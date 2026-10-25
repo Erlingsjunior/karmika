@@ -457,6 +457,7 @@
   .slot { width: 44px; height: 44px; border: 2px solid #8a6a30; border-radius: 8px; background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--c) 28%, #1a1220), #0c0810 80%); box-shadow: 0 0 0 1px #000, inset 0 0 10px rgba(0,0,0,.8), 0 3px 8px rgba(0,0,0,.7); overflow: visible; }
   .slot svg { width: 28px; height: 28px; stroke: none; fill: none; stroke-width: 1; filter: drop-shadow(0 1px 2px #000); }
   .slot.ready { border-color: var(--c); animation: rdy .9s ease-in-out infinite; }
+  .slot.locked.ready, .slot.locked.on { animation: none; border-color: inherit; transform: none; box-shadow: none; } /* magia que você ainda não tem não pisca (avisava 'pronta' por causa da Fúria) */
   @keyframes rdy { 50% { box-shadow: 0 0 0 1px #000, 0 0 18px var(--c), inset 0 0 12px color-mix(in srgb, var(--c) 50%, transparent); } }
   .slot kbd { left: 4px; top: 2px; font: 700 9px Cinzel, serif; color: #f0d08a; text-shadow: 0 1px 2px #000; z-index: 3; }
   .slot .cd { background: rgba(0,0,0,.55); border-radius: 6px; }
@@ -589,6 +590,7 @@
   .charpn { width: min(760px, 94vw); } .charpn h2 .lv { font-size: 13px; color: #b9c6e0; margin-left: auto; margin-right: 12px; }
   .paper { display: grid; grid-template-columns: 1fr 190px 1fr; gap: 12px; align-items: center; background: radial-gradient(ellipse at 50% 40%, rgba(201,162,74,.12), transparent 65%); padding: 8px 0 14px; }
   .doll { position: relative; width: 170px; height: 262px; margin: 0 auto; border: 2px solid #b8924a; background: #14101a; box-shadow: inset 0 0 30px #000, 0 0 18px rgba(201,162,74,.25); display: grid; place-items: center; overflow: hidden; }
+  .doll canvas.dollcv { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; cursor: grab; display: block; } .doll canvas.dollcv:active { cursor: grabbing; }
   .doll img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; } .doll .pw { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font: 600 12px Cinzel, serif; color: #ffe08a; background: rgba(0,0,0,.55); padding: 4px; }
   .eqcol { display: flex; flex-direction: column; gap: 6px; } .eqcol .eq { display: grid; grid-template-columns: 34px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; min-height: 44px; }
   .eqcol .eq .ic { grid-row: 1 / span 2; font-size: 24px; text-align: center; } .eqcol .eq small { color: #8a7a60; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; } .eqcol .eq b { font-size: 12px; }

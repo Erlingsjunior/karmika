@@ -9,10 +9,10 @@ import * as THREE from 'three';
 import { fine } from './dual3d';
 
 const T = 2;
-export type SenseKind = 'rastro' | 'sangue' | 'espirito' | 'dispositivo' | 'cheiro';
+export type SenseKind = 'rastro' | 'sangue' | 'espirito' | 'dispositivo' | 'cheiro' | 'ninho';
 export interface SenseGoal { id: string; kind: SenseKind; label: string; from: { x: number; y: number }; to: { x: number; y: number }; spirit?: { name: string; lines: string[] } }
 export interface Cache { id: string; x: number; y: number; name: string; lore: string; tier: number }
-interface Ctx { scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; color(): number; inside(): boolean; bubble(x: number, y: number, z: number, t: string): void; log(t: string, c?: string): void; fx(x: number, y: number, z: number, col: number): void }
+interface Ctx { /** guincho de ratazana: 0..1 */ squeak?(v: number): void; /** achou um ninho: o que estava escondido nele */ nest?(x: number, y: number, z: number, g: SenseGoal): void; scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; color(): number; inside(): boolean; bubble(x: number, y: number, z: number, t: string): void; log(t: string, c?: string): void; fx(x: number, y: number, z: number, col: number): void }
 
 const tex = (draw: (g: CanvasRenderingContext2D) => void) => { const c = document.createElement('canvas'); c.width = c.height = 64; draw(c.getContext('2d')!); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
 const radial = (col: string) => tex((g) => { const gr = g.createRadialGradient(32, 32, 1, 32, 32, 31); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); });
@@ -23,8 +23,11 @@ const TEX = {
   ghost: tex((g) => { const gr = g.createLinearGradient(0, 0, 0, 64); gr.addColorStop(0, 'rgba(220,255,240,.95)'); gr.addColorStop(1, 'rgba(160,255,210,0)'); g.fillStyle = gr; g.beginPath(); g.arc(32, 15, 9, 0, 6.283); g.fill(); g.beginPath(); g.moveTo(18, 30); g.quadraticCurveTo(32, 18, 46, 30); g.lineTo(52, 64); g.lineTo(12, 64); g.closePath(); g.fill(); g.fillStyle = 'rgba(20,60,40,.9)'; g.fillRect(27, 13, 3, 3); g.fillRect(34, 13, 3, 3); }),
   sigil: tex((g) => { g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 3; g.beginPath(); g.arc(32, 32, 26, 0, 6.283); g.stroke(); g.beginPath(); for (let i = 0; i < 7; i++) { const a = -Math.PI / 2 + i * 6.283 * 3 / 7; const x = 32 + Math.cos(a) * 24, y = 32 + Math.sin(a) * 24; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.stroke(); g.beginPath(); g.arc(32, 32, 5, 0, 6.283); g.fill(); }),
   glow: radial('rgba(255,255,255,.9)'),
+  /* ninho de ratazana: galhos e palha em roda, com um brilho de coisa roubada no meio */
+  nest: tex((g) => { g.lineCap = 'round'; for (let i = 0; i < 26; i++) { const a = i / 26 * 6.283 + (i % 3) * 0.2, r0 = 14 + (i % 4) * 2.5, r1 = 24 + (i % 5) * 1.6; g.strokeStyle = i % 2 ? 'rgba(200,150,90,1)' : 'rgba(150,100,60,1)'; g.lineWidth = 2.2 + (i % 3) * 0.6; g.beginPath(); g.moveTo(32 + Math.cos(a) * r0, 34 + Math.sin(a) * r0 * 0.7); g.lineTo(32 + Math.cos(a + 0.9) * r1, 34 + Math.sin(a + 0.9) * r1 * 0.7); g.stroke(); }
+    const gr = g.createRadialGradient(32, 33, 1, 32, 33, 11); gr.addColorStop(0, 'rgba(255,240,170,1)'); gr.addColorStop(1, 'rgba(255,200,80,0)'); g.fillStyle = gr; g.beginPath(); g.arc(32, 33, 11, 0, 6.283); g.fill(); }),
 };
-const KCOL: Record<SenseKind, number> = { rastro: 0xffe8b0, sangue: 0xff3a3a, espirito: 0x9affd0, dispositivo: 0x8af0ff, cheiro: 0xd0a0ff };
+const KCOL: Record<SenseKind, number> = { rastro: 0xffe8b0, sangue: 0xff3a3a, espirito: 0x9affd0, dispositivo: 0x8af0ff, cheiro: 0xd0a0ff, ninho: 0xffc070 };
 
 export function createSecrets(ctx: Ctx, caches: Cache[]) {
   let found: string[] = []; try { found = JSON.parse(localStorage.getItem('karmika.segredos.v1') || '[]'); } catch { /* */ }
@@ -36,18 +39,20 @@ export function createSecrets(ctx: Ctx, caches: Cache[]) {
   self.visible = false;
   /* rastros ativos */
   type Mark = THREE.Object3D & { material: THREE.Material & { opacity: number } };
-  const trails = new Map<string, { g: SenseGoal; marks: Mark[]; target: THREE.Sprite; ghost?: THREE.Sprite; done: boolean; told: number }>();
+  const trails = new Map<string, { g: SenseGoal; marks: Mark[]; target: THREE.Sprite; ghost?: THREE.Sprite; done: boolean; told: number; sq: number }>();
   function buildTrail(g: SenseGoal) {
     const ax = (g.from.x + 0.5) * T, az = (g.from.y + 0.5) * T, bx = (g.to.x + 0.5) * T, bz = (g.to.y + 0.5) * T, L = Math.hypot(bx - ax, bz - az), n = Math.max(6, Math.floor(L / 2.6)), nx = -(bz - az) / (L || 1), nz = (bx - ax) / (L || 1);
     const marks: Mark[] = []; const tx = g.kind === 'sangue' ? TEX.drop : g.kind === 'dispositivo' ? TEX.gear : g.kind === 'cheiro' ? TEX.glow : TEX.foot;
     for (let i = 0; i < n; i++) { const k = i / n, wob = Math.sin(k * 9 + g.id.length) * 2.2 * Math.sin(k * Math.PI), x = ax + (bx - ax) * k + nx * wob + (i % 2 ? 0.35 : -0.35) * nx, z = az + (bz - az) * k + nz * wob + (i % 2 ? 0.35 : -0.35) * nz;
       let s: Mark;
-      if (g.kind === 'rastro' || g.kind === 'sangue') { /* pegada/gota deitada no chão, na direção do caminho */ const m = new THREE.Mesh(new THREE.PlaneGeometry(g.kind === 'sangue' ? 0.85 : 0.6, g.kind === 'sangue' ? 0.65 : 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, color: KCOL[g.kind], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); m.rotation.y = Math.atan2(bx - ax, bz - az) + (g.kind === 'sangue' ? i * 1.3 : 0); m.position.set(x, ctx.heightAt(x, z) + 0.05, z); s = m as unknown as Mark; }
+      if (g.kind === 'ninho') { /* patinhas de rato: pequenas, em par, correndo até o ninho */ const m = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.42).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: TEX.foot, color: KCOL.ninho, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); m.rotation.y = Math.atan2(bx - ax, bz - az); m.position.set(x, ctx.heightAt(x, z) + 0.05, z); s = m as unknown as Mark; }
+      else if (g.kind === 'rastro' || g.kind === 'sangue') { /* pegada/gota deitada no chão, na direção do caminho */ const m = new THREE.Mesh(new THREE.PlaneGeometry(g.kind === 'sangue' ? 0.85 : 0.6, g.kind === 'sangue' ? 0.65 : 0.9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, color: KCOL[g.kind], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); m.rotation.y = Math.atan2(bx - ax, bz - az) + (g.kind === 'sangue' ? i * 1.3 : 0); m.position.set(x, ctx.heightAt(x, z) + 0.05, z); s = m as unknown as Mark; }
       else { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, color: KCOL[g.kind], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); sp.scale.setScalar(g.kind === 'cheiro' ? 1.4 : 0.7); sp.position.set(x, ctx.heightAt(x, z) + (g.kind === 'cheiro' ? 0.8 : 0.5), z); s = sp as unknown as Mark; }
       s.visible = false; ctx.scene.add(fine(s)); marks.push(s); }
-    const target = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.kind === 'dispositivo' ? TEX.gear : TEX.sigil, color: KCOL[g.kind], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); target.scale.setScalar(1.6); target.position.set(bx, ctx.heightAt(bx, bz) + 0.6, bz); target.visible = false; ctx.scene.add(fine(target));
+    const target = new THREE.Sprite(new THREE.SpriteMaterial({ map: g.kind === 'dispositivo' ? TEX.gear : g.kind === 'ninho' ? TEX.nest : TEX.sigil, color: g.kind === 'ninho' ? 0xffffff : KCOL[g.kind], transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); target.scale.setScalar(1.6); target.position.set(bx, ctx.heightAt(bx, bz) + 0.6, bz); target.visible = false; ctx.scene.add(fine(target));
     let ghost: THREE.Sprite | undefined; if (g.kind === 'espirito') { ghost = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.ghost, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); ghost.scale.set(1.3, 2.2, 1); ghost.position.set(bx, ctx.heightAt(bx, bz) + 1.2, bz); ghost.visible = false; ctx.scene.add(fine(ghost)); }
-    trails.set(g.id, { g, marks, target, ghost, done: false, told: 0 });
+    if (g.kind === 'ninho') { target.scale.set(1.9, 1.4, 1); target.position.y = ctx.heightAt(bx, bz) + 0.35; }
+    trails.set(g.id, { g, marks, target, ghost, done: false, told: 0, sq: 1 + Math.random() * 2 });
   }
   function dropTrail(id: string) { const tr = trails.get(id); if (!tr) return; for (const m of tr.marks) ctx.scene.remove(m); ctx.scene.remove(tr.target); if (tr.ghost) ctx.scene.remove(tr.ghost); trails.delete(id); }
   /** os rastros que as missões ativas pedem */
@@ -61,10 +66,11 @@ export function createSecrets(ctx: Ctx, caches: Cache[]) {
     for (const tr of trails.values()) { if (tr.done) continue; const g = tr.g, tx = (g.to.x + 0.5) * T, tz = (g.to.y + 0.5) * T, dT = Math.hypot(tx - hp.x, tz - hp.z);
       for (const m of tr.marks) { const d = m.position.distanceTo(hp), vis = on && !inside && d < 46; m.visible = vis; if (vis) m.material.opacity = Math.min(1, (1 - d / 46) * 1.8) * (0.8 + 0.2 * Math.sin(t * 3 + m.position.x)); }
       const tv = on && !inside && dT < 60; tr.target.visible = tv; if (tv) { tr.target.material.opacity = 0.55 + 0.35 * Math.sin(t * 4); tr.target.material.rotation = t * 0.6; }
+      if (g.kind === 'ninho' && on && !inside && dT < 26) { tr.sq -= dt; if (tr.sq <= 0) { tr.sq = 2.2 + Math.random() * 3 * (0.4 + dT / 26); ctx.squeak?.(1 - dT / 26); if (dT < 12 && Math.random() < 0.35) ctx.bubble(tx, ctx.heightAt(tx, tz) + 1.2, tz, Math.random() < 0.5 ? 'iiiik!' : 'iik… iik…'); } if (tv) tr.target.material.rotation = 0; }
       if (tr.ghost) { tr.ghost.visible = tv; if (tv) { tr.ghost.material.opacity = 0.35 + 0.25 * Math.sin(t * 1.3); tr.ghost.position.y = ctx.heightAt(tx, tz) + 1.2 + Math.sin(t * 1.1) * 0.15; } }
       if (dT < 4.5 && on && !inside) { tr.done = true; if (g.spirit) { g.spirit.lines.forEach((l, i) => setTimeout(() => { ctx.bubble(tx, ctx.heightAt(tx, tz) + 2.6, tz, l); ctx.log(`👻 ${g.spirit!.name}: “${l}”`, '#9affd0'); }, i * 4200)); }
-        for (let i = 0; i < 16; i++) ctx.fx(tx + (Math.random() - 0.5) * 2, ctx.heightAt(tx, tz) + 0.3, tz + (Math.random() - 0.5) * 2, KCOL[g.kind]); onSense(g.id); setTimeout(() => dropTrail(g.id), g.spirit ? g.spirit.lines.length * 4200 + 2000 : 3000); }
-      else if (dT < 7 && !on && t - tr.told > 25) { tr.told = t; ctx.log(`✧ Tem alguma coisa aqui… algo que os olhos não pegam. (Ligue o Instinto: F)`, '#d8c8a0'); } }
+        for (let i = 0; i < 16; i++) ctx.fx(tx + (Math.random() - 0.5) * 2, ctx.heightAt(tx, tz) + 0.3, tz + (Math.random() - 0.5) * 2, KCOL[g.kind]); if (g.kind === 'ninho') { ctx.squeak?.(1); ctx.nest?.(tx, ctx.heightAt(tx, tz), tz, g); } onSense(g.id); setTimeout(() => dropTrail(g.id), g.spirit ? g.spirit.lines.length * 4200 + 2000 : 3000); }
+      else if (dT < 7 && !on && t - tr.told > 25) { tr.told = t; ctx.log(g.kind === 'ninho' ? '✧ Um chiado miúdo, quase nada, debaixo da terra… (Ligue o Instinto: F)' : `✧ Tem alguma coisa aqui… algo que os olhos não pegam. (Ligue o Instinto: F)`, '#d8c8a0'); } }
     // esconderijos perto
     for (const c of caches) { if (found.includes(c.id)) continue; const x = (c.x + 0.5) * T, z = (c.y + 0.5) * T, d = Math.hypot(x - hp.x, z - hp.z); let o = cacheObjs.get(c.id);
       if (d > 60 || inside) { if (o) { ctx.scene.remove(o.s); ctx.scene.remove(o.g); cacheObjs.delete(c.id); } continue; }

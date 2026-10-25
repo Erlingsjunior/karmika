@@ -23,7 +23,7 @@ export type Obj =
   | { kind: 'escort'; route: string; label: string }
   /** limpar a caravana caída num ponto da rota (at = fração da estrada) */
   | { kind: 'rescue'; route: string; label: string; at: number; note?: string };
-export type SenseWhat = 'rastro' | 'sangue' | 'espirito' | 'dispositivo' | 'cheiro';
+export type SenseWhat = 'rastro' | 'sangue' | 'espirito' | 'dispositivo' | 'cheiro' | 'ninho';
 /** só com o Instinto de classe ligado (tecla F): seguir um rastro, achar um espírito ou um dispositivo perdido (segredos.ts).
     at/from são lugares do mapa (vila ou ponto de interesse); dx/dy deslocam em casas; from é de onde o rastro vem */
 export type SenseObj = { kind: 'sense'; what: SenseWhat; label: string; at: string; dx?: number; dy?: number; from?: string; spirit?: { name: string; lines: string[] } };

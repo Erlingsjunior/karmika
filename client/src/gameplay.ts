@@ -1243,7 +1243,7 @@ export function createGameplay(d: GameplayDeps) {
       const slot = (k: string) => document.querySelector(`.slot[data-id="${k}"]`) as HTMLElement | null;
       const setT = (k: string, v: number) => { const t = slot(k)?.querySelector('.cdt') as HTMLElement | null; if (t) t.textContent = v > 0.05 ? (v >= 10 ? String(Math.ceil(v)) : v.toFixed(1)) : ''; };
       setT('slam', Math.max(cd.cast, cd.slam)); setT('bash', st.counterT > 0 ? 0 : cd.bash); setT('heal', cd.heal); for (const id of Object.keys(cdX)) setT(id, cdX[id]);
-      slot('slam')?.classList.toggle('ready', st.fury >= 3); slot('bash')?.classList.toggle('ready', st.counterT > 0); slot('heal')?.classList.toggle('ready', st.fury > 0 && cd.heal <= 0); slot('combo')?.classList.toggle('ready', st.ambushT > 0);
+      { const rd = (k: string, on: boolean) => { const el = slot(k); el?.classList.toggle('ready', on && !el.classList.contains('locked')); }; rd('slam', st.fury >= 3); rd('bash', st.counterT > 0); rd('heal', st.fury > 0 && cd.heal <= 0); rd('combo', st.ambushT > 0); }
       const fp = document.querySelectorAll('#fury i'); fp.forEach((p, i) => p.classList.toggle('on', i < st.fury));
       const ct = document.getElementById('ctr'); if (ct) { ct.style.opacity = st.counterT > 0 ? '1' : '0'; ct.style.width = (st.counterT / 3.5) * 100 + '%'; }
       void raceLabel; void karma; /* a página Conta do menu é preenchida pelo main */ { const ms = document.getElementById('m-snd'); if (ms) ms.textContent = muted ? 'mudo' : 'ligado'; }

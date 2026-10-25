@@ -182,6 +182,10 @@ export class AudioEngine {
       this.tone(988, 988, 0.5, 0.035, 'sine', 0.42); this.tone(1480, 1480, 0.7, 0.03, 'sine', 0.58); this.tone(1976, 1976, 0.9, 0.012, 'triangle', 0.58);
       this.tone(64, 40, 0.16, 0.12, 'sine', 0.95); this.tone(60, 38, 0.18, 0.09, 'sine', 1.2); }
     else { const f = this.burst('bandpass', 1800, 1.1, 0.45, 0.05, 1); f.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.42); this.tone(660, 330, 0.35, 0.025, 'sine'); } }
+  /** guincho de ratazana (o Instinto ouve os ninhos): v = 0..1, mais alto quanto mais perto */
+  squeak(v = 1) { if (!this.ctx) return; const k = Math.max(0.05, Math.min(1, v)), n = 2 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) { const f = 2400 + Math.random() * 1400, d = i * (0.07 + Math.random() * 0.05); this.tone(f, f * (1.25 + Math.random() * 0.3), 0.06 + Math.random() * 0.04, 0.03 * k, 'square', d); this.tone(f * 1.5, f * 1.1, 0.05, 0.015 * k, 'sine', d + 0.02); }
+    this.burst('highpass', 4200, 2, 0.12, 0.012 * k); }
   click() { if (!this.ctx) return; this.burst('bandpass', 1800, 3, 0.03, 0.05); }
   pickup() { if (!this.ctx) return; this.tone(880, 1320, 0.08, 0.04, 'triangle'); this.tone(1320, 1760, 0.1, 0.03, 'sine', 0.06); }
   levelup() { if (!this.ctx) return; for (const [f, d] of [[392, 0], [523, 0.12], [659, 0.24], [784, 0.36], [1047, 0.5]] as [number, number][]) this.tone(f, f, 0.8, 0.05, 'triangle', d); this.burst('highpass', 3000, 0.7, 1.2, 0.03); }

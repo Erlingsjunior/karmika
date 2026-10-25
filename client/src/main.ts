@@ -461,7 +461,7 @@ function updateCompanions(dt: number, t: number, heroYaw: number, mps: number) {
 const inv = createInventory(game, {
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
   canWear: (g) => g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
-  onGear: () => syncGear(), onBag: () => renderQuick(),
+  onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
   onUse: (id) => { const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>7 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(7); game.logMsg('💧 A Lágrima se desfaz em luz: +7 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
     if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff'); return true; }
@@ -471,7 +471,7 @@ const inv = createInventory(game, {
     if (hunted) { game.logMsg('📜 Há inimigos atrás de você — a Deusa não abre caminho no meio da luta.', '#ff9a8a'); return true; }
     if (combatMode) setCombat(false);
     inv.take('scroll_return', 1); openPortal(); game.logMsg('📜 O pergaminho se desfaz em luz violeta.', '#b8a8ff'); return true; } if (id === 'tome') { inv.take('tome', 1); tree.addBonus(5); return true; } if (MOUNTS[id]) { if (!mount) return false; if (!riding && (combatMode || inside || swimmingNow)) { game.logMsg('Não dá para montar aqui (saia do combate).', '#ff9a8a'); return true; } inv.closeAll(); setRiding(!riding); return true; } if (PETS[id]) { game.logMsg(`${ITEMS_NAME(id)} já está com você — ele busca os itens caídos.`, '#e8dcc0'); return true; } return false; },
-  portrait: () => { portraits.delete('hero'); try { return portraitOf('hero', hero.root, true); } catch { return null; } }, title: () => `${(profile?.name ?? '')}${quests?.title ? ' · ' + quests.title : ''}`.trim() || RACES[state.race].label,
+  portrait: () => { if (dollR && !dollFail) return null; /* o boneco vivo já está desenhando */ portraits.delete('hero'); try { return portraitOf('hero', hero.root, true); } catch { return null; } }, title: () => `${(profile?.name ?? '')}${quests?.title ? ' · ' + quests.title : ''}`.trim() || RACES[state.race].label,
   raceLabel: () => RACES[state.race].label, karma: () => state.karma, xpNeed: game.xpNeed,
   soul: () => { soul.regen(); const r: [string, string][] = [['Fio da Vida', `${game.st.lvl < FRAY_LVL || !profile?.eye ? `intacto até o Olho abrir (nível ${FRAY_LVL})` : `${'●'.repeat(soul.s.breaths)}${'○'.repeat(MAX_BREATHS - soul.s.breaths)}${soul.s.breaths < MAX_BREATHS ? ` · +1 em ${soul.nextBreathH()}h` : ''}`} · 💧 ${inv.count('lagrima')}`]];
     if (soul.s.debt > 0) r.push(['Dívida Kármica', `${soul.s.debt.toLocaleString('pt-BR')} XP`]);
@@ -934,7 +934,12 @@ const CACHES: Cache[] = []; setTimeout(() => { const out = CACHES; /* depois do 
   const h = (n: number) => { const x = Math.sin(n * 91.7 + 13.1) * 43758.5453; return x - Math.floor(x); };
   src.forEach((p, i) => { if (h(i) > 0.55 || out.length >= 36) return; const x = Math.round(p.x + (h(i * 3) - 0.5) * 14), y = Math.round(p.y + (h(i * 7) - 0.5) * 14); const fr = nearestFree(navProbe, x, y, 4); if (!fr) return; const [name, lore] = CACHE_LORE[out.length % CACHE_LORE.length]; out.push({ id: 'c' + i, x: Math.round(fr.x), y: Math.round(fr.y), name, lore, tier: regionAt(x, y).lo }); }); }, 0);
 const secrets = createSecrets({ scene, heightAt, hero: () => heroPos, color: () => myInstinct().color, inside: () => !!inside,
-  bubble: (x, y, z, tx) => carBubble(x, y, z, tx), log: (tx, c) => game.logMsg(tx, c),
+  bubble: (x, y, z, tx) => carBubble(x, y, z, tx), log: (tx, c) => game.logMsg(tx, c), squeak: (v) => audio.squeak(v),
+  nest: (x, y, z) => { /* o que a ratazana guardou: moedas, uma coisa da despensa e, às vezes, uma peça de verdade */ const lv = Math.max(1, game.st.lvl), g = 8 + Math.round(lv * (1.5 + Math.random() * 2)); game.st.gold += g;
+    const LOOT: [string, string][] = [['apple', 'uma maçã meio roída'], ['hide', 'um retalho de couro'], ['claw', 'uma garra arrancada'], ['dust', 'uma pitada de pó de fada'], ['potion', 'um frasco de poção ainda lacrado'], ['bread', 'um pão quase inteiro']];
+    const [it, nm] = LOOT[Math.floor(Math.random() * LOOT.length)]; inv.add(it, 1); game.logMsg(`🐀 No ninho: ${g} moedas e ${nm}.`, '#ffc070');
+    if (Math.random() < 0.3) { game.spawnGear(x, z, y, lv, { rare: 2 }, 1); game.logMsg('🐀 Entre a palha, alguma coisa brilha: uma peça de equipamento!', '#ffd890'); }
+    for (let i = 0; i < 18; i++) particles.spawn(x + (Math.random() - 0.5) * 1.2, y + 0.3, z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.9, s0: 0.18, s1: 0.04, c0: 0xffe0a0, c1: 0xc08040, a: 1, g: 4 }); },
   fx: (x, y, z, col) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.3, vy: 0.9, vz: (Math.random() - 0.5) * 0.3, life: 1.6, s0: 0.22, s1: 0.04, c0: col, c1: col, a: 0.8, drag: 0.6 }) }, CACHES);
 secrets.setOnSense((id) => quests.onSense(id));
 const placeT = (name: string) => { const st = city.settlements.find((q) => q.name === name); if (st) return { x: st.x, y: st.y }; const p = city.pois.find((q) => q.name === name); return p ? { x: p.x, y: p.y } : null; };
@@ -1473,13 +1478,14 @@ function updateStamRing(dt: number) {
 }
 /* bússola no pé do herói: arco dourado que aponta o destino, com três chevrons correndo na direção */
 const guide3d = new THREE.Group(); guide3d.visible = false; scene.add(fine(guide3d));
-const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide });
+/* mistura normal (não aditiva): no chão claro, verde-claro e laranja somados à luz viravam quase branco — a cor da missão tem que aparecer como é */
+const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, blending: THREE.NormalBlending, fog: false, side: THREE.DoubleSide });
 { const arc2 = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.06, 40, 1, -Math.PI / 2 - 0.7, 1.4).rotateX(-Math.PI / 2), gMat(0.8)); guide3d.add(arc2);
   for (let i = 0; i < 3; i++) { const sh = new THREE.Shape(); sh.moveTo(-0.22, -0.16); sh.lineTo(0, 0.1); sh.lineTo(0.22, -0.16); sh.lineTo(0, -0.02); sh.closePath(); const ch = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), gMat(0.9)); ch.name = 'chev' + i; guide3d.add(ch); } }
 let guideT: { x: number; y: number; label: string } | null = null, guideTick = 0;
 /** cor da guia = cor da missão escolhida (história amarela, secundária azul, quadro verde, evento laranja, alfinete do mapa prata-azulado):
  *  o arco, as setas no chão, a etiqueta e o anel no mapa falam a mesma cor do cartão da missão (Erling, 25/10) */
-const GUIDE_COL = { story: '#ffd24a', side: '#6ab4ff', rep: '#7aff7a', ev: '#ff9a3a', pin: '#b9c6e0' } as const;
+const GUIDE_COL = { story: '#ffc21a', side: '#3a9cff', rep: '#2ee05a', ev: '#ff7a14', pin: '#c8d2e8' } as const;
 let guideCol: string = GUIDE_COL.story;
 function guideColor(): string { if (pinT) return GUIDE_COL.pin; if (guideT && /^Evento: /.test(guideT.label)) return GUIDE_COL.ev; const d = quests.tracked; return d ? GUIDE_COL[questCat(d)] : GUIDE_COL.story; }
 const gv = new THREE.Vector3();
@@ -3003,7 +3009,36 @@ function frameBody() {
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
   renderer.info.reset();
   composer.render();
+  dollTick(rawDt);
   if (!shown) { shown = true; document.body.classList.add('ready'); }
+}
+/* boneco vivo na ficha do personagem (C): o próprio herói, animado e com o equipamento que está vestindo, desenhado num
+   quadro pequeno ao lado do mundo. Trocou a peça, o boneco troca na hora e brilha; arrastar com o mouse gira (Erling, 25/10) */
+var dollR: THREE.WebGLRenderer | null = null, dollScene: THREE.Scene | null = null, dollCam: THREE.PerspectiveCamera | null = null, dollYaw = 0.42, dollPulse = -9, dollBoxT = 0, dollDrag: number | null = null, dollFail = false;
+const DOLL_W = 96, DOLL_H = 146;
+function dollTick(dt: number) {
+  if (dollFail) return; const chEl = document.getElementById('char'), host = chEl && chEl.style.display !== 'none' ? chEl.querySelector('.doll') as HTMLElement | null : null; if (!host) return;
+  try {
+    if (!dollR) {
+      dollR = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' }); dollR.setPixelRatio(1); dollR.setSize(DOLL_W, DOLL_H, false); dollR.outputColorSpace = renderer.outputColorSpace; dollR.toneMapping = renderer.toneMapping; dollR.toneMappingExposure = renderer.toneMappingExposure;
+      dollR.domElement.className = 'dollcv'; dollScene = new THREE.Scene(); dollScene.background = new THREE.Color(0x14101a);
+      dollScene.add(new THREE.HemisphereLight(0xfff4e0, 0x3a2a30, 2.3)); const dl = new THREE.DirectionalLight(0xffffff, 2.6); dl.position.set(1.2, 2.2, 2.4); dollScene.add(dl);
+      const rim = new THREE.DirectionalLight(0xffd8a0, 1.2); rim.position.set(-2, 1.5, -2); dollScene.add(rim);
+      dollCam = new THREE.PerspectiveCamera(34, DOLL_W / DOLL_H, 0.05, 30);
+      const cv = dollR.domElement; cv.addEventListener('pointerdown', (e) => { dollDrag = e.clientX; cv.setPointerCapture(e.pointerId); e.stopPropagation(); });
+      cv.addEventListener('pointermove', (e) => { if (dollDrag === null) return; dollYaw += (e.clientX - dollDrag) * 0.02; dollDrag = e.clientX; });
+      cv.addEventListener('pointerup', () => { dollDrag = null; });
+    }
+    const cv = dollR.domElement; if (cv.parentElement !== host) { host.querySelector('img')?.remove(); host.prepend(cv); }
+    const root = hero.root, parent = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible;
+    dollScene!.add(root); root.position.set(0, 0, 0); root.rotation.set(0, dollYaw, 0); root.visible = true; root.updateMatrixWorld(true);
+    const xr: THREE.Object3D[] = []; root.traverse((o) => { const mt = (o as THREE.Mesh).material as THREE.Material | undefined; if (o.visible && (o.userData.xray || (mt && !Array.isArray(mt) && mt.depthTest === false))) { xr.push(o); o.visible = false; } });
+    if ((dollBoxT -= dt) <= 0) { dollBoxT = 0.6; const box = new THREE.Box3().setFromObject(root), top = Math.min(box.max.y, 1.97 * (root.scale.y || 1)), cy = top * 0.52, dist = top * 1.45 + 0.45; dollCam!.position.set(0.3, cy + 0.15, dist); dollCam!.lookAt(0, cy - 0.02, 0); }
+    dollCam!.layers.enableAll(); dollR.render(dollScene!, dollCam!);
+    for (const o of xr) o.visible = true;
+    dollScene!.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; root.updateMatrixWorld(true);
+    const k = Math.max(0, 1 - (performance.now() - dollPulse) / 700); host.style.boxShadow = k > 0 ? `inset 0 0 30px #000, 0 0 ${18 + 26 * k}px rgba(255,210,110,${0.25 + 0.6 * k})` : '';
+  } catch (err) { dollFail = true; console.warn('boneco vivo indisponível', err); }
 }
 (document.getElementById('who') as HTMLElement).textContent = RACES[state.race].label;
 frame();

@@ -69,10 +69,17 @@ export const HUMAN_ROAD: QuestDef[] = ([
     text: '◈ Vá ao Cemitério Esquecido. Há uma alma que chora entre os túmulos e só quem tem o Instinto ligado consegue vê-la. Escute o que ela tem a dizer.',
     objs: [{ kind: 'visit', poi: 'Cemitério Esquecido' }, { kind: 'sense', what: 'espirito', label: 'Achar e ouvir a alma que chora', at: 'Cemitério Esquecido', dx: 3, dy: 2, spirit: { name: 'Alma de Hedda', lines: ['Você… me vê? Ninguém me vê faz tanto tempo.', 'Eu era a sineira do vale. Morri no inverno da fome, e me enterraram sem nome.', 'Debaixo do cemitério tem uma porta. Lá embaixo os ossos não dormem. Diga ao velho do templo.'] } }],
     talk: ['Sente-se. Não, não precisa. Fique de pé, que quem está de pé escuta melhor.', 'Todo vivo tem um instinto. Uns chamam de medo. Eu chamo de atenção.', 'No Cemitério Esquecido alguém chora à noite. Os aldeões juram que é o vento. Eu não juro nada.', F] },
-  { id: 'h06', chain: CN, name: 'Pedra e corda', lvl: 6, giver: 'Doran', xp: 1, gold: 20, items: [['flint', 1]], next: 'h07',
+  { id: 'h06', chain: CN, name: 'Pedra e corda', lvl: 6, giver: 'Doran', xp: 1, gold: 20, items: [['flint', 1]], next: 'h06r',
     text: 'Um caminhante que não sabe fazer o próprio machado não atravessa o inverno. Colete pedras e crie um Machado de Pedra (menu I).',
     objs: [{ kind: 'collect', item: 'stone', n: 4 }, { kind: 'craft', recipe: 'Machado de Pedra', n: 1 }],
     talk: ['Eldrin mandou você? Então você vai descer onde não tem loja. Leve ferramenta.', 'Quatro pedras, um galho, uma corda. O resto é paciência.'] },
+  /* 25/10 (Erling): "o instinto começa desligado e o jogador nem percebe até a primeira missão pedir; uma perto do nível 6 ou 7, na
+     toca das ratazanas — achar os tesouros e itens que elas escondem nos ninhos e escutar o guinchado delas" */
+  { id: 'h06r', chain: CN, name: 'O que as ratazanas escondem', lvl: 6, giver: 'Rosália', xp: 1, gold: 30, items: [['potion', 2]], gear: 1, next: 'h07',
+    text: '◈ As ratazanas rubras do Cemitério Esquecido roubam da despensa e de quem passa, e escondem tudo nos ninhos. Ligue o Instinto (F): ele faz você ouvir o guincho delas e ver as patinhas no chão. Ache os três ninhos e traga o que for da cozinha.',
+    objs: [{ kind: 'kill', type: 'rat', n: 4 }, { kind: 'sense', what: 'ninho', label: 'Achar o ninho do muro caído', at: 'Cemitério Esquecido', dx: -7, dy: -5 }, { kind: 'sense', what: 'ninho', label: 'Achar o ninho debaixo da cripta', at: 'Cemitério Esquecido', dx: 8, dy: -6 }, { kind: 'sense', what: 'ninho', label: 'Achar o ninho do carvalho oco', at: 'Cemitério Esquecido', dx: -6, dy: 8 }],
+    talk: ['Sumiu outra vez. Um queijo inteiro, duas colheres de prata e a aliança da minha mãe, que eu tirei para sovar o pão.', 'Foram as ratazanas rubras. Elas carregam tudo o que brilha e tudo o que cheira para os ninhos, lá pelo Cemitério Esquecido.', 'Ninguém acha os ninhos. Dizem que só quem presta atenção de verdade ouve o guincho delas por baixo da terra.', { who: 'Instinto', t: 'Ligue o Instinto (tecla F). Perto de um ninho você ouve o guincho das ratazanas, mais alto quanto mais perto, e vê as patinhas no chão. Desligado, não ouve nada.' }],
+    done: ['A aliança! Você achou a aliança da minha mãe.', 'O queijo pode ficar com elas. Isso aqui eu não troco por nada. Leve estas poções; o que mais você tirou dos ninhos é seu.'] },
   { id: 'h07', chain: CN, name: 'Os ossos que não dormem', lvl: 7, giver: 'Eldrin', xp: 1, gold: 40, gear: 1, next: 'h08',
     text: 'A alma de Hedda falou de uma porta debaixo do Cemitério Esquecido. É o Mausoléu dos Esquecidos. Desça, chegue ao fundo e cale o Sacristão Sem Rosto.',
     objs: [{ kind: 'dungeon', id: 'esquecidos', name: 'Mausoléu dos Esquecidos' }],
