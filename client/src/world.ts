@@ -1,3 +1,4 @@
+import { CAMPAIGN_NPCS } from './campanha';
 import type { Tile } from '@karmika/shared';
 
 /** deslocamento das Terras dos Homens dentro do mundo grande (tiles) */
@@ -1287,6 +1288,8 @@ export function buildCity(): World {
       ex('Lithendel', { name: 'Anciã Faelwen', role: 'Anciã de Lithendel', kind: 'nordic', x: 84 - 2.5, y: 404 + 2, radius: 1.2, tint: 0x5a8a6a, scale: 1.0, lines: ['As árvores daqui eram velhas quando os reis dos homens eram crianças.', 'A mata fala. Pouca gente escuta.'] });
       ex('Brasaforja', { name: 'Mestre-Mineiro Dvalin', role: 'Mestre das Galerias', kind: 'dwarf', x: 560 + 3, y: 186 + 2.5, radius: 1.5, tint: 0x6a4a2a, scale: 1.0, lines: ['Pedra boa canta quando você bate. Pedra ruim chora.', 'Meu avô dizia: escute a montanha antes de cavar nela.'] });
       ex('Austrvik', { name: 'Irmão Tobias', role: 'Sineiro da Abadia da Aurora', kind: 'nordic', x: 392 + SH - 2, y: 292 + SH + 2.5, radius: 1.5, tint: 0xd8c89a, scale: 0.95, lines: ['Os sinos da Abadia eram de bronze. Agora são de engrenagem. Funcionam melhor, quando funcionam.', 'Toco antes do sol. Sempre antes.'] }); }
+    /* a campanha que viaja (25/10): uma pessoa nova em cada vila do roteiro do Caminho do Norte (campanha.ts) */
+    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (t) t.npcs.push({ name: c.name, role: c.role, kind: 'nordic', x: t.x + c.dx, y: t.y + c.dy, radius: 1.5, tint: c.tint, scale: 1.0, lines: c.lines }); }
     const ak = settlements.find((q) => q.kind === 'city'); if (ak) { /* Hrefna e o santuário da Deusa dos Caminhos: pedras de pé em roda, no lado oeste da praça */
       const hx = ak.x - 12, hy = ak.y + 12; ak.npcs.push({ name: 'Hrefna', role: 'Vidente dos Caminhos', kind: 'nordic', x: hx + 0.5, y: hy + 0.5, radius: 2.5, tint: 0x6a4a8a, scale: 1.0, lines: ['A Deusa dos Caminhos não escolhe por ninguém. Mas ela vê.', 'Volte quando o seu caminho pesar. No nível 30 eu leio você.'] });
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3, gx = Math.round(hx + Math.cos(a) * 3.2), gy = Math.round(hy + Math.sin(a) * 3.2); if (inb(gx, gy) && map[gy][gx] !== 'water') props.push({ kind: 'obelisk', gx, gy, w: 1, h: 1, height: 2.2, wall: 0x6a6a78, roof: 0x9b6ad0, variant: k % 3 }); }

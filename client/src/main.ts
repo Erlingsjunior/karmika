@@ -39,7 +39,8 @@ import { createCoop } from './coop';
 import { createInicio } from './inicio';
 import { profLevelUp, badge } from './celebrate';
 import { STATION_INFO } from './stations3d';
-import { questCat, createQuests, NORTH, SIDE, WARRIOR } from './quests';
+import { questCat, createQuests, SIDE, WARRIOR } from './quests';
+import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
 import { buildInterior, type Interior } from './interiors3d';
 import { DualRenderPass, fine } from './dual3d';
@@ -524,7 +525,7 @@ const auction = createAuction({ me: () => profile?.name || RACES[state.race].lab
   take: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', itemKind: (id) => ITEMS_TBL[id]?.kind ?? 'res', itemValue: (id) => ITEMS_TBL[id]?.sell ?? 1,
   mail: (from, subj, text, att) => mail.send(from, subj, text, att), log: (t, c) => game.logMsg(t, c), save: () => inv.save() });
-const quests = createQuests({ lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...NORTH, ...SIDE, ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT],
+const quests = createQuests({ lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...SIDE, ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT],
   room: { on: () => netRef?.state === 'on', posts: () => netRef?.posts ?? [], add: (item, n, gold) => netRef?.postAdd({ item, name: ITEMS_TBL[item]?.name ?? item, icon: ITEMS_TBL[item]?.icon ?? '•', n, gold, note: '' }),
     fill: (id, item, n) => netRef?.postFill(id, [{ item: { id: item, n } }]), cancel: (id) => netRef?.postCancel(id) } });
 (window as unknown as { __quests?: unknown }).__quests = quests;
@@ -1333,6 +1334,7 @@ function questTarget(): { x: number; y: number; label: string } | null {
   if (o.kind === 'collect') { const src = DROP_SRC[o.item]; if (!src) return null; const p = src === 'tree' ? nearestProp('tree') : src === 'rock' ? nearestProp('rock', true) : src === 'water' ? nearestTile('water') : nearestSpawn(src); return p ? { ...p, label: src === 'tree' ? 'Árvores' : src === 'rock' ? 'Pedras' : src === 'water' ? 'Água (pescar)' : 'Caça por aqui' } : null; }
   if (o.kind === 'talk') { const p = npcAt(o.npc); return p ? { ...p, label: o.npc } : null; }
   if (o.kind === 'visit') { const poi = city.pois.find((q) => q.name === o.poi); return poi ? { x: poi.x, y: poi.y, label: poi.name } : null; }
+  if (o.kind === 'dungeon') { const en = dgs.entrances.find((q) => q.d.id === o.id); return en ? { x: en.x, y: en.y, label: `Entrada: ${o.name}` } : null; }
   if (o.kind === 'craft') { const p = npcAt('Doran'); return p ? { ...p, label: 'Criar no menu I' } : null; }
   if (o.kind === 'sense') { const g = senseGoals().find((q) => q.id === `${d.id}:${i}`); if (!g) return null; const dS = Math.hypot(g.from.x - h0.x, g.from.y - h0.y), dT2 = Math.hypot(g.to.x - h0.x, g.to.y - h0.y); return dT2 < dS || dS < 8 ? (instinctOn ? { ...g.to, label: g.label } : { ...g.from, label: 'Ligue o Instinto (F) e siga o rastro' }) : { ...g.from, label: `Onde o rastro começa${instinctOn ? '' : ' · ligue o Instinto (F)'}` }; }
   if (o.kind === 'escort' || o.kind === 'rescue') { const p = caravans.where(o.kind, o.route, o.kind === 'rescue' ? o.at : 0); return p ? { ...p, label: o.kind === 'escort' ? `Caravana: ${o.label}` : `Caravana caída: ${o.label}` } : null; }
@@ -1980,7 +1982,7 @@ function enterCrypt(floor: number, p: (typeof city.props)[number]) {
 /* ---------- masmorras, cavernas e subsolos (masmorras.ts + dungeon3d.ts) ---------- */
 const dgs = createMasmorras({ scene, T, city: city as never, heightAt, regionLvl: (x, y) => { const r = regionAt(x, y); return [r.lo, r.hi]; }, game: game as never, particles, audio: audio as never,
   heroPos: () => heroPosNow(), partySize: () => netRef?.party ? netRef.party.members.length : 1, say: (t) => chat.sys(t), fine,
-  onClear: (d, first) => { feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
+  onClear: (d, first) => { quests.onDungeon(d.id); feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
 function enterDungeon(en: (typeof dgs.entrances)[number]) {
   withFade(() => {

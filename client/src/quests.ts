@@ -1,3 +1,4 @@
+import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
 import { FALAS } from './falas';
@@ -13,6 +14,8 @@ export type Obj =
   | { kind: 'visit'; poi: string }
   | { kind: 'craft'; recipe: string; n: number }
   | { kind: 'level'; n: number }
+  /** vencer uma masmorra ou caverna até o chefe (masmorras.ts: onClear) */
+  | { kind: 'dungeon'; id: string; name: string }
   | SenseObj
   /** escoltar uma caravana da Companhia de Latão até o fim da rota (caravanas.ts) */
   | { kind: 'escort'; route: string; label: string }
@@ -32,7 +35,7 @@ export interface QuestDef { id: string; name: string; lvl: number; giver: string
   /** escolha kármica na entrega: o MOTIVO pesa (regra 10) */ choice?: { q: string; opts: { label: string; karma: number; say: string; why: string; /** marca que o mundo lembra */ flag?: string }[] } }
 
 const ENEMY_NAME = (t: EnemyType) => DEFS[t]?.name ?? t;
-export const objText = (o: Obj) => o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : `Alcançar o nível ${o.n}`;
+export const objText = (o: Obj): string => o.kind === 'dungeon' ? `Vencer: ${o.name}` : o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : `Alcançar o nível ${o.n}`;
 
 /* ---------- Caminho do Norte: de aprendiz a Guerreira do Norte (níveis 1–25) ---------- */
 export const NORTH: QuestDef[] = [
@@ -59,10 +62,10 @@ export const NORTH: QuestDef[] = [
    Toda missão amarela, ao ser entregue, aponta a próxima: "vá falar com Fulano, em tal lugar". Se ainda falta nível,
    a ponte diz isso com todas as letras e manda ajudar o povo (azuis e Quadro) até lá. Dão pouco XP: só costuram a história. */
 /** fração do XP de cada trecho da história que a missão amarela paga (com as pontes, ~60% do total) */
-export const STORY_SHARE = 0.54;
-export const STORY_THREAD = ['n01', 'n02', 'n03', 'n04', 'n05', 'n06', 'n07', 'n08', 'n09', 'n10', 'n11', 'n12', 'n13', 'n14', 'n15', 'n16', 'a01', 'a02', 'a03', 'a04', 'p01'];
+export const STORY_SHARE = 0.5; /* 25/10: a campanha ganhou o dobro de missões; cada uma paga um pouco menos, a soma fica parecida */
+export const STORY_THREAD = [...HUMAN_ROAD.map((d) => d.id), 'a01', 'a02', 'a03', 'a04', 'p01']; /* o Caminho do Norte agora viaja (campanha.ts) */
 /** saves antigos: quem já passou de 'Os Caminhos' não recebe as missões de Askavik que entraram depois (23/10) */
-const THREAD_SKIP: Record<string, string> = { a02: 'p01', a03: 'p01', a04: 'p01' };
+const THREAD_SKIP: Record<string, string> = { a02: 'p01', a03: 'p01', a04: 'p01', ...ROAD_OLD };
 const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = {
   n02: { name: 'Alguém precisa de você', say: 'Você segura a espada direito. Mas Karmika não vive só de espada: a Lúcia está pedindo ajuda.', text: 'Garrick viu do que você é capaz. A Lúcia, a aldeã que fica perto da fonte, está preocupada com o inverno. Você faz diferença aqui: vá até ela.' },
   n03: { name: 'O mercador da praça', say: 'Obrigada, de verdade. O Thorin, o mercador, comentou que precisava de mãos firmes.', text: 'O Thorin, o mercador anão da praça, anda reclamando que ninguém traz couro. Ele paga bem, e um caminhante precisa de ouro.' },
@@ -83,6 +86,7 @@ const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = 
   a02: { name: 'A primeira lição de Askavik', say: 'Karmika mandou bem. Mas aqui ninguém entra numa escola sem antes servir a cidade.', text: 'O Mestre Halvard tem um serviço para você antes de qualquer escola. Ele está na Escola de Guerra, no noroeste de Askavik.' },
   a03: { name: 'O Jarl quer ouvir', say: 'Grenivik respira. Leve a notícia ao Jarl: ele gosta de ouvir da boca de quem lutou.', text: 'O Jarl Haakon, no Castelo de Askavik (norte da cidade), quer ouvir o relatório de Grenivik.' },
   a04: { name: 'Um nome que ninguém diz', say: 'Os lobos recuaram. Agora o pior: há algo na Clareira de Selvar que o Jarl não diz o nome em voz alta.', text: 'O Jarl Haakon tem um último pedido, e é o mais perigoso.' },
+  ...ROAD_BRIDGES,
   p01: { name: 'A guardiã das relíquias', say: 'Garrick não exagerou: você tem o braço e a cabeça. Antes de qualquer escola, fale com a Velha Gunnhild, aqui mesmo na praça.', text: 'A Velha Gunnhild, guardiã das relíquias de Askavik, conhece quem chega à cidade. Ela vai mostrar o que falta para você descobrir o seu caminho.' },
 };
 /** monta a ponte entre a missão de história anterior e a próxima */
@@ -152,7 +156,7 @@ export const SIDE: QuestDef[] = [
   { id: 'a03', chain: 'A Chamada de Askavik', name: 'Os Lobos do Passo', lvl: 27, giver: 'Jarl Haakon', turnin: 'Jarl Haakon', next: 'a04', text: 'Grenivik respira, mas o passo não. Lobos gélidos descem da cordilheira e cercam as caravanas. Dez a menos, e cinco garras para os sentinelas pendurarem nos portões: lobo entende recado.', objs: [{ kind: 'kill', type: 'frostwolf', n: 10 }, { kind: 'collect', item: 'claw', n: 5 }], xp: 1, gold: 160, items: [['potion', 2]] },
   { id: 'a04', chain: 'A Chamada de Askavik', name: 'O Carniceiro de Selvar', lvl: 28, giver: 'Jarl Haakon', turnin: 'Mestre Halvard', next: 'p01', text: 'Na Clareira de Selvar, na Mata do Leste, os carniçais têm um senhor. Mandei três patrulhas; voltou um homem, e ele não fala mais. Não vá antes do nível 28. Limpe a clareira, doze carniçais, e conte ao Mestre Halvard o que viu. Depois disso, Askavik é sua casa.', objs: [{ kind: 'level', n: 28 }, { kind: 'visit', poi: 'Clareira de Selvar' }, { kind: 'kill', type: 'ghoul', n: 12 }], xp: 1, gold: 260, gear: 2, title: 'Escudo de Askavik' },
   { id: 'p01', chain: 'Os Caminhos', name: 'Os Caminhos', lvl: 28, giver: 'Velha Gunnhild', turnin: 'Hrefna', req: 'a01', text: 'Você já conhece Askavik: as escolas, a igreja, o mercado e os mestres. Falta o mais difícil: saber quem você é. No santuário de pedras a oeste da praça mora Hrefna, a Vidente da Deusa dos Caminhos. Quando chegar ao nível 30, ela lerá a sua alma. O que ela vir não é uma corrente: em Karmika, quem escolhe é você.', objs: [{ kind: 'level', n: 30 }, { kind: 'talk', npc: 'Hrefna' }], xp: 1500, gold: 120 },
-  { id: 'a01', chain: 'A Chamada de Askavik', name: 'A Chamada de Askavik', lvl: 25, giver: 'Eldrin', turnin: 'Mestre Halvard', req: 'n16', next: 'a02', text: 'O Olho despertou em você — Karmika já não tem o que lhe ensinar. Em Askavik, a cidade de pedra a nordeste, ficam as escolas de todas as ordens. Siga as placas pela estrada e apresente-se ao Mestre Halvard, na Escola de Guerra. Lá se escolhe o que se será.', objs: [{ kind: 'visit', poi: 'Askavik' }, { kind: 'talk', npc: 'Mestre Halvard' }], xp: 900, gold: 250, gear: 1 },
+  { id: 'a01', chain: 'A Chamada de Askavik', name: 'A Chamada de Askavik', lvl: 25, giver: 'Eldrin', turnin: 'Mestre Halvard', req: 'h30', next: 'a02', text: 'O Olho despertou em você — Karmika já não tem o que lhe ensinar. Em Askavik, a cidade de pedra a nordeste, ficam as escolas de todas as ordens. Siga as placas pela estrada e apresente-se ao Mestre Halvard, na Escola de Guerra. Lá se escolhe o que se será.', objs: [{ kind: 'visit', poi: 'Askavik' }, { kind: 'talk', npc: 'Mestre Halvard' }], xp: 900, gold: 250, gear: 1 },
   { id: 'c01', chain: 'A Catedral Abandonada', name: 'A Prisioneira da Catedral', lvl: 12, giver: 'Irmã Ysolde', turnin: 'Irmã Ysolde', text: 'Eu era freira desta casa quando o Bispo abriu as portas para Gorvak. Minha alma ficou acorrentada à pedra — não desço, não subo, não durmo. Limpe a nave dos mortos que ele ergueu, arranque os três selos dos seus carrascos nas criptas, abra a Porta e dê fim ao Bispo Caído. Só então estas correntes se partem.', objs: [{ kind: 'kill', type: 'zombie', n: 20 }, { kind: 'collect', item: 'seal_1', n: 1 }, { kind: 'collect', item: 'seal_2', n: 1 }, { kind: 'collect', item: 'seal_3', n: 1 }, { kind: 'kill', type: 'bishop', n: 1 }], xp: 3200, gold: 320, items: [['tome', 2]], gear: 2, title: 'Purificador da Catedral' },
   { id: 'o01', chain: 'Cavalos de Orm', name: 'O Torturador de Bestas', lvl: 6, giver: 'Orm', text: 'Um demônio se instalou na Clareira dos Gritos, no meio da floresta a leste, e tortura os animais que captura — meus cavalos entre eles. Enquanto ele viver, nenhum cavalo sai deste estábulo. Mate-o e eu lhe vendo o melhor baio que tenho.', objs: [{ kind: 'visit', poi: 'Clareira dos Gritos' }, { kind: 'kill', type: 'tormentor', n: 1 }], xp: 600, gold: 150, gear: 1, title: 'Libertador de Bestas' },
 ];
@@ -233,12 +237,15 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   const fix = (d: QuestDef) => { if (ctx.xpNeedAt) d.xp = storyXp[d.id] ?? Math.round(ctx.xpNeedAt(Math.max(1, d.lvl)) * (d.chain ? 0.7 : d.board ? 0.24 : 0.33)); return d; };
   /* REGRA IMUTÁVEL — missão ainda não aceita nasce 1 a 3 níveis acima do jogador, para ser difícil */
   const above = (seed: number) => Math.max(1, ctx.st.lvl) + 1 + (Math.abs(seed) % 3);
-  const defs = new Map<string, QuestDef>(); for (const d of ctx.chainQuests) { const f = FALAS[d.id]; if (f) { if (f.talk && !d.talk) d.talk = f.talk; if (f.done && !d.done) d.done = f.done; } defs.set(d.id, fix(d)); }
+  const defs = new Map<string, QuestDef>(); for (const d of ctx.chainQuests) { const f = FALAS[d.id] ?? FALAS[FALA_ALIAS[d.id] ?? '']; if (f) { if (f.talk && !d.talk) d.talk = f.talk; if (f.done && !d.done) d.done = f.done; } defs.set(d.id, fix(d)); }
   /* 22/10/2026: os NPCs da primeira vila ganharam nomes não nórdicos; saves antigos guardam missões com os nomes velhos */
   const RENAMED: Record<string, string> = { Ragnar: 'Garrick', Bjorn: 'Doran', Sigrid: 'Lúcia', Helga: 'Maren', 'Vígdis': 'Morwen', Brynja: 'Tessa', Ulf: 'Bruno', Ingrid: 'Rosália', Haldor: 'Tomás', Astrid: 'Kaela', Finn: 'Corwin' };
   const reName = (t: string) => t.replace(/[A-Za-zÀ-ú]+/g, (w) => RENAMED[w] ?? w);
   try { const raw = localStorage.getItem(SAVE); if (raw && /Ragnar|Bjorn|Brynja|Vígdis|Sigrid|Helga|Ingrid|Haldor|Astrid|\bUlf\b|\bFinn\b/.test(raw)) localStorage.setItem(SAVE, reName(raw)); } catch { /* */ }
   try { const s = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (s) { Object.assign(q, s); for (const [id, a] of Object.entries(q.active)) if (a.def) defs.set(id, a.def); } } catch { /* sem save */ }
+  /* 25/10: o Caminho do Norte velho (n01–n16, tudo em Karmika) virou a campanha que viaja (h01–h30). Missões velhas em andamento saem do diário; o fio oferece a nova no lugar */
+  for (const id of Object.keys(q.active)) if (/^(b_)?n\d\d$/.test(id)) delete q.active[id];
+  setTimeout(() => { try { ensureThread(); } catch { /* */ } }, 1500); /* quem carregou um save antigo recebe na hora o próximo passo do fio */
   const save = () => { try { localStorage.setItem(SAVE, JSON.stringify(q)); } catch { /* */ } };
   for (const id of Object.keys(q.active)) if (!defs.get(id)) delete q.active[id]; // missão de save antigo que não existe mais
   const def = (id: string) => defs.get(id)!;
@@ -252,7 +259,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   function offers(npc: string): QuestDef[] {
     const out: QuestDef[] = [];
     if (!(ctx.chainQuests.some((d) => d.giver === npc && !isDone(d.id))) && ctx.roleOf?.(npc) && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const times = npcTimes[npc] ?? 0; if (times < NPC_Q_MAX) { const d = fix(genNpcQuest(npc, role, above(sd), sd, times)); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } } }
-    for (const d of ctx.chainQuests) { if (d.giver !== npc || isDone(d.id) || q.active[d.id]) continue; const prevId = ctx.chainQuests.find((p) => p.next === d.id)?.id; if (prevId && !isDone(prevId)) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
+    for (const d of ctx.chainQuests) { if (d.giver !== npc || isDone(d.id) || q.active[d.id]) continue; const prevId = ctx.chainQuests.find((p) => p.next === d.id)?.id; if (prevId && !isDone(prevId) && !(THREAD_SKIP[prevId] && isDone(THREAD_SKIP[prevId]))) continue; if (THREAD_SKIP[d.id] && isDone(THREAD_SKIP[d.id])) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
     return out;
   }
   function turnins(npc: string): QuestDef[] { return Object.keys(q.active).map(def).filter((d) => !!d && (d.turnin ?? d.giver) === npc && complete(d)); }
@@ -263,7 +270,8 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   /** o fio da história nunca some: se a próxima missão amarela não está no diário, entra a ponte que leva até ela */
   function ensureThread(fromTurnIn?: QuestDef) {
     const T = STORY_THREAD.find((id) => !isDone(id) && !(THREAD_SKIP[id] && isDone(THREAD_SKIP[id]))); if (!T) return; const i = STORY_THREAD.indexOf(T); if (i === 0 || q.active[T] || q.active['b_' + T]) return;
-    const prev = def(STORY_THREAD.slice(0, i).reverse().find((id) => isDone(id)) ?? STORY_THREAD[i - 1]), nx = def(T); if (!prev || !nx || !isDone(prev.id)) return;
+    const passed = (id: string) => isDone(id) || (!!THREAD_SKIP[id] && isDone(THREAD_SKIP[id]));
+    const prev = def(STORY_THREAD.slice(0, i).reverse().find((id) => passed(id)) ?? STORY_THREAD[i - 1]), nx = def(T); if (!prev || !nx || !passed(prev.id)) return;
     const b = bridgeFor(prev, nx, ctx.st.lvl); if (isDone(b.id)) { /* ponte já feita mas a missão não foi pega: a ponte volta */ q.done = q.done.filter((x) => x !== b.id); }
     accept(b); if (fromTurnIn) setTimeout(() => ctx.log(`${b.giver}: “${(b as QuestDef & { say?: string }).say ?? ''}”`, '#f4e6b8'), 400);
   }
@@ -285,6 +293,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   /** achou o que o instinto mostrava (id = 'missão:objetivo') */
   function onSense(id: string) { const [qid, oi] = id.split(':'); const a = q.active[qid]; if (!a) return; const d = def(qid), i = +oi; if (d?.objs[i]?.kind === 'sense' && a.prog[i] < 1) { a.prog[i] = 1; ctx.log(`📜 ${d.name}: ${objText(d.objs[i])} ✔`, '#ffe08a'); save(); render(); } }
   function onCaravan(kind: 'escort' | 'rescue', route: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === kind && o.route === route && a.prog[i] < 1) { a.prog[i] = 1; ch = true; ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
+  function onDungeon(id: string) { let ch = false; for (const [qid, a] of Object.entries(q.active)) { const d = def(qid); d?.objs.forEach((o, i) => { if (o.kind === 'dungeon' && o.id === id && a.prog[i] < 1) { a.prog[i] = 1; ch = true; ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
   function onCraft(recipeName: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'craft' && o.recipe === recipeName && a.prog[i] < o.n) { a.prog[i]++; ch = true; } }); } if (ch) { save(); render(); } }
   /** quadro: 3 missões do nível atual; aceitar uma gera outra */
   function board(): QuestDef[] { const out: QuestDef[] = []; for (let i = 0; i < 3; i++) out.push(fix(genBoard(above(q.boardSeed + i), q.boardSeed + i))); return out; }
@@ -450,7 +459,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   render();
   /** missão que um companheiro de grupo pegou: 'have' = já tenho, 'done' = já fiz, 'later' = ainda não cheguei nessa parte da história, 'ok' = posso pegar */
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
-  return { shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
+  return { shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
     /** reencarnação: esquece as missões do caminho de classe para poder refazê-las */
     forget(f: (id: string) => boolean) { for (const id of Object.keys(q.active)) if (f(id)) delete q.active[id]; q.done = q.done.filter((id) => !f(id)); save(); render(); },
     /** marca como feita sem entregar (testes do beta) */ markDone(id: string) { delete q.active[id]; if (!q.done.includes(id)) q.done.push(id); save(); render(); } };
