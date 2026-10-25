@@ -185,7 +185,7 @@ const HSVG: Record<string, string> = {
     ['⇧5', 'conversion', 24, 35, 'Martelo da Conversão', 'Marca o chão: um martelo de luz do tamanho de uma porta desce do céu. Morto-vivo ou demônio com menos de 35% de vida é purificado na hora; gente com menos de 40% larga a arma, se ajoelha e foge.'],
   ], '#ffd24a');
   KITS.vam = MK([
-    ['1', 'combo', 1, 0, 'Lâmina Sedenta', 'Golpes 45% mais rápidos, de duelista: espada fina, adaga ou as próprias mãos. Todo vampiro rouba um pouco da vida de cada golpe (5%). De dia o sol queima fora da sombra (casas, masmorras, mata fechada, Corvoscuro): beba Sangue Diluído. À noite: +25% de dano, +20% de velocidade e golpes ainda mais rápidos.'],
+    ['1', 'combo', 1, 0, 'Lâmina Sedenta', 'Golpes 45% mais rápidos, de duelista: espada fina, adaga ou as próprias mãos. Todo vampiro rouba um pouco da vida de cada golpe (5%). De dia o sol queima fora da sombra (casas, masmorras, mata fechada, Corvoscuro): beba Sangue Diluído. À noite: +15% de dano, +12% de velocidade e golpes ainda mais rápidos.'],
     ['2', 'guard', 1, 0, 'Aparar', 'Segure: apara à frente com a arma.'],
     ['3', 'bash', 1, 0, 'Bote da Sombra', 'Marca uma linha: atravessa o caminho de uma vez, cortando quem estiver nele.'],
     ['4', 'drain', 5, 15, 'Beber a Vida', 'Prende o inimigo mais perto (até 7 m) num fio de sangue por 2 s: tira a vida dele e devolve para você.'],
@@ -200,7 +200,7 @@ const HSVG: Record<string, string> = {
     ['⇧3', 'venomclaw', 12, 15, 'Garras Envenenadas', 'As unhas crescem negras: quatro rasgos rápidos à frente, em zigue-zague. Cada rasgo envenena (o veneno corrói por 4 s e não deixa a ferida fechar).'],
   ], '#e0303a');
   KITS.lob = MK([
-    ['1', 'combo', 1, 0, 'Garras', 'De dia você é o licantropo: homem, 10% maior e 15% mais forte. Não usa arma: rasga com as garras, em golpes rápidos e selvagens. Cada acerto enche a Fúria.'],
+    ['1', 'combo', 1, 0, 'Garras', 'De dia você é o licantropo: homem, 10% maior e 10% mais forte. Não usa arma: rasga com as garras, em golpes rápidos e selvagens. Cada acerto enche a Fúria.'],
     ['2', 'guard', 1, 0, 'Couro Grosso', 'Segure: o corpo se fecha e aguenta os golpes à frente.'],
     ['3', 'bash', 1, 0, 'Bote do Lobo', 'Marca uma linha: corre baixo e derruba quem estiver no caminho.'],
     ['4', 'rend', 5, 15, 'Dilacerar', 'Três golpes de garra em sequência à frente; o último faz sangrar por 4 s.'],

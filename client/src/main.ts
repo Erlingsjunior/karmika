@@ -585,7 +585,7 @@ function globalSide(id: string | null): number {
   if (id === 'aurora') return light ? 1 : dark ? -1 : 0;
   return 0;
 }
-function globalSideText(id: string | null) { const sd = globalSide(id); if (!sd) return ''; return id === 'lua' ? (sd > 0 ? 'A Lua te alimenta: +20% de dano, −12% de dano recebido.' : 'A Lua caça os de alma clara: +10% de dano recebido.') : (sd > 0 ? 'A Aurora te abençoa: +20% de dano, −12% de dano recebido.' : 'A luz da Aurora te queima: +10% de dano recebido.'); }
+function globalSideText(id: string | null) { const sd = globalSide(id); if (!sd) return ''; return id === 'lua' ? (sd > 0 ? 'A Lua te alimenta: +10% de dano, −8% de dano recebido.' : 'A Lua caça os de alma clara: +6% de dano recebido.') : (sd > 0 ? 'A Aurora te abençoa: +10% de dano, −8% de dano recebido.' : 'A luz da Aurora te queima: +6% de dano recebido.'); }
 function luaBonus() { try { return instinctOn && myPath() === 'lob' && globalNow()?.id === 'lua' ? 0.15 : 0; } catch { return 0; } }
 function shopLeanK(shop: string): number { if (shop === 'latao') return latoK() * shopLeanK('_'); const L = soulLean(); if (!L) return 1; return L === 'sombra' ? (LIGHT_SHOPS.has(shop) ? 1.15 : DARK_SHOPS.has(shop) ? 0.95 : 1) : (DARK_SHOPS.has(shop) ? 1.1 : LIGHT_SHOPS.has(shop) ? 0.95 : 1); }
 /** o caminho que o herói já trilha de verdade (passou na prova do mestre) */
@@ -3022,7 +3022,7 @@ function frameBody() {
 
   /* luz do dia e da noite: o dia é quente (sol dourado, sombras âmbar), a noite é fria (lua azulada).
      Os eventos globais tingem o mundo inteiro: a Lua de Sangue deixa tudo rubro; a Aurora, dourado e rosado */
-  if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.2 : 1; game.st.takenMul = sd > 0 ? 0.88 : sd < 0 ? 1.1 : 1; }
+  if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.1 : 1; game.st.takenMul = sd > 0 ? 0.92 : sd < 0 ? 1.06 : 1; /* regra 01: bônus de evento pequeno, e o de dano entra no balde da situação com teto de +30% */ }
   luaK += ((gCur === 'lua' && !inside?.dg ? 1 : 0) - luaK) * Math.min(1, rawDt * 0.35);
   aurK += ((gCur === 'aurora' && !inside?.dg ? 1 : 0) - aurK) * Math.min(1, rawDt * 0.35);
   instK += ((instinctOn && !inside ? 1 : 0) - instK) * Math.min(1, rawDt * 2);

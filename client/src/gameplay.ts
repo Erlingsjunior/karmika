@@ -157,7 +157,7 @@ export function createGameplay(d: GameplayDeps) {
   /** PvP: main.ts confere quem (jogador de verdade) está no golpe e manda o dano pela rede */
   let pvpHit: (cx: number, cz: number, yaw: number, reach: number, arc: number, dmg: number, crit: boolean) => void = () => {};
   const pvpDmg = (mul: number) => { const crit = Math.random() < st.crit; return { n: Math.max(1, Math.round((5 + st.lvl * 2.2 + st.attrs.str * 1.2) * st.atk * mul * (crit ? 1.5 : 1) * 0.6)), crit }; }; // entre jogadores o golpe pesa menos que num bicho: a luta dura // quantos do meu grupo estão perto (eu incluso): bônus de XP e de equipamento
-  const enemies = createEnemies({ level: () => st.lvl, outMul: () => st.outMul, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
+  const enemies = createEnemies({ level: () => st.lvl, outMul: () => 1 /* o bônus do evento entra no balde da situação (regra 01) */, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
     trail: (x, y, z, col) => { for (let q = 0; q < 2; q++) d.particles.spawn(x + rnd(-0.1, 0.1), y + rnd(-0.1, 0.1), z + rnd(-0.1, 0.1), { vx: rnd(-0.4, 0.4), vy: rnd(0.2, 0.9), vz: rnd(-0.4, 0.4), life: 0.45, s0: 0.32, s1: 0.04, c0: 0xffe0a0, c1: col, a: 0.95, drag: 1.5 }); }, night: () => (window as unknown as { __night?: number }).__night ?? 0,
     scene: d.scene, heightAt: d.world.heightAt, walkable: d.world.walkable, spawns: d.world.spawns,
     heroPos: () => d.getHero().root.position, heroAlive: () => !st.dead, heroInvuln: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || (n === 'rush' && d.getHero().actP < 0.7); }, heroGhost: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge'; },
@@ -373,7 +373,11 @@ export function createGameplay(d: GameplayDeps) {
     const marked = (e.mark ?? 0) > now;
     // balde único de bônus: nível (+5%/nível), Força (st.atk já vem com retorno decrescente), buffs, marca e emboscada SOMAM
     // o nível dá +5% por nível ao golpe base e só metade disso ao dano da arma (senão nível × arma × Força explodem no fim do jogo)
-    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + stance.dmg + cmod.dmg + (marked ? 0.5 : 0) + (bonus - 1);
+    /* REGRA 01 — EQUILÍBRIO (Erling, 25/10): o que vem da situação (postura, dia/noite do caminho, Lua de Sangue/Aurora)
+       SOMA num balde só e o balde tem teto: no máximo +30% e no mínimo −30%. Nada disso multiplica com nada; assim,
+       no nível 100, ninguém vira indestrutível por estar na noite certa, no evento certo e na postura certa. */
+    const sit = Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1)));
+    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1);
     let dmg = (rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1);
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
@@ -1046,7 +1050,7 @@ export function createGameplay(d: GameplayDeps) {
         for (let i = 0; i < 14; i++) d.particles.spawn(bx + rnd(-0.6, 0.6), rnd(0.5, 1.6), bz + rnd(-0.6, 0.6), { vx: rnd(-2, 2), vy: rnd(0, 2.5), vz: rnd(-2, 2), life: 0.35, s0: 0.25, s1: 0.03, c0: 0xffffff, c1: 0x9ad7ff, a: 1, drag: 2 });
         if (w.tier >= 2 && from) { const src = enemies.nearest(from, 2.5); if (src) { const rf = Math.round(n * 0.5); if (enemies.hurt(src, rf, heroPos, 2)) killEnemy(src); dmgText(src.pos.clone().setY(src.pos.y + 2.4), `↩ ${rf}`, false, '#cfe6ff'); } }
         return; } }
-      lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.85, st.def + buff.def + stance.def)))));
+      lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.75, st.def + Math.min(0.3, buff.def + stance.def)))))); /* regra 01: defesa de buff/postura com teto de 30%, total com teto de 75% */
       // esquiva pela destreza (até 35%) e bloqueio pela defesa/escudo (até 30%, metade do dano) — a dança da luta
       if (st.sp.has('t_exo')) n = Math.max(1, Math.round(n * 0.8));
       const dodge = Math.min(0.35, 0.04 + (st.attrs?.dex ?? 0) * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0);
@@ -1319,18 +1323,20 @@ export function createGameplay(d: GameplayDeps) {
       { const h = d.getHero(); heroMps += (Math.hypot(heroPos.x - lastHeroP.x, heroPos.z - lastHeroP.z) / Math.max(1e-3, dt) - heroMps) * Math.min(1, dt * 10); lastHeroP.copy(heroPos); if (heroMps > 30) heroMps = 0;
         /* dia e noite (Erling, 25/10): o lobisomem de dia é o licantropo (homem maior e mais forte; a Besta só à noite);
            o vampiro queima ao sol fora da sombra (casas, masmorras, mata fechada, Corvoscuro) e à noite fica mais feroz e mais rápido */
-        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = isL ? 1.1 : 1; if (isL) cmod.dmg += 0.15;
+        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = isL ? 1.1 : 1; if (isL) cmod.dmg += 0.1;
           if (isV) { sunVeilT = Math.max(0, sunVeilT - dt); const exposed = !nightNow && !skyShade && !st.dead; sunK = Math.max(0, Math.min(1, sunK + (exposed ? dt / (sunVeilT > 0 ? 120 : 14) : -dt / 5)));
             if (sunK > 0) { if (st.hp > st.hpMax * 0.08) st.hp = Math.max(st.hpMax * 0.08, st.hp - st.hpMax * 0.012 * sunK * dt); cmod.dmg -= 0.2 * sunK; cmod.move *= 1 - 0.15 * sunK;
-              if (Math.random() < dt * 30 * sunK) d.particles.spawn(heroPos.x + rnd(-0.3, 0.3), heroPos.y + rnd(0.4, 1.8), heroPos.z + rnd(-0.3, 0.3), { vx: rnd(-0.2, 0.2), vy: rnd(0.6, 1.4), vz: rnd(-0.2, 0.2), life: 0.9, s0: 0.2, s1: 0.55, c0: 0x8a7a6a, c1: 0x2a2420, a: 0.45 });
-              if (Math.random() < dt * 10 * sunK) d.particles.spawn(heroPos.x + rnd(-0.25, 0.25), heroPos.y + rnd(0.6, 1.7), heroPos.z + rnd(-0.25, 0.25), { vy: rnd(0.8, 1.6), life: 0.5, s0: 0.08, s1: 0.02, c0: 0xffd070, c1: 0xff5a10, a: 1 }); }
+              /* Erling: não fica queimando o tempo todo — a fumaça só aparece abaixo de 45% da vida, as chamas no corpo abaixo de 20% */
+              const hpk = st.hp / st.hpMax;
+              if (hpk < 0.45 && Math.random() < dt * 26 * sunK) d.particles.spawn(heroPos.x + rnd(-0.3, 0.3), heroPos.y + rnd(0.4, 1.8), heroPos.z + rnd(-0.3, 0.3), { vx: rnd(-0.2, 0.2), vy: rnd(0.6, 1.4), vz: rnd(-0.2, 0.2), life: 0.9, s0: 0.2, s1: 0.55, c0: 0x8a7a6a, c1: 0x2a2420, a: 0.45 });
+              if (hpk < 0.2) for (let q = 0; q < 2; q++) if (Math.random() < dt * 22 * sunK) d.particles.spawn(heroPos.x + rnd(-0.28, 0.28), heroPos.y + rnd(0.3, 1.8), heroPos.z + rnd(-0.28, 0.28), { vx: rnd(-0.2, 0.2), vy: rnd(1, 2.2), vz: rnd(-0.2, 0.2), life: 0.55, s0: 0.3, s1: 0.05, c0: 0xffe08a, c1: 0xff4a10, a: 1 }); }
             if (exposed && sunK > 0.05 && now > sunMsgT) { sunMsgT = now + 30; logMsg(sunVeilT > 0 ? '☀ O sangue diluído segura o sol, mas não para sempre.' : '☀ O sol queima a sua pele. Procure sombra (casas, masmorras, mata fechada, Corvoscuro) ou beba Sangue Diluído.', '#ffb070'); }
-            if (nightNow) { cmod.dmg += 0.25; cmod.move *= 1.2; } }
+            if (nightNow) { cmod.dmg += 0.15; cmod.move *= 1.12; } }
           if (nightOn !== nightNow) { const first = nightOn === null; nightOn = nightNow;
-            if (!first && isV) logMsg(nightNow ? '🌙 A noite acorda o sangue: +25% de dano, +20% de velocidade, golpes mais rápidos.' : '☀ O dia nasce. Sombra, ou sangue diluído.', nightNow ? '#ff6a7a' : '#ffb070');
+            if (!first && isV) logMsg(nightNow ? '🌙 A noite acorda o sangue: +15% de dano, +12% de velocidade, golpes mais rápidos.' : '☀ O dia nasce. Sombra, ou sangue diluído.', nightNow ? '#ff6a7a' : '#ffb070');
             if (!first && isL) logMsg(nightNow ? '🌕 A noite chegou: a Forma da Besta pode despertar (0).' : '☀ O dia nasce: o lobo recua para dentro do homem.', '#c8a070');
             if (isL && !nightNow && form?.id === 'fenrir') form.t = 0.01; } }
-        h.actSpeed = kitKey === 'vam' ? (skyNight > 0.5 ? 1.65 : 1.45) : kitKey === 'lob' ? 1.2 : 1;
+        h.actSpeed = kitKey === 'vam' ? (skyNight > 0.5 ? 1.55 : 1.45) : kitKey === 'lob' ? 1.2 : 1;
         techLook?.setMech(form?.id === 'mech');
         if (techLook && thunderN > 0 && Math.random() < dt * 8) { const gp = techLook.gauntlet(new THREE.Vector3()); const a2 = rnd(0, 6.283); bolt3d(gp, gp.clone().add(new THREE.Vector3(Math.cos(a2) * 0.35, rnd(-0.3, 0.3), Math.sin(a2) * 0.35)), 0xbff4ff); techLook.charge(0.6); }
         // Drone Médico: um drone de verdade (casco branco, cruz verde, quatro rotores) que orbita e manda o feixe de cura
