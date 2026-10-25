@@ -146,7 +146,7 @@ export function buildWorld(world: World): WorldObjs {
       const v = p.variant ?? 0; let b: Built | null = null;
       if (p.kind === 'quay') { const sd = v === 1 ? -1 : 1, pts: { x: number; z: number }[] = []; for (let k = 0; k <= 4; k++) { const ty = p.gy + k * 0.5, ex = canalX(ty) - sd * CANAL_HW; pts.push({ x: ex * T - p.gx * T, z: k * 0.5 * T }); } b = buildQuay(pts, sd); } else
       if (p.kind === 'monument') b = buildMonument(v, Wm, Dm); else
-      if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17); else
+      if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0, p.len ?? 6, p.ox ?? 1, p.oz ?? 1); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17, p.len, p.broken ?? 0, p.ox ?? 1, p.oz ?? 1); else
       if (p.kind === 'landmark') b = buildLandmark(v, Wm, Dm); else if (p.kind === 'palisade') b = buildPalisade(v === 1, p.gx * 3 + p.gy); else if (p.kind === 'totem') b = buildTotem(v); else
       if (p.kind === 'rwall') b = buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
       else if (p.kind === 'rtower') b = buildWallTower(v & 3, p.height, v >= 4, p.roof);

@@ -18,6 +18,7 @@ export interface Prop {
   height: number;         // altura em metros (ver shared/src/scale.ts)
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
+  /** peças que seguem um traçado (muros, cercas, pórticos): centro exato dentro da casa (m, a partir do canto), comprimento (m) e quanto desmoronou (0–1) */ ox?: number; oz?: number; len?: number; broken?: number;
   variant?: number;       // tipo da árvore (0 carvalho, 1 seca, 2 pinheiro) / modelo da pedra / etc.
   /** giro (radianos) para peças que olham para algum lugar (pontos de trabalho olham para o centro da vila) */
   ry?: number;
@@ -826,27 +827,47 @@ export function buildCity(): World {
      nas entradas segurando os bichos"): depois que as estradas existem, cada vila ganha um anel de muro baixo com aberturas onde as estradas
      entram; em cada abertura, um pórtico com o nome e um guarda */
   { const GN = ['Bjorn', 'Halla', 'Torsten', 'Edda', 'Arne', 'Sigrid', 'Leif', 'Runa', 'Gorm', 'Asta', 'Knut', 'Thyra', 'Ivar', 'Brenna', 'Ulf', 'Dagny'];
+    /* 25/10 (Erling: "nada de círculo nem quadrado: é uma ocupação — um muro orgânico que acompanha a vila a alguns metros dos limites; vila é
+       pobre, então musgo, partes quebradas e trechos faltando são normais e bem-vindos; vilas menores usam cerca de madeira; muro contínuo de
+       pedras assentadas com lodo, cinza"). O contorno sai da própria ocupação: em cada direção, até onde vão as casas, as barracas e a praça,
+       mais uma folga; depois é suavizado e ganha um pouco de irregularidade. */
+    const OCC = new Set<PropKind>(['house', 'stall', 'fountain', 'campfire', 'totem', 'tent', 'chest', 'noticeboard', 'mailbox', 'temple', 'bench', 'torch']);
     for (const [si, st] of settlements.entries()) { if (st.kind !== 'village') continue; const cult = CULT[st.name] ?? 0, cx = st.x, cy = st.y, pal = cult === 1 || cult === 5;
-      const R = pal ? st.radius + 1 : st.radius + 2;
-      /* anel: casas do anel em ordem de ângulo (quadrado nas vilas de paliçada, redondo nas outras) */
-      const ring: { x: number; y: number; a: number }[] = [];
-      if (pal) { for (let k = -R; k <= R; k++) for (const [x, y] of [[cx + k, cy - R], [cx + R, cy + k], [cx - k, cy + R], [cx - R, cy - k]] as [number, number][]) ring.push({ x, y, a: Math.atan2(y - cy, x - cx) }); }
-      else for (let y = cy - R - 1; y <= cy + R + 1; y++) for (let x = cx - R - 1; x <= cx + R + 1; x++) { const d = Math.hypot(x - cx, y - cy); if (Math.abs(d - R) < 0.5) ring.push({ x, y, a: Math.atan2(y - cy, x - cx) }); }
-      ring.sort((p, q) => p.a - q.a); const uniq = ring.filter((p, i) => i === 0 || p.x !== ring[i - 1].x || p.y !== ring[i - 1].y);
-      const isRoad = (x: number, y: number) => inb(x, y) && (map[y][x] === 'road' || map[y][x] === 'plaza');
-      /* entradas: trechos contínuos de estrada no anel */
-      const runs: { x: number; y: number; a: number }[][] = []; let cur: { x: number; y: number; a: number }[] = [];
-      for (const p of uniq) { if (isRoad(p.x, p.y)) cur.push(p); else if (cur.length) { runs.push(cur); cur = []; } } if (cur.length) { if (runs.length && isRoad(uniq[0].x, uniq[0].y)) runs[0] = [...cur, ...runs[0]]; else runs.push(cur); }
-      const gates: { x: number; y: number; a: number; w: number }[] = [];
-      for (const run of runs) { if (run.length > 6) continue; const m = run[Math.floor(run.length / 2)]; gates.push({ x: m.x, y: m.y, a: Math.atan2(m.y - cy, m.x - cx), w: run.length }); }
-      /* muro baixo (as vilas de paliçada já têm a sua) */
-      if (!pal) for (const p of uniq) { if (!inb(p.x, p.y) || map[p.y][p.x] !== 'grass') continue; if (gates.some((gt) => Math.hypot(gt.x - p.x, gt.y - p.y) < gt.w / 2 + 1.2)) continue;
-        for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && q.gx === p.x && q.gy === p.y) props.splice(i, 1); }
-        props.push({ kind: 'lowwall', gx: p.x, gy: p.y, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-Math.cos(p.a), -Math.sin(p.a)) }); map[p.y][p.x] = 'wall'; }
+      const NB = 48, far = new Array<number>(NB).fill(0), bin = (x: number, y: number) => ((Math.round(Math.atan2(y - cy, x - cx) / (Math.PI * 2) * NB) % NB) + NB) % NB;
+      const mark = (x: number, y: number) => { const d = Math.hypot(x - cx, y - cy); if (d > st.radius + 9) return; const b = bin(x, y); far[b] = Math.max(far[b], d); };
+      let nHouse = 0;
+      for (const q of props) { if (!OCC.has(q.kind)) continue; const qx = q.gx + q.w / 2, qy = q.gy + q.h / 2; if (Math.hypot(qx - cx, qy - cy) > st.radius + 8) continue; if (q.kind === 'house') nHouse++;
+        for (const [ax, ay] of [[q.gx, q.gy], [q.gx + q.w, q.gy], [q.gx, q.gy + q.h], [q.gx + q.w, q.gy + q.h], [qx, qy]]) mark(ax, ay); }
+      for (let y = cy - 4; y <= cy + 4; y++) for (let x = cx - 4; x <= cx + 4; x++) if (inb(x, y) && map[y][x] === 'plaza') mark(x, y);
+      /* direções vazias pegam o vizinho; depois suaviza duas vezes e põe a folga */
+      for (let k = 0; k < NB; k++) if (far[k] < 5) far[k] = 0; for (let it = 0; it < NB; it++) for (let k = 0; k < NB; k++) if (!far[k]) { const a = far[(k + NB - 1) % NB], b = far[(k + 1) % NB]; if (a || b) far[k] = Math.max(a, b) * 0.96; }
+      for (let k = 0; k < NB; k++) if (!far[k]) far[k] = 8;
+      let rad = far.slice(); for (let it = 0; it < 3; it++) rad = rad.map((v, k) => (rad[(k + NB - 1) % NB] + v * 2 + rad[(k + 1) % NB]) / 4);
+      const hs = (k: number) => { const v = Math.sin(k * 12.9898 + si * 78.233) * 43758.5453; return v - Math.floor(v); };
+      const pts = rad.map((v, k) => { const a = k / NB * Math.PI * 2, r0 = Math.max(7, v + 3.2 + (hs(k) - 0.5) * 1.4); return { x: cx + Math.cos(a) * r0, y: cy + Math.sin(a) * r0 }; });
+      /* amostras ao longo do contorno: onde há estrada, abre o portão */
+      const samp: { x: number; y: number; ux: number; uy: number; road: boolean }[] = [];
+      for (let k = 0; k < NB; k++) { const A = pts[k], B = pts[(k + 1) % NB], L = Math.hypot(B.x - A.x, B.y - A.y), n = Math.max(1, Math.ceil(L / 0.5)), ux = (B.x - A.x) / (L || 1), uy = (B.y - A.y) / (L || 1);
+        for (let s = 0; s < n; s++) { const x = A.x + (B.x - A.x) * s / n, y = A.y + (B.y - A.y) * s / n, tx = Math.floor(x), ty = Math.floor(y); samp.push({ x, y, ux, uy, road: inb(tx, ty) && (map[ty][tx] === 'road' || map[ty][tx] === 'plaza') }); } }
+      const gates: { x: number; y: number; ux: number; uy: number; w: number }[] = []; const gateAt = new Uint8Array(samp.length);
+      { let i0 = -1; const S = samp.length; let start = 0; while (start < S && samp[start].road) start++; // começa fora de uma estrada
+        for (let j = 0; j <= S; j++) { const i = (start + j) % S, on = j < S && samp[i].road; if (on && i0 < 0) i0 = j; if (!on && i0 >= 0) { const len = j - i0; if (len <= 16) { const mid = samp[(start + i0 + Math.floor(len / 2)) % S], dd = Math.hypot(mid.x - cx, mid.y - cy) || 1, ox2 = Math.floor(mid.x + (mid.x - cx) / dd * 3), oy2 = Math.floor(mid.y + (mid.y - cy) / dd * 3);
+            /* só é portão se a estrada continua lá fora (trilha de porta de casa não conta) e se não há outro portão perto */
+            if (inb(ox2, oy2) && map[oy2][ox2] === 'road' && !gates.some((q) => Math.hypot(q.x - mid.x, q.y - mid.y) < 9)) gates.push({ x: mid.x, y: mid.y, ux: mid.ux, uy: mid.uy, w: len * 0.5 }); }
+          for (let q = i0 - 3; q < j + 3; q++) gateAt[((start + q) % S + S) % S] = 1; i0 = -1; } } }
+      /* o muro (ou a cerca): pedaços de ~2,4 m seguindo o contorno, sem emenda; alguns faltando, outros desmoronados */
+      const fence = pal ? -1 : nHouse <= 4 || cult === 4 || cult === 6 ? 1 : 0; // paliçada já existe · cerca de madeira · muro de pedra
+      if (fence >= 0) { const STEPS = 5; for (let i = 0; i + STEPS <= samp.length; i += STEPS) { let blocked = false; for (let q = i; q <= i + STEPS && !blocked; q++) if (gateAt[q % samp.length] || samp[q % samp.length].road) blocked = true; if (blocked) continue;
+          const A = samp[i], B = samp[(i + STEPS) % samp.length], mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, L = Math.hypot(B.x - A.x, B.y - A.y), hv = hs(i * 3.7 + 1);
+          if (L < 0.2) continue; if (hv < (fence ? 0.08 : 0.13)) continue; // trecho que caiu de vez
+          const gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy) || map[gy][gx] === 'water' || map[gy][gx] === 'wall') continue;
+          for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx + 0.5 - mx, q.gy + 0.5 - my) < 1.3) props.splice(k, 1); }
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: hv < 0.32 ? 0.35 + hv : 0 });
+          for (let q = i; q < i + STEPS; q++) { const tx = Math.floor(samp[q].x), ty = Math.floor(samp[q].y); if (inb(tx, ty) && map[ty][tx] === 'grass') map[ty][tx] = 'wall'; } } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
-      gates.forEach((gt, gi) => { props.push({ kind: 'vgate', gx: gt.x, gy: gt.y, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-Math.cos(gt.a), -Math.sin(gt.a)), label: st.name });
-        if (gi < 3) { const tx = -Math.sin(gt.a), ty = Math.cos(gt.a), side = gi % 2 ? -1 : 1, ox = gt.x + tx * side * (gt.w / 2 + 1.1) - Math.cos(gt.a) * 0.9, oy = gt.y + ty * side * (gt.w / 2 + 1.1) - Math.sin(gt.a) * 0.9;
-          st.npcs.push({ name: GN[(si * 3 + gi) % GN.length], role: `Guarda do portão de ${st.name}`, kind: 'nordic', x: ox, y: oy, radius: 0.5, tint: 0x5a6a8a, scale: 1.0, lines: [`Bem-vindo a ${st.name}. Bicho não passa deste portão enquanto eu estiver de pé.`, 'Fique na estrada. O mato é dos lobos, e a estrada é nossa.', 'Viu alguma coisa estranha lá fora? Avise a guarda, não banque o herói sozinho.', 'À noite a gente fecha o portão com o corpo. Não tem porta, tem gente.'] }); } });
+      gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });
+        if (gi < 3) { const nx = -gt.uy, ny = gt.ux, toC = Math.sign((cx - gt.x) * nx + (cy - gt.y) * ny) || 1, side = gi % 2 ? -1 : 1, ox = gt.x + gt.ux * side * (gt.w / 2 + 1.6) + nx * toC * 0.9, oy = gt.y + gt.uy * side * (gt.w / 2 + 1.6) + ny * toC * 0.9;
+          st.npcs.push({ name: GN[(si * 3 + gi) % GN.length], role: `Guarda do portão de ${st.name}`, kind: 'nordic', x: ox, y: oy, radius: 0.5, tint: 0x5a6a8a, scale: 1.0, lines: [`Bem-vindo a ${st.name}. Bicho não passa deste portão enquanto eu estiver de pé.`, 'Fique na estrada. O mato é dos lobos, e a estrada é nossa.', 'Viu alguma coisa estranha lá fora? Avise a guarda, não banque o herói sozinho.', 'O muro tem buraco, eu sei. Pedra custa, e quem conserta somos nós.'] }); } });
     } }
   /* 25/10 (Erling: "andar pelos caminhos é mais seguro: cercas de madeira, vigilância e pequenos fortes de vigia com soldados; perto da
      cidade grande as estradas ficam todas de pedra, com muros médios de pedra e defesas; nos lugares distantes, menos pedra, cercas de
@@ -861,10 +882,13 @@ export function buildCity(): World {
         if (nearVillage(p.x, p.y)) { runOn = false; continue; }
         const tier = tierAt(p.x, p.y), h = ((Math.floor(p.x) * 73856093) ^ (Math.floor(p.y) * 19349663)) >>> 0;
         if (--run <= 0) { runOn = (h % 100) < (tier === 2 ? 85 : tier === 1 ? 45 : 18); run = 4 + (h % 6); }
-        if (runOn) for (const sd of [-1, 1]) { const gx = Math.round(p.x + nx * sd * 2.6), gy = Math.round(p.y + ny * sd * 2.6); if (!inb(gx, gy) || map[gy][gx] !== 'grass') continue;
+        if (runOn) for (const sd of [-1, 1]) { /* um pedaço contínuo do ponto até o próximo, ao lado da estrada (sem emendas nem blocos soltos) */
+          const ax = p.x + nx * sd * 2.6, ay = p.y + ny * sd * 2.6, bx = q1.x + nx * sd * 2.6, by = q1.y + ny * sd * 2.6, mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my), SL = Math.hypot(bx - ax, by - ay);
+          if (!inb(gx, gy) || map[gy][gx] !== 'grass' || SL < 0.3) continue;
           if (props.some((o) => o.gx === gx && o.gy === gy && o.kind !== 'tree' && o.kind !== 'rock' && o.kind !== 'herb')) continue;
-          for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (o.gx === gx && o.gy === gy && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
-          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 10 : tier === 1 ? 11 : 12, ry: Math.atan2(-uy, ux) }); map[gy][gx] = 'wall'; }
+          for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (Math.hypot(o.gx + 0.5 - mx, o.gy + 0.5 - my) < 1.4 && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
+          const hb = ((h >>> 3) % 100) / 100; if (tier < 2 && hb < 0.1) continue; // um vão aqui e ali
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : tier === 1 ? 13 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); map[gy][gx] = 'wall'; }
         /* forte de vigia à beira da estrada: torre de pedra (perto da cidade) ou posto de madeira (no ermo), com dois soldados */
         if (--sinceFort <= 0 && posts < 40) { const sd = (h & 1) ? 1 : -1, fx = Math.round(p.x + nx * sd * 6), fy = Math.round(p.y + ny * sd * 6);
           let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { std, stoneTex, woodTex, texBox } from './toon3d';
 
 /* =====================================================================================================
    ENTRADAS DAS MASMORRAS (25/10/2026)
@@ -19,6 +20,25 @@ const toon = (c: number, e = 0) => new THREE.MeshToonMaterial({ color: c, emissi
 let glowTex: THREE.Texture | null = null;
 function glow(): THREE.Texture { if (glowTex) return glowTex; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.4, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); glowTex = new THREE.CanvasTexture(c); return glowTex; }
 
+/* 25/10 (Erling: "dá para melhorar e muito as artes de todas as dungeons; nem parece o mesmo nível de qualidade do jogo"):
+   pedra e madeira com textura (iguais às das vilas), rocha natural com veios e musgo, boca de caverna em túnel que escurece para dentro */
+const TX = new Map<string, THREE.Texture>();
+function rockTex(c: number, mossy = 0): THREE.Texture { const key = `rk${c}:${mossy}`; let t = TX.get(key); if (t) return t;
+  const S = 64, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d')!; const col = new THREE.Color(c);
+  let seed = c % 9973 + 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const sh = (k: number) => `rgb(${Math.min(255, col.r * 255 * k) | 0},${Math.min(255, col.g * 255 * k) | 0},${Math.min(255, col.b * 255 * k) | 0})`;
+  g.fillStyle = sh(1); g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 160; i++) { g.fillStyle = sh(0.78 + rnd() * 0.4); const r = 1 + rnd() * 4; g.fillRect(rnd() * S, rnd() * S, r, r * (0.6 + rnd())); } // grão
+  for (let i = 0; i < 7; i++) { g.strokeStyle = `rgba(0,0,0,${0.25 + rnd() * 0.25})`; g.lineWidth = 1; g.beginPath(); let x = rnd() * S, y = rnd() * S; g.moveTo(x, y); for (let k = 0; k < 5; k++) { x += (rnd() - 0.5) * 18; y += rnd() * 12; g.lineTo(x, y); } g.stroke(); } // veios e rachas
+  if (mossy) for (let i = 0; i < 60 * mossy; i++) { g.fillStyle = `rgba(${70 + rnd() * 30},${110 + rnd() * 40},${40 + rnd() * 20},${0.5 + rnd() * 0.4})`; const r = 1 + rnd() * 3.5; g.beginPath(); g.arc(rnd() * S, rnd() * S * 0.55, r, 0, 6.283); g.fill(); } // musgo (mais em cima)
+  t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; TX.set(key, t); return t; }
+/** pedra natural: icosaedro com os vértices mexidos (sempre igual para a mesma semente), mapeado com a textura de rocha */
+function boulder(r: number, seed: number, m: THREE.Material, flat = 1): THREE.Mesh {
+  const geo = new THREE.IcosahedronGeometry(r, 1), p = geo.attributes.position as THREE.BufferAttribute; let s = seed * 9301 + 49297; const rnd = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const cache = new Map<string, number>(); for (let i = 0; i < p.count; i++) { const k = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`; let f = cache.get(k); if (f === undefined) { f = 0.78 + rnd() * 0.42; cache.set(k, f); } p.setXYZ(i, p.getX(i) * f, p.getY(i) * f * flat, p.getZ(i) * f); }
+  geo.computeVertexNormals(); const uv = geo.attributes.uv as THREE.BufferAttribute; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * r * 1.6, uv.getY(i) * r * 1.6);
+  return new THREE.Mesh(geo, m); }
+
 /** a placa: tábua de madeira com veio, bordas queimadas, pregos de ferro e o nome entalhado (letra funda, sombra embaixo, luz em cima) */
 function boardTexture(title: string, sub: string, group: boolean): THREE.Texture {
   const W = 768, H = 224, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d')!;
@@ -37,12 +57,16 @@ function boardTexture(title: string, sub: string, group: boolean): THREE.Texture
   /* letras entalhadas: sombra funda + preenchimento escuro + fio de luz na borda de cima */
   const _fit = (txt: string, max: number, px: number, font: string) => { let p = px; g.font = `${font} ${p}px Georgia, serif`; while (g.measureText(txt).width > max && p > 18) { p -= 2; g.font = `${font} ${p}px Georgia, serif`; } return p; };
   g.textAlign = 'center'; g.textBaseline = 'middle';
-  /* no mundo a resolução é de pixel art: letra miúda vira borrão. A tábua leva um PICTOGRAMA grande, pintado em ouro velho
-     (escada descendo; com crânio e espadas se for masmorra de grupo), e o nome aparece em letra nítida quando você chega perto */
-  g.lineJoin = 'round'; const paint = (draw: () => void) => { g.save(); g.lineWidth = 22; g.strokeStyle = 'rgba(16,8,2,.95)'; g.fillStyle = 'rgba(16,8,2,.95)'; draw(); g.restore(); g.save(); g.lineWidth = 12; g.strokeStyle = group ? '#ff9a7a' : '#f0c878'; g.fillStyle = group ? '#ff9a7a' : '#f0c878'; draw(); g.restore(); };
-  paint(() => { g.beginPath(); g.moveTo(W / 2 - 150, 60); for (let i = 0; i < 4; i++) { g.lineTo(W / 2 - 150 + i * 70, 60 + i * 30); g.lineTo(W / 2 - 150 + (i + 1) * 70, 60 + i * 30); } g.stroke(); /* a escada descendo */
-    g.beginPath(); g.moveTo(W / 2 + 150, 52); g.lineTo(W / 2 + 150, 182); g.stroke(); g.beginPath(); g.moveTo(W / 2 + 120, 150); g.lineTo(W / 2 + 150, 184); g.lineTo(W / 2 + 180, 150); g.stroke(); });
-  if (group) paint(() => { g.beginPath(); g.arc(W / 2 - 250, 105, 32, 0, 6.283); g.fill(); g.fillRect(W / 2 - 272, 120, 44, 30); });
+  /* 25/10: a tábua vai na camada fina (resolução cheia), então o NOME vai escrito de verdade, entalhado e pintado em ouro velho,
+     com o tipo e quantos jogadores embaixo; à esquerda, o pictograma da escada descendo (e o crânio, se for de grupo) */
+  g.lineJoin = 'round'; const gold = group ? '#ffb08a' : '#f0c878';
+  const paint = (draw: () => void, lw: number) => { g.save(); g.lineWidth = lw + 8; g.strokeStyle = 'rgba(16,8,2,.95)'; g.fillStyle = 'rgba(16,8,2,.95)'; draw(); g.restore(); g.save(); g.lineWidth = lw; g.strokeStyle = gold; g.fillStyle = gold; draw(); g.restore(); };
+  paint(() => { g.beginPath(); g.moveTo(40, 62); for (let i = 0; i < 4; i++) { g.lineTo(40 + i * 24, 62 + i * 26); g.lineTo(40 + (i + 1) * 24, 62 + i * 26); } g.stroke(); }, 7);
+  if (group) paint(() => { g.beginPath(); g.arc(150, 150, 18, 0, 6.283); g.fill(); g.fillRect(138, 158, 24, 16); }, 4);
+  const tp = _fit(title, W - 250, 78, 'bold'); g.textAlign = 'center';
+  g.lineWidth = 10; g.strokeStyle = 'rgba(16,8,2,.95)'; g.font = `bold ${tp}px Georgia, serif`; g.strokeText(title, W / 2 + 70, 92); g.fillStyle = gold; g.fillText(title, W / 2 + 70, 92);
+  g.fillStyle = 'rgba(255,240,200,.18)'; g.fillText(title, W / 2 + 70, 90);
+  const sp = _fit(sub, W - 250, 30, '600'); g.font = `600 ${sp}px Georgia, serif`; g.lineWidth = 6; g.strokeText(sub, W / 2 + 70, 164); g.fillStyle = '#e8d6a8'; g.fillText(sub, W / 2 + 70, 164);
   void title; void sub; void _fit;
   const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.minFilter = THREE.LinearMipmapLinearFilter; return t;
 }
@@ -63,13 +87,15 @@ function bannerTexture(col: string, skull: boolean): THREE.Texture {
 export function buildEntrance(d: EntranceSpec, fine: (o: THREE.Object3D) => THREE.Object3D): { g: THREE.Group; fx: EntranceFx } {
   const g = new THREE.Group(), fx: EntranceFx = { flames: [], glow: [] };
   const add = <T extends THREE.Object3D>(o: T, x: number, y: number, z: number) => { o.position.set(x, y, z); o.traverse((k) => { const m = k as THREE.Mesh; if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); g.add(o); return o; };
-  const box = (w: number, h: number, dd: number, m: THREE.Material) => new THREE.Mesh(new THREE.BoxGeometry(w, h, dd), m);
+  const box = (w: number, h: number, dd: number, m: THREE.Material) => new THREE.Mesh(texBox(w, h, dd, 2), m);
   const big = d.kind === 'grupo' ? 1.3 : 1;
   const T = d.theme;
-  const stone = toon(T === 'gelo' ? 0x9ab4cc : T === 'magma' ? 0x4a3a36 : T === 'mata' || T === 'toca' ? 0x6a6656 : T === 'mina' ? 0x6e6458 : 0x8e8a96, 0x060508);
-  const stoneD = toon(T === 'gelo' ? 0x6a86a0 : T === 'magma' ? 0x2e2422 : T === 'mata' || T === 'toca' ? 0x4a4a3c : T === 'mina' ? 0x4e463c : 0x625e6e, 0x040306);
+  const cave = T !== 'cripta' && T !== 'mina';
+  const sC = T === 'gelo' ? 0x9ab4cc : T === 'magma' ? 0x5a4a44 : T === 'mata' || T === 'toca' ? 0x7a7664 : T === 'mina' ? 0x7e7468 : 0x9e9aa6;
+  const sTex = cave ? rockTex(sC, T === 'mata' || T === 'toca' ? 1 : 0) : stoneTex(sC);
+  const stone = std(0xffffff, { map: sTex }), stoneD = std(0xb0aaa4, { map: sTex });
   const dark = new THREE.MeshBasicMaterial({ color: 0x020103 });
-  const inner = T === 'cripta' ? 0xff5a3a : T === 'gelo' ? 0x7ad0ff : T === 'magma' ? 0xff7a20 : T === 'mata' || T === 'toca' ? 0x9aff6a : 0xffb060;
+  const inner = T === 'cripta' ? 0xff5a3a : T === 'gelo' ? 0x7ad0ff : T === 'magma' ? 0xff7a20 : T === 'toca' ? 0xc8603a : T === 'mata' ? 0x7ad05a : 0xffb060;
 
   /* ---------- a escadaria: sobe-se três degraus até o patamar e dali ela DESCE, entre muros, até a boca escura ----------
      (o terreno não tem buraco: por isso a descida fica dentro de um corpo de pedra elevado, e os degraus são maciços até o chão) */
@@ -77,13 +103,13 @@ export function buildEntrance(d: EntranceSpec, fine: (o: THREE.Object3D) => THRE
   for (let i = 0; i < 3; i++) { const h = 0.32 * (i + 1); add(box(sw + 0.6, h, 0.42, i === 2 ? stone : stoneD), 0, h / 2, 3.35 * big - i * 0.42); } /* subida */
   add(box(sw + 1.4, yTop, 0.8, stone), 0, yTop / 2, 3.35 * big - 1.5); /* patamar */
   const z0 = 3.35 * big - 1.9;
-  for (let i = 0; i < nDown; i++) { const k = i / (nDown - 1), top = yTop - (i + 1) * 0.16; const m = toon(new THREE.Color(stone.color).lerp(new THREE.Color(0x060505), 0.1 + k * 0.85).getHex());
+  for (let i = 0; i < nDown; i++) { const k = i / (nDown - 1), top = yTop - (i + 1) * 0.16; const m = std(new THREE.Color(0xffffff).lerp(new THREE.Color(0x060505), 0.1 + k * 0.85).getHex(), { map: sTex });
     add(box(sw, Math.max(0.05, top), stepD, m), 0, Math.max(0.05, top) / 2, z0 - i * stepD); }
   const zEnd = z0 - nDown * stepD, wallL = z0 - zEnd + 1.2;
   for (const sx of [-1, 1]) { add(box(0.5, yTop + 0.45, wallL, stoneD), sx * (sw / 2 + 0.25), (yTop + 0.45) / 2, (z0 + zEnd) / 2 + 0.3); add(box(0.62, 0.14, wallL + 0.05, stone), sx * (sw / 2 + 0.25), yTop + 0.5, (z0 + zEnd) / 2 + 0.3); }
   const doorZ = zEnd + 0.1;
   /* a boca: o escuro no fim da escada, e uma luz fraca lá dentro */
-  add(box(sw + 0.1, 2.4 * big, 0.12, dark), 0, 1.2 * big, doorZ);
+  if (!cave) add(box(sw + 0.1, 2.4 * big, 0.12, dark), 0, 1.2 * big, doorZ);
   { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(), color: inner, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); s.scale.set(2.4, 2.0, 1); add(s, 0, 0.6, doorZ + 0.35); fx.glow.push(s); }
   { const l = new THREE.PointLight(inner, 5, 6, 1.8); add(l, 0, 0.8, doorZ + 0.9); }
 
@@ -119,46 +145,62 @@ export function buildEntrance(d: EntranceSpec, fine: (o: THREE.Object3D) => THRE
       S.rotation.y = sx * -0.35; S.scale.setScalar(1.3); add(S, sx * 3.4 * big, 0, doorZ + 1.7); }
     /* braseiros de ferro na frente das estátuas */
     for (const sx of [-1, 1]) brazier(sx * 2.25 * big, doorZ + 2.6, 0xff8a30);
-  } else if (T === 'mata' || T === 'toca') {
-    /* caverna de mata / o Poço do Atoleiro: arco de pedras musgosas, raízes que descem, ossos na entrada, lanternas do pântano */
-    const moss = toon(0x4a6a2a), root = toon(0x4a3420);
-    for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), r = 1.9 * big; const s = 0.7 + (i % 3) * 0.22; const k = add(new THREE.Mesh(new THREE.DodecahedronGeometry(s, 0), i % 3 === 0 ? moss : stone), Math.cos(a) * r, Math.sin(a) * r * 1.05, doorZ - 0.1); k.rotation.set(i, i * 2, i); }
-    for (let i = 0; i < 5; i++) { const rt = add(new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.1, 1.6 + (i % 2) * 0.6, 5), root), -1.2 + i * 0.6, 1.4 + (i % 2) * 0.2, doorZ + 0.1); rt.rotation.z = (i - 2) * 0.18; }
-    if (d.name.includes('Poço')) { /* o poço velho que dá nome ao lugar: anel de pedra, sarilho e corda, ao lado da escada */
-      const wx = 3.4 * big, wz = doorZ + 2.9;
-      for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.283; add(box(0.5, 0.75, 0.32, i % 2 ? stone : stoneD), wx + Math.cos(a) * 0.95, 0.37, wz + Math.sin(a) * 0.95).rotation.y = -a; }
-      add(new THREE.Mesh(new THREE.CircleGeometry(0.8, 12).rotateX(-Math.PI / 2), dark), wx, 0.7, wz);
-      for (const sx of [-1, 1]) add(box(0.14, 1.9, 0.14, toon(0x5a3a20)), wx + sx * 1.0, 0.95, wz); add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8).rotateZ(Math.PI / 2), toon(0x5a3a20)), wx, 1.8, wz);
-      add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 5), toon(0xb8a070)), wx + 0.2, 1.3, wz); }
-    bones(doorZ + 1.2); lantern(-2.4 * big, doorZ + 2.2, 0xa8ff7a); lantern(2.4 * big, doorZ + 2.0, 0xa8ff7a); banner(-2.9 * big, doorZ + 0.6, d.kind === 'grupo' ? '#6a1a14' : '#2a4a2a', d.kind === 'grupo');
   } else if (T === 'mina') {
-    const wood = toon(0x5a3a22), rail = toon(0x3a3a40);
-    for (let i = 0; i < 8; i++) { const a = Math.PI * (i / 7), r = 2.0 * big; const k = add(new THREE.Mesh(new THREE.DodecahedronGeometry(0.8 + (i % 3) * 0.2, 0), stone), Math.cos(a) * r, Math.sin(a) * r, doorZ - 0.2); k.rotation.set(i, i, i); }
+    const wood = std(0xffffff, { map: woodTex(0x5a3a22) }), rail = toon(0x3a3a40);
+    { const rk = std(0xffffff, { map: rockTex(0x7a7064) }), rkD = std(0x9a948e, { map: rockTex(0x6a6058) }); for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), r = 2.0 * big; const k = add(boulder(0.75 + (i % 3) * 0.2, 700 + i, i % 2 ? rk : rkD, 0.85), Math.cos(a) * r, Math.max(0.3, Math.sin(a) * r), doorZ - 0.2); k.rotation.set(i, i * 2, i); }
+      for (let i = 0; i < 6; i++) { const b = add(boulder(1.0 + (i % 3) * 0.3, 760 + i, rk, 0.7), (i / 5 - 0.5) * 6.5 * big, 0.6 + (i % 2) * 1.2, doorZ - 1.6 - (i % 3) * 0.6); b.rotation.set(i, i, i); } }
     for (const sx of [-1, 1]) add(box(0.3, 2.8, 0.3, wood), sx * 1.4, 1.4, doorZ + 0.3); add(box(3.4, 0.32, 0.36, wood), 0, 2.8, doorZ + 0.3); add(box(0.25, 0.25, 0.9, wood), 0, 2.8, doorZ + 0.3).rotation.z = 0.785;
     for (const sx of [-0.45, 0.45]) add(box(0.08, 0.08, 4.5, rail), sx, 0.18, doorZ + 2.2);
     for (let i = 0; i < 6; i++) add(box(1.3, 0.08, 0.2, wood), 0, 0.12, doorZ + 0.6 + i * 0.7);
     { const cart = new THREE.Group(); const cb = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.6, 0.8), wood); cb.position.y = 0.55; cart.add(cb); for (const [x, z] of [[-0.4, -0.3], [0.4, -0.3], [-0.4, 0.3], [0.4, 0.3]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 10).rotateZ(Math.PI / 2), rail); w.position.set(x, 0.2, z); cart.add(w); } add(cart, 2.4, 0, doorZ + 2.6).rotation.y = 0.4; }
     lantern(-1.4, doorZ + 0.75, 0xffc060, 2.4); lantern(1.4, doorZ + 0.75, 0xffc060, 2.4); banner(2.9 * big, doorZ + 0.6, d.kind === 'grupo' ? '#6a1a14' : '#4a3a20', d.kind === 'grupo');
-  } else if (T === 'gelo') {
-    const ice = new THREE.MeshToonMaterial({ color: 0xbfe6ff, emissive: 0x10304a, transparent: true, opacity: 0.92 });
-    for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), r = 2.0 * big; const k = add(new THREE.Mesh(new THREE.DodecahedronGeometry(0.75 + (i % 3) * 0.25, 0), i % 2 ? ice : stone), Math.cos(a) * r, Math.sin(a) * r * 1.1, doorZ - 0.1); k.rotation.set(i, i * 2, i); }
-    for (let i = 0; i < 7; i++) { const c = add(new THREE.Mesh(new THREE.ConeGeometry(0.12 + (i % 3) * 0.05, 0.9 + (i % 3) * 0.4, 5), ice), -1.3 + i * 0.43, 2.0 + (i % 2) * 0.15, doorZ + 0.25); c.rotation.x = Math.PI; } /* pingentes */
-    for (let i = 0; i < 6; i++) { const cr = add(new THREE.Mesh(new THREE.OctahedronGeometry(0.3 + (i % 3) * 0.15, 0), ice), (i % 2 ? 1 : -1) * (2.6 + (i % 3) * 0.4), 0.3 + (i % 3) * 0.15, doorZ + 0.8 + i * 0.3); cr.rotation.set(i, i, 0); }
-    brazier(-2.3 * big, doorZ + 2.2, 0x9ad7ff); brazier(2.3 * big, doorZ + 2.2, 0x9ad7ff); bones(doorZ + 1.3);
-  } else { /* magma e o resto: arco de rocha negra com veios de lava */
-    const lava = new THREE.MeshBasicMaterial({ color: 0xff6a1a });
-    for (let i = 0; i < 9; i++) { const a = Math.PI * (i / 8), r = 2.1 * big; const k = add(new THREE.Mesh(new THREE.DodecahedronGeometry(0.85 + (i % 3) * 0.25, 0), stone), Math.cos(a) * r, Math.sin(a) * r * 1.05, doorZ - 0.1); k.rotation.set(i, i * 2, i); }
-    for (let i = 0; i < 5; i++) add(box(0.08, 0.9 + (i % 2) * 0.5, 0.06, lava), -1.6 + i * 0.8, 1.2 + (i % 2) * 0.6, doorZ + 0.32).rotation.z = (i - 2) * 0.3;
-    brazier(-2.4 * big, doorZ + 2.2, 0xff7a20); brazier(2.4 * big, doorZ + 2.2, 0xff7a20); banner(2.9 * big, doorZ + 0.8, '#6a1a14', true);
+  } else {
+    /* ---------- boca de caverna: um morro de rocha natural com musgo (ou gelo, ou veios de lava), o arco de pedras em volta da
+       abertura, um túnel que escurece para dentro, pingentes no teto da boca, raízes penduradas, pedras soltas e tufos de mato ---------- */
+    const mata = T === 'mata' || T === 'toca', gelo = T === 'gelo';
+    const rk = std(0xffffff, { map: rockTex(sC, mata ? 0.9 : 0) }), rkD = std(0x9a948e, { map: rockTex(sC, mata ? 0.4 : 0) }), rkIn = std(0x4a4640, { map: rockTex(sC), side: THREE.BackSide });
+    const W = sw + 0.7, Ht = 2.55 * big, L = 3.6;
+    { const tg = new THREE.CylinderGeometry(W / 2 + 0.05, W / 2 + 0.05, L, 18, 1, true, -Math.PI / 2, Math.PI); tg.rotateX(Math.PI / 2); tg.scale(1, Ht / (W / 2), 1); const tm = new THREE.Mesh(tg, rkIn); add(tm, 0, 0.05, doorZ - L / 2 + 0.2); tm.castShadow = false;
+      add(box(W + 0.4, Ht + 0.3, 0.2, dark), 0, (Ht + 0.3) / 2, doorZ - L + 0.2);
+      const fc = document.createElement('canvas'); fc.width = 64; fc.height = 64; const g2 = fc.getContext('2d')!; const gr = g2.createRadialGradient(32, 46, 2, 32, 46, 40); gr.addColorStop(0, 'rgba(0,0,0,.92)'); gr.addColorStop(0.7, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g2.fillStyle = gr; g2.fillRect(0, 0, 64, 64);
+      const fog = new THREE.Mesh(new THREE.PlaneGeometry(W + 0.2, Ht + 0.2), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(fc), transparent: true, depthWrite: false })); add(fog, 0, (Ht + 0.2) / 2, doorZ - 0.6); fog.castShadow = false; }
+    let sd = 11; const nr = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; };
+    for (let i = 0; i <= 10; i++) { const a = Math.PI * (i / 10), r0 = 0.62 + nr() * 0.35; const b = boulder(r0 * big, 100 + i, i % 3 ? rk : rkD, 0.85); add(b, Math.cos(a) * (W / 2 + 0.5), Math.max(0.3, Math.sin(a) * (Ht + 0.25)), doorZ + 0.05 + (nr() - 0.5) * 0.3); b.rotation.set(nr() * 3, nr() * 3, nr() * 3); }
+    const layer = (n: number, y0: number, y1: number, xw: number, z0: number, z1: number, r0: number, r1: number, sd0: number) => { for (let i = 0; i < n; i++) { const t = n === 1 ? 0.5 : i / (n - 1), r = (r0 + nr() * (r1 - r0)) * big; const b = boulder(r, sd0 + i, nr() < 0.3 ? rkD : rk, 0.7 + nr() * 0.3); add(b, (t - 0.5) * 2 * xw + (nr() - 0.5) * 0.6, y0 + nr() * (y1 - y0), z0 + nr() * (z1 - z0)); b.rotation.set(nr() * 3, nr() * 3, nr() * 3); } };
+    layer(8, 0.3, 0.9, 4.4 * big, doorZ - 3.4, doorZ - 1.2, 1.0, 1.6, 200);
+    layer(6, 1.8, 2.6, 3.2 * big, doorZ - 3.0, doorZ - 1.0, 0.85, 1.3, 300);
+    layer(3, 3.1, 3.6, 1.6 * big, doorZ - 2.6, doorZ - 1.3, 0.7, 1.0, 400);
+    for (const sx of [-1, 1]) { const b0 = boulder(1.05 * big, 500 + sx, rk, 0.75); add(b0, sx * (W / 2 + 1.1), 0.5, doorZ + 0.5); const b = boulder(0.75 * big, 520 + sx, rk, 0.7); add(b, sx * (W / 2 + 2.3), 0.35, doorZ - 0.4); }
+    for (let i = 0; i < 8; i++) { const sx = i % 2 ? 1 : -1, b = boulder(0.16 + nr() * 0.18, 600 + i, rkD, 0.6); add(b, sx * (sw / 2 + 0.75 + nr() * 0.9), 0.12, doorZ + 0.8 + nr() * 3.2); }
+    for (let i = 0; i < 6; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.07 + nr() * 0.08, 0.35 + nr() * 0.55, 5), gelo ? new THREE.MeshToonMaterial({ color: 0xcfeeff, emissive: 0x10304a, transparent: true, opacity: 0.9 }) : rkD); c.rotation.x = Math.PI; add(c, (i / 5 - 0.5) * (W - 0.6), Ht - 0.25 - nr() * 0.25, doorZ + 0.1); c.castShadow = false; }
+    if (mata) {
+      const moss = std(0x5a7a32), mossD = std(0x3e5a24), root = std(0xffffff, { map: woodTex(0x5a4028) });
+      for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.5 + nr() * 0.5, 8, 5), i % 2 ? moss : mossD); m.scale.set(1.4, 0.32, 1.1); add(m, (nr() - 0.5) * 6 * big, 2.7 + nr() * 1.4, doorZ - 1.2 - nr() * 2); m.castShadow = false; }
+      for (let i = 0; i < 7; i++) { const x0 = (i / 6 - 0.5) * (W + 0.4), len = 0.9 + nr() * 1.4, pts = [new THREE.Vector3(x0, Ht + 0.35, doorZ + 0.15), new THREE.Vector3(x0 + (nr() - 0.5) * 0.3, Ht - len * 0.45, doorZ + 0.32), new THREE.Vector3(x0 + (nr() - 0.5) * 0.4, Ht - len, doorZ + 0.28)];
+        const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 8, 0.03 + nr() * 0.03, 4), i % 3 ? root : moss); add(tube, 0, 0, 0); tube.castShadow = false; }
+      for (let i = 0; i < 16; i++) { const sx = i % 2 ? 1 : -1, tuft = new THREE.Group(); for (let k = 0; k < 4; k++) { const bl = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.35 + nr() * 0.25, 3), k % 2 ? moss : mossD); bl.position.set((nr() - 0.5) * 0.2, 0.18, (nr() - 0.5) * 0.2); bl.rotation.z = (nr() - 0.5) * 0.6; tuft.add(bl); } add(tuft, sx * (W / 2 + 0.6 + nr() * 2.8), 0, doorZ + 0.2 + nr() * 3.6); }
+      bones(doorZ + 1.4); { const lc = T === 'toca' ? 0xffb060 : 0xb8ff8a; lantern(-2.5 * big, doorZ + 2.3, lc); lantern(2.5 * big, doorZ + 2.1, lc); } banner(-3.2 * big, doorZ + 0.9, d.kind === 'grupo' ? '#6a1a14' : '#2a4a2a', d.kind === 'grupo');
+      if (d.name.includes('Poço')) { const wx = 3.5 * big, wz = doorZ + 3.0, ring = std(0xffffff, { map: stoneTex(0x7a7468) });
+        for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.283; add(box(0.5, 0.75, 0.32, ring), wx + Math.cos(a) * 0.95, 0.37, wz + Math.sin(a) * 0.95).rotation.y = -a; }
+        add(new THREE.Mesh(new THREE.CircleGeometry(0.8, 12).rotateX(-Math.PI / 2), dark), wx, 0.72, wz); const wd = std(0xffffff, { map: woodTex(0x5a3a20) });
+        for (const sx of [-1, 1]) add(box(0.14, 1.9, 0.14, wd), wx + sx * 1.0, 0.95, wz); add(new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 2.2, 8).rotateZ(Math.PI / 2), wd), wx, 1.8, wz);
+        add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.0, 5), toon(0xb8a070)), wx + 0.2, 1.3, wz); } }
+    else if (gelo) { const ice = new THREE.MeshToonMaterial({ color: 0xcfeeff, emissive: 0x10304a, transparent: true, opacity: 0.92 }), snow = std(0xf2f6ff);
+      for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.55 + nr() * 0.5, 8, 5), snow); m.scale.set(1.4, 0.35, 1.1); add(m, (nr() - 0.5) * 6 * big, 2.8 + nr() * 1.4, doorZ - 1.2 - nr() * 2); }
+      for (let i = 0; i < 8; i++) { const cl = new THREE.Group(); for (let k = 0; k < 3; k++) { const cr = new THREE.Mesh(new THREE.OctahedronGeometry(0.18 + nr() * 0.2, 0), ice); cr.scale.y = 2.2; cr.position.set((nr() - 0.5) * 0.4, 0.3, (nr() - 0.5) * 0.4); cr.rotation.set((nr() - 0.5) * 0.6, nr() * 3, (nr() - 0.5) * 0.6); cl.add(cr); } add(cl, (i % 2 ? 1 : -1) * (W / 2 + 0.8 + nr() * 2.4), 0, doorZ + 0.4 + nr() * 3); }
+      brazier(-2.4 * big, doorZ + 2.3, 0x9ad7ff); brazier(2.4 * big, doorZ + 2.3, 0x9ad7ff); bones(doorZ + 1.4); }
+    else { const lava = new THREE.MeshBasicMaterial({ color: 0xff6a1a });
+      for (let i = 0; i < 10; i++) { const vein = add(box(0.07, 0.6 + nr() * 0.9, 0.05, lava), (nr() - 0.5) * (W + 2.5), 0.6 + nr() * 2.2, doorZ + 0.45); vein.rotation.z = (nr() - 0.5) * 1.2; vein.castShadow = false; }
+      { const s2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(), color: 0xff6a1a, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending })); s2.scale.set(5, 3, 1); add(s2, 0, 1.2, doorZ + 0.6); fx.glow.push(s2); }
+      brazier(-2.5 * big, doorZ + 2.3, 0xff7a20); brazier(2.5 * big, doorZ + 2.3, 0xff7a20); banner(3.2 * big, doorZ + 1.0, '#6a1a14', true); }
   }
-
   /* ---------- a placa entalhada, em dois postes, do lado da escada ---------- */
   { const P = new THREE.Group(), wood = toon(0x4a2e18);
     for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 2.5, 7), wood); post.position.set(sx * 1.6, 1.25, -0.04); P.add(post); const cap = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.22, 7), wood); cap.position.set(sx * 1.6, 2.58, -0.04); P.add(cap); }
     const sub = `${d.kind === 'grupo' ? '⚔ Masmorra' : d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · ${d.players}${d.scaled ? ' · acompanha o seu nível' : ''}`;
     const tex = boardTexture(d.name, sub, d.kind === 'grupo');
     const face = new THREE.MeshToonMaterial({ map: tex, emissive: 0x3a2a1a, emissiveMap: tex }); /* a tábua se lê até de noite */
-    const board = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.0, 0.1), [wood, wood, wood, wood, face, wood]); board.position.set(0, 1.75, 0.02); board.rotation.x = -0.28; /* inclinada para quem olha de cima */ P.add(board);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.0, 0.1), [wood, wood, wood, wood, face, wood]); board.position.set(0, 1.75, 0.02); board.rotation.x = -0.28; /* inclinada para quem olha de cima */ P.add(board); fine(board); board.userData.dyn = true;
     P.traverse((k) => { const m = k as THREE.Mesh; if (m.isMesh) m.castShadow = true; });
     P.position.set(-3.9 * big - 0.4, 0, 3.6 * big); P.rotation.y = 0.18; g.add(P); }
 
@@ -174,9 +216,9 @@ export function buildEntrance(d: EntranceSpec, fine: (o: THREE.Object3D) => THRE
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, h, 6), wood); post.position.y = h / 2; L.add(post);
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.06), wood); arm.position.set(0.22, h - 0.05, 0); L.add(arm);
     const cage = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.3, 0.22), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85 })); cage.position.set(0.45, h - 0.3, 0); L.add(cage);
-    const l = new THREE.PointLight(col, 4, 7, 1.7); l.position.set(0.45, h - 0.3, 0); L.add(l);
+    const l = new THREE.PointLight(col, 2.6, 6, 1.8); l.position.set(0.45, h - 0.3, 0); L.add(l);
     const gw = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow(), color: col, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending })); gw.scale.set(1.4, 1.4, 1); gw.position.copy(cage.position); L.add(gw); fx.glow.push(gw);
-    fx.flames.push({ m: cage, l, base: 4, seed: x + z * 2.3 }); add(L, x, 0, z); }
+    fx.flames.push({ m: cage, l, base: 2.6, seed: x + z * 2.3 }); add(L, x, 0, z); }
   function bones(z: number) { const bone = toon(0xe0d8c0); for (let i = 0; i < 6; i++) { const b = add(new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.45, 5), bone), (i - 2.5) * 0.45 + Math.sin(i) * 0.2, 0.05, z + Math.cos(i * 2) * 0.4); b.rotation.set(Math.PI / 2, 0, i); }
     const sk = add(new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 6), bone), 1.1, 0.12, z + 0.3); sk.scale.set(1, 0.9, 1.1); }
   function banner(x: number, z: number, col: string, skull: boolean) { const B = new THREE.Group(), wood = toon(0x3a2414);

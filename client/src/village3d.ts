@@ -162,9 +162,9 @@ export function buildTotem(v: number): Built {
 
 /* ---------- 25/10: proteção das vilas (Erling: "uma entrada com pórtico de madeira bruta e o nome da cidade escrito; mesmo vilas pequenas têm
    muros menores, de meia altura, improvisados") — modelos montados em volta da origem e girados para o lado de fora da vila ---------- */
-function spin(K: ReturnType<typeof kit>, ry: number): Built {
-  const outer = new THREE.Group(); outer.position.set(1, 0, 1); outer.rotation.y = ry; outer.add(K.g);
-  const c = Math.cos(ry), s = Math.sin(ry), rot = (v: THREE.Vector3) => { const x = v.x * c + v.z * s, z = -v.x * s + v.z * c; v.set(x + 1, v.y, z + 1); };
+function spin(K: ReturnType<typeof kit>, ry: number, ox = 1, oz = 1): Built {
+  const outer = new THREE.Group(); outer.position.set(ox, 0, oz); outer.rotation.y = ry; outer.add(K.g);
+  const c = Math.cos(ry), s = Math.sin(ry), rot = (v: THREE.Vector3) => { const x = v.x * c + v.z * s, z = -v.x * s + v.z * c; v.set(x + ox, v.y, z + oz); };
   for (const t of K.out.torches) rot(t.pos); for (const gl of K.out.glows) rot(gl.pos); for (const sm of K.out.smoke) rot(sm);
   return { group: outer, glows: K.out.glows, smoke: K.out.smoke, torches: K.out.torches };
 }
@@ -184,7 +184,7 @@ function nameBoard(name: string, cult: number) {
   t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; signTexCache.set(name + cult, t); return t;
 }
 /** pórtico da vila: dois troncos, a viga, um telhadinho, a tábua com o nome pendurada em correntes, tochas e escoras. span = vão (m) */
-export function buildVillageGate(name: string, cult: number, ry: number, span = 6): Built {
+export function buildVillageGate(name: string, cult: number, ry: number, span = 6, ox = 1, oz = 1): Built {
   const K = kit(), lw = cult === 3 ? 0xd8ccb0 : cult === 4 ? 0x3a3036 : 0x5a4030, logM = wood(lw), dk = wood(cult === 4 ? 0x2a2228 : 0x3a2a1c), stM = stone(cult === 2 ? 0x6a5e52 : 0x7a746a);
   const half = span / 2, H = 4.2;
   for (const sx of [-1, 1]) { const x = sx * half;
@@ -206,10 +206,40 @@ export function buildVillageGate(name: string, cult: number, ry: number, span = 
   /* um feixe de lanças e um escudo da guarda encostados num dos troncos */
   for (let k = 0; k < 3; k++) { const sp = K.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 5), dk, -half - 0.55 + k * 0.08, 1.2, 0.5 + k * 0.05); sp.rotation.z = 0.12 - k * 0.06; K.add(new THREE.ConeGeometry(0.06, 0.25, 4), flat(0x9aa0aa), -half - 0.55 + k * 0.08 - 0.14 + k * 0.007, 2.45, 0.5 + k * 0.05); }
   const sh = K.add(new THREE.CylinderGeometry(0.45, 0.45, 0.08, 12), wood(0x7a3a2a), half + 0.55, 0.62, 0.45); sh.rotation.x = Math.PI / 2 - 0.25;
-  return spin(K, ry);
+  return spin(K, ry, ox, oz);
 }
 /** muro baixo de 1 casa (2 m): pedra seca (anões, elfos, vapor e vale) ou cerca trançada de galhos (sombrios e pacto) */
-export function buildLowWall(cult: number, ry: number, seed: number): Built {
+/* pedras de muro: seis formas prontas (icosaedros amassados), reaproveitadas com escala e giro — o muro fica contínuo e a fusão estática fica leve */
+let STONES: THREE.BufferGeometry[] | null = null;
+function wallStones() { if (STONES) return STONES; STONES = []; for (let v = 0; v < 6; v++) { const g = new THREE.IcosahedronGeometry(1, 1), p = g.attributes.position as THREE.BufferAttribute; let sd = 31 + v * 977; const rn = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; }; const seen = new Map<string, number>();
+  for (let i = 0; i < p.count; i++) { const k = `${p.getX(i).toFixed(3)},${p.getY(i).toFixed(3)},${p.getZ(i).toFixed(3)}`; let f = seen.get(k); if (f === undefined) { f = 0.8 + rn() * 0.35; seen.set(k, f); } p.setXYZ(i, p.getX(i) * f, p.getY(i) * f * 0.62, p.getZ(i) * f); } g.computeVertexNormals(); STONES.push(g); } return STONES; }
+/** muro de pedra assentada com lodo, contínuo ao longo de `len` metros: núcleo de barro escuro, três fiadas de pedras cinzentas,
+ *  musgo e líquen em cima; `broken` (0–1) baixa o trecho, tira pedras da fiada de cima e deixa entulho no chão */
+function dryStoneWall(K: ReturnType<typeof kit>, len: number, broken: number, seed: number, cult: number) {
+  const r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, G = wallStones();
+  const base = cult === 3 ? [0x9a9ea0, 0x8a8e90, 0xa8acac] : cult === 2 ? [0x5e6062, 0x505254, 0x6a6c6e] : [0x7a7e80, 0x6a6e70, 0x868a8c, 0x5e6264]; // cinza frio: pedra de rio e de campo, nunca tijolo
+  const mats = base.map((c) => flat(c)), mud = flat(0x3a3c38), moss = [flat(0x4e6a32), flat(0x5e7a3a), flat(0x3e5228)];
+  const hk = 1 - broken * 0.65, H = 0.78 * hk, L = len;
+  K.add(new THREE.BoxGeometry(L, H, 0.4), mud, 0, H / 2, 0); // o lodo entre as pedras
+  const rows = Math.max(1, Math.round(3 * hk)); let k = 0;
+  for (let row = 0; row < rows; row++) { const y = 0.1 + row * 0.26, sz = row === rows - 1 ? 0.19 : 0.23; let x = -L / 2 + (row % 2) * 0.12;
+    while (x < L / 2 - 0.05) { const s0 = sz * (0.8 + r(k) * 0.5); k++; if (row === rows - 1 && broken && r(k + 91) < broken * 0.8) { x += s0 * 1.7; continue; }
+      for (const side of [-1, 1]) { const m = new THREE.Mesh(G[(k + (side > 0 ? 3 : 0)) % 6], mats[(k + row) % mats.length]); m.scale.set(s0 * (1.05 + r(k + 5) * 0.3), s0 * (0.9 + r(k + 7) * 0.3), s0 * 0.95); m.position.set(x + s0 * 0.8, y + s0 * 0.4, side * 0.16); m.rotation.set(r(k + 2) * 0.4, r(k + 3) * 3, r(k + 4) * 0.4); m.castShadow = true; m.receiveShadow = true; K.g.add(m); }
+      x += s0 * 1.65; } }
+  for (let i = 0; i < Math.round(L * 1.6); i++) { if (r(i + 300) < 0.45) continue; const m = new THREE.Mesh(new THREE.SphereGeometry(0.16 + r(i + 301) * 0.16, 6, 4), moss[i % 3]); m.scale.set(1.4, 0.32, 1.1); m.position.set(-L / 2 + r(i + 302) * L, H + 0.02, (r(i + 303) - 0.5) * 0.3); K.g.add(m); } // musgo por cima
+  for (let i = 0; i < 5; i++) { if (r(i + 400) > 0.5) continue; const m = new THREE.Mesh(new THREE.SphereGeometry(0.12 + r(i + 401) * 0.1, 6, 4), moss[(i + 1) % 3]); m.scale.set(1.2, 0.9, 0.3); m.position.set(-L / 2 + r(i + 402) * L, 0.15 + r(i + 403) * H * 0.7, (r(i + 404) < 0.5 ? -1 : 1) * 0.3); K.g.add(m); } // musgo descendo pelas faces
+  if (broken) for (let i = 0; i < 4 + Math.round(broken * 6); i++) { const s0 = 0.14 + r(i + 500) * 0.12, m = new THREE.Mesh(G[i % 6], mats[i % mats.length]); m.scale.set(s0, s0 * 0.8, s0); m.position.set(-L / 2 + r(i + 501) * L, s0 * 0.35, (r(i + 502) < 0.5 ? -1 : 1) * (0.45 + r(i + 503) * 0.6)); m.rotation.set(r(i + 504) * 3, r(i + 505) * 3, 0); m.castShadow = true; K.g.add(m); } // entulho
+}
+/** cerca de madeira contínua (vilas menores): mourões tortos a cada ~1,2 m, duas varas, algumas caídas */
+function woodFence(K: ReturnType<typeof kit>, len: number, broken: number, seed: number) {
+  const r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, post = wood(0x4a3a28), rail = wood(0x6a5034), L = len, n = Math.max(2, Math.round(L / 1.2));
+  for (let i = 0; i <= n; i++) { if (i === n) continue; const x = -L / 2 + (i / n) * L, h = 1.0 + r(i) * 0.25; const p = K.add(new THREE.CylinderGeometry(0.07, 0.09, h, 6), post, x, h / 2, (r(i + 9) - 0.5) * 0.06); p.rotation.z = (r(i + 1) - 0.5) * 0.18; p.rotation.x = (r(i + 2) - 0.5) * 0.14; }
+  for (const [y, k0] of [[0.42, 10], [0.82, 20]] as [number, number][]) { if (broken && r(k0) < broken) { const fallen = K.add(new THREE.CylinderGeometry(0.045, 0.05, L * 0.7, 5), rail, (r(k0 + 1) - 0.5) * 0.4, 0.06, 0.35); fallen.rotation.z = Math.PI / 2; fallen.rotation.y = (r(k0 + 2) - 0.5) * 0.6; continue; }
+    const rl = K.add(new THREE.CylinderGeometry(0.045, 0.05, L + 0.1, 5), rail, 0, y + (r(k0 + 3) - 0.5) * 0.06, 0.02); rl.rotation.z = Math.PI / 2 + (r(k0 + 4) - 0.5) * 0.06; }
+}
+export function buildLowWall(cult: number, ry: number, seed: number, len = 2.95, broken = 0, ox = 1, oz = 1): Built {
+  if (cult >= 20) { const K = kit(); dryStoneWall(K, len, broken, seed, cult - 20); return spin(K, ry, ox, oz); }
+  if (cult === 13) { const K = kit(); woodFence(K, len, broken, seed); return spin(K, ry, ox, oz); }
   const K = kit(), r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
   if (cult === 11 || cult === 12) { /* cercas de estrada: 11 = cerca de varas com mourões (perto das vilas grandes), 12 = cerca torta do ermo */
     const post = wood(cult === 11 ? 0x5a4030 : 0x4a3a28), rail = wood(cult === 11 ? 0x7a5a38 : 0x6a5030), jit = (k: number) => (r(k) - 0.5) * (cult === 12 ? 0.18 : 0.04);
