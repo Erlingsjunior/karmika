@@ -1,7 +1,9 @@
 /* Cache do mundo (22/10/2026): gerar o mundo de 840×840 é a parte mais pesada da abertura (vários segundos de CPU).
    Como o mundo é sempre o mesmo (mesma semente), a primeira abertura gera e guarda no IndexedDB; as próximas só leem.
    A assinatura é o texto do próprio world.ts: qualquer mudança no gerador invalida o cache sozinha. */
-import worldSrc from './world.ts?raw';
+import worldSrc0 from './world.ts?raw';
+import campSrc from './campanha.ts?raw';
+const worldSrc = worldSrc0 + campSrc; /* a campanha põe gente nas vilas: mudar a campanha também refaz o mundo */
 import { buildCity, worldState, restoreWorldState, type World } from './world';
 
 const DB = 'karmika-cache', STORE = 'kv', KEY = 'world';

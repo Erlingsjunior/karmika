@@ -80,6 +80,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
 export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number } // tiles
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
+  /** a Casa dos Ofícios de Askavik (25/10): o salão de todas as profissões (oficios.ts monta o prédio e os ajudantes) */ craftHall?: { x: number; y: number; w: number; h: number; ry: number };
   pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
@@ -1314,13 +1315,34 @@ export function buildCity(): World {
           if (!free) continue;
           const cx = gx + 1, cy = gy + 1; props.push({ kind: 'station', gx, gy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: Math.atan2(hubX(t) - cx, t.y - cy) });
           for (let y = gy - 1; y <= gy + 2; y++) for (let x = gx - 1; x <= gx + 2; x++) taken.add(y * 100000 + x); placed.push(v); ok = true; } } } }
+  /* a Casa dos Ofícios: num lugar livre perto da Praça do Mercado de Askavik, um salão aberto de 14×10 com as cinco bancadas lá dentro */
+  let craftHall: { x: number; y: number; w: number; h: number; ry: number } | undefined;
+  { const ak = settlements.find((q) => q.kind === 'city'); if (ak) { const cx0 = hubX(ak), cy0 = ak.y;
+      const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch']); /* árvore e pedra solta saem para o salão entrar */
+      const busy = new Set<number>(); for (const p of props) { if (SOFT.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(y * 100000 + x); }
+      const okT = (x: number, y: number) => inb(x, y) && !busy.has(y * 100000 + x) && ['grass', 'plaza', 'dirt', 'road', 'tree'].includes(map[y][x] as string);
+      search: for (const [W2, H2] of [[12, 8], [11, 7], [10, 7]]) for (let r = 4; r <= 60; r++) for (let a = 0; a < 48; a++) { const W = W2, H = H2, gx = Math.round(cx0 + Math.cos(a * 0.1309) * r) - (W >> 1), gy = Math.round(cy0 + Math.sin(a * 0.1309) * r) - (H >> 1); let ok = true;
+        if (Math.hypot(gx + W / 2 - ak.x, gy + H / 2 - ak.y) > ak.radius - 9) continue; /* dentro das muralhas */
+        /* dentro da cidade não sobra campo: até duas casas comuns cedem o lugar (nunca igreja, castelo, escola ou loja com nome) */
+        const over = props.filter((p) => p.kind === 'house' && p.gx + p.w > gx && p.gx < gx + W && p.gy + p.h > gy && p.gy < gy + H);
+        if (over.length > 2) continue;
+        for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.delete(y * 100000 + x);
+        for (let y = gy; y < gy + H && ok; y++) for (let x = gx; x < gx + W && ok; x++) if (!okT(x, y)) ok = false;
+        if (!ok) { for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(y * 100000 + x); continue; } craftHall = { x: gx, y: gy, w: W, h: H, ry: 0 };
+        for (const p of over) { const i = props.indexOf(p); if (i >= 0) props.splice(i, 1); }
+        for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
+        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza' as never; /* (tile 'tree' também vira piso) */
+        /* as cinco bancadas de verdade (as mesmas das vilas: funcionam para craft), em fileira, de frente para o corredor */
+        for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI : 0 }); }
+        pois.push({ name: 'Casa dos Ofícios', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
+        break search; } } }
   { /* elites longe das vilas: nenhum elite nasce a menos de 30 blocos de um povoado (45 dos berços), a não ser os de lugar marcado (nível fixo) */
     const CRADLE = new Set(['Karmika', 'Brasaforja', 'Lithendel']), ELT = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'werewolf']);
     for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!ELT.has(sp.type) || sp.fixLvl) continue;
       if (settlements.some((t) => Math.hypot(t.x - sp.x, t.y - sp.y) < (CRADLE.has(t.name) ? 45 : 30))) spawns.splice(i, 1); } }
   const stOf = (nm: string) => { const st = settlements.find((q) => q.name === nm)!; return { x: st.x + 0.5, y: st.y + 3.5, name: nm }; };
   rampartsRef = ramparts;
-  return { map, biome, props, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
+  return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
 export function veinOf(p: { gx: number; gy: number; w: number }) { const h = Math.abs(Math.sin(p.gx * 127.1 + p.gy * 311.7) * 43758.5453) % 1; return h < (p.w > 1 ? 0.07 : 0.035) ? 2 : h < (p.w > 1 ? 0.3 : 0.16) ? 1 : 0; }

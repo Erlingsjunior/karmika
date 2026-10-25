@@ -52,6 +52,7 @@ import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
 import { PALADIN, VAMPIRE, TECHNO, WEREWOLF, RACE_INSTINCT } from './sagas';
 import { createAtmos } from './atmos';
+import { createCraftHall } from './oficios';
 import { createEvents, globalNow, globalNext, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
@@ -140,6 +141,7 @@ objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(7000);
 const atmos = createAtmos(scene, particles, fine);
+
 scene.add(fine(particles.points));
 void Mist;
 /* sem névoa móvel */
@@ -790,6 +792,8 @@ function syncCaravanQuests() { const want = new Set<string>();
     if (o.kind === 'rescue') { want.add('res:' + o.route); caravans.startRescue(o.route, o.at, o.note); } }); }
   for (const r of caravans.routes.keys()) { if (!want.has('esc:' + r) && caravans.escorting(r) && !caravans.arrivedEsc(r)) caravans.stopEscort(r); if (!want.has('res:' + r)) caravans.stopRescue(r, true); } }
 let carSyncT = 0;
+/* a Casa dos Ofícios de Askavik (oficios.ts) */
+const craftHall = city.craftHall ? createCraftHall({ scene, T, heightAt, fine, particles, bubble: (x, y, z, tx) => carBubble(x, y, z, tx), audio }, city.craftHall) : null;
 function updateCaravans(dt: number) { const nowMs = performance.now(); if (nowMs > carSyncT) { carSyncT = nowMs + 700; syncCaravanQuests(); } caravans.update(dt, t); updateCarBubbles(dt); }
 /** a loja da Companhia: o estoque e o preço dependem das caravanas que chegaram (ou não) */
 const LATAO_BASE = ['potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'], LATAO_PORTO = ['bag_xl', 'pick_st', 'axe_st', 'knife_st'];
@@ -2910,6 +2914,7 @@ function frameBody() {
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   atmos.update(rawDt, t, heroPos, aurK, luaK, gust, (x, z) => heightAt(x, z), !!inside);
+  if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);
 
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
