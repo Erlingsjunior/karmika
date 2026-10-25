@@ -23,7 +23,7 @@ const IL = 'Sargenta Ilka', OM = 'Velho Ormur', OD = 'Irmã Odila', BR = 'Coveir
 const F = { who: 'Instinto', t: 'Aperte F (ou o terceiro olho, no menu de ações) para ligar o seu Instinto. O que esta missão pede só aparece para quem está atento.' };
 
 /** as pessoas novas que a campanha pôs no mundo (uma por vila do roteiro) — world.ts as coloca de pé */
-export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[] }[] = [
+export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf' }[] = [
   { vila: 'Lundr', name: IL, role: 'Guarda-mor de Lundr', dx: 3, dy: 2.5, tint: 0x4a5a3a, lines: ['Lundr é pequena. Por isso a gente cuida dela como se fosse grande.', 'Os lobos sabem contar. Contam quantos guardas eu tenho.'] },
   { vila: 'Hrafnhöfn', name: OM, role: 'Faroleiro de Hrafnhöfn', dx: 3, dy: -2.5, tint: 0x5a6a7a, lines: ['Cinquenta anos acendendo o farol. Nunca apagou. Até agora.', 'O mar fala. O vento traduz.'] },
   { vila: 'Steinfoss', name: OD, role: 'Curandeira de Steinfoss', dx: -3, dy: 2.5, tint: 0xd8d0c0, lines: ['Febre não escolhe casa. Eu também não.', 'Lave as mãos antes de entrar. E antes de sair.'] },
@@ -34,9 +34,19 @@ export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: numb
   { vila: 'Fjallbrún', name: BE, role: 'Escaldo de Fjallbrún', dx: 3, dy: -2, tint: 0x8a5a2a, lines: ['Toda vila tem uma canção. A desta perdeu o último verso.', 'Eu canto o que aconteceu. Você faz acontecer.'] },
   { vila: 'Kaldrfoss', name: UN, role: 'Barqueira de Kaldrfoss', dx: -2.5, dy: 3, tint: 0x3a5a7a, lines: ['A cachoeira congelou. Meu barco virou banco.', 'Quem atravessa o gelo em silêncio, atravessa duas vezes.'] },
   { vila: 'Midvangr', name: TV, role: 'Guarda-Passo de Midvangr', dx: 3, dy: 2.5, tint: 0x5a5a6a, lines: ['Ninguém passa por Midvangr sem que eu saiba o nome.', 'O passo é estreito. A história do Vale, também.'] },
+  /* 25/10: os caminhos dos anões e dos elfos (racas.ts) */
+  { vila: 'Brasaforja', name: 'Thane Borin Barba-Longa', role: 'Senhor do Clã de Brasaforja', dx: -2.5, dy: -3, tint: 0x6a2a1a, kind: 'dwarf', lines: ['Em Brasaforja ninguém ganha nome antes de ganhar calo.', 'A montanha guarda quem guarda a montanha.'] },
+  { vila: 'Brasaforja', name: 'Velha Sigrun', role: 'Guardiã das Runas de Brasaforja', dx: 4, dy: -3, tint: 0x4a3a5a, kind: 'dwarf', lines: ['As runas não gritam. Chegue perto.', 'A pedra lembra de tudo. Até do que a gente esqueceu.'] },
+  { vila: 'Ulfheim', name: 'Ferreira Hjördis', role: 'Ferreira de Ulfheim', dx: 3, dy: 2.5, tint: 0x5a3a2a, kind: 'dwarf', lines: ['Aqui ninguém liga para forja. Os humanos acham que ferro nasce pronto.', 'O Brokki que me desculpe. Ou não.'] },
+  { vila: 'Cinzalto', name: 'Capataz Eldgrim', role: 'Capataz das Minas de Cinzalto', dx: -3, dy: 2.5, tint: 0x3a3a3a, kind: 'dwarf', lines: ['Cinzalto vive de mina. Mina parada, cidade com fome.', 'Eu perdi o Sentido da Pedra numa explosão. Perdi mais coisa depois.'] },
+  { vila: 'Askavik', name: 'Mestre-Forjador Kári', role: 'Mestre da Forja de Askavik', dx: 32, dy: -20, tint: 0x7a4a2a, kind: 'dwarf', lines: ['Ferro barato demais é ferro que alguém chorou para perder.', 'A Forja de Askavik guarda os segredos dos anões. Quase todos.'] },
+  { vila: 'Lithendel', name: 'Patrulheira Sylwen', role: 'Patrulheira de Lithendel', dx: 3, dy: -3, tint: 0x3a6a3a, lines: ['A mata escuta. Agradeça em voz alta.', 'Pé leve, olho aberto, flecha guardada até a hora.'] },
+  { vila: 'Mýrarvik', name: 'Curandeira Tova', role: 'Curandeira de Mýrarvik', dx: -3, dy: 2.5, tint: 0xc8c0a8, lines: ['As crianças sonham com os juncos. Eu não durmo.', 'Erva boa cresce perto de água ruim. O mundo é assim.'] },
+  { vila: 'Skjoldvik', name: 'Vigia Eyvind', role: 'Vigia de Skjoldvik', dx: 3, dy: 2.5, tint: 0x4a5a6a, lines: ['Da torre eu vejo o mar, a neve e quem não devia estar em nenhum dos dois.', 'O vento de Skjoldvik corta até pensamento.'] },
+  { vila: 'Askavik', name: 'Cronista Ormund Salveth', role: 'Cronista da Grande Biblioteca', dx: -22, dy: 28, tint: 0x4a3a2a, lines: ['Tudo o que acontece no mundo cabe num livro. Quase tudo.', 'Anotarei a data. Anoto todas.'] },
 ];
 
-export const HUMAN_ROAD: QuestDef[] = [
+export const HUMAN_ROAD: QuestDef[] = ([
   /* ---------------- Ato I · O Vale de Karmika (1–9) ---------------- */
   { id: 'h01', chain: CN, name: 'Primeiros passos', lvl: 1, giver: 'Garrick', xp: 1, gold: 10, next: 'h02',
     text: 'As ratazanas rubras infestam o cemitério e os arredores. Prove que sabe segurar uma espada: derrube três.',
@@ -194,7 +204,7 @@ export const HUMAN_ROAD: QuestDef[] = [
     objs: [{ kind: 'level', n: 25 }, { kind: 'talk', npc: 'Garrick' }],
     talk: ['Lundr. Hrafnhöfn. Steinfoss, Sandvik, Skógar, Vestheim. A neve, o passo. Todo mundo fala de você.', 'Quando chegou aqui, você tinha bota limpa. Olha a bota agora.', 'Jure. E depois vá para Askavik. Lá dizem o que você pode ser. Quem você é, você já provou aqui.'],
     done: ['Então está jurado.', 'Caminhante do Norte. Que o Olho te veja sempre de pé.'] },
-];
+] as QuestDef[]).map((d) => ({ ...d, origin: 'human' as const })); /* 25/10: anões e elfos têm a própria campanha (racas.ts) */
 
 /** as pontes (o “fio da meada”): para onde ir depois de cada missão, com o nome da vila e a direção */
 export const ROAD_BRIDGES: Record<string, { name: string; say: string; text: string }> = {

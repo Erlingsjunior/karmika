@@ -1318,7 +1318,7 @@ export function buildCity(): World {
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
       if (inb(x, y) && !occ.has(y * 100000 + x) && ['grass', 'plaza', 'road', 'dirt'].includes(map[y][x] as string)) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
-    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (!t) continue; const at = freeAt(t.x + c.dx, t.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: 'nordic', x: at.x, y: at.y, radius: 1.2, tint: c.tint, scale: 1.0, lines: c.lines }); } }
+    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (!t) continue; const at = freeAt(t.x + c.dx, t.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines }); } }
   /* a Casa dos Ofícios: num lugar livre perto da Praça do Mercado de Askavik, um salão aberto de 14×10 com as cinco bancadas lá dentro */
   let craftHall: { x: number; y: number; w: number; h: number; ry: number } | undefined;
   { const ak = settlements.find((q) => q.kind === 'city'); if (ak) { const cx0 = hubX(ak), cy0 = ak.y;

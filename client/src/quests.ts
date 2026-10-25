@@ -1,5 +1,6 @@
 import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
+import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES } from './racas';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
 import { FALAS } from './falas';
@@ -65,6 +66,15 @@ export const NORTH: QuestDef[] = [
 /** fração do XP de cada trecho da história que a missão amarela paga (com as pontes, ~60% do total) */
 export const STORY_SHARE = 0.5; /* 25/10: a campanha ganhou o dobro de missões; cada uma paga um pouco menos, a soma fica parecida */
 export const STORY_THREAD = [...HUMAN_ROAD.map((d) => d.id), 'a01', 'a02', 'a03', 'a04', 'p01']; /* o Caminho do Norte agora viaja (campanha.ts) */
+/** o fio da história de cada povo (25/10): humanos, anões e elfos têm a própria campanha do 1 ao 25 e se encontram em Askavik */
+export const STORY_THREADS: Record<'human' | 'dwarf' | 'elf', string[]> = {
+  human: STORY_THREAD,
+  dwarf: [...DWARF_ROAD.map((d) => d.id), 'a01an', 'a02', 'a03', 'a04', 'p01'],
+  elf: [...ELF_ROAD.map((d) => d.id), 'a01el', 'a02', 'a03', 'a04', 'p01'],
+};
+export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS];
+/** a Chamada de Askavik vale para os três povos: quem fez a do seu povo conta como quem fez 'a01' */
+const DONE_ALIAS: Record<string, string[]> = { a01: ['a01an', 'a01el'] };
 /** saves antigos: quem já passou de 'Os Caminhos' não recebe as missões de Askavik que entraram depois (23/10) */
 const THREAD_SKIP: Record<string, string> = { a02: 'p01', a03: 'p01', a04: 'p01', ...ROAD_OLD };
 const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = {
@@ -88,6 +98,7 @@ const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = 
   a03: { name: 'O Jarl quer ouvir', say: 'Grenivik respira. Leve a notícia ao Jarl: ele gosta de ouvir da boca de quem lutou.', text: 'O Jarl Haakon, no Castelo de Askavik (norte da cidade), quer ouvir o relatório de Grenivik.' },
   a04: { name: 'Um nome que ninguém diz', say: 'Os lobos recuaram. Agora o pior: há algo na Clareira de Selvar que o Jarl não diz o nome em voz alta.', text: 'O Jarl Haakon tem um último pedido, e é o mais perigoso.' },
   ...ROAD_BRIDGES,
+  ...RACE_BRIDGES,
   p01: { name: 'A guardiã das relíquias', say: 'Garrick não exagerou: você tem o braço e a cabeça. Antes de qualquer escola, fale com a Velha Gunnhild, aqui mesmo na praça.', text: 'A Velha Gunnhild, guardiã das relíquias de Askavik, conhece quem chega à cidade. Ela vai mostrar o que falta para você descobrir o seu caminho.' },
 };
 /** monta a ponte entre a missão de história anterior e a próxima */
@@ -205,7 +216,7 @@ export function genNpcQuest(npc: string, role: string, lvl: number, seed: number
   return { id, name: `${role}: ${poi}`, lvl, giver: npc, turnin: npc, text: tx.replace('{it}', poi), objs: [{ kind: 'visit', poi }], xp: Math.round(45 * scale), gold: Math.round(16 * scale) };
 }
 /** cor de cada tipo de missão: amarela = história principal, azul = secundária (NPC), verde = repetição (quadro, contratos) */
-export const STORY_CHAINS = new Set(['Caminho do Norte', 'A Chamada de Askavik', 'Os Caminhos', 'O Guerreiro do Norte', 'A Catedral Abandonada']);
+export const STORY_CHAINS = new Set(['Caminho do Norte', 'Caminho da Forja', 'Caminho da Mata', 'A Chamada de Askavik', 'Os Caminhos', 'O Guerreiro do Norte', 'A Catedral Abandonada']);
 export type QuestCat = 'story' | 'side' | 'rep';
 /** o caminho de classe (Hrefna → mestre → saga da classe) é história principal: amarela */
 export const questCat = (d: { board?: boolean; chain?: string }): QuestCat => d.board ? 'rep' : d.chain && (STORY_CHAINS.has(d.chain) || d.chain.startsWith('O Caminho')) ? 'story' : 'side';
@@ -230,10 +241,10 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
      (objetivo 'nível N'): é aí que o jogador sai para caçar e fazer extras antes de continuar.
      Fora do fio: história ≈ 70% de um nível, extra de NPC ≈ 33%, contrato do Quadro ≈ 24%. */
   const storyXp = (() => { const out: Record<string, number> = {}; const N = ctx.xpNeedAt; if (!N) return out;
-    const th = STORY_THREAD.map((id) => ctx.chainQuests.find((d) => d.id === id)).filter((d): d is QuestDef => !!d && !d.objs.some((o) => o.kind === 'level' && o.n >= 30));
+    for (const TH of Object.values(STORY_THREADS)) { const th = TH.map((id) => ctx.chainQuests.find((d) => d.id === id)).filter((d): d is QuestDef => !!d && !d.objs.some((o) => o.kind === 'level' && o.n >= 30));
     for (let i = 0; i < th.length;) { const L = th[i].lvl; let j = i; while (j < th.length && th[j].lvl === L) j++; // as amarelas do mesmo nível dividem o trecho
       const L2 = j < th.length ? th[j].lvl : 30; let sum = 0; for (let l = L; l < Math.max(L + 1, L2); l++) sum += N(l);
-      for (let k = i; k < j; k++) out[th[k].id] = Math.round(sum * STORY_SHARE / (j - i)); i = j; }
+      for (let k = i; k < j; k++) out[th[k].id] = Math.round(sum * STORY_SHARE / (j - i)); i = j; } }
     return out; })();
   const fix = (d: QuestDef) => { if (ctx.xpNeedAt) d.xp = storyXp[d.id] ?? Math.round(ctx.xpNeedAt(Math.max(1, d.lvl)) * (d.chain ? 0.7 : d.board ? 0.24 : 0.33)); return d; };
   /* REGRA IMUTÁVEL — missão ainda não aceita nasce 1 a 3 níveis acima do jogador, para ser difícil */
@@ -250,7 +261,8 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   const save = () => { try { localStorage.setItem(SAVE, JSON.stringify(q)); } catch { /* */ } };
   for (const id of Object.keys(q.active)) if (!defs.get(id)) delete q.active[id]; // missão de save antigo que não existe mais
   const def = (id: string) => defs.get(id)!;
-  const isDone = (id: string) => q.done.includes(id);
+  const isDone = (id: string) => q.done.includes(id) || (DONE_ALIAS[id]?.some((a) => q.done.includes(a)) ?? false);
+  const thread = () => STORY_THREADS[ctx.origin?.() ?? 'human'] ?? STORY_THREAD;
   const prog = (id: string) => q.active[id]?.prog ?? [];
   setTimeout(() => ensureThread(), 1500); // save antigo parado no meio da história: a ponte aparece
   function objProg(d: QuestDef, i: number) { const o = d.objs[i]; if (o.kind === 'collect') return Math.min(o.n, ctx.count(o.item)); if (o.kind === 'level') return ctx.st.lvl >= o.n ? 1 : 0; return prog(d.id)[i] ?? 0; }
@@ -260,7 +272,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   function offers(npc: string): QuestDef[] {
     const out: QuestDef[] = [];
     if (!(ctx.chainQuests.some((d) => d.giver === npc && !isDone(d.id))) && ctx.roleOf?.(npc) && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const times = npcTimes[npc] ?? 0; if (times < NPC_Q_MAX) { const d = fix(genNpcQuest(npc, role, above(sd), sd, times)); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } } }
-    for (const d of ctx.chainQuests) { if (d.giver !== npc || isDone(d.id) || q.active[d.id]) continue; const prevId = ctx.chainQuests.find((p) => p.next === d.id)?.id; if (prevId && !isDone(prevId) && !(THREAD_SKIP[prevId] && isDone(THREAD_SKIP[prevId]))) continue; if (THREAD_SKIP[d.id] && isDone(THREAD_SKIP[d.id])) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
+    for (const d of ctx.chainQuests) { if (d.giver !== npc || isDone(d.id) || q.active[d.id]) continue; const prevs = ctx.chainQuests.filter((p) => p.next === d.id && (!p.origin || p.origin === ctx.origin?.())).map((p) => p.id); if (prevs.length && !prevs.some((prevId) => isDone(prevId) || (THREAD_SKIP[prevId] && isDone(THREAD_SKIP[prevId])))) continue; if (THREAD_SKIP[d.id] && isDone(THREAD_SKIP[d.id])) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
     return out;
   }
   function turnins(npc: string): QuestDef[] { return Object.keys(q.active).map(def).filter((d) => !!d && (d.turnin ?? d.giver) === npc && complete(d)); }
@@ -270,9 +282,9 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     ctx.log(d.bridge ? `🧵 História: ${d.name}` : from ? `📜 Missão de ${from} aceita: ${d.name}` : `📜 Missão aceita: ${d.name}`, '#ffe08a'); save(); render(); if (!from && !d.bridge) onAcceptCb?.(d); }
   /** o fio da história nunca some: se a próxima missão amarela não está no diário, entra a ponte que leva até ela */
   function ensureThread(fromTurnIn?: QuestDef) {
-    const T = STORY_THREAD.find((id) => !isDone(id) && !(THREAD_SKIP[id] && isDone(THREAD_SKIP[id]))); if (!T) return; const i = STORY_THREAD.indexOf(T); if (i === 0 || q.active[T] || q.active['b_' + T]) return;
+    const TH = thread(); const T = TH.find((id) => !isDone(id) && !(THREAD_SKIP[id] && isDone(THREAD_SKIP[id]))); if (!T) return; const i = TH.indexOf(T); if (i === 0 || q.active[T] || q.active['b_' + T]) return;
     const passed = (id: string) => isDone(id) || (!!THREAD_SKIP[id] && isDone(THREAD_SKIP[id]));
-    const prev = def(STORY_THREAD.slice(0, i).reverse().find((id) => passed(id)) ?? STORY_THREAD[i - 1]), nx = def(T); if (!prev || !nx || !passed(prev.id)) return;
+    const prev = def(TH.slice(0, i).reverse().find((id) => passed(id)) ?? TH[i - 1]), nx = def(T); if (!prev || !nx || !passed(prev.id)) return;
     const b = bridgeFor(prev, nx, ctx.st.lvl); if (isDone(b.id)) return; /* ponte já entregue: a missão está com quem a dá (o “?” na cabeça dela). Antes a ponte voltava ao diário e a entrega se repetia sem fim (25/10) */
     accept(b); if (fromTurnIn) setTimeout(() => ctx.log(`${b.giver}: “${(b as QuestDef & { say?: string }).say ?? ''}”`, '#f4e6b8'), 400);
   }
