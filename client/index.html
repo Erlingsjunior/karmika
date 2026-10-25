@@ -700,9 +700,18 @@
   #chat .in .ch { font: 10px Cinzel, serif; color: #c9a24a; letter-spacing: .1em; } #chat .in input { flex: 1; background: none; border: none; color: #f0e6cc; font: 13px Georgia, serif; outline: none; }
   #chat.new .msgs { border-left-color: #ffe08a; }
   /* instinto de classe (24/10) */
-  #btns #instbtn { position: relative; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; vertical-align: top; color: #b8a27a; } #btns #instbtn svg { width: 24px; height: 24px; margin: 0; }
-  #btns #instbtn kbd { position: absolute; right: -4px; bottom: -4px; font: 700 8.5px monospace; color: #c8b890; background: #1c130b; border: 1px solid #5a4a30; border-radius: 3px; padding: 0 2px; line-height: 11px; }
-  #btns #instbtn.on { color: var(--ic); border-color: var(--ic); box-shadow: 0 0 10px color-mix(in srgb, var(--ic) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--ic) 35%, transparent); animation: instpulse 2.4s ease-in-out infinite; }
+  #stances #instbtn { position: relative; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; vertical-align: top; color: #b8a27a; } #stances #instbtn svg { width: 24px; height: 24px; margin: 0; }
+  #stances #instbtn kbd { position: absolute; right: -4px; bottom: -4px; font: 700 8.5px monospace; color: #c8b890; background: #1c130b; border: 1px solid #5a4a30; border-radius: 3px; padding: 0 2px; line-height: 11px; }
+  #stances #instbtn.on { color: var(--ic); border-color: var(--ic); box-shadow: 0 0 10px color-mix(in srgb, var(--ic) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--ic) 35%, transparent); animation: instpulse 2.4s ease-in-out infinite; }
+  /* barra de Posturas e Instinto: em cima do lado direito da barra de magias (25/10) */
+  #stances { position: fixed; z-index: 7; display: flex; gap: 6px; align-items: center; pointer-events: auto; }
+  #stances button { position: relative; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 7px; background: linear-gradient(180deg, rgba(34,24,16,.92), rgba(14,10,6,.92)); border: 1px solid #6a5030; cursor: pointer; }
+  #stances #instbtn { margin-right: 8px; width: 40px; height: 40px; border-radius: 50%; } #stances #instbtn svg { width: 26px; height: 26px; }
+  #stances .stance { color: var(--sc); } #stances .stance svg { width: 24px; height: 24px; filter: drop-shadow(0 0 2px rgba(0,0,0,.8)); }
+  #stances .stance:hover { border-color: var(--sc); }
+  #stances .stance.on { border: 2px solid var(--sc); box-shadow: 0 0 12px color-mix(in srgb, var(--sc) 70%, transparent), inset 0 0 10px color-mix(in srgb, var(--sc) 35%, transparent); transform: translateY(-3px); }
+  #stances .stance.locked { color: #6a6050; filter: grayscale(.8); opacity: .55; cursor: help; } #stances .stance .lk { position: absolute; right: 1px; bottom: 0; font-size: 10px; font-style: normal; }
+  #stances .stance .tr { position: absolute; left: 0; right: 0; bottom: -12px; font: 600 8px Cinzel, serif; color: var(--sc); font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
   @keyframes instpulse { 50% { box-shadow: 0 0 16px color-mix(in srgb, var(--ic) 80%, transparent), inset 0 0 10px color-mix(in srgb, var(--ic) 45%, transparent); } }
   .instcard { display: flex; gap: 10px; align-items: center; margin: 6px 0 8px; padding: 8px 10px; border: 1px solid #4a3a24; border-radius: 8px; background: rgba(20,14,8,.7); }
   .instcard i { font-style: normal; font-size: 26px; color: var(--ic); opacity: .5; } .instcard.on { border-color: var(--ic); box-shadow: inset 0 0 14px color-mix(in srgb, var(--ic) 22%, transparent); } .instcard.on i { opacity: 1; text-shadow: 0 0 10px var(--ic); }

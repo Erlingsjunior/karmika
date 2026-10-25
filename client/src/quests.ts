@@ -22,7 +22,9 @@ export type Obj =
   /** escoltar uma caravana da Companhia de Latão até o fim da rota (caravanas.ts) */
   | { kind: 'escort'; route: string; label: string }
   /** limpar a caravana caída num ponto da rota (at = fração da estrada) */
-  | { kind: 'rescue'; route: string; label: string; at: number; note?: string };
+  | { kind: 'rescue'; route: string; label: string; at: number; note?: string }
+  /** vencer inimigos lutando numa postura (posturas.ts): a missão que ensina a postura */
+  | { kind: 'stance'; id: string; name: string; n: number };
 export type SenseWhat = 'rastro' | 'sangue' | 'espirito' | 'dispositivo' | 'cheiro' | 'ninho';
 /** só com o Instinto de classe ligado (tecla F): seguir um rastro, achar um espírito ou um dispositivo perdido (segredos.ts).
     at/from são lugares do mapa (vila ou ponto de interesse); dx/dy deslocam em casas; from é de onde o rastro vem */
@@ -37,7 +39,7 @@ export interface QuestDef { id: string; name: string; lvl: number; giver: string
   /** escolha kármica na entrega: o MOTIVO pesa (regra 10) */ choice?: { q: string; opts: { label: string; karma: number; say: string; why: string; /** marca que o mundo lembra */ flag?: string }[] } }
 
 const ENEMY_NAME = (t: EnemyType) => DEFS[t]?.name ?? t;
-export const objText = (o: Obj): string => o.kind === 'dungeon' ? `Vencer: ${o.name}` : o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : `Alcançar o nível ${o.n}`;
+export const objText = (o: Obj): string => o.kind === 'dungeon' ? `Vencer: ${o.name}` : o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : o.kind === 'stance' ? `Vencer ${o.n} inimigos na postura ${o.name}` : `Alcançar o nível ${o.n}`;
 
 /* ---------- Caminho do Norte: de aprendiz a Guerreira do Norte (níveis 1–25) ---------- */
 export const NORTH: QuestDef[] = [
@@ -248,7 +250,7 @@ export const questCat = (d: { board?: boolean; chain?: string }): QuestCat => d.
 export const CAT_INFO: Record<QuestCat, { name: string; col: string }> = { story: { name: 'História', col: '#ffd24a' }, side: { name: 'Secundária', col: '#6ab4ff' }, rep: { name: 'Repetição', col: '#7aff7a' } };
 const CAT_ORDER: QuestCat[] = ['story', 'side', 'rep'];
 
-export function createQuests(ctx: { /** para onde a alma pende (missões de Luz e de Sombra) */ lean?(): 'luz' | 'sombra' | null; origin?(): 'human' | 'elf' | 'dwarf'; roleOf?(npc: string): string | null; st: { lvl: number; xp: number; gold: number }; count(item: string): number; take(item: string, n: number): boolean; add(item: string, n: number): void; gainXp(n: number): void; xpNeedAt?(l: number): number; gear(n: number, lvl: number): void; log(t: string, c?: string): void; onTitle(t: string): void; chainQuests: QuestDef[]; karma?(dk: number): void; me?(): string; onDone?(d: QuestDef): void; auction?: { html(): string; click(t: HTMLElement): boolean; input(f: HTMLInputElement): string; tipOf(id: string): string; readonly count: number };
+export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(): string | null; /** para onde a alma pende (missões de Luz e de Sombra) */ lean?(): 'luz' | 'sombra' | null; origin?(): 'human' | 'elf' | 'dwarf'; roleOf?(npc: string): string | null; st: { lvl: number; xp: number; gold: number }; count(item: string): number; take(item: string, n: number): boolean; add(item: string, n: number): void; gainXp(n: number): void; xpNeedAt?(l: number): number; gear(n: number, lvl: number): void; log(t: string, c?: string): void; onTitle(t: string): void; chainQuests: QuestDef[]; karma?(dk: number): void; me?(): string; onDone?(d: QuestDef): void; auction?: { html(): string; click(t: HTMLElement): boolean; input(f: HTMLInputElement): string; tipOf(id: string): string; readonly count: number };
   /** jogar junto: o quadro de pedidos é o da sala (dos jogadores de verdade) */
   room?: { on(): boolean; posts(): { id: number; by: string; item: string; n: number; gold: number }[]; add(item: string, n: number, gold: number): void; fill(id: number, item: string, n: number): void; cancel(id: number): void } }) {
   let onDoneCb: ((d: QuestDef) => void) | null = null;
@@ -291,7 +293,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   const prog = (id: string) => q.active[id]?.prog ?? [];
   setTimeout(() => ensureThread(), 1500); // save antigo parado no meio da história: a ponte aparece
   function objProg(d: QuestDef, i: number) { const o = d.objs[i]; if (o.kind === 'collect') return Math.min(o.n, ctx.count(o.item)); if (o.kind === 'level') return ctx.st.lvl >= o.n ? 1 : 0; return prog(d.id)[i] ?? 0; }
-  function objNeed(o: Obj) { return o.kind === 'kill' || o.kind === 'collect' || o.kind === 'craft' ? o.n : 1; }
+  function objNeed(o: Obj) { return o.kind === 'kill' || o.kind === 'collect' || o.kind === 'craft' || o.kind === 'stance' ? o.n : 1; }
   const complete = (d: QuestDef) => d.objs.every((o, i) => objProg(d, i) >= objNeed(o));
   /** missões que este NPC pode oferecer agora */
   function offers(npc: string): QuestDef[] {
@@ -325,7 +327,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     if (d.next && !q.active[d.next] && !isDone(d.next)) { const nx = def(d.next); if (nx && nx.giver === 'O Olho' && nx.giver === (d.turnin ?? d.giver) && ctx.st.lvl >= Math.max(1, nx.lvl - 2) && (!nx.req || isDone(nx.req))) accept(nx); }
     ensureThread(d);
   }
-  function onKill(type: EnemyType) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'kill' && o.type === type && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
+  function onKill(type: EnemyType) { let ch = false; const stc = ctx.stance?.() ?? null; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'stance' && o.id === stc && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } if (o.kind === 'kill' && o.type === type && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
   function onTalk(npc: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'talk' && o.npc === npc && a.prog[i] < 1) { a.prog[i] = 1; ch = true; } }); } if (ch) { save(); render(); } }
   function onVisit(poi: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'visit' && o.poi === poi && a.prog[i] < 1) { a.prog[i] = 1; ch = true; ctx.log(`📜 ${d.name}: chegou a ${poi} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
   /** achou o que o instinto mostrava (id = 'missão:objetivo') */

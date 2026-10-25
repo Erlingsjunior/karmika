@@ -30,6 +30,8 @@ import { isTool as isToolId } from './tools';
 const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '❔' };
 import { createAim, type AimSpec } from './aim';
 import { setCulture, genGear, RARITY, ONLY_NAME, tipCtx, type Slot, type Only } from './loot';
+import type { PathId } from './vidente';
+import { createStances, STANCE_QUESTS, ROLE_NAME, type Stance } from './posturas';
 import { applyKit, refreshLocks, skillAt, barRows, setBarRows, resOf, type SkillDef, type KitKey } from './kits';
 import { createSkillTree } from './skilltree';
 import { buildCathedralFloor, type CathedralFloor } from './cathedral3d';
@@ -558,7 +560,7 @@ const auction = createAuction({ me: () => profile?.name || RACES[state.race].lab
   take: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', itemKind: (id) => ITEMS_TBL[id]?.kind ?? 'res', itemValue: (id) => ITEMS_TBL[id]?.sell ?? 1,
   mail: (from, subj, text, att) => mail.send(from, subj, text, att), log: (t, c) => game.logMsg(t, c), save: () => inv.save() });
-const quests = createQuests({ lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT],
+const quests = createQuests({ stance: () => stanceSys?.current().id ?? null, lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT, ...STANCE_QUESTS],
   room: { on: () => netRef?.state === 'on', posts: () => netRef?.posts ?? [], add: (item, n, gold) => netRef?.postAdd({ item, name: ITEMS_TBL[item]?.name ?? item, icon: ITEMS_TBL[item]?.icon ?? '•', n, gold, note: '' }),
     fill: (id, item, n) => netRef?.postFill(id, [{ item: { id: item, n } }]), cancel: (id) => netRef?.postCancel(id) } });
 (window as unknown as { __quests?: unknown }).__quests = quests;
@@ -924,10 +926,44 @@ function updateInstFx(dt: number) {
     if (Math.random() < dt * rate) { const a = Math.random() * 6.283, r = 0.25 + Math.random() * 0.25; particles.spawn(hp.x + Math.cos(a) * r, hp.y + 0.2 + Math.random() * 1.2, hp.z + Math.sin(a) * r, { vx: 0, vy: 0.7 + Math.random() * 0.6, vz: 0, life: 1 + Math.random() * 0.8, s0: instAuraT > 0 ? 0.16 : 0.1, s1: 0.02, c0: 0xffffff, c1: instCol.getHex(), a: instAuraT > 0 ? 0.9 : 0.55, flit: 1 }); } }
 }
 /* o Instinto mora no menu de ações (junto de Mapa, Deus e Menu): um botão pequeno com o terceiro olho; F continua ligando */
-const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; document.getElementById('btns')!.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
+/* barra de Posturas e Instinto: em cima do lado direito da barra de magias (Erling, 25/10) */
+var stanceSys: ReturnType<typeof createStances> | null = null;
+const stanceBar = document.createElement('div'); stanceBar.id = 'stances'; document.body.appendChild(stanceBar);
+const ROLE_SVG: Record<string, string> = {
+  bal: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 6v20M9 16h14" stroke="currentColor" stroke-width="1.6" opacity=".7"/><circle cx="16" cy="16" r="3" fill="currentColor"/></svg>',
+  atk: '<svg viewBox="0 0 32 32"><path d="M24 4l4 4-14 14-4-4z" fill="currentColor"/><path d="M10 18l4 4-3 3-4-4zM6 22l4 4-3 2-3-3z" fill="currentColor" opacity=".75"/><path d="M8 8l4 4M5 12l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg>',
+  tank: '<svg viewBox="0 0 32 32"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M16 8v16M10 13h12" stroke="currentColor" stroke-width="1.8"/></svg>',
+  heal: '<svg viewBox="0 0 32 32"><path d="M16 27C8 21 4 16 4 11a6 6 0 0 1 12-2 6 6 0 0 1 12 2c0 5-4 10-12 16z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 11v9M11.5 15.5h9" stroke="currentColor" stroke-width="2.2"/></svg>',
+  speed: '<svg viewBox="0 0 32 32"><path d="M6 22c6-1 10-5 12-12l6-4-2 8c-2 7-8 11-16 11z" fill="currentColor" opacity=".85"/><path d="M3 14h7M2 18h6M5 10h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg>',
+  leech: '<svg viewBox="0 0 32 32"><path d="M16 4c5 7 8 11 8 15a8 8 0 0 1-16 0c0-4 3-8 8-15z" fill="currentColor" opacity=".85"/><path d="M12 19a4 4 0 0 0 4 4" stroke="#fff" stroke-width="1.4" fill="none" opacity=".6"/></svg>',
+};
+let stanceSig = '';
+function renderStances() { if (!stanceSys) return; const L = stanceSys.list(), cur = stanceSys.current();
+  const sig = L.map((s) => `${s.id}:${stanceSys!.open(s) ? 1 : 0}`).join(',') + '|' + cur.id; if (sig === stanceSig) return; stanceSig = sig;
+  stanceBar.querySelectorAll('.stance').forEach((e) => e.remove());
+  for (const s of L) { const b = document.createElement('button'); const op = stanceSys.open(s), on = s.id === cur.id; b.className = `stance ${on ? 'on' : ''} ${op ? '' : 'locked'}`; b.dataset.st = s.id; b.style.setProperty('--sc', s.col);
+    const q = s.quest ? quests.def(s.quest) : null, trial = s.quest && !quests.q.done.includes(s.quest) && !!quests.q.active[s.quest];
+    b.innerHTML = `${ROLE_SVG[s.role]}${op ? '' : '<i class="lk">🔒</i>'}${trial ? '<i class="tr">treino</i>' : ''}`;
+    b.title = `${s.name} · ${ROLE_NAME[s.role]}${on ? ' (em uso)' : ''}\n${s.tip}${op ? '\nClique ou V para trocar.' : `\n🔒 Abre na missão “${q?.name ?? 'de postura'}”${q ? ` com ${q.giver}, a partir do nível ${q.lvl}` : ''}.`}`;
+    b.addEventListener('click', (e) => { e.stopPropagation(); stanceSys!.pick(s.id); renderStances(); }); stanceBar.appendChild(b); } }
+function placeStances() { const rows = document.querySelectorAll('#skills .srow'), ref = (rows[0]?.children[5] ?? null) as HTMLElement | null, q = document.getElementById('quick');
+  if (!ref) return; const r = ref.getBoundingClientRect(), last = (rows[0]?.children[9] ?? ref) as HTMLElement, rr = last.getBoundingClientRect(), w = stanceBar.offsetWidth || 232;
+  const left = Math.max(r.left, rr.right - w); stanceBar.style.left = `${Math.round(left)}px`; let top = r.top - 48;
+  if (q) { const qr = q.getBoundingClientRect(); top = qr.bottom - 40; if (qr.right > left - 6 && qr.width > 0) top = qr.top - 48; } /* nunca por cima da barra de itens rápidos */
+  stanceBar.style.top = `${Math.round(top)}px`; }
+addEventListener('resize', () => setTimeout(placeStances, 50));
+const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; stanceBar.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
 const THIRD_EYE = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2.5 16C6.6 9.6 11 6.8 16 6.8S25.4 9.6 29.5 16C25.4 22.4 21 25.2 16 25.2S6.6 22.4 2.5 16Z" fill="#120c07" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="6.2" fill="currentColor"/><circle cx="16" cy="16" r="6.2" fill="none" stroke="#0b0810" stroke-opacity=".45" stroke-width="1"/><path d="M16 11.4 18.5 16 16 20.6 13.5 16Z" fill="#0b0810"/><circle cx="14" cy="13.9" r="1.1" fill="#fff" fill-opacity=".75"/></svg>';
 function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
+
+stanceSys = createStances({ path: () => myPath() as PathId | null, isDone: (q) => quests.q.done.includes(q), isActive: (q) => !!quests.q.active[q], apply: (e) => game.setStance(e), log: (tx, c) => game.logMsg(tx, c),
+  onChange: (st: Stance) => { const p = hero.root.position, col = new THREE.Color(st.col).getHex(); audio.instinct(true);
+    for (let i = 0; i < 36; i++) { const a = i / 36 * 6.283; particles.spawn(p.x + Math.cos(a) * 0.9, p.y + 0.15, p.z + Math.sin(a) * 0.9, { vx: Math.cos(a) * 2.2, vy: 0.6 + Math.random() * 0.8, vz: Math.sin(a) * 2.2, life: 0.8, s0: 0.28, s1: 0.04, c0: 0xffffff, c1: col, a: 1, drag: 2 }); }
+    for (let i = 0; i < 20; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.6, p.y + 0.2 + Math.random() * 1.6, p.z + (Math.random() - 0.5) * 0.6, { vy: 1.2 + Math.random(), life: 1, s0: 0.2, s1: 0.03, c0: col, c1: col, a: 0.9, drag: 1 });
+    game.dmgText(p.clone().setY(p.y + 2.9), `Postura: ${st.name}`, false, st.col); game.logMsg(`⚔ Postura: ${st.name} (${ROLE_NAME[st.role]}).`, st.col); } });
+stanceSys.sync();
+setInterval(() => { stanceSys?.sync(); renderStances(); placeStances(); }, 500);
 setTimeout(() => { updateInstBtn(); document.body.classList.toggle('inst-on', instinctOn); document.documentElement.style.setProperty('--instc', myInstinct().css); }, 0);
 /* o que só o instinto mostra: rastros das missões, espíritos, dispositivos perdidos e os esconderijos do mundo */
 const CACHES: Cache[] = []; setTimeout(() => { const out = CACHES; /* depois do arquivo inteiro carregar (navProbe nasce mais abaixo) */ const src = [...city.pois.filter((p) => /ruins|forest|enchanted|blight/.test(p.biome as string)).map((p) => ({ x: p.x, y: p.y })), ...evSites.sitesForest.filter((_, i) => i % 9 === 0)];
@@ -1763,6 +1799,7 @@ addEventListener('keydown', (e) => {
   if (k === 'j' && !e.repeat) useSlot('1', true);
   if (k === 'q' && !e.repeat) useSlot('4', true);
   if (k === 'f' && !e.repeat && !e.ctrlKey && !e.metaKey) toggleInstinct();
+  if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { stanceSys?.cycle(); renderStances(); }
   if (k === 'e') interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
   if (k === 'g') { game.st.god = !game.st.god; ZOOM_MAX = game.st.god ? 95 : 22; if (!game.st.god) zoomTarget = Math.min(zoomTarget, 22); else zoomTarget = Math.max(zoomTarget, 40); game.logMsg(game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }

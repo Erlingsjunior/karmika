@@ -360,7 +360,7 @@ export function createGameplay(d: GameplayDeps) {
   function gainRes(n: number) { lastFight = now; if (st.res.mode !== 'fight') return; st.mp = Math.min(st.mpMax, st.mp + n * (1 + st.gen) * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
-    let crit = Math.random() < st.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
+    let crit = Math.random() < st.crit + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
@@ -372,7 +372,7 @@ export function createGameplay(d: GameplayDeps) {
     const marked = (e.mark ?? 0) > now;
     // balde único de bônus: nível (+5%/nível), Força (st.atk já vem com retorno decrescente), buffs, marca e emboscada SOMAM
     // o nível dá +5% por nível ao golpe base e só metade disso ao dano da arma (senão nível × arma × Força explodem no fim do jogo)
-    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + (marked ? 0.5 : 0) + (bonus - 1);
+    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + stance.dmg + (marked ? 0.5 : 0) + (bonus - 1);
     let dmg = (rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1);
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
@@ -406,7 +406,7 @@ export function createGameplay(d: GameplayDeps) {
     const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize();
     const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1)); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
     st.hits++; d.audio.slash(crit);
-    if (st.leech + buff.leech > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * (st.leech + buff.leech));
+    if (st.leech + buff.leech + stance.leech > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * (st.leech + buff.leech + stance.leech) * (1 + stance.heal));
     if (st.sp.has('burn') && Math.random() < 0.2 && !killed) { e.burn = 4; e.burnTick = 0; }
     if (st.sp.has('echo') && !echoing && !killed && Math.random() < 0.15) { echoing = true; setTimeout(() => { if (e.alive) { const k2 = enemies.hurt(e, Math.round(dmg * 0.7), from, 2); dmgText(e.pos.clone().setY(e.pos.y + 2.4), Math.round(dmg * 0.7), false, '#c9a0ff'); if (k2) killEnemy(e); } echoing = false; }, 140); }
     if (crit && st.sp.has('storm')) for (const o of enemies.list) if (o !== e && o.alive && o.active && Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) < 5) { const dm = Math.round(dmg * 0.5); for (let q = 0; q < 8; q++) d.particles.spawn(o.pos.x + rnd(-0.2, 0.2), o.pos.y + 0.4 + q * 0.3, o.pos.z + rnd(-0.2, 0.2), { life: 0.25, s0: 0.8, s1: 0.2, c0: 0xffffff, c1: 0x6ab0ff, a: 1 }); if (enemies.hurt(o, dm, e.pos, 2)) killEnemy(o); dmgText(o.pos.clone().setY(o.pos.y + 2.2), dm, false, '#9ad0ff'); }
@@ -436,6 +436,8 @@ export function createGameplay(d: GameplayDeps) {
   const cdX: Record<string, number> = {};
   const CDX: Record<string, number> = { kick: 6, hamstring: 7, hatchet: 5, shieldwall: 14, winter: 8, thunder: 12, valkyrie: 10, flame: 6, poison: 9, warcry: 14, spear: 7, whirl: 9, mark: 10, fenrir: 45, hammerthrow: 6, stonerune: 12, forge: 16, mountain: 12, avatar: 45, overcharge: 10, shocktrap: 8, medic: 18, railgun: 9, mech: 50 };
   const buff = { dmg: 1, dmgT: 0, def: 0, defT: 0, burnT: 0, move: 1, moveT: 0, leech: 0 };
+  /** postura de batalha (posturas.ts): somas fixas enquanto a postura estiver ativa */
+  let stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0 };
   let form: { id: string; t: number; scale: number } | null = null, overT = 0, medicT = 0, flameT = 0, flameYaw = 0, flameKind: 'fire' | 'poison' = 'fire', flameMul = 0.55, flameReach = 9.5;
   /** arma equipada que muda o ataque básico: arco, besta de repetição, metralhadora, lança-chamas, lança-veneno (23/10) */
   type WMode = 'bow' | 'longbow' | 'xbow' | 'smg' | 'flame' | 'venom';
@@ -844,10 +846,10 @@ export function createGameplay(d: GameplayDeps) {
       }
       if (hk.kind === 'dwarf') { // Hidromel
         if (!hk.act('drink')) return false; st.mp -= 40; st.lastCast = now; cd.heal = CD.heal + 1; slotFlash('heal');
-        pending.push({ at: now + TEMPO * 0.55, fn: () => { st.hp = Math.min(st.hpMax, st.hp + (st.hpMax * 0.28 + 8 * st.fury) * (st.sp.has('r_calice') ? 2 : 1)); d.audio.heal(); if (st.fury) { st.serene = 3; st.fury = 0; logMsg('🍺 Hidromel: próximos 3 golpes críticos', '#ffc860'); } st.fury = Math.min(5, st.fury + 2); for (let i = 0; i < 20; i++) d.particles.spawn(heroPos.x + rnd(-0.4, 0.4), 1.4, heroPos.z + rnd(-0.4, 0.4), { vx: rnd(-0.5, 0.5), vy: rnd(1, 2.5), vz: rnd(-0.5, 0.5), life: 0.8, s0: 0.3, s1: 0.05, c0: 0xfff2c8, c1: 0xffb040, a: 0.9 }); } });
+        pending.push({ at: now + TEMPO * 0.55, fn: () => { st.hp = Math.min(st.hpMax, st.hp + (st.hpMax * 0.28 + 8 * st.fury) * (st.sp.has('r_calice') ? 2 : 1) * (1 + stance.heal)); d.audio.heal(); if (st.fury) { st.serene = 3; st.fury = 0; logMsg('🍺 Hidromel: próximos 3 golpes críticos', '#ffc860'); } st.fury = Math.min(5, st.fury + 2); for (let i = 0; i < 20; i++) d.particles.spawn(heroPos.x + rnd(-0.4, 0.4), 1.4, heroPos.z + rnd(-0.4, 0.4), { vx: rnd(-0.5, 0.5), vy: rnd(1, 2.5), vz: rnd(-0.5, 0.5), life: 0.8, s0: 0.3, s1: 0.05, c0: 0xfff2c8, c1: 0xffb040, a: 0.9 }); } });
         return true;
       }
-      st.mp -= 40; st.lastCast = now; cd.heal = CD.heal; st.hp = Math.min(st.hpMax, st.hp + (35 + 10 * st.fury) * (st.sp.has('r_calice') ? 2 : 1)); if (st.fury) { st.serene = 3; logMsg(`✚ Cura +${10 * st.fury} (Fúria). Próximos 3 golpes: críticos`, '#7aff9a'); st.fury = 0; } slotFlash('heal'); d.audio.heal();
+      st.mp -= 40; st.lastCast = now; cd.heal = CD.heal; st.hp = Math.min(st.hpMax, st.hp + (35 + 10 * st.fury) * (st.sp.has('r_calice') ? 2 : 1) * (1 + stance.heal)); if (st.fury) { st.serene = 3; logMsg(`✚ Cura +${10 * st.fury} (Fúria). Próximos 3 golpes: críticos`, '#7aff9a'); st.fury = 0; } slotFlash('heal'); d.audio.heal();
       for (let i = 0; i < 26; i++) { const a = (i / 26) * 6.283; d.particles.spawn(heroPos.x + Math.cos(a) * 0.8, 0.1, heroPos.z + Math.sin(a) * 0.8, { vx: 0, vy: rnd(1.1, 1.9), vz: 0, life: 1.1, s0: 0.3, s1: 0.06, c0: 0xfff0bd, c1: 0x7aff9a, a: 0.9, drag: 0.4 }); }
       return true;
     },
@@ -861,7 +863,7 @@ export function createGameplay(d: GameplayDeps) {
         for (let i = 0; i < 14; i++) d.particles.spawn(bx + rnd(-0.6, 0.6), rnd(0.5, 1.6), bz + rnd(-0.6, 0.6), { vx: rnd(-2, 2), vy: rnd(0, 2.5), vz: rnd(-2, 2), life: 0.35, s0: 0.25, s1: 0.03, c0: 0xffffff, c1: 0x9ad7ff, a: 1, drag: 2 });
         if (w.tier >= 2 && from) { const src = enemies.nearest(from, 2.5); if (src) { const rf = Math.round(n * 0.5); if (enemies.hurt(src, rf, heroPos, 2)) killEnemy(src); dmgText(src.pos.clone().setY(src.pos.y + 2.4), `↩ ${rf}`, false, '#cfe6ff'); } }
         return; } }
-      lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.min(0.85, st.def + buff.def))));
+      lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.85, st.def + buff.def + stance.def)))));
       // esquiva pela destreza (até 35%) e bloqueio pela defesa/escudo (até 30%, metade do dano) — a dança da luta
       if (st.sp.has('t_exo')) n = Math.max(1, Math.round(n * 0.8));
       const dodge = Math.min(0.35, 0.04 + (st.attrs?.dex ?? 0) * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0);
@@ -960,7 +962,9 @@ export function createGameplay(d: GameplayDeps) {
         default: return false;
       }
     },
-    get buffMove() { return buff.move; },
+    get buffMove() { return buff.move * (1 + stance.move); },
+    /** postura de batalha: troca as somas fixas (posturas.ts) */
+    setStance(e: Partial<typeof stance>) { stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0, ...e }; },
     /** efeitos de comidas e bebidas (cerveja, hidromel, tônico, antídoto) */
     drinkBuff(id: string) {
       if (id === 'regen') { hot = { t: Math.max(hot.t, 30), per: Math.max(hot.per, st.hpMax * 0.02) }; logMsg('🫙 Vigor: regenerando vida', '#7aff9a'); }
@@ -1016,7 +1020,7 @@ export function createGameplay(d: GameplayDeps) {
       if (st.res.mode === 'regen') { if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
       else if (now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia
-      st.hp = Math.min(st.hpMax, st.hp + st.regen * dt);
+      st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * dt);
       /* auras dos Únicos e Relíquias: partículas da cor do item em volta do herói */
       if (st.sp.has('r_surtr')) buff.burnT = Math.max(buff.burnT, 0.3);
       for (const [i, c] of (st.auras ?? []).entries()) if (Math.random() < dt * (i === 0 ? 16 : 9)) { const a2 = rnd(0, 6.283), r2 = rnd(0.5, 1.0); d.particles.spawn(heroPos.x + Math.cos(a2) * r2, rnd(0.1, 1.9), heroPos.z + Math.sin(a2) * r2, { vx: -Math.sin(a2) * 0.6, vy: rnd(0.4, 1.1), vz: Math.cos(a2) * 0.6, life: rnd(0.7, 1.3), s0: 0.2, s1: 0.03, c0: 0xffffff, c1: c, a: 0.85 }); }
@@ -1073,7 +1077,7 @@ export function createGameplay(d: GameplayDeps) {
         if (g.t >= g.dur || g.p.y <= gy + 0.15) { d.scene.remove(g.m); grenades.splice(i, 1); explode(g.tx, g.tz, gy, g.r, g.mul, 0xff9a30, 1.0, g.p.clone()); for (let k = 0; k < 20; k++) d.particles.spawn(g.tx + rnd(-1, 1), gy + 0.3, g.tz + rnd(-1, 1), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.4, s0: 0.8, s1: 1.4, c0: 0x6a6a6a, c1: 0x222222, a: 0.5, drag: 1 }); }
       }
       for (let i = rocks.length - 1; i >= 0; i--) { const r = rocks[i]; r.t += dt; r.m.position.y = r.y0 + (r.t < 0.25 ? 0.45 * (r.t / 0.25) : r.t > 2.2 ? Math.max(0, 0.45 - (r.t - 2.2) * 0.6) : 0.45); if (r.t > 3.2) { d.scene.remove(r.m); r.m.geometry.dispose(); rocks.splice(i, 1); } }
-      if (hot.t > 0) { hot.t -= dt; st.hp = Math.min(st.hpMax, st.hp + hot.per * dt); if (Math.random() < dt * 20) d.particles.spawn(heroPos.x + rnd(-0.5, 0.5), rnd(0.2, 1.9), heroPos.z + rnd(-0.5, 0.5), { vx: rnd(-0.3, 0.3), vy: rnd(0.3, 1), vz: rnd(-0.3, 0.3), life: 0.6, s0: 0.25, s1: 0.04, c0: 0xd8fff2, c1: 0x2ad0a0, a: 0.9, flit: 2 }); }
+      if (hot.t > 0) { hot.t -= dt; st.hp = Math.min(st.hpMax, st.hp + hot.per * (1 + stance.heal) * dt); if (Math.random() < dt * 20) d.particles.spawn(heroPos.x + rnd(-0.5, 0.5), rnd(0.2, 1.9), heroPos.z + rnd(-0.5, 0.5), { vx: rnd(-0.3, 0.3), vy: rnd(0.3, 1), vz: rnd(-0.3, 0.3), life: 0.6, s0: 0.25, s1: 0.04, c0: 0xd8fff2, c1: 0x2ad0a0, a: 0.9, flit: 2 }); }
       { const h = d.getHero();
         if (pathAct && h.actName === pathAct) {
           const p = h.actP, win = pathAct === 'jet' ? [0.08, 0.78] : pathAct === 'rush' ? [0.05, 0.64] : [0.08, 0.64];
