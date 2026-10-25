@@ -1291,7 +1291,6 @@ export function buildCity(): World {
       ex('Brasaforja', { name: 'Mestre-Mineiro Dvalin', role: 'Mestre das Galerias', kind: 'dwarf', x: 560 + 3, y: 186 + 2.5, radius: 1.5, tint: 0x6a4a2a, scale: 1.0, lines: ['Pedra boa canta quando você bate. Pedra ruim chora.', 'Meu avô dizia: escute a montanha antes de cavar nela.'] });
       ex('Austrvik', { name: 'Irmão Tobias', role: 'Sineiro da Abadia da Aurora', kind: 'nordic', x: 392 + SH - 2, y: 292 + SH + 2.5, radius: 1.5, tint: 0xd8c89a, scale: 0.95, lines: ['Os sinos da Abadia eram de bronze. Agora são de engrenagem. Funcionam melhor, quando funcionam.', 'Toco antes do sol. Sempre antes.'] }); }
     /* a campanha que viaja (25/10): uma pessoa nova em cada vila do roteiro do Caminho do Norte (campanha.ts) */
-    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (t) t.npcs.push({ name: c.name, role: c.role, kind: 'nordic', x: t.x + c.dx, y: t.y + c.dy, radius: 1.5, tint: c.tint, scale: 1.0, lines: c.lines }); }
     const ak = settlements.find((q) => q.kind === 'city'); if (ak) { /* Hrefna e o santuário da Deusa dos Caminhos: pedras de pé em roda, no lado oeste da praça */
       const hx = ak.x - 12, hy = ak.y + 12; ak.npcs.push({ name: 'Hrefna', role: 'Vidente dos Caminhos', kind: 'nordic', x: hx + 0.5, y: hy + 0.5, radius: 2.5, tint: 0x6a4a8a, scale: 1.0, lines: ['A Deusa dos Caminhos não escolhe por ninguém. Mas ela vê.', 'Volte quando o seu caminho pesar. No nível 30 eu leio você.'] });
       for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3, gx = Math.round(hx + Math.cos(a) * 3.2), gy = Math.round(hy + Math.sin(a) * 3.2); if (inb(gx, gy) && map[gy][gx] !== 'water') props.push({ kind: 'obelisk', gx, gy, w: 1, h: 1, height: 2.2, wall: 0x6a6a78, roof: 0x9b6ad0, variant: k % 3 }); }
@@ -1315,6 +1314,11 @@ export function buildCity(): World {
           if (!free) continue;
           const cx = gx + 1, cy = gy + 1; props.push({ kind: 'station', gx, gy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: Math.atan2(hubX(t) - cx, t.y - cy) });
           for (let y = gy - 1; y <= gy + 2; y++) for (let x = gx - 1; x <= gx + 2; x++) taken.add(y * 100000 + x); placed.push(v); ok = true; } } } }
+  { /* cada um em chão livre de verdade (nada de gente em cima de telhado): procura em espiral o primeiro tile andável fora de qualquer construção */
+    const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
+    const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
+      if (inb(x, y) && !occ.has(y * 100000 + x) && ['grass', 'plaza', 'road', 'dirt'].includes(map[y][x] as string)) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
+    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (!t) continue; const at = freeAt(t.x + c.dx, t.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: 'nordic', x: at.x, y: at.y, radius: 1.2, tint: c.tint, scale: 1.0, lines: c.lines }); } }
   /* a Casa dos Ofícios: num lugar livre perto da Praça do Mercado de Askavik, um salão aberto de 14×10 com as cinco bancadas lá dentro */
   let craftHall: { x: number; y: number; w: number; h: number; ry: number } | undefined;
   { const ak = settlements.find((q) => q.kind === 'city'); if (ak) { const cx0 = hubX(ak), cy0 = ak.y;
