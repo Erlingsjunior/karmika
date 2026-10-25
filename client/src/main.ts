@@ -29,6 +29,8 @@ import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil,
 import { isTool as isToolId } from './tools';
 const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '❔' };
 import { createAim, type AimSpec } from './aim';
+import { vampireLook, technoLook, type Look } from './looks3d';
+import { ramp as toonRamp } from './toon3d';
 import { setCulture, genGear, RARITY, ONLY_NAME, tipCtx, type Slot, type Only } from './loot';
 import type { PathId } from './vidente';
 import { createStances, STANCE_QUESTS, ROLE_NAME, type Stance } from './posturas';
@@ -49,6 +51,7 @@ import { DualRenderPass, fine } from './dual3d';
 import { createDialog, type Choice, type Reply } from './dialog';
 import { ECOS, FRIO } from './falas';
 import { createInstinct, selfLine, instinctOf, type Being, type Place } from './instinto';
+import { createOrmund } from './ormund';
 import { createSecrets, CACHE_LORE, type SenseGoal, type Cache } from './segredos';
 import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
@@ -206,7 +209,7 @@ hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
 const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -256,6 +259,7 @@ const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name 
 const tree = createSkillTree(kitRace, () => game.st.lvl, (t, c) => game.logMsg(t, c), treeTitle);
 game.setSkillScale((id) => tree.scale(id));
 let treeSel: string | null = null;
+const SHADE_TOWNS = new Set(['Corvoscuro']);
 const SHOP_BY_NAME = new Map<string, string>(); for (const st of city.settlements) for (const n of st.npcs) if (n.shop) SHOP_BY_NAME.set(n.name, n.shop); for (const n of npcSys.npcs) if (n.def.role === 'Mercador viajante') SHOP_BY_NAME.set(n.def.name, 'mercador');
 /* correio: caixas em cada povoado */
 const mail = createMail({ me: () => profile?.name || RACES[state.race].label, st: game.st,
@@ -989,6 +993,13 @@ const secrets = createSecrets({ ghost: () => makeGhost(), scene, heightAt, hero:
     for (let i = 0; i < 18; i++) particles.spawn(x + (Math.random() - 0.5) * 1.2, y + 0.3, z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.9, s0: 0.18, s1: 0.04, c0: 0xffe0a0, c1: 0xc08040, a: 1, g: 4 }); },
   fx: (x, y, z, col) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.3, vy: 0.9, vz: (Math.random() - 0.5) * 0.3, life: 1.6, s0: 0.22, s1: 0.04, c0: col, c1: col, a: 0.8, drag: 0.6 }) }, CACHES);
 secrets.setOnSense((id) => quests.onSense(id));
+/* o Caderno de Ormund: as notas e páginas soltas da Bíblia, no mundo (ormund.ts) */
+const ormund = createOrmund({ scene, heightAt, free: (tx, ty) => free(tx, ty),
+  resolve: (nm) => { if (nm === '@centro') { const H = city.settlements.filter((v) => ['Askavik', 'Skógar', 'Hrafnhöfn', 'Austrvik', 'Eikvik', 'Lundr'].includes(v.name)); if (!H.length) return null; return { x: H.reduce((a, v) => a + v.x, 0) / H.length, y: H.reduce((a, v) => a + v.y, 0) / H.length }; }
+    const st = city.settlements.find((v) => v.name === nm); if (st) return { x: st.x, y: st.y }; const po = city.pois.find((v) => v.name === nm); if (po) return { x: po.x, y: po.y };
+    const n = npcSys.npcs.find((q) => q.def.name.includes(nm)); if (n) return { x: n.def.x / T, y: n.def.z / T }; for (const v of city.settlements) { const m = v.npcs.find((q) => q.name.includes(nm)); if (m) return { x: m.x, y: m.y }; } return null; },
+  onRead: (e, n, tot) => { game.logMsg(`📜 Caderno de Ormund ${n}/${tot}: ${e.book}`, '#e8d8b0'); audio.chime?.(); } });
+(window as unknown as { __orm: unknown }).__orm = ormund;
 const placeT = (name: string) => { const st = city.settlements.find((q) => q.name === name); if (st) return { x: st.x, y: st.y }; const p = city.pois.find((q) => q.name === name); return p ? { x: p.x, y: p.y } : null; };
 /** os rastros que as missões ativas pedem (o lugar do alvo vem do mapa; o rastro começa ~30 casas antes) */
 function senseGoals(): SenseGoal[] { const out: SenseGoal[] = [];
@@ -1855,7 +1866,7 @@ function turnName(h = gameHour()) { for (const [h0, nm] of TURNS) if (h >= h0 &&
 /** escuridão 0..1 pela hora: noite plena 19–5 h, crepúsculos suaves de 2 h */
 function nightAt(h: number) { if (h >= 7 && h < 17) return 0; if (h >= 19 || h < 5) return 1; if (h >= 17 && h < 19) return (h - 17) / 2; return 1 - (h - 5) / 2; }
 
-/* modelo do artista (Eric Campos) para a guerreira do Norte: dirigido pela animação procedural */
+/* modelo do artista (Herik Campos) para a guerreira do Norte: dirigido pela animação procedural */
 const SKINS_ART: Partial<Record<Kind, SkinDef>> = { nordic: { fbx: '/models/heroes/NordicWarrior/warrior_rigged.fbx', tex: '/models/heroes/NordicWarrior/warrior_base.jpg' } };
 /* humanos (homem e mulher): nível 1 = só a roupa de baixo, sem equipamento; ao vestir a primeira ROUPA (peitoral, elmo, botas, capa ou ombreiras — arma e escudo não contam) passa para o nível 2 */
 const CLOTH_SLOTS = ['armor', 'helm', 'boots', 'cape', 'shoulders'] as const;
@@ -1870,12 +1881,15 @@ function humanSkinKey(): string | null {
 }
 const HERO_SKIN: Record<string, SkinDef> = { guerreiro_m: { fbx: '/models/heroes/NordicWarrior/Guerreiro_lvl_01.fbx', tex: '/models/heroes/NordicWarrior/Guerreiro_lvl_01_Color.jpg' }, guerreiro_f: { fbx: '/models/heroes/NordicWarrior/warrior_rigged.fbx', tex: '/models/heroes/NordicWarrior/warrior_base.jpg' } };
 let skinTick: (() => void) | null = null, skinToken = 0, skinKey = '', skinModel: THREE.Object3D | null = null, netSkin: SkinDef | null = null;
+/** visual do caminho (vampiro: pele pálida, olhos em brasa, névoa rubra à noite) */
+let look: Look | null = null, lookFor: string = '';
+function applyLook() { const kr = kitRace(); const want = kr === 'vam' ? 'vam' : kr === 'tecno' ? 'tecno' : ''; const key = want + ':' + (skinModel?.uuid ?? hero.root.uuid); if (key === lookFor) return; look?.dispose(); look = null; lookFor = key; if (want === 'vam') look = vampireLook(hero.root, skinModel); if (want === 'tecno') { const tl = technoLook(hero.root, skinModel, { fine, ramp: toonRamp }); look = tl; game.setTechLook(tl); } else game.setTechLook(null); }
 function applyArtSkin() {
   skinTick = null; netSkin = null; if (skinModel) { skinModel.parent?.remove(skinModel); skinModel = null; } skinKey = '';
   if (localStorage.getItem('karmika.artskin') === '0') return;
   const hk = humanSkinKey(), k = kindOf(state.race), def: SkinDef | undefined = hk ? HERO_SKIN[hk] ?? { fbx: `/models/humanos/${hk}.fbx`, tex: `/models/humanos/${hk}.jpg` } : SKINS_ART[k]; if (!def) return;
   skinKey = hk ?? k; const my = ++skinToken, h = hero;
-  attachSkin(h, def).then((r) => { if (!r || my !== skinToken || h !== hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; netSkin = def; netRef?.lookNow(); portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); });
+  attachSkin(h, def).then((r) => { if (!r || my !== skinToken || h !== hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; applyLook(); netSkin = def; netRef?.lookNow(); portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); });
 }
 /** ao trocar de roupa: se o nível da pele mudou (1 ↔ 2), troca o modelo */
 function checkSkinLevel() { const hk = humanSkinKey(); if (hk && hk !== skinKey) applyArtSkin(); }
@@ -1889,7 +1903,7 @@ function swapHero() {
 }
 tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k));
 /** recurso do caminho: o orbe da direita muda de nome, de cor e de regra (guerreiros: Ímpeto, que enche lutando) */
-function applyRes() { setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); game.setKit(kitRace()); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
+function applyRes() { setTimeout(applyLook, 0); setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); game.setKit(kitRace()); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
 /* antes da Vidente (nível 30), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
@@ -2563,7 +2577,7 @@ const discovered = new Set<string>((() => { try { return JSON.parse(localStorage
 setInterval(() => { if (inside) return; const hx = state.fx, hy = state.fy; let ch = false; const see = (n: string, x: number, y: number, r: number) => { if (!discovered.has(n) && Math.hypot(x - hx, y - hy) < r) { discovered.add(n); ch = true; } };
   for (const st of city.settlements) see(st.name, st.x, st.y, st.radius + 10); for (const p of city.pois) see(p.name, p.x, p.y, 14); try { for (const e of dgs.entrances) see(e.d.name, e.x, e.y, 14); } catch { /* */ }
   if (ch) try { localStorage.setItem('karmika.descobertos.v1', JSON.stringify([...discovered])); } catch { /* */ } }, 1000);
-let relTab: 'rel' | 'vil' | 'dg' | 'poi' = 'rel', relZoom = 1, relCx = 0.5, relCy = 0.5, relSel: { x: number; y: number; name: string } | null = null;
+let relTab: 'rel' | 'vil' | 'dg' | 'poi' | 'orm' = 'rel', relZoom = 1, relCx = 0.5, relCy = 0.5, relSel: { x: number; y: number; name: string } | null = null;
 function openRelics(from: string) {
   const others = city.relics.filter((r) => knowsRelic(r.name) && r.name !== from), here = city.relics.find((r) => r.name === from);
   relicOpen = true; relZoom = 1; relCx = 0.5; relCy = 0.5; relSel = null;
@@ -2574,8 +2588,8 @@ function openRelics(from: string) {
     const poi = city.pois.filter((q) => discovered.has(q.name)).map((q) => ({ name: q.name, x: q.x, y: q.y, sub: 'Lugar', d: dist(q.x, q.y) }));
     return { vil: vil.sort((a, b) => a.d - b.d), dg: dg.sort((a, b) => a.d - b.d), poi: poi.sort((a, b) => a.d - b.d) }; };
   const listHtml = () => { const P = places();
-    const tabs = `<div class="rtabs">${([['rel', `Relíquias (${others.length})`], ['vil', `Cidades e vilas (${P.vil.length})`], ['dg', `Masmorras (${P.dg.length})`], ['poi', `Lugares (${P.poi.length})`]] as const).map(([k, l]) => `<button data-rt="${k}" class="${relTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
-    const body = relTab === 'rel' ? (others.length ? others.map((r) => `<button data-go="${r.name}"><b>${r.name}</b><small>${fmtDist(Math.hypot(r.x - hereT().x, r.y - hereT().y) * T)} · viajar</small></button>`).join('') : '<em>Toque outra relíquia pelo mundo para viajar até ela.</em>')
+    const tabs = `<div class="rtabs">${([['rel', `Relíquias (${others.length})`], ['vil', `Cidades e vilas (${P.vil.length})`], ['dg', `Masmorras (${P.dg.length})`], ['poi', `Lugares (${P.poi.length})`], ['orm', `Caderno de Ormund (${ormund.count()}/${ormund.total()})`]] as const).map(([k, l]) => `<button data-rt="${k}" class="${relTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    const body = relTab === 'orm' ? (() => { const f = new Set(ormund.found()); const E = ormund.entries(); return `<em>Notas e páginas soltas do cronista Ormund Salveth, espalhadas pelo mundo no lugar de que falam. ${ormund.count()} de ${E.length} achadas.</em>` + E.map((q, i) => f.has(q.id) ? `<button data-orm="${q.id}"><b>${q.book}</b><small>${q.src}</small></button>` : `<button disabled><b>— ${i + 1} —</b><small>ainda não achada</small></button>`).join(''); })() : relTab === 'rel' ? (others.length ? others.map((r) => `<button data-go="${r.name}"><b>${r.name}</b><small>${fmtDist(Math.hypot(r.x - hereT().x, r.y - hereT().y) * T)} · viajar</small></button>`).join('') : '<em>Toque outra relíquia pelo mundo para viajar até ela.</em>')
       : (() => { const L = P[relTab]; return L.length ? L.map((q) => `<button data-see="${q.x},${q.y}" data-nm="${q.name}" class="${relSel?.name === q.name ? 'sel' : ''}"><b>${q.name}</b><small>${q.sub} · ${fmtDist(q.d)}</small><i data-pin="${q.x},${q.y}" data-nm="${q.name}" title="Marcar no mapa e seguir a guia">🧭</i></button>`).join('') : '<em>Nenhum ainda. Os lugares entram aqui quando você chega perto deles.</em>'; })();
     return tabs + `<div class="rl">${body}</div>`; };
   relicEl.innerHTML = `<div class="pn relpn"><h2>✦ Relíquias dos Caminhantes <button data-x>✕</button></h2><small>Você está em <b>${from}</b>. ${others.length ? 'Clique numa relíquia dourada no mapa (ou na lista) para viajar.' : 'Nenhuma outra relíquia conhecida ainda — as cinzentas no mapa ainda não foram tocadas.'}</small>
@@ -2609,6 +2623,7 @@ function openRelics(from: string) {
     let best: typeof others[number] | null = null, bd = 16; for (const r of others) { const p = toS(r.x, r.y), d = Math.hypot(p.x - mx, p.y - my); if (d < bd) { bd = d; best = r; } }
     if (best) travelRelic(best.name); else { const un = city.relics.find((r) => { const p = toS(r.x, r.y); return !knowsRelic(r.name) && Math.hypot(p.x - mx, p.y - my) < 12; }); if (un) game.logMsg('Relíquia ainda não tocada: vá até ela a pé uma vez para que ela lembre de você.', '#b9c6e0'); } });
   relicEl.onclick = (e) => { const t = e.target as HTMLElement; const z = (t.closest('[data-z]') as HTMLElement | null)?.dataset.z; if (z !== undefined) { e.stopPropagation(); zoomAt(+z); return; }
+    const om = (t.closest('[data-orm]') as HTMLElement | null)?.dataset.orm; if (om) { e.stopPropagation(); const q = ormund.entries().find((x) => x.id === om); if (q) ormund.read(q); return; }
     const rt = (t.closest('[data-rt]') as HTMLElement | null)?.dataset.rt; if (rt) { e.stopPropagation(); relTab = rt as typeof relTab; relicEl.querySelector('.rlist')!.innerHTML = listHtml(); return; }
     const pin = t.closest('[data-pin]') as HTMLElement | null; if (pin) { e.stopPropagation(); const [x, y] = pin.dataset.pin!.split(',').map(Number); pinT = { x, y, label: pin.dataset.nm! }; updateBanner(); closeRelics(); game.logMsg(`🧭 Guia marcada: ${pin.dataset.nm}.`, '#c8d2e8'); return; }
     const see = t.closest('[data-see]') as HTMLElement | null; if (see) { e.stopPropagation(); const [x, y] = see.dataset.see!.split(',').map(Number); relSel = { x, y, name: see.dataset.nm! }; relZoom = Math.max(relZoom, 3); relCx = x / MMS; relCy = y / MMS; draw(); relicEl.querySelector('.rlist')!.innerHTML = listHtml(); } };
@@ -2624,6 +2639,7 @@ function findInter(): Inter | null {
   { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); }
   { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); }
   { const si = secrets.interact(hx, hz, instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); }
+  { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); }
   for (const n of npcSys.npcs) {
     const nm = n.def.name, dN = Math.hypot(n.pos.x - hx, n.pos.z - hz);
     if (n.def.night && !n.hero.root.visible) { add(dN + 1, 4, `🌙 ${nm} só recebe à noite. Volte quando escurecer.`, () => game.logMsg(`🌙 Um criado de libré escura: “A senhora ${nm.split(' ').slice(-1)[0]} recebe depois do pôr do sol.”`, '#c98a9a')); continue; }
@@ -2956,7 +2972,9 @@ function frameBody() {
   if (wade > 0.15 && state.moving) { wadeAcc += dt; if (wadeAcc > 0.09) { wadeAcc = 0; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.4, WL + 0.03, heroPos.z + Math.sin(a) * 0.4, { vx: Math.cos(a) * 0.8, vy: 0.9 + Math.random(), vz: Math.sin(a) * 0.8, life: 0.5, s0: 0.18, s1: 0.05, c0: 0xe8f4ff, c1: 0x9ac8e8, a: 0.7, g: 6 }); } } }
   if (swimming) { swimAcc += dt; if (swimAcc > (state.moving ? 0.12 : 0.45)) { swimAcc = 0; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.5, WL + 0.03, heroPos.z + Math.sin(a) * 0.5, { vx: Math.cos(a) * 0.8, vy: 0.05, vz: Math.sin(a) * 0.8, life: 0.9, s0: 0.18, s1: 0.5, c0: 0xdff4ff, c1: 0x9cd0ff, a: 0.5, drag: 1.5 }); } } }
   hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : lockYaw !== null && aiming ? lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : fishing ? Math.atan2(fishing.at.x - state.fx * T, fishing.at.z - state.fy * T) : work ? Math.atan2(work.x - state.fx * T, work.z - state.fy * T) : sitting ? sitting.yaw : state.moving ? Math.atan2(gdx, gdy) : combatMode ? nearYaw() : null);
+  if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
   skinTick?.(); // copia a pose procedural para o modelo do artista
+  look?.tick(dt, state.night);
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);
   updateXray(dt); updateEnvelopes(t);
@@ -3042,6 +3060,9 @@ function frameBody() {
   const WDX = 0.86, WDZ = 0.5; // direção do vento
   particles.wind.x = WDX * (0.4 + gust * 3.2); particles.wind.z = WDZ * (0.4 + gust * 3.2);
   hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt) ? 1 : 0));
+  { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
+    const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
+    const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); }
   if (!inside) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none';
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);

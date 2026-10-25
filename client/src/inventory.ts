@@ -75,6 +75,7 @@ export const ITEMS: Record<string, Item> = {
   potion_g: { name: 'Poção maior', icon: '🧪', kind: 'food', col: 0xff2a4a, desc: 'Cura 140 de vida.', heal: 140, sell: 20 },
   mana: { name: 'Poção de magia', icon: '🔮', kind: 'food', col: 0x5a8aff, desc: 'Restaura 80 de magia.', mp: 80, sell: 14 },
   tonic: { name: 'Tônico de vigor', icon: '🫙', kind: 'food', col: 0x8ad07a, desc: 'Regenera vida por 30 s.', heal: 20, buff: 'regen', sell: 12 },
+  blood_d: { name: 'Sangue Diluído', icon: '🩸', kind: 'food', col: 0xb3202f, desc: 'Sangue de cervo cortado com água benta fraca e ervas. O vampiro aguenta o sol por 5 min (a queimadura vem 8× mais devagar) e a pele começa a fechar.', heal: 40, buff: 'sunveil', sell: 10 },
   antidote: { name: 'Antídoto', icon: '🌿', kind: 'food', col: 0x6ab05a, desc: 'Cura veneno e queimaduras.', heal: 10, buff: 'cleanse', sell: 8 },
   // cervejaria e cozinha
   beer: { name: 'Cerveja de Karmika', icon: '🍺', kind: 'food', col: 0xd8a040, desc: 'Coragem líquida: +10% de dano por 60 s.', heal: 15, buff: 'courage', sell: 5 },
@@ -100,14 +101,14 @@ export const ITEMS: Record<string, Item> = {
   mount_black: { name: 'Corcel Negro', icon: '🐎', kind: 'misc', col: 0x1a1612, desc: 'Montaria (Z): +90% de velocidade fora de combate.', tier: 2 },
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
-export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
+export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
 export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
   armaduras: { title: 'Maren, a Armadureira', items: [], gear: ['armor', 'armor', 'helm', 'helm', 'boots', 'boots'], buys: { hide: 1.6 }, note: 'Couro, cota e placas. Paga bem por couro.' },
   mercador: { title: 'Thorin, o Mercador', items: ['potion', 'bread', 'rope', 'flint', 'axe_s', 'pick_s', 'knife_f', 'shears_c', 'rod', 'bag_s', 'bag_m', 'scroll_return'], note: 'Um pouco de tudo. Bolsas para quem junta demais.' },
   mercador_cidade: { title: 'Ivar, Grande Mercador', items: ['potion', 'potion_g', 'mana', 'bread', 'rope', 'flint', 'axe_i', 'pick_st', 'shears_i', 'rod_ash', 'bag_s', 'bag_m', 'bag_l', 'bag_mg', 'scroll_return'], buys: { gem: 1.4, ore_ag: 1.4 }, note: 'Regra do comércio: quanto maior a cidade, melhores as bolsas e os itens. Aqui vai até o alforje de 24.' },
-  pocoes: { title: 'Morwen, a Alquimista', items: ['potion', 'potion_g', 'mana', 'tonic', 'antidote', 'shears_c', 'shears_i'], buys: { dust: 1.5, sap: 1.5, herb_g: 1.6, herb_s: 1.6, herb_j: 1.5, herb_f: 1.6, herb_r: 1.6, herb_m: 1.5 }, note: 'Poções e tônicos. Compra ervas, pó de fada e seiva — e vende alicates para quem colhe.' },
+  pocoes: { title: 'Morwen, a Alquimista', items: ['potion', 'potion_g', 'mana', 'tonic', 'antidote', 'blood_d', 'shears_c', 'shears_i'], buys: { dust: 1.5, sap: 1.5, herb_g: 1.6, herb_s: 1.6, herb_j: 1.5, herb_f: 1.6, herb_r: 1.6, herb_m: 1.5 }, note: 'Poções e tônicos. Compra ervas, pó de fada e seiva — e vende alicates para quem colhe.' },
   cervejaria: { title: 'Tessa, a Cervejeira', items: ['beer', 'mead', 'bread'], buys: { apple: 1.5 }, note: 'Cerveja e hidromel: coragem em caneca.' },
   churrasco: { title: 'Sven, o Churrasqueiro', items: ['skewer', 'cooked', 'fishc'], buys: { meat: 1.4, fish: 1.4 }, note: 'Carne no espeto, sempre quente.' },
   charcutaria: { title: 'Bruno, o Charcuteiro', items: ['sausage', 'jerky'], buys: { meat: 2.0, hide: 1.2 }, note: 'Paga o dobro por carne crua.' },

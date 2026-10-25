@@ -307,3 +307,114 @@ export function buildWolf(opt: { fur?: number; belly?: number; eye?: number; mat
   }
   return { root, mats, jaw, head, pose };
 }
+
+/* =====================================================================================================
+   CAVALO E JAVALI (25/10/2026) — Erling: "precisa deixar o cavalo mais decente também, e lobos, coiotes e javalis".
+   Cavalo: pernas compridas e finas (canela fina, jarrete alto, casco), peito fundo, barriga que sobe para o flanco,
+   garupa redonda e forte, pescoço comprido arqueado, cabeça longa que afina no focinho, crina e cauda de crina solta.
+   Javali: o peso todo na frente (ombro alto e cerdoso), traseiro que afina, pernas curtas e secas, cabeça em cunha
+   com o disco do focinho e as presas curvas para cima.
+   ===================================================================================================== */
+type Leg3 = { a: THREE.Group; b: THREE.Group; c: THREE.Group; d: THREE.Group; front: boolean; side: number };
+const fwdG = (g: THREE.BufferGeometry) => g.rotateX(-Math.PI / 2), backG = (g: THREE.BufferGeometry) => g.rotateX(Math.PI / 2);
+function makeKit(mats: THREE.MeshToonMaterial[], shadow = true) {
+  const ft = furTex();
+  const M = (c: number, map = true) => { const m = new THREE.MeshToonMaterial({ color: c, gradientMap: ramp, map: map ? ft : null }); mats.push(m); return m; };
+  const mesh = (g: THREE.BufferGeometry, m: THREE.Material, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(g, m); o.scale.set(sx, sy, sz); o.castShadow = shadow; return o; };
+  const tuft = (len: number, r: number, k: number, m: THREE.Material) => { const g = new THREE.ConeGeometry(r, len, 5, 4); g.translate(0, len / 2, 0); bend(g, k, len); return mesh(g, m, 1, 1, 0.55); };
+  return { M, mesh, tuft };
+}
+
+export interface Horse4 { root: THREE.Group; body: THREE.Group; neck: THREE.Group; mats: THREE.MeshToonMaterial[]; seat: number; pose(p: { dt: number; mv: number; idle?: boolean }): void }
+export function buildHorse(opt: { coat?: number; mane?: number; socks?: boolean } = {}): Horse4 {
+  const mats: THREE.MeshToonMaterial[] = []; const { M, mesh, tuft } = makeKit(mats);
+  const COAT = opt.coat ?? 0x6a4630, MANE = opt.mane ?? 0x241812;
+  const coat = M(COAT, false), coatD = M(new THREE.Color(COAT).multiplyScalar(0.72).getHex(), false), mane = M(MANE), hoof = M(0x2a2420, false), muzzle = M(new THREE.Color(COAT).multiplyScalar(0.45).getHex()), sock = M(opt.socks ? 0xe8e0d0 : new THREE.Color(COAT).multiplyScalar(0.55).getHex());
+  const root = new THREE.Group(); const H = 1.22;
+  const body = new THREE.Group(); body.position.y = H; root.add(body);
+  body.add(mesh(backG(mus(1.2, 0.27, 0.32, 0.25, 0.32, 16)), coat, 0.74, 1.02, 1).translateZ(0.6));
+  body.add(mesh(backG(mus(0.55, 0.15, 0.2, 0.08, 0.4, 12)), coatD, 0.78, 1, 1).translateY(-0.17).translateZ(0.52)); // peito fundo
+  const rump = mesh(backG(mus(0.55, 0.24, 0.3, 0.2, 0.5, 14)), coat, 0.95, 0.95, 1); rump.position.set(0, 0.04, -0.3); body.add(rump);
+  const withers = mesh(new THREE.SphereGeometry(0.16, 12, 8), coat, 0.7, 0.7, 1.5); withers.position.set(0, 0.22, 0.38); body.add(withers);
+  const neck = new THREE.Group(); neck.position.set(0, 0.12, 0.6); neck.rotation.x = -0.78; body.add(neck);
+  neck.add(mesh(fwdG(mus(0.78, 0.21, 0.19, 0.12, 0.3, 14)), coat, 0.58, 1.3, 1));
+  for (let i = 0; i < 16; i++) { const t = tuft(0.22 + (i % 3) * 0.04, 0.06, -0.1, mane); t.position.set((i % 2 ? 0.035 : -0.035), 0.21 - i * 0.003, 0.03 + i * 0.045); t.rotation.set(-2.3, 0, (i % 2 ? 1 : -1) * 0.9); neck.add(t); }
+  const head = new THREE.Group(); head.position.set(0, 0.04, 0.72); head.rotation.x = 1.45; neck.add(head);
+  head.add(mesh(fwdG(mus(0.6, 0.13, 0.12, 0.075, 0.25, 12)), coat, 0.72, 1.15, 1));
+  const nose = mesh(new THREE.SphereGeometry(0.085, 12, 9), muzzle, 0.85, 0.95, 1); nose.position.set(0, -0.02, 0.6); head.add(nose);
+  const jaw = mesh(fwdG(mus(0.32, 0.1, 0.09, 0.06, 0.4, 10)), coatD, 0.75, 0.8, 1); jaw.position.set(0, -0.08, 0.06); head.add(jaw);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Group(); ear.position.set(s * 0.055, 0.12, 0.0); ear.rotation.set(-0.2, 0, -s * 0.15); head.add(ear); const eg = new THREE.ConeGeometry(0.035, 0.14, 6, 3); eg.translate(0, 0.07, 0); bend(eg, 0.02, 0.14); ear.add(mesh(eg, coat, 1, 1, 0.5));
+    const ey = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 6), new THREE.MeshBasicMaterial({ color: 0x0e0a08 })); ey.position.set(s * 0.085, 0.05, 0.12); head.add(ey);
+    const nos = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0x0a0806 })); nos.position.set(s * 0.04, 0.0, 0.67); head.add(nos);
+  }
+  const fore = tuft(0.18, 0.06, 0.06, mane); fore.position.set(0, 0.14, 0.06); fore.rotation.x = 1.2; head.add(fore);
+  const legs: Leg3[] = [];
+  for (const front of [true, false]) for (const s of [-1, 1]) {
+    const a = new THREE.Group(); a.position.set(s * 0.17, front ? -0.12 : -0.05, front ? 0.48 : -0.5); body.add(a);
+    if (front) a.add(mesh(mus(0.46, 0.1, 0.105, 0.055, 0.25), coat, 0.85, 1, 1.2)); else a.add(mesh(mus(0.46, 0.16, 0.17, 0.065, 0.25), coat, 0.8, 1, 1.35));
+    const b = new THREE.Group(); b.position.y = -0.46; a.add(b); b.add(mesh(mus(0.34, 0.045, 0.042, 0.04, 0.5), coatD, 1, 1, 1.15));
+    const c = new THREE.Group(); c.position.y = -0.34; b.add(c); c.add(mesh(mus(0.12, 0.042, 0.045, 0.045, 0.5), sock));
+    const d = new THREE.Group(); d.position.y = -0.12; c.add(d); const hv = new THREE.CylinderGeometry(0.052, 0.064, 0.08, 12); hv.translate(0, -0.04, 0.01); d.add(mesh(hv, hoof));
+    if (!front) { const hk = mesh(new THREE.SphereGeometry(0.05, 8, 6), coatD, 0.8, 1, 1.1); b.add(hk); }
+    for (let i = 0; i < 3; i++) { const f = tuft(0.07, 0.035, 0.0, mane); f.position.set(0, -0.06, -0.03); f.rotation.x = 2.6 + i * 0.15; f.rotation.z = (i - 1) * 0.5; c.add(f); }
+    legs.push({ a, b, c, d, front, side: s });
+  }
+  const tail: THREE.Group[] = []; { let par: THREE.Object3D = body; for (let i = 0; i < 4; i++) { const g = new THREE.Group(); if (i === 0) g.position.set(0, 0.2, -0.82); else g.position.y = -0.22; g.add(mesh(mus(0.24, 0.035 + i * 0.008, 0.045 + i * 0.01, 0.035 + i * 0.012, 0.5, 9), mane, 0.7, 1, 1)); for (let k = 0; k < 3; k++) { const t = tuft(0.22 + i * 0.03, 0.025, 0.02, mane); t.position.set((k - 1) * 0.025, -0.12, 0); t.rotation.set(Math.PI + (k - 1) * 0.12, 0, (k - 1) * 0.1); g.add(t); } par.add(g); par = g; tail.push(g); } }
+  const st = { ph: 0, t: 0, mv: 0 };
+  function pose(p: { dt: number; mv: number; idle?: boolean }) {
+    const dt = Math.min(0.05, p.dt); st.t += dt; st.mv += (p.mv - st.mv) * Math.min(1, dt * 6); const mv = st.mv;
+    const spd = Math.min(1, mv / 2.4), gal = Math.max(0, Math.min(1, (mv - 4) / 3)); st.ph += dt * (2.4 + mv * 1.25);
+    const off = [[0, Math.PI, Math.PI, 0], [0, 0.4, Math.PI + 0.3, Math.PI + 0.7]];
+    for (let i = 0; i < 4; i++) { const L = legs[i], k = i, o = off[0][k] * (1 - gal) + off[1][k] * gal, sw = Math.sin(st.ph + o) * spd, lift = Math.max(0, Math.cos(st.ph + o)) * spd, A = 0.42 + 0.3 * gal;
+      if (L.front) { L.a.rotation.x = -sw * A + 0.02; L.b.rotation.x = lift * 1.3; L.c.rotation.x = -0.2 - lift * 0.5; L.d.rotation.x = 0.2 + lift * 0.7; }
+      else { L.a.rotation.x = -sw * A * 0.85 + 0.22; L.b.rotation.x = -0.32 - lift * 0.55; L.c.rotation.x = 0.1 + lift * 0.4; L.d.rotation.x = 0.0 + lift * 0.5; } }
+    body.position.y = H + Math.abs(Math.sin(st.ph)) * 0.04 * spd * (1 + gal * 1.5); body.rotation.x = Math.sin(st.ph * 2) * 0.03 * gal;
+    neck.rotation.x = -0.78 + 0.12 * gal + Math.sin(st.ph * 2) * 0.05 * spd + (p.idle ? Math.sin(st.t * 0.4) * 0.12 + 0.05 : 0);
+    head.rotation.x = 1.45 - 0.15 * gal + (p.idle ? Math.sin(st.t * 0.9) * 0.05 : 0); head.rotation.y = p.idle ? Math.sin(st.t * 0.3) * 0.2 : 0;
+    for (let i = 0; i < tail.length; i++) { tail[i].rotation.x = i === 0 ? 0.5 + 0.5 * gal + 0.2 * spd : 0.1 - 0.05 * gal; tail[i].rotation.z = Math.sin(st.t * 1.6 - i * 0.6) * (0.06 + i * 0.05); }
+  }
+  return { root, body, neck, mats, seat: H + 0.33, pose };
+}
+
+export interface Boar4 { root: THREE.Group; mats: THREE.MeshToonMaterial[]; pose(p: WolfPose): void }
+export function buildBoar(opt: { fur?: number } = {}): Boar4 {
+  const mats: THREE.MeshToonMaterial[] = []; const { M, mesh, tuft } = makeKit(mats);
+  const FUR = opt.fur ?? 0x5a4636; const fur = M(FUR), furD = M(new THREE.Color(FUR).multiplyScalar(0.55).getHex()), snoutM = M(0x8a6a5a, false), tusk = M(0xf0e6cc, false), hoof = M(0x241c16, false);
+  const root = new THREE.Group(); const H = 0.5;
+  const body = new THREE.Group(); body.position.y = H; root.add(body);
+  body.add(mesh(backG(mus(0.85, 0.23, 0.26, 0.1, 0.18, 14)), fur, 0.7, 1.12, 1).translateZ(0.4).translateY(0.03)); // peso na frente, traseiro fino
+  const hump = mesh(new THREE.SphereGeometry(0.2, 12, 9), furD, 0.75, 0.8, 1.4); hump.position.set(0, 0.17, 0.26); body.add(hump);
+  for (let i = 0; i < 14; i++) { const t = tuft(0.12 - Math.abs(i - 3) * 0.006, 0.035, -0.04, furD); t.position.set(0, 0.26 - i * 0.012 - Math.max(0, i - 4) * 0.01, 0.42 - i * 0.06); t.rotation.x = -1.95; body.add(t); }
+  const head = new THREE.Group(); head.position.set(0, 0.0, 0.42); head.rotation.x = 0.35; body.add(head);
+  head.add(mesh(fwdG(mus(0.42, 0.17, 0.14, 0.07, 0.25, 12)), fur, 0.85, 1.05, 1));
+  const disc = mesh(new THREE.CylinderGeometry(0.06, 0.065, 0.05, 14), snoutM); disc.rotation.x = Math.PI / 2; disc.position.set(0, -0.02, 0.45); head.add(disc);
+  for (const s of [-1, 1]) {
+    const nos = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), new THREE.MeshBasicMaterial({ color: 0x1a0e0a })); nos.position.set(s * 0.022, -0.02, 0.476); head.add(nos);
+    const tg = new THREE.ConeGeometry(0.018, 0.13, 6, 3); tg.translate(0, 0.065, 0); bend(tg, -0.04, 0.13); const tk = mesh(tg, tusk); tk.position.set(s * 0.07, -0.07, 0.34); tk.rotation.set(-0.4, 0, -s * 0.35); head.add(tk);
+    const ey = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0x1a0a06 })); ey.position.set(s * 0.1, 0.07, 0.16); head.add(ey);
+    const ear = new THREE.Group(); ear.position.set(s * 0.09, 0.12, 0.02); ear.rotation.set(-0.6, 0, -s * 0.7); head.add(ear); const eg = new THREE.ConeGeometry(0.045, 0.11, 6, 3); eg.translate(0, 0.055, 0); bend(eg, 0.03, 0.11); ear.add(mesh(eg, furD, 1, 1, 0.45));
+    const ck = tuft(0.1, 0.045, -0.04, furD); ck.position.set(s * 0.12, -0.05, 0.05); ck.rotation.set(-1.8, 0, s * 0.8); head.add(ck);
+  }
+  const legs: Leg3[] = [];
+  for (const front of [true, false]) for (const s of [-1, 1]) {
+    const a = new THREE.Group(); a.position.set(s * (front ? 0.12 : 0.085), front ? -0.1 : -0.05, front ? 0.3 : -0.3); body.add(a);
+    a.add(mesh(mus(0.2, front ? 0.075 : 0.07, front ? 0.075 : 0.075, 0.035, 0.3), fur, 0.8, 1, 1.15));
+    const b = new THREE.Group(); b.position.y = -0.2; a.add(b); b.add(mesh(mus(0.15, 0.035, 0.033, 0.03, 0.5), furD));
+    const c = new THREE.Group(); c.position.y = -0.15; b.add(c); const hv = new THREE.CylinderGeometry(0.03, 0.04, 0.05, 8); hv.translate(0, -0.025, 0.01); c.add(mesh(hv, hoof));
+    const d = new THREE.Group(); c.add(d); legs.push({ a, b, c, d, front, side: s });
+  }
+  const tail = new THREE.Group(); tail.position.set(0, 0.08, -0.5); body.add(tail); tail.add(mesh(mus(0.16, 0.018, 0.016, 0.01, 0.5, 6), fur)); const tt = tuft(0.06, 0.025, 0, furD); tt.position.y = -0.17; tt.rotation.x = Math.PI; tail.add(tt);
+  const st = { ph: 0, t: 0, mv: 0 };
+  function pose(p: WolfPose) {
+    const dt = Math.min(0.05, p.dt); st.t += dt; st.mv += (p.mv - st.mv) * Math.min(1, dt * 8); const mv = st.mv, spd = Math.min(1, mv / 2.2); st.ph += dt * (4 + mv * 3.2);
+    const W = p.wind, S = p.strike, crouch = W * W;
+    for (let i = 0; i < 4; i++) { const L = legs[i], o = [0, Math.PI, Math.PI, 0][i], sw = Math.sin(st.ph + o) * spd, lift = Math.max(0, Math.cos(st.ph + o)) * spd;
+      L.a.rotation.x = -sw * 0.6 + (L.front ? -0.4 * crouch : 0.3 * crouch); L.b.rotation.x = (L.front ? 1 : -1) * lift * 0.8 + (L.front ? 0.6 : -0.4) * crouch; L.c.rotation.x = lift * 0.4; }
+    body.position.y = H + Math.abs(Math.sin(st.ph)) * 0.025 * spd - crouch * 0.08 - p.hurt * 0.04; body.rotation.x = crouch * 0.18 - (S > 0 ? 0.15 * Math.sin(Math.min(1, S) * Math.PI) : 0); body.position.z = S * 0.25 - crouch * 0.08;
+    head.rotation.x = 0.35 + 0.25 * crouch - (S > 0 ? 0.6 * Math.sin(Math.min(1, S) * Math.PI) : 0) + (p.idle ? Math.sin(st.t * 1.7) * 0.15 + 0.15 : 0) + 0.3 * p.hurt; head.rotation.y = p.idle ? Math.sin(st.t * 0.8) * 0.2 : 0;
+    tail.rotation.x = 0.3 + Math.sin(st.t * 9) * 0.15 * (p.alert ? 1 : 0.4); tail.rotation.z = Math.sin(st.t * 7) * 0.4;
+  }
+  return { root, mats, pose };
+}
+export { mus, musUp, bend, furTex, ramp as beastRamp };

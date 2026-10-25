@@ -1,6 +1,7 @@
 import { RUNAS } from './runas';
 import * as THREE from 'three';
-import { buildBeast, buildWolf } from './werewolf3d';
+import { buildBeast, buildWolf, buildBoar } from './werewolf3d';
+import { buildUndead } from './undead3d';
 import { charShadow, createCharacter, type Hero3D } from './characters';
 import type { SpawnDef, EnemyType } from './world';
 import { loadModel, Puppet } from './models3d';
@@ -244,33 +245,16 @@ function wolfRig(): Rig {
   const w = buildWolf();
   return { root: w.root, mats: w.mats, update(e, dt, windK, strikeK, hurtK, mv) { w.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e.state === 'idle', alert: e.state === 'chase' || e.state === 'windup' }); } };
 }
+/** zumbi, carniçal e esqueleto (undead3d): corpos orgânicos no lugar das caixas */
+function undeadRig(k: 'zombie' | 'ghoul' | 'skeleton'): Rig {
+  const u = buildUndead(k);
+  return { root: u.root, mats: u.mats, update(e, dt, windK, strikeK, hurtK, mv) { u.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e.state === 'idle' }); } };
+}
 function beastRig(): Rig {
   const b = buildBeast(); let side = 1, lastS = 0;
   return { root: b.root, mats: b.mats, update(_e, dt, windK, strikeK, hurtK, mv) {
     if (strikeK > 0.5 && lastS <= 0.5) side = -side; lastS = strikeK;
     b.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, mode: windK > 0.01 || strikeK > 0.01 ? (side > 0 ? 'clawR' : 'clawL') : null, combat: _e.state === 'chase' || _e.state === 'windup' || _e.state === 'recover' });
-  } };
-}
-function buildZombie(): Rig {
-  const root = new THREE.Group(), mats: THREE.MeshToonMaterial[] = [];
-  const skin = tm(0x7a8a6a), rag = tm(0x3a3a2e), rag2 = tm(0x2a2420); mats.push(skin, rag, rag2);
-  const body = new THREE.Group(); root.add(body);
-  const legs: THREE.Mesh[] = [];
-  for (const s of [-1, 1]) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.85, 6), rag2); lg.position.set(s * 0.17, 0.42, 0); body.add(lg); legs.push(lg); }
-  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.26, 0.8, 7), rag); torso.position.y = 1.25; torso.rotation.x = 0.25; body.add(torso);
-  const belly = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 6), skin); belly.position.set(0, 1.05, 0.14); body.add(belly);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), skin); head.position.set(0.06, 1.75, 0.22); head.rotation.z = 0.5; body.add(head);
-  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.14), skin); jaw.position.set(0.1, 1.6, 0.34); body.add(jaw);
-  for (const s of [-1, 1]) { const ey = new THREE.Mesh(new THREE.SphereGeometry(0.035, 5, 4), new THREE.MeshBasicMaterial({ color: 0xd8ff80 })); ey.position.set(0.06 + s * 0.09, 1.8, 0.4); body.add(ey); }
-  const arms: THREE.Group[] = [];
-  for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.36, 1.55, 0.05); const up = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 0.75, 6), s < 0 ? rag : skin); up.position.set(0, 0, 0.35); up.rotation.x = Math.PI / 2; a.add(up); const hand = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), skin); hand.position.set(0, 0, 0.75); a.add(hand); body.add(a); arms.push(a); }
-  const st = { t: 0 };
-  return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
-    st.t += dt; const sw = Math.sin(st.t * 3.2);
-    body.rotation.z = sw * 0.07; body.rotation.x = 0.12 * Math.min(1, mv / 1.5) - 0.3 * windK + 0.35 * strikeK - 0.25 * hurtK; body.position.y = Math.abs(sw) * 0.03 * Math.min(1, mv);
-    legs[0].rotation.x = sw * 0.45 * Math.min(1, mv / 1.2); legs[1].rotation.x = -sw * 0.45 * Math.min(1, mv / 1.2);
-    arms[0].rotation.x = -0.1 + sw * 0.08 - 0.9 * windK + 0.8 * strikeK; arms[1].rotation.x = -0.15 - sw * 0.08 - 0.9 * windK + 0.8 * strikeK;
-    arms[0].rotation.z = 0.15; arms[1].rotation.z = -0.15; head.rotation.z = 0.5 + sw * 0.08 + hurtK * 0.4;
   } };
 }
 /** Bispo Caído: prelado demoníaco — mitra fendida, casula negra com bandas douradas, cruz invertida, báculo de ferro e auréola escura */
@@ -462,8 +446,9 @@ export function createEnemies(ctx: EnemyCtx) {
 
   function build(e: Enemy) {
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
-    if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
-    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? buildZombie() : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
+    if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
+    else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
+    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(e.type === 'skeleton' ? 'skeleton' : e.type === 'ghoul' ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }
     else if (e.def.model) {
       loadModel(`/models/bestiary/${e.def.model}.glb`).then((m) => {
