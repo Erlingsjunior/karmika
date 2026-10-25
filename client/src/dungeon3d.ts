@@ -126,7 +126,7 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     let ht = 0, wsum = 0; for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const wgt = 1 / (1 + Math.hypot((cx + dx + 0.5) * C - x, (cz + dz + 0.5) * C - z)); ht += hOf(cx + dx, cz + dz) * wgt; wsum += wgt; } ht /= wsum; // altura suave entre células
     const lowish = ht < th.tall[0] * 0.6;
     let h = d <= 0 || open ? -0.06 : ht * Math.min(1, Math.pow(Math.min(1, d / (lowish ? 0.9 : 1.6)), 0.7)) * (0.82 + fbm(x * 1.3 + 7, z * 1.3) * 0.36);
-    if (h > 0.1) h += (vn(x * 3.3, z * 3.3) - 0.5) * 0.35 + Math.max(0, fbm(x * 0.35 + 3, z * 0.35) - 0.62) * 3; // saliências e picos
+    if (h > 0.1) h += (vn(x * 3.3, z * 3.3) - 0.5) * 0.55 + (vn(x * 7.1, z * 7.1) - 0.5) * 0.22 + Math.max(0, fbm(x * 0.35 + 3, z * 0.35) - 0.62) * 3; // saliências e picos
     if (!isW(cx, cz) && d > 3.2 && !lowish) h = ht * 1.05 + fbm(x, z) * 0.8; // miolo da rocha
     hArr[i3] = h; pos[i3 * 3] = x; pos[i3 * 3 + 1] = Math.max(-0.06, h); pos[i3 * 3 + 2] = z;
   }
@@ -175,12 +175,22 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
       for (let k = 0; k < n; k++) { const b = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(0.07, 5, 4), bm); body.scale.set(1, 0.8, 1.6); b.add(body);
         const wl = new THREE.Mesh(wingG, bm), wr = new THREE.Mesh(wingG, bm); wr.scale.x = -1; b.add(wl, wr); b.scale.setScalar(1.4); b.userData.dyn = true; wl.userData.dyn = true; wr.userData.dyn = true; body.userData.dyn = true; g.add(b);
         const c = loc(rm); bats.push({ m: b, wl, wr, cx: c.x + (hsh(k, rm.x) - 0.5) * 3, cz: c.z + (hsh(rm.z, k) - 0.5) * 3, r: 2 + hsh(k * 3, rm.z) * 3, y: 2.6 + hsh(k, k) * 1.2, sp: (0.7 + hsh(rm.x, k) * 0.8) * (k % 2 ? 1 : -1), ph: hsh(k * 7, rm.x * 3) * 6 }); } } }
+  /* 25/10 (Erling: "dá para melhorar e muito as artes das dungeons por dentro"): sombra de contato no pé das paredes (o chão escurece
+     onde encosta na rocha), entulho e seixos pelo chão, e pedras soltas no pé da parede — o chão deixa de ser um ladrilho só */
+  { const shC = document.createElement('canvas'); shC.width = 8; shC.height = 64; const sx2 = shC.getContext('2d')!, gr2 = sx2.createLinearGradient(0, 0, 0, 64); gr2.addColorStop(0, 'rgba(0,0,0,.78)'); gr2.addColorStop(1, 'rgba(0,0,0,0)'); sx2.fillStyle = gr2; sx2.fillRect(0, 0, 8, 64);
+    const aoM = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(shC), transparent: true, depthWrite: false, fog: false });
+    const peb = [std(0xffffff, { map: rockTex(th.rock) }), std(0xffffff, { map: rockTex(th.rock2) })], pebG = [0, 1, 2].map((v) => { const geo = new THREE.IcosahedronGeometry(1, 0), pa = geo.getAttribute('position'); for (let k = 0; k < pa.count; k++) { const f = 0.7 + hsh(k * 3 + v, v * 7 + k) * 0.5; pa.setXYZ(k, pa.getX(k) * f, pa.getY(k) * f * 0.55, pa.getZ(k) * f); } geo.computeVertexNormals(); return geo; });
+    for (let cz = 0; cz < NZ; cz++) for (let cx = 0; cx < NX; cx++) { if (!isW(cx, cz)) continue;
+      for (const [dx, dz, ry] of [[0, -1, 0], [0, 1, Math.PI], [-1, 0, Math.PI / 2], [1, 0, -Math.PI / 2]] as [number, number, number][]) { if (isW(cx + dx, cz + dz)) continue;
+        const pl = new THREE.Mesh(new THREE.PlaneGeometry(C, 1.6), aoM); pl.rotation.set(-Math.PI / 2, 0, ry); pl.position.set((cx + 0.5 + dx * 0.5) * C - dx * 0.8, 0.02, (cz + 0.5 + dz * 0.5) * C - dz * 0.8); pl.userData.keep = true; g.add(pl);
+        if (hsh(cx * 3.1 + dx, cz * 1.7 + dz) < 0.4) { const s0 = 0.25 + hsh(cx + dz, cz + dx) * 0.4, x = (cx + 0.5 + dx * 0.36) * C + (hsh(cx, dz) - 0.5) * 1.6 * (dx ? 0 : 1), z = (cz + 0.5 + dz * 0.36) * C + (hsh(dz, cz) - 0.5) * 1.6 * (dz ? 0 : 1); boulder(x, z, s0, hsh(cz, cx) < 0.5 ? rmA : rm2); cols.push([x, z, s0 * 0.9]); } }
+      for (let k = 0; k < 3; k++) { if (hsh(cx * 7 + k, cz * 5 - k) > 0.45) continue; const m = new THREE.Mesh(pebG[k], peb[k % 2]), s0 = 0.06 + hsh(cx + k, cz) * 0.1; m.scale.setScalar(s0); m.position.set((cx + hsh(cx, cz + k)) * C, s0 * 0.25, (cz + hsh(cz + k, cx)) * C); m.rotation.y = hsh(k, cx) * 6; g.add(m); } } }
   /* enfeites e luzes por tema */
   const M = (c: number, e = 0) => std(c, e ? { emissive: new THREE.Color(c), emissiveIntensity: e } : {});
   const glowM = (c: number) => new THREE.MeshBasicMaterial({ color: c });
   const put = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.rotation.y = ry; g.add(k); return k; };
   const light = (x: number, y: number, z: number, c = th.light, i = 2.2, dist = 14) => fixtures.push({ x, y, z, c, i, dist, ph: r() * 9 });
-  const torch = (x: number, z: number, c = th.light) => { put(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), M(0x3a2414), x, 0.8, z); put(new THREE.ConeGeometry(0.16, 0.42, 6), glowM(c), x, 1.75, z); light(x, 2.1, z, c, 2.4, 13); cols.push([x, z, 0.35]); };
+  const torch = (x: number, z: number, c = th.light) => { put(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), M(0x3a2414), x, 0.8, z); put(new THREE.ConeGeometry(0.16, 0.42, 6), glowM(c), x, 1.75, z); light(x, 2.1, z, c, 2.9, 14); cols.push([x, z, 0.35]); };
   const crystal = (x: number, z: number, c: number, s = 1) => { const k = put(new THREE.OctahedronGeometry(0.35 * s, 0), glowM(c), x, 0.45 * s, z); k.scale.y = 2.2; k.rotation.z = (r() - 0.5) * 0.5; cols.push([x, z, 0.4 * s]); if (r() < 0.5) light(x, 1.2, z, c, 1.5, 9); };
   const bones = (x: number, z: number) => { const bm = M(0xd8d0b8); for (let i = 0; i < 4; i++) { const k = put(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 5), bm, x + (r() - 0.5) * 0.8, 0.05, z + (r() - 0.5) * 0.8); k.rotation.set(Math.PI / 2, 0, r() * 3); } put(new THREE.SphereGeometry(0.13, 7, 6), bm, x, 0.12, z); };
   const nest = (x: number, z: number, s = 1) => { put(new THREE.CylinderGeometry(0.9 * s, 1.1 * s, 0.35 * s, 10), M(0x8a6a3a), x, 0.17 * s, z); put(new THREE.CylinderGeometry(0.6 * s, 0.8 * s, 0.2, 10), M(0x5a3a22), x, 0.36 * s, z); cols.push([x, z, 1.0 * s]); };
