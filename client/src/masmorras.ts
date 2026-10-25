@@ -97,7 +97,7 @@ export interface DgCtx {
     spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[]): void; xpNeed(): number };
   particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   audio: { boom(): void; chime(): void; coins(n: number): void; spell(k: 'shock' | 'fire' | 'ice' | 'arcane' | 'earth' | 'holy'): void };
-  heroPos(): THREE.Vector3; partySize(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
+  heroPos(): THREE.Vector3; partySize(): number; /** nível médio do grupo (ou o seu, sozinho) */ partyLvl?(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
   onClear?(d: DgDef, first: boolean): void;
 }
 type E = DgCtx['game']['enemies']['list'][number] & { tag?: string; own?: number; ownT?: number };
@@ -173,7 +173,9 @@ export function createMasmorras(ctx: DgCtx) {
   function start(e: (typeof entrances)[number], int: DungeonFloor, O: { x: number; z: number }, inst: string) {
     const d = e.d, r = rr(hashS(d.id + 'mobs')), n = Math.max(1, ctx.partySize()), pre = `dg:${d.id}:${inst}`;
     ctx.game.enemies.clearTag('dg');
-    const [lo, hi] = e.lvl; let total = 0, boss: E | null = null;
+    /* a masmorra acompanha quem entra (Erling, 25/10): sozinho, ela pega o seu nível; em grupo, a média do grupo */
+    const avg = Math.max(1, Math.round(ctx.partyLvl?.() ?? ctx.game.st.lvl)), lo = Math.max(1, avg - 1), hi = avg + 2; e = { ...e, lvl: [lo, hi] };
+    let total = 0, boss: E | null = null;
     const S = (type: EnemyType, x: number, z: number, L: number, o: Record<string, unknown> = {}) => { const k = lvlScale(type, L); return ctx.game.enemies.spawn(type, O.x + x, O.z + z, { tag: 'dg', lvl: L, hpMul: k.hp * (o.hpX as number ?? 1), dmgMul: k.dmg * (o.dmgX as number ?? 1), aggro: 13, leash: 999, net: pre, ...o }) as E; };
     const main = int.rooms.filter((q) => q.kind === 'pack' || q.kind === 'elite');
     int.rooms.forEach((rm) => {

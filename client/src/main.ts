@@ -273,16 +273,17 @@ const JOB: Record<string, { ic: string; verb: string; act: Parameters<typeof her
   alquimista: { ic: '⚗️', verb: 'Preparando', act: 'herb', snd: 'brew', beat: 0.45, col: '#7aff9a' },
   cozinheiro: { ic: '🍳', verb: 'Cozinhando', act: 'herb', snd: 'cook', beat: 0.6, col: '#ffd27a' },
   costureiro: { ic: '🧵', verb: 'Costurando', act: 'herb', snd: 'sew', beat: 0.3, col: '#d8b8ff' },
+  fogueira: { ic: '🔥', verb: 'Assando', act: 'herb', snd: 'cook', beat: 0.9, col: '#ff9a4a' },
 };
 const jobEl = document.createElement('div'); jobEl.id = 'craftjob'; document.body.appendChild(jobEl);
 let job: { stop(why?: string): void } | null = null;
-function craftJob(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }) {
+function craftJob(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }, onEnd?: () => void) {
   job?.stop(); const J = JOB[j.prof] ?? { ic: '⚒', verb: 'Fazendo', act: 'herb' as const, snd: 'carve' as const, beat: 0.5, col: '#ffe08a' };
   const PER = 1.15, x0 = state.fx, y0 = state.fy; let k = 0, t = 0, beatT = 0, last = performance.now(), raf = 0, alive = true;
   jobEl.innerHTML = `<div class="cj-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="27"/><circle class="fg" cx="32" cy="32" r="27" style="stroke:${J.col}"/></svg><span class="cj-ic">${J.ic}</span><span class="cj-flash"></span></div>
     <div class="cj-txt"><b>${J.verb}: ${j.icon} ${j.name}</b><small><span class="cj-n">0</span> / ${j.times} · mova-se para parar</small></div><div class="cj-pop"></div>`;
   jobEl.classList.add('on'); const fg = jobEl.querySelector('.fg') as SVGCircleElement, C = 2 * Math.PI * 27; fg.style.strokeDasharray = `${C}`; fg.style.strokeDashoffset = `${C}`;
-  const stop = (why?: string) => { if (!alive) return; alive = false; cancelAnimationFrame(raf); job = null; setTimeout(() => { if (!job) jobEl.classList.remove('on'); }, why ? 900 : 1300); if (why) game.logMsg(why, '#b9c6e0'); };
+  const stop = (why?: string) => { if (!alive) return; alive = false; cancelAnimationFrame(raf); job = null; onEnd?.(); setTimeout(() => { if (!job) jobEl.classList.remove('on'); }, why ? 900 : 1300); if (why) game.logMsg(why, '#b9c6e0'); };
   job = { stop };
   const tick = () => { if (!alive) return; const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; t += dt; beatT -= dt;
     if (Math.hypot(state.fx - x0, state.fy - y0) > 0.5 || game.st.dead) { stop('Você parou o trabalho.'); return; }
@@ -295,6 +296,27 @@ function craftJob(j: { prof: string; name: string; icon: string; times: number; 
       if (k >= j.times || !j.can()) { stop(k > 1 ? `⚒ Pronto: ${k}× ${j.name}.` : undefined); return; } }
     raf = requestAnimationFrame(tick); };
   raf = requestAnimationFrame(tick);
+}
+/** assar na fogueira (25/10): o herói se agacha, um espeto gira sobre o fogo com a carne (ou o peixe) dourando, chia e solta fumaça;
+    cada peça pronta pula para a mochila. Assa tudo o que tiver; andar para. */
+function roastAt(fx: number, fz: number) {
+  const fy = heightAt(fx, fz), spit = new THREE.Group(); spit.position.set(fx, fy + 0.62, fz);
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5).rotateZ(Math.PI / 2), new THREE.MeshToonMaterial({ color: 0x6a4a2a })); spit.add(stick);
+  for (const sx of [-0.55, 0.55]) { const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.025, 0.7, 4), stick.material); fork.position.set(sx, -0.3, 0); spit.add(fork); }
+  const meatMat = new THREE.MeshToonMaterial({ color: 0xc8605a }), meat = new THREE.Group(); spit.add(meat);
+  for (let i = 0; i < 3; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.11 + (i % 2) * 0.02, 7, 5), meatMat); m.scale.set(1.25, 0.9, 0.9); m.position.x = (i - 1) * 0.2; meat.add(m); }
+  scene.add(fine(spit));
+  let cur = inv.has('meat') ? 'meat' : 'fish'; const tint = (k: number) => meatMat.color.setHex(0xc8605a).lerp(new THREE.Color(cur === 'meat' ? 0x6a3410 : 0xb07a3a), k);
+  const t0 = performance.now(); let alive = true;
+  const spin = () => { if (!alive) return; const k = ((performance.now() - t0) / 1000) % 1.15 / 1.15; meat.rotation.x += 0.09; tint(k);
+    if (Math.random() < 0.35) particles.spawn(fx + (Math.random() - 0.5) * 0.4, fy + 0.6, fz + (Math.random() - 0.5) * 0.2, { vy: 0.7 + Math.random() * 0.5, life: 1.6, s0: 0.12, s1: 0.5, c0: 0xc8c0b0, c1: 0x5a5450, a: 0.3, drag: 0.4, w: 0.5 });
+    if (Math.random() < 0.2) particles.spawn(fx + (Math.random() - 0.5) * 0.3, fy + 0.55, fz, { vx: (Math.random() - 0.5) * 1.4, vy: 1 + Math.random(), vz: (Math.random() - 0.5) * 1.4, life: 0.35, s0: 0.07, s1: 0.02, c0: 0xfff0a0, c1: 0xff6a10, a: 1, g: 6 }); /* gordura que pinga e estala */
+    requestAnimationFrame(spin); };
+  requestAnimationFrame(spin);
+  const done = () => { alive = false; scene.remove(spit); };
+  craftJob({ prof: 'fogueira', name: cur === 'meat' ? 'Carne assada' : 'Peixe assado', icon: cur === 'meat' ? '🍖' : '🐟', times: inv.count('meat') + inv.count('fish'),
+    step: () => { const raw = inv.has(cur) ? cur : inv.has('meat') ? 'meat' : inv.has('fish') ? 'fish' : null; if (!raw) return false; inv.take(raw); inv.add(raw === 'meat' ? 'cooked' : 'fishc', 1, true); cur = inv.has('meat') ? 'meat' : 'fish'; return true; },
+    can: () => inv.has('meat') || inv.has('fish') }, done);
 }
 document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-profgo]')) { inv.closeAll(); profs.toggle(); } });
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
@@ -936,6 +958,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
   else if (shopId) choices.push({ kind: 'shop', label: `Comerciar com ${nm}`, cb: () => { if (shopId === 'latao') prepLatao(); inv.openShop(shopId, SHOP_OF[nm] ? undefined : `${nm}, ${n.def.role}`); const k = shopLeanK(shopId);
     if (k > 1) game.logMsg(`${nm} olha você de cima a baixo. Para gente como você, o preço é outro (+${Math.round((k - 1) * 100)}%).`, '#c8a090'); else if (k < 1) game.logMsg(`${nm} sorri: “Para você, um desconto.” (−${Math.round((1 - k) * 100)}%)`, '#a8d0a0'); } });
   if (nm === 'Elowen') choices.push({ kind: 'custom', label: 'Abrir o Shop', hint: 'Premium e brasões', cb: () => { dlg.close(); loja.toggle('prem'); } });
+  if (nm === 'Mestre-Forjador Brokki') choices.push({ kind: 'custom', label: 'Forja de Elite', hint: 'peças lendárias', cb: () => eliteForge(n) });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => quests.openBoard() });
   if (nm === 'Hrefna') { if (game.st.lvl >= 30 && (!profile?.path || profile.path === 'humano')) choices.push({ kind: 'custom', label: profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { dlg.close(); vid.open(); } }); else if (game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => dlg.setText(npcSys.talk(n)) });
@@ -952,6 +975,28 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
       /* tem mais a contar? a conversa continua: a próxima missão é apresentada, não empurrada */
       if (!o) setTimeout(() => { if (!dlg.isOpen && quests.offers(nm).length && Math.hypot(n.pos.x - state.fx * T, n.pos.z - state.fy * T) < 8) talkTo(n); }, 450); },
     objProg: (d, i) => quests.objProg(d, i), objNeed: (d, i) => quests.objNeed(d, i) });
+}
+/** a Forja de Elite do Brokki: material de bicho elite + minério + ouro = peça lendária do seu nível */
+const ELITE_FORGE: { id: string; label: string; slot: Slot; need: [string, number][]; gold: number; say: string }[] = [
+  { id: 'w', label: 'Lâmina Presa-Alfa', slot: 'weapon', need: [['el_fang', 4], ['el_hide', 1], ['ore_i', 6]], gold: 300, say: 'Presa no fio, couro no cabo. Corta como mordida.' },
+  { id: 'a', label: 'Peitoral de Couro de Elite', slot: 'armor', need: [['el_hide', 5], ['el_hoof', 2], ['ore_i', 6]], gold: 350, say: 'Couro de quem mandava na matilha. Agora manda em você: protege.' },
+  { id: 'h', label: 'Elmo da Galhada Ancestral', slot: 'helm', need: [['el_horn', 3], ['el_hide', 1], ['ore_i', 4]], gold: 250, say: 'Quem vê esse elmo na mata pensa duas vezes.' },
+  { id: 'b', label: 'Botas de Casco de Ferro', slot: 'boots', need: [['el_hoof', 4], ['el_hide', 1]], gold: 200, say: 'Pisam pedra, gelo e lama como se fosse tapete.' },
+  { id: 's', label: 'Escudo de Cerne Vivo', slot: 'shield', need: [['el_heart', 2], ['el_hide', 2], ['plank', 4]], gold: 300, say: 'Madeira que ainda pulsa. Fecha a rachadura sozinha.' },
+  { id: 'm', label: 'Amuleto da Presa', slot: 'amulet', need: [['el_fang', 3], ['gem', 1]], gold: 250, say: 'Três presas e uma gema. Dizem que o dono ouve a matilha de longe.' },
+];
+function eliteForge(n: (typeof npcSys.npcs)[number]) {
+  const has = (r: (typeof ELITE_FORGE)[number]) => r.need.every(([i, k]) => inv.count(i) >= k) && game.st.gold >= r.gold;
+  const ch: Choice[] = ELITE_FORGE.map((r) => ({ kind: 'custom', label: `${has(r) ? '⚒' : '✗'} ${r.label}`, hint: `${r.need.map(([i, k]) => `${inv.count(i)}/${k} ${ITEMS_TBL[i]?.name ?? i}`).join(' · ')} · ${r.gold} 🪙`, cb: () => {
+    if (!has(r)) { audio.error(); dlg.setText('Falta material. Bicho elite não se acha na esquina: procure os grandes, os que têm nome, os que mandam na matilha.'); return; }
+    for (const [i, k] of r.need) inv.take(i, k); game.st.gold -= r.gold;
+    const g = genGear(Math.max(5, game.st.lvl + 3), Math.random() < 0.25 ? 'epic' : 'legendary', r.slot); (g as { name: string }).name = r.label;
+    if (!inv.addGear(g)) { for (const [i, k] of r.need) inv.add(i, k); game.st.gold += r.gold; dlg.setText('A mochila está cheia. Abra espaço e volte.'); return; }
+    audio.hit(); setTimeout(() => audio.hit(), 280); setTimeout(() => audio.craftDone?.(), 700); dlg.setText(`${r.say} (${r.label} foi para a sua mochila.)`); game.logMsg(`⚒ Brokki forjou: ${r.label}.`, '#ffb060');
+  } })) as Choice[];
+  ch.push({ kind: 'close', label: 'Até logo' });
+  let pr: string | null = null; try { pr = portraitOf(n.def.name, n.hero.root); } catch { pr = null; }
+  openDlg({ name: n.def.name, role: n.def.role, portrait: pr, text: 'Mostra o que você trouxe. Presa, couro, chifre, casco, cerne: material de elite. O resto eu tenho.', choices: ch, onAccept: () => {}, onTurnIn: () => {} });
 }
 const compendium = createCompendium({ where: () => zoneName(), day: () => dayIndex(), lvl: () => game.st.lvl });
 /* busca e captura: quem mentiu e fugiu se esconde longe; achá-lo e matá-lo pesa MAIS (+14) do que tudo o que se perdeu */
@@ -976,7 +1021,17 @@ game.setOnYield((e, decide) => {
     xp: (f) => game.gainXp(Math.round(game.xpNeed() * f)), tome: () => inv.add('tome', 1), hurt: (f) => game.damage(Math.round(game.st.hpMax * f), heroPosNow()),
     kill: () => { feats.bump('executed'); breakVow('misericordia'); decide(true); }, spare: () => { feats.bump('spared'); decide(false); }, record: (r) => { compendium.add(r); if (/recusou o suborno/i.test(r.title)) feats.bump('bribe_no'); if (/vendeu a sua nobreza/i.test(r.title)) feats.bump('bribe_yes'); }, fled: () => startHunt(e.type, e.def.name, e.def.lvl ?? 1), sealed: !profile?.eye });
 });
-game.setOnKill((t, e) => { featKill(t, e); eventos.onKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
+/* materiais de elite (25/10): bicho elite (maior que o normal, ou com nome próprio) deixa couro, presa, chifre, casco ou cerne
+   — só com eles o Mestre-Forjador Brokki, em Brasaforja, forja as peças lendárias */
+const ELITE_MATS: Partial<Record<EnemyType, [string, string]>> = { wolf: ['el_fang', 'el_hide'], frostwolf: ['el_fang', 'el_hide'], coyote: ['el_fang', 'el_hide'], werewolf: ['el_hide', 'el_fang'], boar: ['el_horn', 'el_hide'], deer: ['el_horn', 'el_hoof'], treant: ['el_heart', 'el_horn'], rat: ['el_fang', 'el_hide'], bat: ['el_fang', 'el_hoof'] };
+function eliteDrop(t: EnemyType, e: { def: { name: string; scale?: number; lvl?: number }; pos: THREE.Vector3 }) {
+  const m = ELITE_MATS[t]; if (!m) return; const base = DEFS[t]; const elite = (e.def.scale ?? 1) > (base?.scale ?? 1) * 1.2 || (!!base && e.def.name !== base.name); if (!elite) return;
+  const got: string[] = [m[0]]; if (Math.random() < 0.55) got.push(m[1]); if (Math.random() < 0.25) got.push(m[0]);
+  for (const id of got) inv.add(id, 1); audio.coins?.(2);
+  for (let i = 0; i < 24; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.25, s1: 0.04, c0: 0xffe8a0, c1: 0xff8a2a, a: 1, g: 4 });
+  game.logMsg(`✦ ${e.def.name} deixou material de elite: ${got.map((id) => ITEMS_TBL[id]?.name ?? id).join(', ')}. O Mestre-Forjador Brokki, em Brasaforja, sabe o que fazer com isso.`, '#ffb060');
+}
+game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
   const what = `Você encontrou ${h.name} no esconderijo e terminou o que ele mesmo começou com a mentira.`; compendium.add({ title: `${h.name}: justiça tardia`, what, delta: 14, sealed: sealedH }); if (sealedH) game.logMsg('🌑 Em algum lugar, algo que ainda dorme guardou o que você fez.', '#a898c8');
   if (!sealedH) setTimeout(() => { eyeSees('Justiça tardia.', what, 'Você foi enganado uma vez, e pagou por isso. Mas não deixou a mentira vencer: buscou, encontrou e cumpriu o seu papel. A ingenuidade se apaga diante da persistência.', 14); const d = quests.q.active[h.qid] ? quests.offers('O Olho') : null; void d; }, 600);
   setTimeout(() => { const d2 = (quests as unknown as { turnins(n: string): { id: string }[] }).turnins('O Olho').find((x) => x.id === h.qid); if (d2) quests.turnIn(d2 as never); }, 900); } quests.onKill(t); if ((e as typeof e & { tag?: string }).tag === 'crypt') pourBlood(e); for (const fl of CRYPT_FLOORS) if (fl.elite && fl.elite.seal && e.def.name === fl.elite.name) { inv.add(fl.elite.seal, 1); chat.sys(`✦ ${fl.elite.name} caiu e deixou o ${ITEMS_TBL[fl.elite.seal]?.name ?? fl.elite.seal}.`); }
@@ -1981,7 +2036,7 @@ function enterCrypt(floor: number, p: (typeof city.props)[number]) {
 
 /* ---------- masmorras, cavernas e subsolos (masmorras.ts + dungeon3d.ts) ---------- */
 const dgs = createMasmorras({ scene, T, city: city as never, heightAt, regionLvl: (x, y) => { const r = regionAt(x, y); return [r.lo, r.hi]; }, game: game as never, particles, audio: audio as never,
-  heroPos: () => heroPosNow(), partySize: () => netRef?.party ? netRef.party.members.length : 1, say: (t) => chat.sys(t), fine,
+  heroPos: () => heroPosNow(), partySize: () => netRef?.party ? netRef.party.members.length : 1, partyLvl: () => { const P = netRef?.party; if (!P) return game.st.lvl; const ls = P.members.map((id) => id === netRef!.myId ? game.st.lvl : netRef!.infoOf(id)?.lvl ?? game.st.lvl); return ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length); }, say: (t) => chat.sys(t), fine,
   onClear: (d, first) => { quests.onDungeon(d.id); feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
 function enterDungeon(en: (typeof dgs.entrances)[number]) {
@@ -2406,7 +2461,7 @@ function findInter(): Inter | null {
       else if (p.kind === 'rock') { const R = rockState(p), pick = inv.tool('pick'), vein = veinOf(p), vn = vein === 2 ? ' · veio de prata' : vein === 1 ? ' · veio de ferro' : '';
         add(d - (p.w - 1) * 0.9, 2.6 + (p.w - 1) * 0.9, R.left <= 0 ? 'Pedra esgotada — volta com os turnos' : pick ? `E — Minerar (${Math.round(100 * (1 - R.left / R.max))}%)${vn} · ${pick.name}` : (pebbles.get(p) ?? 0) < 3 ? 'E — Juntar pedras soltas' : 'Precisa de uma picareta (espaço de ferramenta)', () => { if (pick) startWork('mine', p, px, pz); else gatherPebbles(p); }); }
       else if (p.kind === 'herb') { const H = HERBS[p.variant ?? 0], sh = inv.tool('shears'); if (!sh && H.tier === 0) add(d - 0.4, 2.4, `E — Colher ${H.name} com as mãos`, () => { hero.kneel = true; hero.act('cast'); setTimeout(() => { hero.kneel = false; }, 700); inv.add(H.id, 1, true); feats.bump('herbs', 1); profs.gain('herbalista', 2); objs.removeProp(p); (p as { gone?: boolean }).gone = true; picked.push({ gx: p.gx, gy: p.gy, at: Date.now() }); savePicked(); game.logMsg(`🌼 +1 ${H.name} (com alicate rende mais)`, '#9ad0a0'); }); else add(d - 0.4, 2.4, !sh ? `${H.name} — precisa de um alicate de ervas` : sh.tier < H.tier ? `🔒 ${H.name} — precisa de alicate ${'★'.repeat(H.tier)} (o seu é ${'★'.repeat(sh.tier)})` : `E — Colher ${H.name} · ${sh.name}`, () => { if (sh && sh.tier >= H.tier) startWork('herb', p, px, pz); else game.logMsg(!sh ? '✂ Sem um alicate você só arranca a raiz e mata a planta. Morwen, a Alquimista, vende alicates.' : `✂ ${H.name} murcha se cortada com metal ruim: precisa de alicate ${'★'.repeat(H.tier)}.`, '#ff9a8a'); }); }
-      else if (p.kind === 'campfire' && (inv.has('meat') || inv.has('fish'))) add(d, 3.2, `E — Assar ${inv.has('meat') ? 'carne' : 'peixe'}`, () => { const raw = inv.has('meat') ? 'meat' : 'fish'; inv.take(raw); game.logMsg('Assando...', '#ffb060'); setTimeout(() => inv.add(raw === 'meat' ? 'cooked' : 'fishc', 1), 1800); });
+      else if (p.kind === 'campfire' && (inv.has('meat') || inv.has('fish'))) add(d, 3.2, `E — Assar ${inv.has('meat') ? 'carne' : 'peixe'} (${inv.count('meat') + inv.count('fish')})`, () => roastAt((p.gx + 0.5) * T, (p.gy + 0.5) * T));
     }
     for (const e of game.enemies.list) { const ec = e as typeof e & { corpse?: number; skinned?: boolean }; if (e.state !== 'dead' || !e.active || !ec.corpse || ec.skinned || !SKIN[e.type]) continue; const dC = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (dC > 3.2) continue;
       const S = SKIN[e.type]!, kn = inv.tool('knife'); add(dC - 0.3, 3.0, !kn ? `${e.def.name} — precisa de uma faca de caça` : kn.tier < (S.tier ?? 1) ? `🔒 ${e.def.name} — só uma faca de prata (★★★★) atravessa esse couro` : `E — Esfolar ${e.def.name} · ${kn.name}`, () => { if (kn && kn.tier >= (S.tier ?? 1)) startWork('skin', e, e.pos.x, e.pos.z); else game.logMsg(!kn ? '🔪 Sem uma faca, a carcaça fica para os corvos.' : '🔪 A lâmina escorrega no couro do lobisomem como em pedra. Só a prata.', '#ff9a8a'); }); }

@@ -57,6 +57,12 @@ export const ITEMS: Record<string, Item> = {
   ore_ag: { name: 'Minério de Prata', icon: '⚪', kind: 'res', col: 0xdde3ec, desc: 'Prata bruta. Caçadores de vampiros a disputam.', sell: 18 },
   gem: { name: 'Gema bruta', icon: '💎', kind: 'res', col: 0x7ad0ff, desc: 'Uma pedra que guarda luz. Joalheiros e magos a querem.', sell: 40 },
   hide_f: { name: 'Couro fino', icon: '🟧', kind: 'res', col: 0xb0703a, desc: 'Pele tirada inteira, sem rasgo. Vale o triplo.', sell: 18 },
+  /* materiais de elite (25/10): só caem de bichos elite; o Mestre-Forjador de Brasaforja transforma em peças lendárias */
+  el_hide: { name: 'Couro de Elite', icon: '🟫', kind: 'res', col: 0x7a4a2a, desc: 'Couro grosso de um bicho que mandava na matilha. Não rasga, não fura, não esquece.', sell: 120 },
+  el_fang: { name: 'Presa Alfa', icon: '🦷', kind: 'res', col: 0xf0e8d0, desc: 'A presa de quem comandava os outros. Ainda corta.', sell: 110 },
+  el_horn: { name: 'Chifre Ancestral', icon: '🦌', kind: 'res', col: 0xc8a878, desc: 'Galhada ou presa de bicho velho de mata velha. Dura como ferro rúnico.', sell: 120 },
+  el_hoof: { name: 'Casco de Ferro', icon: '🐾', kind: 'res', col: 0x5a5a5a, desc: 'Casco que pisou pedra a vida inteira. Os anões fazem bota disso.', sell: 100 },
+  el_heart: { name: 'Cerne Vivo', icon: '🪵', kind: 'res', col: 0x6a8a3a, desc: 'O coração de madeira de um Guardião da Mata. Ainda pulsa, devagar.', sell: 160 },
   hide_w: { name: 'Couro de lobisomem', icon: '🟪', kind: 'res', col: 0x4a3a4a, desc: 'Grosso como casca. Só a prata o tira do corpo.', sell: 60 },
   herb_g: { name: 'Folha-de-Prata', icon: '🌿', kind: 'res', col: 0x9ad0a0, desc: 'Erva comum dos campos. Base de quase toda poção.', sell: 2 },
   herb_s: { name: 'Cogumelo-Lamparina', icon: '🍄', kind: 'res', col: 0xd0a04a, desc: 'Brilha fraco no escuro do pântano e da mata.', sell: 4 },
@@ -142,7 +148,7 @@ interface St {
   atk: number; def: number; dmgFlat: number; crit: number; leech: number; regen: number; move: number; xpMul: number; goldMul: number;
   points: number; attrs: Record<Attr, number>; sp: Set<string>; recalc: (() => void) | null;
 }
-interface GameLike { st: St; logMsg(t: string, c?: string): void; drinkBuff?(id: string): void; snd?(k: 'coins' | 'error' | 'pickup' | 'click'): void }
+interface GameLike { st: St; logMsg(t: string, c?: string): void; drinkBuff?(id: string): void; snd?(k: 'coins' | 'error' | 'pickup' | 'click' | 'swap'): void }
 
 export const STACK = 20;
 /** até 7 bolsas além da mochila (8 a 128 espaços cada, conforme o nível, os lugares e o comércio entre jogadores) */
@@ -261,7 +267,15 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     { const g0 = gearBag[i]; if (st.lvl < reqLvl(g0)) { game.logMsg(`Você precisa do nível ${reqLvl(g0)} para usar ${g0.name}.`, '#ff9a8a'); game.snd?.('error'); return; } { const why = hooks.canWear?.(g0); if (why) { game.logMsg(why, '#ff9a8a'); game.snd?.('error'); return; } } if (g0.fac && myFac() !== g0.fac) { game.logMsg(`⚑ Só quem jurou ${FAC[g0.fac].name} pode vestir este brasão. Os lados se escolhem no nível ${FAC_LVL}.`, '#ff9a8a'); game.snd?.('error'); return; } }
     const g = gearBag.splice(i, 1)[0], tg = slotFor(g), old = eqG[tg]; eqG[tg] = g; if (old) gearBag.push(old);
     if ((g.shop || g.fac) && !g.bound) { g.bound = true; game.logMsg(`🔒 ${g.name} agora está vinculado a você (não vai mais ao Leilão).`, '#b9c6e0'); }
-    game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save();
+    game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save(); swapFx(tg, !!old);
+  }
+  /** troca visível (25/10): a peça some do espaço por meio segundo e volta brilhando, com som de troca */
+  function swapFx(slot: Slot, had: boolean) {
+    game.snd?.('swap');
+    const el = ch.querySelector(`.eqs.${slot}`) as HTMLElement | null; if (!el) return;
+    el.classList.remove('swapin'); el.classList.add('swapout'); void el.offsetWidth;
+    setTimeout(() => { const e2 = ch.querySelector(`.eqs.${slot}`) as HTMLElement | null; if (!e2) return; e2.classList.remove('swapout'); void e2.offsetWidth; e2.classList.add('swapin'); setTimeout(() => e2.classList.remove('swapin'), 650); }, 500);
+    void had;
   }
   function unequip(slot: Slot) { const g = eqG[slot]; if (!g) return; eqG[slot] = null; gearBag.push(g); recalc(); render(); save(); }
   function craft(rid: string) {

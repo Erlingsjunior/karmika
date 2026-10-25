@@ -173,6 +173,8 @@ export class AudioEngine {
   /** a faísca da alma subindo: um zumbido que vibra e dispara para o agudo */
   soulRise(delay = 0, hum = 2.4) { if (!this.ctx) return; if (hum > 0) { this.tone(196, 247, hum + 0.1, 0.035, 'sine', delay, this.sfx, 0, 0.8); this.tone(392, 494, hum, 0.012, 'triangle', delay + hum * 0.5, this.sfx, 0, 0.4); } this.tone(330, 2600, 0.9, 0.05, 'sine', delay + hum, this.sfx, 0, 0.02); this.tone(660, 5200, 0.8, 0.02, 'triangle', delay + hum + 0.02, this.sfx, 0, 0.02); }
   error() { if (!this.ctx) return; this.tone(220, 180, 0.12, 0.05, 'square'); this.tone(180, 150, 0.16, 0.04, 'square', 0.12); }
+  /** trocar uma peça de equipamento: couro raspando, a fivela batendo e o metal assentando */
+  swap() { if (!this.ctx) return; const f = this.burst('bandpass', 1400, 1.2, 0.18, 0.09, 1.1); f.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.16); this.metal(2100, 0.16, 0.035, 0.16); this.burst('lowpass', 380, 0.8, 0.09, 0.08, 1, this.sfx, 0, 0.002); this.metal(1500, 0.3, 0.03, 0.34); }
   click() { if (!this.ctx) return; this.burst('bandpass', 1800, 3, 0.03, 0.05); }
   pickup() { if (!this.ctx) return; this.tone(880, 1320, 0.08, 0.04, 'triangle'); this.tone(1320, 1760, 0.1, 0.03, 'sine', 0.06); }
   levelup() { if (!this.ctx) return; for (const [f, d] of [[392, 0], [523, 0.12], [659, 0.24], [784, 0.36], [1047, 0.5]] as [number, number][]) this.tone(f, f, 0.8, 0.05, 'triangle', d); this.burst('highpass', 3000, 0.7, 1.2, 0.03); }
