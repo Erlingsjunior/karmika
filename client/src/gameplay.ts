@@ -238,7 +238,7 @@ export function createGameplay(d: GameplayDeps) {
   /* ---- nível de classe (caminho): segunda barra abaixo do XP ---- */
   const clsNeed = (l: number) => 90 + 70 * l + 9 * l * l;
   let cls: { name: string; lvl: number; xp: number; past?: { name: string; lvl: number }[] } = { name: 'Humano', lvl: 1, xp: 0, past: [] };
-  try { const s0 = JSON.parse(localStorage.getItem('karmika.class.v1') || 'null'); if (s0?.lvl) cls = s0; } catch { /* */ }
+  try { const s0 = JSON.parse(localStorage.getItem('karmika.class.v1') || 'null'); if (s0?.name && typeof s0.lvl === 'number') cls = s0; } catch { /* */ } // antes era s0?.lvl: quem mudava de classe e recarregava antes do 1º nível de classe voltava a Humano
   /** a alma filtra o XP: Dívida Kármica (come uma parte) e o eco da vida passada (multiplica o XP de classe) */
   let xpFilter: ((n: number, c: { name: string; lvl: number }) => { n: number; paid: number; cmul: number }) | null = null;
   function gainXp(n0: number, p: THREE.Vector3) {

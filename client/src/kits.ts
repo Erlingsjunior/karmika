@@ -1,4 +1,7 @@
-import type { Race } from '@karmika/shared';
+import type { Race as BaseRace } from '@karmika/shared';
+/** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
+export type KitKey = BaseRace | 'tecno';
+type Race = KitKey;
 
 export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie';
 export interface AimDef { kind: 'circle' | 'cone' | 'line'; radius: number; range: number; color: number }
@@ -65,7 +68,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };
-export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' ? RESOURCES.energia : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
+export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
 /* ---- Humano puro: luta com o que tiver na mão, sem magia de deus nenhum. Usa os mesmos movimentos da escola nórdica (sem gelo, raio nem lobo),
    com nomes e jeito de gente comum. Feras, armadilhas e construção entram depois (ver arvore-humano.md) ---- */
 { const N = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
@@ -102,6 +105,34 @@ const HSVG: Record<string, string> = {
     valkyrie: `<svg viewBox="0 0 32 32"><circle cx="13" cy="9" r="3" fill="#d8b08a" stroke="#5a3a1a"/><path d="M8 24c1-6 3-10 7-11s6 3 5 7" fill="none" stroke="#8a6a4a" stroke-width="2.6" stroke-linecap="round"/><path d="M4 18a12 12 0 0 0 22 4" fill="none" stroke="#e8d8b0" stroke-width="1.6" stroke-dasharray="2 2"/><path d="M24 19l2 3-3 1" fill="none" stroke="#e8d8b0" stroke-width="1.6"/></svg>`,
   };
   KITS.human = H.map(([k, id, lvl, name, tip]) => { const b = N(id); return { ...b, k, lvl, name, tip, svg: HSVG[id] ?? b.svg, c: '#d8c8a0', cost: id === 'bash' ? 15 : b.cost }; }); } // tudo além do golpe e da guarda custa Determinação
+
+/* ---- Tecnocrata formado (humano, elfo ou anão que passou pela Academia de Askavik, nível 30+): continua com o corpo e a arma que tem,
+   mas tudo o que aprende vem da bancada da Arquiteta Ylva — choque, fogo químico, drones, minas e o exoesqueleto. Nada de runas nem de Odin.
+   Com uma arma da Academia na mão (metralhadora, lança-chamas ou lança-veneno), o golpe básico vira tiro. ---- */
+{ const T = (id: string): SkillDef => KITS.technocrat!.find((x) => x.id === id) ?? { k: '', id: id as SkillId, lvl: 1, c: '#7affd0', name: id, cost: 0, tip: '', svg: '' }, Nn = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
+  const TS: Record<string, string> = {
+    combo: `<svg viewBox="0 0 32 32"><path d="M5 22l12-12 3 3-12 12z" fill="#9aa4b4" stroke="#2a3040" stroke-width="1.2"/><path d="M17 10l4-4 5 5-4 4z" fill="#3a4a5a" stroke="#6ae0ff" stroke-width="1.2"/><path d="M22 4l2-2M26 8l2-2M25 13l3 1" stroke="#6ae0ff" stroke-width="1.6" stroke-linecap="round"/><circle cx="21.5" cy="10.5" r="1.6" fill="#bff4ff"/></svg>`,
+    guard: `<svg viewBox="0 0 32 32"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="#1c2a3a" stroke="#6ae0ff" stroke-width="1.6"/><path d="M10 12h12M10 16h12M12 20h8" stroke="#4de3ff" stroke-width="1.2" opacity=".8"/><circle cx="16" cy="9" r="1.6" fill="#bff4ff"/></svg>`,
+    thunder: `<svg viewBox="0 0 32 32"><path d="M8 28v-9l-2-4 3-5h8l3 5-2 4v9z" fill="#4a5262" stroke="#1c2230" stroke-width="1.3"/><path d="M9 15h12" stroke="#6ae0ff" stroke-width="1.4"/><circle cx="12" cy="20" r="1.2" fill="#6ae0ff"/><circle cx="17" cy="20" r="1.2" fill="#6ae0ff"/><path d="M22 3l-4 6h4l-3 6" fill="none" stroke="#bff4ff" stroke-width="1.8" stroke-linejoin="round"/><path d="M26 6l-2 3h2l-2 3" fill="none" stroke="#6ae0ff" stroke-width="1.3"/></svg>`,
+    medic: `<svg viewBox="0 0 32 32"><ellipse cx="16" cy="15" rx="7" ry="5" fill="#2a3444" stroke="#7affd0" stroke-width="1.5"/><path d="M4 9h7M21 9h7" stroke="#9aa4b4" stroke-width="1.8"/><path d="M7 7v4M25 7v4" stroke="#9aa4b4" stroke-width="1.4"/><path d="M16 12v6M13 15h6" stroke="#7affd0" stroke-width="2.2"/><path d="M12 24q4 4 8 0" fill="none" stroke="#7affd0" stroke-width="1.4" stroke-dasharray="2 2"/></svg>`,
+    mark: `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="#ff5a5a" stroke-width="1.4"/><circle cx="16" cy="16" r="5" fill="none" stroke="#ff5a5a" stroke-width="1.2" stroke-dasharray="2 2"/><path d="M16 3v7M16 22v7M3 16h7M22 16h7" stroke="#ffb0b0" stroke-width="1.4"/><circle cx="16" cy="16" r="1.8" fill="#ff3030"/><path d="M2 28L14 18" stroke="#ff3030" stroke-width="1" opacity=".7"/></svg>`,
+    kick: `<svg viewBox="0 0 32 32"><path d="M6 6h8v12l8 2v6H6z" fill="#4a5262" stroke="#1c2230" stroke-width="1.3"/><path d="M6 22h16" stroke="#6ae0ff" stroke-width="1.4"/><rect x="9" y="8" width="3" height="9" fill="#9aa4b4"/><path d="M24 17l5-2M25 21h5M24 25l5 2" stroke="#bff4ff" stroke-width="1.8" stroke-linecap="round"/></svg>`,
+  };
+  const TK: [string, string, number, number, string, string, 'T' | 'N'][] = [
+    ['1', 'combo', 1, 0, 'Golpe ou Disparo', 'Com uma arma da Academia na mão (metralhadora, lança-chamas ou lança-veneno), atira. Com qualquer outra, golpeia. A Energia vem das baterias e recarrega sozinha.', 'N'],
+    ['2', 'guard', 1, 0, 'Bloqueio Reforçado', 'Segure: bloqueia à frente com o escudo ou com a arma. Bloqueio perfeito devolve Energia.', 'N'],
+    ['3', 'thunder', 1, 25, 'Manopla de Tesla', 'Liga a bobina do antebraço: os próximos 3 golpes descarregam choque no alvo (Bronze: 4). Prata: o arco salta para outro inimigo; Ouro: a descarga atinge todos em volta.', 'N'],
+    ['4', 'shocktrap', 5, 25, 'Mina de Choque', 'Marca o chão e arremessa uma mina: quem pisar fica preso e eletrocutado por 2 s. Até 4 no chão.', 'T'],
+    ['5', 'medic', 10, 40, 'Drone Médico', 'Solta um drone de bolso que orbita em volta de você por 10 s: cura 40% da vida e apaga queimaduras.', 'T'],
+    ['6', 'flame', 18, 30, 'Lança-Chamas de Pulso', 'Marca um cone: o bocal do antebraço cospe fogo químico por 4,5 s. Ande e mire com o mouse.', 'T'],
+    ['7', 'poison', 28, 30, 'Granada Corrosiva', 'Marca o chão: a cápsula estoura numa poça ácida por 7 s que corrói e retarda quem pisar.', 'T'],
+    ['8', 'railgun', 42, 45, 'Canhão de Trilhos', 'Marca uma linha: 1 s carregando as bobinas e um disparo que atravessa tudo com dano enorme.', 'T'],
+    ['9', 'mark', 60, 20, 'Mira Laser', 'Aponta o laser no inimigo mais próximo: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.', 'N'],
+    ['0', 'mech', 85, 60, 'Exoesqueleto', 'Veste o exoesqueleto por 12 s: tamanho +25%, dano ×2 e +40% de defesa.', 'T'],
+    ['⇧1', 'kick', 3, 10, 'Chute Pneumático', 'A bota de pistão dispara contra o inimigo à frente: atordoa, empurra e interrompe golpes e magias em preparo.', 'N'],
+  ];
+  KITS.tecno = TK.map(([k, id, lvl, cost, name, tip, from]) => { const b = from === 'T' ? T(id) : Nn(id); return { ...b, k, lvl, cost, name, tip, c: id === 'medic' ? '#7affd0' : id === 'mark' ? '#ff7a7a' : from === 'T' ? b.c : '#6ae0ff', svg: TS[id] ?? b.svg }; });
+  for (const s of KITS.tecno) if (!s.svg) throw new Error('kit tecno sem ícone: ' + s.id); }
 
 export const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 export function kitOf(race: Race) { return KITS[race] ?? KITS.nordic!; }

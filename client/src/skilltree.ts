@@ -1,6 +1,7 @@
 /** Árvore Kármica de magias: 1 ponto por nível, caminhos que abrem magias, até 10 pontos por magia (Bronze 3, Prata 6, Ouro 10).
  *  Cada ponto deixa a magia mais forte, longa e larga; a cada 5 pontos ela sobe de "tier" e muda a apresentação. */
-import type { Race } from '@karmika/shared';
+import type { KitKey } from './kits';
+type Race = KitKey;
 import { KITS, type SkillDef, type SkillId, resOf, keyOf } from './kits';
 
 export const MAX_RANK = 10, PER_LEVEL = 1, REQ_RANK = 2; // 1 ponto por nível; ranque 10 no máximo (limitado também pelo nível)
@@ -31,6 +32,13 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'stonerune', col: 3, row: 0, req: [['heal', REQ_RANK]] }, { id: 'hammerthrow', col: 3, row: 2, req: [['slam', REQ_RANK]] },
     { id: 'mountain', col: 4, row: 0, req: [['stonerune', REQ_RANK]] }, { id: 'forge', col: 4, row: 2, req: [['hammerthrow', REQ_RANK]] },
     { id: 'avatar', col: 5, row: 1, req: [['mountain', 5], ['forge', 5]] },
+  ],
+  tecno: [ // Tecnocrata formado: Engenharia de Campo (choque), Suporte (drone, minas), Química (fogo e ácido); no fim, o exoesqueleto
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'thunder', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'shocktrap', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'kick', col: 2, row: 0, req: [['thunder', REQ_RANK]] }, { id: 'medic', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'flame', col: 2, row: 2, req: [['shocktrap', REQ_RANK]] },
+    { id: 'mark', col: 3, row: 0, req: [['kick', REQ_RANK]] }, { id: 'railgun', col: 3, row: 1, req: [['medic', REQ_RANK]] }, { id: 'poison', col: 3, row: 2, req: [['flame', REQ_RANK]] },
+    { id: 'mech', col: 4, row: 1, req: [['railgun', 5], ['mark', 5], ['poison', 5]] },
   ],
   technocrat: [
     { id: 'combo', col: 0, row: 1, req: [] },

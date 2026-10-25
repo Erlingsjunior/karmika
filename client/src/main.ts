@@ -30,7 +30,7 @@ import { isTool as isToolId } from './tools';
 const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '❔' };
 import { createAim, type AimSpec } from './aim';
 import { setCulture, genGear, RARITY, ONLY_NAME, tipCtx, type Slot, type Only } from './loot';
-import { applyKit, refreshLocks, skillAt, barRows, setBarRows, resOf, type SkillDef } from './kits';
+import { applyKit, refreshLocks, skillAt, barRows, setBarRows, resOf, type SkillDef, type KitKey } from './kits';
 import { createSkillTree } from './skilltree';
 import { buildCathedralFloor, type CathedralFloor } from './cathedral3d';
 import { attachSkin, type SkinDef } from './skin3d';
@@ -250,7 +250,7 @@ const treeTitle = () => { let n = 'Humano'; try { n = game.classInfo.name || n; 
 /** armas de caminho (loot.ts, Only): o Caçador de Demônios e o Tecnocrata depois da prova do mestre; os anões pela raça */
 function walksPath(o: Only): boolean { if (o === 'dwarf') return profile?.origin === 'dwarf'; try { return profile?.path === o && quests.q.done.includes('v_' + o); } catch { return false; } }
 tipCtx.can = walksPath;
-const kitRace = (): Race => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
+const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } if (n === 'Tecnocrata' && state.race !== 'technocrat') return 'tecno'; return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
 const tree = createSkillTree(kitRace, () => game.st.lvl, (t, c) => game.logMsg(t, c), treeTitle);
 game.setSkillScale((id) => tree.scale(id));
 let treeSel: string | null = null;
