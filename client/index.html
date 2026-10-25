@@ -616,7 +616,11 @@
   #workbar.on { opacity: 1; transform: translateX(-50%); } #workbar b { color: #ffe08a; font-weight: normal; } #workbar i { color: #ffd24a; font-style: normal; } #workbar small { color: #8a7a60; }
   #workbar .wb { height: 7px; margin-top: 5px; background: #000a; border: 1px solid #3a2c1a; } #workbar .wb i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #8a6a2a, #ffd24a); transition: width .3s; }
 
-  .olhopn { width: min(640px, 94vw); } .relpn { width: min(520px, 94vw); } .relpn .rmap { display: block; width: 360px; height: 360px; margin: 10px auto 6px; border: 1px solid #7d5a2c; image-rendering: pixelated; cursor: crosshair; } .relpn .rl { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; } .relpn .rl button { text-align: left; background: rgba(0,0,0,.3); border: 1px solid #3a5a7a; color: #cfe6ff; padding: 8px 12px; cursor: pointer; font-family: Georgia, serif; display: flex; justify-content: space-between; } .relpn .rl button:hover { border-color: #8ad0ff; background: rgba(74,154,255,.12); } .relpn .rl small { display: inline; color: #8ad0ff; }
+  .olhopn { width: min(640px, 94vw); } .relpn { width: min(600px, 96vw); max-height: 96vh; overflow-y: auto; } .relpn .rmapw { position: relative; width: min(520px, 88vw); margin: 10px auto 6px; } .relpn .rmap { display: block; width: 100%; aspect-ratio: 1; border: 1px solid #7d5a2c; image-rendering: pixelated; cursor: grab; touch-action: none; } .relpn .rmap:active { cursor: grabbing; }
+  .relpn .rzoom { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; } .relpn .rzoom button { width: 30px; height: 30px; font: 700 18px Georgia, serif; color: #ffe08a; background: rgba(14,10,6,.88); border: 1px solid #a07a3a; border-radius: 5px; cursor: pointer; padding: 0; } .relpn .rzoom button:hover { border-color: #ffd24a; }
+  .relpn .rtabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; } .relpn .rtabs button { flex: 1; padding: 6px 4px; font: 600 11px Cinzel, serif; color: #c8b890; background: rgba(20,14,10,.9); border: 1px solid #5a4630; border-radius: 4px; cursor: pointer; } .relpn .rtabs button.on { color: #ffe08a; border-color: #d9a24f; box-shadow: inset 0 -2px 0 #d9a24f; }
+  .relpn .rl button { position: relative; padding-right: 40px; } .relpn .rl button.sel { border-color: #fff; } .relpn .rl button i[data-pin] { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-style: normal; font-size: 16px; opacity: .8; } .relpn .rl button i[data-pin]:hover { opacity: 1; transform: translateY(-50%) scale(1.2); }
+  .relpn .rl { max-height: 210px; overflow-y: auto; } .relpn .rl { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; } .relpn .rl button { text-align: left; background: rgba(0,0,0,.3); border: 1px solid #3a5a7a; color: #cfe6ff; padding: 8px 12px; cursor: pointer; font-family: Georgia, serif; display: flex; justify-content: space-between; } .relpn .rl button:hover { border-color: #8ad0ff; background: rgba(74,154,255,.12); } .relpn .rl small { display: inline; color: #8ad0ff; }
   /* nível 20: despertar do Olho */
   #awaken { position: fixed; inset: 0; z-index: 40; background: radial-gradient(circle at 50% 45%, #1a1208, #050308 70%); display: grid; place-items: center; opacity: 0; transition: opacity .9s; pointer-events: none; overflow: hidden; }
   #awaken.on { opacity: 1; } #awaken.off { opacity: 0; }
@@ -702,16 +706,17 @@
   /* instinto de classe (24/10) */
   #stances #instbtn { position: relative; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; vertical-align: top; color: #b8a27a; } #stances #instbtn svg { width: 24px; height: 24px; margin: 0; }
   #stances #instbtn kbd { position: absolute; right: -4px; bottom: -4px; font: 700 8.5px monospace; color: #c8b890; background: #1c130b; border: 1px solid #5a4a30; border-radius: 3px; padding: 0 2px; line-height: 11px; }
-  #stances #instbtn.on { color: var(--ic); border-color: var(--ic); box-shadow: 0 0 10px color-mix(in srgb, var(--ic) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--ic) 35%, transparent); animation: instpulse 2.4s ease-in-out infinite; }
+  #stances #instbtn.on { color: var(--ic); border-color: var(--ic); box-shadow: 0 0 6px color-mix(in srgb, var(--ic) 55%, transparent); animation: none; }
   /* barra de Posturas e Instinto: em cima do lado direito da barra de magias (25/10) */
-  #stances { position: fixed; z-index: 7; display: flex; gap: 6px; align-items: center; pointer-events: auto; }
-  #stances button { position: relative; width: 40px; height: 40px; padding: 0; display: grid; place-items: center; border-radius: 7px; background: linear-gradient(180deg, rgba(34,24,16,.92), rgba(14,10,6,.92)); border: 1px solid #6a5030; cursor: pointer; }
-  #stances #instbtn { margin-right: 8px; width: 40px; height: 40px; border-radius: 50%; } #stances #instbtn svg { width: 26px; height: 26px; }
-  #stances .stance { color: var(--sc); } #stances .stance svg { width: 24px; height: 24px; filter: drop-shadow(0 0 2px rgba(0,0,0,.8)); }
-  #stances .stance:hover { border-color: var(--sc); }
-  #stances .stance.on { border: 2px solid var(--sc); box-shadow: 0 0 12px color-mix(in srgb, var(--sc) 70%, transparent), inset 0 0 10px color-mix(in srgb, var(--sc) 35%, transparent); transform: translateY(-3px); }
-  #stances .stance.locked { color: #6a6050; filter: grayscale(.8); opacity: .55; cursor: help; } #stances .stance .lk { position: absolute; right: 1px; bottom: 0; font-size: 10px; font-style: normal; }
-  #stances .stance .tr { position: absolute; left: 0; right: 0; bottom: -12px; font: 600 8px Cinzel, serif; color: var(--sc); font-style: normal; text-transform: uppercase; letter-spacing: .06em; }
+  #stances { position: fixed; z-index: 7; display: flex; gap: 3px; align-items: center; pointer-events: auto; }
+  #stances button { position: relative; width: 24px; height: 24px; padding: 0; display: grid; place-items: center; border-radius: 4px; background: transparent; border: 1px solid rgba(201,162,74,.28); cursor: pointer; }
+  #stances #instbtn { margin-right: 5px; width: 24px; height: 24px; border-radius: 4px; box-shadow: none; animation: none; } #stances #instbtn svg { width: 17px; height: 17px; } #stances #instbtn kbd { display: none; }
+  #stances .stance { color: var(--sc); opacity: .8; } #stances .stance svg { width: 15px; height: 15px; }
+  #stances .stance:hover { opacity: 1; border-color: var(--sc); }
+  #stances .stance.on { opacity: 1; border-color: var(--sc); box-shadow: 0 0 6px color-mix(in srgb, var(--sc) 55%, transparent); }
+  #stances button { backdrop-filter: none; } #stances #instbtn:not(.on) { color: #b8a27a; }
+  #stances .stance.locked { color: #5a5244; filter: grayscale(.9); opacity: .4; cursor: help; } #stances .stance .lk { display: none; }
+  #stances .stance .tr { position: absolute; right: -2px; top: -2px; width: 6px; height: 6px; border-radius: 50%; background: var(--sc); font-size: 0; box-shadow: 0 0 4px var(--sc); }
   @keyframes instpulse { 50% { box-shadow: 0 0 16px color-mix(in srgb, var(--ic) 80%, transparent), inset 0 0 10px color-mix(in srgb, var(--ic) 45%, transparent); } }
   .instcard { display: flex; gap: 10px; align-items: center; margin: 6px 0 8px; padding: 8px 10px; border: 1px solid #4a3a24; border-radius: 8px; background: rgba(20,14,8,.7); }
   .instcard i { font-style: normal; font-size: 26px; color: var(--ic); opacity: .5; } .instcard.on { border-color: var(--ic); box-shadow: inset 0 0 14px color-mix(in srgb, var(--ic) 22%, transparent); } .instcard.on i { opacity: 1; text-shadow: 0 0 10px var(--ic); }

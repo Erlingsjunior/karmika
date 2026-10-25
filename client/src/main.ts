@@ -948,9 +948,8 @@ function renderStances() { if (!stanceSys) return; const L = stanceSys.list(), c
     b.addEventListener('click', (e) => { e.stopPropagation(); stanceSys!.pick(s.id); renderStances(); }); stanceBar.appendChild(b); } }
 function placeStances() { const rows = document.querySelectorAll('#skills .srow'), ref = (rows[0]?.children[5] ?? null) as HTMLElement | null, q = document.getElementById('quick');
   if (!ref) return; const r = ref.getBoundingClientRect(), last = (rows[0]?.children[9] ?? ref) as HTMLElement, rr = last.getBoundingClientRect(), w = stanceBar.offsetWidth || 232;
-  const left = Math.max(r.left, rr.right - w); stanceBar.style.left = `${Math.round(left)}px`; let top = r.top - 48;
-  if (q) { const qr = q.getBoundingClientRect(); top = qr.bottom - 40; if (qr.right > left - 6 && qr.width > 0) top = qr.top - 48; } /* nunca por cima da barra de itens rápidos */
-  stanceBar.style.top = `${Math.round(top)}px`; }
+  const left = rr.right - w; stanceBar.style.left = `${Math.round(left)}px`; /* discreta, logo acima da linha dourada, encostada no orbe */
+  stanceBar.style.top = `${Math.round(r.top - 34)}px`; void q; }
 addEventListener('resize', () => setTimeout(placeStances, 50));
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; stanceBar.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
@@ -2365,7 +2364,7 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
+if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
 function resumeSoul() { if (!profile || limiar.active) return; if (soul.s.pending === 'choose') unbind(); else if (soul.s.pending === 'reborn') unbind(undefined, 'reborn'); }
 /* os fôlegos ficam à vista, em cima do orbe da vida (só depois que o Olho abre: antes o Fio não se gasta) */
 setInterval(() => { const el = document.getElementById('folegos'); if (!el) return; soul.regen(); const on = !!profile?.eye && game.st.lvl >= FRAY_LVL;
@@ -2524,22 +2523,60 @@ function touchRelic(name: string) {
   if (relicsKnown.size === 1) game.logMsg('Encontre outra relíquia para viajar entre elas.', '#b9c6e0');
 }
 const relicNameAt = (gx: number, gy: number) => city.relics.find((r) => r.x === gx && r.y === gy)?.name ?? null;
+/* lugares que você já descobriu (chegou perto): cidades, vilas, masmorras e lugares — a lista rápida das Relíquias usa isto */
+const discovered = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.descobertos.v1') || '[]') as string[]; } catch { return []; } })());
+setInterval(() => { if (inside) return; const hx = state.fx, hy = state.fy; let ch = false; const see = (n: string, x: number, y: number, r: number) => { if (!discovered.has(n) && Math.hypot(x - hx, y - hy) < r) { discovered.add(n); ch = true; } };
+  for (const st of city.settlements) see(st.name, st.x, st.y, st.radius + 10); for (const p of city.pois) see(p.name, p.x, p.y, 14); try { for (const e of dgs.entrances) see(e.d.name, e.x, e.y, 14); } catch { /* */ }
+  if (ch) try { localStorage.setItem('karmika.descobertos.v1', JSON.stringify([...discovered])); } catch { /* */ } }, 1000);
+let relTab: 'rel' | 'vil' | 'dg' | 'poi' = 'rel', relZoom = 1, relCx = 0.5, relCy = 0.5, relSel: { x: number; y: number; name: string } | null = null;
 function openRelics(from: string) {
-  const others = city.relics.filter((r) => knowsRelic(r.name) && r.name !== from);
-  relicOpen = true;
-  relicEl.innerHTML = `<div class="pn relpn"><h2>✦ Relíquias dos Caminhantes <button data-x>✕</button></h2><small>Você está em <b>${from}</b>. ${others.length ? 'Clique numa relíquia dourada no mapa (ou na lista) para viajar.' : 'Nenhuma outra relíquia conhecida ainda — as cinzentas no mapa ainda não foram tocadas.'}</small><canvas class="rmap" width="360" height="360"></canvas><div class="rl">${others.map((r) => `<button data-go="${r.name}"><b>${r.name}</b><small>${fmtDist(Math.hypot(r.x - state.fx, r.y - state.fy) * T)}</small></button>`).join('')}</div><small class="ft">Esc fecha</small></div>`;
+  const others = city.relics.filter((r) => knowsRelic(r.name) && r.name !== from), here = city.relics.find((r) => r.name === from);
+  relicOpen = true; relZoom = 1; relCx = 0.5; relCy = 0.5; relSel = null;
+  const S = 520;
+  const places = () => { const h0 = hereT(), dist = (x: number, y: number) => Math.hypot(x - h0.x, y - h0.y) * T;
+    const vil = city.settlements.filter((q) => discovered.has(q.name)).map((q) => ({ name: q.name, x: q.x, y: q.y, sub: q.kind === 'city' ? 'Cidade' : 'Vila', d: dist(q.x, q.y) }));
+    let dg: { name: string; x: number; y: number; sub: string; d: number }[] = []; try { dg = dgs.entrances.filter((e) => discovered.has(e.d.name)).map((e) => ({ name: e.d.name, x: e.x, y: e.y, sub: `${e.d.kind === 'grupo' ? 'Masmorra de grupo' : 'Caverna'} · Nv ${e.lvl[0]}–${e.lvl[1]}`, d: dist(e.x, e.y) })); } catch { /* */ }
+    const poi = city.pois.filter((q) => discovered.has(q.name)).map((q) => ({ name: q.name, x: q.x, y: q.y, sub: 'Lugar', d: dist(q.x, q.y) }));
+    return { vil: vil.sort((a, b) => a.d - b.d), dg: dg.sort((a, b) => a.d - b.d), poi: poi.sort((a, b) => a.d - b.d) }; };
+  const listHtml = () => { const P = places();
+    const tabs = `<div class="rtabs">${([['rel', `Relíquias (${others.length})`], ['vil', `Cidades e vilas (${P.vil.length})`], ['dg', `Masmorras (${P.dg.length})`], ['poi', `Lugares (${P.poi.length})`]] as const).map(([k, l]) => `<button data-rt="${k}" class="${relTab === k ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    const body = relTab === 'rel' ? (others.length ? others.map((r) => `<button data-go="${r.name}"><b>${r.name}</b><small>${fmtDist(Math.hypot(r.x - hereT().x, r.y - hereT().y) * T)} · viajar</small></button>`).join('') : '<em>Toque outra relíquia pelo mundo para viajar até ela.</em>')
+      : (() => { const L = P[relTab]; return L.length ? L.map((q) => `<button data-see="${q.x},${q.y}" data-nm="${q.name}" class="${relSel?.name === q.name ? 'sel' : ''}"><b>${q.name}</b><small>${q.sub} · ${fmtDist(q.d)}</small><i data-pin="${q.x},${q.y}" data-nm="${q.name}" title="Marcar no mapa e seguir a guia">🧭</i></button>`).join('') : '<em>Nenhum ainda. Os lugares entram aqui quando você chega perto deles.</em>'; })();
+    return tabs + `<div class="rl">${body}</div>`; };
+  relicEl.innerHTML = `<div class="pn relpn"><h2>✦ Relíquias dos Caminhantes <button data-x>✕</button></h2><small>Você está em <b>${from}</b>. ${others.length ? 'Clique numa relíquia dourada no mapa (ou na lista) para viajar.' : 'Nenhuma outra relíquia conhecida ainda — as cinzentas no mapa ainda não foram tocadas.'}</small>
+    <div class="rmapw"><canvas class="rmap" width="${S}" height="${S}"></canvas><div class="rzoom"><button data-z="1" title="Aproximar (roda do mouse)">+</button><button data-z="-1" title="Afastar">−</button><button data-z="0" title="Mapa inteiro">⤢</button></div></div>
+    <div class="rlist">${listHtml()}</div><small class="ft">Roda do mouse: zoom · arraste: mover o mapa · Esc fecha</small></div>`;
   relicEl.style.display = 'flex';
-  const cv = relicEl.querySelector('canvas.rmap') as HTMLCanvasElement, g = cv.getContext('2d')!, k = 360 / MMS;
-  const draw = () => {
-    g.imageSmoothingEnabled = false; g.clearRect(0, 0, 360, 360); g.drawImage(mmBase, 0, 0, 360, 360);
-    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, 0, 360, 360);
-    for (const r of city.relics) { const x = r.x * k, y = r.y * k, known = knowsRelic(r.name), here = r.name === from;
-      g.beginPath(); g.arc(x, y, here ? 7 : 5, 0, 6.283); g.fillStyle = here ? '#fff0bd' : known ? '#ffd24a' : '#6a6a72'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#000'; g.stroke();
-      if (known) { g.fillStyle = '#ffe9a0'; g.font = '600 9px Cinzel, serif'; g.textAlign = 'center'; g.fillText(r.name, x, y - 9); } }
-    const h0 = hereT(); g.beginPath(); g.arc(h0.x * k, h0.y * k, 3, 0, 6.283); g.fillStyle = '#ff6a4a'; g.fill();
-  };
-  draw();
-  cv.onclick = (e) => { const rc = cv.getBoundingClientRect(), mx = (e.clientX - rc.left) * (360 / rc.width), my = (e.clientY - rc.top) * (360 / rc.height); let best: typeof others[number] | null = null, bd = 14; for (const r of others) { const d = Math.hypot(r.x * k - mx, r.y * k - my); if (d < bd) { bd = d; best = r; } } if (best) travelRelic(best.name); else { const un = city.relics.find((r) => !knowsRelic(r.name) && Math.hypot(r.x * k - mx, r.y * k - my) < 10); if (un) game.logMsg('Relíquia ainda não tocada — vá até ela a pé para marcá-la.', '#b9c6e0'); } };
+  const cv = relicEl.querySelector('canvas.rmap') as HTMLCanvasElement, g = cv.getContext('2d')!;
+  /* mundo (casas do mapa) → tela, com zoom em volta do centro (relCx, relCy em 0–1) */
+  const view = () => { const vw = 1 / relZoom; relCx = Math.min(1 - vw / 2, Math.max(vw / 2, relCx)); relCy = Math.min(1 - vw / 2, Math.max(vw / 2, relCy)); return { x0: relCx - vw / 2, y0: relCy - vw / 2, vw }; };
+  const toS = (gx: number, gy: number) => { const v = view(); return { x: (gx / MMS - v.x0) / v.vw * S, y: (gy / MMS - v.y0) / v.vw * S }; };
+  const draw = () => { const v = view();
+    g.imageSmoothingEnabled = false; g.clearRect(0, 0, S, S); g.drawImage(mmBase, v.x0 * mmBase.width, v.y0 * mmBase.height, v.vw * mmBase.width, v.vw * mmBase.height, 0, 0, S, S);
+    g.fillStyle = 'rgba(0,0,0,.22)'; g.fillRect(0, 0, S, S);
+    const P = places(), fs = Math.round(9 + relZoom * 1.5);
+    const mark = (x: number, y: number, col: string, r: number, label: string | null, shape: 'c' | 'd' | 's' = 'c') => { const p = toS(x, y); if (p.x < -20 || p.y < -20 || p.x > S + 20 || p.y > S + 20) return; g.beginPath(); if (shape === 'd') { g.moveTo(p.x, p.y - r); g.lineTo(p.x + r, p.y); g.lineTo(p.x, p.y + r); g.lineTo(p.x - r, p.y); g.closePath(); } else if (shape === 's') g.rect(p.x - r, p.y - r, r * 2, r * 2); else g.arc(p.x, p.y, r, 0, 6.283); g.fillStyle = col; g.fill(); g.lineWidth = 1.5; g.strokeStyle = '#000'; g.stroke();
+      if (label && (relZoom >= 2 || shape === 'c')) { g.font = `600 ${fs}px Cinzel, serif`; g.textAlign = 'center'; g.lineWidth = 3; g.strokeStyle = 'rgba(0,0,0,.85)'; g.strokeText(label, p.x, p.y - r - 4); g.fillStyle = '#ffe9a0'; g.fillText(label, p.x, p.y - r - 4); } };
+    for (const q of P.poi) mark(q.x, q.y, '#c8b890', 3 + relZoom * 0.5, relZoom >= 2 ? q.name : null, 's');
+    for (const q of P.dg) mark(q.x, q.y, '#d06a5a', 4 + relZoom * 0.5, relZoom >= 2 ? q.name : null, 'd');
+    for (const q of P.vil) mark(q.x, q.y, '#9ad0ff', 4 + relZoom * 0.6, relZoom >= 1.5 ? q.name : null, 's');
+    for (const r of city.relics) { const known = knowsRelic(r.name), hereR = r.name === from; mark(r.x, r.y, hereR ? '#fff0bd' : known ? '#ffd24a' : '#6a6a72', (hereR ? 7 : 5) + relZoom * 0.5, known ? r.name : null); }
+    if (relSel) { const p = toS(relSel.x, relSel.y), pr = 10 + 3 * Math.sin(performance.now() / 200); g.beginPath(); g.arc(p.x, p.y, pr, 0, 6.283); g.lineWidth = 2.5; g.strokeStyle = '#fff'; g.stroke(); }
+    const h0 = hereT(), hp = toS(h0.x, h0.y); g.beginPath(); g.arc(hp.x, hp.y, 4, 0, 6.283); g.fillStyle = '#ff6a4a'; g.fill(); g.strokeStyle = '#000'; g.lineWidth = 1.2; g.stroke(); };
+  draw(); const anim = setInterval(() => { if (!relicOpen) { clearInterval(anim); return; } if (relSel) draw(); }, 60);
+  const zoomAt = (dz: number, mx = S / 2, my = S / 2) => { const v = view(), wx = v.x0 + mx / S * v.vw, wy = v.y0 + my / S * v.vw; relZoom = dz === 0 ? 1 : Math.min(6, Math.max(1, relZoom * (dz > 0 ? 1.5 : 1 / 1.5))); const nv = 1 / relZoom; relCx = wx - (mx / S - 0.5) * nv; relCy = wy - (my / S - 0.5) * nv; if (dz === 0) { relCx = relCy = 0.5; } draw(); };
+  if (here && others.length === 0) { relCx = here.x / MMS; relCy = here.y / MMS; }
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); const rc = cv.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1 : -1, (e.clientX - rc.left) * S / rc.width, (e.clientY - rc.top) * S / rc.height); }, { passive: false });
+  let drag: { x: number; y: number; moved: boolean } | null = null;
+  cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, moved: false }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', (e) => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; if (!drag.moved) return; const rc = cv.getBoundingClientRect(), vw = 1 / relZoom; relCx -= dx / rc.width * vw; relCy -= dy / rc.height * vw; drag.x = e.clientX; drag.y = e.clientY; draw(); });
+  cv.addEventListener('pointerup', (e) => { const d0 = drag; drag = null; if (!d0 || d0.moved) return; const rc = cv.getBoundingClientRect(), mx = (e.clientX - rc.left) * (S / rc.width), my = (e.clientY - rc.top) * (S / rc.height);
+    let best: typeof others[number] | null = null, bd = 16; for (const r of others) { const p = toS(r.x, r.y), d = Math.hypot(p.x - mx, p.y - my); if (d < bd) { bd = d; best = r; } }
+    if (best) travelRelic(best.name); else { const un = city.relics.find((r) => { const p = toS(r.x, r.y); return !knowsRelic(r.name) && Math.hypot(p.x - mx, p.y - my) < 12; }); if (un) game.logMsg('Relíquia ainda não tocada: vá até ela a pé uma vez para que ela lembre de você.', '#b9c6e0'); } });
+  relicEl.onclick = (e) => { const t = e.target as HTMLElement; const z = (t.closest('[data-z]') as HTMLElement | null)?.dataset.z; if (z !== undefined) { e.stopPropagation(); zoomAt(+z); return; }
+    const rt = (t.closest('[data-rt]') as HTMLElement | null)?.dataset.rt; if (rt) { e.stopPropagation(); relTab = rt as typeof relTab; relicEl.querySelector('.rlist')!.innerHTML = listHtml(); return; }
+    const pin = t.closest('[data-pin]') as HTMLElement | null; if (pin) { e.stopPropagation(); const [x, y] = pin.dataset.pin!.split(',').map(Number); pinT = { x, y, label: pin.dataset.nm! }; updateBanner(); closeRelics(); game.logMsg(`🧭 Guia marcada: ${pin.dataset.nm}.`, '#c8d2e8'); return; }
+    const see = t.closest('[data-see]') as HTMLElement | null; if (see) { e.stopPropagation(); const [x, y] = see.dataset.see!.split(',').map(Number); relSel = { x, y, name: see.dataset.nm! }; relZoom = Math.max(relZoom, 3); relCx = x / MMS; relCy = y / MMS; draw(); relicEl.querySelector('.rlist')!.innerHTML = listHtml(); } };
 }
 function travelRelic(go: string) { const r = city.relics.find((q) => q.name === go); if (!r) return; closeRelics();
   withFade(() => { state.fx = r.x + 0.5; state.fy = r.y + 2.2; state.path = []; objs.update(state.fx * T, state.fy * T, true); heroY = heightAt(state.fx * T, state.fy * T); camX = state.fx * T; camZ = state.fy * T; camY = heroY; game.logMsg(`✦ Você atravessa o véu até ${go}.`, '#8ad0ff'); for (let i = 0; i < 40; i++) particles.spawn(state.fx * T, 0.5, state.fy * T, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x4a9aff, a: 1 }); });
