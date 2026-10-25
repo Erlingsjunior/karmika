@@ -82,7 +82,11 @@
   /* missões */
   #quests { position: fixed; left: 14px; top: 40vh; width: 210px; z-index: 6; pointer-events: none; font-family: Georgia, serif; }
   #quests h4 { pointer-events: auto; cursor: grab; user-select: none; } #quests h4:active { cursor: grabbing; } #quests h4 small.mv { float: right; opacity: .5; letter-spacing: 0; font-size: 9px; }
-  #quests .q { pointer-events: auto; cursor: pointer; } #quests .q.track { background: rgba(40,30,8,.72); border-left-color: #ffe08a; box-shadow: 0 0 10px rgba(255,210,100,.18); } #quests .q .dir { color: #ffd24a; font-size: 10px; letter-spacing: .08em; }
+  #quests .q { pointer-events: auto; cursor: pointer; } #quests .q.track { --tc: 255,210,74; background: linear-gradient(90deg, rgba(var(--tc),.16), rgba(14,10,6,.78) 70%); border-left-width: 4px; border-left-color: rgb(var(--tc)); padding: 6px 9px 7px 10px; font-size: 12px; box-shadow: 0 0 0 1px rgba(var(--tc),.35), 0 0 16px rgba(var(--tc),.28); animation: qtrack 2.6s ease-in-out infinite; }
+  #quests .q.track b { font-size: 13.5px; text-shadow: 0 0 8px rgba(var(--tc),.55), 0 1px 2px #000; } #quests .q.track .dir { color: rgb(var(--tc)); font-size: 10.5px; }
+  #quests .q.track.c-side { --tc: 106,180,255; } #quests .q.track.c-rep { --tc: 122,255,122; } #quests .q.track.c-ev { --tc: 255,154,58; }
+  @keyframes qtrack { 50% { box-shadow: 0 0 0 1px rgba(var(--tc),.5), 0 0 22px rgba(var(--tc),.42); } }
+  @media (prefers-reduced-motion: reduce) { #quests .q.track { animation: none; } } #quests .q .dir { color: #ffd24a; font-size: 10px; letter-spacing: .08em; }
   #quests h4 { margin: 0 0 4px; font: 600 11px Cinzel, serif; letter-spacing: .2em; color: #f2cf8a; text-transform: uppercase; text-shadow: 0 1px 2px #000; } #quests h4 small { opacity: .6; letter-spacing: 0; }
   #quests .q { background: rgba(10,8,5,.55); border-left: 2px solid #c9a24a; padding: 4px 7px; margin-bottom: 5px; font-size: 11px; color: #e8dcc0; text-shadow: 0 1px 2px #000; } #quests .q.ok { border-left-color: #7aff9a; }
   #quests .q b { display: block; color: #ffe08a; font-size: 12px; } #quests .q i { display: block; font-style: normal; opacity: .85; } #quests .q i em { float: right; font-style: normal; color: #9ad7ff; } #quests .q .go { color: #7aff9a; }
@@ -537,8 +541,8 @@
   /* guia de missão (seta na tela) */
   #guide { position: fixed; left: 0; top: 0; pointer-events: none; z-index: 5; display: none; transform-origin: 0 0; }
   #guide .lbl { pointer-events: auto; cursor: default; } #guide .lbl span { display: none; } #guide .lbl:hover span { display: inline; }
-  #guide .lbl { position: absolute; left: 0; top: 0; transform: none; display: flex; align-items: center; gap: 5px; white-space: nowrap; font: 600 10px Cinzel, serif; letter-spacing: .08em; color: #ffe08a; text-shadow: 0 1px 2px #000, 0 0 6px #000; }
-  #guide .lbl i { display: none; } #guide .lbl small { color: #ffe08a; font: 600 10px Cinzel, serif; letter-spacing: .06em; }
+  #guide .lbl { position: absolute; left: 0; top: 0; transform: none; display: flex; align-items: center; gap: 5px; white-space: nowrap; font: 600 10px Cinzel, serif; letter-spacing: .08em; color: var(--gc, #ffe08a); text-shadow: 0 1px 2px #000, 0 0 6px #000; }
+  #guide .lbl i { display: none; } #guide .lbl small { color: var(--gc, #ffe08a); font: 600 10px Cinzel, serif; letter-spacing: .06em; }
   @keyframes gpulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
   /* mochila com bolsas */
@@ -678,7 +682,7 @@
   #chat .in .ch { font: 10px Cinzel, serif; color: #c9a24a; letter-spacing: .1em; } #chat .in input { flex: 1; background: none; border: none; color: #f0e6cc; font: 13px Georgia, serif; outline: none; }
   #chat.new .msgs { border-left-color: #ffe08a; }
   /* instinto de classe (24/10) */
-  #btns #instbtn { position: relative; width: 30px; height: 30px; margin-top: 3px; color: #8a7a5a; } #btns #instbtn svg { width: 19px; height: 19px; }
+  #btns #instbtn { position: relative; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; vertical-align: top; color: #b8a27a; } #btns #instbtn svg { width: 24px; height: 24px; margin: 0; }
   #btns #instbtn kbd { position: absolute; right: -4px; bottom: -4px; font: 700 8.5px monospace; color: #c8b890; background: #1c130b; border: 1px solid #5a4a30; border-radius: 3px; padding: 0 2px; line-height: 11px; }
   #btns #instbtn.on { color: var(--ic); border-color: var(--ic); box-shadow: 0 0 10px color-mix(in srgb, var(--ic) 60%, transparent), inset 0 0 8px color-mix(in srgb, var(--ic) 35%, transparent); animation: instpulse 2.4s ease-in-out infinite; }
   @keyframes instpulse { 50% { box-shadow: 0 0 16px color-mix(in srgb, var(--ic) 80%, transparent), inset 0 0 10px color-mix(in srgb, var(--ic) 45%, transparent); } }
@@ -719,7 +723,14 @@
   #evres small { letter-spacing: .3em; color: #c9a24a; font-size: 10.5px; } #evres h3 { font: 700 21px Cinzel, Georgia, serif; margin: 6px 0 4px; color: #ffe08a; } #evres .evs { color: #cbb; font-size: 13px; margin: 0 0 10px; } #evres p { font-size: 14px; line-height: 1.45; margin: 6px 0; }
   #evres .evk { display: flex; justify-content: center; gap: 16px; margin: 12px 0 10px; font: 700 15px Georgia, serif; } #evres button { font: 700 14px Cinzel, Georgia, serif; color: #1a1208; background: linear-gradient(#ffe08a, #c9a24a); border: 0; border-radius: 6px; padding: 7px 18px; cursor: pointer; }
   @keyframes evin { from { opacity: 0; transform: scale(calc(var(--ui, 1) * .92)); } to { opacity: 1; transform: scale(var(--ui, 1)); } }
-  #evglobal { position: fixed; left: 50%; top: 66px; transform: translateX(-50%) scale(var(--ui, 1)); transform-origin: 50% 0; z-index: 5; display: none; pointer-events: none; text-align: center; background: rgba(14,8,8,.78); border: 1px solid rgba(255,120,90,.45); border-radius: 18px; padding: 4px 16px 5px; font-family: Georgia, serif; } #evglobal b { font: 700 13px Cinzel, Georgia, serif; display: block; } #evglobal small { font-size: 11px; color: #e8d8c0; }
+  /* anúncio do evento global (25/10): aparece só na ABERTURA, no terço de cima da tela, longe do letreiro e da guia; depois some e o evento vira um efeito na barra */
+  #evglobal { position: fixed; left: 50%; top: 21vh; transform: translateX(-50%) scale(var(--ui, 1)); transform-origin: 50% 0; z-index: 5; display: none; pointer-events: none; text-align: center; width: min(560px, calc(100vw - 32px));
+    background: radial-gradient(ellipse at 50% 0%, rgba(60,40,12,.85), rgba(14,9,6,.82) 70%); border: 1px solid rgba(255,214,120,.45); border-radius: 6px; padding: 12px 22px 13px; font-family: Georgia, serif; box-shadow: 0 10px 40px rgba(0,0,0,.55), 0 0 30px rgba(255,200,90,.12); transition: opacity .4s; animation: evIn .9s ease-out; }
+  #evglobal b { font: 700 22px Cinzel, Georgia, serif; letter-spacing: .12em; display: block; text-shadow: 0 0 18px currentColor, 0 2px 3px #000; margin-bottom: 6px; } #evglobal b i { display: block; font: 600 11px Cinzel, Georgia, serif; letter-spacing: .2em; color: #c8b890; text-shadow: none; margin-top: 2px; }
+  #evglobal small { display: block; font-size: 12.5px; line-height: 1.45; color: #ecdfc6; text-wrap: balance; } #evglobal small + small { margin-top: 6px; font-weight: 700; }
+  @keyframes evIn { from { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(var(--ui, 1)); } }
+  #buffs .bf.gev { font-size: 15px; } #buffs .bf.gev.aurora { border-color: #e6c46a; box-shadow: 0 0 8px rgba(255,214,120,.35); } #buffs .bf.gev.lua { border-color: #c23a2a; box-shadow: 0 0 8px rgba(226,60,40,.35); }
+  #buffs .bf.gev.good { color: #ffe08a; } #buffs .bf.gev.bad { filter: saturate(.7); }
   .cbub { position: fixed; transform: translate(-50%, -100%) scale(var(--ui, 1)); transform-origin: 50% 100%; background: linear-gradient(#2a1a10, #1a100a); color: #f0d890; border: 2px solid #b08a40; border-radius: 9px; padding: 5px 10px; font: italic 13px Georgia, serif; max-width: 240px; z-index: 6; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
   .cbub::before { content: '⚙ '; color: #e0b048; font-style: normal; }
   .bubble { position: fixed; display: none; transform: translate(-50%, -100%) scale(var(--ui, 1)); transform-origin: 50% 100%; background: #f4ecd8; color: #1a1208; border: 2px solid #3a2a14; border-radius: 10px; padding: 6px 10px; font: 13px Georgia, serif; max-width: 220px; z-index: 6; pointer-events: none; box-shadow: 0 2px 6px rgba(0,0,0,.5); }

@@ -358,13 +358,20 @@ setInterval(() => { try { if (inside || !profile || limiar.active) return; } cat
   for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283, r = 0.45 + Math.random() * 0.25; particles.spawn(p.x + Math.cos(a) * r, p.y + 0.08, p.z + Math.sin(a) * r, { vx: -Math.sin(a) * 0.5, vy: 0.9 + Math.random() * 0.7, vz: Math.cos(a) * 0.5, life: 1.1 + Math.random() * 0.5, s0: 0.1, s1: 0.02, c0: Math.random() < 0.5 ? 0xc9a0ff : 0xffd27a, c1: 0x3a1a5a, a: 0.85, drag: 0.6 }); } }, 140);
 const BLESS = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#c9a0ff"/><circle cx="16" cy="16" r="1.8" fill="#140a1e"/><path d="M16 2v4M16 26v4M4 6l3 3M28 6l-3 3" stroke="#e6c46a" stroke-width="1.2"/></svg>`;
 let buffKey = '';
+/** o evento global como efeito na barra (Lua de Sangue, Dia da Aurora): ícone, minutos restantes e, no título, o que ele faz com você */
+function globalBuffKey() { try { const g = globalNow(); return g ? g.id + Math.ceil((g.end - Date.now()) / 60000) + globalSide(g.id) : ''; } catch { return ''; } }
+function globalBuffHtml() { let g: ReturnType<typeof globalNow> = null; try { g = globalNow(); } catch { return ''; } if (!g) return ''; const sd = globalSide(g.id), left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000));
+  const tip = `${g.name} · mais ${left} min\n${g.text}${sd ? '\n' + globalSideText(g.id) : '\nO seu caminho não pende para nenhum lado: o evento não mexe na sua força.'}`.replace(/"/g, '&quot;');
+  return `<div class="bf gev ${g.id} ${sd > 0 ? 'good' : sd < 0 ? 'bad' : ''}" title="${tip}">${g.icon}<i>${left}</i></div>`; }
 setInterval(() => { const L = game.buffs(); const prem = isPremium();
   let eqF: Fac[] = []; try { eqF = [...new Set((['cape', 'shield', 'relic'] as Slot[]).map((sl) => inv.eq[sl]?.fac).filter((f): f is Fac => !!f))]; } catch { /* */ }
-  const key = echoKey() + (vow ? vow.id + vow.broken + Math.floor(vow.secs / 60) : '') + (prem ? 'P' : '') + eqF.join() + L.map((b) => b.id + Math.ceil(b.t ?? 0)).join(); if (key === buffKey) return; buffKey = key;
-  buffEl.innerHTML = echoHtml() + (vow ? `<div class="bf ${vow.broken ? 'neg' : 'vow'}" title="${vow.broken ? `Voto quebrado: “${VOWS[vow.id]?.text}”. A bênção se apagou.` : `${VOWS[vow.id]?.name}: “${VOWS[vow.id]?.text}” — Bênção do Voto: +5% de XP enquanto mantiver.${vow.titled ? '' : ` Faltam ${Math.max(0, Math.ceil((3 * 3600 - vow.secs) / 60))} min de jogo fiel para o título.`}`}">${vow.broken ? '⛓' : '✦'}</div>` : '') + eqF.map((f) => `<div class="bf fac ${f}" title="${FAC[f].name} — “${FAC[f].motto}”. Você carrega o brasão deste lado.${inv.eq.relic?.fac === f ? ' A relíquia acende o sigilo aos seus pés.' : ''}"><img src="${crestURL(f)}" alt=""></div>`).join('') + (prem ? `<div class="bf good bless" title="Bênção de Marghar (Premium): conforto no dia a dia — Bolsa do Caminhante, Bolsa Mágica e de Ofício, 10 missões. Nunca dá força.">${BLESS}</div>` : '') + L.map((b) => `<div class="bf ${b.good ? 'good' : 'bad'}" title="${b.name}: ${b.tip}"><span>${b.ic}</span>${b.t !== undefined ? `<i>${Math.ceil(b.t)}</i>` : ''}</div>`).join(''); }, 250);
+  const key = globalBuffKey() + echoKey() + (vow ? vow.id + vow.broken + Math.floor(vow.secs / 60) : '') + (prem ? 'P' : '') + eqF.join() + L.map((b) => b.id + Math.ceil(b.t ?? 0)).join(); if (key === buffKey) return; buffKey = key;
+  buffEl.innerHTML = globalBuffHtml() + echoHtml() + (vow ? `<div class="bf ${vow.broken ? 'neg' : 'vow'}" title="${vow.broken ? `Voto quebrado: “${VOWS[vow.id]?.text}”. A bênção se apagou.` : `${VOWS[vow.id]?.name}: “${VOWS[vow.id]?.text}” — Bênção do Voto: +5% de XP enquanto mantiver.${vow.titled ? '' : ` Faltam ${Math.max(0, Math.ceil((3 * 3600 - vow.secs) / 60))} min de jogo fiel para o título.`}`}">${vow.broken ? '⛓' : '✦'}</div>` : '') + eqF.map((f) => `<div class="bf fac ${f}" title="${FAC[f].name} — “${FAC[f].motto}”. Você carrega o brasão deste lado.${inv.eq.relic?.fac === f ? ' A relíquia acende o sigilo aos seus pés.' : ''}"><img src="${crestURL(f)}" alt=""></div>`).join('') + (prem ? `<div class="bf good bless" title="Bênção de Marghar (Premium): conforto no dia a dia — Bolsa do Caminhante, Bolsa Mágica e de Ofício, 10 missões. Nunca dá força.">${BLESS}</div>` : '') + L.map((b) => `<div class="bf ${b.good ? 'good' : 'bad'}" title="${b.name}: ${b.tip}"><span>${b.ic}</span>${b.t !== undefined ? `<i>${Math.ceil(b.t)}</i>` : ''}</div>`).join(''); }, 250);
 /* a bênção também aparece aos pés do herói: uma runa violeta e dourada que gira devagar */
-const blessRune = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.strokeStyle = '#e6c46a'; g.lineWidth = 3; g.beginPath(); g.ellipse(32, 32, 24, 13, 0, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#c9a0ff'; g.beginPath(); g.arc(32, 32, 7, 0, Math.PI * 2); g.fill(); g.fillStyle = '#140a1e'; g.beginPath(); g.arc(32, 32, 3, 0, Math.PI * 2); g.fill();
-  const tx = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0.85 })); sp.scale.setScalar(0.42); sp.visible = false; scene.add(sp); return sp; })();
+/** o olho de Marghar do Premium: o mesmo desenho gira em volta do jogador e, pela rede, em volta de quem é Premium (25/10) */
+function makeBlessRune() { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.strokeStyle = '#e6c46a'; g.lineWidth = 3; g.beginPath(); g.ellipse(32, 32, 24, 13, 0, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#c9a0ff'; g.beginPath(); g.arc(32, 32, 7, 0, Math.PI * 2); g.fill(); g.fillStyle = '#140a1e'; g.beginPath(); g.arc(32, 32, 3, 0, Math.PI * 2); g.fill();
+  const tx = new THREE.CanvasTexture(c); const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false, opacity: 0.85 })); sp.scale.setScalar(0.42); sp.visible = false; return sp; }
+const blessRune = makeBlessRune(); scene.add(blessRune);
 /* o sigilo da facção no chão: aparece quando a relíquia do lado está equipada (o Fio gira devagar e brilha em ouro; os Desfiados giram ao contrário, em brasa) */
 const facSigil = (() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(2.3, 2.3), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.8, blending: THREE.AdditiveBlending, toneMapped: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 3; m.visible = false; scene.add(m); return m; })();
 let facNow: Fac | null = null;
@@ -636,7 +643,8 @@ setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true
 const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: betaCommand, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
 const net = createNet({ scene, camera, canvas,
-  look: () => ({ kind: kindOf(state.race), opts: profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}, gear: lastGear, skin: netSkin, name: profile?.name || RACES[state.race].label, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(state.karma), fac: myFac(), path: myPath(), lean: soulLean() }),
+  look: () => ({ kind: kindOf(state.race), opts: profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}, gear: lastGear, skin: netSkin, name: profile?.name || RACES[state.race].label, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(state.karma), fac: myFac(), path: myPath(), lean: soulLean(), prem: isPremium() }),
+  premRune: () => { const sp = makeBlessRune(); sp.visible = true; return sp; },
   st: () => { const p = hero.root.position; const zn = inside ? (inside.crypt ? `crypt:${inside.crypt}` : `in:${inside.prop.gx},${inside.prop.gy}`) : 'world';
     return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), f: +hero.root.rotation.y.toFixed(3), m: +netMps.toFixed(2), zn, hp: Math.round(100 * game.st.hp / Math.max(1, game.st.hpMax)), ...(hero.combat ? { cb: 1 as const } : {}), ...(hero.guard ? { gd: 1 as const } : {}), ...(hero.riding ? { rd: 1 as const } : {}), ...(hero.kneel ? { kn: 1 as const } : {}), ...(pvpOn ? { ag: 1 as const } : {}) }; },
   chat: (name, text, w) => chat.recv(name, text, w ? 'whisper' : 'local', w ? (profile?.name || '') : undefined),
@@ -863,7 +871,7 @@ function updateEventos(dt: number) { eventos.update(dt, t); evUiT -= dt; if (evU
   /* o evento vira missão: cartão laranja no topo do diário, com os entregáveis e o tempo */
   const card = html ? `<div class="q c-ev track evq">${html}</div>` : ''; if (card !== evCard) { evCard = card; quests.render(); }
   updateEvNear(h0);
-  const g = globalNow(); evBanEl.style.display = g && !inside ? 'block' : 'none'; if (g) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
+  const g = globalNow(), opK = gOpen(); /* o anúncio grande só na ABERTURA; depois o evento mora na barra de efeitos */ evBanEl.style.display = g && !inside && opK > 0.01 ? 'block' : 'none'; evBanEl.style.opacity = String(Math.min(1, opK * 1.4)); if (g && opK > 0.01) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
   if (g?.id !== lastGlobal) { if (g) game.logMsg(`${g.icon} ${g.name} começou no mundo inteiro. ${g.text}`, g.color); lastGlobal = g?.id ?? null; } }
 /* ---------- Instinto e falas do herói (instinto.ts, 24/10) ---------- */
 /** a alma dos NPCs que importam para o Instinto (quem é da Luz, da Sombra, ou de um caminho) */
@@ -875,7 +883,8 @@ function toggleInstinct(v = !instinctOn) { instinctOn = v; try { localStorage.se
   game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc}` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.click?.(); updateInstBtn(); }
 /* o Instinto mora no menu de ações (junto de Mapa, Deus e Menu): um botão pequeno com o terceiro olho; F continua ligando */
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; document.getElementById('btns')!.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
-const THIRD_EYE = '<svg viewBox="0 0 32 32"><path d="M3 16c4-6.5 8.5-9.5 13-9.5S25 9.5 29 16c-4 6.5-8.5 9.5-13 9.5S7 22.5 3 16z" fill="#120c07" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="5.6" fill="currentColor" opacity=".9"/><path d="M16 11.2l2.6 4.8-2.6 4.8-2.6-4.8z" fill="#0b0810"/><path d="M16 1.5v3.4M9 3.6l1.6 2.8M23 3.6l-1.6 2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+/* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
+const THIRD_EYE = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2.5 16C6.6 9.6 11 6.8 16 6.8S25.4 9.6 29.5 16C25.4 22.4 21 25.2 16 25.2S6.6 22.4 2.5 16Z" fill="#120c07" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="6.2" fill="currentColor"/><circle cx="16" cy="16" r="6.2" fill="none" stroke="#0b0810" stroke-opacity=".45" stroke-width="1"/><path d="M16 11.4 18.5 16 16 20.6 13.5 16Z" fill="#0b0810"/><circle cx="14" cy="13.9" r="1.1" fill="#fff" fill-opacity=".75"/></svg>';
 function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
 setTimeout(updateInstBtn, 0);
 /* o que só o instinto mostra: rastros das missões, espíritos, dispositivos perdidos e os esconderijos do mundo */
@@ -957,7 +966,8 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
   const ti = quests.turnins(nm), of = quests.offers(nm);
   const choices: Choice[] = [];
   for (const d of ti) choices.push({ kind: 'turnin', label: `Entregar: ${d.name}`, hint: `${d.xp} XP · ${d.gold} 🪙`, quest: d });
-  for (const d of of) choices.push({ kind: 'quest', label: d.name, hint: `Nv ${d.lvl}`, quest: d });
+  /* dois momentos (Erling, 25/10): quem chega com missão pronta primeiro ENTREGA; só depois da entrega a pessoa conta a missão nova (o diálogo reabre sozinho) */
+  if (!ti.length) for (const d of of) choices.push({ kind: 'quest', label: d.name, hint: `Nv ${d.lvl}`, quest: d });
   if (shopId === 'estabulo' && !quests.q.done.includes('o01')) { /* estábulo fechado até libertar os cavalos */ }
   else if (shopId === 'tec_fio' || shopId === 'tec_desf') { const sf: Fac = shopId === 'tec_fio' ? 'fio' : 'desf', mf = myFac(); /* qualquer um compra; só veste quem jurou o lado, no nível 30 */
     choices.push({ kind: 'shop', label: `Comerciar com ${nm}`, hint: mf === sf ? 'peças com brasão' : 'só para guardar ou vender', cb: () => { inv.openShop(shopId); if (mf !== sf) game.logMsg(sf === 'fio' ? `🧵 ${nm}: “Vendo a quem paga. Vestir o fio é outra história: só quem jura.”` : `✂ ${nm}: “Leve. Mas o manto só cai bem em quem já cortou o fio.”`, '#c8b890'); } }); }
@@ -979,7 +989,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
       if (o) { applyReply({ t: '', luz: o.karma > 0 ? Math.ceil(o.karma / 2) : 0, sombra: o.karma < 0 ? Math.ceil(-o.karma / 2) : 0, flag: (o as { flag?: string }).flag }); state.karma = Math.max(-100, Math.min(100, state.karma + o.karma)); game.logMsg(`${nm}: “${o.say}”`, '#f4e6b8'); setTimeout(() => eyeSees(o.karma >= 0 ? 'O Olho viu.' : 'O Olho guardou.', o.label, o.why, o.karma), 600); }
       else game.logMsg(`${nm}: “Bom trabalho.”`, '#f4e6b8');
       /* tem mais a contar? a conversa continua: a próxima missão é apresentada, não empurrada */
-      if (!o) setTimeout(() => { if (!dlg.isOpen && quests.offers(nm).length && Math.hypot(n.pos.x - state.fx * T, n.pos.z - state.fy * T) < 8) talkTo(n); }, 450); },
+      if (!o) setTimeout(() => { if (!dlg.isOpen && (quests.offers(nm).length || quests.turnins(nm).length) && Math.hypot(n.pos.x - state.fx * T, n.pos.z - state.fy * T) < 8) talkTo(n); }, 450); },
     objProg: (d, i) => quests.objProg(d, i), objNeed: (d, i) => quests.objNeed(d, i) });
 }
 /** a Forja de Elite do Brokki: material de bicho elite + minério + ouro = peça lendária do seu nível */
@@ -1370,7 +1380,7 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
   for (const n of npcSys.npcs) { ctx.fillStyle = '#7ad0ff'; ctx.beginPath(); ctx.arc(X(n.pos.x / T), Y(n.pos.z / T), 2 * sc, 0, 6.283); ctx.fill(); }
   for (const v of CINE.vistas) { const seen = vistaSeen.has(v.id); ctx.fillStyle = seen ? '#ffe08a' : '#a08a50'; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(X(v.at.x), Y(v.at.y), 3.6 * sc, 2.2 * sc, 0, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1a1208'; ctx.beginPath(); ctx.arc(X(v.at.x), Y(v.at.y), 1.1 * sc, 0, 6.283); ctx.fill(); }
   for (const rl of city.relics) if (knowsRelic(rl.name)) { ctx.fillStyle = '#8ad0ff'; ctx.beginPath(); ctx.moveTo(X(rl.x), Y(rl.y) - 4 * sc); ctx.lineTo(X(rl.x) + 3 * sc, Y(rl.y)); ctx.lineTo(X(rl.x), Y(rl.y) + 4 * sc); ctx.lineTo(X(rl.x) - 3 * sc, Y(rl.y)); ctx.closePath(); ctx.fill(); }
-  if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 4 * sc + 2 * sc * Math.abs(Math.sin(performance.now() / 300)); ctx.strokeStyle = '#ffd24a'; ctx.lineWidth = 1.6 * sc; ctx.beginPath(); ctx.arc(x, y, pr, 0, 6.283); ctx.stroke(); ctx.fillStyle = '#ffd24a'; ctx.beginPath(); ctx.arc(x, y, 1.6 * sc, 0, 6.283); ctx.fill(); if (lab) { ctx.font = '600 11px Cinzel, serif'; ctx.fillStyle = '#ffd24a'; ctx.fillText(guideT.label, x + 8, y - 8); } }
+  if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 4 * sc + 2 * sc * Math.abs(Math.sin(performance.now() / 300)); ctx.strokeStyle = guideCol; ctx.lineWidth = 1.6 * sc; ctx.beginPath(); ctx.arc(x, y, pr, 0, 6.283); ctx.stroke(); ctx.fillStyle = guideCol; ctx.beginPath(); ctx.arc(x, y, 1.6 * sc, 0, 6.283); ctx.fill(); if (lab) { ctx.font = '600 11px Cinzel, serif'; ctx.fillStyle = guideCol; ctx.fillText(guideT.label, x + 8, y - 8); } }
 }
 /** distâncias em metros do jogo (1 quadrado = 2 m; heroína 1,7 m) */
 const fmtDist = (m: number) => `${Math.round(m)} m`;
@@ -1425,9 +1435,14 @@ const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, tran
 { const arc2 = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.06, 40, 1, -Math.PI / 2 - 0.7, 1.4).rotateX(-Math.PI / 2), gMat(0.8)); guide3d.add(arc2);
   for (let i = 0; i < 3; i++) { const sh = new THREE.Shape(); sh.moveTo(-0.22, -0.16); sh.lineTo(0, 0.1); sh.lineTo(0.22, -0.16); sh.lineTo(0, -0.02); sh.closePath(); const ch = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), gMat(0.9)); ch.name = 'chev' + i; guide3d.add(ch); } }
 let guideT: { x: number; y: number; label: string } | null = null, guideTick = 0;
+/** cor da guia = cor da missão escolhida (história amarela, secundária azul, quadro verde, evento laranja, alfinete do mapa prata-azulado):
+ *  o arco, as setas no chão, a etiqueta e o anel no mapa falam a mesma cor do cartão da missão (Erling, 25/10) */
+const GUIDE_COL = { story: '#ffd24a', side: '#6ab4ff', rep: '#7aff7a', ev: '#ff9a3a', pin: '#b9c6e0' } as const;
+let guideCol: string = GUIDE_COL.story;
+function guideColor(): string { if (pinT) return GUIDE_COL.pin; if (guideT && /^Evento: /.test(guideT.label)) return GUIDE_COL.ev; const d = quests.tracked; return d ? GUIDE_COL[questCat(d)] : GUIDE_COL.story; }
 const gv = new THREE.Vector3();
 function updateGuide(dt: number) {
-  guideTick -= dt; if (guideTick <= 0) { guideTick = 0.5; guideT = questTarget(); const dir = document.querySelector('#quests .q.track .dir') as HTMLElement | null; if (dir) { if (guideT) { const dx = guideT.x - state.fx, dy = guideT.y - state.fy, m = Math.round(Math.hypot(dx, dy) * T); const comp = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'][((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8]; dir.textContent = `◆ ${guideT.label} · ${fmtDist(m)} ${comp}`; } else dir.textContent = ''; } }
+  guideTick -= dt; if (guideTick <= 0) { guideTick = 0.5; guideT = questTarget(); { const c = guideColor(); if (c !== guideCol) { guideCol = c; guide3d.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color) m.color.set(c); }); guideEl.style.setProperty('--gc', c); } } const dir = document.querySelector('#quests .q.track .dir') as HTMLElement | null; if (dir) { if (guideT) { const dx = guideT.x - state.fx, dy = guideT.y - state.fy, m = Math.round(Math.hypot(dx, dy) * T); const comp = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'][((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8]; dir.textContent = `◆ ${guideT.label} · ${fmtDist(m)} ${comp}`; } else dir.textContent = ''; } }
   if (!guideT || inside || dlg.isOpen) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
   const tx = guideT.x * T, tz = guideT.y * T, hx = state.fx * T, hz = state.fy * T, dist = Math.hypot(tx - hx, tz - hz);
   if (dist < 5) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
@@ -1489,7 +1504,7 @@ function drawBig() {
   if (L.relic) for (const r of city.relics) { const known = knowsRelic(r.name), x = X(r.x), y = Y(r.y); bg.save(); bg.translate(x, y); bg.rotate(Math.PI / 4); bg.fillStyle = known ? '#8ad0ff' : '#c9a24a'; bg.strokeStyle = '#000'; bg.lineWidth = 2; const q = s0 * 0.7; bg.fillRect(-q, -q, q * 2, q * 2); bg.strokeRect(-q, -q, q * 2, q * 2); bg.restore(); if (known) { bg.beginPath(); bg.arc(x, y, s0 + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); bg.strokeStyle = 'rgba(138,208,255,.6)'; bg.lineWidth = 1.5; bg.stroke(); }
     mapHits.push({ x, y, r: s0 + 2, name: r.name, sub: known ? 'Relíquia conhecida — clique para viajar' : 'Relíquia desconhecida — toque nela para lembrar', go: known ? r.name : undefined }); }
   if (L.npc) for (const n of npcSys.npcs) { bg.fillStyle = '#7ad0ff'; bg.beginPath(); bg.arc(X(n.pos.x / T), Y(n.pos.z / T), 2.4, 0, 6.283); bg.fill(); }
-  if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); bg.strokeStyle = '#ffd24a'; bg.lineWidth = 2.5; bg.beginPath(); bg.arc(x, y, pr, 0, 6.283); bg.stroke(); }
+  if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); bg.strokeStyle = guideCol; bg.lineWidth = 2.5; bg.beginPath(); bg.arc(x, y, pr, 0, 6.283); bg.stroke(); }
   const h0 = hereT(); heroArrow(bg, X(h0.x), Y(h0.y), 2.2);
   (bigEl.querySelector('.mzone') as HTMLElement).textContent = zoneName();
 }
@@ -1933,6 +1948,10 @@ const AUR_C = { sky: new THREE.Color(0xf6dcc4), fog: new THREE.Color(0xf0d8c8), 
 const LUA_MUL = new THREE.Vector3(1.42, 0.6, 0.5), LUA_LIFT = new THREE.Vector3(0.07, 0, 0);
 const AUR_MUL = new THREE.Vector3(1.07, 1.03, 0.97), AUR_LIFT = new THREE.Vector3(0.035, 0.028, 0.04);
 let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = undefined, luaK = 0, aurK = 0;
+/* A ABERTURA do evento global (Erling, 25/10): ~12 s de impacto total (luz, coral, folhas, anúncio no meio da tela) e depois
+   o mundo assenta: fica só mais cor no dia, uma brisa leve, o coral quase sumindo ao longe. O efeito (buff) fica na barra de efeitos. */
+let gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL = 12, G_OPEN_FADE = 8;
+const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s < G_OPEN_FULL ? 1 : Math.max(0, 1 - (s - G_OPEN_FULL) / G_OPEN_FADE); }; /* relógio de verdade: não depende do passo do quadro */
 const clock = new THREE.Clock();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
 let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0;
@@ -2261,7 +2280,7 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob };
+if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
 function resumeSoul() { if (!profile || limiar.active) return; if (soul.s.pending === 'choose') unbind(); else if (soul.s.pending === 'reborn') unbind(undefined, 'reborn'); }
 /* os fôlegos ficam à vista, em cima do orbe da vida (só depois que o Olho abre: antes o Fio não se gasta) */
 setInterval(() => { const el = document.getElementById('folegos'); if (!el) return; soul.regen(); const on = !!profile?.eye && game.st.lvl >= FRAY_LVL;
@@ -2830,21 +2849,23 @@ function frameBody() {
   if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.2 : 1; game.st.takenMul = sd > 0 ? 0.88 : sd < 0 ? 1.1 : 1; }
   luaK += ((gCur === 'lua' && !inside?.dg ? 1 : 0) - luaK) * Math.min(1, rawDt * 0.35);
   aurK += ((gCur === 'aurora' && !inside?.dg ? 1 : 0) - aurK) * Math.min(1, rawDt * 0.35);
-  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaK * 0.85).lerp(AUR_C.sky, aurK * 0.35);
-  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaK * 0.8).lerp(AUR_C.fog, aurK * 0.4);
+  if (gCur !== gOpenId && !document.getElementById('boot')?.matches(':not(.off)') && !inicio.isOpen) { gOpenId = gCur; gOpenAt = performance.now(); } /* a abertura só conta quando o jogador já está vendo o mundo */
+  const op = gOpen(), aurV = aurK * (0.4 + 0.6 * op), aurGlow = aurK * (0.12 + 0.88 * op), aurFx = aurK * (0.18 + 0.82 * op);
+  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaK * 0.85).lerp(AUR_C.sky, aurV * 0.35);
+  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaK * 0.8).lerp(AUR_C.fog, aurV * 0.4);
   (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cine ? 0.35 : 1) * (1 + luaK * 0.5);
   curseNow += ((inside ? 0 : curseK()) - curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
-  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaK * 0.75).lerp(AUR_C.hemi, aurK * 0.4);
+  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaK * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
   hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaK * 0.6);
-  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaK * 0.35 + aurK * 0.12;
-  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaK * 0.85).lerp(AUR_C.sun, aurK * 0.5);
-  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaK * 0.6 + aurK * 0.15; // nas cinemáticas a paisagem se acende
+  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaK * 0.35 + aurGlow * 0.12;
+  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaK * 0.85).lerp(AUR_C.sun, aurV * 0.5);
+  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaK * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
   renderer.toneMappingExposure = mix(0.8, 0.96, day); finish.uniforms.uVig.value = mix(0.6, 0.38, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
-    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaK).lerp(AUR_MUL, aurK * 0.8);
-    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaK).lerp(AUR_LIFT, aurK);
-    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.06; }
-  audio.choir(aurK * (inside ? 0.35 : 1), rawDt); audio.blood(luaK * (inside ? 0.4 : 1), rawDt);
+    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaK).lerp(AUR_MUL, aurV * 0.8);
+    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaK).lerp(AUR_LIFT, aurGlow);
+    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.1; /* depois da abertura a Aurora deixa o dia mais colorido */ }
+  audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42; } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
     const dir = new THREE.Vector3(-18, 28, 10).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2;
@@ -2858,7 +2879,7 @@ function frameBody() {
   windU.value = t;
   waterU.uLight.value = mix(0.3, 1, day);
   const gust = THREE.MathUtils.clamp(0.45 + 0.4 * Math.sin(t * 0.37) * Math.sin(t * 0.11 + 1.3) + 0.25 * Math.sin(t * 1.3 + Math.sin(t * 0.21) * 3), 0, 1);
-  gustU.value = Math.min(1, gust + aurK * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
+  gustU.value = Math.min(1, gust + aurFx * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
   const WDX = 0.86, WDZ = 0.5; // direção do vento
   particles.wind.x = WDX * (0.4 + gust * 3.2); particles.wind.z = WDZ * (0.4 + gust * 3.2);
   hero.setNight(night); hero.setWind(gust);
@@ -2931,7 +2952,7 @@ function frameBody() {
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   lightPool(rawDt);
-  atmos.update(rawDt, t, heroPos, aurK, luaK, gust, (x, z) => heightAt(x, z), !!inside);
+  atmos.update(rawDt, t, heroPos, aurFx, luaK, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);
 

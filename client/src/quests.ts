@@ -273,7 +273,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     const T = STORY_THREAD.find((id) => !isDone(id) && !(THREAD_SKIP[id] && isDone(THREAD_SKIP[id]))); if (!T) return; const i = STORY_THREAD.indexOf(T); if (i === 0 || q.active[T] || q.active['b_' + T]) return;
     const passed = (id: string) => isDone(id) || (!!THREAD_SKIP[id] && isDone(THREAD_SKIP[id]));
     const prev = def(STORY_THREAD.slice(0, i).reverse().find((id) => passed(id)) ?? STORY_THREAD[i - 1]), nx = def(T); if (!prev || !nx || !passed(prev.id)) return;
-    const b = bridgeFor(prev, nx, ctx.st.lvl); if (isDone(b.id)) { /* ponte já feita mas a missão não foi pega: a ponte volta */ q.done = q.done.filter((x) => x !== b.id); }
+    const b = bridgeFor(prev, nx, ctx.st.lvl); if (isDone(b.id)) return; /* ponte já entregue: a missão está com quem a dá (o “?” na cabeça dela). Antes a ponte voltava ao diário e a entrega se repetia sem fim (25/10) */
     accept(b); if (fromTurnIn) setTimeout(() => ctx.log(`${b.giver}: “${(b as QuestDef & { say?: string }).say ?? ''}”`, '#f4e6b8'), 400);
   }
   function turnIn(d: QuestDef) {

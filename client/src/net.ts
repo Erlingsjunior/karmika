@@ -10,7 +10,7 @@ export const NET_PROTO = 1;
 export const NET_PORT = 7777;
 
 type GearArg = Parameters<Hero3D['setGear']>[0];
-export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null }
+export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null; /** Premium ativo: os outros veem o olho de Marghar girando em volta do herói (25/10) */ prem?: boolean }
 export interface NetSt { x: number; y: number; z: number; f: number; m: number; zn: string; cb?: 1; gd?: 1; rd?: 1; kn?: 1; hp?: number; ag?: 1 }
 export interface NetParty { id: number; leader: number; members: number[] }
 /** perfil público: o que outro jogador vê ao abrir o seu perfil */
@@ -18,13 +18,15 @@ export interface NetProfile { name: string; lvl: number; cls: string; title: str
 interface Snap { at: number; s: NetSt }
 interface Remote {
   id: number; name: string; host: boolean; look: NetLook | null; hero: Hero3D | null; skinTick: (() => void) | null; skinTok: number;
-  snaps: Snap[]; el: HTMLDivElement; bubbleT: number; lookKey: string; zn: string;
+  snaps: Snap[]; el: HTMLDivElement; bubbleT: number; lookKey: string; zn: string; rune?: THREE.Object3D | null;
 }
 export interface NetPeer { id: number; name: string; host: boolean; lvl: number; cls: string; me?: boolean; zn: string; ping?: number }
 
 export interface NetCtx {
   scene: THREE.Scene; camera: THREE.Camera; canvas: HTMLCanvasElement;
   look(): NetLook;
+  /** cria o olho do Premium (a mesma runa que o próprio jogador vê em volta de si) */
+  premRune?(): THREE.Object3D;
   st(): NetSt;
   chat(name: string, text: string, whisper?: boolean): void;
   sys(text: string, color?: string): void;
@@ -99,6 +101,7 @@ export function createNet(ctx: NetCtx) {
     else if (r.hero && look.gear) { try { r.hero.setGear(look.gear); } catch { /* */ } }
     // a plaquinha com o nome mostra nível e caminho (como os NPCs, em HTML: nítida em qualquer resolução)
     r.name = look.name || r.name; labelOf(r);
+    if (look.prem && !r.rune && ctx.premRune) { r.rune = ctx.premRune(); ctx.scene.add(r.rune); } else if (!look.prem && r.rune) { ctx.scene.remove(r.rune); r.rune = null; }
     r.name = look.name || r.name;
   }
   function addRemote(p: { id: number; name: string; host: boolean; look: NetLook | null; st: NetSt | null }) {
@@ -111,7 +114,7 @@ export function createNet(ctx: NetCtx) {
     return r;
   }
   function labelOf(r: Remote) { (r.el.querySelector('b') as HTMLElement).textContent = (r.host ? '👑 ' : '') + r.name; (r.el.querySelector('small') as HTMLElement).textContent = r.look ? `Nv ${r.look.lvl} · ${r.look.cls}` : ''; r.el.classList.toggle('host', r.host); }
-  function dropRemote(id: number) { const r = remotes.get(id); if (!r) return; if (r.hero) ctx.scene.remove(r.hero.root); r.el.remove(); remotes.delete(id); }
+  function dropRemote(id: number) { const r = remotes.get(id); if (!r) return; if (r.hero) ctx.scene.remove(r.hero.root); if (r.rune) ctx.scene.remove(r.rune); r.el.remove(); remotes.delete(id); }
   function clearAll() { for (const id of [...remotes.keys()]) dropRemote(id); }
 
   function onMsg(m: { t: string; [k: string]: unknown }) {
@@ -190,8 +193,8 @@ export function createNet(ctx: NetCtx) {
     }
     const myZone = ctx.st().zn, now = performance.now(), rt = now - 140; // desenha 140 ms no passado: dá tempo de ter dois pontos para interpolar
     for (const r of remotes.values()) {
-      const h = r.hero; if (!h) { r.el.style.display = 'none'; continue; }
-      const vis = r.zn === myZone && r.snaps.length > 0; h.root.visible = vis; if (!vis) { r.el.style.display = 'none'; continue; }
+      const h = r.hero; if (!h) { r.el.style.display = 'none'; if (r.rune) r.rune.visible = false; continue; }
+      const vis = r.zn === myZone && r.snaps.length > 0; h.root.visible = vis; if (r.rune) r.rune.visible = vis; if (!vis) { r.el.style.display = 'none'; continue; }
       let a = r.snaps[0], b = r.snaps[r.snaps.length - 1];
       for (let i = 0; i < r.snaps.length - 1; i++) if (r.snaps[i].at <= rt && r.snaps[i + 1].at >= rt) { a = r.snaps[i]; b = r.snaps[i + 1]; break; }
       const k = b.at > a.at ? THREE.MathUtils.clamp((rt - a.at) / (b.at - a.at), 0, 1) : 1;
@@ -201,6 +204,7 @@ export function createNet(ctx: NetCtx) {
       h.combat = !!s.cb; h.guard = !!s.gd; h.riding = !!s.rd; h.kneel = !!s.kn; r.el.classList.toggle('ag', !!s.ag); // PvP da facção ligado: nome vermelho
       h.update(dt, t, s.m, f); h.root.rotation.y = lerpAng(h.root.rotation.y, f, Math.min(1, dt * 14));
       r.skinTick?.();
+      if (r.rune) { const hp = h.root.position, a = t * 0.9 + r.id; r.rune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2 + r.id) * 0.04, hp.z + Math.sin(a) * 0.62); }
       { const hp = h.root.position; tmpB.set(hp.x, hp.y + 2.15, hp.z).project(ctx.camera); const on = tmpB.z < 1 && Math.abs(tmpB.x) < 1.1 && Math.abs(tmpB.y) < 1.1; r.el.style.display = on ? 'block' : 'none';
         if (on) { const rc = ctx.canvas.getBoundingClientRect(); r.el.style.left = rc.left + (tmpB.x * 0.5 + 0.5) * rc.width + 'px'; r.el.style.top = rc.top + (-tmpB.y * 0.5 + 0.5) * rc.height + 'px'; } }
       if (r.bubbleT > 0) { r.bubbleT -= dt; if (r.bubbleT <= 0) (r.el.querySelector('p') as HTMLElement).style.display = 'none'; }
