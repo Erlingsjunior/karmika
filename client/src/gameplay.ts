@@ -299,7 +299,7 @@ export function createGameplay(d: GameplayDeps) {
     logMsg(`☠ ${e.def.name} derrotado`, '#ff9a8a'); }
     st.kills++; { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
       const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 5) : Math.max(0, 1 + dl * 0.2);
-      const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
+      const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
     if (Math.random() < 0.12) dropAt(e.pos.x, e.pos.z, e.pos.y, 'potion', 30);
     for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));
@@ -361,7 +361,7 @@ export function createGameplay(d: GameplayDeps) {
   function gainRes(n: number) { lastFight = now; if (st.res.mode !== 'fight') return; st.mp = Math.min(st.mpMax, st.mp + n * (1 + st.gen) * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
-    let crit = Math.random() < st.crit + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
+    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
@@ -633,6 +633,22 @@ export function createGameplay(d: GameplayDeps) {
      Lágrima Santa dos elfos). */
   const DOUBT_KEY = 'karmika.doubt.v1'; let doubt = 0.1; try { const d0 = +(localStorage.getItem(DOUBT_KEY) ?? '0.1'); if (isFinite(d0)) doubt = d0; } catch { /* */ }
   let doubtSaveT = 0, doubtStage = 0, doubtMsgT = 0, graceT = 0;
+  /* AS TRÊS ÚLTIMAS FRAQUEZAS (Erling pediu que eu decidisse, 25/10). Mesmo ritmo das outras: 30 turnos só de tempo, ~20 para quem usa muito.
+     MAGO — Ressonância Arcana: cada magia deixa um eco na cabeça. >50%: a magia volta 30% mais devagar e o dano cai 4%. >80%: SOBERBA, o mago
+       olha de cima para os simples (as boas escolhas não pesam) e a magia às vezes racha na mão dele (4% da vida). Remédio: o Ritual do Aterramento,
+       com o Unguento da Terra dos lobisomens (o chão e o instinto que o mago esqueceu) e a Água Benta dos paladinos.
+     BRUXO — Dívida do Pacto: cada magia é emprestada de Malgrath, e ele cobra juros. >50%: o patrono segura 10% da vida. >80%: as boas escolhas não
+       pesam e, de tempos em tempos, um Cobrador do Pacto aparece para levar o que é dele. Remédio: a Oferenda do Pacto, com o Coração de Demônio que
+       só os caçadores sabem arrancar e o Chifre de Sangue que só os guerreiros do Norte enchem.
+     CAÇADOR — Vigília: o olho de Aravel nunca fecha, e o caçador não dorme. Cada demônio e cada morto caçado somam. >50%: visão turva (−5% de crítico,
+       −4% de dano). >80%: PARANOIA, ele vê demônio em todo rosto (confiar não pesa no karma). Remédio: o Sono Guardado, com o Pó do Sono Sem Sonhos dos
+       bruxos (a quem ele caça) e o Sino de Guarda dos tecnocratas, que toca se algo chegar enquanto ele dorme. */
+  const NEED3_KEY = 'karmika.need3.v1'; let need3: Record<string, number> = { mag: 0.1, bru: 0.1, cac: 0.1 }; try { const n0 = JSON.parse(localStorage.getItem(NEED3_KEY) || 'null'); if (n0) need3 = { ...need3, ...n0 }; } catch { /* */ }
+  let n3SaveT = 0, n3Stage = 0, n3MsgT = 0, n3Calm = 0, n3Cast = -9, cobradorT = 0;
+  const n3Key = (): 'mag' | 'bru' | 'cac' | null => cls.name === 'Mago' ? 'mag' : cls.name === 'Bruxo' ? 'bru' : cls.name === 'Caçador de Demônios' ? 'cac' : null;
+  const N3_TXT = { mag: ['🔮 A Ressonância Arcana ecoa: a magia volta mais devagar.', '🔮 Soberba: o eco das magias sobe à cabeça e você olha de cima para os simples. As boas escolhas não pesam e a magia pode rachar na sua mão. Faça o Ritual do Aterramento (Unguento da Terra + Água Benta).'],
+    bru: ['🜏 A Dívida do Pacto cresce: Malgrath segura uma parte da sua vida.', '🜏 Malgrath cobra: as boas escolhas não pesam e o Cobrador do Pacto vem buscar o que é dele. Faça a Oferenda do Pacto (Coração de Demônio + Chifre de Sangue).'],
+    cac: ['👁 A Vigília pesa: a vista turva de tanto não dormir.', '👁 Paranoia: você vê demônio em todo rosto, e confiar já não pesa na alma. Faça o Sono Guardado (Pó do Sono Sem Sonhos + Sino de Guarda).'] } as const;
   let droneGoT = 0; const droneGo = new THREE.Vector3(); let lobHid = false;
   let heroDark = 0, workAt: { x: number; z: number } | null = null, lastHeroP = new THREE.Vector3(), heroMps = 0;
   /** tira de luz curva (rasgo de garra, corte de duelo): some em ~0,25 s */
@@ -1141,6 +1157,7 @@ export function createGameplay(d: GameplayDeps) {
     /** magias 6–10; target = ponto marcado (se a magia tiver mira) */
     useExtra(id: SkillId, yaw: number, cost: number, target?: { x: number; z: number }) {
       const h = d.getHero(), hp = h.root.position; if (st.menuOpen || st.dead) return false;
+      if (n3Key() === 'mag' && need3.mag > 0.8 && Math.random() < 0.08) { st.hp = Math.max(1, st.hp - st.hpMax * 0.04); logMsg('🔮 A magia rachou na sua mão (−4% de vida).', '#ff9a8a'); }
       if (kitKey === 'tecno' && reactor.charge <= 0 && id !== 'kick') { logMsg('⚛ O reator está vazio: as magias da Academia não saem. Troque o Núcleo de Reator.', '#ffb060'); return false; }
       if ((cdX[id] ?? 0) > 0) return false; if (st.mp < cost && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
@@ -1336,6 +1353,13 @@ export function createGameplay(d: GameplayDeps) {
     /** a Dúvida do paladino (0..1) */
     doubt() { return { v: doubt, grace: graceT }; },
     setDoubt(v: number) { doubt = v; },
+    /** necessidade do mago, do bruxo ou do caçador: { k, v } */
+    need3() { const k = n3Key(); return k ? { k, v: need3[k], calm: n3Calm } : null; },
+    setNeed3(v: number) { const k = n3Key(); if (k) need3[k] = v; },
+    ritual3(): boolean { const k = n3Key(); if (!k) return false; const before = need3[k]; need3[k] = Math.max(0, need3[k] - (k === 'bru' ? 0.8 : 0.75)); n3Calm = 1200; n3Stage = 0; cobradorT = 600; try { localStorage.setItem(NEED3_KEY, JSON.stringify(need3)); } catch { /* */ }
+      const hp = d.getHero().root.position, col = k === 'mag' ? 0x9ab4ff : k === 'bru' ? 0xa070e0 : 0xd8dce8; for (let q = 0; q < 28; q++) d.particles.spawn(hp.x + rnd(-0.7, 0.7), hp.y + rnd(0.2, 1.8), hp.z + rnd(-0.7, 0.7), { vx: rnd(-0.2, 0.2), vy: rnd(0.3, 1), vz: rnd(-0.2, 0.2), life: rnd(1.4, 2.4), s0: 0.12, s1: 0.3, c0: col, c1: 0x403050, a: 0.7, g: -0.1 });
+      if (k === 'cac') st.hp = st.hpMax; d.audio.chime();
+      logMsg(k === 'mag' ? `🔮 Ritual do Aterramento: a terra do lobo nos pés, a água benta na testa, e o eco se cala. Ressonância ${Math.round(before * 100)}% → ${Math.round(need3[k] * 100)}%.` : k === 'bru' ? `🜏 Oferenda do Pacto: o coração do demônio e o sangue da batalha pagam os juros. Dívida ${Math.round(before * 100)}% → ${Math.round(need3[k] * 100)}%.` : `👁 Sono Guardado: o pó do bruxo fecha o olho de Aravel e o sino vigia por você. Vigília ${Math.round(before * 100)}% → ${Math.round(need3[k] * 100)}%.`, '#d8c8ff'); return true; },
     fastPrayer() { const before = doubt; doubt = Math.max(0, doubt - 0.75); graceT = 1200; try { localStorage.setItem(DOUBT_KEY, String(doubt)); } catch { /* */ } st.hp = st.hpMax; st.mp = st.mpMax; const hp = d.getHero().root.position;
       for (let q = 0; q < 30; q++) d.particles.spawn(hp.x + rnd(-0.7, 0.7), hp.y + rnd(0.2, 2), hp.z + rnd(-0.7, 0.7), { vx: rnd(-0.2, 0.2), vy: rnd(0.4, 1.1), vz: rnd(-0.2, 0.2), life: rnd(1.4, 2.4), s0: 0.12, s1: 0.3, c0: 0xfff0b0, c1: 0xffc860, a: 0.8, g: -0.1 });
       d.audio.chime(); logMsg(`✝ Jejum e Oração: o pão sem fermento, o vinho santo e o silêncio. A Dúvida cai de ${Math.round(before * 100)}% para ${Math.round(doubt * 100)}%, e por 20 min ela volta mais devagar.`, '#fff0b0'); doubtStage = 0; },
@@ -1396,6 +1420,11 @@ export function createGameplay(d: GameplayDeps) {
         /* dia e noite (Erling, 25/10): o lobisomem de dia é o licantropo (homem maior e mais forte; a Besta só à noite);
            o vampiro queima ao sol fora da sombra (casas, masmorras, mata fechada, Corvoscuro) e à noite fica mais feroz e mais rápido */
         { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = isL ? 1.1 : 1; if (isL) cmod.dmg += 0.1;
+          { const k3 = n3Key(); if (k3 && !st.dead) { if (st.lastCast !== n3Cast) { if (st.lastCast > n3Cast && k3 !== 'cac') need3[k3] = Math.min(1, need3[k3] + (k3 === 'bru' ? 0.0012 : 0.0009) * (n3Calm > 0 ? 0.4 : 1)); n3Cast = st.lastCast; }
+            need3[k3] = Math.min(1, need3[k3] + dt / (30 * TURN_S)); n3Calm = Math.max(0, n3Calm - dt); const v3 = need3[k3]; n3SaveT -= dt; if (n3SaveT <= 0) { n3SaveT = 6; try { localStorage.setItem(NEED3_KEY, JSON.stringify(need3)); } catch { /* */ } }
+            if (v3 > 0.5) { if (k3 === 'mag' || k3 === 'cac') cmod.dmg -= 0.04; if (k3 === 'bru' && st.hp > st.hpMax * 0.9) st.hp = st.hpMax * 0.9; }
+            if (k3 === 'bru' && v3 > 0.8) { cobradorT -= dt; if (cobradorT <= 0) { cobradorT = 600; const hp = d.getHero().root.position; const e = enemies.debugSpawn?.('imp', hp.x + 4, hp.z + 3, 0, 'chase'); if (e) logMsg('🜏 O Cobrador do Pacto veio buscar o que é de Malgrath.', '#c08aff'); } }
+            const s3 = v3 > 0.8 ? 2 : v3 > 0.5 ? 1 : 0; if (s3 > n3Stage || (s3 === 2 && now > n3MsgT)) { n3MsgT = now + 300; logMsg(N3_TXT[k3][s3 - 1], s3 === 2 ? '#ff8a6a' : '#c8b0ff'); } n3Stage = s3; } }
           if (kitKey === 'pal' && !st.dead) { doubt = Math.min(1, doubt + dt / (30 * TURN_S)); graceT = Math.max(0, graceT - dt); if (doubt > 0.5) cmod.dmg -= 0.06; doubtSaveT -= dt; if (doubtSaveT <= 0) { doubtSaveT = 6; try { localStorage.setItem(DOUBT_KEY, String(doubt)); } catch { /* */ } }
             const ds = doubt > 0.8 ? 2 : doubt > 0.5 ? 1 : 0; if (ds > doubtStage || (ds === 2 && now > doubtMsgT)) { doubtMsgT = now + 300; logMsg(ds === 2 ? '✝ A fé vacila: tanto sangue em nome da Luz... As escolhas boas não pesam e o karma escorre. Faça o Jejum e Oração (Pão Ázimo e Vinho Santo).' : '✝ A Dúvida chega: a Luz responde menos às suas mãos.', ds === 2 ? '#ff8a6a' : '#e8d080'); } doubtStage = ds; }
           if (warrior && !st.dead) { fury = Math.min(1, fury + dt / (30 * TURN_S)); /* sozinho, 30 turnos; quem luta muito chega lá em ~20 */ calmT = Math.max(0, calmT - dt); if (fury > 0.5) cmod.dmg += 0.05; furySaveT -= dt; if (furySaveT <= 0) { furySaveT = 6; try { localStorage.setItem(FURY_KEY, String(fury)); } catch { /* */ } }
@@ -1497,7 +1526,7 @@ export function createGameplay(d: GameplayDeps) {
       // regeneração
       if (kitKey === 'tecno') { reactor.charge = Math.max(0, reactor.charge - dt / (60 * (REACT_MIN[reactor.tier] ?? 150))); reactSaveT -= dt; if (reactSaveT <= 0) { reactSaveT = 5; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } }
         if (reactor.charge < 0.15 && now > reactWarn) { reactWarn = now + 120; logMsg(reactor.charge <= 0 ? '⚛ O reator está vazio: a Energia não volta e a esfera apagou. Troque o Núcleo de Reator (Companhia de Latão ou um ferreiro).' : `⚛ Reator em ${Math.round(reactor.charge * 100)}%: providencie um Núcleo novo.`, '#ffb060'); } }
-      if (st.res.mode === 'regen') { const rk = kitKey === 'tecno' ? (reactor.charge <= 0 ? 0 : reactor.charge < 0.15 ? 0.5 : 1) : 1; if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
+      if (st.res.mode === 'regen') { const rk = (kitKey === 'tecno' ? (reactor.charge <= 0 ? 0 : reactor.charge < 0.15 ? 0.5 : 1) : 1) * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
       else if (now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia
       st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * dt);

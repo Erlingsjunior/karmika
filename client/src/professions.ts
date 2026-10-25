@@ -18,8 +18,29 @@ export const PROFS: Prof[] = [
   { id: 'pescador', name: 'Pescador', ic: '🎣', kind: 'coleta', pair: 'cozinheiro', desc: 'Pesca nos rios, lagos e no mar. A paciência rende peixes raros.' },
   { id: 'cozinheiro', name: 'Cozinheiro', ic: '🍲', kind: 'oficio', pair: 'pescador', desc: 'Assa, defuma e cozinha: comida que cura e dura na estrada.' },
 ];
-interface Recipe { id: string; prof: ProfId; lvl: number; need: [string, number][]; keep?: string[]; out?: [string, number]; gear?: Slot; label?: string; inv?: string }
+interface Recipe { id: string; prof: ProfId; lvl: number; /** receita de especialização: só estas classes fazem (25/10) */ cls?: string[]; need: [string, number][]; keep?: string[]; out?: [string, number]; gear?: Slot; label?: string; inv?: string }
 export const RECIPES2: Recipe[] = [
+  /* RECEITAS DE ESPECIALIZAÇÃO (Erling, 25/10): de alto nível, e só quem tem a classe certa faz. É o que cura a fraqueza de outro caminho. */
+  { id: 'areia_astral', prof: 'alquimista', lvl: 30, cls: ['Mago'], need: [['dust', 3], ['gem', 1]], out: ['areia_astral', 2], label: 'Areia da Iluminação Astral (só magos)' },
+  { id: 'cinzas_mortos', prof: 'alquimista', lvl: 30, cls: ['Bruxo'], need: [['wood', 4], ['dust', 2]], out: ['cinzas_mortos', 2], label: 'Cinzas dos Mortos (só bruxos)' },
+  { id: 'incenso_m', prof: 'alquimista', lvl: 35, cls: ['Mago', 'Bruxo'], need: [['areia_astral', 1], ['cinzas_mortos', 1], ['herb_m', 2], ['sap', 1]], out: ['incenso_m', 1], label: 'Kit de Incensos de Mortificação (magos e bruxos)' },
+  { id: 'po_sono', prof: 'alquimista', lvl: 30, cls: ['Bruxo'], need: [['herb_m', 2], ['dust', 2]], out: ['po_sono', 2], label: 'Pó do Sono Sem Sonhos (só bruxos)' },
+  { id: 'pao_azimo', prof: 'cozinheiro', lvl: 30, cls: ['Humano'], need: [['trigo_sf', 2], ['herb_g', 1]], out: ['pao_azimo', 2], label: 'Pão Ázimo (só cozinheiros humanos)' },
+  { id: 'vinho_santo', prof: 'cozinheiro', lvl: 35, cls: ['Anão'], need: [['gota_santa', 1], ['apple', 4], ['mead', 1]], out: ['vinho_santo', 1], label: 'Vinho Santo (só anões)' },
+  { id: 'gota_santa', prof: 'alquimista', lvl: 30, cls: ['Elfo'], need: [['herb_m', 3], ['herb_f', 1]], out: ['gota_santa', 2], label: 'Gota de Lágrima Santa (só elfos)' },
+  { id: 'sangria_c', prof: 'alquimista', lvl: 30, cls: ['Anão'], need: [['potion', 1], ['herb_r', 2]], out: ['sangria_c', 2], label: 'Sangria Concentrada (só anões)' },
+  { id: 'trigo_sf', prof: 'alquimista', lvl: 30, cls: ['Tecnocrata'], need: [['herb_g', 4], ['ore_ag', 1]], out: ['trigo_sf', 3], label: 'Trigo sem Fermento (só tecnocratas)' },
+  { id: 'inj_s', prof: 'ferreiro', lvl: 35, cls: ['Tecnocrata'], need: [['sangria_c', 2], ['ore_ag', 1], ['herb_g', 1]], out: ['inj_s', 2], label: 'Injeção Automática de Sangue (só tecnocratas)' },
+  { id: 'sino_guarda', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['ore_ag', 2], ['nail', 4]], out: ['sino_guarda', 1], label: 'Sino de Guarda (só tecnocratas)' },
+  { id: 'casco_reator', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata', 'Anão'], need: [['ore_i', 5], ['ore_ag', 2], ['nail', 6]], out: ['casco_reator', 1], label: 'Casco de Reator (tecnocratas e anões)' },
+  { id: 'reator_1', prof: 'ferreiro', lvl: 35, cls: ['Tecnocrata', 'Anão'], need: [['casco_reator', 1], ['fluido_vital', 1], ['cristal_arcano', 1]], out: ['reator_1', 1], label: 'Núcleo de Reator Mk I (precisa do alquimista e dos magos)' },
+  { id: 'fluido_vital', prof: 'alquimista', lvl: 30, cls: ['Humano', 'Elfo', 'Mago'], need: [['herb_m', 2], ['herb_f', 2], ['dust', 2]], out: ['fluido_vital', 1], label: 'Fluido Vital (alquimistas humanos, elfos e magos)' },
+  { id: 'cristal_arcano', prof: 'alquimista', lvl: 35, cls: ['Mago'], need: [['gem', 1], ['dust', 2]], out: ['cristal_arcano', 1], label: 'Cristal Arcano (só magos)' },
+  { id: 'agua_benta', prof: 'alquimista', lvl: 30, cls: ['Paladino de Auréon'], need: [['potion', 1], ['herb_s', 1]], out: ['agua_benta', 3], label: 'Água Benta de Auréon (só paladinos)' },
+  { id: 'unguento_terra', prof: 'costureiro', lvl: 30, cls: ['Lobisomem'], need: [['hide', 3], ['meat', 2]], out: ['unguento_terra', 2], label: 'Unguento da Terra (só lobisomens)' },
+  { id: 'coracao_demonio', prof: 'alquimista', lvl: 30, cls: ['Caçador de Demônios'], need: [['el_heart', 1], ['antidote', 1]], out: ['coracao_demonio', 1], label: 'Coração de Demônio conservado (só caçadores)' },
+  { id: 'chifre_sangue', prof: 'cozinheiro', lvl: 30, cls: ['Guerreiro do Norte'], need: [['el_horn', 1], ['mead', 1]], out: ['chifre_sangue', 1], label: 'Chifre de Sangue (só guerreiros do Norte)' },
+
   // sobrevivência: as receitas antigas da mochila (a fogueira usa a regra de lugar da mochila)
   { id: 'axe', prof: 'sobrevivencia', lvl: 1, need: [['stick', 3], ['stone', 2], ['rope', 1]], out: ['axe_s', 1], inv: 'axe' },
   { id: 'pick', prof: 'sobrevivencia', lvl: 1, need: [['stick', 3], ['stone', 3], ['rope', 1]], out: ['pick_s', 1], inv: 'pick' },
@@ -34,8 +55,6 @@ export const RECIPES2: Recipe[] = [
   { id: 'wshield', prof: 'marceneiro', lvl: 10, need: [['plank', 5], ['nail', 2], ['hide', 1]], gear: 'shield', label: 'Escudo de Madeira' },
   // minerador e ferreiro
   { id: 'block', prof: 'minerador', lvl: 1, need: [['stone', 4]], out: ['block', 1], label: 'Lapidar bloco de pedra' },
-  { id: 'casco_reator', prof: 'ferreiro', lvl: 25, need: [['ore_i', 5], ['ore_ag', 2], ['nail', 6]], out: ['casco_reator', 1], label: 'Casco de Reator' },
-  { id: 'reator_1', prof: 'ferreiro', lvl: 30, need: [['casco_reator', 1], ['fluido_vital', 1], ['cristal_arcano', 1]], out: ['reator_1', 1], label: 'Núcleo de Reator Mk I (precisa do alquimista e dos magos)' },
   { id: 'nail', prof: 'ferreiro', lvl: 1, need: [['ore_i', 1]], out: ['nail', 3] },
   { id: 'knife_i', prof: 'ferreiro', lvl: 6, need: [['ore_i', 2], ['plank', 1]], out: ['knife_i', 1] },
   { id: 'axe_i', prof: 'ferreiro', lvl: 10, need: [['ore_i', 4], ['plank', 1], ['hide', 1]], out: ['axe_i', 1] },
@@ -55,11 +74,6 @@ export const RECIPES2: Recipe[] = [
   { id: 'boots', prof: 'costureiro', lvl: 18, need: [['hide_f', 3], ['hide', 2]], gear: 'boots', label: 'Botas de couro' },
   { id: 'bag_l', prof: 'costureiro', lvl: 30, need: [['hide_f', 8], ['hide', 6], ['rope', 4]], out: ['bag_l', 1] },
   // alquimista
-  { id: 'fluido_vital', prof: 'alquimista', lvl: 20, need: [['herb_m', 2], ['herb_f', 2], ['dust', 2]], out: ['fluido_vital', 1], label: 'Fluido Vital (para o Núcleo de Reator)' },
-  { id: 'inj_s', prof: 'alquimista', lvl: 22, need: [['sangria_c', 2], ['ore_ag', 1], ['herb_g', 1]], out: ['inj_s', 2], label: 'Injeção Automática de Sangue (Sangria dos anões + latão)' },
-  { id: 'incenso_m', prof: 'alquimista', lvl: 15, need: [['areia_astral', 1], ['cinzas_mortos', 1], ['herb_m', 2], ['sap', 1]], out: ['incenso_m', 1], label: 'Kit de Incensos de Mortificação (Areia dos magos + Cinzas dos bruxos)' },
-  { id: 'pao_azimo', prof: 'cozinheiro', lvl: 12, need: [['trigo_sf', 2], ['herb_g', 1]], out: ['pao_azimo', 2], label: 'Pão Ázimo (Trigo sem Fermento dos tecnocratas)' },
-  { id: 'vinho_santo', prof: 'cozinheiro', lvl: 25, need: [['gota_santa', 1], ['apple', 4], ['mead', 1]], out: ['vinho_santo', 1], label: 'Vinho Santo (receita dos anões; Gota de Lágrima Santa dos elfos)' },
   { id: 'potion', prof: 'alquimista', lvl: 1, need: [['herb_g', 2], ['apple', 1]], out: ['potion', 1] },
   { id: 'antidote', prof: 'alquimista', lvl: 5, need: [['herb_g', 1], ['herb_s', 1]], out: ['antidote', 1] },
   { id: 'antidote_j', prof: 'alquimista', lvl: 3, need: [['herb_j', 2], ['herb_g', 1]], out: ['antidote', 1], label: 'Antídoto de junco' },
@@ -81,9 +95,21 @@ export const STATION_OF: Partial<Record<ProfId, { name: string; icon: string }>>
 interface Ctx { /** trabalho na bancada: barra em volta do ícone, som e animação; step(k) faz a peça k e diz se deu */ craftJob?(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }): void; onLevel?(id: string, name: string, icon: string, lvl: number): void; /** o herói está no ponto de trabalho deste ofício? */ atStation?(prof: string): boolean; /** efeito na bancada quando algo fica pronto */ craftFx?(prof: string): void;
   has(id: string, n?: number): boolean; count(id: string): number; take(id: string, n: number): boolean; add(id: string, n: number): void; addGear(g: Gear): boolean;
   invCraft(id: string): void; itemName(id: string): string; itemIcon(id: string): string; heroLvl(): number;
-  log(t: string, c?: string): void; onCraft?(name: string): void;
+  log(t: string, c?: string): void; onCraft?(name: string): void; /** classe atual (para as receitas de especialização) */ cls?(): string;
 }
+/* Quem escolhe um caminho deixa coisas para trás (Erling, 25/10): humanos, anões e elfos sem caminho (raças puras) fazem todas as receitas comuns;
+   cada caminho guarda só os ofícios que combinam com ele. Coleta e Sobrevivência ficam para todos. */
+export const BASE_PURE = ['Humano', 'Anão', 'Elfo'];
+export const CLASS_PROFS: Record<string, ProfId[]> = {
+  'Guerreiro do Norte': ['ferreiro', 'cozinheiro'], 'Paladino de Auréon': ['ferreiro', 'alquimista'], 'Caçador de Demônios': ['alquimista', 'costureiro'],
+  'Tecnocrata': ['ferreiro', 'marceneiro'], 'Vampiro': ['costureiro', 'cozinheiro'], 'Lobisomem': ['costureiro', 'marceneiro'], 'Mago': ['alquimista', 'costureiro'], 'Bruxo': ['alquimista', 'costureiro'] };
 export function createProfessions(ctx: Ctx) {
+  const myCls = () => ctx.cls?.() ?? 'Humano';
+  /** motivo de não poder fazer esta receita por causa da classe (ou null) */
+  const clsBlock = (r: Recipe): string | null => { const c = myCls();
+    if (r.cls) return r.cls.includes(c) ? null : `Especialização de ${r.cls.length > 1 ? r.cls.slice(0, -1).join(', ') + ' e ' + r.cls[r.cls.length - 1] : r.cls[0]}: compre de quem faz.`;
+    if (r.prof === 'sobrevivencia' || BASE_PURE.includes(c)) return null; const keep = CLASS_PROFS[c]; if (!keep || keep.includes(r.prof)) return null;
+    return `Ao seguir o caminho de ${c}, você deixou este ofício para trás.`; };
   const lv: Record<string, { l: number; x: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.prof.v1') || '{}'); } catch { return {}; } })();
   for (const p of PROFS) lv[p.id] ??= { l: 1, x: 0 };
   const save = () => { try { localStorage.setItem('karmika.prof.v1', JSON.stringify(lv)); } catch { /* */ } };
@@ -91,10 +117,11 @@ export function createProfessions(ctx: Ctx) {
   const el = document.createElement('div'); el.id = 'profw'; document.body.appendChild(el);
   function gain(id: ProfId, n: number) { const p = lv[id]; if (!p || p.l >= 100) return; p.x += n; let up = false; while (p.x >= need(p.l) && p.l < 100) { p.x -= need(p.l); p.l++; up = true; }
     if (up) { const P = PROFS.find((q) => q.id === id)!; ctx.log(`✦ ${P.name} subiu para o nível ${p.l}`, '#ffe08a'); ctx.onLevel?.(id, P.name, P.ic, p.l); } save(); if (open) render(); }
-  const ready = (r: Recipe) => lv[r.prof].l >= r.lvl && r.need.every(([i, n]) => ctx.has(i, n)) && (r.keep ?? []).every((k) => ctx.has(k));
+  const ready = (r: Recipe) => !clsBlock(r) && lv[r.prof].l >= r.lvl && r.need.every(([i, n]) => ctx.has(i, n)) && (r.keep ?? []).every((k) => ctx.has(k));
   function rarityFor(l: number): Rarity { const x = Math.random(); return x < l / 400 ? 'rare' : x < l / 90 ? 'magic' : 'normal'; }
   /** faz UMA peça; devolve false se não deu (e já avisou o motivo) */
   function one(r: Recipe, first: boolean): boolean {
+    { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return false; } }
     if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return false; }
     { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem uma, em volta da praça.`, '#ff9a8a'); return false; } }
     if (!ready(r)) { if (first) ctx.log('Faltam materiais.', '#ff9a8a'); return false; }
@@ -109,7 +136,8 @@ export function createProfessions(ctx: Ctx) {
   function craft(r: Recipe, times = 1) {
     const nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
     if (ctx.craftJob && !r.inv) {
-      /* confere antes de começar (sem gastar nada): nível, bancada e materiais */
+      /* confere antes de começar (sem gastar nada): classe, nível, bancada e materiais */
+      { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return; } }
       if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return; }
       { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem uma, em volta da praça.`, '#ff9a8a'); return; } }
       if (!ready(r)) { ctx.log('Faltam materiais.', '#ff9a8a'); return; }
@@ -125,8 +153,8 @@ export function createProfessions(ctx: Ctx) {
     const pairs: ProfId[][] = [['sobrevivencia'], ['lenhador', 'marceneiro'], ['minerador', 'ferreiro'], ['esfolador', 'costureiro'], ['herbalista', 'alquimista'], ['pescador', 'cozinheiro']];
     const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
     const pair = P.pair ? PROFS.find((q) => q.id === P.pair)! : null;
-    const list = rs.length ? rs.map((r) => { const ok = ready(r), lock = L.l < r.lvl, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
-      return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${lock ? `<small class="n">nível ${r.lvl}</small>` : ''}<small>${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemName(i)} ${ctx.count(i)}/${n}</span>`).join(' · ')}${(r.keep ?? []).map((k) => ` · <span class="${ctx.has(k) ? 'y' : 'n'}">${ctx.itemName(k)} (ferramenta)</span>`).join('')}${r.gear ? ' · <em>peça aleatória; ofício alto dá mágicas e raras</em>' : ''}</small></div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
+    const list = rs.length ? rs.map((r) => { const cb = clsBlock(r), ok = ready(r), lock = L.l < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
+      return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${cb ? `<small class="n">${r.cls ? '✦ ' : ''}${cb}</small>` : L.l < r.lvl ? `<small class="n">nível ${r.lvl}</small>` : r.cls ? '<small class="y">✦ especialização</small>' : ''}<small>${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemName(i)} ${ctx.count(i)}/${n}</span>`).join(' · ')}${(r.keep ?? []).map((k) => ` · <span class="${ctx.has(k) ? 'y' : 'n'}">${ctx.itemName(k)} (ferramenta)</span>`).join('')}${r.gear ? ' · <em>peça aleatória; ofício alto dá mágicas e raras</em>' : ''}</small></div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
       : `<em class="emptyb">${P.name} é coleta: sobe trabalhando no mundo${pair ? ` e abastece o ${pair.name}` : ''}.</em>`;
     el.innerHTML = `<div class="pn profpn"><h2>⚒ Profissões <button data-px>✕</button></h2><div class="pfwrap"><nav class="pfnav">${nav}</nav>
       <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
