@@ -299,7 +299,7 @@ export function createGameplay(d: GameplayDeps) {
     logMsg(`☠ ${e.def.name} derrotado`, '#ff9a8a'); }
     st.kills++; { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
       const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 5) : Math.max(0, 1 + dl * 0.2);
-      const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } onKill(e.type, e);
+      const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
     if (Math.random() < 0.12) dropAt(e.pos.x, e.pos.z, e.pos.y, 'potion', 30);
     for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));
@@ -598,6 +598,41 @@ export function createGameplay(d: GameplayDeps) {
      - Blindagem (defesa): não ataca; fica colada em você, joga gás curativo em você e, sempre que está à toa, refaz uma casca de escudo em volta */
   let droneMode: 'atk' | 'grp' | 'def' = 'atk', gasT = 2, shellCd = 0;
   const droneDefends = () => kitKey === 'tecno' && (d.getHero().guard || bubbleT > 0 || droneMode !== 'atk');
+  /* O REATOR PESSOAL do tecnocrata (Erling, 25/10): a Energia vem do reator nas costas, e o reator gasta. Quem é tecnocrata precisa
+     ganhar dinheiro para manter o seu núcleo: um Núcleo custa caro e dura bem (Mk I 8 turnos de jogo; Mk II, da segunda classe, 20 turnos).
+     Vazio: a Energia não volta, a esfera apaga e as magias da Academia não saem. Abaixo de 15%: a Energia volta pela metade. */
+  const REACT_KEY = 'karmika.reactor.v1'; let reactor: { charge: number; tier: number } = { charge: 1, tier: 1 }; try { const r0 = JSON.parse(localStorage.getItem(REACT_KEY) || 'null'); if (r0 && typeof r0.charge === 'number') reactor = r0; } catch { /* */ }
+  let reactSaveT = 0, reactWarn = 0; const REACT_MIN: Record<number, number> = { 1: 8 * 30, 2: 20 * 30 }; /* Mk I: 8 turnos (4 h); Mk II: 20 turnos (10 h) */
+  /* A FOME DA FERA (Erling, 25/10): o lobisomem sente falta de carne de gente (humano, anão de carne dura, elfo de carne magra), o vampiro de sangue de gente.
+     A fome sobe com o tempo de jogo. Carne de bicho e Sangue Diluído enganam por um tempo, mas cada vez menos: o "piso" sobe
+     desde a última refeição de verdade, e o que é de bicho não desce a fome abaixo dele. Com fome alta a fera fica lenta e fraca.
+     Comer gente (NPC humano/anão/elfo ou jogador) zera tudo, mas pesa muito no karma. O caminho do bem existe e custa caro e humilha:
+     o lobisomem compra a Charcutaria Secular dos vampiros; o vampiro compra a Injeção Automática dos tecnocratas, feita com a Sangria dos anões.
+     EQUILÍBRIO (regra 01): o castigo entra no mesmo balde capado (cmod); sem fome nenhuma não há bônus extra além dos que já existiam. */
+  const CRAVE_KEY = 'karmika.crave.v1'; let crave = { v: 0.2, real: 0 }; try { const c0 = JSON.parse(localStorage.getItem(CRAVE_KEY) || 'null'); if (c0 && typeof c0.v === 'number') crave = c0; } catch { /* */ }
+  let craveSaveT = 0, craveMsgT = 0, craveStage = 0, feastT = 0; const TURN_S = 30 * 60; /* 1 turno de Karmika = 30 min reais de jogo */ const CRAVE_FULL = 20 * TURN_S; /* 20 turnos de jogo (10 h) até a fome total; o castigo começa nos 60% (12 turnos) */
+  const craveFloor = () => Math.min(0.78, crave.real / (16 * TURN_S) * 0.78); /* 16 turnos sem comer gente: bicho já não sacia */
+  const saveCrave = () => { try { localStorage.setItem(CRAVE_KEY, JSON.stringify(crave)); } catch { /* */ } };
+  function feed(kind: 'animal' | 'human' | 'preserved'): void {
+    const isV = kitKey === 'vam'; if (kitKey !== 'vam' && kitKey !== 'lob') return;
+    if (kind === 'animal') { const fl = craveFloor(), before = crave.v; crave.v = Math.max(fl, crave.v - 0.14); if (before - crave.v < 0.02) logMsg(isV ? '🩸 O sangue de bicho já não desce: o corpo pede sangue de gente.' : '🥩 Carne de bicho já não enche: a fera quer carne de gente.', '#ff8a7a'); else logMsg(isV ? `🩸 Sangue de bicho: a sede cede um pouco (${Math.round(crave.v * 100)}%).` : `🥩 A fome cede um pouco (${Math.round(crave.v * 100)}%).`, '#e0b0a0'); }
+    else { crave.v = 0; crave.real = 0; feastT = kind === 'preserved' ? 600 : 300; logMsg(kind === 'preserved' ? (isV ? '💉 A Injeção corre na veia: sangue de verdade, sem vítima. A sede some.' : '🍖 Carne humana curada por séculos: a fera se acalma e fica forte. Sem vítima, mas comprada de vampiro.') : (isV ? '🩸 Você bebeu de gente. A sede some... e a alma escurece.' : '🍖 A fera comeu carne de gente. A fome some... e a alma escurece.'), kind === 'preserved' ? '#b0e0ff' : '#ff5a5a'); d.audio.heal(); }
+    craveStage = 0; saveCrave();
+  }
+  /* A FÚRIA DO GUERREIRO (Erling, 25/10): o guerreiro do Norte tende à loucura e ao frenesi. Cada abate e cada hora de luta enchem a Fúria.
+     Acima de 50% é frenesi (+5% de dano, mas apanha 6% mais: o escudo baixa). Acima de 80% é a beira da loucura: as escolhas boas das
+     missões de karma escapam dele e a alma escurece devagar. Só os rituais de calmaria, com o Kit de Incensos de Mortificação dos magos
+     e dos bruxos, devolvem a paz: condolências a Odin e o corpo mortificado. */
+  const FURY_KEY = 'karmika.fury.v1'; let fury = 0.1; try { const f0 = +(localStorage.getItem(FURY_KEY) ?? '0.1'); if (isFinite(f0)) fury = f0; } catch { /* */ }
+  let warrior = false, furySaveT = 0, furyStage = 0, furyMsgT = 0, calmT = 0;
+  const addFury = (x: number) => { if (!warrior) return; fury = Math.max(0, Math.min(1, fury + x * (calmT > 0 ? 0.4 : 1))); };
+  /* A DÚVIDA DO PALADINO (Erling, 25/10): tanto sangue derramado em nome da Luz, contra entidades, demônios e gente, e o paladino começa a
+     sentir que a sua guerra pela paz derrama mais sangue que os próprios malditos. A Dúvida é a fraqueza dele: acima de 50% a Luz responde
+     menos (−6% de dano e de cura); acima de 80% a fé vacila, as escolhas boas não pesam e o karma escorre. De tempos em tempos ele precisa do
+     JEJUM E ORAÇÃO: o Pão Ázimo dos cozinheiros humanos (com o Trigo sem Fermento dos tecnocratas) e o Vinho Santo dos anões (com a Gota de
+     Lágrima Santa dos elfos). */
+  const DOUBT_KEY = 'karmika.doubt.v1'; let doubt = 0.1; try { const d0 = +(localStorage.getItem(DOUBT_KEY) ?? '0.1'); if (isFinite(d0)) doubt = d0; } catch { /* */ }
+  let doubtSaveT = 0, doubtStage = 0, doubtMsgT = 0, graceT = 0;
   let droneGoT = 0; const droneGo = new THREE.Vector3(); let lobHid = false;
   let heroDark = 0, workAt: { x: number; z: number } | null = null, lastHeroP = new THREE.Vector3(), heroMps = 0;
   /** tira de luz curva (rasgo de garra, corte de duelo): some em ~0,25 s */
@@ -927,7 +962,7 @@ export function createGameplay(d: GameplayDeps) {
       comboIdx = seq; lastCombo = now; slotFlash('combo'); d.audio.swing();
       /* vampiro: golpes de duelista 45% mais rápidos (dano por golpe um pouco menor); lobisomem: garras, 20% mais rápidas, sem arma */
       const Q = kitKey === 'vam' ? 1 / 1.45 : kitKey === 'lob' && beastOn ? 1 / 1.2 : 1, MK = kitKey === 'vam' ? 0.82 : 1, RK = kitKey === 'lob' && beastOn ? 0.8 : 1;
-      const fxc = (sd: number) => { if (kitKey === 'lob' && beastOn) clawFx(sd, 0xffd0b0, 3); else if (kitKey === 'vam') { const p0 = h.root.position; streak(p0.x, p0.y + 1.15, p0.z, h.root.rotation.y, sd, 0xff3a4a, { n: 1, r: 1.5, w: 0.05, life: 0.22, span: 1.7 }); } };
+      const fxc = (sd: number) => { if (kitKey === 'tecno' && techLook) { const gp = techLook.gauntlet(new THREE.Vector3()); techLook.charge(0.5); const y2 = h.root.rotation.y; bolt3d(gp, gp.clone().add(new THREE.Vector3(Math.sin(y2) * 1.4, 0, Math.cos(y2) * 1.4)), 0xbff4ff); streak(h.root.position.x, h.root.position.y + 1.1, h.root.position.z, y2, sd, 0x8af0ff, { n: 1, r: 1.2, w: 0.04, life: 0.2 }); } if (kitKey === 'lob' && beastOn) clawFx(sd, 0xffd0b0, 3); else if (kitKey === 'vam') { const p0 = h.root.position; streak(p0.x, p0.y + 1.15, p0.z, h.root.rotation.y, sd, 0xff3a4a, { n: 1, r: 1.5, w: 0.05, life: 0.22, span: 1.7 }); } };
       if (seq === 0) pending.push({ at: now + TEMPO * 0.19 * Q, fn: () => { fxc(1); skStrike('combo', h, yaw, 1.0 * MK, 3.6 * RK, 0.7); } });
       if (seq === 1) pending.push({ at: now + TEMPO * 0.19 * Q, fn: () => { fxc(-1); skStrike('combo', h, yaw, 1.1 * MK, 3.0 * RK, 1.3); } });
       if (seq === 2) pending.push({ at: now + TEMPO * 0.22 * Q, fn: () => { fxc(1); skStrike('combo', h, yaw, 1.3 * MK, 2.8 * RK, 1.0); d.audio.boom(); st.shake = Math.max(st.shake, 0.22); } });
@@ -1051,6 +1086,7 @@ export function createGameplay(d: GameplayDeps) {
     damage(n: number, heroPos: THREE.Vector3, from?: THREE.Vector3) {
       const h = d.getHero();
       if (st.dead || st.god) return;
+      if (warrior && fury > 0.5) n *= 1.06; /* frenesi: o guerreiro esquece a guarda */
       n = Math.max(1, Math.round(n * st.takenMul)); /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');
@@ -1105,6 +1141,7 @@ export function createGameplay(d: GameplayDeps) {
     /** magias 6–10; target = ponto marcado (se a magia tiver mira) */
     useExtra(id: SkillId, yaw: number, cost: number, target?: { x: number; z: number }) {
       const h = d.getHero(), hp = h.root.position; if (st.menuOpen || st.dead) return false;
+      if (kitKey === 'tecno' && reactor.charge <= 0 && id !== 'kick') { logMsg('⚛ O reator está vazio: as magias da Academia não saem. Troque o Núcleo de Reator.', '#ffb060'); return false; }
       if ((cdX[id] ?? 0) > 0) return false; if (st.mp < cost && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
       const sc = skillScale(id); cost = Math.round(cost * sc.cost * (st.sp.has('m_staff') ? 0.8 : 1));
@@ -1294,6 +1331,23 @@ export function createGameplay(d: GameplayDeps) {
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
     setKit(k: string) { kitKey = k; },
     kit() { return kitKey; },
+    /** a Fúria do guerreiro do Norte (0..1) */
+    fury() { return { v: fury, warrior, calm: calmT }; },
+    /** a Dúvida do paladino (0..1) */
+    doubt() { return { v: doubt, grace: graceT }; },
+    setDoubt(v: number) { doubt = v; },
+    fastPrayer() { const before = doubt; doubt = Math.max(0, doubt - 0.75); graceT = 1200; try { localStorage.setItem(DOUBT_KEY, String(doubt)); } catch { /* */ } st.hp = st.hpMax; st.mp = st.mpMax; const hp = d.getHero().root.position;
+      for (let q = 0; q < 30; q++) d.particles.spawn(hp.x + rnd(-0.7, 0.7), hp.y + rnd(0.2, 2), hp.z + rnd(-0.7, 0.7), { vx: rnd(-0.2, 0.2), vy: rnd(0.4, 1.1), vz: rnd(-0.2, 0.2), life: rnd(1.4, 2.4), s0: 0.12, s1: 0.3, c0: 0xfff0b0, c1: 0xffc860, a: 0.8, g: -0.1 });
+      d.audio.chime(); logMsg(`✝ Jejum e Oração: o pão sem fermento, o vinho santo e o silêncio. A Dúvida cai de ${Math.round(before * 100)}% para ${Math.round(doubt * 100)}%, e por 20 min ela volta mais devagar.`, '#fff0b0'); doubtStage = 0; },
+    setWarrior(on: boolean) { warrior = on; },
+    setFury(v: number) { fury = v; },
+    /** reator pessoal do tecnocrata: carga 0..1 e geração do núcleo */
+    reactor() { return { ...reactor }; },
+    /** a fome da fera (lob/vam): 0..1 e o piso que bicho não desce */
+    crave() { return { v: crave.v, floor: craveFloor(), feast: feastT }; },
+    feed,
+    setCrave(v: number, real?: number) { crave.v = v; if (real != null) crave.real = real; saveCrave(); },
+    installReactor(tier: number, maxTier: number) { if (tier > maxTier) { logMsg('⚛ Este núcleo é da segunda classe: o seu reator ainda não aguenta.', '#ff9a8a'); return false; } reactor = { charge: 1, tier }; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } d.audio.chime(); logMsg(`⚛ Núcleo de Reator Mk ${tier === 2 ? 'II' : 'I'} instalado: ${REACT_MIN[tier] / 30} turnos de energia.`, '#8af0ff'); return true; },
     /** postura → modo da esfera do tecnocrata */
     setDroneMode(stanceId: string | null | undefined) { droneMode = stanceId === 'engenharia' ? 'grp' : stanceId === 'blindagem' ? 'def' : 'atk'; },
     /** aparelhos do tecnocrata formado (manopla, reator, exoesqueleto) presos ao modelo */
@@ -1312,7 +1366,12 @@ export function createGameplay(d: GameplayDeps) {
       if (id === 'regen') { hot = { t: Math.max(hot.t, 30), per: Math.max(hot.per, st.hpMax * 0.02) }; logMsg('🫙 Vigor: regenerando vida', '#7aff9a'); }
       else if (id === 'courage') { buff.dmg = Math.max(buff.dmg, 1.1); buff.dmgT = Math.max(buff.dmgT, 60); logMsg('🍺 Coragem: +10% de dano por 60 s', '#ffd24a'); }
       else if (id === 'mead') { buff.dmg = Math.max(buff.dmg, 1.15); buff.dmgT = Math.max(buff.dmgT, 60); buff.move = Math.max(buff.move, 1.1); buff.moveT = Math.max(buff.moveT, 60); logMsg('🍯 Hidromel: +15% de dano e +10% de velocidade', '#ffd24a'); }
-      else if (id === 'sunveil') { sunVeilT = 300; sunK = Math.max(0, sunK - 0.6); logMsg(kitKey === 'vam' ? '🩸 Sangue Diluído: o sol arde bem menos por 5 min e a pele começa a fechar.' : '🩸 Sangue Diluído: gosto de ferro. Nada acontece com quem não é vampiro.', '#ff7a8a'); }
+      else if (id === 'sunveil') { if (kitKey === 'vam') feed('animal'); sunVeilT = 300; sunK = Math.max(0, sunK - 0.6); logMsg(kitKey === 'vam' ? '🩸 Sangue Diluído: o sol arde bem menos por 5 min e a pele começa a fechar.' : '🩸 Sangue Diluído: gosto de ferro. Nada acontece com quem não é vampiro.', '#ff7a8a'); }
+      else if (id === 'carne_h') { if (kitKey === 'lob') feed('preserved'); else logMsg('🍖 Carne velha, salgada demais e com um gosto que você prefere não entender.', '#c8a890'); }
+      else if (id === 'inj_s') { if (kitKey === 'vam') feed('preserved'); else logMsg('💉 A agulha arde e nada acontece: isso é para vampiros.', '#c8a890'); }
+      else if (id === 'ritual') { if (!warrior) logMsg('🕯 O incenso queima e o cheiro é forte, mas ele não foi feito para você.', '#c8a890'); else { const before = fury; fury = Math.max(0, fury - 0.7); calmT = 900; st.hp = Math.max(1, st.hp - st.hpMax * 0.12); try { localStorage.setItem(FURY_KEY, String(fury)); } catch { /* */ }
+          const hp = d.getHero().root.position; for (let q = 0; q < 26; q++) d.particles.spawn(hp.x + rnd(-0.6, 0.6), hp.y + 0.3, hp.z + rnd(-0.6, 0.6), { vx: rnd(-0.3, 0.3), vy: rnd(0.6, 1.4), vz: rnd(-0.3, 0.3), life: rnd(1.6, 2.8), s0: 0.2, s1: 0.5, c0: q % 3 ? 0xb8b0c8 : 0xffc070, c1: 0x6a6080, a: 0.6, g: -0.2 });
+          logMsg(`🕯 Ritual de calmaria: você presta condolências a Odin pelos que caíram e mortifica o corpo (−12% de vida). A Fúria cai de ${Math.round(before * 100)}% para ${Math.round(fury * 100)}%, e por 15 min ela sobe mais devagar.`, '#d8c8ff'); furyStage = 0; } }
       else if (id === 'cleanse') { logMsg('🌿 Antídoto: veneno e queimaduras curados', '#7aff9a'); }
       d.audio.heal();
     },
@@ -1337,6 +1396,14 @@ export function createGameplay(d: GameplayDeps) {
         /* dia e noite (Erling, 25/10): o lobisomem de dia é o licantropo (homem maior e mais forte; a Besta só à noite);
            o vampiro queima ao sol fora da sombra (casas, masmorras, mata fechada, Corvoscuro) e à noite fica mais feroz e mais rápido */
         { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = isL ? 1.1 : 1; if (isL) cmod.dmg += 0.1;
+          if (kitKey === 'pal' && !st.dead) { doubt = Math.min(1, doubt + dt / (30 * TURN_S)); graceT = Math.max(0, graceT - dt); if (doubt > 0.5) cmod.dmg -= 0.06; doubtSaveT -= dt; if (doubtSaveT <= 0) { doubtSaveT = 6; try { localStorage.setItem(DOUBT_KEY, String(doubt)); } catch { /* */ } }
+            const ds = doubt > 0.8 ? 2 : doubt > 0.5 ? 1 : 0; if (ds > doubtStage || (ds === 2 && now > doubtMsgT)) { doubtMsgT = now + 300; logMsg(ds === 2 ? '✝ A fé vacila: tanto sangue em nome da Luz... As escolhas boas não pesam e o karma escorre. Faça o Jejum e Oração (Pão Ázimo e Vinho Santo).' : '✝ A Dúvida chega: a Luz responde menos às suas mãos.', ds === 2 ? '#ff8a6a' : '#e8d080'); } doubtStage = ds; }
+          if (warrior && !st.dead) { fury = Math.min(1, fury + dt / (30 * TURN_S)); /* sozinho, 30 turnos; quem luta muito chega lá em ~20 */ calmT = Math.max(0, calmT - dt); if (fury > 0.5) cmod.dmg += 0.05; furySaveT -= dt; if (furySaveT <= 0) { furySaveT = 6; try { localStorage.setItem(FURY_KEY, String(fury)); } catch { /* */ } }
+            const fs = fury > 0.8 ? 2 : fury > 0.5 ? 1 : 0; if (fs > furyStage || (fs === 2 && now > furyMsgT)) { furyMsgT = now + 300; logMsg(fs === 2 ? '🪓 A loucura da batalha sobe à cabeça: as escolhas boas escapam de você e a alma escurece. Faça o ritual de calmaria (Kit de Incensos de Mortificação).' : '🪓 Frenesi: o sangue ferve. Mais dano, guarda mais baixa.', fs === 2 ? '#ff6a5a' : '#ffb060'); } furyStage = fs; }
+          if ((isV || isL) && !st.dead) { crave.v = Math.min(1, crave.v + dt / CRAVE_FULL); crave.real += dt; feastT = Math.max(0, feastT - dt); craveSaveT -= dt; if (craveSaveT <= 0) { craveSaveT = 6; saveCrave(); }
+            const cv = crave.v; if (feastT > 0) cmod.dmg += 0.05; /* bem alimentado: +5%, ainda dentro do balde capado */
+            if (cv > 0.6) { const k = cv > 0.9 ? 1 : (cv - 0.6) / 0.3; cmod.dmg -= 0.08 + 0.1 * k; cmod.move *= 1 - 0.06 - 0.1 * k; }
+            const stg = cv > 0.9 ? 2 : cv > 0.6 ? 1 : 0; if (stg > craveStage || (stg && now > craveMsgT)) { craveMsgT = now + 240; logMsg(stg === 2 ? (isV ? '🩸 A sede é insuportável: você está lento e fraco. Precisa de sangue de gente — ou de uma Injeção dos tecnocratas.' : '🍖 A fome da fera é insuportável: lento e fraco. Precisa de carne de gente — ou da Charcutaria dos vampiros.') : (isV ? '🩸 A sede aperta. Sangue de bicho só engana.' : '🍖 A fera sente fome de carne. Bicho só engana.'), stg === 2 ? '#ff5a5a' : '#ffb080'); } craveStage = stg; }
           if (isV) { sunVeilT = Math.max(0, sunVeilT - dt); const exposed = !nightNow && !skyShade && !st.dead; sunK = Math.max(0, Math.min(1, sunK + (exposed ? dt / (sunVeilT > 0 ? 120 : 14) : -dt / 5)));
             if (sunK > 0) { if (st.hp > st.hpMax * 0.08) st.hp = Math.max(st.hpMax * 0.08, st.hp - st.hpMax * 0.012 * sunK * dt); cmod.dmg -= 0.2 * sunK; cmod.move *= 1 - 0.15 * sunK;
               /* Erling: não fica queimando o tempo todo — a fumaça só aparece abaixo de 45% da vida, as chamas no corpo abaixo de 20% */
@@ -1360,7 +1427,7 @@ export function createGameplay(d: GameplayDeps) {
           const a2 = now * 2.2, md = medicDrone; md.visible = true; md.position.set(heroPos.x + Math.cos(a2) * 1.1, heroPos.y + 2.1 + Math.sin(now * 3) * 0.1, heroPos.z + Math.sin(a2) * 1.1); md.rotation.y = -a2; md.rotation.z = Math.sin(now * 2) * 0.1;
           medicBeamT -= dt; if (medicBeamT <= 0) { medicBeamT = 0.5; const from = md.position.clone().setY(md.position.y - 0.08), to = heroPos.clone().setY(heroPos.y + 1.2); beam(from, to, 0x7affd0, 0.03, 0.3); for (let q = 0; q < 8; q++) d.particles.spawn(to.x + rnd(-0.3, 0.3), to.y + rnd(-0.4, 0.4), to.z + rnd(-0.3, 0.3), { vy: rnd(0.4, 1.2), life: 0.7, s0: 0.12, s1: 0.03, c0: 0xffffff, c1: 0x7affd0, a: 1 }); } }
         else if (medicDrone) medicDrone.visible = false;
-        if (kitKey === 'tecno' && h.kind !== 'technocrat') { if (!sideDrone) sideDrone = mkSideDrone(); const D = sideDrone; D.g.visible = true; const y = h.root.rotation.y; droneGoT -= dt;
+        if (kitKey === 'tecno' && h.kind !== 'technocrat') { if (!sideDrone) sideDrone = mkSideDrone(); const D = sideDrone; D.g.visible = true; (D.glow.material as THREE.SpriteMaterial).color.setScalar(reactor.charge <= 0 ? 0.15 : 1); const y = h.root.rotation.y; droneGoT -= dt;
           const guarding = h.guard && !st.dead; bubbleT = Math.max(0, bubbleT - dt);
           if (!droneShield) { const sm = new THREE.MeshBasicMaterial({ color: 0x8af0ff, map: hexMap, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); droneShield = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 10, -0.75, 1.5, Math.PI * 0.22, Math.PI * 0.5), sm); fxAdd(droneShield); droneShield.userData.dyn = true; }
           { const m = droneShield.material as THREE.MeshBasicMaterial; m.opacity += ((guarding ? 0.36 : 0) - m.opacity) * Math.min(1, dt * 10); droneShield.visible = m.opacity > 0.02; droneShield.position.set(heroPos.x, heroPos.y + 0.15, heroPos.z); droneShield.rotation.y = y; hexMap.offset.y = -now * 0.2;
@@ -1381,11 +1448,11 @@ export function createGameplay(d: GameplayDeps) {
           if (workAt && !D.droneTo && droneGoT <= 0 && Math.random() < dt * 5) { const a = D.g.position.clone(), b = new THREE.Vector3(workAt.x + rnd(-0.3, 0.3), d.world.heightAt(workAt.x, workAt.z) + rnd(0.3, 1.0), workAt.z + rnd(-0.3, 0.3)); beam(a, b, 0x8af0ff, 0.02, 0.12); D.droneFlash = 0.6; for (let q = 0; q < 6; q++) d.particles.spawn(b.x, b.y, b.z, { vx: rnd(-2, 2), vy: rnd(0.5, 3), vz: rnd(-2, 2), life: 0.4, s0: 0.1, s1: 0.03, c0: 0xffffff, c1: 0xffc060, a: 1, g: 9 }); }
         } else if (sideDrone) sideDrone.g.visible = false;
         { const DR = h.kind === 'technocrat' ? h : kitKey === 'tecno' && sideDrone ? sideDrone : null; const want = DR ? heroDark * 7 : 0; droneLight.intensity += (want - droneLight.intensity) * Math.min(1, dt * 3); if (DR) DR.dronePos(droneLight.position); droneLight.visible = droneLight.intensity > 0.05;
-          const ws = DR ? heroDark * 60 : 0; droneSpot.intensity += (ws - droneSpot.intensity) * Math.min(1, dt * 3); droneSpot.visible = droneSpot.intensity > 0.1;
+          const ws = DR && !(kitKey === 'tecno' && reactor.charge <= 0) ? heroDark * 60 : 0; droneSpot.intensity += (ws - droneSpot.intensity) * Math.min(1, dt * 3); droneSpot.visible = droneSpot.intensity > 0.1;
           if (DR) { DR.dronePos(droneSpot.position); const yy = h.root.rotation.y; droneSpot.target.position.set(heroPos.x + Math.sin(yy) * 6, heroPos.y, heroPos.z + Math.cos(yy) * 6); droneSpot.target.updateMatrixWorld(); } }
         // lobisomem: luta sem arma (garras); a espada e o escudo somem enquanto não estiver com ferramenta de ofício na mão
         { const rg = (h as unknown as { rig?: { sword?: () => THREE.Object3D | null; shield?: () => THREE.Object3D | null } }).rig; const sw = rg?.sword?.() ?? null, shd = rg?.shield?.() ?? null;
-          if (kitKey === 'lob' && beastOn) { if (sw) sw.visible = false; if (shd) shd.visible = false; lobHid = true; } /* de dia o licantropo luta com porrete, maça e alabarda; garras só na Besta */ else if (kitKey === 'tecno') { if (shd) shd.visible = false; if (sw && lobHid) sw.visible = true; lobHid = true; } else if (lobHid) { if (sw) sw.visible = true; if (shd) shd.visible = true; lobHid = false; } } // tecnocrata não usa escudo: quem defende é a esfera
+          if (kitKey === 'lob' && beastOn) { if (sw) sw.visible = false; if (shd) shd.visible = false; lobHid = true; } /* de dia o licantropo luta com porrete, maça e alabarda; garras só na Besta */ else if (kitKey === 'tecno') { if (shd) shd.visible = false; if (sw) sw.visible = !!wmode || h.holdTool; lobHid = true; } /* tecnocrata: nada de espada, adaga ou arco — só as armas da Academia; sem elas, a manopla */ else if (lobHid) { if (sw) sw.visible = true; if (shd) shd.visible = true; lobHid = false; } } // tecnocrata não usa escudo: quem defende é a esfera
         if (form?.id === 'fenrir' && kitKey === 'lob') { beastShow(true); const B = beast!; for (const c of h.root.children) if (c !== B.root) c.visible = false;
           const an = h.actName, p = h.actP; if (an && an !== beastLastAct) beastSide = -beastSide; beastLastAct = an;
           const mode = !an || an === 'dash' || an === 'dodge' ? null : an === 'cast' ? (lastExtra === 'bite' ? 'bite' : 'howl') : an === 'slam' || an === 'bash' || an === 'rush' ? 'pounce' : an === 'kick' ? (lastExtra === 'bite' ? 'bite' : 'clawR') : an === 'combo2' || an === 'combo4' || an === 'lowcut' ? 'clawL' : an === 'hit' ? null : beastSide > 0 ? 'clawR' : 'clawL';
@@ -1428,7 +1495,9 @@ export function createGameplay(d: GameplayDeps) {
       for (const k of Object.keys(cd) as (keyof typeof cd)[]) cd[k] = Math.max(0, cd[k] - dt);
       for (let i = pending.length - 1; i >= 0; i--) if (now >= pending[i].at) { pending.splice(i, 1)[0].fn(); }
       // regeneração
-      if (st.res.mode === 'regen') { if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
+      if (kitKey === 'tecno') { reactor.charge = Math.max(0, reactor.charge - dt / (60 * (REACT_MIN[reactor.tier] ?? 150))); reactSaveT -= dt; if (reactSaveT <= 0) { reactSaveT = 5; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } }
+        if (reactor.charge < 0.15 && now > reactWarn) { reactWarn = now + 120; logMsg(reactor.charge <= 0 ? '⚛ O reator está vazio: a Energia não volta e a esfera apagou. Troque o Núcleo de Reator (Companhia de Latão ou um ferreiro).' : `⚛ Reator em ${Math.round(reactor.charge * 100)}%: providencie um Núcleo novo.`, '#ffb060'); } }
+      if (st.res.mode === 'regen') { const rk = kitKey === 'tecno' ? (reactor.charge <= 0 ? 0 : reactor.charge < 0.15 ? 0.5 : 1) : 1; if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
       else if (now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia
       st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * dt);

@@ -417,4 +417,59 @@ export function buildBoar(opt: { fur?: number } = {}): Boar4 {
   }
   return { root, mats, pose };
 }
+
+export interface Deer4 { root: THREE.Group; mats: THREE.MeshToonMaterial[]; pose(p: { dt: number; mv: number; idle?: boolean; alert?: boolean; hurt?: number }): void }
+/** cervo (Erling, 25/10: "mude o cervo"): esguio, pernas finas e longas, peito estreito, pescoço erguido, galhada ramificada e o rabo branco que levanta quando foge */
+export function buildDeer(opt: { coat?: number; stag?: boolean } = {}): Deer4 {
+  const mats: THREE.MeshToonMaterial[] = []; const { M, mesh, tuft } = makeKit(mats);
+  const COAT = opt.coat ?? 0x9a6a3e, stag = opt.stag ?? true;
+  const coat = M(COAT), coatD = M(new THREE.Color(COAT).multiplyScalar(0.7).getHex()), belly = M(0xe8dcc4), muzzle = M(0x2a2018, false), hoof = M(0x231a14, false), antler = M(0xd8c8a4, false);
+  const root = new THREE.Group(); const H = 0.92;
+  const body = new THREE.Group(); body.position.y = H; root.add(body);
+  body.add(mesh(backG(mus(0.95, 0.17, 0.2, 0.15, 0.35, 14)), coat, 0.68, 1.05, 1).translateZ(0.46)); // tronco fino
+  body.add(mesh(backG(mus(0.6, 0.08, 0.12, 0.06, 0.5, 12)), belly, 0.7, 0.7, 1).translateY(-0.12).translateZ(0.34)); // barriga clara
+  const rump = mesh(backG(mus(0.42, 0.15, 0.19, 0.13, 0.5, 12)), coat, 0.9, 0.95, 1); rump.position.set(0, 0.03, -0.25); body.add(rump);
+  const patch = mesh(new THREE.SphereGeometry(0.12, 10, 8), belly, 0.95, 0.85, 0.35); patch.position.set(0, 0.04, -0.5); body.add(patch); // espelho branco do traseiro
+  const neck = new THREE.Group(); neck.position.set(0, 0.08, 0.44); neck.rotation.x = -1.05; body.add(neck);
+  neck.add(mesh(fwdG(mus(0.55, 0.12, 0.1, 0.075, 0.3, 12)), coat, 0.7, 1.25, 1));
+  const throat = mesh(fwdG(mus(0.3, 0.06, 0.06, 0.04, 0.5, 8)), belly, 0.7, 0.8, 1); throat.position.set(0, -0.05, 0.2); neck.add(throat);
+  const head = new THREE.Group(); head.position.set(0, 0.02, 0.52); head.rotation.x = 1.55; neck.add(head);
+  head.add(mesh(fwdG(mus(0.34, 0.085, 0.075, 0.04, 0.3, 12)), coat, 0.8, 1.05, 1));
+  const nose = mesh(new THREE.SphereGeometry(0.04, 10, 8), muzzle, 0.9, 0.8, 1); nose.position.set(0, -0.005, 0.34); head.add(nose);
+  const chin = mesh(new THREE.SphereGeometry(0.035, 8, 6), belly, 1, 0.6, 1.4); chin.position.set(0, -0.04, 0.24); head.add(chin);
+  for (const s of [-1, 1]) {
+    const ear = new THREE.Group(); ear.position.set(s * 0.06, 0.07, 0.02); ear.rotation.set(-0.3, 0, -s * 1.05); head.add(ear);
+    const eg = new THREE.SphereGeometry(0.06, 8, 6); eg.scale(0.5, 1.15, 0.18); eg.translate(0, 0.06, 0); ear.add(mesh(eg, coat)); const ei = new THREE.SphereGeometry(0.045, 8, 6); ei.scale(0.35, 0.8, 0.1); ei.translate(0, 0.055, 0.01); ear.add(mesh(ei, belly));
+    const ey = new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), new THREE.MeshBasicMaterial({ color: 0x0c0806 })); ey.position.set(s * 0.06, 0.035, 0.1); head.add(ey);
+    if (stag) { // galhada: haste curva com 3 pontas
+      const an = new THREE.Group(); an.position.set(s * 0.04, 0.08, 0.06); an.rotation.set(-0.35, 0, -s * 0.45); head.add(an);
+      const beam = new THREE.CylinderGeometry(0.008, 0.016, 0.34, 6, 6); beam.translate(0, 0.17, 0); bend(beam, 0.08, 0.34); an.add(mesh(beam, antler));
+      for (const [y, rz, rx, l] of [[0.08, -0.2, 0.9, 0.1], [0.17, 0.1, 0.8, 0.13], [0.26, -0.1, 0.7, 0.11]] as const) { const tg = new THREE.ConeGeometry(0.008, l, 5, 2); tg.translate(0, l / 2, 0); const t = mesh(tg, antler); t.position.set(0, y, 0.02 + y * 0.18); t.rotation.set(rx, 0, rz * s); an.add(t); }
+    }
+  }
+  const legs: Leg3[] = [];
+  for (const front of [true, false]) for (const s of [-1, 1]) {
+    const a = new THREE.Group(); a.position.set(s * 0.1, front ? -0.08 : -0.02, front ? 0.36 : -0.36); body.add(a);
+    if (front) a.add(mesh(mus(0.34, 0.06, 0.06, 0.03, 0.25), coat, 0.85, 1, 1.15)); else a.add(mesh(mus(0.36, 0.1, 0.11, 0.035, 0.25), coat, 0.75, 1, 1.4));
+    const b = new THREE.Group(); b.position.y = -0.34; a.add(b); b.add(mesh(mus(0.3, 0.024, 0.022, 0.02, 0.5), coatD, 1, 1, 1.1));
+    const c = new THREE.Group(); c.position.y = -0.3; b.add(c); c.add(mesh(mus(0.12, 0.02, 0.021, 0.022, 0.5), coatD));
+    const d = new THREE.Group(); d.position.y = -0.12; c.add(d); const hv = new THREE.ConeGeometry(0.03, 0.06, 8); hv.rotateX(Math.PI); hv.translate(0, -0.02, 0.01); d.add(mesh(hv, hoof));
+    legs.push({ a, b, c, d, front, side: s });
+  }
+  const tail = new THREE.Group(); tail.position.set(0, 0.12, -0.56); body.add(tail); { const t = tuft(0.14, 0.04, 0.02, coat); t.rotation.x = Math.PI * 0.85; tail.add(t); const w = tuft(0.12, 0.035, 0.02, belly); w.position.z = -0.012; w.rotation.x = Math.PI * 0.85; tail.add(w); }
+  const st = { ph: 0, t: 0, mv: 0, seed: Math.random() * 6.28 };
+  function pose(p: { dt: number; mv: number; idle?: boolean; alert?: boolean; hurt?: number }) {
+    const dt = Math.min(0.05, p.dt); st.t += dt; st.mv += (p.mv - st.mv) * Math.min(1, dt * 7); const mv = st.mv, spd = Math.min(1, mv / 2), bound = Math.max(0, Math.min(1, (mv - 3) / 2.5)); st.ph += dt * (3 + mv * 1.6);
+    for (let i = 0; i < 4; i++) { const L = legs[i], walkO = [0, Math.PI, Math.PI, 0][i], boundO = L.front ? 0 : Math.PI * 0.85, o = walkO * (1 - bound) + boundO * bound, sw = Math.sin(st.ph + o) * spd, lift = Math.max(0, Math.cos(st.ph + o)) * spd, A = 0.4 + 0.45 * bound;
+      if (L.front) { L.a.rotation.x = -sw * A; L.b.rotation.x = lift * 1.4; L.c.rotation.x = -0.15 - lift * 0.4; L.d.rotation.x = 0.15 + lift * 0.5; }
+      else { L.a.rotation.x = -sw * A * 0.9 + 0.25; L.b.rotation.x = -0.38 - lift * 0.6; L.c.rotation.x = 0.12 + lift * 0.4; L.d.rotation.x = lift * 0.4; } }
+    body.position.y = H + Math.max(0, Math.sin(st.ph)) * (0.03 + 0.22 * bound) * spd; body.rotation.x = Math.sin(st.ph) * 0.12 * bound;
+    const gz = Math.sin(st.t * 0.3 + st.seed), graze = p.idle ? Math.max(0, Math.min(1, (gz - 0.45) / 0.3)) : 0; // pasta de vez em quando, a cabeça vai ao chão
+    neck.rotation.x = -1.05 + graze * 1.9 + (p.alert ? -0.15 : 0) + 0.25 * bound;
+    head.rotation.x = 1.55 - graze * 0.5 + (p.hurt ?? 0) * 0.3; head.rotation.y = p.idle && graze < 0.2 ? Math.sin(st.t * 0.7) * 0.35 : 0;
+    tail.rotation.x = (p.alert || bound > 0.2 ? -1.2 : 0) + Math.sin(st.t * 6) * 0.1; // a bandeira branca sobe quando foge
+  }
+  return { root, mats, pose };
+}
+
 export { mus, musUp, bend, furTex, ramp as beastRamp };

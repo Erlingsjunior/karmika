@@ -1,6 +1,6 @@
 import { RUNAS } from './runas';
 import * as THREE from 'three';
-import { buildBeast, buildWolf, buildBoar } from './werewolf3d';
+import { buildBeast, buildWolf, buildBoar, buildDeer } from './werewolf3d';
 import { buildUndead } from './undead3d';
 import { charShadow, createCharacter, type Hero3D } from './characters';
 import type { SpawnDef, EnemyType } from './world';
@@ -446,7 +446,8 @@ export function createEnemies(ctx: EnemyCtx) {
 
   function build(e: Enemy) {
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
-    if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
+    if (e.def.quad === 'deer') { const dr = buildDeer({ stag: Math.random() < 0.55 }); e.rig = { root: dr.root, mats: dr.mats, update(e2, dt, _w, _s, hurtK, mv) { dr.pose({ dt, mv, idle: e2.state === 'idle', alert: e2.state === 'flee' || e2.state === 'hurt', hurt: hurtK }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
+    else if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
     else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(e.type === 'skeleton' ? 'skeleton' : e.type === 'ghoul' ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }

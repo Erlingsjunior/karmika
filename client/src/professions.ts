@@ -34,6 +34,8 @@ export const RECIPES2: Recipe[] = [
   { id: 'wshield', prof: 'marceneiro', lvl: 10, need: [['plank', 5], ['nail', 2], ['hide', 1]], gear: 'shield', label: 'Escudo de Madeira' },
   // minerador e ferreiro
   { id: 'block', prof: 'minerador', lvl: 1, need: [['stone', 4]], out: ['block', 1], label: 'Lapidar bloco de pedra' },
+  { id: 'casco_reator', prof: 'ferreiro', lvl: 25, need: [['ore_i', 5], ['ore_ag', 2], ['nail', 6]], out: ['casco_reator', 1], label: 'Casco de Reator' },
+  { id: 'reator_1', prof: 'ferreiro', lvl: 30, need: [['casco_reator', 1], ['fluido_vital', 1], ['cristal_arcano', 1]], out: ['reator_1', 1], label: 'Núcleo de Reator Mk I (precisa do alquimista e dos magos)' },
   { id: 'nail', prof: 'ferreiro', lvl: 1, need: [['ore_i', 1]], out: ['nail', 3] },
   { id: 'knife_i', prof: 'ferreiro', lvl: 6, need: [['ore_i', 2], ['plank', 1]], out: ['knife_i', 1] },
   { id: 'axe_i', prof: 'ferreiro', lvl: 10, need: [['ore_i', 4], ['plank', 1], ['hide', 1]], out: ['axe_i', 1] },
@@ -53,6 +55,11 @@ export const RECIPES2: Recipe[] = [
   { id: 'boots', prof: 'costureiro', lvl: 18, need: [['hide_f', 3], ['hide', 2]], gear: 'boots', label: 'Botas de couro' },
   { id: 'bag_l', prof: 'costureiro', lvl: 30, need: [['hide_f', 8], ['hide', 6], ['rope', 4]], out: ['bag_l', 1] },
   // alquimista
+  { id: 'fluido_vital', prof: 'alquimista', lvl: 20, need: [['herb_m', 2], ['herb_f', 2], ['dust', 2]], out: ['fluido_vital', 1], label: 'Fluido Vital (para o Núcleo de Reator)' },
+  { id: 'inj_s', prof: 'alquimista', lvl: 22, need: [['sangria_c', 2], ['ore_ag', 1], ['herb_g', 1]], out: ['inj_s', 2], label: 'Injeção Automática de Sangue (Sangria dos anões + latão)' },
+  { id: 'incenso_m', prof: 'alquimista', lvl: 15, need: [['areia_astral', 1], ['cinzas_mortos', 1], ['herb_m', 2], ['sap', 1]], out: ['incenso_m', 1], label: 'Kit de Incensos de Mortificação (Areia dos magos + Cinzas dos bruxos)' },
+  { id: 'pao_azimo', prof: 'cozinheiro', lvl: 12, need: [['trigo_sf', 2], ['herb_g', 1]], out: ['pao_azimo', 2], label: 'Pão Ázimo (Trigo sem Fermento dos tecnocratas)' },
+  { id: 'vinho_santo', prof: 'cozinheiro', lvl: 25, need: [['gota_santa', 1], ['apple', 4], ['mead', 1]], out: ['vinho_santo', 1], label: 'Vinho Santo (receita dos anões; Gota de Lágrima Santa dos elfos)' },
   { id: 'potion', prof: 'alquimista', lvl: 1, need: [['herb_g', 2], ['apple', 1]], out: ['potion', 1] },
   { id: 'antidote', prof: 'alquimista', lvl: 5, need: [['herb_g', 1], ['herb_s', 1]], out: ['antidote', 1] },
   { id: 'antidote_j', prof: 'alquimista', lvl: 3, need: [['herb_j', 2], ['herb_g', 1]], out: ['antidote', 1], label: 'Antídoto de junco' },

@@ -260,6 +260,30 @@ const tree = createSkillTree(kitRace, () => game.st.lvl, (t, c) => game.logMsg(t
 game.setSkillScale((id) => tree.scale(id));
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
+/** guerreiro do Norte: classe ou caminho validado */
+function isWarrior() { let n = ''; try { n = game.classInfo.name; } catch { /* */ } return n === 'Guerreiro do Norte' || myPath() === 'gue'; }
+let furyDriftT = 0;
+/* medidor da necessidade da classe (25/10): ⚛ Reator do tecnocrata, 🍖 Fome do lobisomem, 🩸 Sede do vampiro — sobre o orbe da magia */
+const needEl = document.createElement('div'); needEl.id = 'need'; document.body.appendChild(needEl); let needT = 0, needKey = '';
+function needGauge() { const t = performance.now(); if (t < needT) return; needT = t + 400; const k = kitRace();
+  let html = '', tip = '';
+  if (k === 'tecno') { const r = game.reactor(), p = Math.round(r.charge * 100); html = `<b>⚛</b><i><s style="width:${p}%;background:${p < 15 ? '#ff7a4a' : '#5ae0ff'}"></s></i><em>${p}%</em>`; tip = `Reator pessoal Mk ${r.tier === 2 ? 'II' : 'I'}: ${p}%. Vazio = sem Energia e a esfera apaga. Troque o Núcleo (Companhia de Latão).`; }
+  else if (k === 'lob' || k === 'vam') { const c = game.crave(), p = Math.round(c.v * 100), L = k === 'lob'; html = `<b>${L ? '🍖' : '🩸'}</b><i><s style="width:${p}%;background:${p > 90 ? '#ff3a3a' : p > 60 ? '#ff9a4a' : '#c23a4a'}"></s><s class="fl" style="left:${Math.round(c.floor * 100)}%"></s></i><em>${p}%</em>`; tip = `${L ? 'Fome de carne' : 'Sede de sangue'}: ${p}%. Acima de 60% você fica mais lento e fraco. A risca é o piso: ${L ? 'carne' : 'sangue'} de bicho não desce abaixo dela. ${L ? 'Charcutaria Secular (vampiros de Corvoscuro)' : 'Injeção Automática (tecnocratas)'} sacia sem vítima.`; }
+  if (k === 'pal') { const dv = game.doubt(), p = Math.round(dv.v * 100); html = `<b>✝</b><i><s style="width:${p}%;background:${p > 80 ? '#ff6a4a' : p > 50 ? '#e8c050' : '#f0e0a0'}"></s></i><em>${p}%</em>`; tip = `Dúvida: ${p}%. Acima de 50%: a Luz responde menos (−6% de dano). Acima de 80%: a fé vacila, as escolhas boas não pesam e o karma escorre. Jejum e Oração: Pão Ázimo + Vinho Santo dos Anões.`;
+    if (dv.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; state.karma = Math.max(-100, state.karma - 1); game.logMsg('✝ A dúvida corrói a fé (−1 de karma).', '#ff8a6a'); } } }
+  if (!html && isWarrior()) { const f = game.fury(), p = Math.round(f.v * 100); html = `<b>🪓</b><i><s style="width:${p}%;background:${p > 80 ? '#ff3a3a' : p > 50 ? '#ff9a3a' : '#c8a060'}"></s></i><em>${p}%</em>`; tip = `Fúria: ${p}%. Acima de 50%: frenesi (+5% de dano, apanha 6% mais). Acima de 80%: loucura — as escolhas boas não pesam e a alma escurece. Ritual de calmaria: Kit de Incensos de Mortificação (magos de Lumenhal ou bruxa de Gorvath).`;
+    if (f.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; state.karma = Math.max(-100, state.karma - 1); game.logMsg('🪓 A loucura come a alma por dentro (−1 de karma).', '#ff8a6a'); } } }
+  const key = html; if (key !== needKey) { needKey = key; needEl.innerHTML = html; needEl.title = tip; needEl.style.display = html ? 'flex' : 'none'; } }
+/* a fome da fera (25/10): gente morta pelo lobisomem ou pelo vampiro vira refeição — e pesa muito no karma */
+const PEOPLE = new Set(['soldier', 'cultist', 'darkpal', 'templar', 'hunter', 'pilgrim']);
+const BEASTS_FOOD = new Set(['deer', 'boar', 'wolf', 'coyote', 'frostwolf']);
+function feastOnKill(t: string, e?: { def?: { rig?: string; human?: { kind?: string; civil?: string } } }) { const k = kitRace(); if (k !== 'lob' && k !== 'vam') return;
+  /* carne RACIAL, não só humana (Erling): humano, anão (carne dura) ou elfo (carne magra) */
+  const hu = e?.def?.human, ppl = (PEOPLE.has(t) || e?.def?.rig === 'human') && t !== 'vampire';
+  if (ppl) { const race = hu?.kind === 'dwarf' ? 'dwarf' : hu?.civil === 'elf' || t === 'pilgrim' ? 'elf' : 'human'; game.feed('human');
+    const L = k === 'lob', fl = race === 'dwarf' ? (L ? 'Carne de anão: dura de mastigar, mas sustenta.' : 'Sangue de anão: grosso, quente, com gosto de ferro e cerveja.') : race === 'elf' ? (L ? 'Carne de elfo: magra, quase sem gordura, e deixa um gosto de seiva.' : 'Sangue élfico: fino e frio, com um brilho que demora a sair da boca.') : (L ? 'Carne humana: é dela que a fera mais sente falta.' : 'Sangue humano: o mais doce de todos.');
+    game.logMsg(`☠ ${fl} Comer gente pesa na alma (−6 de karma).`, '#ff6a5a'); state.karma = Math.max(-100, state.karma - 6); }
+  else if (BEASTS_FOOD.has(t)) game.feed('animal'); }
 const SHOP_BY_NAME = new Map<string, string>(); for (const st of city.settlements) for (const n of st.npcs) if (n.shop) SHOP_BY_NAME.set(n.name, n.shop); for (const n of npcSys.npcs) if (n.def.role === 'Mercador viajante') SHOP_BY_NAME.set(n.def.name, 'mercador');
 /* correio: caixas em cada povoado */
 const mail = createMail({ me: () => profile?.name || RACES[state.race].label, st: game.st,
@@ -466,9 +490,11 @@ function updateCompanions(dt: number, t: number, heroYaw: number, mps: number) {
 }
 const inv = createInventory(game, {
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
-  canWear: (g) => g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
+  canWear: (g) => kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
-  onUse: (id) => { const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
+  onUse: (id) => { if (id === 'pao_azimo' || id === 'vinho_santo') { if (kitRace() !== 'pal') { game.logMsg(id === 'pao_azimo' ? '🫓 Pão sem fermento, seco e sem graça. Isso é para o jejum dos paladinos.' : '🍷 Forte demais para beber à toa: é vinho de jejum dos paladinos.', '#c8a890'); return true; } if (!inv.has('pao_azimo') || !inv.has('vinho_santo')) { game.logMsg('✝ O Jejum e Oração pede os dois: o Pão Ázimo e o Vinho Santo dos Anões.', '#ffd88a'); return true; } inv.take('pao_azimo'); inv.take('vinho_santo'); game.fastPrayer(); return true; }
+    if (id === 'reator_1' || id === 'reator_2') { if (kitRace() !== 'tecno' && state.race !== 'technocrat') { game.logMsg('Só tecnocratas carregam um reator pessoal.', '#ff9a8a'); return true; } if (game.installReactor(id === 'reator_2' ? 2 : 1, game.classInfo?.name === 'Engenheiro-Chefe' ? 2 : 1)) inv.take?.(id); return true; }
+    const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>7 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(7); game.logMsg('💧 A Lágrima se desfaz em luz: +7 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
     if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff'); return true; }
     if (id === 'scroll_return') {
@@ -612,6 +638,7 @@ function hasMark(m: string) { return (soul.s.marks ?? []).includes(m); }
 function applyReply(r: Reply) {
   const before = soulLean();
   if (r.luz) soul.s.luz = (soul.s.luz ?? 0) + r.luz; if (r.sombra) soul.s.sombra = (soul.s.sombra ?? 0) + r.sombra;
+  if (r.karma && r.karma > 0 && ((isWarrior() && game.fury().v > 0.8) || (kitRace() === 'pal' && game.doubt().v > 0.8))) { game.logMsg('🪓 A loucura da batalha fala mais alto: o bem que você quis fazer não pesou na alma. Faça o ritual de calmaria.', '#ff8a6a'); r = { ...r, karma: 0 }; }
   if (r.karma) state.karma = Math.max(-100, Math.min(100, state.karma + r.karma));
   if (r.flag && !hasMark(r.flag)) (soul.s.marks ??= []).push(r.flag);
   if (r.flag?.startsWith('mentiu')) breakVow('verdade');
@@ -749,6 +776,7 @@ const pvp = (() => {
       if (rivals(fac)) { game.logMsg(`⚔ ${vn}, de ${FAC[fac as Fac]?.name ?? 'outra facção'}, caiu diante de você.`, '#ffd88a'); feats.bump('pvp_rival'); }
       else if ((hostile.get(from) ?? 0) > Date.now()) game.logMsg(`⚔ ${vn} atacou primeiro e caiu. Foi justiça: o karma não pesa.`, '#ffd88a');
       else { state.karma = Math.max(-100, state.karma - 15); game.logMsg(`☠ Você matou ${vn}, do seu próprio lado. O karma pesa (−15).`, '#ff6a5a'); feats.bump('pk'); }
+      { const k = kitRace(); if (k === 'lob' || k === 'vam') { game.feed('human'); state.karma = Math.max(-100, state.karma - 8); game.logMsg(`☠ Você se alimentou de ${vn}. A alma escurece (−8 de karma).`, '#ff6a5a'); } }
     } else chat.sys(`☠ ${kn} matou ${vn}.`);
   });
   /* duelo */
@@ -1152,7 +1180,7 @@ function eliteDrop(t: EnemyType, e: { def: { name: string; scale?: number; lvl?:
   for (let i = 0; i < 24; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.25, s1: 0.04, c0: 0xffe8a0, c1: 0xff8a2a, a: 1, g: 4 });
   game.logMsg(`✦ ${e.def.name} deixou material de elite: ${got.map((id) => ITEMS_TBL[id]?.name ?? id).join(', ')}. O Mestre-Forjador Brokki, em Brasaforja, sabe o que fazer com isso.`, '#ffb060');
 }
-game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
+game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
   const what = `Você encontrou ${h.name} no esconderijo e terminou o que ele mesmo começou com a mentira.`; compendium.add({ title: `${h.name}: justiça tardia`, what, delta: 14, sealed: sealedH }); if (sealedH) game.logMsg('🌑 Em algum lugar, algo que ainda dorme guardou o que você fez.', '#a898c8');
   if (!sealedH) setTimeout(() => { eyeSees('Justiça tardia.', what, 'Você foi enganado uma vez, e pagou por isso. Mas não deixou a mentira vencer: buscou, encontrou e cumpriu o seu papel. A ingenuidade se apaga diante da persistência.', 14); const d = quests.q.active[h.qid] ? quests.offers('O Olho') : null; void d; }, 600);
   setTimeout(() => { const d2 = (quests as unknown as { turnins(n: string): { id: string }[] }).turnins('O Olho').find((x) => x.id === h.qid); if (d2) quests.turnIn(d2 as never); }, 900); } quests.onKill(t); if ((e as typeof e & { tag?: string }).tag === 'crypt') pourBlood(e); for (const fl of CRYPT_FLOORS) if (fl.elite && fl.elite.seal && e.def.name === fl.elite.name) { inv.add(fl.elite.seal, 1); chat.sys(`✦ ${fl.elite.name} caiu e deixou o ${ITEMS_TBL[fl.elite.seal]?.name ?? fl.elite.seal}.`); }
@@ -2976,6 +3004,7 @@ function frameBody() {
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
   try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
+  game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);
   updateXray(dt); updateEnvelopes(t);

@@ -75,6 +75,21 @@ export const ITEMS: Record<string, Item> = {
   potion_g: { name: 'Poção maior', icon: '🧪', kind: 'food', col: 0xff2a4a, desc: 'Cura 140 de vida.', heal: 140, sell: 20 },
   mana: { name: 'Poção de magia', icon: '🔮', kind: 'food', col: 0x5a8aff, desc: 'Restaura 80 de magia.', mp: 80, sell: 14 },
   tonic: { name: 'Tônico de vigor', icon: '🫙', kind: 'food', col: 0x8ad07a, desc: 'Regenera vida por 30 s.', heal: 20, buff: 'regen', sell: 12 },
+  reator_1: { name: 'Núcleo de Reator Mk I', icon: '⚛', kind: 'misc', col: 0x8af0ff, desc: 'O coração do reator pessoal do tecnocrata. Use para trocar o núcleo: 8 turnos de jogo (4 h) de energia. Caro, mas dura bem. Ferreiros fazem, mas precisam do fluido do alquimista e do cristal dos magos.', sell: 90 },
+  reator_2: { name: 'Núcleo de Reator Mk II', icon: '⚛', kind: 'misc', col: 0xb0f8ff, desc: 'Núcleo moderno, da segunda classe da Academia: 20 turnos de jogo (10 h) de energia. Só serve em reator de Engenheiro.', sell: 240 },
+  casco_reator: { name: 'Casco de Reator', icon: '⚙', kind: 'res', col: 0xa8823a, desc: 'Casco de latão e aço com as bobinas enroladas. Feito pelo ferreiro.', sell: 40 },
+  fluido_vital: { name: 'Fluido Vital', icon: '🧪', kind: 'res', col: 0x7affd0, desc: 'O líquido que esfria o núcleo. Destilado pelo alquimista.', sell: 30 },
+  cristal_arcano: { name: 'Cristal Arcano', icon: '💠', kind: 'res', col: 0x9a8aff, desc: 'Cristal carregado pelos magos do Pináculo de Marfim. Sem ele o núcleo não acende.', sell: 45 },
+  charc_sec: { name: 'Charcutaria Secular', icon: '🍖', kind: 'food', col: 0x8a2a2a, desc: 'Carne humana curada nas adegas de Corvoscuro por séculos. Para o lobisomem, sacia toda a fome e dá força por 10 min, sem vítima. Os vampiros vendem rindo.', heal: 30, buff: 'carne_h', sell: 60 },
+  inj_s: { name: 'Injeção Automática de Sangue', icon: '💉', kind: 'food', col: 0xc02a3a, desc: 'Seringa de latão dos tecnocratas, com Sangria Concentrada dos anões. Para o vampiro, mata a sede de sangue por inteiro, sem vítima.', heal: 30, buff: 'inj_s', sell: 55 },
+  sangria_c: { name: 'Sangria Concentrada', icon: '🩸', kind: 'res', col: 0x9a1a2a, desc: 'Sangue doado nas casas de sangria dos anões, apurado no frio da montanha. Os tecnocratas fazem as Injeções com ela.', sell: 35 },
+  incenso_m: { name: 'Kit de Incensos de Mortificação', icon: '🕯', kind: 'food', col: 0xd8c8ff, desc: 'Incensos de purificação e mortificação. O guerreiro do Norte faz o ritual de calmaria: condolências a Odin, o corpo castigado (−12% de vida) e a Fúria cai muito. Feito por magos e bruxos — cada um precisa do que só o outro faz.', heal: 0, buff: 'ritual', sell: 45 },
+  areia_astral: { name: 'Areia da Iluminação Astral', icon: '✨', kind: 'res', col: 0xbfd8ff, desc: 'Areia que guardou a luz das estrelas no Pináculo de Marfim. Só os magos de Lumenhal a fazem.', sell: 30 },
+  cinzas_mortos: { name: 'Cinzas dos Mortos', icon: '⚱', kind: 'res', col: 0x6a6070, desc: 'Cinzas de cremação recolhidas pelos bruxos do Círculo, com o nome de cada um sussurrado. Só os bruxos as fazem.', sell: 30 },
+  pao_azimo: { name: 'Pão Ázimo', icon: '🫓', kind: 'misc', col: 0xf0e0b0, desc: 'Pão sem fermento dos cozinheiros humanos, feito com o Trigo sem Fermento dos tecnocratas. Com o Vinho Santo, é o Jejum e Oração do paladino: a Dúvida cai muito.', sell: 25 },
+  vinho_santo: { name: 'Vinho Santo dos Anões', icon: '🍷', kind: 'misc', col: 0x8a1a3a, desc: 'O lendário vinho dos anões, que só fecha com a Gota de Lágrima Santa dos elfos. Com o Pão Ázimo, é o Jejum e Oração do paladino.', sell: 40 },
+  trigo_sf: { name: 'Trigo sem Fermento', icon: '🌾', kind: 'res', col: 0xe8d080, desc: 'Trigo raro, mexido na semente pelos tecnocratas: não fermenta nunca. Os cozinheiros humanos fazem o Pão Ázimo com ele.', sell: 18 },
+  gota_santa: { name: 'Gota de Lágrima Santa', icon: '💧', kind: 'res', col: 0xbfe8ff, desc: 'Orvalho das árvores mais velhas de Lithendel, recolhido pelas anciãs élficas. Sem ela, o vinho dos anões não fica santo.', sell: 30 },
   blood_d: { name: 'Sangue Diluído', icon: '🩸', kind: 'food', col: 0xb3202f, desc: 'Sangue de cervo cortado com água benta fraca e ervas. O vampiro aguenta o sol por 5 min (a queimadura vem 8× mais devagar) e a pele começa a fechar.', heal: 40, buff: 'sunveil', sell: 10 },
   antidote: { name: 'Antídoto', icon: '🌿', kind: 'food', col: 0x6ab05a, desc: 'Cura veneno e queimaduras.', heal: 10, buff: 'cleanse', sell: 8 },
   // cervejaria e cozinha
@@ -101,7 +116,7 @@ export const ITEMS: Record<string, Item> = {
   mount_black: { name: 'Corcel Negro', icon: '🐎', kind: 'misc', col: 0x1a1612, desc: 'Montaria (Z): +90% de velocidade fora de combate.', tier: 2 },
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
-export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
+export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
 export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
@@ -112,14 +127,19 @@ export const SHOPDEF: Record<string, ShopDef> = {
   cervejaria: { title: 'Tessa, a Cervejeira', items: ['beer', 'mead', 'bread'], buys: { apple: 1.5 }, note: 'Cerveja e hidromel: coragem em caneca.' },
   churrasco: { title: 'Sven, o Churrasqueiro', items: ['skewer', 'cooked', 'fishc'], buys: { meat: 1.4, fish: 1.4 }, note: 'Carne no espeto, sempre quente.' },
   charcutaria: { title: 'Bruno, o Charcuteiro', items: ['sausage', 'jerky'], buys: { meat: 2.0, hide: 1.2 }, note: 'Paga o dobro por carne crua.' },
-  cozinha: { title: 'Rosália, a Cozinheira', items: ['stew', 'cooked', 'fishc', 'bread'], buys: { meat: 1.3, fish: 1.3, apple: 1.3 }, note: 'Ensopado de caça da casa.' },
+  cozinha: { title: 'Rosália, a Cozinheira', items: ['stew', 'cooked', 'fishc', 'bread', 'pao_azimo'], buys: { meat: 1.3, fish: 1.3, apple: 1.3 }, note: 'Ensopado de caça da casa.' },
   lenhador: { title: 'Tomás, o Lenhador', items: ['axe_s', 'axe_i', 'axe_st', 'wood'], buys: { wood: 1.5, stick: 1.5 }, note: 'Machados e madeira. Paga bem por toras.' },
   cacador: { title: 'Kaela, a Caçadora', items: ['knife_f', 'knife_i', 'knife_st', 'rod', 'rod_ash', 'jerky', 'potion'], buys: { hide: 1.4, hide_f: 1.4, hide_w: 1.3, claw: 1.5, meat: 1.2 }, note: 'Couro, garras e carne: a floresta paga.' },
   construtor: { title: 'Gunnar, o Construtor', items: ['plank', 'nail', 'block', 'rope'], buys: { wood: 1.3, stone: 1.5 }, note: 'Materiais para construir a sua casa.' },
   domador: { title: 'Corwin, o Domador', items: ['pet_fox', 'pet_pup'], note: 'Companheiros que buscam o que cai no chão.' },
   tec_fio: { title: 'Tecelagem Real do Fio', items: [], fac: 'fio', note: 'Feito à mão pelas tecelãs da Ordem, com o fio que nunca se corta. Ninguém mais sabe tecer isto. Só para quem jurou o Fio.' },
   tec_desf: { title: 'Tecelagem dos Desfiados', items: [], fac: 'desf', note: 'Pano negro rasgado de propósito, ferro que não enferruja. Feito na oficina dos Desfiados e em nenhum outro lugar. Só para quem cortou o fio.' },
-  latao: { title: 'Companhia das Caravanas de Latão', items: ['potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'], buys: { ore_i: 1.3, gem: 1.3 }, note: 'Mercadoria do porto, trazida pelas caravanas de latão.' },
+  latao: { title: 'Companhia das Caravanas de Latão', items: ['reator_1', 'reator_2', 'cristal_arcano', 'inj_s', 'trigo_sf', 'potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'], buys: { ore_i: 1.3, gem: 1.3 }, note: 'Mercadoria do porto, trazida pelas caravanas de latão.' },
+  adega_conde: { title: 'Adega do Conde, em Corvoscuro', items: ['charc_sec', 'blood_d'], note: 'Carne curada por séculos e sangue cortado. Os vampiros servem o lobo com um sorriso de canto.' },
+  sangria_anao: { title: 'Casa de Sangria dos Anões', items: ['sangria_c', 'vinho_santo', 'jerky'], buys: { gota_santa: 1.6 }, note: 'Sangue doado e apurado no frio. Os tecnocratas compram para as Injeções.' },
+  magos_lumen: { title: 'Sala dos Incensos do Pináculo', items: ['incenso_m', 'areia_astral', 'cristal_arcano', 'mana'], buys: { cinzas_mortos: 1.6 }, note: 'Os magos vendem a Areia Astral e os Kits de Incenso. As Cinzas eles precisam comprar dos bruxos.' },
+  bruxa_gorvath: { title: 'Tenda da Bruxa de Gorvath', items: ['incenso_m', 'cinzas_mortos', 'antidote'], buys: { areia_astral: 1.6 }, note: 'A bruxa vende as Cinzas dos Mortos e os Kits de Incenso. A Areia ela tem que comprar dos magos, e odeia isso.' },
+  orvalho_elfo: { title: 'O Orvalho de Lithendel', items: ['gota_santa', 'herb_m'], note: 'As anciãs recolhem a Lágrima Santa antes do sol. Os anões compram quase toda para o vinho.' },
   estabulo: { title: 'Orm, o Estalajadeiro', items: ['mount_horse', 'mount_black'], note: 'Montarias: Z para montar e desmontar.' },
 };
 export const SHOPS: Record<string, string[]> = Object.fromEntries(Object.entries(SHOPDEF).map(([k, v]) => [k, v.items]));
@@ -252,7 +272,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   function take(id: string, n = 1) { if (!has(id, n)) return false; bag[id] -= n; if (bag[id] <= 0) delete bag[id]; recalc(); render(); save(); return true; }
   function use(id: string) {
     const it = ITEMS[id]; if (!it || !has(id)) return;
-    if (it.kind === 'food') { if (it.mp) { if (st.mp >= st.mpMax) { game.logMsg('Sua magia já está cheia.'); return; } take(id); st.mp = Math.min(st.mp + it.mp, st.mpMax); game.logMsg(`${it.icon} +${it.mp} magia`, '#9ad7ff'); potionPulse('mp'); } else { if (st.hp >= st.hpMax && !it.buff) { game.logMsg('Sua vida já está cheia.'); return; } take(id); st.hp = Math.min(st.hpMax, st.hp + (it.heal ?? 10)); game.logMsg(`${it.icon} +${it.heal} vida`, '#7aff9a'); if (/potion|tonic/.test(id)) potionPulse(it.buff ? 'buff' : 'hp'); } if (it.buff) game.drinkBuff?.(it.buff); }
+    if (it.kind === 'food') { if (it.mp) { if (st.mp >= st.mpMax) { game.logMsg('Sua magia já está cheia.'); return; } take(id); st.mp = Math.min(st.mp + it.mp, st.mpMax); game.logMsg(`${it.icon} +${it.mp} magia`, '#9ad7ff'); potionPulse('mp'); } else { if (st.hp >= st.hpMax && !it.buff) { game.logMsg('Sua vida já está cheia.'); return; } take(id); st.hp = Math.min(st.hpMax, st.hp + (it.heal ?? 10)); if ((it.heal ?? 10) > 0) game.logMsg(`${it.icon} +${it.heal ?? 10} vida`, '#7aff9a'); if (/potion|tonic/.test(id)) potionPulse(it.buff ? 'buff' : 'hp'); } if (it.buff) game.drinkBuff?.(it.buff); }
     else if (isTool(id)) equipTool(id);
     else if (!hooks.onUse?.(id)) game.logMsg(it.desc);
   }
