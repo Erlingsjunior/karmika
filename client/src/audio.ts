@@ -175,6 +175,13 @@ export class AudioEngine {
   error() { if (!this.ctx) return; this.tone(220, 180, 0.12, 0.05, 'square'); this.tone(180, 150, 0.16, 0.04, 'square', 0.12); }
   /** trocar uma peça de equipamento: couro raspando, a fivela batendo e o metal assentando */
   swap() { if (!this.ctx) return; const f = this.burst('bandpass', 1400, 1.2, 0.18, 0.09, 1.1); f.frequency.exponentialRampToValueAtTime(600, this.ctx.currentTime + 0.16); this.metal(2100, 0.16, 0.035, 0.16); this.burst('lowpass', 380, 0.8, 0.09, 0.08, 1, this.sfx, 0, 0.002); this.metal(1500, 0.3, 0.03, 0.34); }
+  /** Instinto ligado (25/10): um baque grave, o ar sendo puxado (a lente abrindo), dois toques de alerta e o coração batendo duas vezes.
+   *  Desligado: o mesmo ar soltando, descendo. */
+  instinct(on: boolean) { if (!this.ctx) return;
+    if (on) { this.tone(78, 42, 0.55, 0.16, 'sine'); const f = this.burst('bandpass', 380, 1.1, 0.7, 0.09, 1, this.sfx, 0, 0.25); f.frequency.exponentialRampToValueAtTime(2600, this.ctx.currentTime + 0.65);
+      this.tone(988, 988, 0.5, 0.035, 'sine', 0.42); this.tone(1480, 1480, 0.7, 0.03, 'sine', 0.58); this.tone(1976, 1976, 0.9, 0.012, 'triangle', 0.58);
+      this.tone(64, 40, 0.16, 0.12, 'sine', 0.95); this.tone(60, 38, 0.18, 0.09, 'sine', 1.2); }
+    else { const f = this.burst('bandpass', 1800, 1.1, 0.45, 0.05, 1); f.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 0.42); this.tone(660, 330, 0.35, 0.025, 'sine'); } }
   click() { if (!this.ctx) return; this.burst('bandpass', 1800, 3, 0.03, 0.05); }
   pickup() { if (!this.ctx) return; this.tone(880, 1320, 0.08, 0.04, 'triangle'); this.tone(1320, 1760, 0.1, 0.03, 'sine', 0.06); }
   levelup() { if (!this.ctx) return; for (const [f, d] of [[392, 0], [523, 0.12], [659, 0.24], [784, 0.36], [1047, 0.5]] as [number, number][]) this.tone(f, f, 0.8, 0.05, 'triangle', d); this.burst('highpass', 3000, 0.7, 1.2, 0.03); }

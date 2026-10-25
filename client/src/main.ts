@@ -880,13 +880,55 @@ const NPC_SOUL: Record<string, { path?: string; lean?: 'luz' | 'sombra' }> = { '
 let instinctOn = (() => { try { return localStorage.getItem('karmika.instinct') === '1'; } catch { return false; } })();
 const myInstinct = () => instinctOf(myPath(), profile?.origin ?? 'human');
 function toggleInstinct(v = !instinctOn) { instinctOn = v; try { localStorage.setItem('karmika.instinct', v ? '1' : '0'); } catch { /* */ } const I = myInstinct();
-  game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc}` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.click?.(); updateInstBtn(); }
+  game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc}` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.instinct(v); instFx(v); updateInstBtn(); }
+/* ---------- o MOMENTO de ligar o Instinto (Erling, 25/10) ----------
+   1. o símbolo do instinto do seu caminho (ou do seu povo) se abre sobre a cabeça do herói e sobe sumindo;
+   2. um anel de energia corre pelo chão e uma aura na cor do instinto fica no herói uns segundos, depois assenta num brilho leve;
+   3. a LENTE: a borda da tela se fecha como uma íris e reabre, e enquanto o Instinto está ligado o mundo fica um pouco mais nítido
+      (mais contraste e cor no centro, a borda mais escura): o herói está focado. */
+const INST_KEY = () => { const p = myPath(); if (p && INSTINCT_GLYPH[p]) return p; const o = profile?.origin ?? 'human'; return o === 'dwarf' ? 'anao' : o === 'elf' ? 'elfo' : 'humano'; };
+const INST_GLYPH_BASE = (inner: string) => `<svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="21" fill="rgba(10,6,4,.72)" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="24" r="17.5" fill="none" stroke="currentColor" stroke-opacity=".35" stroke-width="1"/>${inner}</svg>`;
+const INSTINCT_GLYPH: Record<string, string> = {
+  humano: '<path d="M10 24c4-6 8.5-9 14-9s10 3 14 9c-4 6-8.5 9-14 9s-10-3-14-9z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="24" cy="24" r="4.6" fill="currentColor"/>',
+  anao: '<path d="M9 33l10-16 5 7 4-5 11 14z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M19 17l2 6M28 19l1 5" stroke="currentColor" stroke-width="1.4"/>',
+  elfo: '<path d="M24 10c8 6 10 14 0 28-10-14-8-22 0-28z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M24 14v22M24 22l-4-3M24 27l4-3" stroke="currentColor" stroke-width="1.4"/>',
+  gue: '<path d="M14 34L32 14M34 34L16 14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M29 11l6 1 1 6M19 11l-6 1-1 6" fill="none" stroke="currentColor" stroke-width="2"/>',
+  pal: '<circle cx="24" cy="24" r="6" fill="currentColor"/><path d="M24 10v6M24 32v6M10 24h6M32 24h6M14 14l4 4M30 30l4 4M34 14l-4 4M18 30l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  cac: '<path d="M24 11v26M14 18c3 4 7 6 10 6s7-2 10-6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 13l4-4 4 4" fill="none" stroke="currentColor" stroke-width="2"/>',
+  tec: '<circle cx="24" cy="24" r="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M24 12v5M24 31v5M12 24h5M31 24h5M15.5 15.5l3.5 3.5M29 29l3.5 3.5M32.5 15.5L29 19M19 29l-3.5 3.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>',
+  vam: '<path d="M24 11c5 8 8 12 8 16a8 8 0 0 1-16 0c0-4 3-8 8-16z" fill="currentColor" fill-opacity=".85"/><path d="M20 27a4 4 0 0 0 4 4" stroke="#fff" stroke-opacity=".6" stroke-width="1.5" fill="none"/>',
+  lob: '<path d="M30 12a12 12 0 1 0 6 21 10 10 0 1 1-6-21z" fill="currentColor" fill-opacity=".85"/>',
+  mag: '<path d="M24 10l3.4 9.6L37 21l-7.6 6 2.6 10L24 31.6 16 37l2.6-10L11 21l9.6-1.4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+  bru: '<path d="M24 10l12 24H12z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="24" cy="26" r="3.4" fill="currentColor"/><path d="M14 16h20" stroke="currentColor" stroke-width="1.4"/>',
+};
+const instPop = document.createElement('div'); instPop.id = 'instpop'; document.body.appendChild(instPop);
+const instLens = document.createElement('div'); instLens.id = 'instlens'; document.body.appendChild(instLens);
+const instRing = new THREE.Mesh(new THREE.RingGeometry(0.86, 1, 56).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide }));
+instRing.visible = false; scene.add(instRing);
+let instFxT = -1, instAuraT = 0; const instV = new THREE.Vector3(), instCol = new THREE.Color();
+function instFx(on: boolean) { const I = myInstinct(); instCol.set(I.color);
+  document.body.classList.toggle('inst-on', on); document.documentElement.style.setProperty('--instc', I.css);
+  if (!on) { instPop.className = ''; instAuraT = 0; return; }
+  instPop.innerHTML = `${INST_GLYPH_BASE(INSTINCT_GLYPH[INST_KEY()] ?? INSTINCT_GLYPH.humano)}<b>${I.name}</b>`; instPop.style.color = I.css;
+  instPop.className = ''; void instPop.offsetWidth; instPop.className = 'go';
+  instLens.className = ''; void instLens.offsetWidth; instLens.className = 'go';
+  instFxT = 0; instAuraT = 6; (instRing.material as THREE.MeshBasicMaterial).color.copy(instCol); instRing.visible = true;
+  const hp = heroPos; for (let i = 0; i < 46; i++) { const a = Math.random() * 6.283, r = 0.3 + Math.random() * 0.5; particles.spawn(hp.x + Math.cos(a) * r, hp.y + 0.1 + Math.random() * 0.4, hp.z + Math.sin(a) * r, { vx: Math.cos(a) * 1.4, vy: 1.6 + Math.random() * 2.2, vz: Math.sin(a) * 1.4, life: 0.9 + Math.random() * 0.6, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: I.color, a: 1, g: -0.4 }); } }
+function updateInstFx(dt: number) {
+  const hp = heroPos;
+  if (instFxT >= 0) { instFxT += dt; const k = Math.min(1, instFxT / 0.9); const m = instRing.material as THREE.MeshBasicMaterial;
+    instRing.position.set(hp.x, hp.y + 0.05, hp.z); instRing.scale.setScalar(0.6 + k * 4.2); m.opacity = 0.9 * (1 - k); if (k >= 1) { instFxT = -1; instRing.visible = false; } }
+  if (instPop.className === 'go') { instV.set(hp.x, hp.y + 2.1, hp.z).project(camera); const r = canvas.getBoundingClientRect(); instPop.style.left = `${r.left + (instV.x * 0.5 + 0.5) * r.width}px`; instPop.style.top = `${r.top + (-instV.y * 0.5 + 0.5) * r.height}px`; }
+  /* a energia que fica: uns segundos de fagulhas subindo do corpo, que vão rareando; depois, só um fio de vez em quando enquanto ligado */
+  if (instinctOn && !inside) { if (instAuraT > 0) instAuraT -= dt; const rate = instAuraT > 0 ? 6 + instAuraT * 5 : 0.8;
+    if (Math.random() < dt * rate) { const a = Math.random() * 6.283, r = 0.25 + Math.random() * 0.25; particles.spawn(hp.x + Math.cos(a) * r, hp.y + 0.2 + Math.random() * 1.2, hp.z + Math.sin(a) * r, { vx: 0, vy: 0.7 + Math.random() * 0.6, vz: 0, life: 1 + Math.random() * 0.8, s0: instAuraT > 0 ? 0.16 : 0.1, s1: 0.02, c0: 0xffffff, c1: instCol.getHex(), a: instAuraT > 0 ? 0.9 : 0.55, flit: 1 }); } }
+}
 /* o Instinto mora no menu de ações (junto de Mapa, Deus e Menu): um botão pequeno com o terceiro olho; F continua ligando */
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; document.getElementById('btns')!.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
 const THIRD_EYE = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2.5 16C6.6 9.6 11 6.8 16 6.8S25.4 9.6 29.5 16C25.4 22.4 21 25.2 16 25.2S6.6 22.4 2.5 16Z" fill="#120c07" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="6.2" fill="currentColor"/><circle cx="16" cy="16" r="6.2" fill="none" stroke="#0b0810" stroke-opacity=".45" stroke-width="1"/><path d="M16 11.4 18.5 16 16 20.6 13.5 16Z" fill="#0b0810"/><circle cx="14" cy="13.9" r="1.1" fill="#fff" fill-opacity=".75"/></svg>';
 function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
-setTimeout(updateInstBtn, 0);
+setTimeout(() => { updateInstBtn(); document.body.classList.toggle('inst-on', instinctOn); document.documentElement.style.setProperty('--instc', myInstinct().css); }, 0);
 /* o que só o instinto mostra: rastros das missões, espíritos, dispositivos perdidos e os esconderijos do mundo */
 const CACHES: Cache[] = []; setTimeout(() => { const out = CACHES; /* depois do arquivo inteiro carregar (navProbe nasce mais abaixo) */ const src = [...city.pois.filter((p) => /ruins|forest|enchanted|blight/.test(p.biome as string)).map((p) => ({ x: p.x, y: p.y })), ...evSites.sitesForest.filter((_, i) => i % 9 === 0)];
   const h = (n: number) => { const x = Math.sin(n * 91.7 + 13.1) * 43758.5453; return x - Math.floor(x); };
@@ -1950,7 +1992,7 @@ const AUR_MUL = new THREE.Vector3(1.07, 1.03, 0.97), AUR_LIFT = new THREE.Vector
 let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = undefined, luaK = 0, aurK = 0;
 /* A ABERTURA do evento global (Erling, 25/10): ~12 s de impacto total (luz, coral, folhas, anúncio no meio da tela) e depois
    o mundo assenta: fica só mais cor no dia, uma brisa leve, o coral quase sumindo ao longe. O efeito (buff) fica na barra de efeitos. */
-let gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL = 12, G_OPEN_FADE = 8;
+let instK = 0, gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL = 12, G_OPEN_FADE = 8;
 const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s < G_OPEN_FULL ? 1 : Math.max(0, 1 - (s - G_OPEN_FULL) / G_OPEN_FADE); }; /* relógio de verdade: não depende do passo do quadro */
 const clock = new THREE.Clock();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
@@ -2849,6 +2891,7 @@ function frameBody() {
   if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.2 : 1; game.st.takenMul = sd > 0 ? 0.88 : sd < 0 ? 1.1 : 1; }
   luaK += ((gCur === 'lua' && !inside?.dg ? 1 : 0) - luaK) * Math.min(1, rawDt * 0.35);
   aurK += ((gCur === 'aurora' && !inside?.dg ? 1 : 0) - aurK) * Math.min(1, rawDt * 0.35);
+  instK += ((instinctOn && !inside ? 1 : 0) - instK) * Math.min(1, rawDt * 2);
   if (gCur !== gOpenId && !document.getElementById('boot')?.matches(':not(.off)') && !inicio.isOpen) { gOpenId = gCur; gOpenAt = performance.now(); } /* a abertura só conta quando o jogador já está vendo o mundo */
   const op = gOpen(), aurV = aurK * (0.4 + 0.6 * op), aurGlow = aurK * (0.12 + 0.88 * op), aurFx = aurK * (0.18 + 0.82 * op);
   scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaK * 0.85).lerp(AUR_C.sky, aurV * 0.35);
@@ -2864,7 +2907,7 @@ function frameBody() {
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
     (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaK).lerp(AUR_MUL, aurV * 0.8);
     (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaK).lerp(AUR_LIFT, aurGlow);
-    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.1; /* depois da abertura a Aurora deixa o dia mais colorido */ }
+    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
   audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42; } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
@@ -2952,6 +2995,7 @@ function frameBody() {
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   lightPool(rawDt);
+  updateInstFx(rawDt);
   atmos.update(rawDt, t, heroPos, aurFx, luaK, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);

@@ -504,6 +504,22 @@
   /* Instinto (24/10): a borda da tela pulsa na cor do que o seu caminho sente */
   #instinto { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0; transition: opacity .6s; --ic: #ff3a3a; box-shadow: inset 0 0 120px 30px color-mix(in srgb, var(--ic) 55%, transparent), inset 0 0 22px 4px color-mix(in srgb, var(--ic) 70%, transparent); }
   #instinto.on { animation: instPulse 1.6s ease-in-out infinite; }
+  /* o momento de ligar o Instinto (25/10): símbolo sobre o herói, a lente que fecha e reabre, e o foco que fica enquanto ligado */
+  :root { --instc: #d8c8a0; }
+  #instpop { position: fixed; left: 0; top: 0; z-index: 7; pointer-events: none; display: none; transform: translate(-50%, -100%); flex-direction: column; align-items: center; gap: 3px; }
+  #instpop.go { display: flex; animation: instPop 2.6s cubic-bezier(.2,.8,.3,1) forwards; }
+  #instpop svg { width: 50px; height: 50px; filter: drop-shadow(0 0 8px currentColor) drop-shadow(0 0 2px #000); }
+  #instpop b { font: 700 11px Cinzel, Georgia, serif; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; text-shadow: 0 0 10px currentColor, 0 1px 2px #000, 0 0 4px #000; }
+  @keyframes instPop { 0% { opacity: 0; transform: translate(-50%, -100%) scale(.3); } 12% { opacity: 1; transform: translate(-50%, -100%) scale(1.18); } 22% { transform: translate(-50%, -100%) scale(1); } 72% { opacity: 1; transform: translate(-50%, calc(-100% - 10px)); } 100% { opacity: 0; transform: translate(-50%, calc(-100% - 36px)); } }
+  #instlens { position: fixed; inset: 0; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .8s;
+    box-shadow: inset 0 0 170px 46px rgba(0,0,0,.42), inset 0 0 36px 2px color-mix(in srgb, var(--instc) 28%, transparent); }
+  body.inst-on #instlens { opacity: 1; }
+  #instlens.go { opacity: 1; transition: none; }
+  /* a lente: uma íris escura que fecha das bordas até perto do herói e reabre, com um aro na cor do instinto */
+  #instlens::before { content: ''; position: absolute; inset: -20%; opacity: 0; background: radial-gradient(circle at 50% 50%, transparent 0 24%, color-mix(in srgb, var(--instc) 40%, transparent) 27%, rgba(0,0,0,.78) 34%, rgba(0,0,0,.86) 70%); transform: scale(2.2); }
+  #instlens.go::before { animation: instLens 1s cubic-bezier(.45,0,.2,1); }
+  @keyframes instLens { 0% { opacity: 0; transform: scale(2.2); } 40% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(2.4); } }
+  @media (prefers-reduced-motion: reduce) { #instpop.go, #instlens.go::before { animation-duration: .01s; } }
   @keyframes instPulse { 0%, 100% { filter: brightness(.8); } 50% { filter: brightness(1.35); } }
   #dlg { position: fixed; inset: 0; display: none; align-items: center; justify-content: flex-start; z-index: 27; font-family: Georgia, serif; padding-left: max(16px, 2.2vw); padding-bottom: 40px; /* encostado à esquerda: o centro (o herói e quem fala com ele) fica livre */ background: transparent; }
   #dlg .dp { width: min(430px, 94vw); max-height: 82vh; overflow: auto; background: linear-gradient(#1d1711, #110d08); border: 2px solid #b8924a; box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0,0,0,.7); color: #e8dcc0; animation: dlgin .18s ease-out; position: relative; }
