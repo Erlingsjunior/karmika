@@ -19,7 +19,7 @@
   #eye .liq { transform: translateY(calc(172px - var(--k) * 118px)); transition: transform 1.1s cubic-bezier(.3,.8,.3,1); }
   #eye .wave { animation: drift 6s linear infinite; }
   @keyframes drift { to { transform: translateX(40px); } }
-  #eye.full .pup { animation: pupil 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+  /* o pulso da pupila cheia agora é feito no hud.ts, junto do olhar (a animação CSS apagava o translate e tirava a pupila do centro) */
   @keyframes pupil { 50% { transform: scale(1.18); } }
   #hour { width: 60px; height: 104px; left: 39px; top: -14px; opacity: 0; transform: rotate(-90deg) scale(.5); }
   #hour .sand { animation: sand 12s linear infinite; }

@@ -109,8 +109,10 @@ export function createEye() {
     const ix = (lookX + trem) * 22, iy = lookY * 9;
     iris.style.transformOrigin = '150px 110px'; ball.style.transformOrigin = '150px 110px';
     ball.style.transform = `translate(${ix}px, ${iy}px) scale(${1 - Math.abs(lookX) * 0.1}, 1)`; /* a íris achata um pouco quando olha para o lado (é uma esfera) */
-    glint.style.transform = `translate(${ix * 0.85}px, ${iy * 0.85}px)`;
-    pup.style.transformOrigin = '150px 110px'; pup.style.transform = `translate(${ix * 1.05}px, ${iy * 1.05}px) scale(${dil * (1 - Math.abs(lookX) * 0.1)}, ${dil})`;
+    ball.style.transformBox = 'view-box'; glint.style.transform = `translate(${ix * 0.85}px, ${iy * 0.85}px)`;
+    /* a pupila gira e escala em volta do CENTRO do Olho (view-box): com fill-box a origem 150,110 caía fora do losango e a pupila escorregava para fora da íris ao dilatar */
+    const pulse = eye.classList.contains('full') ? 1 + Math.sin(performance.now() / 510) * 0.08 : 1;
+    pup.style.transformBox = 'view-box'; pup.style.transformOrigin = '150px 110px'; pup.style.transform = `translate(${ix}px, ${iy}px) scale(${dil * pulse * (1 - Math.abs(lookX) * 0.1)}, ${dil * pulse})`;
     // piscar (às vezes duas seguidas); assustado pisca menos
     blinkT -= dt; if (blinkT <= 0) { blink = 0.2; blink2 = Math.random() < 0.18; blinkT = (gaze?.kind === 'threat' ? 6 : 2.8) + Math.random() * 4.5; }
     if (blink > 0) { blink -= dt; const k = Math.sin(Math.max(0, blink) / 0.2 * Math.PI); lidTop.style.transform = `scaleY(${k})`; lidBot.style.transform = `scaleY(${k * 0.85})`; const vis = k > 0.6 ? '0' : String(1 - k / 0.6); iris.style.opacity = vis; pup.style.opacity = vis; if (blink <= 0 && blink2) { blink2 = false; blinkT = 0.12; } }
