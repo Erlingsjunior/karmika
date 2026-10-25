@@ -183,6 +183,53 @@ const TPL: Tpl[] = [
         win: 'Os noivos casaram sem um presente sequer. A mãe da noiva jura que vai descobrir quem foi.', lose: 'Alguém gritou "ladrão!" e você saiu correndo de mãos vazias.', flag: 'ev_casamento_roubado' } },
     finale: 'petals' },
 
+  /* 25/10 (Erling): "pessoas sendo sequestradas, mordidas por vampiros ou transformadas em lobisomens, tudo acontecendo enquanto você joga" */
+  { id: 'sequestro', name: 'O Sequestro', icon: '⛓', site: 'forest', when: 'night', weight: 2, color: '#c08aff', path: true,
+    herald: { name: 'Moleiro Aldo', role: 'Pai da Moça Levada', kind: 'nordic', civil: 'human', tint: 0x7a6a50 },
+    facs: { A: 'Gente da vila', B: 'Os Bruxos do Vale' },
+    waves: [{ at: 0, fac: 'B', units: [['cultist', 3, 'Bruxo Sequestrador']], from: 10 }, { at: 0, fac: 'A', units: [['hunter', 2, 'Caçador da Vila']] }, { at: 200, fac: 'B', units: [['cultist', 2, 'Bruxo Sequestrador'], ['darkpal', 1]], from: 18 }, { at: 380, fac: 'B', units: [['vampire', 1, 'Comprador da Corte']], from: 20 }],
+    meter: { label: 'Ritual', rate: 1 / 560, side: 'B', by: 'B' },
+    extras: [{ name: 'Liesel, a moça levada', role: 'medo', kind: 'nordic', civil: 'human', tint: 0xc8b8a0 }],
+    chatter: ['Quieta, menina. Não dói. Muito.', 'O sangue tem que ser de quem nunca saiu da vila!', 'Liesel! LIESEL!', 'Segurem a mata, eles vêm pela trilha!'],
+    crowd: ['Me soltem! Pai!', 'Eu não fiz nada! Eu só fui buscar água!', 'Tem alguém aí? Por favor…'],
+    intro: (s) => [
+      `Por favor… por favor, me ajude. Levaram a minha filha. A Liesel. Saiu de ${s.name} para buscar água e não voltou.`,
+      'Achei o balde no caminho e pegadas de bota, muitas. E um cheiro de vela queimada que vem da mata.',
+      'Os caçadores da vila vão comigo, mas são só dois. Dizem que os bruxos do Vale levam moça que nunca saiu de casa. Para um ritual.',
+      { r: [
+        { t: 'Vou trazer a sua filha de volta.', a: 'Que o Olho te pague por mim. Vá pela trilha, eles têm um altar na clareira.', flag: 'ev:A' },
+        { t: '(Você conhece esse ritual.) Quanto os bruxos pagam pela moça?', a: '…O quê? Você é um deles? Caçadores! CAÇADORES!', flag: 'ev:B' },
+        { t: 'Sinto muito. Não posso.', a: 'Então reze para que alguém possa.', flag: 'ev:none' } ] },
+    ],
+    sides: {
+      A: { label: 'Resgatar a moça', lean: 'luz', karma: 9, kills: 3, tasks: [{ id: 'correntes', label: 'Soltar as correntes da moça no altar', kind: 'device', prop: 'altar', at: [[0, 0]], n: 1, channel: 4, done: 'As correntes caem. A Liesel corre para o pai sem olhar para trás.' }],
+        win: 'A Liesel voltou para {vila} de mãos dadas com o pai. O moleiro jura que você vai comer pão de graça na vila até o fim da vida.', lose: 'O ritual fechou. Ninguém em {vila} fala da Liesel. O moleiro não abre mais o moinho.', flag: 'ev_sequestro_resgate' },
+      B: { label: 'Ajudar o ritual', lean: 'sombra', karma: -12, kills: 2, gate: (c) => c.lean() === 'sombra' || ['bru', 'vam'].includes(c.path() ?? ''), win: 'O ritual fechou com a sua mão no círculo. Os bruxos pagaram em ouro e em silêncio. {vila} vai lembrar da noite em que a Liesel sumiu.', lose: 'Os caçadores chegaram antes do fim. A moça foi salva, e o seu rosto foi visto.', flag: 'ev_sequestro_ritual' } },
+    finale: 'dark' },
+
+  { id: 'mordida', name: 'A Mordida', icon: '🩸', site: 'village', when: 'night', weight: 2, color: '#e2445a',
+    herald: { name: 'Curandeira Marit', role: 'Curandeira da Vila', kind: 'nordic', civil: 'human', tint: 0xd8d0c0 },
+    facs: { A: 'A vila', B: 'As crias do Conde' },
+    waves: [{ at: 0, fac: 'A', units: [['soldier', 2, 'Guarda da Vila']] }, { at: 30, fac: 'B', units: [['vampire', 2, 'Cria do Conde'], ['bat', 3]], from: 18 }, { at: 260, fac: 'B', units: [['vampire', 2, 'Cria do Conde']], from: 22 }, { at: 440, fac: 'B', units: [['vampire', 1, 'Primogênito da Cria'], ['bat', 4]], from: 22 }],
+    meter: { label: 'A sede do mordido', rate: 1 / 600, side: 'B', by: 'B' },
+    extras: [{ name: 'Joran, o mordido', role: 'medo', kind: 'nordic', civil: 'human', tint: 0x9a8a80 }, { name: 'Mãe de Joran', role: 'reza', kind: 'nordic', civil: 'human', tint: 0x6a5a6a }],
+    chatter: ['Ele é nosso agora. Ele já sente a sede.', 'Alho! Tragam alho!', 'A mordida ainda está quente, dá tempo!', 'Volte para a Colina, demônio!'],
+    crowd: ['Meu filho… o que fizeram com o meu filho?', 'Ele não quer pão. Ele não quer água.', 'Fecha as janelas, já é noite!', 'Ele olhou para o meu pescoço. Eu juro.'],
+    intro: (s) => [
+      `Graças ao Olho que você veio. O Joran, filho da tecelã de ${s.name}, foi mordido ontem à noite. Uma cria do Conde.`,
+      'A mordida ainda está quente. Se eu acender as velas de prata em volta dele até o sol nascer, a sede não fecha. Mas as crias vão voltar para buscar o que é delas.',
+      'Se ninguém segurar a praça, ao amanhecer o Joran não é mais o Joran.',
+      { r: [
+        { t: 'Acenda as velas. Eu seguro a praça.', a: 'Três velas. Eu acendo, você não deixa ninguém apagar.', flag: 'ev:A' },
+        { t: '(A sede dele chama a sua.) Deixe-o virar. Ele vai ser mais forte assim.', a: 'Você… você tem a mesma marca no olhar. Guardas!', flag: 'ev:B' },
+        { t: 'Isso não é comigo.', a: 'Então vá antes de escurecer. Elas mordem quem estiver na rua.', flag: 'ev:none' } ] },
+    ],
+    sides: {
+      A: { label: 'Salvar o mordido', lean: 'luz', karma: 8, kills: 4, tasks: [{ id: 'velas', label: 'Acender as velas de prata em volta do mordido', kind: 'device', prop: 'lantern', at: [[-3, 2], [3, 2], [0, -3]], n: 3, channel: 3, done: 'A vela de prata acende. O Joran respira mais fundo.' }],
+        win: 'Ao amanhecer, o Joran pediu pão. Só pão. A mãe dele chorou na praça de {vila} até o meio-dia.', lose: 'Ao amanhecer, a cama do Joran estava vazia. Dizem que ele foi visto na estrada para a Colina.', flag: 'ev_mordida_curada' },
+      B: { label: 'Deixar a sede fechar', lean: 'sombra', karma: -10, kills: 2, gate: (c) => c.path() === 'vam' || c.lean() === 'sombra', win: 'A sede fechou. O Joran saiu de {vila} andando atrás das crias, sem olhar para a mãe. A Colina ganhou mais um filho.', lose: 'As velas acenderam. A sede recuou, e as crias fugiram sem você.', flag: 'ev_mordida_cria' } },
+    finale: 'dark' },
+
   { id: 'sitio', name: 'Vila Sitiada', icon: '⚔', site: 'village', weight: 2, color: '#ff6a5a',
     herald: { name: 'Capitã Runa', role: 'Guarda da Vila', kind: 'nordic', tint: 0x6a5a4a, weapon: 'Espada Longa', shield: 'Escudo Redondo' },
     facs: { A: 'Guarda da Vila', B: 'Os Invasores' },
@@ -245,6 +292,8 @@ const BLURB: Record<string, string> = {
   festa: 'A vila se prepara para a festa e falta mão para tudo.',
   casamento: 'Os noivos estão no altar, os convidados chegaram… e o padre sumiu.',
   sitio: 'Fumaça no horizonte: uma vila está cercada.',
+  sequestro: 'Um balde caído na trilha e cheiro de vela na mata: alguém foi levado.',
+  mordida: 'Gritos depois do pôr do sol: um aldeão foi mordido por uma cria do Conde.',
 };
 
 /* ================= a lógica ================= */
@@ -288,7 +337,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       const h = hash(w * 131 + rid * 977); if (h > (g ? 0.7 : 0.34)) continue;
       const ok = TPL.filter((t) => (t.when === 'night' ? night : t.when === 'day' ? !night : true) && (t.site === 'village' ? world.sitesVillage : t.site === 'road' ? world.sitesRoad : world.sitesForest).some((s) => s.region === rid));
       if (!ok.length) continue;
-      const wt = (t: Tpl) => t.weight * (g?.id === 'lua' && t.id === 'patrulha' ? 6 : g?.id === 'aurora' && t.id === 'procissao' ? 6 : 1);
+      const wt = (t: Tpl) => t.weight * (g?.id === 'lua' && (t.id === 'patrulha' || t.id === 'mordida') ? 5 : g?.id === 'aurora' && t.id === 'procissao' ? 6 : 1);
       let r = hash(w * 71 + rid * 13) * ok.reduce((a, t) => a + wt(t), 0), tpl = ok[0]; for (const t of ok) { r -= wt(t); if (r <= 0) { tpl = t; break; } }
       const pool = (tpl.site === 'village' ? world.sitesVillage : tpl.site === 'road' ? world.sitesRoad : world.sitesForest).filter((s) => s.region === rid);
       /* rodízio: a cada janela o acontecimento cai numa vila diferente da região (passa por todas antes de repetir) */

@@ -734,7 +734,7 @@ const pvp = (() => {
     if (inside || safeAt(hero.root.position.x, hero.root.position.z)) return;
     hostile.set(from, Date.now() + 120000); // agora eu posso revidar sem culpa
     game.damage(n, hero.root.position, fromPos);
-    if (game.st.dead) net.x('x:pvpdie', { by: from });
+    if (game.st.dead) { net.x('x:pvpdie', { by: from }); quests.grudge(net.nameOf(from)); game.logMsg(`👁 ${net.nameOf(from)} matou você. O Olho viu: um Contrato de Vingança contra essa pessoa não pesa no seu karma.`, '#d9a0d0'); }
   });
   net.onX('x:pvpdie', (from, m) => {
     const killer = m.by as number, vn = net.nameOf(from), kn = net.nameOf(killer);

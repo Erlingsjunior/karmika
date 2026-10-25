@@ -189,8 +189,33 @@ export function genBoard(lvl: number, seed: number): QuestDef {
     const pool = GATHER.filter(([, l]) => l <= Math.max(1, lvl / 3) + 1); const [item, el] = pool[Math.floor(R() * pool.length)]; const n = Math.max(1, Math.round((3 + R() * 6) / Math.max(1, el * 0.7)));
     return { id, board: true, name: `${adj}: ${ITEMS[item]?.name ?? item}`, lvl, giver: npc, text: `${npc} precisa de ${n}× ${ITEMS[item]?.name ?? item}.`, objs: [{ kind: 'collect', item, n }], xp: Math.round((18 + n * 8 * el) * scale), gold: Math.round((5 + n * 2 * el) * scale) };
   }
+  if (kind < 0.94) return vengeance(lvl, id, npc, R, scale);
   const pois = ['Cemitério Esquecido', 'Igreja Abandonada']; const poi = pois[Math.floor(R() * pois.length)];
   return { id, board: true, name: `${adj}: ${poi}`, lvl, giver: npc, turnin: npc, text: `${npc} quer notícias de ${poi}. Vá até lá e volte.`, objs: [{ kind: 'visit', poi }], xp: Math.round(40 * scale), gold: Math.round(15 * scale) };
+}
+
+/* ---- contratos de vingança (24/10): alguém da cidade perdeu um dos seus e paga pelo sangue. A caça é simples; o peso está na entrega,
+   quando quem pagou pergunta o que não tem resposta. O Olho julga o que você diz, não o que você matou. ---- */
+const VENG_POOL: [EnemyType, number][] = [['wolf', 2], ['boar', 2], ['coyote', 1], ['frostwolf', 3], ['imp', 4], ['puglin', 1]];
+const VENG_PL: Partial<Record<EnemyType, string>> = { wolf: 'Lobos', boar: 'Javalis', coyote: 'Coiotes', frostwolf: 'Lobos Gélidos', imp: 'Diabretes', puglin: 'Puglins' };
+function vengeance(lvl: number, id: string, npc: string, R: () => number, scale: number): QuestDef {
+  const pool = VENG_POOL.filter(([, l]) => l <= Math.max(1, lvl / 2.5) + 1); const [type, el] = pool[Math.floor(R() * pool.length)];
+  const n = Math.max(2, Math.round((4 + R() * 4) / Math.max(1, el * 0.6))), en = VENG_PL[type] ?? ENEMY_NAME(type), fem = npc === 'Lúcia', ele = fem ? 'ela' : 'ele', dele = fem ? 'dela' : 'dele';
+  const T = [
+    { name: 'Sangue na estrada', text: `${npc} não chora mais; já chorou tudo. “${en} mataram meu irmão na estrada do leste. Não quero justiça. Quero sangue: ${n} deles, e eu pago.”`,
+      q: `${npc} conta as provas com as mãos tremendo. “Ele estava entre esses? Diga que estava.”` },
+    { name: 'A conta do rebanho', text: `“O meu filho foi atrás do rebanho e voltou carregado. ${en}. ${n} deles, pelo menos. Quero ouvir que doeu.” ${npc} põe a bolsa no balcão sem olhar para você.`,
+      q: `${npc} pergunta, baixo: “Eles sofreram? Diga que sofreram.”` },
+    { name: 'O que a noite levou', text: `“Foi de noite, perto do poço velho. ${en}. ${npc === 'Lúcia' ? 'Meu companheiro' : 'A minha companheira'} gritou e ninguém saiu de casa. Eu também não saí.” ${npc} pede ${n} mortes. Paga por cada uma.`,
+      q: `${npc} olha as provas e não pega o ouro de volta. “Isso apaga o que eu não fiz naquela noite?”` },
+  ];
+  const t = T[Math.floor(R() * T.length)];
+  return { id, board: true, name: `Vingança: ${t.name}`, lvl, giver: npc, turnin: npc, text: t.text, objs: [{ kind: 'kill', type, n }], xp: Math.round((30 + n * 14 * el) * scale), gold: Math.round((10 + n * 4 * el) * scale),
+    choice: { q: t.q, opts: [
+      { label: '“Está feito. Mas vingança não devolve ninguém. Cuide dos que ficaram.”', karma: 2, say: `${npc} demora a responder. Depois guarda a bolsa e diz que vai visitar a família ${dele} amanhã.`, why: 'Você entregou o que foi pago e devolveu o luto ao lugar dele.', flag: 'veng_consolou' },
+      { label: '“Sim. Foi como você queria.”', karma: 0, say: `${npc} respira fundo. Pela primeira vez em semanas, ${ele} dorme a noite inteira.`, why: 'Uma resposta piedosa a quem estava quebrado. O Olho anota, mas não pesa.' },
+      { label: '“Pague o dobro e eu volto para acabar com a toca inteira.”', karma: -3, say: `${npc} paga. A fome ${dele} agora é sua, e você gostou do gosto.`, why: 'Você vendeu o ódio de outra pessoa por ouro e ainda pediu mais.', flag: 'veng_lucro' },
+    ] } };
 }
 
 export interface QState { active: Record<string, { prog: number[]; def?: QuestDef; from?: string }>; done: string[]; boardSeed: number; title: string }
@@ -324,38 +349,48 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   let logOpen = false, boardOpen = false, boardTab: 'c' | 'l' | 'p' | 'a' | 'm' | 'g' = 'c';
   /* ---- cartas de próprio punho: o jogador escreve, lacra e prega no quadro. O contato fica lacrado até alguém pegar a carta;
      pegar = aceitar o contrato, e o autor é avisado pelo correio. (local por enquanto; o servidor sincroniza entre jogadores) ---- */
-  type LKind = 'kill' | 'party' | 'buy' | 'love' | 'other';
-  interface Letter { id: string; by: string; kind: LKind; title: string; body: string; target?: string; reward: number; contact: string; mine?: boolean; takenBy?: string; t: number }
+  type LKind = 'kill' | 'revenge' | 'party' | 'buy' | 'love' | 'other';
+  interface Letter { id: string; by: string; kind: LKind; title: string; body: string; target?: string; /** o Olho viu: o alvo matou quem escreveu */ seen?: boolean; reward: number; contact: string; mine?: boolean; takenBy?: string; t: number }
   interface Mail { t: number; text: string; read?: boolean }
   const LK: Record<LKind, { name: string; ic: string; seal: string; post: number; take: number; hint: string }> = {
     kill: { name: 'Sentença de Morte', ic: '☠', seal: '#5a0e0e', post: -8, take: -10, hint: 'Pedir a morte de alguém pesa no karma de quem pede e de quem aceita.' },
+    revenge: { name: 'Contrato de Vingança', ic: '⚖', seal: '#4a1840', post: -3, take: -4, hint: 'Alguém atravessou o seu caminho e você paga para que ele caia (não para que desencarne de vez). Se foi ele quem matou você, o Olho já viu: o peso é bem menor.' },
     party: { name: 'Chamado de Grupo', ic: '⚔', seal: '#7a5a1a', post: 0, take: 2, hint: 'Ajuda em missão, chefe ou masmorra.' },
     buy: { name: 'Proposta de Compra', ic: '🪙', seal: '#6a5a2a', post: 0, take: 0, hint: 'Compro ou vendo um item; o acerto é feito direto entre vocês.' },
     love: { name: 'Correio Elegante', ic: '✉', seal: '#6a1a24', post: 0, take: 1, hint: 'Uma carta para quem quiser responder. Discreta e com lacre de cera.' },
     other: { name: 'Carta', ic: '📜', seal: '#3a3a4a', post: 0, take: 0, hint: 'Qualquer outro assunto.' },
   };
+  const kTake = (l: { kind: LKind; seen?: boolean }) => l.kind === 'revenge' && l.seen ? -1 : LK[l.kind].take;
   const esc = (t: string) => G(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   const ld = <T,>(k: string, d: T): T => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch { return d; } };
   const sv = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } };
   const SEED_LETTERS: Letter[] = [
     { id: 's1', by: 'Tessa', kind: 'party', title: 'Procuro escudo para o Príncipe das Cinzas', body: 'Sou curandeira e não aguento os golpes dele sozinha. Divido o tesouro em partes iguais.', reward: 0, contact: 'Tessa — na Igreja Abandonada ao anoitecer, ou /w Tessa', t: 0 },
     { id: 's2', by: 'Ulfgar', kind: 'kill', title: 'A cabeça de Hakon, o Traidor', body: 'Hakon vendeu minha caravana aos draugr. Quero que ele desencarne. O Olho que me julgue.', target: 'Hakon', reward: 900, contact: 'Ulfgar — taverna de Askavik, mesa do fundo', t: 0 },
+    { id: 's5', by: 'Ingrid', kind: 'revenge', title: 'Varg me deixou para os corvos', body: 'Caçávamos juntos na Floresta Sombria. Quando o lobo-alfa veio, Varg fugiu com a carne e me deixou para trás. Não quero que ele desencarne: quero que caia uma vez, e saiba por quê.', target: 'Varg', reward: 300, contact: 'Ingrid — junto ao poço da praça, de manhã', t: 0 },
     { id: 's3', by: 'Gunnar', kind: 'buy', title: 'Compro Garras da Lua Velha', body: 'Pago bem e sem perguntas. Também aceito troca por um épico de anão.', reward: 4000, contact: 'Gunnar — forja de Vestheim', t: 0 },
     { id: 's4', by: 'Sólveig', kind: 'love', title: 'Para quem também olha as estrelas da fonte', body: 'Toda noite sento no banco da praça. Se você também gosta do silêncio da fonte, venha conversar.', reward: 0, contact: 'Sólveig — banco da praça de Karmika, à noite', t: 0 },
   ];
+  /* quem matou você fora de um duelo fica guardado: o Olho viu, e a vingança contra essa pessoa pesa menos */
+  interface Grudge { name: string; t: number }
+  let grudges: Grudge[] = ld('karmika.grudge.v1', []);
+  const seenBy = (nm: string) => grudges.some((g) => g.name.toLowerCase() === nm.trim().toLowerCase());
+  const kPost = (kd: LKind, tgt: string) => kd === 'revenge' && seenBy(tgt) ? 0 : LK[kd].post;
   let letters: Letter[] = ld('karmika.letters.v1', SEED_LETTERS), taken: Letter[] = ld('karmika.taken.v1', []), mail: Mail[] = ld('karmika.mail.v1', []);
+  for (const sl of SEED_LETTERS) if (!letters.some((l) => l.id === sl.id) && !taken.some((l) => l.id === sl.id) && sl.id === 's5') letters.push(sl); // cartas novas chegam a quem já tinha o quadro
   const saveL = () => { sv('karmika.letters.v1', letters); sv('karmika.taken.v1', taken); sv('karmika.mail.v1', mail); };
   let draft = { kind: 'party' as LKind, title: '', body: '', target: '', reward: 0, contact: '' }, writing = false, confirmTake: string | null = null;
   const unread = () => mail.filter((m) => !m.read).length;
   function letterCard(l: Letter, mode: 'board' | 'taken') {
     const k = LK[l.kind], mine = l.mine, open = mode === 'taken';
-    const act = mode === 'taken' ? '' : mine ? (l.takenBy ? `<small class="lt-ok">✔ Pega por ${esc(l.takenBy)}</small>` : `<button data-ldel="${l.id}">Retirar</button>`) : `<button data-ltake="${l.id}" class="${confirmTake === l.id ? 'warn' : ''}">${confirmTake === l.id ? `Confirmar${k.take ? ` (karma ${k.take > 0 ? '+' : ''}${k.take})` : ''}` : 'Pegar a carta'}</button>`;
-    return `<div class="letter k-${l.kind}"><i class="seal" style="background:${k.seal}">${k.ic}</i>${act}<em class="lk">${k.name}${l.target ? ` · alvo: <b>${esc(l.target)}</b>` : ''}</em><b class="lt">${esc(l.title)}</b><p>${esc(l.body)}</p><span class="sig">— ${mine ? 'Você' : esc(l.by)}</span>${l.reward ? `<small class="rw">Oferece ${l.reward} 🪙 <span>(acerto direto entre vocês)</span></small>` : ''}${open || mine ? `<small class="ct">📍 ${esc(l.contact)}</small>` : '<small class="ct lock">🔒 Contato lacrado — só quem pegar a carta pode ver</small>'}</div>`;
+    const act = mode === 'taken' ? '' : mine ? (l.takenBy ? `<small class="lt-ok">✔ Pega por ${esc(l.takenBy)}</small>` : `<button data-ldel="${l.id}">Retirar</button>`) : `<button data-ltake="${l.id}" class="${confirmTake === l.id ? 'warn' : ''}">${confirmTake === l.id ? `Confirmar${kTake(l) ? ` (karma ${kTake(l) > 0 ? '+' : ''}${kTake(l)})` : ''}` : 'Pegar a carta'}</button>`;
+    return `<div class="letter k-${l.kind}"><i class="seal" style="background:${k.seal}">${k.ic}</i>${act}<em class="lk">${k.name}${l.target ? ` · alvo: <b>${esc(l.target)}</b>` : ''}${l.seen ? ' · <span class="seen">👁 o Olho viu: o alvo matou quem escreveu</span>' : ''}</em><b class="lt">${esc(l.title)}</b><p>${esc(l.body)}</p><span class="sig">— ${mine ? 'Você' : esc(l.by)}</span>${l.reward ? `<small class="rw">Oferece ${l.reward} 🪙 <span>(acerto direto entre vocês)</span></small>` : ''}${open || mine ? `<small class="ct">📍 ${esc(l.contact)}</small>` : '<small class="ct lock">🔒 Contato lacrado — só quem pegar a carta pode ver</small>'}</div>`;
   }
+  const lhint = () => { const k = LK[draft.kind], pk = kPost(draft.kind, draft.target); return `${k.hint}${draft.kind === 'revenge' && grudges.length ? ` Quem já matou você: ${grudges.slice(-4).map((g) => `<b>${esc(g.name)}</b>`).join(', ')}.` : ''}${pk ? ` Pregar esta carta: karma ${pk}.` : draft.kind === 'revenge' && draft.target.trim() ? ' <b class="seen">O Olho viu o que essa pessoa fez: pregar não pesa.</b>' : ''}`; };
   function lettersHtml() {
-    const k = LK[draft.kind];
-    const form = writing ? `<div class="lform"><div class="lrow"><select data-lf="kind">${(Object.keys(LK) as LKind[]).map((x) => `<option value="${x}" ${x === draft.kind ? 'selected' : ''}>${LK[x].ic} ${LK[x].name}</option>`).join('')}</select>${draft.kind === 'kill' ? `<input data-lf="target" maxlength="24" placeholder="Nome do alvo" value="${esc(draft.target)}">` : ''}<input data-lf="reward" type="number" min="0" max="999999" title="Recompensa oferecida (ouro)" value="${draft.reward || ''}" placeholder="Ouro"></div>
-      <small class="lhint">${k.hint}${k.post ? ` Pregar esta carta: karma ${k.post}.` : ''}</small>
+
+    const form = writing ? `<div class="lform"><div class="lrow"><select data-lf="kind">${(Object.keys(LK) as LKind[]).map((x) => `<option value="${x}" ${x === draft.kind ? 'selected' : ''}>${LK[x].ic} ${LK[x].name}</option>`).join('')}</select>${draft.kind === 'kill' || draft.kind === 'revenge' ? `<input data-lf="target" maxlength="24" list="lgrudge" placeholder="Nome do alvo" value="${esc(draft.target)}"><datalist id="lgrudge">${grudges.map((g) => `<option value="${esc(g.name)}">matou você em ${new Date(g.t).toLocaleDateString('pt-BR')}</option>`).join('')}</datalist>` : ''}<input data-lf="reward" type="number" min="0" max="999999" title="Recompensa oferecida (ouro)" value="${draft.reward || ''}" placeholder="Ouro"></div>
+      <small class="lhint">${lhint()}</small>
       <input data-lf="title" maxlength="60" placeholder="Título da carta" value="${esc(draft.title)}">
       <textarea data-lf="body" maxlength="400" rows="4" placeholder="Escreva de próprio punho…">${esc(draft.body)}</textarea>
       <input data-lf="contact" maxlength="80" placeholder="Como te encontrar (fica lacrado até alguém pegar a carta)" value="${esc(draft.contact)}">
@@ -430,7 +465,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     } else logEl.style.display = 'none';
   }
   el.addEventListener('click', (e) => { const o = (e.target as HTMLElement).closest('[data-open]') as HTMLElement | null; if (o) { e.stopPropagation(); focusId = o.dataset.open!; logOpen = true; boardOpen = false; render(); return; } const t = (e.target as HTMLElement).closest('[data-id]') as HTMLElement | null; if (t) { tracked = t.dataset.id!; render(); } });
-  const onDraft = (e: Event) => { const f = e.target as HTMLInputElement; const k = f.dataset?.lf as keyof typeof draft | undefined; if (!k) return; if (k === 'reward') draft.reward = +f.value || 0; else if (k === 'kind') { draft.kind = f.value as LKind; render(); } else (draft as Record<string, unknown>)[k] = f.value; };
+  const onDraft = (e: Event) => { const f = e.target as HTMLInputElement; const k = f.dataset?.lf as keyof typeof draft | undefined; if (!k) return; if (k === 'reward') draft.reward = +f.value || 0; else if (k === 'kind') { draft.kind = f.value as LKind; render(); } else if (k === 'target') { draft.target = f.value; const h = logEl.querySelector('.lhint'); if (h) h.innerHTML = lhint(); } else (draft as Record<string, unknown>)[k] = f.value; };
   logEl.addEventListener('input', onDraft); logEl.addEventListener('change', onDraft);
   /* leilão: campos e dica dos equipamentos à venda */
   const onAuc = (e: Event) => { if (!ctx.auction || boardTab !== 'a') return; const f = e.target as HTMLInputElement; const r = ctx.auction.input(f);
@@ -449,19 +484,21 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     if (t.closest('[data-lwrite]')) { writing = true; if (!draft.contact) draft.contact = `${ctx.me?.() ?? 'Caminhante'} — `; render(); return; }
     if (t.closest('[data-lcancel]')) { writing = false; render(); return; }
     if (t.closest('[data-lsend]')) {
-      const k = LK[draft.kind]; if (draft.title.trim().length < 3 || draft.body.trim().length < 5) { ctx.log('✒ Escreva um título e o texto da carta.', '#ff9a8a'); return; }
-      if (draft.kind === 'kill' && !draft.target.trim()) { ctx.log('✒ Uma sentença de morte precisa do nome do alvo.', '#ff9a8a'); return; }
+      if (draft.title.trim().length < 3 || draft.body.trim().length < 5) { ctx.log('✒ Escreva um título e o texto da carta.', '#ff9a8a'); return; }
+      if ((draft.kind === 'kill' || draft.kind === 'revenge') && !draft.target.trim()) { ctx.log(`✒ ${draft.kind === 'kill' ? 'Uma sentença de morte' : 'Um contrato de vingança'} precisa do nome do alvo.`, '#ff9a8a'); return; }
       if (ctx.st.gold < 2) { ctx.log('Sem ouro para papel e lacre (2 🪙).', '#ff9a8a'); return; }
-      ctx.st.gold -= 2; if (k.post) { ctx.karma?.(k.post); ctx.log(`👁 Você pediu a morte de ${draft.target}. Marghar guarda. Karma ${k.post}.`, '#c46a6a'); }
-      letters.unshift({ id: 'm' + Date.now(), by: ctx.me?.() ?? 'Você', kind: draft.kind, title: draft.title.trim(), body: draft.body.trim(), target: draft.kind === 'kill' ? draft.target.trim() : undefined, reward: Math.max(0, Math.floor(draft.reward || 0)), contact: draft.contact.trim() || (ctx.me?.() ?? 'Caminhante'), mine: true, t: Date.now() });
+      const tg = draft.target.trim(), pk = kPost(draft.kind, tg), seen = draft.kind === 'revenge' && seenBy(tg);
+      ctx.st.gold -= 2; if (pk) { ctx.karma?.(pk); ctx.log(draft.kind === 'kill' ? `👁 Você pediu a morte de ${tg}. Marghar guarda. Karma ${pk}.` : `👁 Você pagou para ver ${tg} cair. O Olho anota quem pede. Karma ${pk}.`, '#c46a6a'); }
+      else if (seen) ctx.log(`👁 ${tg} matou você e o Olho viu. Cobrar essa conta não pesa no seu karma.`, '#d9a0d0');
+      letters.unshift({ id: 'm' + Date.now(), by: ctx.me?.() ?? 'Você', kind: draft.kind, title: draft.title.trim(), body: draft.body.trim(), target: draft.kind === 'kill' || draft.kind === 'revenge' ? tg : undefined, seen: seen || undefined, reward: Math.max(0, Math.floor(draft.reward || 0)), contact: draft.contact.trim() || (ctx.me?.() ?? 'Caminhante'), mine: true, t: Date.now() });
       ctx.log(`📜 Carta pregada no quadro: “${draft.title.trim()}”. Você será avisado quando alguém a pegar.`, '#ffe08a');
       draft = { kind: draft.kind, title: '', body: '', target: '', reward: 0, contact: draft.contact }; writing = false; saveL(); render(); return; }
     const ldl = (t.closest('[data-ldel]') as HTMLElement | null)?.dataset.ldel; if (ldl) { letters = letters.filter((l) => l.id !== ldl); saveL(); ctx.log('Você arrancou a sua carta do quadro.', '#b9c6e0'); render(); return; }
     const lt = (t.closest('[data-ltake]') as HTMLElement | null)?.dataset.ltake; if (lt) { const l = letters.find((x) => x.id === lt); if (!l) return;
       if (confirmTake !== lt) { confirmTake = lt; render(); return; } confirmTake = null;
-      const k = LK[l.kind]; l.takenBy = ctx.me?.() ?? 'Você'; taken.unshift({ ...l }); letters = letters.filter((x) => x.id !== lt);
-      if (k.take) ctx.karma?.(k.take);
-      ctx.log(`📜 Você pegou a carta de ${l.by}: “${l.title}”. O contato foi revelado e ${l.by} foi avisado.${k.take ? ` Karma ${k.take > 0 ? '+' : ''}${k.take}.` : ''}`, l.kind === 'kill' ? '#c46a6a' : '#ffe08a'); saveL(); render(); return; }
+      l.takenBy = ctx.me?.() ?? 'Você'; taken.unshift({ ...l }); letters = letters.filter((x) => x.id !== lt);
+      const tk = kTake(l); if (tk) ctx.karma?.(tk);
+      ctx.log(`📜 Você pegou a carta de ${l.by}: “${l.title}”. O contato foi revelado e ${l.by} foi avisado.${tk ? ` Karma ${tk > 0 ? '+' : ''}${tk}.` : ''}`, l.kind === 'kill' || l.kind === 'revenge' ? '#c46a6a' : '#ffe08a'); saveL(); render(); return; }
     if (t.closest('[data-post]')) { const item = (logEl.querySelector('[data-pi]') as HTMLSelectElement).value, n = Math.max(1, +(logEl.querySelector('[data-pn]') as HTMLInputElement).value || 1), gold = Math.max(1, +(logEl.querySelector('[data-pg]') as HTMLInputElement).value || 1); if (ctx.st.gold < gold) { ctx.log('Ouro insuficiente para deixar no quadro.', '#ff9a8a'); return; } ctx.st.gold -= gold;
       if (ctx.room?.on()) { ctx.room.add(item, n, gold); ctx.log(`📋 Pedido publicado no quadro da sala: ${n}× ${ITEMS[item]?.name ?? item} por ${gold} 🪙 (o ouro fica guardado até alguém entregar).`, '#ffe08a'); return; }
       const ps = loadPosts(); ps.unshift({ by: 'Você', item, n, gold, mine: true }); savePosts(ps); ctx.log(`📋 Pedido publicado: ${n}× ${ITEMS[item]?.name ?? item} por ${gold} 🪙 (ouro guardado no quadro).`, '#ffe08a'); render(); return; }
@@ -472,7 +509,9 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   render();
   /** missão que um companheiro de grupo pegou: 'have' = já tenho, 'done' = já fiz, 'later' = ainda não cheguei nessa parte da história, 'ok' = posso pegar */
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
-  return { shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
+  /** alguém matou você fora de duelo: o Olho guarda o nome (até 12, o mais recente por último) */
+  function grudge(name: string) { if (!name) return; grudges = grudges.filter((g) => g.name.toLowerCase() !== name.toLowerCase()); grudges.push({ name, t: Date.now() }); grudges = grudges.slice(-12); sv('karmika.grudge.v1', grudges); }
+  return { grudge, shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
     /** reencarnação: esquece as missões do caminho de classe para poder refazê-las */
     forget(f: (id: string) => boolean) { for (const id of Object.keys(q.active)) if (f(id)) delete q.active[id]; q.done = q.done.filter((id) => !f(id)); save(); render(); },
     /** marca como feita sem entregar (testes do beta) */ markDone(id: string) { delete q.active[id]; if (!q.done.includes(id)) q.done.push(id); save(); render(); } };
