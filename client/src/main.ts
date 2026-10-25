@@ -2975,6 +2975,7 @@ function frameBody() {
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
+  try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);
   updateXray(dt); updateEnvelopes(t);

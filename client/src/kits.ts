@@ -200,7 +200,7 @@ const HSVG: Record<string, string> = {
     ['⇧3', 'venomclaw', 12, 15, 'Garras Envenenadas', 'As unhas crescem negras: quatro rasgos rápidos à frente, em zigue-zague. Cada rasgo envenena (o veneno corrói por 4 s e não deixa a ferida fechar).'],
   ], '#e0303a');
   KITS.lob = MK([
-    ['1', 'combo', 1, 0, 'Garras', 'De dia você é o licantropo: homem, 10% maior e 10% mais forte. Não usa arma: rasga com as garras, em golpes rápidos e selvagens. Cada acerto enche a Fúria.'],
+    ['1', 'combo', 1, 0, 'Porrete e Garras', 'De dia você é o licantropo: homem, 10% maior e 10% mais forte, que luta com armas rudes e mortais: porrete de carvalho, maça de osso, alabarda tosca. À noite, na Forma da Besta, larga a arma e rasga com as garras, golpes 20% mais rápidos. Cada acerto enche a Fúria.'],
     ['2', 'guard', 1, 0, 'Couro Grosso', 'Segure: o corpo se fecha e aguenta os golpes à frente.'],
     ['3', 'bash', 1, 0, 'Bote do Lobo', 'Marca uma linha: corre baixo e derruba quem estiver no caminho.'],
     ['4', 'rend', 5, 15, 'Dilacerar', 'Três golpes de garra em sequência à frente; o último faz sangrar por 4 s.'],

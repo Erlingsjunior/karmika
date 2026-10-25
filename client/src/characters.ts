@@ -1171,6 +1171,24 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             const pilot = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: pz ? 0x9aff5a : 0xff8a2a })); pilot.position.set(0, -0.64, 0.045); RG.add(pilot); // chama-piloto
             const valve = gm(new THREE.TorusGeometry(0.025, 0.006, 4, 10), 'gold'); valve.position.set(0.05, -0.1, -0.07); valve.rotation.y = Math.PI / 2; RG.add(valve);
             len = 0.52; }
+        } else if (base === 'Porrete de Carvalho') { // licantropo de dia: tronco de carvalho que engrossa na ponta, nós e cravos de ferro
+          const pts: THREE.Vector2[] = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.022 + 0.05 * t * t + 0.008 * Math.sin(t * 19), -t * 0.86)); } pts.push(new THREE.Vector2(0.0005, -0.9));
+          const club = mk(new THREE.LatheGeometry(pts.reverse(), 9), 0x5a3a20, 0.004); club.position.y = -0.04; sw.add(club);
+          for (let i = 0; i < 7; i++) { const a2 = i * 2.3, y2 = -0.55 - (i % 3) * 0.1; const sp = mk(new THREE.ConeGeometry(0.012, 0.06, 4), 0x6a6e78, 0.002, metal(rar, 0x6a6e78)); sp.position.set(Math.cos(a2) * 0.065, y2, Math.sin(a2) * 0.065); sp.rotation.set(Math.sin(a2) * 1.57, 0, -Math.cos(a2) * 1.57); sw.add(sp); }
+          len = 0.9;
+        } else if (base === 'Maça de Osso') { // cabo de freixo com tiras de couro e um crânio de touro amarrado na ponta, presas para fora
+          const haft = mk(new THREE.CylinderGeometry(0.018, 0.022, 0.78, 7), 0x6a4a2a, 0.004); haft.position.y = -0.39; sw.add(haft);
+          const skull = mk(new THREE.SphereGeometry(0.085, 10, 8), 0xe8dcc0, 0.004); skull.scale.set(0.9, 1.15, 1.2); skull.position.y = -0.8; sw.add(skull);
+          for (const sx of [-1, 1]) { const horn = new THREE.ConeGeometry(0.022, 0.16, 6); horn.translate(0, 0.08, 0); const hm = mk(horn, 0xd8ccb0, 0.003); hm.position.set(sx * 0.07, -0.76, 0); hm.rotation.z = -sx * 1.1; sw.add(hm); }
+          for (let i = 0; i < 3; i++) { const wr = mk(new THREE.TorusGeometry(0.024, 0.006, 4, 10), 0x3a2414, 0.002); wr.rotation.x = Math.PI / 2; wr.position.y = -0.62 - i * 0.03; sw.add(wr); }
+          len = 0.88;
+        } else if (base === 'Alabarda Tosca') { // haste longa, lâmina de machado batida a martelo, gancho atrás e ponta de lança
+          const haft = mk(new THREE.CylinderGeometry(0.018, 0.022, 1.5, 7), 0x5a3a20, 0.004); haft.position.y = -0.62; sw.add(haft);
+          const bladeS = new THREE.Shape(); bladeS.moveTo(0, 0); bladeS.quadraticCurveTo(0.22, 0.02, 0.26, -0.14); bladeS.quadraticCurveTo(0.2, -0.24, 0, -0.26); bladeS.lineTo(0, 0);
+          const bg = new THREE.ExtrudeGeometry(bladeS, { depth: 0.014, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.006, bevelSegments: 1 }); bg.translate(0.015, 0, -0.007); const bl = mk(bg, 0x8a8e96, 0.003, metal(rar, 0x8a8e96)); bl.position.y = -1.08; sw.add(bl);
+          const hook = mk(new THREE.ConeGeometry(0.02, 0.14, 4), 0x6a6e78, 0.002, metal(rar, 0x6a6e78)); hook.position.set(-0.07, -1.16, 0); hook.rotation.z = -1.2; sw.add(hook);
+          const tipS = mk(new THREE.ConeGeometry(0.025, 0.22, 4), 0x9aa2ae, 0.002, metal(rar, 0x9aa2ae)); tipS.position.y = -1.45; tipS.rotation.z = Math.PI; sw.add(tipS);
+          len = 1.45;
         } else if (base === 'Espada de Duelo') { // rapieira de vampiro: lâmina comprida e fina de seção losango, guarda em cesto com arco de mão e anel
           len = 0.98; const bl = new THREE.CylinderGeometry(0.003, 0.013, len, 4); bl.scale(1, 1, 0.45); const blade = mk(bl, 0xdde3ec, 0.004, metal(rar)); blade.position.y = -0.1 - len / 2; blade.rotation.y = Math.PI / 4; sw.add(blade);
           const ric = mk(new THREE.CylinderGeometry(0.012, 0.014, 0.1, 6), 0x9aa2ae, 0.003, metal(rar, 0x9aa2ae)); ric.position.y = -0.14; sw.add(ric);
