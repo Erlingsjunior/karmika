@@ -11,6 +11,8 @@ import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildLandmark, buildPalisade, buildTotem } from './village3d';
 import { buildMonument } from './monuments3d';
 import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof } from './toon3d';
+/** tampa de cada baú de tesouro do mundo (por prop), para a tampa abrir quando o jogador saqueia */
+export const chestLids = new Map<object, THREE.Object3D>();
 import { buildStation } from './stations3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
@@ -220,12 +222,36 @@ export function buildWorld(world: World): WorldObjs {
       L.glows.push({ light: nullLight, base: 40, seed: r() * 50, warm: false, pos: new THREE.Vector3(wx, wy + hh + 2.6, wz), color: 0x6fc7ff } as WorldObjs['glowLights'][number]);
       L.fountain = new THREE.Vector3(wx, wy, wz);
     } else if (p.kind === 'chest') {
-      const bx = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.55, 0.65), std(0xffffff, { map: plankTex(0x6a4528) })); ink(bx, 0.03); bx.position.set(Wm / 2, 0.28, Dm / 2); bx.castShadow = true; g.add(bx);
-      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 1.0, 8, 1, false, 0, Math.PI), std(0xffffff, { map: plankTex(0x7a5530) })); lid.rotation.set(0, 0, Math.PI / 2); lid.rotation.order = 'ZYX'; lid.rotateX(Math.PI / 2); lid.position.set(Wm / 2, 0.55, Dm / 2); g.add(lid);
-      for (const s of [-1, 1]) { const st = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.62, 0.7), std(0x2a2a32)); st.position.set(Wm / 2 + s * 0.32, 0.3, Dm / 2); g.add(st); }
-      const lk = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.05), std(0xc9a84a)); lk.position.set(Wm / 2, 0.5, Dm / 2 + 0.34); g.add(lk);
-      g.rotation.y = (p.variant ?? 0) * 0.7;
-      g.position.x += 0; 
+      /* Baú de tesouro (cai item): tábuas DEITADAS, tampa abaulada de verdade, cintas de ferro que abraçam corpo e tampa,
+       *  cantoneiras e fechadura de latão. Tudo num subgrupo centrado no tile, para o giro não tirar o baú do lugar. */
+      const cg = new THREE.Group(); cg.position.set(Wm / 2, 0, Dm / 2); g.add(cg);
+      const W0 = 0.86, H0 = 0.44, D0 = 0.54, R0 = D0 / 2;
+      const woodA = std(0x6e4526), woodB = std(0x5c391f), woodL = std(0x7c5130), iron = std(0x2c2a2e), brassM = std(0xd9b153, { emissive: 0x3a2a08 });
+      const put = (m: THREE.Mesh, x: number, y: number, z: number, w = 0) => { m.position.set(x, y, z); if (w) ink(m, w); m.castShadow = true; cg.add(m); return m; };
+      // corpo: três tábuas deitadas, de tons diferentes, com um fio escuro entre elas
+      const bodyIn = put(new THREE.Mesh(new THREE.BoxGeometry(W0 - 0.02, H0 - 0.02, D0 - 0.02), std(0x1a0f08)), 0, H0 / 2, 0);
+      bodyIn.castShadow = true;
+      for (let i = 0; i < 3; i++) put(new THREE.Mesh(new THREE.BoxGeometry(W0, H0 / 3 - 0.014, D0), i === 1 ? woodB : woodA), 0, H0 / 6 + i * H0 / 3, 0, i === 0 ? 0.025 : 0);
+      // tampa abaulada (meio cilindro deitado ao longo do X), presa na dobradiça de trás para poder abrir
+      const lid = new THREE.Group(); lid.position.set(0, H0, -R0); cg.add(lid);
+      const lidG = new THREE.CylinderGeometry(R0, R0, W0, 12, 1, false, 0, Math.PI).rotateZ(Math.PI / 2);
+      const lm = new THREE.Mesh(lidG, woodL); lm.position.set(0, 0, R0); ink(lm, 0.025); lm.castShadow = true; lid.add(lm);
+      // cintas de ferro: duas, abraçando o corpo (frente, trás, fundo) e a tampa (meio anel)
+      for (const sx of [-0.27, 0.27]) {
+        put(new THREE.Mesh(new THREE.BoxGeometry(0.07, H0 + 0.01, D0 + 0.03), iron), sx, H0 / 2, 0);
+        const band = new THREE.Mesh(new THREE.TorusGeometry(R0 + 0.012, 0.018, 4, 12, Math.PI).rotateY(Math.PI / 2), iron); band.scale.set(2.2, 1, 1); band.position.set(sx, 0, R0); lid.add(band);
+      }
+      // cantoneiras de latão nas quinas da frente e fechadura com buraco da chave
+      for (const sx of [-1, 1]) for (const yy of [0.04, H0 - 0.04]) put(new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.02), brassM), sx * (W0 / 2 - 0.035), yy, D0 / 2 + 0.008);
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.16, 0.03), brassM); plate.position.set(0, -0.02, D0 + 0.012); lid.add(plate);
+      const hole = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.06, 0.012), std(0x120a04)); hole.position.set(0, -0.04, D0 + 0.03); lid.add(hole);
+      // alças de ferro nas laterais
+      for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.014, 4, 10, Math.PI).rotateY(Math.PI / 2), iron); h.position.set(sx * (W0 / 2 + 0.012), H0 * 0.62, 0); h.rotation.x = Math.PI; cg.add(h); }
+      // pés baixos para não flutuar nem afundar no capim
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.09), woodB), sx * (W0 / 2 - 0.06), -0.015, sz * (D0 / 2 - 0.06));
+      cg.position.y = 0.035; cg.scale.setScalar(0.8); /* do tamanho de um baú de verdade: até o joelho do herói */
+      cg.rotation.y = ((p.variant ?? 0) % 4) * (Math.PI / 2) + ((p.variant ?? 0) % 2 ? 0.25 : -0.2);
+      lid.userData.dyn = true; chestLids.set(p, lid); /* dyn: a tampa fica fora da fusão estática e pode abrir */
     } else if (p.kind === 'bones') {
       const bm = std(0xd8d0b8); const v = p.variant ?? 0;
       const sk = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), bm); ink(sk, 0.02); sk.position.set(Wm / 2 - 0.5, 0.17, Dm / 2); sk.scale.set(1, 0.85, 1.1); g.add(sk);

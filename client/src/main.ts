@@ -62,7 +62,7 @@ import { DEFS } from './enemies';
 import { heightAt, groundH, rotLocal, localDims, rampartAt, stairTopAt, stairDeck, setRamparts, waterSD, WL, CITY, CATHEDRAL, ASKAVIK, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, REGIONS, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 import { type ToolSlot } from './tools';
-import { buildWorld, FOUNTAIN, stepAt } from './world3d';
+import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
 import { charShadow, createCharacter, type Hero3D, type Kind } from './characters';
 import { createGameplay } from './gameplay';
 import { createNpcs } from './npcs';
@@ -74,6 +74,7 @@ import { createLimiar, soulSpark, type LimiarInfo } from './limiar';
 import { createMasmorras } from './masmorras';
 import { createSoul, FRAY_LVL, MAX_BREATHS, CATCHUP_MUL, type Life } from './soul';
 import { LightShafts, makeHalo } from './volume3d';
+import { setHeroSex } from './genero';
 
 const __t0 = performance.now(); const city = await loadWorld(); setRamparts(city.ramparts ?? []); (window as unknown as { __tcity?: number }).__tcity = performance.now() - __t0; // mundo do cache (só a 1ª abertura gera)
 /* relevo do mapa grande (176 mil alturas), também do cache. Os dois 'await' ficam aqui no topo: depois deles o resto do arquivo roda de uma vez, sem pausa no meio */
@@ -161,6 +162,7 @@ const kindOf = (r: Race): Kind => (r === 'technocrat' ? 'technocrat' : r === 'dw
 interface Profile { name: string; origin: 'human' | 'dwarf' | 'elf'; sex?: 'f' | 'm'; path?: string; hair: number; skin: number; title: string; eye?: boolean; hairStyle?: 'braid' | 'long' | 'short' | 'bald'; beard?: number }
 const HAIRS = [0xe8dcc0, 0xb33a22, 0x2a1a14, 0xe8c66a, 0x7a4a2a, 0x4a2a6a], SKINS = [0xe8c8ae, 0xd9b08a, 0xb8865a, 0x7a5236];
 let profile: Profile | null = null;
+setHeroSex(() => profile?.sex); /* o texto se dirige ao herói no gênero escolhido; sem escolha, masculino */
 try { profile = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); } catch { profile = null; }
 const raceOf = (o: Profile['origin']): Race => o === 'dwarf' ? 'dwarf' : 'nordic';
 if (profile) state.race = raceOf(profile.origin);
@@ -764,8 +766,8 @@ const inicio = createInicio({ hasChar: () => !!profile, desk: (window as unknown
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */
 function slotPic(): Promise<string | null> { return new Promise((res) => { try { if (humanSkinKey() && !skinModel) { res(null); return; } /* o modelo do artista ainda não chegou: fica a foto anterior */ portraits.delete('hero'); const src = portraitOf('hero', hero.root, true); if (!src) { res(null); return; } const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = 132; c.height = 165; const g = c.getContext("2d")!; const k = Math.min(132 / img.width, 165 / img.height); g.fillStyle = '#14101a'; g.fillRect(0, 0, 132, 165); /* corpo inteiro, da cabeça aos pés */ g.drawImage(img, (132 - img.width * k) / 2, (165 - img.height * k) / 2, img.width * k, img.height * k); res(c.toDataURL('image/jpeg', 0.8)); }; img.onerror = () => res(null); img.src = src; } catch { res(null); } }); }
 function saveSlotMeta() { if (!profile || inicio.isOpen || creating) return;
-  slotPic().then((pic) => { if (profile) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'f', pic, server: net.state === 'on' ? `karmika://${net.address}/${net.code}` : null }); }); }
-setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (profile && !inicio.isOpen) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'f', pic: null, server: null }); });
+  slotPic().then((pic) => { if (profile) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'm', pic, server: net.state === 'on' ? `karmika://${net.address}/${net.code}` : null }); }); }
+setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (profile && !inicio.isOpen) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
 const bubbleEl = document.createElement('div'); bubbleEl.className = 'bubble'; document.body.appendChild(bubbleEl); let bubbleT = 0;
 function bubble(text: string) { bubbleEl.textContent = text; bubbleT = 4.5; bubbleEl.style.display = 'block'; }
@@ -1746,7 +1748,7 @@ const CLOTH_SLOTS = ['armor', 'helm', 'boots', 'cape', 'shoulders'] as const;
 let creating = false; /* na tela de criação o personagem nasce sem roupa: a prévia mostra a pele de nível 1 */
 function humanSkinKey(): string | null {
   const origin = profile?.origin ?? 'human'; if (origin !== 'human' || kindOf(state.race) !== 'nordic') return null;
-  const sex = profile?.sex ?? 'f'; let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* inv ainda não existe */ }
+  const sex = profile?.sex ?? 'm'; let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* inv ainda não existe */ }
   /* guerreiro do Norte (passou na prova do mestre, v_gue): vestido, ganha o modelo do guerreiro (homem: Guerreiro_lvl_01; mulher: a guerreira do Norte) */
   let warrior = false; try { warrior = profile?.path === 'gue' && quests.q.done.includes('v_gue'); } catch { /* quests ainda não existe */ }
   if (warrior && dressed) return sex === 'm' ? 'guerreiro_m' : 'guerreiro_f';
@@ -2460,7 +2462,7 @@ function findInter(): Inter | null {
     for (const st of STATIONS) { const d = Math.hypot(st.x - hx, st.z - hz); if (d < 5) { const I = STATION_INFO[st.v]; add(d - 1.6, 3.2, `E — ${I.name} · ${PROF_NAME[I.prof] ?? I.prof}`, () => { keys.clear(); profs.openAt(I.prof as never); }); } }
     for (const p of nearProps(gx, gy, ['tree', 'rock', 'campfire', 'chest', 'herb'], 2)) {
       const px = (p.gx + 0.5) * T, pz = (p.gy + 0.5) * T, d = Math.hypot(px - hx, pz - hz);
-      if (p.kind === 'chest') { if (!chestsOpen.has(p)) add(Math.hypot((p.gx + 0.5) * T - hx, (p.gy + 0.5) * T - hz), 3.0, 'E — Abrir baú', () => { chestsOpen.add(p); const cx = (p.gx + 0.5) * T, cz = (p.gy + 0.5) * T, cy = heightAt(cx, cz); hero.act('combo1'); for (let i = 0; i < 24; i++) particles.spawn(cx, cy + 0.8, cz, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: 0xffc040, a: 1, g: 6 }); if (welcomeKit(cx, cz, cy)) return; game.logMsg('Você abriu o baú!', '#ffe08a'); game.spawnGear(cx, cz, cy, Math.max(2, game.st.lvl + 2), { magic: 2, rare: 2.2, legendary: 2.5, relic: 3 }, 2, 'magic'); game.st.gold += 10 + Math.floor(Math.random() * 25); }); }
+      if (p.kind === 'chest') { if (!chestsOpen.has(p)) add(Math.hypot((p.gx + 0.5) * T - hx, (p.gy + 0.5) * T - hz), 3.0, 'E — Abrir baú', () => { chestsOpen.add(p); { const lid = chestLids.get(p); if (lid) { const t0 = performance.now(); const step = () => { const k = Math.min(1, (performance.now() - t0) / 450); lid.rotation.x = -1.85 * (1 - Math.pow(1 - k, 3)) - (k >= 1 ? 0 : Math.sin(k * Math.PI) * 0.12); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); } } const cx = (p.gx + 0.5) * T, cz = (p.gy + 0.5) * T, cy = heightAt(cx, cz); hero.act('combo1'); for (let i = 0; i < 24; i++) particles.spawn(cx, cy + 0.8, cz, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: 0xffc040, a: 1, g: 6 }); if (welcomeKit(cx, cz, cy)) return; game.logMsg('Você abriu o baú!', '#ffe08a'); game.spawnGear(cx, cz, cy, Math.max(2, game.st.lvl + 2), { magic: 2, rare: 2.2, legendary: 2.5, relic: 3 }, 2, 'magic'); game.st.gold += 10 + Math.floor(Math.random() * 25); }); }
       else if (p.kind === 'tree') { const axe = inv.tool('axe'); add(d, 3.0, axe ? `E — Cortar árvore (${Math.round(100 * (chop.get(p) ?? 0) / CHOPS)}%) · ${axe.name}` : (twigs.get(p) ?? 0) < 2 ? 'E — Juntar galhos' : 'Precisa de um machado (espaço de ferramenta)', () => { if (axe) startWork('chop', p, px, pz); else gatherTwigs(p); }); }
       else if (p.kind === 'rock') { const R = rockState(p), pick = inv.tool('pick'), vein = veinOf(p), vn = vein === 2 ? ' · veio de prata' : vein === 1 ? ' · veio de ferro' : '';
         add(d - (p.w - 1) * 0.9, 2.6 + (p.w - 1) * 0.9, R.left <= 0 ? 'Pedra esgotada — volta com os turnos' : pick ? `E — Minerar (${Math.round(100 * (1 - R.left / R.max))}%)${vn} · ${pick.name}` : (pebbles.get(p) ?? 0) < 3 ? 'E — Juntar pedras soltas' : 'Precisa de uma picareta (espaço de ferramenta)', () => { if (pick) startWork('mine', p, px, pz); else gatherPebbles(p); }); }

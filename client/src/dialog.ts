@@ -1,3 +1,4 @@
+import { G } from './genero';
 /** Diálogo com NPC: modal com retrato, falas e opções (missões, entrega, comércio, quadro). */
 import type { QuestDef } from './quests';
 import { objText } from './quests';
@@ -28,7 +29,7 @@ export function createDialog() {
   el.addEventListener('dblclick', (e) => { if (!(e.target as HTMLElement).closest('.dh')) return; off = { x: 0, y: 0 }; placeOff(); try { localStorage.setItem('karmika.ui.dlg', JSON.stringify(off)); } catch { /* */ } });
   let cur: DialogOpts | null = null, view: { quest: QuestDef; mode: 'offer' | 'turnin' | 'meet'; conv?: { steps: Step[]; i: number; log: { who: string; t: string; me?: boolean }[]; shown: number } } | null = null;
   let typeT = 0;
-  const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
+  const esc = (s: string) => G(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   function render() {
     if (!cur) { el.style.display = 'none'; return; }
     const o = cur;
@@ -58,7 +59,7 @@ export function createDialog() {
     el.innerHTML = `<div class="dp">${head}${body}<div class="ft">Esc fecha</div></div>`;
     el.style.display = 'flex'; requestAnimationFrame(placeOff);
   }
-  const nm = (t: string) => t.replace(/\{nome\}/g, cur?.me || 'Caminhante');
+  const nm = (t: string) => G(t.replace(/\{nome\}/g, cur?.me || 'Caminhante'));
   const who = (st: Step): { who: string; t: string; me?: boolean } | null => typeof st === 'string' ? { who: cur!.name, t: nm(st) } : 'me' in st ? { who: cur!.me || 'Você', t: nm(st.me), me: true } : 'who' in st ? { who: st.who, t: nm(st.t) } : null;
   /** avança a conversa até a próxima fala (ou escolha); no fim, mostra o cartão da missão */
   function step() { if (!view?.conv) return; const cv = view.conv;

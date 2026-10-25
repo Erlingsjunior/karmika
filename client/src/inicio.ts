@@ -19,12 +19,12 @@ function read(): Slots {
   let s: Slots | null = null; try { s = JSON.parse(localStorage.getItem('karmika.slots') || 'null'); } catch { s = null; }
   if (!s) { // primeira vez com espaços: o personagem que já existe vira o espaço 1
     s = { active: 0, meta: [null, null, null], servers: [] };
-    try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) s.meta[0] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'f', pic: null, server: null, t: Date.now() }; } catch { /* */ }
+    try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) s.meta[0] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'm', pic: null, server: null, t: Date.now() }; } catch { /* */ }
     write(s);
   }
   while (s.meta.length < NSLOT) s.meta.push(null); s.servers ??= [];
   if ((s as Slots & { picv?: number }).picv !== 2) { for (const m of s.meta) if (m) m.pic = null; (s as Slots & { picv?: number }).picv = 2; write(s); } // retratos tirados pela versão antiga (escuros/errados): refaz ao jogar
-  if (!s.meta[s.active]) { try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) { s.meta[s.active] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'f', pic: null, server: null, t: Date.now() }; write(s); } } catch { /* */ } }
+  if (!s.meta[s.active]) { try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) { s.meta[s.active] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'm', pic: null, server: null, t: Date.now() }; write(s); } } catch { /* */ } }
   return s;
 }
 function write(s: Slots) { try { localStorage.setItem('karmika.slots', JSON.stringify(s)); } catch { /* */ } }

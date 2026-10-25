@@ -1,3 +1,4 @@
+import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
@@ -321,7 +322,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     love: { name: 'Correio Elegante', ic: '✉', seal: '#6a1a24', post: 0, take: 1, hint: 'Uma carta para quem quiser responder. Discreta e com lacre de cera.' },
     other: { name: 'Carta', ic: '📜', seal: '#3a3a4a', post: 0, take: 0, hint: 'Qualquer outro assunto.' },
   };
-  const esc = (t: string) => t.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+  const esc = (t: string) => G(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
   const ld = <T,>(k: string, d: T): T => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? d; } catch { return d; } };
   const sv = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* */ } };
   const SEED_LETTERS: Letter[] = [

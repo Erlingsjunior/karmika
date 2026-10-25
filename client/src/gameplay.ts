@@ -1,3 +1,4 @@
+import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
 import { fine } from './dual3d';
@@ -178,7 +179,7 @@ export function createGameplay(d: GameplayDeps) {
     for (let i = 0; i < 6; i++) d.particles.spawn(dx, y + 0.4, dz, { vx: rnd(-0.6, 0.6), vy: rnd(0.5, 1.6), vz: rnd(-0.6, 0.6), life: 0.6, s0: 0.2, s1: 0.04, c0: kind === 'gold' ? 0xffe27a : 0xff8a9a, c1: 0xff9a20, a: 0.9, drag: 1.5 });
   }
   const logEl = document.getElementById('log') as HTMLElement | null;
-  function logMsg(txt: string, col = '#e8dcc0') {
+  function logMsg(txt: string, col = '#e8dcc0') { txt = G(txt);
     if (!logEl) return; const li = document.createElement('div'); li.textContent = txt; li.style.color = col; logEl.appendChild(li);
     while (logEl.children.length > 7) logEl.removeChild(logEl.firstChild!);
     setTimeout(() => { li.style.opacity = '0'; setTimeout(() => li.remove(), 600); }, 6000);
