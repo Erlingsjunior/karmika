@@ -33,6 +33,28 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'mountain', col: 4, row: 0, req: [['stonerune', REQ_RANK]] }, { id: 'forge', col: 4, row: 2, req: [['hammerthrow', REQ_RANK]] },
     { id: 'avatar', col: 5, row: 1, req: [['mountain', 5], ['forge', 5]] },
   ],
+  pal: [ // Paladino: Vingança (dano sagrado), Bastião (escudo), Graça (cura e luz); no fim, as Asas da Vingança
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'bash', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'smite', col: 2, row: 0, req: [['bash', REQ_RANK]] }, { id: 'kick', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'consecrate', col: 2, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'mark', col: 3, row: 0, req: [['smite', REQ_RANK]] }, { id: 'shieldwall', col: 3, row: 1, req: [['kick', REQ_RANK]] }, { id: 'warcry', col: 3, row: 2, req: [['consecrate', REQ_RANK]] },
+    { id: 'valkyrie', col: 4, row: 1, req: [['shieldwall', REQ_RANK]] },
+    { id: 'avenging', col: 5, row: 1, req: [['mark', 5], ['valkyrie', 5], ['warcry', 5]] },
+  ],
+  vam: [ // Vampiro: Lâmina (velocidade), Sangue (roubo de vida), Noite (morcegos); no fim, a Forma do Conde
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'bash', col: 1, row: 0, req: [['combo', 1]] }, { id: 'drain', col: 1, row: 1, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'hamstring', col: 2, row: 0, req: [['bash', REQ_RANK]] }, { id: 'bloodnova', col: 2, row: 1, req: [['drain', REQ_RANK]] }, { id: 'batswarm', col: 2, row: 2, req: [['guard', REQ_RANK]] },
+    { id: 'whirl', col: 3, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'mark', col: 3, row: 1, req: [['bloodnova', REQ_RANK]] }, { id: 'valkyrie', col: 3, row: 2, req: [['batswarm', REQ_RANK]] },
+    { id: 'nightform', col: 4, row: 1, req: [['whirl', 5], ['mark', 5], ['valkyrie', 5]] },
+  ],
+  lob: [ // Lobisomem: Garra (dano), Pele (tanque), Lua (uivo e cura); no fim, a Forma da Besta
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'rend', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'howl', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'hamstring', col: 2, row: 0, req: [['rend', REQ_RANK]] }, { id: 'bash', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'heal', col: 2, row: 2, req: [['howl', REQ_RANK]] },
+    { id: 'whirl', col: 3, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'kick', col: 3, row: 1, req: [['bash', REQ_RANK]] }, { id: 'mark', col: 3, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'fenrir', col: 4, row: 1, req: [['whirl', 5], ['kick', 5], ['mark', 5]] },
+  ],
   tecno: [ // Tecnocrata formado: Engenharia de Campo (choque), Suporte (drone, minas), Química (fogo e ácido); no fim, o exoesqueleto
     { id: 'combo', col: 0, row: 1, req: [] },
     { id: 'thunder', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'shocktrap', col: 1, row: 2, req: [['combo', 1]] },
@@ -91,6 +113,20 @@ export const STATS: Record<string, Stat> = {
   'technocrat:mech': { dmg: 2, dur: 12, cd: 50, note: 'Mecha: dano ×2, +40% defesa, Rajadas de 5 tiros.' },
 };
 for (const [k, v] of Object.entries(STATS)) if (k.startsWith('nordic:')) STATS['human:' + k.slice(7)] = { ...v, note: v.note?.replace(/Fúria/g, 'Determinação') };
+/* fichas das magias novas (25/10) e das que os kits formados emprestam */
+Object.assign(STATS, {
+  'x:smite': { dmg: 2.2, range: 11, area: 2.6, cast: 0.45, cd: 7, note: 'Coluna de luz na área marcada. Mortos-vivos, demônios e lobisomens: atordoados e dano sagrado.' },
+  'x:consecrate': { dmg: 0.42, hits: 12, area: 3.6, dur: 6, cd: 14, note: 'Fere quem estiver dentro a cada 0,5 s; você cura 1,5% da vida por pulso dentro do círculo.' },
+  'x:avenging': { dmg: 1.8, dur: 12, cd: 50, note: 'Asas de luz: dano ×1,8, +25% de defesa, 8% de roubo de vida.' },
+  'x:drain': { dmg: 0.4, hits: 8, range: 7, dur: 2, cd: 8, note: 'Fio de sangue por 2 s: o dano volta como vida.' },
+  'x:batswarm': { dmg: 0.3, hits: 12, area: 3, range: 11, dur: 5, cd: 12, note: 'Morcegos mordem e deixam lento; metade do dano volta como vida.' },
+  'x:bloodnova': { dmg: 1.8, area: 4.5, cast: 0.35, cd: 10, note: 'Explosão em volta; cura 30% do dano causado.' },
+  'x:nightform': { dmg: 1.8, dur: 12, cd: 50, note: 'Forma do Conde: dano ×1,8, +40% de velocidade, 25% de roubo de vida.' },
+  'x:howl': { dmg: 0, area: 9, dur: 2, cd: 16, note: 'Medo: paralisa 2 s quem estiver perto; +20% de dano por 8 s.' },
+  'x:rend': { dmg: 0.8, hits: 3, range: 2.6, cd: 6, note: 'Três garras; o último golpe sangra por 4 s.' },
+  'tecno:medic': { dmg: 0, dur: 10, cd: 18, note: 'Drone médico: cura 40% da vida em 10 s e apaga queimaduras.' },
+});
+for (const kk of ['tecno', 'pal', 'vam', 'lob'] as const) for (const sk of KITS[kk] ?? []) { const key = `${kk}:${sk.id}`; if (STATS[key]) continue; STATS[key] = STATS['x:' + sk.id] ?? STATS[`technocrat:${sk.id}`] ?? STATS[`nordic:${sk.id}`] ?? {}; }
 
 export interface Scale { dmg: number; range: number; area: number; dur: number; cost: number; tier: number; rank: number }
 export const scaleOf = (rank: number): Scale => ({ rank, dmg: 1 + 0.04 * rank, range: 1 + 0.04 * rank, area: 1 + 0.04 * rank, dur: 1 + 0.05 * rank, cost: Math.max(0.8, 1 - 0.02 * rank), tier: rank >= 10 ? 3 : rank >= 6 ? 2 : rank >= 3 ? 1 : 0 }); // estágios: Bronze (3), Prata (6), Ouro (10)

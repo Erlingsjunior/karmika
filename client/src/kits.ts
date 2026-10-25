@@ -1,9 +1,9 @@
 import type { Race as BaseRace } from '@karmika/shared';
 /** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
-export type KitKey = BaseRace | 'tecno';
+export type KitKey = BaseRace | 'tecno' | 'pal' | 'vam' | 'lob';
 type Race = KitKey;
 
-export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie';
+export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie' | 'smite' | 'consecrate' | 'avenging' | 'drain' | 'batswarm' | 'bloodnova' | 'nightform' | 'howl' | 'rend';
 export interface AimDef { kind: 'circle' | 'cone' | 'line'; radius: number; range: number; color: number }
 export interface SkillDef { k: string; id: SkillId; lvl: number; c: string; name: string; cost: number; aim?: AimDef; hold?: boolean; tip: string; svg: string }
 /** Níveis de desbloqueio das 10 magias: 1, 1, 1, 5, 10, 18, 28, 42, 60, 85 (todas abertas antes da Ascensão do nível 100). */
@@ -68,7 +68,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };
-export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
+export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
 /* ---- Humano puro: luta com o que tiver na mão, sem magia de deus nenhum. Usa os mesmos movimentos da escola nórdica (sem gelo, raio nem lobo),
    com nomes e jeito de gente comum. Feras, armadilhas e construção entram depois (ver arvore-humano.md) ---- */
 { const N = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
@@ -133,6 +133,65 @@ const HSVG: Record<string, string> = {
   ];
   KITS.tecno = TK.map(([k, id, lvl, cost, name, tip, from]) => { const b = from === 'T' ? T(id) : Nn(id); return { ...b, k, lvl, cost, name, tip, c: id === 'medic' ? '#7affd0' : id === 'mark' ? '#ff7a7a' : from === 'T' ? b.c : '#6ae0ff', svg: TS[id] ?? b.svg }; });
   for (const s of KITS.tecno) if (!s.svg) throw new Error('kit tecno sem ícone: ' + s.id); }
+
+/* ---- 25/10: Paladino, Vampiro e Lobisomem formados ganham golpes próprios (antes usavam os do guerreiro nórdico: gelo e Odin) ---- */
+{ const Nn = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
+  const I = (body: string, c: string) => `<svg viewBox="0 0 32 32">${body.replace(/C/g, c)}</svg>`;
+  const ICON: Record<string, string> = {
+    smite: I('<path d="M13 3h6v8h5l-8 9-8-9h5z" fill="C"/><path d="M6 26h20M9 29h14" stroke="C" stroke-width="2" stroke-linecap="round"/><path d="M5 20l4 2M27 20l-4 2" stroke="#fff6d0" stroke-width="1.5"/>', '#ffd24a'),
+    consecrate: I('<ellipse cx="16" cy="22" rx="12" ry="5" fill="none" stroke="C" stroke-width="2"/><path d="M16 6v14M10 11h12" stroke="C" stroke-width="2.4"/><path d="M8 24l-1 4M24 24l1 4M16 27v3" stroke="#fff0b0" stroke-width="1.4"/>', '#ffe08a'),
+    avenging: I('<path d="M16 9c-4-6-11-5-13 1 4-1 7 1 9 4-3-1-6 0-8 3 4 0 7 1 9 4l3-5 3 5c2-3 5-4 9-4-2-3-5-4-8-3 2-3 5-5 9-4-2-6-9-7-13-1z" fill="C"/><circle cx="16" cy="9" r="2.4" fill="#fff6d0"/>', '#ffd24a'),
+    drain: I('<circle cx="8" cy="10" r="4" fill="none" stroke="C" stroke-width="2"/><path d="M11 13c5 3 7 7 9 12" stroke="C" stroke-width="2" fill="none" stroke-dasharray="3 2"/><path d="M22 18c2 3 4 5 4 7a4 4 0 0 1-8 0c0-2 2-4 4-7z" fill="C"/>', '#e0303a'),
+    batswarm: I('<path d="M16 14c-2-3-6-4-10-2 2 1 2 3 1 5 2-1 4 0 5 2 1-2 3-3 4-5zm0 0c2-3 6-4 10-2-2 1-2 3-1 5-2-1-4 0-5 2-1-2-3-3-4-5z" fill="C"/><path d="M5 25c2-2 4-2 5 0M21 25c2-2 4-2 5 0M12 6c1-1 3-1 4 0" stroke="C" stroke-width="1.6" fill="none"/>', '#c86a8a'),
+    bloodnova: I('<circle cx="16" cy="16" r="5" fill="C"/><path d="M16 3v6M16 23v6M3 16h6M23 16h6M7 7l4 4M21 21l4 4M25 7l-4 4M11 21l-4 4" stroke="C" stroke-width="2" stroke-linecap="round"/>', '#ff3a4a'),
+    nightform: I('<path d="M16 6c-3 0-5 2-5 5 0 2 1 3 2 4-4 1-8 4-10 8 4-1 7-1 9 1 1-2 2-3 4-3s3 1 4 3c2-2 5-2 9-1-2-4-6-7-10-8 1-1 2-2 2-4 0-3-2-5-5-5z" fill="C"/><path d="M13 10l1 2M19 10l-1 2" stroke="#ff4a5a" stroke-width="1.6"/>', '#8a1a2a'),
+    howl: I('<path d="M8 26c0-6 2-11 6-14l-2-6 5 4 3-3 1 5c3 2 5 6 5 10" fill="none" stroke="C" stroke-width="2.2"/><circle cx="24" cy="7" r="3.5" fill="#e8ecff"/><path d="M4 14q-2 3 0 6M2 11q-3 6 0 12" stroke="#c8d8ff" stroke-width="1.4" fill="none"/>', '#a0a8c0'),
+    rend: I('<path d="M7 5l6 22M14 4l5 22M21 5l4 20" stroke="C" stroke-width="2.6" stroke-linecap="round"/><path d="M9 14l1 3M16 12l1 3M23 13l1 3" stroke="#ffd0d0" stroke-width="1.2"/>', '#e04a4a'),
+  };
+  type Row = [string, string, number, number, string, string];
+  const MK = (rows: Row[], col: string): SkillDef[] => rows.map(([k, id, lvl, cost, name, tip]) => { const b = KITS.nordic!.find((x) => x.id === id); const aim: AimDef | undefined = id === 'smite' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xffd24a } : id === 'batswarm' ? { kind: 'circle', radius: 3, range: 11, color: 0xc86a8a } : b?.aim;
+    return { k, id: id as SkillId, lvl, cost, name, tip, c: col, aim, hold: b?.hold, svg: ICON[id] ?? b?.svg ?? '' }; });
+  KITS.pal = MK([
+    ['1', 'combo', 1, 0, 'Golpe Consagrado', 'Espada e escudo. Todo golpe básico é dano sagrado: mortos-vivos, demônios e lobisomens sentem mais.'],
+    ['2', 'guard', 1, 0, 'Escudo da Fé', 'Segure: ergue o escudo à frente. Bloqueio perfeito: o contra-golpe (3) sai em dobro.'],
+    ['3', 'bash', 1, 0, 'Investida Justa', 'Marca uma linha: avança com o escudo à frente e derruba quem estiver no caminho.'],
+    ['4', 'smite', 5, 25, 'Martelo da Aurora', 'Marca o chão: uma coluna de luz desce do céu e martela a área. Mortos-vivos, demônios e lobisomens ficam atordoados.'],
+    ['5', 'heal', 10, 40, 'Imposição de Mãos', 'Põe a mão no peito e cura. Depois de lutar, os próximos 3 golpes são críticos.'],
+    ['6', 'consecrate', 18, 30, 'Solo Consagrado', 'O chão em volta brilha por 6 s: quem estiver dentro queima em luz a cada meio segundo, e você recupera vida enquanto ficar no círculo.'],
+    ['7', 'warcry', 28, 25, 'Desafio do Paladino', 'Bate a espada no escudo: quem estiver a 8 m larga o que fazia e vem atrás de você; +25% de dano por 8 s.'],
+    ['8', 'shieldwall', 42, 25, 'Muralha de Fé', 'Finca o escudo: uma parede de escudos barra golpes, magias e a passagem por 4 s.'],
+    ['9', 'mark', 60, 20, 'Julgamento', 'Aponta a espada para o inimigo mais perto: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.'],
+    ['0', 'avenging', 85, 60, 'Asas da Vingança', 'Transformação de 12 s: asas de luz nas costas, dano ×1,8, +25% de defesa e cada golpe cura.'],
+    ['⇧1', 'kick', 3, 10, 'Golpe de Escudo', 'Bate a borda do escudo no inimigo à frente: atordoa, empurra e interrompe golpes e magias em preparo.'],
+    ['⇧2', 'valkyrie', 20, 20, 'Contra-golpe Sagrado', 'Espera o golpe por 1,5 s: se vier, anula e gira cortando tudo em volta.'],
+  ], '#ffd24a');
+  KITS.vam = MK([
+    ['1', 'combo', 1, 0, 'Lâmina Sedenta', 'Golpes rápidos. Todo vampiro rouba um pouco da vida de cada golpe (5%).'],
+    ['2', 'guard', 1, 0, 'Aparar', 'Segure: apara à frente com a arma.'],
+    ['3', 'bash', 1, 0, 'Bote da Sombra', 'Marca uma linha: atravessa o caminho de uma vez, cortando quem estiver nele.'],
+    ['4', 'drain', 5, 15, 'Beber a Vida', 'Prende o inimigo mais perto (até 7 m) num fio de sangue por 2 s: tira a vida dele e devolve para você.'],
+    ['5', 'batswarm', 10, 25, 'Nuvem de Morcegos', 'Marca o chão: uma nuvem de morcegos cobre a área por 5 s, mordendo e deixando lento quem estiver dentro. Cada mordida devolve vida.'],
+    ['6', 'hamstring', 18, 15, 'Corte Sangrento', 'Corte baixo em arco: quem estiver à frente fica lento (Bronze: sangra).'],
+    ['7', 'bloodnova', 28, 35, 'Explosão de Sangue', 'O sangue que você bebeu explode em volta: fere todos a 4,5 m e você cura 30% do dano causado.'],
+    ['8', 'mark', 42, 20, 'Marca da Presa', 'Marca o inimigo mais perto: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.'],
+    ['9', 'whirl', 60, 35, 'Dança Rubra', 'Gira sem parar por 2 s cortando tudo ao redor.'],
+    ['0', 'nightform', 85, 60, 'Forma do Conde', 'Transformação de 12 s: o corpo vira sombra e morcego, dano ×1,8, +40% de velocidade e 25% de roubo de vida.'],
+    ['⇧1', 'valkyrie', 20, 20, 'Véu da Noite', 'Espera o golpe por 1,5 s: se vier, desvia por baixo dele e corta tudo em volta.'],
+  ], '#e0303a');
+  KITS.lob = MK([
+    ['1', 'combo', 1, 0, 'Garras e Aço', 'Golpes selvagens; cada acerto enche a Fúria.'],
+    ['2', 'guard', 1, 0, 'Couro Grosso', 'Segure: o corpo se fecha e aguenta os golpes à frente.'],
+    ['3', 'bash', 1, 0, 'Bote do Lobo', 'Marca uma linha: corre baixo e derruba quem estiver no caminho.'],
+    ['4', 'rend', 5, 15, 'Dilacerar', 'Três golpes de garra em sequência à frente; o último faz sangrar por 4 s.'],
+    ['5', 'howl', 10, 25, 'Uivo da Lua', 'Uiva para a lua: quem estiver a 9 m fica paralisado de medo por 2 s, e você ganha +20% de dano por 8 s.'],
+    ['6', 'hamstring', 18, 15, 'Rasgar Tendões', 'Abaixa e rasga rente ao chão em arco: quem estiver à frente fica lento.'],
+    ['7', 'heal', 28, 40, 'Regeneração da Lua', 'A besta fecha as próprias feridas: cura. Depois de lutar, os próximos 3 golpes são críticos.'],
+    ['8', 'whirl', 42, 35, 'Frenesi', 'Gira atacando tudo em volta por 2 s.'],
+    ['9', 'mark', 60, 20, 'Presa Marcada', 'Fareja e marca o inimigo mais perto: +50% de dano nele por 6 s, e cada golpe devolve vida.'],
+    ['0', 'fenrir', 85, 60, 'Forma da Besta', 'Transformação de 10 s: vira o lobo grande. Dano ×2, +30% de velocidade e 15% de roubo de vida.'],
+    ['⇧1', 'kick', 3, 10, 'Patada', 'Patada no peito do inimigo à frente: atordoa, empurra e interrompe.'],
+  ], '#c8a070');
+  void Nn; }
 
 export const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 export function kitOf(race: Race) { return KITS[race] ?? KITS.nordic!; }

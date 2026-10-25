@@ -252,7 +252,7 @@ const treeTitle = () => { let n = 'Humano'; try { n = game.classInfo.name || n; 
 /** armas de caminho (loot.ts, Only): o Caçador de Demônios e o Tecnocrata depois da prova do mestre; os anões pela raça */
 function walksPath(o: Only): boolean { if (o === 'dwarf') return profile?.origin === 'dwarf'; try { return profile?.path === o && quests.q.done.includes('v_' + o); } catch { return false; } }
 tipCtx.can = walksPath;
-const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } if (n === 'Tecnocrata' && state.race !== 'technocrat') return 'tecno'; return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
+const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } if (n === 'Tecnocrata' && state.race !== 'technocrat') return 'tecno'; if (n === 'Paladino de Auréon') return 'pal'; if (n === 'Vampiro') return 'vam'; if (n === 'Lobisomem') return 'lob'; return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
 const tree = createSkillTree(kitRace, () => game.st.lvl, (t, c) => game.logMsg(t, c), treeTitle);
 game.setSkillScale((id) => tree.scale(id));
 let treeSel: string | null = null;
@@ -1886,7 +1886,7 @@ function swapHero() {
 }
 tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k));
 /** recurso do caminho: o orbe da direita muda de nome, de cor e de regra (guerreiros: Ímpeto, que enche lutando) */
-function applyRes() { setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
+function applyRes() { setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); game.setKit(kitRace()); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
 /* antes da Vidente (nível 30), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
