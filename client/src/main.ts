@@ -2669,7 +2669,9 @@ function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 
 const LUZES_ATIVAS = 14;
 let poolT = 0, poolList: THREE.PointLight[] = [], poolScanT = 0;
 function lightPool(dt: number) {
-  poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean }).keep) poolList.push(l); }); }
+  poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean }).keep) poolList.push(l);
+      /* sombra só para o que tem tamanho de fazer sombra: capim, flor, pedrinha e vela não entram no mapa de sombras (eram milhares) */
+      const m = o as THREE.Mesh; if (m.isMesh && m.castShadow && !(m.userData as { shadowChecked?: boolean }).shadowChecked) { (m.userData as { shadowChecked?: boolean }).shadowChecked = true; const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const sc = Math.max(m.scale.x, m.scale.y, m.scale.z); if ((g.boundingSphere?.radius ?? 1) * sc < 0.28 && !(m as unknown as { isSkinnedMesh?: boolean }).isSkinnedMesh) m.castShadow = false; } }); }
   poolT -= dt; if (poolT > 0) return; poolT = 0.2;
   const cxp = camX, czp = camZ, v = new THREE.Vector3();
   const scored = poolList.map((l) => { l.getWorldPosition(v); let up = true; for (let p: THREE.Object3D | null = l.parent; p; p = p.parent) if (!p.visible) { up = false; break; } return { l, d: up ? Math.hypot(v.x - cxp, v.z - czp) - l.intensity * 0.05 : 1e9 }; }).sort((a, b) => a.d - b.d);
