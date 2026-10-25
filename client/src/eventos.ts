@@ -31,6 +31,7 @@ interface Tpl {
   id: string; name: string; icon: string; site: 'village' | 'road' | 'forest'; when?: 'night' | 'day'; weight: number; color: string;
   herald: Look; intro: (s: Site, c: EvCtx) => Step[];
   /** falas de quem está no evento, em balões, de tempos em tempos */ chatter?: string[];
+  /** falas do povo que assiste ou acompanha (coadjuvantes) */ crowd?: string[];
   facs?: { A: string; B: string }; waves?: Wave[]; sides: Partial<Record<EvSide, SideDef>>;
   /** medidor do evento (ritual, purificação…) */ meter?: { label: string; rate: number; side: EvSide; /** quem faz o medidor andar */ by: EvSide };
   /** gente sem luta que deixa o lugar vivo (aldeões, noivos, convidados, procissão) */ extras?: Look[]; path?: boolean;
@@ -43,7 +44,7 @@ export interface EvCtx {
   spawn(type: EnemyType, x: number, z: number, o: { name?: string; lvl: number; tag: string; aggro: number; hpMul: number }): Unit;
   clearTag(tag: string): void; hurtBy(e: Unit, n: number, from: THREE.Vector3): void;
   region(tx: number, ty: number): { id: number; name: string; lo: number; hi: number };
-  fx(kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke', x: number, y: number, z: number): void;
+  fx(kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke' | 'incense' | 'candle', x: number, y: number, z: number): void;
   bubble(x: number, y: number, z: number, t: string): void; log(t: string, c?: string): void;
   project(p: THREE.Vector3): { x: number; y: number } | null;
   converse(o: { name: string; role: string; title: string; steps: Step[]; onPick(r: Reply | null): void }): void;
@@ -76,6 +77,8 @@ const TPL: Tpl[] = [
     waves: [{ at: 0, fac: 'B', units: [['cultist', 2], ['darkpal', 1], ['vampire', 1]], from: 12 }, { at: 0, fac: 'A', units: [['soldier', 2, 'Guarda da Vila']] }, { at: 240, fac: 'B', units: [['cultist', 1], ['vampire', 2]], from: 20 }, { at: 400, fac: 'A', units: [['templar', 2]] }],
     meter: { label: 'Invocação', rate: 1 / 600, side: 'B', by: 'B' },
     chatter: ['Ab inferis, karma nostrum…', 'O sangue da vila é nosso!', 'Pela Corte!', 'Não deixem que acendam os pilares!'],
+    extras: [{ name: 'Aldeã assustada', role: 'medo', kind: 'nordic', civil: 'human', tint: 0x6a5a6a }, { name: 'Ferreiro', role: 'medo', kind: 'nordic', civil: 'human', tint: 0x4a3a2a }],
+    crowd: ['Fecha a janela, pelo amor de Auréon!', 'Eu vi olhos no fogo…', 'Alguém chama a Igreja!', 'Não olha pra lá, menino.'],
     intro: (s) => [
       `Graças ao Olho, alguém de fora! Olhe ali, no meio de ${s.name}.`,
       'Bruxos do Vale, crias do Conde e um paladino negro. Acenderam três pilares e cantam desde o pôr do sol. Querem virar o karma da vila do avesso: quando a invocação fechar, aqui só vai nascer desgraça por uma geração.',
@@ -97,6 +100,8 @@ const TPL: Tpl[] = [
     waves: [{ at: 0, fac: 'A', units: [['templar', 2], ['pilgrim', 2]] }, { at: 60, fac: 'B', units: [['ghoul', 2], ['zombie', 1]], from: 20 }, { at: 260, fac: 'B', units: [['darkpal', 1], ['ghoul', 2]], from: 22 }, { at: 460, fac: 'B', units: [['zombie', 3]], from: 22 }],
     meter: { label: 'Purificação', rate: 1 / 540, side: 'A', by: 'A' },
     chatter: ['Auréon, acende o que se apagou.', 'Passo a passo. Ninguém fica para trás.', 'Lá vêm eles! Protejam o estandarte!', 'Que a aurora lave esta terra.'],
+    extras: [{ name: 'Irmã Clotilde', role: 'incenso', kind: 'nordic', civil: 'human', tint: 0xe8e0d0 }, { name: 'Aldeã', role: 'vela', kind: 'nordic', civil: 'human', tint: 0x8a6a5a }, { name: 'Aldeão', role: 'reza', kind: 'nordic', civil: 'human', tint: 0x6a5a40 }, { name: 'Menina', role: 'vela', kind: 'nordic', civil: 'human', tint: 0xc8a0a0 }, { name: 'Velho Bartolo', role: 'reza', kind: 'nordic', civil: 'human', tint: 0x7a7a6a }, { name: 'Romeiro', role: 'incenso', kind: 'nordic', civil: 'elf', tint: 0xa0b8c8 }],
+    crowd: ['Bendita seja a aurora que volta todo dia.', 'Mãe, posso segurar a vela?', 'Meu filho morreu de febre no inverno. Rezem por ele.', 'Auréon, olha por esta vila.', 'Cheira a incenso… faz tempo que não cheirava a nada de bom aqui.', 'Ave, luz. Ave, caminho.', 'Segura firme, menina. A chama não pode apagar.'],
     intro: (s) => [
       `A paz de Auréon, caminhante. Somos a Romaria da Aurora: paladinos, magos do Pináculo, elfos de Lithendel e gente simples de fé.`,
       `O karma de ${s.name} está podre. Morte demais, mentira demais. Vamos atravessar a vila de ponta a ponta, rezando, até a terra respirar.`,
@@ -133,6 +138,7 @@ const TPL: Tpl[] = [
     herald: { name: 'Dona Hilde', role: 'Organizadora da Festa', kind: 'nordic', civil: 'human', tint: 0xc86a4a },
     extras: [{ name: 'Aldeão', role: 'festa', kind: 'nordic', civil: 'human', tint: 0x8a6a4a }, { name: 'Aldeã', role: 'festa', kind: 'nordic', civil: 'human', tint: 0x6a8a5a }, { name: 'Menino', role: 'festa', kind: 'nordic', civil: 'human', tint: 0x4a6a9a }],
     chatter: ['Mais uma tábua aqui!', 'Quem sabe montar essas caixas da Academia?', 'Vai ter dança até de manhã!', 'Cadê a pedra do palco?'],
+    crowd: ['Pendura mais alto essa lanterna!', 'Já provou o hidromel da Tessa? Ainda não?!', 'Ano passado choveu na festa. Esse ano não!', 'Vem dançar, forasteiro!'],
     intro: (s) => [
       `Ai, que bom, mais duas mãos! Hoje à noite é a festa da colheita de ${s.name} e está tudo atrasado.`,
       'Falta madeira para o palco, pedra para a fogueira grande, lanterna para pendurar… e a Academia mandou umas caixas com uma máquina de música e fogos que tocam e explodem sozinhos. Só que ninguém aqui sabe montar!',
@@ -159,6 +165,7 @@ const TPL: Tpl[] = [
     facs: { A: 'Convidados', B: 'Salteadores' },
     waves: [{ at: 0, fac: 'B', units: [['hunter', 3, 'Salteador da Estrada']], from: 26 }],
     chatter: ['Cadê o padre?!', 'O bolo vai derreter…', 'Ingrid, não chora, estraga a pintura!', 'Dizem que salteadores levaram o padre na estrada.'],
+    crowd: ['Que vestido lindo…', 'Se não casar hoje, a avó dela não perdoa.', 'Eu sabia que esse padre era enrolado.', 'Psiu! A noiva tá ouvindo.'],
     intro: (s, c) => [
       `Ai, meu Olho, um rosto novo! Você não viu um padre por aí? Baixinho, careca, de batina marrom?`,
       `A minha Ingrid casa hoje em ${s.name}. Está tudo pronto: flores, bolo, o noivo suando. E o padre sumiu na estrada! Dizem que salteadores pegaram ele.`,
@@ -181,6 +188,8 @@ const TPL: Tpl[] = [
     facs: { A: 'Guarda da Vila', B: 'Os Invasores' },
     waves: [{ at: 0, fac: 'A', units: [['soldier', 3, 'Guarda da Vila']] }, { at: 20, fac: 'B', units: [['ghoul', 2], ['skeleton', 2]], from: 24 }, { at: 200, fac: 'B', units: [['werewolf', 1], ['ghoul', 2]], from: 24 }, { at: 380, fac: 'B', units: [['skeleton', 3], ['darkpal', 1]], from: 24 }],
     chatter: ['Fechem as portas!', 'Eles vêm pelo campo!', 'Segurem a praça!', 'Ninguém foge, ninguém!'],
+    extras: [{ name: 'Aldeã', role: 'fuga', kind: 'nordic', civil: 'human', tint: 0x8a6a5a }, { name: 'Menino', role: 'fuga', kind: 'nordic', civil: 'human', tint: 0x4a6a9a }, { name: 'Aldeão com balde', role: 'fuga', kind: 'nordic', civil: 'human', tint: 0x6a5a40 }],
+    crowd: ['Pro celeiro! Todo mundo pro celeiro!', 'Água! Tragam água!', 'Cadê a minha filha?!', 'Corre, corre!'],
     intro: (s) => [
       `Você sabe usar isso aí? Ótimo. ${s.name} vai ser atacada. Os batedores viram mortos e lobos descendo do morro.`,
       'Tenho três guardas e uma vila cheia de gente. Preciso de mais um braço na praça.',
@@ -227,8 +236,19 @@ function ritualCircle(): { g: THREE.Mesh; set(k: number, t: number): void } {
   return { g: m, set(k, tt) { (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + k * 0.6 + Math.sin(tt * 3) * 0.06; m.rotation.y = tt * 0.08; } };
 }
 
+/** a frase do aviso que corre pela direita da tela quando um acontecimento nasce perto de você */
+const BLURB: Record<string, string> = {
+  patrulha: 'Gritos na estrada: uma patrulha está sendo caçada sob a lua cheia.',
+  ritual: 'Um brilho roxo sobe atrás das casas. Alguém está invocando alguma coisa.',
+  procissao: 'Sinos e cantos: uma romaria da Aurora atravessa a vila.',
+  cacadores: 'Armadilhas na mata e cervos sangrando. Os caçadores malditos voltaram.',
+  festa: 'A vila se prepara para a festa e falta mão para tudo.',
+  casamento: 'Os noivos estão no altar, os convidados chegaram… e o padre sumiu.',
+  sitio: 'Fumaça no horizonte: uma vila está cercada.',
+};
+
 /* ================= a lógica ================= */
-const WIN = 20 * 60, LIVE = 15 * 60; // a cada 20 min uma janela; o evento vive 15
+const WIN = 35 * 60, LIVE = 15 * 60; // a cada 35 min uma janela; o evento vive 15 e o mundo respira 20 (não fica acontecendo o tempo todo)
 const nightAt = (ms: number) => { const h = (((ms % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h < 19 ? (h - 17) / 2 : 1 - (h - 5) / 2; };
 const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 /** os acontecimentos que mudam o mundo inteiro por um tempo.
@@ -265,13 +285,14 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     const w = Math.floor(now / 1000 / WIN), start = w * WIN * 1000, end = start + LIVE * 1000; if (now > end) return [];
     const g = globalNow(start), night = nightAt(start) > 0.5, out: ReturnType<typeof schedule> = [];
     for (const rid of regions) {
-      const h = hash(w * 131 + rid * 977); if (h > (g ? 0.85 : 0.62)) continue;
+      const h = hash(w * 131 + rid * 977); if (h > (g ? 0.7 : 0.34)) continue;
       const ok = TPL.filter((t) => (t.when === 'night' ? night : t.when === 'day' ? !night : true) && (t.site === 'village' ? world.sitesVillage : t.site === 'road' ? world.sitesRoad : world.sitesForest).some((s) => s.region === rid));
       if (!ok.length) continue;
       const wt = (t: Tpl) => t.weight * (g?.id === 'lua' && t.id === 'patrulha' ? 6 : g?.id === 'aurora' && t.id === 'procissao' ? 6 : 1);
       let r = hash(w * 71 + rid * 13) * ok.reduce((a, t) => a + wt(t), 0), tpl = ok[0]; for (const t of ok) { r -= wt(t); if (r <= 0) { tpl = t; break; } }
       const pool = (tpl.site === 'village' ? world.sitesVillage : tpl.site === 'road' ? world.sitesRoad : world.sitesForest).filter((s) => s.region === rid);
-      const site = pool[Math.floor(hash(w * 37 + rid * 7) * pool.length)];
+      /* rodízio: a cada janela o acontecimento cai numa vila diferente da região (passa por todas antes de repetir) */
+      const site = pool[(w + Math.floor(hash(rid * 7) * pool.length)) % pool.length];
       out.push({ key: `${w}:${rid}`, tpl, site, start, end });
     }
     return out;
@@ -350,7 +371,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     if (L.joined) { const sd = sideDef(L)!; ctx.log(`${L.tpl.herald.name}: “${L.side === 'A' ? 'Rápido, ainda dá tempo!' : 'Você de novo…'}” (${sd.label})`, L.tpl.color); deliver(L); return; }
     ctx.converse({ name: L.tpl.herald.name, role: L.tpl.herald.role, title: `${L.tpl.icon} ${L.tpl.name}`, steps, onPick: (r) => {
       const f = r?.flag ?? 'ev:none'; if (f === 'ev:none') { ctx.log(`Você deixa ${L.tpl.name.toLowerCase()} para quem quiser. O evento segue sem você.`, '#b9c6e0'); L.asked = true; return; }
-      L.side = f.startsWith('ev:A') ? 'A' : 'B'; L.joined = true; if (f === 'ev:A:celebrar') L.tasks['altar_perm'] = 1; hostility(L);
+      L.side = f.startsWith('ev:A') ? 'A' : 'B'; L.joined = true; trackKey = L.key; if (f === 'ev:A:celebrar') L.tasks['altar_perm'] = 1; hostility(L);
       const sd = sideDef(L)!; ctx.log(`${L.tpl.icon} Evento: ${L.tpl.name} — você escolheu: ${sd.label}.`, L.tpl.color); } });
   }
   /** entregar o que a festa pede (madeira, pedra) */
@@ -383,8 +404,8 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       if (L.herald) { const h = L.herald, hx = p.x + 2, hz = p.z + 2.5; h.root.position.set(hx, ctx.heightAt(hx, hz), hz); const dd = Math.hypot(hp.x - hx, hp.z - hz); h.root.rotation.y = dd < 9 ? Math.atan2(hp.x - hx, hp.z - hz) : 0.4; h.update(dt, t, 0, null);
         if (L.heraldEl) { const sp = ctx.project(new THREE.Vector3(hx, h.root.position.y + 2.35, hz)); const show = !!sp && dd < 30; L.heraldEl.style.display = show ? 'block' : 'none'; if (sp && show) { L.heraldEl.style.left = sp.x + 'px'; L.heraldEl.style.top = sp.y + 'px'; } L.heraldEl.classList.toggle('joined', L.joined); }
         if (!L.joined && !L.asked && dd < 26 && !L.chatT) { /* */ } }
-      L.extras.forEach((h, i) => { const a = t * 0.15 + i * 1.7, r = 3.5 + Math.sin(t * 0.3 + i) * 0.6, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r; const ox = h.root.position.x, oz = h.root.position.z; h.root.position.set(x, ctx.heightAt(x, z), z); const mv = Math.hypot(x - ox, z - oz) / Math.max(dt, 1e-3); h.root.rotation.y = Math.atan2(x - ox, z - oz); h.update(dt, t, Math.min(mv, 1.4), null); });
-      L.chatT -= dt; if (L.chatT <= 0) { L.chatT = 9 + Math.random() * 8; const talkers = [...L.units.filter((u) => u.alive && u.type !== 'deer' && u.type !== 'werewolf'), ...(L.herald ? [{ pos: L.herald.root.position } as Unit] : [])]; const who = talkers[Math.floor(Math.random() * talkers.length)]; if (who && L.tpl.chatter && dH < 45) ctx.bubble(who.pos.x, who.pos.y + 2.6, who.pos.z, PICK(L.tpl.chatter)); }
+      L.extras.forEach((h, i) => updateExtra(L, h, i, p, dt, t, hp));
+      L.chatT -= dt; if (L.chatT <= 0) { L.chatT = 9 + Math.random() * 8; const talkers = [...L.units.filter((u) => u.alive && u.type !== 'deer' && u.type !== 'werewolf'), ...(L.herald ? [{ pos: L.herald.root.position } as Unit] : [])]; const who = talkers[Math.floor(Math.random() * talkers.length)]; const ex = L.extras.length && L.tpl.crowd && Math.random() < 0.5 ? L.extras[Math.floor(Math.random() * L.extras.length)] : null; if (ex && dH < 45) ctx.bubble(ex.root.position.x, ex.root.position.y + 2.5, ex.root.position.z, PICK(L.tpl.crowd!)); else if (who && L.tpl.chatter && dH < 45) ctx.bubble(who.pos.x, who.pos.y + 2.6, who.pos.z, PICK(L.tpl.chatter)); }
       // objetos: lanternas acendem, pilares caídos tombam
       for (const pr of L.props) { if (pr.hidden) pr.g.visible = !pr.done && ctx.instinct() && L.joined; if (pr.kind === 'lantern' && pr.glow) pr.glow.scale.setScalar(pr.done ? 1.6 + Math.sin(t * 7 + pr.x) * 0.1 : 0.01); if (pr.kind === 'pillar' && pr.glow) pr.glow.scale.setScalar(pr.done ? 0.01 : 2.2 + Math.sin(t * 3 + pr.x) * 0.3); if (pr.kind === 'music' && pr.glow) { pr.g.rotation.y += dt * 0.6; if (Math.random() < dt * 2) ctx.fx('holy', pr.x, ctx.heightAt(pr.x, pr.z) + 1.8, pr.z); } }
       if (L.tpl.id === 'ritual' && Math.random() < dt * (1 + L.meter * 4)) ctx.fx('dark', p.x + (Math.random() - 0.5) * 8, ctx.heightAt(p.x, p.z) + 0.3, p.z + (Math.random() - 0.5) * 8);
@@ -402,6 +423,28 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     }
   }
   /** faz a romaria/patrulha andar pela estrada (o 'home' de cada um anda; eles vão atrás) */
+  /** os coadjuvantes: cada um faz o que o papel pede (andar na romaria com incenso e vela, rezar ajoelhado, assistir, fugir, festejar) */
+  const exMem = new WeakMap<Hero3D, { tx: number; tz: number; wait: number; kneel: number; fx: number }>();
+  function updateExtra(L: Live, h: Hero3D, i: number, p: { x: number; z: number }, dt: number, t: number, hp: THREE.Vector3) {
+    const role = L.tpl.extras?.[i]?.role ?? ''; let m = exMem.get(h); if (!m) { m = { tx: h.root.position.x, tz: h.root.position.z, wait: Math.random() * 2, kneel: 0, fx: 0 }; exMem.set(h, m); }
+    const ox = h.root.position.x, oz = h.root.position.z; let tx = m.tx, tz = m.tz, sp = 1.3;
+    if (L.tpl.id === 'procissao') { /* atrás dos romeiros, em fila dupla, no passo da romaria */
+      const pts = pathOf(L), k = Math.max(0, L.meter - 0.035 * (Math.floor(i / 2) + 1)), f = Math.min(0.999, k) * (pts.length - 1), j = Math.floor(f), a = pts[j], b = pts[j + 1] ?? a, u = f - j;
+      const cx = a.x + (b.x - a.x) * u, cz = a.z + (b.z - a.z) * u, dx = b.x - a.x, dz = b.z - a.z, l = Math.hypot(dx, dz) || 1, side = i % 2 ? 1 : -1;
+      tx = cx - dz / l * side * 1.3; tz = cz + dx / l * side * 1.3; sp = 1.1;
+      if (role === 'reza') { m.kneel -= dt; if (m.kneel <= 0 && Math.random() < dt * 0.08) { m.kneel = 4; h.act('herb', true); } if (m.kneel > 0) { tx = ox; tz = oz; } } }
+    else if (role === 'fuga') { /* correm de um canto a outro da vila, carregando o que dá */ m.wait -= dt; if (m.wait <= 0 || Math.hypot(m.tx - ox, m.tz - oz) < 0.6) { const a2 = Math.random() * 6.283, r2 = 5 + Math.random() * 9; m.tx = p.x + Math.cos(a2) * r2; m.tz = p.z + Math.sin(a2) * r2; m.wait = 3 + Math.random() * 3; } tx = m.tx; tz = m.tz; sp = 4.2; }
+    else if (role === 'medo') { /* olham de longe, encolhidos atrás das casas */ const a2 = 0.8 + i * 2.4; tx = p.x + Math.cos(a2) * 13; tz = p.z + Math.sin(a2) * 13; }
+    else if (role === 'noiva' || role === 'noivo' || role === 'convidado' || role === 'convidada') { const a2 = i * 1.4 + 0.3; tx = p.x + Math.cos(a2) * (i < 2 ? 1.6 : 4.2); tz = p.z + 1.5 + Math.sin(a2) * (i < 2 ? 0.8 : 2.2); }
+    else { /* festa e o resto: zanzam pelo lugar, param, conversam, comemoram */ m.wait -= dt; if (m.wait <= 0) { const a2 = Math.random() * 6.283, r2 = 2.5 + Math.random() * 4; m.tx = p.x + Math.cos(a2) * r2; m.tz = p.z + Math.sin(a2) * r2; m.wait = 3 + Math.random() * 5; } tx = m.tx; tz = m.tz; }
+    const dx = tx - ox, dz = tz - oz, l = Math.hypot(dx, dz); let mv = 0;
+    if (l > 0.25) { const st = Math.min(l, sp * dt); const nx = ox + dx / l * st, nz = oz + dz / l * st; h.root.position.set(nx, ctx.heightAt(nx, nz), nz); h.root.rotation.y = Math.atan2(dx, dz); mv = st / Math.max(dt, 1e-3); }
+    else { h.root.position.y = ctx.heightAt(ox, oz); const face = role === 'medo' || role.startsWith('convid') ? Math.atan2(p.x - ox, p.z - oz) : Math.hypot(hp.x - ox, hp.z - oz) < 4 ? Math.atan2(hp.x - ox, hp.z - oz) : h.root.rotation.y; h.root.rotation.y += (face - h.root.rotation.y) * Math.min(1, dt * 3);
+      if (L.tpl.id === 'festa' && Math.random() < dt * 0.25) h.act('skyraise', true); if (role.startsWith('convid') && Math.random() < dt * 0.06) h.act('skyraise', true); }
+    h.update(dt, t, Math.min(mv, sp), null);
+    /* incenso: fumaça fina que sobe do turíbulo; vela: uma chama pequena na mão */
+    m.fx -= dt; if (m.fx <= 0 && Math.hypot(hp.x - ox, hp.z - oz) < 40) { const hand = h.handPos(new THREE.Vector3()); if (role === 'incenso') { m.fx = 0.09; ctx.fx('incense', hand.x, hand.y - 0.2, hand.z); } else if (role === 'vela') { m.fx = 0.12; ctx.fx('candle', hand.x, hand.y + 0.15, hand.z); } else m.fx = 1; }
+  }
   function walkPath(L: Live, k: number, who: Unit[]) { const pts = pathOf(L); const f = Math.max(0, Math.min(0.999, k)) * (pts.length - 1), i = Math.floor(f), a = pts[i], b = pts[i + 1] ?? a, u = f - i, cx = a.x + (b.x - a.x) * u, cz = a.z + (b.z - a.z) * u;
     who.forEach((m, j) => { const ox = ((j % 2) ? 1 : -1) * 1.2, oz = -Math.floor(j / 2) * 1.6; m.home.set(cx + ox, cz + oz); if (m.state === 'idle' && Math.hypot(m.pos.x - m.home.x, m.pos.z - m.home.y) > 1.5) { m.state = 'return'; m.t = 0; } });
     if (L.herald && L.tpl.id === 'procissao') { /* o frei vai na frente */ } }
@@ -438,7 +481,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     return out;
   }
   /** o painel do evento perto de você */
-  function tracker(heroT: V2): string { let best: Live | null = null, bd = 1e9; for (const L of lives.values()) { if (L.over) continue; const d = Math.hypot(L.site.x - heroT.x, L.site.y - heroT.y); if ((L.joined && d < 140) || d < 60) { const sc = d - (L.joined ? 1000 : 0); if (sc < bd) { bd = sc; best = L; } } } if (!best) return '';
+  function tracker(heroT: V2): string { let best: Live | null = null, bd = 1e9; for (const L of lives.values()) { if (L.over) continue; const d = Math.hypot(L.site.x - heroT.x, L.site.y - heroT.y); if ((L.joined && d < 140) || L.key === trackKey || d < 30) { const sc = d - (L.joined ? 1000 : L.key === trackKey ? 500 : 0); if (sc < bd) { bd = sc; best = L; } } } if (!best) return '';
     const L = best, left = Math.max(0, (L.end - Date.now()) / 1000), mm = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`, sd = sideDef(L);
     const row = (lab: string, k: number, txt: string) => `<div class="er"><span>${lab}</span><i><b style="width:${Math.round(Math.min(1, k) * 100)}%"></b></i><em>${txt}</em></div>`;
     let body = '';
@@ -452,5 +495,13 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   /** (dev) força um evento aqui */
   function devForce(id: string, site?: Site) { const tpl = TPL.find((q) => q.id === id); if (!tpl) return null; const hp = ctx.hero(), s = site ?? { x: Math.floor(hp.x / T) + 6, y: Math.floor(hp.z / T), name: 'aqui', region: ctx.region(Math.floor(hp.x / T), Math.floor(hp.z / T)).id }; const now = Date.now(), key = 'dev:' + id + ':' + now;
     lives.set(key, { key, tpl, site: s, start: now, end: now + LIVE * 1000, lvl: Math.max(5, ctx.lvl()), spawned: false, units: [], waveDone: new Set(), herald: null, heraldEl: null, extras: [], props: [], meter: 0, side: null, joined: false, kills: 0, tasks: {}, over: false, chatT: 3, pathS: 0, finT: 0 }); return key; }
-  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL };
+  /** "pegar" o evento: a bússola passa a apontar para ele (aceitar o lado é outra coisa, com o arauto, na chegada) */
+  let trackKey: string | null = null;
+  function nearby(heroT: V2, meters = 480) { const out: { key: string; name: string; icon: string; color: string; site: string; x: number; y: number; d: number; left: number; joined: boolean; asked: boolean; herald: string; text: string }[] = [];
+    for (const L of lives.values()) { if (L.over || Date.now() > L.end) continue; const d = Math.hypot(L.site.x - heroT.x, L.site.y - heroT.y) * T; if (d > meters) continue;
+      out.push({ key: L.key, name: L.tpl.name, icon: L.tpl.icon, color: L.tpl.color, site: L.site.name, x: L.site.x + 1, y: L.site.y + 1.25, d, left: (L.end - Date.now()) / 1000, joined: L.joined, asked: !!L.asked, herald: L.tpl.herald.name, text: BLURB[L.tpl.id] ?? '' }); }
+    return out.sort((a, b) => a.d - b.d); }
+  function track(key: string | null) { trackKey = key; }
+  const tracking = () => { const L = trackKey ? lives.get(trackKey) : null; if (!L || L.over || Date.now() > L.end) { trackKey = null; return null; } return { key: L.key, x: L.site.x + 1, y: L.site.y + 1.25, joined: L.joined, name: L.tpl.name, herald: L.tpl.herald.name }; };
+  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, tracking };
 }

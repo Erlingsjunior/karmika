@@ -780,7 +780,9 @@ const evSites = (() => { const v: { x: number; y: number; name: string; region: 
   for (const rp of city.roadPaths) for (let i = 10; i < rp.length - 10; i += 28) { const q = rp[i]; if (nearTownT(q.x, q.y, 24)) continue; r.push({ x: Math.round(q.x), y: Math.round(q.y), name: `estrada perto de ${nameNear(q.x, q.y)}`, region: regionAt(q.x, q.y).id }); }
   for (let y = 20; y < MAP_W - 20; y += 13) for (let x = 20; x < MAP_W - 20; x += 13) { if (city.biome[y]?.[x] !== 'forest' || city.map[y]?.[x] !== 'grass' || nearTownT(x, y, 22)) continue; f.push({ x, y, name: `mata perto de ${nameNear(x, y)}`, region: regionAt(x, y).id }); }
   return { sitesVillage: v, sitesRoad: r, sitesForest: f, roadPaths: city.roadPaths }; })();
-const evFx = (kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke', x: number, y: number, z: number) => {
+const evFx = (kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke' | 'incense' | 'candle', x: number, y: number, z: number) => {
+  if (kind === 'incense') { particles.spawn(x + (Math.random() - 0.5) * 0.05, y, z + (Math.random() - 0.5) * 0.05, { vx: (Math.random() - 0.5) * 0.15, vy: 0.55 + Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.15, life: 2.6, s0: 0.12, s1: 0.55, c0: 0xd8d0c0, c1: 0x6a6460, a: 0.32, drag: 0.5, w: 0.5, flit: 0.6 }); return; }
+  if (kind === 'candle') { particles.spawn(x, y, z, { vy: 0.25, life: 0.35, s0: 0.2, s1: 0.06, c0: 0xfff0a0, c1: 0xff8a20, a: 0.95 }); return; }
   if (kind === 'firework') { const c = [0xff5a4a, 0x5ab0ff, 0xffd24a, 0x9aff7a, 0xff8ad0][Math.floor(Math.random() * 5)]; for (let i = 0; i < 36; i++) { const a = Math.random() * 6.283, b = Math.random() * 3.14, sp = 5 + Math.random() * 3; particles.spawn(x, y, z, { vx: Math.cos(a) * Math.sin(b) * sp, vy: Math.cos(b) * sp, vz: Math.sin(a) * Math.sin(b) * sp, life: 1.6, s0: 0.5, s1: 0.15, c0: c, c1: 0x401808, a: 1, drag: 1.2, g: -3 }); } audio.click?.(); return; }
   if (kind === 'petal') { particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.6, vy: -0.5, vz: (Math.random() - 0.5) * 0.6, life: 4, s0: 0.22, s1: 0.18, c0: Math.random() < 0.5 ? 0xffb0d0 : 0xffffff, c1: 0xff8ab0, a: 0.9, drag: 0.3, flit: 1 }); return; }
   if (kind === 'holy') { particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.3, vy: 1.6, vz: (Math.random() - 0.5) * 0.3, life: 2.2, s0: 0.45, s1: 0.1, c0: 0xfff0b0, c1: 0xffc84a, a: 0.85, drag: 0.4 }); return; }
@@ -807,10 +809,31 @@ function showEvResult(r: EvResult) {
 /** o Olho registra no Compêndio só depois que você fecha a resposta (uma janela de cada vez) */
 let evPendingEye: (() => void) | null = null;
 evResEl.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-ok]') || e.target === evResEl) { evResEl.style.display = 'none'; const f = evPendingEye; evPendingEye = null; if (f) setTimeout(f, 250); } });
-let evUiT = 0, lastGlobal: string | null = null;
+let evUiT = 0, lastGlobal: string | null = null, evCard = '';
+quests.setExtraTop(() => evCard);
+/* aviso de evento por perto: uma faixa animada que entra pela DIREITA da tela (o diário fica à esquerda).
+   Clicar = pegar a missão: a bússola passa a levar até lá. Chegando, o arauto conta e você escolhe o lado (isso é aceitar). */
+const evNearEl = document.createElement('div'); evNearEl.id = 'evnear'; document.body.appendChild(evNearEl);
+const evNearShown = new Set<string>(); let evNearKey: string | null = null, evNearT = 0;
+evNearEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-k]') as HTMLElement | null; if (!b) return; e.stopPropagation(); audio.click?.();
+  if (b.dataset.x) { evNearEl.classList.remove('on'); evNearKey = null; return; }
+  eventos.track(b.dataset.k!); pinT = null; evNearEl.classList.add('took'); game.logMsg('🧭 Evento seguido: a bússola aponta para lá. Chegando, fale com o arauto.', '#ffb060'); setTimeout(() => { evNearEl.classList.remove('on', 'took'); evNearKey = null; }, 1600); });
+function updateEvNear(h0: { x: number; y: number }) {
+  if (inside || dlg.isOpen) { evNearEl.classList.remove('on'); return; }
+  const tk = eventos.tracking(); const list = eventos.nearby(h0).filter((e) => !e.joined && !e.asked && e.key !== tk?.key);
+  if (evNearKey) { evNearT -= 0.25; const cur = list.find((e) => e.key === evNearKey); if (!cur || evNearT <= 0) { evNearEl.classList.remove('on'); evNearKey = null; } else { const m = evNearEl.querySelector('.d'); if (m) m.textContent = `${Math.round(cur.d)} m · ⌛ ${Math.max(1, Math.ceil(cur.left / 60))} min`; } return; }
+  const nx = list.find((e) => !evNearShown.has(e.key)); if (!nx) return;
+  evNearShown.add(nx.key); evNearKey = nx.key; evNearT = 16;
+  evNearEl.style.setProperty('--c', nx.color);
+  evNearEl.innerHTML = `<small>ACONTECENDO POR PERTO</small><b>${nx.icon} ${nx.name}</b><p>${nx.text}</p><span class="w">${nx.site} · <i class="d">${Math.round(nx.d)} m · ⌛ ${Math.max(1, Math.ceil(nx.left / 60))} min</i></span><div class="r"><button data-k="${nx.key}">🧭 Pegar a missão</button><button data-k="${nx.key}" data-x="1" class="x">Agora não</button></div>`;
+  evNearEl.classList.remove('on'); void evNearEl.offsetWidth; evNearEl.classList.add('on'); audio.chime?.();
+}
 setTimeout(() => { const nx = globalNext(); if (nx && !globalNow()) { const d = new Date(nx.start); game.logMsg(`${nx.icon} Próximo evento global: ${nx.name}, hoje/amanhã às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} (o horário muda a cada dia).`, nx.color); } }, 6000);
 function updateEventos(dt: number) { eventos.update(dt, t); evUiT -= dt; if (evUiT > 0) return; evUiT = 0.25;
-  const h0 = hereT(), html = inside ? '' : eventos.tracker(h0); evTrkEl.innerHTML = html; evTrkEl.style.display = html ? 'block' : 'none';
+  const h0 = hereT(), html = inside ? '' : eventos.tracker(h0); evTrkEl.style.display = 'none';
+  /* o evento vira missão: cartão laranja no topo do diário, com os entregáveis e o tempo */
+  const card = html ? `<div class="q c-ev track evq">${html}</div>` : ''; if (card !== evCard) { evCard = card; quests.render(); }
+  updateEvNear(h0);
   const g = globalNow(); evBanEl.style.display = g && !inside ? 'block' : 'none'; if (g) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
   if (g?.id !== lastGlobal) { if (g) game.logMsg(`${g.icon} ${g.name} começou no mundo inteiro. ${g.text}`, g.color); lastGlobal = g?.id ?? null; } }
 /* ---------- Instinto e falas do herói (instinto.ts, 24/10) ---------- */
@@ -821,8 +844,10 @@ let instinctOn = (() => { try { return localStorage.getItem('karmika.instinct') 
 const myInstinct = () => instinctOf(myPath(), profile?.origin ?? 'human');
 function toggleInstinct(v = !instinctOn) { instinctOn = v; try { localStorage.setItem('karmika.instinct', v ? '1' : '0'); } catch { /* */ } const I = myInstinct();
   game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc}` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.click?.(); updateInstBtn(); }
-const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; document.body.appendChild(instBtn); instBtn.addEventListener('click', () => toggleInstinct());
-function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `<i>✧</i><span>${I.name}</span><kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
+/* o Instinto mora no menu de ações (junto de Mapa, Deus e Menu): um botão pequeno com o terceiro olho; F continua ligando */
+const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; document.getElementById('btns')!.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
+const THIRD_EYE = '<svg viewBox="0 0 32 32"><path d="M3 16c4-6.5 8.5-9.5 13-9.5S25 9.5 29 16c-4 6.5-8.5 9.5-13 9.5S7 22.5 3 16z" fill="#120c07" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="5.6" fill="currentColor" opacity=".9"/><path d="M16 11.2l2.6 4.8-2.6 4.8-2.6-4.8z" fill="#0b0810"/><path d="M16 1.5v3.4M9 3.6l1.6 2.8M23 3.6l-1.6 2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
 setTimeout(updateInstBtn, 0);
 /* o que só o instinto mostra: rastros das missões, espíritos, dispositivos perdidos e os esconderijos do mundo */
 const CACHES: Cache[] = []; setTimeout(() => { const out = CACHES; /* depois do arquivo inteiro carregar (navProbe nasce mais abaixo) */ const src = [...city.pois.filter((p) => /ruins|forest|enchanted|blight/.test(p.biome as string)).map((p) => ({ x: p.x, y: p.y })), ...evSites.sitesForest.filter((_, i) => i % 9 === 0)];
@@ -1293,6 +1318,9 @@ let pinT: { x: number; y: number; label: string } | null = null;
 function setPin(p: { x: number; y: number; label: string } | null) { pinT = p; if (p) { game.logMsg(`🔍 Indo para ${p.label}.`, '#b9c6e0'); audio.click(); } updateBanner(); }
 function questTarget(): { x: number; y: number; label: string } | null {
   if (pinT) { if (Math.hypot(pinT.x - state.fx, pinT.y - state.fy) * T < 4) { game.logMsg(`🔍 Você chegou: ${pinT.label}.`, '#b9c6e0'); pinT = null; updateBanner(); } else return pinT; }
+  { const tk = eventos.tracking(); if (tk) { const dd = Math.hypot(tk.x - state.fx, tk.y - state.fy) * T;
+      if (!tk.joined && dd > 5) return { x: tk.x, y: tk.y, label: `Evento: ${tk.name} · fale com ${tk.herald}` };
+      if (tk.joined && dd > 24) return { x: tk.x, y: tk.y, label: `Evento: ${tk.name}` }; } }
   const d = quests.tracked; if (!d) return null; const h0 = hereT();
   const npcAt = (name: string) => { const n = npcSys.npcs.find((q) => q.def.name === name); return n ? { x: n.pos.x / T, y: n.pos.z / T } : null; };
   const i = quests.firstOpen(d);

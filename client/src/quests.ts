@@ -211,6 +211,8 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   /** jogar junto: o quadro de pedidos é o da sala (dos jogadores de verdade) */
   room?: { on(): boolean; posts(): { id: number; by: string; item: string; n: number; gold: number }[]; add(item: string, n: number, gold: number): void; fill(id: number, item: string, n: number): void; cancel(id: number): void } }) {
   let onDoneCb: ((d: QuestDef) => void) | null = null;
+  /** cartão extra no topo do diário (o evento vivo em que você entrou ou que está seguindo) */
+  let extraTop: (() => string) | null = null;
   const SAVE = 'karmika.quests.v1';
   const q: QState = { active: {}, done: [], boardSeed: 1, title: '' };
   /** quantas vezes cada NPC já teve pedido atendido: depois de 5, ele só negocia (não pede mais) */
@@ -361,7 +363,8 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     { // cards agrupados por cor (história, secundárias, repetição), com um respiro entre os grupos
       const sorted = [...ids].sort((a, b) => CAT_ORDER.indexOf(questCat(def(a))) - CAT_ORDER.indexOf(questCat(def(b))));
       let prev: QuestCat | null = null;
-      el.innerHTML = ids.length ? `<h4>Missões <small>${ids.length}/${questLimit()} · J</small><small class="mv">⠿ arraste</small></h4>` + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
+      const xt = extraTop?.() ?? '';
+      el.innerHTML = ids.length || xt ? `<h4>Missões <small>${ids.length}/${questLimit()} · J</small><small class="mv">⠿ arraste</small></h4>` + xt + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
         return `<div class="q c-${c} ${gap ? 'gap' : ''} ${ok ? 'ok' : ''} ${id === tracked ? 'track' : ''}" data-id="${id}"><a class="qopen" data-open="${id}" title="Abrir no diário (J)">↗</a><b>${d.name}</b><span class="qx">${q.active[id].from ? `<u class="qfrom">missão de ${q.active[id].from}</u> · ` : ''}${d.giver}${d.chain ? ' · ' + d.chain : ''} · Nv ${d.lvl}</span>${d.objs.map((o, i) => `<i>${objText(o)} <em>${objProg(d, i)}/${objNeed(o)}</em></i>`).join('')}${ok ? `<i class="go">→ Entregar a ${d.turnin ?? d.giver}</i>` : ''}${id === tracked ? '<i class="dir"></i>' : ''}</div>`; }).join('') : '';
     }
     if (boardOpen) {
@@ -447,7 +450,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   render();
   /** missão que um companheiro de grupo pegou: 'have' = já tenho, 'done' = já fiz, 'later' = ainda não cheguei nessa parte da história, 'ok' = posso pegar */
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
-  return { shareState, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
+  return { shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
     /** reencarnação: esquece as missões do caminho de classe para poder refazê-las */
     forget(f: (id: string) => boolean) { for (const id of Object.keys(q.active)) if (f(id)) delete q.active[id]; q.done = q.done.filter((id) => !f(id)); save(); render(); },
     /** marca como feita sem entregar (testes do beta) */ markDone(id: string) { delete q.active[id]; if (!q.done.includes(id)) q.done.push(id); save(); render(); } };
