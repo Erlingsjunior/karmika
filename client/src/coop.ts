@@ -18,7 +18,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
 
   function hostBlock(): string {
     if (!desk) return `<div class="cp-box"><h3>Abrir uma sala</h3><p class="cp-mut">Para abrir a sala na sua máquina, use o <b>app do Karmika</b> (instalado). No navegador dá para <b>entrar</b> numa sala, mas não para abrir uma.</p></div>`;
-    if (!hosting) return `<div class="cp-box"><h3>Abrir uma sala nesta máquina</h3><p class="cp-mut">Sua máquina vira o servidor. Até 6 Caminhantes; cada um traz o próprio personagem e o próprio save.</p><div class="cp-join" style="margin-bottom:8px"><input data-i="hpass" type="password" placeholder="Senha da sala (opcional)"></div><button class="cp-btn gold" data-a="host" ${busy ? 'disabled' : ''}>${busy ? 'Abrindo a sala… (testando o roteador)' : '🜂 Abrir servidor'}</button>${hostErr ? `<p class="cp-bad">✖ ${esc(hostErr)}</p>` : ''}</div>`;
+    if (!hosting) return `<div class="cp-box"><h3>Abrir uma sala nesta máquina</h3><p class="cp-mut">Sua máquina vira o servidor. Até 6 Caminhantes; cada um traz o próprio personagem e o próprio save.</p><div class="cp-join" style="margin-bottom:8px"><input data-i="hpass" type="password" placeholder="Senha da sala (opcional)"></div><button class="cp-btn gold" data-a="host" ${busy ? 'disabled' : ''}>${busy ? 'Abrindo a sala… (testando o roteador)' : '✧ Abrir servidor'}</button>${hostErr ? `<p class="cp-bad">✖ ${esc(hostErr)}</p>` : ''}</div>`;
     const H = hosting, pubInv = H.publicIp ? inviteOf(H.publicIp, H.port, H.code) : null;
     const ts = H.lan.find((a) => a.kind === 'tailscale'), rad = H.lan.find((a) => a.kind === 'radmin'), lan = H.lan.find((a) => a.kind === 'lan');
     let status = '';
@@ -26,7 +26,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
     else if (H.cgnat) status = `<p class="cp-bad">✖ Sua operadora usa <b>CGNAT</b>: o seu IP de internet é dividido com outros clientes, e ninguém de fora consegue chegar até a sua máquina pelo convite público.</p><p class="cp-mut"><b>Plano B (grátis, 2 min):</b> instale o <a data-u="https://tailscale.com/download">Tailscale</a> em todas as máquinas, entre com a mesma conta (ou convide os amigos para a sua rede), e use o convite do Tailscale que aparece aqui.</p>`;
     else status = `<p class="cp-warn">⚠ O roteador não abriu a porta sozinho (${esc(H.upnp.why || 'sem UPnP')}). Duas saídas: ligue o <b>UPnP</b> no roteador e reabra a sala, ou faça um <b>redirecionamento da porta ${H.port} (TCP)</b> para ${esc(lan?.ip || 'esta máquina')}. Se nada der certo, use o <a data-u="https://tailscale.com/download">Tailscale</a>.</p>`;
     const row = (label: string, inv: string, hint: string) => `<div class="cp-inv"><small>${label}</small><code>${esc(inv)}</code><button class="cp-btn" data-copy="${esc(inv)}">Copiar</button><em>${hint}</em></div>`;
-    return `<div class="cp-box host"><h3>🜂 Sua sala está aberta · código <b>${esc(H.code)}</b>${(H as HostInfo & { pass?: boolean }).pass ? ' · 🔒 com senha' : ''}</h3>${status}
+    return `<div class="cp-box host"><h3>✧ Sua sala está aberta · código <b>${esc(H.code)}</b>${(H as HostInfo & { pass?: boolean }).pass ? ' · 🔒 com senha' : ''}</h3>${status}
       ${pubInv && !H.cgnat ? row('Convite pela internet', pubInv, 'para os amigos em casa') : ''}
       ${ts ? row('Convite pelo Tailscale', inviteOf(ts.ip, H.port, H.code), 'quem estiver na sua rede Tailscale') : ''}
       ${rad ? row('Convite pelo Radmin VPN', inviteOf(rad.ip, H.port, H.code), 'quem estiver na sua rede Radmin') : ''}
@@ -38,7 +38,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
     if (!open) return;
     const st = net.state, peers = st === 'on' ? net.peers() : [];
     const zoneTxt = (z: string) => z === 'world' ? 'no mundo' : z.startsWith('crypt:') ? `Catedral, andar ${z.slice(6)}` : 'dentro de uma casa';
-    el.innerHTML = `<div class="pn coop"><h2>🜂 Jogar junto <button data-x>✕</button></h2>
+    el.innerHTML = `<div class="pn coop"><h2>✧ Jogar junto <button data-x>✕</button></h2>
       ${gpu ? `<p class="cp-gpu">Placa de vídeo em uso: <b>${esc(gpu)}</b></p>` : ''}
       ${hostBlock()}
       <div class="cp-box"><h3>${st === 'on' ? `Na sala ${esc(net.code)} · ${peers.length} Caminhante${peers.length > 1 ? 's' : ''}` : st === 'connecting' ? 'Entrando…' : 'Entrar numa sala'}</h3>

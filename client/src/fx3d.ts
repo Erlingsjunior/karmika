@@ -14,6 +14,8 @@ export function radialTexture(size: number, stops: [number, string][]): THREE.Te
 
 /** Partículas aditivas (chamas, brasas, aura, poeira) em um único draw call. */
 export class Particles {
+  /** densidade global (opções): abaixo de 1 descarta parte das partículas sorteadas */
+  density = 1;
   readonly points: THREE.Points;
   private n: number;
   private pos: Float32Array; private col: Float32Array; private size: Float32Array; private alpha: Float32Array;
@@ -45,6 +47,7 @@ export class Particles {
   }
 
   spawn(x: number, y: number, z: number, o: { vx?: number; vy?: number; vz?: number; life: number; s0: number; s1: number; c0: number; c1: number; a?: number; drag?: number; w?: number; g?: number; flit?: number }) {
+    if (this.density < 1 && Math.random() > this.density) return;
     const i = this.cursor; this.cursor = (this.cursor + 1) % this.n;
     this.pos[i * 3] = x; this.pos[i * 3 + 1] = y; this.pos[i * 3 + 2] = z;
     this.vel[i * 3] = o.vx ?? 0; this.vel[i * 3 + 1] = o.vy ?? 0; this.vel[i * 3 + 2] = o.vz ?? 0;

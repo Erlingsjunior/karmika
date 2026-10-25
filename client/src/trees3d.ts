@@ -148,7 +148,7 @@ export function buildTree(height: number, h: number): { obj: THREE.Group; kind: 
   const g = new THREE.Group();
   const bark = new THREE.Mesh(v.bark, barkMat); bark.castShadow = true;
   const hull = new THREE.Mesh(v.bark, inkHull);
-  bark.add(hull);
+  void hull;
   g.add(bark);
   if (v.leaves) {
     const lm = kind === 'pine' ? pineMat : leafMats[h > 0.17 ? 0 : 1];

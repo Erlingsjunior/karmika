@@ -17,8 +17,8 @@ export class LightShafts {
             float a = smoothstep(0.0, 0.12, y) * (1.0 - smoothstep(0.45, 1.0, y));
             float across = 1.0 - abs(vUv.x - 0.5) * 2.0;
             a *= pow(max(across, 0.0), 1.6);
-            float n = 0.6 + 0.4 * sin(vUv.y * 7.0 + uT * 0.35 + uS) * sin(vUv.x * 9.0 - uT * 0.22 + uS * 1.7);
-            float f = 0.85 + 0.15 * sin(uT * 0.9 + uS);
+            float n = 0.6 + 0.4 * sin(vUv.y * 7.0 + uT * 0.08 + uS) * sin(vUv.x * 9.0 - uT * 0.05 + uS * 1.7);
+            float f = 0.96 + 0.04 * sin(uT * 0.25 + uS);
             a *= n * f * uI;
             gl_FragColor = vec4(uC * a, a);
           }`,

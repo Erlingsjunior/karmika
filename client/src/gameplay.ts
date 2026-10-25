@@ -31,7 +31,7 @@ function dummyTexture() {
 
 export function createGameplay(d: GameplayDeps) {
   const fxAdd = (...os: THREE.Object3D[]) => { for (const o of os) fine(o); d.scene.add(...os); };
-  const st = { hp: 100, hpMax: 100, mp: 100, mpMax: 100, stam: 100, stamMax: 100, hits: 0, hpLag: 100, mpLag: 100, lastCast: -9, menuOpen: false, shake: 0, dead: false, xp: 0, lvl: 1, gold: 0, kills: 0, god: false, atk: 1, def: 0, fury: 0, counterT: 0, ambushT: 0, serene: 0, dmgFlat: 0, crit: 0.12, leech: 0, regen: 0.35, move: 1, xpMul: 1, goldMul: 1, points: 0, gen: 0, auras: [] as number[], res: { name: 'Mana', label: 'MANA', style: 'mana', mode: 'regen' } as { name: string; label: string; style: string; mode: 'regen' | 'fight' }, attrs: { str: 0, dex: 0, vit: 0, int: 0 }, sp: new Set<string>(), recalc: null as (() => void) | null };
+  const st = { hp: 100, hpMax: 100, mp: 100, mpMax: 100, stam: 100, stamMax: 100, hits: 0, hpLag: 100, mpLag: 100, lastCast: -9, menuOpen: false, shake: 0, dead: false, xp: 0, lvl: 1, gold: 0, kills: 0, god: false, atk: 1, def: 0, fury: 0, counterT: 0, ambushT: 0, serene: 0, dmgFlat: 0, crit: 0.12, leech: 0, regen: 0.35, move: 1, xpMul: 1, goldMul: 1, outMul: 1, takenMul: 1, points: 0, gen: 0, auras: [] as number[], res: { name: 'Mana', label: 'MANA', style: 'mana', mode: 'regen' } as { name: string; label: string; style: string; mode: 'regen' | 'fight' }, attrs: { str: 0, dex: 0, vit: 0, int: 0 }, sp: new Set<string>(), recalc: null as (() => void) | null };
   let heroMoving = false; // informado pelo main (anda/corre)
   let inStrike = false, skill: string | null = null, slamFury = 0, counterBash = false, guardAt = -9, overcharge = false;
   /* árvore kármica: multiplicadores por magia (dano, alcance, área, duração, custo, tier visual) */
@@ -155,7 +155,7 @@ export function createGameplay(d: GameplayDeps) {
   /** PvP: main.ts confere quem (jogador de verdade) está no golpe e manda o dano pela rede */
   let pvpHit: (cx: number, cz: number, yaw: number, reach: number, arc: number, dmg: number, crit: boolean) => void = () => {};
   const pvpDmg = (mul: number) => { const crit = Math.random() < st.crit; return { n: Math.max(1, Math.round((5 + st.lvl * 2.2 + st.attrs.str * 1.2) * st.atk * mul * (crit ? 1.5 : 1) * 0.6)), crit }; }; // entre jogadores o golpe pesa menos que num bicho: a luta dura // quantos do meu grupo estão perto (eu incluso): bônus de XP e de equipamento
-  const enemies = createEnemies({ level: () => st.lvl, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
+  const enemies = createEnemies({ level: () => st.lvl, outMul: () => st.outMul, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
     trail: (x, y, z, col) => { for (let q = 0; q < 2; q++) d.particles.spawn(x + rnd(-0.1, 0.1), y + rnd(-0.1, 0.1), z + rnd(-0.1, 0.1), { vx: rnd(-0.4, 0.4), vy: rnd(0.2, 0.9), vz: rnd(-0.4, 0.4), life: 0.45, s0: 0.32, s1: 0.04, c0: 0xffe0a0, c1: col, a: 0.95, drag: 1.5 }); }, night: () => (window as unknown as { __night?: number }).__night ?? 0,
     scene: d.scene, heightAt: d.world.heightAt, walkable: d.world.walkable, spawns: d.world.spawns,
     heroPos: () => d.getHero().root.position, heroAlive: () => !st.dead, heroInvuln: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || (n === 'rush' && d.getHero().actP < 0.7); }, heroGhost: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge'; },
@@ -462,6 +462,14 @@ export function createGameplay(d: GameplayDeps) {
   }
   /* cura ao longo do tempo (nanitos) e golpes de trajeto (jato / investida de ombro) */
   let turretAt: { x: number; z: number } | null = null;
+  /** escudada final da Investida de Lâmina (no fim da corrida, ou na hora em que a corrida bate no primeiro inimigo) */
+  let rushDone = false, rushHalt = false;
+  function rushFinish(h: Hero3D) {
+    rushDone = true; const p = h.root.position, yaw = h.root.rotation.y;
+          skStrike('bash', h, yaw, 2.0, 3.2, 0.9, true); d.audio.boom(); st.shake = Math.max(st.shake, 0.4); h.blockHit();
+          for (let i = 0; i < 18; i++) d.particles.spawn(p.x + Math.sin(yaw) * 1.1, 1.2, p.z + Math.cos(yaw) * 1.1, { vx: Math.sin(yaw) * rnd(2, 6) + rnd(-2, 2), vy: rnd(0, 2.5), vz: Math.cos(yaw) * rnd(2, 6) + rnd(-2, 2), life: 0.4, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 });
+          for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 3.2 + e.def.radius) { let ea = Math.atan2(e.pos.x - p.x, e.pos.z - p.z) - yaw; while (ea > Math.PI) ea -= Math.PI * 2; while (ea < -Math.PI) ea += Math.PI * 2; if (Math.abs(ea) < 1.0) { e.state = 'hurt'; e.t = -0.9; e.vel.set(Math.sin(yaw) * 9, Math.cos(yaw) * 9); } }
+  }
   let hot = { t: 0, per: 0 }; const pathHit = new Set<Enemy>(); let pathAct: string | null = null;
   /* ---- engenharia do tecnocrata: esfera (laser, busca itens, carrega bombas), minas, chuva de mísseis, torre ---- */
   let droneTask: { kind: 'bomb' | 'rain'; x: number; z: number; t: number; fired: number; sx?: number; sz?: number; ex?: number; ez?: number } | null = null, droneLaserT = 0;
@@ -644,6 +652,19 @@ export function createGameplay(d: GameplayDeps) {
     /** alvo mais próximo ao alcance (trava automática dos golpes) */
     timeScale() { return performance.now() < hitstop ? 0.1 : 1; },
     /** alvo na direção do mouse (cone de ±40°): o mais próximo primeiro; empate (até 1,5 m) → o mais forte */
+    /** a magia pode sair agora? 'cd' = recarregando, 'res' = sem mana/determinação/fôlego; null = pode */
+    ready(id: string, cost: number): 'cd' | 'res' | null {
+      const kind = d.getHero().kind, counter = st.counterT > 0;
+      let c = 0, need = 0;
+      if (id === 'slam') { const slammer = kind === 'nordic' || kind === 'dwarf' || kind === 'technocrat'; c = slammer ? cd.slam : cd.cast; need = slammer ? Math.max(8, 30 - 5 * st.fury) : 25; }
+      else if (id === 'bash') { c = counter ? 0 : cd.bash; need = counter ? 0 : kind === 'technocrat' ? 35 : kind === 'nordic' && st.res.name === 'Determinação' ? 15 : 0; }
+      else if (id === 'heal') { c = cd.heal; need = 40; }
+      else if (id === 'combo' || id === 'guard') return null;
+      else { c = cdX[id] ?? 0; need = Math.round(cost * skillScale(id as SkillId).cost * (st.sp.has('m_staff') ? 0.8 : 1)); if (st.sp.has('u_draupnir') && now >= draupT) need = 0; }
+      if (c > 0.05) return 'cd';
+      if (!st.god && st.mp < need) return 'res';
+      return null;
+    },
     target(p: THREE.Vector3, yaw?: number): THREE.Vector3 | null {
       let best: Enemy | null = null, bd = 11;
       for (const e of enemies.list) { if (!e.alive || !e.active) continue; const dx = e.pos.x - p.x, dz = e.pos.z - p.z, dd = Math.hypot(dx, dz); if (dd > 11) continue;
@@ -737,7 +758,7 @@ export function createGameplay(d: GameplayDeps) {
       }
       if (h.kind === 'dwarf') { // Investida de Ombro: corre, trombada, e termina com uma esmagada do martelo
         if (!h.act('charge')) return false;
-        counterBash = st.counterT > 0; cd.bash = counterBash ? 0.4 : 2.6; if (counterBash) st.counterT = 0; slotFlash('bash'); d.audio.dash(); pathHit.clear(); pathAct = 'charge';
+        counterBash = st.counterT > 0; cd.bash = counterBash ? 0.4 : 2.6; if (counterBash) st.counterT = 0; slotFlash('bash'); d.audio.dash(); pathHit.clear(); pathAct = 'charge'; rushHalt = false;
         pending.push({ at: now + TEMPO * 0.5, fn: () => { if (h.actName === 'charge') h.act('cleave2'); } });
         pending.push({ at: now + TEMPO * 0.76, fn: () => { const yaw = h.root.rotation.y, p = h.root.position; skStrike('bash', h, yaw, 2.2, 3.4, 1.1, true); d.audio.boom(); st.shake = Math.max(st.shake, 0.45); const cx = p.x + Math.sin(yaw) * 1.2, cz = p.z + Math.cos(yaw) * 1.2, gy = d.world.heightAt(cx, cz); crack.position.set(cx, gy + 0.07, cz); crack.rotation.z = Math.random() * 6; crackT = 0; (crack.material as THREE.MeshBasicMaterial).color.setHex(0xd8c8a8); for (let i = 0; i < 24; i++) d.particles.spawn(cx, gy + 0.1, cz, { vx: rnd(-3, 3), vy: rnd(1, 4), vz: rnd(-3, 3), life: 0.6, s0: 0.5, s1: 0.1, c0: 0xb09060, c1: 0x5a4a30, a: 1, g: 10 }); } });
         return true;
@@ -746,13 +767,8 @@ export function createGameplay(d: GameplayDeps) {
         // o humano paga a investida com Determinação (a "mana" dele, que enche lutando); no contragolpe sai de graça
         const det = st.res.name === 'Determinação' && st.counterT <= 0 ? 15 : 0;
         if (det && st.mp < det) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); logMsg(`Falta Determinação (${det}). Ela enche a cada golpe dado ou recebido.`, '#ff9a8a'); return false; }
-        if (!h.act('rush')) return false; st.mp -= det; counterBash = st.counterT > 0; cd.bash = counterBash ? 0.4 : CD.bash + 0.6; if (counterBash) st.counterT = 0; slotFlash('bash'); d.audio.dash(); pathHit.clear(); pathAct = 'rush';
-        pending.push({ at: now + TEMPO * 0.78, fn: () => { // escudada final
-          if (h.actName !== 'rush') return; const p = h.root.position, yaw = h.root.rotation.y;
-          skStrike('bash', h, yaw, 2.0, 3.2, 0.9, true); d.audio.boom(); st.shake = Math.max(st.shake, 0.4); h.blockHit();
-          for (let i = 0; i < 18; i++) d.particles.spawn(p.x + Math.sin(yaw) * 1.1, 1.2, p.z + Math.cos(yaw) * 1.1, { vx: Math.sin(yaw) * rnd(2, 6) + rnd(-2, 2), vy: rnd(0, 2.5), vz: Math.cos(yaw) * rnd(2, 6) + rnd(-2, 2), life: 0.4, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 });
-          for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - p.x, e.pos.z - p.z) < 3.2 + e.def.radius) { let ea = Math.atan2(e.pos.x - p.x, e.pos.z - p.z) - yaw; while (ea > Math.PI) ea -= Math.PI * 2; while (ea < -Math.PI) ea += Math.PI * 2; if (Math.abs(ea) < 1.0) { e.state = 'hurt'; e.t = -0.9; e.vel.set(Math.sin(yaw) * 9, Math.cos(yaw) * 9); } }
-        } });
+        if (!h.act('rush')) return false; st.mp -= det; counterBash = st.counterT > 0; cd.bash = counterBash ? 0.4 : CD.bash + 0.6; if (counterBash) st.counterT = 0; slotFlash('bash'); d.audio.dash(); pathHit.clear(); pathAct = 'rush'; rushDone = false; rushHalt = false;
+        pending.push({ at: now + TEMPO * 0.78, fn: () => { if (h.actName !== 'rush' || rushDone) return; rushFinish(h); } });
         return true;
       }
       if (!h.act('bash')) return false; counterBash = st.counterT > 0; cd.bash = counterBash ? 0.4 : CD.bash; if (counterBash) st.counterT = 0; slotFlash('bash'); d.audio.dash();
@@ -837,6 +853,7 @@ export function createGameplay(d: GameplayDeps) {
     damage(n: number, heroPos: THREE.Vector3, from?: THREE.Vector3) {
       const h = d.getHero();
       if (st.dead || st.god) return;
+      n = Math.max(1, Math.round(n * st.takenMul)); /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; } // Contra-golpe da Valquíria: o golpe some e ela gira por baixo dele
       { const w = wallBlocks(from, heroPos); if (w) { // Parede de Escudos: o golpe bate nos escudos espectrais
         const bx = heroPos.x + Math.sin(w.yaw) * 1.5, bz = heroPos.z + Math.cos(w.yaw) * 1.5; dmgText(new THREE.Vector3(bx, 2.4, bz), 'PAREDE', false, '#cfe6ff'); d.audio.block(); st.shake = Math.max(st.shake, 0.12);
@@ -1067,6 +1084,8 @@ export function createGameplay(d: GameplayDeps) {
               pathHit.add(e); skill = 'bash'; const from = heroPos.clone().sub(new THREE.Vector3(Math.sin(yw), 0, Math.cos(yw)).multiplyScalar(1.5)); hitEnemy(e, pathAct === 'jet' ? 1.4 : pathAct === 'rush' ? 1.7 : 1.6, true, from); skill = null;
               if (pathAct === 'rush') { h.slash(); const tp = h.weaponTip(new THREE.Vector3()); for (let q = 0; q < 10; q++) d.particles.spawn(tp.x, tp.y, tp.z, { vx: rnd(-3, 3), vy: rnd(0, 3), vz: rnd(-3, 3), life: 0.3, s0: 0.45, s1: 0.05, c0: 0xffffff, c1: 0xcfe0ff, a: 1, drag: 2 }); d.audio.swing(); }
               if (pathAct === 'charge' && e.alive) { e.state = 'hurt'; e.t = -0.8; } d.audio.boom(); st.shake = Math.max(st.shake, 0.25);
+              /* a corrida para no primeiro inimigo que encontra (não passa correndo por ele): a investida vira a escudada/martelada ali mesmo */
+              if (!rushHalt && (pathAct === 'rush' || pathAct === 'charge')) { rushHalt = true; if (pathAct === 'rush') { h.act('bash', true); pending.push({ at: now + 0.14, fn: () => { if (!rushDone) rushFinish(h); } }); } else { h.act('cleave2', true); } }
             }
           }
         } else if (pathAct) pathAct = null;

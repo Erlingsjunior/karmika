@@ -50,7 +50,8 @@ import { createSecrets, CACHE_LORE, type SenseGoal, type Cache } from './segredo
 import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
 import { PALADIN, VAMPIRE, TECHNO, WEREWOLF, RACE_INSTINCT } from './sagas';
-import { createEvents, globalNow, type EvResult } from './eventos';
+import { createAtmos } from './atmos';
+import { createEvents, globalNow, globalNext, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
@@ -137,6 +138,7 @@ const objs = buildWorld(city);
 objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(7000);
+const atmos = createAtmos(scene, particles, fine);
 scene.add(fine(particles.points));
 void Mist;
 /* sem névoa móvel */
@@ -197,7 +199,7 @@ hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
 const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -423,7 +425,7 @@ function updateCompanions(dt: number, t: number, heroYaw: number, mps: number) {
   if (riding && mount) mount.update(dt, t, heroPos, heroYaw, mps);
 }
 const inv = createInventory(game, {
-  priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0),
+  priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
   canWear: (g) => g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
   onGear: () => syncGear(), onBag: () => renderQuick(),
   onUse: (id) => { const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
@@ -533,6 +535,18 @@ const LEAN_GAP = 6;
 function soulLean(): 'luz' | 'sombra' | null { const l = soul.s.luz ?? 0, d = soul.s.sombra ?? 0; return l - d >= LEAN_GAP ? 'luz' : d - l >= LEAN_GAP ? 'sombra' : null; }
 /** comerciantes da luz cobram mais de quem pende para a sombra (e o contrário); a própria gente dá desconto */
 const LIGHT_SHOPS = new Set(['pocoes', 'cozinha', 'cervejaria', 'tec_fio', 'construtor', 'domador']), DARK_SHOPS = new Set(['tec_desf', 'charcutaria']);
+/** (a ficha do herói é montada antes do instinto existir: por isso o try) */
+/** quem o evento global fortalece: +1 fortalecido, −1 acuado, 0 neutro.
+ *  Lua de Sangue: vampiros, lobisomens, bruxos e toda alma de karma baixo. Dia da Aurora: paladinos, magos e toda alma de karma alto */
+function globalSide(id: string | null): number {
+  if (!id) return 0; const p = myPath(), k = state.karma;
+  const dark = k <= -20 || p === 'vam' || p === 'lob' || p === 'bru', light = k >= 20 || p === 'pal' || p === 'mag';
+  if (id === 'lua') return dark ? 1 : light ? -1 : 0;
+  if (id === 'aurora') return light ? 1 : dark ? -1 : 0;
+  return 0;
+}
+function globalSideText(id: string | null) { const sd = globalSide(id); if (!sd) return ''; return id === 'lua' ? (sd > 0 ? 'A Lua te alimenta: +20% de dano, −12% de dano recebido.' : 'A Lua caça os de alma clara: +10% de dano recebido.') : (sd > 0 ? 'A Aurora te abençoa: +20% de dano, −12% de dano recebido.' : 'A luz da Aurora te queima: +10% de dano recebido.'); }
+function luaBonus() { try { return instinctOn && myPath() === 'lob' && globalNow()?.id === 'lua' ? 0.15 : 0; } catch { return 0; } }
 function shopLeanK(shop: string): number { if (shop === 'latao') return latoK() * shopLeanK('_'); const L = soulLean(); if (!L) return 1; return L === 'sombra' ? (LIGHT_SHOPS.has(shop) ? 1.15 : DARK_SHOPS.has(shop) ? 0.95 : 1) : (DARK_SHOPS.has(shop) ? 1.1 : LIGHT_SHOPS.has(shop) ? 0.95 : 1); }
 /** o caminho que o herói já trilha de verdade (passou na prova do mestre) */
 function myPath(): string | null { const p = profile?.path; if (!p || p === 'humano') return null; try { return quests.q.done.includes('v_' + p) ? p : null; } catch { return null; } }
@@ -793,10 +807,12 @@ function showEvResult(r: EvResult) {
 /** o Olho registra no Compêndio só depois que você fecha a resposta (uma janela de cada vez) */
 let evPendingEye: (() => void) | null = null;
 evResEl.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-ok]') || e.target === evResEl) { evResEl.style.display = 'none'; const f = evPendingEye; evPendingEye = null; if (f) setTimeout(f, 250); } });
-let evUiT = 0;
+let evUiT = 0, lastGlobal: string | null = null;
+setTimeout(() => { const nx = globalNext(); if (nx && !globalNow()) { const d = new Date(nx.start); game.logMsg(`${nx.icon} Próximo evento global: ${nx.name}, hoje/amanhã às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} (o horário muda a cada dia).`, nx.color); } }, 6000);
 function updateEventos(dt: number) { eventos.update(dt, t); evUiT -= dt; if (evUiT > 0) return; evUiT = 0.25;
   const h0 = hereT(), html = inside ? '' : eventos.tracker(h0); evTrkEl.innerHTML = html; evTrkEl.style.display = html ? 'block' : 'none';
-  const g = globalNow(); evBanEl.style.display = g && !inside ? 'block' : 'none'; if (g) evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name}</b><small>${g.text}</small>`; }
+  const g = globalNow(); evBanEl.style.display = g && !inside ? 'block' : 'none'; if (g) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
+  if (g?.id !== lastGlobal) { if (g) game.logMsg(`${g.icon} ${g.name} começou no mundo inteiro. ${g.text}`, g.color); lastGlobal = g?.id ?? null; } }
 /* ---------- Instinto e falas do herói (instinto.ts, 24/10) ---------- */
 /** a alma dos NPCs que importam para o Instinto (quem é da Luz, da Sombra, ou de um caminho) */
 const NPC_SOUL: Record<string, { path?: string; lean?: 'luz' | 'sombra' }> = { 'Vesna Corvo-Negro': { lean: 'sombra' }, 'Irmã Maela': { lean: 'luz' }, Eldrin: { lean: 'luz' }, 'Paladino Aldric': { path: 'pal', lean: 'luz' }, 'Arquiteta Ylva': { path: 'tec' }, 'Thorgrim Mão-de-Ferro': { path: 'gue' }, 'Hrefna': { lean: 'luz' }, 'Irmã Ysolde': { lean: 'luz' }, 'Grão-Mestre Cassius': { path: 'pal', lean: 'luz' }, 'Bispa Solveig': { lean: 'luz' }, 'Irmão Tobias': { lean: 'luz' }, 'Lady Mirela': { path: 'vam' }, 'Conde Vladislav III': { path: 'vam', lean: 'sombra' }, 'Mestra Ilsa Van Rhal': { path: 'cac', lean: 'luz' }, 'Malgrath, Senhor dos Pactos': { path: 'bru', lean: 'sombra' }, 'Ulfrun, a Mãe-Alfa': { path: 'lob' } };
@@ -1397,13 +1413,15 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93)
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 const finish = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, levels: { value: 20 } },
+  uniforms: { tDiffuse: { value: null }, levels: { value: 20 }, uMul: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: new THREE.Vector3(0, 0, 0) }, uSat: { value: 1 }, uVig: { value: 0.6 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float levels; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float levels; uniform vec3 uMul; uniform vec3 uLift; uniform float uSat; uniform float uVig; varying vec2 vUv;
     void main(){
       vec4 c = texture2D(tDiffuse, vUv);
+      float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+      c.rgb = mix(vec3(lum), c.rgb, uSat) * uMul + uLift * (1.0 - lum); /* grade de cor: dia quente, noite fria, Lua de Sangue, Aurora */
       float v = smoothstep(0.38, 0.98, length((vUv - 0.5) * vec2(1.1, 1.0)));
-      c.rgb *= 1.0 - v * 0.6;
+      c.rgb *= 1.0 - v * uVig;
       float b = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
       c.rgb = floor(c.rgb * levels + 0.5 + b * 0.4) / levels;
       gl_FragColor = c;
@@ -1470,7 +1488,14 @@ function cancelAim() { if (aimSlot) document.querySelector(`.slot[data-k="${aimS
 function fireAim() {
   if (!aimSlot) return;
   const hx = state.fx * T, hz = state.fy * T, a = aim.update(0, hx, hz, mouse.x, mouse.z, (x, z) => inside ? 0 : heightAt(x, z));
-  const sk = skillAt(kitRace(), aimSlot)!, yaw = a.yaw; let ok = false;
+  const slot = aimSlot, at = { x: a.x, z: a.z, yaw: a.yaw };
+  cancelAim();
+  if (!castAt(slot, at)) { const sk = skillAt(kitRace(), slot); if (sk && game.ready(sk.id, sk.cost) === null) castQ = { slot, at, until: performance.now() + 650 }; /* o herói estava no meio de outro gesto: a magia sai assim que ele termina */ }
+}
+/** lança a magia de mira no ponto marcado; false se não pôde sair agora */
+function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
+  const hx = state.fx * T, hz = state.fy * T;
+  const sk = skillAt(kitRace(), slot); if (!sk) return false; const yaw = a.yaw; let ok = false;
   if (sk.id === 'slam') {
     if (state.race === 'nordic' || state.race === 'dwarf') {
       // ponto de pouso: encurta até cair em chão livre
@@ -1480,14 +1505,24 @@ function fireAim() {
   } else if (sk.id === 'bash') ok = game.bash(yaw, { x: a.x, z: a.z });
   else if (sk.id === 'heal') ok = game.heal(heroPosNow(), { x: a.x, z: a.z });
   else ok = game.useExtra(sk.id, yaw, sk.cost, { x: a.x, z: a.z });
-  if (ok) { lockYaw = yaw; cancelAim(); }
+  if (ok) { lockYaw = yaw; castQ = null; }
+  return ok;
+}
+let castQ: { slot: string; at: { x: number; z: number; yaw: number }; until: number } | null = null, aimKey: string | null = null, denyT = 0;
+/** sem recurso ou recarregando: nem desenha a mira; avisa uma vez e pisca a barra */
+function denySkill(sk: SkillDef, why: 'cd' | 'res') {
+  audio.error(); const el = document.querySelector(`.slot[data-k="${sk.k}"]`) as HTMLElement | null; el?.animate([{ filter: 'brightness(2.2) saturate(0.2)' }, { filter: 'none' }], 260);
+  if (why === 'res') document.getElementById('mp')?.animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250);
+  const now = performance.now(); if (now - denyT < 900) return; denyT = now;
+  game.logMsg(why === 'res' ? `${sk.name}: falta ${game.st.res.name}.` : `${sk.name}: ainda recarregando.`, why === 'res' ? '#ff9a8a' : '#c8c0a8');
 }
 /** aperta um botão da barra (tecla 1-9,0) */
-function useSlot(k: string) {
+function useSlot(k: string, fromKey = false) {
   const sk = skillAt(kitRace(), k); if (!sk) return;
   if (locked(sk)) return;
   if (sk.id === 'guard') { setCombat(true); game.guard(true); if (hero.guard && !aimSlot) { guardCone = true; aim.show(GUARD_AIM); } return; }
-  if (sk.aim) { startAim(k); return; }
+  { const why = game.ready(sk.id, sk.cost); if (why && aimSlot !== k) { denySkill(sk, why); return; } }
+  if (sk.aim) { startAim(k); if (fromKey && aimSlot === k) aimKey = k; return; }
   setCombat(true);
   if (sk.id === 'combo') game.attack(aimYaw(), heroPosNow());
   else if (sk.id === 'slam') game.cast(aimYaw());
@@ -1527,6 +1562,11 @@ addEventListener('scroll', (e) => { const t = e.target as Element | Document; if
 for (const id of ['bar', 'mini', 'menu', 'inv', 'shop', 'bigmap']) document.getElementById(id)?.addEventListener('contextmenu', (e) => e.preventDefault());
 const ORDER: Race[] = ['nordic', 'technocrat', 'dwarf'];
 function swapTo(r: Race) { if (r !== state.race) { state.race = r; swapHero(); game.setClassName(classOfRace(r)); } }
+addEventListener('keyup', (e) => {
+  /* magia de mira: segurar a tecla mostra o desenho no chão; soltar lança (toque rápido = lança na hora, onde o mouse está) */
+  if (aimKey) { const k = e.key.toLowerCase(), slot = e.shiftKey && /^Digit[0-9]$/.test(e.code) ? '⇧' + e.code.slice(5) : k === 'j' ? '1' : k === 'q' ? '4' : /^[0-9]$/.test(k) ? k : null;
+    if (slot && (slot === aimKey || slot === aimKey.replace('⇧', ''))) { const was = aimKey; aimKey = null; if (aimSlot === was) fireAim(); } }
+});
 addEventListener('keyup', (e) => { const sk = skillAt(kitRace(), e.key); if (sk?.id === 'guard') { game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); } });
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -1549,7 +1589,7 @@ addEventListener('keydown', (e) => {
   if (k === 'r' && build.on) { build.rotate(); return; }
   if (k === 'z') { if (!mount) { if (Object.keys(MOUNTS).some((id) => inv.has(id))) return; game.logMsg('Você não tem montaria. Procure Orm, o Estalajadeiro.', '#ff9a8a'); return; } if (!riding && (combatMode || inside || swimmingNow)) { game.logMsg(combatMode ? 'Saia do modo de combate (Tab) para montar.' : 'Não dá para montar aqui.', '#ff9a8a'); return; } setRiding(!riding); return; }
   if (dlg.isOpen) return;
-  if (e.shiftKey && /^Digit[0-9]$/.test(e.code)) { if (!e.repeat) useSlot('⇧' + e.code.slice(5)); return; } // 2º andar da barra: ⇧1–⇧0
+  if (e.shiftKey && /^Digit[0-9]$/.test(e.code)) { if (!e.repeat) useSlot('⇧' + e.code.slice(5), true); return; } // 2º andar da barra: ⇧1–⇧0
   keys.add(k); /* com janelas abertas ainda dá para andar, lutar e usar a barra */
   if (!e.repeat && DIRK[k]) { // duplo toque em W/A/S/D (ou setas) = dash naquela direção
     const nowMs = performance.now();
@@ -1562,9 +1602,9 @@ addEventListener('keydown', (e) => {
   if (k === 'o') audio.toggleMute();
   if (k === 'p') game.logMsg(audio.toggleMusic() ? '🎵 Música ligada' : '🎵 Música desligada', '#b9c6e0');
   if (k === 'n') { nightOverride = nightOverride === null ? 1 : nightOverride === 1 ? 0 : null; game.logMsg(nightOverride === null ? '🕯 Ciclo natural de dia e noite.' : nightOverride ? '🌙 Noite forçada (teste).' : '☀ Dia forçado (teste).', '#b9c6e0'); }
-  if (/^[0-9]$/.test(k) && !e.repeat) useSlot(k); else if (/^[0-9]$/.test(k) && skillAt(kitRace(), k)?.id === 'combo') useSlot(k);
-  if (k === 'j') useSlot('1');
-  if (k === 'q') useSlot('4');
+  if (/^[0-9]$/.test(k) && !e.repeat) useSlot(k, true); else if (/^[0-9]$/.test(k) && skillAt(kitRace(), k)?.id === 'combo') useSlot(k);
+  if (k === 'j' && !e.repeat) useSlot('1', true);
+  if (k === 'q' && !e.repeat) useSlot('4', true);
   if (k === 'f' && !e.repeat && !e.ctrlKey && !e.metaKey) toggleInstinct();
   if (k === 'e') interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
@@ -1790,8 +1830,15 @@ function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {
 /* ---------- ciclo ---------- */
 const dayC = { sky: new THREE.Color(0x9bbad8), fog: new THREE.Color(0x9bbad8) };
 const nightC = { sky: new THREE.Color(0x050814), fog: new THREE.Color(0x070a18) };
-const sunDay = new THREE.Color(0xfff0d0), sunNight = new THREE.Color(0x6f86c8);
-const hemiDaySky = new THREE.Color(0xbcd4ff), hemiNightSky = new THREE.Color(0x2a3a70);
+const sunDay = new THREE.Color(0xffdca8), sunNight = new THREE.Color(0x6a88d0);
+const hemiDaySky = new THREE.Color(0xf4e6cc), hemiNightSky = new THREE.Color(0x24407e);
+const hemiDayGround = new THREE.Color(0x4a3a22), hemiNightGround = new THREE.Color(0x10182a);
+/* os globais: Lua de Sangue (rubro, sanguinário) e Dia da Aurora (ouro e rosa, luz de igreja) */
+const LUA_C = { sky: new THREE.Color(0x3a0604), fog: new THREE.Color(0x4a0a06), hemi: new THREE.Color(0xa0241a), ground: new THREE.Color(0x3a0806), sun: new THREE.Color(0xff3a1c) };
+const AUR_C = { sky: new THREE.Color(0xf6dcc4), fog: new THREE.Color(0xf0d8c8), hemi: new THREE.Color(0xffe8f0), sun: new THREE.Color(0xfff0d8) };
+const LUA_MUL = new THREE.Vector3(1.42, 0.6, 0.5), LUA_LIFT = new THREE.Vector3(0.07, 0, 0);
+const AUR_MUL = new THREE.Vector3(1.07, 1.03, 0.97), AUR_LIFT = new THREE.Vector3(0.035, 0.028, 0.04);
+let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = undefined, luaK = 0, aurK = 0;
 const clock = new THREE.Clock();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
 let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0;
@@ -2596,6 +2643,7 @@ function frameBody() {
   if (!inside) { if (!cine) objs.setRad(Math.min(5, Math.max(2, Math.ceil(Math.hypot(zoom * innerWidth / innerHeight, zoom * 2.2) / 2 / 40 + 0.7)))); /* raio de chunks segue o zoom e a tela: nada de vazio nas bordas */ objs.update(camX, camZ); } else { inside.int.flicker(t, state.fx * T - IX, state.fy * T - IZ); if (state.fy * T - IZ > inside.int.D + 0.5) exitHouse(); }
   const mps = Math.max(sp * T * run * boost * vel * actSlow * (state.moving || vel > 0.02 ? 1 : 0), Math.abs(forced ? hero.stepVel : 0));
   const aiming = hero.acting;
+  if (castQ) { if (performance.now() > castQ.until || game.st.dead) castQ = null; else castAt(castQ.slot, castQ.at); }
   if (lockYaw !== null && !hero.acting) lockYaw = null;
   if ((aimSlot || guardCone) && (dlg.isOpen || game.menuOpen || game.st.dead)) { cancelAim(); guardCone = false; aim.hide(); }
   const aimNow = aim.active ? aim.update(dt, state.fx * T, state.fy * T, mouse.x, mouse.z, (x, z) => inside ? 0 : heightAt(x, z)) : null;
@@ -2650,16 +2698,26 @@ function frameBody() {
     camera.position.addScaledVector(rr, Math.round(px / ppu) * ppu - px).addScaledVector(uu, Math.round(py / ppu) * ppu - py);
   }
 
-  /* luz do dia e da noite */
-  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day);
-
-  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day);
-  (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cine ? 0.35 : 1);
+  /* luz do dia e da noite: o dia é quente (sol dourado, sombras âmbar), a noite é fria (lua azulada).
+     Os eventos globais tingem o mundo inteiro: a Lua de Sangue deixa tudo rubro; a Aurora, dourado e rosado */
+  if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.2 : 1; game.st.takenMul = sd > 0 ? 0.88 : sd < 0 ? 1.1 : 1; }
+  luaK += ((gCur === 'lua' && !inside?.dg ? 1 : 0) - luaK) * Math.min(1, rawDt * 0.35);
+  aurK += ((gCur === 'aurora' && !inside?.dg ? 1 : 0) - aurK) * Math.min(1, rawDt * 0.35);
+  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaK * 0.85).lerp(AUR_C.sky, aurK * 0.35);
+  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaK * 0.8).lerp(AUR_C.fog, aurK * 0.4);
+  (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cine ? 0.35 : 1) * (1 + luaK * 0.5);
   curseNow += ((inside ? 0 : curseK()) - curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
-  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day);
-  hemi.intensity = mix(0.5, 0.6, day) + (cine ? 0.6 * (1 - day) : 0);
-  sun.color.copy(sunNight).lerp(sunDay, day);
-  sun.intensity = mix(0.4, 1.5, day) + (cine ? 0.9 * (1 - day) : 0); // nas cinemáticas a paisagem se acende
+  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaK * 0.75).lerp(AUR_C.hemi, aurK * 0.4);
+  hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaK * 0.6);
+  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaK * 0.35 + aurK * 0.12;
+  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaK * 0.85).lerp(AUR_C.sun, aurK * 0.5);
+  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaK * 0.6 + aurK * 0.15; // nas cinemáticas a paisagem se acende
+  renderer.toneMappingExposure = mix(0.8, 0.96, day); finish.uniforms.uVig.value = mix(0.6, 0.38, day * (inside?.dg ? 0 : 1));
+  { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
+    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaK).lerp(AUR_MUL, aurK * 0.8);
+    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaK).lerp(AUR_LIFT, aurK);
+    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.06; }
+  audio.choir(aurK * (inside ? 0.35 : 1), rawDt); audio.blood(luaK * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42; } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
     const dir = new THREE.Vector3(-18, 28, 10).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2;
@@ -2667,13 +2725,13 @@ function frameBody() {
     sun.target.position.set(0, 0, 0).addScaledVector(lr, a).addScaledVector(lu, b).addScaledVector(dir, c);
     sun.position.copy(sun.target.position).addScaledVector(dir, 40);
   }
-  const fl = mix(1.0, 0.18, day); // fogo e janelas pesam menos de dia
+  const fl = mix(1.0, 0.07, day); // de dia as tochas quase não iluminam (o sol manda)
   (objs.windows.color as THREE.Color).setHex(day > 0.6 ? 0x6b5a40 : 0xffc266); setVitraisDay(day);
 
   windU.value = t;
   waterU.uLight.value = mix(0.3, 1, day);
   const gust = THREE.MathUtils.clamp(0.45 + 0.4 * Math.sin(t * 0.37) * Math.sin(t * 0.11 + 1.3) + 0.25 * Math.sin(t * 1.3 + Math.sin(t * 0.21) * 3), 0, 1);
-  gustU.value = gust;
+  gustU.value = Math.min(1, gust + aurK * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
   const WDX = 0.86, WDZ = 0.5; // direção do vento
   particles.wind.x = WDX * (0.4 + gust * 3.2); particles.wind.z = WDZ * (0.4 + gust * 3.2);
   hero.setNight(night); hero.setWind(gust);
@@ -2745,6 +2803,7 @@ function frameBody() {
   if (full !== wasFull) { wasFull = full; hero.setAura(full); }
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
+  atmos.update(rawDt, t, heroPos, aurK, luaK, gust, (x, z) => heightAt(x, z), !!inside);
   particles.update(dt);
 
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;

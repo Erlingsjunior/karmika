@@ -14,6 +14,8 @@ export interface CathedralFloor extends Interior {
   door?: { x: number; z: number; open(): void };
   spawnPts: { x: number; z: number }[]; elitePt: { x: number; z: number };
   throne?: { x: number; z: number };
+  /** Vasilhame do Sacrifício: o sangue dos mortos deste andar enche a taça; fill(0..1) */
+  vessel?: { x: number; z: number; fill(k: number, t: number): void };
 }
 const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
 
@@ -150,7 +152,7 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
   /** arcada cega em relevo numa parede (série de ogivas rasas) — dá vida às paredes altas */
   const blindArcade = (x0: number, z0: number, x1: number, z1: number, y: number, h: number, faceX: boolean) => { const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.floor(len / 2.6)); for (let i = 0; i < n; i++) { const t0 = i / n, t1 = (i + 1) / n; const ax = x0 + (x1 - x0) * t0 + (faceX ? 0.5 : 0), az = z0 + (z1 - z0) * t0 + (faceX ? 0 : 0.5), bx = x0 + (x1 - x0) * t1 + (faceX ? 0.5 : 0), bz = z0 + (z1 - z0) * t1 + (faceX ? 0 : 0.5); arch(ax, az, bx, bz, y + h, 0.1, smD); add(new THREE.CylinderGeometry(0.1, 0.1, h, 5), smD, ax, y + h / 2, az, false); } };
 
-  const spawnPts: { x: number; z: number }[] = []; let elitePt = { x: 0, z: 0 }, stairs: CathedralFloor['stairs'], door: CathedralFloor['door'], throne: CathedralFloor['throne'];
+  const spawnPts: { x: number; z: number }[] = []; let elitePt = { x: 0, z: 0 }, vessel: CathedralFloor['vessel'], stairs: CathedralFloor['stairs'], door: CathedralFloor['door'], throne: CathedralFloor['throne'];
   let W: number, D: number;
   const GL1 = ['#3a2a7a', '#6a1a2a', '#1a4a6a', '#c8902a', '#2a5a3a', '#5a2a6a'], GL2 = ['#7a1a1a', '#c84a1a', '#2a1a4a', '#c8a02a', '#4a0a1a'];
   const floorPlane = (x: number, z: number, w: number, d: number, tex: THREE.Texture, rep: number, y = 0, m?: THREE.Material) => { const t = tex.clone(); t.needsUpdate = true; t.repeat.set(w / rep, d / rep); const mat = m ?? new THREE.MeshToonMaterial({ map: t, gradientMap: ramp }); if (m) (m as THREE.MeshToonMaterial).map = t; const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat); pl.rotation.x = -Math.PI / 2; pl.position.set(x + w / 2, y, z + d / 2); pl.receiveShadow = true; g.add(pl); return pl; };
@@ -213,7 +215,7 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
     for (let k = 0; k < 8; k++) spawnPts.push({ x: cx + (r() - 0.5) * 14, z: crossZ1 + 10 + r() * (D - crossZ1 - 30) });
     elitePt = { x: cx, z: (crossZ0 + crossZ1) / 2 + 5 };
     // escada em espiral para as criptas: na capela leste do transepto
-    stairsAt(W - 9, crossZ1 - 9, H);
+    stairsAt(W - 9, crossZ1 - 9, H); vesselAt(W - 19, crossZ1 - 8);
   } else if (!boss) {
     /* ================= CRIPTAS (salões abobadados) ================= */
     const NX = 4, NY = 5, cw = 34, cd = 32, H = 7; W = NX * cw; D = NY * cd;
@@ -247,8 +249,8 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
       const n = 2 + Math.floor(r() * 2); for (let k = 0; k < n; k++) spawnPts.push({ x: cx + (r() - 0.5) * cw * 0.55, z: cz + (r() - 0.5) * cd * 0.55 });
     }
     elitePt = throne ? { x: throne.x, z: throne.z + 3 } : { x: W / 2, z: cd * 0.5 + 4 };
-    if (floor <= 3) stairsAt(W - 9, 9, H);
-    if (floor === 4) bishopDoor(W / 2, 0.9, H);
+    if (floor <= 3) { stairsAt(W - 9, 9, H); vesselAt(W - 19, 9); }
+    if (floor === 4) { bishopDoor(W / 2, 0.9, H); vesselAt(W / 2 + 15, 8); }
   } else {
     /* ================= SANTUÁRIO PROFANO DO BISPO ================= */
     W = 96; D = 120; const cx = W / 2, az = 36, ar = 34, H = 16;
@@ -275,11 +277,35 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
   }
 
   function stairsAt(sx: number, sz: number, H: number) {
-    const p = new THREE.Mesh(new THREE.CircleGeometry(4.2, 28), new THREE.MeshBasicMaterial({ color: 0x030205 })); p.rotation.x = -Math.PI / 2; p.position.set(sx, 0.04, sz); g.add(p);
-    add(new THREE.CylinderGeometry(0.7, 0.8, H, 10), sm, sx, H / 2, sz, false); for (let k = 0; k < 20; k++) { const a = k * 0.42, y = 0.1 - k * 0.2; const st = new THREE.Mesh(B(2.6, 0.2, 1.0), smD); st.position.set(sx + Math.cos(a) * 2.2, y, sz + Math.sin(a) * 2.2); st.rotation.y = -a; g.add(st); }
-    add(new THREE.TorusGeometry(4.2, 0.32, 6, 28), sm, sx, 0.25, sz, false).rotation.x = Math.PI / 2; glow(sx, 0.08, sz, 7, 7, 0x6a3aff, 0.2, 0, true);
-    for (let a = 0; a < 14; a++) { const t = a / 14 * 6.283; if (t > 0.9 && t < 2.3) continue; solid(sx + Math.cos(t) * 4.2, sz + Math.sin(t) * 4.2, 0.55); }
-    brazier(sx - 5.5, sz + 5.5, 0xffb040, 36); stairs = { x: sx - 1, z: sz + 5.3 };
+    // poço da escada: mureta de pedra em volta, degraus em espiral que descem visíveis do parapeito até sumir no escuro
+    const R = 3.6;
+    const p = new THREE.Mesh(new THREE.CircleGeometry(R, 28), new THREE.MeshBasicMaterial({ color: 0x050308 })); p.rotation.x = -Math.PI / 2; p.position.set(sx, 0.03, sz); g.add(p);
+    add(new THREE.CylinderGeometry(0.55, 0.65, H, 10), sm, sx, H / 2, sz, false); // coluna central (o eixo da espiral)
+    const a0 = Math.PI / 2 + 0.15; // a entrada fica virada para +z (de onde o jogador chega)
+    { const shaft = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 1.1, 28, 1, true), (() => { const m = std(0xffffff, { map: stoneTex(0x2c2832) }); m.side = THREE.BackSide; return m; })()); shaft.position.set(sx, 0.52, sz); g.add(shaft); } // parede interna do poço: dá profundidade
+    for (let k = 0; k < 15; k++) { const a = a0 - 0.2 - k * 0.43, y = 0.92 - k * 0.062, c = new THREE.Color(0x9a948a).lerp(new THREE.Color(0x120f16), Math.min(1, k / 11));
+      const st = add(B(1.75, 0.13, 0.7), std(c.getHex()), sx + Math.cos(a) * 1.75, y, sz + Math.sin(a) * 1.75, k < 8, -a); void st; }
+    // mureta (parapeito) com abertura para a entrada
+    for (let a = 0; a < 20; a++) { const t = a / 20 * 6.283; if (Math.abs(((t - a0 + 9.42) % 6.283) - 3.14) < 0.62) continue; const blk = add(B(1.25, 1.05, 0.5), smD, sx + Math.cos(t) * (R + 0.25), 0.52, sz + Math.sin(t) * (R + 0.25), false, -t + Math.PI / 2); void blk; solid(sx + Math.cos(t) * (R + 0.25), sz + Math.sin(t) * (R + 0.25), 0.6); }
+    // dois pilaretes com lanternas marcando a boca da escada
+    for (const s2 of [-1, 1]) { const t = a0 + s2 * 0.72, x = sx + Math.cos(t) * (R + 0.3), z = sz + Math.sin(t) * (R + 0.3); add(B(0.6, 1.6, 0.6), sm, x, 0.8, z); flame(x, 1.75, z, 0.8); light(x, 1.9, z, 0xffb050, 14, 9); }
+    stairs = { x: sx + Math.cos(a0) * (R + 1.4), z: sz + Math.sin(a0) * (R + 1.4) };
+  }
+  /** Vasilhame do Sacrifício: grande taça de pedra num pedestal; o sangue sobe conforme os mortos do andar caem */
+  function vesselAt(vx: number, vz: number) {
+    add(new THREE.CylinderGeometry(2.1, 2.4, 0.35, 8), smD, vx, 0.17, vz); // degrau octogonal
+    add(new THREE.CylinderGeometry(0.55, 0.85, 1.2, 8), sm, vx, 0.95, vz); // haste
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 0.75, 0.95, 16, 1, true), std(0xffffff, { map: stoneTex(0x6a6258) })); bowl.position.set(vx, 2.0, vz); (bowl.material as THREE.Material).side = THREE.DoubleSide; ink(bowl, 0.05); g.add(bowl);
+    add(new THREE.TorusGeometry(1.7, 0.1, 6, 24), goldD, vx, 2.48, vz, false).rotation.x = Math.PI / 2;
+    add(new THREE.CircleGeometry(0.76, 16), smD, vx, 1.54, vz, false).rotation.x = -Math.PI / 2;
+    for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283 + 0.4; candles(vx + Math.cos(a) * 2.9, vz + Math.sin(a) * 2.9, 3); }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; const ch = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 2.4), new THREE.MeshToonMaterial({ color: 0x4a060c })); ch.rotation.x = -Math.PI / 2; ch.rotation.z = -a + Math.PI / 2; ch.position.set(vx + Math.cos(a) * 3.6, 0.036, vz + Math.sin(a) * 3.6); g.add(ch); } // canais de sangue chegando à taça
+    solid(vx, vz, 2.0);
+    const bm = new THREE.MeshBasicMaterial({ color: 0x8a0a14 }); const blood = new THREE.Mesh(new THREE.CircleGeometry(1, 20), bm); blood.rotation.x = -Math.PI / 2; blood.userData.dyn = true; g.add(blood);
+    const halo = new THREE.Mesh(new THREE.PlaneGeometry(5, 5), new THREE.MeshBasicMaterial({ color: 0xff1a2a, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending })); halo.rotation.x = -Math.PI / 2; halo.position.set(vx, 2.6, vz); halo.userData.dyn = true; g.add(halo);
+    const lamp = new THREE.PointLight(0xff2a1a, 0, 12); lamp.position.set(vx, 3.2, vz); g.add(lamp);
+    vessel = { x: vx, z: vz, fill(k: number, t: number) { const q = Math.max(0, Math.min(1, k)); blood.visible = q > 0.01; const y = 1.56 + q * 0.86, rad = 0.76 + (1.68 - 0.76) * ((y - 1.53) / 0.95); blood.position.set(vx, y, vz); blood.scale.setScalar(rad); const pulse = 0.5 + 0.5 * Math.sin(t * (q >= 1 ? 4 : 1.6)); bm.color.setHex(q >= 1 ? 0xd0101c : 0x8a0a14); (halo.material as THREE.MeshBasicMaterial).opacity = q >= 1 ? 0.35 + 0.25 * pulse : q * 0.18 * (0.7 + 0.3 * pulse); lamp.intensity = q >= 1 ? 8 + 6 * pulse : q * 4; } };
+    vessel.fill(0, 0);
   }
   function bishopDoor(px: number, pz: number, H: number) {
     const doorG = new THREE.Group(); doorG.position.set(px, 0, pz); g.add(doorG);
@@ -305,5 +331,5 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
     for (const l of lights) l.l.intensity = l.base * (0.9 + 0.1 * Math.sin(t * 9 + l.ph) + 0.05 * Math.sin(t * 23 + l.ph * 2));
   };
   mergeStatic(g, ramp);
-  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, stairs, door, spawnPts, elitePt, throne };
+  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, stairs, vessel, door, spawnPts, elitePt, throne };
 }

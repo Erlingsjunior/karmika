@@ -231,12 +231,22 @@ function ritualCircle(): { g: THREE.Mesh; set(k: number, t: number): void } {
 const WIN = 20 * 60, LIVE = 15 * 60; // a cada 20 min uma janela; o evento vive 15
 const nightAt = (ms: number) => { const h = (((ms % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h < 19 ? (h - 17) / 2 : 1 - (h - 5) / 2; };
 const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
-const DAY_MS = 3 * 3600 * 1000;
-/** os acontecimentos que mudam o mundo inteiro por um tempo */
-export function globalNow(ms = Date.now()) { const day = Math.floor((ms - 1792000000000) / DAY_MS) + 1, night = nightAt(ms) > 0.5;
-  if (day % 8 === 0 && night) return { id: 'lua', name: 'Lua de Sangue', icon: '🌕', text: 'A lua cheia sangra no céu. Os lobisomens saem das matas e atacam as patrulhas em todas as estradas.', color: '#ff6a5a' };
-  if (day % 8 === 4 && !night) return { id: 'aurora', name: 'Dia da Aurora', icon: '☀', text: 'É o dia santo de Auréon: romarias atravessam as vilas de karma ruim e cada ato de luz pesa mais.', color: '#ffe08a' };
-  return null; }
+/** os acontecimentos que mudam o mundo inteiro por um tempo.
+    Erling, 24/10: "horários marcados fazem jogadores ocupados perderem eventos" — então eles ANDAM: um marco a cada 11h17min
+    (alternando Lua e Aurora), e o global começa na primeira noite (Lua) ou no primeiro dia (Aurora) depois do marco.
+    Como 2 × 11h17 = 22h34, cada um cai cerca de 1h26 mais cedo a cada dia: em uma semana passa por todas as horas. */
+const G_STEP = (11 * 60 + 17) * 60 * 1000, G_BASE = 1792000000000 + 37 * 60 * 1000, G_LEN = { lua: 80 * 60 * 1000, aurora: 90 * 60 * 1000 };
+const G_INFO = {
+  lua: { id: 'lua', name: 'Lua de Sangue', icon: '🌕', text: 'A lua cheia sangra no céu. Patrulhas são atacadas em todas as estradas e os lobisomens ficam mais fortes e vêm em maior número. Para quem tem o Faro da Lua ligado: +15% de XP.', color: '#ff6a5a' },
+  aurora: { id: 'aurora', name: 'Dia da Aurora', icon: '☀', text: 'É o dia santo de Auréon: romarias atravessam as vilas de karma ruim, e todo ato de luz nos eventos vale 50% a mais de karma.', color: '#ffe08a' },
+};
+const gCache = new Map<number, { start: number; end: number; kind: 'lua' | 'aurora' }>();
+function gWindow(k: number) { let w = gCache.get(k); if (w) return w; const kind = (k % 2 === 0 ? 'lua' : 'aurora') as 'lua' | 'aurora', t0 = G_BASE + k * G_STEP; let st = t0;
+  for (let m = 0; m < 240; m++) { const tt = t0 + m * 60000, n = nightAt(tt); if (kind === 'lua' ? n > 0.5 : n < 0.01) { st = tt; break; } }
+  w = { start: st, end: st + G_LEN[kind], kind }; gCache.set(k, w); return w; }
+export function globalNow(ms = Date.now()) { const k = Math.floor((ms - G_BASE) / G_STEP); for (const kk of [k, k - 1]) { const w = gWindow(kk); if (ms >= w.start && ms < w.end) return { ...G_INFO[w.kind], end: w.end }; } return null; }
+/** quando vem o próximo (para o mapa e para quem quiser se programar) */
+export function globalNext(ms = Date.now()) { const k = Math.floor((ms - G_BASE) / G_STEP); for (let kk = k - 1; kk < k + 4; kk++) { const w = gWindow(kk); if (w.start > ms) return { ...G_INFO[w.kind], start: w.start }; } return null; }
 
 interface Live { key: string; tpl: Tpl; site: Site; start: number; end: number; lvl: number;
   // estado local (quem está aqui)
@@ -294,9 +304,9 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   function spawnWave(L: Live, wv: Wave, idx: number) {
     if (L.waveDone.has(idx)) return; L.waveDone.add(idx); const p = sitePos(L.site), lv = L.lvl;
     const ang = hash(idx * 11 + L.start) * 6.283; let k = 0;
-    for (const [type, n, nm] of wv.units) for (let i = 0; i < n; i++, k++) {
+    const luaN = globalNow()?.id === 'lua'; for (const [type, n0, nm] of wv.units) for (let i = 0, n = n0 + (luaN && type === 'werewolf' ? 1 : 0); i < n; i++, k++) { // na Lua de Sangue vem um lobisomem a mais em cada onda
       const r = wv.from ?? 3 + (k % 3), a = wv.from ? ang + (k - 2) * 0.35 : k * 1.9, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
-      const e = ctx.spawn(type, x, z, { name: nm, lvl: lv + (type === 'werewolf' || type === 'darkpal' ? 1 : 0), tag: 'ev:' + L.key, aggro: 0, hpMul: type === 'deer' ? 1 : 1.1 }); e.evFac = wv.fac; if (type === 'deer') e.def.passive = true;
+      const lua = globalNow()?.id === 'lua' && type === 'werewolf'; const e = ctx.spawn(type, x, z, { name: nm, lvl: lv + (type === 'werewolf' || type === 'darkpal' ? 1 : 0) + (lua ? 2 : 0), tag: 'ev:' + L.key, aggro: 0, hpMul: type === 'deer' ? 1 : lua ? 1.45 : 1.1 }); e.evFac = wv.fac; if (type === 'deer') e.def.passive = true;
       if (wv.from) e.home.set(p.x + Math.cos(a) * 3, p.z + Math.sin(a) * 3); // vêm de fora para o meio
       L.units.push(e); }
     hostility(L);
@@ -321,12 +331,13 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     if (L.over) return; L.over = true; markSeen(L.key);
     if (!L.joined || !L.side) { deactivate(L); return; }
     const sd = sideDef(L)!, won = reason === 'done', c = contribution(L), vila = L.site.name;
-    const karma = Math.round(sd.karma * (won ? 1 : 0.4 * c)), lv = Math.max(1, ctx.lvl()), xp = Math.round(ctx.xpNeedAt(lv) * (won ? 0.3 : 0.08 + 0.14 * c)), gold = Math.round((won ? 30 : 8) + lv * (won ? 3 : 1) + (sd.lean === 'sombra' && won ? lv * 4 : 0));
+    const aurora = globalNow()?.id === 'aurora' && sd.karma > 0, karma = Math.round(sd.karma * (won ? 1 : 0.4 * c) * (aurora ? 1.5 : 1)), lv = Math.max(1, ctx.lvl()), xp = Math.round(ctx.xpNeedAt(lv) * (won ? 0.3 : 0.08 + 0.14 * c)), gold = Math.round((won ? 30 : 8) + lv * (won ? 3 : 1) + (sd.lean === 'sombra' && won ? lv * 4 : 0));
     const fogos = L.props.some((p) => p.kind === 'fireworks') ? 'À meia-noite os fogos da Academia pintaram o céu de vermelho e azul. ' : '';
     const lines = [(won ? sd.win : sd.lose).replace(/\{vila\}/g, vila).replace('{fogos}', fogos)];
     if (sd.kills) lines.push(`Você derrubou ${L.kills} ${L.kills === 1 ? 'inimigo' : 'inimigos'} do lado contrário.`);
     for (const tk of sd.tasks ?? []) if (!(tk.need && !tk.need(ctx))) lines.push(`${(L.tasks[tk.id] ?? 0) >= tk.n ? '✔' : '✗'} ${tk.label}`);
     if (L.celebrate) lines.push('✔ Você celebrou o casamento.');
+    if (aurora) lines.push('☀ Dia da Aurora: o seu ato de luz pesou 50% a mais.');
     ctx.result({ name: L.tpl.name, icon: L.tpl.icon, side: sd.label, lean: sd.lean, won, karma, xp, gold, lines, flag: won ? sd.flag : undefined, kills: L.kills });
     // o lado vencido se dispersa; a festa/a luz/a sombra do final
     if (won) { for (const u of L.units) if (u.alive && u.evFac !== L.side && u.type !== 'deer') { u.foe = undefined; u.def.aggro = 0; u.state = 'flee'; u.t = 0; } setTimeout(() => ctx.clearTag('ev:' + L.key), 6000);

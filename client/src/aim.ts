@@ -34,14 +34,23 @@ function lineTex(): THREE.Texture {
 export function createAim(scene: THREE.Scene) {
   const mat = (map: THREE.Texture) => new THREE.MeshBasicMaterial({ map, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 });
   const g = new THREE.Group(); g.visible = false; g.renderOrder = 4; scene.add(g);
-  const disc = new THREE.Mesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), mat(discTex())); g.add(disc);
+  const disc = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 20, 20).rotateX(-Math.PI / 2), mat(discTex())); g.add(disc);
   const cones = new Map<number, THREE.Mesh>();
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat(lineTex())); line.geometry.translate(0, 0, 0.5); g.add(line);
-  const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); rangeRing.renderOrder = 4; rangeRing.visible = false; scene.add(rangeRing);
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(1, 1, 4, 24).rotateX(-Math.PI / 2), mat(lineTex())); line.geometry.translate(0, 0, 0.5); g.add(line);
+  const rangeRing = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 96, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.25, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); rangeRing.renderOrder = 4; rangeRing.visible = false; scene.add(rangeRing);
   const cursor = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); cursor.renderOrder = 5; cursor.visible = false; scene.add(cursor);
   let spec: AimSpec | null = null, t = 0, cur: THREE.Mesh = disc, fade = 0;
   const out = { x: 0, z: 0, yaw: 0, ok: true };
-  function coneFor(arc: number) { let m = cones.get(arc); if (!m) { m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2).rotateX(-Math.PI / 2), mat(coneTex(arc))); g.add(m); cones.set(arc, m); } return m; }
+  /** o desenho no chão acompanha o relevo: cada vértice desce/sobe até a altura do terreno (não corta morro nem flutua em vala) */
+  const base = new WeakMap<THREE.BufferGeometry, Float32Array>();
+  const _v = new THREE.Vector3();
+  function conform(m: THREE.Mesh, hAt: (x: number, z: number) => number, lift = 0.07) {
+    const geo = m.geometry, pos = geo.attributes.position as THREE.BufferAttribute; let b = base.get(geo); if (!b) { b = new Float32Array(pos.array as Float32Array); base.set(geo, b); }
+    m.updateWorldMatrix(true, false); const wy = new THREE.Vector3().setFromMatrixPosition(m.matrixWorld).y, sy = new THREE.Vector3().setFromMatrixScale(m.matrixWorld).y || 1;
+    for (let i = 0; i < pos.count; i++) { _v.set(b[i * 3], 0, b[i * 3 + 2]).applyMatrix4(m.matrixWorld); pos.setY(i, (hAt(_v.x, _v.z) + lift - wy) / sy); }
+    pos.needsUpdate = true; geo.computeBoundingSphere();
+  }
+  function coneFor(arc: number) { let m = cones.get(arc); if (!m) { m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2, 20, 20).rotateX(-Math.PI / 2), mat(coneTex(arc))); g.add(m); cones.set(arc, m); } return m; }
   return {
     get active() { return spec !== null; },
     get spec() { return spec; },
@@ -66,11 +75,13 @@ export function createAim(scene: THREE.Scene) {
         rangeRing.visible = true; rangeRing.position.set(hx, hAt(hx, hz) + 0.09, hz); rangeRing.scale.setScalar(spec.range);
         cursor.visible = true; cursor.position.set(mx, hAt(mx, mz) + 0.11, mz); cursor.rotation.y = -t * 2;
         (cur.material as THREE.MeshBasicMaterial).opacity = fade * (0.8 + 0.2 * pul);
+        conform(cur, hAt); conform(rangeRing, hAt, 0.06);
       } else {
         out.x = hx + dx * spec.range; out.z = hz + dz * spec.range;
         g.position.set(hx, hAt(hx, hz) + 0.1, hz); g.rotation.y = yaw;
         rangeRing.visible = false; cursor.visible = spec.kind === 'line'; cursor.position.set(out.x, hAt(out.x, out.z) + 0.11, out.z);
         (cur.material as THREE.MeshBasicMaterial).opacity = fade * (0.75 + 0.25 * pul);
+        conform(cur, hAt);
       }
       return out;
     },

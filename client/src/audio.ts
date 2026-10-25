@@ -227,4 +227,49 @@ export class AudioEngine {
     for (let i = 0; i < n; i++) { const f = root * Math.pow(2, scale[deg] / 12) * (Math.random() < 0.3 ? 2 : 1); this.pluck(f, 1.6 + Math.random(), 0.09, i * (0.35 + Math.random() * 0.2), (Math.random() - 0.5) * 0.8); deg = Math.max(0, Math.min(scale.length - 1, deg + (Math.random() < 0.5 ? -1 : 1) * (1 + Math.floor(Math.random() * 2)))); }
     void this.key;
   }
+
+  /* ---------- coro distante (Dia da Aurora) e o pulso surdo da Lua de Sangue ---------- */
+  private choirV: { root: GainNode; voices: { o: OscillatorNode; o2: OscillatorNode; g: GainNode }[]; lfo: OscillatorNode; t: number; ch: number } | null = null;
+  private bloodV: { g: GainNode; os: OscillatorNode[]; t: number } | null = null;
+  /** k 0..1: quanto do coro se ouve. Vozes em "aah" (formantes) por trás de um eco longo e de um filtro, como se viesse de longe, de uma igreja no alto do vale */
+  choir(k: number, dt: number) {
+    const ctx = this.ctx; if (!ctx) return; const now = ctx.currentTime;
+    if (k > 0.01 && !this.choirV) {
+      const root = ctx.createGain(); root.gain.value = 0;
+      const far = ctx.createBiquadFilter(); far.type = 'lowpass'; far.frequency.value = 2400; far.Q.value = 0.3;
+      const dl = ctx.createDelay(1.5); dl.delayTime.value = 0.41; const fb = ctx.createGain(); fb.gain.value = 0.55; const dlF = ctx.createBiquadFilter(); dlF.type = 'lowpass'; dlF.frequency.value = 1600;
+      const dl2 = ctx.createDelay(1.5); dl2.delayTime.value = 0.67; const fb2 = ctx.createGain(); fb2.gain.value = 0.45;
+      root.connect(far); far.connect(this.master); far.connect(dl); dl.connect(dlF); dlF.connect(fb); fb.connect(dl); dlF.connect(this.master);
+      far.connect(dl2); dl2.connect(fb2); fb2.connect(dl2); dl2.connect(this.master);
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 5.2; lfo.start();
+      const voices: { o: OscillatorNode; o2: OscillatorNode; g: GainNode }[] = [];
+      for (let i = 0; i < 4; i++) {
+        const o = ctx.createOscillator(); o.type = 'sawtooth'; const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.detune.value = 7 + i * 2; o.detune.value = -5 - i;
+        const vib = ctx.createGain(); vib.gain.value = 5 + i; lfo.connect(vib); vib.connect(o.detune); vib.connect(o2.detune);
+        const g = ctx.createGain(); g.gain.value = 0; const mix = ctx.createGain(); mix.gain.value = 0.5; o.connect(mix); o2.connect(mix);
+        for (const [f, q, a] of [[800, 9, 1], [1150, 10, 0.55], [2900, 12, 0.18]] as [number, number, number][]) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * (i > 1 ? 1.08 : 1); bp.Q.value = q; const ag = ctx.createGain(); ag.gain.value = a; mix.connect(bp); bp.connect(ag); ag.connect(g); }
+        g.connect(root); o.start(); o2.start(); voices.push({ o, o2, g });
+      }
+      this.choirV = { root, voices, lfo, t: 0, ch: -1 };
+    }
+    const cv = this.choirV; if (!cv) return;
+    cv.root.gain.setTargetAtTime(k * 0.22 * (this.music ? 1 : 0.6), now, 2.5);
+    if (k <= 0.01) { if (cv.root.gain.value < 0.002) { for (const v of cv.voices) { v.o.stop(); v.o2.stop(); } cv.lfo.stop(); this.choirV = null; } return; }
+    cv.t -= dt; if (cv.t > 0) return; cv.t = 6 + Math.random() * 3;
+    /* progressão lenta e luminosa (Ré maior): I, IV, vi, V, I sus */
+    const prog = [[146.8, 220, 293.7, 370], [196, 246.9, 293.7, 392], [123.5, 246.9, 293.7, 370], [110, 220, 277.2, 330], [146.8, 220, 293.7, 440]];
+    cv.ch = (cv.ch + 1) % prog.length; const ch = prog[cv.ch];
+    cv.voices.forEach((v, i) => { const f = ch[i]; v.o.frequency.setTargetAtTime(f, now, 0.9); v.o2.frequency.setTargetAtTime(f, now, 0.9); v.g.gain.cancelScheduledValues(now); v.g.gain.setTargetAtTime(0.0, now, 0.6); v.g.gain.setTargetAtTime([0.9, 0.7, 0.6, 0.45][i], now + 0.7, 1.4); });
+  }
+  /** k 0..1: um pulso grave como um coração gigante e um zumbido baixo, sob a Lua de Sangue */
+  blood(k: number, dt: number) {
+    const ctx = this.ctx; if (!ctx) return; const now = ctx.currentTime;
+    if (k > 0.01 && !this.bloodV) { const g = ctx.createGain(); g.gain.value = 0; const fl = ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = 260; g.connect(this.master); fl.connect(g);
+      const os = [55, 58.3, 82.4].map((f, i) => { const o = ctx.createOscillator(); o.type = i === 2 ? 'triangle' : 'sawtooth'; o.frequency.value = f; const og = ctx.createGain(); og.gain.value = [0.5, 0.35, 0.2][i]; o.connect(og); og.connect(fl); o.start(); return o; });
+      this.bloodV = { g, os, t: 1 }; }
+    const bv = this.bloodV; if (!bv) return;
+    bv.g.gain.setTargetAtTime(k * 0.05, now, 2);
+    if (k <= 0.01) { if (bv.g.gain.value < 0.001) { for (const o of bv.os) o.stop(); this.bloodV = null; } return; }
+    bv.t -= dt; if (bv.t <= 0) { bv.t = 1.7 + Math.random() * 0.4; this.tone(62, 38, 0.22, 0.07 * k, 'sine', 0, this.amb, 0, 0.005); this.tone(58, 36, 0.26, 0.05 * k, 'sine', 0.24, this.amb, 0, 0.005); }
+  }
 }

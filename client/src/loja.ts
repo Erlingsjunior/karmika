@@ -1,4 +1,4 @@
-/* Tesouro de Marghar: a loja do jogo (dinheiro real, por Pix).
+/* Shop: a loja do jogo (dinheiro real, por Pix). Botão no menu de baixo (T) e a loja da Elowen em Askavik.
    Regra de ouro: conforto e beleza, nunca força. Premium não dá atributo; as peças com brasão são as mesmas da Tecelagem Real
    (que também vende por ouro), presas ao nível 30 e só para quem escolheu o lado.
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
@@ -40,42 +40,46 @@ function art(f: Fac, slot: 'cape' | 'shield' | 'relic') {
 }
 const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#c9a0ff"/><circle cx="16" cy="16" r="1.8" fill="#140a1e"/><path d="M16 2v4M16 26v4M4 6l3 3M28 6l-3 3" stroke="#e6c46a" stroke-width="1.2"/></svg>`;
 
+export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
-  isPremium: () => boolean; setPremium: (v: boolean) => void; fac: () => Fac | null; lvl: () => number;
-  owns: (uniq: string) => boolean; grant: (f: Fac, slots: ('cape' | 'shield' | 'relic')[]) => number; log: (t: string, c?: string) => void; dev: boolean;
+  isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
+  owns: (uniq: string) => boolean; deliver: (subj: string, text: string, att: Deliv[]) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
-  let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false;
-  const UNTIL = 'karmika.premium.until';
-  const until = () => { try { return +(localStorage.getItem(UNTIL) || 0); } catch { return 0; } };
+  let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
+  const until = ctx.until;
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
     return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>O Premium deixa o dia a dia mais leve. <b>Nunca dá força:</b> nada de dano, vida, XP ou drop a mais. Um jogador free com o mesmo tempo de jogo luta de igual para igual.</p>
-      ${on ? `<p class="lj-on">✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. Comprar de novo soma dias.</p>` : ''}</div></div>
+      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}A compra chega como um <b>Selo de Marghar</b> na sua caixa de correio: use para ativar (soma dias) ou venda a outro jogador.</p></div></div>
       <ul class="lj-perks">${PREM_PERKS.map(([i, t]) => `<li><span>${i}</span>${t}</li>`).join('')}</ul>
       <div class="lj-plans">${PREM_PLANS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small><small class="lj-pm">${brl(p.brl / (p.days! / 30))} por mês</small></button>`).join('')}</div>
       <small class="lj-note">Ao acabar, nada se perde: as bolsas Premium ficam lacradas com tudo dentro. Também dá para ativar com o Selo de Marghar comprado por ouro no balcão.</small>`;
   }
   function facCard() {
-    const f = ctx.fac(), lv = ctx.lvl();
-    if (!f || lv < FAC_LVL) return `<div class="lj-lock"><div class="lj-two"><img src="${crestURL('fio')}" alt=""><span>ou</span><img src="${crestURL('desf')}" alt=""></div>
-      <h3>Os brasões ainda não existem para você</h3><p>Manto, escudo e relíquia com brasão são tecidos só para quem jurou um lado. A escolha entre ${FAC.fio.name} e ${FAC.desf.name} acontece no nível ${FAC_LVL}.${f ? '' : ' Você ainda não escolheu.'}</p><small>${lv < FAC_LVL ? `Você está no nível ${lv}.` : ''}</small></div>`;
-    const F = FAC[f];
-    return `<div class="lj-hero ${f}"><img class="lj-crest" src="${crestURL(f)}" alt=""><div><h3>${F.name}</h3><p class="lj-motto">“${F.motto}”</p><p>As mesmas peças da ${f === 'fio' ? 'Tecelagem Real do Fio' : 'Tecelagem dos Desfiados'}, em Askavik. Ninguém mais sabe fazê-las: nenhum jogador consegue fabricar. Os atributos ficam no nível ${FAC_LVL}: com o tempo viram mais nobreza do que luta.</p></div></div>
-      <div class="lj-items">${FAC_PRODS.map((p) => { const own = p.slots!.every((s) => ctx.owns(`${f}_${s}`)), gold = p.slots!.reduce((a, s) => a + FAC_PRICE[s], 0);
-        return `<div class="lj-item ${f} ${p.id === 'all' ? 'bundle' : ''} ${own ? 'own' : ''}">${p.tag ? `<em>${p.tag}</em>` : ''}<div class="lj-art">${p.id === 'all' ? `<div class="lj-trio">${p.slots!.map((s) => art(f, s)).join('')}</div>` : art(f, p.slots![0])}</div>
+    const mine = ctx.fac(), lv = ctx.lvl(); if (!sideSet) side = mine ?? 'fio';
+    const f = side, F = FAC[f], can = mine === f && lv >= FAC_LVL;
+    const warn = can ? '' : `<p class="lj-warnf">${mine && mine !== f ? `Você jurou ${FAC[mine].name}.` : !mine ? `Você ainda não escolheu um lado${lv < FAC_LVL ? ` (a escolha vem no nível ${FAC_LVL})` : ''}.` : `Você está no nível ${lv}.`} Pode comprar, guardar ou vender estas peças, mas <b>só veste quem jurou ${F.name}, a partir do nível ${FAC_LVL}</b>.</p>`;
+    return `<div class="lj-side"><button data-side="fio" class="${f === 'fio' ? 'on fio' : ''}"><img src="${crestURL('fio')}" alt="">${FAC.fio.name}${mine === 'fio' ? ' <small>seu lado</small>' : ''}</button><button data-side="desf" class="${f === 'desf' ? 'on desf' : ''}"><img src="${crestURL('desf')}" alt="">${FAC.desf.name}${mine === 'desf' ? ' <small>seu lado</small>' : ''}</button></div>
+      <div class="lj-hero ${f}"><img class="lj-crest" src="${crestURL(f)}" alt=""><div><h3>${F.name}</h3><p class="lj-motto">“${F.motto}”</p><p>As mesmas peças da ${f === 'fio' ? 'Tecelagem Real do Fio' : 'Tecelagem dos Desfiados'}, em Askavik. Nenhum jogador consegue fabricar. Os atributos ficam no nível ${FAC_LVL}: com o tempo viram mais nobreza do que luta. A compra chega na sua caixa de correio.</p>${warn}</div></div>
+      <div class="lj-items">${FAC_PRODS.map((p) => { const own = p.slots!.every((sl) => ctx.owns(`${f}_${sl}`)), gold = p.slots!.reduce((a, sl) => a + FAC_PRICE[sl], 0);
+        return `<div class="lj-item ${f} ${p.id === 'all' ? 'bundle' : ''}">${p.tag ? `<em>${p.tag}</em>` : ''}<div class="lj-art">${p.id === 'all' ? `<div class="lj-trio">${p.slots!.map((sl) => art(f, sl)).join('')}</div>` : art(f, p.slots![0])}</div>
+          <span class="lj-rar ${p.slots!.length === 1 && p.slots![0] === 'relic' ? 'relic' : 'unique'}">${p.id === 'all' ? 'ÚNICO + RELÍQUIA' : p.slots![0] === 'relic' ? 'RELÍQUIA' : 'ÚNICO'} · nível ${FAC_LVL}</span>
           <b>${p.id === 'all' ? p.name : NAMES[f][p.slots![0]]}</b><small>${p.desc}</small>
-          <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : ''}${own ? '<i>✓ você já tem</i>' : `<button data-buy="${p.id}">Comprar</button>`}</div>
+          <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : ''}<button data-buy="${p.id}">Comprar</button>${own ? '<i>✓ você já tem</i>' : ''}</div>
           <small class="lj-gold">ou 🪙 ${gold.toLocaleString('pt-BR')} na tecelagem</small></div>`; }).join('')}</div>`;
   }
+  /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
+      Quando o Pix ligar, é só trocar para false. */
+  const BETA_FREE = true;
   function checkout() {
     if (!cart) return '';
-    const f = ctx.fac(), what = cart.kind === 'prem' ? `Premium · ${cart.name}` : cart.id === 'all' ? `${cart.name} · ${FAC[f!].short}` : NAMES[f!][cart.slots![0]];
+    const f = side, what = cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
     return `<div class="lj-co"><div class="lj-copn"><h3>${paid ? '✦ Pagamento aprovado' : 'Pagar com Pix'}</h3>
-      ${paid ? `<p>${what} já é seu. ${cart.kind === 'fac' ? 'As peças estão na sua mochila.' : 'A Bênção de Marghar está ativa.'}</p><button data-co-ok>Fechar</button>`
+      ${paid ? `<p>${what} já é seu. Chega na sua <b>caixa de correio</b> em instantes: retire em qualquer povoado.${cart.kind === 'prem' ? ' Use o selo para ativar o Premium, ou venda a outro jogador.' : ''}</p><button data-co-ok>Fechar</button>`
       : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div><div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
-        <p class="lj-warn">O pagamento por Pix liga junto com o servidor. Por enquanto <b>nada é cobrado</b> e este QR Code não paga nada.</p>
-        <div class="lj-cobtn"><button data-co-x>Voltar</button>${ctx.dev ? '<button data-co-sim class="dev">Simular pagamento aprovado (DEV)</button>' : ''}</div>`}</div></div>`;
+        <p class="lj-warn">${BETA_FREE ? 'Fase de testes: o Pix ainda não está ligado e <b>nada é cobrado</b>. Clique em <b>Receber grátis</b> para testar a compra de verdade (chega no correio).' : 'O pagamento por Pix liga junto com o servidor. Por enquanto <b>nada é cobrado</b> e este QR Code não paga nada.'}</p>
+        <div class="lj-cobtn"><button data-co-x>Voltar</button>${BETA_FREE ? '<button data-co-sim class="gold">✦ Receber grátis (teste)</button>' : ctx.dev ? '<button data-co-sim class="dev">Simular pagamento aprovado (DEV)</button>' : ''}</div>`}</div></div>`;
   }
   /* um QR desenhado de enfeite (não é um código válido) */
   function qr() { let s = ''; const on = (x: number, y: number) => ((x * 7 + y * 13 + x * y) % 5) < 2; const fin = (x: number, y: number) => `<path d="M${x} ${y}h7v7h-7z M${x + 1} ${y + 1}v5h5v-5z" fill="#140e08" fill-rule="evenodd"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#140e08"/>`;
@@ -83,26 +87,28 @@ export function createLoja(ctx: {
     return `<rect width="21" height="21" fill="#f3ead6"/>${s}${fin(0, 0)}${fin(14, 0)}${fin(0, 14)}`; }
   function render() {
     if (!open) { el.style.display = 'none'; return; }
-    el.innerHTML = `<div class="pn ljpn"><h2><span class="lj-t">${EYE}Tesouro de Marghar</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
+    el.innerHTML = `<div class="pn ljpn"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
       <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button disabled title="Em breve: aparências por cultura, montarias e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'prem' ? premCard() : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex';
   }
   function approve() {
     if (!cart) return;
-    if (cart.kind === 'prem') { const base = Math.max(Date.now(), until()); try { localStorage.setItem(UNTIL, String(base + cart.days! * 864e5)); } catch { /* */ } ctx.setPremium(true); ctx.log(`✦ Premium: +${cart.days} dias da Bênção de Marghar.`, '#c9a0ff'); }
-    else { const f = ctx.fac(); if (!f) return; const n = ctx.grant(f, cart.slots!); ctx.log(`⚑ ${n} peça${n > 1 ? 's' : ''} com o brasão de ${FAC[f].name} na mochila.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
+    if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }]); ctx.log(`📮 Selo de Marghar (${cart.name}) a caminho da sua caixa de correio.`, '#c9a0ff'); }
+    else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })));
+      ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da sua caixa de correio.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
     paid = true; render();
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
     if (t.closest('[data-lx]') || t === el) { api.close(); return; }
     const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac'; render(); return; }
+    const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
     const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS].find((p) => p.id === b) ?? null; paid = false; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
     if (t.closest('[data-co-sim]')) approve(); });
   const api = {
     get isOpen() { return open; },
-    toggle(which?: 'prem' | 'fac') { if (which) tab = which; open = which ? true : !open; cart = null; paid = false; render(); },
+    toggle(which?: 'prem' | 'fac') { if (which) tab = which; open = which ? true : !open; cart = null; paid = false; sideSet = false; render(); },
     close() { open = false; cart = null; render(); }, refresh() { if (open) render(); },
   };
   return api;

@@ -87,7 +87,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     const head = `<div class="in-logo"><h1>KARMIKA</h1><p>Toda escolha importa. Você já fez a sua.</p></div>`;
     let body = '';
     if (step === 'home') body = `<div class="in-menu">
-        <button data-i="find" class="big">🜂 Encontrar servidor<small>entrar no mundo de outro Caminhante com o convite</small></button>
+        <button data-i="find" class="big">✧ Encontrar servidor<small>entrar no mundo de outro Caminhante com o convite</small></button>
         ${o.desk ? `<button data-i="host">⚑ Abrir meu servidor<small>esta máquina vira o mundo; mande o convite para os amigos</small></button>` : ''}
         <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>

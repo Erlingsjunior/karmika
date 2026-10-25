@@ -1071,7 +1071,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     scrub(a, p) { act = { a, t: p * DUR[a], dur: DUR[a] }; },
     act(a, force) {
       if (!force && act && act.a !== 'dash' && act.a !== 'hit' && a !== 'hit' && a !== 'dash') {
-        const canCancel = COMBO.has(act.a) && COMBO.has(a) && act.t / act.dur > 0.62;
+        /* magias e golpes especiais têm prioridade: cortam o ataque básico na hora (a resposta tem que ser imediata) */
+        const canCancel = (COMBO.has(act.a) && COMBO.has(a) && act.t / act.dur > 0.62) || (COMBO.has(act.a) && !COMBO.has(a));
         if (!canCancel) return false;
       }
       if (a === 'dash') dashLeadL = Math.sin(phase) >= 0;

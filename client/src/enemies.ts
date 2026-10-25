@@ -7,7 +7,7 @@ import { mergeStatic } from './merge3d';
 import { fine } from './dual3d';
 import { rng } from './world';
 
-export interface EnemyCtx {
+export interface EnemyCtx { outMul?: () => number;
   scene: THREE.Scene;
   /** explosão visual da magia inimiga no chão */
   spellFx?(x: number, z: number, col: number, r: number): void;
@@ -492,6 +492,7 @@ export function createEnemies(ctx: EnemyCtx) {
   function hurt(e: Enemy, n: number, from: THREE.Vector3, knock = 3): boolean {
     if (!e.alive) return false;
     if ((e as Enemy & { ally?: boolean }).ally && !byUnit) return false;
+    if (!byUnit && ctx.outMul) n = Math.max(1, Math.round(n * ctx.outMul()));
     e.hp -= n; e.flash = 1;
     const nk = (e as NetE).net; if (nk && ctx.sync) { ctx.sync.hit(nk, n); if (e.hp <= 0) ctx.sync.die(nk); }
     const dx = e.pos.x - from.x, dz = e.pos.z - from.z, l = Math.hypot(dx, dz) || 1;
