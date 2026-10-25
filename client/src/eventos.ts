@@ -257,8 +257,8 @@ const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453
     Como 2 × 11h17 = 22h34, cada um cai cerca de 1h26 mais cedo a cada dia: em uma semana passa por todas as horas. */
 const G_STEP = (11 * 60 + 17) * 60 * 1000, G_BASE = 1792000000000 + 37 * 60 * 1000, G_LEN = { lua: 80 * 60 * 1000, aurora: 90 * 60 * 1000 };
 const G_INFO = {
-  lua: { id: 'lua', name: 'Lua de Sangue', icon: '🌕', text: 'A lua cheia sangra no céu. Patrulhas são atacadas em todas as estradas e os lobisomens ficam mais fortes e vêm em maior número. Para quem tem o Faro da Lua ligado: +15% de XP.', color: '#ff6a5a' },
-  aurora: { id: 'aurora', name: 'Dia da Aurora', icon: '☀', text: 'É o dia santo de Auréon: romarias atravessam as vilas de karma ruim, e todo ato de luz nos eventos vale 50% a mais de karma.', color: '#ffe08a' },
+  lua: { id: 'lua', name: 'Lua de Sangue', icon: '🌕', text: 'A lua cheia sangra no céu e o mundo fica rubro. Vampiros, lobisomens, bruxos e toda alma de karma baixo ficam mais fortes; patrulhas são atacadas em todas as estradas. Faro da Lua ligado: +15% de XP.', color: '#ff6a5a' },
+  aurora: { id: 'aurora', name: 'Dia da Aurora', icon: '☀', text: 'Dia santo de Auréon: brisa morna, brilhos caindo do céu e um coral ao longe. Paladinos, magos e toda alma de karma alto ficam mais fortes; todo ato de luz nos eventos vale 50% a mais de karma.', color: '#ffe08a' },
 };
 const gCache = new Map<number, { start: number; end: number; kind: 'lua' | 'aurora' }>();
 function gWindow(k: number) { let w = gCache.get(k); if (w) return w; const kind = (k % 2 === 0 ? 'lua' : 'aurora') as 'lua' | 'aurora', t0 = G_BASE + k * G_STEP; let st = t0;

@@ -2662,6 +2662,19 @@ function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 
   if (eyeNpc && performance.now() < eyeNpcT - 2500) return { ...rel(eyeNpc.clone().setY(eyeNpc.y + 1.6)), kind: 'npc' };
   return null;
 }
+/* DESEMPENHO (25/10): a cena tinha ~70 luzes pontuais acesas (tochas, janelas, braseiros, lanternas). No WebGL cada pixel
+   iluminado calcula TODAS as luzes, nas duas passadas do desenho — era isso que segurava o FPS em máquina forte.
+   Agora só as LUZES_ATIVAS mais perto da câmera ficam acesas; o número é sempre o mesmo (nada de recompilar sombreador)
+   e quem está longe nem se nota, porque a luz dela já não chegava na tela. A luz do herói e as de magia ficam sempre. */
+const LUZES_ATIVAS = 14;
+let poolT = 0, poolList: THREE.PointLight[] = [], poolScanT = 0;
+function lightPool(dt: number) {
+  poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean }).keep) poolList.push(l); }); }
+  poolT -= dt; if (poolT > 0) return; poolT = 0.2;
+  const cxp = camX, czp = camZ, v = new THREE.Vector3();
+  const scored = poolList.map((l) => { l.getWorldPosition(v); let up = true; for (let p: THREE.Object3D | null = l.parent; p; p = p.parent) if (!p.visible) { up = false; break; } return { l, d: up ? Math.hypot(v.x - cxp, v.z - czp) - l.intensity * 0.05 : 1e9 }; }).sort((a, b) => a.d - b.d);
+  scored.forEach((e, i) => { const on = i < LUZES_ATIVAS; if (e.l.visible !== on) e.l.visible = on; });
+}
 function frame() {
   if (bootFrames < 12 && ++bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
   try { frameBody(); } catch (e) { kshow('ERRO no frame: ' + ((e as Error).stack || e)); return; }
@@ -2913,6 +2926,7 @@ function frameBody() {
   if (full !== wasFull) { wasFull = full; hero.setAura(full); }
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
+  lightPool(rawDt);
   atmos.update(rawDt, t, heroPos, aurK, luaK, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);
