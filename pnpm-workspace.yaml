@@ -1,0 +1,9 @@
+packages:
+  - client
+  - shared
+  - desktop
+
+# pacotes que podem rodar script de instalação (o Electron baixa o próprio binário assim)
+onlyBuiltDependencies:
+  - esbuild
+  - electron

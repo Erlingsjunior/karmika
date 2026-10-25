@@ -1,0 +1,15 @@
+{
+  "name": "karmika",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter karmika-client dev",
+    "build": "pnpm --filter karmika-client build",
+    "typecheck": "pnpm --filter karmika-client typecheck",
+    "desktop:dev": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop start",
+    "desktop:dist": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop dist",
+    "sala": "node desktop/src/server.cjs",
+    "desktop:dist:mac": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop dist:mac"
+  }
+}

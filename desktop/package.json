@@ -1,0 +1,95 @@
+{
+  "name": "karmika-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Karmika — app de desktop",
+  "main": "out/main.cjs",
+  "author": "Erling",
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs",
+    "dev": "node scripts/bundle.mjs && cross-env KARMIKA_DEV=1 electron .",
+    "start": "node scripts/bundle.mjs && electron .",
+    "dist": "node scripts/bundle.mjs && electron-builder --win nsis",
+    "server": "node src/server.cjs",
+    "dist:mac": "node scripts/bundle.mjs && electron-builder --mac dmg zip"
+  },
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "@achingbrain/nat-port-mapper": "^4.0.5",
+    "ws": "^8.22.0"
+  },
+  "build": {
+    "appId": "com.karmika.game",
+    "productName": "Karmika",
+    "copyright": "Erling",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../client/dist",
+        "to": "game"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Karmika",
+      "runAfterFinish": true,
+      "installerLanguages": [
+        "pt_BR"
+      ],
+      "language": "1046"
+    },
+    "asar": true,
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.role-playing-games",
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0"
+    },
+    "dmg": {
+      "title": "Karmika",
+      "artifactName": "Karmika-${version}-mac.${ext}"
+    }
+  }
+}

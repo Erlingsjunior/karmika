@@ -1,0 +1,24 @@
+# Gera o instalador do Karmika para Mac (.dmg universal: chip M e Intel) num Mac do GitHub.
+# Como usar: GitHub → aba Actions → "Karmika para Mac" → Run workflow. No fim, baixe o artefato "Karmika-mac".
+name: Karmika para Mac
+on: workflow_dispatch
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm desktop:dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Karmika-mac
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip

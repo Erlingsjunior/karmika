@@ -1,0 +1,34 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#222}canvas{display:block}</style></head><body><canvas id="c" width="1600" height="800"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { createCharacter } from '/src/characters.ts';
+import { attachSkin } from '/src/skin3d.ts';
+const cv = document.getElementById('c'); const r = new THREE.WebGLRenderer({ canvas: cv, antialias: false }); r.setSize(1600, 800, false); r.autoClear = false;
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x30343a);
+sc.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.6)); const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(3, 5, 4); sc.add(d);
+const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 50); cam.layers.enableAll();
+const mode = new URLSearchParams(location.search).get('m') || 'grid';
+ window.__curlAx = new URLSearchParams(location.search).get('ax') || 'x'; for (const k of ['bladeSg', 'palmSg', 'shSg', 'mrel', 'curlSg', 'twY', 'swap', 'rollL', 'rollR', 'norel', 'diag']) { const v = new URLSearchParams(location.search).get(k); if (v) window['__' + k] = +v; }
+const COLS = +(new URLSearchParams(location.search).get('cols') || 6); if (new URLSearchParams(location.search).get('noshield')) window.__noshield = 1; const PO = (new URLSearchParams(location.search).get('poses') || 'idle,walk,run,combat,combo1,combo2,combo4,rush,slam,cast,guard,ride').split(',');
+const heroes = []; window.__heroes = heroes;
+const art = new URLSearchParams(location.search).get('art') !== '0';
+for (let i = 0; i < PO.length; i++) { const h = createCharacter('nordic', { hair: 0xe8dcc0, skin: 0xd9b08a }); sc.add(h.root); heroes.push(h); if (window.__noshield) h.setGear({ shield: null }); { const gw = new URLSearchParams(location.search).get('gwp'); if (gw) h.setGear({ weapon: { base: gw, rarity: 'normal' } }); } { const gs = new URLSearchParams(location.search).get('gsh'); if (gs) h.setGear({ shield: { base: gs, rarity: new URLSearchParams(location.search).get('grar') || 'magico' } }); } { const q = new URLSearchParams(location.search); const gh = q.get('ghelm'), gc = q.get('gcape'), gp = q.get('gpau'); if (gh || gc || gp) h.setGear({ helm: gh ? { base: gh, rarity: 'rare' } : undefined, cape: gc ? { base: gc.split(',')[i % gc.split(',').length], rarity: 'rare' } : undefined, shoulders: gp ? { base: gp.split(',')[i % gp.split(',').length], rarity: 'epic' } : undefined }); } if (art) await attachSkin(h, { fbx: '/models/heroes/NordicWarrior/warrior_rigged.fbx', tex: new URLSearchParams(location.search).get('tex') || '/models/heroes/NordicWarrior/warrior_base.jpg' }).then((x) => { h._tick = x?.tick; }); }
+window.__ready = false;
+async function run() {
+  const cols = COLS, rows = Math.ceil(PO.length / cols), cw = 1600 / cols, ch = 800 / rows;
+  const dt = 1 / 60; const T = +(new URLSearchParams(location.search).get('t') || 0.4);
+  for (let i = 0; i < PO.length; i++) { const h = heroes[i], p = PO[i]; let mps = 0; if (p === 'walk') mps = 1.5; if (p === 'run' || p === 'crun') mps = 6; if (p === 'cidle' || p === 'crun') h.combat = true; if (['kick', 'lowcut', 'plant', 'breath', 'skyraise', 'stance'].includes(p)) h.combat = true; if (p === 'combat' || p === 'parry' || p === 'dodge' || p === 'block' || p.startsWith('combo') || p === 'rush' || p === 'slam' || p === 'guard') h.combat = true; if (p === 'guard') h.guard = true; if (p === 'ride') h.riding = true;
+    for (let k = 0; k < 60; k++) h.update(dt, k * dt, mps, null);
+    const TOOLB = { chop: ['Machado de Lenhador', 0x8a929e], mine: ['Picareta', 0xdde3ec], skin: ['Faca de Caça', 0xdde3ec], herb: ['Alicate de Ervas', 0xe8eef6], kneel: ['Faca de Caça', 0xdde3ec] };
+    if (TOOLB[p]) { h.holdTool = true; h.setGear({ weapon: { base: TOOLB[p][0], rarity: 'normal', tint: TOOLB[p][1] } }); if (p === 'skin' || p === 'herb' || p === 'kneel') { h.kneel = true; for (let k = 0; k < 90; k++) h.update(dt, 1 + k * dt, 0, null); } }
+    if (['combo1', 'combo2', 'combo4', 'rush', 'slam', 'cast', 'parry', 'dodge', 'block', 'chop', 'mine', 'skin', 'herb', 'kick', 'lowcut', 'plant', 'breath', 'skyraise', 'stance'].includes(p)) { h.act(p); }
+    const TS = (new URLSearchParams(location.search).get('ts') || '').split(',').filter(Boolean).map(Number); const steps = Math.round((TS[i] ?? T) / dt); for (let k = 0; k < steps; k++) h.update(dt, 1 + k * dt, mps, null);
+    h._tick?.(); }
+  r.clear();
+  for (let i = 0; i < PO.length; i++) { heroes.forEach((h, j) => h.root.visible = j === i); const cx = i % cols, cy = Math.floor(i / cols);
+    const yaw = +(new URLSearchParams(location.search).get('yaw') || 0.6); const DS = +(new URLSearchParams(location.search).get('dist') || 5.2), TY = +(new URLSearchParams(location.search).get('ty') || 0.95); const EL = +(new URLSearchParams(location.search).get('el') || 0.31); cam.position.set(Math.sin(yaw) * DS * Math.cos(EL), TY + Math.sin(EL) * DS, Math.cos(yaw) * DS * Math.cos(EL)); cam.lookAt(0, TY, 0); cam.aspect = cw / ch; cam.updateProjectionMatrix();
+    r.setViewport(cx * cw, 800 - (cy + 1) * ch, cw, ch); r.setScissor(cx * cw, 800 - (cy + 1) * ch, cw, ch); r.setScissorTest(true); r.render(sc, cam); }
+  window.__ready = true;
+}
+setTimeout(run, 2500);
+</script></body></html>

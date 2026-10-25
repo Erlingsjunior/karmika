@@ -1,0 +1,2 @@
+Coloque aqui os modelos .glb
+Exemplo: client/public/models/bestiary/lobo.glb
