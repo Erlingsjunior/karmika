@@ -704,6 +704,11 @@
   /* troca de equipamento: some meio segundo e volta brilhando */
   #char .eqs.swapout { opacity: 0 !important; transform: scale(.55); transition: opacity .12s, transform .12s; }
   #char .eqs.swapin { animation: eqin .6s ease-out; } @keyframes eqin { 0% { opacity: 0; transform: scale(.6); } 55% { opacity: 1; transform: scale(1.18); box-shadow: 0 0 18px var(--rc, #ffe08a), inset 0 0 10px var(--rc, #ffe08a); } 100% { transform: scale(1); } }
+  /* nome da entrada de masmorra: letra nítida, em pedra e ouro, sobre a entrada quando você chega perto */
+  .dgname { position: fixed; z-index: 4; display: none; pointer-events: none; transform: translate(-50%, -100%); text-align: center; white-space: nowrap; zoom: var(--ui); }
+  .dgname b { display: block; font: 700 17px Cinzel, Georgia, serif; letter-spacing: .14em; color: #f2d79a; text-shadow: 0 0 10px rgba(255,190,90,.35), 0 2px 3px #000, 0 0 2px #000; }
+  .dgname small { display: inline-block; margin-top: 3px; padding: 1px 10px; font: italic 11.5px Georgia, serif; color: #d8c8a8; background: linear-gradient(90deg, transparent, rgba(14,10,6,.7) 18%, rgba(14,10,6,.7) 82%, transparent); text-shadow: 0 1px 2px #000; }
+  .dgname.grp b { color: #ffb8a0; text-shadow: 0 0 10px rgba(255,80,50,.4), 0 2px 3px #000; } .dgname::after { content: ''; display: block; margin: 4px auto 0; width: 1px; height: 18px; background: linear-gradient(#d9a24f, transparent); }
   #evt { position: fixed; right: 14px; top: 296px; width: 252px; z-index: 6; display: none; pointer-events: none; font-family: Georgia, serif; color: #f0e6cc; background: linear-gradient(rgba(26,18,12,.92), rgba(14,10,8,.88)); border: 1px solid #6a4a20; border-radius: 8px; padding: 8px 10px 9px; box-shadow: 0 3px 14px rgba(0,0,0,.6); transform: scale(var(--ui, 1)); transform-origin: 100% 0; }
   #evt .et { border-bottom: 1px solid rgba(201,162,74,.3); padding-bottom: 5px; margin-bottom: 6px; } #evt .et b { display: block; font: 700 14px Cinzel, Georgia, serif; color: var(--c); text-shadow: 0 0 8px rgba(0,0,0,.8); } #evt .et small { font-size: 11px; color: #bba; }
   #evt .eh { font-size: 12px; margin: 2px 0; color: #e8dcc0; } #evt .es { font: 700 12px Georgia, serif; margin: 0 0 5px; } #evt .es.luz { color: #ffe08a; } #evt .es.sombra { color: #c9a0ff; }

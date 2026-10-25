@@ -4,6 +4,7 @@
  *    e o salão do chefe, com mecânicas que pedem tanque, cura e dano.
  *  - Em grupo: quem é do mesmo grupo cai na MESMA cópia (os monstros têm as mesmas chaves de rede); cada um rola o seu saque. */
 import * as THREE from 'three';
+import { buildEntrance, flickerEntrance, type EntranceFx } from './entradas';
 import { buildDungeon, type DungeonFloor, type DgTheme } from './dungeon3d';
 import { lvlScale } from './enemies';
 import { genGear, type Gear, type Slot } from './loot';
@@ -97,6 +98,7 @@ export interface DgCtx {
     spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[]): void; xpNeed(): number };
   particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   audio: { boom(): void; chime(): void; coins(n: number): void; spell(k: 'shock' | 'fire' | 'ice' | 'arcane' | 'earth' | 'holy'): void };
+  /** posição na tela de um ponto do mundo (para o nome da entrada, em letra nítida) */ project?(p: THREE.Vector3): { x: number; y: number } | null;
   heroPos(): THREE.Vector3; partySize(): number; /** nível médio do grupo (ou o seu, sozinho) */ partyLvl?(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
   onClear?(d: DgDef, first: boolean): void;
 }
@@ -104,6 +106,7 @@ type E = DgCtx['game']['enemies']['list'][number] & { tag?: string; own?: number
 
 export function createMasmorras(ctx: DgCtx) {
   const T = ctx.T;
+  const efx: { x: number; z: number; fx: EntranceFx; el: HTMLElement; y: number }[] = []; /* (no topo: as entradas são montadas logo abaixo) */
   /* ---------- entradas no mundo ---------- */
   const busy = new Set<string>(); for (const p of ctx.city.props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(x + ',' + y);
   const target = (nm: string) => ctx.city.pois.find((p) => p.name === nm) ?? ctx.city.settlements.find((s) => s.name === nm) ?? null;
@@ -120,45 +123,12 @@ export function createMasmorras(ctx: DgCtx) {
     ctx.city.pois.push({ name: d.name, x: at.x, y: at.y + 1, biome: 'rock' });
   }
   /** a boca da masmorra: rochas em arco e um buraco escuro (caverna), um alçapão de pedra (subsolo) ou vigas de mina */
+  /** a entrada no mundo (entradas.ts): escadaria que desce, luz, placa entalhada e o que o tema pede */
   function mouth(d: DgDef, x: number, z: number) {
-    const g = new THREE.Group(), y = ctx.heightAt(x, z); g.position.set(x, y, z); ctx.scene.add(g);
-    const rock = new THREE.MeshToonMaterial({ color: d.theme === 'gelo' ? 0x8aa8c0 : d.theme === 'magma' ? 0x3a2e2e : 0x5a5650 });
-    const dark = new THREE.MeshBasicMaterial({ color: 0x050307 });
-    const add = (geo: THREE.BufferGeometry, m: THREE.Material, px: number, py: number, pz: number) => { const k = new THREE.Mesh(geo, m); k.position.set(px, py, pz); k.castShadow = true; g.add(k); return k; };
-    if (d.theme === 'cripta') { // mausoléu maldito: pedra escura, frontão, porta com grade de ferro entreaberta, velas e uma luz vermelha lá dentro
-      const st = new THREE.MeshToonMaterial({ color: 0x9a96a2, emissive: 0x0c0a10 }), stD = new THREE.MeshToonMaterial({ color: 0x6e6a78, emissive: 0x08060c }), iron = new THREE.MeshToonMaterial({ color: 0x2a2a30 });
-      const big = d.kind === 'grupo' ? 1.35 : 1;
-      add(new THREE.BoxGeometry(5.2 * big, 0.4, 4.4 * big), stD, 0, 0.2, -0.6); // plinto
-      add(new THREE.BoxGeometry(4.2 * big, 3.2 * big, 3.4 * big), st, 0, 0.4 + 1.6 * big, -0.9);
-      const roofS = new THREE.Shape(); roofS.moveTo(-2.5 * big, 0); roofS.lineTo(0, 1.5 * big); roofS.lineTo(2.5 * big, 0); roofS.closePath();
-      const rg = new THREE.ExtrudeGeometry(roofS, { depth: 3.8 * big, bevelEnabled: false }); rg.translate(0, 0, -1.9 * big); const rf = add(rg, stD, 0, 0.4 + 3.2 * big, -0.9);
-      void rf; add(new THREE.BoxGeometry(5.0 * big, 0.25, 0.4), stD, 0, 0.4 + 3.2 * big, 0.85 * big); // cornija
-      for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.22, 0.26, 3.0 * big, 8), st, sx * 1.6 * big, 0.4 + 1.5 * big, 0.95 * big); add(new THREE.BoxGeometry(0.6, 0.25, 0.6), stD, sx * 1.6 * big, 0.4 + 3.05 * big, 0.95 * big); }
-      add(new THREE.BoxGeometry(1.6 * big, 2.3 * big, 0.1), dark, 0, 0.4 + 1.15 * big, 0.82 * big); // a porta: escuro
-      for (let i = 0; i < 6; i++) { const bar = add(new THREE.CylinderGeometry(0.03, 0.03, 2.2 * big, 5), iron, -0.65 * big + i * 0.26 * big, 0.4 + 1.1 * big, 0.95 * big + (i < 3 ? 0.25 : 0)); bar.rotation.y = 0; } // grade, metade aberta
-      const skull = add(new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshToonMaterial({ color: 0xd8d0b8 }), 0, 0.4 + 2.75 * big, 0.88 * big); skull.scale.set(1, 0.9, 0.7);
-      const red = new THREE.PointLight(0xff3a2a, 6, 7, 1.6); red.position.set(0, 1.2, 0.3); g.add(red);
-      for (let k = 0; k < 6; k++) { const cx = (k - 2.5) * 0.45, cz = 1.7 + (k % 2) * 0.25; add(new THREE.CylinderGeometry(0.05, 0.05, 0.25 + (k % 3) * 0.12, 6), new THREE.MeshToonMaterial({ color: 0xe8e0c8 }), cx, 0.55, cz); add(new THREE.ConeGeometry(0.04, 0.1, 5), new THREE.MeshBasicMaterial({ color: 0xffc060 }), cx, 0.78 + (k % 3) * 0.06, cz); }
-      for (const sx of [-1, 1]) { const ob = add(new THREE.ConeGeometry(0.35, 2.4, 4), stD, sx * 3.6 * big, 1.2, 0.6); ob.rotation.z = sx * 0.12; } // obeliscos tortos
-    } else if (d.kind === 'subsolo') {
-      add(new THREE.BoxGeometry(3.2, 0.3, 3.2), rock, 0, 0.15, 0); add(new THREE.BoxGeometry(2.2, 0.32, 2.2), dark, 0, 0.17, 0);
-      for (let i = 0; i < 4; i++) add(new THREE.BoxGeometry(2.0, 0.18, 0.45), rock, 0, 0.05 - i * 0.18, -0.6 + i * 0.4).visible = i === 0;
-      const slab = add(new THREE.BoxGeometry(2.3, 0.2, 1.4), rock, 1.6, 0.5, -0.4); slab.rotation.z = 0.5;
-      for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.4, 1.2, 0.3), rock, s * 1.9, 0.6, 1.4);
-    } else {
-      for (let i = 0; i < 7; i++) { const a = Math.PI * (i / 6), r = 2.2; const s = 0.9 + (i % 3) * 0.25; const k = add(new THREE.DodecahedronGeometry(s, 0), rock, Math.cos(a) * r, 0.4 + Math.sin(a) * r * 0.9, -0.3); k.rotation.set(i, i * 2, i); }
-      add(new THREE.CircleGeometry(1.9, 18, 0, Math.PI), dark, 0, 0.05, -0.05).scale.y = 1.25;
-      const back = add(new THREE.DodecahedronGeometry(2.6, 0), rock, 0, 1.2, -1.6); back.scale.set(1.3, 0.9, 0.8);
-      if (d.theme === 'mina') { const wm = new THREE.MeshToonMaterial({ color: 0x5a3a22 }); for (const s of [-1, 1]) add(new THREE.BoxGeometry(0.25, 2.6, 0.25), wm, s * 1.5, 1.3, 0.2); add(new THREE.BoxGeometry(3.4, 0.3, 0.3), wm, 0, 2.6, 0.2); }
-    }
-    for (const s of [-1, 1]) { const tx = s * 2.6, tz = 1.0; add(new THREE.CylinderGeometry(0.06, 0.08, 1.7, 6), new THREE.MeshToonMaterial({ color: 0x3a2414 }), tx, 0.85, tz);
-      add(new THREE.ConeGeometry(0.16, 0.42, 6), new THREE.MeshBasicMaterial({ color: d.kind === 'grupo' ? 0xff4a3a : 0xffb040 }), tx, 1.85, tz); }
-    // placa: nome e níveis
-    const c = document.createElement('canvas'); c.width = 256; c.height = 64; const q = c.getContext('2d')!; q.fillStyle = 'rgba(14,10,6,.85)'; q.fillRect(0, 0, 256, 64); q.strokeStyle = d.kind === 'grupo' ? '#ff6a5a' : '#c9a24a'; q.lineWidth = 3; q.strokeRect(2, 2, 252, 60);
-    q.fillStyle = '#ffe08a'; q.font = 'bold 18px Georgia'; q.textAlign = 'center'; q.fillText(d.name.length > 26 ? d.name.slice(0, 25) + '…' : d.name, 128, 27); q.fillStyle = d.kind === 'grupo' ? '#ff9a8a' : '#b9c6e0'; q.font = '14px Georgia';
-    q.fillText(`${d.kind === 'grupo' ? '⚔ Masmorra' : d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · ${d.players}`, 128, 50);
-    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, depthTest: false })); sp.renderOrder = 20; /* a placa nunca some atrás do telhado */ sp.scale.set(4, 1, 1); if (d.theme === 'cripta') sp.position.set(0, 2.9, 2.8); else sp.position.set(0, 4.2, 0.6); /* na cripta, a placa fica à frente da porta, na altura dos olhos */ g.add(sp);
-    ctx.fine(sp); return g;
+    const { g, fx } = buildEntrance({ name: d.name, kind: d.kind, theme: d.theme, players: d.players, scaled: true }, ctx.fine);
+    g.position.set(x, ctx.heightAt(x, z), z); g.rotation.y = Math.PI / 4; /* de frente para a câmera (que olha de 45°): a escada desce para dentro da tela */ ctx.scene.add(g);
+    const el = document.createElement('div'); el.className = 'dgname' + (d.kind === 'grupo' ? ' grp' : ''); el.innerHTML = `<b>${d.name}</b><small>${d.kind === 'grupo' ? '⚔ Masmorra' : d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · ${d.players} · acompanha o seu nível</small>`; document.body.appendChild(el);
+    efx.push({ x, z, fx, el, y: g.position.y }); return g;
   }
 
   /* ---------- a corrida (uma masmorra por vez) ---------- */
@@ -229,7 +199,12 @@ export function createMasmorras(ctx: DgCtx) {
     const tick = () => { t = (performance.now() - t0) / 1000; const k = Math.min(1, t / dur); f.scale.setScalar(Math.max(0.05, k)); (f.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.3 * k;
       if (k < 1) requestAnimationFrame(tick); else { ctx.scene.remove(m); ctx.scene.remove(f); then(); } }; tick();
   }
+  let flickT = 0;
   function update(dt: number) {
+    flickT += dt; { const hp = ctx.heroPos(); for (const e of efx) { const near = Math.abs(e.x - hp.x) < 45 && Math.abs(e.z - hp.z) < 45; if (near) flickerEntrance(e.fx, flickT);
+      /* o nome em letra nítida sobre a entrada, quando você chega perto (some dentro da masmorra) */
+      const dd = Math.hypot(e.x - hp.x, e.z - hp.z), sp = !run && dd < 22 && ctx.project ? ctx.project(new THREE.Vector3(e.x, e.y + 4.6, e.z)) : null;
+      if (sp) { e.el.style.display = 'block'; e.el.style.left = sp.x + 'px'; e.el.style.top = sp.y + 'px'; e.el.style.opacity = String(Math.min(1, (22 - dd) / 6)); } else if (e.el.style.display !== 'none') e.el.style.display = 'none'; } }
     if (!run) return; const R = run, b = R.boss; if (!b || R.done) return;
     if (!b.alive) { if (!R.done && b.hp <= 0) victory(); return; }
     const hp = ctx.heroPos(), dist = Math.hypot(hp.x - b.pos.x, hp.z - b.pos.z), engaged = b.state !== 'idle' && b.state !== 'return' && dist < 30;
