@@ -291,7 +291,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   function activate(L: Live) {
     if (L.spawned) return; L.spawned = true; const p = sitePos(L.site);
     L.herald = addActor(L, L.tpl.herald, p.x + 2, p.z + 2.5);
-    const el = document.createElement('div'); el.className = 'npc evh'; el.innerHTML = `<i class="qm">!</i><b>${L.tpl.herald.name}</b><small>${L.tpl.herald.role}</small>`; document.body.appendChild(el); L.heraldEl = el;
+    const el = document.createElement('div'); el.className = 'npc evh'; el.innerHTML = `<i class="qm">?</i><b>${L.tpl.herald.name}</b><small>${L.tpl.herald.role}</small>`; document.body.appendChild(el); L.heraldEl = el;
     (L.tpl.extras ?? []).forEach((lk, i) => { const a = (i / Math.max(1, L.tpl.extras!.length)) * 6.283 + 0.6; L.extras.push(addActor(L, lk, p.x + Math.cos(a) * 3.5, p.z + Math.sin(a) * 3.5)); });
     if (L.tpl.id === 'ritual') { L.circle = ritualCircle(); L.circle.g.position.set(p.x, ctx.heightAt(p.x, p.z) + 0.06, p.z); ctx.scene.add(fine(L.circle.g)); }
     for (const sd of Object.values(L.tpl.sides)) for (const tk of sd?.tasks ?? []) if (tk.kind === 'device') tk.at!.forEach(([dx, dz], i) => { const b = buildProp(tk.prop!), q = posAt(L, dx, dz); b.g.position.set(q.x, ctx.heightAt(q.x, q.z), q.z); b.g.rotation.y = Math.atan2(p.x - q.x, p.z - q.z); ctx.scene.add(b.g); if (tk.hidden) b.g.visible = false; L.props.push({ kind: tk.prop!, task: tk.id, i, g: b.g, glow: b.glow, x: q.x, z: q.z, hidden: tk.hidden }); });
@@ -328,7 +328,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   function contribution(L: Live) { const sd = sideDef(L); if (!sd) return 0; const parts: number[] = []; if (sd.kills) parts.push(Math.min(1, L.kills / sd.kills)); for (const tk of sd.tasks ?? []) { if (tk.need && !tk.need(ctx)) continue; parts.push(Math.min(1, (L.tasks[tk.id] ?? 0) / tk.n)); } if (L.celebrate) parts.push(1); return parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : 1; }
 
   function finish(L: Live, reason: 'done' | 'time' | 'fail') {
-    if (L.over) return; L.over = true; markSeen(L.key);
+    if (L.over) return; L.over = true; markSeen(L.key); if (L.heraldEl) L.heraldEl.style.display = 'none';
     if (!L.joined || !L.side) { deactivate(L); return; }
     const sd = sideDef(L)!, won = reason === 'done', c = contribution(L), vila = L.site.name;
     const aurora = globalNow()?.id === 'aurora' && sd.karma > 0, karma = Math.round(sd.karma * (won ? 1 : 0.4 * c) * (aurora ? 1.5 : 1)), lv = Math.max(1, ctx.lvl()), xp = Math.round(ctx.xpNeedAt(lv) * (won ? 0.3 : 0.08 + 0.14 * c)), gold = Math.round((won ? 30 : 8) + lv * (won ? 3 : 1) + (sd.lean === 'sombra' && won ? lv * 4 : 0));
@@ -366,8 +366,8 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     }
     for (const L of lives.values()) {
       const p = sitePos(L.site), dH = Math.hypot(p.x - hp.x, p.z - hp.z), el = (now - L.start) / 1000;
-      if (L.over) { if (L.finT > 0 && L.spawned) { L.finT -= dt; finale(L, t, dt); } continue; }
-      if (inside || dH > 170) { if (L.spawned && (!L.joined || dH > 260)) deactivate(L); continue; }
+      if (L.over) { if (L.heraldEl) L.heraldEl.style.display = 'none'; /* sem nomes congelados na tela depois do fim */ if (L.finT > 0 && L.spawned) { L.finT -= dt; finale(L, t, dt); } continue; }
+      if (inside || dH > 170) { if (L.heraldEl) L.heraldEl.style.display = 'none'; if (L.spawned && (!L.joined || dH > 260)) deactivate(L); continue; }
       if (!L.spawned) activate(L);
       // as ondas que já deviam ter chegado (quem chega tarde pega o evento andando)
       (L.tpl.waves ?? []).forEach((wv, i) => { if (el >= wv.at && !L.waveDone.has(i)) { const later = (L.tpl.waves ?? []).some((w2, j) => j > i && w2.fac === wv.fac && el >= w2.at); if (!later || wv.at === 0) spawnWave(L, wv, i); else L.waveDone.add(i); } });

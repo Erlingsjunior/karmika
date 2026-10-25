@@ -187,13 +187,15 @@ const ROLE_Q: [RegExp, { kind: 'kill' | 'collect' | 'visit'; pool: string[]; tex
   [/guard|caçad|alfa|paladin|armeir|armadur|ferreir|mercador/i, { kind: 'kill', pool: ['wolf', 'boar', 'coyote', 'imp', 'puglin', 'rat'], text: ['{n} {it} andam perto demais. Resolva.', 'Quem derrubar {n} {it} come de graça aqui por uma semana.'] }],
   [/aldeã|aldeão|mendig|pedinte|velh|ceg/i, { kind: 'visit', pool: ['Cemitério Esquecido', 'Igreja Abandonada', 'Catedral Abandonada', 'Clareira dos Gritos'], text: ['Ninguém mais passa por {it}. Vá ver se ainda está lá e volte para me contar.', 'Dizem coisas de {it}. Olhe com os seus olhos.'] }],
 ];
-export function genNpcQuest(npc: string, role: string, lvl: number, seed: number): QuestDef {
+export function genNpcQuest(npc: string, role: string, lvl: number, seed: number, times = 0): QuestDef {
   let s = seed * 7919 + 104729; const R = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   const rq = ROLE_Q.find(([re]) => re.test(role)) ?? ROLE_Q[ROLE_Q.length - 1];
   const g = rq[1]; const id = `q${seed}-${npc}`, scale = 1 + lvl * 0.1;
+  /* cada vez que o mesmo NPC pede de novo, pede MUITO mais (e paga só um pouco mais): não dá para virar fonte infinita de XP */
+  const more = 1 + times * 1.2, payK = 1 + times * 0.35, again = times ? ` (${times + 1}ª vez: agora ele quer bem mais)` : '';
   const tx = g.text[Math.floor(R() * g.text.length)];
-  if (g.kind === 'kill') { const type = g.pool[Math.floor(R() * g.pool.length)] as EnemyType, n = 3 + Math.floor(R() * 5); return { id, name: `${role}: ${ENEMY_NAME(type)}`, lvl, giver: npc, text: tx.replace('{n}', String(n)).replace('{it}', ENEMY_NAME(type)), objs: [{ kind: 'kill', type, n }], xp: Math.round((30 + n * 14) * scale), gold: Math.round((8 + n * 4) * scale) }; }
-  if (g.kind === 'collect') { const item = g.pool[Math.floor(R() * g.pool.length)], n = 3 + Math.floor(R() * 6); return { id, name: `${role}: ${ITEMS[item]?.name ?? item}`, lvl, giver: npc, text: tx.replace('{n}', String(n)).replace('{it}', ITEMS[item]?.name ?? item), objs: [{ kind: 'collect', item, n }], xp: Math.round((26 + n * 9) * scale), gold: Math.round((6 + n * 3) * scale) }; }
+  if (g.kind === 'kill') { const type = g.pool[Math.floor(R() * g.pool.length)] as EnemyType, n0 = 3 + Math.floor(R() * 5), n = Math.round(n0 * more); return { id, name: `${role}: ${ENEMY_NAME(type)}`, lvl, giver: npc, text: tx.replace('{n}', String(n)).replace('{it}', ENEMY_NAME(type)) + again, objs: [{ kind: 'kill', type, n }], xp: Math.round((30 + n0 * 14) * scale * payK), gold: Math.round((8 + n0 * 4) * scale * payK) }; }
+  if (g.kind === 'collect') { const item = g.pool[Math.floor(R() * g.pool.length)], n0 = 3 + Math.floor(R() * 6), n = Math.round(n0 * more); return { id, name: `${role}: ${ITEMS[item]?.name ?? item}`, lvl, giver: npc, text: tx.replace('{n}', String(n)).replace('{it}', ITEMS[item]?.name ?? item) + again, objs: [{ kind: 'collect', item, n }], xp: Math.round((26 + n0 * 9) * scale * payK), gold: Math.round((6 + n0 * 3) * scale * payK) }; }
   const poi = g.pool[Math.floor(R() * g.pool.length)];
   return { id, name: `${role}: ${poi}`, lvl, giver: npc, turnin: npc, text: tx.replace('{it}', poi), objs: [{ kind: 'visit', poi }], xp: Math.round(45 * scale), gold: Math.round(16 * scale) };
 }
@@ -211,6 +213,8 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   let onDoneCb: ((d: QuestDef) => void) | null = null;
   const SAVE = 'karmika.quests.v1';
   const q: QState = { active: {}, done: [], boardSeed: 1, title: '' };
+  /** quantas vezes cada NPC já teve pedido atendido: depois de 5, ele só negocia (não pede mais) */
+  const NPC_Q_MAX = 5, npcTimes: Record<string, number> = {}; try { Object.assign(npcTimes, JSON.parse(localStorage.getItem('karmika.npcqn.v1') || '{}')); } catch { /* */ }
   const npcSeeds: Record<string, number> = {}; try { Object.assign(npcSeeds, JSON.parse(localStorage.getItem('karmika.npcq.v1') || '{}')); } catch { /* */ }
   let tracked: string | null = null;
   /* REGRA IMUTÁVEL — missão é o que mais faz evoluir (Erling, 23/10: "a linha amarela precisa pegar uns 60% do XP"):
@@ -245,7 +249,7 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
   /** missões que este NPC pode oferecer agora */
   function offers(npc: string): QuestDef[] {
     const out: QuestDef[] = [];
-    if (!(ctx.chainQuests.some((d) => d.giver === npc && !isDone(d.id))) && ctx.roleOf?.(npc) && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const d = fix(genNpcQuest(npc, role, above(sd), sd)); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } }
+    if (!(ctx.chainQuests.some((d) => d.giver === npc && !isDone(d.id))) && ctx.roleOf?.(npc) && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const times = npcTimes[npc] ?? 0; if (times < NPC_Q_MAX) { const d = fix(genNpcQuest(npc, role, above(sd), sd, times)); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } } }
     for (const d of ctx.chainQuests) { if (d.giver !== npc || isDone(d.id) || q.active[d.id]) continue; const prevId = ctx.chainQuests.find((p) => p.next === d.id)?.id; if (prevId && !isDone(prevId)) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
     return out;
   }
@@ -262,14 +266,15 @@ export function createQuests(ctx: { /** para onde a alma pende (missões de Luz 
     accept(b); if (fromTurnIn) setTimeout(() => ctx.log(`${b.giver}: “${(b as QuestDef & { say?: string }).say ?? ''}”`, '#f4e6b8'), 400);
   }
   function turnIn(d: QuestDef) {
-    if (d.id.startsWith('q') && npcSeeds[d.giver] !== undefined) { npcSeeds[d.giver] += 7; try { localStorage.setItem('karmika.npcq.v1', JSON.stringify(npcSeeds)); } catch { /* */ } }
+    if (d.id.startsWith('q') && npcSeeds[d.giver] !== undefined) { npcTimes[d.giver] = (npcTimes[d.giver] ?? 0) + 1; try { localStorage.setItem('karmika.npcqn.v1', JSON.stringify(npcTimes)); } catch { /* */ } if (npcTimes[d.giver] >= NPC_Q_MAX) setTimeout(() => ctx.log(`${d.giver}: “Já me ajudou o bastante. Daqui pra frente, só negócio.”`, '#c8b890'), 600); npcSeeds[d.giver] += 7; try { localStorage.setItem('karmika.npcq.v1', JSON.stringify(npcSeeds)); } catch { /* */ } }
     for (const o of d.objs) if (o.kind === 'collect') ctx.take(o.item, o.n);
     delete q.active[d.id]; q.done.push(d.id);
     ctx.st.gold += Math.round(d.gold * 0.6); ctx.gainXp(d.xp); for (const [it, n] of d.items ?? []) ctx.add(it, n); if (d.gear) ctx.gear(d.gear, d.lvl);
     if (d.title) { q.title = d.title; ctx.onTitle(d.title); }
     ctx.onDone?.(d); onDoneCb?.(d);
     ctx.log(`✅ Missão concluída: ${d.name} (+${d.xp} XP, +${Math.round(d.gold * 0.6)} ouro)`, '#7aff9a'); save(); render();
-    if (d.next && !q.active[d.next] && !isDone(d.next)) { const nx = def(d.next); if (nx && nx.giver === (d.turnin ?? d.giver) && ctx.st.lvl >= Math.max(1, nx.lvl - 2) && (!nx.req || isDone(nx.req))) accept(nx); }
+    /* a próxima missão NÃO entra sozinha: quem dá a missão precisa contar do que se trata (o diálogo reabre com a oferta). Só o Olho, que não tem boca, entrega direto */
+    if (d.next && !q.active[d.next] && !isDone(d.next)) { const nx = def(d.next); if (nx && nx.giver === 'O Olho' && nx.giver === (d.turnin ?? d.giver) && ctx.st.lvl >= Math.max(1, nx.lvl - 2) && (!nx.req || isDone(nx.req))) accept(nx); }
     ensureThread(d);
   }
   function onKill(type: EnemyType) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'kill' && o.type === type && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }

@@ -81,26 +81,40 @@ export function createEye() {
   const defs = eye.querySelector('defs') ?? eye.insertBefore(document.createElementNS(svgNS, 'defs'), eye.firstChild);
   defs.insertAdjacentHTML('beforeend', '<radialGradient id="hudIris" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff0bd"/><stop offset=".6" stop-color="#f2b04a"/><stop offset="1" stop-color="#7a4a10"/></radialGradient>');
   const iris = document.createElementNS(svgNS, 'g'); iris.setAttribute('class', 'iris'); iris.setAttribute('clip-path', 'url(#lozc)');
-  iris.innerHTML = '<ellipse cx="150" cy="110" rx="40" ry="40" fill="url(#hudIris)" stroke="#5a3408" stroke-width="2"/><ellipse cx="137" cy="97" rx="7" ry="4.5" fill="rgba(255,255,255,.75)"/>';
-  pup.parentNode!.insertBefore(iris, pup); pup.setAttribute('points', '150,90 170,110 150,130 130,110'); pup.setAttribute('stroke', '#3a2006');
+  iris.innerHTML = '<g class="irisball"><ellipse cx="150" cy="110" rx="30" ry="30" fill="url(#hudIris)" stroke="#5a3408" stroke-width="2"/><ellipse cx="150" cy="110" rx="21" ry="21" fill="none" stroke="rgba(122,74,16,.45)" stroke-width="1.5"/></g><ellipse class="glint" cx="140" cy="100" rx="5.5" ry="3.5" fill="rgba(255,255,255,.8)"/>';
+  pup.parentNode!.insertBefore(iris, pup); pup.setAttribute('points', '150,95 159,110 150,125 141,110'); pup.setAttribute('stroke', '#3a2006'); pup.setAttribute('stroke-width', '1.5');
+  const ball = iris.querySelector('.irisball') as SVGGElement, glint = iris.querySelector('.glint') as SVGEllipseElement;
   const tear = document.createElementNS(svgNS, 'path'); tear.setAttribute('d', 'M150 168 q-9 14 0 22 q9 -8 0 -22 z'); tear.setAttribute('fill', '#fff0bd'); tear.setAttribute('class', 'tear'); tear.style.opacity = '0'; eye.appendChild(tear);
   const lidTop = document.createElementNS(svgNS, 'polygon'); lidTop.setAttribute('points', '60,110 143,54 157,54 240,110'); lidTop.setAttribute('fill', '#0b0810'); lidTop.setAttribute('class', 'lid'); lidTop.style.transformOrigin = '150px 110px'; lidTop.style.transform = 'scaleY(0)'; eye.appendChild(lidTop);
   const lidBot = document.createElementNS(svgNS, 'polygon'); lidBot.setAttribute('points', '60,110 143,166 157,166 240,110'); lidBot.setAttribute('fill', '#0b0810'); lidBot.setAttribute('class', 'lid'); lidBot.style.transformOrigin = '150px 110px'; lidBot.style.transform = 'scaleY(0)'; eye.appendChild(lidBot);
-  let lookX = 0, lookY = 0, tx = 0, ty = 0, blinkT = 3 + Math.random() * 4, blink = 0, overflow = 0, tearT = 0, shown = 0;
-  function update(dt: number, aimX: number, aimY: number, acting: boolean, karma: number, sealed = false) {
+  let lookX = 0, lookY = 0, tx = 0, ty = 0, blinkT = 3 + Math.random() * 4, blink = 0, blink2 = false, overflow = 0, tearT = 0, shown = 0;
+  let fixT = 0, dil = 1, idleX = 0, idleY = 0;
+  /** gaze: para onde olhar, em coordenadas da tela (-1..1, centro = herói), e por quê.
+   *  O Olho não fica seguindo o mouse feito doido: ele se FIXA num ponto (meio segundo a um segundo e meio) e salta
+   *  rápido para o próximo, como um olho de verdade. Ameaça: crava no inimigo e a pupila aperta. Andando: olha para onde
+   *  o herói vai. Parado: passeia pelo mundo, às vezes olha você (o centro), às vezes um NPC, às vezes o mouse. */
+  function update(dt: number, gaze: { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 'npc' } | null, acting: boolean, karma: number, sealed = false, night = 0) {
     eye.classList.toggle('sealed', sealed);
     if (sealed) { // antes do nível 20 o Olho dorme: pálpebras fechadas, sem líquido, sem pupila
       lidTop.style.transform = 'scaleY(1)'; lidBot.style.transform = 'scaleY(1)'; iris.style.opacity = '0'; pup.style.opacity = '0'; shown += (0 - shown) * Math.min(1, dt * 2); eye.style.setProperty('--k', String(shown)); eye.classList.remove('over'); return; }
-    // pupila: olha na direção do mouse em relação ao centro; quando o herói age, "foca" (contrai)
-    tx = Math.max(-1, Math.min(1, aimX)); ty = Math.max(-1, Math.min(1, aimY));
-    lookX += (tx - lookX) * Math.min(1, dt * 6); lookY += (ty - lookY) * Math.min(1, dt * 6);
-    const sc = acting ? 0.8 : 1 + Math.sin(performance.now() / 900) * 0.04;
-    pup.style.transformOrigin = '150px 110px'; pup.style.transform = `translate(${lookX * 14}px, ${lookY * 7}px) scale(${sc})`;
-    iris.style.transform = `translate(${lookX * 10}px, ${lookY * 5}px)`; iris.style.transformOrigin = '150px 110px';
-    // piscar
-    blinkT -= dt; if (blinkT <= 0) { blink = 0.22; blinkT = 2.5 + Math.random() * 5; }
-    // piscada: as duas pálpebras fecham e a íris/pupila somem (fica escuro), depois reaparecem
-    if (blink > 0) { blink -= dt; const k = Math.sin(Math.max(0, blink) / 0.22 * Math.PI); lidTop.style.transform = `scaleY(${k})`; lidBot.style.transform = `scaleY(${k})`; const vis = k > 0.6 ? '0' : String(1 - k / 0.6); iris.style.opacity = vis; pup.style.opacity = vis; } else { lidTop.style.transform = 'scaleY(0)'; lidBot.style.transform = 'scaleY(0)'; iris.style.opacity = '1'; pup.style.opacity = '1'; }
+    fixT -= dt;
+    if (gaze && (gaze.kind === 'threat' || fixT <= 0)) { tx = gaze.x; ty = gaze.y; fixT = gaze.kind === 'threat' ? 0.15 : 0.5 + Math.random() * 0.8; }
+    else if (!gaze && fixT <= 0) { /* parado e sem nada: passeia o olhar, e volta ao centro de vez em quando */
+      const r = Math.random(); if (r < 0.35) { idleX = 0; idleY = 0; } else { idleX = (Math.random() - 0.5) * 1.6; idleY = (Math.random() - 0.5) * 0.9; } tx = idleX; ty = idleY; fixT = 0.9 + Math.random() * 2.2; }
+    /* o olhar cabe na amêndoa: elipse achatada (mais curso para os lados, pouco para cima/baixo) */
+    let gx = Math.max(-1, Math.min(1, tx)), gy = Math.max(-1, Math.min(1, ty)); const m = Math.hypot(gx, gy * 1.3); if (m > 1) { gx /= m; gy /= m; }
+    const sp = Math.min(1, dt * 16); lookX += (gx - lookX) * sp; lookY += (gy - lookY) * sp; /* sacada: rápido, e para */
+    const trem = Math.sin(performance.now() / 97) * 0.012; /* micro-tremor de olho vivo */
+    const wantDil = (gaze?.kind === 'threat' ? 0.72 : acting ? 0.8 : 1) * (1 + night * 0.25); dil += (wantDil - dil) * Math.min(1, dt * 4);
+    const ix = (lookX + trem) * 22, iy = lookY * 9;
+    iris.style.transformOrigin = '150px 110px'; ball.style.transformOrigin = '150px 110px';
+    ball.style.transform = `translate(${ix}px, ${iy}px) scale(${1 - Math.abs(lookX) * 0.1}, 1)`; /* a íris achata um pouco quando olha para o lado (é uma esfera) */
+    glint.style.transform = `translate(${ix * 0.85}px, ${iy * 0.85}px)`;
+    pup.style.transformOrigin = '150px 110px'; pup.style.transform = `translate(${ix * 1.05}px, ${iy * 1.05}px) scale(${dil * (1 - Math.abs(lookX) * 0.1)}, ${dil})`;
+    // piscar (às vezes duas seguidas); assustado pisca menos
+    blinkT -= dt; if (blinkT <= 0) { blink = 0.2; blink2 = Math.random() < 0.18; blinkT = (gaze?.kind === 'threat' ? 6 : 2.8) + Math.random() * 4.5; }
+    if (blink > 0) { blink -= dt; const k = Math.sin(Math.max(0, blink) / 0.2 * Math.PI); lidTop.style.transform = `scaleY(${k})`; lidBot.style.transform = `scaleY(${k * 0.85})`; const vis = k > 0.6 ? '0' : String(1 - k / 0.6); iris.style.opacity = vis; pup.style.opacity = vis; if (blink <= 0 && blink2) { blink2 = false; blinkT = 0.12; } }
+    else { lidTop.style.transform = 'scaleY(0)'; lidBot.style.transform = 'scaleY(0)'; iris.style.opacity = '1'; pup.style.opacity = '1'; }
     // nível: karma 0..100 → 0..0.9 (nunca enche); transbordo só em ato heroico
     const target = overflow > 0 ? 1.0 : Math.min(0.9, karma / 100 * 0.9);
     shown += (target - shown) * Math.min(1, dt * (overflow > 0 ? 3 : 0.8));

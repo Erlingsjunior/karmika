@@ -46,8 +46,16 @@ function modal(title: string, html: string, buttons: [string, () => void][], cls
   document.body.appendChild(d); bringFront(d);
   d.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-i]') as HTMLElement | null; if (!b) return; d.remove(); buttons[+b.dataset.i!][1](); });
 }
-/** o Olho sai do brasão, sobe até o meio da tela e VÊ; depois, o que você fez e o resultado kármico */
+/** o Olho sai do brasão, sobe até o meio da tela e VÊ; depois, o que você fez e o resultado kármico.
+ *  Um Olho só: se outras escolhas chegam enquanto ele está aberto (vários elites, missão com muitos atos), entram na mesma visão
+ *  e o karma aparece somado, em vez de o Olho subir cinco vezes seguidas. */
+let openEye: { list: HTMLElement; kd: HTMLElement; total: number; n: number; jt: HTMLElement; afters: (() => void)[] } | null = null;
 export function eyeSees(title: string, what: string, why: string, delta: number, after?: () => void) {
+  if (openEye) { const o = openEye; o.n++; o.total += delta; if (after) o.afters.push(after);
+    const it = document.createElement('div'); it.className = 'eyeitem'; const c = delta > 0 ? '#9ad7ff' : delta < 0 ? '#ff8a7a' : '#d9c08a';
+    it.innerHTML = `<b>${title}</b> <span style="color:${c}">${delta > 0 ? '+' : ''}${delta}</span><br><small>${what}</small>`; o.list.appendChild(it);
+    o.jt.textContent = `O Olho viu ${o.n} atos seus.`; o.kd.textContent = `Karma ${o.total > 0 ? '+' : ''}${o.total}`; o.kd.style.color = o.total > 0 ? '#9ad7ff' : o.total < 0 ? '#ff8a7a' : '#d9c08a';
+    o.kd.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], 350); return; }
   const src = document.getElementById('eye'); const r = src?.getBoundingClientRect();
   const wrap = document.createElement('div'); wrap.className = 'eyesee'; document.body.appendChild(wrap); bringFront(wrap);
   const eye = document.createElement('div'); eye.className = 'eyefly'; eye.innerHTML = src ? src.outerHTML.replace('id="eye"', '') : '👁'; wrap.appendChild(eye);
@@ -57,12 +65,17 @@ export function eyeSees(title: string, what: string, why: string, delta: number,
   requestAnimationFrame(() => requestAnimationFrame(() => { wrap.classList.add('on'); Object.assign(eye.style, { left: (innerWidth - W) / 2 + 'px', top: innerHeight * 0.12 + 'px', width: W + 'px', height: H + 'px' }); }));
   const col = delta > 0 ? '#9ad7ff' : delta < 0 ? '#ff8a7a' : '#d9c08a';
   const panel = document.createElement('div'); panel.className = 'eyetext';
-  panel.innerHTML = `<p class="creed">Marghar não julga. Ele vê, e guarda.<br>Mas ele cobra… Ele se lembra.</p><p class="jt">${title}</p><p>${what}</p><p class="why">${why}</p><p class="kd" style="color:${col}">Karma ${delta > 0 ? '+' : ''}${delta}</p><small class="cmp">✦ Registrado para sempre no seu Compêndio do Karma (U)</small><div class="row"><button>Seguir o caminho</button></div>`;
+  panel.innerHTML = `<p class="creed">Marghar não julga. Ele vê, e guarda.<br>Mas ele cobra… Ele se lembra.</p><p class="jt">${title}</p><div class="eyelist"><div class="eyeitem first"><p>${what}</p><p class="why">${why}</p></div></div><p class="kd" style="color:${col}">Karma ${delta > 0 ? '+' : ''}${delta}</p><small class="cmp">✦ Registrado para sempre no seu Compêndio do Karma (U)</small><div class="row"><button>Seguir o caminho</button></div>`;
   panel.style.top = innerHeight * 0.12 + H + 14 + 'px'; wrap.appendChild(panel);
+  const o = { list: panel.querySelector('.eyelist') as HTMLElement, kd: panel.querySelector('.kd') as HTMLElement, jt: panel.querySelector('.jt') as HTMLElement, total: delta, n: 1, afters: after ? [after] : [] }; openEye = o;
+  /* quando chega o segundo ato, o primeiro vira linha da lista também */
+  const first = o.list.querySelector('.first') as HTMLElement; const origAppend = o.list.appendChild.bind(o.list);
+  o.list.appendChild = (<T extends Node>(nd: T): T => { if (first.dataset.compact !== '1') { first.dataset.compact = '1'; first.innerHTML = `<b>${title}</b> <span style="color:${col}">${delta > 0 ? '+' : ''}${delta}</span><br><small>${what}</small>`; } return origAppend(nd); }) as typeof o.list.appendChild;
   setTimeout(() => panel.classList.add('on'), 1300);
   panel.querySelector('button')!.addEventListener('click', () => {
+    if (openEye === o) openEye = null;
     panel.classList.remove('on'); if (r) Object.assign(eye.style, { left: r.left + 'px', top: r.top + 'px', width: w0 + 'px', height: h0 + 'px' }); wrap.classList.remove('on');
-    setTimeout(() => { wrap.remove(); if (src) src.style.visibility = ''; after?.(); }, 1100);
+    setTimeout(() => { wrap.remove(); if (src) src.style.visibility = ''; for (const f of o.afters) f(); }, 1100);
   });
 }
 

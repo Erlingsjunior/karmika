@@ -285,6 +285,7 @@
   .eyefly svg { width: 100%; height: 100%; } @keyframes eyepulse { 50% { filter: drop-shadow(0 0 40px #ffe08a) drop-shadow(0 0 90px #8f7bff); } }
   .eyetext { position: fixed; left: 50%; transform: translate(-50%, 14px); width: min(620px, 90vw); text-align: center; opacity: 0; transition: opacity 1s, transform 1s; color: #f0e6cc; text-shadow: 0 0 10px #000; }
   .eyetext.on { opacity: 1; transform: translate(-50%, 0); } .eyetext .creed { font: italic 17px Georgia, serif; color: #c8b8ff; letter-spacing: 1px; margin: 0 0 14px; }
+  .eyetext .eyelist { max-height: 34vh; overflow-y: auto; } .eyetext .eyeitem[data-compact], .eyetext .eyeitem:not(.first) { text-align: left; margin: 4px auto; padding: 6px 12px; max-width: 520px; background: rgba(20,14,8,.55); border-left: 2px solid #c9a24a; border-radius: 3px; font-size: 15px; } .eyetext .eyeitem small { color: #c8b890; }
   .eyetext .jt { font: 700 24px Cinzel, Georgia, serif; color: #ffe08a; margin: 0 0 8px; } .eyetext p { margin: 6px 0; font-size: 16px; line-height: 1.55; } .eyetext .why { font-style: italic; color: #c8bca0; }
   .eyetext .kd { font: 700 26px Cinzel, Georgia, serif; margin: 12px 0 6px; } .eyetext .cmp { display: block; color: #a89878; margin-bottom: 12px; }
   .eyetext button { background: #3a2a1a; color: #f0e6cc; border: 1px solid #b8924a; padding: 8px 22px; cursor: pointer; font-family: inherit; font-size: 15px; }
@@ -685,7 +686,7 @@
   .instcard b { color: var(--ic); font: 700 14px Cinzel, Georgia, serif; } .instcard small { display: block; color: #aa9; font-size: 11px; } .instcard p { margin: 4px 0 0; font-size: 12px; color: #d8ccb0; line-height: 1.35; }
   .instcard button { font: 700 12px Georgia, serif; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--ic); background: rgba(0,0,0,.3); color: var(--ic); cursor: pointer; white-space: nowrap; }
   /* eventos vivos (24/10) */
-  .npc.evh .qm { display: block; color: #ffd24a; font-size: 26px; } .npc.evh.joined .qm { color: #7aff9a; } .npc.evh b { color: #ffe08a; }
+  .npc.evh .qm { display: block; color: #ffd24a; font-size: 26px; } .npc.evh.joined .qm { display: none; } /* já entrou no evento: nada de "!" falso; o painel mostra o que falta */ .npc.evh b { color: #ffe08a; }
   #evt { position: fixed; right: 14px; top: 296px; width: 252px; z-index: 6; display: none; pointer-events: none; font-family: Georgia, serif; color: #f0e6cc; background: linear-gradient(rgba(26,18,12,.92), rgba(14,10,8,.88)); border: 1px solid #6a4a20; border-radius: 8px; padding: 8px 10px 9px; box-shadow: 0 3px 14px rgba(0,0,0,.6); transform: scale(var(--ui, 1)); transform-origin: 100% 0; }
   #evt .et { border-bottom: 1px solid rgba(201,162,74,.3); padding-bottom: 5px; margin-bottom: 6px; } #evt .et b { display: block; font: 700 14px Cinzel, Georgia, serif; color: var(--c); text-shadow: 0 0 8px rgba(0,0,0,.8); } #evt .et small { font-size: 11px; color: #bba; }
   #evt .eh { font-size: 12px; margin: 2px 0; color: #e8dcc0; } #evt .es { font: 700 12px Georgia, serif; margin: 0 0 5px; } #evt .es.luz { color: #ffe08a; } #evt .es.sombra { color: #c9a0ff; }

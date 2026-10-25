@@ -199,7 +199,7 @@ hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
 const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -922,7 +922,9 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
     onAccept: (d) => { quests.accept(d); game.logMsg(`${nm}: “Que Karmika guie seus passos.”`, '#f4e6b8'); },
     onTurnIn: (d, ci) => { const o = d.choice && ci !== undefined ? d.choice.opts[ci] : null; quests.turnIn(d);
       if (o) { applyReply({ t: '', luz: o.karma > 0 ? Math.ceil(o.karma / 2) : 0, sombra: o.karma < 0 ? Math.ceil(-o.karma / 2) : 0, flag: (o as { flag?: string }).flag }); state.karma = Math.max(-100, Math.min(100, state.karma + o.karma)); game.logMsg(`${nm}: “${o.say}”`, '#f4e6b8'); setTimeout(() => eyeSees(o.karma >= 0 ? 'O Olho viu.' : 'O Olho guardou.', o.label, o.why, o.karma), 600); }
-      else game.logMsg(`${nm}: “Bom trabalho.”`, '#f4e6b8'); },
+      else game.logMsg(`${nm}: “Bom trabalho.”`, '#f4e6b8');
+      /* tem mais a contar? a conversa continua: a próxima missão é apresentada, não empurrada */
+      if (!o) setTimeout(() => { if (!dlg.isOpen && quests.offers(nm).length && Math.hypot(n.pos.x - state.fx * T, n.pos.z - state.fy * T) < 8) talkTo(n); }, 450); },
     objProg: (d, i) => quests.objProg(d, i), objNeed: (d, i) => quests.objNeed(d, i) });
 }
 const compendium = createCompendium({ where: () => zoneName(), day: () => dayIndex(), lvl: () => game.st.lvl });
@@ -1505,9 +1507,10 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
   } else if (sk.id === 'bash') ok = game.bash(yaw, { x: a.x, z: a.z });
   else if (sk.id === 'heal') ok = game.heal(heroPosNow(), { x: a.x, z: a.z });
   else ok = game.useExtra(sk.id, yaw, sk.cost, { x: a.x, z: a.z });
-  if (ok) { lockYaw = yaw; castQ = null; }
+  if (ok) { lockYaw = yaw; lockFresh = true; castQ = null; }
   return ok;
 }
+let lockFresh = false, lastActN: string | null = null, lastActP = 0;
 let castQ: { slot: string; at: { x: number; z: number; yaw: number }; until: number } | null = null, aimKey: string | null = null, denyT = 0;
 /** sem recurso ou recarregando: nem desenha a mira; avisa uma vez e pisca a barra */
 function denySkill(sk: SkillDef, why: 'cd' | 'res') {
@@ -1696,7 +1699,7 @@ scene.add(fine(marker));
 addEventListener('pointermove', (e) => {
   const r = canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-  const p = new THREE.Vector3(); if (ray.ray.intersectPlane(plane, p)) { mouse.x = p.x; mouse.z = p.z; }
+  const p = new THREE.Vector3(); if (ray.ray.intersectPlane(plane, p)) { mouse.x = p.x; mouse.z = p.z; mouseMovedT = performance.now(); }
 });
 let rmb = false;
 addEventListener('pointerup', (e) => { if (e.button === 2) rmb = false; if (e.button === 0) lmbHold = 0; });
@@ -2556,6 +2559,20 @@ function updateQuestRings(dt: number) { qmarkT -= dt; if (qmarkT > 0) return; qm
   for (const a of Object.values(quests.q.active) as { prog: number[]; def?: { objs: { kind: string; type?: string; item?: string; n: number }[] } }[]) { const objs = a.def?.objs ?? []; objs.forEach((o, i) => { if ((a.prog[i] ?? 0) >= o.n) return; if (o.kind === 'kill' && o.type) want.add(o.type); if (o.kind === 'collect' && o.item) { const src = DROP_SRC[o.item]; if (Array.isArray(src)) for (const t of src) want.add(t); } }); }
   for (const e of game.enemies.list) { const ee = e as typeof e & { quest?: boolean; qring?: THREE.Mesh }; ee.quest = want.has(e.type) && e.alive; if (ee.qring) ee.qring.visible = ee.quest; } }
 const fireflyK = () => 0.05 + 0.12 * forestK + 0.7 * elfK;
+/** para onde o Olho olha agora (ver hud.ts): inimigo que vem para cima > mouse que acabou de mexer > para onde o herói anda > NPC perto > nada (passeia) */
+let mouseMovedT = 0, eyeNpcT = 0, eyeNpc: THREE.Vector3 | null = null;
+function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 'npc' } | null {
+  const hp = heroPosNow(), c = new THREE.Vector3(hp.x, heroY + 1, hp.z).project(camera);
+  const rel = (w: THREE.Vector3) => { const v = w.clone().project(camera); return { x: (v.x - c.x) * 2.2, y: -(v.y - c.y) * 2.2 }; };
+  let best: THREE.Vector3 | null = null, bd = 14;
+  for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || (e as typeof e & { ally?: boolean }).ally) continue; if (e.state !== 'chase' && e.state !== 'windup' && e.state !== 'recover') continue; const d = Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z); if (d < bd) { bd = d; best = e.pos; } }
+  if (best) return { ...rel(best.clone().setY(best.y + 1)), kind: 'threat' };
+  if (performance.now() - mouseMovedT < 1400) return { ...rel(new THREE.Vector3(mouse.x, heroY, mouse.z)), kind: 'mouse' };
+  if (state.moving) { const a = hero.facing; return { ...rel(new THREE.Vector3(hp.x + Math.sin(a) * 6, heroY, hp.z + Math.cos(a) * 6)), kind: 'move' }; }
+  if (performance.now() > eyeNpcT) { eyeNpcT = performance.now() + 4000 + Math.random() * 5000; eyeNpc = null; const ns = npcSys.npcs.filter((n) => n.hero.root.visible && Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z) < 12); if (ns.length && Math.random() < 0.6) eyeNpc = ns[Math.floor(Math.random() * ns.length)].pos; }
+  if (eyeNpc && performance.now() < eyeNpcT - 2500) return { ...rel(eyeNpc.clone().setY(eyeNpc.y + 1.6)), kind: 'npc' };
+  return null;
+}
 function frame() {
   if (bootFrames < 12 && ++bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
   try { frameBody(); } catch (e) { kshow('ERRO no frame: ' + ((e as Error).stack || e)); return; }
@@ -2645,6 +2662,10 @@ function frameBody() {
   const aiming = hero.acting;
   if (castQ) { if (performance.now() > castQ.until || game.st.dead) castQ = null; else castAt(castQ.slot, castQ.at); }
   if (lockYaw !== null && !hero.acting) lockYaw = null;
+  { /* o herói encara o golpe do começo ao fim: a direção é decidida quando o gesto começa e não fica girando atrás do mouse */
+    const an = hero.acting ? hero.actName : null;
+    if (an && an !== 'dash' && an !== 'hit' && an !== 'dodge' && (an !== lastActN || hero.actP + 0.15 < lastActP) && !lockFresh) lockYaw = aimYaw();
+    lockFresh = false; lastActN = an; lastActP = hero.actP; }
   if ((aimSlot || guardCone) && (dlg.isOpen || game.menuOpen || game.st.dead)) { cancelAim(); guardCone = false; aim.hide(); }
   const aimNow = aim.active ? aim.update(dt, state.fx * T, state.fy * T, mouse.x, mouse.z, (x, z) => inside ? 0 : heightAt(x, z)) : null;
   const mouseYaw = Math.atan2(mouse.x - state.fx * T, mouse.z - state.fy * T);
@@ -2796,7 +2817,7 @@ function frameBody() {
   /* karma */
   const eyeEl = document.getElementById('eye') as unknown as SVGElement;
   eyeEl.classList.toggle('full', state.karma >= 100);
-  { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(mouse.x, heroY, mouse.z).project(camera); eyeSys.update(dt, v.x, -v.y, hero.acting, state.karma, !profile?.eye); void r; }
+  { eyeSys.update(rawDt, eyeGaze(), hero.acting, state.karma, !profile?.eye, night); }
   globes.update(dt, game.st.hp, game.st.hpMax, game.st.mp, game.st.mpMax);
   if ((fpsN & 15) === 0) checkAwakening();
   const full = state.karma >= 100;

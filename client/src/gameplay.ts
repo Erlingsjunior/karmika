@@ -285,9 +285,9 @@ export function createGameplay(d: GameplayDeps) {
   function killEnemy(e: Enemy, shared = false) {
     const ey = e as Enemy & { yielded?: boolean };
     if (!shared && onYield && YIELDERS.has(e.type) && !ey.yielded) {
-      ey.yielded = true; e.alive = true; e.hp = Math.max(1, Math.round(e.hpMax * 0.02)); e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0);
+      ey.yielded = true; (e as Enemy & { kneel?: boolean }).kneel = true; e.alive = true; e.hp = Math.max(1, Math.round(e.hpMax * 0.02)); e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0);
       dmgText(e.pos.clone().setY(e.pos.y + 3), 'RENDIDO', true, '#ffe08a');
-      onYield(e, (kill) => { if (!e.alive) return; if (kill) { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 0; killEnemy(e); } else { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 2.5; e.respawn = 240; for (let i = 0; i < 30; i++) d.particles.spawn(e.pos.x + rnd(-0.6, 0.6), e.pos.y + rnd(0.2, 2), e.pos.z + rnd(-0.6, 0.6), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.2, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0xffe08a, a: 0.9, drag: 1 }); } });
+      onYield(e, (kill) => { (e as Enemy & { kneel?: boolean }).kneel = false; if (!e.alive) return; if (kill) { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 0; killEnemy(e); } else { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 2.5; e.respawn = 1800; /* poupado: vai embora de verdade (não volta em 4 min como se nada tivesse acontecido) */ for (let i = 0; i < 30; i++) d.particles.spawn(e.pos.x + rnd(-0.6, 0.6), e.pos.y + rnd(0.2, 2), e.pos.z + rnd(-0.6, 0.6), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.2, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0xffe08a, a: 0.9, drag: 1 }); } });
       return;
     }
     const pn = Math.max(1, Math.min(6, partyN())), pk = 1 + 0.1 * (pn - 1); // grupo perto: +10% de XP e de chance de equipamento por companheiro

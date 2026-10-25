@@ -21,8 +21,8 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     const r = ctx.canvas.getBoundingClientRect();
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
-      if (d.night && night < 0.45) { if (n.hero.root.visible) { n.hero.root.visible = false; n.el.style.display = 'none'; } continue; } // a Corte só recebe à noite
-      if (dH > 60) { if (n.hero.root.visible) { n.hero.root.visible = false; n.el.style.display = 'none'; } continue; } // longe: nem anima nem desenha
+      if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
+      if (dH > 60) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
       if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro

@@ -492,6 +492,7 @@ export function createEnemies(ctx: EnemyCtx) {
   function hurt(e: Enemy, n: number, from: THREE.Vector3, knock = 3): boolean {
     if (!e.alive) return false;
     if ((e as Enemy & { ally?: boolean }).ally && !byUnit) return false;
+    if ((e as Enemy & { kneel?: boolean }).kneel) return false; /* de joelhos: nenhum golpe, brasa ou veneno mexe nele até a escolha */
     if (!byUnit && ctx.outMul) n = Math.max(1, Math.round(n * ctx.outMul()));
     e.hp -= n; e.flash = 1;
     const nk = (e as NetE).net; if (nk && ctx.sync) { ctx.sync.hit(nk, n); if (e.hp <= 0) ctx.sync.die(nk); }
@@ -577,6 +578,7 @@ export function createEnemies(ctx: EnemyCtx) {
       if (!e.active) { if (dormant(e) && !puppet) continue; if (dHero < ACT && (e.alive || e.state === 'dead')) { e.active = true; build(e); } else { if (!e.alive) { e.respawn -= dt; if (e.respawn <= 0) { e.alive = true; e.hp = e.hpMax; e.state = 'idle'; e.pos.set(e.home.x, 0, e.home.y); } } continue; } }
       else if ((e as Enemy & { night?: boolean }).night && (ctx.night?.() ?? 0) < 0.4 && e.state !== 'chase' && e.state !== 'windup') { unbuild(e); e.active = false; continue; }
       else if (dHero > DEACT) { unbuild(e); e.active = false; if (e.state === 'dead') { e.respawn = Math.max(e.respawn, 1); } continue; }
+      if ((e as Enemy & { kneel?: boolean }).kneel && e.alive) { e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0); } /* rendido, esperando a sentença: não ataca, não anda, não levanta */
       e.t += dt;
       const D = e.def; let mv = 0;
       if (puppet && ne.np) { // outro jogador está lutando com ele: só segue o que chega pela rede (sem IA aqui)
