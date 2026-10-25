@@ -435,7 +435,7 @@ export function createGameplay(d: GameplayDeps) {
   const bolts: { p: THREE.Vector3; v: THREE.Vector3; life: number; mul?: number; pulse?: boolean; pierce?: boolean; hit?: Set<Enemy>; rootLast?: number; boomer?: number; col?: number; big?: boolean; m?: THREE.Object3D; sk?: string; ricochet?: number; onHit?: (e: Enemy) => void; /** flecha/virote: voa reto, sem girar */ straight?: boolean; /** some sem explosão (bala, flecha) */ quiet?: boolean }[] = [];
   /* magias 6–10 (genéricas): cooldowns, buffs temporários e transformações */
   const cdX: Record<string, number> = {};
-  const CDX: Record<string, number> = { kick: 6, hamstring: 7, hatchet: 5, shieldwall: 14, winter: 8, thunder: 12, valkyrie: 10, flame: 6, poison: 9, warcry: 14, spear: 7, whirl: 9, mark: 10, fenrir: 45, hammerthrow: 6, stonerune: 12, forge: 16, mountain: 12, avatar: 45, overcharge: 10, shocktrap: 8, medic: 18, railgun: 9, mech: 50, smite: 7, consecrate: 14, avenging: 50, drain: 8, batswarm: 12, bloodnova: 10, nightform: 50, howl: 16, rend: 6, aegis: 16, shieldthrow: 7, conversion: 16, clot: 11, venomclaw: 7, bite: 6, pounce: 9, packhowl: 40, gunturret: 18, teslatower: 20, mortar: 24 };
+  const CDX: Record<string, number> = { kick: 6, hamstring: 7, hatchet: 5, shieldwall: 14, winter: 8, thunder: 12, valkyrie: 10, flame: 6, poison: 9, warcry: 14, spear: 7, whirl: 9, mark: 10, fenrir: 45, hammerthrow: 6, stonerune: 12, forge: 16, mountain: 12, avatar: 45, overcharge: 10, shocktrap: 8, medic: 18, railgun: 9, mech: 50, smite: 7, consecrate: 14, avenging: 50, drain: 8, batswarm: 12, bloodnova: 10, nightform: 50, howl: 16, rend: 6, aegis: 16, shieldthrow: 7, conversion: 16, clot: 11, venomclaw: 7, bite: 6, pounce: 9, packhowl: 40, gunturret: 18, teslatower: 20, mortar: 24, bubble: 16 };
   const buff = { dmg: 1, dmgT: 0, def: 0, defT: 0, burnT: 0, move: 1, moveT: 0, leech: 0 };
   /** postura de batalha (posturas.ts): somas fixas enquanto a postura estiver ativa */
   let stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0 };
@@ -585,6 +585,10 @@ export function createGameplay(d: GameplayDeps) {
   const convertedL: { e: Enemy; until: number }[] = [];
   let skyNight = 0, skyShade = false, sunK = 0, sunVeilT = 0, sunMsgT = -99, nightOn: boolean | null = null, baseScale = 1; const cmod = { dmg: 0, move: 1 };
   let techLook: { gauntlet(out: THREE.Vector3): THREE.Vector3; setMech(on: boolean): void; charge(k: number): void } | null = null, medicDrone: THREE.Group | null = null, medicBeamT = 0;
+  /* a esfera do tecnocrata formado: OU ataca OU defende (Erling, 25/10). Na guarda ela voa para a frente e projeta o
+     escudo de favos; na Bolha de Escudos ela sobe acima da cabeça e mantém seis escudos transparentes girando em volta */
+  let bubbleT = 0, droneShield: THREE.Mesh | null = null;
+  const droneDefends = () => kitKey === 'tecno' && (d.getHero().guard || bubbleT > 0);
   let droneGoT = 0; const droneGo = new THREE.Vector3(); let lobHid = false;
   let heroDark = 0, workAt: { x: number; z: number } | null = null, lastHeroP = new THREE.Vector3(), heroMps = 0;
   /** tira de luz curva (rasgo de garra, corte de duelo): some em ~0,25 s */
@@ -606,7 +610,7 @@ export function createGameplay(d: GameplayDeps) {
   const bleed = (e: Enemy, ticksN: number, per: number, col = '#ff6a6a') => { for (let q = 1; q <= ticksN; q++) pending.push({ at: now + q * 1.0, fn: () => { if (!e.alive) return; const dm = Math.round(per); if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.0), dm, false, col); for (let k = 0; k < 6; k++) d.particles.spawn(e.pos.x + rnd(-0.2, 0.2), e.pos.y + 1, e.pos.z + rnd(-0.2, 0.2), { vx: rnd(-1, 1), vy: rnd(-0.5, 1.5), vz: rnd(-1, 1), life: 0.55, s0: 0.13, s1: 0.04, c0: 0xc0101a, c1: 0x4a0006, a: 1, g: 9 }); } }); };
 
   /* ---- Égide de Auréon: cúpula de luz com favos que bebe os golpes ---- */
-  let aegis: { hp: number; max: number; m: THREE.Mesh; u: { t: { value: number }; hit: { value: number }; op: { value: number } }; tier: number } | null = null;
+  let aegis: { hp: number; max: number; m: THREE.Object3D; u: { t: { value: number }; hit: { value: number }; op: { value: number } }; tier: number } | null = null;
   const hexMap = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; g.fillStyle = '#000'; g.fillRect(0, 0, 128, 128); g.strokeStyle = '#fff'; g.lineWidth = 2.2; const r = 12;
     for (let y = -1; y < 8; y++) for (let x = -1; x < 7; x++) { const cx = x * r * 1.732 + (y % 2 ? r * 0.866 : 0), cy = y * r * 1.5; g.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + Math.PI / 6; g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.closePath(); g.stroke(); }
     const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; })();
@@ -1257,6 +1261,12 @@ export function createGameplay(d: GameplayDeps) {
         case 'packhowl': { if (!ok('cast')) return false; d.audio.boom(); st.shake = Math.max(st.shake, 0.3); const D = 12 * sc.dur; buff.dmg = Math.max(buff.dmg, 1.3); buff.dmgT = Math.max(buff.dmgT, D); buff.move = Math.max(buff.move, 1.2); buff.moveT = Math.max(buff.moveT, D); buff.def = Math.max(buff.def, 0.15); buff.defT = Math.max(buff.defT, D); ringFx(hp.x, hp.z, 0x9ac8ff, 2.4);
           for (let i = 0; i < 40; i++) d.particles.spawn(hp.x, hp.y + 1.9, hp.z, { vx: rnd(-1.2, 1.2), vy: rnd(2, 4.5), vz: rnd(-1.2, 1.2), life: 1.2, s0: 0.35, s1: 1.0, c0: 0xdde8ff, c1: 0x4a6aa0, a: 0.5, drag: 1.5 });
           for (let i = 0; i < 2; i++) pending.push({ at: now + 0.35 + i * 0.3, fn: () => spiritWolf(i, D, sc.dmg) }); logMsg('🐺 Uivo da Matilha: dois lobos espirituais lutam ao seu lado; +30% dano, +20% velocidade, +15% defesa', '#9ac8ff'); return true; }
+        case 'bubble': { if (!ok('cast')) return false; if (aegis) { d.scene.remove(aegis.m); aegis = null; } const g = new THREE.Group(); const A = mkAegis(); const u = A.u; (u as unknown as { col: { value: THREE.Color } }).col.value.setHex(0x8af0ff); d.scene.remove(A.m);
+          for (let i = 0; i < 6; i++) { const pnl = new THREE.Mesh(new THREE.SphereGeometry(1.35, 12, 10, i / 6 * Math.PI * 2, 0.6, Math.PI * 0.24, Math.PI * 0.42), A.m.material as THREE.Material); g.add(pnl); } fxAdd(g); g.userData.dyn = true;
+          const max = Math.round(st.hpMax * (0.35 + 0.05 * sc.tier)); aegis = { hp: max, max, m: g, u, tier: sc.tier }; const me = aegis; bubbleT = 8 * sc.dur; d.audio.spell('shock'); ringFx(hp.x, hp.z, 0x8af0ff, 1.3); let tt = 0;
+          ticks.push({ t: 8 * sc.dur, fn: (dt2, left) => { if (aegis !== me) { bubbleT = 0; return; } tt += dt2; const hh = d.getHero().root.position; g.position.set(hh.x, hh.y + 0.05, hh.z); g.rotation.y += dt2 * 1.6; me.u.t.value = tt; me.u.hit.value = Math.max(0, me.u.hit.value - dt2 * 4); me.u.op.value = Math.min(1, tt * 4, left * 2) * (0.45 + 0.55 * me.hp / me.max);
+            if (sideDrone && Math.random() < dt2 * 8) { const a2 = rnd(0, 6.283); beam(sideDrone.g.position.clone(), new THREE.Vector3(hh.x + Math.cos(a2) * 1.3, hh.y + rnd(0.6, 1.5), hh.z + Math.sin(a2) * 1.3), 0x8af0ff, 0.012, 0.12); } },
+            end: () => { if (aegis === me) { aegis = null; d.scene.remove(g); } bubbleT = 0; } }); logMsg(`🛡 Bolha de Escudos: a esfera para de atacar e segura seis escudos em volta de você (até ${max} de dano)`, '#8af0ff'); return true; }
         /* ---- Tecnocrata formado: torres ---- */
         case 'gunturret': case 'teslatower': case 'mortar': { if (!ok('throw')) return false; const kind = id === 'gunturret' ? 'gun' : id === 'teslatower' ? 'tesla' : 'mortar'; const x = tx, z = tz; d.audio.swing();
           droneGo.set(x, d.world.heightAt(x, z) + 1.4, z); droneGoT = TEMPO * 0.55; if (sideDrone) sideDrone.droneFlash = 1;
@@ -1332,7 +1342,11 @@ export function createGameplay(d: GameplayDeps) {
           medicBeamT -= dt; if (medicBeamT <= 0) { medicBeamT = 0.5; const from = md.position.clone().setY(md.position.y - 0.08), to = heroPos.clone().setY(heroPos.y + 1.2); beam(from, to, 0x7affd0, 0.03, 0.3); for (let q = 0; q < 8; q++) d.particles.spawn(to.x + rnd(-0.3, 0.3), to.y + rnd(-0.4, 0.4), to.z + rnd(-0.3, 0.3), { vy: rnd(0.4, 1.2), life: 0.7, s0: 0.12, s1: 0.03, c0: 0xffffff, c1: 0x7affd0, a: 1 }); } }
         else if (medicDrone) medicDrone.visible = false;
         if (kitKey === 'tecno' && h.kind !== 'technocrat') { if (!sideDrone) sideDrone = mkSideDrone(); const D = sideDrone; D.g.visible = true; const y = h.root.rotation.y; droneGoT -= dt;
-          const goal = droneGoT > 0 ? droneGo.clone() : D.droneTo ? D.droneTo.clone() : workAt ? new THREE.Vector3(workAt.x - Math.sin(y) * 0.2, d.world.heightAt(workAt.x, workAt.z) + 1.25, workAt.z - Math.cos(y) * 0.2)
+          const guarding = h.guard && !st.dead; bubbleT = Math.max(0, bubbleT - dt);
+          if (!droneShield) { const sm = new THREE.MeshBasicMaterial({ color: 0x8af0ff, map: hexMap, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }); droneShield = new THREE.Mesh(new THREE.SphereGeometry(1.4, 20, 10, -0.75, 1.5, Math.PI * 0.22, Math.PI * 0.5), sm); fxAdd(droneShield); droneShield.userData.dyn = true; }
+          { const m = droneShield.material as THREE.MeshBasicMaterial; m.opacity += ((guarding ? 0.36 : 0) - m.opacity) * Math.min(1, dt * 10); droneShield.visible = m.opacity > 0.02; droneShield.position.set(heroPos.x, heroPos.y + 0.15, heroPos.z); droneShield.rotation.y = y; hexMap.offset.y = -now * 0.2;
+            if (guarding && Math.random() < dt * 6) { const sp2 = D.g.position.clone(), tp2 = new THREE.Vector3(heroPos.x + Math.sin(y + rnd(-0.6, 0.6)) * 1.35, heroPos.y + rnd(0.5, 1.6), heroPos.z + Math.cos(y + rnd(-0.6, 0.6)) * 1.35); beam(sp2, tp2, 0x8af0ff, 0.012, 0.1); } }
+          const goal = guarding ? new THREE.Vector3(heroPos.x + Math.sin(y) * 0.85, heroPos.y + 1.45, heroPos.z + Math.cos(y) * 0.85) : bubbleT > 0 ? new THREE.Vector3(heroPos.x, heroPos.y + 2.5 + Math.sin(now * 2) * 0.06, heroPos.z) : droneGoT > 0 ? droneGo.clone() : D.droneTo ? D.droneTo.clone() : workAt ? new THREE.Vector3(workAt.x - Math.sin(y) * 0.2, d.world.heightAt(workAt.x, workAt.z) + 1.25, workAt.z - Math.cos(y) * 0.2)
             : new THREE.Vector3(heroPos.x - Math.cos(y) * 0.7 - Math.sin(y) * 0.35, heroPos.y + 2.05 + Math.sin(now * 1.7) * 0.08, heroPos.z + Math.sin(y) * 0.7 - Math.cos(y) * 0.35);
           const k = Math.min(1, dt * (droneGoT > 0 || D.droneTo ? 6 : 3.2)); D.vel.copy(goal).sub(D.g.position).multiplyScalar(k); D.g.position.add(D.vel);
           let dy = y - D.g.rotation.y; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; D.g.rotation.y += dy * Math.min(1, dt * 4); D.g.rotation.z = THREE.MathUtils.clamp(-D.vel.x * 5, -0.5, 0.5); D.g.rotation.x = THREE.MathUtils.clamp(D.vel.z * 5, -0.5, 0.5);
@@ -1342,7 +1356,7 @@ export function createGameplay(d: GameplayDeps) {
         { const DR = h.kind === 'technocrat' ? h : kitKey === 'tecno' && sideDrone ? sideDrone : null; const want = DR ? heroDark * 18 : 0; droneLight.intensity += (want - droneLight.intensity) * Math.min(1, dt * 3); if (DR) DR.dronePos(droneLight.position); droneLight.visible = droneLight.intensity > 0.05; }
         // lobisomem: luta sem arma (garras); a espada e o escudo somem enquanto não estiver com ferramenta de ofício na mão
         { const rg = (h as unknown as { rig?: { sword?: () => THREE.Object3D | null; shield?: () => THREE.Object3D | null } }).rig; const sw = rg?.sword?.() ?? null, shd = rg?.shield?.() ?? null;
-          if (kitKey === 'lob' && !h.holdTool) { if (sw) sw.visible = false; if (shd) shd.visible = false; lobHid = true; } else if (lobHid) { if (sw) sw.visible = true; if (shd) shd.visible = true; lobHid = false; } }
+          if (kitKey === 'lob' && !h.holdTool) { if (sw) sw.visible = false; if (shd) shd.visible = false; lobHid = true; } else if (kitKey === 'tecno') { if (shd) shd.visible = false; if (sw && lobHid) sw.visible = true; lobHid = true; } else if (lobHid) { if (sw) sw.visible = true; if (shd) shd.visible = true; lobHid = false; } } // tecnocrata não usa escudo: quem defende é a esfera
         if (form?.id === 'fenrir' && kitKey === 'lob') { beastShow(true); const B = beast!; for (const c of h.root.children) if (c !== B.root) c.visible = false;
           const an = h.actName, p = h.actP; if (an && an !== beastLastAct) beastSide = -beastSide; beastLastAct = an;
           const mode = !an || an === 'dash' || an === 'dodge' ? null : an === 'cast' ? (lastExtra === 'bite' ? 'bite' : 'howl') : an === 'slam' || an === 'bash' || an === 'rush' ? 'pounce' : an === 'kick' ? (lastExtra === 'bite' ? 'bite' : 'clawR') : an === 'combo2' || an === 'combo4' || an === 'lowcut' ? 'clawL' : an === 'hit' ? null : beastSide > 0 ? 'clawR' : 'clawL';
@@ -1495,7 +1509,7 @@ export function createGameplay(d: GameplayDeps) {
             if (best && bd > 2.2) { DR.droneTo = new THREE.Vector3(best.x, best.y + 1.0, best.z); const k = Math.min(1, dt * 4); best.x += (heroPos.x - best.x) * k; best.z += (heroPos.z - best.z) * k; best.m.position.x = best.x; best.m.position.z = best.z; }
             else DR.droneTo = null;
             droneLaserT -= dt;
-            if (h.combat && droneLaserT <= 0) { const e = enemies.nearest(heroPos, 10); if (e) { droneLaserT = 1.5; DR.droneFlash = 1; const tp = e.pos.clone().setY(e.pos.y + 1.0); beam(dp, tp, 0x8af0ff, 0.045); skill = 'combo'; hitEnemy(e, 0.45, false, dp); skill = null; if (e.alive && Math.random() < 0.2) { e.state = 'hurt'; e.t = -0.4; for (let i = 0; i < 8; i++) d.particles.spawn(tp.x + rnd(-0.3, 0.3), tp.y + rnd(-0.5, 0.5), tp.z + rnd(-0.3, 0.3), { life: 0.2, s0: 0.5, s1: 0.1, c0: 0xffffff, c1: 0x8af0ff, a: 1 }); } } }
+            if (h.combat && droneLaserT <= 0 && !droneDefends()) { const e = enemies.nearest(heroPos, 10); if (e) { droneLaserT = 1.5; DR.droneFlash = 1; const tp = e.pos.clone().setY(e.pos.y + 1.0); beam(dp, tp, 0x8af0ff, 0.045); skill = 'combo'; hitEnemy(e, 0.45, false, dp); skill = null; if (e.alive && Math.random() < 0.2) { e.state = 'hurt'; e.t = -0.4; for (let i = 0; i < 8; i++) d.particles.spawn(tp.x + rnd(-0.3, 0.3), tp.y + rnd(-0.5, 0.5), tp.z + rnd(-0.3, 0.3), { life: 0.2, s0: 0.5, s1: 0.1, c0: 0xffffff, c1: 0x8af0ff, a: 1 }); } } }
           }
         } else if (droneTask) droneTask = null;
         for (let i = mines.length - 1; i >= 0; i--) {

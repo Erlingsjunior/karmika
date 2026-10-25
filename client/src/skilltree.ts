@@ -134,6 +134,7 @@ Object.assign(STATS, {
   'x:packhowl': { dmg: 1.3, dur: 12, cd: 40, note: 'Dois lobos espirituais por 12 s; +30% dano, +20% velocidade, +15% defesa.' },
   'x:gunturret': { dmg: 0.32, range: 14, dur: 16, cd: 18, note: 'Tripé com metralhadora: rajadas de 5 balas na presa mais próxima.' },
   'x:teslatower': { dmg: 0.7, hits: 4, range: 9, dur: 14, cd: 20, note: 'Arco que salta em até 4 inimigos a cada 1,2 s e deixa lento.' },
+  'x:bubble': { dmg: 0, dur: 8, cd: 16, note: 'Seis escudos girando bebem até 35% da vida; a esfera não ataca enquanto defende.' },
   'x:mortar': { dmg: 1.5, area: 2.2, range: 26, dur: 15, cd: 24, note: 'Granadas em arco alto de 6 a 26 m; cada uma derruba.' },
   'tecno:medic': { dmg: 0, dur: 10, cd: 18, note: 'Drone médico: cura 40% da vida em 10 s e apaga queimaduras.' },
 });
