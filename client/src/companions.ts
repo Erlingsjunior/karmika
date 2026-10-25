@@ -1,6 +1,7 @@
 /** Companheiros: pet que coleta itens e montaria. Modelos quadrúpedes reaproveitados dos inimigos. */
 import * as THREE from 'three';
 import { buildQuad, animQuadWalk } from './enemies';
+import { buildWolf } from './werewolf3d';
 import { mergeStatic } from './merge3d';
 import { fine } from './dual3d';
 import { ramp } from './toon3d';
@@ -17,7 +18,9 @@ export const MOUNTS: Record<string, MountKind> = {
 };
 
 export function createPet(scene: THREE.Scene, kind: PetKind, heightAt: (x: number, z: number) => number) {
-  const q = buildQuad(kind.quad, kind.tint); const root = new THREE.Group(); root.scale.setScalar(kind.scale); root.add(q.root); mergeStatic(q.root, ramp); fine(root); scene.add(root);
+  // 25/10: o filhote de lobo é o lobo esguio (werewolf3d); os outros bichos seguem no quadrúpede antigo
+  const W = kind.quad === 'wolf' ? buildWolf({ fur: kind.tint ?? 0x8a847c }) : null; const q = W ? null : buildQuad(kind.quad, kind.tint);
+  const root = new THREE.Group(); root.scale.setScalar(kind.scale * (W ? 1.15 : 1)); root.add(W ? W.root : q!.root); mergeStatic(W ? W.root : q!.root, ramp); fine(root); scene.add(root);
   const pos = new THREE.Vector3(), tgt = new THREE.Vector3(); let yaw = 0, ph = 0, placed = false, idleT = 0;
   const el = document.createElement('div'); el.className = 'npc pet'; el.innerHTML = `<b>${kind.name}</b>`; document.body.appendChild(el); if (kind.silent) el.style.display = 'none';
   let carrying = false;
@@ -34,7 +37,7 @@ export function createPet(scene: THREE.Scene, kind: PetKind, heightAt: (x: numbe
     ph += dt * (6 + mv * 2.2) * (mv > 0.1 ? 1 : 0);
     pos.y = heightAt(pos.x, pos.z);
     root.position.copy(pos); root.rotation.y = yaw;
-    animQuadWalk(q, ph, mv, t, 7);
+    if (W) W.pose({ dt, mv, wind: 0, strike: 0, hurt: 0, idle: mv < 0.1 }); else animQuadWalk(q!, ph, mv, t, 7);
     carrying = !!goal;
     const v = new THREE.Vector3(pos.x, pos.y + 0.9 * kind.scale, pos.z).project(camera); const r = canvas.getBoundingClientRect(); const show = v.z < 1 && far < 16;
     if (!kind.silent) el.style.display = show ? 'block' : 'none'; if (show && !kind.silent) { el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; }

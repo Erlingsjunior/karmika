@@ -1,5 +1,6 @@
 import { RUNAS } from './runas';
 import * as THREE from 'three';
+import { buildBeast, buildWolf } from './werewolf3d';
 import { charShadow, createCharacter, type Hero3D } from './characters';
 import type { SpawnDef, EnemyType } from './world';
 import { loadModel, Puppet } from './models3d';
@@ -35,7 +36,7 @@ export interface EnemyCtx { outMul?: () => number;
 
 interface Def {
   name: string; lvl: number; hp: number; dmg: number; speed: number; aggro: number; range: number; windup: number; cd: number; xp: number; gold: [number, number];
-  model?: string; scale: number; quad?: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote'; rig?: 'fairy' | 'treant' | 'prince' | 'zombie' | 'bishop' | 'human'; /** gente: o mesmo boneco dos NPCs, armado */ human?: HumanLook; fly?: number; passive?: boolean; radius: number; tint?: number;
+  model?: string; scale: number; quad?: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote'; rig?: 'fairy' | 'treant' | 'prince' | 'zombie' | 'bishop' | 'human' | 'beast'; /** gente: o mesmo boneco dos NPCs, armado */ human?: HumanLook; fly?: number; passive?: boolean; radius: number; tint?: number;
 }
 /** o adversário de um bicho num evento (outro bicho, ou gente do evento) */
 export interface Foe { pos: THREE.Vector3; alive(): boolean; hit(n: number): void }
@@ -73,7 +74,7 @@ export const DEFS: Record<EnemyType, Def> = {
   prince: { name: 'Príncipe das Cinzas', lvl: 8, hp: 520, dmg: 30, speed: 2.7, aggro: 20, range: 3.6, windup: 1.05, cd: 2.2, xp: 450, gold: [60, 120], rig: 'prince', fly: 0.35, scale: 1.0, radius: 1.2 },
   skeleton: { name: 'Esqueleto do Campo Santo', lvl: 12, hp: 150, dmg: 18, speed: 2.6, aggro: 15, range: 1.9, windup: 0.7, cd: 1.6, xp: 80, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8 },
   bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 0.7, radius: 0.45, tint: 0x1a1418 },
-  werewolf: { name: 'Lobisomem', lvl: 16, hp: 420, dmg: 30, speed: 5.0, aggro: 19, range: 2.1, windup: 0.6, cd: 1.4, xp: 180, gold: [10, 26], quad: 'wolf', scale: 1.75, radius: 1.0, tint: 0x3a302a },
+  werewolf: { name: 'Lobisomem', lvl: 16, hp: 420, dmg: 30, speed: 5.0, aggro: 19, range: 2.1, windup: 0.6, cd: 1.4, xp: 180, gold: [10, 26], rig: 'beast', scale: 1.12, radius: 1.0 },
   /* gente dos eventos vivos: boneco articulado dos NPCs, com arma, escudo e cor da facção */
   soldier: { name: 'Soldado da Patrulha', lvl: 20, hp: 300, dmg: 22, speed: 3.3, aggro: 16, range: 2.0, windup: 0.55, cd: 1.3, xp: 120, gold: [6, 16], rig: 'human', scale: 1, radius: 0.55, human: { kind: 'nordic', tint: 0x5a6a8a, weapon: 'Espada Longa', shield: 'Escudo Nórdico', helm: 'Elmo Nórdico' } },
   cultist: { name: 'Bruxo do Círculo', lvl: 20, hp: 240, dmg: 24, speed: 3.0, aggro: 16, range: 2.0, windup: 0.6, cd: 1.4, xp: 120, gold: [8, 18], rig: 'human', scale: 1, radius: 0.5, human: { kind: 'nordic', civil: 'human', tint: 0x3a1450, weapon: 'Cajado Retorcido' } },
@@ -237,6 +238,19 @@ function runes() {
 }
 
 /** Zumbi: corpo cinza-esverdeado em farrapos, cabeça pendida, braços estendidos; cambaleia e se arrasta */
+/** lobisomem de pé (werewolf3d): alterna a garra a cada golpe; morde quando o golpe é curto */
+/** lobo e coiote: o lobo esguio de quatro patas */
+function wolfRig(): Rig {
+  const w = buildWolf();
+  return { root: w.root, mats: w.mats, update(e, dt, windK, strikeK, hurtK, mv) { w.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e.state === 'idle', alert: e.state === 'chase' || e.state === 'windup' }); } };
+}
+function beastRig(): Rig {
+  const b = buildBeast(); let side = 1, lastS = 0;
+  return { root: b.root, mats: b.mats, update(_e, dt, windK, strikeK, hurtK, mv) {
+    if (strikeK > 0.5 && lastS <= 0.5) side = -side; lastS = strikeK;
+    b.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, mode: windK > 0.01 || strikeK > 0.01 ? (side > 0 ? 'clawR' : 'clawL') : null, combat: _e.state === 'chase' || _e.state === 'windup' || _e.state === 'recover' });
+  } };
+}
 function buildZombie(): Rig {
   const root = new THREE.Group(), mats: THREE.MeshToonMaterial[] = [];
   const skin = tm(0x7a8a6a), rag = tm(0x3a3a2e), rag2 = tm(0x2a2420); mats.push(skin, rag, rag2);
@@ -448,7 +462,8 @@ export function createEnemies(ctx: EnemyCtx) {
 
   function build(e: Enemy) {
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
-    if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? buildZombie() : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
+    if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
+    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? buildZombie() : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }
     else if (e.def.model) {
       loadModel(`/models/bestiary/${e.def.model}.glb`).then((m) => {

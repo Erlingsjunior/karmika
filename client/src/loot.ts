@@ -131,8 +131,8 @@ const SLOT_AFF: Record<Slot, StatKey[]> = {
   amulet: ['hp', 'mp', 'regen', 'xp', 'gold', 'vit', 'int', 'crit', 'dmg', 'gen'],
 };
 /** armas de caminho: só quem trilha aquele caminho empunha (Caçador de Demônios, Tecnocrata) ou só a raça (anões) */
-export type Only = 'cac' | 'tec' | 'dwarf';
-export const ONLY_NAME: Record<Only, string> = { cac: 'Caçadores de Demônios', tec: 'Tecnocratas', dwarf: 'Anões' };
+export type Only = 'cac' | 'tec' | 'dwarf' | 'vam';
+export const ONLY_NAME: Record<Only, string> = { cac: 'Caçadores de Demônios', tec: 'Tecnocratas', dwarf: 'Anões', vam: 'Vampiros' };
 interface Base { n: string; g: 'm' | 'f'; icon: string; s?: Partial<Record<StatKey, number>>; only?: Only }
 const BASES: Record<Slot, Base[]> = {
   relic: [{ n: 'Relíquia', g: 'f', icon: '🏺' }], ring2: [], earring2: [],
@@ -145,6 +145,7 @@ const BASES: Record<Slot, Base[]> = {
     { n: 'Arco Curto', g: 'm', icon: '🏹', s: { dmg: 9, dex: 2 } }, { n: 'Arco Longo', g: 'm', icon: '🏹', s: { dmg: 13, dex: 2 } },
     { n: 'Besta de Repetição', g: 'f', icon: '🏹', s: { dmg: 12, crit: 2 }, only: 'cac' },
     { n: 'Metralhadora de Mão', g: 'f', icon: '🔫', s: { dmg: 11 }, only: 'tec' }, { n: 'Lança-Chamas de Mão', g: 'm', icon: '🔥', s: { dmg: 12 }, only: 'tec' }, { n: 'Lança-Veneno de Mão', g: 'm', icon: '☣', s: { dmg: 12 }, only: 'tec' },
+    { n: 'Espada de Duelo', g: 'f', icon: '🗡️', s: { dmg: 12, crit: 4, dex: 2 }, only: 'vam' }, { n: 'Adaga Fina', g: 'f', icon: '🗡️', s: { dmg: 9, crit: 6, leech: 1 }, only: 'vam' },
     { n: 'Martelo de Guerra Anão', g: 'm', icon: '🔨', s: { dmg: 24, str: 2 }, only: 'dwarf' }, { n: 'Machado Duplo Anão', g: 'm', icon: '🪓', s: { dmg: 23, crit: 2 }, only: 'dwarf' }],
   armor: [{ n: 'Gibão de Couro', g: 'm', icon: '🥋', s: { def: 6 } }, { n: 'Túnica Nórdica', g: 'f', icon: '👘', s: { def: 5, mp: 12 } }, { n: 'Cota de Malha', g: 'f', icon: '🦺', s: { def: 11 } }, { n: 'Armadura de Placas', g: 'f', icon: '🛡️', s: { def: 16 } }],
   shield: [{ n: 'Broquel', g: 'm', icon: '🔰', s: { def: 4 } }, { n: 'Escudo Redondo', g: 'm', icon: '🛡', s: { def: 8 } }, { n: 'Escudo Nórdico', g: 'm', icon: '🛡', s: { def: 10, hp: 10 } }, { n: 'Escudo Ogival', g: 'm', icon: '🛡', s: { def: 11, hp: 6 } }, { n: 'Escudo de Pipa', g: 'm', icon: '🛡', s: { def: 12 } }, { n: 'Escudo Torre', g: 'm', icon: '🛡️', s: { def: 14 } }],
@@ -200,6 +201,7 @@ export const RSLOT: Record<Slot, string> = { weapon: 'Arma', armor: 'Peitoral', 
 /* ---- ícones desenhados (em vez de emoji): traço na cor da raridade, um desenho por tipo de peça ---- */
 const P: Record<string, string> = {
   sword: '<path d="M22 4l6 0 0 6-12 12-4-4z" fill="currentColor" fill-opacity=".25"/><path d="M22 4h6v6L16 22l-4-4z M10 18l4 4 M7 21l4 4 M5 27l3-3"/><path d="M8 17l7 7" stroke-width="2.4"/>',
+  rapier: '<path d="M27 4L12 19"/><path d="M14 14c-3 0-5 2-5 5s2 4 4 4"/><path d="M9 17l6 6M8 24l-3 3"/><circle cx="7" cy="25" r="1.4"/>',
   dagger: '<path d="M20 6l5 1-1 5-9 9-4-4z" fill="currentColor" fill-opacity=".25"/><path d="M20 6l5 1-1 5-9 9-4-4z M9 18l5 5 M7 25l4-4"/>',
   greatsword: '<path d="M24 2h6v6L14 24l-6-6z" fill="currentColor" fill-opacity=".25"/><path d="M24 2h6v6L14 24l-6-6z M6 16l10 10 M4 28l5-5"/>',
   axe: '<path d="M8 28L22 8" stroke-width="2.4"/><path d="M16 6c4-4 12-2 12 4-4 0-8 2-9 6z" fill="currentColor" fill-opacity=".3"/><path d="M16 6c4-4 12-2 12 4-4 0-8 2-9 6z"/>',
@@ -239,7 +241,7 @@ const P: Record<string, string> = {
   fang: '<path d="M8 5c4 0 8 2 8 6 0-4 4-6 8-6-1 9-4 18-8 22-4-4-7-13-8-22z" fill="currentColor" fill-opacity=".3"/><path d="M8 5c4 0 8 2 8 6 0-4 4-6 8-6-1 9-4 18-8 22-4-4-7-13-8-22z"/>',
   claw: '<path d="M6 26C6 16 10 8 14 4M12 27c0-9 4-16 8-20M18 28c0-7 3-13 8-17" stroke-width="2.4"/>',
 };
-const KEY_BY_BASE: [RegExp, string][] = [[/Lança-Chamas|Lança-Veneno/, 'flamer'], [/Adaga|Faca/, 'dagger'], [/Montante/, 'greatsword'], [/Espada|Lâmina/, 'sword'], [/Machado/, 'axe'], [/Martelo|Maça/, 'hammer'], [/Lança/, 'spear'], [/Rifle|Canhão|Pistola/, 'rifle'], [/Cajado|Bastão/, 'staff'], [/Besta/, 'crossbow'], [/Arco/, 'bow'], [/Metralhadora/, 'gun'], [/Garra/, 'claw'],
+const KEY_BY_BASE: [RegExp, string][] = [[/Lança-Chamas|Lança-Veneno/, 'flamer'], [/Espada de Duelo/, 'rapier'], [/Adaga|Faca/, 'dagger'], [/Montante/, 'greatsword'], [/Espada|Lâmina/, 'sword'], [/Machado/, 'axe'], [/Martelo|Maça/, 'hammer'], [/Lança/, 'spear'], [/Rifle|Canhão|Pistola/, 'rifle'], [/Cajado|Bastão/, 'staff'], [/Besta/, 'crossbow'], [/Arco/, 'bow'], [/Metralhadora/, 'gun'], [/Garra/, 'claw'],
   [/Torre/, 'tower'], [/Ogival|Pipa/, 'heater'], [/Capuz/, 'hood'], [/Alado/, 'winghelm'], [/Cota/, 'mail'], [/Placas|Exoesqueleto/, 'plate'], [/Túnica|Manto Sacro|Batina/, 'tunic'], [/Cálice/, 'chalice'], [/Grimório|Livro/, 'book'], [/Olho/, 'eye'], [/Coração/, 'heart'], [/Pena/, 'feather'], [/Brasa/, 'ember'], [/Engrenagem/, 'gear'], [/Crânio|Caveira/, 'skull'], [/Cruz|Relicário|Sudário/, 'cross'], [/Presa|Dente/, 'fang']];
 const KEY_BY_SLOT: Record<Slot, string> = { weapon: 'sword', armor: 'chest', shield: 'shield', helm: 'helm', boots: 'boots', ring: 'ring', ring2: 'ring', amulet: 'amulet', relic: 'chalice', earring: 'earring', earring2: 'earring', shoulders: 'shoulders', cape: 'cape' };
 const svgOf = (k: string, col = 'currentColor') => `<svg class="gico" viewBox="0 0 32 32" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:${col}">${P[k] ?? P.sword}</svg>`;

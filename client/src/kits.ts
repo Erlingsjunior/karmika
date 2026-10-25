@@ -3,7 +3,7 @@ import type { Race as BaseRace } from '@karmika/shared';
 export type KitKey = BaseRace | 'tecno' | 'pal' | 'vam' | 'lob';
 type Race = KitKey;
 
-export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie' | 'smite' | 'consecrate' | 'avenging' | 'drain' | 'batswarm' | 'bloodnova' | 'nightform' | 'howl' | 'rend';
+export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie' | 'smite' | 'consecrate' | 'avenging' | 'drain' | 'batswarm' | 'bloodnova' | 'nightform' | 'howl' | 'rend' | 'aegis' | 'shieldthrow' | 'conversion' | 'clot' | 'venomclaw' | 'bite' | 'pounce' | 'packhowl' | 'gunturret' | 'teslatower' | 'mortar';
 export interface AimDef { kind: 'circle' | 'cone' | 'line'; radius: number; range: number; color: number }
 export interface SkillDef { k: string; id: SkillId; lvl: number; c: string; name: string; cost: number; aim?: AimDef; hold?: boolean; tip: string; svg: string }
 /** Níveis de desbloqueio das 10 magias: 1, 1, 1, 5, 10, 18, 28, 42, 60, 85 (todas abertas antes da Ascensão do nível 100). */
@@ -111,6 +111,9 @@ const HSVG: Record<string, string> = {
    Com uma arma da Academia na mão (metralhadora, lança-chamas ou lança-veneno), o golpe básico vira tiro. ---- */
 { const T = (id: string): SkillDef => KITS.technocrat!.find((x) => x.id === id) ?? { k: '', id: id as SkillId, lvl: 1, c: '#7affd0', name: id, cost: 0, tip: '', svg: '' }, Nn = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
   const TS: Record<string, string> = {
+    gunturret: `<svg viewBox="0 0 32 32"><path d="M9 29l5-10M23 29l-5-10M16 29V19" stroke="#8a6a3a" stroke-width="2" stroke-linecap="round"/><rect x="9" y="11" width="13" height="8" rx="2" fill="#4a5262" stroke="#c9a050" stroke-width="1.3"/><path d="M22 13h7M22 15h7M22 17h7" stroke="#9aa4b4" stroke-width="1.3"/><path d="M29 12l2-1M29 18l2 1" stroke="#ffd070" stroke-width="1.4"/><circle cx="13" cy="15" r="1.6" fill="#6ae0ff"/></svg>`,
+    teslatower: `<svg viewBox="0 0 32 32"><path d="M11 30h10l-2-6h-6z" fill="#4a5262" stroke="#1c2230"/><path d="M14 24V12h4v12" fill="#b0703a" stroke="#6a3a1a"/><path d="M12 14h8M12 17h8M12 20h8" stroke="#e8a060" stroke-width="1.2"/><circle cx="16" cy="8" r="4" fill="#2a3444" stroke="#8af0ff" stroke-width="1.5"/><path d="M19 6l5-3-2 4 5-1M13 6l-5-3 2 4-5-1" stroke="#bff4ff" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>`,
+    mortar: `<svg viewBox="0 0 32 32"><path d="M6 28h20" stroke="#6a5a40" stroke-width="2.4" stroke-linecap="round"/><path d="M10 27l6-17 5 2-5 15z" fill="#4a5262" stroke="#1c2230" stroke-width="1.2"/><path d="M15 12l5 2" stroke="#c9a050" stroke-width="1.6"/><path d="M19 9c3-5 7-6 10-4" stroke="#ffd070" stroke-width="1.4" fill="none" stroke-dasharray="2 2"/><circle cx="28" cy="5" r="2.2" fill="#3a3a3a" stroke="#ffb060"/></svg>`,
     combo: `<svg viewBox="0 0 32 32"><path d="M5 22l12-12 3 3-12 12z" fill="#9aa4b4" stroke="#2a3040" stroke-width="1.2"/><path d="M17 10l4-4 5 5-4 4z" fill="#3a4a5a" stroke="#6ae0ff" stroke-width="1.2"/><path d="M22 4l2-2M26 8l2-2M25 13l3 1" stroke="#6ae0ff" stroke-width="1.6" stroke-linecap="round"/><circle cx="21.5" cy="10.5" r="1.6" fill="#bff4ff"/></svg>`,
     guard: `<svg viewBox="0 0 32 32"><path d="M16 3l11 4v8c0 7-5 12-11 14C10 27 5 22 5 15V7z" fill="#1c2a3a" stroke="#6ae0ff" stroke-width="1.6"/><path d="M10 12h12M10 16h12M12 20h8" stroke="#4de3ff" stroke-width="1.2" opacity=".8"/><circle cx="16" cy="9" r="1.6" fill="#bff4ff"/></svg>`,
     thunder: `<svg viewBox="0 0 32 32"><path d="M8 28v-9l-2-4 3-5h8l3 5-2 4v9z" fill="#4a5262" stroke="#1c2230" stroke-width="1.3"/><path d="M9 15h12" stroke="#6ae0ff" stroke-width="1.4"/><circle cx="12" cy="20" r="1.2" fill="#6ae0ff"/><circle cx="17" cy="20" r="1.2" fill="#6ae0ff"/><path d="M22 3l-4 6h4l-3 6" fill="none" stroke="#bff4ff" stroke-width="1.8" stroke-linejoin="round"/><path d="M26 6l-2 3h2l-2 3" fill="none" stroke="#6ae0ff" stroke-width="1.3"/></svg>`,
@@ -118,7 +121,7 @@ const HSVG: Record<string, string> = {
     mark: `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="#ff5a5a" stroke-width="1.4"/><circle cx="16" cy="16" r="5" fill="none" stroke="#ff5a5a" stroke-width="1.2" stroke-dasharray="2 2"/><path d="M16 3v7M16 22v7M3 16h7M22 16h7" stroke="#ffb0b0" stroke-width="1.4"/><circle cx="16" cy="16" r="1.8" fill="#ff3030"/><path d="M2 28L14 18" stroke="#ff3030" stroke-width="1" opacity=".7"/></svg>`,
     kick: `<svg viewBox="0 0 32 32"><path d="M6 6h8v12l8 2v6H6z" fill="#4a5262" stroke="#1c2230" stroke-width="1.3"/><path d="M6 22h16" stroke="#6ae0ff" stroke-width="1.4"/><rect x="9" y="8" width="3" height="9" fill="#9aa4b4"/><path d="M24 17l5-2M25 21h5M24 25l5 2" stroke="#bff4ff" stroke-width="1.8" stroke-linecap="round"/></svg>`,
   };
-  const TK: [string, string, number, number, string, string, 'T' | 'N'][] = [
+  const TK: [string, string, number, number, string, string, 'T' | 'N' | 'X'][] = [
     ['1', 'combo', 1, 0, 'Golpe ou Disparo', 'Com uma arma da Academia na mão (metralhadora, lança-chamas ou lança-veneno), atira. Com qualquer outra, golpeia. A Energia vem das baterias e recarrega sozinha.', 'N'],
     ['2', 'guard', 1, 0, 'Bloqueio Reforçado', 'Segure: bloqueia à frente com o escudo ou com a arma. Bloqueio perfeito devolve Energia.', 'N'],
     ['3', 'thunder', 1, 25, 'Manopla de Tesla', 'Liga a bobina do antebraço: os próximos 3 golpes descarregam choque no alvo (Bronze: 4). Prata: o arco salta para outro inimigo; Ouro: a descarga atinge todos em volta.', 'N'],
@@ -130,8 +133,11 @@ const HSVG: Record<string, string> = {
     ['9', 'mark', 60, 20, 'Mira Laser', 'Aponta o laser no inimigo mais próximo: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.', 'N'],
     ['0', 'mech', 85, 60, 'Exoesqueleto', 'Veste o exoesqueleto por 12 s: tamanho +25%, dano ×2 e +40% de defesa.', 'T'],
     ['⇧1', 'kick', 3, 10, 'Chute Pneumático', 'A bota de pistão dispara contra o inimigo à frente: atordoa, empurra e interrompe golpes e magias em preparo.', 'N'],
+    ['⇧2', 'gunturret', 8, 30, 'Torre Metralhadora', 'Marca o chão: a esfera solta um tripé de latão que se arma sozinho e despeja rajadas na presa mais próxima por 16 s (alcance 14 m). Até 1 de cada torre.', 'X'],
+    ['⇧3', 'teslatower', 15, 35, 'Torre Tesla', 'Marca o chão: uma bobina de cobre sobe do chão e solta arcos que saltam de inimigo em inimigo (até 4) a cada 1,2 s, por 14 s. Quem leva o arco fica lento.', 'X'],
+    ['⇧4', 'mortar', 24, 40, 'Morteiro de Campanha', 'Marca o chão: arma um morteiro que lança granadas em arco alto contra os inimigos de 6 a 26 m, por 15 s. Cada granada abre uma cratera e derruba.', 'X'],
   ];
-  KITS.tecno = TK.map(([k, id, lvl, cost, name, tip, from]) => { const b = from === 'T' ? T(id) : Nn(id); return { ...b, k, lvl, cost, name, tip, c: id === 'medic' ? '#7affd0' : id === 'mark' ? '#ff7a7a' : from === 'T' ? b.c : '#6ae0ff', svg: TS[id] ?? b.svg }; });
+  KITS.tecno = TK.map(([k, id, lvl, cost, name, tip, from]) => { const b = from === 'X' ? { k: '', id: id as SkillId, lvl: 1, c: '#6ae0ff', name: id, cost: 0, tip: '', svg: '', aim: { kind: 'circle' as const, radius: id === 'mortar' ? 2.2 : 1.4, range: 9, color: 0x6ae0ff } } : from === 'T' ? T(id) : Nn(id); return { ...b, k, lvl, cost, name, tip, c: id === 'medic' ? '#7affd0' : id === 'mark' ? '#ff7a7a' : from === 'T' ? b.c : '#6ae0ff', svg: TS[id] ?? b.svg }; });
   for (const s of KITS.tecno) if (!s.svg) throw new Error('kit tecno sem ícone: ' + s.id); }
 
 /* ---- 25/10: Paladino, Vampiro e Lobisomem formados ganham golpes próprios (antes usavam os do guerreiro nórdico: gelo e Odin) ---- */
@@ -146,10 +152,18 @@ const HSVG: Record<string, string> = {
     bloodnova: I('<circle cx="16" cy="16" r="5" fill="C"/><path d="M16 3v6M16 23v6M3 16h6M23 16h6M7 7l4 4M21 21l4 4M25 7l-4 4M11 21l-4 4" stroke="C" stroke-width="2" stroke-linecap="round"/>', '#ff3a4a'),
     nightform: I('<path d="M16 6c-3 0-5 2-5 5 0 2 1 3 2 4-4 1-8 4-10 8 4-1 7-1 9 1 1-2 2-3 4-3s3 1 4 3c2-2 5-2 9-1-2-4-6-7-10-8 1-1 2-2 2-4 0-3-2-5-5-5z" fill="C"/><path d="M13 10l1 2M19 10l-1 2" stroke="#ff4a5a" stroke-width="1.6"/>', '#8a1a2a'),
     howl: I('<path d="M8 26c0-6 2-11 6-14l-2-6 5 4 3-3 1 5c3 2 5 6 5 10" fill="none" stroke="C" stroke-width="2.2"/><circle cx="24" cy="7" r="3.5" fill="#e8ecff"/><path d="M4 14q-2 3 0 6M2 11q-3 6 0 12" stroke="#c8d8ff" stroke-width="1.4" fill="none"/>', '#a0a8c0'),
+    aegis: I('<path d="M16 3c5 3 9 3 12 3v9c0 7-5 12-12 14C9 27 4 22 4 15V6c3 0 7 0 12-3z" fill="none" stroke="C" stroke-width="2"/><path d="M16 8l2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5z" fill="C" opacity=".85"/><path d="M2 12q-1 5 2 9M30 12q1 5-2 9" stroke="#fff6d0" stroke-width="1.3" fill="none"/>', '#ffd24a'),
+    shieldthrow: I('<circle cx="20" cy="12" r="7" fill="#7a5530" stroke="C" stroke-width="1.8"/><path d="M20 6v12M14 12h12" stroke="C" stroke-width="1.6"/><path d="M4 26q6-2 10-9M3 21q5-1 8-6" stroke="#fff0b0" stroke-width="1.4" fill="none" stroke-dasharray="3 2"/><path d="M26 22l3 4-5 1" stroke="C" stroke-width="1.6" fill="none"/>', '#ffd24a'),
+    conversion: I('<path d="M10 4h12v8H10z" fill="C"/><path d="M15 12h2v14h-2z" fill="#e8d8b0"/><path d="M8 28h16" stroke="C" stroke-width="2" stroke-linecap="round"/><path d="M4 8l3 1M28 8l-3 1M6 3l3 3M26 3l-3 3" stroke="#fff6d0" stroke-width="1.4"/><path d="M14 7h4M16 5v4" stroke="#7a5a10" stroke-width="1.4"/>', '#ffd24a'),
+    clot: I('<path d="M16 4c4 6 8 10 8 15a8 8 0 0 1-16 0c0-5 4-9 8-15z" fill="C"/><path d="M12 19c1 2 3 3 5 3" stroke="#ffb0b0" stroke-width="1.4" fill="none"/><path d="M3 10l4 2M29 10l-4 2M4 26l4-2M28 26l-4-2" stroke="#8a0a14" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="12" r="1.6" fill="#2a0004"/>', '#c0101a'),
+    venomclaw: I('<path d="M7 5c2 8 4 15 9 22M13 4c2 7 4 13 8 20M19 5c2 6 4 11 7 16" stroke="C" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M15 27c0 2 1 3 2 3s2-1 2-3l-2-3z M22 24c0 2 1 3 2 3s2-1 2-3l-2-3z" fill="#9aff6a"/>', '#b47aff'),
+    bite: I('<path d="M4 12c4-6 20-6 24 0l-4 2-2-3-2 4-2-4-2 4-2-4-2 4-2-3z" fill="#f0e8d8" stroke="C" stroke-width="1.2"/><path d="M4 20c4 6 20 6 24 0l-4-2-2 3-2-4-2 4-2-4-2 4-2-4-2 3z" fill="#f0e8d8" stroke="C" stroke-width="1.2"/><path d="M13 16h6" stroke="#c0101a" stroke-width="2"/>', '#8a5a3a'),
+    pounce: I('<path d="M5 27c4-12 10-18 21-20" stroke="#e8d8c0" stroke-width="1.6" fill="none" stroke-dasharray="3 2"/><path d="M20 4l7 3-3 7" stroke="C" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M4 28l3-5M8 29l2-6M12 29l1-6" stroke="C" stroke-width="2.2" stroke-linecap="round"/>', '#c8a070'),
+    packhowl: I('<circle cx="24" cy="7" r="4" fill="#e8ecff"/><path d="M5 27c0-5 2-9 5-11l-1-5 4 3 2-2 1 4c2 2 3 5 3 9" fill="none" stroke="C" stroke-width="2"/><path d="M15 28c0-4 2-7 4-9l-1-4 3 2 2-2 1 3c2 2 3 5 3 9" fill="none" stroke="#8ab0ff" stroke-width="1.6" opacity=".8"/>', '#c8a070'),
     rend: I('<path d="M7 5l6 22M14 4l5 22M21 5l4 20" stroke="C" stroke-width="2.6" stroke-linecap="round"/><path d="M9 14l1 3M16 12l1 3M23 13l1 3" stroke="#ffd0d0" stroke-width="1.2"/>', '#e04a4a'),
   };
   type Row = [string, string, number, number, string, string];
-  const MK = (rows: Row[], col: string): SkillDef[] => rows.map(([k, id, lvl, cost, name, tip]) => { const b = KITS.nordic!.find((x) => x.id === id); const aim: AimDef | undefined = id === 'smite' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xffd24a } : id === 'batswarm' ? { kind: 'circle', radius: 3, range: 11, color: 0xc86a8a } : b?.aim;
+  const MK = (rows: Row[], col: string): SkillDef[] => rows.map(([k, id, lvl, cost, name, tip]) => { const b = KITS.nordic!.find((x) => x.id === id); const aim: AimDef | undefined = id === 'smite' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xffd24a } : id === 'conversion' ? { kind: 'circle', radius: 2.8, range: 9, color: 0xffd24a } : id === 'pounce' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xc8a070 } : id === 'shieldthrow' ? { kind: 'line', radius: 1.2, range: 10, color: 0xffd24a } : id === 'batswarm' ? { kind: 'circle', radius: 3, range: 11, color: 0xc86a8a } : b?.aim;
     return { k, id: id as SkillId, lvl, cost, name, tip, c: col, aim, hold: b?.hold, svg: ICON[id] ?? b?.svg ?? '' }; });
   KITS.pal = MK([
     ['1', 'combo', 1, 0, 'Golpe Consagrado', 'Espada e escudo. Todo golpe básico é dano sagrado: mortos-vivos, demônios e lobisomens sentem mais.'],
@@ -164,9 +178,12 @@ const HSVG: Record<string, string> = {
     ['0', 'avenging', 85, 60, 'Asas da Vingança', 'Transformação de 12 s: asas de luz nas costas, dano ×1,8, +25% de defesa e cada golpe cura.'],
     ['⇧1', 'kick', 3, 10, 'Golpe de Escudo', 'Bate a borda do escudo no inimigo à frente: atordoa, empurra e interrompe golpes e magias em preparo.'],
     ['⇧2', 'valkyrie', 20, 20, 'Contra-golpe Sagrado', 'Espera o golpe por 1,5 s: se vier, anula e gira cortando tudo em volta.'],
+    ['⇧3', 'aegis', 7, 25, 'Égide de Auréon', 'Ergue a mão e uma cúpula de luz dourada fecha em volta de você por 8 s: ela bebe os golpes (até 30% da sua vida). Se quebrar, explode em luz e atordoa quem estiver perto.'],
+    ['⇧4', 'shieldthrow', 12, 15, 'Escudo Arremessado', 'Marca uma linha: arremessa o escudo girando; ele ricocheteia em até 3 inimigos (atordoa cada um) e volta para a sua mão. Sem escudo no braço, vai um escudo de luz.'],
+    ['⇧5', 'conversion', 24, 35, 'Martelo da Conversão', 'Marca o chão: um martelo de luz do tamanho de uma porta desce do céu. Morto-vivo ou demônio com menos de 35% de vida é purificado na hora; gente com menos de 40% larga a arma, se ajoelha e foge.'],
   ], '#ffd24a');
   KITS.vam = MK([
-    ['1', 'combo', 1, 0, 'Lâmina Sedenta', 'Golpes rápidos. Todo vampiro rouba um pouco da vida de cada golpe (5%).'],
+    ['1', 'combo', 1, 0, 'Lâmina Sedenta', 'Golpes 45% mais rápidos, de duelista: espada fina, adaga ou as próprias mãos. Todo vampiro rouba um pouco da vida de cada golpe (5%).'],
     ['2', 'guard', 1, 0, 'Aparar', 'Segure: apara à frente com a arma.'],
     ['3', 'bash', 1, 0, 'Bote da Sombra', 'Marca uma linha: atravessa o caminho de uma vez, cortando quem estiver nele.'],
     ['4', 'drain', 5, 15, 'Beber a Vida', 'Prende o inimigo mais perto (até 7 m) num fio de sangue por 2 s: tira a vida dele e devolve para você.'],
@@ -177,9 +194,11 @@ const HSVG: Record<string, string> = {
     ['9', 'whirl', 60, 35, 'Dança Rubra', 'Gira sem parar por 2 s cortando tudo ao redor.'],
     ['0', 'nightform', 85, 60, 'Forma do Conde', 'Transformação de 12 s: o corpo vira sombra e morcego, dano ×1,8, +40% de velocidade e 25% de roubo de vida.'],
     ['⇧1', 'valkyrie', 20, 20, 'Véu da Noite', 'Espera o golpe por 1,5 s: se vier, desvia por baixo dele e corta tudo em volta.'],
+    ['⇧2', 'clot', 7, 20, 'Coagulação Tardia', 'Amaldiçoa o sangue do inimigo mais perto: por 3 s as veias dele escurecem e guardam cada golpe que ele leva. Depois o sangue estoura para fora (dano = base + 60% do que ele levou), ele sangra por 4 s e você bebe parte.'],
+    ['⇧3', 'venomclaw', 12, 15, 'Garras Envenenadas', 'As unhas crescem negras: quatro rasgos rápidos à frente, em zigue-zague. Cada rasgo envenena (o veneno corrói por 4 s e não deixa a ferida fechar).'],
   ], '#e0303a');
   KITS.lob = MK([
-    ['1', 'combo', 1, 0, 'Garras e Aço', 'Golpes selvagens; cada acerto enche a Fúria.'],
+    ['1', 'combo', 1, 0, 'Garras', 'O lobisomem não usa arma: rasga com as garras, em golpes rápidos e selvagens. Cada acerto enche a Fúria.'],
     ['2', 'guard', 1, 0, 'Couro Grosso', 'Segure: o corpo se fecha e aguenta os golpes à frente.'],
     ['3', 'bash', 1, 0, 'Bote do Lobo', 'Marca uma linha: corre baixo e derruba quem estiver no caminho.'],
     ['4', 'rend', 5, 15, 'Dilacerar', 'Três golpes de garra em sequência à frente; o último faz sangrar por 4 s.'],
@@ -190,6 +209,9 @@ const HSVG: Record<string, string> = {
     ['9', 'mark', 60, 20, 'Presa Marcada', 'Fareja e marca o inimigo mais perto: +50% de dano nele por 6 s, e cada golpe devolve vida.'],
     ['0', 'fenrir', 85, 60, 'Forma da Besta', 'Transformação de 10 s: vira o lobo grande. Dano ×2, +30% de velocidade e 15% de roubo de vida.'],
     ['⇧1', 'kick', 3, 10, 'Patada', 'Patada no peito do inimigo à frente: atordoa, empurra e interrompe.'],
+    ['⇧2', 'bite', 6, 10, 'Mordida', 'Avança o focinho e crava os dentes no inimigo à frente: dano forte, ele sangra por 4 s e metade do dano volta como vida.'],
+    ['⇧3', 'pounce', 12, 20, 'Salto da Fera', 'Marca o chão: salta alto e cai em cima, garras primeiro. Quem estiver no pouso é derrubado; o alvo principal leva o dobro.'],
+    ['⇧4', 'packhowl', 22, 30, 'Uivo da Matilha', 'Uiva chamando a matilha: dois lobos espirituais saem da névoa e lutam ao seu lado por 12 s, e você ganha +30% de dano, +20% de velocidade e +15% de defesa (aliados perto também).'],
   ], '#c8a070');
   void Nn; }
 

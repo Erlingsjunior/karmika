@@ -58,6 +58,8 @@ export interface Hero3D {
   /** nadando: corpo deitado na água, braçadas de crawl (parado: boiando, só a cabeça e os ombros de fora) */
   swim: boolean;
   scrub(a: Action, p: number): void;
+  /** velocidade do combo básico (vampiro 1,45: golpes de duelista; lobisomem 1,2) */
+  actSpeed: number;
 }
 
 const ramp = new THREE.DataTexture(new Uint8Array([45, 45, 45, 255, 115, 115, 115, 255, 190, 190, 190, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
@@ -1059,7 +1061,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     guard: false,
     combat: false,
     riding: false,
-    droneTo: null, droneFlash: 0,
+    droneTo: null, droneFlash: 0, actSpeed: 1,
     muzzle() { muzzleK = 1; },
     slash() { slashK = 1; },
     dronePos(out) { return droneObj ? droneObj.getWorldPosition(out) : out.copy(root.position).add(tmp.set(0, 1.6, 0)); },
@@ -1077,7 +1079,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       }
       if (a === 'dash') dashLeadL = Math.sin(phase) >= 0;
       if (a === 'dodge') dodgeSide = Math.random() < 0.5 ? -1 : 1;
-      act = { a, t: 0, dur: DUR[a] }; return true;
+      act = { a, t: 0, dur: DUR[a] / (COMBO.has(a) ? hero.actSpeed || 1 : 1) }; return true;
     },
     setAura(on) { auraOn = on; },
     setGear(g) {
@@ -1169,6 +1171,19 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             const pilot = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: pz ? 0x9aff5a : 0xff8a2a })); pilot.position.set(0, -0.64, 0.045); RG.add(pilot); // chama-piloto
             const valve = gm(new THREE.TorusGeometry(0.025, 0.006, 4, 10), 'gold'); valve.position.set(0.05, -0.1, -0.07); valve.rotation.y = Math.PI / 2; RG.add(valve);
             len = 0.52; }
+        } else if (base === 'Espada de Duelo') { // rapieira de vampiro: lâmina comprida e fina de seção losango, guarda em cesto com arco de mão e anel
+          len = 0.98; const bl = new THREE.CylinderGeometry(0.003, 0.013, len, 4); bl.scale(1, 1, 0.45); const blade = mk(bl, 0xdde3ec, 0.004, metal(rar)); blade.position.y = -0.1 - len / 2; blade.rotation.y = Math.PI / 4; sw.add(blade);
+          const ric = mk(new THREE.CylinderGeometry(0.012, 0.014, 0.1, 6), 0x9aa2ae, 0.003, metal(rar, 0x9aa2ae)); ric.position.y = -0.14; sw.add(ric);
+          const q1 = mk(new THREE.CylinderGeometry(0.007, 0.007, 0.22, 6), 0x2a2a32, 0.003, metal(rar, 0x3a3440)); q1.rotation.z = Math.PI / 2; q1.position.y = -0.095; sw.add(q1);
+          for (const sx of [-1, 1]) { const tip = mk(new THREE.SphereGeometry(0.012, 6, 5), glowOf(rar) || 0xb01a2a, 0.002); tip.position.set(sx * 0.11, -0.095, 0); sw.add(tip); }
+          const ringG = mk(new THREE.TorusGeometry(0.035, 0.006, 5, 14), 0x2a2a32, 0.002, metal(rar, 0x3a3440)); ringG.position.set(0, -0.13, 0.0); ringG.rotation.y = Math.PI / 2; sw.add(ringG);
+          const bow = mk(new THREE.TorusGeometry(0.075, 0.006, 5, 16, Math.PI), 0x2a2a32, 0.002, metal(rar, 0x3a3440)); bow.position.set(0, 0.0, 0.0); bow.rotation.set(0, Math.PI / 2, Math.PI / 2); bow.position.z = 0.0; bow.position.y = -0.02; sw.add(bow);
+          const cup = mk(new THREE.SphereGeometry(0.05, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), 0x3a3440, 0.002, metal(rar, 0x3a3440)); cup.position.y = -0.11; cup.rotation.x = Math.PI; sw.add(cup);
+        } else if (base === 'Adaga Fina') { // estilete: lâmina curta de losango, quillons curvos para aparar, anel de dedo
+          len = 0.4; const bl = new THREE.CylinderGeometry(0.002, 0.018, len, 4); bl.scale(1, 1, 0.5); const blade = mk(bl, 0xdde3ec, 0.004, metal(rar)); blade.position.y = -0.1 - len / 2; blade.rotation.y = Math.PI / 4; sw.add(blade);
+          for (const sx of [-1, 1]) { const qg = new THREE.TorusGeometry(0.06, 0.007, 5, 10, Math.PI / 2); const q = mk(qg, 0x2a2a32, 0.002, metal(rar, 0x3a3440)); q.position.set(sx * 0.0, -0.1, 0); q.rotation.z = sx > 0 ? -Math.PI / 2 : Math.PI; sw.add(q); }
+          const ringG = mk(new THREE.TorusGeometry(0.028, 0.006, 5, 12), 0x2a2a32, 0.002, metal(rar, 0x3a3440)); ringG.position.set(0, -0.135, 0.0); ringG.rotation.y = Math.PI / 2; sw.add(ringG);
+          const gem = mk(new THREE.OctahedronGeometry(0.018, 0), glowOf(rar) || 0xb01a2a, 0.002); gem.position.y = -0.1; sw.add(gem);
         } else if (base === 'Martelo') {
           const haft = mk(new THREE.CylinderGeometry(0.022, 0.024, 0.86, 7), 0x4a3220, 0.004); haft.position.y = -0.43; sw.add(haft);
           const headH = mk(new THREE.BoxGeometry(0.16, 0.2, 0.3), 0x6a6e78, 0.006, metal(rar, 0x6a6e78)); headH.position.set(0, -0.8, 0); sw.add(headH);

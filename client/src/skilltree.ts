@@ -124,6 +124,17 @@ Object.assign(STATS, {
   'x:nightform': { dmg: 1.8, dur: 12, cd: 50, note: 'Forma do Conde: dano ×1,8, +40% de velocidade, 25% de roubo de vida.' },
   'x:howl': { dmg: 0, area: 9, dur: 2, cd: 16, note: 'Medo: paralisa 2 s quem estiver perto; +20% de dano por 8 s.' },
   'x:rend': { dmg: 0.8, hits: 3, range: 2.6, cd: 6, note: 'Três garras; o último golpe sangra por 4 s.' },
+  'x:aegis': { dmg: 0, dur: 8, cd: 16, note: 'Cúpula que absorve até 30% da vida; ao quebrar, explode em luz e atordoa em 3 m.' },
+  'x:shieldthrow': { dmg: 1.3, hits: 3, range: 10, cd: 7, note: 'O escudo ricocheteia em até 3 inimigos, atordoa cada um e volta.' },
+  'x:conversion': { dmg: 2.6, area: 2.8, range: 9, cast: 0.7, cd: 16, note: 'Martelo de luz. Morto-vivo/demônio <35%: purificado. Gente <40%: converte e foge.' },
+  'x:clot': { dmg: 1.2, range: 8, dur: 3, cd: 11, note: 'Guarda 3 s de golpes no sangue do alvo; estoura com 60% do que ele levou e sangra 4 s.' },
+  'x:venomclaw': { dmg: 0.6, hits: 4, range: 2.6, cd: 7, note: 'Quatro rasgos rápidos; cada um envenena por 4 s.' },
+  'x:bite': { dmg: 1.7, range: 2.4, cd: 6, note: 'Mordida: sangra 4 s; metade do dano volta como vida.' },
+  'x:pounce': { dmg: 1.9, area: 2.6, range: 11, cd: 9, note: 'Salto: derruba no pouso; o alvo principal leva o dobro.' },
+  'x:packhowl': { dmg: 1.3, dur: 12, cd: 40, note: 'Dois lobos espirituais por 12 s; +30% dano, +20% velocidade, +15% defesa.' },
+  'x:gunturret': { dmg: 0.32, range: 14, dur: 16, cd: 18, note: 'Tripé com metralhadora: rajadas de 5 balas na presa mais próxima.' },
+  'x:teslatower': { dmg: 0.7, hits: 4, range: 9, dur: 14, cd: 20, note: 'Arco que salta em até 4 inimigos a cada 1,2 s e deixa lento.' },
+  'x:mortar': { dmg: 1.5, area: 2.2, range: 26, dur: 15, cd: 24, note: 'Granadas em arco alto de 6 a 26 m; cada uma derruba.' },
   'tecno:medic': { dmg: 0, dur: 10, cd: 18, note: 'Drone médico: cura 40% da vida em 10 s e apaga queimaduras.' },
 });
 for (const kk of ['tecno', 'pal', 'vam', 'lob'] as const) for (const sk of KITS[kk] ?? []) { const key = `${kk}:${sk.id}`; if (STATS[key]) continue; STATS[key] = STATS['x:' + sk.id] ?? STATS[`technocrat:${sk.id}`] ?? STATS[`nordic:${sk.id}`] ?? {}; }

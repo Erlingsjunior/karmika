@@ -1705,6 +1705,9 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
       let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
       ok = game.slam({ x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
     } else ok = game.cast(yaw, { x: a.x, z: a.z });
+  } else if (sk.id === 'pounce') { // Salto da Fera: o mesmo arco do salto marcado
+    let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
+    ok = game.useExtra('pounce', yaw, sk.cost, { x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
   } else if (sk.id === 'bash') ok = game.bash(yaw, { x: a.x, z: a.z });
   else if (sk.id === 'heal') ok = game.heal(heroPosNow(), { x: a.x, z: a.z });
   else ok = game.useExtra(sk.id, yaw, sk.cost, { x: a.x, z: a.z });
@@ -2728,12 +2731,13 @@ function drawWork() { if (!work) return; const W = WORK[work.kind], tool = inv.t
   (workBar.querySelector('.wl') as HTMLElement).innerHTML = `${W.icon} ${W.verb} — <b>${tool?.name ?? ''}</b> <i>${'★'.repeat(tool?.tier ?? 0)}</i> · ${Math.round(k * 100)}% <small>(E: parar)</small>`;
   (workBar.querySelector('.wb i') as HTMLElement).style.width = `${k * 100}%`; }
 function updateWork() {
+  game.setWork(work ? { x: work.x, z: work.z } : null);
   if (!work) return;
   if (keys.has('w') || keys.has('a') || keys.has('s') || keys.has('d') || state.path.length || game.menuOpen || combatMode || game.st.dead || inside) { endWork('Você interrompe o trabalho.'); return; }
   const W = WORK[work.kind], tool = inv.tool(W.slot); if (!tool) { endWork(); return; }
   if (work.kind === 'skin') { const e = work.target as { state: string; active: boolean }; if (e.state !== 'dead' || !e.active) { endWork('A carcaça se foi.'); return; } }
   if (!hero.acting) { if (hero.act(W.anim)) { work.hitDone = false; work.strokes++; } return; }
-  if (!work.hitDone && hero.actName === W.anim && hero.actP >= W.hit) { work.hitDone = true; workHit(work, tool); drawWork(); }
+  if (!work.hitDone && hero.actName === W.anim && hero.actP >= W.hit) { work.hitDone = true; workHit(work, kitRace() === 'tecno' || state.race === 'technocrat' ? { ...tool, power: tool.power * 1.25 } : tool); drawWork(); } // a esfera do tecnocrata ajuda: +25% por golpe
 }
 function workHit(w: NonNullable<typeof work>, tool: NonNullable<ReturnType<typeof inv.tool>>) {
   profs.gain(w.kind === 'chop' ? 'lenhador' : w.kind === 'mine' ? 'minerador' : w.kind === 'skin' ? 'esfolador' : 'herbalista', 2);
@@ -3037,7 +3041,7 @@ function frameBody() {
   gustU.value = Math.min(1, gust + aurFx * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
   const WDX = 0.86, WDZ = 0.5; // direção do vento
   particles.wind.x = WDX * (0.4 + gust * 3.2); particles.wind.z = WDZ * (0.4 + gust * 3.2);
-  hero.setNight(night); hero.setWind(gust);
+  hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt) ? 1 : 0));
   if (!inside) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none';
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);
