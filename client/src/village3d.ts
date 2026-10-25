@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { std, texBox, stoneTex, shingleTex, woodTex, plankTex } from './toon3d';
 import type { Built } from './city3d';
+import { fine } from './dual3d';
 
 const MC = new Map<string, THREE.Material>();
 const mat = <M extends THREE.Material>(k: string, mk: () => M): M => { let m = MC.get(k) as M | undefined; if (!m) { m = mk(); MC.set(k, m); } return m; };
@@ -157,4 +158,73 @@ export function buildTotem(v: number): Built {
   else if (v === 3) { for (let k = 0; k < 5; k++) { const a = k * 1.3, h = 1.2 + (k % 3) * 0.7, cr = K.add(new THREE.OctahedronGeometry(0.32, 0), glow(k % 2 ? 0x9ae0ff : 0xd8f0ff), c + Math.cos(a) * 0.35 * (k ? 1 : 0), h * 0.55, c + Math.sin(a) * 0.35 * (k ? 1 : 0)); cr.scale.set(0.8, h * 1.3, 0.8); cr.rotation.z = k ? Math.cos(a) * 0.3 : 0; } K.out.glows.push({ pos: new THREE.Vector3(c, 1.4, c), color: 0x9ae0ff, base: 14 }); }
   else { K.add(new THREE.CylinderGeometry(0.3, 0.5, 3.6, 4), stone(0x241e2a), c, 1.8, c); K.add(new THREE.ConeGeometry(0.3, 0.7, 4), stone(0x241e2a), c, 3.95, c); K.plane(0.2, 2.2, c, 1.8, c + 0.36, glow(0xb06aff)); K.out.glows.push({ pos: new THREE.Vector3(c, 2, c + 0.6), color: 0xa05aff, base: 12 }); }
   return K.out;
+}
+
+/* ---------- 25/10: proteção das vilas (Erling: "uma entrada com pórtico de madeira bruta e o nome da cidade escrito; mesmo vilas pequenas têm
+   muros menores, de meia altura, improvisados") — modelos montados em volta da origem e girados para o lado de fora da vila ---------- */
+function spin(K: ReturnType<typeof kit>, ry: number): Built {
+  const outer = new THREE.Group(); outer.position.set(1, 0, 1); outer.rotation.y = ry; outer.add(K.g);
+  const c = Math.cos(ry), s = Math.sin(ry), rot = (v: THREE.Vector3) => { const x = v.x * c + v.z * s, z = -v.x * s + v.z * c; v.set(x + 1, v.y, z + 1); };
+  for (const t of K.out.torches) rot(t.pos); for (const gl of K.out.glows) rot(gl.pos); for (const sm of K.out.smoke) rot(sm);
+  return { group: outer, glows: K.out.glows, smoke: K.out.smoke, torches: K.out.torches };
+}
+const signTexCache = new Map<string, THREE.CanvasTexture>();
+function nameBoard(name: string, cult: number) {
+  let t = signTexCache.get(name + cult); if (t) return t;
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const g = c.getContext('2d')!;
+  const base = cult === 3 ? '#cbbf9e' : cult === 2 ? '#6a5a4a' : cult === 4 ? '#3a3036' : '#7a5632';
+  g.fillStyle = base; g.fillRect(0, 0, 512, 128);
+  for (let i = 0; i < 4; i++) { g.fillStyle = `rgba(0,0,0,${0.12 + (i % 2) * 0.08})`; g.fillRect(0, i * 32, 512, 2); } // tábuas
+  for (let i = 0; i < 70; i++) { g.strokeStyle = `rgba(30,18,8,${0.08 + Math.random() * 0.12})`; g.lineWidth = 1; g.beginPath(); const y = Math.random() * 128; g.moveTo(Math.random() * 512, y); g.lineTo(Math.random() * 512, y + (Math.random() - 0.5) * 4); g.stroke(); } // veio da madeira
+  g.strokeStyle = 'rgba(20,12,6,.75)'; g.lineWidth = 6; g.strokeRect(3, 3, 506, 122);
+  for (const [x, y] of [[16, 16], [496, 16], [16, 112], [496, 112]]) { g.fillStyle = '#2a2a30'; g.beginPath(); g.arc(x, y, 5, 0, 6.283); g.fill(); } // pregos
+  const txt = name.toUpperCase(); let fs = 64; g.font = `bold ${fs}px Georgia, serif`; while (g.measureText(txt).width > 440 && fs > 26) { fs -= 2; g.font = `bold ${fs}px Georgia, serif`; }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 7; g.strokeStyle = 'rgba(20,10,4,.9)'; g.strokeText(txt, 256, 68);
+  g.fillStyle = cult === 3 ? '#2a4a3a' : '#f2d690'; g.fillText(txt, 256, 68); // letra pintada
+  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; signTexCache.set(name + cult, t); return t;
+}
+/** pórtico da vila: dois troncos, a viga, um telhadinho, a tábua com o nome pendurada em correntes, tochas e escoras. span = vão (m) */
+export function buildVillageGate(name: string, cult: number, ry: number, span = 6): Built {
+  const K = kit(), lw = cult === 3 ? 0xd8ccb0 : cult === 4 ? 0x3a3036 : 0x5a4030, logM = wood(lw), dk = wood(cult === 4 ? 0x2a2228 : 0x3a2a1c), stM = stone(cult === 2 ? 0x6a5e52 : 0x7a746a);
+  const half = span / 2, H = 4.2;
+  for (const sx of [-1, 1]) { const x = sx * half;
+    K.box(0.95, 0.5, 0.95, x, 0, 0, stM); // base de pedra
+    if (cult === 2) K.box(0.7, H, 0.7, x, 0.4, 0, stM); else K.cyl(0.26, 0.31, H, x, 0.4, 0, logM, 8); // tronco (anões: pilar de pedra)
+    K.add(new THREE.CylinderGeometry(0.29, 0.29, 0.14, 8), dk, x, 1.6, 0); K.add(new THREE.CylinderGeometry(0.29, 0.29, 0.14, 8), dk, x, 3.1, 0); // amarras
+    const br = K.add(new THREE.CylinderGeometry(0.1, 0.12, 1.7, 6), logM, x - sx * 0.55, H - 0.2, 0); br.rotation.z = sx * 0.78; // escora
+    K.torch(x + sx * 0.05, 2.1, 0.42); }
+  const beam = K.add(new THREE.CylinderGeometry(0.24, 0.24, span + 1.4, 8), logM, 0, H + 0.45, 0); beam.rotation.z = Math.PI / 2;
+  const beam2 = K.add(new THREE.CylinderGeometry(0.15, 0.15, span - 0.2, 7), logM, 0, H - 0.35, 0); beam2.rotation.z = Math.PI / 2;
+  for (const sx of [-1, 1]) { const cap = K.add(new THREE.CylinderGeometry(0.27, 0.24, 0.12, 8), dk, sx * (half + 0.7), H + 0.45, 0); cap.rotation.z = Math.PI / 2; }
+  K.gable(span + 1.9, 1.3, 0.7, 0, H + 0.68, 0, slate(cult === 3 ? 0x3a7a5a : cult === 2 ? 0x4a423a : cult === 4 ? 0x2a2228 : 0x5a3a28), plank(lw), true, 0.25);
+  /* a tábua com o nome, pendurada da viga de baixo, dos dois lados */
+  const bw = Math.min(span - 0.6, 3.6), bh = bw * 0.25, by = H - 0.95, sign = std(0xffffff, { map: nameBoard(name, cult) });
+  K.box(bw + 0.12, bh + 0.12, 0.12, 0, by - bh / 2 - 0.06, 0, dk);
+  /* o nome tem que ser legível: as duas faces da tábua vão na camada fina (resolução cheia) e ficam fora da fusão estática */
+  for (const [zz, ra] of [[0.07, 0], [-0.07, Math.PI]] as [number, number][]) { const sm = K.add(new THREE.PlaneGeometry(bw, bh), sign, 0, by, zz, ra, false); sm.userData.dyn = true; fine(sm); }
+  for (const sx of [-1, 1]) for (let k = 0; k < 3; k++) K.add(new THREE.TorusGeometry(0.05, 0.015, 4, 8), flat(0x2a2a30), sx * bw * 0.4, by + bh / 2 + 0.08 + k * 0.1, 0, k % 2 ? Math.PI / 2 : 0, false); // correntes
+  /* um feixe de lanças e um escudo da guarda encostados num dos troncos */
+  for (let k = 0; k < 3; k++) { const sp = K.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 5), dk, -half - 0.55 + k * 0.08, 1.2, 0.5 + k * 0.05); sp.rotation.z = 0.12 - k * 0.06; K.add(new THREE.ConeGeometry(0.06, 0.25, 4), flat(0x9aa0aa), -half - 0.55 + k * 0.08 - 0.14 + k * 0.007, 2.45, 0.5 + k * 0.05); }
+  const sh = K.add(new THREE.CylinderGeometry(0.45, 0.45, 0.08, 12), wood(0x7a3a2a), half + 0.55, 0.62, 0.45); sh.rotation.x = Math.PI / 2 - 0.25;
+  return spin(K, ry);
+}
+/** muro baixo de 1 casa (2 m): pedra seca (anões, elfos, vapor e vale) ou cerca trançada de galhos (sombrios e pacto) */
+export function buildLowWall(cult: number, ry: number, seed: number): Built {
+  const K = kit(), r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+  if (cult === 11 || cult === 12) { /* cercas de estrada: 11 = cerca de varas com mourões (perto das vilas grandes), 12 = cerca torta do ermo */
+    const post = wood(cult === 11 ? 0x5a4030 : 0x4a3a28), rail = wood(cult === 11 ? 0x7a5a38 : 0x6a5030), jit = (k: number) => (r(k) - 0.5) * (cult === 12 ? 0.18 : 0.04);
+    for (const x of [-1.4, 0, 1.4]) { const pp = K.add(new THREE.CylinderGeometry(0.08, 0.1, 1.15, 6), post, x, 0.55, 0); pp.rotation.z = jit(x * 5); pp.rotation.x = jit(x * 3 + 1); }
+    for (const y of cult === 11 ? [0.45, 0.85] : [0.62]) { const rl = K.add(new THREE.CylinderGeometry(0.05, 0.055, 2.95, 5), rail, 0, y + jit(y * 9), 0); rl.rotation.z = Math.PI / 2 + jit(y * 11); }
+    return spin(K, ry); }
+  if (cult === 10) { /* muro médio de pedra lavrada da estrada real (perto da cidade grande) */
+    const sm = stone(0x8a857e), cap = stone(0xa8a298);
+    for (let row = 0; row < 4; row++) { let x = -1.46 + (row % 2) * 0.3; while (x < 1.44) { const w = Math.min(0.55 + r(x * 5 + row) * 0.15, 1.46 - x); if (w > 0.1) K.box(w - 0.03, 0.27, 0.6, x + w / 2, row * 0.28, 0, sm); x += w; } }
+    K.box(2.98, 0.14, 0.72, 0, 1.12, 0, cap); return spin(K, ry); }
+  if (cult === 4 || cult === 6) { const post = wood(0x3a2a1c), twig = wood(0x5a4a30);
+    for (const x of [-1.4, -0.47, 0.47, 1.4]) K.cyl(0.07, 0.08, 1.05, x, 0, 0, post, 5);
+    for (let k = 0; k < 5; k++) { const b = K.add(new THREE.CylinderGeometry(0.035, 0.035, 2.95, 4), twig, 0, 0.22 + k * 0.16, (k % 2 ? 0.05 : -0.05)); b.rotation.z = Math.PI / 2; }
+  } else { const sc = cult === 3 ? 0xa8a090 : cult === 2 ? 0x6a5e52 : 0x8a8276, sm = stone(sc), cap = stone(cult === 3 ? 0xc0b8a8 : 0x9a9488);
+    let x = -1.46; let row = 0; for (let y = 0; y < 0.7; y += 0.24, row++) { x = -1.46 + (row % 2) * 0.18; while (x < 1.44) { const w = 0.32 + r(x * 7 + y * 3) * 0.3, h = 0.2 + r(x + y) * 0.06; const ww = Math.min(w, 1.46 - x); if (ww > 0.08) { const b = K.box(ww, h, 0.5 + r(x * y + 1) * 0.08, x + ww / 2, y, (r(x * 3) - 0.5) * 0.06, sm); b.rotation.y = (r(x + 9) - 0.5) * 0.12; } x += w + 0.02; } }
+    K.box(2.94, 0.12, 0.62, 0, 0.72, 0, cap); }
+  return spin(K, ry);
 }

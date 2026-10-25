@@ -2376,7 +2376,7 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
+if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { city: () => city, scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
 function resumeSoul() { if (!profile || limiar.active) return; if (soul.s.pending === 'choose') unbind(); else if (soul.s.pending === 'reborn') unbind(undefined, 'reborn'); }
 /* os fôlegos ficam à vista, em cima do orbe da vida (só depois que o Olho abre: antes o Fio não se gasta) */
 setInterval(() => { const el = document.getElementById('folegos'); if (!el) return; soul.regen(); const on = !!profile?.eye && game.st.lvl >= FRAY_LVL;
@@ -2452,9 +2452,29 @@ function updateCine(rdt: number) {
   return true;
 }
 // Fontes da Visão: bacia de pedra com o Olho de cristal flutuando
-const vistaObjs: { v: (typeof CINE.vistas)[number]; eye: THREE.Mesh; ring: THREE.Mesh; x: number; z: number; y: number }[] = [];
+/* 25/10 (Erling: "a fonte da visão estava colada numa casa qualquer; a fonte da praça, que é o marco central de cada vila e cidade, é que
+   devia ser a Fonte da Visão — juntar as duas coisas numa só"): cada vila e cidade conta a sua história na própria fonte da praça */
+const FONT_R = new Map<string, number>();
+{ const D = Math.PI / 180, shot = (x: number, y: number, zoom: number, az: number) => ({ x: x * T, z: y * T, zoom, az: az * D });
+  for (const st of city.settlements) {
+    let f: (typeof city.props)[number] | null = null, bd = st.radius; for (const q of city.props) { if (q.kind !== 'fountain') continue; const d = Math.hypot(q.gx + q.w / 2 - st.x, q.gy + q.h / 2 - st.y); if (d < bd) { bd = d; f = q; } }
+    if (!f) continue; const fx = f.gx + f.w / 2 - 0.5, fy = f.gy + f.h / 2 - 0.5;
+    const old = CINE.vistas.find((v) => v.title.endsWith(`— ${st.name}`) && !FONT_R.has(v.id));
+    if (old) { old.at = { x: fx, y: fy }; old.shots[0] = shot(fx, fy, 22, 45); FONT_R.set(old.id, f.w); continue; }
+    const lore = (st.npcs[0]?.lines[0] ?? '').replace(`Bem-vindo a ${st.name}. `, '');
+    const id = 'v_st_' + st.name; FONT_R.set(id, f.w);
+    CINE.vistas.push({ id, at: { x: fx, y: fy }, title: `Fonte da Visão — ${st.name}`, sub: st.kind === 'city' ? 'A fonte da cidade' : 'A fonte da praça', mood: 'bright', skippable: true, sec: 24,
+      shots: [shot(fx, fy, 22, 45), shot(st.x, st.y, 44, 120), shot(st.x, st.y, 38, 220)],
+      text: [`A fonte de ${st.name} é o coração do lugar: as estradas chegam nela, as notícias se espalham dela, e as crianças aprendem a contar com as moedas do fundo.${lore ? ' ' + lore : ''}`,
+        'Como toda fonte de Karmika, esta guarda o que as almas deixam cair quando passam. Quem joga uma moeda e olha a água vê o que o lugar já viu: os que nasceram, os que partiram e os que voltaram com outro rosto.',
+        'Os velhos dizem que Marghar bebe de todas as fontes ao mesmo tempo. Por isso nenhuma seca, e por isso ninguém mente com a mão na borda de pedra.'] } as (typeof CINE.vistas)[number]); } }
+const vistaObjs: { v: (typeof CINE.vistas)[number]; eye: THREE.Mesh; ring: THREE.Mesh; x: number; z: number; y: number; r: number }[] = [];
 for (const v of CINE.vistas) {
   const g = new THREE.Group(), x = (v.at.x + 0.5) * T, z = (v.at.y + 0.5) * T, y = heightAt(x, z);
+  const fw = FONT_R.get(v.id); if (fw) { /* na fonte da praça: só o Olho flutuando sobre a água e um anel dourado em volta da borda */
+    const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3 + fw * 0.35; g.add(eye);
+    const R0 = fw * T * 0.62; const ring = new THREE.Mesh(new THREE.RingGeometry(R0, R0 + 0.22, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; g.add(ring);
+    g.position.set(x, y, z); scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y, r: R0 + 1.6 }); continue; }
   const st = new THREE.MeshToonMaterial({ color: 0x8a8680 }), sd = new THREE.MeshToonMaterial({ color: 0x5a5650 });
   const base = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, 0.35, 10), sd); base.position.y = 0.17; g.add(base);
   const col = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.4, 0.9, 8), st); col.position.y = 0.8; g.add(col);
@@ -2462,7 +2482,7 @@ for (const v of CINE.vistas) {
   const water = new THREE.Mesh(new THREE.CircleGeometry(0.66, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.85 })); water.position.y = 1.58; g.add(water);
   const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3; g.add(eye);
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; g.add(ring);
-  g.position.set(x, y, z); scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y });
+  g.position.set(x, y, z); scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y, r: 3.6 });
 }
 /* luz na porta: todo lugar onde dá para entrar tem um brilho quente no batente e no chão, chamando para dentro (pool perto do herói) */
 const doorTex = (() => { const c = document.createElement('canvas'); c.width = 32; c.height = 64; const g = c.getContext('2d')!; const gr = g.createLinearGradient(0, 64, 0, 0); gr.addColorStop(0, 'rgba(255,255,255,.95)'); gr.addColorStop(0.6, 'rgba(255,255,255,.35)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 32, 64); const gx = g.createLinearGradient(0, 0, 32, 0); gx.addColorStop(0, 'rgba(0,0,0,1)'); gx.addColorStop(0.25, 'rgba(0,0,0,0)'); gx.addColorStop(0.75, 'rgba(0,0,0,0)'); gx.addColorStop(1, 'rgba(0,0,0,1)'); g.globalCompositeOperation = 'destination-out'; g.fillStyle = gx; g.fillRect(0, 0, 32, 64); return new THREE.CanvasTexture(c); })();
@@ -2609,7 +2629,7 @@ function findInter(): Inter | null {
   }
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
-    for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < 3.6) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
+    for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
     for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz); if (d < 5) add(d - 1.5, 3.6, `E — Entrar: ${en.d.name} (nível ${en.lvl[0]}–${en.lvl[1]} · ${en.d.players})`, () => enterDungeon(en)); }
     for (const rl of city.relics) { const d = Math.hypot((rl.x + 0.5) * T - hx, (rl.y + 0.5) * T - hz); if (d < 4.5) add(d - 2, 4, knowsRelic(rl.name) ? `E — Viajar (${rl.name})` : `E — Tocar ${rl.name}`, () => touchRelic(rl.name)); }
     for (const st of STATIONS) { const d = Math.hypot(st.x - hx, st.z - hz); if (d < 5) { const I = STATION_INFO[st.v]; add(d - 1.6, 3.2, `E — ${I.name} · ${PROF_NAME[I.prof] ?? I.prof}`, () => { keys.clear(); profs.openAt(I.prof as never); }); } }
@@ -2967,7 +2987,7 @@ function frameBody() {
   camY += (heroY - camY) * Math.min(1, dt * 5);
   }
   updateDoors(rawDt);
-  for (const vo of vistaObjs) { vo.eye.rotation.y += rawDt * 1.2; vo.eye.position.y = 2.3 + Math.sin(performance.now() / 600) * 0.08; (vo.ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.2 * Math.sin(performance.now() / 400); }
+  for (const vo of vistaObjs) { vo.eye.rotation.y += rawDt * 1.2; vo.eye.position.y = (vo.r > 3.6 ? 2.3 + (vo.r - 1.6) * 0.27 : 2.3) + Math.sin(performance.now() / 600) * 0.08; (vo.ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.2 * Math.sin(performance.now() / 400); }
   if (Math.floor(performance.now() / 500) !== cineTick) { cineTick = Math.floor(performance.now() / 500); checkCineTriggers(); }
   camera.position.set(camX + camDir.x + (Math.random() - 0.5) * game.st.shake, camY + camDir.y + (Math.random() - 0.5) * game.st.shake, camZ + camDir.z + (Math.random() - 0.5) * game.st.shake);
   camera.lookAt(camX, camY, camZ);

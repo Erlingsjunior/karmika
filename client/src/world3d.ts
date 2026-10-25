@@ -8,7 +8,7 @@ import { RUNAS } from './runas';
 import { buildRampart, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
-import { buildLandmark, buildPalisade, buildTotem } from './village3d';
+import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
 import { buildMonument } from './monuments3d';
 import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof } from './toon3d';
 /** tampa de cada baú de tesouro do mundo (por prop), para a tampa abrir quando o jogador saqueia */
@@ -141,11 +141,12 @@ export function buildWorld(world: World): WorldObjs {
       g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + ch.y, p.gy * T + ch.z));
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
-    } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
+    } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
       /* cidade média: muralha com caminho de ronda, torres, portões, escadarias, castelo, academias e a catedral (city3d.ts) */
       const v = p.variant ?? 0; let b: Built | null = null;
       if (p.kind === 'quay') { const sd = v === 1 ? -1 : 1, pts: { x: number; z: number }[] = []; for (let k = 0; k <= 4; k++) { const ty = p.gy + k * 0.5, ex = canalX(ty) - sd * CANAL_HW; pts.push({ x: ex * T - p.gx * T, z: k * 0.5 * T }); } b = buildQuay(pts, sd); } else
       if (p.kind === 'monument') b = buildMonument(v, Wm, Dm); else
+      if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17); else
       if (p.kind === 'landmark') b = buildLandmark(v, Wm, Dm); else if (p.kind === 'palisade') b = buildPalisade(v === 1, p.gx * 3 + p.gy); else if (p.kind === 'totem') b = buildTotem(v); else
       if (p.kind === 'rwall') b = buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
       else if (p.kind === 'rtower') b = buildWallTower(v & 3, p.height, v >= 4, p.roof);

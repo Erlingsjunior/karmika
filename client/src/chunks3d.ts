@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { TILE_M as T } from '@karmika/shared';
 import { type World, type Biome, MAP_W, MAP_H, groundH, waterSD, zoneW, WL, fbm, vnoise, smoothstep, rng } from './world';
 import { windU, windify } from './terrain3d';
+/* fator de calçamento num ponto (em casas): 1 perto das cidades, cai até 0 no ermo; perto das vilas, meio a meio (25/10) */
+function paveAt(w: World, x: number, y: number) { let p = 0; for (const st of w.settlements) { const d = Math.hypot(x - st.x, y - st.y); if (st.kind === 'city') p = Math.max(p, 1 - smoothstep(80, 170, d)); else p = Math.max(p, 0.55 * (1 - smoothstep(st.radius + 4, st.radius + 26, d))); } return p; }
 
 export const CS = 20;               // tiles por chunk
 export const CSM = CS * T;          // metros
@@ -160,7 +162,9 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     // estradas e praça (peso vem do mapa de tiles, borda irregular)
     const edgeN = (vnoise(xm * 1.7, zm * 1.7, 21) - 0.5) * 0.34;
     const rw = smoothstep(0.42 + edgeN, 0.72 + edgeN, tileW(w, tx, ty, (t) => t === 'road' || t === 'plaza'));
-    const pw = smoothstep(0.5, 0.8, tileW(w, tx, ty, (t) => t === 'plaza'));
+    let pw = smoothstep(0.5, 0.8, tileW(w, tx, ty, (t) => t === 'plaza'));
+    /* calçamento das estradas (25/10): perto da cidade grande, pedra inteira; no meio do caminho, trechos; no ermo, quase nada */
+    if (rw > 0.05) { const pv = paveAt(w, tx, ty); if (pv > 0) { const n = vnoise(xm * 0.55, zm * 0.55, 33) * 0.8 + vnoise(xm * 2.2, zm * 2.2, 34) * 0.2; pw = Math.max(pw, rw * smoothstep(n - 0.05, n + 0.05, pv)); } }
     if (rw > 0) { tmpD.copy(ROAD).lerp(ROAD2, vnoise(xm * 1.3, zm * 1.3, 2)); tmpC.lerp(tmpD, rw * 0.95); }
     if (pw > 0) tmpC.lerp(PLAZA, pw);
     pl[k] = pw;

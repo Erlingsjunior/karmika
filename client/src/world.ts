@@ -3,7 +3,7 @@ import type { Tile } from '@karmika/shared';
 
 /** deslocamento das Terras dos Homens dentro do mundo grande (tiles) */
 export const SH = 210;
-export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument';
+export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -17,6 +17,7 @@ export interface Prop {
   w: number; h: number;   // tamanho em tiles
   height: number;         // altura em metros (ver shared/src/scale.ts)
   wall: number; roof: number;
+  /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
   variant?: number;       // tipo da árvore (0 carvalho, 1 seca, 2 pinheiro) / modelo da pedra / etc.
   /** giro (radianos) para peças que olham para algum lugar (pontos de trabalho olham para o centro da vila) */
   ry?: number;
@@ -602,8 +603,9 @@ export function buildCity(): World {
     const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) if (inb(x, y)) map[y][x] = 'plaza';
     for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) if (inb(x, y) && map[y][x] === 'grass' && (Math.abs(x - cx) <= 1 || Math.abs(y - cy) <= 1)) map[y][x] = 'road';
-    if (cult === 0 || cult === 3 || cult === 7) props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: cult === 3 ? 0xd8d0bc : cult === 7 ? 0x8a4a3a : 0x6a5a48, roof: cult === 3 ? 0x9ae0ff : 0x6fc7ff, variant: 1 });
-    else { props.push({ kind: 'campfire', gx: cx, gy: cy, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: cult === 6 ? 0xb06aff : cult === 4 ? 0xff3a2a : 0xff8a2a }); // fogueira no centro (nórdicos, anões, sombrios, Uivo, pacto)
+    /* 25/10: toda vila tem a sua fonte no centro da praça — o marco da vila e a sua Fonte da Visão; os povos do fogo mantêm a fogueira ao lado */
+    props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: cult === 3 ? 0xd8d0bc : cult === 7 ? 0x8a4a3a : cult === 2 ? 0x6a5e52 : cult === 4 || cult === 6 ? 0x3e3a40 : cult === 1 ? 0x7a746a : cult === 5 ? 0x6a5a48 : 0x6a5a48, roof: cult === 3 ? 0x9ae0ff : cult === 4 ? 0x5a8ab0 : cult === 6 ? 0x8a6ac8 : 0x6fc7ff, variant: 1 });
+    if (!(cult === 0 || cult === 3 || cult === 7)) { props.push({ kind: 'campfire', gx: cx - 2, gy: cy + 2, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: cult === 6 ? 0xb06aff : cult === 4 ? 0xff3a2a : 0xff8a2a }); // fogueira no centro (nórdicos, anões, sombrios, Uivo, pacto)
       const tv = cult === 5 ? 0 : cult === 6 ? 2 : cult === 1 || cult === 2 ? 1 : -1; if (tv >= 0) for (const [tx, ty] of [[cx - 2, cy - 2], [cx + 2, cy + 2]]) if (inb(tx, ty) && map[ty][tx] === 'plaza') { props.push({ kind: 'totem', gx: tx, gy: ty, w: 1, h: 1, height: 3, wall: 0, roof: 0, variant: tv }); } }
     const PAL: [number[], number[]][] = [[[0xb99a6b, 0xc2a679, 0xa88a60], [0x8a3b2e, 0x7a4a2a, 0x6d3a28, 0x5d6b3a]], [[0x4a3220], [0x5a6a34]], [[0x6a5e52], [0x4a423a]], [[0xe8e0cc], [0x3a7a5a]], [[0x3e3a40], [0x2a2228]], [[0x5a4030], [0x8a7440]], [[0x3a2e3a], [0x2a1a30]], [[0x8a4a3a], [0x4a4e56]]];
     const nH = 4 + Math.floor(rr() * 3) + (cult === 1 || cult === 5 ? -1 : 0), WALLS = PAL[cult][0], ROOFS = PAL[cult][1];
@@ -817,6 +819,63 @@ export function buildCity(): World {
   for (const [a, b] of [['Nordvik', 'Jarlsheim'], ['Jarlsheim', 'Skjoldvik'], ['Jarlsheim', 'Hrimgard'], ['Hrimgard', 'Fjallbrún'], ['Kaldrfoss', 'Midvangr'], ['Midvangr', 'Brasaforja'], ['Ulfheim', 'Brasaforja'], ['Brasaforja', 'Cinzalto'], ['Cinzalto', 'Corvoscuro'], ['Hrafnhöfn', 'Corvoscuro'], ['Corvoscuro', 'Gorvath'], ['Austrvik', 'Gorvath'], ['Austrvik', 'Dalborg'], ['Dalborg', 'Uivo Antigo'], ['Steinfoss', 'Dalborg'], ['Sandvik', 'Ferrugem'], ['Ferrugem', 'Porto Caldeira'], ['Sudrholt', 'Vindholt'], ['Vindholt', 'Porto Caldeira'], ['Brekkuvik', 'Vaporeira'], ['Vaporeira', 'Porto Caldeira'], ['Myrbakki', 'Lumenhal'], ['Vatnaholt', 'Lumenhal'], ['Vestheim', 'Lithendel'], ['Mýrarvik', 'Skjoldvik'], ['Lithendel', 'Skjoldvik']] as [string, string][]) route(a, b, 1.2);
   for (const [a, b] of [['Grenivik', 'Karmika'], ['Hvítadalr', 'Nordvik'], ['Hvítadalr', 'Bjarnholt'], ['Bjarnholt', 'Fjallbrún'], ['Kaldrfoss', 'Ulfheim'], ['Ulfheim', 'Hrafnhöfn'], ['Skógar', 'Vestheim'], ['Skógar', 'Karmika']] as [string, string][]) route(a, b, 1.0);
   bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH(b.ax * T, b.ay * T); b.hB = groundH(b.bx * T, b.by * T); bridgesRef = save; } }
+  /* 25/10 (Erling: "a estrada da vila não tem uma ponte em curva de pedra bonita para atravessar?"): toda travessia curta de estrada vira
+     ponte de pedra em arco; só as muito longas continuam de madeira (com cobertura) */
+  for (const b of bridges) { if (b.stone) continue; const L = Math.hypot(b.bx - b.ax, b.by - b.ay); if (L * T > 26) continue; b.stone = true; b.half = 2.1; b.hump = Math.min(1.7, 0.45 + L * T * 0.055); }
+  /* 25/10 (Erling: "vilas têm proteção: entrada com pórtico de madeira bruta e o nome escrito, muros de meia altura improvisados, soldados
+     nas entradas segurando os bichos"): depois que as estradas existem, cada vila ganha um anel de muro baixo com aberturas onde as estradas
+     entram; em cada abertura, um pórtico com o nome e um guarda */
+  { const GN = ['Bjorn', 'Halla', 'Torsten', 'Edda', 'Arne', 'Sigrid', 'Leif', 'Runa', 'Gorm', 'Asta', 'Knut', 'Thyra', 'Ivar', 'Brenna', 'Ulf', 'Dagny'];
+    for (const [si, st] of settlements.entries()) { if (st.kind !== 'village') continue; const cult = CULT[st.name] ?? 0, cx = st.x, cy = st.y, pal = cult === 1 || cult === 5;
+      const R = pal ? st.radius + 1 : st.radius + 2;
+      /* anel: casas do anel em ordem de ângulo (quadrado nas vilas de paliçada, redondo nas outras) */
+      const ring: { x: number; y: number; a: number }[] = [];
+      if (pal) { for (let k = -R; k <= R; k++) for (const [x, y] of [[cx + k, cy - R], [cx + R, cy + k], [cx - k, cy + R], [cx - R, cy - k]] as [number, number][]) ring.push({ x, y, a: Math.atan2(y - cy, x - cx) }); }
+      else for (let y = cy - R - 1; y <= cy + R + 1; y++) for (let x = cx - R - 1; x <= cx + R + 1; x++) { const d = Math.hypot(x - cx, y - cy); if (Math.abs(d - R) < 0.5) ring.push({ x, y, a: Math.atan2(y - cy, x - cx) }); }
+      ring.sort((p, q) => p.a - q.a); const uniq = ring.filter((p, i) => i === 0 || p.x !== ring[i - 1].x || p.y !== ring[i - 1].y);
+      const isRoad = (x: number, y: number) => inb(x, y) && (map[y][x] === 'road' || map[y][x] === 'plaza');
+      /* entradas: trechos contínuos de estrada no anel */
+      const runs: { x: number; y: number; a: number }[][] = []; let cur: { x: number; y: number; a: number }[] = [];
+      for (const p of uniq) { if (isRoad(p.x, p.y)) cur.push(p); else if (cur.length) { runs.push(cur); cur = []; } } if (cur.length) { if (runs.length && isRoad(uniq[0].x, uniq[0].y)) runs[0] = [...cur, ...runs[0]]; else runs.push(cur); }
+      const gates: { x: number; y: number; a: number; w: number }[] = [];
+      for (const run of runs) { if (run.length > 6) continue; const m = run[Math.floor(run.length / 2)]; gates.push({ x: m.x, y: m.y, a: Math.atan2(m.y - cy, m.x - cx), w: run.length }); }
+      /* muro baixo (as vilas de paliçada já têm a sua) */
+      if (!pal) for (const p of uniq) { if (!inb(p.x, p.y) || map[p.y][p.x] !== 'grass') continue; if (gates.some((gt) => Math.hypot(gt.x - p.x, gt.y - p.y) < gt.w / 2 + 1.2)) continue;
+        for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && q.gx === p.x && q.gy === p.y) props.splice(i, 1); }
+        props.push({ kind: 'lowwall', gx: p.x, gy: p.y, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-Math.cos(p.a), -Math.sin(p.a)) }); map[p.y][p.x] = 'wall'; }
+      /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
+      gates.forEach((gt, gi) => { props.push({ kind: 'vgate', gx: gt.x, gy: gt.y, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-Math.cos(gt.a), -Math.sin(gt.a)), label: st.name });
+        if (gi < 3) { const tx = -Math.sin(gt.a), ty = Math.cos(gt.a), side = gi % 2 ? -1 : 1, ox = gt.x + tx * side * (gt.w / 2 + 1.1) - Math.cos(gt.a) * 0.9, oy = gt.y + ty * side * (gt.w / 2 + 1.1) - Math.sin(gt.a) * 0.9;
+          st.npcs.push({ name: GN[(si * 3 + gi) % GN.length], role: `Guarda do portão de ${st.name}`, kind: 'nordic', x: ox, y: oy, radius: 0.5, tint: 0x5a6a8a, scale: 1.0, lines: [`Bem-vindo a ${st.name}. Bicho não passa deste portão enquanto eu estiver de pé.`, 'Fique na estrada. O mato é dos lobos, e a estrada é nossa.', 'Viu alguma coisa estranha lá fora? Avise a guarda, não banque o herói sozinho.', 'À noite a gente fecha o portão com o corpo. Não tem porta, tem gente.'] }); } });
+    } }
+  /* 25/10 (Erling: "andar pelos caminhos é mais seguro: cercas de madeira, vigilância e pequenos fortes de vigia com soldados; perto da
+     cidade grande as estradas ficam todas de pedra, com muros médios de pedra e defesas; nos lugares distantes, menos pedra, cercas de
+     madeira e soldados mais simples"). O calçamento é pintado no chão (chunks3d: paveAt); aqui ficam as cercas, os muros e os fortes. */
+  { const big = settlements.filter((q) => q.kind === 'city'), vil = settlements.filter((q) => q.kind === 'village');
+    const tierAt = (x: number, y: number) => { let d = 1e9; for (const c of big) d = Math.min(d, Math.hypot(x - c.x, y - c.y) - 50); return d < 30 ? 2 : d < 110 ? 1 : 0; }; // 2 pedra · 1 misto · 0 ermo
+    const nearVillage = (x: number, y: number) => vil.some((v) => Math.hypot(x - v.x, y - v.y) < v.radius + 5) || big.some((c) => Math.hypot(x - c.x, y - c.y) < 58);
+    const SN = ['Halvar', 'Gudrun', 'Eskil', 'Ylva', 'Orm', 'Ragna', 'Sten', 'Hild', 'Tove', 'Brand', 'Sigvald', 'Ingeborg'];
+    let posts = 0;
+    roadPaths.forEach((path, pi) => { let run = 0, runOn = false, sinceFort = 40 + (pi * 37) % 60;
+      for (let i = 1; i < path.length - 1; i++) { const p = path[i], q0 = path[i - 1], q1 = path[i + 1]; const dx = q1.x - q0.x, dy = q1.y - q0.y, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+        if (nearVillage(p.x, p.y)) { runOn = false; continue; }
+        const tier = tierAt(p.x, p.y), h = ((Math.floor(p.x) * 73856093) ^ (Math.floor(p.y) * 19349663)) >>> 0;
+        if (--run <= 0) { runOn = (h % 100) < (tier === 2 ? 85 : tier === 1 ? 45 : 18); run = 4 + (h % 6); }
+        if (runOn) for (const sd of [-1, 1]) { const gx = Math.round(p.x + nx * sd * 2.6), gy = Math.round(p.y + ny * sd * 2.6); if (!inb(gx, gy) || map[gy][gx] !== 'grass') continue;
+          if (props.some((o) => o.gx === gx && o.gy === gy && o.kind !== 'tree' && o.kind !== 'rock' && o.kind !== 'herb')) continue;
+          for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (o.gx === gx && o.gy === gy && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 10 : tier === 1 ? 11 : 12, ry: Math.atan2(-uy, ux) }); map[gy][gx] = 'wall'; }
+        /* forte de vigia à beira da estrada: torre de pedra (perto da cidade) ou posto de madeira (no ermo), com dois soldados */
+        if (--sinceFort <= 0 && posts < 40) { const sd = (h & 1) ? 1 : -1, fx = Math.round(p.x + nx * sd * 6), fy = Math.round(p.y + ny * sd * 6);
+          let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; }
+          if (ok) { sinceFort = 70 + (h % 40); posts++;
+            for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (Math.abs(o.gx - fx) <= 2 && Math.abs(o.gy - fy) <= 2 && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
+            if (tier >= 1) { props.push({ kind: 'tower', gx: fx, gy: fy, w: 1, h: 1, height: tier === 2 ? 9 : 6.5, wall: 0x6e6a66, roof: tier === 2 ? 0x34445e : 0x5a3a28 }); map[fy][fx] = 'wall'; }
+            else { props.push({ kind: 'tent', gx: fx - 1, gy: fy - 1, w: 2, h: 2, height: 2.4, wall: 0x7a6040, roof: 0x5a4028 }); for (let y = fy - 1; y <= fy; y++) for (let x = fx - 1; x <= fx; x++) map[y][x] = 'wall'; }
+            props.push({ kind: 'campfire', gx: fx - sd * 0, gy: fy + 2, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a });
+            const home = vil.reduce((b, v) => Math.hypot(v.x - fx, v.y - fy) < Math.hypot(b.x - fx, b.y - fy) ? v : b, vil[0]);
+            if (home) for (let k = 0; k < 2; k++) home.npcs.push({ name: SN[(posts * 2 + k) % SN.length], role: tier === 2 ? 'Soldado do Forte de Vigia' : tier === 1 ? 'Sentinela da Estrada' : 'Vigia do Posto', kind: 'nordic', x: fx + (k ? 1.6 : -1.6), y: fy + 2.2, radius: 1.2, tint: tier === 2 ? 0x4a5a7a : 0x6a5a3a, scale: 1.0,
+              lines: tier === 2 ? ['A estrada é do rei até onde a vista alcança. Daqui para lá, é da sorte.', 'Quem anda na estrada anda com a guarda. Quem entra no mato, anda sozinho.', 'Temos cartazes de procurados no forte. Quem trouxer um deles vivo ganha bem.'] : tier === 1 ? ['Fique na estrada e na luz. É o melhor conselho que eu tenho de graça.', 'Os lobos não chegam na cerca. Os bandidos, às vezes, sim.', 'Se vir fumaça no mato, é bandido assando o que roubou. Avise a gente.'] : ['Aqui é o fim do mundo dos homens. Daqui para frente, a cerca acaba.', 'Somos dois e uma fogueira. Não é muito, mas assusta bicho.', 'Se quiser ganhar umas moedas, a gente precisa de alguém que ache o que fugiu para o mato.'] }); } } } }); }
 
   /* relíquias dos caminhantes: pedras rúnicas perto de cada assentamento e em lugares ermos — viagem rápida entre as conhecidas */
   const relics: Relic[] = [];
