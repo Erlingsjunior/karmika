@@ -47,6 +47,7 @@ import { createCoop } from './coop';
 import { createInicio } from './inicio';
 import { profLevelUp, badge } from './celebrate';
 import { STATION_INFO, CUTAWAYS, HALL_WALLS } from './stations3d';
+import { LIB_WALLS } from './library3d';
 import { questCat, createQuests, SIDE, WARRIOR, RACE_ROADS } from './quests';
 import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
@@ -1712,6 +1713,7 @@ function drawBig() {
     const sz = s0 * 0.6, withLabel = mapV.z >= 5.5;
     const put = (glyph: string, x0: number, y0: number, name: string, sub: string, ring: string) => { const x = X(x0), y = Y(y0); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) return; icon(glyph, x, y, sz, ring); if (withLabel) label(name, x, y + sz + 10, 10, '#e8dcc0'); mapHits.push({ x, y, r: sz + 2, name, sub }); };
     for (const p of city.props) {
+      if (p.kind === 'library') put('📚', p.gx + p.w / 2, p.gy + p.h / 2, p.label || 'Biblioteca', p.variant ? 'Livros, mapas e o orbe dos magos' : 'O cronista, as estantes de dois andares e as três escadas dos subsolos', '#e6c46a');
       if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) put(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, p.label || si.name, `Lugar de trabalho · ${PROF_NAME[si.prof] ?? si.prof}`, '#8ab4d8'); }
       else if (p.kind === 'mailbox') put('📮', p.gx + 0.5, p.gy + 0.5, 'Correio', 'Cartas e encomendas', '#a0d8a0');
       else if (p.kind === 'vault') put('🏦', p.gx + p.w / 2, p.gy + p.h / 2, 'Cofre', 'Guarde itens e ouro', '#a0d8a0');
@@ -2104,10 +2106,10 @@ const solids = new Map<number, { x: number; y: number; r: number }[]>();
 for (const p of city.props) { const r0 = SOLID_R[p.kind]; if (r0 === undefined) continue; const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }
 /* as casas de ofício da cidade (25/10) têm paredes de fundo e laterais: corpo de verdade, a frente fica aberta */
-for (const p of city.props) { if (p.kind !== 'station' || p.w < 3) continue; const ry = p.ry ?? 0, cs = Math.cos(ry), sn = Math.sin(ry), cx = p.gx + p.w / 2, cy = p.gy + p.h / 2;
+for (const p of city.props) { if (!(p.kind === 'library' || (p.kind === 'station' && p.w >= 3))) continue; const ry = p.ry ?? 0, cs = Math.cos(ry), sn = Math.sin(ry), cx = p.gx + p.w / 2, cy = p.gy + p.h / 2;
   const wall = (x0: number, z0: number, x1: number, z1: number) => { const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.55); for (let i = 0; i <= n; i++) { const lx = x0 + (x1 - x0) * i / n, lz = z0 + (z1 - z0) * i / n, c = { x: cx + (lx * cs + lz * sn) / T, y: cy + (-lx * sn + lz * cs) / T, r: 0.26 };
     for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } };
-  for (const [x0, z0, x1, z1] of HALL_WALLS[p.variant ?? 0] ?? []) wall(x0, z0, x1, z1); }
+  for (const [x0, z0, x1, z1] of (p.kind === 'library' ? LIB_WALLS : HALL_WALLS)[p.variant ?? 0] ?? []) wall(x0, z0, x1, z1); }
 /** bichos são corpos: o herói não entra neles (só atravessa na investida e na esquiva); afastar-se é sempre livre */
 function enemyBlock(x: number, y: number) { const n = hero.actName; if (n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge') return false;
   for (const e of game.enemies.list) { if (!e.active || !e.alive || e.state === 'dead') continue; const ex = e.pos.x / T, ey = e.pos.z / T, m = (e.def.radius * 0.8 + 0.45) / T, dn = Math.hypot(x - ex, y - ey); if (dn < m && dn < Math.hypot(state.fx - ex, state.fy - ey)) return true; } return false; }
@@ -2315,7 +2317,7 @@ function dungeonBoard(en: (typeof dgs.entrances)[number]) {
     choices: [...rows, { kind: 'custom' as const, label: 'Agora não.', hint: '', cb: () => dlg.close() }], onAccept: () => {}, onTurnIn: () => {} });
 }
 /* a placa da masmorra é sólida: dois postes e a tábua (antes se atravessava) */
-for (const en of dgs.entrances) { const big = en.d.kind === 'grupo' ? 1.35 : 1; en.root.updateMatrixWorld(true);
+for (const en of dgs.entrances) { if (en.d.fixed) continue; const big = en.d.kind === 'grupo' ? 1.35 : 1; en.root.updateMatrixWorld(true);
   for (const lx of [-1.6, -0.8, 0, 0.8, 1.6]) { const v = new THREE.Vector3(-3.9 * big - 0.4 + Math.cos(0.18) * lx, 0, 3.6 * big - Math.sin(0.18) * lx); en.root.localToWorld(v); const c = { x: v.x / T, y: v.z / T, r: 0.22 };
     for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } }
 function enterDungeon(en: (typeof dgs.entrances)[number], tier = 0) {
@@ -3277,7 +3279,9 @@ function frameBody() {
     }
   }
   /* casa de ofício: entrou, o telhado e a parede de fundo somem (dá para ver a bancada e o herói) */
-  { const hx = state.fx * T, hz = state.fy * T; const _v = cutV; for (const o of CUTAWAYS) { o.parent?.getWorldPosition(_v); const near = Math.hypot(_v.x - hx, _v.z - hz) < 4.2; if (o.visible === near) o.visible = !near; } }
+  { const hx = state.fx * T, hz = state.fy * T; const _v = cutV; for (const o of CUTAWAYS) { const par = o.parent; if (!par) continue; const box = o.userData.cutBox as { hw: number; z0: number; z1: number } | undefined; let near: boolean;
+      if (box) { _v.set(hx, heroY + 1, hz); par.worldToLocal(_v); near = Math.abs(_v.x) < box.hw && _v.z > box.z0 && _v.z < box.z1; } else { par.getWorldPosition(_v); near = Math.hypot(_v.x - hx, _v.z - hz) < 4.2; }
+      if (o.visible === near) o.visible = !near; } }
   for (const sm of objs.smokers) if (Math.random() < 0.25) particles.spawn(sm.x, sm.y, sm.z, { vx: 0.5, vy: 0.9, vz: 0.1, life: 2.4, s0: 0.6, s1: 2.2, c0: 0x8a8a96, c1: 0x30303c, a: 0.22, drag: 0.4 });
   /* relíquias dos caminhantes: runas pulsam; as já marcadas ganham aura dourada e fagulhas */
   for (const rl of objs.relics) {

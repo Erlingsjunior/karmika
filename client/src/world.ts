@@ -8,7 +8,7 @@ export const STATION_NAMES = {
 
 /** deslocamento das Terras dos Homens dentro do mundo grande (tiles) */
 export const SH = 210;
-export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall';
+export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -1424,11 +1424,34 @@ export function buildCity(): World {
           const cx = gx + S / 2, cy = gy + S / 2, ry = Math.atan2(hubX(t) - cx, t.y - cy);
           { let door = true; for (const k of [1, 2]) { const fx = Math.floor(cx + Math.sin(ry) * (S / 2 + k)), fy = Math.floor(cy + Math.cos(ry) * (S / 2 + k)); if (!inb(fx, fy) || !['grass', 'plaza', 'dirt', 'road'].includes(map[fy][fx] as string)) door = false; } if (!door) continue; } /* a frente aberta dá para chão, nunca para o rio */
           put(v, gx, gy, ry); ok = true; } } } }
+  /* AS BIBLIOTECAS (25/10): a Grande Biblioteca de Askavik (imensa, perto de onde o cronista sempre esteve) e a de Lumenhal (simples, linda).
+     Casas comuns cedem o lugar (nunca templo, castelo, escola ou loja com nome); árvore e pedra solta saem. O chão de dentro vira praça. */
+  const libs: { gx: number; gy: number; w: number; h: number; v: number; name: string }[] = [];
+  { const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch', 'fogpatch', 'mailbox']);
+    const want: [string, number, string, number, number, number][] = [['Askavik', 0, 'Grande Biblioteca de Askavik', -22, 22, 10], ['Lumenhal', 1, 'Biblioteca de Lumenhal', 0, 4, 2]];
+    for (const [vila, v, name, ox, oy, maxH] of want) { const t = settlements.find((q) => q.name === vila); if (!t) continue; const W = v ? 11 : 18, H = v ? 9 : 14;
+      const busyB = new Set<number>(); for (const p of props) { if (SOFT.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.add(y * 100000 + x); }
+      const okT = (x: number, y: number) => inb(x, y) && !busyB.has(y * 100000 + x) && ['grass', 'plaza', 'dirt', 'road', 'tree'].includes(map[y][x] as string);
+      search: for (let r = 0; r <= 60; r++) for (let a = 0; a < Math.max(1, r * 6); a++) { const gx = Math.round(t.x + ox + Math.cos(a / Math.max(1, r * 6) * 6.283) * r) - (W >> 1), gy = Math.round(t.y + oy + Math.sin(a / Math.max(1, r * 6) * 6.283) * r) - (H >> 1);
+        if (t.kind === 'city' && Math.hypot(gx + W / 2 - t.x, gy + H / 2 - t.y) > t.radius - 12) continue;
+        const over = props.filter((p) => p.kind === 'house' && (p.variant ?? 0) < 4 && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1);
+        if (over.length > maxH) continue;
+        for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.delete(y * 100000 + x);
+        const underH = (x: number, y: number) => over.some((p) => x >= p.gx && x < p.gx + p.w && y >= p.gy && y < p.gy + p.h); /* o chão da casa que cede vira praça */
+        let ok = true; for (let y = gy; y < gy + H && ok; y++) for (let x = gx; x < gx + W && ok; x++) if (!okT(x, y) && !(underH(x, y) && !busyB.has(y * 100000 + x))) ok = false;
+        if (!ok) { for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.add(y * 100000 + x); continue; }
+        for (const p of over) { const i = props.indexOf(p); if (i >= 0) props.splice(i, 1); }
+        for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
+        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza' as never;
+        props.push({ kind: 'library', gx, gy, w: W, h: H, height: v ? 9 : 22, wall: 0xd8d0c0, roof: 0x5a9a86, variant: v, ry: 0, label: name });
+        libs.push({ gx, gy, w: W, h: H, v, name }); pois.push({ name: v ? name : 'Grande Biblioteca', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
+        break search; } } }
+  const libAt = (v: number) => libs.find((q) => q.v === v);
   { /* cada um em chão livre de verdade (nada de gente em cima de telhado): procura em espiral o primeiro tile andável fora de qualquer construção */
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
       if (inb(x, y) && !occ.has(y * 100000 + x) && ['grass', 'plaza', 'road', 'dirt'].includes(map[y][x] as string)) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
-    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (!t) continue; const at = freeAt(t.x + c.dx, t.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines }); }
+    for (const c of CAMPAIGN_NPCS) { const t = settlements.find((q) => q.name === c.vila); if (!t) continue; const L0 = c.name.includes('Ormund') ? libAt(0) : undefined; const at = L0 ? { x: L0.gx + L0.w / 2, y: L0.gy + L0.h / 2 + 1.5 } /* o cronista dentro da Grande Biblioteca, no balcão diante da rotunda */ : freeAt(t.x + c.dx, t.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines }); }
     /* as casas das necessidades de classe (25/10): Adega do Conde, Sangria dos anões, incensos dos magos e da bruxa, orvalho élfico — em chão livre */
     for (const [vila, dx, dy, n] of ([
       ['Uivo Antigo', 3, 2.5, { name: 'Curtidora Rhagna', role: 'Toca das Curtidoras de Selvar', kind: 'nordic', radius: 1.2, tint: 0x5a4030, scale: 1.05, shop: 'toca_selvar', lines: ['Terra de toca e gordura de fera. O mago esqueceu que tem pés.', 'Um mago aqui, de manto limpo? A matilha vai rir a semana inteira.', 'Unguento bom cheira mal. Esse cheira muito mal.'] }],
@@ -1471,7 +1494,7 @@ export function buildCity(): World {
   { /* LIMPEZA DO MAPA (25/10): tochas nunca dentro de prédio, na água, coladas umas nas outras ou em fila torta;
        bancos e enfeites pequenos nunca em cima de construção */
     const SMALL = new Set(['torch', 'bench', 'barrel', 'crate', 'sign', 'herb', 'bones', 'corpse', 'grave', 'fogpatch', 'tar']);
-    const BIG = new Set(['house', 'temple', 'church', 'tower', 'stall', 'station', 'shopfront', 'gatehouse', 'monument', 'landmark', 'fountain', 'vault', 'tent', 'relic', 'obelisk', 'wstair', 'vgate', 'ggate', 'palisade', 'lowwall']);
+    const BIG = new Set(['library', 'house', 'temple', 'church', 'tower', 'stall', 'station', 'shopfront', 'gatehouse', 'monument', 'landmark', 'fountain', 'vault', 'tent', 'relic', 'obelisk', 'wstair', 'vgate', 'ggate', 'palisade', 'lowwall']);
     const occ = new Set<number>(); for (const p of props) if (BIG.has(p.kind)) for (let y = p.gy; y < p.gy + (p.h || 1); y++) for (let x = p.gx; x < p.gx + (p.w || 1); x++) occ.add(y * 100000 + x);
     const torches: { gx: number; gy: number }[] = [], smallAt = new Set<number>(); let cut = 0;
     const keep = props.filter((p) => { if (!SMALL.has(p.kind)) return true; const k = p.gy * 100000 + p.gx;

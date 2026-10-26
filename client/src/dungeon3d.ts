@@ -8,7 +8,7 @@ import { std, ramp } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
 
-export type DgTheme = 'toca' | 'mina' | 'gelo' | 'magma' | 'cripta' | 'mata';
+export type DgTheme = 'toca' | 'mina' | 'gelo' | 'magma' | 'cripta' | 'mata' | 'arquivo';
 export type RoomKind = 'start' | 'pack' | 'side' | 'elite' | 'boss';
 export interface DgRoom { x: number; z: number; w: number; d: number; kind: RoomKind }
 export interface DungeonFloor extends Interior {
@@ -48,6 +48,7 @@ export const THEMES: Record<DgTheme, ThemeDef> = {
   gelo: { floor: 0x9ab8d0, rock: 0x7a9ab8, rock2: 0xc8e0f0, light: 0x9ad7ff, tall: [3.0, 4.4], low: [0.7, 1.2], void: 0x060a10 },
   magma: { floor: 0x2a2224, rock: 0x3a2e2e, rock2: 0x1e1818, light: 0xff6a20, tall: [3.0, 4.6], low: [0.7, 1.2], void: 0x0a0402 },
   cripta: { floor: 0x5a5650, rock: 0x6a6660, rock2: 0x4a4640, light: 0xffb860, tall: [3.2, 4.2], low: [0.6, 1.0], void: 0x060508 },
+  arquivo: { floor: 0x5a4a3a, rock: 0x6a5e50, rock2: 0x4a4038, light: 0xffc880, tall: [3.4, 4.4], low: [0.6, 1.0], void: 0x070504 },
   mata: { floor: 0x2e3a26, rock: 0x3e3a2e, rock2: 0x2a3424, light: 0x9aff9a, tall: [2.8, 4.0], low: [0.6, 1.1], void: 0x040806 },
 };
 
@@ -205,12 +206,17 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     else if (o.theme === 'gelo') { if (k < 0.6) crystal(x, z, 0x9ae8ff, 0.9 + r() * 1.2); else bones(x, z); }
     else if (o.theme === 'magma') { if (k < 0.45) pool2(x, z, 0xff5a10, 0.9 + r() * 0.8, true); else { const hh = 1 + r() * 2.5; put(new THREE.CylinderGeometry(0.5, 0.6, hh, 6), rm2, x, hh / 2, z); cols.push([x, z, 0.6]); } }
     else if (o.theme === 'cripta') { if (k < 0.45) sarc(x, z); else if (k < 0.75) candles(x, z); else bones(x, z); }
+    else if (o.theme === 'arquivo') { /* os subsolos da Grande Biblioteca: estantes tombadas, pilhas de pergaminho, caixas de mapas, velas */
+      if (k < 0.45) { const ry = r() * 3.14, sw = M(0x4a2e18); const sh = put(new THREE.BoxGeometry(2.4, 2.6, 0.5), sw, x, 1.3, z, ry); void sh; for (let q = 0; q < 3; q++) { const row = put(new THREE.BoxGeometry(2.2, 0.5, 0.42), M([0x6a1a1a, 0x1a3a5a, 0x2a4a2a, 0x5a3a1a][(q + Math.floor(k * 9)) % 4]), x, 0.5 + q * 0.8, z, ry); row.translateZ(0.06); } cols.push([x, z, 1.2]); }
+      else if (k < 0.7) { for (let q = 0; q < 5; q++) { const sc = put(new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6), M(0xe8dcc0), x + (r() - 0.5) * 0.9, 0.08 + q * 0.12, z + (r() - 0.5) * 0.9); sc.rotation.z = Math.PI / 2; sc.rotation.y = r() * 3; } cols.push([x, z, 0.5]); }
+      else if (k < 0.85) { put(new THREE.BoxGeometry(1.0, 0.7, 0.7), M(0x5a3a22), x, 0.35, z, r() * 3); put(new THREE.BoxGeometry(1.05, 0.08, 0.75), M(0x3a2414), x, 0.72, z); cols.push([x, z, 0.6]); }
+      else candles(x, z); }
     else { if (k < 0.65) mush(x, z, r() < 0.5 ? 0x9aff9a : 0xc89aff); else bones(x, z); } };
   for (const rm of P.rooms) {
     const c = loc(rm), hw = (rm.w * C) / 2 - 1.2, hd = (rm.d * C) / 2 - 1.2;
     if (rm.kind !== 'boss') { const n = rm.kind === 'start' ? 1 : 2 + Math.floor(r() * 3); for (let i = 0; i < n; i++) { const side = r() < 0.5 ? -1 : 1; deco(c.x + side * hw * (0.6 + r() * 0.4), c.z + (r() - 0.5) * hd * 1.6); } }
     // tochas nas paredes do fundo (norte) de cada sala: a luz nunca fica no caminho
-    if (o.theme === 'mina' || o.theme === 'toca' || o.theme === 'cripta') { torch(c.x - hw * 0.7, c.z - hd); torch(c.x + hw * 0.7, c.z - hd); }
+    if (o.theme === 'mina' || o.theme === 'toca' || o.theme === 'cripta' || o.theme === 'arquivo') { torch(c.x - hw * 0.7, c.z - hd); torch(c.x + hw * 0.7, c.z - hd); }
     else light(c.x, 2.4, c.z, th.light, 1.6, 16);
   }
   if (o.theme === 'mina') for (const [a, b] of P.links) { const ax = (a.x + ox) * C, az = (a.z + oz) * C, bz = (b.z + oz) * C; for (let z = Math.min(az, bz) + 3; z < Math.max(az, bz) - 3; z += 6) beam((b.x + ox) * C, z, false); void ax; }

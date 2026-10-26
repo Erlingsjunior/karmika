@@ -32,9 +32,17 @@ export interface DgDef {
   boss: { type: EnemyType; name: string; scale: number; hp: number; dmg: number; mech: BossMech; hello: string; bye: string };
   uniq?: { name: string; slot: Slot; icon: string; lore: string }[];
   title?: string;
+  /** entrada fixa dentro de um prédio (as escadas da Grande Biblioteca): sem a boca no mundo, a escada já está no modelo */ fixed?: boolean;
 }
 const MECH_GROUP = (aoe: string, col: number, heavy: string): BossMech => ({ aoe: { every: 9, r: 6.5, k: 1.3, name: aoe, col }, heavy: { every: 13, mul: 3.2, name: heavy } });
 export const DUNGEONS: DgDef[] = [
+  /* os três subsolos da Grande Biblioteca de Askavik (25/10): as escadas I, II e III no fundo do salão (library3d.LIB_STAIRS) */
+  { id: 'arq1', name: 'Arquivo dos Mapas', kind: 'subsolo', lvl: [12, 16], theme: 'arquivo', near: 'Grande Biblioteca', dx: -6.25, dy: -12.75, fixed: true, main: 3, side: 1, mobs: ['rat', 'bat', 'rat'], players: 'sozinho ou em dupla',
+    elite: { type: 'rat', name: 'Roedor de Pergaminho', scale: 1.7 }, boss: { type: 'ghoul', name: 'O Copista Que Não Parou', scale: 1.2, hp: 5, dmg: 1.1, mech: { aoe: { every: 10, r: 4.5, k: 1, name: 'Tinta que Queima', col: 0x3a2a6a } }, hello: 'O primeiro subsolo: mapas de lugares que já não existem. Alguém ainda copia aqui embaixo.', bye: 'A pena cai. O copista, enfim, descansa sobre a última folha.' } },
+  { id: 'arq2', name: 'Galerias Proibidas', kind: 'subsolo', lvl: [26, 30], theme: 'arquivo', near: 'Grande Biblioteca', dx: 0, dy: -13.2, fixed: true, main: 4, side: 2, mobs: ['skeleton', 'ghoul', 'bat'], players: 'grupo de 2 a 3',
+    elite: { type: 'skeleton', name: 'Guardião das Chaves', scale: 1.3 }, boss: { type: 'bishop', name: 'O Bibliotecário Cego', scale: 1.1, hp: 7, dmg: 1.2, mech: { aoe: { every: 9, r: 5.5, k: 1.2, name: 'Silêncio', col: 0x6a4a9a }, heavy: { every: 13, mul: 2.8, name: 'Livro Fechado' } }, hello: 'O segundo subsolo guarda o que a cidade preferiu esquecer. As portas daqui não abrem por fora.', bye: 'O Bibliotecário Cego larga a lanterna. As galerias voltam a ser só pó.' } },
+  { id: 'arq3', name: 'A Escada Sem Fim', kind: 'subsolo', lvl: [44, 50], theme: 'arquivo', near: 'Grande Biblioteca', dx: 6.25, dy: -12.75, fixed: true, main: 5, side: 2, mobs: ['ghoul', 'imp', 'skeleton'], players: 'grupo de 3 a 5',
+    elite: { type: 'imp', name: 'O Que Sussurra nas Lombadas', scale: 1.4 }, boss: { type: 'prince', name: 'A Sombra do Décimo', scale: 1.05, hp: 9, dmg: 1.3, mech: { aoe: { every: 8, r: 6, k: 1.3, name: 'Olho Fechado', col: 0x9a6aff }, heavy: { every: 12, mul: 3.0, name: 'Pálpebra' } }, hello: 'O terceiro subsolo desce mais do que devia. Lá no fim, uma porta de pedra preta com um olho fechado.', bye: 'A sombra se desfaz. A porta continua fechada. Ainda.' } },
   { id: 'toca', name: 'Toca das Ratazanas Rubras', kind: 'grupo', lvl: [10, 15], theme: 'toca', near: 'Cemitério Esquecido', dy: 4, main: 4, side: 2, mobs: ['rat', 'rat', 'bat'], players: 'grupo de 3',
     elite: { type: 'rat', name: 'Ratazana Alfa', scale: 1.9 },
     boss: { type: 'rat', name: 'Mãe-Ninhada', scale: 3.4, hp: 16, dmg: 2.0, mech: { ...MECH_GROUP('Guincho da Ninhada', 0xff4a3a, 'Mordida Dilacerante'), adds: { at: [0.7, 0.4], type: 'rat', n: 5, line: 'A Mãe-Ninhada guincha: os filhotes saem das paredes!' }, pools: { every: 15, n: 3, k: 0.35, name: 'Peste', col: 0x6aff4a }, enrage: 'A Mãe-Ninhada, ferida, fica ainda mais faminta.' },
@@ -123,6 +131,7 @@ export function createMasmorras(ctx: DgCtx) {
   const entrances: { d: DgDef; x: number; y: number; lvl: [number, number]; root: THREE.Group }[] = [];
   /** a dificuldade escolhida na placa (Erling, 25/10): a masmorra acompanha o seu nível, mas você pode pedir mais — e o prêmio cresce junto */
   for (const d of DUNGEONS) {
+    if (d.fixed) { const t1 = target(d.near); if (!t1) continue; const fx0 = t1.x + (d.dx ?? 0), fy0 = t1.y + (d.dy ?? 0); const root = mouthFixed(d, fx0 * T, fy0 * T); entrances.push({ d, x: Math.floor(fx0), y: Math.floor(fy0), lvl: d.lvl ?? [1, 5], root }); continue; }
     const t0 = target(d.near); if (!t0) continue; const bx = Math.round(t0.x + (d.dx ?? 0)), by = Math.round(t0.y + (d.dy ?? 6)); let at: { x: number; y: number } | null = null;
     for (let r = 0; r < 48 && !at; r++) for (let a = 0; a < 24 && !at; a++) { const x = Math.round(bx + Math.cos((a / 24) * 6.283) * r), y = Math.round(by + Math.sin((a / 24) * 6.283) * r); if (spotOk(x, y)) at = { x, y }; }
     for (let r = 1; r < 44 && !at; r++) for (let a = 0; a < r * 8 && !at; a++) { const x = Math.round(bx + Math.cos((a / (r * 8)) * 6.283) * r), y = Math.round(by + Math.sin((a / (r * 8)) * 6.283) * r); if (spotOk(x, y, true)) at = { x, y }; } // 2ª passada: aceita árvores e cercas em volta
@@ -131,6 +140,9 @@ export function createMasmorras(ctx: DgCtx) {
     const root = mouth(d, at.x * T, at.y * T); entrances.push({ d, x: at.x, y: at.y, lvl, root });
     ctx.city.pois.push({ name: d.name, x: at.x, y: at.y + 1, biome: 'rock' });
   }
+  /** a escada já está no prédio: só o nome flutuando e a luz (a boca não é montada no mundo) */
+  function mouthFixed(d: DgDef, x: number, z: number) { const { g, fx } = buildEntrance({ name: d.name, kind: d.kind, theme: d.theme === 'arquivo' ? 'cripta' : d.theme, players: d.players, scaled: true }, ctx.fine); const root = new THREE.Group(); root.position.set(x, ctx.heightAt(x, z), z); ctx.scene.add(root); void g;
+    const el = document.createElement('div'); el.className = 'dgname'; el.innerHTML = `<b>${d.name}</b><small>Subsolo da Grande Biblioteca · ${d.players} · níveis ${d.lvl?.[0]}–${d.lvl?.[1]}</small>`; document.body.appendChild(el); efx.push({ x, z, fx, el, y: root.position.y + 0.9 }); return root; }
   /** a boca da masmorra: rochas em arco e um buraco escuro (caverna), um alçapão de pedra (subsolo) ou vigas de mina */
   /** a entrada no mundo (entradas.ts): escadaria que desce, luz, placa entalhada e o que o tema pede */
   function mouth(d: DgDef, x: number, z: number) {

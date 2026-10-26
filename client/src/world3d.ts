@@ -14,6 +14,7 @@ import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof } from './too
 /** tampa de cada baú de tesouro do mundo (por prop), para a tampa abrir quando o jogador saqueia */
 export const chestLids = new Map<object, THREE.Object3D>();
 import { buildStation, buildWorkshop } from './stations3d';
+import { buildLibrary } from './library3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
 import { windU } from './terrain3d';
@@ -286,6 +287,9 @@ export function buildWorld(world: World): WorldObjs {
         const tail = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.02, 0.14), rm); tail.position.set(0, 0.02, -0.17); tail.rotation.x = 0.4; rv.add(tail); }
       const fp = (typeof fountainRef !== 'undefined' && fountainRef) ? fountainRef : null;
       bg.rotation.y = fp ? Math.atan2(fp.x - wx, fp.z - wz) : (p.variant ?? 0);
+    } else if (p.kind === 'library') { // as bibliotecas (library3d)
+      const lb = buildLibrary(p.variant ?? 0, p.label ?? 'Biblioteca'); lb.group.position.set(Wm / 2, 0, Dm / 2); lb.group.rotation.y = p.ry ?? 0; g.add(lb.group);
+      for (const gl of lb.glows) L.glows.push({ light: nullLight, base: gl.base, seed: r() * 50, warm: true, pos: new THREE.Vector3(gl.x, gl.y, gl.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz)), color: gl.color } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'station') { // pontos de trabalho dos ofícios
       const st = p.w >= 3 ? buildWorkshop(p.variant ?? 0, r, p.label ?? '') : buildStation(p.variant ?? 0, r); st.group.position.set(Wm / 2, 0, Dm / 2); st.group.rotation.y = p.ry ?? 0; g.add(st.group);
       const loc = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz));
