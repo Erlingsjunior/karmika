@@ -25,6 +25,7 @@ export interface Prop {
   height: number;         // altura em metros (ver shared/src/scale.ts)
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
+  /** ângulo (rad, no mundo) do lado em que a água está — a roda do moinho da marcenaria fica virada para lá */ wdir?: number;
   /** peças que seguem um traçado (muros, cercas, pórticos): centro exato dentro da casa (m, a partir do canto), comprimento (m) e quanto desmoronou (0–1) */ ox?: number; oz?: number; len?: number; broken?: number;
   variant?: number;       // tipo da árvore (0 carvalho, 1 seca, 2 pinheiro) / modelo da pedra / etc.
   /** giro (radianos) para peças que olham para algum lugar (pontos de trabalho olham para o centro da vila) */
@@ -603,7 +604,7 @@ export function buildCity(): World {
     Brasaforja: 2, Cinzalto: 2, Lithendel: 3, Lumenhal: 3, Corvoscuro: 4, 'Uivo Antigo': 5, Gorvath: 6, Vaporeira: 7, 'Porto Caldeira': 7, Ferrugem: 7 };
   /** o marco do mestre de cada caminho (fica logo ao norte da vila, ligado por estrada) */
   const LANDMARK_AT: Record<string, number> = {}; // Corvoscuro e Lumenhal: monumentos próprios (montanha e lagoa), mais abaixo
-  const LM_SIZE: Record<number, [number, number, string]> = { 1: [14, 10, 'Fortaleza de Odin'], 2: [12, 11, 'Abadia da Aurora'], 3: [12, 12, 'Bastião de Prata'], 4: [9, 9, 'Pináculo de Marfim'], 5: [13, 12, 'Castelo da Colina Vampírica'], 6: [12, 12, 'Vale da Desgraça'], 7: [11, 11, 'Grande Toca do Uivo'] };
+  const LM_SIZE: Record<number, [number, number, string]> = { 8: [13, 13, 'Ruínas de Aravel'], 1: [14, 10, 'Fortaleza de Odin'], 2: [12, 11, 'Abadia da Aurora'], 3: [12, 12, 'Bastião de Prata'], 4: [9, 9, 'Pináculo de Marfim'], 5: [13, 12, 'Castelo da Colina Vampírica'], 6: [12, 12, 'Vale da Desgraça'], 7: [11, 11, 'Grande Toca do Uivo'] };
   const landmarkDoor: Record<string, { x: number; y: number }> = {};
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
@@ -1105,6 +1106,10 @@ export function buildCity(): World {
   pois.push({ name: 'Ruínas de Aravel', x: ru.x, y: ru.y, biome: 'ruins' });
   for (let k = 0; k < 8; k++) addBones(ru.x + Math.round((r() - 0.5) * 18), ru.y + Math.round((r() - 0.5) * 12));
   for (let k = 0; k < 9; k++) addRuin(ru.x + Math.round((r() - 0.5) * 16), ru.y + Math.round((r() - 0.5) * 10), 1 + Math.floor(r() * 3), 1);
+  { /* o salão caído da Primeira Vigília (26/10): marco próprio no meio das ruínas, as ruínas pequenas em volta cedem o lugar */
+    const lw = 13, lh = 13, gx = ru.x - 6, gy = ru.y - 6; for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > gx - 1 && q.gx < gx + lw + 1 && q.gy + q.h > gy - 1 && q.gy < gy + lh + 1 && (q.kind === 'ruin' || q.kind === 'tree' || q.kind === 'rock' || q.kind === 'bones' || q.kind === 'herb')) props.splice(i, 1); }
+    for (let y = gy - 1; y <= gy + lh; y++) for (let x = gx - 1; x <= gx + lw; x++) if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'road') map[y][x] = 'grass' as never;
+    props.push({ kind: 'landmark', gx, gy, w: lw, h: lh, height: 12, wall: 0, roof: 0, variant: 8 }); for (let y = gy + 1; y < gy + lh - 1; y++) for (let x = gx + 1; x < gx + lw - 1; x++) if (inb(x, y) && Math.hypot(x - gx - lw / 2, y - gy - lh / 2) > lw / 2 - 1.5 && Math.abs(x - gx - lw / 2) > 2.2) map[y][x] = 'wall' as never; flatten(gx + lw / 2, gy + lh / 2, lw / 2 + 2); /* a colunata bloqueia, o meio (brecha e portão) fica livre */ }
 
   /* trilhas: dos lugares de luta e de mistério até a estrada mais próxima (juntam-se à rede, não fazem estrelas) */
   { const near = (x: number, y: number) => { let best: [number, number] = PLACE.Karmika, bd = 1e9; for (const [, q] of Object.entries(PLACE)) { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = q; } } return best; };
@@ -1442,7 +1447,16 @@ export function buildCity(): World {
         for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass' as never;
         props.push({ kind: 'station', gx, gy, w: S, h: S, height: S === 3 ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
         for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { hard.add(y * 100000 + x); taken.add(y * 100000 + x); } };
-      for (const v of vs) { let ok = false; S = city || v === 3 ? 3 : 2; /* o apotecário da vila também é casinha: farmácia pequena com antessala (Erling, 25/10) */
+      for (const v of vs) { let ok = false; S = city || v === 3 ? 3 : 2;
+        if (v === 0) { /* MARCENARIA À BEIRA DO RIACHO (Erling 26/10): a roda d'água move as serras — procura um lugar com água a 2–3 casas do lado e vira a roda para ela */
+          let best: { gx: number; gy: number; ry: number; wdir: number; d: number } | null = null;
+          for (let r = city ? 8 : 5; r <= (city ? 44 : 26); r++) for (let a = 0; a < 48; a++) { const ang = a * 0.1309, gx = Math.round(hubX(t) + Math.cos(ang) * r) - (S >> 1), gy = Math.round(t.y + Math.sin(ang) * r) - (S >> 1);
+            if (t.kind === 'city' && Math.hypot(gx - t.x, gy - t.y) > t.radius - 8) continue; if (!fits(gx, gy, true)) continue;
+            const cx = gx + S / 2, cy = gy + S / 2; let wd = 99, wx = 0, wy = 0; for (let y = gy - 4; y <= gy + S + 3; y++) for (let x = gx - 4; x <= gx + S + 3; x++) { if (!inb(x, y) || map[y][x] !== 'water') continue; const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d < wd) { wd = d; wx = x + 0.5; wy = y + 0.5; } }
+            if (wd > S / 2 + 3.2) continue; const ry = Math.atan2(hubX(t) - cx, t.y - cy);
+            { let door = true; for (const k of [1, 2]) { const fx = Math.floor(cx + Math.sin(ry) * (S / 2 + k)), fy = Math.floor(cy + Math.cos(ry) * (S / 2 + k)); if (!inb(fx, fy) || !['grass', 'plaza', 'dirt', 'road'].includes(map[fy][fx] as string)) door = false; } if (!door) continue; }
+            const score = wd + r * 0.08; if (!best || score < best.d) best = { gx, gy, ry, wdir: Math.atan2(wx - cx, wy - cy), d: score }; }
+          if (best) { put(0, best.gx, best.gy, best.ry); props[props.length - 1].wdir = best.wdir; ok = true; } } /* o apotecário da vila também é casinha: farmácia pequena com antessala (Erling, 25/10) */
         if (v === 4 && tav) { /* a cozinha simples fica nos fundos da taverna: do lado de lá da casa, olhando a porta dos fundos */
           const hx = tav.gx + tav.w / 2, hy = tav.gy + tav.h / 2, bx = hx - hubX(t), by = hy - t.y, bl = Math.hypot(bx, by) || 1;
           for (let d = 0; d <= 3 && !ok; d++) for (let k = -2; k <= 2 && !ok; k++) { const ox = bx / bl, oy = by / bl, gx = Math.round(hx + ox * (tav.w / 2 + 1.6 + d) - oy * k) - 1, gy = Math.round(hy + oy * (tav.h / 2 + 1.6 + d) + ox * k) - 1;

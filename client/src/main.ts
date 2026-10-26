@@ -147,6 +147,23 @@ renderer.debug.onShaderError = (gl, prog, vs, fs) => kshow('SHADER falhou:\n' + 
 canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); kshow('WebGL perdeu o contexto (GPU/driver). Recarregue a página.'); });
 document.getElementById('game')!.appendChild(canvas);
 
+/* VARREDURA DE GEOMETRIAS E TEXTURAS (26/10, Erling: "RangeError: Array buffer allocation failed" depois de horas de jogo). Tudo o que foi desenhado uma vez e
+   depois largado sem dispose() — efeito de golpe, corpo de bicho, placa de ofício, item no chão — fica preso dentro do WebGLRenderer para sempre, e a memória
+   só cresce. De 30 em 30 s marcamos o que ainda está na cena e soltamos o resto; o que for reaproveitado (cache de corpos, geometria compartilhada) é só
+   enviado de novo à placa quando voltar a aparecer. */
+const GEO_REG = new Set<THREE.BufferGeometry>(), TEX_REG = new Set<THREE.Texture>();
+{ const bs = THREE.BufferGeometry.prototype.computeBoundingSphere; THREE.BufferGeometry.prototype.computeBoundingSphere = function (this: THREE.BufferGeometry) { GEO_REG.add(this); return bs.call(this); };
+  const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate')!; Object.defineProperty(THREE.Texture.prototype, 'needsUpdate', { configurable: true, set(this: THREE.Texture, v: boolean) { if (!(this as THREE.Texture & { isRenderTargetTexture?: boolean; isDepthTexture?: boolean }).isRenderTargetTexture && !(this as THREE.Texture & { isDepthTexture?: boolean }).isDepthTexture) TEX_REG.add(this); d.set!.call(this, v); } }); } /* toda CanvasTexture passa por needsUpdate=true ao nascer */
+const TEX_KEYS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'gradientMap', 'bumpMap'] as const;
+function geoSweep(roots: THREE.Object3D[]): { geo: number; tex: number } {
+  const live = new Set<THREE.BufferGeometry>(), tlive = new Set<THREE.Texture>();
+  const mat = (m: THREE.Material) => { for (const k of TEX_KEYS) { const t = (m as unknown as Record<string, THREE.Texture | null>)[k]; if (t) tlive.add(t); } const u = (m as THREE.ShaderMaterial).uniforms; if (u) for (const key in u) { const v = u[key].value; if (v && (v as THREE.Texture).isTexture) tlive.add(v as THREE.Texture); } };
+  for (const r of roots) r.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) live.add(m.geometry); if (m.material) { if (Array.isArray(m.material)) m.material.forEach(mat); else mat(m.material); } if ((o as THREE.Sprite).isSprite) mat((o as THREE.Sprite).material); });
+  let geo = 0, tex = 0; for (const g of GEO_REG) { if (live.has(g)) continue; GEO_REG.delete(g); if (!(g.userData as { keep?: boolean }).keep) { g.dispose(); geo++; } }
+  for (const t of TEX_REG) { if (tlive.has(t) || (t.userData as { keep?: boolean }).keep) continue; TEX_REG.delete(t); t.dispose(); tex++; }
+  return { geo, tex };
+}
+let geoSweepT = 30;
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
 scene.fog = new THREE.FogExp2(0x050814, 0.02);
@@ -233,7 +250,7 @@ hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
 const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { sweep: () => geoSweep([scene]), pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -360,7 +377,7 @@ const jobEl = document.createElement('div'); jobEl.id = 'craftjob'; document.bod
 let job: { stop(why?: string): void } | null = null;
 function craftJob(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }, onEnd?: () => void) {
   job?.stop(); const J = JOB[j.prof] ?? { ic: '⚒', verb: 'Fazendo', act: 'herb' as const, snd: 'carve' as const, beat: 0.5, col: '#ffe08a' };
-  const PER = 1.15, x0 = state.fx, y0 = state.fy; let k = 0, t = 0, beatT = 0, last = performance.now(), raf = 0, alive = true;
+  const PER = j.times === 1 ? 1.9 : 1.15, x0 = state.fx, y0 = state.fy; /* uma peça só: preparo mais longo e visível (Erling 26/10: 'um item só tem que ter a animação de preparo') */ let k = 0, t = 0, beatT = 0, last = performance.now(), raf = 0, alive = true;
   jobEl.innerHTML = `<div class="cj-ring"><svg viewBox="0 0 64 64"><circle class="bg" cx="32" cy="32" r="27"/><circle class="fg" cx="32" cy="32" r="27" style="stroke:${J.col}"/></svg><span class="cj-ic">${J.ic}</span><span class="cj-flash"></span></div>
     <div class="cj-txt"><b>${J.verb}: ${j.icon} ${j.name}</b><small><span class="cj-n">0</span> / ${j.times} · mova-se para parar</small></div><div class="cj-pop"></div>`;
   jobEl.classList.add('on'); const fg = jobEl.querySelector('.fg') as SVGCircleElement, C = 2 * Math.PI * 27; fg.style.strokeDasharray = `${C}`; fg.style.strokeDashoffset = `${C}`;
@@ -529,7 +546,7 @@ function updateMules(dt: number, t: number) { for (const m of mules) { const far
 function updateCompanions(dt: number, t: number, heroYaw: number, mps: number) {
   updateMules(dt, t);
   const ps = stable.petStats(), petId = ps ? stable.petId : null, petName = ps?.name ?? '';
-  if (petId && (!pet || pet.kind.id !== petId || pet.kind.name !== petName)) { pet?.dispose(); pet = createPet(scene, { ...PETS[petId]!, name: petName }, (x, z) => inside ? 0 : heightAt(x, z)); }
+  if (petId && (!pet || pet.kind.id !== petId || pet.kind.name !== petName)) { pet?.dispose(); pet = createPet(scene, { ...PETS[petId]!, name: petName }, (x, z) => inside ? 0 : heightAt(x, z), (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, true); } catch { return true; } }); }
   if (!petId && pet) { pet.dispose(); pet = null; }
   if (pet && ps) { pet.kind.speed = PETS[petId!]!.speed * ps.fetchMul; pet.root.visible = !inside || !!inside.dg; /* na masmorra o pet desce junto (25/10) */ const goal = (inside && !inside.dg) || combatMode ? null : game.petFetch(pet.pos, heroPos, ps.range); pet.update(dt, t, heroPos, heroYaw, goal, camera, canvas); petSkills(dt, ps); }
   const mountId = stable.mountId, ms = stable.mountStats();
@@ -1979,7 +1996,10 @@ function questTarget(): { x: number; y: number; label: string } | null {
   const nearestSpawn = (types: EnemyType[]) => { let best: { x: number; y: number } | null = null, bd = 1e9; for (const sp of city.spawns) if (types.includes(sp.type)) { const dd = Math.hypot(sp.x - h0.x, sp.y - h0.y) * (1 + Math.max(0, (sp.lvl ?? 1) - game.st.lvl - 2) * 0.8); /* a guia prefere bichos do seu nível */ if (dd < bd) { bd = dd; best = { x: sp.x, y: sp.y }; } } return best; };
   const nearestProp = (kind: string, small = false) => { let best: { x: number; y: number } | null = null, bd = 1e9; for (const p of city.props) { if (p.kind !== kind || (p as { gone?: boolean }).gone || (small && p.w > 2)) continue; const dd = Math.hypot(p.gx + 0.5 - h0.x, p.gy + 0.5 - h0.y); if (dd < bd) { bd = dd; best = { x: p.gx + 0.5, y: p.gy + 0.5 }; } } return best; };
   const nearestTile = (tile: string) => { let best: { x: number; y: number } | null = null, bd = 1e9; const cx = Math.round(h0.x), cy = Math.round(h0.y); for (let y = cy - 40; y <= cy + 40; y += 2) for (let x = cx - 40; x <= cx + 40; x += 2) if (city.map[y]?.[x] === tile) { const dd = Math.hypot(x - h0.x, y - h0.y); if (dd < bd) { bd = dd; best = { x, y }; } } return best; };
-  if (o.kind === 'kill') { const p = nearestSpawn([o.type]); return p ? { ...p, label: `${ENEMY_LABEL(o.type)} por aqui` } : null; }
+  if (o.kind === 'kill') { /* 26/10: mira o bicho vivo mais perto; se todos estão mortos, diz quando volta (o Torturador "sumia" e a bússola parava) */
+    let live: { x: number; y: number } | null = null, ld = 1e9, wait = 0; for (const e of game.enemies.list) { if (e.type !== o.type) continue; const dd = Math.hypot(e.pos.x / T - h0.x, e.pos.z / T - h0.y); if (e.alive) { if (dd < ld) { ld = dd; live = { x: e.pos.x / T, y: e.pos.z / T }; } } else if (dd < 40) wait = Math.max(wait, e.respawn); }
+    if (live) return { ...live, label: `${ENEMY_LABEL(o.type)} por aqui` };
+    const p = nearestSpawn([o.type]); return p ? { ...p, label: wait > 0 && wait < 1e8 ? `${ENEMY_LABEL(o.type)} volta em ${Math.ceil(wait)} s` : `${ENEMY_LABEL(o.type)} por aqui` } : null; }
   if (o.kind === 'collect') { const src = DROP_SRC[o.item]; if (!src) return null; const p = src === 'tree' ? nearestProp('tree') : src === 'rock' ? nearestProp('rock', true) : src === 'water' ? nearestTile('water') : nearestSpawn(src); return p ? { ...p, label: src === 'tree' ? 'Árvores' : src === 'rock' ? 'Pedras' : src === 'water' ? 'Água (pescar)' : 'Caça por aqui' } : null; }
   if (o.kind === 'talk') { const p = npcAt(o.npc); return p ? { ...p, label: o.npc } : null; }
   if (o.kind === 'visit') { const poi = city.pois.find((q) => q.name === o.poi); return poi ? { x: poi.x, y: poi.y, label: poi.name } : null; }
@@ -3571,6 +3591,7 @@ function frameBody() {
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
+  geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
   t += dt;
   nightTarget = nightOverride ?? nightAt(gameHour());
   (window as unknown as { __night?: number }).__night = state.night;
@@ -3694,7 +3715,7 @@ function frameBody() {
   hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting || game.st.dead ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
   if (hintEl.style.display !== 'none') { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.1, heroPos.z).project(camera); hintEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; hintEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; }
   lantern.position.set(heroPos.x, 3.2, heroPos.z);
-  lantern.intensity = mix(5, 55, night);
+  lantern.intensity = mix(5, 55, night); lantern.distance = 36 * (1 + Math.min(60, game.st.lvl - 1) * 0.004); /* a aura alcança um pouco mais a cada nível (Erling 26/10: 'o alcance aumenta, numa proporção BEM pequena, não o brilho'): +0,4 % por nível, até +24 % no 60 */
 
   /* câmera com zoom suave e lento */
   zoom += (zoomTarget - zoom) * Math.min(1, dt * 2.2);
@@ -3795,8 +3816,11 @@ function frameBody() {
   { const hx = state.fx * T, hz = state.fy * T; const _v = cutV; for (const o of CUTAWAYS) { const par = o.parent; if (!par) continue; const box = o.userData.cutBox as { hw: number; z0: number; z1: number } | undefined; let near: boolean;
       if (box) { _v.set(hx, heroY + 1, hz); par.worldToLocal(_v); near = Math.abs(_v.x) < box.hw && _v.z > box.z0 && _v.z < box.z1; } else { par.getWorldPosition(_v); near = Math.hypot(_v.x - hx, _v.z - hz) < 4.2; }
       if (o.visible === near) o.visible = !near; } }
-  for (const sm of objs.smokers) if (Math.random() < 0.25) particles.spawn(sm.x, sm.y, sm.z, { vx: 0.5, vy: 0.9, vz: 0.1, life: 2.4, s0: 0.6, s1: 2.2, c0: 0x8a8a96, c1: 0x30303c, a: 0.22, drag: 0.4 });
+  for (const sm of objs.smokers) { const strong = (sm as THREE.Vector3 & { strong?: boolean }).strong; /* a forja fumega forte e solta fagulhas (Erling, 26/10) */
+    if (Math.random() < (strong ? 0.8 : 0.25)) particles.spawn(sm.x, sm.y, sm.z, { vx: 0.5 + WDX * 0.6, vy: strong ? 1.4 : 0.9, vz: 0.1 + WDZ * 0.6, life: strong ? 3.2 : 2.4, s0: strong ? 0.5 : 0.6, s1: strong ? 2.8 : 2.2, c0: strong ? 0x5a5a62 : 0x8a8a96, c1: 0x30303c, a: strong ? 0.4 : 0.22, drag: 0.4 });
+    if (strong && Math.random() < 0.3) particles.spawn(sm.x, sm.y, sm.z, { vx: (Math.random() - 0.5) * 1.2, vy: 2 + Math.random() * 1.5, vz: (Math.random() - 0.5) * 1.2, life: 0.9, s0: 0.08, s1: 0.02, c0: 0xffd070, c1: 0xff5a1a, a: 1, drag: 0.6 }); }
   /* relíquias dos caminhantes: runas pulsam; as já marcadas ganham aura dourada e fagulhas */
+  for (const [o, ax, w] of objs.spinners) o.rotation[ax] += w * dt; /* moinho da marcenaria */
   for (const rl of objs.relics) {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */

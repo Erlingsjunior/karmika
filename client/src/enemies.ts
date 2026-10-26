@@ -606,7 +606,7 @@ export function createEnemies(ctx: EnemyCtx) {
       const dHero = Math.hypot(hero.x - e.pos.x, hero.z - e.pos.z);
       const ne = e as NetE, puppet = !!ne.own && performance.now() - (ne.ownT ?? 0) < 1500 && e.alive;
       if (!puppet && ne.own) { ne.own = undefined; if (e.state !== 'dead') { e.state = 'return'; e.t = 0; } } // o dono parou de mandar: o bicho volta a ser simulado aqui
-      if (!e.active) { if (dormant(e) && !puppet) continue; if (dHero < ACT && (e.alive || e.state === 'dead')) { e.active = true; build(e); } else { if (!e.alive) { e.respawn -= dt; if (e.respawn <= 0) { e.alive = true; e.hp = e.hpMax; e.state = 'idle'; e.pos.set(e.home.x, 0, e.home.y); } } continue; } }
+      if (!e.active) { if (dormant(e) && !puppet) continue; if (dHero < ACT && (e.alive || (e.state === 'dead' && e.t <= ((e as Enemy & { corpse?: number }).corpse ?? 4)))) { e.active = true; build(e); } else { if (!e.alive) { /* o corpo já sumiu: o tempo de renascer corre mesmo com o herói por perto (26/10: o Torturador nunca voltava à Clareira enquanto o jogador esperava lá) */ e.respawn -= dt; if (e.respawn <= 0) { e.alive = true; e.hp = e.hpMax; e.state = 'idle'; e.pos.set(e.home.x, 0, e.home.y); } } continue; } }
       else if ((e as Enemy & { night?: boolean }).night && (ctx.night?.() ?? 0) < 0.4 && e.state !== 'chase' && e.state !== 'windup') { unbuild(e); e.active = false; continue; }
       else if (dHero > DEACT) { unbuild(e); e.active = false; if (e.state === 'dead') { e.respawn = Math.max(e.respawn, 1); } continue; }
       if ((e as Enemy & { kneel?: boolean }).kneel && e.alive) { e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0); } /* rendido, esperando a sentença: não ataca, não anda, não levanta */

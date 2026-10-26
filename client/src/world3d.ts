@@ -30,6 +30,8 @@ export interface WorldObjs {
   smokers: THREE.Vector3[];
   /** relíquias dos caminhantes visíveis: runas e anel animados por fora */
   relics: { gx: number; gy: number; runes: THREE.Mesh; ring: THREE.Mesh; pos: THREE.Vector3; seed: number }[];
+  /** rodas d'água, eixos e serras dos moinhos carregados */
+  spinners: [THREE.Object3D, 'x' | 'y' | 'z', number][];
   update(hx: number, hz: number, sync?: boolean): void;
   fountainPos(): THREE.Vector3 | null;
   /** raio de chunks carregados (cinemáticas afastam a câmera) */
@@ -60,7 +62,7 @@ export const FOUNTAIN = { rim: 0.9, bowl: 2.1, top: 3.35, rad: 2.2 };
 const fountainWater = new THREE.ShaderMaterial({ transparent: true, uniforms: { uT: windU, uL: { value: 1 } },
   vertexShader: 'varying vec3 vP; void main(){ vP = (modelMatrix*vec4(position,1.)).xyz; gl_Position = projectionMatrix*viewMatrix*vec4(vP,1.); }',
   fragmentShader: 'uniform float uT; varying vec3 vP; void main(){ vec2 c = vP.xz - floor(vP.xz*0.0); float r = length(vP.xz - vec2(0.0)); float w = sin(vP.x*3.1+uT*1.7)*sin(vP.z*2.7-uT*1.3)*0.5+0.5; float rg = smoothstep(0.9,1.0,sin(length(fract(vP.xz*0.25)-0.5)*40.0 - uT*5.0)); vec3 col = mix(vec3(0.08,0.35,0.5), vec3(0.3,0.7,0.85), w*0.6) + rg*0.18; gl_FragColor = vec4(col, 0.92); }' });
-interface Loaded { terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; glows: WorldObjs['glowLights'][number][]; trees: { obj: THREE.Object3D; ph: number }[]; smokers: THREE.Vector3[]; relics?: WorldObjs['relics']; own: THREE.BufferGeometry[]; fountain?: THREE.Vector3; treeG?: THREE.Group[]; treeMerged?: THREE.Mesh[]; staticG?: THREE.Group[]; staticMerged?: THREE.Mesh[] }
+interface Loaded { terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; glows: WorldObjs['glowLights'][number][]; trees: { obj: THREE.Object3D; ph: number }[]; smokers: THREE.Vector3[]; relics?: WorldObjs['relics']; own: THREE.BufferGeometry[]; fountain?: THREE.Vector3; treeG?: THREE.Group[]; treeMerged?: THREE.Mesh[]; staticG?: THREE.Group[]; staticMerged?: THREE.Mesh[]; spin?: [THREE.Object3D, 'x' | 'y' | 'z', number][] }
 
 /* ---------- degraus pisáveis (Erling, 23/10: "não consigo subir a escada, fico atravessando ela" — em todos os prédios grandes).
    As escadarias, plintos e patamares dos prédios eram só desenho: o chão do herói continuava o terreno. Agora, quando um prédio
@@ -98,7 +100,7 @@ export function buildWorld(world: World): WorldObjs {
   const windows = new THREE.MeshBasicMaterial({ color: 0xffc266 });
   // brilhos compartilhados (entram no mesmo lote de desenho em todo o chunk): cogumelo-lamparina, flor-de-marghar, prata no veio
   const glowShroom = new THREE.MeshBasicMaterial({ color: 0xffc85a }), glowMarghar = new THREE.MeshBasicMaterial({ color: 0x8ac8ff }), glowSilver = new THREE.MeshBasicMaterial({ color: 0xeef4ff });
-  const torchesA: Torch[] = [], glowA: WorldObjs['glowLights'] = [], treesA: WorldObjs['trees'] = [], smokersA: THREE.Vector3[] = [], relicsA: WorldObjs['relics'] = [];
+  const torchesA: Torch[] = [], glowA: WorldObjs['glowLights'] = [], treesA: WorldObjs['trees'] = [], smokersA: THREE.Vector3[] = [], relicsA: WorldObjs['relics'] = [], spinA: WorldObjs['spinners'] = [];
   const bridgeMeshes = new THREE.Group(); group.add(bridgeMeshes);
 
   /* iluminação em pool: só as fontes mais próximas ganham PointLight de verdade (número fixo = sem recompilar shaders) */
@@ -291,10 +293,11 @@ export function buildWorld(world: World): WorldObjs {
       const lb = buildLibrary(p.variant ?? 0, p.label ?? 'Biblioteca'); lb.group.position.set(Wm / 2, 0, Dm / 2); lb.group.rotation.y = p.ry ?? 0; g.add(lb.group);
       for (const gl of lb.glows) L.glows.push({ light: nullLight, base: gl.base, seed: r() * 50, warm: true, pos: new THREE.Vector3(gl.x, gl.y, gl.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz)), color: gl.color } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'station') { // pontos de trabalho dos ofícios
-      const st = p.w >= 3 ? buildWorkshop(p.variant ?? 0, r, p.label ?? '') : buildStation(p.variant ?? 0, r); st.group.position.set(Wm / 2, 0, Dm / 2); st.group.rotation.y = p.ry ?? 0; g.add(st.group);
+      const st = p.w >= 3 ? buildWorkshop(p.variant ?? 0, r, p.label ?? '', p.wdir !== undefined ? p.wdir - (p.ry ?? 0) : undefined, p.ry ?? 0) : buildStation(p.variant ?? 0, r, false, p.wdir !== undefined ? p.wdir - (p.ry ?? 0) : undefined, p.ry ?? 0); st.group.position.set(Wm / 2, 0, Dm / 2); st.group.rotation.y = p.ry ?? 0; g.add(st.group);
+      if (st.spin) (L.spin ??= []).push(...st.spin);
       const loc = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz));
       if (st.glow) L.glows.push({ light: nullLight, base: st.glow.base, seed: r() * 50, warm: true, pos: loc(st.glow), color: st.glow.color } as WorldObjs['glowLights'][number]);
-      if (st.smoke) L.smokers.push(loc(st.smoke));
+      if (st.smoke) { const v = loc(st.smoke); if ((st.smoke as { strong?: boolean }).strong) (v as THREE.Vector3 & { strong?: boolean }).strong = true; L.smokers.push(v); }
     } else if (p.kind === 'vault') {
       // Baú do Caminhante: arca grande de carvalho com cintas de ferro, cantoneiras de bronze, o Olho de Marghar na tampa, sobre um tablado de pedra
       const wood = std(0xffffff, { map: plankTex(0x5a3a20) }), iron = std(0x2e3238), bronze = std(0xb08a40), stone = std(0x7a766e);
@@ -538,8 +541,8 @@ export function buildWorld(world: World): WorldObjs {
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);
   function rebuildLists() {
     torchesA.length = 0; glowA.length = 0; treesA.length = 0; smokersA.length = 0;
-    relicsA.length = 0;
-    for (const L of [...loaded.values(), dynL]) { torchesA.push(...L.torches); glowA.push(...L.glows); treesA.push(...L.trees); smokersA.push(...L.smokers); if (L.relics) relicsA.push(...L.relics); }
+    relicsA.length = 0; spinA.length = 0;
+    for (const L of [...loaded.values(), dynL]) { torchesA.push(...L.torches); glowA.push(...L.glows); treesA.push(...L.trees); smokersA.push(...L.smokers); if (L.relics) relicsA.push(...L.relics); if (L.spin) spinA.push(...L.spin); }
   }
   function loadChunk(cx: number, cy: number, k: number) {
     const L: Loaded = { terrain: buildChunkTerrain(cx, cy, world), group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] };
@@ -571,7 +574,13 @@ export function buildWorld(world: World): WorldObjs {
     group.add(L.group); loaded.set(k, L); rebuildLists();
   }
   function unloadChunk(k: number) {
-    const L = loaded.get(k)!; group.remove(L.group); L.terrain.dispose(); for (const g of L.own) g.dispose(); loaded.delete(k); rebuildLists();
+    const L = loaded.get(k)!; group.remove(L.group); L.terrain.dispose(); for (const g of L.own) g.dispose(); loaded.delete(k);
+    /* VAZAMENTO (26/10, "Array buffer allocation failed" depois de horas): o mapa prop→grupo guardava cada chunk já visitado inteiro.
+       Ao descarregar, solta as entradas desse chunk e as geometrias fundidas (árvores e estáticos) */
+    for (const [p, e] of propG) if (e.L === L) propG.delete(p);
+    for (const m of L.treeMerged ?? []) { L.group.remove(m); m.geometry.dispose(); } L.treeMerged = []; for (const m of L.staticMerged ?? []) { L.group.remove(m); m.geometry.dispose(); } L.staticMerged = [];
+    L.group.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.geometry && !m.userData.shared) m.geometry.dispose(); if ((m as unknown as THREE.InstancedMesh).isInstancedMesh) (m as unknown as THREE.InstancedMesh).dispose(); });
+    L.treeG = []; L.staticG = []; L.trees = []; L.torches = []; L.glows = []; L.smokers = []; L.relics = []; L.spin = []; rebuildLists();
   }
   let lastCx = -99, lastCy = -99, queue: [number, number, number][] = [];
   let RAD = 2;
@@ -709,5 +718,5 @@ export function buildWorld(world: World): WorldObjs {
   }
   function addProp(p: Prop) { world.props.push(p); const pg = buildProp(p, dynL); dynL.group.add(pg); propG.set(p, { g: pg, L: dynL }); rebuildLists(); }
   const fountainPos = () => { for (const L of loaded.values()) if (L.fountain) return L.fountain; return null; };
-  return { setRad(n: number) { if (n !== RAD) { RAD = n; lastCx = -9999; } }, fountainPos, removeProp, addProp, group, torches: torchesA, glowLights: glowA, windows, trees: treesA, smokers: smokersA, relics: relicsA, update, bridgeMeshes };
+  return { setRad(n: number) { if (n !== RAD) { RAD = n; lastCx = -9999; } }, fountainPos, removeProp, addProp, group, torches: torchesA, glowLights: glowA, windows, trees: treesA, smokers: smokersA, relics: relicsA, spinners: spinA, update, bridgeMeshes };
 }

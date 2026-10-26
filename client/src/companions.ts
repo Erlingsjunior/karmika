@@ -46,7 +46,7 @@ export function mountModel(kind: MountKind) {
   return { root, hz };
 }
 
-export function createPet(scene: THREE.Scene, kind: PetKind, heightAt: (x: number, z: number) => number) {
+export function createPet(scene: THREE.Scene, kind: PetKind, heightAt: (x: number, z: number) => number, walkable?: (x: number, z: number) => boolean) {
   const pm = petModel(kind), root = pm.root; fine(root); scene.add(root);
   const pos = new THREE.Vector3(), tgt = new THREE.Vector3(); let yaw = 0, placed = false, idleT = 0;
   const el = document.createElement('div'); el.className = 'npc pet'; el.innerHTML = `<b>${kind.name}</b>`; document.body.appendChild(el); if (kind.silent) el.style.display = 'none';
@@ -59,7 +59,10 @@ export function createPet(scene: THREE.Scene, kind: PetKind, heightAt: (x: numbe
     const far = Math.hypot(hero.x - pos.x, hero.z - pos.z);
     if (far > 26) { pos.set(hero.x - Math.sin(heroYaw) * 1.4, 0, hero.z - Math.cos(heroYaw) * 1.4); }
     let mv = 0;
-    if (dd > (goal ? 0.5 : 0.9)) { const sp = Math.min(kind.speed, dd * 3) * dt; pos.x += dx / dd * Math.min(sp, dd); pos.z += dz / dd * Math.min(sp, dd); mv = Math.min(kind.speed, dd * 3); const w = Math.atan2(dx, dz); let df = w - yaw; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283; yaw += df * Math.min(1, dt * 8); idleT = 0; }
+    if (dd > (goal ? 0.5 : 0.9)) { const sp = Math.min(kind.speed, dd * 3) * dt, sx = dx / dd * Math.min(sp, dd), sz = dz / dd * Math.min(sp, dd);
+      /* o pet respeita paredes e móveis como o herói (Erling 26/10: "estou passando DENTRO da casa"): tenta o passo, senão desliza num eixo; preso longe do dono → reaparece atrás dele */
+      if (!walkable || walkable(pos.x + sx, pos.z + sz)) { pos.x += sx; pos.z += sz; } else if (walkable(pos.x + sx, pos.z)) pos.x += sx; else if (walkable(pos.x, pos.z + sz)) pos.z += sz; else if (far > 6) pos.set(hero.x - Math.sin(heroYaw) * 1.4, 0, hero.z - Math.cos(heroYaw) * 1.4);
+      mv = Math.min(kind.speed, dd * 3); const w = Math.atan2(dx, dz); let df = w - yaw; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283; yaw += df * Math.min(1, dt * 8); idleT = 0; }
     else { idleT += dt; if (!goal && idleT > 1.5) { const w = heroYaw; let df = w - yaw; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283; yaw += df * Math.min(1, dt * 2); } }
     pos.y = heightAt(pos.x, pos.z);
     root.position.copy(pos); root.rotation.y = yaw;

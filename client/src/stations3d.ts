@@ -16,9 +16,35 @@ export const STATION_INFO = [
 
 /** telhado e parede de fundo das casas de ofício: somem quando o herói entra, para ver a bancada (main.ts) */
 export const CUTAWAYS: THREE.Object3D[] = [];
-type Out = { group: THREE.Group; glow?: { x: number; y: number; z: number; color: number; base: number }; smoke?: { x: number; y: number; z: number } };
+type Out = { group: THREE.Group; glow?: { x: number; y: number; z: number; color: number; base: number }; smoke?: { x: number; y: number; z: number; strong?: boolean }; /** peças que giram (roda d'água, eixo, serra): [objeto, eixo, rad/s] */ spin?: [THREE.Object3D, 'x' | 'y' | 'z', number][] };
 
-export function buildStation(v: number, rnd: () => number, bare = false): Out {
+/** MOINHO D'ÁGUA (Erling 26/10: "marcenaria ao lado do riacho usando um moinho como força motriz das serras"): roda de pás na lateral do
+    barracão, calha de água no sentido do riacho, eixo com engrenagem até a serra circular na bancada. `wdirLocal` = lado da água (rad, local),
+    `ry` = giro do prédio no mundo (para puxar a roda ao lado que a câmera vê), `side` = distância da roda ao centro, `bench` = onde fica a serra. */
+export function buildMill(g: THREE.Group, wdirLocal: number, ry: number, side: number, bench: { x: number; y: number; z: number }): Out['spin'] {
+  const wood = std(0xffffff, { map: plankTex(0x6a4a2a) }), dark = std(0xffffff, { map: woodTex(0x3a2614) }), iron = std(0x2e3238);
+  const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d), C = (r0: number, r1: number, h: number, s = 8) => new THREE.CylinderGeometry(r0, r1, h, s);
+  const pr = Math.sin(wdirLocal + Math.PI / 2 + ry) >= 0 ? wdirLocal + Math.PI / 2 : wdirLocal - Math.PI / 2;
+  const px = Math.sin(pr) * side + Math.sin(wdirLocal) * 0.5, pz = Math.cos(pr) * side + Math.cos(wdirLocal) * 0.5;
+  const wl = new THREE.Group(); wl.name = 'moinho'; wl.position.set(px, 0, pz); wl.rotation.y = pr; g.add(wl);
+  const wheel = new THREE.Group(); wheel.position.set(0, 1.2, 0); wl.add(wheel);
+  for (const sz of [-0.3, 0.3]) { const rim = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.07, 6, 18), dark); rim.position.z = sz; wheel.add(rim); for (let k = 0; k < 6; k++) { const sp = new THREE.Mesh(B(0.08, 2.15, 0.05), wood); sp.rotation.z = k * Math.PI / 6; sp.position.z = sz; wheel.add(sp); } }
+  for (let k = 0; k < 12; k++) { const a = k * Math.PI / 6; const pad = new THREE.Mesh(B(0.34, 0.05, 0.66), wood); pad.position.set(Math.cos(a) * 1.1, Math.sin(a) * 1.1, 0); pad.rotation.z = a + Math.PI / 2 + 0.5; wheel.add(pad); }
+  const hub = new THREE.Mesh(C(0.11, 0.11, 0.9, 8), dark); hub.rotation.x = Math.PI / 2; wheel.add(hub);
+  for (const sz of [-0.55, 0.55]) { const post = new THREE.Mesh(B(0.16, 1.25, 0.16), dark); post.position.set(0, 0.62, sz); wl.add(post); }
+  const trough = new THREE.Mesh(B(2.6, 0.3, 0.7), wood); trough.position.set(0, 0.2, 0); wl.add(trough);
+  const wat = new THREE.Mesh(B(2.5, 0.08, 0.55), std(0x3a6a9a, { transparent: true, opacity: 0.6 })); wat.position.set(0, 0.4, 0); wl.add(wat);
+  for (const o of [wheel, hub, trough, wat]) o.traverse((c) => { c.castShadow = true; });
+  const ax = bench.x - px, az = bench.z - pz, al = Math.hypot(ax, az), aa = Math.atan2(ax, az);
+  const along = (m: THREE.Mesh, x: number, y: number, z: number) => { const gp = new THREE.Group(); gp.position.set(x, y, z); gp.rotation.order = 'YXZ'; gp.rotation.y = aa; gp.rotation.x = Math.PI / 2; gp.add(m); g.add(gp); m.castShadow = true; return m; };
+  const axle = along(new THREE.Mesh(C(0.07, 0.07, al, 8), dark), (px + bench.x) / 2, 1.2, (pz + bench.z) / 2);
+  const gear = along(new THREE.Mesh(C(0.3, 0.3, 0.08, 10), iron), px + ax * 0.35, 1.2, pz + az * 0.35);
+  const blade = along(new THREE.Mesh(C(0.34, 0.34, 0.02, 14), std(0xc8ccd4)), bench.x, bench.y, bench.z);
+  const spin: Out['spin'] = [[wheel, 'z', -0.9], [axle, 'y', -0.9], [gear, 'y', -0.9], [blade, 'y', 6]]; for (const [o] of spin) o.userData.dyn = true; /* peças vivas: ficam fora da fusão estática do chunk */
+  return spin;
+}
+
+export function buildStation(v: number, rnd: () => number, bare = false, wdirLocal?: number, ry = 0): Out {
   const g = new THREE.Group();
   const wood = std(0xffffff, { map: plankTex(0x6a4a2a) }), dark = std(0xffffff, { map: woodTex(0x3a2614) }), iron = std(0x2e3238), stone = std(0xffffff, { map: stoneTex(0x7a766e) });
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, inked = true, ry = 0) => { const o = new THREE.Mesh(geo, m); if (inked) ink(o, 0.02); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
@@ -49,13 +75,14 @@ export function buildStation(v: number, rnd: () => number, bare = false): Out {
     for (let k = 0; k < 5; k++) add(B(1.6, 0.06, 0.3), wood, -0.1 + (rnd() - 0.5) * 0.1, 0.05 + k * 0.065, -0.75, false, (rnd() - 0.5) * 0.08);
     add(new THREE.CircleGeometry(0.6, 12), std(0xd8b880), 0.2, 0.02, 0.35, false).rotation.x = -Math.PI / 2;
     add(C(0.3, 0.32, 0.5, 10), std(0xffffff, { map: woodTex(0x6a4a2a) }), 1.25, 0.25, 0.55); const axe = add(B(0.05, 0.6, 0.05), dark, 1.25, 0.72, 0.55, false); axe.rotation.z = 0.5; add(B(0.2, 0.14, 0.03), iron, 1.12, 0.98, 0.55, false);
+    if (!bare && wdirLocal !== undefined) { out.spin = buildMill(g, wdirLocal, ry, 2.7, { x: 0.2, y: 1.18, z: 0.05 }); saw.visible = false; /* a serra de mão cede o lugar à serra circular movida pelo eixo */ }
     sign(2.5, 0xffd080, (c) => { c.strokeStyle = '#e8dcc0'; c.lineWidth = 4; c.beginPath(); c.moveTo(14, 46); c.lineTo(46, 18); c.stroke(); c.fillStyle = '#c8ccd4'; c.beginPath(); c.moveTo(20, 50); c.lineTo(52, 22); c.lineTo(54, 30); c.lineTo(24, 54); c.fill(); });
   } else if (v === 1) { // Forja: lareira de pedra com brasas, coifa e chaminé, bigorna no toco, tina d'água, ferramentas
     add(B(1.5, 0.9, 1.1), stone, -0.55, 0.45, -0.35);
     const coals = add(B(1.1, 0.06, 0.7), glowM(0xff6a1a), -0.55, 0.93, -0.35, false); void coals;
     for (let k = 0; k < 8; k++) add(new THREE.IcosahedronGeometry(0.07, 0), glowM(k % 2 ? 0xffb040 : 0xff3a0a), -0.55 + (rnd() - 0.5) * 0.9, 0.97, -0.35 + (rnd() - 0.5) * 0.5, false);
     const hood = add(new THREE.ConeGeometry(0.95, 0.9, 4), stone, -0.55, 1.75, -0.4); hood.rotation.y = Math.PI / 4;
-    add(B(0.45, 1.6, 0.45), stone, -0.55, 2.9, -0.45);
+    add(B(0.45, 1.6, 0.45), stone, -0.55, 2.9, -0.45); add(B(0.55, 0.12, 0.55), stone, -0.55, 3.72, -0.45); add(B(0.3, 0.1, 0.3), std(0x0a0806), -0.55, 3.76, -0.45, false); /* boca da chaminé: borda e o furo escuro (Erling: "chaminé não pode não ter furo") */
     add(C(0.22, 0.28, 0.55, 9), std(0xffffff, { map: woodTex(0x5a3a20) }), 0.85, 0.27, 0.3); // toco
     add(B(0.55, 0.16, 0.22), iron, 0.85, 0.62, 0.3); add(B(0.3, 0.1, 0.14), iron, 0.85, 0.5, 0.3); const horn = add(new THREE.ConeGeometry(0.08, 0.3, 6), iron, 1.2, 0.63, 0.3, false); horn.rotation.z = -Math.PI / 2;
     add(C(0.3, 0.27, 0.55, 12), dark, 0.9, 0.27, -0.75); add(new THREE.CircleGeometry(0.27, 12), std(0x2a4a6a), 0.9, 0.5, -0.75, false).rotation.x = -Math.PI / 2;
@@ -63,7 +90,7 @@ export function buildStation(v: number, rnd: () => number, bare = false): Out {
     for (let k = 0; k < 3; k++) { const t = add(B(0.03, 0.7, 0.03), iron, -1.35, 1.1, -0.2 + k * 0.18, false); t.rotation.z = 0.1; }
     sign(2.4, 0xff8040, (c) => { c.fillStyle = '#9aa0aa'; c.fillRect(14, 30, 36, 10); c.fillRect(24, 40, 16, 12); c.beginPath(); c.moveTo(50, 30); c.lineTo(58, 34); c.lineTo(50, 38); c.fill(); c.fillStyle = '#ff8a3a'; c.fillRect(26, 14, 4, 4); c.fillRect(36, 10, 3, 3); });
     if (!bare) { for (const sx of [-1, 1]) add(C(0.07, 0.08, 2.4, 6), dark, sx * 1.4, 1.2, 0.95); add(B(3.0, 0.08, 0.15), dark, 0, 2.35, 0.95, false); }
-    out.glow = { x: -0.55, y: 1.3, z: -0.1, color: 0xff7a2a, base: 26 }; out.smoke = { x: -0.55, y: 3.8, z: -0.45 };
+    out.glow = { x: -0.55, y: 1.3, z: -0.1, color: 0xff7a2a, base: 26 }; out.smoke = { x: -0.55, y: 3.85, z: -0.45, strong: true };
   } else if (v === 2) { // Mesa do Curtidor: armação com couro esticado, mesa com faca e linha, balde, peles penduradas
     canopy(3.0, 2.0, 2.4, 0x5a4a3a);
     const frame = new THREE.Group(); frame.position.set(-0.75, 0, -0.55); frame.rotation.x = -0.15; g.add(frame);
@@ -75,6 +102,14 @@ export function buildStation(v: number, rnd: () => number, bare = false): Out {
     add(B(0.5, 0.03, 0.35), std(0x8a6a3a), 0.6, 0.87, 0.2, false); add(B(0.25, 0.015, 0.04), std(0xc8ccd4), 0.95, 0.87, 0.3, false); add(C(0.05, 0.05, 0.08, 8), std(0xd8c8a0), 0.9, 0.9, 0.05, false);
     add(C(0.2, 0.17, 0.35, 10), dark, 1.15, 0.17, -0.6);
     for (let k = 0; k < 3; k++) { const pel = add(new THREE.PlaneGeometry(0.45, 0.6), std([0x8a6a4a, 0x6a5a4a, 0xb8a080][k], { side: THREE.DoubleSide }), -1.0 + k * 0.5, 1.75, 0.95, false); pel.rotation.y = 0.2; }
+    if (!bare) { /* Erling 26/10: "alfaiataria sem uns varais e sem bancadas de madeira curtindo couro?" — varais nas laterais e mesas inclinadas de curtir ao sol */
+      for (const sx of [-1, 1]) { const x = sx * 2.15; add(C(0.04, 0.05, 2.0, 6), dark, x, 1.0, -1.1); add(C(0.04, 0.05, 2.0, 6), dark, x, 1.0, 1.1); add(C(0.012, 0.012, 2.3, 4), std(0xd8c8a0), x, 1.95, 0, false).rotation.x = Math.PI / 2;
+        for (let k = 0; k < 4; k++) { const cl = [0x8a6a4a, 0x2a3a8a, 0xb08a5a, 0x9a2a2a][(k + (sx > 0 ? 2 : 0)) % 4]; const pel = add(new THREE.PlaneGeometry(0.42, 0.62 + rnd() * 0.2), std(cl, { side: THREE.DoubleSide }), x, 1.62, -0.85 + k * 0.56, false); pel.rotation.y = Math.PI / 2 + (rnd() - 0.5) * 0.25; pel.rotation.x = (rnd() - 0.5) * 0.12; } }
+      for (const [x, z, ry] of [[-1.0, 1.75, 0.0], [1.1, 1.8, 0.15]] as const) { const bk = new THREE.Group(); bk.position.set(x, 0, z); bk.rotation.y = ry; g.add(bk);
+        const top = new THREE.Mesh(B(1.1, 0.06, 0.6), wood); ink(top, 0.02); top.position.set(0, 0.62, 0); top.rotation.x = -0.55; top.castShadow = true; bk.add(top);
+        for (const sx of [-1, 1]) { const l1 = new THREE.Mesh(B(0.07, 0.75, 0.07), dark); l1.position.set(sx * 0.48, 0.37, -0.22); bk.add(l1); const l2 = new THREE.Mesh(B(0.07, 0.42, 0.07), dark); l2.position.set(sx * 0.48, 0.21, 0.2); bk.add(l2); }
+        const h2 = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.5, 3, 3), std(0xa07a4a, { side: THREE.DoubleSide })); h2.position.set(0, 0.665, 0.0); h2.rotation.x = -Math.PI / 2 - 0.55; bk.add(h2);
+        for (const px of [-0.35, 0.35]) for (const pz of [-0.2, 0.2]) { const nail = new THREE.Mesh(C(0.012, 0.012, 0.03, 4), iron); nail.position.set(px, 0.69 + pz * 0.6, pz * 0.85); nail.rotation.x = -0.55; bk.add(nail); } } }
     sign(2.4, 0xc8a070, (c) => { c.fillStyle = '#b08a5a'; c.beginPath(); c.ellipse(32, 34, 16, 20, 0, 0, 6.283); c.fill(); c.strokeStyle = '#e8dcc0'; c.lineWidth = 2; c.beginPath(); c.moveTo(20, 18); c.lineTo(44, 50); c.stroke(); });
   } else if (v === 3) { // Laboratório: bancada com alambique, frascos coloridos que brilham, estante, caldeirão borbulhando
     canopy(3.2, 2.2, 2.6, 0x3a4a5a);
@@ -132,7 +167,7 @@ export const HALL_WALLS: Record<number, [number, number, number, number][]> = {
   4: [[-2.7, -2.6, 2.7, -2.6], [-2.7, -2.6, -2.7, 2.2], [2.7, -2.6, 2.7, 0.0]],
   5: [[-2.7, -2.6, 2.7, -2.6], [-2.7, -2.6, -2.7, 2.2], [2.7, -2.6, 2.7, 2.2]],
 };
-export function buildWorkshop(v: number, rnd: () => number, label: string): Out {
+export function buildWorkshop(v: number, rnd: () => number, label: string, wdirLocal?: number, ry = 0): Out {
   const g = new THREE.Group(), cut = new THREE.Group(); g.add(cut); CUTAWAYS.push(cut);
   const out: Out = { group: g };
   const T = (c: number) => std(0xffffff, { map: woodTex(c) });
@@ -169,6 +204,7 @@ export function buildWorkshop(v: number, rnd: () => number, label: string): Out 
     for (const z of [-2.4, 2.2]) for (const sx of [-1, 1]) M(B(0.12, 0.9, 0.12), beam, sx * 2.25, 2.85, z, 0, 0, sx * 0.75); // mãos-francesas
     for (const x of [-2.6, 2.6]) M(B(0.2, 0.2, 4.9), beam, x, 3.2, -0.1);
     roof(5.4, 4.6, 3.25, 0.55, 0x6a4a2a, -0.1);
+    if (wdirLocal !== undefined) out.spin = buildMill(g, wdirLocal, ry, 3.6, { x: 0, y: 1.25, z: 0.2 }); /* a Marcenaria da cidade à beira d'água também tem a roda (26/10) */
     /* fundo: meia parede de tábuas (dá para ver tudo de qualquer lado) e o painel das serras */
     M(B(5.4, 1.3, 0.14), plank, 0, 0.8, -2.5); M(B(5.4, 0.12, 0.2), beam, 0, 1.5, -2.5);
     into = cut; M(B(5.4, 1.6, 0.1), plank, 0, 2.35, -2.52); into = g;
