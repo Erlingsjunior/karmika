@@ -58,7 +58,12 @@ export function eyeSees(title: string, what: string, why: string, delta: number,
     o.kd.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], 350); return; }
   const src = document.getElementById('eye'); const r = src?.getBoundingClientRect();
   const wrap = document.createElement('div'); wrap.className = 'eyesee'; document.body.appendChild(wrap); bringFront(wrap);
-  const eye = document.createElement('div'); eye.className = 'eyefly'; eye.innerHTML = src ? src.outerHTML.replace('id="eye"', '') : '👁'; wrap.appendChild(eye);
+  const eye = document.createElement('div'); eye.className = 'eyefly'; /* 26/10 (Erling: "o Olho viu, mas está fechado? no aviso ele precisa estar aberto"): o Olho que voa é sempre o ABERTO —
+     íris dourada acesa e a pupila em losango, como no despertar —, mesmo se o da barra estiver selado ou com pouco karma */
+  eye.innerHTML = `<svg viewBox="20 30 260 160"><defs><clipPath id="eyfC"><polygon points="60,110 143,54 157,54 240,110 157,166 143,166"/></clipPath><radialGradient id="eyfG" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff0bd"/><stop offset=".6" stop-color="#f2b04a"/><stop offset="1" stop-color="#7a4a10"/></radialGradient></defs>
+    <polygon points="60,110 143,54 157,54 240,110 157,166 143,166" fill="#0b0810"/>
+    <g clip-path="url(#eyfC)"><ellipse cx="150" cy="110" rx="46" ry="46" fill="url(#eyfG)"/><polygon points="150,86 174,110 150,134 126,110" fill="#0b0810"/><ellipse cx="136" cy="96" rx="8" ry="5" fill="rgba(255,255,255,.7)"/></g>
+    <g fill="none" stroke="#d9a24f" stroke-width="14" stroke-linejoin="bevel"><path d="M144 40 L40 110 L144 180"/><path d="M40 40 L40 180"/><path d="M156 40 L260 110 L156 180"/><path d="M260 40 L260 180"/></g></svg>`; wrap.appendChild(eye);
   const w0 = r?.width || 120, h0 = r?.height || 74; Object.assign(eye.style, { left: (r?.left ?? innerWidth / 2 - 60) + 'px', top: (r?.top ?? 20) + 'px', width: w0 + 'px', height: h0 + 'px' });
   if (src) src.style.visibility = 'hidden';
   const W = Math.min(340, innerWidth * 0.4), H = W * h0 / w0;
