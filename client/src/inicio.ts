@@ -123,7 +123,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
   function remember(v: string) { const s = read(); s.servers = [v, ...s.servers.filter((x) => x !== v)].slice(0, 5); write(s); }
   function play(i: number, isNew: boolean) {
     const s = read();
-    if (i !== s.active) { if (!swapTo(i)) return; sessionStorage.setItem(BOOT, JSON.stringify({ server })); location.reload(); return; }
+    if (i !== s.active) { if (!swapTo(i)) return; lockChar(); /* cada personagem é um universo: o jogo do personagem antigo, ainda rodando atrás da tela, salvava karma, alma e o resto por cima do novo na hora de recarregar */ sessionStorage.setItem(BOOT, JSON.stringify({ server })); location.reload(); return; }
     if (isNew && o.hasChar()) { // espaço ativo, mas pediu novo? não acontece: o ativo sempre é o que tem personagem
       return; }
     isOpen = false; render(); o.onPlay(server, !o.hasChar());
