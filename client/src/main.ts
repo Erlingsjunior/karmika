@@ -64,6 +64,7 @@ import { createDialog, type Choice, type Reply, type Step } from './dialog';
 import { ECOS, FRIO } from './falas';
 import { createInstinct, selfLine, instinctOf, type Being, type Place } from './instinto';
 import { createOrmund } from './ormund';
+import { battleCry } from './gritos';
 import { createSecrets, CACHE_LORE, type SenseGoal, type Cache } from './segredos';
 import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
@@ -3750,7 +3751,7 @@ function frameBody() {
   void shaftCol;
   { /* a trilha muda com o lugar e com a luta (25/10): chefe, elite, masmorra, lugar maligno, vila, estrada */
     let mood: 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss' = 'explore'; const hx2 = state.fx * T, hz2 = state.fy * T;
-    for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return') continue; if (Math.hypot(e.pos.x - hx2, e.pos.z - hz2) > 26) continue; const boss = e.hpMax > 3000 || ['bishop', 'prince'].includes(e.type), el = boss || e.hpMax > 1500 || ['tormentor', 'treant', 'werewolf'].includes(e.type); if (boss) { mood = 'boss'; break; } if (el) mood = 'elite'; }
+    for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return') continue; if (Math.hypot(e.pos.x - hx2, e.pos.z - hz2) > 26) continue; const boss = e.hpMax > 3000 || ['bishop', 'prince'].includes(e.type), el = boss || e.hpMax > 1500 || ['tormentor', 'treant', 'werewolf'].includes(e.type); if (el) { const cry = battleCry(kitRace(), profile?.sex ?? 'm', String(e.id ?? '') || e.type + ':' + Math.round(e.home.x) + ',' + Math.round(e.home.y), boss); if (cry) { bubble(cry); game.logMsg(`${profile?.name ?? 'Você'}: “${cry}”`, '#ffe08a'); } } if (boss) { mood = 'boss'; break; } if (el) mood = 'elite'; }
     if (mood === 'explore') { if (inside && (inside.dg || inside.crypt)) mood = 'dungeon'; else if (!inside) { const b = biomeAt(Math.floor(state.fx), Math.floor(state.fy)); if (b === 'blight' || b === 'volcanic' || city.settlements.some((v) => (v.name === 'Gorvath' || v.name === 'Corvoscuro') && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 18)) mood = 'evil'; else if (city.settlements.some((v) => Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 4)) mood = 'town'; } }
     audio.setMood(festa && Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) < 80 ? 'festa' : mood); }
   { const zz = zoneW(Math.floor(state.fx), Math.floor(state.fy)); audio.update(dt, { fallDist: inside ? 999 : falls.update(dt, heroPos), night, gust, fireDist: inside ? 3 : objs.torches.reduce((m2, tc) => Math.min(m2, tc.pos.distanceTo(heroPos)), 1e3), waterDist: inside ? 99 : fountainPos.distanceTo(heroPos), riverDist: inside ? 99 : Math.max(0, waterSD(heroPos.x, heroPos.z)), forest: zz.forest, snow: zz.snow, inside: !!inside }); }
