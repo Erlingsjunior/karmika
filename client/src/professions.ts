@@ -148,24 +148,30 @@ export function createProfessions(ctx: Ctx) {
     for (let k = 0; k < times; k++) if (!one(r, k === 0)) break;
     render();
   }
+  let ptab: 'now' | 'next' | 'spec' = 'now';
   function render() {
     if (!open) { el.style.display = 'none'; return; }
     const P = PROFS.find((p) => p.id === sel)!, L = lv[sel], rs = RECIPES2.filter((r) => r.prof === sel).sort((a, b) => a.lvl - b.lvl);
     const pairs: ProfId[][] = [['sobrevivencia'], ['lenhador', 'marceneiro'], ['minerador', 'ferreiro'], ['esfolador', 'costureiro'], ['herbalista', 'alquimista'], ['pescador', 'cozinheiro']];
     const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
     const pair = P.pair ? PROFS.find((q) => q.id === P.pair)! : null;
-    const list = rs.length ? rs.map((r) => { const cb = clsBlock(r), ok = ready(r), lock = L.l < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
+    /* abas (Erling, 25/10: "modais quadradas com abas, e não essa linguiça"): o que dá para fazer agora, o que vem com nível e as especializações */
+    const tabOf = (r: Recipe) => (r.cls ? 'spec' : L.l < r.lvl ? 'next' : 'now'), cnt = { now: 0, next: 0, spec: 0 } as Record<string, number>; for (const r of rs) cnt[tabOf(r)]++;
+    if (!cnt[ptab] && rs.length) ptab = cnt.now ? 'now' : cnt.next ? 'next' : 'spec';
+    const tabs = rs.length ? `<div class="pftabs">${([['now', '⚒ Pode fazer'], ['next', '🔒 Próximas'], ['spec', '✦ Especialização']] as const).map(([k, t]) => `<button data-ptab="${k}" class="${ptab === k ? 'on' : ''}" ${cnt[k] ? '' : 'disabled'}>${t} <small>${cnt[k]}</small></button>`).join('')}</div>` : '';
+    const list = rs.length ? rs.filter((r) => tabOf(r) === ptab).map((r) => { const cb = clsBlock(r), ok = ready(r), lock = L.l < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
       return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${cb ? `<small class="n">${r.cls ? '✦ ' : ''}${cb}</small>` : L.l < r.lvl ? `<small class="n">nível ${r.lvl}</small>` : r.cls ? '<small class="y">✦ especialização</small>' : ''}<small>${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemName(i)} ${ctx.count(i)}/${n}</span>`).join(' · ')}${(r.keep ?? []).map((k) => ` · <span class="${ctx.has(k) ? 'y' : 'n'}">${ctx.itemName(k)} (ferramenta)</span>`).join('')}${r.gear ? ' · <em>peça aleatória; ofício alto dá mágicas e raras</em>' : ''}</small></div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
       : `<em class="emptyb">${P.name} é coleta: sobe trabalhando no mundo${pair ? ` e abastece o ${pair.name}` : ''}.</em>`;
     el.innerHTML = `<div class="pn profpn"><h2>⚒ Profissões <button data-px>✕</button></h2><div class="pfwrap"><nav class="pfnav">${nav}</nav>
       <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
       ${(() => { const S = STATION_OF[sel]; if (!S) return ''; const here = !ctx.atStation || ctx.atStation(sel); return `<div class="pfst ${here ? 'here' : 'away'}">${S.icon} ${here ? `Você está na <b>${S.name}</b>: mãos à obra.` : `Só se faz na <b>${S.name}</b>. Toda vila e cidade tem, em volta da praça (veja no mapa).`}</div>`; })()}
-      <div class="pflist ${STATION_OF[sel] && ctx.atStation && !ctx.atStation(sel) ? 'away' : ''}">${list}</div></div></div><small class="ft">Y abre e fecha · Esc fecha</small></div>`;
+      ${tabs}<div class="pflist pfgrid ${STATION_OF[sel] && ctx.atStation && !ctx.atStation(sel) ? 'away' : ''}">${list}</div></div></div><small class="ft">Y abre e fecha · Esc fecha</small></div>`;
     el.style.display = 'flex';
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
     if (t.closest('[data-px]')) { api.close(); return; }
-    const pf = (t.closest('[data-pf]') as HTMLElement | null)?.dataset.pf; if (pf) { sel = pf as ProfId; render(); return; }
+    const pt = (t.closest('[data-ptab]') as HTMLElement | null)?.dataset.ptab; if (pt) { ptab = pt as 'now'; render(); return; }
+    const pf = (t.closest('[data-pf]') as HTMLElement | null)?.dataset.pf; if (pf) { sel = pf as ProfId; ptab = 'now'; render(); return; }
     const pc = (t.closest('[data-pc]') as HTMLElement | null)?.dataset.pc; if (pc) { const r = RECIPES2.find((x) => x.id === pc); if (r) craft(r); return; }
     const p5 = (t.closest('[data-pc5]') as HTMLElement | null)?.dataset.pc5; if (p5) { const r = RECIPES2.find((x) => x.id === p5); if (r) craft(r, 5); return; } });
   const api = {
