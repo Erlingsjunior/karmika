@@ -15,7 +15,7 @@ export class DualRenderPass extends Pass {
   rt: THREE.WebGLRenderTarget;
   quad: FullScreenQuad;
   mat: THREE.ShaderMaterial;
-  private tick = 0;
+  private tick = 0; private onlyW = new Set<THREE.Object3D>(); private onlyF = new Set<THREE.Object3D>();
   /** planos de corte da camada fina (a água corta herói, NPCs e bichos na linha d'água) — só valem na cena clipFor */
   fineClip: THREE.Plane[] = []; clipFor: THREE.Scene | null = null;
   constructor(private scene: THREE.Scene, private camera: THREE.Camera, w: number, h: number, public ratio = 2) {
@@ -39,19 +39,29 @@ export class DualRenderPass extends Pass {
     void writeBuffer;
     const cam = this.camera, sm = renderer.shadowMap;
     // luzes precisam existir nas duas camadas (a cada 30 quadros, caso novas luzes tenham sido criadas)
+    /* 26/10 (desempenho, Erling: "não tem por que não rodar a mais de 200 fps numa 3080 Ti"): a cena é desenhada DUAS vezes por quadro
+       (cenário e depois personagens). O three.js percorria os ~8 mil objetos visíveis nas duas passadas, mesmo quando um galho inteiro
+       não tinha nada daquela camada. Agora cada raiz da cena sabe quais camadas contém, e a passada esconde as raízes que não lhe dizem
+       respeito: o cenário (milhares de objetos) some da passada fina, e os personagens somem da passada do cenário. */
+    if ((this.tick % 30) === 0) { this.onlyW.clear(); this.onlyF.clear(); const W = 1 << LAYER_WORLD, F = 1 << LAYER_FINE;
+      for (const r of this.scene.children) { let m = 0, cs = false; r.traverse((o) => { if (!(o as THREE.Light).isLight) { m |= o.layers.mask; if (o.castShadow && (o as THREE.Mesh).isMesh) cs = true; } }); if ((m & F) && !(m & W) && !cs) this.onlyF.add(r); /* quem projeta sombra fica: o mapa de sombra é desenhado na passada do cenário */ else if ((m & W) && !(m & F)) this.onlyW.add(r); } }
     if ((this.tick++ % 30) === 0) this.scene.traverse((o) => { if ((o as THREE.Light).isLight) { o.layers.enableAll(); const l = o as THREE.DirectionalLight; if (l.shadow && l.shadow.camera) l.shadow.camera.layers.enableAll(); } });
     const autoSM = sm.autoUpdate; sm.autoUpdate = false; sm.needsUpdate = true; // sombras: 1× por quadro
     const oldAC = renderer.autoClear; renderer.autoClear = true;
     // 1) cenário em meia resolução
     cam.layers.set(LAYER_WORLD);
+    const hid: THREE.Object3D[] = []; for (const r of this.onlyF) if (r.visible) { r.visible = false; hid.push(r); }
     renderer.setRenderTarget(this.rt); renderer.clear(); renderer.render(this.scene, cam);
+    for (const r of hid) r.visible = true; hid.length = 0;
     // 2) copia cor + profundidade para o alvo final (ampliação "nearest": pixels grandes)
     renderer.setRenderTarget(this.renderToScreen ? null : readBuffer); renderer.clear();
     this.quad.render(renderer);
     // 3) personagens, monstros e efeitos em resolução cheia, por cima, respeitando a profundidade do cenário
     // (scene.background como cor força um clear mesmo com autoClear=false — por isso ele sai daqui nesta passagem)
     const bg = this.scene.background; this.scene.background = null;
+    for (const r of this.onlyW) if (r.visible) { r.visible = false; hid.push(r); }
     cam.layers.set(LAYER_FINE); renderer.autoClear = false; const clip0 = renderer.clippingPlanes; if (this.scene === this.clipFor) renderer.clippingPlanes = this.fineClip; renderer.render(this.scene, cam); renderer.clippingPlanes = clip0;
+    for (const r of hid) r.visible = true;
     this.scene.background = bg; cam.layers.enableAll(); renderer.autoClear = oldAC; sm.autoUpdate = autoSM;
   }
   dispose() { this.rt.dispose(); this.mat.dispose(); this.quad.dispose(); }
