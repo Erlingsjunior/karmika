@@ -169,11 +169,11 @@ export function rollRarity(boost: Partial<Record<Rarity, number>> = {}): Rarity 
   const ws = (Object.keys(RARITY) as Rarity[]).map((r) => [r, RARITY[r].w * (boost[r] ?? 1)] as [Rarity, number]); let t = ws.reduce((s, [, w]) => s + w, 0) * Math.random();
   for (const [r, w] of ws) { if ((t -= w) <= 0) return r; } return 'normal';
 }
-export function genGear(ilvl: number, rarity: Rarity = rollRarity(), slot?: Slot): Gear {
+export function genGear(ilvl: number, rarity: Rarity = rollRarity(), slot?: Slot, baseName?: string): Gear {
   if (rarity === 'unique' || rarity === 'relic') { const g = named(rarity === 'relic' ? RELICS : UNIQUES, ilvl, rarity, slot); if (g) return g; rarity = 'epic'; } // acabaram (ou nível baixo demais): vira épico
   if (slot === 'relic') slot = undefined;
   const sl = slot ?? pick(['weapon', 'weapon', 'armor', 'armor', 'shield', 'helm', 'boots', 'ring', 'amulet', 'earring', 'shoulders', 'cape'] as Slot[]);
-  const b = pick(BASES[sl]), R = RARITY[rarity], lv = 1 + ilvl * 0.09, stats: Partial<Record<StatKey, number>> = {};
+  const b = (baseName && BASES[sl].find((q) => q.n === baseName)) || pick(BASES[sl]), R = RARITY[rarity], lv = 1 + ilvl * 0.09, stats: Partial<Record<StatKey, number>> = {};
   /* porcentagens (crítico, roubo de vida, velocidade, XP, ouro) dependem só da raridade, nunca do nível do item: senão viram 30% aos 45;
      regeneração e atributos crescem devagar; dano, defesa, vida e magia crescem com o nível */
   const LV = (k: StatKey) => PCT.has(k) ? 1 : k === 'regen' || ['str', 'dex', 'vit', 'int'].includes(k) ? 1 + ilvl * 0.03 : lv;

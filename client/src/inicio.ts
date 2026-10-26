@@ -10,7 +10,7 @@ export interface SlotMeta { name: string; lvl: number; cls: string; origin: stri
 interface Slots { active: number; meta: (SlotMeta | null)[]; servers: string[] }
 
 /** chaves que são da máquina (opções, janelas, premium, rede), não do personagem */
-const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
+const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.minizoom', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
 const isChar = (k: string) => k.startsWith('karmika.') && !GLOBAL.some((g) => k === g || k.startsWith(g));
 const NSLOT = 3;
 const BOOT = 'karmika.boot';
@@ -59,7 +59,7 @@ async function scanRooms(desk: Desk | null): Promise<Room[]> {
     const r = await fetch(`http://127.0.0.1:${port}/karmika/info`, { signal: c.signal }); clearTimeout(t); const m = await r.json(); if (m.karmika === 1) out.push({ host: '127.0.0.1', port: m.port, code: m.code, name: m.name, players: m.players, max: m.max, pass: !!m.pass }); } catch { /* nada nessa porta */ } }));
   return out;
 }
-export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(server: string | null, isNew: boolean): void; /** dados frescos do personagem ativo (nível, classe e retrato tirado do modelo que está carregado) */ fresh(): Promise<Partial<SlotMeta> | null> }) {
+export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(server: string | null, isNew: boolean): void; /** dados frescos do personagem ativo (nível, classe e retrato tirado do modelo que está carregado) */ fresh(): Promise<Partial<SlotMeta> | null>; /** o servidor escolhido (o hub de amigos liga já no menu) */ onServer?(s: string): void; /** abre amigos e conversas */ social?(): void }) {
   let boot: { server: string | null } | null = null;
   let rooms: Room[] = [], scanning = true;
   const roomInv = (r: Room) => `karmika://${r.host}:${r.port}/${r.code}`;
@@ -102,12 +102,13 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     if (step === 'upd') { const k = upd.total ? upd.got / upd.total : 0; body = `<div class="in-box"><h2>Atualizando Karmika</h2><p>O servidor tem uma versão mais nova do jogo. Baixando só o que mudou${upd.n ? ` (${upd.n} arquivo${upd.n > 1 ? 's' : ''})` : ''}…</p>
         <div class="in-bar"><i style="width:${(k * 100).toFixed(1)}%"></i><span>${upd.total ? `${(upd.got / 1048576).toFixed(1)} / ${(upd.total / 1048576).toFixed(1)} MB` : 'conferindo versões…'}</span></div><p class="in-mut">${esc(upd.file)}</p></div>`; }
     if (step === 'chars') refreshActive();
+    if (step === 'chars' && server) o.onServer?.(server);
     if (step === 'chars') body = `<div class="in-chars"><h2>${server ? `Servidor <b>${esc(server.replace(/^karmika:\/\//, ''))}</b>` : 'Jogar sozinho'}</h2><p class="in-mut">Escolha o seu Caminhante (até ${NSLOT} por máquina).</p><div class="in-slots">${s.meta.map((m, i) => m ? `
         <div class="in-slot ${i === s.active ? 'act' : ''}" data-s="${i}"><div class="in-pic">${(m.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${m.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : m.pic ? `<img src="${m.pic}" alt="">` : `<span>${m.origin === 'dwarf' ? '⚒' : m.origin === 'elf' ? '❦' : '⚔'}</span>`}</div>
           <b>${esc(m.name)}</b><small>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}</small><em>${m.origin === 'dwarf' ? 'Anão' : m.origin === 'elf' ? 'Elfo' : 'Humano'} · ${m.sex === 'm' ? 'Homem' : 'Mulher'}</em>
           <button data-play="${i}" class="gold">Entrar</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
         : `<div class="in-slot empty" data-new="${i}"><div class="in-pic"><span>+</span></div><b>Espaço livre</b><small>Criar novo personagem</small><button data-new="${i}">Criar</button></div>`).join('')}</div>
-        <button data-i="back" class="lnk">← voltar</button></div>`;
+        ${server ? '<button data-i="social" class="lnk">👥 Amigos e conversas</button>' : ''}<button data-i="back" class="lnk">← voltar</button></div>`;
     if (step === 'chars' && delAsk !== null && s.meta[delAsk]) { const m = s.meta[delAsk]!; body += `<div class="in-ask"><div class="in-box"><h2>Apagar ${esc(m.name)}?</h2>
         <p>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}. Isso apaga o personagem <b>para sempre</b>: itens, missões, karma e vidas passadas. Não tem volta.</p>
         <p class="in-mut">Para confirmar, digite o nome: <b>${esc(m.name)}</b></p>
@@ -153,6 +154,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
       localStorage.removeItem(`karmika.slot.${i}`); write(s); render(); return; }
     if (a === 'back') { step = step === 'chars' && server && hostInv ? 'host' : 'home'; render(); return; }
     if (a === 'find') { step = 'find'; render(); (el.querySelector('[data-v="inv"]') as HTMLInputElement)?.focus(); return; }
+    if (a === 'social') { o.social?.(); return; }
     if (a === 'solo') { server = null; step = 'chars'; render(); return; }
     if (a === 'go') { const v = (el.querySelector('[data-v="inv"]') as HTMLInputElement).value.trim(); const pv = parseInvite(v); if (!pv) { err = 'Convite inválido. O formato é karmika://IP:7777/CÓDIGO'; render(); return; }
       if (!/[.:]/.test(pv.host) && pv.host.toLowerCase() !== 'localhost') { err = `"${pv.host}" não é um endereço. Troque pelo número do computador da sala: no mesmo PC use 127.0.0.1 (karmika://127.0.0.1:${pv.port}/${pv.code}). Ou clique numa sala da lista acima.`; render(); return; }

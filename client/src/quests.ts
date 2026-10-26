@@ -150,6 +150,12 @@ export const WARRIOR: QuestDef[] = [
       { label: 'Aceita o duelo final e dá a ele a morte honrosa.', karma: 6, say: '(Um golpe limpo. Thorgrim abaixa a cabeça antes de cair.) “Bom golpe.”', why: 'Foi o mais difícil, e você não fugiu. A morte pedida e dada com respeito não pesa contra quem a dá.' } ] } },
 ];
 export const SIDE: QuestDef[] = [
+  /* ---------- guildas (26/10): nível 20, a Carta Patente de Askavik e o Magistrado de Lumenhal ---------- */
+  { id: 'gu1', chain: 'A Fundação', name: 'O Peso de um Estandarte', lvl: 20, xp: 1, gold: 0, giver: 'Escrivão-Mor Aldric', turnin: 'Magistrado Corvin Aldmar', give: [['carta_patente', 1]],
+    text: 'Quer fundar uma guilda? Askavik escreve a Carta Patente, mas quem registra é o Magistrado de Lumenhal, a cidade média, desde o tempo dos primeiros mercadores. Leve a carta lacrada até ele. A taxa do registro são 500 de ouro: tenha-os na bolsa.',
+    objs: [{ kind: 'visit', poi: 'Lumenhal' }, { kind: 'talk', npc: 'Magistrado Corvin Aldmar' }],
+    talk: ['Uma guilda não é um grupo que dura uma tarde. É um nome que dura mais do que quem o escolheu.', 'Esta é a Carta Patente. Lacrada. Não abra, não venda, não perca.', 'O Magistrado Corvin, em Lumenhal, abre o livro de registros. Ele vai perguntar o nome, a sigla e a cor do estandarte.'],
+    meet: { 'Magistrado Corvin Aldmar': ['Uma Carta Patente de Askavik. O lacre está inteiro. Bom sinal.', 'Nome, sigla, cor. E os 500 de ouro da taxa. O livro não espera.'] } },
   /* ---------- Luz e Sombra (24/10): missões que só aparecem para quem a alma pende para um lado ---------- */
   { id: 'lz1', chain: 'As Mãos da Igreja', name: 'Remédio para Grenivik', lvl: 24, lean: 'luz', giver: 'Irmã Maela', text: 'A febre do pântano chegou a Grenivik com os mortos que andam. Seis Flores-de-Campo e eu faço o chá que baixa a febre. As crianças primeiro.', objs: [{ kind: 'collect', item: 'herb_f', n: 6 }], xp: 1, gold: 60, items: [['potion_g', 2]], next: 'lz2' },
   { id: 'lz2', chain: 'As Mãos da Igreja', name: 'O Órfão do Passo', lvl: 26, lean: 'luz', giver: 'Irmã Maela', text: 'Um menino sobreviveu ao ataque dos lobos gélidos a uma caravana no passo. Ele está escondido em Kaldrfoss e não confia em ninguém. Vá até lá, afaste os lobos e traga-o para cá.', objs: [{ kind: 'visit', poi: 'Kaldrfoss' }, { kind: 'kill', type: 'frostwolf', n: 5 }, { kind: 'talk', npc: 'Irmã Maela' }], xp: 1, gold: 40, title: 'Mãos da Igreja',

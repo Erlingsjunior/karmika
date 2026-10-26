@@ -61,7 +61,7 @@ function startServer(opts = {}) {
     let nid = 1;
     /* ---- o que a sala guarda entre sessões: cartas para quem está fora e o quadro de pedidos ---- */
     const dataFile = opts.dataFile || null;
-    let store = { mail: {}, posts: [], pid: 1 };
+    let store = { mail: {}, posts: [], pid: 1, accounts: {}, dmq: {}, guilds: {}, gseq: 1 };
     try { if (dataFile && fs.existsSync(dataFile)) store = { ...store, ...JSON.parse(fs.readFileSync(dataFile, 'utf8')) }; } catch (e) { log('não deu para ler os dados da sala:', e.message); }
     let saveT = null; const saveStore = () => { if (!dataFile || saveT) return; saveT = setTimeout(() => { saveT = null; try { fs.writeFileSync(dataFile, JSON.stringify(store)); } catch (e) { log('não deu para salvar os dados da sala:', e.message); } }, 400); };
     const lc = (n) => String(n || '').trim().toLowerCase();
@@ -91,14 +91,100 @@ function startServer(opts = {}) {
       sendParty(party); for (const id of party.members) { const q = players.get(id); if (q) send(q.ws, { t: 'sys', text: `${p.name} ${why || 'saiu do grupo'}.` }); }
     }
 
+
+    /* ================= CONTAS, AMIGOS E GUILDAS (26/10) =================
+       A amizade é da CONTA (o jogador), não do personagem: a conta nasce na máquina (id + chave) e o servidor guarda
+       amigos, pedidos e conversas. Quem está no menu (fora do mundo) também conversa: o "hub" é uma segunda conexão, leve,
+       sem personagem no mapa. As guildas são dos personagens (cada personagem é um universo) e moram neste servidor. */
+    const hubs = new Set(); // conexões leves: { ws, acc, char, where }
+    const sha = (x) => crypto.createHash('sha256').update(String(x)).digest('hex');
+    const A = (id) => store.accounts[id] || null;
+    const pubAcc = (id) => { const a = A(id); return a ? { id, nick: a.nick } : null; };
+    function connsOf(id) { const out = []; for (const h of hubs) if (h.acc === id) out.push(h); return out; }
+    function presence(id) { const c = connsOf(id); if (!c.length) { const a = A(id); return { on: false, seen: a ? a.seen : 0 }; } const inW = c.find((h) => h.where === 'mundo'); return { on: true, where: inW ? 'mundo' : 'menu', char: (inW || c[0]).char || '' }; }
+    function sendAcc(id, m) { for (const h of connsOf(id)) send(h.ws, m); }
+    function friendsMsg(id) { const a = A(id); if (!a) return { t: 'a:friends', list: [], reqIn: [], reqOut: [] }; return { t: 'a:friends', list: a.friends.map((f) => ({ ...pubAcc(f), ...presence(f) })).filter((x) => x.id), reqIn: a.reqIn.map(pubAcc).filter(Boolean), reqOut: a.reqOut.map(pubAcc).filter(Boolean) }; }
+    function pushFriendsOf(id) { const a = A(id); if (!a) return; for (const f of a.friends) sendAcc(f, friendsMsg(f)); }
+    function auth(acc) { if (!acc || typeof acc.id !== 'string' || typeof acc.key !== 'string' || acc.id.length > 64) return null; let a = A(acc.id); const kh = sha(acc.key);
+      if (!a) { let nick = String(acc.nick || 'Caminhante').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 20).trim() || 'Caminhante'; const taken = (n) => Object.values(store.accounts).some((x) => x.nick.toLowerCase() === n.toLowerCase()); let n2 = nick, k = 1; while (taken(n2)) n2 = `${nick}#${++k}`;
+        a = store.accounts[acc.id] = { nick: n2, kh, friends: [], reqIn: [], reqOut: [], seen: Date.now() }; saveStore(); }
+      else if (a.kh !== kh) return 'bad'; return a; }
+    const charKey = (n) => lc(n);
+    function guildOf(char) { const k = charKey(char); for (const g of Object.values(store.guilds)) if (g.members[k]) return g; return null; }
+    const RANKS = ['recruta', 'membro', 'oficial', 'lider'];
+    const rankN = (g, char) => RANKS.indexOf((g.members[charKey(char)] || {}).rank);
+    function guildMsg(g) { return { t: 'g:info', g: g ? { id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, motd: g.motd, created: g.created, members: Object.entries(g.members).map(([k, m]) => ({ k, name: m.name, rank: m.rank, joined: m.joined, ...(m.acc ? presence(m.acc) : { on: false }) })), market: g.market, log: g.log.slice(-60) } : null }; }
+    function worldGuilds() { return { t: 'g:world', list: Object.values(store.guilds).map((g) => ({ id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, build: g.build })) }; }
+    function toGuild(g, m) { const ks = new Set(Object.keys(g.members)); for (const h of hubs) if (h.char && ks.has(charKey(h.char))) send(h.ws, m); }
+    const pushGuild = (g) => toGuild(g, guildMsg(g));
+    const pushWorld = () => { const m = worldGuilds(); for (const h of hubs) send(h.ws, m); };
+    const ginv = new Map(); // personagem convidado → { gid, from, at }
+    function hubMsg(h, m) {
+      const me = A(h.acc); if (!me) return; me.seen = Date.now();
+      switch (m.t) {
+        case 'a:where': { h.char = String(m.char || '').slice(0, 24); h.where = m.where === 'mundo' ? 'mundo' : 'menu'; pushFriendsOf(h.acc); send(h.ws, guildMsg(h.char ? guildOf(h.char) : null)); break; }
+        case 'a:nick': { const n = String(m.nick || '').replace(/[^\p{L}\p{N} _-]/gu, '').slice(0, 20).trim(); if (n.length < 3) { send(h.ws, { t: 'a:sys', text: 'O apelido precisa de pelo menos 3 letras.' }); break; } if (Object.entries(store.accounts).some(([id, x]) => id !== h.acc && x.nick.toLowerCase() === n.toLowerCase())) { send(h.ws, { t: 'a:sys', text: `O apelido ${n} já é de outro jogador.` }); break; } me.nick = n; saveStore(); sendAcc(h.acc, { t: 'a:me', id: h.acc, nick: n }); pushFriendsOf(h.acc); break; }
+        case 'a:freq': { let to = null; if (m.nick) to = Object.keys(store.accounts).find((id) => store.accounts[id].nick.toLowerCase() === String(m.nick).toLowerCase()); if (!to && m.char) { const c = [...hubs].find((x) => x.char && lc(x.char) === lc(m.char)); if (c) to = c.acc; }
+          if (!to) { send(h.ws, { t: 'a:sys', text: m.char ? `${m.char} não está com a conta conectada agora.` : `Nenhum jogador com o apelido ${m.nick}.` }); break; } if (to === h.acc) break; const T = A(to);
+          if (me.friends.includes(to)) { send(h.ws, { t: 'a:sys', text: `${T.nick} já é seu amigo.` }); break; }
+          if (me.reqIn.includes(to)) { me.reqIn = me.reqIn.filter((x) => x !== to); T.reqOut = T.reqOut.filter((x) => x !== h.acc); me.friends.push(to); T.friends.push(h.acc); saveStore(); sendAcc(h.acc, friendsMsg(h.acc)); sendAcc(to, friendsMsg(to)); sendAcc(to, { t: 'a:sys', text: `${me.nick} agora é seu amigo.` }); break; }
+          if (!me.reqOut.includes(to)) me.reqOut.push(to); if (!T.reqIn.includes(h.acc)) T.reqIn.push(h.acc); saveStore(); sendAcc(h.acc, friendsMsg(h.acc)); sendAcc(to, friendsMsg(to)); sendAcc(to, { t: 'a:freq', from: pubAcc(h.acc) }); send(h.ws, { t: 'a:sys', text: `Pedido de amizade enviado para ${T.nick}.` }); break; }
+        case 'a:fans': { const from = String(m.id || ''); const F = A(from); if (!F || !me.reqIn.includes(from)) break; me.reqIn = me.reqIn.filter((x) => x !== from); F.reqOut = F.reqOut.filter((x) => x !== h.acc);
+          if (m.ok) { if (!me.friends.includes(from)) me.friends.push(from); if (!F.friends.includes(h.acc)) F.friends.push(h.acc); sendAcc(from, { t: 'a:sys', text: `${me.nick} aceitou a sua amizade.` }); } saveStore(); sendAcc(h.acc, friendsMsg(h.acc)); sendAcc(from, friendsMsg(from)); break; }
+        case 'a:fdel': { const o = String(m.id || ''); const O = A(o); me.friends = me.friends.filter((x) => x !== o); me.reqOut = me.reqOut.filter((x) => x !== o); if (O) { O.friends = O.friends.filter((x) => x !== h.acc); O.reqIn = O.reqIn.filter((x) => x !== h.acc); } saveStore(); sendAcc(h.acc, friendsMsg(h.acc)); if (O) sendAcc(o, friendsMsg(o)); break; }
+        case 'a:dm': { const to = String(m.to || ''); const T = A(to); const text = String(m.text || '').slice(0, 500).trim(); if (!T || !text) break; if (!me.friends.includes(to)) { send(h.ws, { t: 'a:sys', text: 'Só dá para conversar com amigos.' }); break; }
+          const msg = { t: 'a:dm', from: h.acc, fromNick: me.nick, to, text, at: Date.now() }; if (connsOf(to).length) sendAcc(to, msg); else { (store.dmq[to] ||= []).push(msg); if (store.dmq[to].length > 200) store.dmq[to].shift(); saveStore(); } sendAcc(h.acc, msg); break; }
+        case 'a:list': send(h.ws, friendsMsg(h.acc)); break;
+        /* ---------- guildas ---------- */
+        case 'g:create': { const char = h.char; if (!char) break; if (guildOf(char)) { send(h.ws, { t: 'a:sys', text: 'Você já está em uma guilda.' }); break; }
+          const name = String(m.name || '').replace(/[<>]/g, '').slice(0, 28).trim(), tag = String(m.tag || '').replace(/[^\p{L}\p{N}]/gu, '').slice(0, 4).toUpperCase();
+          if (name.length < 3 || tag.length < 2) { send(h.ws, { t: 'g:fail', why: 'O nome precisa de 3 letras e a sigla de 2 a 4.' }); break; }
+          if (Object.values(store.guilds).some((g) => g.name.toLowerCase() === name.toLowerCase() || g.tag === tag)) { send(h.ws, { t: 'g:fail', why: 'Já existe uma guilda com esse nome ou essa sigla.' }); break; }
+          const used = new Set(Object.values(store.guilds).map((g) => g.plot)); let plot = 0; while (used.has(plot)) plot++;
+          const g = { id: store.gseq++, name, tag, col: /^#[0-9a-f]{6}$/i.test(m.col) ? m.col : '#b8924a', created: Date.now(), plot, motd: 'Bem-vindos.', members: { [charKey(char)]: { name: char, acc: h.acc, rank: 'lider', joined: Date.now() } }, market: [], build: Array.isArray(m.seed) ? m.seed.slice(0, 120) : [], log: [{ at: Date.now(), sys: 1, text: `${char} fundou a guilda ${name}.` }] };
+          store.guilds[g.id] = g; saveStore(); send(h.ws, { t: 'g:ok', id: g.id }); pushGuild(g); pushWorld(); break; }
+        case 'g:inv': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 2) { send(h.ws, { t: 'a:sys', text: 'Só líder e oficiais convidam para a guilda.' }); break; } const to = String(m.char || ''); if (guildOf(to)) { send(h.ws, { t: 'a:sys', text: `${to} já está numa guilda.` }); break; }
+          const c = [...hubs].filter((x) => x.char && lc(x.char) === lc(to)); if (!c.length) { send(h.ws, { t: 'a:sys', text: `${to} não está conectado agora.` }); break; }
+          ginv.set(lc(to), { gid: g.id, from: h.char, at: Date.now() }); for (const x of c) send(x.ws, { t: 'g:inv', gid: g.id, name: g.name, tag: g.tag, col: g.col, from: h.char }); send(h.ws, { t: 'a:sys', text: `Convite da guilda enviado para ${to}.` }); break; }
+        case 'g:ans': { const iv = ginv.get(lc(h.char)); ginv.delete(lc(h.char)); const g = iv && store.guilds[iv.gid]; if (!g || Date.now() - iv.at > 180000) { send(h.ws, { t: 'a:sys', text: 'Esse convite expirou.' }); break; } if (!m.ok) { toGuild(g, { t: 'g:chat', sys: 1, text: `${h.char} recusou o convite.`, at: Date.now() }); break; } if (guildOf(h.char)) break;
+          g.members[charKey(h.char)] = { name: h.char, acc: h.acc, rank: 'recruta', joined: Date.now() }; const L = { at: Date.now(), sys: 1, text: `${h.char} entrou na guilda.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        case 'g:leave': { const g = guildOf(h.char); if (!g) break; delete g.members[charKey(h.char)]; const L = { at: Date.now(), sys: 1, text: `${h.char} saiu da guilda.` }; g.log.push(L);
+          if (!Object.keys(g.members).length) { delete store.guilds[g.id]; saveStore(); send(h.ws, guildMsg(null)); pushWorld(); break; }
+          if (!Object.values(g.members).some((x) => x.rank === 'lider')) { const nx = Object.values(g.members).sort((a, b) => RANKS.indexOf(b.rank) - RANKS.indexOf(a.rank) || a.joined - b.joined)[0]; nx.rank = 'lider'; g.log.push({ at: Date.now(), sys: 1, text: `${nx.name} agora lidera a guilda.` }); }
+          saveStore(); send(h.ws, guildMsg(null)); toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        case 'g:kick': { const g = guildOf(h.char); const tk = charKey(m.char || ''); if (!g || !g.members[tk] || rankN(g, h.char) < 2 || RANKS.indexOf(g.members[tk].rank) >= rankN(g, h.char)) break; const nm = g.members[tk].name; delete g.members[tk]; const L = { at: Date.now(), sys: 1, text: `${nm} foi removido da guilda por ${h.char}.` }; g.log.push(L); saveStore();
+          for (const x of hubs) if (x.char && charKey(x.char) === tk) { send(x.ws, guildMsg(null)); send(x.ws, { t: 'a:sys', text: `Você foi removido da guilda ${g.name}.` }); } toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        case 'g:rank': { const g = guildOf(h.char); const tk = charKey(m.char || ''); const r = String(m.rank); if (!g || !g.members[tk] || rankN(g, h.char) < 3 || !RANKS.includes(r) || tk === charKey(h.char)) break;
+          if (r === 'lider') g.members[charKey(h.char)].rank = 'oficial'; g.members[tk].rank = r; const L = { at: Date.now(), sys: 1, text: `${g.members[tk].name} agora é ${r}.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        case 'g:motd': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 2) break; g.motd = String(m.text || '').slice(0, 200); saveStore(); pushGuild(g); break; }
+        case 'g:chat': { const g = guildOf(h.char); const text = String(m.text || '').slice(0, 300).trim(); if (!g || !text) break; const L = { at: Date.now(), from: h.char, text }; g.log.push(L); if (g.log.length > 200) g.log.splice(0, g.log.length - 200); saveStore(); toGuild(g, { t: 'g:chat', ...L }); break; }
+        case 'g:mk:add': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 1) { send(h.ws, { t: 'a:sys', text: 'Recrutas ainda não vendem no mercado da guilda.' }); break; } const price = Math.max(1, Math.min(1e7, Math.floor(Number(m.price) || 0))); const att = m.att; if (!att || (!att.item && !att.gear)) break;
+          if (g.market.filter((x) => lc(x.by) === lc(h.char)).length >= 10) { post(sysLetter(h.char, 'Mercado da guilda cheio', 'No máximo 10 ofertas suas ao mesmo tempo. O item voltou.', [att])); break; }
+          g.market.push({ id: store.pid++, by: h.char, att, price, at: Date.now() }); saveStore(); pushGuild(g); break; }
+        case 'g:mk:buy': { const g = guildOf(h.char); if (!g) break; const i = g.market.findIndex((x) => x.id === m.id); if (i < 0) { post(sysLetter(h.char, 'Oferta já vendida', 'Alguém comprou antes. O seu ouro voltou.', [{ gold: Math.max(0, Math.floor(Number(m.paid) || 0)) }])); break; }
+          const o = g.market.splice(i, 1)[0]; saveStore(); post(sysLetter(h.char, `Mercado da guilda: ${o.att.item ? o.att.item.n + '× ' + o.att.item.id : (o.att.gear && o.att.gear.name) || 'item'}`, `Comprado de ${o.by} no mercado da ${g.name}.`, [o.att]));
+          post(sysLetter(o.by, 'Mercado da guilda: venda', `${h.char} comprou a sua oferta por ${o.price} de ouro. A guilda não cobra taxa dos seus.`, [{ gold: o.price }])); pushGuild(g); break; }
+        case 'g:mk:del': { const g = guildOf(h.char); if (!g) break; const i = g.market.findIndex((x) => x.id === m.id && (lc(x.by) === lc(h.char) || rankN(g, h.char) >= 3)); if (i < 0) break; const o = g.market.splice(i, 1)[0]; saveStore(); post(sysLetter(o.by, 'Oferta retirada', 'A oferta saiu do mercado da guilda. O item voltou.', [o.att])); pushGuild(g); break; }
+        case 'g:build': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 1) { send(h.ws, { t: 'a:sys', text: 'Recrutas ainda não constroem no terreno da guilda.' }); break; } const b = m.b; if (!b || typeof b.gx !== 'number') break;
+          if (m.del) { const j = g.build.map((x, k) => [x, k]).reverse().find(([x]) => x.gx === b.gx && x.gy === b.gy); if (j) g.build.splice(j[1], 1); } else { if (g.build.length >= 400) { send(h.ws, { t: 'a:sys', text: 'O terreno da guilda já tem 400 peças.' }); break; } g.build.push({ kind: String(b.kind).slice(0, 12), gx: b.gx | 0, gy: b.gy | 0, v: b.v | 0 }); }
+          saveStore(); pushWorld(); break; }
+      }
+    }
     web.on('error', (e) => reject(e));
     web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
     wss.on('connection', (ws, req) => {
-      let me = null;
+      let me = null, hubConn = null;
       const ip = req.socket.remoteAddress;
       const bye = setTimeout(() => { if (!me) ws.close(4001, 'sem apresentação'); }, 8000);
       ws.on('message', (raw) => {
         let m; try { m = JSON.parse(String(raw)); } catch { return; }
+        if (!me && hubConn) { hubMsg(hubConn, m); return; }
+        if (!me && m.t === 'a:hello') { // conexão leve da conta (menu, amigos, guilda)
+          if (String(m.code || '').toUpperCase() !== code || (opts.password && String(m.pass || '') !== String(opts.password))) { send(ws, { t: 'a:deny', why: 'Convite ou senha errados.' }); ws.close(); return; }
+          const a = auth(m.acc); if (!a || a === 'bad') { send(ws, { t: 'a:deny', why: a === 'bad' ? 'Esta conta já existe com outra chave neste servidor.' : 'Conta inválida.' }); ws.close(); return; }
+          clearTimeout(bye); hubConn = { ws, acc: m.acc.id, char: String(m.char || '').slice(0, 24), where: m.where === 'mundo' ? 'mundo' : 'menu' }; hubs.add(hubConn); a.seen = Date.now();
+          send(ws, { t: 'a:me', id: m.acc.id, nick: a.nick }); send(ws, friendsMsg(m.acc.id)); send(ws, guildMsg(hubConn.char ? guildOf(hubConn.char) : null)); send(ws, worldGuilds());
+          const q = store.dmq[m.acc.id]; if (q && q.length) { for (const x of q) send(ws, x); delete store.dmq[m.acc.id]; } saveStore(); pushFriendsOf(m.acc.id); return; }
         if (!me) {
           if (m.t !== 'hello') return;
           if (m.proto !== PROTO) { send(ws, { t: 'deny', why: 'Versões diferentes do jogo. Atualize o Karmika.' }); ws.close(); return; }
@@ -173,6 +259,7 @@ function startServer(opts = {}) {
       });
       ws.on('close', () => {
         clearTimeout(bye);
+        if (hubConn) { hubs.delete(hubConn); const a = A(hubConn.acc); if (a) a.seen = Date.now(); pushFriendsOf(hubConn.acc); hubConn = null; return; }
         if (!me) return;
         leaveParty(me, 'deixou o mundo'); players.delete(me.id); others(me.id, { t: 'leave', id: me.id, name: me.name });
         if (me.host) { const next = players.values().next().value; if (next) { next.host = true; for (const p of players.values()) send(p.ws, { t: 'host', id: next.id }); } }

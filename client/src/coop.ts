@@ -7,7 +7,7 @@ const desk = (window as unknown as { karmikaDesktop?: Desktop }).karmikaDesktop 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
-export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myHp(): number; mailTo?(name: string): void; duel?(id: number): void; toMenu?(): void; pvpToggle?(): void; pvpOn?(): boolean }) {
+export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myHp(): number; friend?(name: string): void; guildInvite?(name: string): void; inGuild?(): boolean; mailTo?(name: string): void; duel?(id: number): void; toMenu?(): void; pvpToggle?(): void; pvpOn?(): boolean }) {
   const el = document.createElement('div'); el.id = 'coop'; el.className = 'modalw'; document.body.appendChild(el);
   let open = false, hosting: HostInfo | null = null, busy = false, gpu = '', hostErr = '';
   const LS = 'karmika.coop.last';
@@ -86,7 +86,9 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
       ${inMine ? (lead ? `<button data-m="lead">👑 Passar a liderança</button><button data-m="kick">✖ Remover do grupo</button>` : '') : `<button data-m="inv" ${inf.inParty ? 'disabled title="Já está em um grupo"' : ''}>⚑ Convidar para o grupo</button>`}
       <button data-m="prof">◎ Ver perfil</button>
       <button data-m="mail">📮 Enviar carta ou itens</button>
-      <button data-m="duel">⚔ Desafiar para duelo</button>`;
+      <button data-m="duel">⚔ Desafiar para duelo</button>
+      <button data-m="friend">👥 Pedir amizade</button>
+      ${hooks.inGuild?.() ? '<button data-m="ginv">⚑ Convidar para a guilda</button>' : ''}`;
     menu.style.display = 'block'; const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1, w = 220 * z, h = menu.offsetHeight * z; menu.style.left = Math.min(innerWidth - w - 8, x + 8) / z + 'px'; menu.style.top = Math.min(innerHeight - h - 8, y + 8) / z + 'px'; menu.dataset.id = String(id); /* (o id ficava depois do comentário da linha, comentado junto: nenhum botão do menu funcionava) — o menu segue o tamanho da interface (zoom): posição em px da tela ÷ zoom */
   }
   menu.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-m]') as HTMLButtonElement | null; if (!b || b.disabled) return; const id = +menu.dataset.id!; const inf = net.infoOf(id); menu.style.display = 'none'; if (!inf) return;
@@ -96,7 +98,9 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
     if (b.dataset.m === 'lead') net.makeLeader(id);
     if (b.dataset.m === 'prof') { net.askProfile(id); showProfile(id, null); }
     if (b.dataset.m === 'mail') hooks.mailTo?.(inf.name);
-    if (b.dataset.m === 'duel') hooks.duel?.(id); });
+    if (b.dataset.m === 'duel') hooks.duel?.(id);
+    if (b.dataset.m === 'friend') hooks.friend?.(inf.name);
+    if (b.dataset.m === 'ginv') hooks.guildInvite?.(inf.name); });
   addEventListener('pointerdown', (e) => { if (menu.style.display === 'block' && !menu.contains(e.target as Node)) menu.style.display = 'none'; }, true);
 
   /* ---------- convite de grupo recebido ---------- */
@@ -105,7 +109,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
   function partyInvite(from: number, name: string, lvl: number) {
     if (noParty()) { net.answerParty(from, false, true); return; }
     clearTimeout(invTimer);
-    invBox.innerHTML = `<div class="pi-t">⚑ Convite de grupo</div><p><b>${esc(name)}</b> (Nv ${lvl}) chama você para o grupo.</p><p class="cp-mut">No grupo, todos ganham bônus de XP e de achados, e as missões de um aparecem para os outros.</p><div class="pi-b"><button class="cp-btn gold" data-p="1">Aceitar</button><button class="cp-btn" data-p="0">Recusar</button></div><i class="pi-bar"></i>`;
+    invBox.innerHTML = `<div class="pi-t">⚑ Convite de grupo</div><p><b>${esc(name)}</b> (Nv ${lvl}) chama você para o grupo.</p><p class="cp-mut">No grupo, cada companheiro perto dá +15% de XP, ouro e achados (e raridade melhor), mas os bichos ficam +50% mais duros e batem +12% mais forte. O saque de cada um é só seu. As missões de um aparecem para os outros.</p><div class="pi-b"><button class="cp-btn gold" data-p="1">Aceitar</button><button class="cp-btn" data-p="0">Recusar</button></div><i class="pi-bar"></i>`;
     invBox.style.display = 'block'; invBox.dataset.from = String(from);
     invTimer = window.setTimeout(() => { if (invBox.style.display === 'block') { invBox.style.display = 'none'; net.answerParty(from, false); } }, 60000);
   }

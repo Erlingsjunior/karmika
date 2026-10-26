@@ -119,6 +119,7 @@ export const ITEMS: Record<string, Item> = {
   // companheiros
   pet_fox: { name: 'Raposa Ruiva', icon: '🦊', kind: 'misc', col: 0xd0702a, desc: 'Companheira que corre atrás dos itens caídos e traz para você.', tier: 1 },
   pet_pup: { name: 'Filhote de Lobo', icon: '🐺', kind: 'misc', col: 0x8a8a8a, desc: 'Fiel e rápido. Busca itens caídos.', tier: 1 },
+  carta_patente: { name: 'Carta Patente', icon: '📜', kind: 'misc', col: 0xe8d8a8, quest: 'gu1', desc: '◆ Item de missão (O Peso de um Estandarte). Lacrada pelo Escrivão-Mor de Askavik: leve ao Magistrado de Lumenhal para registrar a sua guilda. Não se vende nem se dá; destruir abandona a missão.' },
   carta_garrick: { name: 'Carta de Garrick', icon: '✉', kind: 'misc', col: 0xe8dcc0, quest: 'h09', desc: '◆ Item de missão (A carta para Lundr). Lacrada com o selo da guarda de Karmika, para a Sargenta Ilka, em Lundr. Não se vende nem se dá; destruir abandona a missão.' },
   lenco_bento: { name: 'Lenço de Bento', icon: '🧣', kind: 'misc', col: 0xc84a5a, quest: 'h08', desc: '◆ Item de missão (O marido desaparecido). A Lúcia bordou para ele: mostre ao Bento para ele confiar em você. Não se vende nem se dá; destruir abandona a missão.' },
   pet_cat: { name: 'Gatinho Malhado', icon: '🐱', kind: 'misc', col: 0xd8883a, desc: 'Macio e curioso. No combate, chia e faz o inimigo parar. Use para levar ao Estábulo (X).', tier: 1 },

@@ -1,4 +1,6 @@
 import { installTitleTips } from './dicas';
+import { createHub } from './hub';
+import { createSocial, type Guild } from './social';
 import type { DungeonFloor } from './dungeon3d';
 import { dressEnemy, createBossBrain, bossBody } from './chefes';
 import { enemyHooks } from './enemies';
@@ -576,7 +578,7 @@ syncGear(); renderQuick();
    e a chamada falhava em silêncio. Repete assim que tudo estiver de pé. */
 setTimeout(() => syncGear(), 0);
 /* ---------- construção ---------- */
-const build = createBuild({ world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
+const build = createBuild({ guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
   canBuildAt: (gx, gy) => !city.settlements.some((st) => Math.hypot(gx - st.x, gy - st.y) < st.radius + 2) && !city.pois.some((q) => Math.hypot(gx - q.x, gy - q.y) < 6) && city.map[gy]?.[gx] !== 'water' });
 build.load();
 /* ---------- dock de janelas (canto inferior direito): mochila, personagem, magias, missões, feitos, mapa ---------- */
@@ -595,9 +597,10 @@ DOCK_ICONS.prof = `<svg viewBox="0 0 32 32"><path d="M6 26l11-11" stroke="#8a5a2
 DOCK_ICONS.loja = `<svg viewBox="0 0 32 32"><path d="M5 13h22l-2 14H7z" fill="#3a2614" stroke="#d9b45a" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 13l3-6h16l3 6" fill="#5a3a1c" stroke="#d9b45a" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 20c2-3 3.5-4 5-4s3 1 5 4c-2 3-3.5 4-5 4s-3-1-5-4z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.1"/><circle cx="16" cy="20" r="1.6" fill="#c9a0ff"/></svg>`;
 DOCK_ICONS.coop = `<svg viewBox="0 0 32 32"><circle cx="11" cy="11" r="4.5" fill="#9ad0ff" stroke="#1a2a3a" stroke-width="1.3"/><circle cx="21" cy="11" r="4.5" fill="#ffd88a" stroke="#3a2a0a" stroke-width="1.3"/><path d="M3 27c.8-6 4-9 8-9s7.2 3 8 9z" fill="#4a6a9a" stroke="#1a2a3a" stroke-width="1.3"/><path d="M13 27c.8-6 4-9 8-9s7.2 3 8 9z" fill="#9a6a2a" stroke="#3a2a0a" stroke-width="1.3"/></svg>`;
 DOCK_ICONS.stable = `<svg viewBox="0 0 32 32"><path d="M7 20c0-5 4-9 9-9h3l4-4 1 5c2 1 3 3 3 5v3l-3 1-2-2H12l-2 6H7z" fill="#c8641e" stroke="#3a1a0a" stroke-width="1.4" stroke-linejoin="round"/><path d="M24 12l2-4 1 5" fill="#f4ece0" stroke="#3a1a0a" stroke-width="1"/><circle cx="23" cy="15" r="1.2" fill="#1a0a04"/><path d="M7 20q-4 1-4 5 3-1 5-3" fill="#f4ece0" stroke="#3a1a0a" stroke-width="1"/></svg>`;
+DOCK_ICONS.social = `<svg viewBox="0 0 32 32"><path d="M9 4v24" stroke="#c8a46a" stroke-width="2"/><path d="M9 5h16l-4 5 4 5H9z" fill="#b3202f" stroke="#3a0a0a" stroke-width="1.3" stroke-linejoin="round"/><circle cx="22" cy="23" r="3.4" fill="#9ad0ff" stroke="#1a2a3a" stroke-width="1.2"/><path d="M16 30c.6-3.6 3-5.4 6-5.4s5.4 1.8 6 5.4z" fill="#4a6a9a" stroke="#1a2a3a" stroke-width="1.2"/></svg>`;
 DOCK_ICONS.relics = `<svg viewBox="0 0 32 32"><path d="M10 28V10l6-6 6 6v18z" fill="#3a3a5a" stroke="#9ab4ff" stroke-width="1.4"/><path d="M13 14h6M13 18h6M13 22h6" stroke="#9ab4ff" stroke-width="1.4"/></svg>`;
 /* dock em quadradinhos, embaixo do chat (canto inferior esquerdo): um quadrado para cada janela do jogo */
-const DOCK: [string, string, string][] = [['inv', 'Mochila', 'I'], ['char', 'Personagem', 'C'], ['skills', 'Árvore Kármica (magias)', 'K'], ['quests', 'Missões', 'J'], ['feats', 'Conquistas — Inscrições de Marghar', 'L'], ['karma', 'Compêndio do Karma', 'U'], ['prof', 'Profissões', 'Y'], ['loja', 'Shop — Premium e brasões', 'T'], ['map', 'Mapa', 'M'], ['stable', 'Estábulo e Companheiros — pets e montarias', 'X'], ['coop', 'Jogar junto — abrir sala ou entrar com convite', 'F4'], ['opts', 'Opções e configurações', 'Esc']];
+const DOCK: [string, string, string][] = [['inv', 'Mochila', 'I'], ['char', 'Personagem', 'C'], ['skills', 'Árvore Kármica (magias)', 'K'], ['quests', 'Missões', 'J'], ['feats', 'Conquistas — Inscrições de Marghar', 'L'], ['karma', 'Compêndio do Karma', 'U'], ['prof', 'Profissões', 'Y'], ['loja', 'Shop — Premium e brasões', 'T'], ['map', 'Mapa', 'M'], ['stable', 'Estábulo e Companheiros — pets e montarias', 'X'], ['coop', 'Jogar junto — abrir sala ou entrar com convite', 'F4'], ['social', 'Amigos, conversas e guilda', 'F9'], ['opts', 'Opções e configurações', 'Esc']];
 dockEl.innerHTML = DOCK.map(([d, t, k]) => `<button data-d="${d}" title="${t} (${k})">${DOCK_ICONS[d] ?? ''}<small>${k}</small></button>`).join('');
 document.body.appendChild(dockEl);
 const skillsEl = document.createElement('div'); skillsEl.id = 'skillsw'; skillsEl.className = 'modalw'; document.body.appendChild(skillsEl);
@@ -640,7 +643,7 @@ featsEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).c
 function toggleSkills(on?: boolean) { skillsOpen = on ?? !skillsOpen; if (skillsOpen) renderSkills(); else skillsEl.style.display = 'none'; }
 function toggleFeats(on?: boolean) { featsOpen = on ?? !featsOpen; if (featsOpen) renderFeats(); else featsEl.style.display = 'none'; }
 for (const [el, fn] of [[skillsEl, toggleSkills], [featsEl, toggleFeats]] as [HTMLElement, (on?: boolean) => void][]) el.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === el) fn(false); });
-dockEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; keys.clear(); const d = b.dataset.d; if (d === 'inv') inv.toggle(); else if (d === 'char') inv.toggleChar(); else if (d === 'skills') toggleSkills(); else if (d === 'quests') quests.toggleLog(); else if (d === 'feats') toggleFeats(); else if (d === 'map') toggleBigMap(); else if (d === 'prof') profs.toggle(); else if (d === 'loja') loja.toggle(); else if (d === 'karma') compendium.toggle(); else if (d === 'coop') coop.toggle(); else if (d === 'stable') stable.toggle(); else if (d === 'opts') { game.toggleMenu(true); (document.querySelector('#menu [data-p="p-opt"]') as HTMLElement | null)?.click(); } });
+dockEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; keys.clear(); const d = b.dataset.d; if (d === 'inv') inv.toggle(); else if (d === 'char') inv.toggleChar(); else if (d === 'skills') toggleSkills(); else if (d === 'quests') quests.toggleLog(); else if (d === 'feats') toggleFeats(); else if (d === 'map') toggleBigMap(); else if (d === 'prof') profs.toggle(); else if (d === 'loja') loja.toggle(); else if (d === 'karma') compendium.toggle(); else if (d === 'coop') coop.toggle(); else if (d === 'stable') stable.toggle(); else if (d === 'social') social.toggle(); else if (d === 'opts') { game.toggleMenu(true); (document.querySelector('#menu [data-p="p-opt"]') as HTMLElement | null)?.click(); } });
 const stable = createStable({ has: (id) => inv.has(id), count: (id) => inv.count(id), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '❔', log: (t, c) => game.logMsg(t, c), gold: (n) => { game.st.gold += n; },
   onChange: () => { pet?.dispose(); pet = null; }, sfx: (k) => { if (k === 'eat') audio.work('cook'); else if (k === 'swap') audio.click(); else audio.chime(); } });
 setTimeout(() => stable.migrate(), 1500);
@@ -741,7 +744,7 @@ function betaCommand(cmd: string, a: string[]): string | null {
    quem já tinha o Olho aberto recebe a Lágrima do nascimento que não ganhou */
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
-const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: betaCommand, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda') { const tx = a.join(' ').trim(); if (tx) social.guildChat(tx); else social.toggle(true, 'guilda'); return '⚑ (guilda)'; } return betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
 const net = createNet({ scene, camera, canvas,
   look: () => ({ kind: kindOf(state.race), opts: profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}, gear: lastGear, skin: netSkin, name: profile?.name || RACES[state.race].label, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(state.karma), fac: myFac(), path: myPath(), lean: soulLean(), prem: isPremium() }),
@@ -787,7 +790,52 @@ netRef = net;
   net.onX('x:pq', (from, m) => { if (!inParty(from)) return; const d = m.d as Parameters<typeof quests.accept>[0], nm = net.nameOf(from); coop.questShare(nm, d, quests.shareState(d), () => quests.accept(d, nm)); });
   setInterval(() => { pvp.tick(); }, 500);
   setInterval(() => { if (net.state !== 'on' || (inside && !inside.crypt && !inside.dg)) return; const l = game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }, 100); }
-const coop = createCoop(net, { pvpToggle: () => pvp.toggle(), pvpOn: () => pvpOn, toMenu: () => inicio.open(), mailTo: (n) => mail.compose(n), duel: (id) => pvp.challenge(id), whisperTo: (n) => chat.whisperTo(n), myHp: () => Math.round(100 * game.st.hp / Math.max(1, game.st.hpMax)) });
+const coop = createCoop(net, { friend: (n) => social.friendChar(n), guildInvite: (n) => social.inviteGuild(n), inGuild: () => !!social.guild, pvpToggle: () => pvp.toggle(), pvpOn: () => pvpOn, toMenu: () => inicio.open(), mailTo: (n) => mail.compose(n), duel: (id) => pvp.challenge(id), whisperTo: (n) => chat.whisperTo(n), myHp: () => Math.round(100 * game.st.hp / Math.max(1, game.st.hpMax)) });
+
+/* ---------- AMIGOS, CONVERSAS E GUILDAS (26/10) — hub.ts (conta e conexão leve) e social.ts (a janela) ---------- */
+const hub = createHub({ char: () => profile?.name ?? '', where: () => (profile && !inicio.isOpen && !creating) ? 'mundo' : 'menu' });
+/* os terrenos das guildas: quadras de 10×10 de capim livre em volta de Lumenhal, a cidade média (todos calculam igual: o mundo é o mesmo) */
+const GPLOT = 10;
+const guildPlots = (() => { const lu = city.settlements.find((q) => q.name === 'Lumenhal'); if (!lu) return [] as { x0: number; y0: number }[]; const out: { x0: number; y0: number }[] = [];
+  const free = (x0: number, y0: number) => { for (let y = y0 - 1; y <= y0 + GPLOT; y++) for (let x = x0 - 1; x <= x0 + GPLOT; x++) if (city.map[y]?.[x] !== 'grass') return false; for (const p of city.props) if (p.gx + p.w > x0 - 1 && p.gx < x0 + GPLOT + 1 && p.gy + p.h > y0 - 1 && p.gy < y0 + GPLOT + 1 && p.kind !== 'tree' && p.kind !== 'rock' && p.kind !== 'herb') return false; return true; };
+  for (let r = lu.radius + 8; r < lu.radius + 90 && out.length < 24; r += 3) for (let k = 0; k < 48 && out.length < 24; k++) { const a = (k / 48) * 6.283, x0 = Math.round(lu.x + Math.cos(a) * r - GPLOT / 2), y0 = Math.round(lu.y + Math.sin(a) * r - GPLOT / 2);
+    if (out.some((q) => Math.abs(q.x0 - x0) < GPLOT + 3 && Math.abs(q.y0 - y0) < GPLOT + 3)) continue; if (free(x0, y0)) out.push({ x0, y0 }); }
+  return out; })();
+let guildWorld: { id: number; name: string; tag: string; col: string; plot: number; build: { kind: string; gx: number; gy: number; v: number }[] }[] = [], myGuild: Guild | null = null;
+function guildZoneAt(gx: number, gy: number): 'mine' | 'other' | null { for (const g of guildWorld) { const P = guildPlots.at(g.plot); if (P && gx >= P.x0 && gx < P.x0 + GPLOT && gy >= P.y0 && gy < P.y0 + GPLOT) return myGuild && myGuild.id === g.id && ['membro', 'oficial', 'lider'].includes(myGuild.members.find((m) => m.name.toLowerCase() === (profile?.name ?? '').toLowerCase())?.rank ?? '') ? 'mine' : 'other'; } return null; }
+const guildGfx = new THREE.Group(); scene.add(guildGfx);
+function drawGuilds() {
+  for (const c of [...guildGfx.children]) { guildGfx.remove(c); c.traverse((o) => { const m = o as THREE.Mesh; m.geometry?.dispose?.(); }); }
+  for (const g of guildWorld) { const P = guildPlots.at(g.plot); if (!P) continue; const col = new THREE.Color(g.col);
+    const cx = (P.x0 + 1.5) * T, cz = (P.y0 + 1.5) * T, y = heightAt(cx, cz); const grp = new THREE.Group(); grp.position.set(cx, y, cz); guildGfx.add(grp);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 6.5, 8), new THREE.MeshToonMaterial({ color: 0x4a3220 })); pole.position.y = 3.25; grp.add(pole);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.4, 8), new THREE.MeshToonMaterial({ color: 0xd8b04a })); tip.position.y = 6.65; grp.add(tip);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.6, 6, 1), new THREE.MeshToonMaterial({ color: col, side: THREE.DoubleSide })); flag.position.set(0.95, 5.0, 0); flag.userData.flag = 1; grp.add(flag);
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const gx = cv.getContext('2d')!; gx.fillStyle = '#2a1a0e'; gx.fillRect(0, 0, 256, 96); gx.strokeStyle = g.col; gx.lineWidth = 6; gx.strokeRect(3, 3, 250, 90); gx.fillStyle = '#ffe8b0'; gx.font = 'bold 30px Georgia, serif'; gx.textAlign = 'center'; gx.fillText(`[${g.tag}]`, 128, 40); gx.font = '20px Georgia, serif'; gx.fillText(g.name.slice(0, 24), 128, 74);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), new THREE.MeshBasicMaterial({ map: tx, side: THREE.DoubleSide })); sign.position.set(0, 2.2, 0.15); grp.add(sign);
+    const ring: THREE.Vector3[] = []; for (const [x, z] of [[0, 0], [GPLOT, 0], [GPLOT, GPLOT], [0, GPLOT], [0, 0]]) { const wx = (P.x0 + x) * T, wz = (P.y0 + z) * T; ring.push(new THREE.Vector3(wx, heightAt(wx, wz) + 0.12, wz)); }
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.85 })); guildGfx.add(line); }
+  build.setRemote(guildWorld.flatMap((g) => g.build as never));
+}
+setInterval(() => { const t = performance.now() / 1000; for (const c of guildGfx.children) c.traverse((o) => { if (o.userData.flag) o.rotation.y = Math.sin(t * 1.7 + o.id) * 0.25; }); }, 120);
+/* o salão que nasce com a guilda: piso 6×4, paredes com porta, telhado, tochas e bancos (o fundador manda as peças ao servidor uma vez) */
+function seedHall(plot: number) { const P = guildPlots.at(plot); if (!P) return []; const out: { kind: string; gx: number; gy: number; v: number }[] = []; const x0 = P.x0 + 2, y0 = P.y0 + 3, W = 6, D = 4;
+  for (let y = y0; y < y0 + D; y++) for (let x = x0; x < x0 + W; x++) { const edge = x === x0 || x === x0 + W - 1 || y === y0 || y === y0 + D - 1, door = y === y0 + D - 1 && x === x0 + 2; out.push({ kind: edge ? (door ? 'bdoor' : 'bwall') : 'bfloor', gx: x, gy: y, v: y === y0 || y === y0 + D - 1 ? 0 : 1 }); }
+  for (let y = y0; y < y0 + D; y++) for (let x = x0; x < x0 + W; x++) out.push({ kind: 'broof', gx: x, gy: y, v: 0 });
+  out.push({ kind: 'torch', gx: x0 + 1, gy: y0 + D + 1, v: 0 }, { kind: 'torch', gx: x0 + 4, gy: y0 + D + 1, v: 0 }, { kind: 'bench', gx: x0 + 6, gy: y0 + D + 2, v: 0 }, { kind: 'campfire', gx: x0 + 3, gy: y0 + D + 3, v: 0 }); return out; }
+const CARTA_K = 'karmika.guildcarta';
+const social = createSocial({ hub, char: () => profile?.name ?? '', lvl: () => game.st.lvl, gold: () => game.st.gold, payGold: (n) => { if (game.st.gold < n) return false; game.st.gold -= n; return true; }, log: (t, c) => game.logMsg(t, c),
+  items: () => Object.keys(inv.bag).filter((k) => inv.bag[k] > 0 && !isToolId(k) && !ITEMS_TBL[k]?.quest).map((id) => ({ id, n: inv.bag[id], name: ITEMS_TBL[id]?.name ?? id, icon: ITEMS_TBL[id]?.icon ?? '•' })),
+  gear: () => inv.gearBag, takeItem: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
+  itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', rarityCol: (r) => (RARITY as Record<string, { col: string }>)[r]?.col ?? '#e8dcc0',
+  ask: (t, x, y, cb) => coop.ask(t, x, y, cb, 40), hasCarta: () => localStorage.getItem(CARTA_K) === '1', useCarta: () => { try { localStorage.removeItem(CARTA_K); } catch { /* */ } }, seedHall,
+  plotText: (plot) => { const P = guildPlots.at(plot), lu = city.settlements.find((q) => q.name === 'Lumenhal'); if (!P || !lu) return 'perto de Lumenhal'; const dx = P.x0 + 5 - lu.x, dy = P.y0 + 5 - lu.y, dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'a leste' : 'a oeste') : (dy > 0 ? 'ao sul' : 'ao norte'); return `${dir} de Lumenhal, a ${Math.round(Math.hypot(dx, dy) * T)} m da praça`; },
+  markPlot: (plot) => { const P = guildPlots.at(plot); if (!P) return; mapV.cx = P.x0 + 5; mapV.cy = P.y0 + 5; mapV.z = Math.max(mapV.z, 4); if (!bigOpen) toggleBigMap(); game.logMsg('📍 O terreno da guilda está no centro do mapa.', '#ffe08a'); },
+  onWorld: (list) => { guildWorld = list; drawGuilds(); if (myGuild && seedPending === myGuild.id) { const g = list.find((q) => q.id === myGuild!.id); if (g && !g.build.length) { for (const b of seedHall(g.plot)) hub.send({ t: 'g:build', b }); } seedPending = 0; } },
+  onGuild: (g) => { const was = myGuild; myGuild = g; if (g && !was && g.members.length === 1 && Date.now() - g.created < 60000) seedPending = g.id; drawGuilds(); updateWho(); } });
+let seedPending = 0;
+if (IS_DEV) Object.assign(window as object, { __festa: () => festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
+addEventListener('keydown', (e) => { if (e.key === 'F9') { e.preventDefault(); social.toggle(); } });
 (window as unknown as { __net?: unknown }).__net = net;
 setTimeout(() => { (window as unknown as { __pvp?: unknown }).__pvp = pvp; (window as unknown as { __mail?: unknown }).__mail = mail; }, 0);
 /* ===== PvP (jogar junto) — regra do Erling, 22/10/2026 =====
@@ -861,7 +909,7 @@ const pvp = (() => {
 })();
 /* tela de boas-vindas: encontrar servidor / abrir servidor / jogar sozinho → escolher um dos 3 personagens → mundo */
 let pendingServer: string | null = null;
-function joinServer() { const v = pendingServer; pendingServer = null; if (v) net.connect(v); }
+function joinServer() { const v = pendingServer; pendingServer = null; if (v) { net.connect(v); hub.connect(v); } }
 /* auras rápidas em volta do herói: poção (vermelho vida, azul magia, âmbar tônico) e comemorações (classe, profissão) */
 addEventListener('karmika:drink', (e) => { const k = (e as CustomEvent).detail as string, [c0, c1] = k === 'mp' ? [0xbfe0ff, 0x2a6aff] : k === 'buff' ? [0xffe0a0, 0xff8a2a] : [0xffb0b0, 0xe0202a]; const p = hero.root.position;
   for (let i = 0; i < 34; i++) { const a = Math.random() * 6.283, r = 0.35 + Math.random() * 0.4; particles.spawn(p.x + Math.cos(a) * r, p.y + 0.1 + Math.random() * 0.6, p.z + Math.sin(a) * r, { vx: Math.cos(a) * 0.4, vy: 1.4 + Math.random() * 1.8, vz: Math.sin(a) * 0.4, life: 0.8 + Math.random() * 0.4, s0: 0.22, s1: 0.03, c0, c1, a: 0.95, drag: 1.5 }); } });
@@ -870,7 +918,7 @@ addEventListener('karmika:burst', (e) => { const d = (e as CustomEvent).detail a
 /* a tela de abertura sai quando o mundo e a tela de boas-vindas já estão de pé */
 function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 700); }
 let bootFrames = 0; setTimeout(hideBoot, 30000); // segurança: nunca fica preso na abertura
-const inicio = createInicio({ hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
+const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
   onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) setTimeout(() => showCreate(), 200); else { joinServer(); setTimeout(resumeSoul, 900); } },
   fresh: async () => profile ? { lvl: game.st.lvl, cls: classOfRace(state.race), pic: await slotPic() } : null });
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */
@@ -984,7 +1032,8 @@ function alignCatchup() { if (!profile || inicio.isOpen || creating || !npcSys.n
   for (const id of quests.q.done) { if (align.flag('q:' + id)) continue; const d = quests.def(id); if (!d || id.startsWith('b_')) { align.setFlag('q:' + id); continue; } const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); if (!st) continue;
     const story = questCat(d) === 'story'; align.add('vila', st.name, story ? 6 : 3, undefined, true); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1, undefined, true); align.setFlag('q:' + id); n++; }
   if (n) { const h = hereSettle(); game.logMsg(`🏘 ${n} missões antigas contaram para o seu Alinhamento Kármico${h ? `: ${h.name} agora te vê como ${align.tier('vila', h.name).name}` : ''}.`, h ? align.tier('vila', h.name).col : '#ffe08a'); } }
-queueMicrotask(() => quests.addDoneHook((d) => { align.setFlag('q:' + d.id); const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
+queueMicrotask(() => quests.addDoneHook((d) => { if (d.id === 'gu1') { try { localStorage.setItem(CARTA_K, '1'); } catch { /* */ } setTimeout(() => social.startFounding(), 600); }
+  align.setFlag('q:' + d.id); const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
   if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
   const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));
 /** quem defende as casas: bicho derrubado perto do povoado soma um pouquinho */
@@ -1016,7 +1065,7 @@ function festaStatus() { const st = hereSettle(); if (!st) return '📍 Você es
 let festaAsked = '';
 function festaOffer(stName = hereSettle()?.name ?? '') { if (!stName || align.flag('festa_' + stName) || festa || festaAsked === stName) return false; const v = align.get('vila', stName); if (v < (stName === 'Karmika' ? 10 : 30)) return false;
   const d = leavingQuest(stName); if (!d) return false; festaAsked = stName; const host = d.giver;
-  confirmBox(`<b>${host}:</b> “Soubemos que você vai partir. ${stName} inteira quer te dar uma <b>festa de despedida</b> — um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com ${stName}: ${align.tier('vila', stName).name}</small>`, '🎉 Aceitar a festa', () => festaFade([`A notícia correu de casa em casa: ${profile?.name || 'o caminhante'} vai partir.`, `Ao cair da tarde, a praça de ${stName} se encheu de gente, de música e de cheiro de churrasco.`], () => startFesta(stName)));
+  confirmBox(`<b>${host}:</b> “Soubemos que você vai partir. ${stName} inteira quer te dar uma <b>festa de despedida</b> — um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com ${stName}: ${align.tier('vila', stName).name}</small>`, '🎉 Aceitar a festa', () => festaFade([`A notícia correu de casa em casa: ${profile?.name || 'o caminhante'} vai partir.`, `Ao cair da tarde, a praça de ${stName} se encheu de gente, de música e de cheiro de churrasco.`], () => startFesta(stName)), { keep: true, onNo: () => game.logMsg(`🎉 A festa fica de pé: fale com ${host} quando quiser aceitar.`, '#ffe08a') });
   return true; }
 /** a tela esmaece, as palavras aparecem, e a tela abre de novo (a festa começando, ou o dia seguinte) */
 function festaFade(lines: string[], mid: () => void, after?: () => void) { const d = document.createElement('div'); d.id = 'fadefx'; d.innerHTML = lines.map((l, i) => `<p style="animation-delay:${0.9 + i * 1.6}s">${l}</p>`).join(''); document.body.appendChild(d);
@@ -1394,6 +1443,10 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
     if (k > 1) game.logMsg(`${nm} olha você de cima a baixo. Para gente como você, o preço é outro (+${Math.round((k - 1) * 100)}%).`, '#c8a090'); else if (k < 1) game.logMsg(`${nm} sorri: “Para você, um desconto.” (−${Math.round((1 - k) * 100)}%)`, '#a8d0a0'); } });
   if (nm === 'Elowen') choices.push({ kind: 'custom', label: 'Abrir o Shop', hint: 'Premium e brasões', cb: () => { dlg.close(); loja.toggle('prem'); } });
   if (nm === 'Mestre-Forjador Brokki') choices.push({ kind: 'custom', label: 'Forja de Elite', hint: 'peças lendárias', cb: () => eliteForge(n) });
+  { /* a festa também é um assunto de conversa: quem fechou o convite (ou clicou fora dele) ainda pode aceitar falando com quem deu a missão */
+    const stF = hereSettle()?.name ?? '', dF = stF && !festa && !align.flag('festa_' + stF) && align.get('vila', stF) >= (stF === 'Karmika' ? 10 : 30) ? leavingQuest(stF) : null;
+    if (dF && dF.giver === nm) choices.push({ kind: 'custom', label: '🎉 Aceitar a festa de despedida', hint: `${stF} quer se despedir de você`, cb: () => { dlg.close(); festaAsked = stF; festaFade([`A notícia correu de casa em casa: ${profile?.name || 'o caminhante'} vai partir.`, `Ao cair da tarde, a praça de ${stF} se encheu de gente, de música e de cheiro de churrasco.`], () => startFesta(stF)); } }); }
+  if (nm === 'Magistrado Corvin Aldmar' && localStorage.getItem(CARTA_K) === '1' && !social.guild) choices.push({ kind: 'custom', label: 'Registrar a minha guilda', hint: 'Carta Patente + 500 de ouro', cb: () => { dlg.close(); social.startFounding(); } });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => quests.openBoard() });
   if (nm === 'Hrefna') { if (game.st.lvl >= 30 && (!profile?.path || profile.path === 'humano')) choices.push({ kind: 'custom', label: profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { dlg.close(); vid.open(); } }); else if (game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => dlg.setText(npcSys.talk(n)) });
@@ -1530,7 +1583,7 @@ function rebirth(name: string, np: Profile) {
 }
 /** reborn = reencarnação: mesma alma (nome), corpo novo; nível, mochila, ouro, cofre e missões ficam */
 function showCreate(reborn = false) {
-  const el = document.getElementById('create')!; el.style.display = 'grid'; creating = true;
+  const el = document.getElementById('create')!; el.style.display = 'grid'; creating = true; keys.clear();
   createAC?.abort(); createAC = new AbortController(); const sig = createAC.signal; const soulName = reborn ? profile?.name ?? '' : '', oldProfile = reborn ? profile : null;
   el.classList.toggle('reborn', reborn); (el.querySelector('h2') as HTMLElement).textContent = reborn ? 'Reencarnação' : 'Criação de personagem';
   (el.querySelector('#c-go') as HTMLElement).textContent = reborn ? 'RENASCER EM KARMIKA' : 'ENTRAR EM KARMIKA';
@@ -1661,7 +1714,13 @@ function welcomeKit(_cx: number, _cz: number, _cy: number): boolean { return fal
 function giveStartKit() {
   try { if (localStorage.getItem('karmika.startkit')) return; localStorage.setItem('karmika.startkit', '1'); } catch { return; }
   const L = game.st.lvl, slots: Slot[] = ['weapon', 'shield', 'armor', 'helm', 'boots', 'cape', 'shoulders'];
-  inv.vaultPut([['potion', 5], ['bread', 10], ['scroll_return', 1]], slots.map((sl) => genGear(Math.max(2, L + 1), sl === 'weapon' || sl === 'armor' ? 'magic' : 'normal', sl)));
+  /* 26/10 (Erling: "o personagem não pode receber de kit de início itens que ele não pode usar — metralhadora, itens de anão, de guerreiro;
+     somos humanos puros"): o kit é de aprendiz e da raça. Peças simples (couro, broquel, capuz), arma leve que qualquer um maneja;
+     o anão ganha o martelo da Forja, o elfo um arco. Nada de arma de caminho (Tecnocrata, Caçador, Vampiro, Lobisomem) */
+  const o = profile?.origin ?? 'human', pk = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+  const KIT: Partial<Record<Slot, string>> = { weapon: o === 'dwarf' ? 'Martelo' : o === 'elf' ? 'Arco Curto' : pk(['Espada Curta', 'Machado de Mão', 'Adaga']), armor: 'Gibão de Couro', shield: 'Broquel', helm: pk(['Capuz', 'Elmo de Couro']), boots: 'Botas de Couro', cape: pk(['Capa de Lã', 'Capa Curta de Viagem']), shoulders: 'Ombreiras de Couro' };
+  const kit = slots.filter((sl) => !(o === 'elf' && sl === 'shield')).map((sl) => genGear(Math.max(2, L + 1), sl === 'weapon' || sl === 'armor' ? 'magic' : 'normal', sl, KIT[sl])).filter((g) => !g.only || walksPath(g.only));
+  inv.vaultPut([['potion', 5], ['bread', 10], ['scroll_return', 1]], kit);
   game.logMsg('🎁 Presentes de começo de jornada no seu Baú do Caminhante, perto do centro da vila.', '#ffe08a');
 }
 setTimeout(giveStartKit, 1500);
@@ -1719,15 +1778,24 @@ const BNAME: Record<string, string> = { meadow: 'Campos', forest: 'Floresta', sw
 const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getContext('2d')!;
 /* círculo do minimapa redimensionável: arraste a alça ◣ (canto de baixo à esquerda); duplo clique volta ao padrão; tamanho salvo */
 { const mini = document.getElementById('mini') as HTMLElement, grip = document.createElement('div'); grip.className = 'mmgrip'; grip.title = 'Arraste para aumentar ou diminuir o minimapa (duplo clique: padrão)'; mini.appendChild(grip);
-  let D = 170; try { D = +(localStorage.getItem('karmika.minisize') || 170) || 170; } catch { /* */ }
+  /* 26/10 (Erling: "o minimapa pode ser um pouco maior no 1.0 padrão… e ter zoom"): padrão 210 (o antigo 170 sobe junto); a escala da interface já o acompanha */
+  let D = 210; try { D = +(localStorage.getItem('karmika.minisize') || 210) || 210; if (D === 170) D = 210; } catch { /* */ }
   const set = (d: number, save = false) => { D = Math.round(Math.max(120, Math.min(Math.min(380, innerHeight * 0.5), d))); mmEl.width = mmEl.height = D; mmEl.style.width = mmEl.style.height = D + 'px'; mini.style.width = D + 8 + 'px'; { const C = D / 2 + 4; grip.style.left = C - D * 0.354 - 9 + 'px'; grip.style.top = C + D * 0.354 - 11 + 'px'; } /* na borda do círculo, a 45° em baixo à esquerda */ if (save) try { localStorage.setItem('karmika.minisize', String(D)); } catch { /* */ } };
   set(D);
   let rs: { x: number; y: number; d: number } | null = null;
   grip.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); rs = { x: e.clientX, y: e.clientY, d: D }; grip.setPointerCapture(e.pointerId); });
   grip.addEventListener('pointermove', (e) => { if (rs) set(rs.d + Math.max(rs.x - e.clientX, e.clientY - rs.y)); }); // preso no canto de cima à direita: cresce para baixo e para a esquerda
   const end = () => { if (rs) { rs = null; set(D, true); } }; grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
-  grip.addEventListener('dblclick', (e) => { e.stopPropagation(); set(170, true); });
+  grip.addEventListener('dblclick', (e) => { e.stopPropagation(); set(210, true); });
+  /* zoom do minimapa: botões + e − na borda e a roda do mouse em cima dele */
+  const zb = document.createElement('div'); zb.className = 'mmzoom'; zb.innerHTML = '<button data-z="1" title="Aproximar o minimapa">+</button><button data-z="-1" title="Afastar o minimapa">−</button>'; mini.appendChild(zb);
+  const zt = () => { zb.style.left = D / 2 + 4 + D * 0.354 - 6 + 'px'; zb.style.top = D / 2 + 4 + D * 0.354 - 30 + 'px'; }; zt(); const set0 = set; void set0;
+  new ResizeObserver(zt).observe(mmEl);
+  zb.addEventListener('pointerdown', (e) => e.stopPropagation());
+  zb.addEventListener('click', (e) => { e.stopPropagation(); const b = (e.target as HTMLElement).closest('[data-z]') as HTMLElement | null; if (b) miniZoomBy(+b.dataset.z! > 0 ? 1.25 : 0.8); });
+  mmEl.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); miniZoomBy(e.deltaY < 0 ? 1.15 : 0.87); }, { passive: false });
 }
+function miniZoomBy(f: number) { mmZoom = Math.max(0.5, Math.min(4, mmZoom * f)); try { localStorage.setItem('karmika.minizoom', String(mmZoom)); } catch { /* */ } drawMini(); }
 const bmEl = document.getElementById('bm') as HTMLCanvasElement, bg = bmEl.getContext('2d')!, bigEl = document.getElementById('bigmap') as HTMLElement;
 let bigOpen = false;
 function toggleBigMap() { bigOpen = !bigOpen; bigEl.style.display = bigOpen ? 'block' : 'none'; if (bigOpen) { bigEl.dispatchEvent(new Event('karmika:open')); const h0 = hereT(); mapV.cx = h0.x; mapV.cy = h0.y; mapV.z = Math.max(mapV.z, 6.4); /* abre perto: lugares, níveis e região legíveis */ drawBig(); } }
@@ -1915,9 +1983,10 @@ function dgDraw(ctx: CanvasRenderingContext2D, int: DungeonFloor, cx: number, cz
   dgMapMarks(ctx, int, X, Y, Math.max(0.8, Math.min(1.6, k / 3)));
   heroArrow(ctx, X(lx), Y(lz), Math.max(1, Math.min(1.6, k / 3)));
 }
+let mmZoom = (() => { try { return Math.max(0.5, Math.min(4, +(localStorage.getItem('karmika.minizoom') || 1) || 1)); } catch { return 1; } })();
 function drawMini() {
-  if (inside?.dg) { const int = inside.int as DungeonFloor, D = mmEl.width, C = D / 2; mg.save(); mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); dgDraw(mg, int, state.fx * T - IX, state.fy * T - IZ, D / 40, D, D); mg.restore(); return; }
-  const S = 2.4, h0 = hereT(), D = mmEl.width, C = D / 2; mg.save(); mg.imageSmoothingEnabled = false; mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); mg.fillStyle = '#0a0810'; mg.fillRect(0, 0, D, D);
+  if (inside?.dg) { const int = inside.int as DungeonFloor, D = mmEl.width, C = D / 2; mg.save(); mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); dgDraw(mg, int, state.fx * T - IX, state.fy * T - IZ, D / 40 * mmZoom, D, D); mg.restore(); return; }
+  const S = 2.4 * mmZoom, h0 = hereT(), D = mmEl.width, C = D / 2; mg.save(); mg.imageSmoothingEnabled = false; mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); mg.fillStyle = '#0a0810'; mg.fillRect(0, 0, D, D);
   mg.drawImage(mmBase, C - h0.x * S, C - h0.y * S, MMS * S, MMS * S); markers(mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); heroArrow(mg, C, C, 1); mg.restore();
 }
 function drawBig() {
@@ -2146,7 +2215,8 @@ addEventListener('keyup', (e) => { const sk = skillAt(kitRace(), e.key); if (sk?
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (cine) { if (e.key === 'Escape' && (cine.sc.skippable || cine.skipOk)) endScene(); e.preventDefault(); return; }
-  if (chat.isOpen || inicio.isOpen) return;
+  if (chat.isOpen || inicio.isOpen || creating) return;
+  { const tg = e.target as HTMLElement | null; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return; } /* digitando num campo: nada vaza para o personagem */
   if (e.key === 'F4') { e.preventDefault(); keys.clear(); coop.toggle(); return; }
   if (e.key === 'Enter' && !inv.isOpen && !dlg.isOpen && !quests.isOpen) { e.preventDefault(); keys.clear(); chat.open(); return; }
   if (e.key === 'Tab') e.preventDefault();
@@ -2887,6 +2957,20 @@ function startScene(sc: Scene, done?: () => void) {
   withFade(() => { objs.setRad(5); for (const sh of sc.shots) objs.update(sh.x, sh.z, true); objs.update(camX, camZ, true); }, `Preparando a cena — ${sc.title}`, () => playScene(sc, done));
 }
 function endScene() { if (!cine) return; const c = cine; cine = null; c.ov.close(); document.body.classList.remove('cinema'); objs.setRad(2); zoomTarget = c.z0; azT = c.az0; c.done?.(); }
+/* 26/10 (Erling: "na tela de fundo coloque cada vez um lugar diferente dos lindos que já foram criados — paisagens de Karmika, e não
+   o nosso personagem"): com o menu ou a criação abertos, a câmera passeia pelas Fontes da Visão, um lugar novo a cada abertura e a cada 40 s */
+let mv: { x: number; z: number; zoom: number; az: number; t: number; z0: number; az0: number } | null = null, mvLast = -1;
+function menuView(rdt: number) {
+  const want = (inicio.isOpen || creating) && !inside && !cine;
+  document.body.classList.toggle('mvista', want);
+  if (!want) { if (mv) { zoom = zoomTarget = mv.z0; az = azT = mv.az0; camX = state.fx * T; camZ = state.fy * T; camY = heroY; objs.update(camX, camZ, true); mv = null; } return false; }
+  if (!mv || mv.t > 40) { const vs = CINE.vistas; if (!vs.length) return false; let i = Math.floor(Math.random() * vs.length); if (vs.length > 1 && i === mvLast) i = (i + 1) % vs.length; mvLast = i;
+    const sh = vs[i].shots, s = sh[1 + Math.floor(Math.random() * Math.max(1, sh.length - 1))] ?? sh[0];
+    mv = { x: s.x, z: s.z, zoom: Math.max(40, Math.min(80, s.zoom)), az: s.az, t: 0, z0: mv?.z0 ?? zoomTarget, az0: mv?.az0 ?? azT }; objs.update(s.x, s.z, true); }
+  mv.t += rdt; mv.az += rdt * 0.035; /* giro bem lento, como um quadro vivo */
+  camX = mv.x; camZ = mv.z; zoom = zoomTarget = mv.zoom; az = azT = mv.az; camY = heightAt(camX, camZ) + mv.zoom * 0.12;
+  return true;
+}
 function updateCine(rdt: number) {
   if (!cine) return false; cine.t += rdt; const sc = cine.sc, sh = sc.shots, u = Math.min(1, cine.t / sc.sec);
   const f = u * (sh.length - 1), i = Math.min(sh.length - 2, Math.floor(f)), k = f - i, e = k * k * (3 - 2 * k), a = sh[i], b = sh[i + 1];
@@ -3458,7 +3542,7 @@ function frameBody() {
   camDir.set(Math.sin(az) * Math.cos(pitch), Math.sin(pitch), Math.cos(az) * Math.cos(pitch)).multiplyScalar(camDist());
   leadX += ((state.moving ? gdx * 2.2 : 0) * T * 0.5 - leadX) * Math.min(1, dt * 2.5);
   leadZ += ((state.moving ? gdy * 2.2 : 0) * T * 0.5 - leadZ) * Math.min(1, dt * 2.5);
-  if (!updateCine(rawDt)) {
+  if (!updateCine(rawDt) && !menuView(rawDt)) {
   camX += (heroPos.x + leadX - camX) * Math.min(1, dt * 6);
   camZ += (heroPos.z + leadZ - camZ) * Math.min(1, dt * 6);
   camY += (heroY - camY) * Math.min(1, dt * 5);

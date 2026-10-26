@@ -24,6 +24,9 @@ const F = { who: 'Instinto', t: 'Aperte F (ou o terceiro olho, no menu de açõe
 
 /** as pessoas novas que a campanha pôs no mundo (uma por vila do roteiro) — world.ts as coloca de pé */
 export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf'; /** só aparece enquanto esta missão está no diário */ onlyQ?: string }[] = [
+  /* guildas (26/10): o Escrivão-Mor de Askavik dá a Carta Patente; o Magistrado de Lumenhal, a cidade média, registra a guilda */
+  { vila: 'Askavik', name: 'Escrivão-Mor Aldric', role: 'Escrivão-Mor de Askavik', dx: 6, dy: 4, tint: 0x3a3a5a, lines: ['Toda guilda começa num papel. A maioria termina em outro: o de dívidas.', 'Assine aqui. E aqui. E aqui também.'] },
+  { vila: 'Lumenhal', name: 'Magistrado Corvin Aldmar', role: 'Magistrado de Lumenhal', dx: 4, dy: -3, tint: 0x5a2a2a, lines: ['Lumenhal registra as guildas desde antes de Askavik ter muralha.', 'Um estandarte é uma promessa pendurada num pau. Cuide da promessa.'] },
   { vila: 'Igreja Abandonada', name: 'Bento', role: 'Caçador, escondido', dx: 1.5, dy: 1.5, tint: 0x5a4a32, onlyQ: 'h08', lines: ['Shh… eles ainda estão lá fora?', 'Não conta para a Lúcia que eu me escondi. Por favor.'] },
   { vila: 'Lundr', name: IL, role: 'Guarda-mor de Lundr', dx: 3, dy: 2.5, tint: 0x4a5a3a, lines: ['Lundr é pequena. Por isso a gente cuida dela como se fosse grande.', 'Os lobos sabem contar. Contam quantos guardas eu tenho.'] },
   { vila: 'Hrafnhöfn', name: OM, role: 'Faroleiro de Hrafnhöfn', dx: 3, dy: -2.5, tint: 0x5a6a7a, lines: ['Cinquenta anos acendendo o farol. Nunca apagou. Até agora.', 'O mar fala. O vento traduz.'] },

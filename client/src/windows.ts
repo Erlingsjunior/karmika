@@ -50,14 +50,15 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
   let shown = false; new MutationObserver(() => { const vis = el.style.display !== 'none' && el.style.display !== ''; if (vis && !shown) { bringFront(el); requestAnimationFrame(fit); } shown = vis; }).observe(el, { attributes: true, attributeFilter: ['style'] });
 }
 /** confirmação dentro do jogo (sem a caixa do navegador) */
-export function confirmBox(text: string, yes: string, onYes: () => void) {
+export function confirmBox(text: string, yes: string, onYes: () => void, o: { keep?: boolean; onNo?: () => void } = {}) {
   const d = document.createElement('div'); d.className = 'kconf';
   d.innerHTML = `<div class="pn"><p>${text}</p><div class="row"><button data-y>${yes}</button><button data-n>Cancelar</button></div></div>`;
   document.body.appendChild(d); bringFront(d);
   const close = () => { d.remove(); removeEventListener('keydown', key, true); };
-  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'Enter') { e.stopPropagation(); close(); onYes(); } };
+  const no = () => { close(); o.onNo?.(); };
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); no(); } else if (e.key === 'Enter') { e.stopPropagation(); close(); onYes(); } };
   addEventListener('keydown', key, true);
-  d.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-y]')) { close(); onYes(); } else if (t.closest('[data-n]') || t === d) close(); });
+  d.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-y]')) { close(); onYes(); } else if (t.closest('[data-n]') || (t === d && !o.keep)) no(); }); /* keep: clicar fora (andando pelo mapa) não fecha um convite importante */
 }
 /** escolha de duas saídas (ex.: poupar ou matar um elite rendido) */
 export function choiceBox(title: string, text: string, a: [string, () => void], b: [string, () => void]) {
