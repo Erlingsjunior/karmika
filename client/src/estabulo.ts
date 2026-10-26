@@ -140,5 +140,9 @@ export function createStable(ctx: StableCtx) {
   el.addEventListener('change', (e) => { const t = e.target as HTMLInputElement; if (!t.classList.contains('stren')) return; const c = cur(); if (!c) return; const v = t.value.trim().slice(0, 20); if (!v) return; c.name = v; save(); ctx.onChange(); ctx.log(`✎ Agora se chama ${v}.`, '#e8dcc0'); render(); });
   el.addEventListener('keydown', (e) => e.stopPropagation());
   function toggle(on = !open, focus?: { tab: 'pets' | 'mounts'; id?: string }) { open = on; el.style.display = on ? 'flex' : 'none'; if (focus) { tab = focus.tab; sel = focus.id ?? null; } if (on) { render(); last = performance.now(); requestAnimationFrame(frame); } }
-  return { adopt, migrate, tick, petStats, mountStats, toggle, get isOpen() { return open; }, get petId() { return S.pet && S.pets[S.pet] ? S.pet : null; }, get mountId() { return S.mount && S.mounts[S.mount] ? S.mount : null; }, owns: (id: string) => !!(S.pets[id] || S.mounts[id]), hearts };
+  /** clicar na coleira ou no peitoral da mochila: veste no pet que anda com você (o item sai da mochila; o que ele usava volta) */
+  function wear(id: string) { const G = GEAR[id]; if (!G) return false; const c = pet(); if (!c) { ctx.log('Nenhum pet anda com você. Abra o Estábulo (X).', '#ff9a8a'); return true; }
+    if (!ctx.take(id, 1)) return true; const old = c.gear[G.slot]; if (old) ctx.add(old, 1); c.gear[G.slot] = id; save(); ctx.onChange(); ctx.sfx?.('swap'); hearts(2);
+    ctx.log(`🐾 ${c.name} agora usa ${ctx.itemName(id)}${old ? ` (${ctx.itemName(old)} voltou para a mochila)` : ''}.`, '#9aff9a'); if (open) render(); return true; }
+  return { adopt, wear, migrate, tick, petStats, mountStats, toggle, get isOpen() { return open; }, get petId() { return S.pet && S.pets[S.pet] ? S.pet : null; }, get mountId() { return S.mount && S.mounts[S.mount] ? S.mount : null; }, owns: (id: string) => !!(S.pets[id] || S.mounts[id]), hearts };
 }
