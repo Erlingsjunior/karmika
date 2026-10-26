@@ -977,7 +977,7 @@ queueMicrotask(() => quests.addDoneHook((d) => { const st = npcHome(d.turnin ?? 
 function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | undefined) { if (!e?.pos || e.def?.passive) return; const st = settleAt(e.pos.x / T, e.pos.z / T, 25); if (st) align.add('vila', st.name, 0.25); }
 /* chegada e volta: quem é querido é recebido; a festa só acontece uma vez */
 let alignChk = 0, alignHere = '';
-function alignTick(dt: number) { alignChk -= dt; if (alignChk > 0) return; alignChk = 1; const st = hereSettle(), nm = st?.name ?? '';
+function alignTick(dt: number) { void dt; const nowA = performance.now(); if (nowA < alignChk) return; alignChk = nowA + 1000; /* relógio de verdade */ const st = hereSettle(), nm = st?.name ?? '';
   if (nm && nm !== alignHere) { const away = align.arrive(nm), t = align.tier('vila', nm);
     if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(align.flag('festa_' + nm) === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
     else if (away > 10 * 60000 && t.min <= -60) game.logMsg(`🏘 Em ${nm} as portas se fecham quando você passa (${t.name}).`, t.col); }
@@ -988,7 +988,7 @@ function alignTick(dt: number) { alignChk -= dt; if (alignChk > 0) return; align
 const alignPriceK = () => { const st = hereSettle(); return st ? align.tier('vila', st.name).price : 1; };
 /* a festa de despedida (Erling, 25/10): o centro da praça enfeitado, a carroça do anão com cerveja, churrasco e fogos por tudo o que você fez */
 addEventListener('karmika:align', () => align.toggle(true));
-let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number } | null = null;
+let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number; st: string; bards: { h: Hero3D; inst: string; ph: number }[]; crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[]; deeds: string[]; ballad: string[]; bl: number; coroOn: boolean; done: boolean } | null = null;
 /** a missão da história que te leva embora deste lugar (dada por alguém daqui, para entregar ou visitar outro lugar) */
 function leavingQuest(stName: string) { for (const id of Object.keys(quests.q.active)) { const d = quests.def(id); if (!d || questCat(d) !== 'story') continue; if (npcHome(d.giver)?.name !== stName) continue;
     const far = (d.turnin && npcHome(d.turnin)?.name && npcHome(d.turnin)!.name !== stName) || d.objs.some((o) => o.kind === 'visit' && o.poi !== stName && city.settlements.some((q) => q.name === o.poi)); if (far) return d; } return null; }
@@ -996,8 +996,21 @@ function leavingQuest(stName: string) { for (const id of Object.keys(quests.q.ac
 let festaAsked = '';
 function festaOffer(stName = hereSettle()?.name ?? '') { if (!stName || align.flag('festa_' + stName) || festa || festaAsked === stName) return false; const v = align.get('vila', stName); if (v < (stName === 'Karmika' ? 10 : 30)) return false;
   const d = leavingQuest(stName); if (!d) return false; festaAsked = stName; const host = d.giver;
-  confirmBox(`<b>${host}:</b> “Soubemos que você vai partir. ${stName} inteira quer te dar uma <b>festa de despedida</b> — um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com ${stName}: ${align.tier('vila', stName).name}</small>`, '🎉 Aceitar a festa', () => startFesta(stName));
+  confirmBox(`<b>${host}:</b> “Soubemos que você vai partir. ${stName} inteira quer te dar uma <b>festa de despedida</b> — um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com ${stName}: ${align.tier('vila', stName).name}</small>`, '🎉 Aceitar a festa', () => festaFade([`A notícia correu de casa em casa: ${profile?.name || 'o caminhante'} vai partir.`, `Ao cair da tarde, a praça de ${stName} se encheu de gente, de música e de cheiro de churrasco.`], () => startFesta(stName)));
   return true; }
+/** a tela esmaece, as palavras aparecem, e a tela abre de novo (a festa começando, ou o dia seguinte) */
+function festaFade(lines: string[], mid: () => void, after?: () => void) { const d = document.createElement('div'); d.id = 'fadefx'; d.innerHTML = lines.map((l, i) => `<p style="animation-delay:${0.9 + i * 1.6}s">${l}</p>`).join(''); document.body.appendChild(d);
+  requestAnimationFrame(() => d.classList.add('on')); const hold = 900 + lines.length * 1600 + 1600;
+  setTimeout(() => { try { mid(); } catch (e) { console.error(e); } }, hold - 400); setTimeout(() => { d.classList.remove('on'); d.classList.add('off'); }, hold); setTimeout(() => { d.remove(); after?.(); }, hold + 1600); }
+/** os feitos do herói contados pelo povo e cantados pelo bardo (do que o jogo sabe de verdade: missões, abates, nível, alma) */
+const DEED_OF: Record<string, string> = { h01: 'limpou o cemitério das ratazanas rubras', h02: 'encheu de lenha o fogão da Lúcia antes do inverno', h03: 'trouxe couro para o mercador', h05: 'desceu no Mausoléu dos Esquecidos e voltou', h06: 'enfrentou os mortos que não dormem', h07: 'achou o que as ratazanas escondiam', h08: 'trouxe o Bento de volta da igreja velha, vivo', n01: 'limpou o cemitério das ratazanas rubras' };
+function festaDeeds(stName: string) { const nm = profile?.name || 'o caminhante', out: string[] = [];
+  for (const id of quests.q.done) { const d = quests.def(id); if (!d || id.startsWith('b_')) continue; const home = npcHome(d.turnin ?? d.giver)?.name; if (home !== stName) continue; out.push(DEED_OF[id] ? `Eu vi! ${nm} ${DEED_OF[id]}!` : `Lembra de “${d.name}”? Foi ${nm} quem resolveu, e sem pedir nada em troca.`); }
+  out.push(`${game.st.kills} bichos no chão. Eu contei, eu contei!`, `Nível ${game.st.lvl} e ainda com cara de quem acordou ontem!`, state.karma >= 10 ? `Alma boa, essa. O Olho de Marghar sorri para ${nm}.` : state.karma <= -10 ? `Tem sombra nesse olhar… mas aqui ninguém esquece o que ${nm} fez pela vila.` : `Nem santo nem demônio: gente da gente, ${nm}.`);
+  return out; }
+function festaBallad(stName: string) { const nm = profile?.name || 'o caminhante', d = quests.q.done.map((id) => DEED_OF[id]).filter(Boolean) as string[];
+  return [`♪ Lá do vale de ${stName} veio ${nm}, de espada na mão ♪`, `♪ ${game.st.kills} bestas derrubou, sem tremer o coração ♪`, `♪ ${d[0] ? d[0].charAt(0).toUpperCase() + d[0].slice(1) : 'Ninguém viu medo nos seus olhos'}, e a vila inteira viu ♪`, `♪ ${d[1] ? d[1].charAt(0).toUpperCase() + d[1].slice(1) : 'Nem lobo nem morto o fez fugir'}, e o povo aplaudiu ♪`,
+    `♪ Encham as canecas, batam os pés no chão ♪`, `♪ Que o Olho guie ${nm} por cada nova estação ♪`, `♪ Bebam todos, bebam já: ${nm} vai partir ♪`, `♪ Mas em ${stName} há sempre um lugar à mesa para ${nm} ♪`]; }
 function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) => q.name === stName); const fo = city.props.filter((p) => p.kind === 'fountain' && stS && Math.hypot(p.gx - stS.x, p.gy - stS.y) < stS.radius + 4).sort((a, b) => (a.variant ?? 0) - (b.variant ?? 0))[0]; if (!fo) return; align.setFlag('festa_' + stName, 1); if (stName === 'Karmika') align.setFlag('festa_karmika', 1);
   const cx = (fo.gx + fo.w / 2) * T, cz = (fo.gy + fo.h / 2) * T, y0 = heightAt(cx, cz), g = new THREE.Group(); g.position.set(cx, y0, cz); scene.add(g);
   const tm = (c: number, e = 0) => new THREE.MeshToonMaterial({ color: c, gradientMap: toonRamp, emissive: e ? new THREE.Color(c).multiplyScalar(e) : undefined }), M = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; g.add(o); return o; };
@@ -1009,7 +1022,7 @@ function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) 
   const top = new THREE.Vector3(0, 6.2, 0); M(new THREE.CylinderGeometry(0.08, 0.1, 6.4, 6), pole, 0, 3.2, -0.01).visible = false;
   for (let i = 0; i < N; i++) { string(pts[i], pts[(i + 1) % N], 0.5); if (i % 2 === 0) string(pts[i], top, 0.9); }
   /* a carroça do anão: estrado, rodas, barris e o toldo listrado com a placa */
-  { const c = new THREE.Group(); c.position.set(R + 3.2, 0, 2); c.rotation.y = -Math.PI / 2; g.add(c); const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; c.add(o); return o; };
+  { const c = new THREE.Group(); c.position.set(R - 2.4, 0, 2.6); c.rotation.y = -Math.PI / 2 + 0.3; g.add(c); const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; c.add(o); return o; };
     const wd = tm(0x7a5434); add(new THREE.BoxGeometry(2.6, 0.18, 1.5), wd, 0, 0.75, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 14), tm(0x4a2e18), sx * 0.9, 0.42, sz * 0.82, Math.PI / 2);
     for (let i = 0; i < 3; i++) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.75, 12), tm(0x8a5a2a), -0.8 + i * 0.8, 1.22, 0); for (const yy of [-0.25, 0.25]) add(new THREE.TorusGeometry(0.33, 0.03, 4, 14), tm(0x3a3a40), -0.8 + i * 0.8, 1.22 + yy, 0, Math.PI / 2); }
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5), wd, sx * 1.25, 1.65, sz * 0.7);
@@ -1018,17 +1031,50 @@ function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) 
     const sc = document.createElement('canvas'); sc.width = 256; sc.height = 48; const sg = sc.getContext('2d')!; sg.fillStyle = '#2a1a10'; sg.fillRect(0, 0, 256, 48); sg.fillStyle = '#ffd890'; sg.font = 'bold 26px Georgia'; sg.textAlign = 'center'; sg.fillText('Cerveja de Brasaforja', 128, 33); const st2 = new THREE.CanvasTexture(sc); st2.colorSpace = THREE.SRGBColorSpace;
     const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.34), new THREE.MeshBasicMaterial({ map: st2 })); sign.position.set(0, 2.25, 0.86); c.add(sign); }
   /* o churrasco: fogueira, espeto com carne, mesas compridas com canecas */
-  M(new THREE.CylinderGeometry(0.7, 0.8, 0.2, 10), tm(0x5a5650), -R - 2.6, 0.1, -2); M(new THREE.ConeGeometry(0.4, 0.7, 6), new THREE.MeshBasicMaterial({ color: 0xff8a2a }), -R - 2.6, 0.5, -2);
-  for (const sz of [-0.6, 0.6]) M(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 5), pole, -R - 2.6, 0.7, -2 + sz); M(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 5), tm(0x3a3a40), -R - 2.6, 1.35, -2).rotation.x = Math.PI / 2; M(new THREE.SphereGeometry(0.3, 10, 8), tm(0x9a4a2a), -R - 2.6, 1.3, -2).scale.set(1, 0.7, 1.6);
-  for (const [x, z, ry] of [[-3.5, R + 3, 0], [3.5, R + 3, 0], [0, -R - 3, 0]] as const) { M(new THREE.BoxGeometry(3.2, 0.1, 0.9), tm(0x8a6a44), x, 0.82, z, ry); for (const sx of [-1.4, 1.4]) M(new THREE.BoxGeometry(0.1, 0.8, 0.8), pole, x + sx, 0.4, z, ry); for (let i = 0; i < 4; i++) M(new THREE.CylinderGeometry(0.07, 0.06, 0.16, 8), tm(0xc8a050), x - 1.2 + i * 0.8, 0.95, z + 0.15, ry); }
-  festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz };
+  M(new THREE.CylinderGeometry(0.7, 0.8, 0.2, 10), tm(0x5a5650), -R + 2.4, 0.1, 2.4); M(new THREE.ConeGeometry(0.4, 0.7, 6), new THREE.MeshBasicMaterial({ color: 0xff8a2a }), -R + 2.4, 0.5, 2.4);
+  for (const sz of [-0.6, 0.6]) M(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 5), pole, -R + 2.4, 0.7, 2.4 + sz); M(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 5), tm(0x3a3a40), -R + 2.4, 1.35, 2.4).rotation.x = Math.PI / 2; M(new THREE.SphereGeometry(0.3, 10, 8), tm(0x9a4a2a), -R + 2.4, 1.3, 2.4).scale.set(1, 0.7, 1.6);
+  for (const [x, z, ry] of [[-3.2, R - 2.2, 0], [3.2, R - 2.2, 0]] as const) { M(new THREE.BoxGeometry(3.2, 0.1, 0.9), tm(0x8a6a44), x, 0.82, z, ry); for (const sx of [-1.4, 1.4]) M(new THREE.BoxGeometry(0.1, 0.8, 0.8), pole, x + sx, 0.4, z, ry); for (let i = 0; i < 4; i++) M(new THREE.CylinderGeometry(0.07, 0.06, 0.16, 8), tm(0xc8a050), x - 1.2 + i * 0.8, 0.95, z + 0.15, ry); }
+  /* o palco dos artistas: tablado com degraus, toldo vermelho e dourado, e três músicos — alaúde, tambor e flauta — com o Bardo à frente */
+  const stage = new THREE.Group(); stage.position.set(0, 0, -R + 1.6); g.add(stage); { const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; stage.add(o); return o; };
+    const wd = tm(0x8a5a32), wd2 = tm(0x5a3a20); add(new THREE.BoxGeometry(6, 0.6, 3), wd, 0, 0.3, 0); for (let i = 0; i < 3; i++) add(new THREE.BoxGeometry(1.6, 0.2, 0.4), wd2, 0, 0.1 + i * 0.2, 1.7 - i * 0.2).scale.y = 1;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.09, 0.1, 3.2, 6), wd2, sx * 2.8, 2.2, sz * 1.3);
+    const cv = document.createElement('canvas'); cv.width = 64; cv.height = 16; const cg = cv.getContext('2d')!; for (let i = 0; i < 8; i++) { cg.fillStyle = i % 2 ? '#d9b45a' : '#9a2a2a'; cg.fillRect(i * 8, 0, 8, 16); } const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; tx.wrapS = THREE.RepeatWrapping; tx.repeat.set(2, 1);
+    add(new THREE.BoxGeometry(6.2, 0.08, 3.2), new THREE.MeshToonMaterial({ map: tx, gradientMap: toonRamp }), 0, 3.85, 0); for (let i = 0; i < 9; i++) add(new THREE.ConeGeometry(0.33, 0.5, 3), new THREE.MeshToonMaterial({ color: i % 2 ? 0xd9b45a : 0x9a2a2a, gradientMap: toonRamp }), -2.8 + i * 0.7, 3.55, 1.6).rotation.x = Math.PI;
+    for (const sx of [-1, 1]) { add(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd080 }), sx * 2.8, 3.6, 1.3); } }
+  const bards: { h: Hero3D; inst: string; ph: number }[] = [];
+  for (const [i, [, tint, inst]] of ([['Bardo Eirik', 0x6a2a6a, 'alaude'], ['Tamborileira Sigrun', 0x2a5a3a, 'tambor'], ['Flautista Ove', 0x7a5a2a, 'flauta']] as const).entries()) {
+    const h = createCharacter('nordic', { static: true, civil: 'human', cloth: tint }); h.root.scale.setScalar(1); h.root.position.set(-1.6 + i * 1.6 + (i === 0 ? 0 : 0), 0.6, 0.2 - (i === 0 ? -0.6 : 0)); h.root.rotation.y = 0; stage.add(h.root);
+    const im = new THREE.Group(); if (inst === 'alaude') { const body = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), tm(0x9a6a2a)); body.scale.set(1, 1.3, 0.5); im.add(body); const neck = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.5, 0.04), tm(0x5a3a1a)); neck.position.set(0.25, 0.25, 0); neck.rotation.z = -0.9; im.add(neck); im.position.set(0.05, 1.05, 0.28); im.rotation.z = 0.5; }
+    else if (inst === 'tambor') { const dr = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16), tm(0xe8dcc0)); dr.rotation.x = Math.PI / 2 - 0.3; im.add(dr); im.position.set(0, 1.1, 0.32); }
+    else { const fl = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.5, 6), tm(0x8a6a3a)); fl.rotation.z = Math.PI / 2; im.add(fl); im.position.set(0.12, 1.45, 0.25); }
+    h.root.add(im); bards.push({ h, inst, ph: i * 1.3 }); }
+  /* o povo da vila vem para a praça: em roda, de frente para o palco e para a fonte (volta para casa quando a festa acaba) */
+  const crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[] = [];
+  { const mine = npcSys.npcs.filter((n) => !n.def.route && settleAt(n.def.x / T, n.def.z / T, 6)?.name === stName).slice(0, 18);
+    mine.forEach((n, i) => { crowd.push({ n, ox: n.def.x, oz: n.def.z, or: n.def.radius }); const a = (i / Math.max(1, mine.length)) * 6.283 + 0.3, rr = 5.2 + (i % 3) * 1.1; n.def.x = cx + Math.cos(a) * rr; n.def.z = cz + Math.sin(a) * rr; n.def.radius = 0.6; n.target = null; n.wait = 0; }); }
+  festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz, st: stName, bards, crowd, deeds: festaDeeds(stName), ballad: festaBallad(stName), bl: 0, coroOn: false, done: false };
   inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', stName, 10, 'a festa de despedida');
-  audio.chime(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
-const FESTA_LEN = 180000;
-function festaTick() { if (!festa) return; const el = performance.now() - festa.t0;
-  if (el < FESTA_LEN) { if (Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) < 70) { for (let i = 0; i < 2; i++) evFx('firework', festa.x + (Math.random() - 0.5) * 30, heightAt(festa.x, festa.z) + 14 + Math.random() * 10, festa.z + (Math.random() - 0.5) * 30); if (Math.random() < 0.35) audio.boom();
-      festa.talk -= 1; if (festa.talk <= 0) { festa.talk = 3 + Math.random() * 3; const L = ['À saúde de {nome}!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', 'Olha os fogos! Olha os fogos!', 'Essa carne está divina, quem assou?', 'Que o caminho seja leve, {nome}!', 'Alguém segura o Bento antes que ele cante de novo.', 'Dança, {nome}! Hoje a festa é sua!']; npcSys.say(L[Math.floor(Math.random() * L.length)].replace(/\{nome\}/g, profile?.name || 'caminhante'), heroPos); } } }
-  else if (el > FESTA_LEN && Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) > 160) { scene.remove(festa.g); festa = null; } }
+  audio.festaStart(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
+const FESTA_LEN = 240000; /* 4 minutos */
+const say2 = (n: (typeof npcSys.npcs)[number], line: string, secs = 4.5) => { const q = n as unknown as { bark?: string; barkT?: number }; q.bark = line; q.barkT = secs; };
+function festaTick() { if (!festa || festa.done) return; const F = festa, el = performance.now() - F.t0, nm = profile?.name || 'caminhante';
+  if (Math.hypot(heroPos.x - F.x, heroPos.z - F.z) < 80) {
+    if (Math.random() < 0.55) evFx('firework', F.x + (Math.random() - 0.5) * 34, heightAt(F.x, F.z) + 14 + Math.random() * 12, F.z + (Math.random() - 0.5) * 34); if (Math.random() < 0.25) audio.boom();
+    /* o coro: quando a música vira coro, a roda inteira canta o seu nome */
+    const coro = audio.festaPart === 'coro'; if (coro && !F.coroOn) { F.coroOn = true; const L = [`${nm} é um bom companheirooo!`, `${nm} é um bom companheirooo!`, `${nm} é um bom companheirooo!`, 'Ninguém pode negaaar!'];
+      F.crowd.forEach((c, i) => { setTimeout(() => say2(c.n, L[Math.min(3, Math.floor(i / Math.max(1, F.crowd.length / 4)))] + ' 🍺', 3.6), i * 220); });
+      L.forEach((l, i) => setTimeout(() => { const c = F.crowd[i % Math.max(1, F.crowd.length)]; if (c) say2(c.n, l + ' 🍺', 3); }, i * 3000)); }
+    if (!coro) F.coroOn = false;
+    /* o bardo canta a balada dos seus feitos; o povo conta as suas histórias */
+    F.talk -= 1; if (F.talk <= 0) { F.talk = 4; const bard = F.bards[0]; if (!coro && bard) { const line = F.ballad[F.bl++ % F.ballad.length]; const e = bard.h as unknown as { root: THREE.Object3D }; void e; game.dmgText(new THREE.Vector3().setFromMatrixPosition(bard.h.root.matrixWorld).setY(heightAt(F.x, F.z) + 3.4), line, false, '#ffe08a'); }
+      const c = F.crowd[Math.floor(Math.random() * F.crowd.length)]; if (c && !coro) say2(c.n, Math.random() < 0.6 ? F.deeds[Math.floor(Math.random() * F.deeds.length)] : ['À saúde de ' + nm + '!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', 'Essa carne está divina!', 'Que o caminho seja leve, ' + nm + '!', 'Dança, ' + nm + '! Hoje a festa é sua!'][Math.floor(Math.random() * 5)]); }
+    /* o povo bebe e dança: de vez em quando cada um ergue a caneca */
+    for (const c of F.crowd) if (Math.random() < 0.08 && !c.n.hero.acting) c.n.hero.act('drink');
+  }
+  if (el > FESTA_LEN) { F.done = true; festaFade(['A música foi morrendo devagar, uma vela de cada vez.', 'No dia seguinte, com a cabeça ainda girando e o coração cheio, você está pronto para partir.'], () => festaEnd()); } }
+/* bardos tocando: o corpo balança no ritmo (no quadro) */
+function festaAnim(dt: number, t: number) { if (!festa) return; for (const b of festa.bards) { b.ph += dt; b.h.update(dt, t, 0, null); b.h.root.position.y = 0.6 + Math.abs(Math.sin(b.ph * 5.2)) * 0.05; b.h.root.rotation.y = Math.sin(b.ph * 1.3) * 0.25; } }
+function festaEnd() { if (!festa) return; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; game.logMsg('☀ Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
 function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
   state.karma = Math.max(-100, Math.min(100, state.karma + r.karma)); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
@@ -2677,7 +2723,7 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { enterDg: (i: number) => enterDungeon(dgs.entrances[i]), city: () => city, scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, falls, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
+if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { enterDg: (i: number) => enterDungeon(dgs.entrances[i]), city: () => city, scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, falls, align, startFesta, festaFade, festaOffer, leavingQuest, npcHome, hereSettle, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
 function resumeSoul() { if (!profile || limiar.active) return; if (soul.s.pending === 'choose') unbind(); else if (soul.s.pending === 'reborn') unbind(undefined, 'reborn'); }
 /* os fôlegos ficam à vista, em cima do orbe da vida (só depois que o Olho abre: antes o Fio não se gasta) */
 setInterval(() => { const el = document.getElementById('folegos'); if (!el) return; soul.regen(); const on = !!profile?.eye && game.st.lvl >= FRAY_LVL;
@@ -3267,7 +3313,7 @@ function frameBody() {
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
   try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
-  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); }
+  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t);
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);
@@ -3369,7 +3415,7 @@ function frameBody() {
     let mood: 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss' = 'explore'; const hx2 = state.fx * T, hz2 = state.fy * T;
     for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return') continue; if (Math.hypot(e.pos.x - hx2, e.pos.z - hz2) > 26) continue; const boss = e.hpMax > 3000 || ['bishop', 'prince'].includes(e.type), el = boss || e.hpMax > 1500 || ['tormentor', 'treant', 'werewolf'].includes(e.type); if (boss) { mood = 'boss'; break; } if (el) mood = 'elite'; }
     if (mood === 'explore') { if (inside && (inside.dg || inside.crypt)) mood = 'dungeon'; else if (!inside) { const b = biomeAt(Math.floor(state.fx), Math.floor(state.fy)); if (b === 'blight' || b === 'volcanic' || city.settlements.some((v) => (v.name === 'Gorvath' || v.name === 'Corvoscuro') && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 18)) mood = 'evil'; else if (city.settlements.some((v) => Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 4)) mood = 'town'; } }
-    audio.setMood(mood); }
+    audio.setMood(festa && Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) < 80 ? 'festa' : mood); }
   { const zz = zoneW(Math.floor(state.fx), Math.floor(state.fy)); audio.update(dt, { fallDist: inside ? 999 : falls.update(dt, heroPos), night, gust, fireDist: inside ? 3 : objs.torches.reduce((m2, tc) => Math.min(m2, tc.pos.distanceTo(heroPos)), 1e3), waterDist: inside ? 99 : fountainPos.distanceTo(heroPos), riverDist: inside ? 99 : Math.max(0, waterSD(heroPos.x, heroPos.z)), forest: zz.forest, snow: zz.snow, inside: !!inside }); }
   { // jatos da fonte: de cada bica cai água em arco; do topo sobe um filete e cai em cortina
     const fp = objs.fountainPos();

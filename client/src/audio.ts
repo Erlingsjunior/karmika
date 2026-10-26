@@ -1,7 +1,7 @@
 /** Som 100% procedural (WebAudio), sem arquivos: ambiente (vento baixo, pássaros, grilos, corujas, uivos, água, fogo),
  *  passos por terreno, golpes/magias, moedas e uma trilha ambiente gerada (pentatônica, pads + melodia esparsa). */
 export type Surface = 'dirt' | 'stone' | 'grass' | 'snow' | 'water' | 'wood' | 'sand' | 'mud';
-export type Mood = 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss';
+export type Mood = 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss' | 'festa';
 export type SpellKind = 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy';
 
 export class AudioEngine {
@@ -283,12 +283,46 @@ export class AudioEngine {
   /** o clima da trilha: explorar, vila, masmorra, lugar maligno, luta com elite, chefe */
   mood: Mood = 'explore'; private beat = 0; private beatN = 0;
   setMood(m: Mood) { if (m === this.mood) return; this.mood = m; this.nextNote = 0.3; this.beat = 0; }
-  private drum(f: number, vol: number, dly = 0, noise = 0.6) { this.tone(f, f * 0.45, 0.28, vol, 'sine', dly, this.mus, 0, 0.003); this.burst('lowpass', 900, 0.8, 0.09, vol * noise, 1, this.mus, 0, 0.002); }
+  private drum(f: number, vol: number, dly = 0, noise = 0.6) { this.tone(f, f * 0.45, 0.28, vol, 'sine', dly, this.mus, 0, 0.003); const nb = () => this.burst('lowpass', 900, 0.8, 0.09, vol * noise, 1, this.mus, 0, 0.002); if (dly > 0.01) setTimeout(nb, dly * 1000); else nb(); }
+  /* ---------- A FESTA (25/10): a giga do bardo, original, em ré dórico, 6/8 — alaúde, flauta, bodhrán, pandeiro e o bordão —
+     e o coro do povo: "Ele é um bom companheiro" (a melodia tradicional, domínio público). Uma volta: giga A·B (alaúde), coro, giga A·B (flauta). ---------- */
+  private fz = { t: 0, step: 0, part: 0 }; festaPart = 'giga';
+  private sing(f: number, dur: number, vol: number, delay: number) { const ctx = this.ctx!, t0 = ctx.currentTime + delay;
+    for (const [mul, det, pan] of [[1, -6, -0.4], [1, 5, 0.3], [0.5, 0, 0], [1, 12, 0.1]] as const) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * mul; o.detune.value = det;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5 + Math.random(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.detune);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol * (mul < 1 ? 0.6 : 0.45), t0 + 0.05); g.gain.setValueAtTime(vol * (mul < 1 ? 0.6 : 0.45), t0 + dur * 0.8); g.gain.linearRampToValueAtTime(0, t0 + dur);
+      const pn = ctx.createStereoPanner(); pn.pan.value = pan; for (const [ff, q, a] of [[800, 5, 1], [1200, 7, 0.5], [2600, 9, 0.18]] as const) { const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = ff; bp.Q.value = q; const ag = ctx.createGain(); ag.gain.value = a; o.connect(bp); bp.connect(ag); ag.connect(g); }
+      g.connect(pn); pn.connect(this.mus); o.start(t0); lfo.start(t0); o.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05); } }
+  private flute(f: number, dur: number, vol: number, delay: number) { const ctx = this.ctx!, t0 = ctx.currentTime + delay, o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5.5; lg.gain.value = f * 0.008; lfo.connect(lg); lg.connect(o.frequency);
+    const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.03); g.gain.setValueAtTime(vol * 0.85, t0 + dur * 0.7); g.gain.linearRampToValueAtTime(0, t0 + dur); o.connect(g); g.connect(this.mus); o.start(t0); lfo.start(t0); o.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
+    this.burst('bandpass', f * 2, 3, Math.min(0.08, dur), vol * 0.25, 1, this.mus, 0, 0.005); }
+  private festaMusic(dt: number) {
+    const now0 = this.ctx!.currentTime; this.pads[0].g.gain.setTargetAtTime(0.07, now0, 1); this.pads[1].g.gain.setTargetAtTime(0.05, now0, 1);
+    const E8 = 0.2, D = 293.66, f = (st: number) => D * Math.pow(2, st / 12);
+    const A = [[7, 3, 7, 12, 7, 3], [5, 2, 5, 10, 5, 2], [7, 3, 7, 12, 14, 15], [14, 12, 10, 7, -1, -1], [7, 3, 7, 12, 7, 3], [5, 2, 5, 10, 5, 2], [3, 5, 7, 10, 9, 7], [0, -1, -1, 0, -1, -1]];
+    const Bp = [[12, 14, 15, 14, 12, 10], [9, 10, 12, 10, 9, 7], [12, 14, 15, 17, 15, 14], [12, -1, 10, 7, -1, -1], [12, 14, 15, 14, 12, 10], [9, 10, 12, 10, 9, 7], [5, 7, 9, 10, 9, 7], [0, -1, -1, 0, -1, -1]];
+    /* o coro em ré maior: "Ele é um bom com-pa-nhei-ro" ×3 e "nin-guém po-de ne-gar" — [semitom, colcheias] */
+    const CORO: [number, number][] = [[-3, 1], [2, 2], [2, 1], [2, 2], [0, 1], [2, 2], [4, 1], [2, 3], [2, 2], [0, 1], [0, 2], [0, 1], [0, 2], [-1, 1], [0, 3],
+      [-1, 2], [-3, 1], [-5, 2], [-3, 1], [-1, 2], [0, 1], [2, 3], [7, 2], [7, 1], [7, 3], [5, 2], [4, 1], [2, 6]];
+    this.fz.t -= dt; if (this.fz.t > 0) return;
+    const part = this.fz.part % 4; // 0 giga (alaúde) · 1 coro · 2 giga (flauta) · 3 coro
+    if (part === 1 || part === 3) { this.festaPart = 'coro'; let tt = 0; for (const [st, n] of CORO) { const d = n * E8 * 1.15; this.sing(f(st), d * 0.95, 0.05, tt); if (n >= 2) this.pluck(f(st) / 2, d, 0.05, tt, 0); tt += d; }
+      for (let b = 0; b < tt / (E8 * 3.45); b++) { this.drum(70, 0.22, b * E8 * 3.45); this.tone(7400, 6800, 0.05, 0.008, 'square', b * E8 * 3.45 + E8 * 1.7, this.mus, 0.3, 0.001); }
+      this.fz.t = tt + 0.4; this.fz.part++; return; }
+    this.festaPart = 'giga'; const tune = [...A, ...A, ...Bp, ...Bp]; let tt = 0;
+    tune.forEach((bar, bi) => { bar.forEach((st, k) => { const dly = tt + k * E8; if (st >= 0) { if (part === 0) this.pluck(f(st), E8 * 1.6, 0.075, dly, -0.2); else { this.flute(f(st) * 2, E8 * 0.95, 0.045, dly); this.pluck(f(st), E8 * 1.4, 0.04, dly, -0.3); } } });
+      /* bordão e acordes do alaúde de acompanhamento */ this.pluck(D / 2, E8 * 3, 0.06, tt, 0.2); this.pluck(D * 0.75, E8 * 3, 0.04, tt + E8 * 3, 0.2);
+      /* bodhrán: forte no 1, médio no 4, toquinhos; pandeiro no 2 e no 5 */ this.drum(66, 0.32, tt); this.drum(80, 0.18, tt + E8 * 3); if (bi % 2) this.drum(110, 0.08, tt + E8 * 5, 0.9);
+      for (const k of [1, 4]) { this.tone(7400, 6800, 0.05, 0.008, 'square', tt + k * E8, this.mus, (k - 2.5) * 0.2, 0.001); this.tone(9800, 9000, 0.04, 0.006, 'square', tt + k * E8 + 0.012, this.mus, 0, 0.001); }
+      tt += E8 * 6; });
+    this.fz.t = tt; this.fz.part++; }
+  festaStart() { this.fz = { t: 0, step: 0, part: 0 }; this.setMood('festa'); }
   private tickMusic(dt: number, night: number, inside: boolean) {
     if (!this.music) return;
     { const M = this.mood, now0 = this.ctx!.currentTime;
-      const ROOT: Record<Mood, [number, number]> = { explore: [73.4, 110], town: [98, 146.8], dungeon: [55, 77.8], evil: [51.9, 73.4], elite: [65.4, 98], boss: [55, 82.4] };
+      const ROOT: Record<Mood, [number, number]> = { explore: [73.4, 110], town: [98, 146.8], dungeon: [55, 77.8], evil: [51.9, 73.4], elite: [65.4, 98], boss: [55, 82.4], festa: [73.4, 110] };
       this.pads[0].o.frequency.setTargetAtTime(ROOT[M][0], now0, 1.5); this.pads[1].o.frequency.setTargetAtTime(ROOT[M][1], now0, 1.5);
+      if (M === 'festa') { this.festaMusic(dt); return; }
       if (M === 'elite' || M === 'boss') { // tambores de guerra e um riff em menor harmônica
         this.musicT += dt; const bpm = M === 'boss' ? 148 : 118, spb = 60 / bpm; this.beat -= dt; this.pads[0].g.gain.setTargetAtTime(0.16, now0, 0.5); this.pads[1].g.gain.setTargetAtTime(0.12, now0, 0.5);
         if (this.beat <= 0) { this.beat += spb / 2; const b = this.beatN++ % 16, root = M === 'boss' ? 110 : 130.8, sc = [0, 2, 3, 5, 7, 8, 11, 12];
