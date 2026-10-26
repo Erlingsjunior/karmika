@@ -23,7 +23,7 @@ function read(): Slots {
     write(s);
   }
   while (s.meta.length < NSLOT) s.meta.push(null); s.servers ??= [];
-  if ((s as Slots & { picv?: number }).picv !== 2) { for (const m of s.meta) if (m) m.pic = null; (s as Slots & { picv?: number }).picv = 2; write(s); } // retratos tirados pela versão antiga (escuros/errados): refaz ao jogar
+  if ((s as Slots & { picv?: number }).picv !== 3) { for (const m of s.meta) if (m) m.pic = null; (s as Slots & { picv?: number }).picv = 3; write(s); } // retratos tirados pela versão antiga (escuros/errados): refaz ao jogar
   if (!s.meta[s.active]) { try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) { s.meta[s.active] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'm', pic: null, server: null, t: Date.now() }; write(s); } } catch { /* */ } }
   return s;
 }

@@ -1,7 +1,7 @@
 /** Janelas flutuantes (estilo WoW): várias abertas ao mesmo tempo, arrastáveis pelo título, posição lembrada,
  *  a última clicada fica por cima. Não escurecem nem travam o jogo. */
 const KEY = 'karmika.win.v1';
-let pos: Record<string, { x: number; y: number }> = {};
+let pos: Record<string, { x: number; y: number; w?: number; h?: number }> = {};
 try { pos = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { pos = {}; }
 let zTop = 40;
 export function bringFront(el: HTMLElement) { el.style.zIndex = String(++zTop); }
@@ -14,20 +14,40 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
     else { el.style.left = def.left ?? 'auto'; el.style.right = def.right ?? 'auto'; el.style.top = def.top; if (!def.left) el.style.left = 'auto'; }
   };
   apply();
+  /* nunca sai da tela (Erling, 25/10): a janela inteira fica dentro das bordas; se for alta demais, rola por dentro */
+  const pnOf = () => el.querySelector(':scope > .pn') as HTMLElement | null;
+  const fit = () => { if (el.style.display === 'none' || !el.offsetParent && getComputedStyle(el).position !== 'fixed') return; const pn = pnOf(); if (!pn) return; const z = parseFloat(getComputedStyle(pn).zoom || '1') || 1;
+    let r = el.getBoundingClientRect(); if (!r.width) return; let L = r.left, T = r.top;
+    if (r.width <= innerWidth) { if (L + r.width > innerWidth - 2) L = innerWidth - r.width - 2; if (L < 2) L = 2; } else L = 0;
+    if (T < 2) T = 2; const maxH = innerHeight - T - 6; pn.style.maxHeight = Math.max(160, maxH) / z + 'px';
+    r = el.getBoundingClientRect(); if (T + r.height > innerHeight - 4) T = Math.max(2, innerHeight - r.height - 4);
+    if (Math.abs(L - r.left) > 0.5 || Math.abs(T - r.top) > 0.5) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.right = 'auto'; } };
+  const applySize = () => { const p = pos[id]; if (p?.w && p?.h) { el.classList.add('sized'); el.style.setProperty('--fw-w', p.w + 'px'); el.style.setProperty('--fw-h', p.h + 'px'); } };
+  applySize(); addEventListener('resize', fit); new ResizeObserver(() => fit()).observe(el);
+  /* alça de redimensionar no canto inferior direito */
+  const grip = document.createElement('div'); grip.className = 'rz'; grip.title = 'Arraste para mudar o tamanho da janela (duplo clique: tamanho padrão)'; el.appendChild(grip);
+  new MutationObserver(() => { if (grip.parentElement !== el || el.lastElementChild !== grip) el.appendChild(grip); }).observe(el, { childList: true });
+  let rz: { x: number; y: number; w: number; h: number; z: number } | null = null;
+  grip.addEventListener('pointerdown', (e) => { const pn = pnOf(); if (!pn) return; const z = parseFloat(getComputedStyle(pn).zoom || '1') || 1, r = pn.getBoundingClientRect(); rz = { x: e.clientX, y: e.clientY, w: r.width / z, h: r.height / z, z }; grip.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); bringFront(el); });
+  grip.addEventListener('pointermove', (e) => { if (!rz) return; const r = el.getBoundingClientRect(); const w = Math.max(260, Math.min((innerWidth - r.left - 4) / rz.z, rz.w + (e.clientX - rz.x) / rz.z)), h = Math.max(180, Math.min((innerHeight - r.top - 6) / rz.z, rz.h + (e.clientY - rz.y) / rz.z));
+    pos[id] = { ...(pos[id] ?? { x: r.left, y: r.top }), w: Math.round(w), h: Math.round(h) }; applySize(); });
+  const rzEnd = () => { if (!rz) return; rz = null; try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } fit(); };
+  grip.addEventListener('pointerup', rzEnd); grip.addEventListener('pointercancel', rzEnd);
+  grip.addEventListener('dblclick', (e) => { e.stopPropagation(); const p = pos[id]; if (p) { delete p.w; delete p.h; } el.classList.remove('sized'); el.style.removeProperty('--fw-w'); el.style.removeProperty('--fw-h'); try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } fit(); });
   let drag: { dx: number; dy: number } | null = null;
   el.addEventListener('pointerdown', (e) => {
     bringFront(el);
-    const t = e.target as HTMLElement; const h = t.closest('h2'); if (!h || t.closest('button,input,select')) return;
+    const t = e.target as HTMLElement; if (t.closest('.rz')) return; const h = t.closest('h2'); if (!h || t.closest('button,input,select')) return;
     const r = el.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); e.preventDefault();
   });
   el.addEventListener('pointermove', (e) => {
     if (!drag) return; const x = e.clientX - drag.dx, y = e.clientY - drag.dy;
-    el.style.left = Math.max(0, Math.min(innerWidth - 120, x)) + 'px'; el.style.top = Math.max(0, Math.min(innerHeight - 60, y)) + 'px'; el.style.right = 'auto';
+    el.style.left = Math.max(0, Math.min(innerWidth - 120, x)) + 'px'; el.style.top = Math.max(0, Math.min(innerHeight - 60, y)) + 'px'; el.style.right = 'auto'; fit();
   });
-  const end = () => { if (!drag) return; drag = null; const r = el.getBoundingClientRect(); pos[id] = { x: r.left, y: r.top }; try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } };
+  const end = () => { if (!drag) return; drag = null; fit(); const r = el.getBoundingClientRect(); pos[id] = { ...pos[id], x: r.left, y: r.top }; try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
   // ao abrir, vem para a frente
-  let shown = false; new MutationObserver(() => { const vis = el.style.display !== 'none' && el.style.display !== ''; if (vis && !shown) bringFront(el); shown = vis; }).observe(el, { attributes: true, attributeFilter: ['style'] });
+  let shown = false; new MutationObserver(() => { const vis = el.style.display !== 'none' && el.style.display !== ''; if (vis && !shown) { bringFront(el); requestAnimationFrame(fit); } shown = vis; }).observe(el, { attributes: true, attributeFilter: ['style'] });
 }
 /** confirmação dentro do jogo (sem a caixa do navegador) */
 export function confirmBox(text: string, yes: string, onYes: () => void) {
@@ -72,7 +92,7 @@ export function dragAll() {
   addEventListener('pointermove', (e) => { if (!d) return; free[d.k] = { x: d.ox + e.clientX - d.x, y: d.oy + e.clientY - d.y }; applyFree(d.p, d.k); });
   let dragEnd = 0; addEventListener('click', (e) => { if (performance.now() - dragEnd < 250) { e.stopPropagation(); e.preventDefault(); } }, true); // soltar o arrasto não conta como clique (não fecha a janela)
   addEventListener('pointerup', () => { if (!d) return; const { p, k } = d; d = null; p.classList.remove('dragging'); dragEnd = performance.now();
-    const r = p.getBoundingClientRect(), o = free[k]; if (o) { if (r.top < 0) o.y -= r.top; if (r.top > innerHeight - 50) o.y -= r.top - (innerHeight - 50); if (r.right < 80) o.x += 80 - r.right; if (r.left > innerWidth - 80) o.x -= r.left - (innerWidth - 80); applyFree(p, k); }
+    const r = p.getBoundingClientRect(), o = free[k]; if (o) { /* a janela inteira dentro da tela */ if (r.width <= innerWidth) { if (r.left < 0) o.x -= r.left; else if (r.right > innerWidth) o.x -= r.right - innerWidth; } if (r.height <= innerHeight) { if (r.top < 0) o.y -= r.top; else if (r.bottom > innerHeight) o.y -= r.bottom - innerHeight; } else if (r.top < 0) o.y -= r.top; applyFree(p, k); }
     try { localStorage.setItem(FREE_KEY, JSON.stringify(free)); } catch { /* */ } });
   addEventListener('dblclick', (e) => { const t = e.target as HTMLElement; const head = t?.closest('h2, .ph, .pn-head'); const p = head?.closest('.pn, .panel') as HTMLElement | null; if (!p || p.closest(SKIP)) return;
     const k = keyOf(p); delete free[k]; applyFree(p, k); try { localStorage.setItem(FREE_KEY, JSON.stringify(free)); } catch { /* */ } });

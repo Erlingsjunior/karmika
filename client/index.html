@@ -281,6 +281,10 @@
   .fw { background: none !important; align-items: flex-start !important; justify-content: flex-start !important; }
   .fw > .pn { box-shadow: 0 14px 40px rgba(0,0,0,.7); } .fw .pn h2 { cursor: move; user-select: none; }
   .fw .pn { max-height: 86vh; }
+  .fw.sized > .pn { width: var(--fw-w) !important; height: var(--fw-h) !important; max-width: 98vw !important; box-sizing: border-box; }
+  .fw > .rz { position: absolute; right: 2px; bottom: 2px; width: 18px; height: 18px; cursor: nwse-resize; z-index: 3; pointer-events: auto; background: linear-gradient(135deg, transparent 0 46%, #c9a24a 46% 54%, transparent 54% 64%, #c9a24a 64% 72%, transparent 72% 82%, #c9a24a 82% 90%, transparent 90%); opacity: .7; }
+  .fw > .rz:hover { opacity: 1; filter: drop-shadow(0 0 3px #ffd24a); }
+  .fw { position: fixed; }
   /* cinemáticas: barras de cinema, título, texto subindo; o HUD some */
   body.cinema > *:not(.cine):not(canvas):not(#game):not(#fade):not(script):not(style) { opacity: 0 !important; pointer-events: none !important; transition: opacity .8s; }
   /* o Olho sai do brasão, sobe ao centro e vê */
@@ -563,9 +567,10 @@
   @keyframes gpulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 
   /* mochila com bolsas */
-  .bagpn { width: 470px; max-width: 94vw; display: flex; flex-direction: column; overflow: hidden !important; box-sizing: border-box; }
+  .bagpn { width: 860px; max-width: 96vw; display: flex; flex-direction: column; overflow: hidden !important; box-sizing: border-box; }
   .bagpn h2 { flex-wrap: wrap; row-gap: 4px; } .bagpn h2 .cap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: flex; flex-direction: column; gap: 8px; }
+  .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(392px, 1fr)); gap: 8px; align-content: start; align-items: start; }
+  .bagsx > .profgo { grid-column: 1 / -1; }
   .acc { background: rgba(0,0,0,.25); border: 1px solid #4a3c28; } .acc.spec { border-color: #6a5430; }
   .acc > h3 { margin: 0; padding: 6px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; } .acc > h3:hover { background: rgba(255,224,138,.06); }
   .acc > h3 small { margin-left: auto; color: #a89878; font-size: 11px; letter-spacing: 1px; } .acc .car { font-style: normal; display: inline-block; transition: transform .15s; color: #c9a24a; }
