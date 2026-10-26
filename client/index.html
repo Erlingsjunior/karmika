@@ -423,19 +423,21 @@
   #menu.open { display: grid; }
   #menu .panel > div { min-height: 0; overflow: hidden; display: flex; flex-direction: column; } #menu .page.on { display: block; flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #7d5a2c transparent; }
   body.nodmg .dmg { display: none; }
-  #menu .panel { width: min(760px, 92vw); height: min(600px, 88vh); border: 1px solid #8a6a38; background: linear-gradient(180deg, #1b1222, #0e0913); box-shadow: 0 0 40px #000, 0 0 0 3px #0a0610 inset; display: grid; grid-template-columns: 170px 1fr; }
-  #menu nav { border-right: 1px solid #4a3a28; padding: 18px 0; display: flex; flex-direction: column; }
-  #menu nav button { all: unset; cursor: pointer; padding: 11px 22px; letter-spacing: .2em; font-size: 12px; text-transform: uppercase; color: #b39a6a; }
+  #menu .panel { width: min(980px, calc(94vw / var(--ui))); height: min(700px, calc(90vh / var(--ui))); border: 1px solid #8a6a38; background: linear-gradient(180deg, #1b1222, #0e0913); box-shadow: 0 0 40px #000, 0 0 0 3px #0a0610 inset; display: grid; grid-template-columns: 200px 1fr; }
+  #menu nav { border-right: 1px solid #4a3a28; padding: 22px 0 18px; display: flex; flex-direction: column; position: relative; z-index: 6; }
+  #menu nav button { all: unset; cursor: pointer; padding: 11px 24px; letter-spacing: .12em; font: 600 12.5px Cinzel, Georgia, serif; text-transform: uppercase; color: #b39a6a; white-space: nowrap; }
+  #menu nav .hint2 { position: static !important; margin: auto 0 0 24px; opacity: .5; font-size: 10px; letter-spacing: .2em; }
   #menu nav button.on, #menu nav button:hover { color: #fff0bd; background: linear-gradient(90deg, rgba(242,176,74,.18), transparent); border-left: 2px solid #f2b04a; padding-left: 20px; }
-  #menu .page { display: none; padding: 22px 28px; overflow: auto; font-family: serif; color: #d8c8a0; }
+  #menu .page { display: none; padding: 22px 40px 26px 30px; overflow: auto; font-family: serif; color: #d8c8a0; } #menu .page h2 { margin: 0 0 10px; font: 600 20px Cinzel, Georgia, serif; letter-spacing: .22em; color: #f2cf8a; }
   #menu .page.on { display: block; }
   #menu h2 { margin: 0 0 14px; font: 600 15px Cinzel, serif; letter-spacing: .22em; color: #f2cf8a; text-transform: uppercase; }
   #menu .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
   #menu .cell { aspect-ratio: 1; border: 1px solid #4a3a28; background: #140d19; border-radius: 4px; display: grid; place-items: center; font-size: 20px; }
-  #menu .stat { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px dotted #4a3a28; padding: 6px 0; font-size: 14px; } #menu .stat small { display: block; color: #8a7a60; font-size: 11px; }
-  #menu h3 { margin: 14px 0 4px; font: 600 11px Cinzel, serif; letter-spacing: .24em; text-transform: uppercase; color: #d9a24f; } #menu .page h3:first-of-type { margin-top: 4px; }
-  #menu .seg { display: flex; gap: 3px; align-items: center; } #menu .seg button { background: rgba(0,0,0,.3); border: 1px solid #5a4a30; color: #b4a68e; font: 12px Georgia, serif; padding: 4px 10px; cursor: pointer; border-radius: 2px; } #menu .seg button.on { background: linear-gradient(#5a4220, #3a2a14); border-color: #ffe08a; color: #fff0bd; } #menu .seg button:hover { color: #ffe08a; } #menu .seg .hint3 { color: #8a7a60; font-size: 11px; margin-left: 6px; }
-  #menu .rng { display: flex; align-items: center; gap: 10px; } #menu .rng input { width: 150px; accent-color: #d9a24f; } #menu .rng b { min-width: 40px; text-align: right; color: #ffe08a; font-size: 13px; }
+  #menu .stat { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: center; gap: 8px 18px; border-bottom: 1px dotted #4a3a28; padding: 9px 0; font-size: 14px; } #menu .stat > span { line-height: 1.25; } #menu .stat small { display: block; color: #8a7a60; font-size: 11.5px; margin-top: 2px; line-height: 1.35; } #menu .stat > b { text-align: right; color: #fff0c8; font-weight: normal; }
+  @media (max-width: 760px) { #menu .panel { grid-template-columns: 1fr; height: calc(92vh / var(--ui)); } #menu nav { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid #4a3a28; padding: 8px; } #menu nav .hint2 { display: none; } #menu .stat { grid-template-columns: 1fr; } #menu .seg, #menu .rng { justify-content: flex-start; } }
+  #menu h3 { margin: 22px 0 2px; font: 600 11.5px Cinzel, serif; letter-spacing: .24em; text-transform: uppercase; color: #d9a24f; padding-bottom: 4px; border-bottom: 1px solid #5a4628; } #menu .page h3:first-of-type { margin-top: 6px; }
+  #menu .seg { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; max-width: 480px; } #menu .seg button { background: rgba(0,0,0,.3); border: 1px solid #5a4a30; color: #b4a68e; font: 12.5px Georgia, serif; padding: 5px 11px; cursor: pointer; border-radius: 2px; white-space: nowrap; min-width: 44px; text-align: center; } #menu .seg button.on { background: linear-gradient(#5a4220, #3a2a14); border-color: #ffe08a; color: #fff0bd; } #menu .seg button:hover { color: #ffe08a; } #menu .seg .hint3 { color: #8a7a60; font-size: 11px; margin-left: 6px; }
+  #menu .rng { display: flex; align-items: center; justify-content: flex-end; gap: 10px; } #menu .rng input { width: 200px; accent-color: #d9a24f; } #menu .rng b { min-width: 44px; text-align: right; color: #ffe08a; font-size: 13px; } #menu .hint3 { color: #8a7a60; font-size: 11px; margin-left: 6px; }
   #menu .hint2 { position: absolute; bottom: 14px; font: 10px Cinzel, serif; letter-spacing: .2em; color: #8a7a5a; }
   #hud .lbl { margin-top: 4px; font-size: 10px; letter-spacing: .2em; opacity: .7; }
   #hint { position: fixed; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 11px; letter-spacing: .24em; opacity: .55; pointer-events: none; text-transform: uppercase; }
@@ -1284,14 +1286,13 @@
 </div></div>
 <div id="menu">
   <div class="panel">
-    <nav><button class="on" data-p="p-opt">Opções</button><button data-p="p-char">Conta</button><button data-go="back">Voltar ao jogo</button><button data-go="exit">Sair para o menu</button><button data-go="quit" id="m-quit">Fechar o jogo</button></nav>
+    <nav><button class="on" data-p="p-opt">Opções</button><button data-p="p-char">Conta</button><button data-go="back">Voltar ao jogo</button><button data-go="exit">Sair para o menu</button><button data-go="quit" id="m-quit">Fechar o jogo</button><span class="hint2">ESC FECHA</span></nav>
     <div>
       <div class="page" id="p-char"><h2>Conta</h2>
         <div class="stat"><span>Conta</span><b id="m-acc">—</b></div><div class="stat"><span>Plano</span><b id="m-plan">Gratuito</b></div><div class="stat"><span>Personagem ativo</span><b id="m-name">—</b></div><div class="stat"><span>Nível · classe</span><b id="m-lvl">—</b></div><div class="stat"><span>Karma</span><b id="m-karma">0</b></div><div class="stat"><span>Ouro</span><b id="m-gold">0</b></div>
         <p style="opacity:.7;font-size:13px;margin-top:18px">Por enquanto a conta é local, guardada neste navegador. Com o servidor ela ganha login, os seus personagens, o plano Premium e o histórico de compras.</p><button id="m-new" style="margin-top:10px;background:#3a2a1a;color:#ffe08a;border:1px solid #b8924a;padding:6px 12px;cursor:pointer;font:13px Georgia,serif">Novo personagem</button></div>
       <div class="page on" id="p-opt"><h2>Opções</h2><div class="stat"><span>Tamanho do pixel (desempenho)</span><b><button id="m-pix" style="background:#3a2a1a;color:#ffe08a;border:1px solid #b8924a;padding:3px 10px;cursor:pointer">alternar 2 ↔ 3</button></b></div><div class="stat"><span>Sombras</span><b><button id="m-sh" style="background:#3a2a1a;color:#ffe08a;border:1px solid #b8924a;padding:3px 10px;cursor:pointer">ligar/desligar</button></b></div><div class="stat"><span>Som (M)</span><b id="m-snd">ligado</b></div><div class="stat"><span>Dia / noite (N)</span><b>alternar</b></div><div class="stat"><span>Zoom</span><b>roda do mouse</b></div></div>
     </div>
-    <span class="hint2" style="left:196px">ESC FECHA</span>
   </div>
 </div>
 <div id="ver" style="position:fixed;left:10px;bottom:6px;z-index:8;font:10px monospace;color:#8a7a5a;opacity:.7">build 20261019-1720 · mundo140+relevo+rios</div><div id="hint">WASD andar · Shift corre · Espaço dash · E interagir · Q magia · G modo deus · 1 combo (clique repetido) · 2 salto de fogo · 3 segurar = defesa · 4 investida · 5 cura · Esc menu · N dia/noite</div>
