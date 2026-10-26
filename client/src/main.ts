@@ -53,7 +53,7 @@ import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
 import { buildInterior, type Interior } from './interiors3d';
 import { DualRenderPass, fine } from './dual3d';
-import { createDialog, type Choice, type Reply } from './dialog';
+import { createDialog, type Choice, type Reply, type Step } from './dialog';
 import { ECOS, FRIO } from './falas';
 import { createInstinct, selfLine, instinctOf, type Being, type Place } from './instinto';
 import { createOrmund } from './ormund';
@@ -259,7 +259,7 @@ const npcSys = createNpcs(scene, [
   ...city.settlements.flatMap((st) => st.npcs.map((n, i) => ({ name: n.name, role: n.role, kind: n.kind, civil: civilFor(n.role, n.kind, n.x, n.y, st.x + i), x: n.x * T, z: n.y * T, radius: n.radius, tint: n.tint, scale: n.scale, lines: n.lines, night: n.night, onlyQ: n.onlyQ }))),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
-], { heightAt, walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; return !!t && isWalkable(t); }, camera, canvas,
+], { heightAt, walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, true); } catch { return true; } /* NPC também respeita fonte, poço, bancada (25/10) */ }, camera, canvas,
   questOn: (id) => { try { return !!quests.q.active[id]; } catch { return false; } },
   situ: () => { const tags: string[] = []; try { const hr = gameHour(), g = globalNow()?.id, k = state.karma, pth = myPath(), tp = temperature();
     tags.push(hr >= 5 && hr < 9 ? 'manha' : state.night > 0.5 ? 'noite' : 'dia'); if (tp < 3) tags.push('frio'); if (tp > 24) tags.push('calor');
@@ -1051,7 +1051,9 @@ function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) 
   /* o povo da vila vem para a praça: em roda, de frente para o palco e para a fonte (volta para casa quando a festa acaba) */
   const crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[] = [];
   { const mine = npcSys.npcs.filter((n) => !n.def.route && settleAt(n.def.x / T, n.def.z / T, 6)?.name === stName).slice(0, 18);
-    mine.forEach((n, i) => { crowd.push({ n, ox: n.def.x, oz: n.def.z, or: n.def.radius }); const a = (i / Math.max(1, mine.length)) * 6.283 + 0.3, rr = 5.2 + (i % 3) * 1.1; n.def.x = cx + Math.cos(a) * rr; n.def.z = cz + Math.sin(a) * rr; n.def.radius = 0.6; n.target = null; n.wait = 0; }); }
+    const fr = Math.max(fo.w, fo.h) * T * 0.5 + 2.0; mine.forEach((n, i) => { crowd.push({ n, ox: n.def.x, oz: n.def.z, or: n.def.radius }); const a = (i / Math.max(1, mine.length)) * 6.283 + 0.3, rr = fr + (i % 3) * 1.0; /* em volta da fonte, nunca dentro */ n.def.x = cx + Math.cos(a) * rr; n.def.z = cz + Math.sin(a) * rr; n.def.radius = 0.6; n.target = null; n.wait = 0; }); }
+  nightOverride = 1; nightTarget = 1; /* a festa é de noite: lanternas, fogos e brindes */
+  { const L1 = new THREE.PointLight(0xffb060, 30, 26, 1.6); L1.position.set(0, 4.5, 0); g.add(L1); const L2 = new THREE.PointLight(0xff8a50, 18, 16, 1.6); L2.position.set(0, 3, -R + 2); g.add(L2); } /* duas luzes só (desempenho) */
   festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz, st: stName, bards, crowd, deeds: festaDeeds(stName), ballad: festaBallad(stName), bl: 0, coroOn: false, done: false };
   inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', stName, 10, 'a festa de despedida');
   audio.festaStart(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
@@ -1071,10 +1073,40 @@ function festaTick() { if (!festa || festa.done) return; const F = festa, el = p
     /* o povo bebe e dança: de vez em quando cada um ergue a caneca */
     for (const c of F.crowd) if (Math.random() < 0.08 && !c.n.hero.acting) c.n.hero.act('drink');
   }
-  if (el > FESTA_LEN) { F.done = true; festaFade(['A música foi morrendo devagar, uma vela de cada vez.', 'No dia seguinte, com a cabeça ainda girando e o coração cheio, você está pronto para partir.'], () => festaEnd()); } }
+  if (el > FESTA_LEN) { F.done = true; festaFade(['A música foi morrendo devagar, uma lanterna de cada vez.', 'A noite passou, o dia passou, e mais uma noite.', 'No alvorecer, com a cabeça ainda girando e o coração cheio, você está pronto para seguir caminhando.'], () => festaEnd()); } }
 /* bardos tocando: o corpo balança no ritmo (no quadro) */
-function festaAnim(dt: number, t: number) { if (!festa) return; for (const b of festa.bards) { b.ph += dt; b.h.update(dt, t, 0, null); b.h.root.position.y = 0.6 + Math.abs(Math.sin(b.ph * 5.2)) * 0.05; b.h.root.rotation.y = Math.sin(b.ph * 1.3) * 0.25; } }
-function festaEnd() { if (!festa) return; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; game.logMsg('☀ Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
+const NOTE_TEX = ['♪', '♫', '♩', '♬'].map((ch, i) => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.font = 'bold 50px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.shadowColor = '#000'; g.shadowBlur = 6; g.fillStyle = ['#ffe08a', '#ffffff', '#ffb0d0', '#9ad7ff'][i]; g.fillText(ch, 32, 34); const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; return tx; });
+const notes: { s: THREE.Sprite; v: THREE.Vector3; life: number; ph: number }[] = [];
+function festaAnim(dt: number, t: number) { if (!festa) return; /* notas musicais subindo do palco para o céu */
+  if (Math.random() < dt * 5) { const b = festa.bards[Math.floor(Math.random() * festa.bards.length)]; if (b) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: NOTE_TEX[Math.floor(Math.random() * 4)], transparent: true, depthWrite: false })); const wp = new THREE.Vector3().setFromMatrixPosition(b.h.root.matrixWorld); sp.position.set(wp.x + (Math.random() - 0.5) * 0.6, wp.y + 2.1, wp.z); sp.scale.setScalar(0.55 + Math.random() * 0.3); scene.add(sp); notes.push({ s: sp, v: new THREE.Vector3((Math.random() - 0.5) * 0.6, 1.1 + Math.random() * 0.6, (Math.random() - 0.5) * 0.6), life: 4.5, ph: Math.random() * 6 }); } }
+  for (let i = notes.length - 1; i >= 0; i--) { const q = notes[i]; q.life -= dt; q.ph += dt * 3; q.s.position.addScaledVector(q.v, dt); q.s.position.x += Math.sin(q.ph) * dt * 0.5; (q.s.material as THREE.SpriteMaterial).opacity = Math.min(1, q.life / 1.5); if (q.life <= 0) { scene.remove(q.s); (q.s.material as THREE.SpriteMaterial).dispose(); notes.splice(i, 1); } } for (const b of festa.bards) { b.ph += dt; b.h.update(dt, t, 0, null); b.h.root.position.y = 0.6 + Math.abs(Math.sin(b.ph * 5.2)) * 0.05; b.h.root.rotation.y = Math.sin(b.ph * 1.3) * 0.25; } }
+/* conversar na festa (Erling, 25/10): o povo agradece, conversa sobre o que você fez e brinda com você */
+const FESTA_FALA: Record<string, string[]> = {
+  Garrick: ['Quando você acordou, achei que não durava uma semana. Olha você agora.', 'Lundr vai ver o que Karmika já sabe. Não me envergonhe, ouviu?'],
+  'Lúcia': ['Você trouxe o meu Bento de volta. Eu nunca vou esquecer disso.', 'Leva o lenço com você. Agora ele é seu.'],
+  Bento: ['Fui eu que pedi o barril maior. Você merece.', 'Prometo que da próxima vez eu luto em vez de me esconder. Talvez.'],
+  'Rosália': ['Fiz o ensopado que você gosta. Come antes que o Sven acabe.', 'A cozinha vai ficar silenciosa sem você roubando pão.'],
+  Sven: ['Essa carne eu guardei para hoje. A melhor do vale!', 'Volta com histórias e eu volto com churrasco.'],
+  Morwen: ['Pus uma poção a mais na sua bolsa. Não agradeça, só volte inteira.', 'As ervas da estrada são diferentes. Cuidado com as azuis.'],
+  Thorin: ['Um anão não chora. É fumaça da fogueira.', 'Se achar minério bom lá fora, lembra de quem te vendeu a primeira picareta.'],
+  Doran: ['A lâmina aguenta. Você também.', 'Volte para eu afiar de novo.'],
+  Tessa: ['A cerveja hoje é por conta da vila!', 'Brindo a você e à estrada.'],
+};
+const toasted = new Set<string>();
+function festaTalk(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const nm = n.def.name, me = profile?.name || 'caminhante', deed = festa.deeds[Math.floor(Math.random() * Math.max(1, festa.deeds.length - 3))] ?? '';
+  const own = FESTA_FALA[nm] ?? [`Obrigado por tudo, ${me}. A vila dorme melhor por sua causa.`, `${deed || 'A gente viu tudo o que você fez.'}`.replace(/^Eu vi! /, 'Eu vi com estes olhos: ')];
+  const steps: Step[] = [own[0], { r: [
+    { t: '🍻 Um brinde! A Karmika e a todos vocês!', a: `À sua saúde, ${me}! Que a estrada seja leve e a caneca nunca vazia! 🍻`, flag: 'brinde' },
+    { t: 'Vou sentir falta de vocês.', a: `E nós de você. ${own[1] ?? ''} Agora brinda comigo, vai! 🍻`, flag: 'brinde' },
+    { t: 'Conta de novo aquela história.', a: `${deed.replace(/^Eu vi! /, '') || 'Você não lembra? A vila inteira lembra.'} E todo mundo aplaudiu! Brinda comigo! 🍻`, flag: 'brinde' } ] }];
+  let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
+  openDlg({ name: nm, role: `${n.def.role} · na festa`, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: { id: 'festa', name: '🎉 A festa de despedida', giver: nm, objs: [], lvl: 1, xp: 0, gold: 0, text: '' } as never, steps, onEnd: () => festaToast(n) } }); }
+function festaToast(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const nm = n.def.name;
+  if (!hero.acting) hero.act('drink'); n.hero.act('drink'); audio.equip('jewel'); setTimeout(() => audio.equip('metal'), 120);
+  const p = n.pos.clone().lerp(heroPos, 0.5); for (let i = 0; i < 16; i++) particles.spawn(p.x, p.y + 1.6, p.z, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 1.5, vz: (Math.random() - 0.5) * 2, life: 0.7, s0: 0.2, s1: 0.04, c0: 0xffe8a0, c1: 0xd8a040, a: 1 });
+  say2(n, `À saúde de ${profile?.name || 'caminhante'}! 🍻`, 3.5);
+  if (!toasted.has(nm)) { toasted.add(nm); align.add('vila', festa.st, 1); game.logMsg(`🍻 Você brindou com ${nm}. (+1 com ${festa.st})`, '#ffe08a'); } else game.logMsg(`🍻 Mais um brinde com ${nm}!`, '#e8d8b0'); }
+function festaEnd() { if (!festa) return; for (const q of notes) scene.remove(q.s); notes.length = 0; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; nightOverride = 0.3; nightTarget = 0.3; /* o alvorecer do dia seguinte */ setTimeout(() => { nightOverride = null; }, 90000); game.logMsg('🌅 Alvorecer. Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
 function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
   state.karma = Math.max(-100, Math.min(100, state.karma + r.karma)); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
@@ -1326,6 +1358,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
     const mq = Object.keys(quests.q.active).map((id) => quests.def(id)).find((d) => !!d?.meet?.[nm] && d.objs.some((o, i) => o.kind === 'talk' && o.npc === nm && quests.objProg(d, i) < 1));
     if (mq) { let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
       openDlg({ name: nm, role: n.def.role, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: mq, steps: mq.meet![nm], onEnd: () => { quests.onTalk(nm); setTimeout(() => { if (quests.turnins(nm).length) talkTo(n); }, 200); } } }); return; } }
+  if (festa && !festa.done && festa.crowd.some((c) => c.n === n)) { festaTalk(n); return; }
   quests.onTalk(nm); /* conversar conta antes de listar as entregas */
   const ti = quests.turnins(nm), of = quests.offers(nm);
   const choices: Choice[] = [];
