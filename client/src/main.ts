@@ -120,8 +120,8 @@ setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
-interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean }
-const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true };
+interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number }
+const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240 };
 const opts: Opts = (() => { try { return { ...OPT_DEF, ...(JSON.parse(localStorage.getItem('karmika.opts.v1') || 'null') ?? { pix: Number(localStorage.getItem('karmika.pix') || 0) || 2, shadows: localStorage.getItem('karmika.shadows') !== '0', music: localStorage.getItem('karmika.music') === '0' ? 0 : 1 }) }; } catch { return { ...OPT_DEF }; } })();
 const saveOpts = () => localStorage.setItem('karmika.opts.v1', JSON.stringify(opts));
 let PIX = Number(new URLSearchParams(location.search).get('pix')) || opts.pix;
@@ -960,8 +960,11 @@ function heroCard(root: THREE.Object3D): string | null {
   g.strokeStyle = 'rgba(224,180,90,.55)'; g.lineWidth = 2; g.strokeRect(5, 5, W - 10, H - 10);
   return cv.toDataURL('image/jpeg', 0.86);
 }
+/* o retrato do cartão lê pixels da placa (trava o quadro): só tira de novo quando muda nível, classe ou a cada 5 min, não a cada 20 s */
+let picKey = '', picAt = 0;
 function saveSlotMeta() { if (!profile || inicio.isOpen || creating) return;
-  slotPic().then((pic) => { if (profile) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'm', pic, server: net.state === 'on' ? `karmika://${net.address}/${net.code}` : null }); }); }
+  const pk = `${game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`, needPic = pk !== picKey || performance.now() - picAt > 300000; if (needPic) { picKey = pk; picAt = performance.now(); }
+  (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (profile) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'm', pic, server: net.state === 'on' ? `karmika://${net.address}/${net.code}` : null }); }); }
 setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (profile && !inicio.isOpen) inicio.saveMeta({ name: profile.name, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: profile.origin, sex: profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
 const bubbleEl = document.createElement('div'); bubbleEl.className = 'bubble'; document.body.appendChild(bubbleEl); let bubbleT = 0;
@@ -1689,7 +1692,8 @@ function renderOptions() {
     <div class="stat"><span>Brilho (bloom)</span>${rng('bloom', 0, 2, 0.1, pct)}</div>
     <div class="stat"><span>Partículas e efeitos</span>${rng('particles', 0.2, 1.5, 0.1, pct)}</div>
     <div class="stat"><span>Números de dano</span>${seg('dmgText', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
-    <div class="stat"><span>Contador de FPS</span>${seg('fps', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
+    <div class="stat"><span>Contador de FPS <small>mostra também onde o tempo do quadro vai: CPU (lógica e desenho) e GPU</small></span>${seg('fps', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
+    <div class="stat"><span>Limite de FPS <small>no app do Karmika o jogo passa da taxa do monitor; no navegador o limite é sempre o monitor</small></span>${seg('cap', [[60, '60'], [144, '144'], [240, '240'], [0, 'Sem limite']])}</div>
     <h3>Som</h3>
     <div class="stat"><span>Volume geral <small>O: mudo</small></span>${rng('master', 0, 1, 0.05, pct)}</div>
     <div class="stat"><span>Música <small>P: liga/desliga</small></span>${rng('music', 0, 1, 0.05, pct)}</div>
@@ -3443,15 +3447,27 @@ function lightPool(dt: number) {
   scored.forEach((e, i) => { const on = i < LUZES_ATIVAS; if (e.l.visible !== on) e.l.visible = on; });
 }
 let lastFrameErr = '';
+/* 26/10 (Erling: "não tem por que o jogo não rodar a mais de 200 fps numa 3080 Ti"): limite de FPS escolhido nas opções (o app
+   desliga o vsync do Chromium) e um medidor que separa o tempo do quadro em CPU (lógica, desenho) e GPU — para saber onde apertar */
+let capLast = 0; const perf = { cpu: 0, draw: 0, gpu: -1, n: 0, cpuS: 0, drawS: 0, gpuS: 0, gpuN: 0 };
+const glT = renderer.getContext() as WebGL2RenderingContext, tq = (() => { try { return glT.getExtension('EXT_disjoint_timer_query_webgl2') as { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null; } catch { return null; } })();
+let tqPend: WebGLQuery | null = null, tqOpen: WebGLQuery | null = null;
+function gpuBegin() { if (!tq || tqPend || tqOpen) return; const q = glT.createQuery(); if (!q) return; glT.beginQuery(tq.TIME_ELAPSED_EXT, q); tqOpen = q; }
+function gpuEnd() { if (!tq || !tqOpen) return; glT.endQuery(tq.TIME_ELAPSED_EXT); tqPend = tqOpen; tqOpen = null; }
+function gpuPoll() { if (!tq || !tqPend) return; if (!glT.getQueryParameter(tqPend, glT.QUERY_RESULT_AVAILABLE)) return; const dis = glT.getParameter(tq.GPU_DISJOINT_EXT); if (!dis) { perf.gpuS += glT.getQueryParameter(tqPend, glT.QUERY_RESULT) / 1e6; perf.gpuN++; } glT.deleteQuery(tqPend); tqPend = null; }
 function frame() {
-  if (bootFrames < 12 && ++bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
-  try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   requestAnimationFrame(frame);
+  const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF;
+  if (bootFrames < 12 && ++bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
+  gpuPoll(); const c0 = performance.now();
+  try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
+  perf.cpuS += performance.now() - c0; perf.n++;
 }
 const __BUILD__ = '20261019-2340';
 let fpsN = 0, fpsT = 0, poiTick = -1;
 function frameBody() {
-  { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) v.textContent = `${fpsN} fps · ${game.dbg().en.length} inimigos ativos · build ${__BUILD__}`; fpsN = 0; fpsT = nowMs; } }
+  { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
+    perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
@@ -3730,7 +3746,7 @@ function frameBody() {
 
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
   renderer.info.reset();
-  composer.render();
+  { const d0 = performance.now(); gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
   dollTick(rawDt);
   if (!shown) { shown = true; document.body.classList.add('ready'); }
 }

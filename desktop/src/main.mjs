@@ -21,6 +21,9 @@ console.log('[karmika] app iniciando');
 
 // ---- placa de vídeo: notebook com RTX usa a dedicada; nada de lista negra de GPU nem freio em segundo plano
 app.commandLine.appendSwitch('force_high_performance_gpu');
+/* 26/10 (Erling: "rodar a mais de 200 fps numa 3080 Ti"): sem trava no vsync do Chromium; o limite é o do jogo (Opções → Limite de FPS) */
+app.commandLine.appendSwitch('disable-frame-rate-limit');
+app.commandLine.appendSwitch('disable-gpu-vsync');
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
 app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
