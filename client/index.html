@@ -637,7 +637,13 @@
   #dlg .objs, #dlg .rew { background: rgba(0,0,0,.28); border-left: 2px solid #c9a24a; padding: 6px 10px; margin: 6px 0; font-size: 13px; } #dlg .objs h4, #dlg .rew h4 { margin: 0 0 3px; font: 600 10px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #f2cf8a; }
   #dlg .objs i, #dlg .rew i { display: block; font-style: normal; } #dlg .objs em { float: right; color: #9ad7ff; font-style: normal; }
   /* conversa (24/10): a fala atual em destaque, as anteriores apagadas; o herói fala à direita, em itálico */
-  #dlg .conv { padding: 8px 32px 24px; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; } #dlg .dp > :not(.conv):not(.ft) { flex: none; } #dlg .dp > .body, #dlg .dp > .list { flex: 1; min-height: 0; overflow-y: auto; }
+  #dlg .conv { padding: 8px 32px 24px; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; } #dlg .dp > :not(.conv):not(.ft):not(.qd):not(.ch) { flex: none; } #dlg .dp > .body, #dlg .dp > .list { flex: 1; min-height: 0; overflow-y: auto; }
+  /* 26/10 (Erling: "quase não consigo clicar na missão, a tela não faz o conteúdo aparecer"): a ficha da missão rola por dentro e os botões ficam sempre à vista, no pé */
+  #dlg .qd { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 12px; } #dlg .qd > :not(.btns) { flex: none; } #dlg .qd .qscroll { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; } #dlg .qd .btns { flex: none; margin-top: 10px; }
+  #dlg .ch { flex: 1; min-height: 0; overflow-y: auto; }
+  /* a rolagem do nosso jeito (Erling: "não pode ser um scroll padrão do Windows"): trilho escuro com friso, puxador dourado */
+  * { scrollbar-width: thin; scrollbar-color: #8a6a32 #120d08; }
+  ::-webkit-scrollbar { width: 9px; height: 9px; } ::-webkit-scrollbar-track { background: #120d08; border-left: 1px solid #2e2416; } ::-webkit-scrollbar-thumb { background: linear-gradient(#b8924a, #6a4a22); border: 1px solid #1a1208; border-radius: 2px; } ::-webkit-scrollbar-thumb:hover { background: linear-gradient(#e6c46a, #8a6a32); } ::-webkit-scrollbar-corner { background: #120d08; }
   #dlg .conv h3 { margin: 4px 0 10px; font: 700 15px Cinzel, serif; color: #ffe08a; text-align: center; }
   #dlg .ln { margin: 0 0 8px; font-size: 15px; line-height: 1.55; color: #f0e6cc; padding: 6px 10px; border-left: 2px solid #8a6a3a; background: rgba(0,0,0,.22); }
   #dlg .ln b { display: block; font: 600 11px Cinzel, serif; letter-spacing: .12em; color: #e6c46a; margin-bottom: 2px; }

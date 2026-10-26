@@ -49,10 +49,10 @@ export function createDialog() {
       body = `<div class="conv"><h3>📜 ${esc(view.quest.name)}</h3>${hist}${curL}${act}</div>`;
     } else if (view) {
       const d = view.quest, prog = (i: number) => o.objProg ? o.objProg(d, i) : 0, need = (i: number) => o.objNeed ? o.objNeed(d, i) : 1;
-      body = `<div class="qd"><h3>📜 ${esc(d.name)} <small>Nv ${d.lvl}${d.chain ? ' · ' + esc(d.chain) : ' · Quadro'}</small></h3><p class="say">“${esc(d.text)}”</p>
+      body = `<div class="qd"><h3>📜 ${esc(d.name)} <small>Nv ${d.lvl}${d.chain ? ' · ' + esc(d.chain) : ' · Quadro'}</small></h3><div class="qscroll"><p class="say">“${esc(d.text)}”</p>
         <div class="objs"><h4>Objetivos</h4>${d.objs.map((ob, i) => `<i>${view!.mode === 'turnin' || prog(i) >= need(i) ? '✔' : '•'} ${esc(objText(ob))}${view!.mode === 'offer' ? '' : ` <em>${prog(i)}/${need(i)}</em>`}</i>`).join('')}</div>
         <div class="rew"><h4>Recompensa</h4><i>✨ ${d.xp} XP</i><i>🪙 ${d.gold} ouro</i>${(d.items ?? []).map(([it, n]) => `<i>🎒 ${n}× ${esc(ITEMS[it]?.name ?? it)}</i>`).join('')}${d.gear ? `<i>⚔ ${d.gear} equipamento${d.gear > 1 ? 's' : ''} (≥ Raro)</i>` : ''}${d.title ? `<i>🏅 Título: ${esc(d.title)}</i>` : ''}</div>
-        <div class="btns">${view.mode === 'offer' ? `<button class="ok" data-accept>Aceitar missão</button><button data-back>Agora não</button>` : (d.choice ? `<div class="qchoice"><p>${esc(d.choice.q)}</p>${d.choice.opts.map((c, i) => `<button class="ok" data-qc="${i}">${esc(c.label)}</button>`).join('')}</div>` : `<button class="ok" data-turnin>Entregar</button>`) + `<button data-back>Voltar</button>`}</div></div>`;
+        </div><div class="btns">${view.mode === 'offer' ? `<button class="ok" data-accept>Aceitar missão</button><button data-back>Agora não</button>` : (d.choice ? `<div class="qchoice"><p>${esc(d.choice.q)}</p>${d.choice.opts.map((c, i) => `<button class="ok" data-qc="${i}">${esc(c.label)}</button>`).join('')}</div>` : `<button class="ok" data-turnin>Entregar</button>`) + `<button data-back>Voltar</button>`}</div></div>`;
     } else {
       body = `<p class="say">“${esc(o.text)}”</p><div class="ch">${o.choices.map((c, i) => `<button class="c ${c.kind}" data-i="${i}"><span>${esc(c.label)}</span>${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</button>`).join('')}</div>`;
     }

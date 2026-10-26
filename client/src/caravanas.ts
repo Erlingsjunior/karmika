@@ -156,7 +156,10 @@ export function buildOreCart(): Wagon {
     for (const sx of [-1, 1]) { const w = wheel(r, 0.12), hold = new THREE.Group(); hold.position.set(sx * 0.95, r, zz); hold.rotation.y = Math.PI / 2; hold.add(w); body.add(hold); wheels.push({ m: w, r }); } }
   add(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.45, 1.1); // banco do cocheiro
   for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.035, 0.035, 2.4, 5).rotateX(Math.PI / 2), M.dark, sx * 0.55, 0.9, 2.5); // varais até o cavalo
-  const horse = buildHorse({ coat: 0x5a4030, mane: 0x201410 }); horse.root.position.set(0, 0, 3.6); horse.root.scale.setScalar(1.05); body.add(horse.root);
+  /* parelha dupla: minério pesa — quatro cavalos de carga, dois a dois (Erling: "lembre-se da física") */
+  const team: Horse4[] = []; for (const [sx, zz] of [[-0.6, 3.4], [0.6, 3.4], [-0.6, 5.6], [0.6, 5.6]] as [number, number][]) { const h = buildHorse({ coat: [0x5a4030, 0x4a3426, 0x6a4a34, 0x3a2a20][team.length], mane: 0x201410 }); h.root.position.set(sx, 0, zz); h.root.scale.setScalar(1.05); body.add(h.root); team.push(h); }
+  for (const sx of [-0.6, 0.6]) add(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 5).rotateX(Math.PI / 2), M.dark, sx, 0.95, 4.5); /* tirantes entre as duas parelhas */
+  add(new THREE.BoxGeometry(1.5, 0.08, 0.08), M.dark, 0, 0.95, 2.3); const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
   /* estandarte dos anões */
   add(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5), M.dark, 0.7, 2.1, -1.6);
   const flag = add(new THREE.PlaneGeometry(0.5, 0.3, 4, 1), std(0x8a3a1c, { side: THREE.DoubleSide }), 0.7, 2.6, -1.85); flag.rotation.y = Math.PI / 2;
@@ -182,7 +185,9 @@ export function buildMerchantWagon(): Wagon {
     for (const sx of [-1, 1]) { const w = wheel(r, 0.1), hold = new THREE.Group(); hold.position.set(sx * 0.9, r, zz); hold.rotation.y = Math.PI / 2; hold.add(w); body.add(hold); wheels.push({ m: w, r }); } }
   add(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.4, 1.2);
   for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.035, 0.035, 2.4, 5).rotateX(Math.PI / 2), M.dark, sx * 0.5, 0.9, 2.6);
-  const horse = buildHorse({ coat: 0x8a5a34, mane: 0x2a1a10, socks: true }); horse.root.position.set(0, 0, 3.7); body.add(horse.root);
+  /* parelha: dois cavalos lado a lado */
+  const team: Horse4[] = []; for (const sx of [-0.55, 0.55]) { const h = buildHorse({ coat: sx < 0 ? 0x8a5a34 : 0x6a4a30, mane: 0x2a1a10, socks: sx < 0 }); h.root.position.set(sx, 0, 3.7); body.add(h.root); team.push(h); }
+  add(new THREE.BoxGeometry(1.4, 0.08, 0.08), M.dark, 0, 0.95, 2.5); const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
   add(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 5), M.dark, -0.65, 2.0, -1.7);
   const flag = add(new THREE.PlaneGeometry(0.45, 0.28, 4, 1), std(0x3a6a9a, { side: THREE.DoubleSide }), -0.65, 2.45, -1.92); flag.rotation.y = Math.PI / 2;
   add(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4), M.iron, 0.65, 1.7, 1.3); add(new THREE.BoxGeometry(0.14, 0.18, 0.14), M.glass, 0.65, 1.9, 1.3);
@@ -197,11 +202,11 @@ function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotati
 
 /* ================= a lógica ================= */
 type Mode = 'ambient' | 'escort' | 'rescue' | 'event';
-interface Car { key: string; mode: Mode; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string }
+interface Car { key: string; mode: Mode; /** negociando com o jogador (parada) e o atraso acumulado */ trading?: boolean; lag?: number; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string }
 export interface CaravanCtx {
   scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; night(): number; inside(): boolean; lvl(): number;
   spawn(type: EnemyType, x: number, z: number, o: { name: string; lvl: number; tag: string; aggro: number; hpMul: number }): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number; def: { name: string } };
-  clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void;
+  clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void; /** a janela da loja está aberta (a carroça espera) */ shopOpen?(): boolean;
   smoke(x: number, y: number, z: number, dark: boolean): void; bubble(x: number, y: number, z: number, t: string): void;
   log(t: string, c?: string): void; onEscort(id: string): void; onRescue(id: string): void;
   onEvent(r: Route, how: 'salva' | 'saque' | 'perdida'): void; lean(): 'luz' | 'sombra' | null;
@@ -226,7 +231,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** anda pela estrada até sair de perto das vilas */
   const openRoad = (r: Route, s0: number) => { for (let k = 0; k < 60; k++) { const s = (s0 + k * 8) % r.len, p = at(r, s); if (!ctx.nearTown(p.x, p.z)) return s; } return s0; };
   const SPEED = 3.1, PERIOD_PAD = 40, /** a escolta espera um pouco fora do portão, não dentro dele */ START = 9;
-  function ambientS(r: Route, i: number) { const per = r.len / SPEED + PERIOD_PAD, cyc = per * 2, t = (now() + i * 977) % cyc; // vai, para, volta
+  function ambientS(r: Route, i: number, lag = 0) { const per = r.len / SPEED + PERIOD_PAD, cyc = per * 2, t = (now() - lag + i * 977) % cyc; // vai, para, volta
     const go = Math.max(0, Math.min(1, t / (per - PERIOD_PAD))), back = Math.max(0, Math.min(1, (t - per) / (per - PERIOD_PAD)));
     return t < per ? { s: go * r.len, dir: 1, park: go >= 1 } : { s: (1 - back) * r.len, dir: -1, park: back >= 1 }; }
   /* a emboscada do mundo: a cada 9 minutos uma rota é sorteada (pelo relógio), num ponto entre 30% e 70% da estrada; dura 9 minutos */
@@ -235,8 +240,8 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     const r = routes.get(ids[Math.floor(h * ids.length)])!; return { slot, r, s: openRoad(r, r.len * (0.3 + ((h * 7.31) % 1) * 0.4)), left: EV - (now() % EV) }; }
 
   function crewFor(c: Car) { if (c.crew.length) return; const kind = c.route.kind ?? 'steam';
-    const drv = kind === 'dwarf' ? createCharacter('dwarf', { static: true }) : kind === 'human' ? createCharacter('nordic', { static: true, civil: 'human' }) : createCharacter('technocrat', { static: true });
-    const g1 = kind === 'dwarf' ? createCharacter('dwarf', { static: true }) : createCharacter('nordic', { static: true }), g2 = kind === 'human' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true });
+    const drv = kind === 'steam' ? createCharacter('technocrat', { static: true }) : createCharacter('dwarf', { static: true }); /* carroças são de anões (Erling) */
+    const g1 = kind === 'steam' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true }), g2 = createCharacter('dwarf', { static: true });
     for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); ctx.scene.add(h.root); }
     try { g1.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); g2.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
     c.crew = [drv, g1, g2]; }
@@ -270,7 +275,10 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     /* caravanas do mundo */
     for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const key = `amb:${id}:${i}`; let c = cars.get(key);
       if (!c) { c = { key, mode: 'ambient', route: r, s: 0, dir: 1, w: null, crew: [], hp: 1, stop: false, speed: SPEED, foes: [], bubbleT: 0 }; cars.set(key, c); }
-      const a = ambientS(r, i); c.s = a.s; c.dir = a.dir; c.stop = a.park; } }
+      /* 26/10 (Erling: "clico na carroça, abro a janela deles e eles vão embora andando?"): enquanto você negocia, ela espera; o atraso
+         fica com ela (chega um pouco mais tarde) */
+      if (c.trading) { if (ctx.shopOpen?.()) { c.lag = (c.lag ?? 0) + dt; } else { c.trading = false; } }
+      const a = ambientS(r, i, c.lag ?? 0); c.s = a.s; c.dir = a.dir; c.stop = a.park || !!c.trading; } }
     /* a emboscada do mundo (uma por vez) */
     const ev = eventNow();
     if (ev && !saved.done.includes(ev.slot)) { const key = 'ev:' + ev.slot; if (!cars.has(key)) { for (const k of [...cars.keys()]) if (k.startsWith('ev:')) { const o = cars.get(k)!; dropModel(o); ctx.clearTag('car:' + k); cars.delete(k); }
@@ -302,23 +310,26 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
           if (!alive(c)) { c.cleared = true; c.fight = false; say(c, w.fallen ? 'A carga… o que sobrou. Obrigado por vir.' : 'Você salvou a gente. A Companhia vai saber disso.'); } } }
       // posição, inclinação no terreno e animação
       const yaw = p.yaw + (c.dir < 0 ? Math.PI : 0), ca = Math.sin(yaw), cb = Math.cos(yaw);
+      /* 26/10 (Erling: "carroças não se atravessam assim"): cada uma anda pela sua mão (direita no sentido em que vai); as que
+         se cruzam passam lado a lado, e as que vão juntas na mesma rota já saem em horários diferentes */
+      if (c.mode === 'ambient') { p.x += cb * 1.7; p.z -= ca * 1.7; }
       const hF = ctx.heightAt(p.x + ca * 1.3, p.z + cb * 1.3), hB = ctx.heightAt(p.x - ca * 1.3, p.z - cb * 1.3);
       w.root.position.set(p.x, (hF + hB) / 2, p.z); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, 2.6) * 0.9;
       const moving = !c.stop && !w.fallen && !(c.mode === 'ambient' && c.stop);
       if (moving) for (const wh of w.wheels) wh.m.rotation.z += (c.speed * dt) / wh.r;
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;
       { const fp = w.flag.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < fp.count; i++) { const x0 = (i % 5) / 4; fp.setZ(i, Math.sin(t * 6 + x0 * 3) * 0.06 * x0); } fp.needsUpdate = true; }
-      if (w.horse) w.horse.pose({ dt, mv: moving ? c.speed : 0, idle: !moving });
+      if (w.horse) for (const h of (w.horse as Horse4 & { team?: Horse4[] }).team ?? [w.horse]) h.pose({ dt, mv: moving ? c.speed : 0, idle: !moving });
       if (w.kind === 'steam' && Math.random() < (moving ? 0.5 : w.fallen ? 0.35 : 0.12)) { const s = new THREE.Vector3(0, 3.4, 1.25).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
-      if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.root.rotation.y = yaw + 2; drv.update(dt, t, 0, null); }
-        else { const sp = new THREE.Vector3(0, 1.45, 0.3).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.root.rotation.y = yaw; drv.update(dt, t, 0, null); } }
+      if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); }
+        else { const sp = new THREE.Vector3(0, 1.45, 0.3).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); } }
       let foe: { pos: THREE.Vector3; hp: number; hpMax: number } | null = null, fd = 1e9; for (const f of c.foes) if (f.alive) { const d = f.pos.distanceTo(w.root.position); if (d < fd) { fd = d; foe = f; } }
       [g1, g2].forEach((g, k) => { if (!g) return; const sd = k ? -1.6 : 1.6, back = k ? 0.6 : -0.8; let gx = p.x + cb * sd - ca * back, gz = p.z - ca * sd - cb * back, mps = moving ? c.speed : 0, face = yaw;
         if (foe && fd < 16) { const dx = foe.pos.x - gx, dz = foe.pos.z - gz, l = Math.hypot(dx, dz); face = Math.atan2(dx, dz); if (l > 1.6 && l < 7) { gx += dx / l * Math.min(l - 1.6, 2.5); gz += dz / l * Math.min(l - 1.6, 2.5); } g.combat = true; if (Math.random() < dt * 0.8) g.act('combo1'); } else g.combat = false;
         if (w.fallen && !foe) { face = yaw + (k ? 2.4 : -2.4); }
-        g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.root.rotation.y = face; g.update(dt, t, mps, null); });
+        g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.update(dt, t, mps, face); /* o boneco só vira pelo heading: antes olhava sempre para o norte (Erling: "os NPC de lado?") */ });
       // os guardas também batem (de leve: o golpe que mata é seu)
       if (foe && fd < 3.2 && ctx.hurt && Math.random() < dt * 0.7) { const f = foe; if (f.hp > f.hpMax * 0.25) ctx.hurt(foe, Math.max(1, Math.round(f.hpMax * 0.06)), w.root.position); }
       if (c.bubbleT > 0) c.bubbleT -= dt;
@@ -328,7 +339,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** o que dá para fazer perto de uma carroça (o E) */
   function interact(hx: number, hz: number): { d: number; label: string; act: () => void } | null {
     for (const c of cars.values()) { if (!c.w) continue; const p = c.w.root.position, d = Math.hypot(p.x - hx, p.z - hz); if (d > 4.5) continue;
-      if (c.mode === 'ambient' && ctx.trade) return { d, label: 'E — Falar com o cocheiro (comerciar com a Companhia de Latão)', act: () => { say(c, pick(['Olha a mercadoria! Rápido, que o vapor não espera.', 'Da Companhia de Latão, direto do porto. Vai levar?'])); ctx.trade!(c.route); } };
+      if (c.mode === 'ambient' && ctx.trade) return { d, label: c.route.kind === 'steam' ? 'E — Falar com o cocheiro (comerciar com a Companhia de Latão)' : 'E — Falar com o cocheiro anão (comerciar)', act: () => { say(c, pick(c.route.kind === 'steam' ? ['Olha a mercadoria! Rápido, que o vapor não espera.', 'Da Companhia de Latão, direto do porto. Vai levar?'] : ['Ô! Pare aí, que a parelha descansa. O que vai ser?', 'Minério, cerveja e ferramenta boa. Dos anões, direto da Forja.'])); c.trading = true; ctx.trade!(c.route); } };
       if (c.mode === 'escort' && c.s <= START && !c.arrived && c.failT === undefined) return { d, label: 'E — "Vamos?" (a caravana parte com você por perto)', act: () => { say(c, pick(SAY.go)); c.stop = false; } };
       if (c.mode === 'rescue' && c.cleared && c.note !== undefined) return { d, label: 'E — Examinar os destroços', act: () => { const r = c.route; ctx.log(`🔎 ${c.note}`, '#e0b048'); c.cleared = true; c.note = undefined; setTimeout(() => stopRescue(r.id), 20000); } };
       if (c.mode === 'event' && c.cleared && !saved.done.includes(c.slot!)) { const sombra = ctx.lean() === 'sombra', fallen = c.w.fallen;
@@ -343,7 +354,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** para o mapa: caravanas andando, e a atacada piscando */
   function mapMarks(): { x: number; y: number; kind: 'move' | 'ev' | 'esc' | 'res'; name: string; sub: string }[] {
     const out: ReturnType<typeof mapMarks> = [];
-    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: r.kind === 'dwarf' ? 'Carroça de minério dos anões' : r.kind === 'human' ? 'Caravana de mercadores' : 'Caravana de Latão', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
+    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: r.kind === 'dwarf' ? 'Carroça de minério dos anões' : r.kind === 'human' ? 'Caravana de mercadores anões' : 'Caravana de Latão', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
     if (evShown && !saved.done.includes(evShown.slot)) { const p = at(evShown.r, evShown.s), left = Math.ceil((EV - (now() % EV)) / 60); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Caravana atacada!', sub: `${evShown.r.name} · atacada por ${evShown.r.foeName} e outros · ~${left} min` }); }
     for (const c of cars.values()) { if (c.mode === 'escort' && !c.arrived) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'esc', name: 'Sua escolta', sub: c.route.name }); } if (c.mode === 'rescue' && !c.cleared) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'res', name: 'Caravana caída', sub: c.route.name }); } }
     return out;
