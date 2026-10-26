@@ -19,7 +19,8 @@ import * as THREE from 'three';
 /* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
    e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
 { const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
-  P.updateMatrixWorld = function (this: THREE.Object3D, force?: boolean) { if (!this.visible) { this.matrixWorldNeedsUpdate = true; return; } orig.call(this, force); }; } }
+  /* 26/10 (perfil do Erling: 20% da CPU era este percurso): um galho congelado (cenário: matrixWorldAutoUpdate=false, marcado pelo world3d) nem é visitado */
+  P.updateMatrixWorld = function (this: THREE.Object3D, force?: boolean) { if (!this.visible) { this.matrixWorldNeedsUpdate = true; return; } if (this.matrixWorldAutoUpdate === false && !force && !(this as THREE.Object3D & { isScene?: boolean }).isScene) return; orig.call(this, force); }; } }
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -130,6 +131,9 @@ const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /* ---------- renderer em baixa resolução ---------- */
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+/* 26/10 (perfil do Erling: 5% da CPU era getBoundingClientRect do canvas, pedido dezenas de vezes por quadro por barras, balões e dicas,
+   e cada pedido obriga o navegador a refazer o layout): o retângulo do canvas é guardado e só se refaz ao mudar o tamanho */
+{ const cv = renderer.domElement; let cr: DOMRect | null = null; const orig = cv.getBoundingClientRect.bind(cv); cv.getBoundingClientRect = () => cr ?? (cr = orig()); const drop = () => { cr = null; }; addEventListener('resize', drop); setInterval(drop, 1000); }
 renderer.setPixelRatio(1);
 renderer.shadowMap.enabled = opts.shadows; renderer.info.autoReset = false;
 renderer.shadowMap.type = THREE.BasicShadowMap; // sombra dura: combina com pixel art e custa 1/4 do PCF
@@ -142,7 +146,7 @@ renderer.debug.onShaderError = (gl, prog, vs, fs) => kshow('SHADER falhou:\n' + 
 canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); kshow('WebGL perdeu o contexto (GPU/driver). Recarregue a página.'); });
 document.getElementById('game')!.appendChild(canvas);
 
-const scene = new THREE.Scene();
+const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
 scene.fog = new THREE.FogExp2(0x050814, 0.02);
 
@@ -3773,6 +3777,7 @@ function frameBody() {
   pm('atmos/partículas');
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
   pm('bloom-cfg');
+  scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
   { const d0 = performance.now(); gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
   pm('desenho');

@@ -450,6 +450,7 @@ export function createEnemies(ctx: EnemyCtx) {
   const ELITE = new Set<EnemyType>(['prince', 'tormentor', 'treant']); // raio de ativação: só os inimigos perto da tela ganham corpo (desempenho)
 
   function build(e: Enemy) {
+    { const b = (e as Enemy & { body?: Body }).body; if (b) { (e as Enemy & { body?: Body }).body = undefined; e.root = b.root; e.pup = b.pup; e.quad = b.quad; e.rig = b.rig; e.tele = b.tele; e.mats = b.mats; (e as Enemy & { qring?: THREE.Mesh }).qring = b.qring; if (e.tele) ctx.scene.add(e.tele); ctx.scene.add(e.root); return; } }
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
     const custom = enemyHooks.body?.(e) ?? null;
     if (custom) { e.rig = custom; g.add(custom.root); e.mats = [...custom.mats]; }
@@ -478,8 +479,12 @@ export function createEnemies(ctx: EnemyCtx) {
     ctx.scene.add(fine(g));
     if (enemyHooks.dress) { if (e.def.model) { let n = 0; const w = () => { if (e.root !== g) return; if (e.pup || ++n > 40) enemyHooks.dress!(e, g); else setTimeout(w, 150); }; w(); } else enemyHooks.dress(e, g); }
   }
+  /* 26/10 (desempenho, perfil do Erling: 14% da CPU era o three.js fundindo geometria — toNonIndexed — porque cada bicho que entrava
+     no raio ganhava um corpo NOVO, e perdia ao sair). Agora o corpo é guardado e só sai de cena; voltar é só recolocar. */
+  type Body = { root: THREE.Group; pup: Enemy['pup']; quad: Enemy['quad']; rig: Enemy['rig']; tele: Enemy['tele']; mats: Enemy['mats']; qring?: THREE.Mesh };
   function unbuild(e: Enemy) {
     if (e.root) ctx.scene.remove(e.root); if (e.tele) ctx.scene.remove(e.tele);
+    if (e.root) (e as Enemy & { body?: Body }).body = { root: e.root, pup: e.pup, quad: e.quad, rig: e.rig, tele: e.tele, mats: e.mats, qring: (e as Enemy & { qring?: THREE.Mesh }).qring };
     e.root = null; e.pup = null; e.quad = null; e.rig = null; e.tele = null; e.mats = []; (e as Enemy & { qring?: THREE.Mesh }).qring = undefined;
   }
   const tmp = new THREE.Vector3();

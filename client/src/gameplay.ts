@@ -1838,7 +1838,7 @@ export function createGameplay(d: GameplayDeps) {
       st.hpLag += (st.hp - st.hpLag) * Math.min(1, dt * 1.5); st.mpLag += (st.mp - st.mpLag) * Math.min(1, dt * 1.5);
       const hp = $('hp'), mp = $('mp');
       hp.style.setProperty('--f', String(st.hp / st.hpMax)); hp.style.setProperty('--l', String(st.hpLag / st.hpMax)); mp.style.setProperty('--f', String(st.mp / st.mpMax)); mp.style.setProperty('--l', String(st.mpLag / st.mpMax));
-      hp.querySelector('b')!.textContent = `${Math.round(st.hp)}`; mp.querySelector('b')!.textContent = `${Math.round(st.mp)}`; // o número de verdade (o canvas do globo é o 1º filho)
+      { const a = `${Math.round(st.hp)}`, b = `${Math.round(st.mp)}`, ha = hp.querySelector('b')!, hb = mp.querySelector('b')!; if (ha.textContent !== a) ha.textContent = a; if (hb.textContent !== b) hb.textContent = b; } /* mexer no DOM só quando o número muda (perfil: layout a cada quadro) */ // o número de verdade (o canvas do globo é o 1º filho)
       const setCd = (k: string, v: number, tot: number) => { const e = document.querySelector(`.slot[data-id="${k}"] .cd`) as HTMLElement | null; if (e) e.style.transform = `scaleY(${v / tot})`; };
       setCd('combo', cd.attack, CD.attack); setCd('slam', Math.max(cd.cast, cd.slam), CD.slam); setCd('bash', st.counterT > 0 ? 0 : cd.bash, CD.bash); setCd('heal', cd.heal, CD.heal); for (const id of Object.keys(cdX)) setCd(id, cdX[id], CDX[id] ?? 10);
       const slot = (k: string) => document.querySelector(`.slot[data-id="${k}"]`) as HTMLElement | null;

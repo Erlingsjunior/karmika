@@ -61,8 +61,8 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (show) {
         n.el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; n.el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
         const p = n.el.querySelector('p') as HTMLElement;
-        if (n.barkT && n.barkT > 0) { n.barkT -= dt; p.textContent = n.bark ?? ''; p.style.display = 'block'; p.classList.add('bark'); }
-        else if (dH < 6) { p.classList.remove('bark'); n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; if (Math.random() < 0.3) { const l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.5; } } } p.textContent = d.lines[n.line]; p.style.display = 'block'; } else { p.classList.remove('bark'); p.style.display = 'none'; n.lineT = 4; }
+        if (n.barkT && n.barkT > 0) { n.barkT -= dt; { const tx = n.bark ?? ''; if (p.textContent !== tx) p.textContent = tx; } if (p.style.display !== 'block') p.style.display = 'block'; p.classList.add('bark'); }
+        else if (dH < 6) { p.classList.remove('bark'); n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; if (Math.random() < 0.3) { const l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.5; } } } { const tx = d.lines[n.line]; if (p.textContent !== tx) p.textContent = tx; } p.style.display = 'block'; } else { p.classList.remove('bark'); p.style.display = 'none'; n.lineT = 4; }
       }
     }
   }

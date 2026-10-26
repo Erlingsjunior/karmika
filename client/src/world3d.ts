@@ -565,6 +565,9 @@ export function buildWorld(world: World): WorldObjs {
     for (const tc of L.torches) tc.flame.traverse((o) => { o.matrixAutoUpdate = true; });
     for (const rl of L.relics ?? []) { rl.ring.matrixAutoUpdate = true; rl.runes.matrixAutoUpdate = true; }
     L.group.traverse((o) => { if (o.userData.dyn || o.userData.sway) o.traverse((c) => { c.matrixAutoUpdate = true; }); });
+    /* galhos 100% congelados nem são visitados pelo updateMatrixWorld (main.ts corta em matrixWorldAutoUpdate=false) */
+    const freeze = (o: THREE.Object3D): boolean => { let live = o.matrixAutoUpdate; for (const c of o.children) if (freeze(c)) live = true; o.matrixWorldAutoUpdate = live; return live; };
+    for (const c of L.group.children) freeze(c);
     group.add(L.group); loaded.set(k, L); rebuildLists();
   }
   function unloadChunk(k: number) {
