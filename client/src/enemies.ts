@@ -57,6 +57,8 @@ function buildHuman(h: HumanLook): Rig {
     if (windK === 0 && strikeK === 0) swung = false;
     void hurtK; hero.update(dt, t0, mv, null); hero.root.rotation.set(0, 0, 0); } };
 }
+/** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
+export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null } = {};
 export const HPK = 5.2; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos
 export const DEFS: Record<EnemyType, Def> = {
   puglin: { name: 'Puglin', lvl: 1, hp: 42, dmg: 7, speed: 2.7, aggro: 12, range: 1.7, windup: 0.6, cd: 1.5, xp: 12, gold: [1, 4], model: 'Puglin', scale: 1.3, radius: 0.6 },
@@ -282,7 +284,7 @@ function buildBishop(): Rig {
   const arms: THREE.Group[] = [];
   for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.7, 2.85, 0); const up = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 1.0, 6), robe); up.position.y = -0.45; a.add(up); const hand = new THREE.Mesh(new THREE.SphereGeometry(0.13, 6, 5), skin); hand.position.y = -1.0; a.add(hand); body.add(a); arms.push(a); }
   // báculo de ferro com crosta em espiral e cristal rubro
-  const stf = new THREE.Group(); stf.position.set(0, -1.0, 0); arms[1].add(stf);
+  const stf = new THREE.Group(); stf.position.set(0, -1.0, 0); stf.name = 'weapon'; arms[1].add(stf); arms[1].name = 'armR'; arms[0].name = 'armL';
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 3.4, 6), tm(0x2a2a30)); pole.position.y = 0.6; stf.add(pole);
   const crook = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.05, 5, 14, 4.4), gold); crook.position.set(0.3, 2.35, 0); crook.rotation.z = 1.2; stf.add(crook);
   const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.16, 0), new THREE.MeshBasicMaterial({ color: 0xff3a4a })); gem.position.set(0.58, 2.5, 0); stf.add(gem);
@@ -301,26 +303,26 @@ function buildBishop(): Rig {
 function buildPrince(): Rig {
   const root = new THREE.Group(), mats: THREE.MeshToonMaterial[] = [];
   const robe = tm(0x14101e), robe2 = tm(0x241a3a), bone = tm(0xcfc8d8); mats.push(robe, robe2, bone);
-  const circ = new THREE.Mesh(new THREE.CircleGeometry(3.4, 48), new THREE.MeshBasicMaterial({ map: runes(), transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending })); circ.rotation.x = -Math.PI / 2; circ.position.y = 0.06; root.add(circ);
+  const circ = new THREE.Mesh(new THREE.CircleGeometry(3.4, 48), new THREE.MeshBasicMaterial({ map: runes(), transparent: true, opacity: 0.95, depthWrite: false, blending: THREE.AdditiveBlending })); circ.rotation.x = -Math.PI / 2; circ.position.y = 0.06; circ.name = 'circle'; root.add(circ);
   const body = new THREE.Group(); root.add(body);
   const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.95, 2.2, 10, 1, true), robe); skirt.material.side = THREE.DoubleSide; skirt.position.y = 1.15; body.add(skirt);
   const tat = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.0, 6), robe2); tat.position.set(0, 0.35, 0.1); tat.rotation.x = 0.1; body.add(tat);
   const chest = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.34, 0.9, 8), robe2); chest.position.y = 2.45; body.add(chest);
   const sh = new THREE.Mesh(new THREE.SphereGeometry(0.62, 8, 6, 0, 6.283, 0, 1.4), robe); sh.position.y = 2.65; sh.scale.set(1.15, 0.6, 0.9); body.add(sh);
-  const hood = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.9, 8), robe); hood.position.y = 3.35; body.add(hood);
+  const hood = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.9, 8), robe); hood.position.y = 3.35; hood.name = 'hood'; body.add(hood);
   const face = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0x050308 })); face.position.set(0, 3.08, 0.14); face.scale.set(1, 1.15, 0.8); body.add(face);
   for (const s of [-1, 1]) { const ey = new THREE.Mesh(new THREE.SphereGeometry(0.045, 5, 4), new THREE.MeshBasicMaterial({ color: 0xc89aff })); ey.position.set(s * 0.08, 3.12, 0.3); body.add(ey); }
   const core = new THREE.Mesh(new THREE.OctahedronGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xb98aff })); core.position.set(0, 2.5, 0.38); core.scale.set(1, 1.5, 0.6); body.add(core);
   const hornGeo = new THREE.ConeGeometry(0.05, 0.6, 5);
-  for (const s of [-1, 1]) { const hn = new THREE.Mesh(hornGeo, bone); hn.position.set(s * 0.22, 3.62, 0); hn.rotation.z = -s * 0.5; body.add(hn); }
+  for (const s of [-1, 1]) { const hn = new THREE.Mesh(hornGeo, bone); hn.position.set(s * 0.22, 3.62, 0); hn.rotation.z = -s * 0.5; hn.name = 'horn'; body.add(hn); }
   const arms: THREE.Group[] = [];
   for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.62, 2.65, 0); const up = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 0.9, 6), robe); up.position.y = -0.4; a.add(up); const hd = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), bone); hd.position.y = -0.9; a.add(hd); body.add(a); arms.push(a); }
   // foice na mão direita
-  const sc = new THREE.Group(); sc.position.set(0, -0.9, 0); arms[1].add(sc);
+  const sc = new THREE.Group(); sc.position.set(0, -0.9, 0); sc.name = 'weapon'; arms[1].add(sc); arms[1].name = 'armR'; arms[0].name = 'armL';
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 3.2, 5), tm(0x3a2a22)); pole.position.y = 0.3; sc.add(pole);
   const blade = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.07, 4, 14, 1.9), new THREE.MeshBasicMaterial({ color: 0xcfc4ff })); blade.position.set(0, 1.85, 0.0); blade.rotation.set(0, 0, 1.9); blade.scale.set(1, 1, 0.3); sc.add(blade);
   sc.rotation.x = -0.9;
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x9a5cff, map: radialTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.55 })); glow.scale.setScalar(5); glow.position.y = 2.2; root.add(glow);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x9a5cff, map: radialTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0.55 })); glow.scale.setScalar(5); glow.position.y = 2.2; glow.name = 'glow'; root.add(glow);
   root.scale.setScalar(1.25);
   const st = { t: 0 };
   return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
@@ -449,7 +451,9 @@ export function createEnemies(ctx: EnemyCtx) {
 
   function build(e: Enemy) {
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
-    if (e.def.quad === 'deer') { const dr = buildDeer({ stag: Math.random() < 0.55 }); e.rig = { root: dr.root, mats: dr.mats, update(e2, dt, _w, _s, hurtK, mv) { dr.pose({ dt, mv, idle: e2.state === 'idle', alert: e2.state === 'flee' || e2.state === 'hurt', hurt: hurtK }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
+    const custom = enemyHooks.body?.(e) ?? null;
+    if (custom) { e.rig = custom; g.add(custom.root); e.mats = [...custom.mats]; }
+    else if (e.def.quad === 'deer') { const dr = buildDeer({ stag: Math.random() < 0.55 }); e.rig = { root: dr.root, mats: dr.mats, update(e2, dt, _w, _s, hurtK, mv) { dr.pose({ dt, mv, idle: e2.state === 'idle', alert: e2.state === 'flee' || e2.state === 'hurt', hurt: hurtK }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
     else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(e.type === 'skeleton' ? 'skeleton' : e.type === 'ghoul' ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
@@ -472,6 +476,7 @@ export function createEnemies(ctx: EnemyCtx) {
     // anel de missão: dourado no chão, sob o bicho que a missão pede (liga/desliga pelo diário)
     const qr = new THREE.Mesh(qringGeo, new THREE.MeshBasicMaterial({ color: 0xffc83a, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide })); qr.position.y = 0.06; qr.visible = !!(e as Enemy & { quest?: boolean }).quest; qr.scale.setScalar(Math.max(0.8, e.def.radius ?? 0.7)); g.add(qr); (e as Enemy & { qring?: THREE.Mesh }).qring = qr;
     ctx.scene.add(fine(g));
+    if (enemyHooks.dress) { if (e.def.model) { let n = 0; const w = () => { if (e.root !== g) return; if (e.pup || ++n > 40) enemyHooks.dress!(e, g); else setTimeout(w, 150); }; w(); } else enemyHooks.dress(e, g); }
   }
   function unbuild(e: Enemy) {
     if (e.root) ctx.scene.remove(e.root); if (e.tele) ctx.scene.remove(e.tele);

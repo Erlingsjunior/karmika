@@ -38,14 +38,14 @@ const MECH_GROUP = (aoe: string, col: number, heavy: string): BossMech => ({ aoe
 export const DUNGEONS: DgDef[] = [
   /* os três subsolos da Grande Biblioteca de Askavik (25/10): as escadas I, II e III no fundo do salão (library3d.LIB_STAIRS) */
   { id: 'arq1', name: 'Arquivo dos Mapas', kind: 'subsolo', lvl: [12, 16], theme: 'arquivo', near: 'Grande Biblioteca', dx: -6.25, dy: -12.75, fixed: true, main: 3, side: 1, mobs: ['rat', 'bat', 'rat'], players: 'sozinho ou em dupla',
-    elite: { type: 'rat', name: 'Roedor de Pergaminho', scale: 1.7 }, boss: { type: 'ghoul', name: 'O Copista Que Não Parou', scale: 1.2, hp: 5, dmg: 1.1, mech: { aoe: { every: 10, r: 4.5, k: 1, name: 'Tinta que Queima', col: 0x3a2a6a } }, hello: 'O primeiro subsolo: mapas de lugares que já não existem. Alguém ainda copia aqui embaixo.', bye: 'A pena cai. O copista, enfim, descansa sobre a última folha.' } },
+    elite: { type: 'rat', name: 'Roedor de Pergaminho', scale: 1.3 }, boss: { type: 'ghoul', name: 'O Copista Que Não Parou', scale: 1.2, hp: 5, dmg: 1.1, mech: { aoe: { every: 10, r: 4.5, k: 1, name: 'Tinta que Queima', col: 0x3a2a6a } }, hello: 'O primeiro subsolo: mapas de lugares que já não existem. Alguém ainda copia aqui embaixo.', bye: 'A pena cai. O copista, enfim, descansa sobre a última folha.' } },
   { id: 'arq2', name: 'Galerias Proibidas', kind: 'subsolo', lvl: [26, 30], theme: 'arquivo', near: 'Grande Biblioteca', dx: 0, dy: -13.2, fixed: true, main: 4, side: 2, mobs: ['skeleton', 'ghoul', 'bat'], players: 'grupo de 2 a 3',
     elite: { type: 'skeleton', name: 'Guardião das Chaves', scale: 1.3 }, boss: { type: 'bishop', name: 'O Bibliotecário Cego', scale: 1.1, hp: 7, dmg: 1.2, mech: { aoe: { every: 9, r: 5.5, k: 1.2, name: 'Silêncio', col: 0x6a4a9a }, heavy: { every: 13, mul: 2.8, name: 'Livro Fechado' } }, hello: 'O segundo subsolo guarda o que a cidade preferiu esquecer. As portas daqui não abrem por fora.', bye: 'O Bibliotecário Cego larga a lanterna. As galerias voltam a ser só pó.' } },
   { id: 'arq3', name: 'A Escada Sem Fim', kind: 'subsolo', lvl: [44, 50], theme: 'arquivo', near: 'Grande Biblioteca', dx: 6.25, dy: -12.75, fixed: true, main: 5, side: 2, mobs: ['ghoul', 'imp', 'skeleton'], players: 'grupo de 3 a 5',
     elite: { type: 'imp', name: 'O Que Sussurra nas Lombadas', scale: 1.4 }, boss: { type: 'prince', name: 'A Sombra do Décimo', scale: 1.05, hp: 9, dmg: 1.3, mech: { aoe: { every: 8, r: 6, k: 1.3, name: 'Olho Fechado', col: 0x9a6aff }, heavy: { every: 12, mul: 3.0, name: 'Pálpebra' } }, hello: 'O terceiro subsolo desce mais do que devia. Lá no fim, uma porta de pedra preta com um olho fechado.', bye: 'A sombra se desfaz. A porta continua fechada. Ainda.' } },
   { id: 'toca', name: 'Toca das Ratazanas Rubras', kind: 'grupo', lvl: [10, 15], theme: 'toca', near: 'Cemitério Esquecido', dy: 4, main: 4, side: 2, mobs: ['rat', 'rat', 'bat'], players: 'grupo de 3',
-    elite: { type: 'rat', name: 'Ratazana Alfa', scale: 1.9 },
-    boss: { type: 'rat', name: 'Mãe-Ninhada', scale: 3.4, hp: 16, dmg: 2.0, mech: { ...MECH_GROUP('Guincho da Ninhada', 0xff4a3a, 'Mordida Dilacerante'), adds: { at: [0.7, 0.4], type: 'rat', n: 5, line: 'A Mãe-Ninhada guincha: os filhotes saem das paredes!' }, pools: { every: 15, n: 3, k: 0.35, name: 'Peste', col: 0x6aff4a }, enrage: 'A Mãe-Ninhada, ferida, fica ainda mais faminta.' },
+    elite: { type: 'rat', name: 'Ratazana Alfa', scale: 1.45 },
+    boss: { type: 'rat', name: 'Mãe-Ninhada', scale: 2.5, hp: 16, dmg: 2.0, mech: { ...MECH_GROUP('Guincho da Ninhada', 0xff4a3a, 'Mordida Dilacerante'), adds: { at: [0.7, 0.4], type: 'rat', n: 5, line: 'A Mãe-Ninhada guincha: os filhotes saem das paredes!' }, pools: { every: 15, n: 3, k: 0.35, name: 'Peste', col: 0x6aff4a }, enrage: 'A Mãe-Ninhada, ferida, fica ainda mais faminta.' },
       hello: 'Algo enorme se mexe no ninho. Os filhotes param de chiar.', bye: 'A Mãe-Ninhada tomba. Debaixo do cemitério, o silêncio volta.' },
     uniq: [{ name: 'Dente da Mãe-Ninhada', slot: 'weapon', icon: '🗡', lore: 'Arrancado do maior rato que Karmika já viu. Ainda cheira a peste.' }, { name: 'Capa de Couro Rubro', slot: 'cape', icon: '🧥', lore: 'Costurada com o couro da Ninhada: os ratos fogem de quem a usa.' }],
     title: 'Caçador da Ninhada' },
@@ -55,7 +55,7 @@ export const DUNGEONS: DgDef[] = [
       hello: 'Um sino toca no fundo da mina. Ninguém sobe com vida desde o desabamento.', bye: 'O Capataz cai. As lanternas da mina se acendem sozinhas.' },
     uniq: [{ name: 'Lanterna do Capataz', slot: 'relic', icon: '🏮', lore: 'A luz que ele perdeu. Ilumina quem não tem medo do escuro.' }, { name: 'Elmo de Mineiro Anão', slot: 'helm', icon: '⛑', lore: 'Amassado por mil desabamentos e nenhum deles venceu.' }], title: 'Desafogador das Minas' },
   { id: 'fiorde', name: 'Gruta do Fiorde', kind: 'grupo', lvl: [32, 38], theme: 'gelo', near: 'Skjoldvik', dx: -8, dy: 6, main: 5, side: 2, mobs: ['frostwolf', 'skeleton', 'frostwolf'], players: 'grupo de 3 a 5',
-    elite: { type: 'frostwolf', name: 'Lobo do Gelo Eterno', scale: 1.8 },
+    elite: { type: 'frostwolf', name: 'Lobo do Gelo Eterno', scale: 1.35 },
     boss: { type: 'prince', name: 'Jarl Afogado', scale: 1.8, hp: 15, dmg: 1.9, mech: { ...MECH_GROUP('Maré Gelada', 0x9ad7ff, 'Machado do Jarl'), adds: { at: [0.66, 0.33], type: 'skeleton', n: 4, line: 'O Jarl chama a tripulação do fundo do fiorde!' }, pools: { every: 14, n: 3, k: 0.3, name: 'Gelo Negro', col: 0x9ad7ff }, enrage: 'O Jarl ruge: o gelo racha em volta dele.' },
       hello: 'O vento para. No fundo da gruta, um barco-dragão congelado e um trono de gelo.', bye: 'O Jarl Afogado afunda no gelo. O fiorde respira.' },
     uniq: [{ name: 'Machado do Jarl Afogado', slot: 'weapon', icon: '🪓', lore: 'Ainda pinga água do fiorde, mesmo no deserto.' }], title: 'Quebra-Gelo' },
@@ -93,15 +93,15 @@ export const DUNGEONS: DgDef[] = [
   { id: 'garganta', name: 'Caverna da Garganta', kind: 'caverna', lvl: null, theme: 'mina', near: 'Garganta de Pedra', dx: 6, main: 2, side: 1, mobs: ['bat', 'skeleton'], players: 'sozinho ou em dupla',
     elite: { type: 'skeleton', name: 'Sentinela de Ossos', scale: 1.4 }, boss: { type: 'tormentor', name: 'O Eco da Garganta', scale: 1.3, hp: 6, dmg: 1.4, mech: { aoe: { every: 10, r: 5, k: 1.2, name: 'Grito do Eco', col: 0xc8b8ff } }, hello: 'A Garganta ecoa a sua respiração. Depois, outra respiração.', bye: 'O eco se cala.' } },
   { id: 'lobos', name: 'Toca do Covil dos Lobos', kind: 'caverna', lvl: null, theme: 'mata', near: 'Covil dos Lobos', dx: -6, dy: 3, main: 2, side: 1, mobs: ['wolf', 'wolf'], players: 'sozinho ou em dupla',
-    elite: { type: 'wolf', name: 'Lobo de Guarda', scale: 1.5 }, boss: { type: 'werewolf', name: 'Lobo Cinzento', scale: 1.2, hp: 5, dmg: 1.2, mech: { heavy: { every: 12, mul: 2.4, name: 'Bote do Lobo Cinzento' } }, hello: 'Olhos amarelos no escuro. Muitos.', bye: 'O Lobo Cinzento cai. A matilha some.' } },
+    elite: { type: 'wolf', name: 'Lobo de Guarda', scale: 1.2 }, boss: { type: 'werewolf', name: 'Lobo Cinzento', scale: 1.2, hp: 5, dmg: 1.2, mech: { heavy: { every: 12, mul: 2.4, name: 'Bote do Lobo Cinzento' } }, hello: 'Olhos amarelos no escuro. Muitos.', bye: 'O Lobo Cinzento cai. A matilha some.' } },
   { id: 'cume', name: 'Fenda do Cume Gelado', kind: 'caverna', lvl: null, theme: 'gelo', near: 'Cume Gelado', dx: 5, dy: 5, main: 2, side: 1, mobs: ['frostwolf', 'frostwolf'], players: 'sozinho ou em dupla',
-    elite: { type: 'frostwolf', name: 'Lobo Branco', scale: 1.5 }, boss: { type: 'frostwolf', name: 'Mãe do Gelo', scale: 2.2, hp: 6, dmg: 1.4, mech: { aoe: { every: 9, r: 5, k: 1.1, name: 'Sopro Gelado', col: 0x9ad7ff } }, hello: 'A fenda estala. O frio tem forma.', bye: 'A Mãe do Gelo se desfaz em neve.' } },
+    elite: { type: 'frostwolf', name: 'Lobo Branco', scale: 1.2 }, boss: { type: 'frostwolf', name: 'Mãe do Gelo', scale: 1.7, hp: 6, dmg: 1.4, mech: { aoe: { every: 9, r: 5, k: 1.1, name: 'Sopro Gelado', col: 0x9ad7ff } }, hello: 'A fenda estala. O frio tem forma.', bye: 'A Mãe do Gelo se desfaz em neve.' } },
   { id: 'atoleiro', name: 'Poço do Atoleiro', kind: 'caverna', lvl: null, theme: 'mata', near: 'Atoleiro de Zerath', dx: 6, dy: -4, main: 2, side: 1, mobs: ['ghoul', 'bat'], players: 'sozinho ou em dupla',
     elite: { type: 'ghoul', name: 'Afogado do Brejo', scale: 1.4 }, boss: { type: 'ghoul', name: 'O Que Bebe o Brejo', scale: 1.9, hp: 6, dmg: 1.3, mech: { pools: { every: 10, n: 2, k: 0.35, name: 'Lodo', col: 0x7aff6a } }, hello: 'O lodo borbulha. Algo bebe o brejo de baixo para cima.', bye: 'O lodo fica parado, enfim.' } },
   { id: 'draugr', name: 'Túmulo dos Draugr', kind: 'subsolo', lvl: null, theme: 'cripta', near: 'Acampamento Draugr', dx: 5, dy: 5, main: 3, side: 1, mobs: ['skeleton', 'zombie'], players: 'sozinho ou em dupla',
     elite: { type: 'skeleton', name: 'Draugr Antigo', scale: 1.5 }, boss: { type: 'prince', name: 'Rei do Túmulo', scale: 1.4, hp: 7, dmg: 1.4, mech: { adds: { at: [0.5], type: 'skeleton', n: 3, line: 'O Rei do Túmulo chama a guarda!' } }, hello: 'Um trono de ossos. Um rei que não quer descansar.', bye: 'O Rei do Túmulo enfim descansa.' } },
   { id: 'galerias', name: 'Galerias de Brasaforja', kind: 'subsolo', lvl: [4, 8], theme: 'mina', near: 'Brasaforja', dx: -12, dy: 10, main: 2, side: 1, mobs: ['rat', 'bat'], players: 'sozinho',
-    elite: { type: 'rat', name: 'Rato das Galerias', scale: 1.6 }, boss: { type: 'imp', name: 'Diabrete da Fornalha Velha', scale: 1.5, hp: 5, dmg: 1.1, mech: { aoe: { every: 11, r: 4.5, k: 1, name: 'Fagulhas', col: 0xffa040 } }, hello: 'As galerias velhas dos anões. Algo mexeu nas fornalhas apagadas.', bye: 'A fornalha velha apaga de vez.' } },
+    elite: { type: 'rat', name: 'Rato das Galerias', scale: 1.25 }, boss: { type: 'imp', name: 'Diabrete da Fornalha Velha', scale: 1.5, hp: 5, dmg: 1.1, mech: { aoe: { every: 11, r: 4.5, k: 1, name: 'Fagulhas', col: 0xffa040 } }, hello: 'As galerias velhas dos anões. Algo mexeu nas fornalhas apagadas.', bye: 'A fornalha velha apaga de vez.' } },
   { id: 'raizes', name: 'Raízes de Lithendel', kind: 'subsolo', lvl: [4, 8], theme: 'mata', near: 'Lithendel', dx: 12, dy: -10, main: 2, side: 1, mobs: ['rat', 'fairy'], players: 'sozinho',
     elite: { type: 'fairy', name: 'Fada das Raízes', scale: 1.5 }, boss: { type: 'treant', name: 'Raiz Doente', scale: 1.1, hp: 4, dmg: 1.0, mech: { pools: { every: 11, n: 2, k: 0.3, name: 'Seiva Podre', col: 0x9aff6a } }, hello: 'Sob as árvores mais velhas, uma raiz apodrece e se mexe.', bye: 'A Raiz Doente seca. Lá em cima, uma árvore suspira.' } },
 ];
@@ -117,6 +117,7 @@ export interface DgCtx {
   /** posição na tela de um ponto do mundo (para o nome da entrada, em letra nítida) */ project?(p: THREE.Vector3): { x: number; y: number } | null;
   heroPos(): THREE.Vector3; partySize(): number; /** nível médio do grupo (ou o seu, sozinho) */ partyLvl?(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
   onClear?(d: DgDef, first: boolean): void;
+  /** chefe e elite com kit (chefes.ts): magias, andar e roupa da história */ onKit?(e: unknown): void; onStop?(): void;
 }
 type E = DgCtx['game']['enemies']['list'][number] & { tag?: string; own?: number; ownT?: number };
 
@@ -174,16 +175,16 @@ export function createMasmorras(ctx: DgCtx) {
       const step = Math.max(0, main.indexOf(rm)), L = Math.round(lo + (hi - lo) * Math.min(1, step / Math.max(1, main.length - 1)));
       const at = () => ({ x: rm.x + (r() - 0.5) * (rm.w - 4), z: rm.z + (r() - 0.5) * (rm.d - 4) });
       if (rm.kind === 'pack') { const k = 3 + (r() < 0.5 ? 1 : 0) + (n >= 4 ? 1 : 0); for (let i = 0; i < k; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L, { hpX: 0.8 + 0.2 * Math.min(n, 5) }); total++; } }
-      else if (rm.kind === 'elite') { S(d.elite.type, rm.x, rm.z, hi, { name: d.elite.name, scale: d.elite.scale, hpX: 3.2 * (0.6 + 0.2 * Math.min(n, 5)), dmgX: 1.35 }); total++; for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
+      else if (rm.kind === 'elite') { ctx.onKit?.(S(d.elite.type, rm.x, rm.z, hi, { name: d.elite.name, scale: d.elite.scale, hpX: 3.2 * (0.6 + 0.2 * Math.min(n, 5)), dmgX: 1.35 })); total++; for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
       else if (rm.kind === 'side') { for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
-      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); }
+      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); ctx.onKit?.(boss); }
     });
     const need = Math.ceil(total * (d.kind === 'grupo' ? 0.7 : 0.6));
     run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), done: false, dead: new Set() };
     ctx.game.logMsg(`⚔ ${d.name} · ${TI.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
     hud();
   }
-  function stop() { if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
+  function stop() { ctx.onStop?.(); if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
   function hud() {
     if (!run) { HUD.style.display = 'none'; return; } const R = run, b = R.boss, open = !!R.int.gate?.opened;
     HUD.style.display = 'block';

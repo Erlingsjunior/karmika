@@ -1,4 +1,6 @@
 import { installTitleTips } from './dicas';
+import { dressEnemy, createBossBrain, bossBody } from './chefes';
+import { enemyHooks } from './enemies';
 import { floatWin, dragAll, confirmBox } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
 import { surrender, eyeSees } from './surrender';
@@ -2367,6 +2369,7 @@ function updateXray(dt: number) {
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
 let stuckT = 0;
 function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {
+  if (trying && heroSlowUntil > performance.now()) { dx *= heroSlowK; dy *= heroSlowK; } /* rugido do chefe: lento por uns segundos */
   const x0 = state.fx, y0 = state.fy, L = Math.hypot(dx, dy); if (L < 1e-6) return;
   if (free(x0 + dx, y0 + dy)) { state.fx += dx; state.fy += dy; }
   else {
@@ -2503,7 +2506,17 @@ function enterCrypt(floor: number, p: (typeof city.props)[number]) {
 /* ---------- masmorras, cavernas e subsolos (masmorras.ts + dungeon3d.ts) ---------- */
 const dgs = createMasmorras({ scene, T, city: city as never, heightAt, regionLvl: (x, y) => { const r = regionAt(x, y); return [r.lo, r.hi]; }, game: game as never, particles, audio: audio as never,
   heroPos: () => heroPosNow(), project: (p) => { const v = p.clone().project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; }, partySize: () => netRef?.party ? netRef.party.members.length : 1, partyLvl: () => { const P = netRef?.party; if (!P) return game.st.lvl; const ls = P.members.map((id) => id === netRef!.myId ? game.st.lvl : netRef!.infoOf(id)?.lvl ?? game.st.lvl); return ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length); }, say: (t) => chat.sys(t), fine,
+  onKit: (e) => brain.track(e as never), onStop: () => brain.untrackAll(),
   onClear: (d, first) => { quests.onDungeon(d.id); feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
+/* chefes e elites com história (chefes.ts): roupa ao montar o corpo, magias e jeito de andar */
+enemyHooks.dress = (e, g) => dressEnemy(e as never, g); enemyHooks.body = (e) => bossBody(e as never) as never;
+let heroSlowK = 1, heroSlowUntil = 0;
+const brain = createBossBrain({ scene, fine: (o) => o, particles, heroPos: () => heroPosNow().setY(groundH(state.fx * T, state.fy * T)), heroDead: () => game.st.dead,
+  damage: (n, from) => game.damage(n, heroPosNow(), from), say: (t) => game.logMsg(t, '#ffb08a'), log: (t, c) => game.logMsg(t, c), shake: (k) => { game.st.shake = Math.max(game.st.shake, k); },
+  slowHero: (k, secs) => { heroSlowK = k; heroSlowUntil = performance.now() + secs * 1000; }, pushHero: (dx, dz) => moveSlide(dx / T, dz / T, 0, false),
+  walkable: (x, z) => free(x / T, z / T), spawnAdd: (type, x, z) => { game.enemies.spawn(type, x, z, { tag: 'dg-add', lvl: Math.max(1, game.st.lvl + 1), aggro: 30, leash: 999 }); },
+  sound: (k) => { if (k === 'boom') audio.boom(); else audio.spell(k); } });
+if (IS_DEV) (window as unknown as { __brain: unknown }).__brain = brain;
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
 /** a placa da masmorra (25/10): mostra as dificuldades, os níveis e os prêmios; a masmorra acompanha o seu nível, mas você pode pedir mais */
 function dungeonBoard(en: (typeof dgs.entrances)[number]) {
@@ -3262,9 +3275,10 @@ function lightPool(dt: number) {
   const scored = poolList.map((l) => { l.getWorldPosition(v); let up = true; for (let p: THREE.Object3D | null = l.parent; p; p = p.parent) if (!p.visible) { up = false; break; } return { l, d: up ? Math.hypot(v.x - cxp, v.z - czp) - l.intensity * 0.05 : 1e9 }; }).sort((a, b) => a.d - b.d);
   scored.forEach((e, i) => { const on = i < LUZES_ATIVAS; if (e.l.visible !== on) e.l.visible = on; });
 }
+let lastFrameErr = '';
 function frame() {
   if (bootFrames < 12 && ++bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
-  try { frameBody(); } catch (e) { kshow('ERRO no frame: ' + ((e as Error).stack || e)); return; }
+  try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   requestAnimationFrame(frame);
 }
 const __BUILD__ = '20261019-2340';
@@ -3375,6 +3389,7 @@ function frameBody() {
   updateCompanions(dt, t, hero.root.rotation.y, mps); updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);
+  brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   if (rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   updateGuide(dt); updateInstinct(dt); updateCaravans(dt); updateEventos(dt); updateSecrets(dt); build.update(mouse.x, mouse.z);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubbleEl.style.display = 'none'; else { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.4, heroPos.z).project(camera); bubbleEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; bubbleEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; } }
