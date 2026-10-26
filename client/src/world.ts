@@ -13,7 +13,9 @@ export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
   /* gente (eventos vivos, 24/10): soldados, bruxos, paladinos negros, templários, caçadores, crias do Conde, peregrinos elfos */
-  | 'soldier' | 'cultist' | 'darkpal' | 'templar' | 'hunter' | 'vampire' | 'pilgrim';
+  | 'soldier' | 'cultist' | 'darkpal' | 'templar' | 'hunter' | 'vampire' | 'pilgrim'
+  /* 26/10: salteadores dos acampamentos de bandidos à beira das estradas */
+  | 'bandit' | 'bandit_arch' | 'bandit_chief';
 const T = 2; // metros por tile (igual a TILE_M)
 
 export interface Prop {
@@ -88,7 +90,7 @@ export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: nu
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
   /** a Casa dos Ofícios de Askavik (25/10): o salão de todas as profissões (oficios.ts monta o prédio e os ajudantes) */ craftHall?: { x: number; y: number; w: number; h: number; ry: number };
-  pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
+  pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; /** acampamentos de salteadores e as torres de vigia (26/10) */ bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
 }
@@ -940,6 +942,33 @@ export function buildCity(): World {
     for (let k = 0; k < 6; k++) addRock(Math.round(c.x + (r() - 0.5) * 16), Math.round(c.y + (r() - 0.5) * 16), r() < 0.3);
     return c;
   };
+  /* 26/10 (Erling: "diversos acampamentos de bandidos e torres de vigia depois de pontes, com soldados que dão missões de caçar bandidos;
+     ruas mais seguras que o mato"): nas estradas mais longas, um acampamento de salteadores escondido a uns 9 tiles da estrada,
+     na metade do caminho; e, mais perto da vila, uma torre de vigia com um sargento e uma tocha */
+  const BANDIT_ROADS: [string, string][] = [['Lundr', 'Karmika'], ['Karmika', 'Vestheim'], ['Karmika', 'Sudrholt'], ['Askavik', 'Lundr'], ['Vatnaholt', 'Lumenhal'], ['Myrbakki', 'Lumenhal'], ['Lundr', 'Eikvik'], ['Askavik', 'Hrafnhöfn'], ['Kaldrfoss', 'Midvangr'], ['Sudrholt', 'Vindholt']];
+  const bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[] = [];
+  { const SGT = ['Sargento Halvar', 'Sargenta Brynja', 'Sargento Eirik', 'Sargenta Solveig', 'Sargento Gunnar', 'Sargenta Astrid', 'Sargento Ragnvald', 'Sargenta Hild', 'Sargento Torvald', 'Sargenta Yrsa'];
+    const CAMPN = ['Toca dos Salteadores', 'Acampamento da Forquilha', 'Covil do Machado Torto', 'Clareira dos Ladrões', 'Barraca do Cão Velho', 'Esconderijo da Pedra Rachada', 'Acampamento do Corvo Manco', 'Vau dos Saqueadores', 'Toca do Passo Frio', 'Acampamento da Vindima Roubada'];
+    BANDIT_ROADS.forEach(([a, b], bi) => {
+      const l = roadLinks.find((q) => (q.a === a && q.b === b) || (q.a === b && q.b === a)); if (!l) return; const path = roadPaths[l.i]; if (!path || path.length < 50) return;
+      const mid = path[Math.floor(path.length * 0.5)], ahead = path[Math.min(path.length - 1, Math.floor(path.length * 0.5) + 6)];
+      const dx = ahead.x - mid.x, dy = ahead.y - mid.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L; /* perpendicular à estrada */
+      let c: { x: number; y: number } | null = null;
+      for (const side of [1, -1]) for (const dist of [9, 11, 13, 7]) { const x = Math.round(mid.x + nx * dist * side), y = Math.round(mid.y + ny * dist * side); if (free(x, y) && waterSD(x * T, y * T) > 3 && !settlements.some((st) => Math.hypot(st.x - x, st.y - y) < st.radius + 14)) { c = { x, y }; break; } if (c) break; }
+      if (!c) return;
+      const name = CAMPN[bi % CAMPN.length]; camp(name, c, 'forest', 3, 0x5a4a30); addFire(c.x + 3, c.y - 2);
+      if (free(c.x - 3, c.y + 2)) block({ kind: 'chest', gx: c.x - 3, gy: c.y + 2, w: 1, h: 1, height: 0.6, wall: 0x5a3a1a, roof: 0xd9a441 });
+      spawns.push({ type: 'bandit', x: c.x, y: c.y, r: 5, n: 4, fixLvl: 8 + bi }, { type: 'bandit_arch', x: c.x + 2, y: c.y - 2, r: 4, n: 2, fixLvl: 8 + bi }, { type: 'bandit_chief', x: c.x, y: c.y + 1, r: 1, n: 1, fixLvl: 10 + bi });
+      /* a torre: no quarto do caminho mais perto da vila de origem (a), encostada na estrada */
+      const q = path[Math.floor(path.length * (l.a === a ? 0.22 : 0.78))], q2 = path[Math.min(path.length - 1, Math.floor(path.length * (l.a === a ? 0.22 : 0.78)) + 4)];
+      const ddx = q2.x - q.x, ddy = q2.y - q.y, LL = Math.hypot(ddx, ddy) || 1, tnx = -ddy / LL, tny = ddx / LL; let tw: { x: number; y: number } | null = null;
+      for (const side of [1, -1]) for (const dist of [3, 4, 5]) { const x = Math.round(q.x + tnx * dist * side), y = Math.round(q.y + tny * dist * side); if (free(x, y) && free(x + 1, y) && free(x, y + 1) && free(x + 1, y + 1) && waterSD(x * T, y * T) > 2) { tw = { x, y }; break; } if (tw) break; }
+      let tower: typeof bandits[number]['tower'] = null;
+      if (tw) { block({ kind: 'tower', gx: tw.x, gy: tw.y, w: 2, h: 2, height: 7, wall: 0x6e6a66, roof: 0x5a3a28 }); if (free(tw.x + 2, tw.y + 2)) props.push({ kind: 'torch', gx: tw.x + 2, gy: tw.y + 2, w: 1, h: 1, height: 2.2, wall: 0x5a3a1a, roof: 0xff9a3a });
+        const sgt = SGT[bi % SGT.length]; tower = { x: tw.x + 2.5, y: tw.y - 0.5, sgt };
+        const home = settlements.find((st) => st.name === a) ?? settlements[0];
+        home.npcs.push({ name: sgt, role: `Vigia da estrada · ${a} → ${b}`, kind: 'nordic', x: tw.x + 2.5, y: tw.y - 0.5, radius: 1.5, tint: 0x5a6a8a, scale: 1.02, lines: [`Daqui vejo a estrada até ${b}. O que não vejo é o que se esconde no mato.`, `A ${name} fica a meio caminho, fora da estrada. Quem anda pelo mato perto de lá, não volta inteiro.`, 'A patrulha sai da cidade e volta. Entre uma e outra, a estrada é sua.'] }); }
+      bandits.push({ name, x: c.x, y: c.y, road: [a, b], tower }); }); }
   const cDraugr = camp('Acampamento Draugr', K(66, 120), 'ruins', 4, 0x4a4a52);
   const cWolf = camp('Covil dos Lobos', K(120, 62), 'forest', 2, 0x5a3a28);
   const cSwamp = camp('Atoleiro de Zerath', K(22, 66), 'swamp', 3, 0x4a5a3a);
@@ -1503,7 +1532,7 @@ export function buildCity(): World {
       else if (smallAt.has(k)) { cut++; return false; }
       smallAt.add(k); return true; });
     if (cut) { props.length = 0; props.push(...keep); } }
-  return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
+  return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
 export function veinOf(p: { gx: number; gy: number; w: number }) { const h = Math.abs(Math.sin(p.gx * 127.1 + p.gy * 311.7) * 43758.5453) % 1; return h < (p.w > 1 ? 0.07 : 0.035) ? 2 : h < (p.w > 1 ? 0.3 : 0.16) ? 1 : 0; }

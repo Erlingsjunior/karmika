@@ -202,11 +202,11 @@ function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotati
 
 /* ================= a lógica ================= */
 type Mode = 'ambient' | 'escort' | 'rescue' | 'event';
-interface Car { key: string; mode: Mode; /** negociando com o jogador (parada) e o atraso acumulado */ trading?: boolean; lag?: number; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string }
+interface Car { key: string; mode: Mode; /** negociando com o jogador (parada) e o atraso acumulado */ trading?: boolean; lag?: number; /** afastamento lateral atual (mão da estrada; some nas pontes) */ off?: number; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string }
 export interface CaravanCtx {
   scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; night(): number; inside(): boolean; lvl(): number;
   spawn(type: EnemyType, x: number, z: number, o: { name: string; lvl: number; tag: string; aggro: number; hpMul: number }): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number; def: { name: string } };
-  clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void; /** a janela da loja está aberta (a carroça espera) */ shopOpen?(): boolean;
+  clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void; /** a janela da loja está aberta (a carroça espera) */ shopOpen?(): boolean; /** o ponto (m) está em cima de uma ponte ou nas cabeceiras dela */ onBridge?(x: number, z: number): boolean;
   smoke(x: number, y: number, z: number, dark: boolean): void; bubble(x: number, y: number, z: number, t: string): void;
   log(t: string, c?: string): void; onEscort(id: string): void; onRescue(id: string): void;
   onEvent(r: Route, how: 'salva' | 'saque' | 'perdida'): void; lean(): 'luz' | 'sombra' | null;
@@ -312,7 +312,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       const yaw = p.yaw + (c.dir < 0 ? Math.PI : 0), ca = Math.sin(yaw), cb = Math.cos(yaw);
       /* 26/10 (Erling: "carroças não se atravessam assim"): cada uma anda pela sua mão (direita no sentido em que vai); as que
          se cruzam passam lado a lado, e as que vão juntas na mesma rota já saem em horários diferentes */
-      if (c.mode === 'ambient') { p.x += cb * 1.7; p.z -= ca * 1.7; }
+      if (c.mode === 'ambient') { const want = ctx.onBridge?.(p.x, p.z) ? 0.3 : 1.7; /* na ponte, manobra para o meio: a ponte é estreita (Erling: "passar certinho pelas pontes") */ c.off = (c.off ?? want) + (want - (c.off ?? want)) * Math.min(1, dt * 1.6); p.x += cb * c.off; p.z -= ca * c.off; }
       const hF = ctx.heightAt(p.x + ca * 1.3, p.z + cb * 1.3), hB = ctx.heightAt(p.x - ca * 1.3, p.z - cb * 1.3);
       w.root.position.set(p.x, (hF + hB) / 2, p.z); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, 2.6) * 0.9;
       const moving = !c.stop && !w.fallen && !(c.mode === 'ambient' && c.stop);
