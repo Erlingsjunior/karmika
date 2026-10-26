@@ -59,7 +59,7 @@ import { DG_TIERS } from './masmorras';
 import { PALADIN, VAMPIRE, TECHNO, WEREWOLF, RACE_INSTINCT } from './sagas';
 import { createAtmos } from './atmos';
 import { createCraftHall } from './oficios';
-import { createEvents, globalNow, globalNext, type EvResult } from './eventos';
+import { createEvents, globalNow, globalNext, globalList, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
@@ -908,7 +908,7 @@ const eventos = createEvents({ scene, heightAt, hero: () => heroPos, inside: () 
   project: (p) => { const v = p.clone().project(camera); if (v.z > 1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
   converse: (o) => { let picked: Reply | null = null; openDlg({ name: o.name, role: o.role, portrait: null, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, onReply: (r) => { if (r.flag?.startsWith('ev:')) picked = r; else applyReply(r); }, meet: { quest: { id: 'ev', name: o.title, lvl: 1, giver: o.name, text: '', objs: [], xp: 0, gold: 0 }, steps: o.steps, onEnd: () => o.onPick(picked) } }); },
   count: (it) => inv.count(it), take: (it, n) => inv.take(it, n), act: (a) => { hero.act(a as never, true); }, result: (r) => showEvResult(r) }, evSites);
-function showEvResult(r: EvResult) {
+function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; });
   state.karma = Math.max(-100, Math.min(100, state.karma + r.karma)); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
   const k = r.karma, kc = k > 0 ? '#ffe08a' : k < 0 ? '#c98aff' : '#b9c6e0';
@@ -1222,7 +1222,7 @@ function eliteDrop(t: EnemyType, e: { def: { name: string; scale?: number; lvl?:
   for (let i = 0; i < 24; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.25, s1: 0.04, c0: 0xffe8a0, c1: 0xff8a2a, a: 1, g: 4 });
   game.logMsg(`✦ ${e.def.name} deixou material de elite: ${got.map((id) => ITEMS_TBL[id]?.name ?? id).join(', ')}. O Mestre-Forjador Brokki, em Brasaforja, sabe o que fazer com isso.`, '#ffb060');
 }
-game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
+game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); gevNote((h) => { h.kills++; }); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
   const what = `Você encontrou ${h.name} no esconderijo e terminou o que ele mesmo começou com a mentira.`; compendium.add({ title: `${h.name}: justiça tardia`, what, delta: 14, sealed: sealedH }); if (sealedH) game.logMsg('🌑 Em algum lugar, algo que ainda dorme guardou o que você fez.', '#a898c8');
   if (!sealedH) setTimeout(() => { eyeSees('Justiça tardia.', what, 'Você foi enganado uma vez, e pagou por isso. Mas não deixou a mentira vencer: buscou, encontrou e cumpriu o seu papel. A ingenuidade se apaga diante da persistência.', 14); const d = quests.q.active[h.qid] ? quests.offers('O Olho') : null; void d; }, 600);
   setTimeout(() => { const d2 = (quests as unknown as { turnins(n: string): { id: string }[] }).turnins('O Olho').find((x) => x.id === h.qid); if (d2) quests.turnIn(d2 as never); }, 900); } quests.onKill(t); if ((e as typeof e & { tag?: string }).tag === 'crypt') pourBlood(e); for (const fl of CRYPT_FLOORS) if (fl.elite && fl.elite.seal && e.def.name === fl.elite.name) { inv.add(fl.elite.seal, 1); chat.sys(`✦ ${fl.elite.name} caiu e deixou o ${ITEMS_TBL[fl.elite.seal]?.name ?? fl.elite.seal}.`); }
@@ -2144,7 +2144,7 @@ const LUA_C = { sky: new THREE.Color(0x3a0604), fog: new THREE.Color(0x4a0a06), 
 const AUR_C = { sky: new THREE.Color(0xf6dcc4), fog: new THREE.Color(0xf0d8c8), hemi: new THREE.Color(0xffe8f0), sun: new THREE.Color(0xfff0d8) };
 const LUA_MUL = new THREE.Vector3(1.42, 0.6, 0.5), LUA_LIFT = new THREE.Vector3(0.07, 0, 0);
 const AUR_MUL = new THREE.Vector3(1.07, 1.03, 0.97), AUR_LIFT = new THREE.Vector3(0.035, 0.028, 0.04);
-let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = undefined, luaK = 0, aurK = 0;
+let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = undefined, luaK = 0, aurK = 0, engK = 0;
 /* A ABERTURA do evento global (Erling, 25/10): ~12 s de impacto total (luz, coral, folhas, anúncio no meio da tela) e depois
    o mundo assenta: fica só mais cor no dia, uma brisa leve, o coral quase sumindo ao longe. O efeito (buff) fica na barra de efeitos. */
 let instK = 0, gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL = 12, G_OPEN_FADE = 8;
@@ -2363,6 +2363,43 @@ type Inter = { d: number; label: string; act: () => void };
 
 /* ---------- letreiro rúnico do alto: lugar, clima, hora/turno, nível da região, elite próxima, cidade ---------- */
 const bannerEl = document.createElement('div'); bannerEl.id = 'banner'; document.body.appendChild(bannerEl);
+/* ---------- EVENTOS MUNDIAIS (25/10): contador embaixo do minimapa, chip na barra e o painel para rever tudo depois do anúncio ---------- */
+function fmtLeft(ms: number) { const m = Math.max(0, Math.ceil(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)}h${String(m % 60).padStart(2, '0')}` : `${m} min`; }
+function fmtClock(ms: number) { const s2 = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s2 / 3600), m = Math.floor((s2 % 3600) / 60), sec = s2 % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}` : `${m}:${String(sec).padStart(2, '0')}`; }
+const GEV_HIST = 'karmika.gevhist.v1';
+type GevH = { id: string; start: number; kills: number; evs: number };
+const gevHist = (): GevH[] => { try { return JSON.parse(localStorage.getItem(GEV_HIST) || '[]'); } catch { return []; } };
+function gevNote(f: (h: GevH) => void) { let g: ReturnType<typeof globalNow> = null; try { g = globalNow(); } catch { /* */ } if (!g) return; const L = gevHist(); let h = L.find((q) => q.id === g!.id && Math.abs(q.start - (g!.end - (g!.id === 'lua' ? 80 : 90) * 60000)) < 60000);
+  if (!h) { h = { id: g.id, start: g.end - (g.id === 'lua' ? 80 : 90) * 60000, kills: 0, evs: 0 }; L.unshift(h); } f(h); try { localStorage.setItem(GEV_HIST, JSON.stringify(L.slice(0, 12))); } catch { /* */ } }
+const gevChip = document.createElement('button'); gevChip.id = 'gevt'; gevChip.title = 'Eventos mundiais: o que está acontecendo, o que vem e o que já passou';
+setTimeout(() => document.getElementById('mini')?.appendChild(gevChip), 0);
+gevChip.addEventListener('click', () => openGev());
+const gevEl = document.createElement('div'); gevEl.id = 'gevwin'; gevEl.className = 'pn gevpn'; gevEl.style.display = 'none'; document.body.appendChild(gevEl);
+setTimeout(() => floatWin(gevEl, 'gev', { right: '210px', top: '70px' }), 0);
+let gevOpen = false;
+function openGev(on = !gevOpen) { gevOpen = on; gevEl.style.display = on ? 'block' : 'none'; if (on) renderGev(); }
+gevEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]')) { openGev(false); return; } const b = t.closest('[data-evk]') as HTMLElement | null; if (b) { eventos.track(b.dataset.evk!); pinT = null; game.logMsg('🧭 Evento seguido: a bússola aponta para lá.', '#ffb060'); renderGev(); } });
+const fmtWhen = (ms: number) => { const d = new Date(ms), now = new Date(), same = d.toDateString() === now.toDateString(), tm = new Date(now.getTime() + 864e5).toDateString() === d.toDateString(); return `${same ? 'hoje' : tm ? 'amanhã' : d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' })} às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+function renderGev() {
+  const L = globalList(), now = Date.now(), H = gevHist();
+  const cur = L.now, side = cur ? globalSideText(cur.id) : '';
+  const near = (() => { try { return eventos.nearby(hereT(), 900); } catch { return []; } })();
+  const card = cur ? `<div class="gv-now" style="--gc:${cur.color}"><div class="gv-ic">${cur.icon}</div><div><b>${cur.name}</b><span class="gv-cd">termina em ${fmtClock(cur.end - now)}</span><p>${cur.text}</p>${side ? `<p class="gv-side">✦ Para você: ${side}</p>` : ''}<p class="gv-note">O céu pesa na chegada e depois fica leve para jogar. Dentro de um evento que você aceitou, a ${cur.id === 'lua' ? 'lua' : 'luz'} volta com tudo.</p></div></div>`
+    : `<div class="gv-now none"><div class="gv-ic">☾</div><div><b>Nenhum evento mundial agora</b><p>O mundo respira. ${L.next[0] ? `O próximo é ${L.next[0].icon} ${L.next[0].name}, ${fmtWhen(L.next[0].start)} (em ${fmtLeft(L.next[0].start - now)}).` : ''}</p></div></div>`;
+  const nearH = near.length ? near.slice(0, 6).map((q) => `<div class="gv-row"><span style="color:${q.color}">${q.icon} ${q.name}</span><small>Nv ${q.lvl} · ${fmtDist(q.d)} · ${q.joined ? 'você está nele' : `termina em ${fmtLeft(q.left * 1000)}`}</small>${q.joined ? '' : `<button data-evk="${q.key}">Seguir</button>`}</div>`).join('') : '<p class="gv-empty">Nada acontecendo por perto agora.</p>';
+  const hist = (id: string, st: number) => H.find((q) => q.id === id && Math.abs(q.start - st) < 120000);
+  const pastH = L.past.map((q) => { const h = hist(q.id, q.start); return `<div class="gv-row past"><span>${q.icon} ${q.name}</span><small>${fmtWhen(q.start)}${h ? ` · você estava lá: ${h.kills} abates, ${h.evs} evento(s)` : ' · você não estava'}</small></div>`; }).join('');
+  const nextH = L.next.map((q) => `<div class="gv-row"><span style="color:${q.color}">${q.icon} ${q.name}</span><small>${fmtWhen(q.start)} · em ${fmtLeft(q.start - now)}</small></div>`).join('');
+  gevEl.innerHTML = `<h2>Eventos mundiais<button data-x title="Fechar">✕</button></h2>${card}<h3>Acontecendo perto de você</h3>${nearH}<h3>Próximos</h3>${nextH}<h3>Já aconteceram</h3>${pastH}<small class="ft">Os eventos mundiais andam ~1h26 mais cedo a cada dia: em uma semana passam por todas as horas.</small>`;
+}
+let gevT = 0;
+function updateGevChip(dt: number) { gevT -= dt; if (gevT > 0) return; gevT = 1;
+  let g: ReturnType<typeof globalNow> = null, nx: ReturnType<typeof globalNext> = null; try { g = globalNow(); nx = g ? null : globalNext(); } catch { /* */ }
+  gevChip.className = g ? 'on ' + g.id : 'off';
+  gevChip.innerHTML = g ? `<i>${g.icon}</i><span><b>${g.name}</b><em>${fmtClock(g.end - Date.now())}</em></span>` : nx ? `<i>${nx.icon}</i><span><b>${nx.name}</b><em>em ${fmtLeft(nx.start - Date.now())}</em></span>` : '';
+  gevChip.style.display = g || nx ? '' : 'none'; if (g) gevChip.style.setProperty('--gc', g.color);
+  if (gevOpen) renderGev(); }
+
 let bannerT = 0, qmT = 0;
 /** marcadores de missão sobre os NPCs: ? = tem missão, ! = missão pronta para entregar; amarelo história, verde recorrente (quadro), azul extra */
 function updateQuestMarks() {
@@ -2410,6 +2447,7 @@ function updateBanner() {
     `<span title="Temperatura">${temp < 2 ? '❄' : temp > 24 ? '☀' : '🌤'} ${temp}°C</span>`,
     `<span title="Dia e turno de Karmika (6 turnos de 4 h; 1 turno = 30 min reais)">Dia ${dayIndex()} · Turno ${turnIndex()}/6 ${turnName()} · ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</span>`,
     `<span title="Situação kármica da região" style="color:${moodC}">◈ ${mood}</span>`,
+    (() => { let g: ReturnType<typeof globalNow> = null; try { g = globalNow(); } catch { /* */ } return g ? `<a class="gevb" data-gev style="color:${g.color}" title="Evento mundial: clique para ver o que está acontecendo">${g.icon} ${g.name} · ${fmtLeft(g.end - Date.now())}</a>` : ''; })(),
     `<span title="${ri.region}: os bichos daqui vão do nível ${ri.lo} ao ${ri.hi}" class="${ri.lo > game.st.lvl + 3 ? 'danger' : ''}">⚔ ${ri.region} · Nv ${ri.lo}–${ri.hi}${ri.lo > game.st.lvl + 3 ? ' · perigo' : ''}</span>`,
     ri.elite ? `<a class="elite" data-pin="elite" title="Clique para ir até a elite"><i class="${ri.elite.alive ? 'on' : ''}"></i>${ri.elite.name} · ${fmtDist(ri.elite.d)}${ri.elite.alive ? '' : ' (caído)'}</a>` : '',
     st ? `<span class="dd" title="Assentamento">${st.kind === 'city' ? '🏰 Cidade' : '🏘 Vila'}${nearHome ? ' · ⛲ lar' : ''}<div class="menu">${shops.map((q) => `<a data-pin="npc:${q.def.name}">🪙 ${q.def.name} <small>${q.def.role}</small></a>`).join('')}${tav ? `<a data-pin="tav">🍺 Taverna</a>` : ''}${places.map((p) => `<a data-pin="poi:${p.name}">📍 ${p.name}</a>`).join('')}${!shops.length && !tav && !places.length ? '<a>nada por aqui</a>' : ''}</div></span>` : '',
@@ -2419,6 +2457,7 @@ function updateBanner() {
   bannerEl.dataset.eliteName = ri.elite?.name ?? ''; bannerEl.dataset.eliteX = eliteSp ? String(eliteSp.x) : ''; bannerEl.dataset.eliteY = eliteSp ? String(eliteSp.y) : ''; bannerEl.dataset.tavX = tav ? String(tav.gx + tav.w / 2) : ''; bannerEl.dataset.tavY = tav ? String(tav.gy + tav.h + 1) : '';
 }
 bannerEl.addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('[data-gev]')) { openGev(); return; }
   const a = (e.target as HTMLElement).closest('[data-pin]') as HTMLElement | null; if (!a) return; const k = a.dataset.pin!;
   if (k === 'clear') { setPin(null); return; }
   if (k === 'elite') { if (bannerEl.dataset.eliteX) setPin({ x: +bannerEl.dataset.eliteX, y: +bannerEl.dataset.eliteY!, label: bannerEl.dataset.eliteName || 'Elite' }); return; }
@@ -3090,7 +3129,7 @@ function frameBody() {
   if (rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   updateGuide(dt); updateInstinct(dt); updateCaravans(dt); updateEventos(dt); updateSecrets(dt); build.update(mouse.x, mouse.z);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubbleEl.style.display = 'none'; else { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.4, heroPos.z).project(camera); bubbleEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; bubbleEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; } }
-  bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); }
+  bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt);
   qmT -= dt; if (qmT <= 0) { qmT = 0.7; updateQuestMarks(); }
   mmT -= dt; if (mmT <= 0) { mmT = 0.1; drawMini(); if (bigOpen) drawBig(); (document.getElementById('zone') as HTMLElement).textContent = `${zoneName()} · ${turnName()} ${Math.floor(gameHour())}h`; }
   hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
@@ -3133,21 +3172,25 @@ function frameBody() {
   instK += ((instinctOn && !inside ? 1 : 0) - instK) * Math.min(1, rawDt * 2);
   if (gCur !== gOpenId && !document.getElementById('boot')?.matches(':not(.off)') && !inicio.isOpen) { gOpenId = gCur; gOpenAt = performance.now(); } /* a abertura só conta quando o jogador já está vendo o mundo */
   const op = gOpen(), aurV = aurK * (0.4 + 0.6 * op), aurGlow = aurK * (0.12 + 0.88 * op), aurFx = aurK * (0.18 + 0.82 * op);
-  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaK * 0.85).lerp(AUR_C.sky, aurV * 0.35);
-  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaK * 0.8).lerp(AUR_C.fog, aurV * 0.4);
-  (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cine ? 0.35 : 1) * (1 + luaK * 0.5);
+  /* Lua de Sangue (Erling, 25/10): a abertura vem forte (cor e o pulso); depois fica leve para jogar — percebe-se a lua, mas sem sofrer.
+     Dentro de um evento aceito, o rubro e o coração voltam a pesar. */
+  engK += ((eventos.engaged() ? 1 : 0) - engK) * Math.min(1, rawDt * 0.5);
+  const luaV = luaK * Math.min(1, 0.25 + 0.75 * Math.max(op, engK * 0.85));
+  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaV * 0.85).lerp(AUR_C.sky, aurV * 0.35);
+  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaV * 0.8).lerp(AUR_C.fog, aurV * 0.4);
+  (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cine ? 0.35 : 1) * (1 + luaV * 0.5);
   curseNow += ((inside ? 0 : curseK()) - curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
-  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaK * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
-  hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaK * 0.6);
-  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaK * 0.35 + aurGlow * 0.12;
-  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaK * 0.85).lerp(AUR_C.sun, aurV * 0.5);
-  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaK * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
+  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
+  hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaV * 0.6);
+  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
+  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
+  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
   renderer.toneMappingExposure = mix(0.8, 0.96, day); finish.uniforms.uVig.value = mix(0.6, 0.38, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
-    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaK).lerp(AUR_MUL, aurV * 0.8);
-    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaK).lerp(AUR_LIFT, aurGlow);
-    u.uSat.value = mix(0.86, 1.04, dayW) + luaK * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
-  audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (inside ? 0.4 : 1), rawDt);
+    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
+    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
+    u.uSat.value = mix(0.86, 1.04, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
+  audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (0.12 + 0.88 * Math.max(op, engK)) * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42; } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
     const dir = new THREE.Vector3(-18, 28, 10).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2;
@@ -3245,7 +3288,7 @@ function frameBody() {
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   lightPool(rawDt);
   updateInstFx(rawDt);
-  atmos.update(rawDt, t, heroPos, aurFx, luaK, gust, (x, z) => heightAt(x, z), !!inside);
+  atmos.update(rawDt, t, heroPos, aurFx, luaV, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);
 

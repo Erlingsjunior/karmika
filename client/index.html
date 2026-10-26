@@ -479,6 +479,35 @@
   #eye .tear { transition: opacity .3s; }
   #ctrw { position: absolute; left: 50%; bottom: 90px; transform: translateX(-50%); width: 90px; height: 4px; background: rgba(0,0,0,.5); z-index: 3; } #ctr { height: 100%; width: 0; background: linear-gradient(90deg, #ffd24a, #fff0a0); opacity: 0; box-shadow: 0 0 8px #ffd24a; }
   #bar .slot, #bar .orb, #crest, #panel { pointer-events: auto; } .slot { cursor: pointer; } .slot:hover { filter: brightness(1.25); }
+
+  /* eventos mundiais (25/10): o contador embaixo dos botões do minimapa e o painel */
+  #gevt { display: flex; align-items: center; gap: 6px; margin: 6px auto 0; padding: 3px 10px 3px 6px; max-width: 176px; background: linear-gradient(#1c0f10ee, #0e0708ee); border: 1px solid #6a4a22; border-radius: 14px; color: #e8d8b0; cursor: pointer; font-family: Georgia, serif; pointer-events: auto; }
+  #gevt i { font-style: normal; font-size: 17px; filter: drop-shadow(0 0 4px var(--gc, #ffd070)); }
+  #gevt span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; min-width: 0; }
+  #gevt b { font-size: 11px; letter-spacing: .04em; color: var(--gc, #d8c8a0); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+  #gevt em { font-style: normal; font-size: 12px; font-variant-numeric: tabular-nums; color: #fff; }
+  #gevt.off { opacity: .75; } #gevt.off b { color: #b8a888; } #gevt.off em { color: #c8b898; font-size: 11px; }
+  #gevt.on { border-color: var(--gc); box-shadow: 0 0 10px color-mix(in srgb, var(--gc) 45%, transparent); animation: gevp 2.4s ease-in-out infinite; }
+  @keyframes gevp { 50% { box-shadow: 0 0 16px color-mix(in srgb, var(--gc) 70%, transparent); } }
+  #gevt:hover { filter: brightness(1.2); }
+  #banner .gevb { cursor: pointer; font-weight: 700; } #banner .gevb:hover { text-decoration: underline; }
+  #gevwin { position: fixed; z-index: 24; width: 420px; max-height: 80vh; overflow: auto; padding: 14px 18px 12px; font-family: Georgia, serif; color: #e8dcc0; }
+  #gevwin h2 { margin: 0 0 10px; font: 700 17px Cinzel, serif; color: #f2cf8a; display: flex; justify-content: space-between; align-items: center; }
+  #gevwin h2 button { background: none; border: 1px solid #6a4a22; color: #e8dcc0; border-radius: 4px; cursor: pointer; }
+  #gevwin h3 { margin: 12px 0 5px; font: 700 12px Cinzel, serif; letter-spacing: .08em; color: #c9a24a; border-bottom: 1px solid #3a2a18; padding-bottom: 3px; }
+  #gevwin .gv-now { display: flex; gap: 12px; padding: 10px; border: 1px solid var(--gc, #5a4a30); border-radius: 6px; background: radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--gc, #5a4a30) 22%, transparent), transparent 70%); }
+  #gevwin .gv-now.none { border-color: #3a3024; }
+  #gevwin .gv-ic { font-size: 38px; line-height: 1; filter: drop-shadow(0 0 8px var(--gc, #000)); }
+  #gevwin .gv-now b { font: 700 15px Cinzel, serif; color: var(--gc, #e8dcc0); display: block; }
+  #gevwin .gv-cd { font-size: 12px; color: #fff; font-variant-numeric: tabular-nums; }
+  #gevwin .gv-now p { margin: 5px 0 0; font-size: 12.5px; line-height: 1.35; color: #d8ccb0; }
+  #gevwin .gv-side { color: #ffd890 !important; } #gevwin .gv-note { color: #a8987a !important; font-style: italic; font-size: 11.5px !important; }
+  #gevwin .gv-row { display: grid; grid-template-columns: 1fr auto; gap: 1px 8px; align-items: center; padding: 4px 2px; border-bottom: 1px dashed #2e2418; font-size: 13px; }
+  #gevwin .gv-row small { grid-column: 1; color: #a8987a; font-size: 11px; }
+  #gevwin .gv-row button { grid-row: 1 / span 2; grid-column: 2; background: #2a1c10; border: 1px solid #8a6a32; color: #f2cf8a; border-radius: 4px; padding: 2px 8px; cursor: pointer; font-family: Georgia, serif; }
+  #gevwin .gv-row.past span { color: #b8a888; }
+  #gevwin .gv-empty { font-size: 12px; color: #8a7a60; font-style: italic; margin: 2px 0; }
+  #gevwin .ft { display: block; margin-top: 10px; color: #7a6a50; font-size: 10.5px; }
   #mini, #btns, #btns button { pointer-events: auto; } #mini { position: fixed; right: 14px; top: 12px; width: 178px; z-index: 6; text-align: center; }
   #mini canvas { width: 170px; height: 170px; border-radius: 50%; border: 4px solid #a4833f; box-shadow: 0 0 0 2px #120a04, 0 0 0 4px #5a4220, 0 0 18px #000, inset 0 0 14px #000; background: #0a0810; display: block; margin: 2px auto; }
   #mini .nn { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font: 700 11px Cinzel, serif; color: #ffe08a; text-shadow: 0 1px 3px #000; font-style: normal; background: #1c130b; border: 1px solid #a4833f; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; }

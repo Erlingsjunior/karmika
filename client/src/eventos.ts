@@ -314,6 +314,10 @@ function gWindow(k: number) { let w = gCache.get(k); if (w) return w; const kind
   for (let m = 0; m < 240; m++) { const tt = t0 + m * 60000, n = nightAt(tt); if (kind === 'lua' ? n > 0.5 : n < 0.01) { st = tt; break; } }
   w = { start: st, end: st + G_LEN[kind], kind }; gCache.set(k, w); return w; }
 export function globalNow(ms = Date.now()) { const k = Math.floor((ms - G_BASE) / G_STEP); for (const kk of [k, k - 1]) { const w = gWindow(kk); if (ms >= w.start && ms < w.end) return { ...G_INFO[w.kind], end: w.end }; } return null; }
+/** janelas em volta de agora: as que já passaram e as próximas (painel dos eventos mundiais) */
+export function globalList(ms = Date.now(), back = 3, ahead = 4) { const k = Math.floor((ms - G_BASE) / G_STEP), out: { id: string; name: string; icon: string; color: string; text: string; start: number; end: number; state: 'past' | 'now' | 'next' }[] = [];
+  for (let kk = k - back - 1; kk <= k + ahead + 1; kk++) { const w = gWindow(kk); out.push({ ...G_INFO[w.kind], start: w.start, end: w.end, state: ms >= w.end ? 'past' : ms >= w.start ? 'now' : 'next' }); }
+  const past = out.filter((q) => q.state === 'past').slice(-back), now = out.filter((q) => q.state === 'now'), next = out.filter((q) => q.state === 'next').slice(0, ahead); return { past: past.reverse(), now: now[0] ?? null, next }; }
 /** quando vem o próximo (para o mapa e para quem quiser se programar) */
 export function globalNext(ms = Date.now()) { const k = Math.floor((ms - G_BASE) / G_STEP); for (let kk = k - 1; kk < k + 4; kk++) { const w = gWindow(kk); if (w.start > ms) return { ...G_INFO[w.kind], start: w.start }; } return null; }
 
@@ -557,5 +561,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   /** abandonar o evento: sai do lado que escolheu e a bússola para de apontar (25/10) */
   function leave(key: string) { const L = lives.get(key); if (trackKey === key) trackKey = null; if (!L) return; if (L.joined) { L.joined = false; L.side = null; L.asked = true; hostility(L); ctx.log(`Você abandonou o evento ${L.tpl.name}.`, '#c8b8a0'); } else { L.asked = true; ctx.log(`Você deixou o evento ${L.tpl.name} para lá.`, '#c8b8a0'); } }
   const tracking = () => { const L = trackKey ? lives.get(trackKey) : null; if (!L || L.over || Date.now() > L.end) { trackKey = null; return null; } return { key: L.key, x: L.site.x + 1, y: L.site.y + 1.25, joined: L.joined, name: L.tpl.name, herald: L.tpl.herald.name }; };
-  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking };
+  /** o herói está DENTRO de um evento que aceitou (perto do lugar, lutando): aí o clima do evento global pode pesar de novo */
+  function engaged() { const hp = ctx.hero(); for (const L of lives.values()) { if (!L.joined || L.over) continue; const p = sitePos(L.site); if (Math.hypot(p.x - hp.x, p.z - hp.z) < 70) return true; } return false; }
+  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking, engaged };
 }
