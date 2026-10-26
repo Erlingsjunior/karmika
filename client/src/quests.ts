@@ -255,7 +255,7 @@ const CAT_ORDER: QuestCat[] = ['story', 'side', 'rep'];
 export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(): string | null; /** para onde a alma pende (missões de Luz e de Sombra) */ lean?(): 'luz' | 'sombra' | null; origin?(): 'human' | 'elf' | 'dwarf'; roleOf?(npc: string): string | null; st: { lvl: number; xp: number; gold: number }; count(item: string): number; take(item: string, n: number): boolean; add(item: string, n: number): void; gainXp(n: number): void; xpNeedAt?(l: number): number; gear(n: number, lvl: number): void; log(t: string, c?: string): void; onTitle(t: string): void; chainQuests: QuestDef[]; karma?(dk: number): void; me?(): string; onDone?(d: QuestDef): void; auction?: { html(): string; click(t: HTMLElement): boolean; input(f: HTMLInputElement): string; tipOf(id: string): string; readonly count: number };
   /** jogar junto: o quadro de pedidos é o da sala (dos jogadores de verdade) */
   room?: { on(): boolean; posts(): { id: number; by: string; item: string; n: number; gold: number }[]; add(item: string, n: number, gold: number): void; fill(id: number, item: string, n: number): void; cancel(id: number): void } }) {
-  let onDoneCb: ((d: QuestDef) => void) | null = null;
+  let onDoneCb: ((d: QuestDef) => void) | null = null; const doneHooks: ((d: QuestDef) => void)[] = [];
   /** cartão extra no topo do diário (o evento vivo em que você entrou ou que está seguindo) */
   let extraTop: (() => string) | null = null;
   const SAVE = 'karmika.quests.v1';
@@ -325,7 +325,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
     delete q.active[d.id]; q.done.push(d.id);
     ctx.st.gold += Math.round(d.gold * 0.6); ctx.gainXp(d.xp); for (const [it, n] of d.items ?? []) ctx.add(it, n); if (d.gear) ctx.gear(d.gear, d.lvl);
     if (d.title) { q.title = d.title; ctx.onTitle(d.title); }
-    ctx.onDone?.(d); onDoneCb?.(d);
+    ctx.onDone?.(d); onDoneCb?.(d); for (const f of doneHooks) { try { f(d); } catch { /* */ } }
     ctx.log(`✅ Missão concluída: ${d.name} (+${d.xp} XP, +${Math.round(d.gold * 0.6)} ouro)`, '#7aff9a'); save(); render();
     /* a próxima missão NÃO entra sozinha: quem dá a missão precisa contar do que se trata (o diálogo reabre com a oferta). Só o Olho, que não tem boca, entrega direto */
     if (d.next && !q.active[d.next] && !isDone(d.next)) { const nx = def(d.next); if (nx && nx.giver === 'O Olho' && nx.giver === (d.turnin ?? d.giver) && ctx.st.lvl >= Math.max(1, nx.lvl - 2) && (!nx.req || isDone(nx.req))) accept(nx); }
@@ -521,7 +521,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
   /** alguém matou você fora de duelo: o Olho guarda o nome (até 12, o mais recente por último) */
   function grudge(name: string) { if (!name) return; grudges = grudges.filter((g) => g.name.toLowerCase() !== name.toLowerCase()); grudges.push({ name, t: Date.now() }); grudges = grudges.slice(-12); sv('karmika.grudge.v1', grudges); }
-  return { grudge, dropQuest, shareState, setExtraTop(f: () => string) { extraTop = f; },
+  return { grudge, dropQuest, addDoneHook: (f: (d: QuestDef) => void) => { doneHooks.push(f); }, shareState, setExtraTop(f: () => string) { extraTop = f; },
     /** só o cartão do evento mudou (relógio, distância): troca o miolo sem refazer a lista (antes piscava, abrindo e fechando no hover) */
     renderExtra() { const x = el.querySelector('.xtop') as HTMLElement | null; const html = extraTop?.() ?? ''; if (!x || !!x.innerHTML !== !!html) { render(); return; }
       const cur = x.querySelector('.evq'), tmp = document.createElement('div'); tmp.innerHTML = html; const nw = tmp.querySelector('.evq'); if (cur && nw) { if (cur.innerHTML !== nw.innerHTML) cur.innerHTML = nw.innerHTML; } else x.innerHTML = html; }, abandon, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },

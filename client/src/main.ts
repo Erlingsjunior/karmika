@@ -67,6 +67,7 @@ import { createCraftHall } from './oficios';
 import { createEvents, globalNow, globalNext, globalList, G_FX, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createStable } from './estabulo';
+import { createAlign } from './alinhamento';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
 import { createBuild } from './build';
@@ -262,6 +263,8 @@ const npcSys = createNpcs(scene, [
     if (g === 'lua') tags.push('lua', 'lua'); if (g === 'aurora') tags.push('aurora', 'aurora');
     if (combatMode || game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 14)) tags.push('combate', 'combate', 'combate');
     if (game.st.hp < game.st.hpMax * 0.35) tags.push('ferido', 'ferido'); if (riding) tags.push('montado'); if (pet) tags.push('pet');
+    { const st = hereSettle(); if (st) { const v = align.get('vila', st.name); if (v >= 30) tags.push('rep_alta', 'rep_alta'); else if (v <= -25) tags.push('rep_baixa', 'rep_baixa');
+      if (st.name === 'Karmika' && quests.q.active['h09'] && !align.flag('festa_karmika')) tags.push('despedida', 'despedida', 'despedida'); if (st.name === 'Karmika' && align.flag('festa_karmika') === 1 && !festa) tags.push('volta'); if (festa) tags.push('festa', 'festa', 'festa', 'festa'); } }
     if (game.st.lvl < 5) tags.push('novato'); else if (game.st.lvl >= 30) tags.push('veterano'); if (k >= 20) tags.push('luz'); if (k <= -20) tags.push('sombra', 'sombra');
     const P: Record<string, string> = { vam: 'vam', lob: 'lob', mag: 'mag', bru: 'bru', pal: 'pal', cac: 'cac', tec: 'tecno' }; if (pth && P[pth]) tags.push(P[pth], P[pth]); else if (isWarrior()) tags.push('gue'); } catch { /* ainda carregando */ }
     return { tags, nome: profile?.name || 'caminhante', pet: pet?.kind.name ?? '' }; } });
@@ -669,7 +672,8 @@ function globalSide(id: string | null): number {
 }
 function globalSideText(id: string | null) { const sd = globalSide(id); if (!sd) return ''; return id === 'lua' ? (sd > 0 ? 'A Lua te alimenta: +10% de dano, −8% de dano recebido.' : 'A Lua caça os de alma clara: +6% de dano recebido.') : (sd > 0 ? 'A Aurora te abençoa: +10% de dano, −8% de dano recebido.' : 'A luz da Aurora te queima: +6% de dano recebido.'); }
 function luaBonus() { try { return instinctOn && myPath() === 'lob' && globalNow()?.id === 'lua' ? 0.15 : 0; } catch { return 0; } }
-function shopLeanK(shop: string): number { if (shop === 'latao') return latoK() * shopLeanK('_'); const L = soulLean(); if (!L) return 1; return L === 'sombra' ? (LIGHT_SHOPS.has(shop) ? 1.15 : DARK_SHOPS.has(shop) ? 0.95 : 1) : (DARK_SHOPS.has(shop) ? 1.1 : LIGHT_SHOPS.has(shop) ? 0.95 : 1); }
+function shopLeanK(shop: string): number { let k = 1; try { k = alignPriceK(); } catch { /* o alinhamento ainda não nasceu */ } return shopLeanK0(shop) * k; }
+function shopLeanK0(shop: string): number { if (shop === 'latao') return latoK() * shopLeanK0('_'); const L = soulLean(); if (!L) return 1; return L === 'sombra' ? (LIGHT_SHOPS.has(shop) ? 1.15 : DARK_SHOPS.has(shop) ? 0.95 : 1) : (DARK_SHOPS.has(shop) ? 1.1 : LIGHT_SHOPS.has(shop) ? 0.95 : 1); }
 /** o caminho que o herói já trilha de verdade (passou na prova do mestre) */
 function myPath(): string | null { const p = profile?.path; if (!p || p === 'humano') return null; try { return quests.q.done.includes('v_' + p) ? p : null; } catch { return null; } }
 /* ---------- Juramentos de roleplay (24/10): ao entrar na classe, o herói pode jurar um voto que o jogo vigia.
@@ -956,7 +960,65 @@ const eventos = createEvents({ scene, heightAt, hero: () => heroPos, inside: () 
   project: (p) => { const v = p.clone().project(camera); if (v.z > 1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
   converse: (o) => { let picked: Reply | null = null; openDlg({ name: o.name, role: o.role, portrait: null, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, onReply: (r) => { if (r.flag?.startsWith('ev:')) picked = r; else applyReply(r); }, meet: { quest: { id: 'ev', name: o.title, lvl: 1, giver: o.name, text: '', objs: [], xp: 0, gold: 0 }, steps: o.steps, onEnd: () => o.onPick(picked) } }); },
   count: (it) => inv.count(it), take: (it, n) => inv.take(it, n), act: (a) => { hero.act(a as never, true); }, result: (r) => showEvResult(r) }, evSites);
-function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; });
+/* ---------- ALINHAMENTO KÁRMICO com cada lugar (alinhamento.ts) e a festa de despedida de Karmika ---------- */
+const align = createAlign({ places: () => city.settlements.filter((q) => q.radius >= 10).map((q) => ({ name: q.name, kind: q.kind === 'city' || q.name === 'Karmika' ? 'city' as const : 'village' as const })), regions: () => REGIONS.map((r) => r.name),
+  factions: () => Object.entries(FAC).map(([id, f]) => ({ id, name: f.name })), myFac: () => myFac(), log: (t, c) => game.logMsg(t, c) });
+const settleAt = (x: number, y: number, pad = 6) => city.settlements.find((q) => q.radius >= 10 && Math.hypot(x - q.x, y - q.y) < q.radius + pad) ?? null;
+const hereSettle = () => { const h0 = hereT(); return settleAt(h0.x, h0.y); };
+const npcHome = (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n ? settleAt(n.def.x / T, n.def.z / T, 12) : null; };
+queueMicrotask(() => quests.addDoneHook((d) => { const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
+  if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
+  const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));
+/** quem defende as casas: bicho derrubado perto do povoado soma um pouquinho */
+function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | undefined) { if (!e?.pos || e.def?.passive) return; const st = settleAt(e.pos.x / T, e.pos.z / T, 25); if (st) align.add('vila', st.name, 0.25); }
+/* chegada e volta: quem é querido é recebido; a festa só acontece uma vez */
+let alignChk = 0, alignHere = '';
+function alignTick(dt: number) { alignChk -= dt; if (alignChk > 0) return; alignChk = 1; const st = hereSettle(), nm = st?.name ?? '';
+  if (nm && nm !== alignHere) { const away = align.arrive(nm), t = align.tier('vila', nm);
+    if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(nm === 'Karmika' && align.flag('festa_karmika') === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
+    else if (away > 10 * 60000 && t.min <= -60) game.logMsg(`🏘 Em ${nm} as portas se fecham quando você passa (${t.name}).`, t.col); }
+  alignHere = nm;
+  if (festa) festaTick(); }
+/** preço nas lojas do lugar onde você está */
+const alignPriceK = () => { const st = hereSettle(); return st ? align.tier('vila', st.name).price : 1; };
+/* a festa de despedida (Erling, 25/10): o centro da praça enfeitado, a carroça do anão com cerveja, churrasco e fogos por tudo o que você fez */
+addEventListener('karmika:align', () => align.toggle(true));
+let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number } | null = null;
+function festaOffer() { if (align.flag('festa_karmika') || !quests.q.active['h09'] || hereSettle()?.name !== 'Karmika') return false;
+  confirmBox(`<b>Garrick:</b> “A vila soube que você vai para Lundr. A Lúcia, o Bento, a Rosália, o Sven… todo mundo quer te dar uma <b>festa de despedida</b>. Um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com Karmika: ${align.tier('vila', 'Karmika').name}</small>`, '🎉 Aceitar a festa', () => startFesta());
+  return true; }
+function startFesta() { const fo = city.props.find((p) => p.kind === 'fountain' && !p.variant) ?? city.props.find((p) => p.kind === 'fountain'); if (!fo) return; align.setFlag('festa_karmika', 1);
+  const cx = (fo.gx + fo.w / 2) * T, cz = (fo.gy + fo.h / 2) * T, y0 = heightAt(cx, cz), g = new THREE.Group(); g.position.set(cx, y0, cz); scene.add(g);
+  const tm = (c: number, e = 0) => new THREE.MeshToonMaterial({ color: c, gradientMap: toonRamp, emissive: e ? new THREE.Color(c).multiplyScalar(e) : undefined }), M = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; g.add(o); return o; };
+  const R = 9, N = 10, pole = tm(0x6a4a2a), cols = [0xd84a3a, 0xe8c040, 0x3a7ad8, 0x4ab05a, 0xe8e0d0, 0xa050c0];
+  const pts: THREE.Vector3[] = []; for (let i = 0; i < N; i++) { const a = i / N * 6.283, x = Math.cos(a) * R, z = Math.sin(a) * R; M(new THREE.CylinderGeometry(0.07, 0.09, 3.6, 6), pole, x, 1.8, z); M(new THREE.SphereGeometry(0.16, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd080 }), x, 3.7, z); pts.push(new THREE.Vector3(x, 3.4, z)); }
+  /* bandeirinhas: de poste em poste e de cada poste até o mastro no meio (acima da fonte) */
+  const flag = new THREE.BufferGeometry(); flag.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-0.14, 0, 0, 0.14, 0, 0, 0, -0.34, 0]), 3)); flag.computeVertexNormals();
+  const string = (a: THREE.Vector3, b: THREE.Vector3, sag: number) => { const n = Math.max(4, Math.round(a.distanceTo(b) / 0.42)); for (let i = 1; i < n; i++) { const t = i / n, p = a.clone().lerp(b, t); p.y -= Math.sin(t * Math.PI) * sag; const f = new THREE.Mesh(flag, new THREE.MeshBasicMaterial({ color: cols[(i + n) % cols.length], side: THREE.DoubleSide })); f.position.copy(p); f.lookAt(p.x + (b.z - a.z), p.y, p.z - (b.x - a.x)); g.add(f); } };
+  const top = new THREE.Vector3(0, 6.2, 0); M(new THREE.CylinderGeometry(0.08, 0.1, 6.4, 6), pole, 0, 3.2, -0.01).visible = false;
+  for (let i = 0; i < N; i++) { string(pts[i], pts[(i + 1) % N], 0.5); if (i % 2 === 0) string(pts[i], top, 0.9); }
+  /* a carroça do anão: estrado, rodas, barris e o toldo listrado com a placa */
+  { const c = new THREE.Group(); c.position.set(R + 3.2, 0, 2); c.rotation.y = -Math.PI / 2; g.add(c); const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, rx = 0, rz = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, 0, rz); o.castShadow = true; c.add(o); return o; };
+    const wd = tm(0x7a5434); add(new THREE.BoxGeometry(2.6, 0.18, 1.5), wd, 0, 0.75, 0); for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.42, 0.42, 0.12, 14), tm(0x4a2e18), sx * 0.9, 0.42, sz * 0.82, Math.PI / 2);
+    for (let i = 0; i < 3; i++) { add(new THREE.CylinderGeometry(0.32, 0.32, 0.75, 12), tm(0x8a5a2a), -0.8 + i * 0.8, 1.22, 0); for (const yy of [-0.25, 0.25]) add(new THREE.TorusGeometry(0.33, 0.03, 4, 14), tm(0x3a3a40), -0.8 + i * 0.8, 1.22 + yy, 0, Math.PI / 2); }
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(new THREE.CylinderGeometry(0.04, 0.04, 1.8, 5), wd, sx * 1.25, 1.65, sz * 0.7);
+    const cv = document.createElement('canvas'); cv.width = 64; cv.height = 16; const cg = cv.getContext('2d')!; for (let i = 0; i < 8; i++) { cg.fillStyle = i % 2 ? '#e8d8b0' : '#b8302a'; cg.fillRect(i * 8, 0, 8, 16); } const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+    add(new THREE.BoxGeometry(2.8, 0.06, 1.7), new THREE.MeshToonMaterial({ map: tx, gradientMap: toonRamp }), 0, 2.56, 0, 0, 0.08);
+    const sc = document.createElement('canvas'); sc.width = 256; sc.height = 48; const sg = sc.getContext('2d')!; sg.fillStyle = '#2a1a10'; sg.fillRect(0, 0, 256, 48); sg.fillStyle = '#ffd890'; sg.font = 'bold 26px Georgia'; sg.textAlign = 'center'; sg.fillText('Cerveja de Brasaforja', 128, 33); const st2 = new THREE.CanvasTexture(sc); st2.colorSpace = THREE.SRGBColorSpace;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.34), new THREE.MeshBasicMaterial({ map: st2 })); sign.position.set(0, 2.25, 0.86); c.add(sign); }
+  /* o churrasco: fogueira, espeto com carne, mesas compridas com canecas */
+  M(new THREE.CylinderGeometry(0.7, 0.8, 0.2, 10), tm(0x5a5650), -R - 2.6, 0.1, -2); M(new THREE.ConeGeometry(0.4, 0.7, 6), new THREE.MeshBasicMaterial({ color: 0xff8a2a }), -R - 2.6, 0.5, -2);
+  for (const sz of [-0.6, 0.6]) M(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 5), pole, -R - 2.6, 0.7, -2 + sz); M(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 5), tm(0x3a3a40), -R - 2.6, 1.35, -2).rotation.x = Math.PI / 2; M(new THREE.SphereGeometry(0.3, 10, 8), tm(0x9a4a2a), -R - 2.6, 1.3, -2).scale.set(1, 0.7, 1.6);
+  for (const [x, z, ry] of [[-3.5, R + 3, 0], [3.5, R + 3, 0], [0, -R - 3, 0]] as const) { M(new THREE.BoxGeometry(3.2, 0.1, 0.9), tm(0x8a6a44), x, 0.82, z, ry); for (const sx of [-1.4, 1.4]) M(new THREE.BoxGeometry(0.1, 0.8, 0.8), pole, x + sx, 0.4, z, ry); for (let i = 0; i < 4; i++) M(new THREE.CylinderGeometry(0.07, 0.06, 0.16, 8), tm(0xc8a050), x - 1.2 + i * 0.8, 0.95, z + 0.15, ry); }
+  festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz };
+  inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', 'Karmika', 10, 'a festa de despedida');
+  audio.chime(); game.logMsg('🎉 A festa de despedida começa na praça de Karmika! Cerveja do anão, churrasco do Sven e fogos por tudo o que você fez.', '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
+const FESTA_LEN = 180000;
+function festaTick() { if (!festa) return; const el = performance.now() - festa.t0;
+  if (el < FESTA_LEN) { if (Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) < 70) { for (let i = 0; i < 2; i++) evFx('firework', festa.x + (Math.random() - 0.5) * 30, heightAt(festa.x, festa.z) + 14 + Math.random() * 10, festa.z + (Math.random() - 0.5) * 30); if (Math.random() < 0.35) audio.boom();
+      festa.talk -= 1; if (festa.talk <= 0) { festa.talk = 3 + Math.random() * 3; const L = ['À saúde de {nome}!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', 'Olha os fogos! Olha os fogos!', 'Essa carne está divina, quem assou?', 'Que o caminho seja leve, {nome}!', 'Alguém segura o Bento antes que ele cante de novo.', 'Dança, {nome}! Hoje a festa é sua!']; npcSys.say(L[Math.floor(Math.random() * L.length)].replace(/\{nome\}/g, profile?.name || 'caminhante'), heroPos); } } }
+  else if (el > FESTA_LEN && Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) > 160) { scene.remove(festa.g); festa = null; } }
+function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
   state.karma = Math.max(-100, Math.min(100, state.karma + r.karma)); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
   const k = r.karma, kc = k > 0 ? '#ffe08a' : k < 0 ? '#c98aff' : '#b9c6e0';
@@ -1207,6 +1269,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
     const mq = Object.keys(quests.q.active).map((id) => quests.def(id)).find((d) => !!d?.meet?.[nm] && d.objs.some((o, i) => o.kind === 'talk' && o.npc === nm && quests.objProg(d, i) < 1));
     if (mq) { let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
       openDlg({ name: nm, role: n.def.role, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: mq, steps: mq.meet![nm], onEnd: () => { quests.onTalk(nm); setTimeout(() => { if (quests.turnins(nm).length) talkTo(n); }, 200); } } }); return; } }
+  if (nm === 'Garrick' && festaOffer()) return;
   quests.onTalk(nm); /* conversar conta antes de listar as entregas */
   const ti = quests.turnins(nm), of = quests.offers(nm);
   const choices: Choice[] = [];
@@ -1292,7 +1355,7 @@ function eliteDrop(t: EnemyType, e: { def: { name: string; scale?: number; lvl?:
   for (let i = 0; i < 24; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.25, s1: 0.04, c0: 0xffe8a0, c1: 0xff8a2a, a: 1, g: 4 });
   game.logMsg(`✦ ${e.def.name} deixou material de elite: ${got.map((id) => ITEMS_TBL[id]?.name ?? id).join(', ')}. O Mestre-Forjador Brokki, em Brasaforja, sabe o que fazer com isso.`, '#ffb060');
 }
-game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); gevNote((h) => { h.kills++; }); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
+game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); gevNote((h) => { h.kills++; }); alignKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
   const what = `Você encontrou ${h.name} no esconderijo e terminou o que ele mesmo começou com a mentira.`; compendium.add({ title: `${h.name}: justiça tardia`, what, delta: 14, sealed: sealedH }); if (sealedH) game.logMsg('🌑 Em algum lugar, algo que ainda dorme guardou o que você fez.', '#a898c8');
   if (!sealedH) setTimeout(() => { eyeSees('Justiça tardia.', what, 'Você foi enganado uma vez, e pagou por isso. Mas não deixou a mentira vencer: buscou, encontrou e cumpriu o seu papel. A ingenuidade se apaga diante da persistência.', 14); const d = quests.q.active[h.qid] ? quests.offers('O Olho') : null; void d; }, 600);
   setTimeout(() => { const d2 = (quests as unknown as { turnins(n: string): { id: string }[] }).turnins('O Olho').find((x) => x.id === h.qid); if (d2) quests.turnIn(d2 as never); }, 900); } quests.onKill(t); if ((e as typeof e & { tag?: string }).tag === 'crypt') pourBlood(e); for (const fl of CRYPT_FLOORS) if (fl.elite && fl.elite.seal && e.def.name === fl.elite.name) { inv.add(fl.elite.seal, 1); chat.sys(`✦ ${fl.elite.name} caiu e deixou o ${ITEMS_TBL[fl.elite.seal]?.name ?? fl.elite.seal}.`); }
@@ -1937,7 +2000,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'F4') { e.preventDefault(); keys.clear(); coop.toggle(); return; }
   if (e.key === 'Enter' && !inv.isOpen && !dlg.isOpen && !quests.isOpen) { e.preventDefault(); keys.clear(); chat.open(); return; }
   if (e.key === 'Tab') e.preventDefault();
-  if (e.key === 'Escape') { if (aimSlot) { cancelAim(); return; } if (stable.isOpen) { stable.toggle(false); return; } if (skillsOpen || featsOpen) { toggleSkills(false); toggleFeats(false); return; } if (build.on) { build.toggle(false); return; } if (relicOpen) { closeRelics(); return; } if (olhoOpen) { toggleOlho(false); return; } if (dlg.isOpen) { dlg.close(); return; } if (quests.isOpen) { quests.closeAll(); return; } if (vid.isOpen) { vid.close(); return; } if (mail.isOpen) { mail.close(); return; } if (profs.isOpen) { profs.close(); return; } if (loja.isOpen) { loja.close(); return; } if (bigOpen) { toggleBigMap(); return; } if (inv.isOpen) { inv.closeAll(); return; } game.toggleMenu(); return; }
+  if (e.key === 'Escape') { if (aimSlot) { cancelAim(); return; } if (stable.isOpen) { stable.toggle(false); return; } if (align.isOpen) { align.toggle(false); return; } if (skillsOpen || featsOpen) { toggleSkills(false); toggleFeats(false); return; } if (build.on) { build.toggle(false); return; } if (relicOpen) { closeRelics(); return; } if (olhoOpen) { toggleOlho(false); return; } if (dlg.isOpen) { dlg.close(); return; } if (quests.isOpen) { quests.closeAll(); return; } if (vid.isOpen) { vid.close(); return; } if (mail.isOpen) { mail.close(); return; } if (profs.isOpen) { profs.close(); return; } if (loja.isOpen) { loja.close(); return; } if (bigOpen) { toggleBigMap(); return; } if (inv.isOpen) { inv.closeAll(); return; } game.toggleMenu(); return; }
   if (game.menuOpen) return;
   if (k === 'i') { keys.clear(); inv.toggle(); return; }
   if (k === 'j') { keys.clear(); quests.toggleLog(); return; }
@@ -2525,7 +2588,7 @@ function updateBanner() {
     (() => { let g: ReturnType<typeof globalNow> = null; try { g = globalNow(); } catch { /* */ } return g ? `<a class="gevb" data-gev style="color:${g.color}" title="Evento mundial: clique para ver o que está acontecendo">${g.icon} ${g.name} · ${fmtLeft(g.end - Date.now())}</a>` : ''; })(),
     `<span title="${ri.region}: os bichos daqui vão do nível ${ri.lo} ao ${ri.hi}" class="${ri.lo > game.st.lvl + 3 ? 'danger' : ''}">⚔ ${ri.region} · Nv ${ri.lo}–${ri.hi}${ri.lo > game.st.lvl + 3 ? ' · perigo' : ''}</span>`,
     ri.elite ? `<a class="elite" data-pin="elite" title="Clique para ir até a elite"><i class="${ri.elite.alive ? 'on' : ''}"></i>${ri.elite.name} · ${fmtDist(ri.elite.d)}${ri.elite.alive ? '' : ' (caído)'}</a>` : '',
-    st ? `<span class="dd" title="Assentamento">${st.kind === 'city' ? '🏰 Cidade' : '🏘 Vila'}${nearHome ? ' · ⛲ lar' : ''}<div class="menu">${shops.map((q) => `<a data-pin="npc:${q.def.name}">🪙 ${q.def.name} <small>${q.def.role}</small></a>`).join('')}${tav ? `<a data-pin="tav">🍺 Taverna</a>` : ''}${places.map((p) => `<a data-pin="poi:${p.name}">📍 ${p.name}</a>`).join('')}${!shops.length && !tav && !places.length ? '<a>nada por aqui</a>' : ''}</div></span>` : '',
+    st ? `<span class="dd" title="Assentamento">${st.kind === 'city' ? '🏰 Cidade' : '🏘 Vila'}${nearHome ? ' · ⛲ lar' : ''}${(() => { const t = align.tier('vila', st.name); return ` · <a data-align style="color:${t.col}" title="Alinhamento Kármico com ${st.name} (clique para ver todos)">${t.name}</a>`; })()}<div class="menu">${shops.map((q) => `<a data-pin="npc:${q.def.name}">🪙 ${q.def.name} <small>${q.def.role}</small></a>`).join('')}${tav ? `<a data-pin="tav">🍺 Taverna</a>` : ''}${places.map((p) => `<a data-pin="poi:${p.name}">📍 ${p.name}</a>`).join('')}${!shops.length && !tav && !places.length ? '<a>nada por aqui</a>' : ''}</div></span>` : '',
   ].filter(Boolean);
   const loc = pinT ? `<div class="loc"><span>🔍 Indo para <b>${pinT.label}</b> · ${fmtDist(Math.hypot(pinT.x - state.fx, pinT.y - state.fy) * T)}</span><a data-pin="clear" title="Parar de guiar">✕</a></div>` : quests.tracked && guideT ? `<div class="loc"><span>🔍 Missão: <b>${guideT.label}</b> · ${fmtDist(Math.hypot(guideT.x - state.fx, guideT.y - state.fy) * T)}</span></div>` : '';
   bannerEl.innerHTML = `<div class="bn">${parts.join('<em>◆</em>')}</div>${loc}`;
@@ -2533,6 +2596,7 @@ function updateBanner() {
 }
 bannerEl.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-gev]')) { openGev(); return; }
+  if ((e.target as HTMLElement).closest('[data-align]')) { align.toggle(true); return; }
   const a = (e.target as HTMLElement).closest('[data-pin]') as HTMLElement | null; if (!a) return; const k = a.dataset.pin!;
   if (k === 'clear') { setPin(null); return; }
   if (k === 'elite') { if (bannerEl.dataset.eliteX) setPin({ x: +bannerEl.dataset.eliteX, y: +bannerEl.dataset.eliteY!, label: bannerEl.dataset.eliteName || 'Elite' }); return; }
@@ -3205,7 +3269,7 @@ function frameBody() {
   if (rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   updateGuide(dt); updateInstinct(dt); updateCaravans(dt); updateEventos(dt); updateSecrets(dt); build.update(mouse.x, mouse.z);
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubbleEl.style.display = 'none'; else { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.4, heroPos.z).project(camera); bubbleEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; bubbleEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; } }
-  bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt);
+  bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt); alignTick(rawDt);
   qmT -= dt; if (qmT <= 0) { qmT = 0.7; updateQuestMarks(); }
   mmT -= dt; if (mmT <= 0) { mmT = 0.1; drawMini(); if (bigOpen) drawBig(); (document.getElementById('zone') as HTMLElement).textContent = `${zoneName()} · ${turnName()} ${Math.floor(gameHour())}h`; }
   hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }

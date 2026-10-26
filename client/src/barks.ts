@@ -31,6 +31,12 @@ export const BARKS: Record<string, string[]> = {
   cac: ['Caçador do Bastião… quem morreu?', 'Se você está aqui, tem demônio por perto.', 'Prata no cinto. Então é verdade o que dizem.'],
   tecno: ['Que barulho é esse no seu peito? Um coração de lata?', 'A Academia mandou mais um. Cuidado com o reator perto do feno.', 'Meu avô dizia que máquina não tem alma. Você tem?'],
   gue: ['Um guerreiro do Norte! Odin ainda manda os seus.', 'Calma com o machado, a vila é pequena.', 'Cicatrizes bonitas. Quantos inimigos foram?'],
+  /* o alinhamento kármico com o lugar (25/10) */
+  rep_alta: ['Olha quem está aqui! Senta, {nome}, a casa é sua.', 'Minha mãe reza por você toda noite. Sério.', 'Se precisar de qualquer coisa, é só pedir. Qualquer coisa.', 'As crianças brincam de ser você, sabia?', 'Guardei o melhor pedaço do pão para você.'],
+  rep_baixa: ['Não queremos encrenca aqui.', 'Os guardas estão de olho em você.', 'Some daqui antes que eu chame alguém.', 'Lojista nenhum vai te fazer preço bom aqui.'],
+  despedida: ['Então é verdade? Você vai embora de Karmika?', 'A vila vai ficar mais quieta sem você, {nome}.', 'Leva um pedaço de queijo para a estrada. Leva!', 'Vou sentir sua falta. Não conta para ninguém que eu disse isso.', 'Volta de vez em quando, ouviu? Promete.', 'O Garrick finge que não, mas ele está orgulhoso.'],
+  festa: ['À saúde de {nome}!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', 'Olha os fogos! Olha os fogos!', 'Essa carne está divina, quem assou?', 'Que o caminho seja leve, {nome}!', 'Alguém segura o Bento antes que ele cante de novo.', 'Dança, {nome}! Hoje a festa é sua!'],
+  volta: ['Você voltou! A festa ainda é assunto na taverna.', 'Olha só, o herói de Karmika em casa de novo!', 'Conta, conta: como é o mundo lá fora?', 'Seu lugar na mesa continua guardado.', 'A Lúcia vai ficar feliz de te ver. O Bento também.'],
   /* o ofício de quem fala */
   r_guarda: ['Fique dentro dos muros depois do sol, {nome}.', 'Viu alguém estranho na estrada? Me avisa.', 'Eu guardo este portão desde antes de você saber andar.'],
   r_ferreiro: ['A forja não espera. Ferro frio não perdoa.', 'Traga minério, que eu faço milagre.', 'Essa sua lâmina precisa de fio, viu?'],
