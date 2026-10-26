@@ -24,8 +24,8 @@ export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'vil
   const k = (kind: Kind, name: string) => `${kind}:${name}`;
   const get = (kind: Kind, name: string) => S.v[k(kind, name)] ?? 0;
   /** muda e avisa quando passa de faixa */
-  function add(kind: Kind, name: string, dv: number, why?: string) { if (!name || !dv) return; const key = k(kind, name), a = S.v[key] ?? 0, b = Math.max(-100, Math.min(100, a + dv)); S.v[key] = b;
-    const ta = tierOf(a), tb = tierOf(b); if (ta !== tb) ctx.log(`${b > a ? '▲' : '▼'} Alinhamento Kármico com ${name}: agora ${tb.name}${why ? ` (${why})` : ''}.`, tb.col); save(); if (open) render(); }
+  function add(kind: Kind, name: string, dv: number, why?: string, quiet = false) { if (!name || !dv) return; const key = k(kind, name), a = S.v[key] ?? 0, b = Math.max(-100, Math.min(100, a + dv)); S.v[key] = b;
+    const ta = tierOf(a), tb = tierOf(b); if (ta !== tb && !quiet) ctx.log(`${b > a ? '▲' : '▼'} Alinhamento Kármico com ${name}: agora ${tb.name}${why ? ` (${why})` : ''}.`, tb.col); save(); if (open) render(); }
   /* ---------- a janela ---------- */
   const el = document.createElement('div'); el.id = 'alignw'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'align', { left: '30vw', top: '8vh' }), 0);
   let open = false, tab: Kind = 'vila';

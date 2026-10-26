@@ -970,6 +970,8 @@ const align = createAlign({ places: () => city.settlements.filter((q) => q.radiu
 const settleAt = (x: number, y: number, pad = 6) => city.settlements.find((q) => q.radius >= 10 && Math.hypot(x - q.x, y - q.y) < q.radius + pad) ?? null;
 const hereSettle = () => { const h0 = hereT(); return settleAt(h0.x, h0.y); };
 const npcHome = (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n ? settleAt(n.def.x / T, n.def.z / T, 12) : null; };
+/* quem já jogava antes do alinhamento existir: as missões feitas contam (uma vez só) */
+setTimeout(() => { if (align.flag('seed1')) return; for (const id of quests.q.done) { const d = quests.def(id); if (!d || id.startsWith('b_')) continue; const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story'; if (st) { align.add('vila', st.name, story ? 6 : 3, undefined, true); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1, undefined, true); } } align.setFlag('seed1'); const h = hereSettle(); if (h) game.logMsg(`🏘 Alinhamento Kármico com ${h.name}: ${align.tier('vila', h.name).name} (as suas missões contaram).`, align.tier('vila', h.name).col); }, 2500);
 queueMicrotask(() => quests.addDoneHook((d) => { const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
   if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
   const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));
