@@ -87,7 +87,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
       <button data-m="prof">◎ Ver perfil</button>
       <button data-m="mail">📮 Enviar carta ou itens</button>
       <button data-m="duel">⚔ Desafiar para duelo</button>`;
-    menu.style.display = 'block'; const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1, w = 220 * z, h = menu.offsetHeight * z; menu.style.left = Math.min(innerWidth - w - 8, x + 8) / z + 'px'; menu.style.top = Math.min(innerHeight - h - 8, y + 8) / z + 'px'; // o menu segue o tamanho da interface (zoom): posição em px da tela ÷ zoom menu.dataset.id = String(id);
+    menu.style.display = 'block'; const z = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1, w = 220 * z, h = menu.offsetHeight * z; menu.style.left = Math.min(innerWidth - w - 8, x + 8) / z + 'px'; menu.style.top = Math.min(innerHeight - h - 8, y + 8) / z + 'px'; menu.dataset.id = String(id); /* (o id ficava depois do comentário da linha, comentado junto: nenhum botão do menu funcionava) — o menu segue o tamanho da interface (zoom): posição em px da tela ÷ zoom */
   }
   menu.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-m]') as HTMLButtonElement | null; if (!b || b.disabled) return; const id = +menu.dataset.id!; const inf = net.infoOf(id); menu.style.display = 'none'; if (!inf) return;
     if (b.dataset.m === 'w') hooks.whisperTo(inf.name);
