@@ -129,7 +129,7 @@ export function createMasmorras(ctx: DgCtx) {
   const target = (nm: string) => ctx.city.pois.find((p) => p.name === nm) ?? ctx.city.settlements.find((s) => s.name === nm) ?? null;
   const spotOk = (x: number, y: number, loose = false) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = ctx.city.map[y + dy]?.[x + dx], core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core ? t !== 'grass' && t !== 'road' && t !== 'plaza' : !t || t === 'water' || t === 'wall') return false; if ((!loose || core) && busy.has(x + dx + ',' + (y + dy))) return false; }
     return !ctx.city.settlements.some((s) => Math.hypot(s.x - x, s.y - y) < s.radius + 2); };
-  const entrances: { d: DgDef; x: number; y: number; lvl: [number, number]; root: THREE.Group }[] = [];
+  const entrances: { d: DgDef; x: number; y: number; lvl: [number, number]; root: THREE.Group; sign?: { x: number; z: number } }[] = [];
   /** a dificuldade escolhida na placa (Erling, 25/10): a masmorra acompanha o seu nível, mas você pode pedir mais — e o prêmio cresce junto */
   for (const d of DUNGEONS) {
     if (d.fixed) { const t1 = target(d.near); if (!t1) continue; const fx0 = t1.x + (d.dx ?? 0), fy0 = t1.y + (d.dy ?? 0); const root = mouthFixed(d, fx0 * T, fy0 * T); entrances.push({ d, x: Math.floor(fx0), y: Math.floor(fy0), lvl: d.lvl ?? [1, 5], root }); continue; }
@@ -138,7 +138,8 @@ export function createMasmorras(ctx: DgCtx) {
     for (let r = 1; r < 44 && !at; r++) for (let a = 0; a < r * 8 && !at; a++) { const x = Math.round(bx + Math.cos((a / (r * 8)) * 6.283) * r), y = Math.round(by + Math.sin((a / (r * 8)) * 6.283) * r); if (spotOk(x, y, true)) at = { x, y }; } // 2ª passada: aceita árvores e cercas em volta
     if (!at) continue; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) busy.add(at.x + dx + ',' + (at.y + dy));
     const lvl: [number, number] = d.lvl ?? (() => { const [lo, hi] = ctx.regionLvl(at!.x, at!.y); const m = Math.round((lo + hi) / 2); return [Math.max(1, m - 2), m + 2]; })();
-    const root = mouth(d, at.x * T, at.y * T); entrances.push({ d, x: at.x, y: at.y, lvl, root });
+    const root = mouth(d, at.x * T, at.y * T); const big = d.kind === 'grupo' ? 1.3 : 1, lx = -3.9 * big - 0.4, lz = 3.6 * big, ca = Math.cos(Math.PI / 4), sa = Math.sin(Math.PI / 4); /* a placa entalhada (entradas.ts), girada com a boca */
+    entrances.push({ d, x: at.x, y: at.y, lvl, root, sign: { x: at.x * T + lx * ca + lz * sa, z: at.y * T - lx * sa + lz * ca } });
     ctx.city.pois.push({ name: d.name, x: at.x, y: at.y + 1, biome: 'rock' });
   }
   /** a escada já está no prédio: só o nome flutuando e a luz (a boca não é montada no mundo) */

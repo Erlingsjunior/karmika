@@ -1,4 +1,5 @@
 import { installTitleTips } from './dicas';
+import type { DungeonFloor } from './dungeon3d';
 import { dressEnemy, createBossBrain, bossBody } from './chefes';
 import { enemyHooks } from './enemies';
 import { floatWin, dragAll, confirmBox } from './windows';
@@ -1878,11 +1879,49 @@ function updateGuide(dt: number) {
 }
 function hereT() { return inside ? inside.ret : { x: state.fx, y: state.fy }; }
 function heroArrow(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI - hero.root.rotation.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6 * s); ctx.lineTo(4.5 * s, 5 * s); ctx.lineTo(0, 2.5 * s); ctx.lineTo(-4.5 * s, 5 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+/* MAPA DA MASMORRA (Erling, 26/10: "estou dentro de uma dungeon e o minimapa não muda, nem o mapa"): dentro, os dois mapas
+   mostram a masmorra — salas por tipo, o portão do chefe, baús, a saída, os bichos vivos por perto — e o que você ainda não viu fica no escuro */
+let dgMap: { key: string; cv: HTMLCanvasElement; seen: Uint8Array; W: number; D: number } | null = null;
+const DG_PX = 4; /* pixels por metro no desenho base */
+function dgMapFor(int: DungeonFloor, key: string) {
+  if (dgMap && dgMap.key === key) return dgMap;
+  const W = Math.ceil(int.W), D = Math.ceil(int.D), cv = document.createElement('canvas'); cv.width = W * DG_PX; cv.height = D * DG_PX; const g = cv.getContext('2d')!;
+  const th = int.theme, floor = th === 'gelo' ? '#8aa0b4' : th === 'magma' ? '#8a5a40' : th === 'mata' || th === 'toca' ? '#8a7656' : th === 'arquivo' ? '#9a8462' : '#80786e';
+  for (let z = 0; z < D; z++) for (let x = 0; x < W; x++) if (int.free(x + 0.5, z + 0.5)) { g.fillStyle = floor; g.fillRect(x * DG_PX, z * DG_PX, DG_PX, DG_PX); }
+  const RC: Record<string, string> = { boss: 'rgba(200,40,40,.28)', elite: 'rgba(230,150,40,.22)', side: 'rgba(120,160,230,.18)', pack: 'rgba(0,0,0,0)', entry: 'rgba(120,220,120,.25)' };
+  for (const r of int.rooms) { const c = RC[r.kind]; if (!c) continue; g.fillStyle = c; g.fillRect((r.x - r.w / 2) * DG_PX, (r.z - r.d / 2) * DG_PX, r.w * DG_PX, r.d * DG_PX); }
+  /* borda clara nas paredes */ const im = g.getImageData(0, 0, cv.width, cv.height), dd = im.data, Wp = cv.width; const out = new Uint8ClampedArray(dd);
+  for (let y = 1; y < cv.height - 1; y++) for (let x = 1; x < Wp - 1; x++) { const i = (y * Wp + x) * 4; if (dd[i + 3]) continue; if (dd[i + 7] || dd[i - 1] || dd[i + Wp * 4 + 3] || dd[i - Wp * 4 + 3]) { out[i] = 190; out[i + 1] = 170; out[i + 2] = 130; out[i + 3] = 255; } }
+  g.putImageData(new ImageData(out, cv.width, cv.height), 0, 0);
+  dgMap = { key, cv, seen: new Uint8Array(W * D), W, D }; return dgMap;
+}
+function dgMapMarks(ctx: CanvasRenderingContext2D, int: DungeonFloor, X: (x: number) => number, Y: (z: number) => number, s: number) {
+  const ic = (g: string, x: number, z: number, sz: number) => { ctx.font = `${sz}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(g, X(x), Y(z)); };
+  const M = dgMap!; const seen = (x: number, z: number) => M.seen[Math.max(0, Math.min(M.D - 1, Math.floor(z))) * M.W + Math.max(0, Math.min(M.W - 1, Math.floor(x)))];
+  ic('🚪', int.entry.x, int.entry.z, 12 * s);
+  if (int.gate && seen(int.gate.x, int.gate.z)) ic(int.gate.opened ? '🔓' : '🔒', int.gate.x, int.gate.z, 12 * s);
+  if (seen(int.boss.x, int.boss.z) || int.gate?.opened) ic('💀', int.boss.x, int.boss.z, 15 * s);
+  const run = dgs.run; int.chests.forEach((c, i) => { if (seen(c.x, c.z) && !run?.opened.has(i)) ic('📦', c.x, c.z, 10 * s); });
+  for (const e of game.enemies.list) { if (!e.alive || !(e as { tag?: string }).tag?.startsWith('dg')) continue; const lx = e.pos.x - IX, lz = e.pos.z - IZ; if (!seen(lx, lz)) continue; const big = e === run?.boss;
+    ctx.beginPath(); ctx.arc(X(lx), Y(lz), (big ? 4 : 2.2) * s, 0, 6.283); ctx.fillStyle = big ? '#ff3a2a' : '#ff8a6a'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = '#2a0a06'; ctx.stroke(); }
+}
+function dgReveal(lx: number, lz: number) { const M = dgMap; if (!M) return; const R = 9; for (let z = Math.floor(lz - R); z <= lz + R; z++) for (let x = Math.floor(lx - R); x <= lx + R; x++) { if (x < 0 || z < 0 || x >= M.W || z >= M.D) continue; if ((x - lx) ** 2 + (z - lz) ** 2 < R * R) M.seen[z * M.W + x] = 1; } }
+/** desenha a masmorra no canvas (o que não foi visto fica escuro) */
+function dgDraw(ctx: CanvasRenderingContext2D, int: DungeonFloor, cx: number, cz: number, k: number, Wc: number, Hc: number) {
+  const M = dgMapFor(int, inside!.dg! + int.W + 'x' + int.D); const lx = state.fx * T - IX, lz = state.fy * T - IZ; dgReveal(lx, lz);
+  const X = (x: number) => Wc / 2 + (x - cx) * k, Y = (z: number) => Hc / 2 + (z - cz) * k;
+  ctx.fillStyle = '#07060a'; ctx.fillRect(0, 0, Wc, Hc); ctx.imageSmoothingEnabled = false; ctx.drawImage(M.cv, X(0), Y(0), M.W * k, M.D * k);
+  ctx.fillStyle = 'rgba(7,6,10,.8)'; for (let z = 0; z < M.D; z++) { let run0 = -1; for (let x = 0; x <= M.W; x++) { const un = x < M.W && !M.seen[z * M.W + x]; if (un && run0 < 0) run0 = x; else if (!un && run0 >= 0) { ctx.fillRect(X(run0), Y(z), (x - run0) * k + 0.5, k + 0.5); run0 = -1; } } }
+  dgMapMarks(ctx, int, X, Y, Math.max(0.8, Math.min(1.6, k / 3)));
+  heroArrow(ctx, X(lx), Y(lz), Math.max(1, Math.min(1.6, k / 3)));
+}
 function drawMini() {
+  if (inside?.dg) { const int = inside.int as DungeonFloor, D = mmEl.width, C = D / 2; mg.save(); mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); dgDraw(mg, int, state.fx * T - IX, state.fy * T - IZ, D / 40, D, D); mg.restore(); return; }
   const S = 2.4, h0 = hereT(), D = mmEl.width, C = D / 2; mg.save(); mg.imageSmoothingEnabled = false; mg.clearRect(0, 0, D, D); mg.beginPath(); mg.arc(C, C, C, 0, 6.283); mg.clip(); mg.fillStyle = '#0a0810'; mg.fillRect(0, 0, D, D);
   mg.drawImage(mmBase, C - h0.x * S, C - h0.y * S, MMS * S, MMS * S); markers(mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); heroArrow(mg, C, C, 1); mg.restore();
 }
 function drawBig() {
+  if (inside?.dg) { const int = inside.int as DungeonFloor, W = bmEl.width, H = bmEl.height, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(bg, int, int.W / 2, int.D / 2, k, W, H); bg.font = '600 18px Cinzel, Georgia, serif'; bg.textAlign = 'center'; bg.fillStyle = '#ffe08a'; bg.fillText(dgs.run?.d.name ?? 'Masmorra', W / 2, 28); bg.font = '12px Georgia, serif'; bg.fillStyle = '#c8b898'; bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); mapHits = []; return; }
   mapV.z = Math.max(mapV.z, mapZMin());
   const W = bmEl.width, H = bmEl.height, k = pxPerTile(), L = mapV.layers; const half = MAP_W / 2 / mapV.z;
   mapV.cx = THREE.MathUtils.clamp(mapV.cx, half * W / H * 0.3, MAP_W - half * W / H * 0.3); mapV.cy = THREE.MathUtils.clamp(mapV.cy, Math.min(half, MAP_W / 2), Math.max(MAP_W - half, MAP_W / 2));
@@ -2519,6 +2558,12 @@ const brain = createBossBrain({ scene, fine: (o) => o, particles, heroPos: () =>
 if (IS_DEV) (window as unknown as { __brain: unknown }).__brain = brain;
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
 /** a placa da masmorra (25/10): mostra as dificuldades, os níveis e os prêmios; a masmorra acompanha o seu nível, mas você pode pedir mais */
+/** a placa da estrada, lida de perto: cada tábua com o nome, a direção (rosa dos ventos) e a distância a pé */
+function readSign(sg: (typeof city.signs)[number]) {
+  const DIRS = ['Sul', 'Sudeste', 'Leste', 'Nordeste', 'Norte', 'Noroeste', 'Oeste', 'Sudoeste'], ARW = ['↓', '↘', '→', '↗', '↑', '↖', '←', '↙'];
+  const rows = sg.lines.map((ln) => { const k = ((Math.round(ln.dir / (Math.PI / 4)) % 8) + 8) % 8; const tgt = city.settlements.find((q) => q.name === ln.text) ?? city.pois.find((q) => q.name === ln.text); const dist = tgt ? Math.round(Math.hypot(tgt.x - sg.x, tgt.y - sg.y) * T) : 0;
+    return `<div class="sgrow"><span class="sgarw">${ARW[k]}</span><b>${ln.text}</b><small>${DIRS[k]}${dist ? ` · ${dist >= 1000 ? (dist / 1000).toFixed(1).replace('.', ',') + ' km' : dist + ' m'}` : ''}</small></div>`; }).join('');
+  confirmBox(`<div class="sgread"><div class="sgtit">🪧 Placa da estrada</div>${rows}<p class="sgnote">As setas seguem o norte do mapa (M).</p></div>`, 'Seguir viagem', () => {}); }
 function dungeonBoard(en: (typeof dgs.entrances)[number]) {
   const avg = Math.max(1, Math.round(game.st.lvl)), base = Math.max(1, avg - 1), seen = +(localStorage.getItem('karmika.dg.' + en.d.id) || 0);
   const rows = DG_TIERS.map((t, i) => ({ kind: 'custom' as const, label: `${t.name} · nível ${base + t.lv}–${avg + 2 + t.lv}`, hint: `XP ×${t.xp} · 🪙 ×${t.gold} · baú ${t.min === 'epic' ? 'épico+' : 'raro+'}${t.extra ? ` · +${t.extra} peça` : ''}`, cb: () => { dlg.close(); if (i >= 3) game.logMsg(`⚠ ${t.name}: os bichos vêm ${t.lv} níveis acima de você. Boa sorte.`, t.col); enterDungeon(en, i); } }));
@@ -3048,7 +3093,9 @@ function findInter(): Inter | null {
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
     for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
-    for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz); if (d < 5.5) add(d - 1.5, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
+    for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz), ds = en.sign ? Math.hypot(en.sign.x - hx, en.sign.z - hz) : 99, dd = Math.min(d - 1.5, ds - 1.2); if (d < 5.5 || ds < 4) add(dd, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
+    /* placas de estrada (Erling, 26/10: "ao apertar deveríamos ver o que elas estão dizendo, os lugares que elas apontam") */
+    for (const sg of city.signs) { const sx = (sg.x + 0.5) * T, sz = (sg.y + 0.5) * T, d = Math.hypot(sx - hx, sz - hz); if (d < 3.2) add(d - 0.6, 2.8, 'E — Ler a placa da estrada', () => readSign(sg)); }
     for (const rl of city.relics) { const d = Math.hypot((rl.x + 0.5) * T - hx, (rl.y + 0.5) * T - hz); if (d < 4.5) add(d - 2, 4, knowsRelic(rl.name) ? `E — Viajar (${rl.name})` : `E — Tocar ${rl.name}`, () => touchRelic(rl.name)); }
     for (const st of STATIONS) { const d = Math.hypot(st.x - hx, st.z - hz); if (d < 5) { const I = STATION_INFO[st.v]; add(d - 1.6, 3.2, st.v === 5 ? `E — ${st.label} · forja e bancada do tecnocrata (reatores, engrenagens)` : `E — ${st.label} · ${PROF_NAME[I.prof] ?? I.prof}`, () => { keys.clear(); profs.openAt(I.prof as never); }); } }
     for (const p of nearProps(gx, gy, ['tree', 'rock', 'campfire', 'chest', 'herb'], 2)) {
