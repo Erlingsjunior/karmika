@@ -64,7 +64,7 @@ import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
 import { createBuild } from './build';
 import { DEFS } from './enemies';
-import { heightAt, groundH, rotLocal, localDims, rampartAt, stairTopAt, stairDeck, setRamparts, waterSD, WL, CITY, CATHEDRAL, ASKAVIK, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, REGIONS, type EnemyType } from './world';
+import { biomeAt, heightAt, groundH, rotLocal, localDims, rampartAt, stairTopAt, stairDeck, setRamparts, waterSD, WL, CITY, CATHEDRAL, ASKAVIK, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, REGIONS, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 import { type ToolSlot } from './tools';
 import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
@@ -196,7 +196,9 @@ function hookHero() {
     const tx = Math.floor(state.fx), ty = Math.floor(state.fy);
     const tile = city.map[ty]?.[tx];
     const zz = inside ? null : zoneW(tx, ty);
-    const surf: Surface = inside ? (inside.crypt || inside.prop.kind !== 'house' ? 'stone' : 'wood') : swimmingNow || (tile === 'water') ? 'water' : tile === 'plaza' ? 'stone' : zz && zz.snow > 0.5 ? 'snow' : tile === 'grass' ? 'grass' : 'dirt';
+    const bio = inside ? null : biomeAt(tx, ty);
+    const surf: Surface = inside ? (inside.crypt || inside.prop.kind !== 'house' ? 'stone' : 'wood') : swimmingNow || (tile === 'water') ? 'water' : tile === 'plaza' || tile === 'road' && (bio === 'ruins' || bio === 'rock') ? 'stone' : zz && zz.snow > 0.5 ? 'snow' : bio === 'coast' && tile !== 'road' ? 'sand' : bio === 'swamp' || bio === 'blight' ? 'mud' : bio === 'rock' || bio === 'volcanic' ? 'stone' : tile === 'grass' ? 'grass' : 'dirt';
+    audio.voice = (profile?.sex ?? 'm') === 'f' ? 'f' : 'm';
     audio.step(surf, runningNow());
     const x = state.fx * T, z = state.fy * T;
     const n = surf === 'grass' ? 4 : surf === 'dirt' ? 3 : 1;
@@ -2034,7 +2036,12 @@ const free = (x: number, y: number, squeeze = false) => inside ? inside.int.free
 function heroGround(xm: number, zm: number) { const g = heightAt(xm, zm), s = stepAt(xm, zm); return s !== null && s > g && s - heroY < 0.8 ? s : g; }
 /** degrau alto demais (a lateral do plinto, um muro baixo): barra em vez de atravessar */
 const stepBlock = (x: number, y: number) => { if (inside || onWall) return false; const s = stepAt(x * T, y * T); return s !== null && s - heroY > 0.8 && s > heightAt(x * T, y * T) + 0.06; };
-const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) &&
+/* muros baixos e cercas (25/10): colisão pelo segmento desenhado, não pelo tile — o vão que se vê é o vão que se passa */
+const LOWW = new Map<number, { ax: number; ay: number; bx: number; by: number }[]>();
+for (const p of city.props) if (p.kind === 'lowwall') { const cx = p.gx + (p.ox ?? T / 2) / T, cy = p.gy + (p.oz ?? T / 2) / T, hl = ((p.len ?? T) / T) / 2, ry = p.ry ?? 0, ux = Math.cos(ry), uy = -Math.sin(ry), sg = { ax: cx - ux * hl, ay: cy - uy * hl, bx: cx + ux * hl, by: cy + uy * hl };
+  for (let ty = Math.floor(Math.min(sg.ay, sg.by) - 1); ty <= Math.floor(Math.max(sg.ay, sg.by) + 1); ty++) for (let tx = Math.floor(Math.min(sg.ax, sg.bx) - 1); tx <= Math.floor(Math.max(sg.ax, sg.bx) + 1); tx++) { const k = ty * 4096 + tx; const l = LOWW.get(k); if (l) l.push(sg); else LOWW.set(k, [sg]); } }
+function lowWallHit(x: number, y: number) { const l = LOWW.get(Math.floor(y) * 4096 + Math.floor(x)); if (!l) return false; for (const s of l) { const dx = s.bx - s.ax, dy = s.by - s.ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (y - s.ay) * dy) / L2)); if (Math.hypot(x - (s.ax + dx * t), y - (s.ay + dy * t)) < 0.17 + R * 0.8) return true; } return false; }
+const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) && !(lowWallHit(x, y) && !lowWallHit(state.fx, state.fy)) &&
   [[-R, -R], [R, -R], [R, R], [-R, R]].every(([dx, dy]) => {
     const tx = Math.floor(x + dx), ty = Math.floor(y + dy);
     return ty >= 0 && tx >= 0 && ty < city.map.length && tx < city.map[0].length && (isWalkable(city.map[ty][tx]) || city.map[ty][tx] === 'water' || city.map[ty][tx] === 'tree');
@@ -2067,7 +2074,7 @@ function tileHeightOk(tx: number, ty: number) { const i = ty * city.map[0].lengt
 function groundProbe(x: number, y: number) {
   for (const [dx, dy] of CORN) { const tx = Math.floor(x + dx), ty = Math.floor(y + dy); if (ty < 0 || tx < 0 || ty >= city.map.length || tx >= city.map[0].length) return false; const tl = city.map[ty][tx];
     if (!(isWalkable(tl) || tl === 'water' || tl === 'tree') || !tileHeightOk(tx, ty)) return false; }
-  return !trunkHit(x, y) && !solidHit(x, y);
+  return !trunkHit(x, y) && !solidHit(x, y) && !lowWallHit(x, y);
 }
 const navProbe = (x: number, y: number) => inside ? inside.int.free(x * T - IX, y * T - IZ, false) : onWall ? wallFree(x, y) : groundProbe(x, y);
 const navCost = (x: number, y: number) => { if (inside || onWall) return 1; const tl = city.map[Math.floor(y)]?.[Math.floor(x)]; return tl === 'water' ? 3 : tl === 'tree' ? 1.3 : tl === 'road' || tl === 'plaza' ? 0.85 : 1; };
@@ -3146,6 +3153,11 @@ function frameBody() {
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);
   void shaftCol;
+  { /* a trilha muda com o lugar e com a luta (25/10): chefe, elite, masmorra, lugar maligno, vila, estrada */
+    let mood: 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss' = 'explore'; const hx2 = state.fx * T, hz2 = state.fy * T;
+    for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return') continue; if (Math.hypot(e.pos.x - hx2, e.pos.z - hz2) > 26) continue; const boss = e.hpMax > 3000 || ['bishop', 'prince'].includes(e.type), el = boss || e.hpMax > 1500 || ['tormentor', 'treant', 'werewolf'].includes(e.type); if (boss) { mood = 'boss'; break; } if (el) mood = 'elite'; }
+    if (mood === 'explore') { if (inside && (inside.dg || inside.crypt)) mood = 'dungeon'; else if (!inside) { const b = biomeAt(Math.floor(state.fx), Math.floor(state.fy)); if (b === 'blight' || b === 'volcanic' || city.settlements.some((v) => (v.name === 'Gorvath' || v.name === 'Corvoscuro') && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 18)) mood = 'evil'; else if (city.settlements.some((v) => Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 4)) mood = 'town'; } }
+    audio.setMood(mood); }
   { const zz = zoneW(Math.floor(state.fx), Math.floor(state.fy)); audio.update(dt, { night, gust, fireDist: inside ? 3 : objs.torches.reduce((m2, tc) => Math.min(m2, tc.pos.distanceTo(heroPos)), 1e3), waterDist: inside ? 99 : fountainPos.distanceTo(heroPos), riverDist: inside ? 99 : Math.max(0, waterSD(heroPos.x, heroPos.z)), forest: zz.forest, snow: zz.snow, inside: !!inside }); }
   { // jatos da fonte: de cada bica cai água em arco; do topo sobe um filete e cai em cortina
     const fp = objs.fountainPos();

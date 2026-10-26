@@ -863,7 +863,7 @@ export function buildCity(): World {
           const gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy) || map[gy][gx] === 'water' || map[gy][gx] === 'wall') continue;
           for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx + 0.5 - mx, q.gy + 0.5 - my) < 1.3) props.splice(k, 1); }
           props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: hv < 0.32 ? 0.35 + hv : 0 });
-          for (let q = i; q < i + STEPS; q++) { const tx = Math.floor(samp[q].x), ty = Math.floor(samp[q].y); if (inb(tx, ty) && map[ty][tx] === 'grass') map[ty][tx] = 'wall'; } } }
+          /* o muro baixo não trava mais tiles inteiros: o main.ts colide com o segmento de verdade (regra: nunca travar onde se vê espaço) */ } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
       gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });
         if (gi < 3) { const nx = -gt.uy, ny = gt.ux, toC = Math.sign((cx - gt.x) * nx + (cy - gt.y) * ny) || 1, side = gi % 2 ? -1 : 1, ox = gt.x + gt.ux * side * (gt.w / 2 + 1.6) + nx * toC * 0.9, oy = gt.y + gt.uy * side * (gt.w / 2 + 1.6) + ny * toC * 0.9;
@@ -888,7 +888,7 @@ export function buildCity(): World {
           if (props.some((o) => o.gx === gx && o.gy === gy && o.kind !== 'tree' && o.kind !== 'rock' && o.kind !== 'herb')) continue;
           for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (Math.hypot(o.gx + 0.5 - mx, o.gy + 0.5 - my) < 1.4 && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
           const hb = ((h >>> 3) % 100) / 100; if (tier < 2 && hb < 0.1) continue; // um vão aqui e ali
-          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : tier === 1 ? 13 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); map[gy][gx] = 'wall'; }
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : tier === 1 ? 13 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); }
         /* forte de vigia à beira da estrada: torre de pedra (perto da cidade) ou posto de madeira (no ermo), com dois soldados */
         if (--sinceFort <= 0 && posts < 40) { const sd = (h & 1) ? 1 : -1, fx = Math.round(p.x + nx * sd * 6), fy = Math.round(p.y + ny * sd * 6);
           let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; }
@@ -1016,7 +1016,8 @@ export function buildCity(): World {
     // tochas e lamparinas: pilares do portão, avenida dos anjos, mausoléu e trilhas — sem elas a noite aqui é cega
     const torchAt = (gx: number, gy: number) => { if (inb(gx, gy) && (map[gy][gx] === 'grass' || map[gy][gx] === 'road')) props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 2.2, wall: 0x3a2a1c, roof: 0xff8a2a }); };
     for (let gy = y1 - 2; gy > cat.y + 27; gy -= 4) { torchAt(cat.x + 6 - 2, gy); torchAt(cat.x + 6 + 2, gy); }
-    for (let k = 0; k < 46; k++) torchAt(x0 + 3 + Math.floor(rg() * (x1 - x0 - 6)), y0 + 3 + Math.floor(rg() * (y1 - y0 - 6)));
+    for (let gy = y0 + 4; gy <= y1 - 4; gy += 9) for (let gx = x0 + 4; gx <= x1 - 4; gx += 9) torchAt(gx, gy); /* em grade, não espalhadas a esmo (Erling: 'aleatoriedade que deu errado') */
+    void rg;
     for (const [tx, ty] of [[cat.x + 21, cat.y + 2], [cat.x + 36, cat.y + 2], [cat.x + 21, cat.y + 17], [cat.x + 36, cat.y + 17], [cat.x + 27, cat.y + 17], [cat.x + 31, cat.y + 17]]) torchAt(tx, ty);
     // névoa rasteira pelo cemitério inteiro
     // (névoa rasteira removida: escurecia a região e pesava)
@@ -1441,6 +1442,18 @@ export function buildCity(): World {
       if (settlements.some((t) => Math.hypot(t.x - sp.x, t.y - sp.y) < (CRADLE.has(t.name) ? 45 : 30))) spawns.splice(i, 1); } }
   const stOf = (nm: string) => { const st = settlements.find((q) => q.name === nm)!; return { x: st.x + 0.5, y: st.y + 3.5, name: nm }; };
   rampartsRef = ramparts;
+  { /* LIMPEZA DO MAPA (25/10): tochas nunca dentro de prédio, na água, coladas umas nas outras ou em fila torta;
+       bancos e enfeites pequenos nunca em cima de construção */
+    const SMALL = new Set(['torch', 'bench', 'barrel', 'crate', 'sign', 'herb', 'bones', 'corpse', 'grave', 'fogpatch', 'tar']);
+    const BIG = new Set(['house', 'temple', 'church', 'tower', 'stall', 'station', 'shopfront', 'gatehouse', 'monument', 'landmark', 'fountain', 'vault', 'tent', 'relic', 'obelisk', 'wstair', 'vgate', 'ggate', 'palisade', 'lowwall']);
+    const occ = new Set<number>(); for (const p of props) if (BIG.has(p.kind)) for (let y = p.gy; y < p.gy + (p.h || 1); y++) for (let x = p.gx; x < p.gx + (p.w || 1); x++) occ.add(y * 100000 + x);
+    const torches: { gx: number; gy: number }[] = [], smallAt = new Set<number>(); let cut = 0;
+    const keep = props.filter((p) => { if (!SMALL.has(p.kind)) return true; const k = p.gy * 100000 + p.gx;
+      if (occ.has(k) || map[p.gy]?.[p.gx] === 'water' || map[p.gy]?.[p.gx] === 'wall') { cut++; return false; }
+      if (p.kind === 'torch') { if (torches.some((t) => Math.hypot(t.gx - p.gx, t.gy - p.gy) < 3.6)) { cut++; return false; } torches.push(p); }
+      else if (smallAt.has(k)) { cut++; return false; }
+      smallAt.add(k); return true; });
+    if (cut) { props.length = 0; props.push(...keep); } }
   return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */

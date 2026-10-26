@@ -411,7 +411,7 @@ export function createGameplay(d: GameplayDeps) {
     }
     const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize();
     const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1)); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
-    st.hits++; d.audio.slash(crit);
+    st.hits++; d.audio.slash(crit); onoma(e.pos.clone().setY(e.pos.y + 1.6), crit ? 'crit' : 'hit');
     { const lch = st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal)); }
     if (st.sp.has('burn') && Math.random() < 0.2 && !killed) { e.burn = 4; e.burnTick = 0; }
     if (st.sp.has('echo') && !echoing && !killed && Math.random() < 0.15) { echoing = true; setTimeout(() => { if (e.alive) { const k2 = enemies.hurt(e, Math.round(dmg * 0.7), from, 2); dmgText(e.pos.clone().setY(e.pos.y + 2.4), Math.round(dmg * 0.7), false, '#c9a0ff'); if (k2) killEnemy(e); } echoing = false; }, 140); }
@@ -525,6 +525,10 @@ export function createGameplay(d: GameplayDeps) {
   const spellLight = new THREE.PointLight(0xffffff, 0, 9, 2); fxAdd(spellLight);
   const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3();
 
+  /* onomatopeias de quadrinho (Erling, 25/10): só às vezes, nunca em todo golpe */
+  let onoT = 0; const ONO = { hit: ['TÁ!', 'PÁ!', 'TUM!', 'ZÁS!', 'TCHAC!'], crit: ['CRAC!', 'POW!', 'BLAM!', 'KRAAK!'], block: ['TUNC!', 'TOC!', 'BUM!'], parry: ['CLANG!', 'TINC!', 'KLANG!'] } as const;
+  function onoma(pos: THREE.Vector3, kind: keyof typeof ONO) { if (now < onoT || Math.random() > (kind === 'crit' ? 0.4 : kind === 'parry' ? 0.45 : 0.16)) return; onoT = now + 2.4; const w = ONO[kind][Math.floor(Math.random() * ONO[kind].length)];
+    dmgText(pos.clone().add(new THREE.Vector3(rnd(-0.6, 0.6), 0.9, rnd(-0.6, 0.6))), w, true, kind === 'parry' ? '#cfe6ff' : kind === 'block' ? '#e8d0a0' : kind === 'crit' ? '#ff9a5a' : '#fff0c0'); }
   function dmgText(pos: THREE.Vector3, n: number | string, crit: boolean, color = '#ffe08a') {
     const v = pos.clone().project(d.camera as THREE.Camera); const r = d.canvas.getBoundingClientRect();
     const el = document.createElement('div'); el.className = 'dmg'; el.textContent = String(n) + (crit ? '!' : '');
@@ -1130,13 +1134,13 @@ export function createGameplay(d: GameplayDeps) {
       // aparo: só quem luta com lâmina, de frente; desvia o golpe, faísca e deixa o inimigo vulnerável (contra-ataque)
       const parryCh = h.kind === 'nordic' && !h.guarding ? Math.min(0.2, 0.05 + (st.attrs?.str ?? 0) * 0.006) : 0;
       if (parryCh > 0 && !h.actName && Math.random() < parryCh) {
-        h.act('parry'); dmgText(heroPos.clone().setY(2.5), 'APARADO!', true, '#ffe6a0'); d.audio.parry(); st.fury = Math.min(5, st.fury + 1); st.counterT = Math.max(st.counterT, 2); hitstop = Math.max(hitstop, performance.now() + 110); st.shake = Math.max(st.shake, 0.18);
+        h.act('parry'); dmgText(heroPos.clone().setY(2.5), 'APARADO!', true, '#ffe6a0'); d.audio.parry(); onoma(heroPos.clone().setY(1.8), 'parry'); st.fury = Math.min(5, st.fury + 1); st.counterT = Math.max(st.counterT, 2); hitstop = Math.max(hitstop, performance.now() + 110); st.shake = Math.max(st.shake, 0.18);
         const yw = h.root.rotation.y; for (let i = 0; i < 14; i++) d.particles.spawn(heroPos.x + Math.sin(yw) * 0.8 + Math.cos(yw) * 0.3, 1.5, heroPos.z + Math.cos(yw) * 0.8 - Math.sin(yw) * 0.3, { vx: rnd(-3.5, 3.5), vy: rnd(0.5, 3.5), vz: rnd(-3.5, 3.5), life: 0.3, s0: 0.16, s1: 0.02, c0: 0xffffff, c1: 0xffc040, a: 1, drag: 2.5 });
         for (const e of enemies.list) if (e.alive && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 3.2 + e.def.radius) { e.state = 'hurt'; e.slow = Math.max(e.slow ?? 0, 0.8); poiseHit(e, e.hpMax * 0.07); }
         return;
       }
       const blockCh = Math.min(0.3, 0.03 + st.def * 0.5 + (h.guarding ? 0.3 : 0));
-      if (!(h.guarding && now - guardAt < 0.5) && Math.random() < blockCh) { n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
+      if (!(h.guarding && now - guardAt < 0.5) && Math.random() < blockCh) { n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); onoma(heroPos.clone().setY(1.8), 'block'); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
       if (h.guarding && now - guardAt < 0.5) { // bloqueio perfeito
         d.audio.hit(); h.blockHit(); st.counterT = 3.5; st.mp = Math.min(st.mpMax, st.mp + 15); if (st.sp.has('aegis')) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.1); logMsg('✦ Égide: +10% de vida', '#7aff9a'); } if (st.sp.has('u_egide')) { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 3.5 + e.def.radius) { if (enemies.hurt(e, n, heroPos, 4)) killEnemy(e); else { e.state = 'hurt'; e.t = -2; } dmgText(e.pos.clone().setY(e.pos.y + 2.4), `↩ ${n}`, true, '#ffe08a'); } } if (h.kind === 'technocrat') overcharge = true; st.fury = Math.min(5, st.fury + 1); st.shake = Math.max(st.shake, 0.2); hitstop = Math.max(hitstop, performance.now() + 60);
         dmgText(heroPos.clone().setY(2.5), 'PERFEITO!', true, '#ffe08a'); logMsg('🛡 Bloqueio perfeito: Investida liberada', '#ffe08a'); for (const e of enemies.list) if (e.alive && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 4 + e.def.radius) poiseHit(e, e.hpMax * 0.09);
