@@ -65,6 +65,7 @@ import { createAtmos } from './atmos';
 import { createCraftHall } from './oficios';
 import { createEvents, globalNow, globalNext, globalList, G_FX, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
+import { createStable } from './estabulo';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
 import { createBuild } from './build';
@@ -488,15 +489,30 @@ const mules = npcSys.npcs.filter((n) => n.def.route).map((n) => ({ n, pet: creat
 function updateMules(dt: number, t: number) { for (const m of mules) { const far = Math.hypot(m.n.pos.x - heroPos.x, m.n.pos.z - heroPos.z) > 70; m.pet.root.visible = !far && !inside; if (far || inside) continue; m.pet.update(dt, t, m.n.pos, m.n.yaw, null, camera, canvas); } }
 function updateCompanions(dt: number, t: number, heroYaw: number, mps: number) {
   updateMules(dt, t);
-  const petId = Object.keys(PETS).find((id) => inv.has(id)) ?? null;
-  if (petId && (!pet || pet.kind.id !== petId)) { pet?.dispose(); pet = createPet(scene, PETS[petId], (x, z) => inside ? 0 : heightAt(x, z)); }
+  const ps = stable.petStats(), petId = ps ? stable.petId : null, petName = ps?.name ?? '';
+  if (petId && (!pet || pet.kind.id !== petId || pet.kind.name !== petName)) { pet?.dispose(); pet = createPet(scene, { ...PETS[petId]!, name: petName }, (x, z) => inside ? 0 : heightAt(x, z)); }
   if (!petId && pet) { pet.dispose(); pet = null; }
-  if (pet) { pet.root.visible = !inside; const goal = inside || combatMode ? null : game.petFetch(pet.pos, heroPos); pet.update(dt, t, heroPos, heroYaw, goal, camera, canvas); }
-  const mountId = Object.keys(MOUNTS).find((id) => inv.has(id)) ?? null;
-  if (mountId && (!mount || mount.kind.id !== mountId)) { if (riding) setRiding(false, true); if (mount) scene.remove(mount.root); mount = createMount(scene, MOUNTS[mountId]); }
+  if (pet && ps) { pet.kind.speed = PETS[petId!]!.speed * ps.fetchMul; pet.root.visible = !inside || !!inside.dg; /* na masmorra o pet desce junto (25/10) */ const goal = (inside && !inside.dg) || combatMode ? null : game.petFetch(pet.pos, heroPos, ps.range); pet.update(dt, t, heroPos, heroYaw, goal, camera, canvas); petSkills(dt, ps); }
+  const mountId = stable.mountId, ms = stable.mountStats();
+  if (mountId && (!mount || mount.kind.id !== mountId || mount.kind.name !== ms?.name)) { if (riding) setRiding(false, true); if (mount) scene.remove(mount.root); mount = createMount(scene, { ...MOUNTS[mountId]!, name: ms?.name ?? MOUNTS[mountId]!.name, speed: MOUNTS[mountId]!.speed * (ms?.speedMul ?? 1) }); }
+  if (mount && ms) mount.kind.speed = MOUNTS[mount.kind.id]!.speed * ms.speedMul;
   if (!mountId && mount) { setRiding(false, true); scene.remove(mount.root); mount = null; }
   if (riding && (inside || combatMode || swimmingNow || hero.acting)) setRiding(false, hero.acting);
   if (riding && mount) mount.update(dt, t, heroPos, heroYaw, mps);
+}
+/* habilidades do pet (Estábulo, 25/10): alarido, mordida, guincho do faro, fuçar */
+let petCd = 2, fucarT = 60;
+function petSkills(dt: number, ps: NonNullable<ReturnType<typeof stable.petStats>>) {
+  if (!pet || inside) return; petCd -= dt; const sk = ps.skill; if (!sk) return;
+  const foes = game.enemies.list.filter((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 10 * (1 + (ps.range / (sk === 'faro' ? 22 : 14) - 1)));
+  if (sk === 'fucar') { if (combatMode || foes.length || Math.hypot(pet.pos.x - heroPos.x, pet.pos.z - heroPos.z) > 5) return; fucarT -= dt; if (fucarT > 0) return; fucarT = 90 * ps.cdMul;
+    for (let i = 0; i < 10; i++) particles.spawn(pet.pos.x, pet.pos.y + 0.1, pet.pos.z, { vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.6, s0: 0.3, s1: 0.1, c0: 0x8a6a3a, c1: 0x4a3a20, a: 0.9 });
+    const r = Math.random(); if (r < 0.35) { inv.add('apple', 1); game.logMsg(`🐖 ${ps.name} fuçou a terra e achou uma Maçã silvestre.`, '#d8c890'); } else if (r < 0.55) { inv.add('bread', 1); game.logMsg(`🐖 ${ps.name} desenterrou um Pão (ainda bom, quase).`, '#d8c890'); } else if (r < 0.7) { const g = 2 + Math.floor(Math.random() * 6); game.st.gold += g; audio.coins(2); game.logMsg(`🐖 ${ps.name} achou ${g} moedas enterradas.`, '#ffe08a'); } else game.logMsg(`🐖 ${ps.name} fuçou, fuçou... e não achou nada.`, '#a8987a');
+    return; }
+  if (!foes.length || petCd > 0) return;
+  const e = foes.sort((a, b) => Math.hypot(a.pos.x - heroPos.x, a.pos.z - heroPos.z) - Math.hypot(b.pos.x - heroPos.x, b.pos.z - heroPos.z))[0];
+  if (sk === 'mordida') { petCd = 4 * ps.cdMul; game.petBite(e, (6 + 2 * game.st.lvl) * ps.biteMul, pet.pos); audio.hit(); pet.pos.set(e.pos.x - 0.8, pet.pos.y, e.pos.z - 0.8); }
+  else if (sk === 'alarido' || sk === 'faro') { petCd = (sk === 'faro' ? 25 : 18) * ps.cdMul; if (game.petDistract(e, sk === 'faro' ? 1 : 1.5)) { audio.squeak(1); game.logMsg(`${sk === 'faro' ? '🐀' : '🦊'} ${ps.name} ${sk === 'faro' ? 'guinchou' : 'deu um alarido'}: ${e.def.name} parou para procurar o barulho.`, '#ffe08a'); } }
 }
 const inv = createInventory(game, {
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
@@ -514,7 +530,7 @@ const inv = createInventory(game, {
     const hp = heroPosNow(), hunted = game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) < 16);
     if (hunted) { game.logMsg('📜 Há inimigos atrás de você — a Deusa não abre caminho no meio da luta.', '#ff9a8a'); return true; }
     if (combatMode) setCombat(false);
-    inv.take('scroll_return', 1); openPortal(); game.logMsg('📜 O pergaminho se desfaz em luz violeta.', '#b8a8ff'); return true; } if (id === 'tome') { inv.take('tome', 1); tree.addBonus(5); return true; } if (MOUNTS[id]) { if (!mount) return false; if (!riding && (combatMode || inside || swimmingNow)) { game.logMsg('Não dá para montar aqui (saia do combate).', '#ff9a8a'); return true; } inv.closeAll(); setRiding(!riding); return true; } if (PETS[id]) { game.logMsg(`${ITEMS_NAME(id)} já está com você — ele busca os itens caídos.`, '#e8dcc0'); return true; } return false; },
+    inv.take('scroll_return', 1); openPortal(); game.logMsg('📜 O pergaminho se desfaz em luz violeta.', '#b8a8ff'); return true; } if (id === 'tome') { inv.take('tome', 1); tree.addBonus(5); return true; } if (MOUNTS[id] || PETS[id]) { if (stable.adopt(id)) stable.toggle(true, { tab: PETS[id] ? 'pets' : 'mounts', id }); return true; } return false; },
   portrait: () => { if (dollR && !dollFail) return null; /* o boneco vivo já está desenhando */ portraits.delete('hero'); try { return portraitOf('hero', hero.root, true); } catch { return null; } }, title: () => `${(profile?.name ?? '')}${quests?.title ? ' · ' + quests.title : ''}`.trim() || RACES[state.race].label,
   raceLabel: () => RACES[state.race].label, karma: () => state.karma, xpNeed: game.xpNeed,
   soul: () => { soul.regen(); const r: [string, string][] = [['Fio da Vida', `${game.st.lvl < FRAY_LVL || !profile?.eye ? `intacto até o Olho abrir (nível ${FRAY_LVL})` : `${'●'.repeat(soul.s.breaths)}${'○'.repeat(MAX_BREATHS - soul.s.breaths)}${soul.s.breaths < MAX_BREATHS ? ` · +1 em ${soul.nextBreathH()}h` : ''}`} · 💧 ${inv.count('lagrima')}`]];
@@ -548,9 +564,10 @@ DOCK_ICONS.opts = `<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="6" fill="
 DOCK_ICONS.prof = `<svg viewBox="0 0 32 32"><path d="M6 26l11-11" stroke="#8a5a2a" stroke-width="3" stroke-linecap="round"/><path d="M14 6l8-2 6 6-2 8-4-4-4 1-1-4z" fill="#c8ccd4" stroke="#3a3d44" stroke-width="1.3"/><path d="M20 24l6 0" stroke="#e8d6a8" stroke-width="2"/></svg>`;
 DOCK_ICONS.loja = `<svg viewBox="0 0 32 32"><path d="M5 13h22l-2 14H7z" fill="#3a2614" stroke="#d9b45a" stroke-width="1.6" stroke-linejoin="round"/><path d="M5 13l3-6h16l3 6" fill="#5a3a1c" stroke="#d9b45a" stroke-width="1.6" stroke-linejoin="round"/><path d="M11 20c2-3 3.5-4 5-4s3 1 5 4c-2 3-3.5 4-5 4s-3-1-5-4z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.1"/><circle cx="16" cy="20" r="1.6" fill="#c9a0ff"/></svg>`;
 DOCK_ICONS.coop = `<svg viewBox="0 0 32 32"><circle cx="11" cy="11" r="4.5" fill="#9ad0ff" stroke="#1a2a3a" stroke-width="1.3"/><circle cx="21" cy="11" r="4.5" fill="#ffd88a" stroke="#3a2a0a" stroke-width="1.3"/><path d="M3 27c.8-6 4-9 8-9s7.2 3 8 9z" fill="#4a6a9a" stroke="#1a2a3a" stroke-width="1.3"/><path d="M13 27c.8-6 4-9 8-9s7.2 3 8 9z" fill="#9a6a2a" stroke="#3a2a0a" stroke-width="1.3"/></svg>`;
+DOCK_ICONS.stable = `<svg viewBox="0 0 32 32"><path d="M7 20c0-5 4-9 9-9h3l4-4 1 5c2 1 3 3 3 5v3l-3 1-2-2H12l-2 6H7z" fill="#c8641e" stroke="#3a1a0a" stroke-width="1.4" stroke-linejoin="round"/><path d="M24 12l2-4 1 5" fill="#f4ece0" stroke="#3a1a0a" stroke-width="1"/><circle cx="23" cy="15" r="1.2" fill="#1a0a04"/><path d="M7 20q-4 1-4 5 3-1 5-3" fill="#f4ece0" stroke="#3a1a0a" stroke-width="1"/></svg>`;
 DOCK_ICONS.relics = `<svg viewBox="0 0 32 32"><path d="M10 28V10l6-6 6 6v18z" fill="#3a3a5a" stroke="#9ab4ff" stroke-width="1.4"/><path d="M13 14h6M13 18h6M13 22h6" stroke="#9ab4ff" stroke-width="1.4"/></svg>`;
 /* dock em quadradinhos, embaixo do chat (canto inferior esquerdo): um quadrado para cada janela do jogo */
-const DOCK: [string, string, string][] = [['inv', 'Mochila', 'I'], ['char', 'Personagem', 'C'], ['skills', 'Árvore Kármica (magias)', 'K'], ['quests', 'Missões', 'J'], ['feats', 'Conquistas — Inscrições de Marghar', 'L'], ['karma', 'Compêndio do Karma', 'U'], ['prof', 'Profissões', 'Y'], ['loja', 'Shop — Premium e brasões', 'T'], ['map', 'Mapa', 'M'], ['coop', 'Jogar junto — abrir sala ou entrar com convite', 'F4'], ['opts', 'Opções e configurações', 'Esc']];
+const DOCK: [string, string, string][] = [['inv', 'Mochila', 'I'], ['char', 'Personagem', 'C'], ['skills', 'Árvore Kármica (magias)', 'K'], ['quests', 'Missões', 'J'], ['feats', 'Conquistas — Inscrições de Marghar', 'L'], ['karma', 'Compêndio do Karma', 'U'], ['prof', 'Profissões', 'Y'], ['loja', 'Shop — Premium e brasões', 'T'], ['map', 'Mapa', 'M'], ['stable', 'Estábulo e Companheiros — pets e montarias', 'X'], ['coop', 'Jogar junto — abrir sala ou entrar com convite', 'F4'], ['opts', 'Opções e configurações', 'Esc']];
 dockEl.innerHTML = DOCK.map(([d, t, k]) => `<button data-d="${d}" title="${t} (${k})">${DOCK_ICONS[d] ?? ''}<small>${k}</small></button>`).join('');
 document.body.appendChild(dockEl);
 const skillsEl = document.createElement('div'); skillsEl.id = 'skillsw'; skillsEl.className = 'modalw'; document.body.appendChild(skillsEl);
@@ -593,7 +610,15 @@ featsEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).c
 function toggleSkills(on?: boolean) { skillsOpen = on ?? !skillsOpen; if (skillsOpen) renderSkills(); else skillsEl.style.display = 'none'; }
 function toggleFeats(on?: boolean) { featsOpen = on ?? !featsOpen; if (featsOpen) renderFeats(); else featsEl.style.display = 'none'; }
 for (const [el, fn] of [[skillsEl, toggleSkills], [featsEl, toggleFeats]] as [HTMLElement, (on?: boolean) => void][]) el.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === el) fn(false); });
-dockEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; keys.clear(); const d = b.dataset.d; if (d === 'inv') inv.toggle(); else if (d === 'char') inv.toggleChar(); else if (d === 'skills') toggleSkills(); else if (d === 'quests') quests.toggleLog(); else if (d === 'feats') toggleFeats(); else if (d === 'map') toggleBigMap(); else if (d === 'prof') profs.toggle(); else if (d === 'loja') loja.toggle(); else if (d === 'karma') compendium.toggle(); else if (d === 'coop') coop.toggle(); else if (d === 'opts') { game.toggleMenu(true); (document.querySelector('#menu [data-p="p-opt"]') as HTMLElement | null)?.click(); } });
+dockEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; keys.clear(); const d = b.dataset.d; if (d === 'inv') inv.toggle(); else if (d === 'char') inv.toggleChar(); else if (d === 'skills') toggleSkills(); else if (d === 'quests') quests.toggleLog(); else if (d === 'feats') toggleFeats(); else if (d === 'map') toggleBigMap(); else if (d === 'prof') profs.toggle(); else if (d === 'loja') loja.toggle(); else if (d === 'karma') compendium.toggle(); else if (d === 'coop') coop.toggle(); else if (d === 'stable') stable.toggle(); else if (d === 'opts') { game.toggleMenu(true); (document.querySelector('#menu [data-p="p-opt"]') as HTMLElement | null)?.click(); } });
+const stable = createStable({ has: (id) => inv.has(id), count: (id) => inv.count(id), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '❔', log: (t, c) => game.logMsg(t, c), gold: (n) => { game.st.gold += n; },
+  onChange: () => { pet?.dispose(); pet = null; }, sfx: (k) => { if (k === 'eat') audio.work('cook'); else if (k === 'swap') audio.click(); else audio.chime(); } });
+setTimeout(() => stable.migrate(), 1500);
+/* Ctrl + clique no pet (ou na montaria): abre o Estábulo nele */
+canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey) return; const r = canvas.getBoundingClientRect();
+  const hitAt = (p: THREE.Vector3, h: number) => { const v = p.clone().setY(p.y + h).project(camera); return Math.hypot(r.left + (v.x * 0.5 + 0.5) * r.width - e.clientX, r.top + (-v.y * 0.5 + 0.5) * r.height - e.clientY) < 46; };
+  if (pet && pet.root.visible && hitAt(pet.pos, 0.4)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'pets', id: pet.kind.id }); stable.hearts(3); }
+  else if (mount && riding && hitAt(heroPos, 1.0)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'mounts', id: mount.kind.id }); } }, true);
 game.setOnItem((id, n) => inv.add(id, n));
 game.setOnGear((g) => inv.addGear(g));
 /* leilão do Quadro de Avisos: vender, não só pedir (compras e vendas passam pelo correio) */
@@ -1132,7 +1157,6 @@ function portraitOf(name: string, root: THREE.Object3D, full = false): string {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const si = ((h - 1 - y) * w + x) * 4, di = (y * w + x) * 4; im.data[di] = px[si]; im.data[di + 1] = px[si + 1]; im.data[di + 2] = px[si + 2]; im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); const url = cv.toDataURL(); portraits.set(name, url); return url;
 }
-const ITEMS_NAME = (id: string) => ({ pet_fox: 'A raposa', pet_pup: 'O filhote' } as Record<string, string>)[id] ?? id;
 const SHOP_OF: Record<string, string> = { Doran: 'armeiro', Thorin: 'mercador', Maren: 'armaduras', Morwen: 'pocoes', Tessa: 'cervejaria', Sven: 'churrasco', Bruno: 'charcutaria', Rosália: 'cozinha', Tomás: 'lenhador', Kaela: 'cacador', Gunnar: 'construtor', Corwin: 'domador', Orm: 'estabulo' };
 /* conversa com um NPC: missões para entregar, missões novas, comércio, quadro, conversa */
 function talkTo(n: (typeof npcSys.npcs)[number]) {
@@ -1870,7 +1894,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'F4') { e.preventDefault(); keys.clear(); coop.toggle(); return; }
   if (e.key === 'Enter' && !inv.isOpen && !dlg.isOpen && !quests.isOpen) { e.preventDefault(); keys.clear(); chat.open(); return; }
   if (e.key === 'Tab') e.preventDefault();
-  if (e.key === 'Escape') { if (aimSlot) { cancelAim(); return; } if (skillsOpen || featsOpen) { toggleSkills(false); toggleFeats(false); return; } if (build.on) { build.toggle(false); return; } if (relicOpen) { closeRelics(); return; } if (olhoOpen) { toggleOlho(false); return; } if (dlg.isOpen) { dlg.close(); return; } if (quests.isOpen) { quests.closeAll(); return; } if (vid.isOpen) { vid.close(); return; } if (mail.isOpen) { mail.close(); return; } if (profs.isOpen) { profs.close(); return; } if (loja.isOpen) { loja.close(); return; } if (bigOpen) { toggleBigMap(); return; } if (inv.isOpen) { inv.closeAll(); return; } game.toggleMenu(); return; }
+  if (e.key === 'Escape') { if (aimSlot) { cancelAim(); return; } if (stable.isOpen) { stable.toggle(false); return; } if (skillsOpen || featsOpen) { toggleSkills(false); toggleFeats(false); return; } if (build.on) { build.toggle(false); return; } if (relicOpen) { closeRelics(); return; } if (olhoOpen) { toggleOlho(false); return; } if (dlg.isOpen) { dlg.close(); return; } if (quests.isOpen) { quests.closeAll(); return; } if (vid.isOpen) { vid.close(); return; } if (mail.isOpen) { mail.close(); return; } if (profs.isOpen) { profs.close(); return; } if (loja.isOpen) { loja.close(); return; } if (bigOpen) { toggleBigMap(); return; } if (inv.isOpen) { inv.closeAll(); return; } game.toggleMenu(); return; }
   if (game.menuOpen) return;
   if (k === 'i') { keys.clear(); inv.toggle(); return; }
   if (k === 'j') { keys.clear(); quests.toggleLog(); return; }
@@ -1882,7 +1906,7 @@ addEventListener('keydown', (e) => {
   if (k === 'l') { keys.clear(); toggleFeats(); return; }
   if (k === 'b') { if (inside) { game.logMsg('Construa do lado de fora.', '#ff9a8a'); return; } if (combatMode) setCombat(false); build.toggle(); return; }
   if (k === 'r' && build.on) { build.rotate(); return; }
-  if (k === 'z') { if (!mount) { if (Object.keys(MOUNTS).some((id) => inv.has(id))) return; game.logMsg('Você não tem montaria. Procure Orm, o Estalajadeiro.', '#ff9a8a'); return; } if (!riding && (combatMode || inside || swimmingNow)) { game.logMsg(combatMode ? 'Saia do modo de combate (Tab) para montar.' : 'Não dá para montar aqui.', '#ff9a8a'); return; } setRiding(!riding); return; }
+  if (k === 'z') { if (!mount) { if (stable.mountId) return; game.logMsg('Você não tem montaria. Procure Orm, o Estalajadeiro.', '#ff9a8a'); return; } if (!riding && (combatMode || inside || swimmingNow)) { game.logMsg(combatMode ? 'Saia do modo de combate (Tab) para montar.' : 'Não dá para montar aqui.', '#ff9a8a'); return; } setRiding(!riding); return; }
   if (dlg.isOpen) return;
   if (e.shiftKey && /^Digit[0-9]$/.test(e.code)) { if (!e.repeat) useSlot('⇧' + e.code.slice(5), true); return; } // 2º andar da barra: ⇧1–⇧0
   keys.add(k); /* com janelas abertas ainda dá para andar, lutar e usar a barra */
@@ -1895,6 +1919,7 @@ addEventListener('keydown', (e) => {
   if (k === 'l') { keys.clear(); toggleFeats(); return; }
   if (k === 'm') toggleBigMap();
   if (k === 'o') audio.toggleMute();
+  if (k === 'x') { stable.toggle(); return; }
   if (k === 'p') game.logMsg(audio.toggleMusic() ? '🎵 Música ligada' : '🎵 Música desligada', '#b9c6e0');
   if (k === 'n') { nightOverride = nightOverride === null ? 1 : nightOverride === 1 ? 0 : null; game.logMsg(nightOverride === null ? '🕯 Ciclo natural de dia e noite.' : nightOverride ? '🌙 Noite forçada (teste).' : '☀ Dia forçado (teste).', '#b9c6e0'); }
   if (/^[0-9]$/.test(k) && !e.repeat) useSlot(k, true); else if (/^[0-9]$/.test(k) && skillAt(kitRace(), k)?.id === 'combo') useSlot(k);

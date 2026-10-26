@@ -1477,13 +1477,19 @@ export function createGameplay(d: GameplayDeps) {
       d.audio.heal();
     },
     /** pet: posição do item mais próximo para buscar (até 14 m do herói); ao chegar, o item é levado ao herói */
-    petFetch(petPos: THREE.Vector3, heroPos: THREE.Vector3): THREE.Vector3 | null {
-      let best: (typeof drops)[number] | null = null, bd = 14;
+    petFetch(petPos: THREE.Vector3, heroPos: THREE.Vector3, range = 14): THREE.Vector3 | null {
+      let best: (typeof drops)[number] | null = null, bd = range;
       for (const dr of drops) { if (dr.t < 0.6) continue; const dd = Math.hypot(dr.x - heroPos.x, dr.z - heroPos.z); if (dd < bd && dd > 2.2) { bd = dd; best = dr; } }
       if (!best) return null;
       if (Math.hypot(best.x - petPos.x, best.z - petPos.z) < 1.1) { best.x = heroPos.x; best.z = heroPos.z; best.m.position.x = best.x; best.m.position.z = best.z; d.particles.spawn(petPos.x, petPos.y + 0.5, petPos.z, { vy: 1.5, life: 0.5, s0: 0.5, s1: 0.1, c0: 0xffe08a, c1: 0xffa040, a: 1 }); return null; }
       return new THREE.Vector3(best.x, best.y, best.z);
     },
+    /** pet (Estábulo, 25/10): morde quem te ataca */
+    petBite(e: Enemy, dmg: number, from: THREE.Vector3) { if (!e.alive || !e.active) return; const n = Math.max(1, Math.round(dmg)); dmgText(e.pos.clone().setY(e.pos.y + 2.0), n, false, '#ffd890');
+      for (let q = 0; q < 6; q++) d.particles.spawn(e.pos.x + rnd(-0.3, 0.3), e.pos.y + 0.6, e.pos.z + rnd(-0.3, 0.3), { vx: rnd(-1, 1), vy: rnd(0.5, 2), vz: rnd(-1, 1), life: 0.4, s0: 0.25, s1: 0.05, c0: 0xffffff, c1: 0xb3202f, a: 1 });
+      if (enemies.hurt(e, n, from, 0.6)) killEnemy(e); },
+    /** pet: o alarido — quem vinha para cima de você para e procura de onde veio o barulho */
+    petDistract(e: Enemy, secs: number) { if (!e.alive || !e.active || isElite(e)) return false; e.state = 'hurt'; e.t = -secs; dmgText(e.pos.clone().setY(e.pos.y + 2.6), '?!', false, '#ffe08a'); return true; },
     get flaming() { return flameT > 0; },
     dbg() { return { turrets: turrets.map((t) => [t.x, t.z, t.t]), en: enemies.list.filter((e) => e.active).map((e) => [e.type, e.alive, Math.round(e.pos.x), Math.round(e.pos.z)]) }; },
     hurtNow() { return now - lastHurt < 0.1; },

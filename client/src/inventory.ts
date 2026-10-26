@@ -119,11 +119,19 @@ export const ITEMS: Record<string, Item> = {
   // companheiros
   pet_fox: { name: 'Raposa Ruiva', icon: '🦊', kind: 'misc', col: 0xd0702a, desc: 'Companheira que corre atrás dos itens caídos e traz para você.', tier: 1 },
   pet_pup: { name: 'Filhote de Lobo', icon: '🐺', kind: 'misc', col: 0x8a8a8a, desc: 'Fiel e rápido. Busca itens caídos.', tier: 1 },
+  pet_rat: { name: 'Ratinho de Porão', icon: '🐀', kind: 'misc', col: 0x8a7a6a, desc: 'Faro fino: busca itens caídos bem mais longe. Use para levar ao Estábulo (X).', tier: 1 },
+  pet_piglet: { name: 'Leitão Malhado', icon: '🐖', kind: 'misc', col: 0xd8a890, desc: 'Fuça a terra quando você descansa e às vezes traz uma coisinha. Use para levar ao Estábulo (X).', tier: 1 },
+  mount_grey: { name: 'Cavalo Ruço', icon: '🐴', kind: 'misc', col: 0x9a968e, desc: 'Montaria (Z): +80% de velocidade fora de combate. Use para levar ao Estábulo (X).', tier: 1 },
+  coleira_couro: { name: 'Coleira de Couro', icon: '🟤', kind: 'misc', col: 0x8a5a2a, desc: 'Para o pet (Estábulo, X): +15% de velocidade ao buscar itens.', sell: 12 },
+  coleira_prata: { name: 'Coleira de Prata', icon: '⚪', kind: 'misc', col: 0xc8ccd4, desc: 'Para o pet (Estábulo, X): +30% de velocidade ao buscar e +25% de alcance da habilidade.', sell: 60 },
+  peitoral_couro: { name: 'Peitoral de Couro', icon: '🛡', kind: 'misc', col: 0x6a4a2a, desc: 'Para o pet (Estábulo, X): a habilidade de combate volta 20% mais rápido.', sell: 20 },
+  peitoral_ferro: { name: 'Peitoral de Ferro', icon: '🛡', kind: 'misc', col: 0x8a8e96, desc: 'Para o pet (Estábulo, X): a habilidade volta 35% mais rápido e a mordida dói +25%.', sell: 80 },
+  feno: { name: 'Fardo de Feno', icon: '🌾', kind: 'misc', col: 0xd8c060, desc: 'Comida de montaria (Estábulo, X). Também vale maçã e pão.', sell: 1 },
   mount_horse: { name: 'Cavalo Baio', icon: '🐴', kind: 'misc', col: 0x6a4a2e, desc: 'Montaria (Z): +75% de velocidade fora de combate.', tier: 1 },
   mount_black: { name: 'Corcel Negro', icon: '🐎', kind: 'misc', col: 0x1a1612, desc: 'Montaria (Z): +90% de velocidade fora de combate.', tier: 2 },
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
-export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
+export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
 export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
@@ -138,7 +146,7 @@ export const SHOPDEF: Record<string, ShopDef> = {
   lenhador: { title: 'Tomás, o Lenhador', items: ['axe_s', 'axe_i', 'axe_st', 'wood'], buys: { wood: 1.5, stick: 1.5 }, note: 'Machados e madeira. Paga bem por toras.' },
   cacador: { title: 'Kaela, a Caçadora', items: ['knife_f', 'knife_i', 'knife_st', 'rod', 'rod_ash', 'jerky', 'potion'], buys: { hide: 1.4, hide_f: 1.4, hide_w: 1.3, claw: 1.5, meat: 1.2 }, note: 'Couro, garras e carne: a floresta paga.' },
   construtor: { title: 'Gunnar, o Construtor', items: ['plank', 'nail', 'block', 'rope'], buys: { wood: 1.3, stone: 1.5 }, note: 'Materiais para construir a sua casa.' },
-  domador: { title: 'Corwin, o Domador', items: ['pet_fox', 'pet_pup'], note: 'Companheiros que buscam o que cai no chão.' },
+  domador: { title: 'Corwin, o Domador', items: ['pet_fox', 'pet_pup', 'pet_rat', 'pet_piglet', 'coleira_couro', 'coleira_prata', 'peitoral_couro', 'peitoral_ferro', 'meat', 'apple'], note: 'Companheiros que buscam o que cai no chão.' },
   tec_fio: { title: 'Tecelagem Real do Fio', items: [], fac: 'fio', note: 'Feito à mão pelas tecelãs da Ordem, com o fio que nunca se corta. Ninguém mais sabe tecer isto. Só para quem jurou o Fio.' },
   tec_desf: { title: 'Tecelagem dos Desfiados', items: [], fac: 'desf', note: 'Pano negro rasgado de propósito, ferro que não enferruja. Feito na oficina dos Desfiados e em nenhum outro lugar. Só para quem cortou o fio.' },
   latao: { title: 'Companhia das Caravanas de Latão', items: ['reator_1', 'reator_2', 'cristal_arcano', 'inj_s', 'semente_mod', 'sino_guarda', 'potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'], buys: { ore_i: 1.3, gem: 1.3 }, note: 'Mercadoria do porto, trazida pelas caravanas de latão.' },
@@ -151,7 +159,7 @@ export const SHOPDEF: Record<string, ShopDef> = {
   abadia_aurora: { title: 'Capela da Abadia da Aurora', items: ['agua_benta', 'bread'], note: 'Água benzida pelos paladinos. Os magos compram calados.' },
   bastiao_prata: { title: 'Arsenal do Bastião de Prata', items: ['coracao_demonio', 'antidote'], note: 'Corações arrancados pelos caçadores do Clã Helsing. Os bruxos pagam bem e ninguém pergunta para quê.' },
   salao_hidromel: { title: 'Salão do Hidromel de Jarlsheim', items: ['chifre_sangue', 'mead', 'beer'], note: 'O chifre se enche no campo de batalha. Aqui só se vende o que já foi enchido.' },
-  estabulo: { title: 'Orm, o Estalajadeiro', items: ['mount_horse', 'mount_black'], note: 'Montarias: Z para montar e desmontar.' },
+  estabulo: { title: 'Orm, o Estalajadeiro', items: ['mount_horse', 'mount_grey', 'mount_black', 'feno', 'apple'], note: 'Montarias: Z para montar e desmontar.' },
 };
 export const SHOPS: Record<string, string[]> = Object.fromEntries(Object.entries(SHOPDEF).map(([k, v]) => [k, v.items]));
 export const RECIPES: { id: string; out: string; n: number; need: [string, number][]; keep?: string[]; label?: string }[] = [

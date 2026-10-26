@@ -512,6 +512,33 @@
   #gevwin .gv-row.past span { color: #b8a888; }
   #gevwin .gv-empty { font-size: 12px; color: #8a7a60; font-style: italic; margin: 2px 0; }
   #gevwin .ft { display: block; margin-top: 10px; color: #7a6a50; font-size: 10.5px; }
+
+  /* Estábulo e Companheiros (25/10) */
+  #stablew .stpn { width: min(900px, 94vw); height: min(600px, 90vh); display: flex; flex-direction: column; padding: 14px 20px 14px; overflow: hidden; }
+  #stablew h2 { margin: 0 0 8px; display: flex; align-items: center; gap: 12px; font: 700 20px Cinzel, serif; color: #f2cf8a; } #stablew h2 .stc { flex: 1; font: 12px Georgia, serif; color: #b8a888; } #stablew h2 button { background: none; border: 1px solid #6a4a22; color: #e8dcc0; border-radius: 4px; cursor: pointer; }
+  #stablew .sttabs { display: flex; gap: 6px; margin-bottom: 10px; } #stablew .sttabs button { flex: none; padding: 6px 16px; background: #1a120c; border: 1px solid #5a4020; color: #c8b898; border-radius: 6px 6px 0 0; cursor: pointer; font: 14px Georgia, serif; } #stablew .sttabs button.on { background: #3a2614; color: #f2cf8a; border-color: #c9a24a; }
+  #stablew .stbody { flex: 1; display: grid; grid-template-columns: 1fr 300px; gap: 16px; min-height: 0; }
+  #stablew .stleft { display: flex; flex-direction: column; gap: 7px; min-height: 0; overflow: auto; }
+  #stablew .stview { position: relative; width: 300px; height: 210px; align-self: center; border: 1px solid #5a4020; border-radius: 8px; background: radial-gradient(ellipse at 50% 70%, #3a2a1a, #120c08 75%); cursor: pointer; flex: none; }
+  #stablew .stview canvas { width: 100%; height: 100%; display: block; } #stablew .sthint { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; color: #8a7a5a; font-size: 10.5px; pointer-events: none; }
+  #stablew .sthearts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; } #stablew .sthearts i { position: absolute; bottom: 40%; font-style: normal; color: #ff6a9a; font-size: 20px; animation: sthrt 1.4s ease-out forwards; text-shadow: 0 0 6px #ff3a7a; }
+  @keyframes sthrt { from { transform: translateY(0) scale(.6); opacity: 1; } to { transform: translateY(-110px) scale(1.2); opacity: 0; } }
+  #stablew .stname { display: flex; flex-direction: column; gap: 3px; } #stablew .stren { font: 700 18px Cinzel, serif; color: #f2cf8a; background: transparent; border: none; border-bottom: 1px dashed #6a4a22; width: 100%; padding: 2px 0; } #stablew .stren:focus { outline: none; border-bottom-color: #f2cf8a; }
+  #stablew .stname small { color: #c8b898; font-size: 12px; line-height: 1.35; } #stablew .stname small b { color: #ffd890; } #stablew .stbl { font-style: italic; color: #9a8a6a !important; }
+  #stablew .ststats div { display: grid; grid-template-columns: 78px 1fr 150px; gap: 8px; align-items: center; font-size: 12px; margin: 2px 0; } #stablew .ststats em { font-style: normal; color: #c8b898; font-size: 11px; }
+  #stablew .stbar { height: 9px; background: #1a120c; border: 1px solid #4a3418; border-radius: 5px; overflow: hidden; } #stablew .stbar i { display: block; height: 100%; transition: width .4s; }
+  #stablew .stacts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } #stablew .stacts button, #stablew .stslot button { background: #2a1c10; border: 1px solid #8a6a32; color: #f2cf8a; border-radius: 5px; padding: 4px 10px; cursor: pointer; font: 13px Georgia, serif; } #stablew .stacts button:disabled { opacity: .55; cursor: default; }
+  #stablew .stacts button:hover:not(:disabled), #stablew .stslot button:hover { background: #3a2614; } #stablew .stfood { display: flex; gap: 4px; flex-wrap: wrap; } #stablew .stfood small { color: #a8987a; font-size: 11px; }
+  #stablew .stgear { display: flex; flex-direction: column; gap: 4px; } #stablew .stslot { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; } #stablew .stslot > b { width: 64px; color: #c9a24a; } #stablew .stslot em { color: #7a6a50; }
+  #stablew .stright { display: flex; flex-direction: column; min-height: 0; } #stablew .stright h3 { margin: 0 0 6px; font: 700 13px Cinzel, serif; letter-spacing: .08em; color: #c9a24a; }
+  #stablew .stcoll { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; overflow: auto; align-content: start; }
+  #stablew .stcard { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; background: #1a120c; border: 1px solid #4a3418; border-radius: 6px; color: #e8dcc0; cursor: pointer; font-family: Georgia, serif; }
+  #stablew .stcard i { font-style: normal; font-size: 28px; } #stablew .stcard b { font-size: 12px; } #stablew .stcard small { font-size: 10px; color: #a8987a; text-align: center; }
+  #stablew .stcard.sel { border-color: #f2cf8a; background: #2e2010; } #stablew .stcard.act small { color: #9aff9a; } #stablew .stcard.none { cursor: default; opacity: .55; } #stablew .stcard.none i { color: #5a4a30; font-weight: 700; }
+  #stablew .stnote { margin-top: 8px; color: #8a7a5a; font-size: 11px; line-height: 1.35; } #stablew .stempty { color: #c8b898; font-style: italic; }
+  .evtask { position: fixed; transform: translate(-50%, -100%); pointer-events: none; z-index: 5; text-align: center; padding: 3px 9px 4px; background: linear-gradient(#1c1208ee, #0e0804ee); border: 1px solid #c9a24a; border-radius: 6px; font-family: Georgia, serif; animation: evtk 1.6s ease-in-out infinite; white-space: nowrap; }
+  .evtask b { display: block; font-size: 12.5px; color: #ffe08a; } .evtask small { font-size: 10.5px; color: #e8d8b0; } .evtask.near { border-color: #fff0b0; box-shadow: 0 0 14px #ffd07080; } .evtask.near small { color: #fff; font-weight: 700; }
+  @keyframes evtk { 50% { transform: translate(-50%, calc(-100% - 5px)); } }
   #mini, #btns, #btns button { pointer-events: auto; } #mini { position: fixed; right: 14px; top: 12px; width: 178px; z-index: 6; text-align: center; }
   #mini canvas { width: 170px; height: 170px; border-radius: 50%; border: 4px solid #a4833f; box-shadow: 0 0 0 2px #120a04, 0 0 0 4px #5a4220, 0 0 18px #000, inset 0 0 14px #000; background: #0a0810; display: block; margin: 2px auto; }
   #mini .nn { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font: 700 11px Cinzel, serif; color: #ffe08a; text-shadow: 0 1px 3px #000; font-style: normal; background: #1c130b; border: 1px solid #a4833f; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; }

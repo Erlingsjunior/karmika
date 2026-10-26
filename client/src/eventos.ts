@@ -388,7 +388,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     if (L.tpl.id === 'ritual') { L.circle = ritualCircle(); L.circle.g.position.set(p.x, ctx.heightAt(p.x, p.z) + 0.06, p.z); ctx.scene.add(fine(L.circle.g)); }
     for (const sd of Object.values(L.tpl.sides)) for (const tk of sd?.tasks ?? []) if (tk.kind === 'device') tk.at!.forEach(([dx, dz], i) => { const b = buildProp(tk.prop!), q = posAt(L, dx, dz); b.g.position.set(q.x, ctx.heightAt(q.x, q.z), q.z); b.g.rotation.y = Math.atan2(p.x - q.x, p.z - q.z); ctx.scene.add(b.g); if (tk.hidden) b.g.visible = false; L.props.push({ kind: tk.prop!, task: tk.id, i, g: b.g, glow: b.glow, x: q.x, z: q.z, hidden: tk.hidden }); });
   }
-  function deactivate(L: Live) {
+  function deactivate(L: Live) { for (const pr of L.props) { taskEls.get(pr)?.remove(); taskEls.delete(pr); }
     if (!L.spawned) return; L.spawned = false; ctx.clearTag('ev:' + L.key); L.units = []; L.waveDone.clear();
     if (L.herald) ctx.scene.remove(L.herald.root); L.herald = null; L.heraldEl?.remove(); L.heraldEl = null; for (const h of L.extras) ctx.scene.remove(h.root); L.extras = [];
     for (const pr of L.props) ctx.scene.remove(pr.g); L.props = []; if (L.circle) ctx.scene.remove(L.circle.g); L.circle = undefined;
@@ -403,6 +403,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       L.units.push(e); }
     hostility(L);
   }
+  const taskEls = new Map<object, HTMLElement>();
   /** de que lado cada um está, para você */
   function hostility(L: Live) { for (const u of L.units) { if (!L.joined || !L.side) { u.def.aggro = 0; u.ally = false; continue; } const mine = u.evFac === L.side; u.ally = mine; u.def.aggro = mine || u.type === 'deer' ? 0 : 18; } }
   /** quem briga com quem (o mais perto do outro lado) */
@@ -443,7 +444,8 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     ctx.converse({ name: L.tpl.herald.name, role: L.tpl.herald.role, title: `${L.tpl.icon} ${L.tpl.name}`, steps, onPick: (r) => {
       const f = r?.flag ?? 'ev:none'; if (f === 'ev:none') { ctx.log(`Você deixa ${L.tpl.name.toLowerCase()} para quem quiser. O evento segue sem você.`, '#b9c6e0'); L.asked = true; return; }
       L.side = f.startsWith('ev:A') ? 'A' : 'B'; L.joined = true; trackKey = L.key; if (f === 'ev:A:celebrar') L.tasks['altar_perm'] = 1; hostility(L);
-      const sd = sideDef(L)!; ctx.log(`${L.tpl.icon} Evento: ${L.tpl.name} — você escolheu: ${sd.label}.`, L.tpl.color); } });
+      const sd = sideDef(L)!; ctx.log(`${L.tpl.icon} Evento: ${L.tpl.name} — você escolheu: ${sd.label}.`, L.tpl.color);
+      { const el = (Date.now() - L.start) / 1000, nx = (L.tpl.waves ?? []).find((w, i) => !L.waveDone.has(i) && w.fac !== L.side); if (nx) ctx.log(`⚠ ${L.tpl.facs?.[nx.fac as "A"] ?? "Os inimigos"} chegam em ~${Math.max(5, Math.round(nx.at - el))} s. ${L.tpl.id === 'mordida' && L.side === 'A' ? `${L.tpl.herald.name} vai acender as velas: proteja-a (ou acenda junto, E perto de uma vela).` : 'Prepare-se.'}`, '#ffb060'); } } });
   }
   /** entregar o que a festa pede (madeira, pedra) */
   function deliver(L: Live) { const sd = sideDef(L); if (!sd) return; for (const tk of sd.tasks ?? []) if (tk.kind === 'deliver') { const have = ctx.count(tk.item!), left = tk.n - (L.tasks[tk.id] ?? 0), give = Math.min(have, left); if (give > 0 && ctx.take(tk.item!, give)) { L.tasks[tk.id] = (L.tasks[tk.id] ?? 0) + give; ctx.log(`📦 Você entrega ${give}× ${tk.item === 'wood' ? 'madeira' : tk.item === 'stone' ? 'pedra' : tk.item}. (${L.tasks[tk.id]}/${tk.n})`, '#ffd24a'); } } }
@@ -472,10 +474,28 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
         if (L.tpl.path && L.tpl.id === 'procissao') walkPath(L, L.meter, by); }
       if (L.tpl.path && L.tpl.id === 'patrulha') { const sold = L.units.filter((u) => u.alive && u.evFac === 'A'); L.pathS = (L.pathS + dt * 0.006) % 1; walkPath(L, 0.5 + Math.sin(L.pathS * 6.283) * 0.45, sold); }
       // herói do evento, aldeões e falas
-      if (L.herald) { const h = L.herald, hx = p.x + 2, hz = p.z + 2.5; h.root.position.set(hx, ctx.heightAt(hx, hz), hz); const dd = Math.hypot(hp.x - hx, hp.z - hz); h.root.rotation.y = dd < 9 ? Math.atan2(hp.x - hx, hp.z - hz) : 0.4; h.update(dt, t, 0, null);
+      if (L.herald) { const h = L.herald, HW = L as Live & { hx?: number; hz?: number; hT?: number }; if (HW.hx === undefined) { HW.hx = p.x + 2; HW.hz = p.z + 2.5; HW.hT = 0; }
+        /* quem prometeu acender as velas, acende (Erling, 25/10: "a curandeira disse que ia acender velas e não faz nada"):
+           ela anda de vela em vela, ajoelha e acende (8 s cada); você segura a praça — ou acende junto (E perto da vela) */
+        let mvH = 0, walkTo: { x: number; z: number } | null = null; const tkV = L.joined && L.side === 'A' ? sideDef(L)?.tasks?.find((x) => x.kind === 'device' && x.prop === 'lantern') : undefined;
+        const nextV = tkV ? L.props.find((q) => q.task === tkV.id && !q.done) : undefined;
+        if (nextV) walkTo = { x: nextV.x + 0.9, z: nextV.z + 0.9 }; else walkTo = { x: p.x + 2, z: p.z + 2.5 };
+        { const dx = walkTo.x - HW.hx!, dz = walkTo.z - HW.hz!, dd0 = Math.hypot(dx, dz); if (dd0 > 0.25) { const sp = Math.min(dd0, 2.4 * dt); HW.hx! += dx / dd0 * sp; HW.hz! += dz / dd0 * sp; mvH = 2.4; h.root.rotation.y = Math.atan2(dx, dz); }
+          else if (nextV && tkV) { HW.hT! += dt; h.root.rotation.y = Math.atan2(nextV.x - HW.hx!, nextV.z - HW.hz!); if (Math.random() < dt * 6) ctx.fx('holy', nextV.x, ctx.heightAt(nextV.x, nextV.z) + 0.8, nextV.z);
+            if (HW.hT! >= 8) { HW.hT = 0; nextV.done = true; L.tasks[tkV.id] = (L.tasks[tkV.id] ?? 0) + 1; if (tkV.done) ctx.bubble(nextV.x, ctx.heightAt(nextV.x, nextV.z) + 2.4, nextV.z, tkV.done); ctx.log(`🕯 ${L.tpl.herald.name} acendeu uma vela de prata (${L.tasks[tkV.id]}/${tkV.n}). Não deixe as crias chegarem nela!`, L.tpl.color); } } }
+        const hx = HW.hx!, hz = HW.hz!; h.root.position.set(hx, ctx.heightAt(hx, hz), hz); const dd = Math.hypot(hp.x - hx, hp.z - hz); if (mvH === 0 && !nextV) h.root.rotation.y = dd < 9 ? Math.atan2(hp.x - hx, hp.z - hz) : 0.4; h.update(dt, t, mvH, null);
         if (L.heraldEl) { const sp = ctx.project(new THREE.Vector3(hx, h.root.position.y + 2.35, hz)); const show = !!sp && dd < 30; L.heraldEl.style.display = show ? 'block' : 'none'; if (sp && show) { L.heraldEl.style.left = sp.x + 'px'; L.heraldEl.style.top = sp.y + 'px'; } L.heraldEl.classList.toggle('joined', L.joined); }
         if (!L.joined && !L.asked && dd < 26 && !L.chatT) { /* */ } }
       L.extras.forEach((h, i) => updateExtra(L, h, i, p, dt, t, hp));
+      /* o que é para fazer aparece EM CIMA da coisa (Erling, 25/10: "não entendi o que é acender as velas, não apareceu nada"):
+         cada vela, altar, pilar… ainda por fazer ganha uma placa flutuante com o que fazer e a tecla */
+      for (const pr of L.props) { const tk = pr.task ? sideDef(L)?.tasks?.find((x) => x.id === pr.task && x.kind === 'device') : undefined; let me = taskEls.get(pr);
+        const show = !!tk && L.joined && !pr.done && pr.g.visible && Math.hypot(pr.x - hp.x, pr.z - hp.z) < 32;
+        if (!show) { if (me) me.style.display = 'none'; continue; }
+        if (!me) { me = document.createElement('div'); me.className = 'evtask'; document.body.appendChild(me); taskEls.set(pr, me); }
+        const sp = ctx.project(new THREE.Vector3(pr.x, ctx.heightAt(pr.x, pr.z) + 2.2, pr.z)); if (!sp) { me.style.display = 'none'; continue; }
+        const near = Math.hypot(pr.x - hp.x, pr.z - hp.z) < 2.6, nm = pr.kind === 'lantern' ? '🕯 Vela de prata' : pr.kind === 'altar' ? '⛧ Altar' : pr.kind === 'pillar' ? '🗿 Pilar' : '✦ ' + tk!.label;
+        me.style.display = 'block'; me.style.left = sp.x + 'px'; me.style.top = sp.y + 'px'; me.classList.toggle('near', near); me.innerHTML = `<b>${nm}</b><small>${near ? `segure E por ${tk!.channel ?? 3} s` : "vá até aqui e segure E"}</small>`; }
       L.chatT -= dt; if (L.chatT <= 0) { L.chatT = 9 + Math.random() * 8; const talkers = [...L.units.filter((u) => u.alive && u.type !== 'deer' && u.type !== 'werewolf'), ...(L.herald ? [{ pos: L.herald.root.position } as Unit] : [])]; const who = talkers[Math.floor(Math.random() * talkers.length)]; const ex = L.extras.length && L.tpl.crowd && Math.random() < 0.5 ? L.extras[Math.floor(Math.random() * L.extras.length)] : null; if (ex && dH < 45) ctx.bubble(ex.root.position.x, ex.root.position.y + 2.5, ex.root.position.z, PICK(L.tpl.crowd!)); else if (who && L.tpl.chatter && dH < 45) ctx.bubble(who.pos.x, who.pos.y + 2.6, who.pos.z, PICK(L.tpl.chatter)); }
       // objetos: lanternas acendem, pilares caídos tombam
       for (const pr of L.props) { if (pr.hidden) pr.g.visible = !pr.done && ctx.instinct() && L.joined; if (pr.kind === 'lantern' && pr.glow) pr.glow.scale.setScalar(pr.done ? 1.6 + Math.sin(t * 7 + pr.x) * 0.1 : 0.01); if (pr.kind === 'pillar' && pr.glow) pr.glow.scale.setScalar(pr.done ? 0.01 : 2.2 + Math.sin(t * 3 + pr.x) * 0.3); if (pr.kind === 'music' && pr.glow) { pr.g.rotation.y += dt * 0.6; if (Math.random() < dt * 2) ctx.fx('holy', pr.x, ctx.heightAt(pr.x, pr.z) + 1.8, pr.z); } }
@@ -529,8 +549,8 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   /** o E perto do arauto ou de um objeto do evento */
   function interact(hx: number, hz: number): { d: number; label: string; act: () => void } | null {
     let best: { d: number; label: string; act: () => void } | null = null; const put = (d: number, label: string, act: () => void) => { if (!best || d < best.d) best = { d, label, act }; };
-    for (const L of lives.values()) { if (!L.spawned || L.over) continue; const p = sitePos(L.site);
-      if (L.herald) { const d = Math.hypot(p.x + 2 - hx, p.z + 2.5 - hz); if (d < 3.4) put(d, L.joined ? `E — ${L.tpl.herald.name}${sideDef(L)?.tasks?.some((x) => x.kind === 'deliver') ? ' (entregar)' : ''}` : `E — ${L.tpl.icon} ${L.tpl.herald.name}: o que está acontecendo?`, () => talk(L)); }
+    for (const L of lives.values()) { if (!L.spawned || L.over) continue; void sitePos;
+      if (L.herald) { const d = Math.hypot(L.herald.root.position.x - hx, L.herald.root.position.z - hz); if (d < 3.4) put(d, L.joined ? `E — ${L.tpl.herald.name}${sideDef(L)?.tasks?.some((x) => x.kind === 'deliver') ? ' (entregar)' : ''}` : `E — ${L.tpl.icon} ${L.tpl.herald.name}: o que está acontecendo?`, () => talk(L)); }
       if (!L.joined || !L.side) continue; const sd = sideDef(L)!;
       for (const pr of L.props) { if (pr.done) continue; const tk = (sd.tasks ?? []).find((x) => x.id === pr.task); if (!tk) continue; const d = Math.hypot(pr.x - hx, pr.z - hz); if (d > 2.8) continue;
         if (tk.id === 'altar' && !L.tasks['altar_perm'] && !L.tasks['padre']) { put(d, 'O altar espera um celebrante… (resgate o padre, ou volte como paladino, mago ou elfo)', () => {}); continue; }
