@@ -68,6 +68,7 @@ import { createEvents, globalNow, globalNext, globalList, G_FX, type EvResult } 
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createStable } from './estabulo';
 import { createAlign } from './alinhamento';
+import { createFalls } from './cachoeiras';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
 import { createBuild } from './build';
@@ -189,6 +190,8 @@ scene.add(fine(lantern));
 const audio = new AudioEngine();
 for (const ev of ['pointerdown', 'keydown'] as const) addEventListener(ev, () => audio.start(), { once: false });
 const fountain = city.props.find((p) => p.kind === 'fountain');
+/* as cachoeiras: onde o rio encosta no paredão (cachoeiras.ts) */
+const falls = createFalls({ scene, map: city.map as string[][], T, WL, height: (x, z) => heightAt(x, z), pois: city.pois as never, spawn: (x, y, z, p) => particles.spawn(x, y, z, p as never) });
 const fountainPos = fountain ? new THREE.Vector3((fountain.gx + fountain.w / 2) * T, 0, (fountain.gy + fountain.h / 2) * T) : new THREE.Vector3(1e4, 0, 1e4);
 void LightShafts;
 /* sem raios de luz */
@@ -264,7 +267,7 @@ const npcSys = createNpcs(scene, [
     if (combatMode || game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 14)) tags.push('combate', 'combate', 'combate');
     if (game.st.hp < game.st.hpMax * 0.35) tags.push('ferido', 'ferido'); if (riding) tags.push('montado'); if (pet) tags.push('pet');
     { const st = hereSettle(); if (st) { const v = align.get('vila', st.name); if (v >= 30) tags.push('rep_alta', 'rep_alta'); else if (v <= -25) tags.push('rep_baixa', 'rep_baixa');
-      if (st.name === 'Karmika' && quests.q.active['h09'] && !align.flag('festa_karmika')) tags.push('despedida', 'despedida', 'despedida'); if (st.name === 'Karmika' && align.flag('festa_karmika') === 1 && !festa) tags.push('volta'); if (festa) tags.push('festa', 'festa', 'festa', 'festa'); } }
+      if (v >= (st.name === 'Karmika' ? 10 : 30) && !align.flag('festa_' + st.name) && leavingQuest(st.name)) tags.push('despedida', 'despedida', 'despedida'); if (align.flag('festa_' + st.name) === 1 && !festa) tags.push('volta'); if (festa) tags.push('festa', 'festa', 'festa', 'festa'); } }
     if (game.st.lvl < 5) tags.push('novato'); else if (game.st.lvl >= 30) tags.push('veterano'); if (k >= 20) tags.push('luz'); if (k <= -20) tags.push('sombra', 'sombra');
     const P: Record<string, string> = { vam: 'vam', lob: 'lob', mag: 'mag', bru: 'bru', pal: 'pal', cac: 'cac', tec: 'tecno' }; if (pth && P[pth]) tags.push(P[pth], P[pth]); else if (isWarrior()) tags.push('gue'); } catch { /* ainda carregando */ }
     return { tags, nome: profile?.name || 'caminhante', pet: pet?.kind.name ?? '' }; } });
@@ -532,6 +535,7 @@ const inv = createInventory(game, {
   canWear: (g) => kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
   /* usar e vestir com corpo e som (25/10): gole, mastigada, pano, couro, metal, joia — e um brilho no herói */
+  alignHtml: () => { try { return align.visitedHtml(); } catch { return ''; } },
   questItemLost: (qid, item) => { const d = quests.def(qid); if (d && quests.q.active[qid]) { quests.dropQuest(qid); game.logMsg(`◆ Você destruiu ${ITEMS_TBL[item]?.name ?? item}: a missão “${d.name}” foi abandonada. Pegue de novo com ${d.giver}.`, '#ffb060'); } },
   feel: (kind, id) => { const p = heroPos, y0 = heroY;
     if (kind === 'drink') { audio.gulp(); if (!hero.acting && !inside) hero.act('drink'); for (let i = 0; i < 14; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.8, y0 + 0.3 + Math.random() * 1.2, p.z + (Math.random() - 0.5) * 0.8, { vy: 1.2 + Math.random(), life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: /mana|🔮/.test(id) ? 0x5a8aff : 0xff4a6a, a: 0.9 }); }
@@ -975,19 +979,26 @@ function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | und
 let alignChk = 0, alignHere = '';
 function alignTick(dt: number) { alignChk -= dt; if (alignChk > 0) return; alignChk = 1; const st = hereSettle(), nm = st?.name ?? '';
   if (nm && nm !== alignHere) { const away = align.arrive(nm), t = align.tier('vila', nm);
-    if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(nm === 'Karmika' && align.flag('festa_karmika') === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
+    if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(align.flag('festa_' + nm) === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
     else if (away > 10 * 60000 && t.min <= -60) game.logMsg(`🏘 Em ${nm} as portas se fecham quando você passa (${t.name}).`, t.col); }
   alignHere = nm;
+  if (nm && !festa && !document.querySelector('.kconf')) festaOffer(nm);
   if (festa) festaTick(); }
 /** preço nas lojas do lugar onde você está */
 const alignPriceK = () => { const st = hereSettle(); return st ? align.tier('vila', st.name).price : 1; };
 /* a festa de despedida (Erling, 25/10): o centro da praça enfeitado, a carroça do anão com cerveja, churrasco e fogos por tudo o que você fez */
 addEventListener('karmika:align', () => align.toggle(true));
 let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number } | null = null;
-function festaOffer() { if (align.flag('festa_karmika') || !quests.q.active['h09'] || hereSettle()?.name !== 'Karmika') return false;
-  confirmBox(`<b>Garrick:</b> “A vila soube que você vai para Lundr. A Lúcia, o Bento, a Rosália, o Sven… todo mundo quer te dar uma <b>festa de despedida</b>. Um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com Karmika: ${align.tier('vila', 'Karmika').name}</small>`, '🎉 Aceitar a festa', () => startFesta());
+/** a missão da história que te leva embora deste lugar (dada por alguém daqui, para entregar ou visitar outro lugar) */
+function leavingQuest(stName: string) { for (const id of Object.keys(quests.q.active)) { const d = quests.def(id); if (!d || questCat(d) !== 'story') continue; if (npcHome(d.giver)?.name !== stName) continue;
+    const far = (d.turnin && npcHome(d.turnin)?.name && npcHome(d.turnin)!.name !== stName) || d.objs.some((o) => o.kind === 'visit' && o.poi !== stName && city.settlements.some((q) => q.name === o.poi)); if (far) return d; } return null; }
+/* a festa de despedida acontece em TODO lugar onde você é amado (Amigo ou mais; em Karmika basta Conhecido), uma vez por lugar, quando uma missão te leva embora */
+let festaAsked = '';
+function festaOffer(stName = hereSettle()?.name ?? '') { if (!stName || align.flag('festa_' + stName) || festa || festaAsked === stName) return false; const v = align.get('vila', stName); if (v < (stName === 'Karmika' ? 10 : 30)) return false;
+  const d = leavingQuest(stName); if (!d) return false; festaAsked = stName; const host = d.giver;
+  confirmBox(`<b>${host}:</b> “Soubemos que você vai partir. ${stName} inteira quer te dar uma <b>festa de despedida</b> — um anão de Brasaforja até trouxe uma carroça de cerveja. Você aceita?”<br><small>Alinhamento com ${stName}: ${align.tier('vila', stName).name}</small>`, '🎉 Aceitar a festa', () => startFesta(stName));
   return true; }
-function startFesta() { const fo = city.props.find((p) => p.kind === 'fountain' && !p.variant) ?? city.props.find((p) => p.kind === 'fountain'); if (!fo) return; align.setFlag('festa_karmika', 1);
+function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) => q.name === stName); const fo = city.props.filter((p) => p.kind === 'fountain' && stS && Math.hypot(p.gx - stS.x, p.gy - stS.y) < stS.radius + 4).sort((a, b) => (a.variant ?? 0) - (b.variant ?? 0))[0]; if (!fo) return; align.setFlag('festa_' + stName, 1); if (stName === 'Karmika') align.setFlag('festa_karmika', 1);
   const cx = (fo.gx + fo.w / 2) * T, cz = (fo.gy + fo.h / 2) * T, y0 = heightAt(cx, cz), g = new THREE.Group(); g.position.set(cx, y0, cz); scene.add(g);
   const tm = (c: number, e = 0) => new THREE.MeshToonMaterial({ color: c, gradientMap: toonRamp, emissive: e ? new THREE.Color(c).multiplyScalar(e) : undefined }), M = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; g.add(o); return o; };
   const R = 9, N = 10, pole = tm(0x6a4a2a), cols = [0xd84a3a, 0xe8c040, 0x3a7ad8, 0x4ab05a, 0xe8e0d0, 0xa050c0];
@@ -1011,8 +1022,8 @@ function startFesta() { const fo = city.props.find((p) => p.kind === 'fountain' 
   for (const sz of [-0.6, 0.6]) M(new THREE.CylinderGeometry(0.04, 0.04, 1.4, 5), pole, -R - 2.6, 0.7, -2 + sz); M(new THREE.CylinderGeometry(0.03, 0.03, 1.6, 5), tm(0x3a3a40), -R - 2.6, 1.35, -2).rotation.x = Math.PI / 2; M(new THREE.SphereGeometry(0.3, 10, 8), tm(0x9a4a2a), -R - 2.6, 1.3, -2).scale.set(1, 0.7, 1.6);
   for (const [x, z, ry] of [[-3.5, R + 3, 0], [3.5, R + 3, 0], [0, -R - 3, 0]] as const) { M(new THREE.BoxGeometry(3.2, 0.1, 0.9), tm(0x8a6a44), x, 0.82, z, ry); for (const sx of [-1.4, 1.4]) M(new THREE.BoxGeometry(0.1, 0.8, 0.8), pole, x + sx, 0.4, z, ry); for (let i = 0; i < 4; i++) M(new THREE.CylinderGeometry(0.07, 0.06, 0.16, 8), tm(0xc8a050), x - 1.2 + i * 0.8, 0.95, z + 0.15, ry); }
   festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz };
-  inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', 'Karmika', 10, 'a festa de despedida');
-  audio.chime(); game.logMsg('🎉 A festa de despedida começa na praça de Karmika! Cerveja do anão, churrasco do Sven e fogos por tudo o que você fez.', '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
+  inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', stName, 10, 'a festa de despedida');
+  audio.chime(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
 const FESTA_LEN = 180000;
 function festaTick() { if (!festa) return; const el = performance.now() - festa.t0;
   if (el < FESTA_LEN) { if (Math.hypot(heroPos.x - festa.x, heroPos.z - festa.z) < 70) { for (let i = 0; i < 2; i++) evFx('firework', festa.x + (Math.random() - 0.5) * 30, heightAt(festa.x, festa.z) + 14 + Math.random() * 10, festa.z + (Math.random() - 0.5) * 30); if (Math.random() < 0.35) audio.boom();
@@ -1269,7 +1280,6 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
     const mq = Object.keys(quests.q.active).map((id) => quests.def(id)).find((d) => !!d?.meet?.[nm] && d.objs.some((o, i) => o.kind === 'talk' && o.npc === nm && quests.objProg(d, i) < 1));
     if (mq) { let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
       openDlg({ name: nm, role: n.def.role, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: mq, steps: mq.meet![nm], onEnd: () => { quests.onTalk(nm); setTimeout(() => { if (quests.turnins(nm).length) talkTo(n); }, 200); } } }); return; } }
-  if (nm === 'Garrick' && festaOffer()) return;
   quests.onTalk(nm); /* conversar conta antes de listar as entregas */
   const ti = quests.turnins(nm), of = quests.offers(nm);
   const choices: Choice[] = [];
@@ -2667,7 +2677,7 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { enterDg: (i: number) => enterDungeon(dgs.entrances[i]), city: () => city, scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
+if (IS_DEV) (window as unknown as { __soul: unknown }).__soul = { enterDg: (i: number) => enterDungeon(dgs.entrances[i]), city: () => city, scene: () => scene, camera: () => camera, relics: (n: string) => openRelics(n), discovered: () => discovered, dgs: () => dgs, roastAt, eliteForge: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (n) eliteForge(n); }, eyeSees, caravans, eventos, falls, senseGoals, headShot, planTo, navProbe, stepAt, offerVow, vowState: () => vow, quests, wall: () => ({ on: onWall, y: heroY }), hero: () => hero, applyArtSkin, skinKey: () => skinKey, setProfile: (p: Partial<Profile>) => { if (profile) Object.assign(profile, p); }, swapHero, soul, game, state, unbind, inv, tree, heroPos: () => hero.root.position, talkTo, npcs: () => npcSys.npcs, limiar, craftJob, net: () => net };
 function resumeSoul() { if (!profile || limiar.active) return; if (soul.s.pending === 'choose') unbind(); else if (soul.s.pending === 'reborn') unbind(undefined, 'reborn'); }
 /* os fôlegos ficam à vista, em cima do orbe da vida (só depois que o Olho abre: antes o Fio não se gasta) */
 setInterval(() => { const el = document.getElementById('folegos'); if (!el) return; soul.regen(); const on = !!profile?.eye && game.st.lvl >= FRAY_LVL;
@@ -3360,7 +3370,7 @@ function frameBody() {
     for (const e of game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return') continue; if (Math.hypot(e.pos.x - hx2, e.pos.z - hz2) > 26) continue; const boss = e.hpMax > 3000 || ['bishop', 'prince'].includes(e.type), el = boss || e.hpMax > 1500 || ['tormentor', 'treant', 'werewolf'].includes(e.type); if (boss) { mood = 'boss'; break; } if (el) mood = 'elite'; }
     if (mood === 'explore') { if (inside && (inside.dg || inside.crypt)) mood = 'dungeon'; else if (!inside) { const b = biomeAt(Math.floor(state.fx), Math.floor(state.fy)); if (b === 'blight' || b === 'volcanic' || city.settlements.some((v) => (v.name === 'Gorvath' || v.name === 'Corvoscuro') && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 18)) mood = 'evil'; else if (city.settlements.some((v) => Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 4)) mood = 'town'; } }
     audio.setMood(mood); }
-  { const zz = zoneW(Math.floor(state.fx), Math.floor(state.fy)); audio.update(dt, { night, gust, fireDist: inside ? 3 : objs.torches.reduce((m2, tc) => Math.min(m2, tc.pos.distanceTo(heroPos)), 1e3), waterDist: inside ? 99 : fountainPos.distanceTo(heroPos), riverDist: inside ? 99 : Math.max(0, waterSD(heroPos.x, heroPos.z)), forest: zz.forest, snow: zz.snow, inside: !!inside }); }
+  { const zz = zoneW(Math.floor(state.fx), Math.floor(state.fy)); audio.update(dt, { fallDist: inside ? 999 : falls.update(dt, heroPos), night, gust, fireDist: inside ? 3 : objs.torches.reduce((m2, tc) => Math.min(m2, tc.pos.distanceTo(heroPos)), 1e3), waterDist: inside ? 99 : fountainPos.distanceTo(heroPos), riverDist: inside ? 99 : Math.max(0, waterSD(heroPos.x, heroPos.z)), forest: zz.forest, snow: zz.snow, inside: !!inside }); }
   { // jatos da fonte: de cada bica cai água em arco; do topo sobe um filete e cai em cortina
     const fp = objs.fountainPos();
     if (fp && fp.distanceTo(heroPos) < 55) {

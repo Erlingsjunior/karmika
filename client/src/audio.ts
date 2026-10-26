@@ -9,7 +9,7 @@ export class AudioEngine {
   private master!: GainNode; private amb!: GainNode; private sfx!: GainNode; private mus!: GainNode;
   private noise!: AudioBuffer;
   private windLo!: GainNode; private windHi!: GainNode; private windHiF!: BiquadFilterNode;
-  private fireG!: GainNode; private waterG!: GainNode; private riverG!: GainNode; private riverLo!: GainNode;
+  private fireG!: GainNode; private waterG!: GainNode; private riverG!: GainNode; private riverLo!: GainNode; private fallLo!: GainNode; private fallHi!: GainNode;
   muted = false; music = localStorage.getItem('karmika.music') !== '0';
   private musicT = 0; private nextNote = 2; private pads: { o: OscillatorNode; g: GainNode }[] = []; private key = 0;
 
@@ -39,6 +39,7 @@ export class AudioEngine {
     this.fireG = loop('lowpass', 400, 0.6).g;
     this.waterG = loop('bandpass', 1500, 0.9).g;
     this.riverG = loop('bandpass', 900, 0.5).g; this.riverLo = loop('lowpass', 320, 0.7).g;
+    this.fallLo = loop('lowpass', 520, 0.6).g; this.fallHi = loop('bandpass', 2300, 0.5).g; /* cachoeira: o ronco grave da queda e o chiado branco da espuma */
     // pads da trilha: duas vozes em quinta, bem baixas, com tremolo lento
     for (const [f, det] of [[73.4, 0], [110, 3]] as [number, number][]) {
       const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = f; o.detune.value = det;
@@ -249,7 +250,7 @@ export class AudioEngine {
   private howl(vol: number) { const pan = (Math.random() - 0.5) * 1.6; const o = this.tone(380, 620, 1.1, vol, 'sine', 0, this.amb, pan, 0.25); const ctx = this.ctx!; o.frequency.setValueAtTime(620, ctx.currentTime + 1.1); o.frequency.exponentialRampToValueAtTime(340, ctx.currentTime + 2.6); const o2 = this.tone(760, 1240, 1.0, vol * 0.3, 'triangle', 0.05, this.amb, pan, 0.3); o2.frequency.setValueAtTime(1240, ctx.currentTime + 1.05); o2.frequency.exponentialRampToValueAtTime(680, ctx.currentTime + 2.4); }
 
   /** sons ambientes esparsos: camadas que entram e saem, nunca tudo ao mesmo tempo */
-  update(dt: number, p: { night: number; gust: number; fireDist: number; waterDist: number; riverDist?: number; forest?: number; snow?: number; inside?: boolean }) {
+  update(dt: number, p: { night: number; gust: number; fireDist: number; waterDist: number; riverDist?: number; fallDist?: number; forest?: number; snow?: number; inside?: boolean }) {
     const ctx = this.ctx; if (!ctx) return;
     const now = ctx.currentTime, day = 1 - p.night, inside = p.inside ? 0.25 : 1;
     // vento: bem mais baixo que antes; um sopro grave constante e um assobio só nas rajadas fortes
@@ -264,6 +265,7 @@ export class AudioEngine {
     // água: fonte perto e rio
     this.waterG.gain.setTargetAtTime(0.045 * Math.max(0, 1 - p.waterDist / 9) ** 2, now, 0.6);
     this.riverG.gain.setTargetAtTime(0.03 * Math.max(0, 1 - (p.riverDist ?? 99) / 14) ** 2 * inside, now, 0.8);
+    { const fk = Math.max(0, 1 - (p.fallDist ?? 999) / 60) ** 2 * inside; this.fallLo.gain.setTargetAtTime(0.11 * fk, now, 0.7); this.fallHi.gain.setTargetAtTime(0.045 * fk, now, 0.7); }
     { const rk = Math.max(0, 1 - (p.riverDist ?? 99) / 18) ** 2 * inside; this.riverLo.gain.setTargetAtTime(0.05 * rk, now, 0.8); /* o rio corre: grave constante e gotas/borbulhas soltas */
       if (rk > 0.05 && Math.random() < dt * 6 * rk) { const f = 600 + Math.random() * 1400; this.tone(f, f * (1.4 + Math.random()), 0.04 + Math.random() * 0.05, 0.01 * rk, 'sine', 0, this.amb, (Math.random() - 0.5) * 1.2, 0.003); } }
     if (p.inside && this.mood === 'dungeon' && Math.random() < dt * 0.25) { const f = 900 + Math.random() * 900; this.tone(f, f * 0.6, 0.12, 0.02, 'sine', 0, this.amb, (Math.random() - 0.5) * 1.4, 0.002); this.tone(f * 0.5, f * 0.45, 0.6, 0.006, 'sine', 0.12, this.amb, 0, 0.01); } // gota pingando na masmorra

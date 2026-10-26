@@ -205,7 +205,8 @@ const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.h
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
-export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+  let alOpen = false; /* a coluna do alinhamento kármico na tela do personagem */
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
   const tools: Record<ToolSlot, string | null> = { axe: null, pick: null, knife: null, shears: null, rod: null };
@@ -370,7 +371,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       const slot = (s: Slot) => { const g = eqG[s], [x, y] = POS[s]; return `<div class="eqs ${g ? 'on' : ''} ${s}" style="left:${x - 24}px;top:${y - 24}px;${g ? `--rc:${RARITY[g.rarity].col}` : ''}" ${g ? `draggable="true" data-drag="e:${s}" data-g="e:${s}" data-un="${s}"` : `title="${RSLOT[s]} — vazio. Arraste uma peça para cá."`}>${gearIcon(g, s)}<small>${RSLOT[s]}</small></div>`; };
       const row = (l: string, v: string) => `<div class="stt"><span>${l}</span><b>${v}</b></div>`;
       const pic = hooks.portrait?.() ?? null;
-      ch.innerHTML = `<div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span><button data-x>✕</button></h2>
+      ch.innerHTML = `<div class="charwrap"><div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span>${hooks.alignHtml ? `<button class="alx ${alOpen ? 'on' : ''}" data-alx title="Os seus pontos de karma com cada vila, cidade, região e facção por onde você passou">🏘 Alinhamento ${alOpen ? '◂' : '▸'}</button>` : ''}<button data-x>✕</button></h2>
         <div class="paper2" style="width:${W}px;height:${H}px"><svg class="eqlines" width="${W}" height="${H}"><defs><filter id="eqglow"><feGaussianBlur stdDeviation="1.6"/></filter></defs>${lines}</svg>
           <div class="doll" style="position:absolute;left:${DX}px;top:${DY}px;width:${DW}px;height:${DH}px">${pic ? `<img src="${pic}" alt="">` : ''}<div class="pw">⚔ Poder ${power()}</div></div>
           ${SLOTS.map(slot).join('')}
@@ -384,7 +385,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
           <div class="col"><h3>Combate</h3>
           ${row('Vida', `${Math.round(st.hp)}/${st.hpMax}`)}${row(st.res?.name ?? 'Magia', `${Math.round(st.mp)}/${st.mpMax}`)}${st.gen ? row(`Geração de ${st.res?.name ?? 'magia'}`, `+${Math.round(st.gen * 100)}%`) : ''}${row('Dano por golpe', `${lo}–${hi}`)}${row('Crítico', `${Math.round(st.crit * 100)}%`)}${row('Defesa', `${Math.round(st.def * 100)}%`)}${row('Velocidade', `+${Math.round((st.move - 1) * 100)}%`)}${row('Regeneração', `${st.regen.toFixed(1)}/s`)}${st.leech ? row('Roubo de vida', `${(st.leech * 100).toFixed(1)}%`) : ''}${st.xpMul > 1 ? row('XP', `+${Math.round((st.xpMul - 1) * 100)}%`) : ''}${st.goldMul > 1 ? row('Ouro', `+${Math.round((st.goldMul - 1) * 100)}%`) : ''}
           ${row('Karma', String(Math.round(hooks.karma())))}${row('Ouro', `🪙 ${st.gold}`)}</div>
-        </div><small class="ft">C: fechar · I: mochila · arraste da mochila para o boneco para equipar · clique ou arraste para a mochila para desequipar</small></div>`;
+        </div><small class="ft">C: fechar · I: mochila · arraste da mochila para o boneco para equipar · clique ou arraste para a mochila para desequipar</small></div>${alOpen && hooks.alignHtml ? `<div class="pn alside"><h3>Alinhamento Kármico</h3><p class="alsd">Os lugares por onde você passou como caminhante e o quanto a sua alma combina com cada um.</p>${hooks.alignHtml()}</div>` : ''}</div>`;
       ch.style.display = 'flex';
     } else ch.style.display = 'none';
     if (shop) {
@@ -429,6 +430,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     if (e.shiftKey && other) { tip2.innerHTML = `<span class="eqh">Equipado</span>` + gearTip(other); tip2.style.display = 'block'; tip2.style.borderColor = RARITY[other.rarity].col; const w2 = tip2.offsetWidth; if (x + w + w2 + 8 > innerWidth) x = Math.max(8, e.clientX - 16 - w - w2 - 6); tip2.style.left = x + w + 6 + 'px'; tip2.style.top = y + 'px'; } else tip2.style.display = 'none';
     tip.style.left = x + 'px'; tip.style.top = y + 'px'; lastTipEv = e; lastTipT = t;
   };
+  ch.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-alx]')) { e.stopPropagation(); alOpen = !alOpen; render(); return; } });
   ch.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('[data-helm]')) return; e.stopPropagation(); const show = localStorage.getItem('karmika.showHelm') === '0'; localStorage.setItem('karmika.showHelm', show ? '1' : '0'); game.logMsg(show ? '⛑ Elmo à mostra.' : '⛑ Elmo escondido: o rosto fica sempre à mostra (os atributos continuam valendo).', '#b9c6e0'); hooks.onGear?.(); render(); });
   el.addEventListener('mousemove', showTip); sh.addEventListener('mousemove', showTip); ch.addEventListener('mousemove', showTip);
   for (const kk of ['keydown', 'keyup'] as const) addEventListener(kk, (ev) => { if (ev.key === 'Shift' && lastTipEv && lastTipT && lastTipT.isConnected && tip.style.display === 'block') lastTipT.dispatchEvent(new MouseEvent('mousemove', { clientX: lastTipEv.clientX, clientY: lastTipEv.clientY, shiftKey: kk === 'keydown', bubbles: true })); });
