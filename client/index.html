@@ -606,7 +606,7 @@
   @media (prefers-reduced-motion: reduce) { #instpop.go, #instlens.go::before { animation-duration: .01s; } }
   @keyframes instPulse { 0%, 100% { filter: brightness(.8); } 50% { filter: brightness(1.35); } }
   #dlg { position: fixed; inset: 0; display: none; align-items: center; justify-content: flex-start; z-index: 27; font-family: Georgia, serif; padding-left: max(16px, 2.2vw); padding-bottom: 40px; /* encostado à esquerda: o centro (o herói e quem fala com ele) fica livre */ background: transparent; }
-  #dlg .dp { width: min(430px, 94vw); max-height: 82vh; overflow: auto; background: linear-gradient(#1d1711, #110d08); border: 2px solid #b8924a; box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0,0,0,.7); color: #e8dcc0; animation: dlgin .18s ease-out; position: relative; }
+  #dlg .dp { width: min(470px, calc(94vw / var(--ui))); height: min(720px, calc(86vh / var(--ui))); max-height: none; overflow: hidden; display: flex; flex-direction: column; /* a janela já abre do tamanho certo; o texto vai preenchendo (Erling, 25/10) */ background: linear-gradient(#1d1711, #110d08); border: 2px solid #b8924a; box-shadow: 0 0 0 1px #000, 0 12px 40px rgba(0,0,0,.7); color: #e8dcc0; animation: dlgin .18s ease-out; position: relative; }
   @keyframes dlgin { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
   #dlg .dh { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 22px 16px 10px; cursor: grab; user-select: none; border-bottom: 1px solid #5a4620; background: rgba(0,0,0,.2); }
   #dlg .pf { width: 118px; height: 132px; border: 2px solid #c9a24a; background: #14101a; display: grid; place-items: center; overflow: hidden; box-shadow: inset 0 0 12px #000; flex: none; }
@@ -623,7 +623,7 @@
   #dlg .objs, #dlg .rew { background: rgba(0,0,0,.28); border-left: 2px solid #c9a24a; padding: 6px 10px; margin: 6px 0; font-size: 13px; } #dlg .objs h4, #dlg .rew h4 { margin: 0 0 3px; font: 600 10px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #f2cf8a; }
   #dlg .objs i, #dlg .rew i { display: block; font-style: normal; } #dlg .objs em { float: right; color: #9ad7ff; font-style: normal; }
   /* conversa (24/10): a fala atual em destaque, as anteriores apagadas; o herói fala à direita, em itálico */
-  #dlg .conv { padding: 8px 32px 24px; }
+  #dlg .conv { padding: 8px 32px 24px; flex: 1; min-height: 0; overflow-y: auto; scroll-behavior: smooth; } #dlg .dp > :not(.conv):not(.ft) { flex: none; } #dlg .dp > .body, #dlg .dp > .list { flex: 1; min-height: 0; overflow-y: auto; }
   #dlg .conv h3 { margin: 4px 0 10px; font: 700 15px Cinzel, serif; color: #ffe08a; text-align: center; }
   #dlg .ln { margin: 0 0 8px; font-size: 15px; line-height: 1.55; color: #f0e6cc; padding: 6px 10px; border-left: 2px solid #8a6a3a; background: rgba(0,0,0,.22); }
   #dlg .ln b { display: block; font: 600 11px Cinzel, serif; letter-spacing: .12em; color: #e6c46a; margin-bottom: 2px; }

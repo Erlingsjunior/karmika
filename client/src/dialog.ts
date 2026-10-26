@@ -57,6 +57,7 @@ export function createDialog() {
       body = `<p class="say">“${esc(o.text)}”</p><div class="ch">${o.choices.map((c, i) => `<button class="c ${c.kind}" data-i="${i}"><span>${esc(c.label)}</span>${c.hint ? `<small>${esc(c.hint)}</small>` : ''}</button>`).join('')}</div>`;
     }
     el.innerHTML = `<div class="dp">${head}${body}<div class="ft">Esc fecha</div></div>`;
+    { const cv = el.querySelector('.conv') as HTMLElement | null; if (cv) cv.scrollTop = cv.scrollHeight; }
     el.style.display = 'flex'; requestAnimationFrame(placeOff);
   }
   const nm = (t: string) => G(t.replace(/\{nome\}/g, cur?.me || 'Caminhante'));
@@ -65,7 +66,7 @@ export function createDialog() {
   function step() { if (!view?.conv) return; const cv = view.conv;
     if (cv.i >= cv.steps.length) { if (view.mode === 'meet') { const f = cur?.meet?.onEnd; close(); f?.(); return; } view.conv = undefined; render(); return; }
     const l = who(cv.steps[cv.i]); if (l) { cv.log.push(l); cv.shown = 0; cv.i++; typeOn(); } render(); }
-  function typeOn() { clearInterval(typeT); const t0 = performance.now(); typeT = window.setInterval(() => { const cv = view?.conv, l = cv?.log[cv.log.length - 1]; if (!cv || !l) { clearInterval(typeT); return; } cv.shown = Math.min(l.t.length, Math.floor((performance.now() - t0) / 1000 * 70)); /* 70 letras por segundo, pelo relógio (não trava se o quadro pesar) */ if (cv.shown >= l.t.length) { clearInterval(typeT); render(); return; } const sp = el.querySelector('[data-type]'); if (sp) sp.textContent = l.t.slice(0, cv.shown); }, 16); }
+  function typeOn() { clearInterval(typeT); const t0 = performance.now(); typeT = window.setInterval(() => { const cv = view?.conv, l = cv?.log[cv.log.length - 1]; if (!cv || !l) { clearInterval(typeT); return; } cv.shown = Math.min(l.t.length, Math.floor((performance.now() - t0) / 1000 * 70)); /* 70 letras por segundo, pelo relógio (não trava se o quadro pesar) */ if (cv.shown >= l.t.length) { clearInterval(typeT); render(); return; } const sp = el.querySelector('[data-type]'); if (sp) sp.textContent = l.t.slice(0, cv.shown); const cvE = el.querySelector('.conv') as HTMLElement | null; if (cvE) cvE.scrollTop = cvE.scrollHeight; }, 16); }
   function startConv(q: QuestDef, mode: 'offer' | 'turnin') { const steps = mode === 'offer' ? q.talk : q.done; view = { quest: q, mode }; if (steps?.length) { view.conv = { steps: [...steps], i: 0, log: [], shown: 0 }; step(); } else render(); }
   el.addEventListener('click', (e) => {
     const t = e.target as HTMLElement; if (!cur) return;
