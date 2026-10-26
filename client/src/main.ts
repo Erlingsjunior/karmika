@@ -255,7 +255,7 @@ const treeTitle = () => { let n = 'Humano'; try { n = game.classInfo.name || n; 
 /** armas de caminho (loot.ts, Only): o Caçador de Demônios e o Tecnocrata depois da prova do mestre; os anões pela raça */
 function walksPath(o: Only): boolean { if (o === 'dwarf') return profile?.origin === 'dwarf'; try { return profile?.path === o && quests.q.done.includes('v_' + o); } catch { return false; } }
 tipCtx.can = walksPath;
-const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } if (n === 'Tecnocrata' && state.race !== 'technocrat') return 'tecno'; if (n === 'Paladino de Auréon') return 'pal'; if (n === 'Vampiro') return 'vam'; if (n === 'Lobisomem') return 'lob'; return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
+const kitRace = (): KitKey => { let n = 'Humano'; try { n = game.classInfo.name || n; } catch { /* */ } if (n === 'Tecnocrata' && state.race !== 'technocrat') return 'tecno'; if (n === 'Paladino de Auréon') return 'pal'; if (n === 'Vampiro') return 'vam'; if (n === 'Lobisomem') return 'lob'; if (n === 'Mago') return 'mag'; if (n === 'Bruxo') return 'bru'; if (n === 'Caçador de Demônios') return 'cac'; return state.race === 'nordic' && (profile?.origin ?? 'human') === 'human' && n === 'Humano' ? 'human' : kindOf(state.race) as Race; };
 const tree = createSkillTree(kitRace, () => game.st.lvl, (t, c) => game.logMsg(t, c), treeTitle);
 game.setSkillScale((id) => tree.scale(id));
 let treeSel: string | null = null;
@@ -1752,6 +1752,9 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
   } else if (sk.id === 'pounce') { // Salto da Fera: o mesmo arco do salto marcado
     let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = game.useExtra('pounce', yaw, sk.cost, { x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
+  } else if (sk.id === 'blink') { // Piscar / Passo Sombrio: some e reaparece até 8 m à frente, em chão livre
+    const dl = Math.min(8 * 1, Math.hypot(a.x - hx, a.z - hz) || 8), dx = Math.sin(yaw), dz = Math.cos(yaw); let tx = hx + dx * dl, tz = hz + dz * dl; for (let k = 0; k < 14 && !free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
+    ok = game.useExtra('blink', yaw, sk.cost, { x: tx, z: tz }); if (ok) { state.fx = tx / T; state.fy = tz / T; state.path = []; hero.root.position.x = tx; hero.root.position.z = tz; game.blinkArrive?.(); }
   } else if (sk.id === 'bash') ok = game.bash(yaw, { x: a.x, z: a.z });
   else if (sk.id === 'heal') ok = game.heal(heroPosNow(), { x: a.x, z: a.z });
   else ok = game.useExtra(sk.id, yaw, sk.cost, { x: a.x, z: a.z });

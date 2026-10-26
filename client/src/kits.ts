@@ -1,9 +1,9 @@
 import type { Race as BaseRace } from '@karmika/shared';
 /** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
-export type KitKey = BaseRace | 'tecno' | 'pal' | 'vam' | 'lob';
+export type KitKey = BaseRace | 'tecno' | 'pal' | 'vam' | 'lob' | 'mag' | 'bru' | 'cac';
 type Race = KitKey;
 
-export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie' | 'smite' | 'consecrate' | 'avenging' | 'drain' | 'batswarm' | 'bloodnova' | 'nightform' | 'howl' | 'rend' | 'aegis' | 'shieldthrow' | 'conversion' | 'clot' | 'venomclaw' | 'bite' | 'pounce' | 'packhowl' | 'gunturret' | 'teslatower' | 'mortar' | 'bubble';
+export type SkillId = 'combo' | 'guard' | 'bash' | 'slam' | 'heal' | 'flame' | 'poison' | 'warcry' | 'spear' | 'whirl' | 'mark' | 'fenrir' | 'hammerthrow' | 'stonerune' | 'forge' | 'mountain' | 'avatar' | 'overcharge' | 'shocktrap' | 'medic' | 'railgun' | 'mech' | 'kick' | 'hamstring' | 'hatchet' | 'shieldwall' | 'winter' | 'thunder' | 'valkyrie' | 'smite' | 'consecrate' | 'avenging' | 'drain' | 'batswarm' | 'bloodnova' | 'nightform' | 'howl' | 'rend' | 'aegis' | 'shieldthrow' | 'conversion' | 'clot' | 'venomclaw' | 'bite' | 'pounce' | 'packhowl' | 'gunturret' | 'teslatower' | 'mortar' | 'bubble' | 'blink' | 'fireball' | 'chainlight' | 'blizzard' | 'meteor' | 'archon' | 'frostnova' | 'curse' | 'hellhound' | 'demonform' | 'holyflask' | 'volley' | 'huntform';
 export interface AimDef { kind: 'circle' | 'cone' | 'line'; radius: number; range: number; color: number }
 export interface SkillDef { k: string; id: SkillId; lvl: number; c: string; name: string; cost: number; aim?: AimDef; hold?: boolean; tip: string; svg: string }
 /** Níveis de desbloqueio das 10 magias: 1, 1, 1, 5, 10, 18, 28, 42, 60, 85 (todas abertas antes da Ascensão do nível 100). */
@@ -68,7 +68,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };
-export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
+export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'cac' ? RESOURCES.odio : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
 /* ---- Humano puro: luta com o que tiver na mão, sem magia de deus nenhum. Usa os mesmos movimentos da escola nórdica (sem gelo, raio nem lobo),
    com nomes e jeito de gente comum. Feras, armadilhas e construção entram depois (ver arvore-humano.md) ---- */
 { const N = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
@@ -162,10 +162,24 @@ const HSVG: Record<string, string> = {
     bite: I('<path d="M4 12c4-6 20-6 24 0l-4 2-2-3-2 4-2-4-2 4-2-4-2 4-2-3z" fill="#f0e8d8" stroke="C" stroke-width="1.2"/><path d="M4 20c4 6 20 6 24 0l-4-2-2 3-2-4-2 4-2-4-2 4-2-4-2 3z" fill="#f0e8d8" stroke="C" stroke-width="1.2"/><path d="M13 16h6" stroke="#c0101a" stroke-width="2"/>', '#8a5a3a'),
     pounce: I('<path d="M5 27c4-12 10-18 21-20" stroke="#e8d8c0" stroke-width="1.6" fill="none" stroke-dasharray="3 2"/><path d="M20 4l7 3-3 7" stroke="C" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M4 28l3-5M8 29l2-6M12 29l1-6" stroke="C" stroke-width="2.2" stroke-linecap="round"/>', '#c8a070'),
     packhowl: I('<circle cx="24" cy="7" r="4" fill="#e8ecff"/><path d="M5 27c0-5 2-9 5-11l-1-5 4 3 2-2 1 4c2 2 3 5 3 9" fill="none" stroke="C" stroke-width="2"/><path d="M15 28c0-4 2-7 4-9l-1-4 3 2 2-2 1 3c2 2 3 5 3 9" fill="none" stroke="#8ab0ff" stroke-width="1.6" opacity=".8"/>', '#c8a070'),
+    blink: I('<circle cx="8" cy="22" r="4" fill="none" stroke="C" stroke-width="1.6" stroke-dasharray="2 2"/><circle cx="24" cy="10" r="4.5" fill="C"/><path d="M11 19l9-6" stroke="#fff" stroke-width="1.6" stroke-dasharray="2 3"/><path d="M24 3v3M24 14v3M17 10h3M28 10h3" stroke="#fff" stroke-width="1.2"/>', '#9ad0ff'),
+    fireball: I('<circle cx="19" cy="13" r="7" fill="C"/><circle cx="19" cy="13" r="3.5" fill="#fff0a0"/><path d="M13 17c-4 2-7 6-9 11 4-2 7-3 10-3M14 20c-2 3-3 5-3 8" stroke="#ff9a40" stroke-width="2" fill="none" stroke-linecap="round"/>', '#ff6a1a'),
+    chainlight: I('<path d="M3 6l7 5-3 2 8 5-3 2 9 6" fill="none" stroke="C" stroke-width="2.2" stroke-linejoin="round"/><circle cx="10" cy="11" r="2" fill="#fff"/><circle cx="15" cy="18" r="2" fill="#fff"/><circle cx="21" cy="26" r="2" fill="#fff"/><path d="M22 4l6 6M28 4l-6 6" stroke="C" stroke-width="1.4"/>', '#bfe8ff'),
+    blizzard: I('<path d="M5 12c0-4 4-7 8-6 2-3 8-3 10 1 4 0 6 3 5 6z" fill="#dfeeff" stroke="C" stroke-width="1"/><path d="M9 18l-2 4M14 17l-2 5M19 18l-2 4M24 17l-2 5M11 25l-1 3M21 25l-1 3" stroke="C" stroke-width="1.6" stroke-linecap="round"/>', '#9ad0ff'),
+    meteor: I('<circle cx="21" cy="21" r="7" fill="C"/><circle cx="19" cy="19" r="2" fill="#4a1a08"/><circle cx="23" cy="23" r="1.4" fill="#4a1a08"/><path d="M15 15L3 3M17 12L8 2M12 17L2 8" stroke="#ffb040" stroke-width="2" stroke-linecap="round"/>', '#ff5a1a'),
+    archon: I('<circle cx="16" cy="9" r="4" fill="C"/><path d="M8 29c0-8 3-13 8-13s8 5 8 13" fill="C" opacity=".85"/><circle cx="16" cy="18" r="11" fill="none" stroke="#dfeeff" stroke-width="1" stroke-dasharray="3 3"/><path d="M5 9l2 2M27 9l-2 2M4 18h3M25 18h3" stroke="#fff" stroke-width="1.4"/>', '#7ab8ff'),
+    frostnova: I('<circle cx="16" cy="16" r="4" fill="#dfeeff"/><path d="M16 2v8M16 22v8M2 16h8M22 16h8M6 6l5 5M21 21l5 5M26 6l-5 5M11 21l-5 5" stroke="C" stroke-width="2" stroke-linecap="round"/><circle cx="16" cy="16" r="13" fill="none" stroke="C" stroke-width="1" opacity=".6"/>', '#9ad0ff'),
+    curse: I('<path d="M16 4c-6 0-10 5-10 10 0 4 2 6 4 7v5h12v-5c2-1 4-3 4-7 0-5-4-10-10-10z" fill="#2a1840" stroke="C" stroke-width="1.4"/><circle cx="12" cy="14" r="2.2" fill="C"/><circle cx="20" cy="14" r="2.2" fill="C"/><path d="M13 24v2M16 24v2M19 24v2" stroke="C" stroke-width="1.2"/><path d="M3 30q4-4 8-2M29 30q-4-4-8-2" stroke="#8aff6a" stroke-width="1.2" fill="none"/>', '#a060ff'),
+    hellhound: I('<path d="M5 24c2-6 6-9 11-9l3-5 2 3 3-1-1 4c3 2 4 5 4 8h-3l-2-3-6 1-3 2z" fill="#1a0a14" stroke="C" stroke-width="1.4"/><circle cx="21" cy="14" r="1.2" fill="#ff6a2a"/><path d="M6 28c2-2 4-1 5 0M15 28c1-3 4-3 5-1" stroke="#ff6a2a" stroke-width="1.4" fill="none"/>', '#a060ff'),
+    demonform: I('<path d="M9 9L6 2l6 5M23 9l3-7-6 5" fill="C"/><path d="M8 28V15c0-4 4-7 8-7s8 3 8 7v13z" fill="#2a0a1a" stroke="C" stroke-width="1.4"/><path d="M12 16l2 1M20 16l-2 1" stroke="#ff6a2a" stroke-width="1.8"/><path d="M13 22q3 2 6 0" stroke="#ff6a2a" stroke-width="1.4" fill="none"/>', '#a060ff'),
+    holyflask: I('<path d="M13 3h6v5l5 8c2 5-1 12-8 12s-10-7-8-12l5-8z" fill="#dfeeff" stroke="C" stroke-width="1.4"/><path d="M10 18h12" stroke="#9ad0ff" stroke-width="1.4"/><path d="M16 14v8M13 18h6" stroke="#ffd24a" stroke-width="1.8"/><rect x="12.5" y="2" width="7" height="2.5" fill="#8a6a3a"/>', '#d8dce8'),
+    volley: I('<path d="M6 3l3 14M14 2l2 15M22 3l1 14M28 4l-2 13" stroke="C" stroke-width="1.6"/><path d="M8 17l1 3 2-3M15 17l1 3 2-3M22 17l1 3 2-3" fill="none" stroke="#fff" stroke-width="1.4"/><ellipse cx="16" cy="26" rx="12" ry="3" fill="none" stroke="C" stroke-width="1.2" stroke-dasharray="3 2"/>', '#d8dce8'),
+    huntform: I('<path d="M16 4c-7 0-12 7-12 12s5 12 12 12 12-7 12-12S23 4 16 4z" fill="none" stroke="C" stroke-width="1.6"/><ellipse cx="16" cy="16" rx="9" ry="5" fill="#1c2230" stroke="C" stroke-width="1.4"/><circle cx="16" cy="16" r="3.4" fill="C"/><circle cx="16" cy="16" r="1.4" fill="#0a0c12"/><path d="M16 1v3M16 28v3M1 16h3M28 16h3" stroke="#fff" stroke-width="1.2"/>', '#d8dce8'),
     rend: I('<path d="M7 5l6 22M14 4l5 22M21 5l4 20" stroke="C" stroke-width="2.6" stroke-linecap="round"/><path d="M9 14l1 3M16 12l1 3M23 13l1 3" stroke="#ffd0d0" stroke-width="1.2"/>', '#e04a4a'),
   };
   type Row = [string, string, number, number, string, string];
-  const MK = (rows: Row[], col: string): SkillDef[] => rows.map(([k, id, lvl, cost, name, tip]) => { const b = KITS.nordic!.find((x) => x.id === id); const aim: AimDef | undefined = id === 'smite' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xffd24a } : id === 'conversion' ? { kind: 'circle', radius: 2.8, range: 9, color: 0xffd24a } : id === 'pounce' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xc8a070 } : id === 'shieldthrow' ? { kind: 'line', radius: 1.2, range: 10, color: 0xffd24a } : id === 'batswarm' ? { kind: 'circle', radius: 3, range: 11, color: 0xc86a8a } : b?.aim;
+  const NEW_AIM: Record<string, AimDef> = { blink: { kind: 'line', radius: 1.0, range: 8, color: 0x9ad0ff }, fireball: { kind: 'circle', radius: 2.6, range: 13, color: 0xff7a2a }, blizzard: { kind: 'circle', radius: 3.4, range: 12, color: 0xbfe8ff }, meteor: { kind: 'circle', radius: 3.2, range: 14, color: 0xff5a1a }, holyflask: { kind: 'circle', radius: 2.8, range: 11, color: 0xbfe8ff }, volley: { kind: 'circle', radius: 3.2, range: 14, color: 0xd8dce8 } };
+  const MK = (rows: Row[], col: string): SkillDef[] => rows.map(([k, id, lvl, cost, name, tip]) => { const b = KITS.nordic!.find((x) => x.id === id) ?? KITS.technocrat!.find((x) => x.id === id); const aim: AimDef | undefined = id === 'smite' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xffd24a } : id === 'conversion' ? { kind: 'circle', radius: 2.8, range: 9, color: 0xffd24a } : id === 'pounce' ? { kind: 'circle', radius: 2.6, range: 11, color: 0xc8a070 } : id === 'shieldthrow' ? { kind: 'line', radius: 1.2, range: 10, color: 0xffd24a } : id === 'batswarm' ? { kind: 'circle', radius: 3, range: 11, color: 0xc86a8a } : NEW_AIM[id] ?? b?.aim;
     return { k, id: id as SkillId, lvl, cost, name, tip, c: col, aim, hold: b?.hold, svg: ICON[id] ?? b?.svg ?? '' }; });
   KITS.pal = MK([
     ['1', 'combo', 1, 0, 'Golpe Consagrado', 'Espada e escudo. Todo golpe básico é dano sagrado: mortos-vivos, demônios e lobisomens sentem mais.'],
@@ -215,6 +229,50 @@ const HSVG: Record<string, string> = {
     ['⇧3', 'pounce', 12, 20, 'Salto da Fera', 'Marca o chão: salta alto e cai em cima, garras primeiro. Quem estiver no pouso é derrubado; o alvo principal leva o dobro.'],
     ['⇧4', 'packhowl', 22, 30, 'Uivo da Matilha', 'Uiva chamando a matilha: dois lobos espirituais saem da névoa e lutam ao seu lado por 12 s, e você ganha +30% de dano, +20% de velocidade e +15% de defesa (aliados perto também).'],
   ], '#c8a070');
+  /* 25/10 noite: Mago, Bruxo e Caçador de Demônios ganham golpes próprios (pedido do Erling) */
+  KITS.mag = MK([
+    ['1', 'combo', 1, 0, 'Míssil Arcano', 'Dois mísseis de luz azul saem da mão (ou da ponta do cajado) e voam até o alvo. A Mana volta sozinha quando você não conjura. Cada magia deixa eco: cuidado com a Ressonância Arcana.'],
+    ['2', 'guard', 1, 0, 'Escudo Arcano', 'Segure: um círculo de runas à frente apara os golpes.'],
+    ['3', 'blink', 1, 15, 'Piscar', 'Marca uma linha: some num clarão azul e reaparece até 8 m à frente, deixando um eco de luz.'],
+    ['4', 'fireball', 5, 20, 'Bola de Fogo', 'Marca o chão: uma bola de fogo voa até lá e explode, queimando todos em volta por 3 s.'],
+    ['5', 'heal', 10, 40, 'Meditação Arcana', 'Fecha os olhos por um instante e cura. Depois de lutar, as próximas 3 magias são críticas.'],
+    ['6', 'chainlight', 18, 25, 'Raio em Cadeia', 'Um raio sai da mão e salta de inimigo em inimigo (até 4; Bronze: 5).'],
+    ['7', 'blizzard', 28, 35, 'Nevasca', 'Marca o chão: por 6 s cai uma nevasca que fere e deixa todos lentos dentro dela.'],
+    ['8', 'frostnova', 42, 30, 'Anel de Gelo', 'Um anel de gelo explode em volta de você: quem estiver a 5 m fica congelado por 2 s.'],
+    ['9', 'meteor', 60, 50, 'Meteoro', 'Marca o chão: depois de 1 s um meteoro cai do céu. Dano enorme, derruba e deixa o chão em brasa.'],
+    ['0', 'archon', 85, 60, 'Avatar Arcano', 'Transformação de 12 s: o corpo vira luz azul, flutua e as runas giram em volta. Dano ×1,8, +20% de defesa, mísseis triplos.'],
+    ['⇧1', 'mark', 14, 20, 'Selo Arcano', 'Grava um selo no inimigo mais perto: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.'],
+    ['⇧2', 'winter', 8, 20, 'Cone de Gelo', 'Marca um cone: sopra na palma aberta e um vento gelado varre à frente, ferindo e deixando lento.'],
+    ['⇧3', 'shocktrap', 20, 25, 'Runa de Choque', 'Marca o chão: grava uma runa; quem pisar fica preso e eletrocutado por 2 s. Até 4.'],
+  ], '#7ab8ff');
+  KITS.bru = MK([
+    ['1', 'combo', 1, 0, 'Raio Sombrio', 'Um raio de sombra roxa sai da mão (ou da foice) e devolve um pouco de vida. Toda magia é emprestada de Malgrath: cuidado com a Dívida do Pacto.'],
+    ['2', 'guard', 1, 0, 'Véu do Pacto', 'Segure: um véu de sombra se fecha à frente e bebe os golpes.'],
+    ['3', 'blink', 1, 15, 'Passo Sombrio', 'Marca uma linha: afunda na própria sombra e sai dela até 8 m à frente.'],
+    ['4', 'curse', 5, 15, 'Maldição da Agonia', 'Amaldiçoa o inimigo mais perto: ele apodrece por 6 s. Se morrer amaldiçoado, a maldição pula para o mais próximo.'],
+    ['5', 'heal', 10, 40, 'Pacto de Sangue', 'Malgrath fecha as suas feridas, e anota. Depois de lutar, as próximas 3 magias são críticas.'],
+    ['6', 'poison', 18, 30, 'Pestilência', 'Marca o chão: uma nuvem de peste por 7 s que corrói e retarda quem estiver dentro.'],
+    ['7', 'drain', 28, 20, 'Drenar Alma', 'Prende o inimigo mais perto num fio de sombra por 2 s: tira a vida dele e devolve para você.'],
+    ['8', 'hellhound', 42, 40, 'Cães do Abismo', 'Abre o chão e chama dois cães de sombra e brasa, que lutam ao seu lado por 12 s.'],
+    ['9', 'howl', 60, 25, 'Grito do Abismo', 'A boca se abre mais do que devia: quem estiver a 9 m fica paralisado de pavor por 2 s.'],
+    ['0', 'demonform', 85, 60, 'Forma Demoníaca', 'Transformação de 12 s: chifres, pele escura e olhos em brasa. Dano ×1,8, +25% de defesa e 10% de roubo de vida.'],
+    ['⇧1', 'mark', 14, 20, 'Marca de Malgrath', 'Escreve o nome do inimigo no contrato: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.'],
+  ], '#a060ff');
+  KITS.cac = MK([
+    ['1', 'combo', 1, 0, 'Lâmina de Prata', 'Espada curta de prata (com a Besta de Repetição na mão, atira). +25% de dano em demônios, mortos-vivos e feras da noite, e cada golpe neles enche o Ódio.'],
+    ['2', 'guard', 1, 0, 'Esquiva Treinada', 'Segure: apara à frente com a lâmina e o braço de couro.'],
+    ['3', 'bash', 1, 0, 'Rolamento do Caçador', 'Marca uma linha: rola baixo e corta quem estiver no caminho.'],
+    ['4', 'spear', 5, 15, 'Estaca Arremessada', 'Marca uma linha: arremessa uma estaca de freixo com ponta de prata, que atravessa todos e prende o último por 3 s.'],
+    ['5', 'heal', 10, 40, 'Tônico do Caçador', 'Um gole amargo de ervas e prata: cura. Depois de lutar, os próximos 3 golpes são críticos.'],
+    ['6', 'shocktrap', 18, 25, 'Armadilha de Prata', 'Marca o chão: arma uma armadilha de dentes de prata; quem pisar fica preso por 2 s. Até 4.'],
+    ['7', 'holyflask', 28, 25, 'Frasco de Água Benta', 'Marca o chão: arremessa um frasco que estoura em luz. Demônios e mortos-vivos queimam em dobro e o chão fica bento por 4 s.'],
+    ['8', 'volley', 42, 35, 'Chuva de Virotes', 'Marca o chão: dispara para o alto e uma chuva de virotes de prata cai na área.'],
+    ['9', 'mark', 60, 20, 'Marca da Caça', 'Marca o inimigo mais perto: por 6 s ele recebe +50% de dano e cada golpe seu nele devolve vida.'],
+    ['0', 'huntform', 85, 60, 'Vigília de Aravel', 'Por 12 s o olho de Aravel abre no seu: dano ×1,8, +20% de velocidade, e todo demônio a 15 m fica marcado.'],
+    ['⇧1', 'kick', 3, 10, 'Chute de Bota Ferrada', 'Chuta o inimigo à frente com a bota ferrada: atordoa, empurra e interrompe golpes e magias em preparo.'],
+    ['⇧2', 'hatchet', 8, 15, 'Machadinha de Prata', 'Marca uma linha: arremessa a machadinha de prata girando. Bronze: ricocheteia; Prata: duas; Ouro: atravessa e volta à mão.'],
+    ['⇧3', 'hamstring', 14, 15, 'Corte nos Jarretes', 'Abaixa e corta rente ao chão em arco: quem estiver à frente fica lento.'],
+  ], '#d8dce8');
   void Nn; }
 
 export const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];

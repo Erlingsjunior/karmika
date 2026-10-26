@@ -136,9 +136,22 @@ Object.assign(STATS, {
   'x:teslatower': { dmg: 0.7, hits: 4, range: 9, dur: 14, cd: 20, note: 'Arco que salta em até 4 inimigos a cada 1,2 s e deixa lento.' },
   'x:bubble': { dmg: 0, dur: 8, cd: 16, note: 'Seis escudos girando bebem até 35% da vida; a esfera não ataca enquanto defende.' },
   'x:mortar': { dmg: 1.5, area: 2.2, range: 26, dur: 15, cd: 24, note: 'Granadas em arco alto de 6 a 26 m; cada uma derruba.' },
+  'x:blink': { dmg: 0, range: 8, cd: 6, note: 'Teleporte curto em linha.' },
+  'x:fireball': { dmg: 1.7, area: 2.6, range: 13, cd: 6, note: 'Explode na área marcada e queima por 3 s.' },
+  'x:chainlight': { dmg: 1.1, hits: 4, range: 10, cd: 8, note: 'Salta de inimigo em inimigo (até 4).' },
+  'x:blizzard': { dmg: 0.35, hits: 12, area: 3.4, range: 12, dur: 6, cd: 14, note: 'Nevasca: fere a cada 0,5 s e deixa lento.' },
+  'x:frostnova': { dmg: 0.8, area: 5, dur: 2, cd: 14, note: 'Congela por 2 s quem estiver a 5 m.' },
+  'x:meteor': { dmg: 3.2, area: 3.2, range: 14, cast: 1.1, cd: 20, note: 'Meteoro: dano enorme, derruba, chão em brasa.' },
+  'x:archon': { dmg: 1.8, dur: 12, cd: 50, note: 'Avatar Arcano: dano ×1,8, +20% de defesa, mísseis triplos.' },
+  'x:curse': { dmg: 0.4, hits: 12, range: 10, dur: 6, cd: 9, note: 'Apodrece por 6 s; se o alvo morrer, pula para o mais próximo.' },
+  'x:hellhound': { dmg: 1.2, dur: 12, cd: 40, note: 'Dois cães de sombra e brasa por 12 s.' },
+  'x:demonform': { dmg: 1.8, dur: 12, cd: 50, note: 'Forma Demoníaca: dano ×1,8, +25% de defesa, 10% de roubo de vida.' },
+  'x:holyflask': { dmg: 1.4, area: 2.8, range: 11, dur: 4, cd: 10, note: 'Estoura em luz; demônios e mortos-vivos levam o dobro; chão bento por 4 s.' },
+  'x:volley': { dmg: 0.55, hits: 14, area: 3.2, range: 14, cd: 12, note: 'Chuva de 14 virotes de prata na área.' },
+  'x:huntform': { dmg: 1.8, dur: 12, cd: 50, note: 'Vigília de Aravel: dano ×1,8, +20% de velocidade, demônios marcados.' },
   'tecno:medic': { dmg: 0, dur: 10, cd: 18, note: 'Drone médico: cura 40% da vida em 10 s e apaga queimaduras.' },
 });
-for (const kk of ['tecno', 'pal', 'vam', 'lob'] as const) for (const sk of KITS[kk] ?? []) { const key = `${kk}:${sk.id}`; if (STATS[key]) continue; STATS[key] = STATS['x:' + sk.id] ?? STATS[`technocrat:${sk.id}`] ?? STATS[`nordic:${sk.id}`] ?? {}; }
+for (const kk of ['tecno', 'pal', 'vam', 'lob', 'mag', 'bru', 'cac'] as const) for (const sk of KITS[kk] ?? []) { const key = `${kk}:${sk.id}`; if (STATS[key]) continue; STATS[key] = STATS['x:' + sk.id] ?? STATS[`technocrat:${sk.id}`] ?? STATS[`nordic:${sk.id}`] ?? {}; }
 
 export interface Scale { dmg: number; range: number; area: number; dur: number; cost: number; tier: number; rank: number }
 export const scaleOf = (rank: number): Scale => ({ rank, dmg: 1 + 0.04 * rank, range: 1 + 0.04 * rank, area: 1 + 0.04 * rank, dur: 1 + 0.05 * rank, cost: Math.max(0.8, 1 - 0.02 * rank), tier: rank >= 10 ? 3 : rank >= 6 ? 2 : rank >= 3 ? 1 : 0 }); // estágios: Bronze (3), Prata (6), Ouro (10)
