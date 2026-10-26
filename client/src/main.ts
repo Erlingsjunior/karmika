@@ -725,6 +725,7 @@ const BETA_TOOLS = true;
 function betaCommand(cmd: string, a: string[]): string | null {
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
   if (cmd === 'ajuda' || cmd === 'help') return 'Teste (beta): /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'perf') { const r = perfReport(); console.log(r); return r; }
   if (cmd === 'morrer') { if (game.st.dead) return 'Você já caiu.'; game.st.hp = 1; game.damage(99999, hero.root.position); return `☠ Você caiu de propósito. Fôlegos antes da queda: ${soul.s.breaths}/${MAX_BREATHS}${game.st.lvl < FRAY_LVL ? ` (antes do nível ${FRAY_LVL}, com o Olho ainda dormindo, o Fio não se gasta: use /nivel ${FRAY_LVL})` : ''}.`; }
   if (cmd === 'folegos' || cmd === 'fôlegos') { if (!(n >= 0 && n <= MAX_BREATHS)) return `Uso: /folegos 0-${MAX_BREATHS}`; soul.s.breaths = n; soul.s.regenAt = Date.now(); soul.save(); return `🕯 Fio da Vida: ${n}/${MAX_BREATHS}.`; }
   if (cmd === 'lagrimas' || cmd === 'lágrimas') { if (!(n >= 0 && n <= 9)) return 'Uso: /lagrimas 0-9'; const c = inv.count('lagrima'); if (n > c) inv.add('lagrima', n - c, true); else if (n < c) inv.take('lagrima', c - n); return `💧 Lágrimas do Olho na mochila: ${n}.`; }
@@ -840,7 +841,7 @@ const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) =
   onWorld: (list) => { guildWorld = list; drawGuilds(); if (myGuild && seedPending === myGuild.id) { const g = list.find((q) => q.id === myGuild!.id); if (g && !g.build.length) { for (const b of seedHall(g.plot)) hub.send({ t: 'g:build', b }); } seedPending = 0; } },
   onGuild: (g) => { const was = myGuild; myGuild = g; if (g && !was && g.members.length === 1 && Date.now() - g.created < 60000) seedPending = g.id; drawGuilds(); updateWho(); } });
 let seedPending = 0;
-if (IS_DEV) Object.assign(window as object, { __festa: () => festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
+if (IS_DEV) Object.assign(window as object, { __perf: () => perfReport(), __festa: () => festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
 addEventListener('keydown', (e) => { if (e.key === 'F9') { e.preventDefault(); social.toggle(); } });
 (window as unknown as { __net?: unknown }).__net = net;
 setTimeout(() => { (window as unknown as { __pvp?: unknown }).__pvp = pvp; (window as unknown as { __mail?: unknown }).__mail = mail; }, 0);
@@ -2091,6 +2092,10 @@ const finish = new ShaderPass({
     }`,
 });
 composer.addPass(finish);
+/* /perf: tempo de cada passada do desenho (bloom, saída, etc.) */
+const PM: Record<string, number> = {};
+DualRenderPass.timer = (k, ms) => { PM[k] = (PM[k] ?? 0) + ms; };
+for (const ps of composer.passes) { if (ps === dual) continue; const nm = 'desenho:' + (ps === bloom ? 'bloom' : ps === finish ? 'acabamento' : ps.constructor.name.replace(/Pass$/, '').toLowerCase()); const orig = ps.render.bind(ps); ps.render = ((...a: Parameters<typeof orig>) => { const t0 = performance.now(); orig(...a); PM[nm] = (PM[nm] ?? 0) + performance.now() - t0; }) as typeof ps.render; }
 /* o Limiar: para onde a alma sobe quando o Fio da Vida se rompe (limiar.ts) */
 const limiar = createLimiar({ use: (s, c) => dual.use(s, c), restore: () => dual.use(scene, camera), compile: (s, c) => renderer.compile(s, c),
   makeSoul: () => createCharacter(kindOf(state.race), profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}), audio });
@@ -3465,9 +3470,16 @@ function frame() {
 }
 const __BUILD__ = '20261019-2340';
 let fpsN = 0, fpsT = 0, poiTick = -1;
+/* medidor por seção do quadro (/perf no chat): quanto da CPU vai para cada parte */
+let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
+const pm = (k: string) => { const n = performance.now(); PM[k] = (PM[k] ?? 0) + n - pmLast; pmLast = n; };
+function pmFlush() { const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
+function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · '); }
 function frameBody() {
+  pmLast = performance.now(); pmFrames++;
   { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
-    perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; } }
+    perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
@@ -3481,6 +3493,7 @@ function frameBody() {
   /* água: entra andando até a cintura (lento, empurrando a água); mais fundo que isso, nada */
   const depthNow = inside ? 0 : WL - heightAt(state.fx * T, state.fy * T);
   const swimming = !inside && depthNow > 1.25; swimmingNow = swimming; hero.swim = swimming;
+  pm('entrada');
   dual.clipFor = scene; dual.fineClip = inside ? [] : waterClip; // a linha d'água corta os corpos (a água não escreve profundidade)
   const wade = !inside && !swimming && depthNow > 0.04 ? Math.min(1, depthNow / 1.0) : 0;
   updateFishing(dt, t); updateWork(); herbSparkle(dt); updateQuestRings(dt); featsTick(dt);
@@ -3541,6 +3554,7 @@ function frameBody() {
   const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH + (sitting ? -0.28 : 0); /* nadando: água no peito; andando: pés no leito (até a cintura) */
   heroY += (tgtY - heroY) * Math.min(1, dt * (swimming ? 6 : 18) + (dt > 0 ? 0 : 1));
   heroPos.set(state.fx * T, heroY, state.fy * T);
+  pm('entrada/física');
   hero.root.position.copy(heroPos); if (riding && mount) hero.root.position.y += mount.seatY() - 0.62;
   plane.constant = -heroY;
   if (!inside) { if (!cine) objs.setRad(Math.min(5, Math.max(2, Math.ceil(Math.hypot(zoom * innerWidth / innerHeight, zoom * 2.2) / 2 / 40 + 0.7)))); /* raio de chunks segue o zoom e a tela: nada de vazio nas bordas */ objs.update(camX, camZ); } else { inside.int.flicker(t, state.fx * T - IX, state.fy * T - IZ); if (state.fy * T - IZ > inside.int.D + 0.5) exitHouse(); }
@@ -3556,6 +3570,7 @@ function frameBody() {
   const aimNow = aim.active ? aim.update(dt, state.fx * T, state.fy * T, mouse.x, mouse.z, (x, z) => inside ? 0 : heightAt(x, z)) : null;
   const mouseYaw = Math.atan2(mouse.x - state.fx * T, mouse.z - state.fy * T);
   if (sitting) { state.fx = sitting.x; state.fy = sitting.y; game.st.hp = Math.min(game.st.hpMax, game.st.hp + dt * 6); }
+  pm('chunks');
   if (wade > 0.15 && state.moving) { wadeAcc += dt; if (wadeAcc > 0.09) { wadeAcc = 0; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.4, WL + 0.03, heroPos.z + Math.sin(a) * 0.4, { vx: Math.cos(a) * 0.8, vy: 0.9 + Math.random(), vz: Math.sin(a) * 0.8, life: 0.5, s0: 0.18, s1: 0.05, c0: 0xe8f4ff, c1: 0x9ac8e8, a: 0.7, g: 6 }); } } }
   if (swimming) { swimAcc += dt; if (swimAcc > (state.moving ? 0.12 : 0.45)) { swimAcc = 0; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.5, WL + 0.03, heroPos.z + Math.sin(a) * 0.5, { vx: Math.cos(a) * 0.8, vy: 0.05, vz: Math.sin(a) * 0.8, life: 0.9, s0: 0.18, s1: 0.5, c0: 0xdff4ff, c1: 0x9cd0ff, a: 0.5, drag: 1.5 }); } } }
   hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : lockYaw !== null && aiming ? lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : fishing ? Math.atan2(fishing.at.x - state.fx * T, fishing.at.z - state.fy * T) : work ? Math.atan2(work.x - state.fx * T, work.z - state.fy * T) : sitting ? sitting.yaw : state.moving ? Math.atan2(gdx, gdy) : combatMode ? nearYaw() : null);
@@ -3570,16 +3585,22 @@ function frameBody() {
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);
+  pm('herói.update');
   updateXray(dt); updateEnvelopes(t);
   if (isPremium()) { const hp = hero.root.position, a = t * 0.9; blessRune.visible = !inside; blessRune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2) * 0.04, hp.z + Math.sin(a) * 0.62); } else blessRune.visible = false;
+  pm('xray/env');
   updateCompanions(dt, t, hero.root.rotation.y, mps); updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
+  pm('companheiros');
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);
+  pm('jogo(inimigos)');
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   if (rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   updateGuide(dt); updateInstinct(dt); updateCaravans(dt); updateEventos(dt); updateSecrets(dt); build.update(mouse.x, mouse.z);
+  pm('chefes/sistemas');
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubbleEl.style.display = 'none'; else { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.4, heroPos.z).project(camera); bubbleEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; bubbleEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; } }
   bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt); alignTick(rawDt);
+  pm('balões/banner');
   qmT -= dt; if (qmT <= 0) { qmT = 0.7; updateQuestMarks(); }
   mmT -= dt; if (mmT <= 0) { mmT = 0.1; drawMini(); if (bigOpen) drawBig(); (document.getElementById('zone') as HTMLElement).textContent = `${zoneName()} · ${turnName()} ${Math.floor(gameHour())}h`; }
   hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting || game.st.dead ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
@@ -3600,6 +3621,7 @@ function frameBody() {
   if (!updateCine(rawDt) && !menuView(rawDt)) {
   camX += (heroPos.x + leadX - camX) * Math.min(1, dt * 6);
   camZ += (heroPos.z + leadZ - camZ) * Math.min(1, dt * 6);
+  pm('minimapa/hint/cine');
   camY += (heroY - camY) * Math.min(1, dt * 5);
   }
   updateDoors(rawDt);
@@ -3730,24 +3752,32 @@ function frameBody() {
   }
   /* karma */
   const eyeEl = document.getElementById('eye') as unknown as SVGElement;
+  pm('câmera/mundo/doors');
   eyeEl.classList.toggle('full', state.karma >= 100);
   { eyeSys.update(rawDt, eyeGaze(), hero.acting, state.karma, !profile?.eye, night); }
   globes.update(dt, game.st.hp, game.st.hpMax, game.st.mp, game.st.mpMax);
   if ((fpsN & 15) === 0) checkAwakening();
   const full = state.karma >= 100;
   if (full !== wasFull) { wasFull = full; hero.setAura(full); }
+  pm('olho/globos');
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
+  pm('aura');
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   lightPool(rawDt);
   updateInstFx(rawDt);
+  pm('luzes/instfx');
   atmos.update(rawDt, t, heroPos, aurFx, luaV, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);
 
+  pm('atmos/partículas');
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
+  pm('bloom-cfg');
   renderer.info.reset();
   { const d0 = performance.now(); gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
+  pm('desenho');
   dollTick(rawDt);
+  pm('boneco');
   if (!shown) { shown = true; document.body.classList.add('ready'); }
 }
 /* boneco vivo na ficha do personagem (C): o próprio herói, animado e com o equipamento que está vestindo, desenhado num

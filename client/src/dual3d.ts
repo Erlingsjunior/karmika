@@ -15,6 +15,7 @@ export class DualRenderPass extends Pass {
   rt: THREE.WebGLRenderTarget;
   quad: FullScreenQuad;
   mat: THREE.ShaderMaterial;
+  /** medidor (main /perf): tempo de cada etapa */ static timer: ((k: string, ms: number) => void) | null = null;
   private tick = 0; private onlyW = new Set<THREE.Object3D>(); private onlyF = new Set<THREE.Object3D>();
   /** planos de corte da camada fina (a água corta herói, NPCs e bichos na linha d'água) — só valem na cena clipFor */
   fineClip: THREE.Plane[] = []; clipFor: THREE.Scene | null = null;
@@ -51,7 +52,7 @@ export class DualRenderPass extends Pass {
     // 1) cenário em meia resolução
     cam.layers.set(LAYER_WORLD);
     const hid: THREE.Object3D[] = []; for (const r of this.onlyF) if (r.visible) { r.visible = false; hid.push(r); }
-    renderer.setRenderTarget(this.rt); renderer.clear(); renderer.render(this.scene, cam);
+    const t0 = performance.now(); renderer.setRenderTarget(this.rt); renderer.clear(); renderer.render(this.scene, cam); const t1 = performance.now(); DualRenderPass.timer?.('desenho:cenário+sombra', t1 - t0);
     for (const r of hid) r.visible = true; hid.length = 0;
     // 2) copia cor + profundidade para o alvo final (ampliação "nearest": pixels grandes)
     renderer.setRenderTarget(this.renderToScreen ? null : readBuffer); renderer.clear();
@@ -61,7 +62,7 @@ export class DualRenderPass extends Pass {
     const bg = this.scene.background; this.scene.background = null;
     for (const r of this.onlyW) if (r.visible) { r.visible = false; hid.push(r); }
     cam.layers.set(LAYER_FINE); renderer.autoClear = false; const clip0 = renderer.clippingPlanes; if (this.scene === this.clipFor) renderer.clippingPlanes = this.fineClip; renderer.render(this.scene, cam); renderer.clippingPlanes = clip0;
-    for (const r of hid) r.visible = true;
+    for (const r of hid) r.visible = true; DualRenderPass.timer?.('desenho:personagens', performance.now() - t1);
     this.scene.background = bg; cam.layers.enableAll(); renderer.autoClear = oldAC; sm.autoUpdate = autoSM;
   }
   dispose() { this.rt.dispose(); this.mat.dispose(); this.quad.dispose(); }
