@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { createCharacter, type Hero3D, type Kind } from './characters';
+import { BARKS, roleTag } from './barks';
 
 export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** só à noite (some de dia) */ night?: boolean }
-interface Npc { def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number }
+interface Npc { def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
-export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement }) {
+export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   const npcs: Npc[] = defs.map((def) => {
     const hero = createCharacter(def.civil ? 'nordic' : def.kind, { static: true, civil: def.civil, cloth: def.civil ? def.tint : undefined });
     hero.root.scale.setScalar(def.scale); hero.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); // NPCs sem sombra (desempenho)
@@ -17,8 +18,14 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     return { def, hero, pos, yaw: Math.random() * 6.28, target: null, wait: Math.random() * 3, el, line: 0, lineT: 0, spd: 0, ri, rdir: 1 };
   });
   const v = new THREE.Vector3();
+  /* falas soltas: uma de cada vez, a cada 8–16 s, de alguém entre 3 e 18 m; a situação mais específica pesa mais */
+  let barkT = 5; const recent: string[] = [];
+  function pickBark(n: Npc) { const S = ctx.situ?.(); if (!S) return null; const rt = roleTag(n.def.role); const tags = [...S.tags, ...(rt ? [rt, rt] : [])].filter((k) => BARKS[k]);
+    if (!tags.length) return null; for (let tries = 0; tries < 6; tries++) { const tg = tags[Math.floor(Math.random() * tags.length)], L = BARKS[tg], l = L[Math.floor(Math.random() * L.length)]; if (recent.includes(l)) continue; recent.push(l); if (recent.length > 14) recent.shift(); return l.replace(/\{nome\}/g, S.nome).replace(/\{pet\}/g, S.pet || 'bichinho'); } return null; }
   function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
     const r = ctx.canvas.getBoundingClientRect();
+    barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
+      if (cand.length) { const n = cand[Math.floor(Math.random() * cand.length)], l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.8; } } }
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
@@ -53,7 +60,8 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (show) {
         n.el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; n.el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
         const p = n.el.querySelector('p') as HTMLElement;
-        if (dH < 6) { n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; } p.textContent = d.lines[n.line]; p.style.display = 'block'; } else { p.style.display = 'none'; n.lineT = 4; }
+        if (n.barkT && n.barkT > 0) { n.barkT -= dt; p.textContent = n.bark ?? ''; p.style.display = 'block'; p.classList.add('bark'); }
+        else if (dH < 6) { p.classList.remove('bark'); n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; if (Math.random() < 0.3) { const l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.5; } } } p.textContent = d.lines[n.line]; p.style.display = 'block'; } else { p.classList.remove('bark'); p.style.display = 'none'; n.lineT = 4; }
       }
     }
   }

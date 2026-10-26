@@ -1,17 +1,19 @@
 /** Companheiros: pet que coleta itens e montaria. Modelos quadrúpedes reaproveitados dos inimigos. */
 import * as THREE from 'three';
 import { buildQuad, animQuadWalk } from './enemies';
-import { buildWolf, buildHorse, buildBoar } from './werewolf3d';
+import { buildWolf, buildHorse, buildBoar, buildCat } from './werewolf3d';
 import { mergeStatic } from './merge3d';
 import { fine } from './dual3d';
 import { ramp } from './toon3d';
 
 export type PetSkill = 'alarido' | 'mordida' | 'faro' | 'fucar';
-export interface PetKind { id: string; name: string; quad: 'fox' | 'wolf' | 'rat' | 'horse' | 'boar'; tint?: number; scale: number; speed: number; silent?: boolean;
+export interface PetKind { id: string; name: string; quad: 'fox' | 'wolf' | 'rat' | 'horse' | 'boar' | 'cat'; tint?: number; scale: number; speed: number; silent?: boolean;
   /** o que ele faz sozinho (além de buscar o que cai), o que come e onde se arruma um */ skill?: PetSkill; eats?: 'carne' | 'graos' | 'tudo'; where?: string; blurb?: string }
 export const PETS: Record<string, PetKind> = {
   pet_fox: { id: 'pet_fox', name: 'Raposa Ruiva', quad: 'fox', scale: 0.9, speed: 6.5, skill: 'alarido', eats: 'carne', where: 'Corwin, o Domador', blurb: 'Esperta e barulhenta. No combate, grita e distrai quem vem para cima de você.' },
   pet_pup: { id: 'pet_pup', name: 'Filhote de Lobo', quad: 'wolf', tint: 0x8a8a8a, scale: 0.55, speed: 6.0, skill: 'mordida', eats: 'carne', where: 'Corwin, o Domador', blurb: 'Fiel. Quando você briga, ele morde as canelas de quem te ataca.' },
+  pet_cat: { id: 'pet_cat', name: 'Gatinho Malhado', quad: 'cat', scale: 1.0, speed: 6.2, skill: 'alarido', eats: 'carne', where: 'Corwin, o Domador', blurb: 'Macio, curioso e dono da casa. No combate, chia e arranha a cara de quem vem: o inimigo para por 1,5 s.' },
+  pet_cat_b: { id: 'pet_cat_b', name: 'Gata Preta', quad: 'cat', tint: 0x26222a, scale: 1.0, speed: 6.4, skill: 'faro', eats: 'carne', where: 'Corwin, o Domador', blurb: 'Olhos verdes no escuro. Acha o que caiu longe (22 m) e, na briga, um chiado distrai por 1 s.' },
   pet_rat: { id: 'pet_rat', name: 'Ratinho de Porão', quad: 'rat', scale: 0.55, speed: 5.5, skill: 'faro', eats: 'graos', where: 'Corwin, o Domador', blurb: 'Faro fino: acha o que caiu bem mais longe que os outros.' },
   pet_piglet: { id: 'pet_piglet', name: 'Leitão Malhado', quad: 'boar', tint: 0xd8a890, scale: 0.42, speed: 5.0, skill: 'fucar', eats: 'tudo', where: 'Corwin, o Domador', blurb: 'Fuça a terra quando você descansa e de vez em quando traz uma coisinha.' },
 };
@@ -24,8 +26,8 @@ export const MOUNTS: Record<string, MountKind> = {
 /** o bicho em si (sem nome flutuando): o mesmo modelo no mundo e na página do Estábulo */
 export function petModel(kind: PetKind) {
   // 25/10: a raposa e o filhote são o canídeo esguio (werewolf3d); o rato segue o quadrúpede de antes (Erling gostou), o leitão é o javali pequeno
-  const W = kind.quad === 'wolf' ? buildWolf({ fur: kind.tint ?? 0x8a847c }) : kind.quad === 'fox' ? buildWolf({ fur: 0xc8641e, belly: 0xf4ece0, eye: 0xffb030 }) : kind.quad === 'horse' ? buildHorse({ coat: kind.tint ?? 0x6a5a4a }) : kind.quad === 'boar' ? buildBoar({ fur: kind.tint }) : null; const q = W ? null : buildQuad(kind.quad, kind.tint);
-  const root = new THREE.Group(); root.scale.setScalar(kind.scale * (kind.quad === 'wolf' ? 1.15 : kind.quad === 'fox' ? 0.62 : kind.quad === 'horse' ? 0.85 : 1)); root.add(W ? W.root : q!.root); mergeStatic(W ? W.root : q!.root, ramp);
+  const W = kind.quad === 'cat' ? buildCat(kind.tint ? { coat: kind.tint, belly: 0x3a3440, eye: 0x7aff6a, stripes: false } : {}) : kind.quad === 'wolf' ? buildWolf({ fur: kind.tint ?? 0x8a847c }) : kind.quad === 'fox' ? buildWolf({ fur: 0xc8641e, belly: 0xf4ece0, eye: 0xffb030 }) : kind.quad === 'horse' ? buildHorse({ coat: kind.tint ?? 0x6a5a4a }) : kind.quad === 'boar' ? buildBoar({ fur: kind.tint }) : null; const q = W ? null : buildQuad(kind.quad as 'rat', kind.tint);
+  const root = new THREE.Group(); root.scale.setScalar(kind.scale * (kind.quad === 'wolf' ? 1.15 : kind.quad === 'fox' ? 0.62 : kind.quad === 'cat' ? 1.3 : kind.quad === 'horse' ? 0.85 : 1)); root.add(W ? W.root : q!.root); mergeStatic(W ? W.root : q!.root, ramp);
   let ph = 0;
   const pose = (dt: number, mv: number, t: number) => { ph += dt * (6 + mv * 2.2) * (mv > 0.1 ? 1 : 0); if (W) (W.pose as (p: { dt: number; mv: number; wind: number; strike: number; hurt: number; idle: boolean }) => void)({ dt, mv, wind: 0, strike: 0, hurt: 0, idle: mv < 0.1 }); else animQuadWalk(q!, ph, mv, t, 7); };
   return { root, pose };

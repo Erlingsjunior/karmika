@@ -119,6 +119,8 @@ export const ITEMS: Record<string, Item> = {
   // companheiros
   pet_fox: { name: 'Raposa Ruiva', icon: '🦊', kind: 'misc', col: 0xd0702a, desc: 'Companheira que corre atrás dos itens caídos e traz para você.', tier: 1 },
   pet_pup: { name: 'Filhote de Lobo', icon: '🐺', kind: 'misc', col: 0x8a8a8a, desc: 'Fiel e rápido. Busca itens caídos.', tier: 1 },
+  pet_cat: { name: 'Gatinho Malhado', icon: '🐱', kind: 'misc', col: 0xd8883a, desc: 'Macio e curioso. No combate, chia e faz o inimigo parar. Use para levar ao Estábulo (X).', tier: 1 },
+  pet_cat_b: { name: 'Gata Preta', icon: '🐈‍⬛', kind: 'misc', col: 0x26222a, desc: 'Faro fino no escuro: acha itens longe. Use para levar ao Estábulo (X).', tier: 1 },
   pet_rat: { name: 'Ratinho de Porão', icon: '🐀', kind: 'misc', col: 0x8a7a6a, desc: 'Faro fino: busca itens caídos bem mais longe. Use para levar ao Estábulo (X).', tier: 1 },
   pet_piglet: { name: 'Leitão Malhado', icon: '🐖', kind: 'misc', col: 0xd8a890, desc: 'Fuça a terra quando você descansa e às vezes traz uma coisinha. Use para levar ao Estábulo (X).', tier: 1 },
   mount_grey: { name: 'Cavalo Ruço', icon: '🐴', kind: 'misc', col: 0x9a968e, desc: 'Montaria (Z): +80% de velocidade fora de combate. Use para levar ao Estábulo (X).', tier: 1 },
@@ -131,7 +133,7 @@ export const ITEMS: Record<string, Item> = {
   mount_black: { name: 'Corcel Negro', icon: '🐎', kind: 'misc', col: 0x1a1612, desc: 'Montaria (Z): +90% de velocidade fora de combate.', tier: 2 },
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
-export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
+export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_cat: 300, pet_cat_b: 420, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
 export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
@@ -146,7 +148,7 @@ export const SHOPDEF: Record<string, ShopDef> = {
   lenhador: { title: 'Tomás, o Lenhador', items: ['axe_s', 'axe_i', 'axe_st', 'wood'], buys: { wood: 1.5, stick: 1.5 }, note: 'Machados e madeira. Paga bem por toras.' },
   cacador: { title: 'Kaela, a Caçadora', items: ['knife_f', 'knife_i', 'knife_st', 'rod', 'rod_ash', 'jerky', 'potion'], buys: { hide: 1.4, hide_f: 1.4, hide_w: 1.3, claw: 1.5, meat: 1.2 }, note: 'Couro, garras e carne: a floresta paga.' },
   construtor: { title: 'Gunnar, o Construtor', items: ['plank', 'nail', 'block', 'rope'], buys: { wood: 1.3, stone: 1.5 }, note: 'Materiais para construir a sua casa.' },
-  domador: { title: 'Corwin, o Domador', items: ['pet_fox', 'pet_pup', 'pet_rat', 'pet_piglet', 'coleira_couro', 'coleira_prata', 'peitoral_couro', 'peitoral_ferro', 'meat', 'apple'], note: 'Companheiros que buscam o que cai no chão.' },
+  domador: { title: 'Corwin, o Domador', items: ['pet_cat', 'pet_cat_b', 'pet_fox', 'pet_pup', 'pet_rat', 'pet_piglet', 'coleira_couro', 'coleira_prata', 'peitoral_couro', 'peitoral_ferro', 'meat', 'apple'], note: 'Companheiros que buscam o que cai no chão.' },
   tec_fio: { title: 'Tecelagem Real do Fio', items: [], fac: 'fio', note: 'Feito à mão pelas tecelãs da Ordem, com o fio que nunca se corta. Ninguém mais sabe tecer isto. Só para quem jurou o Fio.' },
   tec_desf: { title: 'Tecelagem dos Desfiados', items: [], fac: 'desf', note: 'Pano negro rasgado de propósito, ferro que não enferruja. Feito na oficina dos Desfiados e em nenhum outro lugar. Só para quem cortou o fio.' },
   latao: { title: 'Companhia das Caravanas de Latão', items: ['reator_1', 'reator_2', 'cristal_arcano', 'inj_s', 'semente_mod', 'sino_guarda', 'potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'], buys: { ore_i: 1.3, gem: 1.3 }, note: 'Mercadoria do porto, trazida pelas caravanas de latão.' },
@@ -201,7 +203,7 @@ const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.h
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
-export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
   const tools: Record<ToolSlot, string | null> = { axe: null, pick: null, knife: null, shears: null, rod: null };
@@ -291,6 +293,9 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   function take(id: string, n = 1) { if (!has(id, n)) return false; bag[id] -= n; if (bag[id] <= 0) delete bag[id]; recalc(); render(); save(); return true; }
   function use(id: string) {
     const it = ITEMS[id]; if (!it || !has(id)) return;
+    const before = count(id); try { use0(id, it); } finally { if (count(id) < before) hooks.feel?.(it.kind === 'food' ? (/🧪|🍺|🍯|🔮|🫙|🩸|💉|🍷|🥛/.test(it.icon) || it.mp ? 'drink' : 'eat') : 'use', id); else if (isTool(id) && tools && Object.values(tools).includes(id)) hooks.feel?.('tool', id); }
+  }
+  function use0(id: string, it: Item) {
     if (it.kind === 'food') { if (it.mp) { if (st.mp >= st.mpMax) { game.logMsg('Sua magia já está cheia.'); return; } take(id); st.mp = Math.min(st.mp + it.mp, st.mpMax); game.logMsg(`${it.icon} +${it.mp} magia`, '#9ad7ff'); potionPulse('mp'); } else { if (st.hp >= st.hpMax && !it.buff) { game.logMsg('Sua vida já está cheia.'); return; } take(id); st.hp = Math.min(st.hpMax, st.hp + (it.heal ?? 10)); if ((it.heal ?? 10) > 0) game.logMsg(`${it.icon} +${it.heal ?? 10} vida`, '#7aff9a'); if (/potion|tonic/.test(id)) potionPulse(it.buff ? 'buff' : 'hp'); } if (it.buff) game.drinkBuff?.(it.buff); }
     else if (isTool(id)) equipTool(id);
     else if (!hooks.onUse?.(id)) game.logMsg(it.desc);
@@ -305,7 +310,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   function equip(uid: number) {
     const i = gearBag.findIndex((g) => g.uid === uid); if (i < 0) return;
     { const g0 = gearBag[i]; if (st.lvl < reqLvl(g0)) { game.logMsg(`Você precisa do nível ${reqLvl(g0)} para usar ${g0.name}.`, '#ff9a8a'); game.snd?.('error'); return; } { const why = hooks.canWear?.(g0); if (why) { game.logMsg(why, '#ff9a8a'); game.snd?.('error'); return; } } if (g0.fac && myFac() !== g0.fac) { game.logMsg(`⚑ Só quem jurou ${FAC[g0.fac].name} pode vestir este brasão. Os lados se escolhem no nível ${FAC_LVL}.`, '#ff9a8a'); game.snd?.('error'); return; } }
-    const g = gearBag.splice(i, 1)[0], tg = slotFor(g), old = eqG[tg]; eqG[tg] = g; if (old) gearBag.push(old);
+    const g = gearBag.splice(i, 1)[0], tg = slotFor(g), old = eqG[tg]; eqG[tg] = g; if (old) gearBag.push(old); hooks.feel?.('equip', String(g.slot));
     if ((g.shop || g.fac) && !g.bound) { g.bound = true; game.logMsg(`🔒 ${g.name} agora está vinculado a você (não vai mais ao Leilão).`, '#b9c6e0'); }
     game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save(); swapFx(tg, !!old);
   }

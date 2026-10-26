@@ -165,6 +165,15 @@ export class AudioEngine {
   }
   boom() { if (!this.ctx) return; this.burst('lowpass', 420, 0.8, 0.45, 0.16); this.tone(90, 32, 0.5, 0.14); this.burst('bandpass', 1800, 1, 0.12, 0.06); }
   heal() { this.spell('holy'); }
+  /** usar item (25/10, Erling: "não vejo animação nem barulho ao trocar item"): gole, mastigar, vestir pano/couro, encaixar metal, trocar ferramenta */
+  gulp() { if (!this.ctx) return; for (let i = 0; i < 3; i++) { const d = i * 0.22; this.tone(220 + Math.random() * 40, 120, 0.12, 0.05, 'sine', d); setTimeout(() => this.burst('lowpass', 500, 2, 0.08, 0.05), d * 1000); } this.tone(880, 1200, 0.05, 0.02, 'sine', 0.7); }
+  chew() { if (!this.ctx) return; for (let i = 0; i < 4; i++) setTimeout(() => { this.burst('bandpass', 1400 + Math.random() * 900, 1.6, 0.06, 0.06); this.burst('lowpass', 300, 1, 0.05, 0.04); }, i * 160 + Math.random() * 40); }
+  equip(kind: 'metal' | 'cloth' | 'leather' | 'jewel' | 'tool') { if (!this.ctx) return;
+    if (kind === 'cloth') { this.burst('bandpass', 2400, 0.7, 0.22, 0.06); setTimeout(() => this.burst('bandpass', 1800, 0.8, 0.16, 0.05), 140); }
+    else if (kind === 'leather') { this.burst('lowpass', 900, 1.2, 0.12, 0.08); setTimeout(() => this.burst('bandpass', 1300, 2, 0.06, 0.06), 120); this.tone(160, 120, 0.06, 0.04, 'triangle', 0.18); }
+    else if (kind === 'jewel') { this.tone(2400, 2400, 0.4, 0.04, 'sine'); this.tone(3600, 3600, 0.5, 0.025, 'sine', 0.06); }
+    else if (kind === 'tool') { this.burst('lowpass', 700, 1.4, 0.08, 0.08); this.metal(520, 0.25, 0.05, 0.05); }
+    else { this.burst('bandpass', 1600, 1.2, 0.06, 0.07); this.metal(380 + Math.random() * 80, 0.45, 0.08, 0.02); this.metal(900, 0.25, 0.03, 0.12); } }
   hurt() { if (!this.ctx) return; this.effort('hurt'); this.burst('lowpass', 700, 0.8, 0.12, 0.12); this.tone(120, 70, 0.16, 0.08); }
   dash() { if (!this.ctx) return; const f = this.burst('bandpass', 1200, 0.9, 0.3, 0.14, 1.3); f.frequency.exponentialRampToValueAtTime(3200, this.ctx.currentTime + 0.2); }
   chime() { if (!this.ctx) return; this.tone(660, 660, 0.9, 0.06); this.tone(990, 990, 1.1, 0.045, 'sine', 0.08); this.tone(1320, 1320, 1.2, 0.03, 'sine', 0.16); }

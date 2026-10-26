@@ -80,7 +80,7 @@ export function createStable(ctx: StableCtx) {
   sc.add(new THREE.HemisphereLight(0xfff0d8, 0x3a2a20, 1.6)); const dl = new THREE.DirectionalLight(0xffe0b0, 2.2); dl.position.set(2, 4, 3); sc.add(dl);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(1.6, 32), new THREE.MeshToonMaterial({ color: 0x5a4a30, gradientMap: ramp })); floor.rotation.x = -Math.PI / 2; sc.add(floor);
   let model: { root: THREE.Group; pose: (dt: number, mv: number, t: number) => void } | null = null, modelId = '';
-  let yaw = Math.PI + 0.6, drag = false, dragX = 0, moved = 0, hop = 0, spin = 0, runT = 0;
+  let yaw = 0.6, drag = false, dragX = 0, moved = 0, hop = 0, spin = 0, runT = 0;
   function setModel(id: string) { if (modelId === id) return; if (model) sc.remove(model.root); modelId = id;
     if (PETS[id]) { const m = petModel(PETS[id]!); model = m; } else { const m = mountModel(MOUNTS[id]!); model = { root: m.root, pose: (dt, mv) => m.hz.pose({ dt, mv, idle: mv < 0.1 }) }; }
     sc.add(model.root); const box = new THREE.Box3().setFromObject(model.root), sz = box.getSize(new THREE.Vector3()), h = Math.max(sz.y, sz.z * 0.7, 0.4);

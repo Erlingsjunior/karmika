@@ -23,7 +23,7 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
     r = el.getBoundingClientRect(); if (T + r.height > innerHeight - 4) T = Math.max(2, innerHeight - r.height - 4);
     if (Math.abs(L - r.left) > 0.5 || Math.abs(T - r.top) > 0.5) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.right = 'auto'; } };
   const applySize = () => { const p = pos[id]; if (p?.w && p?.h) { el.classList.add('sized'); el.style.setProperty('--fw-w', p.w + 'px'); el.style.setProperty('--fw-h', p.h + 'px'); } };
-  applySize(); addEventListener('resize', fit); new ResizeObserver(() => fit()).observe(el);
+  applySize(); addEventListener('resize', fit); { let q = 0; new ResizeObserver(() => { if (q) return; q = requestAnimationFrame(() => { q = 0; fit(); }); }).observe(el); } /* no quadro seguinte: sem o aviso "ResizeObserver loop" */
   /* alça de redimensionar no canto inferior direito */
   const grip = document.createElement('div'); grip.className = 'rz'; grip.title = 'Arraste para mudar o tamanho da janela (duplo clique: tamanho padrão)'; el.appendChild(grip);
   new MutationObserver(() => { if (grip.parentElement !== el || el.lastElementChild !== grip) el.appendChild(grip); }).observe(el, { childList: true });

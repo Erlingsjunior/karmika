@@ -539,6 +539,7 @@
   .evtask { position: fixed; transform: translate(-50%, -100%); pointer-events: none; z-index: 5; text-align: center; padding: 3px 9px 4px; background: linear-gradient(#1c1208ee, #0e0804ee); border: 1px solid #c9a24a; border-radius: 6px; font-family: Georgia, serif; animation: evtk 1.6s ease-in-out infinite; white-space: nowrap; }
   .evtask b { display: block; font-size: 12.5px; color: #ffe08a; } .evtask small { font-size: 10.5px; color: #e8d8b0; } .evtask.near { border-color: #fff0b0; box-shadow: 0 0 14px #ffd07080; } .evtask.near small { color: #fff; font-weight: 700; }
   @keyframes evtk { 50% { transform: translate(-50%, calc(-100% - 5px)); } }
+  .npc p.bark { font-style: italic; border-color: #8a6a32 !important; }
   #mini, #btns, #btns button { pointer-events: auto; } #mini { position: fixed; right: 14px; top: 12px; width: 178px; z-index: 6; text-align: center; }
   #mini canvas { width: 170px; height: 170px; border-radius: 50%; border: 4px solid #a4833f; box-shadow: 0 0 0 2px #120a04, 0 0 0 4px #5a4220, 0 0 18px #000, inset 0 0 14px #000; background: #0a0810; display: block; margin: 2px auto; }
   #mini .nn { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font: 700 11px Cinzel, serif; color: #ffe08a; text-shadow: 0 1px 3px #000; font-style: normal; background: #1c130b; border: 1px solid #a4833f; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; }
@@ -629,7 +630,7 @@
   /* mochila com bolsas */
   .bagpn { width: 860px; max-width: calc(96vw / var(--ui)); display: flex; flex-direction: column; overflow: hidden !important; box-sizing: border-box; }
   .bagpn h2 { flex-wrap: wrap; row-gap: 4px; } .bagpn h2 .cap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-  .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(392px, 1fr)); gap: 8px; align-content: start; align-items: start; }
+  .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); gap: 8px; align-content: start; align-items: start; }
   .bagsx > .profgo { grid-column: 1 / -1; }
   .acc { background: rgba(0,0,0,.25); border: 1px solid #4a3c28; } .acc.spec { border-color: #6a5430; }
   .acc > h3 { margin: 0; padding: 6px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; } .acc > h3:hover { background: rgba(255,224,138,.06); }
@@ -1144,7 +1145,7 @@
   // diagnóstico: mostra qualquer erro na tela em vez de ficar preto
   (function(){
     function show(m){ var d=document.getElementById('kerr'); if(!d){ d=document.createElement('pre'); d.id='kerr'; d.style.cssText='position:fixed;left:8px;right:8px;top:70px;z-index:99;max-height:70vh;overflow:auto;margin:0;padding:10px;background:rgba(40,0,0,.92);color:#ffb4a8;font:12px/1.4 monospace;white-space:pre-wrap;border:1px solid #a33'; document.body.appendChild(d);} d.textContent += m + '\n\n'; }
-    window.addEventListener('error', function(e){ show('ERRO: ' + e.message + (e.filename? '\n' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
+    window.addEventListener('error', function(e){ if (/ResizeObserver loop/.test(e.message || '')) { e.stopImmediatePropagation && e.stopImmediatePropagation(); return; } show('ERRO: ' + e.message + (e.filename? '\n' + e.filename.split('/').pop() + ':' + e.lineno : '')); });
     window.addEventListener('unhandledrejection', function(e){ show('PROMISE: ' + (e.reason && (e.reason.stack || e.reason.message) || e.reason)); });
     window.__kshow = show;
   })();
