@@ -876,8 +876,8 @@ function slotPic(): Promise<string | null> { return new Promise((res) => { try {
 function heroCard(root: THREE.Object3D): string | null {
   const W = 264, H = 330, S = 2, rw = W * S, rh = H * S, rt = new THREE.WebGLRenderTarget(rw, rh); rt.texture.colorSpace = THREE.SRGBColorSpace;
   const ps = new THREE.Scene(); ps.environment = scene.environment;
-  ps.add(new THREE.HemisphereLight(0xfff2dc, 0x4a3a30, 2.4));
-  const key = new THREE.DirectionalLight(0xfff0d8, 3.2); key.position.set(1.6, 2.6, 3.2); ps.add(key);
+  ps.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a50, 4.2)); ps.add(new THREE.AmbientLight(0xffffff, 1.4));
+  const key = new THREE.DirectionalLight(0xfff0d8, 5.2); key.position.set(1.6, 2.6, 3.2); ps.add(key);
   const fill = new THREE.DirectionalLight(0xc8d8ff, 1.1); fill.position.set(-2.4, 1.2, 1.6); ps.add(fill);
   const rim = new THREE.DirectionalLight(0xffd8a0, 2.4); rim.position.set(-1.2, 2.2, -3); ps.add(rim);
   const parent = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible;
@@ -971,15 +971,23 @@ const settleAt = (x: number, y: number, pad = 6) => city.settlements.find((q) =>
 const hereSettle = () => { const h0 = hereT(); return settleAt(h0.x, h0.y); };
 const npcHome = (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n ? settleAt(n.def.x / T, n.def.z / T, 12) : null; };
 /* quem já jogava antes do alinhamento existir: as missões feitas contam (uma vez só) */
-setTimeout(() => { if (align.flag('seed1')) return; for (const id of quests.q.done) { const d = quests.def(id); if (!d || id.startsWith('b_')) continue; const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story'; if (st) { align.add('vila', st.name, story ? 6 : 3, undefined, true); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1, undefined, true); } } align.setFlag('seed1'); const h = hereSettle(); if (h) game.logMsg(`🏘 Alinhamento Kármico com ${h.name}: ${align.tier('vila', h.name).name} (as suas missões contaram).`, align.tier('vila', h.name).col); }, 2500);
-queueMicrotask(() => quests.addDoneHook((d) => { const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
+/* quem já jogava antes do alinhamento existir: cada missão feita conta uma vez só (marcada por id). Roda no relógio do alinhamento,
+   só depois que o personagem e os NPCs do mundo carregaram — antes, o cálculo rodava na tela de personagens e marcava "feito" sem contar nada. */
+let alignCU = 0;
+function alignCatchup() { if (!profile || inicio.isOpen || creating || !npcSys.npcs.length) return; const nowC = performance.now(); if (nowC < alignCU) return; alignCU = nowC + 4000;
+  if (align.flag('seed1') && !align.flag('seed2')) { /* a semente antiga: se ela chegou a contar alguma coisa, as missões feitas até aqui já valeram */ if (align.places().some((p) => align.get('vila', p.name) > 0)) for (const id of quests.q.done) align.setFlag('q:' + id); align.setFlag('seed2'); }
+  align.setFlag('seed2'); let n = 0;
+  for (const id of quests.q.done) { if (align.flag('q:' + id)) continue; const d = quests.def(id); if (!d || id.startsWith('b_')) { align.setFlag('q:' + id); continue; } const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); if (!st) continue;
+    const story = questCat(d) === 'story'; align.add('vila', st.name, story ? 6 : 3, undefined, true); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1, undefined, true); align.setFlag('q:' + id); n++; }
+  if (n) { const h = hereSettle(); game.logMsg(`🏘 ${n} missões antigas contaram para o seu Alinhamento Kármico${h ? `: ${h.name} agora te vê como ${align.tier('vila', h.name).name}` : ''}.`, h ? align.tier('vila', h.name).col : '#ffe08a'); } }
+queueMicrotask(() => quests.addDoneHook((d) => { align.setFlag('q:' + d.id); const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
   if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
   const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));
 /** quem defende as casas: bicho derrubado perto do povoado soma um pouquinho */
 function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | undefined) { if (!e?.pos || e.def?.passive) return; const st = settleAt(e.pos.x / T, e.pos.z / T, 25); if (st) align.add('vila', st.name, 0.25); }
 /* chegada e volta: quem é querido é recebido; a festa só acontece uma vez */
 let alignChk = 0, alignHere = '';
-function alignTick(dt: number) { void dt; const nowA = performance.now(); if (nowA < alignChk) return; alignChk = nowA + 1000; /* relógio de verdade */ const st = hereSettle(), nm = st?.name ?? '';
+function alignTick(dt: number) { void dt; const nowA = performance.now(); if (nowA < alignChk) return; alignChk = nowA + 1000; /* relógio de verdade */ alignCatchup(); const st = hereSettle(), nm = st?.name ?? '';
   if (nm && nm !== alignHere) { const away = align.arrive(nm), t = align.tier('vila', nm);
     if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(align.flag('festa_' + nm) === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
     else if (away > 10 * 60000 && t.min <= -60) game.logMsg(`🏘 Em ${nm} as portas se fecham quando você passa (${t.name}).`, t.col); }

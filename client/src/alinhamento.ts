@@ -45,7 +45,7 @@ export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'vil
   function visitedHtml() { const P = ctx.places().filter((p) => S.seen[p.name] || S.v[k('vila', p.name)]); const R = ctx.regions().filter((r) => S.v[k('regiao', r)]); const F = ctx.factions().filter((f) => S.v[k('faccao', f.id)] || ctx.myFac() === f.id);
     const sec = (t: string, rows: string) => rows ? `<h4>${t}</h4>${rows}` : '';
     return (sec('Vilas e cidades', P.sort((a, b) => get('vila', b.name) - get('vila', a.name)).map((p) => row(`${p.kind === 'city' ? '🏰' : '🏘'} ${p.name}`, get('vila', p.name))).join('')) + sec('Regiões', R.map((r) => row(`⛰ ${r}`, get('regiao', r))).join('')) + sec('Facções', F.map((f) => row(`⚑ ${f.name}`, get('faccao', f.id))).join(''))) || '<p class="alsd">Você ainda não passou por nenhum lugar que te conheça.</p>'; }
-  return { visitedHtml, get, add, toggle, get isOpen() { return open; }, tier: (kind: Kind, name: string) => tierOf(get(kind, name)),
+  return { visitedHtml, get, places: () => ctx.places(), add, toggle, get isOpen() { return open; }, tier: (kind: Kind, name: string) => tierOf(get(kind, name)),
     /** chegou na vila: guarda a hora (para saber se é volta) e devolve há quanto tempo não vinha (ms) */
     arrive(name: string) { const now = Date.now(), last = S.seen[name] ?? 0; S.seen[name] = now; save(); return last ? now - last : -1; },
     flag: (f: string) => S.flags[f] ?? 0, setFlag(f: string, v = 1) { S.flags[f] = v; save(); } };
