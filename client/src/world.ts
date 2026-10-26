@@ -1,5 +1,10 @@
 import { CAMPAIGN_NPCS } from './campanha';
 import type { Tile } from '@karmika/shared';
+/** os nomes dos lugares de ofício: na cidade são casas de verdade; na vila, coisa simples (Erling, 25/10) */
+export const STATION_NAMES = {
+  city: ['Marcenaria', 'Forja', 'Curtume e Alfaiataria', 'Apotecário', 'Escola de Cozinha', 'Casa de Tecnologia'],
+  village: ['Barracão de Corte', 'Forja ao Ar Livre', 'Mesa do Curtidor', 'Apotecário', 'Cozinha dos Fundos', 'Oficina de Latão'],
+} as const;
 
 /** deslocamento das Terras dos Homens dentro do mundo grande (tiles) */
 export const SH = 210;
@@ -1390,14 +1395,35 @@ export function buildCity(): World {
       let okv = false; for (let r = 2; r <= 9 && !okv; r++) for (let a = 0; a < 16 && !okv; a++) { const ang = (a % 2 ? 1 : -1) * Math.ceil(a / 2) * 0.3927 + 0.6 + Math.PI, gx = Math.round(hubX(t) + Math.cos(ang) * r), gy = Math.round(t.y + Math.sin(ang) * r); /* do outro lado do centro, de frente para o correio */
         if (!inb(gx, gy) || taken.has(gy * 100000 + gx) || !['grass', 'plaza', 'dirt'].includes(map[gy][gx] as string)) continue;
         props.push({ kind: 'vault', gx, gy, w: 1, h: 1, height: 1.2, wall: 0x4a3020, roof: 0xb08a40, variant: 0 }); for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) taken.add(y * 100000 + x); okv = true; } }
-    /* pontos de trabalho (bancada de corte, forja, curtidor, laboratório, cozinha): um de cada em todo povoado, em volta da praça, de frente para o centro */
-    for (const t of settlements) { const placed: number[] = [];
-      for (let v = 0; v < 5; v++) { let ok = false;
-        for (let r = 6; r <= 16 && !ok; r++) for (let a = 0; a < 24 && !ok; a++) { const ang = a * 0.2618 + v * 1.2566 + 0.3, gx = Math.round(hubX(t) + Math.cos(ang) * r) - 1, gy = Math.round(t.y + Math.sin(ang) * r) - 1;
-          let free = true; for (let y = gy - 1; y <= gy + 2 && free; y++) for (let x = gx - 1; x <= gx + 2 && free; x++) if (!inb(x, y) || taken.has(y * 100000 + x) || !['grass', 'plaza', 'dirt'].includes(map[y][x] as string)) free = false;
-          if (!free) continue;
-          const cx = gx + 1, cy = gy + 1; props.push({ kind: 'station', gx, gy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: Math.atan2(hubX(t) - cx, t.y - cy) });
-          for (let y = gy - 1; y <= gy + 2; y++) for (let x = gx - 1; x <= gx + 2; x++) taken.add(y * 100000 + x); placed.push(v); ok = true; } } } }
+    /* lugares de ofício (25/10, Erling: "como eu vou evoluir minhas coisas se a cidade simplesmente não tem?"): TODO povoado tem os cinco.
+       Na cidade (Askavik, Karmika) são casas de verdade (Marcenaria, Forja, Curtume, Apotecário, Escola de Cozinha) e mais a Casa de Tecnologia;
+       na vila é coisa simples (barracão de corte, forja ao ar livre, mesa do curtidor, apotecário pequeno, a cozinha dos fundos da taverna).
+       As vilas de vapor (Porto Caldeira, Ferrugem, Vaporeira) têm também a Oficina de Latão. Árvore e pedra solta cedem o lugar. */
+    const SOFTK = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch', 'fogpatch']);
+    const hard = new Set<number>(); for (const p of props) { if (SOFTK.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) hard.add(y * 100000 + x); }
+    for (const p of props) if (p.kind === 'vgate' || p.kind === 'gatehouse') { const R = Math.ceil(((p.len ?? 6) / T) / 2) + 2; for (let y = p.gy - R; y <= p.gy + R; y++) for (let x = p.gx - R; x <= p.gx + R; x++) hard.add(y * 100000 + x); } /* pórtico da vila: nada encosta nele */
+    const TECH = new Set(['Porto Caldeira', 'Ferrugem', 'Vaporeira']);
+    for (const t of settlements) { if (t.radius < 10) continue; /* cripta e clareira não são povoado */
+      const city = t.kind === 'city' || t.name === 'Karmika', names = city ? STATION_NAMES.city : STATION_NAMES.village;
+      const vs = t.kind === 'city' ? [5] : (city || TECH.has(t.name)) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4]; /* Askavik já tem as cinco na Casa dos Ofícios */
+      const S = city ? 3 : 2, tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
+      const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S && true; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
+      const put = (v: number, gx: number, gy: number, ry: number) => {
+        for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFTK.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + S + 1 && p.gy + p.h > gy - 1 && p.gy < gy + S + 1) props.splice(i, 1); }
+        for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass' as never;
+        props.push({ kind: 'station', gx, gy, w: S, h: S, height: city ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
+        for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { hard.add(y * 100000 + x); taken.add(y * 100000 + x); } };
+      for (const v of vs) { let ok = false;
+        if (v === 4 && tav) { /* a cozinha simples fica nos fundos da taverna: do lado de lá da casa, olhando a porta dos fundos */
+          const hx = tav.gx + tav.w / 2, hy = tav.gy + tav.h / 2, bx = hx - hubX(t), by = hy - t.y, bl = Math.hypot(bx, by) || 1;
+          for (let d = 0; d <= 3 && !ok; d++) for (let k = -2; k <= 2 && !ok; k++) { const ox = bx / bl, oy = by / bl, gx = Math.round(hx + ox * (tav.w / 2 + 1.6 + d) - oy * k) - 1, gy = Math.round(hy + oy * (tav.h / 2 + 1.6 + d) + ox * k) - 1;
+            if (fits(gx, gy, true)) { put(4, gx, gy, Math.atan2(hx - gx - 1, hy - gy - 1)); ok = true; } } }
+        for (let pass = 0; pass < 2 && !ok; pass++) for (let r = city ? 8 : 6; r <= (city ? 40 : 22) && !ok; r++) for (let a = 0; a < 32 && !ok; a++) { const ang = a * 0.19635 + v * 1.0472 + 0.3, gx = Math.round(hubX(t) + Math.cos(ang) * r) - (S >> 1), gy = Math.round(t.y + Math.sin(ang) * r) - (S >> 1);
+          if (t.kind === 'city' && Math.hypot(gx - t.x, gy - t.y) > t.radius - 8) continue;
+          if (!fits(gx, gy, pass === 1)) continue;
+          const cx = gx + S / 2, cy = gy + S / 2, ry = Math.atan2(hubX(t) - cx, t.y - cy);
+          { let door = true; for (const k of [1, 2]) { const fx = Math.floor(cx + Math.sin(ry) * (S / 2 + k)), fy = Math.floor(cy + Math.cos(ry) * (S / 2 + k)); if (!inb(fx, fy) || !['grass', 'plaza', 'dirt', 'road'].includes(map[fy][fx] as string)) door = false; } if (!door) continue; } /* a frente aberta dá para chão, nunca para o rio */
+          put(v, gx, gy, ry); ok = true; } } } }
   { /* cada um em chão livre de verdade (nada de gente em cima de telhado): procura em espiral o primeiro tile andável fora de qualquer construção */
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);

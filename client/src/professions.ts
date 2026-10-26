@@ -92,7 +92,7 @@ export const RECIPES2: Recipe[] = [
 ];
 const need = (l: number) => 20 + l * 12;
 /** ofícios que só se fazem no ponto de trabalho certo (as vilas e cidades têm um de cada) */
-export const STATION_OF: Partial<Record<ProfId, { name: string; icon: string }>> = { marceneiro: { name: 'Bancada de Corte', icon: '🪚' }, ferreiro: { name: 'Forja', icon: '⚒' }, costureiro: { name: 'Mesa do Curtidor', icon: '🧵' }, alquimista: { name: 'Laboratório', icon: '⚗' }, cozinheiro: { name: 'Cozinha', icon: '🍲' } };
+export const STATION_OF: Partial<Record<ProfId, { name: string; icon: string }>> = { marceneiro: { name: 'Marcenaria (na vila, o Barracão de Corte)', icon: '🪚' }, ferreiro: { name: 'Forja', icon: '⚒' }, costureiro: { name: 'Curtume (na vila, a Mesa do Curtidor)', icon: '🧵' }, alquimista: { name: 'Apotecário', icon: '⚗' }, cozinheiro: { name: 'Escola de Cozinha (na vila, a cozinha nos fundos da taverna)', icon: '🍲' } };
 interface Ctx { /** trabalho na bancada: barra em volta do ícone, som e animação; step(k) faz a peça k e diz se deu */ craftJob?(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }): void; onLevel?(id: string, name: string, icon: string, lvl: number): void; /** o herói está no ponto de trabalho deste ofício? */ atStation?(prof: string): boolean; /** efeito na bancada quando algo fica pronto */ craftFx?(prof: string): void;
   has(id: string, n?: number): boolean; count(id: string): number; take(id: string, n: number): boolean; add(id: string, n: number): void; addGear(g: Gear): boolean;
   invCraft(id: string): void; itemName(id: string): string; itemIcon(id: string): string; heroLvl(): number;
@@ -124,7 +124,7 @@ export function createProfessions(ctx: Ctx) {
   function one(r: Recipe, first: boolean): boolean {
     { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return false; } }
     if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return false; }
-    { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem uma, em volta da praça.`, '#ff9a8a'); return false; } }
+    { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem, em volta da praça (veja no mapa).`, '#ff9a8a'); return false; } }
     if (!ready(r)) { if (first) ctx.log('Faltam materiais.', '#ff9a8a'); return false; }
     if (r.inv) { ctx.invCraft(r.inv); gain(r.prof, 4); if (r.inv === 'fire') api.close(); return r.inv !== 'fire'; }
     for (const [i, n] of r.need) ctx.take(i, n);
@@ -140,7 +140,7 @@ export function createProfessions(ctx: Ctx) {
       /* confere antes de começar (sem gastar nada): classe, nível, bancada e materiais */
       { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return; } }
       if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return; }
-      { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem uma, em volta da praça.`, '#ff9a8a'); return; } }
+      { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem, em volta da praça (veja no mapa).`, '#ff9a8a'); return; } }
       if (!ready(r)) { ctx.log('Faltam materiais.', '#ff9a8a'); return; }
       ctx.craftJob({ prof: r.prof, name: nm, icon: ic, times, step: (k) => { const ok = one(r, k === 0); render(); return ok; }, can: () => ready(r) && (!ctx.atStation || !STATION_OF[r.prof] || ctx.atStation(r.prof)) });
       return;
@@ -159,7 +159,7 @@ export function createProfessions(ctx: Ctx) {
       : `<em class="emptyb">${P.name} é coleta: sobe trabalhando no mundo${pair ? ` e abastece o ${pair.name}` : ''}.</em>`;
     el.innerHTML = `<div class="pn profpn"><h2>⚒ Profissões <button data-px>✕</button></h2><div class="pfwrap"><nav class="pfnav">${nav}</nav>
       <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
-      ${(() => { const S = STATION_OF[sel]; if (!S) return ''; const here = !ctx.atStation || ctx.atStation(sel); return `<div class="pfst ${here ? 'here' : 'away'}">${S.icon} ${here ? `Você está na <b>${S.name}</b>: mãos à obra.` : `Só se faz na <b>${S.name}</b>. Toda vila e cidade tem uma, em volta da praça.`}</div>`; })()}
+      ${(() => { const S = STATION_OF[sel]; if (!S) return ''; const here = !ctx.atStation || ctx.atStation(sel); return `<div class="pfst ${here ? 'here' : 'away'}">${S.icon} ${here ? `Você está na <b>${S.name}</b>: mãos à obra.` : `Só se faz na <b>${S.name}</b>. Toda vila e cidade tem, em volta da praça (veja no mapa).`}</div>`; })()}
       <div class="pflist ${STATION_OF[sel] && ctx.atStation && !ctx.atStation(sel) ? 'away' : ''}">${list}</div></div></div><small class="ft">Y abre e fecha · Esc fecha</small></div>`;
     el.style.display = 'flex';
   }

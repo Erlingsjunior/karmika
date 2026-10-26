@@ -42,7 +42,7 @@ import { createNet, type Net } from './net';
 import { createCoop } from './coop';
 import { createInicio } from './inicio';
 import { profLevelUp, badge } from './celebrate';
-import { STATION_INFO } from './stations3d';
+import { STATION_INFO, CUTAWAYS, HALL_WALLS } from './stations3d';
 import { questCat, createQuests, SIDE, WARRIOR, RACE_ROADS } from './quests';
 import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
@@ -55,6 +55,7 @@ import { createOrmund } from './ormund';
 import { createSecrets, CACHE_LORE, type SenseGoal, type Cache } from './segredos';
 import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
+import { DG_TIERS } from './masmorras';
 import { PALADIN, VAMPIRE, TECHNO, WEREWOLF, RACE_INSTINCT } from './sagas';
 import { createAtmos } from './atmos';
 import { createCraftHall } from './oficios';
@@ -1667,7 +1668,7 @@ function drawBig() {
     const sz = s0 * 0.6, withLabel = mapV.z >= 5.5;
     const put = (glyph: string, x0: number, y0: number, name: string, sub: string, ring: string) => { const x = X(x0), y = Y(y0); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) return; icon(glyph, x, y, sz, ring); if (withLabel) label(name, x, y + sz + 10, 10, '#e8dcc0'); mapHits.push({ x, y, r: sz + 2, name, sub }); };
     for (const p of city.props) {
-      if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) put(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, si.name, `Lugar de trabalho · ${PROF_NAME[si.prof] ?? si.prof}`, '#8ab4d8'); }
+      if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) put(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, p.label || si.name, `Lugar de trabalho · ${PROF_NAME[si.prof] ?? si.prof}`, '#8ab4d8'); }
       else if (p.kind === 'mailbox') put('📮', p.gx + 0.5, p.gy + 0.5, 'Correio', 'Cartas e encomendas', '#a0d8a0');
       else if (p.kind === 'vault') put('🏦', p.gx + p.w / 2, p.gy + p.h / 2, 'Cofre', 'Guarde itens e ouro', '#a0d8a0');
       else if (p.kind === 'noticeboard') put('📋', p.gx + 0.5, p.gy + 0.5, 'Quadro de Avisos', 'Contratos e missões', '#a0d8a0');
@@ -2049,13 +2050,19 @@ const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) &
 /* objetos sólidos do cenário (fonte, bancos, barracas, tendas, baús, tochas, lápides, estátuas, relíquias…): não se atravessa mais.
    O que continua passável de propósito: grama, ervas, ossos e o meio das árvores da floresta (só o tronco bloqueia) */
 /** pontos de trabalho do mapa (centro em metros) */
-const STATIONS = city.props.filter((p) => p.kind === 'station').map((p) => ({ x: (p.gx + p.w / 2) * T, z: (p.gy + p.h / 2) * T, v: p.variant ?? 0 }));
+const STATIONS = city.props.filter((p) => p.kind === 'station').map((p) => ({ x: (p.gx + p.w / 2) * T, z: (p.gy + p.h / 2) * T, v: p.variant ?? 0, label: p.label || STATION_INFO[p.variant ?? 0].name }));
 const PROF_NAME: Record<string, string> = { marceneiro: 'Marceneiro', ferreiro: 'Ferreiro', costureiro: 'Costureiro', alquimista: 'Alquimista', cozinheiro: 'Cozinheiro' };
-function stationNear(prof: string, reach = 6) { if (inside) return null; const hx = state.fx * T, hz = state.fy * T; return STATIONS.find((s2) => STATION_INFO[s2.v].prof === prof && Math.hypot(s2.x - hx, s2.z - hz) < reach) ?? null; }
+function stationNear(prof: string, reach = 6) { if (inside) return null; const hx = state.fx * T, hz = state.fy * T; return STATIONS.find((s2) => (STATION_INFO[s2.v].prof === prof || (s2.v === 5 && (prof === 'ferreiro' || prof === 'marceneiro'))) && Math.hypot(s2.x - hx, s2.z - hz) < reach) ?? null; }
+const cutV = new THREE.Vector3();
 const SOLID_R: Record<string, number> = { station: 0.72, noticeboard: 0.3, mailbox: 0.2, vault: 0.36, shopfront: 1.2, fountain: -1, deadwell: -1, bench: 0.24, stall: 0.6, chest: 0.24, torch: 0.1, relic: 0.4, tent: 0.85, grave: 0.18, angel: 0.38, obelisk: 0.34, saint: 0.38, altar: 0.55, campfire: 0.26, gpillar: 0.24, mausoleum: -1 };
 const solids = new Map<number, { x: number; y: number; r: number }[]>();
 for (const p of city.props) { const r0 = SOLID_R[p.kind]; if (r0 === undefined) continue; const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }
+/* as casas de ofício da cidade (25/10) têm paredes de fundo e laterais: corpo de verdade, a frente fica aberta */
+for (const p of city.props) { if (p.kind !== 'station' || p.w < 3) continue; const ry = p.ry ?? 0, cs = Math.cos(ry), sn = Math.sin(ry), cx = p.gx + p.w / 2, cy = p.gy + p.h / 2;
+  const wall = (x0: number, z0: number, x1: number, z1: number) => { const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.55); for (let i = 0; i <= n; i++) { const lx = x0 + (x1 - x0) * i / n, lz = z0 + (z1 - z0) * i / n, c = { x: cx + (lx * cs + lz * sn) / T, y: cy + (-lx * sn + lz * cs) / T, r: 0.26 };
+    for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } };
+  for (const [x0, z0, x1, z1] of HALL_WALLS[p.variant ?? 0] ?? []) wall(x0, z0, x1, z1); }
 /** bichos são corpos: o herói não entra neles (só atravessa na investida e na esquiva); afastar-se é sempre livre */
 function enemyBlock(x: number, y: number) { const n = hero.actName; if (n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge') return false;
   for (const e of game.enemies.list) { if (!e.active || !e.alive || e.state === 'dead') continue; const ex = e.pos.x / T, ey = e.pos.z / T, m = (e.def.radius * 0.8 + 0.45) / T, dn = Math.hypot(x - ex, y - ey); if (dn < m && dn < Math.hypot(state.fx - ex, state.fy - ey)) return true; } return false; }
@@ -2254,14 +2261,26 @@ const dgs = createMasmorras({ scene, T, city: city as never, heightAt, regionLvl
   heroPos: () => heroPosNow(), project: (p) => { const v = p.clone().project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; }, partySize: () => netRef?.party ? netRef.party.members.length : 1, partyLvl: () => { const P = netRef?.party; if (!P) return game.st.lvl; const ls = P.members.map((id) => id === netRef!.myId ? game.st.lvl : netRef!.infoOf(id)?.lvl ?? game.st.lvl); return ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length); }, say: (t) => chat.sys(t), fine,
   onClear: (d, first) => { quests.onDungeon(d.id); feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
-function enterDungeon(en: (typeof dgs.entrances)[number]) {
+/** a placa da masmorra (25/10): mostra as dificuldades, os níveis e os prêmios; a masmorra acompanha o seu nível, mas você pode pedir mais */
+function dungeonBoard(en: (typeof dgs.entrances)[number]) {
+  const avg = Math.max(1, Math.round(game.st.lvl)), base = Math.max(1, avg - 1), seen = +(localStorage.getItem('karmika.dg.' + en.d.id) || 0);
+  const rows = DG_TIERS.map((t, i) => ({ kind: 'custom' as const, label: `${t.name} · nível ${base + t.lv}–${avg + 2 + t.lv}`, hint: `XP ×${t.xp} · 🪙 ×${t.gold} · baú ${t.min === 'epic' ? 'épico+' : 'raro+'}${t.extra ? ` · +${t.extra} peça` : ''}`, cb: () => { dlg.close(); if (i >= 3) game.logMsg(`⚠ ${t.name}: os bichos vêm ${t.lv} níveis acima de você. Boa sorte.`, t.col); enterDungeon(en, i); } }));
+  openDlg({ name: en.d.name, role: `${en.d.kind === 'grupo' ? 'Masmorra' : en.d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · ${en.d.players}`, portrait: null,
+    text: `Entalhado na tábua: “Quem desce volta mudado.”\n\nA masmorra acompanha o seu nível (${base}–${avg + 2}). Se quiser, peça mais: Difícil +4 níveis, Desafiador +8, Impossível +14 e Coisa de Doido +22. Quanto mais alto, mais fortes os bichos e mais rico o baú do chefe (e mais chance da peça única).${seen ? `\n\nVocê já venceu esta masmorra ${seen}×.` : ''}`,
+    choices: [...rows, { kind: 'custom' as const, label: 'Agora não.', hint: '', cb: () => dlg.close() }], onAccept: () => {}, onTurnIn: () => {} });
+}
+/* a placa da masmorra é sólida: dois postes e a tábua (antes se atravessava) */
+for (const en of dgs.entrances) { const big = en.d.kind === 'grupo' ? 1.35 : 1; en.root.updateMatrixWorld(true);
+  for (const lx of [-1.6, -0.8, 0, 0.8, 1.6]) { const v = new THREE.Vector3(-3.9 * big - 0.4 + Math.cos(0.18) * lx, 0, 3.6 * big - Math.sin(0.18) * lx); en.root.localToWorld(v); const c = { x: v.x / T, y: v.z / T, r: 0.22 };
+    for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } }
+function enterDungeon(en: (typeof dgs.entrances)[number], tier = 0) {
   withFade(() => {
     if (inside) scene.remove(inside.int.group);
     const int = dgs.build(en.d); int.group.position.set(IX, 0, IZ); scene.add(int.group);
     inside = { int, ret: { x: en.x, y: en.y + 2.4 }, prop: { kind: 'dungeon', gx: en.x, gy: en.y, w: 1, h: 1, height: 1, wall: 0, roof: 0 } as unknown as (typeof city.props)[number], dg: en.d.id };
     objs.group.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false;
     state.fx = (IX + int.W / 2) / T; state.fy = (IZ + int.D - 1.6) / T; state.path = []; heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D - 8; camY = 0;
-    dgs.start(en, int as never, { x: IX, z: IZ }, dgInst()); feats.bump('dgenter');
+    dgs.start(en, int as never, { x: IX, z: IZ }, dgInst(), tier); feats.bump('dgenter');
     netRef?.x('x:dgin', { id: en.d.id, inst: dgInst() });
   }, `Descendo: ${en.d.name}…`);
 }
@@ -2729,9 +2748,9 @@ function findInter(): Inter | null {
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
     for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
-    for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz); if (d < 5) add(d - 1.5, 3.6, `E — Entrar: ${en.d.name} (nível ${en.lvl[0]}–${en.lvl[1]} · ${en.d.players})`, () => enterDungeon(en)); }
+    for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz); if (d < 5.5) add(d - 1.5, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
     for (const rl of city.relics) { const d = Math.hypot((rl.x + 0.5) * T - hx, (rl.y + 0.5) * T - hz); if (d < 4.5) add(d - 2, 4, knowsRelic(rl.name) ? `E — Viajar (${rl.name})` : `E — Tocar ${rl.name}`, () => touchRelic(rl.name)); }
-    for (const st of STATIONS) { const d = Math.hypot(st.x - hx, st.z - hz); if (d < 5) { const I = STATION_INFO[st.v]; add(d - 1.6, 3.2, `E — ${I.name} · ${PROF_NAME[I.prof] ?? I.prof}`, () => { keys.clear(); profs.openAt(I.prof as never); }); } }
+    for (const st of STATIONS) { const d = Math.hypot(st.x - hx, st.z - hz); if (d < 5) { const I = STATION_INFO[st.v]; add(d - 1.6, 3.2, st.v === 5 ? `E — ${st.label} · forja e bancada do tecnocrata (reatores, engrenagens)` : `E — ${st.label} · ${PROF_NAME[I.prof] ?? I.prof}`, () => { keys.clear(); profs.openAt(I.prof as never); }); } }
     for (const p of nearProps(gx, gy, ['tree', 'rock', 'campfire', 'chest', 'herb'], 2)) {
       const px = (p.gx + 0.5) * T, pz = (p.gy + 0.5) * T, d = Math.hypot(px - hx, pz - hz);
       if (p.kind === 'chest') { if (!chestsOpen.has(p)) add(Math.hypot((p.gx + 0.5) * T - hx, (p.gy + 0.5) * T - hz), 3.0, 'E — Abrir baú', () => { chestsOpen.add(p); { const lid = chestLids.get(p); if (lid) { const t0 = performance.now(); const step = () => { const k = Math.min(1, (performance.now() - t0) / 450); lid.rotation.x = -1.85 * (1 - Math.pow(1 - k, 3)) - (k >= 1 ? 0 : Math.sin(k * Math.PI) * 0.12); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); } } const cx = (p.gx + 0.5) * T, cz = (p.gy + 0.5) * T, cy = heightAt(cx, cz); hero.act('combo1'); for (let i = 0; i < 24; i++) particles.spawn(cx, cy + 0.8, cz, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: 0xffc040, a: 1, g: 6 }); if (welcomeKit(cx, cz, cy)) return; game.logMsg('Você abriu o baú!', '#ffe08a'); game.spawnGear(cx, cz, cy, Math.max(2, game.st.lvl + 2), { magic: 2, rare: 2.2, legendary: 2.5, relic: 3 }, 2, 'magic'); game.st.gold += 10 + Math.floor(Math.random() * 25); }); }
@@ -3169,6 +3188,8 @@ function frameBody() {
       if (Math.random() < 0.5) { const a = Math.random() * 6.283, rr = 0.6 + Math.random() * (R2 - 1.2); particles.spawn(fp.x + Math.cos(a) * rr, fp.y + FOUNTAIN.rim, fp.z + Math.sin(a) * rr, { vx: 0, vy: 0.5, vz: 0, life: 0.9, s0: 0.5, s1: 1.1, c0: 0xdff4ff, c1: 0xbfe0ff, a: 0.18, drag: 1 }); }
     }
   }
+  /* casa de ofício: entrou, o telhado e a parede de fundo somem (dá para ver a bancada e o herói) */
+  { const hx = state.fx * T, hz = state.fy * T; const _v = cutV; for (const o of CUTAWAYS) { o.parent?.getWorldPosition(_v); const near = Math.hypot(_v.x - hx, _v.z - hz) < 4.2; if (o.visible === near) o.visible = !near; } }
   for (const sm of objs.smokers) if (Math.random() < 0.25) particles.spawn(sm.x, sm.y, sm.z, { vx: 0.5, vy: 0.9, vz: 0.1, life: 2.4, s0: 0.6, s1: 2.2, c0: 0x8a8a96, c1: 0x30303c, a: 0.22, drag: 0.4 });
   /* relíquias dos caminhantes: runas pulsam; as já marcadas ganham aura dourada e fagulhas */
   for (const rl of objs.relics) {

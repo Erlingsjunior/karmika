@@ -17,6 +17,14 @@ export interface BossMech {
   pools?: { every: number; n: number; k: number; name: string; col: number };
   enrage?: string;
 }
+/** as cinco dificuldades da placa: níveis a mais, vida e dano dos bichos, e o quanto o prêmio cresce */
+export const DG_TIERS = [
+  { id: 'normal', name: 'Normal', col: '#c8e8b0', lv: 0, hp: 1, dmg: 1, xp: 1, gold: 1, loot: 1, extra: 0, min: 'rare', uq: 0, note: 'Acompanha o seu nível.' },
+  { id: 'dificil', name: 'Difícil', col: '#ffd070', lv: 4, hp: 1.25, dmg: 1.15, xp: 1.5, gold: 1.6, loot: 1.4, extra: 0, min: 'rare', uq: 0.05, note: '+4 níveis. Bichos mais duros.' },
+  { id: 'desafiador', name: 'Desafiador', col: '#ff9a4a', lv: 8, hp: 1.6, dmg: 1.3, xp: 2.2, gold: 2.5, loot: 2, extra: 1, min: 'rare', uq: 0.12, note: '+8 níveis. Uma peça a mais no baú.' },
+  { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. Só épicas para cima no baú.' },
+  { id: 'doido', name: 'Coisa de Doido', col: '#d070ff', lv: 22, hp: 3, dmg: 1.9, xp: 5, gold: 7, loot: 5, extra: 2, min: 'epic', uq: 0.45, note: '+22 níveis. Quem sai vivo conta história.' },
+] as const;
 export interface DgDef {
   id: string; name: string; kind: 'grupo' | 'caverna' | 'subsolo'; lvl: [number, number] | null; theme: DgTheme; near: string; dx?: number; dy?: number;
   main: number; side: number; mobs: EnemyType[]; players: string;
@@ -113,6 +121,7 @@ export function createMasmorras(ctx: DgCtx) {
   const spotOk = (x: number, y: number, loose = false) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = ctx.city.map[y + dy]?.[x + dx], core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core ? t !== 'grass' && t !== 'road' && t !== 'plaza' : !t || t === 'water' || t === 'wall') return false; if ((!loose || core) && busy.has(x + dx + ',' + (y + dy))) return false; }
     return !ctx.city.settlements.some((s) => Math.hypot(s.x - x, s.y - y) < s.radius + 2); };
   const entrances: { d: DgDef; x: number; y: number; lvl: [number, number]; root: THREE.Group }[] = [];
+  /** a dificuldade escolhida na placa (Erling, 25/10): a masmorra acompanha o seu nível, mas você pode pedir mais — e o prêmio cresce junto */
   for (const d of DUNGEONS) {
     const t0 = target(d.near); if (!t0) continue; const bx = Math.round(t0.x + (d.dx ?? 0)), by = Math.round(t0.y + (d.dy ?? 6)); let at: { x: number; y: number } | null = null;
     for (let r = 0; r < 48 && !at; r++) for (let a = 0; a < 24 && !at; a++) { const x = Math.round(bx + Math.cos((a / 24) * 6.283) * r), y = Math.round(by + Math.sin((a / 24) * 6.283) * r); if (spotOk(x, y)) at = { x, y }; }
@@ -134,19 +143,20 @@ export function createMasmorras(ctx: DgCtx) {
   /* ---------- a corrida (uma masmorra por vez) ---------- */
   const HUD = document.createElement('div'); HUD.id = 'dghud'; document.body.appendChild(HUD);
   type Pool = { x: number; z: number; r: number; t: number; m: THREE.Mesh; dmg: number };
-  let run: null | { d: DgDef; int: DungeonFloor; O: { x: number; z: number }; pre: string; lvl: [number, number]; kills: number; need: number; total: number; boss: E | null; bossHp: number;
+  let run: null | { tier: (typeof DG_TIERS)[number]; d: DgDef; int: DungeonFloor; O: { x: number; z: number }; pre: string; lvl: [number, number]; kills: number; need: number; total: number; boss: E | null; bossHp: number;
     phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; opened: Set<number>; done: boolean; dead: Set<string> } = null;
   const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const hashS = (s: string) => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 2147483647; return h || 1; };
   function build(d: DgDef) { return buildDungeon({ seed: hashS(d.id), theme: d.theme, main: d.main, side: d.side, boss: d.kind === 'grupo' ? 11 : 8 }); }
   /** começa: monta os bandos com chaves de rede determinísticas (o grupo vê os mesmos bichos) */
-  function start(e: (typeof entrances)[number], int: DungeonFloor, O: { x: number; z: number }, inst: string) {
+  function start(e: (typeof entrances)[number], int: DungeonFloor, O: { x: number; z: number }, inst: string, tier = 0) {
+    const TI = DG_TIERS[Math.max(0, Math.min(DG_TIERS.length - 1, tier))];
     const d = e.d, r = rr(hashS(d.id + 'mobs')), n = Math.max(1, ctx.partySize()), pre = `dg:${d.id}:${inst}`;
     ctx.game.enemies.clearTag('dg');
     /* a masmorra acompanha quem entra (Erling, 25/10): sozinho, ela pega o seu nível; em grupo, a média do grupo */
-    const avg = Math.max(1, Math.round(ctx.partyLvl?.() ?? ctx.game.st.lvl)), lo = Math.max(1, avg - 1), hi = avg + 2; e = { ...e, lvl: [lo, hi] };
+    const avg = Math.max(1, Math.round(ctx.partyLvl?.() ?? ctx.game.st.lvl)), lo = Math.max(1, avg - 1 + TI.lv), hi = avg + 2 + TI.lv; e = { ...e, lvl: [lo, hi] };
     let total = 0, boss: E | null = null;
-    const S = (type: EnemyType, x: number, z: number, L: number, o: Record<string, unknown> = {}) => { const k = lvlScale(type, L); return ctx.game.enemies.spawn(type, O.x + x, O.z + z, { tag: 'dg', lvl: L, hpMul: k.hp * (o.hpX as number ?? 1), dmgMul: k.dmg * (o.dmgX as number ?? 1), aggro: 13, leash: 999, net: pre, ...o }) as E; };
+    const S = (type: EnemyType, x: number, z: number, L: number, o: Record<string, unknown> = {}) => { const k = lvlScale(type, L); return ctx.game.enemies.spawn(type, O.x + x, O.z + z, { tag: 'dg', lvl: L, hpMul: k.hp * TI.hp * (o.hpX as number ?? 1), dmgMul: k.dmg * TI.dmg * (o.dmgX as number ?? 1), aggro: 13, leash: 999, net: pre, ...o }) as E; };
     const main = int.rooms.filter((q) => q.kind === 'pack' || q.kind === 'elite');
     int.rooms.forEach((rm) => {
       const step = Math.max(0, main.indexOf(rm)), L = Math.round(lo + (hi - lo) * Math.min(1, step / Math.max(1, main.length - 1)));
@@ -157,15 +167,15 @@ export function createMasmorras(ctx: DgCtx) {
       else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); }
     });
     const need = Math.ceil(total * (d.kind === 'grupo' ? 0.7 : 0.6));
-    run = { d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), done: false, dead: new Set() };
-    ctx.game.logMsg(`⚔ ${d.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
+    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), done: false, dead: new Set() };
+    ctx.game.logMsg(`⚔ ${d.name} · ${TI.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
     hud();
   }
   function stop() { if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
   function hud() {
     if (!run) { HUD.style.display = 'none'; return; } const R = run, b = R.boss, open = !!R.int.gate?.opened;
     HUD.style.display = 'block';
-    HUD.innerHTML = `<b>${R.d.name}</b><small>nível ${R.lvl[0]}–${R.lvl[1]} · ${R.d.players}</small>` +
+    HUD.innerHTML = `<b>${R.d.name}</b><small style="color:${R.tier.col}">${R.tier.name}</small><small>nível ${R.lvl[0]}–${R.lvl[1]} · ${R.d.players}</small>` +
       (R.done ? `<div class="dg-done">✦ Vencida. O baú do chefe é seu.</div>` : open ? (b ? `<div class="dg-boss"><span>${b.def.name}</span><i style="width:${Math.max(0, (b.hp / b.hpMax) * 100).toFixed(1)}%"></i></div>` : '') :
         `<div class="dg-gate">🗝 Portão do chefe: <b>${Math.min(R.kills, R.need)}</b> / ${R.need}</div>`);
   }
@@ -183,11 +193,11 @@ export function createMasmorras(ctx: DgCtx) {
     for (let i = 0; i < 120; i++) { const a = Math.random() * 6.283, s = 2 + Math.random() * 6; ctx.particles.spawn(b.pos.x, 1 + Math.random() * 2, b.pos.z, { vx: Math.cos(a) * s, vy: Math.random() * 6, vz: Math.sin(a) * s, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xfff0b0, c1: 0xff8a3a, a: 1, drag: 1.5 }); }
     /* o saque é de cada um: equipamentos bons e, às vezes, a peça única da masmorra */
     const ilvl = R.lvl[1] + 1, y = ctx.heightAt(b.pos.x, b.pos.z);
-    ctx.game.spawnGear(b.pos.x, b.pos.z, y, ilvl, { rare: 6, legendary: 4, epic: 2 }, d.kind === 'grupo' ? 3 : 2, 'rare');
-    const uq = d.uniq?.length && (first || Math.random() < (d.kind === 'grupo' ? 0.3 : 0)) ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
+    ctx.game.spawnGear(b.pos.x, b.pos.z, y, ilvl, { rare: 6 * R.tier.loot, legendary: 4 * R.tier.loot, epic: 2 * R.tier.loot }, (d.kind === 'grupo' ? 3 : 2) + R.tier.extra, R.tier.min);
+    const uq = d.uniq?.length && (first || Math.random() < (d.kind === 'grupo' ? 0.3 : 0) + R.tier.uq) ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
     if (uq) { const g = genGear(ilvl, 'epic', uq.slot); g.name = uq.name; g.icon = uq.icon; g.rarity = 'unique'; (g as Gear & { lore?: string }).lore = uq.lore; for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.25 * 10) / 10; ctx.game.spawnGear(b.pos.x + 1, b.pos.z, y, ilvl, {}, 1, 'unique', [g]); ctx.game.logMsg(`✦ Peça única: ${uq.name}!`, '#f2cf6a'); }
-    const bonus = Math.round(ctx.game.xpNeed() * (d.kind === 'grupo' ? (first ? 0.6 : 0.25) : (first ? 0.3 : 0.1))); if (bonus > 0) ctx.game.gainXp(bonus);
-    ctx.game.st.gold += (d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)); ctx.audio.coins(3);
+    const bonus = Math.round(ctx.game.xpNeed() * (d.kind === 'grupo' ? (first ? 0.6 : 0.25) : (first ? 0.3 : 0.1)) * R.tier.xp); if (bonus > 0) ctx.game.gainXp(bonus);
+    ctx.game.st.gold += Math.round((d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)) * R.tier.gold); if (R.tier.lv) ctx.game.logMsg(`✦ ${R.tier.name}: prêmio ×${R.tier.gold}`, R.tier.col); ctx.audio.coins(3);
     ctx.onClear?.(d, first); hud();
   }
   /* ---------- chefe: telegrafa, chama ajuda, joga poças, enfurece ---------- */
