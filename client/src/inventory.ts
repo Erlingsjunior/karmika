@@ -6,7 +6,7 @@ import { facSet, myFac, setMyFac, FAC, FAC_LVL, FAC_ILVL, FAC_PRICE, type Fac } 
 import { reqLvl, tipCtx, genGear, gearTip, gearIcon, plainGear, syncUid, rollRarity, RARITY, RSLOT, STAT_LABEL, SPECIAL, type Gear, type Slot, type StatKey } from './loot';
 
 export type ItemKind = 'res' | 'food' | 'tool' | 'weapon' | 'armor' | 'shield' | 'misc';
-export interface Item { name: string; icon: string; kind: ItemKind; col: number; desc: string; heal?: number; mp?: number; buff?: string; atk?: number; def?: number; tier?: number; sell?: number }
+export interface Item { name: string; icon: string; kind: ItemKind; col: number; desc: string; /** item de missão: não se vende, não se dá, não vai ao leilão nem ao correio; destruir abandona a missão */ quest?: string; heal?: number; mp?: number; buff?: string; atk?: number; def?: number; tier?: number; sell?: number }
 export const ITEMS: Record<string, Item> = {
   stick: { name: 'Galho', icon: '🥢', kind: 'res', col: 0x8a6a3a, desc: 'Gravetos secos. Servem para ferramentas e fogueira.', sell: 1 },
   wood: { name: 'Madeira', icon: '🪵', kind: 'res', col: 0x7a5532, desc: 'Troncos cortados.', sell: 2 },
@@ -119,6 +119,8 @@ export const ITEMS: Record<string, Item> = {
   // companheiros
   pet_fox: { name: 'Raposa Ruiva', icon: '🦊', kind: 'misc', col: 0xd0702a, desc: 'Companheira que corre atrás dos itens caídos e traz para você.', tier: 1 },
   pet_pup: { name: 'Filhote de Lobo', icon: '🐺', kind: 'misc', col: 0x8a8a8a, desc: 'Fiel e rápido. Busca itens caídos.', tier: 1 },
+  carta_garrick: { name: 'Carta de Garrick', icon: '✉', kind: 'misc', col: 0xe8dcc0, quest: 'h09', desc: '◆ Item de missão (A carta para Lundr). Lacrada com o selo da guarda de Karmika, para a Sargenta Ilka, em Lundr. Não se vende nem se dá; destruir abandona a missão.' },
+  lenco_bento: { name: 'Lenço de Bento', icon: '🧣', kind: 'misc', col: 0xc84a5a, quest: 'h08', desc: '◆ Item de missão (O marido desaparecido). A Lúcia bordou para ele: mostre ao Bento para ele confiar em você. Não se vende nem se dá; destruir abandona a missão.' },
   pet_cat: { name: 'Gatinho Malhado', icon: '🐱', kind: 'misc', col: 0xd8883a, desc: 'Macio e curioso. No combate, chia e faz o inimigo parar. Use para levar ao Estábulo (X).', tier: 1 },
   pet_cat_b: { name: 'Gata Preta', icon: '🐈‍⬛', kind: 'misc', col: 0x26222a, desc: 'Faro fino no escuro: acha itens longe. Use para levar ao Estábulo (X).', tier: 1 },
   pet_rat: { name: 'Ratinho de Porão', icon: '🐀', kind: 'misc', col: 0x8a7a6a, desc: 'Faro fino: busca itens caídos bem mais longe. Use para levar ao Estábulo (X).', tier: 1 },
@@ -203,7 +205,7 @@ const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.h
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
-export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
   const tools: Record<ToolSlot, string | null> = { axe: null, pick: null, knife: null, shears: null, rod: null };
@@ -343,7 +345,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       const sp = (id: string) => Math.round((ITEMS[id]?.sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[id] ? SHOPDEF[shop].buys![id] : 1));
       const tag = (v: number) => shop && v > 0 ? `<i class="ptag">🪙${v}</i>` : '';
       const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
-      for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(STACK, left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+      for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(STACK, left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
       const sec = (key: string, head: string, count: string, body: string, extra = '') => `<section class="acc ${accClosed.has(key) ? 'closed' : ''} ${extra}"><h3 data-acct="${key}"><i class="car">▾</i>${head}<small>${count}</small></h3><div class="accb">${body}</div></section>`;
       const special = (title: string, ic: string, set: Set<string>, hint: string, cap = 0) => { const ids = [...set].filter((k) => (bag[k] ?? 0) > 0); return sec(title, `${ic} ${title}`, `${stacksIn(set)}/${cap} espaços`, `<div class="grid g6 sc" title="${hint}">${ids.map((i) => `<div class="it ${ITEMS[i]?.kind ?? ''}" draggable="true" data-drag="i:${i}:${bag[i]}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${bag[i]}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`).join('') || '<em class="emptyb">vazia</em>'}</div>`, 'spec'); };
       const cap = capacity(), used = cells.length;
@@ -473,11 +475,12 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       const [k, a, b] = ref.split(':');
       if (k === 'g') { const i = gearBag.findIndex((x) => x.uid === +a); if (i >= 0) gearBag.splice(i, 1); }
       else if (k === 'e') { eqG[a as Slot] = null; recalc(); }
-      else { bag[a] = Math.max(0, (bag[a] ?? 0) - (+b || 0)); if (bag[a] <= 0) delete bag[a]; recalc(); }
+      else { bag[a] = Math.max(0, (bag[a] ?? 0) - (+b || 0)); if (bag[a] <= 0) delete bag[a]; recalc(); if (ITEMS[a]?.quest && !bag[a]) hooks.questItemLost?.(ITEMS[a].quest!, a); }
       game.logMsg(`🗑 Destruiu ${nm}`, '#d0907a'); game.snd?.('click'); render(); save();
     });
   }
   function sellRef(ref: string) {
+    { const id0 = ref.split(':')[1]; if (ref.startsWith('b:') || ref.startsWith('i:')) { const it0 = ITEMS[id0]; if (it0?.quest) { game.logMsg(`◆ ${it0.name} é item de missão: não se vende. Se não quiser mais, destrua (a missão é abandonada).`, '#ffb060'); game.snd?.('error'); return; } } }
     const [k, a, b] = ref.split(':');
     if (k === 'g') { const i = gearBag.findIndex((x) => x.uid === +a); if (i < 0) return; const g = gearBag.splice(i, 1)[0]; st.gold += g.value; game.logMsg(`💰 Vendeu ${g.icon} ${g.name} por ${g.value} 🪙 (total ${st.gold}).`, '#ffd24a'); }
     else if (k === 'i') { const pr = Math.round((ITEMS[a]?.sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[a] ? SHOPDEF[shop].buys![a] : 1)); if (pr <= 0) { game.logMsg('Ninguém compra isso aqui.', '#ff9a8a'); return; } const n = Math.min(+b || 1, bag[a] ?? 0); if (!take(a, n)) return; st.gold += pr * n; game.logMsg(`💰 Vendeu ${n}× ${ITEMS[a].icon} ${ITEMS[a].name} por ${pr * n} 🪙 (total ${st.gold}).`, '#ffd24a'); }

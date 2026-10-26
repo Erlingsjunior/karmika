@@ -23,7 +23,8 @@ const IL = 'Sargenta Ilka', OM = 'Velho Ormur', OD = 'Irmã Odila', BR = 'Coveir
 const F = { who: 'Instinto', t: 'Aperte F (ou o terceiro olho, no menu de ações) para ligar o seu Instinto. O que esta missão pede só aparece para quem está atento.' };
 
 /** as pessoas novas que a campanha pôs no mundo (uma por vila do roteiro) — world.ts as coloca de pé */
-export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf' }[] = [
+export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf'; /** só aparece enquanto esta missão está no diário */ onlyQ?: string }[] = [
+  { vila: 'Igreja Abandonada', name: 'Bento', role: 'Caçador, escondido', dx: 1.5, dy: 1.5, tint: 0x5a4a32, onlyQ: 'h08', lines: ['Shh… eles ainda estão lá fora?', 'Não conta para a Lúcia que eu me escondi. Por favor.'] },
   { vila: 'Lundr', name: IL, role: 'Guarda-mor de Lundr', dx: 3, dy: 2.5, tint: 0x4a5a3a, lines: ['Lundr é pequena. Por isso a gente cuida dela como se fosse grande.', 'Os lobos sabem contar. Contam quantos guardas eu tenho.'] },
   { vila: 'Hrafnhöfn', name: OM, role: 'Faroleiro de Hrafnhöfn', dx: 3, dy: -2.5, tint: 0x5a6a7a, lines: ['Cinquenta anos acendendo o farol. Nunca apagou. Até agora.', 'O mar fala. O vento traduz.'] },
   { vila: 'Steinfoss', name: OD, role: 'Curandeira de Steinfoss', dx: -3, dy: 2.5, tint: 0xd8d0c0, lines: ['Febre não escolhe casa. Eu também não.', 'Lave as mãos antes de entrar. E antes de sair.'] },
@@ -86,7 +87,9 @@ export const HUMAN_ROAD: QuestDef[] = ([
     talk: ['Hedda. A sineira. Eu tocava sino com ela quando era menino. Então ela ficou.', 'O Mausoléu dos Esquecidos foi lacrado antes de eu nascer. Se os ossos estão de pé lá embaixo, alguém os levantou.', 'Desça. A entrada fica no cemitério, entre os túmulos mais velhos. E volte para me contar.'] },
   { id: 'h08', chain: CN, name: 'O marido desaparecido', lvl: 9, giver: 'Lúcia', xp: 1, gold: 30, items: [['potion', 1]], next: 'h09',
     text: '◈ O marido de Lúcia foi caçar ao norte e não voltou. Ligue o Instinto, siga as pegadas dele desde a vila até a Igreja Abandonada e afaste os puglins que rondam o lugar.',
-    objs: [{ kind: 'sense', what: 'rastro', label: 'Seguir as pegadas do marido de Lúcia', at: 'Igreja Abandonada', dx: -3, dy: 4, from: 'Karmika' }, { kind: 'kill', type: 'puglin', n: 4 }],
+    give: [['lenco_bento', 1]],
+    objs: [{ kind: 'sense', what: 'rastro', label: 'Seguir as pegadas do marido de Lúcia', at: 'Igreja Abandonada', dx: -3, dy: 4, from: 'Karmika' }, { kind: 'talk', npc: 'Bento' }, { kind: 'kill', type: 'puglin', n: 4 }],
+    meet: { Bento: ['(Atrás das pedras caídas da igreja, um homem magro aperta uma faca de caça contra o peito.)', 'Quem… quem é você? Fica abaixado!', '(Você mostra o lenço bordado pela Lúcia.) …Esse é o lenço dela. Ela mandou você?', 'Os puglins me cercaram faz quatro dias. Eu corri para cá e não saí mais. Tenho vergonha, mas estou vivo.', 'Espanta esses bichos e eu volto com você. Juro pelo Olho.'] },
     talk: ['Você desceu no mausoléu e voltou. Então você é a pessoa certa.', 'O Bento foi caçar ao norte faz cinco dias. Ele sempre volta em dois.', 'A chuva parou ontem. As pegadas ainda devem estar lá, se alguém souber olhar.', F],
     done: ['Ele… estava vivo? Estava vivo.', 'Machucado, escondido na igreja velha, com medo dos puglins. Ele contou que você chegou como se já soubesse onde ele estava.'],
     choice: { q: 'Bento pede que ninguém saiba que ele se escondeu em vez de lutar.', opts: [
@@ -95,6 +98,7 @@ export const HUMAN_ROAD: QuestDef[] = ([
 
   /* ---------------- Ato II · Para o leste: Lundr e o planalto (10–15) ---------------- */
   { id: 'h09', chain: CN, name: 'A carta para Lundr', lvl: 10, giver: 'Garrick', turnin: IL, xp: 1, gold: 20, next: 'h10',
+    give: [['carta_garrick', 1]],
     text: 'Garrick tem uma carta para a Sargenta Ilka, em Lundr, a vila do bosque a leste de Karmika. Siga a estrada para o leste. Ao chegar, toque a relíquia da vila: ela abre o caminho de volta (teleporte).',
     objs: [{ kind: 'visit', poi: 'Lundr' }, { kind: 'talk', npc: IL }],
     talk: ['Você cresceu rápido. Karmika ficou pequena para você, e isso é um elogio.', 'Lundr pediu ajuda. Os lobos do bosque estão mais ousados, e a Ilka não tem gente.', 'Leve esta carta. E abra os olhos na estrada: é a primeira vez que você sai do vale.'],

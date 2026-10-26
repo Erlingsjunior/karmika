@@ -37,6 +37,7 @@ export interface QuestDef { id: string; name: string; lvl: number; giver: string
   /** só para quem nasceu humano, elfo ou anão (as missões do instinto da raça) */ origin?: 'human' | 'elf' | 'dwarf';
   /** conversa ao pegar (antes do cartão da missão) e ao entregar (antes da recompensa) — dialog.ts */ talk?: Step[]; done?: Step[];
   /** conversa ao encontrar quem a missão manda procurar (objetivo 'talk'): o encontro tem diálogo próprio */ meet?: Record<string, Step[]>;
+  /** itens de missão entregues ao aceitar (não se vendem nem se dão; somem na entrega; destruir abandona a missão) */ give?: [string, number][];
   /** escolha kármica na entrega: o MOTIVO pesa (regra 10) */ choice?: { q: string; opts: { label: string; karma: number; say: string; why: string; /** marca que o mundo lembra */ flag?: string }[] } }
 
 const ENEMY_NAME = (t: EnemyType) => DEFS[t]?.name ?? t;
@@ -307,6 +308,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   let onAcceptCb: ((d: QuestDef) => void) | null = null;
   function accept(d: QuestDef, from?: string) { if (from && (q.active[d.id] || q.done.includes(d.id))) return; if (!q.active[d.id] && Object.keys(q.active).length >= questLimit() && d.giver !== 'O Olho' && !d.bridge) { ctx.log(`Diário cheio: até ${questLimit()} missões ao mesmo tempo${isPremium() ? '' : ' (Premium: 10)'}. Entregue ou abandone uma.`, '#ff9a8a'); return; } q.active[d.id] = { prog: d.objs.map(() => 0), def: from || d.board || d.bridge || d.id.startsWith('q') || d.id.startsWith('v') ? d : undefined, ...(from ? { from } : {}) }; defs.set(d.id, d);
     if (!d.bridge && q.active['b_' + d.id]) { delete q.active['b_' + d.id]; q.done.push('b_' + d.id); } // pegou a missão direto: a ponte já cumpriu o papel
+    for (const [it, n] of d.give ?? []) if (!ctx.count?.(it)) ctx.add(it, n);
     ctx.log(d.bridge ? `🧵 História: ${d.name}` : from ? `📜 Missão de ${from} aceita: ${d.name}` : `📜 Missão aceita: ${d.name}`, '#ffe08a'); save(); render(); if (!from && !d.bridge) onAcceptCb?.(d); }
   /** o fio da história nunca some: se a próxima missão amarela não está no diário, entra a ponte que leva até ela */
   function ensureThread(fromTurnIn?: QuestDef) {
@@ -319,6 +321,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   function turnIn(d: QuestDef) {
     if (d.id.startsWith('q') && npcSeeds[d.giver] !== undefined) { npcTimes[d.giver] = (npcTimes[d.giver] ?? 0) + 1; try { localStorage.setItem('karmika.npcqn.v1', JSON.stringify(npcTimes)); } catch { /* */ } if (npcTimes[d.giver] >= NPC_Q_MAX) setTimeout(() => ctx.log(`${d.giver}: “Já me ajudou o bastante. Daqui pra frente, só negócio.”`, '#c8b890'), 600); npcSeeds[d.giver] += 7; try { localStorage.setItem('karmika.npcq.v1', JSON.stringify(npcSeeds)); } catch { /* */ } }
     for (const o of d.objs) if (o.kind === 'collect') ctx.take(o.item, o.n);
+    for (const [it] of d.give ?? []) { const c = ctx.count(it); if (c > 0) ctx.take(it, c); }
     delete q.active[d.id]; q.done.push(d.id);
     ctx.st.gold += Math.round(d.gold * 0.6); ctx.gainXp(d.xp); for (const [it, n] of d.items ?? []) ctx.add(it, n); if (d.gear) ctx.gear(d.gear, d.lvl);
     if (d.title) { q.title = d.title; ctx.onTitle(d.title); }
@@ -417,8 +420,10 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const POSTABLE = ['wood', 'stone', 'hide', 'meat', 'fish', 'claw', 'dust', 'sap', 'apple', 'plank', 'nail', 'potion'];
   const loadPosts = (): Post[] => { try { return JSON.parse(localStorage.getItem('karmika.posts.v1') || 'null') ?? [{ by: 'Tessa', item: 'apple', n: 8, gold: 30 }, { by: 'Gunnar', item: 'plank', n: 6, gold: 45 }]; } catch { return []; } };
   const savePosts = (p: Post[]) => { try { localStorage.setItem('karmika.posts.v1', JSON.stringify(p)); } catch { /* */ } };
+  /** sem perguntar (o item da missão foi destruído) */
+  function dropQuest(id: string) { const d = def(id); if (!d || !q.active[id]) return; delete q.active[id]; for (const [it] of d.give ?? []) { const c = ctx.count(it); if (c > 0) ctx.take(it, c); } if (tracked === id) tracked = null; if (focusId === id) focusId = null; save(); render(); }
   function abandon(id: string) { const d = def(id); if (!d || !q.active[id]) return;
-    confirmBox(`Abandonar <b>${d.name}</b>? O progresso se perde. Você pode pegar de novo com ${d.giver}.`, 'Abandonar', () => { delete q.active[id]; if (tracked === id) tracked = null; if (focusId === id) focusId = null; save(); render(); ctx.log(`Missão abandonada: ${d.name}.`, '#c8b8a0'); }); }
+    confirmBox(`Abandonar <b>${d.name}</b>? O progresso se perde. Você pode pegar de novo com ${d.giver}.`, 'Abandonar', () => { delete q.active[id]; for (const [it] of d.give ?? []) { const c = ctx.count(it); if (c > 0) ctx.take(it, c); } if (tracked === id) tracked = null; if (focusId === id) focusId = null; save(); render(); ctx.log(`Missão abandonada: ${d.name}.`, '#c8b8a0'); }); }
   function render() {
     const ids = Object.keys(q.active);
     if (tracked && !q.active[tracked]) tracked = null; if (!tracked && ids.length) tracked = ids[0];
@@ -516,7 +521,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
   /** alguém matou você fora de duelo: o Olho guarda o nome (até 12, o mais recente por último) */
   function grudge(name: string) { if (!name) return; grudges = grudges.filter((g) => g.name.toLowerCase() !== name.toLowerCase()); grudges.push({ name, t: Date.now() }); grudges = grudges.slice(-12); sv('karmika.grudge.v1', grudges); }
-  return { grudge, shareState, setExtraTop(f: () => string) { extraTop = f; },
+  return { grudge, dropQuest, shareState, setExtraTop(f: () => string) { extraTop = f; },
     /** só o cartão do evento mudou (relógio, distância): troca o miolo sem refazer a lista (antes piscava, abrindo e fechando no hover) */
     renderExtra() { const x = el.querySelector('.xtop') as HTMLElement | null; const html = extraTop?.() ?? ''; if (!x || !!x.innerHTML !== !!html) { render(); return; }
       const cur = x.querySelector('.evq'), tmp = document.createElement('div'); tmp.innerHTML = html; const nw = tmp.querySelector('.evq'); if (cur && nw) { if (cur.innerHTML !== nw.innerHTML) cur.innerHTML = nw.innerHTML; } else x.innerHTML = html; }, abandon, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },

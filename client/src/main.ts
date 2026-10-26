@@ -252,10 +252,11 @@ const npcSys = createNpcs(scene, [
   { name: 'Gunnar', role: 'Construtor', kind: 'dwarf', ...OXY(31, 10.5), radius: 1.5, tint: 0x8a7a6a, scale: 1.0, lines: ['Tábua, prego e bloco. Com isso se levanta uma casa.', 'Compro madeira e pedra. Vendo material para quem quer construir.', 'Em breve você poderá erguer sua própria casa em Karmika. Os mestres construtores de Hallenheim fazem castelos — comece pelo galpão.'] },
   { name: 'Corwin', role: 'Domador', kind: 'technocrat', ...OXY(34.5, 24.5), radius: 1.5, tint: 0xd0702a, scale: 0.95, lines: ['Uma raposa adestrada busca o que cai no chão. Você só caça.', 'Os domadores de Askavik treinam ursos e falcões. Aqui, raposas e filhotes.', 'Trate bem seu companheiro. Ele lembra.'] },
   { name: 'Orm', role: 'Estalajadeiro', kind: 'dwarf', ...OXY(2.5, 18.5), radius: 1.5, tint: 0x6a4a2e, scale: 1.0, lines: ['Cavalo bom encurta a estrada. Z para montar, Z para descer.', 'Em combate o cavalo empina e você desce. Não adianta brigar montado — ainda.', 'Os haras de Hallenheim criam corcéis de guerra. O meu baio é honesto, só isso.'] },
-  ...city.settlements.flatMap((st) => st.npcs.map((n, i) => ({ name: n.name, role: n.role, kind: n.kind, civil: civilFor(n.role, n.kind, n.x, n.y, st.x + i), x: n.x * T, z: n.y * T, radius: n.radius, tint: n.tint, scale: n.scale, lines: n.lines, night: n.night }))),
+  ...city.settlements.flatMap((st) => st.npcs.map((n, i) => ({ name: n.name, role: n.role, kind: n.kind, civil: civilFor(n.role, n.kind, n.x, n.y, st.x + i), x: n.x * T, z: n.y * T, radius: n.radius, tint: n.tint, scale: n.scale, lines: n.lines, night: n.night, onlyQ: n.onlyQ }))),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
 ], { heightAt, walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; return !!t && isWalkable(t); }, camera, canvas,
+  questOn: (id) => { try { return !!quests.q.active[id]; } catch { return false; } },
   situ: () => { const tags: string[] = []; try { const hr = gameHour(), g = globalNow()?.id, k = state.karma, pth = myPath(), tp = temperature();
     tags.push(hr >= 5 && hr < 9 ? 'manha' : state.night > 0.5 ? 'noite' : 'dia'); if (tp < 3) tags.push('frio'); if (tp > 24) tags.push('calor');
     if (g === 'lua') tags.push('lua', 'lua'); if (g === 'aurora') tags.push('aurora', 'aurora');
@@ -528,6 +529,7 @@ const inv = createInventory(game, {
   canWear: (g) => kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null,
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
   /* usar e vestir com corpo e som (25/10): gole, mastigada, pano, couro, metal, joia — e um brilho no herói */
+  questItemLost: (qid, item) => { const d = quests.def(qid); if (d && quests.q.active[qid]) { quests.dropQuest(qid); game.logMsg(`◆ Você destruiu ${ITEMS_TBL[item]?.name ?? item}: a missão “${d.name}” foi abandonada. Pegue de novo com ${d.giver}.`, '#ffb060'); } },
   feel: (kind, id) => { const p = heroPos, y0 = heroY;
     if (kind === 'drink') { audio.gulp(); if (!hero.acting && !inside) hero.act('drink'); for (let i = 0; i < 14; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.8, y0 + 0.3 + Math.random() * 1.2, p.z + (Math.random() - 0.5) * 0.8, { vy: 1.2 + Math.random(), life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: /mana|🔮/.test(id) ? 0x5a8aff : 0xff4a6a, a: 0.9 }); }
     else if (kind === 'eat') { audio.chew(); if (!hero.acting && !inside) hero.act('drink'); for (let i = 0; i < 8; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.4, y0 + 1.5, p.z + (Math.random() - 0.5) * 0.4, { vx: (Math.random() - 0.5) * 1.5, vy: Math.random() * 1.2, vz: (Math.random() - 0.5) * 1.5, life: 0.5, s0: 0.14, s1: 0.04, c0: 0xe8c890, c1: 0x8a5a2a, a: 0.9, g: 4 }); }
@@ -640,7 +642,7 @@ game.setOnItem((id, n) => inv.add(id, n));
 game.setOnGear((g) => inv.addGear(g));
 /* leilão do Quadro de Avisos: vender, não só pedir (compras e vendas passam pelo correio) */
 const auction = createAuction({ me: () => profile?.name || RACES[state.race].label, lvl: () => game.st.lvl, st: game.st,
-  items: () => Object.entries(inv.bag).filter(([id, n]) => n > 0 && ITEMS_TBL[id]).map(([id, n]) => ({ id, n, name: ITEMS_TBL[id].name, icon: ITEMS_TBL[id].icon, sell: ITEMS_TBL[id].sell ?? 0, kind: ITEMS_TBL[id].kind })), gear: () => inv.gearBag,
+  items: () => Object.entries(inv.bag).filter(([id, n]) => n > 0 && ITEMS_TBL[id] && !ITEMS_TBL[id].quest).map(([id, n]) => ({ id, n, name: ITEMS_TBL[id].name, icon: ITEMS_TBL[id].icon, sell: ITEMS_TBL[id].sell ?? 0, kind: ITEMS_TBL[id].kind })), gear: () => inv.gearBag,
   take: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', itemKind: (id) => ITEMS_TBL[id]?.kind ?? 'res', itemValue: (id) => ITEMS_TBL[id]?.sell ?? 1,
   mail: (from, subj, text, att) => mail.send(from, subj, text, att), log: (t, c) => game.logMsg(t, c), save: () => inv.save() });
@@ -2451,6 +2453,9 @@ let bannerT = 0, qmT = 0;
 /** marcadores de missão sobre os NPCs: ? = tem missão, ! = missão pronta para entregar; amarelo história, verde recorrente (quadro), azul extra */
 function updateQuestMarks() {
   for (const n of npcSys.npcs) { if (!n.hero.root.visible) continue; const nm = n.def.name; let ti: ReturnType<typeof quests.turnins> = [], of: ReturnType<typeof quests.offers> = []; try { ti = quests.turnins(nm); of = quests.offers(nm); } catch (err) { console.warn('marca de missão', nm, err); } /* um NPC com problema não apaga as marcas dos outros */
+    /* quem uma missão manda procurar (objetivo 'falar com'): o sinal de pessoa da missão em cima da cabeça (Erling, 25/10) */
+    const meetQ = Object.keys(quests.q.active).map((id) => quests.def(id)).find((q2) => !!q2 && q2.objs.some((o, i) => o.kind === 'talk' && o.npc === nm && quests.objProg(q2, i) < 1));
+    if (meetQ && !ti.length) { const qm0 = n.el.querySelector('.qm') as HTMLElement | null; if (qm0) { n.el.dataset.qm = 'meet'; qm0.textContent = '👤'; qm0.title = `Missão: ${meetQ.name}`; } continue; }
     const d = ti[0] ?? of[0]; const cat = d ? ({ story: 'story', side: 'side', rep: 'board' } as const)[questCat(d)] : nm === 'Garrick' ? 'board' : null;
     const qm = n.el.querySelector('.qm') as HTMLElement | null; if (!qm) continue;
     if (!cat) { delete n.el.dataset.qm; continue; }

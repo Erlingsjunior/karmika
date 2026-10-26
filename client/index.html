@@ -540,6 +540,8 @@
   .evtask b { display: block; font-size: 12.5px; color: #ffe08a; } .evtask small { font-size: 10.5px; color: #e8d8b0; } .evtask.near { border-color: #fff0b0; box-shadow: 0 0 14px #ffd07080; } .evtask.near small { color: #fff; font-weight: 700; }
   @keyframes evtk { 50% { transform: translate(-50%, calc(-100% - 5px)); } }
   .npc p.bark { font-style: italic; border-color: #8a6a32 !important; }
+  .it.qitem { border-color: #e6c46a !important; box-shadow: inset 0 0 10px rgba(230,196,106,.35); position: relative; } .it.qitem::after { content: '◆'; position: absolute; left: 3px; top: 1px; font-size: 10px; color: #ffe08a; text-shadow: 0 0 4px #000; }
+  .npc[data-qm^="meet"] .qm { display: block; color: #c8a0ff; text-shadow: 0 0 8px #8a5aff, 0 1px 2px #000; }
   #mini, #btns, #btns button { pointer-events: auto; } #mini { position: fixed; right: 14px; top: 12px; width: 178px; z-index: 6; text-align: center; }
   #mini canvas { width: 170px; height: 170px; border-radius: 50%; border: 4px solid #a4833f; box-shadow: 0 0 0 2px #120a04, 0 0 0 4px #5a4220, 0 0 18px #000, inset 0 0 14px #000; background: #0a0810; display: block; margin: 2px auto; }
   #mini .nn { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); font: 700 11px Cinzel, serif; color: #ffe08a; text-shadow: 0 1px 3px #000; font-style: normal; background: #1c130b; border: 1px solid #a4833f; border-radius: 50%; width: 18px; height: 18px; display: grid; place-items: center; }
