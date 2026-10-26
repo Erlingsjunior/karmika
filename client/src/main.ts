@@ -919,7 +919,7 @@ addEventListener('karmika:burst', (e) => { const d = (e as CustomEvent).detail a
 function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 700); }
 let bootFrames = 0; setTimeout(hideBoot, 30000); // segurança: nunca fica preso na abertura
 const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
-  onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) setTimeout(() => showCreate(), 200); else { joinServer(); setTimeout(resumeSoul, 900); } },
+  onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else { joinServer(); setTimeout(resumeSoul, 900); } },
   fresh: async () => profile ? { lvl: game.st.lvl, cls: classOfRace(state.race), pic: await slotPic() } : null });
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */
 function slotPic(): Promise<string | null> { return new Promise((res) => { try { if (humanSkinKey() && !skinModel) { res(null); return; } /* o modelo do artista ainda não chegou: fica a foto anterior */ res(heroCard(hero.root)); } catch { res(null); } }); }
@@ -2983,10 +2983,13 @@ function startScene(sc: Scene, done?: () => void) {
 function endScene() { if (!cine) return; const c = cine; cine = null; c.ov.close(); document.body.classList.remove('cinema'); objs.setRad(2); zoomTarget = c.z0; azT = c.az0; c.done?.(); }
 /* 26/10 (Erling: "na tela de fundo coloque cada vez um lugar diferente dos lindos que já foram criados — paisagens de Karmika, e não
    o nosso personagem"): com o menu ou a criação abertos, a câmera passeia pelas Fontes da Visão, um lugar novo a cada abertura e a cada 40 s */
-let mv: { x: number; z: number; zoom: number; az: number; t: number; z0: number; az0: number } | null = null, mvLast = -1;
+let mvHold = 0; let mv: { x: number; z: number; zoom: number; az: number; t: number; z0: number; az0: number } | null = null, mvLast = -1;
 function menuView(rdt: number) {
-  const want = (inicio.isOpen || creating) && !inside && !cine;
+  const want0 = (inicio.isOpen || creating) && !inside && !cine, nowM = performance.now();
+  /* entre o menu fechar e a criação abrir passa um instante: a paisagem segura 0,8 s em vez de piscar a vila (Erling, 26/10) */
+  if (want0) mvHold = nowM + 800; const want = want0 || (!!mv && nowM < mvHold && !inside && !cine);
   document.body.classList.toggle('mvista', want);
+  social.dock(inicio.isOpen); document.body.classList.toggle('indock', inicio.isOpen);
   if (!want) { if (mv) { zoom = zoomTarget = mv.z0; az = azT = mv.az0; camX = state.fx * T; camZ = state.fy * T; camY = heroY; objs.update(camX, camZ, true); mv = null; } return false; }
   if (!mv || mv.t > 40) { const vs = CINE.vistas; if (!vs.length) return false; let i = Math.floor(Math.random() * vs.length); if (vs.length > 1 && i === mvLast) i = (i + 1) % vs.length; mvLast = i;
     const sh = vs[i].shots, s = sh[1 + Math.floor(Math.random() * Math.max(1, sh.length - 1))] ?? sh[0];

@@ -108,7 +108,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
           <b>${esc(m.name)}</b><small>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}</small><em>${m.origin === 'dwarf' ? 'Anão' : m.origin === 'elf' ? 'Elfo' : 'Humano'} · ${m.sex === 'm' ? 'Homem' : 'Mulher'}</em>
           <button data-play="${i}" class="gold">Entrar</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
         : `<div class="in-slot empty" data-new="${i}"><div class="in-pic"><span>+</span></div><b>Espaço livre</b><small>Criar novo personagem</small><button data-new="${i}">Criar</button></div>`).join('')}</div>
-        ${server ? '<button data-i="social" class="lnk">👥 Amigos e conversas</button>' : ''}<button data-i="back" class="lnk">← voltar</button></div>`;
+        <button data-i="back" class="lnk">← voltar</button></div>`;
     if (step === 'chars' && delAsk !== null && s.meta[delAsk]) { const m = s.meta[delAsk]!; body += `<div class="in-ask"><div class="in-box"><h2>Apagar ${esc(m.name)}?</h2>
         <p>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}. Isso apaga o personagem <b>para sempre</b>: itens, missões, karma e vidas passadas. Não tem volta.</p>
         <p class="in-mut">Para confirmar, digite o nome: <b>${esc(m.name)}</b></p>

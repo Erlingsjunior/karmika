@@ -98,7 +98,7 @@ export function createSocial(ctx: {
     if (!open) { el.style.display = 'none'; return; }
     const tabs = (['amigos', 'conversa', 'guilda'] as const).map((t) => `<button data-tab="${t}" class="${tab === t ? 'on' : ''}">${{ amigos: `👥 Amigos${reqIn.length ? ` <em>${reqIn.length}</em>` : ''}`, conversa: `✉ Conversas${unread ? ` <em>${unread}</em>` : ''}`, guilda: `⚑ Guilda${guild ? ` [${esc(guild.tag)}]` : ''}` }[t]}</button>`).join('');
     const st = H.state === 'on' ? '<span class="soon">● conectado</span>' : H.state === 'connecting' ? '<span class="sowait">● conectando…</span>' : '<span class="sooff">● sem servidor</span>';
-    el.innerHTML = `<div class="pn sopn"><h2>Amigos e Guilda ${st}<button data-x title="Fechar">✕</button></h2><div class="altabs">${tabs}</div><div class="sobody">${tab === 'amigos' ? friendsHtml() : tab === 'conversa' ? talkHtml() : guildHtml()}</div></div>`;
+    el.innerHTML = `<div class="pn sopn"><h2>Amigos e Guilda ${st}${docked ? '' : '<button data-x title="Fechar">✕</button>'}</h2><div class="altabs">${tabs}</div><div class="sobody">${tab === 'amigos' ? friendsHtml() : tab === 'conversa' ? talkHtml() : guildHtml()}</div></div>`;
     el.style.display = 'flex'; const lg = el.querySelector('.solog') as HTMLElement | null; if (lg) lg.scrollTop = lg.scrollHeight;
   }
   const val = (k: string) => (el.querySelector(`[data-v="${k}"]`) as HTMLInputElement | null)?.value ?? '';
@@ -138,9 +138,13 @@ export function createSocial(ctx: {
   el.addEventListener('click', (e) => { const t = (e.target as HTMLElement).closest('button,[data-dm]') as HTMLElement | null; if (t) act(t); });
   el.addEventListener('change', (e) => { const t = e.target as HTMLSelectElement; if (t.dataset.rank) H.send({ t: 'g:rank', char: t.dataset.rank, rank: t.value }); });
   el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key !== 'Enter') return; const t = e.target as HTMLElement; if (t.dataset.v === 'dm') sendDm(); else if (t.dataset.v === 'gchat') sendG(); else if (t.dataset.v === 'nick') act(el.querySelector('[data-a="add"]') as HTMLElement); });
-  function toggle(on = !open, t?: typeof tab) { open = on; if (t) tab = t; if (open && tab === 'conversa') { unread = 0; badge(); } render(); }
+  /* 26/10 (Erling: "um menu do lado esquerdo — encontrar servidor etc. — e do lado direito o nosso chat fora dos servers, a guilda e o chat
+     dela, para chamar a galera antes mesmo de entrar"): no menu inicial a janela fica presa à direita, sempre aberta */
+  let docked = false, openBefore = false;
+  function dock(on: boolean) { if (on === docked) return; docked = on; el.classList.toggle('docked', on); if (on) { openBefore = open; open = true; } else open = openBefore; render(); }
+  function toggle(on = !open, t?: typeof tab) { if (docked && !on) return; open = on; if (t) tab = t; if (open && tab === 'conversa') { unread = 0; badge(); } render(); }
   return {
-    toggle, get isOpen() { return open; }, get guild() { return guild; }, get unread() { return unread; },
+    toggle, dock, get isOpen() { return open; }, get guild() { return guild; }, get unread() { return unread; },
     /** Ctrl+clique num jogador */ friendChar(name: string) { if (off()) { ctx.log('👥 Sem servidor: amizades moram no servidor.', '#ff9a8a'); return; } H.send({ t: 'a:freq', char: name }); },
     inviteGuild(name: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:inv', char: name }); },
     /** o Magistrado abre o livro de registros */ startFounding() { founding = true; toggle(true, 'guilda'); },
