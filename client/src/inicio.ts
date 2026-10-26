@@ -78,7 +78,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     return `<div class="in-runes">${pts.map(([x, y], i) => `<i style="left:${x}%;top:${y}%;animation-duration:${cyc}s;animation-delay:${(i * step - cyc).toFixed(2)}s">${runaSvg(i * 5)}</i>`).join('')}</div>`; })();
   let hostPass = '', draftInv = '', draftPass = '';
   let step: 'home' | 'find' | 'host' | 'chars' | 'upd' = 'home', upd = { got: 0, total: 0, file: '', n: 0 }, server: string | null = null, err = '', busy = false, hostInv = '';
-  let isOpen = !boot;
+  let isOpen = !boot, backHome = false;
   let delAsk: number | null = null, delErr = ''; // confirmação de apagar DENTRO da tela (o app de desktop não tem prompt())
 
   function render() {
@@ -86,11 +86,18 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     el.style.display = 'flex'; const s = read();
     const head = `<div class="in-logo"><h1>KARMIKA</h1><p>Toda escolha importa. Você já fez a sua.</p></div>`;
     let body = '';
-    if (step === 'home') body = `<div class="in-menu">
+    /* 26/10 (Erling: "a escolha de personagens vem antes do servidor — o save é diferente: escolhe o personagem, volta para a tela
+       principal e aí cria ou procura um servidor") */
+    const cur = s.meta[s.active];
+    const curHtml = cur ? `<div class="in-cur"><div class="in-pic sm">${(cur.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${cur.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : cur.pic ? `<img src="${cur.pic}" alt="">` : `<span>${cur.origin === 'dwarf' ? '⚒' : '🌿'}</span>`}</div>
+        <div><small>Personagem</small><b>${esc(cur.name)}</b><em>Nível ${cur.lvl}${cur.cls ? ' · ' + esc(cur.cls) : ''}</em></div><button data-i="pick" class="gold">Trocar personagem</button></div>`
+      : `<div class="in-cur"><div class="in-pic sm"><span>+</span></div><div><small>Personagem</small><b>Nenhum ainda</b><em>Crie o seu Caminhante antes de jogar</em></div><button data-i="pick" class="gold">Escolher ou criar</button></div>`;
+    if (step === 'home') body = `${curHtml}<div class="in-menu${cur ? '' : ' in-dis'}">
         <button data-i="find" class="big">✧ Encontrar servidor<small>entrar no mundo de outro Caminhante com o convite</small></button>
         ${o.desk ? `<button data-i="host">⚑ Abrir meu servidor<small>esta máquina vira o mundo; mande o convite para os amigos</small></button>` : ''}
         <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button>
-        <button data-i="shop">🛍 Shop<small>Premium da conta (vale para todos os seus personagens) e as peças com brasão</small></button></div>`;
+        <button data-i="social">👥 Amigos e Guilda<small>conversas e o chat da guilda, antes de entrar no mundo</small></button>
+        <button data-i="shop">🛍 Shop<small>Premium (Selo de Marghar) e as peças com brasão; comprado aqui, vai para o inventário da conta</small></button></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>
         <div class="in-row"><input data-v="inv" placeholder="karmika://IP:7777/CÓDIGO" value="${esc(draftInv || s.servers[0] || '')}" spellcheck="false"></div>
         <div class="in-row" style="margin-top:8px"><input data-v="pass" type="password" placeholder="Senha (só se a sala tiver)" value="${esc(draftPass || passFor(draftInv || s.servers[0] || ''))}"><button data-i="go" class="gold">Continuar</button></div>
@@ -98,16 +105,16 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         ${s.servers.length ? `<div class="in-recent"><small>Servidores recentes</small>${s.servers.map((v) => `<a data-r="${esc(v)}">${esc(v)}</a>`).join('')}</div>` : ''}
         ${err ? `<p class="in-err">✖ ${esc(err)}</p>` : ''}<button data-i="back" class="lnk">← voltar</button></div>`;
     if (step === 'host') body = `<div class="in-box"><h2>Abrir meu servidor</h2>${!hostInv && !busy ? `<p>Esta máquina vira o mundo. Se quiser, coloque uma senha: só entra quem tiver o convite <b>e</b> a senha.</p><div class="in-row"><input data-v="hpass" type="password" placeholder="Senha da sala (opcional)"><button data-i="hostopen" class="gold">Abrir a sala</button></div>` : hostInv ? `<p class="in-ok">✔ Sala aberta. Mande este convite para quem vai jogar com você:</p><code>${esc(hostInv)}</code>
-        <p class="in-mut">Detalhes (CGNAT, Tailscale, rede de casa) ficam no painel <b>Jogar junto</b> (F4) dentro do jogo.</p><button data-i="hostgo" class="gold">Escolher personagem →</button>`
+        <p class="in-mut">Detalhes (CGNAT, Tailscale, rede de casa) ficam no painel <b>Jogar junto</b> (F4) dentro do jogo.</p><button data-i="hostgo" class="gold">Entrar no mundo →</button>`
         : `<p>Abrindo a sala e testando o seu roteador…</p>`}${hostPass ? '<p class="in-mut">🔒 Sala com senha: mande a senha junto com o convite.</p>' : ''}${err ? `<p class="in-err">✖ ${esc(err)}</p>` : ''}<button data-i="back" class="lnk">← voltar</button></div>`;
     if (step === 'upd') { const k = upd.total ? upd.got / upd.total : 0; body = `<div class="in-box"><h2>Atualizando Karmika</h2><p>O servidor tem uma versão mais nova do jogo. Baixando só o que mudou${upd.n ? ` (${upd.n} arquivo${upd.n > 1 ? 's' : ''})` : ''}…</p>
         <div class="in-bar"><i style="width:${(k * 100).toFixed(1)}%"></i><span>${upd.total ? `${(upd.got / 1048576).toFixed(1)} / ${(upd.total / 1048576).toFixed(1)} MB` : 'conferindo versões…'}</span></div><p class="in-mut">${esc(upd.file)}</p></div>`; }
     if (step === 'chars') refreshActive();
     if (step === 'chars' && server) o.onServer?.(server);
-    if (step === 'chars') body = `<div class="in-chars"><h2>${server ? `Servidor <b>${esc(server.replace(/^karmika:\/\//, ''))}</b>` : 'Jogar sozinho'}</h2><p class="in-mut">Escolha o seu Caminhante (até ${NSLOT} por máquina).</p><div class="in-slots">${s.meta.map((m, i) => m ? `
+    if (step === 'chars') body = `<div class="in-chars"><h2>Seus personagens</h2><p class="in-mut">Escolha o seu Caminhante (até ${NSLOT} por máquina). Cada um tem o seu próprio save; depois você volta e escolhe onde jogar.</p><div class="in-slots">${s.meta.map((m, i) => m ? `
         <div class="in-slot ${i === s.active ? 'act' : ''}" data-s="${i}"><div class="in-pic">${(m.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${m.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : m.pic ? `<img src="${m.pic}" alt="">` : `<span>${m.origin === 'dwarf' ? '⚒' : m.origin === 'elf' ? '❦' : '⚔'}</span>`}</div>
           <b>${esc(m.name)}</b><small>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}</small><em>${m.origin === 'dwarf' ? 'Anão' : m.origin === 'elf' ? 'Elfo' : 'Humano'} · ${m.sex === 'm' ? 'Homem' : 'Mulher'}</em>
-          <button data-play="${i}" class="gold">Entrar</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
+          <button data-play="${i}" class="gold">${i === s.active ? '✔ Escolhido' : 'Escolher'}</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
         : `<div class="in-slot empty" data-new="${i}"><div class="in-pic"><span>+</span></div><b>Espaço livre</b><small>Criar novo personagem</small><button data-new="${i}">Criar</button></div>`).join('')}</div>
         <button data-i="back" class="lnk">← voltar</button></div>`;
     if (step === 'chars' && delAsk !== null && s.meta[delAsk]) { const m = s.meta[delAsk]!; body += `<div class="in-ask"><div class="in-box"><h2>Apagar ${esc(m.name)}?</h2>
@@ -123,20 +130,22 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     o.fresh().then((f) => { refreshing = false; if (!f) return; const s2 = read(), m2 = s2.meta[s2.active]; if (!m2) return; s2.meta[s2.active] = { ...m2, ...Object.fromEntries(Object.entries(f).filter(([, v]) => v !== null && v !== undefined && v !== '')) } as SlotMeta; write(s2); if (f.pic) refreshedPic = true; if (isOpen && step === 'chars') render(); }).catch(() => { refreshing = false; }); }
   addEventListener('karmika:skinready', () => { refreshedPic = false; if (isOpen && step === 'chars') refreshActive(); });
   function remember(v: string) { const s = read(); s.servers = [v, ...s.servers.filter((x) => x !== v)].slice(0, 5); write(s); }
-  function play(i: number, isNew: boolean) {
+  /** escolher um espaço: troca o save e volta para a tela principal (vazio = criação, que também volta para cá) */
+  function choose(i: number, isNew: boolean) {
     const s = read();
-    if (i !== s.active) { if (!swapTo(i)) return; lockChar(); /* cada personagem é um universo: o jogo do personagem antigo, ainda rodando atrás da tela, salvava karma, alma e o resto por cima do novo na hora de recarregar */ sessionStorage.setItem(BOOT, JSON.stringify({ server })); location.reload(); return; }
-    if (isNew && o.hasChar()) { // espaço ativo, mas pediu novo? não acontece: o ativo sempre é o que tem personagem
-      return; }
-    isOpen = false; render(); o.onPlay(server, !o.hasChar());
+    if (i !== s.active) { if (!swapTo(i)) return; lockChar(); /* cada personagem é um universo: o jogo do personagem antigo, ainda rodando atrás da tela, salvava karma, alma e o resto por cima do novo na hora de recarregar */ sessionStorage.setItem(BOOT, JSON.stringify(isNew ? { server: null, create: true } : { server: null, home: true })); location.reload(); return; }
+    if (isNew && !o.hasChar()) { isOpen = false; render(); backHome = true; o.onPlay(null, true); return; }
+    step = 'home'; render();
   }
+  /** jogar: com o personagem já escolhido, no servidor (ou sozinho) */
+  function play(sv: string | null) { server = sv; if (sv) o.onServer?.(sv); isOpen = false; render(); backHome = false; o.onPlay(sv, !o.hasChar()); }
   el.addEventListener('click', async (e) => {
     const t = e.target as HTMLElement;
     const rm = t.closest('[data-room]') as HTMLElement | null; if (rm) { const v = rm.dataset.room!, pw = passFor(v); (el.querySelector('[data-v="inv"]') as HTMLInputElement).value = v; const pin = el.querySelector('[data-v="pass"]') as HTMLInputElement; pin.value = pw;
       if (rm.dataset.rp === '1' && !pw) { err = ''; pin.focus(); pin.placeholder = 'Esta sala tem senha: digite e clique em Continuar'; return; } (el.querySelector('[data-i="go"]') as HTMLElement).click(); return; } // clicou numa sala da lista: entra direto (ou pede a senha)
     const r = (t.closest('[data-r]') as HTMLElement | null)?.dataset.r; if (r) { (el.querySelector('[data-v="inv"]') as HTMLInputElement).value = r; (el.querySelector('[data-v="pass"]') as HTMLInputElement).value = passFor(r); return; }
-    const pl = (t.closest('[data-play]') as HTMLElement | null)?.dataset.play; if (pl !== undefined) { play(+pl, false); return; }
-    const nw = (t.closest('[data-new]') as HTMLElement | null)?.dataset.new; if (nw !== undefined) { play(+nw, true); return; }
+    const pl = (t.closest('[data-play]') as HTMLElement | null)?.dataset.play; if (pl !== undefined) { choose(+pl, false); return; }
+    const nw = (t.closest('[data-new]') as HTMLElement | null)?.dataset.new; if (nw !== undefined) { choose(+nw, true); return; }
     const del = (t.closest('[data-del]') as HTMLElement | null)?.dataset.del;
     if (del !== undefined) { if (!read().meta[+del]) return; delAsk = +del; delErr = ''; render(); (el.querySelector('[data-v="delname"]') as HTMLInputElement)?.focus(); return; }
     const a = (t.closest('[data-i]') as HTMLElement | null)?.dataset.i; if (!a || busy) return;
@@ -153,11 +162,13 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
           for (const [k, v] of Object.entries(next)) rawSet(k, v); localStorage.removeItem(`karmika.slot.${free}`); s.active = free; }
         write(s); sessionStorage.setItem(BOOT, JSON.stringify({ server, pick: true })); location.reload(); return; }
       localStorage.removeItem(`karmika.slot.${i}`); write(s); render(); return; }
-    if (a === 'back') { step = step === 'chars' && server && hostInv ? 'host' : 'home'; render(); return; }
+    if (a === 'back') { step = 'home'; render(); return; }
+    if (a === 'pick') { step = 'chars'; render(); return; }
+    if ((a === 'find' || a === 'solo' || a === 'host') && !o.hasChar()) { step = 'chars'; render(); return; } /* sem personagem: primeiro escolher ou criar */
     if (a === 'find') { step = 'find'; render(); (el.querySelector('[data-v="inv"]') as HTMLInputElement)?.focus(); return; }
     if (a === 'social') { o.social?.(); return; }
     if (a === 'shop') { o.shop?.(); return; }
-    if (a === 'solo') { server = null; step = 'chars'; render(); return; }
+    if (a === 'solo') { play(null); return; }
     if (a === 'go') { const v = (el.querySelector('[data-v="inv"]') as HTMLInputElement).value.trim(); const pv = parseInvite(v); if (!pv) { err = 'Convite inválido. O formato é karmika://IP:7777/CÓDIGO'; render(); return; }
       if (!/[.:]/.test(pv.host) && pv.host.toLowerCase() !== 'localhost') { err = `"${pv.host}" não é um endereço. Troque pelo número do computador da sala: no mesmo PC use 127.0.0.1 (karmika://127.0.0.1:${pv.port}/${pv.code}). Ou clique numa sala da lista acima.`; render(); return; }
       const pw = (el.querySelector('[data-v="pass"]') as HTMLInputElement).value; draftInv = v; draftPass = pw;
@@ -167,21 +178,23 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         step = 'upd'; upd = { got: 0, total: 0, file: '', n: 0 }; render(); busy = true;
         const off = o.desk.onUpdate?.((p) => { upd = p; if (step === 'upd') render(); });
         const r: { ok: boolean; updated?: boolean; why?: string } = await o.desk.update(v).catch((x) => ({ ok: false, why: String(x) })); off?.(); busy = false;
-        if (r.ok && r.updated) { sessionStorage.setItem(BOOT, JSON.stringify({ server, pick: true })); location.reload(); return; }
+        if (r.ok && r.updated) { sessionStorage.setItem(BOOT, JSON.stringify({ server })); location.reload(); return; }
         if (!r.ok) { err = `Não deu para atualizar o jogo: ${r.why}`; step = 'find'; render(); return; } }
-      step = 'chars'; render(); return; }
+      play(v); return; }
     if (a === 'host' && o.desk) { step = 'host'; hostInv = ''; render(); return; }
     if (a === 'hostopen' && o.desk) { hostPass = (el.querySelector('[data-v="hpass"]') as HTMLInputElement).value; busy = true; render();
       try { const h = await o.desk.host({ port: 7777, password: hostPass }); hostInv = `karmika://${h.publicIp && !h.cgnat ? h.publicIp : '127.0.0.1'}:${h.port}/${h.code}`; server = `karmika://127.0.0.1:${h.port}/${h.code}`; savePass(server, hostPass); }
       catch (x) { err = /EADDRINUSE/.test(String(x)) ? 'A porta 7777 já está em uso (outra sala aberta?).' : 'Não deu para abrir: ' + String((x as Error)?.message || x); }
       busy = false; render(); return; }
-    if (a === 'hostgo') { step = 'chars'; render(); return; }
+    if (a === 'hostgo') { play(server); return; }
   });
   el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' && (e.target as HTMLElement).matches('[data-v="inv"], [data-v="pass"]')) (el.querySelector('[data-i="go"]') as HTMLElement)?.click();
     if (e.key === 'Enter' && (e.target as HTMLElement).matches('[data-v="delname"]')) (el.querySelector('[data-i="delok"]') as HTMLElement)?.click(); if (e.key === 'Escape' && delAsk !== null) { delAsk = null; render(); } });
 
   // voltou de uma troca de personagem: entra direto (ou cria), já com o servidor escolhido
-  if (boot) { server = boot.server; const pick = (boot as { pick?: boolean }).pick; if (pick) { isOpen = true; step = 'chars'; render(); } else setTimeout(() => o.onPlay(server, !o.hasChar()), 0); }
+  if (boot) { server = boot.server; const b2 = boot as { pick?: boolean; home?: boolean; create?: boolean };
+    if (b2.pick) { isOpen = true; step = 'chars'; render(); } else if (b2.home) { isOpen = true; step = 'home'; render(); }
+    else if (b2.create) { backHome = true; setTimeout(() => o.onPlay(null, true), 0); } else setTimeout(() => o.onPlay(server, !o.hasChar()), 0); }
   else render();
 
   return {
@@ -189,6 +202,14 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     /** atualiza o card do personagem ativo (nome, nível, classe, retrato) */
     saveMeta(m: Omit<SlotMeta, 't'>) { const s = read(), old = s.meta[s.active]; s.meta[s.active] = { ...m, pic: m.pic ?? old?.pic ?? null, server: m.server ?? old?.server ?? null, t: Date.now() }; write(s); },
     open() { isOpen = true; step = 'home'; render(); },
+    /** a criação terminou: quem criou pelo menu volta para a tela principal para escolher onde jogar */
+    takeBackHome() { const b = backHome; backHome = false; if (b) { isOpen = true; step = 'home'; render(); } return b; },
+    /** os personagens da máquina (para o Shop escolher quem recebe) */
+    chars() { const s = read(); return s.meta.map((m, i) => m ? { i, name: m.name, lvl: m.lvl, active: i === s.active } : null).filter(Boolean) as { i: number; name: string; lvl: number; active: boolean }[]; },
+    /** carta para um personagem guardado (não o ativo): vai direto para a caixa dele no save */
+    mailToSlot(i: number, letter: Record<string, unknown>) { const s = read(); if (i === s.active) return false; let blob: Record<string, string> = {}; try { blob = JSON.parse(localStorage.getItem(`karmika.slot.${i}`) || '{}'); } catch { /* */ }
+      let inbox: unknown[] = []; try { inbox = JSON.parse(blob['karmika.post.in'] || '[]'); } catch { inbox = []; } inbox.push(letter); blob['karmika.post.in'] = JSON.stringify(inbox);
+      try { rawSet(`karmika.slot.${i}`, JSON.stringify(blob)); return true; } catch { return false; } },
     /** volta da criação de personagem para a escolha dos 3 espaços */
     openChars(sv: string | null) { server = sv; isOpen = true; step = 'chars'; render(); },
   };

@@ -11,6 +11,7 @@ export interface GMember { k: string; name: string; rank: string; joined: number
 export interface GListing { id: number; by: string; price: number; at: number; att: { item?: { id: string; n: number }; gear?: { name: string; rarity: string; icon: string; uid?: number } } }
 export interface Guild { id: number; name: string; tag: string; col: string; plot: number; motd: string; created: number; members: GMember[]; market: GListing[]; log: { at: number; from?: string; sys?: number; text: string }[] }
 interface Friend { id: string; nick: string; on: boolean; where?: string; char?: string; seen?: number }
+interface AMail { id: number; from: string; fromId?: string; subj: string; text: string; att: { item?: { id: string; n: number }; gear?: { name: string; rarity: string } & Record<string, unknown> }[]; t: number; read?: boolean; local?: boolean }
 interface Dm { from: string; fromNick: string; to: string; text: string; at: number }
 const RANK_NAME: Record<string, string> = { lider: 'Líder', oficial: 'Oficial', membro: 'Membro', recruta: 'Recruta' };
 const esc = (t: string) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -20,12 +21,12 @@ export function createSocial(ctx: {
   hub: Hub; char(): string; lvl(): number; gold(): number; payGold(n: number): boolean; log(t: string, c?: string): void;
   items(): { id: string; n: number; name: string; icon: string }[]; gear(): { uid: number; name: string; rarity: string; icon: string; ilvl: number }[];
   takeItem(id: string, n: number): boolean; takeGear(uid: number): unknown; itemName(id: string): string; itemIcon(id: string): string; rarityCol(r: string): string;
-  ask(title: string, text: string, yes: string, cb: (ok: boolean) => void): void; plotText(plot: number): string; markPlot(plot: number): void; hasCarta(): boolean; useCarta(): void; seedHall(plot: number): { kind: string; gx: number; gy: number; v: number }[];
+  ask(title: string, text: string, yes: string, cb: (ok: boolean) => void): void; chars(): { i: number; name: string; lvl: number; active: boolean }[]; toChar(i: number, l: { from: string; subj: string; text: string; att: unknown[] }): boolean; plotText(plot: number): string; markPlot(plot: number): void; hasCarta(): boolean; useCarta(): void; seedHall(plot: number): { kind: string; gx: number; gy: number; v: number }[];
   onWorld?(list: { id: number; name: string; tag: string; col: string; plot: number; build: { kind: string; gx: number; gy: number; v: number }[] }[]): void; onGuild?(g: Guild | null): void;
 }) {
   const H = ctx.hub;
   let me: { id: string; nick: string } | null = null, friends: Friend[] = [], reqIn: { id: string; nick: string }[] = [], reqOut: { id: string; nick: string }[] = [];
-  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'guilda' = 'amigos', gtab: 'membros' | 'chat' | 'mercado' | 'terreno' = 'chat', talk = '', founding = false, unread = 0;
+  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'membros' | 'chat' | 'mercado' | 'terreno' = 'chat', talk = '', founding = false, unread = 0;
   const DMK = 'karmika.coop.dm'; let dms: Dm[] = (() => { try { return JSON.parse(localStorage.getItem(DMK) || '[]'); } catch { return []; } })();
   const saveDm = () => { try { localStorage.setItem(DMK, JSON.stringify(dms.slice(-400))); } catch { /* */ } };
   const el = document.createElement('div'); el.id = 'socw'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'social', { left: '26vw', top: '8vh' }), 0);
@@ -44,6 +45,30 @@ export function createSocial(ctx: {
   H.on('g:fail', (m) => { ctx.log(`⚑ ${m.why}`, '#ff9a8a'); founding = true; render(); });
   H.on('g:ok', () => { founding = false; ctx.useCarta(); ctx.log('⚑ A guilda foi registrada pelo Magistrado. O estandarte já está de pé no seu terreno.', '#ffe08a'); tab = 'guilda'; gtab = 'terreno'; render(); });
   H.on('hub:state', () => render());
+  /* 26/10 (Erling: "a aba Correio: recebemos por lá os itens que compramos fora do jogo, já no servidor, e decidimos para qual personagem
+     enviar; mandamos e recebemos cartas"). É o correio da CONTA (no servidor); a caixa de correio de cada personagem continua no mundo */
+  let amail: AMail[] = [], mopen = 0, mcompose = false;
+  /* o INVENTÁRIO DA CONTA (fora do mundo e fora do servidor): o que se compra no Shop pelo menu cai aqui, guardado nesta máquina.
+     Daqui vai para a caixa de correio de qualquer personagem seu, ou para um amigo (esse precisa do servidor) */
+  const BOXK = 'karmika.acc.box'; let box: AMail[] = (() => { try { return JSON.parse(localStorage.getItem(BOXK) || '[]'); } catch { return []; } })();
+  const saveBox = () => { try { localStorage.setItem(BOXK, JSON.stringify(box)); } catch { /* */ } };
+  const allMail = () => [...box.map((x) => ({ ...x, local: true })), ...amail];
+  H.on('a:mail', (m) => { amail = (m.list as AMail[]) ?? []; if (m.fresh) ctx.log('📮 Chegou algo no Correio da conta (F9 → Correio).', '#ffe08a'); render(); });
+  function mailHtml() {
+    const chars = ctx.chars();
+    if (mcompose && off()) mcompose = false;
+    if (mcompose) return `<div class="somail"><h4>Nova carta para um amigo</h4><select data-v="mto">${friends.map((f) => `<option value="${f.id}">${esc(f.nick)}</option>`).join('')}</select>
+      <input data-v="msubj" placeholder="Assunto" maxlength="80"><textarea data-v="mtext" rows="7" maxlength="1500" placeholder="Escreva a sua carta…"></textarea>
+      <div class="sorow"><button data-a="msend">✉ Enviar</button><button data-a="mback" class="ghost">Voltar</button></div>${friends.length ? '' : '<p class="somut">Cartas da conta vão para amigos: peça amizade na aba Amigos.</p>'}</div>`;
+    const L = allMail().sort((a, b) => b.t - a.t), cur = L.find((x) => x.id === mopen) ?? L[0];
+    if (cur && !cur.read) { cur.read = true; if (cur.local) { const b = box.find((x) => x.id === cur.id); if (b) { b.read = true; saveBox(); } } else H.send({ t: 'a:mread', id: cur.id }); }
+    const attH = (a: AMail['att'][number]) => a.item ? `${ctx.itemIcon(a.item.id)} ${esc(ctx.itemName(a.item.id))}${a.item.n > 1 ? ` ×${a.item.n}` : ''}` : a.gear ? `<span style="color:${ctx.rarityCol(a.gear.rarity)}">${esc(a.gear.name)}</span>` : '?';
+    return `<div class="somailw"><div class="somlist">${off() ? '<p class="somut">Sem servidor: só o inventário da conta (compras pelo menu). Cartas e envios a amigos pedem o servidor.</p>' : '<button data-a="mnew" class="sonew">✎ Escrever carta</button>'}${L.length ? L.map((x) => `<div class="somi ${x === cur ? 'on' : ''} ${x.read ? '' : 'new'}" data-mopen="${x.id}"><b>${esc(x.subj)}</b><small>${esc(x.from)} · ${ago(x.t)}${x.att.length ? ' · 📦' : ''}</small></div>`).join('') : '<p class="somut">Nada por aqui ainda.</p>'}</div>
+      <div class="somread">${cur ? `<h4>${esc(cur.subj)}</h4><small>de <b>${esc(cur.from)}</b> · ${ago(cur.t)}</small><p>${esc(cur.text).replace(/\n/g, '<br>')}</p>
+        ${cur.att.length ? `<div class="somatt"><h4>Anexos</h4>${cur.att.map((a) => `<div>${attH(a)}</div>`).join('')}<small>Mandar para a caixa de correio de um personagem seu:</small><div class="sorow">${chars.length ? chars.map((c) => `<button data-mto="${c.i}" data-mid="${cur.id}">${esc(c.name)} <em>nv ${c.lvl}</em></button>`).join('') : '<p class="somut">Crie um personagem primeiro.</p>'}</div>
+          <small>…ou de presente para um amigo:</small><div class="sorow">${off() ? '<span class="somut">precisa do servidor</span>' : friends.length ? friends.map((f) => `<button data-mfr="${f.id}" data-mid="${cur.id}" class="ghost">🎁 ${esc(f.nick)}</button>`).join('') : '<span class="somut">nenhum amigo ainda</span>'}</div></div>` : ''}
+        <div class="sorow">${cur.fromId ? `<button data-a="mreply" data-rto="${cur.fromId}" class="ghost">↩ Responder</button>` : ''}${cur.att.length ? '' : `<button data-mdel="${cur.id}" class="ghost">🗑 Apagar</button>`}</div>` : ''}</div></div>`;
+  }
 
   const off = () => H.state !== 'on';
   function friendsHtml() {
@@ -96,9 +121,9 @@ export function createSocial(ctx: {
   }
   function render() {
     if (!open) { el.style.display = 'none'; return; }
-    const tabs = (['amigos', 'conversa', 'guilda'] as const).map((t) => `<button data-tab="${t}" class="${tab === t ? 'on' : ''}">${{ amigos: `👥 Amigos${reqIn.length ? ` <em>${reqIn.length}</em>` : ''}`, conversa: `✉ Conversas${unread ? ` <em>${unread}</em>` : ''}`, guilda: `⚑ Guilda${guild ? ` [${esc(guild.tag)}]` : ''}` }[t]}</button>`).join('');
+    const tabs = (['amigos', 'conversa', 'correio', 'guilda'] as const).map((t) => `<button data-tab="${t}" class="${tab === t ? 'on' : ''}">${{ amigos: `👥 Amigos${reqIn.length ? ` <em>${reqIn.length}</em>` : ''}`, conversa: `💬 Conversas${unread ? ` <em>${unread}</em>` : ''}`, correio: `📮 Correio${allMail().filter((x) => !x.read || x.att.length).length ? ` <em>${allMail().filter((x) => !x.read || x.att.length).length}</em>` : ''}`, guilda: `⚑ Guilda${guild ? ` [${esc(guild.tag)}]` : ''}` }[t]}</button>`).join('');
     const st = H.state === 'on' ? '<span class="soon">● conectado</span>' : H.state === 'connecting' ? '<span class="sowait">● conectando…</span>' : '<span class="sooff">● sem servidor</span>';
-    el.innerHTML = `<div class="pn sopn"><h2>Amigos e Guilda ${st}${docked ? '' : '<button data-x title="Fechar">✕</button>'}</h2><div class="altabs">${tabs}</div><div class="sobody">${tab === 'amigos' ? friendsHtml() : tab === 'conversa' ? talkHtml() : guildHtml()}</div></div>`;
+    el.innerHTML = `<div class="pn sopn"><h2>Amigos e Guilda ${st}<button data-x title="Fechar">✕</button></h2><div class="altabs">${tabs}</div><div class="sobody">${tab === 'amigos' ? friendsHtml() : tab === 'conversa' ? talkHtml() : tab === 'correio' ? mailHtml() : guildHtml()}</div></div>`;
     el.style.display = 'flex'; const lg = el.querySelector('.solog') as HTMLElement | null; if (lg) lg.scrollTop = lg.scrollHeight;
   }
   const val = (k: string) => (el.querySelector(`[data-v="${k}"]`) as HTMLInputElement | null)?.value ?? '';
@@ -107,6 +132,17 @@ export function createSocial(ctx: {
     if (t.closest('[data-x]')) { toggle(false); return; }
     if (d.tab) { tab = d.tab as typeof tab; if (tab === 'conversa') { unread = 0; badge(); } render(); return; }
     if (d.gt) { gtab = d.gt as typeof gtab; render(); return; }
+    if (d.mopen) { mopen = +d.mopen; render(); return; }
+    const take = (L: AMail & { local?: boolean }, del = false) => { if (L.local) { box = box.filter((x) => x.id !== L.id); saveBox(); render(); } else H.send({ t: 'a:mtake', id: L.id, del }); };
+    if (d.mdel) { const L = allMail().find((x) => x.id === +d.mdel!); if (L) take(L, true); return; }
+    if (d.mto) { const L = allMail().find((x) => x.id === +d.mid!); const c = ctx.chars().find((q) => q.i === +d.mto!); if (!L || !c) return;
+      if (ctx.toChar(c.i, { from: L.from, subj: L.subj, text: L.text, att: L.att })) { take(L); ctx.log(`📮 ${L.subj}: mandado para a caixa de correio de ${c.name}.`, '#ffe08a'); } return; }
+    if (d.mfr) { const L = allMail().find((x) => x.id === +d.mid!); const f = friends.find((q) => q.id === d.mfr); if (!L || !f || off()) return;
+      ctx.ask('🎁 Presente', `Mandar <b>${esc(L.subj)}</b> para ${esc(f.nick)}? Chega no Correio da conta dele, e ele escolhe o personagem.`, 'Mandar', (ok) => { if (!ok) return; H.send({ t: 'a:msend', to: f.id, subj: L.subj, text: `${me?.nick ?? 'Um amigo'} mandou de presente:\n\n${L.text}`, att: L.att }); take(L); }); return; }
+    if (d.a === 'mnew') { mcompose = true; render(); return; }
+    if (d.a === 'mback') { mcompose = false; render(); return; }
+    if (d.a === 'mreply') { mcompose = true; render(); const sel = el.querySelector('[data-v="mto"]') as HTMLSelectElement | null; if (sel) sel.value = d.rto!; return; }
+    if (d.a === 'msend') { const to = val('mto'), text = (el.querySelector('[data-v="mtext"]') as HTMLTextAreaElement | null)?.value ?? ''; if (!to || !text.trim()) return; H.send({ t: 'a:msend', to, subj: val('msubj'), text }); mcompose = false; render(); return; }
     if (d.dm) { tab = 'conversa'; talk = d.dm; unread = 0; badge(); render(); setTimeout(() => (el.querySelector('[data-v="dm"]') as HTMLInputElement | null)?.focus(), 0); return; }
     if (d.fdel) { H.send({ t: 'a:fdel', id: d.fdel }); return; }
     if (d.fok) { H.send({ t: 'a:fans', id: d.fok, ok: true }); return; }
@@ -140,11 +176,15 @@ export function createSocial(ctx: {
   el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key !== 'Enter') return; const t = e.target as HTMLElement; if (t.dataset.v === 'dm') sendDm(); else if (t.dataset.v === 'gchat') sendG(); else if (t.dataset.v === 'nick') act(el.querySelector('[data-a="add"]') as HTMLElement); });
   /* 26/10 (Erling: "um menu do lado esquerdo — encontrar servidor etc. — e do lado direito o nosso chat fora dos servers, a guilda e o chat
      dela, para chamar a galera antes mesmo de entrar"): no menu inicial a janela fica presa à direita, sempre aberta */
+  /* 26/10 (Erling: "a modal de amigos e guilda presa na lateral pode ser solta"): no menu ela abre sozinha uma vez, mas é a janela
+     de sempre — arrasta, fecha e reabre pelo botão do menu */
   let docked = false, openBefore = false;
-  function dock(on: boolean) { if (on === docked) return; docked = on; el.classList.toggle('docked', on); if (on) { openBefore = open; open = true; } else open = openBefore; render(); }
-  function toggle(on = !open, t?: typeof tab) { if (docked && !on) return; open = on; if (t) tab = t; if (open && tab === 'conversa') { unread = 0; badge(); } render(); }
+  function dock(on: boolean) { if (on === docked) return; docked = on; if (on) { openBefore = open; open = false; } else open = openBefore; render(); } /* no menu ela não abre sozinha (cobria os botões): abre pelo botão Amigos e Guilda */
+  function toggle(on = !open, t?: typeof tab) { open = on; if (t) tab = t; if (open && tab === 'conversa') { unread = 0; badge(); } render(); }
   return {
-    toggle, dock, get isOpen() { return open; }, get guild() { return guild; }, get unread() { return unread; },
+    /** compra feita pelo menu: cai no inventário da conta */
+    toBox(l: { from: string; subj: string; text: string; att: unknown[] }) { box.push({ id: -Date.now() - Math.floor(Math.random() * 1000), from: l.from, subj: l.subj, text: l.text, att: l.att as AMail['att'], t: Date.now() }); saveBox(); render(); },
+    toggle, dock, get isOpen() { return open; }, get online() { return H.state === 'on'; }, get guild() { return guild; }, get unread() { return unread; },
     /** Ctrl+clique num jogador */ friendChar(name: string) { if (off()) { ctx.log('👥 Sem servidor: amizades moram no servidor.', '#ff9a8a'); return; } H.send({ t: 'a:freq', char: name }); },
     inviteGuild(name: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:inv', char: name }); },
     /** o Magistrado abre o livro de registros */ startFounding() { founding = true; toggle(true, 'guilda'); },

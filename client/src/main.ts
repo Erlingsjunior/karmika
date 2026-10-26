@@ -389,9 +389,12 @@ document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closes
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
 const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some((g) => g?.uniq === u);
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cine) cine.t = t; }; }
-const loja = createLoja({ isPremium, fac: myFac, lvl: () => game.st.lvl, owns: ownsUniq, addDays: (d) => addPremiumDays(d), dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
+const loja = createLoja({ isPremium, fac: myFac, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
-  deliver: (subj, text, att) => { mail.send('Shop de Askavik', subj, text, att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } })); } });
+  deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
+    /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →
+       inventário da conta, e de lá ele escolhe o personagem ou manda de presente a um amigo */
+    if (inicio.isOpen) { social.toBox({ from: 'Shop de Askavik', subj, text, att: A }); return; } void to; mail.send('Shop de Askavik', subj, text, A); } });
 onFac(() => loja.refresh());
 /* o Premium comprado tem data para acabar (o interruptor do dev não tem) */
 checkPremiumExpiry(); setInterval(checkPremiumExpiry, 30000);
@@ -824,7 +827,10 @@ function seedHall(plot: number) { const P = guildPlots.at(plot); if (!P) return 
   for (let y = y0; y < y0 + D; y++) for (let x = x0; x < x0 + W; x++) out.push({ kind: 'broof', gx: x, gy: y, v: 0 });
   out.push({ kind: 'torch', gx: x0 + 1, gy: y0 + D + 1, v: 0 }, { kind: 'torch', gx: x0 + 4, gy: y0 + D + 1, v: 0 }, { kind: 'bench', gx: x0 + 6, gy: y0 + D + 2, v: 0 }, { kind: 'campfire', gx: x0 + 3, gy: y0 + D + 3, v: 0 }); return out; }
 const CARTA_K = 'karmika.guildcarta';
-const social = createSocial({ hub, char: () => profile?.name ?? '', lvl: () => game.st.lvl, gold: () => game.st.gold, payGold: (n) => { if (game.st.gold < n) return false; game.st.gold -= n; return true; }, log: (t, c) => game.logMsg(t, c),
+const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) => { const who = inicio.chars().find((c) => c.i === i); if (!who) return false;
+    if (!who.active) return inicio.mailToSlot(i, { id: 's' + Date.now() + Math.random(), from: l.from, to: who.name, subj: l.subj, text: l.text, att: l.att, cod: 0, t: Date.now() });
+    mail.send(l.from, l.subj, l.text, l.att as never, 1500); return true; },
+  char: () => profile?.name ?? '', lvl: () => game.st.lvl, gold: () => game.st.gold, payGold: (n) => { if (game.st.gold < n) return false; game.st.gold -= n; return true; }, log: (t, c) => game.logMsg(t, c),
   items: () => Object.keys(inv.bag).filter((k) => inv.bag[k] > 0 && !isToolId(k) && !ITEMS_TBL[k]?.quest).map((id) => ({ id, n: inv.bag[id], name: ITEMS_TBL[id]?.name ?? id, icon: ITEMS_TBL[id]?.icon ?? '•' })),
   gear: () => inv.gearBag, takeItem: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', rarityCol: (r) => (RARITY as Record<string, { col: string }>)[r]?.col ?? '#e8dcc0',
@@ -919,7 +925,7 @@ addEventListener('karmika:burst', (e) => { const d = (e as CustomEvent).detail a
 function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 700); }
 let bootFrames = 0; setTimeout(hideBoot, 30000); // segurança: nunca fica preso na abertura
 const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), shop: () => loja.toggle('prem'), hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
-  onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else { joinServer(); setTimeout(resumeSoul, 900); } },
+  onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else withFade(() => { objs.update(state.fx * T, state.fy * T, true); joinServer(); }, server ? 'Entrando no servidor…' : 'Entrando em Karmika…', () => setTimeout(resumeSoul, 300)); },
   fresh: async () => profile ? { lvl: game.st.lvl, cls: classOfRace(state.race), pic: await slotPic() } : null });
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */
 function slotPic(): Promise<string | null> { return new Promise((res) => { try { if (humanSkinKey() && !skinModel) { res(null); return; } /* o modelo do artista ainda não chegou: fica a foto anterior */ res(heroCard(hero.root)); } catch { res(null); } }); }
@@ -1609,13 +1615,16 @@ function showCreate(reborn = false) {
     if (t.closest('#c-go')) {
       const name = ((el.querySelector('#c-name') as HTMLInputElement).value || '').trim(); if (name.length < 2) { (el.querySelector('#c-err') as HTMLElement).textContent = 'Escolha um nome com pelo menos 2 letras.'; return; }
       if (reborn) { rebirth(name, { name, origin, sex, hair: HAIRS[hair], skin: SKINS[skin], title: oldProfile?.title ?? '', hairStyle, beard, eye: oldProfile?.eye }); el.style.display = 'none'; creating = false; return; }
+      /* 26/10 (Erling: "a tela fica escura antes de entrar no jogo — faça a tela de loading"): o mundo carrega por trás do Olho */
+      withFade(() => {
       soul.reset(); state.karma = 0;
       game.resetClass(classOfRace(raceOf(origin)));
       try { localStorage.removeItem('karmika.welcome'); localStorage.removeItem('karmika.startkit'); } catch { /* */ } // personagem novo: o Baú de Boas-Vindas espera de novo
       profile = { name, origin, sex, hair: HAIRS[hair], skin: SKINS[skin], title: '', hairStyle, beard }; localStorage.setItem('karmika.char.v1', JSON.stringify(profile));
       inv.reset(); quests.reset(); state.race = raceOf(origin); swapHero(); updateWho(); { const s0 = city.starts[origin]; state.fx = s0.x; state.fy = s0.y; localStorage.removeItem(HOME_KEY); home = defaultHome(); if (origin !== 'human') game.logMsg(origin === 'dwarf' ? '⛏ Você nasce em Brasaforja, no sopé da Montanha Negra. As estradas levam a Askavik, onde as academias esperam.' : '🌿 Você nasce em Lithendel, sob as árvores mais velhas do mundo. As estradas levam a Askavik, onde as academias esperam.', '#ffe08a'); } setCombat(false, true);
-      el.style.display = 'none'; creating = false; checkSkinLevel(); setTimeout(() => { joinServer(); saveSlotMeta(); }, 600); game.logMsg(`Bem-vindo a Karmika, ${name}. Fale com Garrick (E) para começar.`, '#ffe08a');
+      el.style.display = 'none'; creating = false; checkSkinLevel(); setTimeout(() => { joinServer(); saveSlotMeta(); }, 600); setTimeout(() => inicio.takeBackHome(), 900); /* criou pelo menu: volta para a tela principal escolher onde jogar */ game.logMsg(`Bem-vindo a Karmika, ${name}. Fale com Garrick (E) para começar.`, '#ffe08a');
       mail.welcome(name); game.logMsg('📮 Três cartas esperam por você na caixa de correio.', '#ffe08a'); giveStartKit();
+      }, `Preparando o mundo de ${name}…`);
     }
   }, { signal: sig });
   let pvT = 0;
@@ -2525,7 +2534,7 @@ let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = he
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
 const IX = 4000, IZ = 4000;
-const fadeEl = document.createElement('div'); fadeEl.id = 'fade'; fadeEl.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:30;transition:opacity .25s';
+const fadeEl = document.createElement('div'); fadeEl.id = 'fade'; fadeEl.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:200;transition:opacity .25s';
 fadeEl.innerHTML = '<div class="ldr"><div class="ldr-eye"><i></i></div><b>Atravessando o caminho…</b><small>o mundo se ergue à sua volta</small></div>'; document.body.appendChild(fadeEl);
 /** troca de lugar (fonte, relíquia, casa, cripta): tela de carregamento com o olho girando (animação de CSS: continua mesmo com o jogo ocupado);
     só some quando o mundo novo já foi montado, os shaders compilados e os quadros voltaram a ficar leves */

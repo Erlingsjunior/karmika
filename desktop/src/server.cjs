@@ -61,7 +61,7 @@ function startServer(opts = {}) {
     let nid = 1;
     /* ---- o que a sala guarda entre sessões: cartas para quem está fora e o quadro de pedidos ---- */
     const dataFile = opts.dataFile || null;
-    let store = { mail: {}, posts: [], pid: 1, accounts: {}, dmq: {}, guilds: {}, gseq: 1 };
+    let store = { mail: {}, posts: [], pid: 1, accounts: {}, dmq: {}, guilds: {}, gseq: 1, amail: {}, amseq: 1 };
     try { if (dataFile && fs.existsSync(dataFile)) store = { ...store, ...JSON.parse(fs.readFileSync(dataFile, 'utf8')) }; } catch (e) { log('não deu para ler os dados da sala:', e.message); }
     let saveT = null; const saveStore = () => { if (!dataFile || saveT) return; saveT = setTimeout(() => { saveT = null; try { fs.writeFileSync(dataFile, JSON.stringify(store)); } catch (e) { log('não deu para salvar os dados da sala:', e.message); } }, 400); };
     const lc = (n) => String(n || '').trim().toLowerCase();
@@ -135,6 +135,17 @@ function startServer(opts = {}) {
         case 'a:dm': { const to = String(m.to || ''); const T = A(to); const text = String(m.text || '').slice(0, 500).trim(); if (!T || !text) break; if (!me.friends.includes(to)) { send(h.ws, { t: 'a:sys', text: 'Só dá para conversar com amigos.' }); break; }
           const msg = { t: 'a:dm', from: h.acc, fromNick: me.nick, to, text, at: Date.now() }; if (connsOf(to).length) sendAcc(to, msg); else { (store.dmq[to] ||= []).push(msg); if (store.dmq[to].length > 200) store.dmq[to].shift(); saveStore(); } sendAcc(h.acc, msg); break; }
         case 'a:list': send(h.ws, friendsMsg(h.acc)); break;
+        /* 26/10 (Erling): o CORREIO DA CONTA — compras do Shop e cartas entre jogadores chegam aqui, fora do mundo; o jogador decide
+           para qual personagem mandar os anexos (aí vão para a caixa de correio daquele personagem) */
+        case 'a:mlist': send(h.ws, { t: 'a:mail', list: store.amail[h.acc] || [] }); break;
+        case 'a:mshop': { const subj = String(m.subj || '').slice(0, 80), text = String(m.text || '').slice(0, 1500); const att = Array.isArray(m.att) ? m.att.slice(0, 6) : [];
+          (store.amail[h.acc] ||= []).push({ id: store.amseq++, from: 'Shop de Askavik', subj, text, att, t: Date.now() }); saveStore(); sendAcc(h.acc, { t: 'a:mail', list: store.amail[h.acc], fresh: true }); break; }
+        case 'a:msend': { const to = String(m.to || ''); const T = A(to); const subj = String(m.subj || '').slice(0, 80).trim() || '(sem assunto)', text = String(m.text || '').slice(0, 1500).trim(); if (!T || !text) break;
+          if (!me.friends.includes(to)) { send(h.ws, { t: 'a:sys', text: 'Cartas da conta só vão para amigos.' }); break; }
+          (store.amail[to] ||= []).push({ id: store.amseq++, from: me.nick, fromId: h.acc, subj, text, att: Array.isArray(m.att) ? m.att.slice(0, 6) : [], t: Date.now() }); if (store.amail[to].length > 100) store.amail[to].shift(); saveStore();
+          sendAcc(to, { t: 'a:mail', list: store.amail[to], fresh: true }); send(h.ws, { t: 'a:sys', text: `Carta enviada para ${T.nick}.` }); break; }
+        case 'a:mtake': { const L = store.amail[h.acc] || []; const i = L.findIndex((x) => x.id === m.id); if (i < 0) break; if (m.del) L.splice(i, 1); else { L[i].att = []; L[i].read = true; } saveStore(); sendAcc(h.acc, { t: 'a:mail', list: L }); break; }
+        case 'a:mread': { const L = store.amail[h.acc] || []; const x = L.find((q) => q.id === m.id); if (x) { x.read = true; saveStore(); } break; }
         /* ---------- guildas ---------- */
         case 'g:create': { const char = h.char; if (!char) break; if (guildOf(char)) { send(h.ws, { t: 'a:sys', text: 'Você já está em uma guilda.' }); break; }
           const name = String(m.name || '').replace(/[<>]/g, '').slice(0, 28).trim(), tag = String(m.tag || '').replace(/[^\p{L}\p{N}]/gu, '').slice(0, 4).toUpperCase();
@@ -183,7 +194,7 @@ function startServer(opts = {}) {
           if (String(m.code || '').toUpperCase() !== code || (opts.password && String(m.pass || '') !== String(opts.password))) { send(ws, { t: 'a:deny', why: 'Convite ou senha errados.' }); ws.close(); return; }
           const a = auth(m.acc); if (!a || a === 'bad') { send(ws, { t: 'a:deny', why: a === 'bad' ? 'Esta conta já existe com outra chave neste servidor.' : 'Conta inválida.' }); ws.close(); return; }
           clearTimeout(bye); hubConn = { ws, acc: m.acc.id, char: String(m.char || '').slice(0, 24), where: m.where === 'mundo' ? 'mundo' : 'menu' }; hubs.add(hubConn); a.seen = Date.now();
-          send(ws, { t: 'a:me', id: m.acc.id, nick: a.nick }); send(ws, friendsMsg(m.acc.id)); send(ws, guildMsg(hubConn.char ? guildOf(hubConn.char) : null)); send(ws, worldGuilds());
+          send(ws, { t: 'a:me', id: m.acc.id, nick: a.nick }); send(ws, friendsMsg(m.acc.id)); send(ws, guildMsg(hubConn.char ? guildOf(hubConn.char) : null)); send(ws, worldGuilds()); send(ws, { t: 'a:mail', list: store.amail[m.acc.id] || [] });
           const q = store.dmq[m.acc.id]; if (q && q.length) { for (const x of q) send(ws, x); delete store.dmq[m.acc.id]; } saveStore(); pushFriendsOf(m.acc.id); return; }
         if (!me) {
           if (m.t !== 'hello') return;

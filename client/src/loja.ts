@@ -5,6 +5,7 @@
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
 
 type Prod = { id: string; kind: 'prem' | 'fac'; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
+const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const brl = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
 export const PREM_PLANS: Prod[] = [
   { id: 'p30', kind: 'prem', name: '30 dias', brl: 19.9, days: 30, desc: 'Um mês de Bênção de Marghar.' },
@@ -43,15 +44,15 @@ const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
-  owns: (uniq: string) => boolean; addDays: (d: number) => void; deliver: (subj: string, text: string, att: Deliv[]) => void; log: (t: string, c?: string) => void; dev: boolean;
+  owns: (uniq: string) => boolean; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
-  let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
+  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
   const until = ctx.until;
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
     return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>O Premium deixa o dia a dia mais leve. <b>Nunca dá força:</b> nada de dano, vida, XP ou drop a mais. Um jogador free com o mesmo tempo de jogo luta de igual para igual.</p>
-      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}O Premium é da <b>conta</b>: vale para todos os seus personagens, e a compra ativa na hora (os dias somam). Dá para comprar até pelo menu, sem entrar num servidor.</p></div></div>
+      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}A compra chega como um <b>Selo de Marghar</b> no correio do personagem que você escolher: ao usar, o Premium vale para a <b>conta</b> (todos os seus personagens, os dias somam). Ou guarde, ou venda a outro jogador. Dá para comprar pelo menu, sem entrar num servidor.</p></div></div>
       <ul class="lj-perks">${PREM_PERKS.map(([i, t]) => `<li><span>${i}</span>${t}</li>`).join('')}</ul>
       <div class="lj-plans">${PREM_PLANS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small><small class="lj-pm">${brl(p.brl / (p.days! / 30))} por mês</small></button>`).join('')}</div>
       <small class="lj-note">Ao acabar, nada se perde: as bolsas Premium ficam lacradas com tudo dentro. Também dá para ativar com o Selo de Marghar comprado por ouro no balcão.</small>`;
@@ -74,10 +75,10 @@ export function createLoja(ctx: {
   const BETA_FREE = true;
   function checkout() {
     if (!cart) return '';
-    const f = side, what = cart.kind === 'prem' ? `${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
+    const f = side, what = cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
     return `<div class="lj-co"><div class="lj-copn"><h3>${paid ? '✦ Pagamento aprovado' : 'Pagar com Pix'}</h3>
-      ${paid ? `<p>${cart.kind === 'prem' ? `${what} ativado na sua conta: vale para todos os seus personagens.` : `${what} já é seu. Chega na caixa de correio do personagem ativo em instantes: retire em qualquer povoado.`}</p><button data-co-ok>Fechar</button>`
-      : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div><div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
+      ${paid && ctx.inMenu() ? `<p>${what} já é seu. Está no <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio): escolha lá para qual personagem mandar, ou dê de presente a um amigo.</p><button data-co-ok>Fechar</button>` : paid ? `<p>${what} já é seu. Chega na caixa de correio de <b>${esc2(ctx.chars().find((c) => c.i === (recip ?? -1))?.name ?? ctx.chars().find((c) => c.active)?.name ?? 'seu personagem')}</b>: retire em qualquer povoado.${cart.kind === 'prem' ? ' Use o selo para ativar o Premium da conta, guarde, ou venda a outro jogador.' : ''}</p><button data-co-ok>Fechar</button>`
+      : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div>${ctx.inMenu() ? '<p class="lj-warn">Comprando pelo menu: a compra vai para o <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio). De lá você manda para qualquer personagem seu, ou de presente para um amigo.</p>' : ''}<div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
         <p class="lj-warn">${BETA_FREE ? 'Fase de testes: o Pix ainda não está ligado e <b>nada é cobrado</b>. Clique em <b>Receber grátis</b> para testar a compra de verdade (chega no correio).' : 'O pagamento por Pix liga junto com o servidor. Por enquanto <b>nada é cobrado</b> e este QR Code não paga nada.'}</p>
         <div class="lj-cobtn"><button data-co-x>Voltar</button>${BETA_FREE ? '<button data-co-sim class="gold">✦ Receber grátis (teste)</button>' : ctx.dev ? '<button data-co-sim class="dev">Simular pagamento aprovado (DEV)</button>' : ''}</div>`}</div></div>`;
   }
@@ -94,10 +95,12 @@ export function createLoja(ctx: {
   }
   function approve() {
     if (!cart) return;
-    /* 26/10 (Erling: "o Premium é para o jogador e não para o personagem: se ele comprar, compra para todos"): ativa direto na conta da máquina */
-    if (cart.kind === 'prem') { ctx.addDays(cart.days!); ctx.log(`✦ Premium ativo na sua conta: +${cart.name}. Vale para todos os seus personagens.`, '#c9a0ff'); }
-    else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })));
-      ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da sua caixa de correio.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
+    /* 26/10 (Erling): o Premium vem como Selo de Marghar no correio do personagem que o jogador escolher; ele usa, guarda ou vende
+       (e o ouro da venda fica com esse personagem). As peças com brasão também vão para quem ele escolher */
+    const to = recip ?? ctx.chars().find((c) => c.active)?.i ?? 0, toName = ctx.chars().find((c) => c.i === to)?.name ?? 'você';
+    if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam e valem para a conta inteira, todos os seus personagens) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }], to); ctx.log(ctx.inMenu() ? `📮 Selo de Marghar (${cart.name}) no inventário da conta (Correio).` : `📮 Selo de Marghar (${cart.name}) a caminho da caixa de correio de ${toName}.`, '#c9a0ff'); }
+    else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })), to);
+      ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da caixa de correio de ${toName}.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
     paid = true; render();
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
@@ -105,6 +108,7 @@ export function createLoja(ctx: {
     const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac'; render(); return; }
     const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
     const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS].find((p) => p.id === b) ?? null; paid = false; render(); return; }
+    const tp = (t.closest('[data-to]') as HTMLElement | null)?.dataset.to; if (tp !== undefined) { recip = +tp; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
     if (t.closest('[data-co-sim]')) approve(); });
   const api = {
