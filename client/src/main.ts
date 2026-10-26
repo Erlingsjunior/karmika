@@ -250,7 +250,7 @@ hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
 const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { sweep: () => geoSweep([scene]), pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { sweep: () => geoSweep([scene]), night: (v: number | null) => { nightOverride = v; if (v !== null) nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -1338,18 +1338,20 @@ var stanceSys: ReturnType<typeof createStances> | null = null;
 /* o ícone da postura nos pés (25/10): um anel com o símbolo do papel, na cor da postura, girando devagar sob o herói */
 const ST_ICON: Record<string, string> = { bal: '◎', atk: '⚔', tank: '🛡', heal: '✚', speed: '➶', leech: '🩸' };
 const stTex = new Map<string, THREE.CanvasTexture>();
-function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!;
-  g.strokeStyle = col; g.globalAlpha = 0.95; g.lineWidth = 5; g.beginPath(); g.arc(64, 64, 56, 0, 6.283); g.stroke(); g.lineWidth = 2; g.globalAlpha = 0.6; g.beginPath(); g.arc(64, 64, 47, 0, 6.283); g.stroke();
-  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; g.globalAlpha = 0.85; g.fillStyle = col; g.beginPath(); g.arc(64 + Math.cos(a) * 52, 64 + Math.sin(a) * 52, 2.6, 0, 6.283); g.fill(); }
-  g.globalAlpha = 1; g.font = 'bold 34px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 8;
-  for (const [dx, dy] of [[0, -30], [30, 0], [0, 30], [-30, 0]]) g.fillText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy);
-  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; stTex.set(id, t); return t; }
-const stRing = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.6, fog: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 2; scene.add(stRing);
+function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d')!; g.scale(2, 2);
+  /* 26/10 (Erling: "menos etérea, mais nítida"): traço cheio com contorno escuro por baixo, sem borrão — lê em grama, pedra e neve */
+  const ring = (r: number, w: number, a: number) => { g.globalAlpha = a * 0.7; g.strokeStyle = '#0a0806'; g.lineWidth = w + 3; g.beginPath(); g.arc(64, 64, r, 0, 6.283); g.stroke(); g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.arc(64, 64, r, 0, 6.283); g.stroke(); };
+  ring(56, 4.5, 1); ring(47, 2, 0.85);
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, x = 64 + Math.cos(a) * 52, y = 64 + Math.sin(a) * 52; g.globalAlpha = 0.8; g.fillStyle = '#0a0806'; g.beginPath(); g.arc(x, y, 3.8, 0, 6.283); g.fill(); g.globalAlpha = 1; g.fillStyle = col; g.beginPath(); g.arc(x, y, 2.6, 0, 6.283); g.fill(); }
+  g.font = 'bold 34px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+  for (const [dx, dy] of [[0, -30], [30, 0], [0, 30], [-30, 0]]) { g.globalAlpha = 0.75; g.strokeStyle = '#0a0806'; g.lineWidth = 4; g.strokeText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy); g.globalAlpha = 1; g.fillStyle = col; g.fillText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy); }
+  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.keep = true; stTex.set(id, t); return t; }
+const stRing = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, opacity: 0.8, fog: false, toneMapped: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 3; /* depthTest off: a grama alta não come o anel */ scene.add(stRing);
 let stRingId = '', stPop = 0;
 function stanceRing(st: { id: string; role: string; col: string } | null, dt: number) {
   if (!st) { stRing.visible = false; return; }
   if (st.id !== stRingId) { stRingId = st.id; (stRing.material as THREE.MeshBasicMaterial).map = stanceTex(st.id, st.role, st.col); (stRing.material as THREE.MeshBasicMaterial).needsUpdate = true; }
-  stPop = Math.max(0, stPop - dt * 1.6); const p = hero.root.position; stRing.visible = !riding; stRing.position.set(p.x, p.y + 0.06, p.z); stRing.rotation.z += dt * 0.35; stRing.scale.setScalar(1 + stPop * 1.4); (stRing.material as THREE.MeshBasicMaterial).opacity = 0.42 + 0.5 * stPop; }
+  stPop = Math.max(0, stPop - dt * 1.6); const p = hero.root.position; stRing.visible = !riding; stRing.position.set(p.x, p.y + 0.06, p.z); stRing.rotation.z += dt * 0.35; stRing.scale.setScalar(1 + stPop * 1.4); (stRing.material as THREE.MeshBasicMaterial).opacity = Math.min(1, 0.78 + 0.3 * stPop); }
 /* o aviso grande no meio da tela: nome, papel e o que muda (fica 3 s, dá para ler) */
 const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.appendChild(stBan); let stBanT = 0;
 function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
@@ -2014,25 +2016,31 @@ const guideEl = document.createElement('div'); guideEl.id = 'guide'; guideEl.inn
 const guideLbl = guideEl.querySelector('.lbl span') as HTMLElement, guideDist = guideEl.querySelector('.lbl small') as HTMLElement;
 /* fôlego: arco amarelo no pé do herói (voltado para a câmera), esvazia ao correr e ao dar dash */
 const stamG = new THREE.Group(); scene.add(fine(stamG));
-const stamArc = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.28, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide })); stamG.add(stamArc);
-const stamBg = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.28, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x3a2a10, transparent: true, opacity: 0.45, depthWrite: false, fog: false, side: THREE.DoubleSide })); stamG.add(stamBg);
+const stamArc = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.28, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false, fog: false, toneMapped: false, side: THREE.DoubleSide })); stamArc.renderOrder = 5; stamG.add(stamArc);
+const stamBg = new THREE.Mesh(new THREE.RingGeometry(1.06, 1.32, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide })); stamBg.renderOrder = 4; stamG.add(stamBg);
 let stamShow = 0;
 function updateStamRing(dt: number) {
-  const k = game.st.stam / Math.max(1, game.st.stamMax), want = k < 0.999 ? 1 : 0;
+  const k = game.st.stam / Math.max(1, game.st.stamMax), want = 1; /* 26/10 (Erling): o fôlego não some — fica sempre no pé, cheio ou não */
   stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !inside && !game.st.dead;
   if (!stamG.visible) return;
   stamG.position.set(heroPos.x, heroPos.y + 0.05, heroPos.z); stamG.rotation.y = az; // arco virado para a câmera, à frente dos pés
   const SPAN = 1.5, start = -Math.PI / 2 - SPAN / 2; // centrado na direção da câmera
   stamArc.geometry.dispose(); stamArc.geometry = new THREE.RingGeometry(1.1, 1.28, 48, 1, start + SPAN * (1 - k), Math.max(0.001, SPAN * k)).rotateX(-Math.PI / 2);
-  stamBg.geometry.dispose(); stamBg.geometry = new THREE.RingGeometry(1.1, 1.28, 48, 1, start, SPAN).rotateX(-Math.PI / 2);
-  (stamArc.material as THREE.MeshBasicMaterial).color.setHex(k < 0.25 ? 0xff6a3a : k < 0.5 ? 0xffa040 : 0xffd24a); (stamArc.material as THREE.MeshBasicMaterial).opacity = 0.85 * stamShow; (stamBg.material as THREE.MeshBasicMaterial).opacity = 0.45 * stamShow;
+  stamBg.geometry.dispose(); stamBg.geometry = new THREE.RingGeometry(1.06, 1.32, 48, 1, start - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
+  (stamArc.material as THREE.MeshBasicMaterial).color.setHex(k < 0.25 ? 0xff6a3a : k < 0.5 ? 0xffa040 : 0xffd24a); (stamArc.material as THREE.MeshBasicMaterial).opacity = 0.95 * stamShow; (stamBg.material as THREE.MeshBasicMaterial).opacity = 0.6 * stamShow;
 }
 /* bússola no pé do herói: arco dourado que aponta o destino, com três chevrons correndo na direção */
 const guide3d = new THREE.Group(); guide3d.visible = false; scene.add(fine(guide3d));
 /* mistura normal (não aditiva): no chão claro, verde-claro e laranja somados à luz viravam quase branco — a cor da missão tem que aparecer como é */
-const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, blending: THREE.NormalBlending, fog: false, side: THREE.DoubleSide });
-{ const arc2 = new THREE.Mesh(new THREE.RingGeometry(0.98, 1.06, 40, 1, -Math.PI / 2 - 0.7, 1.4).rotateX(-Math.PI / 2), gMat(0.8)); guide3d.add(arc2);
-  for (let i = 0; i < 3; i++) { const sh = new THREE.Shape(); sh.moveTo(-0.22, -0.16); sh.lineTo(0, 0.1); sh.lineTo(0.22, -0.16); sh.lineTo(0, -0.02); sh.closePath(); const ch = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), gMat(0.9)); ch.name = 'chev' + i; guide3d.add(ch); } }
+const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, depthTest: false, blending: THREE.NormalBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
+/* 26/10 (Erling: "a bússola some no chão da floresta, precisa ficar mais viva"): desenhada por cima do chão e da grama (sem teste de profundidade),
+   com uma sombra escura por baixo do arco e das setas — a cor da missão lê em qualquer fundo — e pulsando */
+const gInk = (op: number) => new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: op, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide, userData: { ink: true } } as THREE.MeshBasicMaterialParameters);
+{ const ink = new THREE.Mesh(new THREE.RingGeometry(0.92, 1.14, 40, 1, -Math.PI / 2 - 0.74, 1.48).rotateX(-Math.PI / 2), gInk(0.55)); ink.renderOrder = 6; ink.userData.ink = true; guide3d.add(ink);
+  const arc2 = new THREE.Mesh(new THREE.RingGeometry(0.96, 1.1, 40, 1, -Math.PI / 2 - 0.7, 1.4).rotateX(-Math.PI / 2), gMat(1)); arc2.name = 'garc'; arc2.renderOrder = 7; guide3d.add(arc2);
+  for (let i = 0; i < 3; i++) { const sh = new THREE.Shape(); sh.moveTo(-0.24, -0.17); sh.lineTo(0, 0.11); sh.lineTo(0.24, -0.17); sh.lineTo(0, -0.02); sh.closePath();
+    const sh2 = new THREE.Shape(); sh2.moveTo(-0.32, -0.23); sh2.lineTo(0, 0.17); sh2.lineTo(0.32, -0.23); sh2.lineTo(0, -0.07); sh2.closePath();
+    const ch = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), gMat(1)); ch.name = 'chev' + i; ch.renderOrder = 9; const chi = new THREE.Mesh(new THREE.ShapeGeometry(sh2).rotateX(Math.PI / 2), gInk(0.5)); chi.renderOrder = 8; chi.userData.ink = true; chi.position.y = -0.002; ch.add(chi); guide3d.add(ch); } }
 let guideT: { x: number; y: number; label: string } | null = null, guideTick = 0;
 /** cor da guia = cor da missão escolhida (história amarela, secundária azul, quadro verde, evento laranja, alfinete do mapa prata-azulado):
  *  o arco, as setas no chão, a etiqueta e o anel no mapa falam a mesma cor do cartão da missão (Erling, 25/10) */
@@ -2041,13 +2049,14 @@ let guideCol: string = GUIDE_COL.story;
 function guideColor(): string { if (pinT) return GUIDE_COL.pin; if (guideT && /^Evento: /.test(guideT.label)) return GUIDE_COL.ev; const d = quests.tracked; return d ? GUIDE_COL[questCat(d)] : GUIDE_COL.story; }
 const gv = new THREE.Vector3();
 function updateGuide(dt: number) {
-  guideTick -= dt; if (guideTick <= 0) { guideTick = 0.5; guideT = questTarget(); { const c = guideColor(); if (c !== guideCol) { guideCol = c; guide3d.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color) m.color.set(c); }); guideEl.style.setProperty('--gc', c); } } const dir = document.querySelector('#quests .q.track .dir') as HTMLElement | null; if (dir) { if (guideT) { const dx = guideT.x - state.fx, dy = guideT.y - state.fy, m = Math.round(Math.hypot(dx, dy) * T); const comp = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'][((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8]; dir.textContent = `◆ ${guideT.label} · ${fmtDist(m)} ${comp}`; } else dir.textContent = ''; } }
+  guideTick -= dt; if (guideTick <= 0) { guideTick = 0.5; guideT = questTarget(); { const c = guideColor(); if (c !== guideCol) { guideCol = c; guide3d.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color && !o.userData.ink) m.color.set(c); }); guideEl.style.setProperty('--gc', c); } } const dir = document.querySelector('#quests .q.track .dir') as HTMLElement | null; if (dir) { if (guideT) { const dx = guideT.x - state.fx, dy = guideT.y - state.fy, m = Math.round(Math.hypot(dx, dy) * T); const comp = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'][((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8]; dir.textContent = `◆ ${guideT.label} · ${fmtDist(m)} ${comp}`; } else dir.textContent = ''; } }
   if (!guideT || inside || dlg.isOpen) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
   const tx = guideT.x * T, tz = guideT.y * T, hx = state.fx * T, hz = state.fy * T, dist = Math.hypot(tx - hx, tz - hz);
   if (dist < 5) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
   const ang = Math.atan2(tx - hx, tz - hz), t = performance.now() / 1000;
   guide3d.visible = true; guide3d.position.set(heroPos.x, heroPos.y + 0.06, heroPos.z); guide3d.rotation.y = ang;
-  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, 1.35 + k * 0.9); ch.scale.setScalar(0.8 + k * 0.5); (ch.material as THREE.MeshBasicMaterial).opacity = 0.95 * (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); }
+  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, 1.35 + k * 0.9); ch.scale.setScalar(0.8 + k * 0.5); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.5 * op; }
+  { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.85 + 0.15 * Math.sin(t * 4); ga.scale.setScalar(1 + 0.03 * Math.sin(t * 4)); }
   // etiqueta acima da ponta do arco: destino e distância
   const r = canvas.getBoundingClientRect();
   // contagem no canto inferior direito do personagem (onde ficarão os ícones de buffs/debuffs)
@@ -3714,8 +3723,10 @@ function frameBody() {
   mmT -= dt; if (mmT <= 0) { mmT = 0.1; drawMini(); if (bigOpen) drawBig(); (document.getElementById('zone') as HTMLElement).textContent = `${zoneName()} · ${turnName()} ${Math.floor(gameHour())}h`; }
   hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting || game.st.dead ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
   if (hintEl.style.display !== 'none') { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.1, heroPos.z).project(camera); hintEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; hintEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; }
-  lantern.position.set(heroPos.x, 3.2, heroPos.z);
-  lantern.intensity = mix(5, 55, night); lantern.distance = 36 * (1 + Math.min(60, game.st.lvl - 1) * 0.004); /* a aura alcança um pouco mais a cada nível (Erling 26/10: 'o alcance aumenta, numa proporção BEM pequena, não o brilho'): +0,4 % por nível, até +24 % no 60 */
+  /* AURA QUE CRESCE COM O NÍVEL (Erling 26/10: "o alcance aumenta, não o brilho"). O círculo visível depende da queda da luz, não do corte:
+     esticar o desenho inteiro por s = subir a luz s vezes, cortar s vezes mais longe e multiplicar a força por s^1.6 (a mesma queda) —
+     o chão sob o herói fica igual e a borda vai mais longe. +1% por nível (nível 16 ≈ +15%, nível 60 ≈ +59%). */
+  { const s = 1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01; lantern.position.set(heroPos.x, 3.2 * s, heroPos.z); lantern.distance = 36 * s; lantern.intensity = mix(5, 55, night) * Math.pow(s, 1.6); }
 
   /* câmera com zoom suave e lento */
   zoom += (zoomTarget - zoom) * Math.min(1, dt * 2.2);
@@ -3772,7 +3783,7 @@ function frameBody() {
     (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
     u.uSat.value = mix(0.86, 1.04, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
   audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (0.12 + 0.88 * Math.max(op, engK)) * (inside ? 0.4 : 1), rawDt);
-  if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42; } // debaixo da terra: só as tochas, os cristais e a lava iluminam
+  if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42 * Math.pow(1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01, 1.6); } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
     const dir = new THREE.Vector3(-18, 28, 10).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2;
     const a = Math.round(heroPos.dot(lr) / tex) * tex, b = Math.round(heroPos.dot(lu) / tex) * tex, c = heroPos.dot(dir);
