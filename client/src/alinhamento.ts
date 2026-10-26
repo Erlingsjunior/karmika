@@ -18,7 +18,7 @@ export const tierOf = (v: number) => { let t = TIERS[0]; for (const x of TIERS) 
 type Kind = 'vila' | 'regiao' | 'faccao';
 interface St { v: Record<string, number>; seen: Record<string, number>; flags: Record<string, number> }
 const KEY = 'karmika.align.v1';
-export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'village' }[]; regions(): string[]; factions(): { id: string; name: string }[]; myFac(): string | null; log(t: string, c?: string): void }) {
+export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'village' }[]; regions(): string[]; factions(): { id: string; name: string }[]; myFac(): string | null; log(t: string, c?: string): void; /** uma linha sobre o lugar onde você está agora (festa, por que sim, por que não) */ status?(): string }) {
   let S: St = { v: {}, seen: {}, flags: {} }; try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o?.v) S = { ...S, ...o }; } catch { /* */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* */ } };
   const k = (kind: Kind, name: string) => `${kind}:${name}`;
@@ -36,7 +36,7 @@ export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'vil
     else if (tab === 'regiao') body = ctx.regions().slice().sort((a, b) => get('regiao', b) - get('regiao', a)).map((r) => row(`⛰ ${r}`, get('regiao', r))).join('');
     else body = ctx.factions().map((f) => row(`⚑ ${f.name}`, get('faccao', f.id), ctx.myFac() === f.id ? 'Você jurou por ela: cada missão feita soma +1.' : ctx.myFac() ? 'A outra bandeira: cada missão sua pesa −1 aqui.' : 'Sem juramento ainda.')).join('');
     el.innerHTML = `<div class="pn alpn"><h2>Alinhamento Kármico <button data-x title="Fechar">✕</button></h2><p class="aldesc">O que outros chamam de reputação, em Karmika é o quanto a sua alma combina com o lugar. Missões, ajuda e sangue mudam isso.</p>
-      <div class="altabs">${(([['vila', '🏘 Vilas e cidades'], ['regiao', '⛰ Regiões'], ['faccao', '⚑ Facções']]) as [Kind, string][]).map(([kk, t]) => `<button data-tab="${kk}" class="${tab === kk ? 'on' : ''}">${t}</button>`).join('')}</div>
+      ${ctx.status ? `<div class="alnow">${ctx.status()}</div>` : ''}<div class="altabs">${(([['vila', '🏘 Vilas e cidades'], ['regiao', '⛰ Regiões'], ['faccao', '⚑ Facções']]) as [Kind, string][]).map(([kk, t]) => `<button data-tab="${kk}" class="${tab === kk ? 'on' : ''}">${t}</button>`).join('')}</div>
       <div class="allist">${body}</div><div class="altiers">${TIERS.map((t) => `<span style="color:${t.col}">${t.name}</span>`).join(' · ')}</div></div>`;
     el.style.display = 'flex'; }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]')) { toggle(false); return; } const b = t.closest('[data-tab]') as HTMLElement | null; if (b) { tab = b.dataset.tab as Kind; render(); } });

@@ -966,7 +966,7 @@ const eventos = createEvents({ scene, heightAt, hero: () => heroPos, inside: () 
   count: (it) => inv.count(it), take: (it, n) => inv.take(it, n), act: (a) => { hero.act(a as never, true); }, result: (r) => showEvResult(r) }, evSites);
 /* ---------- ALINHAMENTO KÁRMICO com cada lugar (alinhamento.ts) e a festa de despedida de Karmika ---------- */
 const align = createAlign({ places: () => city.settlements.filter((q) => q.radius >= 10).map((q) => ({ name: q.name, kind: q.kind === 'city' || q.name === 'Karmika' ? 'city' as const : 'village' as const })), regions: () => REGIONS.map((r) => r.name),
-  factions: () => Object.entries(FAC).map(([id, f]) => ({ id, name: f.name })), myFac: () => myFac(), log: (t, c) => game.logMsg(t, c) });
+  factions: () => Object.entries(FAC).map(([id, f]) => ({ id, name: f.name })), myFac: () => myFac(), log: (t, c) => game.logMsg(t, c), status: () => festaStatus() });
 const settleAt = (x: number, y: number, pad = 6) => city.settlements.find((q) => q.radius >= 10 && Math.hypot(x - q.x, y - q.y) < q.radius + pad) ?? null;
 const hereSettle = () => { const h0 = hereT(); return settleAt(h0.x, h0.y); };
 const npcHome = (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n ? settleAt(n.def.x / T, n.def.z / T, 12) : null; };
@@ -991,8 +991,9 @@ function alignTick(dt: number) { void dt; const nowA = performance.now(); if (no
   if (nm && nm !== alignHere) { const away = align.arrive(nm), t = align.tier('vila', nm);
     if (away > 10 * 60000 && t.min >= 30) { game.logMsg(`🏘 ${nm} te recebe de braços abertos (${t.name}).`, t.col); setTimeout(() => npcSys.say(align.flag('festa_' + nm) === 1 ? 'Você voltou! A festa ainda é assunto na taverna.' : 'Olha quem voltou! Bem-vindo de volta!', heroPos), 900); }
     else if (away > 10 * 60000 && t.min <= -60) game.logMsg(`🏘 Em ${nm} as portas se fecham quando você passa (${t.name}).`, t.col); }
+  if (nm !== alignHere && festaAsked && festaAsked !== nm) festaAsked = '';
   alignHere = nm;
-  if (nm && !festa && !document.querySelector('.kconf')) festaOffer(nm);
+  if (nm && !festa && !dlg.isOpen && !document.querySelector('.kconf')) festaOffer(nm); /* com a conversa aberta o convite nascia escondido atrás dela (e o ESC da conversa fechava os dois) */
   if (festa) festaTick(); }
 /** preço nas lojas do lugar onde você está */
 const alignPriceK = () => { const st = hereSettle(); return st ? align.tier('vila', st.name).price : 1; };
@@ -1003,6 +1004,11 @@ let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z:
 function leavingQuest(stName: string) { for (const id of Object.keys(quests.q.active)) { const d = quests.def(id); if (!d || questCat(d) !== 'story') continue; if (npcHome(d.giver)?.name !== stName) continue;
     const far = (d.turnin && npcHome(d.turnin)?.name && npcHome(d.turnin)!.name !== stName) || d.objs.some((o) => o.kind === 'visit' && o.poi !== stName && city.settlements.some((q) => q.name === o.poi)); if (far) return d; } return null; }
 /* a festa de despedida acontece em TODO lugar onde você é amado (Amigo ou mais; em Karmika basta Conhecido), uma vez por lugar, quando uma missão te leva embora */
+/** o painel do alinhamento diz, sem segredo, como está a festa do lugar onde você está (Erling, 26/10: "o Garrick não me fez o convite") */
+function festaStatus() { const st = hereSettle(); if (!st) return '📍 Você está fora de qualquer vila ou cidade agora.'; const nm = st.name, v = align.get('vila', nm), need = nm === 'Karmika' ? 10 : 30, t = align.tier('vila', nm), lq = leavingQuest(nm), ok = (b: boolean) => b ? '✔' : '✖';
+  const counted = quests.q.done.filter((id) => align.flag('q:' + id)).length;
+  if (align.flag('festa_' + nm)) return `📍 <b>${nm}</b>: <span style="color:${t.col}">${t.name} (${Math.round(v)})</span> · 🎉 a festa de despedida daqui já aconteceu.`;
+  return `📍 <b>${nm}</b>: <span style="color:${t.col}">${t.name} (${v > 0 ? '+' : ''}${Math.round(v)})</span> · ${counted}/${quests.q.done.length} missões feitas já contaram<br>🎉 Festa de despedida: ${ok(v >= need)} alinhamento ${need}+ · ${ok(!!lq)} ${lq ? `“${lq.name}” te leva embora` : 'nenhuma missão da história dada aqui te leva para outro lugar'}${v >= need && lq ? ' · <b>pronta: o convite chega em instantes</b>' : ''}`; }
 let festaAsked = '';
 function festaOffer(stName = hereSettle()?.name ?? '') { if (!stName || align.flag('festa_' + stName) || festa || festaAsked === stName) return false; const v = align.get('vila', stName); if (v < (stName === 'Karmika' ? 10 : 30)) return false;
   const d = leavingQuest(stName); if (!d) return false; festaAsked = stName; const host = d.giver;
