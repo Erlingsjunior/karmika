@@ -29,7 +29,7 @@ export const RECIPES2: Recipe[] = [
   { id: 'vinho_santo', prof: 'cozinheiro', lvl: 35, cls: ['Anão'], need: [['gota_santa', 1], ['apple', 4], ['mead', 1]], out: ['vinho_santo', 1], label: 'Vinho Santo (só anões)' },
   { id: 'gota_santa', prof: 'alquimista', lvl: 30, cls: ['Elfo'], need: [['herb_m', 3], ['herb_f', 1]], out: ['gota_santa', 2], label: 'Gota de Lágrima Santa (só elfos)' },
   { id: 'sangria_c', prof: 'alquimista', lvl: 30, cls: ['Anão'], need: [['potion', 1], ['herb_r', 2]], out: ['sangria_c', 2], label: 'Sangria Concentrada (só anões)' },
-  { id: 'trigo_sf', prof: 'alquimista', lvl: 30, cls: ['Tecnocrata'], need: [['herb_g', 4], ['ore_ag', 1]], out: ['trigo_sf', 3], label: 'Trigo sem Fermento (só tecnocratas)' },
+  { id: 'trigo_sf', prof: 'marceneiro', lvl: 30, cls: ['Tecnocrata'], need: [['herb_g', 4], ['ore_ag', 1]], out: ['trigo_sf', 3], label: 'Trigo sem Fermento (estufa de latão; só tecnocratas)' },
   { id: 'inj_s', prof: 'ferreiro', lvl: 35, cls: ['Tecnocrata'], need: [['sangria_c', 2], ['ore_ag', 1], ['herb_g', 1]], out: ['inj_s', 2], label: 'Injeção Automática de Sangue (só tecnocratas)' },
   { id: 'sino_guarda', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['ore_ag', 2], ['nail', 4]], out: ['sino_guarda', 1], label: 'Sino de Guarda (só tecnocratas)' },
   { id: 'casco_reator', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata', 'Anão'], need: [['ore_i', 5], ['ore_ag', 2], ['nail', 6]], out: ['casco_reator', 1], label: 'Casco de Reator (tecnocratas e anões)' },
