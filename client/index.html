@@ -1174,7 +1174,12 @@
   #socw.docked .sopn { width: min(440px, calc(40vw / var(--ui))); height: calc((100vh - 56px) / var(--ui)) !important; max-height: none !important; box-shadow: 0 10px 40px #000; }
   body.indock #inicio { justify-content: flex-start; padding-left: max(2vw, calc((100vw - 480px - min(760px, 54vw)) / 2)); padding-right: 480px; box-sizing: border-box; }
   body.indock #inicio .in-wrap { width: min(760px, 54vw); }
-  #inicio button.lnk { display: block; } #pquest { z-index: 96 !important; }
+  #inicio button.lnk { display: block; }
+  body.indock #lojaw { z-index: 140; } /* o Shop abre por cima do menu */
+  /* a janela do jogo muda de tamanho: o painel encolhe; em tela estreita ele desce para baixo do menu */
+  @media (max-width: 1150px) { #socw.docked .sopn { width: calc(330px / var(--ui)); } body.indock #inicio { padding-right: 360px; padding-left: 2vw; } body.indock #inicio .in-wrap { width: min(760px, calc(100vw - 400px)); } body.indock #inicio h1 { font-size: 44px; } }
+  @media (max-width: 820px), (max-height: 520px) and (max-width: 1150px) { #socw.docked { top: auto !important; left: 10px !important; right: 10px !important; bottom: 10px !important; } #socw.docked .sopn { width: 100% !important; height: calc(34vh / var(--ui)) !important; }
+    body.indock #inicio { padding: 10px 10px 37vh; justify-content: center; overflow-y: auto; align-items: flex-start; } body.indock #inicio .in-wrap { width: 96vw; gap: 10px; } body.indock #inicio h1 { font-size: 34px; } } #pquest { z-index: 96 !important; }
   .sopn { width: min(640px, calc(94vw / var(--ui))); height: min(660px, calc(86vh / var(--ui))); display: flex; flex-direction: column; overflow: hidden; padding: 14px 18px; font-family: Georgia, serif; color: #e8dcc0; }
   .sopn h2 { margin: 0 0 8px; display: flex; align-items: center; gap: 10px; font: 700 19px Cinzel, serif; color: #f2cf8a; } .sopn h2 button[data-x] { margin-left: auto; background: none; border: 1px solid #6a4a22; color: #e8dcc0; border-radius: 4px; cursor: pointer; }
   .sopn h2 span { font: 11.5px Georgia, serif; } .soon { color: #8ad08a; } .sowait { color: #ffd24a; } .sooff { color: #c08070; }

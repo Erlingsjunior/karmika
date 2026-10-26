@@ -389,7 +389,7 @@ document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closes
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
 const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some((g) => g?.uniq === u);
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cine) cine.t = t; }; }
-const loja = createLoja({ isPremium, fac: myFac, lvl: () => game.st.lvl, owns: ownsUniq, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
+const loja = createLoja({ isPremium, fac: myFac, lvl: () => game.st.lvl, owns: ownsUniq, addDays: (d) => addPremiumDays(d), dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
   deliver: (subj, text, att) => { mail.send('Shop de Askavik', subj, text, att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } })); } });
 onFac(() => loja.refresh());
@@ -918,7 +918,7 @@ addEventListener('karmika:burst', (e) => { const d = (e as CustomEvent).detail a
 /* a tela de abertura sai quando o mundo e a tela de boas-vindas já estão de pé */
 function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 700); }
 let bootFrames = 0; setTimeout(hideBoot, 30000); // segurança: nunca fica preso na abertura
-const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
+const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), shop: () => loja.toggle('prem'), hasChar: () => !!profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
   onPlay: (server, isNew) => { pendingServer = server; if (isNew || !profile) showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else { joinServer(); setTimeout(resumeSoul, 900); } },
   fresh: async () => profile ? { lvl: game.st.lvl, cls: classOfRace(state.race), pic: await slotPic() } : null });
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */

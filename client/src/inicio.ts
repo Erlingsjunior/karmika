@@ -59,7 +59,7 @@ async function scanRooms(desk: Desk | null): Promise<Room[]> {
     const r = await fetch(`http://127.0.0.1:${port}/karmika/info`, { signal: c.signal }); clearTimeout(t); const m = await r.json(); if (m.karmika === 1) out.push({ host: '127.0.0.1', port: m.port, code: m.code, name: m.name, players: m.players, max: m.max, pass: !!m.pass }); } catch { /* nada nessa porta */ } }));
   return out;
 }
-export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(server: string | null, isNew: boolean): void; /** dados frescos do personagem ativo (nível, classe e retrato tirado do modelo que está carregado) */ fresh(): Promise<Partial<SlotMeta> | null>; /** o servidor escolhido (o hub de amigos liga já no menu) */ onServer?(s: string): void; /** abre amigos e conversas */ social?(): void }) {
+export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(server: string | null, isNew: boolean): void; /** dados frescos do personagem ativo (nível, classe e retrato tirado do modelo que está carregado) */ fresh(): Promise<Partial<SlotMeta> | null>; /** o servidor escolhido (o hub de amigos liga já no menu) */ onServer?(s: string): void; /** abre amigos e conversas */ social?(): void; /** o Shop, sem entrar no servidor */ shop?(): void }) {
   let boot: { server: string | null } | null = null;
   let rooms: Room[] = [], scanning = true;
   const roomInv = (r: Room) => `karmika://${r.host}:${r.port}/${r.code}`;
@@ -89,7 +89,8 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     if (step === 'home') body = `<div class="in-menu">
         <button data-i="find" class="big">✧ Encontrar servidor<small>entrar no mundo de outro Caminhante com o convite</small></button>
         ${o.desk ? `<button data-i="host">⚑ Abrir meu servidor<small>esta máquina vira o mundo; mande o convite para os amigos</small></button>` : ''}
-        <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button></div>`;
+        <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button>
+        <button data-i="shop">🛍 Shop<small>Premium da conta (vale para todos os seus personagens) e as peças com brasão</small></button></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>
         <div class="in-row"><input data-v="inv" placeholder="karmika://IP:7777/CÓDIGO" value="${esc(draftInv || s.servers[0] || '')}" spellcheck="false"></div>
         <div class="in-row" style="margin-top:8px"><input data-v="pass" type="password" placeholder="Senha (só se a sala tiver)" value="${esc(draftPass || passFor(draftInv || s.servers[0] || ''))}"><button data-i="go" class="gold">Continuar</button></div>
@@ -155,6 +156,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     if (a === 'back') { step = step === 'chars' && server && hostInv ? 'host' : 'home'; render(); return; }
     if (a === 'find') { step = 'find'; render(); (el.querySelector('[data-v="inv"]') as HTMLInputElement)?.focus(); return; }
     if (a === 'social') { o.social?.(); return; }
+    if (a === 'shop') { o.shop?.(); return; }
     if (a === 'solo') { server = null; step = 'chars'; render(); return; }
     if (a === 'go') { const v = (el.querySelector('[data-v="inv"]') as HTMLInputElement).value.trim(); const pv = parseInvite(v); if (!pv) { err = 'Convite inválido. O formato é karmika://IP:7777/CÓDIGO'; render(); return; }
       if (!/[.:]/.test(pv.host) && pv.host.toLowerCase() !== 'localhost') { err = `"${pv.host}" não é um endereço. Troque pelo número do computador da sala: no mesmo PC use 127.0.0.1 (karmika://127.0.0.1:${pv.port}/${pv.code}). Ou clique numa sala da lista acima.`; render(); return; }

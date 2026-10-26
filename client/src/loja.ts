@@ -43,7 +43,7 @@ const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
-  owns: (uniq: string) => boolean; deliver: (subj: string, text: string, att: Deliv[]) => void; log: (t: string, c?: string) => void; dev: boolean;
+  owns: (uniq: string) => boolean; addDays: (d: number) => void; deliver: (subj: string, text: string, att: Deliv[]) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
   let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
@@ -51,7 +51,7 @@ export function createLoja(ctx: {
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
     return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>O Premium deixa o dia a dia mais leve. <b>Nunca dá força:</b> nada de dano, vida, XP ou drop a mais. Um jogador free com o mesmo tempo de jogo luta de igual para igual.</p>
-      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}A compra chega como um <b>Selo de Marghar</b> na sua caixa de correio: use para ativar (soma dias) ou venda a outro jogador.</p></div></div>
+      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}O Premium é da <b>conta</b>: vale para todos os seus personagens, e a compra ativa na hora (os dias somam). Dá para comprar até pelo menu, sem entrar num servidor.</p></div></div>
       <ul class="lj-perks">${PREM_PERKS.map(([i, t]) => `<li><span>${i}</span>${t}</li>`).join('')}</ul>
       <div class="lj-plans">${PREM_PLANS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small><small class="lj-pm">${brl(p.brl / (p.days! / 30))} por mês</small></button>`).join('')}</div>
       <small class="lj-note">Ao acabar, nada se perde: as bolsas Premium ficam lacradas com tudo dentro. Também dá para ativar com o Selo de Marghar comprado por ouro no balcão.</small>`;
@@ -74,9 +74,9 @@ export function createLoja(ctx: {
   const BETA_FREE = true;
   function checkout() {
     if (!cart) return '';
-    const f = side, what = cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
+    const f = side, what = cart.kind === 'prem' ? `${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
     return `<div class="lj-co"><div class="lj-copn"><h3>${paid ? '✦ Pagamento aprovado' : 'Pagar com Pix'}</h3>
-      ${paid ? `<p>${what} já é seu. Chega na sua <b>caixa de correio</b> em instantes: retire em qualquer povoado.${cart.kind === 'prem' ? ' Use o selo para ativar o Premium, ou venda a outro jogador.' : ''}</p><button data-co-ok>Fechar</button>`
+      ${paid ? `<p>${cart.kind === 'prem' ? `${what} ativado na sua conta: vale para todos os seus personagens.` : `${what} já é seu. Chega na caixa de correio do personagem ativo em instantes: retire em qualquer povoado.`}</p><button data-co-ok>Fechar</button>`
       : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div><div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
         <p class="lj-warn">${BETA_FREE ? 'Fase de testes: o Pix ainda não está ligado e <b>nada é cobrado</b>. Clique em <b>Receber grátis</b> para testar a compra de verdade (chega no correio).' : 'O pagamento por Pix liga junto com o servidor. Por enquanto <b>nada é cobrado</b> e este QR Code não paga nada.'}</p>
         <div class="lj-cobtn"><button data-co-x>Voltar</button>${BETA_FREE ? '<button data-co-sim class="gold">✦ Receber grátis (teste)</button>' : ctx.dev ? '<button data-co-sim class="dev">Simular pagamento aprovado (DEV)</button>' : ''}</div>`}</div></div>`;
@@ -94,7 +94,8 @@ export function createLoja(ctx: {
   }
   function approve() {
     if (!cart) return;
-    if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }]); ctx.log(`📮 Selo de Marghar (${cart.name}) a caminho da sua caixa de correio.`, '#c9a0ff'); }
+    /* 26/10 (Erling: "o Premium é para o jogador e não para o personagem: se ele comprar, compra para todos"): ativa direto na conta da máquina */
+    if (cart.kind === 'prem') { ctx.addDays(cart.days!); ctx.log(`✦ Premium ativo na sua conta: +${cart.name}. Vale para todos os seus personagens.`, '#c9a0ff'); }
     else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })));
       ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da sua caixa de correio.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
     paid = true; render();
