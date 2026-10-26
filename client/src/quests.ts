@@ -8,6 +8,7 @@ import { FALAS } from './falas';
 import type { EnemyType } from './world';
 import { ITEMS } from './inventory';
 import { DEFS } from './enemies';
+import { confirmBox } from './windows';
 
 export type Obj =
   | { kind: 'kill'; type: EnemyType; n: number }
@@ -416,6 +417,8 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const POSTABLE = ['wood', 'stone', 'hide', 'meat', 'fish', 'claw', 'dust', 'sap', 'apple', 'plank', 'nail', 'potion'];
   const loadPosts = (): Post[] => { try { return JSON.parse(localStorage.getItem('karmika.posts.v1') || 'null') ?? [{ by: 'Tessa', item: 'apple', n: 8, gold: 30 }, { by: 'Gunnar', item: 'plank', n: 6, gold: 45 }]; } catch { return []; } };
   const savePosts = (p: Post[]) => { try { localStorage.setItem('karmika.posts.v1', JSON.stringify(p)); } catch { /* */ } };
+  function abandon(id: string) { const d = def(id); if (!d || !q.active[id]) return;
+    confirmBox(`Abandonar <b>${d.name}</b>? O progresso se perde. Você pode pegar de novo com ${d.giver}.`, 'Abandonar', () => { delete q.active[id]; if (tracked === id) tracked = null; if (focusId === id) focusId = null; save(); render(); ctx.log(`Missão abandonada: ${d.name}.`, '#c8b8a0'); }); }
   function render() {
     const ids = Object.keys(q.active);
     if (tracked && !q.active[tracked]) tracked = null; if (!tracked && ids.length) tracked = ids[0];
@@ -423,8 +426,8 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
       const sorted = [...ids].sort((a, b) => CAT_ORDER.indexOf(questCat(def(a))) - CAT_ORDER.indexOf(questCat(def(b))));
       let prev: QuestCat | null = null;
       const xt = extraTop?.() ?? '';
-      el.innerHTML = ids.length || xt ? `<h4>Missões <small>${ids.length}/${questLimit()} · J</small><small class="mv">⠿ arraste</small></h4>` + xt + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
-        return `<div class="q c-${c} ${gap ? 'gap' : ''} ${ok ? 'ok' : ''} ${id === tracked ? 'track' : ''}" data-id="${id}"><a class="qopen" data-open="${id}" title="Abrir no diário (J)">↗</a><b>${d.name}</b><span class="qx">${q.active[id].from ? `<u class="qfrom">missão de ${q.active[id].from}</u> · ` : ''}${d.giver}${d.chain ? ' · ' + d.chain : ''} · Nv ${d.lvl}</span>${d.objs.map((o, i) => `<i>${objText(o)} <em>${objProg(d, i)}/${objNeed(o)}</em></i>`).join('')}${ok ? `<i class="go">→ Entregar a ${d.turnin ?? d.giver}</i>` : ''}${id === tracked ? '<i class="dir"></i>' : ''}</div>`; }).join('') : '';
+      el.innerHTML = ids.length || xt ? `<h4>Missões <small>${ids.length}/${questLimit()} · J</small><small class="mv">⠿ arraste</small></h4>` + `<div class="xtop">${xt}</div>` + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
+        return `<div class="q c-${c} ${gap ? 'gap' : ''} ${ok ? 'ok' : ''} ${id === tracked ? 'track' : ''}" data-id="${id}"><a class="qopen" data-open="${id}" title="Abrir no diário (J)">↗</a><a class="qab" data-ab="${id}" title="Abandonar esta missão">✕</a><b>${d.name}</b><span class="qx">${q.active[id].from ? `<u class="qfrom">missão de ${q.active[id].from}</u> · ` : ''}${d.giver}${d.chain ? ' · ' + d.chain : ''} · Nv ${d.lvl}</span>${d.objs.map((o, i) => `<i>${objText(o)} <em>${objProg(d, i)}/${objNeed(o)}</em></i>`).join('')}${ok ? `<i class="go">→ Entregar a ${d.turnin ?? d.giver}</i>` : ''}${id === tracked ? '<i class="dir"></i>' : ''}</div>`; }).join('') : '';
     }
     if (boardOpen) {
       const bs = board();
@@ -453,7 +456,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
           <div class="qf-obj"><h4>Objetivos</h4>${fd.objs.map((o, i) => { const pr = objProg(fd, i), nd = objNeed(o); return `<div class="${pr >= nd ? 'done' : ''}"><span>${pr >= nd ? '✔' : '◇'} ${objText(o)}</span><em>${pr}/${nd}</em></div>`; }).join('')}${complete(fd) ? `<div class="go">→ Pronto: entregue a ${fd.turnin ?? fd.giver}</div>` : ''}</div>
           <div class="qf-rw"><h4>Recompensa</h4>${fd.xp} XP · ${fd.gold} 🪙${fd.items ? ' · ' + fd.items.map(([it, n]) => `${n}× ${ITEMS[it]?.name}`).join(', ') : ''}${fd.gear ? ` · ${fd.gear} equipamento${fd.gear > 1 ? 's' : ''}` : ''}${fd.title ? ' · Título: <b>' + fd.title + '</b>' : ''}${fd.choice ? '<div class="qf-ch">⚖ Esta missão termina com uma escolha. O Olho vai julgar o motivo.</div>' : ''}</div>
           ${chainList.length > 1 ? `<div class="qf-chain"><h4>${fd.chain} <small>${chainList.filter((x) => isDone(x.id)).length}/${chainList.length}</small></h4><div class="qf-chips">${chainList.map((x, i) => `<span class="${isDone(x.id) ? 'd' : x.id === fd.id ? 'cur' : ''}" title="${x.name} · Nv ${x.lvl}">${i + 1}</span>`).join('')}</div></div>` : ''}
-          <div class="qf-b"><button data-qtrack="${fd.id}">${tracked === fd.id ? '✔ Guiando até ela' : '🧭 Guiar até ela'}</button><button data-qfx>Ver todas</button></div></div>`; })() : '';
+          <div class="qf-b"><button data-qtrack="${fd.id}">${tracked === fd.id ? '✔ Guiando até ela' : '🧭 Guiar até ela'}</button><button data-qfx>Ver todas</button><button data-ab="${fd.id}" class="qabb">✕ Abandonar</button></div></div>`; })() : '';
       const act = [...ids].sort((a, b) => CAT_ORDER.indexOf(questCat(def(a))) - CAT_ORDER.indexOf(questCat(def(b))));
       let pc: QuestCat | null = null;
       const actHtml = act.map((id) => { const d = def(id), c = questCat(d), head = pc !== c ? `<h4 class="qgrp" style="color:${CAT_INFO[c].col}">${CAT_INFO[c].name}</h4>` : ''; pc = c; return `${head}<div class="rc qrc c-${c} ${id === focusId ? 'sel' : ''}" data-qf="${id}"><b>${d.name}</b> <small>Nv ${d.lvl} · ${d.giver}${d.chain ? ' · ' + d.chain : ' · Quadro'}</small><small>${d.objs.map((o, i) => `${objText(o)} ${objProg(d, i)}/${objNeed(o)}`).join(' · ')}</small></div>`; }).join('');
@@ -466,7 +469,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
       logEl.style.display = 'flex';
     } else logEl.style.display = 'none';
   }
-  el.addEventListener('click', (e) => { const o = (e.target as HTMLElement).closest('[data-open]') as HTMLElement | null; if (o) { e.stopPropagation(); focusId = o.dataset.open!; logOpen = true; boardOpen = false; render(); return; } const t = (e.target as HTMLElement).closest('[data-id]') as HTMLElement | null; if (t) { tracked = t.dataset.id!; render(); } });
+  el.addEventListener('click', (e) => { const ab = (e.target as HTMLElement).closest('[data-ab]') as HTMLElement | null; if (ab) { e.stopPropagation(); abandon(ab.dataset.ab!); return; } if ((e.target as HTMLElement).closest('[data-evx]')) return; const o = (e.target as HTMLElement).closest('[data-open]') as HTMLElement | null; if (o) { e.stopPropagation(); focusId = o.dataset.open!; logOpen = true; boardOpen = false; render(); return; } const t = (e.target as HTMLElement).closest('[data-id]') as HTMLElement | null; if (t) { tracked = t.dataset.id!; render(); } });
   const onDraft = (e: Event) => { const f = e.target as HTMLInputElement; const k = f.dataset?.lf as keyof typeof draft | undefined; if (!k) return; if (k === 'reward') draft.reward = +f.value || 0; else if (k === 'kind') { draft.kind = f.value as LKind; render(); } else if (k === 'target') { draft.target = f.value; const h = logEl.querySelector('.lhint'); if (h) h.innerHTML = lhint(); } else (draft as Record<string, unknown>)[k] = f.value; };
   logEl.addEventListener('input', onDraft); logEl.addEventListener('change', onDraft);
   /* leilão: campos e dica dos equipamentos à venda */
@@ -478,7 +481,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
     if (!h) { atip.style.display = 'none'; return; } atip.innerHTML = h; atip.style.display = 'block'; atip.style.left = Math.min(innerWidth - 290, e.clientX + 16) + 'px'; atip.style.top = Math.min(innerHeight - atip.offsetHeight - 8, e.clientY + 12) + 'px'; });
   logEl.addEventListener('mouseleave', () => { atip.style.display = 'none'; });
   logEl.addEventListener('keydown', (e) => { if ((e.target as HTMLElement).closest('input,textarea,select')) e.stopPropagation(); });
-  logEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]')) { logOpen = false; boardOpen = false; focusId = null; render(); return; }
+  logEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; { const ab = (t.closest('[data-ab]') as HTMLElement | null)?.dataset.ab; if (ab) { abandon(ab); return; } } if (t.closest('[data-x]')) { logOpen = false; boardOpen = false; focusId = null; render(); return; }
     if (logOpen) { const qf = (t.closest('[data-qf]') as HTMLElement | null)?.dataset.qf; if (qf) { focusId = qf; render(); logEl.querySelector('.qfocus')?.scrollIntoView({ block: 'nearest' }); return; }
       const qt = (t.closest('[data-qtrack]') as HTMLElement | null)?.dataset.qtrack; if (qt) { tracked = qt; render(); return; } if (t.closest('[data-qfx]')) { focusId = null; render(); return; } }
     const bt = (t.closest('[data-bt]') as HTMLElement | null)?.dataset.bt; if (bt) { boardTab = bt as typeof boardTab; confirmTake = null; render(); return; }
@@ -513,7 +516,10 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
   /** alguém matou você fora de duelo: o Olho guarda o nome (até 12, o mais recente por último) */
   function grudge(name: string) { if (!name) return; grudges = grudges.filter((g) => g.name.toLowerCase() !== name.toLowerCase()); grudges.push({ name, t: Date.now() }); grudges = grudges.slice(-12); sv('karmika.grudge.v1', grudges); }
-  return { grudge, shareState, setExtraTop(f: () => string) { extraTop = f; }, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
+  return { grudge, shareState, setExtraTop(f: () => string) { extraTop = f; },
+    /** só o cartão do evento mudou (relógio, distância): troca o miolo sem refazer a lista (antes piscava, abrindo e fechando no hover) */
+    renderExtra() { const x = el.querySelector('.xtop') as HTMLElement | null; const html = extraTop?.() ?? ''; if (!x || !!x.innerHTML !== !!html) { render(); return; }
+      const cur = x.querySelector('.evq'), tmp = document.createElement('div'); tmp.innerHTML = html; const nw = tmp.querySelector('.evq'); if (cur && nw) { if (cur.innerHTML !== nw.innerHTML) cur.innerHTML = nw.innerHTML; } else x.innerHTML = html; }, abandon, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },
     /** reencarnação: esquece as missões do caminho de classe para poder refazê-las */
     forget(f: (id: string) => boolean) { for (const id of Object.keys(q.active)) if (f(id)) delete q.active[id]; q.done = q.done.filter((id) => !f(id)); save(); render(); },
     /** marca como feita sem entregar (testes do beta) */ markDone(id: string) { delete q.active[id]; if (!q.done.includes(id)) q.done.push(id); save(); render(); } };

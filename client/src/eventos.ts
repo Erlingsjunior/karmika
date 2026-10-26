@@ -540,17 +540,22 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       if (L.tpl.id === 'casamento' && L.side === 'A' && !L.tasks['altar_perm']) body += row('Resgatar o padre dos salteadores', L.tasks['padre'] ? 1 : 0, L.tasks['padre'] ? '✔' : '…'); }
     if (L.tpl.meter) body += row(L.tpl.meter.label, L.meter, `${Math.round(L.meter * 100)}%`);
     if (channel?.live === L) body += row(`⏳ ${channel.task.label}`, channel.t / (channel.task.channel ?? 3), '');
-    return `<div class="et" style="--c:${L.tpl.color}"><b>${L.tpl.icon} ${L.tpl.name}</b><small>${L.site.name} · ${mm}</small></div>${body}`; }
+    return `<div class="et" style="--c:${L.tpl.color}"><b>${L.tpl.icon} ${L.tpl.name}</b><small>${L.site.name} · Nv ${L.lvl} · ${mm}</small><a class="qab" data-evx="${L.key}" title="Abandonar este evento">✕</a></div>${body}`; }
   /** (dev) força um evento aqui */
   function devForce(id: string, site?: Site) { const tpl = TPL.find((q) => q.id === id); if (!tpl) return null; const hp = ctx.hero(), s = site ?? { x: Math.floor(hp.x / T) + 6, y: Math.floor(hp.z / T), name: 'aqui', region: ctx.region(Math.floor(hp.x / T), Math.floor(hp.z / T)).id }; const now = Date.now(), key = 'dev:' + id + ':' + now;
     lives.set(key, { key, tpl, site: s, start: now, end: now + LIVE * 1000, lvl: Math.max(5, ctx.lvl()), spawned: false, units: [], waveDone: new Set(), herald: null, heraldEl: null, extras: [], props: [], meter: 0, side: null, joined: false, kills: 0, tasks: {}, over: false, chatT: 3, pathS: 0, finT: 0 }); return key; }
   /** "pegar" o evento: a bússola passa a apontar para ele (aceitar o lado é outra coisa, com o arauto, na chegada) */
   let trackKey: string | null = null;
-  function nearby(heroT: V2, meters = 480) { const out: { key: string; name: string; icon: string; color: string; site: string; x: number; y: number; d: number; left: number; joined: boolean; asked: boolean; herald: string; text: string }[] = [];
+  function nearby(heroT: V2, meters = 480) { const out: { key: string; name: string; icon: string; color: string; site: string; x: number; y: number; d: number; left: number; joined: boolean; asked: boolean; herald: string; text: string; lvl: number }[] = [];
     for (const L of lives.values()) { if (L.over || Date.now() > L.end) continue; const d = Math.hypot(L.site.x - heroT.x, L.site.y - heroT.y) * T; if (d > meters) continue;
-      out.push({ key: L.key, name: L.tpl.name, icon: L.tpl.icon, color: L.tpl.color, site: L.site.name, x: L.site.x + 1, y: L.site.y + 1.25, d, left: (L.end - Date.now()) / 1000, joined: L.joined, asked: !!L.asked, herald: L.tpl.herald.name, text: BLURB[L.tpl.id] ?? '' }); }
+      out.push({ key: L.key, name: L.tpl.name, icon: L.tpl.icon, color: L.tpl.color, site: L.site.name, x: L.site.x + 1, y: L.site.y + 1.25, d, left: (L.end - Date.now()) / 1000, joined: L.joined, asked: !!L.asked, herald: L.tpl.herald.name, text: BLURB[L.tpl.id] ?? '', lvl: L.lvl }); }
     return out.sort((a, b) => a.d - b.d); }
   function track(key: string | null) { trackKey = key; }
+  /** a história contada quando você pega o evento pela carta: o arauto e as primeiras falas dele */
+  function story(key: string): { name: string; role: string; lines: string[]; blurb: string; site: string } | null { const L = lives.get(key); if (!L) return null; const st = L.tpl.intro(L.site, ctx).filter((x): x is string => typeof x === 'string').slice(0, 3);
+    return { name: L.tpl.herald.name, role: L.tpl.herald.role ?? '', lines: st, blurb: BLURB[L.tpl.id] ?? '', site: L.site.name }; }
+  /** abandonar o evento: sai do lado que escolheu e a bússola para de apontar (25/10) */
+  function leave(key: string) { const L = lives.get(key); if (trackKey === key) trackKey = null; if (!L) return; if (L.joined) { L.joined = false; L.side = null; L.asked = true; hostility(L); ctx.log(`Você abandonou o evento ${L.tpl.name}.`, '#c8b8a0'); } else { L.asked = true; ctx.log(`Você deixou o evento ${L.tpl.name} para lá.`, '#c8b8a0'); } }
   const tracking = () => { const L = trackKey ? lives.get(trackKey) : null; if (!L || L.over || Date.now() > L.end) { trackKey = null; return null; } return { key: L.key, x: L.site.x + 1, y: L.site.y + 1.25, joined: L.joined, name: L.tpl.name, herald: L.tpl.herald.name }; };
-  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, tracking };
+  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking };
 }
