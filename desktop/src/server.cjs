@@ -40,12 +40,17 @@ function startServer(opts = {}) {
   const log = opts.log || ((...a) => console.log('[karmika]', ...a));
   return new Promise((resolve, reject) => {
     const gameDir = opts.gameDir ? path.resolve(opts.gameDir) : null;
-    const manifest = gameManifest(gameDir);
-    if (manifest) log(`entregando o jogo da pasta ${gameDir} · versão ${manifest.version} (${Object.keys(manifest.files).length} arquivos)`);
+    /* 26/10 (Erling): a sala fica ligada o tempo todo; depois de um `pnpm build` ela percebe sozinha o jogo novo (olha o carimbo
+       do dist a cada pedido, sem precisar reiniciar) */
+    let manifest = gameManifest(gameDir), stampAt = 0;
+    const stamp = () => { try { return fs.statSync(path.join(gameDir, 'karmika-manifest.json')).mtimeMs; } catch { return 0; } };
+    if (manifest) { stampAt = stamp(); log(`entregando o jogo da pasta ${gameDir} · versão ${manifest.version} (${Object.keys(manifest.files).length} arquivos)`); }
+    const freshen = () => { if (!gameDir) return; const st = stamp(); if (st && st !== stampAt) { stampAt = st; const m = gameManifest(gameDir); if (m && (!manifest || m.version !== manifest.version)) { manifest = m; log(`jogo atualizado no dist · versão ${m.version} (${Object.keys(m.files).length} arquivos) — quem entrar agora já recebe`); } } };
+    setInterval(freshen, 5000).unref();
     const web = http.createServer((req, res) => {
       const u = new URL(req.url || '/', 'http://x');
       res.setHeader('Access-Control-Allow-Origin', '*');
-      if (u.pathname === '/karmika/manifest.json') { if (!manifest) { res.writeHead(404); res.end('sem jogo'); return; } res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(manifest)); return; }
+      if (u.pathname === '/karmika/manifest.json') { freshen(); if (!manifest) { res.writeHead(404); res.end('sem jogo'); return; } res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(manifest)); return; }
       if (u.pathname.startsWith('/karmika/files/') && manifest) {
         const rel = decodeURIComponent(u.pathname.slice('/karmika/files/'.length));
         if (!manifest.files[rel]) { res.writeHead(404); res.end(); return; } // só entrega o que está na lista (nada de ../)
