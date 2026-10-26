@@ -388,7 +388,9 @@ export function createGameplay(d: GameplayDeps) {
       poiseHit(e, dmg * (mul > 1.5 || skill === 'slam' || skill === 'bash' ? 2.2 : 1) * (crit ? 1.5 : 1));
       if (rs >= 1.25 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'FRAQUEZA', false, '#ffb060'); else if (rs <= 0.6 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'RESISTE', false, '#a8b0c0');
     }
-    dmg = Math.max(1, Math.round(dmg));
+    { const dl = (e.def.lvl ?? 1) - st.lvl; if (dl > 2) { /* acima de você: golpes escorregam e erram */ dmg *= Math.max(0.65, 1 - 0.035 * dl);
+        if (Math.random() < Math.min(0.3, 0.03 * (dl - 2))) { dmgText(e.pos.clone().setY(e.pos.y + 2.4), 'ERROU', false, '#a8b0c0'); dmg = 0; } } }
+    dmg = dmg <= 0 ? 0 : Math.max(1, Math.round(dmg));
     if (marked) st.hp = Math.min(st.hpMax, st.hp + dmg * 0.25);
     if (inStrike && thunderN > 0 && thunderT > 0 && e.alive) thunderProc(e);
     if (buff.burnT > 0 && e.alive) { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; }
@@ -1116,6 +1118,10 @@ export function createGameplay(d: GameplayDeps) {
       const h = d.getHero();
       if (st.dead || st.god) return;
       if (warrior && fury > 0.5) n *= 1.06; /* frenesi: o guerreiro esquece a guarda */
+      { /* diferença de nível (Erling, 25/10: "nível 9 brigando bem com monstro 15 de caveira? eu deveria morrer"): quem está acima bate MUITO mais forte.
+           +5 níveis (caveira) ≈ ×1,7; +8 ≈ ×2,4; teto ×3. Monstro abaixo de você machuca menos (até −40%). Não é bônus de situação: fica fora do balde da Regra 01. */
+        let eL = 0; if (from) { let bd = 2.6; for (const o of enemies.list) { if (!o.alive || !o.active) continue; const dd = Math.hypot(o.pos.x - from.x, o.pos.z - from.z); if (dd < bd) { bd = dd; eL = o.def.lvl ?? 0; } } }
+        if (eL) { const dl = eL - st.lvl; n *= dl > 0 ? Math.min(3, 1 + 0.09 * dl + 0.01 * dl * dl) : Math.max(0.6, 1 + 0.04 * dl); } }
       n = Math.max(1, Math.round(n * st.takenMul)); /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');

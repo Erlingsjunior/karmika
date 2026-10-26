@@ -10,6 +10,10 @@ import { createFeats, FEATS, CATS, type Feat } from './feats';
   mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } }); mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } });
   mv('karmika.hunt', (h) => { if (h) { h.x += SHF * T2; h.z += SHF * T2; } }); localStorage.setItem(W2, '2'); } }
 import * as THREE from 'three';
+/* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
+   e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
+{ const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
+  P.updateMatrixWorld = function (this: THREE.Object3D, force?: boolean) { if (!this.visible) { this.matrixWorldNeedsUpdate = true; return; } orig.call(this, force); }; } }
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -59,7 +63,7 @@ import { DG_TIERS } from './masmorras';
 import { PALADIN, VAMPIRE, TECHNO, WEREWOLF, RACE_INSTINCT } from './sagas';
 import { createAtmos } from './atmos';
 import { createCraftHall } from './oficios';
-import { createEvents, globalNow, globalNext, globalList, type EvResult } from './eventos';
+import { createEvents, globalNow, globalNext, globalList, G_FX, type EvResult } from './eventos';
 import { createPet, createMount, PETS, MOUNTS } from './companions';
 import { createGlobes, createEye, playAwakening, playDeath } from './hud';
 import { createChat } from './chat';
@@ -947,8 +951,8 @@ function updateEventos(dt: number) { eventos.update(dt, t); evUiT -= dt; if (evU
   /* o evento vira missão: cartão laranja no topo do diário, com os entregáveis e o tempo */
   const card = html ? `<div class="q c-ev track evq">${html}</div>` : ''; if (card !== evCard) { evCard = card; quests.renderExtra(); }
   updateEvNear(h0);
-  const g = globalNow(), opK = gOpen(); /* o anúncio grande só na ABERTURA; depois o evento mora na barra de efeitos */ evBanEl.style.display = g && !inside && opK > 0.01 ? 'block' : 'none'; evBanEl.style.opacity = String(Math.min(1, opK * 1.4)); if (g && opK > 0.01) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
-  if (g?.id !== lastGlobal) { if (g) game.logMsg(`${g.icon} ${g.name} começou no mundo inteiro. ${g.text}`, g.color); lastGlobal = g?.id ?? null; } }
+  const g = globalNow(), opK = gOpen(); /* o anúncio grande só na ABERTURA; depois o evento mora na barra de efeitos */ evBanEl.style.display = g && !inside && opK > 0.01 ? 'block' : 'none'; evBanEl.style.opacity = String(Math.min(1, opK * 1.4)); if (g && opK > 0.01) { const left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000)); const fx = globalSideText(g.id); evBanEl.innerHTML = `<b style="color:${g.color}">${g.icon} ${g.name} <i>· mais ${left} min</i></b><small>${g.text}</small><span class="evfx">${(G_FX[g.id as 'lua'] ?? []).slice(0, 3).map((f) => `<em>${f.icon} ${f.t}</em>`).join('')}</span>${fx ? `<small style="color:${globalSide(g.id) > 0 ? '#9aff9a' : '#ff9a8a'}">${fx}</small>` : ''}`; }
+  if (g?.id !== lastGlobal) { if (g) { game.logMsg(`${g.icon} ${g.name} começou no mundo inteiro. ${g.text}`, g.color); for (const f of G_FX[g.id as 'lua'] ?? []) game.logMsg(`   ${f.icon} ${f.t}`, g.color); game.logMsg('   (clique no contador embaixo do mapa para ver tudo de novo)', '#a8987a'); } lastGlobal = g?.id ?? null; } }
 /* ---------- Instinto e falas do herói (instinto.ts, 24/10) ---------- */
 /** a alma dos NPCs que importam para o Instinto (quem é da Luz, da Sombra, ou de um caminho) */
 const NPC_SOUL: Record<string, { path?: string; lean?: 'luz' | 'sombra' }> = { 'Vesna Corvo-Negro': { lean: 'sombra' }, 'Irmã Maela': { lean: 'luz' }, Eldrin: { lean: 'luz' }, 'Paladino Aldric': { path: 'pal', lean: 'luz' }, 'Arquiteta Ylva': { path: 'tec' }, 'Thorgrim Mão-de-Ferro': { path: 'gue' }, 'Hrefna': { lean: 'luz' }, 'Irmã Ysolde': { lean: 'luz' }, 'Grão-Mestre Cassius': { path: 'pal', lean: 'luz' }, 'Bispa Solveig': { lean: 'luz' }, 'Irmão Tobias': { lean: 'luz' }, 'Lady Mirela': { path: 'vam' }, 'Conde Vladislav III': { path: 'vam', lean: 'sombra' }, 'Mestra Ilsa Van Rhal': { path: 'cac', lean: 'luz' }, 'Malgrath, Senhor dos Pactos': { path: 'bru', lean: 'sombra' }, 'Ulfrun, a Mãe-Alfa': { path: 'lob' } };
@@ -2384,7 +2388,7 @@ function renderGev() {
   const L = globalList(), now = Date.now(), H = gevHist();
   const cur = L.now, side = cur ? globalSideText(cur.id) : '';
   const near = (() => { try { return eventos.nearby(hereT(), 900); } catch { return []; } })();
-  const card = cur ? `<div class="gv-now" style="--gc:${cur.color}"><div class="gv-ic">${cur.icon}</div><div><b>${cur.name}</b><span class="gv-cd">termina em ${fmtClock(cur.end - now)}</span><p>${cur.text}</p>${side ? `<p class="gv-side">✦ Para você: ${side}</p>` : ''}<p class="gv-note">O céu pesa na chegada e depois fica leve para jogar. Dentro de um evento que você aceitou, a ${cur.id === 'lua' ? 'lua' : 'luz'} volta com tudo.</p></div></div>`
+  const card = cur ? `<div class="gv-now" style="--gc:${cur.color}"><div class="gv-ic">${cur.icon}</div><div><b>${cur.name}</b><span class="gv-cd">termina em ${fmtClock(cur.end - now)}</span><p>${cur.text}</p>${side ? `<p class="gv-side">✦ Para você: ${side}</p>` : ''}<div class="gv-fx"><b class="gv-fxh">O que ${cur.id === 'lua' ? 'a Lua de Sangue' : 'o Dia da Aurora'} causa no mundo</b>${(G_FX[cur.id as 'lua'] ?? []).map((f) => `<div><i>${f.icon}</i>${f.t}</div>`).join('')}</div><p class="gv-note">O céu pesa na chegada e depois fica leve para jogar. Dentro de um evento que você aceitou, a ${cur.id === 'lua' ? 'lua' : 'luz'} volta com tudo.</p></div></div>`
     : `<div class="gv-now none"><div class="gv-ic">☾</div><div><b>Nenhum evento mundial agora</b><p>O mundo respira. ${L.next[0] ? `O próximo é ${L.next[0].icon} ${L.next[0].name}, ${fmtWhen(L.next[0].start)} (em ${fmtLeft(L.next[0].start - now)}).` : ''}</p></div></div>`;
   const nearH = near.length ? near.slice(0, 6).map((q) => `<div class="gv-row"><span style="color:${q.color}">${q.icon} ${q.name}</span><small>Nv ${q.lvl} · ${fmtDist(q.d)} · ${q.joined ? 'você está nele' : `termina em ${fmtLeft(q.left * 1000)}`}</small>${q.joined ? '' : `<button data-evk="${q.key}">Seguir</button>`}</div>`).join('') : '<p class="gv-empty">Nada acontecendo por perto agora.</p>';
   const hist = (id: string, st: number) => H.find((q) => q.id === id && Math.abs(q.start - st) < 120000);

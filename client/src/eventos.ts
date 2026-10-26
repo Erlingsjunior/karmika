@@ -309,6 +309,24 @@ const G_INFO = {
   lua: { id: 'lua', name: 'Lua de Sangue', icon: '🌕', text: 'A lua cheia sangra no céu e o mundo fica rubro. Vampiros, lobisomens, bruxos e toda alma de karma baixo ficam mais fortes; patrulhas são atacadas em todas as estradas. Faro da Lua ligado: +15% de XP.', color: '#ff6a5a' },
   aurora: { id: 'aurora', name: 'Dia da Aurora', icon: '☀', text: 'Dia santo de Auréon: brisa morna, brilhos caindo do céu e um coral ao longe. Paladinos, magos e toda alma de karma alto ficam mais fortes; todo ato de luz nos eventos vale 50% a mais de karma.', color: '#ffe08a' },
 };
+/** o que cada evento mundial CAUSA no mundo (cada linha aqui existe no código: eventos.ts, main.ts, atmos.ts, audio.ts) */
+export const G_FX: Record<'lua' | 'aurora', { icon: string; t: string }[]> = {
+  lua: [
+    { icon: '🐺', t: 'Patrulhas atacadas e mordidas de lobisomem ficam 5× mais comuns nas estradas.' },
+    { icon: '🌕', t: 'Toda onda de lobisomens traz um a mais, e eles chegam 2 níveis acima do normal.' },
+    { icon: '🦇', t: 'Vampiros, lobisomens, bruxos e almas de karma −20 ou menos: +10% de dano e −8% de dano recebido.' },
+    { icon: '✝', t: 'Paladinos, magos e almas de karma +20 ou mais ficam acuados: +6% de dano recebido.' },
+    { icon: '👃', t: 'Lobisomem com o Faro (Instinto) ligado: +15% de XP.' },
+    { icon: '🩸', t: 'O céu fica rubro, cinzas e brasas sobem do chão e um coração bate ao longe; dentro de um evento, tudo pesa mais.' },
+  ],
+  aurora: [
+    { icon: '🕯', t: 'Procissões de Auréon ficam 6× mais comuns.' },
+    { icon: '✨', t: 'Todo ato de luz nos eventos vale 50% a mais de karma.' },
+    { icon: '✝', t: 'Paladinos, magos e almas de karma +20 ou mais: +10% de dano e −8% de dano recebido.' },
+    { icon: '🦇', t: 'Vampiros, lobisomens, bruxos e almas de karma −20 ou menos: +6% de dano recebido.' },
+    { icon: '☀', t: 'Brisa morna, brilhos caindo do céu e um coral ao longe.' },
+  ],
+};
 const gCache = new Map<number, { start: number; end: number; kind: 'lua' | 'aurora' }>();
 function gWindow(k: number) { let w = gCache.get(k); if (w) return w; const kind = (k % 2 === 0 ? 'lua' : 'aurora') as 'lua' | 'aurora', t0 = G_BASE + k * G_STEP; let st = t0;
   for (let m = 0; m < 240; m++) { const tt = t0 + m * 60000, n = nightAt(tt); if (kind === 'lua' ? n > 0.5 : n < 0.01) { st = tt; break; } }
