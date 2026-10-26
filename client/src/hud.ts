@@ -20,7 +20,7 @@ export function createGlobes() {
   function draw(c: HTMLCanvasElement, q: Liquid, frac: number, kind: 'hp' | 'mp', dt: number, hit: number) {
     const g = c.getContext('2d')!, W = c.width, H = c.height, R = W / 2 - 3, cx = W / 2, cy = H / 2;
     // física do líquido: nível com mola (sobe/desce suave) e onda lateral que balança ao levar dano
-    q.vel += (frac - q.level) * 18 * dt; q.vel *= Math.exp(-dt * 5); q.level += q.vel * dt; q.level = Math.max(0, Math.min(1, q.level));
+    q.vel += (frac - q.level) * 18 * dt; q.vel *= Math.exp(-dt * 5); q.level += q.vel * dt; q.level = Math.max(0, Math.min(1, q.level)); if (frac <= 0) { q.level = Math.max(0, Math.min(q.level, q.level - dt * 4)); q.vel = Math.min(0, q.vel); } /* morto é zero: o globo esvazia de vez, sem a mola deixar um resto */
     q.wVel += -q.wave * 40 * dt + hit * 6; q.wVel *= Math.exp(-dt * 3.5); q.wave += q.wVel * dt;
     g.clearRect(0, 0, W, H);
     g.save(); g.beginPath(); g.arc(cx, cy, R, 0, 6.283); g.clip();
@@ -29,7 +29,8 @@ export function createGlobes() {
     // superfície do líquido
     const yL = cy + R - q.level * 2 * R, amp = 2 + Math.abs(q.wave) * 20 + (kind === 'mp' ? 1.2 : 0.6);
     const surf = (x: number) => yL + Math.sin(x / W * 6.283 * 1.5 + t * (kind === 'hp' ? 2.2 : 3.4)) * amp * 0.5 + Math.sin(x / W * 6.283 * 0.9 - t * 1.6) * amp * 0.4 + q.wave * (x - cx) * 0.9;
-    g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 2) g.lineTo(x, surf(x)); g.lineTo(W, H); g.closePath();
+    const empty = frac <= 0 && q.level < 0.02; if (empty) q.wave = 0;
+    g.beginPath(); g.moveTo(0, H); for (let x = 0; x <= W; x += 2) g.lineTo(x, empty ? H + 4 : surf(x)); g.lineTo(W, H); g.closePath();
     const lg = g.createLinearGradient(0, yL - 10, 0, cy + R);
     if (kind === 'hp') { lg.addColorStop(0, '#ff5a46'); lg.addColorStop(0.25, '#c81e1c'); lg.addColorStop(0.7, '#7a0a10'); lg.addColorStop(1, '#3a0408'); }
     else { lg.addColorStop(0, P.c[0]); lg.addColorStop(0.3, P.c[1]); lg.addColorStop(0.75, P.c[2]); lg.addColorStop(1, P.c[3]); }
@@ -37,7 +38,7 @@ export function createGlobes() {
     // volume: sombra interna nas bordas e luz lateral
     const inner = g.createRadialGradient(cx, cy, R * 0.55, cx, cy, R); inner.addColorStop(0, 'rgba(0,0,0,0)'); inner.addColorStop(1, 'rgba(0,0,0,.55)'); g.fillStyle = inner; g.fillRect(0, 0, W, H);
     // menisco / brilho na superfície
-    g.beginPath(); for (let x = 0; x <= W; x += 2) { const y = surf(x); if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.strokeStyle = kind === 'hp' ? 'rgba(255,170,150,.75)' : P.men; g.lineWidth = 1.5; g.stroke();
+    if (!empty) { g.beginPath(); for (let x = 0; x <= W; x += 2) { const y = surf(x); if (x === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.strokeStyle = kind === 'hp' ? 'rgba(255,170,150,.75)' : P.men; g.lineWidth = 1.5; g.stroke(); }
     // bolhas (magia) / gotas escorrendo (sangue)
     if (kind === 'mp' && P.part !== 'bubble') { // brasas sobem e estalam (Ímpeto/Fúria/Ódio), faíscas correm (Energia), luzes flutuam (Fé)
       if (Math.random() < dt * (P.part === 'spark' ? 10 : 9) && q.level > 0.05) q.bubbles.push({ x: cx + (Math.random() - 0.5) * R * 1.4, y: cy + R - 4, r: 0.8 + Math.random() * 1.6, v: (P.part === 'mote' ? 10 : 22) + Math.random() * 26 });

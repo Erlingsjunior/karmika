@@ -1167,7 +1167,7 @@ export function createGameplay(d: GameplayDeps) {
       if (st.hp > 0 && st.hp < st.hpMax * 0.3 && st.sp.has('u_fenrir') && now >= fenrirT) { fenrirT = now + 60; buff.dmg = Math.max(buff.dmg, 1.4); buff.dmgT = Math.max(buff.dmgT, 8); buff.leech = Math.max(buff.leech, 0.1); setTimeout(() => { if (!form) buff.leech = 0; }, 8000); logMsg('🐺 Elmo de Fenrir: a fúria do lobo desperta!', '#ff8a5a'); dmgText(heroPos.clone().setY(2.8), 'FÚRIA DO LOBO', true, '#ff8a5a'); }
       if (st.hp <= 0 && st.sp.has('r_calice') && now >= caliceT) { caliceT = now + 600; st.hp = Math.round(st.hpMax * 0.5); logMsg('🏆 O Cálice de Marghar recusa a sua morte.', '#ffd24a'); dmgText(heroPos.clone().setY(2.8), 'O CÁLICE TE SALVA', true, '#ffd24a'); for (let i = 0; i < 60; i++) { const a2 = rnd(0, 6.283); d.particles.spawn(heroPos.x, rnd(0.2, 2), heroPos.z, { vx: Math.cos(a2) * rnd(1, 4), vy: rnd(1, 4), vz: Math.sin(a2) * rnd(1, 4), life: 1, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffd24a, a: 1 }); } }
       if (st.hp <= 0) {
-        st.dead = true; document.body.classList.add('dead'); $('sigil').classList.add('dead');
+        st.dead = true; st.hpLag = 0; document.body.classList.add('dead'); $('sigil').classList.add('dead');
         const revive = () => { st.hp = st.hpMax; st.mp = st.res.mode === 'fight' ? 0 : st.mpMax; st.dead = false; document.body.classList.remove('dead'); $('sigil').classList.remove('dead'); };
         if (onDeath) onDeath(revive); else setTimeout(revive, 3600);
       }

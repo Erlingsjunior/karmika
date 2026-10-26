@@ -1780,7 +1780,7 @@ const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getCo
 { const mini = document.getElementById('mini') as HTMLElement, grip = document.createElement('div'); grip.className = 'mmgrip'; grip.title = 'Arraste para aumentar ou diminuir o minimapa (duplo clique: padrão)'; mini.appendChild(grip);
   /* 26/10 (Erling: "o minimapa pode ser um pouco maior no 1.0 padrão… e ter zoom"): padrão 210 (o antigo 170 sobe junto); a escala da interface já o acompanha */
   let D = 210; try { D = +(localStorage.getItem('karmika.minisize') || 210) || 210; if (D === 170) D = 210; } catch { /* */ }
-  const set = (d: number, save = false) => { D = Math.round(Math.max(120, Math.min(Math.min(380, innerHeight * 0.5), d))); mmEl.width = mmEl.height = D; mmEl.style.width = mmEl.style.height = D + 'px'; mini.style.width = D + 8 + 'px'; { const C = D / 2 + 4; grip.style.left = C - D * 0.354 - 9 + 'px'; grip.style.top = C + D * 0.354 - 11 + 'px'; } /* na borda do círculo, a 45° em baixo à esquerda */ if (save) try { localStorage.setItem('karmika.minisize', String(D)); } catch { /* */ } };
+  const set = (d: number, save = false) => { D = Math.round(Math.max(120, Math.min(Math.min(560, innerHeight * 0.75), d))); mmEl.width = mmEl.height = D; mmEl.style.width = mmEl.style.height = D + 'px'; mini.style.width = D + 8 + 'px'; { const C = D / 2 + 4; grip.style.left = C - D * 0.354 - 9 + 'px'; grip.style.top = C + D * 0.354 - 11 + 'px'; } /* na borda do círculo, a 45° em baixo à esquerda */ if (save) try { localStorage.setItem('karmika.minisize', String(D)); } catch { /* */ } };
   set(D);
   let rs: { x: number; y: number; d: number } | null = null;
   grip.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); rs = { x: e.clientX, y: e.clientY, d: D }; grip.setPointerCapture(e.pointerId); });
@@ -1793,6 +1793,19 @@ const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getCo
   new ResizeObserver(zt).observe(mmEl);
   zb.addEventListener('pointerdown', (e) => e.stopPropagation());
   zb.addEventListener('click', (e) => { e.stopPropagation(); const b = (e.target as HTMLElement).closest('[data-z]') as HTMLElement | null; if (b) miniZoomBy(+b.dataset.z! > 0 ? 1.25 : 0.8); });
+  /* 26/10 (Erling: "deixar ele no tamanho que a gente desejar, expandir ou mudar de lugar como fazemos com as janelas"):
+     arraste o minimapa para onde quiser (duplo clique nele: volta ao canto); o tamanho continua no puxador da borda */
+  const MPK = 'karmika.minipos'; let off = { x: 0, y: 0 }; try { off = JSON.parse(localStorage.getItem(MPK) || 'null') ?? off; } catch { /* */ }
+  const uiK = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+  const applyPos = () => { mini.style.translate = off.x || off.y ? `${off.x / uiK()}px ${off.y / uiK()}px` : ''; };
+  const keepIn = () => { const r = mini.getBoundingClientRect(); if (r.left < 0) off.x -= r.left; else if (r.right > innerWidth) off.x -= r.right - innerWidth; if (r.top < 0) off.y -= r.top; else if (r.bottom > innerHeight) off.y -= r.bottom - innerHeight; applyPos(); };
+  applyPos(); setTimeout(keepIn, 500); addEventListener('resize', () => keepIn());
+  let mvd: { x: number; y: number; ox: number; oy: number; moved: boolean } | null = null; mmEl.style.cursor = 'grab'; mmEl.title = 'Arraste para mudar o minimapa de lugar · roda do mouse: zoom · duplo clique: volta ao canto';
+  mmEl.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); mvd = { x: e.clientX, y: e.clientY, ox: off.x, oy: off.y, moved: false }; mmEl.setPointerCapture(e.pointerId); mmEl.style.cursor = 'grabbing'; });
+  mmEl.addEventListener('pointermove', (e) => { if (!mvd) return; const dx = e.clientX - mvd.x, dy = e.clientY - mvd.y; if (Math.hypot(dx, dy) > 4) mvd.moved = true; if (mvd.moved) { off = { x: mvd.ox + dx, y: mvd.oy + dy }; applyPos(); } });
+  const mvEnd = () => { if (!mvd) return; const was = mvd.moved; mvd = null; mmEl.style.cursor = 'grab'; if (was) { keepIn(); try { localStorage.setItem(MPK, JSON.stringify(off)); } catch { /* */ } } };
+  mmEl.addEventListener('pointerup', mvEnd); mmEl.addEventListener('pointercancel', mvEnd);
+  mmEl.addEventListener('dblclick', (e) => { e.stopPropagation(); off = { x: 0, y: 0 }; applyPos(); try { localStorage.removeItem(MPK); } catch { /* */ } });
   mmEl.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); miniZoomBy(e.deltaY < 0 ? 1.15 : 0.87); }, { passive: false });
 }
 function miniZoomBy(f: number) { mmZoom = Math.max(0.5, Math.min(4, mmZoom * f)); try { localStorage.setItem('karmika.minizoom', String(mmZoom)); } catch { /* */ } drawMini(); }
@@ -2298,7 +2311,7 @@ function nightAt(h: number) { if (h >= 7 && h < 17) return 0; if (h >= 19 || h <
 const SKINS_ART: Partial<Record<Kind, SkinDef>> = { nordic: { fbx: '/models/heroes/NordicWarrior/warrior_rigged.fbx', tex: '/models/heroes/NordicWarrior/warrior_base.jpg' } };
 /* humanos (homem e mulher): nível 1 = só a roupa de baixo, sem equipamento; ao vestir a primeira ROUPA (peitoral, elmo, botas, capa ou ombreiras — arma e escudo não contam) passa para o nível 2 */
 const CLOTH_SLOTS = ['armor', 'helm', 'boots', 'cape', 'shoulders'] as const;
-let creating = false; /* na tela de criação o personagem nasce sem roupa: a prévia mostra a pele de nível 1 */
+let deadK = 0; let creating = false; /* na tela de criação o personagem nasce sem roupa: a prévia mostra a pele de nível 1 */
 function humanSkinKey(): string | null {
   const origin = profile?.origin ?? 'human'; if (origin !== 'human' || kindOf(state.race) !== 'nordic') return null;
   const sex = profile?.sex ?? 'm'; let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* inv ainda não existe */ }
@@ -2858,7 +2871,9 @@ function placeAt(why: string, to: { x: number; y: number } = home) { leaveInteri
 function goHome(why: string, to: { x: number; y: number } = home) { withFade(() => placeAt(why, to)); }
 game.setOnDeath((revive) => { feats.bump('deaths'); soul.regen();
   const fall = (note?: string, left?: number) => { const after = () => { goHome(`⛲ Você renasce na fonte de ${home.name}.`); setTimeout(() => { revive(); if (note) game.logMsg(note, '#c9a0ff'); }, 400); };
-    if (profile?.eye) playDeath(profile.name, home.name, after, { title: 'Você cai', sub: left === undefined ? `O Olho guarda o que viu, <b>${profile.name}</b>.` : left > 0 ? `O Fio da Vida perde um fôlego. Restam <b>${left}</b> de ${MAX_BREATHS}.` : 'Era o último fôlego. Se cair de novo, a alma desencarna.' }); else setTimeout(after, 2600); };
+    /* 26/10 (Erling): o corpo cai, o Olho vira Ampulheta, e a gente fica ali, morto, vendo a cena — até clicar e escolher ressurgir na cidade */
+    const sub = left === undefined ? `O Olho guarda o que viu${profile ? `, <b>${profile.name}</b>` : ''}.` : left > 0 ? `O Fio da Vida perde um fôlego. Restam <b>${left}</b> de ${MAX_BREATHS}.` : 'Era o último fôlego. Se cair de novo, a alma desencarna.';
+    deathPanel(sub, () => { if (profile?.eye) playDeath(profile.name, home.name, after, { title: 'Você ressurge', sub }); else after(); }); };
   /* Fio da Vida: antes do Olho abrir (nível 20) não se desgasta; com fôlego é só uma queda; sem fôlego a alma desencarna */
   if (!profile || game.st.lvl < FRAY_LVL || !profile.eye) { fall(); return; } /* o Fio só se gasta depois que o Olho abre (nível 20) */
   if (soul.s.breaths > 0) { soul.s.breaths--; soul.save(); const b = soul.s.breaths;
@@ -2868,6 +2883,15 @@ game.setOnDeath((revive) => { feats.bump('deaths'); soul.regen();
   setTimeout(() => soulSpark(scene, hero.root.position.clone(), { burst: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: Math.random() * 0.6, vz: (Math.random() - 0.5) * 0.8, life: 0.7, s0: 0.35, s1: 0.04, c0, c1, a: 1 }),
     rise: () => { /* o som já está correndo */ }, fade: (a) => { soulFade.style.opacity = String(a); }, done: () => { unbind(revive); setTimeout(() => { soulFade.style.opacity = '0'; }, 400); } }), 300);
 });
+/** o painel de quem caiu: a cena continua atrás (em cinza), e só o jogador decide a hora de ressurgir */
+function deathPanel(sub: string, go: () => void) {
+  document.getElementById('deathp')?.remove(); const d = document.createElement('div'); d.id = 'deathp';
+  d.innerHTML = `<h2>Você caiu</h2><p>${sub}</p><button>⛲ Ressurgir em ${home.name}</button><small>Enter ou clique quando quiser</small>`;
+  document.body.appendChild(d); requestAnimationFrame(() => setTimeout(() => d.classList.add('on'), 900));
+  let done = false; const fire = () => { if (done) return; done = true; removeEventListener('keydown', key, true); d.classList.remove('on'); setTimeout(() => d.remove(), 400); go(); };
+  const key = (e: KeyboardEvent) => { if (e.key === 'Enter' && d.classList.contains('on')) { e.preventDefault(); e.stopPropagation(); fire(); } }; addEventListener('keydown', key, true);
+  d.querySelector('button')!.addEventListener('click', (e) => { e.stopPropagation(); fire(); });
+}
 const soulFade = document.createElement('div'); soulFade.id = 'soulfade'; document.body.appendChild(soulFade);
 const originName = (o?: string) => o === 'dwarf' ? 'Anão' : o === 'elf' ? 'Elfo' : 'Humano';
 /** o lugar sagrado da classe (onde a Lágrima devolve a alma): o mestre do caminho; sem classe, a fonte do lar */
@@ -3507,6 +3531,9 @@ function frameBody() {
   if (wade > 0.15 && state.moving) { wadeAcc += dt; if (wadeAcc > 0.09) { wadeAcc = 0; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.4, WL + 0.03, heroPos.z + Math.sin(a) * 0.4, { vx: Math.cos(a) * 0.8, vy: 0.9 + Math.random(), vz: Math.sin(a) * 0.8, life: 0.5, s0: 0.18, s1: 0.05, c0: 0xe8f4ff, c1: 0x9ac8e8, a: 0.7, g: 6 }); } } }
   if (swimming) { swimAcc += dt; if (swimAcc > (state.moving ? 0.12 : 0.45)) { swimAcc = 0; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.5, WL + 0.03, heroPos.z + Math.sin(a) * 0.5, { vx: Math.cos(a) * 0.8, vy: 0.05, vz: Math.sin(a) * 0.8, life: 0.9, s0: 0.18, s1: 0.5, c0: 0xdff4ff, c1: 0x9cd0ff, a: 0.5, drag: 1.5 }); } } }
   hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : lockYaw !== null && aiming ? lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : fishing ? Math.atan2(fishing.at.x - state.fx * T, fishing.at.z - state.fy * T) : work ? Math.atan2(work.x - state.fx * T, work.z - state.fy * T) : sitting ? sitting.yaw : state.moving ? Math.atan2(gdx, gdy) : combatMode ? nearYaw() : null);
+  { /* 26/10 (Erling: "o corpo precisa morrer, cair no chão morto"): o corpo tomba e fica lá até o jogador escolher ressurgir */
+    deadK += ((game.st.dead ? 1 : 0) - deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && deadK < 0.995) deadK = Math.min(1, deadK + rawDt * 0.6);
+    if (deadK > 0.002) { const e = deadK < 1 ? 1 - Math.pow(1 - deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
@@ -3527,7 +3554,7 @@ function frameBody() {
   bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt); alignTick(rawDt);
   qmT -= dt; if (qmT <= 0) { qmT = 0.7; updateQuestMarks(); }
   mmT -= dt; if (mmT <= 0) { mmT = 0.1; drawMini(); if (bigOpen) drawBig(); (document.getElementById('zone') as HTMLElement).textContent = `${zoneName()} · ${turnName()} ${Math.floor(gameHour())}h`; }
-  hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
+  hintT -= dt; if (hintT <= 0) { hintT = 0.12; const it = sitting || game.st.dead ? null : findInter(); hintEl.style.display = it ? 'block' : 'none'; if (it) hintEl.textContent = it.label; }
   if (hintEl.style.display !== 'none') { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.1, heroPos.z).project(camera); hintEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; hintEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; }
   lantern.position.set(heroPos.x, 3.2, heroPos.z);
   lantern.intensity = mix(5, 55, night);

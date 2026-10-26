@@ -10,7 +10,7 @@ export interface SlotMeta { name: string; lvl: number; cls: string; origin: stri
 interface Slots { active: number; meta: (SlotMeta | null)[]; servers: string[] }
 
 /** chaves que são da máquina (opções, janelas, premium, rede), não do personagem */
-const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.minizoom', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
+const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.minizoom', 'karmika.minipos', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
 const isChar = (k: string) => k.startsWith('karmika.') && !GLOBAL.some((g) => k === g || k.startsWith(g));
 const NSLOT = 3;
 const BOOT = 'karmika.boot';
