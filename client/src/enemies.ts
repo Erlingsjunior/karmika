@@ -58,7 +58,7 @@ function buildHuman(h: HumanLook): Rig {
     void hurtK; hero.update(dt, t0, mv, null); hero.root.rotation.set(0, 0, 0); } };
 }
 /** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
-export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null } = {};
+export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void } = {};
 export const HPK = 5.2; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos
 export const DEFS: Record<EnemyType, Def> = {
   puglin: { name: 'Puglin', lvl: 1, hp: 42, dmg: 7, speed: 2.7, aggro: 12, range: 1.7, windup: 0.6, cd: 1.5, xp: 12, gold: [1, 4], model: 'Puglin', scale: 1.3, radius: 0.6 },
@@ -68,7 +68,7 @@ export const DEFS: Record<EnemyType, Def> = {
   boar: { name: 'Javali', lvl: 2, hp: 75, dmg: 10, speed: 3.4, aggro: 11, range: 1.6, windup: 0.5, cd: 1.5, xp: 22, gold: [1, 6], quad: 'boar', scale: 1, radius: 0.7 },
   coyote: { name: 'Coiote', lvl: 1, hp: 34, dmg: 6, speed: 5.0, aggro: 14, range: 1.5, windup: 0.35, cd: 0.9, xp: 10, gold: [0, 3], quad: 'coyote', scale: 0.8, radius: 0.55, tint: 0xc9a266 },
   rat: { name: 'Ratazana Rubra', lvl: 1, hp: 16, dmg: 4, speed: 4.2, aggro: 10, range: 1.1, windup: 0.3, cd: 0.8, xp: 6, gold: [0, 2], quad: 'rat', scale: 1.0, radius: 0.4 },
-  fairy: { name: 'Fada Maliciosa', lvl: 2, hp: 20, dmg: 5, speed: 4.8, aggro: 11, range: 1.4, windup: 0.3, cd: 0.9, xp: 15, gold: [1, 6], rig: 'fairy', fly: 1.3, scale: 1.9, radius: 0.5 }, /* 26/10 (Erling: "a fada não aparece"): era do tamanho de um punho; agora dá para ver */
+  fairy: { name: 'Fada Maliciosa', lvl: 2, hp: 20, dmg: 5, speed: 4.8, aggro: 11, range: 1.4, windup: 0.3, cd: 0.9, xp: 15, gold: [1, 6], rig: 'fairy', fly: 1.2, scale: 1.15, radius: 0.5 }, /* 26/10 (Erling): pequena como fada é, mas com brilho e sombra que a mostram no capim */
   treant: { name: 'Guardião da Mata', lvl: 5, hp: 190, dmg: 18, speed: 2.1, aggro: 11, range: 2.6, windup: 0.85, cd: 1.8, xp: 70, gold: [8, 20], rig: 'treant', scale: 1.0, radius: 1.0 },
   zombie: { name: 'Zumbi da Catedral', lvl: 10, hp: 190, dmg: 16, speed: 1.9, aggro: 16, range: 1.9, windup: 0.9, cd: 1.9, xp: 70, gold: [3, 10], rig: 'zombie', scale: 1.0, radius: 0.6 },
   ghoul: { name: 'Carniçal', lvl: 14, hp: 260, dmg: 22, speed: 3.6, aggro: 18, range: 1.8, windup: 0.5, cd: 1.2, xp: 110, gold: [6, 14], rig: 'zombie', scale: 0.9, radius: 0.6, tint: 0x6a8a5a },
@@ -76,7 +76,7 @@ export const DEFS: Record<EnemyType, Def> = {
   tormentor: { name: 'Torturador de Bestas', lvl: 7, hp: 680, dmg: 24, speed: 3.0, aggro: 18, range: 3.2, windup: 0.95, cd: 2.0, xp: 520, gold: [80, 160], rig: 'prince', fly: 0.25, scale: 1.15, radius: 1.2, tint: 0xff3a1a },
   prince: { name: 'Príncipe das Cinzas', lvl: 8, hp: 520, dmg: 30, speed: 2.7, aggro: 20, range: 3.6, windup: 1.05, cd: 2.2, xp: 450, gold: [60, 120], rig: 'prince', fly: 0.35, scale: 1.0, radius: 1.2 },
   skeleton: { name: 'Esqueleto do Campo Santo', lvl: 12, hp: 150, dmg: 18, speed: 2.6, aggro: 15, range: 1.9, windup: 0.7, cd: 1.6, xp: 80, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8 },
-  bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 1.25, radius: 0.45, tint: 0x1a1418 },
+  bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 0.9, radius: 0.45, tint: 0x1a1418 },
   werewolf: { name: 'Lobisomem', lvl: 16, hp: 420, dmg: 30, speed: 5.0, aggro: 19, range: 2.1, windup: 0.6, cd: 1.4, xp: 180, gold: [10, 26], rig: 'beast', scale: 1.12, radius: 1.0 },
   /* gente dos eventos vivos: boneco articulado dos NPCs, com arma, escudo e cor da facção */
   soldier: { name: 'Soldado da Patrulha', lvl: 20, hp: 300, dmg: 22, speed: 3.3, aggro: 16, range: 2.0, windup: 0.55, cd: 1.3, xp: 120, gold: [6, 16], rig: 'human', scale: 1, radius: 0.55, human: { kind: 'nordic', tint: 0x5a6a8a, weapon: 'Espada Longa', shield: 'Escudo Nórdico', helm: 'Elmo Nórdico' } },
@@ -181,23 +181,35 @@ export function buildQuad(kind0: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote' | '
 
 /* ---- fada e guardião da mata (rigs procedurais) ---- */
 function buildFairy(): Rig {
+  /* 26/10 (Erling: "as fadas estão feias"): corpinho esguio com vestido de pétalas, cabelo comprido, asas de libélula em duas
+     camadas que batem, antenas com pontinhas de luz e um rastro de faíscas — pequena, mas viva */
   const root = new THREE.Group(), mats: THREE.MeshToonMaterial[] = [];
-  const hue = [0xff9ad8, 0x9ae8ff, 0xc8ff9a, 0xffe49a][(Math.random() * 4) | 0];
-  const body = inked(new THREE.CapsuleGeometry(0.08, 0.2, 4, 8), tm(0xf0e0d0), 0.02); body.position.y = 0; root.add(body);
-  const head = inked(new THREE.SphereGeometry(0.1, 8, 6), tm(0xf5e6d8), 0.02); head.position.y = 0.26; root.add(head);
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.11, 8, 6, 0, 6.283, 0, 1.6), tm(hue)); hair.position.y = 0.29; root.add(hair);
-  for (const s of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.018, 5, 4), new THREE.MeshBasicMaterial({ color: 0xff2040 })); eye.position.set(s * 0.04, 0.27, 0.09); root.add(eye); }
-  const wm = new THREE.MeshBasicMaterial({ color: hue, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
-  const wings: THREE.Mesh[] = [];
-  for (const s of [-1, 1]) for (const k of [0, 1]) { const w = new THREE.Mesh(new THREE.CircleGeometry(k ? 0.17 : 0.24, 8), wm); w.scale.set(1, 1.6, 1); w.position.set(s * 0.12, 0.08 - k * 0.1, -0.05); w.rotation.y = s * 1.1; root.add(w); wings.push(w); }
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: hue, map: radialTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); glow.scale.setScalar(1.6); glow.position.y = 0.1; root.add(glow);
-  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1a0830, map: radialTex(), transparent: true, opacity: 0.35, depthWrite: false, fog: false })); halo.scale.setScalar(1.1); halo.position.y = 0.1; root.add(halo); /* sombra escura atrás do brilho: no capim claro o brilho aditivo sumia */
-  const lt = { t: Math.random() * 6 };
+  const hue = [0xff9ad8, 0x9ae8ff, 0xc8ff9a, 0xffe49a][(Math.random() * 4) | 0], skin = 0xf6e4d4;
+  const torso = inked(new THREE.CapsuleGeometry(0.055, 0.14, 4, 8), tm(skin), 0.015); torso.position.y = 0.02; root.add(torso);
+  const dress = inked(new THREE.ConeGeometry(0.13, 0.2, 6, 1, true), tm(hue), 0.015); dress.position.y = -0.08; dress.rotation.x = Math.PI; root.add(dress);
+  for (let k = 0; k < 5; k++) { const pet = new THREE.Mesh(new THREE.SphereGeometry(0.045, 6, 4), tm(hue)); pet.scale.set(1, 0.5, 1.4); const a = k / 5 * 6.283; pet.position.set(Math.cos(a) * 0.11, -0.17, Math.sin(a) * 0.11); pet.rotation.y = -a; root.add(pet); }
+  const head = inked(new THREE.SphereGeometry(0.085, 10, 8), tm(skin), 0.015); head.position.y = 0.21; root.add(head);
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.095, 10, 8, 0, 6.283, 0, 1.9), tm(hue)); hair.position.y = 0.235; root.add(hair);
+  const mane = new THREE.Mesh(new THREE.CapsuleGeometry(0.04, 0.16, 4, 6), tm(hue)); mane.position.set(0, 0.1, -0.08); mane.rotation.x = -0.25; root.add(mane);
+  for (const sx of [-1, 1]) { const eye = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 4), new THREE.MeshBasicMaterial({ color: 0x3a1050 })); eye.position.set(sx * 0.035, 0.22, 0.075); root.add(eye);
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 0.12, 4), tm(0x60406a)); ant.position.set(sx * 0.03, 0.33, 0.02); ant.rotation.z = -sx * 0.5; root.add(ant);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.012, 6, 4), new THREE.MeshBasicMaterial({ color: hue })); tip.position.set(sx * 0.06, 0.385, 0.02); root.add(tip); }
+  for (const sx of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.014, 0.1, 3, 5), tm(skin)); arm.position.set(sx * 0.075, 0.03, 0.01); arm.rotation.z = sx * 0.6; root.add(arm);
+    const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.016, 0.12, 3, 5), tm(skin)); leg.position.set(sx * 0.03, -0.2, 0); leg.rotation.x = 0.3; root.add(leg); }
+  const wm = new THREE.MeshBasicMaterial({ color: hue, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  const wm2 = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  const wings: THREE.Group[] = [];
+  const wingGeo = (L: number, W: number) => { const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.bezierCurveTo(L * 0.3, W * 0.9, L * 1.05, W * 0.5, L, 0); sh.bezierCurveTo(L * 0.8, -W * 0.45, L * 0.3, -W * 0.35, 0, 0); return new THREE.ShapeGeometry(sh, 8); };
+  for (const sx of [-1, 1]) for (const k of [0, 1]) { const w = new THREE.Mesh(wingGeo(k ? 0.2 : 0.3, k ? 0.07 : 0.1), k ? wm2 : wm); const pivot = new THREE.Group(); pivot.position.set(sx * 0.03, 0.1 - k * 0.07, -0.04); pivot.rotation.y = sx * (k ? 1.9 : 1.5); pivot.rotation.z = k ? -0.35 : 0.3; w.scale.x = 1; pivot.add(w); root.add(pivot); wings.push(pivot); }
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: hue, map: radialTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); glow.scale.setScalar(0.9); glow.position.y = 0.05; root.add(glow);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1a0830, map: radialTex(), transparent: true, opacity: 0.3, depthWrite: false, fog: false })); halo.scale.setScalar(0.7); halo.position.y = 0.05; root.add(halo); /* sombra escura atrás do brilho: no capim claro o brilho aditivo sumia */
+  const lt = { t: Math.random() * 6, sp: 0 };
   return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
-    lt.t += dt; const f = Math.sin(lt.t * 40);
-    wings.forEach((w, i) => { w.rotation.z = (i % 2 ? 1 : -1) * 0.15 + f * 0.5 * (i < 2 ? 1 : -1) * (i % 2 ? -1 : 1); });
-    root.position.y = Math.sin(lt.t * 3) * 0.15 + strikeK * -0.2; root.rotation.x = 0.35 * Math.min(1, mv / 3) + windK * -0.4;
-    (glow.material as THREE.SpriteMaterial).opacity = 0.7 + Math.sin(lt.t * 7) * 0.25 + hurtK * 0.3;
+    lt.t += dt; const f = Math.sin(lt.t * 28);
+    wings.forEach((w, i) => { const sx = i < 2 ? -1 : 1, k = i % 2; w.rotation.y = sx * ((k ? 1.9 : 1.5) + f * 0.55); });
+    root.position.y = Math.sin(lt.t * 3) * 0.12 + strikeK * -0.2; root.rotation.x = 0.3 * Math.min(1, mv / 3) + windK * -0.4;
+    (glow.material as THREE.SpriteMaterial).opacity = 0.5 + Math.sin(lt.t * 7) * 0.2 + hurtK * 0.3;
+    lt.sp -= dt; if (lt.sp <= 0 && mv > 0.2) { lt.sp = 0.12; const wp = root.getWorldPosition(new THREE.Vector3()); enemyHooks.spark?.(wp.x, wp.y - 0.1, wp.z, hue); }
   } };
 }
 let rtex: THREE.Texture | null = null;
@@ -451,7 +463,7 @@ export function createEnemies(ctx: EnemyCtx) {
   const ELITE = new Set<EnemyType>(['prince', 'tormentor', 'treant']); // raio de ativação: só os inimigos perto da tela ganham corpo (desempenho)
 
   function build(e: Enemy) {
-    { const b = (e as Enemy & { body?: Body }).body; if (b) { (e as Enemy & { body?: Body }).body = undefined; e.root = b.root; e.pup = b.pup; e.quad = b.quad; e.rig = b.rig; e.tele = b.tele; e.mats = b.mats; (e as Enemy & { qring?: THREE.Mesh }).qring = b.qring; if (e.tele) ctx.scene.add(e.tele); ctx.scene.add(e.root); return; } }
+    { const b = (e as Enemy & { body?: Body }).body; if (b) { (e as Enemy & { body?: Body }).body = undefined; e.root = b.root; e.pup = b.pup; e.quad = b.quad; e.rig = b.rig; e.tele = b.tele; e.mats = b.mats; (e as Enemy & { qring?: THREE.Mesh }).qring = b.qring; /* o cadáver encolheu até sumir: o corpo volta inteiro, de pé e visível (Erling: "coiote invisível") */ e.root.scale.setScalar(e.def.scale); e.root.rotation.set(0, 0, 0); e.root.visible = true; for (const m of e.mats) if (m.emissive) m.emissive.setRGB(0, 0, 0); if (e.tele) ctx.scene.add(e.tele); ctx.scene.add(e.root); return; } }
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
     const custom = enemyHooks.body?.(e) ?? null;
     if (custom) { e.rig = custom; g.add(custom.root); e.mats = [...custom.mats]; }
