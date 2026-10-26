@@ -1008,6 +1008,8 @@ export function buildCity(): World {
     pois.push({ name: 'Clareira de Selvar', x: v.x, y: v.y, biome: 'forest' });
     st.npcs.push({ name: 'Ulfrik', role: 'Alfa da Matilha', kind: 'nordic', x: v.x - 1.5, y: v.y + 1.5, radius: 1.5, tint: 0x6a6a72, scale: 1.1, lines: ['A alcateia protege quem está dentro até a morte. Quem está fora é presa ou aliado. Escolha.', 'Selvar corre nas noites de lua. Quem recebe a marca corre junto — e nunca mais dorme em cama.', 'Prove que sobrevive à floresta sozinho: nível 30. Depois a matilha decide se você é lobo.'] });
     spawns.push({ type: 'wolf', x: v.x + 6, y: v.y + 6, r: 5, n: 4 }); }
+  /* 26/10 (Erling: "todas as vilas têm que estar ligadas por estradas e pontes"): a Cripta de Hemara e a Clareira de Selvar ganham a sua estrada */
+  for (const [nm, to] of [['Cripta de Hemara', 'Myrbakki'], ['Clareira de Selvar', 'Austrvik']] as [string, string][]) { const st = settlements.find((q) => q.name === nm); if (st) { PLACE[nm] = [st.x, st.y + 2]; route(nm, to, 1.05); } }
   // Catedral Abandonada (sul, terras antigas): 3 criptas descendo até o santuário do Sacerdote Maldito
   const cat = safe(CATHEDRAL.x, CATHEDRAL.y, 12);
   for (let y = cat.y - 10; y <= cat.y + 22; y++) for (let x = cat.x - 10; x <= cat.x + 18; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
@@ -1546,6 +1548,19 @@ export function buildCity(): World {
       else if (smallAt.has(k)) { cut++; return false; }
       smallAt.add(k); return true; });
     if (cut) { props.length = 0; props.push(...keep); } }
+  /* ESTRADA É ESTRADA ATÉ O FIM (26/10, Erling: "carroça de anão e de vapor só andam na estrada; quem garante a segurança no meio do mato?").
+     Depois de tudo plantado (vilas, matas, marcos), refaz o leito de cada estrada: o que virou grama ou árvore volta a ser estrada, a árvore
+     e a pedra em cima saem, e onde a estrada passa sobre água sem ponte, ponte. As caravanas andam exatamente sobre esse leito. */
+  { const on = new Set<number>(); for (const rp of roadPaths) for (let i = 0; i < rp.length; i++) { const a = rp[i], b = rp[Math.min(rp.length - 1, i + 1)];
+      for (let k = 0; k <= 4; k++) { const x = a.x + (b.x - a.x) * k / 4, y = a.y + (b.y - a.y) * k / 4; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const tx = Math.floor(x) + dx, ty = Math.floor(y) + dy; if (inb(tx, ty) && Math.hypot(tx + 0.5 - x, ty + 0.5 - y) <= 1.05) on.add(ty * 100000 + tx); } } }
+    const LOOSE = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']);
+    for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (LOOSE.has(p.kind as string) && on.has(p.gy * 100000 + p.gx)) props.splice(i, 1); }
+    for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree' || t === 'dirt') map[y][x] = 'road' as never; }
+    for (const rp of roadPaths) { let i = 0; while (i < rp.length) { const wet = (q: { x: number; y: number }) => map[Math.floor(q.y)]?.[Math.floor(q.x)] === 'water'; if (!wet(rp[i])) { i++; continue; } let j = i; while (j + 1 < rp.length && wet(rp[j + 1])) j++;
+        const a = rp[Math.max(0, i - 2)], b = rp[Math.min(rp.length - 1, j + 2)], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        if (!bridges.some((e) => { const L = Math.hypot(e.bx - e.ax, e.by - e.ay) || 1, t2 = Math.max(0, Math.min(1, ((mx - e.ax) * (e.bx - e.ax) + (my - e.ay) * (e.by - e.ay)) / (L * L))); return Math.hypot(e.ax + (e.bx - e.ax) * t2 - mx, e.ay + (e.by - e.ay) * t2 - my) < 3; })) {
+          const nb: Bridge = { ax: a.x, ay: a.y, bx: b.x, by: b.y, hA: 0, hB: 0 }; const save = bridgesRef; bridgesRef = []; nb.hA = groundH(a.x * T, a.y * T); nb.hB = groundH(b.x * T, b.y * T); bridgesRef = save; bridges.push(nb); }
+        i = j + 1; } } }
   return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
