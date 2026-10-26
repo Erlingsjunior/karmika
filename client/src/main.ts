@@ -851,7 +851,7 @@ const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) =
   onWorld: (list) => { guildWorld = list; drawGuilds(); if (myGuild && seedPending === myGuild.id) { const g = list.find((q) => q.id === myGuild!.id); if (g && !g.build.length) { for (const b of seedHall(g.plot)) hub.send({ t: 'g:build', b }); } seedPending = 0; } },
   onGuild: (g) => { const was = myGuild; myGuild = g; if (g && !was && g.members.length === 1 && Date.now() - g.created < 60000) seedPending = g.id; drawGuilds(); updateWho(); } });
 let seedPending = 0;
-if (IS_DEV) Object.assign(window as object, { __perf: () => perfReport(), __festa: () => festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
+if (IS_DEV) Object.assign(window as object, { __carav: () => caravans, __perf: () => perfReport(), __festa: () => festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
 addEventListener('keydown', (e) => { if (e.key === 'F9') { e.preventDefault(); social.toggle(); } });
 (window as unknown as { __net?: unknown }).__net = net;
 setTimeout(() => { (window as unknown as { __pvp?: unknown }).__pvp = pvp; (window as unknown as { __mail?: unknown }).__mail = mail; }, 0);

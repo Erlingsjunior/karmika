@@ -13,11 +13,12 @@ import * as THREE from 'three';
 import { std, plankTex, woodTex } from './toon3d';
 import { createCharacter, type Hero3D } from './characters';
 import { fine } from './dual3d';
+import { buildHorse, type Horse4 } from './werewolf3d';
 import type { EnemyType } from './world';
 
 const T = 2;
 type P2 = { x: number; z: number };
-export interface RouteDef { id: string; name: string; stops: string[]; lvl: number; foes: EnemyType[]; foeName: string; /** nome de cada bicho da emboscada */ names?: Partial<Record<EnemyType, string>>; night?: boolean; /** onde o comboio sai (texto) */ from: string }
+export interface RouteDef { id: string; name: string; stops: string[]; lvl: number; foes: EnemyType[]; foeName: string; /** quem leva a carga: a Companhia (vapor, tecnocratas), os anões (carroça de minério puxada a cavalo) ou mercadores humanos (carroça coberta) */ kind?: 'steam' | 'dwarf' | 'human'; /** nome de cada bicho da emboscada */ names?: Partial<Record<EnemyType, string>>; night?: boolean; /** onde o comboio sai (texto) */ from: string }
 export interface Route extends RouteDef { pts: P2[]; cum: number[]; len: number }
 
 /** as rotas da Companhia (os nomes são as vilas por onde a estrada passa) */
@@ -28,9 +29,20 @@ export const ROUTES: RouteDef[] = [
   { id: 'ak-au', names: { werewolf: 'Lobisomem Saqueador', ghoul: 'Carniçal Saqueador', skeleton: 'Ossada Desfiada' },  name: 'A Grande Rota (Askavik → Austrvik)', stops: ['Askavik', 'Lundr', 'Eikvik', 'Austrvik'], lvl: 39, foes: ['werewolf', 'ghoul', 'skeleton'], foeName: 'Saqueador da Grande Rota', from: 'portão sul de Askavik' },
   { id: 'kf-bf', names: { frostwolf: 'Lobo do Passo', imp: 'Diabrete da Fenda' },  name: 'Passo de Midvangr', stops: ['Kaldrfoss', 'Midvangr', 'Brasaforja'], lvl: 34, foes: ['frostwolf', 'frostwolf', 'imp'], foeName: 'Lobo do Passo', from: 'Kaldrfoss' },
   { id: 'pc-vp', names: { puglin: 'Saqueador da Costa', boar: 'Javali da Costa' },  name: 'Porto Caldeira → Vaporeira', stops: ['Porto Caldeira', 'Vaporeira'], lvl: 25, foes: ['puglin', 'puglin', 'boar'], foeName: 'Saqueador da Costa', from: 'Porto Caldeira' },
+  /* 26/10 (Erling: "não tenho visto muitas caravanas; caravanas de tecnocratas e de anões também, com suas carroças") */
+  { id: 'bf-ak', kind: 'dwarf', names: { frostwolf: 'Lobo do Passo', imp: 'Diabrete da Fenda' }, name: 'Minério de Brasaforja (→ Askavik)', stops: ['Brasaforja', 'Midvangr', 'Kaldrfoss', 'Askavik'], lvl: 33, foes: ['frostwolf', 'imp', 'frostwolf'], foeName: 'Lobo do Passo', from: 'portão de Brasaforja' },
+  { id: 'bf-cz', kind: 'dwarf', names: { imp: 'Diabrete das Cinzas', puglin: 'Puglin das Cinzas' }, name: 'Brasaforja → Cinzalto', stops: ['Brasaforja', 'Cinzalto'], lvl: 30, foes: ['imp', 'puglin', 'imp'], foeName: 'Diabrete das Cinzas', from: 'portão de Brasaforja' },
+  { id: 'uf-bf', kind: 'dwarf', names: { wolf: 'Lobo de Ulfheim', boar: 'Javali de Ulfheim' }, name: 'Ulfheim → Brasaforja', stops: ['Ulfheim', 'Brasaforja'], lvl: 28, foes: ['wolf', 'boar', 'wolf'], foeName: 'Lobo de Ulfheim', from: 'Ulfheim' },
+  { id: 'vp-bk', kind: 'steam', names: { puglin: 'Saqueador do Pântano', boar: 'Javali do Pântano' }, name: 'Vaporeira → Brekkuvik', stops: ['Vaporeira', 'Brekkuvik'], lvl: 24, foes: ['puglin', 'boar', 'puglin'], foeName: 'Saqueador do Pântano', from: 'Vaporeira' },
+  { id: 'km-lu', kind: 'human', names: { wolf: 'Lobo da Estrada', coyote: 'Coiote da Estrada' }, name: 'Karmika → Lundr', stops: ['Karmika', 'Lundr'], lvl: 6, foes: ['coyote', 'wolf', 'coyote'], foeName: 'Coiote da Estrada', from: 'Karmika' },
+  { id: 'km-ve', kind: 'human', names: { boar: 'Javali da Estrada', coyote: 'Coiote da Estrada' }, name: 'Karmika → Vestheim', stops: ['Karmika', 'Vestheim'], lvl: 7, foes: ['boar', 'coyote', 'coyote'], foeName: 'Javali da Estrada', from: 'Karmika' },
+  { id: 'km-su', kind: 'human', names: { wolf: 'Lobo da Estrada', boar: 'Javali da Estrada' }, name: 'Karmika → Sudrholt', stops: ['Karmika', 'Sudrholt'], lvl: 8, foes: ['wolf', 'boar', 'wolf'], foeName: 'Lobo da Estrada', from: 'Karmika' },
+  { id: 'lu-ak', kind: 'human', names: { wolf: 'Lobo da Estrada', coyote: 'Coiote da Estrada' }, name: 'Lundr → Askavik', stops: ['Lundr', 'Askavik'], lvl: 14, foes: ['wolf', 'wolf', 'coyote'], foeName: 'Lobo da Estrada', from: 'Lundr' },
+  { id: 'lm-bk', kind: 'human', names: { puglin: 'Salteador da Lagoa', wolf: 'Lobo da Lagoa' }, name: 'Lumenhal → Brekkuvik', stops: ['Lumenhal', 'Myrbakki', 'Brekkuvik'], lvl: 20, foes: ['puglin', 'wolf', 'puglin'], foeName: 'Salteador da Lagoa', from: 'Lumenhal' },
+  { id: 'lm-ve', kind: 'human', names: { puglin: 'Salteador da Lagoa', boar: 'Javali do Vale' }, name: 'Lumenhal → Vestheim', stops: ['Lumenhal', 'Vatnaholt', 'Vestheim'], lvl: 18, foes: ['puglin', 'boar', 'puglin'], foeName: 'Salteador da Lagoa', from: 'Lumenhal' },
 ];
 /** as que andam sozinhas pelo mundo (as outras só existem nas missões) */
-const AMBIENT = ['ak-cv', 'ak-au', 'kf-bf', 'pc-vp', 'ak-hr'];
+const AMBIENT = ['ak-cv', 'ak-au', 'kf-bf', 'pc-vp', 'ak-hr', 'bf-ak', 'bf-cz', 'uf-bf', 'vp-bk', 'km-lu', 'km-ve', 'km-su', 'lu-ak', 'lm-bk', 'lm-ve'];
 
 /** junta os trechos de estrada (world.roadLinks) na ordem das paradas */
 export function buildRoutes(roadPaths: { x: number; y: number }[][], links: { a: string; b: string; i: number }[]): Map<string, Route> {
@@ -55,7 +67,7 @@ function at(r: Route, s: number) { s = Math.max(0, Math.min(r.len - 0.01, s)); l
   const a = r.pts[lo], b = r.pts[lo + 1] ?? a, L = r.cum[lo + 1] - r.cum[lo] || 1, k = (s - r.cum[lo]) / L; return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: Math.atan2(b.x - a.x, b.z - a.z) }; }
 
 /* ================= o modelo: carroça a vapor da Companhia ================= */
-interface Wagon { root: THREE.Group; body: THREE.Group; wheels: { m: THREE.Object3D; r: number }[]; stack: THREE.Object3D; lamp: THREE.Sprite; flag: THREE.Mesh; fallen: boolean; hpBar: THREE.Group; hpFill: THREE.Mesh }
+interface Wagon { root: THREE.Group; body: THREE.Group; wheels: { m: THREE.Object3D; r: number }[]; stack: THREE.Object3D; lamp: THREE.Sprite; flag: THREE.Mesh; fallen: boolean; hpBar: THREE.Group; hpFill: THREE.Mesh; /** carroça puxada a cavalo (anões e mercadores): o cavalo anda na frente */ horse?: Horse4; kind: 'steam' | 'dwarf' | 'human' }
 const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!, gr = g.createRadialGradient(32, 32, 1, 32, 32, 31); gr.addColorStop(0, 'rgba(255,230,160,1)'); gr.addColorStop(0.3, 'rgba(255,170,60,.55)'); gr.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 /** brasão da Companhia: engrenagem de latão sobre carvalho */
 const crestTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.fillStyle = '#5a1e14'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#7a2a1c'; g.fillRect(0, 44, 64, 20);
@@ -121,7 +133,63 @@ export function buildSteamWagon(): Wagon {
   const hpBar = new THREE.Group(); hpBar.position.set(0, 3.7, 0); const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.16), new THREE.MeshBasicMaterial({ color: 0x1a0e08, transparent: true, opacity: 0.8, depthTest: false })); bg.renderOrder = 30; hpBar.add(bg);
   const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
-  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill };
+  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
+}
+/** barra de vida da carroça (igual nas três) */
+function hpBarFor(): { hpBar: THREE.Group; hpFill: THREE.Mesh } {
+  const hpBar = new THREE.Group(); hpBar.position.set(0, 3.2, 0); const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.16), new THREE.MeshBasicMaterial({ color: 0x1a0e08, transparent: true, opacity: 0.85, depthTest: false })); bg.renderOrder = 30; hpBar.add(bg);
+  const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; return { hpBar, hpFill };
+}
+/** a carroça de minério dos anões: caçamba de tábuas grossas cheia de pedra e carvão, barris de cerveja, rodas de ferro, puxada por um cavalo de carga */
+export function buildOreCart(): Wagon {
+  const M = mats(), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, p: THREE.Object3D = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; p.add(o); return o; };
+  add(new THREE.BoxGeometry(1.7, 0.16, 3.0), M.dark, 0, 0.78, -0.2); // estrado
+  for (const sx of [-1, 1]) { const w = add(new THREE.BoxGeometry(0.12, 0.75, 3.0), M.oak, sx * 0.82, 1.2, -0.2); w.rotation.z = sx * 0.1; for (const yy of [0.95, 1.35]) add(new THREE.BoxGeometry(0.04, 0.05, 3.0), M.iron, sx * 0.86, yy, -0.2); }
+  add(new THREE.BoxGeometry(1.7, 0.75, 0.12), M.oak, 0, 1.2, -1.7); add(new THREE.BoxGeometry(1.7, 0.55, 0.12), M.oak, 0, 1.1, 1.3);
+  /* a carga: pedras de minério com veios, carvão, dois barris */
+  { const ore = std(0x6a6660), vein = std(0xd9a441, { emissive: new THREE.Color(0x3a2408), emissiveIntensity: 0.3 }), coal = M.coal; const r = (k: number) => Math.abs(Math.sin(k * 12.9898) * 43758.5453) % 1;
+    for (let k = 0; k < 14; k++) { const g = new THREE.DodecahedronGeometry(0.14 + r(k) * 0.12, 0); const o = add(g, k % 4 === 0 ? coal : k % 5 === 1 ? vein : ore, -0.55 + r(k + 9) * 1.1, 1.05 + r(k + 3) * 0.25, -1.4 + r(k + 5) * 2.4); o.rotation.set(r(k) * 3, r(k + 1) * 3, 0); }
+    for (const [x, z] of [[-0.45, 0.85], [0.45, 0.85]]) { add(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 10), M.oak, x, 1.2, z); add(new THREE.TorusGeometry(0.225, 0.02, 3, 12).rotateX(Math.PI / 2), M.iron, x, 1.3, z); add(new THREE.TorusGeometry(0.225, 0.02, 3, 12).rotateX(Math.PI / 2), M.iron, x, 1.1, z); } }
+  const wheels: Wagon['wheels'] = [];
+  for (const [zz, r] of [[-1.0, 0.62], [1.0, 0.62]] as [number, number][]) { add(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 6).rotateZ(Math.PI / 2), M.iron, 0, r, zz);
+    for (const sx of [-1, 1]) { const w = wheel(r, 0.12), hold = new THREE.Group(); hold.position.set(sx * 0.95, r, zz); hold.rotation.y = Math.PI / 2; hold.add(w); body.add(hold); wheels.push({ m: w, r }); } }
+  add(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.45, 1.1); // banco do cocheiro
+  for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.035, 0.035, 2.4, 5).rotateX(Math.PI / 2), M.dark, sx * 0.55, 0.9, 2.5); // varais até o cavalo
+  const horse = buildHorse({ coat: 0x5a4030, mane: 0x201410 }); horse.root.position.set(0, 0, 3.6); horse.root.scale.setScalar(1.05); body.add(horse.root);
+  /* estandarte dos anões */
+  add(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5), M.dark, 0.7, 2.1, -1.6);
+  const flag = add(new THREE.PlaneGeometry(0.5, 0.3, 4, 1), std(0x8a3a1c, { side: THREE.DoubleSide }), 0.7, 2.6, -1.85); flag.rotation.y = Math.PI / 2;
+  add(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4), M.iron, -0.7, 1.7, 1.2); add(new THREE.BoxGeometry(0.14, 0.18, 0.14), M.glass, -0.7, 1.9, 1.2);
+  const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); lamp.position.set(-0.7, 1.9, 1.2); lamp.scale.setScalar(1.6); lamp.visible = false; body.add(lamp);
+  const stack = new THREE.Group(); stack.visible = false; body.add(stack); const { hpBar, hpFill } = hpBarFor(); root.add(hpBar);
+  root.traverse((o) => { o.frustumCulled = true; });
+  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'dwarf' };
+}
+/** a carroça coberta dos mercadores humanos: caixa de tábuas, lona em arcos, sacos e caixotes, puxada por um cavalo baio */
+export function buildMerchantWagon(): Wagon {
+  const M = mats(), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, p: THREE.Object3D = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; p.add(o); return o; };
+  add(new THREE.BoxGeometry(1.6, 0.14, 3.2), M.dark, 0, 0.8, -0.2);
+  for (const sx of [-1, 1]) add(new THREE.BoxGeometry(0.1, 0.5, 3.2), M.oak, sx * 0.78, 1.1, -0.2); add(new THREE.BoxGeometry(1.6, 0.5, 0.1), M.oak, 0, 1.1, -1.8); add(new THREE.BoxGeometry(1.6, 0.4, 0.1), M.oak, 0, 1.05, 1.4);
+  const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 0.85, 2.6, 14, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), std(0xe0d2b0, { side: THREE.DoubleSide })); cover.position.set(0, 1.3, -0.5); cover.scale.y = 1.3; cover.castShadow = true; body.add(cover);
+  for (const zz of [-1.7, -1.0, -0.3, 0.4]) { const arc = add(new THREE.TorusGeometry(0.86, 0.04, 4, 14, Math.PI), M.dark, 0, 1.3, zz); arc.scale.y = 1.3; }
+  { const cap = add(new THREE.CircleGeometry(0.85, 14, 0, Math.PI), std(0xc8ba98), 0, 1.3, -1.82); cap.rotation.y = Math.PI; cap.scale.y = 1.3; }
+  /* sacos e caixotes na boca */
+  add(new THREE.SphereGeometry(0.26, 8, 6), std(0xa08a60), -0.35, 1.1, 0.9); add(new THREE.SphereGeometry(0.22, 8, 6), std(0xb09a70), 0.3, 1.06, 0.95); add(new THREE.BoxGeometry(0.4, 0.3, 0.4), M.oak, 0.35, 1.02, 0.4);
+  const wheels: Wagon['wheels'] = [];
+  for (const [zz, r] of [[-1.2, 0.66], [1.1, 0.5]] as [number, number][]) { add(new THREE.CylinderGeometry(0.05, 0.05, 1.8, 6).rotateZ(Math.PI / 2), M.iron, 0, r, zz);
+    for (const sx of [-1, 1]) { const w = wheel(r, 0.1), hold = new THREE.Group(); hold.position.set(sx * 0.9, r, zz); hold.rotation.y = Math.PI / 2; hold.add(w); body.add(hold); wheels.push({ m: w, r }); } }
+  add(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.4, 1.2);
+  for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.035, 0.035, 2.4, 5).rotateX(Math.PI / 2), M.dark, sx * 0.5, 0.9, 2.6);
+  const horse = buildHorse({ coat: 0x8a5a34, mane: 0x2a1a10, socks: true }); horse.root.position.set(0, 0, 3.7); body.add(horse.root);
+  add(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 5), M.dark, -0.65, 2.0, -1.7);
+  const flag = add(new THREE.PlaneGeometry(0.45, 0.28, 4, 1), std(0x3a6a9a, { side: THREE.DoubleSide }), -0.65, 2.45, -1.92); flag.rotation.y = Math.PI / 2;
+  add(new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4), M.iron, 0.65, 1.7, 1.3); add(new THREE.BoxGeometry(0.14, 0.18, 0.14), M.glass, 0.65, 1.9, 1.3);
+  const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); lamp.position.set(0.65, 1.9, 1.3); lamp.scale.setScalar(1.6); lamp.visible = false; body.add(lamp);
+  const stack = new THREE.Group(); stack.visible = false; body.add(stack); const { hpBar, hpFill } = hpBarFor(); root.add(hpBar);
+  root.traverse((o) => { o.frustumCulled = true; });
+  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'human' };
 }
 /** a carroça caída: tomba de lado, uma roda solta, carga espalhada (resgate e emboscada perdida) */
 function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotation.z = 0.42; w.body.position.y = -0.25; const lost = w.wheels[1].m.parent!; w.body.remove(lost); w.root.add(lost); lost.rotation.set(Math.PI / 2 - 0.2, 0, 0); lost.position.set(1.9, 0.1, -2.6); w.lamp.visible = false;
@@ -166,11 +234,13 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   function eventNow() { const slot = Math.floor(now() / EV), h = Math.abs(Math.sin(slot * 12.9898) * 43758.5453) % 1, ids = AMBIENT.filter((id) => routes.has(id)); if (!ids.length) return null;
     const r = routes.get(ids[Math.floor(h * ids.length)])!; return { slot, r, s: openRoad(r, r.len * (0.3 + ((h * 7.31) % 1) * 0.4)), left: EV - (now() % EV) }; }
 
-  function crewFor(c: Car) { if (c.crew.length) return; const drv = createCharacter('technocrat', { static: true }); const g1 = createCharacter('nordic', { static: true }), g2 = createCharacter('dwarf', { static: true });
+  function crewFor(c: Car) { if (c.crew.length) return; const kind = c.route.kind ?? 'steam';
+    const drv = kind === 'dwarf' ? createCharacter('dwarf', { static: true }) : kind === 'human' ? createCharacter('nordic', { static: true, civil: 'human' }) : createCharacter('technocrat', { static: true });
+    const g1 = kind === 'dwarf' ? createCharacter('dwarf', { static: true }) : createCharacter('nordic', { static: true }), g2 = kind === 'human' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true });
     for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); ctx.scene.add(h.root); }
     try { g1.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); g2.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
     c.crew = [drv, g1, g2]; }
-  function ensureModel(c: Car) { if (c.w) return; c.w = buildSteamWagon(); ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0)) topple(c.w); }
+  function ensureModel(c: Car) { if (c.w) return; c.w = c.route.kind === 'dwarf' ? buildOreCart() : c.route.kind === 'human' ? buildMerchantWagon() : buildSteamWagon(); ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0)) topple(c.w); }
   function dropModel(c: Car) { if (!c.w) return; ctx.scene.remove(c.w.root); c.w = null; for (const h of c.crew) ctx.scene.remove(h.root); c.crew = []; }
   function say(c: Car, t: string) { if (!c.w) return; const p = c.w.root.position; ctx.bubble(p.x, p.y + 3.2, p.z, t); c.bubbleT = 4; }
 
@@ -198,7 +268,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   function update(dt: number, t: number) {
     const hp = ctx.hero(), night = ctx.night(), inside = ctx.inside();
     /* caravanas do mundo */
-    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 600 ? 2 : 1); i++) { const key = `amb:${id}:${i}`; let c = cars.get(key);
+    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const key = `amb:${id}:${i}`; let c = cars.get(key);
       if (!c) { c = { key, mode: 'ambient', route: r, s: 0, dir: 1, w: null, crew: [], hp: 1, stop: false, speed: SPEED, foes: [], bubbleT: 0 }; cars.set(key, c); }
       const a = ambientS(r, i); c.s = a.s; c.dir = a.dir; c.stop = a.park; } }
     /* a emboscada do mundo (uma por vez) */
@@ -238,7 +308,8 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       if (moving) for (const wh of w.wheels) wh.m.rotation.z += (c.speed * dt) / wh.r;
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;
       { const fp = w.flag.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < fp.count; i++) { const x0 = (i % 5) / 4; fp.setZ(i, Math.sin(t * 6 + x0 * 3) * 0.06 * x0); } fp.needsUpdate = true; }
-      if (Math.random() < (moving ? 0.5 : w.fallen ? 0.35 : 0.12)) { const s = new THREE.Vector3(0, 3.4, 1.25).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
+      if (w.horse) w.horse.pose({ dt, mv: moving ? c.speed : 0, idle: !moving });
+      if (w.kind === 'steam' && Math.random() < (moving ? 0.5 : w.fallen ? 0.35 : 0.12)) { const s = new THREE.Vector3(0, 3.4, 1.25).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
       if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.root.rotation.y = yaw + 2; drv.update(dt, t, 0, null); }
@@ -272,7 +343,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** para o mapa: caravanas andando, e a atacada piscando */
   function mapMarks(): { x: number; y: number; kind: 'move' | 'ev' | 'esc' | 'res'; name: string; sub: string }[] {
     const out: ReturnType<typeof mapMarks> = [];
-    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 600 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: 'Caravana de Latão', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
+    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: r.kind === 'dwarf' ? 'Carroça de minério dos anões' : r.kind === 'human' ? 'Caravana de mercadores' : 'Caravana de Latão', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
     if (evShown && !saved.done.includes(evShown.slot)) { const p = at(evShown.r, evShown.s), left = Math.ceil((EV - (now() % EV)) / 60); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Caravana atacada!', sub: `${evShown.r.name} · atacada por ${evShown.r.foeName} e outros · ~${left} min` }); }
     for (const c of cars.values()) { if (c.mode === 'escort' && !c.arrived) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'esc', name: 'Sua escolta', sub: c.route.name }); } if (c.mode === 'rescue' && !c.cleared) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'res', name: 'Caravana caída', sub: c.route.name }); } }
     return out;
