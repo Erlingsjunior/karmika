@@ -5,12 +5,14 @@ import type { Prop } from './world';
 /** tempo compartilhado do vento (atualizado no main) */
 export const windU = { value: 0 };
 export const gustU = { value: 0.5 };
+/** onde o herói está (x, z) e quanto se mexe: o capim se abre quando ele passa (atualizado no main) */
+export const heroU = { value: new THREE.Vector3(0, 0, 0) };
 
 /** faz o material balançar com o vento (base presa no chão, topo se move) */
-export function windify(m: THREE.Material, amp = 0.12, freq = 1.6) {
+export function windify(m: THREE.Material, amp = 0.12, freq = 1.6, o: { hero?: boolean } = {}) {
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uWind = windU; sh.uniforms.uGust = gustU;
-    sh.vertexShader = 'uniform float uWind; uniform float uGust;\n' + sh.vertexShader.replace(
+    sh.uniforms.uWind = windU; sh.uniforms.uGust = gustU; sh.uniforms.uHero = heroU;
+    sh.vertexShader = 'uniform float uWind; uniform float uGust; uniform vec3 uHero;\n' + sh.vertexShader.replace(
       '#include <begin_vertex>',
       `#include <begin_vertex>
        #ifdef USE_INSTANCING
@@ -18,10 +20,14 @@ export function windify(m: THREE.Material, amp = 0.12, freq = 1.6) {
        #else
          vec3 ip = vec3(0.0);
        #endif
-       float sw = sin(uWind * ${freq.toFixed(2)} + ip.x * 0.6 + ip.z * 0.45) + 0.5 * sin(uWind * ${(freq * 2.3).toFixed(2)} + ip.x * 1.3);
+       float hy = max(position.y, 0.0);
+       /* onda que viaja no campo (rajada passando) + balanço miúdo por touceira */
+       float sw = sin(uWind * ${freq.toFixed(2)} + ip.x * 0.6 + ip.z * 0.45) + 0.5 * sin(uWind * ${(freq * 2.3).toFixed(2)} + ip.x * 1.3) + 0.6 * sin(uWind * 1.1 - (ip.x + ip.z) * 0.18);
        float gm = 0.5 + uGust * 1.4;
-       transformed.x += sw * gm * ${amp.toFixed(3)} * max(position.y, 0.0);
-       transformed.z += sw * gm * ${(amp * 0.6).toFixed(3)} * max(position.y, 0.0);`);
+       transformed.x += sw * gm * ${amp.toFixed(3)} * hy * hy;
+       transformed.z += sw * gm * ${(amp * 0.6).toFixed(3)} * hy * hy;
+       ${o.hero ? `/* o herói passando: o capim se abre para os lados e deita um pouco (Erling, 26/10) */
+       { vec2 dh = ip.xz - uHero.xz; float dd = length(dh); float k = smoothstep(1.35, 0.15, dd); if (k > 0.001) { vec2 push = (dd > 0.001 ? dh / dd : vec2(1.0, 0.0)) * k * 0.55 * hy; transformed.x += push.x; transformed.z += push.y; transformed.y -= k * 0.45 * hy; } }` : ''}`);
   };
   return m;
 }

@@ -88,7 +88,7 @@ function getWaterMat() {
 }
 
 let grassTex: THREE.Texture | null = null, reedTex: THREE.Texture | null = null;
-function getGrassTex() {
+export function getGrassTex() {
   if (grassTex) return grassTex;
   const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!;
   const r = rng(5);
@@ -111,6 +111,20 @@ function getReedTex() {
   reedTex = new THREE.CanvasTexture(c); reedTex.colorSpace = THREE.SRGBColorSpace; return reedTex;
 }
 let blade: THREE.BufferGeometry | null = null, reedG: THREE.BufferGeometry | null = null, stoneG: THREE.BufferGeometry | null = null;
+/** touceira: 7 lâminas afuniladas (3 segmentos cada) em volta de um centro, cor por vértice (pé escuro → ponta clara) */
+function grassTuft() {
+  const pos: number[] = [], col: number[] = [], nor: number[] = [], idx: number[] = []; const r = rng(23); let off = 0;
+  const N = 7;
+  for (let b = 0; b < N; b++) {
+    const a = b / N * 6.283 + r() * 0.6, h = 0.42 + r() * 0.4, w = 0.06 + r() * 0.035, lean = 0.12 + r() * 0.25, dx = Math.cos(a), dz = Math.sin(a), ox = dx * 0.1, oz = dz * 0.1;
+    const ca = 0.5 + r() * 0.1, cb = 0.82, tipL = 0.95 + r() * 0.1; /* pé mais escuro, ponta mais clara (a cor da instância multiplica) */
+    const SEG = 3; for (let k = 0; k <= SEG; k++) { const t = k / SEG, y = h * t, ww = w * (1 - t * 0.85), bend = lean * t * t; const px = ox + dx * bend, pz = oz + dz * bend; const c = ca + (cb - ca) * t, cc2 = k === SEG ? tipL : c;
+      pos.push(px - dz * ww, y, pz + dx * ww, px + dz * ww, y, pz - dx * ww); nor.push(0, 1, 0, 0, 1, 0); col.push(cc2, cc2, cc2, cc2, cc2, cc2);
+      if (k < SEG) { const o2 = off + k * 2; idx.push(o2, o2 + 1, o2 + 2, o2 + 1, o2 + 3, o2 + 2, /* o verso, com a normal também para cima: visto de trás a lâmina não fica preta */ o2, o2 + 2, o2 + 1, o2 + 1, o2 + 2, o2 + 3); } }
+    off += (SEG + 1) * 2;
+  }
+  const m = new THREE.BufferGeometry(); m.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); m.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); m.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); m.setIndex(idx); m.computeBoundingSphere(); return m;
+}
 function crossQuad(w: number, h: number) {
   const a = new THREE.PlaneGeometry(w, h); a.translate(0, h / 2, 0);
   const b = a.clone(); b.rotateY(Math.PI / 2);
@@ -196,10 +210,10 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   const o = new THREE.Object3D(), cc = new THREE.Color();
   const grassSpots: { x: number; z: number; b: Biome }[] = [];
   // grama pela metade e só em manchas (ruído): campos e pântano têm; neve e rocha quase nada
-  const DENS: Record<Biome, number> = { meadow: 3.5, forest: 2.5, swamp: 4, snow: 0.3, ruins: 1.2, rock: 0.3, volcanic: 0.1, enchanted: 3, blight: 1.2, jungle: 4.5, coast: 0.8 };
+  const DENS: Record<Biome, number> = { meadow: 4.5, forest: 3, swamp: 4.5, snow: 0.3, ruins: 1.2, rock: 0.3, volcanic: 0.1, enchanted: 3, blight: 1.2, jungle: 4.5, coast: 0.8 };
   for (let ty = cy * CS; ty < (cy + 1) * CS; ty++) for (let tx = cx * CS; tx < (cx + 1) * CS; tx++) {
     if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || w.map[ty][tx] !== 'grass') continue;
-    if (fbm(tx * 0.13, ty * 0.13, 61) < 0.47) continue; // manchas de grama, não tapete
+    if (fbm(tx * 0.13, ty * 0.13, 61) < 0.4) continue; // manchas de grama, não tapete
     const bm = w.biome[ty][tx], n = DENS[bm] + (R() < (DENS[bm] % 1) ? 1 : 0);
     for (let k = 0; k < Math.floor(n); k++) {
       const x = (tx + R()) * T, z = (ty + R()) * T;
@@ -209,12 +223,16 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     }
   }
   if (grassSpots.length) {
-    blade ??= crossQuad(0.9, 0.75);
-    const mat = windify(new THREE.MeshLambertMaterial({ map: getGrassTex(), alphaTest: 0.45, side: THREE.DoubleSide }), 0.22, 1.9);
+    /* 26/10 (Erling: "a grama está quebrando o cenário: menos quadrada, mais suave e macia, tons de verde bonitos, balança e se abre
+       quando passamos"): touceira de lâminas de verdade (malha, sem textura serrilhada), cor por vértice do pé escuro à ponta clara,
+       vento em onda e afastamento do herói no shader. Continua um desenho só por região. */
+    blade ??= grassTuft();
+    const mat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.2, 1.7, { hero: true });
     const im = new THREE.InstancedMesh(blade, mat, grassSpots.length);
     grassSpots.forEach((s, i) => {
-      o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.7 + R() * 0.9; o.scale.set(sc, sc * (0.8 + R() * 0.5), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
-      if (s.b === 'snow') cc.setHSL(0.1, 0.18, 0.55 + R() * 0.2); else if (s.b === 'swamp') cc.setHSL(0.2 + R() * 0.05, 0.4, 0.3 + R() * 0.15); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.14 + R() * 0.04, 0.3, 0.35 + R() * 0.15); else cc.setHSL(0.22 + R() * 0.12, 0.35 + R() * 0.25, 0.42 + R() * 0.2);
+      o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.75 + R() * 0.7; o.scale.set(sc, sc * (0.75 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
+      const v = fbm(s.x * 0.05, s.z * 0.05, 7); /* manchas largas de tom: um campo não é um verde só */
+      if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.6 + R() * 0.15); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.3 + R() * 0.12); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.38 + R() * 0.12); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.45 + R() * 0.15); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.28 + R() * 0.1); else cc.setHSL(0.25 + v * 0.09 + R() * 0.02, 0.4 + v * 0.18, 0.33 + v * 0.1 + R() * 0.05);
       im.setColorAt(i, cc);
     });
     im.instanceMatrix.needsUpdate = true; grp.add(im);

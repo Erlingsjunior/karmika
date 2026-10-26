@@ -90,7 +90,7 @@ import { createGameplay } from './gameplay';
 import { createNpcs } from './npcs';
 import { Mist, Particles } from './fx3d';
 import { waterU } from './chunks3d';
-import { windU, gustU } from './terrain3d';
+import { windU, gustU, heroU } from './terrain3d';
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar, soulSpark, type LimiarInfo } from './limiar';
 import { createMasmorras } from './masmorras';
@@ -3735,7 +3735,7 @@ function frameBody() {
   const fl = mix(1.0, 0.07, day); // de dia as tochas quase não iluminam (o sol manda)
   (objs.windows.color as THREE.Color).setHex(day > 0.6 ? 0x6b5a40 : 0xffc266); setVitraisDay(day);
 
-  windU.value = t;
+  windU.value = t; heroU.value.set(heroPos.x, state.moving ? 1 : 0, heroPos.z);
   waterU.uLight.value = mix(0.3, 1, day);
   const gust = THREE.MathUtils.clamp(0.45 + 0.4 * Math.sin(t * 0.37) * Math.sin(t * 0.11 + 1.3) + 0.25 * Math.sin(t * 1.3 + Math.sin(t * 0.21) * 3), 0, 1);
   gustU.value = Math.min(1, gust + aurFx * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
