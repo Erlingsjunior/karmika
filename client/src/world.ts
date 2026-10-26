@@ -1406,14 +1406,14 @@ export function buildCity(): World {
     for (const t of settlements) { if (t.radius < 10) continue; /* cripta e clareira não são povoado */
       const city = t.kind === 'city' || t.name === 'Karmika', names = city ? STATION_NAMES.city : STATION_NAMES.village;
       const vs = t.kind === 'city' ? [5] : (city || TECH.has(t.name)) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4]; /* Askavik já tem as cinco na Casa dos Ofícios */
-      const S = city ? 3 : 2, tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
+      let S = city ? 3 : 2; const tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
       const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S && true; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
       const put = (v: number, gx: number, gy: number, ry: number) => {
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFTK.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + S + 1 && p.gy + p.h > gy - 1 && p.gy < gy + S + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass' as never;
-        props.push({ kind: 'station', gx, gy, w: S, h: S, height: city ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
+        props.push({ kind: 'station', gx, gy, w: S, h: S, height: S === 3 ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
         for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { hard.add(y * 100000 + x); taken.add(y * 100000 + x); } };
-      for (const v of vs) { let ok = false;
+      for (const v of vs) { let ok = false; S = city || v === 3 ? 3 : 2; /* o apotecário da vila também é casinha: farmácia pequena com antessala (Erling, 25/10) */
         if (v === 4 && tav) { /* a cozinha simples fica nos fundos da taverna: do lado de lá da casa, olhando a porta dos fundos */
           const hx = tav.gx + tav.w / 2, hy = tav.gy + tav.h / 2, bx = hx - hubX(t), by = hy - t.y, bl = Math.hypot(bx, by) || 1;
           for (let d = 0; d <= 3 && !ok; d++) for (let k = -2; k <= 2 && !ok; k++) { const ox = bx / bl, oy = by / bl, gx = Math.round(hx + ox * (tav.w / 2 + 1.6 + d) - oy * k) - 1, gy = Math.round(hy + oy * (tav.h / 2 + 1.6 + d) + ox * k) - 1;
