@@ -130,33 +130,35 @@ export function buildLandmark(id: number, Wm: number, Dm: number): Built {
   } else if (id === 8) { // RUÍNAS DE ARAVEL (26/10, Erling: "mais bonitas e majestosas mesmo destruídas, para valorizar os caçadores"): salão élfico da Primeira Vigília caído —
     // colunata de pedra clara com pátina verde, arco triunfal partido, nave com a grande janela ogival quebrada, o dais com a pedra-lunar ainda acesa, tambores tombados, hera e flechas de prata nas raízes
     const pale = stone(0xb8b4a4), paleD = stone(0x8f8c7e), moss = flat(0x4a6a3a), ivy = cloth(0x3a5a2e), silver = glow(0xdfe9ff), moon = glow(0xbfd4ff);
-    const R = Math.min(Wm, Dm) / 2 - 1.2, h0 = 0.45, rr = () => { seedN = (seedN * 9301 + 49297) % 233280; return seedN / 233280; }; let seedN = 7;
-    K.cyl(R + 1.4, R + 1.8, h0, cx, 0, cz, paleD, 24); K.cyl(R + 0.2, R + 0.6, 0.3, cx, h0, cz, pale, 24); /* dois degraus da plataforma */
+    const R = Math.min(Wm, Dm) / 2 - 1.2, h0 = 0.06, /* piso rente ao chão (Erling 26/10: bichos, placas e o herói afundavam no piso alto) */ rr = () => { seedN = (seedN * 9301 + 49297) % 233280; return seedN / 233280; }; let seedN = 7;
+    K.cyl(R + 1.4, R + 1.8, 0.06, cx, 0, cz, paleD, 24); K.cyl(R + 0.2, R + 0.6, 0.04, cx, 0.03, cz, pale, 24); /* lajes rentes ao chão */
     for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R; if (k === 10 || k === 11) continue; /* a brecha onde a parede caiu */
-      const whole = k % 3 !== 1, h = whole ? 6.2 + (k % 2) * 0.4 : 1.6 + rr() * 2.6; K.cyl(0.42, 0.5, 0.5, x, h0 + 0.3, z, paleD, 10); const c = K.cyl(0.34, 0.38, h, x, h0 + 0.8, z, pale, 10); if (!whole) c.rotation.set((rr() - 0.5) * 0.12, 0, (rr() - 0.5) * 0.12);
-      if (whole) { K.cyl(0.52, 0.36, 0.5, x, h0 + 0.8 + h, z, paleD, 10); const leaf = K.add(new THREE.ConeGeometry(0.5, 0.8, 6), moss, x, h0 + 0.8 + h + 0.7, z, a); leaf.scale.y = 0.6; } /* capitel em folha, com musgo em cima */
-      else { const drum = K.add(new THREE.CylinderGeometry(0.34, 0.34, 1.3, 10), pale, x + Math.cos(a + 1.2) * 1.2, h0 + 0.3 + 0.34, z + Math.sin(a + 1.2) * 1.2); drum.rotation.set(Math.PI / 2, 0, a + 0.4); } /* tambor tombado ao lado */
+      const whole = k % 3 !== 1, h = whole ? 6.2 + (k % 2) * 0.4 : 1.6 + rr() * 2.6; K.cyl(0.42, 0.5, 0.5, x, h0, z, paleD, 10); const c = K.cyl(0.34, 0.38, h, x, h0 + 0.5, z, pale, 10); if (!whole) c.rotation.set((rr() - 0.5) * 0.12, 0, (rr() - 0.5) * 0.12);
+      if (whole) { K.cyl(0.52, 0.36, 0.5, x, h0 + 0.5 + h, z, paleD, 10); const leaf = K.add(new THREE.ConeGeometry(0.5, 0.8, 6), moss, x, h0 + 0.5 + h + 0.7, z, a); leaf.scale.y = 0.6; } /* capitel em folha, com musgo em cima */
+      else { const drum = K.add(new THREE.CylinderGeometry(0.34, 0.34, 1.3, 10), pale, x + Math.cos(a + 1.2) * 1.2, h0 + 0.34, z + Math.sin(a + 1.2) * 1.2); drum.rotation.set(Math.PI / 2, 0, a + 0.4); } /* tambor tombado ao lado */
       if (rr() < 0.5) { const iv = K.plane(0.6, 2.2 + rr() * 2, x + Math.cos(a) * 0.37, h0 + 2.0, z + Math.sin(a) * 0.37, ivy, -a + Math.PI / 2); iv.position.y = h0 + 1.6; } }
     /* arquitrave: só sobrevive em dois trechos, do lado de trás */
-    for (const [a0, a1] of [[0.45, 1.7], [2.3, 3.4]]) { const n = 6; for (let i = 0; i < n; i++) { const a = a0 + (a1 - a0) * (i + 0.5) / n, da = (a1 - a0) / n; const seg = K.add(new THREE.BoxGeometry(R * da * 1.05, 0.5, 0.9), paleD, cx + Math.cos(a) * R, h0 + 7.75, cz + Math.sin(a) * R, -a); seg.rotation.y = -a; } }
+    /* arquitrave só entre duas colunas inteiras vizinhas (nunca flutuando sobre um toco); o resto caiu e está no chão */
+    for (const k of [2, 5, 8]) { const a = (k + 0.5) / 14 * Math.PI * 2, L = 2 * R * Math.sin(Math.PI / 14) + 0.8; const seg = K.add(new THREE.BoxGeometry(L, 0.5, 0.8), paleD, cx + Math.cos(a) * R * Math.cos(Math.PI / 14), h0 + 7.6, cz + Math.sin(a) * R * Math.cos(Math.PI / 14)); seg.rotation.y = -a + Math.PI / 2; }
+    for (const k of [0, 11]) { const a = (k + 0.5) / 14 * Math.PI * 2; const seg = K.add(new THREE.BoxGeometry(2.6, 0.5, 0.8), paleD, cx + Math.cos(a) * (R + 1.0), 0.25, cz + Math.sin(a) * (R + 1.0)); seg.rotation.set(0, -a + 0.4, 0.08); }
     /* a nave do fundo: parede alta de pedra clara com a grande janela ogival partida — metade de pé, metade no chão */
     { const wz = cz - R * 0.55; K.box(8.6, 1.0, 1.1, cx, h0, wz, paleD); K.box(2.2, 7.8, 0.9, cx - 3.2, h0 + 1, wz, pale); K.box(2.2, 5.2, 0.9, cx + 3.2, h0 + 1, wz, pale); K.box(1.0, 9.6, 0.9, cx - 4.3, h0 + 1, wz, pale); K.box(1.0, 6.4, 0.9, cx + 4.3, h0 + 1, wz, pale);
       const win = K.arch(4.2, 9.2, 0.9, 2.8, 5.6, pale); win.position.set(cx, h0 + 1, wz - 0.45); /* moldura ogival (arco de K) */
       const top = K.add(new THREE.ConeGeometry(0.8, 1.6, 4), pale, cx - 4.3, h0 + 10.6 + 0.8, wz, Math.PI / 4); top.scale.set(1.2, 1, 1.2); /* pináculo que sobrou */
-      for (let i = 0; i < 5; i++) { const b = K.box(1.6 + rr() * 1.2, 0.7, 0.9, cx + 2 + rr() * 4, h0 + 0.3, wz + 1.5 + rr() * 3, pale, rr() * 1.2); b.rotation.z = (rr() - 0.5) * 0.3; } /* blocos caídos da metade que ruiu */
+      for (let i = 0; i < 5; i++) { const b = K.box(1.6 + rr() * 1.2, 0.7, 0.9, cx + 2 + rr() * 4, h0, wz + 1.5 + rr() * 3, pale, rr() * 1.2); b.rotation.z = (rr() - 0.5) * 0.3; } /* blocos caídos da metade que ruiu */
       K.out.glows.push({ pos: new THREE.Vector3(cx, h0 + 6, wz + 1.5), color: 0xbfd4ff, base: 12 }); }
     /* arco triunfal partido na entrada (frente): um pé inteiro com o começo do arco, o outro só o toco */
     { const az = cz + R * 0.95; K.box(1.3, 5.2, 1.0, cx - 2.4, h0, az, pale); K.box(1.7, 0.5, 1.3, cx - 2.4, h0 + 5.2, az, paleD); /* pé esquerdo inteiro */
       const half = K.add(new THREE.TorusGeometry(2.4, 0.5, 6, 14, Math.PI * 0.55), pale, cx, h0 + 5.45, az, 0); half.rotation.z = Math.PI / 2 - 0.1; /* o meio-arco que ainda resiste */
       K.box(1.3, 2.4, 1.0, cx + 2.4, h0, az, pale); K.box(1.5, 0.4, 1.2, cx + 2.4, h0 + 2.4, az, paleD); /* o toco do pé direito */
-      for (let i = 0; i < 4; i++) K.box(0.9 + rr() * 0.6, 0.6, 0.8, cx + 1.4 + rr() * 2.4, h0 + 0.3, az + 0.8 + rr() * 2.2, pale, rr() * 2); }
+      for (let i = 0; i < 4; i++) K.box(0.9 + rr() * 0.6, 0.6, 0.8, cx + 1.4 + rr() * 2.4, h0, az + 0.8 + rr() * 2.2, pale, rr() * 2); }
     /* o dais da Vigília: pedra-lunar sobre um altar de três degraus, ainda acesa — o que resta da luz dos caçadores */
-    K.cyl(2.4, 2.7, 0.35, cx, h0 + 0.3, cz, paleD, 12); K.cyl(1.7, 2.0, 0.35, cx, h0 + 0.65, cz, pale, 12); K.box(1.3, 1.0, 0.9, cx, h0 + 1.0, cz, paleD);
-    const ms = K.add(new THREE.OctahedronGeometry(0.42), moon, cx, h0 + 2.5, cz, 0, false); ms.scale.y = 1.5; ms.userData.dyn = true;
-    const ring = K.add(new THREE.TorusGeometry(1.35, 0.05, 4, 32), silver, cx, h0 + 1.02, cz, 0, false); ring.rotation.x = Math.PI / 2;
-    for (let k = 0; k < 5; k++) { const a = k * 1.26 + 0.3; const ar = K.add(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 4), silver, cx + Math.cos(a) * (R - 1.6), h0 + 0.7, cz + Math.sin(a) * (R - 1.6), 0, false); ar.rotation.set(0.5, a, 0.3); } /* flechas de prata cravadas entre as raízes */
-    for (let k = 0; k < 7; k++) { const a = rr() * 6.28, d = 1.2 + rr() * (R - 2.6); const b = K.box(0.8 + rr() * 1.4, 0.5, 0.7, cx + Math.cos(a) * d, h0 + 0.3, cz + Math.sin(a) * d, pale, rr() * 3); b.rotation.z = (rr() - 0.5) * 0.2; }
-    K.out.glows.push({ pos: new THREE.Vector3(cx, h0 + 2.6, cz), color: 0xbfd4ff, base: 34 });
+    K.cyl(2.4, 2.7, 0.35, cx, h0, cz, paleD, 12); K.cyl(1.7, 2.0, 0.35, cx, h0 + 0.35, cz, pale, 12); K.box(1.3, 1.0, 0.9, cx, h0 + 0.7, cz, paleD);
+    const ms = K.add(new THREE.OctahedronGeometry(0.42), moon, cx, h0 + 2.2, cz, 0, false); ms.scale.y = 1.5; ms.userData.dyn = true;
+    const ring = K.add(new THREE.TorusGeometry(1.35, 0.05, 4, 32), silver, cx, h0 + 0.72, cz, 0, false); ring.rotation.x = Math.PI / 2;
+    for (let k = 0; k < 5; k++) { const a = k * 1.26 + 0.3; const ar = K.add(new THREE.CylinderGeometry(0.015, 0.015, 0.8, 4), silver, cx + Math.cos(a) * (R - 1.6), h0 + 0.3, cz + Math.sin(a) * (R - 1.6), 0, false); ar.rotation.set(0.5, a, 0.3); } /* flechas de prata cravadas entre as raízes */
+    for (let k = 0; k < 4; k++) { const a = rr() * 6.28, d = R - 1.4; const b = K.box(0.8 + rr() * 1.0, 0.4, 0.7, cx + Math.cos(a) * d, h0, cz + Math.sin(a) * d, pale, rr() * 3); b.rotation.z = (rr() - 0.5) * 0.2; }
+    K.out.glows.push({ pos: new THREE.Vector3(cx, h0 + 2.3, cz), color: 0xbfd4ff, base: 34 });
   } else { // 7 GRANDE TOCA DO UIVO: grande cabana cônica de toras, crânio de lobo na entrada, totens em roda e fogueira
     const lg = wood(0x5a4030), th = slate(0x8a7440), R = Math.min(Wm, Dm) / 2 - 2.2;
     K.cyl(R, R * 1.05, 3.2, cx, 0, cz - 0.6, lg, 16); K.cone(R * 1.35, 8.5, cx, 3.2, cz - 0.6, th, 16, 0);
