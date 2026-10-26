@@ -282,6 +282,10 @@ export class AudioEngine {
   /* ---------- trilha ambiente gerada ---------- */
   /** o clima da trilha: explorar, vila, masmorra, lugar maligno, luta com elite, chefe */
   mood: Mood = 'explore'; private beat = 0; private beatN = 0;
+  /** /som: o que está tocando agora (para achar um som que não devia estar aí) */
+  whatPlays(): string { const g = (x: GainNode) => x.gain.value.toFixed(3); const parts = [`clima: ${this.mood}`, `música ${this.music ? 'ligada' : 'desligada'} (ganho ${g(this.mus)})`, `ambiente ${g(this.amb)}`, `pads ${this.pads.map((p) => `${p.o.frequency.value.toFixed(0)}Hz@${g(p.g)}`).join(' ')}`,
+      `vento ${g(this.windLo)}/${g(this.windHi)}`, `fogo ${g(this.fireG)}`, `água ${g(this.waterG)} rio ${g(this.riverG)}/${g(this.riverLo)} queda ${g(this.fallLo)}`, `Lua de Sangue (bordão) ${this.bloodV ? 'TOCANDO ' + g(this.bloodV.g) : 'parado'}`, `coral ${this.choirV ? 'tocando ' + g(this.choirV.root) : 'parado'}`, `Limiar ${this.limiarPad ? 'tocando' : 'parado'}`];
+    return parts.join(' · '); }
   setMood(m: Mood) { if (m === this.mood) return; this.mood = m; this.nextNote = 0.3; this.beat = 0; }
   private drum(f: number, vol: number, dly = 0, noise = 0.6) { this.tone(f, f * 0.45, 0.28, vol, 'sine', dly, this.mus, 0, 0.003); const nb = () => this.burst('lowpass', 900, 0.8, 0.09, vol * noise, 1, this.mus, 0, 0.002); if (dly > 0.01) setTimeout(nb, dly * 1000); else nb(); }
   /* ---------- A FESTA (25/10): a giga do bardo, original, em ré dórico, 6/8 — alaúde, flauta, bodhrán, pandeiro e o bordão —
@@ -333,7 +337,7 @@ export class AudioEngine {
           if (M === 'boss' && b % 8 === 0) for (const k of [0, 3, 7]) { const f = root * 2 * Math.pow(2, k / 12); this.tone(f, f * 0.99, spb * 2.5, 0.025, 'sawtooth', 0, this.mus, (k - 3) * 0.1, 0.03); } }
         return; }
       if (M === 'dungeon' || M === 'evil') { // drone grave, notas raras na escala frígia, um gongo distante
-        this.musicT += dt; this.pads[0].g.gain.setTargetAtTime(0.18, now0, 2); this.pads[1].g.gain.setTargetAtTime(0.06 + 0.05 * Math.sin(this.musicT * (M === 'evil' ? 2.2 : 0.2)) ** 2, now0, 0.4);
+        this.musicT += dt; this.pads[0].g.gain.setTargetAtTime(0.18, now0, 2); this.pads[1].g.gain.setTargetAtTime(0.05 + 0.03 * Math.sin(this.musicT * (M === 'evil' ? 0.45 : 0.2)) ** 2, now0, 0.8); /* 26/10: o pulso rápido do lugar maligno parecia o coração da Lua de Sangue; agora respira devagar */
         this.nextNote -= dt; if (this.nextNote > 0) return; this.nextNote = 4 + Math.random() * 5;
         const sc = M === 'evil' ? [0, 1, 4, 5, 6, 8, 11] : [0, 1, 3, 5, 7, 8, 10], root = M === 'evil' ? 103.8 : 110;
         const f = root * Math.pow(2, sc[Math.floor(Math.random() * sc.length)] / 12) * (Math.random() < 0.3 ? 2 : 1); this.tone(f, f * 0.998, 3.5, 0.05, 'triangle', 0, this.mus, (Math.random() - 0.5) * 0.8, 0.4);
@@ -360,7 +364,7 @@ export class AudioEngine {
 
   /* ---------- coro distante (Dia da Aurora) e o pulso surdo da Lua de Sangue ---------- */
   private choirV: { root: GainNode; voices: { o: OscillatorNode; o2: OscillatorNode; g: GainNode }[]; lfo: OscillatorNode; t: number; ch: number } | null = null;
-  private bloodV: { g: GainNode; os: OscillatorNode[]; t: number } | null = null;
+  private bloodV: { g: GainNode; os: OscillatorNode[]; t: number; off?: number } | null = null;
   /** k 0..1: quanto do coro se ouve. Vozes em "aah" (formantes) por trás de um eco longo e de um filtro, como se viesse de longe, de uma igreja no alto do vale */
   choir(k: number, dt: number) {
     const ctx = this.ctx; if (!ctx) return; const now = ctx.currentTime;
@@ -399,7 +403,7 @@ export class AudioEngine {
       this.bloodV = { g, os, t: 1 }; }
     const bv = this.bloodV; if (!bv) return;
     bv.g.gain.setTargetAtTime(k * 0.05, now, 2);
-    if (k <= 0.01) { if (bv.g.gain.value < 0.001) { for (const o of bv.os) o.stop(); this.bloodV = null; } return; }
+    if (k <= 0.01) { bv.off = (bv.off ?? 0) + dt; if (bv.off > 6) { for (const o of bv.os) { try { o.stop(); } catch { /* */ } } this.bloodV = null; } return; } bv.off = 0; /* 26/10 (Erling: "som de lua de sangue sem lua"): o bordão para de verdade 6 s depois de a lua acabar, sem depender do valor do ganho */
     bv.t -= dt; if (bv.t <= 0) { bv.t = 1.7 + Math.random() * 0.4; this.tone(62, 38, 0.22, 0.07 * k, 'sine', 0, this.amb, 0, 0.005); this.tone(58, 36, 0.26, 0.05 * k, 'sine', 0.24, this.amb, 0, 0.005); }
   }
 }

@@ -729,6 +729,7 @@ const BETA_TOOLS = true;
 function betaCommand(cmd: string, a: string[]): string | null {
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
   if (cmd === 'ajuda' || cmd === 'help') return 'Teste (beta): /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'som') { const r = `🔊 ${audio.whatPlays()} · lua=${luaK.toFixed(2)} aurora=${aurK.toFixed(2)} global=${gCur ?? '—'}`; console.log(r); return r; }
   if (cmd === 'perf') { const r = perfReport(); console.log(r); return r; }
   if (cmd === 'morrer') { if (game.st.dead) return 'Você já caiu.'; game.st.hp = 1; game.damage(99999, hero.root.position); return `☠ Você caiu de propósito. Fôlegos antes da queda: ${soul.s.breaths}/${MAX_BREATHS}${game.st.lvl < FRAY_LVL ? ` (antes do nível ${FRAY_LVL}, com o Olho ainda dormindo, o Fio não se gasta: use /nivel ${FRAY_LVL})` : ''}.`; }
   if (cmd === 'folegos' || cmd === 'fôlegos') { if (!(n >= 0 && n <= MAX_BREATHS)) return `Uso: /folegos 0-${MAX_BREATHS}`; soul.s.breaths = n; soul.s.regenAt = Date.now(); soul.save(); return `🕯 Fio da Vida: ${n}/${MAX_BREATHS}.`; }
