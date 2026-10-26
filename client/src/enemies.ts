@@ -68,7 +68,7 @@ export const DEFS: Record<EnemyType, Def> = {
   boar: { name: 'Javali', lvl: 2, hp: 75, dmg: 10, speed: 3.4, aggro: 11, range: 1.6, windup: 0.5, cd: 1.5, xp: 22, gold: [1, 6], quad: 'boar', scale: 1, radius: 0.7 },
   coyote: { name: 'Coiote', lvl: 1, hp: 34, dmg: 6, speed: 5.0, aggro: 14, range: 1.5, windup: 0.35, cd: 0.9, xp: 10, gold: [0, 3], quad: 'coyote', scale: 0.8, radius: 0.55, tint: 0xc9a266 },
   rat: { name: 'Ratazana Rubra', lvl: 1, hp: 16, dmg: 4, speed: 4.2, aggro: 10, range: 1.1, windup: 0.3, cd: 0.8, xp: 6, gold: [0, 2], quad: 'rat', scale: 1.0, radius: 0.4 },
-  fairy: { name: 'Fada Maliciosa', lvl: 2, hp: 20, dmg: 5, speed: 4.8, aggro: 11, range: 1.4, windup: 0.3, cd: 0.9, xp: 15, gold: [1, 6], rig: 'fairy', fly: 1.5, scale: 1.0, radius: 0.5 },
+  fairy: { name: 'Fada Maliciosa', lvl: 2, hp: 20, dmg: 5, speed: 4.8, aggro: 11, range: 1.4, windup: 0.3, cd: 0.9, xp: 15, gold: [1, 6], rig: 'fairy', fly: 1.3, scale: 1.9, radius: 0.5 }, /* 26/10 (Erling: "a fada não aparece"): era do tamanho de um punho; agora dá para ver */
   treant: { name: 'Guardião da Mata', lvl: 5, hp: 190, dmg: 18, speed: 2.1, aggro: 11, range: 2.6, windup: 0.85, cd: 1.8, xp: 70, gold: [8, 20], rig: 'treant', scale: 1.0, radius: 1.0 },
   zombie: { name: 'Zumbi da Catedral', lvl: 10, hp: 190, dmg: 16, speed: 1.9, aggro: 16, range: 1.9, windup: 0.9, cd: 1.9, xp: 70, gold: [3, 10], rig: 'zombie', scale: 1.0, radius: 0.6 },
   ghoul: { name: 'Carniçal', lvl: 14, hp: 260, dmg: 22, speed: 3.6, aggro: 18, range: 1.8, windup: 0.5, cd: 1.2, xp: 110, gold: [6, 14], rig: 'zombie', scale: 0.9, radius: 0.6, tint: 0x6a8a5a },
@@ -76,7 +76,7 @@ export const DEFS: Record<EnemyType, Def> = {
   tormentor: { name: 'Torturador de Bestas', lvl: 7, hp: 680, dmg: 24, speed: 3.0, aggro: 18, range: 3.2, windup: 0.95, cd: 2.0, xp: 520, gold: [80, 160], rig: 'prince', fly: 0.25, scale: 1.15, radius: 1.2, tint: 0xff3a1a },
   prince: { name: 'Príncipe das Cinzas', lvl: 8, hp: 520, dmg: 30, speed: 2.7, aggro: 20, range: 3.6, windup: 1.05, cd: 2.2, xp: 450, gold: [60, 120], rig: 'prince', fly: 0.35, scale: 1.0, radius: 1.2 },
   skeleton: { name: 'Esqueleto do Campo Santo', lvl: 12, hp: 150, dmg: 18, speed: 2.6, aggro: 15, range: 1.9, windup: 0.7, cd: 1.6, xp: 80, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8 },
-  bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 0.7, radius: 0.45, tint: 0x1a1418 },
+  bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 1.25, radius: 0.45, tint: 0x1a1418 },
   werewolf: { name: 'Lobisomem', lvl: 16, hp: 420, dmg: 30, speed: 5.0, aggro: 19, range: 2.1, windup: 0.6, cd: 1.4, xp: 180, gold: [10, 26], rig: 'beast', scale: 1.12, radius: 1.0 },
   /* gente dos eventos vivos: boneco articulado dos NPCs, com arma, escudo e cor da facção */
   soldier: { name: 'Soldado da Patrulha', lvl: 20, hp: 300, dmg: 22, speed: 3.3, aggro: 16, range: 2.0, windup: 0.55, cd: 1.3, xp: 120, gold: [6, 16], rig: 'human', scale: 1, radius: 0.55, human: { kind: 'nordic', tint: 0x5a6a8a, weapon: 'Espada Longa', shield: 'Escudo Nórdico', helm: 'Elmo Nórdico' } },
@@ -191,6 +191,7 @@ function buildFairy(): Rig {
   const wings: THREE.Mesh[] = [];
   for (const s of [-1, 1]) for (const k of [0, 1]) { const w = new THREE.Mesh(new THREE.CircleGeometry(k ? 0.17 : 0.24, 8), wm); w.scale.set(1, 1.6, 1); w.position.set(s * 0.12, 0.08 - k * 0.1, -0.05); w.rotation.y = s * 1.1; root.add(w); wings.push(w); }
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ color: hue, map: radialTex(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); glow.scale.setScalar(1.6); glow.position.y = 0.1; root.add(glow);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0x1a0830, map: radialTex(), transparent: true, opacity: 0.35, depthWrite: false, fog: false })); halo.scale.setScalar(1.1); halo.position.y = 0.1; root.add(halo); /* sombra escura atrás do brilho: no capim claro o brilho aditivo sumia */
   const lt = { t: Math.random() * 6 };
   return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
     lt.t += dt; const f = Math.sin(lt.t * 40);
