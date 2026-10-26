@@ -1050,6 +1050,24 @@ function updateInstFx(dt: number) {
 /* o Instinto mora no menu de ações (junto de Mapa, Deus e Menu): um botão pequeno com o terceiro olho; F continua ligando */
 /* barra de Posturas e Instinto: em cima do lado direito da barra de magias (Erling, 25/10) */
 var stanceSys: ReturnType<typeof createStances> | null = null;
+/* o ícone da postura nos pés (25/10): um anel com o símbolo do papel, na cor da postura, girando devagar sob o herói */
+const ST_ICON: Record<string, string> = { bal: '◎', atk: '⚔', tank: '🛡', heal: '✚', speed: '➶', leech: '🩸' };
+const stTex = new Map<string, THREE.CanvasTexture>();
+function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!;
+  g.strokeStyle = col; g.globalAlpha = 0.95; g.lineWidth = 5; g.beginPath(); g.arc(64, 64, 56, 0, 6.283); g.stroke(); g.lineWidth = 2; g.globalAlpha = 0.6; g.beginPath(); g.arc(64, 64, 47, 0, 6.283); g.stroke();
+  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; g.globalAlpha = 0.85; g.fillStyle = col; g.beginPath(); g.arc(64 + Math.cos(a) * 52, 64 + Math.sin(a) * 52, 2.6, 0, 6.283); g.fill(); }
+  g.globalAlpha = 1; g.font = 'bold 34px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = col; g.shadowColor = col; g.shadowBlur = 8;
+  for (const [dx, dy] of [[0, -30], [30, 0], [0, 30], [-30, 0]]) g.fillText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy);
+  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; stTex.set(id, t); return t; }
+const stRing = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0.6, fog: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 2; scene.add(stRing);
+let stRingId = '', stPop = 0;
+function stanceRing(st: { id: string; role: string; col: string } | null, dt: number) {
+  if (!st) { stRing.visible = false; return; }
+  if (st.id !== stRingId) { stRingId = st.id; (stRing.material as THREE.MeshBasicMaterial).map = stanceTex(st.id, st.role, st.col); (stRing.material as THREE.MeshBasicMaterial).needsUpdate = true; }
+  stPop = Math.max(0, stPop - dt * 1.6); const p = hero.root.position; stRing.visible = !riding; stRing.position.set(p.x, p.y + 0.06, p.z); stRing.rotation.z += dt * 0.35; stRing.scale.setScalar(1 + stPop * 1.4); (stRing.material as THREE.MeshBasicMaterial).opacity = 0.42 + 0.5 * stPop; }
+/* o aviso grande no meio da tela: nome, papel e o que muda (fica 3 s, dá para ler) */
+const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.appendChild(stBan); let stBanT = 0;
+function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
 const stanceBar = document.createElement('div'); stanceBar.id = 'stances'; document.body.appendChild(stanceBar);
 const ROLE_SVG: Record<string, string> = {
   bal: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 6v20M9 16h14" stroke="currentColor" stroke-width="1.6" opacity=".7"/><circle cx="16" cy="16" r="3" fill="currentColor"/></svg>',
@@ -1082,7 +1100,12 @@ stanceSys = createStances({ path: () => myPath() as PathId | null, isDone: (q) =
   onChange: (st: Stance) => { const p = hero.root.position, col = new THREE.Color(st.col).getHex(); audio.instinct(true);
     for (let i = 0; i < 36; i++) { const a = i / 36 * 6.283; particles.spawn(p.x + Math.cos(a) * 0.9, p.y + 0.15, p.z + Math.sin(a) * 0.9, { vx: Math.cos(a) * 2.2, vy: 0.6 + Math.random() * 0.8, vz: Math.sin(a) * 2.2, life: 0.8, s0: 0.28, s1: 0.04, c0: 0xffffff, c1: col, a: 1, drag: 2 }); }
     for (let i = 0; i < 20; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.6, p.y + 0.2 + Math.random() * 1.6, p.z + (Math.random() - 0.5) * 0.6, { vy: 1.2 + Math.random(), life: 1, s0: 0.2, s1: 0.03, c0: col, c1: col, a: 0.9, drag: 1 });
-    game.dmgText(p.clone().setY(p.y + 2.9), `Postura: ${st.name}`, false, st.col); game.logMsg(`⚔ Postura: ${st.name} (${ROLE_NAME[st.role]}).`, st.col); } });
+    game.dmgText(p.clone().setY(p.y + 2.9), `Postura: ${st.name}`, false, st.col); game.logMsg(`⚔ Postura: ${st.name} (${ROLE_NAME[st.role]}).`, st.col);
+    /* a troca com corpo: o herói respira fundo e assume a postura; o anel dos pés pulsa; o aviso fica 3 s */
+    if (!hero.acting && !riding) hero.act('breath'); stPop = 1; audio.equip(st.role === 'tank' ? 'metal' : st.role === 'heal' ? 'jewel' : 'leather');
+    for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283; particles.spawn(p.x + Math.cos(a) * 1.3, p.y + 0.05, p.z + Math.sin(a) * 1.3, { vx: -Math.cos(a) * 1.6, vy: 2.2, vz: -Math.sin(a) * 1.6, life: 0.7, s0: 0.22, s1: 0.04, c0: col, c1: 0xffffff, a: 1, drag: 2.5 }); }
+    const E = st.eff, ef = [E.dmg ? `${E.dmg > 0 ? '+' : ''}${Math.round(E.dmg * 100)}% dano` : '', E.def ? `${E.def > 0 ? '+' : ''}${Math.round(E.def * 100)}% defesa` : '', E.heal ? `+${Math.round(E.heal * 100)}% cura` : '', E.move ? `+${Math.round(E.move * 100)}% passo` : '', E.crit ? `+${Math.round(E.crit * 100)}% crítico` : '', E.leech ? `${Math.round(E.leech * 100)}% roubo de vida` : ''].filter(Boolean).join(' · ') || 'sem bônus nem penalidade';
+    stanceBanner(st, ef); } });
 stanceSys.sync();
 setInterval(() => { stanceSys?.sync(); renderStances(); placeStances(); }, 500);
 setTimeout(() => { updateInstBtn(); document.body.classList.toggle('inst-on', instinctOn); document.documentElement.style.setProperty('--instc', myInstinct().css); }, 0);
@@ -3170,6 +3193,7 @@ function frameBody() {
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
   try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
+  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); }
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t);

@@ -38,6 +38,7 @@ export interface Hero3D {
   guard: boolean;
   /** true quando há inimigo perto ou lutou há pouco: entra em postura de combate */
   combat: boolean;
+  /** postura de batalha (posturas.ts): muda o corpo de verdade — ataque inclina e ergue a arma, tanque agacha atrás do escudo, cura abre os braços… */ stance: string;
   /** montado: pernas abertas sobre a sela, braços à frente nas rédeas */
   riding: boolean;
   /** esfera do tecnocrata: alvo no mundo (null = orbita o herói), posição atual e brilho de disparo */
@@ -1045,7 +1046,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   };
   const sm: Record<string, number> = {};
   const smooth1 = (key: string, v: number, dt: number, rate = 26) => (sm[key] = (sm[key] ?? v) + (v - (sm[key] ?? v)) * Math.min(1, dt * rate));
-  let guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
+  let stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
   const qRoot = new THREE.Quaternion(), qPar = new THREE.Quaternion(), qDes = new THREE.Quaternion(), qLoc = new THREE.Quaternion(), eDes = new THREE.Euler();
   const tmp = new V();
   const smooth = { lean: 0, hipRoll: 0, tilt: 0 };
@@ -1059,7 +1060,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
     get stepVel() { return stepVel; },
     guard: false,
-    combat: false,
+    combat: false, stance: 'bal',
     riding: false,
     droneTo: null, droneFlash: 0, actSpeed: 1,
     muzzle() { muzzleK = 1; },
@@ -1394,6 +1395,15 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const idleK = smooth1('idle', (1 - walkK) * (act ? 0 : 1), dt, 7);
       const restK = idleK * (1 - combatK);
       aShR -= 0.08 * restK; aElR -= 0.12 * restK; aShL -= 0.06 * restK; aElL -= 0.15 * restK; aShRz += -0.08 * restK; aShLz += 0.08 * restK; aLean += 0.04 * restK; aTwist += 0.06 * restK; aCrouch += 0.015 * restK;
+      /* POSTURA ESCOLHIDA (25/10, Erling: "a mudança de postura não muda a postura do personagem"): o corpo assume a postura, parado ou andando */
+      { const want = act ? 0 : 1 - 0.5 * walkK; stK += (want - stK) * Math.min(1, dt * 6); const k = stK, sr = hero.stance;
+        if (k > 0.01) {
+          if (sr === 'atk') { aLean += 0.16 * k; aCrouch += 0.06 * k; aShR += -0.4 * k; aElR += -0.55 * k; aTwist += 0.18 * k; aHeadX += -0.1 * k; }
+          else if (sr === 'tank') { aCrouch += 0.12 * k; aLean += 0.06 * k; aShL += -0.85 * k; aElL += -1.25 * k; aShLz += 0.12 * k; aFace = Math.max(aFace, 0.7 * k); aShR += 0.3 * k; aTwist += 0.12 * k; }
+          else if (sr === 'heal') { aLean += -0.05 * k; aShL += -0.32 * k; aShR += -0.32 * k; aShLz += 0.42 * k; aShRz += -0.42 * k; aElL += -0.3 * k; aElR += -0.3 * k; aHeadX += -0.1 * k; }
+          else if (sr === 'speed') { aCrouch += 0.07 * k; aLean += 0.12 * k; aJump += Math.max(0, Math.sin(t * 7)) * 0.025 * k * (1 - walkK); aShR += 0.2 * k; aShL += 0.2 * k; aElR += -0.6 * k; aElL += -0.6 * k; }
+          else if (sr === 'leech') { aLean += 0.26 * k; aCrouch += 0.1 * k; aShR += 0.25 * k; aShL += 0.25 * k; aShRz += -0.2 * k; aShLz += 0.2 * k; aElR += -0.7 * k; aElL += -0.7 * k; aHeadX += -0.22 * k; }
+        } }
       /* postura de combate (Eitr): baixa, tronco à frente, lado do escudo apresentado, escudo no peito, arma atrás da cintura pronta */
       combatK += ((act ? 0 : hero.combat ? 1 : 0) - combatK) * Math.min(1, dt * 5);
       const cK = combatK * (1 - 0.65 * runK * walkK);
