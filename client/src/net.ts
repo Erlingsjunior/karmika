@@ -32,6 +32,8 @@ export interface NetCtx {
   sys(text: string, color?: string): void;
   /** alguém entrou no mundo (aviso, som, notificação do sistema) */
   joined?(name: string): void;
+  /** a sala avisou que vai reiniciar / atualizar em N s; waiting: esperando a sala voltar (true) ou voltou (false) */
+  restart?(sec: number, why: string): void; update?(sec: number, version: string): void; waiting?(on: boolean): void;
   /** monta o meu perfil quando alguém pede para ver */
   profile(): NetProfile;
   /** alguém me chamou para o grupo: a interface pergunta (ou recusa sozinha se estiver bloqueado) */
@@ -75,7 +77,7 @@ const lerpAng = (a: number, b: number, k: number) => { let d = b - a; while (d >
 export function createNet(ctx: NetCtx) {
   let ws: WebSocket | null = null;
   let myId = 0, amHost = false, code = '', addr = '', pass = '', state: 'off' | 'connecting' | 'on' = 'off', ping = 0;
-  let wantClose = false, retries = 0, party: NetParty | null = null, posts: NetPost[] = [];
+  let wantClose = false, waiting = false, retries = 0, party: NetParty | null = null, posts: NetPost[] = [];
   const partyOf = new Map<number, number>();
   const remotes = new Map<number, Remote>();
   let sendT = 0, keepT = 0, lookT = 0, pingT = 0, lastSt = '', lastLook = '';
@@ -120,13 +122,15 @@ export function createNet(ctx: NetCtx) {
   function onMsg(m: { t: string; [k: string]: unknown }) {
     switch (m.t) {
       case 'welcome': {
-        myId = m.id as number; amHost = !!m.host; state = 'on'; retries = 0; clearAll(); party = null; partyOf.clear();
+        myId = m.id as number; amHost = !!m.host; state = 'on'; retries = 0; clearAll(); party = null; partyOf.clear(); if (waiting) { waiting = false; ctx.waiting?.(false); }
         for (const p of m.players as Parameters<typeof addRemote>[0][]) addRemote(p);
         ctx.sys(amHost ? `✧ Sala aberta. Você é o anfitrião — convite: ${code}` : `✧ Você entrou na sala (${(m.players as unknown[]).length + 1} Caminhantes).`, '#ffd88a');
         lastLook = ''; lastSt = ''; changed(); ctx.connected?.(); break;
       }
       case 'deny': ctx.sys(`✖ ${m.why}`, '#ff8a7a'); wantClose = true; break;
-      case 'closed': ctx.sys(`✖ ${m.why}`, '#ff8a7a'); wantClose = true; break;
+      case 'closed': if (m.restart) { waiting = true; ctx.sys(`⟳ ${m.why}`, '#ffd24a'); ctx.waiting?.(true); } else { ctx.sys(`✖ ${m.why}`, '#ff8a7a'); wantClose = true; } break;
+      case 'restart': ctx.restart?.(m.sec as number, String(m.why ?? 'reiniciar')); break;
+      case 'update': ctx.update?.(m.sec as number, String(m.version ?? '')); break;
       case 'join': { const r = addRemote(m as never); ctx.sys(`➜ ${r.name} chegou ao mundo.`, '#9ad0ff'); ctx.joined?.(r.name); changed(); break; }
       case 'leave': { const r = remotes.get(m.id as number); if (r) ctx.sys(`← ${r.name} deixou o mundo.`, '#b9a890'); dropRemote(m.id as number); changed(); break; }
       case 'host': { const id = m.id as number; amHost = id === myId; for (const r of remotes.values()) { r.host = r.id === id; labelOf(r); } if (amHost) ctx.sys('✧ O anfitrião saiu: agora a sala segue com você.', '#ffd88a'); changed(); break; }
@@ -169,13 +173,14 @@ export function createNet(ctx: NetCtx) {
     sock.onclose = () => {
       clearTimeout(timer); if (ws !== sock) return;
       const was = state; ws = null; clearAll();
+      if (waiting && !wantClose) { state = 'connecting'; changed(); setTimeout(() => { if (waiting && !wantClose && !ws) open(); }, 2000); return; } /* a sala está reiniciando: insiste até ela voltar */
       if (!wantClose && was === 'on' && retries < 5) { retries++; state = 'connecting'; ctx.sys(`… conexão caiu, tentando de novo (${retries}/5)`, '#ffd24a'); changed(); setTimeout(() => { if (!wantClose && state === 'connecting') open(); }, 1500 * retries); return; }
       if (!wantClose && was === 'connecting' && retries === 0) ctx.sys(`✖ Não deu para alcançar ${addr}. Confira o convite, se a sala está aberta e se o firewall do anfitrião liberou o Karmika.`, '#ff8a7a');
       state = 'off'; myId = 0; party = null; changed();
     };
   }
   function disconnect(silent = false) {
-    wantClose = true; if (ws) { const w = ws; ws = null; try { w.close(); } catch { /* */ } }
+    wantClose = true; waiting = false; if (ws) { const w = ws; ws = null; try { w.close(); } catch { /* */ } }
     if (state !== 'off' && !silent) ctx.sys('Você saiu da sala.', '#b9a890');
     state = 'off'; myId = 0; party = null; clearAll(); changed();
   }

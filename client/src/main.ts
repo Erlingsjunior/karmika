@@ -768,6 +768,10 @@ const net = createNet({ scene, camera, canvas,
   mail: (l) => { mail.receive(l as Parameters<typeof mail.receive>[0]); },
   posts: () => { quests.refreshBoard(); },
   connected: () => { mail.flush(); },
+  /* 26/10 (Erling): a sala avisa 10 s antes de reiniciar ou atualizar; a tela esmaece, o Olho espera, e todo mundo volta sozinho */
+  restart: (sec, why) => srvWait.countdown(sec, why === 'fechar' ? 'A sala vai fechar' : 'A sala vai reiniciar'),
+  update: (sec, version) => srvWait.update(sec, version),
+  waiting: (on) => { if (on) srvWait.wait('Esperando a sala voltar…'); else srvWait.done(); },
   partyInvite: (from, name, lvl) => coop.partyInvite(from, name, lvl),
   showProfile: (id, p) => coop.showProfile(id, p),
   profile: () => { // o que os outros veem ao abrir o meu perfil
@@ -2915,6 +2919,30 @@ function deathPanel(sub: string, go: () => void) {
   const key = (e: KeyboardEvent) => { if (e.key === 'Enter' && d.classList.contains('on')) { e.preventDefault(); e.stopPropagation(); fire(); } }; addEventListener('keydown', key, true);
   d.querySelector('button')!.addEventListener('click', (e) => { e.stopPropagation(); fire(); });
 }
+/* a tela de espera da sala: contagem, esmaece, o Olho carregando, barra da atualização, e volta ao mundo quando a sala responde */
+const srvWait = (() => {
+  const el = document.createElement('div'); el.id = 'srvwait'; el.innerHTML = '<div class="ldr"><div class="ldr-eye"><i></i></div><b></b><small></small><div class="in-bar" style="display:none"><i></i><span></span></div></div>'; document.body.appendChild(el);
+  const B = el.querySelector('b') as HTMLElement, S = el.querySelector('small') as HTMLElement, bar = el.querySelector('.in-bar') as HTMLElement, barI = bar.querySelector('i') as HTMLElement, barS = bar.querySelector('span') as HTMLElement;
+  let mode: 'off' | 'count' | 'wait' | 'upd' = 'off', cdT = 0;
+  const show = (on: boolean) => { el.classList.toggle('on', on); };
+  const desk = (window as unknown as { karmikaDesktop?: { update?(inv: string): Promise<{ ok: boolean; updated?: boolean; why?: string }>; onUpdate?(cb: (p: { got: number; total: number; file: string; n: number }) => void): () => void } }).karmikaDesktop ?? null;
+  const inviteNow = () => net.state !== 'off' ? `karmika://${net.address}/${net.code}` : hub.invite;
+  return {
+    countdown(sec: number, what: string) { if (mode === 'upd') return; mode = 'count'; cdT = performance.now(); if (sec > 0) { game.logMsg(`⟳ ${what} em ${sec} s. Fique onde está: você volta sozinho.`, '#ffd24a'); B.textContent = `${what} em ${sec} s`; S.textContent = 'o mundo volta sozinho, com todo mundo'; bar.style.display = 'none'; show(sec <= 5); } },
+    wait(txt: string) { mode = 'wait'; B.textContent = txt; S.textContent = 'a sala está reiniciando — pode levar alguns segundos'; bar.style.display = 'none'; show(true); },
+    done() { if (mode === 'off') return; const was = mode; mode = 'off'; show(false); if (was === 'wait') { game.logMsg('✧ A sala voltou. Bem-vindo de volta.', '#9ad0ff');
+      /* a sala pode ter voltado com o jogo novo: confere e baixa só o que mudou */ const inv = inviteNow(); if (desk?.update && inv) desk.update(inv).then((r) => { if (r.ok && r.updated) { sessionStorage.setItem('karmika.boot', JSON.stringify({ server: inv })); location.reload(); } }).catch(() => { /* */ }); } },
+    async update(sec: number, version: string) { void version; if (mode === 'upd') return;
+      if (sec > 0) { mode = 'count'; B.textContent = `Atualização do jogo em ${sec} s`; S.textContent = 'o mundo volta sozinho, com todo mundo'; bar.style.display = 'none'; show(sec <= 5); if (sec === 10) game.logMsg('⬇ O jogo vai atualizar em 10 s. Fique onde está: você volta sozinho.', '#ffd24a'); return; }
+      mode = 'upd'; B.textContent = 'Atualizando Karmika'; S.textContent = 'baixando só o que mudou…'; bar.style.display = ''; barI.style.width = '0%'; barS.textContent = ''; show(true);
+      const inv = inviteNow();
+      if (desk?.update && inv) { const off = desk.onUpdate?.((p) => { const k = p.total ? p.got / p.total : 0; barI.style.width = `${(k * 100).toFixed(1)}%`; barS.textContent = p.total ? `${(p.got / 1048576).toFixed(1)} / ${(p.total / 1048576).toFixed(1)} MB` : 'conferindo…'; });
+        const r = await desk.update(inv).catch((x) => ({ ok: false, why: String(x), updated: false })); off?.(); sessionStorage.setItem('karmika.boot', JSON.stringify({ server: inv })); if (r.ok) location.reload(); else { mode = 'off'; show(false); game.logMsg(`✖ Não deu para atualizar: ${(r as { why?: string }).why ?? '?'}`, '#ff8a7a'); } }
+      else { /* navegador (dev): recarrega e volta para a sala */ sessionStorage.setItem('karmika.boot', JSON.stringify({ server: inv })); setTimeout(() => location.reload(), 800); } },
+    tick() { if (mode !== 'count') return; if (performance.now() - cdT > 15000) { mode = 'off'; show(false); } },
+  };
+})();
+setInterval(() => srvWait.tick(), 1000);
 const soulFade = document.createElement('div'); soulFade.id = 'soulfade'; document.body.appendChild(soulFade);
 const originName = (o?: string) => o === 'dwarf' ? 'Anão' : o === 'elf' ? 'Elfo' : 'Humano';
 /** o lugar sagrado da classe (onde a Lágrima devolve a alma): o mestre do caminho; sem classe, a fonte do lar */

@@ -45,7 +45,7 @@ function startServer(opts = {}) {
     let manifest = gameManifest(gameDir), stampAt = 0;
     const stamp = () => { try { return fs.statSync(path.join(gameDir, 'karmika-manifest.json')).mtimeMs; } catch { return 0; } };
     if (manifest) { stampAt = stamp(); log(`entregando o jogo da pasta ${gameDir} · versão ${manifest.version} (${Object.keys(manifest.files).length} arquivos)`); }
-    const freshen = () => { if (!gameDir) return; const st = stamp(); if (st && st !== stampAt) { stampAt = st; const m = gameManifest(gameDir); if (m && (!manifest || m.version !== manifest.version)) { manifest = m; log(`jogo atualizado no dist · versão ${m.version} (${Object.keys(m.files).length} arquivos) — quem entrar agora já recebe`); } } };
+    const freshen = () => { if (!gameDir) return; const st = stamp(); if (st && st !== stampAt) { stampAt = st; const m = gameManifest(gameDir); if (m && (!manifest || m.version !== manifest.version)) { manifest = m; log(`jogo atualizado no dist · versão ${m.version} (${Object.keys(m.files).length} arquivos) — avisando quem está dentro`); announceUpdate(m.version); } } };
     setInterval(freshen, 5000).unref();
     const web = http.createServer((req, res) => {
       const u = new URL(req.url || '/', 'http://x');
@@ -187,7 +187,7 @@ function startServer(opts = {}) {
       }
     }
     web.on('error', (e) => reject(e));
-    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
+    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, restart, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
     wss.on('connection', (ws, req) => {
       let me = null, hubConn = null;
       const ip = req.socket.remoteAddress;
@@ -284,6 +284,21 @@ function startServer(opts = {}) {
     });
     // mantém conexões vivas atrás de roteadores que derrubam silêncio
     const beat = setInterval(() => { for (const p of players.values()) if (p.ws.readyState === 1) p.ws.ping(); }, 20000);
+    /* 26/10 (Erling: "o server precisa dizer que em 10 s vai reiniciar; a tela esmaece, o loading vem, termina para todos e o server
+       volta com todo mundo logado"): aviso com contagem para todos, e os clientes esperam a sala voltar e entram sozinhos */
+    let restarting = null;
+    function restart(sec = 10, why = 'reiniciar', then = () => process.exit(0)) {
+      if (restarting) return; restarting = { sec };
+      log(`${why} em ${sec} s — avisando ${players.size} jogador(es)`);
+      const tick = () => { for (const p of players.values()) send(p.ws, { t: 'restart', sec: restarting.sec, why }); for (const h of hubs) send(h.ws, { t: 'restart', sec: restarting.sec, why });
+        if (restarting.sec <= 0) { saveStore(); for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'A sala está reiniciando. Já volta.', restart: true }); try { p.ws.close(); } catch { /* */ } } setTimeout(then, 300); return; }
+        restarting.sec--; setTimeout(tick, 1000); };
+      tick();
+    }
+    /* o jogo mudou no dist: manda todo mundo atualizar (a sala não cai; cada um baixa o que mudou e volta) */
+    let updateAnn = null;
+    function announceUpdate(version) { if (updateAnn) return; updateAnn = { sec: 10 };
+      const tick = () => { for (const p of players.values()) send(p.ws, { t: 'update', sec: updateAnn.sec, version }); if (updateAnn.sec <= 0) { updateAnn = null; return; } updateAnn.sec--; setTimeout(tick, 1000); }; tick(); }
     function stop() { clearInterval(beat); clearInterval(announce); try { udp?.close(); } catch { /* */ } for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'O anfitrião fechou a sala.' }); p.ws.close(); } players.clear(); return new Promise((r) => wss.close(() => web.close(() => r()))); }
   });
 }
@@ -299,5 +314,9 @@ if (require.main === module) {
   const password = flag('senha') || process.env.KARMIKA_SENHA || '';
   if (password) console.log('[karmika] sala com senha');
   const dataFile = flag('dados') || path.join(__dirname, '..', 'sala-dados.json'); // cartas guardadas e quadro de pedidos
-  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome') }).catch((e) => { console.error('Não deu para abrir a sala:', e.message); process.exit(1); });
+  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome') }).then((room) => {
+    /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro */
+    let pressed = 0; const bye = () => { if (pressed++) process.exit(0); room.restart(10, 'reiniciar'); }; process.on('SIGINT', bye); process.on('SIGTERM', bye);
+    if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); }); }
+  }).catch((e) => { console.error('Não deu para abrir a sala:', e.message); process.exit(1); });
 }
