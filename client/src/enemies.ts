@@ -88,7 +88,7 @@ export const DEFS: Record<EnemyType, Def> = {
 };
 /* os bichos que são monstros ficam maiores (Erling, 26/10: "como monstros deveriam ser maiores… apenas aumentar em proporção"):
    o mesmo modelo, só em escala — e o corpo (raio de colisão e de acerto) acompanha */
-for (const [k, m] of [['wolf', 1.35], ['frostwolf', 1.35], ['coyote', 1.35], ['boar', 1.35], ['rat', 1.3]] as const) { DEFS[k].scale *= m; DEFS[k].radius *= m; }
+for (const [k, m] of [['wolf', 1.55], ['frostwolf', 1.5], ['coyote', 1.45], ['boar', 1.45], ['rat', 1.4]] as const) { DEFS[k].scale *= m; DEFS[k].radius *= m; }
 /* REGRA DO COMBATE — inimigos telegrafam: preparo do golpe 50% mais longo e intervalo 40% maior (dá tempo de ler,
    bloquear, aparar e esquivar); andam 10% mais devagar. Mesmo andamento lento do herói (TEMPO em characters/gameplay). */
 for (const d of Object.values(DEFS)) { d.windup *= 1.75; d.cd *= 1.6; d.speed *= 0.85; d.dmg = Math.round(d.dmg * 1.7); }
