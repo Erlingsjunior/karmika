@@ -110,14 +110,13 @@ function getReedTex() {
   }
   reedTex = new THREE.CanvasTexture(c); reedTex.colorSpace = THREE.SRGBColorSpace; return reedTex;
 }
-let blade: THREE.BufferGeometry | null = null, reedG: THREE.BufferGeometry | null = null, stoneG: THREE.BufferGeometry | null = null;
+let tufts: THREE.BufferGeometry[] | null = null, reedG: THREE.BufferGeometry | null = null, stoneG: THREE.BufferGeometry | null = null;
 /** touceira: 7 lâminas afuniladas (3 segmentos cada) em volta de um centro, cor por vértice (pé escuro → ponta clara) */
-function grassTuft() {
-  const pos: number[] = [], col: number[] = [], nor: number[] = [], idx: number[] = []; const r = rng(23); let off = 0;
-  const N = 7;
+function grassTuft(N = 7, h0 = 0.4, hv = 0.35, seed = 23) {
+  const pos: number[] = [], col: number[] = [], nor: number[] = [], idx: number[] = []; const r = rng(seed); let off = 0;
   for (let b = 0; b < N; b++) {
-    const a = b / N * 6.283 + r() * 0.6, h = 0.42 + r() * 0.4, w = 0.06 + r() * 0.035, lean = 0.12 + r() * 0.25, dx = Math.cos(a), dz = Math.sin(a), ox = dx * 0.1, oz = dz * 0.1;
-    const ca = 0.5 + r() * 0.1, cb = 0.82, tipL = 0.95 + r() * 0.1; /* pé mais escuro, ponta mais clara (a cor da instância multiplica) */
+    const a = b / N * 6.283 + r() * 0.9, h = h0 + r() * hv, w = 0.05 + r() * 0.035, lean = 0.1 + r() * 0.3, dx = Math.cos(a), dz = Math.sin(a), ox = dx * (0.04 + r() * 0.08), oz = dz * (0.04 + r() * 0.08);
+    const ca = 0.55 + r() * 0.1, cb = 0.9, tipL = 0.98 + r() * 0.08; /* pé mais escuro, ponta mais clara (a cor da instância multiplica) */
     const SEG = 3; for (let k = 0; k <= SEG; k++) { const t = k / SEG, y = h * t, ww = w * (1 - t * 0.85), bend = lean * t * t; const px = ox + dx * bend, pz = oz + dz * bend; const c = ca + (cb - ca) * t, cc2 = k === SEG ? tipL : c;
       pos.push(px - dz * ww, y, pz + dx * ww, px + dz * ww, y, pz - dx * ww); nor.push(0, 1, 0, 0, 1, 0); col.push(cc2, cc2, cc2, cc2, cc2, cc2);
       if (k < SEG) { const o2 = off + k * 2; idx.push(o2, o2 + 1, o2 + 2, o2 + 1, o2 + 3, o2 + 2, /* o verso, com a normal também para cima: visto de trás a lâmina não fica preta */ o2, o2 + 2, o2 + 1, o2 + 1, o2 + 2, o2 + 3); } }
@@ -210,10 +209,10 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   const o = new THREE.Object3D(), cc = new THREE.Color();
   const grassSpots: { x: number; z: number; b: Biome }[] = [];
   // grama pela metade e só em manchas (ruído): campos e pântano têm; neve e rocha quase nada
-  const DENS: Record<Biome, number> = { meadow: 4.5, forest: 3, swamp: 4.5, snow: 0.3, ruins: 1.2, rock: 0.3, volcanic: 0.1, enchanted: 3, blight: 1.2, jungle: 4.5, coast: 0.8 };
+  const DENS: Record<Biome, number> = { meadow: 3.2, forest: 2.3, swamp: 4, snow: 0.3, ruins: 1.2, rock: 0.3, volcanic: 0.1, enchanted: 3, blight: 1.2, jungle: 4.5, coast: 0.8 };
   for (let ty = cy * CS; ty < (cy + 1) * CS; ty++) for (let tx = cx * CS; tx < (cx + 1) * CS; tx++) {
     if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || w.map[ty][tx] !== 'grass') continue;
-    if (fbm(tx * 0.13, ty * 0.13, 61) < 0.4) continue; // manchas de grama, não tapete
+    if (fbm(tx * 0.13, ty * 0.13, 61) < 0.47) continue; // manchas de grama, não tapete
     const bm = w.biome[ty][tx], n = DENS[bm] + (R() < (DENS[bm] % 1) ? 1 : 0);
     for (let k = 0; k < Math.floor(n); k++) {
       const x = (tx + R()) * T, z = (ty + R()) * T;
@@ -226,16 +225,20 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     /* 26/10 (Erling: "a grama está quebrando o cenário: menos quadrada, mais suave e macia, tons de verde bonitos, balança e se abre
        quando passamos"): touceira de lâminas de verdade (malha, sem textura serrilhada), cor por vértice do pé escuro à ponta clara,
        vento em onda e afastamento do herói no shader. Continua um desenho só por região. */
-    blade ??= grassTuft();
-    const mat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.2, 1.7, { hero: true });
-    const im = new THREE.InstancedMesh(blade, mat, grassSpots.length);
-    grassSpots.forEach((s, i) => {
-      o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.75 + R() * 0.7; o.scale.set(sc, sc * (0.75 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
-      const v = fbm(s.x * 0.05, s.z * 0.05, 7); /* manchas largas de tom: um campo não é um verde só */
-      if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.6 + R() * 0.15); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.3 + R() * 0.12); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.38 + R() * 0.12); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.45 + R() * 0.15); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.28 + R() * 0.1); else cc.setHSL(0.25 + v * 0.09 + R() * 0.02, 0.4 + v * 0.18, 0.33 + v * 0.1 + R() * 0.05);
-      im.setColorAt(i, cc);
-    });
-    im.instanceMatrix.needsUpdate = true; grp.add(im);
+    /* (Erling, 15:22: "exagerada, todas do mesmo tamanho e altas, parece ctrl-c ctrl-v; sem transparência; a antiga era a quantidade
+       certa"): 4 touceiras diferentes (de 3 a 7 lâminas, baixas e altas), tamanho bem variado, menos lâminas, cor mais cheia e escura */
+    tufts ??= [grassTuft(3, 0.22, 0.14, 101), grassTuft(5, 0.3, 0.22, 102), grassTuft(6, 0.36, 0.3, 103), grassTuft(7, 0.45, 0.35, 104)];
+    const mat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.16, 1.7, { hero: true });
+    const groups: { x: number; z: number; b: Biome }[][] = [[], [], [], []];
+    for (const sp of grassSpots) { const u = R(); groups[u < 0.35 ? 0 : u < 0.65 ? 1 : u < 0.88 ? 2 : 3].push(sp); }
+    groups.forEach((list, gi) => { if (!list.length) return; const im = new THREE.InstancedMesh(tufts![gi], mat, list.length);
+      list.forEach((s, i) => {
+        o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.55 + R() * 0.8; o.scale.set(sc, sc * (0.6 + R() * 0.8), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
+        const v = fbm(s.x * 0.05, s.z * 0.05, 7); /* manchas largas de tom: um campo não é um verde só */
+        if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.55 + R() * 0.12); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.26 + R() * 0.1); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.3 + R() * 0.1); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.38 + R() * 0.12); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.24 + R() * 0.08); else cc.setHSL(0.25 + v * 0.08 + R() * 0.02, 0.45 + v * 0.15, 0.27 + v * 0.1 + R() * 0.06);
+        im.setColorAt(i, cc);
+      });
+      im.instanceMatrix.needsUpdate = true; grp.add(im); });
     // flores nas campinas
     const fl = grassSpots.filter((s) => s.b === 'meadow' && R() < 0.035);
     if (fl.length) {
