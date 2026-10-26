@@ -112,14 +112,14 @@ function getReedTex() {
 }
 let tufts: THREE.BufferGeometry[] | null = null, reedG: THREE.BufferGeometry | null = null, stoneG: THREE.BufferGeometry | null = null;
 /** touceira: 7 lâminas afuniladas (3 segmentos cada) em volta de um centro, cor por vértice (pé escuro → ponta clara) */
-function grassTuft(N = 7, h0 = 0.4, hv = 0.35, seed = 23) {
+function grassTuft(N = 7, h0 = 0.4, hv = 0.35, seed = 23, hue0 = 0.22, hueW = 0.14) {
   /* GRAMA (Erling, 15:44: "verde claro demais, sem vários tons misturados, amontoada como erva daninha alta — quero GRAMA"):
      touceira baixa e aberta, muitas lâminas finas em leque, cada lâmina com o seu tom (verde-escuro, verde-oliva, verde-azulado,
      verde-claro), do pé escuro à ponta; a cor da instância só clareia ou escurece a mancha inteira */
   const pos: number[] = [], col: number[] = [], nor: number[] = [], idx: number[] = []; const r = rng(seed); let off = 0; const c = new THREE.Color(), c2 = new THREE.Color();
   for (let b = 0; b < N; b++) {
     const a = b / N * 6.283 + r() * 1.2, h = h0 + r() * hv, w = 0.03 + r() * 0.025, lean = 0.25 + r() * 0.45, dx = Math.cos(a), dz = Math.sin(a), ox = dx * (0.02 + r() * 0.1), oz = dz * (0.02 + r() * 0.1);
-    const hue = 0.22 + r() * 0.14, sat = 0.35 + r() * 0.3, lb = 0.16 + r() * 0.06, lt = 0.3 + r() * 0.14; /* cada lâmina um tom; o pé bem escuro, a ponta nunca pálida */
+    const hue = hue0 + r() * hueW, sat = 0.32 + r() * 0.28, lb = 0.14 + r() * 0.06, lt = 0.26 + r() * 0.12; /* cada lâmina um tom; o pé bem escuro, a ponta nunca pálida */
     const SEG = 3; for (let k = 0; k <= SEG; k++) { const t = k / SEG, y = h * t, ww = w * (1 - t * 0.9), bend = lean * t * t; const px = ox + dx * bend, pz = oz + dz * bend;
       c.setHSL(hue, sat, lb + (lt - lb) * t); c2.setHSL(hue + 0.01, sat, lb + (lt - lb) * t * 0.9);
       pos.push(px - dz * ww, y, pz + dx * ww, px + dz * ww, y, pz - dx * ww); nor.push(0, 1, 0, 0, 1, 0); col.push(c.r, c.g, c.b, c2.r, c2.g, c2.b);
@@ -231,7 +231,8 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
        vento em onda e afastamento do herói no shader. Continua um desenho só por região. */
     /* (Erling, 15:22: "exagerada, todas do mesmo tamanho e altas, parece ctrl-c ctrl-v; sem transparência; a antiga era a quantidade
        certa"): 4 touceiras diferentes (de 3 a 7 lâminas, baixas e altas), tamanho bem variado, menos lâminas, cor mais cheia e escura */
-    tufts ??= [grassTuft(8, 0.1, 0.1, 101), grassTuft(11, 0.14, 0.12, 102), grassTuft(13, 0.17, 0.16, 103), grassTuft(10, 0.22, 0.2, 104)];
+    /* quatro famílias de tom (verde-escuro, verde-oliva, verde-azulado, verde-claro) misturadas no mesmo campo */
+    tufts ??= [grassTuft(8, 0.1, 0.1, 101, 0.3, 0.06), grassTuft(11, 0.14, 0.12, 102, 0.19, 0.07), grassTuft(13, 0.17, 0.16, 103, 0.36, 0.08), grassTuft(10, 0.22, 0.2, 104, 0.25, 0.08)];
     const mat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.16, 1.7, { hero: true });
     const groups: { x: number; z: number; b: Biome }[][] = [[], [], [], []];
     for (const sp of grassSpots) { const u = R(); groups[u < 0.3 ? 0 : u < 0.6 ? 1 : u < 0.88 ? 2 : 3].push(sp); }
@@ -239,7 +240,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
       list.forEach((s, i) => {
         o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.8 + R() * 0.9; o.scale.set(sc, sc * (0.7 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
         const v = fbm(s.x * 0.05, s.z * 0.05, 7); /* manchas largas de tom: um campo não é um verde só */
-        if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.55 + R() * 0.12); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.26 + R() * 0.1); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.3 + R() * 0.1); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.38 + R() * 0.12); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.24 + R() * 0.08); else { const dry = fbm(s.x * 0.03 + 50, s.z * 0.03, 9); cc.setHSL(dry > 0.62 ? 0.14 : 0.3, dry > 0.62 ? 0.25 : 0.1, 0.52 + v * 0.22 + R() * 0.08); } /* multiplicador: manchas mais claras/escuras e trechos de capim seco */
+        if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.55 + R() * 0.12); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.26 + R() * 0.1); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.3 + R() * 0.1); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.38 + R() * 0.12); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.24 + R() * 0.08); else { const dry = fbm(s.x * 0.03 + 50, s.z * 0.03, 9); /* multiplicador: nunca clareia além do tom do chão; nos trechos secos vira cáqui/areia escura, com vários tons (Erling: "areia, vários tons de areia; verde, vários tons de verde") */ if (dry > 0.6) cc.setHSL(0.1 + R() * 0.04, 0.3 + R() * 0.15, 0.38 + (dry - 0.6) * 0.5 + R() * 0.08); else cc.setHSL(0.3 + (v - 0.5) * 0.06, 0.08 + R() * 0.1, 0.42 + v * 0.16 + R() * 0.07); } /* multiplicador: manchas mais claras/escuras e trechos de capim seco */
         im.setColorAt(i, cc);
       });
       im.instanceMatrix.needsUpdate = true; grp.add(im); });

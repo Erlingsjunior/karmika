@@ -24,8 +24,9 @@ export function windify(m: THREE.Material, amp = 0.12, freq = 1.6, o: { hero?: b
        /* onda que viaja no campo (rajada passando) + balanço miúdo por touceira */
        float sw = sin(uWind * ${freq.toFixed(2)} + ip.x * 0.6 + ip.z * 0.45) + 0.5 * sin(uWind * ${(freq * 2.3).toFixed(2)} + ip.x * 1.3) + 0.6 * sin(uWind * 1.1 - (ip.x + ip.z) * 0.18);
        float gm = 0.5 + uGust * 1.4;
-       transformed.x += sw * gm * ${amp.toFixed(3)} * hy * hy;
-       transformed.z += sw * gm * ${(amp * 0.6).toFixed(3)} * hy * hy;
+       float hb = hy * min(hy, 1.0); /* capim (baixo): balanço suave; árvores (altas): o mesmo que antes, só a copa mexe um pouco */
+       transformed.x += sw * gm * ${amp.toFixed(3)} * hb;
+       transformed.z += sw * gm * ${(amp * 0.6).toFixed(3)} * hb;
        ${o.hero ? `/* o herói passando: o capim se abre para os lados e deita um pouco (Erling, 26/10) */
        { vec2 dh = ip.xz - uHero.xz; float dd = length(dh); float k = smoothstep(1.35, 0.15, dd); if (k > 0.001) { vec2 push = (dd > 0.001 ? dh / dd : vec2(1.0, 0.0)) * k * 0.55 * hy; transformed.x += push.x; transformed.z += push.y; transformed.y -= k * 0.45 * hy; } }` : ''}`);
   };

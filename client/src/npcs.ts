@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag } from './barks';
 
-export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** só à noite (some de dia) */ night?: boolean }
+export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
 interface Npc { def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
@@ -14,7 +14,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     scene.add(hero.root);
     const el = document.createElement('div'); el.className = 'npc'; el.innerHTML = `<i class="qm"></i><b>${def.name}</b><small>${def.role}</small><p></p>`; document.body.appendChild(el);
     const pos = new THREE.Vector3(def.x, 0, def.z);
-    const ri = def.route ? Math.floor(Math.random() * def.route.length) : 0; if (def.route) pos.set(def.route[ri].x, 0, def.route[ri].z);
+    const ri = def.route ? (def.ri0 !== undefined ? Math.min(def.route.length - 1, def.ri0) : Math.floor(Math.random() * def.route.length)) : 0; if (def.route) pos.set(def.route[ri].x, 0, def.route[ri].z);
     return { def, hero, pos, yaw: Math.random() * 6.28, target: null, wait: Math.random() * 3, el, line: 0, lineT: 0, spd: 0, ri, rdir: 1 };
   });
   const v = new THREE.Vector3();
@@ -36,7 +36,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);
         if (l < 0.6) { n.ri += n.rdir; if (n.ri >= r0.length || n.ri < 0) { n.rdir *= -1; n.ri += n.rdir * 2; n.wait = 6; } }
-        else if (n.wait > 0) n.wait -= dt; else { const sp = 1.5 * dt; n.pos.x += dx / l * sp; n.pos.z += dz / l * sp; mps = 1.5; n.yaw = Math.atan2(dx, dz); head = n.yaw; }
+        else if (n.wait > 0) n.wait -= dt; else { const pace = d.pace ?? 1.5, sp = pace * dt; n.pos.x += dx / l * sp; n.pos.z += dz / l * sp; mps = pace; n.yaw = Math.atan2(dx, dz); head = n.yaw; }
       } else if (dH < 4.5) { // olha para o herói
         n.target = null; const w = Math.atan2(heroPos.x - n.pos.x, heroPos.z - n.pos.z); let df = w - n.yaw; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283; n.yaw += df * Math.min(1, dt * 5); head = n.yaw;
       } else if (n.target) {
