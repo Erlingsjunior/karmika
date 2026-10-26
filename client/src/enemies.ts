@@ -86,6 +86,9 @@ export const DEFS: Record<EnemyType, Def> = {
   pilgrim: { name: 'Peregrina Élfica', lvl: 18, hp: 220, dmg: 18, speed: 3.4, aggro: 16, range: 1.9, windup: 0.5, cd: 1.2, xp: 100, gold: [6, 14], rig: 'human', scale: 0.98, radius: 0.5, human: { kind: 'nordic', civil: 'elf', tint: 0x4a7a5a, weapon: 'Espada Curta' } },
   deer: { name: 'Cervo', lvl: 1, hp: 22, dmg: 0, speed: 5.2, aggro: 9, range: 0, windup: 0, cd: 0, xp: 6, gold: [0, 2], quad: 'deer', scale: 1, passive: true, radius: 0.6 },
 };
+/* os bichos que são monstros ficam maiores (Erling, 26/10: "como monstros deveriam ser maiores… apenas aumentar em proporção"):
+   o mesmo modelo, só em escala — e o corpo (raio de colisão e de acerto) acompanha */
+for (const [k, m] of [['wolf', 1.35], ['frostwolf', 1.35], ['coyote', 1.35], ['boar', 1.35], ['rat', 1.3]] as const) { DEFS[k].scale *= m; DEFS[k].radius *= m; }
 /* REGRA DO COMBATE — inimigos telegrafam: preparo do golpe 50% mais longo e intervalo 40% maior (dá tempo de ler,
    bloquear, aparar e esquivar); andam 10% mais devagar. Mesmo andamento lento do herói (TEMPO em characters/gameplay). */
 for (const d of Object.values(DEFS)) { d.windup *= 1.75; d.cd *= 1.6; d.speed *= 0.85; d.dmg = Math.round(d.dmg * 1.7); }

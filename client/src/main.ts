@@ -1,3 +1,4 @@
+import { installTitleTips } from './dicas';
 import { floatWin, dragAll, confirmBox } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
 import { surrender, eyeSees } from './surrender';
@@ -1590,15 +1591,16 @@ function applyOpts(k?: keyof Opts) {
    O tamanho do texto multiplica TODAS as fontes em px das folhas de estilo do jogo (sem esticar janelas e ícones);
    o chat tem o seu próprio multiplicador por cima. A dica dos itens também acompanha o tamanho da interface. ---------- */
 const FS0 = new WeakMap<CSSStyleRule, number>();
+installTitleTips();
 function applyTextScale() {
   const walk = (rules: CSSRuleList) => { for (const r of Array.from(rules)) {
     if ((r as CSSGroupingRule).cssRules && !(r as CSSStyleRule).style) { walk((r as CSSGroupingRule).cssRules); continue; }
     const sr = r as CSSStyleRule; if (!sr.style) continue; let px = FS0.get(sr);
     if (px === undefined) { const f = sr.style.fontSize; if (!f || !f.endsWith('px')) continue; px = parseFloat(f); if (!(px > 0)) continue; FS0.set(sr, px); }
-    const sel = sr.selectorText || '', tipK = /#tip\b|#tip2\b/.test(sel) ? uiScale() : 1;
+    const sel = sr.selectorText || '', tipK = /#tip\b|#tip2\b|#tt\b/.test(sel) ? uiScale() : 1;
     sr.style.fontSize = (px * opts.txt * tipK * (/#chat\b/.test(sel) ? opts.chat : 1)).toFixed(2) + 'px'; } };
   for (const sh of Array.from(document.styleSheets)) { try { walk(sh.cssRules); } catch { /* folha de fora (fontes): não dá para ler, e não precisa */ } }
-  for (const id of ['tip', 'tip2']) { const t = document.getElementById(id); if (t) t.style.maxWidth = `${Math.round(270 * opts.txt * uiScale())}px`; }
+  for (const id of ['tip', 'tip2', 'tt']) { const t = document.getElementById(id); if (t) t.style.maxWidth = `${Math.round(270 * opts.txt * uiScale())}px`; }
 }
 setTimeout(applyTextScale, 0); setTimeout(applyTextScale, 2500); // depois dos estilos que os módulos criam
 function renderOptions() {
