@@ -3,7 +3,7 @@ import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag } from './barks';
 
 export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
-interface Npc { def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
+interface Npc { lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   const npcs: Npc[] = defs.map((def) => {
@@ -44,7 +44,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
-      if (dH > 60) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
+      if (dH > 48) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
       if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
@@ -66,7 +66,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       n.pos.y = ctx.heightAt(n.pos.x, n.pos.z);
       n.hero.root.position.copy(n.pos);
       n.hero.setNight(night); n.hero.setWind(gust);
-      n.hero.update(dt, t, mps, head);
+      if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */
       n.hero.root.rotation.y = n.yaw;
       // nome e fala
       v.set(n.pos.x, n.pos.y + 2.3 * d.scale, n.pos.z).project(ctx.camera);
