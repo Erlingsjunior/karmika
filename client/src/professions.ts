@@ -64,9 +64,14 @@ export const RECIPES2: Recipe[] = [
   { id: 'weapon', prof: 'ferreiro', lvl: 15, need: [['ore_i', 6], ['plank', 1], ['hide', 1]], gear: 'weapon', label: 'Forjar arma' },
   { id: 'helm', prof: 'ferreiro', lvl: 18, need: [['ore_i', 5], ['hide', 1]], gear: 'helm', label: 'Forjar elmo' },
   { id: 'armor', prof: 'ferreiro', lvl: 22, need: [['ore_i', 9], ['hide', 3]], gear: 'armor', label: 'Forjar peitoral' },
-  /* a fornalha quente (27/10): com o Carvão Potencializado da Companhia, certas armas só nascem neste fogo (sai no mínimo rara) */
-  { id: 'weapon_hot', prof: 'ferreiro', lvl: 35, need: [['ore_i', 8], ['ore_ag', 3], ['gem', 1], ['carvao_pot', 3]], gear: 'weapon', minR: 'rare', label: 'Forjar arma na fornalha quente (Carvão Potencializado)' },
-  { id: 'armor_hot', prof: 'ferreiro', lvl: 40, need: [['ore_i', 12], ['ore_ag', 3], ['hide', 4], ['carvao_pot', 4]], gear: 'armor', minR: 'rare', label: 'Forjar peitoral na fornalha quente (Carvão Potencializado)' },
+  /* a fornalha quente (27/10, Erling): os anões têm as peças, os tecnocratas têm o fogo. O carvão da Companhia decide a raridade mínima:
+     azul → no mínimo rara (amarela) · amarelo → no mínimo lendária (classe superior) · vermelho → única e poderosa */
+  { id: 'weapon_azul', prof: 'ferreiro', lvl: 30, need: [['ore_i', 8], ['ore_ag', 2], ['carvao_azul', 3]], gear: 'weapon', minR: 'rare', label: 'Arma na fornalha azul (Carvão Azul: no mínimo rara)' },
+  { id: 'armor_azul', prof: 'ferreiro', lvl: 32, need: [['ore_i', 10], ['ore_ag', 2], ['hide', 3], ['carvao_azul', 3]], gear: 'armor', minR: 'rare', label: 'Peitoral na fornalha azul (Carvão Azul: no mínimo raro)' },
+  { id: 'weapon_amarelo', prof: 'ferreiro', lvl: 45, need: [['ore_i', 12], ['ore_ag', 4], ['gem', 2], ['carvao_amarelo', 3]], gear: 'weapon', minR: 'legendary', label: 'Arma na fornalha amarela (Carvão Amarelo: no mínimo lendária)' },
+  { id: 'armor_amarelo', prof: 'ferreiro', lvl: 48, need: [['ore_i', 14], ['ore_ag', 4], ['hide', 4], ['gem', 2], ['carvao_amarelo', 3]], gear: 'armor', minR: 'legendary', label: 'Peitoral na fornalha amarela (Carvão Amarelo: no mínimo lendário)' },
+  { id: 'weapon_vermelho', prof: 'ferreiro', lvl: 60, need: [['ore_ag', 8], ['gem', 4], ['sap', 2], ['carvao_vermelho', 3]], gear: 'weapon', minR: 'unique', label: 'Arma na fornalha vermelha (Carvão Vermelho: única)' },
+  { id: 'armor_vermelho', prof: 'ferreiro', lvl: 62, need: [['ore_ag', 10], ['gem', 4], ['hide', 6], ['carvao_vermelho', 3]], gear: 'armor', minR: 'unique', label: 'Peitoral na fornalha vermelha (Carvão Vermelho: único)' },
   /* engenhocas dos tecnocratas, montadas com as peças finas dos anões */
   { id: 'sentinela', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['porca_perfeita', 2], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 4]], out: ['sentinela', 1], label: 'Robô Sentinela de Latão (tecnocratas)' },
   { id: 'drone_cura', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['porca_perfeita', 1], ['parafuso_inexp', 1], ['engrenagem_diam', 1], ['herb_g', 3]], out: ['drone_cura', 1], label: 'Drone de Cura Automatizada (tecnocratas)' },
@@ -145,7 +150,7 @@ export function createProfessions(ctx: Ctx) {
     if (!ready(r)) { if (first) ctx.log('Faltam materiais.', '#ff9a8a'); return false; }
     if (r.inv) { ctx.invCraft(r.inv); gain(r.prof, 4); if (r.inv === 'fire') api.close(); return r.inv !== 'fire'; }
     for (const [i, n] of r.need) ctx.take(i, n);
-    if (r.gear) { const L = lv[r.prof].l, RK: Rarity[] = ['normal', 'magic', 'rare', 'legendary'], r0 = rarityFor(L), rr = r.minR && RK.indexOf(r0) < RK.indexOf(r.minR) ? r.minR : r0, g = genGear(Math.max(2, Math.min(ctx.heroLvl() + 2, Math.round(L * 0.6) + 2)), rr, r.gear); if (!ctx.addGear(g)) { for (const [i, n] of r.need) ctx.add(i, n); ctx.log('🎒 Sem espaço para equipamento.', '#ff9a8a'); return false; } ctx.log(`⚒ Você fez ${g.name}`, '#ffe08a'); ctx.onCraft?.(g.name); }
+    if (r.gear) { const L = lv[r.prof].l, RK: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique'], r0 = rarityFor(L), rr = r.minR && RK.indexOf(r0) < RK.indexOf(r.minR) ? r.minR : r0, g = genGear(Math.max(2, Math.min(ctx.heroLvl() + 2, Math.round(L * 0.6) + 2)), rr, r.gear); if (!ctx.addGear(g)) { for (const [i, n] of r.need) ctx.add(i, n); ctx.log('🎒 Sem espaço para equipamento.', '#ff9a8a'); return false; } ctx.log(`⚒ Você fez ${g.name}`, '#ffe08a'); ctx.onCraft?.(g.name); }
     else if (r.out) { ctx.add(r.out[0], r.out[1]); ctx.log(`⚒ Você fez ${r.out[1] > 1 ? r.out[1] + '× ' : ''}${ctx.itemName(r.out[0])}`, '#ffe08a'); ctx.onCraft?.(ctx.itemName(r.out[0])); }
     gain(r.prof, 5 + Math.round(r.lvl * 0.6)); ctx.craftFx?.(r.prof);
     return true;
