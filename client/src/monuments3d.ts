@@ -226,7 +226,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     for (const sx of [-1, 1]) { const x = cx + sx * 8.6, z = Dm - 1.2; K.cyl(0.8, 0.5, 1.6, x, 0, z, iron, 8); K.cyl(1.1, 0.8, 0.4, x, 1.6, z, iron, 8); K.add(new THREE.ConeGeometry(0.7, 1.8, 7), fire, x, 2.9, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 2.8, z), color: 0xff7a2a, base: 42 }); }
     for (let k = 0; k < 4; k++) { const x = cx - Wm * 0.36 + k * (Wm * 0.72 / 3); K.torch(x, 2 + 9, Dm * 0.62 + 1.6, 0xff8a3a); }
     for (const sx of [-1, 1]) { K.cyl(0.6, 0.8, 4, cx + sx * Wm * 0.22, 22, Dm * 0.25, stone(0x4a3a30), 8); K.out.smoke.push(new THREE.Vector3(cx + sx * Wm * 0.22, 26.4, Dm * 0.25)); }
-  } else { // 2 PINÁCULO DE MARFIM
+  } else if (id === 2) { // PINÁCULO DE MARFIM
     const iv = stone(0xece4d0), ivD = stone(0xc8c0a8), gd = flat(0xd8b860), H = 70, blue = glow(0x9ad8ff);
     // embasamento em degraus redondos e colunata
     for (let k = 0; k < 4; k++) K.cyl(Wm / 2 - k * 0.7, Wm / 2 - k * 0.7 + 0.2, 0.5, cx, k * 0.5, cz, k % 2 ? ivD : iv, 32);
@@ -252,12 +252,13 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     { const a = K.arch(5, 7, 1.2, 2.6, 3.6, iv, true); a.position.set(cx, 2, cz + 4.2); K.plane(2.6, 5, cx, 2 + 2.5, cz + 3.6, glow(0x7ab8e8)); for (const s of [-1, 1]) K.torch(cx + s * 3.2, 2, cz + 5.4, 0x9ad8ff); }
     K.out.glows.push({ pos: new THREE.Vector3(cx, 4, cz + 6), color: 0x9ad8ff, base: 40 });
   }
-  if (id === 10) { // O FAROL TECNOCRÁTICO (27/10, regra 19): numa ilha de pedras diante de Porto Caldeira; torre cônica de ferro rebitado sobre base de tijolo,
+  else if (id === 10) { // O FAROL TECNOCRÁTICO (27/10, regra 19): numa ilha de pedras diante de Porto Caldeira; torre cônica de ferro rebitado sobre base de tijolo,
     // escada em caracol por fora, cinta de engrenagens, lanterna de latão com o feixe girando, tubo de vapor e sirene, casa do faroleiro ao pé
     const br = stone(0x6a4036), ir = flat(0x3a3d44), brass = flat(0xc8963a), rust = flat(0x8a4a2a), ir2 = flat(0x2a2c32), H = 22;
-    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r = Math.min(Wm, Dm) * 0.5 + 1.0 + (k % 3) * 0.6, h = 1.5 + (k % 4) * 0.8; const b = K.add(new THREE.DodecahedronGeometry(1.6 + (k % 3) * 0.5, 0), stone(0x4a4a48), cx + Math.cos(a) * r, -h * 0.4, cz + Math.sin(a) * r); b.scale.set(1.2, h / 2, 1.2); }
+    for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2, sea = Math.sin(a) > -0.2 /* sul, leste e oeste caem para o mar; o norte liga à areia */, r = Math.min(Wm, Dm) * 0.5 + (sea ? 1.6 + (k % 3) * 0.9 : 0.8), h = sea ? 2.2 + (k % 4) * 1.0 : 1.2 + (k % 3) * 0.5; const b = K.add(new THREE.DodecahedronGeometry((sea ? 2.0 : 1.4) + (k % 3) * 0.5, 0), stone(sea ? 0x3e3c3a : 0x4a4a48), cx + Math.cos(a) * r, -h * 0.45, cz + Math.sin(a) * r); b.scale.set(1.25, h / 2.2, 1.25); b.rotation.y = k * 0.7;
+      if (sea && k % 2 === 0) { const f = K.plane(2.6, 1.2, cx + Math.cos(a) * (r + 1.6), 0.08, cz + Math.sin(a) * (r + 1.6), glowA(0xffffff, 0.45)); f.rotation.x = -Math.PI / 2; f.rotation.z = a; f.userData.dyn = true; f.userData.foam = k; } } // espuma das ondas quebrando nas pedras
     K.cyl(3.4, 4.2, 3.0, cx, 0, cz, br, 12); K.cyl(3.6, 3.6, 0.4, cx, 3.0, cz, ir, 12); // base de tijolo e a cinta
-    K.cyl(1.7, 3.0, H - 6, cx, 3.4, cz, ir, 12); // a torre cônica de ferro
+    const tw = stone(0xb8a890); K.cyl(1.7, 3.0, H - 6, cx, 3.4, cz, tw, 12); // a torre cônica de pedra clara (como os faróis de verdade), cintada de ferro
     for (let f = 0; f < 5; f++) { const y = 5 + f * 3.2, r = 3.0 - (3.0 - 1.7) * ((y - 3.4) / (H - 6)); K.cyl(r + 0.12, r + 0.12, 0.25, cx, y, cz, rust, 12); for (let q = 0; q < 16; q++) { const a = q / 16 * Math.PI * 2; K.add(new THREE.SphereGeometry(0.08, 5, 4), brass, cx + Math.cos(a) * (r + 0.13), y + 0.12, cz + Math.sin(a) * (r + 0.13), 0, false); } }
     for (let k = 0; k < 40; k++) { const t = k / 40, a = t * Math.PI * 4.5, y = 3.4 + t * (H - 7), r = 3.0 - (3.0 - 1.7) * t + 0.55; K.box(0.9, 0.08, 0.5, cx + Math.cos(a) * r, y, cz + Math.sin(a) * r, ir2, -a); K.cyl(0.03, 0.03, 0.9, cx + Math.cos(a) * (r + 0.4), y, cz + Math.sin(a) * (r + 0.4), ir2, 4); } // escada em caracol
     { const y = H - 3.2; for (let q = 0; q < 3; q++) { const a = q / 3 * Math.PI * 2; const gear = K.add(new THREE.TorusGeometry(0.9, 0.18, 6, 10), brass, cx + Math.cos(a) * 2.2, y, cz + Math.sin(a) * 2.2, a); gear.rotation.x = Math.PI / 2; for (let t = 0; t < 8; t++) { const b = t / 8 * Math.PI * 2; K.add(new THREE.BoxGeometry(0.25, 0.25, 0.3), brass, cx + Math.cos(a) * 2.2 + Math.cos(b) * 1.05, y, cz + Math.sin(a) * 2.2 + Math.sin(b) * 1.05, b, false); } } }
