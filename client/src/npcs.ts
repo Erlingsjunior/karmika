@@ -26,6 +26,17 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     const r = ctx.canvas.getBoundingClientRect();
     barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
       if (cand.length) { const n = cand[Math.floor(Math.random() * cand.length)], l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.8; } } }
+    /* 26/10 noite (Erling: "dois NPCs grudados um dentro do outro"): ninguém ocupa o mesmo lugar. Quem está perto demais
+       é empurrado para fora devagar (quem anda numa rota de patrulha cede menos), sempre para chão andável. */
+    { const vis = npcs.filter((n) => n.hero.root.visible);
+      for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) { const a = vis[i], b = vis[j], min = 0.85 * Math.max(a.def.scale, b.def.scale) + 0.25;
+        let dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, l = Math.hypot(dx, dz); if (l >= min) continue;
+        if (l < 1e-3) { const g = (i * 7 + j * 13) % 6.283; dx = Math.cos(g); dz = Math.sin(g); l = 1; }
+        const push = Math.min(min - l, 2.5 * dt + (min - l) * 0.2), ka = a.def.route ? 0.15 : b.def.route ? 0.85 : 0.5, kb = 1 - ka;
+        const ax = a.pos.x - dx / l * push * ka, az = a.pos.z - dz / l * push * ka, bx = b.pos.x + dx / l * push * kb, bz = b.pos.z + dz / l * push * kb;
+        if (ctx.walkable(ax, az)) { a.pos.x = ax; a.pos.z = az; } if (ctx.walkable(bx, bz)) { b.pos.x = bx; b.pos.z = bz; }
+        /* quem estava parado ali arruma outro canto para ficar */
+        if (!a.def.route && !a.target) a.wait = Math.min(a.wait, 0.5); if (!b.def.route && !b.target) b.wait = Math.min(b.wait, 0.5); } }
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
@@ -47,7 +58,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
         }
       } else {
         n.wait -= dt;
-        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (ctx.walkable(tx, tz)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
+        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (ctx.walkable(tx, tz) && !npcs.some((o) => o !== n && o.hero.root.visible && Math.hypot(o.pos.x - tx, o.pos.z - tz) < 1.2)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
       }
       n.pos.y = ctx.heightAt(n.pos.x, n.pos.z);
       n.hero.root.position.copy(n.pos);
