@@ -548,6 +548,24 @@ function updateFacSigil(t: number) {
   const hp = hero.root.position, mt = facSigil.material as THREE.MeshBasicMaterial; facSigil.position.set(hp.x, hp.y + 0.05, hp.z);
   facSigil.rotation.z = rf === 'fio' ? t * 0.22 : -t * 0.35; mt.opacity = rf === 'fio' ? 0.62 + Math.sin(t * 1.6) * 0.12 : 0.55 + Math.max(0, Math.sin(t * 5.3) * Math.sin(t * 1.1)) * 0.3; // a brasa dos Desfiados pisca irregular
 }
+/* o sigilo do clã aos pés (27/10, Erling: "sigilo nos pés sim!"): Renegados = sol nascente dourado (voltaram da sombra para a luz);
+   Desgarrados = estrela caindo em roxo (largaram a luz pela sombra). Um anel largo, por fora do anel da postura. */
+const outTex = new Map<string, THREE.CanvasTexture>();
+function outcastTex(kind: 'renegado' | 'desgarrado') { let t2 = outTex.get(kind); if (t2) return t2; const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d')!; g.translate(256, 256);
+  const col = kind === 'renegado' ? '#ffd27a' : '#b47aff'; g.strokeStyle = col; g.fillStyle = col; g.lineCap = 'round'; g.lineWidth = 6; g.globalAlpha = 0.9;
+  g.beginPath(); g.arc(0, 0, 240, 0, 6.283); g.stroke(); g.lineWidth = 2.5; g.beginPath(); g.arc(0, 0, 214, 0, 6.283); g.stroke();
+  for (let k = 0; k < 6; k++) { g.save(); g.rotate(k * Math.PI / 3); g.translate(0, -227);
+    if (kind === 'renegado') { g.beginPath(); g.arc(0, 6, 9, Math.PI, 0); g.fill(); for (let r = 0; r < 5; r++) { const a2 = Math.PI + (r + 0.5) * Math.PI / 5; g.beginPath(); g.moveTo(Math.cos(a2) * 12, 6 + Math.sin(a2) * 12); g.lineTo(Math.cos(a2) * 19, 6 + Math.sin(a2) * 19); g.lineWidth = 2.5; g.stroke(); } }
+    else { g.beginPath(); for (let r = 0; r < 10; r++) { const a2 = r * Math.PI / 5 - Math.PI / 2, rr = r % 2 ? 4.5 : 11; r ? g.lineTo(Math.cos(a2) * rr, Math.sin(a2) * rr) : g.moveTo(Math.cos(a2) * rr, Math.sin(a2) * rr); } g.closePath(); g.fill(); g.lineWidth = 2; g.beginPath(); g.moveTo(6, -6); g.lineTo(18, -16); g.moveTo(9, -1); g.lineTo(22, -8); g.stroke(); }
+    g.restore(); }
+  for (let k = 0; k < 36; k++) { if (k % 6 === 0) continue; const a2 = k / 36 * 6.283; g.lineWidth = 2; g.beginPath(); g.moveTo(Math.cos(a2) * 218, Math.sin(a2) * 218); g.lineTo(Math.cos(a2) * 236, Math.sin(a2) * 236); g.stroke(); }
+  t2 = new THREE.CanvasTexture(c); t2.colorSpace = THREE.SRGBColorSpace; t2.anisotropy = 4; t2.userData.keep = true; outTex.set(kind, t2); return t2; }
+const outSigil = (() => { const m = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 3.3), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, opacity: 0.7, blending: THREE.AdditiveBlending, toneMapped: false, fog: false })); m.rotation.x = -Math.PI / 2; m.renderOrder = 2; m.visible = false; scene.add(m); return m; })();
+let outNow = '';
+function updateOutSigil(t: number) { const oc = (soul.s.outcast ?? '') as '' | 'renegado' | 'desgarrado', mt = outSigil.material as THREE.MeshBasicMaterial;
+  if (oc !== outNow) { outNow = oc; mt.map = oc ? outcastTex(oc) : null; mt.needsUpdate = true; }
+  outSigil.visible = !!oc && !inside && !riding; if (!oc) return; const hp = hero.root.position; outSigil.position.set(hp.x, hp.y + 0.04, hp.z);
+  outSigil.rotation.z = oc === 'renegado' ? t * 0.12 : -t * 0.12; mt.opacity = 0.5 + Math.sin(t * 1.3) * 0.12; }
 /* a Vidente dos Caminhos (Askavik, nível 30) */
 const vid = createVidente({ karma: () => state.karma, name: () => profile?.name || 'Caminhante',
   onChoose: (p, rev) => {
@@ -1536,6 +1554,13 @@ function stanceRing(st: { id: string; role: string; col: string } | null, dt: nu
   stGlow.scale.setScalar(1 + stPop * 1.6 + 0.03 * pulse * k);
   m.opacity = Math.min(1, 0.42 + 0.53 * k + 0.2 * stPop);
   gm.opacity = Math.min(1, (0.32 + 0.14 * pulse) * k + 0.8 * stPop); }
+/* a névoa espessa da treva cegante (27/10): tufos escuros e lentos, em mistura normal (o escuro aparece), girando em volta do herói */
+const mistTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(8,4,14,0.95)'); gr.addColorStop(0.5, 'rgba(18,8,28,0.55)'); gr.addColorStop(1, 'rgba(18,8,28,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t2 = new THREE.CanvasTexture(c); t2.userData.keep = true; return t2; })();
+const mistG = new THREE.Group(); mistG.visible = false; scene.add(mistG); const mistP: { s: THREE.Sprite; a: number; r: number; h: number; sp: number }[] = [];
+for (let i = 0; i < 10; i++) { const s2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTex, transparent: true, depthWrite: false, depthTest: false, opacity: 0, fog: false, toneMapped: false })); s2.userData.keep = true; s2.renderOrder = 6; mistG.add(s2); mistP.push({ s: s2, a: i / 10 * 6.283, r: 0.5 + (i % 3) * 0.35, h: 0.2 + (i % 4) * 0.5, sp: 0.25 + (i % 3) * 0.12 }); }
+let mistK = 0;
+function darkMist(on: boolean, dt: number) { mistK += ((on ? 1 : 0) - mistK) * Math.min(1, dt * 1.5); mistG.visible = mistK > 0.02; if (!mistG.visible) return; const p = hero.root.position; mistG.position.set(p.x, p.y, p.z);
+  for (const m of mistP) { m.a += dt * m.sp; m.s.position.set(Math.cos(m.a) * m.r, m.h + Math.sin(m.a * 1.7) * 0.15, Math.sin(m.a) * m.r); m.s.scale.setScalar(2.1 + Math.sin(m.a * 0.9) * 0.35); (m.s.material as THREE.SpriteMaterial).opacity = 0.85 * mistK; } }
 /* o aviso grande no meio da tela: nome, papel e o que muda (fica 3 s, dá para ler) */
 const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.appendChild(stBan); let stBanT = 0;
 function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
@@ -3902,7 +3927,7 @@ function frameBody() {
   { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t);
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
-  updateFacSigil(t);
+  updateFacSigil(t); updateOutSigil(t);
   pm('herói.update');
   updateXray(dt); updateEnvelopes(t);
   if (isPremium()) { const hp = hero.root.position, a = t * 0.9; blessRune.visible = !inside; blessRune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2) * 0.04, hp.z + Math.sin(a) * 0.62); } else blessRune.visible = false;
@@ -4078,14 +4103,17 @@ function frameBody() {
   /* karma */
   const eyeEl = document.getElementById('eye') as unknown as SVGElement;
   pm('câmera/mundo/doors');
-  eyeEl.classList.toggle('full', Math.abs(state.karma) >= 500);
+  eyeEl.classList.toggle('full', Math.abs(state.karma) >= 500); /* o Olho cheio continua pela faixa do alinhamento */
   { eyeSys.update(rawDt, eyeGaze(), hero.acting, Math.min(100, Math.abs(state.karma) / 6), !profile?.eye, night); } /* o Olho enche com a carga kármica (luz ou sombra), nunca por completo */
   globes.update(dt, game.st.hp, game.st.hpMax, game.st.mp, game.st.mpMax);
   if ((fpsN & 15) === 0) checkAwakening();
-  const full = state.karma >= 500; /* aura dourada: só a luz radiante */
+  /* 27/10 (Erling): a AURA DOURADA da luz radiante e a NÉVOA ESPESSA da treva cegante só existem para karmas altíssimos —
+     o karma acumulado da vida (luz − sombra) de +2000 ou −2000, em heróis de nível 120+ — e só se veem com o Instinto ligado */
+  const netK = (soul.s.luzT ?? 0) - (soul.s.sombraT ?? 0), seeAura = instinctOn && !inside && game.st.lvl >= 120, /* e só para heróis de nível 120 ou mais */ full = seeAura && netK >= 2000, mist = seeAura && netK <= -2000;
   if (full !== wasFull) { wasFull = full; hero.setAura(full); }
   pm('olho/globos');
-  if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
+  if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, heroPos.y + 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
+  darkMist(mist, rawDt);
   pm('aura');
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
   lightPool(rawDt); pm('luzes');
