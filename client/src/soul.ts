@@ -10,7 +10,7 @@
    - O karma é da alma: atravessa todas as vidas. As vidas passadas ficam escritas. */
 
 export type Life = { name: string; origin: string; cls: string; clsLvl: number; lvl: number; karma: number; /** karma acumulado naquela vida */ luz?: number; sombra?: number; end: 'corpo' | 'reencarne' | 'lagrima'; at: number };
-export type Soul = { breaths: number; regenAt: number; tears: number; debt: number; catchup: { cls: string; until: number } | null; karma: number; /** karma acumulado sem teto desta vida (zera ao desencarnar) */ luzT?: number; sombraT?: number; /** a natureza do caminho já foi aplicada (27/10) */ natSet?: string; lives: Life[]; pending?: 'choose' | 'reborn' | null; /** já ganhou a Lágrima do nascimento (nível 20, o Olho abre) */ born?: boolean;
+export type Soul = { breaths: number; regenAt: number; tears: number; debt: number; catchup: { cls: string; until: number } | null; karma: number; /** karma acumulado sem teto desta vida (zera ao desencarnar) */ luzT?: number; sombraT?: number; /** a natureza do caminho já foi aplicada (27/10) */ natSet?: string; /** atravessou o zero pelo ritual (27/10) */ outcast?: 'renegado' | 'desgarrado' | null; lives: Life[]; pending?: 'choose' | 'reborn' | null; /** já ganhou a Lágrima do nascimento (nível 20, o Olho abre) */ born?: boolean;
   /** inclinação da alma pelas palavras (24/10): luz = compaixão, honra, verdade; sombra = cobiça, crueldade, mentira. Atravessa as vidas */ luz?: number; sombra?: number;
   /** marcas que o mundo lembra (respostas, promessas, mentiras): os NPCs comentam */ marks?: string[] };
 
