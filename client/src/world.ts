@@ -709,8 +709,15 @@ export function buildCity(): World {
     /** ponte de pedra em arco onde uma rua cruza o canal: acha o trecho de água ao longo da rua e lança a ponte de cais a cais */
     const bridgeAcross = (x0: number, y0: number, x1: number, y1: number, half: number, hump: number) => { const L = Math.hypot(x1 - x0, y1 - y0); let a = -1, b = -1;
       for (let i = 0; i <= L * 4; i++) { const k = i / (L * 4), x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k; if (at(Math.floor(x), Math.floor(y)) === 'water') { if (a < 0) a = k; b = k; } }
-      if (a < 0) return; const pad = 2.2 / L; a = Math.max(0, a - pad); b = Math.min(1, b + pad);
-      bridgesC.push({ x0: x0 + (x1 - x0) * a, y0: y0 + (y1 - y0) * a, x1: x0 + (x1 - x0) * b, y1: y0 + (y1 - y0) * b, half, hump }); };
+      if (a < 0) return;
+      /* 27/10 (Erling: "ainda estou caindo das pontes"): a ponta da ponte fica SEMPRE em terra firme (cais), nunca dentro d'água — senão a
+         altura da ponta vinha do fundo do canal e o tabuleiro afundava. E nunca duas pontes uma por cima da outra. */
+      const dry = (k: number) => { const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k; for (const [ox, oy] of [[0, 0], [0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]]) { const q = at(Math.floor(x + ox), Math.floor(y + oy)); if (q === 'water' || q === undefined) return false; } return true; };
+      const step = 0.25 / L; a -= 1.2 / L; b += 1.2 / L; while (a > -6 / L && !dry(a)) a -= step; while (b < 1 + 6 / L && !dry(b)) b += step; if (!dry(a) || !dry(b)) return;
+      const nb = { x0: x0 + (x1 - x0) * a, y0: y0 + (y1 - y0) * a, x1: x0 + (x1 - x0) * b, y1: y0 + (y1 - y0) * b, half, hump };
+      const segD = (px: number, py: number, q: typeof nb) => { const dx = q.x1 - q.x0, dy = q.y1 - q.y0, l2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((px - q.x0) * dx + (py - q.y0) * dy) / l2)); return Math.hypot(px - q.x0 - dx * t, py - q.y0 - dy * t); };
+      for (const q of bridgesC) { let close = false; for (let i = 0; i <= 8 && !close; i++) { const k = i / 8; if (segD(nb.x0 + (nb.x1 - nb.x0) * k, nb.y0 + (nb.y1 - nb.y0) * k, q) < (q.half + half) / 2 + 1.2) close = true; } if (close) return; }
+      bridgesC.push(nb); };
     // 2) o coração: parque redondo, anel de rua em volta, a catedral no meio e a praça da fonte na frente dela
     disc(0, 0, 23.5, 'road', 21.2);
     block({ kind: 'temple', gx: cx - 6, gy: cy - 9, w: 13, h: 14, height: 30, wall: 0x9a968e, roof: 0x3e3a5a, variant: 20 }); pois.push({ name: 'Catedral de Askavik', x: cx, y: cy + 9, biome: 'meadow' });
@@ -731,7 +738,7 @@ export function buildCity(): World {
     bridgeAcross(8, 0, 34, 0, 1.6, 1.1);
     /** o anel do parque também cruza o canal (duas vezes): ponte reta de cais a cais onde o arco encontra a água */
     { const RR = 22.4; let inW = false, a0 = 0; for (let i = 0; i <= 720; i++) { const ang = i / 720 * Math.PI * 2, x = Math.cos(ang) * RR, y = Math.sin(ang) * RR, w = at(Math.floor(x), Math.floor(y)) === 'water';
-        if (w && !inW) { a0 = ang; inW = true; } else if (!w && inW) { inW = false; const p0 = a0 - 0.1, p1 = ang + 0.1; bridgesC.push({ x0: Math.cos(p0) * RR, y0: Math.sin(p0) * RR, x1: Math.cos(p1) * RR, y1: Math.sin(p1) * RR, half: 1.2, hump: 0.8 }); } } }
+        if (w && !inW) { a0 = ang; inW = true; } else if (!w && inW) { inW = false; const p0 = a0 - 0.12, p1 = ang + 0.12; bridgeAcross(Math.cos(p0) * RR, Math.sin(p0) * RR, Math.cos(p1) * RR, Math.sin(p1) * RR, 1.2, 0.8); } } } /* 27/10: pela mesma função (ponta seca, sem ponte cruzando ponte) */
     // 4) o castelo do Jarl, no alto, com a Praça do Jarl e a avenida até o parque
     block({ kind: 'castle', gx: cx - 8, gy: cy - 52, w: 16, h: 14, height: 22, wall: 0x8a8478, roof: 0x34445e, variant: 0 }); pois.push({ name: 'Castelo de Askavik', x: cx, y: cy - 36, biome: 'meadow' });
     rect(-9, -38, 8, -33, 'plaza'); rect(-1, -33, 1, -22); for (const s of [-1, 1]) for (let y = -37; y <= -26; y += 4) lit(s * 3, y);
@@ -975,7 +982,7 @@ export function buildCity(): World {
   // o mundo de fora: tronco até as regiões de lore, ligando as vilas delas entre si
   for (const [a, b] of [['Nordvik', 'Jarlsheim'], ['Jarlsheim', 'Skjoldvik'], ['Jarlsheim', 'Hrimgard'], ['Hrimgard', 'Fjallbrún'], ['Kaldrfoss', 'Midvangr'], ['Midvangr', 'Brasaforja'], ['Ulfheim', 'Brasaforja'], ['Brasaforja', 'Cinzalto'], ['Cinzalto', 'Corvoscuro'], ['Hrafnhöfn', 'Corvoscuro'], ['Corvoscuro', 'Gorvath'], ['Austrvik', 'Gorvath'], ['Austrvik', 'Dalborg'], ['Dalborg', 'Uivo Antigo'], ['Steinfoss', 'Dalborg'], ['Sandvik', 'Ferrugem'], ['Ferrugem', 'Porto Caldeira'], ['Sudrholt', 'Vindholt'], ['Vindholt', 'Porto Caldeira'], ['Brekkuvik', 'Vaporeira'], ['Vaporeira', 'Porto Caldeira'], ['Myrbakki', 'Lumenhal'], ['Vatnaholt', 'Lumenhal'], ['Vestheim', 'Lithendel'], ['Mýrarvik', 'Skjoldvik'], ['Lithendel', 'Skjoldvik']] as [string, string][]) route(a, b, 1.2);
   for (const [a, b] of [['Grenivik', 'Karmika'], ['Hvítadalr', 'Nordvik'], ['Hvítadalr', 'Bjarnholt'], ['Bjarnholt', 'Fjallbrún'], ['Kaldrfoss', 'Ulfheim'], ['Ulfheim', 'Hrafnhöfn'], ['Skógar', 'Vestheim'], ['Skógar', 'Karmika']] as [string, string][]) route(a, b, 1.0);
-  bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH(b.ax * T, b.ay * T); b.hB = groundH(b.bx * T, b.by * T); bridgesRef = save; } }
+  bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH(b.ax * T, b.ay * T); b.hB = groundH(b.bx * T, b.by * T); bridgesRef = save; } b.hA = Math.max(b.hA, WL + 0.15); b.hB = Math.max(b.hB, WL + 0.15); } /* tabuleiro nunca abaixo da água */
   /* 25/10 (Erling: "a estrada da vila não tem uma ponte em curva de pedra bonita para atravessar?"): toda travessia curta de estrada vira
      ponte de pedra em arco; só as muito longas continuam de madeira (com cobertura) */
   for (const b of bridges) { if (b.stone) continue; const L = Math.hypot(b.bx - b.ax, b.by - b.ay); if (L * T > 26) continue; b.stone = true; b.half = 2.1; b.hump = Math.min(1.7, 0.45 + L * T * 0.055); }
@@ -1265,7 +1272,7 @@ export function buildCity(): World {
   { const near = (x: number, y: number) => { let best: [number, number] = PLACE.Karmika, bd = 1e9; for (const [, q] of Object.entries(PLACE)) { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = q; } } return best; };
     for (const nm of ['Cume Gelado', 'Atoleiro de Zerath', 'Covil dos Lobos', 'Clareira dos Gritos', 'Igreja Abandonada', 'Cemitério Esquecido', 'Acampamento Draugr', 'Ruínas de Aravel', 'Garganta de Pedra', 'Catedral Abandonada', 'Cripta de Hemara', 'Clareira de Selvar']) {
       const p = pois.find((q) => q.name === nm); if (!p) continue; route([p.x, p.y + 3], near(p.x, p.y), 0.85); } }
-  bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH(b.ax * T, b.ay * T); b.hB = groundH(b.bx * T, b.by * T); bridgesRef = save; } }
+  bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH(b.ax * T, b.ay * T); b.hB = groundH(b.bx * T, b.by * T); bridgesRef = save; } b.hA = Math.max(b.hA, WL + 0.15); b.hB = Math.max(b.hB, WL + 0.15); } /* tabuleiro nunca abaixo da água */
   /* tochas ao longo das estradas perto da vila: uma de cada lado, alternadas */
   for (const rp of roadPaths) for (let i = 6; i < rp.length - 2; i += 7) { const q = rp[i], d = Math.hypot(q.x - CITY.x, q.y - CITY.y); if (d < 16 || d > 42) continue; const nx = rp[i + 1].y - rp[i - 1].y, ny = -(rp[i + 1].x - rp[i - 1].x), L = Math.hypot(nx, ny) || 1, sd2 = (i / 7) % 2 ? 2.2 : -2.2; torch(Math.round(q.x + nx / L * sd2), Math.round(q.y + ny / L * sd2)); }
   /* árvores, pedras e vegetação por bioma */
