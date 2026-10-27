@@ -17,7 +17,7 @@ export const PIECES: Piece[] = [
 ];
 export interface Built { kind: PropKind; gx: number; gy: number; v: number }
 
-export function createBuild(ctx: { /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+export function createBuild(ctx: { /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0;
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
@@ -42,8 +42,9 @@ export function createBuild(ctx: { /** terreno de guilda (26/10): 'mine' = o meu
   };
   function place(gx: number, gy: number) {
     const p = PIECES[sel]; if (!canPlace(p, gx, gy)) { ctx.log('Não dá para construir aqui.', '#ff9a8a'); return; }
-    for (const [k, n] of Object.entries(p.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais: ${ITEMS[k]?.name ?? k} ×${n}. Gunnar vende.`, '#ff9a8a'); return; }
-    for (const [k, n] of Object.entries(p.cost)) ctx.take(k, n);
+    const K = ctx.costK?.() ?? 1, cost = Object.fromEntries(Object.entries(p.cost).map(([k, n]) => [k, Math.max(K < 1 ? 0 : 1, Math.ceil(n * K))])) as Record<string, number>;
+    for (const [k, n] of Object.entries(cost)) if (n > 0 && !ctx.has(k, n)) { ctx.log(`Faltam materiais: ${ITEMS[k]?.name ?? k} ×${n}. Gunnar vende.`, '#ff9a8a'); return; }
+    for (const [k, n] of Object.entries(cost)) if (n > 0) ctx.take(k, n);
     const b: Built = { kind: p.id, gx, gy, v: p.rot ? rot : 0 };
     if (ctx.guildZone?.(gx, gy) === 'mine' && ctx.onGuildBuild) { ctx.onGuildBuild(b, false); ctx.log(`🔨 ${p.name}: obra da guilda (todos veem).`, '#ffe08a'); render(); return; }
     addBuilt(b); save(); ctx.log(`🔨 ${p.name} construído.`, '#ffe08a'); render();

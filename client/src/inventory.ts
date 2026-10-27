@@ -1,4 +1,5 @@
 import { potionPulse } from './celebrate';
+import { FEASTS, feastEff, FEAST_MIN, GADGETS } from './festim';
 import { isPremium, GIFT_BAG } from './premium';
 import { floatWin, confirmBox } from './windows';
 import { TOOLS, TOOL_SLOTS, TIER_NAME, isTool, toolDesc, type ToolSlot } from './tools';
@@ -166,6 +167,11 @@ export const SHOPDEF: Record<string, ShopDef> = {
   salao_hidromel: { title: 'Salão do Hidromel de Jarlsheim', items: ['chifre_sangue', 'mead', 'beer'], note: 'O chifre se enche no campo de batalha. Aqui só se vende o que já foi enchido.' },
   estabulo: { title: 'Orm, o Estalajadeiro', items: ['mount_horse', 'mount_grey', 'mount_black', 'feno', 'apple'], note: 'Montarias: Z para montar e desmontar.' },
 };
+/* a mesa dos anões (festim.ts, 27/10): carnes, cervejas e vinhos viram itens de comer e beber; as carroças dos anões vendem isso */
+for (const [k, f] of Object.entries(FEASTS)) { ITEMS[k] = { name: f.name, icon: f.icon, kind: 'food', col: f.slot === 'meal' ? 0xb05a2a : 0xd8a040, desc: `${f.desc}\n${f.slot === 'meal' ? 'Prato' : 'Bebida'} · ${FEAST_MIN} min: ${feastEff(f)}. Um prato e uma bebida por vez.`, heal: f.slot === 'meal' ? 40 : 12, buff: 'feast:' + k, sell: Math.round(f.price / 3) } as Item; PRICES[k] = f.price; }
+for (const [k, g] of Object.entries(GADGETS)) { ITEMS[k] = { name: g.name, icon: g.icon, kind: g.kind, col: g.col, desc: g.desc, tier: 3, sell: Math.round(g.price / 3) } as Item; PRICES[k] = g.price; }
+SHOPDEF.latao.items = ['sentinela', 'drone_cura', 'drone_choque', 'escudo_auto', 'obra_auto', 'reacao_azul', 'reacao_amarela', 'reacao_vermelha', 'carvao_pot', 'pet_cao_latao', 'pet_robo_faisca', ...SHOPDEF.latao.items];
+SHOPDEF.anoes_carav = { title: 'Carroça dos Anões de Brasaforja', items: [...Object.keys(FEASTS), 'porca_perfeita', 'parafuso_inexp', 'engrenagem_diam', 'inj_s', 'reator_1', 'bag_l', 'scroll_return', 'rope'], buys: { meat: 1.4, hide: 1.2, ore_i: 1.2 }, note: 'Carne na brasa, cerveja e vinho de Brasaforja. Para festa, é só contratar.' };
 export const SHOPS: Record<string, string[]> = Object.fromEntries(Object.entries(SHOPDEF).map(([k, v]) => [k, v.items]));
 export const RECIPES: { id: string; out: string; n: number; need: [string, number][]; keep?: string[]; label?: string }[] = [
   { id: 'axe', out: 'axe_s', n: 1, need: [['stick', 3], ['stone', 2], ['rope', 1]] },
@@ -192,6 +198,7 @@ interface St {
   hp: number; hpMax: number; mp: number; mpMax: number; gold: number; lvl: number; xp: number; kills: number;
   atk: number; def: number; dmgFlat: number; crit: number; leech: number; regen: number; move: number; xpMul: number; goldMul: number;
   points: number; attrs: Record<Attr, number>; sp: Set<string>; recalc: (() => void) | null;
+  /** prato e bebida da mesa dos anões (festim.ts): id e quando acaba (ms) */ feast?: { meal?: { id: string; until: number }; brew?: { id: string; until: number } }; stamMax?: number;
 }
 interface GameLike { st: St; logMsg(t: string, c?: string): void; drinkBuff?(id: string): void; snd?(k: 'coins' | 'error' | 'pickup' | 'click' | 'swap'): void }
 
@@ -273,6 +280,9 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     st.leech = (t.leech ?? 0) / 100; st.xpMul = 1 + (t.xp ?? 0) / 100 + (hooks.xpBonus?.() ?? 0); st.goldMul = 1 + (t.gold ?? 0) / 100 + (Object.values(eqG).some((g) => g?.special === 'u_andvari') ? 0.6 : 0);
     st.auras = SLOTS.map((sl) => eqG[sl]).filter((g): g is Gear => !!g?.aura).sort((a, b) => (b.rarity === 'relic' ? 1 : 0) - (a.rarity === 'relic' ? 1 : 0)).map((g) => g.aura!);
     st.sp = new Set(Object.values(eqG).map((g) => g?.special).filter(Boolean) as string[]);
+    { /* a mesa dos anões: prato e bebida ativos (15 min) */ const now = Date.now(); let hp = 0, stam = 0;
+      for (const sl of ['meal', 'brew'] as const) { const e = st.feast?.[sl]; if (!e || e.until < now) continue; const f = FEASTS[e.id]; if (!f) continue; hp += f.hp ?? 0; stam += f.stam ?? 0; st.atk += f.dmg ?? 0; st.crit = Math.min(0.5, st.crit + (f.crit ?? 0)); st.move += f.move ?? 0; st.def = Math.max(0, Math.min(0.72, st.def + (f.def ?? 0))); st.regen += f.regen ?? 0; }
+      if (hp) { st.hpMax = Math.round(st.hpMax * (1 + hp)); st.hp = Math.min(st.hp, st.hpMax); } (st as St & { feastStam?: number }).feastStam = stam; }
     hooks.onGear?.();
   }
   const hitRange = () => { const lp = 0.05 * (st.lvl - 1), m = st.atk; /* mesma conta do combate: nível cheio no golpe base, metade no dano da arma */ return [Math.round((9 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m), Math.round((15 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m)]; };

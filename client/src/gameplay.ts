@@ -1,3 +1,4 @@
+import { FEASTS, feastEff, FEAST_MIN } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
@@ -500,6 +501,9 @@ export function createGameplay(d: GameplayDeps) {
   const mines: { m: THREE.Group; x: number; z: number; t: number; r: number; mul: number }[] = [];
   const missiles: { p: THREE.Vector3; v: THREE.Vector3; tx: number; tz: number; t: number; dur: number; napalm?: boolean }[] = [];
   const turrets: { m: THREE.Group; head: THREE.Object3D; x: number; z: number; t: number; shotT: number; healT: number }[] = [];
+  /* engenhocas da Companhia de Latão (festim.ts, 27/10): duram turnos (1 turno = 30 min reais) */
+  const gad = { heal: 0, healT: 6, shock: 0, shockT: 4, shield: 0, shieldReady: true, shieldT: 0, sentry: null as null | { m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number } };
+  function zap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, col: number) { const n = 9; for (let k = 0; k <= n; k++) { const t = k / n; d.particles.spawn(ax + (bx - ax) * t + rnd(-0.18, 0.18), ay + (by - ay) * t + rnd(-0.18, 0.18), az + (bz - az) * t + rnd(-0.18, 0.18), { life: 0.22, s0: 0.35, s1: 0.05, c0: 0xffffff, c1: col, a: 1 }); } }
   const beams: { m: THREE.Mesh; t: number; life: number }[] = [];
   const beamMat = new THREE.MeshBasicMaterial({ color: 0x8af0ff, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
   function beam(a: THREE.Vector3, b: THREE.Vector3, col = 0x8af0ff, w = 0.05, life = 0.14) {
@@ -896,6 +900,8 @@ export function createGameplay(d: GameplayDeps) {
       if (buff.dmgT > 0) L.push({ id: 'dmg', name: 'Fúria de Batalha', ic: '⚔', t: buff.dmgT, good: true, tip: `+${Math.round((buff.dmg - 1) * 100)}% de dano` });
       if (buff.defT > 0) L.push({ id: 'def', name: 'Muralha', ic: '🛡', t: buff.defT, good: true, tip: `+${Math.round(buff.def * 100)}% de defesa` });
       if (buff.moveT > 0) L.push({ id: 'move', name: 'Pés Ligeiros', ic: '➶', t: buff.moveT, good: buff.move >= 1, tip: `${buff.move >= 1 ? '+' : ''}${Math.round((buff.move - 1) * 100)}% de velocidade` });
+      { const fe = (st as typeof st & { feast?: Record<string, { id: string; until: number } | undefined> }).feast; if (fe) for (const sl of ['meal', 'brew']) { const e = fe[sl]; if (!e) continue; const left = (e.until - Date.now()) / 1000; const f = FEASTS[e.id]; if (left > 0 && f) L.push({ id: 'feast_' + sl, name: f.name, ic: f.icon, t: left, good: true, tip: feastEff(f) }); } }
+      { const nw = Date.now(); if (gad.heal > nw) L.push({ id: 'g_heal', name: 'Drone de Cura', ic: '🛸', t: (gad.heal - nw) / 1000, good: true, tip: '+2% de vida a cada 6 s' }); if (gad.shock > nw) L.push({ id: 'g_shock', name: 'Bobina de Choque', ic: '⚡', t: (gad.shock - nw) / 1000, good: true, tip: 'raio no inimigo mais perto a cada 4 s' }); if (gad.shield > nw) L.push({ id: 'g_shield', name: 'Escudo Automatizado', ic: '🛡', t: (gad.shield - nw) / 1000, good: true, tip: gad.shieldReady ? 'barreira pronta' : 'recarregando' }); if (gad.sentry) L.push({ id: 'g_sentry', name: 'Robô Sentinela', ic: '🤖', t: (gad.sentry.until - nw) / 1000, good: true, tip: 'guarda o lugar onde foi plantado' }); }
       if (hot.t > 0) L.push({ id: 'hot', name: 'Cura contínua', ic: '✚', t: hot.t, good: true, tip: `+${Math.round(hot.per)} de vida por segundo` });
       if (form) L.push({ id: 'form', name: 'Transformação', ic: '✷', t: form.t, good: true, tip: 'forma de batalha ativa' });
       if (st.ambushT > 0) L.push({ id: 'amb', name: 'Emboscada', ic: '◆', t: st.ambushT, good: true, tip: 'próximo golpe +50%' });
@@ -1131,6 +1137,7 @@ export function createGameplay(d: GameplayDeps) {
         if (eL) { const dl = eL - st.lvl; n *= dl > 0 ? Math.min(3, 1 + 0.09 * dl + 0.01 * dl * dl) : Math.max(0.6, 1 + 0.04 * dl); } }
       { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1) n *= 1 + 0.12 * (pn - 1); } /* GRUPO: e bate mais forte (+12% por companheiro perto) */
       n = Math.max(1, Math.round(n * st.takenMul * (d.takenK?.() ?? 1))); /* Instinto ligado: a defesa cai (a atenção está em outro lugar) */ /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
+      if (gad.shield > Date.now() && gad.shieldReady) { gad.shieldReady = false; gad.shieldT = 25; logMsg('🛡 Clanc! O Escudo Automatizado segurou o golpe inteiro.', '#9ad7ff'); for (let q = 0; q < 14; q++) { const hp2 = d.getHero().root.position; d.particles.spawn(hp2.x + rnd(-0.6, 0.6), hp2.y + rnd(0.4, 1.8), hp2.z + rnd(-0.6, 0.6), { vy: rnd(0.2, 1), life: 0.5, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0x9ad7ff, a: 0.9 }); } return; }
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');
         if (from) { const a2 = Math.atan2(from.x - heroPos.x, from.z - heroPos.z); for (let i = 0; i < 12; i++) d.particles.spawn(heroPos.x + Math.sin(a2) * 1.4, heroPos.y + rnd(0.6, 1.8), heroPos.z + Math.cos(a2) * 1.4, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.35, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 }); }
@@ -1471,7 +1478,23 @@ export function createGameplay(d: GameplayDeps) {
     setWork(p: { x: number; z: number } | null) { workAt = p; },
     setStance(e: Partial<typeof stance>) { stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0, ...e }; },
     /** efeitos de comidas e bebidas (cerveja, hidromel, tônico, antídoto) */
+    /** usar uma engenhoca da Companhia (true = consumiu) */
+    gadget(id: string): boolean { const hp = d.getHero().root.position, yaw = d.getHero().root.rotation.y, now2 = Date.now(), gy = d.world.heightAt(hp.x, hp.z);
+      if (id === 'drone_cura') { gad.heal = now2 + TURN_S * 1000; logMsg('🛸 O Drone de Cura sobe ao seu ombro: +2% de vida a cada 6 s por 1 turno.', '#7affd0'); return true; }
+      if (id === 'drone_choque') { gad.shock = now2 + TURN_S * 1000; logMsg('⚡ Bobina de Choque ligada no cinto por 1 turno: raio no inimigo mais perto a cada 4 s.', '#6ad0ff'); return true; }
+      if (id === 'escudo_auto') { gad.shield = now2 + TURN_S * 1000; gad.shieldReady = true; logMsg('🛡 O disco do Escudo Automatizado começa a girar: segura um golpe inteiro a cada 25 s, por 1 turno.', '#9ad7ff'); return true; }
+      if (id === 'sentinela') { if (gad.sentry) d.scene.remove(gad.sentry.m); const x = hp.x + Math.sin(yaw) * 1.8, z = hp.z + Math.cos(yaw) * 1.8, tr = mkTurret(x, z); gad.sentry = { m: tr.m, head: tr.head, x, z, until: now2 + TURN_S * 1000, shotT: 1 }; for (let i = 0; i < 18; i++) d.particles.spawn(x, gy + 0.3, z, { vx: rnd(-2, 2), vy: rnd(1, 3), vz: rnd(-2, 2), life: 0.6, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffc060, a: 0.9 }); logMsg('🤖 Bartolomeu, o Robô Sentinela, toma posição. Guarda este lugar por 1 turno (12 m).', '#e0b048'); return true; }
+      if (/^reacao_/.test(id)) { const x = hp.x + Math.sin(yaw) * 3, z = hp.z + Math.cos(yaw) * 3, y = d.world.heightAt(x, z), from = new THREE.Vector3(x, y, z); skill = 'combo';
+        if (id === 'reacao_azul') explode(x, z, y, 2.5, 0.9, 0x4a8aff, 0, from);
+        else if (id === 'reacao_amarela') explode(x, z, y, 4, 1.8, 0xffd040, 1.2, from);
+        else { explode(x, z, y, 6, 2.6, 0xff3a1a, 1, from); napalmAt(x, z, y); napalmAt(x + 2, z + 1, y); napalmAt(x - 2, z - 1, y); st.shake = Math.max(st.shake, 1.1); for (let k = 0; k < 90; k++) d.particles.spawn(x + rnd(-0.6, 0.6), y + 0.5, z + rnd(-0.6, 0.6), { vx: rnd(-3, 3), vy: rnd(6, 14), vz: rnd(-3, 3), life: rnd(1, 2.2), s0: rnd(0.4, 0.9), s1: 0.1, c0: k % 3 ? 0xffd060 : 0xffffff, c1: 0xff2a0a, a: 1, g: 9 }); logMsg('🌋 Você criou um vulcão. A Companhia não se responsabiliza.', '#ff8a5a'); }
+        skill = null; return true; }
+      return false; },
     drinkBuff(id: string) {
+      if (id.startsWith('feast:')) { const k = id.slice(6), f = FEASTS[k]; if (!f) return;
+        if (k === 'picanha' && kitKey === 'vam') { st.hp = Math.max(1, st.hp - st.hpMax * 0.1); logMsg('🧄 Alho! A garganta fecha, o estômago revira. Vampiro e picanha no alho não combinam — nenhum efeito, só a ânsia.', '#ff8a7a'); return; }
+        const s2 = st as typeof st & { feast?: { meal?: { id: string; until: number }; brew?: { id: string; until: number } } }; s2.feast ??= {}; const had = s2.feast[f.slot]; s2.feast[f.slot] = { id: k, until: Date.now() + FEAST_MIN * 60000 }; (st as { recalc?: (() => void) | null }).recalc?.();
+        logMsg(`${f.icon} ${f.name}${had && had.id !== k ? ` (no lugar de ${FEASTS[had.id]?.name ?? 'outra'})` : ''}: ${feastEff(f)} por ${FEAST_MIN} min.`, '#ffd27a'); return; }
       if (id === 'regen') { hot = { t: Math.max(hot.t, 30), per: Math.max(hot.per, st.hpMax * 0.02) }; logMsg('🫙 Vigor: regenerando vida', '#7aff9a'); }
       else if (id === 'courage') { buff.dmg = Math.max(buff.dmg, 1.1); buff.dmgT = Math.max(buff.dmgT, 60); logMsg('🍺 Coragem: +10% de dano por 60 s', '#ffd24a'); }
       else if (id === 'mead') { buff.dmg = Math.max(buff.dmg, 1.15); buff.dmgT = Math.max(buff.dmgT, 60); buff.move = Math.max(buff.move, 1.1); buff.moveT = Math.max(buff.moveT, 60); logMsg('🍯 Hidromel: +15% de dano e +10% de velocidade', '#ffd24a'); }
@@ -1678,6 +1701,12 @@ export function createGameplay(d: GameplayDeps) {
         if (g.t >= g.dur || g.p.y <= gy + 0.15) { d.scene.remove(g.m); grenades.splice(i, 1); explode(g.tx, g.tz, gy, g.r, g.mul, 0xff9a30, 1.0, g.p.clone()); for (let k = 0; k < 20; k++) d.particles.spawn(g.tx + rnd(-1, 1), gy + 0.3, g.tz + rnd(-1, 1), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.4, s0: 0.8, s1: 1.4, c0: 0x6a6a6a, c1: 0x222222, a: 0.5, drag: 1 }); }
       }
       for (let i = rocks.length - 1; i >= 0; i--) { const r = rocks[i]; r.t += dt; r.m.position.y = r.y0 + (r.t < 0.25 ? 0.45 * (r.t / 0.25) : r.t > 2.2 ? Math.max(0, 0.45 - (r.t - 2.2) * 0.6) : 0.45); if (r.t > 3.2) { d.scene.remove(r.m); r.m.geometry.dispose(); rocks.splice(i, 1); } }
+      { const nw = Date.now(), hpp = d.getHero().root.position;
+        if (gad.heal > nw) { gad.healT -= dt; if (gad.healT <= 0) { gad.healT = 6; if (st.hp < st.hpMax) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02); for (let q = 0; q < 6; q++) d.particles.spawn(hpp.x + rnd(-0.4, 0.4), hpp.y + 2, hpp.z + rnd(-0.4, 0.4), { vy: -0.8, life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x7affd0, a: 0.8 }); } } }
+        if (gad.shock > nw) { gad.shockT -= dt; if (gad.shockT <= 0) { gad.shockT = 4; const e = enemies.nearest(hpp, 7); if (e && e.alive) { zap(hpp.x, hpp.y + 1.3, hpp.z, e.pos.x, e.pos.y + 1, e.pos.z, 0x6ad0ff); skill = 'combo'; hitEnemy(e, 0.35, false, hpp); skill = null; } } }
+        if (gad.shield > nw && !gad.shieldReady) { gad.shieldT -= dt; if (gad.shieldT <= 0) gad.shieldReady = true; }
+        const S = gad.sentry; if (S) { if (S.until < nw) { d.scene.remove(S.m); gad.sentry = null; logMsg('🤖 Bartolomeu desliga e a Companhia vem buscar.', '#c8b890'); } else { S.shotT -= dt; const sp = new THREE.Vector3(S.x, 0, S.z), e = enemies.nearest(sp, 12); if (e) S.head.rotation.y = Math.atan2(e.pos.x - S.x, e.pos.z - S.z); if (S.shotT <= 0 && e && e.alive) { S.shotT = 1.2; const sy = d.world.heightAt(S.x, S.z) + 1.05; zap(S.x, sy, S.z, e.pos.x, e.pos.y + 1, e.pos.z, 0xffc060); skill = 'combo'; hitEnemy(e, 0.3, false, sp); skill = null; } } } }
+      { const fe = (st as typeof st & { feast?: Record<string, { id: string; until: number } | undefined> }).feast; if (fe) for (const sl of ['meal', 'brew']) { const e = fe[sl]; if (e && e.until < Date.now()) { fe[sl] = undefined; (st as { recalc?: (() => void) | null }).recalc?.(); logMsg(`${FEASTS[e.id]?.icon ?? '🍽'} O efeito de ${FEASTS[e.id]?.name ?? 'refeição'} passou.`, '#c8b890'); } } }
       if (hot.t > 0) { hot.t -= dt; st.hp = Math.min(st.hpMax, st.hp + hot.per * (1 + stance.heal) * dt); if (Math.random() < dt * 20) d.particles.spawn(heroPos.x + rnd(-0.5, 0.5), rnd(0.2, 1.9), heroPos.z + rnd(-0.5, 0.5), { vx: rnd(-0.3, 0.3), vy: rnd(0.3, 1), vz: rnd(-0.3, 0.3), life: 0.6, s0: 0.25, s1: 0.04, c0: 0xd8fff2, c1: 0x2ad0a0, a: 0.9, flit: 2 }); }
       { const h = d.getHero();
         if (pathAct && h.actName === pathAct) {
