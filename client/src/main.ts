@@ -127,8 +127,8 @@ let vow: VowState = (() => { try { return JSON.parse(localStorage.getItem('karmi
 const saveVow = () => { try { localStorage.setItem('karmika.vow', JSON.stringify(vow)); } catch { /* */ } };
 
 /* 26/10 noite (Erling: "não tenho 100/100, o limite não é 100"): dois números. O ALINHAMENTO (state.karma) continua de −100 a +100 —
-   é o que guardas, inquisidor, facções e o Olho leem. O KARMA ACUMULADO não tem teto: tudo de luz e de sombra que a alma juntou,
-   em todas as vidas (soul.s.luzT / soul.s.sombraT). Todo ganho e perda de karma passa por aqui. */
+   é o que guardas, inquisidor, facções e o Olho leem. O KARMA ACUMULADO não tem teto: tudo de luz e de sombra juntado NESTA vida (soul.s.luzT / soul.s.sombraT);
+   ao desencarnar ele fica escrito na vida passada e recomeça do zero. Todo ganho e perda de karma passa por aqui. */
 function addKarma(dk: number) { if (!dk || !Number.isFinite(dk)) return; state.karma = Math.max(-100, Math.min(100, state.karma + dk));
   if (dk > 0) soul.s.luzT = (soul.s.luzT ?? 0) + dk; else soul.s.sombraT = (soul.s.sombraT ?? 0) - dk; soul.save(); }
 if (soul.s.luzT === undefined && soul.s.sombraT === undefined) { soul.s.luzT = Math.max(0, state.karma); soul.s.sombraT = Math.max(0, -state.karma); soul.save(); }
@@ -1706,7 +1706,7 @@ function checkAwakening() {
 function renderOlho() {
   const k = Math.round(state.karma), title = quests.title || 'Aprendiz';
   olhoEl.innerHTML = `<div class="pn olhopn"><h2>👁 Olho Kármico <button data-x>✕</button></h2>
-    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Alinhamento agora: <b>${k > 0 ? '+' : ''}${k}</b> <small>(de −100 a +100)</small></p><p>Karma acumulado da alma: <b style="color:#ffe08a">☀ ${Math.round(soul.s.luzT ?? 0)}</b> de luz · <b style="color:#b89aff">☾ ${Math.round(soul.s.sombraT ?? 0)}</b> de sombra</p><small>O alinhamento é para onde a sua alma pende hoje: é o que o Olho enche (nunca por completo), o que os guardas e as facções leem. O acumulado não tem teto: é tudo o que a alma juntou, em todas as vidas, e nunca se apaga.</small>
+    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Alinhamento agora: <b>${k > 0 ? '+' : ''}${k}</b> <small>(de −100 a +100)</small></p><p>Karma acumulado nesta vida: <b style="color:#ffe08a">☀ ${Math.round(soul.s.luzT ?? 0)}</b> de luz · <b style="color:#b89aff">☾ ${Math.round(soul.s.sombraT ?? 0)}</b> de sombra</p><small>O alinhamento é para onde a sua alma pende hoje: é o que o Olho enche (nunca por completo), o que os guardas e as facções leem. Luz e sombra são posições, não bem e mal. O acumulado não tem teto: sobe a cada ato até você desencarnar, e então fica escrito na sua vida passada.</small>
       <h3>Ascensão</h3><p>Nível ${game.st.lvl}. No nível 100 você escolhe duas especializações; 200 e 300 abrem fusões e a forma final.</p><small>As escolas ficam em Askavik, a cidade média. Quando as estradas estiverem abertas, uma missão o levará até lá.</small></div>
     <div class="col"><h3>Atos</h3>${quests.q.done.length ? `<p>${quests.q.done.length} missões concluídas</p>` : '<p>Nenhuma missão concluída ainda.</p>'}<p>${game.st.kills} abates</p><small>Matar outros jogadores e abandonar inocentes pesa para a sombra; proteger a vila e libertar bestas pesa para a luz. O Olho lembra de tudo.</small></div></div>
     <small class="ft">Esc fecha</small></div>`;
@@ -1778,7 +1778,8 @@ function showCreate(reborn = false) {
       if (reborn) { rebirth(name, { name, origin, sex, hair: HAIRS[hair], skin: SKINS[skin], title: oldProfile?.title ?? '', hairStyle, beard, eye: oldProfile?.eye }); el.style.display = 'none'; creating = false; return; }
       /* 26/10 (Erling: "a tela fica escura antes de entrar no jogo — faça a tela de loading"): o mundo carrega por trás do Olho */
       withFade(() => {
-      soul.reset(); state.karma = 0;
+      /* 27/10 (Erling): nasce-se neutro. Luz e sombra são posições, não bem e mal. Só o elfo nasce um pouco pendendo à luz (+35) */
+      soul.reset(); state.karma = origin === 'elf' ? 35 : 0; soul.s.karma = state.karma; soul.s.luzT = 0; soul.s.sombraT = 0; soul.save();
       game.resetClass(classOfRace(raceOf(origin)));
       try { localStorage.removeItem('karmika.welcome'); localStorage.removeItem('karmika.startkit'); } catch { /* */ } // personagem novo: o Baú de Boas-Vindas espera de novo
       profile = { name, origin, sex, hair: HAIRS[hair], skin: SKINS[skin], title: '', hairStyle, beard }; localStorage.setItem('karmika.char.v1', JSON.stringify(profile));
@@ -3156,8 +3157,8 @@ function unbind(revive: () => void = () => { /* já de pé */ }, resume?: 'rebor
     soul.s.breaths = MAX_BREATHS; soul.s.regenAt = Date.now(); soul.s.pending = null;
     if (k === 'corpo') { soul.s.debt += info.debt; soul.save(); revive(); placeAt(`⛲ A alma volta ao mesmo corpo, em ${home.name}. Dívida Kármica: ${soul.s.debt.toLocaleString('pt-BR')} XP.`); return; }
     if (k === 'lagrima') { inv.take('lagrima', 1); revive(); placeAt(`💧 A Lágrima paga a volta. A alma de ${profile!.name} reencontra o corpo ${place.name}.`, place); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 80 } })); return; }
-    if (resume !== 'reborn') { const life: Life = { name: profile!.name, origin: profile!.origin, cls: c.name, clsLvl: c.lvl, lvl: game.st.lvl, karma: Math.round(state.karma), end: 'reencarne', at: Date.now() };
-      soul.s.lives.push(life); soul.s.catchup = { cls: c.name, until: Math.max(c.lvl, soul.s.catchup?.cls === c.name ? soul.s.catchup.until : 0) }; }
+    if (resume !== 'reborn') { const life: Life = { name: profile!.name, origin: profile!.origin, cls: c.name, clsLvl: c.lvl, lvl: game.st.lvl, karma: Math.round(state.karma), luz: Math.round(soul.s.luzT ?? 0), sombra: Math.round(soul.s.sombraT ?? 0), end: 'reencarne', at: Date.now() };
+      soul.s.lives.push(life); soul.s.luzT = 0; soul.s.sombraT = 0; /* o acumulado é desta vida: sobe sem teto até desencarnar, e fica escrito na vida passada */ soul.s.catchup = { cls: c.name, until: Math.max(c.lvl, soul.s.catchup?.cls === c.name ? soul.s.catchup.until : 0) }; }
     soul.s.pending = 'reborn'; soul.save(); revive(); showCreate(true);
   }, { stage: resume });
 }
