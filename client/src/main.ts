@@ -2872,8 +2872,8 @@ function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {
 const dayC = { sky: new THREE.Color(0x9bbad8), fog: new THREE.Color(0x9bbad8) };
 const nightC = { sky: new THREE.Color(0x050814), fog: new THREE.Color(0x070a18) };
 const sunDay = new THREE.Color(0xffdca8), sunNight = new THREE.Color(0x6a88d0);
-const hemiDaySky = new THREE.Color(0xf4e6cc), hemiNightSky = new THREE.Color(0x24407e);
-const hemiDayGround = new THREE.Color(0x4a3a22), hemiNightGround = new THREE.Color(0x10182a);
+const hemiDaySky = new THREE.Color(0xf4e6cc), hemiNightSky = new THREE.Color(0x4668b0); /* 27/10 (Erling: "à noite não se vê nada"): a noite é de luar, não de breu */
+const hemiDayGround = new THREE.Color(0x4a3a22), hemiNightGround = new THREE.Color(0x202a40);
 /* os globais: Lua de Sangue (rubro, sanguinário) e Dia da Aurora (ouro e rosa, luz de igreja) */
 const LUA_C = { sky: new THREE.Color(0x3a0604), fog: new THREE.Color(0x4a0a06), hemi: new THREE.Color(0xa0241a), ground: new THREE.Color(0x3a0806), sun: new THREE.Color(0xff3a1c) };
 const AUR_C = { sky: new THREE.Color(0xf6dcc4), fog: new THREE.Color(0xf0d8c8), hemi: new THREE.Color(0xffe8f0), sun: new THREE.Color(0xfff0d8) };
@@ -4048,13 +4048,13 @@ function frameBody() {
   curseNow += ((inside ? 0 : curseK()) - curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
   hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
   hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaV * 0.6);
-  hemi.intensity = mix(0.55, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
+  hemi.intensity = mix(0.9, 1.12, day) + (cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
   sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
-  sun.intensity = mix(0.45, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
-  renderer.toneMappingExposure = mix(0.8, 0.96, day); finish.uniforms.uVig.value = mix(0.6, 0.38, day * (inside?.dg ? 0 : 1));
+  sun.intensity = mix(0.8, 2.4, day) + (cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
+  renderer.toneMappingExposure = mix(0.9, 0.96, day); finish.uniforms.uVig.value = mix(0.48, 0.38, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
-    (u.uMul.value as THREE.Vector3).set(mix(0.84, 1.07, dayW), mix(0.95, 1.0, dayW), mix(1.16, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
-    (u.uLift.value as THREE.Vector3).set(mix(0, 0.012, dayW), mix(0.004, 0.006, dayW), mix(0.03, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
+    (u.uMul.value as THREE.Vector3).set(mix(0.92, 1.07, dayW), mix(0.98, 1.0, dayW), mix(1.12, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
+    (u.uLift.value as THREE.Vector3).set(mix(0.012, 0.012, dayW), mix(0.018, 0.006, dayW), mix(0.045, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
     u.uSat.value = mix(0.86, 1.04, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
   audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (0.12 + 0.88 * Math.max(op, engK)) * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42 * Math.pow(1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01, 1.6); } // debaixo da terra: só as tochas, os cristais e a lava iluminam
