@@ -18,7 +18,7 @@ export const ITEMS: Record<string, Item> = {
   fish: { name: 'Peixe cru', icon: '🐟', kind: 'food', col: 0x7ab0d0, desc: 'Cozinhe numa fogueira.', heal: 5, sell: 3 },
   fishc: { name: 'Peixe assado', icon: '🍣', kind: 'food', col: 0xd09a5a, desc: 'Cura bastante.', heal: 38, sell: 5 },
   bread: { name: 'Pão', icon: '🍞', kind: 'food', col: 0xd0a060, desc: 'Cura um pouco.', heal: 20, sell: 2 },
-  lagrima: { name: 'Lágrima do Olho', icon: '💧', kind: 'misc', col: 0x9ad7ff, tier: 5, sell: 1500, desc: 'Marghar se emocionou. Guarde para a morte: no Limiar ela paga a volta da alma sem penalidade nenhuma. Ou use para trocar por 7 dias de Premium, venda ao mercador (1.500 ouro) ou a outro jogador pelo correio e pelo Quadro.' },
+  lagrima: { name: 'Lágrima do Olho', icon: '💧', kind: 'misc', col: 0x9ad7ff, tier: 5, sell: 6000, desc: 'Marghar se emocionou. Guarde para a morte: no Limiar ela paga a volta da alma sem penalidade nenhuma. Ou use para trocar por 60 dias de Premium, venda ao mercador (6.000 ouro) ou a outro jogador pelo correio e pelo Quadro.' },
   seal_p30: { name: 'Selo de Marghar · 30 dias', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 30 dias de Premium (Bênção de Marghar), ou venda a outro jogador no Quadro de Avisos ou pelo correio. O mercador não compra.' },
   seal_p90: { name: 'Selo de Marghar · 90 dias', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 90 dias de Premium, ou venda a outro jogador. O mercador não compra.' },
   seal_p365: { name: 'Selo de Marghar · 1 ano', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 1 ano de Premium, ou venda a outro jogador. O mercador não compra.' },

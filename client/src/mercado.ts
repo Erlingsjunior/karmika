@@ -10,7 +10,7 @@ export const TOKENS: Record<string, { days: number; name: string; floor?: number
   seal_p30: { days: 30, name: 'Selo de Marghar · 30 dias' },
   seal_p90: { days: 90 * 0.9, name: 'Selo de Marghar · 90 dias' },
   seal_p365: { days: 365 * 0.82, name: 'Selo de Marghar · 1 ano' },
-  lagrima: { days: 7, name: 'Lágrima do Olho', floor: 1500 },
+  lagrima: { days: 60, name: 'Lágrima do Olho', floor: 6000 }, /* 26/10: vale 2 selos de 30 dias (troca por 60 dias de Premium) */
 };
 const KEY = 'karmika.market.v1', DAY = 864e5;
 type Pt = { t: number; p: number };
