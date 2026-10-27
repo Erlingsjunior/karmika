@@ -170,6 +170,25 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     { const px = cx + 5.5, pz = Dm - 3; K.cyl(2.4, 2.6, 0.3, px, 0, pz, stone(0x6a6a72), 18); K.add(new THREE.CircleGeometry(2.1, 18).rotateX(-Math.PI / 2), glowA(0xb8d0ff, 0.65), px, 0.34, pz, 0, false);
       K.box(0.7, 4.2, 0.4, px, 0.3, pz - 2.6, stone(0x8a8a90)); K.add(new THREE.CircleGeometry(1.4, 24), moon, px, 6.2, pz - 2.6, 0, false); K.out.glows.push({ pos: new THREE.Vector3(px, 3, pz), color: 0xb8d0ff, base: 40 }); }
     K.out.glows.push({ pos: new THREE.Vector3(cx, 3, cz + 7), color: 0xff8a3a, base: 36 }); K.out.smoke.push(new THREE.Vector3(cx, 30, cz));
+  } else if (id === 8) { // A GRANDE CALDEIRA (Porto Caldeira, 27/10): a caldeira-mãe da cidade, de cobre rebitado, sobre um embasamento de tijolo, com duas chaminés, manômetros acesos, tubos que somem no chão e válvulas soltando vapor
+    const brick = stone(0x7a4a3a), iron = flat(0x3a3d44), copper = flat(0xa8603a), brass = flat(0xc8963a), dial = glow(0xffe6a0), steam = glowA(0xe8f0ff, 0.35);
+    K.box(Wm - 1, 1.4, Dm - 1, cx, 0, cz, brick); K.box(Wm - 2.4, 0.5, Dm - 2.4, cx, 1.4, cz, stone(0x5a4a40));
+    for (let k = 0; k < 4; k++) { const x = cx - Wm / 2 + 1.2 + k * ((Wm - 2.4) / 3); K.box(0.8, 1.6, 0.8, x, 1.9, cz - 2.4, iron); K.box(0.8, 1.6, 0.8, x, 1.9, cz + 2.4, iron); } // berços de ferro
+    const R = Math.min(Dm, Wm) * 0.26, L = Wm - 3.4; const body = K.add(new THREE.CylinderGeometry(R, R, L, 18), copper, cx, 3.5 + R, cz, 0); body.rotation.z = Math.PI / 2;
+    for (const s of [-1, 1]) { const cap = K.add(new THREE.SphereGeometry(R, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), copper, cx + s * L / 2, 3.5 + R, cz, 0); cap.rotation.z = s * Math.PI / 2; }
+    for (let k = 0; k < 5; k++) { const x = cx - L / 2 + (k + 0.5) * (L / 5); const band = K.add(new THREE.TorusGeometry(R + 0.06, 0.12, 6, 24), brass, x, 3.5 + R, cz, 0, false); band.rotation.y = Math.PI / 2;
+      for (let j = 0; j < 14; j++) { const a = j / 14 * Math.PI * 2; K.add(new THREE.SphereGeometry(0.09, 5, 4), brass, x + 0.3, 3.5 + R + Math.cos(a) * (R + 0.08), cz + Math.sin(a) * (R + 0.08), 0, false); } }
+    // chaminés gêmeas, com fumaça; manômetros grandes na frente; a escotilha do fogo
+    for (const s of [-1, 1]) { const x = cx + s * L * 0.28; K.cyl(0.55, 0.7, 9, x, 3.5 + R * 1.6, cz, stone(0x5a4a40), 10); K.cyl(0.78, 0.6, 0.6, x, 3.5 + R * 1.6 + 9, cz, iron, 10); K.out.smoke.push(new THREE.Vector3(x, 3.5 + R * 1.6 + 9.8, cz)); }
+    for (let k = -1; k <= 1; k++) { const x = cx + k * 2.6, y = 3.5 + R, z = cz + R + 0.02; K.cyl(0.62, 0.62, 0.25, x, y - 0.12, z, brass, 16).rotation.x = Math.PI / 2; const d = K.add(new THREE.CircleGeometry(0.5, 16), dial, x, y, z + 0.15, 0, false); void d;
+      K.add(new THREE.BoxGeometry(0.05, 0.42, 0.03), flat(0x3a1a10), x, y + 0.14, z + 0.17, 0, false).rotation.z = -0.5 + k * 0.6; K.out.glows.push({ pos: new THREE.Vector3(x, y, z + 0.6), color: 0xffd27a, base: 10 }); }
+    { const a = K.arch(2.4, 2.6, 0.6, 1.4, 1.2, iron); a.position.set(cx, 1.9, cz + Dm / 2 - 0.9); K.plane(1.3, 1.7, cx, 2.75, cz + Dm / 2 - 0.9 + 0.02, glow(0xff7a2a)); K.out.glows.push({ pos: new THREE.Vector3(cx, 2.6, cz + Dm / 2 + 0.8), color: 0xff8a3a, base: 26 }); }
+    // tubulação: canos de cobre que descem da caldeira e somem no chão, com válvulas de roda e vapor
+    for (let k = 0; k < 6; k++) { const s = k % 2 ? 1 : -1, x = cx - L / 2 + 1 + k * (L - 2) / 5, z = cz + s * (R + 1.6); K.cyl(0.18, 0.18, R + 1.6, x, 3.5 + R, z, copper, 8).rotation.x = Math.PI / 2; K.cyl(0.18, 0.18, 3.5 + R, x, 0, z, copper, 8);
+      if (k % 3 === 1) { const w = K.add(new THREE.TorusGeometry(0.36, 0.06, 6, 12), brass, x, 2.4, z + s * 0.3, 0, false); w.rotation.x = Math.PI / 2; K.add(new THREE.ConeGeometry(0.5, 1.6, 8), steam, x, 2.2 + 1.1, z + s * 0.9, 0, false); } }
+    // lampiões a gás nos quatro cantos e a placa de latão
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const x = cx + sx * (Wm / 2 - 0.9), z = cz + sz * (Dm / 2 - 0.9); K.cyl(0.08, 0.11, 3.4, x, 1.9, z, iron, 6); K.add(new THREE.BoxGeometry(0.36, 0.44, 0.36), glow(0xffd27a), x, 5.5, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 5.6, z), color: 0xffc070, base: 12 }); }
+    K.plane(2.2, 0.6, cx, 1.1, cz + Dm / 2 - 0.48, brass);
   } else { // 2 PINÁCULO DE MARFIM
     const iv = stone(0xece4d0), ivD = stone(0xc8c0a8), gd = flat(0xd8b860), H = 70, blue = glow(0x9ad8ff);
     // embasamento em degraus redondos e colunata

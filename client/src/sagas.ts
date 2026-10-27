@@ -333,7 +333,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: 'Abriu a caixa para ver o que a Academia vende ao Conde.', karma: -1, flag: 'vam_espiou', say: '…E o que você viu? Ah. As engrenagens têm a marca da Ordem por dentro. A Academia vende para os dois lados. Guarde isso. Para mim.', why: 'Curiosidade não é maldade. Mas você quebrou um lacre que prometeu proteger.' } ] } },
 
   { id: 'va4', chain: VC, name: 'O Sol Filtrado', lvl: 33, giver: MI, turnin: MI, next: 'va5', xp: 0, gold: 280,
-    text: 'O Conde quer vitrais que filtram o sol para o castelo. A Arquiteta Ylva, na Academia de Askavik, sabe fazer, mas cobra caro. Vá ouvir o preço.',
+    text: 'O Conde quer vitrais que filtram o sol para o castelo. A Arquiteta Ylva, na Academia da Graxa de Porto Caldeira, sabe fazer, mas cobra caro. Vá ouvir o preço.',
     objs: [{ kind: 'talk', npc: YL }],
     talk: [
       'O Conde tem um sonho. É pequeno e é antigo: ver um pôr do sol sem morrer.',
