@@ -72,6 +72,7 @@ import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
 import { buildInterior, type Interior } from './interiors3d';
 import { buildDwarfHall } from './salao3d';
+import { buildCastleFloor, CASTLE_FLOORS, type CastleFloor } from './castelo3d';
 import { setCutout, CUT } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
@@ -308,7 +309,7 @@ function hookHero() {
 }
 hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
-let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
+let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null = null;
 const game = createGameplay({ takenK: () => (instinctOn && !inside ? 1.1 : 1), scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
 /** retrato isolado (bestiário e compêndio): renderiza um objeto sozinho, fundo transparente, luz de estúdio, e devolve um PNG */
 function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): string {
@@ -3118,8 +3119,31 @@ function enterHall(p: (typeof city.props)[number]) {
     game.logMsg('⛏ O Grande Salão de Brasaforja: a montanha respira aqui dentro', '#ffb060');
   });
 }
+/* ---------- o Castelo do Conde Vladislav (27/10): seis andares; entra-se pelo portão do térreo, sobe-se e desce-se pelas escadas ---------- */
+const CASTLE = city.props.find((p) => p.kind === 'monument' && p.variant === 1) ?? null;
+const CASTLE_DOOR = CASTLE ? { x: (CASTLE.gx + CASTLE.w / 2 + 1.6) * T, z: (CASTLE.gy + CASTLE.h + 1.4) * T } : null;
+let castleInt: CastleFloor | null = null;
+const CASTLE_MOBS: Record<number, [EnemyType, number][]> = { 0: [['ghoul', 4], ['skeleton', 4], ['vampire', 2], ['bat', 4]], 1: [['thrall', 5], ['bat', 4], ['ghoul', 2]] };
+function enterCastle(F: number, from?: 'up' | 'down') {
+  if (!CASTLE) return; const p = CASTLE; feats.max('castle', F);
+  withFade(() => {
+    if (inside) scene.remove(inside.int.group);
+    game.enemies.clearTag('castle');
+    const int = buildCastleFloor(F, p.gx * 31 + p.gy); castleInt = int;
+    int.group.position.set(IX, 0, IZ); scene.add(int.group);
+    inside = { int, ret: { x: p.gx + p.w / 2 + 0.8, y: p.gy + p.h + 1.4 }, prop: p, castle: F };
+    objs.group.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false;
+    const at = from === 'up' ? int.down : from === 'down' ? int.up : null; // chegou pela escada: aparece ao pé da escada oposta
+    state.fx = (IX + (at ? at.x : int.W / 2)) / T; state.fy = (IZ + (at ? at.z : int.D - 1.2)) / T; state.path = [];
+    heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D / 2; camY = 0;
+    const mobs = CASTLE_MOBS[F]; if (mobs) { const pts = [...int.spawnPts]; let pi = 0; const lvl = F === 0 ? 40 : 34, k = F === 0 ? 1.6 : 1.2;
+      for (const [type, n] of mobs) for (let i = 0; i < n; i++) { const q = pts[pi++ % pts.length]; game.enemies.spawn(type, IX + q.x + (Math.random() - 0.5) * 4, IZ + q.z + (Math.random() - 0.5) * 4, { tag: 'castle', hpMul: k, dmgMul: k, lvl, aggro: 22, leash: 999, net: `k${F}` }); } }
+    game.logMsg(`🦇 ${CASTLE_FLOORS[F]}${F === 5 ? ' — o Conde espera no trono' : F === 0 ? ' — aqui dorme a Corte antiga' : ''}`, '#e0a0b0');
+  });
+}
 function exitHouse() {
   if (!inside || exiting) return; const ins = inside;
+  if (ins.castle !== undefined) { game.enemies.clearTag('castle'); castleInt = null; }
   if (ins.crypt && ins.crypt > 1) { enterCrypt(ins.crypt - 1, ins.prop); return; }
   if (ins.crypt) { game.enemies.clearTag('crypt'); cryptInt = null; bishop = null; if (spirit) { scene.remove(spirit.root); spirit = null; } }
   if (ins.dg) dgs.stop();
@@ -3632,7 +3656,13 @@ function findInter(): Inter | null {
     if (inv.tool('rod') && !fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(wt!); }); }
   } else if (inside.prop.variant === 5 || inside.prop.variant === 4) add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
   if (spirit) add(Math.hypot(hx - spirit.x, hz - spirit.z) - 0.6, 3.2, 'E — Falar com Irmã Ysolde', talkSpirit);
-  if (inside) { const ins = inside; const lx = hx - IX, lz = hz - IZ; add(Math.hypot(lx - ins.int.W / 2, lz - ins.int.D), 2.4, ins.crypt && ins.crypt > 1 ? 'E — Subir' : ins.dg ? 'E — Voltar à superfície' : 'E — Sair', exitHouse);
+  if (inside) { const ins = inside; const lx = hx - IX, lz = hz - IZ; if (ins.castle === undefined || ins.castle === 2) add(Math.hypot(lx - ins.int.W / 2, lz - ins.int.D), 2.4, ins.crypt && ins.crypt > 1 ? 'E — Subir' : ins.dg ? 'E — Voltar à superfície' : 'E — Sair', exitHouse);
+  if (ins.castle !== undefined && castleInt) { const F = ins.castle, ci = castleInt;
+    if (ci.up) add(Math.hypot(lx - ci.up.x, lz - ci.up.z), 3.0, `E — Subir a escada (${CASTLE_FLOORS[F + 1]})`, () => enterCastle(F + 1, 'down'));
+    if (ci.down) add(Math.hypot(lx - ci.down.x, lz - ci.down.z), 3.0, `E — Descer a escada (${CASTLE_FLOORS[F - 1]})`, () => enterCastle(F - 1, 'up'));
+    if (ci.well) add(Math.hypot(lx - ci.well.x, lz - ci.well.z) - 1.2, 2.6, 'E — Olhar o Poço da Visão da Corte', () => { chat.sys('O sangue no poço mostra a colina inteira: cada morcego, cada caçador, cada convidado que sobe o caracol.'); });
+    if (ci.throne) add(Math.hypot(lx - ci.throne.x, lz - ci.throne.z), 3.2, 'E — Ajoelhar diante do Conde Vladislav', () => { const vam = profile?.path === 'vam'; chat.sys(vam ? 'Vladislav: "Levante-se. A Corte não ajoelha; a Corte espera. Quando a sua sede for educada, a piscina será sua."' : 'Vladislav: "Um vivo, no meu salão. Ou você tem muita coragem, ou alguém lá embaixo dormiu no posto. Fale com Lady Mirela, em Corvoscuro, se quer pertencer à noite."'); });
+  }
   if (ins.dg) dgs.interactions(hx, hz, add);
   if (ins.crypt && cryptInt) {
     const open = bloodFull(ins.crypt) || localStorage.getItem('karmika.crypt.done') === '1', f = ins.crypt;
@@ -3640,6 +3670,7 @@ function findInter(): Inter | null {
     if (cryptInt.stairs && f < 4) { const sx = IX + cryptInt.stairs.x, sz = IZ + cryptInt.stairs.z; add(Math.hypot(hx - sx, hz - sz), 3.4, open ? `E — Descer a escada em espiral (andar ${f + 1})` : `🩸 Escada em espiral — a taça pede ${BLOOD_NEED[f - 1] - Math.floor(blood[f - 1])} litros de sangue`, () => { if (open) enterCrypt(f + 1, ins.prop); }); }
     if (cryptInt.door && f === 4) { const dx = IX + cryptInt.door.x, dz = IZ + cryptInt.door.z, have = SEALS.filter((id) => inv.has(id)).length; add(Math.hypot(hx - dx, hz - dz), 3.4, have < 3 ? `🔒 Porta do Bispo — ${have}/3 selos (caem dos elites dos andares 2, 3 e 4)` : !open ? `🩸 Porta do Bispo — a taça ainda pede ${BLOOD_NEED[3] - Math.floor(blood[3])} litros` : 'E — Quebrar os três selos e abrir a Porta do Bispo', () => { if (have >= 3 && open) { cryptInt!.door!.open(); audio.boom(); game.logMsg('✝ Os selos estalam e a porta se abre. Além dela, o Bispo Caído.', '#ffd24a'); setTimeout(() => enterCrypt(5, ins.prop), 1400); } }); } }
     return best; }
+  if (CASTLE_DOOR) add(Math.max(0, Math.hypot(hx - CASTLE_DOOR.x, hz - CASTLE_DOOR.z) - 1.0) + 0.01, 3.0, 'E — Empurrar o portão do Castelo do Conde', () => enterCastle(2));
   if (HALL_GATE) { const gx0 = (HALL_GATE.gx + HALL_GATE.w / 2 + 0.5) * T, gz0 = (HALL_GATE.gy + 7.6) * T; add(Math.max(0, Math.hypot(hx - gx0, hz - gz0) - 1.2) + 0.01, 3.0, 'E — Abrir a porta de ferro e entrar no Grande Salão', () => enterHall(HALL_GATE)); }
   for (const p of city.props) if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church') { const dd = DOOR_OF.get(p); if (!dd) continue; const catLocked = p.kind === 'church' && p.variant === 2 && state.night < 0.5; add(Math.max(0, Math.hypot(hx - dd.x, hz - dd.z) - (p.kind === 'house' ? 0.6 : 1.4)) + 0.01, 2.8, catLocked ? '🔒 As portas da Catedral só se abrem à noite' : `E — Entrar${p.kind === 'temple' ? ' no Templo' : p.kind === 'church' ? (p.variant === 2 ? ' na Catedral Abandonada' : ' na Igreja Abandonada') : p.variant === 4 ? ' na Taverna' : p.variant === 5 ? ' na Loja do Armeiro' : ''}`, () => { if (catLocked) { game.logMsg('🌙 As portas de ferro não cedem. Dizem que a Catedral só respira depois que o sol morre.', '#c8b8ff'); return; } if (p.kind === 'church' && p.variant === 2) enterCrypt(1, p); else enterHouse(p); }); }
   if (!sitting) for (const p of city.props) if (p.kind === 'fountain') { const fx = (p.gx + p.w / 2) * T, fz = (p.gy + p.h / 2) * T, isHome = Math.abs(home.x - (p.gx + p.h / 2)) < 0.6 && Math.abs(home.y - (p.gy + p.h + 1)) < 0.6;
@@ -4076,7 +4107,7 @@ function frameBody() {
   gustU.value = Math.min(1, gust + aurFx * 0.25); /* na Aurora corre uma brisa a mais pelo capim */
   const WDX = 0.86, WDZ = 0.5; // direção do vento
   particles.wind.x = WDX * (0.4 + gust * 3.2); particles.wind.z = WDZ * (0.4 + gust * 3.2);
-  hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt) ? 1 : 0));
+  hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt || (inside.castle !== undefined && inside.castle < 2)) ? 1 : 0));
   { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
     const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
     const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); }
