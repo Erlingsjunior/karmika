@@ -9,7 +9,7 @@
    - Sem caminho (humano, anão, elfo) e o neutro não têm fraqueza kármica.
    - KARMA ACUMULADO (luz e sombra) sobe sem teto a vida inteira e é escrito na vida passada ao desencarnar. ---------- */
 export const KMAX = 1000;
-export const NATURE: Record<string, number> = { vam: -400, bru: -400, lob: -350, pal: 400, mag: 400, cac: 350, gue: 150, tec: 150 };
+export const NATURE: Record<string, number> = { vam: -400, bru: -400, lob: -350, pal: 400, mag: 400, cac: 350 }; /* guerreiro e tecnocrata são neutros: veja CHAOS */
 export const PATH_NAME: Record<string, string> = { vam: 'vampiro', bru: 'bruxo', lob: 'lobisomem', pal: 'paladino', mag: 'mago', cac: 'caçador de demônios', gue: 'guerreiro do Norte', tec: 'tecnocrata' };
 
 /** faixas do alinhamento (para textos e para quem precisa de um rótulo) */
@@ -31,3 +31,19 @@ export function strainOf(a: number, path: string | null, outcast = false): numbe
 }
 /** o castigo da fraqueza kármica (entra no balde da situação) */
 export const strainMod = (k: number) => ({ dmg: -0.2 * k, taken: 0.15 * k });
+
+/* ---------- Loucura kármica: guerreiro e tecnocrata (Erling, 27/10/2026) ----------
+   Os dois são neutros: não têm natureza, não temem a fraqueza kármica e não fazem Queda nem Renascimento.
+   O alinhamento deles flutua de −250 a +250 e o jogador precisa vigiar: nos extremos vem a LOUCURA.
+   - Guerreiro: sombra demais → BERSERKER (matador compulsivo); luz demais → ERMITÃO (pacifista, larga a luta).
+   - Tecnocrata: sombra demais → CIENTISTA LOUCO (arrogante, cruel, delírio de grandeza); luz demais → ACADÊMICO RECLUSO.
+   Entra-se na loucura a ±200. Só o RITUAL DE REALINHAMENTO tira (volta a 0). Avisos a ±150. */
+export const CHAOS_MAX = 250, CHAOS_IN = 200, CHAOS_WARN = 150;
+export type Madness = 'berserker' | 'ermitao' | 'louco' | 'academico';
+export const CHAOS: Record<string, { neg: Madness; pos: Madness }> = { gue: { neg: 'berserker', pos: 'ermitao' }, tec: { neg: 'louco', pos: 'academico' } };
+export const MADNESS: Record<Madness, { name: string; col: string; dmg: number; taken: number; line: string }> = {
+  berserker: { name: 'Berserker', col: '#ff5a3a', dmg: 0.1, taken: 0.15, line: 'O sangue não esfria mais. Você precisa matar, e mata além da conta.' },
+  ermitao: { name: 'Ermitão', col: '#a8d88a', dmg: -0.25, taken: 0, line: 'A espada pesa. Você só quer terra, madeira e silêncio.' },
+  louco: { name: 'Cientista Louco', col: '#b04aff', dmg: 0.05, taken: 0.15, line: 'Grandeza, só grandeza. O mundo é um laboratório e as criaturas, cobaias.' },
+  academico: { name: 'Acadêmico Recluso', col: '#8ac8ff', dmg: -0.25, taken: 0, line: 'Catalogar, medir, vender. A luta virou um borrão nas margens do caderno.' },
+};
