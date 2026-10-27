@@ -138,7 +138,7 @@ export const ITEMS: Record<string, Item> = {
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
 export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_cat: 300, pet_cat_b: 420, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
-export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string }
+export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string; /** abas da prateleira (27/10): cada aba lista os seus itens; sem abas, tudo junto */ tabs?: { name: string; items: string[] }[] }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
   armaduras: { title: 'Maren, a Armadureira', items: [], gear: ['armor', 'armor', 'helm', 'helm', 'boots', 'boots'], buys: { hide: 1.6 }, note: 'Couro, cota e placas. Paga bem por couro.' },
@@ -171,7 +171,8 @@ export const SHOPDEF: Record<string, ShopDef> = {
 for (const [k, f] of Object.entries(FEASTS)) { ITEMS[k] = { name: f.name, icon: f.icon, kind: 'food', col: f.slot === 'meal' ? 0xb05a2a : 0xd8a040, desc: `${f.desc}\n${f.slot === 'meal' ? 'Prato' : 'Bebida'} · ${FEAST_MIN} min: ${feastEff(f)}. Um prato e uma bebida por vez.`, heal: f.slot === 'meal' ? 40 : 12, buff: 'feast:' + k, sell: Math.round(f.price / 3) } as Item; PRICES[k] = f.price; }
 for (const [k, g] of Object.entries(GADGETS)) { ITEMS[k] = { name: g.name, icon: g.icon, kind: g.kind, col: g.col, desc: g.desc, tier: 3, sell: Math.round(g.price / 3) } as Item; PRICES[k] = g.price; }
 SHOPDEF.latao.items = ['sentinela', 'sentinela_2', 'sentinela_3', 'drone_cura', 'drone_cura_2', 'drone_cura_3', 'drone_choque', 'drone_choque_2', 'drone_choque_3', 'escudo_auto', 'escudo_auto_2', 'escudo_auto_3', 'obra_auto', 'obra_auto_2', 'obra_auto_3', 'reacao_azul', 'reacao_amarela', 'reacao_vermelha', 'carvao_azul', 'carvao_amarelo', 'carvao_vermelho', 'pet_cao_latao', 'pet_robo_faisca', ...SHOPDEF.latao.items];
-SHOPDEF.anoes_carav = { title: 'Carroça dos Anões de Brasaforja', items: [...Object.keys(FEASTS), 'porca_perfeita', 'parafuso_inexp', 'engrenagem_diam', 'inj_s', 'reator_1', 'bag_l', 'scroll_return', 'rope'], buys: { meat: 1.4, hide: 1.2, ore_i: 1.2 }, note: 'Carne na brasa, cerveja e vinho de Brasaforja. Para festa, é só contratar.' };
+SHOPDEF.latao.tabs = [{ name: '🤖 Engenhocas', items: ['sentinela', 'sentinela_2', 'sentinela_3', 'drone_cura', 'drone_cura_2', 'drone_cura_3', 'drone_choque', 'drone_choque_2', 'drone_choque_3', 'escudo_auto', 'escudo_auto_2', 'escudo_auto_3', 'obra_auto', 'obra_auto_2', 'obra_auto_3'] }, { name: '🧪 Reações e carvão', items: ['reacao_azul', 'reacao_amarela', 'reacao_vermelha', 'carvao_azul', 'carvao_amarelo', 'carvao_vermelho'] }, { name: '🐕 Companheiros', items: ['pet_cao_latao', 'pet_robo_faisca'] }, { name: '📦 Mercadoria', items: ['reator_1', 'reator_2', 'cristal_arcano', 'inj_s', 'semente_mod', 'sino_guarda', 'potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'] }];
+SHOPDEF.anoes_carav = { title: 'Carroça dos Anões de Brasaforja', items: [...Object.keys(FEASTS), 'porca_perfeita', 'parafuso_inexp', 'engrenagem_diam', 'bag_l', 'scroll_return', 'rope'], tabs: [{ name: '🍖 Mesa', items: Object.keys(FEASTS).filter((k) => FEASTS[k].slot === 'meal') }, { name: '🍺 Adega', items: Object.keys(FEASTS).filter((k) => FEASTS[k].slot === 'brew') }, { name: '⚙ Peças', items: ['porca_perfeita', 'parafuso_inexp', 'engrenagem_diam'] }, { name: '🎒 Viagem', items: ['bag_l', 'scroll_return', 'rope'] }], buys: { meat: 1.4, hide: 1.2, ore_i: 1.2 }, note: 'Carne na brasa, cerveja e vinho de Brasaforja. Para festa, é só contratar.' };
 export const SHOPS: Record<string, string[]> = Object.fromEntries(Object.entries(SHOPDEF).map(([k, v]) => [k, v.items]));
 export const RECIPES: { id: string; out: string; n: number; need: [string, number][]; keep?: string[]; label?: string }[] = [
   { id: 'axe', out: 'axe_s', n: 1, need: [['stick', 3], ['stone', 2], ['rope', 1]] },
@@ -221,7 +222,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   const eqG: Record<Slot, Gear | null> = { weapon: null, armor: null, shield: null, helm: null, boots: null, ring: null, ring2: null, amulet: null, relic: null, earring: null, earring2: null, shoulders: null, cape: null };
   let stock: Gear[] = [];
   const accClosed = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.acc') || '["craft"]') as string[]; } catch { return ['craft']; } })());
-  let open = false, charOpen = false, shop: string | null = null, shopTitle: string | null = null;
+  let open = false, charOpen = false, shop: string | null = null, shopTitle: string | null = null, shopTab = 0;
   const bags: string[] = []; // bolsas extras equipadas (ids de BAGS), até 4
   /* Bolsa de Ofício (60 espaços) e Bolsa Mágica (30): grandes, mas com fim. O que passar do limite ocupa a mochila comum */
   const CRAFT_CAP = 60, MAGIC_CAP = 30;
@@ -403,9 +404,9 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       const price = shopPrice;
       const sd = SHOPDEF[shop] ?? { title: shop, items: [] };
       const shelf = [...(sd.gear || sd.fac ? stock.map((g) => `<div class="it gi shelf ${st.gold >= price(g) ? '' : 'poor'}" data-gbuy="${g.uid}" data-g="s:${g.uid}" style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${RARITY[g.rarity].col}44"><span>${gearIcon(g)}</span><b style="color:${RARITY[g.rarity].col}">${g.ilvl}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small><i class="ptag">🪙${price(g)}</i></div>`) : []),
-        ...SHOPS[shop].map((i) => `<div class="it shelf ${st.gold >= buyP(i) ? '' : 'poor'}" data-buy="${i}" title="${ITEMS[i].name}: ${ITEMS[i].desc}"><span>${ITEMS[i].icon}</span><small>${ITEMS[i].name}</small><i class="ptag">🪙${buyP(i)}</i></div>`)];
+        ...(sd.tabs ? (sd.tabs[Math.min(shopTab, sd.tabs.length - 1)]?.items ?? []) : SHOPS[shop]).map((i) => `<div class="it shelf ${st.gold >= buyP(i) ? '' : 'poor'}" data-buy="${i}" title="${ITEMS[i].name}: ${ITEMS[i].desc}"><span>${ITEMS[i].icon}</span><small>${ITEMS[i].name}</small><i class="ptag">🪙${buyP(i)}</i></div>`)];
       sh.innerHTML = `<div class="pn shoppn"><h2>${shopTitle ?? sd.title} <span class="gold">🪙 ${st.gold}</span><button data-x2>✕</button></h2>${sd.note ? `<small class="note">${sd.note}</small>` : ''}
-        <h3>Prateleira</h3><div class="grid g5">${shelf.join('')}</div>
+        ${sd.tabs ? `<div class="stabs">${sd.tabs.map((t, i) => `<button class="${i === Math.min(shopTab, sd.tabs!.length - 1) ? 'on' : ''}" data-stab="${i}">${t.name}</button>`).join('')}</div>` : '<h3>Prateleira</h3>'}<div class="grid g5">${shelf.join('')}</div>
         <small class="ft">clique na prateleira: comprar · clique na sua mochila: vender (Ctrl: 50 · Shift: tudo) · arraste da mochila para cá: vender</small></div>`;
       sh.style.display = 'flex';
     } else sh.style.display = 'none';
@@ -469,7 +470,8 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     if (t.closest('[data-vgear]')) { let n = 0; for (const g of [...gearBag]) if (deposit(`g:${g.uid}`, true)) n++; render(); save(); game.logMsg(n ? `📦 ${n} equipamento${n > 1 ? 's' : ''} guardado${n > 1 ? 's' : ''} no baú.` : 'Nenhum equipamento na mochila.', '#ffe08a'); return; }
     const o = (t.closest('[data-vout]') as HTMLElement | null)?.dataset.vout; if (o) withdraw(o); });
   sh.addEventListener('click', (e) => {
-    const t = (e.target as HTMLElement).closest('[data-buy],[data-sell],[data-x2],[data-gbuy],[data-gsell]') as HTMLElement | null; if (!t) return;
+    const t = (e.target as HTMLElement).closest('[data-buy],[data-sell],[data-x2],[data-gbuy],[data-gsell],[data-stab]') as HTMLElement | null; if (!t) return;
+    if (t.dataset.stab !== undefined) { shopTab = +t.dataset.stab; render(); return; }
     if ('x2' in t.dataset) { shop = null; render(); return; }
     if (t.dataset.buy) { const i = t.dataset.buy; if (PREMIUM_BAGS.has(i) && !isPremium()) { game.logMsg(`✦ ${ITEMS[i].name} é exclusivo do Premium.`, '#c9a0ff'); game.snd?.('error'); return; } if (st.gold < buyP(i)) { game.logMsg(`Ouro insuficiente: ${ITEMS[i].name} custa ${buyP(i)} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!BAGS[i] && !canAdd(i, 1)) { game.logMsg('🎒 Mochila cheia! Venda ou use algo antes, ou compre uma bolsa maior.', '#ff9a8a'); game.snd?.('error'); return; } st.gold -= buyP(i); add(i, 1, true); game.logMsg(`🛒 Comprou ${ITEMS[i].icon} ${ITEMS[i].name} por ${buyP(i)} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); }
     const priceOf = (i: string) => Math.round((ITEMS[i].sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[i] ? SHOPDEF[shop].buys![i] : 1));
@@ -551,7 +553,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     toggleChar() { charOpen = !charOpen; render(); },
     canAdd, canAddGear, capacity, usedSlots, bagCount: () => bags.length,
     openShop(id: string, title?: string) {
-      open = true; shop = id; vaultOpen = false; shopTitle = title ?? null; // a mochila abre junto com a loja (arrasta para vender)
+      open = true; shop = id; vaultOpen = false; shopTitle = title ?? null; shopTab = 0; // a mochila abre junto com a loja (arrasta para vender)
       const sd = SHOPDEF[id]; if (sd?.fac) stock = facSet(sd.fac, FAC_ILVL); else if (sd?.gear) stock = sd.gear.map((s, i) => genGear(Math.max(1, st.lvl + (i % 3)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), s)); else stock = [];
       render();
     },
