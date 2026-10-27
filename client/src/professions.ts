@@ -72,6 +72,15 @@ export const RECIPES2: Recipe[] = [
   { id: 'drone_cura', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['porca_perfeita', 1], ['parafuso_inexp', 1], ['engrenagem_diam', 1], ['herb_g', 3]], out: ['drone_cura', 1], label: 'Drone de Cura Automatizada (tecnocratas)' },
   { id: 'drone_choque', prof: 'ferreiro', lvl: 32, cls: ['Tecnocrata'], need: [['porca_perfeita', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 2]], out: ['drone_choque', 1], label: 'Bobina de Choque Automatizado (tecnocratas)' },
   { id: 'escudo_auto', prof: 'ferreiro', lvl: 34, cls: ['Tecnocrata'], need: [['porca_perfeita', 2], ['parafuso_inexp', 1], ['engrenagem_diam', 2], ['ore_i', 3]], out: ['escudo_auto', 1], label: 'Escudo Automatizado (tecnocratas)' },
+  /* Mk II e Mk III (27/10): mais turnos e mais força, mais peças dos anões */
+  { id: 'sentinela_2', prof: 'ferreiro', lvl: 42, cls: ['Tecnocrata'], need: [['sentinela', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2], ['ore_ag', 2]], out: ['sentinela_2', 1], label: 'Robô Sentinela Mk II (tecnocratas)' },
+  { id: 'sentinela_3', prof: 'ferreiro', lvl: 55, cls: ['Tecnocrata'], need: [['sentinela_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 3], ['gem', 2]], out: ['sentinela_3', 1], label: 'Robô Sentinela Mk III (tecnocratas)' },
+  { id: 'drone_cura_2', prof: 'ferreiro', lvl: 42, cls: ['Tecnocrata'], need: [['drone_cura', 1], ['engrenagem_diam', 1], ['herb_m', 2]], out: ['drone_cura_2', 1], label: 'Drone de Cura Mk II (tecnocratas)' },
+  { id: 'drone_cura_3', prof: 'ferreiro', lvl: 55, cls: ['Tecnocrata'], need: [['drone_cura_2', 1], ['engrenagem_diam', 2], ['sap', 2]], out: ['drone_cura_3', 1], label: 'Drone de Cura Mk III (tecnocratas)' },
+  { id: 'drone_choque_2', prof: 'ferreiro', lvl: 44, cls: ['Tecnocrata'], need: [['drone_choque', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1]], out: ['drone_choque_2', 1], label: 'Bobina de Choque Mk II (tecnocratas)' },
+  { id: 'drone_choque_3', prof: 'ferreiro', lvl: 56, cls: ['Tecnocrata'], need: [['drone_choque_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 2], ['gem', 1]], out: ['drone_choque_3', 1], label: 'Bobina de Choque Mk III (tecnocratas)' },
+  { id: 'escudo_auto_2', prof: 'ferreiro', lvl: 46, cls: ['Tecnocrata'], need: [['escudo_auto', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2]], out: ['escudo_auto_2', 1], label: 'Escudo Automatizado Mk II (tecnocratas)' },
+  { id: 'escudo_auto_3', prof: 'ferreiro', lvl: 58, cls: ['Tecnocrata'], need: [['escudo_auto_2', 1], ['porca_perfeita', 3], ['engrenagem_diam', 3], ['ore_ag', 3]], out: ['escudo_auto_3', 1], label: 'Escudo Automatizado Mk III (tecnocratas)' },
   { id: 'axe_st', prof: 'ferreiro', lvl: 30, need: [['ore_i', 10], ['ore_ag', 2], ['plank', 2]], out: ['axe_st', 1] },
   { id: 'pick_st', prof: 'ferreiro', lvl: 30, need: [['ore_i', 10], ['ore_ag', 2], ['plank', 2]], out: ['pick_st', 1] },
   // costureiro

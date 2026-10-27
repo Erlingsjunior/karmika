@@ -59,3 +59,24 @@ export const GADGETS: Record<string, Gadget> = {
   parafuso_inexp: { name: 'O Parafuso Inespanável', icon: '🔧', price: 32, kind: 'res', col: 0xb8b8c8, desc: 'A rosca é tão justa que a chave cansa antes dele. Diz a lenda que um anão foi enterrado com um, para o caixão nunca abrir.' },
   engrenagem_diam: { name: 'A Engrenagem Diamantada', icon: '⚙', price: 70, kind: 'res', col: 0xd8e8ff, desc: 'Dentes com pó de diamante: nunca gasta. A Companhia de Latão compra todas que os anões fazem, e os anões cobram cada vez mais.' },
 };
+
+/* ---------- Níveis das engenhocas de turno (Erling, 27/10): Mk I · Mk II · Mk III ----------
+   Mk I dura 1 turno (30 min), é a mais barata e a mais fraca; Mk II dura 2 turnos (1 hora); Mk III dura 4 turnos (2 horas) e é a mais forte e cara.
+   O id do Mk I é o de sempre (ex.: 'sentinela'); os outros levam _2 e _3. */
+export const TIMED = ['sentinela', 'drone_cura', 'drone_choque', 'escudo_auto', 'obra_auto'] as const;
+export const MK = ['I', 'II', 'III'];
+/** turnos de cada nível: 30 min, 1 hora, 2 horas */
+export const TURNS = [1, 2, 4];
+export const PRICE_K = [1, 2.3, 4];
+/** o poder de cada nível (índice 0..2) */
+export const TIER: Record<string, { what: (t: number) => string }> = {
+  sentinela: { what: (t) => `descarga a cada ${[1.2, 1, 0.8][t]} s em quem chega a ${[12, 14, 16][t]} m, ${['fraca', 'média', 'forte'][t]}` },
+  drone_cura: { what: (t) => `+${[2, 3, 4][t]}% de vida a cada 6 s` },
+  drone_choque: { what: (t) => `raio a cada ${[4, 3.5, 3][t]} s no inimigo mais perto (${[7, 8, 9][t]} m), ${['fraco', 'médio', 'forte'][t]}` },
+  escudo_auto: { what: (t) => `segura um golpe inteiro a cada ${[25, 20, 15][t]} s` },
+  obra_auto: { what: (t) => `cada peça de obra gasta ${[50, 40, 30][t]}% dos materiais` },
+};
+export const tierOf = (id: string) => { const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
+export const baseOf = (id: string) => id.replace(/_(2|3)$/, '');
+for (const b of TIMED) { const g0 = GADGETS[b]; for (let t = 0; t < 3; t++) { const id = t ? `${b}_${t + 1}` : b, turns = TURNS[t];
+  GADGETS[id] = { ...g0, name: `${g0.name} Mk ${MK[t]}`, price: Math.round(g0.price * PRICE_K[t]), desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nMk ${MK[t]}: dura ${turns} turno${turns > 1 ? 's' : ''} (${turns === 1 ? '30 min' : turns / 2 + (turns === 2 ? ' hora' : ' horas')}) · ${TIER[b].what(t)}.` }; } }
