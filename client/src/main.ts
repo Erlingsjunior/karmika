@@ -2732,7 +2732,8 @@ const free = (x: number, y: number, squeeze = false) => inside ? inside.int.free
 /** chão do herói: o terreno ou o degrau/patamar de prédio por cima dele (world3d.stepAt), se estiver ao alcance de um passo */
 function heroGround(xm: number, zm: number) { const g = heightAt(xm, zm), s = stepAt(xm, zm); return s !== null && s > g && s - heroY < 0.8 ? s : g; }
 /** degrau alto demais (a lateral do plinto, um muro baixo): barra em vez de atravessar */
-const stepBlock = (x: number, y: number) => { if (inside || onWall) return false; const s = stepAt(x * T, y * T); return s !== null && s - heroY > 0.8 && s > heightAt(x * T, y * T) + 0.06; };
+const stepBlock = (x: number, y: number) => { if (inside || onWall) return false; const s = stepAt(x * T, y * T); if (!(s !== null && s - heroY > 0.8 && s > heightAt(x * T, y * T) + 0.06)) return false;
+  /* preso dentro do degrau (teleporte, saída de prédio): se o lugar onde ele está também é alto demais, deixa andar (27/10) */ const h = stepAt(state.fx * T, state.fy * T); return !(h !== null && h - heroY > 0.8); };
 /* muros baixos e cercas (25/10): colisão pelo segmento desenhado, não pelo tile — o vão que se vê é o vão que se passa */
 const LOWW = new Map<number, { ax: number; ay: number; bx: number; by: number }[]>();
 for (const p of city.props) if (p.kind === 'lowwall') { const cx = p.gx + (p.ox ?? T / 2) / T, cy = p.gy + (p.oz ?? T / 2) / T, hl = ((p.len ?? T) / T) / 2, ry = p.ry ?? 0, ux = Math.cos(ry), uy = -Math.sin(ry), sg = { ax: cx - ux * hl, ay: cy - uy * hl, bx: cx + ux * hl, by: cy + uy * hl };
@@ -3077,7 +3078,7 @@ function exitHouse() {
   if (ins.crypt) { game.enemies.clearTag('crypt'); cryptInt = null; bishop = null; if (spirit) { scene.remove(spirit.root); spirit = null; } }
   if (ins.dg) dgs.stop();
   exiting = true;
-  withFade(() => { scene.remove(ins.int.group); inside = null; objs.group.visible = true; for (const n of npcSys.npcs) n.hero.root.visible = true; state.fx = ins.ret.x; state.fy = ins.ret.y; state.path = []; objs.update(state.fx * T, state.fy * T, true); heroY = heightAt(state.fx * T, state.fy * T); camX = state.fx * T; camZ = state.fy * T; camY = heroY; exiting = false; });
+  withFade(() => { scene.remove(ins.int.group); inside = null; objs.group.visible = true; for (const n of npcSys.npcs) n.hero.root.visible = true; state.fx = ins.ret.x; state.fy = ins.ret.y; state.path = []; objs.update(state.fx * T, state.fy * T, true); { const g0 = heightAt(state.fx * T, state.fy * T), s0 = stepAt(state.fx * T, state.fy * T); heroY = s0 !== null && s0 > g0 ? s0 : g0; } /* 27/10: a porta da catedral fica na escadaria: sair com a altura do degrau, não da terra embaixo */ camX = state.fx * T; camZ = state.fy * T; camY = heroY; exiting = false; });
 }
 let sitting: { x: number; y: number; yaw: number } | null = null;
 const hintEl = document.getElementById('act') as HTMLElement;
