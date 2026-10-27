@@ -312,7 +312,7 @@ const npcSys = createNpcs(scene, [
     const RANK = ['Sargento', 'Soldado', 'Soldado'], NM = [['Osvald', 'Finn', 'Bragi'], ['Sigrun', 'Kari', 'Hakon'], ['Dag', 'Tove', 'Ulf'], ['Ingrid', 'Bjarne', 'Rolf'], ['Erlend', 'Gyda', 'Sten'], ['Halle', 'Vidar', 'Liv'], ['Orm', 'Tyra', 'Geir'], ['Svein', 'Runa', 'Ketil']];
     PATROLS.forEach(([a, b], pi) => { const l = (city.roadLinks ?? []).find((q) => (q.a === a && q.b === b) || (q.a === b && q.b === a)); if (!l) return; let p = city.roadPaths[l.i]; if (!p || p.length < 20) return; if (l.a !== a) p = [...p].reverse();
       const route = p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T }));
-      for (let k = 0; k < 3; k++) out.push({ name: `${RANK[k]} ${NM[pi % NM.length][k]}`, role: `Patrulha de ${a}`, kind: 'nordic', x: route[0].x, z: route[0].z, radius: 0, tint: 0x5a6a8a, scale: 1.0, pace: 2.1, ri0: Math.max(0, 2 - k * 2),
+      for (let k = 0; k < 3; k++) out.push({ name: `${RANK[k]} ${NM[pi % NM.length][k]}`, role: `Patrulha de ${a}`, kind: 'nordic', x: route[0].x, z: route[0].z, radius: 0, tint: 0x5a6a8a, scale: 1.0, pace: 2.1, ri0: Math.min(route.length - 3, Math.floor(route.length * ((0.23 + pi * 0.37) % 0.8)) + Math.max(0, 2 - k * 2)), /* cada patrulha começa num ponto da estrada (antes as 9 nasciam juntas dentro de Karmika: ~550 desenhos na praça) */
         lines: k === 0 ? [`Patrulha de ${a}. A estrada até ${b} está sob nossa vista.`, 'Fique na estrada, caminhante. No mato ninguém ouve você gritar.', 'Se vir fumaça fora da estrada, não vá olhar. Avise a torre.'] : ['Marchando desde a alvorada. As botas é que sabem.', `O sargento diz que ${b} nos espera com cerveja. Duvido.`, 'Ontem foram lobos. Hoje, salteadores. Amanhã, quem sabe.'], route }); });
     return out; })(),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
@@ -2694,7 +2694,9 @@ const xray = createXray();
   xray.setTrees(city.props.filter((p) => p.kind === 'tree').map((p) => { const x = (p.gx + 0.5) * T, z = (p.gy + 0.5) * T, h = p.height ?? 6; return { x, z, y0: groundH(x, z), h, r: Math.max(1.1, Math.min(3.2, h * 0.3)), alive: () => !(p as { gone?: boolean }).gone }; })); }
 function updateXray(dt: number) {
   const hp = hero.root.position, who: { root: THREE.Object3D; at: THREE.Vector3; want: boolean; trees?: boolean }[] = [{ root: hero.root, at: hp, want: !inside && !cine, trees: true }];
-  for (const n of npcSys.npcs) { const d = Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z); if (d < 7) who.push({ root: n.hero.root, at: n.pos, want: !inside && !cine }); }
+  /* NPC: só os 2 mais perto e que não estão de passagem (patrulha/caravana) — cada silhueta custa ~60 desenhos (26/10 noite) */
+  const nn = npcSys.npcs.filter((n) => !n.def.route && n.hero.root.visible).map((n) => ({ n, d: Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z) })).filter((q) => q.d < 7).sort((a, b) => a.d - b.d).slice(0, 2);
+  for (const { n } of nn) who.push({ root: n.hero.root, at: n.pos, want: !inside && !cine });
   xray.update(dt, camera.position, who);
 }
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
@@ -3816,8 +3818,9 @@ function frameBody() {
   pm('jogo(inimigos)');
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   if (rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
-  updateGuide(dt); updateInstinct(dt); updateCaravans(dt); updateEventos(dt); updateSecrets(dt); build.update(mouse.x, mouse.z);
-  pm('chefes/sistemas');
+  pm('chefes');
+  updateGuide(dt); pm('guia'); updateInstinct(dt); pm('instinto'); updateCaravans(dt); pm('caravanas'); updateEventos(dt); pm('eventos'); updateSecrets(dt); pm('segredos'); build.update(mouse.x, mouse.z);
+  pm('construção');
   if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubbleEl.style.display = 'none'; else { const r = canvas.getBoundingClientRect(); const v = new THREE.Vector3(heroPos.x, heroPos.y + 2.4, heroPos.z).project(camera); bubbleEl.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; bubbleEl.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px'; } }
   bannerT -= dt; if (bannerT <= 0) { bannerT = 0.5; updateBanner(); } updateGevChip(rawDt); alignTick(rawDt);
   pm('balões/banner');
@@ -3988,9 +3991,9 @@ function frameBody() {
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });
   pm('aura');
   if (dashT > 0) for (let i = 0; i < 3; i++) particles.spawn(heroPos.x, 0.3 + Math.random() * 1.4, heroPos.z, { vx: (Math.random() - 0.5) * 0.6, vy: 0.2, vz: (Math.random() - 0.5) * 0.6, life: 0.35, s0: 1.4, s1: 0.2, c0: 0xcfe0ff, c1: 0x6a4aff, a: 0.5, drag: 2 });
-  lightPool(rawDt);
+  lightPool(rawDt); pm('luzes');
   updateInstFx(rawDt);
-  pm('luzes/instfx');
+  pm('instfx');
   atmos.update(rawDt, t, heroPos, aurFx, luaV, gust, (x, z) => heightAt(x, z), !!inside);
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt);

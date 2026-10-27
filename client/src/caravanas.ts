@@ -249,8 +249,13 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); ctx.scene.add(h.root); }
     try { g1.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); g2.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
     c.crew = [drv, g1, g2]; }
-  function ensureModel(c: Car) { if (c.w) return; c.w = c.route.kind === 'dwarf' ? buildOreCart() : c.route.kind === 'human' ? buildMerchantWagon() : buildSteamWagon(); ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0)) topple(c.w); }
-  function dropModel(c: Car) { if (!c.w) return; ctx.scene.remove(c.w.root); c.w = null; for (const h of c.crew) ctx.scene.remove(h.root); c.crew = []; }
+  /* 26/10 noite (desempenho): a carroça das rotas do mundo que sai de perto fica GUARDADA (fora da cena) e volta igual quando você
+     chega — antes ela era montada de novo (carroça, cavalos e tripulação) toda vez que cruzava os 120 m, um soluço de vários ms. */
+  const parked = new Map<string, { w: NonNullable<Car['w']>; crew: Car['crew'] }>();
+  function ensureModel(c: Car) { if (c.w) return; const pk = c.mode === 'ambient' ? parked.get(c.key) : undefined;
+    if (pk) { parked.delete(c.key); c.w = pk.w; c.crew = pk.crew; ctx.scene.add(c.w.root); for (const h of c.crew) ctx.scene.add(h.root); return; }
+    c.w = c.route.kind === 'dwarf' ? buildOreCart() : c.route.kind === 'human' ? buildMerchantWagon() : buildSteamWagon(); ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0)) topple(c.w); }
+  function dropModel(c: Car) { if (!c.w) return; ctx.scene.remove(c.w.root); for (const h of c.crew) ctx.scene.remove(h.root); if (c.mode === 'ambient' && !c.w.fallen) parked.set(c.key, { w: c.w, crew: c.crew }); c.w = null; c.crew = []; }
   function say(c: Car, t: string) { if (!c.w) return; const p = c.w.root.position; ctx.bubble(p.x, p.y + 3.2, p.z, t); c.bubbleT = 4; }
 
   function startEscort(id: string) { const r = routes.get(id); if (!r) return false; cars.get('esc:' + id) && stopEscort(id);
@@ -290,7 +295,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       evShown = { slot: ev.slot, r: ev.r, s: ev.s }; } else evShown = null;
     const placed: { x: number; z: number }[] = [];
     for (const c of [...cars.values()]) {
-      const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) && !inside;
+      const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) + (c.w ? 20 : 0) && !inside; /* +20 m para quem já está montada: não monta e desmonta na borda */
       if (!near) { if (c.w) dropModel(c); if (c.mode === 'event' && c.spawned && !c.cleared && ev && c.slot !== ev.slot) { ctx.clearTag('car:' + c.key); cars.delete(c.key); } continue; }
       ensureModel(c); const w = c.w!;
       // escolta: anda só com você perto; emboscadas em pontos fixos
