@@ -199,7 +199,7 @@ export function createMasmorras(ctx: DgCtx) {
   /** a entrada no mundo (entradas.ts): escadaria que desce, luz, placa entalhada e o que o tema pede */
   function mouth(d: DgDef, x: number, z: number) {
     const { g, fx } = buildEntrance({ name: d.name, kind: d.kind, theme: d.theme, players: d.players, scaled: true }, ctx.fine);
-    g.position.set(x, ctx.heightAt(x, z), z); g.rotation.y = Math.PI / 4; /* de frente para a câmera (que olha de 45°): a escada desce para dentro da tela */ ctx.scene.add(g);
+    g.position.set(x, ctx.heightAt(x, z), z); g.rotation.y = Math.PI / 4; /* de frente para a câmera (que olha de 45°): a escada desce para dentro da tela */ g.userData.farCull = true; ctx.scene.add(g);
     const el = document.createElement('div'); el.className = 'dgname' + (d.kind === 'grupo' ? ' grp' : ''); el.innerHTML = `<b>${d.name}</b><small>${d.kind === 'grupo' ? '⚔ Masmorra' : d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · ${d.players} · acompanha o seu nível</small>`; document.body.appendChild(el);
     efx.push({ x, z, fx, el, y: g.position.y }); return g;
   }

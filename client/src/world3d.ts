@@ -543,7 +543,7 @@ export function buildWorld(world: World): WorldObjs {
     return g;
   }
 
-  const STATIC_KINDS = new Set(['dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor']);
+  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);
@@ -568,7 +568,7 @@ export function buildWorld(world: World): WorldObjs {
         else if (ek.west > 0.5 && R() < 0.25) extra.push({ kind: 'tree', gx, gy, w: 1, h: 1, height: 4 + R() * 2, wall: 0x3a2a1c, roof: 0x2a3a22, variant: 1 });
       }
     }
-    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
+    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
     L.trees.length = 0; mergeTrees(L); mergeChunkProps(L);
     /* congela as matrizes do que não se mexe: com ~30 mil objetos no mundo, recalcular todas a cada quadro custava ~20 ms */
     L.group.updateMatrixWorld(true);

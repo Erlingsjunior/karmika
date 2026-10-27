@@ -1415,6 +1415,12 @@ export function buildCity(): World {
     void idxOf;
     const isGate = new Map<number, number>(); // índice → centro do portão
     for (const g of gateIdx) for (let d = -2; d <= 2; d++) isGate.set(((g + d) % N + N) % N, g);
+    /* REGRA DE OURO (Erling, 27/10): TODA estrada que sai da cidade tem passagem aberta no muro. Qualquer rua que cruza o anel e não ganhou
+       portão vira uma abertura (vão de 3 casas sem muro, com torre de guarda ao lado); nenhuma estrada morre numa parede. */
+    const opening = new Set<number>();
+    { const isRd = (i: number) => { const [x, y] = ring[i]; const t = map[y]?.[x]; if (t === 'road' || t === 'plaza') return true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (map[y + dy]?.[x + dx] === 'road' && map[y - dy]?.[x - dx] === 'road') return true; return false; };
+      let i = 0; while (i < N) { if (!wallOk[i] || isGate.has(i) || !isRd(i)) { i++; continue; } let j = i; while (j + 1 < N && isRd(j + 1)) j++; const c = Math.floor((i + j) / 2);
+        if (![...isGate.keys()].some((g) => Math.min(Math.abs(g - c), N - Math.abs(g - c)) < 5)) for (let d = -1; d <= 1; d++) opening.add(((c + d) % N + N) % N); i = j + 1; } }
     const tiles = new Set<number>(); const flights: Flight[] = [];
     const tangent = (i: number) => { const a = ring[((i - 3) % N + N) % N], b = ring[(i + 3) % N]; let tx = b[0] - a[0], ty = b[1] - a[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L; const ox = ring[i][0] - cx, oy = ring[i][1] - cy; if (ty * ox - tx * oy < 0) { tx = -tx; ty = -ty; } /* fora = tangente girada −90° */ return [tx, ty]; };
     const outRy = (i: number) => { const [tx, ty] = tangent(i); return Math.atan2(-(ty), tx); }; // +x local = tangente; −z local = fora
@@ -1422,11 +1428,13 @@ export function buildCity(): World {
     const towerAt = new Map<number, number>(); let lastStyle = -1;
     { let i = Math.floor(rw() * 8); while (i < N) { if (wallOk[i] && !isGate.has(i) && ![1, 2, 3, 4].some((d) => isGate.has((i + d) % N) || isGate.has(((i - d) % N + N) % N))) { let style = Math.floor(rw() * 4); if (style === lastStyle) style = (style + 1) % 4; lastStyle = style; towerAt.set(i, style); } i += 11 + Math.floor(rw() * 7); } }
     for (let i = 0; i < N; i++) { const i0 = ((i - 1) % N + N) % N, i1 = (i + 1) % N; if (wallOk[i] && (!wallOk[i0] || !wallOk[i1])) towerAt.set(i, 8); } // ponta do muro na água: torre redonda de guarda
+    for (let i = 0; i < N; i++) { const i0 = ((i - 1) % N + N) % N, i1 = (i + 1) % N; if (!opening.has(i) && wallOk[i] && !isGate.has(i) && (opening.has(i0) || opening.has(i1))) towerAt.set(i, 2); } // torre aberta de guarda ao lado de cada abertura
     // 5) as peças
     for (let i = 0; i < N; i++) { const [x, y] = ring[i]; if (!wallOk[i]) continue; const t = map[y][x]; if (t === 'water') continue;
       const gc = isGate.get(i); if (gc !== undefined) { if (gc === i) { const ry = outRy(i); props.push({ kind: 'gatehouse', gx: x, gy: y, w: 1, h: 1, height: H + 1.5, wall: 0x8a857e, roof: [0x34445e, 0x5a3a28, 0x3a4a3a][gateIdx.indexOf(gc) % 3], variant: 0, ry, len: 5 }); }
         // sob o arco a estrada passa (3 casas do meio); as 2 de cada lado são corpo do portão
         const d = Math.min(Math.abs(i - gc), N - Math.abs(i - gc)); clearAt(x, y); if (d <= 1) { if (t !== 'road' && t !== 'plaza') map[y][x] = 'road'; } else map[y][x] = 'wall'; tiles.add(y * 4096 + x); continue; }
+      if (opening.has(i)) { clearAt(x, y); if (t !== 'road' && t !== 'plaza') map[y][x] = 'road'; continue; } // abertura da estrada: sem muro (as torres de guarda ficam nas casas vizinhas do anel)
       clearAt(x, y); map[y][x] = 'wall'; tiles.add(y * 4096 + x);
       const ts = towerAt.get(i); const ry = outRy(i);
       if (ts !== undefined) { const v = ts === 8 ? 8 : [8, 9, 10, 12][ts]; props.push({ kind: 'rtower', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: [0x34445e, 0x5a3a28, 0x3a4a3a, 0x4a4a52][Math.floor(rw() * 4)], variant: v, ry, len: v === 12 ? 0 : 2.4 + rw() * 2.6 }); }
