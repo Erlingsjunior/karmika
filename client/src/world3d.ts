@@ -5,7 +5,7 @@ import { SCALE, TILE_M as T } from '@karmika/shared';
 import { type World, type Prop, MAP_W, MAP_H, groundH, rng, edgeK, WL, veinOf, rotLocal, canalX, CANAL_HW } from './world';
 import { buildTree } from './trees3d';
 import { RUNAS } from './runas';
-import { buildRampart, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
+import { buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
@@ -71,6 +71,12 @@ interface Loaded { terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; 
    carrega, as faces de cima (viradas para o céu) dos seus degraus e plataformas baixas (até 2,2 m acima do chão) viram um mapa de
    alturas de 25 cm. O herói sobe o que estiver a até ~0,55 m do pé (um degrau) e é barrado pelo que for mais alto (a lateral do plinto). */
 const STEP_RES = 0.25, stepMap = new Map<number, number>(), stepDone = new WeakSet<object>();
+/** muralha orgânica (27/10): gira um prédio construído "para o norte" (fora = −z local) em volta do seu centro local (cxL, czL) e o põe no centro da casa */
+function spinB(b: Built, ry: number, cxL: number, czL: number): Built {
+  const piv = new THREE.Group(); b.group.position.set(-cxL, 0, -czL); piv.add(b.group); piv.rotation.y = ry; piv.position.set(T / 2, 0, T / 2);
+  const rot = (v: THREE.Vector3) => { const x = v.x - cxL, z = v.z - czL; v.x = T / 2 + x * Math.cos(ry) + z * Math.sin(ry); v.z = T / 2 - x * Math.sin(ry) + z * Math.cos(ry); };
+  for (const q of b.glows) rot(q.pos); for (const q of b.smoke) rot(q); for (const q of b.torches) rot(q.pos); return { ...b, group: piv };
+}
 const STEP_KINDS = new Set(['temple', 'church', 'castle', 'academy', 'monument', 'gothic', 'gatehouse', 'landmark', 'house', 'shopfront', 'mausoleum', 'tower', 'altar', 'station']);
 const sKey = (ix: number, iz: number) => (iz + 32768) * 65536 + (ix + 32768);
 /** altura do degrau/plataforma de prédio neste ponto (m), ou null */
@@ -153,9 +159,9 @@ export function buildWorld(world: World): WorldObjs {
       if (p.kind === 'monument') b = buildMonument(v, Wm, Dm); else if (p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico') b = buildVapor(p.kind, v, Wm, Dm, p.gx * 31 + p.gy * 17); else
       if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0, p.len ?? 6, p.ox ?? 1, p.oz ?? 1); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17, p.len, p.broken ?? 0, p.ox ?? 1, p.oz ?? 1); else
       if (p.kind === 'landmark') b = buildLandmark(v, Wm, Dm); else if (p.kind === 'palisade') b = buildPalisade(v === 1, p.gx * 3 + p.gy); else if (p.kind === 'totem') b = buildTotem(v); else
-      if (p.kind === 'rwall') b = buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
-      else if (p.kind === 'rtower') b = buildWallTower(v & 3, p.height, v >= 4, p.roof);
-      else if (p.kind === 'gatehouse') b = buildGatehouse(v, Math.max(p.w, p.h), p.height, p.roof);
+      if (p.kind === 'rwall') b = p.ry !== undefined ? spinB(buildRampartSeg(p.height, p.len ?? T, p.gx * 7 + p.gy * 13, v), p.ry, T / 2, T / 2) : buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
+      else if (p.kind === 'rtower') b = p.ry !== undefined ? spinB(v >= 8 && v < 12 ? buildRoundTower(p.height, p.len ?? 3, p.roof, v === 10, p.gx * 7 + p.gy * 13) : buildWallTower(0, p.height, v === 12, p.roof), p.ry, T / 2, T / 2) : buildWallTower(v & 3, p.height, v >= 4, p.roof);
+      else if (p.kind === 'gatehouse') b = p.ry !== undefined ? spinB(buildGatehouse(0, p.len ?? 5, p.height, p.roof), p.ry, (p.len ?? 5) * T / 2, T / 2) : buildGatehouse(v, Math.max(p.w, p.h), p.height, p.roof);
       else if (p.kind === 'wstair') b = buildWallStair(v >> 1, Math.max(p.w, p.h), v & 1 ? 1 : -1, p.height);
       else if (p.kind === 'castle') b = buildCastle(Wm, Dm, p.wall, p.roof);
       else if (v === 20) { g.add(buildGothic(Wm, Dm, p.wall, p.roof, true)); L.glows.push({ light: nullLight, base: 44, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 6, p.gy * T + Dm + 3), color: 0xffb060 } as WorldObjs['glowLights'][number]); }

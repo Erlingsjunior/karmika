@@ -77,6 +77,35 @@ export function buildRampart(side: number, H: number, seed: number): Built {
   return K.out;
 }
 
+/** MURALHA ORGÂNICA (27/10, regra 19): um trecho de muro centrado na casa, correndo ao longo do eixo x local (comprimento len,
+ *  até o centro da casa seguinte, com sobra para não abrir fresta nas curvas); o lado de fora é −z local. O chamador gira o grupo.
+ *  Corpo de 2 m, sapata por fora, cordão de pedra, lajes do caminho de ronda, ameias por fora e mureta por dentro. */
+export function buildRampartSeg(H: number, len: number, seed: number, tone = 0): Built {
+  const K = kit(), c = T / 2, sm = stone(tone === 1 ? 0x8a7a6a : tone === 2 ? 0x6e6a66 : 0x7e7a74), dk = stone(tone === 1 ? 0x6a5a4a : 0x5e5a56), L = len + 0.7;
+  K.box(L, H, T, c, 0, c, sm);
+  K.box(L, 1.4, 0.5, c, 0, c - (T / 2 + 0.2), dk); // sapata (talude) por fora
+  K.box(L, 0.18, 0.25, c, H - 0.9, c - (T / 2 + 0.08), dk); // cordão
+  K.box(L - 0.02, 0.1, T - 0.02, c, H, c, stone(0x5a5650)); // lajes do caminho
+  const ez = c - (T / 2 - 0.22); K.box(L, 0.5, 0.44, c, H, ez, sm);
+  const n = Math.max(1, Math.round(L / 1.0)); for (let k = 0; k < n; k++) { if (k % 2) continue; K.box(0.62, 0.8, 0.44, c - L / 2 + (k + 0.5) * (L / n), H + 0.5, ez, sm); }
+  K.box(L, 0.36, 0.24, c, H, c + (T / 2 - 0.12), dk); // mureta por dentro
+  if (seed % 3 === 0) K.slit(c, H * 0.55, c - (T / 2 + 0.01), 0);
+  return K.out;
+}
+/** torre redonda da muralha orgânica: tambor de pedra, cordão, mirante com ameias (o caminho de ronda atravessa), telhado cônico
+ *  ou plataforma aberta com braseiro; `extra` = quanto sobe acima do caminho. Lado de fora = −z local. */
+export function buildRoundTower(H: number, extra: number, roofC: number, open: boolean, seed: number): Built {
+  const K = kit(), c = T / 2, R = 2.1 + (seed % 3) * 0.25, sm = stone(0x76726c), dk = stone(0x56524e);
+  K.cyl(R, R + 0.35, H, c, 0, c - 0.5, sm, 14); K.cyl(R + 0.5, R + 0.7, 1.2, c, 0, c - 0.5, dk, 14);
+  K.cyl(R + 0.15, R + 0.15, 0.22, c, H - 0.25, c - 0.5, dk, 14); K.cyl(R, R, 0.1, c, H, c - 0.5, stone(0x5a5650), 14);
+  const y2 = H + extra; K.cyl(R, R, extra, c, H, c - 0.5, sm, 14); K.cyl(R + 0.3, R + 0.3, 0.4, c, y2, c - 0.5, dk, 14);
+  for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2; K.box(0.5, 0.8, 0.5, c + Math.cos(a) * (R + 0.05), y2 + 0.4, c - 0.5 + Math.sin(a) * (R + 0.05), sm, -a); }
+  if (open) { K.torch(c, y2 + 0.5, c - 0.5); K.add(new THREE.CylinderGeometry(0.5, 0.35, 0.6, 8), ironM(), c, y2 + 0.7, c - 0.5); }
+  else { K.cone(R + 0.2, 3.6 + (seed % 2) * 0.8, c, y2 + 0.4, c - 0.5, slate(roofC), 12, 0); K.add(new THREE.ConeGeometry(0.08, 0.9, 4), goldM(), c, y2 + 4.6 + (seed % 2) * 0.8, c - 0.5, 0, false); }
+  for (let k = 0; k < 2; k++) K.slit(c, H * (0.35 + k * 0.3), c - 0.5 - R - 0.01, 0);
+  K.window_(0.4, 0.7, c, H + extra * 0.5, c - 0.5 - R - 0.01, 0);
+  return K.out;
+}
 /** torre de vigia da muralha: base maciça até o caminho; no alto, um mirante aberto (quatro pilares) por onde o caminho de ronda passa;
  *  laje, ameias e telhado de ardósia em pirâmide; um braseiro aceso dentro */
 export function buildWallTower(side: number, H: number, corner: boolean, roofC: number): Built {
