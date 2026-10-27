@@ -1232,12 +1232,16 @@ export function buildCity(): World {
   /* tochas ao longo das estradas perto da vila: uma de cada lado, alternadas */
   for (const rp of roadPaths) for (let i = 6; i < rp.length - 2; i += 7) { const q = rp[i], d = Math.hypot(q.x - CITY.x, q.y - CITY.y); if (d < 16 || d > 42) continue; const nx = rp[i + 1].y - rp[i - 1].y, ny = -(rp[i + 1].x - rp[i - 1].x), L = Math.hypot(nx, ny) || 1, sd2 = (i / 7) % 2 ? 2.2 : -2.2; torch(Math.round(q.x + nx / L * sd2), Math.round(q.y + ny / L * sd2)); }
   /* árvores, pedras e vegetação por bioma */
-  const dens: Record<Biome, number> = { meadow: 0.04, forest: 0.3, swamp: 0.1, snow: 0.1, ruins: 0.05, rock: 0.02, volcanic: 0.02, enchanted: 0.26, blight: 0.07, jungle: 0.5, coast: 0.015 };
+  /* 27/10 (Erling: "não precisa ser tão fechada; clareiras, espaços, não um monte de mato que não conseguimos sequer ver o jogo"):
+     mata e selva mais abertas, e CLAREIRAS de verdade: onde o ruído largo passa do limiar, não nasce árvore (bolsões de 10–30 casas) */
+  const dens: Record<Biome, number> = { meadow: 0.04, forest: 0.22, swamp: 0.09, snow: 0.09, ruins: 0.05, rock: 0.02, volcanic: 0.02, enchanted: 0.2, blight: 0.06, jungle: 0.3, coast: 0.015 };
+  const clearing = (x: number, y: number) => fbm(x * 0.045, y * 0.045, 58) > 0.62 || fbm(x * 0.02, y * 0.02, 59) > 0.66;
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
     if (map[y][x] !== 'grass') continue;
     const bm = biome[y][x];
     const cluster = 0.35 + 1.3 * fbm(x * 0.12, y * 0.12, 21);
     if (r() > dens[bm] * cluster) continue;
+    if ((bm === 'forest' || bm === 'jungle' || bm === 'enchanted') && clearing(x, y)) continue;
     if (Math.hypot(x - CITY.x, y - CITY.y - 3) < 12) continue; // praça e arredores livres
     if (nearSettle(x, y, 0)) continue;
     let near = false;
@@ -1496,6 +1500,8 @@ export function buildCity(): World {
       for (let y = 96; y <= 106; y++) for (let x = 640; x <= 651; x++) if (inb(x, y) && Math.hypot(x - 645.5, y - 101.5) < 5 && map[y][x] === 'grass' && !(x >= 645 && x <= 646 && y >= 100 && y <= 101)) map[y][x] = 'road';
       for (let y = 122; y <= 131; y++) for (let x = 596; x <= 605; x++) if (inb(x, y) && Math.hypot(x - 600.5, y - 126.5) < 4.5 && map[y][x] === 'grass') map[y][x] = 'plaza'; }
     { const o = MONU.uivo, s0 = site('Uivo Antigo', o.x, o.y, 18, 18, 7, 'Árvore-Mãe do Uivo', 'jungle', 16); if (s0.vv) road([[s0.vv.x, s0.vv.y - 3], [o.x + 0.5, s0.gy + 18 + 2]], 1.1, 0.3);
+      /* 27/10 (Erling: "não consigo me aproximar da árvore"): só o tronco é sólido (colisão no main); o resto do terreno da árvore é chão */
+      for (let yy = s0.gy; yy < s0.gy + 18; yy++) for (let xx = s0.gx; xx < s0.gx + 18; xx++) if (inb(xx, yy) && map[yy][xx] === 'wall') map[yy][xx] = 'grass';
       scatter(o.x, o.y, 11, 20, 40, (x, y, k) => { if (k % 3 === 0) props.push({ kind: 'totem', gx: x, gy: y, w: 1, h: 1, height: 3.8, wall: 0, roof: 0, variant: 0 }); else { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 6 + rnd() * 3, wall: 0x4a3220, roof: 0x2a4a2a, variant: 0 }); map[y][x] = 'tree'; } }); }
   }
   /* relíquias dos caminhantes (pedras de viagem): só onde se precisa ir — na saída de cada cidade e vila, à beira da estrada,

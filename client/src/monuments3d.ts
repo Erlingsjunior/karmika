@@ -157,19 +157,32 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     // a cabeça partida de um rei antigo, meio enterrada
     { const hx = cx - R * 0.55, hz = cz + R * 0.55; const hd = K.add(new THREE.SphereGeometry(2.6, 10, 8), stone(0x5a5460), hx, 1.4, hz); hd.scale.set(1, 1.2, 1); hd.rotation.z = 0.5; K.add(new THREE.ConeGeometry(0.9, 2.2, 5), stone(0x5a5460), hx + 0.6, 4.2, hz - 0.4).rotation.z = 0.7; K.plane(0.8, 0.4, hx + 1.2, 2.2, hz + 2.3, vi, 0.4); }
     K.out.glows.push({ pos: new THREE.Vector3(cx, 3, cz), color: 0xa05aff, base: 60 }, { pos: new THREE.Vector3(cx, 22, cz), color: 0xa05aff, base: 50 });
-  } else if (id === 7) { // ÁRVORE-MÃE DO UIVO: tronco colossal com raízes em arco, a toca da matilha dentro, copa enorme, a pedra da lua e o lago de luar
-    const bark = mat('bark2', () => std(0xffffff, { map: stoneTex(0x4a3628) })), leaf = flat(0x2a4a2e), leaf2 = flat(0x3a5a34), moon = glow(0xdce8ff);
-    K.cyl(4.2, 6.4, 24, cx, 0, cz - 1, bark, 14);
-    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2 + 0.2; const rt = K.add(new THREE.TorusGeometry(3.6, 0.9, 6, 10, Math.PI * 0.6), bark, cx + Math.cos(a) * 5.5, 0.6, cz - 1 + Math.sin(a) * 5.5); rt.rotation.set(Math.PI / 2, 0, -a + Math.PI / 2); rt.rotateX(-Math.PI / 2.4); }
-    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, br = K.add(new THREE.CylinderGeometry(0.8, 1.6, 12, 8), bark, cx + Math.cos(a) * 4.5, 26, cz - 1 + Math.sin(a) * 4.5); br.rotation.set(Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9); }
-    for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2, r = k ? 8.5 : 0, s0 = k ? 7.2 : 9.5; const c2 = K.add(new THREE.IcosahedronGeometry(s0, 1), k % 2 ? leaf : leaf2, cx + Math.cos(a) * r, 33 + (k % 3) * 2.2, cz - 1 + Math.sin(a) * r); c2.scale.y = 0.62; }
-    // a toca da matilha: entrada em arco no tronco, crânio de lobo gigante em cima
-    { const ez = cz - 1 + 6.2; K.plane(3, 4.2, cx, 2.1, ez + 0.05, dark()); const a = K.arch(5.2, 6, 1.2, 3, 3, bark); a.position.set(cx, 0, ez); K.add(new THREE.SphereGeometry(1.6, 10, 8), flat(0xe8dcc0), cx, 7.2, ez + 0.6).scale.set(1, 0.8, 1.4);
-      for (const s of [-1, 1]) { K.add(new THREE.ConeGeometry(0.4, 1.4, 4), flat(0xe8dcc0), cx + s * 1.0, 8.4, ez + 0.4).rotation.z = s * 0.4; K.add(new THREE.ConeGeometry(0.22, 1.8, 5), flat(0xe8dcc0), cx + s * 2.8, 6.6, ez + 0.8).rotation.z = s * 0.9; K.torch(cx + s * 2.4, 0, ez + 1.6, 0xff8a3a); } }
-    // a pedra da lua: um disco aceso sobre um lago redondo de luar
-    { const px = cx + 5.5, pz = Dm - 3; K.cyl(2.4, 2.6, 0.3, px, 0, pz, stone(0x6a6a72), 18); K.add(new THREE.CircleGeometry(2.1, 18).rotateX(-Math.PI / 2), glowA(0xb8d0ff, 0.65), px, 0.34, pz, 0, false);
-      K.box(0.7, 4.2, 0.4, px, 0.3, pz - 2.6, stone(0x8a8a90)); K.add(new THREE.CircleGeometry(1.4, 24), moon, px, 6.2, pz - 2.6, 0, false); K.out.glows.push({ pos: new THREE.Vector3(px, 3, pz), color: 0xb8d0ff, base: 40 }); }
-    K.out.glows.push({ pos: new THREE.Vector3(cx, 3, cz + 7), color: 0xff8a3a, base: 36 }); K.out.smoke.push(new THREE.Vector3(cx, 30, cz));
+  } else if (id === 7) { // ÁRVORE-MÃE DO UIVO (27/10, Erling): a árvore-toca IMENSA, CAÍDA no meio da selva; o tronco é a moradia da Mãe-Alfa. Raízes reviradas numa ponta, a copa partida na outra, musgo, cogumelos, ossos; a boca da toca aberta no flanco virado para a vila; a estátua da Mãe Loba amamentando as crianças humanas no caminho
+    const bark = mat('bark2', () => std(0xffffff, { map: stoneTex(0x4a3628) })), barkD = mat('bark3', () => std(0xffffff, { map: stoneTex(0x3a2a1e) })), moss = flat(0x3a6a2e), leaf = flat(0x2a4a2e), leaf2 = flat(0x4a7a3a), bone = flat(0xe8dcc0), st = stone(0x8a8a90);
+    const R = 5.6, L = Wm - 4, tz = cz - 2, ty = R - 0.6; // o tronco afundado 60 cm na terra
+    const trunk = K.add(new THREE.CylinderGeometry(R, R * 1.15, L, 16), bark, cx, ty, tz); trunk.rotation.z = Math.PI / 2;
+    for (let k = 0; k < 7; k++) { const x = 3 + k * (L / 6); const ring = K.add(new THREE.TorusGeometry(R * (1.02 + (k % 2) * 0.03), 0.25, 5, 16), barkD, x, ty, tz, 0, false); ring.rotation.y = Math.PI / 2; } // as cascas em anéis
+    for (let k = 0; k < 18; k++) { const x = 2 + (k * 1.73) % L, a = (k * 0.9) % Math.PI; K.add(new THREE.SphereGeometry(0.9 + (k % 3) * 0.5, 6, 5), moss, x, ty + Math.sin(a) * R * 0.9, tz - Math.cos(a) * R * 0.9); } // musgo por cima e pelo lado da sombra
+    for (let k = 0; k < 9; k++) { const x = 4 + k * 3.1; K.add(new THREE.CylinderGeometry(0.5 + (k % 3) * 0.3, 0.1, 0.35, 7), flat(k % 2 ? 0xd9b45a : 0xc08a4a), x, ty + 0.4 + (k % 2) * 0.6, tz + R - 0.1).rotation.x = Math.PI / 2; } // orelhas-de-pau
+    // a ponta das raízes (oeste): o disco de terra erguido e as raízes retorcidas no ar
+    { const rx = 2; K.add(new THREE.CylinderGeometry(R * 1.7, R * 1.5, 1.6, 14), barkD, rx, ty, tz, 0).rotation.z = Math.PI / 2;
+      for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, rr0 = R * 1.2 + (k % 3) * 1.2, root = K.add(new THREE.ConeGeometry(0.55, 4 + (k % 4) * 2, 6), bark, rx - 1.2, ty + Math.sin(a) * rr0, tz + Math.cos(a) * rr0); root.rotation.z = Math.PI / 2 + Math.cos(a) * 0.4; root.rotation.x = -Math.sin(a) * 0.6; } }
+    // a ponta da copa (leste): o tronco partido em lascas, galhos mortos e três galhos vivos subindo com folhas
+    { const ex = L + 1; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; K.add(new THREE.ConeGeometry(1.2, 4.5, 5), barkD, ex + 1.5, ty + Math.sin(a) * R * 0.7, tz + Math.cos(a) * R * 0.7).rotation.z = -Math.PI / 2; }
+      for (let k = 0; k < 4; k++) { const a = -0.3 + k * 0.5; const br = K.add(new THREE.CylinderGeometry(0.35, 0.7, 9, 7), bark, ex - 2 - k * 1.5, ty + 4, tz + (k % 2 ? 2.5 : -2.5)); br.rotation.z = a + 0.3; br.rotation.x = (k % 2 ? -0.5 : 0.5); }
+      for (let k = 0; k < 3; k++) { const x = 8 + k * 9; const b2 = K.add(new THREE.CylinderGeometry(0.3, 0.5, 7, 7), bark, x, ty + R + 2.6, tz - 1); b2.rotation.x = -0.25; K.add(new THREE.IcosahedronGeometry(3.2 + (k % 2), 1), k % 2 ? leaf : leaf2, x + 0.6, ty + R + 6.6, tz - 2.4); K.add(new THREE.IcosahedronGeometry(2.2, 1), leaf2, x - 1.6, ty + R + 5.2, tz - 1.4); } }
+    // a boca da toca: um rasgo em arco no flanco virado para a vila, escuro, com um crânio de lobo e tochas; a Mãe-Alfa mora aqui dentro
+    { const mx = cx + 2, mz = tz + R * 0.75; const a = K.arch(6.2, 7, 2.6, 4, 3.6, barkD); a.position.set(mx, 0, mz + 0.4); K.plane(3.8, 5.4, mx, 2.7, mz + 0.3, dark());
+      K.add(new THREE.SphereGeometry(1.1, 10, 8), bone, mx, 7.4, mz + 0.6); for (const s2 of [-1, 1]) K.add(new THREE.ConeGeometry(0.28, 1.0, 4), bone, mx + s2 * 0.7, 8.2, mz + 1.0).rotation.z = s2 * 0.35; K.add(new THREE.ConeGeometry(0.16, 1.2, 5), bone, mx, 6.5, mz + 1.5).rotation.x = 0.9;
+      K.torch(mx - 4.4, 0, mz + 2.2, 0xffa050); K.torch(mx + 4.4, 0, mz + 2.2, 0xffa050); K.out.glows.push({ pos: new THREE.Vector3(mx, 2.5, mz + 2.5), color: 0xff8a3a, base: 30 });
+      for (let k = 0; k < 7; k++) K.add(new THREE.CylinderGeometry(0.08, 0.14, 0.7 + (k % 3) * 0.4, 5), bone, mx - 5 + k * 1.6, 0.35, mz + 3.4 + (k % 2) * 0.8, 0, false).rotation.z = (k % 2 ? 0.5 : -0.4); }
+    // a estátua da Mãe Loba: a loba gigante deitada, de pedra, amamentando três crianças humanas; no caminho, entre a vila e a toca
+    { const sx = cx + 9.5, sz = Dm - 4.5; K.cyl(3.6, 3.9, 0.5, sx, 0, sz, stone(0x6a6a72), 14);
+      K.box(5.2, 1.9, 2.2, sx, 0.5, sz, st); K.add(new THREE.SphereGeometry(1.2, 10, 8), st, sx + 2.9, 1.9, sz - 0.3); K.box(1.0, 0.7, 0.9, sx + 3.9, 1.5, sz - 0.3, st); for (const s2 of [-1, 1]) K.add(new THREE.ConeGeometry(0.3, 0.9, 4), st, sx + 2.6, 3.0, sz - 0.3 + s2 * 0.6);
+      K.box(1.6, 0.6, 0.6, sx - 3.2, 0.8, sz + 0.4, st).rotation.y = 0.4; K.box(0.8, 0.5, 0.5, sx - 2.6, 0.5, sz - 0.8, st); K.box(0.8, 0.5, 0.5, sx + 1.8, 0.5, sz + 1.2, st); // cauda e patas
+      for (let k = 0; k < 3; k++) { const x = sx - 1.6 + k * 1.3, z = sz + 1.45; K.box(0.5, 0.9, 0.4, x, 0.5, z, st); K.add(new THREE.SphereGeometry(0.3, 7, 6), st, x, 1.6, z); K.box(0.9, 0.18, 0.18, x, 1.1, z + 0.1, st); } // as crianças, ajoelhadas junto ao ventre
+      K.plane(3.2, 0.5, sx, 0.75, sz + 2.2, flat(0xd9b45a)); K.out.glows.push({ pos: new THREE.Vector3(sx, 2.4, sz + 2.5), color: 0xffd27a, base: 18 }); }
+    K.out.smoke.push(new THREE.Vector3(cx + 2, R * 2 - 1, tz));
   } else if (id === 8) { // A GRANDE CALDEIRA (Porto Caldeira, 27/10): a caldeira-mãe da cidade, de cobre rebitado, sobre um embasamento de tijolo, com duas chaminés, manômetros acesos, tubos que somem no chão e válvulas soltando vapor
     const brick = stone(0x7a4a3a), iron = flat(0x3a3d44), copper = flat(0xa8603a), brass = flat(0xc8963a), dial = glow(0xffe6a0), steam = glowA(0xe8f0ff, 0.35);
     K.box(Wm - 1, 1.4, Dm - 1, cx, 0, cz, brick); K.box(Wm - 2.4, 0.5, Dm - 2.4, cx, 1.4, cz, stone(0x5a4a40));

@@ -2780,6 +2780,9 @@ function stationNear(prof: string, reach = 6) { if (inside) return null; const h
 const cutV = new THREE.Vector3();
 const SOLID_R: Record<string, number> = { rock: 0.32, chimney: 0.5, crane: 0.7, boat: -1, station: 0.72, noticeboard: 0.3, mailbox: 0.2, vault: 0.36, shopfront: 1.2, fountain: -1, deadwell: -1, bench: 0.24, stall: 0.6, chest: 0.24, torch: 0.1, relic: 0.4, tent: 0.85, grave: 0.18, angel: 0.38, obelisk: 0.34, saint: 0.38, altar: 0.55, campfire: 0.26, gpillar: 0.24, mausoleum: -1 };
 const solids = new Map<number, { x: number; y: number; r: number }[]>();
+const solidAdd = (c: { x: number; y: number; r: number }) => { for (let ty = Math.floor(c.y - c.r - 0.3); ty <= Math.floor(c.y + c.r + 0.3); ty++) for (let tx = Math.floor(c.x - c.r - 0.3); tx <= Math.floor(c.x + c.r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } };
+/* a Árvore-Mãe caída (27/10): só o tronco barra, em círculos ao longo dele; o terreno em volta é chão */
+for (const p of city.props) if (p.kind === 'monument' && p.variant === 7) for (let k = 0; k < 6; k++) solidAdd({ x: p.gx + 1.5 + k * 3.1, y: p.gy + p.h / 2 - 1, r: 2.8 });
 for (const p of city.props) { const r0 = SOLID_R[p.kind]; if (r0 === undefined) continue; const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }
 /* as casas de ofício da cidade (25/10) têm paredes de fundo e laterais: corpo de verdade, a frente fica aberta */
