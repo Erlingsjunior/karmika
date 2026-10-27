@@ -46,6 +46,25 @@ export function buildVapor(kind: 'dock' | 'boat' | 'chimney' | 'crane' | 'portic
       if ((seed >> 1) % 3 === 0) K.lamp(wx + (v === 1 ? 1.4 : -1.4), Dm * 0.5);
       if ((seed >> 2) % 4 === 0) { K.box(0.9, 0.9, 0.9, wx + (v === 1 ? 1.6 : -1.6), 0, Dm * 0.2, wood(0x6a4a2c)); K.cyl(0.42, 0.42, 0.9, wx + (v === 1 ? 2.4 : -2.4), 0, Dm * 0.3, plank(0x5a3a22), 10); }
     }
+  } else if (kind === 'boat' && v >= 3) { // CARGUEIRO A VAPOR (27/10, regra 19: navio maior do que casa): casco de ferro rebitado ao longo do eixo maior, convés com escotilhas, castelo de popa, ponte, duas chaminés, mastro de carga com lança, bote salva-vidas, âncora e nome em latão
+    const alongX = Wm >= Dm, L = Math.max(Wm, Dm) - 0.6, Bw = Math.min(Wm, Dm) - 0.8, hull = flat(v === 4 ? 0x3a2a26 : 0x2a3036), hull2 = flat(v === 4 ? 0x6a2a22 : 0x8a2a22), deck = plank(0x7a5a32), ry = alongX ? 0 : Math.PI / 2;
+    const P = (x: number, z: number): [number, number] => alongX ? [cx + x, cz + z] : [cx - z, cz + x]; // (ao longo, através) → mundo
+    const bx = (w: number, h: number, d: number, x: number, y: number, z: number, m: THREE.Material) => { const [X, Z] = P(x, z); K.box(alongX ? w : d, h, alongX ? d : w, X, y, Z, m); };
+    bx(L * 0.7, 2.4, Bw, 0, -1.2, 0, hull); bx(L * 0.7 + 0.2, 0.5, Bw + 0.1, 0, 0.0, 0, hull2); // casco e a linha d'água vermelha
+    for (const s0 of [-1, 1]) { const [X, Z] = P(s0 * L * 0.35, 0); const bow = K.add(new THREE.CylinderGeometry(Bw / 2, Bw / 2 * 0.7, 2.9, 10, 1, false, 0, Math.PI), hull, X, 0.25, Z, ry + (s0 > 0 ? -Math.PI / 2 : Math.PI / 2), 0); bow.scale.x = s0 > 0 ? 1.6 : 1.0; }
+    for (let k = 0; k < L * 0.7 / 0.9; k++) for (const sz of [-Bw / 2 - 0.02, Bw / 2 + 0.02]) { const [X, Z] = P(-L * 0.35 + 0.45 + k * 0.9, sz); K.add(new THREE.SphereGeometry(0.06, 5, 4), flat(RUST), X, 0.3, Z, 0, 0, false); } // rebites
+    bx(L * 0.78, 0.14, Bw + 0.2, 0, 1.2, 0, flat(BRASS)); bx(L * 0.76, 0.1, Bw - 0.3, 0, 1.3, 0, deck); // amurada de latão e convés
+    for (let k = 0; k < L * 0.76 / 1.3; k++) for (const sz of [-Bw / 2 + 0.12, Bw / 2 - 0.12]) { const [X, Z] = P(-L * 0.38 + 0.6 + k * 1.3, sz); K.cyl(0.05, 0.06, 0.9, X, 1.35, Z, flat(IRON), 5); } for (const sz of [-Bw / 2 + 0.12, Bw / 2 - 0.12]) bx(L * 0.74, 0.05, 0.05, 0, 2.2, sz, flat(IRON)); // balaustrada
+    for (const x of [-L * 0.2, -L * 0.02, L * 0.14]) { bx(2.4, 0.6, Bw * 0.5, x, 1.4, 0, wood(0x4a3a2a)); bx(2.6, 0.1, Bw * 0.5 + 0.2, x, 2.0, 0, flat(IRON)); } // escotilhas de carga
+    bx(L * 0.2, 2.2, Bw - 1.0, -L * 0.3, 1.4, 0, wood(0x5a4a3a)); bx(L * 0.2 + 0.3, 0.14, Bw - 0.7, -L * 0.3, 3.6, 0, flat(IRON)); // castelo de popa
+    bx(L * 0.1, 1.6, Bw - 1.6, -L * 0.3, 3.74, 0, wood(0x6a5a4a)); bx(L * 0.1 + 0.3, 0.12, Bw - 1.3, -L * 0.3, 5.34, 0, flat(IRON)); // ponte de comando
+    for (let k = -2; k <= 2; k++) { const [X, Z] = P(-L * 0.3 + k * 0.7, (Bw - 1.6) / 2 + 0.01); K.add(new THREE.CircleGeometry(0.16, 8), glow(0xffd27a), X, 4.5, Z, ry, 0, false); const [X2, Z2] = P(-L * 0.3 + k * 0.7, -(Bw - 1.6) / 2 - 0.01); K.add(new THREE.CircleGeometry(0.16, 8), glow(0xffd27a), X2, 4.5, Z2, ry, 0, false); }
+    for (const x of [-L * 0.12, -L * 0.02]) { const [X, Z] = P(x, 0); K.funnel(X, 1.4, Z, 0.55, 4.2, v === 4 ? COPPER : IRON); K.out.smoke.push(new THREE.Vector3(X, 6.0, Z)); }
+    { const [X, Z] = P(L * 0.22, 0); K.cyl(0.14, 0.18, 9, X, 1.4, Z, flat(IRON), 6); const [X2, Z2] = P(L * 0.22, 0); const boom = K.add(new THREE.CylinderGeometry(0.08, 0.1, 6.5, 6), wood(0x5a4a3a), X2, 6.2, Z2, 0, 0); boom.rotation.z = alongX ? -0.9 : 0; boom.rotation.x = alongX ? 0 : 0.9; K.add(new THREE.BoxGeometry(0.9, 0.9, 0.9), wood(0x6a4a2c), X2 + (alongX ? 2.6 : 0), 3.2, Z2 + (alongX ? 0 : -2.6), 0); K.out.glows.push({ pos: new THREE.Vector3(X, 10.6, Z), color: 0xff4a3a, base: 6 }); }
+    { const [X, Z] = P(-L * 0.2, Bw / 2 + 0.5); const lb = K.add(new THREE.CylinderGeometry(0.5, 0.35, 2.2, 8), wood(0x8a6a3a), X, 3.0, Z, 0, Math.PI / 2); lb.rotation.set(0, ry, Math.PI / 2); }
+    { const [X, Z] = P(L * 0.33, Bw / 2 + 0.3); K.add(new THREE.TorusGeometry(0.35, 0.07, 5, 10), flat(IRON), X, 0.6, Z, ry, 0); }
+    { const [X, Z] = P(L * 0.1, Bw / 2 + 0.02); K.add(new THREE.PlaneGeometry(2.2, 0.4), flat(BRASS), X, 0.9, Z, ry, 0, false); }
+    K.out.glows.push({ pos: new THREE.Vector3(cx, 5.2, cz), color: 0xffc070, base: 10 });
   } else if (kind === 'boat') {
     const L = Math.min(Wm, 7.2) - 0.4, Bw = 2.4, hull = flat(v === 1 ? 0x8a2a22 : v === 2 ? 0x2a3a4a : 0x2a4a3a), deck = plank(0x8a6a3a);
     // casco: corpo + proa e popa afiladas, borda de latão, convés

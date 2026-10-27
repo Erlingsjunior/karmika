@@ -252,5 +252,24 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     { const a = K.arch(5, 7, 1.2, 2.6, 3.6, iv, true); a.position.set(cx, 2, cz + 4.2); K.plane(2.6, 5, cx, 2 + 2.5, cz + 3.6, glow(0x7ab8e8)); for (const s of [-1, 1]) K.torch(cx + s * 3.2, 2, cz + 5.4, 0x9ad8ff); }
     K.out.glows.push({ pos: new THREE.Vector3(cx, 4, cz + 6), color: 0x9ad8ff, base: 40 });
   }
+  if (id === 10) { // O FAROL TECNOCRÁTICO (27/10, regra 19): numa ilha de pedras diante de Porto Caldeira; torre cônica de ferro rebitado sobre base de tijolo,
+    // escada em caracol por fora, cinta de engrenagens, lanterna de latão com o feixe girando, tubo de vapor e sirene, casa do faroleiro ao pé
+    const br = stone(0x6a4036), ir = flat(0x3a3d44), brass = flat(0xc8963a), rust = flat(0x8a4a2a), ir2 = flat(0x2a2c32), H = 22;
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2, r = Math.min(Wm, Dm) * 0.5 + 1.0 + (k % 3) * 0.6, h = 1.5 + (k % 4) * 0.8; const b = K.add(new THREE.DodecahedronGeometry(1.6 + (k % 3) * 0.5, 0), stone(0x4a4a48), cx + Math.cos(a) * r, -h * 0.4, cz + Math.sin(a) * r); b.scale.set(1.2, h / 2, 1.2); }
+    K.cyl(3.4, 4.2, 3.0, cx, 0, cz, br, 12); K.cyl(3.6, 3.6, 0.4, cx, 3.0, cz, ir, 12); // base de tijolo e a cinta
+    K.cyl(1.7, 3.0, H - 6, cx, 3.4, cz, ir, 12); // a torre cônica de ferro
+    for (let f = 0; f < 5; f++) { const y = 5 + f * 3.2, r = 3.0 - (3.0 - 1.7) * ((y - 3.4) / (H - 6)); K.cyl(r + 0.12, r + 0.12, 0.25, cx, y, cz, rust, 12); for (let q = 0; q < 16; q++) { const a = q / 16 * Math.PI * 2; K.add(new THREE.SphereGeometry(0.08, 5, 4), brass, cx + Math.cos(a) * (r + 0.13), y + 0.12, cz + Math.sin(a) * (r + 0.13), 0, false); } }
+    for (let k = 0; k < 40; k++) { const t = k / 40, a = t * Math.PI * 4.5, y = 3.4 + t * (H - 7), r = 3.0 - (3.0 - 1.7) * t + 0.55; K.box(0.9, 0.08, 0.5, cx + Math.cos(a) * r, y, cz + Math.sin(a) * r, ir2, -a); K.cyl(0.03, 0.03, 0.9, cx + Math.cos(a) * (r + 0.4), y, cz + Math.sin(a) * (r + 0.4), ir2, 4); } // escada em caracol
+    { const y = H - 3.2; for (let q = 0; q < 3; q++) { const a = q / 3 * Math.PI * 2; const gear = K.add(new THREE.TorusGeometry(0.9, 0.18, 6, 10), brass, cx + Math.cos(a) * 2.2, y, cz + Math.sin(a) * 2.2, a); gear.rotation.x = Math.PI / 2; for (let t = 0; t < 8; t++) { const b = t / 8 * Math.PI * 2; K.add(new THREE.BoxGeometry(0.25, 0.25, 0.3), brass, cx + Math.cos(a) * 2.2 + Math.cos(b) * 1.05, y, cz + Math.sin(a) * 2.2 + Math.sin(b) * 1.05, b, false); } } }
+    K.cyl(2.3, 2.3, 0.5, cx, H - 2.6, cz, ir, 12); for (let q = 0; q < 12; q++) { const a = q / 12 * Math.PI * 2; K.cyl(0.04, 0.04, 1.0, cx + Math.cos(a) * 2.3, H - 2.1, cz + Math.sin(a) * 2.3, ir2, 4); } K.add(new THREE.TorusGeometry(2.3, 0.04, 4, 24), ir2, cx, H - 1.1, cz, 0, false).rotation.x = Math.PI / 2; // galeria
+    for (let q = 0; q < 8; q++) { const a = q / 8 * Math.PI * 2; K.box(0.14, 3.2, 0.14, cx + Math.cos(a) * 1.5, H - 2.1, cz + Math.sin(a) * 1.5, brass, -a); } // montantes da lanterna
+    K.add(new THREE.CylinderGeometry(1.5, 1.5, 3.0, 8, 1, true), glow(0xfff0b0), cx, H - 0.6, cz, 0, false); // o vidro iluminado
+    K.add(new THREE.SphereGeometry(0.7, 10, 8), glow(0xffffff), cx, H - 0.6, cz, 0, false);
+    { const bg = new THREE.CylinderGeometry(0.3, 4.5, 40, 10, 1, true); bg.translate(0, -20, 0); bg.rotateZ(Math.PI / 2); /* o feixe sai da lanterna e corre ao longo de +x; gira em volta de si mesmo (world3d) */ const beam = K.add(bg, new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }), cx, H - 0.6, cz, 0, false); beam.userData.beam = true; beam.userData.dyn = true; }
+    K.cyl(1.7, 1.7, 0.5, cx, H + 0.9, cz, ir, 8); K.cone(1.8, 1.8, cx, H + 1.4, cz, flat(0x8a2a22), 8); K.add(new THREE.ConeGeometry(0.08, 1.4, 4), brass, cx, H + 3.9, cz, 0, false); // cúpula e para-raios
+    K.cyl(0.25, 0.25, 6, cx + 2.6, H - 6, cz - 1.2, flat(0xb87333), 8); K.add(new THREE.ConeGeometry(0.5, 0.9, 8), brass, cx + 2.6, H + 0.3, cz - 1.2, 0, false); K.out.smoke.push(new THREE.Vector3(cx + 2.6, H + 0.9, cz - 1.2)); // o tubo de vapor da sirene
+    K.box(4.2, 2.8, 3.2, cx - 4.4, 0, cz + 2.2, br); K.box(4.6, 0.2, 3.6, cx - 4.4, 2.8, cz + 2.2, ir); K.cone(3.0, 1.6, cx - 4.4, 3.0, cz + 2.2, flat(0x4a4e56), 4, Math.PI / 4); K.plane(0.6, 0.8, cx - 4.4, 1.5, cz + 3.81, glow(0xffc070)); // a casa do faroleiro
+    K.out.glows.push({ pos: new THREE.Vector3(cx, H - 0.6, cz), color: 0xfff0b0, base: 160 }); K.out.glows.push({ pos: new THREE.Vector3(cx - 4.4, 2.0, cz + 4.0), color: 0xffc070, base: 14 });
+  }
   return K.out;
 }

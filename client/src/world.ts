@@ -9,7 +9,8 @@ export const STATION_NAMES = {
 /** deslocamento das Terras dos Homens dentro do mundo grande (tiles) */
 export const SH = 210;
 /** Porto Caldeira, a Cidade da Graxa (27/10): a bacia do porto, escavada da praça até o mar, com cais de pedra a prumo */
-export const PORTO = { x: 432, y: 800, r: 27, hw: 6, y0: 808 };
+/** Porto Caldeira: centro, raio, as duas bacias (relativas ao centro: x0..x1 e a cabeceira y0; a água vai até o mar) e a ilha do Farol */
+export const PORTO = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x0: -22, x1: -15, y0: 18 }], farol: { x: 474, y: 834, r: 3.4 } };
 
 export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico';
 export interface Relic { name: string; x: number; y: number }
@@ -181,7 +182,7 @@ export const VILL: [string, number, number, string][] = ([
   ['Dalborg', 640, 560, 'Última vila antes da selva. Compre tochas.'], ['Vindholt', 470, 640, 'Os ventos do mar chegam até aqui com cheiro de óleo.'],
 ] as [string, number, number, string][]);
 export const ASKAVIK = { x: 318 + SH, y: 112 + SH, r: 52 };
-function harborSD(tx: number, ty: number): number { const dx = Math.abs(tx - PORTO.x - 0.5) - PORTO.hw, dy = PORTO.y0 - ty; if (dx > 8 || dy > 8) return 99; return Math.max(dx, dy) * T; }
+function harborSD(tx: number, ty: number): number { let best = 99; for (const b of PORTO.basins) { const cxb = PORTO.x + (b.x0 + b.x1 + 1) / 2, hw = (b.x1 - b.x0 + 1) / 2; const dx = Math.abs(tx - cxb) - hw, dy = PORTO.y + b.y0 - ty; if (dx > 8 || dy > 8) continue; best = Math.min(best, Math.max(dx, dy) * T); } return best; }
 /** distância assinada até a água (m); negativo = dentro d'água */
 /** bordas do mundo (0 longe → 1 na beira): norte = cordilheira, sul = oceano, oeste = pântano intransponível, leste = floresta fechada */
 export function edgeK(tx: number, ty: number) {
@@ -247,6 +248,7 @@ function lagoonSD(tx: number, ty: number): number {
 function moatSD(tx: number, ty: number): number { const p = MONU.prata, d = Math.hypot(tx - p.x, ty - p.y); if (Math.abs(d - p.moat) > 6) return 99; return (Math.abs(d - p.moat) - p.moatW) * T; }
 function waterSD0(xm: number, zm: number): number {
   const tx = xm / T, ty = zm / T;
+  { const di = Math.hypot(tx - PORTO.farol.x, ty - PORTO.farol.y); if (di < 7) return Math.max(waterSD1(xm, zm), (PORTO.farol.r + 0.25 * Math.sin(Math.atan2(ty - PORTO.farol.y, tx - PORTO.farol.x) * 5) - di) * T); } // a ilha de pedras do Farol: terra no meio do mar
   { const lg = Math.min(lagoonSD(tx, ty), moatSD(tx, ty), harborSD(tx, ty)); if (lg < 98) { const rest = waterSD1(xm, zm); return Math.min(rest, lg); } }
   return waterSD1(xm, zm);
 }
@@ -429,6 +431,7 @@ export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): n
   for (const p of padsNear(xm, zm)) { const d = Math.hypot(xm - p.x, zm - p.z); if (d < p.r) h0 += (p.h - h0) * smoothstep(p.r, p.r * 0.55, d); }
   const sd = sdPre ?? waterSD(xm, zm);
   if (Math.max(Math.abs(tx - ASKAVIK.x), Math.abs(ty - ASKAVIK.y)) < ASKAVIK.r + 7) return sd <= 0 ? WL - 1.6 : h0; // Askavik: cais de pedra a prumo (o canal não tem margem em rampa)
+  if (Math.hypot(tx - PORTO.farol.x, ty - PORTO.farol.y) < 8) return sd <= 0 ? WL - 1.6 : WL + 1.2 + Math.min(1.6, sd * 0.9); // a ilha do Farol: pedra que sobe do mar, a prumo
   if (Math.abs(tx - PORTO.x) < PORTO.r + 6 && Math.abs(ty - PORTO.y) < PORTO.r + 6) return sd <= 0 ? WL - 1.6 : Math.max(h0, WL + 0.3); // Porto Caldeira: a bacia tem cais a prumo e a cidade nunca afunda no mar
   /* margem sem "briga" com o plano da água (a tela tremia): o fundo começa 35 cm abaixo da água e a terra 14 cm acima */
   if (sd <= 0) return WL - 0.35 - 1.2 * smoothstep(0, 2.4, -sd) - 0.1 * vnoise(xm * 0.5, zm * 0.5, 2) * smoothstep(0, 1, -sd);
@@ -441,13 +444,15 @@ export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): n
 /** escadaria da muralha: casas do lance, da mais baixa para a mais alta; axis = eixo ao longo do qual sobe; dir = +1 sobe no sentido +eixo */
 export interface Flight { tiles: [number, number][]; axis: 'x' | 'y'; dir: 1 | -1 }
 /** muralha orgânica (27/10, regra 19): o conjunto de casas do anel (chave ty*4096+tx), a altura do caminho de ronda e as escadarias */
-export interface Rampart { cx: number; cy: number; R: number; top: number; H: number; flights: Flight[]; tiles: Set<number> }
+export interface Rampart { cx: number; cy: number; R: number; top: number; H: number; flights: Flight[]; /** chaves ty*4096+tx (array: sobrevive ao cache JSON do mundo) */ tiles: number[] }
+const rampSets = new WeakMap<Rampart, Set<number>>();
+const rampSet = (r: Rampart) => { let s = rampSets.get(r); if (!s) { s = new Set(r.tiles); rampSets.set(r, s); } return s; };
 export const RAMPART_H = 6;
 let rampartsRef: Rampart[] = [];
 export function setRamparts(r: Rampart[]) { rampartsRef = r; }
 /** a muralha cujo anel passa por esta casa (ou null) */
 export function rampartAt(tx: number, ty: number): Rampart | null {
-  const k = ty * 4096 + tx; for (const r of rampartsRef) if (r.tiles.has(k)) return r; return null; }
+  const k = ty * 4096 + tx; for (const r of rampartsRef) if (rampSet(r).has(k)) return r; return null; }
 /** casa de escada? devolve a altura do degrau (absoluta) no ponto (m) — ou null */
 export function stairDeck(xm: number, zm: number): number | null {
   const fx = xm / T, fy = zm / T, tx = Math.floor(fx), ty = Math.floor(fy);
@@ -804,11 +809,16 @@ export function buildCity(): World {
    *  a Fábrica da Companhia de Latão com as chaminés a leste; a Avenida do Vapor até o portão norte; a Rua das Válvulas com as lojas;
    *  bairros de casas de tijolo e ferro; lampiões a gás; muralha de pedra (ramparts) com o portão do mar aberto pela bacia. */
   const portCity = (name: string, cx: number, cy: number, lore: string) => {
+    /* PORTO CALDEIRA (refeita 27/10, regra 19): a cidade dos tecnocratas abraça a costa. A Praça da Caldeira no meio; a Avenida do Vapor
+       sobe ao portão norte e a Avenida do Cais desce à Praça do Cais, na beira do mar. Dois portos: a Bacia dos Cargueiros a leste
+       (cais de pedra, guindastes trabalhando, navios maiores do que casas) e a Enseada dos Botes a oeste (píeres de madeira, barcos
+       pequenos). A Academia da Graxa a oeste, a Fábrica da Companhia a nordeste, as lojas na Rua das Válvulas. Ruas largas (4 casas),
+       casas afastadas; o Farol Tecnocrático na ilha de pedras ao largo. A muralha (orgânica, só do lado da terra) é feita depois. */
     const rr = rng(7272); const R0 = PORTO.r;
     pads.push({ x: cx * T, z: cy * T, r: (R0 + 9) * T, h: WL + 2.1 }); // a cidade é um platô baixo e plano, pouco acima do mar
     const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
-    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) <= R0 + 6 && Math.abs(q.gy - cy) <= R0 + 6) props.splice(i, 1); }
-    for (let y = cy - R0 - 6; y <= cy + R0 + 6; y++) for (let x = cx - R0 - 6; x <= cx + R0 + 6; x++) if (inb(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) <= R0 + 8 && Math.abs(q.gy - cy) <= R0 + 8) props.splice(i, 1); }
+    for (let y = cy - R0 - 8; y <= cy + R0 + 8; y++) for (let x = cx - R0 - 8; x <= cx + R0 + 8; x++) if (inb(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
     const at = (x: number, y: number) => map[cy + y]?.[cx + x];
     const set = (x: number, y: number, t: Tile) => { if (inb(cx + x, cy + y)) map[cy + y][cx + x] = t; };
     const paint = (x: number, y: number, t: Tile = 'road') => { const q = at(x, y); if (q === 'grass' || q === 'tree' || (t === 'plaza' && q === 'road')) set(x, y, t); };
@@ -816,80 +826,92 @@ export function buildCity(): World {
     const disc = (x0: number, y0: number, r: number, t: Tile, r0 = -1) => { for (let y = Math.floor(y0 - r); y <= y0 + r; y++) for (let x = Math.floor(x0 - r); x <= x0 + r; x++) { const d = Math.hypot(x - x0, y - y0); if (d <= r && d > r0) paint(x, y, t); } };
     const lit = (x: number, y: number) => { if (at(x, y) === 'grass' || at(x, y) === 'plaza') props.push({ kind: 'torch', gx: cx + x, gy: cy + y, w: 1, h: 1, height: 2.6, wall: 0x2a2d34, roof: 0xffc070 }); };
     const P = (kind: PropKind, x: number, y: number, w: number, h: number, extra: Partial<Prop> = {}) => props.push({ kind, gx: cx + x, gy: cy + y, w, h, height: 3, wall: 0x6a3a2a, roof: 0x3a3d44, ...extra });
-    // 1) a bacia do porto: da praça até o mar, com os cais de pedra (calçada) dos dois lados
-    const hw = PORTO.hw, by0 = PORTO.y0 - cy;
-    for (let y = by0; y <= R0 + 14; y++) for (let x = -hw; x <= hw; x++) set(x, y, 'water');
-    for (let y = by0; y <= R0 + 2; y++) for (const s of [-1, 1]) { rect(s * (hw + 1), y, s * (hw + 3), y, 'plaza'); if (y % 2 === 0 && y < R0) P('dock', s * (hw + (s > 0 ? 1 : 2)), y, 1, 2, { variant: s > 0 ? 1 : 0 }); }
-    rect(-hw - 3, by0 - 2, hw + 3, by0 - 1, 'plaza'); for (let x = -hw; x <= hw; x += 2) P('dock', x, by0 - 1, 1, 1, { variant: 1 }); // a cabeceira
-    P('dock', -hw, by0 + 11, 5, 1, { variant: 2 }); P('dock', 1, by0 + 19, 5, 1, { variant: 2 }); // dois píeres entrando na água
-    P('boat', -5, by0 + 4, 4, 2, { variant: 0 }); P('boat', 1, by0 + 14, 4, 2, { variant: 1 }); P('boat', -5, by0 + 23, 4, 2, { variant: 2 }); P('boat', 2, by0 + 32, 4, 2, { variant: 0 });
-    P('crane', -hw - 3, by0 + 6, 1, 1); P('crane', hw + 2, by0 + 15, 1, 1); P('crane', -hw - 3, by0 + 24, 1, 1);
-    // 2) a Praça da Caldeira com a Grande Caldeira no meio; anel de rua; a Avenida do Vapor até o portão norte; as avenidas leste e oeste
-    disc(0, -2, 8.5, 'plaza'); block({ kind: 'monument', gx: cx - 3, gy: cy - 6, w: 7, h: 6, height: 16, wall: 0, roof: 0, variant: 8 }); pois.push({ name: 'A Grande Caldeira', x: cx, y: cy + 1, biome: 'coast' });
-    disc(0, -2, 10.5, 'road', 8.5);
-    rect(-1, -R0 - 4, 1, -11); rect(-R0 - 4, -3, -10, -1); rect(10, -3, R0 + 4, -1);
-    for (const [bx, byy] of [[-6, 3], [5, 3], [-7, -8], [6, -8]]) decorAt('bench', cx + bx, cy + byy, 1, 1, 0, 0x3a3d44, 0x8a3b2e);
-    // 3) a Academia da Graxa (a universidade das engrenagens, virada para a praça) e o seu adro
-    block({ kind: 'temple', gx: cx - 28, gy: cy - 11, w: 15, h: 13, height: 18, wall: 0x6a4a3a, roof: 0x8f7bff, variant: 12, rot: 1 });
-    rect(-13, -12, -9, 2, 'plaza'); for (const y of [-11, 1]) lit(-10, y); props.push({ kind: 'portico', gx: cx - 13, gy: cy - 8, w: 3, h: 7, height: 9, wall: 0, roof: 0, variant: 0, rot: 1 }); /* o pórtico da Academia: escadaria, colunata e o portão com moldura em relevo */
-    pois.push({ name: 'Academia da Graxa', x: cx - 9, y: cy - 4, biome: 'coast' }); landmarkDoor[name] = { x: cx - 8.5, y: cy - 4.5 };
-    // 4) a Fábrica da Companhia de Latão: o galpão, o pátio e três chaminés; a garagem ao lado
-    P('house', 11, -14, 8, 5, { height: 4.2, wall: 0x7a4a3a, roof: 0x3a3d44, variant: 2, style: 7, rot: 0 }); rect(10, -9, 19, -8, 'plaza'); pois.push({ name: 'Fábrica da Companhia de Latão', x: cx + 15, y: cy - 8, biome: 'coast' });
-    P('chimney', 12, -17, 1, 1, { variant: 0 }); P('chimney', 15, -17, 1, 1, { variant: 0 }); P('chimney', 18, -17, 1, 1, { variant: 0 });
-    P('house', 21, -14, 5, 4, { height: 3.4, wall: 0x5a4a3a, roof: 0x4a4e56, variant: 1, style: 7, rot: 0 }); rect(21, -10, 25, -9, 'plaza'); P('chimney', 25, -16, 1, 1, { variant: 1 });
-    rect(10, -10, 26, -10); rect(19, -14, 20, -10); // a rua da fábrica e o beco entre o galpão e a garagem
-    // 5) a Rua das Válvulas: as lojas da cidade, de frente para a avenida (oeste olha para o leste, leste olha para o sul)
+    const B = (kind: PropKind, x: number, y: number, w: number, h: number, extra: Partial<Prop> = {}) => block({ kind, gx: cx + x, gy: cy + y, w, h, height: 3.4, wall: 0x6a3a2a, roof: 0x3a3d44, ...extra });
+    /* 1) OS DOIS PORTOS. A Bacia dos Cargueiros: água de x 8..22, da cabeceira (y 12) até o mar; cais de pedra de 3 casas dos dois lados e na cabeceira.
+       A Enseada dos Botes: água de x −22..−15, de y 18 até o mar; cais estreito e píeres de madeira. (o relevo acompanha: harborSD) */
+    const CB = PORTO.basins[0], CV = PORTO.basins[1]; // {x0,x1,y0} relativos
+    for (const bz of [CB, CV]) for (let y = bz.y0; y <= R0 + 14; y++) for (let x = bz.x0; x <= bz.x1; x++) set(x, y, 'water');
+    rect(CB.x0 - 3, CB.y0 - 3, CB.x1 + 3, CB.y0 - 1, 'plaza'); for (let y = CB.y0; y <= R0 + 1; y++) { rect(CB.x0 - 3, y, CB.x0 - 1, y, 'plaza'); rect(CB.x1 + 1, y, CB.x1 + 3, y, 'plaza'); }
+    for (let y = CB.y0; y < R0; y += 2) { P('dock', CB.x0 - 2, y, 1, 2, { variant: 0 }); P('dock', CB.x1 + 1, y, 1, 2, { variant: 1 }); } for (let x = CB.x0; x <= CB.x1; x += 2) P('dock', x, CB.y0 - 1, 1, 1, { variant: 1 });
+    P('crane', CB.x0 - 3, CB.y0 + 3, 1, 1, { variant: 0 }); P('crane', CB.x1 + 3, CB.y0 + 9, 1, 1, { variant: 1 }); P('crane', CB.x0 - 3, CB.y0 + 15, 1, 1, { variant: 2 }); P('crane', CB.x1 + 3, CB.y0 + 1, 1, 1, { variant: 1 });
+    P('boat', CB.x0 + 1, CB.y0 + 2, 5, 12, { variant: 3 }); P('boat', CB.x0 + 8, CB.y0 + 10, 5, 12, { variant: 4 }); P('boat', -40, 24, 12, 5, { variant: 3 }); // três cargueiros: dois atracados, um chegando pelo mar a oeste
+    rect(CV.x0 - 2, CV.y0 - 2, CV.x1 + 2, CV.y0 - 1, 'plaza'); for (let y = CV.y0; y <= R0 + 1; y++) { rect(CV.x0 - 2, y, CV.x0 - 1, y, 'plaza'); rect(CV.x1 + 1, y, CV.x1 + 2, y, 'plaza'); }
+    P('dock', CV.x0, CV.y0 + 3, 4, 1, { variant: 2 }); P('dock', CV.x1 - 3, CV.y0 + 8, 4, 1, { variant: 2 }); P('dock', CV.x0, CV.y0 + 13, 5, 1, { variant: 2 }); // píeres de madeira
+    P('boat', CV.x0 + 1, CV.y0 + 1, 4, 2, { variant: 0 }); P('boat', CV.x0 + 3, CV.y0 + 5, 4, 2, { variant: 1 }); P('boat', CV.x0, CV.y0 + 10, 4, 2, { variant: 2 }); P('boat', CV.x0 + 2, CV.y0 + 16, 4, 2, { variant: 0 }); P('boat', CV.x0 + 1, CV.y0 + 22, 4, 2, { variant: 1 });
+    /* 2) a Praça da Caldeira com a Grande Caldeira no meio; a Avenida do Vapor (4 casas) até o portão norte; a Avenida do Cais até a Praça do Cais; a Rua Leste e a Rua Oeste */
+    disc(0, -4, 9.5, 'plaza'); block({ kind: 'monument', gx: cx - 3, gy: cy - 8, w: 7, h: 6, height: 16, wall: 0, roof: 0, variant: 8 }); pois.push({ name: 'A Grande Caldeira', x: cx, y: cy - 1, biome: 'coast' });
+    rect(-2, -R0 - 8, 1, -13); rect(-2, 5, 1, 20); rect(10, -7, R0 + 8, -4); rect(-R0 - 8, 2, -10, 5);
+    rect(-12, 20, 6, 25, 'plaza'); // a Praça do Cais, de frente para o mar, entre os dois portos
+    for (const [bx, byy] of [[-7, 2], [6, 2], [-8, -10], [7, -10], [-9, 22], [3, 22]]) decorAt('bench', cx + bx, cy + byy, 1, 1, 0, 0x3a3d44, 0x8a3b2e);
+    decorAt('fountain', cx - 3, cy + 22, 2, 2, 1, 0x6a6a70, 0x3a8ab0); // a fonte do cais (água do mar bombeada a vapor)
+    /* 3) a Academia da Graxa (a universidade das engrenagens, virada para a praça) e o seu pórtico e adro */
+    block({ kind: 'temple', gx: cx - 27, gy: cy - 14, w: 15, h: 13, height: 18, wall: 0x6a4a3a, roof: 0x8f7bff, variant: 12, rot: 1 });
+    rect(-12, -16, -8, 0, 'plaza'); for (const y of [-15, -1]) lit(-10, y); props.push({ kind: 'portico', gx: cx - 12, gy: cy - 11, w: 3, h: 7, height: 9, wall: 0, roof: 0, variant: 0, rot: 1 });
+    pois.push({ name: 'Academia da Graxa', x: cx - 8, y: cy - 7, biome: 'coast' }); landmarkDoor[name] = { x: cx - 7.5, y: cy - 7.5 };
+    rect(-28, -18, -12, -16); rect(-28, 0, -12, 1); // as ruas que contornam a Academia (ligam à Rua Oeste)
+    /* 4) a Fábrica da Companhia de Latão: o galpão, o pátio e três chaminés; a garagem ao lado; a rua da fábrica */
+    B('house', 12, -24, 9, 5, { height: 4.4, wall: 0x7a4a3a, roof: 0x3a3d44, variant: 2, style: 7, rot: 0 }); rect(11, -19, 27, -17, 'plaza'); pois.push({ name: 'Fábrica da Companhia de Latão', x: cx + 16, y: cy - 18, biome: 'coast' });
+    P('chimney', 13, -27, 1, 1, { variant: 0 }); P('chimney', 16, -27, 1, 1, { variant: 0 }); P('chimney', 19, -27, 1, 1, { variant: 0 });
+    B('house', 23, -24, 5, 4, { height: 3.4, wall: 0x5a4a3a, roof: 0x4a4e56, variant: 1, style: 7, rot: 0 }); P('chimney', 28, -26, 1, 1, { variant: 1 });
+    rect(10, -16, 28, -13); rect(10, -13, 13, -7); // a Rua da Fábrica e a descida até a Rua Leste
+    /* 5) a Rua das Válvulas: as lojas, de frente para a avenida (oeste olha para o leste) e para a rua das lojas (sul) */
     const shops: { x: number; y: number; rot: number; key: string }[] = [];
     const shopAt = (gx: number, gy: number, rot: number, v: number, key: string) => { const ww = 4, hh = 4; for (let y = gy - 1; y <= gy + hh; y++) for (let x = gx - 1; x <= gx + ww; x++) { const q = at(x, y); if (q !== 'grass' && q !== 'road' && q !== 'plaza') return; }
       block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.6, wall: [0x7a4a3a, 0x8a5a3a, 0x6a5a4a][shops.length % 3], roof: [0x3a3d44, 0x4a4e56, 0x5a3a2a][shops.length % 3], variant: v, rot, style: 7 }); shops.push({ x: gx, y: gy, rot, key });
       if (rot === 1) rect(gx + ww, gy, gx + ww, gy + hh - 1, 'plaza'); else rect(gx, gy + hh, gx + ww - 1, gy + hh, 'plaza'); };
-    shopAt(-6, -27, 1, 4, 'taverna'); shopAt(-6, -22, 1, 1, 'pocoes'); shopAt(-6, -17, 1, 2, 'mercador_cidade');
-    rect(2, -21, 17, -21); shopAt(3, -26, 0, 5, 'armeiro'); shopAt(8, -26, 0, 5, 'armaduras'); shopAt(13, -26, 0, 1, 'domador');
-    rect(-26, -21, -2, -21); shopAt(-12, -26, 0, 2, 'estabulo');
+    shopAt(-8, -31, 1, 4, 'taverna'); shopAt(-8, -25, 1, 1, 'pocoes'); shopAt(-8, -19, 1, 2, 'mercador_cidade');
+    rect(3, -26, 24, -23); shopAt(4, -32, 0, 5, 'armeiro'); shopAt(10, -32, 0, 5, 'armaduras'); shopAt(16, -32, 0, 1, 'domador');
+    rect(-28, -24, -3, -21); shopAt(-16, -30, 0, 2, 'estabulo');
     props.push({ kind: 'shopfront', gx: cx - 8, gy: cy - 14, w: 2, h: 2, height: 3, wall: 0x3a2d34, roof: 0xc8963a, variant: 0 });
-    // 6) armazéns ao longo dos cais e os bairros: casas de tijolo e ferro viradas para a rua mais perto
-    for (const y of [by0 + 1, by0 + 7, by0 + 13]) { P('house', -hw - 10, y, 6, 4, { height: 3.6, wall: 0x6a4a3a, roof: 0x3a3d44, variant: 2, style: 7, rot: 1 }); rect(-hw - 4, y, -hw - 4, y + 3, 'plaza'); }
-    for (const y of [by0 + 1, by0 + 7, by0 + 13]) { P('house', hw + 5, y, 6, 4, { height: 3.6, wall: 0x7a4a3a, roof: 0x4a4e56, variant: 2, style: 7, rot: 0 }); rect(hw + 5, y + 4, hw + 10, y + 4); }
-    rect(-R0 - 2, by0 + 5, -hw - 4, by0 + 5); rect(hw + 4, by0 + 5, R0 + 2, by0 + 5); rect(-R0 - 2, by0 + 17, -hw - 4, by0 + 17); rect(hw + 4, by0 + 17, R0 + 2, by0 + 17); // as ruas transversais do cais
-    rect(-R0 - 2, -R0 - 2, -R0 - 2, R0 + 2); rect(R0 + 2, -R0 - 2, R0 + 2, R0 + 2); rect(-R0 - 2, -R0 - 2, R0 + 2, -R0 - 2); // a rua de ronda
+    /* 6) armazéns da Companhia junto à bacia e as casas dos pescadores junto à enseada */
+    for (const y of [CB.y0 - 9, CB.y0 - 3]) { B('house', CB.x0 - 2, y, 9, 4, { height: 3.8, wall: 0x6a4a3a, roof: 0x3a3d44, variant: 2, style: 7, rot: 0 }); }
+    for (const y of [CB.y0 + 1, CB.y0 + 8]) { B('house', CB.x1 + 5, y, 6, 4, { height: 3.6, wall: 0x7a4a3a, roof: 0x4a4e56, variant: 2, style: 7, rot: 1 }); rect(CB.x1 + 4, y, CB.x1 + 4, y + 3, 'plaza'); }
+    rect(CB.x1 + 4, CB.y0 - 4, CB.x1 + 11, CB.y0 - 1); rect(CB.x1 + 11, CB.y0 - 4, CB.x1 + 11, R0 - 2); // a rua dos armazéns
+    for (const [x, y] of [[CV.x0 - 8, CV.y0 - 2], [CV.x0 - 9, CV.y0 + 5], [CV.x1 + 4, CV.y0 - 7]]) B('house', x, y, 4, 4, { height: 3.0, wall: [0x8a7a5a, 0x7a6a5a, 0x6a5a4a][(x + y) & 1], roof: [0x4a4e56, 0x5a3a2a][(x + y) & 1], variant: 1, style: 7, rot: 0 });
+    rect(CV.x0 - 6, CV.y0 - 4, CV.x1 + 4, CV.y0 - 3); rect(-14, 6, -11, 20); // a rua da enseada e a ligação com a Praça do Cais
+    /* 7) os bairros: casas de tijolo e ferro viradas para a rua mais perto, com 2 casas de folga entre si (regra 19: ruas largas, nada apertado) */
     { const WALLS = [0x7a4a3a, 0x8a5a4a, 0x6a5a52, 0x5a4a44, 0x8a6a4a], ROOFS = [0x3a3d44, 0x4a4e56, 0x5a3a2a, 0x3a3a3a, 0x4a3a30];
-      const free = (x0: number, y0: number, w: number, h: number) => { for (let y = y0 - 1; y <= y0 + h; y++) for (let x = x0 - 1; x <= x0 + w; x++) { const q = at(x, y), edge = y < y0 || y >= y0 + h || x < x0 || x >= x0 + w; if (Math.abs(x) > R0 - 1 || Math.abs(y) > R0 - 1) return false; if (q !== 'grass' && !(edge && (q === 'road' || q === 'plaza'))) return false; } return true; };
-      const roadDist = (x0: number, y0: number, w: number, h: number, side: number) => { for (let d = 1; d <= 4; d++) { let hit = 0, n = 0; for (let i = 0; i < (side % 2 ? h : w); i++) { const x = side === 1 ? x0 + w - 1 + d : x0 + i, y = side === 0 ? y0 + h - 1 + d : y0 + i; n++; const q = at(x, y); if (q === 'road' || q === 'plaza') hit++; } if (hit >= n * 0.6) return d; } return 99; };
+      const free = (x0: number, y0: number, w: number, h: number) => { for (let y = y0 - 2; y <= y0 + h + 1; y++) for (let x = x0 - 2; x <= x0 + w + 1; x++) { const q = at(x, y), edge = y < y0 || y >= y0 + h || x < x0 || x >= x0 + w; if (Math.hypot(x, y) > R0 + 1) return false; if (q !== 'grass' && !(edge && (q === 'road' || q === 'plaza'))) return false; } return true; };
+      const roadDist = (x0: number, y0: number, w: number, h: number, side: number) => { for (let d = 1; d <= 4; d++) { let hit = 0, n = 0; for (let i = 0; i < (side % 2 ? h : w); i++) { const x = side === 1 ? x0 + w - 1 + d : x0 + i, y = side === 0 ? y0 + h - 1 + d : y0 + i; n++; const q = at(x, y); if (q === 'road' || q === 'plaza') hit++; } if (hit >= Math.min(2, n)) return d; } return 99; };
       let nH = 0;
       for (let pass = 0; pass < 2; pass++) for (let gy = -R0 + 1; gy <= R0 - 5; gy += 1) for (let gx = -R0 + 1; gx <= R0 - 5; gx += 1) {
-        if (rr() > (pass ? 0.5 : 0.22)) continue; const w = 4 + Math.floor(rr() * 2), h = 4; if (!free(gx, gy, w, h)) continue;
+        if (rr() > (pass ? 0.4 : 0.18)) continue; const w = 4 + Math.floor(rr() * 2), h = 4; if (!free(gx, gy, w, h)) continue;
         let best = 99, rot = 0; for (let sd = 0; sd < 2; sd++) { const dd = roadDist(gx, gy, w, h, sd); if (dd < best) { best = dd; rot = sd; } }
         if (best > 3 && pass === 0) continue; const ww = rot % 2 ? h : w, hh = rot % 2 ? w : h; if (!free(gx, gy, ww, hh)) continue;
-        block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.4, wall: WALLS[nH % 5], roof: ROOFS[nH % 5], variant: [1, 2, 0, 3, 1, 2, 0, 1][nH % 8], rot, style: 7 }); nH++;
+        block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.2 + rr() * 0.6, wall: WALLS[nH % 5], roof: ROOFS[(nH * 2 + 1) % 5], variant: [1, 2, 0, 3, 1, 2, 0, 1][nH % 8], rot, style: 7 }); nH++;
         const mid = rot % 2 ? gy + Math.floor(hh / 2) : gx + Math.floor(ww / 2);
         for (let d = 0; d <= best + 1; d++) { const x = rot === 1 ? gx + ww + d : mid, y = rot === 0 ? gy + hh + d : mid; if (at(x, y) === 'grass') set(x, y, 'road'); else break; }
-        if (nH % 5 === 0) P('chimney', gx + (rot ? ww : 0) - 1, gy - 1, 1, 1, { variant: 1 });
+        if (nH % 4 === 0) P('chimney', gx + (rot ? ww : 0) - 1, gy - 1, 1, 1, { variant: 1 });
       }
     }
-    // 7) lampiões a gás nas avenidas, no cais e na praça
-    for (let k = -R0; k <= -12; k += 5) { lit(k, -4); lit(k, 0); } for (let k = 12; k <= R0; k += 5) { lit(k, -4); lit(k, 0); } for (let k = -R0 - 2; k <= -12; k += 5) { lit(-3, k); lit(3, k); }
-    for (let k = 0; k < 10; k++) { const ang = k / 10 * Math.PI * 2 + 0.3; lit(Math.round(Math.cos(ang) * 9.6), Math.round(-2 + Math.sin(ang) * 9.6)); }
+    /* 8) lampiões a gás nas avenidas, no cais e na praça; a ilha do Farol */
+    for (let k = -R0 - 6; k <= -12; k += 5) { lit(k, -8); lit(k, -3); } for (let k = 12; k <= R0 + 6; k += 5) { lit(k, -8); lit(k, -3); } for (let k = -R0 - 6; k <= -14; k += 5) { lit(-3, k); lit(2, k); } for (let k = 6; k <= 19; k += 4) { lit(-3, k); lit(2, k); }
+    for (let k = 0; k < 10; k++) { const ang = k / 10 * Math.PI * 2 + 0.3; lit(Math.round(Math.cos(ang) * 10.5), Math.round(-4 + Math.sin(ang) * 10.5)); } for (let x = -11; x <= 6; x += 4) lit(x, 26);
+    { const fx = PORTO.farol.x - cx, fy = PORTO.farol.y - cy; for (let y = fy - 4; y <= fy + 4; y++) for (let x = fx - 4; x <= fx + 4; x++) { const d = Math.hypot(x + 0.5 - fx, y + 0.5 - fy); if (d <= PORTO.farol.r - 1.4) set(x, y, 'grass'); else if (d <= PORTO.farol.r + 0.2 && inb(cx + x, cy + y)) { set(x, y, 'grass'); if (rr() < 0.7) props.push({ kind: 'rock', gx: cx + x, gy: cy + y, w: 1, h: 1, height: 1.2 + rr(), wall: 0x5a5a58, roof: 0, variant: Math.floor(rr() * 3) }); } } // a ilha: pedras em volta, saindo do mar
+      block({ kind: 'monument', gx: PORTO.farol.x - 2, gy: PORTO.farol.y - 2, w: 5, h: 5, height: 26, wall: 0, roof: 0, variant: 10 }); pois.push({ name: 'Farol Tecnocrático', x: PORTO.farol.x, y: PORTO.farol.y + 3, biome: 'coast' }); }
     pois.push({ name, x: cx, y: cy, biome: 'coast' });
-    // 8) a gente da cidade
-    const shopNpc = (key: string, fx: number, fy: number) => { const sh = shops.find((q) => q.key === key); if (!sh) return { x: cx + fx, y: cy + fy }; return { x: cx + (sh.rot === 1 ? sh.x + 4.9 : sh.x + 1.5), y: cy + (sh.rot === 1 ? sh.y + 2.5 : sh.y + 4.9) }; };
+    /* 9) a gente da cidade */
+    const shopNpc = (key: string, fx: number, fy: number) => { const sh = shops.find((q) => q.key === key); if (!sh) return { x: cx + fx, y: cy + fy }; return { x: cx + (sh.rot === 1 ? sh.x + 4.9 : sh.x + 1.5), y: cy + (sh.rot === 1 ? sh.y + 1.5 : sh.y + 4.9) }; };
     const N = (nm: string, role: string, kind: 'nordic' | 'dwarf' | 'technocrat', x: number, y: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name: nm, role, kind, x, y, radius: 2, tint, scale: 1.0, lines, shop });
-    N('Arquiteta Ylva', 'Reitora da Academia da Graxa', 'technocrat', cx - 8.5, cy - 4.5, 0x5a8ab0, ['Pólvora, vapor e esferas. A Academia faz o impossível virar engrenagem.', 'Quem quer ser tecnocrata vem a Porto Caldeira. Askavik tem livros; aqui tem a caldeira.', 'Um Engenheiro-Chefe escolhe dois caminhos no nível 100. Escolha com a cabeça, não com o coração.']);
-    N('Aprendiz Teodora', 'Aluna da Academia da Graxa', 'technocrat', cx - 9.5, cy - 10, 0x7a9ab0, ['A reitora diz que todo acidente é um experimento mal anotado.', 'Ontem a caldeira do laboratório apitou sozinha. Ninguém mexeu. Ninguém.']);
-    N('Aprendiz Nuno', 'Aluno da Academia da Graxa', 'technocrat', cx - 9.5, cy + 1, 0x6a8aa0, ['Quatro anos de óleo nas mãos. Minha mãe queria um padre.', 'A Fábrica paga melhor que a Academia. Mas a Academia tem a reitora.']);
-    N('Capitão Baltazar', 'Capitão do Porto', 'nordic', cx + 2.5, cy + by0 - 1.5, 0x2a3a4a, [`Bem-vindo a ${name}. ${lore}`, 'Os vapores saem com a maré e voltam quando a Companhia manda.', 'Se cair na bacia, grite. Se não gritar, a caldeira é sua.']);
-    N('Estivador Brás', 'Estivador do Cais', 'dwarf', cx - hw - 2, cy + by0 + 9, 0x6a5a3a, ['Carvão azul vai para o norte. Peças vêm do norte. O resto é peso.', 'O guindaste número dois range. Não é saudade: é ferrugem.']);
-    N('Estivadora Marta', 'Estivadora do Cais', 'nordic', cx + hw + 2.5, cy + by0 + 12, 0x8a6a4a, ['Dez caixas por hora. Onze quando o Baltazar olha.', 'Já vi um robô cair na água. Afundou com a mão levantada, como quem pede licença.']);
-    N('Foguista Elói', 'Foguista da Grande Caldeira', 'dwarf', cx + 1.5, cy + 2.5, 0x5a3a2a, ['A Grande Caldeira não apaga desde que a cidade existe. Nem no dia do incêndio.', 'Cada chaminé desta cidade é um tubo que sai daqui de baixo. A cidade respira por ela.']);
-    N('Feitora Brunna', 'Feitora da Fábrica da Companhia', 'dwarf', cx + 15, cy - 7.5, 0x7a4a2a, ['A Fábrica não para. A Companhia não perdoa.', 'Engenhoca de turno sai daqui. Mk I, Mk II, Mk III. O resto é imitação de Ferrugem.']);
-    N('Taverneira Josefa', 'A Válvula', 'nordic', shopNpc('taverna', -1, -25).x, shopNpc('taverna', -1, -25).y, 0x8a3a3a, ['A Válvula abre quando a Fábrica fecha. Ou seja, nunca fecha.', 'Cerveja de Brasaforja e rum do porto. O vinho é para os de Askavik.'], 'taverna');
-    N('Boticária Celeste', 'Botica da Graxa', 'technocrat', shopNpc('pocoes', -1, -20).x, shopNpc('pocoes', -1, -20).y, 0x7a5aa0, ['Poções destiladas a vapor. Mais puras, dizem. Mais caras, eu digo.'], 'pocoes');
-    N('Mercador Zacarias', 'Grande Mercador do Porto', 'dwarf', shopNpc('mercador_cidade', -1, -15).x, shopNpc('mercador_cidade', -1, -15).y, 0xb08a40, ['Tudo o que chega de barco passa por mim. Tudo o que sai, também.', 'Bolsas, corda, ferramentas, lamparinas. E segredos, mas esses não vendo.'], 'mercador_cidade');
-    N('Armeiro Gaspar', 'Armeiro do Porto', 'dwarf', shopNpc('armeiro', 5, -21).x, shopNpc('armeiro', 5, -21).y, 0x7a4a2a, ['Lâmina de aço de Brasaforja, cabo de latão daqui. O melhor dos dois povos.'], 'armeiro');
-    N('Armadureira Inês', 'Armaduras do Porto', 'nordic', shopNpc('armaduras', 10, -21).x, shopNpc('armaduras', 10, -21).y, 0x9a8a7a, ['Placas rebitadas. Pesam, mas param.'], 'armaduras');
-    N('Domador Tibúrcio', 'Domador do Porto', 'nordic', shopNpc('domador', 15, -21).x, shopNpc('domador', 15, -21).y, 0xd0702a, ['Gaivotas, cães de cais e um macaco que roubei de um vapor.'], 'domador');
-    N('Estalajadeira Rosa', 'Estalagem do Porto', 'dwarf', shopNpc('estabulo', -10, -21).x, shopNpc('estabulo', -10, -21).y, 0x6a4a2e, ['Cavalos aqui comem sal com o capim. Ficam teimosos.'], 'estabulo');
-    N('Guarda Vitorino', 'Guarda do Porto', 'nordic', cx + 2.5, cy - 24, 0x6a7a9a, [`Aqui a lei é a Companhia, e a Companhia sou eu das oito às seis.`, 'Ladrão de carvão vai para a caldeira. Brincadeira. Vai para a masmorra.']);
-    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 11.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo deixa alguém mais forte do que o outro: só mais bonito.'] });
+    N('Arquiteta Ylva', 'Reitora da Academia da Graxa', 'technocrat', cx - 7.5, cy - 7.5, 0x5a8ab0, ['Pólvora, vapor e esferas. A Academia faz o impossível virar engrenagem.', 'Quem quer ser tecnocrata vem a Porto Caldeira. Askavik tem livros; nós temos a graxa.', 'O Farol foi o primeiro projeto da Academia. Ainda é o melhor.']);
+    N('Aprendiz Teodora', 'Aluna da Academia da Graxa', 'technocrat', cx - 10.5, cy - 13, 0x7a9ab0, ['A reitora diz que todo acidente é um experimento mal anotado.', 'Ontem a caldeira do laboratório apitou sozinha. Ninguém mexeu. Ninguém confessa.']);
+    N('Aprendiz Nuno', 'Aluno da Academia da Graxa', 'technocrat', cx - 10.5, cy - 2, 0x6a8aa0, ['Quatro anos de óleo nas mãos. Minha mãe queria um padre.', 'A Fábrica paga melhor que a Academia. Mas a Academia tem a reitora.']);
+    N('Capitão Baltazar', 'Capitão do Porto', 'nordic', cx + CB.x0 - 1.5, cy + CB.y0 - 2.5, 0x2a3a4a, [`Bem-vindo a ${name}. ${lore}`, 'Cargueiro grande entra pela bacia; bote entra pela enseada. Quem confunde, afunda.', 'O Farol pisca a cada três fôlegos. Conte, e saberá se está vivo.']);
+    N('Estivador Brás', 'Estivador da Bacia', 'dwarf', cx + CB.x0 - 2.5, cy + CB.y0 + 9.5, 0x6a5a3a, ['Carvão azul vai para o norte. Peças vêm do norte. O resto é peso.', 'O guindaste número dois range. Não é saudade: é ferrugem.']);
+    N('Estivadora Marta', 'Estivadora da Bacia', 'nordic', cx + CB.x1 + 2.5, cy + CB.y0 + 6.5, 0x8a6a4a, ['Dez caixas por hora. Onze quando o Baltazar olha.', 'Já vi um robô cair na água. Afundou com a mão levantada, como quem pede licença.']);
+    N('Pescador Anselmo', 'Pescador da Enseada', 'nordic', cx + CV.x1 + 1.5, cy + CV.y0 + 2.5, 0x5a6a5a, ['Os cargueiros assustam o peixe. Os botes trazem ele de volta.', 'De noite o Farol vira a luz. De dia, vira a sombra. Eu pesco nas duas.']);
+    N('Foguista Elói', 'Foguista da Grande Caldeira', 'dwarf', cx + 4.5, cy - 0.5, 0x5a3a2a, ['A Grande Caldeira não apaga desde que a cidade existe. Nem no dia do incêndio.', 'Cada chaminé desta cidade é um tubo que sai daqui de baixo.']);
+    N('Feitora Brunna', 'Feitora da Fábrica da Companhia', 'dwarf', cx + 16.5, cy - 18.5, 0x7a4a2a, ['A Fábrica não para. A Companhia não perdoa.', 'Engenhoca de turno sai daqui. Mk I, Mk II, Mk III. O resto é imitação de Ferrugem.']);
+    N('Taverneira Josefa', 'A Válvula', 'nordic', shopNpc('taverna', -1, -29).x, shopNpc('taverna', -1, -29).y, 0x8a3a3a, ['A Válvula abre quando a Fábrica fecha. Ou seja, nunca fecha.', 'Cerveja de Brasaforja e rum do porto. O vinho é de Corvoscuro, e eu não pergunto.'], 'taverna');
+    N('Boticária Celeste', 'Botica da Graxa', 'technocrat', shopNpc('pocoes', -1, -23).x, shopNpc('pocoes', -1, -23).y, 0x7a5aa0, ['Poções destiladas a vapor. Mais puras, dizem. Mais caras, eu digo.'], 'pocoes');
+    N('Mercador Zacarias', 'Grande Mercador do Porto', 'dwarf', shopNpc('mercador_cidade', -1, -17).x, shopNpc('mercador_cidade', -1, -17).y, 0xb08a40, ['Tudo o que chega de barco passa por mim. Tudo o que sai, também.', 'Bolsas, corda, ferramentas. E segredos, se pagar em prata.'], 'mercador_cidade');
+    N('Armeiro Gaspar', 'Armeiro do Porto', 'dwarf', shopNpc('armeiro', 6, -27).x, shopNpc('armeiro', 6, -27).y, 0x7a4a2a, ['Lâmina de aço de Brasaforja, cabo de latão daqui. O melhor dos dois povos.'], 'armeiro');
+    N('Armadureira Inês', 'Armaduras do Porto', 'nordic', shopNpc('armaduras', 12, -27).x, shopNpc('armaduras', 12, -27).y, 0x9a8a7a, ['Placas rebitadas. Pesam, mas param.'], 'armaduras');
+    N('Domador Tibúrcio', 'Domador do Porto', 'nordic', shopNpc('domador', 18, -27).x, shopNpc('domador', 18, -27).y, 0xd0702a, ['Gaivotas, cães de cais e um macaco que roubei de um vapor.'], 'domador');
+    N('Estalajadeira Rosa', 'Estalagem do Porto', 'dwarf', shopNpc('estabulo', -14, -25).x, shopNpc('estabulo', -14, -25).y, 0x6a4a2e, ['Cavalos aqui comem sal com o capim. Ficam teimosos.'], 'estabulo');
+    N('Guarda Vitorino', 'Guarda do Porto', 'nordic', cx + 2.5, cy - 30, 0x6a7a9a, [`Aqui a lei é a Companhia, e a Companhia sou eu das oito às seis.`, 'Ladrão de carvão vai para a caldeira. Brincadeira. Vai para a masmorra.']);
+    N('Faroleira Dinorá', 'Guardiã do Farol Tecnocrático', 'technocrat', cx - 1.5, cy + 23.5, 0x4a7a9a, ['O Farol é da Academia, mas a luz é de quem está no mar.', 'Três voltas por minuto. Quando falha uma, eu já estou no bote.']);
+    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 14.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo muda a sua força. Muda a sua cara.'] });
     return st;
   };
   // vilas de madeira espalhadas pelo mundo exterior e a cidade média a nordeste
@@ -1358,7 +1380,9 @@ export function buildCity(): World {
     const clearAt = (x: number, y: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx === x && q.gy === y && (q.kind === 'tree' || q.kind === 'rock' || q.kind === 'grave' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree')) props.splice(i, 1); } };
     // 1) o anel rasterizado: casas em ordem, sem repetição
     const ring: [number, number][] = []; const seenK = new Set<number>();
-    for (let i = 0; i < 2400; i++) { const a = i / 2400 * 6.283, r = radAt(a), x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r), k = y * 4096 + x; if (seenK.has(k) || !inb(x, y)) continue; seenK.add(k); ring.push([x, y]); }
+    for (let i = 0; i < 2400; i++) { const a = i / 2400 * 6.283, r = radAt(a), x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r), k = y * 4096 + x; if (seenK.has(k) || !inb(x, y)) continue;
+      if (ring.length >= 2) { const p2 = ring[ring.length - 2]; if (Math.abs(p2[0] - x) <= 1 && Math.abs(p2[1] - y) <= 1) { const p1 = ring.pop()!; seenK.delete(p1[1] * 4096 + p1[0]); } } /* anel fino: a casa do canto que sobra sai */
+      seenK.add(k); ring.push([x, y]); }
     const N = ring.length;
     const nearWater = (x: number, y: number, d: number) => { for (let yy = y - d; yy <= y + d; yy++) for (let xx = x - d; xx <= x + d; xx++) if (map[yy]?.[xx] === 'water') return true; return false; };
     const wallOk = ring.map(([x, y]) => !nearWater(x, y, 2)); // onde a costa chega, o muro para
@@ -1413,7 +1437,7 @@ export function buildCity(): World {
         const side = Math.abs(ox) > Math.abs(oy) ? (ox > 0 ? 3 : 2) : (oy > 0 ? 1 : 0); const minx = Math.min(...picked.map((q) => q[0])), miny = Math.min(...picked.map((q) => q[1]));
         props.push({ kind: 'wstair', gx: minx, gy: miny, w: axis === 'x' ? L : 1, h: axis === 'x' ? 1 : L, height: H, wall: 0x8a857e, roof: 0, variant: side * 2 + (dir > 0 ? 1 : 0) });
         flights.push({ tiles: picked, axis, dir }); n++; i += 12; } }
-    ramparts.push({ cx, cy, R: Rb + 6, top: groundH(cx * T, cy * T) + H, H, flights, tiles });
+    ramparts.push({ cx, cy, R: Rb + 6, top: groundH(cx * T, cy * T) + H, H, flights, tiles: [...tiles] });
     // 8) do lado de fora: dois assentamentos pequenos e distantes (regra 19: nada de fila de tendas nem mendigo com missão)
     for (let k = 0; k < 2; k++) { const a = rw() * 6.283; let hx = 0, hy = 0, ok = false; for (let tries = 0; tries < 30 && !ok; tries++) { const r = Rb + 16 + rw() * 10, aa = a + (tries * 0.7); hx = Math.round(cx + Math.cos(aa) * r); hy = Math.round(cy + Math.sin(aa) * r); ok = inb(hx, hy) && !nearWater(hx, hy, 3) && !insideWall(hx, hy) && map[hy][hx] === 'grass'; }
       if (!ok) continue; const nh = 2 + Math.floor(rw() * 2); for (let q = 0; q < nh; q++) { const ang = q / nh * 6.283 + rw(), d = 4 + rw() * 3, gx = Math.round(hx + Math.cos(ang) * d) - 2, gy = Math.round(hy + Math.sin(ang) * d) - 2, w = 3 + Math.floor(rw() * 2), h = 3; let free2 = true; for (let y = gy - 1; y <= gy + h && free2; y++) for (let x = gx - 1; x <= gx + w && free2; x++) if (!inb(x, y) || map[y][x] !== 'grass') free2 = false; if (!free2) continue;
