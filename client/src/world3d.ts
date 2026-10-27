@@ -688,7 +688,7 @@ export function buildWorld(world: World): WorldObjs {
       const skip = new Set<THREE.Object3D>(), taken: THREE.Mesh[] = [];
       pg.traverse((o) => {
         if (o.userData.sway || o.userData.dyn || o.userData.keep) { o.traverse((c) => skip.add(c)); return; }
-        const m = o as THREE.Mesh; if (!m.isMesh || skip.has(m) || Array.isArray(m.material) || !m.geometry.attributes.position || !m.visible) return;
+        const m = o as THREE.Mesh; if (!m.isMesh || skip.has(m) || Array.isArray(m.material) || !m.geometry.attributes.position || (!m.visible && !m.userData.merged)) return;
         const mat = m.material as THREE.MeshToonMaterial; if (mat.transparent || (mat as THREE.Material & { isSprite?: boolean }).isSprite) return;
         const toon = (mat as THREE.Material & { isMeshToonMaterial?: boolean }).isMeshToonMaterial === true;
         const key = toon ? `t|${mat.map ? mat.map.uuid : ''}|${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}` : `i|${mat.uuid}|${m.castShadow ? 1 : 0}`;
@@ -702,8 +702,11 @@ export function buildWorld(world: World): WorldObjs {
         else if (gg.attributes.color) gg.deleteAttribute('color');
         gg.applyMatrix4(tmpM.multiplyMatrices(inv, m.matrixWorld)); b.geos.push(gg); taken.push(m);
       });
-      for (const m of taken) m.parent?.remove(m);
-      let left = false; pg.traverse((o) => { if ((o as THREE.Mesh).isMesh) left = true; }); if (!left) L.group.remove(pg);
+      /* 26/10 (relíquia invisível): as malhas fundidas NÃO saem do prop — só se escondem. Antes elas eram arrancadas, e quando
+         algo do chunk sumia (erva colhida, pedra quebrada) a refusão achava os props vazios: a pedra da relíquia, túmulos e casas
+         sumiam e só ficavam as partes que brilham. Agora a refusão sempre encontra tudo. */
+      for (const m of taken) { m.userData.merged = true; m.visible = false; }
+      let left = false; pg.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible && !skip.has(o)) left = true; if ((o as THREE.Mesh).isMesh && skip.has(o)) left = true; }); if (!left) L.group.remove(pg);
     }
     for (const buckets of cells.values()) for (const b of buckets.values()) {
       const merged = mergeGeometries(b.geos, false); for (const gg of b.geos) gg.dispose(); if (!merged) continue;
