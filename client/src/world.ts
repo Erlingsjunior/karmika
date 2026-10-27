@@ -209,7 +209,7 @@ export const MONU = {
 };
 /** altura extra do terreno nos monumentos (m) */
 /** a estrada em caracol do Conde: sai do pé (raio R+3, ângulo a0) e dá 2,2 voltas até o platô */
-export const CONDE_ROAD = { a0: Math.PI * 1.05, turns: 2.2 };
+export const CONDE_ROAD = { a0: Math.PI * 1.05, turns: 2.725 }; /* 27/10: 2,725 voltas terminam no SUL (frente do castelo); com 2,2 o caracol acabava no norte, debaixo do castelo, e a porta ficava ilhada */
 /** a estrada é um terraço cortado na encosta: a altura dela só sobe, sem a inclinação de lado */
 function condeTerrace(tx: number, ty: number): { w: number; h: number } | null {
   const c = MONU.conde, dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy); if (d > c.R + 6 || d < c.top - 2) return null;
@@ -911,7 +911,7 @@ export function buildCity(): World {
           props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : tier === 1 ? 13 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); }
         /* forte de vigia à beira da estrada: torre de pedra (perto da cidade) ou posto de madeira (no ermo), com dois soldados */
         if (--sinceFort <= 0 && posts < 40) { const sd = (h & 1) ? 1 : -1, fx = Math.round(p.x + nx * sd * 6), fy = Math.round(p.y + ny * sd * 6);
-          let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; }
+          let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) { if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; } const g = groundH((x + 0.5) * T, (y + 0.5) * T); if (g >= 10.5 || g <= WL - 2.4) { ok = false; break; } } /* 27/10: posto só onde dá para pisar (grama alta demais ilha os vigias) */
           if (ok) { sinceFort = 70 + (h % 40); posts++;
             for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (Math.abs(o.gx - fx) <= 2 && Math.abs(o.gy - fy) <= 2 && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
             if (tier >= 1) { props.push({ kind: 'tower', gx: fx, gy: fy, w: 1, h: 1, height: tier === 2 ? 9 : 6.5, wall: 0x6e6a66, roof: tier === 2 ? 0x34445e : 0x5a3a28 }); map[fy][fx] = 'wall'; }
@@ -1012,7 +1012,7 @@ export function buildCity(): World {
     st.npcs.push({ name: 'Lady Morwen', role: 'Senhora do Sangue', kind: 'nordic', x: v.x, y: v.y + 1.5, radius: 1.2, tint: 0x7a5a8a, scale: 1.0, lines: ['Hemara nunca obrigou ninguém. Ela espera. Eu também.', 'A mordida é um caminho: sede, noite eterna, força que não envelhece — e caçadores de Aravel no seu encalço até o fim das vidas.', 'Volte com o seu próprio sangue provado: nível 30. Então conversaremos sobre a primeira noite.'] });
     spawns.push({ type: 'rat', x: v.x - 5, y: v.y + 4, r: 4, n: 3 }); }
   // Primeiro lugar licantropo: a Clareira de Selvar (floresta do leste)
-  { const v = safe(396 + SH, 262 + SH, 10); const st: Settlement = { name: 'Clareira de Selvar', kind: 'village', x: v.x, y: v.y, radius: 7, npcs: [] }; settlements.push(st);
+  { const v = safe(396 + SH + 36, 262 + SH + 4, 10); /* 27/10: a clareira ficava debaixo da colina da Abadia da Aurora */ const st: Settlement = { name: 'Clareira de Selvar', kind: 'village', x: v.x, y: v.y, radius: 7, npcs: [] }; settlements.push(st);
     for (let y = v.y - 4; y <= v.y + 4; y++) for (let x = v.x - 4; x <= v.x + 4; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
     if (free(v.x, v.y)) block({ kind: 'campfire', gx: v.x, gy: v.y, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a });
     for (const [tx, ty] of [[v.x - 4, v.y - 3], [v.x + 3, v.y - 3], [v.x + 3, v.y + 2]]) if (free(tx, ty) && free(tx + 1, ty + 1) && free(tx + 1, ty) && free(tx, ty + 1)) block({ kind: 'tent', gx: tx, gy: ty, w: 2, h: 2, height: 2.4, wall: 0x5a4a3a, roof: 0x3a2a1a });
@@ -1316,14 +1316,14 @@ export function buildCity(): World {
       const c = MONU.conde; clearArea(c.x, c.y, c.R + 4);
       for (let y = c.y - c.R; y <= c.y + c.R; y++) for (let x = c.x - c.R; x <= c.x + c.R; x++) if (inb(x, y) && Math.hypot(x - c.x, y - c.y) < c.R && map[y][x] !== 'water') map[y][x] = 'grass';
       const pts: [number, number][] = []; const a0 = CONDE_ROAD.a0, turns = CONDE_ROAD.turns; // sai do lado de Corvoscuro (oeste) e sobe em caracol até a frente do castelo (sul)
-      for (let i = 0; i <= 160; i++) { const t = i / 160, ang = a0 + t * turns * Math.PI * 2, r = (c.R + 3) - t * (c.R + 3 - (c.top - 1.2)); pts.push([c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r]); }
+      for (let i = 0; i <= 160; i++) { const t = i / 160, ang = a0 + t * turns * Math.PI * 2, r = (c.R + 3) - t * (c.R + 3 - 15); pts.push([c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r]); } /* raio final 15: passa livre dos cantos do castelo (22×20) */
       const endA = a0 + turns * Math.PI * 2; road(pts, 1.25, 0);
       // da vila até o pé da montanha
       { const v = settlements.find((q) => q.name === 'Corvoscuro'); if (v) road([[v.x + 3, v.y], [pts[0][0], pts[0][1]]], 1.1, 0.4); }
       for (let i = 4; i < pts.length; i += 7) { const [x, y] = pts[i], a = Math.atan2(y - c.y, x - c.x); const ox = Math.round(x + Math.cos(a) * 2.2), oy = Math.round(y + Math.sin(a) * 2.2); if (inb(ox, oy) && map[oy][ox] === 'grass') props.push({ kind: 'torch', gx: ox, gy: oy, w: 1, h: 1, height: 2.2, wall: 0x1a1a20, roof: 0xff2a2a }); }
       const W = 22, H = 20, gx = c.x - Math.floor(W / 2), gy = c.y - Math.floor(H / 2) - 1; block({ kind: 'monument', gx, gy, w: W, h: H, height: 60, wall: 0x3a3438, roof: 0x2a1e24, variant: 1 });
       landmarkDoor['Corvoscuro'] = { x: gx + W / 2 + 1.6, y: gy + H + 1.4 };
-      for (let y = gy + H; y <= c.y + c.top; y++) for (let x = c.x - 2; x <= c.x + 2; x++) if (inb(x, y) && map[y][x] === 'grass') map[y][x] = 'road'; void endA;
+      for (let y = gy + H; y <= c.y + 16; y++) for (let x = c.x - 2; x <= c.x + 2; x++) if (inb(x, y) && map[y][x] === 'grass') map[y][x] = 'road'; void endA; /* a faixa da porta desce até encontrar o fim do caracol */
       pois.push({ name: 'Castelo da Colina Vampírica', x: c.x, y: gy + H + 2, biome: 'blight' });
       for (let k = 0; k < 150; k++) { const a = rnd() * 6.283, r = c.top + 2 + rnd() * (c.R + 6 - c.top), x = Math.round(c.x + Math.cos(a) * r), y = Math.round(c.y + Math.sin(a) * r); if (!inb(x, y) || map[y][x] !== 'grass') continue;
         const q = rnd(); if (q < 0.55) { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 4 + rnd() * 4, wall: 0x2a2226, roof: 0x3a2a30, variant: 1 }); map[y][x] = 'tree'; }
@@ -1373,6 +1373,15 @@ export function buildCity(): World {
       scatter(o.x, o.y, o.moat + 3, o.moat + 10, 28, (x, y, k) => { props.push(k % 3 ? { kind: 'grave', gx: x, gy: y, w: 1, h: 1, height: 1.2, wall: 0x9a9aa0, roof: 0, variant: Math.floor(rnd() * 3) } : { kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 2.4, wall: 0x8a8e94, roof: 0xd8e8ff }); }); }
     { const o = MONU.desgraca, s0 = site('Gorvath', o.x, o.y, 20, 20, 6, 'Vale da Desgraça', 'blight', o.R + 2); const pts: [number, number][] = [[o.x + 0.5, o.y + o.R + 6], [o.x + 0.5, o.y + 11]]; road(pts, 1.25, 0); /* entra pela brecha do sul da crista */ if (s0.vv) road([[s0.vv.x, s0.vv.y - 3], pts[0]], 1.1, 0.3);
       scatter(o.x, o.y, o.top, o.R + 6, 70, (x, y, k) => { const q = k % 5; if (q === 0) props.push({ kind: 'totem', gx: x, gy: y, w: 1, h: 1, height: 3.6, wall: 0, roof: 0, variant: 2 }); else if (q === 1) props.push({ kind: 'fogpatch', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0x3a2a4a, roof: 0x9a5ad0, variant: 0 }); else if (q === 2) props.push({ kind: 'bones', gx: x, gy: y, w: 1, h: 1, height: 0.4, wall: 0xd8d0b8, roof: 0, variant: Math.floor(rnd() * 3) }); else { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 4 + rnd() * 4, wall: 0x2a2226, roof: 0x3a2a40, variant: 1 }); map[y][x] = 'tree'; } }); }
+    /* 27/10: a Montanha Negra inteira é alta demais para pisar fora de estrada; a masmorra do Coração e a relíquia da cratera ficavam ilhadas (quem chegava pela relíquia não andava). Estrada de Brasaforja até a boca do Coração e caracol até a cratera */
+    { const vx = LORE.negra.x, vy = LORE.negra.y - 8, bf = settlements.find((q) => q.name === 'Brasaforja'); const mouth: [number, number] = [599.5, 130.5];
+      if (bf) road([[bf.x + 4, bf.y - 2], [578, 168], [590, 148], mouth], 1.25, 0.2);
+      const a0 = Math.atan2(mouth[1] - vy, mouth[0] - vx), r0 = Math.hypot(mouth[0] - vx, mouth[1] - vy), pts: [number, number][] = [];
+      for (let i = 0; i <= 120; i++) { const t = i / 120, ang = a0 + t * Math.PI * 2 * 1.1, r = r0 - t * (r0 - 8); pts.push([vx + Math.cos(ang) * r, vy + Math.sin(ang) * r]); }
+      pts.push([645.5, 103.5]); road(pts, 1.25, 0);
+      /* pátio de estrada na cratera (a relíquia precisa de um bolsão de grama com estrada ao lado: 645–646 × 100–101 fica de fora) e na boca da masmorra */
+      for (let y = 96; y <= 106; y++) for (let x = 640; x <= 651; x++) if (inb(x, y) && Math.hypot(x - 645.5, y - 101.5) < 5 && map[y][x] === 'grass' && !(x >= 645 && x <= 646 && y >= 100 && y <= 101)) map[y][x] = 'road';
+      for (let y = 122; y <= 131; y++) for (let x = 596; x <= 605; x++) if (inb(x, y) && Math.hypot(x - 600.5, y - 126.5) < 4.5 && map[y][x] === 'grass') map[y][x] = 'plaza'; }
     { const o = MONU.uivo, s0 = site('Uivo Antigo', o.x, o.y, 18, 18, 7, 'Árvore-Mãe do Uivo', 'jungle', 16); if (s0.vv) road([[s0.vv.x, s0.vv.y - 3], [o.x + 0.5, s0.gy + 18 + 2]], 1.1, 0.3);
       scatter(o.x, o.y, 11, 20, 40, (x, y, k) => { if (k % 3 === 0) props.push({ kind: 'totem', gx: x, gy: y, w: 1, h: 1, height: 3.8, wall: 0, roof: 0, variant: 0 }); else { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 6 + rnd() * 3, wall: 0x4a3220, roof: 0x2a4a2a, variant: 0 }); map[y][x] = 'tree'; } }); }
   }
@@ -1384,7 +1393,7 @@ export function buildCity(): World {
     const nearRoad = (x: number, y: number, r: number) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (map[y + dy]?.[x + dx] === 'road') return true; return false; };
     const place = (name: string, x0: number, y0: number, wantRoad: boolean, minGap = 22) => {
       if (relics.some((q) => Math.hypot(q.x - x0, q.y - y0) < minGap)) return false;
-      for (let r = 1; r < 14; r++) for (let k = 0; k < r * 8; k++) { const a = (k / (r * 8)) * 6.283, x = Math.round(x0 + Math.cos(a) * r), y = Math.round(y0 + Math.sin(a) * r);
+      for (let r = 1; r < (wantRoad ? 14 : 26); r++) for (let k = 0; k < r * 8; k++) { const a = (k / (r * 8)) * 6.283, x = Math.round(x0 + Math.cos(a) * r), y = Math.round(y0 + Math.sin(a) * r); /* 27/10: sem estrada por perto, procura mais longe (a Colina Vampírica ficava sem pedra) */
         if (!okT(x, y) || (wantRoad && !nearRoad(x, y, 2)) || nearRoad(x, y, 0)) continue;
         if (settlements.some((t) => t.kind === 'city' && Math.abs(t.x - x) <= t.radius + 4 && Math.abs(t.y - y) <= t.radius + 4)) continue; // fora da muralha
         block({ kind: 'relic', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0x6a6a72, roof: 0x4a9aff }); relics.push({ name, x, y }); return true; }
@@ -1396,7 +1405,7 @@ export function buildCity(): World {
     const kar = settlements.find((t) => t.name === 'Karmika'); if (kar) { const [x, y] = exitOf(kar); place('Relíquia de Karmika', x, y, true, 0); }
     for (const t of settlements) if (t.name !== 'Karmika') { const [x, y] = exitOf(t); place(`Relíquia de ${t.name}`, x, y, true, 14); }
     for (const pn of ['Acampamento Draugr', 'Covil dos Lobos', 'Atoleiro de Zerath', 'Cume Gelado', 'Garganta de Pedra', 'Cemitério Esquecido', 'Igreja Abandonada', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn); if (q) place(`Relíquia: ${pn}`, q.x, q.y + 5, false); }
-    for (const rg of REGIONS) place(`Relíquia: ${rg.name}`, Math.round(rg.x), Math.round(rg.y), true) || place(`Relíquia: ${rg.name}`, Math.round(rg.x), Math.round(rg.y), false);
+    for (const rg of REGIONS) { const rx = rg.name === 'Colina Vampírica' ? 764 : Math.round(rg.x), ry = rg.name === 'Colina Vampírica' ? 270 : Math.round(rg.y); /* 27/10: a pedra da Colina fica na frente do castelo (perto demais da de Corvoscuro no sopé) */ place(`Relíquia: ${rg.name}`, rx, ry, true) || place(`Relíquia: ${rg.name}`, rx, ry, false); }
   }
   /* ervas (herborismo): não bloqueiam o caminho; gerador próprio para não mexer no resto do mundo.
      0 Folha-de-Prata (campos e matas) · 1 Cogumelo-Lamparina (pântano e mata fechada) · 2 Raiz-Sangue (pântano, ruínas, rocha) · 3 Flor-de-Marghar (rara, perto das relíquias) */
