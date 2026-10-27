@@ -126,6 +126,12 @@ type VowState = { id: string; secs: number; broken: boolean; titled: boolean } |
 let vow: VowState = (() => { try { return JSON.parse(localStorage.getItem('karmika.vow') || 'null'); } catch { return null; } })();
 const saveVow = () => { try { localStorage.setItem('karmika.vow', JSON.stringify(vow)); } catch { /* */ } };
 
+/* 26/10 noite (Erling: "não tenho 100/100, o limite não é 100"): dois números. O ALINHAMENTO (state.karma) continua de −100 a +100 —
+   é o que guardas, inquisidor, facções e o Olho leem. O KARMA ACUMULADO não tem teto: tudo de luz e de sombra que a alma juntou,
+   em todas as vidas (soul.s.luzT / soul.s.sombraT). Todo ganho e perda de karma passa por aqui. */
+function addKarma(dk: number) { if (!dk || !Number.isFinite(dk)) return; state.karma = Math.max(-100, Math.min(100, state.karma + dk));
+  if (dk > 0) soul.s.luzT = (soul.s.luzT ?? 0) + dk; else soul.s.sombraT = (soul.s.sombraT ?? 0) - dk; soul.save(); }
+if (soul.s.luzT === undefined && soul.s.sombraT === undefined) { soul.s.luzT = Math.max(0, state.karma); soul.s.sombraT = Math.max(0, -state.karma); soul.save(); }
 const keepKarma = () => { if (soul.s.karma !== state.karma) { soul.s.karma = state.karma; soul.save(); } };
 setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
@@ -352,12 +358,12 @@ function needGauge() { const t = performance.now(); if (t < needT) return; needT
   if (k === 'tecno') { const r = game.reactor(), p = Math.round(r.charge * 100); html = `<b>⚛</b><i><s style="width:${p}%;background:${p < 15 ? '#ff7a4a' : '#5ae0ff'}"></s></i><em>${p}%</em>`; tip = `Reator pessoal Mk ${r.tier === 2 ? 'II' : 'I'}: ${p}%. Vazio = sem Energia e a esfera apaga. Troque o Núcleo (Companhia de Latão).`; }
   else if (k === 'lob' || k === 'vam') { const c = game.crave(), p = Math.round(c.v * 100), L = k === 'lob'; html = `<b>${L ? '🍖' : '🩸'}</b><i><s style="width:${p}%;background:${p > 90 ? '#ff3a3a' : p > 60 ? '#ff9a4a' : '#c23a4a'}"></s><s class="fl" style="left:${Math.round(c.floor * 100)}%"></s></i><em>${p}%</em>`; tip = `${L ? 'Fome de carne' : 'Sede de sangue'}: ${p}%. Acima de 60% você fica mais lento e fraco. A risca é o piso: ${L ? 'carne' : 'sangue'} de bicho não desce abaixo dela. ${L ? 'Charcutaria Secular (vampiros de Corvoscuro)' : 'Injeção Automática (tecnocratas)'} sacia sem vítima.`; }
   if (k === 'pal') { const dv = game.doubt(), p = Math.round(dv.v * 100); html = `<b>✝</b><i><s style="width:${p}%;background:${p > 80 ? '#ff6a4a' : p > 50 ? '#e8c050' : '#f0e0a0'}"></s></i><em>${p}%</em>`; tip = `Dúvida: ${p}%. Acima de 50%: a Luz responde menos (−6% de dano). Acima de 80%: a fé vacila, as escolhas boas não pesam e o karma escorre. Jejum e Oração: Pão Ázimo + Vinho Santo dos Anões.`;
-    if (dv.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; state.karma = Math.max(-100, state.karma - 1); game.logMsg('✝ A dúvida corrói a fé (−1 de karma).', '#ff8a6a'); } } }
+    if (dv.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; addKarma(-(1)); game.logMsg('✝ A dúvida corrói a fé (−1 de karma).', '#ff8a6a'); } } }
   { const n3 = game.need3(); if (!html && n3) { const p = Math.round(n3.v * 100), I = { mag: '🔮', bru: '🜏', cac: '👁' }[n3.k], N = { mag: 'Ressonância Arcana', bru: 'Dívida do Pacto', cac: 'Vigília' }[n3.k]; html = `<b>${I}</b><i><s style="width:${p}%;background:${p > 80 ? '#ff5a4a' : p > 50 ? '#c08aff' : '#8a7ad0'}"></s></i><em>${p}%</em>`;
     tip = `${N}: ${p}%. ` + ({ mag: 'Acima de 50%: magia volta 30% mais devagar, −4% de dano. Acima de 80%: Soberba — boas escolhas não pesam e a magia pode rachar na mão. Ritual do Aterramento: Unguento da Terra (lobisomens) + Água Benta (paladinos).', bru: 'Acima de 50%: Malgrath segura 10% da vida. Acima de 80%: boas escolhas não pesam e o Cobrador do Pacto aparece. Oferenda: Coração de Demônio (caçadores) + Chifre de Sangue (guerreiros).', cac: 'Acima de 50%: −5% de crítico e −4% de dano. Acima de 80%: Paranoia — confiar não pesa. Sono Guardado: Pó do Sono (bruxos) + Sino de Guarda (tecnocratas).' } as Record<string, string>)[n3.k];
-    if (n3.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; state.karma = Math.max(-100, state.karma - 1); game.logMsg('A fraqueza come a alma por dentro (−1 de karma).', '#ff8a6a'); } } } }
+    if (n3.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; addKarma(-(1)); game.logMsg('A fraqueza come a alma por dentro (−1 de karma).', '#ff8a6a'); } } } }
   if (!html && isWarrior()) { const f = game.fury(), p = Math.round(f.v * 100); html = `<b>🪓</b><i><s style="width:${p}%;background:${p > 80 ? '#ff3a3a' : p > 50 ? '#ff9a3a' : '#c8a060'}"></s></i><em>${p}%</em>`; tip = `Fúria: ${p}%. Acima de 50%: frenesi (+5% de dano, apanha 6% mais). Acima de 80%: loucura — as escolhas boas não pesam e a alma escurece. Ritual de calmaria: Kit de Incensos de Mortificação (magos de Lumenhal ou bruxa de Gorvath).`;
-    if (f.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; state.karma = Math.max(-100, state.karma - 1); game.logMsg('🪓 A loucura come a alma por dentro (−1 de karma).', '#ff8a6a'); } } }
+    if (f.v > 0.8) { furyDriftT += 0.4; if (furyDriftT >= 480) { furyDriftT = 0; addKarma(-(1)); game.logMsg('🪓 A loucura come a alma por dentro (−1 de karma).', '#ff8a6a'); } } }
   const key = html; if (key !== needKey) { needKey = key; needEl.innerHTML = html; needEl.title = tip; needEl.style.display = html ? 'flex' : 'none'; } }
 /* a fome da fera (25/10): gente morta pelo lobisomem ou pelo vampiro vira refeição — e pesa muito no karma */
 const PEOPLE = new Set(['soldier', 'cultist', 'darkpal', 'templar', 'hunter', 'pilgrim']);
@@ -367,7 +373,7 @@ function feastOnKill(t: string, e?: { def?: { rig?: string; human?: { kind?: str
   const hu = e?.def?.human, ppl = (PEOPLE.has(t) || e?.def?.rig === 'human') && t !== 'vampire';
   if (ppl) { const race = hu?.kind === 'dwarf' ? 'dwarf' : hu?.civil === 'elf' || t === 'pilgrim' ? 'elf' : 'human'; game.feed('human');
     const L = k === 'lob', fl = race === 'dwarf' ? (L ? 'Carne de anão: dura de mastigar, mas sustenta.' : 'Sangue de anão: grosso, quente, com gosto de ferro e cerveja.') : race === 'elf' ? (L ? 'Carne de elfo: magra, quase sem gordura, e deixa um gosto de seiva.' : 'Sangue élfico: fino e frio, com um brilho que demora a sair da boca.') : (L ? 'Carne humana: é dela que a fera mais sente falta.' : 'Sangue humano: o mais doce de todos.');
-    game.logMsg(`☠ ${fl} O Banquete cobra: 20 turnos de paz roubados e uma vida, −21 de karma.`, '#ff6a5a'); state.karma = Math.max(-100, state.karma - 21); }
+    game.logMsg(`☠ ${fl} O Banquete cobra: 20 turnos de paz roubados e uma vida, −21 de karma.`, '#ff6a5a'); addKarma(-(21)); }
   else if (BEASTS_FOOD.has(t)) game.feed('animal'); }
 const SHOP_BY_NAME = new Map<string, string>(); for (const st of city.settlements) for (const n of st.npcs) if (n.shop) SHOP_BY_NAME.set(n.name, n.shop); for (const n of npcSys.npcs) if (n.def.role === 'Mercador viajante') SHOP_BY_NAME.set(n.def.name, 'mercador');
 /* correio: caixas em cada povoado */
@@ -732,7 +738,7 @@ function banditQuests() {
       done: ['Então caiu. A patrulha vai poder passar sem segurar o escudo.', 'Isto aqui é pelo serviço. E a estrada agradece.'] } as unknown as import('./quests').QuestDef); });
   return out;
 }
-const quests = createQuests({ stance: () => stanceSys?.current().id ?? null, lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT, ...STANCE_QUESTS],
+const quests = createQuests({ stance: () => stanceSys?.current().id ?? null, lean: () => soulLean(), origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { addKarma(dk); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WEREWOLF, ...RACE_INSTINCT, ...STANCE_QUESTS],
   room: { on: () => netRef?.state === 'on', posts: () => netRef?.posts ?? [], add: (item, n, gold) => netRef?.postAdd({ item, name: ITEMS_TBL[item]?.name ?? item, icon: ITEMS_TBL[item]?.icon ?? '•', n, gold, note: '' }),
     fill: (id, item, n) => netRef?.postFill(id, [{ item: { id: item, n } }]), cancel: (id) => netRef?.postCancel(id) } });
 (window as unknown as { __quests?: unknown }).__quests = quests;
@@ -763,7 +769,7 @@ function myPath(): string | null { const p = profile?.path; if (!p || p === 'hum
    Manter: Bênção do Voto (+5% de XP) e, depois de 3 horas de jogo fiel, o título. Quebrar: perde a bênção, −6 de karma,
    o nome fica manchado e os NPCs comentam. Não é obrigatório: é roleplay com peso. ---------- */
 function vowKept() { return !!vow && !vow.broken; }
-function breakVow(id: string) { if (!vow || vow.broken || vow.id !== id) return; vow.broken = true; saveVow(); state.karma = Math.max(-100, state.karma - 6); (soul.s.marks ??= []).push('voto_quebrado'); soul.s.sombra = (soul.s.sombra ?? 0) + 3; soul.save(); game.st.xpMul = Math.max(1, game.st.xpMul - 0.05);
+function breakVow(id: string) { if (!vow || vow.broken || vow.id !== id) return; vow.broken = true; saveVow(); addKarma(-(6)); (soul.s.marks ??= []).push('voto_quebrado'); soul.s.sombra = (soul.s.sombra ?? 0) + 3; soul.save(); game.st.xpMul = Math.max(1, game.st.xpMul - 0.05);
   game.logMsg(`⛓ Você quebrou o ${VOWS[id].name}. ${VOWS[id].why} A bênção se apaga, e o seu nome fica manchado.`, '#ff8a7a'); setTimeout(() => eyeSees('O Olho guardou.', `Quebrou o voto: “${VOWS[id].text}”`, `${VOWS[id].why} Ninguém obrigou você a jurar. Por isso pesa.`, -6), 500); }
 function offerVow(path: string) {
   const ids = VOW_FOR[path] ?? Object.keys(VOWS);
@@ -782,7 +788,7 @@ function applyReply(r: Reply) {
   const before = soulLean();
   if (r.luz) soul.s.luz = (soul.s.luz ?? 0) + r.luz; if (r.sombra) soul.s.sombra = (soul.s.sombra ?? 0) + r.sombra;
   if (r.karma && r.karma > 0 && ((isWarrior() && game.fury().v > 0.8) || (kitRace() === 'pal' && game.doubt().v > 0.8) || (game.need3()?.v ?? 0) > 0.8)) { game.logMsg('🪓 A loucura da batalha fala mais alto: o bem que você quis fazer não pesou na alma. Faça o ritual de calmaria.', '#ff8a6a'); r = { ...r, karma: 0 }; }
-  if (r.karma) state.karma = Math.max(-100, Math.min(100, state.karma + r.karma));
+  if (r.karma) addKarma(r.karma);
   if (r.flag && !hasMark(r.flag)) (soul.s.marks ??= []).push(r.flag);
   if (r.flag?.startsWith('mentiu')) breakVow('verdade');
   soul.save(); const after = soulLean();
@@ -946,7 +952,7 @@ const pvp = (() => {
         const revenge = (hostile.get(r.id) ?? 0) > now;
         if (!rivals(r.fac) && !revenge) { // mesmo lado (ou sem facção): só com o PvP da facção ligado, e custa karma
           if (!pvpOn) continue;
-          if (!((struck.get(r.id) ?? 0) > now)) { state.karma = Math.max(-100, state.karma - 3); game.logMsg(`⚔ Você atacou ${r.name}, do seu próprio lado. O karma pesa (−3).`, '#ff8a7a'); }
+          if (!((struck.get(r.id) ?? 0) > now)) { addKarma(-(3)); game.logMsg(`⚔ Você atacou ${r.name}, do seu próprio lado. O karma pesa (−3).`, '#ff8a7a'); }
           struck.set(r.id, now + 120000);
         }
       }
@@ -972,8 +978,8 @@ const pvp = (() => {
       const fac = net.remotes().find((q) => q.id === from)?.fac ?? null;
       if (rivals(fac)) { game.logMsg(`⚔ ${vn}, de ${FAC[fac as Fac]?.name ?? 'outra facção'}, caiu diante de você.`, '#ffd88a'); feats.bump('pvp_rival'); }
       else if ((hostile.get(from) ?? 0) > Date.now()) game.logMsg(`⚔ ${vn} atacou primeiro e caiu. Foi justiça: o karma não pesa.`, '#ffd88a');
-      else { state.karma = Math.max(-100, state.karma - 15); game.logMsg(`☠ Você matou ${vn}, do seu próprio lado. O karma pesa (−15).`, '#ff6a5a'); feats.bump('pk'); }
-      { const k = kitRace(); if (k === 'lob' || k === 'vam') { const paid = rivals(fac) || (hostile.get(from) ?? 0) > Date.now() ? 0 : 15; game.feed('human'); state.karma = Math.max(-100, state.karma - (42 - paid)); game.logMsg(`☠ Você se alimentou de ${vn}. Uma alma que vai voltar e lembrar vale o dobro: −42 de karma no total.`, '#ff6a5a'); } }
+      else { addKarma(-(15)); game.logMsg(`☠ Você matou ${vn}, do seu próprio lado. O karma pesa (−15).`, '#ff6a5a'); feats.bump('pk'); }
+      { const k = kitRace(); if (k === 'lob' || k === 'vam') { const paid = rivals(fac) || (hostile.get(from) ?? 0) > Date.now() ? 0 : 15; game.feed('human'); addKarma(-((42 - paid))); game.logMsg(`☠ Você se alimentou de ${vn}. Uma alma que vai voltar e lembrar vale o dobro: −42 de karma no total.`, '#ff6a5a'); } }
     } else chat.sys(`☠ ${kn} matou ${vn}.`);
   });
   /* duelo */
@@ -1056,9 +1062,9 @@ const caravans = createCaravans({ onBridge: onBridgeM, shopOpen: () => inv.isOpe
   nearTown: (x, z) => { const tx = x / T, ty = z / T; return city.settlements.some((st) => Math.hypot(st.x - tx, st.y - ty) < st.radius + 6) || Math.hypot(CITY.x - tx, CITY.y - ty) < 30; },
   onEscort: (id) => quests.onCaravan('escort', id), onRescue: (id) => quests.onCaravan('rescue', id),
   onEvent: (r, how) => { const lv = Math.max(game.st.lvl, r.lvl - 5), xp = Math.round(game.xpNeedAt(lv) * 0.22);
-    if (how === 'salva') { const g = 40 + lv * 4; game.st.gold += g; game.gainXp(xp); state.karma = Math.min(100, state.karma + 2); applyReply({ t: '', luz: 1 });
+    if (how === 'salva') { const g = 40 + lv * 4; game.st.gold += g; game.gainXp(xp); addKarma(2); applyReply({ t: '', luz: 1 });
       game.logMsg(`⚙ Os sobreviventes da caravana agradecem. A Companhia de Latão paga o resgate: +${g} ouro, +${xp} XP. Na loja da Companhia, você tem desconto por meia hora.`, '#e0b048'); }
-    else { const g = 120 + lv * 9; game.st.gold += g; state.karma = Math.max(-100, state.karma - 5); applyReply({ t: '', sombra: 2, flag: 'saqueou_caravana' });
+    else { const g = 120 + lv * 9; game.st.gold += g; addKarma(-(5)); applyReply({ t: '', sombra: 2, flag: 'saqueou_caravana' });
       game.logMsg(`💰 Você abre as caixas sem dono e enche os bolsos: +${g} ouro. Ninguém viu. A Companhia vai saber mesmo assim.`, '#c98a9a'); setTimeout(() => eyeSees('O Olho guardou.', 'Saqueou uma caravana caída.', 'Os cocheiros estavam mortos e a carga não tinha dono. Mas tinha: as famílias que esperavam o pagamento da viagem.', -5), 700); } } },
   buildRoutes(city.roadPaths, city.roadLinks ?? []));
 /** a escolta e o resgate só existem enquanto a missão está no diário */
@@ -1209,7 +1215,7 @@ function startFesta(stName = 'Karmika') { const stS = city.settlements.find((q) 
   nightOverride = 1; nightTarget = 1; /* a festa é de noite: lanternas, fogos e brindes */
   { const L1 = new THREE.PointLight(0xffb060, 30, 26, 1.6); L1.position.set(0, 4.5, 0); g.add(L1); const L2 = new THREE.PointLight(0xff8a50, 18, 16, 1.6); L2.position.set(0, 3, -R + 2); g.add(L2); } /* duas luzes só (desempenho) */
   festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz, st: stName, bards, crowd, deeds: festaDeeds(stName), ballad: festaBallad(stName), bl: 0, coroOn: false, done: false };
-  inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); state.karma = Math.min(100, state.karma + 2); align.add('vila', stName, 10, 'a festa de despedida');
+  inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); addKarma(2); align.add('vila', stName, 10, 'a festa de despedida');
   audio.festaStart(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
 const FESTA_LEN = 240000; /* 4 minutos */
 const say2 = (n: (typeof npcSys.npcs)[number], line: string, secs = 4.5) => { const q = n as unknown as { bark?: string; barkT?: number }; q.bark = line; q.barkT = secs; };
@@ -1264,7 +1270,7 @@ function festaToast(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const
   if (!toasted.has(nm)) { toasted.add(nm); align.add('vila', festa.st, 1); game.logMsg(`🍻 Você brindou com ${nm}. (+1 com ${festa.st})`, '#ffe08a'); } else game.logMsg(`🍻 Mais um brinde com ${nm}!`, '#e8d8b0'); }
 function festaEnd() { if (!festa) return; for (const q of notes) scene.remove(q.s); notes.length = 0; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; nightOverride = 0.3; nightTarget = 0.3; /* o alvorecer do dia seguinte */ setTimeout(() => { nightOverride = null; }, 90000); game.logMsg('🌅 Alvorecer. Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
 function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
-  state.karma = Math.max(-100, Math.min(100, state.karma + r.karma)); game.gainXp(r.xp); game.st.gold += r.gold;
+  addKarma(r.karma); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
   const k = r.karma, kc = k > 0 ? '#ffe08a' : k < 0 ? '#c98aff' : '#b9c6e0';
   evResEl.innerHTML = `<div class="evp ${r.lean}"><small>RESPOSTA KÁRMICA</small><h3>${r.icon} ${r.name}</h3><p class="evs">${r.won ? 'Decidido' : 'O tempo acabou'} · você: <b>${r.side}</b></p>${r.lines.map((l) => `<p>${l}</p>`).join('')}
@@ -1619,7 +1625,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
   openDlg({ name: nm, role: n.def.role, portrait, text: (eco || frio) ? (eco || frio)!.replace(/\{nome\}/g, profile?.name || 'Caminhante') : ti.length ? 'Você voltou. Conseguiu?' : of.length ? (of[0].talk ? `${profile?.name ? profile.name + ', ' : ''}preciso falar com você.` : of[0].text) : (nm === 'Orm' && !quests.q.done.includes('o01') && quests.q.active['o01']) ? 'Enquanto o Torturador viver, nenhum cavalo sai daqui. A clareira fica no meio da floresta, a leste.' : n.def.lines[n.line], choices,
     onAccept: (d) => { quests.accept(d); game.logMsg(`${nm}: “Que Karmika guie seus passos.”`, '#f4e6b8'); },
     onTurnIn: (d, ci) => { const o = d.choice && ci !== undefined ? d.choice.opts[ci] : null; quests.turnIn(d);
-      if (o) { applyReply({ t: '', luz: o.karma > 0 ? Math.ceil(o.karma / 2) : 0, sombra: o.karma < 0 ? Math.ceil(-o.karma / 2) : 0, flag: (o as { flag?: string }).flag }); state.karma = Math.max(-100, Math.min(100, state.karma + o.karma)); game.logMsg(`${nm}: “${o.say}”`, '#f4e6b8'); setTimeout(() => eyeSees(o.karma >= 0 ? 'O Olho viu.' : 'O Olho guardou.', o.label, o.why, o.karma), 600); }
+      if (o) { applyReply({ t: '', luz: o.karma > 0 ? Math.ceil(o.karma / 2) : 0, sombra: o.karma < 0 ? Math.ceil(-o.karma / 2) : 0, flag: (o as { flag?: string }).flag }); addKarma(o.karma); game.logMsg(`${nm}: “${o.say}”`, '#f4e6b8'); setTimeout(() => eyeSees(o.karma >= 0 ? 'O Olho viu.' : 'O Olho guardou.', o.label, o.why, o.karma), 600); }
       else game.logMsg(`${nm}: “Bom trabalho.”`, '#f4e6b8');
       /* tem mais a contar? a conversa continua: a próxima missão é apresentada, não empurrada */
       if (!o) setTimeout(() => { if (!dlg.isOpen && (quests.offers(nm).length || quests.turnins(nm).length) && Math.hypot(n.pos.x - state.fx * T, n.pos.z - state.fy * T) < 8) talkTo(n); }, 450); },
@@ -1665,7 +1671,7 @@ if (hunt) setTimeout(() => { if (hunt) spawnHunt(hunt); }, 1500);
 game.setOnYield((e, decide) => {
   const hp = heroPosNow(), lvl = Math.max(2, (e.def.lvl ?? 1) + 2);
   surrender({ name: e.def.name, level: e.def.lvl ?? 1, demonic: ['prince', 'tormentor', 'bishop', 'imp'].includes(e.type),
-    karma: (dk) => { state.karma = Math.max(-100, Math.min(100, state.karma + dk)); }, log: (t, c) => game.logMsg(t, c),
+    karma: (dk) => { addKarma(dk); }, log: (t, c) => game.logMsg(t, c),
     treasure: () => { game.spawnGear(hp.x, hp.z, heightAt(hp.x, hp.z), lvl + 2, { rare: 8, legendary: 6, relic: 3 }, 2, 'rare'); game.st.gold += 60 + lvl * 15; game.logMsg('💰 Tesouros caem aos seus pés.', '#ffd24a'); },
     xp: (f) => game.gainXp(Math.round(game.xpNeed() * f)), tome: () => inv.add('tome', 1), hurt: (f) => game.damage(Math.round(game.st.hpMax * f), heroPosNow()),
     kill: () => { feats.bump('executed'); breakVow('misericordia'); decide(true); }, spare: () => { feats.bump('spared'); decide(false); }, record: (r) => { compendium.add(r); if (/recusou o suborno/i.test(r.title)) feats.bump('bribe_no'); if (/vendeu a sua nobreza/i.test(r.title)) feats.bump('bribe_yes'); }, fled: () => startHunt(e.type, e.def.name, e.def.lvl ?? 1), sealed: !profile?.eye });
@@ -1680,12 +1686,12 @@ function eliteDrop(t: EnemyType, e: { def: { name: string; scale?: number; lvl?:
   for (let i = 0; i < 24; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 3, vy: 1 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.25, s1: 0.04, c0: 0xffe8a0, c1: 0xff8a2a, a: 1, g: 4 });
   game.logMsg(`✦ ${e.def.name} deixou material de elite: ${got.map((id) => ITEMS_TBL[id]?.name ?? id).join(', ')}. O Mestre-Forjador Brokki, em Brasaforja, sabe o que fazer com isso.`, '#ffb060');
 }
-game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); gevNote((h) => { h.kills++; }); alignKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) state.karma = Math.min(100, state.karma + 14);
+game.setOnKill((t, e) => { try { eliteDrop(t, e as never); } catch { /* */ } featKill(t, e); eventos.onKill(e as never); gevNote((h) => { h.kills++; }); alignKill(e as never); if (t === 'deer' && myPath() !== 'lob') breakVow('inocente'); feastOnKill(t, e as never); /* o lobo caça para comer: cervo não é sangue inocente para a matilha */ dgs.onKill(e as never); if (SKIN[t]) (e as typeof e & { corpse?: number }).corpse = 90; /* a fera fica no chão para ser esfolada */ if ((e as typeof e & { tag?: string }).tag === 'hunt' && hunt) { const h = hunt; hunt = null; localStorage.removeItem('karmika.hunt'); feats.bump('hunts'); const sealedH = !profile?.eye; if (!sealedH) addKarma(14);
   const what = `Você encontrou ${h.name} no esconderijo e terminou o que ele mesmo começou com a mentira.`; compendium.add({ title: `${h.name}: justiça tardia`, what, delta: 14, sealed: sealedH }); if (sealedH) game.logMsg('🌑 Em algum lugar, algo que ainda dorme guardou o que você fez.', '#a898c8');
   if (!sealedH) setTimeout(() => { eyeSees('Justiça tardia.', what, 'Você foi enganado uma vez, e pagou por isso. Mas não deixou a mentira vencer: buscou, encontrou e cumpriu o seu papel. A ingenuidade se apaga diante da persistência.', 14); const d = quests.q.active[h.qid] ? quests.offers('O Olho') : null; void d; }, 600);
   setTimeout(() => { const d2 = (quests as unknown as { turnins(n: string): { id: string }[] }).turnins('O Olho').find((x) => x.id === h.qid); if (d2) quests.turnIn(d2 as never); }, 900); } quests.onKill(t); if ((e as typeof e & { tag?: string }).tag === 'crypt') pourBlood(e); for (const fl of CRYPT_FLOORS) if (fl.elite && fl.elite.seal && e.def.name === fl.elite.name) { inv.add(fl.elite.seal, 1); chat.sys(`✦ ${fl.elite.name} caiu e deixou o ${ITEMS_TBL[fl.elite.seal]?.name ?? fl.elite.seal}.`); }
-  if (e.def.name === 'Bispo Caído') { heroicAct('O Bispo Caído foi derrubado — a Catedral respira'); state.karma = Math.min(100, state.karma + 20); localStorage.setItem('karmika.crypt.done', '1'); chat.sys('✦ O Olho derrama uma lágrima sobre o trono negro. A Catedral Abandonada está purificada.'); game.logMsg('🏅 Título: Purificador da Catedral', '#ffe08a'); if (profile) { profile.title = 'Purificador da Catedral'; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); } return; }
-  if (e.def.name === 'Sacerdote Maldito') { heroicAct('O Sacerdote Maldito caiu — a Catedral respira'); state.karma = Math.min(100, state.karma + 15); inv.add('tome', 2); localStorage.setItem('karmika.crypt.done', '1'); chat.sys('✦ Uma lágrima do Olho cai sobre o altar negro. A Catedral Abandonada foi purificada.'); game.logMsg('🏅 Título: Purificador da Catedral', '#ffe08a'); if (profile) { profile.title = 'Purificador da Catedral'; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); } return; } if (t === 'tormentor' || t === 'prince') heroicAct(`${DEFS[t].name} derrotado`); });
+  if (e.def.name === 'Bispo Caído') { heroicAct('O Bispo Caído foi derrubado — a Catedral respira'); addKarma(20); localStorage.setItem('karmika.crypt.done', '1'); chat.sys('✦ O Olho derrama uma lágrima sobre o trono negro. A Catedral Abandonada está purificada.'); game.logMsg('🏅 Título: Purificador da Catedral', '#ffe08a'); if (profile) { profile.title = 'Purificador da Catedral'; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); } return; }
+  if (e.def.name === 'Sacerdote Maldito') { heroicAct('O Sacerdote Maldito caiu — a Catedral respira'); addKarma(15); inv.add('tome', 2); localStorage.setItem('karmika.crypt.done', '1'); chat.sys('✦ Uma lágrima do Olho cai sobre o altar negro. A Catedral Abandonada foi purificada.'); game.logMsg('🏅 Título: Purificador da Catedral', '#ffe08a'); if (profile) { profile.title = 'Purificador da Catedral'; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); } return; } if (t === 'tormentor' || t === 'prince') heroicAct(`${DEFS[t].name} derrotado`); });
 const globes = createGlobes(), eyeSys = createEye();
 /** ato heroico: o Olho Kármico enche e transborda numa lágrima; karma sobe */
 /* nível 20: o Olho desperta uma vez; o centro da barra vira o menu do Olho */
@@ -1695,12 +1701,12 @@ function checkAwakening() {
   if (awakening || !profile || profile.eye || game.st.lvl < 20) { crestEl.classList.toggle('awake', !!profile?.eye); return; }
   awakening = true; game.logMsg('👁 Algo desperta...', '#ffe08a'); const bornTear = !soul.s.born; soul.s.born = true; soul.save(); // marca já: recarregar no meio da animação não dá uma 2ª lágrima
   const sealedNow = compendium.unseal(); const owed = sealedNow.reduce((a, e) => a + e.delta, 0);
-  playAwakening(profile.name || RACES[state.race].label, sealedNow, () => { feats.max('eye', 1); if (bornTear) { setTimeout(() => { giveTear('💧 Marghar se emociona: você acaba de nascer para o karma. Uma Lágrima do Olho é sua. Guarde para a morte, troque por Premium ou venda.'); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 90 } })); }, 1800); } state.karma = Math.max(-100, Math.min(100, state.karma + owed)); if (owed) game.logMsg(`👁 O Olho cobra o que guardou: karma ${owed > 0 ? '+' : ''}${owed}.`, owed > 0 ? '#9ad7ff' : '#ff8a7a'); profile!.eye = true; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); awakening = false; crestEl.classList.add('awake'); heroicAct('O Olho Kármico despertou', false); }); // a Lágrima do despertar já é a do nascimento (antes vinham duas)
+  playAwakening(profile.name || RACES[state.race].label, sealedNow, () => { feats.max('eye', 1); if (bornTear) { setTimeout(() => { giveTear('💧 Marghar se emociona: você acaba de nascer para o karma. Uma Lágrima do Olho é sua. Guarde para a morte, troque por Premium ou venda.'); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 90 } })); }, 1800); } addKarma(owed); if (owed) game.logMsg(`👁 O Olho cobra o que guardou: karma ${owed > 0 ? '+' : ''}${owed}.`, owed > 0 ? '#9ad7ff' : '#ff8a7a'); profile!.eye = true; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); awakening = false; crestEl.classList.add('awake'); heroicAct('O Olho Kármico despertou', false); }); // a Lágrima do despertar já é a do nascimento (antes vinham duas)
 }
 function renderOlho() {
   const k = Math.round(state.karma), title = quests.title || 'Aprendiz';
   olhoEl.innerHTML = `<div class="pn olhopn"><h2>👁 Olho Kármico <button data-x>✕</button></h2>
-    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Karma acumulado: <b>${k}</b> / 100</p><small>O Olho enche devagar com suas atitudes e só transborda em atos heroicos. Ele nunca enche por completo — a lágrima é a carga kármica que sobra.</small>
+    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Alinhamento agora: <b>${k > 0 ? '+' : ''}${k}</b> <small>(de −100 a +100)</small></p><p>Karma acumulado da alma: <b style="color:#ffe08a">☀ ${Math.round(soul.s.luzT ?? 0)}</b> de luz · <b style="color:#b89aff">☾ ${Math.round(soul.s.sombraT ?? 0)}</b> de sombra</p><small>O alinhamento é para onde a sua alma pende hoje: é o que o Olho enche (nunca por completo), o que os guardas e as facções leem. O acumulado não tem teto: é tudo o que a alma juntou, em todas as vidas, e nunca se apaga.</small>
       <h3>Ascensão</h3><p>Nível ${game.st.lvl}. No nível 100 você escolhe duas especializações; 200 e 300 abrem fusões e a forma final.</p><small>As escolas ficam em Askavik, a cidade média. Quando as estradas estiverem abertas, uma missão o levará até lá.</small></div>
     <div class="col"><h3>Atos</h3>${quests.q.done.length ? `<p>${quests.q.done.length} missões concluídas</p>` : '<p>Nenhuma missão concluída ainda.</p>'}<p>${game.st.kills} abates</p><small>Matar outros jogadores e abandonar inocentes pesa para a sombra; proteger a vila e libertar bestas pesa para a luz. O Olho lembra de tudo.</small></div></div>
     <small class="ft">Esc fecha</small></div>`;
@@ -1710,7 +1716,7 @@ let olhoOpen = false;
 function toggleOlho(on?: boolean) { olhoOpen = on ?? !olhoOpen; if (olhoOpen) renderOlho(); else olhoEl.style.display = 'none'; }
 olhoEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === olhoEl) toggleOlho(false); });
 document.getElementById('sigil')?.addEventListener('click', () => { if (profile?.eye) toggleOlho(); else game.logMsg(`O Olho ainda dorme. Ele desperta no nível 20 (você está no ${game.st.lvl}).`, '#b9c6e0'); });
-function heroicAct(why: string, tear = true) { feats.bump('heroic'); eyeSys.heroic(); state.karma = Math.min(100, state.karma + 25); game.logMsg(`👁 ${why} — o Olho Kármico transborda.`, '#ffe08a');
+function heroicAct(why: string, tear = true) { feats.bump('heroic'); eyeSys.heroic(); addKarma(25); game.logMsg(`👁 ${why} — o Olho Kármico transborda.`, '#ffe08a');
   /* o Olho dormindo (antes do nível 20) não chora: o ato fica guardado no Compêndio, mas não vira Lágrima */
   if (!tear) return;
   if (!profile?.eye) { game.logMsg('👁 O Olho ainda dorme: este ato fica guardado, mas só o Olho aberto chora Lágrimas (nível 20).', '#b9c6e0'); return; }
@@ -3360,7 +3366,7 @@ const relicEl = document.createElement('div'); relicEl.id = 'relics'; document.b
 function touchRelic(name: string) {
   if (knowsRelic(name)) { openRelics(name); return; }
   relicsKnown.add(name); localStorage.setItem('karmika.relics.v1', JSON.stringify([...relicsKnown]));
-  hero.act('cast'); if (profile?.eye) state.karma = Math.min(100, state.karma + 4); { const xp = Math.round(game.xpNeed() * 0.06); game.gainXp(xp); game.logMsg(`✦ Relíquia marcada: ${name} (+${xp} XP). Agora ela lembra de você.`, '#8ad0ff'); }
+  hero.act('cast'); if (profile?.eye) addKarma(4); { const xp = Math.round(game.xpNeed() * 0.06); game.gainXp(xp); game.logMsg(`✦ Relíquia marcada: ${name} (+${xp} XP). Agora ela lembra de você.`, '#8ad0ff'); }
   for (let i = 0; i < 40; i++) particles.spawn(heroPos.x + (Math.random() - 0.5), 0.3, heroPos.z + (Math.random() - 0.5), { vy: 1.5 + Math.random() * 3, life: 1.2, s0: 0.5, s1: 0.05, c0: 0xbfe6ff, c1: 0x4a9aff, a: 1, drag: 1 });
   game.logMsg(`✦ ${name} lembra de você. (${relicsKnown.size} relíquia${relicsKnown.size > 1 ? 's' : ''} conhecida${relicsKnown.size > 1 ? 's' : ''})`, '#8ad0ff');
   if (relicsKnown.size === 1) game.logMsg('Encontre outra relíquia para viajar entre elas.', '#b9c6e0');
