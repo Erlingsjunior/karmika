@@ -6,14 +6,19 @@ ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
 /* Corte de visão (Erling, 27/10: "toda vez que tivermos elementos que impedem a visão eles são cortados em um círculo que permite ver o que está atrás"):
    todo material toon do cenário descarta os pixels dentro de um círculo na tela em volta do herói, só para o que está ENTRE a câmera e ele
    (mais perto da câmera do que o herói, com folga). A borda do círculo é pontilhada. setCutout() é chamado a cada quadro pelo main. */
-export const CUT = { uCut: { value: new THREE.Vector4(-9999, -9999, 0, 0) } };
+export const CUT = { uCut: { value: new THREE.Vector4(-9999, -9999, 0, 0) }, uCutF: { value: new THREE.Vector3(0, 1, 0) } };
 export function setCutout(px: number, py: number, radiusPx: number, heroDist: number) { CUT.uCut.value.set(px, py, radiusPx, heroDist); }
+/** 27/10 (Erling: "o trono atrás do herói sumia junto com o pilar"): o corte só vale para o que está ENTRE a câmera e o herói no chão —
+ *  profundidade horizontal (xz) na direção da câmera, não a distância em 3D (um objeto alto atrás do herói fica mais perto da câmera). */
+export function setCutoutPlane(fwdX: number, fwdZ: number, heroDepth: number) { CUT.uCutF.value.set(fwdX, fwdZ, heroDepth); }
 export function cutoutify<M extends THREE.Material>(m: M): M {
   if ((m as THREE.Material & { userData: { noCut?: boolean } }).userData.noCut) return m;
   const prev = m.onBeforeCompile;
-  m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut;
-    sh.fragmentShader = sh.fragmentShader.replace('#include <clipping_planes_pars_fragment>', '#include <clipping_planes_pars_fragment>\nuniform vec4 uCut;')
-      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n{ float dCut = distance(gl_FragCoord.xy, uCut.xy); if (dCut < uCut.z && length(vViewPosition) < uCut.w) { if (dCut < uCut.z * 0.86 || mod(floor(gl_FragCoord.x * 0.5) + floor(gl_FragCoord.y * 0.5), 2.0) < 1.0) discard; } }'); };
+  m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut; sh.uniforms.uCutF = CUT.uCutF;
+    sh.vertexShader = sh.vertexShader.replace('#include <clipping_planes_pars_vertex>', '#include <clipping_planes_pars_vertex>\nvarying vec2 vCutW;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 cw = modelMatrix * vec4( transformed, 1.0 ); vCutW = cw.xz; }');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <clipping_planes_pars_fragment>', '#include <clipping_planes_pars_fragment>\nuniform vec4 uCut; uniform vec3 uCutF; varying vec2 vCutW;')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n{ float dCut = distance(gl_FragCoord.xy, uCut.xy); if (uCut.w > 0.0 && dCut < uCut.z && dot(vCutW, uCutF.xy) < uCutF.z) { if (dCut < uCut.z * 0.86 || mod(floor(gl_FragCoord.x * 0.5) + floor(gl_FragCoord.y * 0.5), 2.0) < 1.0) discard; } }'); };
   m.customProgramCacheKey = () => 'cut' + ((m as unknown as { map?: unknown }).map ? 't' : '') + m.type;
   return m;
 }

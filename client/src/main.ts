@@ -73,7 +73,7 @@ import { createVidente, PATHS } from './vidente';
 import { buildInterior, type Interior } from './interiors3d';
 import { buildDwarfHall } from './salao3d';
 import { buildCastleFloor, CASTLE_FLOORS, type CastleFloor } from './castelo3d';
-import { setCutout, CUT } from './toon3d';
+import { setCutout, setCutoutPlane, CUT } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
 import { createDialog, type Choice, type Reply, type Step } from './dialog';
@@ -1426,8 +1426,14 @@ const NPC_SOUL: Record<string, { path?: string; lean?: 'luz' | 'sombra' }> = { '
 /* ---------- Instinto de classe: liga e desliga com F (ou no menu de magias, K). Só você vê a aura. ---------- */
 let instinctOn = (() => { try { return localStorage.getItem('karmika.instinct') === '1'; } catch { return false; } })();
 const myInstinct = () => instinctOf(myPath(), profile?.origin ?? 'human');
-function toggleInstinct(v = !instinctOn) { instinctOn = v; try { localStorage.setItem('karmika.instinct', v ? '1' : '0'); } catch { /* */ } const I = myInstinct();
-  game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc} (Atenção custa: −15% de passo e +10% de dano recebido enquanto estiver ligado.)` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.instinct(v); instFx(v); updateInstBtn(); }
+/* Instinto com duração e recarga (Erling, 27/10): fica ligado por 5 minutos, com as penalidades (−15% de passo, +10% de dano recebido); depois desliga sozinho e só volta depois de 15 minutos de recarga */
+const INST_DUR = 5 * 60, INST_CD = 15 * 60; let instUntil = 0, instCdUntil = 0;
+try { instUntil = +(localStorage.getItem('karmika.instuntil') || 0); instCdUntil = +(localStorage.getItem('karmika.instcd') || 0); if (instinctOn && Date.now() > instUntil) { instinctOn = false; localStorage.setItem('karmika.instinct', '0'); } } catch { /* */ }
+const fmtMin = (ms: number) => { const s0 = Math.max(0, Math.ceil(ms / 1000)); return s0 >= 60 ? `${Math.floor(s0 / 60)} min ${String(s0 % 60).padStart(2, '0')} s` : `${s0} s`; };
+function toggleInstinct(v = !instinctOn) { const I = myInstinct();
+  if (v && Date.now() < instCdUntil) { game.logMsg(`✧ ${I.name} ainda descansa: volta em ${fmtMin(instCdUntil - Date.now())}.`, '#b9c6e0'); return; }
+  instinctOn = v; try { localStorage.setItem('karmika.instinct', v ? '1' : '0'); if (v) { instUntil = Date.now() + INST_DUR * 1000; localStorage.setItem('karmika.instuntil', String(instUntil)); } else { instCdUntil = Date.now() + INST_CD * 1000; localStorage.setItem('karmika.instcd', String(instCdUntil)); } } catch { /* */ }
+  game.logMsg(v ? `✧ ${I.name}: ligado por 5 minutos. ${I.desc} (Atenção custa: −15% de passo e +10% de dano recebido enquanto estiver ligado.)` : `✧ ${I.name}: desligado. Volta em 15 minutos.`, v ? I.css : '#b9c6e0'); audio.instinct(v); instFx(v); updateInstBtn(); }
 /* ---------- o MOMENTO de ligar o Instinto (Erling, 25/10) ----------
    1. o símbolo do instinto do seu caminho (ou do seu povo) se abre sobre a cabeça do herói e sobe sumindo;
    2. um anel de energia corre pelo chão e uma aura na cor do instinto fica no herói uns segundos, depois assenta num brilho leve;
@@ -1467,6 +1473,7 @@ function updateInstFx(dt: number) {
     instRing.position.set(hp.x, hp.y + 0.05, hp.z); instRing.scale.setScalar(0.6 + k * 4.2); m.opacity = 0.9 * (1 - k); if (k >= 1) { instFxT = -1; instRing.visible = false; } }
   if (instPop.className === 'go') { instV.set(hp.x, hp.y + 2.1, hp.z).project(camera); const r = canvas.getBoundingClientRect(); instPop.style.left = `${r.left + (instV.x * 0.5 + 0.5) * r.width}px`; instPop.style.top = `${r.top + (-instV.y * 0.5 + 0.5) * r.height}px`; }
   /* a energia que fica: uns segundos de fagulhas subindo do corpo, que vão rareando; depois, só um fio de vez em quando enquanto ligado */
+  if (instinctOn && Date.now() > instUntil) toggleInstinct(false); instBtnT -= dt; if (instBtnT <= 0) { instBtnT = 1; if (instinctOn || Date.now() < instCdUntil) updateInstBtn(); }
   if (instinctOn && !inside) { if (instAuraT > 0) instAuraT -= dt; const rate = instAuraT > 0 ? 6 + instAuraT * 5 : 0.8;
     if (Math.random() < dt * rate) { const a = Math.random() * 6.283, r = 0.25 + Math.random() * 0.25; particles.spawn(hp.x + Math.cos(a) * r, hp.y + 0.2 + Math.random() * 1.2, hp.z + Math.sin(a) * r, { vx: 0, vy: 0.7 + Math.random() * 0.6, vz: 0, life: 1 + Math.random() * 0.8, s0: instAuraT > 0 ? 0.16 : 0.1, s1: 0.02, c0: 0xffffff, c1: instCol.getHex(), a: instAuraT > 0 ? 0.9 : 0.55, flit: 1 }); } }
 }
@@ -1594,7 +1601,8 @@ addEventListener('resize', () => setTimeout(placeStances, 50));
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; stanceBar.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
 const THIRD_EYE = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2.5 16C6.6 9.6 11 6.8 16 6.8S25.4 9.6 29.5 16C25.4 22.4 21 25.2 16 25.2S6.6 22.4 2.5 16Z" fill="#120c07" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="6.2" fill="currentColor"/><circle cx="16" cy="16" r="6.2" fill="none" stroke="#0b0810" stroke-opacity=".45" stroke-width="1"/><path d="M16 11.4 18.5 16 16 20.6 13.5 16Z" fill="#0b0810"/><circle cx="14" cy="13.9" r="1.1" fill="#fff" fill-opacity=".75"/></svg>';
-function updateInstBtn() { const I = myInstinct(); instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>`; instBtn.classList.toggle('on', instinctOn); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? 'Ligado' : 'Desligado'} (F para trocar)`; }
+function updateInstBtn() { const I = myInstinct(), now = Date.now(), cd = !instinctOn && now < instCdUntil; instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>${instinctOn ? `<em>${fmtMin(instUntil - now)}</em>` : cd ? `<em class="cd">${fmtMin(instCdUntil - now)}</em>` : ''}`; instBtn.classList.toggle('on', instinctOn); instBtn.classList.toggle('cd', cd); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? `Ligado · acaba em ${fmtMin(instUntil - now)}` : cd ? `Em recarga · volta em ${fmtMin(instCdUntil - now)}` : 'Desligado'} (F para ligar; dura 5 min, recarga de 15 min)`; }
+let instBtnT = 0;
 
 stanceSys = createStances({ path: () => myPath() as PathId | null, isDone: (q) => quests.q.done.includes(q), isActive: (q) => !!quests.q.active[q], apply: (e) => game.setStance(e), log: (tx, c) => game.logMsg(tx, c),
   onChange: (st: Stance) => { const p = hero.root.position, col = new THREE.Color(st.col).getHex(); audio.instinct(true);
@@ -2855,7 +2863,7 @@ function updateXray(dt: number) {
   xray.update(dt, camera.position, who);
   /* o corte circular de visão: o herói projetado na tela (pixels do canvas), o raio de ~2,6 m à distância dele, e a distância da câmera até ele */
   { const v = cutP.copy(hp).setY(hp.y + 0.9), W = renderer.domElement.width, H = renderer.domElement.height; const dist = v.distanceTo(camera.position); v.project(camera); const sx = (v.x * 0.5 + 0.5) * W, sy = (v.y * 0.5 + 0.5) * H;
-    cutP.set(hp.x, hp.y + 0.9, hp.z); const right = cutV2.set(1, 0, 0).applyQuaternion(camera.quaternion); cutP.add(right.multiplyScalar(2.6)).project(camera); const rx = (cutP.x * 0.5 + 0.5) * W; const k = 1 / (dual.enabled ? dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, cine ? 0 : dist - 2.2); }
+    cutP.set(hp.x, hp.y + 0.9, hp.z); const right = cutV2.set(1, 0, 0).applyQuaternion(camera.quaternion); cutP.add(right.multiplyScalar(2.6)).project(camera); const rx = (cutP.x * 0.5 + 0.5) * W; const k = 1 / (dual.enabled ? dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) { setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, cine ? 0 : dist); const f = cutV2.set(0, 0, -1).applyQuaternion(camera.quaternion); const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl; setCutoutPlane(fx, fz, hp.x * fx + hp.z * fz - 1.4); } }
 }
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
 let stuckT = 0;

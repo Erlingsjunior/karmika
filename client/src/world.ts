@@ -685,8 +685,9 @@ export function buildCity(): World {
   const city = (name: string, cx: number, cy: number) => {
     const rr = rng(4242); const R0 = 52; clearWater(cx, cy, 80); flatten(cx, cy, 82);
     const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
-    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) <= 56 && Math.abs(q.gy - cy) <= 56) props.splice(i, 1); } // o terreno da cidade começa limpo
-    for (let y = cy - 56; y <= cy + 56; y++) for (let x = cx - 56; x <= cx + 56; x++) if (inb(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
+    const inLot = (x: number, y: number) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < 57 + 6 * Math.sin(a * 3 + 0.7) + 4 * Math.sin(a * 5 + 2.1); }; /* regra 19: o terreno limpo da cidade tem contorno irregular, não quadrado */
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (inLot(q.gx, q.gy)) props.splice(i, 1); } // o terreno da cidade começa limpo
+    for (let y = cy - 66; y <= cy + 66; y++) for (let x = cx - 66; x <= cx + 66; x++) if (inb(x, y) && inLot(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
     const at = (x: number, y: number) => map[cy + y]?.[cx + x];
     const set = (x: number, y: number, t: Tile) => { if (inb(cx + x, cy + y)) map[cy + y][cx + x] = t; };
     const paint = (x: number, y: number, t: Tile = 'road') => { const q = at(x, y); if (q === 'grass' || q === 'tree' || (t === 'plaza' && q === 'road')) set(x, y, t); };
@@ -711,11 +712,16 @@ export function buildCity(): World {
     rect(-9, -12, 9, -10, 'plaza'); rect(-9, -12, -8, 8, 'plaza'); rect(8, -12, 9, 8, 'plaza'); rect(-9, 6, 9, 14, 'plaza'); // calçada em volta da catedral e a praça da fonte
     props.push({ kind: 'fountain', gx: cx - 2, gy: cy + 9, w: 4, h: 4, height: 1.4, wall: 0x9a968e, roof: 0x6fc7ff, variant: 2 });
     for (const [bx, by] of [[-6, 9], [5, 9], [-6, 13], [5, 13]]) decorAt('bench', cx + bx, cy + by, 1, 1, 0, 0x5a4a3a, 0x8a3b2e);
+    /* 27/10 (referência do Erling: adro de catedral com jardim oval, fonte e balaustrada): o jardim oval ao sul da praça da fonte, canteiros, sebes e bancos */
+    for (let y = 15; y <= 21; y++) for (let x = -11; x <= 11; x++) { const e = Math.hypot(x / 11, (y - 18) / 3.5); if (e <= 1 && e > 0.72) set(x, y, 'grass'); else if (e <= 0.72) set(x, y, 'plaza'); }
+    for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283, x = Math.round(Math.cos(a) * 9.6), y = Math.round(18 + Math.sin(a) * 3.1); if (k % 2 === 0) tree(x, y); else decorAt('bench', cx + x, cy + y, 1, 1, 0, 0x5a4a3a, 0x8a3b2e); }
+    props.push({ kind: 'fountain', gx: cx - 1, gy: cy + 17, w: 2, h: 2, height: 1.2, wall: 0x9a968e, roof: 0x6fc7ff, variant: 1 });
     line(0, -12, 0, -21.5, 0); line(0, 14, 0, 21.5, 0); line(-9, -1, -21.5, -1, 0); line(9, -1, 21.5, -1, 0); // caminhos do parque
     for (let k = 0; k < 64; k++) { const ang = k / 64 * Math.PI * 2, r = 16.5 + (k % 3) * 1.6; const x = Math.round(Math.cos(ang) * r), y = Math.round(Math.sin(ang) * r); if (Math.hypot(x + 12, y - 12) < 5) continue; tree(x, y); }
     for (let k = 0; k < 16; k++) { const ang = k / 16 * Math.PI * 2 + 0.2; lit(Math.round(Math.cos(ang) * 20.6), Math.round(Math.sin(ang) * 20.6)); decorAt('bench', cx + Math.round(Math.cos(ang + 0.1) * 12.5), cy + Math.round(Math.sin(ang + 0.1) * 12.5), 1, 1, 0, 0x5a4a3a, 0x8a3b2e); }
     // 3) avenidas dos portões (o norte entra a oeste do castelo) e a ponte grande sobre o canal
-    rect(-55, -1, -22, 1); rect(9, -1, 55, 1); rect(-1, 22, 1, 55); // a avenida do leste sai da praça da catedral e cruza o canal pela Ponte Grande
+    /* regra 19 (27/10): avenidas largas (5 casas) que serpenteiam em vez de régua; a do leste sai da praça da catedral e cruza o canal pela Ponte Grande */
+    line(-22, 0, -36, -3, 2); line(-36, -3, -58, 2, 2); line(9, 0, 24, 0, 2); line(24, 0, 40, 3, 2); line(40, 3, 58, -1, 2); line(0, 22, -3, 38, 2); line(-3, 38, 2, 58, 2);
     line(-18, -55, -18, -27, 1); line(-18, -27, -13, -19, 1);
     bridgeAcross(8, 0, 34, 0, 1.6, 1.1);
     /** o anel do parque também cruza o canal (duas vezes): ponte reta de cais a cais onde o arco encontra a água */
@@ -736,8 +742,12 @@ export function buildCity(): World {
       else { const px0 = gx + w, px1 = gx + w + 5; rect(px0, gy - 1, px1, gy + h, 'plaza'); for (const y of [gy, gy + h - 1]) { lit(px1, y); tree(px0 + 1, y - 1); } pois.push({ name: nm, x: cx + px1, y: cy + my, biome: 'meadow' }); line(px1, my, ex, ey, 1); }
     }
     // 6) a rua de ronda por dentro e duas pontes de pedestres no canal
-    for (const k of [-47, 47]) { rect(-47, k, 47, k); rect(k, -47, k, 47); }
-    bridgeAcross(0, -47, 30, -47, 1.0, 0.9); bridgeAcross(0, 47, 30, 47, 1.0, 0.9);
+    /* 27/10: a rua de ronda deixou de ser um quadrado: contorna a cidade por dentro acompanhando o traçado orgânico da muralha */
+    { const ph = [1.3, 2.9, 0.4]; const rAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); return 44 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2) * (1 + 0.05 * Math.sin(a * 2 + ph[0]) + 0.04 * Math.sin(a * 3 + ph[1]) + 0.03 * Math.sin(a * 5 + ph[2])); };
+      let px = 0, py = 0; for (let i = 0; i <= 360; i++) { const a = i / 360 * 6.283, r = rAt(a), x = Math.cos(a) * r, y = Math.sin(a) * r; if (i) line(px, py, x, y, 1); px = x; py = y; }
+      for (const sgn of [-1, 1]) { const a = sgn * Math.PI / 2; const r = rAt(a); bridgeAcross(-6, Math.sin(a) * r, 36, Math.sin(a) * r, 1.0, 0.9); } }
+    // os distritos (27/10, referência do mapa de Ventobravo): nomes no mapa
+    for (const [nm, x, y] of [['Praça da Catedral', 0, 16], ['Distrito das Escolas', -34, -30], ['Distrito dos Mecanismos', 32, 30], ['Cidade Velha', -34, 36], ['Distrito Comercial', -37, 0], ['Cais do Canal', 20, -20], ['Bairro do Jarl', 0, -42]] as [string, number, number][]) pois.push({ name: nm, x: cx + x, y: cy + y, biome: 'meadow' });
     // 7) a Praça do Mercado e a Rua do Comércio (lado oeste): casas de comércio dos dois lados, de frente para a rua
     rect(-43, -5, -31, 5, 'plaza'); props.push({ kind: 'shopfront', gx: cx - 38, gy: cy - 1, w: 2, h: 2, height: 3, wall: 0x3a2050, roof: 0xd9b45a, variant: 0 });
     for (const [x, y] of [[-43, -5], [-31, -5], [-43, 5], [-31, 5]]) lit(x, y);
