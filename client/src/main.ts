@@ -1360,20 +1360,56 @@ var stanceSys: ReturnType<typeof createStances> | null = null;
 /* o ícone da postura nos pés (25/10): um anel com o símbolo do papel, na cor da postura, girando devagar sob o herói */
 const ST_ICON: Record<string, string> = { bal: '◎', atk: '⚔', tank: '🛡', heal: '✚', speed: '➶', leech: '🩸' };
 const stTex = new Map<string, THREE.CanvasTexture>();
-function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d')!; g.scale(2, 2);
-  /* 26/10 (Erling: "menos etérea, mais nítida"): traço cheio com contorno escuro por baixo, sem borrão — lê em grama, pedra e neve */
-  const ring = (r: number, w: number, a: number) => { g.globalAlpha = a * 0.7; g.strokeStyle = '#0a0806'; g.lineWidth = w + 3; g.beginPath(); g.arc(64, 64, r, 0, 6.283); g.stroke(); g.globalAlpha = a; g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.arc(64, 64, r, 0, 6.283); g.stroke(); };
-  ring(56, 4.5, 1); ring(47, 2, 0.85);
-  for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, x = 64 + Math.cos(a) * 52, y = 64 + Math.sin(a) * 52; g.globalAlpha = 0.8; g.fillStyle = '#0a0806'; g.beginPath(); g.arc(x, y, 3.8, 0, 6.283); g.fill(); g.globalAlpha = 1; g.fillStyle = col; g.beginPath(); g.arc(x, y, 2.6, 0, 6.283); g.fill(); }
-  g.font = 'bold 34px "Segoe UI Emoji", "Noto Color Emoji", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  for (const [dx, dy] of [[0, -30], [30, 0], [0, 30], [-30, 0]]) { g.globalAlpha = 0.75; g.strokeStyle = '#0a0806'; g.lineWidth = 4; g.strokeText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy); g.globalAlpha = 1; g.fillStyle = col; g.fillText(ST_ICON[role] ?? '◎', 64 + dx, 64 + dy); }
-  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.userData.keep = true; stTex.set(id, t); return t; }
+/* 26/10 noite (Erling: "as auras estão feinhas"): círculo rúnico desenhado à mão — sem emoji no chão.
+   Anel de bronze escuro por baixo, traço na cor da postura por cima, marcas de relógio, três arcos de runas
+   e o símbolo do papel desenhado em vetor três vezes ao redor (o centro fica sob os pés e não se vê). */
+function stGlyph(g: CanvasRenderingContext2D, role: string, x: number, y: number, s: number, rot: number) {
+  g.save(); g.translate(x, y); g.rotate(rot); g.scale(s / 10, s / 10); g.beginPath();
+  if (role === 'atk') { g.moveTo(0, -10); g.lineTo(2.2, -6); g.lineTo(2.2, 4); g.lineTo(6, 4); g.lineTo(6, 6); g.lineTo(1.6, 6); g.lineTo(1.6, 10); g.lineTo(-1.6, 10); g.lineTo(-1.6, 6); g.lineTo(-6, 6); g.lineTo(-6, 4); g.lineTo(-2.2, 4); g.lineTo(-2.2, -6); g.closePath(); }
+  else if (role === 'tank') { g.moveTo(0, -9); g.lineTo(8, -6); g.quadraticCurveTo(8, 5, 0, 10); g.quadraticCurveTo(-8, 5, -8, -6); g.closePath(); }
+  else if (role === 'heal') { g.rect(-2.6, -9, 5.2, 18); g.rect(-9, -2.6, 18, 5.2); }
+  else if (role === 'speed') { g.moveTo(-9, -6); g.lineTo(0, 0); g.lineTo(-9, 6); g.lineTo(-6, 0); g.closePath(); g.moveTo(-1, -6); g.lineTo(8, 0); g.lineTo(-1, 6); g.lineTo(2, 0); g.closePath(); }
+  else if (role === 'leech') { g.moveTo(0, -10); g.bezierCurveTo(4, -4, 7, 0, 7, 3.5); g.arc(0, 3.5, 7, 0, Math.PI); g.bezierCurveTo(-7, 0, -4, -4, 0, -10); g.closePath(); }
+  else { g.arc(0, 0, 8, 0, 6.283); g.moveTo(4, 0); g.arc(0, 0, 4, 0, 6.283); }
+  g.restore(); }
+function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d')!; g.scale(4, 4);
+  const ink = '#0b0906', C = 64, two = (fn: () => void, w: number, a = 1) => { g.globalAlpha = 0.8 * a; g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = w + 2.4; fn(); g.globalAlpha = a; g.strokeStyle = col; g.fillStyle = col; g.lineWidth = w; fn(); };
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  two(() => { g.beginPath(); g.arc(C, C, 57, 0, 6.283); g.stroke(); }, 3.2);
+  two(() => { g.beginPath(); g.arc(C, C, 50.5, 0, 6.283); g.stroke(); }, 1.1, 0.9);
+  /* marcas de relógio entre os dois anéis: 24 curtas, 6 longas */
+  two(() => { g.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283, L = i % 4 === 0 ? 5.5 : 2.6; g.moveTo(C + Math.cos(a) * 51.5, C + Math.sin(a) * 51.5); g.lineTo(C + Math.cos(a) * (51.5 + L), C + Math.sin(a) * (51.5 + L)); } g.stroke(); }, 1.2);
+  /* três arcos internos de "runas": traços curtos alternados, quebrados onde mora o símbolo */
+  for (let k = 0; k < 3; k++) { const a0 = k * 2.094 - 0.524 - 0.62, a1 = a0 + 1.24;
+    two(() => { g.beginPath(); g.arc(C, C, 41, a0, a1); g.stroke(); }, 1.6);
+    two(() => { g.beginPath(); for (let i = 0; i < 9; i++) { const a = a0 + 0.08 + i * (a1 - a0 - 0.16) / 8, h = i % 2 ? 3 : 5; g.moveTo(C + Math.cos(a) * 41, C + Math.sin(a) * 41); g.lineTo(C + Math.cos(a) * (41 - h), C + Math.sin(a) * (41 - h)); } g.stroke(); }, 1.1, 0.9); }
+  /* o símbolo do papel, três vezes, sempre de pé para fora */
+  for (let k = 0; k < 3; k++) { const a = k * 2.094 - 1.571 + 0.0, x = C + Math.cos(a) * 43, y = C + Math.sin(a) * 43;
+    g.globalAlpha = 0.85; g.fillStyle = ink; g.beginPath(); g.arc(x, y, 9.5, 0, 6.283); g.fill();
+    g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = 1.3; g.beginPath(); g.arc(x, y, 9.5, 0, 6.283); g.stroke();
+    g.fillStyle = col; stGlyph(g, role, x, y, 6.6, a + 1.571); g.fill(role === 'bal' ? 'evenodd' : 'nonzero'); }
+  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.userData.keep = true; stTex.set(id, t); return t; }
+/* o brilho por baixo (aditivo, gradiente radial): só aparece forte quando a postura acabou de mudar */
+const stGlowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 8, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.86, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.userData.keep = true; return t; })();
+const stGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 3.1), new THREE.MeshBasicMaterial({ map: stGlowTex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false, toneMapped: false })); stGlow.rotation.x = -Math.PI / 2; stGlow.renderOrder = 2; scene.add(stGlow);
 const stRing = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.4), new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, opacity: 0.8, fog: false, toneMapped: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 3; /* depthTest off: a grama alta não come o anel */ scene.add(stRing);
-let stRingId = '', stPop = 0;
+/* forte por 2 minutos depois de trocar; depois esmaece em 6 s até ficar discreta (não atrapalha a visão) */
+const ST_STRONG = 120, ST_FADE = 6;
+let stRingId = '', stPop = 0, stAge = 0;
 function stanceRing(st: { id: string; role: string; col: string } | null, dt: number) {
-  if (!st) { stRing.visible = false; return; }
-  if (st.id !== stRingId) { stRingId = st.id; (stRing.material as THREE.MeshBasicMaterial).map = stanceTex(st.id, st.role, st.col); (stRing.material as THREE.MeshBasicMaterial).needsUpdate = true; }
-  stPop = Math.max(0, stPop - dt * 1.6); const p = hero.root.position; stRing.visible = !riding; stRing.position.set(p.x, p.y + 0.06, p.z); stRing.rotation.z += dt * 0.35; stRing.scale.setScalar(1 + stPop * 1.4); (stRing.material as THREE.MeshBasicMaterial).opacity = Math.min(1, 0.78 + 0.3 * stPop); }
+  if (!st) { stRing.visible = stGlow.visible = false; return; }
+  const m = stRing.material as THREE.MeshBasicMaterial, gm = stGlow.material as THREE.MeshBasicMaterial;
+  if (st.id !== stRingId) { const first = stRingId === ''; stRingId = st.id; m.map = stanceTex(st.id, st.role, st.col); m.needsUpdate = true; gm.color.set(st.col); stAge = 0; if (!first) stPop = 1; }
+  stAge += dt; stPop = Math.max(0, stPop - dt * 1.5);
+  const k = stAge < ST_STRONG ? 1 : Math.max(0, 1 - (stAge - ST_STRONG) / ST_FADE); /* 1 = forte, 0 = discreta */
+  const p = hero.root.position, vis = !riding; stRing.visible = stGlow.visible = vis;
+  stRing.position.set(p.x, p.y + 0.06, p.z); stGlow.position.set(p.x, p.y + 0.05, p.z);
+  stRing.rotation.z += dt * (0.18 + 0.22 * k); stGlow.rotation.z -= dt * 0.1;
+  const pulse = 0.5 + 0.5 * Math.sin(stAge * 2.4);
+  stRing.scale.setScalar(1 + stPop * 0.9 - stPop * stPop * 0.5);
+  stGlow.scale.setScalar(1 + stPop * 1.6 + 0.03 * pulse * k);
+  m.opacity = Math.min(1, 0.42 + 0.53 * k + 0.2 * stPop);
+  gm.opacity = Math.min(1, (0.32 + 0.14 * pulse) * k + 0.8 * stPop); }
 /* o aviso grande no meio da tela: nome, papel e o que muda (fica 3 s, dá para ler) */
 const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.appendChild(stBan); let stBanT = 0;
 function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
