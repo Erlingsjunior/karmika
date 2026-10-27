@@ -36,6 +36,7 @@ export interface Prop {
   height: number;         // altura em metros (ver shared/src/scale.ts)
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
+  /** muro baixo do adro de um edifício monumental (urbanismo 27/10) */ adro?: boolean;
   /** ângulo (rad, no mundo) do lado em que a água está — a roda do moinho da marcenaria fica virada para lá */ wdir?: number;
   /** peças que seguem um traçado (muros, cercas, pórticos): centro exato dentro da casa (m, a partir do canto), comprimento (m) e quanto desmoronou (0–1) */ ox?: number; oz?: number; len?: number; broken?: number;
   variant?: number;       // tipo da árvore (0 carvalho, 1 seca, 2 pinheiro) / modelo da pedra / etc.
@@ -1653,6 +1654,24 @@ export function buildCity(): World {
         libs.push({ gx, gy, w: W, h: H, v, name }); pois.push({ name: v ? name : 'Grande Biblioteca', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
   const libAt = (v: number) => libs.find((q) => q.v === v);
+  /* URBANISMO (27/10, Erling: "não podemos ter casas e construções perto de monumentos; cada monumento tem que ter seu espaço reservado,
+     sua praça cercada e mais distanciamento"). Regra real de urbanismo: RECUO obrigatório (setback) e ADRO — a praça cívica em volta do
+     edifício monumental, murada e com entradas. Todo edifício grande (biblioteca, catedral, academia, templo grande, estação, monumento)
+     ganha um anel de 4 tiles sem casa, barraca ou tenda; o anel vira praça calçada, cercada por um muro baixo com vãos no meio de cada lado
+     e onde passa rua. */
+  { const SETB = 4, MONK = new Set<string>(['library', 'monument', 'church', 'temple', 'station', 'castle', 'landmark']), GONE = new Set<string>(['house', 'stall', 'tent', 'tree', 'herb', 'rock', 'bones', 'grave', 'campfire', 'deadtree', 'lowwall']);
+    const big = props.filter((p) => MONK.has(p.kind) && p.w * p.h >= 40);
+    for (const m of big) { const x0 = m.gx - SETB, y0 = m.gy - SETB, x1 = m.gx + m.w + SETB, y1 = m.gy + m.h + SETB; // [x0,x1) × [y0,y1)
+      for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (p === m || !GONE.has(p.kind)) continue; if (p.gx + p.w <= x0 || p.gx >= x1 || p.gy + p.h <= y0 || p.gy >= y1) continue;
+        props.splice(i, 1); for (let y = p.gy; y < p.gy + p.h; y++) for (let x = p.gx; x < p.gx + p.w; x++) if (inb(x, y) && map[y][x] === 'wall' && !big.some((q) => x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) map[y][x] = 'plaza'; }
+      const under = (x: number, y: number) => props.some((q) => x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h);
+      for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { if (!inb(x, y)) continue; const t = map[y][x]; if (t === 'grass' || t === 'tree' || (t === 'wall' && !under(x, y))) map[y][x] = 'plaza'; } /* 'wall' órfão = casa que a biblioteca engoliu sem limpar o chão */
+      /* o muro do adro: segmentos de ~2,5 tiles pelo contorno, vão de 3 tiles no meio de cada lado e onde há rua */
+      const seg = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy)) return; const L = Math.hypot(bx - ax, by - ay);
+        for (let t = 0; t <= 1; t += 0.25) { const qx = Math.floor(ax + (bx - ax) * t), qy = Math.floor(ay + (by - ay) * t); const tt = map[qy]?.[qx]; if (tt !== 'plaza') return; }
+        props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 10, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.1, broken: 0, adro: true }); };
+      const side = (ax: number, ay: number, bx: number, by: number) => { const L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.round(L / 2.5)), gap = Math.floor(n / 2); for (let i = 0; i < n; i++) { if (i === gap || (n >= 6 && i === gap - 1)) continue; const t0 = i / n, t1 = (i + 1) / n; seg(ax + (bx - ax) * t0, ay + (by - ay) * t0, ax + (bx - ax) * t1, ay + (by - ay) * t1); } };
+      const ox = x0 + 0.3, oy = y0 + 0.3, ex = x1 - 0.3, ey = y1 - 0.3; side(ox, oy, ex, oy); side(ex, oy, ex, ey); side(ex, ey, ox, ey); side(ox, ey, ox, oy); } }
   { /* cada um em chão livre de verdade (nada de gente em cima de telhado): procura em espiral o primeiro tile andável fora de qualquer construção */
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
