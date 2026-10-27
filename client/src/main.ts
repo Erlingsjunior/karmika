@@ -1372,23 +1372,54 @@ function stGlyph(g: CanvasRenderingContext2D, role: string, x: number, y: number
   else if (role === 'leech') { g.moveTo(0, -10); g.bezierCurveTo(4, -4, 7, 0, 7, 3.5); g.arc(0, 3.5, 7, 0, Math.PI); g.bezierCurveTo(-7, 0, -4, -4, 0, -10); g.closePath(); }
   else { g.arc(0, 0, 8, 0, 6.283); g.moveTo(4, 0); g.arc(0, 0, 4, 0, 6.283); }
   g.restore(); }
-function stanceTex(id: string, role: string, col: string) { let t = stTex.get(id); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d')!; g.scale(4, 4);
+let stOrigin = 'human';
+function stanceTex(id: string, role: string, col: string) { const key = id.startsWith('povo') ? id + ':' + stOrigin : id; let t = stTex.get(key); if (t) return t; const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d')!; g.scale(4, 4);
   const ink = '#0b0906', C = 64, two = (fn: () => void, w: number, a = 1) => { g.globalAlpha = 0.8 * a; g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = w + 2.4; fn(); g.globalAlpha = a; g.strokeStyle = col; g.fillStyle = col; g.lineWidth = w; fn(); };
   g.lineCap = 'round'; g.lineJoin = 'round';
   two(() => { g.beginPath(); g.arc(C, C, 57, 0, 6.283); g.stroke(); }, 3.2);
   two(() => { g.beginPath(); g.arc(C, C, 50.5, 0, 6.283); g.stroke(); }, 1.1, 0.9);
   /* marcas de relógio entre os dois anéis: 24 curtas, 6 longas */
   two(() => { g.beginPath(); for (let i = 0; i < 24; i++) { const a = i / 24 * 6.283, L = i % 4 === 0 ? 5.5 : 2.6; g.moveTo(C + Math.cos(a) * 51.5, C + Math.sin(a) * 51.5); g.lineTo(C + Math.cos(a) * (51.5 + L), C + Math.sin(a) * (51.5 + L)); } g.stroke(); }, 1.2);
-  /* três arcos internos de "runas": traços curtos alternados, quebrados onde mora o símbolo */
-  for (let k = 0; k < 3; k++) { const a0 = k * 2.094 - 0.524 - 0.62, a1 = a0 + 1.24;
-    two(() => { g.beginPath(); g.arc(C, C, 41, a0, a1); g.stroke(); }, 1.6);
-    two(() => { g.beginPath(); for (let i = 0; i < 9; i++) { const a = a0 + 0.08 + i * (a1 - a0 - 0.16) / 8, h = i % 2 ? 3 : 5; g.moveTo(C + Math.cos(a) * 41, C + Math.sin(a) * 41); g.lineTo(C + Math.cos(a) * (41 - h), C + Math.sin(a) * (41 - h)); } g.stroke(); }, 1.1, 0.9); }
+  /* três arcos internos, entre os símbolos: o desenho é do CAMINHO (ou do povo, para quem ainda não escolheu) — 26/10 noite */
+  const motif = id.startsWith('povo') ? (stOrigin === 'dwarf' ? 'anao' : stOrigin === 'elf' ? 'elfo' : 'humano') : id.split('_')[0];
+  const P = (a: number, r: number): [number, number] => [C + Math.cos(a) * r, C + Math.sin(a) * r];
+  for (let k = 0; k < 3; k++) { const mid = k * 2.094 - 0.524, a0 = mid - 0.62, a1 = mid + 0.62, N = 9, at = (i: number) => a0 + 0.06 + i * (a1 - a0 - 0.12) / (N - 1);
+    const arc = (r: number) => { g.beginPath(); g.arc(C, C, r, a0, a1); g.stroke(); };
+    if (motif === 'humano') { two(() => arc(41), 1.6); two(() => { g.beginPath(); for (let i = 0; i < N; i++) { const h = i % 2 ? 3 : 5; g.moveTo(...P(at(i), 41)); g.lineTo(...P(at(i), 41 - h)); } g.stroke(); }, 1.1, 0.9); }
+    else if (motif === 'anao') { /* corrente de losangos de ferro, angulosa como runa de forja */
+      two(() => arc(40), 1); two(() => { for (let i = 0; i < N; i++) { const a = at(i); g.beginPath(); g.moveTo(...P(a, 44)); g.lineTo(...P(a + 0.045, 40)); g.lineTo(...P(a, 36)); g.lineTo(...P(a - 0.045, 40)); g.closePath(); i % 2 ? g.stroke() : g.fill(); } }, 1.1); }
+    else if (motif === 'elfo') { /* ramo: uma vinha ondulada com folhinhas */
+      two(() => { g.beginPath(); for (let i = 0; i <= 40; i++) { const a = a0 + (a1 - a0) * i / 40, r = 40 + Math.sin(i / 40 * Math.PI * 4) * 2.2; i ? g.lineTo(...P(a, r)) : g.moveTo(...P(a, r)); } g.stroke(); }, 1.2);
+      two(() => { for (let i = 1; i < 8; i++) { const a = a0 + (a1 - a0) * i / 8, out = i % 2 ? 1 : -1, [x, y] = P(a, 40 + out * 1.5); g.save(); g.translate(x, y); g.rotate(a + (out > 0 ? 0.6 : -0.6)); g.beginPath(); g.ellipse(out * 3.2, 0, 3.2, 1.4, 0, 0, 6.283); g.fill(); g.restore(); } }, 0.6); }
+    else if (motif === 'gue') { /* runas nórdicas: haste com galhos (feitas a traço, não letras de verdade) */
+      two(() => arc(36), 1); two(() => { g.beginPath(); for (let i = 0; i < 7; i++) { const a = a0 + 0.1 + i * (a1 - a0 - 0.2) / 6, [x0, y0] = P(a, 45), [x1, y1] = P(a, 38), d = 0.06 * (i % 2 ? 1 : -1); g.moveTo(x0, y0); g.lineTo(x1, y1); g.moveTo(...P(a, 44)); g.lineTo(...P(a + d, 41)); if (i % 3 === 0) { g.moveTo(...P(a, 41)); g.lineTo(...P(a - d, 38.5)); } } g.stroke(); }, 1.3); }
+    else if (motif === 'pal') { /* raios de sol para dentro, longos e curtos, com o arco dourado */
+      two(() => arc(44), 1.4); two(() => { g.beginPath(); for (let i = 0; i < 13; i++) { const a = a0 + 0.05 + i * (a1 - a0 - 0.1) / 12, L = i % 2 ? 4 : 9; g.moveTo(...P(a, 43)); g.lineTo(...P(a, 43 - L)); } g.stroke(); }, 1.2); }
+    else if (motif === 'tec') { /* engrenagem: arco com dentes quadrados e um parafuso no meio */
+      two(() => { g.beginPath(); const n = 10; for (let i = 0; i < n; i++) { const b0 = a0 + i * (a1 - a0) / n, b1 = b0 + (a1 - a0) / n, bm = (b0 + b1) / 2; g.arc(C, C, 39, b0, bm - 0.03); g.lineTo(...P(bm - 0.03, 43.5)); g.arc(C, C, 43.5, bm - 0.03, b1 - 0.02); g.lineTo(...P(b1 - 0.02, 39)); } g.stroke(); }, 1.1);
+      two(() => { const [x, y] = P(mid, 34); g.beginPath(); g.arc(x, y, 2.4, 0, 6.283); g.stroke(); }, 1); }
+    else if (motif === 'vam') { /* espinhos para dentro e uma gota pingando no meio */
+      two(() => { g.beginPath(); g.arc(C, C, 43, a0, a1); for (let i = 0; i < 8; i++) { const a = a0 + 0.06 + i * (a1 - a0 - 0.12) / 7; g.moveTo(...P(a - 0.045, 43)); g.lineTo(...P(a, 36 + (i % 2) * 3)); g.lineTo(...P(a + 0.045, 43)); } g.stroke(); }, 1.1);
+      two(() => { const [x, y] = P(mid, 31); g.beginPath(); g.moveTo(x, y - 3.2); g.quadraticCurveTo(x + 2.4, y, x, y + 2); g.quadraticCurveTo(x - 2.4, y, x, y - 3.2); g.fill(); }, 0.5); }
+    else if (motif === 'lob') { /* três marcas de garra, curvas, cruzando o arco */
+      two(() => { for (let j = -1; j <= 1; j++) { const a = mid + j * 0.32; g.beginPath(); g.moveTo(...P(a - 0.12, 45)); g.quadraticCurveTo(...P(a + 0.02, 40), ...P(a + 0.1, 33)); g.stroke(); } }, 2);
+      two(() => arc(47.5), 0.7, 0.6); }
+    else if (motif === 'cac') { /* estacas de prata apontadas para dentro, entre duas linhas */
+      two(() => { arc(44.5); arc(37); }, 0.9); two(() => { for (let i = 0; i < 5; i++) { const a = a0 + 0.12 + i * (a1 - a0 - 0.24) / 4; g.beginPath(); g.moveTo(...P(a - 0.03, 44)); g.lineTo(...P(a + 0.03, 44)); g.lineTo(...P(a, 37.5)); g.closePath(); g.fill(); } }, 0.6); }
+    else if (motif === 'mag') { /* constelação: estrelinhas ligadas por linhas finas */
+      const pts: [number, number][] = []; for (let i = 0; i < 6; i++) pts.push(P(a0 + 0.08 + i * (a1 - a0 - 0.16) / 5, 40 + (i % 2 ? -3.5 : 2.5)));
+      two(() => { g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(...p) : g.moveTo(...p)); g.stroke(); }, 0.8);
+      two(() => { for (const [x, y] of pts) { g.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 1 : 2.8, a = i * 0.785; i ? g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r) : g.moveTo(x + r, y); } g.closePath(); g.fill(); } }, 0.5); }
+    else if (motif === 'bru') { /* corrente de pacto: zigue-zague com olhos fechados */
+      two(() => { g.beginPath(); for (let i = 0; i <= 12; i++) { const a = a0 + i * (a1 - a0) / 12, r = i % 2 ? 37 : 44; i ? g.lineTo(...P(a, r)) : g.moveTo(...P(a, r)); } g.stroke(); }, 1.1);
+      two(() => { for (const f of [-0.35, 0, 0.35]) { const [x, y] = P(mid + f, 32); g.beginPath(); g.ellipse(x, y, 2.6, 1.2, mid + f + 1.571, 0, 6.283); g.stroke(); } }, 0.8); }
+  }
   /* o símbolo do papel, três vezes, sempre de pé para fora */
   for (let k = 0; k < 3; k++) { const a = k * 2.094 - 1.571 + 0.0, x = C + Math.cos(a) * 43, y = C + Math.sin(a) * 43;
     g.globalAlpha = 0.85; g.fillStyle = ink; g.beginPath(); g.arc(x, y, 9.5, 0, 6.283); g.fill();
     g.globalAlpha = 1; g.strokeStyle = col; g.lineWidth = 1.3; g.beginPath(); g.arc(x, y, 9.5, 0, 6.283); g.stroke();
     g.fillStyle = col; stGlyph(g, role, x, y, 6.6, a + 1.571); g.fill(role === 'bal' ? 'evenodd' : 'nonzero'); }
-  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.userData.keep = true; stTex.set(id, t); return t; }
+  t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.userData.keep = true; stTex.set(key, t); return t; }
 /* o brilho por baixo (aditivo, gradiente radial): só aparece forte quando a postura acabou de mudar */
 const stGlowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 8, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.86, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.userData.keep = true; return t; })();
 const stGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 3.1), new THREE.MeshBasicMaterial({ map: stGlowTex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false, toneMapped: false })); stGlow.rotation.x = -Math.PI / 2; stGlow.renderOrder = 2; scene.add(stGlow);
@@ -1399,7 +1430,8 @@ let stRingId = '', stPop = 0, stAge = 0;
 function stanceRing(st: { id: string; role: string; col: string } | null, dt: number) {
   if (!st) { stRing.visible = stGlow.visible = false; return; }
   const m = stRing.material as THREE.MeshBasicMaterial, gm = stGlow.material as THREE.MeshBasicMaterial;
-  if (st.id !== stRingId) { const first = stRingId === ''; stRingId = st.id; m.map = stanceTex(st.id, st.role, st.col); m.needsUpdate = true; gm.color.set(st.col); stAge = 0; if (!first) stPop = 1; }
+  const org = profile?.origin ?? 'human', rid = st.id + ':' + org;
+  if (rid !== stRingId) { const first = stRingId === ''; stRingId = rid; stOrigin = org; m.map = stanceTex(st.id, st.role, st.col); m.needsUpdate = true; gm.color.set(st.col); stAge = 0; if (!first) stPop = 1; }
   stAge += dt; stPop = Math.max(0, stPop - dt * 1.5);
   const k = stAge < ST_STRONG ? 1 : Math.max(0, 1 - (stAge - ST_STRONG) / ST_FADE); /* 1 = forte, 0 = discreta */
   const p = hero.root.position, vis = !riding; stRing.visible = stGlow.visible = vis;
@@ -1805,7 +1837,7 @@ function renderOptions() {
     <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']])}</div>
     <h3>Gráficos</h3>
     <div class="stat"><span>Tamanho do pixel <small>1 = nítido (pesado) · 4 = pixel grosso (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
-    <div class="stat"><span>Detalhe do cenário <small>cenário em 1/N da resolução dos personagens</small></span>${seg('wratio', [[1, 'Igual'], [2, 'Metade'], [3, 'Um terço']])}</div>
+    <div class="stat"><span>Detalhe do cenário <small>cenário em 1/N da resolução dos personagens</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Sombras dos personagens <small>caras: dobram o custo de cada personagem; a mancha no pé fica</small></span>${seg('charShadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Qualidade das sombras</span>${seg('shadowRes', [[512, 'Baixa'], [1024, 'Média'], [2048, 'Alta']])}</div>
@@ -2264,7 +2296,8 @@ function uiScale() { const base = Math.max(0.85, Math.min(2, Math.min(innerHeigh
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
   const refH = opts.res > 0 ? Math.min(innerHeight, opts.res) : innerHeight, k = innerHeight / refH; // k > 1: desenha menos pixels e estica
-  const w = Math.max(160, Math.floor(innerWidth / k / PIX / WORLD_RATIO) * WORLD_RATIO), h = Math.max(120, Math.floor(innerHeight / k / PIX / WORLD_RATIO) * WORLD_RATIO);
+  const step = Number.isInteger(WORLD_RATIO) ? WORLD_RATIO : WORLD_RATIO * 2; /* 2/3: múltiplo de 3 para o cenário cair em pixel inteiro */
+  const w = Math.max(160, Math.floor(innerWidth / k / PIX / step) * step), h = Math.max(120, Math.floor(innerHeight / k / PIX / step) * step);
   renderer.setSize(w, h, false); dual.setSize(w, h);
   canvas.style.width = '100%'; canvas.style.height = '100%';
   composer.setSize(w, h);
@@ -2656,9 +2689,11 @@ function updateEnvelopes(t: number) { const on = mail.unread > 0 && !inside; for
 /* silhueta atrás dos prédios (herói sempre; NPC só quando o herói está perto) */
 const xray = createXray();
 { const HT: Record<string, number> = { house: 7.5, temple: 12, church: 10, shopfront: 4.6, tent: 3.2, stall: 3, mausoleum: 6, tower: 14 };
-  xray.setBuildings(city.props.filter((p) => HT[p.kind]).map((p) => { const y0 = groundH((p.gx + p.w / 2) * T, (p.gy + p.h / 2) * T), big = p.kind === 'church' && p.variant === 2; return { x0: p.gx * T + 0.2, z0: p.gy * T + 0.2, x1: (p.gx + p.w) * T - 0.2, z1: (p.gy + p.h) * T - 0.2, y0, y1: y0 + (big ? 40 : HT[p.kind]) }; })); }
+  xray.setBuildings(city.props.filter((p) => HT[p.kind]).map((p) => { const y0 = groundH((p.gx + p.w / 2) * T, (p.gy + p.h / 2) * T), big = p.kind === 'church' && p.variant === 2; return { x0: p.gx * T + 0.2, z0: p.gy * T + 0.2, x1: (p.gx + p.w) * T - 0.2, z1: (p.gy + p.h) * T - 0.2, y0, y1: y0 + (big ? 40 : HT[p.kind]) }; }));
+  /* árvores: só a copa (do terço da altura para cima); raio ~30% da altura, entre 1,1 e 3,2 m */
+  xray.setTrees(city.props.filter((p) => p.kind === 'tree').map((p) => { const x = (p.gx + 0.5) * T, z = (p.gy + 0.5) * T, h = p.height ?? 6; return { x, z, y0: groundH(x, z), h, r: Math.max(1.1, Math.min(3.2, h * 0.3)), alive: () => !(p as { gone?: boolean }).gone }; })); }
 function updateXray(dt: number) {
-  const hp = hero.root.position, who: { root: THREE.Object3D; at: THREE.Vector3; want: boolean }[] = [{ root: hero.root, at: hp, want: !inside && !cine }];
+  const hp = hero.root.position, who: { root: THREE.Object3D; at: THREE.Vector3; want: boolean; trees?: boolean }[] = [{ root: hero.root, at: hp, want: !inside && !cine, trees: true }];
   for (const n of npcSys.npcs) { const d = Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z); if (d < 7) who.push({ root: n.hero.root, at: n.pos, want: !inside && !cine }); }
   xray.update(dt, camera.position, who);
 }
