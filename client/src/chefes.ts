@@ -298,7 +298,7 @@ export const KITS: Record<string, Kit> = {
   'Aranha Tecelã': q({ gait: 'skitter', spells: [{ kind: 'roar', name: 'Teia', col: 0xe8e8f0, every: 11, k: 0.2, r: 4.5, slow: 0.15 }] }),
   'Aranha Filhote': q({ gait: 'skitter', spells: [] }),
   'Aracnídea-Mãe': q({ eye: 0xff2a1a, gait: 'stomp', speed: 0.9, fx: { col: 0x9aff6a, col2: 0x1a2a10, up: -0.5, rate: 8 },
-    look(D) { P.ring(D, 0xff2a1a, 3.2); },
+    look(D) { P.ring(D, 0xff2a1a, 1.4); },
     spells: [{ kind: 'summon', name: 'A Ninhada Sem Fim', col: 0xff3a1a, every: 9, k: 0, type: 'spiderling', n: 10, line: 'A Aracnídea-Mãe treme o abdômen: cem filhotes escorrem das bolsas!' }, { kind: 'roar', name: 'Teia da Mãe', col: 0xf0f0f8, every: 14, k: 0.4, r: 11, slow: 0.12 }, { kind: 'volley', name: 'Cuspe Ácido', col: 0x9aff4a, every: 8, k: 0.8, n: 5, spread: 1.0, sp: 9 }, { kind: 'leap', name: 'O Peso da Mãe', col: 0xff3a1a, every: 15, k: 1.8, r: 5 }] }),
   'Urso das Cavernas': q({ eye: 0xffb040, gait: 'stomp', look(D) { P.bones(D, 5, D.H * 0.4, D.W * 0.5); }, spells: [{ kind: 'roar', name: 'Rugido da Caverna', col: 0xd8c8a0, every: 15, k: 0.4, r: 9, slow: 0.5 }, { kind: 'leap', name: 'Patada', col: 0xffb040, every: 10, k: 1.5, r: 3.5 }] }),
   'Cobra Gigante': q({ eye: 0xffd040, gait: 'prowl', spells: [{ kind: 'charge', name: 'Bote da Gigante', col: 0xffd040, every: 9, k: 1.5, len: 11, w: 1.8 }, { kind: 'cone', name: 'Peçonha', col: 0x9aff4a, every: 12, k: 1.0, r: 7, deg: 50 }] }),

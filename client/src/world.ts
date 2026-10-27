@@ -52,7 +52,7 @@ export function rotLocal(p: { gx: number; gy: number; w: number; h: number; rot?
 /** tamanho do modelo no próprio eixo (m) */
 export const localDims = (p: { w: number; h: number; rot?: number }) => ((p.rot ?? 0) & 1 ? { W: p.h * T, D: p.w * T } : { W: p.w * T, D: p.h * T });
 export interface Poi { name: string; x: number; y: number; biome: Biome }
-export interface SpawnDef { type: EnemyType; x: number; y: number; r: number; n: number; /** só existe à noite */ night?: boolean; /** nível dos bichos deste ponto (pela região) */ lvl?: number; /** nível fixo (ignora a região) */ fixLvl?: number }
+export interface SpawnDef { type: EnemyType; x: number; y: number; r: number; n: number; /** só existe à noite */ night?: boolean; /** nível dos bichos deste ponto (pela região) */ lvl?: number; /** nível fixo (ignora a região) */ fixLvl?: number; /** dono de lugar marcado: não é retirado por estar perto de vila */ keep?: boolean }
 /* REGIÕES: cada uma tem a sua faixa de 10 níveis. Dentro dela convivem bichos fracos e fortes (do começo ao fim da faixa);
    as missões levam o jogador de uma faixa para a próxima. As fronteiras são um diagrama de Voronoi torto (ruído), nunca um círculo. */
 export interface Region { id: number; name: string; x: number; y: number; lo: number; hi: number; col: string }
@@ -991,7 +991,7 @@ export function buildCity(): World {
   { const c = safe(25 + OFX, 100 + OFY, 14); /* longe da igreja: na mata do sudoeste, depois do lago */ pois.push({ name: 'Clareira dos Gritos', x: c.x, y: c.y, biome: 'forest' });
     for (let k = 0; k < 10; k++) addBones(c.x + Math.round((r() - 0.5) * 10), c.y + Math.round((r() - 0.5) * 8));
     addFire(c.x + 2, c.y + 1);
-    spawns.push({ type: 'tormentor', x: c.x, y: c.y, r: 1, n: 1 }, { type: 'imp', x: c.x, y: c.y, r: 6, n: 3 }); }
+    spawns.push({ type: 'tormentor', x: c.x, y: c.y, r: 1, n: 1, keep: true }, { type: 'imp', x: c.x, y: c.y, r: 6, n: 3 }); }
   // cemitério e ruínas
   const gy0 = safe(48 + OFX, 118 + OFY);
   pois.push({ name: 'Cemitério Esquecido', x: gy0.x, y: gy0.y, biome: 'ruins' });
@@ -1220,13 +1220,6 @@ export function buildCity(): World {
     for (let gy = 10; gy < MAP_H - 10 && nD < 70; gy += 11) for (let gx = 10; gx < MAP_W - 10 && nD < 70; gx += 11) { const x = gx + Math.round((rw() - 0.5) * 8), y = gy + Math.round((rw() - 0.5) * 8); if (!inb(x, y) || map[y][x] !== 'grass') continue;
       const sd = waterSD((x + 0.5) * T, (y + 0.5) * T); if (sd < 1.2 || sd > 3.6) continue; if (nearSettle(x, y, 12) || Math.hypot(x - CITY.x, y - CITY.y) < 30) continue; if (rw() > 0.55) continue;
       const rg = regionAt(x, y); nD++; sp(rg.lo >= 30 && rw() < 0.3 ? 'drowner_old' : (rg.id === 4 || biome[y][x] === 'swamp') && rw() < 0.45 ? 'swampsnake' : 'drowner', { x, y }, 3, rg.lo >= 30 ? 1 : 1 + Math.floor(rw() * 2)); } }
-  /* ELITES E CHEFES DO MUNDO: cada lugar marcado tem o seu dono, no nível do lugar */
-  { const at = (nm: string, dx = 0, dy = 0) => { const q = pois.find((v) => v.name === nm) ?? settlements.find((v) => v.name === nm); return q ? { x: Math.round(q.x + dx), y: Math.round(q.y + dy) } : null; };
-    const put = (type: EnemyType, nm: string, dx: number, dy: number, night = false) => { const c = at(nm, dx, dy); if (c) spawns.push({ type, x: c.x, y: c.y, r: 1, n: 1, ...(night ? { night: true } : {}) }); };
-    put('alpha', 'Covil dos Lobos', 3, 3); put('necro', 'Cemitério Esquecido', -4, 6, true); put('skel_arch', 'Cemitério Esquecido', 4, 4); put('headless', 'Catedral Abandonada', -12, 18, true);
-    put('cavebear', 'Lágrimas de Hrefna', 6, 4); put('troll', 'Queda de Odin', 5, 6); put('jotun', 'Cachoeira da Neblina', 8, 10); put('harpy', 'Salto Branco', 4, -4);
-    put('fairyqueen', 'Véu das Fadas', 4, 6); put('ent', 'Pináculo de Marfim', -16, -14); put('giantsnake', 'Árvore-Mãe do Uivo', 10, 8); put('scorpion_king', 'Ferrugem', 16, 14);
-    put('colossus', 'Ferrugem', -18, -10); put('glutton', 'Castelo da Colina Vampírica', -10, 14); put('suplicio', 'Vale da Desgraça', 0, 10); put('drowner_old', 'Vatnaholt', -9, 7); put('inquisitor', 'Steinfoss', 6, -6); put('inquisitor', 'Grenivik', -5, 6); }
   /* placas: nas pontas e cruzamentos das estradas, apontando para o lugar mais próximo e para Karmika */
   const signs: Sign[] = [];
   const nearPoi = (x: number, y: number) => { let best: Poi | null = null, bd = 30; for (const p of pois) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } } return best; };
@@ -1577,9 +1570,16 @@ export function buildCity(): World {
         for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI : 0 }); }
         pois.push({ name: 'Casa dos Ofícios', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
+  /* ELITES E CHEFES DO MUNDO: cada lugar marcado tem o seu dono, no nível do lugar */
+  { const at = (nm: string, dx = 0, dy = 0) => { const q = pois.find((v) => v.name === nm) ?? settlements.find((v) => v.name === nm); return q ? { x: Math.round(q.x + dx), y: Math.round(q.y + dy) } : null; };
+    const put = (type: EnemyType, nm: string, dx: number, dy: number, night = false) => { const c = at(nm, dx, dy); if (c) { const rg = regionAt(c.x, c.y); spawns.push({ type, x: c.x, y: c.y, r: 1, n: 1, lvl: rg.hi, keep: true, ...(night ? { night: true } : {}) }); } };
+    put('alpha', 'Covil dos Lobos', 3, 3); put('necro', 'Cemitério Esquecido', -4, 6, true); put('skel_arch', 'Cemitério Esquecido', 4, 4); put('headless', 'Catedral Abandonada', -12, 18, true);
+    put('cavebear', 'Hrimgard', 14, 12); put('troll', 'Bjarnholt', -12, 9); put('jotun', 'Fortaleza de Odin', 20, 16); put('harpy', 'Hvítadalr', 11, -10);
+    put('fairyqueen', 'Lumenhal', 20, -16); put('ent', 'Pináculo de Marfim', -16, -14); put('giantsnake', 'Árvore-Mãe do Uivo', 10, 8); put('scorpion_king', 'Ferrugem', 16, 14);
+    put('colossus', 'Ferrugem', -18, -10); put('glutton', 'Castelo da Colina Vampírica', -10, 14); put('suplicio', 'Vale da Desgraça', 0, 10); put('drowner_old', 'Vatnaholt', -9, 7); put('inquisitor', 'Steinfoss', 6, -6); put('inquisitor', 'Grenivik', -5, 6); }
   { /* elites longe das vilas: nenhum elite nasce a menos de 30 blocos de um povoado (45 dos berços), a não ser os de lugar marcado (nível fixo) */
     const CRADLE = new Set(['Karmika', 'Brasaforja', 'Lithendel']), ELT = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'werewolf']);
-    for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!ELT.has(sp.type) || sp.fixLvl) continue;
+    for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!ELT.has(sp.type) || sp.fixLvl || sp.keep) continue; /* 26/10: o dono do lugar marcado (o Torturador na Clareira dos Gritos) nunca some — antes ele era apagado por estar perto de Karmika e a missão ficava impossível */
       if (settlements.some((t) => Math.hypot(t.x - sp.x, t.y - sp.y) < (CRADLE.has(t.name) ? 45 : 30))) spawns.splice(i, 1); } }
   const stOf = (nm: string) => { const st = settlements.find((q) => q.name === nm)!; return { x: st.x + 0.5, y: st.y + 3.5, name: nm }; };
   rampartsRef = ramparts;
