@@ -22,6 +22,8 @@ export interface EnemyCtx { outMul?: () => number;
   night?(): number;
   heightAt(x: number, z: number): number;
   walkable(x: number, z: number): boolean;
+  /** 27/10 (Erling: "os soldados não deixam monstros invadir a cidade"): chão de vila/cidade — bicho selvagem não entra */ townAt?(x: number, z: number): boolean;
+  /** um guarda da cidade a menos de ~7 m deste ponto: o bicho leva pancada e foge */ guardNear?(x: number, z: number): boolean;
   heroPos(): THREE.Vector3;
   heroAlive(): boolean;
   heroInvuln(): boolean;
@@ -588,8 +590,9 @@ export function createEnemies(ctx: EnemyCtx) {
 
   function step(e: Enemy, dx: number, dz: number) {
     const nx = e.pos.x + dx, nz = e.pos.z + dz;
-    if (ctx.walkable(nx, e.pos.z)) e.pos.x = nx;
-    if (ctx.walkable(e.pos.x, nz)) e.pos.z = nz;
+    const wild = !(e as Enemy & { tag?: string }).tag; // bicho do mundo (sem missão/evento): não pisa em vila nem cidade
+    if (ctx.walkable(nx, e.pos.z) && !(wild && ctx.townAt?.(nx, e.pos.z) && !ctx.townAt?.(e.pos.x, e.pos.z))) e.pos.x = nx;
+    if (ctx.walkable(e.pos.x, nz) && !(wild && ctx.townAt?.(e.pos.x, nz) && !ctx.townAt?.(e.pos.x, e.pos.z))) e.pos.z = nz;
   }
   function face(e: Enemy, tx: number, tz: number, dt: number, rate = 10) {
     const want = Math.atan2(tx - e.pos.x, tz - e.pos.z); let d = want - e.yaw; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283;
@@ -716,6 +719,7 @@ export function createEnemies(ctx: EnemyCtx) {
           break;
         }
         case 'chase': {
+          if (!(e as Enemy & { tag?: string }).tag && ctx.guardNear?.(e.pos.x, e.pos.z)) { e.state = 'return'; (e as Enemy & { guardT?: number }).guardT = 6; break; } /* a guarda da cidade enxota: o bicho desiste e volta para casa */
           if (!aliveT || dT > (foeOn ? 60 : D.aggro * 1.7) || (!foeOn && Math.hypot(e.pos.x - e.home.x, e.pos.z - e.home.y) > ((e as Enemy & { leash?: number }).leash ?? 34))) { e.state = 'return'; break; }
           face(e, tx, tz, dt, 12);
           if (dT < D.range) { e.state = 'windup'; e.t = 0; break; }
@@ -759,7 +763,7 @@ export function createEnemies(ctx: EnemyCtx) {
           e.hp = Math.min(e.hpMax, e.hp + e.hpMax * 0.2 * dt);
           const dx = e.home.x - e.pos.x, dz = e.home.y - e.pos.z, l = Math.hypot(dx, dz);
           if (l < 1.2) { e.state = 'idle'; break; }
-          if (alive && dHero < D.aggro * 0.6 && !D.passive) { e.state = 'chase'; break; }
+          { const g = (e as Enemy & { guardT?: number }); if (g.guardT && g.guardT > 0) { g.guardT -= dt; if (ctx.guardNear?.(e.pos.x, e.pos.z)) e.hp -= e.hpMax * 0.25 * dt; if (e.hp <= 0) { e.hp = 1; } } else if (alive && dHero < D.aggro * 0.6 && !D.passive) { e.state = 'chase'; break; } } /* enxotado pela guarda: apanha enquanto estiver perto dela e não volta a atacar por 6 s */
           face(e, e.home.x, e.home.y, dt); step(e, dx / l * D.speed * dt, dz / l * D.speed * dt); mv = D.speed; break;
         }
         case 'dead': if (e.tele) e.tele.visible = false; if (e.t > ((e as Enemy & { corpse?: number }).corpse ?? 4)) { unbuild(e); e.active = false; (e as Enemy & { corpse?: number }).corpse = undefined; } break;

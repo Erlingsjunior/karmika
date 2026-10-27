@@ -18,7 +18,7 @@ export interface GameplayDeps { /** multiplicador do dano recebido de fora (Inst
   scene: THREE.Scene; particles: Particles; camera: THREE.Camera; audio: AudioEngine;
   getHero: () => Hero3D; getRaceColor: () => number; canvas: HTMLCanvasElement;
   dummyPos: THREE.Vector3;
-  world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean };
+  world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; townAt?(x: number, z: number): boolean; guardNear?(x: number, z: number): boolean };
 }
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -160,7 +160,7 @@ export function createGameplay(d: GameplayDeps) {
   const pvpDmg = (mul: number) => { const crit = Math.random() < st.crit; return { n: Math.max(1, Math.round((5 + st.lvl * 2.2 + st.attrs.str * 1.2) * st.atk * mul * (crit ? 1.5 : 1) * 0.6)), crit }; }; // entre jogadores o golpe pesa menos que num bicho: a luta dura // quantos do meu grupo estão perto (eu incluso): bônus de XP e de equipamento
   const enemies = createEnemies({ level: () => st.lvl, outMul: () => 1 /* o bônus do evento entra no balde da situação (regra 01) */, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
     trail: (x, y, z, col) => { for (let q = 0; q < 2; q++) d.particles.spawn(x + rnd(-0.1, 0.1), y + rnd(-0.1, 0.1), z + rnd(-0.1, 0.1), { vx: rnd(-0.4, 0.4), vy: rnd(0.2, 0.9), vz: rnd(-0.4, 0.4), life: 0.45, s0: 0.32, s1: 0.04, c0: 0xffe0a0, c1: col, a: 0.95, drag: 1.5 }); }, night: () => (window as unknown as { __night?: number }).__night ?? 0,
-    scene: d.scene, heightAt: d.world.heightAt, walkable: d.world.walkable, spawns: d.world.spawns,
+    scene: d.scene, heightAt: d.world.heightAt, walkable: d.world.walkable, townAt: d.world.townAt, guardNear: d.world.guardNear, spawns: d.world.spawns,
     heroPos: () => d.getHero().root.position, heroAlive: () => !st.dead, heroInvuln: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || (n === 'rush' && d.getHero().actP < 0.7); }, heroGhost: () => { const n = d.getHero().actName; return n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge'; },
     damageHero: (n, from) => api.damage(n, d.getHero().root.position, from),
     spellFx: (x, z, col, r) => { const y = d.world.heightAt(x, z); for (let i = 0; i < 26; i++) { const a = rnd(0, 6.283), rr = rnd(0, r); d.particles.spawn(x + Math.cos(a) * rr, y + 0.2, z + Math.sin(a) * rr, { vx: Math.cos(a) * rnd(0.5, 2), vy: rnd(1.5, 4.5), vz: Math.sin(a) * rnd(0.5, 2), life: 0.7, s0: 0.5, s1: 0.06, c0: 0xffffff, c1: col, a: 1, drag: 1.5 }); } d.audio.boom(); st.shake = Math.max(st.shake, 0.12); },
