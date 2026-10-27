@@ -193,7 +193,9 @@ export function edgeK(tx: number, ty: number) {
    e sai pelo sul até o lago de baixo. Margens retas (sem ruído): é obra de pedreiro, não de rio */
 export const canalX = (ty: number) => ASKAVIK.x + 14 + 4 * Math.sin((ty - ASKAVIK.y) * 0.055 + 0.6);
 export const CANAL_HW = 2.0; // meia largura da água (casas)
-function canalSD(tx: number, ty: number) { const dy = ty - ASKAVIK.y; if (dy < -70 || dy > 64) return 99; const sl = 4 * 0.055 * Math.cos(dy * 0.055 + 0.6); return (Math.abs(tx - canalX(ty)) / Math.sqrt(1 + sl * sl) - CANAL_HW) * T; }
+/** meia-largura do rio de Askavik por linha: canal de pedra na cidade; ao norte afina até a nascente (dy −84), ao sul segue até o lago (dy 84) */
+export const canalHW = (dy: number) => dy < -60 ? Math.max(0.3, CANAL_HW * (1 - (-60 - dy) / 24) + 0.3) : CANAL_HW;
+function canalSD(tx: number, ty: number) { const dy = ty - ASKAVIK.y; if (dy < -84 || dy > 84) return 99; const sl = 4 * 0.055 * Math.cos(dy * 0.055 + 0.6); return (Math.abs(tx - canalX(ty)) / Math.sqrt(1 + sl * sl) - canalHW(dy)) * T; }
 export function waterSD(xm: number, zm: number): number {
   const tx = xm / T, ty = zm / T;
   { const dA = Math.max(Math.abs(tx - ASKAVIK.x), Math.abs(ty - ASKAVIK.y)) - (ASKAVIK.r + 7), cs = canalSD(tx, ty);
@@ -699,6 +701,9 @@ export function buildCity(): World {
     const canal = (dy: number) => canalX(cy + dy) - cx;
     // 1) o canal e os cais de pedra (o cais é calçada: anda-se por ele)
     for (let dy = -60; dy <= 60; dy++) { const c = canal(dy); for (let dx = Math.floor(c - 5); dx <= c + 5; dx++) { const d = Math.abs(dx + 0.5 - c); if (d <= CANAL_HW) set(dx, dy, 'water'); else if (d <= CANAL_HW + 1.25 && Math.abs(dy) <= 54) set(dx, dy, 'plaza'); } }
+    /* 27/10 (Erling: "nenhum rio acaba reto assim"): o canal continua como rio fora da cidade — ao sul até o lago, ao norte afinando até a nascente (o relevo acompanha: canalSD) */
+    { let wet = 0; for (let dy = 61; dy <= 84; dy++) { const c = canal(dy), hw = canalHW(dy); let already = true; for (let dx = Math.floor(c - hw - 1); dx <= c + hw + 1; dx++) if (Math.abs(dx + 0.5 - c) <= hw) { if (at(dx, dy) !== 'water') { already = false; set(dx, dy, 'water'); } } wet = already ? wet + 1 : 0; if (wet >= 3) break; }
+      for (let dy = -61; dy >= -84; dy--) { const c = canal(dy), hw = canalHW(dy); for (let dx = Math.floor(c - hw - 1); dx <= c + hw + 1; dx++) if (Math.abs(dx + 0.5 - c) <= hw) set(dx, dy, 'water'); } }
     for (let dy = -54; dy <= 54; dy++) for (const s of [-1, 1]) { const c = canal(dy), x = Math.floor(c + s * (CANAL_HW + 0.6)); if (dy % 2 === 0) props.push({ kind: 'quay', gx: cx + x, gy: cy + dy, w: 1, h: 2, height: 1, wall: 0x8a857e, roof: 0, variant: s > 0 ? 1 : 0, ry: Math.atan2(canal(dy + 1) - canal(dy - 1), 2) }); }
     const bridgesC: { x0: number; y0: number; x1: number; y1: number; half: number; hump: number }[] = [];
     /** ponte de pedra em arco onde uma rua cruza o canal: acha o trecho de água ao longo da rua e lança a ponte de cais a cais */
@@ -775,7 +780,7 @@ export function buildCity(): World {
         block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.4, wall: styleQ === 2 ? 0x6a5e52 : styleQ === 7 ? 0x8a4a3a : WALLS[nH % 6], roof: styleQ === 2 ? 0x4a423a : styleQ === 7 ? 0x4a4e56 : ROOFS[nH % 6], variant: [1, 2, 0, 3, 1, 2, 0, 1][nH % 8], rot, ...(styleQ && rr() < 0.7 ? { style: styleQ } : {}) }); nH++;
         // o beco da porta até a rua
         const mid = rot % 2 ? gy + Math.floor(hh / 2) : gx + Math.floor(ww / 2);
-        for (let d = 0; d <= best + 1; d++) { const x = rot === 1 ? gx + ww + d : rot === 3 ? gx - 1 - d : mid, y = rot === 0 ? gy + hh + d : rot === 2 ? gy - 1 - d : mid; if (at(x, y) === 'grass') set(x, y, 'road'); else break; }
+        if (best <= 4) for (let d = 0; d <= best + 1; d++) { const x = rot === 1 ? gx + ww + d : rot === 3 ? gx - 1 - d : mid, y = rot === 0 ? gy + hh + d : rot === 2 ? gy - 1 - d : mid; if (at(x, y) === 'grass') set(x, y, 'road'); else break; } /* 27/10: sem rua perto (best=99) o beco virava uma estrada de 100 casas até o fim do mundo (Erling: "montes de caminhos inúteis") */
         if (nH % 4 === 0) { const tx = gx + (rot === 1 ? -1 : ww), ty = gy + (rot === 0 ? -1 : hh); tree(tx, ty); }
       }
       // pracinhas: um poço e árvores nos terrenos que sobraram grandes
@@ -890,7 +895,7 @@ export function buildCity(): World {
         if (best > 3 && pass === 0) continue; const ww = rot % 2 ? h : w, hh = rot % 2 ? w : h; if (!free(gx, gy, ww, hh)) continue;
         block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.2 + rr() * 0.6, wall: WALLS[nH % 5], roof: ROOFS[(nH * 2 + 1) % 5], variant: [1, 2, 0, 3, 1, 2, 0, 1][nH % 8], rot, style: 7 }); nH++;
         const mid = rot % 2 ? gy + Math.floor(hh / 2) : gx + Math.floor(ww / 2);
-        for (let d = 0; d <= best + 1; d++) { const x = rot === 1 ? gx + ww + d : mid, y = rot === 0 ? gy + hh + d : mid; if (at(x, y) === 'grass') set(x, y, 'road'); else break; }
+        if (best <= 4) for (let d = 0; d <= best + 1; d++) { const x = rot === 1 ? gx + ww + d : mid, y = rot === 0 ? gy + hh + d : mid; if (at(x, y) === 'grass') set(x, y, 'road'); else break; }
         if (nH % 4 === 0) P('chimney', gx + (rot ? ww : 0) - 1, gy - 1, 1, 1, { variant: 1 });
       }
     }
