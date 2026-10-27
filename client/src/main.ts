@@ -35,6 +35,7 @@ import { createAuction } from './leilao';
 import { houseDoor } from './houses3d';
 import { setVitraisDay } from './vitrais';
 import { createXray } from './xray';
+import { KMAX, NATURE, PATH_NAME, bandOf, strainOf, strainMod } from './karma';
 import { FAC, facOf, facSet, facGear, crestURL, sigilTexture, myFac, setMyFac, onFac, FAC_ILVL, type Fac } from './faccoes';
 import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil, checkPremiumExpiry } from './premium';
 import { isTool as isToolId } from './tools';
@@ -126,12 +127,18 @@ type VowState = { id: string; secs: number; broken: boolean; titled: boolean } |
 let vow: VowState = (() => { try { return JSON.parse(localStorage.getItem('karmika.vow') || 'null'); } catch { return null; } })();
 const saveVow = () => { try { localStorage.setItem('karmika.vow', JSON.stringify(vow)); } catch { /* */ } };
 
-/* 26/10 noite (Erling: "não tenho 100/100, o limite não é 100"): dois números. O ALINHAMENTO (state.karma) continua de −100 a +100 —
+/* 26/10 noite (Erling: "não tenho 100/100, o limite não é 100"): dois números. O ALINHAMENTO (state.karma) vai de −1000 a +1000 (karma.ts, 27/10) —
    é o que guardas, inquisidor, facções e o Olho leem. O KARMA ACUMULADO não tem teto: tudo de luz e de sombra juntado NESTA vida (soul.s.luzT / soul.s.sombraT);
    ao desencarnar ele fica escrito na vida passada e recomeça do zero. Todo ganho e perda de karma passa por aqui. */
-function addKarma(dk: number) { if (!dk || !Number.isFinite(dk)) return; state.karma = Math.max(-100, Math.min(100, state.karma + dk));
+function addKarma(dk: number) { if (!dk || !Number.isFinite(dk)) return; state.karma = Math.max(-KMAX, Math.min(KMAX, state.karma + dk));
   if (dk > 0) soul.s.luzT = (soul.s.luzT ?? 0) + dk; else soul.s.sombraT = (soul.s.sombraT ?? 0) - dk; soul.save(); }
 if (soul.s.luzT === undefined && soul.s.sombraT === undefined) { soul.s.luzT = Math.max(0, state.karma); soul.s.sombraT = Math.max(0, -state.karma); soul.save(); }
+/** a alma vai para a natureza do caminho (vampiro −400, paladino +400…) — 27/10 */
+function takeNature(path: string) { const nat = NATURE[path]; if (!nat) return; const d = nat - state.karma; if (d) addKarma(d); soul.s.natSet = path; soul.save();
+  game.logMsg(`👁 O Olho vê o ${PATH_NAME[path]}: a sua alma vai para ${nat > 0 ? '+' : ''}${nat} (${nat > 0 ? 'luz' : 'sombra'}). Afastar-se da sua natureza enfraquece.`, nat > 0 ? '#ffe08a' : '#c46a8a'); }
+/* quem já tinha caminho antes da escala nova: a alma vai para a natureza do caminho, somando o que já tinha (uma vez só) */
+setTimeout(() => { try { const p = myPath(); if (p && NATURE[p] && soul.s.natSet !== p) { const old = state.karma; state.karma = Math.max(-KMAX, Math.min(KMAX, NATURE[p] + old)); soul.s.karma = state.karma; soul.s.natSet = p; soul.save(); } } catch { /* */ } }, 1500);
+let strainStage = -1;
 const keepKarma = () => { if (soul.s.karma !== state.karma) { soul.s.karma = state.karma; soul.save(); } };
 setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
@@ -332,7 +339,7 @@ const npcSys = createNpcs(scene, [
     if (game.st.hp < game.st.hpMax * 0.35) tags.push('ferido', 'ferido'); if (riding) tags.push('montado'); if (pet) tags.push('pet');
     { const st = hereSettle(); if (st) { const v = align.get('vila', st.name); if (v >= 30) tags.push('rep_alta', 'rep_alta'); else if (v <= -25) tags.push('rep_baixa', 'rep_baixa');
       if (v >= (st.name === 'Karmika' ? 10 : 30) && !align.flag('festa_' + st.name) && leavingQuest(st.name)) tags.push('despedida', 'despedida', 'despedida'); if (align.flag('festa_' + st.name) === 1 && !festa) tags.push('volta'); if (festa) tags.push('festa', 'festa', 'festa', 'festa'); } }
-    if (game.st.lvl < 5) tags.push('novato'); else if (game.st.lvl >= 30) tags.push('veterano'); if (k >= 20) tags.push('luz'); if (k <= -20) tags.push('sombra', 'sombra');
+    if (game.st.lvl < 5) tags.push('novato'); else if (game.st.lvl >= 30) tags.push('veterano'); if (k >= 100) tags.push('luz'); if (k <= -100) tags.push('sombra', 'sombra');
     const P: Record<string, string> = { vam: 'vam', lob: 'lob', mag: 'mag', bru: 'bru', pal: 'pal', cac: 'cac', tec: 'tecno' }; if (pth && P[pth]) tags.push(P[pth], P[pth]); else if (isWarrior()) tags.push('gue'); } catch { /* ainda carregando */ }
     return { tags, nome: profile?.name || 'caminhante', pet: pet?.kind.name ?? '' }; } });
 /* ---------- árvore kármica de magias ---------- */
@@ -527,6 +534,7 @@ queueMicrotask(() => quests.setOnDone?.((d) => { if (!d.id.startsWith('v_') || d
   const p = PATHS.find((x) => 'v_' + x.id === d.id); if (!p) return; if (game.changeClass(p.cls)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); setTimeout(() => offerVow(p.id), 3500); game.logMsg(`✦ Você agora trilha o caminho de ${p.cls}. A barra de classe recomeça do zero e a Árvore Kármica é a da sua classe.`, p.col); game.dmgText(heroPosNow().clone().setY(heroPosNow().y + 3), p.cls.toUpperCase(), true, p.col);
     /* a primeira classe já é o lado (Erling, 22/10): Fio = paladino, caçador, mago; Desfiados = vampiro, lobisomem, bruxo.
        Guerreiro (caótico neutro) e tecnocrata (neutro de verdade) ficam neutros; uma missão do mestre valida o alinhamento depois. */
+    takeNature(p.id);
     const side = ({ pal: 'fio', cac: 'fio', mag: 'fio', vam: 'desf', lob: 'desf', bru: 'desf' } as Record<string, Fac>)[p.id] ?? null;
     setMyFac(side); netRef?.lookNow();
     game.logMsg(side ? `⚑ O seu caminho jura com ${FAC[side].name}. “${FAC[side].motto}.”` : '⚖ O seu caminho é neutro. Uma missão do seu mestre vai validar o seu alinhamento.', side === 'fio' ? '#d9b45a' : side === 'desf' ? '#e0303a' : '#c8d8f0'); } }));
@@ -754,7 +762,7 @@ const LIGHT_SHOPS = new Set(['pocoes', 'cozinha', 'cervejaria', 'tec_fio', 'cons
  *  Lua de Sangue: vampiros, lobisomens, bruxos e toda alma de karma baixo. Dia da Aurora: paladinos, magos e toda alma de karma alto */
 function globalSide(id: string | null): number {
   if (!id) return 0; const p = myPath(), k = state.karma;
-  const dark = k <= -20 || p === 'vam' || p === 'lob' || p === 'bru', light = k >= 20 || p === 'pal' || p === 'mag';
+  const dark = k <= -100 || p === 'vam' || p === 'lob' || p === 'bru', light = k >= 100 || p === 'pal' || p === 'mag';
   if (id === 'lua') return dark ? 1 : light ? -1 : 0;
   if (id === 'aurora') return light ? 1 : dark ? -1 : 0;
   return 0;
@@ -846,7 +854,7 @@ const net = createNet({ scene, camera, canvas,
   partyInvite: (from, name, lvl) => coop.partyInvite(from, name, lvl),
   showProfile: (id, p) => coop.showProfile(id, p),
   profile: () => { // o que os outros veem ao abrir o meu perfil
-    const k = Math.round(state.karma), align = k >= 60 ? 'Luz radiante' : k >= 20 ? 'Luminoso' : k > -20 ? 'Equilibrado' : k > -60 ? 'Sombrio' : 'Trevas';
+    const k = Math.round(state.karma), align = bandOf(k).name;
     let portrait: string | null = null; try { portraits.delete('hero'); portrait = portraitOf('hero', hero.root, true); } catch { /* */ }
     const gear = Object.entries(inv.eq).filter(([, g]) => !!g).map(([slot, g]) => ({ slot, name: g!.name, rarity: RARITY[g!.rarity].name, icon: g!.icon, col: RARITY[g!.rarity].col }));
     const done = FEATS.filter((f) => feats.isDone(f.id)); const top = [...done].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0) || b.goal - a.goal).slice(0, 6);
@@ -1166,7 +1174,7 @@ function festaFade(lines: string[], mid: () => void, after?: () => void) { const
 const DEED_OF: Record<string, string> = { h01: 'limpou o cemitério das ratazanas rubras', h02: 'encheu de lenha o fogão da Lúcia antes do inverno', h03: 'trouxe couro para o mercador', h05: 'desceu no Mausoléu dos Esquecidos e voltou', h06: 'enfrentou os mortos que não dormem', h07: 'achou o que as ratazanas escondiam', h08: 'trouxe o Bento de volta da igreja velha, vivo', n01: 'limpou o cemitério das ratazanas rubras' };
 function festaDeeds(stName: string) { const nm = profile?.name || 'o caminhante', out: string[] = [];
   for (const id of quests.q.done) { const d = quests.def(id); if (!d || id.startsWith('b_')) continue; const home = npcHome(d.turnin ?? d.giver)?.name; if (home !== stName) continue; out.push(DEED_OF[id] ? `Eu vi! ${nm} ${DEED_OF[id]}!` : `Lembra de “${d.name}”? Foi ${nm} quem resolveu, e sem pedir nada em troca.`); }
-  out.push(`${game.st.kills} bichos no chão. Eu contei, eu contei!`, `Nível ${game.st.lvl} e ainda com cara de quem acordou ontem!`, state.karma >= 10 ? `Alma boa, essa. O Olho de Marghar sorri para ${nm}.` : state.karma <= -10 ? `Tem sombra nesse olhar… mas aqui ninguém esquece o que ${nm} fez pela vila.` : `Nem santo nem demônio: gente da gente, ${nm}.`);
+  out.push(`${game.st.kills} bichos no chão. Eu contei, eu contei!`, `Nível ${game.st.lvl} e ainda com cara de quem acordou ontem!`, state.karma >= 100 ? `Alma boa, essa. O Olho de Marghar sorri para ${nm}.` : state.karma <= -100 ? `Tem sombra nesse olhar… mas aqui ninguém esquece o que ${nm} fez pela vila.` : `Nem santo nem demônio: gente da gente, ${nm}.`);
   return out; }
 function festaBallad(stName: string) { const nm = profile?.name || 'o caminhante', d = quests.q.done.map((id) => DEED_OF[id]).filter(Boolean) as string[];
   return [`♪ Lá do vale de ${stName} veio ${nm}, de espada na mão ♪`, `♪ ${game.st.kills} bestas derrubou, sem tremer o coração ♪`, `♪ ${d[0] ? d[0].charAt(0).toUpperCase() + d[0].slice(1) : 'Ninguém viu medo nos seus olhos'}, e a vila inteira viu ♪`, `♪ ${d[1] ? d[1].charAt(0).toUpperCase() + d[1].slice(1) : 'Nem lobo nem morto o fez fugir'}, e o povo aplaudiu ♪`,
@@ -1706,7 +1714,7 @@ function checkAwakening() {
 function renderOlho() {
   const k = Math.round(state.karma), title = quests.title || 'Aprendiz';
   olhoEl.innerHTML = `<div class="pn olhopn"><h2>👁 Olho Kármico <button data-x>✕</button></h2>
-    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Alinhamento agora: <b>${k > 0 ? '+' : ''}${k}</b> <small>(de −100 a +100)</small></p><p>Karma acumulado nesta vida: <b style="color:#ffe08a">☀ ${Math.round(soul.s.luzT ?? 0)}</b> de luz · <b style="color:#b89aff">☾ ${Math.round(soul.s.sombraT ?? 0)}</b> de sombra</p><small>O alinhamento é para onde a sua alma pende hoje: é o que o Olho enche (nunca por completo), o que os guardas e as facções leem. Luz e sombra são posições, não bem e mal. O acumulado não tem teto: sobe a cada ato até você desencarnar, e então fica escrito na sua vida passada.</small>
+    <div class="cols"><div class="col"><h3>Sua alma</h3><p><b>${profile?.name ?? ''}</b> · ${RACES[state.race].label} · <b>${title}</b></p><p>Alinhamento agora: <b>${k > 0 ? '+' : ''}${k}</b> · ${bandOf(k).name} <small>(de −1000 a +1000)</small></p>${(() => { const p = myPath(), nat = p ? NATURE[p] : 0; if (!nat) return '<small>Sem caminho, você não tem natureza kármica: nenhuma fraqueza por alinhamento.</small>'; const sk = strainOf(state.karma, p); return `<p>Natureza do ${PATH_NAME[p!]}: <b>${nat > 0 ? '+' : ''}${nat}</b>${sk > 0 ? ` · <b style="color:#ff9a6a">fraqueza kármica ${Math.round(sk * 100)}%</b>` : ' · em casa'}</p>`; })()}<p>Karma acumulado nesta vida: <b style="color:#ffe08a">☀ ${Math.round(soul.s.luzT ?? 0)}</b> de luz · <b style="color:#b89aff">☾ ${Math.round(soul.s.sombraT ?? 0)}</b> de sombra</p><small>O alinhamento é para onde a sua alma pende hoje: é o que o mundo lê. Cada caminho tem uma natureza; afastar-se dela (para quem é da sombra, subir em direção à luz; para quem é da luz, descer em direção à sombra) traz fraqueza kármica. Luz e sombra são posições, não bem e mal. O acumulado não tem teto: sobe a cada ato até você desencarnar, e então fica escrito na sua vida passada.</small>
       <h3>Ascensão</h3><p>Nível ${game.st.lvl}. No nível 100 você escolhe duas especializações; 200 e 300 abrem fusões e a forma final.</p><small>As escolas ficam em Askavik, a cidade média. Quando as estradas estiverem abertas, uma missão o levará até lá.</small></div>
     <div class="col"><h3>Atos</h3>${quests.q.done.length ? `<p>${quests.q.done.length} missões concluídas</p>` : '<p>Nenhuma missão concluída ainda.</p>'}<p>${game.st.kills} abates</p><small>Matar outros jogadores e abandonar inocentes pesa para a sombra; proteger a vila e libertar bestas pesa para a luz. O Olho lembra de tudo.</small></div></div>
     <small class="ft">Esc fecha</small></div>`;
@@ -3870,7 +3878,8 @@ function frameBody() {
 
   /* luz do dia e da noite: o dia é quente (sol dourado, sombras âmbar), a noite é fria (lua azulada).
      Os eventos globais tingem o mundo inteiro: a Lua de Sangue deixa tudo rubro; a Aurora, dourado e rosado */
-  if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); game.st.outMul = sd > 0 ? 1.1 : 1; game.st.takenMul = sd > 0 ? 0.92 : sd < 0 ? 1.06 : 1; /* regra 01: bônus de evento pequeno, e o de dano entra no balde da situação com teto de +30% */ }
+  if (performance.now() - gChkT > 1000) { gChkT = performance.now(); try { gCur = gForce !== undefined ? gForce : (globalNow()?.id ?? null); } catch { gCur = null; } const sd = globalSide(gCur); const sk = strainOf(state.karma, myPath()), sm = strainMod(sk); game.st.outMul = (sd > 0 ? 1.1 : 1) + sm.dmg; game.st.takenMul = (sd > 0 ? 0.92 : sd < 0 ? 1.06 : 1) * (1 + sm.taken);
+    { const stg = sk <= 0 ? 0 : sk < 0.5 ? 1 : sk < 1 ? 2 : 3; if (strainStage >= 0 && stg > strainStage) { const p = myPath()!, dark = (NATURE[p] ?? 0) < 0; game.logMsg(stg === 1 ? `⚖ A sua natureza de ${PATH_NAME[p]} estranha a alma: ela se afasta ${dark ? 'da sombra' : 'da luz'} (fraqueza kármica: −${Math.round(-sm.dmg * 100)}% de dano).` : stg === 2 ? `⚖ A alma já passou do neutro. O ${PATH_NAME[p]} em você enfraquece: −${Math.round(-sm.dmg * 100)}% de dano, +${Math.round(sm.taken * 100)}% de dano recebido.` : `⚖ A sua alma está do outro lado da sua natureza. Fraqueza kármica total: −20% de dano, +15% de dano recebido.`, '#ff9a6a'); } else if (strainStage > 0 && stg === 0) game.logMsg('⚖ A alma voltou para perto da sua natureza. A fraqueza kármica passou.', '#9ad7ff'); strainStage = stg; } /* regra 01: bônus de evento pequeno, e o de dano entra no balde da situação com teto de +30% */ }
   luaK += ((gCur === 'lua' && !inside?.dg ? 1 : 0) - luaK) * Math.min(1, rawDt * 0.35);
   aurK += ((gCur === 'aurora' && !inside?.dg ? 1 : 0) - aurK) * Math.min(1, rawDt * 0.35);
   instK += ((instinctOn && !inside ? 1 : 0) - instK) * Math.min(1, rawDt * 2);
@@ -3988,11 +3997,11 @@ function frameBody() {
   /* karma */
   const eyeEl = document.getElementById('eye') as unknown as SVGElement;
   pm('câmera/mundo/doors');
-  eyeEl.classList.toggle('full', state.karma >= 100);
-  { eyeSys.update(rawDt, eyeGaze(), hero.acting, state.karma, !profile?.eye, night); }
+  eyeEl.classList.toggle('full', Math.abs(state.karma) >= 500);
+  { eyeSys.update(rawDt, eyeGaze(), hero.acting, Math.min(100, Math.abs(state.karma) / 6), !profile?.eye, night); } /* o Olho enche com a carga kármica (luz ou sombra), nunca por completo */
   globes.update(dt, game.st.hp, game.st.hpMax, game.st.mp, game.st.mpMax);
   if ((fpsN & 15) === 0) checkAwakening();
-  const full = state.karma >= 100;
+  const full = state.karma >= 500; /* aura dourada: só a luz radiante */
   if (full !== wasFull) { wasFull = full; hero.setAura(full); }
   pm('olho/globos');
   if (full && Math.random() < 0.7) particles.spawn(heroPos.x + (Math.random() - 0.5) * 0.6, 0.2, heroPos.z + (Math.random() - 0.5) * 0.6, { vy: 1.4 + Math.random(), life: 1.2, s0: 0.9, s1: 0.1, c0: 0xfff0bd, c1: 0xf2b04a, a: 0.9 });

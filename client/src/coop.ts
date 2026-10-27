@@ -154,7 +154,7 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
     pw.innerHTML = `<div class="pn prof" style="width:640px"><h2>${esc(p.name)} <button data-x>✕</button></h2>
       <div class="pr-top"><div class="pr-pic">${p.portrait ? `<img src="${p.portrait}" alt="">` : '<span>sem retrato</span>'}</div>
         <div class="pr-info"><div class="pr-lv">Nível ${p.lvl} · ${esc(p.cls)}</div>${p.title ? `<div class="pr-ti">${esc(p.title)}</div>` : ''}
-          <div class="pr-al"><small>Alinhamento</small><b>${esc(p.align)}</b><div class="pr-kb"><i style="left:${(k + 100) / 2}%"></i></div><span>Karma ${k > 0 ? '+' : ''}${k}</span></div>
+          <div class="pr-al"><small>Alinhamento</small><b>${esc(p.align)}</b><div class="pr-kb"><i style="left:${Math.max(0, Math.min(100, (k + 1000) / 20))}%"></i></div><span>Karma ${k > 0 ? '+' : ''}${k}</span></div>
           ${p.fac ? `<div class="pr-fac">Jurado: <b>${esc(p.fac)}</b></div>` : '<div class="pr-fac cp-mut">Ainda não jurou nenhum lado</div>'}
           <div class="pr-st"><span>⚔ ${p.kills} abates</span><span>📜 ${p.quests} missões</span><span>🏅 ${p.featCount}/${p.featTotal} inscrições</span></div></div></div>
       <h3>Equipamento</h3><div class="pr-gear">${p.gear.length ? p.gear.map((g) => `<div><i>${g.icon}</i><b style="color:${g.col}">${esc(g.name)}</b><small>${SL[g.slot] ?? g.slot} · ${esc(g.rarity)}</small></div>`).join('') : '<p class="cp-mut">Sem equipamento.</p>'}</div>

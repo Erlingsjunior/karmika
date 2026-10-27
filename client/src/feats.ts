@@ -70,7 +70,7 @@ export const FEATS: Feat[] = [
   F('alma', 'a_sold', 'Tudo Tem Preço', 'Aceite um suborno.', 'bribe_yes', 1, 0.02),
   F('alma', 'a_hunt', 'Justiça Tardia', 'Encontre quem mentiu e fugiu.', 'hunts', 1, 0.15),
   F('alma', 'a_tear', 'Lágrima', 'Faça o Olho transbordar num ato heroico.', 'heroic', 1, 0.15),
-  F('alma', 'a_dark', 'Sombra Longa', 'Chegue a karma −50.', 'darkness', 50, 0.1),
+  F('alma', 'a_dark', 'Sombra Longa', 'Chegue a alinhamento −300.', 'darkness', 300, 0.1),
   F('alma', 'a_comp', 'Compêndio', 'Tenha 10 decisões gravadas no Compêndio do Karma.', 'choices', 10, 0.1),
   F('alma', 'a_die', 'Desencarnar', 'Morra pela primeira vez.', 'deaths', 1, 0.02),
   F('alma', 'a_seven', 'Sete Vidas', 'Morra 7 vezes e volte todas.', 'deaths', 7, 0.08),

@@ -49,7 +49,7 @@ export function createVidente(ctx: Ctx) {
     if (t.closest('[data-vx]')) { api.close(); return; }
     if (t.closest('[data-vgo]')) { step = 0; render(); return; }
     const va = d('va'); if (va !== null && va !== undefined && step >= 0 && step < Q.length) { for (const [k, v] of Object.entries(Q[step].a[+va][1])) score[k as PathId] += v!; step++;
-      if (step === Q.length) { const k = ctx.karma(); if (k > 30) { score.pal += 2; score.cac += 1; } else if (k < -30) { score.bru += 2; score.vam += 1; } ranked = [...PATHS].sort((a, b) => score[b.id] - score[a.id]); }
+      if (step === Q.length) { const k = ctx.karma(); if (k > 60) { score.pal += 2; score.cac += 1; } else if (k < -60) { score.bru += 2; score.vam += 1; } ranked = [...PATHS].sort((a, b) => score[b.id] - score[a.id]); }
       render(); return; }
     if (t.closest('[data-vfree]')) { step = Q.length + 1; picked = ranked[0].id; render(); return; }
     const vp = d('vp'); if (vp) { picked = vp as PathId; render(); return; }

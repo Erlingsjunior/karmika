@@ -444,7 +444,7 @@ export function createLimiar(deps: LimiarDeps) {
   const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
   const REST = new THREE.Vector3(0, 4.4, 11.5), REST_L = new THREE.Vector3(0, -0.3, -24); // olhando um pouco para baixo: o labirinto lá embaixo, até o horizonte
   function moveCam(to: THREE.Vector3, look: THREE.Vector3, dur: number) { camFrom.copy(camPos); lookFrom.copy(camLook); camTo.copy(to); lookTo.copy(look); camK = 0; camDur = dur; }
-  const alignOf = (k: number) => k >= 60 ? 'a luz é tanta que quase não vejo o chão' : k >= 20 ? 'rastros claros, de quem ajudou mais do que feriu' : k > -20 ? 'claro e escuro na mesma medida; você ainda está decidindo quem é' : k > -60 ? 'rastros escuros, de quem passou por cima de muita coisa' : 'tão negro que a pedra queima onde você pisou';
+  const alignOf = (k: number) => k >= 500 ? 'a luz é tanta que quase não vejo o chão' : k >= 100 ? 'rastros claros, de quem ajudou mais do que feriu' : k > -100 ? 'claro e escuro na mesma medida; você ainda está decidindo quem é' : k > -500 ? 'rastros escuros, de quem passou por cima de muita coisa' : 'tão negro que a pedra queima onde você pisou';
 
   function script() {
     const i = info, k = Math.round(i.karma);

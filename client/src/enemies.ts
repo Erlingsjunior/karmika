@@ -707,7 +707,7 @@ export function createEnemies(ctx: EnemyCtx) {
       switch (e.state) {
         case 'idle': {
           if (D.ambush && !foeOn) { const hid = !(aliveT && dT < D.aggro * 0.75); if (hid !== !!(e as Enemy & { hid?: boolean }).hid) { (e as Enemy & { hid?: boolean }).hid = hid; if (!hid) { ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); ctx.onSpell?.(e, D.ambush === 'water' ? 'Sai da água!' : 'Sai da areia!'); e.state = 'chase'; e.t = 0; } } if (hid) break; }
-          if (D.lawful && (enemyHooks.karma?.() ?? 0) > -25) { /* o Inquisidor só caça quem deve: com você em paz, ele só vigia */ e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + Math.random() * 3; face(e, hero.x, hero.z, 1, 1); } break; }
+          if (D.lawful && (enemyHooks.karma?.() ?? 0) > -150) { /* o Inquisidor só caça quem deve: com você em paz, ele só vigia */ e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + Math.random() * 3; face(e, hero.x, hero.z, 1, 1); } break; }
           if (!D.passive && aliveT && dT < (foeOn ? 40 : D.aggro)) { e.state = 'chase'; e.t = 0; break; }
           if (D.passive && dHero < D.aggro) { e.state = 'flee'; e.t = 0; break; }
           e.wanderT -= dt;
