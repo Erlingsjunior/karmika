@@ -9,11 +9,11 @@ import { genGear, rollRarity, RARITY, type Gear, type Rarity } from './loot';
 import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
 import type { SkillId } from './kits';
-import { createEnemies, type Enemy } from './enemies';
+import { createEnemies, ELITE_TYPES, type Enemy } from './enemies';
 import { buildBeast, buildWolf, type Beast } from './werewolf3d';
 
 /** Combate básico, vida/magia, boneco de treino, projéteis, números de dano e menu. */
-export interface GameplayDeps {
+export interface GameplayDeps { /** multiplicador do dano recebido de fora (Instinto ligado: +10%) */ takenK?: () => number;
   scene: THREE.Scene; particles: Particles; camera: THREE.Camera; audio: AudioEngine;
   getHero: () => Hero3D; getRaceColor: () => number; canvas: HTMLCanvasElement;
   dummyPos: THREE.Vector3;
@@ -226,6 +226,11 @@ export function createGameplay(d: GameplayDeps) {
     pending.push({ at: now + TEMPO * 2.9, fn: () => { fwBurst(hp.x, hp.y + 10, hp.z, 0xffd24a, 260, 8, 13); fwBurst(hp.x, hp.y + 10, hp.z, 0xffffff, 120, 4, 7); st.shake = Math.max(st.shake, 0.5); } });
   }
   const LOOT: Record<string, [string, number, number, number][]> = {
+    /* a safra nova (26/10): cada bicho deixa o que tem — ossos e pó dos mortos, quitina e veneno, couro de urso, engrenagem */
+    skull_fire: [['dust', 1, 2, 0.6]], skull_frost: [['dust', 1, 2, 0.6]], skel_arch: [['claw', 1, 1, 0.3]], necro: [['dust', 2, 4, 1], ['tome', 1, 1, 0.3]], lich: [['dust', 4, 8, 1], ['tome', 1, 2, 1]], headless: [['dust', 2, 4, 1], ['potion', 1, 2, 1]],
+    spider: [['claw', 1, 2, 0.5]], broodmother: [['claw', 4, 8, 1], ['potion', 2, 3, 1]], scorpion: [['claw', 1, 2, 0.55]], scorpion_king: [['claw', 4, 6, 1]], swampsnake: [['hide', 1, 1, 0.4]], giantsnake: [['hide', 2, 4, 1]],
+    bear: [['claw', 1, 2, 0.5]], cavebear: [['claw', 2, 4, 1]], fungus: [['sap', 1, 2, 0.6]], ent: [['wood', 6, 10, 1], ['sap', 2, 4, 1]], fairyqueen: [['dust', 3, 6, 1]], troll: [['claw', 2, 3, 0.8]], harpy: [['claw', 1, 1, 0.4]],
+    hellhound: [['claw', 1, 2, 0.5]], imp_bomb: [['claw', 1, 1, 0.4]], glutton: [['claw', 3, 5, 1]], suplicio: [['dust', 4, 6, 1], ['claw', 3, 5, 1]], jotun: [['claw', 3, 5, 1]], drowner: [['claw', 1, 1, 0.35]], drowner_old: [['claw', 2, 4, 1]], mudzombie: [['hide', 1, 1, 0.3]],
     // feras (cervo, javali, lobos, coiote, lobisomem) não soltam couro nem carne: o corpo fica no chão para ser esfolado com a faca de caça
     wolf: [['claw', 1, 1, 0.3]], frostwolf: [['claw', 1, 1, 0.3]],
     zombie: [['hide', 1, 1, 0.3], ['claw', 1, 1, 0.3]], ghoul: [['claw', 1, 2, 0.6]], bishop: [['dust', 4, 8, 1], ['tome', 2, 2, 1]],
@@ -334,7 +339,7 @@ export function createGameplay(d: GameplayDeps) {
     prince: { arm: 0.18, abs: 4, res: { fogo: 0.4, sagrado: 1.6 } }, tormentor: { arm: 0.16, abs: 3.5, res: { sagrado: 1.4 } }, bishop: { arm: 0.22, abs: 5, res: { fogo: 0.6, sagrado: 1.3 } },
   };
   const ELITE_T = new Set(['prince', 'tormentor', 'treant', 'werewolf', 'bishop']);
-  const isElite = (e: Enemy) => ELITE_T.has(e.type) || !!(e as Enemy & { tag?: string }).tag && (e.hpMax > 1500);
+  const isElite = (e: Enemy) => ELITE_T.has(e.type) || ELITE_TYPES.has(e.type) || !!(e as Enemy & { tag?: string }).tag && (e.hpMax > 1500);
   /** tipo do dano de cada magia (a arma muda o golpe básico: martelo = impacto, lança = perfuração) */
   const dmgTypeOf = (sk: string | null): DmgType => { const k = d.getHero().kind; if (st.sp.has('u_excal') && (sk === 'combo' || sk === null)) return 'sagrado'; if (sk === 'slam') return k === 'dwarf' ? 'fogo' : k === 'technocrat' ? 'fogo' : 'gelo'; if (sk === 'spear' || sk === 'railgun') return 'perfuracao'; if (sk === 'bash' || sk === 'hammerthrow' || sk === 'mountain' || sk === 'kick' || sk === 'shieldwall') return 'impacto'; if (sk === 'winter') return 'gelo'; if (sk === 'mark' || sk === 'smite' || sk === 'consecrate') return 'sagrado'; if (kitKey === 'pal' && (sk === 'combo' || sk === null || sk === 'bash' || sk === 'kick')) return 'sagrado'; if (sk === 'flame' || sk === 'forge') return 'fogo'; if (sk === 'shocktrap') return 'impacto'; return k === 'dwarf' ? 'impacto' : k === 'technocrat' ? 'perfuracao' : 'corte'; };
   /** postura dos elites: enche de novo 8 s depois de quebrada */
@@ -429,7 +434,7 @@ export function createGameplay(d: GameplayDeps) {
     let n = 0; const r = d.canvas.getBoundingClientRect();
     for (const e of enemies.list) {
       const danger = (e.def.lvl ?? 1) >= st.lvl + 5; // forte demais: caveira sobre a cabeça, mesmo parado — melhor correr
-      if (!e.alive || !e.active || (e.hp >= e.hpMax && e.state === 'idle' && !(danger && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
+      if (!e.alive || !e.active || (e.root && !e.root.visible) || (e.hp >= e.hpMax && e.state === 'idle' && !(danger && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
       const v = tmp.set(e.pos.x, e.pos.y + 2.1 * e.def.scale, e.pos.z).project(d.camera as THREE.Camera);
       if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
       let el = ebars[n]; if (!el) { el = document.createElement('div'); el.className = 'ebar'; el.innerHTML = '<span></span><i></i><u></u>'; document.body.appendChild(el); ebars[n] = el; }
@@ -1125,7 +1130,7 @@ export function createGameplay(d: GameplayDeps) {
         let eL = 0; if (from) { let bd = 2.6; for (const o of enemies.list) { if (!o.alive || !o.active) continue; const dd = Math.hypot(o.pos.x - from.x, o.pos.z - from.z); if (dd < bd) { bd = dd; eL = o.def.lvl ?? 0; } } }
         if (eL) { const dl = eL - st.lvl; n *= dl > 0 ? Math.min(3, 1 + 0.09 * dl + 0.01 * dl * dl) : Math.max(0.6, 1 + 0.04 * dl); } }
       { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1) n *= 1 + 0.12 * (pn - 1); } /* GRUPO: e bate mais forte (+12% por companheiro perto) */
-      n = Math.max(1, Math.round(n * st.takenMul)); /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
+      n = Math.max(1, Math.round(n * st.takenMul * (d.takenK?.() ?? 1))); /* Instinto ligado: a defesa cai (a atenção está em outro lugar) */ /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');
         if (from) { const a2 = Math.atan2(from.x - heroPos.x, from.z - heroPos.z); for (let i = 0; i < 12; i++) d.particles.spawn(heroPos.x + Math.sin(a2) * 1.4, heroPos.y + rnd(0.6, 1.8), heroPos.z + Math.cos(a2) * 1.4, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.35, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 }); }

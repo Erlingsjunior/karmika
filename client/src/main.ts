@@ -2,7 +2,7 @@ import { installTitleTips } from './dicas';
 import { createHub } from './hub';
 import { createSocial, type Guild } from './social';
 import type { DungeonFloor } from './dungeon3d';
-import { dressEnemy, createBossBrain, bossBody } from './chefes';
+import { dressEnemy, createBossBrain, bossBody, kitOf } from './chefes';
 import { enemyHooks } from './enemies';
 import { floatWin, dragAll, confirmBox } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
@@ -27,7 +27,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { RACES, TILE_M as T, isWalkable, type Race, type Vec } from '@karmika/shared';
 import { navPath, lineFree } from './nav';
-import { createInventory, ITEMS as ITEMS_TBL, SHOPDEF } from './inventory';
+import { createInventory, ITEMS as ITEMS_TBL, SHOPDEF, SHOPS, PRICES } from './inventory';
 import { createMail } from './mail';
 import { createProfessions } from './professions';
 import { createLoja } from './loja';
@@ -38,6 +38,15 @@ import { createXray } from './xray';
 import { FAC, facOf, facSet, facGear, crestURL, sigilTexture, myFac, setMyFac, onFac, FAC_ILVL, type Fac } from './faccoes';
 import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil, checkPremiumExpiry } from './premium';
 import { isTool as isToolId } from './tools';
+/* PETS E MONTARIAS DE CADA LUGAR (26/10): o item de cada um nasce da ficha (companions.ts), e os estábulos e domadores de cada cidade vendem os seus */
+{ const ICON: Record<string, string> = { dog: '🐶', cat: '🐱', wolf: '🐺', fox: '🦊', boar: '🐗', rat: '🐀', spider: '🕷', scorpion: '🦂', snake: '🐍', skull: '💀', automaton: '⚙', fairy: '🧚' };
+  for (const k of Object.values(PETS)) if (!ITEMS_TBL[k.id]) { ITEMS_TBL[k.id] = { name: k.name, icon: ICON[k.make ?? k.quad] ?? '🐾', kind: 'misc', col: k.tint ?? 0xc8a070, desc: `${k.blurb ?? 'Companheiro.'} Use para levar ao Estábulo (X).${k.where ? ` · De: ${k.where}.` : ''}`, tier: 2 } as never; PRICES[k.id] ??= /chefe|guardião/.test(k.where ?? '') ? 0 : 420; }
+  for (const k of Object.values(MOUNTS)) if (!ITEMS_TBL[k.id]) { ITEMS_TBL[k.id] = { name: k.name, icon: k.body === 'wolf' ? '🐺' : k.body === 'boar' ? '🐗' : k.body === 'cat' ? '🐅' : k.horse?.horn ? '🦄' : k.horse?.antlers ? '🦌' : '🐎', kind: 'misc', col: k.tint ?? 0x6a4a2e, desc: `Montaria (Z): +${Math.round((k.speed - 1) * 100)}% de velocidade fora de combate.${k.lvl ? ` Precisa do nível ${k.lvl}.` : ''} ${k.blurb ?? ''} Use para levar ao Estábulo (X).`, tier: 2 } as never; PRICES[k.id] ??= 900 + (k.lvl ?? 1) * 140; }
+  SHOPDEF.domador.items.splice(2, 0, 'pet_boxer', 'pet_cat_grey'); SHOPS.domador = SHOPDEF.domador.items;
+  const STALLS: Record<string, [string, string[]]> = { baias_brasa: ['Baias de Brasaforja', ['mount_pony', 'mount_warboar', 'pet_javali_cinza', 'feno']], baias_lithen: ['Clareira dos Cervos de Lithendel', ['mount_whitestag', 'pet_raposa_prata', 'apple']],
+    estrebaria_real: ['Estrebaria Real de Askavik', ['mount_palfrey', 'mount_templar', 'feno']], baias_jarl: ['Baias de Jarlsheim', ['mount_elk', 'mount_snowwolf', 'pet_lobo_neve', 'feno']], baias_latao: ['Garagem da Companhia de Latão', ['mount_brass', 'pet_aranha_latao']],
+    baias_lumen: ['Jardim do Pináculo', ['mount_unicorn', 'pet_fada', 'apple']], baias_conde: ['Cocheira do Conde', ['mount_nightmare', 'feno']], baias_uivo: ['Covil dos Domadores do Uivo', ['mount_moonwolf', 'mount_sabre', 'pet_pantera', 'meat']] };
+  for (const [id, [title, items]] of Object.entries(STALLS)) { SHOPDEF[id] = { title, items, note: 'Montarias: Z para montar e desmontar. Pets: use para levar ao Estábulo (X).' } as never; SHOPS[id] = items; } }
 const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '❔' };
 import { createAim, type AimSpec } from './aim';
 import { vampireLook, technoLook, type Look } from './looks3d';
@@ -64,7 +73,7 @@ import { createDialog, type Choice, type Reply, type Step } from './dialog';
 import { ECOS, FRIO } from './falas';
 import { createInstinct, selfLine, instinctOf, type Being, type Place } from './instinto';
 import { createOrmund } from './ormund';
-import { battleCry } from './gritos';
+import { battleCry, instinctHint } from './gritos';
 import { createSecrets, CACHE_LORE, type SenseGoal, type Cache } from './segredos';
 import { nearestFree } from './nav';
 import { createCaravans, buildRoutes } from './caravanas';
@@ -249,8 +258,20 @@ function hookHero() {
 hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string } | null = null;
-const game = createGameplay({ scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
-(window as unknown as { __k: unknown }).__k = { sweep: () => geoSweep([scene]), night: (v: number | null) => { nightOverride = v; if (v !== null) nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+const game = createGameplay({ takenK: () => (instinctOn && !inside ? 1.1 : 1), scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummyPos: new THREE.Vector3(city.spawn.x * T + 5, 0, city.spawn.y * T - 1.5), world: { spawns: city.spawns, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
+/** retrato isolado (bestiário e compêndio): renderiza um objeto sozinho, fundo transparente, luz de estúdio, e devolve um PNG */
+function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): string {
+  const sc = new THREE.Scene(); const par = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible; sc.add(root); root.position.set(0, 0, 0); root.rotation.set(0, 0, 0); root.visible = true; root.updateMatrixWorld(true);
+  sc.add(new THREE.HemisphereLight(0xfff4e0, 0x5a5060, 2.4)); const dl = new THREE.DirectionalLight(0xffffff, 3.0); dl.position.set(3, 6, 5); sc.add(dl); const rim = new THREE.DirectionalLight(0x9ab8ff, 1.2); rim.position.set(-4, 3, -5); sc.add(rim);
+  const box = new THREE.Box3(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.visible) return; const mt = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshBasicMaterial; if (mt?.transparent || mt?.blending === THREE.AdditiveBlending) return; box.expandByObject(m); }); if (box.isEmpty()) box.setFromObject(root); /* anéis e auras no chão não contam no enquadramento */
+  const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z) * 0.62 + 0.05;
+  const cam = new THREE.PerspectiveCamera(28, 1, 0.05, 200), dist = R / Math.sin(14 * Math.PI / 180) * 1.05; cam.position.set(c.x + Math.sin(yaw) * Math.cos(pitch) * dist, c.y + Math.sin(pitch) * dist, c.z + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(c); cam.layers.enableAll();
+  const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 }); const old = renderer.getRenderTarget(), oc = new THREE.Color(); renderer.getClearColor(oc); const oa = renderer.getClearAlpha();
+  renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam); const px = new Uint8Array(size * size * 4); renderer.readRenderTargetPixels(rt, 0, 0, size, size, px); renderer.setRenderTarget(old); renderer.setClearColor(oc, oa); rt.dispose();
+  const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d')!, im = g.createImageData(size, size); for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4); g.putImageData(im, 0, 0);
+  sc.remove(root); if (par) par.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; return cv.toDataURL('image/png');
+}
+(window as unknown as { __k: unknown }).__k = { sweep: () => geoSweep([scene]), portrait, THREE, night: (v: number | null) => { nightOverride = v; if (v !== null) nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKit(kitRace(), game.st.lvl, (k) => tree.rank(k)); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enter: (v: number) => { const p = city.props.find((q) => q.kind === 'house' && q.variant === v); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -537,6 +558,7 @@ function syncGear() { try { const eq = inv.eq; const wt = work ? inv.tool(WORK[w
 /* ---------- companheiros: pet coletor e montaria ---------- */
 let pet: ReturnType<typeof createPet> | null = null, mount: ReturnType<typeof createMount> | null = null, riding = false;
 function setRiding(on: boolean, quiet = false) {
+  if (on && mount && (MOUNTS[mount.kind.id]?.lvl ?? 0) > game.st.lvl) { if (!quiet) game.logMsg(`🐴 ${mount.kind.name} não aceita você ainda: precisa do nível ${MOUNTS[mount.kind.id]!.lvl}.`, '#ff9a8a'); return; }
   if (on && !riding) setTimeout(() => feats.bump('rides'), 0);
   if (riding === on) return; if (on && !mount) return;
   riding = on; hero.riding = on; if (!on) mount?.hide(); if (!quiet) game.logMsg(on ? `🐴 Você monta ${mount!.kind.name}.` : '🐴 Você desmonta.', '#e0c080');
@@ -1289,7 +1311,7 @@ const NPC_SOUL: Record<string, { path?: string; lean?: 'luz' | 'sombra' }> = { '
 let instinctOn = (() => { try { return localStorage.getItem('karmika.instinct') === '1'; } catch { return false; } })();
 const myInstinct = () => instinctOf(myPath(), profile?.origin ?? 'human');
 function toggleInstinct(v = !instinctOn) { instinctOn = v; try { localStorage.setItem('karmika.instinct', v ? '1' : '0'); } catch { /* */ } const I = myInstinct();
-  game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc}` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.instinct(v); instFx(v); updateInstBtn(); }
+  game.logMsg(v ? `✧ ${I.name}: ligado. ${I.desc} (Atenção custa: −15% de passo e +10% de dano recebido enquanto estiver ligado.)` : `✧ ${I.name}: desligado. Só a ameaça de verdade vai te acordar.`, v ? I.css : '#b9c6e0'); audio.instinct(v); instFx(v); updateInstBtn(); }
 /* ---------- o MOMENTO de ligar o Instinto (Erling, 25/10) ----------
    1. o símbolo do instinto do seu caminho (ou do seu povo) se abre sobre a cabeça do herói e sobe sumindo;
    2. um anel de energia corre pelo chão e uma aura na cor do instinto fica no herói uns segundos, depois assenta num brilho leve;
@@ -1437,7 +1459,13 @@ function senseGoals(): SenseGoal[] { const out: SenseGoal[] = [];
     out.push({ id: `${id}:${i}`, kind: o.what, label: o.label, from: { x: ax, y: ay }, to: { x: fr.x, y: fr.y }, spirit: o.spirit }); }); }
   return out; }
 let senseT = 0;
-function updateSecrets(dt: number) { senseT -= dt; if (senseT <= 0) { senseT = 1; secrets.sync(senseGoals()); } secrets.update(dt, t, instinctOn); }
+let instHintT = 3;
+function updateSecrets(dt: number) { senseT -= dt; if (senseT <= 0) { senseT = 1; secrets.sync(senseGoals()); } secrets.update(dt, t, instinctOn);
+  /* a dica de ligar o Instinto: perto de um segredo ainda não achado ou do rastro que a missão pede, o herói fala */
+  instHintT -= dt; if (instHintT <= 0) { instHintT = 2; if (!instinctOn && !inside && !game.st.dead) { const hx = state.fx, hy = state.fy; let key = '';
+      for (const c of CACHES) if (!secrets.isFound(c.id) && Math.hypot(c.x - hx, c.y - hy) < 16) { key = c.id; break; }
+      if (!key) for (const g of senseGoals()) if (Math.hypot(g.from.x - hx, g.from.y - hy) < 14 || Math.hypot(g.to.x - hx, g.to.y - hy) < 14) { key = 'q:' + g.id; break; }
+      if (key) { const race = profile?.origin === 'dwarf' ? 'anao' : profile?.origin === 'elf' ? 'elfo' : 'humano', ph = instinctHint(race, myPath(), key); if (ph) { bubble(ph); game.logMsg(`${profile?.name ?? 'Você'}: “${ph}” — aperte F para ligar o ${myInstinct().name}.`, myInstinct().css); } } } } }
 function digCache(c: Cache) { const lv = Math.max(game.st.lvl, c.tier), g = 15 + Math.round(lv * (3 + Math.random() * 3)); game.st.gold += g; game.gainXp(Math.round(game.xpNeedAt(lv) * 0.05));
   game.logMsg(`✦ ${c.name}: ${c.lore} (+${g} ouro)`, '#ffd890'); if (Math.random() < 0.45) game.spawnGear(heroPos.x, heroPos.z, heroPos.y, lv, { rare: 3, legendary: 1.5 }, 1, 'rare');
   game.logMsg(`✧ Esconderijos achados: ${secrets.foundCount()}/${secrets.total()}`, myInstinct().css); }
@@ -2601,7 +2629,8 @@ function updateXray(dt: number) {
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
 let stuckT = 0;
 function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {
-  if (trying && heroSlowUntil > performance.now()) { dx *= heroSlowK; dy *= heroSlowK; } /* rugido do chefe: lento por uns segundos */
+  if (trying && heroSlowUntil > performance.now()) { dx *= heroSlowK; dy *= heroSlowK; }
+  if (trying && heroCharmUntil > performance.now()) { dx = -dx; dy = -dy; } /* encanto: os passos saem trocados */ /* rugido do chefe: lento por uns segundos */
   const x0 = state.fx, y0 = state.fy, L = Math.hypot(dx, dy); if (L < 1e-6) return;
   if (free(x0 + dx, y0 + dy)) { state.fx += dx; state.fy += dy; }
   else {
@@ -2738,16 +2767,18 @@ function enterCrypt(floor: number, p: (typeof city.props)[number]) {
 /* ---------- masmorras, cavernas e subsolos (masmorras.ts + dungeon3d.ts) ---------- */
 const dgs = createMasmorras({ scene, T, city: city as never, heightAt, regionLvl: (x, y) => { const r = regionAt(x, y); return [r.lo, r.hi]; }, game: game as never, particles, audio: audio as never,
   heroPos: () => heroPosNow(), project: (p) => { const v = p.clone().project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; }, partySize: () => netRef?.party ? netRef.party.members.length : 1, partyLvl: () => { const P = netRef?.party; if (!P) return game.st.lvl; const ls = P.members.map((id) => id === netRef!.myId ? game.st.lvl : netRef!.infoOf(id)?.lvl ?? game.st.lvl); return ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length); }, say: (t) => chat.sys(t), fine,
-  onKit: (e) => brain.track(e as never), onStop: () => brain.untrackAll(),
+  onKit: (e) => brain.track(e as never), onStop: () => brain.untrackAll(), descend: (depth, tier) => { const R = dgs.run, en = R && dgs.entrances.find((q) => q.d.id === R.d.id); if (en) enterDungeon(en, tier, depth); },
   onClear: (d, first) => { quests.onDungeon(d.id); feats.bump('dungeons'); if (first && d.kind === 'grupo') heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && profile) { profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); updateWho(); game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } netRef?.x('x:dgwin', { id: d.id }); } });
 /* chefes e elites com história (chefes.ts): roupa ao montar o corpo, magias e jeito de andar */
 enemyHooks.spark = (x, y, z, col) => { if (Math.random() > opts.particles) return; particles.spawn(x + (Math.random() - 0.5) * 0.2, y, z + (Math.random() - 0.5) * 0.2, { vx: (Math.random() - 0.5) * 0.3, vy: -0.2 - Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.3, life: 0.6 + Math.random() * 0.4, s0: 0.07, s1: 0.01, c0: 0xffffff, c1: col, a: 0.9 }); };
 enemyHooks.dress = (e, g) => dressEnemy(e as never, g); enemyHooks.body = (e) => bossBody(e as never) as never;
-let heroSlowK = 1, heroSlowUntil = 0;
+/* 26/10: os bichos do mundo com kit (a safra nova, os elites) também conjuram — o cérebro cuida deles quando o corpo aparece */
+enemyHooks.track = (e) => { const k = kitOf(e.def.name); if (k && k.spells.length) brain.track(e as never); }; enemyHooks.karma = () => state.karma;
+let heroSlowK = 1, heroSlowUntil = 0, heroCharmUntil = 0;
 const brain = createBossBrain({ scene, fine: (o) => o, particles, heroPos: () => heroPosNow().setY(groundH(state.fx * T, state.fy * T)), heroDead: () => game.st.dead,
   damage: (n, from) => game.damage(n, heroPosNow(), from), say: (t) => game.logMsg(t, '#ffb08a'), log: (t, c) => game.logMsg(t, c), shake: (k) => { game.st.shake = Math.max(game.st.shake, k); },
-  slowHero: (k, secs) => { heroSlowK = k; heroSlowUntil = performance.now() + secs * 1000; }, pushHero: (dx, dz) => moveSlide(dx / T, dz / T, 0, false),
-  walkable: (x, z) => free(x / T, z / T), spawnAdd: (type, x, z) => { game.enemies.spawn(type, x, z, { tag: 'dg-add', lvl: Math.max(1, game.st.lvl + 1), aggro: 30, leash: 999 }); },
+  slowHero: (k, secs) => { heroSlowK = k; heroSlowUntil = performance.now() + secs * 1000; }, pushHero: (dx, dz) => moveSlide(dx / T, dz / T, 0, false), charm: (sec) => { heroCharmUntil = performance.now() + sec * 1000; },
+  walkable: (x, z) => free(x / T, z / T), spawnAdd: (type, x, z) => { if (game.enemies.list.filter((q) => (q as { tag?: string }).tag === 'dg-add' && q.alive).length >= 45) return; /* a ninhada é sem fim, mas a tela não: no máximo 45 crias vivas */ game.enemies.spawn(type, x, z, { tag: 'dg-add', lvl: Math.max(1, (type === 'spiderling' ? game.st.lvl - 4 : game.st.lvl + 1)), aggro: 30, leash: 999 }); },
   sound: (k) => { if (k === 'boom') audio.boom(); else audio.spell(k); } });
 if (IS_DEV) (window as unknown as { __brain: unknown }).__brain = brain;
 function dgInst() { const p = netRef?.party; return p && p.members.length > 1 ? 'g' + Math.min(...p.members) : 's' + (netRef?.myId ?? 0); } // o grupo inteiro cai na mesma cópia
@@ -2769,16 +2800,16 @@ function dungeonBoard(en: (typeof dgs.entrances)[number]) {
 for (const en of dgs.entrances) { if (en.d.fixed) continue; const big = en.d.kind === 'grupo' ? 1.35 : 1; en.root.updateMatrixWorld(true);
   for (const lx of [-1.6, -0.8, 0, 0.8, 1.6]) { const v = new THREE.Vector3(-3.9 * big - 0.4 + Math.cos(0.18) * lx, 0, 3.6 * big - Math.sin(0.18) * lx); en.root.localToWorld(v); const c = { x: v.x / T, y: v.z / T, r: 0.22 };
     for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } }
-function enterDungeon(en: (typeof dgs.entrances)[number], tier = 0) {
+function enterDungeon(en: (typeof dgs.entrances)[number], tier = 0, depth = 0) {
   withFade(() => {
-    if (inside) scene.remove(inside.int.group);
-    const int = dgs.build(en.d); int.group.position.set(IX, 0, IZ); scene.add(int.group);
+    if (inside) { if (inside.dg) dgs.stop(); scene.remove(inside.int.group); }
+    const int = dgs.build(en.d, depth); int.group.position.set(IX, 0, IZ); scene.add(int.group);
     inside = { int, ret: { x: en.x, y: en.y + 2.4 }, prop: { kind: 'dungeon', gx: en.x, gy: en.y, w: 1, h: 1, height: 1, wall: 0, roof: 0 } as unknown as (typeof city.props)[number], dg: en.d.id };
     objs.group.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false;
     state.fx = (IX + int.W / 2) / T; state.fy = (IZ + int.D - 1.6) / T; state.path = []; heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D - 8; camY = 0;
-    dgs.start(en, int as never, { x: IX, z: IZ }, dgInst(), tier); feats.bump('dgenter');
+    dgs.start(en, int as never, { x: IX, z: IZ }, dgInst(), tier, depth); feats.bump('dgenter');
     netRef?.x('x:dgin', { id: en.d.id, inst: dgInst() });
-  }, `Descendo: ${en.d.name}…`);
+  }, depth ? `Descendo ao nível ${depth + 1}: ${en.d.name}…` : `Descendo: ${en.d.name}…`);
 }
 /* os mausoléus das criptas são prédios: o herói não atravessa (fica livre só a frente, onde está a porta) */
 for (const en of dgs.entrances) { if (en.d.theme !== 'cripta') continue; const big = en.d.kind === 'grupo' ? 1.35 : 1, cx = en.x, cy = en.y - 0.45, r = 0.95 * big;
@@ -3615,7 +3646,7 @@ function frameBody() {
   dual.clipFor = scene; dual.fineClip = inside ? [] : waterClip; // a linha d'água corta os corpos (a água não escreve profundidade)
   const wade = !inside && !swimming && depthNow > 0.04 ? Math.min(1, depthNow / 1.0) : 0;
   updateFishing(dt, t); updateWork(); herbSparkle(dt); updateQuestRings(dt); featsTick(dt);
-  const sp = RACES[state.race].speed * game.st.move * game.buffMove * (combatMode ? 1 : 1.2) * (riding && mount ? mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
+  const sp = RACES[state.race].speed * game.st.move * game.buffMove * (instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (combatMode ? 1 : 1.2) * (riding && mount ? mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
   if (game.st.lvl !== lastLvl) { lastLvl = game.st.lvl; refreshLocks(kitRace(), lastLvl, (k) => tree.rank(k)); game.logMsg('✨ +1 ponto de magia — abra a Árvore Kármica (K) para gastar.', '#ffe08a'); }
   dockEl.querySelector('[data-d="skills"]')?.classList.toggle('pulse', tree.available() > 0 && !skillsOpen);
   if (game.hurtNow()) setCombat(true);

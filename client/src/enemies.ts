@@ -8,6 +8,7 @@ import { loadModel, Puppet } from './models3d';
 import { mergeStatic } from './merge3d';
 import { fine } from './dual3d';
 import { rng } from './world';
+import { buildSpider, buildScorpion, buildSnake, buildSkull, buildHarpy, buildFungus, buildAutomaton, buildTurret, buildBear, buildHeadless } from './bestas3d';
 
 export interface EnemyCtx { outMul?: () => number;
   scene: THREE.Scene;
@@ -38,13 +39,24 @@ export interface EnemyCtx { outMul?: () => number;
 interface Def {
   name: string; lvl: number; hp: number; dmg: number; speed: number; aggro: number; range: number; windup: number; cd: number; xp: number; gold: [number, number];
   model?: string; scale: number; quad?: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote'; rig?: 'fairy' | 'treant' | 'prince' | 'zombie' | 'bishop' | 'human' | 'beast'; /** gente: o mesmo boneco dos NPCs, armado */ human?: HumanLook; fly?: number; passive?: boolean; radius: number; tint?: number;
+  /* 26/10 — a nova safra: comportamento além do corpo */
+  /** corpo próprio (bestas3d) */ make?: () => Rig;
+  /** elite do mundo: vida ×elite, corpo ×1.25, golpe ×1.3 */ elite?: number;
+  /** escondido até você chegar perto: na água (afogador, serpente), enterrado na areia (escorpião) */ ambush?: 'water' | 'sand';
+  /** atira de longe e recua se você chega (arqueiros, caveiras, torretas): a distância que ele quer */ kite?: number;
+  /** explode ao morrer (caveira, fungo) */ boom?: { r: number; k: number; col: number; name: string };
+  /** regenera a vida por segundo (fração) — fogo para a regeneração (troll) */ regen?: number;
+  /** invisível de longe até atacar (batedor élfico) */ stealth?: number;
+  /** só ataca quem tem karma baixo (inquisidor) */ lawful?: boolean;
 }
 /** o adversário de um bicho num evento (outro bicho, ou gente do evento) */
 export interface Foe { pos: THREE.Vector3; alive(): boolean; hit(n: number): void }
 export interface HumanLook { kind: 'nordic' | 'technocrat' | 'dwarf'; civil?: 'human' | 'elf'; tint: number; weapon?: string; shield?: string; helm?: string }
 /** gente que luta: o boneco dos NPCs (characters.ts) com arma e escudo; anima o golpe quando o inimigo dá o bote */
 function buildHuman(h: HumanLook): Rig {
-  const hero: Hero3D = createCharacter(h.kind, { static: true, civil: h.civil, cloth: h.civil ? h.tint : undefined });
+  /* 26/10: cada salteador, soldado ou capanga com a sua cara — cabelo, penteado e barba sorteados (antes eram todos a mesma ruiva) */
+  const HAIR = [0x2a1a10, 0x4a2e1a, 0x1a1412, 0x6a4a2a, 0x8a6a40, 0x3a3a3a, 0x9a3a1a, 0xc8b890], rr = Math.random;
+  const hero: Hero3D = createCharacter(h.kind, { static: true, civil: h.civil, cloth: h.civil ? h.tint : undefined, hair: HAIR[Math.floor(rr() * HAIR.length)], hairStyle: h.civil === 'elf' ? 'long' : (['short', 'bald', 'short', 'braid'] as const)[Math.floor(rr() * 4)], beard: h.civil === 'elf' ? 0 : Math.floor(rr() * 3) });
   const tint = new THREE.Color(h.tint);
   hero.root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.castShadow = false; const mats = Array.isArray(m.material) ? m.material : [m.material];
     const out = mats.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color || t.side === THREE.BackSide || (t as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) return mt; const c = t.clone(); c.color.lerp(tint, 0.42); return c; });
@@ -58,7 +70,7 @@ function buildHuman(h: HumanLook): Rig {
     void hurtK; hero.update(dt, t0, mv, null); hero.root.rotation.set(0, 0, 0); } };
 }
 /** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
-export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void } = {};
+export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void; /** o cérebro dos kits passa a cuidar deste bicho (magias) */ track?: (e: Enemy) => void; /** karma do herói (o Inquisidor só caça quem deve) */ karma?: () => number } = {};
 export const HPK = 5.2; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos
 export const DEFS: Record<EnemyType, Def> = {
   puglin: { name: 'Puglin', lvl: 1, hp: 42, dmg: 7, speed: 2.7, aggro: 12, range: 1.7, windup: 0.6, cd: 1.5, xp: 12, gold: [1, 4], model: 'Puglin', scale: 1.3, radius: 0.6 },
@@ -91,7 +103,59 @@ export const DEFS: Record<EnemyType, Def> = {
   vampire: { name: 'Cria do Conde', lvl: 22, hp: 300, dmg: 26, speed: 4.2, aggro: 18, range: 1.8, windup: 0.42, cd: 1.0, xp: 150, gold: [10, 22], rig: 'human', scale: 1, radius: 0.5, human: { kind: 'nordic', civil: 'human', tint: 0x5a0e1e, weapon: 'Adaga' } },
   pilgrim: { name: 'Peregrina Élfica', lvl: 18, hp: 220, dmg: 18, speed: 3.4, aggro: 16, range: 1.9, windup: 0.5, cd: 1.2, xp: 100, gold: [6, 14], rig: 'human', scale: 0.98, radius: 0.5, human: { kind: 'nordic', civil: 'elf', tint: 0x4a7a5a, weapon: 'Espada Curta' } },
   deer: { name: 'Cervo', lvl: 1, hp: 22, dmg: 0, speed: 5.2, aggro: 9, range: 0, windup: 0, cd: 0, xp: 6, gold: [0, 2], quad: 'deer', scale: 1, passive: true, radius: 0.6 },
+  /* ===================== A NOVA SAFRA (26/10) ===================== */
+  /* mortos e ossos */
+  skull_fire: { name: 'Caveira Flamejante', lvl: 14, hp: 70, dmg: 16, speed: 3.6, aggro: 16, range: 1.5, windup: 0.5, cd: 1.3, xp: 70, gold: [3, 9], make: () => buildSkull(0xff7a20, 0xfff0a0), fly: 1.3, scale: 1.25, radius: 0.5, kite: 7, boom: { r: 2.6, k: 1.3, col: 0xff6a20, name: 'Estouro de Brasas' } },
+  skull_frost: { name: 'Caveira Gélida', lvl: 26, hp: 110, dmg: 20, speed: 3.4, aggro: 16, range: 1.5, windup: 0.5, cd: 1.3, xp: 120, gold: [5, 12], make: () => buildSkull(0x6ad0ff, 0xe8f8ff), fly: 1.3, scale: 1.25, radius: 0.5, kite: 7, boom: { r: 3, k: 1.2, col: 0x9ad7ff, name: 'Estilhaço de Gelo' } },
+  skel_arch: { name: 'Arqueiro Esquelético', lvl: 12, hp: 110, dmg: 14, speed: 2.6, aggro: 19, range: 1.6, windup: 0.6, cd: 1.5, xp: 75, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8, kite: 9 },
+  headless: { name: 'Cavaleiro Sem Cabeça', lvl: 24, hp: 420, dmg: 32, speed: 5.4, aggro: 22, range: 2.4, windup: 0.75, cd: 1.7, xp: 380, gold: [40, 90], make: () => buildHeadless(), scale: 1, radius: 1.1, elite: 3 },
+  necro: { name: 'Necromante do Campo Santo', lvl: 18, hp: 240, dmg: 20, speed: 2.6, aggro: 17, range: 1.8, windup: 0.7, cd: 1.6, xp: 300, gold: [30, 70], rig: 'zombie', scale: 1.05, radius: 0.6, kite: 8, elite: 3 },
+  lich: { name: 'Lich dos Esquecidos', lvl: 30, hp: 900, dmg: 34, speed: 2.4, aggro: 18, range: 2.2, windup: 0.9, cd: 1.9, xp: 900, gold: [80, 160], rig: 'zombie', scale: 1.2, radius: 0.8, elite: 4 },
+  /* demônios */
+  imp_bomb: { name: 'Diabrete Bombardeiro', lvl: 16, hp: 80, dmg: 16, speed: 3.6, aggro: 17, range: 1.4, windup: 0.5, cd: 1.3, xp: 85, gold: [4, 10], model: 'Imp', fly: 3.2, scale: 0.9, radius: 0.6, kite: 6, tint: 0x3a1a10 },
+  succubus: { name: 'Súcubo das Cinzas', lvl: 30, hp: 300, dmg: 26, speed: 3.4, aggro: 17, range: 1.9, windup: 0.55, cd: 1.3, xp: 220, gold: [12, 28], rig: 'zombie', scale: 1, radius: 0.55 },
+  hellhound: { name: 'Cão Infernal', lvl: 20, hp: 150, dmg: 20, speed: 5.6, aggro: 19, range: 1.8, windup: 0.4, cd: 1.0, xp: 110, gold: [3, 8], quad: 'wolf', scale: 1.5, radius: 0.85, tint: 0x2a0e08 },
+  glutton: { name: 'Demônio da Gula', lvl: 34, hp: 900, dmg: 40, speed: 2.2, aggro: 15, range: 2.6, windup: 1.0, cd: 2.0, xp: 700, gold: [60, 140], rig: 'zombie', scale: 1.3, radius: 1.3, elite: 2.5 },
+  pactbroken: { name: 'Pactário Quebrado', lvl: 38, hp: 380, dmg: 30, speed: 3.2, aggro: 17, range: 2.0, windup: 0.6, cd: 1.4, xp: 280, gold: [14, 30], rig: 'zombie', scale: 1.05, radius: 0.6, kite: 6 },
+  suplicio: { name: 'Senhor do Suplício', lvl: 44, hp: 1600, dmg: 48, speed: 2.6, aggro: 18, range: 3.0, windup: 1.0, cd: 2.1, xp: 2200, gold: [200, 420], rig: 'zombie', scale: 1.4, radius: 1.5, elite: 4 },
+  /* mata, pântano e caverna */
+  spider: { name: 'Aranha Tecelã', lvl: 12, hp: 120, dmg: 15, speed: 4.2, aggro: 15, range: 1.7, windup: 0.5, cd: 1.2, xp: 70, gold: [2, 7], make: () => buildSpider({ col: 0x3a2a24, col2: 0x5a3a2a, abd: 1, leg: 1.1, hairy: true, eye: 0xff3a1a }), scale: 1.3, radius: 0.8 },
+  spiderling: { name: 'Aranha Filhote', lvl: 6, hp: 18, dmg: 5, speed: 5.0, aggro: 14, range: 1.1, windup: 0.3, cd: 0.8, xp: 8, gold: [0, 1], make: () => buildSpider({ col: 0x4a3a30, col2: 0x6a4a34, abd: 0.9, leg: 1, eye: 0xff6a3a }), scale: 0.5, radius: 0.35 },
+  broodmother: { name: 'Aracnídea-Mãe', lvl: 28, hp: 2400, dmg: 40, speed: 2.8, aggro: 18, range: 3.2, windup: 1.0, cd: 2.0, xp: 2600, gold: [200, 400], make: () => buildSpider({ col: 0x1a1214, col2: 0x2a1418, abd: 2.6, leg: 1.6, mark: 0xff1a2a, hairy: true, sacs: 9, eye: 0xff2a1a }), scale: 2.0, radius: 2.2, elite: 4 },
+  bear: { name: 'Urso Pardo', lvl: 12, hp: 320, dmg: 26, speed: 3.8, aggro: 8, range: 2.1, windup: 0.75, cd: 1.7, xp: 120, gold: [2, 8], make: () => buildBear(0x5a3a22), scale: 1.25, radius: 1.0 },
+  cavebear: { name: 'Urso das Cavernas', lvl: 30, hp: 620, dmg: 40, speed: 3.6, aggro: 12, range: 2.4, windup: 0.8, cd: 1.8, xp: 520, gold: [20, 50], make: () => buildBear(0x3a2e28, 0x6a5a4a), scale: 1.6, radius: 1.3, elite: 2.4 },
+  swampsnake: { name: 'Serpente do Brejo', lvl: 14, hp: 130, dmg: 16, speed: 3.8, aggro: 11, range: 2.0, windup: 0.6, cd: 1.3, xp: 80, gold: [2, 6], make: () => buildSnake(0x3a5a2a, 0xb8a860, 16, 0.12), scale: 1.4, radius: 0.6, ambush: 'water' },
+  giantsnake: { name: 'Cobra Gigante', lvl: 36, hp: 900, dmg: 42, speed: 4.0, aggro: 15, range: 3.4, windup: 0.85, cd: 1.8, xp: 900, gold: [60, 140], make: () => buildSnake(0x4a3a1a, 0xd8c890, 24, 0.28, true, 0xffd040), scale: 1.6, radius: 1.4, elite: 3 },
+  mudzombie: { name: 'Zumbi do Lodo', lvl: 16, hp: 210, dmg: 18, speed: 1.9, aggro: 15, range: 1.9, windup: 0.9, cd: 1.9, xp: 85, gold: [3, 9], rig: 'zombie', scale: 1.05, radius: 0.6, tint: 0x5a4a2a },
+  fungus: { name: 'Fungo Caminhante', lvl: 22, hp: 180, dmg: 18, speed: 2.2, aggro: 13, range: 1.8, windup: 0.8, cd: 1.6, xp: 110, gold: [2, 7], make: () => buildFungus(0x8a2a5a, 0xe8d8b0), scale: 1.2, radius: 0.7, boom: { r: 3.2, k: 1.0, col: 0x9aff6a, name: 'Nuvem de Esporos' } },
+  fairyqueen: { name: 'Fada Rainha', lvl: 42, hp: 520, dmg: 30, speed: 4.4, aggro: 16, range: 1.8, windup: 0.4, cd: 1.0, xp: 1400, gold: [80, 180], rig: 'fairy', fly: 1.6, scale: 2.6, radius: 0.8, elite: 4 },
+  ent: { name: 'Ent, Mestre da Mata', lvl: 46, hp: 1400, dmg: 50, speed: 1.9, aggro: 14, range: 3.4, windup: 1.1, cd: 2.2, xp: 3200, gold: [200, 400], rig: 'treant', scale: 3.0, radius: 2.4, elite: 5 },
+  /* montanha, gelo e norte */
+  draugr_arch: { name: 'Draugr Arqueiro', lvl: 32, hp: 260, dmg: 24, speed: 2.8, aggro: 20, range: 1.6, windup: 0.6, cd: 1.5, xp: 160, gold: [6, 14], rig: 'zombie', scale: 1.05, radius: 0.55, tint: 0x7a8a8a, kite: 10 },
+  draugr_bers: { name: 'Draugr Berserker', lvl: 34, hp: 420, dmg: 34, speed: 4.2, aggro: 18, range: 2.0, windup: 0.5, cd: 1.1, xp: 210, gold: [8, 18], rig: 'zombie', scale: 1.15, radius: 0.65, tint: 0x5a6a6a },
+  troll: { name: 'Troll das Pedras', lvl: 28, hp: 700, dmg: 38, speed: 2.8, aggro: 15, range: 2.6, windup: 0.95, cd: 2.0, xp: 420, gold: [20, 45], rig: 'zombie', scale: 1.35, radius: 1.2, regen: 0.02, elite: 1.6 },
+  harpy: { name: 'Harpia', lvl: 26, hp: 180, dmg: 22, speed: 5.0, aggro: 19, range: 1.8, windup: 0.5, cd: 1.2, xp: 140, gold: [4, 10], make: () => buildHarpy(0xc8a888, 0x6a5a4a), fly: 1.6, scale: 1.35, radius: 0.7 },
+  jotun: { name: 'Jotun Menor', lvl: 40, hp: 1800, dmg: 52, speed: 2.4, aggro: 17, range: 3.4, windup: 1.15, cd: 2.3, xp: 2800, gold: [160, 340], rig: 'zombie', scale: 1.7, radius: 1.8, elite: 4 },
+  alpha: { name: 'Lobo-Rei Alfa', lvl: 10, hp: 260, dmg: 18, speed: 5.0, aggro: 19, range: 1.9, windup: 0.45, cd: 1.1, xp: 300, gold: [20, 45], quad: 'wolf', scale: 1.7, radius: 1.0, tint: 0x4a4a52, elite: 4 },
+  /* tecnologia (a Costa do Vapor e os Recifes da Graxa) */
+  automaton: { name: 'Autômato de Latão', lvl: 24, hp: 380, dmg: 26, speed: 2.6, aggro: 15, range: 2.0, windup: 0.8, cd: 1.7, xp: 170, gold: [8, 18], make: () => buildAutomaton(0xb08a40, 0x6a4a2a), scale: 1.1, radius: 0.75 },
+  turret: { name: 'Torreta a Vapor', lvl: 26, hp: 300, dmg: 22, speed: 0, aggro: 18, range: 1.2, windup: 0.6, cd: 1.6, xp: 150, gold: [10, 22], make: () => buildTurret(0x8a7050, 0xb08a40), scale: 1.1, radius: 0.8, kite: 99 },
+  tinker: { name: 'Engenhoqueiro Enlouquecido', lvl: 28, hp: 240, dmg: 22, speed: 3.4, aggro: 17, range: 1.8, windup: 0.55, cd: 1.3, xp: 170, gold: [10, 24], rig: 'human', scale: 1, radius: 0.5, kite: 7, human: { kind: 'technocrat', tint: 0x6a4a2a, weapon: 'Martelo' } },
+  colossus: { name: 'Colosso de Ferro', lvl: 38, hp: 2000, dmg: 54, speed: 2.0, aggro: 16, range: 3.6, windup: 1.2, cd: 2.4, xp: 3000, gold: [200, 400], make: () => buildAutomaton(0x5a5a62, 0x8a6a3a, 0xff6a2a), scale: 3.0, radius: 2.4, elite: 4 },
+  /* gente */
+  elfscout: { name: 'Batedor Élfico Corrompido', lvl: 22, hp: 200, dmg: 22, speed: 3.8, aggro: 19, range: 1.7, windup: 0.5, cd: 1.3, xp: 140, gold: [8, 18], rig: 'human', scale: 0.98, radius: 0.5, kite: 10, stealth: 8, human: { kind: 'nordic', civil: 'elf', tint: 0x1a3a24, weapon: 'Arco Longo' } },
+  inquisitor: { name: 'Inquisidor Kármico', lvl: 30, hp: 420, dmg: 30, speed: 3.3, aggro: 18, range: 2.0, windup: 0.6, cd: 1.4, xp: 260, gold: [20, 40], rig: 'human', scale: 1.05, radius: 0.55, lawful: true, human: { kind: 'nordic', tint: 0xe8e0d0, weapon: 'Espada Longa', shield: 'Escudo de Pipa', helm: 'Elmo Alado' } },
+  slaver: { name: 'Negociante de Gente', lvl: 18, hp: 230, dmg: 20, speed: 3.3, aggro: 16, range: 2.0, windup: 0.55, cd: 1.3, xp: 110, gold: [14, 30], rig: 'human', scale: 1.05, radius: 0.55, human: { kind: 'nordic', civil: 'human', tint: 0x3a2a1a, weapon: 'Martelo' } },
+  thrall: { name: 'Capanga do Conde', lvl: 48, hp: 520, dmg: 36, speed: 3.6, aggro: 17, range: 2.0, windup: 0.5, cd: 1.2, xp: 300, gold: [16, 34], rig: 'human', scale: 1.05, radius: 0.55, human: { kind: 'nordic', civil: 'human', tint: 0x4a0e18, weapon: 'Espada Longa', helm: 'Elmo de Couro' } },
+  /* água e areia */
+  drowner: { name: 'Afogador', lvl: 10, hp: 150, dmg: 15, speed: 3.2, aggro: 10, range: 1.8, windup: 0.55, cd: 1.3, xp: 60, gold: [2, 8], rig: 'zombie', scale: 1, radius: 0.55, tint: 0x3a6a5a, ambush: 'water' },
+  drowner_old: { name: 'Afogador Antigo', lvl: 30, hp: 600, dmg: 36, speed: 3.0, aggro: 12, range: 2.2, windup: 0.7, cd: 1.6, xp: 600, gold: [40, 90], rig: 'zombie', scale: 1.35, radius: 0.9, tint: 0x2a5a4a, ambush: 'water', elite: 3 },
+  scorpion: { name: 'Escorpião das Dunas', lvl: 22, hp: 220, dmg: 22, speed: 3.8, aggro: 10, range: 2.0, windup: 0.6, cd: 1.3, xp: 120, gold: [3, 9], make: () => buildScorpion(0xb8864a, 0x8a5a2a), scale: 1.5, radius: 0.85, ambush: 'sand' },
+  scorpion_king: { name: 'Escorpião-Rei', lvl: 36, hp: 1100, dmg: 46, speed: 3.4, aggro: 14, range: 3.0, windup: 0.85, cd: 1.8, xp: 1600, gold: [120, 260], make: () => buildScorpion(0x2a1a14, 0x6a2a14, 0xff3a1a), scale: 2.6, radius: 1.8, ambush: 'sand', elite: 3 },
 };
+/** elites do mundo (corpo maior, vida e golpe a mais, renascem devagar): os de sempre e todo bicho com `elite` */
+export const ELITE_TYPES = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'bandit_chief', ...(Object.keys(DEFS) as EnemyType[]).filter((k) => DEFS[k].elite)]);
+DEFS.bandit_chief.elite = 2.6; /* 26/10 (Erling: "o chefe não é maior, nem mais forte, nem tem vida extra"): agora é elite de verdade */
 /* os bichos que são monstros ficam maiores (Erling, 26/10: "como monstros deveriam ser maiores… apenas aumentar em proporção"):
    o mesmo modelo, só em escala — e o corpo (raio de colisão e de acerto) acompanha */
 for (const [k, m] of [['wolf', 1.55], ['frostwolf', 1.5], ['coyote', 1.45], ['boar', 1.45], ['rat', 1.4]] as const) { DEFS[k].scale *= m; DEFS[k].radius *= m; }
@@ -184,7 +248,7 @@ export function buildQuad(kind0: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote' | '
 }
 
 /* ---- fada e guardião da mata (rigs procedurais) ---- */
-function buildFairy(): Rig {
+export function buildFairy(): Rig {
   /* 26/10 (Erling: "as fadas estão feias"): corpinho esguio com vestido de pétalas, cabelo comprido, asas de libélula em duas
      camadas que batem, antenas com pontinhas de luz e um rastro de faíscas — pequena, mas viva */
   const root = new THREE.Group(), mats: THREE.MeshToonMaterial[] = [];
@@ -362,7 +426,7 @@ export function createEnemies(ctx: EnemyCtx) {
   const teleGeo = new THREE.RingGeometry(0.75, 1, 28).rotateX(-Math.PI / 2);
   /* marcação do golpe no formato do ataque: mordida/garra = cone; arma = arco largo; investida = linha; pancada no chão = círculo */
   type TShape = 'cone' | 'arc' | 'line' | 'circle';
-  const SHAPE: Partial<Record<EnemyType, TShape>> = { wolf: 'cone', frostwolf: 'cone', coyote: 'cone', rat: 'cone', werewolf: 'cone', ghoul: 'cone', bat: 'cone', fairy: 'cone', deer: 'cone', boar: 'line', treant: 'circle', puglin: 'arc', imp: 'arc', skeleton: 'arc', zombie: 'arc', prince: 'arc', tormentor: 'arc', bishop: 'arc' };
+  const SHAPE: Partial<Record<EnemyType, TShape>> = { spider: 'cone', spiderling: 'cone', broodmother: 'circle', scorpion: 'line', scorpion_king: 'line', swampsnake: 'line', giantsnake: 'line', bear: 'arc', cavebear: 'circle', headless: 'line', hellhound: 'cone', alpha: 'cone', harpy: 'cone', troll: 'circle', jotun: 'circle', glutton: 'circle', colossus: 'circle', ent: 'circle', suplicio: 'arc', fungus: 'circle', automaton: 'arc', wolf: 'cone', frostwolf: 'cone', coyote: 'cone', rat: 'cone', werewolf: 'cone', ghoul: 'cone', bat: 'cone', fairy: 'cone', deer: 'cone', boar: 'line', treant: 'circle', puglin: 'arc', imp: 'arc', skeleton: 'arc', zombie: 'arc', prince: 'arc', tormentor: 'arc', bishop: 'arc' };
   const HALF: Record<TShape, number> = { cone: 0.62, arc: 1.25, line: 0, circle: Math.PI };
   const sector = (half: number, inner: number) => new THREE.RingGeometry(inner, 1, 28, 1, -Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2);
   const fillSector = (half: number) => new THREE.CircleGeometry(1, 28, -Math.PI / 2 - half, half * 2).rotateX(-Math.PI / 2);
@@ -390,11 +454,11 @@ export function createEnemies(ctx: EnemyCtx) {
         const a = R() * 6.283, r = Math.sqrt(R()) * s.r; const px = s.x + Math.cos(a) * r, py = s.y + Math.sin(a) * r;
         if (ctx.walkable(px * 2, py * 2)) { x = px; y = py; break; }
       }
-      const elite = ['prince', 'tormentor', 'treant'].includes(s.type), B = DEFS[s.type];
+      const elite = ELITE_TYPES.has(s.type), B = DEFS[s.type], EM = B.elite ?? 4.2;
       // nível pela região (faixa de 10): vida, dano e XP acompanham; elites ficam no topo da faixa (+2)
       const L = s.lvl ? Math.max(1, s.lvl + (elite ? 2 : Math.round((R() - 0.5) * 2.4))) : B.lvl, dL = L - B.lvl, hi = Math.max(0, L - 20), kH = Math.max(0.35, 1 + 0.12 * dL + 0.03 * hi * dL), kD = Math.max(0.4, 1 + 0.085 * dL + 0.02 * hi * dL); /* depois do 20 a vida e o golpe crescem mais rápido, para acompanhar equipamento, Força e magias (até o 20 nada muda) */
-      const def = { ...B, lvl: L, hp: Math.round(B.hp * kH), dmg: Math.round(B.dmg * kD * (elite ? 1.4 : 1)), xp: Math.round(B.xp * Math.max(0.4, 1 + 0.1 * dL)), scale: B.scale * (elite ? 1.3 : 1), ...(s.fixLvl ? { aggro: Math.min(B.aggro, 8) } : {}) } as Def; /* guardião de lugar marcado: só ataca quem chega perto */ // elites: enormes e assustadores
-      const e: Enemy = { id: nid++, type: s.type, def, home: new THREE.Vector2(x * 2, y * 2), pos: new THREE.Vector3(x * 2, 0, y * 2), yaw: R() * 6.28, hp: Math.round(def.hp * HPK * (['prince', 'tormentor', 'treant'].includes(s.type) ? 4.2 : 1)), hpMax: Math.round(def.hp * HPK * (['prince', 'tormentor', 'treant'].includes(s.type) ? 4.2 : 1)), state: 'idle', t: 0, alive: true, active: false, vel: new THREE.Vector2(), root: null, pup: null, quad: null, rig: null, wanderTo: null, wanderT: R() * 3, phase: R() * 6, respawn: 0, hurtT: 0, tele: null, flash: 0, mats: [] };
+      const def = { ...B, lvl: L, hp: Math.round(B.hp * kH), dmg: Math.round(B.dmg * kD * (elite ? 1.35 : 1)), xp: Math.round(B.xp * Math.max(0.4, 1 + 0.1 * dL)), scale: B.scale * (elite ? (B.elite ? 1.25 : 1.3) : 1), ...(s.fixLvl ? { aggro: Math.min(B.aggro, 8) } : {}) } as Def; /* guardião de lugar marcado: só ataca quem chega perto */ // elites: enormes e assustadores
+      const e: Enemy = { id: nid++, type: s.type, def, home: new THREE.Vector2(x * 2, y * 2), pos: new THREE.Vector3(x * 2, 0, y * 2), yaw: R() * 6.28, hp: Math.round(def.hp * HPK * (elite ? EM : 1)), hpMax: Math.round(def.hp * HPK * (elite ? EM : 1)), state: 'idle', t: 0, alive: true, active: false, vel: new THREE.Vector2(), root: null, pup: null, quad: null, rig: null, wanderTo: null, wanderT: R() * 3, phase: R() * 6, respawn: 0, hurtT: 0, tele: null, flash: 0, mats: [] };
       e.slot = i; e.groupN = s.n; (e as Enemy & { night?: boolean }).night = !!s.night; (e as NetE).net = String(e.id); list.push(e); // mesmo mundo, mesma semente: o id é igual em todas as máquinas
     }
   }
@@ -409,6 +473,19 @@ export function createEnemies(ctx: EnemyCtx) {
     bishop: { col: 0x8a40ff, r: 2.8, delay: 1.7, mul: 1.5, cd: [5, 7], n: 4, name: 'Juízo profano' },
     ghoul: { col: 0x8ad040, r: 1.8, delay: 1.4, mul: 1.1, cd: [8, 12], name: 'Vômito pútrido' },
     zombie: { col: 0x6aa040, r: 1.6, delay: 1.6, mul: 1.0, cd: [10, 14], name: 'Bile' },
+    /* a nova safra: quem ataca de longe atira de verdade (a bola voa da mão até o círculo) */
+    skull_fire: { col: 0xff6a20, r: 1.5, delay: 1.2, mul: 1.0, cd: [3.5, 5], name: 'Cuspe de Brasa', proj: 0.26 },
+    skull_frost: { col: 0x9ad7ff, r: 1.7, delay: 1.3, mul: 1.0, cd: [3.5, 5], name: 'Cuspe Gélido', proj: 0.26 },
+    skel_arch: { col: 0xe8dcc0, r: 1.0, delay: 0.95, mul: 0.9, cd: [2.4, 3.4], name: 'Flecha', proj: 0.12 },
+    draugr_arch: { col: 0x9ad7ff, r: 1.0, delay: 0.95, mul: 0.95, cd: [2.4, 3.4], name: 'Flecha Gelada', proj: 0.13 },
+    elfscout: { col: 0x9aff6a, r: 1.0, delay: 0.85, mul: 1.0, cd: [2.2, 3.2], name: 'Flecha Envenenada', proj: 0.12 },
+    imp_bomb: { col: 0xff8a20, r: 2.2, delay: 1.8, mul: 1.3, cd: [4, 6], name: 'Carvão Aceso', proj: 0.3 },
+    turret: { col: 0xffd070, r: 1.3, delay: 1.0, mul: 1.0, cd: [2.2, 3], n: 2, name: 'Bala de Vapor', proj: 0.16 },
+    tinker: { col: 0xffb040, r: 2.4, delay: 2.0, mul: 1.4, cd: [5, 7], name: 'Bomba de Relógio', proj: 0.24 },
+    necro: { col: 0x9a6aff, r: 2.0, delay: 1.5, mul: 1.2, cd: [5, 7], name: 'Toque da Cova', proj: 0.3 },
+    pactbroken: { col: 0x6a2aff, r: 2.0, delay: 1.4, mul: 1.2, cd: [5, 7], n: 2, name: 'Dívida Cobrada', proj: 0.28 },
+    mudzombie: { col: 0x6a5a2a, r: 1.8, delay: 1.5, mul: 1.0, cd: [8, 11], name: 'Lama nos Olhos' },
+    harpy: { col: 0xd8c8a8, r: 1.6, delay: 1.1, mul: 1.0, cd: [6, 8], name: 'Penas Cortantes', proj: 0.18 },
   };
   const casts: { m: THREE.Mesh; x: number; z: number; t: number; s: Spell; dmg: number; from: THREE.Vector3; src?: Enemy; ball?: THREE.Object3D }[] = [];
   const ballGeo = new THREE.SphereGeometry(1, 12, 8);
@@ -464,9 +541,11 @@ export function createEnemies(ctx: EnemyCtx) {
   /** fração do grupo que existe conforme o nível: batalhas mais longas e menos numerosas no começo */
   const densityK = () => { const l = ctx.level?.() ?? 1; return l < 30 ? 0.25 : l < 60 ? 0.35 : l < 80 ? 0.5 : 0.7; }; // metade dos inimigos de antes
   const dormant = (e: Enemy) => ((e as Enemy & { night?: boolean }).night && (ctx.night?.() ?? 0) < 0.5) || !ELITE.has(e.type) && e.slot !== undefined && e.groupN !== undefined && e.slot >= Math.max(1, Math.ceil(e.groupN * densityK()));
-  const ELITE = new Set<EnemyType>(['prince', 'tormentor', 'treant']); // raio de ativação: só os inimigos perto da tela ganham corpo (desempenho)
+  const ELITE = ELITE_TYPES; // raio de ativação: só os inimigos perto da tela ganham corpo (desempenho)
 
-  function build(e: Enemy) {
+  /** monta o corpo e avisa o cérebro dos kits (magias dos elites e da safra nova, chefes.ts) */
+  function build(e: Enemy) { build0(e); try { enemyHooks.track?.(e); } catch { /* */ } }
+  function build0(e: Enemy) {
     { const b = (e as Enemy & { body?: Body }).body; if (b) { (e as Enemy & { body?: Body }).body = undefined; e.root = b.root; e.pup = b.pup; e.quad = b.quad; e.rig = b.rig; e.tele = b.tele; e.mats = b.mats; (e as Enemy & { qring?: THREE.Mesh }).qring = b.qring; /* o cadáver encolheu até sumir: o corpo volta inteiro, de pé e visível (Erling: "coiote invisível") */ e.root.scale.setScalar(e.def.scale); e.root.rotation.set(0, 0, 0); e.root.visible = true; for (const m of e.mats) if (m.emissive) m.emissive.setRGB(0, 0, 0); if (e.tele) ctx.scene.add(e.tele); ctx.scene.add(e.root); return; } }
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
     const custom = enemyHooks.body?.(e) ?? null;
@@ -474,7 +553,8 @@ export function createEnemies(ctx: EnemyCtx) {
     else if (e.def.quad === 'deer') { const dr = buildDeer({ stag: Math.random() < 0.55 }); e.rig = { root: dr.root, mats: dr.mats, update(e2, dt, _w, _s, hurtK, mv) { dr.pose({ dt, mv, idle: e2.state === 'idle', alert: e2.state === 'flee' || e2.state === 'hurt', hurt: hurtK }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
-    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(e.type === 'skeleton' ? 'skeleton' : e.type === 'ghoul' ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
+    else if (e.def.make) { e.rig = e.def.make(); g.add(e.rig.root); e.mats = [...e.rig.mats]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.5); } }
+    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(['skeleton', 'skel_arch', 'draugr_arch', 'lich'].includes(e.type) ? 'skeleton' : ['ghoul', 'drowner', 'drowner_old', 'draugr_bers'].includes(e.type) ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }
     else if (e.def.model) {
       loadModel(`/models/bestiary/${e.def.model}.glb`).then((m) => {
@@ -529,7 +609,9 @@ export function createEnemies(ctx: EnemyCtx) {
     const nk = (e as NetE).net; if (nk && ctx.sync) { ctx.sync.hit(nk, n); if (e.hp <= 0) ctx.sync.die(nk); }
     const dx = e.pos.x - from.x, dz = e.pos.z - from.z, l = Math.hypot(dx, dz) || 1;
     e.vel.set((dx / l) * knock, (dz / l) * knock);
-    if (e.hp <= 0) { e.alive = false; e.state = 'dead'; e.t = 0; e.respawn = (e as Enemy & { tag?: string }).tag ? 1e9 : ELITE.has(e.type) ? 240 : 90; return true; }
+    if (e.hp <= 0) { e.alive = false; e.state = 'dead'; e.t = 0; e.respawn = (e as Enemy & { tag?: string }).tag ? 1e9 : ELITE.has(e.type) ? 240 : 90;
+      if (e.def.boom) { const B = e.def.boom; addCast(e, { col: B.col, r: B.r, delay: 0.9, mul: B.k, cd: [0, 0], name: B.name }, e.pos.x, e.pos.z, 0); ctx.onSpell?.(e, B.name); } /* a caveira estoura, o fungo solta a nuvem: saia de perto */
+      return true; }
     if (e.def.passive) { e.state = 'flee'; e.t = 0; }
     else { // tranco só com golpe pesado ou de vez em quando — bicho grande não para de atacar a cada corte
       const now = performance.now() / 1000, heavy = n > e.hpMax * 0.3;
@@ -624,6 +706,8 @@ export function createEnemies(ctx: EnemyCtx) {
       const tx = foeOn ? fo!.pos.x : hero.x, tz = foeOn ? fo!.pos.z : hero.z, dT = foeOn ? Math.hypot(tx - e.pos.x, tz - e.pos.z) : dHero, aliveT = foeOn || alive;
       switch (e.state) {
         case 'idle': {
+          if (D.ambush && !foeOn) { const hid = !(aliveT && dT < D.aggro * 0.75); if (hid !== !!(e as Enemy & { hid?: boolean }).hid) { (e as Enemy & { hid?: boolean }).hid = hid; if (!hid) { ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); ctx.onSpell?.(e, D.ambush === 'water' ? 'Sai da água!' : 'Sai da areia!'); e.state = 'chase'; e.t = 0; } } if (hid) break; }
+          if (D.lawful && (enemyHooks.karma?.() ?? 0) > -25) { /* o Inquisidor só caça quem deve: com você em paz, ele só vigia */ e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + Math.random() * 3; face(e, hero.x, hero.z, 1, 1); } break; }
           if (!D.passive && aliveT && dT < (foeOn ? 40 : D.aggro)) { e.state = 'chase'; e.t = 0; break; }
           if (D.passive && dHero < D.aggro) { e.state = 'flee'; e.t = 0; break; }
           e.wanderT -= dt;
@@ -636,6 +720,10 @@ export function createEnemies(ctx: EnemyCtx) {
           face(e, tx, tz, dt, 12);
           if (dT < D.range) { e.state = 'windup'; e.t = 0; break; }
           { const sp = SPELLS[e.type]; if (sp && alive && !foeOn) { e.spellCd = (e.spellCd ?? 2 + Math.random() * 3) - dt; if (e.spellCd <= 0 && dHero < 13) { e.spellCd = sp.cd[0] + Math.random() * (sp.cd[1] - sp.cd[0]); castSpell(e, sp, hero); ctx.onSpell?.(e, sp.name); e.state = 'recover'; e.t = 0; break; } } }
+          if (D.kite && !foeOn) { /* atirador: fica na distância dele; se você chega, recua de frente para você */ if (D.speed <= 0) { mv = 0; break; }
+            const want = Math.min(D.kite, 12), ddx = tx - e.pos.x, ddz = tz - e.pos.z, ll = Math.hypot(ddx, ddz) || 1;
+            if (dT < want * 0.65) { step(e, -ddx / ll * D.speed * 0.85 * dt, -ddz / ll * D.speed * 0.85 * dt); mv = D.speed * 0.85; break; }
+            if (dT < want * 1.15) { const side = Math.sin(e.t * 0.7 + e.id) > 0 ? 1 : -1; step(e, -ddz / ll * side * D.speed * 0.35 * dt, ddx / ll * side * D.speed * 0.35 * dt); mv = D.speed * 0.35; break; } }
           const dx = tx - e.pos.x, dz = tz - e.pos.z, l = Math.hypot(dx, dz) || 1;
           const wob = l > D.range * 1.8 ? Math.sin(e.t * 4 + e.id * 2) * 0.6 : 0, burst = 1 + 0.35 * Math.max(0, Math.sin(e.t * 2.2 + e.id));
           const ux = dx / l, uz = dz / l, vx = ux - uz * wob, vz = uz + ux * wob, vl = Math.hypot(vx, vz) || 1;
@@ -677,9 +765,12 @@ export function createEnemies(ctx: EnemyCtx) {
         case 'dead': if (e.tele) e.tele.visible = false; if (e.t > ((e as Enemy & { corpse?: number }).corpse ?? 4)) { unbuild(e); e.active = false; (e as Enemy & { corpse?: number }).corpse = undefined; } break;
       }
       }
+      if (D.regen && e.alive && e.hp < e.hpMax && !((e.burn ?? 0) > 0)) e.hp = Math.min(e.hpMax, e.hp + e.hpMax * D.regen * dt); /* o troll fecha as feridas — o fogo impede */
       e.pos.y = ctx.heightAt(e.pos.x, e.pos.z);
       if (e.root) {
         e.root.position.copy(e.pos); if (D.fly) e.root.position.y += D.fly; e.root.rotation.y = e.yaw;
+        if (D.ambush) e.root.visible = !(e as Enemy & { hid?: boolean }).hid || e.state === 'dead';
+        else if (D.stealth) e.root.visible = dHero < D.stealth || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt' || e.state === 'dead' || e.flash > 0;
         { const near = charShadow.on && dHero < 14; if (e.root.userData.sh !== near) { e.root.userData.sh = near; e.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite) m.castShadow = near; }); } }
         if (e.state === 'dead') { const k = Math.min(1, e.t / 0.55); e.root.rotation.x = -k * 1.45; e.root.position.y = e.pos.y - 0.12 * k; const lim = ((e as Enemy & { corpse?: number }).corpse ?? 4) - 1; if (e.t > lim) e.root.scale.setScalar(e.def.scale * Math.max(0, 1 - (e.t - lim))); }
         else e.root.rotation.x = 0;

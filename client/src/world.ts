@@ -15,7 +15,15 @@ export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer
   /* gente (eventos vivos, 24/10): soldados, bruxos, paladinos negros, templários, caçadores, crias do Conde, peregrinos elfos */
   | 'soldier' | 'cultist' | 'darkpal' | 'templar' | 'hunter' | 'vampire' | 'pilgrim'
   /* 26/10: salteadores dos acampamentos de bandidos à beira das estradas */
-  | 'bandit' | 'bandit_arch' | 'bandit_chief';
+  | 'bandit' | 'bandit_arch' | 'bandit_chief'
+  /* 26/10: a nova safra (bestas3d + chefes): mortos, demônios, mata e pântano, norte, tecnologia, gente, água e areia */
+  | 'skull_fire' | 'skull_frost' | 'skel_arch' | 'headless' | 'necro' | 'lich'
+  | 'imp_bomb' | 'succubus' | 'hellhound' | 'glutton' | 'pactbroken' | 'suplicio'
+  | 'spider' | 'spiderling' | 'broodmother' | 'bear' | 'cavebear' | 'swampsnake' | 'giantsnake' | 'mudzombie' | 'fungus' | 'fairyqueen' | 'ent'
+  | 'draugr_arch' | 'draugr_bers' | 'troll' | 'harpy' | 'jotun' | 'alpha'
+  | 'automaton' | 'turret' | 'tinker' | 'colossus'
+  | 'elfscout' | 'inquisitor' | 'slaver' | 'thrall'
+  | 'drowner' | 'drowner_old' | 'scorpion' | 'scorpion_king';
 const T = 2; // metros por tile (igual a TILE_M)
 
 export interface Prop {
@@ -86,7 +94,11 @@ export function regionAt(x: number, y: number): Region {
   return best;
 }
 /** força relativa de cada bicho dentro da faixa da região (0 = fim fraco, 1 = fim forte) */
-const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0.15, fairy: 0.25, puglin: 0.3, boar: 0.4, wolf: 0.45, imp: 0.5, zombie: 0.55, bat: 0.5, frostwolf: 0.65, ghoul: 0.7, skeleton: 0.8, werewolf: 0.95, treant: 1, prince: 1, tormentor: 1 };
+const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0.15, fairy: 0.25, puglin: 0.3, boar: 0.4, wolf: 0.45, imp: 0.5, zombie: 0.55, bat: 0.5, frostwolf: 0.65, ghoul: 0.7, skeleton: 0.8, werewolf: 0.95, treant: 1, prince: 1, tormentor: 1,
+  /* a safra nova: dentro da faixa da região, do mais fraco ao mais forte; elites sempre no topo */
+  spiderling: 0.05, drowner: 0.35, swampsnake: 0.4, mudzombie: 0.45, spider: 0.5, skel_arch: 0.55, bear: 0.6, scorpion: 0.55, harpy: 0.6, fungus: 0.6, skull_fire: 0.6, skull_frost: 0.65, automaton: 0.6, turret: 0.55, tinker: 0.7,
+  hellhound: 0.65, imp_bomb: 0.6, draugr_arch: 0.6, draugr_bers: 0.75, elfscout: 0.7, slaver: 0.5, thrall: 0.6, inquisitor: 0.8, troll: 0.85, succubus: 0.8, pactbroken: 0.85,
+  alpha: 1, necro: 1, headless: 1, cavebear: 1, giantsnake: 1, drowner_old: 1, scorpion_king: 1, glutton: 1, suplicio: 1, jotun: 1, colossus: 1, ent: 1, fairyqueen: 1, broodmother: 1, lich: 1 };
 export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number } // tiles
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
@@ -1174,6 +1186,18 @@ export function buildCity(): World {
     volcanic: ['imp', 'imp', 'skeleton', 'ghoul'], enchanted: ['fairy', 'treant', 'fairy', 'wolf'], blight: ['zombie', 'ghoul', 'skeleton', 'bat', 'imp'], jungle: ['werewolf', 'wolf', 'boar', 'frostwolf'], coast: ['rat', 'coyote', 'puglin', 'boar'],
   };
   const EASY: EnemyType[] = ['rat', 'coyote', 'puglin', 'deer', 'fairy', 'boar'];
+  /* FAUNA DE CADA TERRITÓRIO (26/10, Erling: "cada território com seu tipo de monstro, e os mais terríveis nas áreas mais difíceis").
+     Mais da metade dos grupos vem desta lista; o resto do bioma. O nível sai da faixa da região (RANK), então o mesmo bicho é
+     manso no berço e cruel no fim do mundo. */
+  const FAUNA: Record<number, EnemyType[]> = {
+    1: ['rat', 'coyote', 'puglin', 'fairy', 'boar', 'spiderling'], 17: ['rat', 'puglin', 'coyote', 'boar', 'imp', 'spiderling'], 20: ['fairy', 'deer', 'spiderling', 'rat', 'coyote'],
+    2: ['wolf', 'boar', 'bear', 'spider', 'spiderling', 'skel_arch'], 3: ['skeleton', 'skel_arch', 'zombie', 'mudzombie', 'skull_fire', 'imp', 'hellhound'], 4: ['swampsnake', 'mudzombie', 'spider', 'rat', 'imp', 'boar'],
+    5: ['coyote', 'boar', 'wolf', 'bear', 'slaver', 'spider'], 18: ['imp', 'skeleton', 'skull_fire', 'spider', 'automaton', 'rat'], 19: ['wolf', 'frostwolf', 'bear', 'skel_arch', 'spider'], 10: ['fairy', 'treant', 'spider', 'elfscout', 'wolf', 'fungus'],
+    6: ['frostwolf', 'troll', 'harpy', 'skull_frost', 'bear'], 7: ['spider', 'fungus', 'bear', 'elfscout', 'wolf', 'swampsnake'], 8: ['scorpion', 'coyote', 'harpy', 'slaver', 'skel_arch', 'hellhound'], 21: ['treant', 'fungus', 'spider', 'elfscout', 'swampsnake'],
+    11: ['automaton', 'turret', 'tinker', 'scorpion', 'rat'], 9: ['draugr_arch', 'draugr_bers', 'frostwolf', 'troll', 'harpy', 'skull_frost'], 22: ['automaton', 'tinker', 'scorpion', 'turret', 'drowner'],
+    12: ['fairy', 'fungus', 'spider', 'harpy', 'elfscout', 'treant'], 13: ['imp_bomb', 'skull_fire', 'hellhound', 'pactbroken', 'imp'],
+    14: ['bat', 'thrall', 'succubus', 'vampire', 'skull_frost'], 15: ['pactbroken', 'succubus', 'hellhound', 'imp_bomb', 'cultist'], 16: ['werewolf', 'swampsnake', 'spider', 'wolf', 'boar'],
+  };
   for (let gy = 7; gy < MAP_H - 6; gy += 9) for (let gx = 7; gx < MAP_W - 6; gx += 9) {
     const px = gx + Math.round((rs() - 0.5) * 6), py = gy + Math.round((rs() - 0.5) * 6);
     const dc = Math.hypot(px - CITY.x, py - CITY.y);
@@ -1184,11 +1208,25 @@ export function buildCity(): World {
     if (!c || nearSettle(c.x, c.y, 10)) continue;
     const bm = biome[c.y][c.x], tb = TBL[bm];
     const n = 2 + Math.floor(rs() * 3);
-    const t1 = dc < 50 ? EASY[Math.floor(rs() * EASY.length)] : tb[Math.floor(rs() * tb.length)];
-    sp(t1, c, 7, n);
-    if (rs() < 0.55) sp(dc < 50 ? EASY[Math.floor(rs() * EASY.length)] : tb[Math.floor(rs() * tb.length)], { x: c.x + 3, y: c.y - 2 }, 6, 1 + Math.floor(rs() * 2));
+    const fa = FAUNA[regionAt(c.x, c.y).id], pick = () => dc < 50 ? EASY[Math.floor(rs() * EASY.length)] : fa && rs() < 0.6 ? fa[Math.floor(rs() * fa.length)] : tb[Math.floor(rs() * tb.length)];
+    let t1 = pick(); if ((bm === 'coast' || bm === 'rock') && [8, 11, 22, 3].includes(regionAt(c.x, c.y).id) && rs() < 0.35) t1 = 'scorpion'; /* areia e pedra seca do sul: escorpiões enterrados */
+    sp(t1, c, 7, ['turret', 'troll'].includes(t1) ? 1 : n);
+    if (rs() < 0.55) sp(pick(), { x: c.x + 3, y: c.y - 2 }, 6, 1 + Math.floor(rs() * 2));
   }
 
+  /* AFOGADORES NAS MARGENS (26/10): onde a água encosta na grama, longe das vilas, um ou dois esperam submersos — de dia e de noite.
+     Nas regiões do fim do mundo, o Afogador Antigo. Serpentes do brejo dividem as margens dos charcos. */
+  { const rw = rng(4242); let nD = 0;
+    for (let gy = 10; gy < MAP_H - 10 && nD < 70; gy += 11) for (let gx = 10; gx < MAP_W - 10 && nD < 70; gx += 11) { const x = gx + Math.round((rw() - 0.5) * 8), y = gy + Math.round((rw() - 0.5) * 8); if (!inb(x, y) || map[y][x] !== 'grass') continue;
+      const sd = waterSD((x + 0.5) * T, (y + 0.5) * T); if (sd < 1.2 || sd > 3.6) continue; if (nearSettle(x, y, 12) || Math.hypot(x - CITY.x, y - CITY.y) < 30) continue; if (rw() > 0.55) continue;
+      const rg = regionAt(x, y); nD++; sp(rg.lo >= 30 && rw() < 0.3 ? 'drowner_old' : (rg.id === 4 || biome[y][x] === 'swamp') && rw() < 0.45 ? 'swampsnake' : 'drowner', { x, y }, 3, rg.lo >= 30 ? 1 : 1 + Math.floor(rw() * 2)); } }
+  /* ELITES E CHEFES DO MUNDO: cada lugar marcado tem o seu dono, no nível do lugar */
+  { const at = (nm: string, dx = 0, dy = 0) => { const q = pois.find((v) => v.name === nm) ?? settlements.find((v) => v.name === nm); return q ? { x: Math.round(q.x + dx), y: Math.round(q.y + dy) } : null; };
+    const put = (type: EnemyType, nm: string, dx: number, dy: number, night = false) => { const c = at(nm, dx, dy); if (c) spawns.push({ type, x: c.x, y: c.y, r: 1, n: 1, ...(night ? { night: true } : {}) }); };
+    put('alpha', 'Covil dos Lobos', 3, 3); put('necro', 'Cemitério Esquecido', -4, 6, true); put('skel_arch', 'Cemitério Esquecido', 4, 4); put('headless', 'Catedral Abandonada', -12, 18, true);
+    put('cavebear', 'Lágrimas de Hrefna', 6, 4); put('troll', 'Queda de Odin', 5, 6); put('jotun', 'Cachoeira da Neblina', 8, 10); put('harpy', 'Salto Branco', 4, -4);
+    put('fairyqueen', 'Véu das Fadas', 4, 6); put('ent', 'Pináculo de Marfim', -16, -14); put('giantsnake', 'Árvore-Mãe do Uivo', 10, 8); put('scorpion_king', 'Ferrugem', 16, 14);
+    put('colossus', 'Ferrugem', -18, -10); put('glutton', 'Castelo da Colina Vampírica', -10, 14); put('suplicio', 'Vale da Desgraça', 0, 10); put('drowner_old', 'Vatnaholt', -9, 7); put('inquisitor', 'Steinfoss', 6, -6); put('inquisitor', 'Grenivik', -5, 6); }
   /* placas: nas pontas e cruzamentos das estradas, apontando para o lugar mais próximo e para Karmika */
   const signs: Sign[] = [];
   const nearPoi = (x: number, y: number) => { let best: Poi | null = null, bd = 30; for (const p of pois) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } } return best; };
@@ -1507,6 +1545,15 @@ export function buildCity(): World {
       ['Brasaforja', 0, 4.5, { name: 'Sangradora Hulda', role: 'Casa de Sangria dos Anões', kind: 'dwarf', radius: 1.2, tint: 0x7a1a24, scale: 0.95, shop: 'sangria_anao', lines: ['Sangue doado, pago e apurado no frio. Ninguém morre aqui.', 'Os tecnocratas levam quase tudo para as tais injeções.', 'Vampiro do bem? Já vi de tudo nesta montanha.'] }],
       ['Lumenhal', 3.0, 2.5, { name: 'Arquimaga Seline', role: 'Sala dos Incensos do Pináculo', kind: 'nordic', radius: 1.2, tint: 0x3a4a9a, scale: 1.0, shop: 'magos_lumen', lines: ['A areia guardou a luz das estrelas. Não espirre perto dela.', 'Os guerreiros do Norte vêm aqui quando o sangue não esfria mais.', 'Cinzas? Compro da bruxa. Não gosto, mas compro.'] }],
       ['Gorvath', 3.0, 2.5, { name: 'Bruxa Grisolda', role: 'Tenda da Bruxa de Gorvath', kind: 'nordic', radius: 1.2, tint: 0x3a2a3a, scale: 0.95, night: false, shop: 'bruxa_gorvath', lines: ['Cada pitada de cinza tem um nome. Eu sei todos.', 'O guerreiro louco não sabe que precisa de mim até começar a ouvir os mortos.', 'A areia dos magos brilha demais. Mas sem ela o incenso não fecha.'] }],
+      /* 26/10: estábulos e domadores de cada cidade (montarias e pets do lugar) */
+      ['Brasaforja', -4, 3, { name: 'Domadora Brunna Cascalho', role: 'Baias de Brasaforja', kind: 'dwarf', radius: 1.2, tint: 0x6a3a1a, scale: 0.95, shop: 'baias_brasa', lines: ['Pônei não é cavalo pequeno. É cavalo teimoso.', 'O javali de guerra só obedece quem dá a primeira maçã.', 'Montanha boa se sobe devagar. Ou de javali.'] }],
+      ['Lithendel', -3, 2.5, { name: 'Guardiã Elaria', role: 'Clareira dos Cervos de Lithendel', kind: 'nordic', civil: 'elf', radius: 1.2, tint: 0x3a6a4a, scale: 1.0, shop: 'baias_lithen', lines: ['Não vendemos o cervo. Ele escolhe. Nós só cobramos a sela.', 'Fale baixo perto dele.', 'A raposa prateada vai sumir com seus anéis. É o charme dela.'] }],
+      ['Askavik', -6, 30, { name: 'Estribeiro Aldric', role: 'Estrebaria Real de Askavik', kind: 'nordic', radius: 1.2, tint: 0x2a3a7a, scale: 1.05, shop: 'estrebaria_real', lines: ['Os cavalos do rei comem melhor que muito cavaleiro.', 'O corcel templário não recua. Nem quando deveria.', 'Crina de ouro não é tinta. Pergunte ao palafrém.'] }],
+      ['Jarlsheim', -3.5, 2.5, { name: 'Domador Sigvald', role: 'Baias de Jarlsheim', kind: 'nordic', radius: 1.2, tint: 0x3a4a6a, scale: 1.1, shop: 'baias_jarl', lines: ['O alce entende runas. Eu não.', 'O lobo das neves morde. Por isso é bom.', 'No gelo, o cavalo escorrega. O alce não.'] }],
+      ['Porto Caldeira', 3, 2.5, { name: 'Mecânica Odette', role: 'Garagem da Companhia de Latão', kind: 'technocrat', radius: 1.2, tint: 0x5a1e14, scale: 1.0, shop: 'baias_latao', lines: ['Não come, não cansa. Mas pede óleo como quem pede amor.', 'A aranha de latão foi um acidente. Um acidente lindo.', 'Se chiar na subida, é saudade da fábrica.'] }],
+      ['Lumenhal', -3, 2.5, { name: 'Jardineira Ysmé', role: 'Jardim do Pináculo', kind: 'nordic', civil: 'elf', radius: 1.2, tint: 0x6a4aaa, scale: 1.0, shop: 'baias_lumen', lines: ['O unicórnio vê o que você fez com os bichos. Todos.', 'A fadinha ficou porque gostou do jardim. Talvez goste de você.', 'O chifre brilha perto de magia. E perto de mentira.'] }],
+      ['Corvoscuro', 3.5, 3, { name: 'Cocheiro Mortimer', role: 'Cocheira do Conde', kind: 'nordic', civil: 'human', radius: 1.2, tint: 0x4a0a14, scale: 1.0, shop: 'baias_conde', lines: ['O Pesadelo não pisa em terra santa. Nem eu.', 'A crina queima sem consumir. Não toque. Ou toque, e aprenda.', 'Os cavalos normais fogem dele. Os inteligentes também.'] }],
+      ['Uivo Antigo', -3, 2.5, { name: 'Domadora Kaia Garra-Lua', role: 'Covil dos Domadores do Uivo', kind: 'nordic', radius: 1.2, tint: 0x3a2a1a, scale: 1.05, shop: 'baias_uivo', lines: ['O lobo da lua corre mais de noite. Como nós.', 'O tigre ronrona como trovão. Não confunda com fome.', 'A pantera filhote escolhe o dono pelo cheiro de coragem.'] }],
       ['Lithendel', 3.0, 2.5, { name: 'Irmã Ithilwen', role: 'O Orvalho de Lithendel', kind: 'nordic', radius: 1.2, tint: 0x5a8a6a, scale: 1.0, shop: 'orvalho_elfo', lines: ['Uma gota por árvore, por manhã. Nem uma a mais.', 'Os anões pagam bem. Os paladinos agradecem depois, sem saber a quem.', 'Lágrima Santa não se vende a quem chora por raiva.'] }],
     ] as [string, number, number, Omit<NpcSpec, 'x' | 'y'>][])) { const t = settlements.find((q) => q.name === vila); if (!t) continue; const at = freeAt(t.x + dx, t.y + dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ ...n, x: at.x, y: at.y } as NpcSpec); } }
   /* a Casa dos Ofícios: num lugar livre perto da Praça do Mercado de Askavik, um salão aberto de 14×10 com as cinco bancadas lá dentro */

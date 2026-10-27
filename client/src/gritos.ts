@@ -139,3 +139,26 @@ export function battleCry(kit: KitKey, sex: Sex, key: string, boss: boolean): st
   seen.set(key, now); lastAny = now;
   const L = (boss ? BOSS : ELITE)[kit] ?? ELITE.human; return G(L[Math.floor(Math.random() * L.length)], sex);
 }
+
+/* DICA DO INSTINTO (26/10, Erling: "quando o personagem estiver numa área onde vale a pena usar o instinto, ele diz uma frase que dá a
+   dica de ligar; cada raça e cada classe tem a sua — 2 tipos já basta"). A classe fala por cima da raça quando já existe. */
+const HINT: Record<string, [string, string]> = {
+  humano: ['Tem alguma coisa errada aqui… se eu prestar atenção, eu acho.', 'Esse silêncio não é natural. Melhor abrir os olhos de verdade.'],
+  anao: ['A pedra está cochichando. Deixa eu escutar direito.', 'Pelas barbas! Tem metal debaixo deste chão, sinto no dente.'],
+  elfo: ['As árvores lembram de alguém que passou por aqui. Vou ouvi-las.', 'O vento mudou de cheiro. A mata quer me mostrar algo.'],
+  gue: ['Cheiro de sangue velho. Alguém fugiu por aqui.', 'Meu sangue esquentou do nada. Tem rastro nesta terra.'],
+  pal: ['A Luz pesa no meu peito aqui. Alguma alma pede socorro.', 'Auréon, mostra-me o que os olhos não veem.'],
+  cac: ['Prata nos olhos. Tem coisa escondida que não é deste mundo.', 'O ar ficou com gosto de enxofre. Hora de caçar com atenção.'],
+  tec: ['Os medidores tremeram. Tem um dispositivo perdido por aqui.', 'Leitura anômala. Vou calibrar e olhar de novo.'],
+  vam: ['Há um coração batendo onde não devia. Escuta…', 'A noite me contou um segredo. Deixa eu ouvir o resto.'],
+  lob: ['Esse cheiro… a matilha passou por aqui. Fareja.', 'Meus pelos arrepiaram. O faro não mente.'],
+  mag: ['A trama do mundo está torta aqui. Magia antiga, escondida.', 'As runas do meu cajado esquentaram. Tem coisa para ver.'],
+  bru: ['As marcas ardem. Alguém deixou um pacto enterrado aqui.', 'A sombra sussurrou um nome. Vou escutar com o outro ouvido.'],
+};
+let hintAt = -1e9; const hinted = new Set<string>();
+/** a frase-dica (null = não é hora: o mesmo lugar não repete, e no máximo uma a cada 2 minutos) */
+export function instinctHint(race: string, path: string | null, key: string): string | null {
+  const now = performance.now(); if (now - hintAt < 120000 || hinted.has(key)) return null; hinted.add(key); hintAt = now;
+  const L = (path && HINT[path]) || HINT[race] || HINT.humano; return L[Math.floor(Math.random() * 2)];
+}
+export const INSTINCT_HINTS = HINT;

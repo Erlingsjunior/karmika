@@ -326,7 +326,7 @@ function makeKit(mats: THREE.MeshToonMaterial[], shadow = true) {
 }
 
 export interface Horse4 { root: THREE.Group; body: THREE.Group; neck: THREE.Group; mats: THREE.MeshToonMaterial[]; seat: number; pose(p: { dt: number; mv: number; idle?: boolean }): void }
-export function buildHorse(opt: { coat?: number; mane?: number; socks?: boolean } = {}): Horse4 {
+export function buildHorse(opt: { coat?: number; mane?: number; socks?: boolean; /** chifre de unicórnio */ horn?: number; /** galhada (cervo, alce) */ antlers?: number; /** armadura (bardas) */ barding?: number; /** olhos e crina em brasa (pesadelo) */ fire?: number; /** crina mais farta (pônei) */ shaggy?: boolean } = {}): Horse4 {
   const mats: THREE.MeshToonMaterial[] = []; const { M, mesh, tuft } = makeKit(mats);
   const COAT = opt.coat ?? 0x6a4630, MANE = opt.mane ?? 0x241812;
   const coat = M(COAT, false), coatD = M(new THREE.Color(COAT).multiplyScalar(0.72).getHex(), false), mane = M(MANE), hoof = M(0x2a2420, false), muzzle = M(new THREE.Color(COAT).multiplyScalar(0.45).getHex()), sock = M(opt.socks ? 0xe8e0d0 : new THREE.Color(COAT).multiplyScalar(0.55).getHex());
@@ -349,6 +349,12 @@ export function buildHorse(opt: { coat?: number; mane?: number; socks?: boolean 
     const nos = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0x0a0806 })); nos.position.set(s * 0.04, 0.0, 0.67); head.add(nos);
   }
   const fore = tuft(0.18, 0.06, 0.06, mane); fore.position.set(0, 0.14, 0.06); fore.rotation.x = 1.2; head.add(fore);
+  /* 26/10: as montarias de cada cidade (unicórnio, cervo e alce, corcel de guerra, pesadelo, cavalo de latão, pônei) */
+  if (opt.horn !== undefined) { const hm = new THREE.MeshToonMaterial({ color: opt.horn, gradientMap: ramp, emissive: new THREE.Color(opt.horn), emissiveIntensity: 0.35 }); mats.push(hm); const hg = new THREE.ConeGeometry(0.03, 0.42, 8, 6); hg.translate(0, 0.21, 0); const hn = mesh(hg, hm); hn.position.set(0, 0.16, 0.12); hn.rotation.x = 0.5; head.add(hn); }
+  if (opt.antlers !== undefined) { const am = M(opt.antlers, false); for (const s of [-1, 1]) { const g = new THREE.Group(); g.position.set(s * 0.06, 0.15, 0.0); g.rotation.set(-0.3, 0, -s * 0.5); head.add(g); const beam = new THREE.CylinderGeometry(0.014, 0.024, 0.5, 6); beam.translate(0, 0.25, 0); g.add(mesh(beam, am));
+      for (let k = 0; k < 4; k++) { const tg = new THREE.CylinderGeometry(0.008, 0.016, 0.18 + k * 0.02, 5); tg.translate(0, 0.09, 0); const t2 = mesh(tg, am); t2.position.y = 0.12 + k * 0.11; t2.rotation.set(0.6 - k * 0.1, 0, s * (0.5 + k * 0.1)); g.add(t2); } } }
+  if (opt.fire !== undefined) { const fm = new THREE.MeshBasicMaterial({ color: opt.fire, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }); for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 4), new THREE.MeshBasicMaterial({ color: opt.fire })); e.position.set(s * 0.086, 0.05, 0.12); head.add(e); }
+    for (let i = 0; i < 9; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.22 + (i % 3) * 0.06, 5), fm); f.position.set(0, 0.24, 0.05 + i * 0.075); f.rotation.x = -0.6; neck.add(f); } }
   const legs: Leg3[] = [];
   for (const front of [true, false]) for (const s of [-1, 1]) {
     const a = new THREE.Group(); a.position.set(s * 0.17, front ? -0.12 : -0.05, front ? 0.48 : -0.5); body.add(a);
@@ -360,13 +366,18 @@ export function buildHorse(opt: { coat?: number; mane?: number; socks?: boolean 
     for (let i = 0; i < 3; i++) { const f = tuft(0.07, 0.035, 0.0, mane); f.position.set(0, -0.06, -0.03); f.rotation.x = 2.6 + i * 0.15; f.rotation.z = (i - 1) * 0.5; c.add(f); }
     legs.push({ a, b, c, d, front, side: s });
   }
+  if (opt.barding !== undefined) { const bm = M(opt.barding, false), trim = M(0xc8a040, false); const cr = mesh(new THREE.SphereGeometry(0.36, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.62), bm, 0.95, 0.72, 1.55); cr.position.set(0, 0.02, 0.05); body.add(cr); const hem = mesh(new THREE.TorusGeometry(0.33, 0.02, 4, 24), trim); hem.rotation.x = Math.PI / 2; hem.scale.set(0.95, 1.55, 1); hem.position.set(0, -0.12, 0.05); body.add(hem);
+    const chf = mesh(new THREE.BoxGeometry(0.12, 0.05, 0.42), bm); chf.position.set(0, 0.12, 0.3); head.add(chf); const plume = mesh(new THREE.ConeGeometry(0.04, 0.22, 6), M(0xc41a1a)); plume.position.set(0, 0.18, 0.02); head.add(plume); }
+  if (opt.shaggy) for (let i = 0; i < 10; i++) { const t = tuft(0.16, 0.07, 0.04, mane); t.position.set((i % 2 ? 0.05 : -0.05), 0.14, 0.05 + i * 0.06); t.rotation.set(-2.0, 0, (i % 2 ? 1 : -1) * 0.7); neck.add(t); }
   const tail: THREE.Group[] = []; { let par: THREE.Object3D = body; for (let i = 0; i < 4; i++) { const g = new THREE.Group(); if (i === 0) g.position.set(0, 0.2, -0.82); else g.position.y = -0.22; g.add(mesh(mus(0.24, 0.035 + i * 0.008, 0.045 + i * 0.01, 0.035 + i * 0.012, 0.5, 9), mane, 0.7, 1, 1)); for (let k = 0; k < 3; k++) { const t = tuft(0.22 + i * 0.03, 0.025, 0.02, mane); t.position.set((k - 1) * 0.025, -0.12, 0); t.rotation.set(Math.PI + (k - 1) * 0.12, 0, (k - 1) * 0.1); g.add(t); } par.add(g); par = g; tail.push(g); } }
   const st = { ph: 0, t: 0, mv: 0 };
   function pose(p: { dt: number; mv: number; idle?: boolean }) {
     const dt = Math.min(0.05, p.dt); st.t += dt; st.mv += (p.mv - st.mv) * Math.min(1, dt * 6); const mv = st.mv;
-    const spd = Math.min(1, mv / 2.4), gal = Math.max(0, Math.min(1, (mv - 4) / 3)); st.ph += dt * (2.4 + mv * 1.25);
+    /* CADÊNCIA DE CAVALO (26/10, Erling: "não confunda velocidade de movimento com velocidade do corpo"): quem anda rápido é o chão.
+       As patas batem no ritmo do andamento — passo ~0,9 Hz, trote ~1,3 Hz, galope ~1,7 Hz — e a velocidade a mais vira passada longa. */
+    const spd = Math.min(1, mv / 2.4), gal = Math.max(0, Math.min(1, (mv - 6) / 5)), hz = mv < 0.08 ? 0 : mv < 3 ? 0.75 + mv * 0.06 : mv < 7 ? 1.15 + (mv - 3) * 0.04 : Math.min(1.75, 1.42 + (mv - 7) * 0.035); st.ph += dt * 6.283 * hz;
     const off = [[0, Math.PI, Math.PI, 0], [0, 0.4, Math.PI + 0.3, Math.PI + 0.7]];
-    for (let i = 0; i < 4; i++) { const L = legs[i], k = i, o = off[0][k] * (1 - gal) + off[1][k] * gal, sw = Math.sin(st.ph + o) * spd, lift = Math.max(0, Math.cos(st.ph + o)) * spd, A = 0.42 + 0.3 * gal;
+    for (let i = 0; i < 4; i++) { const L = legs[i], k = i, o = off[0][k] * (1 - gal) + off[1][k] * gal, sw = Math.sin(st.ph + o) * spd, lift = Math.max(0, Math.cos(st.ph + o)) * spd, A = 0.42 + 0.34 * gal + 0.1 * Math.min(1, mv / 6);
       if (L.front) { L.a.rotation.x = -sw * A + 0.02; L.b.rotation.x = lift * 1.3; L.c.rotation.x = -0.2 - lift * 0.5; L.d.rotation.x = 0.2 + lift * 0.7; }
       else { L.a.rotation.x = -sw * A * 0.85 + 0.22; L.b.rotation.x = -0.32 - lift * 0.55; L.c.rotation.x = 0.1 + lift * 0.4; L.d.rotation.x = 0.0 + lift * 0.5; } }
     body.position.y = H + Math.abs(Math.sin(st.ph)) * 0.04 * spd * (1 + gal * 1.5); body.rotation.x = Math.sin(st.ph * 2) * 0.03 * gal;
@@ -477,7 +488,7 @@ export { mus, musUp, bend, furTex, ramp as beastRamp };
 export interface Cat4 { root: THREE.Group; mats: THREE.MeshToonMaterial[]; pose(p: { dt: number; mv: number; idle?: boolean }): void }
 /** gatinho (Erling, 25/10: "gatinho né, de pet, poxa"): corpo comprido e macio, cabeça redonda, focinho curto, orelhas em pé,
  *  bigodes, rabo longo que sobe em ponto de interrogação; anda macio, senta e lambe a pata quando você para */
-export function buildCat(opt: { coat?: number; belly?: number; eye?: number; stripes?: boolean } = {}): Cat4 {
+export function buildCat(opt: { coat?: number; belly?: number; eye?: number; stripes?: boolean; /** manchas brancas (gata cinza malhada, 26/10) */ patches?: number } = {}): Cat4 {
   const mats: THREE.MeshToonMaterial[] = []; const { M, mesh, tuft } = makeKit(mats);
   const COAT = opt.coat ?? 0xd8883a, coat = M(COAT), coatD = M(new THREE.Color(COAT).multiplyScalar(0.62).getHex()), belly = M(opt.belly ?? 0xf6efe4), nose = M(0xe87a8a, false), pad = M(0x3a2a2a, false);
   const eyeM = new THREE.MeshBasicMaterial({ color: opt.eye ?? 0x9ad84a }), pupil = new THREE.MeshBasicMaterial({ color: 0x0a0806 });
@@ -485,10 +496,12 @@ export function buildCat(opt: { coat?: number; belly?: number; eye?: number; str
   body.add(mesh(backG(mus(0.36, 0.085, 0.1, 0.09, 0.5, 14)), coat, 0.9, 1.0, 1).translateZ(0.17)); // tronco comprido
   body.add(mesh(backG(mus(0.26, 0.05, 0.07, 0.05, 0.5, 12)), belly, 0.8, 0.7, 1).translateY(-0.04).translateZ(0.13));
   if (opt.stripes ?? true) for (let i = 0; i < 4; i++) { const st = mesh(new THREE.TorusGeometry(0.092, 0.012, 4, 14, Math.PI), coatD); st.rotation.set(0, Math.PI / 2, 0); st.position.set(0, 0.005, 0.1 - i * 0.075); st.scale.set(1, 1.05, 0.95); body.add(st); }
+  if (opt.patches !== undefined) { const pm = M(opt.patches); for (const [x, y, z, r] of [[0.06, 0.05, 0.1, 0.05], [-0.07, 0.02, -0.06, 0.06], [0.0, 0.085, -0.13, 0.045], [-0.05, 0.07, 0.16, 0.035], [0.08, -0.01, -0.14, 0.04]] as const) { const pt = mesh(new THREE.SphereGeometry(r, 10, 8), pm, 1, 0.55, 1.2); pt.position.set(x, y, z); pt.lookAt(x * 4, y * 4 + 0.05, z); body.add(pt); } }
   const neck = new THREE.Group(); neck.position.set(0, 0.05, 0.18); neck.rotation.x = -0.5; body.add(neck);
   neck.add(mesh(fwdG(mus(0.08, 0.06, 0.06, 0.055, 0.5, 10)), coat));
   const head = new THREE.Group(); head.position.set(0, 0.03, 0.1); head.rotation.x = 0.5; neck.add(head);
   head.add(mesh(new THREE.SphereGeometry(0.075, 14, 12), coat, 1.05, 0.9, 0.95)); // cabeça redonda
+  if (opt.patches !== undefined) { const bz = mesh(new THREE.SphereGeometry(0.035, 10, 8), M(opt.patches), 0.7, 1.4, 0.5); bz.position.set(0, 0.035, 0.06); head.add(bz); }
   const snout = mesh(new THREE.SphereGeometry(0.035, 10, 8), belly, 1.25, 0.8, 0.9); snout.position.set(0, -0.022, 0.06); head.add(snout);
   const nz = mesh(new THREE.SphereGeometry(0.011, 6, 5), nose); nz.position.set(0, -0.008, 0.088); head.add(nz);
   for (const s of [-1, 1]) {

@@ -233,7 +233,11 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   const SPEED = 3.1, PERIOD_PAD = 40, /** a escolta espera um pouco fora do portão, não dentro dele */ START = 9;
   function ambientS(r: Route, i: number, lag = 0) { const per = r.len / SPEED + PERIOD_PAD, cyc = per * 2, t = (now() - lag + i * 977) % cyc; // vai, para, volta
     const go = Math.max(0, Math.min(1, t / (per - PERIOD_PAD))), back = Math.max(0, Math.min(1, (t - per) / (per - PERIOD_PAD)));
-    return t < per ? { s: go * r.len, dir: 1, park: go >= 1 } : { s: (1 - back) * r.len, dir: -1, park: back >= 1 }; }
+    /* 26/10 (Erling: "uma carroça não atravessa a outra"): cada rota estaciona na sua vaga, alguns metros antes do centro da vila — duas rotas que
+       terminam na mesma praça nunca param uma em cima da outra */
+    let hh = 7; for (const ch of r.id) hh = (hh * 31 + ch.charCodeAt(0)) % 9973; const bay = Math.min(r.len * 0.25, 6 + ((hh + i * 3) % 5) * 6.5);
+    const pos = (k: number) => bay + k * (r.len - 2 * bay);
+    return t < per ? { s: pos(go), dir: 1, park: go >= 1 } : { s: pos(1 - back), dir: -1, park: back >= 1 }; }
   /* a emboscada do mundo: a cada 9 minutos uma rota é sorteada (pelo relógio), num ponto entre 30% e 70% da estrada; dura 9 minutos */
   const EV = 540;
   function eventNow() { const slot = Math.floor(now() / EV), h = Math.abs(Math.sin(slot * 12.9898) * 43758.5453) % 1, ids = AMBIENT.filter((id) => routes.has(id)); if (!ids.length) return null;
@@ -284,6 +288,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     if (ev && !saved.done.includes(ev.slot)) { const key = 'ev:' + ev.slot; if (!cars.has(key)) { for (const k of [...cars.keys()]) if (k.startsWith('ev:')) { const o = cars.get(k)!; dropModel(o); ctx.clearTag('car:' + k); cars.delete(k); }
         cars.set(key, { key, mode: 'event', route: ev.r, s: ev.s, dir: 1, w: null, crew: [], hp: 1, stop: true, speed: 0, foes: [], bubbleT: 0, slot: ev.slot }); }
       evShown = { slot: ev.slot, r: ev.r, s: ev.s }; } else evShown = null;
+    const placed: { x: number; z: number }[] = [];
     for (const c of [...cars.values()]) {
       const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) && !inside;
       if (!near) { if (c.w) dropModel(c); if (c.mode === 'event' && c.spawned && !c.cleared && ev && c.slot !== ev.slot) { ctx.clearTag('car:' + c.key); cars.delete(c.key); } continue; }
@@ -312,9 +317,9 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       const yaw = p.yaw + (c.dir < 0 ? Math.PI : 0), ca = Math.sin(yaw), cb = Math.cos(yaw);
       /* 26/10 (Erling: "carroças não se atravessam assim"): cada uma anda pela sua mão (direita no sentido em que vai); as que
          se cruzam passam lado a lado, e as que vão juntas na mesma rota já saem em horários diferentes */
-      if (c.mode === 'ambient') { const want = ctx.onBridge?.(p.x, p.z) ? 0.3 : 1.7; /* na ponte, manobra para o meio: a ponte é estreita (Erling: "passar certinho pelas pontes") */ c.off = (c.off ?? want) + (want - (c.off ?? want)) * Math.min(1, dt * 1.6); p.x += cb * c.off; p.z -= ca * c.off; }
+      if (c.mode === 'ambient') { const crowd = placed.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 5.5), want = ctx.onBridge?.(p.x, p.z) ? 0.3 : crowd ? 4.6 : 1.7; /* outra carroça ali: encosta mais para a direita e passa ao lado */ /* na ponte, manobra para o meio: a ponte é estreita (Erling: "passar certinho pelas pontes") */ c.off = (c.off ?? want) + (want - (c.off ?? want)) * Math.min(1, dt * 1.6); p.x += cb * c.off; p.z -= ca * c.off; }
       const hF = ctx.heightAt(p.x + ca * 1.3, p.z + cb * 1.3), hB = ctx.heightAt(p.x - ca * 1.3, p.z - cb * 1.3);
-      w.root.position.set(p.x, (hF + hB) / 2, p.z); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, 2.6) * 0.9;
+      w.root.position.set(p.x, (hF + hB) / 2, p.z); placed.push({ x: p.x, z: p.z }); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, 2.6) * 0.9;
       const moving = !c.stop && !w.fallen && !(c.mode === 'ambient' && c.stop);
       if (moving) for (const wh of w.wheels) wh.m.rotation.z += (c.speed * dt) / wh.r;
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;

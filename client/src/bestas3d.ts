@@ -42,10 +42,11 @@ export function buildSpider(o: SpiderOpt): BRig {
   for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
     const ang = (-0.55 + i * 0.38) * (s > 0 ? 1 : -1), hip = new THREE.Group(); hip.position.set(s * 0.14, 0, 0.22 - i * 0.12); hip.rotation.y = s > 0 ? Math.PI / 2 - (i - 1.5) * 0.45 : -Math.PI / 2 + (i - 1.5) * 0.45; body.add(hip);
     const lift = new THREE.Group(); hip.add(lift);
-    const fem = mesh(down(C(0.035, 0.03, 0.42 * L, 6), 0.42 * L), c1); fem.rotation.x = -2.2; lift.add(fem);
-    const knee = new THREE.Group(); knee.position.set(0, Math.cos(-2.2 + Math.PI) * 0.42 * L, Math.sin(2.2) * 0.42 * L); lift.add(knee);
+    const FL = 0.5 * L, FA = -1.85; /* fêmur sobe e abre bem para fora: a aranha fica larga, de joelhos altos */
+    const fem = mesh(down(C(0.04, 0.032, FL, 6), FL), c1); fem.rotation.x = FA; lift.add(fem);
+    const knee = new THREE.Group(); knee.position.set(0, -Math.cos(FA) * FL, -Math.sin(FA) * FL); lift.add(knee);
     const kj = mesh(S(0.04, 6, 5), c2); knee.add(kj);
-    const tib = mesh(down(C(0.03, 0.012, 0.62 * L, 6), 0.62 * L), c2); tib.rotation.x = -0.35; knee.add(tib);
+    const tib = mesh(down(C(0.032, 0.012, 0.74 * L, 6), 0.74 * L), c2); tib.rotation.x = -0.55; knee.add(tib);
     legs.push({ hip: lift, knee, ang, side: s, grp: (i + (s > 0 ? 0 : 1)) % 2, front: i === 0 });
   }
   let ph = Math.random() * 6;
@@ -66,7 +67,7 @@ export function buildSpider(o: SpiderOpt): BRig {
 export function buildScorpion(col: number, col2: number, glow = 0xffb040): BRig {
   const { mats, M, G, mesh } = kit(); const root = new THREE.Group(), body = new THREE.Group(); body.position.y = 0.32; root.add(body);
   const c1 = M(col), c2 = M(col2);
-  for (let i = 0; i < 5; i++) { const pl = mesh(S(0.3 - i * 0.025, 12, 8), i % 2 ? c2 : c1, 1, 0.42, 0.62); pl.position.set(0, 0.02, 0.3 - i * 0.17); body.add(pl); }
+  for (let i = 0; i < 5; i++) { const pl = mesh(S(0.3 - i * 0.025, 12, 8), i % 2 ? c2 : c1, 1, 0.55, 0.62); pl.position.set(0, 0.04, 0.3 - i * 0.17); body.add(pl); }
   const head = mesh(S(0.2, 10, 8), c1, 1, 0.5, 0.9); head.position.set(0, 0.03, 0.5); body.add(head);
   for (const s of [-1, 1]) { const ey = new THREE.Mesh(S(0.025, 6, 5), G(glow)); ey.position.set(s * 0.05, 0.11, 0.55); body.add(ey); }
   const claws: { arm: THREE.Group; jaw: THREE.Group }[] = [];
@@ -76,14 +77,15 @@ export function buildScorpion(col: number, col2: number, glow = 0xffb040): BRig 
     const fore = new THREE.Group(); fore.position.set(0, 0.09, 0.35); fore.rotation.y = -s * 0.9; arm.add(fore);
     const f = mesh(down(C(0.045, 0.06, 0.3, 7), 0.3), c2); f.rotation.x = -Math.PI / 2; fore.add(f);
     const pincer = new THREE.Group(); pincer.position.z = 0.3; fore.add(pincer);
-    const palm = mesh(S(0.1, 10, 8), c1, 0.9, 0.7, 1.4); pincer.add(palm);
+    const palm = mesh(S(0.14, 10, 8), c1, 0.9, 0.75, 1.4); pincer.add(palm);
     const fix = mesh(new THREE.ConeGeometry(0.045, 0.24, 5), c1); fix.rotation.x = Math.PI / 2; fix.position.set(s * 0.04, 0, 0.2); pincer.add(fix);
     const jaw = new THREE.Group(); jaw.position.set(-s * 0.04, 0, 0.08); pincer.add(jaw); const jw = mesh(new THREE.ConeGeometry(0.04, 0.22, 5), c2); jw.rotation.x = Math.PI / 2; jw.position.z = 0.11; jaw.add(jw);
     claws.push({ arm, jaw });
   }
   const legs: THREE.Group[] = [];
-  for (let i = 0; i < 3; i++) for (const s of [-1, 1]) { const lg = new THREE.Group(); lg.position.set(s * 0.2, -0.02, 0.22 - i * 0.18); lg.rotation.y = s * (Math.PI / 2 - (i - 1) * 0.3); body.add(lg);
-    const a = mesh(down(C(0.026, 0.022, 0.3, 5), 0.3), c1); a.rotation.x = -2.1; lg.add(a); const b = mesh(down(C(0.022, 0.01, 0.38, 5), 0.38), c2); b.position.set(0, -0.15, 0.26); b.rotation.x = -0.25; lg.add(b); legs.push(lg); }
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) { const lg = new THREE.Group(); lg.position.set(s * 0.2, 0, 0.26 - i * 0.16); lg.rotation.y = s * (Math.PI / 2 - (i - 1.5) * 0.35); body.add(lg);
+    const FA = -1.7, FL = 0.26; const a = mesh(down(C(0.03, 0.025, FL, 5), FL), c1); a.rotation.x = FA; lg.add(a); /* coxa sobe e abre; a canela desce até o chão */
+    const kn = new THREE.Group(); kn.position.set(0, -Math.cos(FA) * FL, -Math.sin(FA) * FL); lg.add(kn); const b = mesh(down(C(0.024, 0.01, 0.42, 5), 0.42), c2); b.rotation.x = -0.45; kn.add(b); legs.push(lg); }
   const tail: THREE.Group[] = []; let par: THREE.Object3D = body;
   for (let i = 0; i < 6; i++) { const g = new THREE.Group(); g.position.set(0, i === 0 ? 0.05 : 0.17, i === 0 ? -0.42 : 0); par.add(g); g.rotation.x = i === 0 ? -0.9 : -0.42;
     if (i < 5) { const sg = mesh(S(0.085 - i * 0.006, 8, 6), i % 2 ? c1 : c2, 1, 1.25, 1); sg.position.y = 0.085; g.add(sg); }
@@ -110,15 +112,16 @@ export function buildSnake(col: number, belly: number, n = 16, r = 0.13, hood = 
   for (let i = 0; i < n; i++) { const g = new THREE.Group(); root.add(g); const k = 1 - Math.pow(i / n, 1.6) * 0.8; const sg = mesh(S(r * k, 10, 8), i % 3 === 1 ? dark : c1, 1, 0.85, 1.3); sg.position.y = r * k * 0.8; g.add(sg); const bl = mesh(S(r * k * 0.8, 8, 6), c2, 1, 0.5, 1.2); bl.position.y = r * k * 0.45; g.add(bl); segs.push(g); }
   const head = new THREE.Group(); segs[0].add(head); head.position.y = r * 0.9;
   const sk = mesh(S(r * 1.25, 12, 9), c1, 1.05, 0.62, 1.5); sk.position.z = r * 0.7; head.add(sk);
-  if (hood) { const hd = mesh(S(r * 2.4, 12, 8), dark, 1.4, 1.1, 0.25); hd.position.set(0, r * 0.6, -r * 0.3); head.add(hd); }
+  if (hood) { const hd = mesh(S(r * 1.8, 12, 8), dark, 1.3, 1.1, 0.22); hd.position.set(0, r * 0.6, -r * 0.3); head.add(hd); }
   for (const s of [-1, 1]) { const ey = new THREE.Mesh(S(r * 0.22, 6, 5), G(eye)); ey.position.set(s * r * 0.55, r * 0.35, r * 1.3); head.add(ey); }
   const tongue = mesh(new THREE.ConeGeometry(r * 0.08, r * 1.6, 4), M(0xc4202a)); tongue.rotation.x = Math.PI / 2; tongue.position.set(0, 0, r * 2.6); head.add(tongue);
   let ph = Math.random() * 6; const P: THREE.Vector3[] = Array.from({ length: n }, (_, i) => new THREE.Vector3(0, 0, -i * len));
+  const coilP: { x: number; z: number }[] = []; { let a = 0; for (let i = 0; i < n; i++) { const rr = r * 1.2 + a * r * 0.42; coilP.push({ x: Math.cos(a) * rr, z: Math.sin(a) * rr }); a += len / Math.max(r, rr); } }
   return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
     ph += dt * (2.2 + mv * 1.8); const amp = r * (2.2 + Math.min(1, mv / 2) * 1.5);
     const rear = Math.max(windK, strikeK * 0.6) * (e.state === 'idle' ? 0 : 1), coil = e.state === 'idle' ? 1 : 0;
     for (let i = 0; i < n; i++) { const k = i / n; let x = Math.sin(ph - i * 0.55) * amp * Math.min(1, k * 3 + 0.15), z = -i * len, y = 0;
-      if (coil) { const a = i * 0.55 + e.t * 0.2, rr = r * (1.4 + i * 0.22); x = Math.cos(a) * rr * 0.9 * (k > 0.08 ? 1 : 0); z = Math.sin(a) * rr * 0.9 * (k > 0.08 ? 1 : 0) - (k > 0.08 ? 0 : 0); y = i < 3 ? r * (3 - i) * 0.9 : 0; }
+      if (coil) { /* enrolada: espiral contínua (o mesmo passo entre gomos), a cabeça no meio, erguida, olhando em volta */ x = coilP[i].x; z = coilP[i].z; y = i < 4 ? r * (4 - i) * 0.85 : 0; if (i === 0) { x += Math.sin(e.t * 0.6) * r; } }
       if (rear > 0 && i < n * 0.4) { const kk = 1 - i / (n * 0.4); y += kk * kk * n * len * 0.38 * rear; z += kk * len * 2 * rear; }
       P[i].set(x, y, z + strikeK * len * 4 * (1 - k)); }
     for (let i = 0; i < n; i++) { const g = segs[i]; g.position.copy(P[i]); const nx = i ? P[i - 1] : P[0].clone().add(new THREE.Vector3(0, 0, len)); g.lookAt(nx.x, nx.y + (i ? 0 : 0), nx.z); }
@@ -277,5 +280,58 @@ export function buildHeadless(): BRig {
   return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
     hz.pose({ dt, mv: Math.min(mv, 12) * 1.4, idle: e.state === 'idle' });
     lance.rotation.x = -0.6 + windK * 0.75 + strikeK * 0.2; flame.scale.y = 0.8 + Math.abs(Math.sin(e.t * 9)) * 0.5; maneGlow.scale.y = 0.8 + Math.abs(Math.sin(e.t * 7)) * 0.6; cape.rotation.x = 0.5 + Math.min(1, mv / 6) * 0.6; rider.rotation.x = -hurtK * 0.3;
+  } };
+}
+
+/* ======================= CÃES (pets) ======================= */
+export interface DogOpt { coat: number; patch?: number; patchEye?: 1 | -1; muzzle?: number; ear?: 'fold' | 'up'; bulk?: number; tail?: 'stub' | 'long' }
+/** cachorro (Erling 26/10: "um boxer todo branco com uma manchinha no olho"): peito fundo e largo, cintura fina, focinho curto e quadrado
+ *  com a boca de bochechas caídas, orelhas dobradas, rabinho curto que abana. Anda em trote, corre em galope, senta quando você para. */
+export function buildDog(o: DogOpt): { root: THREE.Group; mats: THREE.MeshToonMaterial[]; pose(p: { dt: number; mv: number; idle?: boolean }): void } {
+  const { mats, M, mesh } = kit(); const root = new THREE.Group(), body = new THREE.Group(); const H = 0.42; body.position.y = H; root.add(body);
+  const B = o.bulk ?? 1, coat = M(o.coat), coatD = M(new THREE.Color(o.coat).multiplyScalar(0.86).getHex()), mz = M(o.muzzle ?? 0xe8dcd0), nose = M(0x1a1414), pink = M(0xd88a8a), dark = M(o.patch ?? 0x1a1414);
+  const chest = mesh(S(0.17 * B, 14, 10), coat, 1, 1.05, 1.15); chest.position.set(0, 0.02, 0.15); body.add(chest);
+  const belly = mesh(S(0.13 * B, 12, 9), coat, 0.95, 0.85, 1.3); belly.position.set(0, 0.03, -0.05); body.add(belly);
+  const hip = mesh(S(0.14 * B, 12, 9), coat, 1, 0.95, 1); hip.position.set(0, 0.04, -0.2); body.add(hip);
+  const brisket = mesh(S(0.11 * B, 10, 8), coatD, 1, 0.9, 0.9); brisket.position.set(0, -0.08, 0.24); body.add(brisket);
+  const neck = new THREE.Group(); neck.position.set(0, 0.1, 0.27); neck.rotation.x = -0.65; body.add(neck);
+  const nk = mesh(new THREE.CapsuleGeometry(0.075 * B, 0.12, 4, 10), coat); nk.position.y = 0.07; neck.add(nk);
+  const head = new THREE.Group(); head.position.set(0, 0.17, 0.02); head.rotation.x = 0.65; neck.add(head);
+  const skull = mesh(S(0.105, 14, 12), coat, 1.05, 0.95, 1.05); head.add(skull);
+  const brow = mesh(S(0.07, 10, 8), coatD, 1.4, 0.45, 0.8); brow.position.set(0, 0.06, 0.06); head.add(brow);
+  const snout = mesh(new THREE.BoxGeometry(0.14, 0.09, 0.1), mz); snout.position.set(0, -0.025, 0.12); head.add(snout);
+  for (const s of [-1, 1]) { const jowl = mesh(S(0.05, 8, 6), mz, 0.9, 1.1, 1); jowl.position.set(s * 0.05, -0.06, 0.13); head.add(jowl); }
+  const nz = mesh(S(0.03, 8, 6), nose, 1.4, 0.9, 0.7); nz.position.set(0, 0.0, 0.175); head.add(nz);
+  const jaw = new THREE.Group(); jaw.position.set(0, -0.06, 0.07); head.add(jaw); jaw.add(mesh(new THREE.BoxGeometry(0.12, 0.035, 0.09), mz).translateZ(0.04));
+  const tongue = mesh(new THREE.BoxGeometry(0.05, 0.01, 0.07), pink); tongue.position.set(0, -0.025, 0.08); jaw.add(tongue);
+  for (const s of [-1, 1]) {
+    const ey = new THREE.Mesh(S(0.018, 8, 6), new THREE.MeshBasicMaterial({ color: 0x1a0e08 })); ey.position.set(s * 0.05, 0.035, 0.085); head.add(ey);
+    const sh = new THREE.Mesh(S(0.006, 5, 4), new THREE.MeshBasicMaterial({ color: 0xffffff })); sh.position.set(s * 0.052, 0.042, 0.1); head.add(sh);
+    if (o.patch !== undefined && s === (o.patchEye ?? 1)) { const p = mesh(S(0.045, 10, 8), dark, 1, 0.85, 0.45); p.position.set(s * 0.05, 0.035, 0.07); head.add(p); }
+    const ear = new THREE.Group(); ear.position.set(s * 0.075, 0.08, -0.01); head.add(ear);
+    if ((o.ear ?? 'fold') === 'fold') { const e = mesh(new THREE.ConeGeometry(0.035, 0.07, 4), coat, 1, 1, 0.4); e.position.set(s * 0.012, -0.02, 0.01); e.rotation.set(0.3, 0, s * 2.4); ear.add(e); }
+    else { const e = mesh(new THREE.ConeGeometry(0.035, 0.09, 4), coat, 1, 1, 0.45); e.position.y = 0.04; e.rotation.z = -s * 0.2; ear.add(e); }
+  }
+  type L = { a: THREE.Group; b: THREE.Group; front: boolean };
+  const legs: L[] = [];
+  for (const front of [true, false]) for (const s of [-1, 1]) {
+    const a = new THREE.Group(); a.position.set(s * 0.085 * B, -0.04, front ? 0.2 : -0.2); body.add(a);
+    const up = mesh(down(C(0.045 * B, 0.035, 0.2, 8), 0.2), coat); a.add(up); if (!front) { const th = mesh(S(0.07 * B, 8, 6), coat, 0.8, 1.2, 1.1); th.position.y = -0.04; a.add(th); }
+    const b = new THREE.Group(); b.position.y = -0.2; a.add(b); b.add(mesh(down(C(0.03, 0.028, 0.18, 7), 0.18), coat));
+    const paw = mesh(S(0.035, 8, 6), coat, 1, 0.6, 1.3); paw.position.set(0, -0.19, 0.015); b.add(paw);
+    legs.push({ a, b, front });
+  }
+  const tail = new THREE.Group(); tail.position.set(0, 0.1, -0.33); body.add(tail); const tl = mesh(down(C(0.025, 0.018, (o.tail ?? 'stub') === 'stub' ? 0.07 : 0.24, 6), (o.tail ?? 'stub') === 'stub' ? 0.07 : 0.24), coat); tl.rotation.x = Math.PI; tail.add(tl);
+  const st = { ph: 0, t: 0, mv: 0, sit: 0, pant: 0 };
+  return { root, mats, pose(p) {
+    const dt = Math.min(0.05, p.dt); st.t += dt; st.mv += (p.mv - st.mv) * Math.min(1, dt * 7); const mv = st.mv, spd = Math.min(1, mv / 1.6), run = Math.max(0, Math.min(1, (mv - 2.8) / 2));
+    st.sit += ((p.idle && mv < 0.1 ? 1 : 0) - st.sit) * Math.min(1, dt * (p.idle ? 1.5 : 7)); const S2 = st.sit;
+    st.ph += dt * 6.283 * (mv < 0.05 ? 0 : 1.6 + 0.8 * run); /* passos de cachorro: trote ~1,6 Hz, galope ~2,4 Hz — a pata não vira hélice */
+    legs.forEach((l, i) => { const o2 = run > 0.5 ? (l.front ? 0 : Math.PI * 0.85) + (i % 2) * 0.35 : [0, Math.PI, Math.PI, 0][i], sw = Math.sin(st.ph + o2) * spd, lift = Math.max(0, Math.cos(st.ph + o2)) * spd, A = 0.5 + 0.35 * run;
+      if (l.front) { l.a.rotation.x = -sw * A + S2 * 0.1; l.b.rotation.x = lift * 0.9; } else { l.a.rotation.x = -sw * A * 0.9 + 0.15 - S2 * 1.35; l.b.rotation.x = -0.3 - lift * 0.5 + S2 * 1.7; } });
+    body.position.y = H + Math.abs(Math.sin(st.ph * 2)) * 0.012 * spd + run * Math.max(0, Math.sin(st.ph)) * 0.03 - S2 * 0.12; body.rotation.x = -S2 * 0.55 + Math.sin(st.ph) * 0.05 * run;
+    neck.rotation.x = -0.65 + S2 * 0.45; head.rotation.x = 0.65 - S2 * 0.35; head.rotation.y = S2 > 0.5 ? Math.sin(st.t * 0.5) * 0.4 : 0; head.rotation.z = S2 > 0.5 ? Math.sin(st.t * 0.31) * 0.12 : 0;
+    st.pant = Math.abs(Math.sin(st.t * (mv > 1 ? 9 : 4))); jaw.rotation.x = 0.12 + st.pant * (mv > 1 ? 0.3 : 0.12); tongue.visible = mv > 0.6 || S2 > 0.5;
+    tail.rotation.x = 0.6 - S2 * 0.4; tail.rotation.y = Math.sin(st.t * (S2 > 0.5 ? 6 : 10)) * (0.5 + 0.3 * spd); /* o rabinho abana o tempo todo */
   } };
 }
