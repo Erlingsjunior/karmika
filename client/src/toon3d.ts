@@ -3,7 +3,21 @@ import * as THREE from 'three';
 export const OUTLINES = false; // sem contorno: os pixels definem as formas (estilo Eitr)
 export const ramp = new THREE.DataTexture(new Uint8Array([60, 60, 60, 255, 130, 130, 130, 255, 200, 200, 200, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
 ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
-export const std = (color: number, extra: THREE.MeshToonMaterialParameters = {}) => new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra });
+/* Corte de visão (Erling, 27/10: "toda vez que tivermos elementos que impedem a visão eles são cortados em um círculo que permite ver o que está atrás"):
+   todo material toon do cenário descarta os pixels dentro de um círculo na tela em volta do herói, só para o que está ENTRE a câmera e ele
+   (mais perto da câmera do que o herói, com folga). A borda do círculo é pontilhada. setCutout() é chamado a cada quadro pelo main. */
+export const CUT = { uCut: { value: new THREE.Vector4(-9999, -9999, 0, 0) } };
+export function setCutout(px: number, py: number, radiusPx: number, heroDist: number) { CUT.uCut.value.set(px, py, radiusPx, heroDist); }
+export function cutoutify<M extends THREE.Material>(m: M): M {
+  if ((m as THREE.Material & { userData: { noCut?: boolean } }).userData.noCut) return m;
+  const prev = m.onBeforeCompile;
+  m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut;
+    sh.fragmentShader = sh.fragmentShader.replace('#include <clipping_planes_pars_fragment>', '#include <clipping_planes_pars_fragment>\nuniform vec4 uCut;')
+      .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n{ float dCut = distance(gl_FragCoord.xy, uCut.xy); if (dCut < uCut.z && length(vViewPosition) < uCut.w) { if (dCut < uCut.z * 0.86 || mod(floor(gl_FragCoord.x * 0.5) + floor(gl_FragCoord.y * 0.5), 2.0) < 1.0) discard; } }'); };
+  m.customProgramCacheKey = () => 'cut' + ((m as unknown as { map?: unknown }).map ? 't' : '') + m.type;
+  return m;
+}
+export const std = (color: number, extra: THREE.MeshToonMaterialParameters = {}) => cutoutify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra }));
 export const inkMat = new THREE.MeshBasicMaterial({ color: 0x07060c, side: THREE.BackSide });
 export function ink(m: THREE.Mesh, w = 0.07) {
   if (!OUTLINES) return m; void w;

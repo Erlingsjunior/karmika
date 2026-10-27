@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cutoutify } from './toon3d';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
@@ -25,7 +26,7 @@ export function mergeStatic(root: THREE.Object3D, gradientMap: THREE.Texture | n
       const textured = !!mat.map; if (textured && !geo.attributes.uv) continue;
       const key = textured ? `tex:${mat.uuid}|${m.castShadow ? 1 : 0}` : `${basic ? 'b' : 't'}${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}`;
       let b = buckets.get(key);
-      if (!b) { const nm = textured ? mat : basic ? (new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, side: mat.side }) as unknown as THREE.MeshToonMaterial) : new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: mat.gradientMap ?? gradientMap, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined }); b = { mats: nm, geos: [], meshes: [] }; buckets.set(key, b); }
+      if (!b) { const nm = textured ? mat : basic ? (new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true, side: mat.side }) as unknown as THREE.MeshToonMaterial) : cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: mat.gradientMap ?? gradientMap, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined })); b = { mats: nm, geos: [], meshes: [] }; buckets.set(key, b); }
       m.updateMatrix();
       const gg = geo.index ? geo.toNonIndexed() : geo.clone();
       const ownCol = !textured && mat.vertexColors && !!gg.attributes.color; // cores por vértice (rochas com musgo, etc.) são preservadas

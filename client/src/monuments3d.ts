@@ -192,13 +192,16 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
   } else if (id === 9) { // OS PORTÕES DE BRASAFORJA (27/10): a face da Montanha Negra escavada, o portão colossal com as portas de ferro abertas, dois Ancestrais de pedra de 14 m com machado e martelo, runas acesas, braseiros e a escadaria
     const rock = stone(0x4a443e), rock2 = stone(0x5e5850), gd = flat(0xd9b45a), iron = flat(0x3a3d44), rune = glow(0xff9a3a), fire = glow(0xff6a2a);
     // a montanha: um maciço que sobe atrás do portão e se funde com a encosta (blocos e dodecaedros irregulares)
-    K.box(Wm, 22, Dm * 0.62, cx, 0, Dm * 0.31, rock); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI, rr0 = Wm * 0.5 - 1 + (k % 3); K.add(new THREE.DodecahedronGeometry(3 + (k % 3) * 1.4, 0), k % 2 ? rock : rock2, cx + Math.cos(a) * rr0 * 0.95, 18 + (k % 4) * 2.4, Dm * 0.2 + Math.sin(a) * 2); }
-    for (let k = 0; k < 6; k++) K.add(new THREE.DodecahedronGeometry(2.4 + (k % 3), 0), rock2, cx - Wm / 2 + 3 + k * (Wm - 6) / 5, 23 + (k % 2) * 2, Dm * 0.3 + (k % 3));
+    K.box(Wm, 30, Dm * 0.62, cx, -6, Dm * 0.31, rock); K.box(Wm + 6, 22, Dm * 0.5, cx, -6, Dm * 0.2, rock); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI, rr0 = Wm * 0.5 - 1 + (k % 3); K.add(new THREE.DodecahedronGeometry(3.4 + (k % 3) * 1.6, 0), k % 2 ? rock : rock2, cx + Math.cos(a) * rr0 * 0.95, 22 + (k % 4) * 2.6, Dm * 0.2 + Math.sin(a) * 2); }
+    for (let k = 0; k < 8; k++) K.add(new THREE.DodecahedronGeometry(2.8 + (k % 3), 0), rock2, cx - Wm / 2 + 2 + k * (Wm - 4) / 7, 26 + (k % 2) * 3, Dm * 0.3 + (k % 3) - 2);
     // a escadaria larga e o patamar
     for (let s = 0; s < 4; s++) K.box(Wm * 0.6 - s * 2, 0.4, 1.4, cx, s * 0.4, Dm - 0.7 - s * 1.2, s % 2 ? rock2 : rock); K.box(Wm * 0.6, 0.4, Dm * 0.2, cx, 1.6, Dm * 0.62 + 1.6, rock2);
     // o portão: arco de pedra fundo, moldura de ouro, as portas de ferro abertas para dentro, a escuridão do salão
-    { const gz = Dm * 0.62; const a = K.arch(11, 15, 2.8, 6.6, 8.2, rock2); a.position.set(cx, 2, gz); K.plane(6.4, 11.6, cx, 2 + 5.8, gz - 1.3, dark()); K.box(12.4, 0.6, 3.0, cx, 2 + 15, gz, gd);
-      for (const sx of [-1, 1]) { const leaf = K.add(texBox(0.4, 11, 3.0, 2), iron, cx + sx * 3.1, 2 + 5.5, gz - 1.4, sx * 0.55); for (let k = 0; k < 4; k++) { const b = K.add(new THREE.BoxGeometry(0.46, 0.3, 3.0), gd, 0, -4.4 + k * 2.9, 0); leaf.add(b); } void leaf; }
+    { const gz = Dm * 0.62; const a = K.arch(11, 15, 2.8, 6.6, 8.2, rock2); a.position.set(cx, 2, gz); K.box(12.4, 0.6, 3.0, cx, 2 + 15, gz, gd);
+      /* a porta de ferro fundido, fechada: duas folhas com cintas de ouro, rebites, as argolas e o emblema do martelo */
+      for (const sx of [-1, 1]) { const leaf = K.add(texBox(3.2, 11.2, 0.5, 2), iron, cx + sx * 1.62, 2 + 5.6, gz + 0.2, 0); for (let k = 0; k < 4; k++) { const b = K.add(new THREE.BoxGeometry(3.3, 0.34, 0.56), gd, 0, -4.6 + k * 3.0, 0); leaf.add(b); } for (let k = 0; k < 10; k++) { const rv = K.add(new THREE.SphereGeometry(0.1, 5, 4), gd, -1.35 + (k % 2) * 2.7, -4.8 + Math.floor(k / 2) * 2.3, 0.3, 0, false); leaf.add(rv); }
+        K.add(new THREE.TorusGeometry(0.42, 0.08, 6, 12), gd, cx + sx * 0.75, 2 + 4.6, gz + 0.55, 0, false); }
+      K.add(new THREE.BoxGeometry(0.5, 1.6, 0.2), gd, cx, 2 + 8.6, gz + 0.5, 0, false); K.add(new THREE.BoxGeometry(1.4, 0.6, 0.2), gd, cx, 2 + 9.5, gz + 0.5, 0, false); dark();
       for (let k = 0; k < 7; k++) { const t = k / 6, x = cx - 5.4 + t * 10.8, y = 2 + 8.2 + Math.sin(t * Math.PI) * 4.2; K.add(new THREE.BoxGeometry(0.7, 0.7, 0.12), rune, x, y, gz + 1.45, 0, false); }
       K.out.glows.push({ pos: new THREE.Vector3(cx, 8, gz + 2), color: 0xff8a3a, base: 48 }); }
     // os dois Ancestrais: botas, túnica, barba trançada, elmo com chifres, um com o machado e outro com o martelo

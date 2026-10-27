@@ -1038,7 +1038,7 @@ export function buildCity(): World {
   const addRock = (cx: number, cy: number, big = false, variant = Math.floor(r() * 4)) => {
     const w = big ? 2 : 1;
     for (let dy = 0; dy < w; dy++) for (let dx = 0; dx < w; dx++) if (!free(cx + dx, cy + dy)) return;
-    block({ kind: 'rock', gx: cx, gy: cy, w, h: w, height: big ? 2.6 + r() * 1.4 : 1.1 + r() * 0.8, wall: 0x6b6a68, roof: 0, variant });
+    props.push({ kind: 'rock', gx: cx, gy: cy, w, h: w, height: big ? 2.6 + r() * 1.4 : 1.1 + r() * 0.8, wall: 0x6b6a68, roof: 0, variant }); /* 27/10: pedra não tranca o tile inteiro; só o miolo dela é sólido (SOLID_R no main) */
   };
   const addBones = (cx: number, cy: number, v = Math.floor(r() * 3)) => { if (free(cx, cy)) props.push({ kind: 'bones', gx: cx, gy: cy, w: 1, h: 1, height: 0.4, wall: 0xd8d0b8, roof: 0, variant: v }); };
   const addGrave = (cx: number, cy: number) => { if (free(cx, cy)) props.push({ kind: 'grave', gx: cx, gy: cy, w: 1, h: 1, height: 1.2, wall: 0x7a7a78, roof: 0, variant: Math.floor(r() * 3) }); };
@@ -1255,7 +1255,7 @@ export function buildCity(): World {
     if (map[y][x] !== 'grass' || nearSettle(x, y, 0)) continue;
     const ek = edgeK(x, y);
     if (ek.east > 0.35 && r() < ek.east * 0.95) { const pine = r() < 0.5; props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: pine ? 7 + r() * 4 : 5 + r() * 3, wall: 0x4b2f1c, roof: r() < 0.5 ? 0x2f6a2e : 0x3f7a3a, variant: pine ? 2 : 0 }); map[y][x] = 'tree'; continue; }
-    if (ek.north > 0.4 && r() < ek.north * 0.35) { props.push({ kind: 'rock', gx: x, gy: y, w: 1, h: 1, height: 1 + r() * 2.5 * ek.north, wall: 0x6b6a68, roof: 0, variant: Math.floor(r() * 4) }); map[y][x] = 'wall'; }
+    if (ek.north > 0.4 && r() < ek.north * 0.35) { props.push({ kind: 'rock', gx: x, gy: y, w: 1, h: 1, height: 1 + r() * 2.5 * ek.north, wall: 0x6b6a68, roof: 0, variant: Math.floor(r() * 4) }); }
   }
   const rockDens: Record<Biome, number> = { meadow: 0.004, forest: 0.012, swamp: 0.006, snow: 0.02, ruins: 0.02, rock: 0.07, volcanic: 0.06, enchanted: 0.006, blight: 0.02, jungle: 0.008, coast: 0.01 };
   for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) {
@@ -1477,10 +1477,11 @@ export function buildCity(): World {
       scatter(o.x, o.y, o.top, o.R + 6, 70, (x, y, k) => { const q = k % 5; if (q === 0) props.push({ kind: 'totem', gx: x, gy: y, w: 1, h: 1, height: 3.6, wall: 0, roof: 0, variant: 2 }); else if (q === 1) props.push({ kind: 'fogpatch', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0x3a2a4a, roof: 0x9a5ad0, variant: 0 }); else if (q === 2) props.push({ kind: 'bones', gx: x, gy: y, w: 1, h: 1, height: 0.4, wall: 0xd8d0b8, roof: 0, variant: Math.floor(rnd() * 3) }); else { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 4 + rnd() * 4, wall: 0x2a2226, roof: 0x3a2a40, variant: 1 }); map[y][x] = 'tree'; } }); }
     /* 27/10: os Portões de Brasaforja, a maravilha dos anões: a face da Montanha Negra escavada logo ao norte da vila, com o Grande Salão por dentro (salao3d.ts) */
     { const bf = settlements.find((q) => q.name === 'Brasaforja'); if (bf) { const gx = bf.x - 8, gy = bf.y - 13 - 3 - 12, W = 16, H = 12, hb = groundH(bf.x * T, bf.y * T);
-        pads.push({ x: (gx + W / 2) * T, z: (gy + H / 2) * T, r: 24 * T, h: hb }); clearArea(gx + W / 2, gy + H / 2, 18); /* o pátio e o pé da montanha ficam na altura da vila: o portão não pode flutuar */
+        pads.push({ x: (gx + W / 2) * T, z: (gy + H + 1) * T, r: 13 * T, h: hb }); clearArea(gx + W / 2, gy + H / 2, 18); /* só o pátio e a frente ficam na altura da vila: atrás, a montanha sobe e engole o portão (Erling: "ele deveria entrar na montanha") */
         for (let yy = gy - 3; yy <= bf.y - 12; yy++) for (let xx = gx - 4; xx <= gx + W + 4; xx++) if (inb(xx, yy) && map[yy][xx] !== 'water') map[yy][xx] = 'grass';
         for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx >= gx - 4 && q.gx <= gx + W + 4 && q.gy >= gy - 3 && q.gy <= bf.y - 12) props.splice(i, 1); }
         block({ kind: 'monument', gx, gy, w: W, h: H, height: 30, wall: 0, roof: 0, variant: 9 });
+        for (let yy = gy + 8; yy <= gy + H - 1; yy++) for (let xx = gx + 3; xx <= gx + W - 4; xx++) if (inb(xx, yy)) map[yy][xx] = 'plaza'; /* a escadaria e o patamar se sobem: dá para encostar na porta */
         for (let yy = gy + H; yy <= gy + H + 3; yy++) for (let xx = gx + 3; xx <= gx + W - 4; xx++) if (inb(xx, yy)) map[yy][xx] = 'plaza';
         for (let yy = gy + H + 4; yy <= bf.y - 2; yy++) for (const ox of [-1, 0, 1]) if (inb(bf.x + ox, yy) && map[yy][bf.x + ox] !== 'wall') map[yy][bf.x + ox] = 'road';
         landmarkDoor['Brasaforja'] = { x: gx + W / 2 + 1.6, y: gy + H + 1.6 }; pois.push({ name: 'Portões de Brasaforja', x: gx + W / 2, y: gy + H + 2, biome: 'volcanic' });

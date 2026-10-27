@@ -11,6 +11,7 @@ import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
 import { buildMonument } from './monuments3d';
 import { buildVapor } from './vapor3d';
+import { cutoutify } from './toon3d';
 import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof } from './toon3d';
 /** tampa de cada baú de tesouro do mundo (por prop), para a tampa abrir quando o jogador saqueia */
 export const chestLids = new Map<object, THREE.Object3D>();
@@ -409,7 +410,7 @@ export function buildWorld(world: World): WorldObjs {
         for (let i = 0; i < pa.count; i++) { const up = Math.max(0, nrm.getY(i)); const v = 0.86 + 0.28 * Math.sin(i * 12.9 + seed); const c = base.clone().multiplyScalar(v); if (up > 0.72 && p.wall !== 0x5a5048) c.lerp(moss, (up - 0.72) * 1.6 * (0.5 + 0.5 * Math.sin(i * 3.3 + seed))); cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b; }
         geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); L.own.push(geo); return geo;
       };
-      const rm = new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp });
+      const rm = cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp }));
       const m = new THREE.Mesh(mkRock(p.gx * 13 + p.gy), rm);
       const sx = Wm * 0.52 * (0.85 + r() * 0.3), sy = p.height * 0.55, sz = Dm * 0.52 * (0.85 + r() * 0.3);
       m.scale.set(sx, sy, sz); m.position.set(Wm / 2, sy * 0.45, Dm / 2); m.rotation.y = r() * 6; m.castShadow = m.receiveShadow = true; g.add(m);
@@ -694,7 +695,7 @@ export function buildWorld(world: World): WorldObjs {
         const toon = (mat as THREE.Material & { isMeshToonMaterial?: boolean }).isMeshToonMaterial === true;
         const key = toon ? `t|${mat.map ? mat.map.uuid : ''}|${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}` : `i|${mat.uuid}|${m.castShadow ? 1 : 0}`;
         let b = buckets!.get(key);
-        if (!b) { b = { mat: toon ? new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined }) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
+        if (!b) { b = { mat: toon ? cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined })) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
         const gg = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
         for (const n of Object.keys(gg.attributes)) if (n !== 'position' && n !== 'normal' && n !== 'uv' && n !== 'color') gg.deleteAttribute(n);
         if (!gg.attributes.normal) gg.computeVertexNormals();
