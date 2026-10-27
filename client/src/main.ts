@@ -3926,7 +3926,8 @@ function frame() {
   try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   perf.cpuS += performance.now() - c0; perf.n++;
 }
-const __BUILD__ = '20261019-2340';
+declare const __BUILD_ID__: string;
+const __BUILD__ = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
 let fpsN = 0, fpsT = 0, poiTick = -1;
 /* medidor por seção do quadro (/perf no chat): quanto da CPU vai para cada parte */
 let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;

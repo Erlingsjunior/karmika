@@ -1,7 +1,12 @@
 import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+/* a versão que aparece no rodapé do jogo: data do build + commit (para saber na hora se o build está atualizado) */
+const gitHash = (() => { try { return execSync('git rev-parse --short HEAD').toString().trim(); } catch { return 'sem-git'; } })();
+const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
 
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(`${stamp} · ${gitHash}`) },
   resolve: {
     alias: { '@karmika/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
   },
