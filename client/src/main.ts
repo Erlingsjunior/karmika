@@ -71,6 +71,7 @@ import { questCat, createQuests, SIDE, WARRIOR, RACE_ROADS } from './quests';
 import { HUMAN_ROAD } from './campanha';
 import { createVidente, PATHS } from './vidente';
 import { buildInterior, type Interior } from './interiors3d';
+import { buildDwarfHall } from './salao3d';
 import { DualRenderPass, fine } from './dual3d';
 import { createDialog, type Choice, type Reply, type Step } from './dialog';
 import { ECOS, FRIO } from './falas';
@@ -3072,6 +3073,19 @@ function updateBishop(dt: number) {
     tick(); audio.spell('shock'); }
 }
 let exiting = false;
+/* o Grande Salão de Brasaforja (27/10): a maravilha dos anões, por dentro dos Portões na Montanha Negra */
+const HALL_GATE = city.props.find((p) => p.kind === 'monument' && p.variant === 9) ?? null;
+function enterHall(p: (typeof city.props)[number]) {
+  withFade(() => {
+    const int = buildDwarfHall(p.gx * 31 + p.gy);
+    int.group.position.set(IX, 0, IZ); scene.add(int.group);
+    inside = { int, ret: { x: p.gx + p.w / 2 + 0.5, y: p.gy + p.h + 1.8 }, prop: p };
+    objs.group.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false;
+    state.fx = (IX + int.W / 2) / T; state.fy = (IZ + int.D - 0.8) / T; state.path = [];
+    heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D / 2; camY = 0;
+    game.logMsg('⛏ O Grande Salão de Brasaforja: a montanha respira aqui dentro', '#ffb060');
+  });
+}
 function exitHouse() {
   if (!inside || exiting) return; const ins = inside;
   if (ins.crypt && ins.crypt > 1) { enterCrypt(ins.crypt - 1, ins.prop); return; }
@@ -3594,6 +3608,7 @@ function findInter(): Inter | null {
     if (cryptInt.stairs && f < 4) { const sx = IX + cryptInt.stairs.x, sz = IZ + cryptInt.stairs.z; add(Math.hypot(hx - sx, hz - sz), 3.4, open ? `E — Descer a escada em espiral (andar ${f + 1})` : `🩸 Escada em espiral — a taça pede ${BLOOD_NEED[f - 1] - Math.floor(blood[f - 1])} litros de sangue`, () => { if (open) enterCrypt(f + 1, ins.prop); }); }
     if (cryptInt.door && f === 4) { const dx = IX + cryptInt.door.x, dz = IZ + cryptInt.door.z, have = SEALS.filter((id) => inv.has(id)).length; add(Math.hypot(hx - dx, hz - dz), 3.4, have < 3 ? `🔒 Porta do Bispo — ${have}/3 selos (caem dos elites dos andares 2, 3 e 4)` : !open ? `🩸 Porta do Bispo — a taça ainda pede ${BLOOD_NEED[3] - Math.floor(blood[3])} litros` : 'E — Quebrar os três selos e abrir a Porta do Bispo', () => { if (have >= 3 && open) { cryptInt!.door!.open(); audio.boom(); game.logMsg('✝ Os selos estalam e a porta se abre. Além dela, o Bispo Caído.', '#ffd24a'); setTimeout(() => enterCrypt(5, ins.prop), 1400); } }); } }
     return best; }
+  if (HALL_GATE) { const gx0 = (HALL_GATE.gx + HALL_GATE.w / 2 + 0.5) * T, gz0 = (HALL_GATE.gy + HALL_GATE.h) * T + 1.2; add(Math.max(0, Math.hypot(hx - gx0, hz - gz0) - 1.8) + 0.01, 3.2, 'E — Entrar no Grande Salão de Brasaforja', () => enterHall(HALL_GATE)); }
   for (const p of city.props) if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church') { const dd = DOOR_OF.get(p); if (!dd) continue; const catLocked = p.kind === 'church' && p.variant === 2 && state.night < 0.5; add(Math.max(0, Math.hypot(hx - dd.x, hz - dd.z) - (p.kind === 'house' ? 0.6 : 1.4)) + 0.01, 2.8, catLocked ? '🔒 As portas da Catedral só se abrem à noite' : `E — Entrar${p.kind === 'temple' ? ' no Templo' : p.kind === 'church' ? (p.variant === 2 ? ' na Catedral Abandonada' : ' na Igreja Abandonada') : p.variant === 4 ? ' na Taverna' : p.variant === 5 ? ' na Loja do Armeiro' : ''}`, () => { if (catLocked) { game.logMsg('🌙 As portas de ferro não cedem. Dizem que a Catedral só respira depois que o sol morre.', '#c8b8ff'); return; } if (p.kind === 'church' && p.variant === 2) enterCrypt(1, p); else enterHouse(p); }); }
   if (!sitting) for (const p of city.props) if (p.kind === 'fountain') { const fx = (p.gx + p.w / 2) * T, fz = (p.gy + p.h / 2) * T, isHome = Math.abs(home.x - (p.gx + p.h / 2)) < 0.6 && Math.abs(home.y - (p.gy + p.h + 1)) < 0.6;
     /* a fonte que também é Fonte da Visão: E joga a moeda (a animação e a história voltam); Shift+E torna a fonte o seu lar */

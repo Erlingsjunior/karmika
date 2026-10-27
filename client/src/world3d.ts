@@ -145,11 +145,11 @@ export function buildWorld(world: World): WorldObjs {
       g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + ch.y, p.gy * T + ch.z));
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
-    } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
+    } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
       /* cidade média: muralha com caminho de ronda, torres, portões, escadarias, castelo, academias e a catedral (city3d.ts) */
       const v = p.variant ?? 0; let b: Built | null = null;
       if (p.kind === 'quay') { const sd = v === 1 ? -1 : 1, pts: { x: number; z: number }[] = []; for (let k = 0; k <= 4; k++) { const ty = p.gy + k * 0.5, ex = canalX(ty) - sd * CANAL_HW; pts.push({ x: ex * T - p.gx * T, z: k * 0.5 * T }); } b = buildQuay(pts, sd); } else
-      if (p.kind === 'monument') b = buildMonument(v, Wm, Dm); else if (p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane') b = buildVapor(p.kind, v, Wm, Dm, p.gx * 31 + p.gy * 17); else
+      if (p.kind === 'monument') b = buildMonument(v, Wm, Dm); else if (p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico') b = buildVapor(p.kind, v, Wm, Dm, p.gx * 31 + p.gy * 17); else
       if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0, p.len ?? 6, p.ox ?? 1, p.oz ?? 1); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17, p.len, p.broken ?? 0, p.ox ?? 1, p.oz ?? 1); else
       if (p.kind === 'landmark') b = buildLandmark(v, Wm, Dm); else if (p.kind === 'palisade') b = buildPalisade(v === 1, p.gx * 3 + p.gy); else if (p.kind === 'totem') b = buildTotem(v); else
       if (p.kind === 'rwall') b = buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
@@ -536,7 +536,7 @@ export function buildWorld(world: World): WorldObjs {
     return g;
   }
 
-  const STATIC_KINDS = new Set(['dock', 'chimney', 'crane', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor']);
+  const STATIC_KINDS = new Set(['dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);

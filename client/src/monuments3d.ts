@@ -189,6 +189,27 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     // lampiões a gás nos quatro cantos e a placa de latão
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const x = cx + sx * (Wm / 2 - 0.9), z = cz + sz * (Dm / 2 - 0.9); K.cyl(0.08, 0.11, 3.4, x, 1.9, z, iron, 6); K.add(new THREE.BoxGeometry(0.36, 0.44, 0.36), glow(0xffd27a), x, 5.5, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 5.6, z), color: 0xffc070, base: 12 }); }
     K.plane(2.2, 0.6, cx, 1.1, cz + Dm / 2 - 0.48, brass);
+  } else if (id === 9) { // OS PORTÕES DE BRASAFORJA (27/10): a face da Montanha Negra escavada, o portão colossal com as portas de ferro abertas, dois Ancestrais de pedra de 14 m com machado e martelo, runas acesas, braseiros e a escadaria
+    const rock = stone(0x4a443e), rock2 = stone(0x5e5850), gd = flat(0xd9b45a), iron = flat(0x3a3d44), rune = glow(0xff9a3a), fire = glow(0xff6a2a);
+    // a montanha: um maciço que sobe atrás do portão e se funde com a encosta (blocos e dodecaedros irregulares)
+    K.box(Wm, 22, Dm * 0.62, cx, 0, Dm * 0.31, rock); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI, rr0 = Wm * 0.5 - 1 + (k % 3); K.add(new THREE.DodecahedronGeometry(3 + (k % 3) * 1.4, 0), k % 2 ? rock : rock2, cx + Math.cos(a) * rr0 * 0.95, 18 + (k % 4) * 2.4, Dm * 0.2 + Math.sin(a) * 2); }
+    for (let k = 0; k < 6; k++) K.add(new THREE.DodecahedronGeometry(2.4 + (k % 3), 0), rock2, cx - Wm / 2 + 3 + k * (Wm - 6) / 5, 23 + (k % 2) * 2, Dm * 0.3 + (k % 3));
+    // a escadaria larga e o patamar
+    for (let s = 0; s < 4; s++) K.box(Wm * 0.6 - s * 2, 0.4, 1.4, cx, s * 0.4, Dm - 0.7 - s * 1.2, s % 2 ? rock2 : rock); K.box(Wm * 0.6, 0.4, Dm * 0.2, cx, 1.6, Dm * 0.62 + 1.6, rock2);
+    // o portão: arco de pedra fundo, moldura de ouro, as portas de ferro abertas para dentro, a escuridão do salão
+    { const gz = Dm * 0.62; const a = K.arch(11, 15, 2.8, 6.6, 8.2, rock2); a.position.set(cx, 2, gz); K.plane(6.4, 11.6, cx, 2 + 5.8, gz - 1.3, dark()); K.box(12.4, 0.6, 3.0, cx, 2 + 15, gz, gd);
+      for (const sx of [-1, 1]) { const leaf = K.add(texBox(0.4, 11, 3.0, 2), iron, cx + sx * 3.1, 2 + 5.5, gz - 1.4, sx * 0.55); for (let k = 0; k < 4; k++) { const b = K.add(new THREE.BoxGeometry(0.46, 0.3, 3.0), gd, 0, -4.4 + k * 2.9, 0); leaf.add(b); } void leaf; }
+      for (let k = 0; k < 7; k++) { const t = k / 6, x = cx - 5.4 + t * 10.8, y = 2 + 8.2 + Math.sin(t * Math.PI) * 4.2; K.add(new THREE.BoxGeometry(0.7, 0.7, 0.12), rune, x, y, gz + 1.45, 0, false); }
+      K.out.glows.push({ pos: new THREE.Vector3(cx, 8, gz + 2), color: 0xff8a3a, base: 48 }); }
+    // os dois Ancestrais: botas, túnica, barba trançada, elmo com chifres, um com o machado e outro com o martelo
+    for (const sx of [-1, 1]) { const x = cx + sx * (Wm * 0.5 - 4.2), z = Dm * 0.62 + 1.2, m = rock2; K.box(5, 2.4, 5, x, 2, z, rock); K.box(1.3, 2.2, 1.6, x - 1, 4.4, z, m); K.box(1.3, 2.2, 1.6, x + 1, 4.4, z, m); K.box(3.8, 5.2, 2.6, x, 6.6, z, m); K.box(4.6, 1.2, 3.0, x, 11.6, z, m); K.add(new THREE.SphereGeometry(1.5, 9, 7), m, x, 14.2, z); K.box(3.0, 1.6, 2.6, x, 14.9, z, iron); for (const hx of [-1, 1]) K.add(new THREE.ConeGeometry(0.45, 2.4, 6), gd, x + hx * 1.9, 16.2, z, 0).rotation.z = -hx * 0.7;
+      K.box(2.2, 3.4, 0.9, x, 9.4, z + 1.5, rock); for (let k = 0; k < 3; k++) K.box(0.5, 0.5, 0.3, x - 0.6 + k * 0.6, 8.4 - k * 0.3, z + 1.95, gd); // barba trançada com anéis
+      K.box(0.5, 10, 0.5, x + sx * 2.9, 2.4, z + 0.8, flat(0x4a3220)); if (sx < 0) { K.box(2.8, 2.2, 0.5, x + sx * 2.9, 11.8, z + 0.8, iron); } else { K.box(2.4, 1.6, 1.6, x + sx * 2.9, 12.0, z + 0.8, iron); }
+      K.add(new THREE.BoxGeometry(0.6, 0.3, 0.12), rune, x - 0.7, 14.3, z + 1.45, 0, false); K.add(new THREE.BoxGeometry(0.6, 0.3, 0.12), rune, x + 0.7, 14.3, z + 1.45, 0, false); }
+    // braseiros de ferro na escadaria e tochas na face da rocha; fumaça das chaminés da forja lá no alto
+    for (const sx of [-1, 1]) { const x = cx + sx * 8.6, z = Dm - 1.2; K.cyl(0.8, 0.5, 1.6, x, 0, z, iron, 8); K.cyl(1.1, 0.8, 0.4, x, 1.6, z, iron, 8); K.add(new THREE.ConeGeometry(0.7, 1.8, 7), fire, x, 2.9, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 2.8, z), color: 0xff7a2a, base: 42 }); }
+    for (let k = 0; k < 4; k++) { const x = cx - Wm * 0.36 + k * (Wm * 0.72 / 3); K.torch(x, 2 + 9, Dm * 0.62 + 1.6, 0xff8a3a); }
+    for (const sx of [-1, 1]) { K.cyl(0.6, 0.8, 4, cx + sx * Wm * 0.22, 22, Dm * 0.25, stone(0x4a3a30), 8); K.out.smoke.push(new THREE.Vector3(cx + sx * Wm * 0.22, 26.4, Dm * 0.25)); }
   } else { // 2 PINÁCULO DE MARFIM
     const iv = stone(0xece4d0), ivD = stone(0xc8c0a8), gd = flat(0xd8b860), H = 70, blue = glow(0x9ad8ff);
     // embasamento em degraus redondos e colunata

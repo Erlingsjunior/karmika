@@ -30,7 +30,7 @@ function kit() {
   return { g, out, add, box, cyl, lamp, bollard, funnel, rivets };
 }
 
-export function buildVapor(kind: 'dock' | 'boat' | 'chimney' | 'crane', v: number, Wm: number, Dm: number, seed: number): Built {
+export function buildVapor(kind: 'dock' | 'boat' | 'chimney' | 'crane' | 'portico', v: number, Wm: number, Dm: number, seed: number): Built {
   const K = kit(); const cx = Wm / 2, cz = Dm / 2; const rr = (() => { let s = seed | 0; return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; }; })();
   if (kind === 'dock') {
     if (v === 2) { // píer sobre a água: estacas, tábuas, corrimão de corrente, lampião na ponta
@@ -65,6 +65,21 @@ export function buildVapor(kind: 'dock' | 'boat' | 'chimney' | 'crane', v: numbe
     for (let k = 1; k <= 3; k++) K.cyl(r * (1.02 - k * 0.06), r * (1.02 - k * 0.06), 0.3, cx, 1.2 + h * k / 3.6, cz, flat(IRON), 10);
     K.cyl(r * 0.95, r * 0.8, 0.5, cx, 1.2 + h, cz, flat(IRON), 10); K.out.smoke.push(new THREE.Vector3(cx, 1.2 + h + 0.6, cz));
     if (v === 0) { K.cyl(0.14, 0.14, h * 0.9, cx + r + 0.3, 1.2, cz, flat(IRON), 5); for (let k = 0; k < h * 0.9 / 0.5; k++) K.box(0.5, 0.05, 0.08, cx + r + 0.3, 1.5 + k * 0.5, cz, flat(IRON)); } // escada de ferro
+  } else if (kind === 'portico') { // pórtico de entrada (Erling, 27/10: "porta gigante com moldura em relevo de pedra e colunatas de entrada"): escadaria, colunata, entablamento com o relevo, e o portão monumental ao fundo
+    const st = stone(v === 1 ? 0x3a3634 : 0x8a847a), stD = stone(v === 1 ? 0x2a2628 : 0x6a655c), brassM = flat(BRASS), ironM = flat(IRON), darkM = flat(0x0a0806), doorM = wood(0x3a2616);
+    const H = 7.2, nCol = Math.max(4, Math.round(Wm / 2.6)) | 0;
+    for (let s0 = 0; s0 < 3; s0++) K.box(Wm - s0 * 0.6, 0.3, 1.0, cx, s0 * 0.3, Dm - 0.5 - s0 * 0.9, s0 % 2 ? st : stD); K.box(Wm, 0.3, Dm - 2.4, cx, 0.6, (Dm - 2.4) / 2, st);
+    for (let k = 0; k < nCol; k++) { const x = 0.9 + k * (Wm - 1.8) / (nCol - 1), z = Dm - 2.6; K.box(1.1, 0.4, 1.1, x, 0.9, z, stD); K.cyl(0.36, 0.42, H - 1.9, x, 1.3, z, st, 10); for (const y of [2.4, 4.4, 6.0]) K.cyl(0.46, 0.46, 0.2, x, y, z, v === 1 ? brassM : ironM, 10); K.box(1.0, 0.5, 1.0, x, H - 0.6, z, stD); }
+    K.box(Wm, 0.9, 1.8, cx, H - 0.1, Dm - 2.6, st); K.box(Wm + 0.4, 0.3, 2.2, cx, H + 0.8, Dm - 2.6, stD); // entablamento e cornija
+    for (let k = 0; k < nCol - 1; k++) K.add(new THREE.CircleGeometry(0.28, 6), brassM, 0.9 + (k + 0.5) * (Wm - 1.8) / (nCol - 1), H + 0.35, Dm - 1.68, 0, 0, false); // relevos no friso
+    { const ped = K.add(new THREE.CylinderGeometry(0, Wm * 0.55, 1.6, 3), st, cx, H + 1.1 + 0.8, Dm - 2.6, 0); ped.rotation.y = Math.PI / 6; ped.scale.set(1, 1, 0.5); ped.rotation.x = 0; // frontão triangular
+      if (v === 1) { K.add(new THREE.OctahedronGeometry(0.5, 0), glow(0xff9a3a), cx, H + 1.9, Dm - 1.5, 0, 0, false); } else { const gear = K.add(new THREE.TorusGeometry(0.7, 0.18, 6, 12), brassM, cx, H + 1.9, Dm - 1.5, 0, 0, false); for (let q = 0; q < 8; q++) { const a = q / 8 * Math.PI * 2; K.add(new THREE.BoxGeometry(0.26, 0.26, 0.2), brassM, cx + Math.cos(a) * 0.98, H + 1.9 + Math.sin(a) * 0.98, Dm - 1.5, 0, a, false); } void gear; } }
+    // o portão monumental ao fundo: moldura em relevo (três camadas de pedra), portas duplas com cintas de latão, lampiões
+    { const dw = Math.min(5.2, Wm * 0.42), dh = H - 1.0, z = 0.7; K.box(dw + 3.2, dh + 1.6, 0.9, cx, 0, z, stD); K.box(dw + 2.0, dh + 1.0, 1.2, cx, 0, z + 0.1, st); K.box(dw + 1.0, dh + 0.5, 1.4, cx, 0, z + 0.2, stD);
+      for (let k = 0; k < 6; k++) K.add(new THREE.BoxGeometry(0.5, 0.5, 0.2), brassM, cx - dw / 2 - 1.1 + k * ((dw + 2.2) / 5), dh + 0.9, z + 0.9, 0, 0, false); // o relevo do lintel
+      for (const sx of [-1, 1]) { const leaf = K.add(texBox(dw / 2 - 0.08, dh, 0.3, 2), doorM, cx + sx * (dw / 4 + 0.04), dh / 2, z + 1.0, 0); for (let k = 0; k < 4; k++) { const b = K.add(new THREE.BoxGeometry(dw / 2 - 0.2, 0.22, 0.34, 1, 1, 1), brassM, 0, -dh / 2 + 0.8 + k * ((dh - 1.6) / 3), 0, 0); leaf.add(b); } K.add(new THREE.TorusGeometry(0.22, 0.05, 6, 10), brassM, cx + sx * 0.5, dh * 0.45, z + 1.2, 0, 0, false); }
+      K.add(new THREE.PlaneGeometry(dw, 0.6), darkM, cx, dh - 0.3, z + 1.17, 0, 0, false);
+      for (const sx of [-1, 1]) { const x = cx + sx * (dw / 2 + 1.9); K.box(0.3, 0.3, 0.5, x, 3.6, z + 0.9, ironM); K.add(new THREE.BoxGeometry(0.42, 0.52, 0.42), glow(0xffd27a), x, 3.2, z + 1.2, 0, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 3.2, z + 1.8), color: 0xffc070, base: 16 }); } }
   } else if (kind === 'crane') {
     const ry = rr() < 0.5 ? 0.5 : -0.6;
     K.box(2.2, 0.5, 2.2, cx, 0, cz, stone(0x6e6a64)); K.cyl(0.55, 0.7, 1.0, cx, 0.5, cz, flat(IRON), 10);
