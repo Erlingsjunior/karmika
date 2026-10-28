@@ -70,6 +70,17 @@ function startServer(opts = {}) {
     try { if (dataFile && fs.existsSync(dataFile)) store = { ...store, ...JSON.parse(fs.readFileSync(dataFile, 'utf8')) }; } catch (e) { log('não deu para ler os dados da sala:', e.message); }
     let saveT = null; const saveStore = () => { if (!dataFile || saveT) return; saveT = setTimeout(() => { saveT = null; try { fs.writeFileSync(dataFile, JSON.stringify(store)); } catch (e) { log('não deu para salvar os dados da sala:', e.message); } }, 400); };
     const lc = (n) => String(n || '').trim().toLowerCase();
+    /* ---- AS CASAS (28/10, Erling: "a casa fica salva no MEU servidor, não no save do cara"; "mesmo quando eu reseto o servidor o
+       save deve manter os dados de casa"). Arquivo próprio, ao lado dos dados da sala e NUNCA apagado junto com eles. O servidor é
+       a referência (o "de-para"): posição, tamanho, andamento, dono. O chão é disputado: dois terrenos não se sobrepõem. ---- */
+    const casasFile = opts.casasFile || (dataFile ? path.join(path.dirname(dataFile), 'casas-dados.json') : null);
+    let casas = {}; try { if (casasFile && fs.existsSync(casasFile)) casas = JSON.parse(fs.readFileSync(casasFile, 'utf8')) || {}; } catch (e) { log('não deu para ler as casas:', e.message); }
+    let casaT = null; const saveCasas = () => { if (!casasFile || casaT) return; casaT = setTimeout(() => { casaT = null; try { const tmp = casasFile + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(casas, null, 1)); fs.renameSync(tmp, casasFile); } catch (e) { log('não deu para salvar as casas:', e.message); } }, 800); };
+    const casaKey = (acc, char) => acc + '|' + lc(char);
+    const num = (v) => Number.isFinite(+v) ? +v : null;
+    const casaOf = (h) => casas[casaKey(h.acc, h.char)] || null;
+    const casaList = () => Object.values(casas).map((c) => ({ char: c.char, nick: c.nick, name: c.name, gx: c.gx, gy: c.gy, w: c.w, h: c.h, done: c.done >= c.work, signed: !!c.signed }));
+    const overlapC = (a, b) => a.gx < b.gx + b.w + 1 && a.gx + a.w + 1 > b.gx && a.gy < b.gy + b.h + 1 && a.gy + a.h + 1 > b.gy;
     const byName = (n) => [...players.values()].find((p) => lc(p.name) === lc(n));
     /** carta para alguém: entrega na hora se estiver na sala; senão guarda até a pessoa entrar */
     function post(letter) { const to = byName(letter.to); if (to) { send(to.ws, { t: 'mail', letter }); return true; } (store.mail[lc(letter.to)] ||= []).push(letter); if (store.mail[lc(letter.to)].length > 200) store.mail[lc(letter.to)].shift(); saveStore(); return false; }
@@ -140,6 +151,16 @@ function startServer(opts = {}) {
         case 'a:dm': { const to = String(m.to || ''); const T = A(to); const text = String(m.text || '').slice(0, 500).trim(); if (!T || !text) break; if (!me.friends.includes(to)) { send(h.ws, { t: 'a:sys', text: 'Só dá para conversar com amigos.' }); break; }
           const msg = { t: 'a:dm', from: h.acc, fromNick: me.nick, to, text, at: Date.now() }; if (connsOf(to).length) sendAcc(to, msg); else { (store.dmq[to] ||= []).push(msg); if (store.dmq[to].length > 200) store.dmq[to].shift(); saveStore(); } sendAcc(h.acc, msg); break; }
         case 'a:list': send(h.ws, friendsMsg(h.acc)); break;
+        case 'h:get': { if (!h.char) break; send(h.ws, { t: 'h:mine', house: casaOf(h) }); send(h.ws, { t: 'h:all', list: casaList() }); break; }
+        case 'h:sync': { if (!h.char) break; const c = m.house || {}; const k = casaKey(h.acc, h.char), old = casas[k];
+          const v = { gx: num(c.gx), gy: num(c.gy), w: num(c.w), h: num(c.h), work: num(c.work), done: num(c.done) }; if (Object.values(v).some((x) => x === null) || v.w < 1 || v.h < 1 || v.w > 12 || v.h > 12) break;
+          const clash = Object.entries(casas).find(([kk, o]) => kk !== k && overlapC(v, o));
+          if (clash) { send(h.ws, { t: 'h:deny', why: `Esse chão já é de ${clash[1].char} (${clash[1].name}).`, house: old || null }); break; }
+          if (old && (old.gx !== v.gx || old.gy !== v.gy) && old.done >= old.work) { send(h.ws, { t: 'h:mine', house: old }); break; } /* casa pronta não muda de lugar pelo save do jogador */
+          casas[k] = { ...v, id: String(c.id || 'casa').slice(0, 32), name: String(c.name || 'Casa').slice(0, 48), signed: !!c.signed, owner: String(c.owner || h.char).slice(0, 24), contract: !!c.contract,
+            robots: Array.isArray(c.robots) ? c.robots.slice(0, 4) : [], char: h.char, nick: me.nick, acc: h.acc, since: old?.since || Date.now(), at: Date.now() };
+          saveCasas(); const L = { t: 'h:all', list: casaList() }; for (const x of hubs) send(x.ws, L); break; }
+        case 'h:del': { if (!h.char) break; const k = casaKey(h.acc, h.char); if (casas[k] && casas[k].done < casas[k].work) { delete casas[k]; saveCasas(); const L = { t: 'h:all', list: casaList() }; for (const x of hubs) send(x.ws, L); } break; }
         /* 26/10 (Erling): o CORREIO DA CONTA — compras do Shop e cartas entre jogadores chegam aqui, fora do mundo; o jogador decide
            para qual personagem mandar os anexos (aí vão para a caixa de correio daquele personagem) */
         case 'a:mlist': send(h.ws, { t: 'a:mail', list: store.amail[h.acc] || [] }); break;

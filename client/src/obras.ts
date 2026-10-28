@@ -13,7 +13,8 @@ import type { Whole } from './build';
 /** work = turnos de trabalho que a obra pede; done = turnos já trabalhados (fração). robot = o Ajudante de Obra plantado no canteiro. */
 export interface HomeSave { id: string; name: string; gx: number; gy: number; w: number; h: number; work: number; done: number; signed: boolean; owner: string;
   /** antigo (um robô só) — migra para robots */ robot?: Robot;
-  /** 28/10: até 4 Ajudantes de Obra ao mesmo tempo; cada um trabalha no seu canto do canteiro (slot 0..3) e soma turnos à obra */ robots?: Robot[] }
+  /** 28/10: até 4 Ajudantes de Obra ao mesmo tempo; cada um trabalha no seu canto do canteiro (slot 0..3) e soma turnos à obra */ robots?: Robot[];
+  /** 28/10: a licença da Companhia para usar Ajudantes nesta obra (um Contrato de Obra Automatizada por casa) */ contract?: boolean }
 export interface Robot { tier: number; until: number; last: number; hp: number; dead?: number; slot: number }
 export const MAX_ROBOTS = 4;
 /** 1 turno de Karmika = 30 min reais; 6 turnos = 1 dia */
@@ -23,13 +24,16 @@ export const TURN_MS = 30 * 60 * 1000;
 const KEY = 'karmika.casa.v1', OLD = 'karmika.home.v1';
 try { const o = JSON.parse(localStorage.getItem(OLD) || 'null'); if (o && typeof o.gx === 'number' && typeof o.gy === 'number') { if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(o)); localStorage.removeItem(OLD); } } catch { /* */ }
 export const loadHome = (): HomeSave | null => { try { const h = JSON.parse(localStorage.getItem(KEY) || 'null'); return h && [h.gx, h.gy, h.w, h.h, h.work, h.done].every((v) => Number.isFinite(v)) ? h : null; } catch { return null; } };
-const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } };
+/** quem ouve as mudanças da casa (o main.ts manda para o servidor) */
+let onSaveFn: ((h: HomeSave | null) => void) | null = null;
+export const onHomeSave = (f: (h: HomeSave | null) => void) => { onSaveFn = f; };
+const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } try { onSaveFn?.(h); } catch { /* */ } };
 
 export function createObras(ctx: {
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
   /** a casa pronta entra no mundo como prop (e sai, se for demolida) */ addHouse(h: HomeSave): void;
-  /** multiplicador do trabalho do herói na obra (Contrato de Obra Automatizada = 2) */ workK?(): number;
+  /** o Contrato de Obra Automatizada na mochila (a licença dos robôs) */ hasContract?(): boolean; takeContract?(): boolean;
   heroName(): string; particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   /** Sentinelas de pé (x, z em metros; r = alcance; until = até quando) */ sentries(): { x: number; z: number; r: number; until: number }[];
   /** um bicho vivo perto deste ponto? (só existe quando o herói está por perto) */ enemyNear(x: number, z: number, r: number): boolean;
@@ -129,12 +133,13 @@ export function createObras(ctx: {
     get home() { return home; },
     get working() { return working; },
     busy: () => !!home,
-    start(w: Whole, gx: number, gy: number) { home = { id: w.id, name: w.name, gx, gy, w: w.w, h: w.h, work: w.work, done: 0, signed: false, owner: ctx.heroName() }; saveHome(home); ctx.block(gx, gy, w.w, w.h, true); buildSite(home);
+    start(w: Whole, gx: number, gy: number) { if (![gx, gy].every(Number.isFinite)) return; home = { id: w.id, name: w.name, gx, gy, w: w.w, h: w.h, work: w.work, done: 0, signed: false, owner: ctx.heroName() }; saveHome(home); ctx.block(gx, gy, w.w, w.h, true); buildSite(home); if (ctx.hasContract?.() && ctx.takeContract?.()) { home.contract = true; saveHome(home); ctx.log('📜 O Contrato de Obra Automatizada que estava na mochila foi vinculado a esta obra: já dá para chamar os Ajudantes.', '#ffe08a'); }
       ctx.log(`🏗 O canteiro de ${w.name} está marcado e o material descarregado. A obra pede ${w.work} turnos de trabalho (${w.work / 6} dias de Karmika): trabalhe nela (E) entre uma aventura e outra, ou contrate um Ajudante de Obra na Caravana de Latão — e proteja-o com Sentinelas.`, '#ffe08a'); },
     /** liga/desliga o trabalho do herói na obra */
     toggleWork() { if (!home || home.done >= home.work) return; working = !working; ctx.log(working ? `🔨 Você arregaça as mangas: cada minuto aqui é obra subindo (${fmtT(home.done)} de ${home.work} turnos). Saia de perto ou aperte E para parar.` : `🔨 Você larga as ferramentas. A obra está em ${fmtT(home.done)} de ${home.work} turnos.`, '#ffe08a'); },
     /** planta o Ajudante de Obra no canteiro (tier 0..2 = Mk I, II, III: 1, 2 ou 4 turnos) */
     deployRobot(tier: number, leftMs?: number): boolean { if (!home || home.done >= home.work) { ctx.log('🦾 O Ajudante de Obra só trabalha num canteiro de obra inteira — compre o projeto no B → Obras inteiras e marque o lugar.', '#ff9a8a'); return false; }
+      if (!home.contract) { ctx.log('🦾 A Companhia só manda Ajudantes para obras com o Contrato de Obra Automatizada (a licença dos robôs). Compre um na Caravana de Latão e use: ele se vincula a esta obra.', '#ff9a8a'); return false; }
       const L = live(); if (L.length >= MAX_ROBOTS) { ctx.log(`🦾 A obra já tem ${MAX_ROBOTS} Ajudantes trabalhando — é o máximo.`, '#ff9a8a'); return false; }
       const used = new Set((home.robots ?? []).filter((r) => !r.dead && r.until > Date.now()).map((r) => r.slot)); let slot = 0; while (used.has(slot)) slot++;
       home.robots = (home.robots ?? []).filter((r) => r.slot !== slot); /* a sucata daquele canto sai: o novo robô recolhe */
@@ -142,6 +147,10 @@ export function createObras(ctx: {
       const p = robotPos(slot); for (let i = 0; i < 24; i++) ctx.particles.spawn(p.x, ctx.heightAt(p.x, p.z) + 0.6, p.z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffe08a, c1: 0xc8963a, a: 0.9 });
       const n = L.length + 1, mins = Math.round(dur / 60000);
       ctx.log(`🦾 O Ajudante de Obra Mk ${['I', 'II', 'III'][tier]} foi até o canteiro de ${home.name} e pegou o martelo: ${mins} min de trabalho sozinho. Agora são ${n} na obra (a obra anda ${n}× mais rápido com eles). ${coveredR(r, now) ? 'Uma Sentinela cobre o canto dele.' : '⚠ Nenhuma Sentinela cobre o canto dele: um bicho que passar acaba com ele.'}`, coveredR(r, now) ? '#ffe08a' : '#ffb070'); return true; },
+    /** usar o Contrato: vincula à obra em curso; sem obra, fica guardado e se vincula sozinho à próxima */
+    bindContract(): boolean { if (!home || home.done >= home.work) { ctx.log('📜 Guarde o contrato: ele se vincula sozinho à primeira obra inteira que você começar (B → Obras inteiras).', '#ffe08a'); return false; }
+      if (home.contract) { ctx.log('📜 Esta obra já tem o Contrato da Companhia. Um por casa.', '#ff9a8a'); return false; }
+      if (!ctx.takeContract?.()) return false; home.contract = true; saveHome(home); ctx.log(`📜 Contrato vinculado a ${home.name}: os Ajudantes de Obra já podem trabalhar nela (até ${MAX_ROBOTS}). Ele some quando a casa ficar pronta.`, '#ffe08a'); return false; /* já tirou da mochila aqui */ },
     /** o robô (ou a sucata) mais perto deste ponto, até 3,2 m */
     robotAt(x: number, z: number) { if (!home || home.done >= home.work) return null; let best: { slot: number; x: number; z: number; tier: number; left: number; dead: boolean } | null = null, bd = 3.2;
       for (const r of home.robots ?? []) { if (!r.dead && r.until <= Date.now()) continue; const p = robotPos(r.slot), d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = { slot: r.slot, x: p.x, z: p.z, tier: r.tier, left: Math.max(0, r.until - Date.now()), dead: !!r.dead }; } } return best; },
@@ -154,6 +163,17 @@ export function createObras(ctx: {
     /** desistir: o canteiro se desmancha e o material se perde (pede confirmação antes, no menu) */
     quit() { if (!home || home.done >= home.work) return false; if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes();
       ctx.block(home.gx, home.gy, home.w, home.h, false); const n = home.name; home = null; working = false; lastStage = -1; saveHome(null); ctx.log(`🪓 Você desistiu de ${n}. O canteiro se desfaz e o material se perde.`, '#d0a080'); return true; },
+    /** o DE-PARA com o servidor (28/10): o servidor guarda a casa de cada personagem. Chegou a do servidor:
+     *  - sem casa aqui → a casa volta (save perdido, outra máquina);
+     *  - mesma casa, mesmo lugar → fica o andamento maior;
+     *  - lugar diferente → vale o servidor (o chão é dele); aparece no lugar certo ao reabrir. */
+    fromServer(h: HomeSave | null): 'up' | 'restored' | 'merged' | 'moved' | 'same' { if (!h) return home ? 'up' : 'same';
+      const ok = [h.gx, h.gy, h.w, h.h, h.work, h.done].every((v) => Number.isFinite(v)); if (!ok) return home ? 'up' : 'same';
+      if (!home) { home = { ...h }; saveHome(home); if (home.done >= home.work) { ctx.addHouse(home); if (home.signed) makeSign(home); } else { ctx.block(home.gx, home.gy, home.w, home.h, true); buildSite(home); showRobots(); }
+        ctx.log(`🏡 ${home.name} voltou do servidor: ${home.done >= home.work ? 'a casa está de pé' : `a obra está em ${fmtT(home.done)} de ${home.work} turnos`}.`, '#ffe08a'); return 'restored'; }
+      if (home.gx === h.gx && home.gy === h.gy) { let ch = false; if (h.done > home.done + 0.01) { home.done = Math.min(home.work, h.done); ch = true; } if (h.signed && !home.signed) { home.signed = true; ch = true; } if (h.contract && !home.contract) { home.contract = true; ch = true; }
+        if (ch) { saveHome(home); refresh(); if (home.done >= home.work) finish(); } return ch ? 'merged' : 'same'; }
+      try { localStorage.setItem(KEY, JSON.stringify(h)); } catch { /* */ } ctx.log(`🏡 O servidor guarda a sua casa em outro lugar (${h.name}). Ela aparece no lugar certo quando você reabrir o jogo.`, '#ffe08a'); return 'moved'; },
     door() { return home ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.9 } : null; },
     siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: live().length > 0, robots: live().length, covered: covered(Date.now()) } : null; },
     signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },
@@ -162,7 +182,7 @@ export function createObras(ctx: {
       if (!home || home.done >= home.work) { working = false; return; }
       const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }, near = Math.hypot(heroX - c.x, heroZ - c.z) < Math.max(home.w, home.h) * T * 0.5 + 6;
       if (working && (!near || moving)) { working = false; ctx.log(`🔨 Você ${moving ? 'saiu andando' : 'se afastou da obra'} e parou de trabalhar (${fmtT(home.done)} de ${home.work} turnos). E perto da obra para voltar.`, '#c8b890'); } /* 28/10 (Erling): andou, parou — igual a cortar árvore */
-      if (working && !moving) { home.done = Math.min(home.work, home.done + dt * 1000 / TURN_MS * (ctx.workK?.() ?? 1)); armT -= dt; if (armT <= 0) { armT = 1.3; hammer(); } if (Math.random() < dt * 0.5) saveHome(home); refresh(); if (home.done >= home.work) { working = false; saveHome(home); ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre.`, '#ffe08a'); finish(); return; } }
+      if (working && !moving) { home.done = Math.min(home.work, home.done + dt * 1000 / TURN_MS); armT -= dt; if (armT <= 0) { armT = 1.3; hammer(); } if (Math.random() < dt * 0.5) saveHome(home); refresh(); if (home.done >= home.work) { working = false; saveHome(home); ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre.`, '#ffe08a'); finish(); return; } }
       // o robô: braço martelando; com o herói por perto, bicho de verdade perto dele e sem torre cobrindo = sucata
       { const tt = performance.now(); for (const [slot, g] of robotM) { const arm = g.getObjectByName('arm'); const ph = tt / 180 + slot * 1.7; if (arm) arm.rotation.x = -0.4 + Math.max(0, Math.sin(ph)) * 1.1;
           /* a martelada: faísca e poeira quando o martelo bate (só perto do herói) */ if (Math.sin(ph) > 0.97 && Math.random() < 0.35 && ctx.heroNear(g.position.x, g.position.z, 40)) { const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }, k = 0.35, hx = g.position.x + (c.x - g.position.x) * k * 0.3, hz = g.position.z + (c.z - g.position.z) * k * 0.3;

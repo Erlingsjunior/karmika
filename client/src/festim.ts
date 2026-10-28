@@ -47,7 +47,7 @@ export const TURN_MIN = 30;
 export interface Gadget { name: string; icon: string; price: number; desc: string; kind: 'misc' | 'res'; col: number }
 export const GADGETS: Record<string, Gadget> = {
   ajudante_obra: { name: 'Ajudante de Obra', icon: '🦾', price: 220, kind: 'misc', col: 0xd0a040, desc: 'Um robô pedreiro da Companhia. Use de qualquer lugar: ele vai sozinho até o canteiro da sua obra inteira e trabalha turno após turno, mesmo com você longe. Até 4 ao mesmo tempo — cada um soma, e a obra anda mais rápido. E perto dele: desmonta e guarda (o tempo que sobrou fica). Mas é indefeso: se um bicho chegar e nenhuma Sentinela estiver cobrindo a obra, ele vira sucata. Plante torres em volta.' },
-  obra_auto: { name: 'Contrato de Obra Automatizada', icon: '🏗', price: 180, kind: 'misc', col: 0xd0a040, desc: 'Uma equipe de braços mecânicos da Companhia trabalha com você por 1 turno: cada peça de obra (B) gasta metade dos materiais. Os braços não falam, mas assobiam vapor quando acertam um prego.' },
+  obra_auto: { name: 'Contrato de Obra Automatizada', icon: '📜', price: 400, kind: 'misc', col: 0xd0a040, desc: 'A licença da Companhia de Latão para pôr robôs numa obra. Sem ela, nenhum Ajudante de Obra pisa no seu canteiro. Um contrato por casa: ele se vincula à obra que você tem (ou à primeira que começar, se comprar antes) e some quando a casa fica pronta.' },
   sentinela: { name: 'Robô Sentinela de Latão', icon: '🤖', price: 260, kind: 'misc', col: 0xb08a40, desc: 'Plante onde quiser defender: ele fica ali por 1 turno, gira a cabeça e solta descargas em quem se aproxima (12 m). Um por vez. Os engenheiros juram que ele não tem nome; todos chamam de Bartolomeu.' },
   drone_cura: { name: 'Drone de Cura Automatizada', icon: '🛸', price: 160, kind: 'misc', col: 0x7affd0, desc: 'Paira sobre o seu ombro por 1 turno e borrifa vapor medicinal: +2% de vida a cada 6 s. Faz um barulhinho de chaleira quando trabalha.' },
   drone_choque: { name: 'Bobina de Choque Automatizado', icon: '⚡', price: 170, kind: 'misc', col: 0x6ad0ff, desc: 'Presa ao cinto por 1 turno: a cada 4 s, um raio pula no inimigo mais perto (7 m). Não chegue perto de poça de água com isso ligado. Sério.' },
@@ -67,7 +67,7 @@ export const GADGETS: Record<string, Gadget> = {
 /* ---------- Níveis das engenhocas de turno (Erling, 27/10): Mk I · Mk II · Mk III ----------
    Mk I dura 1 turno (30 min), é a mais barata e a mais fraca; Mk II dura 2 turnos (1 hora); Mk III dura 4 turnos (2 horas) e é a mais forte e cara.
    O id do Mk I é o de sempre (ex.: 'sentinela'); os outros levam _2 e _3. */
-export const TIMED = ['sentinela', 'drone_cura', 'drone_choque', 'escudo_auto', 'obra_auto', 'ajudante_obra'] as const;
+export const TIMED = ['sentinela', 'drone_cura', 'drone_choque', 'escudo_auto', 'ajudante_obra'] as const; /* 28/10: o Contrato de Obra deixou de ter níveis — é uma licença só */
 export const MK = ['I', 'II', 'III'];
 /** turnos de cada nível: 30 min, 1 hora, 2 horas */
 export const TURNS = [1, 2, 4];
@@ -79,7 +79,6 @@ export const TIER: Record<string, { what: (t: number) => string }> = {
   drone_choque: { what: (t) => `raio a cada ${[4, 3.5, 3][t]} s no inimigo mais perto (${[7, 8, 9][t]} m), ${['fraco', 'médio', 'forte'][t]}` },
   escudo_auto: { what: (t) => `segura um golpe inteiro a cada ${[25, 20, 15][t]} s` },
   ajudante_obra: { what: (t) => `trabalha ${[1, 2, 4][t]} turno${t ? 's' : ''} na obra sozinho` },
-  obra_auto: { what: (t) => `cada peça de obra gasta ${[50, 40, 30][t]}% dos materiais` },
 };
 export const tierOf = (id: string) => { const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
 export const baseOf = (id: string) => id.replace(/_(2|3)$/, '');
