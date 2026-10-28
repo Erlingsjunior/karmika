@@ -17,6 +17,7 @@ export interface HomeSave { id: string; name: string; gx: number; gy: number; w:
   /** 28/10: até 4 Ajudantes de Obra ao mesmo tempo; cada um trabalha no seu canto do canteiro (slot 0..3) e soma turnos à obra */ robots?: Robot[];
   /** quando a escritura saiu (a carta do Cartório) */ deed?: number;
   /** o número da escritura (o item escritura_<deedId>) */ deedId?: string;
+  /** 28/10: mobília e decoração colocadas — x,z em metros (dentro: no interior; fora: a partir do canto da casa), r = giro em 1/8 de volta, i = 1 dentro */ decor?: { id: string; x: number; z: number; r: number; i: number }[];
   /** 28/10: a licença da Companhia para usar Ajudantes nesta obra (um Contrato de Obra Automatizada por casa) */ contract?: boolean }
 export interface Robot { tier: number; until: number; last: number; hp: number; dead?: number; slot: number }
 export const MAX_ROBOTS = 4;
@@ -243,12 +244,15 @@ export function createObras(ctx: { /** a variante do modelo da casa pronta (para
       const ok = [h.gx, h.gy, h.w, h.h, h.work, h.done].every((v) => Number.isFinite(v)); if (!ok) return home ? 'up' : 'same';
       if (!home) { home = { ...h }; saveHome(home); if (home.done >= home.work) { ctx.addHouse(home); if (home.signed) makeSign(home); } else { ctx.block(home.gx, home.gy, home.w, home.h, true); buildSite(home); showRobots(); }
         ctx.log(`🏡 ${home.name} voltou do servidor: ${home.done >= home.work ? 'a casa está de pé' : `a obra está em ${fmtT(home.done)} de ${home.work} turnos`}.`, '#ffe08a'); return 'restored'; }
-      if (home.gx === h.gx && home.gy === h.gy) { let ch = false; if (h.done > home.done + 0.01) { home.done = Math.min(home.work, h.done); ch = true; } if (h.signed && !home.signed) { home.signed = true; ch = true; } if (h.contract && !home.contract) { home.contract = true; ch = true; }
+      if (home.gx === h.gx && home.gy === h.gy) { let ch = false; if (h.done > home.done + 0.01) { home.done = Math.min(home.work, h.done); ch = true; } if (h.signed && !home.signed) { home.signed = true; ch = true; } if (h.contract && !home.contract) { home.contract = true; ch = true; } if (Array.isArray(h.decor) && h.decor.length && !home.decor?.length) { home.decor = h.decor; ch = true; }
         if (ch) { saveHome(home); refresh(); if (home.done >= home.work) finish(); } return ch ? 'merged' : 'same'; }
       try { localStorage.setItem(KEY, JSON.stringify(h)); } catch { /* */ } ctx.log(`🏡 O servidor guarda a sua casa em outro lugar (${h.name}). Ela aparece no lugar certo quando você reabrir o jogo.`, '#ffe08a'); return 'moved'; },
     /** a casa foi vendida (o comprador assinou a escritura): sai do seu mundo e do seu save */
     release(why: string) { if (!home) return; const h = home; if (h.done >= h.work) ctx.removeHouse?.(h); else { if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes(); ctx.block(h.gx, h.gy, h.w, h.h, false); }
       if (sign) { ctx.scene.remove(sign); sign = null; } home = null; working = false; lastStage = -1; try { localStorage.removeItem(KEY); } catch { /* */ } ctx.log(why, '#ffe08a'); },
+    /** mobília/decoração da casa (salva junto e vai para o servidor) */
+    get decor() { return home?.decor ?? []; },
+    setDecor(list: NonNullable<HomeSave['decor']>) { if (!home) return; home.decor = list.slice(0, 160); saveHome(home); },
     door() { if (!home) return null; const d = houseDoor(ctx.variantOf?.(home) ?? 2, home.w * T, home.h * T); return { x: home.gx * T + d.x, z: home.gy * T + d.z + 0.9 }; }, /* 28/10: a casa do jogador é a casa em L da vila (variante 2), com a porta virada para a câmera */
     siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: live().length > 0, robots: live().length, covered: covered(Date.now()) } : null; },
     signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },

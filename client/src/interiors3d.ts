@@ -159,6 +159,8 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
     for (let k = 0; k < 5; k++) { const x = 0.8 + r() * (W - 1.6), z = 1 + r() * (D - 2); add(new THREE.DodecahedronGeometry(0.2 + r() * 0.2, 0), sm, x, 0.15, z, false, r() * 3); }
     // velas pelas paredes
     for (let k = 0; k < 6; k++) { const x = W * (0.1 + 0.16 * k); flame(x, 1.6, 0.25, 0.6); if (k % 2) light(x, 1.7, 0.4, 0xffb060, 14, 7); }
+  } else if (variant === 20) { // 28/10: a casa do jogador, vazia — a mobília é ele quem põe (decor.ts)
+    window_(W * 0.3, 'n'); window_(W * 0.72, 'n'); window_(D * 0.5, 'w'); hang(cx, D / 2);
   } else { // armeiro (loja)
     fireplace(W * 0.18);
     // forja brilhante
