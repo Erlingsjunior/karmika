@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import type { Tile } from '@karmika/shared';
 import type { Prop, PropKind, World } from './world';
 import { ITEMS } from './inventory';
+import { buildHouse } from './houses3d';
 
 export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; blocks?: boolean; rot?: boolean; tip: string }
 export const PIECES: Piece[] = [
@@ -20,24 +21,43 @@ export interface Built { kind: PropKind; gx: number; gy: number; v: number }
    com o trabalho do jogador (E) ou dos Braços Mecânicos da Companhia (sozinhos, enquanto você joga). Quanto maior, mais caro e mais demorado. */
 export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; work: number; tip: string }
 export const WHOLES: Whole[] = [
-  { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 60,
-    tip: 'Casa pequena de morar: alicerce de pedra, paredes de tábua, telhado de telha. Por dentro: cama para descansar, caixa de correio que guarda itens e a placa com o seu nome. A porta só abre para você e o seu grupo. 60 marteladas (ou ~5 min de Braços Mecânicos).' },
+  { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 30,
+    tip: 'Casa pequena de morar: alicerce de pedra, paredes de tábua, telhado de telha. Por dentro: cama que cura, caixa de correio que guarda itens e a placa com o seu nome. A obra pede 30 turnos de trabalho (5 dias de Karmika): trabalhe nela entre uma aventura e outra, ou contrate um Ajudante de Obra na Caravana de Latão — e proteja-o com Sentinelas.' },
 ];
 
-export function createBuild(ctx: { /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+/** a foto da obra no card: a própria casa do jogo, renderizada uma vez num canvas fora da tela */
+const THUMB = new Map<string, string>();
+export function wholeThumb(w: Whole): string {
+  const c0 = THUMB.get(w.id); if (c0) return c0;
+  try { const W = 280, H = 180, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setSize(W, H, false);
+    const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff0d8, 0x4a3a2a, 1.6)); const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(8, 14, 10); sc.add(sun);
+    let sd = 7; const hs = buildHouse(0, w.w * 2, w.h * 2, 0xb09068, 0x8a3a28, { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd: () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; } }); sc.add(hs.group);
+    const bb = new THREE.Box3().setFromObject(hs.group), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R0 = Math.max(sz.x, sz.z, sz.y) * 0.62;
+    const ground = new THREE.Mesh(new THREE.CircleGeometry(R0 * 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5a7a3a })); ground.position.set(ctr.x, bb.min.y - 0.02, ctr.z); sc.add(ground);
+    const cam = new THREE.OrthographicCamera(-R0 * 1.25, R0 * 1.25, R0 * 0.8, -R0 * 0.8, 0.1, 400); cam.position.set(ctr.x + 30, ctr.y + 26, ctr.z + 30); cam.lookAt(ctr); r.render(sc, cam);
+    const url = cv.toDataURL(); THUMB.set(w.id, url); r.dispose(); r.forceContextLoss(); return url; } catch { return ''; } }
+export function createBuild(ctx: { /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
   const el = document.createElement('div'); el.id = 'build'; document.body.appendChild(el);
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xffe08a })); arrow.rotation.x = Math.PI / 2; ghost.add(arrow);
-  const costTxt = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<span class="${ctx.has(k, n) ? 'y' : 'n'}">${ITEMS[k]?.icon ?? ''} ${n}</span>`).join(' ');
   function render() {
     if (!on) { el.style.display = 'none'; return; }
-    el.innerHTML = `<div class="bp"><h4>🔨 Modo de obra <small>B sai · clique: colocar · botão direito: remover · R: girar</small></h4><div class="pcs">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.tip}"><span>${p.icon}</span><b>${p.name}</b><small>${costTxt(p.cost)}</small></button>`).join('')}</div><h4 style="margin-top:6px">🏡 Obras inteiras <small>paga, o canteiro aparece, e a obra sobe com o seu trabalho (E) ou com os Braços Mecânicos</small></h4><div class="pcs">${WHOLES.map((w, i) => `<button class="${i === whole ? 'on' : ''}" data-w="${i}" title="${w.tip}"><span>${w.icon}</span><b>${w.name} <i style="font-style:normal;color:#a89878">${w.w}×${w.h}</i></b><small>${costTxt(w.cost)}</small></button>`).join('')}</div></div>`;
+    const small = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<i class="${ctx.has(k, n) ? 'y' : 'n'}" title="${ITEMS[k]?.name ?? k}">${ITEMS[k]?.icon ?? ''}${n}</i>`).join('');
+    const site = ctx.wholeBusy?.() ?? false;
+    el.innerHTML = `<div class="bp"><h4>🔨 Modo de obra <small>B sai · clique: colocar · botão direito: remover · R: girar</small></h4>
+      <div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}</em></button>`).join('')}</div>
+      <h4 style="margin-top:8px">🏡 Obras inteiras <small>compre o projeto (os materiais saem da mochila) · use o projeto na mochila para escolher o lugar</small></h4>
+      <div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}</em><p>${w.tip}</p>
+        ${site ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div></div>`;
     el.style.display = 'block';
   }
-  el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; if (b.dataset.w !== undefined) { whole = +b.dataset.w; } else { sel = +b.dataset.i!; whole = -1; } render(); });
+  el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
+    if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); ctx.add('projeto_' + w.id, 1); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
+    if (b.hasAttribute('data-quit')) { ctx.quitWhole?.(); render(); return; }
+    sel = +b.dataset.i!; whole = -1; render(); });
   const tileOf = (gx: number, gy: number): Tile | undefined => ctx.world.map[gy]?.[gx];
   const pieceAt = (gx: number, gy: number) => built.find((x) => x.b.gx === gx && x.b.gy === gy) ?? remote.find((x) => x.b.gx === gx && x.b.gy === gy);
   const canPlace = (p: Piece, gx: number, gy: number) => {
@@ -50,9 +70,8 @@ export function createBuild(ctx: { /** obra inteira paga: o main.ts monta o cant
   /** cabe a obra inteira aqui? (canto de cima à esquerda em gx,gy; toda a pegada em grama livre, longe de vilas e lugares) */
   const canWhole = (w: Whole, gx: number, gy: number) => { for (let y = gy - 1; y <= gy + w.h; y++) for (let x = gx - 1; x <= gx + w.w; x++) { const t = tileOf(x, y); const edge = y < gy || y >= gy + w.h || x < gx || x >= gx + w.w; if (!t || (!edge && t !== 'grass') || (edge && t === 'wall') || pieceAt(x, y)) return false; if (!edge && !ctx.canBuildAt(x, y)) return false; } return !(ctx.wholeBusy?.() ?? false); };
   function placeWhole(gx: number, gy: number) { const w = WHOLES[whole]; if (!canWhole(w, gx, gy)) { ctx.log(ctx.wholeBusy?.() ? 'Você já tem uma obra ou casa. Uma de cada vez, por enquanto.' : 'A obra não cabe aqui: precisa de grama livre em volta, longe de vilas e lugares.', '#ff9a8a'); return; }
-    for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais: ${ITEMS[k]?.name ?? k} ×${n}. Gunnar vende tábuas e pregos; pedra, galho e corda se juntam no mundo ou se compram.`, '#ff9a8a'); return; }
-    for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n);
-    ctx.onWhole?.(w, gx, gy); toggle(false); }
+    if (!ctx.has('projeto_' + w.id, 1)) { ctx.log('Você precisa do projeto na mochila (compre no B → Obras inteiras).', '#ff9a8a'); return; }
+    ctx.take('projeto_' + w.id, 1); whole = -1; ctx.onWhole?.(w, gx, gy); toggle(false); }
   function place(gx: number, gy: number) {
     const p = PIECES[sel]; if (!canPlace(p, gx, gy)) { ctx.log('Não dá para construir aqui.', '#ff9a8a'); return; }
     const K = ctx.costK?.() ?? 1, cost = Object.fromEntries(Object.entries(p.cost).map(([k, n]) => [k, Math.max(K < 1 ? 0 : 1, Math.ceil(n * K))])) as Record<string, number>;
@@ -102,5 +121,7 @@ export function createBuild(ctx: { /** obra inteira paga: o main.ts monta o cant
   function click(mx: number, mz: number, button: number) { if (!on) return false; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2); if (whole >= 0) { if (button !== 2) { const w = WHOLES[whole]; placeWhole(gx - Math.floor(w.w / 2), gy - Math.floor(w.h / 2)); } return true; } if (button === 2) remove(gx, gy); else place(gx, gy); return true; }
   function rotate() { rot = (rot + 1) % 4; }
   function reset() { for (const x of built) ctx.objs.removeProp(x.prop); built.length = 0; save(); }
-  return { toggle, update, click, rotate, load, reset, setRemote, get on() { return on; }, built };
+  /** usar o projeto da mochila: liga o modo de obra já com a obra escolhida, para marcar o lugar */
+  function placeProject(id: string) { const i = WHOLES.findIndex((w) => 'projeto_' + w.id === id); if (i < 0) return false; whole = i; toggle(true); ctx.log(`📜 Escolha o lugar de ${WHOLES[i].name}: o contorno verde mostra onde cabe. Clique para marcar o canteiro.`, '#ffe08a'); return true; }
+  return { toggle, update, click, rotate, load, reset, setRemote, placeProject, get on() { return on; }, built };
 }
