@@ -16,10 +16,17 @@ export const PIECES: Piece[] = [
   { id: 'campfire', name: 'Fogueira', icon: '🏕', cost: { stick: 4, stone: 2 }, blocks: true, tip: 'Assa carne e peixe (E).' },
 ];
 export interface Built { kind: PropKind; gx: number; gy: number; v: number }
+/** OBRAS INTEIRAS (28/10, Erling): uma construção completa de uma vez — paga os materiais, o canteiro aparece no chão e a obra avança
+   com o trabalho do jogador (E) ou dos Braços Mecânicos da Companhia (sozinhos, enquanto você joga). Quanto maior, mais caro e mais demorado. */
+export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; work: number; tip: string }
+export const WHOLES: Whole[] = [
+  { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 60,
+    tip: 'Casa pequena de morar: alicerce de pedra, paredes de tábua, telhado de telha. Por dentro: cama para descansar, caixa de correio que guarda itens e a placa com o seu nome. A porta só abre para você e o seu grupo. 60 marteladas (ou ~5 min de Braços Mecânicos).' },
+];
 
-export function createBuild(ctx: { /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+export function createBuild(ctx: { /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
-  let on = false, sel = 0, rot = 0;
+  let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
   const el = document.createElement('div'); el.id = 'build'; document.body.appendChild(el);
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
@@ -27,10 +34,10 @@ export function createBuild(ctx: { /** Obra Automatizada (festim.ts): multiplica
   const costTxt = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<span class="${ctx.has(k, n) ? 'y' : 'n'}">${ITEMS[k]?.icon ?? ''} ${n}</span>`).join(' ');
   function render() {
     if (!on) { el.style.display = 'none'; return; }
-    el.innerHTML = `<div class="bp"><h4>🔨 Modo de obra <small>B sai · clique: colocar · botão direito: remover · R: girar</small></h4><div class="pcs">${PIECES.map((p, i) => `<button class="${i === sel ? 'on' : ''}" data-i="${i}" title="${p.tip}"><span>${p.icon}</span><b>${p.name}</b><small>${costTxt(p.cost)}</small></button>`).join('')}</div></div>`;
+    el.innerHTML = `<div class="bp"><h4>🔨 Modo de obra <small>B sai · clique: colocar · botão direito: remover · R: girar</small></h4><div class="pcs">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.tip}"><span>${p.icon}</span><b>${p.name}</b><small>${costTxt(p.cost)}</small></button>`).join('')}</div><h4 style="margin-top:6px">🏡 Obras inteiras <small>paga, o canteiro aparece, e a obra sobe com o seu trabalho (E) ou com os Braços Mecânicos</small></h4><div class="pcs">${WHOLES.map((w, i) => `<button class="${i === whole ? 'on' : ''}" data-w="${i}" title="${w.tip}"><span>${w.icon}</span><b>${w.name} <i style="font-style:normal;color:#a89878">${w.w}×${w.h}</i></b><small>${costTxt(w.cost)}</small></button>`).join('')}</div></div>`;
     el.style.display = 'block';
   }
-  el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (b) { sel = +b.dataset.i!; render(); } });
+  el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; if (b.dataset.w !== undefined) { whole = +b.dataset.w; } else { sel = +b.dataset.i!; whole = -1; } render(); });
   const tileOf = (gx: number, gy: number): Tile | undefined => ctx.world.map[gy]?.[gx];
   const pieceAt = (gx: number, gy: number) => built.find((x) => x.b.gx === gx && x.b.gy === gy) ?? remote.find((x) => x.b.gx === gx && x.b.gy === gy);
   const canPlace = (p: Piece, gx: number, gy: number) => {
@@ -40,6 +47,12 @@ export function createBuild(ctx: { /** Obra Automatizada (festim.ts): multiplica
     if (here) return false;
     return t === 'grass';
   };
+  /** cabe a obra inteira aqui? (canto de cima à esquerda em gx,gy; toda a pegada em grama livre, longe de vilas e lugares) */
+  const canWhole = (w: Whole, gx: number, gy: number) => { for (let y = gy - 1; y <= gy + w.h; y++) for (let x = gx - 1; x <= gx + w.w; x++) { const t = tileOf(x, y); const edge = y < gy || y >= gy + w.h || x < gx || x >= gx + w.w; if (!t || (!edge && t !== 'grass') || (edge && t === 'wall') || pieceAt(x, y)) return false; if (!edge && !ctx.canBuildAt(x, y)) return false; } return !(ctx.wholeBusy?.() ?? false); };
+  function placeWhole(gx: number, gy: number) { const w = WHOLES[whole]; if (!canWhole(w, gx, gy)) { ctx.log(ctx.wholeBusy?.() ? 'Você já tem uma obra ou casa. Uma de cada vez, por enquanto.' : 'A obra não cabe aqui: precisa de grama livre em volta, longe de vilas e lugares.', '#ff9a8a'); return; }
+    for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais: ${ITEMS[k]?.name ?? k} ×${n}. Gunnar vende tábuas e pregos; pedra, galho e corda se juntam no mundo ou se compram.`, '#ff9a8a'); return; }
+    for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n);
+    ctx.onWhole?.(w, gx, gy); toggle(false); }
   function place(gx: number, gy: number) {
     const p = PIECES[sel]; if (!canPlace(p, gx, gy)) { ctx.log('Não dá para construir aqui.', '#ff9a8a'); return; }
     const K = ctx.costK?.() ?? 1, cost = Object.fromEntries(Object.entries(p.cost).map(([k, n]) => [k, Math.max(K < 1 ? 0 : 1, Math.ceil(n * K))])) as Record<string, number>;
@@ -81,10 +94,12 @@ export function createBuild(ctx: { /** Obra Automatizada (festim.ts): multiplica
   function toggle(force?: boolean) { on = force ?? !on; ghost.visible = on; render(); if (on) ctx.log('🔨 Modo de obra: escolha a peça embaixo, clique no chão para colocar. B sai.', '#ffe08a'); }
   function update(mx: number, mz: number) {
     if (!on) return; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2), p = PIECES[sel];
+    if (whole >= 0) { const w = WHOLES[whole], x0 = gx - Math.floor(w.w / 2), y0 = gy - Math.floor(w.h / 2); ghost.scale.set(w.w, 6, w.h); ghost.position.set((x0 + w.w / 2) * 2, ctx.heightAt((gx + 0.5) * 2, (gy + 0.5) * 2) + 1.2, (y0 + w.h / 2) * 2); ghost.rotation.y = 0; arrow.visible = false; (ghost.material as THREE.MeshBasicMaterial).color.setHex(canWhole(w, x0, y0) ? 0x7aff9a : 0xff6a5a); return; }
+    ghost.scale.set(1, 1, 1);
     ghost.position.set((gx + 0.5) * 2, ctx.heightAt((gx + 0.5) * 2, (gy + 0.5) * 2) + 0.2, (gy + 0.5) * 2); ghost.rotation.y = p.rot ? rot * Math.PI / 2 : 0;
     (ghost.material as THREE.MeshBasicMaterial).color.setHex(canPlace(p, gx, gy) ? 0x7aff9a : 0xff6a5a); arrow.visible = !!p.rot; arrow.position.set(0, 0.3, -0.9);
   }
-  function click(mx: number, mz: number, button: number) { if (!on) return false; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2); if (button === 2) remove(gx, gy); else place(gx, gy); return true; }
+  function click(mx: number, mz: number, button: number) { if (!on) return false; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2); if (whole >= 0) { if (button !== 2) { const w = WHOLES[whole]; placeWhole(gx - Math.floor(w.w / 2), gy - Math.floor(w.h / 2)); } return true; } if (button === 2) remove(gx, gy); else place(gx, gy); return true; }
   function rotate() { rot = (rot + 1) % 4; }
   function reset() { for (const x of built) ctx.objs.removeProp(x.prop); built.length = 0; save(); }
   return { toggle, update, click, rotate, load, reset, setRemote, get on() { return on; }, built };

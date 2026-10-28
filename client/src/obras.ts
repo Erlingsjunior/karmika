@@ -1,0 +1,89 @@
+/** A obra inteira e a casa do jogador (28/10, Erling):
+ *  - Canteiro: o terreno marcado com estacas e corda, pilhas de tábuas, tijolos de pedra, pregos, rolos de corda e galhos. A obra sobe
+ *    em etapas (alicerce → esteios → paredes → telhado) e as pilhas DIMINUEM conforme o material é usado.
+ *  - Trabalho: E perto da obra = uma martelada (o herói trabalha); com os Braços Mecânicos da Companhia ligados, a obra sobe sozinha
+ *    (+1 martelada a cada 5 s), mesmo com o jogador longe.
+ *  - Pronta: vira uma casa de verdade (prop 'house'), com porta. Por dentro: cama (descansar e curar), caixa de correio que guarda
+ *    itens (o cofre), e a placa "Casa de (nome)" na frente. A porta só abre para o dono e o seu grupo.
+ *  Salvo em localStorage (uma obra/casa por jogador, por enquanto). */
+import * as THREE from 'three';
+import { std } from './toon3d';
+import type { Whole } from './build';
+
+export interface HomeSave { id: string; name: string; gx: number; gy: number; w: number; h: number; work: number; done: number; signed: boolean; owner: string }
+const KEY = 'karmika.home.v1';
+export const loadHome = (): HomeSave | null => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } };
+
+export function createObras(ctx: {
+  scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
+  /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
+  /** a casa pronta entra no mundo como prop (e sai, se for demolida) */ addHouse(h: HomeSave): void;
+  robotOn(): boolean; heroName(): string; particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
+}) {
+  const T = ctx.T; let home = loadHome(); let site: THREE.Group | null = null, sign: THREE.Group | null = null, robotT = 5, lastStage = -1;
+  const piles: { m: THREE.Object3D; at: number }[] = []; // cada peça da pilha some quando a obra passa de "at"
+  const stages: { m: THREE.Object3D; at: number }[] = []; // cada peça da obra aparece quando a obra passa de "at"
+  const wood = std(0x9a7448), woodD = std(0x6a4a2c), stoneM = std(0x8a8680), stoneD = std(0x6a6660), roofM = std(0x8a3a28), iron = std(0x4a4a50), ropeM = std(0xc9b07a), stake = std(0x7a5a3a);
+  function buildSite(h: HomeSave) {
+    if (site) ctx.scene.remove(site); piles.length = 0; stages.length = 0; lastStage = -1;
+    const g = new THREE.Group(), W = h.w * T, D = h.h * T, x0 = h.gx * T, z0 = h.gy * T, y0 = ctx.heightAt(x0 + W / 2, z0 + D / 2); g.position.set(x0, y0, z0); site = g;
+    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
+    // estacas e corda marcando o terreno
+    for (const [x, z] of [[0, 0], [W, 0], [0, D], [W, D]]) add(new THREE.CylinderGeometry(0.06, 0.07, 0.9, 5), stake, x, 0.45, z);
+    for (const [ax, az, bx, bz] of [[0, 0, W, 0], [W, 0, W, D], [W, D, 0, D], [0, D, 0, 0]]) { const L = Math.hypot(bx - ax, bz - az); add(new THREE.BoxGeometry(L, 0.02, 0.02), ropeM, (ax + bx) / 2, 0.8, (az + bz) / 2, -Math.atan2(bz - az, bx - ax)); }
+    // as pilhas de material, na frente da obra (lado sul), cada uma some aos poucos
+    const pz = D + 1.1; let k = 0;
+    for (let i = 0; i < 12; i++) { const m = add(new THREE.BoxGeometry(1.9, 0.09, 0.26), i % 2 ? wood : woodD, 0.9 + (i % 3) * 0.02, 0.05 + Math.floor(i / 2) * 0.095, pz + (i % 2) * 0.28 - 0.14, (i % 2) * 0.05); piles.push({ m, at: 0.05 + (k++ / 40) }); } // tábuas
+    for (let i = 0; i < 10; i++) { const m = add(new THREE.BoxGeometry(0.42, 0.22, 0.3), i % 3 ? stoneM : stoneD, W / 2 - 0.5 + (i % 3) * 0.45, 0.11 + Math.floor(i / 3) * 0.22, pz + (i % 2) * 0.1); piles.push({ m, at: 0.02 + i / 40 }); } // pedra do alicerce
+    for (let i = 0; i < 3; i++) { const m = add(new THREE.CylinderGeometry(0.28, 0.28, 0.16, 10), ropeM, W - 1.3 + i * 0.1, 0.08 + i * 0.16, pz - 0.2); piles.push({ m, at: 0.5 + i * 0.12 }); } // rolos de corda
+    for (let i = 0; i < 4; i++) { const m = add(new THREE.BoxGeometry(0.3, 0.2, 0.2), iron, W - 0.4, 0.1 + i * 0.2, pz + 0.3); piles.push({ m, at: 0.25 + i * 0.16 }); } // caixas de pregos
+    for (let i = 0; i < 8; i++) { const m = add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 4), stake, W + 0.6, 0.1 + (i % 4) * 0.09, pz - 0.5 + Math.floor(i / 4) * 0.12); m.rotation.x = Math.PI / 2; piles.push({ m, at: 0.3 + i * 0.08 }); } // galhos
+    // a obra: alicerce (0–20%), esteios (20–40%), paredes (40–80%, sobem em camadas), telhado (80–100%)
+    const H = 3.0, nl = 8;
+    { const F: [number, number, number, number][] = [[W / 2, 0.2, W, 0.4], [W / 2, D - 0.2, W, 0.4], [0.2, D / 2, 0.4, D], [W - 0.2, D / 2, 0.4, D]]; F.forEach(([x, z, w, d], i) => stages.push({ m: add(new THREE.BoxGeometry(w, 0.4, d), i % 2 ? stoneD : stoneM, x, 0.2, z), at: i * 0.04 }));
+      stages.push({ m: add(new THREE.BoxGeometry(W - 0.8, 0.12, D - 0.8), std(0x8a6a44), W / 2, 0.3, D / 2), at: 0.16 }); } // alicerce de pedra e o piso
+    for (const [x, z] of [[0.25, 0.25], [W - 0.25, 0.25], [0.25, D - 0.25], [W - 0.25, D - 0.25], [W / 2, 0.25], [W / 2, D - 0.25]]) stages.push({ m: add(new THREE.BoxGeometry(0.22, H, 0.22), woodD, x, 0.35 + H / 2, z), at: 0.2 + stages.length * 0.02 });
+    for (let l = 0; l < nl; l++) { const y = 0.35 + (l + 0.5) * H / nl, at = 0.4 + l / nl * 0.4;
+      for (const [x, z, w, d] of [[W / 2, 0.2, W - 0.4, 0.14], [0.2, D / 2, 0.14, D - 0.4], [W - 0.2, D / 2, 0.14, D - 0.4]] as [number, number, number, number][]) stages.push({ m: add(new THREE.BoxGeometry(w, H / nl - 0.02, d), l % 2 ? wood : woodD, x, y, z), at });
+      for (const sx of [-1, 1]) stages.push({ m: add(new THREE.BoxGeometry(W / 2 - 0.9, H / nl - 0.02, 0.14), l % 2 ? wood : woodD, W / 2 + sx * (W / 4 + 0.35), y, D - 0.2), at }); } // frente com o vão da porta
+    for (let i = 0; i < 6; i++) { const t = i / 6; for (const s of [-1, 1]) { const r = add(new THREE.BoxGeometry(W + 0.6, 0.1, D / 2 + 0.5), roofM, W / 2, 0.35 + H + 0.65 - 0.01 * i, D / 2 + s * D / 4); r.rotation.x = s * 0.5; r.scale.set(1, 1, 0.2 + t * 0.85); stages.push({ m: r, at: 0.8 + t * 0.2 }); } }
+    // andaime (some quando a obra termina)
+    for (const x of [-0.5, W + 0.5]) for (const z of [-0.5, D + 0.5]) { const pole = add(new THREE.CylinderGeometry(0.05, 0.05, 3.6, 5), stake, x, 1.8, z); piles.push({ m: pole, at: 0.97 }); }
+    for (const z of [-0.5, D + 0.5]) { const b = add(new THREE.BoxGeometry(W + 1, 0.08, 0.5), wood, W / 2, 1.9, z); piles.push({ m: b, at: 0.97 }); }
+    /* o terreno não é plano: estacas e pilhas pousam no chão de onde estão (senão ficavam enterradas na encosta) */
+    for (const c of g.children) { const isStage = stages.some((q) => q.m === c); if (isStage) continue; const gy = ctx.heightAt(x0 + c.position.x, z0 + c.position.z); c.position.y += gy - y0; }
+    ctx.scene.add(g); refresh(); }
+  function refresh() { if (!home || !site) return; const p = home.done / home.work; for (const q of piles) q.m.visible = p < q.at; for (const q of stages) q.m.visible = p >= q.at;
+    const st = p < 0.2 ? 0 : p < 0.4 ? 1 : p < 0.8 ? 2 : 3; if (st !== lastStage && lastStage >= 0) ctx.log(['🧱 O alicerce de pedra está assentado.', '🪵 Os esteios de pé: a casa já tem esqueleto.', '🔨 As paredes sobem, tábua por tábua.', '🏠 O telhado está subindo. Falta pouco.'][st], '#ffe08a'); lastStage = st; }
+  function makeSign(h: HomeSave) {
+    if (sign) ctx.scene.remove(sign); const g = new THREE.Group(); const x = (h.gx + h.w / 2 + 1.6) * T, z = (h.gy + h.h) * T + 1.2; g.position.set(x, ctx.heightAt(x, z), z); sign = g;
+    const c = document.createElement('canvas'); c.width = 256; c.height = 96; const k = c.getContext('2d')!; k.fillStyle = '#7a5a34'; k.fillRect(0, 0, 256, 96); k.strokeStyle = '#3a2614'; k.lineWidth = 6; k.strokeRect(3, 3, 250, 90);
+    k.fillStyle = '#fff0c8'; k.textAlign = 'center'; k.font = '600 20px Georgia'; k.fillText('Casa de', 128, 38); k.font = '700 28px Georgia'; k.fillText(h.owner.slice(0, 16), 128, 74);
+    const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 6), std(0x4a3220)); post.position.y = 0.8; g.add(post);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 0.06), [std(0x5a3a20), std(0x5a3a20), std(0x5a3a20), std(0x5a3a20), new THREE.MeshToonMaterial({ map: tex }), new THREE.MeshToonMaterial({ map: tex })]); board.position.y = 1.5; g.add(board);
+    ctx.scene.add(g); }
+  function finish() { if (!home) return; if (site) { ctx.scene.remove(site); site = null; } ctx.block(home.gx, home.gy, home.w, home.h, false); ctx.addHouse(home); if (home.signed) makeSign(home);
+    const cx = (home.gx + home.w / 2) * T, cz = (home.gy + home.h / 2) * T; for (let i = 0; i < 60; i++) ctx.particles.spawn(cx + (Math.random() - 0.5) * home.w * T, ctx.heightAt(cx, cz) + 3 + Math.random() * 2, cz + (Math.random() - 0.5) * home.h * T, { vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 1.2, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffd070, a: 0.9 }); }
+  // abrir o jogo: recoloca o canteiro ou a casa
+  if (home) { if (home.done >= home.work) { ctx.addHouse(home); if (home.signed) makeSign(home); } else { ctx.block(home.gx, home.gy, home.w, home.h, true); buildSite(home); } }
+  return {
+    get home() { return home; },
+    busy: () => !!home,
+    start(w: Whole, gx: number, gy: number) { home = { id: w.id, name: w.name, gx, gy, w: w.w, h: w.h, work: w.work, done: 0, signed: false, owner: ctx.heroName() }; saveHome(home); ctx.block(gx, gy, w.w, w.h, true); buildSite(home);
+      ctx.log(`🏗 O canteiro de ${w.name} está marcado e o material descarregado. Chegue perto e aperte E para martelar — ou ligue os Braços Mecânicos da Companhia e vá jogar.`, '#ffe08a'); },
+    /** uma martelada (do herói ou do robô) */
+    hammer(by: 'hero' | 'robot') { if (!home || home.done >= home.work) return; home.done = Math.min(home.work, home.done + 1); saveHome(home); refresh();
+      const x = (home.gx + home.w / 2) * T + (Math.random() - 0.5) * home.w, z = (home.gy + home.h / 2) * T + (Math.random() - 0.5) * home.h, y = ctx.heightAt(x, z);
+      for (let i = 0; i < (by === 'hero' ? 8 : 4); i++) ctx.particles.spawn(x, y + 1 + Math.random() * 1.5, z, { vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.5, s0: 0.18, s1: 0.04, c0: 0xd8c090, c1: 0x8a6a3a, a: 0.9 });
+      if (home.done >= home.work) { ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre: a cama cura, e a caixa de correio guarda os seus itens.`, '#ffe08a'); finish(); } },
+    /** pendurar a placa "Casa de (nome)" */
+    sign() { if (!home || home.done < home.work) return; home.signed = true; home.owner = ctx.heroName(); saveHome(home); makeSign(home); ctx.log(`🪧 A placa está na frente: “Casa de ${home.owner}”.`, '#ffe08a'); },
+    /** o ponto da porta e o meio do canteiro (para as interações do E) */
+    door() { return home ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.9 } : null; },
+    siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work } : null; },
+    signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },
+    update(dt: number) { if (!home || home.done >= home.work || !ctx.robotOn()) return; robotT -= dt; if (robotT <= 0) { robotT = 5; this.hammer('robot'); } },
+  };
+}

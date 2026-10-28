@@ -163,7 +163,7 @@ DEFS.bandit_chief.elite = 2.6; /* 26/10 (Erling: "o chefe não é maior, nem mai
 for (const [k, m] of [['wolf', 1.55], ['frostwolf', 1.5], ['coyote', 1.45], ['boar', 1.45], ['rat', 1.4]] as const) { DEFS[k].scale *= m; DEFS[k].radius *= m; }
 /* REGRA DO COMBATE — inimigos telegrafam: preparo do golpe 50% mais longo e intervalo 40% maior (dá tempo de ler,
    bloquear, aparar e esquivar); andam 10% mais devagar. Mesmo andamento lento do herói (TEMPO em characters/gameplay). */
-for (const d of Object.values(DEFS)) { d.windup *= 1.75; d.cd *= 1.6; d.speed *= 0.85; d.dmg = Math.round(d.dmg * 1.7); }
+for (const d of Object.values(DEFS)) { d.windup *= 1.75 * 1.1; d.cd *= 1.6 * 1.1; /* 28/10: a luta 10% mais lenta */ d.speed *= 0.85; d.dmg = Math.round(d.dmg * 1.7); }
 
 export type EState = 'idle' | 'chase' | 'windup' | 'recover' | 'hurt' | 'return' | 'flee' | 'dead';
 export interface Rig { root: THREE.Group; update(e: Enemy, dt: number, windK: number, strikeK: number, hurtK: number, mv: number): void; mats: THREE.MeshToonMaterial[] }
@@ -489,6 +489,8 @@ export function createEnemies(ctx: EnemyCtx) {
     mudzombie: { col: 0x6a5a2a, r: 1.8, delay: 1.5, mul: 1.0, cd: [8, 11], name: 'Lama nos Olhos' },
     harpy: { col: 0xd8c8a8, r: 1.6, delay: 1.1, mul: 1.0, cd: [6, 8], name: 'Penas Cortantes', proj: 0.18 },
   };
+  /* 28/10 (Erling): o preparo das magias dos monstros 10% mais longo (dá para desviar) */
+  for (const sp of Object.values(SPELLS)) if (sp) sp.delay *= 1.1;
   const casts: { m: THREE.Mesh; x: number; z: number; t: number; s: Spell; dmg: number; from: THREE.Vector3; src?: Enemy; ball?: THREE.Object3D }[] = [];
   const ballGeo = new THREE.SphereGeometry(1, 12, 8);
   /** bola de fogo: miolo claro + halo da cor da magia; nasce na mão de quem conjura e voa em arco até o círculo */

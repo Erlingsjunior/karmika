@@ -138,7 +138,7 @@ export const ITEMS: Record<string, Item> = {
 };
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
 export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_cat: 300, pet_cat_b: 420, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
-export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string; /** abas da prateleira (27/10): cada aba lista os seus itens; sem abas, tudo junto */ tabs?: { name: string; items: string[] }[] }
+export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string; /** abas da prateleira (27/10): cada aba lista os seus itens; sem abas, tudo junto */ tabs?: { name: string; items: string[] }[]; /** botão extra ao lado das abas (ex.: a carroça anã contrata festas) */ extra?: { label: string; act: () => void } }
 export const SHOPDEF: Record<string, ShopDef> = {
   armeiro: { title: 'Doran, o Armeiro', items: ['axe_i', 'pick_i', 'knife_i', 'potion'], buys: { ore_i: 1.5, ore_ag: 1.3 }, gear: ['weapon', 'weapon', 'weapon', 'shield', 'shield'], note: 'Espadas, machados, martelos e escudos. Aço do Norte.' },
   armaduras: { title: 'Maren, a Armadureira', items: [], gear: ['armor', 'armor', 'helm', 'helm', 'boots', 'boots'], buys: { hide: 1.6 }, note: 'Couro, cota e placas. Paga bem por couro.' },
@@ -406,7 +406,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       const shelf = [...(sd.gear || sd.fac ? stock.map((g) => `<div class="it gi shelf ${st.gold >= price(g) ? '' : 'poor'}" data-gbuy="${g.uid}" data-g="s:${g.uid}" style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${RARITY[g.rarity].col}44"><span>${gearIcon(g)}</span><b style="color:${RARITY[g.rarity].col}">${g.ilvl}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small><i class="ptag">🪙${price(g)}</i></div>`) : []),
         ...(sd.tabs ? (sd.tabs[Math.min(shopTab, sd.tabs.length - 1)]?.items ?? []) : SHOPS[shop]).map((i) => `<div class="it shelf ${st.gold >= buyP(i) ? '' : 'poor'}" data-buy="${i}" title="${ITEMS[i].name}: ${ITEMS[i].desc}"><span>${ITEMS[i].icon}</span><small>${ITEMS[i].name}</small><i class="ptag">🪙${buyP(i)}</i></div>`)];
       sh.innerHTML = `<div class="pn shoppn"><h2>${shopTitle ?? sd.title} <span class="gold">🪙 ${st.gold}</span><button data-x2>✕</button></h2>${sd.note ? `<small class="note">${sd.note}</small>` : ''}
-        ${sd.tabs ? `<div class="stabs">${sd.tabs.map((t, i) => `<button class="${i === Math.min(shopTab, sd.tabs!.length - 1) ? 'on' : ''}" data-stab="${i}">${t.name}</button>`).join('')}</div>` : '<h3>Prateleira</h3>'}<div class="grid g5">${shelf.join('')}</div>
+        ${sd.tabs ? `<div class="stabs">${sd.tabs.map((t, i) => `<button class="${i === Math.min(shopTab, sd.tabs!.length - 1) ? 'on' : ''}" data-stab="${i}">${t.name}</button>`).join('')}${sd.extra ? `<button class="sx" data-sextra>${sd.extra.label}</button>` : ''}</div>` : '<h3>Prateleira</h3>'}<div class="grid g5">${shelf.join('')}</div>
         <small class="ft">clique na prateleira: comprar · clique na sua mochila: vender (Ctrl: 50 · Shift: tudo) · arraste da mochila para cá: vender</small></div>`;
       sh.style.display = 'flex';
     } else sh.style.display = 'none';
@@ -470,8 +470,9 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     if (t.closest('[data-vgear]')) { let n = 0; for (const g of [...gearBag]) if (deposit(`g:${g.uid}`, true)) n++; render(); save(); game.logMsg(n ? `📦 ${n} equipamento${n > 1 ? 's' : ''} guardado${n > 1 ? 's' : ''} no baú.` : 'Nenhum equipamento na mochila.', '#ffe08a'); return; }
     const o = (t.closest('[data-vout]') as HTMLElement | null)?.dataset.vout; if (o) withdraw(o); });
   sh.addEventListener('click', (e) => {
-    const t = (e.target as HTMLElement).closest('[data-buy],[data-sell],[data-x2],[data-gbuy],[data-gsell],[data-stab]') as HTMLElement | null; if (!t) return;
+    const t = (e.target as HTMLElement).closest('[data-buy],[data-sell],[data-x2],[data-gbuy],[data-gsell],[data-stab],[data-sextra]') as HTMLElement | null; if (!t) return;
     if (t.dataset.stab !== undefined) { shopTab = +t.dataset.stab; render(); return; }
+    if (t.hasAttribute('data-sextra')) { const sd = shop ? SHOPDEF[shop] : null; sd?.extra?.act(); return; }
     if ('x2' in t.dataset) { shop = null; render(); return; }
     if (t.dataset.buy) { const i = t.dataset.buy; if (PREMIUM_BAGS.has(i) && !isPremium()) { game.logMsg(`✦ ${ITEMS[i].name} é exclusivo do Premium.`, '#c9a0ff'); game.snd?.('error'); return; } if (st.gold < buyP(i)) { game.logMsg(`Ouro insuficiente: ${ITEMS[i].name} custa ${buyP(i)} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!BAGS[i] && !canAdd(i, 1)) { game.logMsg('🎒 Mochila cheia! Venda ou use algo antes, ou compre uma bolsa maior.', '#ff9a8a'); game.snd?.('error'); return; } st.gold -= buyP(i); add(i, 1, true); game.logMsg(`🛒 Comprou ${ITEMS[i].icon} ${ITEMS[i].name} por ${buyP(i)} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); }
     const priceOf = (i: string) => Math.round((ITEMS[i].sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[i] ? SHOPDEF[shop].buys![i] : 1));
@@ -549,6 +550,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     /** guarda direto no baú (kit de começo de jornada) */
     vaultPut(items: [string, number][], gear: Gear[]) { for (const [id, n] of items) vault.items[id] = (vault.items[id] ?? 0) + n; for (const g of gear) vault.gear.push(g); vsave(); render(); },
     get vaultOpen() { return vaultOpen; }, vault,
+    closeShop() { shop = null; open = false; vaultOpen = false; render(); },
     toggle() { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); },
     toggleChar() { charOpen = !charOpen; render(); },
     canAdd, canAddGear, capacity, usedSlots, bagCount: () => bags.length,

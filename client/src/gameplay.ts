@@ -47,7 +47,7 @@ export function createGameplay(d: GameplayDeps) {
   const xpNeedAt = (l: number) => Math.round(60 + 45 * l + 6 * l * l);
   const xpNeed = () => xpNeedAt(st.lvl);
   const pending: { at: number; fn: () => void }[] = [];
-  const TEMPO = 1.65; // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
+  const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
   let now = 0;
   const cd = { attack: 0, cast: 0, heal: 0, bash: 0, slam: 0 };
   const CD = { attack: 0.3, cast: 0.75, heal: 1.6, bash: 2.4, slam: 3.2 };

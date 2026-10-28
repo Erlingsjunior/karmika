@@ -888,7 +888,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, skyraise: 0.95, stance: 0.92 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
-  const TEMPO = 1.65; for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
+  const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
   let dodgeSide = 1;
   const COMBO = new Set<Action>(['combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'shoot', 'charge']);
   type Ch = 'shX' | 'shZ' | 'el' | 'swX' | 'swZ' | 'twist' | 'lean' | 'lunge' | 'crouch' | 'jump' | 'spin' | 'shLX' | 'shLZ' | 'elL' | 'face' | 'vel' | 'tilt' | 'head' | 'lgLH' | 'lgLK' | 'lgRH' | 'lgRK' | 'kn';

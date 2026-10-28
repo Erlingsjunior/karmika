@@ -379,6 +379,7 @@ export function createBossBrain(ctx: BrainCtx) {
   /* --- formas no chão (o aviso enche até bater) --- */
   function shapeMesh(geo: THREE.BufferGeometry, col: number) { const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); return edge; }
   function telegraph(geo: THREE.BufferGeometry, col: number, x: number, y: number, z: number, rotY: number, dur: number, then: () => void, grow: 'scale' | 'fade' = 'fade') {
+    dur *= 1.1; /* 28/10: as marcas dos chefes 10% mais longas */
     const m = shapeMesh(geo, col); m.position.set(x, y, z); m.rotation.y = rotY; ctx.scene.add(ctx.fine(m));
     const fill = shapeMesh(geo, col); fill.position.copy(m.position); fill.position.y += 0.01; fill.rotation.y = rotY; ctx.scene.add(ctx.fine(fill)); let t = 0;
     fxs.push((dt) => { t += dt; const k = Math.min(1, t / dur); (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.35 * Math.abs(Math.sin(t * 9)) * (k > 0.7 ? 1 : 0.4);

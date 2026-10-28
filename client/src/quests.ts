@@ -274,7 +274,10 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   let tracked: string | null = null;
   /* 27/10 (Erling): mais de uma missão guiada ao mesmo tempo, mas só uma de cada cor — a segunda bússola mostra a outra */
   let tracked2: string | null = null;
-  const setTracked = (id: string) => { if (tracked === id) return; if (tracked2 === id) { tracked2 = tracked; tracked = id; return; } const cur = tracked ? def(tracked) : null, nw = def(id); if (cur && nw && questCat(cur) !== questCat(nw)) tracked2 = tracked; else if (tracked2 && nw && def(tracked2) && questCat(def(tracked2)!) === questCat(nw)) tracked2 = null; tracked = id; };
+  /* 28/10 (Erling): duas bússolas fixas — a 1ª é SEMPRE a história (amarela): ao entregar uma, a próxima já vem marcada; a 2ª é a que você
+     escolher entre as outras (extra, repetível, do mundo). Clicar numa amarela troca a 1ª; clicar em qualquer outra troca a 2ª. */
+  const isStory = (id: string | null) => { const d = id ? def(id) : null; return !!d && questCat(d) === 'story'; };
+  const setTracked = (id: string) => { if (isStory(id)) { tracked = id; return; } if (isStory(tracked)) { tracked2 = id === tracked2 ? tracked2 : id; return; } tracked = id; };
   /* REGRA IMUTÁVEL — missão é o que mais faz evoluir (Erling, 23/10: "a linha amarela precisa pegar uns 60% do XP"):
      a história amarela (o fio, STORY_THREAD) paga STORY_SHARE de TODO o XP entre ela e a próxima amarela — somadas às pontes (+12%),
      dão ~60% do caminho; os outros ~40% vêm de azuis, Quadro, masmorras, relíquias e caça. As missões de chefe ainda pedem o nível
@@ -437,7 +440,10 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
     confirmBox(`Abandonar <b>${d.name}</b>? O progresso se perde. Você pode pegar de novo com ${d.giver}.`, 'Abandonar', () => { delete q.active[id]; for (const [it] of d.give ?? []) { const c = ctx.count(it); if (c > 0) ctx.take(it, c); } if (tracked === id) tracked = null; if (focusId === id) focusId = null; save(); render(); ctx.log(`Missão abandonada: ${d.name}.`, '#c8b8a0'); }); }
   function render() {
     const ids = Object.keys(q.active);
-    if (tracked && !q.active[tracked]) tracked = null; if (tracked2 && (!q.active[tracked2] || tracked2 === tracked)) tracked2 = null; if (!tracked && ids.length) tracked = ids[0];
+    if (tracked && !q.active[tracked]) tracked = null; if (tracked2 && (!q.active[tracked2] || tracked2 === tracked)) tracked2 = null;
+    { const story = ids.filter((i) => isStory(i)); if (story.length && !isStory(tracked)) { if (tracked && !isStory(tracked) && !tracked2) tracked2 = tracked; tracked = story[story.length - 1]; } /* a história recém-aceita já vem marcada */
+      if (tracked2 && isStory(tracked2)) tracked2 = null; if (isStory(tracked) && !tracked2) { const other = ids.find((i) => !isStory(i)); if (other) tracked2 = other; } }
+    if (!tracked && ids.length) tracked = ids[0];
     { // cards agrupados por cor (história, secundárias, repetição), com um respiro entre os grupos
       const sorted = [...ids].sort((a, b) => CAT_ORDER.indexOf(questCat(def(a))) - CAT_ORDER.indexOf(questCat(def(b))));
       let prev: QuestCat | null = null;
