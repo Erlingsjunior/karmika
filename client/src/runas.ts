@@ -1,25 +1,22 @@
-/* As runas de Karmika (as mesmas da moldura da Bíblia, e outras no mesmo traço). NÃO são runas nórdicas:
-   o alfabeto de Karmika nasce do Olho, da Ampulheta, da Lágrima e do Labirinto. Traço dourado, viewBox 28×28. */
+/* As runas de Karmika. NÃO são runas nórdicas: a língua rúnica de Karmika tem seis runas (Lágrima, Olho Kármico,
+   Ampulheta, Labirinto, Fome e a Fresta). Traço dourado vazado (linha dupla), viewBox 28×28. */
 export const RUNAS: { id: string; nome: string; d: string; fill?: string }[] = [
-  { id: 'olho', nome: 'O Olho (losango)', d: 'M4 14 L14 7 L24 14 L14 21 Z', fill: 'M14 11 L17 14 L14 17 L11 14Z' },
-  { id: 'ampulheta', nome: 'A Ampulheta', d: 'M8 3 H20 L14 14 L20 25 H8 L14 14 Z' },
-  { id: 'lagrima', nome: 'A Lágrima', d: 'M14 4 C19 11 21 17 14 23 C7 17 9 11 14 4Z' },
-  { id: 'ampulheta-deitada', nome: 'A Ampulheta deitada', d: 'M3 8 V20 L14 14 L25 20 V8 L14 14 Z' },
-  { id: 'kk', nome: 'Os dois Ks', d: 'M5 4 V24 M5 14 L12 7 M5 14 L12 21 M23 4 V24 M23 14 L16 7 M23 14 L16 21' },
-  { id: 'amendoa', nome: 'O Olho aberto', d: 'M3 14 Q14 4 25 14 Q14 24 3 14 Z', fill: 'M14 11 a3 3 0 1 0 0.01 0Z' },
-  { id: 'labirinto', nome: 'O Labirinto', d: 'M14 3 A11 11 0 1 1 5.5 7.5 M14 8 A6 6 0 1 0 20 14 M14 12 V3' },
-  { id: 'fio', nome: 'O Fio', d: 'M3 21 C8 21 8 7 14 7 C20 7 20 21 25 21 M14 7 V12', fill: 'M14 12 a2 2 0 1 0 0.01 0Z' },
-  { id: 'fio-cortado', nome: 'O Fio cortado', d: 'M3 18 C7 18 8 9 12 9 M16 19 C20 19 21 10 25 10 M11 6 L17 22' },
-  { id: 'passo', nome: 'O Passo', d: 'M9 23 C6 18 7 12 11 11 C14 10 15 15 13 19 C12 22 11 24 9 23Z M17 9 a2 2 0 1 0 0.01 0Z M20 12 a1.6 1.6 0 1 0 0.01 0Z M15 6 a1.8 1.8 0 1 0 0.01 0Z' },
-  { id: 'sem-passo', nome: 'O Sem-Passo', d: 'M14 4 A10 10 0 0 1 24 14 M24 14 A10 10 0 0 1 14 24 M10 5 A10 10 0 0 0 5 18 M9 9 L19 19 M19 9 L9 19' },
-  { id: 'essencia', nome: 'A Essência', d: 'M14 3 L16.5 11.5 L25 14 L16.5 16.5 L14 25 L11.5 16.5 L3 14 L11.5 11.5 Z' },
-  { id: 'caminho', nome: 'O Caminho', d: 'M14 14 m-1 0 a1 1 0 1 1 2 0 a3 3 0 1 1 -6 0 a5 5 0 1 1 10 0 a7 7 0 1 1 -14 0 a9 9 0 1 1 18 0' },
-  { id: 'balanca', nome: 'O Equilíbrio', d: 'M14 4 V24 M6 8 H22 M6 8 L3 15 H9 Z M22 8 L19 15 H25 Z M10 24 H18' },
-  { id: 'chama', nome: 'A Chama do Olho', d: 'M14 3 C18 9 21 12 19 18 C18 22 16 24 14 24 C10 24 8 21 9 17 C10 14 12 13 12 10 C14 12 15 14 15 16 C17 13 16 8 14 3Z' },
-  { id: 'porta', nome: 'A Porta do centro', d: 'M7 25 V12 Q14 2 21 12 V25 M11 25 V15 Q14 10 17 15 V25' },
+  /* 28/10/2026 (Erling): a NOVA língua rúnica de Karmika — seis runas, cada uma um pilar do mundo. As cinco do Erling e a sexta,
+     "A Fresta": usada em todo ritual, sem que ninguém saiba o que quer dizer (Volume I); no Volume II, a revelação. */
+  { id: 'lagrima', nome: 'A Lágrima', d: 'M14 3 C17 9 21 13.5 21 18 A7 7 0 0 1 7 18 C7 13.5 11 9 14 3Z' },
+  { id: 'olho', nome: 'O Olho Kármico', d: 'M4 4 V24 M24 4 V24 M12 4 L6.5 14 L12 24 M16 4 L21.5 14 L16 24 M8.5 14 Q14 9 19.5 14 Q14 19 8.5 14Z', fill: 'M14 12 a2 2 0 1 0 0.01 0Z' },
+  { id: 'ampulheta', nome: 'A Ampulheta', d: 'M7 4 H21 L14 14 L21 24 H7 L14 14 Z' },
+  { id: 'labirinto', nome: 'O Labirinto', d: 'M5 24 V4 H23 V23.5 H8.5 V7.5 H19.5 V20 H12 V11 H16 V16.5' },
+  { id: 'fome', nome: 'A Fome', d: 'M11.5 7.2 A8.3 8.3 0 1 0 16.5 7.2 M11.5 7.2 C11 5.4 9.8 4.2 8.2 3.6 M16.5 7.2 C17 5.4 18.2 4.2 19.8 3.6' },
+  { id: 'fresta', nome: 'A Fresta', d: 'M11.4 2.6 V18.8 M16.6 9.2 V25.4 M6.6 10.4 C9.2 10.4 11.4 11.8 12.8 14 C14.2 16.2 16.4 17.6 21.4 17.6' },
 ];
 /** a runa como SVG (traço na cor do texto: use `color` no CSS) */
+let RID = 0;
+/** a runa como SVG, no traço dourado VAZADO das runas oficiais (linha dupla: um traço largo com o miolo recortado).
+ *  A cor vem de `color` no CSS; o miolo é transparente (serve em qualquer fundo). */
 export function runaSvg(i: number, w = 28) {
-  const r = RUNAS[((i % RUNAS.length) + RUNAS.length) % RUNAS.length];
-  return `<svg viewBox="0 0 28 28" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-label="${r.nome}"><path d="${r.d}"/>${r.fill ? `<path d="${r.fill}" fill="currentColor" stroke="none"/>` : ''}</svg>`;
+  const r = RUNAS[((i % RUNAS.length) + RUNAS.length) % RUNAS.length], id = 'rk' + (RID++);
+  return `<svg viewBox="0 0 28 28" width="${w}" height="${w}" aria-label="${r.nome}"><mask id="${id}" maskUnits="userSpaceOnUse" x="-2" y="-2" width="32" height="32"><rect x="-2" y="-2" width="32" height="32" fill="#000"/><path d="${r.d}" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="miter"/><path d="${r.d}" fill="none" stroke="#000" stroke-width="0.9" stroke-linejoin="miter"/></mask><rect x="-2" y="-2" width="32" height="32" fill="currentColor" mask="url(#${id})"/>${r.fill ? `<path d="${r.fill}" fill="currentColor"/>` : ''}</svg>`;
 }
+/** índice da runa pelo id (lagrima, olho, ampulheta, labirinto, fome, fresta) */
+export const runaIdx = (id: string) => Math.max(0, RUNAS.findIndex((q) => q.id === id));

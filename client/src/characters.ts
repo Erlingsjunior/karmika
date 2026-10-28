@@ -13,13 +13,17 @@ import { radialTexture } from './fx3d';
    ============================================================ */
 
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
-export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'skyraise' | 'stance';
+export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'skyraise' | 'stance' | 'dance';
 
 export interface Hero3D {
   root: THREE.Group;
   /** mps = velocidade real em metros/segundo */
   update(dt: number, t: number, mps: number, heading: number | null): void;
   act(a: Action, force?: boolean): boolean;
+  /** para a ação na hora (a dança acaba quando o jogador anda) */
+  stopAct?(): void;
+  /** o que aparece na mão no 'drink': caneca (padrão), frasco de poção, ou nada (comer) */
+  drinkProp?: 'mug' | 'vial' | 'none';
   setAura(on: boolean): void;
   /** equipamentos visíveis: arma (nome-base), escudo e elmo, com cor/brilho pela raridade */
   setGear(g: { weapon?: { base: string; rarity: string; tint?: number; glow?: number } | null; shield?: { base: string; rarity: string; seed?: number } | null; helm?: { base: string; rarity: string } | null; cape?: { base: string; rarity: string } | null; shoulders?: { base: string; rarity: string } | null }): void;
@@ -410,7 +414,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   let droneObj: THREE.Object3D | null = null, backAnchor: THREE.Group | null = null, stowed = false, rifleHolder: THREE.Group | null = null, muzzleGlow: THREE.Sprite | null = null;
   let gripR: THREE.Object3D | null = null, gripL: THREE.Object3D | null = null, rifleBack: THREE.Group | null = null, rifleStowed = false, aimRK = 0;
   let styleAtk: 'thrust' | 'chop' | 'punch' = 'thrust';
-  let swordHolder: THREE.Group | null = null, shieldHolder: THREE.Group | null = null;
+  let swordHolder: THREE.Group | null = null, shieldHolder: THREE.Group | null = null, mug: THREE.Group | null = null, vial: THREE.Group | null = null;
   /* arma de fogo / besta: segura com as DUAS mãos, como o rifle do tecnocrata (23/10). A arma vive num suporte próprio na raiz;
      a mão direita vai à empunhadura e a esquerda ao guarda-mão por IK, e a arma é colocada entre as duas mãos, mirando para a frente */
   const gunHolder = new THREE.Group(); let gunK = 0, gunTip0: THREE.Object3D | null = null, gunBase0: THREE.Object3D | null = null, gunOn = false;
@@ -885,7 +889,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, skyraise: 0.95, stance: 0.92 };
+  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -1033,6 +1037,15 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       shLX: [[0, -0.5], [.6, -0.6], [.72, -1.3], [1, 0]], elL: [[0, -1.6], [.6, -1.6], [.72, -0.6], [1, 0]], shLZ: [[0, 0.5], [.75, 0.4], [1, 0]], shX: [[0, 0.9], [.6, 0.9], [1, 0]], el: [[0, -0.3], [1, 0]],
       vel: [[0, 0], [.1, 9], [.6, 9], [.7, 0.5], [.82, 0]],
     },
+    dance: { // /dance (28/10, Erling): oito tempos — bate o pé, ginga o quadril, um braço sobe de cada vez, e no fim uma volta inteira
+      crouch: [[0, 0], [.0625, 0.09], [.125, 0], [.1875, 0.09], [.25, 0], [.3125, 0.09], [.375, 0], [.4375, 0.09], [.5, 0], [.5625, 0.09], [.625, 0], [.6875, 0.09], [.75, 0], [.8125, 0.07], [.875, 0.02], [1, 0]],
+      twist: [[0, 0], [.125, 0.45], [.25, -0.45], [.375, 0.45], [.5, -0.45], [.625, 0.45], [.75, -0.45], [.85, 0], [1, 0]], tilt: [[0, 0], [.125, 0.14], [.375, -0.14], [.625, 0.14], [.85, -0.1], [1, 0]],
+      shX: [[0, 0], [.125, -2.7], [.25, -0.5], [.375, -2.7], [.5, -0.5], [.625, -1.2], [.75, -2.9], [.9, -2.9], [1, 0]], shZ: [[0, 0], [.125, 0.5], [.25, 1.1], [.5, 1.1], [.75, 0.4], [1, 0]], el: [[0, 0], [.125, -0.7], [.25, -1.5], [.375, -0.7], [.5, -1.5], [.75, -0.3], [1, 0]],
+      shLX: [[0, 0], [.125, -0.5], [.25, -2.7], [.375, -0.5], [.5, -2.7], [.625, -1.2], [.75, -2.9], [.9, -2.9], [1, 0]], shLZ: [[0, 0], [.25, 1.1], [.5, 1.1], [.75, 0.4], [1, 0]], elL: [[0, 0], [.125, -1.5], [.25, -0.7], [.375, -1.5], [.5, -0.7], [.75, -0.3], [1, 0]],
+      lgLH: [[0, 0], [.0625, -0.5], [.125, 0], [.3125, -0.5], [.375, 0], [.5625, -0.5], [.625, 0], [1, 0]], lgLK: [[0, 0], [.0625, 0.8], [.125, 0], [.3125, 0.8], [.375, 0], [.5625, 0.8], [.625, 0], [1, 0]],
+      lgRH: [[0, 0], [.1875, -0.5], [.25, 0], [.4375, -0.5], [.5, 0], [.6875, -0.5], [.75, 0], [1, 0]], lgRK: [[0, 0], [.1875, 0.8], [.25, 0], [.4375, 0.8], [.5, 0], [.6875, 0.8], [.75, 0], [1, 0]],
+      head: [[0, 0], [.125, 0.15], [.25, -0.1], [.375, 0.15], [.5, -0.1], [.75, -0.25], [1, 0]], spin: [[0, 0], [.8, 0], [.96, PI2], [1, PI2]], jump: [[0, 0], [.8, 0], [.86, 0.18], [.92, 0], [1, 0]],
+    },
     drink: { // chifre de hidromel: leva à boca, cabeça para trás, bate no peito
       shX: [[0, 0], [.25, -1.9], [.65, -2.0], [.8, -0.9], [1, 0]], el: [[0, 0], [.25, -2.3], [.65, -2.4], [.8, -1.2], [1, 0]], shZ: [[0, 0], [.25, -0.35], [.65, -0.35], [1, 0]],
       head: [[0, 0], [.3, -0.2], [.6, -0.5], [.78, 0], [1, 0]], lean: [[0, 0], [.3, -0.1], [.6, -0.2], [.8, 0.1], [1, 0]], shLX: [[0, 0], [.8, 0], [.88, -0.9], [1, 0]], elL: [[0, 0], [.8, 0], [.88, -1.6], [1, 0]],
@@ -1056,6 +1069,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     kind,
     get facing() { return yaw; },
     get acting() { return act !== null && act.a !== 'dash'; },
+    stopAct() { act = null; },
     get actName() { return act ? act.a : null; },
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
     get stepVel() { return stepVel; },
@@ -1441,6 +1455,16 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         }
         muzzleK = Math.max(0, muzzleK - dt * 14); if (muzzleGlow) { muzzleGlow.material.opacity = muzzleK; muzzleGlow.scale.setScalar(0.4 + muzzleK * 0.5); }
       }
+      { /* a caneca na mão (28/10, Erling: "precisa aparecer a caneca na mão deles"): no /beber, no brinde da festa e no povo da taverna; a arma some enquanto isso (e na dança) */
+        const dp = (hero as { drinkProp?: string }).drinkProp ?? 'mug', drinking = !!act && act.a === 'drink', mugOn = drinking && dp === 'mug', vialOn = drinking && dp === 'vial', freeH = drinking || (!!act && act.a === 'dance');
+        if (vialOn && !vial) { vial = new THREE.Group(); const gl = toon(0xd83a4a, { emissive: new THREE.Color(0x6a0a14) }); const b = new THREE.Mesh(new THREE.SphereGeometry(0.05, 9, 7), gl); vial.add(b); const nk = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.022, 0.07, 7), toon(0xcfe8f0)); nk.position.y = 0.07; vial.add(nk); const ck = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.03, 6), toon(0x8a5a2a)); ck.position.y = 0.115; vial.add(ck); vial.position.set(0, -0.09, 0.07); armR.wr.add(vial); }
+        if (vial) vial.visible = vialOn;
+        if (mugOn && !mug) { mug = new THREE.Group(); const wd = toon(0x8a5a2a), band = toon(0x3a3a40), foam = toon(0xfff4dc);
+          const body = new THREE.Mesh(new THREE.CylinderGeometry(0.062, 0.056, 0.15, 10), wd); mug.add(body); for (const y of [-0.05, 0.05]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(0.066, 0.066, 0.018, 10), band); b.position.y = y; mug.add(b); }
+          const fm = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.062, 0.035, 10), foam); fm.position.y = 0.085; mug.add(fm); const fb = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), foam); fb.position.set(0.03, 0.1, 0.02); mug.add(fb);
+          const hd = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 5, 10, Math.PI), wd); hd.rotation.z = -Math.PI / 2; hd.position.x = -0.062; mug.add(hd);
+          mug.position.set(0.02, -0.1, 0.075); armR.wr.add(mug); }
+        if (mug) mug.visible = mugOn; if (swordHolder) swordHolder.visible = !freeH; if (weaponInner) weaponInner.visible = !freeH; if (freeH && gunHolder.visible) gunHolder.visible = false; else if (!freeH && !gunHolder.visible) gunHolder.visible = true; }
       if (swordHolder) swordHolder.rotation.set((kind === 'nordic' ? -1.9 : 0.3 + Math.PI) + aSwX + 3.3 * hang + 0.55 * rK * (kind === 'nordic' ? 1 : 0), 0, (kind === 'nordic' ? 0 : 0.05) + aSwZ + 0.22 * hang);
       shieldF += (aFace - shieldF) * Math.min(1, dt * 16);
 
@@ -1617,6 +1641,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   root.updateMatrixWorld(true);
   const rigJ = { hips, spine, chest, neck: neckG, head, armL, armR, legL, legR };
   root.add(gunHolder); gunHolder.visible = false;
-  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, swordHolder: () => swordHolder, holdTool: () => hero.holdTool, keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
+  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
   return hero;
 }

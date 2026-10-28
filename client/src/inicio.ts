@@ -1,3 +1,4 @@
+import { alertBox } from './windows';
 import { runaSvg } from './runas';
 /* Tela de boas-vindas e os 3 espaços de personagem.
    Fluxo: abrir o jogo → "Encontrar servidor" (convite), "Abrir meu servidor" (app) ou "Jogar sozinho"
@@ -34,7 +35,7 @@ function charKeys() { const out: string[] = []; for (let i = 0; i < localStorage
 function swapTo(i: number) {
   const s = read(); if (i === s.active) return;
   const blob: Record<string, string> = {}; for (const k of charKeys()) blob[k] = localStorage.getItem(k)!;
-  try { localStorage.setItem(`karmika.slot.${s.active}`, JSON.stringify(blob)); } catch { alert('Sem espaço para guardar o personagem atual.'); return false; }
+  try { localStorage.setItem(`karmika.slot.${s.active}`, JSON.stringify(blob)); } catch { alertBox('Sem espaço para guardar o personagem atual.'); return false; }
   for (const k of charKeys()) localStorage.removeItem(k);
   let next: Record<string, string> = {}; try { next = JSON.parse(localStorage.getItem(`karmika.slot.${i}`) || '{}'); } catch { /* */ }
   for (const [k, v] of Object.entries(next)) localStorage.setItem(k, v);

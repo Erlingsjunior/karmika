@@ -60,6 +60,18 @@ export function confirmBox(text: string, yes: string, onYes: () => void, o: { ke
   addEventListener('keydown', key, true);
   d.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-y]')) { close(); onYes(); } else if (t.closest('[data-n]') || (t === d && !o.keep)) no(); }); /* keep: clicar fora (andando pelo mapa) não fecha um convite importante */
 }
+/** pergunta com campo de texto dentro do jogo (no lugar do prompt() do navegador) */
+export function promptBox(text: string, def: string, onOk: (v: string) => void, max = 120) {
+  const d = document.createElement('div'); d.className = 'kconf';
+  d.innerHTML = `<div class="pn"><p>${text}</p><input class="kpin" maxlength="${max}" style="width:100%;box-sizing:border-box;margin:6px 0 10px;padding:7px 9px;font:14px Georgia,serif;color:#f0e0c0;background:rgba(10,8,6,.85);border:1px solid #7a5a30;border-radius:3px"><div class="row"><button data-y>OK</button><button data-n>Cancelar</button></div></div>`;
+  document.body.appendChild(d); bringFront(d); const inp = d.querySelector('input') as HTMLInputElement; inp.value = def; setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  const close = () => { d.remove(); removeEventListener('keydown', key, true); };
+  const ok = () => { const v = inp.value.trim(); close(); onOk(v); };
+  const key = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); close(); } else if (e.key === 'Enter') { e.stopPropagation(); ok(); } else e.stopPropagation(); };
+  addEventListener('keydown', key, true);
+  d.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-y]')) ok(); else if (t.closest('[data-n]') || t === d) close(); }); }
+/** aviso dentro do jogo (no lugar do alert() do navegador) */
+export function alertBox(text: string) { confirmBox(text, 'OK', () => {}); const L = document.querySelectorAll('.kconf [data-n]'), b = L[L.length - 1] as HTMLElement | undefined; if (b) b.style.display = 'none'; }
 /** escolha de duas saídas (ex.: poupar ou matar um elite rendido) */
 export function choiceBox(title: string, text: string, a: [string, () => void], b: [string, () => void]) {
   const d = document.createElement('div'); d.className = 'kconf kchoice';

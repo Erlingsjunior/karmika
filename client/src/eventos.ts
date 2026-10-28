@@ -1,3 +1,4 @@
+import { RUNAS } from './runas';
 /* ---------- Eventos vivos (Erling, 24/10: "eventos vivos no mapa: regionais e globais; coisas acontecendo que deixam o mundo vivo").
    Cada região do mapa, de tempos em tempos (o relógio de verdade decide, então todo mundo vê o mesmo), ganha um acontecimento:
    uma patrulha atacada por lobisomens na lua cheia, um círculo de bruxos e paladinos negros invocando sobre uma vila, uma procissão
@@ -277,7 +278,7 @@ function buildProp(kind: Prop): { g: THREE.Group; glow?: THREE.Sprite } {
 function ritualCircle(): { g: THREE.Mesh; set(k: number, t: number): void } {
   const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d')!; c.strokeStyle = 'rgba(210,150,255,1)'; c.lineWidth = 5; c.beginPath(); c.arc(128, 128, 118, 0, 6.283); c.stroke(); c.lineWidth = 3; c.beginPath(); c.arc(128, 128, 92, 0, 6.283); c.stroke();
   c.beginPath(); for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * 4 * Math.PI / 5; const x = 128 + Math.cos(a) * 92, y = 128 + Math.sin(a) * 92; if (i) c.lineTo(x, y); else c.moveTo(x, y); } c.closePath(); c.stroke();
-  c.font = 'bold 18px serif'; c.fillStyle = 'rgba(220,170,255,1)'; for (let i = 0; i < 12; i++) { c.save(); c.translate(128, 128); c.rotate(i * Math.PI / 6); c.fillText('ᚱᚦᛟᚾᛉᛞ'[i % 6], -5, -100); c.restore(); }
+  c.fillStyle = 'rgba(220,170,255,1)'; c.lineWidth = 1.8; for (let i = 0; i < 12; i++) { const r = RUNAS[i % 2 ? 5 : (i >> 1) % 5]; c.save(); c.translate(128, 128); c.rotate(i * Math.PI / 6); c.translate(-8.4, -112); c.scale(0.6, 0.6); c.stroke(new Path2D(r.d)); if (r.fill) c.fill(new Path2D(r.fill)); c.restore(); } /* 28/10: as runas de Karmika — e a Fresta entre cada uma, como em todo ritual */
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.Mesh(new THREE.PlaneGeometry(9, 9).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
   return { g: m, set(k, tt) { (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + k * 0.6 + Math.sin(tt * 3) * 0.06; m.rotation.y = tt * 0.08; } };

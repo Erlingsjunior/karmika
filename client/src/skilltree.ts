@@ -1,3 +1,4 @@
+import { confirmBox } from './windows';
 /** Árvore Kármica de magias: 1 ponto por nível, caminhos que abrem magias, até 10 pontos por magia (Bronze 3, Prata 6, Ouro 10).
  *  Cada ponto deixa a magia mais forte, longa e larga; a cada 5 pontos ela sobe de "tier" e muda a apresentação. */
 import type { KitKey } from './kits';
@@ -238,7 +239,7 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
         <small class="nx">${rk >= MAX_RANK ? 'Magia no máximo.' : `Próxima evolução visual em ${next} ponto${next > 1 ? 's' : ''}. Cada ponto: +4% de dano (somado), +4% alcance e área, +5% duração, −2% custo.`}</small>
         <button class="inv ${why ? 'off' : ''}" data-inv="${selId}" ${why ? 'disabled' : ''}>${why ? why : rk ? `+1 ponto em ${d.name}` : `Aprender ${d.name} (1 ponto)`}</button>` : ''}</div></div>
       <small class="ft">Clique numa magia para ver a ficha · Esc fecha</small></div>`;
-    el.onclick = (e) => { const t = e.target as HTMLElement; const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { if (confirm('Redistribuir todos os pontos desta personagem?')) { reset(); onSel(selId); } } };
+    el.onclick = (e) => { const t = e.target as HTMLElement; const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { confirmBox('Redistribuir todos os pontos desta personagem?', 'Redistribuir', () => { reset(); onSel(selId); }); } };
   }
   return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def };
 }

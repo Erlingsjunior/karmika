@@ -676,8 +676,8 @@ const inv = createInventory(game, {
   alignHtml: () => { try { return align.visitedHtml(); } catch { return ''; } },
   questItemLost: (qid, item) => { const d = quests.def(qid); if (d && quests.q.active[qid]) { quests.dropQuest(qid); game.logMsg(`◆ Você destruiu ${ITEMS_TBL[item]?.name ?? item}: a missão “${d.name}” foi abandonada. Pegue de novo com ${d.giver}.`, '#ffb060'); } },
   feel: (kind, id) => { const p = heroPos, y0 = heroY;
-    if (kind === 'drink') { audio.gulp(); if (!hero.acting && !inside) hero.act('drink'); for (let i = 0; i < 14; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.8, y0 + 0.3 + Math.random() * 1.2, p.z + (Math.random() - 0.5) * 0.8, { vy: 1.2 + Math.random(), life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: /mana|🔮/.test(id) ? 0x5a8aff : 0xff4a6a, a: 0.9 }); }
-    else if (kind === 'eat') { audio.chew(); if (!hero.acting && !inside) hero.act('drink'); for (let i = 0; i < 8; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.4, y0 + 1.5, p.z + (Math.random() - 0.5) * 0.4, { vx: (Math.random() - 0.5) * 1.5, vy: Math.random() * 1.2, vz: (Math.random() - 0.5) * 1.5, life: 0.5, s0: 0.14, s1: 0.04, c0: 0xe8c890, c1: 0x8a5a2a, a: 0.9, g: 4 }); }
+    if (kind === 'drink') { audio.gulp(); if (!hero.acting && !inside) { hero.drinkProp = 'vial'; hero.act('drink'); } for (let i = 0; i < 14; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.8, y0 + 0.3 + Math.random() * 1.2, p.z + (Math.random() - 0.5) * 0.8, { vy: 1.2 + Math.random(), life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: /mana|🔮/.test(id) ? 0x5a8aff : 0xff4a6a, a: 0.9 }); }
+    else if (kind === 'eat') { audio.chew(); if (!hero.acting && !inside) { hero.drinkProp = 'none'; hero.act('drink'); } for (let i = 0; i < 8; i++) particles.spawn(p.x + (Math.random() - 0.5) * 0.4, y0 + 1.5, p.z + (Math.random() - 0.5) * 0.4, { vx: (Math.random() - 0.5) * 1.5, vy: Math.random() * 1.2, vz: (Math.random() - 0.5) * 1.5, life: 0.5, s0: 0.14, s1: 0.04, c0: 0xe8c890, c1: 0x8a5a2a, a: 0.9, g: 4 }); }
     else if (kind === 'tool') audio.equip('tool');
     else if (kind === 'equip') { const sl = id; audio.equip(sl === 'ring' || sl === 'ring2' || sl === 'amulet' || sl === 'earring' || sl === 'earring2' ? 'jewel' : sl === 'cape' || sl === 'legs' ? 'cloth' : sl === 'boots' || sl === 'gloves' || sl === 'belt' ? 'leather' : 'metal');
       if (!hero.acting && !inside) hero.act('stance'); for (let i = 0; i < 22; i++) { const a = i / 22 * 6.283; particles.spawn(p.x + Math.cos(a) * 0.7, y0 + 0.2 + (i % 5) * 0.35, p.z + Math.sin(a) * 0.7, { vy: 0.8, life: 0.8, s0: 0.22, s1: 0.04, c0: 0xfff0bd, c1: 0xd9a24f, a: 0.9 }); } }
@@ -714,7 +714,7 @@ setTimeout(() => syncGear(), 0);
 const RLK = 'karmika.robotLeft.v1'; const robotLeft: Record<string, number[]> = (() => { try { return JSON.parse(localStorage.getItem(RLK) || '{}'); } catch { return {}; } })();
 function robotLeftPush(id: string, ms: number) { (robotLeft[id] ??= []).push(ms); try { localStorage.setItem(RLK, JSON.stringify(robotLeft)); } catch { /* */ } }
 function robotLeftPop(id: string): number | null { const v = robotLeft[id]?.pop() ?? null; try { localStorage.setItem(RLK, JSON.stringify(robotLeft)); } catch { /* */ } return v; }
-const build = createBuild({ taken: (gx, gy, w, h) => { const o = otherHouses.find((c) => gx < c.gx + c.w + 1 && gx + w + 1 > c.gx && gy < c.gy + c.h + 1 && gy + h + 1 > c.gy); return o ? o.char : null; }, snd: (k) => game.snd(k), gold: () => game.st.gold, payGold: (n) => { game.st.gold = Math.max(0, game.st.gold - n); }, quitWhole: () => { const h = obras.home; if (h && confirm(`Desistir de ${h.name}? O canteiro se desfaz e TODO o material se perde (${h.done.toFixed(1)} de ${h.work} turnos feitos).`)) obras.quit(); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
+const build = createBuild({ taken: (gx, gy, w, h) => { const o = otherHouses.find((c) => gx < c.gx + c.w + 1 && gx + w + 1 > c.gx && gy < c.gy + c.h + 1 && gy + h + 1 > c.gy); return o ? o.char : null; }, snd: (k) => game.snd(k), gold: () => game.st.gold, payGold: (n) => { game.st.gold = Math.max(0, game.st.gold - n); }, quitWhole: () => { const h = obras.home; if (h) confirmBox(`<b>Desistir de ${h.name}?</b><br>O canteiro se desfaz e <b>todo o material se perde</b> (${h.done.toFixed(1)} de ${h.work} turnos feitos).`, '✖ Desistir da obra', () => obras.quit()); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
   canBuildAt: (gx, gy) => !city.settlements.some((st) => Math.hypot(gx - st.x, gy - st.y) < st.radius + 2) && !city.pois.some((q) => Math.hypot(gx - q.x, gy - q.y) < 6) && city.map[gy]?.[gx] !== 'water' });
 /* a obra inteira e a casa do jogador (obras.ts, 28/10) */
 let homeProp: (typeof city.props)[number] | null = null;
@@ -725,7 +725,7 @@ const obras = createObras({ onDone: (h) => setTimeout(() => {
   hasContract: () => inv.has('obra_auto', 1), takeContract: () => inv.take('obra_auto', 1), scene, T, heightAt, log: (t, c) => game.logMsg(t, c), particles: particles as never, sentries: () => (game as unknown as { sentries(): { x: number; z: number; r: number; until: number }[] }).sentries(), enemyNear: (x, z, r) => { const e = game.enemies.nearest(new THREE.Vector3(x, 0, z), r); return !!e && e.alive; }, heroNear: (x, z, r) => Math.hypot(state.fx * T - x, state.fy * T - z) < r, heroName: () => profile?.name || 'Caminhante',
   block: (gx, gy, w, h, on) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) if (city.map[y]?.[x] !== undefined) city.map[y][x] = on ? 'wall' : 'grass'; },
   removeHouse: (h) => { if (homeProp) objs.removeProp(homeProp); homeProp = null; for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) if (city.map[y]?.[x] !== undefined) city.map[y][x] = 'grass'; },
-  addHouse: (h) => { const p = { kind: 'house', gx: h.gx, gy: h.gy, w: h.w, h: h.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 9, rot: 0, label: `Casa de ${h.owner}` } as (typeof city.props)[number]; homeProp = p; objs.addProp(p); for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) city.map[y][x] = 'wall'; } });
+  addHouse: (h) => { const p = { kind: 'house', gx: h.gx, gy: h.gy, w: h.w, h: h.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 2, rot: 0, label: `Casa de ${h.owner}` } as (typeof city.props)[number]; homeProp = p; objs.addProp(p); for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) city.map[y][x] = 'wall'; } });
 build.load();
 /* ---------- dock de janelas (canto inferior direito): mochila, personagem, magias, missões, feitos, mapa ---------- */
 const dockEl = document.createElement('div'); dockEl.id = 'dock';
@@ -882,8 +882,11 @@ const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.n
 /* comandos de teste do beta (chat): /morrer, /folegos N, /lagrimas N, /nivel N, /ajuda */
 const BETA_TOOLS = true;
 function betaCommand(cmd: string, a: string[]): string | null {
+  /* EMOTES (28/10, Erling): /dance faz o personagem dançar (até você andar); /beber, uma caneca de cerveja na mão. Os outros jogadores veem. */
+  if (cmd === 'dance' || cmd === 'dancar' || cmd === 'dançar' || cmd === 'danca' || cmd === 'dança') { if (inside && !inside.prop) return '💃 Aqui não dá para dançar.'; emote.dance = true; emote.x = state.fx; emote.y = state.fy; hero.stopAct?.(); return '💃 Você começa a dançar. (ande para parar)'; }
+  if (cmd === 'beber' || cmd === 'brinde' || cmd === 'cerveja' || cmd === 'drink') { emote.dance = false; hero.stopAct?.(); hero.drinkProp = 'mug'; hero.act('drink', true); netRef?.act('drink'); audio.gulp(); setTimeout(() => audio.gulp(), 380); return '🍺 Você vira uma caneca de cerveja. Saúde!'; }
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
-  if (cmd === 'ajuda' || cmd === 'help') return 'Teste (beta): /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
   { const MAT: Record<string, string> = { prego: 'nail', pregos: 'nail', madeira: 'wood', tabua: 'plank', tabuas: 'plank', 'tábuas': 'plank', pedra: 'stone', pedras: 'stone', corda: 'rope', cordas: 'rope', galho: 'stick', galhos: 'stick' };
     if (MAT[cmd]) { const id = MAT[cmd], q = n > 0 ? n : 1000; inv.grant(id, q); return `🧪 (teste) +${q} ${ITEMS_TBL[id]?.icon ?? ''} ${ITEMS_TBL[id]?.name ?? id}.`; }
     if (cmd === 'gold' || cmd === 'ouro') { const q = n > 0 ? n : 10000; game.st.gold += q; return `🧪 (teste) +${q} 🪙 ouro.`; } }
@@ -1015,7 +1018,7 @@ hub.on('h:deny', (m) => game.logMsg(`🏡 ${String(m.why || 'O servidor recusou 
 const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean }[] = []; const otherProps = new Map<string, (typeof city.props)[number]>();
 hub.on('h:all', (m) => { const me = (profile?.name ?? '').toLowerCase(); otherHouses.length = 0; for (const c of (m.list as typeof otherHouses) ?? []) if (c.char.toLowerCase() !== me && [c.gx, c.gy, c.w, c.h].every(Number.isFinite)) otherHouses.push(c);
   for (const c of otherHouses) { const k = c.char.toLowerCase() + '@' + c.gx + ',' + c.gy; if (!c.done || otherProps.has(k)) continue; let free = true; for (let y = c.gy; y < c.gy + c.h && free; y++) for (let x = c.gx; x < c.gx + c.w; x++) if (city.map[y]?.[x] !== 'grass') { free = false; break; } if (!free) continue;
-    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 9, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; } });
+    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 2, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; } });
 /* os terrenos das guildas: quadras de 10×10 de capim livre em volta de Lumenhal, a cidade média (todos calculam igual: o mundo é o mesmo) */
 const GPLOT = 10;
 const guildPlots = (() => { const lu = city.settlements.find((q) => q.name === 'Lumenhal'); if (!lu) return [] as { x0: number; y0: number }[]; const out: { x0: number; y0: number }[] = [];
@@ -1515,6 +1518,10 @@ festaCd.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closes
 const joyAura = new THREE.Group(); joyAura.visible = false; scene.add(joyAura);
 { const CONF = ['#ffd24a', '#ff7aa8', '#7ad7ff', '#9aff7a'].map((c) => { const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g2 = cv.getContext('2d')!; g2.fillStyle = c; g2.shadowColor = c; g2.shadowBlur = 8; g2.beginPath(); g2.arc(16, 16, 6, 0, 6.3); g2.fill(); const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx; });
   for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: i % 2 ? NOTE_TEX[i % 4] : CONF[(i >> 1) % 4], transparent: true, depthWrite: false, opacity: 0.85 })); sp.scale.setScalar(i % 2 ? 0.42 : 0.22); sp.userData.a = i / 8 * 6.283; joyAura.add(sp); } }
+/** a dança continua enquanto você fica parado; andar, lutar ou entrar em algum lugar para */
+const emote = { dance: false, x: 0, y: 0 };
+function emoteTick() { if (!emote.dance) return; if (Math.hypot(state.fx - emote.x, state.fy - emote.y) > 0.05 || hero.combat || game.st.dead) { emote.dance = false; if (hero.actName === 'dance') hero.stopAct?.(); return; }
+  if (!hero.acting) { hero.act('dance', true); netRef?.act('dance'); } }
 function joyAnim(t: number) { const on = joyUntil() > Date.now() && !inside; joyAura.visible = on; if (!on) return; joyAura.position.copy(hero.root.position);
   joyAura.children.forEach((c, i) => { const a = c.userData.a + t * (i % 2 ? 0.9 : -1.3), r = 1.05 + Math.sin(t * 2 + i) * 0.12; c.position.set(Math.cos(a) * r, 1.0 + Math.sin(t * 2.4 + i * 0.8) * 0.45 + (i % 2) * 0.5, Math.sin(a) * r); }); }
 function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
@@ -2066,7 +2073,7 @@ function showCreate(reborn = false) {
   }
   preview();
 }
-document.getElementById('m-new')?.addEventListener('click', () => { if (!confirm('Criar um novo personagem do zero apaga o atual: nível, mochila, magias, missões, relíquias e lar. Continuar?')) return; for (const k of Object.keys(localStorage)) if (k.startsWith('karmika.') && !k.startsWith('karmika.ui.') && k !== 'karmika.pix' && k !== 'karmika.shadows' && k !== 'karmika.music' && k !== 'karmika.rows') localStorage.removeItem(k); location.reload(); });
+document.getElementById('m-new')?.addEventListener('click', () => { confirmBox('Criar um novo personagem do zero apaga o atual: nível, mochila, magias, missões, relíquias e lar. Continuar?', 'Apagar e criar novo', () => { for (const k of Object.keys(localStorage)) if (k.startsWith('karmika.') && !k.startsWith('karmika.ui.') && k !== 'karmika.pix' && k !== 'karmika.shadows' && k !== 'karmika.music' && k !== 'karmika.rows') localStorage.removeItem(k); location.reload(); }); });
 /* ---------- página de opções: gráficos, som e jogo, tudo ao vivo ---------- */
 function applyOpts(k?: keyof Opts) {
   saveOpts();
@@ -4139,6 +4146,7 @@ function frameBody() {
   if (stamWarnT > 0) stamWarnT -= dt;
   const run = runningNow() && (game.st.stam > 0.5 || game.st.god) ? 1.5 : 1;
   game.setMoving(!!(ix || iy));
+  if (emote.dance && (ix || iy)) { emote.dance = false; if (hero.actName === 'dance') hero.stopAct?.(); } /* andar para a dança na hora */
   if (sitting && (ix || iy || hero.acting)) { sitting = null; }
   const forced = !!hero.actName && ['slam', 'bash', 'combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'rush', 'quake', 'charge', 'jet', 'throw'].includes(hero.actName);
   const actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? 0.3 : hero.guard ? 0.45 : 1;
@@ -4203,7 +4211,7 @@ function frameBody() {
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
   try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
-  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t);
+  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t); emoteTick();
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t); updateOutSigil(t);

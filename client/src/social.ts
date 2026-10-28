@@ -5,7 +5,7 @@
      Membros e postos, mensagem do dia, chat da guilda, mercado só dos membros (sem taxa) e o terreno da guilda. */
 import type { Hub } from './hub';
 import { account, setNick } from './hub';
-import { floatWin } from './windows';
+import { floatWin, promptBox } from './windows';
 
 export interface GMember { k: string; name: string; rank: string; joined: number; on?: boolean; where?: string; char?: string; seen?: number }
 export interface GListing { id: number; by: string; price: number; at: number; att: { item?: { id: string; n: number }; gear?: { name: string; rarity: string; icon: string; uid?: number } } }
@@ -152,10 +152,10 @@ export function createSocial(ctx: {
     if (d.mkbuy) { const p = +d.p!; if (!ctx.payGold(p)) { ctx.log(`⚖ Falta ouro: ${p} 🪙.`, '#ff9a8a'); return; } H.send({ t: 'g:mk:buy', id: +d.mkbuy, paid: p }); ctx.log(`⚖ Compra feita: ${p} 🪙. O item chega pelo correio.`, '#ffe08a'); return; }
     switch (d.a) {
       case 'add': { const n = val('nick').trim(); if (n) H.send({ t: 'a:freq', nick: n }); break; }
-      case 'nick': { const n = prompt('Seu apelido de jogador (vale para todos os personagens):', me?.nick ?? ''); if (n) H.send({ t: 'a:nick', nick: n }); break; }
+      case 'nick': { promptBox('Seu apelido de jogador (vale para todos os personagens):', me?.nick ?? '', (n) => { if (n) H.send({ t: 'a:nick', nick: n }); }, 24); break; }
       case 'dmsend': sendDm(); break;
       case 'gsend': sendG(); break;
-      case 'motd': { const tx = prompt('Mensagem do dia da guilda:', guild?.motd ?? ''); if (tx !== null) H.send({ t: 'g:motd', text: tx }); break; }
+      case 'motd': { promptBox('Mensagem do dia da guilda:', guild?.motd ?? '', (tx) => H.send({ t: 'g:motd', text: tx }), 200); break; }
       case 'gleave': ctx.ask('⚑ Sair da guilda', `Sair da ${guild?.name}? Se você for o último, a guilda acaba.`, 'Sair', (ok) => { if (ok) H.send({ t: 'g:leave' }); }); break;
       case 'plot': if (guild) ctx.markPlot(guild.plot); break;
       case 'gcancel': founding = false; render(); break;

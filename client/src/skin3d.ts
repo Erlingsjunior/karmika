@@ -188,6 +188,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   { const sh = R.swordHolder(), sw = R.sword(); if (sh && sw) { const a = sh.rotation.clone(), q = sw.quaternion.clone(); sh.rotation.set(-1.9, 0, 0); sw.quaternion.identity(); root.updateMatrixWorld(true);
       const rel = R.armR.wr!.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(sw.getWorldQuaternion(new THREE.Quaternion())); R0inv = rel.invert(); sh.rotation.copy(a); sw.quaternion.copy(q); } }
   const isUnder = (o: THREE.Object3D, p: THREE.Object3D) => { for (let q: THREE.Object3D | null = o; q; q = q.parent) if (q === p) return true; return false; };
+  /* a caneca (e o frasco) na mão do modelo de arte (28/10): a alça atravessa o punho, do mindinho ao indicador, e a caneca fica de pé à frente dos dedos */
+  function placeCups() { const cups = (R as unknown as { cups?: () => (THREE.Object3D | null)[] }).cups?.(); if (!cups) return;
+    for (const c of cups) { if (!c || !c.visible) continue; model.updateMatrixWorld(true); W(sI, vI); W(sP, vP); W(sM, vM); W(sH, vH);
+      const up = vI.clone().sub(vP).normalize(), fd = vM.clone().sub(vH).normalize(), g = vI.clone().add(vP).add(vM).multiplyScalar(1 / 3);
+      root.matrixWorld.decompose(vF, tq, sc); const pos = g.addScaledVector(fd, 0.07 * sc.x); place(c, fd.clone(), up.clone(), pos); } }
   function holdGear() {
     model.updateMatrixWorld(true);
     { const RG2 = R as unknown as { gun?: () => THREE.Object3D | null; placeGun?: (a: THREE.Vector3, b: THREE.Vector3, q: THREE.Quaternion, s: number) => void };
@@ -301,7 +306,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     }
     // giro do antebraço (pronação/supinação): o procedural não tem esse grau; sem ele as palmas ficam viradas para cima/fora
     for (const [b, q] of roll) { b.quaternion.multiply(q); b.updateMatrixWorld(true); }
-    holdGear(); placeFitted();
+    holdGear(); placeCups(); placeFitted();
   }
   return { tick, model };
 }
