@@ -18,17 +18,17 @@ import type { EnemyType } from './world';
 
 const T = 2;
 type P2 = { x: number; z: number };
-export interface RouteDef { id: string; name: string; stops: string[]; lvl: number; foes: EnemyType[]; foeName: string; /** quem leva a carga: a Companhia (vapor, tecnocratas), os anões (carroça de minério puxada a cavalo) ou mercadores humanos (carroça coberta) */ kind?: 'steam' | 'dwarf' | 'human'; /** nome de cada bicho da emboscada */ names?: Partial<Record<EnemyType, string>>; night?: boolean; /** onde o comboio sai (texto) */ from: string }
+export interface RouteDef { id: string; name: string; stops: string[]; lvl: number; foes: EnemyType[]; foeName: string; /** quem leva a carga: a Companhia (vapor, tecnocratas), os anões (carroça de minério puxada a cavalo) ou mercadores humanos (carroça coberta) */ kind?: 'steam' | 'dwarf' | 'human'; /** 28/10 (Erling): a bandeira que diz QUAL carroça é — decide o modelo, a tripulação e a loja. Nunca deduzir de outra coisa */ carroca?: 'carrocaAVapor' | 'carrocaDosAnoes'; /** nome de cada bicho da emboscada */ names?: Partial<Record<EnemyType, string>>; night?: boolean; /** onde o comboio sai (texto) */ from: string }
 export interface Route extends RouteDef { pts: P2[]; cum: number[]; len: number }
 
 /** as rotas da Companhia (os nomes são as vilas por onde a estrada passa) */
 export const ROUTES: RouteDef[] = [
-  { id: 'ak-hr', names: { wolf: 'Lobo da Estrada', coyote: 'Coiote da Estrada' },  name: 'Askavik → Hrafnhöfn', stops: ['Askavik', 'Hrafnhöfn'], lvl: 31, foes: ['wolf', 'wolf', 'coyote'], foeName: 'Lobo da Estrada', from: 'portão leste de Askavik' },
-  { id: 'ak-cv', names: { ghoul: 'Carniçal da Estrada', bat: 'Morcego da Corte' },  name: 'Rota Noturna de Corvoscuro', stops: ['Askavik', 'Hrafnhöfn', 'Corvoscuro'], lvl: 32, foes: ['ghoul', 'bat', 'bat'], foeName: 'Carniçal da Estrada', night: true, from: 'portão leste de Askavik' },
-  { id: 'au-ak', names: { zombie: 'Morto Erguido', skeleton: 'Ossada Desfiada' },  name: 'Austrvik → Askavik (a Catedral)', stops: ['Austrvik', 'Eikvik', 'Lundr', 'Askavik'], lvl: 35, foes: ['zombie', 'skeleton', 'skeleton'], foeName: 'Morto Erguido', from: 'Austrvik, ao pé da Abadia' },
-  { id: 'ak-au', names: { werewolf: 'Lobisomem Saqueador', ghoul: 'Carniçal Saqueador', skeleton: 'Ossada Desfiada' },  name: 'A Grande Rota (Askavik → Austrvik)', stops: ['Askavik', 'Lundr', 'Eikvik', 'Austrvik'], lvl: 39, foes: ['werewolf', 'ghoul', 'skeleton'], foeName: 'Saqueador da Grande Rota', from: 'portão sul de Askavik' },
-  { id: 'kf-bf', names: { frostwolf: 'Lobo do Passo', imp: 'Diabrete da Fenda' },  name: 'Passo de Midvangr', stops: ['Kaldrfoss', 'Midvangr', 'Brasaforja'], lvl: 34, foes: ['frostwolf', 'frostwolf', 'imp'], foeName: 'Lobo do Passo', from: 'Kaldrfoss' },
-  { id: 'pc-vp', names: { puglin: 'Saqueador da Costa', boar: 'Javali da Costa' },  name: 'Porto Caldeira → Vaporeira', stops: ['Porto Caldeira', 'Vaporeira'], lvl: 25, foes: ['puglin', 'puglin', 'boar'], foeName: 'Saqueador da Costa', from: 'Porto Caldeira' },
+  { id: 'ak-hr', kind: 'steam', names: { wolf: 'Lobo da Estrada', coyote: 'Coiote da Estrada' },  name: 'Askavik → Hrafnhöfn', stops: ['Askavik', 'Hrafnhöfn'], lvl: 31, foes: ['wolf', 'wolf', 'coyote'], foeName: 'Lobo da Estrada', from: 'portão leste de Askavik' },
+  { id: 'ak-cv', kind: 'steam', names: { ghoul: 'Carniçal da Estrada', bat: 'Morcego da Corte' },  name: 'Rota Noturna de Corvoscuro', stops: ['Askavik', 'Hrafnhöfn', 'Corvoscuro'], lvl: 32, foes: ['ghoul', 'bat', 'bat'], foeName: 'Carniçal da Estrada', night: true, from: 'portão leste de Askavik' },
+  { id: 'au-ak', kind: 'steam', names: { zombie: 'Morto Erguido', skeleton: 'Ossada Desfiada' },  name: 'Austrvik → Askavik (a Catedral)', stops: ['Austrvik', 'Eikvik', 'Lundr', 'Askavik'], lvl: 35, foes: ['zombie', 'skeleton', 'skeleton'], foeName: 'Morto Erguido', from: 'Austrvik, ao pé da Abadia' },
+  { id: 'ak-au', kind: 'steam', names: { werewolf: 'Lobisomem Saqueador', ghoul: 'Carniçal Saqueador', skeleton: 'Ossada Desfiada' },  name: 'A Grande Rota (Askavik → Austrvik)', stops: ['Askavik', 'Lundr', 'Eikvik', 'Austrvik'], lvl: 39, foes: ['werewolf', 'ghoul', 'skeleton'], foeName: 'Saqueador da Grande Rota', from: 'portão sul de Askavik' },
+  { id: 'kf-bf', kind: 'steam', names: { frostwolf: 'Lobo do Passo', imp: 'Diabrete da Fenda' },  name: 'Passo de Midvangr', stops: ['Kaldrfoss', 'Midvangr', 'Brasaforja'], lvl: 34, foes: ['frostwolf', 'frostwolf', 'imp'], foeName: 'Lobo do Passo', from: 'Kaldrfoss' },
+  { id: 'pc-vp', kind: 'steam', names: { puglin: 'Saqueador da Costa', boar: 'Javali da Costa' },  name: 'Porto Caldeira → Vaporeira', stops: ['Porto Caldeira', 'Vaporeira'], lvl: 25, foes: ['puglin', 'puglin', 'boar'], foeName: 'Saqueador da Costa', from: 'Porto Caldeira' },
   /* 26/10 (Erling: "não tenho visto muitas caravanas; caravanas de tecnocratas e de anões também, com suas carroças") */
   { id: 'bf-ak', kind: 'dwarf', names: { frostwolf: 'Lobo do Passo', imp: 'Diabrete da Fenda' }, name: 'Minério de Brasaforja (→ Askavik)', stops: ['Brasaforja', 'Midvangr', 'Kaldrfoss', 'Askavik'], lvl: 33, foes: ['frostwolf', 'imp', 'frostwolf'], foeName: 'Lobo do Passo', from: 'portão de Brasaforja' },
   { id: 'bf-cz', kind: 'dwarf', names: { imp: 'Diabrete das Cinzas', puglin: 'Puglin das Cinzas' }, name: 'Brasaforja → Cinzalto', stops: ['Brasaforja', 'Cinzalto'], lvl: 30, foes: ['imp', 'puglin', 'imp'], foeName: 'Diabrete das Cinzas', from: 'portão de Brasaforja' },
@@ -41,6 +41,8 @@ export const ROUTES: RouteDef[] = [
   { id: 'lm-bk', kind: 'human', names: { puglin: 'Salteador da Lagoa', wolf: 'Lobo da Lagoa' }, name: 'Lumenhal → Brekkuvik', stops: ['Lumenhal', 'Myrbakki', 'Brekkuvik'], lvl: 20, foes: ['puglin', 'wolf', 'puglin'], foeName: 'Salteador da Lagoa', from: 'Lumenhal' },
   { id: 'lm-ve', kind: 'human', names: { puglin: 'Salteador da Lagoa', boar: 'Javali do Vale' }, name: 'Lumenhal → Vestheim', stops: ['Lumenhal', 'Vatnaholt', 'Vestheim'], lvl: 18, foes: ['puglin', 'boar', 'puglin'], foeName: 'Salteador da Lagoa', from: 'Lumenhal' },
 ];
+/* toda rota sai daqui com a bandeira da carroça: vapor = Companhia de Latão (tecnocratas); anã e humana = a carroça dos anões (carnes, cervejas, peças, festas) */
+for (const r of ROUTES) { r.kind ??= 'steam'; r.carroca = r.kind === 'steam' ? 'carrocaAVapor' : 'carrocaDosAnoes'; }
 /** as que andam sozinhas pelo mundo (as outras só existem nas missões) */
 const AMBIENT = ['ak-cv', 'ak-au', 'kf-bf', 'pc-vp', 'ak-hr', 'bf-ak', 'bf-cz', 'uf-bf', 'vp-bk', 'km-lu', 'km-ve', 'km-su', 'lu-ak', 'lm-bk', 'lm-ve'];
 
@@ -243,7 +245,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   function eventNow() { const slot = Math.floor(now() / EV), h = Math.abs(Math.sin(slot * 12.9898) * 43758.5453) % 1, ids = AMBIENT.filter((id) => routes.has(id)); if (!ids.length) return null;
     const r = routes.get(ids[Math.floor(h * ids.length)])!; return { slot, r, s: openRoad(r, r.len * (0.3 + ((h * 7.31) % 1) * 0.4)), left: EV - (now() % EV) }; }
 
-  function crewFor(c: Car) { if (c.crew.length) return; const kind = c.route.kind ?? 'steam';
+  function crewFor(c: Car) { if (c.crew.length) return; const kind = c.route.carroca === 'carrocaAVapor' ? 'steam' : c.route.kind;
     const drv = kind === 'steam' ? createCharacter('technocrat', { static: true }) : createCharacter('dwarf', { static: true }); /* carroças são de anões (Erling) */
     const g1 = kind === 'steam' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true }), g2 = createCharacter('dwarf', { static: true });
     for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); h.root.userData.farCull = true; ctx.scene.add(h.root); }
@@ -349,7 +351,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** o que dá para fazer perto de uma carroça (o E) */
   function interact(hx: number, hz: number): { d: number; label: string; act: () => void } | null {
     for (const c of cars.values()) { if (!c.w) continue; const p = c.w.root.position, d = Math.hypot(p.x - hx, p.z - hz); if (d > 4.5) continue;
-      if (c.mode === 'ambient' && ctx.trade) return { d, label: c.route.kind === 'steam' ? 'E — Falar com o cocheiro (comerciar com a Companhia de Latão)' : 'E — Falar com o cocheiro anão (comerciar)', act: () => { say(c, pick(c.route.kind === 'steam' ? ['Olha a mercadoria! Rápido, que o vapor não espera.', 'Da Companhia de Latão, direto do porto. Vai levar?'] : ['Ô! Pare aí, que a parelha descansa. O que vai ser?', 'Minério, cerveja e ferramenta boa. Dos anões, direto da Forja.'])); c.trading = true; ctx.trade!(c.route); } };
+      if (c.mode === 'ambient' && ctx.trade) return { d, label: c.route.carroca === 'carrocaAVapor' ? 'E — Falar com o cocheiro (comerciar com a Companhia de Latão)' : 'E — Falar com o cocheiro anão (comerciar)', act: () => { say(c, pick(c.route.kind === 'steam' ? ['Olha a mercadoria! Rápido, que o vapor não espera.', 'Da Companhia de Latão, direto do porto. Vai levar?'] : ['Ô! Pare aí, que a parelha descansa. O que vai ser?', 'Minério, cerveja e ferramenta boa. Dos anões, direto da Forja.'])); c.trading = true; ctx.trade!(c.route); } };
       if (c.mode === 'escort' && c.s <= START && !c.arrived && c.failT === undefined) return { d, label: 'E — "Vamos?" (a caravana parte com você por perto)', act: () => { say(c, pick(SAY.go)); c.stop = false; } };
       if (c.mode === 'rescue' && c.cleared && c.note !== undefined) return { d, label: 'E — Examinar os destroços', act: () => { const r = c.route; ctx.log(`🔎 ${c.note}`, '#e0b048'); c.cleared = true; c.note = undefined; setTimeout(() => stopRescue(r.id), 20000); } };
       if (c.mode === 'event' && c.cleared && !saved.done.includes(c.slot!)) { const sombra = ctx.lean() === 'sombra', fallen = c.w.fallen;
