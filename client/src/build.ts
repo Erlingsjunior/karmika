@@ -72,14 +72,18 @@ export function wholeThumb(w: Whole): string {
     const url = cv.toDataURL(); THUMB.set(w.id, url); r.dispose(); r.forceContextLoss(); return url; } catch { return ''; } }
 export function createBuild(ctx: { /** o id do projeto da obra em andamento */ siteId?(): string | null; /** o chão já é de outro jogador (casas no servidor) */ taken?(gx: number, gy: number, w: number, h: number): string | null; snd?(k: 'coins' | 'error'): void; gold?(): number; payGold?(n: number): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
-  let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
+  let on = false, sel = 0, rot = 0, whole = -1, bare = false; // whole >= 0: escolheu uma obra inteira; bare: veio do projeto da mochila (sem abrir a janela)
+  /* 28/10 (Erling: "quando clico para colocar a casa você me abre a loja e não consigo enxergar a tela"): marcar o lugar a partir do 📜 da mochila mostra só uma faixa pequena no alto */
+  const bar = document.createElement('div'); bar.id = 'buildbar'; bar.style.display = 'none'; document.body.appendChild(bar);
+  bar.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-cancel]')) { whole = -1; bare = false; toggle(false); } });
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
   const el = document.createElement('div'); el.id = 'build'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'build', { left: 'calc(50vw - 330px)', top: '46vh' }), 0); /* 28/10: janela padrão do jogo (arrastar, redimensionar, escala e texto das Configurações) */
   let tab: 'pecas' | 'obras' = 'pecas', pick = 0;
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xffe08a })); arrow.rotation.x = Math.PI / 2; ghost.add(arrow);
   function render() {
-    if (!on) { el.style.display = 'none'; return; }
+    if (!on || (bare && whole >= 0)) { el.style.display = 'none'; if (on && bare && whole >= 0) { bar.innerHTML = `📜 Escolhendo o lugar de <b>${WHOLES[whole].name}</b> · o contorno verde mostra onde cabe · clique no chão para marcar o canteiro <button data-cancel>Cancelar</button>`; bar.style.display = 'block'; } else bar.style.display = 'none'; return; }
+    bar.style.display = 'none';
     const small = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<i class="${ctx.has(k, n) ? 'y' : 'n'}" title="${ITEMS[k]?.name ?? k}">${ITEMS[k]?.icon ?? ''}${n}</i>`).join('');
     const site = ctx.wholeBusy?.() ?? false;
     const goldTag = (g?: number) => g ? `<i class="${(ctx.gold?.() ?? 0) >= g ? 'y' : 'n'}" title="Ouro (mão de obra)">🪙${g}</i>` : '';
@@ -115,7 +119,7 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
   const canWhole = (w: Whole, gx: number, gy: number) => { for (let y = gy - 1; y <= gy + w.h; y++) for (let x = gx - 1; x <= gx + w.w; x++) { const t = tileOf(x, y); const edge = y < gy || y >= gy + w.h || x < gx || x >= gx + w.w; if (!t || (!edge && t !== 'grass') || (edge && t === 'wall') || pieceAt(x, y)) return false; if (!edge && !ctx.canBuildAt(x, y)) return false; } if (ctx.taken?.(gx, gy, w.w, w.h)) return false; return !(ctx.wholeBusy?.() ?? false); };
   function placeWhole(gx: number, gy: number) { const w = WHOLES[whole]; if (!canWhole(w, gx, gy)) { ctx.log(ctx.wholeBusy?.() ? 'Você já tem uma obra ou casa. Uma de cada vez, por enquanto.' : (ctx.taken?.(gx, gy, w.w, w.h) ? `Esse chão já é de ${ctx.taken(gx, gy, w.w, w.h)}.` : 'A obra não cabe aqui: precisa de grama livre em volta, longe de vilas e lugares.'), '#ff9a8a'); return; }
     if (!ctx.has('projeto_' + w.id, 1)) { ctx.log('Você precisa do projeto na mochila (compre no B → Obras inteiras).', '#ff9a8a'); return; }
-    ctx.take('projeto_' + w.id, 1); whole = -1; ctx.onWhole?.(w, gx, gy); toggle(false); }
+    ctx.take('projeto_' + w.id, 1); whole = -1; bare = false; ctx.onWhole?.(w, gx, gy); toggle(false); }
   function place(gx: number, gy: number) {
     const p = PIECES[sel]; if (!canPlace(p, gx, gy)) { ctx.log('Não dá para construir aqui.', '#ff9a8a'); return; }
     const K = ctx.costK?.() ?? 1, cost = Object.fromEntries(Object.entries(p.cost).map(([k, n]) => [k, Math.max(K < 1 ? 0 : 1, Math.ceil(n * K))])) as Record<string, number>;
@@ -155,7 +159,7 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
   }
   function save() { try { localStorage.setItem(SAVE, JSON.stringify(built.map((x) => x.b))); } catch { /* */ } }
   function load() { try { const list = JSON.parse(localStorage.getItem(SAVE) || '[]') as Built[]; for (const b of list) if (tileOf(b.gx, b.gy) === 'grass' || b.kind === 'broof') addBuilt(b); } catch { /* */ } }
-  function toggle(force?: boolean) { on = force ?? !on; ghost.visible = on; render(); if (on) ctx.log('🔨 Modo de obra: escolha a peça embaixo, clique no chão para colocar. B sai.', '#ffe08a'); }
+  function toggle(force?: boolean) { on = force ?? !on; if (!on) bare = false; ghost.visible = on; render(); if (on && !bare) ctx.log('🔨 Modo de obra: escolha a peça embaixo, clique no chão para colocar. B sai.', '#ffe08a'); }
   function update(mx: number, mz: number) {
     if (!on) return; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2), p = PIECES[sel];
     if (whole >= 0) { const w = WHOLES[whole], x0 = gx - Math.floor(w.w / 2), y0 = gy - Math.floor(w.h / 2); ghost.scale.set(w.w, 6, w.h); ghost.position.set((x0 + w.w / 2) * 2, ctx.heightAt((gx + 0.5) * 2, (gy + 0.5) * 2) + 1.2, (y0 + w.h / 2) * 2); ghost.rotation.y = 0; arrow.visible = false; (ghost.material as THREE.MeshBasicMaterial).color.setHex(canWhole(w, x0, y0) ? 0x7aff9a : 0xff6a5a); return; }
@@ -163,10 +167,10 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
     ghost.position.set((gx + 0.5) * 2, ctx.heightAt((gx + 0.5) * 2, (gy + 0.5) * 2) + 0.2, (gy + 0.5) * 2); ghost.rotation.y = p.rot ? rot * Math.PI / 2 : 0;
     (ghost.material as THREE.MeshBasicMaterial).color.setHex(canPlace(p, gx, gy) ? 0x7aff9a : 0xff6a5a); arrow.visible = !!p.rot; arrow.position.set(0, 0.3, -0.9);
   }
-  function click(mx: number, mz: number, button: number) { if (!on) return false; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2); if (whole >= 0) { if (button !== 2) { const w = WHOLES[whole]; placeWhole(gx - Math.floor(w.w / 2), gy - Math.floor(w.h / 2)); } return true; } if (button === 2) remove(gx, gy); else place(gx, gy); return true; }
+  function click(mx: number, mz: number, button: number) { if (!on) return false; const gx = Math.floor(mx / 2), gy = Math.floor(mz / 2); if (whole >= 0) { if (button !== 2) { const w = WHOLES[whole]; placeWhole(gx - Math.floor(w.w / 2), gy - Math.floor(w.h / 2)); } else if (bare) { whole = -1; bare = false; toggle(false); } return true; } if (button === 2) remove(gx, gy); else place(gx, gy); return true; }
   function rotate() { rot = (rot + 1) % 4; }
   function reset() { for (const x of built) ctx.objs.removeProp(x.prop); built.length = 0; save(); }
   /** usar o projeto da mochila: liga o modo de obra já com a obra escolhida, para marcar o lugar */
-  function placeProject(id: string) { const i = WHOLES.findIndex((w) => 'projeto_' + w.id === id); if (i < 0) return false; whole = i; toggle(true); ctx.log(`📜 Escolha o lugar de ${WHOLES[i].name}: o contorno verde mostra onde cabe. Clique para marcar o canteiro.`, '#ffe08a'); return true; }
+  function placeProject(id: string) { const i = WHOLES.findIndex((w) => 'projeto_' + w.id === id); if (i < 0) return false; whole = i; bare = true; toggle(true); ctx.log(`📜 Escolha o lugar de ${WHOLES[i].name}: o contorno verde mostra onde cabe. Clique para marcar o canteiro.`, '#ffe08a'); return true; }
   return { toggle, update, click, rotate, load, reset, setRemote, placeProject, get on() { return on; }, built };
 }
