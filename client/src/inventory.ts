@@ -297,6 +297,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     st.sp = new Set(Object.values(eqG).map((g) => g?.special).filter(Boolean) as string[]);
     { /* a mesa dos anões: prato e bebida ativos (15 min) */ const now = Date.now(); let hp = 0, stam = 0;
       for (const sl of ['meal', 'brew'] as const) { const e = st.feast?.[sl]; if (!e || e.until < now) continue; const f = FEASTS[e.id]; if (!f) continue; hp += f.hp ?? 0; stam += f.stam ?? 0; st.atk += f.dmg ?? 0; st.crit = Math.min(0.5, st.crit + (f.crit ?? 0)); st.move += f.move ?? 0; st.def = Math.max(0, Math.min(0.72, st.def + (f.def ?? 0))); st.regen += f.regen ?? 0; }
+      /* a Aura de Alegria da festa (28/10): +10% de tudo por 1 turno */ if (((st as St & { joy?: number }).joy ?? 0) > now) { hp += 0.1; stam += 0.1; st.atk *= 1.1; st.crit = Math.min(0.5, st.crit * 1.1); st.move *= 1.1; st.def = Math.min(0.72, st.def * 1.1); st.regen *= 1.1; st.xpMul += 0.1; st.goldMul += 0.1; }
       if (hp) { st.hpMax = Math.round(st.hpMax * (1 + hp)); st.hp = Math.min(st.hp, st.hpMax); } (st as St & { feastStam?: number }).feastStam = stam; }
     hooks.onGear?.();
   }

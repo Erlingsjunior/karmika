@@ -4,6 +4,7 @@ import { std, ink, texBox, plankTex, stoneTex, plasterTex, woodTex, gableRoof, s
 /** onde fica a porta da frente de cada modelo de casa (coordenadas locais da casa, chão): a luz da porta usa isto */
 export function houseDoor(variant: number, Wm: number, Dm: number): { x: number; z: number; y: number; w: number; h: number } {
   const bw = Wm - 0.5, bd = Dm - 0.5, cx = Wm / 2, cz = Dm / 2, front = cz + bd / 2;
+  if (variant === 9) return { x: cx, z: Dm * 0.66 + 0.02, y: 0.75, w: 1.2, h: 2.2 }; /* o chalé do jogador (buildChalet) */
   if (variant === 0) return { x: cx - bw * 0.2, z: front + 0.02, y: 0, w: 1.25, h: 2.2 };
   if (variant === 1) return { x: cx - bw * 0.25, z: front + 0.04, y: 0, w: 1.25, h: 2.2 };
   if (variant === 2) return { x: cx + bw * 0.2, z: cz + bd * 0.18 + bd * 0.29 + 0.04, y: 0.35, w: 1.25, h: 2.2 };
@@ -100,6 +101,7 @@ function volume(parent: THREE.Object3D, cx: number, cz: number, w: number, d: nu
  * 5 tipos de casa. `Wm`,`Dm` = pegada em metros; origem no canto (x,z) da pegada, +z para a câmera.
  */
 export function buildHouse(variant: number, Wm: number, Dm: number, wallC: number, roofC: number, c: Ctx): HouseOut {
+  if (variant === 9) return buildChalet(Wm, Dm, c);
   const g = new THREE.Group(), chim: THREE.Vector3[] = [];
   const bw = Wm - 0.5, bd = Dm - 0.5, cx = Wm / 2, cz = Dm / 2;
   const front = cz + bd / 2;
@@ -316,4 +318,88 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
   }
   void wallC; void roofC; void R; void ink; void scaleUV; void stairs; void volume;
   return { group: g, chimneys: chim, lantern };
+}
+
+/* ---------- O CHALÉ (28/10, Erling: "redesenha a única casa que temos para algo assim — aquela casa tá muito feia") ----------
+   A casa do jogador, no espírito da foto que o Erling mandou: chalé de madeira cor de mel sobre pilares de pedra, empena alta virada
+   para a frente com as duas janelas do sótão, telhado de telha de barro, varanda na largura toda com o seu próprio telhadinho,
+   guarda-corpo de ripas, escada no meio, janelões dos dois lados da porta, chaminé de pedra, varal de luzinhas, vasos e cadeiras.
+   Origem no canto da pegada (x,z), +z para a câmera (frente), igual às outras casas. A porta fica no meio da frente (obras.door()). */
+const CH: Record<string, THREE.Texture> = {};
+function chTex(key: string, draw: (g: CanvasRenderingContext2D, s: number) => void, s = 128) { if (CH[key]) return CH[key]; const c = document.createElement('canvas'); c.width = c.height = s; draw(c.getContext('2d')!, s);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; t.anisotropy = 4; return (CH[key] = t); }
+/** tábua horizontal sobreposta (lambri de fora): cada régua com a sombra da de cima */
+const sidingTex = () => chTex('siding', (g, s) => { const n = 8, h = s / n; for (let i = 0; i < n; i++) { const k = 0.88 + Math.random() * 0.22; g.fillStyle = `rgb(${200 * k | 0},${122 * k | 0},${62 * k | 0})`; g.fillRect(0, i * h, s, h);
+  for (let j = 0; j < 5; j++) { g.fillStyle = `rgba(90,45,15,${0.12 + Math.random() * 0.12})`; g.fillRect(0, i * h + Math.random() * h, s, 1); } g.fillStyle = 'rgba(255,220,160,.35)'; g.fillRect(0, i * h + 1, s, 1); g.fillStyle = 'rgba(40,18,6,.7)'; g.fillRect(0, i * h + h - 2, s, 2);
+  if (i % 3 === 1) { g.fillStyle = 'rgba(40,18,6,.5)'; g.fillRect((i * 37) % s, i * h, 1.5, h); } } });
+/** telha de barro capa-e-canal: colunas arredondadas, fiadas com sombra */
+const telhaTex = () => chTex('telha', (g, s) => { const cols = 8, rows = 6, w = s / cols, h = s / rows; g.fillStyle = '#7a3418'; g.fillRect(0, 0, s, s);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) { const k = 0.85 + Math.random() * 0.25, x = c * w, y = r * h, gr = g.createLinearGradient(x, 0, x + w, 0);
+    gr.addColorStop(0, `rgb(${150 * k | 0},${62 * k | 0},${32 * k | 0})`); gr.addColorStop(0.45, `rgb(${222 * k | 0},${118 * k | 0},${70 * k | 0})`); gr.addColorStop(1, `rgb(${140 * k | 0},${55 * k | 0},${28 * k | 0})`);
+    g.fillStyle = gr; g.fillRect(x + 1, y, w - 2, h - 3); g.fillStyle = 'rgba(40,12,4,.55)'; g.fillRect(x, y + h - 3, w, 3); } });
+export function buildChalet(Wm: number, Dm: number, c: Ctx): HouseOut {
+  const g = new THREE.Group(), chim: THREE.Vector3[] = [];
+  const wood = std(0xffffff, { map: sidingTex() }), trim = std(0x8a4e22), trimD = std(0x5a3216), deck = std(0xffffff, { map: plankTex(0xa86a34) }), stone = std(0xffffff, { map: stoneTex(0x8a8478) });
+  const tileM = (w: number, l: number) => { const t = telhaTex().clone(); t.needsUpdate = true; t.repeat.set(w / 0.9, l / 0.9); return std(0xffffff, { map: t }); };
+  const mesh = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, inked = 0.03) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.castShadow = k.receiveShadow = true; if (inked) ink(k, inked); g.add(k); return k; };
+  const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
+  const x0 = 0.5, x1 = Wm - 0.5, bw = x1 - x0, cx = Wm / 2, zb = 0.4, zf = Dm * 0.66, bd = zf - zb, czb = (zb + zf) / 2, zp = Dm - 0.25; // corpo (zb..zf) e varanda (zf..zp)
+  const Y = 0.75, WH = 4.0, RH = Math.min(3.0, bw * 0.36); // piso sobre pilares, parede (térreo + sótão), altura do telhado
+  /* pilares de pedra e o rodapé de ripas entre eles */
+  for (const x of [x0 + 0.2, cx, x1 - 0.2]) for (const z of [zb + 0.2, czb, zf, zp - 0.15]) mesh(B(0.42, Y, 0.42), stone, x, Y / 2, z, 0.02);
+  for (const [x, z, w, d] of [[cx, zb + 0.1, bw - 0.3, 0.06], [x0 + 0.12, czb, 0.06, bd - 0.2], [x1 - 0.12, czb, 0.06, bd - 0.2]] as const) mesh(B(w, Y - 0.1, d), trimD, x, (Y - 0.1) / 2, z, 0);
+  /* o corpo: lambri horizontal, cantoneiras escuras, frechal */
+  const body = mesh(texBox(bw, WH, bd, 2.2), wood, cx, Y + WH / 2, czb, 0.05); void body;
+  for (const x of [x0, x1]) for (const z of [zb, zf]) mesh(B(0.2, WH + 0.1, 0.2), trim, x, Y + WH / 2, z, 0.02);
+  mesh(B(bw + 0.2, 0.18, 0.18), trimD, cx, Y + 2.85, zf + 0.04, 0); // viga onde apoia a varanda
+  mesh(B(bw + 0.3, 0.16, bd + 0.3), trimD, cx, Y + 0.05, czb, 0); // soleira do piso
+  /* o telhado principal: duas águas, cumeeira de trás para a frente (a empena alta olhando para a rua), telha de barro */
+  { const over = 0.75, a = Math.atan2(RH, bw / 2), L = (bw / 2 + over) / Math.cos(a), len = bd + 1.1;
+    for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(cx, Y + WH + RH + 0.05, czb + 0.25); piv.rotation.z = s * -a; g.add(piv);
+      const sl = new THREE.Mesh(B(L, 0.18, len), tileM(L, len)); sl.position.x = s * L / 2; sl.castShadow = true; ink(sl, 0.04); piv.add(sl);
+      const fas = new THREE.Mesh(B(L, 0.12, 0.14), trimD); fas.position.set(s * L / 2, -0.05, len / 2); piv.add(fas); const fb = fas.clone(); fb.position.z = -len / 2; piv.add(fb);
+      for (let i = 1; i < 5; i++) { const cb = new THREE.Mesh(B(0.16, 0.16, 0.5), trim); cb.position.set(s * L * i / 5, -0.14, len / 2 - 0.4); piv.add(cb); } } // cachorros (pontas dos caibros) sob o beiral
+    mesh(B(0.26, 0.22, len + 0.05), std(0x9a4424), cx, Y + WH + RH + 0.2, czb + 0.25, 0.02); // cumeeira de telha
+    const tri = new THREE.Shape(); tri.moveTo(-bw / 2, 0); tri.lineTo(bw / 2, 0); tri.lineTo(0, RH); tri.closePath(); const tg = new THREE.ExtrudeGeometry(tri, { depth: 0.2, bevelEnabled: false }); scaleUV(tg, 1 / 2.2, 1 / 2.2);
+    for (const z of [zf - 0.2, zb]) mesh(tg, wood, cx, Y + WH, z, 0.03); }
+  /* a varanda: deck, telhadinho de uma água, esteios, guarda-corpo de ripas, escada no meio */
+  const pw = bw + 0.4, pd = zp - zf, sw = 1.7; mesh(B(pw, 0.16, pd), deck, cx, Y - 0.02, zf + pd / 2, 0.02);
+  { const yTop = Y + 2.95, yLow = Y + 2.45, ang = Math.atan2(yTop - yLow, pd + 0.6), L = (pd + 0.6) / Math.cos(ang);
+    const r = mesh(B(pw + 0.6, 0.14, L), tileM(pw + 0.6, L), cx, (yTop + yLow) / 2 + 0.1, zf + (pd + 0.6) / 2, 0.04); r.rotation.x = ang;
+    mesh(B(pw + 0.6, 0.18, 0.16), trimD, cx, yLow + 0.02, zp + 0.3, 0); mesh(B(pw, 0.2, 0.18), trim, cx, yLow - 0.12, zp - 0.05, 0.02); // beiral e viga da frente
+    for (const x of [x0 - 0.1, x0 + pw * 0.3, x1 - pw * 0.3, x1 + 0.1]) mesh(B(0.2, yLow - Y - 0.1, 0.2), trim, x, (yLow + Y) / 2 - 0.05, zp - 0.05, 0.02);
+    for (const x of [x0 - 0.1, x1 + 0.1]) mesh(B(0.18, yTop - Y - 0.3, 0.18), trim, x, (yTop + Y) / 2 - 0.15, zf + 0.1, 0.02);
+    /* varal de luzinhas entre os esteios (uma malha instanciada só) */
+    const NL = 22, bulbs = new THREE.InstancedMesh(new THREE.SphereGeometry(0.055, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffd27a, toneMapped: false }), NL), m4 = new THREE.Matrix4();
+    for (let i = 0; i < NL; i++) { const t = i / (NL - 1), seg = t * 3, k = seg % 1, sx = x0 - 0.1 + t * (pw + 0.2); m4.makeTranslation(sx, yLow - 0.32 - Math.sin(k * Math.PI) * 0.22, zp + 0.06); bulbs.setMatrixAt(i, m4); } g.add(bulbs); }
+  { const yR = Y + 0.95, rails: [number, number, number, number][] = [[x0 - 0.1, zp - 0.05, cx - sw / 2, zp - 0.05], [cx + sw / 2, zp - 0.05, x1 + 0.1, zp - 0.05], [x0 - 0.1, zf + 0.1, x0 - 0.1, zp - 0.05], [x1 + 0.1, zf + 0.1, x1 + 0.1, zp - 0.05]];
+    for (const [ax, az, bx, bz] of rails) { const L = Math.hypot(bx - ax, bz - az), along = Math.abs(bx - ax) > 0.01, mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      for (const [y, t] of [[yR, 0.1], [Y + 0.62, 0.07], [Y + 0.32, 0.07]] as const) mesh(along ? B(L, t, 0.09) : B(0.09, t, L), y === yR ? trim : trimD, mx, y, mz, 0.015);
+      const n = Math.max(1, Math.round(L / 1.1)); for (let i = 1; i < n; i++) { const t = i / n; mesh(B(0.12, 0.95, 0.12), trim, ax + (bx - ax) * t, Y + 0.47, az + (bz - az) * t, 0.015); } }
+    for (const s of [-1, 1]) mesh(B(0.16, 1.1, 0.16), trim, cx + s * sw / 2, Y + 0.5, zp - 0.05, 0.02); }
+  { const n = 3, sh = Y / n, sd = 0.34; for (let i = 0; i < n; i++) mesh(B(sw - 0.1, 0.1, sd + 0.05), deck, cx, sh * (n - i) - sh - 0.03 + 0.08, zp + sd * (i + 0.5), 0.02);
+    for (const s of [-1, 1]) { const len = Math.hypot(n * sd, Y), ang = Math.atan2(Y, n * sd); const str = mesh(B(0.1, 0.22, len), trimD, cx + s * (sw / 2 - 0.02), Y / 2 - 0.05, zp + n * sd / 2, 0.02); str.rotation.x = ang;
+      const hr = mesh(B(0.08, 0.08, len + 0.1), trim, cx + s * (sw / 2), Y / 2 + 0.92, zp + n * sd / 2, 0.015); hr.rotation.x = ang; mesh(B(0.12, 0.9, 0.12), trim, cx + s * sw / 2, 0.45, zp + n * sd, 0.015); } }
+  /* porta no meio, janelões dos dois lados (com cortina), as duas janelas do sótão na empena, janelas dos lados */
+  door(g, cx, Y, zf + 0.02, 'z', c, 1.2, 2.2);
+  const win = (x: number, y: number, z: number, w: number, h: number, ry: number, panes = 2) => { const q = new THREE.Group(); q.position.set(x, y, z); q.rotation.y = ry; g.add(q);
+    const gl = new THREE.Mesh(new THREE.PlaneGeometry(w, h), c.windows); gl.position.z = 0.02; q.add(gl);
+    for (const s of [-1, 1]) { const cu = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.22, h * 0.95), std(0xe8e0d0)); cu.position.set(s * w * 0.38, 0, 0.03); q.add(cu); }
+    for (const [bx, by, bwid, bh] of [[0, h / 2 + 0.06, w + 0.3, 0.14], [0, -h / 2 - 0.07, w + 0.36, 0.14], [-w / 2 - 0.07, 0, 0.14, h + 0.2], [w / 2 + 0.07, 0, 0.14, h + 0.2]]) { const f = new THREE.Mesh(B(bwid, bh, 0.12), trimD); f.position.set(bx, by, 0.05); q.add(f); }
+    for (let i = 1; i < panes; i++) { const mu = new THREE.Mesh(B(0.06, h, 0.05), trimD); mu.position.set(-w / 2 + w * i / panes, 0, 0.07); q.add(mu); } const mh = new THREE.Mesh(B(w, 0.05, 0.05), trimD); mh.position.set(0, h * 0.1, 0.07); q.add(mh); };
+  for (const s of [-1, 1]) win(cx + s * bw * 0.27, Y + 1.25, zf + 0.03, 1.7, 1.55, 0, 3);
+  for (const s of [-1, 1]) win(cx + s * 0.75, Y + 3.45, zf + 0.03, 0.85, 0.95, 0, 2);
+  for (const s of [-1, 1]) for (const z of [zb + bd * 0.3, zb + bd * 0.72]) win(cx + s * (bw / 2 + 0.03), Y + 1.3, z, 1.0, 1.15, s * Math.PI / 2, 2);
+  win(cx, Y + WH + RH * 0.38, zf - 0.02 + 0.2, 0.55, 0.55, 0, 1); // o olho de boi no alto da empena
+  for (const s of [-1, 1]) win(cx + s * bw * 0.26, Y + 1.3, zb - 0.03, 1.0, 1.15, Math.PI, 2); win(cx, Y + 3.3, zb - 0.03, 0.85, 0.95, Math.PI, 2); // janelas dos fundos (cozinha e quarto) e do sótão
+  /* chaminé de pedra quadrada, atrás à direita, furando o telhado */
+  { const hx = cx + bw * 0.28, hz = zb + bd * 0.3, top = Y + WH + RH * 0.75 + 1.1; mesh(texBox(0.85, top, 0.85, 1.4), stone, hx, top / 2, hz, 0.04); mesh(B(1.05, 0.14, 1.05), std(0x5a564e), hx, top + 0.07, hz, 0.02); mesh(B(0.5, 0.06, 0.5), std(0x080606), hx, top + 0.15, hz, 0); chim.push(new THREE.Vector3(hx, top + 0.4, hz)); }
+  /* a vida na varanda: vasos com folhagem, duas cadeiras de vime e uma mesinha */
+  const leaf = std(0x4a8a3a), pot = std(0xa8542c);
+  for (const [x, z] of [[x0 + 0.5, zp - 0.45], [x1 - 0.5, zf + 0.5], [cx - sw / 2 - 0.35, zp - 0.35]] as const) { mesh(new THREE.CylinderGeometry(0.22, 0.16, 0.36, 8), pot, x, Y + 0.18, z, 0.02); const b = mesh(new THREE.IcosahedronGeometry(0.34, 0), leaf, x, Y + 0.55, z, 0.02); b.scale.set(1, 0.85, 1); }
+  for (const s of [1]) { const bx = cx + s * bw * 0.27, cm = std(0xd8c8a8); for (const o of [-0.55, 0.55]) { mesh(B(0.55, 0.12, 0.55), cm, bx + o, Y + 0.45, zp - 0.75, 0.02); mesh(B(0.55, 0.55, 0.1), cm, bx + o, Y + 0.75, zp - 0.5, 0.02); for (const lx of [-0.22, 0.22]) mesh(B(0.06, 0.4, 0.06), trimD, bx + o + lx, Y + 0.2, zp - 0.75, 0); }
+    mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 10), trimD, bx, Y + 0.55, zp - 0.95, 0.02); mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 5), trimD, bx, Y + 0.28, zp - 0.95, 0); mesh(new THREE.IcosahedronGeometry(0.14, 0), std(0xd84a5a), bx, Y + 0.68, zp - 0.95, 0); }
+  /* uma rede de dormir na ponta esquerda da varanda */
+  { const hx = cx - bw * 0.3, hm = mesh(new THREE.CylinderGeometry(0.32, 0.32, 1.9, 10, 1, true, Math.PI * 0.15, Math.PI * 0.7), std(0xe0c890, { side: THREE.DoubleSide }), hx, Y + 1.05, zp - 0.9, 0); hm.rotation.z = Math.PI / 2; hm.rotation.x = Math.PI; }
+  return { group: g, chimneys: chim, lantern: new THREE.Vector3(cx + 0.9, Y + 2.0, zf + 0.25) };
 }

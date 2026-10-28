@@ -114,6 +114,7 @@ import { createMasmorras } from './masmorras';
 import { createSoul, FRAY_LVL, MAX_BREATHS, CATCHUP_MUL, type Life } from './soul';
 import { LightShafts, makeHalo } from './volume3d';
 import { setHeroSex } from './genero';
+import { SONGS, STYLE_INFO, songById, DEFAULT_SETLIST, type FestaSong } from './festa-musica';
 
 const __t0 = performance.now(); const city = await loadWorld(); setRamparts(city.ramparts ?? []); (window as unknown as { __tcity?: number }).__tcity = performance.now() - __t0; // mundo do cache (só a 1ª abertura gera)
 /* relevo do mapa grande (176 mil alturas), também do cache. Os dois 'await' ficam aqui no topo: depois deles o resto do arquivo roda de uma vez, sem pausa no meio */
@@ -618,7 +619,7 @@ function renderQuick() {
   try { const pinned = new Set(quickPins.filter(Boolean) as string[]); const auto = QUICK_ORDER.filter((id) => !pinned.has(id) && inv.has(id)); quickIds = quickPins.map((p) => p ?? auto.shift() ?? null); } catch { return; }
   const cell = (id: string | null, i: number) => { const pin = !!quickPins[i]; if (!id) return `<div class="slot q empty" data-qs="${i}"><kbd>F${i + 1}</kbd></div>`; const n = inv.count(id), it = ITEMS_Q(id);
     return `<div class="slot q ${pin ? 'pin' : ''} ${n ? '' : 'none'}" data-q="${i}" data-qs="${i}" title="${it.name}: ${it.desc}${pin ? ' — fixado (botão direito solta)' : ''}"><kbd>F${i + 1}</kbd><span class="ic">${it.icon}</span><b class="n">${n}</b></div>`; };
-  quickEl.innerHTML = `<button class="qtog" title="Mostrar/esconder acesso rápido (F1–F8). Arraste itens da mochila para cá.">${quickOpen ? '▼' : '▲'}</button>` + (quickOpen ? quickIds.map(cell).join('') : '');
+  quickEl.innerHTML = `<button class="qtog" title="Mostrar/esconder acesso rápido (F1–F8). Arraste itens da mochila para cá."><svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path d="${quickOpen ? 'M1 2.5h8L5 7.5z' : 'M1 7.5h8L5 2.5z'}" fill="currentColor"/></svg></button>` + (quickOpen ? quickIds.map(cell).join('') : '');
   quickEl.classList.toggle('open', quickOpen);
 }
 addEventListener('karmika:quickpin', (e) => { const { id, slot } = (e as CustomEvent<{ id: string; slot: number }>).detail; const k = quickPins.indexOf(id); if (k >= 0) quickPins[k] = null;
@@ -724,7 +725,7 @@ const obras = createObras({ onDone: (h) => setTimeout(() => {
   hasContract: () => inv.has('obra_auto', 1), takeContract: () => inv.take('obra_auto', 1), scene, T, heightAt, log: (t, c) => game.logMsg(t, c), particles: particles as never, sentries: () => (game as unknown as { sentries(): { x: number; z: number; r: number; until: number }[] }).sentries(), enemyNear: (x, z, r) => { const e = game.enemies.nearest(new THREE.Vector3(x, 0, z), r); return !!e && e.alive; }, heroNear: (x, z, r) => Math.hypot(state.fx * T - x, state.fy * T - z) < r, heroName: () => profile?.name || 'Caminhante',
   block: (gx, gy, w, h, on) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) if (city.map[y]?.[x] !== undefined) city.map[y][x] = on ? 'wall' : 'grass'; },
   removeHouse: (h) => { if (homeProp) objs.removeProp(homeProp); homeProp = null; for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) if (city.map[y]?.[x] !== undefined) city.map[y][x] = 'grass'; },
-  addHouse: (h) => { const p = { kind: 'house', gx: h.gx, gy: h.gy, w: h.w, h: h.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 0, rot: 0, label: `Casa de ${h.owner}` } as (typeof city.props)[number]; homeProp = p; objs.addProp(p); for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) city.map[y][x] = 'wall'; } });
+  addHouse: (h) => { const p = { kind: 'house', gx: h.gx, gy: h.gy, w: h.w, h: h.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 9, rot: 0, label: `Casa de ${h.owner}` } as (typeof city.props)[number]; homeProp = p; objs.addProp(p); for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) city.map[y][x] = 'wall'; } });
 build.load();
 /* ---------- dock de janelas (canto inferior direito): mochila, personagem, magias, missões, feitos, mapa ---------- */
 const dockEl = document.createElement('div'); dockEl.id = 'dock';
@@ -1014,7 +1015,7 @@ hub.on('h:deny', (m) => game.logMsg(`🏡 ${String(m.why || 'O servidor recusou 
 const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean }[] = []; const otherProps = new Map<string, (typeof city.props)[number]>();
 hub.on('h:all', (m) => { const me = (profile?.name ?? '').toLowerCase(); otherHouses.length = 0; for (const c of (m.list as typeof otherHouses) ?? []) if (c.char.toLowerCase() !== me && [c.gx, c.gy, c.w, c.h].every(Number.isFinite)) otherHouses.push(c);
   for (const c of otherHouses) { const k = c.char.toLowerCase() + '@' + c.gx + ',' + c.gy; if (!c.done || otherProps.has(k)) continue; let free = true; for (let y = c.gy; y < c.gy + c.h && free; y++) for (let x = c.gx; x < c.gx + c.w; x++) if (city.map[y]?.[x] !== 'grass') { free = false; break; } if (!free) continue;
-    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 0, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; } });
+    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: 9, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; } });
 /* os terrenos das guildas: quadras de 10×10 de capim livre em volta de Lumenhal, a cidade média (todos calculam igual: o mundo é o mesmo) */
 const GPLOT = 10;
 const guildPlots = (() => { const lu = city.settlements.find((q) => q.name === 'Lumenhal'); if (!lu) return [] as { x0: number; y0: number }[]; const out: { x0: number; y0: number }[] = [];
@@ -1229,7 +1230,7 @@ function openDwarfCart(route: string) {
 function openDwarfFesta(route: string) {
   const homeSt = settleAt(home.x, home.y, 8)?.name ?? null, places: [string, string, boolean][] = [];
   if (homeSt) places.push([homeSt, `${homeSt} (a sua cidade-lar)`, false]); if (myGuild) places.push(['Lumenhal', `Salão da guilda ${myGuild.name} (Lumenhal)`, true]);
-  const plan = { where: places[0]?.[0] ?? '', guild: places[0]?.[2] ?? false, min: 10, music: true, meats: ['costela', 'picanha'], brews: ['cerveja_forte', 'cerveja_amanteigada'] };
+  const plan = { where: places[0]?.[0] ?? '', guild: places[0]?.[2] ?? false, min: 10, music: true, songs: [...DEFAULT_SETLIST], meats: ['costela', 'picanha'], brews: ['cerveja_forte', 'cerveja_amanteigada'] };
   let tab: 'mesa' | 'festa' = 'festa';
   const draw = () => { const price = festaPrice(plan), chk = (on: boolean) => on ? '☑' : '☐';
     const card = (k: string) => { const f = FEASTS[k]; return `<div style="display:grid;grid-template-columns:28px 1fr;gap:8px;padding:7px;border:1px solid #5a4630;border-radius:4px;background:rgba(20,14,10,.6)"><span style="font-size:22px">${f.icon}</span><div><b style="color:#ffd890">${f.name}</b> <small style="color:#c8a060">· ${f.price} 🪙</small><div style="font-size:12px;color:#c8b890;margin:2px 0">${f.desc}</div><small style="color:#9ad79a">${feastEff(f)} · 15 min</small></div></div>`; };
@@ -1243,6 +1244,7 @@ function openDwarfFesta(route: string) {
       : `<p style="color:#c8b890;font-size:13px;margin:4px 0">Você paga, acerta o tempo e o cardápio, e eles armam a festa na praça: bandeirinhas, churrasco, barris e, se quiser, os músicos. Ela começa quando você chegar lá.</p>
       <h3 style="margin:8px 0 4px;color:#e0b048;font:600 12px Cinzel;letter-spacing:.1em">ONDE</h3><div style="display:flex;gap:6px;flex-wrap:wrap">${places.map(([v, l, gd]) => `<button data-where="${v}" data-guild="${gd ? 1 : 0}" style="padding:6px 9px;font:12px Georgia;color:${plan.where === v && plan.guild === gd ? '#ffe0a0' : '#a89878'};background:${plan.where === v && plan.guild === gd ? 'rgba(90,60,20,.7)' : 'rgba(20,14,10,.8)'};border:1px solid #5a4630;border-radius:3px">${l}</button>`).join('')}</div>
       <h3 style="margin:10px 0 4px;color:#e0b048;font:600 12px Cinzel;letter-spacing:.1em">QUANTO TEMPO</h3><div style="display:flex;gap:6px">${[5, 10, 20, 30].map((m) => `<button data-min="${m}" style="padding:6px 12px;font:12px Georgia;color:${plan.min === m ? '#ffe0a0' : '#a89878'};background:${plan.min === m ? 'rgba(90,60,20,.7)' : 'rgba(20,14,10,.8)'};border:1px solid #5a4630;border-radius:3px">${m} min</button>`).join('')}<button data-music style="padding:6px 12px;font:12px Georgia;color:${plan.music ? '#ffe0a0' : '#a89878'};background:${plan.music ? 'rgba(90,60,20,.7)' : 'rgba(20,14,10,.8)'};border:1px solid #5a4630;border-radius:3px">${chk(plan.music)} 🎶 Bardo, tambor e flauta</button></div>
+      ${plan.music ? `<h3 style="margin:10px 0 4px;color:#e0b048;font:600 12px Cinzel;letter-spacing:.1em">REPERTÓRIO DOS BARDOS <small style="color:#a89878;font:11px Georgia;letter-spacing:0">(${plan.songs.length} na lista · tocam em ordem)</small></h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:5px">${SONGS.map((sg) => { const on = plan.songs.includes(sg.id), si = STYLE_INFO[sg.style]; return `<button data-song="${sg.id}" style="text-align:left;padding:5px 7px;font:12px Georgia;color:${on ? '#ffe0a0' : '#a89878'};background:${on ? 'rgba(90,60,20,.7)' : 'rgba(20,14,10,.8)'};border:1px solid #5a4630;border-radius:3px">${chk(on)} ${si.icon} ${sg.title} <small style="color:${si.col}">· ${si.name}</small></button>`; }).join('')}</div>` : ''}
       <h3 style="margin:10px 0 4px;color:#e0b048;font:600 12px Cinzel;letter-spacing:.1em">CARNES NA BRASA</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:5px">${meats.map((k) => tog(k, plan.meats)).join('')}</div>
       <h3 style="margin:10px 0 4px;color:#e0b048;font:600 12px Cinzel;letter-spacing:.1em">CERVEJAS E VINHOS</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:5px">${brews.map((k) => tog(k, plan.brews)).join('')}</div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:10px"><span style="color:#ffd890">Total: <b>${price.toLocaleString('pt-BR')} 🪙</b> <small style="color:#a89878">(você tem ${game.st.gold.toLocaleString('pt-BR')})</small></span>
@@ -1255,9 +1257,10 @@ function openDwarfFesta(route: string) {
     else if (b.dataset.where) { plan.where = b.dataset.where; plan.guild = b.dataset.guild === '1'; }
     else if (b.dataset.min) plan.min = +b.dataset.min;
     else if (b.hasAttribute('data-music')) plan.music = !plan.music;
+    else if (b.dataset.song) { const k = b.dataset.song, i = plan.songs.indexOf(k); if (i >= 0) { if (plan.songs.length > 1) plan.songs.splice(i, 1); } else plan.songs.push(k); }
     else if (b.dataset.fk) { const k = b.dataset.fk, L = FEASTS[k].slot === 'meal' ? plan.meats : plan.brews, i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); }
     else if (b.hasAttribute('data-hire')) { const price = festaPrice(plan); if (game.st.gold < price) { game.logMsg(`🪙 A festa custa ${price.toLocaleString('pt-BR')} de ouro. Falta dinheiro.`, '#ff9a8a'); return; }
-      buyFxLast('🎉'); audio.coins(5); game.st.gold -= price; festaPending = { st: plan.where, opts: { min: plan.min, music: plan.music, meats: [...plan.meats], brews: [...plan.brews], guild: plan.guild }, at: Date.now() + 60000 }; savePend();
+      buyFxLast('🎉'); audio.coins(5); game.st.gold -= price; festaPending = { st: plan.where, opts: { min: plan.min, music: plan.music, songs: [...plan.songs], meats: [...plan.meats], brews: [...plan.brews], guild: plan.guild }, at: Date.now() + 60000 }; savePend();
       game.logMsg(`🍺 Festa contratada para ${plan.guild ? 'o salão da guilda, em ' : ''}${plan.where}: ${plan.min} min. Os anões vão na frente armar tudo; a festa começa quando você chegar lá (daqui a pelo menos 1 minuto).`, '#ffe08a'); dwarfEl.style.display = 'none'; return; }
     draw(); };
   draw(); dwarfEl.style.display = 'flex'; }
@@ -1327,7 +1330,7 @@ function alignTick(dt: number) { void dt; const nowA = performance.now(); if (no
 const alignPriceK = () => { const st = hereSettle(); return st ? align.tier('vila', st.name).price : 1; };
 /* a festa de despedida (Erling, 25/10): o centro da praça enfeitado, a carroça do anão com cerveja, churrasco e fogos por tudo o que você fez */
 addEventListener('karmika:align', () => align.toggle(true));
-let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number; st: string; bards: { h: Hero3D; inst: string; ph: number }[]; crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[]; deeds: string[]; ballad: string[]; bl: number; coroOn: boolean; done: boolean; len?: number; paid?: FestaOpts } | null = null;
+let festa: { t0: number; g: THREE.Group; fw: number; talk: number; x: number; z: number; st: string; bards: { h: Hero3D; inst: string; ph: number }[]; crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[]; deeds: string[]; ballad: string[]; bl: number; refPh: number; coroOn: boolean; done: boolean; len?: number; paid?: FestaOpts } | null = null;
 /** a missão da história que te leva embora deste lugar (dada por alguém daqui, para entregar ou visitar outro lugar) */
 function leavingQuest(stName: string) { for (const id of Object.keys(quests.q.active)) { const d = quests.def(id); if (!d || questCat(d) !== 'story') continue; if (npcHome(d.giver)?.name !== stName) continue;
     const far = (d.turnin && npcHome(d.turnin)?.name && npcHome(d.turnin)!.name !== stName) || d.objs.some((o) => o.kind === 'visit' && o.poi !== stName && city.settlements.some((q) => q.name === o.poi)); if (far) return d; } return null; }
@@ -1355,7 +1358,7 @@ function festaDeeds(stName: string) { const nm = profile?.name || 'o caminhante'
 function festaBallad(stName: string) { const nm = profile?.name || 'o caminhante', d = quests.q.done.map((id) => DEED_OF[id]).filter(Boolean) as string[];
   return [`♪ Lá do vale de ${stName} veio ${nm}, de espada na mão ♪`, `♪ ${game.st.kills} bestas derrubou, sem tremer o coração ♪`, `♪ ${d[0] ? d[0].charAt(0).toUpperCase() + d[0].slice(1) : 'Ninguém viu medo nos seus olhos'}, e a vila inteira viu ♪`, `♪ ${d[1] ? d[1].charAt(0).toUpperCase() + d[1].slice(1) : 'Nem lobo nem morto o fez fugir'}, e o povo aplaudiu ♪`,
     `♪ Encham as canecas, batam os pés no chão ♪`, `♪ Que o Olho guie ${nm} por cada nova estação ♪`, `♪ Bebam todos, bebam já: ${nm} vai partir ♪`, `♪ Mas em ${stName} há sempre um lugar à mesa para ${nm} ♪`]; }
-type FestaOpts = { min: number; music: boolean; meats: string[]; brews: string[]; guild?: boolean };
+type FestaOpts = { min: number; music: boolean; meats: string[]; brews: string[]; guild?: boolean; songs?: string[]; /** convidado: a festa é de outro jogador (sem cardápio nem recompensa; só a festa, a música e a alegria) */ guest?: string; hostId?: number; song?: string };
 function startFesta(stName = 'Karmika', paid?: FestaOpts) { const stS = city.settlements.find((q) => q.name === stName); const fo = city.props.filter((p) => p.kind === 'fountain' && stS && Math.hypot(p.gx - stS.x, p.gy - stS.y) < stS.radius + 4).sort((a, b) => (a.variant ?? 0) - (b.variant ?? 0))[0]; if (!fo) return; if (!paid) { align.setFlag('festa_' + stName, 1); if (stName === 'Karmika') align.setFlag('festa_karmika', 1); }
   const cx = (fo.gx + fo.w / 2) * T, cz = (fo.gy + fo.h / 2) * T, y0 = heightAt(cx, cz), g = new THREE.Group(); g.position.set(cx, y0, cz); scene.add(g);
   const tm = (c: number, e = 0) => new THREE.MeshToonMaterial({ color: c, gradientMap: toonRamp, emissive: e ? new THREE.Color(c).multiplyScalar(e) : undefined }), M = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; g.add(o); return o; };
@@ -1400,12 +1403,16 @@ function startFesta(stName = 'Karmika', paid?: FestaOpts) { const stS = city.set
     const fr = Math.max(fo.w, fo.h) * T * 0.5 + 2.0; mine.forEach((n, i) => { crowd.push({ n, ox: n.def.x, oz: n.def.z, or: n.def.radius }); const a = (i / Math.max(1, mine.length)) * 6.283 + 0.3, rr = fr + (i % 3) * 1.0; /* em volta da fonte, nunca dentro */ n.def.x = cx + Math.cos(a) * rr; n.def.z = cz + Math.sin(a) * rr; n.def.radius = 0.6; n.target = null; n.wait = 0; }); }
   nightOverride = 1; nightTarget = 1; /* a festa é de noite: lanternas, fogos e brindes */
   { const L1 = new THREE.PointLight(0xffb060, 30, 26, 1.6); L1.position.set(0, 4.5, 0); g.add(L1); const L2 = new THREE.PointLight(0xff8a50, 18, 16, 1.6); L2.position.set(0, 3, -R + 2); g.add(L2); } /* duas luzes só (desempenho) */
-  festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz, st: stName, bards, crowd, deeds: festaDeeds(stName), ballad: festaBallad(stName), bl: 0, coroOn: false, done: false, len: paid ? paid.min * 60000 : FESTA_LEN, paid };
-  if (paid) { const menu = [...paid.meats, ...paid.brews]; for (const k of menu) inv.add(k, 2, true); if (paid.music) audio.festaStart();
+  festa = { t0: performance.now(), g, fw: 0, talk: 0, x: cx, z: cz, st: stName, bards, crowd, deeds: festaDeeds(stName), ballad: festaBallad(stName), bl: 0, refPh: -1, coroOn: false, done: false, len: paid ? paid.min * 60000 : FESTA_LEN, paid };
+  festaGuests.clear(); giveJoy();
+  if (paid?.guest) { if (paid.music) { const L = (paid.songs ?? []).map(songById); audio.festaStart(L.length ? L : undefined); const cur = paid.song ? songById(paid.song) : null; if (cur && L.length) audio.festaPlay(cur); }
+    game.logMsg(`🎉 Você entrou na festa de ${paid.guest} na praça de ${stName}. ✨ Aura de Alegria: +10% em tudo por 1 turno.`, '#ffe08a'); return; }
+  festaBroadcast();
+  if (paid) { const menu = [...paid.meats, ...paid.brews]; for (const k of menu) inv.add(k, 2, true); if (paid.music) audio.festaStart((paid.songs?.length ? paid.songs : DEFAULT_SETLIST).map(songById));
     game.logMsg(`🎉 Os anões de Brasaforja armaram a sua festa na praça de ${paid.guild ? stName + ' (salão da guilda)' : stName}: ${paid.min} min${paid.music ? ', com música' : ''}.`, '#ffe08a');
     if (menu.length) game.logMsg(`🍖 Na mesa: ${menu.map((k) => FEASTS[k]?.name ?? k).join(', ')}. Duas porções de cada são suas.`, '#ffd27a'); return; }
   inv.add('beer', 2); inv.add('skewer', 2); game.gainXp(Math.round(game.xpNeed() * 0.25)); addKarma(2); align.add('vila', stName, 10, 'a festa de despedida');
-  audio.festaStart(); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
+  audio.festaStart(); game.logMsg('✨ Aura de Alegria: +10% em tudo por 1 turno (30 min).', '#ffe08a'); game.logMsg(`🎉 A festa de despedida começa na praça de ${stName}! Cerveja do anão, churrasco e fogos por tudo o que você fez.`, '#ffe08a'); game.logMsg('🍺 Ganhou 2× Cerveja de Karmika e 2× Espetinho de javali. +2 de karma.', '#ffe08a'); }
 var FESTA_LEN = 240000; /* 4 minutos (despedida) */
 const say2 = (n: (typeof npcSys.npcs)[number], line: string, secs = 4.5) => { const q = n as unknown as { bark?: string; barkT?: number }; q.bark = line; q.barkT = secs; };
 function festaTick() { if (!festa || festa.done) return; const F = festa, el = performance.now() - F.t0, nm = profile?.name || 'caminhante';
@@ -1417,8 +1424,10 @@ function festaTick() { if (!festa || festa.done) return; const F = festa, el = p
       L.forEach((l, i) => setTimeout(() => { const c = F.crowd[i % Math.max(1, F.crowd.length)]; if (c) say2(c.n, l + ' 🍺', 3); }, i * 3000)); }
     if (!coro) F.coroOn = false;
     /* o bardo canta a balada dos seus feitos; o povo conta as suas histórias */
-    F.talk -= 1; if (F.talk <= 0) { F.talk = 4; const bard = F.bards[0]; if (!coro && bard) { const line = F.ballad[F.bl++ % F.ballad.length]; const e = bard.h as unknown as { root: THREE.Object3D }; void e; game.dmgText(new THREE.Vector3().setFromMatrixPosition(bard.h.root.matrixWorld).setY(heightAt(F.x, F.z) + 3.4), line, false, '#ffe08a'); }
-      const c = F.crowd[Math.floor(Math.random() * F.crowd.length)]; if (c && !coro) say2(c.n, Math.random() < 0.6 ? F.deeds[Math.floor(Math.random() * F.deeds.length)] : ['À saúde de ' + nm + '!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', F.paid?.meats.length ? `Essa ${FEASTS[F.paid.meats[Math.floor(Math.random() * F.paid.meats.length)]]?.name ?? 'carne'} está divina!` : 'Essa carne está divina!', F.paid?.brews.length ? `Mais uma ${FEASTS[F.paid.brews[Math.floor(Math.random() * F.paid.brews.length)]]?.name ?? 'cerveja'}, anão!` : 'Saúde!', 'Que o caminho seja leve, ' + nm + '!', 'Dança, ' + nm + '! Hoje a festa é sua!'][Math.floor(Math.random() * 5)]); }
+    const sgL = audio.festaSong && audio.festaSong.style !== 'giga' ? audio.festaSong : null; /* 28/10: o repertório — o bardo canta o verso, a praça canta o refrão */
+    if (sgL && audio.festaPart === 'refrao' && F.refPh !== audio.festaPhrase) { F.refPh = audio.festaPhrase; F.crowd.forEach((c, i) => setTimeout(() => say2(c.n, sgL.refrao, 3.4), i * 120)); }
+    F.talk -= 1; if (F.talk <= 0) { F.talk = 4; const bard = F.bards[0]; if (!coro && bard) { const line = sgL ? (audio.festaPart === 'verso' ? '🎤 ' + sgL.verso[F.bl++ % sgL.verso.length] : '') : F.ballad[F.bl++ % F.ballad.length]; if (line) game.dmgText(new THREE.Vector3().setFromMatrixPosition(bard.h.root.matrixWorld).setY(heightAt(F.x, F.z) + 3.4), line, false, '#ffe08a'); }
+      const c = F.crowd[Math.floor(Math.random() * F.crowd.length)]; if (c && !coro && audio.festaPart !== 'refrao') say2(c.n, Math.random() < 0.6 ? F.deeds[Math.floor(Math.random() * F.deeds.length)] : ['À saúde de ' + nm + '!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', F.paid?.meats.length ? `Essa ${FEASTS[F.paid.meats[Math.floor(Math.random() * F.paid.meats.length)]]?.name ?? 'carne'} está divina!` : 'Essa carne está divina!', F.paid?.brews.length ? `Mais uma ${FEASTS[F.paid.brews[Math.floor(Math.random() * F.paid.brews.length)]]?.name ?? 'cerveja'}, anão!` : 'Saúde!', 'Que o caminho seja leve, ' + nm + '!', 'Dança, ' + nm + '! Hoje a festa é sua!'][Math.floor(Math.random() * 5)]); }
     /* o povo bebe e dança: de vez em quando cada um ergue a caneca */
     for (const c of F.crowd) if (Math.random() < 0.08 && !c.n.hero.acting) c.n.hero.act('drink');
   }
@@ -1428,7 +1437,7 @@ const NOTE_TEX = ['♪', '♫', '♩', '♬'].map((ch, i) => { const c = documen
 const notes: { s: THREE.Sprite; v: THREE.Vector3; life: number; ph: number }[] = [];
 const festaCd = document.createElement('div'); festaCd.id = 'festacd'; document.body.appendChild(festaCd); let festaCdTxt = '';
 function festaAnim(dt: number, t: number) { if (!festa) { if (festaCdTxt) { festaCdTxt = ''; festaCd.style.display = 'none'; } return; }
-  { const left = Math.max(0, (festa.len ?? FESTA_LEN) - (performance.now() - festa.t0)), m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000), tx = `🎉 ${festa.paid ? 'Festa dos anões' : 'Festa de despedida'} em ${festa.st} · ${m}:${String(sec).padStart(2, '0')}`; if (tx !== festaCdTxt) { festaCdTxt = tx; festaCd.textContent = tx; festaCd.style.display = 'block'; } } /* notas musicais subindo do palco para o céu */
+  { const left = Math.max(0, (festa.len ?? FESTA_LEN) - (performance.now() - festa.t0)), m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000), sg = audio.festaSong, tx = `🎉 ${festa.paid?.guest ? 'Festa de ' + festa.paid.guest : festa.paid ? 'Festa dos anões' : 'Festa de despedida'} em ${festa.st} · ${m}:${String(sec).padStart(2, '0')}${festaGuests.size ? ` · 👥 ${festaGuests.size + 1}` : ''}`; if (tx + (sg?.id ?? '') !== festaCdTxt) { if (!festaCd.firstChild) festaCd.innerHTML = '<span></span><small></small><button data-req>🎶 Pedir música</button>'; const [sp, sm, bt] = festaCd.children as unknown as HTMLElement[]; festaCdTxt = tx + (sg?.id ?? ''); sp.textContent = tx; sm.innerHTML = sg ? `${STYLE_INFO[sg.style].icon} Tocando agora: <b>${sg.title}</b>` : ''; sm.style.display = sg ? '' : 'none'; bt.style.display = !festa.paid?.guest && festa.paid?.music !== false ? '' : 'none'; festaCd.style.display = 'block'; } /* (o texto troca, o botão fica: recriar a cada segundo engolia o clique) */ } /* notas musicais subindo do palco para o céu */
   if (Math.random() < dt * 5) { const b = festa.bards[Math.floor(Math.random() * festa.bards.length)]; if (b) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: NOTE_TEX[Math.floor(Math.random() * 4)], transparent: true, depthWrite: false })); const wp = new THREE.Vector3().setFromMatrixPosition(b.h.root.matrixWorld); sp.position.set(wp.x + (Math.random() - 0.5) * 0.6, wp.y + 2.1, wp.z); sp.scale.setScalar(0.55 + Math.random() * 0.3); scene.add(sp); notes.push({ s: sp, v: new THREE.Vector3((Math.random() - 0.5) * 0.6, 1.1 + Math.random() * 0.6, (Math.random() - 0.5) * 0.6), life: 4.5, ph: Math.random() * 6 }); } }
   for (let i = notes.length - 1; i >= 0; i--) { const q = notes[i]; q.life -= dt; q.ph += dt * 3; q.s.position.addScaledVector(q.v, dt); q.s.position.x += Math.sin(q.ph) * dt * 0.5; (q.s.material as THREE.SpriteMaterial).opacity = Math.min(1, q.life / 1.5); if (q.life <= 0) { scene.remove(q.s); (q.s.material as THREE.SpriteMaterial).dispose(); notes.splice(i, 1); } } for (const b of festa.bards) { b.ph += dt; b.h.update(dt, t, 0, null); b.h.root.position.y = 0.6 + Math.abs(Math.sin(b.ph * 5.2)) * 0.05; b.h.root.rotation.y = Math.sin(b.ph * 1.3) * 0.25; } }
 /* conversar na festa (Erling, 25/10): o povo agradece, conversa sobre o que você fez e brinda com você */
@@ -1457,7 +1466,57 @@ function festaToast(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const
   const p = n.pos.clone().lerp(heroPos, 0.5); for (let i = 0; i < 16; i++) particles.spawn(p.x, p.y + 1.6, p.z, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 1.5, vz: (Math.random() - 0.5) * 2, life: 0.7, s0: 0.2, s1: 0.04, c0: 0xffe8a0, c1: 0xd8a040, a: 1 });
   say2(n, `À saúde de ${profile?.name || 'caminhante'}! 🍻`, 3.5);
   if (!toasted.has(nm)) { toasted.add(nm); align.add('vila', festa.st, 1); game.logMsg(`🍻 Você brindou com ${nm}. (+1 com ${festa.st})`, '#ffe08a'); } else game.logMsg(`🍻 Mais um brinde com ${nm}!`, '#e8d8b0'); }
-function festaEnd() { if (!festa) return; for (const q of notes) scene.remove(q.s); notes.length = 0; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; nightOverride = 0.3; nightTarget = 0.3; /* o alvorecer do dia seguinte */ setTimeout(() => { nightOverride = null; }, 90000); game.logMsg('🌅 Alvorecer. Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
+function festaEnd() { if (!festa) return; if (!festa.paid?.guest) netRef?.x('x:festaEnd', {}); festaGuests.clear(); for (const q of notes) scene.remove(q.s); notes.length = 0; for (const c of festa.crowd) { c.n.def.x = c.ox; c.n.def.z = c.oz; c.n.def.radius = c.or; c.n.target = null; } scene.remove(festa.g); festa = null; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; nightOverride = 0.3; nightTarget = 0.3; /* o alvorecer do dia seguinte */ setTimeout(() => { nightOverride = null; }, 90000); game.logMsg('🌅 Alvorecer. Descansado depois da festa: vida e magia cheias. A estrada espera.', '#ffe08a'); }
+
+/* ---------- A FESTA EM GRUPO (28/10, Erling): "se eu estiver em party todos participam; quem chegar perto e clicar em mim ou
+   em quem estiver participando pede para entrar, e nós permitimos; aura de alegria que dura 1 turno, +10% de tudo" ----------
+   Quem dá a festa avisa a sala (x:festa) a cada 8 s: lugar, tempo que falta, repertório, a música de agora e os convidados.
+   Os companheiros de GRUPO entram sozinhos (perto da praça na hora, ou quando chegarem lá). Os outros pedem (x:festaAsk) e
+   o anfitrião aceita ou não (x:festaOk). A Aura de Alegria (+10% em vida, vigor, dano, defesa, crítico, velocidade, XP e
+   ouro; dentro do teto de ±30% dos bônus de situação) dura 1 turno = 30 min reais, e fica gravada (sobrevive a recarregar). */
+const festaGuests = new Set<number>();
+const festasNet = new Map<number, { st: string; host: string; guests: number[]; left: number; songs: string[]; song?: string; music: boolean; at: number }>();
+let festaInvite: { hostId: number; host: string; st: string } | null = null, festaAskT = 0;
+const JOY_KEY = 'karmika.alegria.v1', JOY_MS = 30 * 60000;
+function joyUntil() { return (game.st as unknown as { joy?: number }).joy ?? 0; }
+function giveJoy() { const u = Date.now() + JOY_MS; (game.st as unknown as { joy?: number }).joy = u; try { localStorage.setItem(JOY_KEY, String(u)); } catch { /* */ } (game.st as unknown as { recalc?: (() => void) | null }).recalc?.(); setTimeout(() => (game.st as unknown as { recalc?: (() => void) | null }).recalc?.(), JOY_MS + 500); }
+{ let u = 0; try { u = +(localStorage.getItem(JOY_KEY) || 0); } catch { /* */ } if (u > Date.now()) { (game.st as unknown as { joy?: number }).joy = u; setTimeout(() => (game.st as unknown as { recalc?: (() => void) | null }).recalc?.(), 50); setTimeout(() => (game.st as unknown as { recalc?: (() => void) | null }).recalc?.(), u - Date.now() + 500); } }
+function festaBroadcast() { const F = festa; if (!F || F.done || F.paid?.guest || net.state !== 'on') return; const left = Math.max(0, (F.len ?? FESTA_LEN) - (performance.now() - F.t0));
+  net.x('x:festa', { st: F.st, host: profile?.name || 'Caminhante', left: Math.round(left), guests: [...festaGuests], songs: F.paid?.songs ?? [], song: audio.festaSong?.id ?? '', music: F.paid ? F.paid.music : true }); }
+setInterval(festaBroadcast, 8000);
+audio.onFestaSong = (sg: FestaSong) => { if (!festa) return; if (sg.style !== 'giga') game.logMsg(`🎶 Os bardos atacam: “${sg.title}” (${STYLE_INFO[sg.style].name}).`, STYLE_INFO[sg.style].col); festaBroadcast(); };
+const festaJoin = (hostId: number, m: { st: string; host: string; left: number; songs: string[]; song?: string; music: boolean }) => { if (festa) return; festaInvite = null;
+  festaFade([`${m.host} abriu a roda para você.`, `A praça de ${m.st} ferve: bandeirinhas, churrasco e os bardos no palco.`], () => startFesta(m.st, { min: Math.max(1, m.left / 60000), music: m.music, meats: [], brews: [], songs: m.songs, song: m.song, guest: m.host, hostId })); };
+const nearSt = (st: string) => !inside && hereSettle()?.name === st;
+net.onX('x:festa', (from, m) => { const d = { st: String(m.st), host: String(m.host), guests: (m.guests as number[]) ?? [], left: +(m.left as number) || 0, songs: (m.songs as string[]) ?? [], song: (m.song as string) || undefined, music: m.music !== false, at: Date.now() }; festasNet.set(from, d);
+  /* já sou convidado: acompanho a música do anfitrião */
+  if (festa?.paid?.guest && festa.paid.hostId === from && d.song && audio.festaSong?.id !== d.song) audio.festaPlay(songById(d.song));
+  const mate = !!net.party && net.party.members.includes(from) && from !== net.myId; if (!mate || festa || d.left < 20000) return;
+  if (nearSt(d.st)) festaJoin(from, d); else if (festaInvite?.hostId !== from) { festaInvite = { hostId: from, host: d.host, st: d.st }; game.logMsg(`🎉 ${d.host}, do seu grupo, está dando uma festa na praça de ${d.st}. Vá até lá: você entra sozinho.`, '#ffe08a'); } });
+net.onX('x:festaEnd', (from) => { festasNet.delete(from); if (festaInvite?.hostId === from) festaInvite = null; if (festa?.paid?.guest && festa.paid.hostId === from) festa.len = Math.min(festa.len ?? 0, performance.now() - festa.t0 + 3000); });
+net.onX('x:festaAsk', (from, m) => { if (m.to !== net.myId || !festa || festa.done || festa.paid?.guest) return; const nm = net.nameOf(from); audio.chime();
+  confirmBox(`🎉 <b>${nm}</b> chegou perto da festa e pede para entrar na roda.`, '✔ Pode entrar', () => { festaGuests.add(from); net.x('x:festaOk', { to: from }); festaBroadcast(); game.logMsg(`🎉 ${nm} entrou na festa.`, '#ffe08a'); }, { onNo: () => { net.x('x:festaNo', { to: from }); } }); });
+net.onX('x:festaOk', (from, m) => { if (m.to !== net.myId) return; const d = festasNet.get(from); if (d) festaJoin(from, d); });
+net.onX('x:festaNo', (from, m) => { if (m.to !== net.myId) return; game.logMsg(`🎉 ${net.nameOf(from)} preferiu manter a festa só com os de casa desta vez.`, '#c8b890'); });
+/** clique (sem Ctrl) num jogador que está numa festa: pedir para entrar (o pedido vai sempre para o anfitrião) */
+function festaHostOf(id: number) { const now = Date.now(); for (const [h, d] of festasNet) { if (now - d.at > 20000) { festasNet.delete(h); continue; } if (h === id || d.guests.includes(id)) return h; } return 0; }
+function festaAskJoin(id: number) { const h = festaHostOf(id); if (!h || festa) return false; const d = festasNet.get(h)!;
+  if (!nearSt(d.st)) { game.logMsg(`🎉 Chegue mais perto da praça de ${d.st} para pedir para entrar na festa.`, '#c8b890'); return true; }
+  if (performance.now() < festaAskT) { game.logMsg('🎉 O pedido já foi; espere a resposta.', '#c8b890'); return true; }
+  confirmBox(`🎉 ${h === id ? `<b>${d.host}</b> está dando uma festa.` : `<b>${net.nameOf(id)}</b> está na festa de <b>${d.host}</b>.`}<br>Pedir para entrar na roda?<br><small>Quem entra ganha a ✨ Aura de Alegria: +10% em tudo por 1 turno.</small>`, '🎉 Pedir para entrar', () => { festaAskT = performance.now() + 30000; net.x('x:festaAsk', { to: h }); game.logMsg(`🎉 Pedido enviado a ${d.host}.`, '#ffe08a'); });
+  return true; }
+/* o convite do grupo vale quando você chega à praça */
+setInterval(() => { if (!festaInvite || festa) return; const d = festasNet.get(festaInvite.hostId); if (!d || Date.now() - d.at > 20000) { festaInvite = null; return; } if (nearSt(d.st)) festaJoin(festaInvite.hostId, d); }, 1500);
+/* pedir música: o anfitrião escolhe, os bardos tocam na hora (e os convidados ouvem a mesma) */
+festaCd.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('[data-req]') || !festa) return; audio.click?.();
+  const draw = () => { const cur = audio.festaSong?.id; dwarfEl.innerHTML = `<div class="pn relpn" style="width:min(520px,94vw);height:min(600px,78vh);overflow:auto"><h2>🎶 Pedir uma música aos bardos <button data-x>✕</button></h2><p style="color:#c8b890;font-size:13px;margin:4px 0 8px">Eirik, Sigrun e Ove tocam qualquer estilo — no alaúde, no tambor e na flauta. A música pedida começa na hora (e quem está na sua festa ouve a mesma).</p><div style="display:grid;gap:5px">${SONGS.map((sg) => { const si = STYLE_INFO[sg.style]; return `<button data-play="${sg.id}" style="text-align:left;padding:7px 9px;font:13px Georgia;color:${sg.id === cur ? '#1a1008' : '#ffe0a0'};background:${sg.id === cur ? '#e0b048' : 'rgba(20,14,10,.8)'};border:1px solid #5a4630;border-radius:3px">${si.icon} <b>${sg.title}</b> <small style="color:${sg.id === cur ? '#3a2410' : si.col}">· ${si.name} · ${sg.bpm} bpm</small></button>`; }).join('')}</div></div>`; dwarfEl.style.display = 'flex'; };
+  draw(); dwarfEl.onclick = (ev) => { const t = ev.target as HTMLElement; if (t === dwarfEl || t.closest('[data-x]')) { dwarfEl.style.display = 'none'; return; } const b = t.closest('[data-play]') as HTMLElement | null; if (!b) return; audio.festaPlay(songById(b.dataset.play!)); draw(); }; });
+/* a aura de alegria: notinhas e confetes girando em volta do herói enquanto dura */
+const joyAura = new THREE.Group(); joyAura.visible = false; scene.add(joyAura);
+{ const CONF = ['#ffd24a', '#ff7aa8', '#7ad7ff', '#9aff7a'].map((c) => { const cv = document.createElement('canvas'); cv.width = cv.height = 32; const g2 = cv.getContext('2d')!; g2.fillStyle = c; g2.shadowColor = c; g2.shadowBlur = 8; g2.beginPath(); g2.arc(16, 16, 6, 0, 6.3); g2.fill(); const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; return tx; });
+  for (let i = 0; i < 8; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: i % 2 ? NOTE_TEX[i % 4] : CONF[(i >> 1) % 4], transparent: true, depthWrite: false, opacity: 0.85 })); sp.scale.setScalar(i % 2 ? 0.42 : 0.22); sp.userData.a = i / 8 * 6.283; joyAura.add(sp); } }
+function joyAnim(t: number) { const on = joyUntil() > Date.now() && !inside; joyAura.visible = on; if (!on) return; joyAura.position.copy(hero.root.position);
+  joyAura.children.forEach((c, i) => { const a = c.userData.a + t * (i % 2 ? 0.9 : -1.3), r = 1.05 + Math.sin(t * 2 + i) * 0.12; c.position.set(Math.cos(a) * r, 1.0 + Math.sin(t * 2.4 + i * 0.8) * 0.45 + (i % 2) * 0.5, Math.sin(a) * r); }); }
 function showEvResult(r: EvResult) { gevNote((h) => { h.evs++; }); { const st = hereSettle(); if (st && r.won) align.add('vila', st.name, r.lean === 'luz' ? 5 : r.lean === 'sombra' ? -5 : 2, r.name); }
   addKarma(r.karma); game.gainXp(r.xp); game.st.gold += r.gold;
   if (r.karma) applyReply({ t: '', luz: r.karma > 0 ? Math.ceil(r.karma / 3) : 0, sombra: r.karma < 0 ? Math.ceil(-r.karma / 3) : 0, flag: r.flag });
@@ -2747,7 +2806,8 @@ let eDown = 0, eRot = false;
 let drag: { x: number; y: number } | null = null;
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 /* Ctrl + clique num jogador: menu dele (mensagem privada, grupo, perfil) — antes de qualquer outro clique no mundo */
-canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey || e.button !== 0 || net.state !== 'on') return; const id = net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); coop.playerMenu(id, e.clientX, e.clientY); }, true);
+canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && e.button === 0 && net.state === 'on' && !festa && festasNet.size) { const id = net.pickAt(e.clientX, e.clientY); if (id && festaAskJoin(id)) { e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); return; } } /* 28/10: clicar em quem está numa festa pede para entrar */
+  if (!e.ctrlKey || e.button !== 0 || net.state !== 'on') return; const id = net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); coop.playerMenu(id, e.clientX, e.clientY); }, true);
 const CAM_FREE = false; // câmera fixa (Hades-like); true liga giro Q/E e arrasto com o botão do meio
 canvas.addEventListener('pointerdown', (e) => { if (CAM_FREE && e.button === 1) { e.preventDefault(); drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); } });
 addEventListener('pointermove', (e) => {
@@ -3036,7 +3096,7 @@ function withFade(fn: () => void, label?: string, after?: () => void) {
 function enterHouse(p: (typeof city.props)[number]) {
   withFade(() => {
     const holy = p.kind === 'temple' || p.kind === 'church';
-    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : 6) : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy);
+    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : 6) : p.variant === 9 ? 0 : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy);
     if (p === homeProp) { /* a casa do jogador: cama (descansa e cura) e a caixa de correio que guarda itens (o cofre), encostadas na parede do fundo */
       const bx = 1.6, bz = 1.5, mk = (g: THREE.BufferGeometry, c: number, x: number, y: number, z: number) => { const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color: c })); m.position.set(x, y, z); int.group.add(m); return m; };
       mk(new THREE.BoxGeometry(1.5, 0.4, 2.3), 0x6a4a2c, bx, 0.2, bz); mk(new THREE.BoxGeometry(1.4, 0.18, 2.1), 0xe8dcc8, bx, 0.49, bz); mk(new THREE.BoxGeometry(1.4, 0.06, 1.3), 0x8a2a2a, bx, 0.6, bz + 0.35); mk(new THREE.BoxGeometry(1.0, 0.16, 0.45), 0xf4ecdc, bx, 0.63, bz - 0.75); mk(new THREE.BoxGeometry(1.5, 1.0, 0.1), 0x5a3a20, bx, 0.5, bz - 1.15);
@@ -4143,7 +4203,7 @@ function frameBody() {
   skinTick?.(); // copia a pose procedural para o modelo do artista
   look?.tick(dt, state.night);
   try { game.setDroneMode(stanceSys?.current().id); } catch { /* */ }
-  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t);
+  { const cs = stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t);
   game.setWarrior(isWarrior()); needGauge();
   netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
   updateFacSigil(t); updateOutSigil(t);

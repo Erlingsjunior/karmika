@@ -38,7 +38,7 @@ export function wholeThumb(w: Whole): string {
   const c0 = THUMB.get(w.id); if (c0) return c0;
   try { const W = 280, H = 180, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setSize(W, H, false);
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff0d8, 0x4a3a2a, 1.6)); const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(8, 14, 10); sc.add(sun);
-    let sd = 7; const hs = buildHouse(0, w.w * 2, w.h * 2, 0xb09068, 0x8a3a28, { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd: () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; } }); sc.add(hs.group);
+    let sd = 7; const hs = buildHouse(9, w.w * 2, w.h * 2, 0xb09068, 0x8a3a28, { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd: () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; } }); sc.add(hs.group);
     const bb = new THREE.Box3().setFromObject(hs.group), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R0 = Math.max(sz.x, sz.z, sz.y) * 0.62;
     const ground = new THREE.Mesh(new THREE.CircleGeometry(R0 * 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5a7a3a })); ground.position.set(ctr.x, bb.min.y - 0.02, ctr.z); sc.add(ground);
     const cam = new THREE.OrthographicCamera(-R0 * 1.25, R0 * 1.25, R0 * 0.8, -R0 * 0.8, 0.1, 400); cam.position.set(ctr.x + 30, ctr.y + 26, ctr.z + 30); cam.lookAt(ctr); r.render(sc, cam);

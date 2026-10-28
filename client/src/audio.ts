@@ -1,6 +1,7 @@
 /** Som 100% procedural (WebAudio), sem arquivos: ambiente (vento baixo, pássaros, grilos, corujas, uivos, água, fogo),
  *  passos por terreno, golpes/magias, moedas e uma trilha ambiente gerada (pentatônica, pads + melodia esparsa). */
 export type Surface = 'dirt' | 'stone' | 'grass' | 'snow' | 'water' | 'wood' | 'sand' | 'mud';
+import type { FestaSong } from './festa-musica';
 export type Mood = 'explore' | 'town' | 'dungeon' | 'evil' | 'elite' | 'boss' | 'festa';
 export type SpellKind = 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy';
 
@@ -290,7 +291,7 @@ export class AudioEngine {
   private drum(f: number, vol: number, dly = 0, noise = 0.6) { this.tone(f, f * 0.45, 0.28, vol, 'sine', dly, this.mus, 0, 0.003); const nb = () => this.burst('lowpass', 900, 0.8, 0.09, vol * noise, 1, this.mus, 0, 0.002); if (dly > 0.01) setTimeout(nb, dly * 1000); else nb(); }
   /* ---------- A FESTA (25/10): a giga do bardo, original, em ré dórico, 6/8 — alaúde, flauta, bodhrán, pandeiro e o bordão —
      e o coro do povo: "Ele é um bom companheiro" (a melodia tradicional, domínio público). Uma volta: giga A·B (alaúde), coro, giga A·B (flauta). ---------- */
-  private fz = { t: 0, step: 0, part: 0 }; festaPart = 'giga';
+  private fz = { t: 0, step: 0, part: 0 }; festaPart: string = 'giga';
   private sing(f: number, dur: number, vol: number, delay: number) { const ctx = this.ctx!, t0 = ctx.currentTime + delay;
     for (const [mul, det, pan] of [[1, -6, -0.4], [1, 5, 0.3], [0.5, 0, 0], [1, 12, 0.1]] as const) { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f * mul; o.detune.value = det;
       const lfo = ctx.createOscillator(), lg = ctx.createGain(); lfo.frequency.value = 5 + Math.random(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.detune);
@@ -309,6 +310,8 @@ export class AudioEngine {
     const CORO: [number, number][] = [[-3, 1], [2, 2], [2, 1], [2, 2], [0, 1], [2, 2], [4, 1], [2, 3], [2, 2], [0, 1], [0, 2], [0, 1], [0, 2], [-1, 1], [0, 3],
       [-1, 2], [-3, 1], [-5, 2], [-3, 1], [-1, 2], [0, 1], [2, 3], [7, 2], [7, 1], [7, 3], [5, 2], [4, 1], [2, 6]];
     this.fz.t -= dt; if (this.fz.t > 0) return;
+    { const sg = this.festaSong; if (sg && sg.style !== 'giga') { this.festaStyled(sg); return; }
+      if (sg && this.fs.list.length > 1 && this.fz.part >= 4) { this.fz.part = 0; this.fs.i = (this.fs.i + 1) % this.fs.list.length; const nx = this.fs.list[this.fs.i]; this.festaSong = nx; this.onFestaSong?.(nx); this.fz.t = 1.6; return; } }
     const part = this.fz.part % 4; // 0 giga (alaúde) · 1 coro · 2 giga (flauta) · 3 coro
     if (part === 1 || part === 3) { this.festaPart = 'coro'; let tt = 0; for (const [st, n] of CORO) { const d = n * E8 * 1.15; this.sing(f(st), d * 0.95, 0.05, tt); if (n >= 2) this.pluck(f(st) / 2, d, 0.05, tt, 0); tt += d; }
       for (let b = 0; b < tt / (E8 * 3.45); b++) { this.drum(70, 0.22, b * E8 * 3.45); this.tone(7400, 6800, 0.05, 0.008, 'square', b * E8 * 3.45 + E8 * 1.7, this.mus, 0.3, 0.001); }
@@ -320,7 +323,64 @@ export class AudioEngine {
       for (const k of [1, 4]) { this.tone(7400, 6800, 0.05, 0.008, 'square', tt + k * E8, this.mus, (k - 2.5) * 0.2, 0.001); this.tone(9800, 9000, 0.04, 0.006, 'square', tt + k * E8 + 0.012, this.mus, 0, 0.001); }
       tt += E8 * 6; });
     this.fz.t = tt; this.fz.part++; }
-  festaStart() { this.fz = { t: 0, step: 0, part: 0 }; this.setMood('festa'); }
+  /* ---------- O REPERTÓRIO (28/10, Erling): rock, country, pop, sertanejo e balada tocados pelos MESMOS bardos — alaúde,
+     flauta, voz, bodhrán e pandeiro — só mudando andamento, escala, levada e progressão. Melodias originais, geradas por
+     uma semente fixa por música (a mesma música soa igual toda vez: verso, refrão e solo têm o seu próprio desenho). ---------- */
+  private fs: { list: FestaSong[]; i: number; sec: number; mel: Map<string, [number, number][][]> } = { list: [], i: 0, sec: 0, mel: new Map() };
+  /** a música que está tocando agora e a parte dela (o main.ts mostra o título e faz o povo cantar o refrão) */
+  festaSong: FestaSong | null = null; festaPhrase = 0; onFestaSong: ((s: FestaSong) => void) | null = null;
+  private static SEQ = ['intro', 'verso', 'verso', 'refrao', 'refrao', 'verso', 'refrao', 'solo', 'refrao', 'refrao', 'fim'] as const;
+  /** um golpe de ruído com atraso (caixa, palma, vassourinha) */
+  private nhit(type: BiquadFilterType, f: number, q: number, dur: number, vol: number, delay: number, pan = 0) {
+    const ctx = this.ctx!, t0 = ctx.currentTime + delay, s = ctx.createBufferSource(); s.buffer = this.noise;
+    const fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; const g = ctx.createGain(); g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    const p = ctx.createStereoPanner(); p.pan.value = pan; s.connect(fl); fl.connect(g); g.connect(p); p.connect(this.mus); s.start(t0, Math.random() * 1.5, dur + 0.05); }
+  private festaMel(song: FestaSong, kind: string, prog: number[]) { const key = song.id + ':' + kind; const had = this.fs.mel.get(key); if (had) return had;
+    let sd = (song.seed * 2654435761 + kind.length * 97 + (kind === 'refrao' ? 7 : 0)) >>> 0; const rnd = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+    const R: Record<string, number[][]> = { rock: [[2, 1, 1, 2, 2], [1, 1, 2, 1, 1, 2], [3, 1, 2, 2], [2, 2, 4]], country: [[2, 2, 2, 2], [1, 1, 2, 2, 2], [3, 1, 2, 2], [2, 1, 1, 4]],
+      pop: [[1, 2, 1, 2, 2], [2, 1, 1, 1, 1, 2], [1, 1, 1, 1, 4], [3, 3, 2]], sertanejo: [[3, 1, 4], [2, 2, 2, 2], [4, 2, 2], [3, 1, 2, 2]], balada: [[3, 1, 4], [4, 2, 2], [2, 2, 4], [6, 2]] };
+    const pats = kind === 'solo' ? [[1, 1, 1, 1, 1, 1, 2], [1, 1, 1, 1, 2, 2], [2, 1, 1, 1, 1, 1, 1]] : R[song.style] ?? R.pop;
+    const base = kind === 'refrao' ? 4 : kind === 'solo' ? 7 : 0; let cur = base; const out: [number, number][][] = [];
+    /* dois compassos de motivo que se repetem (com o fim mudado): é isso que faz grudar no ouvido */
+    const motif: number[][] = [pats[Math.floor(rnd() * pats.length)], pats[Math.floor(rnd() * pats.length)]];
+    prog.forEach((ch, bi) => { const rh = bi === prog.length - 1 && kind !== 'solo' ? [3, 5] : motif[bi % 2], bar: [number, number][] = [];
+      rh.forEach((len, k) => { if (k === 0) { const tones = [ch, ch + 2, ch + 4, ch + 7].filter((d) => Math.abs(d - cur) <= 4); cur = tones.length ? tones[Math.floor(rnd() * tones.length)] : ch + base; }
+        else { const st = [-1, 1, 1, -2, 2, 0, -1][Math.floor(rnd() * 7)]; cur = Math.max(base - 3, Math.min(base + 8, cur + st)); }
+        if (bi === prog.length - 1 && k === rh.length - 1) cur = kind === 'solo' ? base : ch + base - (base % 7); bar.push([cur, len]); }); out.push(bar); });
+    this.fs.mel.set(key, out); return out; }
+  private festaStyled(song: FestaSong) {
+    const sec = AudioEngine.SEQ[this.fs.sec % AudioEngine.SEQ.length]; this.festaPart = sec; this.festaPhrase++;
+    const E8 = 30 / song.bpm, scale = song.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11], semi = (d: number) => scale[((d % 7) + 7) % 7] + 12 * Math.floor(d / 7), f = (d: number, o = 0) => song.root * Math.pow(2, (semi(d) + 12 * o) / 12);
+    const PV: Record<string, [number[], number[]]> = { rock: [[0, 0, 5, 6], [0, 5, 2, 6]], country: [[0, 0, 3, 4], [3, 0, 4, 0]], pop: song.minor ? [[0, 5, 2, 6], [0, 3, 5, 4]] : [[5, 3, 0, 4], [0, 4, 5, 3]], sertanejo: [[0, 4, 5, 3], [3, 4, 0, 5]], balada: [[0, 5, 3, 4], [3, 4, 2, 5]] };
+    const [pv, pr] = PV[song.style] ?? PV.pop, prog = sec === 'refrao' || sec === 'solo' ? pr : pv, bars = sec === 'intro' || sec === 'fim' ? 2 : 4, BAR = E8 * 8;
+    /* a levada (base): bodhrán no lugar do bumbo, pandeiro e palmas, o alaúde de acompanhamento */
+    for (let b = 0; b < bars; b++) { const ch = sec === 'fim' ? 0 : prog[b % prog.length], t = b * BAR, last = sec === 'fim' && b === bars - 1;
+      if (last) { for (const d of [0, 2, 4, 7]) this.pluck(f(ch + d, -1), BAR, 0.05, t, -0.2); this.drum(60, 0.4, t); this.nhit('highpass', 5000, 0.6, 1.2, 0.05, t); break; }
+      if (song.style === 'rock') { for (let k = 0; k < 8; k++) { const acc = k % 4 === 0 ? 1 : 0.7; this.pluck(f(ch, -2), E8 * 0.85, 0.05 * acc, t + k * E8, -0.25); this.pluck(f(ch + 4, -2), E8 * 0.85, 0.035 * acc, t + k * E8, 0.25); }
+        for (const k of song.bpm < 95 ? [0, 1] : [0, 4, 5]) this.drum(58, 0.36, t + k * E8); for (const k of [2, 6]) { this.nhit('bandpass', 1900, 0.8, 0.16, 0.16, t + k * E8); this.drum(190, 0.1, t + k * E8, 0.2); }
+        for (let k = 0; k < 8; k++) this.tone(8200, 7600, 0.04, 0.006, 'square', t + k * E8, this.mus, 0.35, 0.001); }
+      else if (song.style === 'country') { this.pluck(f(ch, -2), E8 * 1.8, 0.07, t, 0); this.pluck(f(ch + 4, -2), E8 * 1.8, 0.06, t + 4 * E8, 0); this.drum(70, 0.2, t); this.drum(70, 0.16, t + 4 * E8);
+        for (const k of [2, 6]) { for (const d of [2, 4, 7]) this.pluck(f(ch + d, -1), E8 * 0.6, 0.03, t + k * E8, 0.3); this.nhit('lowpass', 2600, 0.5, 0.14, 0.07, t + k * E8, 0.2); }
+        for (const k of [1, 3, 5, 7]) this.tone(7400, 6800, 0.04, 0.005, 'square', t + k * E8, this.mus, -0.3, 0.001); }
+      else if (song.style === 'pop') { for (const k of [0, 2, 4, 6]) this.drum(55, 0.34, t + k * E8); for (const k of [2, 6]) { this.nhit('bandpass', 1300, 1.2, 0.12, 0.12, t + k * E8, -0.1); this.nhit('bandpass', 1500, 1.2, 0.1, 0.09, t + k * E8 + 0.012, 0.1); }
+        for (const k of [0, 3, 6]) { this.pluck(f(ch, -2), E8 * 1.6, 0.06, t + k * E8, 0); for (const d of [0, 2, 4]) this.pluck(f(ch + d, -1), E8 * 0.9, 0.028, t + k * E8, 0.25); }
+        for (let k = 0; k < 8; k++) this.nhit('highpass', 7000, 0.7, 0.05, k % 2 ? 0.03 : 0.018, t + k * E8, 0.4); }
+      else { /* sertanejo e balada: a viola dedilhada, baixo no 1 e no 3, pandeiro manso */ const arp = [0, 4, 7, 9, 7, 4, 2, 4]; arp.forEach((d, k) => this.pluck(f(ch + d, -1), E8 * 1.6, song.style === 'balada' ? 0.03 : 0.036, t + k * E8, k % 2 ? 0.3 : -0.3));
+        this.pluck(f(ch, -2), E8 * 3.5, 0.06, t, 0); this.pluck(f(ch + 4, -2), E8 * 3.5, 0.05, t + 4 * E8, 0); this.drum(68, song.style === 'balada' ? 0.14 : 0.22, t); this.drum(68, 0.14, t + 4 * E8);
+        if (song.style === 'sertanejo') for (const k of [2, 6]) this.tone(7400, 6800, 0.05, 0.007, 'square', t + k * E8, this.mus, 0.3, 0.001); } }
+    /* a melodia: no verso o bardo canta (no sertanejo, em dupla — a segunda voz uma terça acima); no refrão a praça canta junto e a flauta dobra; no solo, a flauta voa */
+    if (sec === 'verso' || sec === 'refrao' || sec === 'solo' || sec === 'intro') { const mel = this.festaMel(song, sec === 'intro' ? 'refrao' : sec, sec === 'intro' ? pr.slice(0, 2) : prog); let t = 0;
+      for (const bar of mel) for (const [d, len] of bar) { const dur = len * E8;
+        if (sec === 'solo' || sec === 'intro') { this.flute(f(d, 1), dur * 0.95, 0.045, t); if (sec === 'solo') this.pluck(f(d), dur, 0.03, t, -0.3); }
+        else { const vol = sec === 'refrao' ? 0.05 : 0.04; this.sing(f(d), dur * 0.95, vol, t); if (song.style === 'sertanejo') this.sing(f(d + 2), dur * 0.95, vol * 0.7, t);
+          if (sec === 'refrao') { this.flute(f(d, 1), dur * 0.9, 0.025, t); if (len >= 2) this.sing(f(d, -1), dur * 0.95, 0.03, t); } }
+        t += dur; } }
+    this.fz.t = bars * BAR; this.fs.sec++;
+    if (sec === 'fim') { this.fs.sec = 0; this.fs.i = (this.fs.i + 1) % Math.max(1, this.fs.list.length); this.fz.part = 0; this.fz.t += 1.6; /* uma respirada entre as músicas */ const nx = this.fs.list[this.fs.i]; if (nx) { this.festaSong = nx; this.onFestaSong?.(nx); } } }
+  /** começa a festa com um repertório (sem lista: a giga de sempre, com o coro) */
+  festaStart(list?: FestaSong[]) { this.fz = { t: 0, step: 0, part: 0 }; this.fs = { list: list ?? [], i: 0, sec: 0, mel: this.fs.mel }; this.festaSong = list?.[0] ?? null; if (this.festaSong) this.onFestaSong?.(this.festaSong); this.setMood('festa'); }
+  /** pedir uma música: ela entra agora (do começo) */
+  festaPlay(song: FestaSong) { const i = this.fs.list.findIndex((q) => q.id === song.id); if (i >= 0) this.fs.i = i; else { this.fs.list.splice(this.fs.i + 1, 0, song); this.fs.i++; } this.fs.sec = 0; this.fz = { t: 0.3, step: 0, part: 0 }; this.festaSong = song; this.onFestaSong?.(song); }
   private tickMusic(dt: number, night: number, inside: boolean) {
     if (!this.music) return;
     { const M = this.mood, now0 = this.ctx!.currentTime;
