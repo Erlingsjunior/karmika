@@ -167,6 +167,10 @@ export function buildWorld(world: World): WorldObjs {
       else if (v === 20) { g.add(buildGothic(Wm, Dm, p.wall, p.roof, true)); L.glows.push({ light: nullLight, base: 44, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 6, p.gy * T + Dm + 3), color: 0xffb060 } as WorldObjs['glowLights'][number]); }
       else b = buildAcademy(v, Wm, Dm, p.wall);
       if (b) { g.add(b.group);
+        /* GRAVIDADE (28/10, Erling: "esse muro flutuando"): o muro baixo acompanha o chão pedra por pedra — cada peça desce ou sobe
+           até o terreno embaixo dela (e afunda um dedo), em vez de o muro inteiro ficar na altura do centro */
+        if (p.kind === 'lowwall') { g.updateMatrixWorld(true); const v3 = new THREE.Vector3(), bx = new THREE.Box3(); const ms: THREE.Mesh[] = []; b.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) ms.push(o as THREE.Mesh); });
+          for (const m of ms) { bx.setFromObject(m); if (bx.isEmpty()) continue; bx.getCenter(v3); const gy1 = Math.min(groundH(bx.min.x, bx.min.z), groundH(bx.max.x, bx.max.z), groundH(bx.min.x, bx.max.z), groundH(bx.max.x, bx.min.z), groundH(v3.x, v3.z)); m.position.y += gy1 - wy - 0.05; } }
         for (const q of b.glows) L.glows.push({ light: nullLight, base: q.base, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + q.pos.x, wy + q.pos.y, p.gy * T + q.pos.z), color: q.color } as WorldObjs['glowLights'][number]);
         for (const q of b.smoke) L.smokers.push(new THREE.Vector3(p.gx * T + q.x, wy + q.y, p.gy * T + q.z));
         for (const q of b.torches) L.torches.push({ pos: new THREE.Vector3(p.gx * T + q.pos.x, wy + q.pos.y, p.gy * T + q.pos.z), light: nullLight, base: 46, seed: r() * 50, flame: q.flame, dist: 0 }); }
