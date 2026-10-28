@@ -46,12 +46,12 @@ export const festaPrice = (p: FestaPlan) => 250 + p.min * 40 + (p.music ? 180 : 
 export const TURN_MIN = 30;
 export interface Gadget { name: string; icon: string; price: number; desc: string; kind: 'misc' | 'res'; col: number }
 export const GADGETS: Record<string, Gadget> = {
-  ajudante_obra: { name: 'Ajudante de Obra', icon: '🦾', price: 220, kind: 'misc', col: 0xd0a040, desc: 'Um robô pedreiro da Companhia. Use de qualquer lugar: ele vai sozinho até o canteiro da sua obra inteira e trabalha turno após turno, mesmo com você longe. Até 4 ao mesmo tempo — cada um soma, e a obra anda mais rápido. E perto dele: desmonta e guarda (o tempo que sobrou fica). Mas é indefeso: se um bicho chegar e nenhuma Sentinela estiver cobrindo a obra, ele vira sucata. Plante torres em volta.' },
+  ajudante_obra: { name: 'Ajudante de Obra', icon: '🦾', price: 900, kind: 'misc', col: 0xd0a040, desc: 'Um robô pedreiro da Companhia. Use de qualquer lugar: ele vai sozinho até o canteiro da sua obra inteira e trabalha turno após turno, mesmo com você longe. Até 4 ao mesmo tempo — cada um soma, e a obra anda mais rápido. E perto dele: desmonta e guarda (o tempo que sobrou fica). Mas é indefeso: se um bicho chegar e nenhuma Sentinela estiver cobrindo a obra, ele vira sucata. Plante torres em volta.' },
   obra_auto: { name: 'Contrato de Obra Automatizada', icon: '📜', price: 400, kind: 'misc', col: 0xd0a040, desc: 'A licença da Companhia de Latão para pôr robôs numa obra. Sem ela, nenhum Ajudante de Obra pisa no seu canteiro. Um contrato por casa: ele se vincula à obra que você tem (ou à primeira que começar, se comprar antes) e some quando a casa fica pronta.' },
-  sentinela: { name: 'Robô Sentinela de Latão', icon: '🤖', price: 260, kind: 'misc', col: 0xb08a40, desc: 'Plante onde quiser defender: ele fica ali por 1 turno, gira a cabeça e solta descargas em quem se aproxima (12 m). Um por vez. Os engenheiros juram que ele não tem nome; todos chamam de Bartolomeu.' },
-  drone_cura: { name: 'Drone de Cura Automatizada', icon: '🛸', price: 160, kind: 'misc', col: 0x7affd0, desc: 'Paira sobre o seu ombro por 1 turno e borrifa vapor medicinal: +2% de vida a cada 6 s. Faz um barulhinho de chaleira quando trabalha.' },
+  sentinela: { name: 'Robô Sentinela de Latão', icon: '🤖', price: 450, kind: 'misc', col: 0xb08a40, desc: 'Plante onde quiser defender: ele fica ali por 1 turno, gira a cabeça e solta descargas em quem se aproxima (12 m). Um por vez. Os engenheiros juram que ele não tem nome; todos chamam de Bartolomeu.' },
+  drone_cura: { name: 'Drone de Cura Automatizada', icon: '🛸', price: 180, kind: 'misc', col: 0x7affd0, desc: 'Paira sobre o seu ombro por 1 turno e borrifa vapor medicinal: +2% de vida a cada 6 s. Faz um barulhinho de chaleira quando trabalha.' },
   drone_choque: { name: 'Bobina de Choque Automatizado', icon: '⚡', price: 170, kind: 'misc', col: 0x6ad0ff, desc: 'Presa ao cinto por 1 turno: a cada 4 s, um raio pula no inimigo mais perto (7 m). Não chegue perto de poça de água com isso ligado. Sério.' },
-  escudo_auto: { name: 'Escudo Automatizado', icon: '🛡', price: 200, kind: 'misc', col: 0x9aa4b4, desc: 'Um disco de latão gira à sua volta por 1 turno e, a cada 25 s, arma uma barreira que segura um golpe inteiro. Ele faz “clanc” e você nem sente.' },
+  escudo_auto: { name: 'Escudo Automatizado', icon: '🛡', price: 220, kind: 'misc', col: 0x9aa4b4, desc: 'Um disco de latão gira à sua volta por 1 turno e, a cada 25 s, arma uma barreira que segura um golpe inteiro. Ele faz “clanc” e você nem sente.' },
   carvao_azul: { name: 'Carvão Azul', icon: '🔷', price: 45, kind: 'res', col: 0x4a8aff, desc: 'Carvão anão que passou pelo laboratório da Companhia e voltou queimando azul. A fornalha passa do ponto do ferro: a peça forjada nesse fogo sai no mínimo rara (amarela). Os anões têm as peças, os tecnocratas têm o fogo.' },
   carvao_amarelo: { name: 'Carvão Amarelo', icon: '🔶', price: 160, kind: 'res', col: 0xffc030, desc: 'Tratado três vezes no vapor da Companhia. Queima amarelo e chia: só ele esquenta a fornalha para peças de classe superior (no mínimo lendárias).' },
   carvao_vermelho: { name: 'Carvão Vermelho', icon: '♦', price: 600, kind: 'res', col: 0xff2a1a, desc: 'O segredo mais bem guardado da Companhia: queima vermelho como o coração de um vulcão. É o único fogo que forja peças únicas e poderosas. Cada pedra tem número de série.' },
@@ -71,7 +71,7 @@ export const TIMED = ['sentinela', 'drone_cura', 'drone_choque', 'escudo_auto', 
 export const MK = ['I', 'II', 'III'];
 /** turnos de cada nível: 30 min, 1 hora, 2 horas */
 export const TURNS = [1, 2, 4];
-export const PRICE_K = [1, 2.3, 4];
+export const PRICE_K = [1, 4, 10]; /* 28/10 (Erling): o Mk I custa caro mas dá para pagar por volta do nível 3; o Mk II e o Mk III são bem caros */
 /** o poder de cada nível (índice 0..2) */
 export const TIER: Record<string, { what: (t: number) => string }> = {
   sentinela: { what: (t) => `descarga a cada ${[1.2, 1, 0.8][t]} s em quem chega a ${[12, 14, 16][t]} m, ${['fraca', 'média', 'forte'][t]}` },
