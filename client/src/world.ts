@@ -1829,6 +1829,27 @@ export function buildCity(): World {
         if (!bridges.some((e) => { const L = Math.hypot(e.bx - e.ax, e.by - e.ay) || 1, t2 = Math.max(0, Math.min(1, ((mx - e.ax) * (e.bx - e.ax) + (my - e.ay) * (e.by - e.ay)) / (L * L))); return Math.hypot(e.ax + (e.bx - e.ax) * t2 - mx, e.ay + (e.by - e.ay) * t2 - my) < 3; })) {
           const nb: Bridge = { ax: a.x, ay: a.y, bx: b.x, by: b.y, hA: 0, hB: 0 }; const save = bridgesRef; bridgesRef = []; nb.hA = groundH(a.x * T, a.y * T); nb.hB = groundH(b.x * T, b.y * T); bridgesRef = save; bridges.push(nb); }
         i = j + 1; } } }
+  /* CASA É CASA (28/10, Erling: "estou entrando na casa porque não tem parede do lado que não dá para ver"). Passes posteriores
+     (o leito das estradas, adros) abriam chão andável dentro de 18 casas. Casa nunca fica em cima de estrada: a casa que caiu
+     sobre o leito anda para o terreno livre mais perto (até 6 tiles); se não houver, sai — a estrada fica aberta. O resto da
+     pegada volta a ser parede. */
+  { const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch']);
+    const hard = props.filter((q) => !SOFT.has(q.kind as string));
+    const fp = (q: Prop, f: (x: number, y: number) => boolean) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (!f(x, y)) return false; return true; };
+    const overlap = (q: Prop, gx: number, gy: number) => hard.some((o) => o !== q && o.gx < gx + q.w + 1 && o.gx + o.w + 1 > gx && o.gy < gy + q.h + 1 && o.gy + o.h + 1 > gy);
+    let moved = 0, gone = 0;
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind !== 'house') continue;
+      const onRoad = !fp(q, (x, y) => (map[y]?.[x] as string) !== 'road'); if (!onRoad) { fp(q, (x, y) => { if (map[y]?.[x] === 'grass') map[y][x] = 'wall' as never; return true; }); continue; }
+      let best: [number, number] | null = null;
+      for (let r = 1; r <= 6 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const gx = q.gx + dx, gy = q.gy + dy;
+        let ok = true; for (let y = gy - 1; y <= gy + q.h && ok; y++) for (let x = gx - 1; x <= gx + q.w && ok; x++) { const t = map[y]?.[x] as string; const inside = x >= gx && x < gx + q.w && y >= gy && y < gy + q.h;
+          if (inside ? !(t === 'grass' || (t === 'wall' && x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) : t === 'water') ok = false; }
+        if (ok && !overlap(q, gx, gy)) best = [gx, gy]; }
+      fp(q, (x, y) => { if (map[y]?.[x] === 'wall') map[y][x] = 'grass' as never; return true; });
+      if (best) { q.gx = best[0]; q.gy = best[1]; fp(q, (x, y) => { map[y][x] = 'wall' as never; return true; }); moved++;
+        for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (SOFT.has(o.kind as string) && o.gx >= q.gx && o.gx < q.gx + q.w && o.gy >= q.gy && o.gy < q.gy + q.h) { props.splice(k, 1); if (k < i) i--; } } }
+      else { props.splice(i, 1); gone++; } }
+    if (moved || gone) console.info(`[mundo] casas sobre a estrada: ${moved} mudaram de lugar, ${gone} saíram`); }
   return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */

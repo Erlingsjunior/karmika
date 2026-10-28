@@ -710,7 +710,7 @@ syncGear(); renderQuick();
 setTimeout(() => syncGear(), 0);
 /* ---------- construção ---------- */
 let obraUntil = 0, obraK = 0.5;
-const build = createBuild({ snd: (k) => game.snd(k), quitWhole: () => { const h = obras.home; if (h && confirm(`Desistir de ${h.name}? O canteiro se desfaz e TODO o material se perde (${h.done.toFixed(1)} de ${h.work} turnos feitos).`)) obras.quit(); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), costK: () => (obraUntil > Date.now() ? obraK : 1), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
+const build = createBuild({ snd: (k) => game.snd(k), gold: () => game.st.gold, payGold: (n) => { game.st.gold = Math.max(0, game.st.gold - n); }, quitWhole: () => { const h = obras.home; if (h && confirm(`Desistir de ${h.name}? O canteiro se desfaz e TODO o material se perde (${h.done.toFixed(1)} de ${h.work} turnos feitos).`)) obras.quit(); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), costK: () => (obraUntil > Date.now() ? obraK : 1), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
   canBuildAt: (gx, gy) => !city.settlements.some((st) => Math.hypot(gx - st.x, gy - st.y) < st.radius + 2) && !city.pois.some((q) => Math.hypot(gx - q.x, gy - q.y) < 6) && city.map[gy]?.[gx] !== 'water' });
 /* a obra inteira e a casa do jogador (obras.ts, 28/10) */
 let homeProp: (typeof city.props)[number] | null = null;
@@ -1581,7 +1581,7 @@ function stanceRing(st: { id: string; role: string; col: string } | null, dt: nu
   if (rid !== stRingId) { const first = stRingId === ''; stRingId = rid; stOrigin = org; m.map = stanceTex(st.id, st.role, st.col); m.needsUpdate = true; gm.color.set(st.col); stAge = 0; if (!first) stPop = 1; }
   stAge += dt; stPop = Math.max(0, stPop - dt * 1.5);
   const k = stAge < ST_STRONG ? 1 : Math.max(0, 1 - (stAge - ST_STRONG) / ST_FADE); /* 1 = forte, 0 = discreta */
-  const p = hero.root.position, vis = !riding; stRing.visible = stGlow.visible = vis;
+  const p = hero.root.position, vis = !riding; stRing.visible = vis; /* 28/10 (Erling): o halo brilhante em volta da postura é só de quem tem alinhamento de luz +2000 (a mesma regra das auras do mundo); os outros veem só a aura de runas */ stGlow.visible = vis && (soul.s.luzT ?? 0) - (soul.s.sombraT ?? 0) >= 2000;
   stRing.position.set(p.x, p.y + 0.06, p.z); stGlow.position.set(p.x, p.y + 0.05, p.z);
   stRing.rotation.z += dt * (0.18 + 0.22 * k); stGlow.rotation.z -= dt * 0.1;
   const pulse = 0.5 + 0.5 * Math.sin(stAge * 2.4);

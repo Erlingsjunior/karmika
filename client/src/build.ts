@@ -6,7 +6,7 @@ import { ITEMS } from './inventory';
 import { buildHouse } from './houses3d';
 import { floatWin, buyFx } from './windows';
 
-export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; blocks?: boolean; rot?: boolean; tip: string }
+export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; /** ouro cobrado junto com o material */ gold?: number; blocks?: boolean; rot?: boolean; tip: string }
 export const PIECES: Piece[] = [
   { id: 'bfloor', name: 'Piso de tábuas', icon: '🟫', cost: { plank: 2 }, tip: 'Base da casa. Pode-se andar por cima.' },
   { id: 'bwall', name: 'Parede de toras', icon: '🧱', cost: { plank: 3, nail: 2 }, blocks: true, rot: true, tip: 'Bloqueia a passagem. R gira.' },
@@ -20,12 +20,18 @@ export const PIECES: Piece[] = [
 export interface Built { kind: PropKind; gx: number; gy: number; v: number }
 /** OBRAS INTEIRAS (28/10, Erling): uma construção completa de uma vez — paga os materiais, o canteiro aparece no chão e a obra avança
    com o trabalho do jogador (E) ou dos Braços Mecânicos da Companhia (sozinhos, enquanto você joga). Quanto maior, mais caro e mais demorado. */
-export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; work: number; tip: string }
+export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; gold?: number; work: number; tip: string }
 export const WHOLES: Whole[] = [
   { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 30,
     tip: 'Casa pequena de morar: alicerce de pedra, paredes de tábua, telhado de telha. Por dentro: cama que cura, caixa de correio que guarda itens e a placa com o seu nome. A obra pede 30 turnos de trabalho (5 dias de Karmika): trabalhe nela entre uma aventura e outra, ou contrate um Ajudante de Obra na Caravana de Latão — e proteja-o com Sentinelas.' },
 ];
 
+/* PREÇO DA OBRA (28/10, Erling): material +10% nas peças soltas e +18% nos projetos inteiros, e toda obra cobra ouro também.
+   Arredonda para o inteiro mais perto (2 tábuas continuam 2); o ouro é o mão-de-obra do mestre de obras. */
+const PIECE_GOLD: Record<string, number> = { bfloor: 4, bwall: 8, bdoor: 10, broof: 8, bfence: 3, torch: 4, bench: 6, campfire: 5 };
+for (const p of PIECES) { for (const k of Object.keys(p.cost)) p.cost[k] = Math.max(p.cost[k], Math.round(p.cost[k] * 1.1)); p.gold = PIECE_GOLD[p.id] ?? 5; }
+const WHOLE_GOLD: Record<string, number> = { casa_tabuas: 900 };
+for (const w of WHOLES) { for (const k of Object.keys(w.cost)) w.cost[k] = Math.ceil(w.cost[k] * 1.18); w.gold = WHOLE_GOLD[w.id] ?? 500; }
 /** a foto da obra no card: a própria casa do jogo, renderizada uma vez num canvas fora da tela */
 const THUMB = new Map<string, string>();
 export function wholeThumb(w: Whole): string {
@@ -37,7 +43,7 @@ export function wholeThumb(w: Whole): string {
     const ground = new THREE.Mesh(new THREE.CircleGeometry(R0 * 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5a7a3a })); ground.position.set(ctr.x, bb.min.y - 0.02, ctr.z); sc.add(ground);
     const cam = new THREE.OrthographicCamera(-R0 * 1.25, R0 * 1.25, R0 * 0.8, -R0 * 0.8, 0.1, 400); cam.position.set(ctr.x + 30, ctr.y + 26, ctr.z + 30); cam.lookAt(ctr); r.render(sc, cam);
     const url = cv.toDataURL(); THUMB.set(w.id, url); r.dispose(); r.forceContextLoss(); return url; } catch { return ''; } }
-export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; gold?(): number; payGold?(n: number): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
@@ -49,10 +55,11 @@ export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; /** desisti
     if (!on) { el.style.display = 'none'; return; }
     const small = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<i class="${ctx.has(k, n) ? 'y' : 'n'}" title="${ITEMS[k]?.name ?? k}">${ITEMS[k]?.icon ?? ''}${n}</i>`).join('');
     const site = ctx.wholeBusy?.() ?? false;
+    const goldTag = (g?: number) => g ? `<i class="${(ctx.gold?.() ?? 0) >= g ? 'y' : 'n'}" title="Ouro (mão de obra)">🪙${g}</i>` : '';
     const W0 = whole >= 0 ? WHOLES[whole] : null;
     const body = tab === 'pecas'
-      ? `<p class="bhint">Clique no chão para colocar · botão direito remove · R gira · B fecha</p><div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}</em></button>`).join('')}</div>`
-      : `<p class="bhint">Compre o projeto (o material sai da mochila). Depois use o 📜 projeto na mochila para escolher o lugar.</p><div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}</em><p>${w.tip}</p>
+      ? `<p class="bhint">Clique no chão para colocar · botão direito remove · R gira · B fecha</p><div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}${goldTag(p.gold)}</em></button>`).join('')}</div>`
+      : `<p class="bhint">Compre o projeto (o material sai da mochila). Depois use o 📜 projeto na mochila para escolher o lugar.</p><div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}${goldTag(w.gold)}</em><p>${w.tip}</p>
         ${site ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div>`;
     el.innerHTML = `<div class="pn bpn"><h2>🔨 Construção <button data-x title="Fechar (B)">✕</button></h2>${W0 ? `<p class="bplace">📜 Escolhendo o lugar de <b>${W0.name}</b>: o contorno verde mostra onde cabe. Clique no chão para marcar o canteiro.</p>` : ''}
       <div class="altabs"><button data-tab="pecas" class="${tab === 'pecas' ? 'on' : ''}">Peças</button><button data-tab="obras" class="${tab === 'obras' ? 'on' : ''}">Obras inteiras</button></div><div class="bbody">${body}</div></div>`;
@@ -60,7 +67,7 @@ export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; /** desisti
   }
   el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
     if (b.hasAttribute('data-x')) { toggle(false); return; } if (b.dataset.tab) { tab = b.dataset.tab as typeof tab; render(); return; }
-    if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); if (!ctx.add('projeto_' + w.id, 1)) { for (const [k, n] of Object.entries(w.cost)) ctx.add(k, n); ctx.log('🎒 Mochila cheia: o projeto não coube e o material voltou para você. Libere um espaço e compre de novo.', '#ff9a8a'); ctx.snd?.('error'); return; } buyFx(b, '📜'); ctx.snd?.('coins'); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
+    if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); ctx.snd?.('error'); return; } if ((ctx.gold?.() ?? 0) < (w.gold ?? 0)) { ctx.log(`Falta ouro: o projeto custa ${w.gold} 🪙 além do material.`, '#ff9a8a'); ctx.snd?.('error'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); if (!ctx.add('projeto_' + w.id, 1)) { for (const [k, n] of Object.entries(w.cost)) ctx.add(k, n); ctx.log('🎒 Mochila cheia: o projeto não coube e o material voltou para você. Libere um espaço e compre de novo.', '#ff9a8a'); ctx.snd?.('error'); return; } ctx.payGold?.(w.gold ?? 0); buyFx(b, '📜'); ctx.snd?.('coins'); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
     if (b.hasAttribute('data-quit')) { ctx.quitWhole?.(); render(); return; }
     sel = +b.dataset.i!; whole = -1; render(); });
   const tileOf = (gx: number, gy: number): Tile | undefined => ctx.world.map[gy]?.[gx];
@@ -81,7 +88,8 @@ export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; /** desisti
     const p = PIECES[sel]; if (!canPlace(p, gx, gy)) { ctx.log('Não dá para construir aqui.', '#ff9a8a'); return; }
     const K = ctx.costK?.() ?? 1, cost = Object.fromEntries(Object.entries(p.cost).map(([k, n]) => [k, Math.max(K < 1 ? 0 : 1, Math.ceil(n * K))])) as Record<string, number>;
     for (const [k, n] of Object.entries(cost)) if (n > 0 && !ctx.has(k, n)) { ctx.log(`Faltam materiais: ${ITEMS[k]?.name ?? k} ×${n}. Gunnar vende.`, '#ff9a8a'); return; }
-    for (const [k, n] of Object.entries(cost)) if (n > 0) ctx.take(k, n);
+    const g0 = p.gold ?? 0; if (g0 && (ctx.gold?.() ?? 0) < g0) { ctx.log(`Falta ouro: ${p.name} custa ${g0} 🪙 de mão de obra.`, '#ff9a8a'); ctx.snd?.('error'); return; }
+    for (const [k, n] of Object.entries(cost)) if (n > 0) ctx.take(k, n); if (g0) ctx.payGold?.(g0);
     const b: Built = { kind: p.id, gx, gy, v: p.rot ? rot : 0 };
     if (ctx.guildZone?.(gx, gy) === 'mine' && ctx.onGuildBuild) { ctx.onGuildBuild(b, false); ctx.log(`🔨 ${p.name}: obra da guilda (todos veem).`, '#ffe08a'); render(); return; }
     addBuilt(b); save(); ctx.log(`🔨 ${p.name} construído.`, '#ffe08a'); render();
