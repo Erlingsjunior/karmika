@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import type { Tile } from '@karmika/shared';
 import type { Prop, PropKind, World } from './world';
 import { ITEMS } from './inventory';
-import { buildHouse } from './houses3d';
+import { buildHouse, buildStyledHouse } from './houses3d';
 import { floatWin, buyFx } from './windows';
 
 export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; /** ouro cobrado junto com o material */ gold?: number; blocks?: boolean; rot?: boolean; tip: string }
@@ -20,17 +20,43 @@ export const PIECES: Piece[] = [
 export interface Built { kind: PropKind; gx: number; gy: number; v: number }
 /** OBRAS INTEIRAS (28/10, Erling): uma construção completa de uma vez — paga os materiais, o canteiro aparece no chão e a obra avança
    com o trabalho do jogador (E) ou dos Braços Mecânicos da Companhia (sozinhos, enquanto você joga). Quanto maior, mais caro e mais demorado. */
-export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; gold?: number; work: number; tip: string }
+export interface Whole { id: string; name: string; icon: string; w: number; h: number; cost: Record<string, number>; gold?: number; work: number; tip: string; /** o modelo da casa pronta (houses3d): variante e, se houver, o estilo do povo */ variant: number; style?: number; tag?: string }
 export const WHOLES: Whole[] = [
-  { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 30,
+  { id: 'casa_tabuas', name: 'Casa de Tábuas e Pedra', icon: '🏡', w: 5, h: 4, cost: { plank: 40, nail: 30, stone: 24, rope: 8, stick: 16 }, work: 30, variant: 2, tag: 'Casa',
     tip: 'Casa pequena de morar: alicerce de pedra, paredes de tábua, telhado de telha. Por dentro: cama que cura, caixa de correio que guarda itens e a placa com o seu nome. A obra pede 30 turnos de trabalho (5 dias de Karmika): trabalhe nela entre uma aventura e outra, ou contrate um Ajudante de Obra na Caravana de Latão — e proteja-o com Sentinelas.' },
+  /* 28/10 (Erling: "aceito as 10 ideias"): o catálogo de obras inteiras, todas no estilo do jogo (os mesmos modelos das vilas),
+     com a porta sempre virada para a câmera. Maior e mais rica = mais material, mais ouro e mais turnos. */
+  { id: 'cabana', name: 'Cabana do Caminhante', icon: '🛖', w: 4, h: 4, variant: 0, tag: 'Casa', cost: { plank: 26, nail: 18, stone: 10, rope: 6, stick: 20 }, work: 18,
+    tip: 'A primeira casa de quem está começando: tábua escura, telhado alto de sapê e um alpendre para pendurar a capa. Pequena, quente e rápida de erguer (18 turnos, 3 dias de Karmika).' },
+  { id: 'sobrado', name: 'Sobrado de Dois Andares', icon: '🏘', w: 5, h: 4, variant: 1, tag: 'Casa', cost: { plank: 60, nail: 44, stone: 48, rope: 12, stick: 20 }, work: 45,
+    tip: 'Pedra embaixo, enxaimel em cima e escada de fora para o andar de cima. A casa de quem já tem nome na vila (45 turnos).' },
+  { id: 'atalaia', name: 'Atalaia de Pedra', icon: '🗼', w: 3, h: 3, variant: 3, tag: 'Torre', cost: { plank: 30, nail: 24, stone: 70, rope: 14, stick: 10 }, work: 40,
+    tip: 'A torre de vigia do Caminho Humano: pedra alta, sacada de madeira e telhado pontudo. Pouco chão, muita altura (40 turnos).' },
+  { id: 'armeiro', name: 'Casa com Loja', icon: '🏪', w: 6, h: 5, variant: 5, tag: 'Comércio', cost: { plank: 70, nail: 52, stone: 40, rope: 16, stick: 24 }, work: 50,
+    tip: 'Casa em cima e balcão embaixo: toldo grande, bancada e placa na frente, para quem quer abrir o próprio comércio (50 turnos).' },
+  { id: 'nordica', name: 'Salão Nórdico', icon: '🪓', w: 5, h: 4, variant: 0, style: 1, tag: 'Nórdico', cost: { plank: 58, nail: 30, stone: 20, rope: 14, stick: 30 }, work: 40,
+    tip: 'Toras empilhadas, telhado de turfa verde e as cabeças de dragão cruzadas na cumeeira. O lar dos que juraram a Odin (40 turnos).' },
+  { id: 'ana', name: 'Casa de Pedra Anã', icon: '⚒', w: 5, h: 4, variant: 0, style: 2, tag: 'Anão', cost: { plank: 24, nail: 30, stone: 80, rope: 8, stick: 10 }, work: 45,
+    tip: 'Pedra grossa, porta de ferro e a fornalha sempre acesa. Feita para durar mil anos, do jeito de Brasaforja (45 turnos).' },
+  { id: 'elfica', name: 'Casa Élfica', icon: '🌿', w: 5, h: 4, variant: 0, style: 3, tag: 'Elfo', cost: { plank: 50, nail: 20, stone: 20, rope: 20, stick: 40 }, work: 40,
+    tip: 'Madeira clara curvada, folhas no telhado e janelas redondas. Parece que cresceu ali sozinha (40 turnos).' },
+  { id: 'sombria', name: 'Casa Sombria', icon: '🦇', w: 5, h: 4, variant: 0, style: 4, tag: 'Sombra', cost: { plank: 44, nail: 40, stone: 50, rope: 10, stick: 16 }, work: 45,
+    tip: 'Pedra escura, telhado íngreme e janelas estreitas que deixam passar pouca luz. Para vampiros, bruxos e quem prefere a noite (45 turnos).' },
+  { id: 'tribal', name: 'Toca Tribal', icon: '🐺', w: 5, h: 4, variant: 0, style: 5, tag: 'Lobisomem', cost: { plank: 30, nail: 12, stone: 24, rope: 24, stick: 50 }, work: 35,
+    tip: 'Couro, galhos trançados e ossos na entrada: a toca de quem uiva para a lua (35 turnos).' },
+  { id: 'pacto', name: 'Casa do Pacto', icon: '🔮', w: 5, h: 4, variant: 0, style: 6, tag: 'Pacto', cost: { plank: 46, nail: 36, stone: 44, rope: 14, stick: 20 }, work: 45,
+    tip: 'Pedra marcada com runas, chama roxa na porta e um círculo riscado no chão. Para quem estuda o que não se ensina na Academia (45 turnos).' },
 ];
+/* cada obra tem o seu item de projeto (📜 na mochila) */
+for (const w of WHOLES) if (!ITEMS['projeto_' + w.id]) ITEMS['projeto_' + w.id] = { name: 'Projeto · ' + w.name, icon: '📜', kind: 'misc', col: 0xe8d8a8, desc: `A planta de ${w.name} (${w.w}×${w.h}) com o material já separado. Use para escolher o lugar do canteiro. Depois a obra pede ${w.work} turnos de trabalho — a sua mão ou a de um Ajudante de Obra.` } as (typeof ITEMS)[string];
+/** o modelo de uma obra pelo id (ou pelo nome, para casas antigas do servidor) */
+export const wholeOf = (id?: string, name?: string) => WHOLES.find((w) => w.id === id) ?? WHOLES.find((w) => w.name === name) ?? WHOLES[0];
 
 /* PREÇO DA OBRA (28/10, Erling): material +10% nas peças soltas e +18% nos projetos inteiros, e toda obra cobra ouro também.
    Arredonda para o inteiro mais perto (2 tábuas continuam 2); o ouro é o mão-de-obra do mestre de obras. */
 const PIECE_GOLD: Record<string, number> = { bfloor: 4, bwall: 8, bdoor: 10, broof: 8, bfence: 3, torch: 4, bench: 6, campfire: 5 };
 for (const p of PIECES) { for (const k of Object.keys(p.cost)) p.cost[k] = Math.max(p.cost[k], Math.round(p.cost[k] * 1.1)); p.gold = PIECE_GOLD[p.id] ?? 5; }
-const WHOLE_GOLD: Record<string, number> = { casa_tabuas: 900 };
+const WHOLE_GOLD: Record<string, number> = { casa_tabuas: 900, cabana: 500, sobrado: 1600, atalaia: 1400, armeiro: 2200, nordica: 1300, ana: 1500, elfica: 1300, sombria: 1500, tribal: 1100, pacto: 1500 };
 for (const w of WHOLES) { for (const k of Object.keys(w.cost)) w.cost[k] = Math.ceil(w.cost[k] * 1.18); w.gold = WHOLE_GOLD[w.id] ?? 500; }
 /** a foto da obra no card: a própria casa do jogo, renderizada uma vez num canvas fora da tela */
 const THUMB = new Map<string, string>();
@@ -38,12 +64,12 @@ export function wholeThumb(w: Whole): string {
   const c0 = THUMB.get(w.id); if (c0) return c0;
   try { const W = 280, H = 180, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); r.setSize(W, H, false);
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff0d8, 0x4a3a2a, 1.6)); const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(8, 14, 10); sc.add(sun);
-    let sd = 7; const hs = buildHouse(2, w.w * 2, w.h * 2, 0xb09068, 0x8a3a28, { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd: () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; } }); sc.add(hs.group);
+    let sd = 7; const hs = (w.style ? buildStyledHouse : (_s: number, v: number, a: number, b2: number, c1: number, c2: number, cx: Parameters<typeof buildHouse>[5]) => buildHouse(v, a, b2, c1, c2, cx))(w.style ?? 0, w.variant, w.w * 2, w.h * 2, 0xb09068, 0x8a3a28, { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd: () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; } }); sc.add(hs.group);
     const bb = new THREE.Box3().setFromObject(hs.group), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R0 = Math.max(sz.x, sz.z, sz.y) * 0.62;
     const ground = new THREE.Mesh(new THREE.CircleGeometry(R0 * 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5a7a3a })); ground.position.set(ctr.x, bb.min.y - 0.02, ctr.z); sc.add(ground);
     const cam = new THREE.OrthographicCamera(-R0 * 1.25, R0 * 1.25, R0 * 0.8, -R0 * 0.8, 0.1, 400); cam.position.set(ctr.x + 30, ctr.y + 26, ctr.z + 30); cam.lookAt(ctr); r.render(sc, cam);
     const url = cv.toDataURL(); THUMB.set(w.id, url); r.dispose(); r.forceContextLoss(); return url; } catch { return ''; } }
-export function createBuild(ctx: { /** o chão já é de outro jogador (casas no servidor) */ taken?(gx: number, gy: number, w: number, h: number): string | null; snd?(k: 'coins' | 'error'): void; gold?(): number; payGold?(n: number): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+export function createBuild(ctx: { /** o id do projeto da obra em andamento */ siteId?(): string | null; /** o chão já é de outro jogador (casas no servidor) */ taken?(gx: number, gy: number, w: number, h: number): string | null; snd?(k: 'coins' | 'error'): void; gold?(): number; payGold?(n: number): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
@@ -60,7 +86,7 @@ export function createBuild(ctx: { /** o chão já é de outro jogador (casas no
     const body = tab === 'pecas'
       ? `<p class="bhint">Clique no chão para colocar · botão direito remove · R gira · B fecha</p><div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}${goldTag(p.gold)}</em></button>`).join('')}</div>`
       : `<p class="bhint">Compre o projeto (o material sai da mochila). Depois use o 📜 projeto na mochila para escolher o lugar.</p><div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}${goldTag(w.gold)}</em><p>${w.tip}</p>
-        ${site ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div>`;
+        ${site ? (ctx.siteId?.() === w.id ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button disabled title="Uma obra por vez">Uma obra por vez</button>`) : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div>`;
     el.innerHTML = `<div class="pn bpn"><h2>🔨 Construção <button data-x title="Fechar (B)">✕</button></h2>${W0 ? `<p class="bplace">📜 Escolhendo o lugar de <b>${W0.name}</b>: o contorno verde mostra onde cabe. Clique no chão para marcar o canteiro.</p>` : ''}
       <div class="altabs"><button data-tab="pecas" class="${tab === 'pecas' ? 'on' : ''}">Peças</button><button data-tab="obras" class="${tab === 'obras' ? 'on' : ''}">Obras inteiras</button></div><div class="bbody">${body}</div></div>`;
     el.style.display = 'flex';

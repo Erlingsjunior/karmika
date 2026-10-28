@@ -32,7 +32,7 @@ let onSaveFn: ((h: HomeSave | null) => void) | null = null;
 export const onHomeSave = (f: (h: HomeSave | null) => void) => { onSaveFn = f; };
 const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } try { onSaveFn?.(h); } catch { /* */ } };
 
-export function createObras(ctx: {
+export function createObras(ctx: { /** a variante do modelo da casa pronta (para achar a porta) */ variantOf?(h: HomeSave): number;
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
   /** a casa pronta entra no mundo como prop (e sai, se for demolida ou vendida) */ addHouse(h: HomeSave): void; removeHouse?(h: HomeSave): void;
@@ -249,7 +249,7 @@ export function createObras(ctx: {
     /** a casa foi vendida (o comprador assinou a escritura): sai do seu mundo e do seu save */
     release(why: string) { if (!home) return; const h = home; if (h.done >= h.work) ctx.removeHouse?.(h); else { if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes(); ctx.block(h.gx, h.gy, h.w, h.h, false); }
       if (sign) { ctx.scene.remove(sign); sign = null; } home = null; working = false; lastStage = -1; try { localStorage.removeItem(KEY); } catch { /* */ } ctx.log(why, '#ffe08a'); },
-    door() { if (!home) return null; const d = houseDoor(2, home.w * T, home.h * T); return { x: home.gx * T + d.x, z: home.gy * T + d.z + 0.9 }; }, /* 28/10: a casa do jogador é a casa em L da vila (variante 2), com a porta virada para a câmera */
+    door() { if (!home) return null; const d = houseDoor(ctx.variantOf?.(home) ?? 2, home.w * T, home.h * T); return { x: home.gx * T + d.x, z: home.gy * T + d.z + 0.9 }; }, /* 28/10: a casa do jogador é a casa em L da vila (variante 2), com a porta virada para a câmera */
     siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: live().length > 0, robots: live().length, covered: covered(Date.now()) } : null; },
     signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },
     sign() { if (!home || home.done < home.work) return; home.signed = true; home.owner = ctx.heroName(); saveHome(home); makeSign(home); ctx.log(`🪧 A placa está na frente: “Casa de ${home.owner}”.`, '#ffe08a'); },
