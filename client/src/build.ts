@@ -4,6 +4,7 @@ import type { Tile } from '@karmika/shared';
 import type { Prop, PropKind, World } from './world';
 import { ITEMS } from './inventory';
 import { buildHouse } from './houses3d';
+import { floatWin } from './windows';
 
 export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; blocks?: boolean; rot?: boolean; tip: string }
 export const PIECES: Piece[] = [
@@ -40,21 +41,25 @@ export function createBuild(ctx: { /** desistir da obra (o canteiro se desfaz, o
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
-  const el = document.createElement('div'); el.id = 'build'; document.body.appendChild(el);
+  const el = document.createElement('div'); el.id = 'build'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'build', { left: 'calc(50vw - 330px)', top: '46vh' }), 0); /* 28/10: janela padrão do jogo (arrastar, redimensionar, escala e texto das Configurações) */
+  let tab: 'pecas' | 'obras' = 'pecas';
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xffe08a })); arrow.rotation.x = Math.PI / 2; ghost.add(arrow);
   function render() {
     if (!on) { el.style.display = 'none'; return; }
     const small = (c: Record<string, number>) => Object.entries(c).map(([k, n]) => `<i class="${ctx.has(k, n) ? 'y' : 'n'}" title="${ITEMS[k]?.name ?? k}">${ITEMS[k]?.icon ?? ''}${n}</i>`).join('');
     const site = ctx.wholeBusy?.() ?? false;
-    el.innerHTML = `<div class="bp"><h4>🔨 Modo de obra <small>B sai · clique: colocar · botão direito: remover · R: girar</small></h4>
-      <div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}</em></button>`).join('')}</div>
-      <h4 style="margin-top:8px">🏡 Obras inteiras <small>compre o projeto (os materiais saem da mochila) · use o projeto na mochila para escolher o lugar</small></h4>
-      <div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}</em><p>${w.tip}</p>
-        ${site ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div></div>`;
-    el.style.display = 'block';
+    const W0 = whole >= 0 ? WHOLES[whole] : null;
+    const body = tab === 'pecas'
+      ? `<p class="bhint">Clique no chão para colocar · botão direito remove · R gira · B fecha</p><div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}</em></button>`).join('')}</div>`
+      : `<p class="bhint">Compre o projeto (o material sai da mochila). Depois use o 📜 projeto na mochila para escolher o lugar.</p><div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}</em><p>${w.tip}</p>
+        ${site ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div>`;
+    el.innerHTML = `<div class="pn bpn"><h2>🔨 Construção <button data-x title="Fechar (B)">✕</button></h2>${W0 ? `<p class="bplace">📜 Escolhendo o lugar de <b>${W0.name}</b>: o contorno verde mostra onde cabe. Clique no chão para marcar o canteiro.</p>` : ''}
+      <div class="altabs"><button data-tab="pecas" class="${tab === 'pecas' ? 'on' : ''}">Peças</button><button data-tab="obras" class="${tab === 'obras' ? 'on' : ''}">Obras inteiras</button></div><div class="bbody">${body}</div></div>`;
+    el.style.display = 'flex';
   }
   el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
+    if (b.hasAttribute('data-x')) { toggle(false); return; } if (b.dataset.tab) { tab = b.dataset.tab as typeof tab; render(); return; }
     if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); ctx.add('projeto_' + w.id, 1); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
     if (b.hasAttribute('data-quit')) { ctx.quitWhole?.(); render(); return; }
     sel = +b.dataset.i!; whole = -1; render(); });

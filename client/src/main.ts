@@ -540,7 +540,7 @@ setInterval(() => { const L = game.buffs(); const prem = isPremium();
   buffEl.innerHTML = globalBuffHtml() + echoHtml() + (vow ? `<div class="bf ${vow.broken ? 'neg' : 'vow'}" title="${vow.broken ? `Voto quebrado: “${VOWS[vow.id]?.text}”. A bênção se apagou.` : `${VOWS[vow.id]?.name}: “${VOWS[vow.id]?.text}” — Bênção do Voto: +5% de XP enquanto mantiver.${vow.titled ? '' : ` Faltam ${Math.max(0, Math.ceil((3 * 3600 - vow.secs) / 60))} min de jogo fiel para o título.`}`}">${vow.broken ? '⛓' : '✦'}</div>` : '') + eqF.map((f) => `<div class="bf fac ${f}" title="${FAC[f].name} — “${FAC[f].motto}”. Você carrega o brasão deste lado.${inv.eq.relic?.fac === f ? ' A relíquia acende o sigilo aos seus pés.' : ''}"><img src="${crestURL(f)}" alt=""></div>`).join('') + (prem ? `<div class="bf good bless" title="Bênção de Marghar (Premium): conforto no dia a dia — Bolsa do Caminhante, Bolsa Mágica e de Ofício, 10 missões. Nunca dá força.">${BLESS}</div>` : '') + L.map((b) => `<div class="bf ${b.good ? 'good' : 'bad'}" title="${b.name}: ${b.tip}"><span>${b.ic}</span>${b.t !== undefined ? `<i>${Math.ceil(b.t)}</i>` : ''}</div>`).join('');
   /* 28/10 (Erling): tooltip de verdade (o title nativo demorava e ficava feio) e o bloco à direita, entre a barra de informações e o minimapa */
   buffEl.querySelectorAll('[title]').forEach((e) => { e.setAttribute('data-tip', e.getAttribute('title') || ''); e.removeAttribute('title'); });
-  { const mm = document.getElementById('mini')?.getBoundingClientRect(), ui = +(getComputedStyle(document.documentElement).getPropertyValue('--ui') || 1) || 1; if (mm && mm.width) buffEl.style.right = ((innerWidth - mm.left) + 10) / ui + 'px'; } }, 250);
+  { const mm = document.getElementById('mini')?.getBoundingClientRect(), ui = +(getComputedStyle(document.documentElement).getPropertyValue('--ui') || 1) || 1; if (mm && mm.width) (buffEl.parentElement ?? buffEl).style.right = ((innerWidth - mm.left) + 10) / ui + 'px'; } }, 250);
 /* a bênção também aparece aos pés do herói: uma runa violeta e dourada que gira devagar */
 /** o olho de Marghar do Premium: o mesmo desenho gira em volta do jogador e, pela rede, em volta de quem é Premium (25/10) */
 function makeBlessRune() { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.strokeStyle = '#e6c46a'; g.lineWidth = 3; g.beginPath(); g.ellipse(32, 32, 24, 13, 0, 0, Math.PI * 2); g.stroke(); g.fillStyle = '#c9a0ff'; g.beginPath(); g.arc(32, 32, 7, 0, Math.PI * 2); g.fill(); g.fillStyle = '#140a1e'; g.beginPath(); g.arc(32, 32, 3, 0, Math.PI * 2); g.fill();
@@ -874,7 +874,10 @@ const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.n
 const BETA_TOOLS = true;
 function betaCommand(cmd: string, a: string[]): string | null {
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
-  if (cmd === 'ajuda' || cmd === 'help') return 'Teste (beta): /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'ajuda' || cmd === 'help') return 'Teste (beta): /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  { const MAT: Record<string, string> = { prego: 'nail', pregos: 'nail', madeira: 'wood', tabua: 'plank', tabuas: 'plank', 'tábuas': 'plank', pedra: 'stone', pedras: 'stone', corda: 'rope', cordas: 'rope', galho: 'stick', galhos: 'stick' };
+    if (MAT[cmd]) { const id = MAT[cmd], q = n > 0 ? n : 1000; inv.grant(id, q); return `🧪 (teste) +${q} ${ITEMS_TBL[id]?.icon ?? ''} ${ITEMS_TBL[id]?.name ?? id}.`; }
+    if (cmd === 'gold' || cmd === 'ouro') { const q = n > 0 ? n : 10000; game.st.gold += q; return `🧪 (teste) +${q} 🪙 ouro.`; } }
   if (cmd === 'som') { const r = `🔊 ${audio.whatPlays()} · lua=${luaK.toFixed(2)} aurora=${aurK.toFixed(2)} global=${gCur ?? '—'}`; console.log(r); return r; }
   if (cmd === 'perf') { const r = perfReport(); console.log(r); return r; }
   if (cmd === 'morrer') { if (game.st.dead) return 'Você já caiu.'; game.st.hp = 1; game.damage(99999, hero.root.position); return `☠ Você caiu de propósito. Fôlegos antes da queda: ${soul.s.breaths}/${MAX_BREATHS}${game.st.lvl < FRAY_LVL ? ` (antes do nível ${FRAY_LVL}, com o Olho ainda dormindo, o Fio não se gasta: use /nivel ${FRAY_LVL})` : ''}.`; }
@@ -1584,8 +1587,8 @@ function stanceRing(st: { id: string; role: string; col: string } | null, dt: nu
   const pulse = 0.5 + 0.5 * Math.sin(stAge * 2.4);
   stRing.scale.setScalar(1 + stPop * 0.9 - stPop * stPop * 0.5);
   stGlow.scale.setScalar(1 + stPop * 1.6); /* 28/10 (Erling): a aura não cresce nem encolhe — ela acende e apaga devagar, e fica mais marcante */
-  m.opacity = Math.min(1, 0.6 + 0.3 * k + 0.12 * pulse + 0.2 * stPop);
-  gm.opacity = Math.min(1, 0.14 + 0.3 * pulse + 0.12 * k + 0.8 * stPop); }
+  m.opacity = Math.min(1, 0.4 + 0.55 * pulse + 0.2 * stPop); m.color.setScalar(0.8 + 0.7 * pulse); /* acende (mais claro que o normal) e apaga devagar */
+  gm.opacity = Math.min(1, 0.05 + 0.5 * pulse + 0.8 * stPop); void k; }
 /* a névoa espessa da treva cegante (27/10): tufos escuros e lentos, em mistura normal (o escuro aparece), girando em volta do herói */
 const mistTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(8,4,14,0.95)'); gr.addColorStop(0.5, 'rgba(18,8,28,0.55)'); gr.addColorStop(1, 'rgba(18,8,28,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t2 = new THREE.CanvasTexture(c); t2.userData.keep = true; return t2; })();
 const mistG = new THREE.Group(); mistG.visible = false; scene.add(mistG); const mistP: { s: THREE.Sprite; a: number; r: number; h: number; sp: number }[] = [];
@@ -1596,7 +1599,7 @@ function darkMist(on: boolean, dt: number) { mistK += ((on ? 1 : 0) - mistK) * M
 /* o aviso grande no meio da tela: nome, papel e o que muda (fica 3 s, dá para ler) */
 const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.appendChild(stBan); let stBanT = 0;
 function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
-const stanceBar = document.createElement('div'); stanceBar.id = 'stances'; document.body.appendChild(stanceBar);
+const stanceBar = document.createElement('div'); stanceBar.id = 'stances'; /* 28/10 (Erling): posturas e Instinto moram lá em cima, junto do Premium e dos buffs, com balão explicando */ { const top = document.createElement('div'); top.id = 'topfx'; document.body.appendChild(top); top.appendChild(stanceBar); top.appendChild(buffEl); }
 const ROLE_SVG: Record<string, string> = {
   bal: '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 6v20M9 16h14" stroke="currentColor" stroke-width="1.6" opacity=".7"/><circle cx="16" cy="16" r="3" fill="currentColor"/></svg>',
   atk: '<svg viewBox="0 0 32 32"><path d="M24 4l4 4-14 14-4-4z" fill="currentColor"/><path d="M10 18l4 4-3 3-4-4zM6 22l4 4-3 2-3-3z" fill="currentColor" opacity=".75"/><path d="M8 8l4 4M5 12l3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg>',
@@ -1612,17 +1615,14 @@ function renderStances() { if (!stanceSys) return; const L = stanceSys.list(), c
   for (const s of L) { const b = document.createElement('button'); const op = stanceSys.open(s), on = s.id === cur.id; b.className = `stance ${on ? 'on' : ''} ${op ? '' : 'locked'}`; b.dataset.st = s.id; b.style.setProperty('--sc', s.col);
     const q = s.quest ? quests.def(s.quest) : null, trial = s.quest && !quests.q.done.includes(s.quest) && !!quests.q.active[s.quest];
     b.innerHTML = `${ROLE_SVG[s.role]}${op ? '' : '<i class="lk">🔒</i>'}${trial ? '<i class="tr">treino</i>' : ''}`;
-    b.title = `${s.name} · ${ROLE_NAME[s.role]}${on ? ' (em uso)' : ''}\n${s.tip}${op ? '\nClique ou V para trocar.' : `\n🔒 Abre na missão “${q?.name ?? 'de postura'}”${q ? ` com ${q.giver}, a partir do nível ${q.lvl}` : ''}.`}`;
+    b.dataset.tip = `${s.name} · ${ROLE_NAME[s.role]}${on ? ' (em uso)' : ''}\n${s.tip}${op ? '\nClique ou V para trocar.' : `\n🔒 Abre na missão “${q?.name ?? 'de postura'}”${q ? ` com ${q.giver}, a partir do nível ${q.lvl}` : ''}.`}`;
     b.addEventListener('click', (e) => { e.stopPropagation(); stanceSys!.pick(s.id); renderStances(); }); stanceBar.appendChild(b); } }
-function placeStances() { const rows = document.querySelectorAll('#skills .srow'), ref = (rows[0]?.children[5] ?? null) as HTMLElement | null, q = document.getElementById('quick');
-  if (!ref) return; const r = ref.getBoundingClientRect(), last = (rows[0]?.children[9] ?? ref) as HTMLElement, rr = last.getBoundingClientRect(), w = stanceBar.offsetWidth || 232;
-  const left = rr.right - w; stanceBar.style.left = `${Math.round(left)}px`; /* discreta, logo acima da linha dourada, encostada no orbe */
-  stanceBar.style.top = `${Math.round(r.top - 34)}px`; void q; }
+function placeStances() { /* 28/10: a barra das posturas foi para o topo (#topfx), não acompanha mais a barra de magias */ }
 addEventListener('resize', () => setTimeout(placeStances, 50));
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; stanceBar.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
 const THIRD_EYE = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2.5 16C6.6 9.6 11 6.8 16 6.8S25.4 9.6 29.5 16C25.4 22.4 21 25.2 16 25.2S6.6 22.4 2.5 16Z" fill="#120c07" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="16" r="6.2" fill="currentColor"/><circle cx="16" cy="16" r="6.2" fill="none" stroke="#0b0810" stroke-opacity=".45" stroke-width="1"/><path d="M16 11.4 18.5 16 16 20.6 13.5 16Z" fill="#0b0810"/><circle cx="14" cy="13.9" r="1.1" fill="#fff" fill-opacity=".75"/></svg>';
-function updateInstBtn() { const I = myInstinct(), now = Date.now(), cd = !instinctOn && now < instCdUntil; instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>${instinctOn ? `<em>${fmtMin(instUntil - now)}</em>` : cd ? `<em class="cd">${fmtMin(instCdUntil - now)}</em>` : ''}`; instBtn.classList.toggle('on', instinctOn); instBtn.classList.toggle('cd', cd); instBtn.style.setProperty('--ic', I.css); instBtn.title = `${I.name} — ${I.desc}\n${instinctOn ? `Ligado · acaba em ${fmtMin(instUntil - now)}` : cd ? `Em recarga · volta em ${fmtMin(instCdUntil - now)}` : 'Desligado'} (F para ligar; dura 5 min, recarga de 15 min)`; }
+function updateInstBtn() { const I = myInstinct(), now = Date.now(), cd = !instinctOn && now < instCdUntil; instBtn.innerHTML = `${THIRD_EYE}<kbd>F</kbd>${instinctOn ? `<em>${fmtMin(instUntil - now)}</em>` : cd ? `<em class="cd">${fmtMin(instCdUntil - now)}</em>` : ''}`; instBtn.classList.toggle('on', instinctOn); instBtn.classList.toggle('cd', cd); instBtn.style.setProperty('--ic', I.css); instBtn.dataset.tip = `${I.name} — ${I.desc}\n${instinctOn ? `Ligado · acaba em ${fmtMin(instUntil - now)}` : cd ? `Em recarga · volta em ${fmtMin(instCdUntil - now)}` : 'Desligado'} (F para ligar; dura 5 min, recarga de 15 min)`; }
 let instBtnT = 0, farCullT = 0;
 
 stanceSys = createStances({ path: () => myPath() as PathId | null, isDone: (q) => quests.q.done.includes(q), isActive: (q) => !!quests.q.active[q], apply: (e) => game.setStance(e), log: (tx, c) => game.logMsg(tx, c),
@@ -2340,7 +2340,7 @@ function updateGuide(dt: number) {
   const ang = Math.atan2(tx - hx, tz - hz), t = performance.now() / 1000;
   guide3d.visible = true; guide3d.position.set(heroPos.x, heroPos.y + 0.06, heroPos.z); guide3d.rotation.y = ang;
   for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, 1.75 + k * 0.9); ch.scale.setScalar(0.8 + k * 0.5); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.5 * op; }
-  { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.85 + 0.15 * Math.sin(t * 4); ga.scale.setScalar(1 + 0.03 * Math.sin(t * 4)); }
+  { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.95; ga.scale.setScalar(1); } /* 28/10 (Erling): o arco da bússola fica parado, sem pulsar */
   // etiqueta acima da ponta do arco: destino e distância
   const r = canvas.getBoundingClientRect();
   // contagem no canto inferior direito do personagem (onde ficarão os ícones de buffs/debuffs)

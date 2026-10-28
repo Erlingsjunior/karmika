@@ -541,6 +541,8 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   if (!tools.knife) tools.knife = 'knife_f';
   st.recalc = recalc; st.hpMax = 0; st.mpMax = 0; recalc(); st.hp = st.hpMax; st.mp = st.mpMax; render();
   return {
+    /** comando de teste (/tabuas, /prego…): põe direto na mochila, sem olhar espaço */
+    grant(id: string, n: number) { bag[id] = (bag[id] ?? 0) + n; recalc(); render(); save(); },
     bag, eq: eqG, gearBag, tools, equipTool, unequip,
     /** a ferramenta no espaço (ou null): id e números */
     tool(sl: ToolSlot) { const id = tools[sl]; return id ? { id, ...TOOLS[id], name: ITEMS[id].name } : null; },
