@@ -1583,9 +1583,9 @@ function stanceRing(st: { id: string; role: string; col: string } | null, dt: nu
   stRing.rotation.z += dt * (0.18 + 0.22 * k); stGlow.rotation.z -= dt * 0.1;
   const pulse = 0.5 + 0.5 * Math.sin(stAge * 2.4);
   stRing.scale.setScalar(1 + stPop * 0.9 - stPop * stPop * 0.5);
-  stGlow.scale.setScalar(1 + stPop * 1.6 + 0.03 * pulse * k);
-  m.opacity = Math.min(1, 0.42 + 0.53 * k + 0.2 * stPop);
-  gm.opacity = Math.min(1, (0.32 + 0.14 * pulse) * k + 0.8 * stPop); }
+  stGlow.scale.setScalar(1 + stPop * 1.6); /* 28/10 (Erling): a aura não cresce nem encolhe — ela acende e apaga devagar, e fica mais marcante */
+  m.opacity = Math.min(1, 0.6 + 0.3 * k + 0.12 * pulse + 0.2 * stPop);
+  gm.opacity = Math.min(1, 0.14 + 0.3 * pulse + 0.12 * k + 0.8 * stPop); }
 /* a névoa espessa da treva cegante (27/10): tufos escuros e lentos, em mistura normal (o escuro aparece), girando em volta do herói */
 const mistTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 4, 64, 64, 64); gr.addColorStop(0, 'rgba(8,4,14,0.95)'); gr.addColorStop(0.5, 'rgba(18,8,28,0.55)'); gr.addColorStop(1, 'rgba(18,8,28,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t2 = new THREE.CanvasTexture(c); t2.userData.keep = true; return t2; })();
 const mistG = new THREE.Group(); mistG.visible = false; scene.add(mistG); const mistP: { s: THREE.Sprite; a: number; r: number; h: number; sp: number }[] = [];
@@ -2898,7 +2898,6 @@ const xray = createXray();
   /* árvores: só a copa (do terço da altura para cima); raio ~30% da altura, entre 1,1 e 3,2 m */
   xray.setTrees(city.props.filter((p) => p.kind === 'tree').map((p) => { const x = (p.gx + 0.5) * T, z = (p.gy + 0.5) * T, h = p.height ?? 6; return { x, z, y0: groundH(x, z), h, r: Math.max(1.1, Math.min(3.2, h * 0.3)), alive: () => !(p as { gone?: boolean }).gone }; })); }
 function updateXray(dt: number) {
-  CUT.uCutT.value += dt; /* a aura respira: o anel dourado da borda pulsa devagar (28/10) */
   const hp = hero.root.position, who: { root: THREE.Object3D; at: THREE.Vector3; want: boolean; trees?: boolean }[] = [{ root: hero.root, at: hp, want: false, trees: true }]; /* 28/10 (Erling): o herói não ganha silhueta — quem mostra o herói escondido é a aura de corte; a silhueta fica para os NPCs */
   /* NPC: só os 2 mais perto e que não estão de passagem (patrulha/caravana) — cada silhueta custa ~60 desenhos (26/10 noite) */
   const nn = npcSys.npcs.filter((n) => !n.def.route && n.hero.root.visible).map((n) => ({ n, d: Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z) })).filter((q) => q.d < 7).sort((a, b) => a.d - b.d).slice(0, 2);
