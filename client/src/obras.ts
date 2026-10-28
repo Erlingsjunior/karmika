@@ -12,23 +12,32 @@ import type { Whole } from './build';
 
 /** work = turnos de trabalho que a obra pede; done = turnos já trabalhados (fração). robot = o Ajudante de Obra plantado no canteiro. */
 export interface HomeSave { id: string; name: string; gx: number; gy: number; w: number; h: number; work: number; done: number; signed: boolean; owner: string;
-  robot?: { tier: number; until: number; last: number; hp: number; dead?: number } }
+  /** antigo (um robô só) — migra para robots */ robot?: Robot;
+  /** 28/10: até 4 Ajudantes de Obra ao mesmo tempo; cada um trabalha no seu canto do canteiro (slot 0..3) e soma turnos à obra */ robots?: Robot[] }
+export interface Robot { tier: number; until: number; last: number; hp: number; dead?: number; slot: number }
+export const MAX_ROBOTS = 4;
 /** 1 turno de Karmika = 30 min reais; 6 turnos = 1 dia */
 export const TURN_MS = 30 * 60 * 1000;
-const KEY = 'karmika.home.v1';
-export const loadHome = (): HomeSave | null => { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } };
+/* 28/10: a obra/casa tinha a MESMA chave da fonte-lar ('karmika.home.v1') e uma apagava a outra (o herói nascia em NaN e o jogo
+   travava ao abrir). Agora é 'karmika.casa.v1'; o que estava na chave velha com cara de obra (gx/gy) muda para cá. */
+const KEY = 'karmika.casa.v1', OLD = 'karmika.home.v1';
+try { const o = JSON.parse(localStorage.getItem(OLD) || 'null'); if (o && typeof o.gx === 'number' && typeof o.gy === 'number') { if (!localStorage.getItem(KEY)) localStorage.setItem(KEY, JSON.stringify(o)); localStorage.removeItem(OLD); } } catch { /* */ }
+export const loadHome = (): HomeSave | null => { try { const h = JSON.parse(localStorage.getItem(KEY) || 'null'); return h && [h.gx, h.gy, h.w, h.h, h.work, h.done].every((v) => Number.isFinite(v)) ? h : null; } catch { return null; } };
 const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } };
 
 export function createObras(ctx: {
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
   /** a casa pronta entra no mundo como prop (e sai, se for demolida) */ addHouse(h: HomeSave): void;
+  /** multiplicador do trabalho do herói na obra (Contrato de Obra Automatizada = 2) */ workK?(): number;
   heroName(): string; particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   /** Sentinelas de pé (x, z em metros; r = alcance; until = até quando) */ sentries(): { x: number; z: number; r: number; until: number }[];
   /** um bicho vivo perto deste ponto? (só existe quando o herói está por perto) */ enemyNear(x: number, z: number, r: number): boolean;
   /** o herói está perto (os bichos da região estão simulados)? */ heroNear(x: number, z: number, r: number): boolean;
 }) {
-  const T = ctx.T; let home = loadHome(); let site: THREE.Group | null = null, sign: THREE.Group | null = null, robotT = 1, lastStage = -1, working = false, robotM: THREE.Group | null = null, wreck: THREE.Group | null = null, armT = 0;
+  const T = ctx.T; let home = loadHome(); let site: THREE.Group | null = null, sign: THREE.Group | null = null, robotT = 0, lastStage = -1, working = false, armT = 0;
+  const robotM = new Map<number, THREE.Group>(), wreckM = new Map<number, THREE.Group>();
+  if (home && home.robot) { home.robots = [...(home.robots ?? []), { ...home.robot, slot: home.robot.slot ?? 0 }]; delete home.robot; saveHome(home); }
   const piles: { m: THREE.Object3D; at: number }[] = []; // cada peça da pilha some quando a obra passa de "at"
   const stages: { m: THREE.Object3D; at: number }[] = []; // cada peça da obra aparece quando a obra passa de "at"
   const wood = std(0x9a7448), woodD = std(0x6a4a2c), stoneM = std(0x8a8680), stoneD = std(0x6a6660), roofM = std(0x8a3a28), iron = std(0x4a4a50), ropeM = std(0xc9b07a), stake = std(0x7a5a3a);
@@ -73,38 +82,47 @@ export function createObras(ctx: {
     ctx.scene.add(g); }
   function finish() { if (!home) return; if (site) { ctx.scene.remove(site); site = null; } ctx.block(home.gx, home.gy, home.w, home.h, false); ctx.addHouse(home); if (home.signed) makeSign(home);
     const cx = (home.gx + home.w / 2) * T, cz = (home.gy + home.h / 2) * T; for (let i = 0; i < 60; i++) ctx.particles.spawn(cx + (Math.random() - 0.5) * home.w * T, ctx.heightAt(cx, cz) + 3 + Math.random() * 2, cz + (Math.random() - 0.5) * home.h * T, { vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 1.2, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffd070, a: 0.9 }); }
-  /* ---- o Ajudante de Obra: robô pedreiro com braço de martelo; indefeso ---- */
-  const robotPos = () => home ? { x: (home.gx + home.w) * T + 0.9, z: (home.gy + home.h) * T + 0.4 } : { x: 0, z: 0 };
-  function showRobot() { if (robotM) { ctx.scene.remove(robotM); robotM = null; } if (!home?.robot || home.robot.dead || home.done >= home.work) return; const tier = home.robot.tier, s0 = 1 + tier * 0.12;
-    const g = new THREE.Group(), p = robotPos(); g.position.set(p.x, ctx.heightAt(p.x, p.z), p.z); g.rotation.y = -Math.PI * 0.75;
-    const body = std(tier === 2 ? 0xd8c070 : tier === 1 ? 0xb87333 : 0xc8963a), dark = std(0x3a3d44), glowE = new THREE.MeshBasicMaterial({ color: 0xffd070, toneMapped: false });
-    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
-    for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.06 * s0, 0.07 * s0, 0.5 * s0, 6), dark, sx * 0.18 * s0, 0.25 * s0, 0); add(new THREE.BoxGeometry(0.16 * s0, 0.06 * s0, 0.26 * s0), body, sx * 0.18 * s0, 0.03, 0.04); }
-    add(new THREE.BoxGeometry(0.5 * s0, 0.45 * s0, 0.36 * s0), body, 0, 0.72 * s0, 0); add(new THREE.CylinderGeometry(0.06 * s0, 0.06 * s0, 0.3 * s0, 6), dark, 0, 1.05 * s0, -0.12 * s0); // a chaminé
-    add(new THREE.BoxGeometry(0.3 * s0, 0.22 * s0, 0.26 * s0), dark, 0, 1.06 * s0, 0.04); add(new THREE.BoxGeometry(0.2 * s0, 0.05 * s0, 0.02), glowE, 0, 1.08 * s0, 0.18 * s0);
-    const arm = new THREE.Group(); arm.position.set(0.3 * s0, 0.85 * s0, 0); g.add(arm); arm.name = 'arm';
-    add(new THREE.BoxGeometry(0.08 * s0, 0.45 * s0, 0.08 * s0), dark, 0, -0.2 * s0, 0.1, arm); add(new THREE.BoxGeometry(0.22 * s0, 0.12 * s0, 0.12 * s0), std(0x6a6a70), 0, -0.45 * s0, 0.18 * s0, arm);
-    ctx.scene.add(g); robotM = g; }
-  function showWreck() { if (wreck) { ctx.scene.remove(wreck); wreck = null; } if (!home?.robot?.dead || home.done >= home.work) return; const g = new THREE.Group(), p = robotPos(); g.position.set(p.x, ctx.heightAt(p.x, p.z), p.z);
-    for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.14 + Math.random() * 0.2, 0.08 + Math.random() * 0.12, 0.14 + Math.random() * 0.2), std(i % 2 ? 0x8a6a3a : 0x3a3d44)); m.position.set((Math.random() - 0.5) * 0.9, 0.06, (Math.random() - 0.5) * 0.9); m.rotation.set(Math.random(), Math.random() * 3, Math.random()); g.add(m); }
-    ctx.scene.add(g); wreck = g; }
-  /** a obra está coberta por uma Sentinela neste instante? */
-  const covered = (t: number) => { const p = robotPos(); return ctx.sentries().some((q) => q.until >= t && Math.hypot(q.x - p.x, q.z - p.z) <= q.r); };
-  function killRobot(at: number, why: string) { if (!home?.robot) return; home.robot.dead = at; saveHome(home); if (robotM) { const p = robotM.position; for (let i = 0; i < 30; i++) ctx.particles.spawn(p.x, p.y + 0.8, p.z, { vx: (Math.random() - 0.5) * 4, vy: Math.random() * 4, vz: (Math.random() - 0.5) * 4, life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffd070, c1: 0x5a5a5a, a: 0.9 }); }
-    showRobot(); showWreck(); ctx.log(why, '#ff9a6a'); }
-  /** credita o trabalho do robô até agora (também o tempo em que o jogo esteve fechado), rolando os ataques turno a turno quando ninguém estava por perto */
+  /* ---- os Ajudantes de Obra: robôs pedreiros com braço de martelo; indefesos. Um em cada canto do canteiro ---- */
+  const live = () => (home?.robots ?? []).filter((r) => !r.dead && r.until > Date.now());
+  const robotPos = (slot: number) => { if (!home) return { x: 0, z: 0 }; const x0 = home.gx * T - 0.9, x1 = (home.gx + home.w) * T + 0.9, z0 = home.gy * T - 0.9, z1 = (home.gy + home.h) * T + 0.9;
+    return [{ x: x1, z: z1 }, { x: x0, z: z1 }, { x: x1, z: z0 }, { x: x0, z: z0 }][slot & 3]; };
+  function clearRobotMeshes() { for (const g of robotM.values()) ctx.scene.remove(g); for (const g of wreckM.values()) ctx.scene.remove(g); robotM.clear(); wreckM.clear(); }
+  function showRobots() { clearRobotMeshes(); if (!home || home.done >= home.work) return; const now = Date.now();
+    for (const r of home.robots ?? []) { const p = robotPos(r.slot);
+      if (r.dead) { const g = new THREE.Group(); g.position.set(p.x, ctx.heightAt(p.x, p.z), p.z);
+        for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(0.14 + Math.random() * 0.2, 0.08 + Math.random() * 0.12, 0.14 + Math.random() * 0.2), std(i % 2 ? 0x8a6a3a : 0x3a3d44)); m.position.set((Math.random() - 0.5) * 0.9, 0.06, (Math.random() - 0.5) * 0.9); m.rotation.set(Math.random(), Math.random() * 3, Math.random()); g.add(m); }
+        ctx.scene.add(g); wreckM.set(r.slot, g); continue; }
+      if (r.until <= now) continue;
+      const tier = r.tier, s0 = 1.35 + tier * 0.12, g = new THREE.Group(); g.position.set(p.x, ctx.heightAt(p.x, p.z), p.z);
+      const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }; g.rotation.y = Math.atan2(c.x - p.x, c.z - p.z); /* de frente para a obra */
+      const body = std(tier === 2 ? 0xd8c070 : tier === 1 ? 0xb87333 : 0xc8963a), dark = std(0x3a3d44), glowE = new THREE.MeshBasicMaterial({ color: 0xffd070, toneMapped: false });
+      const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
+      for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.06 * s0, 0.07 * s0, 0.5 * s0, 6), dark, sx * 0.18 * s0, 0.25 * s0, 0); add(new THREE.BoxGeometry(0.16 * s0, 0.06 * s0, 0.26 * s0), body, sx * 0.18 * s0, 0.03, 0.04); }
+      add(new THREE.BoxGeometry(0.5 * s0, 0.45 * s0, 0.36 * s0), body, 0, 0.72 * s0, 0); add(new THREE.CylinderGeometry(0.06 * s0, 0.06 * s0, 0.3 * s0, 6), dark, 0, 1.05 * s0, -0.12 * s0); // a chaminé
+      add(new THREE.BoxGeometry(0.3 * s0, 0.22 * s0, 0.26 * s0), dark, 0, 1.06 * s0, 0.04); add(new THREE.BoxGeometry(0.2 * s0, 0.05 * s0, 0.02), glowE, 0, 1.08 * s0, 0.18 * s0);
+      const arm = new THREE.Group(); arm.position.set(0.3 * s0, 0.85 * s0, 0); g.add(arm); arm.name = 'arm';
+      add(new THREE.BoxGeometry(0.08 * s0, 0.45 * s0, 0.08 * s0), dark, 0, -0.2 * s0, 0.1, arm); add(new THREE.BoxGeometry(0.22 * s0, 0.12 * s0, 0.12 * s0), std(0x6a6a70), 0, -0.45 * s0, 0.18 * s0, arm);
+      g.userData.slot = r.slot; ctx.scene.add(g); robotM.set(r.slot, g); } }
+  /** este ponto está coberto por uma Sentinela neste instante? */
+  const coveredAt = (x: number, z: number, t: number) => ctx.sentries().some((q) => q.until >= t && Math.hypot(q.x - x, q.z - z) <= q.r);
+  const coveredR = (r: Robot, t: number) => { const p = robotPos(r.slot); return coveredAt(p.x, p.z, t); };
+  const covered = (t: number) => { const L = live(); if (!L.length) { const c = home ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T } : { x: 0, z: 0 }; return coveredAt(c.x, c.z, t); } return L.every((r) => coveredR(r, t)); };
+  function killRobot(r: Robot, at: number, why: string) { r.dead = at; if (home) saveHome(home); const m = robotM.get(r.slot); if (m) { const p = m.position; for (let i = 0; i < 30; i++) ctx.particles.spawn(p.x, p.y + 0.8, p.z, { vx: (Math.random() - 0.5) * 4, vy: Math.random() * 4, vz: (Math.random() - 0.5) * 4, life: 0.9, s0: 0.25, s1: 0.04, c0: 0xffd070, c1: 0x5a5a5a, a: 0.9 }); }
+    showRobots(); ctx.log(why, '#ff9a6a'); }
+  /** credita o trabalho de cada robô até agora (também o tempo com o jogo fechado), rolando os ataques turno a turno quando ninguém estava por perto */
   function creditRobot(now: number, offline: boolean): { turns: number; died: boolean } {
-    const r = home?.robot; if (!home || !r || r.dead || home.done >= home.work) return { turns: 0, died: false };
-    const end = Math.min(now, r.until); if (end <= r.last) return { turns: 0, died: false }; let t = r.last, died = false;
-    if (offline) { /* um turno de cada vez: 30% de chance de um bicho passar pela obra; sem torre cobrindo naquele instante, o robô vira sucata */
-      let k = Math.floor(t / TURN_MS) + 1; while (k * TURN_MS < end) { const at = k * TURN_MS, roll = (Math.sin(k * 12.9898 + home.gx * 78.233 + home.gy * 37.719) * 43758.5453) % 1; if (Math.abs(roll) < 0.3 && !covered(at)) { home.done = Math.min(home.work, home.done + (at - t) / TURN_MS); r.last = at; killRobot(at, '🦾 Um bicho passou pela obra enquanto você estava longe e destruiu o Ajudante de Obra. Sem uma Sentinela cobrindo o canteiro, ele não tem como se defender.'); died = true; break; } k++; } }
-    const before = home.done; if (!died) { home.done = Math.min(home.work, home.done + (end - t) / TURN_MS); r.last = end; } saveHome(home); refresh();
-    if (r.until <= now && !r.dead) { ctx.log('🦾 O Ajudante de Obra cumpriu o contrato e volta para a Companhia.', '#c8b890'); home.robot = undefined; saveHome(home); showRobot(); }
+    if (!home || home.done >= home.work) return { turns: 0, died: false }; const before = home.done; let died = false, changed = false;
+    for (const r of home.robots ?? []) { if (r.dead) continue; const end = Math.min(now, r.until); if (end <= r.last) continue; let t = r.last, gone = false;
+      if (offline) { /* um turno de cada vez: 30% de chance de um bicho passar; sem torre cobrindo ESTE robô naquele instante, ele vira sucata */
+        let k = Math.floor(t / TURN_MS) + 1; while (k * TURN_MS < end) { const at = k * TURN_MS, roll = (Math.sin(k * 12.9898 + home.gx * 78.233 + home.gy * 37.719 + r.slot * 5.17) * 43758.5453) % 1; if (Math.abs(roll) < 0.3 && !coveredR(r, at)) { home.done = Math.min(home.work, home.done + (at - t) / TURN_MS); r.last = at; killRobot(r, at, '🦾 Um bicho passou pela obra enquanto você estava longe e destruiu um Ajudante de Obra. Sem uma Sentinela cobrindo o canto dele, ele não tem como se defender.'); died = gone = true; break; } k++; } }
+      if (!gone) { home.done = Math.min(home.work, home.done + (end - t) / TURN_MS); r.last = end; } changed = true; }
+    const done = (home.robots ?? []).filter((r) => !r.dead && r.until <= now); if (done.length) { ctx.log(`🦾 ${done.length > 1 ? `${done.length} Ajudantes de Obra cumpriram` : 'O Ajudante de Obra cumpriu'} o contrato e ${done.length > 1 ? 'voltam' : 'volta'} para a Companhia.`, '#c8b890'); home.robots = (home.robots ?? []).filter((r) => !done.includes(r)); changed = true; showRobots(); }
+    if (changed) { saveHome(home); refresh(); }
     if (home.done >= home.work) { ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre: a cama cura, e a caixa de correio guarda os seus itens.`, '#ffe08a'); finish(); }
     return { turns: home.done - before, died }; }
   // abrir o jogo: recoloca o canteiro ou a casa, e acerta o que o robô fez enquanto o jogo estava fechado
   if (home && (home as HomeSave & { work: number }).work === 60) { home.work = 30; home.done = Math.min(home.done / 2, 29.9); saveHome(home); } // obras do teste de 28/10 (marteladas) viram turnos
-  if (home) { if (home.done >= home.work) { ctx.addHouse(home); if (home.signed) makeSign(home); } else { ctx.block(home.gx, home.gy, home.w, home.h, true); buildSite(home); showRobot(); showWreck();
+  if (home) { if (home.done >= home.work) { ctx.addHouse(home); if (home.signed) makeSign(home); } else { ctx.block(home.gx, home.gy, home.w, home.h, true); buildSite(home); showRobots();
       const r0 = creditRobot(Date.now(), true); if (r0.turns > 0.05) ctx.log(`🦾 Enquanto você esteve fora, o Ajudante de Obra trabalhou ${r0.turns.toFixed(1).replace('.', ',')} turno(s). A obra está em ${home.done.toFixed(1).replace('.', ',')} de ${home.work} turnos.`, '#ffe08a'); } }
   const fmtT = (x: number) => x.toFixed(1).replace('.', ',');
   return {
@@ -116,26 +134,44 @@ export function createObras(ctx: {
     /** liga/desliga o trabalho do herói na obra */
     toggleWork() { if (!home || home.done >= home.work) return; working = !working; ctx.log(working ? `🔨 Você arregaça as mangas: cada minuto aqui é obra subindo (${fmtT(home.done)} de ${home.work} turnos). Saia de perto ou aperte E para parar.` : `🔨 Você larga as ferramentas. A obra está em ${fmtT(home.done)} de ${home.work} turnos.`, '#ffe08a'); },
     /** planta o Ajudante de Obra no canteiro (tier 0..2 = Mk I, II, III: 1, 2 ou 4 turnos) */
-    deployRobot(tier: number): boolean { if (!home || home.done >= home.work) { ctx.log('🦾 O Ajudante de Obra só trabalha num canteiro de obra inteira (B → Obras inteiras).', '#ff9a8a'); return false; }
-      if (home.robot && !home.robot.dead && home.robot.until > Date.now()) { ctx.log('🦾 Já há um Ajudante trabalhando nesta obra.', '#ff9a8a'); return false; }
-      const now = Date.now(); home.robot = { tier, until: now + [1, 2, 4][tier] * TURN_MS, last: now, hp: 100 }; saveHome(home); showRobot(); showWreck();
-      ctx.log(`🦾 O Ajudante de Obra Mk ${['I', 'II', 'III'][tier]} pega o martelo: ${[1, 2, 4][tier]} turno(s) de trabalho sozinho. ${covered(now) ? 'Uma Sentinela cobre a obra.' : '⚠ Nenhuma Sentinela cobre a obra: um bicho que passar acaba com ele.'}`, covered(now) ? '#ffe08a' : '#ffb070'); return true; },
+    deployRobot(tier: number, leftMs?: number): boolean { if (!home || home.done >= home.work) { ctx.log('🦾 O Ajudante de Obra só trabalha num canteiro de obra inteira — compre o projeto no B → Obras inteiras e marque o lugar.', '#ff9a8a'); return false; }
+      const L = live(); if (L.length >= MAX_ROBOTS) { ctx.log(`🦾 A obra já tem ${MAX_ROBOTS} Ajudantes trabalhando — é o máximo.`, '#ff9a8a'); return false; }
+      const used = new Set((home.robots ?? []).filter((r) => !r.dead && r.until > Date.now()).map((r) => r.slot)); let slot = 0; while (used.has(slot)) slot++;
+      home.robots = (home.robots ?? []).filter((r) => r.slot !== slot); /* a sucata daquele canto sai: o novo robô recolhe */
+      const now = Date.now(), dur = leftMs && leftMs > 0 ? leftMs : [1, 2, 4][tier] * TURN_MS; const r: Robot = { tier, until: now + dur, last: now, hp: 100, slot }; home.robots.push(r); saveHome(home); showRobots();
+      const p = robotPos(slot); for (let i = 0; i < 24; i++) ctx.particles.spawn(p.x, ctx.heightAt(p.x, p.z) + 0.6, p.z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffe08a, c1: 0xc8963a, a: 0.9 });
+      const n = L.length + 1, mins = Math.round(dur / 60000);
+      ctx.log(`🦾 O Ajudante de Obra Mk ${['I', 'II', 'III'][tier]} foi até o canteiro de ${home.name} e pegou o martelo: ${mins} min de trabalho sozinho. Agora são ${n} na obra (a obra anda ${n}× mais rápido com eles). ${coveredR(r, now) ? 'Uma Sentinela cobre o canto dele.' : '⚠ Nenhuma Sentinela cobre o canto dele: um bicho que passar acaba com ele.'}`, coveredR(r, now) ? '#ffe08a' : '#ffb070'); return true; },
+    /** o robô (ou a sucata) mais perto deste ponto, até 3,2 m */
+    robotAt(x: number, z: number) { if (!home || home.done >= home.work) return null; let best: { slot: number; x: number; z: number; tier: number; left: number; dead: boolean } | null = null, bd = 3.2;
+      for (const r of home.robots ?? []) { if (!r.dead && r.until <= Date.now()) continue; const p = robotPos(r.slot), d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = { slot: r.slot, x: p.x, z: p.z, tier: r.tier, left: Math.max(0, r.until - Date.now()), dead: !!r.dead }; } } return best; },
+    /** desmonta o robô (guarda o tempo que sobrou) ou recolhe a sucata; devolve o item e o tempo para a mochila */
+    packRobot(slot: number): { id: string; left: number } | null { if (!home) return null; const r = (home.robots ?? []).find((q) => q.slot === slot); if (!r) return null;
+      creditRobot(Date.now(), false); if (!home) return null; home.robots = (home.robots ?? []).filter((q) => q !== r); saveHome(home); showRobots();
+      if (r.dead) { ctx.log('🦾 Você recolhe a sucata do Ajudante. Não tem conserto.', '#c8b890'); return null; }
+      const left = Math.max(0, r.until - Date.now()); if (left < 60000) { ctx.log('🦾 O Ajudante já tinha cumprido o contrato.', '#c8b890'); return null; }
+      return { id: ['ajudante_obra', 'ajudante_obra_2', 'ajudante_obra_3'][r.tier], left }; },
     /** desistir: o canteiro se desmancha e o material se perde (pede confirmação antes, no menu) */
-    quit() { if (!home || home.done >= home.work) return false; if (site) { ctx.scene.remove(site); site = null; } if (robotM) { ctx.scene.remove(robotM); robotM = null; } if (wreck) { ctx.scene.remove(wreck); wreck = null; }
+    quit() { if (!home || home.done >= home.work) return false; if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes();
       ctx.block(home.gx, home.gy, home.w, home.h, false); const n = home.name; home = null; working = false; lastStage = -1; saveHome(null); ctx.log(`🪓 Você desistiu de ${n}. O canteiro se desfaz e o material se perde.`, '#d0a080'); return true; },
     door() { return home ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.9 } : null; },
-    siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: !!(home.robot && !home.robot.dead && home.robot.until > Date.now()), covered: covered(Date.now()) } : null; },
+    siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: live().length > 0, robots: live().length, covered: covered(Date.now()) } : null; },
     signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },
     sign() { if (!home || home.done < home.work) return; home.signed = true; home.owner = ctx.heroName(); saveHome(home); makeSign(home); ctx.log(`🪧 A placa está na frente: “Casa de ${home.owner}”.`, '#ffe08a'); },
     update(dt: number, heroX: number, heroZ: number, moving: boolean, hammer: () => void) {
       if (!home || home.done >= home.work) { working = false; return; }
       const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }, near = Math.hypot(heroX - c.x, heroZ - c.z) < Math.max(home.w, home.h) * T * 0.5 + 6;
-      if (working && !near) { working = false; ctx.log(`🔨 Você se afastou da obra e o trabalho parou (${fmtT(home.done)} de ${home.work} turnos).`, '#c8b890'); }
-      if (working && !moving) { home.done = Math.min(home.work, home.done + dt * 1000 / TURN_MS); armT -= dt; if (armT <= 0) { armT = 1.3; hammer(); } if (Math.random() < dt * 0.5) saveHome(home); refresh(); if (home.done >= home.work) { working = false; saveHome(home); ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre.`, '#ffe08a'); finish(); return; } }
+      if (working && (!near || moving)) { working = false; ctx.log(`🔨 Você ${moving ? 'saiu andando' : 'se afastou da obra'} e parou de trabalhar (${fmtT(home.done)} de ${home.work} turnos). E perto da obra para voltar.`, '#c8b890'); } /* 28/10 (Erling): andou, parou — igual a cortar árvore */
+      if (working && !moving) { home.done = Math.min(home.work, home.done + dt * 1000 / TURN_MS * (ctx.workK?.() ?? 1)); armT -= dt; if (armT <= 0) { armT = 1.3; hammer(); } if (Math.random() < dt * 0.5) saveHome(home); refresh(); if (home.done >= home.work) { working = false; saveHome(home); ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre.`, '#ffe08a'); finish(); return; } }
       // o robô: braço martelando; com o herói por perto, bicho de verdade perto dele e sem torre cobrindo = sucata
-      if (robotM) { const arm = robotM.getObjectByName('arm'); if (arm) arm.rotation.x = -0.4 + Math.max(0, Math.sin(performance.now() / 180)) * 1.1; }
-      robotT -= dt; if (robotT > 0) return; robotT = 1;
-      const r = home.robot; if (r && !r.dead) { const p = robotPos(); if (ctx.heroNear(p.x, p.z, 70)) { if (ctx.enemyNear(p.x, p.z, 6) && !covered(Date.now())) { r.hp -= 25; if (r.hp <= 0) killRobot(Date.now(), '🦾 Os bichos acabaram com o Ajudante de Obra! Ele não se defende sozinho: plante Sentinelas em volta do canteiro.'); else ctx.log('🦾 O Ajudante de Obra está sendo atacado!', '#ff9a6a'); saveHome(home); } creditRobot(Date.now(), false); } else creditRobot(Date.now(), true); }
+      { const tt = performance.now(); for (const [slot, g] of robotM) { const arm = g.getObjectByName('arm'); const ph = tt / 180 + slot * 1.7; if (arm) arm.rotation.x = -0.4 + Math.max(0, Math.sin(ph)) * 1.1;
+          /* a martelada: faísca e poeira quando o martelo bate (só perto do herói) */ if (Math.sin(ph) > 0.97 && Math.random() < 0.35 && ctx.heroNear(g.position.x, g.position.z, 40)) { const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }, k = 0.35, hx = g.position.x + (c.x - g.position.x) * k * 0.3, hz = g.position.z + (c.z - g.position.z) * k * 0.3;
+            for (let i = 0; i < 4; i++) ctx.particles.spawn(hx, g.position.y + 0.25, hz, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.45, s0: 0.12, s1: 0.02, c0: 0xffd070, c1: 0x8a7a60, a: 0.9 }); } } }
+      { const nw = performance.now(); if (nw - robotT < 1000) return; robotT = nw; } /* relógio de verdade (o dt do quadro é limitado e atrasaria a conta) */
+      const L = live(); if (!L.length) return; const now = Date.now(); let anyNear = false;
+      for (const r of L) { const p = robotPos(r.slot); if (!ctx.heroNear(p.x, p.z, 70)) continue; anyNear = true;
+        if (ctx.enemyNear(p.x, p.z, 6) && !coveredR(r, now)) { r.hp -= 25; if (r.hp <= 0) killRobot(r, now, '🦾 Os bichos acabaram com um Ajudante de Obra! Ele não se defende sozinho: plante Sentinelas perto de cada canto do canteiro.'); else ctx.log('🦾 Um Ajudante de Obra está sendo atacado!', '#ff9a6a'); saveHome(home); } }
+      creditRobot(now, !anyNear);
     },
   };
 }

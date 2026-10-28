@@ -51,15 +51,19 @@ export function buildShieldBot(tier: number): ShieldBot {
   return { g, legs, dish, phase: 0, tier };
 }
 
-/** a cúpula holográfica: casca translúcida + malha de hexágonos (icosaedro em arame); raio pelo Mk */
+/** 28/10 (Erling: "faça um símbolo de um escudo holográfico que aparece na minha frente bloqueando os ataques"): nada de cúpula
+ *  em volta do herói. Um escudo de brasão holográfico, de pé na frente dele, que só acende no instante em que segura um golpe. */
 export interface Dome { g: THREE.Group; shell: THREE.MeshBasicMaterial; wire: THREE.MeshBasicMaterial; flash: number; r: number }
 export function buildDome(tier: number): Dome {
-  const r = [1.15, 1.35, 1.6][tier] ?? 1.15, g = new THREE.Group();
-  const shell = new THREE.MeshBasicMaterial({ color: 0x6ad0ff, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
-  const wire = new THREE.MeshBasicMaterial({ color: 0x9ae8ff, transparent: true, opacity: 0.35, wireframe: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
-  const geoS = new THREE.SphereGeometry(r, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), geoW = new THREE.SphereGeometry(r * 1.01, 14, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-  g.add(new THREE.Mesh(geoS, shell)); const w = new THREE.Mesh(geoW, wire); w.scale.y = 1; g.add(w);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(r * 0.96, r * 1.04, 32).rotateX(-Math.PI / 2), shell); ring.position.y = 0.03; g.add(ring);
-  g.traverse((o) => { (o as THREE.Mesh).castShadow = false; o.renderOrder = 5; });
+  const r = [0.55, 0.62, 0.7][tier] ?? 0.55, g = new THREE.Group();
+  const sh = new THREE.Shape(); sh.moveTo(-r, r * 1.05); sh.lineTo(r, r * 1.05); sh.lineTo(r, r * 0.1); sh.quadraticCurveTo(r * 0.95, -r * 0.85, 0, -r * 1.35); sh.quadraticCurveTo(-r * 0.95, -r * 0.85, -r, r * 0.1); sh.lineTo(-r, r * 1.05);
+  const shell = new THREE.MeshBasicMaterial({ color: 0x6ad0ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
+  const wire = new THREE.MeshBasicMaterial({ color: 0xc8f2ff, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, toneMapped: false });
+  g.add(new THREE.Mesh(new THREE.ShapeGeometry(sh, 10), shell));
+  /* a borda e o emblema (uma cruz de faixas), em linhas claras */
+  const rim = new THREE.Mesh(new THREE.ShapeGeometry((() => { const o = new THREE.Shape(sh.getPoints(24)); const k = 0.82, inner = new THREE.Path(sh.getPoints(24).map((p) => new THREE.Vector2(p.x * k, p.y * k + r * 0.02)).reverse()); o.holes.push(inner); return o; })(), 1), wire); rim.position.z = 0.01; g.add(rim);
+  const bar = (w: number, h: number, x: number, y: number) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wire); m.position.set(x, y, 0.012); g.add(m); };
+  bar(r * 0.14, r * 1.6, 0, -r * 0.05); bar(r * 1.2, r * 0.14, 0, r * 0.35);
+  g.traverse((o) => { (o as THREE.Mesh).castShadow = false; o.renderOrder = 5; }); g.visible = false;
   return { g, shell, wire, flash: 0, r };
 }
