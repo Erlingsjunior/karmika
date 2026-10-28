@@ -39,6 +39,7 @@ export function createObras(ctx: {
   /** a casa ficou pronta (uma vez só): o main manda a carta do Cartório com a escritura */ onDone?(h: HomeSave): void;
   heroName(): string; particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   /** Sentinelas de pé (x, z em metros; r = alcance; until = até quando) */ sentries(): { x: number; z: number; r: number; until: number }[];
+  /** o som/efeito de uma martelada (opcional) */ hit?(x: number, z: number): void;
   /** um bicho vivo perto deste ponto? (só existe quando o herói está por perto) */ enemyNear(x: number, z: number, r: number): boolean;
   /** o herói está perto (os bichos da região estão simulados)? */ heroNear(x: number, z: number, r: number): boolean;
 }) {
@@ -49,7 +50,7 @@ export function createObras(ctx: {
   const stages: { m: THREE.Object3D; at: number }[] = []; // cada peça da obra aparece quando a obra passa de "at"
   const wood = std(0x9a7448), woodD = std(0x6a4a2c), stoneM = std(0x8a8680), stoneD = std(0x6a6660), roofM = std(0x8a3a28), iron = std(0x4a4a50), ropeM = std(0xc9b07a), stake = std(0x7a5a3a);
   function buildSite(h: HomeSave) {
-    if (site) ctx.scene.remove(site); piles.length = 0; stages.length = 0; lastStage = -1;
+    if (site) ctx.scene.remove(site); siteSign = null; piles.length = 0; stages.length = 0; lastStage = -1;
     const g = new THREE.Group(), W = h.w * T, D = h.h * T, x0 = h.gx * T, z0 = h.gy * T, y0 = ctx.heightAt(x0 + W / 2, z0 + D / 2); g.position.set(x0, y0, z0); site = g;
     const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.y = ry; o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
     // estacas e corda marcando o terreno
@@ -77,7 +78,7 @@ export function createObras(ctx: {
     /* o terreno não é plano: estacas e pilhas pousam no chão de onde estão (senão ficavam enterradas na encosta) */
     for (const c of g.children) { const isStage = stages.some((q) => q.m === c); if (isStage) continue; const gy = ctx.heightAt(x0 + c.position.x, z0 + c.position.z); c.position.y += gy - y0; }
     ctx.scene.add(g); refresh(); }
-  function refresh() { if (!home || !site) return; const p = home.done / home.work; for (const q of piles) q.m.visible = p < q.at; for (const q of stages) q.m.visible = p >= q.at;
+  function refresh() { if (!home || !site) return; drawSiteSign(); const p = home.done / home.work; for (const q of piles) q.m.visible = p < q.at; for (const q of stages) q.m.visible = p >= q.at;
     const st = p < 0.2 ? 0 : p < 0.4 ? 1 : p < 0.8 ? 2 : 3; if (st !== lastStage && lastStage >= 0) ctx.log(['🧱 O alicerce de pedra está assentado.', '🪵 Os esteios de pé: a casa já tem esqueleto.', '🔨 As paredes sobem, tábua por tábua.', '🏠 O telhado está subindo. Falta pouco.'][st], '#ffe08a'); lastStage = st; }
   function makeSign(h: HomeSave) {
     if (sign) ctx.scene.remove(sign); const g = new THREE.Group(); const x = (h.gx + h.w / 2 + 1.6) * T, z = (h.gy + h.h) * T + 1.2; g.position.set(x, ctx.heightAt(x, z), z); sign = g;
@@ -102,14 +103,81 @@ export function createObras(ctx: {
       if (r.until <= now) continue;
       const tier = r.tier, s0 = 1.35 + tier * 0.12, g = new THREE.Group(); g.position.set(p.x, ctx.heightAt(p.x, p.z), p.z);
       const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }; g.rotation.y = Math.atan2(c.x - p.x, c.z - p.z); /* de frente para a obra */
-      const body = std(tier === 2 ? 0xd8c070 : tier === 1 ? 0xb87333 : 0xc8963a), dark = std(0x3a3d44), glowE = new THREE.MeshBasicMaterial({ color: 0xffd070, toneMapped: false });
-      const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
-      for (const sx of [-1, 1]) { add(new THREE.CylinderGeometry(0.06 * s0, 0.07 * s0, 0.5 * s0, 6), dark, sx * 0.18 * s0, 0.25 * s0, 0); add(new THREE.BoxGeometry(0.16 * s0, 0.06 * s0, 0.26 * s0), body, sx * 0.18 * s0, 0.03, 0.04); }
-      add(new THREE.BoxGeometry(0.5 * s0, 0.45 * s0, 0.36 * s0), body, 0, 0.72 * s0, 0); add(new THREE.CylinderGeometry(0.06 * s0, 0.06 * s0, 0.3 * s0, 6), dark, 0, 1.05 * s0, -0.12 * s0); // a chaminé
-      add(new THREE.BoxGeometry(0.3 * s0, 0.22 * s0, 0.26 * s0), dark, 0, 1.06 * s0, 0.04); add(new THREE.BoxGeometry(0.2 * s0, 0.05 * s0, 0.02), glowE, 0, 1.08 * s0, 0.18 * s0);
-      const arm = new THREE.Group(); arm.position.set(0.3 * s0, 0.85 * s0, 0); g.add(arm); arm.name = 'arm';
-      add(new THREE.BoxGeometry(0.08 * s0, 0.45 * s0, 0.08 * s0), dark, 0, -0.2 * s0, 0.1, arm); add(new THREE.BoxGeometry(0.22 * s0, 0.12 * s0, 0.12 * s0), std(0x6a6a70), 0, -0.45 * s0, 0.18 * s0, arm);
-      g.userData.slot = r.slot; ctx.scene.add(g); robotM.set(r.slot, g); } }
+      buildWorker(g, tier, s0 * 0.78);
+      g.userData.slot = r.slot; g.userData.base = { x: p.x, z: p.z }; ctx.scene.add(g); robotM.set(r.slot, g); anim.set(r.slot, { ph: 'work', t: 2 + r.slot * 1.7, tx: p.x, tz: p.z }); } }
+  /* 28/10 (Erling: "mais steampunk, sair faísca, uma mão serra, a outra martela, ir no monte de entulho pegar coisas e voltar"):
+     o Ajudante é uma caldeira de cobre sobre pernas de pistão, com chaminé que fuma, elmo de escafandro de lente âmbar,
+     o braço esquerdo é uma serra circular que gira e o direito, um martelo a vapor. Ele martela e serra no canto dele, vai até as
+     pilhas de material, se abaixa, volta com uma tábua no ombro e recomeça. */
+  function buildWorker(g: THREE.Group, tier: number, s: number) {
+    const copper = std(tier === 2 ? 0xa0703a : tier === 1 ? 0x8a5228 : 0x7a4a24), brass = std(0x9a7430), iron = std(0x34363c), steel = std(0x9aa0a6), glowA = new THREE.MeshBasicMaterial({ color: 0xffb040, toneMapped: false });
+    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
+    for (const [sx, nm] of [[-1, 'legL'], [1, 'legR']] as [number, string][]) { const hip = new THREE.Group(); hip.position.set(sx * 0.17 * s, 0.5 * s, 0); hip.name = nm; g.add(hip);
+      add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.24 * s, 8), copper, 0, -0.12 * s, 0, hip); add(new THREE.CylinderGeometry(0.04 * s, 0.04 * s, 0.26 * s, 6), steel, 0, -0.32 * s, 0, hip);
+      add(new THREE.BoxGeometry(0.16 * s, 0.08 * s, 0.28 * s), iron, 0, -0.46 * s, 0.04 * s, hip); add(new THREE.SphereGeometry(0.06 * s, 8, 6), brass, 0, 0, 0, hip); }
+    const torso = new THREE.Group(); torso.name = 'torso'; g.add(torso);
+    add(new THREE.CylinderGeometry(0.26 * s, 0.28 * s, 0.46 * s, 14), copper, 0, 0.78 * s, 0, torso);
+    for (const y of [0.6, 0.78, 0.96]) add(new THREE.TorusGeometry(0.275 * s, 0.02 * s, 5, 18), brass, 0, y * s, 0, torso).rotation.x = Math.PI / 2;
+    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; add(new THREE.SphereGeometry(0.016 * s, 4, 3), brass, Math.cos(a) * 0.282 * s, 0.69 * s, Math.sin(a) * 0.282 * s, torso); }
+    add(new THREE.CircleGeometry(0.07 * s, 12), glowA, 0, 0.74 * s, 0.283 * s, torso); add(new THREE.TorusGeometry(0.075 * s, 0.015 * s, 5, 14), brass, 0, 0.74 * s, 0.284 * s, torso); // a fornalha acesa
+    const chim = add(new THREE.CylinderGeometry(0.045 * s, 0.04 * s, 0.32 * s, 8), iron, -0.14 * s, 1.16 * s, -0.12 * s, torso); chim.name = 'chim'; add(new THREE.CylinderGeometry(0.07 * s, 0.045 * s, 0.06 * s, 8), iron, -0.14 * s, 1.34 * s, -0.12 * s, torso);
+    const head = new THREE.Group(); head.position.set(0.04 * s, 1.14 * s, 0.03 * s); torso.add(head);
+    add(new THREE.SphereGeometry(0.14 * s, 12, 9), brass, 0, 0, 0, head); add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.05 * s, 12), iron, 0, 0, 0.12 * s, head).rotation.x = Math.PI / 2;
+    add(new THREE.CircleGeometry(0.055 * s, 12), glowA, 0, 0, 0.146 * s, head);
+    /* braço esquerdo: a serra circular */
+    const armL = new THREE.Group(); armL.name = 'armL'; armL.position.set(-0.32 * s, 0.94 * s, 0.02 * s); torso.add(armL);
+    for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armL).rotation.x = Math.PI / 2;
+    add(new THREE.BoxGeometry(0.1 * s, 0.1 * s, 0.12 * s), iron, 0, -0.24 * s, 0.04 * s, armL);
+    const saw = new THREE.Group(); saw.name = 'saw'; saw.position.set(0, -0.3 * s, 0.17 * s); armL.add(saw);
+    add(new THREE.CylinderGeometry(0.15 * s, 0.15 * s, 0.012 * s, 16), steel, 0, 0, 0, saw).rotation.z = Math.PI / 2;
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; const t = add(new THREE.BoxGeometry(0.012 * s, 0.04 * s, 0.03 * s), steel, 0, Math.cos(a) * 0.16 * s, Math.sin(a) * 0.16 * s, saw); t.rotation.x = -a; }
+    add(new THREE.CylinderGeometry(0.035 * s, 0.035 * s, 0.03 * s, 8), brass, 0, 0, 0, saw).rotation.z = Math.PI / 2;
+    /* braço direito: o martelo a vapor */
+    const armR = new THREE.Group(); armR.name = 'armR'; armR.position.set(0.32 * s, 0.94 * s, 0.02 * s); torso.add(armR);
+    for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armR).rotation.x = Math.PI / 2;
+    add(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.3 * s, 6), steel, 0, -0.32 * s, 0.06 * s, armR);
+    const hh = add(new THREE.BoxGeometry(0.22 * s, 0.11 * s, 0.11 * s), iron, 0, -0.48 * s, 0.1 * s, armR); hh.name = 'hammerHead';
+    add(new THREE.BoxGeometry(0.06 * s, 0.13 * s, 0.13 * s), brass, 0.12 * s, -0.48 * s, 0.1 * s, armR);
+    /* a tábua que ele carrega no ombro (só aparece na volta das pilhas) */
+    const carry = add(new THREE.BoxGeometry(1.2 * s, 0.07 * s, 0.22 * s), std(0x9a7448), 0, 1.42 * s, 0.02 * s, torso); carry.name = 'carry'; carry.visible = false; carry.rotation.y = 0.2;
+  }
+  /** o vai e vem de cada Ajudante: trabalha no canto, vai às pilhas, pega, volta carregando */
+  const anim = new Map<number, { ph: 'work' | 'go' | 'pick' | 'back'; t: number; tx: number; tz: number }>();
+  const sparks = (x: number, y: number, z: number, n: number, hot = true) => { for (let i = 0; i < n; i++) ctx.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 3, vy: 0.8 + Math.random() * 2.4, vz: (Math.random() - 0.5) * 3, life: 0.35 + Math.random() * 0.3, s0: 0.1, s1: 0.02, c0: hot ? 0xfff0a0 : 0xd8c8a0, c1: hot ? 0xff7a20 : 0x8a7a60, a: 1 }); };
+  function animRobots(dt: number, tt: number) { if (!home) return;
+    const W = home.w * T, D = home.h * T, x0 = home.gx * T, z0 = home.gy * T, cx = x0 + W / 2, cz = z0 + D / 2;
+    for (const [slot, g] of robotM) { const A = anim.get(slot); if (!A) continue; const base = g.userData.base as { x: number; z: number };
+      const armL = g.getObjectByName('armL'), armR = g.getObjectByName('armR'), saw = g.getObjectByName('saw'), carry = g.getObjectByName('carry'), torso = g.getObjectByName('torso'), legL = g.getObjectByName('legL'), legR = g.getObjectByName('legR');
+      const walkTo = (tx: number, tz: number) => { const dx = tx - g.position.x, dz = tz - g.position.z, L = Math.hypot(dx, dz), sp = Math.min(L, dt * 1.7); if (L > 0.02) { g.position.x += dx / L * sp; g.position.z += dz / L * sp; g.rotation.y = Math.atan2(dx, dz); }
+        g.position.y = ctx.heightAt(g.position.x, g.position.z) + Math.abs(Math.sin(tt * 9)) * 0.03; const w = Math.sin(tt * 9) * 0.7; if (legL) legL.rotation.x = w; if (legR) legR.rotation.x = -w; if (armL) armL.rotation.x = -w * 0.4; if (armR) armR.rotation.x = w * 0.4; return L < 0.06; };
+      A.t -= dt;
+      if (A.ph === 'work') { g.rotation.y = Math.atan2(cx - g.position.x, cz - g.position.z); if (legL) legL.rotation.x = 0; if (legR) legR.rotation.x = 0; if (torso) torso.rotation.x = 0.12;
+        const ph = tt * 5.2 + slot; if (armR) armR.rotation.x = -1.3 + Math.max(0, Math.sin(ph)) * 1.6; if (armL) armL.rotation.x = -0.9 + Math.sin(tt * 2.1 + slot) * 0.15; if (saw) saw.rotation.x += dt * 26;
+        const near = Math.random() < 0.6; if (near && Math.sin(ph) > 0.96 && Math.sin(ph - dt * 5.2) <= 0.96) { const f = 0.55; sparks(g.position.x + Math.sin(g.rotation.y) * f + Math.cos(g.rotation.y) * 0.25, g.position.y + 0.32, g.position.z + Math.cos(g.rotation.y) * f - Math.sin(g.rotation.y) * 0.25, 7); ctx.hit?.(g.position.x, g.position.z); }
+        if (Math.random() < dt * 9) sparks(g.position.x + Math.sin(g.rotation.y) * 0.5 - Math.cos(g.rotation.y) * 0.25, g.position.y + 0.55, g.position.z + Math.cos(g.rotation.y) * 0.5 + Math.sin(g.rotation.y) * 0.25, 1); // a serra soltando faísca
+        if (A.t <= 0) { A.ph = 'go'; A.tx = x0 + W * (0.25 + Math.random() * 0.5); A.tz = z0 + D + 1.9; if (torso) torso.rotation.x = 0; } }
+      else if (A.ph === 'go') { if (saw) saw.rotation.x += dt * 4; if (walkTo(A.tx, A.tz)) { A.ph = 'pick'; A.t = 1.1; } }
+      else if (A.ph === 'pick') { const k = Math.sin(Math.min(1, 1 - A.t / 1.1) * Math.PI); if (torso) torso.rotation.x = k * 0.55; if (armL) armL.rotation.x = -k * 1.1; if (armR) armR.rotation.x = -k * 1.1; if (A.t < 0.55 && carry && !carry.visible) { carry.visible = true; sparks(g.position.x, g.position.y + 0.2, g.position.z, 5, false); } if (A.t <= 0) { A.ph = 'back'; if (torso) torso.rotation.x = 0; } }
+      else if (A.ph === 'back') { if (armR) armR.rotation.x = -2.6; if (walkTo(base.x, base.z)) { A.ph = 'work'; A.t = 6 + Math.random() * 4; if (carry) carry.visible = false; } }
+      const chim = g.getObjectByName('chim'); if (chim && Math.random() < dt * 2.5) { const v = new THREE.Vector3(); chim.getWorldPosition(v); ctx.particles.spawn(v.x, v.y + 0.2, v.z, { vx: (Math.random() - 0.5) * 0.3, vy: 0.9, vz: (Math.random() - 0.5) * 0.3, life: 1.2, s0: 0.12, s1: 0.45, c0: 0xe8e4dc, c1: 0x8a8680, a: 0.45 }); } } }
+  /* ---- a placa da obra: o que está sendo feito e quanto falta ---- */
+  let siteSign: { g: THREE.Group; c: HTMLCanvasElement; tex: THREE.CanvasTexture; key: string } | null = null;
+  function drawSiteSign() { if (!home || !site || home.done >= home.work) return;
+    if (!siteSign) { const c = document.createElement('canvas'); c.width = 512; c.height = 320; const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; const g = new THREE.Group();
+      const W = home.w * T, D = home.h * T; g.position.set(-0.9, 0, D + 1.4); g.rotation.y = 0.35; const gy = ctx.heightAt(home.gx * T - 0.9, home.gy * T + D + 1.4) - site.position.y; g.position.y = gy;
+      for (const x of [-0.62, 0.62]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 1.9, 6), std(0x5a3a20)); p.position.set(x, 0.95, 0); p.castShadow = true; g.add(p); }
+      const face = new THREE.MeshToonMaterial({ map: tex }), wd = std(0x6a4a2c); const b = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.0, 0.06), [wd, wd, wd, wd, face, wd]); b.position.y = 1.5; b.castShadow = true; g.add(b); void W;
+      site.add(g); siteSign = { g, c, tex, key: '' }; }
+    const n = live().length, left = home.work - home.done, key = `${home.done.toFixed(1)}|${n}|${home.contract ? 1 : 0}`; if (key === siteSign.key) return; siteSign.key = key;
+    const k = siteSign.c.getContext('2d')!, Wc = 512, Hc = 320; k.fillStyle = '#e9d6a8'; k.fillRect(0, 0, Wc, Hc); for (let i = 0; i < 9; i++) { k.fillStyle = i % 2 ? 'rgba(120,80,30,.06)' : 'rgba(255,255,255,.06)'; k.fillRect(0, i * 36, Wc, 18); }
+    k.strokeStyle = '#5a3a1a'; k.lineWidth = 10; k.strokeRect(5, 5, Wc - 10, Hc - 10); k.fillStyle = '#8a1d24'; k.fillRect(5, 5, Wc - 10, 58);
+    k.fillStyle = '#ffe9b0'; k.textAlign = 'center'; k.font = '700 34px Georgia'; k.fillText('⚒ OBRA EM ANDAMENTO ⚒', Wc / 2, 46);
+    k.fillStyle = '#2c1d10'; k.font = '700 34px Georgia'; k.fillText(home.name.slice(0, 26), Wc / 2, 108); k.font = 'italic 24px Georgia'; k.fillText(`do mestre ${home.owner.slice(0, 18)}`, Wc / 2, 140);
+    const bx = 40, by = 162, bw = Wc - 80, p = home.done / home.work; k.fillStyle = '#6a4a2c'; k.fillRect(bx, by, bw, 26); k.fillStyle = '#d9a24f'; k.fillRect(bx + 3, by + 3, (bw - 6) * p, 20); k.fillStyle = '#2c1d10'; k.font = '700 18px Georgia'; k.fillText(`${Math.round(p * 100)}%`, Wc / 2, by + 20);
+    k.font = '600 26px Georgia'; k.fillText(`${home.done.toFixed(1).replace('.', ',')} de ${home.work} turnos`, Wc / 2, 222);
+    const days = left / 6; k.font = '24px Georgia'; k.fillText(`faltam ${left.toFixed(1).replace('.', ',')} turnos (${days < 1 ? 'menos de 1 dia' : `~${Math.ceil(days)} dia${Math.ceil(days) > 1 ? 's' : ''}`})`, Wc / 2, 256);
+    k.font = 'italic 21px Georgia'; k.fillStyle = n ? '#3a5a1a' : '#6a4a2c'; k.fillText(n ? `${n} Ajudante${n > 1 ? 's' : ''} de Obra trabalhando · obra ${n + 1}× mais rápida` : home.contract ? 'Contrato da Companhia: os Ajudantes podem trabalhar aqui' : 'sem Contrato da Companhia (robôs não entram)', Wc / 2, 292);
+    siteSign.tex.needsUpdate = true; }
   /** este ponto está coberto por uma Sentinela neste instante? */
   const coveredAt = (x: number, z: number, t: number) => ctx.sentries().some((q) => q.until >= t && Math.hypot(q.x - x, q.z - z) <= q.r);
   const coveredR = (r: Robot, t: number) => { const p = robotPos(r.slot); return coveredAt(p.x, p.z, t); };
@@ -190,9 +258,7 @@ export function createObras(ctx: {
       if (working && (!near || moving)) { working = false; ctx.log(`🔨 Você ${moving ? 'saiu andando' : 'se afastou da obra'} e parou de trabalhar (${fmtT(home.done)} de ${home.work} turnos). E perto da obra para voltar.`, '#c8b890'); } /* 28/10 (Erling): andou, parou — igual a cortar árvore */
       if (working && !moving) { home.done = Math.min(home.work, home.done + dt * 1000 / TURN_MS); armT -= dt; if (armT <= 0) { armT = 1.3; hammer(); } if (Math.random() < dt * 0.5) saveHome(home); refresh(); if (home.done >= home.work) { working = false; saveHome(home); ctx.log(`🏡 ${home.name} está pronta! Pendure a placa na frente (E) e entre.`, '#ffe08a'); finish(); return; } }
       // o robô: braço martelando; com o herói por perto, bicho de verdade perto dele e sem torre cobrindo = sucata
-      { const tt = performance.now(); for (const [slot, g] of robotM) { const arm = g.getObjectByName('arm'); const ph = tt / 180 + slot * 1.7; if (arm) arm.rotation.x = -0.4 + Math.max(0, Math.sin(ph)) * 1.1;
-          /* a martelada: faísca e poeira quando o martelo bate (só perto do herói) */ if (Math.sin(ph) > 0.97 && Math.random() < 0.35 && ctx.heroNear(g.position.x, g.position.z, 40)) { const c = { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h / 2) * T }, k = 0.35, hx = g.position.x + (c.x - g.position.x) * k * 0.3, hz = g.position.z + (c.z - g.position.z) * k * 0.3;
-            for (let i = 0; i < 4; i++) ctx.particles.spawn(hx, g.position.y + 0.25, hz, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.45, s0: 0.12, s1: 0.02, c0: 0xffd070, c1: 0x8a7a60, a: 0.9 }); } } }
+      if (ctx.heroNear((home.gx + home.w / 2) * T, (home.gy + home.h / 2) * T, 60)) { animRobots(Math.min(dt, 0.1), performance.now() / 1000); drawSiteSign(); }
       { const nw = performance.now(); if (nw - robotT < 1000) return; robotT = nw; } /* relógio de verdade (o dt do quadro é limitado e atrasaria a conta) */
       const L = live(); if (!L.length) return; const now = Date.now(); let anyNear = false;
       for (const r of L) { const p = robotPos(r.slot); if (!ctx.heroNear(p.x, p.z, 70)) continue; anyNear = true;
