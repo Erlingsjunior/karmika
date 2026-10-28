@@ -189,7 +189,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       const rel = R.armR.wr!.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(sw.getWorldQuaternion(new THREE.Quaternion())); R0inv = rel.invert(); sh.rotation.copy(a); sw.quaternion.copy(q); } }
   const isUnder = (o: THREE.Object3D, p: THREE.Object3D) => { for (let q: THREE.Object3D | null = o; q; q = q.parent) if (q === p) return true; return false; };
   /* a caneca (e o frasco) na mão do modelo de arte (28/10): a alça atravessa o punho, do mindinho ao indicador, e a caneca fica de pé à frente dos dedos */
-  function placeCups() { const cups = (R as unknown as { cups?: () => (THREE.Object3D | null)[] }).cups?.(); if (!cups) return;
+  function placeCups() { { const cf = (R as unknown as { cuff?: () => THREE.Object3D | null }).cuff?.(); if (cf && cf.visible) { model.updateMatrixWorld(true); W(hI, vI); W(hP, vP); W(hM, vM); W(hH, vH); W(hF, vF);
+        const fd = vH.clone().sub(vF).normalize(), ac = vI.clone().sub(vP).normalize(), pos = vH.clone().addScaledVector(fd, -0.04 * sc.x); root.matrixWorld.decompose(new THREE.Vector3(), tq, sc); place(cf, ac.clone(), fd.clone(), pos); } } /* o bracelete da Bobina no pulso do braço do escudo */
+    const cups = (R as unknown as { cups?: () => (THREE.Object3D | null)[] }).cups?.(); if (!cups) return;
     for (const c of cups) { if (!c || !c.visible) continue; model.updateMatrixWorld(true); W(sI, vI); W(sP, vP); W(sM, vM); W(sH, vH);
       const up = vI.clone().sub(vP).normalize(), fd = vM.clone().sub(vH).normalize(), g = vI.clone().add(vP).add(vM).multiplyScalar(1 / 3);
       root.matrixWorld.decompose(vF, tq, sc); const pos = g.addScaledVector(fd, 0.07 * sc.x); place(c, fd.clone(), up.clone(), pos); } }

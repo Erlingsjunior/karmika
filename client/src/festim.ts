@@ -49,7 +49,7 @@ export const GADGETS: Record<string, Gadget> = {
   ajudante_obra: { name: 'Ajudante de Obra', icon: '🦾', price: 900, kind: 'misc', col: 0xd0a040, desc: 'Um robô pedreiro da Companhia. Use de qualquer lugar: ele vai sozinho até o canteiro da sua obra inteira e trabalha turno após turno, mesmo com você longe. Até 4 ao mesmo tempo — cada um soma, e a obra anda mais rápido. E perto dele: desmonta e guarda (o tempo que sobrou fica). Mas é indefeso: se um bicho chegar e nenhuma Sentinela estiver cobrindo a obra, ele vira sucata. Plante torres em volta.' },
   obra_auto: { name: 'Contrato de Obra Automatizada', icon: '📜', price: 400, kind: 'misc', col: 0xd0a040, desc: 'A licença da Companhia de Latão para pôr robôs numa obra. Sem ela, nenhum Ajudante de Obra pisa no seu canteiro. Um contrato por casa: ele se vincula à obra que você tem (ou à primeira que começar, se comprar antes) e some quando a casa fica pronta.' },
   sentinela: { name: 'Robô Sentinela de Latão', icon: '🤖', price: 450, kind: 'misc', col: 0xb08a40, desc: 'Plante onde quiser defender: ele fica ali por 1 turno, gira a cabeça e solta descargas em quem se aproxima (12 m). Um por vez. Os engenheiros juram que ele não tem nome; todos chamam de Bartolomeu.' },
-  drone_cura: { name: 'Drone de Cura Automatizada', icon: '🛸', price: 180, kind: 'misc', col: 0x7affd0, desc: 'Paira sobre o seu ombro por 1 turno e borrifa vapor medicinal: +2% de vida a cada 6 s. Faz um barulhinho de chaleira quando trabalha.' },
+  drone_cura: { name: 'Drone de Cura Automatizada', icon: '🛸', price: 180, kind: 'misc', col: 0x7affd0, desc: 'Paira sobre o seu ombro por 1 turno e borrifa vapor medicinal: +5% de vida a cada 6 s. Faz um barulhinho de chaleira quando trabalha.' },
   drone_choque: { name: 'Bobina de Choque Automatizado', icon: '⚡', price: 170, kind: 'misc', col: 0x6ad0ff, desc: 'Presa ao cinto por 1 turno: a cada 4 s, um raio pula no inimigo mais perto (7 m). Não chegue perto de poça de água com isso ligado. Sério.' },
   escudo_auto: { name: 'Escudo Automatizado', icon: '🛡', price: 220, kind: 'misc', col: 0x9aa4b4, desc: 'Um disco de latão gira à sua volta por 1 turno e, a cada 25 s, arma uma barreira que segura um golpe inteiro. Ele faz “clanc” e você nem sente.' },
   carvao_azul: { name: 'Carvão Azul', icon: '🔷', price: 45, kind: 'res', col: 0x4a8aff, desc: 'Carvão anão que passou pelo laboratório da Companhia e voltou queimando azul. A fornalha passa do ponto do ferro: a peça forjada nesse fogo sai no mínimo rara (amarela). Os anões têm as peças, os tecnocratas têm o fogo.' },
@@ -75,7 +75,7 @@ export const PRICE_K = [1, 4, 10]; /* 28/10 (Erling): o Mk I custa caro mas dá 
 /** o poder de cada nível (índice 0..2) */
 export const TIER: Record<string, { what: (t: number) => string }> = {
   sentinela: { what: (t) => `descarga a cada ${[1.2, 1, 0.8][t]} s em quem chega a ${[12, 14, 16][t]} m, ${['fraca', 'média', 'forte'][t]}` },
-  drone_cura: { what: (t) => `+${[2, 3, 4][t]}% de vida a cada 6 s` },
+  drone_cura: { what: (t) => `+${[5, 6, 7][t]}% de vida a cada 6 s` },
   drone_choque: { what: (t) => `raio a cada ${[4, 3.5, 3][t]} s no inimigo mais perto (${[7, 8, 9][t]} m), ${['fraco', 'médio', 'forte'][t]}` },
   escudo_auto: { what: (t) => `segura um golpe inteiro a cada ${[25, 20, 15][t]} s` },
   ajudante_obra: { what: (t) => `trabalha ${[1, 2, 4][t]} turno${t ? 's' : ''} na obra sozinho` },

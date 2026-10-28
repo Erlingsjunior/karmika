@@ -24,6 +24,9 @@ export interface Hero3D {
   stopAct?(): void;
   /** o que aparece na mão no 'drink': caneca (padrão), frasco de poção, ou nada (comer) */
   drinkProp?: 'mug' | 'vial' | 'none';
+  /** a Bobina de Choque ligada: o bracelete azul pulsando no pulso esquerdo */
+  cuffOn?: boolean;
+  cuffPos?(out: THREE.Vector3): THREE.Vector3;
   setAura(on: boolean): void;
   /** equipamentos visíveis: arma (nome-base), escudo e elmo, com cor/brilho pela raridade */
   setGear(g: { weapon?: { base: string; rarity: string; tint?: number; glow?: number } | null; shield?: { base: string; rarity: string; seed?: number } | null; helm?: { base: string; rarity: string } | null; cape?: { base: string; rarity: string } | null; shoulders?: { base: string; rarity: string } | null }): void;
@@ -414,7 +417,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   let droneObj: THREE.Object3D | null = null, backAnchor: THREE.Group | null = null, stowed = false, rifleHolder: THREE.Group | null = null, muzzleGlow: THREE.Sprite | null = null;
   let gripR: THREE.Object3D | null = null, gripL: THREE.Object3D | null = null, rifleBack: THREE.Group | null = null, rifleStowed = false, aimRK = 0;
   let styleAtk: 'thrust' | 'chop' | 'punch' = 'thrust';
-  let swordHolder: THREE.Group | null = null, shieldHolder: THREE.Group | null = null, mug: THREE.Group | null = null, vial: THREE.Group | null = null;
+  let swordHolder: THREE.Group | null = null, shieldHolder: THREE.Group | null = null, mug: THREE.Group | null = null, vial: THREE.Group | null = null, cuff: THREE.Group | null = null, cuffMat: THREE.MeshToonMaterial | null = null;
   /* arma de fogo / besta: segura com as DUAS mãos, como o rifle do tecnocrata (23/10). A arma vive num suporte próprio na raiz;
      a mão direita vai à empunhadura e a esquerda ao guarda-mão por IK, e a arma é colocada entre as duas mãos, mirando para a frente */
   const gunHolder = new THREE.Group(); let gunK = 0, gunTip0: THREE.Object3D | null = null, gunBase0: THREE.Object3D | null = null, gunOn = false;
@@ -1070,6 +1073,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     get facing() { return yaw; },
     get acting() { return act !== null && act.a !== 'dash'; },
     stopAct() { act = null; },
+    cuffPos(out: THREE.Vector3) { return (cuff && cuff.visible ? cuff : armL.wr).getWorldPosition(out); },
     get actName() { return act ? act.a : null; },
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
     get stepVel() { return stepVel; },
@@ -1465,6 +1469,12 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const hd = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 5, 10, Math.PI), wd); hd.rotation.z = -Math.PI / 2; hd.position.x = -0.062; mug.add(hd);
           mug.position.set(0.02, -0.1, 0.075); armR.wr.add(mug); }
         if (mug) mug.visible = mugOn; if (swordHolder) swordHolder.visible = !freeH; if (weaponInner) weaponInner.visible = !freeH; if (freeH && gunHolder.visible) gunHolder.visible = false; else if (!freeH && !gunHolder.visible) gunHolder.visible = true; }
+      { /* 28/10 (Erling: "devia ficar uma bobina azul como um relógio ou um bracelete no meu pulso, pulsando azul") */
+        const on = !!(hero as { cuffOn?: boolean }).cuffOn; if (on && !cuff) { cuff = new THREE.Group(); cuffMat = toon(0x3a9aff, { emissive: new THREE.Color(0x2a8aff) }); const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.02, 6, 16), toon(0x8a6a3a)); band.rotation.x = Math.PI / 2; cuff.add(band);
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.009, 4, 16), cuffMat); ring.rotation.x = Math.PI / 2; ring.position.y = 0.012; cuff.add(ring); const ring2 = ring.clone(); ring2.position.y = -0.012; cuff.add(ring2);
+          const coil = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.05, 8), cuffMat); coil.rotation.z = Math.PI / 2; coil.position.set(0, 0, 0.07); cuff.add(coil); const cap = new THREE.Mesh(new THREE.SphereGeometry(0.016, 6, 5), new THREE.MeshBasicMaterial({ color: 0xbfe8ff })); cap.position.set(0, 0.02, 0.07); cuff.add(cap);
+          cuff.position.set(0, 0.03, 0); armL.wr.add(cuff); }
+        if (cuff) { cuff.visible = on; if (on && cuffMat) { const k = 0.5 + 0.5 * Math.sin(t * 6); cuffMat.emissiveIntensity = 0.6 + 1.6 * k; cuff.scale.setScalar(1 + 0.06 * k); } } }
       if (swordHolder) swordHolder.rotation.set((kind === 'nordic' ? -1.9 : 0.3 + Math.PI) + aSwX + 3.3 * hang + 0.55 * rK * (kind === 'nordic' ? 1 : 0), 0, (kind === 'nordic' ? 0 : 0.05) + aSwZ + 0.22 * hang);
       shieldF += (aFace - shieldF) * Math.min(1, dt * 16);
 
@@ -1641,6 +1651,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   root.updateMatrixWorld(true);
   const rigJ = { hips, spine, chest, neck: neckG, head, armL, armR, legL, legR };
   root.add(gunHolder); gunHolder.visible = false;
-  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
+  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
   return hero;
 }

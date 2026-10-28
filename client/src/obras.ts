@@ -33,7 +33,7 @@ let onSaveFn: ((h: HomeSave | null) => void) | null = null;
 export const onHomeSave = (f: (h: HomeSave | null) => void) => { onSaveFn = f; };
 const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } try { onSaveFn?.(h); } catch { /* */ } };
 
-export function createObras(ctx: { /** a variante do modelo da casa pronta (para achar a porta) */ variantOf?(h: HomeSave): number;
+export function createObras(ctx: { /** o modelo da casa pronta (para ela subir do chão durante a obra) */ siteModel?(h: HomeSave): THREE.Group | null; /** a variante do modelo da casa pronta (para achar a porta) */ variantOf?(h: HomeSave): number;
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
   /** a casa pronta entra no mundo como prop (e sai, se for demolida ou vendida) */ addHouse(h: HomeSave): void; removeHouse?(h: HomeSave): void;
@@ -49,8 +49,8 @@ export function createObras(ctx: { /** a variante do modelo da casa pronta (para
   const robotM = new Map<number, THREE.Group>(), wreckM = new Map<number, THREE.Group>();
   if (home && home.robot) { home.robots = [...(home.robots ?? []), { ...home.robot, slot: home.robot.slot ?? 0 }]; delete home.robot; saveHome(home); }
   const piles: { m: THREE.Object3D; at: number }[] = []; // cada peça da pilha some quando a obra passa de "at"
-  const stages: { m: THREE.Object3D; at: number }[] = []; // cada peça da obra aparece quando a obra passa de "at"
-  const wood = std(0x9a7448), woodD = std(0x6a4a2c), stoneM = std(0x8a8680), stoneD = std(0x6a6660), roofM = std(0x8a3a28), iron = std(0x4a4a50), ropeM = std(0xc9b07a), stake = std(0x7a5a3a);
+  const stages: { m: THREE.Object3D; at: number }[] = []; let siteModel: THREE.Group | null = null, siteH = 0, sitePieces: { o: THREE.Object3D; y: number }[] = []; // cada peça da obra aparece quando a obra passa de "at"
+  const wood = std(0x9a7448), woodD = std(0x6a4a2c), stoneM = std(0x8a8680), stoneD = std(0x6a6660), iron = std(0x4a4a50), ropeM = std(0xc9b07a), stake = std(0x7a5a3a);
   function buildSite(h: HomeSave) {
     if (site) ctx.scene.remove(site); siteSign = null; piles.length = 0; stages.length = 0; lastStage = -1;
     const g = new THREE.Group(), W = h.w * T, D = h.h * T, x0 = h.gx * T, z0 = h.gy * T, y0 = ctx.heightAt(x0 + W / 2, z0 + D / 2); g.position.set(x0, y0, z0); site = g;
@@ -66,14 +66,15 @@ export function createObras(ctx: { /** a variante do modelo da casa pronta (para
     for (let i = 0; i < 4; i++) { const m = add(new THREE.BoxGeometry(0.3, 0.2, 0.2), iron, W - 0.4, 0.1 + i * 0.2, pz + 0.3); piles.push({ m, at: 0.25 + i * 0.16 }); } // caixas de pregos
     for (let i = 0; i < 8; i++) { const m = add(new THREE.CylinderGeometry(0.04, 0.05, 1.4, 4), stake, W + 0.6, 0.1 + (i % 4) * 0.09, pz - 0.5 + Math.floor(i / 4) * 0.12); m.rotation.x = Math.PI / 2; piles.push({ m, at: 0.3 + i * 0.08 }); } // galhos
     // a obra: alicerce (0–20%), esteios (20–40%), paredes (40–80%, sobem em camadas), telhado (80–100%)
-    const H = 3.0, nl = 8;
+    // (alicerce de 0 a 12%, depois a casa sobe)
     { const F: [number, number, number, number][] = [[W / 2, 0.2, W, 0.4], [W / 2, D - 0.2, W, 0.4], [0.2, D / 2, 0.4, D], [W - 0.2, D / 2, 0.4, D]]; F.forEach(([x, z, w, d], i) => stages.push({ m: add(new THREE.BoxGeometry(w, 0.4, d), i % 2 ? stoneD : stoneM, x, 0.2, z), at: i * 0.04 }));
       stages.push({ m: add(new THREE.BoxGeometry(W - 0.8, 0.12, D - 0.8), std(0x8a6a44), W / 2, 0.3, D / 2), at: 0.16 }); } // alicerce de pedra e o piso
-    for (const [x, z] of [[0.25, 0.25], [W - 0.25, 0.25], [0.25, D - 0.25], [W - 0.25, D - 0.25], [W / 2, 0.25], [W / 2, D - 0.25]]) stages.push({ m: add(new THREE.BoxGeometry(0.22, H, 0.22), woodD, x, 0.35 + H / 2, z), at: 0.2 + stages.length * 0.02 });
-    for (let l = 0; l < nl; l++) { const y = 0.35 + (l + 0.5) * H / nl, at = 0.4 + l / nl * 0.4;
-      for (const [x, z, w, d] of [[W / 2, 0.2, W - 0.4, 0.14], [0.2, D / 2, 0.14, D - 0.4], [W - 0.2, D / 2, 0.14, D - 0.4]] as [number, number, number, number][]) stages.push({ m: add(new THREE.BoxGeometry(w, H / nl - 0.02, d), l % 2 ? wood : woodD, x, y, z), at });
-      for (const sx of [-1, 1]) stages.push({ m: add(new THREE.BoxGeometry(W / 2 - 0.9, H / nl - 0.02, 0.14), l % 2 ? wood : woodD, W / 2 + sx * (W / 4 + 0.35), y, D - 0.2), at }); } // frente com o vão da porta
-    for (let i = 0; i < 6; i++) { const t = i / 6; for (const s of [-1, 1]) { const r = add(new THREE.BoxGeometry(W + 0.6, 0.1, D / 2 + 0.5), roofM, W / 2, 0.35 + H + 0.65 - 0.01 * i, D / 2 + s * D / 4); r.rotation.x = s * 0.5; r.scale.set(1, 1, 0.2 + t * 0.85); stages.push({ m: r, at: 0.8 + t * 0.2 }); } }
+    /* 28/10 (Erling: "conforme a casa fica pronta, 25% 50% 75%, ela vai crescendo, tomando forma"): depois do alicerce, a própria casa
+       que vai ficar pronta sobe do chão — um corte horizontal que vai subindo com a obra (o modelo é o mesmo da casa acabada) */
+    siteModel = null; siteH = 0; sitePieces = []; { const mdl = ctx.siteModel?.(h); if (mdl) { /* cada peça da casa aparece quando a obra chega à altura de onde ela começa: alicerce, paredes, janelas, telhado por último */
+      mdl.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(mdl); siteH = Math.max(1, bb.max.y); const b1 = new THREE.Box3();
+      mdl.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh && !(o as THREE.Sprite).isSprite) return; b1.setFromObject(o); sitePieces.push({ o, y: Math.max(0, b1.min.y) + Math.min(0.6, (b1.max.y - b1.min.y) * 0.25) }); o.castShadow = true; });
+      g.add(mdl); siteModel = mdl; } }
     // andaime (some quando a obra termina)
     for (const x of [-0.5, W + 0.5]) for (const z of [-0.5, D + 0.5]) { const pole = add(new THREE.CylinderGeometry(0.05, 0.05, 3.6, 5), stake, x, 1.8, z); piles.push({ m: pole, at: 0.97 }); }
     for (const z of [-0.5, D + 0.5]) { const b = add(new THREE.BoxGeometry(W + 1, 0.08, 0.5), wood, W / 2, 1.9, z); piles.push({ m: b, at: 0.97 }); }
@@ -81,6 +82,7 @@ export function createObras(ctx: { /** a variante do modelo da casa pronta (para
     for (const c of g.children) { const isStage = stages.some((q) => q.m === c); if (isStage) continue; const gy = ctx.heightAt(x0 + c.position.x, z0 + c.position.z); c.position.y += gy - y0; }
     ctx.scene.add(g); refresh(); }
   function refresh() { if (!home || !site) return; drawSiteSign(); const p = home.done / home.work; for (const q of piles) q.m.visible = p < q.at; for (const q of stages) q.m.visible = p >= q.at;
+    if (siteModel) { const k = Math.max(0, Math.min(1, (p - 0.12) / 0.88)), lv = k * siteH; for (const q of sitePieces) q.o.visible = q.y <= lv; }
     const st = p < 0.2 ? 0 : p < 0.4 ? 1 : p < 0.8 ? 2 : 3; if (st !== lastStage && lastStage >= 0) ctx.log(['🧱 O alicerce de pedra está assentado.', '🪵 Os esteios de pé: a casa já tem esqueleto.', '🔨 As paredes sobem, tábua por tábua.', '🏠 O telhado está subindo. Falta pouco.'][st], '#ffe08a'); lastStage = st; }
   function makeSign(h: HomeSave) {
     if (sign) ctx.scene.remove(sign); const g = new THREE.Group(); const x = (h.gx + h.w / 2 + 1.6) * T, z = (h.gy + h.h) * T + 1.2; g.position.set(x, ctx.heightAt(x, z), z); sign = g;
@@ -250,6 +252,8 @@ export function createObras(ctx: { /** a variante do modelo da casa pronta (para
     /** a casa foi vendida (o comprador assinou a escritura): sai do seu mundo e do seu save */
     release(why: string) { if (!home) return; const h = home; if (h.done >= h.work) ctx.removeHouse?.(h); else { if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes(); ctx.block(h.gx, h.gy, h.w, h.h, false); }
       if (sign) { ctx.scene.remove(sign); sign = null; } home = null; working = false; lastStage = -1; try { localStorage.removeItem(KEY); } catch { /* */ } ctx.log(why, '#ffe08a'); },
+    /** teste: adianta a obra (fração do total) */
+    advance(frac: number) { if (!home || home.done >= home.work) return false; home.done = Math.min(home.work, home.done + home.work * frac); saveHome(home); refresh(); if (home.done >= home.work) finish(); return true; },
     /** mobília/decoração da casa (salva junto e vai para o servidor) */
     get decor() { return home?.decor ?? []; },
     setDecor(list: NonNullable<HomeSave['decor']>) { if (!home) return; home.decor = list.slice(0, 160); saveHome(home); },

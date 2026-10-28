@@ -32,7 +32,7 @@ import { createMail } from './mail';
 import { createProfessions } from './professions';
 import { createLoja } from './loja';
 import { createAuction } from './leilao';
-import { houseDoor } from './houses3d';
+import { houseDoor, buildHouse, buildStyledHouse } from './houses3d';
 import { setVitraisDay } from './vitrais';
 import { createXray } from './xray';
 import { FEASTS, feastEff, festaPrice, GADGETS } from './festim';
@@ -533,13 +533,15 @@ const BLESS = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-
 let buffKey = '';
 /** o evento global como efeito na barra (Lua de Sangue, Dia da Aurora): ícone, minutos restantes e, no título, o que ele faz com você */
 function globalBuffKey() { try { const g = globalNow(); return g ? g.id + Math.ceil((g.end - Date.now()) / 60000) + globalSide(g.id) : ''; } catch { return ''; } }
+/** tempo que falta num buff: 45s · 14m · 2h (28/10: "894" segundos não dizia nada) */
+const fmtBuffT = (t: number) => t < 60 ? `${Math.ceil(t)}s` : t < 3600 ? `${Math.ceil(t / 60)}m` : `${Math.floor(t / 3600)}h${Math.round((t % 3600) / 60) ? Math.round((t % 3600) / 60) : ''}`;
 function globalBuffHtml() { let g: ReturnType<typeof globalNow> = null; try { g = globalNow(); } catch { return ''; } if (!g) return ''; const sd = globalSide(g.id), left = Math.max(1, Math.ceil((g.end - Date.now()) / 60000));
   const tip = `${g.name} · mais ${left} min\n${g.text}${sd ? '\n' + globalSideText(g.id) : '\nO seu caminho não pende para nenhum lado: o evento não mexe na sua força.'}`.replace(/"/g, '&quot;');
   return `<div class="bf gev ${g.id} ${sd > 0 ? 'good' : sd < 0 ? 'bad' : ''}" title="${tip}">${g.icon}<i>${left}</i></div>`; }
 setInterval(() => { const L = game.buffs(); const prem = isPremium();
   let eqF: Fac[] = []; try { eqF = [...new Set((['cape', 'shield', 'relic'] as Slot[]).map((sl) => inv.eq[sl]?.fac).filter((f): f is Fac => !!f))]; } catch { /* */ }
-  const key = globalBuffKey() + echoKey() + (vow ? vow.id + vow.broken + Math.floor(vow.secs / 60) : '') + (prem ? 'P' : '') + eqF.join() + L.map((b) => b.id + Math.ceil(b.t ?? 0)).join(); if (key === buffKey) return; buffKey = key;
-  buffEl.innerHTML = globalBuffHtml() + echoHtml() + (vow ? `<div class="bf ${vow.broken ? 'neg' : 'vow'}" title="${vow.broken ? `Voto quebrado: “${VOWS[vow.id]?.text}”. A bênção se apagou.` : `${VOWS[vow.id]?.name}: “${VOWS[vow.id]?.text}” — Bênção do Voto: +5% de XP enquanto mantiver.${vow.titled ? '' : ` Faltam ${Math.max(0, Math.ceil((3 * 3600 - vow.secs) / 60))} min de jogo fiel para o título.`}`}">${vow.broken ? '⛓' : '✦'}</div>` : '') + eqF.map((f) => `<div class="bf fac ${f}" title="${FAC[f].name} — “${FAC[f].motto}”. Você carrega o brasão deste lado.${inv.eq.relic?.fac === f ? ' A relíquia acende o sigilo aos seus pés.' : ''}"><img src="${crestURL(f)}" alt=""></div>`).join('') + (prem ? `<div class="bf good bless" title="Bênção de Marghar (Premium): conforto no dia a dia — Bolsa do Caminhante, Bolsa Mágica e de Ofício, 10 missões. Nunca dá força.">${BLESS}</div>` : '') + L.map((b) => `<div class="bf ${b.good ? 'good' : 'bad'}" title="${b.name}: ${b.tip}"><span>${b.ic}</span>${b.t !== undefined ? `<i>${Math.ceil(b.t)}</i>` : ''}</div>`).join('');
+  const key = globalBuffKey() + echoKey() + (vow ? vow.id + vow.broken + Math.floor(vow.secs / 60) : '') + (prem ? 'P' : '') + eqF.join() + L.map((b) => b.id + (b.t === undefined ? "" : fmtBuffT(b.t))).join(); if (key === buffKey) return; buffKey = key;
+  buffEl.innerHTML = globalBuffHtml() + echoHtml() + (vow ? `<div class="bf ${vow.broken ? 'neg' : 'vow'}" title="${vow.broken ? `Voto quebrado: “${VOWS[vow.id]?.text}”. A bênção se apagou.` : `${VOWS[vow.id]?.name}: “${VOWS[vow.id]?.text}” — Bênção do Voto: +5% de XP enquanto mantiver.${vow.titled ? '' : ` Faltam ${Math.max(0, Math.ceil((3 * 3600 - vow.secs) / 60))} min de jogo fiel para o título.`}`}">${vow.broken ? '⛓' : '✦'}</div>` : '') + eqF.map((f) => `<div class="bf fac ${f}" title="${FAC[f].name} — “${FAC[f].motto}”. Você carrega o brasão deste lado.${inv.eq.relic?.fac === f ? ' A relíquia acende o sigilo aos seus pés.' : ''}"><img src="${crestURL(f)}" alt=""></div>`).join('') + (prem ? `<div class="bf good bless" title="Bênção de Marghar (Premium): conforto no dia a dia — Bolsa do Caminhante, Bolsa Mágica e de Ofício, 10 missões. Nunca dá força.">${BLESS}</div>` : '') + L.map((b) => `<div class="bf ${b.good ? 'good' : 'bad'}" title="${b.name}: ${b.tip}"><span>${b.ic}</span>${b.t !== undefined ? `<i>${fmtBuffT(b.t)}</i>` : ''}</div>`).join('');
   /* 28/10 (Erling): tooltip de verdade (o title nativo demorava e ficava feio) e o bloco à direita, entre a barra de informações e o minimapa */
   buffEl.querySelectorAll('[title]').forEach((e) => { e.setAttribute('data-tip', e.getAttribute('title') || ''); e.removeAttribute('title'); });
   { const mm = document.getElementById('mini')?.getBoundingClientRect(), ui = +(getComputedStyle(document.documentElement).getPropertyValue('--ui') || 1) || 1; if (mm && mm.width) (buffEl.parentElement ?? buffEl).style.right = ((innerWidth - mm.left) + 10) / ui + 'px'; } }, 250);
@@ -719,7 +721,7 @@ const build = createBuild({ count: (id) => inv.bag[id] ?? 0, placeDecor: (id) =>
   canBuildAt: (gx, gy) => !city.settlements.some((st) => Math.hypot(gx - st.x, gy - st.y) < st.radius + 2) && !city.pois.some((q) => Math.hypot(gx - q.x, gy - q.y) < 6) && city.map[gy]?.[gx] !== 'water' });
 /* a obra inteira e a casa do jogador (obras.ts, 28/10) */
 let homeProp: (typeof city.props)[number] | null = null;
-const obras = createObras({ variantOf: (h) => wholeOf(h.id, h.name).variant, onDone: (h) => setTimeout(() => {
+const obras = createObras({ siteModel: (h) => { const lk = wholeOf(h.id, h.name); let sd = h.gx * 977 + h.gy * 131 + 7; const rnd = () => { sd = (sd * 16807) % 2147483647; return sd / 2147483647; }; const c = { windows: new THREE.MeshBasicMaterial({ color: 0xffc266 }), rnd }; return (lk.style ? buildStyledHouse(lk.style, lk.variant, h.w * T, h.h * T, 0xb09068, 0x8a3a28, c) : buildHouse(lk.variant, h.w * T, h.h * T, 0xb09068, 0x8a3a28, c)).group; }, variantOf: (h) => wholeOf(h.id, h.name).variant, onDone: (h) => setTimeout(() => {
     badge('🏡', 'Casa pronta', h.name);
     game.logMsg(`🏡 ${h.name} está de pé! O Cartório de Karmika mandou a escritura pelo correio.`, '#ffe08a');
     mail.send('Cartório de Karmika', `A sua casa está de pé: ${h.name}`, `${h.owner},\n\nTábua por tábua, prego por prego, turno após turno: a ${h.name} está de pé, e o chão em que ela está é seu.\n\nPoucos em Karmika podem dizer que têm um teto que ergueram. Os vizinhos vão comentar, os corvos vão pousar no seu telhado e, nas noites frias, a sua lareira vai ser a mais quente da estrada.\n\nSegue em anexo a ESCRITURA DA CASA, com o selo do Cartório. Guarde com carinho e cuidado: quem tem a escritura é o dono.\n\nQue o Olho veja a sua porta sempre aberta para os amigos.\n\n— O Escrivão do Cartório de Karmika`, [{ item: { id: deedItemOf(h), n: 1 } }], 2500); }, 1200),
@@ -883,6 +885,8 @@ const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.n
 /* comandos de teste do beta (chat): /morrer, /folegos N, /lagrimas N, /nivel N, /ajuda */
 const BETA_TOOLS = true;
 function betaCommand(cmd: string, a: string[]): string | null {
+  /* /obra: adianta 25% da obra (teste, Erling 28/10) — /obra 50 adianta 50% */
+  if (cmd === 'obra') { const pc = Math.max(1, Math.min(100, Number(a[0]) || 25)); return obras.advance(pc / 100) ? `🏗 (teste) +${pc}% de obra: ${Math.round((obras.home!.done / obras.home!.work) * 100)}% pronta.` : '🏗 Você não tem obra em andamento.'; }
   /* EMOTES (28/10, Erling): /dance faz o personagem dançar (até você andar); /beber, uma caneca de cerveja na mão. Os outros jogadores veem. */
   if (cmd === 'dance' || cmd === 'dancar' || cmd === 'dançar' || cmd === 'danca' || cmd === 'dança') { if (inside && !inside.prop) return '💃 Aqui não dá para dançar.'; emote.dance = true; emote.x = state.fx; emote.y = state.fy; hero.stopAct?.(); return '💃 Você começa a dançar. (ande para parar)'; }
   if (cmd === 'beber' || cmd === 'brinde' || cmd === 'cerveja' || cmd === 'drink') { emote.dance = false; hero.stopAct?.(); hero.drinkProp = 'mug'; hero.act('drink', true); netRef?.act('drink'); audio.gulp(); setTimeout(() => audio.gulp(), 380); return '🍺 Você vira uma caneca de cerveja. Saúde!'; }
@@ -1576,6 +1580,8 @@ function decoDrop(e: { def: { name: string; scale?: number }; tag?: string; hpMa
   const pool: DecorPool = boss ? 'chefe' : elite ? 'elite' : 'mundo'; const id = rollDecor(pool); if (!id) return; const d = DECOR[id]; if (!inv.add(id, 1)) { game.logMsg(`✨ ${d.name} caiu, mas a mochila está cheia e ela se desfez em pó.`, '#ff9a8a'); return; }
   audio.chime(); badge(d.icon, 'Decoração rara', d.name); for (let i = 0; i < 40; i++) particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: (Math.random() - 0.5) * 4, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 4, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xf0d0ff, c1: 0x9a6aff, a: 1, g: 3 });
   game.logMsg(`✨ ${e.def.name} deixou uma decoração rara: ${d.icon} ${d.name}! (${whereTxt(d.where)} da sua casa)`, '#d8b0ff'); }
+/* a Bobina de Choque e a água (28/10): pisar na água (mais de um palmo) com ela ligada é morte certa — o aviso está na caixa */
+game.setWaterCheck(() => !inside && !game.st.dead && !onWall && WL - heightAt(state.fx * T, state.fy * T) > 0.22 && heroY < WL - 0.05); /* ponte e muralha não contam: o pé tem que estar na água */
 /** a dança continua enquanto você fica parado; andar, lutar ou entrar em algum lugar para */
 const emote = { dance: false, x: 0, y: 0 };
 function emoteTick() { if (!emote.dance) return; if (Math.hypot(state.fx - emote.x, state.fy - emote.y) > 0.05 || hero.combat || game.st.dead) { emote.dance = false; if (hero.actName === 'dance') hero.stopAct?.(); return; }

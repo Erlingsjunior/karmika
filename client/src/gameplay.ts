@@ -170,6 +170,13 @@ export function createGameplay(d: GameplayDeps) {
   const drops: { m: THREE.Object3D; x: number; z: number; y: number; kind: 'gold' | 'potion' | 'item' | 'gear'; n: number; t: number; id?: string; gear?: Gear; label?: HTMLElement; vy?: number }[] = [];
   let onItem: (id: string, n: number) => boolean | void = () => {};
   let onDeath: ((revive: () => void) => void) | null = null;
+  function heroDie() { if (st.dead) return; st.hp = 0;
+    st.dead = true; st.hpLag = 0; document.body.classList.add('dead'); $('sigil').classList.add('dead');
+    const revive = () => { st.hp = st.hpMax; st.mp = st.res.mode === 'fight' ? 0 : st.mpMax; st.dead = false; document.body.classList.remove('dead'); $('sigil').classList.remove('dead'); };
+    if (onDeath) onDeath(revive); else setTimeout(revive, 3600); }
+  /* 28/10 (Erling: "pegadinha: o aviso diz para não chegar perto de poça nem de água com a bobina ligada — se for, choque fortíssimo,
+     caveira piscando e eletricidade em volta do corpo por 3 segundos, e morre. O aviso foi dado, né?") */
+  let gadLast = 0, inWater: (() => boolean) | null = null, zapDeath = 0, zapFx = 0, zapSkull = 0;
   let onGear: (g: Gear) => boolean | void = () => {};
   let fullMsgT = 0;
   let onKill: (type: Enemy['type'], e: Enemy) => void = () => {};
@@ -518,7 +525,11 @@ export function createGameplay(d: GameplayDeps) {
   const SENT_KEY = 'karmika.sentries.v1';
   const saveSentries = () => { try { localStorage.setItem(SENT_KEY, JSON.stringify(gad.sentries.map((q) => ({ id: q.id, x: q.x, z: q.z, until: q.until })))); } catch { /* */ } };
   const loadSentries = () => { try { const L = JSON.parse(localStorage.getItem(SENT_KEY) || '[]') as { id: string; x: number; z: number; until: number }[]; for (const q of L) { if (q.until < Date.now()) continue; const t = tierOf(q.id), tr = mkTurret(q.x, q.z); tr.m.scale.setScalar(1 + t * 0.12); gad.sentries.push({ id: q.id, m: tr.m, head: tr.head, x: q.x, z: q.z, until: q.until, shotT: 1, iv: [1.2, 1, 0.8][t], r: [12, 14, 16][t], k: [0.3, 0.42, 0.55][t] }); } } catch { /* */ } };
-  const gad = { heal: 0, healT: 6, healK: 0.02, shock: 0, shockT: 4, shockI: 4, shockR: 7, shockK: 0.35, shield: 0, shieldReady: true, shieldT: 0, shieldCd: 25, sentries: [] as { id: string; m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number; iv: number; r: number; k: number }[] };
+  /* as cruzes de cura (+) azul-esverdeadas que sobem em volta do herói */
+  const PLUS_TEX = (() => { const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d')!; g.shadowColor = '#7affd0'; g.shadowBlur = 6; g.fillStyle = '#b8fff0'; g.fillRect(12, 4, 8, 24); g.fillRect(4, 12, 24, 8); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const pluses: { s: THREE.Sprite; t: number; life: number; a: number; r: number; y: number }[] = [];
+  function plusFx(p: THREE.Vector3, n: number) { for (let i = 0; i < n; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: PLUS_TEX, transparent: true, depthWrite: false, color: i % 3 ? 0x7affd0 : 0x6ad0ff, blending: THREE.AdditiveBlending })); s.scale.setScalar(rnd(0.18, 0.3)); d.scene.add(s); pluses.push({ s, t: 0, life: rnd(1.0, 1.6), a: i / n * 6.283, r: rnd(0.45, 0.7), y: rnd(0.2, 1.4) }); } }
+  const gad = { heal: 0, healT: 6, healK: 0.05, shock: 0, shockT: 4, shockI: 4, shockR: 7, shockK: 0.35, shield: 0, shieldReady: true, shieldT: 0, shieldCd: 25, sentries: [] as { id: string; m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number; iv: number; r: number; k: number }[] };
   setTimeout(loadSentries, 0);
   function zap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, col: number) { const n = 9; for (let k = 0; k <= n; k++) { const t = k / n; d.particles.spawn(ax + (bx - ax) * t + rnd(-0.18, 0.18), ay + (by - ay) * t + rnd(-0.18, 0.18), az + (bz - az) * t + rnd(-0.18, 0.18), { life: 0.22, s0: 0.35, s1: 0.05, c0: 0xffffff, c1: col, a: 1 }); } }
   const beams: { m: THREE.Mesh; t: number; life: number }[] = [];
@@ -927,6 +938,9 @@ export function createGameplay(d: GameplayDeps) {
       return L; },
     resetClass(n: string) { cls = { name: n, lvl: 1, xp: 0, past: [] }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } },
     /** mudar de classe (a partir do nível 30, opcional e sem volta): a barra de classe recomeça do zero; magias e golpes da classe antiga continuam */
+    /** a água em que o herói está (a bobina de choque mata) */
+    setWaterCheck(f: () => boolean) { inWater = f; },
+    gadState() { return { ...gad, sentries: gad.sentries.length, zapDeath }; },
     changeClass(n: string) { if (st.lvl < 30) { logMsg('A mudança de classe só se abre no nível 30.', '#ff9a8a'); return false; } cls.past = [...(cls.past ?? []), { name: cls.name, lvl: cls.lvl }]; cls = { name: n, lvl: 0, xp: 0, past: cls.past }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } logMsg(`✦ Você agora segue o caminho de ${n}. O que aprendeu antes fica com você.`, '#c9a0ff'); return true; }, setResource(r: { name: string; label: string; style: string; mode: 'regen' | 'fight' }) { const was = st.res.mode; st.res = r; st.recalc?.(); if (r.mode === 'fight' && was !== 'fight') st.mp = 0; st.mp = Math.min(st.mp, st.mpMax); }, ambush() { st.ambushT = 0.9; }, xpNeed, xpNeedAt, setOnItem(f: (id: string, n: number) => boolean | void) { onItem = f; }, setOnDeath(f: (revive: () => void) => void) { onDeath = f; }, snd(k: 'coins' | 'error' | 'pickup' | 'click' | 'swap') { d.audio[k](); }, setMoving(m: boolean) { heroMoving = m; }, setSkillScale(f: (id: string) => SScale) { skillScale = f; }, setOnGear(f: (g: Gear) => boolean | void) { onGear = f; }, setOnKill(f: (t: Enemy['type'], e: Enemy) => void) { onKill = f; },
     /** jogar junto: liga os avisos da rede e o tamanho do grupo por perto */
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
@@ -1196,11 +1210,7 @@ export function createGameplay(d: GameplayDeps) {
       }
       if (st.hp > 0 && st.hp < st.hpMax * 0.3 && st.sp.has('u_fenrir') && now >= fenrirT) { fenrirT = now + 60; buff.dmg = Math.max(buff.dmg, 1.4); buff.dmgT = Math.max(buff.dmgT, 8); buff.leech = Math.max(buff.leech, 0.1); setTimeout(() => { if (!form) buff.leech = 0; }, 8000); logMsg('🐺 Elmo de Fenrir: a fúria do lobo desperta!', '#ff8a5a'); dmgText(heroPos.clone().setY(2.8), 'FÚRIA DO LOBO', true, '#ff8a5a'); }
       if (st.hp <= 0 && st.sp.has('r_calice') && now >= caliceT) { caliceT = now + 600; st.hp = Math.round(st.hpMax * 0.5); logMsg('🏆 O Cálice de Marghar recusa a sua morte.', '#ffd24a'); dmgText(heroPos.clone().setY(2.8), 'O CÁLICE TE SALVA', true, '#ffd24a'); for (let i = 0; i < 60; i++) { const a2 = rnd(0, 6.283); d.particles.spawn(heroPos.x, rnd(0.2, 2), heroPos.z, { vx: Math.cos(a2) * rnd(1, 4), vy: rnd(1, 4), vz: Math.sin(a2) * rnd(1, 4), life: 1, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffd24a, a: 1 }); } }
-      if (st.hp <= 0) {
-        st.dead = true; st.hpLag = 0; document.body.classList.add('dead'); $('sigil').classList.add('dead');
-        const revive = () => { st.hp = st.hpMax; st.mp = st.res.mode === 'fight' ? 0 : st.mpMax; st.dead = false; document.body.classList.remove('dead'); $('sigil').classList.remove('dead'); };
-        if (onDeath) onDeath(revive); else setTimeout(revive, 3600);
-      }
+      if (st.hp <= 0) heroDie();
     },
     toggleMenu(force?: boolean) {
       st.menuOpen = force ?? !st.menuOpen; $('menu').classList.toggle('open', st.menuOpen);
@@ -1510,7 +1520,7 @@ export function createGameplay(d: GameplayDeps) {
       if (b === 'drone_cura' && gad.heal > now2) { logMsg(`🛸 Você já tem um Drone de Cura voando (mais ${Math.ceil((gad.heal - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       if (b === 'escudo_auto' && gad.shield > now2) { logMsg(`🛡 Você já tem um Escudo Automatizado (mais ${Math.ceil((gad.shield - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       if (b === 'drone_choque' && gad.shock > now2) { logMsg(`⚡ A Bobina de Choque já está no cinto (mais ${Math.ceil((gad.shock - now2) / 60000)} min). Só uma por vez.`, '#ff9a8a'); return false; }
-      if (b === 'drone_cura') { gvDrop('heal'); gv.heal = buildHealDrone(t); gv.heal.g.position.set(hp.x, gy + 2.6, hp.z); d.scene.add(gv.heal.g); for (let i = 0; i < 14; i++) d.particles.spawn(hp.x, gy + 2.4, hp.z, { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.6, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x7affd0, a: 0.9 }); gad.heal = now2 + dur; gad.healK = [0.02, 0.03, 0.04][t]; logMsg(`🛸 Drone de Cura ${mk} no ombro por ${tl}: +${Math.round(gad.healK * 100)}% de vida a cada 6 s.`, '#7affd0'); return true; }
+      if (b === 'drone_cura') { gvDrop('heal'); gv.heal = buildHealDrone(t); gv.heal.g.position.set(hp.x, gy + 2.6, hp.z); d.scene.add(gv.heal.g); for (let i = 0; i < 14; i++) d.particles.spawn(hp.x, gy + 2.4, hp.z, { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.6, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x7affd0, a: 0.9 }); gad.heal = now2 + dur; gad.healK = [0.05, 0.06, 0.07][t]; logMsg(`🛸 Drone de Cura ${mk} no ombro por ${tl}: +${Math.round(gad.healK * 100)}% de vida a cada 6 s.`, '#7affd0'); return true; }
       if (b === 'drone_choque') { gad.shock = now2 + dur; gad.shockI = [4, 3.5, 3][t]; gad.shockR = [7, 8, 9][t]; gad.shockK = [0.35, 0.5, 0.65][t]; logMsg(`⚡ Bobina de Choque ${mk} no cinto por ${tl}: raio a cada ${gad.shockI} s (${gad.shockR} m).`, '#6ad0ff'); return true; }
       if (b === 'escudo_auto') { gvDrop('bot'); gvDrop('dome'); gv.bot = buildShieldBot(t); gv.bot.g.position.set(hp.x + Math.cos(yaw) * 1.3, gy, hp.z - Math.sin(yaw) * 1.3); d.scene.add(gv.bot.g); gv.dome = buildDome(t); gv.dome.g.position.set(hp.x, gy, hp.z); d.scene.add(gv.dome.g); gad.shield = now2 + dur; gad.shieldReady = true; gad.shieldCd = [25, 20, 15][t]; logMsg(`🛡 Escudo Automatizado ${mk} girando por ${tl}: segura um golpe inteiro a cada ${gad.shieldCd} s.`, '#9ad7ff'); return true; }
       if (b === 'sentinela') { if (gad.sentries.length >= 5) { logMsg('🤖 Já há 5 Sentinelas de pé. Desmonte uma (E perto dela) para plantar outra.', '#e0b048'); return false; } /* até 5 de pé (28/10: proteger a obra) */ const left = sentryLeftPop(id), dur2 = left ?? dur; const x = hp.x + Math.sin(yaw) * 1.8, z = hp.z + Math.cos(yaw) * 1.8, tr = mkTurret(x, z); tr.m.scale.setScalar(1 + t * 0.12); gad.sentries.push({ id, m: tr.m, head: tr.head, x, z, until: now2 + dur2, shotT: 1, iv: [1.2, 1, 0.8][t], r: [12, 14, 16][t], k: [0.3, 0.42, 0.55][t] }); saveSentries(); for (let i = 0; i < 18; i++) d.particles.spawn(x, gy + 0.3, z, { vx: rnd(-2, 2), vy: rnd(1, 3), vz: rnd(-2, 2), life: 0.6, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffc060, a: 0.9 }); logMsg(left ? `🤖 Bartolomeu ${mk} volta ao posto: ainda tem ${fmtLeft(left)} de corda (${[12, 14, 16][t]} m).` : `🤖 Bartolomeu ${mk} toma posição: guarda este lugar por ${tl} (${[12, 14, 16][t]} m).`, '#e0b048'); return true; }
@@ -1731,9 +1741,27 @@ export function createGameplay(d: GameplayDeps) {
         if (g.t >= g.dur || g.p.y <= gy + 0.15) { d.scene.remove(g.m); grenades.splice(i, 1); explode(g.tx, g.tz, gy, g.r, g.mul, 0xff9a30, 1.0, g.p.clone()); for (let k = 0; k < 20; k++) d.particles.spawn(g.tx + rnd(-1, 1), gy + 0.3, g.tz + rnd(-1, 1), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.4, s0: 0.8, s1: 1.4, c0: 0x6a6a6a, c1: 0x222222, a: 0.5, drag: 1 }); }
       }
       for (let i = rocks.length - 1; i >= 0; i--) { const r = rocks[i]; r.t += dt; r.m.position.y = r.y0 + (r.t < 0.25 ? 0.45 * (r.t / 0.25) : r.t > 2.2 ? Math.max(0, 0.45 - (r.t - 2.2) * 0.6) : 0.45); if (r.t > 3.2) { d.scene.remove(r.m); r.m.geometry.dispose(); rocks.splice(i, 1); } }
-      { const nw = Date.now(), hpp = d.getHero().root.position;
-        if (gad.heal > nw) { gad.healT -= dt; if (gad.healT <= 0) { gad.healT = 6; if (st.hp < st.hpMax) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * gad.healK); if (gv.heal) gv.heal.beamT = 0.9; for (let q = 0; q < 6; q++) d.particles.spawn(hpp.x + rnd(-0.4, 0.4), hpp.y + 2, hpp.z + rnd(-0.4, 0.4), { vy: -0.8, life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x7affd0, a: 0.8 }); } } }
-        if (gad.shock > nw) { gad.shockT -= dt; if (gad.shockT <= 0) { gad.shockT = gad.shockI; const e = enemies.nearest(hpp, gad.shockR); if (e && e.alive) { zap(hpp.x, hpp.y + 1.3, hpp.z, e.pos.x, e.pos.y + 1, e.pos.z, 0x6ad0ff); skill = 'combo'; hitEnemy(e, gad.shockK, false, hpp); skill = null; } } }
+      { const nw = Date.now(), hpp = d.getHero().root.position, gdt = Math.min(1, Math.max(0, (nw - (gadLast || nw)) / 1000)); gadLast = nw; /* relógio de verdade: a bobina e o drone não atrasam quando o quadro cai */
+        if (gad.heal > nw) { gad.healT -= gdt; if (gad.healT <= 0) { gad.healT = 6; /* 28/10 (Erling: "quando receber o raio tem que fazer uns + azuis esverdeados em volta de mim, mostrando que está curando"): o raio do drone desce, as cruzes sobem em volta do corpo e o número de cura aparece */
+          if (gv.heal) gv.heal.beamT = 0.9; const full = st.hp >= st.hpMax, n = Math.round(Math.min(st.hpMax - st.hp, st.hpMax * gad.healK)); if (!full) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * gad.healK); dmgText(hpp.clone().setY(hpp.y + 2.3), `+${n}`, false, '#7affd0'); }
+          plusFx(hpp, full ? 5 : 12); for (let q = 0; q < 6; q++) d.particles.spawn(hpp.x + rnd(-0.4, 0.4), hpp.y + 2, hpp.z + rnd(-0.4, 0.4), { vy: -0.8, life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x7affd0, a: 0.8 }); } }
+        for (let i = pluses.length - 1; i >= 0; i--) { const q = pluses[i]; q.t += gdt; const k = q.t / q.life; q.s.position.set(hpp.x + Math.cos(q.a + q.t * 1.6) * q.r, hpp.y + q.y + q.t * 0.9, hpp.z + Math.sin(q.a + q.t * 1.6) * q.r); (q.s.material as THREE.SpriteMaterial).opacity = k < 0.2 ? k * 5 : 1 - (k - 0.2) / 0.8; if (k >= 1) { d.scene.remove(q.s); (q.s.material as THREE.SpriteMaterial).dispose(); pluses.splice(i, 1); } }
+        { const hh = d.getHero() as ReturnType<typeof d.getHero> & { cuffOn?: boolean }; hh.cuffOn = gad.shock > nw && zapDeath <= 0; }
+        if (gad.shock > nw && zapDeath <= 0 && !st.dead && inWater?.()) { zapDeath = 3; gad.shock = 0; zapFx = 0; zapSkull = 0; d.audio.spell('shock'); st.shake = Math.max(st.shake, 0.9); d.getHero().act('hit', true);
+          logMsg('⚡💀 ÁGUA COM A BOBINA LIGADA! A corrente fecha pelo seu corpo inteiro. O aviso estava na caixa…', '#ff6a5a'); }
+        if (zapDeath > 0) { zapDeath -= gdt; zapFx -= gdt; zapSkull -= gdt; const hr = d.getHero().root; st.shake = Math.max(st.shake, 0.35);
+          if (zapFx <= 0) { zapFx = 0.06; for (let k = 0; k < 2; k++) { const a = Math.random() * 6.283, b = a + rnd(1.2, 3), ya = hpp.y + rnd(0.2, 1.9), yb = hpp.y + rnd(0.2, 1.9); bolt3d(new THREE.Vector3(hpp.x + Math.cos(a) * 0.45, ya, hpp.z + Math.sin(a) * 0.45), new THREE.Vector3(hpp.x + Math.cos(b) * 0.45, yb, hpp.z + Math.sin(b) * 0.45), k ? 0xffffff : 0x6ad0ff); }
+            spellLight.color.setHex(0x8ad8ff); spellLight.position.set(hpp.x, hpp.y + 1.2, hpp.z); spellLight.intensity = 40 + Math.random() * 40; if (Math.random() < 0.3) d.audio.spell('shock'); }
+          hr.visible = Math.floor(zapDeath * 12) % 2 === 0; /* o corpo pisca no ritmo do choque */
+          if (zapSkull <= 0) { zapSkull = 0.45; dmgText(hpp.clone().setY(hpp.y + 2.6), '💀', true, '#ff4a4a'); }
+          if (zapDeath <= 0) { hr.visible = true; spellLight.intensity = 0; for (let i = 0; i < 30; i++) d.particles.spawn(hpp.x, hpp.y + 1, hpp.z, { vx: rnd(-3, 3), vy: rnd(1, 4), vz: rnd(-3, 3), life: 0.8, s0: 0.25, s1: 0.03, c0: 0xffffff, c1: 0x6ad0ff, a: 1, g: 3 }); logMsg('💀 Eletrocutado. Bobina de choque e água não combinam — estava escrito.', '#ff6a5a'); heroDie(); } }
+        if (gad.shock > nw && zapDeath <= 0) { gad.shockT -= gdt; if (gad.shockT <= 0) { gad.shockT = gad.shockI; const e = enemies.nearest(hpp, gad.shockR); if (e && e.alive) {
+          /* 28/10 (Erling: "não vejo o raio caindo sobre os bichos"): o raio sai do bracelete e um segundo cai do céu em cima do bicho, com clarão */
+          const top = e.pos.clone().setY(e.pos.y + 1.1), wr = (d.getHero() as { cuffPos?: (v: THREE.Vector3) => THREE.Vector3 }).cuffPos?.(new THREE.Vector3()) ?? new THREE.Vector3(hpp.x, hpp.y + 1.1, hpp.z);
+          bolt3d(wr, top, 0x6ad0ff); bolt3d(e.pos.clone().setY(e.pos.y + 9), top, 0xdff4ff); zap(top.x, top.y, top.z, e.pos.x, e.pos.y + 0.1, e.pos.z, 0x6ad0ff);
+          spellLight.color.setHex(0x8ad8ff); spellLight.position.copy(top); spellLight.intensity = 60; setTimeout(() => { spellLight.intensity = 0; }, 120); d.audio.spell('shock');
+          for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; d.particles.spawn(e.pos.x + Math.cos(a) * 0.3, e.pos.y + 0.15, e.pos.z + Math.sin(a) * 0.3, { vx: Math.cos(a) * 3, vy: 0.6, vz: Math.sin(a) * 3, life: 0.35, s0: 0.2, s1: 0.03, c0: 0xffffff, c1: 0x6ad0ff, a: 1, g: 0 }); }
+          skill = 'combo'; hitEnemy(e, gad.shockK, false, hpp); skill = null; } } }
         if (gad.shield > nw && !gad.shieldReady) { gad.shieldT -= dt; if (gad.shieldT <= 0) gad.shieldReady = true; }
         { const hy = d.getHero().root.rotation.y, tt = performance.now() / 1000, gyh = hpp.y; /* altura do herói (degrau, varanda, ponte), não do terreno */
           /* drone de cura: paira acima do ombro, gira devagar em volta, hélices zunindo; na cura desce um feixe verde */
