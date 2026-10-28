@@ -109,6 +109,7 @@ export const ITEMS: Record<string, Item> = {
   jerky: { name: 'Carne seca', icon: '🥓', kind: 'food', col: 0x8a4a3a, desc: 'Cura 30. Leve e durável.', heal: 30, sell: 5 },
   // construção
   plank: { name: 'Tábua', icon: '🟨', kind: 'res', col: 0xb08a5a, desc: 'Madeira aparelhada para construir.', sell: 3 },
+  escritura_casa: { name: 'Escritura da Casa', icon: '📃', kind: 'misc', col: 0xf0e0b0, desc: 'O documento de propriedade da sua casa, com o selo do Cartório de Karmika. Guarde com carinho e cuidado: quem tem a escritura é o dono. Use para ver o contrato.' },
   projeto_casa_tabuas: { name: 'Projeto · Casa de Tábuas e Pedra', icon: '📜', kind: 'misc', col: 0xe8d8a8, desc: 'A planta da casa com o material já separado (40 tábuas, 30 pregos, 24 pedras, 8 cordas, 16 galhos). Use para escolher o lugar do canteiro. Depois a obra pede 30 turnos de trabalho — a sua mão ou a de um Ajudante de Obra.' },
   nail: { name: 'Pregos', icon: '🔩', kind: 'res', col: 0x9a9aa0, desc: 'Um punhado de pregos de ferro.', sell: 2 },
   block: { name: 'Bloco de pedra', icon: '🧱', kind: 'res', col: 0x8a8a88, desc: 'Pedra aparelhada para fundações.', sell: 4 },
