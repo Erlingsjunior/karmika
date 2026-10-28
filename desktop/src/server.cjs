@@ -79,7 +79,7 @@ function startServer(opts = {}) {
     const casaKey = (acc, char) => acc + '|' + lc(char);
     const num = (v) => Number.isFinite(+v) ? +v : null;
     const casaOf = (h) => casas[casaKey(h.acc, h.char)] || null;
-    const casaList = () => Object.values(casas).map((c) => ({ char: c.char, nick: c.nick, name: c.name, gx: c.gx, gy: c.gy, w: c.w, h: c.h, done: c.done >= c.work, signed: !!c.signed }));
+    const casaList = () => Object.values(casas).map((c) => ({ char: c.char, nick: c.nick, name: c.name, gx: c.gx, gy: c.gy, w: c.w, h: c.h, done: c.done >= c.work, signed: !!c.signed, id: c.id, decor: c.decor || [] })); /* 28/10: a mobília e a decoração vão para todos da sala (as casas moram no servidor) */
     const deedOk = (d) => typeof d === 'string' && /^[a-z0-9]{6,16}$/.test(d);
     const deedMeta = (c) => ({ id: c.deedId, house: c.name, owner: c.owner || c.char, gx: c.gx, gy: c.gy, w: c.w, h: c.h, since: c.since });
     const hubOf = (acc, char) => [...hubs].find((x) => x.acc === acc && lc(x.char) === lc(char));

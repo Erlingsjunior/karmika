@@ -35,6 +35,6 @@ export function createHub(o: { char(): string; where(): 'mundo' | 'menu' }) {
   /* conta onde está: no menu ou no mundo, e com qual personagem (os amigos veem; a guilda é do personagem) */
   setInterval(() => { if (state !== 'on') return; const w = o.where() + o.char(); if (w !== lastWhere) { lastWhere = w; send({ t: 'a:where', char: o.char(), where: o.where() }); } }, 1500);
   { const last = (() => { try { return localStorage.getItem(LAST) || ''; } catch { return ''; } })(); if (last) setTimeout(() => connect(last), 400); }
-  return { connect, close, send, on(t: string, f: H) { if (!hs.has(t)) hs.set(t, new Set()); hs.get(t)!.add(f); }, onAny(f: () => void) { any.add(f); }, get state() { return state; }, get invite() { return inv; } };
+  return { connect, close, send, /** teste: entrega uma mensagem como se viesse do servidor */ inject: emit, on(t: string, f: H) { if (!hs.has(t)) hs.set(t, new Set()); hs.get(t)!.add(f); }, onAny(f: () => void) { any.add(f); }, get state() { return state; }, get invite() { return inv; } };
 }
 export type Hub = ReturnType<typeof createHub>;

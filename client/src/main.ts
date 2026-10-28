@@ -1016,10 +1016,11 @@ const askHouse = () => { const c = profile?.name ?? ''; if (!c || hub.state !== 
 hub.on('a:me', () => { hGot = ''; setTimeout(askHouse, 600); }); setInterval(askHouse, 3000);
 hub.on('h:mine', (m) => { if (m.bought) { badge('🏡', 'Casa comprada', String((m.house as { name?: string })?.name ?? '')); const hh = m.house as { deedId?: string; name: string; owner: string; gx: number; gy: number; w: number; h: number; since?: number }; if (hh?.deedId) registerDeed({ id: hh.deedId, house: hh.name, owner: hh.owner, place: placeOf(hh.gx, hh.gy), gx: hh.gx, gy: hh.gy, w: hh.w, h: hh.h, since: hh.since }); } const r = obras.fromServer((m.house as never) ?? null); if (r === 'up' && obras.home) hub.send({ t: 'h:sync', house: obras.home }); });
 hub.on('h:deny', (m) => game.logMsg(`🏡 ${String(m.why || 'O servidor recusou a casa.')}`, '#ff9a8a'));
-const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean }[] = []; const otherProps = new Map<string, (typeof city.props)[number]>();
+const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean; id?: string; decor?: { id: string; x: number; z: number; r: number; i: number }[] }[] = []; const otherDecor = new Map<(typeof city.props)[number], NonNullable<(typeof otherHouses)[number]['decor']>>(); const otherProps = new Map<string, (typeof city.props)[number]>();
 hub.on('h:all', (m) => { const me = (profile?.name ?? '').toLowerCase(); otherHouses.length = 0; for (const c of (m.list as typeof otherHouses) ?? []) if (c.char.toLowerCase() !== me && [c.gx, c.gy, c.w, c.h].every(Number.isFinite)) otherHouses.push(c);
   for (const c of otherHouses) { const k = c.char.toLowerCase() + '@' + c.gx + ',' + c.gy; if (!c.done || otherProps.has(k)) continue; let free = true; for (let y = c.gy; y < c.gy + c.h && free; y++) for (let x = c.gx; x < c.gx + c.w; x++) if (city.map[y]?.[x] !== 'grass') { free = false; break; } if (!free) continue;
-    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: wholeOf(undefined, c.name).variant, style: wholeOf(undefined, c.name).style, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; } });
+    const p = { kind: 'house', gx: c.gx, gy: c.gy, w: c.w, h: c.h, height: 3.4, wall: 0xb09068, roof: 0x8a3a28, variant: wholeOf(undefined, c.name).variant, style: wholeOf(undefined, c.name).style, rot: 0, label: `Casa de ${c.char}` } as (typeof city.props)[number]; objs.addProp(p); otherProps.set(k, p); for (let y = c.gy; y < c.gy + c.h; y++) for (let x = c.gx; x < c.gx + c.w; x++) city.map[y][x] = 'wall'; }
+  otherDecor.clear(); for (const c of otherHouses) { const p = otherProps.get(c.char.toLowerCase() + '@' + c.gx + ',' + c.gy); if (p && c.done) otherDecor.set(p, c.decor ?? []); } decoRenderOthers(); });
 /* os terrenos das guildas: quadras de 10×10 de capim livre em volta de Lumenhal, a cidade média (todos calculam igual: o mundo é o mesmo) */
 const GPLOT = 10;
 const guildPlots = (() => { const lu = city.settlements.find((q) => q.name === 'Lumenhal'); if (!lu) return [] as { x0: number; y0: number }[]; const out: { x0: number; y0: number }[] = [];
@@ -1555,9 +1556,12 @@ function decoPickup(k: number) { const list = [...(obras.decor ?? [])], it = lis
 /** do lado de fora: as peças do terreno (refeitas quando a lista muda) */
 function decoRender() { for (const c of [...decoOut.children]) decoOut.remove(c); const h = homeDone(); if (!h) return;
   for (const it of obras.decor ?? []) { if (it.i) continue; const d = DECOR[it.id]; if (!d) continue; const g = d.build(), x = h.gx * T + it.x, z = h.gy * T + it.z; g.position.set(x, heightAt(x, z), z); g.rotation.y = it.r * Math.PI / 4; decoOut.add(g); } }
+/** as casas dos outros jogadores: a decoração do terreno deles aparece para todos */
+const decoOthers = new THREE.Group(); scene.add(decoOthers);
+function decoRenderOthers() { for (const c of [...decoOthers.children]) decoOthers.remove(c); for (const [p, L] of otherDecor) for (const it of L) { if (it.i) continue; const d = DECOR[it.id]; if (!d) continue; const g = d.build(), x = p.gx * T + it.x, z = p.gy * T + it.z; g.position.set(x, heightAt(x, z), z); g.rotation.y = (it.r & 7) * Math.PI / 4; decoOthers.add(g); } }
 /** dentro de casa: as peças do interior, com colisão e as luzes de lareira/velas/cristal (no máximo 4) */
-function decoInterior() { if (!inside || !decoInHome()) return; const int = inside.int; for (const q of decoInObjs) q.o.parent?.remove(q.o); decoInObjs = []; int.colliders.splice(0, int.colliders.length, ...int.colliders.filter((c) => !(c as unknown as { deco?: boolean }).deco));
-  let lights = 0; (obras.decor ?? []).forEach((it, k) => { if (!it.i) return; const d = DECOR[it.id]; if (!d) return; const g = d.build(); g.position.set(it.x, 0, it.z); g.rotation.y = it.r * Math.PI / 4; int.group.add(g); decoInObjs.push({ o: g, k });
+function decoInterior(list?: { id: string; x: number; z: number; r: number; i: number }[]) { if (!inside || (!list && !decoInHome())) return; const int = inside.int; for (const q of decoInObjs) q.o.parent?.remove(q.o); decoInObjs = []; int.colliders.splice(0, int.colliders.length, ...int.colliders.filter((c) => !(c as unknown as { deco?: boolean }).deco));
+  let lights = 0; (list ?? obras.decor ?? []).forEach((it, k) => { if (!it.i) return; const d = DECOR[it.id]; if (!d) return; const g = d.build(); g.position.set(it.x, 0, it.z); g.rotation.y = it.r * Math.PI / 4; int.group.add(g); decoInObjs.push({ o: g, k });
     if (d.r > 0 && !d.wall) { const c = [it.x, it.z, d.r * 0.8] as [number, number, number]; (c as unknown as { deco: boolean }).deco = true; int.colliders.push(c); }
     const L = g.userData.light as [number, number, number, number] | undefined; if (L && lights < 4) { lights++; const pl = new THREE.PointLight(L[3], 14, 7, 1.6); pl.position.set(L[0], L[1], L[2]); g.add(pl); } }); }
 /** E perto de uma peça colocada: guardar */
@@ -3157,7 +3161,7 @@ function withFade(fn: () => void, label?: string, after?: () => void) {
 function enterHouse(p: (typeof city.props)[number]) {
   withFade(() => {
     const holy = p.kind === 'temple' || p.kind === 'church';
-    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : 6) : p === homeProp ? 20 : p.variant === 9 ? 0 : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy); /* 28/10: a casa do jogador começa vazia (só cama e correio): o resto é a mobília dele */
+    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : 6) : p === homeProp || otherDecor.has(p) ? 20 : p.variant === 9 ? 0 : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy); /* 28/10: a casa do jogador começa vazia (só cama e correio): o resto é a mobília dele */
     if (p === homeProp) { /* a casa do jogador: cama (descansa e cura) e a caixa de correio que guarda itens (o cofre), encostadas na parede do fundo */
       const bx = 1.6, bz = 1.5, mk = (g: THREE.BufferGeometry, c: number, x: number, y: number, z: number) => { const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color: c })); m.position.set(x, y, z); int.group.add(m); return m; };
       mk(new THREE.BoxGeometry(1.5, 0.4, 2.3), 0x6a4a2c, bx, 0.2, bz); mk(new THREE.BoxGeometry(1.4, 0.18, 2.1), 0xe8dcc8, bx, 0.49, bz); mk(new THREE.BoxGeometry(1.4, 0.06, 1.3), 0x8a2a2a, bx, 0.6, bz + 0.35); mk(new THREE.BoxGeometry(1.0, 0.16, 0.45), 0xf4ecdc, bx, 0.63, bz - 0.75); mk(new THREE.BoxGeometry(1.5, 1.0, 0.1), 0x5a3a20, bx, 0.5, bz - 1.15);
@@ -3165,7 +3169,7 @@ function enterHouse(p: (typeof city.props)[number]) {
       (int as typeof int & { home?: { bed: { x: number; z: number }; box: { x: number; z: number } } }).home = { bed: { x: bx, z: bz + 1.4 }, box: { x: mx, z: mz + 0.7 } }; }
     int.group.position.set(IX, 0, IZ); scene.add(int.group);
     { const dd = DOOR_OF.get(p); inside = { int, ret: dd ? { x: dd.out.x / T, y: dd.out.z / T } : { x: p.gx + p.w / 2 + (holy ? 0.8 : 0), y: p.gy + p.h + 0.8 }, prop: p }; }
-    objs.group.visible = false; decoOut.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false; if (p === homeProp) decoInterior();
+    objs.group.visible = false; decoOut.visible = false; decoOthers.visible = false; sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false; if (p === homeProp) decoInterior(); else if (otherDecor.has(p)) decoInterior(otherDecor.get(p));
     state.fx = (IX + int.W / 2) / T; state.fy = (IZ + int.D - 0.6) / T; state.path = [];
     heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D / 2; camY = 0;
     game.logMsg(p.kind === 'temple' ? 'Templo Kármico' : p.kind === 'church' ? 'Igreja Abandonada — o ar é frio aqui' : p.variant === 4 ? 'Taverna Karmika' : p.variant === 5 ? 'Loja do Armeiro' : 'Você entra na casa', '#f4e6b8');
@@ -3396,7 +3400,7 @@ function exitHouse() {
   if (ins.crypt) { game.enemies.clearTag('crypt'); cryptInt = null; bishop = null; if (spirit) { scene.remove(spirit.root); spirit = null; } }
   if (ins.dg) dgs.stop();
   exiting = true;
-  withFade(() => { scene.remove(ins.int.group); inside = null; objs.group.visible = true; decoOut.visible = true; decoCancel(); for (const n of npcSys.npcs) n.hero.root.visible = true; state.fx = ins.ret.x; state.fy = ins.ret.y; state.path = []; objs.update(state.fx * T, state.fy * T, true); { const g0 = heightAt(state.fx * T, state.fy * T), s0 = stepAt(state.fx * T, state.fy * T); heroY = s0 !== null && s0 > g0 ? s0 : g0; } /* 27/10: a porta da catedral fica na escadaria: sair com a altura do degrau, não da terra embaixo */ camX = state.fx * T; camZ = state.fy * T; camY = heroY; exiting = false; });
+  withFade(() => { scene.remove(ins.int.group); inside = null; objs.group.visible = true; decoOut.visible = true; decoOthers.visible = true; decoCancel(); for (const n of npcSys.npcs) n.hero.root.visible = true; state.fx = ins.ret.x; state.fy = ins.ret.y; state.path = []; objs.update(state.fx * T, state.fy * T, true); { const g0 = heightAt(state.fx * T, state.fy * T), s0 = stepAt(state.fx * T, state.fy * T); heroY = s0 !== null && s0 > g0 ? s0 : g0; } /* 27/10: a porta da catedral fica na escadaria: sair com a altura do degrau, não da terra embaixo */ camX = state.fx * T; camZ = state.fy * T; camY = heroY; exiting = false; });
 }
 let sitting: { x: number; y: number; yaw: number } | null = null;
 const hintEl = document.getElementById('act') as HTMLElement;
@@ -3524,7 +3528,7 @@ function setHome(p: { gx: number; gy: number; h: number }) { feats.bump('homes')
 /** põe o herói num lugar sem tela de carregamento (a luz branca do Limiar cobre a troca) */
 /** morreu ou foi levado lá dentro (masmorra, cripta, casa): sai do interior sem tela de carregamento */
 function leaveInteriorNow() { if (!inside) return; const ins = inside; if (ins.dg) dgs.stop(); if (ins.crypt) { game.enemies.clearTag('crypt'); cryptInt = null; bishop = null; if (spirit) { scene.remove(spirit.root); spirit = null; } }
-  scene.remove(ins.int.group); inside = null; objs.group.visible = true; decoOut.visible = true; decoCancel(); for (const n of npcSys.npcs) n.hero.root.visible = true; }
+  scene.remove(ins.int.group); inside = null; objs.group.visible = true; decoOut.visible = true; decoOthers.visible = true; decoCancel(); for (const n of npcSys.npcs) n.hero.root.visible = true; }
 function placeAt(why: string, to: { x: number; y: number } = home) { leaveInteriorNow(); state.fx = to.x; state.fy = to.y; state.path = []; objs.update(state.fx * T, state.fy * T, true); heroY = heightAt(state.fx * T, state.fy * T); camX = state.fx * T; camZ = state.fy * T; camY = heroY; game.logMsg(why, '#8ad0ff'); for (let i = 0; i < 40; i++) particles.spawn(state.fx * T, 0.5, state.fy * T, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.05, c0: 0xfff0bd, c1: 0x8f7bff, a: 1 }); }
 function goHome(why: string, to: { x: number; y: number } = home) { withFade(() => placeAt(why, to)); }
 game.setOnDeath((revive) => { feats.bump('deaths'); soul.regen();
@@ -3905,6 +3909,7 @@ function findInter(): Inter | null {
     if (inv.tool('rod') && !fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(wt!); }); }
   } else if (inside.prop.variant === 5 || inside.prop.variant === 4) add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
   if (spirit) add(Math.hypot(hx - spirit.x, hz - spirit.z) - 0.6, 3.2, 'E — Falar com Irmã Ysolde', talkSpirit);
+  if (!inside) for (const p of otherDecor.keys()) { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T), dx = p.gx * T + hd.x, dz = p.gy * T + hd.z + 0.9; add(Math.hypot(hx - dx, hz - dz), 2.2, `E — Visitar a ${p.label ?? 'casa'}`, () => enterHouse(p)); }
   { const dn = decoNear(hx, hz); if (dn) { const it = obras.decor[dn.k]; add(dn.d, 1.5, `E — Guardar ${DECOR[it.id]?.icon ?? ''} ${DECOR[it.id]?.name ?? ''} na mochila`, () => decoPickup(dn.k)); } }
   if (inside && inside.prop === homeProp) { const hm = (inside.int as typeof inside.int & { home?: { bed: { x: number; z: number }; box: { x: number; z: number } } }).home; if (hm) { const lx0 = hx - IX, lz0 = hz - IZ;
       add(Math.hypot(lx0 - hm.bed.x, lz0 - hm.bed.z) - 0.4, 2.2, 'E — Deitar e descansar (recupera a vida)', () => { hero.kneel = true; game.logMsg('🛏 Você se deita um pouco. A casa é sua; aqui ninguém incomoda.', '#ffe08a'); setTimeout(() => { hero.kneel = false; game.st.hp = game.st.hpMax; game.st.mp = game.st.mpMax; game.logMsg('🛏 Descansado: vida e magia cheias.', '#9affb0'); }, 1800); });
