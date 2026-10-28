@@ -182,9 +182,10 @@ export function createGameplay(d: GameplayDeps) {
     for (let i = 0; i < 6; i++) d.particles.spawn(dx, y + 0.4, dz, { vx: rnd(-0.6, 0.6), vy: rnd(0.5, 1.6), vz: rnd(-0.6, 0.6), life: 0.6, s0: 0.2, s1: 0.04, c0: kind === 'gold' ? 0xffe27a : 0xff8a9a, c1: 0xff9a20, a: 0.9, drag: 1.5 });
   }
   const logEl = document.getElementById('log') as HTMLElement | null;
-  function logMsg(txt: string, col = '#e8dcc0') { txt = G(txt);
+  let logHook: ((t: string) => void) | null = null;
+  function logMsg(txt: string, col = '#e8dcc0') { txt = G(txt); try { logHook?.(txt); } catch { /* */ }
     if (!logEl) return; const li = document.createElement('div'); li.textContent = txt; li.style.color = col; logEl.appendChild(li);
-    while (logEl.children.length > 7) logEl.removeChild(logEl.firstChild!);
+    while (logEl.children.length > 5) logEl.removeChild(logEl.firstChild!); /* 28/10 (Erling): no máximo 5 linhas; as novas empurram as velhas */
     setTimeout(() => { li.style.opacity = '0'; setTimeout(() => li.remove(), 600); }, 6000);
   }
   function levelBanner(n: number, lines: string[]) {
@@ -910,7 +911,7 @@ export function createGameplay(d: GameplayDeps) {
     return null;
   }
   const api = {
-    st, logMsg, dmgText, enemies, dropLoot(x: number, z: number, y: number, id: string, n: number) { dropItem({ pos: new THREE.Vector3(x, y, z) } as unknown as Enemy, id, n); }, dropGearSet(x: number, z: number, y: number, gs: Gear[]) { spawnGear(x, z, y, 1, {}, gs.length, undefined, gs); }, setClassName(n: string) { if (!(cls.past ?? []).length && cls.name !== n) { cls.name = n; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } } }, get classInfo() { return { ...cls, need: clsNeed(cls.lvl) }; },
+    st, logMsg, setLogHook(f: (t: string) => void) { logHook = f; }, dmgText, enemies, dropLoot(x: number, z: number, y: number, id: string, n: number) { dropItem({ pos: new THREE.Vector3(x, y, z) } as unknown as Enemy, id, n); }, dropGearSet(x: number, z: number, y: number, gs: Gear[]) { spawnGear(x, z, y, 1, {}, gs.length, undefined, gs); }, setClassName(n: string) { if (!(cls.past ?? []).length && cls.name !== n) { cls.name = n; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } } }, get classInfo() { return { ...cls, need: clsNeed(cls.lvl) }; },
     /** buffs e debuffs ativos agora (para a barra de efeitos no alto da tela) */
     buffs() { const L: { id: string; name: string; ic: string; t?: number; good: boolean; tip: string }[] = [];
       if (buff.dmgT > 0) L.push({ id: 'dmg', name: 'Fúria de Batalha', ic: '⚔', t: buff.dmgT, good: true, tip: `+${Math.round((buff.dmg - 1) * 100)}% de dano` });

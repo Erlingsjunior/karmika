@@ -40,7 +40,7 @@ export function createChat(ctx: { me(): string; onSay?(text: string, ch: Channel
     msgs.innerHTML = list.map((m) => `<div style="color:${COL[m.ch]}"><small>${new Date(m.t).toTimeString().slice(0, 5)}</small> ${PRE[m.ch]}${m.ch === 'sys' ? '' : m.ch === 'whisper' && m.to ? `<b>${esc(m.from)} → ${esc(m.to)}:</b> ` : `<b>${esc(m.from)}:</b> `}${esc(m.text)}</div>`).join('');
     msgs.scrollTop = msgs.scrollHeight;
   }
-  function push(m: ChatMsg) { hist.push(m); if (hist.length > 200) hist.shift(); try { localStorage.setItem('karmika.chat.v1', JSON.stringify(hist.slice(-120))); } catch { /* */ } render(); el.classList.add('new'); el.classList.remove('dim'); setTimeout(() => { el.classList.remove('new'); if (!el.classList.contains('open') && !el.matches(':hover')) el.classList.add('dim'); }, 6000); }
+  function push(m: ChatMsg, quiet = false) { hist.push(m); if (hist.length > 200) hist.shift(); try { localStorage.setItem('karmika.chat.v1', JSON.stringify(hist.slice(-120))); } catch { /* */ } render(); if (quiet) return; el.classList.add('new'); el.classList.remove('dim'); setTimeout(() => { el.classList.remove('new'); if (!el.classList.contains('open') && !el.matches(':hover')) el.classList.add('dim'); }, 6000); }
   /** mensagem de sistema (missões, eventos) */
   const sys = (text: string) => push({ ch: 'sys', from: '', text, t: Date.now() });
   /** mensagem recebida de outro jogador (servidor) */
@@ -62,5 +62,7 @@ export function createChat(ctx: { me(): string; onSay?(text: string, ch: Channel
   render(); el.classList.add('dim');
   /** abre o chat já com "/w nome " (menu do jogador → mensagem privada) */
   function whisperTo(name: string) { open(); input.value = `/w ${name.includes(' ') ? name.replace(/\s+/g, '_') : name} `; input.setSelectionRange(input.value.length, input.value.length); }
-  return { open, close, say, sys, recv, whisperTo, get isOpen() { return el.classList.contains('open'); } };
+  /** 28/10: os acontecimentos do jogo (o registro ao lado) também ficam guardados na aba Sistema, sem acender o chat */
+  const sysLog = (text: string) => push({ ch: 'sys', from: '', text, t: Date.now() }, true);
+  return { open, close, say, sys, sysLog, recv, whisperTo, get isOpen() { return el.classList.contains('open'); } };
 }

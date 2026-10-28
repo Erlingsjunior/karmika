@@ -911,6 +911,12 @@ function betaCommand(cmd: string, a: string[]): string | null {
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
 const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda') { const tx = a.join(' ').trim(); if (tx) social.guildChat(tx); else social.toggle(true, 'guilda'); return '⚑ (guilda)'; } return betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+/* 28/10 (Erling): o registro de acontecimentos mostra só as 5 últimas linhas e tudo fica guardado na aba Sistema do chat;
+   o botão 📜 recolhe o registro (aí ele só aparece no chat) */
+(game as unknown as { setLogHook(f: (t: string) => void): void }).setLogHook((t) => chat.sysLog(t));
+{ const LK = 'karmika.ui.logoff'; const lg = document.getElementById('log'); const bt = document.createElement('button'); bt.id = 'logtog'; document.body.appendChild(bt);
+  const apply = (off: boolean) => { if (lg) lg.style.visibility = off ? 'hidden' : ''; bt.classList.toggle('off', off); bt.textContent = off ? '📜' : '📜'; bt.title = off ? 'Mostrar o registro de acontecimentos na tela (eles continuam na aba Sistema do chat)' : 'Recolher o registro de acontecimentos (eles continuam na aba Sistema do chat)'; try { localStorage.setItem(LK, off ? '1' : '0'); } catch { /* */ } };
+  let off = false; try { off = localStorage.getItem(LK) === '1'; } catch { /* */ } apply(off); bt.addEventListener('click', () => { off = !off; apply(off); }); }
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
 const net = createNet({ scene, camera, canvas,
   look: () => ({ kind: kindOf(state.race), opts: profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}, gear: lastGear, skin: netSkin, name: profile?.name || RACES[state.race].label, lvl: game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(state.karma), fac: myFac(), path: myPath(), lean: soulLean(), prem: isPremium() }),
@@ -918,7 +924,7 @@ const net = createNet({ scene, camera, canvas,
   st: () => { const p = hero.root.position; const zn = inside ? (inside.crypt ? `crypt:${inside.crypt}` : `in:${inside.prop.gx},${inside.prop.gy}`) : 'world';
     return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), f: +hero.root.rotation.y.toFixed(3), m: +netMps.toFixed(2), zn, hp: Math.round(100 * game.st.hp / Math.max(1, game.st.hpMax)), ...(hero.combat ? { cb: 1 as const } : {}), ...(hero.guard ? { gd: 1 as const } : {}), ...(hero.riding ? { rd: 1 as const } : {}), ...(hero.kneel ? { kn: 1 as const } : {}), ...(pvpOn ? { ag: 1 as const } : {}) }; },
   chat: (name, text, w) => chat.recv(name, text, w ? 'whisper' : 'local', w ? (profile?.name || '') : undefined),
-  sys: (text, color) => { game.logMsg(text, color); chat.sys(text); },
+  sys: (text, color) => { game.logMsg(text, color); },
   joined: (name) => { // aviso de chegada: som, um selo na tela e, se a janela estiver em segundo plano, notificação do sistema
     audio.chime(); badge('✧', 'chegou ao mundo', name, 'join');
     try { if (!document.hasFocus() && 'Notification' in window) { const go = () => new Notification('Karmika', { body: `${name} entrou no mundo.` }); if (Notification.permission === 'granted') go(); else if (Notification.permission !== 'denied') Notification.requestPermission().then((p) => { if (p === 'granted') go(); }); } } catch { /* */ } },
