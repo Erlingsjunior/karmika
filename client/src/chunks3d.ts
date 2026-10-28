@@ -19,7 +19,7 @@ const PAL: Record<Biome, [THREE.Color, THREE.Color]> = {
 const MOSS = C(0x4c6c2a), DIRT = C(0x6e5438), MUD = C(0x3a3226), BED = C(0x2a3a3a), PEBBLE = C(0x817e76), ROAD = C(0x8a6d49), ROAD2 = C(0x6f5638), PLAZA = C(0x8d8f9c), CLIFF = C(0x5d5a56), CLIFF2 = C(0x7b7468);
 const tmpC = new THREE.Color(), tmpD = new THREE.Color();
 
-function tileAt(w: World, x: number, y: number) { return w.map[Math.min(MAP_H - 1, Math.max(0, y))][Math.min(MAP_W - 1, Math.max(0, x))]; }
+function tileAt(w: World, x: number, y: number) { return w.map[Math.min(MAP_H - 1, Math.max(0, y | 0))][Math.min(MAP_W - 1, Math.max(0, x | 0))]; } /* | 0: NaN vira 0 (28/10: um NaN aqui travava a abertura do jogo) */
 /** peso bilinear de um tipo de tile em (tx,ty) contínuos */
 function tileW(w: World, tx: number, ty: number, pred: (t: string) => boolean) {
   const fx = tx - 0.5, fy = ty - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), u = fx - x0, v = fy - y0;

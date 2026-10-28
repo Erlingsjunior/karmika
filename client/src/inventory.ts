@@ -8,7 +8,7 @@ import { reqLvl, tipCtx, genGear, gearTip, gearIcon, plainGear, syncUid, rollRar
 
 export type ItemKind = 'res' | 'food' | 'tool' | 'weapon' | 'armor' | 'shield' | 'misc';
 export interface Item { name: string; icon: string; kind: ItemKind; col: number; desc: string; /** item de missão: não se vende, não se dá, não vai ao leilão nem ao correio; destruir abandona a missão */ quest?: string; heal?: number; mp?: number; buff?: string; atk?: number; def?: number; tier?: number; sell?: number }
-export const ITEMS: Record<string, Item> = {
+const ITEMS0: Record<string, Item> = {
   stick: { name: 'Galho', icon: '🥢', kind: 'res', col: 0x8a6a3a, desc: 'Gravetos secos. Servem para ferramentas e fogueira.', sell: 1 },
   wood: { name: 'Madeira', icon: '🪵', kind: 'res', col: 0x7a5532, desc: 'Troncos cortados.', sell: 2 },
   stone: { name: 'Pedra', icon: '🪨', kind: 'res', col: 0x8a8a88, desc: 'Pedra comum.', sell: 1 },
@@ -138,6 +138,16 @@ export const ITEMS: Record<string, Item> = {
   mount_horse: { name: 'Cavalo Baio', icon: '🐴', kind: 'misc', col: 0x6a4a2e, desc: 'Montaria (Z): +75% de velocidade fora de combate.', tier: 1 },
   mount_black: { name: 'Corcel Negro', icon: '🐎', kind: 'misc', col: 0x1a1612, desc: 'Montaria (Z): +90% de velocidade fora de combate.', tier: 2 },
 };
+/* A ESCRITURA É UM ITEM ÚNICO DINÂMICO (28/10, Erling): um só tipo de item que "recebe" cada casa. O id é escritura_<número>; o
+   nome e os dados vêm do registro de escrituras (preenchido pela casa e pelo servidor). Qualquer casa nova (2 andares, capela,
+   toca…) usa o mesmo item, sem trabalho novo. ITEMS responde por qualquer escritura_* mesmo antes do registro chegar. */
+export interface DeedMeta { id: string; house: string; owner: string; place?: string; gx?: number; gy?: number; w?: number; h?: number; since?: number }
+const DEEDK = 'karmika.deeds.v1';
+export const DEEDS: Record<string, DeedMeta> = (() => { try { return JSON.parse(localStorage.getItem(DEEDK) || '{}'); } catch { return {}; } })();
+const deedItem = (m?: DeedMeta): Item => ({ name: m ? `Escritura · ${m.house}` : 'Escritura de Casa', icon: '📃', kind: 'misc', col: 0xf0e0b0, desc: m ? `O documento de propriedade da ${m.house}${m.place ? `, em ${m.place}` : ''}, com o selo do Cartório de Karmika. Dono registrado: ${m.owner}. Quem tem a escritura pode tomar posse: use para abrir o contrato.` : 'O documento de propriedade de uma casa, com o selo do Cartório de Karmika. Use para abrir o contrato.' });
+export function registerDeed(m: DeedMeta) { DEEDS[m.id] = { ...DEEDS[m.id], ...m }; try { localStorage.setItem(DEEDK, JSON.stringify(DEEDS)); } catch { /* */ } ITEMS0['escritura_' + m.id] = deedItem(DEEDS[m.id]); }
+export const deedIdOf = (itemId: string) => /^escritura_([a-z0-9]{6,16})$/.test(itemId) ? itemId.slice(10) : null;
+export const ITEMS: Record<string, Item> = new Proxy(ITEMS0, { get(t, k) { if (typeof k === 'string' && !(k in t)) { const d = deedIdOf(k); if (d) t[k] = deedItem(DEEDS[d]); } return (t as Record<string | symbol, Item>)[k as string]; } });
 for (const id of Object.keys(TOOLS)) if (ITEMS[id]) ITEMS[id].desc = (ITEMS[id].desc ? ITEMS[id].desc + ' ' : '') + toolDesc(id);
 export const PRICES: Record<string, number> = { axe_i: 60, axe_s: 30, axe_st: 220, pick_s: 30, pick_i: 70, pick_st: 240, knife_f: 12, knife_i: 55, knife_st: 200, shears_c: 25, shears_i: 80, rod_ash: 90, potion: 15, blood_d: 22, semente_mod: 30, unguento_terra: 80, agua_benta: 80, coracao_demonio: 120, chifre_sangue: 110, po_sono: 90, sino_guarda: 95, pao_azimo: 70, vinho_santo: 110, trigo_sf: 45, gota_santa: 70, incenso_m: 150, areia_astral: 65, cinzas_mortos: 65, charc_sec: 190, inj_s: 170, sangria_c: 75, reator_1: 280, reator_2: 760, cristal_arcano: 120, fluido_vital: 70, bread: 4, rope: 6, flint: 8, rod: 25, bag_s: 60, bag_m: 180, bag_l: 520, bag_xl: 1400, potion_g: 40, mana: 28, tonic: 24, antidote: 16, beer: 8, mead: 16, skewer: 14, stew: 22, sausage: 12, jerky: 9, cooked: 10, fishc: 9, plank: 6, nail: 4, block: 8, wood: 5, stone: 3, pet_fox: 350, meat: 6, apple: 3, pet_rat: 180, pet_cat: 300, pet_cat_b: 420, pet_piglet: 260, mount_grey: 1100, coleira_couro: 40, coleira_prata: 220, peitoral_couro: 70, peitoral_ferro: 300, feno: 4, bag_mg: 2400, pet_pup: 500, mount_horse: 900, mount_black: 2200, scroll_return: 30 };
 export interface ShopDef { title: string; items: string[]; fac?: Fac; gear?: Slot[]; buys?: Record<string, number>; note?: string; /** abas da prateleira (27/10): cada aba lista os seus itens; sem abas, tudo junto */ tabs?: { name: string; items: string[] }[]; /** botão extra ao lado das abas (ex.: a carroça anã contrata festas) */ extra?: { label: string; act: () => void } }

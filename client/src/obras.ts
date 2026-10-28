@@ -15,6 +15,7 @@ export interface HomeSave { id: string; name: string; gx: number; gy: number; w:
   /** antigo (um robô só) — migra para robots */ robot?: Robot;
   /** 28/10: até 4 Ajudantes de Obra ao mesmo tempo; cada um trabalha no seu canto do canteiro (slot 0..3) e soma turnos à obra */ robots?: Robot[];
   /** quando a escritura saiu (a carta do Cartório) */ deed?: number;
+  /** o número da escritura (o item escritura_<deedId>) */ deedId?: string;
   /** 28/10: a licença da Companhia para usar Ajudantes nesta obra (um Contrato de Obra Automatizada por casa) */ contract?: boolean }
 export interface Robot { tier: number; until: number; last: number; hp: number; dead?: number; slot: number }
 export const MAX_ROBOTS = 4;
@@ -33,7 +34,7 @@ const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY
 export function createObras(ctx: {
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
-  /** a casa pronta entra no mundo como prop (e sai, se for demolida) */ addHouse(h: HomeSave): void;
+  /** a casa pronta entra no mundo como prop (e sai, se for demolida ou vendida) */ addHouse(h: HomeSave): void; removeHouse?(h: HomeSave): void;
   /** o Contrato de Obra Automatizada na mochila (a licença dos robôs) */ hasContract?(): boolean; takeContract?(): boolean;
   /** a casa ficou pronta (uma vez só): o main manda a carta do Cartório com a escritura */ onDone?(h: HomeSave): void;
   heroName(): string; particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
@@ -86,7 +87,7 @@ export function createObras(ctx: {
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.6, 6), std(0x4a3220)); post.position.y = 0.8; g.add(post);
     const board = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 0.06), [std(0x5a3a20), std(0x5a3a20), std(0x5a3a20), std(0x5a3a20), new THREE.MeshToonMaterial({ map: tex }), new THREE.MeshToonMaterial({ map: tex })]); board.position.y = 1.5; g.add(board);
     ctx.scene.add(g); }
-  function finish() { if (!home) return; if (site) { ctx.scene.remove(site); site = null; } ctx.block(home.gx, home.gy, home.w, home.h, false); ctx.addHouse(home); if (home.signed) makeSign(home); if (!home.deed) { home.deed = Date.now(); saveHome(home); try { ctx.onDone?.(home); } catch { /* */ } }
+  function finish() { if (!home) return; if (site) { ctx.scene.remove(site); site = null; } ctx.block(home.gx, home.gy, home.w, home.h, false); ctx.addHouse(home); if (home.signed) makeSign(home); if (!home.deedId) home.deedId = Array.from(crypto.getRandomValues(new Uint8Array(5)), (b) => b.toString(36).padStart(2, '0')).join('').slice(0, 10); if (!home.deed) { home.deed = Date.now(); saveHome(home); try { ctx.onDone?.(home); } catch { /* */ } }
     const cx = (home.gx + home.w / 2) * T, cz = (home.gy + home.h / 2) * T; for (let i = 0; i < 60; i++) ctx.particles.spawn(cx + (Math.random() - 0.5) * home.w * T, ctx.heightAt(cx, cz) + 3 + Math.random() * 2, cz + (Math.random() - 0.5) * home.h * T, { vx: (Math.random() - 0.5) * 2, vy: Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 1.2, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0xffd070, a: 0.9 }); }
   /* ---- os Ajudantes de Obra: robôs pedreiros com braço de martelo; indefesos. Um em cada canto do canteiro ---- */
   const live = () => (home?.robots ?? []).filter((r) => !r.dead && r.until > Date.now());
@@ -176,6 +177,9 @@ export function createObras(ctx: {
       if (home.gx === h.gx && home.gy === h.gy) { let ch = false; if (h.done > home.done + 0.01) { home.done = Math.min(home.work, h.done); ch = true; } if (h.signed && !home.signed) { home.signed = true; ch = true; } if (h.contract && !home.contract) { home.contract = true; ch = true; }
         if (ch) { saveHome(home); refresh(); if (home.done >= home.work) finish(); } return ch ? 'merged' : 'same'; }
       try { localStorage.setItem(KEY, JSON.stringify(h)); } catch { /* */ } ctx.log(`🏡 O servidor guarda a sua casa em outro lugar (${h.name}). Ela aparece no lugar certo quando você reabrir o jogo.`, '#ffe08a'); return 'moved'; },
+    /** a casa foi vendida (o comprador assinou a escritura): sai do seu mundo e do seu save */
+    release(why: string) { if (!home) return; const h = home; if (h.done >= h.work) ctx.removeHouse?.(h); else { if (site) { ctx.scene.remove(site); site = null; } clearRobotMeshes(); ctx.block(h.gx, h.gy, h.w, h.h, false); }
+      if (sign) { ctx.scene.remove(sign); sign = null; } home = null; working = false; lastStage = -1; try { localStorage.removeItem(KEY); } catch { /* */ } ctx.log(why, '#ffe08a'); },
     door() { return home ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.9 } : null; },
     siteCenter() { return home && home.done < home.work ? { x: (home.gx + home.w / 2) * T, z: (home.gy + home.h) * T + 0.6, p: home.done / home.work, done: home.done, need: home.work, robot: live().length > 0, robots: live().length, covered: covered(Date.now()) } : null; },
     signAt() { return home && home.done >= home.work ? { x: (home.gx + home.w / 2 + 1.6) * T, z: (home.gy + home.h) * T + 1.2 } : null; },
