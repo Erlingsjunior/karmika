@@ -28,24 +28,24 @@ export const WHOLES: Whole[] = [
      com a porta sempre virada para a câmera. Maior e mais rica = mais material, mais ouro e mais turnos. */
   { id: 'cabana', name: 'Cabana do Caminhante', icon: '🛖', w: 4, h: 4, variant: 0, tag: 'Casa', cost: { plank: 26, nail: 18, stone: 10, rope: 6, stick: 20 }, work: 18,
     tip: 'A primeira casa de quem está começando: tábua escura, telhado alto de sapê e um alpendre para pendurar a capa. Pequena, quente e rápida de erguer (18 turnos, 3 dias de Karmika).' },
-  { id: 'sobrado', name: 'Sobrado de Dois Andares', icon: '🏘', w: 5, h: 4, variant: 1, tag: 'Casa', cost: { plank: 60, nail: 44, stone: 48, rope: 12, stick: 20 }, work: 45,
-    tip: 'Pedra embaixo, enxaimel em cima e escada de fora para o andar de cima. A casa de quem já tem nome na vila (45 turnos).' },
-  { id: 'atalaia', name: 'Atalaia de Pedra', icon: '🗼', w: 3, h: 3, variant: 3, tag: 'Torre', cost: { plank: 30, nail: 24, stone: 70, rope: 14, stick: 10 }, work: 40,
-    tip: 'A torre de vigia do Caminho Humano: pedra alta, sacada de madeira e telhado pontudo. Pouco chão, muita altura (40 turnos).' },
-  { id: 'armeiro', name: 'Casa com Loja', icon: '🏪', w: 6, h: 5, variant: 5, tag: 'Comércio', cost: { plank: 70, nail: 52, stone: 40, rope: 16, stick: 24 }, work: 50,
-    tip: 'Casa em cima e balcão embaixo: toldo grande, bancada e placa na frente, para quem quer abrir o próprio comércio (50 turnos).' },
-  { id: 'nordica', name: 'Salão Nórdico', icon: '🪓', w: 5, h: 4, variant: 0, style: 1, tag: 'Nórdico', cost: { plank: 58, nail: 30, stone: 20, rope: 14, stick: 30 }, work: 40,
-    tip: 'Toras empilhadas, telhado de turfa verde e as cabeças de dragão cruzadas na cumeeira. O lar dos que juraram a Odin (40 turnos).' },
-  { id: 'ana', name: 'Casa de Pedra Anã', icon: '⚒', w: 5, h: 4, variant: 0, style: 2, tag: 'Anão', cost: { plank: 24, nail: 30, stone: 80, rope: 8, stick: 10 }, work: 45,
-    tip: 'Pedra grossa, porta de ferro e a fornalha sempre acesa. Feita para durar mil anos, do jeito de Brasaforja (45 turnos).' },
-  { id: 'elfica', name: 'Casa Élfica', icon: '🌿', w: 5, h: 4, variant: 0, style: 3, tag: 'Elfo', cost: { plank: 50, nail: 20, stone: 20, rope: 20, stick: 40 }, work: 40,
-    tip: 'Madeira clara curvada, folhas no telhado e janelas redondas. Parece que cresceu ali sozinha (40 turnos).' },
-  { id: 'sombria', name: 'Casa Sombria', icon: '🦇', w: 5, h: 4, variant: 0, style: 4, tag: 'Sombra', cost: { plank: 44, nail: 40, stone: 50, rope: 10, stick: 16 }, work: 45,
-    tip: 'Pedra escura, telhado íngreme e janelas estreitas que deixam passar pouca luz. Para vampiros, bruxos e quem prefere a noite (45 turnos).' },
-  { id: 'tribal', name: 'Toca Tribal', icon: '🐺', w: 5, h: 4, variant: 0, style: 5, tag: 'Lobisomem', cost: { plank: 30, nail: 12, stone: 24, rope: 24, stick: 50 }, work: 35,
-    tip: 'Couro, galhos trançados e ossos na entrada: a toca de quem uiva para a lua (35 turnos).' },
-  { id: 'pacto', name: 'Casa do Pacto', icon: '🔮', w: 5, h: 4, variant: 0, style: 6, tag: 'Pacto', cost: { plank: 46, nail: 36, stone: 44, rope: 14, stick: 20 }, work: 45,
-    tip: 'Pedra marcada com runas, chama roxa na porta e um círculo riscado no chão. Para quem estuda o que não se ensina na Academia (45 turnos).' },
+  { id: 'sobrado', name: 'Sobrado de Dois Andares', icon: '🏘', w: 5, h: 4, variant: 1, tag: 'Casa', cost: { plank: 60, nail: 44, stone: 48, rope: 12, stick: 20 }, work: 48,
+    tip: 'Pedra embaixo, enxaimel em cima e escada de fora para o andar de cima. A casa de quem já tem nome na vila (48 turnos, 8 dias).' },
+  { id: 'atalaia', name: 'Atalaia de Pedra', icon: '🗼', w: 3, h: 3, variant: 3, tag: 'Torre', cost: { plank: 30, nail: 24, stone: 70, rope: 14, stick: 10 }, work: 42,
+    tip: 'A torre de vigia do Caminho Humano: pedra alta, sacada de madeira e telhado pontudo. Pouco chão, muita altura (42 turnos, 7 dias).' },
+  { id: 'armeiro', name: 'Casa com Loja', icon: '🏪', w: 6, h: 5, variant: 5, tag: 'Comércio', cost: { plank: 70, nail: 52, stone: 40, rope: 16, stick: 24 }, work: 60,
+    tip: 'Casa em cima e balcão embaixo: toldo grande, bancada e placa na frente, para quem quer abrir o próprio comércio (60 turnos, 10 dias).' },
+  { id: 'nordica', name: 'Salão Nórdico', icon: '🪓', w: 5, h: 4, variant: 0, style: 1, tag: 'Nórdico', cost: { plank: 58, nail: 30, stone: 20, rope: 14, stick: 30 }, work: 42,
+    tip: 'Toras empilhadas, telhado de turfa verde e as cabeças de dragão cruzadas na cumeeira. O lar dos que juraram a Odin (42 turnos, 7 dias).' },
+  { id: 'ana', name: 'Casa de Pedra Anã', icon: '⚒', w: 5, h: 4, variant: 0, style: 2, tag: 'Anão', cost: { plank: 24, nail: 30, stone: 80, rope: 8, stick: 10 }, work: 48,
+    tip: 'Pedra grossa, porta de ferro e a fornalha sempre acesa. Feita para durar mil anos, do jeito de Brasaforja (48 turnos, 8 dias).' },
+  { id: 'elfica', name: 'Casa Élfica', icon: '🌿', w: 5, h: 4, variant: 0, style: 3, tag: 'Elfo', cost: { plank: 50, nail: 20, stone: 20, rope: 20, stick: 40 }, work: 42,
+    tip: 'Madeira clara curvada, folhas no telhado e janelas redondas. Parece que cresceu ali sozinha (42 turnos, 7 dias).' },
+  { id: 'sombria', name: 'Casa Sombria', icon: '🦇', w: 5, h: 4, variant: 0, style: 4, tag: 'Sombra', cost: { plank: 44, nail: 40, stone: 50, rope: 10, stick: 16 }, work: 48,
+    tip: 'Pedra escura, telhado íngreme e janelas estreitas que deixam passar pouca luz. Para vampiros, bruxos e quem prefere a noite (48 turnos, 8 dias).' },
+  { id: 'tribal', name: 'Toca Tribal', icon: '🐺', w: 5, h: 4, variant: 0, style: 5, tag: 'Lobisomem', cost: { plank: 30, nail: 12, stone: 24, rope: 24, stick: 50 }, work: 36,
+    tip: 'Couro, galhos trançados e ossos na entrada: a toca de quem uiva para a lua (36 turnos, 6 dias).' },
+  { id: 'pacto', name: 'Casa do Pacto', icon: '🔮', w: 5, h: 4, variant: 0, style: 6, tag: 'Pacto', cost: { plank: 46, nail: 36, stone: 44, rope: 14, stick: 20 }, work: 48,
+    tip: 'Pedra marcada com runas, chama roxa na porta e um círculo riscado no chão. Para quem estuda o que não se ensina na Academia (48 turnos, 8 dias).' },
 ];
 /* cada obra tem o seu item de projeto (📜 na mochila) */
 for (const w of WHOLES) if (!ITEMS['projeto_' + w.id]) ITEMS['projeto_' + w.id] = { name: 'Projeto · ' + w.name, icon: '📜', kind: 'misc', col: 0xe8d8a8, desc: `A planta de ${w.name} (${w.w}×${w.h}) com o material já separado. Use para escolher o lugar do canteiro. Depois a obra pede ${w.work} turnos de trabalho — a sua mão ou a de um Ajudante de Obra.` } as (typeof ITEMS)[string];
@@ -56,7 +56,8 @@ export const wholeOf = (id?: string, name?: string) => WHOLES.find((w) => w.id =
    Arredonda para o inteiro mais perto (2 tábuas continuam 2); o ouro é o mão-de-obra do mestre de obras. */
 const PIECE_GOLD: Record<string, number> = { bfloor: 4, bwall: 8, bdoor: 10, broof: 8, bfence: 3, torch: 4, bench: 6, campfire: 5 };
 for (const p of PIECES) { for (const k of Object.keys(p.cost)) p.cost[k] = Math.max(p.cost[k], Math.round(p.cost[k] * 1.1)); p.gold = PIECE_GOLD[p.id] ?? 5; }
-const WHOLE_GOLD: Record<string, number> = { casa_tabuas: 900, cabana: 500, sobrado: 1600, atalaia: 1400, armeiro: 2200, nordica: 1300, ana: 1500, elfica: 1300, sombria: 1500, tribal: 1100, pacto: 1500 };
+/* 28/10 (Erling: "pode colocar 100k numa casa com loja; casas menores mais baratas, maiores mais caras"): casa é patrimônio, não item de vitrine */
+const WHOLE_GOLD: Record<string, number> = { cabana: 8000, casa_tabuas: 15000, tribal: 12000, nordica: 28000, elfica: 28000, atalaia: 35000, sobrado: 45000, ana: 50000, sombria: 50000, pacto: 50000, armeiro: 100000 };
 for (const w of WHOLES) { for (const k of Object.keys(w.cost)) w.cost[k] = Math.ceil(w.cost[k] * 1.18); w.gold = WHOLE_GOLD[w.id] ?? 500; }
 /** a foto da obra no card: a própria casa do jogo, renderizada uma vez num canvas fora da tela */
 const THUMB = new Map<string, string>();
@@ -74,7 +75,7 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
   const el = document.createElement('div'); el.id = 'build'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'build', { left: 'calc(50vw - 330px)', top: '46vh' }), 0); /* 28/10: janela padrão do jogo (arrastar, redimensionar, escala e texto das Configurações) */
-  let tab: 'pecas' | 'obras' = 'pecas';
+  let tab: 'pecas' | 'obras' = 'pecas', pick = 0;
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
   const arrow = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.5, 6), new THREE.MeshBasicMaterial({ color: 0xffe08a })); arrow.rotation.x = Math.PI / 2; ghost.add(arrow);
   function render() {
@@ -85,16 +86,21 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
     const W0 = whole >= 0 ? WHOLES[whole] : null;
     const body = tab === 'pecas'
       ? `<p class="bhint">Clique no chão para colocar · botão direito remove · R gira · B fecha</p><div class="pcs2">${PIECES.map((p, i) => `<button class="${i === sel && whole < 0 ? 'on' : ''}" data-i="${i}" title="${p.name} — ${p.tip}"><span>${p.icon}</span><b>${p.name}</b><em>${small(p.cost)}${goldTag(p.gold)}</em></button>`).join('')}</div>`
-      : `<p class="bhint">Compre o projeto (o material sai da mochila). Depois use o 📜 projeto na mochila para escolher o lugar.</p><div class="wcards">${WHOLES.map((w, i) => `<div class="wcard"><img src="${wholeThumb(w)}" alt=""><div class="wi"><b>${w.icon} ${w.name}</b><small>${w.w}×${w.h} · ${w.work} turnos de obra (${w.work / 6} dias)</small><em>${small(w.cost)}${goldTag(w.gold)}</em><p>${w.tip}</p>
-        ${site ? (ctx.siteId?.() === w.id ? `<button data-quit>✖ Desistir da obra atual</button>` : `<button disabled title="Uma obra por vez">Uma obra por vez</button>`) : `<button data-buyw="${i}">Comprar o projeto</button>`}</div></div>`).join('')}</div>`;
+      : (() => { const fmt = (n: number) => n.toLocaleString('pt-BR'), dias = (w: Whole) => `${w.work} turnos · ${w.work / 6} ${w.work / 6 === 1 ? 'dia' : 'dias'}`, gold = ctx.gold?.() ?? 0, D = WHOLES[pick] ?? WHOLES[0];
+        const grid = WHOLES.map((w, i) => `<button class="wc${i === pick ? ' on' : ''}${ctx.siteId?.() === w.id ? ' cur' : ''}" data-pick="${i}"><img src="${wholeThumb(w)}" alt=""><b>${w.icon} ${w.name}</b><small>${w.tag ?? ''} · ${w.w}×${w.h}</small><i class="${gold >= (w.gold ?? 0) ? 'y' : 'n'}">🪙 ${fmt(w.gold ?? 0)}</i></button>`).join('');
+        const mats = Object.entries(D.cost).map(([k, n]) => `<li class="${ctx.has(k, n) ? 'y' : 'n'}"><span>${ITEMS[k]?.icon ?? ''}</span>${ITEMS[k]?.name ?? k}<b>${n}</b></li>`).join('') + `<li class="${gold >= (D.gold ?? 0) ? 'y' : 'n'}"><span>🪙</span>Ouro (mão de obra)<b>${fmt(D.gold ?? 0)}</b></li>`;
+        const act = site ? (ctx.siteId?.() === D.id ? `<button class="wbuy quit" data-quit>✖ Desistir da obra atual</button>` : `<button class="wbuy" disabled>Uma obra por vez</button>`) : `<button class="wbuy" data-buyw="${pick}">Comprar o projeto</button>`;
+        return `<div class="wsplit"><div class="wgrid">${grid}</div><aside class="wdet"><img src="${wholeThumb(D)}" alt=""><h3>${D.icon} ${D.name}</h3><div class="wmeta"><span>${D.tag ?? ''}</span><span>${D.w}×${D.h}</span><span>⏳ ${dias(D)}</span></div><p>${D.tip}</p><ul class="wmats">${mats}</ul>${act}<small class="whint">O material e o ouro saem na compra; o 📜 projeto vai para a mochila — use-o para escolher o lugar.</small></aside></div>`; })();
+    const sc0 = (el.querySelector('.wgrid') as HTMLElement | null)?.scrollTop ?? 0, sc1 = (el.querySelector('.wdet') as HTMLElement | null)?.scrollTop ?? 0, sc2 = (el.querySelector('.bbody') as HTMLElement | null)?.scrollTop ?? 0;
     el.innerHTML = `<div class="pn bpn"><h2>🔨 Construção <button data-x title="Fechar (B)">✕</button></h2>${W0 ? `<p class="bplace">📜 Escolhendo o lugar de <b>${W0.name}</b>: o contorno verde mostra onde cabe. Clique no chão para marcar o canteiro.</p>` : ''}
       <div class="altabs"><button data-tab="pecas" class="${tab === 'pecas' ? 'on' : ''}">Peças</button><button data-tab="obras" class="${tab === 'obras' ? 'on' : ''}">Obras inteiras</button></div><div class="bbody">${body}</div></div>`;
-    el.style.display = 'flex';
+    el.style.display = 'flex'; { const g = el.querySelector('.wgrid') as HTMLElement | null, d = el.querySelector('.wdet') as HTMLElement | null, bb = el.querySelector('.bbody') as HTMLElement | null; if (g) g.scrollTop = sc0; if (d) d.scrollTop = sc1; if (bb) bb.scrollTop = sc2; }
   }
   el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
     if (b.hasAttribute('data-x')) { toggle(false); return; } if (b.dataset.tab) { tab = b.dataset.tab as typeof tab; render(); return; }
     if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); ctx.snd?.('error'); return; } if ((ctx.gold?.() ?? 0) < (w.gold ?? 0)) { ctx.log(`Falta ouro: o projeto custa ${w.gold} 🪙 além do material.`, '#ff9a8a'); ctx.snd?.('error'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); if (!ctx.add('projeto_' + w.id, 1)) { for (const [k, n] of Object.entries(w.cost)) ctx.add(k, n); ctx.log('🎒 Mochila cheia: o projeto não coube e o material voltou para você. Libere um espaço e compre de novo.', '#ff9a8a'); ctx.snd?.('error'); return; } ctx.payGold?.(w.gold ?? 0); buyFx(b, '📜'); ctx.snd?.('coins'); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
     if (b.hasAttribute('data-quit')) { ctx.quitWhole?.(); render(); return; }
+    if (b.dataset.pick !== undefined) { pick = +b.dataset.pick; render(); return; }
     sel = +b.dataset.i!; whole = -1; render(); });
   const tileOf = (gx: number, gy: number): Tile | undefined => ctx.world.map[gy]?.[gx];
   const pieceAt = (gx: number, gy: number) => built.find((x) => x.b.gx === gx && x.b.gy === gy) ?? remote.find((x) => x.b.gx === gx && x.b.gy === gy);
