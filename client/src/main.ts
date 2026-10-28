@@ -4,7 +4,7 @@ import { createSocial, type Guild } from './social';
 import type { DungeonFloor } from './dungeon3d';
 import { dressEnemy, createBossBrain, bossBody, kitOf } from './chefes';
 import { enemyHooks } from './enemies';
-import { floatWin, dragAll, confirmBox } from './windows';
+import { floatWin, dragAll, confirmBox, buyFxLast } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
 import { surrender, eyeSees } from './surrender';
 import { createCompendium } from './compendium';
@@ -710,7 +710,7 @@ syncGear(); renderQuick();
 setTimeout(() => syncGear(), 0);
 /* ---------- construção ---------- */
 let obraUntil = 0, obraK = 0.5;
-const build = createBuild({ quitWhole: () => { const h = obras.home; if (h && confirm(`Desistir de ${h.name}? O canteiro se desfaz e TODO o material se perde (${h.done.toFixed(1)} de ${h.work} turnos feitos).`)) obras.quit(); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), costK: () => (obraUntil > Date.now() ? obraK : 1), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
+const build = createBuild({ snd: (k) => game.snd(k), quitWhole: () => { const h = obras.home; if (h && confirm(`Desistir de ${h.name}? O canteiro se desfaz e TODO o material se perde (${h.done.toFixed(1)} de ${h.work} turnos feitos).`)) obras.quit(); }, onWhole: (w, gx, gy) => obras.start(w, gx, gy), wholeBusy: () => obras.busy(), costK: () => (obraUntil > Date.now() ? obraK : 1), guildZone: (gx, gy) => guildZoneAt(gx, gy), onGuildBuild: (b, del) => { hub.send({ t: 'g:build', b, del }); }, world: city, scene, objs, has: (id, n) => inv.has(id, n), take: (id, n) => inv.take(id, n), add: (id, n) => inv.add(id, n), log: (t, c) => game.logMsg(t, c), heightAt,
   canBuildAt: (gx, gy) => !city.settlements.some((st) => Math.hypot(gx - st.x, gy - st.y) < st.radius + 2) && !city.pois.some((q) => Math.hypot(gx - q.x, gy - q.y) < 6) && city.map[gy]?.[gx] !== 'water' });
 /* a obra inteira e a casa do jogador (obras.ts, 28/10) */
 let homeProp: (typeof city.props)[number] | null = null;
@@ -989,7 +989,7 @@ const CARTA_K = 'karmika.guildcarta';
 const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) => { const who = inicio.chars().find((c) => c.i === i); if (!who) return false;
     if (!who.active) return inicio.mailToSlot(i, { id: 's' + Date.now() + Math.random(), from: l.from, to: who.name, subj: l.subj, text: l.text, att: l.att, cod: 0, t: Date.now() });
     mail.send(l.from, l.subj, l.text, l.att as never, 1500); return true; },
-  char: () => profile?.name ?? '', lvl: () => game.st.lvl, gold: () => game.st.gold, payGold: (n) => { if (game.st.gold < n) return false; game.st.gold -= n; return true; }, log: (t, c) => game.logMsg(t, c),
+  char: () => profile?.name ?? '', lvl: () => game.st.lvl, gold: () => game.st.gold, payGold: (n) => { if (game.st.gold < n) return false; buyFxLast('🪙'); audio.coins(5); game.st.gold -= n; return true; }, log: (t, c) => game.logMsg(t, c),
   items: () => Object.keys(inv.bag).filter((k) => inv.bag[k] > 0 && !isToolId(k) && !ITEMS_TBL[k]?.quest).map((id) => ({ id, n: inv.bag[id], name: ITEMS_TBL[id]?.name ?? id, icon: ITEMS_TBL[id]?.icon ?? '•' })),
   gear: () => inv.gearBag, takeItem: (id, n) => inv.take(id, n), takeGear: (uid) => { const i = inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = inv.gearBag.splice(i, 1)[0]; inv.save(); inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', rarityCol: (r) => (RARITY as Record<string, { col: string }>)[r]?.col ?? '#e8dcc0',
@@ -1197,7 +1197,7 @@ function openDwarfFesta(route: string) {
     else if (b.hasAttribute('data-music')) plan.music = !plan.music;
     else if (b.dataset.fk) { const k = b.dataset.fk, L = FEASTS[k].slot === 'meal' ? plan.meats : plan.brews, i = L.indexOf(k); if (i >= 0) L.splice(i, 1); else L.push(k); }
     else if (b.hasAttribute('data-hire')) { const price = festaPrice(plan); if (game.st.gold < price) { game.logMsg(`🪙 A festa custa ${price.toLocaleString('pt-BR')} de ouro. Falta dinheiro.`, '#ff9a8a'); return; }
-      game.st.gold -= price; festaPending = { st: plan.where, opts: { min: plan.min, music: plan.music, meats: [...plan.meats], brews: [...plan.brews], guild: plan.guild }, at: Date.now() + 60000 }; savePend();
+      buyFxLast('🎉'); audio.coins(5); game.st.gold -= price; festaPending = { st: plan.where, opts: { min: plan.min, music: plan.music, meats: [...plan.meats], brews: [...plan.brews], guild: plan.guild }, at: Date.now() + 60000 }; savePend();
       game.logMsg(`🍺 Festa contratada para ${plan.guild ? 'o salão da guilda, em ' : ''}${plan.where}: ${plan.min} min. Os anões vão na frente armar tudo; a festa começa quando você chegar lá (daqui a pelo menos 1 minuto).`, '#ffe08a'); dwarfEl.style.display = 'none'; return; }
     draw(); };
   draw(); dwarfEl.style.display = 'flex'; }
@@ -1612,7 +1612,7 @@ let stanceSig = '';
 function renderStances() { if (!stanceSys) return; const L = stanceSys.list(), cur = stanceSys.current();
   const sig = L.map((s) => `${s.id}:${stanceSys!.open(s) ? 1 : 0}`).join(',') + '|' + cur.id; if (sig === stanceSig) return; stanceSig = sig;
   stanceBar.querySelectorAll('.stance').forEach((e) => e.remove());
-  for (const s of L) { const b = document.createElement('button'); const op = stanceSys.open(s), on = s.id === cur.id; b.className = `stance ${on ? 'on' : ''} ${op ? '' : 'locked'}`; b.dataset.st = s.id; b.style.setProperty('--sc', s.col);
+  for (const s of L) { if (!stanceSys.open(s)) continue; /* 28/10 (Erling): postura que ainda não aprendi não aparece */ const b = document.createElement('button'); const op = stanceSys.open(s), on = s.id === cur.id; b.className = `stance ${on ? 'on' : ''} ${op ? '' : 'locked'}`; b.dataset.st = s.id; b.style.setProperty('--sc', s.col);
     const q = s.quest ? quests.def(s.quest) : null, trial = s.quest && !quests.q.done.includes(s.quest) && !!quests.q.active[s.quest];
     b.innerHTML = `${ROLE_SVG[s.role]}${op ? '' : '<i class="lk">🔒</i>'}${trial ? '<i class="tr">treino</i>' : ''}`;
     b.dataset.tip = `${s.name} · ${ROLE_NAME[s.role]}${on ? ' (em uso)' : ''}\n${s.tip}${op ? '\nClique ou V para trocar.' : `\n🔒 Abre na missão “${q?.name ?? 'de postura'}”${q ? ` com ${q.giver}, a partir do nível ${q.lvl}` : ''}.`}`;

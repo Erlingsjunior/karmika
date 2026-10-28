@@ -882,6 +882,13 @@
   .bubble::after { content: ''; position: absolute; left: 50%; bottom: -9px; width: 10px; height: 10px; background: #f4ecd8; border-right: 2px solid #3a2a14; border-bottom: 2px solid #3a2a14; transform: translateX(-50%) rotate(45deg); }
 
   /* modo de obra */
+  .buyfx { position: fixed; z-index: 9999; pointer-events: none; width: 0; height: 0; }
+  .buyfx .ring { position: absolute; left: -22px; top: -22px; width: 44px; height: 44px; border-radius: 50%; border: 2px solid #ffe08a; box-shadow: 0 0 14px #ffd24a, inset 0 0 10px #ffd24a; animation: bfxRing .55s ease-out forwards; }
+  .buyfx .sp, .buyfx .cn { position: absolute; left: -7px; top: -9px; font-size: 16px; font-style: normal; color: #ffe08a; text-shadow: 0 0 6px #ffd24a, 0 0 2px #fff; animation: bfxSpark .8s ease-out forwards; } .buyfx .cn { font-size: 13px; }
+  .buyfx b { position: absolute; left: 0; top: -14px; transform: translateX(-50%); white-space: nowrap; font: 700 15px Georgia, serif; color: #ffe08a; text-shadow: 0 0 6px #000, 0 0 10px #ffb02a; animation: bfxUp .95s ease-out forwards; }
+  @keyframes bfxRing { from { transform: scale(.3); opacity: 1; } to { transform: scale(2.2); opacity: 0; } }
+  @keyframes bfxSpark { 0% { transform: translate(0, 0) scale(.4); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(160deg); opacity: 0; } }
+  @keyframes bfxUp { 0% { transform: translate(-50%, 6px) scale(.7); opacity: 0; } 20% { transform: translate(-50%, -6px) scale(1.15); opacity: 1; } 100% { transform: translate(-50%, -46px) scale(1); opacity: 0; } }
   #build .bpn { width: 660px; display: flex; flex-direction: column; } #build .bbody { overflow: auto; flex: 1; min-height: 0; } #build .altabs button.on { color: #ffe08a; border-color: #b8924a; background: #2a2014; }
   #build .bhint { margin: 2px 0 8px; font-size: 13px; color: #a8987a; font-style: italic; } #build .bplace { margin: 0 0 8px; padding: 6px 10px; font-size: 14px; color: #ffe08a; background: #2a2014; border: 1px solid #6a5434; }
   #build .pcs2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; } #build .pcs2 button { background: #241c12; border: 1px solid #5a4a30; color: #e8dcc0; cursor: pointer; padding: 6px 4px; font-family: Georgia, serif; display: flex; flex-direction: column; align-items: center; gap: 3px; }

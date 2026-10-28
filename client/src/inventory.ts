@@ -1,7 +1,7 @@
 import { potionPulse } from './celebrate';
 import { FEASTS, feastEff, FEAST_MIN, GADGETS } from './festim';
 import { isPremium, GIFT_BAG } from './premium';
-import { floatWin, confirmBox } from './windows';
+import { floatWin, buyFx, confirmBox } from './windows';
 import { TOOLS, TOOL_SLOTS, TIER_NAME, isTool, toolDesc, type ToolSlot } from './tools';
 import { facSet, myFac, setMyFac, FAC, FAC_LVL, FAC_ILVL, FAC_PRICE, type Fac } from './faccoes';
 import { reqLvl, tipCtx, genGear, gearTip, gearIcon, plainGear, syncUid, rollRarity, RARITY, RSLOT, STAT_LABEL, SPECIAL, type Gear, type Slot, type StatKey } from './loot';
@@ -204,13 +204,15 @@ interface St {
 }
 interface GameLike { st: St; logMsg(t: string, c?: string): void; drinkBuff?(id: string): void; snd?(k: 'coins' | 'error' | 'pickup' | 'click' | 'swap'): void }
 
-export const STACK = 20;
-/** até 7 bolsas além da mochila (8 a 128 espaços cada, conforme o nível, os lugares e o comércio entre jogadores) */
-export const MAX_BAGS = 7;
+/** 28/10 (Erling): itens empilham até 99; material de construção, de forja, mágico ou de qualquer ofício empilha até 10.000 num espaço só */
+export const STACK = 99, MAT_STACK = 10000;
+/** 28/10 (Erling): no máximo 6 bolsas equipadas além da mochila, seja qual for o tamanho de cada uma */
+export const MAX_BAGS = 6;
 /** Bolsa de Ofício: materiais de coleta e construção sem limite de espaço · Bolsa Mágica: reagentes e escritos arcanos sem limite */
 export const CRAFT_BAG = new Set(['stick', 'wood', 'stone', 'rope', 'plank', 'nail', 'block', 'hide', 'claw', 'ore_i', 'ore_ag', 'hide_f', 'hide_w', 'herb_g', 'herb_s', 'herb_r', 'herb_j', 'herb_f']);
 export const MAGIC_BAG = new Set(['gem', 'herb_m', 'dust', 'sap', 'tome', 'scroll_return', 'seal_1', 'seal_2', 'seal_3', 'flint']);
 /* Bolsa de Ofício e Bolsa Mágica são do Premium: sem ele, o que estava nelas aparece na mochila comum (nada some) */
+export const stackOf = (id: string) => (CRAFT_BAG.has(id) || MAGIC_BAG.has(id) || ITEMS[id]?.kind === 'res') ? MAT_STACK : STACK;
 const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.has(id));
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
@@ -227,8 +229,8 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   const bags: string[] = []; // bolsas extras equipadas (ids de BAGS), até 4
   /* Bolsa de Ofício (60 espaços) e Bolsa Mágica (30): grandes, mas com fim. O que passar do limite ocupa a mochila comum */
   const CRAFT_CAP = 60, MAGIC_CAP = 30;
-  const slotsOf = (id: string) => freeBag(id) ? 0 : Math.ceil((bag[id] ?? 0) / STACK);
-  const stacksIn = (set: Set<string>) => [...set].reduce((a, k) => a + Math.ceil((bag[k] ?? 0) / STACK), 0);
+  const slotsOf = (id: string) => freeBag(id) ? 0 : Math.ceil((bag[id] ?? 0) / stackOf(id));
+    const stacksIn = (set: Set<string>) => [...set].reduce((a, k) => a + Math.ceil((bag[k] ?? 0) / stackOf(k)), 0);
   const overflow = () => isPremium() ? Math.max(0, stacksIn(CRAFT_BAG) - CRAFT_CAP) + Math.max(0, stacksIn(MAGIC_BAG) - MAGIC_CAP) : 0;
   const usedSlots = () => gearBag.length + Object.keys(bag).reduce((a, k) => a + slotsOf(k), 0) + overflow();
   const capacity = () => 16 + (isPremium() ? GIFT_BAG : 0) + bags.reduce((a, b) => a + (PREMIUM_BAGS.has(b) && !isPremium() ? 0 : BAGS[b] ?? 0), 0);
@@ -244,12 +246,12 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   const vt = document.createElement('div'); vt.id = 'vault'; document.body.appendChild(vt);
   const VAULT_FREE = 60, VAULT_PREM = 60;
   const vaultCap = () => VAULT_FREE + (isPremium() ? VAULT_PREM : 0);
-  const vaultUsed = () => vault.gear.length + Object.values(vault.items).reduce((a, n) => a + Math.ceil(n / STACK), 0);
+  const vaultUsed = () => vault.gear.length + Object.entries(vault.items).reduce((a, [k, n]) => a + Math.ceil(n / stackOf(k)), 0);
   const vsave = () => { try { localStorage.setItem(VKEY, JSON.stringify(vault)); } catch { /* */ } };
   function deposit(ref: string, quiet = false): boolean {
     const [k, a, b] = ref.split(':');
     if (k === 'g') { const i = gearBag.findIndex((g) => g.uid === +a); if (i < 0) return false; if (vaultUsed() + 1 > vaultCap()) { if (!quiet) game.logMsg('📦 O baú está cheio.', '#ff9a8a'); return false; } vault.gear.push(gearBag.splice(i, 1)[0]); }
-    else { const id = a, n = Math.min(+b || 1, bag[id] ?? 0); if (n <= 0) return false; const cur = vault.items[id] ?? 0, extra = Math.ceil((cur + n) / STACK) - Math.ceil(cur / STACK); if (vaultUsed() + extra > vaultCap()) { if (!quiet) game.logMsg('📦 O baú está cheio.', '#ff9a8a'); return false; }
+    else { const id = a, n = Math.min(+b || 1, bag[id] ?? 0); if (n <= 0) return false; const cur = vault.items[id] ?? 0, extra = Math.ceil((cur + n) / stackOf(id)) - Math.ceil(cur / stackOf(id)); if (vaultUsed() + extra > vaultCap()) { if (!quiet) game.logMsg('📦 O baú está cheio.', '#ff9a8a'); return false; }
       bag[id] -= n; if (bag[id] <= 0) delete bag[id]; vault.items[id] = cur + n; }
     vsave(); recalc(); if (!quiet) { render(); save(); } return true;
   }
@@ -355,13 +357,14 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     if (open) {
       const order = ['relic', 'unique', 'epic', 'legendary', 'rare', 'magic', 'normal'];
       const sorted = [...gearBag].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity) || b.ilvl - a.ilvl);
-      // células: equipamentos primeiro, depois pilhas de até 20
+      // células: equipamentos primeiro, depois pilhas de até 99 (material: 10.000)
       const sp = (id: string) => Math.round((ITEMS[id]?.sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[id] ? SHOPDEF[shop].buys![id] : 1));
       const tag = (v: number) => shop && v > 0 ? `<i class="ptag">🪙${v}</i>` : '';
       const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
-      for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(STACK, left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+      for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
       const sec = (key: string, head: string, count: string, body: string, extra = '') => `<section class="acc ${accClosed.has(key) ? 'closed' : ''} ${extra}"><h3 data-acct="${key}"><i class="car">▾</i>${head}<small>${count}</small></h3><div class="accb">${body}</div></section>`;
       const special = (title: string, ic: string, set: Set<string>, hint: string, cap = 0) => { const ids = [...set].filter((k) => (bag[k] ?? 0) > 0); return sec(title, `${ic} ${title}`, `${stacksIn(set)}/${cap} espaços`, `<div class="grid g6 sc" title="${hint}">${ids.map((i) => `<div class="it ${ITEMS[i]?.kind ?? ''}" draggable="true" data-drag="i:${i}:${bag[i]}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${bag[i]}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`).join('') || '<em class="emptyb">vazia</em>'}</div>`, 'spec'); };
+      { const ov = overflow(); for (let q = 0; q < ov; q++) cells.push(`<div class="it ovf" title="Excesso das Bolsas de Ofício/Mágica: o material que não coube nelas ocupa este espaço da mochila. Venda, use ou guarde no baú para liberar.">📦</div>`); }
       const cap = capacity(), used = cells.length;
       const groups: { name: string; n: number }[] = [{ name: 'Mochila', n: 16 }, ...(isPremium() ? [{ name: '✦ Bolsa do Caminhante (Premium)', n: GIFT_BAG }] : []), ...bags.filter((b) => !PREMIUM_BAGS.has(b) || isPremium()).map((b) => ({ name: ITEMS[b].name, n: BAGS[b] }))];
       let k = 0;
@@ -413,7 +416,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     } else sh.style.display = 'none';
     if (vaultOpen) {
       const vc: string[] = [...vault.gear].map((g) => cell(g, `data-g="v:${g.uid}" data-vout="vg:${g.uid}"`));
-      for (const i of Object.keys(vault.items).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = vault.items[i]; while (left > 0) { const n = Math.min(STACK, left); left -= n; vc.push(`<div class="it ${ITEMS[i]?.kind ?? ''}" data-vout="vi:${i}" title="${ITEMS[i]?.name ?? i}: ${ITEMS[i]?.desc ?? ''}"><span>${ITEMS[i]?.icon ?? '•'}</span><b>${n}</b><small>${ITEMS[i]?.name ?? i}</small></div>`); } }
+      for (const i of Object.keys(vault.items).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = vault.items[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; vc.push(`<div class="it ${ITEMS[i]?.kind ?? ''}" data-vout="vi:${i}" title="${ITEMS[i]?.name ?? i}: ${ITEMS[i]?.desc ?? ''}"><span>${ITEMS[i]?.icon ?? '•'}</span><b>${n}</b><small>${ITEMS[i]?.name ?? i}</small></div>`); } }
       const cap = vaultCap(), used = vaultUsed(), empt = Math.max(0, cap - vc.length);
       vt.innerHTML = `<div class="pn shoppn vaultpn"><h2>📦 Baú do Caminhante <span class="cap ${used >= cap ? 'full' : ''}">${used}/${cap}</span><button data-vx>✕</button></h2>
         <small class="note">O mesmo baú em toda vila e cidade de Karmika: o que você guarda aqui, retira em qualquer outro lugar.${isPremium() ? ' ✦ Premium: +' + VAULT_PREM + ' espaços.' : ` Premium: +${VAULT_PREM} espaços.`}</small>
@@ -475,11 +478,11 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     if (t.dataset.stab !== undefined) { shopTab = +t.dataset.stab; render(); return; }
     if (t.hasAttribute('data-sextra')) { const sd = shop ? SHOPDEF[shop] : null; sd?.extra?.act(); return; }
     if ('x2' in t.dataset) { shop = null; render(); return; }
-    if (t.dataset.buy) { const i = t.dataset.buy; if (PREMIUM_BAGS.has(i) && !isPremium()) { game.logMsg(`✦ ${ITEMS[i].name} é exclusivo do Premium.`, '#c9a0ff'); game.snd?.('error'); return; } if (st.gold < buyP(i)) { game.logMsg(`Ouro insuficiente: ${ITEMS[i].name} custa ${buyP(i)} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!BAGS[i] && !canAdd(i, 1)) { game.logMsg('🎒 Mochila cheia! Venda ou use algo antes, ou compre uma bolsa maior.', '#ff9a8a'); game.snd?.('error'); return; } st.gold -= buyP(i); add(i, 1, true); game.logMsg(`🛒 Comprou ${ITEMS[i].icon} ${ITEMS[i].name} por ${buyP(i)} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); }
+    if (t.dataset.buy) { const i = t.dataset.buy; if (PREMIUM_BAGS.has(i) && !isPremium()) { game.logMsg(`✦ ${ITEMS[i].name} é exclusivo do Premium.`, '#c9a0ff'); game.snd?.('error'); return; } if (st.gold < buyP(i)) { game.logMsg(`Ouro insuficiente: ${ITEMS[i].name} custa ${buyP(i)} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!BAGS[i] && !canAdd(i, 1)) { game.logMsg('🎒 Mochila cheia! Venda ou use algo antes, ou compre uma bolsa maior.', '#ff9a8a'); game.snd?.('error'); return; } buyFx(t, '+1 ' + ITEMS[i].icon); st.gold -= buyP(i); add(i, 1, true); game.logMsg(`🛒 Comprou ${ITEMS[i].icon} ${ITEMS[i].name} por ${buyP(i)} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); game.snd?.('pickup'); }
     const priceOf = (i: string) => Math.round((ITEMS[i].sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[i] ? SHOPDEF[shop].buys![i] : 1));
     if (t.dataset.sell) { const i = t.dataset.sell; const n = e.shiftKey ? (bag[i] ?? 0) : e.ctrlKey ? Math.min(50, bag[i] ?? 0) : 1; const pr = priceOf(i); if (n > 0 && take(i, n)) { st.gold += pr * n; game.logMsg(`💰 Vendeu ${n}× ${ITEMS[i].icon} ${ITEMS[i].name} por ${pr * n} 🪙 (total ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); render(); save(); } }
     if (t.closest('[data-sellall]')) { const ids = Object.keys(bag).filter((i) => (ITEMS[i]?.sell ?? 0) > 0 && !BAGS[i] && (ITEMS[i].kind === 'res' || (ITEMS[i].kind === 'misc' && !ITEMS[i].tier))); /* recursos e tralha; poções, comida, ferramentas, pets e montarias ficam */ let tot = 0, cnt = 0; for (const i of ids) { const n = bag[i] ?? 0; const pr = priceOf(i); if (n > 0 && take(i, n)) { tot += pr * n; cnt += n; } } if (cnt) { st.gold += tot; game.logMsg(`💰 Vendeu tudo: ${cnt} itens por ${tot} 🪙 (total ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); render(); save(); } }
-    if (t.dataset.gbuy) { const g = stock.find((x) => x.uid === +t.dataset.gbuy!); if (!g) return; const p = shopPrice(g); if (st.gold < p) { game.logMsg(`Ouro insuficiente: ${g.name} custa ${p} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!canAddGear()) { game.logMsg('🎒 Sem espaço para equipamentos na mochila.', '#ff9a8a'); game.snd?.('error'); return; } st.gold -= p; stock = stock.filter((x) => x !== g); addGear(g); game.logMsg(`🛒 Comprou ${g.icon} ${g.name} por ${p} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); }
+    if (t.dataset.gbuy) { const g = stock.find((x) => x.uid === +t.dataset.gbuy!); if (!g) return; const p = shopPrice(g); if (st.gold < p) { game.logMsg(`Ouro insuficiente: ${g.name} custa ${p} 🪙 e você tem ${st.gold}.`, '#ff9a8a'); game.snd?.('error'); return; } if (!canAddGear()) { game.logMsg('🎒 Sem espaço para equipamentos na mochila.', '#ff9a8a'); game.snd?.('error'); return; } buyFx(t, '+1 ' + g.icon); st.gold -= p; stock = stock.filter((x) => x !== g); addGear(g); game.logMsg(`🛒 Comprou ${g.icon} ${g.name} por ${p} 🪙 (restam ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); }
     if (t.dataset.gsell) { const i = gearBag.findIndex((x) => x.uid === +t.dataset.gsell!); if (i < 0) return; const g = gearBag.splice(i, 1)[0]; st.gold += g.value; game.logMsg(`💰 Vendeu ${g.icon} ${g.name} por ${g.value} 🪙 (total ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); render(); save(); }
   });
   /* arrastar e soltar: mochila → boneco (equipa), boneco → mochila (desequipa), qualquer um → loja (vende),

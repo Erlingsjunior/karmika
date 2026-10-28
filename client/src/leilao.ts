@@ -1,3 +1,4 @@
+import { buyFxLast } from './windows';
 /* Leilão do Quadro de Avisos: além de pedir (Pedidos), dá para colocar à venda.
    Quem anuncia deixa um depósito de 1% (volta inteiro se vender); quem compra paga o preço e recebe pelo correio.
    O vendedor recebe o ouro pelo correio, menos 3% da casa (Erling, 23/10: 5% + 7% era pesado demais).
@@ -95,7 +96,7 @@ export function createAuction(ctx: Ctx) {
     const av = d('av'); if (av) { view = av as typeof view; return true; }
     const ac = d('ac'); if (ac) { cat = ac as typeof cat; return true; }
     const ab = d('abuy'); if (ab) { const l = lots.find((x) => x.id === ab); if (!l) return true; if (ctx.st.gold < l.price) { ctx.log('Ouro insuficiente.', '#ff9a8a'); return true; }
-      ctx.st.gold -= l.price; lots = lots.filter((x) => x !== l); save(); ctx.save(); if (l.item && market.isToken(l.item.id)) market.recordSale(l.item.id, l.price / l.item.n);
+      buyFxLast('⚖'); ctx.st.gold -= l.price; lots = lots.filter((x) => x !== l); save(); ctx.save(); if (l.item && market.isToken(l.item.id)) market.recordSale(l.item.id, l.price / l.item.n);
       ctx.mail('Leilão de Karmika', `Compra: ${l.gear ? l.gear.name : `${l.item!.n}× ${ctx.itemName(l.item!.id)}`}`, `Você arrematou o lote de ${l.seller} por ${l.price} 🪙. Retire o anexo em qualquer caixa de correio.`, [l.gear ? { gear: l.gear } : { item: l.item! }]);
       ctx.log(`⚖ Comprou por ${l.price} 🪙. Chega pelo correio em instantes.`, '#ffd24a'); return true; }
     { const fp = d('afair'); if (fp) { price = +fp; return true; } }

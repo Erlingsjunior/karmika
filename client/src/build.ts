@@ -4,7 +4,7 @@ import type { Tile } from '@karmika/shared';
 import type { Prop, PropKind, World } from './world';
 import { ITEMS } from './inventory';
 import { buildHouse } from './houses3d';
-import { floatWin } from './windows';
+import { floatWin, buyFx } from './windows';
 
 export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; blocks?: boolean; rot?: boolean; tip: string }
 export const PIECES: Piece[] = [
@@ -37,7 +37,7 @@ export function wholeThumb(w: Whole): string {
     const ground = new THREE.Mesh(new THREE.CircleGeometry(R0 * 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: 0x5a7a3a })); ground.position.set(ctr.x, bb.min.y - 0.02, ctr.z); sc.add(ground);
     const cam = new THREE.OrthographicCamera(-R0 * 1.25, R0 * 1.25, R0 * 0.8, -R0 * 0.8, 0.1, 400); cam.position.set(ctr.x + 30, ctr.y + 26, ctr.z + 30); cam.lookAt(ctr); r.render(sc, cam);
     const url = cv.toDataURL(); THUMB.set(w.id, url); r.dispose(); r.forceContextLoss(); return url; } catch { return ''; } }
-export function createBuild(ctx: { /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
+export function createBuild(ctx: { snd?(k: 'coins' | 'error'): void; /** desistir da obra (o canteiro se desfaz, o material se perde) */ quitWhole?(): void; /** obra inteira paga: o main.ts monta o canteiro */ onWhole?(w: Whole, gx: number, gy: number): void; /** já existe uma obra/casa do jogador? */ wholeBusy?(): boolean; /** Obra Automatizada (festim.ts): multiplica os materiais */ costK?(): number; /** terreno de guilda (26/10): 'mine' = o meu (a obra vai para o servidor), 'other' = de outra guilda (não se mexe) */ guildZone?(gx: number, gy: number): 'mine' | 'other' | null; onGuildBuild?(b: Built, del: boolean): void; world: World; scene: THREE.Scene; objs: { addProp(p: Prop): void; removeProp(p: Prop): void }; has(id: string, n: number): boolean; take(id: string, n: number): boolean; add(id: string, n: number): boolean; log(t: string, c?: string): void; heightAt(x: number, z: number): number; canBuildAt(gx: number, gy: number): boolean }) {
   const SAVE = 'karmika.build.v1';
   let on = false, sel = 0, rot = 0, whole = -1; // whole >= 0: escolheu uma obra inteira
   const built: { b: Built; prop: Prop }[] = [], remote: { b: Built; prop: Prop }[] = [];
@@ -60,7 +60,7 @@ export function createBuild(ctx: { /** desistir da obra (o canteiro se desfaz, o
   }
   el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
     if (b.hasAttribute('data-x')) { toggle(false); return; } if (b.dataset.tab) { tab = b.dataset.tab as typeof tab; render(); return; }
-    if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); ctx.add('projeto_' + w.id, 1); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
+    if (b.dataset.buyw !== undefined) { const w = WHOLES[+b.dataset.buyw]; for (const [k, n] of Object.entries(w.cost)) if (!ctx.has(k, n)) { ctx.log(`Faltam materiais para o projeto: ${ITEMS[k]?.name ?? k} ×${n}.`, '#ff9a8a'); return; } for (const [k, n] of Object.entries(w.cost)) ctx.take(k, n); if (!ctx.add('projeto_' + w.id, 1)) { for (const [k, n] of Object.entries(w.cost)) ctx.add(k, n); ctx.log('🎒 Mochila cheia: o projeto não coube e o material voltou para você. Libere um espaço e compre de novo.', '#ff9a8a'); ctx.snd?.('error'); return; } buyFx(b, '📜'); ctx.snd?.('coins'); ctx.log(`📜 Projeto comprado: ${w.name}. Está na mochila — use-o para escolher o lugar da obra.`, '#ffe08a'); render(); return; }
     if (b.hasAttribute('data-quit')) { ctx.quitWhole?.(); render(); return; }
     sel = +b.dataset.i!; whole = -1; render(); });
   const tileOf = (gx: number, gy: number): Tile | undefined => ctx.world.map[gy]?.[gx];

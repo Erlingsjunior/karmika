@@ -100,3 +100,17 @@ export function dragAll() {
   /* janelas que reaparecem (ou são recriadas) voltam ao lugar salvo */
   setInterval(() => { for (const p of Array.from(document.querySelectorAll<HTMLElement>('.pn, #menu .panel'))) { if (p.closest(SKIP) || !p.offsetParent) continue; const k = keyOf(p); if (free[k] && !p.style.translate) applyFree(p, k); } }, 400);
 }
+/** 28/10 (Erling): toda compra tem retorno — o botão afunda e volta, sobe um brilho dourado de faíscas e moedas */
+export function buyFx(target: Element | null, label = '') {
+  if (!target) return; const r = target.getBoundingClientRect(); if (!r.width) return; const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  (target as HTMLElement).animate?.([{ transform: 'scale(1)' }, { transform: 'scale(.88)', filter: 'brightness(1.6)' }, { transform: 'scale(1.06)', filter: 'brightness(1.3)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
+  const box = document.createElement('div'); box.className = 'buyfx'; box.style.left = cx + 'px'; box.style.top = cy + 'px'; document.body.appendChild(box);
+  const ring = document.createElement('i'); ring.className = 'ring'; box.appendChild(ring);
+  for (let k = 0; k < 12; k++) { const s = document.createElement('i'); s.className = k % 3 ? 'sp' : 'cn'; s.textContent = k % 3 ? '✦' : '🪙'; const a = (k / 12) * Math.PI * 2 + Math.random() * 0.4, d = 34 + Math.random() * 26;
+    s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d - 16 + 'px'); s.style.animationDelay = Math.random() * 60 + 'ms'; box.appendChild(s); }
+  if (label) { const t = document.createElement('b'); t.textContent = label; box.appendChild(t); }
+  setTimeout(() => box.remove(), 1000);
+}
+/* o último botão clicado: compras feitas longe do clique (leilão, estábulo, festa) brilham nele */
+let lastHit: Element | null = null; addEventListener('pointerdown', (e) => { lastHit = (e.target as Element)?.closest?.('button,[data-buy],.it,.card') ?? (e.target as Element); }, true);
+export function buyFxLast(label = '') { buyFx(lastHit, label); }
