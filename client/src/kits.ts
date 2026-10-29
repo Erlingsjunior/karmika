@@ -276,7 +276,11 @@ const HSVG: Record<string, string> = {
   void Nn; }
 
 export const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-export function kitOf(race: Race) { return KITS[race] ?? KITS.nordic!; }
+/* 29/10: as magias aprendidas nas abas anteriores da Árvore (Humano antes do Guerreiro, a 1ª classe antes da Classe II)
+   entram na barra da classe atual, nos espaços livres */
+const EXTRA: Partial<Record<Race, SkillDef[]>> = {};
+export function setKitExtras(race: Race, defs: SkillDef[]) { const base = KITS[race] ?? KITS.nordic!, L = defs.filter((d) => !base.some((b) => b.id === d.id)); const was = (EXTRA[race] ?? []).map((d) => d.id).join(); if (was === L.map((d) => d.id).join()) return; EXTRA[race] = L; delete layoutCache[race]; }
+export function kitOf(race: Race) { const base = KITS[race] ?? KITS.nordic!, ex = EXTRA[race]; return ex?.length ? [...base, ...ex] : base; }
 /* ---- ordem da barra: o jogador arrasta as magias para os espaços que preferir (30 espaços, 3 andares); a ordem fica salva ---- */
 const ROW_P = ['', '⇧', '⌃'];
 export const posKey = (p: number) => ROW_P[Math.floor(p / 10)] + KEYS[p % 10];

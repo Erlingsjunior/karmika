@@ -277,7 +277,7 @@ export function createGameplay(d: GameplayDeps) {
     }
   }
   /* ---- equipamentos no chão ---- */
-  const gearLabels: HTMLElement[] = [];
+  const gearLabels: HTMLElement[] = [], labelSpots: [number, number][] = [];
   function spawnGear(x: number, z: number, y: number, ilvl: number, boost: Partial<Record<Rarity, number>> = {}, n = 1, rarityMin?: Rarity, preset?: Gear[]) {
     if (preset) n = preset.length;
     for (let k = 0; k < n; k++) {
@@ -1867,6 +1867,7 @@ export function createGameplay(d: GameplayDeps) {
         for (let i = beams.length - 1; i >= 0; i--) { const b = beams[i]; b.t += dt; const k = 1 - b.t / b.life; (b.m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, k); b.m.scale.x = b.m.scale.z = Math.max(0.1, k); if (b.t >= b.life) { d.scene.remove(b.m); b.m.geometry.dispose(); beams.splice(i, 1); } }
       }
       enemies.update(dt, now);
+      labelSpots.length = 0;
       for (let i = drops.length - 1; i >= 0; i--) {
         const dr = drops[i]; dr.t += dt; dr.m.position.y = dr.y + 0.5 + Math.sin(dr.t * 4) * 0.08; dr.m.rotation.y += dt * 3;
         if (dr.t > 0.4 && Math.hypot(dr.x - heroPos.x, dr.z - heroPos.z) < 1.9) {
@@ -1874,7 +1875,7 @@ export function createGameplay(d: GameplayDeps) {
           if (dr.kind === 'item') { /* já guardado */ } else if (dr.kind === 'gear') { dmgText(heroPos.clone().setY(2.6), dr.gear!.name, dr.gear!.rarity !== 'normal', RARITY[dr.gear!.rarity].col); } else if (dr.kind === 'gold') { const gn = Math.round(dr.n * st.goldMul); st.gold += gn; logMsg(`+${gn} 🪙 ouro`, '#ffd24a'); dmgText(heroPos.clone().setY(2.4), `+${gn} 🪙`, false, '#ffd24a'); } else { logMsg(`+${dr.n} vida`, '#7aff9a'); st.hp = Math.min(st.hpMax, st.hp + dr.n); dmgText(heroPos.clone().setY(2.4), `+${dr.n} vida`, false, '#7aff9a'); }
           if (dr.kind === 'gold') d.audio.coins(2); else d.audio.pickup(); d.scene.remove(dr.m); dr.label?.remove(); drops.splice(i, 1);
         } else if (dr.t > 120) { d.scene.remove(dr.m); dr.label?.remove(); drops.splice(i, 1); }
-        else if (dr.label) { const v = tmp.set(dr.x, dr.y + 1.5, dr.z).project(d.camera as THREE.Camera), rc = d.canvas.getBoundingClientRect(), near = Math.hypot(dr.x - heroPos.x, dr.z - heroPos.z) < 22 && v.z < 1; dr.label.style.display = near ? 'block' : 'none'; if (near) { dr.label.style.left = rc.left + (v.x * 0.5 + 0.5) * rc.width + 'px'; dr.label.style.top = rc.top + (-v.y * 0.5 + 0.5) * rc.height + 'px'; } if (dr.gear!.rarity !== 'normal' && Math.random() < dt * 8) d.particles.spawn(dr.x + rnd(-0.3, 0.3), dr.y + 0.3, dr.z + rnd(-0.3, 0.3), { vy: rnd(1, 2.5), life: 0.9, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: parseInt(RARITY[dr.gear!.rarity].col.slice(1), 16), a: 0.9 }); }
+        else if (dr.label) { const v = tmp.set(dr.x, dr.y + 1.5, dr.z).project(d.camera as THREE.Camera), rc = d.canvas.getBoundingClientRect(), near = Math.hypot(dr.x - heroPos.x, dr.z - heroPos.z) < 22 && v.z < 1; dr.label.style.display = near ? 'block' : 'none'; if (near) { const lx = rc.left + (v.x * 0.5 + 0.5) * rc.width; let ly = rc.top + (-v.y * 0.5 + 0.5) * rc.height; /* 29/10: dois itens juntos no chão não podem ter os nomes um em cima do outro (parecia que o item mudava de nome ao pegar) */ for (let g = 0; g < 8 && labelSpots.some(([x, y]) => Math.abs(x - lx) < 110 && Math.abs(y - ly) < 18); g++) ly -= 19; labelSpots.push([lx, ly]); dr.label.style.left = lx + 'px'; dr.label.style.top = ly + 'px'; } if (dr.gear!.rarity !== 'normal' && Math.random() < dt * 8) d.particles.spawn(dr.x + rnd(-0.3, 0.3), dr.y + 0.3, dr.z + rnd(-0.3, 0.3), { vy: rnd(1, 2.5), life: 0.9, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: parseInt(RARITY[dr.gear!.rarity].col.slice(1), 16), a: 0.9 }); }
       }
       updateBars();
       for (let i = lvFx.length - 1; i >= 0; i--) { const f = lvFx[i]; f.t += dt; f.f(Math.min(1, f.t / f.dur)); if (f.t >= f.dur) { f.end(); lvFx.splice(i, 1); } }

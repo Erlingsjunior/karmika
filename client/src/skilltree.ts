@@ -159,7 +159,11 @@ export const scaleOf = (rank: number): Scale => ({ rank, dmg: 1 + 0.04 * rank, r
 export const TIER_NAMES = ['Iniciante', 'Bronze', 'Prata', 'Ouro'];
 export const TIER_ICON = ['', 'I', 'II', '✦'];
 
-export function createSkillTree(race: () => Race, lvl: () => number, log: (t: string, c?: string) => void, title?: () => string) {
+/* 29/10 (Erling: "a árvore do humano não some; vira abas Humano · Guerreiro (e depois Guerreiro Classe II); posso pegar magias de
+   ambas as classes"): owned = as árvores que a alma já percorreu (a de origem, cada classe passada e a atual). Os pontos são um
+   monte só (1 por nível); cada aba gasta do mesmo monte. A barra usa a classe atual e recebe, nos espaços livres, as magias
+   aprendidas nas abas anteriores. */
+export function createSkillTree(race: () => Race, lvl: () => number, log: (t: string, c?: string) => void, title?: () => string, owned?: () => Race[], nameOf?: (r: Race) => string) {
   const SAVE = 'karmika.tree.v2';
   let ranks: Record<string, number> = {}, bonus = 0, migrated: string[] = [];
   try { const s = JSON.parse(localStorage.getItem(SAVE) || 'null'); if (s) { ranks = s.ranks ?? {}; bonus = s.bonus ?? 0; migrated = s.migrated ?? []; }
@@ -167,27 +171,34 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
   } catch { /* */ }
   const save = () => { try { localStorage.setItem(SAVE, JSON.stringify({ ranks, bonus, migrated })); } catch { /* */ } };
   const key = (r: Race, id: string) => `${r}:${id}`;
-  const rank = (id: string, r = race()) => ranks[key(r, id)] ?? 0;
-  const spent = (r = race()) => (TREES[r] ?? []).reduce((a, n) => a + rank(n.id, r), 0);
+  let view: Race | null = null;
+  const ownedL = (): Race[] => { const L = owned?.() ?? [race()]; return L.includes(race()) ? L : [...L, race()]; };
+  const vr = (): Race => (view && ownedL().includes(view) ? view : race());
+  const rankIn = (id: string, r: Race) => ranks[key(r, id)] ?? 0;
+  /** de fora (barra e poder da magia): o maior ponto que a magia tem em qualquer aba que a alma percorreu */
+  const rank = (id: string, r?: Race) => r ? rankIn(id, r) : Math.max(0, ...ownedL().map((q) => rankIn(id, q)));
+  const rkV = (id: string) => rankIn(id, vr());
+  const spent1 = (r: Race) => (TREES[r] ?? []).reduce((a, n) => a + rankIn(n.id, r), 0);
+  const spent = () => ownedL().reduce((a, r) => a + spent1(r), 0);
   const total = () => 2 + lvl() * PER_LEVEL + bonus; // 3 no nível 1 (as três magias básicas), depois 1 por nível
   const available = () => Math.max(0, total() - spent());
-  const node = (id: string, r = race()) => (TREES[r] ?? []).find((n) => n.id === id);
-  const def = (id: string, r = race()) => (KITS[r] ?? []).find((s) => s.id === id) as SkillDef | undefined;
+  const node = (id: string, r = vr()) => (TREES[r] ?? []).find((n) => n.id === id);
+  const def = (id: string, r = vr()) => (KITS[r] ?? []).find((s) => s.id === id) as SkillDef | undefined;
   /* teto por magia: 1 + nível/8 (regra 8) — mas um ponto ganho NUNCA fica preso. Se as magias que já abriram não comportam
      todos os pontos do nível, o teto sobe o bastante para caber (ex.: nível 2, três magias abertas, 4 pontos → teto 2). */
-  const cap = () => { const open = (TREES[race()] ?? []).filter((n) => (def(n.id)?.lvl ?? 1) <= lvl() || rank(n.id) > 0).length || 1; return Math.min(MAX_RANK, Math.max(1 + Math.floor(lvl() / 8), Math.ceil(total() / open))); };
+  const cap = () => { const open = ownedL().reduce((a, r) => a + (TREES[r] ?? []).filter((n) => (def(n.id, r)?.lvl ?? 1) <= lvl() || rankIn(n.id, r) > 0).length, 0) || 1; return Math.min(MAX_RANK, Math.max(1 + Math.floor(lvl() / 8), Math.ceil(total() / open))); };
   /** por que não dá para investir (null = pode) */
   function blocked(id: string): string | null {
     const n = node(id); if (!n) return 'desconhecida';
-    { const dl = def(id)?.lvl ?? 1; if (lvl() < dl && !rank(id)) return `abre no nível ${dl}`; }
+    { const dl = def(id)?.lvl ?? 1; if (lvl() < dl && !rkV(id)) return `abre no nível ${dl}`; }
     if (available() <= 0) return 'sem pontos';
-    if (rank(id) >= cap()) return rank(id) >= MAX_RANK ? `no máximo (${MAX_RANK})` : `máximo no seu nível: ${cap()}`;
-    for (const [p, k0] of n.req) { const k = Math.min(k0, cap()); if (rank(p) < k) return `precisa de ${k} ponto${k > 1 ? 's' : ''} em ${def(p)?.name ?? p}`; } // o pré-requisito nunca pede mais do que o teto do seu nível (senão nada abre antes do nível 8)
+    if (rkV(id) >= cap()) return rkV(id) >= MAX_RANK ? `no máximo (${MAX_RANK})` : `máximo no seu nível: ${cap()}`;
+    for (const [p, k0] of n.req) { const k = Math.min(k0, cap()); if (rkV(p) < k) return `precisa de ${k} ponto${k > 1 ? 's' : ''} em ${def(p)?.name ?? p}`; } // o pré-requisito nunca pede mais do que o teto do seu nível (senão nada abre antes do nível 8)
     return null;
   }
   function invest(id: string): boolean {
     const why = blocked(id); if (why) { log(`Não dá: ${why}.`, '#ff9a8a'); return false; }
-    const k = key(race(), id); const before = scaleOf(ranks[k] ?? 0).tier; ranks[k] = (ranks[k] ?? 0) + 1; save();
+    const k = key(vr(), id); const before = scaleOf(ranks[k] ?? 0).tier; ranks[k] = (ranks[k] ?? 0) + 1; save();
     const d = def(id)!, after = scaleOf(ranks[k]).tier;
     if (ranks[k] === 1) log(`✨ ${d.name} aprendida! Tecla [${keyOf(race(), d.id)}].`, '#ffe08a');
     else if (after > before) log(`✦ ${d.name} evoluiu: ${TIER_NAMES[after]} — nova apresentação, mais dano e alcance.`, '#ffe08a');
@@ -202,14 +213,14 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
     for (const s of KITS[r] ?? []) if (lvl() >= s.lvl && !ranks[key(r, s.id)]) ranks[key(r, s.id)] = 1;
     if (!ranks[key(r, 'combo')]) ranks[key(r, 'combo')] = 1; save();
   }
-  function reset() { for (const n of TREES[race()] ?? []) delete ranks[key(race(), n.id)]; ranks[key(race(), 'combo')] = 1; save(); log('Árvore redistribuída.', '#b9c6e0'); }
+  function reset() { for (const n of TREES[vr()] ?? []) delete ranks[key(vr(), n.id)]; ranks[key(vr(), 'combo')] = 1; save(); log('Árvore redistribuída.', '#b9c6e0'); }
   /** reencarnação: a árvore inteira volta (todas as raças) e todos os pontos ficam livres para redistribuir */
   function wipe() { ranks = {}; migrated = Object.keys(TREES); for (const r of migrated) ranks[key(r as Race, 'combo')] = 1; save(); log('✦ A Árvore Kármica voltou inteira: todos os pontos estão livres (K).', '#ffe08a'); }
   const scale = (id: string) => scaleOf(rank(id));
   const has = (id: string) => rank(id) > 0;
   /** ficha completa da magia no ponto atual */
   function sheet(id: string): string[] {
-    const s = STATS[key(race(), id)] ?? {}, d = def(id), sc = scale(id), L = lvl(), base = 12 * (1 + 0.05 * (L - 1));
+    const s = STATS[key(vr(), id)] ?? {}, d = def(id), sc = scale(id), L = lvl(), base = 12 * (1 + 0.05 * (L - 1));
     const out: string[] = [];
     if (s.dmg) out.push(`⚔ Dano: ${Math.round(base * s.dmg * sc.dmg)}${s.hits ? ` × ${s.hits} acertos` : ''} <i>(×${(s.dmg * sc.dmg).toFixed(2)} do golpe básico)</i>`);
     if (s.range) out.push(`➤ Alcance: ${(s.range * sc.range).toFixed(1)} m`);
@@ -217,20 +228,20 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
     if (s.dur) out.push(`⏳ Duração: ${(s.dur * sc.dur).toFixed(1)} s`);
     if (s.cast) out.push(`✋ Preparo: ${s.cast} s`);
     if (s.cd) out.push(`↻ Recarga: ${s.cd} s`);
-    if (d?.cost) out.push(`💧 Custo: ${Math.round(d.cost * sc.cost)} de ${resOf(race()).name}`);
+    if (d?.cost) out.push(`💧 Custo: ${Math.round(d.cost * sc.cost)} de ${resOf(vr()).name}`);
     if (s.note) out.push(`📝 ${s.note}`);
     return out;
   }
   function render(el: HTMLElement, sel: string | null, onSel: (id: string) => void, onInvest: (id: string) => void) {
-    const r = race(), nodes = TREES[r] ?? [], d = def(sel ?? 'combo') ?? null, selId = d?.id ?? 'combo';
+    const r = vr(), nodes = TREES[r] ?? [], d = def(sel ?? 'combo') ?? null, selId = d?.id ?? 'combo';
     const cols = Math.max(...nodes.map((n) => n.col)) + 1, W = cols > 6 ? 104 : 118, H = 96, rows = Math.ceil(Math.max(...nodes.map((n) => n.row)) + 1);
     const cx = (n: Node) => n.col * W + 44, cy = (n: Node) => n.row * H + 40;
-    const lines = nodes.flatMap((n) => n.req.map(([p]) => { const pn = node(p)!; const on = rank(n.id) > 0; return `<line x1="${cx(pn) + 22}" y1="${cy(pn)}" x2="${cx(n) - 22}" y2="${cy(n)}" stroke="${on ? '#ffd24a' : rank(p) >= (n.req.find((q) => q[0] === p)![1]) ? '#a08a50' : '#4a3a28'}" stroke-width="${on ? 3 : 2}" ${on ? '' : 'stroke-dasharray="4 4"'}/>`; }));
-    const html = nodes.map((n) => { const s = def(n.id)!, rk = rank(n.id), sc = scaleOf(rk), why = blocked(n.id); return `<div class="tn ${rk ? 'on' : ''} ${n.id === selId ? 'sel' : ''} ${!rk && !why ? 'can' : ''}" style="left:${cx(n) - 22}px;top:${cy(n) - 22}px;--c:${s.c}" data-n="${n.id}" title="${s.name}"><div class="ic">${s.svg}</div><b>${rk}/${MAX_RANK}</b>${sc.tier ? `<i class="tier">${TIER_ICON[sc.tier]}</i>` : ''}<kbd>${s.k}</kbd></div>`; }).join('');
-    const sc = scale(selId), why = blocked(selId), rk = rank(selId);
+    const lines = nodes.flatMap((n) => n.req.map(([p]) => { const pn = node(p)!; const on = rkV(n.id) > 0; return `<line x1="${cx(pn) + 22}" y1="${cy(pn)}" x2="${cx(n) - 22}" y2="${cy(n)}" stroke="${on ? '#ffd24a' : rkV(p) >= (n.req.find((q) => q[0] === p)![1]) ? '#a08a50' : '#4a3a28'}" stroke-width="${on ? 3 : 2}" ${on ? '' : 'stroke-dasharray="4 4"'}/>`; }));
+    const html = nodes.map((n) => { const s = def(n.id)!, rk = rkV(n.id), sc = scaleOf(rk), why = blocked(n.id); return `<div class="tn ${rk ? 'on' : ''} ${n.id === selId ? 'sel' : ''} ${!rk && !why ? 'can' : ''}" style="left:${cx(n) - 22}px;top:${cy(n) - 22}px;--c:${s.c}" data-n="${n.id}" title="${s.name}"><div class="ic">${s.svg}</div><b>${rk}/${MAX_RANK}</b>${sc.tier ? `<i class="tier">${TIER_ICON[sc.tier]}</i>` : ''}<kbd>${s.k}</kbd></div>`; }).join('');
+    const sc = scale(selId), why = blocked(selId), rk = rkV(selId);
     const next = rk < 3 ? 3 : rk < 6 ? 6 : 10;
-    el.innerHTML = `<div class="pn skpn"><h2>🌳 Árvore Kármica — ${title ? title() : r === 'human' ? 'Humano' : r === 'nordic' ? 'Guerreira Nórdica' : r === 'dwarf' ? 'Anão' : 'Tecnocrata'} <button data-x>✕</button></h2>
-      <div class="tree-top"><span class="pts ${available() ? 'on' : ''}">${available()} ponto${available() === 1 ? '' : 's'} para gastar</span><small>Nível ${lvl()} · 1 ponto por nível · máx. ${cap()} por magia agora · ${spent()} gastos</small><button data-reset title="Redistribuir todos os pontos">↺ Redistribuir</button></div>
+    el.innerHTML = `<div class="pn skpn"><h2>🌳 Árvore Kármica — ${nameOf && ownedL().length > 1 ? nameOf(r) : title ? title() : r === 'human' ? 'Humano' : r === 'nordic' ? 'Guerreira Nórdica' : r === 'dwarf' ? 'Anão' : 'Tecnocrata'} <button data-x>✕</button></h2>
+      ${ownedL().length > 1 ? `<div class="ktabs">${ownedL().map((q, i) => `${i ? '<span class="karr" title="mudança de classe">➜</span>' : ''}<button data-tab="${q}" class="${q === r ? 'on' : ''}">${nameOf ? nameOf(q) : q}${q === race() ? ' <i>· atual</i>' : ''}</button>`).join('')}</div>` : ''}<div class="tree-top"><span class="pts ${available() ? 'on' : ''}">${available()} ponto${available() === 1 ? '' : 's'} para gastar</span><small>Nível ${lvl()} · 1 ponto por nível · máx. ${cap()} por magia agora · ${spent()} gastos</small><button data-reset title="Redistribuir todos os pontos">↺ Redistribuir</button></div>
       <div class="tree-body"><div class="treew"><div class="tree" style="width:${cols * W}px;height:${rows * H}px"><svg width="${cols * W}" height="${rows * H}">${lines.join('')}</svg>${html}</div></div>
       <div class="tdet">${d ? `<div class="th"><div class="ic" style="--c:${d.c}">${d.svg}</div><div><b>${d.name}</b><small>Tecla [${keyOf(race(), d.id)}] · ${rk ? `${rk}/${MAX_RANK} · ${TIER_NAMES[sc.tier]}` : 'não aprendida'}</small></div></div>
         <p class="tip">${d.tip}</p>
@@ -238,8 +249,12 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
         <div class="evo">${[1, 2, 3].map((t) => `<span class="${sc.tier >= t ? 'on' : ''}">${TIER_ICON[t]} ${TIER_NAMES[t]} <i>${[0, 3, 6, 10][t]} pts</i></span>`).join('')}</div>
         <small class="nx">${rk >= MAX_RANK ? 'Magia no máximo.' : `Próxima evolução visual em ${next} ponto${next > 1 ? 's' : ''}. Cada ponto: +4% de dano (somado), +4% alcance e área, +5% duração, −2% custo.`}</small>
         <button class="inv ${why ? 'off' : ''}" data-inv="${selId}" ${why ? 'disabled' : ''}>${why ? why : rk ? `+1 ponto em ${d.name}` : `Aprender ${d.name} (1 ponto)`}</button>` : ''}</div></div>
-      <small class="ft">Clique numa magia para ver a ficha · Esc fecha</small></div>`;
-    el.onclick = (e) => { const t = e.target as HTMLElement; const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { confirmBox('Redistribuir todos os pontos desta personagem?', 'Redistribuir', () => { reset(); onSel(selId); }); } };
+      ${(() => { const L = ownedL(), at = L.indexOf(r); return at >= 0 && at < L.length - 1 ? `<button class="knext" data-tab="${L[at + 1]}">⬇ Mudança de classe: <b>${nameOf ? nameOf(L[at + 1]) : L[at + 1]}</b> — as magias daqui continuam suas</button>` : ''; })()}<small class="ft">Clique numa magia para ver a ficha · Esc fecha${ownedL().length > 1 ? ' · os pontos são um monte só, para todas as abas' : ''}</small></div>`;
+    el.onclick = (e) => { const t = e.target as HTMLElement; { const tb = t.closest('[data-tab]') as HTMLElement | null; if (tb) { view = tb.dataset.tab as Race; onSel('combo'); return; } } const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { confirmBox('Redistribuir todos os pontos desta personagem?', 'Redistribuir', () => { reset(); onSel(selId); }); } };
   }
-  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def };
+  /** classe nova (29/10): a aba nova começa só com o golpe básico — os pontos ficam livres para você escolher (o migrate antigo dava 1 ponto em tudo) */
+  const startClass = () => { const r = race(); if (!migrated.includes(r)) migrated.push(r); if (!ranks[key(r, 'combo')]) ranks[key(r, 'combo')] = 1; save(); };
+  /** a aba aberta (null = a da classe atual) */
+  const setView = (r: Race | null) => { view = r; };
+  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL };
 }
