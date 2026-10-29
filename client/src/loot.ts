@@ -144,7 +144,7 @@ const BASES: Record<Slot, Base[]> = {
     { n: 'Machado de Mão', g: 'm', icon: '🪓', s: { dmg: 11, crit: 2 } }, { n: 'Machado Barbado', g: 'm', icon: '🪓', s: { dmg: 14 } },
     { n: 'Arco Curto', g: 'm', icon: '🏹', s: { dmg: 9, dex: 2 } }, { n: 'Arco Longo', g: 'm', icon: '🏹', s: { dmg: 13, dex: 2 } },
     { n: 'Besta de Repetição', g: 'f', icon: '🏹', s: { dmg: 12, crit: 2 }, only: 'cac' },
-    { n: 'Metralhadora de Mão', g: 'f', icon: '🔫', s: { dmg: 11 }, only: 'tec' }, { n: 'Lança-Chamas de Mão', g: 'm', icon: '🔥', s: { dmg: 12 }, only: 'tec' }, { n: 'Lança-Veneno de Mão', g: 'm', icon: '☣', s: { dmg: 12 }, only: 'tec' },
+    { n: 'Metralhadora de Mão', g: 'f', icon: '🔫', s: { dmg: 11 }, only: 'tec' }, { n: 'Pistola de Latão', g: 'f', icon: '🔫', s: { dmg: 10, crit: 4 }, only: 'tec' }, { n: 'Lança-Chamas de Mão', g: 'm', icon: '🔥', s: { dmg: 12 }, only: 'tec' }, { n: 'Lança-Veneno de Mão', g: 'm', icon: '☣', s: { dmg: 12 }, only: 'tec' },
     { n: 'Porrete de Carvalho', g: 'm', icon: '🪵', s: { dmg: 14, str: 2 }, only: 'lob' }, { n: 'Maça de Osso', g: 'f', icon: '🦴', s: { dmg: 16, crit: 2 }, only: 'lob' }, { n: 'Alabarda Tosca', g: 'f', icon: '🪓', s: { dmg: 19, str: 1 }, only: 'lob' },
     { n: 'Espada de Duelo', g: 'f', icon: '🗡️', s: { dmg: 12, crit: 4, dex: 2 }, only: 'vam' }, { n: 'Adaga Fina', g: 'f', icon: '🗡️', s: { dmg: 9, crit: 6, leech: 1 }, only: 'vam' },
     { n: 'Martelo de Guerra Anão', g: 'm', icon: '🔨', s: { dmg: 24, str: 2 }, only: 'dwarf' }, { n: 'Machado Duplo Anão', g: 'm', icon: '🪓', s: { dmg: 23, crit: 2 }, only: 'dwarf' }],

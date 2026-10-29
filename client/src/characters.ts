@@ -1173,6 +1173,15 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const sk = gm(new THREE.SphereGeometry(0.03, 8, 6), 'bone'); sk.position.set(0, -0.04, 0.05); RG.add(sk); // caveirinha na coronha
           const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.018), new THREE.MeshBasicMaterial({ color: 0xc0202a })); gem.position.set(0, -0.5, 0.075); RG.add(gem);
           len = 0.4;
+        } else if (base === 'Pistola de Latão') { // pistola dos tecnocratas: um cano de latão, tambor de cobre e cabo de nogueira
+          sw.remove(pom); sw.remove(grip); RG = new THREE.Group(); RG.rotation.x = -Math.PI / 2; gunHolder.add(RG);
+          const body = gm(new THREE.BoxGeometry(0.05, 0.12, 0.07), 'bronze'); body.position.set(0, -0.08, 0.03); RG.add(body);
+          const grip2 = gm(new THREE.BoxGeometry(0.04, 0.05, 0.11), 'leatherD'); grip2.position.set(0, 0.0, -0.03); grip2.rotation.x = 0.35; RG.add(grip2);
+          const br = gm(new THREE.CylinderGeometry(0.016, 0.014, 0.24, 8), 'dark'); br.position.set(0, -0.24, 0.05); RG.add(br);
+          const drum = gm(new THREE.CylinderGeometry(0.035, 0.035, 0.05, 8), 'iron'); drum.position.set(0, -0.11, 0.05); RG.add(drum);
+          const ring = gm(new THREE.CylinderGeometry(0.024, 0.024, 0.02, 10), 'bronze'); ring.position.set(0, -0.35, 0.05); RG.add(ring);
+          const valve = gm(new THREE.TorusGeometry(0.018, 0.005, 4, 10), 'gold'); valve.position.set(0.035, -0.06, 0.03); valve.rotation.y = Math.PI / 2; RG.add(valve);
+          len = 0.36;
         } else if (base === 'Metralhadora de Mão' || base === 'Lança-Chamas de Mão' || base === 'Lança-Veneno de Mão') { // armas dos tecnocratas: latão, cobre, válvulas
           sw.remove(pom); sw.remove(grip); RG = new THREE.Group(); RG.rotation.x = -Math.PI / 2; gunHolder.add(RG); const K = base[0] === 'M' ? 'smg' : base.includes('Chamas') ? 'flame' : 'venom';
           const body = gm(new THREE.BoxGeometry(0.07, 0.26, 0.09), 'bronze'); body.position.set(0, -0.14, 0.03); RG.add(body);

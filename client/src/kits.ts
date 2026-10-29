@@ -62,7 +62,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   mana: { name: 'Mana', label: 'MANA', style: 'mana', mode: 'regen', tip: 'Mana: volta sozinha, devagar, quando você não conjura.' },
   determinacao: { name: 'Determinação', label: 'DETERMINAÇÃO', style: 'impeto', mode: 'fight', tip: 'Determinação: a teimosia de quem não nasceu com dom. Enche a cada golpe dado ou recebido; fora da luta, esfria.' },
   impeto: { name: 'Ímpeto', label: 'ÍMPETO', style: 'impeto', mode: 'fight', tip: 'Ímpeto: começa vazio e enche a cada golpe dado ou recebido. Fora da luta, esfria e esvazia. Itens de Geração de Ímpeto enchem mais rápido.' },
-  energia: { name: 'Energia', label: 'ENERGIA', style: 'energia', mode: 'regen', tip: 'Energia: as baterias recarregam sozinhas.' },
+  energia: { name: 'Energia', label: 'ENERGIA', style: 'energia', mode: 'regen', tip: 'Energia: vem da bateria do reator (Mk I: 50.000; Mk II: 120.000). Não recarrega sozinha e só gasta com as magias — quando acabar, troque a bateria (Núcleo de Reator) ou monte uma nova na aba ⚛ Reator da mochila.' },
   sangue: { name: 'Sangue', label: 'SANGUE', style: 'sangue', mode: 'fight', tip: 'Sangue: enche ao ferir e ao beber das vítimas; seca com o tempo.' },
   furia: { name: 'Fúria', label: 'FÚRIA', style: 'furia', mode: 'fight', tip: 'Fúria: a besta acorda com a dor e com a caça.' },
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },

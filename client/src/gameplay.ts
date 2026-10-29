@@ -468,9 +468,9 @@ export function createGameplay(d: GameplayDeps) {
   const ticks: { t: number; fn: (dt: number, left: number) => void; end?: () => void }[] = [];
   let form: { id: string; t: number; scale: number } | null = null, overT = 0, medicT = 0, flameT = 0, flameYaw = 0, flameKind: 'fire' | 'poison' = 'fire', flameMul = 0.55, flameReach = 9.5;
   /** arma equipada que muda o ataque básico: arco, besta de repetição, metralhadora, lança-chamas, lança-veneno (23/10) */
-  type WMode = 'bow' | 'longbow' | 'xbow' | 'smg' | 'flame' | 'venom';
+  type WMode = 'bow' | 'longbow' | 'xbow' | 'smg' | 'pistol' | 'flame' | 'venom';
   let wmode = null as WMode | null;
-  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Metralhadora/, 'smg'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
+  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Metralhadora/, 'smg'], [/Pistola/, 'pistol'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
   function mkArrow(col: number) { const g = new THREE.Group(), tm = (c: number) => new THREE.MeshToonMaterial({ color: c, gradientMap: ramp });
     const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 5), tm(0x8a6a40)); sh.rotation.x = Math.PI / 2; g.add(sh);
     const hd = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 4), tm(0xb8c0c8)); hd.rotation.x = Math.PI / 2; hd.position.z = 0.38; g.add(hd);
@@ -648,7 +648,12 @@ export function createGameplay(d: GameplayDeps) {
      ganhar dinheiro para manter o seu núcleo: um Núcleo custa caro e dura bem (Mk I 8 turnos de jogo; Mk II, da segunda classe, 20 turnos).
      Vazio: a Energia não volta, a esfera apaga e as magias da Academia não saem. Abaixo de 15%: a Energia volta pela metade. */
   const REACT_KEY = 'karmika.reactor.v1'; let reactor: { charge: number; tier: number } = { charge: 1, tier: 1 }; try { const r0 = JSON.parse(localStorage.getItem(REACT_KEY) || 'null'); if (r0 && typeof r0.charge === 'number') reactor = r0; } catch { /* */ }
-  let reactSaveT = 0, reactWarn = 0; const REACT_MIN: Record<number, number> = { 1: 8 * 30, 2: 20 * 30 }; /* Mk I: 8 turnos (4 h); Mk II: 20 turnos (10 h) */
+  let reactSaveT = 0, reactWarn = 0; const REACT_MIN: Record<number, number> = { 1: 8 * 30, 2: 20 * 30 }; void REACT_MIN;
+  /* 29/10 (Erling: "bateria não recarrega sozinha: a gente compra, coloca, a energia fica super cheia — uns 50 mil — e vai gastando com as magias; aí troca a bateria"):
+     a Energia do tecnocrata É a bateria. Mk I guarda 50.000, Mk II 120.000. Não volta sozinha e não gasta com o tempo: só com as magias. */
+  const REACT_CAP: Record<number, number> = { 1: 50000, 2: 120000 };
+  /** a lanterna da esfera ajudante (29/10: botão ao lado do acesso rápido) */
+  let lampOn = (() => { try { return localStorage.getItem('karmika.lamp') !== '0'; } catch { return true; } })();
   /* A FOME DA FERA (Erling, 25/10): o lobisomem sente falta de carne de gente (humano, anão de carne dura, elfo de carne magra), o vampiro de sangue de gente.
      A fome sobe com o tempo de jogo. Carne de bicho e Sangue Diluído enganam por um tempo, mas cada vez menos: o "piso" sobe
      desde a última refeição de verdade, e o que é de bicho não desce a fome abaixo dele. Com fome alta a fera fica lenta e fraca.
@@ -990,6 +995,10 @@ export function createGameplay(d: GameplayDeps) {
           pending.push({ at: now + TEMPO * 0.22, fn: () => { const from = from0(), dir = dir0(0.01); bolts.push({ p: from, v: dir.multiplyScalar(L ? 40 : 34), life: L ? 0.6 : 0.5, mul: L ? 1.55 : 1.25, pulse: true, straight: true, quiet: true, m: mkArrow(0xe8d8b0), col: 0xe8d8b0 }); d.audio.parry(); } }); return true; }
         if (wmode === 'xbow') { cd.attack = 0.6 * TEMPO; // besta de repetição: três virotes em sequência
           for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { const from = from0(), dir = dir0(0.03); bolts.push({ p: from, v: dir.multiplyScalar(46), life: 0.42, mul: 0.62, pulse: true, straight: true, quiet: true, m: mkArrow(0x9a2a2a), col: 0xc8d8ff }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
+        if (wmode === 'pistol') { cd.attack = 0.42 * TEMPO; // pistola de latão: dois tiros certeiros e pesados
+          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.16, fn: () => { const from = from0(), dir = dir0(0.012); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.07);
+            bolts.push({ p: from, v: dir.clone().multiplyScalar(60), life: 0.32, mul: 0.78, pulse: true, quiet: true, col: 0xffd080 }); beam(from, from.clone().addScaledVector(dir, 1.6), 0xffe0a0, 0.025, 0.06);
+            const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2, vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); } }); return true; }
         if (wmode === 'smg') { cd.attack = 0.55 * TEMPO; // metralhadora de mão: seis balas rápidas e espalhadas
           for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(), dir = dir0(0.06); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.05);
             bolts.push({ p: from, v: dir.clone().multiplyScalar(52), life: 0.3, mul: 0.34, pulse: true, quiet: true, col: 0xffd080 }); beam(from, from.clone().addScaledVector(dir, 1.2), 0xffe0a0, 0.02, 0.05);
@@ -1485,13 +1494,19 @@ export function createGameplay(d: GameplayDeps) {
       d.audio.chime(); logMsg(`✝ Jejum e Oração: o pão sem fermento, o vinho santo e o silêncio. A Dúvida cai de ${Math.round(before * 100)}% para ${Math.round(doubt * 100)}%, e por 20 min ela volta mais devagar.`, '#fff0b0'); doubtStage = 0; },
     setWarrior(on: boolean) { warrior = on; },
     setFury(v: number) { fury = v; },
+    hasOrb() { return d.getHero().kind === 'technocrat' || kitKey === 'tecno'; },
+    lamp() { return lampOn; },
+    setLamp(on: boolean) { lampOn = on; try { localStorage.setItem('karmika.lamp', on ? '1' : '0'); } catch { /* */ } },
+    reactorCap() { return REACT_CAP[reactor.tier] ?? 50000; },
+    /** a fusão dos encaixes da aba Reator: bateria cheia no nível do reator */
+    fuseReactor() { reactor.charge = 1; st.mpMax = REACT_CAP[reactor.tier] ?? 50000; st.mp = st.mpMax; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } d.audio.chime(); logMsg(`⚛ As peças se fundiram no cilindro: bateria cheia — ${st.mpMax.toLocaleString('pt-BR')} de Energia.`, '#8af0ff'); },
     /** reator pessoal do tecnocrata: carga 0..1 e geração do núcleo */
     reactor() { return { ...reactor }; },
     /** a fome da fera (lob/vam): 0..1 e o piso que bicho não desce */
     crave() { return { v: crave.v, floor: craveFloor(), feast: feastT }; },
     feed,
     setCrave(v: number, real?: number) { crave.v = v; if (real != null) crave.real = real; saveCrave(); },
-    installReactor(tier: number, maxTier: number) { if (tier > maxTier) { logMsg('⚛ Este núcleo é da segunda classe: o seu reator ainda não aguenta.', '#ff9a8a'); return false; } reactor = { charge: 1, tier }; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } d.audio.chime(); logMsg(`⚛ Núcleo de Reator Mk ${tier === 2 ? 'II' : 'I'} instalado: ${REACT_MIN[tier] / 30} turnos de energia.`, '#8af0ff'); return true; },
+    installReactor(tier: number, maxTier: number) { if (tier > maxTier) { logMsg('⚛ Este núcleo é da segunda classe: o seu reator ainda não aguenta.', '#ff9a8a'); return false; } reactor = { charge: 1, tier }; st.mpMax = REACT_CAP[tier] ?? 50000; st.mp = st.mpMax; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } d.audio.chime(); logMsg(`⚛ Bateria Mk ${tier === 2 ? 'II' : 'I'} no reator: ${st.mpMax.toLocaleString('pt-BR')} de Energia. Ela só gasta com as magias — quando acabar, troque a bateria.`, '#8af0ff'); return true; },
     /** postura → modo da esfera do tecnocrata */
     setDroneMode(stanceId: string | null | undefined) { droneMode = stanceId === 'engenharia' ? 'grp' : stanceId === 'blindagem' ? 'def' : 'atk'; },
     /** aparelhos do tecnocrata formado (manopla, reator, exoesqueleto) presos ao modelo */
@@ -1630,8 +1645,8 @@ export function createGameplay(d: GameplayDeps) {
           D.ring.rotation.y += dt * 2.2; D.ring2.rotation.y -= dt * 1.4; D.droneFlash = Math.max(0, D.droneFlash - dt * 5); D.eye.scale.setScalar(1 + D.droneFlash * 0.7); (D.glow.material as THREE.SpriteMaterial).opacity = 0.3 + heroDark * 0.4 + D.droneFlash * 0.6;
           if (workAt && !D.droneTo && droneGoT <= 0 && Math.random() < dt * 5) { const a = D.g.position.clone(), b = new THREE.Vector3(workAt.x + rnd(-0.3, 0.3), d.world.heightAt(workAt.x, workAt.z) + rnd(0.3, 1.0), workAt.z + rnd(-0.3, 0.3)); beam(a, b, 0x8af0ff, 0.02, 0.12); D.droneFlash = 0.6; for (let q = 0; q < 6; q++) d.particles.spawn(b.x, b.y, b.z, { vx: rnd(-2, 2), vy: rnd(0.5, 3), vz: rnd(-2, 2), life: 0.4, s0: 0.1, s1: 0.03, c0: 0xffffff, c1: 0xffc060, a: 1, g: 9 }); }
         } else if (sideDrone) sideDrone.g.visible = false;
-        { const DR = h.kind === 'technocrat' ? h : kitKey === 'tecno' && sideDrone ? sideDrone : null; const want = DR ? heroDark * 7 : 0; droneLight.intensity += (want - droneLight.intensity) * Math.min(1, dt * 3); if (DR) DR.dronePos(droneLight.position); droneLight.visible = droneLight.intensity > 0.05;
-          const ws = DR && !(kitKey === 'tecno' && reactor.charge <= 0) ? heroDark * 60 : 0; droneSpot.intensity += (ws - droneSpot.intensity) * Math.min(1, dt * 3); droneSpot.visible = droneSpot.intensity > 0.1;
+        { const DR = h.kind === 'technocrat' ? h : kitKey === 'tecno' && sideDrone ? sideDrone : null; const want = DR && lampOn ? heroDark * 7 : 0; droneLight.intensity += (want - droneLight.intensity) * Math.min(1, dt * 3); if (DR) DR.dronePos(droneLight.position); droneLight.visible = droneLight.intensity > 0.05;
+          const ws = DR && lampOn && !(kitKey === 'tecno' && reactor.charge <= 0) ? heroDark * 60 : 0; droneSpot.intensity += (ws - droneSpot.intensity) * Math.min(1, dt * 3); droneSpot.visible = droneSpot.intensity > 0.1;
           if (DR) { DR.dronePos(droneSpot.position); const yy = h.root.rotation.y; droneSpot.target.position.set(heroPos.x + Math.sin(yy) * 6, heroPos.y, heroPos.z + Math.cos(yy) * 6); droneSpot.target.updateMatrixWorld(); } }
         // lobisomem: luta sem arma (garras); a espada e o escudo somem enquanto não estiver com ferramenta de ofício na mão
         { const rg = (h as unknown as { rig?: { sword?: () => THREE.Object3D | null; shield?: () => THREE.Object3D | null } }).rig; const sw = rg?.sword?.() ?? null, shd = rg?.shield?.() ?? null;
@@ -1678,11 +1693,11 @@ export function createGameplay(d: GameplayDeps) {
       for (const k of Object.keys(cd) as (keyof typeof cd)[]) cd[k] = Math.max(0, cd[k] - dt);
       for (let i = pending.length - 1; i >= 0; i--) if (now >= pending[i].at) { pending.splice(i, 1)[0].fn(); }
       // regeneração
-      if (kitKey === 'tecno') { reactor.charge = Math.max(0, reactor.charge - dt / (60 * (REACT_MIN[reactor.tier] ?? 150))); reactSaveT -= dt; if (reactSaveT <= 0) { reactSaveT = 5; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } }
+      if (kitKey === 'tecno') { const CAP = REACT_CAP[reactor.tier] ?? 50000; if (st.mpMax !== CAP) { st.mpMax = CAP; st.mp = Math.round(reactor.charge * CAP); } else reactor.charge = Math.max(0, Math.min(1, st.mp / CAP)); reactSaveT -= dt; if (reactSaveT <= 0) { reactSaveT = 5; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } }
         if (reactor.charge < 0.15 && now > reactWarn) { reactWarn = now + 120; logMsg(reactor.charge <= 0 ? '⚛ O reator está vazio: a Energia não volta e a esfera apagou. Troque o Núcleo de Reator (Companhia de Latão ou um ferreiro).' : `⚛ Reator em ${Math.round(reactor.charge * 100)}%: providencie um Núcleo novo.`, '#ffb060'); } }
-      if (st.res.mode === 'regen') { const rk = (kitKey === 'tecno' ? (reactor.charge <= 0 ? 0 : reactor.charge < 0.15 ? 0.5 : 1) : 1) * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
+      if (st.res.mode === 'regen' && kitKey !== 'tecno') { const rk = 1 * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
-      else if (now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia
+      else if (st.res.mode !== 'regen' && now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia (29/10: só esses — a Magia e a Energia não esvaziavam e enchiam ao mesmo tempo)
       st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * dt);
       /* auras dos Únicos e Relíquias: partículas da cor do item em volta do herói */
       if (st.sp.has('r_surtr')) buff.burnT = Math.max(buff.burnT, 0.3);

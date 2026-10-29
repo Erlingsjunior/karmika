@@ -944,6 +944,22 @@
   #quick { position: fixed; left: 50%; bottom: calc(112px + (var(--rows) - 1) * 50px); transform: translateX(-50%); display: flex; gap: 6px; align-items: flex-end; z-index: 7; pointer-events: auto; }
   #quick .qtog { display: grid; place-items: center; padding: 0; line-height: 0; width: 22px; height: 22px; background: rgba(14,10,6,.85); border: 1px solid #7a5a30; color: #c9a24a; cursor: pointer; font-size: 10px; border-radius: 4px; margin-right: 4px; align-self: center; }
   #quick .slot.q { width: 40px; height: 40px; cursor: pointer; pointer-events: auto; } #quick .slot.q .ic { font-size: 20px; } #quick .slot.q .n { position: absolute; right: 3px; bottom: 1px; font: 600 10px Cinzel, serif; color: #ffe08a; }
+  #quick .qgap { width: 14px; flex: none; }
+  #quick .slot.q.qtool { background: linear-gradient(#2a1e10, #120c06); border-color: #7a5a30; } #quick .slot.q.qtool.lit { border-color: #ffe08a; box-shadow: 0 0 12px #ffd86a88, inset 0 0 10px #ffe08a44; } #quick .slot.q.qtool:not(.lit):not(.rx) .ic { filter: grayscale(1) brightness(.6); }
+  #quick .slot.q.rx { border-color: #5ae0ff; box-shadow: inset 0 0 10px #5ae0ff33; } #quick .slot.q.rx .n { color: #9af0ff; } #quick .slot.q.rx.low { border-color: #ff6a5a; animation: rxlow 1s infinite; }
+  #quick .slot.q.rx .rbar { position: absolute; left: 3px; top: 4px; bottom: 4px; width: 4px; background: #0a1420; border-radius: 2px; overflow: hidden; display: flex; align-items: flex-end; } #quick .slot.q.rx .rbar s { display: block; width: 100%; background: linear-gradient(#dff8ff, #2a8aff); }
+  @keyframes rxlow { 50% { box-shadow: 0 0 12px #ff6a5a; } }
+  .btabs2 { display: flex; gap: 4px; margin: 2px 0 6px; } .btabs2 button { flex: 1; background: #1a120a; border: 1px solid #6a4a24; color: #c9a24a; font: 600 12px Cinzel, serif; padding: 5px; border-radius: 4px; cursor: pointer; } .btabs2 button.on { background: #3a2810; color: #ffe08a; border-color: #c9a24a; }
+  .rtab { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; padding: 4px; } .rtab .rcol { display: flex; flex-direction: column; gap: 8px; }
+  .rslot { display: grid; grid-template-columns: 26px 1fr; column-gap: 6px; align-items: center; background: #120c06; border: 1px dashed #6a4a24; border-radius: 6px; padding: 6px; color: #b8a080; font: 11px Georgia, serif; cursor: pointer; text-align: left; min-height: 44px; } .rslot .ic { font-size: 20px; width: 26px; text-align: center; opacity: .45; grid-row: span 3; } .rslot b { font: 600 11px Cinzel, serif; } .rslot small { font-size: 10px; opacity: .8; } .rslot i { font-size: 10px; color: #c9a24a; }
+  .rslot.can { border-color: #c9a24a; color: #ffe08a; box-shadow: 0 0 8px #c9a24a55; } .rslot.can .ic { opacity: .8; } .rslot.ok { border-style: solid; border-color: #5ae0ff; color: #dff8ff; box-shadow: inset 0 0 10px #5ae0ff33; cursor: default; } .rslot.ok .ic { opacity: 1; }
+  .rinfo { text-align: center; font: 600 12px Cinzel, serif; color: #9af0ff; margin-top: 4px; } .rhint { grid-column: 1 / -1; text-align: center; font: italic 11px Georgia, serif; color: #a89070; }
+  .rsvg { max-width: 100%; height: auto; display: block; } .rsvg .g1, .rsvg .g2, .rsvg .g3 { animation: rgear 6s linear infinite; } .rsvg .g2 { animation-direction: reverse; animation-duration: 4s; } .rsvg .g3 { animation-duration: 3.2s; }
+  .rsvg .piston { animation: rpist 1.4s ease-in-out infinite; } .rsvg .piston.p2 { animation-delay: -.7s; } .rsvg .steam { animation: rsteam 2.4s ease-out infinite; } .rsvg .coreglow { animation: rpulse 2.2s ease-in-out infinite; }
+  .rsvg.fusing .g1, .rsvg.fusing .g2, .rsvg.fusing .g3 { animation-duration: .4s; } .rsvg.fusing .coreglow { animation: rflash .25s infinite; } .rsvg.fusing .arc { animation: rarc .12s infinite; } .rsvg.fusing .piston { animation-duration: .3s; }
+  @keyframes rgear { to { transform: rotate(360deg); } } @keyframes rpist { 50% { transform: translateX(-8px); } } @keyframes rsteam { from { transform: translateY(0); opacity: .8; } to { transform: translateY(-14px); opacity: 0; } }
+  @keyframes rpulse { 50% { opacity: .75; } } @keyframes rflash { 50% { opacity: .35; } } @keyframes rarc { 50% { opacity: .1; } }
+  @media (prefers-reduced-motion: reduce) { .rsvg * { animation: none !important; } }
   #quick .slot.q.empty { opacity: .35; cursor: default; } #quick .slot.q.on { transform: scale(1.15); box-shadow: 0 0 14px #ffe08a; }
   #fury { bottom: calc(160px + (var(--rows) - 1) * 50px); }
 

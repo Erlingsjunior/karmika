@@ -1,3 +1,4 @@
+import { REACTOR_PARTS, type ReactorPart, loadParts, saveParts, partsFull, reactorSvg } from './reator';
 import { potionPulse } from './celebrate';
 import { FEASTS, feastEff, FEAST_MIN, GADGETS } from './festim';
 import { isPremium, GIFT_BAG } from './premium';
@@ -76,8 +77,8 @@ const ITEMS0: Record<string, Item> = {
   potion_g: { name: 'Poção maior', icon: '🧪', kind: 'food', col: 0xff2a4a, desc: 'Cura 140 de vida.', heal: 140, sell: 20 },
   mana: { name: 'Poção de magia', icon: '🔮', kind: 'food', col: 0x5a8aff, desc: 'Restaura 80 de magia.', mp: 80, sell: 14 },
   tonic: { name: 'Tônico de vigor', icon: '🫙', kind: 'food', col: 0x8ad07a, desc: 'Regenera vida por 30 s.', heal: 20, buff: 'regen', sell: 12 },
-  reator_1: { name: 'Núcleo de Reator Mk I', icon: '⚛', kind: 'misc', col: 0x8af0ff, desc: 'O coração do reator pessoal do tecnocrata. Use para trocar o núcleo: 8 turnos de jogo (4 h) de energia. Caro, mas dura bem. Ferreiros fazem, mas precisam do fluido do alquimista e do cristal dos magos.', sell: 90 },
-  reator_2: { name: 'Núcleo de Reator Mk II', icon: '⚛', kind: 'misc', col: 0xb0f8ff, desc: 'Núcleo moderno, da segunda classe da Academia: 20 turnos de jogo (10 h) de energia. Só serve em reator de Engenheiro.', sell: 240 },
+  reator_1: { name: 'Núcleo de Reator Mk I', icon: '⚛', kind: 'misc', col: 0x8af0ff, desc: 'A bateria do reator pessoal do tecnocrata. Use para trocar: o reator enche com 50.000 de Energia, que só gasta com as magias. Ferreiros fazem (fluido do alquimista + cristal dos magos), ou monte uma na aba ⚛ Reator da mochila.', sell: 90 },
+  reator_2: { name: 'Núcleo de Reator Mk II', icon: '⚛', kind: 'misc', col: 0xb0f8ff, desc: 'Bateria moderna, da segunda classe da Academia: 120.000 de Energia. Só serve em reator de Engenheiro.', sell: 240 },
   casco_reator: { name: 'Casco de Reator', icon: '⚙', kind: 'res', col: 0xa8823a, desc: 'Casco de latão e aço com as bobinas enroladas. Feito pelo ferreiro.', sell: 40 },
   fluido_vital: { name: 'Fluido Vital', icon: '🧪', kind: 'res', col: 0x7affd0, desc: 'O líquido que esfria o núcleo. Destilado pelo alquimista.', sell: 30 },
   cristal_arcano: { name: 'Cristal Arcano', icon: '💠', kind: 'res', col: 0x9a8aff, desc: 'Cristal carregado pelos magos do Pináculo de Marfim. Sem ele o núcleo não acende.', sell: 45 },
@@ -228,7 +229,7 @@ const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.h
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
-export function createInventory(game: GameLike, hooks: { placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Reator (só para o tecnocrata) */ reactor?(): { on: boolean; charge: number; cap: number }; fuse?(): void; placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
   let alOpen = false; /* a coluna do alinhamento kármico na tela do personagem */
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
@@ -236,7 +237,7 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   const eqG: Record<Slot, Gear | null> = { weapon: null, armor: null, shield: null, helm: null, boots: null, ring: null, ring2: null, amulet: null, relic: null, earring: null, earring2: null, shoulders: null, cape: null };
   let stock: Gear[] = [];
   const accClosed = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.acc') || '["craft"]') as string[]; } catch { return ['craft']; } })());
-  let open = false, charOpen = false, shop: string | null = null, shopTitle: string | null = null, shopTab = 0;
+  let open = false, charOpen = false, shop: string | null = null, shopTitle: string | null = null, shopTab = 0, bagTab: 'bag' | 'reator' = 'bag', fusing = false;
   const bags: string[] = []; // bolsas extras equipadas (ids de BAGS), até 4
   /* Bolsa de Ofício (60 espaços) e Bolsa Mágica (30): grandes, mas com fim. O que passar do limite ocupa a mochila comum */
   const CRAFT_CAP = 60, MAGIC_CAP = 30;
@@ -363,6 +364,12 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
   const bar = (v: number, m: number, c: string) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, v / m * 100))}%;background:${c}"></i></div>`;
   // (resumo de status dos itens: hoje mostrado só no tooltip)
   const cell = (g: Gear, attrs: string) => { const bad = st.lvl < reqLvl(g) || (!!g.fac && myFac() !== g.fac); return `<div class="it gi ${bad ? 'noreq' : ''}" draggable="true" data-drag="g:${g.uid}" ${attrs} style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${bad ? '#c0202a66' : RARITY[g.rarity].col + '44'}"><span>${gearIcon(g)}</span><b style="color:${bad ? '#ff4a4a' : RARITY[g.rarity].col}" title="nível de uso">${reqLvl(g)}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small></div>`; };
+  /** a aba ⚛ Reator: o cilindro cortado no meio e os seis encaixes em volta */
+  function reactorTab() { const R = hooks.reactor!(), P = loadParts(), filled = REACTOR_PARTS.filter((q) => (P[q.id] ?? 0) >= q.n).length;
+    const slot = (q: ReactorPart) => { const have = P[q.id] ?? 0, inBag = bag[q.id] ?? 0, it = ITEMS[q.id], ok = have >= q.n;
+      return `<button class="rslot ${ok ? 'ok' : inBag >= q.n - have ? 'can' : ''}" data-rslot="${q.id}" title="${it?.name ?? q.id}: ${it?.desc ?? ''}"><span class="ic">${it?.icon ?? '?'}</span><b>${q.label}</b><small>${it?.name ?? q.id}</small><i>${ok ? '✔ encaixado' : `${have}/${q.n} · mochila: ${inBag}`}</i></button>`; };
+    return `<div class="rtab"><div class="rcol">${REACTOR_PARTS.slice(0, 3).map(slot).join('')}</div><div class="rmid">${reactorSvg(R.charge, fusing, filled)}<div class="rinfo"><b>${Math.round(R.charge * R.cap).toLocaleString('pt-BR')}</b> / ${R.cap.toLocaleString('pt-BR')} de Energia</div></div><div class="rcol">${REACTOR_PARTS.slice(3).map(slot).join('')}</div>
+      <p class="rhint">Clique num encaixe para pôr a peça da mochila. Com os seis cheios, as peças se fundem no cilindro e o reator volta à carga máxima. A Energia só gasta com as magias — o Núcleo de Reator pronto (Companhia de Latão) também enche.</p></div>`; }
   function render() {
     tipCtx.lvl = st.lvl; tipCtx.fac = myFac();
     tip.style.display = 'none'; hooks.onBag?.();
@@ -382,8 +389,9 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
       let k = 0;
       const bagsHtml = groups.map((gp, gi) => { const mine = cells.slice(k, k + gp.n); k += gp.n; const empties = Array.from({ length: gp.n - mine.length }, () => '<div class="it empty"></div>').join(''); return sec(`b${gi}`, gp.name, `${mine.length}/${gp.n}`, `<div class="grid g6 sc">${mine.join('')}${empties}</div>`); }).join('');
       el.innerHTML = `<div class="pn bagpn"><h2>Mochila <span class="cap ${used >= cap ? 'full' : ''}">${used}/${cap} espaços · 🪙 ${st.gold}${shop ? '<button class="sellall" data-sellall2 title="Vende todos os recursos e tralhas (poções, comida, ferramentas e equipamentos ficam)">💰 vender tralha</button>' : ''}<span class="trash" data-trash title="Arraste um item para cá (ou para fora das janelas) para destruí-lo">🗑 destruir</span></span><button data-x>✕</button></h2>
-        <div class="bagsx">${bagsHtml}${isPremium() ? special('Bolsa de Ofício', '🧰', CRAFT_BAG, `pedra, madeira, couro e material de construção — ${CRAFT_CAP} espaços (Premium); o que passar vai para a mochila`, CRAFT_CAP) + special('Bolsa Mágica', '🔮', MAGIC_BAG, `reagentes, tomos, selos e pergaminhos — ${MAGIC_CAP} espaços (Premium); o que passar vai para a mochila`, MAGIC_CAP) : ''}
-        <button class="profgo" data-profgo>⚒ Criar e ofícios ficam em <b>Profissões</b> (Y)</button></div>
+        ${hooks.reactor?.().on && !shop ? `<div class="btabs2"><button data-btab="bag" class="${bagTab === 'bag' ? 'on' : ''}">🎒 Mochila</button><button data-btab="reator" class="${bagTab === 'reator' ? 'on' : ''}">⚛ Reator</button></div>` : ''}
+        ${bagTab === 'reator' && hooks.reactor?.().on && !shop ? reactorTab() : `<div class="bagsx">${bagsHtml}${isPremium() ? special('Bolsa de Ofício', '🧰', CRAFT_BAG, `pedra, madeira, couro e material de construção — ${CRAFT_CAP} espaços (Premium); o que passar vai para a mochila`, CRAFT_CAP) + special('Bolsa Mágica', '🔮', MAGIC_BAG, `reagentes, tomos, selos e pergaminhos — ${MAGIC_CAP} espaços (Premium); o que passar vai para a mochila`, MAGIC_CAP) : ''}
+        <button class="profgo" data-profgo>⚒ Criar e ofícios ficam em <b>Profissões</b> (Y)</button></div>`}
         <small class="ft">${bags.length < MAX_BAGS ? `${MAX_BAGS - bags.length} de ${MAX_BAGS} lugares para bolsas livres · ` : ''}clique no título da bolsa: abrir/fechar · arraste: equipar, vender, 🗑 destruir</small></div>`;
       el.style.display = 'flex';
     } else el.style.display = 'none';
@@ -477,7 +485,12 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     }
         if ('x' in t.dataset) { if (ch.contains(t)) charOpen = false; else open = false; render(); } else if (t.dataset.pt) spend(t.dataset.pt as Attr); else if (t.dataset.eq) equip(+t.dataset.eq); else if (t.dataset.use) use(t.dataset.use); else if (t.dataset.cr) craft(t.dataset.cr); else if (t.dataset.un) unequip(t.dataset.un as Slot);
   };
-  el.addEventListener('click', (e) => { const acc = (e.target as HTMLElement).closest('[data-acct]') as HTMLElement | null; if (acc) { const k2 = acc.dataset.acct!; if (accClosed.has(k2)) accClosed.delete(k2); else accClosed.add(k2); try { localStorage.setItem('karmika.acc', JSON.stringify([...accClosed])); } catch { /* */ } render(); return; } if ((e.target as HTMLElement).closest('[data-sellall2]')) { sellJunk(); return; } onPanelClick(e); }); ch.addEventListener('click', onPanelClick);
+  el.addEventListener('click', (e) => { { const tb = (e.target as HTMLElement).closest('[data-btab]') as HTMLElement | null; if (tb) { bagTab = tb.dataset.btab as typeof bagTab; render(); return; }
+      const rs = (e.target as HTMLElement).closest('[data-rslot]') as HTMLElement | null; if (rs && !fusing) { const q = REACTOR_PARTS.find((x) => x.id === rs.dataset.rslot)!, P = loadParts(), need = q.n - (P[q.id] ?? 0);
+        if (need <= 0) return; const n = Math.min(need, bag[q.id] ?? 0); if (!n) { game.logMsg(`⚛ Falta ${ITEMS[q.id]?.name ?? q.id} na mochila (precisa de ${need}).`, '#ff9a8a'); return; }
+        take(q.id, n); P[q.id] = (P[q.id] ?? 0) + n; saveParts(P); game.logMsg(`⚛ ${ITEMS[q.id]?.icon ?? ''} ${ITEMS[q.id]?.name ?? q.id} no encaixe (${P[q.id]}/${q.n}).`, '#8af0ff');
+        if (partsFull(P)) { fusing = true; render(); setTimeout(() => { saveParts({}); fusing = false; hooks.fuse?.(); render(); }, 2600); } else render(); return; } }
+    const acc = (e.target as HTMLElement).closest('[data-acct]') as HTMLElement | null; if (acc) { const k2 = acc.dataset.acct!; if (accClosed.has(k2)) accClosed.delete(k2); else accClosed.add(k2); try { localStorage.setItem('karmika.acc', JSON.stringify([...accClosed])); } catch { /* */ } render(); return; } if ((e.target as HTMLElement).closest('[data-sellall2]')) { sellJunk(); return; } onPanelClick(e); }); ch.addEventListener('click', onPanelClick);
   function sellJunk() { const ids = Object.keys(bag).filter((i) => (ITEMS[i]?.sell ?? 0) > 0 && !BAGS[i] && (ITEMS[i].kind === 'res' || (ITEMS[i].kind === 'misc' && !ITEMS[i].tier))); let tot = 0, cnt = 0; for (const i of ids) { const n = bag[i] ?? 0; const pr = Math.round((ITEMS[i].sell ?? 0) * (shop && SHOPDEF[shop]?.buys?.[i] ? SHOPDEF[shop].buys![i] : 1)); if (n > 0 && take(i, n)) { tot += pr * n; cnt += n; } } if (cnt) { st.gold += tot; game.logMsg(`💰 Vendeu tudo: ${cnt} itens por ${tot} 🪙 (total ${st.gold}).`, '#ffd24a'); game.snd?.('coins'); render(); save(); } }
   vt.addEventListener('mousemove', showTip); vt.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
   vt.addEventListener('click', (e) => { const t = e.target as HTMLElement;
@@ -571,11 +584,16 @@ export function createInventory(game: GameLike, hooks: { placeFire(): boolean; r
     get vaultOpen() { return vaultOpen; }, vault,
     closeShop() { shop = null; open = false; vaultOpen = false; render(); },
     toggle() { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); },
+    /** abre a mochila já na aba do Reator (botão ⚛ ao lado do acesso rápido) */
+    openReactor() { open = true; bagTab = 'reator'; render(); },
     toggleChar() { charOpen = !charOpen; render(); },
     canAdd, canAddGear, capacity, usedSlots, bagCount: () => bags.length,
     openShop(id: string, title?: string) {
       open = true; shop = id; vaultOpen = false; shopTitle = title ?? null; shopTab = 0; // a mochila abre junto com a loja (arrasta para vender)
-      const sd = SHOPDEF[id]; if (sd?.fac) stock = facSet(sd.fac, FAC_ILVL); else if (sd?.gear) stock = sd.gear.map((s, i) => genGear(Math.max(1, st.lvl + (i % 3)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), s)); else stock = [];
+      const sd = SHOPDEF[id]; if (sd?.fac) stock = facSet(sd.fac, FAC_ILVL); else if (sd?.gear) { stock = sd.gear.map((s, i) => genGear(Math.max(1, st.lvl + (i % 3)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), s));
+        /* 29/10 (Erling): "o armeiro da cidade não tem metralhadora nem pistola para vender" — todo armeiro passa a ter a prateleira de latão dos tecnocratas */
+        if (id === 'armeiro') for (const [i, b] of ['Pistola de Latão', 'Metralhadora de Mão', 'Lança-Chamas de Mão', 'Lança-Veneno de Mão'].entries()) stock.push(genGear(Math.max(1, st.lvl + (i % 2)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), 'weapon', b)); }
+      else stock = [];
       render();
     },
     closeAll() { open = false; charOpen = false; shop = null; vaultOpen = false; render(); },
