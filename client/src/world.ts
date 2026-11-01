@@ -14,6 +14,8 @@ export const SH = 210;
 /** Porto Caldeira: centro, raio, as duas bacias (relativas ao centro: x0..x1 e a cabeceira y0; a água vai até o mar) e a ilha do Farol */
 export const PORTO = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x0: -22, x1: -15, y0: 18 }], farol: { x: 474, y: 834, r: 3.4 } };
 
+/** pedras da prancha 58 (01/11): musgosa, laje, menir, seixos, bola de musgo com samambaias, pico cinza, obsidiana azul, arenito laranja, veio de cobre, gelo, lisa escura e vulcânica rachada */
+export type RockStyle = 'mossy' | 'slab' | 'menhir' | 'pebbles' | 'mossball' | 'peak' | 'obsidian' | 'sandstone' | 'copper' | 'ice' | 'darkSmooth' | 'volcanic';
 export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
@@ -39,6 +41,7 @@ export interface Prop {
   height: number;         // altura em metros (ver shared/src/scale.ts)
   /** árvore: espécie das pranchas do Herik (flora3d.ts), escolhida pelo bioma; sem ela, a árvore antiga */ sp?: Species;
   /** planta decorativa (plantas3d.ts), pelo bioma */ plant?: Plant;
+  /** rocha: estilo da prancha 58 pelo bioma (world3d) */ rs?: RockStyle;
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
   /** muro baixo do adro de um edifício monumental (urbanismo 27/10) */ adro?: boolean;
@@ -1100,7 +1103,10 @@ export function buildCity(): World {
   const addRock = (cx: number, cy: number, big = false, variant = Math.floor(r() * 4)) => {
     const w = big ? 2 : 1;
     for (let dy = 0; dy < w; dy++) for (let dx = 0; dx < w; dx++) if (!free(cx + dx, cy + dy)) return;
-    props.push({ kind: 'rock', gx: cx, gy: cy, w, h: w, height: big ? 2.6 + r() * 1.4 : 1.1 + r() * 0.8, wall: 0x6b6a68, roof: 0, variant }); /* 27/10: pedra não tranca o tile inteiro; só o miolo dela é sólido (SOLID_R no main) */
+    const bm = biome[cy]?.[cx] ?? 'meadow', q = r(); // estilo pela prancha 58, conforme o bioma
+    const RS: Record<Biome, RockStyle[]> = { meadow: ['mossy', 'mossy', 'pebbles', 'slab'], forest: ['mossy', 'mossball', 'mossy', 'pebbles'], swamp: ['darkSmooth', 'mossball', 'darkSmooth', 'slab'], snow: ['ice', 'ice', 'peak', 'slab'], ruins: ['menhir', 'slab', 'mossy', 'pebbles'], rock: ['peak', 'peak', 'slab', 'copper'], volcanic: ['volcanic', 'volcanic', 'copper', 'obsidian'], enchanted: ['mossball', 'mossball', 'mossy', 'menhir'], blight: ['obsidian', 'obsidian', 'darkSmooth', 'menhir'], jungle: ['mossball', 'mossy', 'darkSmooth', 'pebbles'], coast: ['sandstone', 'sandstone', 'pebbles', 'slab'] };
+    const rs = RS[bm][Math.floor(q * 4)];
+    props.push({ kind: 'rock', rs, gx: cx, gy: cy, w, h: w, height: (rs === 'peak' || rs === 'menhir' ? 1.5 : rs === 'slab' || rs === 'pebbles' ? 0.5 : 1) * (big ? 2.6 + r() * 1.4 : 1.1 + r() * 0.8), wall: 0x6b6a68, roof: 0, variant }); /* 27/10: pedra não tranca o tile inteiro; só o miolo dela é sólido (SOLID_R no main) */
   };
   const addBones = (cx: number, cy: number, v = Math.floor(r() * 3)) => { if (free(cx, cy)) props.push({ kind: 'bones', gx: cx, gy: cy, w: 1, h: 1, height: 0.4, wall: 0xd8d0b8, roof: 0, variant: v }); };
   const addGrave = (cx: number, cy: number) => { if (free(cx, cy)) props.push({ kind: 'grave', gx: cx, gy: cy, w: 1, h: 1, height: 1.2, wall: 0x7a7a78, roof: 0, variant: Math.floor(r() * 3) }); };

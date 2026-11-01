@@ -426,25 +426,38 @@ export function buildWorld(world: World): WorldObjs {
       const core = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 6), new THREE.MeshBasicMaterial({ color: 0xfff6c0 })); core.position.y = -0.1; flame.add(core);
       L.torches.push({ pos: new THREE.Vector3(wx, wy + 0.7, wz), light: nullLight, base: 62, seed: r() * 50, flame, dist: 0 });
     } else if (p.kind === 'rock') {
+      const x4 = (i: number, pa: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) => pa.getX(i) + pa.getZ(i) * 0.7;
       // rocha: esfera subdividida deformada por ruído (facetas irregulares, base achatada), com musgo nos topos e pedras menores ao redor
+      /* estilo da prancha 58 pelo bioma (01/11): cor, quanto musgo, quão pontuda/lisa/chata; sem `rs` fica a rocha cinza de antes */
+      const RS = p.rs, ST = { base: [0x6b6a68, 0x5e5d5b, 0x7a746a, 0x625f66][(p.variant ?? 0) % 4], moss: RS === 'mossball' ? 2.2 : RS === 'mossy' || RS === 'menhir' ? 1 : 0, jag: 0, smooth: 0, bands: 0 };
+      if (RS === 'peak') { ST.base = 0x8a8884; ST.jag = 1; } else if (RS === 'obsidian') { ST.base = 0x1c2a58; ST.jag = 1.2; ST.smooth = 0.5; } else if (RS === 'sandstone') { ST.base = 0xd09050; ST.bands = 1; }
+      else if (RS === 'copper') { ST.base = 0x4a4642; } else if (RS === 'ice') { ST.base = 0xa8dcf0; ST.smooth = 0.6; } else if (RS === 'darkSmooth') { ST.base = 0x2e3238; ST.smooth = 1; } else if (RS === 'volcanic') { ST.base = 0x262220; ST.jag = 0.5; }
+      else if (RS === 'slab') { ST.base = 0xa8a49c; } else if (RS === 'pebbles') { ST.base = 0x8a8a8e; ST.smooth = 1; } else if (RS === 'menhir') { ST.base = 0x7a766e; }
       const mkRock = (seed: number, flat = 0.62) => {
         const geo = new THREE.IcosahedronGeometry(1, 2), pa = geo.attributes.position; const n1 = seed * 7.3, n2 = seed * 3.1;
         for (let i = 0; i < pa.count; i++) {
           const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i);
-          const k = 0.82 + 0.26 * (Math.sin(x * 3.1 + n1) * Math.cos(z * 2.7 + n2) * 0.5 + Math.sin(y * 4.3 + x * 1.7 + n2) * 0.3 + Math.sin((x + z) * 5.7 + n1) * 0.2);
+          const amp = 0.26 * (1 - ST.smooth * 0.7) + ST.jag * 0.2;
+          let k = 0.82 + amp * (Math.sin(x * 3.1 + n1) * Math.cos(z * 2.7 + n2) * 0.5 + Math.sin(y * 4.3 + x * 1.7 + n2) * 0.3 + Math.sin((x + z) * 5.7 + n1) * 0.2);
+          if (ST.jag) k *= 1 - ST.jag * 0.35 * Math.max(0, y) * (1 - Math.abs(Math.sin(x * 4 + z * 3 + n1))); // pico: afina para cima em cristas
+          if (ST.bands) k *= 1 + 0.08 * Math.sin(y * 9 + n2); // arenito: camadas
           pa.setXYZ(i, x * k, (y * k) * (y < 0 ? 0.35 : flat) + (y < 0 ? -0.1 : 0), z * k);
         }
         geo.computeVertexNormals();
-        // cor por vértice: cinza com variação + musgo verde nos topos voltados para cima
-        const cols = new Float32Array(pa.count * 3), base = new THREE.Color([0x6b6a68, 0x5e5d5b, 0x7a746a, 0x625f66][(p.variant ?? 0) % 4]), moss = new THREE.Color(0x4a6a34), nrm = geo.attributes.normal;
-        for (let i = 0; i < pa.count; i++) { const up = Math.max(0, nrm.getY(i)); const v = 0.86 + 0.28 * Math.sin(i * 12.9 + seed); const c = base.clone().multiplyScalar(v); if (up > 0.72 && p.wall !== 0x5a5048) c.lerp(moss, (up - 0.72) * 1.6 * (0.5 + 0.5 * Math.sin(i * 3.3 + seed))); cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b; }
+        // cor por vértice: base com variação + musgo verde nos topos voltados para cima (conforme o estilo)
+        const cols = new Float32Array(pa.count * 3), base = new THREE.Color(ST.base), moss = new THREE.Color(RS === 'mossball' ? 0x5a8a2a : 0x4a6a34), nrm = geo.attributes.normal;
+        for (let i = 0; i < pa.count; i++) { const up = Math.max(0, nrm.getY(i)), y = pa.getY(i); const v = 0.86 + 0.28 * Math.sin(i * 12.9 + seed); const c = base.clone().multiplyScalar(v);
+          if (ST.bands) c.lerp(new THREE.Color(0xa86838), Math.sin(y * 9 + n2) > 0.3 ? 0.5 : 0); if (RS === 'copper' && Math.abs(Math.sin(x4(i, pa) * 6 + y * 5 + n1)) > 0.93) c.set(0xd0702a); if (RS === 'volcanic' && Math.abs(Math.sin(x4(i, pa) * 7 + y * 4 + n2)) > 0.95) c.set(0xff6a20);
+          const mossK = RS ? ST.moss : (p.wall !== 0x5a5048 ? 1 : 0); if (up > (mossK > 1 ? 0.2 : 0.72) && mossK) c.lerp(moss, Math.min(1, (up - (mossK > 1 ? 0.2 : 0.72)) * 1.6 * mossK * (0.5 + 0.5 * Math.sin(i * 3.3 + seed)))); cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b; }
         geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); L.own.push(geo); return geo;
       };
       const rm = cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp }));
-      const m = new THREE.Mesh(mkRock(p.gx * 13 + p.gy), rm);
-      const sx = Wm * 0.52 * (0.85 + r() * 0.3), sy = p.height * 0.55, sz = Dm * 0.52 * (0.85 + r() * 0.3);
+      const m = new THREE.Mesh(mkRock(p.gx * 13 + p.gy, RS === 'slab' ? 0.3 : RS === 'peak' || RS === 'menhir' ? 1.2 : 0.62), rm);
+      const sx = Wm * 0.52 * (0.85 + r() * 0.3) * (RS === 'menhir' ? 0.45 : RS === 'pebbles' ? 0.6 : 1), sy = p.height * 0.55, sz = Dm * 0.52 * (0.85 + r() * 0.3) * (RS === 'menhir' ? 0.6 : RS === 'pebbles' ? 0.6 : 1);
       m.scale.set(sx, sy, sz); m.position.set(Wm / 2, sy * 0.45, Dm / 2); m.rotation.y = r() * 6; m.castShadow = m.receiveShadow = true; g.add(m);
-      const nSmall = p.w === 1 ? 2 : 4;
+      if (RS === 'ice') for (let k = 0; k < 5; k++) { const a = r() * 6.283; const ic = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.25 + r() * 0.3, 5), std(0xd8f0ff)); ic.rotation.x = Math.PI; ic.position.set(Wm / 2 + Math.cos(a) * sx * 0.8, sy * 0.4, Dm / 2 + Math.sin(a) * sz * 0.8); g.add(ic); } // pingentes de gelo
+      if (RS === 'mossball') for (let k = 0; k < 3; k++) { const a = r() * 6.283; const f = buildPlant('fern', p.gx + k); f.scale.setScalar(0.7); f.position.set(Wm / 2 + Math.cos(a) * sx * 1.05, 0, Dm / 2 + Math.sin(a) * sz * 1.05); g.add(f); } // samambaias ao pé
+      const nSmall = RS === 'pebbles' ? 6 : p.w === 1 ? 2 : 4;
       for (let k = 0; k < nSmall; k++) { const a = r() * 6.283, d = Math.max(sx, sz) * (0.95 + r() * 0.5); const m2 = new THREE.Mesh(mkRock(p.gx * 31 + p.gy * 7 + k, 0.7), rm); const s2 = 0.18 + r() * 0.3; m2.scale.set(s2 * 1.3, s2 * 0.8, s2); m2.position.set(Wm / 2 + Math.cos(a) * d, s2 * 0.3, Dm / 2 + Math.sin(a) * d); m2.rotation.y = r() * 6; m2.castShadow = true; g.add(m2); }
       { const vein = veinOf(p); if (vein) { const nN = p.w > 1 ? 9 : 5; // veio de minério: pepitas cravadas na rocha (ferrugem = ferro, brilho = prata)
         for (let k = 0; k < nN; k++) { const a = r() * 6.283, hh = 0.25 + r() * 0.5; const nug = new THREE.Mesh(new THREE.OctahedronGeometry(0.09 + r() * 0.08, 0), vein === 2 ? glowSilver : std(0xa0582e)); nug.position.set(Wm / 2 + Math.cos(a) * sx * 0.86 * (1 - hh * 0.4), sy * 0.45 + sy * hh * 0.5, Dm / 2 + Math.sin(a) * sz * 0.86 * (1 - hh * 0.4)); nug.rotation.set(r() * 3, r() * 3, 0); g.add(nug); } } }
