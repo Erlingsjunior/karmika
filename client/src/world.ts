@@ -1,4 +1,5 @@
 import { pickSpecies, type Species } from './flora3d';
+import { pickPlant, WATER_PLANTS, type Plant } from './plantas3d';
 import { CAMPAIGN_NPCS } from './campanha';
 import type { Tile } from '@karmika/shared';
 /** os nomes dos lugares de ofício: na cidade são casas de verdade; na vila, coisa simples (Erling, 25/10) */
@@ -13,7 +14,7 @@ export const SH = 210;
 /** Porto Caldeira: centro, raio, as duas bacias (relativas ao centro: x0..x1 e a cabeceira y0; a água vai até o mar) e a ilha do Farol */
 export const PORTO = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x0: -22, x1: -15, y0: 18 }], farol: { x: 474, y: 834, r: 3.4 } };
 
-export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack';
+export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -37,6 +38,7 @@ export interface Prop {
   w: number; h: number;   // tamanho em tiles
   height: number;         // altura em metros (ver shared/src/scale.ts)
   /** árvore: espécie das pranchas do Herik (flora3d.ts), escolhida pelo bioma; sem ela, a árvore antiga */ sp?: Species;
+  /** planta decorativa (plantas3d.ts), pelo bioma */ plant?: Plant;
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
   /** muro baixo do adro de um edifício monumental (urbanismo 27/10) */ adro?: boolean;
@@ -1632,6 +1634,18 @@ export function buildCity(): World {
     for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) { const pb = PB[biome[y][x]]; if (!pb || map[y][x] !== 'grass' || rj() > pb) continue; patch(x, y, rj() < 0.65 ? 5 : 0, 4 + Math.floor(rj() * 5), 1.8, isGrass); }
     // em volta de cada povoado, dois ou três canteiros perto da estrada (quem começa acha logo o que colher)
     for (const t of settlements) { const n = 2 + Math.floor(rj() * 2); for (let k = 0; k < n; k++) { const a = rj() * 6.283, d = t.radius + 5 + rj() * 10; patch(Math.round(t.x + Math.cos(a) * d), Math.round(t.y + Math.sin(a) * d), k === 0 ? 0 : 5, 5 + Math.floor(rj() * 4), 1.8, isGrass); } }
+  }
+  /* plantas de cenário (pranchas 56/57, 01/11): canteiros pequenos de UMA espécie por bioma, poucos (Erling: "cuidado com as quantidades");
+     nenúfares só na água rasa junto à margem. Não bloqueiam e não se colhem. */
+  { const rp = rng(5151); const taken = new Set(props.filter((q) => q.kind === 'herb' || q.kind === 'plant').map((q) => q.gy * 100000 + q.gx));
+    const PD: Record<Biome, number> = { meadow: 0.0014, forest: 0.0022, swamp: 0.0024, snow: 0.0008, ruins: 0.0014, rock: 0.0012, volcanic: 0.0006, enchanted: 0.0026, blight: 0.0014, jungle: 0.0026, coast: 0.0012 };
+    const okG = (x: number, y: number) => inb(x, y) && map[y][x] === 'grass' && !taken.has(y * 100000 + x) && !nearSettle(x, y, 1);
+    for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) {
+      if (map[y][x] !== 'grass' || rp() > PD[biome[y][x]]) continue; const pl = pickPlant(biome[y][x], rp()), n = 2 + Math.floor(rp() * 3);
+      for (let k = 0, tries = 0; k < n && tries < n * 5; tries++) { const a = rp() * 6.283, d = Math.sqrt(rp()) * 1.6, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d); if (!okG(px, py)) continue; props.push({ kind: 'plant', plant: pl, gx: px, gy: py, w: 1, h: 1, height: 0.6, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); taken.add(py * 100000 + px); k++; }
+    }
+    for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) { const wp = WATER_PLANTS[biome[y][x]]; if (!wp || map[y][x] !== 'water' || rp() > 0.004) continue;
+      if (!(map[y - 1][x] === 'grass' || map[y + 1][x] === 'grass' || map[y][x - 1] === 'grass' || map[y][x + 1] === 'grass')) continue; props.push({ kind: 'plant', plant: wp, gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); }
   }
   for (const sp of spawns) { const rg = regionAt(sp.x, sp.y), k = RANK[sp.type] ?? 0.5; sp.lvl = sp.fixLvl ?? Math.max(rg.lo, Math.min(rg.hi, Math.round(rg.lo + k * (rg.hi - rg.lo)))); }
   { /* mestres dos caminhos (a Vidente de Askavik manda o jogador até eles no nível 30) */

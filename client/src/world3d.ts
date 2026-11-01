@@ -9,6 +9,7 @@ import { buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGa
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildSpecies } from './flora3d';
+import { buildPlant } from './plantas3d';
 import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
 import { buildMonument } from './monuments3d';
 import { buildVapor } from './vapor3d';
@@ -484,6 +485,8 @@ export function buildWorld(world: World): WorldObjs {
       }
       else if (p.kind === 'bfence') { const fg = new THREE.Group(); fg.position.set(Wm / 2, 0, Dm / 2); fg.rotation.y = v * Math.PI / 2; g.add(fg); for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 0.14), dark); post.position.set(sx * (Wm / 2 - 0.1), 0.5, -Dm / 2 + 0.1); post.castShadow = true; fg.add(post); } for (const y of [0.4, 0.8]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(Wm, 0.08, 0.06), logM); rail.position.set(0, y, -Dm / 2 + 0.1); fg.add(rail); } }
       else { const roof = gableRoof(Wm + 0.3, Dm + 0.3, 0.9, 0.15, 0x6d3a28, 0x4a3220, v % 2 === 0); roof.position.set(Wm / 2, 2.1, Dm / 2); g.add(roof); }
+    } else if (p.kind === 'plant' && p.plant) { /* planta de cenário (pranchas 56/57): parada, mesclada no estático; nenúfar fica na linha da água */
+      const pl = buildPlant(p.plant, p.gx * 7 + p.gy * 13 + (p.variant ?? 0)); pl.position.set(Wm / 2, p.plant === 'lilypad' ? WL - gy0 + 0.03 : 0, Dm / 2); pl.rotation.y = r() * 6.283; const sc = 0.85 + r() * 0.3; pl.scale.set(sc, sc, sc); g.add(pl);
     } else if (p.kind === 'rack') { /* estante de armas do quartel (01/11): dois mourões com travessa, lanças e espadas de treino encostadas, um escudo redondo pendurado */
       const wd = std(0xffffff, { map: plankTex(0x5a3a20) }), iron = std(0x3a3f46), steel = std(0x9aa0a8), leather = std(0x6a3a22), v = p.variant ?? 0;
       const rg = new THREE.Group(); rg.position.set(Wm / 2, 0, 0.45); g.add(rg);
@@ -580,7 +583,7 @@ export function buildWorld(world: World): WorldObjs {
    pedra de teletransporte (relíquia), quadro de avisos, estação da carroça. Essas peças ficam fora da fusão e com material sem o corte. */
 const NOCUT_KINDS = new Set(['mailbox', 'fountain', 'chest', 'vault', 'relic', 'noticeboard', 'station', 'deadwell', 'shopfront', 'campfire']);
 function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
-  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack']);
+  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);
