@@ -1,3 +1,4 @@
+import { buildSpecies } from './flora3d';
 import { installTitleTips } from './dicas';
 import { createHub } from './hub';
 import { createSocial, type Guild } from './social';
@@ -4558,4 +4559,4 @@ function dollTick(dt: number) {
 }
 (document.getElementById('who') as HTMLElement).textContent = RACES[state.race].label;
 frame();
-(window as unknown as { __THREE: unknown }).__THREE = THREE;
+(window as unknown as { __THREE: unknown }).__THREE = THREE; (window as unknown as { __flora: unknown }).__flora = buildSpecies; /* teste: uma árvore de cada espécie */

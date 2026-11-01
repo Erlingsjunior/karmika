@@ -8,6 +8,7 @@ import { RUNAS } from './runas';
 import { buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
+import { buildSpecies } from './flora3d';
 import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
 import { buildMonument } from './monuments3d';
 import { buildVapor } from './vapor3d';
@@ -401,7 +402,7 @@ export function buildWorld(world: World): WorldObjs {
       for (let i = 0; i < 6; i++) { const it = new THREE.Mesh(i % 2 ? new THREE.SphereGeometry(0.14, 6, 5) : new THREE.BoxGeometry(0.22, 0.2, 0.22), std([0xc23a2a, 0xe0b040, 0x5a9a40, 0xa06ad0, 0xd87030, 0x4a8ad0][i])); it.position.set(Wm / 2 - 1.0 + i * 0.4, 1.02, Dm / 2 + 0.1); g.add(it); }
     } else if (p.kind === 'tree') {
       const hsh = Math.abs(Math.sin(p.gx * 12.9898 + p.gy * 78.233) * 43758.5453) % 1;
-      const { obj } = buildTree(p.height, p.variant === 2 ? 0.9 : p.variant === 1 ? 0.5 : hsh * 0.3);
+      const obj = p.sp ? buildSpecies(p.sp, p.height, hsh) : buildTree(p.height, p.variant === 2 ? 0.9 : p.variant === 1 ? 0.5 : hsh * 0.3).obj;
       g.position.set(wx, gy0 - 0.08, wz); g.rotation.y = hsh * 40;
       if (p.style === 2) obj.traverse((o) => { const mm = o as THREE.Mesh; if (mm.isMesh && o !== obj.children[0]) mm.material = blossomMat(p.roof); }); // árvores de flor (ilhas do Pináculo)
       L.trees.push({ obj, ph: r() * 6 }); obj.userData.sway = true; g.add(obj);

@@ -1,3 +1,4 @@
+import { pickSpecies, type Species } from './flora3d';
 import { CAMPAIGN_NPCS } from './campanha';
 import type { Tile } from '@karmika/shared';
 /** os nomes dos lugares de ofício: na cidade são casas de verdade; na vila, coisa simples (Erling, 25/10) */
@@ -35,6 +36,7 @@ export interface Prop {
   gx: number; gy: number; // canto de cima (grade)
   w: number; h: number;   // tamanho em tiles
   height: number;         // altura em metros (ver shared/src/scale.ts)
+  /** árvore: espécie das pranchas do Herik (flora3d.ts), escolhida pelo bioma; sem ela, a árvore antiga */ sp?: Species;
   wall: number; roof: number;
   /** texto escrito na peça (o nome da vila no pórtico) */ label?: string;
   /** muro baixo do adro de um edifício monumental (urbanismo 27/10) */ adro?: boolean;
@@ -711,7 +713,7 @@ export function buildCity(): World {
     const disc = (x0: number, y0: number, r: number, t: Tile, r0 = -1) => { for (let y = Math.floor(y0 - r); y <= y0 + r; y++) for (let x = Math.floor(x0 - r); x <= x0 + r; x++) { const d = Math.hypot(x - x0, y - y0); if (d <= r && d > r0) paint(x, y, t); } };
     const line = (x0: number, y0: number, x1: number, y1: number, w = 1, t: Tile = 'road') => { const L = Math.hypot(x1 - x0, y1 - y0); for (let i = 0; i <= L * 2; i++) { const k = i / (L * 2), x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k; for (let dy = -w; dy <= w; dy++) for (let dx = -w; dx <= w; dx++) if (Math.hypot(dx, dy) <= w + 0.3) paint(Math.round(x + dx), Math.round(y + dy), t); } };
     const lit = (x: number, y: number) => { if (at(x, y) === 'grass' || at(x, y) === 'plaza') props.push({ kind: 'torch', gx: cx + x, gy: cy + y, w: 1, h: 1, height: 2.4, wall: 0x2a2a30, roof: 0xffb050 }); };
-    const tree = (x: number, y: number, round = true) => { if (at(x, y) !== 'grass') return; props.push({ kind: 'tree', gx: cx + x, gy: cy + y, w: 1, h: 1, height: 5 + rr() * 2.5, wall: 0x5b3b22, roof: round ? [0x4f8f45, 0x5a9a4a, 0x6a8a3a][Math.floor(rr() * 3)] : 0x3a6a3a, variant: 0, style: 1 }); set(x, y, 'tree'); }; // style 1 = árvore plantada (a limpeza da mata dentro da muralha não leva)
+    const tree = (x: number, y: number, round = true) => { if (at(x, y) !== 'grass') return; props.push({ kind: 'tree', sp: round ? (rr() < 0.75 ? 'oak' : 'birchYellow') : 'pineRed', gx: cx + x, gy: cy + y, w: 1, h: 1, height: 5 + rr() * 2.5, wall: 0x5b3b22, roof: round ? [0x4f8f45, 0x5a9a4a, 0x6a8a3a][Math.floor(rr() * 3)] : 0x3a6a3a, variant: 0, style: 1 }); set(x, y, 'tree'); }; // style 1 = árvore plantada (a limpeza da mata dentro da muralha não leva)
     const canal = (dy: number) => canalX(cy + dy) - cx;
     // 1) o canal e os cais de pedra (o cais é calçada: anda-se por ele)
     for (let dy = -60; dy <= 60; dy++) { const c = canal(dy); for (let dx = Math.floor(c - 5); dx <= c + 5; dx++) { const d = Math.abs(dx + 0.5 - c); if (d <= CANAL_HW) set(dx, dy, 'water'); else if (d <= CANAL_HW + 1.25 && Math.abs(dy) <= 54) set(dx, dy, 'plaza'); } }
@@ -1310,13 +1312,13 @@ export function buildCity(): World {
     const v = r();
     const kind = bm === 'volcanic' || bm === 'blight' ? 1 : bm === 'jungle' || bm === 'enchanted' || bm === 'coast' ? (v < 0.85 ? 0 : 2) : bm === 'snow' ? 2 : bm === 'swamp' ? (v < 0.7 ? 1 : 0) : bm === 'ruins' ? (v < 0.75 ? 1 : 0) : bm === 'forest' ? (v < 0.55 ? 2 : v < 0.8 ? 0 : 1) : bm === 'rock' ? (v < 0.6 ? 1 : 2) : (v < 0.8 ? 0 : v < 0.9 ? 2 : 1);
     const pine = kind === 2;
-    props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: (pine ? 6 + r() * 4 : 4.5 + r() * 3) * (bm === 'jungle' ? 1.5 : bm === 'enchanted' ? 1.3 : 1), wall: bm === 'enchanted' ? 0x6a5a7a : bm === 'blight' ? 0x2a2026 : 0x5b3b22, roof: bm === 'enchanted' ? (r() < 0.5 ? 0x8a5ad0 : 0x5ab0c8) : bm === 'jungle' ? (r() < 0.5 ? 0x1f4a24 : 0x2a5a26) : bm === 'blight' ? 0x4a3a4a : r() < 0.5 ? 0x3f7a3a : 0x4f8f45, variant: kind }); map[y][x] = 'tree'; // o tronco bloqueia (colisão circular), a copa não
+    props.push({ kind: 'tree', sp: pickSpecies(bm, r()), gx: x, gy: y, w: 1, h: 1, height: (pine ? 6 + r() * 4 : 4.5 + r() * 3) * (bm === 'jungle' ? 1.5 : bm === 'enchanted' ? 1.3 : 1), wall: bm === 'enchanted' ? 0x6a5a7a : bm === 'blight' ? 0x2a2026 : 0x5b3b22, roof: bm === 'enchanted' ? (r() < 0.5 ? 0x8a5ad0 : 0x5ab0c8) : bm === 'jungle' ? (r() < 0.5 ? 0x1f4a24 : 0x2a5a26) : bm === 'blight' ? 0x4a3a4a : r() < 0.5 ? 0x3f7a3a : 0x4f8f45, variant: kind }); map[y][x] = 'tree'; // o tronco bloqueia (colisão circular), a copa não
   }
   // floresta fechada no leste e cordilheira rochosa no norte: a borda nunca é uma linha
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
     if (map[y][x] !== 'grass' || nearSettle(x, y, 0)) continue;
     const ek = edgeK(x, y);
-    if (ek.east > 0.35 && r() < ek.east * 0.95) { const pine = r() < 0.5; props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: pine ? 7 + r() * 4 : 5 + r() * 3, wall: 0x4b2f1c, roof: r() < 0.5 ? 0x2f6a2e : 0x3f7a3a, variant: pine ? 2 : 0 }); map[y][x] = 'tree'; continue; }
+    if (ek.east > 0.35 && r() < ek.east * 0.95) { const pine = r() < 0.5; props.push({ kind: 'tree', sp: pickSpecies('forest', r()), gx: x, gy: y, w: 1, h: 1, height: pine ? 7 + r() * 4 : 5 + r() * 3, wall: 0x4b2f1c, roof: r() < 0.5 ? 0x2f6a2e : 0x3f7a3a, variant: pine ? 2 : 0 }); map[y][x] = 'tree'; continue; }
     if (ek.north > 0.4 && r() < ek.north * 0.35) { props.push({ kind: 'rock', gx: x, gy: y, w: 1, h: 1, height: 1 + r() * 2.5 * ek.north, wall: 0x6b6a68, roof: 0, variant: Math.floor(r() * 4) }); }
   }
   const rockDens: Record<Biome, number> = { meadow: 0.004, forest: 0.012, swamp: 0.006, snow: 0.02, ruins: 0.02, rock: 0.07, volcanic: 0.06, enchanted: 0.006, blight: 0.02, jungle: 0.008, coast: 0.01 };
