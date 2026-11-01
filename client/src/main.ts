@@ -3066,7 +3066,7 @@ const solids = new Map<number, { x: number; y: number; r: number }[]>();
 const solidAdd = (c: { x: number; y: number; r: number }) => { for (let ty = Math.floor(c.y - c.r - 0.3); ty <= Math.floor(c.y + c.r + 0.3); ty++) for (let tx = Math.floor(c.x - c.r - 0.3); tx <= Math.floor(c.x + c.r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } };
 /* a Árvore-Mãe caída (27/10): só o tronco barra, em círculos ao longo dele; o terreno em volta é chão */
 for (const p of city.props) if (p.kind === 'monument' && p.variant === 7) for (let k = 0; k < 6; k++) solidAdd({ x: p.gx + 1.5 + k * 3.1, y: p.gy + p.h / 2 - 1, r: 2.8 });
-for (const p of city.props) { const r0 = SOLID_R[p.kind]; if (r0 === undefined) continue; const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
+for (const p of city.props) { const r0 = p.kind === 'vprop' && (p.variant === 2 || p.variant === 6) ? 0.7 : SOLID_R[p.kind]; if (r0 === undefined) continue; /* poço e feno: sólidos inteiros */ const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }
 /* as casas de ofício da cidade (25/10) têm paredes de fundo e laterais: corpo de verdade, a frente fica aberta */
 for (const p of city.props) { if (!(p.kind === 'library' || (p.kind === 'station' && p.w >= 3))) continue; const ry = p.ry ?? 0, cs = Math.cos(ry), sn = Math.sin(ry), cx = p.gx + p.w / 2, cy = p.gy + p.h / 2;
