@@ -556,24 +556,25 @@ export function buildWorld(world: World): WorldObjs {
       L.torches.push({ pos: new THREE.Vector3(wx + 1.0, wy + H + 1.3, wz + 0.8), light: nullLight, base: 70, seed: r() * 50, flame, dist: 0 });
     } else if (p.kind === 'relic' && p.label && PORTAL_OF[p.label]) { /* portal da vila (prancha 33, 01/11): o anel/arco do povo no lugar do monólito */
       const ps = PORTAL_OF[p.label], { g: pg, veil, height } = buildPortal(ps, p.gx * 7 + p.gy * 13); pg.position.set(Wm / 2, 0, Dm / 2); g.add(pg); const G = PORTAL_GLOW[ps];
-      const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.9, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: G, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.9, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: G, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = G; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes: veil, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
       L.glows.push({ light: nullLight, base: 30, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + height * 0.45, p.gy * T + Dm / 2), color: G } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'relic') {
-      // pedra rúnica dos caminhantes: monólito alto, runas azuis brilhantes, pedras ao redor, luz fria
-      const stoneM = std(0x9a9aa8, { map: stoneTex(0x8a8a98) });
-      const mono = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.62, 2.6, 7), stoneM); mono.position.set(Wm / 2, 1.3, Dm / 2); mono.rotation.y = 0.4; mono.castShadow = mono.receiveShadow = true; g.add(mono);
-      const cap = new THREE.Mesh(new THREE.ConeGeometry(0.44, 0.5, 7), stoneM); cap.position.set(Wm / 2, 2.85, Dm / 2); cap.rotation.y = 0.4; g.add(cap);
-      /* runas de Karmika em volta da pedra inteira (antes ficavam só de um lado, virado para longe da câmera) */
-      const runeC = document.createElement('canvas'); runeC.width = 256; runeC.height = 128; const rg = runeC.getContext('2d')!; rg.strokeStyle = '#bfe6ff'; rg.fillStyle = '#bfe6ff'; rg.lineWidth = 2.2; rg.lineJoin = rg.lineCap = 'round'; rg.shadowColor = '#4a9aff'; rg.shadowBlur = 5;
-      for (let col = 0; col < 7; col++) for (let row = 0; row < 3; row++) { const ru = RUNAS[(col * 3 + row + Math.floor(r() * 16)) % RUNAS.length]; rg.save(); rg.translate(col * (256 / 7) + 4, 8 + row * 40); rg.scale(1.0, 1.15); rg.stroke(new Path2D(ru.d)); if (ru.fill) rg.fill(new Path2D(ru.fill)); rg.restore(); }
+      /* pedra do teleporte (prancha 34, 01/11): menir facetado cinza-azulado com uma rachadura, runas em brasa na face da frente
+         (apagadas até o caminhante tocar; acesas depois, com fogo subindo), musgo e seixos ao pé */
+      const stoneM = std(0xffffff, { map: stoneTex(0x5e6878) });
+      const geo = new THREE.IcosahedronGeometry(1, 2), pa = geo.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); const k = 0.86 + 0.2 * (Math.sin(x * 4.1 + y * 2.3) * Math.cos(z * 3.7 + 1.2) * 0.6 + Math.sin((x + z) * 6.1 + y) * 0.4); pa.setXYZ(i, x * k * (0.55 + 0.25 * (1 - y)), y * k * 1.55 + 0.1 * Math.max(0, y), z * k * (0.45 + 0.2 * (1 - y))); } geo.computeVertexNormals(); L.own.push(geo);
+      const mono = new THREE.Mesh(geo, stoneM); mono.position.set(Wm / 2, 1.5, Dm / 2); mono.rotation.y = Math.PI / 4 + 0.15; mono.castShadow = mono.receiveShadow = true; g.add(mono);
+      const runeC = document.createElement('canvas'); runeC.width = 128; runeC.height = 192; const rg = runeC.getContext('2d')!; rg.strokeStyle = '#ff9a30'; rg.fillStyle = '#ff9a30'; rg.lineWidth = 3; rg.lineJoin = rg.lineCap = 'round'; rg.shadowColor = '#ff5a10'; rg.shadowBlur = 8;
+      for (let col = 0; col < 2; col++) for (let row = 0; row < 3; row++) { const ru = RUNAS[(col * 3 + row + Math.floor(r() * 16)) % RUNAS.length]; rg.save(); rg.translate(14 + col * 56, 12 + row * 58); rg.scale(1.4, 1.6); rg.stroke(new Path2D(ru.d)); if (ru.fill) rg.fill(new Path2D(ru.fill)); rg.restore(); }
       const runeT = new THREE.CanvasTexture(runeC); runeT.magFilter = runeT.minFilter = THREE.NearestFilter;
-      const runes = new THREE.Mesh(new THREE.CylinderGeometry(0.47, 0.66, 2.4, 7, 1, true), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2, 1.3, Dm / 2); runes.rotation.y = 0.4; runes.userData.dyn = true; g.add(runes);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6ab4ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.position.set(Wm / 2, 0.08, Dm / 2); ring.userData.dyn = true; g.add(ring);
-      for (let k = 0; k < 5; k++) { const a = k * 1.26 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.16 + (k % 2) * 0.08, 0), std(0x5e5d5b)); st.position.set(Wm / 2 + Math.cos(a) * 1.1, 0.12, Dm / 2 + Math.sin(a) * 1.1); st.rotation.y = a; g.add(st); }
-      g.scale.setScalar(1.45); g.position.x -= Wm * 0.225; g.position.z -= Dm * 0.225; // maior, para não passar despercebida
+      const runes = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.3), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2 + 0.5, 1.45, Dm / 2 + 0.5); runes.rotation.y = Math.PI / 4; g.add(runes);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff9a40, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff9a40; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
+      const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
+      for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x6e7888)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
+      g.scale.setScalar(1.3); g.position.x -= Wm * 0.15; g.position.z -= Dm * 0.15;
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
-      L.glows.push({ light: nullLight, base: 34, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), color: 0x4a9aff } as WorldObjs['glowLights'][number]);
+      L.glows.push({ light: nullLight, base: 12, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.0, p.gy * T + Dm / 2 + 0.9), color: 0xff8a30 } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'grave') {
       const v = p.variant ?? 0;
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.9), std(0x5a5448)); base.position.set(Wm / 2, 0.05, Dm / 2 + 0.3); g.add(base);

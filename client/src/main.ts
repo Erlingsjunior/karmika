@@ -4458,9 +4458,9 @@ function frameBody() {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */
     (rl.runes.material as THREE.MeshBasicMaterial).opacity = known ? 0.8 + 0.2 * k : 0.04;
-    (rl.ring.material as THREE.MeshBasicMaterial).color.setHex(known ? 0x5aa8ff : 0xffc83a); (rl.ring.material as THREE.MeshBasicMaterial).opacity = known ? 0.35 + 0.2 * k : 0.55 + 0.4 * k;
+    (rl.ring.material as THREE.MeshBasicMaterial).color.setHex(known ? (rl.ring.userData.col as number | undefined) ?? 0x5aa8ff : 0xffc83a); (rl.ring.material as THREE.MeshBasicMaterial).opacity = known ? 0.35 + 0.2 * k : 0.55 + 0.4 * k;
     rl.ring.scale.setScalar(known ? 0.72 + 0.04 * k : 1.0 + 0.12 * k); rl.ring.rotation.y = t * (known ? 0.25 : 0.5);
-    if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.4 + Math.random() * 0.5, life: 1.4, s0: 0.1, s1: 0.02, c0: 0xd8f0ff, c1: 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
+    if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: 0xffe0a0, c1: (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
   }
   /* tochas, chamas, brasas */
   const litSources: { pos: THREE.Vector3; r: number }[] = [];
