@@ -12,7 +12,7 @@ export const SH = 210;
 /** Porto Caldeira: centro, raio, as duas bacias (relativas ao centro: x0..x1 e a cabeceira y0; a água vai até o mar) e a ilha do Farol */
 export const PORTO = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x0: -22, x1: -15, y0: 18 }], farol: { x: 474, y: 834, r: 3.4 } };
 
-export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico';
+export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -107,6 +107,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
 export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number } // tiles
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
+  /** o Quartel de Karmika (01/11): pátio de treino murado depois da igreja, com os bonecos de palha (posições em tiles, centro do boneco) */ quartel: { x: number; y: number; dummies: { x: number; y: number }[] };
   /** a Casa dos Ofícios de Askavik (25/10): o salão de todas as profissões (oficios.ts monta o prédio e os ajudantes) */ craftHall?: { x: number; y: number; w: number; h: number; ry: number };
   pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; /** acampamentos de salteadores e as torres de vigia (26/10) */ bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
@@ -608,6 +609,19 @@ export function buildCity(): World {
   if (map[26 + OY][28 + OX] === 'grass') block({ kind: 'campfire', gx: 28 + OX, gy: 26 + OY, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }); decor('stall', 24 + OX, 13 + OY, 2, 2, 0, 0x6a4a2c, 0x4e5f7a); decor('stall', 12 + OX, 19 + OY, 2, 2, 0, 0x7a5a38, 0x5d6b3a);
   const torch = (gx: number, gy: number) => { if (inb(gx, gy) && map[gy][gx] !== 'water') props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a }); };
   [[15, 15], [20, 15], [15, 20], [20, 20], [9, 7], [15, 7], [16, 25], [19, 25]].forEach(([x, y]) => torch(x + OX, y + OY));
+  /* ---- o Quartel de Karmika (Erling, 01/11: "uma zona de treinamento um pouco depois da igreja, um quartel com um quintal com pelo menos 4 bonecos"):
+     prédio de pedra logo a oeste da igreja, pátio calçado e murado com portão para o sul, quatro bonecos de palha em fila,
+     estantes de armas encostadas no prédio, baú, bancos e tochas no portão. O boneco que ficava escondido atrás da casa veio para cá. ---- */
+  const QX = 2 + OX, QY = 0 + OY; // canto noroeste do terreno (8 × 7 tiles); o prédio ocupa 4 × 3 no canto
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 8; x++) if (inb(QX + x, QY + y) && map[QY + y][QX + x] !== 'water') map[QY + y][QX + x] = 'plaza';
+  block({ kind: 'house', gx: QX, gy: QY, w: 4, h: 3, height: 4.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 3 });
+  const qwall = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy)) return;
+    props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 20, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: Math.hypot(bx - ax, by - ay) * T + 0.12, broken: 0 }); };
+  qwall(QX + 4, QY, QX + 8, QY); qwall(QX + 8, QY, QX + 8, QY + 7); qwall(QX, QY + 3, QX, QY + 7); qwall(QX, QY + 7, QX + 3, QY + 7); qwall(QX + 5, QY + 7, QX + 8, QY + 7); // portão: vão de 2 tiles no muro sul
+  torch(QX + 2, QY + 7); torch(QX + 5, QY + 7);
+  decor('rack', QX + 5, QY, 1, 1, 0); decor('rack', QX + 6, QY, 1, 1, 1); decor('chest', QX + 7, QY + 2, 1, 1, 2);
+  decor('bench', QX + 1, QY + 6, 1, 1, 0); decor('bench', QX + 6, QY + 6, 1, 1, 0);
+  const quartel = { x: QX + 4, y: QY + 5, dummies: [1, 3, 5, 7].map((x) => ({ x: QX + x + 0.5, y: QY + 4.5 })) }; pois.push({ name: 'Quartel de Karmika', x: QX + 4, y: QY + 7, biome: 'meadow' });
 
   /* ---------- assentamentos: Karmika (centro), vilas de madeira e Askavik (cidade média de madeira e pedra) ---------- */
   const settlements: Settlement[] = [{ name: 'Karmika', kind: 'village', x: CITY.x, y: CITY.y + 3, radius: 22, npcs: [] }];
@@ -1850,7 +1864,7 @@ export function buildCity(): World {
         for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (SOFT.has(o.kind as string) && o.gx >= q.gx && o.gx < q.gx + q.w && o.gy >= q.gy && o.gy < q.gy + q.h) { props.splice(k, 1); if (k < i) i--; } } }
       else { props.splice(i, 1); gone++; } }
     if (moved || gone) console.info(`[mundo] casas sobre a estrada: ${moved} mudaram de lugar, ${gone} saíram`); }
-  return { map, biome, props, craftHall, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
+  return { map, biome, props, craftHall, quartel, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
 export function veinOf(p: { gx: number; gy: number; w: number }) { const h = Math.abs(Math.sin(p.gx * 127.1 + p.gy * 311.7) * 43758.5453) % 1; return h < (p.w > 1 ? 0.07 : 0.035) ? 2 : h < (p.w > 1 ? 0.3 : 0.16) ? 1 : 0; }

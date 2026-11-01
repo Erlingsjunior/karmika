@@ -18,7 +18,7 @@ import { buildBeast, buildWolf, type Beast } from './werewolf3d';
 export interface GameplayDeps { /** multiplicador do dano recebido de fora (Instinto ligado: +10%) */ takenK?: () => number;
   scene: THREE.Scene; particles: Particles; camera: THREE.Camera; audio: AudioEngine;
   getHero: () => Hero3D; getRaceColor: () => number; canvas: HTMLCanvasElement;
-  dummyPos: THREE.Vector3;
+  /** bonecos de treino do Quartel (01/11): um grupo por posição */ dummies: THREE.Vector3[];
   world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; townAt?(x: number, z: number): boolean; guardNear?(x: number, z: number): boolean };
 }
 
@@ -140,17 +140,22 @@ export function createGameplay(d: GameplayDeps) {
   const rocks: { m: THREE.Mesh; t: number; y0: number }[] = [];
 
   /* ---- boneco de treino ---- */
-  const dummy = new THREE.Group(); dummy.position.copy(d.dummyPos);
+  type Dummy = { g: THREE.Group; pivot: THREE.Group; wob: number; dir: THREE.Vector3; position: THREE.Vector3 };
   const ramp = new THREE.DataTexture(new Uint8Array([90, 90, 90, 255, 170, 170, 170, 255, 255, 255, 255, 255]), 3, 1, THREE.RGBAFormat); ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
   const wood = new THREE.MeshToonMaterial({ color: 0x6a4a2a, gradientMap: ramp }), straw = new THREE.MeshToonMaterial({ map: dummyTexture(), gradientMap: ramp });
-  const pivot = new THREE.Group(); dummy.add(pivot);
-  const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.7, 7), wood); post.position.y = 0.85; post.castShadow = true; pivot.add(post);
-  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 6), wood); arm.rotation.z = Math.PI / 2; arm.position.y = 1.35; pivot.add(arm);
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.8, 12), straw); body.position.y = 1.15; body.castShadow = true; pivot.add(body);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), new THREE.MeshToonMaterial({ color: 0xc9a766, gradientMap: ramp })); head.position.y = 1.75; head.castShadow = true; pivot.add(head);
-  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.18, 8), new THREE.MeshToonMaterial({ color: 0x6a6a72, gradientMap: ramp })); base.position.y = 0.09; dummy.add(base);
-  fxAdd(dummy);
-  let wob = 0, wobDir = new THREE.Vector3(1, 0, 0);
+  const headM = new THREE.MeshToonMaterial({ color: 0xc9a766, gradientMap: ramp }), baseM = new THREE.MeshToonMaterial({ color: 0x6a6a72, gradientMap: ramp });
+  const dummies: Dummy[] = d.dummies.map((at, i) => {
+    const g = new THREE.Group(); g.position.copy(at); g.position.y = d.world.heightAt(at.x, at.z); g.rotation.y = (i % 2 ? -1 : 1) * 0.12;
+    const pivot = new THREE.Group(); g.add(pivot);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 1.7, 7), wood); post.position.y = 0.85; post.castShadow = true; pivot.add(post);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.0, 6), wood); arm.rotation.z = Math.PI / 2; arm.position.y = 1.35; pivot.add(arm);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.36, 0.8, 12), straw); body.position.y = 1.15; body.castShadow = true; pivot.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), headM); head.position.y = 1.75; head.castShadow = true; pivot.add(head);
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.18, 8), baseM); base.position.y = 0.09; g.add(base);
+    fxAdd(g); return { g, pivot, wob: 0, dir: new THREE.Vector3(1, 0, 0), position: g.position };
+  });
+  /** o boneco mais perto de um ponto (plano), dentro do raio */
+  const dummyNear = (x: number, z: number, r: number): Dummy | null => { let best: Dummy | null = null, bd = r; for (const dm of dummies) { const dd = Math.hypot(dm.position.x - x, dm.position.z - z); if (dd < bd) { bd = dd; best = dm; } } return best; };
 
   /* ---- inimigos, XP e loot ---- */
   /* jogar junto: main.ts liga estes ganchos à rede (sozinho, não fazem nada) */
@@ -489,7 +494,7 @@ export function createGameplay(d: GameplayDeps) {
     for (let k = 0; k < 14; k++) d.particles.spawn(cx + rnd(-0.3, 0.3), cy + 0.3, cz + rnd(-0.3, 0.3), { vy: rnd(3, 7), life: 0.5, s0: 1.4, s1: 0.2, c0: 0xffffff, c1: col, a: 0.9 });
     for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < r + e.def.radius) { skill = 'slam'; hitEnemy(e, mul, true, from); skill = null; if (stun > 0 && e.alive) { e.state = 'hurt'; e.t = -stun; } }
     { const p = pvpDmg(mul); pvpHit(cx, cz, 0, r, Math.PI, p.n, p.crit); }
-    const dd = Math.hypot(dummy.position.x - cx, dummy.position.z - cz); if (dd < r) { const crit = Math.random() < 0.15; hitDummy(Math.round(rnd(20, 34) * mul * (crit ? 1.7 : 1)), crit, from, col, true); }
+    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < r) { const crit = Math.random() < 0.15; hitDummy(dm, Math.round(rnd(20, 34) * mul * (crit ? 1.7 : 1)), crit, from, col, true); }
   }
   /* cura ao longo do tempo (nanitos) e golpes de trajeto (jato / investida de ombro) */
   let turretAt: { x: number; z: number } | null = null;
@@ -577,10 +582,10 @@ export function createGameplay(d: GameplayDeps) {
     el.style.color = color; if (crit) el.style.fontSize = '28px';
     document.body.appendChild(el); setTimeout(() => el.remove(), 1000);
   }
-  function hitDummy(dmg: number, crit: boolean, from: THREE.Vector3, col = 0xffd27a, stop = false) {
-    st.hits++; wob = 1; wobDir.copy(dummy.position).sub(from).setY(0).normalize();
-    const p = tmp2.copy(dummy.position).setY(1.4);
-    dmgText(p.clone().setY(2.1), dmg, crit);
+  function hitDummy(dummy: Dummy, dmg: number, crit: boolean, from: THREE.Vector3, col = 0xffd27a, stop = false) {
+    st.hits++; dummy.wob = 1; dummy.dir.copy(dummy.position).sub(from).setY(0).normalize();
+    const p = tmp2.copy(dummy.position).setY(dummy.position.y + 1.4);
+    dmgText(p.clone().setY(p.y + 0.7), dmg, crit);
     for (let i = 0; i < 10; i++) d.particles.spawn(p.x + rnd(-0.2, 0.2), p.y + rnd(-0.3, 0.3), p.z + rnd(-0.2, 0.2), { vx: rnd(-2.5, 2.5), vy: rnd(0.5, 3), vz: rnd(-2.5, 2.5), life: 0.5 + Math.random() * 0.3, s0: 0.22, s1: 0.04, c0: col, c1: 0xff5a10, a: 1, drag: 1.4 });
     for (let i = 0; i < 4; i++) d.particles.spawn(p.x, p.y, p.z, { vx: rnd(-0.8, 0.8), vy: rnd(0.3, 1), vz: rnd(-0.8, 0.8), life: 0.9, s0: 0.5, s1: 1.4, c0: 0xc9a766, c1: 0x6a5a40, a: 0.22, drag: 1.2 });
     d.audio.hit(); st.shake = Math.max(st.shake, crit ? 0.35 : 0.2);
@@ -593,9 +598,9 @@ export function createGameplay(d: GameplayDeps) {
   }
   function strikeIn(h: Hero3D, yaw: number, mul: number, reach: number, arc: number, stop = false) {
     const hp = h.root.position;
-    const to = tmp.copy(dummy.position).sub(hp).setY(0); const dist = to.length();
-    const ang = Math.atan2(to.x, to.z); let da = ang - yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
-    if (dist < reach && Math.abs(da) < arc) { const crit = Math.random() < 0.12; hitDummy(Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, hp.clone(), 0xffd27a, stop); }
+    for (const dm of dummies) { const to = tmp.copy(dm.position).sub(hp).setY(0); const dist = to.length(); if (dist >= reach) continue;
+      const ang = Math.atan2(to.x, to.z); let da = ang - yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+      if (Math.abs(da) < arc) { const crit = Math.random() < 0.12; hitDummy(dm, Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, hp.clone(), 0xffd27a, stop); } }
     for (const e of enemies.list) {
       if (!e.alive || !e.active) continue;
       const tx = e.pos.x - hp.x, tz = e.pos.z - hp.z, dd = Math.hypot(tx, tz);
@@ -875,7 +880,7 @@ export function createGameplay(d: GameplayDeps) {
       let ea = Math.atan2(tx, tz) - yaw; while (ea > Math.PI) ea -= Math.PI * 2; while (ea < -Math.PI) ea += Math.PI * 2; if (dd > 1.2 && Math.abs(ea) > arc) continue;
       const hp0 = e.hp; hitEnemy(e, mul, stop, from); if (e.hp < hp0 || !e.alive) { n++; if (e.alive && fx) fx(e); }
     }
-    const dd = Math.hypot(dummy.position.x - cx, dummy.position.z - cz); if (dd < reach) { const crit = Math.random() < 0.12; hitDummy(Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, from, 0xffd27a, stop); n++; }
+    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < reach) { const crit = Math.random() < 0.12; hitDummy(dm, Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, from, 0xffd27a, stop); n++; }
     { const p = pvpDmg(mul); pvpHit(cx, cz, yaw, reach, arc, p.n, p.crit); }
     skill = null; return n;
   }
@@ -974,7 +979,7 @@ export function createGameplay(d: GameplayDeps) {
       for (const e of enemies.list) { if (!e.alive || !e.active) continue; const dx = e.pos.x - p.x, dz = e.pos.z - p.z, dd = Math.hypot(dx, dz); if (dd > 11) continue;
         if (yaw !== undefined) { let da = Math.atan2(dx, dz) - yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2; if (Math.abs(da) > 0.7) continue; }
         if (!best || dd < bd - 1.5 || (Math.abs(dd - bd) <= 1.5 && e.hpMax > best.hpMax)) { best = e; bd = Math.min(bd, dd); } }
-      if (best) return best.pos; return Math.hypot(dummy.position.x - p.x, dummy.position.z - p.z) < 11 ? dummy.position : null;
+      if (best) return best.pos; return dummyNear(p.x, p.z, 11)?.position ?? null;
     },
     attack(yaw: number, heroPos: THREE.Vector3) {
       if (st.menuOpen) return false;
@@ -1731,7 +1736,7 @@ export function createGameplay(d: GameplayDeps) {
         else if (!b.quiet) d.particles.spawn(b.p.x, b.p.y, b.p.z, { vx: rnd(-0.3, 0.3), vy: rnd(-0.2, 0.3), vz: rnd(-0.3, 0.3), life: 0.4, s0: 0.5, s1: 0.08, c0: b.col ?? col, c1: 0x203050, a: 0.9, drag: 2 });
         if (!b.quiet) d.particles.spawn(b.p.x, b.p.y, b.p.z, { life: 0.12, s0: 0.7, s1: 0.5, c0: 0xffffff, c1: b.col ?? col, a: 1 }); else if (!b.m) d.particles.spawn(b.p.x, b.p.y, b.p.z, { life: 0.08, s0: 0.35, s1: 0.1, c0: 0xffffff, c1: b.col ?? col, a: 1 });
         if (first) { spellLight.position.copy(b.p); spellLight.color.setHex(b.col ?? col); spellLight.intensity = 24; first = false; }
-        const dd = Math.hypot(b.p.x - dummy.position.x, b.p.z - dummy.position.z);
+        const dmN = dummyNear(b.p.x, b.p.z, 0.75), dd = dmN ? 0 : 9;
         if (b.boomer !== undefined) { b.boomer -= dt; if (b.boomer <= 0) { b.boomer = 99; b.v.multiplyScalar(-1); b.hit?.clear(); } }
         if (b.pierce) {
           for (const e of enemies.list) if (e.alive && e.active && !b.hit!.has(e) && Math.hypot(e.pos.x - b.p.x, e.pos.z - b.p.z) < 1.1 + e.def.radius) { b.hit!.add(e); skill = b.sk ?? 'combo'; hitEnemy(e, b.mul ?? 1.8, true, b.p.clone().sub(b.v)); skill = null; if (e.alive) b.onHit?.(e); if (b.rootLast && e.alive) { e.root2 = b.rootLast; e.state = 'hurt'; e.t = -b.rootLast; } }
@@ -1740,7 +1745,7 @@ export function createGameplay(d: GameplayDeps) {
           const nx = b.ricochet ? enemies.list.filter((o) => o.alive && o.active && !b.hit?.has(o) && Math.hypot(o.pos.x - be.pos.x, o.pos.z - be.pos.z) < 7).sort((p1, p2) => Math.hypot(p1.pos.x - be.pos.x, p1.pos.z - be.pos.z) - Math.hypot(p2.pos.x - be.pos.x, p2.pos.z - be.pos.z))[0] : undefined;
           if (nx) { b.ricochet!--; const sp = b.v.length(); b.v.set(nx.pos.x - b.p.x, 0, nx.pos.z - b.p.z).normalize().multiplyScalar(sp); b.life = 0.5; d.audio.parry(); } else b.life = 0; } }
         if (dd < 0.75 && b.p.y < 2.1 || b.life <= 0) {
-          if (dd < 0.75) { const crit = Math.random() < 0.15; hitDummy(Math.round(rnd(24, 38) * (crit ? 1.7 : 1)), crit, b.p.clone().sub(b.v), col); }
+          if (dmN) { const crit = Math.random() < 0.15; hitDummy(dmN, Math.round(rnd(24, 38) * (crit ? 1.7 : 1)), crit, b.p.clone().sub(b.v), col); }
           if (!b.quiet) { d.audio.boom(); st.shake = Math.max(st.shake, 0.25); }
           if (!b.quiet) for (let k = 0; k < 18; k++) d.particles.spawn(b.p.x, b.p.y, b.p.z, { vx: rnd(-3, 3), vy: rnd(-1, 3), vz: rnd(-3, 3), life: 0.6, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: b.col ?? col, a: 1, drag: 2.5 });
           if (b.boom) { const bb = b.boom; b.boom = undefined; explode(b.p.x, b.p.z, d.world.heightAt(b.p.x, b.p.z), bb.r, bb.mul, b.col ?? col, bb.stun ?? 0, b.p.clone().sub(b.v)); bb.fn?.(b.p.x, b.p.z); }
@@ -1898,8 +1903,7 @@ export function createGameplay(d: GameplayDeps) {
       { const cl = document.getElementById('clv'); if (cl) { cl.textContent = `${cls.name} ${cls.lvl}`; ($('cxb').children[0] as HTMLElement).style.width = (cls.xp / clsNeed(cls.lvl)) * 100 + '%'; } }
       $('lv').textContent = `Nv ${st.lvl}`; $('gold').textContent = `🪙 ${st.gold}`; ($('xpb').children[0] as HTMLElement).style.width = (st.xp / xpNeed()) * 100 + '%';
       // boneco balança e assenta
-      wob *= Math.exp(-dt * 3.2);
-      pivot.rotation.set(wobDir.z * wob * Math.sin(now * 22) * 0.35, 0, -wobDir.x * wob * Math.sin(now * 22) * 0.35);
+      for (const dm of dummies) { if (dm.wob < 0.001) continue; dm.wob *= Math.exp(-dt * 3.2); dm.pivot.rotation.set(dm.dir.z * dm.wob * Math.sin(now * 22) * 0.35, 0, -dm.dir.x * dm.wob * Math.sin(now * 22) * 0.35); }
       // rastro: só registra quando a ponta da lâmina está rápida
       {
         const h = d.getHero(); h.weaponTip(tipNow); h.weaponBase(baseNow);
