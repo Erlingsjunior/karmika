@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { REF_SWORDS, buildRefSword, type RefSword, REF_SHIELD_STYLE, refShieldFace } from './armas3d';
 import { mergeStatic } from './merge3d';
 import { crestTexture, facOf } from './faccoes';
 import { fine } from './dual3d';
@@ -1115,7 +1116,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const pom = mk(new THREE.SphereGeometry(0.034, 6, 5), glowOf(rar) || gold, 0.004); pom.position.y = 0.105; sw.add(pom);
         let len = 0.84, wid = 0.07;
         if (base === 'Adaga') { len = 0.42; wid = 0.05; } else if (base === 'Espada Curta') { len = 0.62; wid = 0.065; } else if (base === 'Montante') { len = 1.12; wid = 0.085; } else if (base === 'Lança') { len = 1.3; wid = 0.04; }
-        if (base === 'Machado de Guerra') {
+        if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
+          len = buildRefSword(sw, base as RefSword, { mk, metal, toon, glow: glowOf(rar), rar });
+        } else if (base === 'Machado de Guerra') {
           const haft = mk(new THREE.CylinderGeometry(0.02, 0.022, 0.9, 7), 0x4a3220, 0.004); haft.position.y = -0.45; sw.add(haft);
           const headA = mk(new THREE.BoxGeometry(0.3, 0.26, 0.03), 0x8a929e, 0.006, metal(rar, 0x8a929e)); headA.position.set(0.14, -0.78, 0); sw.add(headA);
           const edge = mk(new THREE.BoxGeometry(0.04, 0.32, 0.034), 0xdde3ec, 0.004, metal(rar)); edge.position.set(0.3, -0.78, 0); sw.add(edge);
@@ -1284,13 +1287,14 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           'Escudo de Pipa': (w, h) => { const q = new THREE.Shape(); q.moveTo(-w / 2, h * 0.24); q.quadraticCurveTo(-w / 2, h * 0.5, 0, h * 0.5); q.quadraticCurveTo(w / 2, h * 0.5, w / 2, h * 0.24); q.quadraticCurveTo(w * 0.42, -h * 0.12, 0, -h * 0.5); q.quadraticCurveTo(-w * 0.42, -h * 0.12, -w / 2, h * 0.24); return q; },
         };
         SHAPED['Escudo da Ordem do Fio'] = SHAPED['Escudo Ogival']; SHAPED['Escudo dos Desfiados'] = SHAPED['Escudo Ogival'];
-        const SZ: Record<string, [number, number, number, number]> = { 'Escudo da Ordem do Fio': [0.6, 0.78, 0x1a2f5a, 0xd9b45a], 'Escudo dos Desfiados': [0.6, 0.78, 0x120d10, 0xa3151f], 'Escudo Torre': [0.58, 1.0, 0x7a808c, 0x8a2a20], 'Escudo Ogival': [0.6, 0.74, 0xd8cfc4, 0x8a1f1f], 'Escudo de Pipa': [0.54, 0.96, 0x2a4a7a, 0xe8dcc0] };
+        SHAPED['Escudo Élfico'] = (w, h) => { const q = new THREE.Shape(); q.moveTo(0, h * 0.5); q.quadraticCurveTo(w * 0.62, h * 0.22, w / 2, 0); q.quadraticCurveTo(w * 0.62, -h * 0.22, 0, -h * 0.5); q.quadraticCurveTo(-w * 0.62, -h * 0.22, -w / 2, 0); q.quadraticCurveTo(-w * 0.62, h * 0.22, 0, h * 0.5); return q; }; // amêndoa élfica (imagem 51.4)
+        const SZ: Record<string, [number, number, number, number]> = { 'Escudo da Ordem do Fio': [0.6, 0.78, 0x1a2f5a, 0xd9b45a], 'Escudo dos Desfiados': [0.6, 0.78, 0x120d10, 0xa3151f], 'Escudo Torre': [0.58, 1.0, 0x7a808c, 0x8a2a20], 'Escudo Ogival': [0.6, 0.74, 0xd8cfc4, 0x8a1f1f], 'Escudo de Pipa': [0.54, 0.96, 0x2a4a7a, 0xe8dcc0], 'Escudo Élfico': [0.5, 0.98, 0xe4ddc8, 0xc8a050] };
         { const ROUND = (w: number) => { const q = new THREE.Shape(); q.absarc(0, 0, w / 2, 0, Math.PI * 2, false); return q; };
-          for (const b of ['Broquel', 'Escudo Redondo', 'Escudo Nórdico']) SHAPED[b] = (w) => ROUND(w);
-          SZ['Broquel'] = [0.4, 0.4, 0, 0]; SZ['Escudo Redondo'] = [0.6, 0.6, 0, 0]; SZ['Escudo Nórdico'] = [0.74, 0.74, 0, 0]; }
+          for (const b of ['Broquel', 'Escudo Redondo', 'Escudo Nórdico', 'Escudo de Espinhos']) SHAPED[b] = (w) => ROUND(w);
+          SZ['Broquel'] = [0.4, 0.4, 0, 0]; SZ['Escudo Redondo'] = [0.6, 0.6, 0, 0]; SZ['Escudo Nórdico'] = [0.74, 0.74, 0, 0]; SZ['Escudo de Espinhos'] = [0.62, 0.62, 0, 0]; }
         if (!SHAPED[base]) { SHAPED[base] = SHAPED['Escudo Nórdico']; SZ[base] = SZ['Escudo Nórdico']; } // base desconhecida: redondo nórdico
         {
-          const [w, h, fc, ec] = SZ[base], shp = SHAPED[base](w, h), dep = 0.035, round = /Broquel|Redondo|Nórdico/.test(base) || SHAPED[base] === SHAPED['Escudo Nórdico'];
+          const [w, h, fc, ec] = SZ[base], shp = SHAPED[base](w, h), dep = 0.035, round = /Broquel|Redondo|Nórdico|Espinhos/.test(base) || SHAPED[base] === SHAPED['Escudo Nórdico'];
           const ext = (q: THREE.Shape, d: number, bev: number) => { const g2 = new THREE.ExtrudeGeometry(q, { depth: d, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 20 }); g2.translate(0, 0, -d / 2); g2.rotateY(Math.PI / 2); return g2; };
           const out = -(dep / 2 + 0.014), deco = (geo: THREE.BufferGeometry, col: number, m?: THREE.Material) => { const o = mk(geo, col, 0, m); o.position.x = out; shield.add(o); return o; };
           const FS = facOf(base);
@@ -1308,20 +1312,22 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             const hi = rar === 'epic' || rar === 'legendary' || rar === 'unique' || rar === 'relic';
             const sd = (g.shield as { seed?: number } | null)?.seed ?? [...(base + rar)].reduce((a2, ch) => (a2 * 31 + ch.charCodeAt(0)) % 9973, 7);
             const style: ShieldStyle = base === 'Broquel' ? 'metal' : hi ? 'blackgold' : rar === 'rare' ? 'heraldic' : base === 'Escudo Nórdico' ? 'nordic' : base === 'Escudo Torre' ? 'bands' : sd % 2 ? 'bands' : 'wood';
-            const rimK: GearKind = hi ? 'gold' : rar === 'rare' ? 'bronze' : /Pipa|Ogival|Torre/.test(base) ? 'steel' : 'iron', rivK: GearKind = hi ? 'gold' : style === 'metal' ? 'dark' : 'steel', GL = glowOf(rar) || undefined;
+            const REF = hi ? undefined : REF_SHIELD_STYLE[base]; /* 01/11: os seis escudos da prancha de referência (imagem 51); as raridades altas seguem com a laca negra e ouro */
+            const rimK: GearKind = REF === 'elf_leaf' ? 'gold' : REF === 'spiked' ? 'dark' : hi ? 'gold' : rar === 'rare' ? 'bronze' : /Pipa|Ogival|Torre/.test(base) ? 'steel' : 'iron', rivK: GearKind = hi ? 'gold' : style === 'metal' || REF === 'spiked' ? 'dark' : 'steel', GL = glowOf(rar) || undefined;
             shield = new THREE.Mesh(ext(shp, dep, 0.01), gearMat('leatherD')); // o corpo de tábuas (a borda de madeira aparece de lado)
             const W2 = w * 0.96, H2 = h * 0.96, sg = new THREE.ShapeGeometry(SHAPED[base](W2, H2), 24), uv = sg.attributes.uv, ps = sg.attributes.position;
             for (let k = 0; k < uv.count; k++) uv.setXY(k, 0.5 - ps.getX(k) / W2, ps.getY(k) / H2 + 0.5);
-            sg.rotateY(Math.PI / 2); const face = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ map: shieldFace(style, sd), emissive: 0x0a0806, side: THREE.DoubleSide })); face.position.x = -(dep / 2 + 0.016); shield.add(face);
+            sg.rotateY(Math.PI / 2); const face = new THREE.Mesh(sg, new THREE.MeshLambertMaterial({ map: REF ? refShieldFace(REF, sd) : shieldFace(style, sd), emissive: 0x0a0806, side: THREE.DoubleSide })); face.position.x = -(dep / 2 + 0.016); shield.add(face);
             const ring = SHAPED[base](w * 1.05, h * 1.04); ring.holes.push(new THREE.Path(SHAPED[base](w * (round ? 0.88 : 0.9), h * (round ? 0.88 : 0.92)).getPoints(32)));
             const rg = new THREE.ExtrudeGeometry(ring, { depth: 0.014, bevelEnabled: true, bevelThickness: 0.004, bevelSize: 0.004, bevelSegments: 1, curveSegments: 24 }); rg.translate(0, 0, -0.007); rg.rotateY(Math.PI / 2);
             const rim = new THREE.Mesh(rg, gearMat(rimK, GL)); rim.position.x = -(dep / 2 + 0.006); rim.castShadow = true; shield.add(rim); // o aro de metal na frente
             const back = new THREE.Mesh(ext(SHAPED[base](w * 1.05, h * 1.04), dep * 0.5, 0.006), gearMat(rimK)); back.position.x = 0.006; shield.add(back);
             const pts = SHAPED[base](w * 0.965, h * 0.97).getSpacedPoints(round ? 14 : 18); pts.pop();
             for (const pt of pts) { const rv = gm(new THREE.SphereGeometry(0.012, 6, 4), rivK); rv.position.set(-(dep / 2 + 0.02), pt.y, -pt.x); shield.add(rv); }
-            if (round) { const boss = gm(new THREE.SphereGeometry(w * 0.11, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), hi ? 'gold' : 'steel', GL); boss.rotation.z = Math.PI / 2; boss.position.x = -(dep / 2 + 0.012); shield.add(boss);
+            if (REF === 'spiked') for (let i = 0; i < 12; i++) { const a2 = i / 12 * Math.PI * 2, sp = gm(new THREE.ConeGeometry(0.014, 0.09, 5), 'dark', GL); const dir = new THREE.Vector3(0, Math.sin(a2), Math.cos(a2)); sp.position.copy(dir).multiplyScalar(w * 0.54).setX(0); sp.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir); shield.add(sp); } // espinhos de ferro em volta (51.6)
+            if (round) { const boss = gm(new THREE.SphereGeometry(w * 0.11, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), REF === 'spiked' ? 'dark' : hi ? 'gold' : 'steel', GL); boss.rotation.z = Math.PI / 2; boss.position.x = -(dep / 2 + 0.012); shield.add(boss);
               const bring = gm(new THREE.TorusGeometry(w * 0.115, 0.01, 4, 20), rimK); bring.rotation.y = Math.PI / 2; bring.position.x = -(dep / 2 + 0.014); shield.add(bring); }
-            else if (style !== 'blackgold') { const dia = gm(new THREE.OctahedronGeometry(0.05, 0), hi ? 'gold' : 'steel', GL); dia.scale.set(0.35, 1.25, 0.85); dia.position.set(-(dep / 2 + 0.018), h * (base === 'Escudo de Pipa' ? 0.18 : 0.1), 0); shield.add(dia); }
+            else if (style !== 'blackgold' && !REF) { const dia = gm(new THREE.OctahedronGeometry(0.05, 0), hi ? 'gold' : 'steel', GL); dia.scale.set(0.35, 1.25, 0.85); dia.position.set(-(dep / 2 + 0.018), h * (base === 'Escudo de Pipa' ? 0.18 : 0.1), 0); shield.add(dia); }
           }
         }
         shield.castShadow = true; sh.add(shield); if (!(g.shield)) { /* sem escudo equipado: mantém o nórdico padrão */ }

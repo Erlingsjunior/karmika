@@ -60,7 +60,7 @@ function noiseTex(): THREE.Texture {
 const rockMat = (c: number) => std(c, {});
 const nullLight = new THREE.PointLight(0xffffff, 0, 1, 2);
 
-export const FOUNTAIN = { rim: 0.9, bowl: 2.1, top: 3.35, rad: 2.2 };
+export const FOUNTAIN = { rim: 0.9, bowl: 2.1, top: 2.12, rad: 2.2 }; /* 01/11: top = o espelho d'água da taça (a estátua não jorra) */
 const fountainWater = new THREE.ShaderMaterial({ transparent: true, uniforms: { uT: windU, uL: { value: 1 } },
   vertexShader: 'varying vec3 vP; void main(){ vP = (modelMatrix*vec4(position,1.)).xyz; gl_Position = projectionMatrix*viewMatrix*vec4(vP,1.); }',
   fragmentShader: 'uniform float uT; varying vec3 vP; void main(){ vec2 c = vP.xz - floor(vP.xz*0.0); float r = length(vP.xz - vec2(0.0)); float w = sin(vP.x*3.1+uT*1.7)*sin(vP.z*2.7-uT*1.3)*0.5+0.5; float rg = smoothstep(0.9,1.0,sin(length(fract(vP.xz*0.25)-0.5)*40.0 - uT*5.0)); vec3 col = mix(vec3(0.08,0.35,0.5), vec3(0.3,0.7,0.85), w*0.6) + rg*0.18; gl_FragColor = vec4(col, 0.92); }' });
@@ -218,24 +218,42 @@ export function buildWorld(world: World): WorldObjs {
         rune.scale.set(1, 1.6, 0.25); rune.position.set(Wm / 2, 6.2, Dm - 0.1); g.add(rune);
       }
     } else if (p.kind === 'fountain') {
+      /* 01/11 (Erling): a fonte da praça refeita pela prancha de referência (imagem 62): tanque redondo de pedra com musgo, calçada em volta,
+         taça canelada no meio com três bicas, e em cima a estátua encapuzada segurando o losango com o Olho. */
       const rad = SCALE.fountain.radius, hh = SCALE.fountain.height;
-      const stoneM = std(0xffffff, { map: stoneTex(0x8a8f9c) }), stoneD = std(0xffffff, { map: stoneTex(0x6a6f7c) });
-      const lathe = (pts: [number, number][], m: THREE.Material, y = 0) => { const geo = new THREE.LatheGeometry(pts.map(([x, yy]) => new THREE.Vector2(x, yy)), 20); const mm = new THREE.Mesh(geo, m); ink(mm, 0.04); mm.position.set(Wm / 2, y, Dm / 2); mm.castShadow = mm.receiveShadow = true; g.add(mm); return mm; };
-      // degrau + bacia grande com borda grossa e interior escavado
-      lathe([[0, 0], [rad + 0.55, 0], [rad + 0.55, 0.18], [rad + 0.3, 0.18], [rad + 0.3, 0.32]], stoneD);
-      lathe([[rad - 0.05, 0.3], [rad + 0.12, 0.3], [rad + 0.12, hh], [rad - 0.32, hh], [rad - 0.32, hh - 0.14], [rad - 0.4, hh - 0.14], [rad - 0.4, 0.3]], stoneM);
-      for (let i = 0; i < 14; i++) { const a2 = (i / 14) * 6.283; const rk = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.36), stoneD); rk.position.set(Wm / 2 + Math.cos(a2) * (rad - 0.1), hh + 0.04, Dm / 2 + Math.sin(a2) * (rad - 0.1)); rk.rotation.y = -a2; g.add(rk); }
-      // água animada na bacia
-      const wat = new THREE.Mesh(new THREE.CircleGeometry(rad - 0.38, 28).rotateX(-Math.PI / 2), fountainWater); wat.position.set(Wm / 2, hh - 0.2, Dm / 2); g.add(wat);
-      // coluna central, bacia superior e remate
-      lathe([[0, 0], [0.55, 0], [0.5, 0.3], [0.3, 0.5], [0.22, 1.1], [0.3, 1.25], [0.2, 1.3]], stoneM, hh - 0.2);
-      lathe([[0, 1.2], [0.2, 1.2], [0.9, 1.5], [1.05, 1.78], [0.9, 1.74], [0.0, 1.5]], stoneM, hh - 0.2);
-      const wat2 = new THREE.Mesh(new THREE.CircleGeometry(0.88, 20).rotateX(-Math.PI / 2), fountainWater); wat2.position.set(Wm / 2, hh + 1.52, Dm / 2); g.add(wat2);
-      lathe([[0, 1.5], [0.14, 1.5], [0.2, 2.0], [0.1, 2.35], [0.0, 2.45]], stoneM, hh - 0.2);
-      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0xbfe6ff })); orb.position.set(Wm / 2, hh + 2.55, Dm / 2); g.add(orb);
-      // bicas (cabeças de leão) na borda da bacia superior
-      for (let i = 0; i < 4; i++) { const a2 = (i / 4) * 6.283 + 0.78; const sp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.3), stoneD); sp.position.set(Wm / 2 + Math.cos(a2) * 0.98, hh + 1.45, Dm / 2 + Math.sin(a2) * 0.98); sp.rotation.y = -a2 + Math.PI / 2; g.add(sp); }
-      L.glows.push({ light: nullLight, base: 40, seed: r() * 50, warm: false, pos: new THREE.Vector3(wx, wy + hh + 2.6, wz), color: 0x6fc7ff } as WorldObjs['glowLights'][number]);
+      const stoneM = std(0xffffff, { map: stoneTex(0x9a9690) }), stoneD = std(0xffffff, { map: stoneTex(0x7a7672) }), statueM = std(0x787a74, {}), mossM = std(0x4e6a26, {}), fernM = std(0x4e8a34, { side: THREE.DoubleSide });
+      const C = (m: THREE.Mesh, y = 0, w = 0.04) => { ink(m, w); m.position.x += Wm / 2; m.position.y += y; m.position.z += Dm / 2; m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+      const lathe = (pts: [number, number][], m: THREE.Material, y = 0, seg = 24, rep = 0) => { const geo = new THREE.LatheGeometry(pts.map(([x, yy]) => new THREE.Vector2(x, yy)), seg); if (rep) { const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * rep, uv.getY(i) * 2); } return C(new THREE.Mesh(geo, m), y); };
+      // calçada de pedras em volta e o tanque de tijolos de pedra
+      lathe([[0, 0], [rad + 1.0, 0], [rad + 1.0, 0.1], [0, 0.1]], stoneD, 0, 28, 10);
+      lathe([[rad - 0.4, 0.1], [rad + 0.08, 0.1], [rad + 0.08, hh - 0.08], [rad - 0.4, hh - 0.08]], stoneM, 0, 28, 12);
+      for (let i = 0; i < 20; i++) { const a2 = (i / 20) * 6.283; const cap = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.12, 0.5), i % 3 ? stoneM : stoneD); cap.position.set(Math.cos(a2) * (rad - 0.16), hh - 0.02, Math.sin(a2) * (rad - 0.16)); cap.rotation.y = -a2; C(cap, 0, 0.03); } // pedras da borda
+      for (let i = 0; i < 9; i++) { const a2 = i * 0.7 + 0.2, ms = new THREE.Mesh(new THREE.SphereGeometry(0.16 + (i % 3) * 0.05, 7, 5), mossM); ms.scale.set(1.4, 0.5, 1); ms.position.set(Math.cos(a2) * (rad + 0.06), 0.2 + (i % 4) * 0.16, Math.sin(a2) * (rad + 0.06)); C(ms, 0, 0); } // musgo na parede
+      for (let i = 0; i < 6; i++) { const a2 = i * 1.05 + 0.4, r0 = rad + 0.35; for (let k = 0; k < 5; k++) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.42), fernM); f.position.set(Math.cos(a2) * r0 + (k - 2) * 0.05, 0.3, Math.sin(a2) * r0 + ((k * 7) % 5 - 2) * 0.04); f.rotation.set(-0.5 + (k % 3) * 0.35, k * 1.3 + i, 0); C(f, 0, 0); } } // samambaias ao pé
+      const wat = new THREE.Mesh(new THREE.CircleGeometry(rad - 0.4, 28).rotateX(-Math.PI / 2), fountainWater); wat.position.set(Wm / 2, hh - 0.22, Dm / 2); g.add(wat);
+      // pedestal, coluna e a taça canelada com três bicas
+      lathe([[0, 0.1], [0.62, 0.1], [0.62, 0.4], [0.5, 0.42], [0.5, 0.5], [0.28, 0.56], [0.24, 1.55], [0.34, 1.62], [0.34, 1.7], [0, 1.7]], stoneM, 0, 20);
+      const basinY = FOUNTAIN.bowl - 0.45;
+      lathe([[0, 0], [0.36, 0], [0.9, 0.28], [1.02, 0.46], [0.96, 0.5], [0.0, 0.42]], stoneM, basinY, 24);
+      for (let i = 0; i < 16; i++) { const a2 = (i / 16) * 6.283, k = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 5), stoneM); k.scale.set(1, 1.5, 0.7); k.position.set(Math.cos(a2) * 0.98, basinY + 0.4, Math.sin(a2) * 0.98); k.rotation.y = -a2; C(k, 0, 0.02); } // canelado da taça
+      const wat2 = new THREE.Mesh(new THREE.CircleGeometry(0.9, 20).rotateX(-Math.PI / 2), fountainWater); wat2.position.set(Wm / 2, basinY + 0.44, Dm / 2); g.add(wat2);
+      for (let i = 0; i < 3; i++) { const a2 = (i / 3) * 6.283 + 0.5, sp = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.32), stoneD); sp.position.set(Math.cos(a2) * 1.0, basinY + 0.36, Math.sin(a2) * 1.0); sp.rotation.y = -a2 + Math.PI / 2; C(sp, 0, 0.02); } // bicas
+      lathe([[0, 0.4], [0.46, 0.4], [0.5, 0.5], [0.5, 0.7], [0.42, 0.72], [0, 0.72]], stoneD, basinY, 16); // plinto da estátua
+      // a estátua: manto encapuzado, braços à frente segurando o losango com o Olho
+      const SY = basinY + 0.72, ST = new THREE.Group(); ST.position.set(Wm / 2, SY, Dm / 2); ST.rotation.y = Math.PI / 4; g.add(ST); // a estátua olha para a câmera (sudeste)
+      const robe = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [0.46, 0], [0.42, 0.3], [0.34, 0.9], [0.3, 1.35], [0.26, 1.5], [0.14, 1.58], [0, 1.6]].map(([x, y]) => new THREE.Vector2(x, y)), 18), statueM); ink(robe, 0.04); robe.castShadow = true; ST.add(robe);
+      for (let i = 0; i < 10; i++) { const a2 = (i / 10) * 6.283, fold = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.3, 0.04), statueM); fold.position.set(Math.cos(a2) * 0.39, 0.66, Math.sin(a2) * 0.39); fold.rotation.y = -a2; fold.rotation.z = 0.05; ST.add(fold); } // pregas
+      const hood = new THREE.Mesh(new THREE.SphereGeometry(0.21, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.62), statueM); hood.position.set(0, 1.72, -0.02); hood.scale.set(1, 1.15, 1.1); ink(hood, 0.03); ST.add(hood);
+      const hoodTip = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.3, 8), statueM); hoodTip.position.set(0, 1.98, -0.08); hoodTip.rotation.x = -0.5; ST.add(hoodTip);
+      const face = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), std(0x5a5c56, {})); face.position.set(0, 1.7, 0.1); ST.add(face);
+      for (const sx of [-1, 1]) { const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.5, 8), statueM); arm.position.set(sx * 0.22, 1.2, 0.2); arm.rotation.set(1.2, 0, sx * -0.5); ink(arm, 0.02); ST.add(arm); const sleeve = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.28, 8), statueM); sleeve.position.set(sx * 0.3, 1.32, 0.08); sleeve.rotation.set(1.0, 0, sx * -0.6); ST.add(sleeve); }
+      const PL = new THREE.Group(); PL.position.set(0, 1.12, 0.36); PL.rotation.x = -0.55; ST.add(PL); // o losango inclinado para cima: visto de cima, lê-se o Olho
+      const plaque = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.06), stoneD); plaque.rotation.z = Math.PI / 4; ink(plaque, 0.03); PL.add(plaque);
+      const plaqueIn = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.36, 0.07), statueM); plaqueIn.rotation.z = Math.PI / 4; PL.add(plaqueIn);
+      const eyeR = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.025, 6, 16), std(0x4e5048, {})); eyeR.scale.set(1.4, 0.85, 1); eyeR.position.z = 0.04; PL.add(eyeR);
+      const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0x8fd8ff })); pupil.position.z = 0.05; PL.add(pupil);
+      for (let i = 0; i < 5; i++) { const ms = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), mossM); ms.scale.set(1.2, 0.5, 0.8); ms.position.set(Math.cos(i * 1.9) * 0.36, 0.25 + i * 0.28, Math.sin(i * 1.9) * 0.36); ST.add(ms); } // musgo na estátua
+      L.glows.push({ light: nullLight, base: 8, seed: r() * 50, warm: false, pos: new THREE.Vector3(wx, wy + SY + 1.3, wz + 1.2), color: 0x6fc7ff } as WorldObjs['glowLights'][number]);
       L.fountain = new THREE.Vector3(wx, wy, wz);
     } else if (p.kind === 'chest') {
       /* Baú de tesouro (cai item): tábuas DEITADAS, tampa abaulada de verdade, cintas de ferro que abraçam corpo e tampa,

@@ -4418,7 +4418,7 @@ function frameBody() {
     if (fp && fp.distanceTo(heroPos) < 55) {
       const R2 = FOUNTAIN.rad;
       if (Math.random() < 0.9) { const a = Math.random() * 6.283; particles.spawn(fp.x, fp.y + FOUNTAIN.top, fp.z, { vx: Math.cos(a) * 0.9, vy: 3.3 + Math.random() * 0.8, vz: Math.sin(a) * 0.9, life: 1.0, s0: 0.22, s1: 0.14, c0: 0xcfeeff, c1: 0x6fb8ff, a: 0.9, drag: 0.1, g: 9 }); }
-      for (let i = 0; i < 4; i++) { const a = (i / 4) * 6.283 + 0.78; if (Math.random() < 0.8) particles.spawn(fp.x + Math.cos(a) * 1.0, fp.y + FOUNTAIN.bowl - 0.3, fp.z + Math.sin(a) * 1.0, { vx: Math.cos(a) * 1.6, vy: 0.8, vz: Math.sin(a) * 1.6, life: 0.7, s0: 0.2, s1: 0.12, c0: 0xe0f4ff, c1: 0x6fb8ff, a: 0.85, drag: 0.2, g: 9 }); }
+      for (let i = 0; i < 3; i++) { const a = (i / 3) * 6.283 + 0.5; if (Math.random() < 0.8) particles.spawn(fp.x + Math.cos(a) * 1.1, fp.y + FOUNTAIN.bowl - 0.1, fp.z + Math.sin(a) * 1.0, { vx: Math.cos(a) * 1.6, vy: 0.8, vz: Math.sin(a) * 1.6, life: 0.7, s0: 0.2, s1: 0.12, c0: 0xe0f4ff, c1: 0x6fb8ff, a: 0.85, drag: 0.2, g: 9 }); }
       if (Math.random() < 0.7) { const a = Math.random() * 6.283; particles.spawn(fp.x + Math.cos(a) * 0.95, fp.y + FOUNTAIN.bowl - 0.15, fp.z + Math.sin(a) * 0.95, { vx: Math.cos(a) * 0.4, vy: 0, vz: Math.sin(a) * 0.4, life: 0.7, s0: 0.18, s1: 0.12, c0: 0xe0f4ff, c1: 0x6fb8ff, a: 0.7, drag: 0.1, g: 9 }); }
       if (Math.random() < 0.5) { const a = Math.random() * 6.283, rr = 0.6 + Math.random() * (R2 - 1.2); particles.spawn(fp.x + Math.cos(a) * rr, fp.y + FOUNTAIN.rim, fp.z + Math.sin(a) * rr, { vx: 0, vy: 0.5, vz: 0, life: 0.9, s0: 0.5, s1: 1.1, c0: 0xdff4ff, c1: 0xbfe0ff, a: 0.18, drag: 1 }); }
     }
