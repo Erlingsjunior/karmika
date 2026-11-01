@@ -10,6 +10,7 @@ import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildSpecies } from './flora3d';
 import { buildPlant } from './plantas3d';
+import { buildPortal, PORTAL_OF, PORTAL_GLOW } from './portais3d';
 import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWall } from './village3d';
 import { buildMonument } from './monuments3d';
 import { buildVapor } from './vapor3d';
@@ -553,6 +554,11 @@ export function buildWorld(world: World): WorldObjs {
       for (let k = 0; k < 3; k++) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.1), std(0x1a1410)); const a = k * 2.1; w.position.set(Wm / 2 + Math.cos(a) * 1.3, H * (0.4 + k * 0.2), Dm / 2 + Math.sin(a) * 1.3); w.rotation.y = -a + Math.PI / 2; g.add(w); }
       const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.46, 7), new THREE.MeshBasicMaterial({ color: 0xffb040 })); flame.position.set(Wm / 2 + 1.0, H + 1.2, Dm / 2 + 0.8); flame.userData.dyn = true; g.add(flame);
       L.torches.push({ pos: new THREE.Vector3(wx + 1.0, wy + H + 1.3, wz + 0.8), light: nullLight, base: 70, seed: r() * 50, flame, dist: 0 });
+    } else if (p.kind === 'relic' && p.label && PORTAL_OF[p.label]) { /* portal da vila (prancha 33, 01/11): o anel/arco do povo no lugar do monólito */
+      const ps = PORTAL_OF[p.label], { g: pg, veil, height } = buildPortal(ps, p.gx * 7 + p.gy * 13); pg.position.set(Wm / 2, 0, Dm / 2); g.add(pg); const G = PORTAL_GLOW[ps];
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.9, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: G, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
+      (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes: veil, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
+      L.glows.push({ light: nullLight, base: 30, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + height * 0.45, p.gy * T + Dm / 2), color: G } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'relic') {
       // pedra rúnica dos caminhantes: monólito alto, runas azuis brilhantes, pedras ao redor, luz fria
       const stoneM = std(0x9a9aa8, { map: stoneTex(0x8a8a98) });
