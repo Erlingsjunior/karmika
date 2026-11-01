@@ -2935,6 +2935,22 @@ function humanSkinKey(): string | null {
   return `${sex === 'm' ? 'humano' : 'humana'}_${dressed ? 2 : 1}`;
 }
 const HERO_SKIN: Record<string, SkinDef> = { guerreiro_m: { fbx: '/models/heroes/NordicWarrior/Guerreiro_lvl_01.fbx', tex: '/models/heroes/NordicWarrior/Guerreiro_lvl_01_Color.jpg' }, guerreiro_f: { fbx: '/models/heroes/NordicWarrior/warrior_rigged.fbx', tex: '/models/heroes/NordicWarrior/warrior_base.jpg' } };
+/* personagens GLB do Herik (01/11, /models/personagens): `classe_sexo[_lvlNN]`, h = homem, m = mulher. O manifesto personagens.json diz quais existem;
+   sem ele (pasta ainda não copiada) o jogo fica nos FBX acima. Os GLBs têm o mesmo esqueleto Mixamo e passam pelo mesmo retarget. */
+const ART_SET = new Set<string>(); let artSetReady = false;
+fetch('/models/personagens/personagens.json').then((r) => (r.ok ? r.json() : [])).then((l: { id: string }[]) => { for (const e of l) ART_SET.add(e.id); artSetReady = true; if (ART_SET.size) { skinKey = ''; applyArtSkin(); } }).catch(() => { artSetReady = true; });
+/** qual GLB novo veste o herói agora (null = nenhum; continua no FBX): classe pelo caminho já provado, nível da roupa pelo nível do herói */
+function artSkinId(): string | null {
+  if (!ART_SET.size || (profile?.origin ?? 'human') !== 'human') return null;
+  const sx = (profile?.sex ?? 'm') === 'm' ? 'h' : 'm'; let lvl = 1; try { lvl = game.st.lvl; } catch { /* */ }
+  let pth = ''; try { pth = profile?.path ?? ''; if (!(pth && quests.q.done.includes('v_' + pth))) pth = ''; } catch { pth = ''; }
+  const CL: Record<string, string> = { vam: 'vampiro', lob: 'lobisomem', mag: 'mago', bru: 'bruxo', pal: 'paladino', tec: 'technocrata' };
+  const pick = (ids: string[]) => ids.find((i) => ART_SET.has(i)) ?? null;
+  if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : lvl >= 35 ? 2 : 1}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl01`, `guerreiro_${sx}_lvl03`]);
+  if (CL[pth]) return pick([`${CL[pth]}_${sx}`]);
+  let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* */ }
+  const n = !dressed ? 1 : lvl >= 20 ? 3 : 2; return pick([`humano_${sx}_lvl0${n}`, `humano_${sx}_lvl02`, `humano_${sx}_lvl01`]);
+}
 let skinTick: (() => void) | null = null, skinToken = 0, skinKey = '', skinModel: THREE.Object3D | null = null, netSkin: SkinDef | null = null;
 /** visual do caminho (vampiro: pele pálida, olhos em brasa, névoa rubra à noite) */
 let look: Look | null = null, lookFor: string = '';
@@ -2942,12 +2958,16 @@ function applyLook() { const kr = kitRace(); const want = kr === 'vam' ? 'vam' :
 function applyArtSkin() {
   skinTick = null; netSkin = null; if (skinModel) { skinModel.parent?.remove(skinModel); skinModel = null; } skinKey = '';
   if (localStorage.getItem('karmika.artskin') === '0') return;
+  const art = artSkinId(); if (art) { skinKey = 'glb:' + art; const my = ++skinToken, h = hero; void artSetReady;
+    attachSkin(h, { fbx: `/models/personagens/${art}.glb`, tex: '' }).then((r) => { if (!r || my !== skinToken || h !== hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; applyLook(); netSkin = { fbx: `/models/personagens/${art}.glb`, tex: '' }; netRef?.lookNow(); portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); }); return; }
   const hk = humanSkinKey(), k = kindOf(state.race), def: SkinDef | undefined = hk ? HERO_SKIN[hk] ?? { fbx: `/models/humanos/${hk}.fbx`, tex: `/models/humanos/${hk}.jpg` } : SKINS_ART[k]; if (!def) return;
   skinKey = hk ?? k; const my = ++skinToken, h = hero;
   attachSkin(h, def).then((r) => { if (!r || my !== skinToken || h !== hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; applyLook(); netSkin = def; netRef?.lookNow(); portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); });
 }
 /** ao trocar de roupa: se o nível da pele mudou (1 ↔ 2), troca o modelo */
-function checkSkinLevel() { const hk = humanSkinKey(); if (hk && hk !== skinKey) applyArtSkin(); }
+function checkSkinLevel() { const art = artSkinId(); if (art) { if ('glb:' + art !== skinKey) applyArtSkin(); return; } const hk = humanSkinKey(); if (hk && hk !== skinKey) applyArtSkin(); }
+/* o modelo também muda ao subir de nível e ao passar na prova do caminho: confere de tempos em tempos (barato: só compara chaves) */
+setInterval(() => { try { if (!creating && !game.st.dead) checkSkinLevel(); } catch { /* */ } }, 3000);
 function swapHero() {
   scene.remove(hero.root);
   hero = createCharacter(kindOf(state.race), profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {});

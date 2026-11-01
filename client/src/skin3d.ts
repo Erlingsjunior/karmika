@@ -5,6 +5,7 @@
  *  os comprimentos dos ossos invisíveis aos do modelo: a mão do modelo fica exatamente onde está a espada. */
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Hero3D } from './characters';
 import { fine } from './dual3d';
@@ -12,10 +13,23 @@ import { fine } from './dual3d';
 type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip?: THREE.Object3D; knee?: THREE.Object3D; ankle?: THREE.Object3D };
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
 
-export interface SkinDef { fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number }
+export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number }
 const cache = new Map<string, Promise<THREE.Group>>();
+/* material do jogo (Lambert com a textura de cor) em cima da malha do artista: o GLB já traz a textura embutida (JPEG 2048, só cor) */
+function dress(obj: THREE.Object3D, def: SkinDef, tex: THREE.Texture | null) {
+  obj.traverse((o) => { const m = o as THREE.SkinnedMesh; if (!m.isMesh) return;
+    if (/humanos/.test(def.fbx)) m.geometry.computeVertexNormals(); /* alguns exports vêm com normais invertidas em pedaços (manchas pretas) */
+    const old = m.material as THREE.MeshStandardMaterial, map = tex ?? old?.map ?? null; if (map && !tex) { map.colorSpace = THREE.SRGBColorSpace; map.anisotropy = 4; }
+    m.material = new THREE.MeshLambertMaterial({ map, color: new THREE.Color(def.tint ?? 0xffffff).multiplyScalar(1.18), emissive: 0x140e0c, side: old?.side === THREE.DoubleSide ? THREE.DoubleSide : THREE.FrontSide });
+    m.castShadow = false; m.receiveShadow = true; m.frustumCulled = false; });
+}
 function load(def: SkinDef): Promise<THREE.Group> {
   let p = cache.get(def.fbx);
+  if (!p && /\.glb$/i.test(def.fbx)) {
+    /* GLB (personagens do Herik, 01/11): 1 unidade = 1 m, pés em Y = 0, olhando para +Z, esqueleto Mixamo de 65 ossos (`mixamorigHips`), sem animação */
+    p = new GLTFLoader().loadAsync(def.fbx).then((g) => { const obj = g.scene as THREE.Group; obj.updateMatrixWorld(true); dress(obj, def, null); return obj; });
+    cache.set(def.fbx, p);
+  }
   if (!p) {
     p = new Promise((res, rej) => {
       new FBXLoader().load(def.fbx, (obj) => {
@@ -30,10 +44,7 @@ function load(def: SkinDef): Promise<THREE.Group> {
         obj.updateMatrixWorld(true); { const P = (n: string) => obj.getObjectByName('mixamorig' + n)?.getWorldPosition(new THREE.Vector3());
           const hp = P('Hips'), hd = P('Head'); if (hp && hd && Math.abs(hd.z - hp.z) > Math.abs(hd.y - hp.y)) { obj.rotation.x += hd.z > hp.z ? -Math.PI / 2 : Math.PI / 2; obj.updateMatrixWorld(true); }
           const ft = P('LeftFoot'), to = P('LeftToeBase'); if (ft && to && to.z < ft.z) { obj.rotation.y += Math.PI; obj.updateMatrixWorld(true); } }
-        obj.traverse((o) => { const m = o as THREE.SkinnedMesh; if (!m.isMesh) return;
-          if (/humanos/.test(def.fbx)) m.geometry.computeVertexNormals(); /* alguns exports vêm com normais invertidas em pedaços (manchas pretas) */
-          m.material = new THREE.MeshLambertMaterial({ map: tex, color: new THREE.Color(def.tint ?? 0xffffff).multiplyScalar(1.18), emissive: 0x140e0c });
-          m.castShadow = false; m.receiveShadow = true; m.frustumCulled = false; });
+        dress(obj, def, tex);
         res(obj);
       }, undefined, rej);
     });
