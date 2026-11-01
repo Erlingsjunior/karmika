@@ -16,7 +16,7 @@ export const PORTO = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }
 
 /** pedras da prancha 58 (01/11): musgosa, laje, menir, seixos, bola de musgo com samambaias, pico cinza, obsidiana azul, arenito laranja, veio de cobre, gelo, lisa escura e vulcânica rachada */
 export type RockStyle = 'mossy' | 'slab' | 'menhir' | 'pebbles' | 'mossball' | 'peak' | 'obsidian' | 'sandstone' | 'copper' | 'ice' | 'darkSmooth' | 'volcanic';
-export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant';
+export type PropKind = 'house' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant' | 'vprop';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -628,6 +628,8 @@ export function buildCity(): World {
   torch(QX + 2, QY + 7); torch(QX + 5, QY + 7);
   decor('rack', QX + 5, QY, 1, 1, 0); decor('rack', QX + 6, QY, 1, 1, 1); decor('chest', QX + 7, QY + 2, 1, 1, 2);
   decor('bench', QX + 1, QY + 6, 1, 1, 0); decor('bench', QX + 6, QY + 6, 1, 1, 0);
+  /* props da prancha 59 na cidade de Karmika: poço, lanternas nas esquinas da praça, placa na saída sul, barris e caixotes junto de quatro casas, feno perto do estábulo */
+  for (const [v, x, y] of [[2, 22, 16], [4, 14, 14], [4, 21, 21], [5, 17, 27], [0, 9, 11], [1, 28, 11], [1, 9, 23], [0, 28, 24], [6, 27, 25]] as [number, number, number][]) { const gx = x + OX, gy = y + OY; if (inb(gx, gy) && (map[gy][gx] === 'grass' || map[gy][gx] === 'plaza' || (v === 5 && map[gy][gx] === 'road')) && !props.some((q) => q.gx === gx && q.gy === gy)) props.push({ kind: 'vprop', gx, gy, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v }); }
   const quartel = { x: QX + 4, y: QY + 5, dummies: [1, 3, 5, 7].map((x) => ({ x: QX + x + 0.5, y: QY + 4.5 })) }; pois.push({ name: 'Quartel de Karmika', x: QX + 4, y: QY + 7, biome: 'meadow' });
 
   /* ---------- assentamentos: Karmika (centro), vilas de madeira e Askavik (cidade média de madeira e pedra) ---------- */
@@ -678,6 +680,11 @@ export function buildCity(): World {
       const dx = gx + Math.floor(w / 2), dy = gy + h; for (let y = dy; y !== cy; y += Math.sign(cy - dy)) if (inb(dx, y) && map[y][dx] === 'grass') map[y][dx] = 'road';
     }
     decorAt('stall', cx + 3, cy - 4, 2, 2, 0, 0x7a5a38, 0x8a3b2e); decorAt('stall', cx - 5, cy + 3, 2, 2, 0, 0x6a4a2c, 0x5d6b3a);
+    /* props da prancha 59 (01/11), poucos por vila: um poço numa esquina da praça, um poste de lanterna junto da barraca, uma placa na saída,
+       e ao lado de metade das casas um barril, caixotes, feno, cocho ou carroça de mão (quem passa lê que ali se vive) */
+    const vp = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza' || (variant === 5 && map[y][x] === 'road')) && !props.some((q) => q.gx === x && q.gy === y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
+    vp(2, cx + 3, cy + 3); vp(4, cx + 5, cy - 4); vp(5, cx + 1, cy + R0 - 1); vp(4, cx - 6, cy + 2);
+    hs.forEach((hh, i) => { if (rr() < 0.55) vp([0, 1, 6, 8, 7, 0, 1][i % 7], hh.gx + hh.w, hh.gy + hh.h - 1, rr() * 6.283); });
     if (cult === 1 || cult === 5) { // paliçada de estacas em volta (nórdicos e Uivo), aberta nas estradas
       const PR = R0 + 1; for (let k = -PR; k <= PR; k++) for (const [x, y, ns] of [[cx + k, cy - PR, false], [cx + k, cy + PR, false], [cx - PR, cy + k, true], [cx + PR, cy + k, true]] as [number, number, boolean][]) {
         if (!inb(x, y) || map[y][x] !== 'grass' || Math.abs(k) <= 2) continue; props.push({ kind: 'palisade', gx: x, gy: y, w: 1, h: 1, height: 2.8, wall: 0x5a4030, roof: 0, variant: ns ? 1 : 0 }); map[y][x] = 'wall'; } }
