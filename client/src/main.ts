@@ -2949,7 +2949,8 @@ function artSkinId(): string | null {
   if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : lvl >= 35 ? 2 : 1}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl01`, `guerreiro_${sx}_lvl03`]);
   if (CL[pth]) return pick([`${CL[pth]}_${sx}`]);
   let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* */ }
-  const n = !dressed ? 1 : lvl >= 20 ? 3 : 2; return pick([`humano_${sx}_lvl0${n}`, `humano_${sx}_lvl02`, `humano_${sx}_lvl01`]);
+  /* humano: 1 = sem roupa, 2 = vestido. O lvl03 do Drive é da expansão (Erling, 01/11): não entra agora */
+  return pick([`humano_${sx}_lvl0${dressed ? 2 : 1}`, `humano_${sx}_lvl01`]);
 }
 let skinTick: (() => void) | null = null, skinToken = 0, skinKey = '', skinModel: THREE.Object3D | null = null, netSkin: SkinDef | null = null;
 /** visual do caminho (vampiro: pele pálida, olhos em brasa, névoa rubra à noite) */
