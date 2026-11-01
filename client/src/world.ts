@@ -1425,10 +1425,11 @@ export function buildCity(): World {
   // e escadarias por dentro nos trechos retos. Casas que caíram em cima do muro somem; dentro não há mata.
   const ramparts: Rampart[] = [];
   for (const st of settlements) {
-    if (st.kind !== 'city') continue;
-    const cx = st.x, cy = st.y, H = RAMPART_H, Rb = st.radius + 4, rw = rng(st.x * 3 + st.y * 5 + 11);
+    const kitS = st.name === 'Karmika'; /* 01/11: Karmika ganha a muralha da prancha 53 (pedra + paliçada de madeira, torres enxaimel, portão com ponte), mais baixa */
+    if (st.kind !== 'city' && !kitS) continue;
+    const cx = st.x, cy = st.y, H = kitS ? 3.4 : RAMPART_H, Rb = st.radius + (kitS ? 8 : 4), rw = rng(st.x * 3 + st.y * 5 + 11);
     const ph = [rw() * 6.283, rw() * 6.283, rw() * 6.283];
-    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return Rb * sq * (1 + nz); };
+    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return Math.max(Rb * sq * (1 + nz), kitS ? Rb - 2 : 0); }; /* Karmika: raio mínimo para o anel não passar por cima do Quartel */
     const insideWall = (x: number, y: number) => { const dx = x - cx, dy = y - cy; return Math.hypot(dx, dy) < radAt(Math.atan2(dy, dx)) - 0.5; };
     const clearAt = (x: number, y: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx === x && q.gy === y && (q.kind === 'tree' || q.kind === 'rock' || q.kind === 'grave' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree')) props.splice(i, 1); } };
     // 1) o anel rasterizado: casas em ordem, sem repetição
@@ -1436,7 +1437,7 @@ export function buildCity(): World {
     for (let i = 0; i < 2400; i++) { const a = i / 2400 * 6.283, r = radAt(a), x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r), k = y * 4096 + x; if (seenK.has(k) || !inb(x, y)) continue;
       if (ring.length >= 2) { const p2 = ring[ring.length - 2]; if (Math.abs(p2[0] - x) <= 1 && Math.abs(p2[1] - y) <= 1) { const p1 = ring.pop()!; seenK.delete(p1[1] * 4096 + p1[0]); } } /* anel fino: a casa do canto que sobra sai */
       seenK.add(k); ring.push([x, y]); }
-    const N = ring.length;
+    const N = ring.length; if (!N) { console.warn('muralha: anel vazio em', st.name, cx, cy, Rb); continue; }
     const nearWater = (x: number, y: number, d: number) => { for (let yy = y - d; yy <= y + d; yy++) for (let xx = x - d; xx <= x + d; xx++) if (map[yy]?.[xx] === 'water') return true; return false; };
     const wallOk = ring.map(([x, y]) => !nearWater(x, y, 2)); // onde a costa chega, o muro para
     // 2) casas dentro do anel: grama de cidade, sem mata nem pedra; casas e barracas em cima do muro somem
@@ -1465,7 +1466,7 @@ export function buildCity(): World {
       let i = 0; while (i < N) { if (!wallOk[i] || isGate.has(i) || !isRd(i)) { i++; continue; } let j = i; while (j + 1 < N && isRd(j + 1)) j++; const c = Math.floor((i + j) / 2);
         if (![...isGate.keys()].some((g) => Math.min(Math.abs(g - c), N - Math.abs(g - c)) < 5)) for (let d = -1; d <= 1; d++) opening.add(((c + d) % N + N) % N); i = j + 1; } }
     const tiles = new Set<number>(); const flights: Flight[] = [];
-    const tangent = (i: number) => { const a = ring[((i - 3) % N + N) % N], b = ring[(i + 3) % N]; let tx = b[0] - a[0], ty = b[1] - a[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L; const ox = ring[i][0] - cx, oy = ring[i][1] - cy; if (ty * ox - tx * oy < 0) { tx = -tx; ty = -ty; } /* fora = tangente girada −90° */ return [tx, ty]; };
+    const tangent = (i: number) => { const a = ring[((i - 3) % N + N) % N], b = ring[(i + 3) % N]; let tx = b[0] - a[0], ty = b[1] - a[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L; const ri = ring[((i % N) + N) % N], ox = ri[0] - cx, oy = ri[1] - cy; if (ty * ox - tx * oy < 0) { tx = -tx; ty = -ty; } /* fora = tangente girada −90° */ return [tx, ty]; };
     const outRy = (i: number) => { const [tx, ty] = tangent(i); return Math.atan2(-(ty), tx); }; // +x local = tangente; −z local = fora
     // 4) torres em espaços desiguais (11 a 17 casas), longe dos portões; estilos alternando sem repetir o vizinho
     const towerAt = new Map<number, number>(); let lastStyle = -1;
@@ -1474,15 +1475,15 @@ export function buildCity(): World {
     for (let i = 0; i < N; i++) { const i0 = ((i - 1) % N + N) % N, i1 = (i + 1) % N; if (!opening.has(i) && wallOk[i] && !isGate.has(i) && (opening.has(i0) || opening.has(i1))) towerAt.set(i, 2); } // torre aberta de guarda ao lado de cada abertura
     // 5) as peças
     for (let i = 0; i < N; i++) { const [x, y] = ring[i]; if (!wallOk[i]) continue; const t = map[y][x]; if (t === 'water') continue;
-      const gc = isGate.get(i); if (gc !== undefined) { if (gc === i) { const ry = outRy(i); props.push({ kind: 'gatehouse', gx: x, gy: y, w: 1, h: 1, height: H + 1.5, wall: 0x8a857e, roof: [0x34445e, 0x5a3a28, 0x3a4a3a][gateIdx.indexOf(gc) % 3], variant: 0, ry, len: 5 }); }
+      const gc = isGate.get(i); if (gc !== undefined) { if (gc === i) { const ry = outRy(i); props.push({ kind: 'gatehouse', gx: x, gy: y, w: 1, h: 1, height: kitS ? H : H + 1.5, wall: 0x8a857e, roof: [0x34445e, 0x5a3a28, 0x3a4a3a][gateIdx.indexOf(gc) % 3], variant: kitS ? 20 : 0, ry, len: 5 }); }
         // sob o arco a estrada passa (3 casas do meio); as 2 de cada lado são corpo do portão
         const d = Math.min(Math.abs(i - gc), N - Math.abs(i - gc)); clearAt(x, y); if (d <= 1) { if (t !== 'road' && t !== 'plaza') map[y][x] = 'road'; } else map[y][x] = 'wall'; tiles.add(y * 4096 + x); continue; }
       if (opening.has(i)) { clearAt(x, y); if (t !== 'road' && t !== 'plaza') map[y][x] = 'road'; continue; } // abertura da estrada: sem muro (as torres de guarda ficam nas casas vizinhas do anel)
       clearAt(x, y); map[y][x] = 'wall'; tiles.add(y * 4096 + x);
       const ts = towerAt.get(i); const ry = outRy(i);
-      if (ts !== undefined) { const v = ts === 8 ? 8 : [8, 9, 10, 12][ts]; props.push({ kind: 'rtower', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: [0x34445e, 0x5a3a28, 0x3a4a3a, 0x4a4a52][Math.floor(rw() * 4)], variant: v, ry, len: v === 12 ? 0 : 2.4 + rw() * 2.6 }); }
+      if (ts !== undefined) { const v = kitS ? 20 : ts === 8 ? 8 : [8, 9, 10, 12][ts]; props.push({ kind: 'rtower', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: [0x34445e, 0x5a3a28, 0x3a4a3a, 0x4a4a52][Math.floor(rw() * 4)], variant: v, ry, len: v === 12 ? 0 : 2.4 + rw() * 2.6 }); }
       const nx = ring[(i + 1) % N]; const len = wallOk[(i + 1) % N] ? Math.hypot(nx[0] - x, nx[1] - y) * T : T;
-      props.push({ kind: 'rwall', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: 0x34445e, variant: Math.floor(rw() * 3), ry, len }); }
+      props.push({ kind: 'rwall', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: 0x34445e, variant: (kitS ? 20 : 0) + Math.floor(rw() * 3), ry, len }); }
     // 6) a estrada de cada portão continua para dentro até a primeira rua e para fora até a estrada
     for (const g of gateIdx) { const [gx0, gy0] = ring[g], [tx, ty] = tangent(g); const ox = ty, oy = -tx; /* fora */
       for (const sgn of [-1, 1]) for (let d = 1; d <= (sgn > 0 ? 10 : 16); d++) { const x = Math.round(gx0 + ox * d * sgn), y = Math.round(gy0 + oy * d * sgn); if (!inb(x, y)) break; const t = map[y][x]; if (t === 'water') break; if (d > 2 && (t === 'road' || t === 'plaza')) break; if (t === 'wall' && !tiles.has(y * 4096 + x)) break; clearAt(x, y); map[y][x] = 'road'; for (const [px2, py2] of [[Math.round(x + tx), Math.round(y + ty)], [Math.round(x - tx), Math.round(y - ty)]]) if (inb(px2, py2) && (map[py2][px2] === 'grass' || map[py2][px2] === 'tree')) { clearAt(px2, py2); map[py2][px2] = 'road'; } } }

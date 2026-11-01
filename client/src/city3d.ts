@@ -401,3 +401,50 @@ export function buildQuay(pts: { x: number; z: number }[], side: number): Built 
     for (let k = 0; k < 2; k++) { const t = (k + 0.5) / 2; K.add(new THREE.CylinderGeometry(0.07, 0.1, 0.5, 6), lt, a.x + (b.x - a.x) * t - side * 0.1, 0.36, a.z + (b.z - a.z) * t); } }
   return K.out;
 }
+
+/* ---------------------------------------------------------------- kit de muralha da vila (prancha 53, 01/11) ----------------------------------------------------------------
+   Karmika: base de pedra com musgo, caminho de ronda de tábuas em mãos-francesas, paliçada de estacas apontadas por fora, guarda-corpo por dentro;
+   torre de vigia enxaimel com sacada e telhado pontudo de ardósia; portão de dois pilares de pedra com ponte de madeira em cima e porta dupla em arco. */
+const kitStone = () => stone(0x8a8680), kitMoss = () => stone(0x6e7a62), kitWood = () => wood(0x6a4a2c), kitPlank = () => planks(0x8a6a40), kitStake = () => wood(0x7a5a34);
+/** trecho de muro ao longo do eixo x local (len m); lado de fora = −z. H = altura do caminho de ronda */
+export function buildKitWall(H: number, len: number, seed: number): Built {
+  const K = kit(), c = T / 2, L = len + 0.6, SH = H - 0.1, r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+  K.box(L, SH, 1.5, c, 0, c, kitStone()); K.box(L, 0.5, 1.7, c, 0, c, kitMoss()); K.box(L, 0.3, 1.6, c, SH - 0.3, c, stone(0x7a766e)); // corpo, pé com musgo, cordão
+  K.box(L, 0.12, 2.0, c, SH, c + 0.1, kitPlank()); // tábuas do caminho (sobram para fora, apoiadas nas mãos-francesas)
+  const n = Math.max(1, Math.round(L / 1.3)); for (let k = 0; k < n; k++) { const x = c - L / 2 + (k + 0.5) * (L / n); const br = K.add(new THREE.BoxGeometry(0.12, 0.12, 0.9), kitWood(), x, SH - 0.45, c - 0.75 - 0.2); br.rotation.x = 0.8; } // mãos-francesas por fora
+  const ns = Math.max(2, Math.round(L / 0.36)); for (let k = 0; k < ns; k++) { const x = c - L / 2 + (k + 0.5) * (L / ns), h = 1.5 + r(k) * 0.3; K.cyl(0.13, 0.15, h, x, SH, c - 0.85, kitStake(), 6); K.cone(0.14, 0.3, x, SH + h, c - 0.85, kitStake(), 6, 0); } // estacas apontadas
+  K.box(L, 0.1, 0.1, c, SH + 1.1, c - 0.85, kitWood()); // travessa das estacas
+  for (const y of [0.45, 0.95]) K.box(L, 0.07, 0.07, c, SH + y, c + 0.95, kitWood()); const np = Math.max(2, Math.round(L / 1.5)); for (let k = 0; k <= np; k++) K.box(0.1, 1.05, 0.1, c - L / 2 + k * (L / np), SH, c + 0.95, kitWood()); // guarda-corpo por dentro
+  return K.out;
+}
+/** torre de vigia enxaimel: base de pedra até o caminho, andar enxaimel com sacada, telhado pontudo */
+export function buildKitTower(H: number, seed: number): Built {
+  const K = kit(), c = T / 2, S = 2.8, cz = c - 0.4, pl = std(0xe8e0cc), tm = kitWood();
+  K.box(S + 0.4, 1.0, S + 0.4, c, 0, cz, kitMoss()); K.box(S, H + 0.4, S, c, 0, cz, kitStone()); K.box(S + 0.3, 0.25, S + 0.3, c, H + 0.3, cz, stone(0x7a766e));
+  const y1 = H + 0.55, FH = 3.2; K.box(S - 0.2, FH, S - 0.2, c, y1, cz, pl); // andar enxaimel
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) K.box(0.16, FH, 0.16, c + sx * (S / 2 - 0.12), y1, cz + sz * (S / 2 - 0.12), tm);
+  for (const [dx, dz, ry] of [[0, -1, 0], [0, 1, 0], [-1, 0, Math.PI / 2], [1, 0, Math.PI / 2]] as [number, number, number][]) { const x = c + dx * (S / 2 - 0.1), z = cz + dz * (S / 2 - 0.1);
+    K.box(S - 0.2, 0.14, 0.14, x, y1 + FH * 0.5, z, tm, ry); const d1 = K.add(new THREE.BoxGeometry(0.12, FH * 0.95, 0.12), tm, x + (dz ? 0.6 : 0), y1 + FH / 2, z + (dx ? 0.6 : 0), ry); d1.rotation.z = 0.45; const d2 = K.add(new THREE.BoxGeometry(0.12, FH * 0.95, 0.12), tm, x - (dz ? 0.6 : 0), y1 + FH / 2, z - (dx ? 0.6 : 0), ry); d2.rotation.z = -0.45;
+    K.window_(0.5, 0.6, x + dx * 0.03, y1 + FH * 0.72, z + dz * 0.03, Math.atan2(dx, dz)); }
+  // sacada em volta na altura do caminho
+  K.box(S + 1.4, 0.12, S + 1.4, c, y1 - 0.12, cz, kitPlank()); for (const sx of [-1, 1]) for (const sz of [-1, 1]) K.box(0.1, 1.0, 0.1, c + sx * (S / 2 + 0.62), y1, cz + sz * (S / 2 + 0.62), tm);
+  for (const [dx, dz] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { K.box(dz ? S + 1.4 : 0.07, 0.07, dz ? 0.07 : S + 1.4, c + dx * (S / 2 + 0.62), y1 + 0.95, cz + dz * (S / 2 + 0.62), tm); K.box(dz ? S + 1.4 : 0.07, 0.07, dz ? 0.07 : S + 1.4, c + dx * (S / 2 + 0.62), y1 + 0.5, cz + dz * (S / 2 + 0.62), tm); }
+  for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283; const br = K.add(new THREE.BoxGeometry(0.12, 0.12, 0.9), tm, c + Math.cos(a) * (S / 2 + 0.3), y1 - 0.5, cz + Math.sin(a) * (S / 2 + 0.3), -a); br.rotation.x = 0.8; }
+  K.box(S + 0.5, 0.3, S + 0.5, c, y1 + FH, cz, tm); K.cone(S * 0.85, 4.2 + (seed % 2) * 0.5, c, y1 + FH + 0.3, cz, slate(0x3a3e46), 4, Math.PI / 4); K.add(new THREE.ConeGeometry(0.06, 0.8, 4), ironM(), c, y1 + FH + 4.6 + (seed % 2) * 0.5, cz, 0, false);
+  K.torch(c, y1 + 0.05, cz - S / 2 - 0.55);
+  return K.out;
+}
+/** portão da vila: dois pilares de pedra, viga e ponte de tábuas com guarda-corpo em cima (o caminho de ronda passa), porta dupla em arco entreaberta. Estrada ao longo de z local; n casas de largura */
+export function buildKitGate(n: number, H: number): Built {
+  const K = kit(), Lm = n * T, cx = Lm / 2, cz = T / 2, w = Lm - 2.6, P = 1.3, tm = kitWood();
+  for (const s of [-1, 1]) { const px = cx + s * (w / 2 + P / 2); K.box(P + 0.5, 1.0, P + 0.7, px, 0, cz, kitMoss()); K.box(P, H + 0.2, P, px, 0, cz, kitStone()); K.box(P + 0.3, 0.25, P + 0.3, px, H - 0.3, cz, stone(0x7a766e)); K.box(0.2, H - 0.4, 0.2, px - s * (P / 2 + 0.1), 0, cz, tm); }
+  K.box(Lm + 0.4, 0.3, 0.4, cx, H + 0.2, cz - 0.6, tm); K.box(Lm + 0.4, 0.3, 0.4, cx, H + 0.2, cz + 0.6, tm); K.box(Lm + 0.4, 0.12, 2.0, cx, H + 0.5, cz, kitPlank()); // vigas e ponte
+  for (const z of [-0.95, 0.95]) { for (const y of [0.5, 1.0]) K.box(Lm + 0.4, 0.07, 0.07, cx, H + 0.62 + y, cz + z, tm); for (let k = 0; k <= 4; k++) K.box(0.1, 1.05, 0.1, cx - Lm / 2 + k * (Lm / 4), H + 0.62, cz + z, tm); }
+  // porta dupla em arco, entreaberta (cada folha gira em torno do seu pilar)
+  const dh = H - 0.5, dw = w / 2; for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(cx + s * (w / 2 - 0.05), 0, cz - 0.5); piv.rotation.y = s * 1.05; K.g.add(piv);
+    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(s * -dw, 0); sh.lineTo(s * -dw, dh - dw * 0.9); sh.absarc(0, dh - dw * 0.9, dw, s > 0 ? Math.PI : 0, Math.PI / 2, s > 0); sh.lineTo(0, 0);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: false, curveSegments: 8 }); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 2, uv.getY(i) / 2); const door = new THREE.Mesh(geo, kitPlank()); door.castShadow = true; piv.add(door);
+    for (const y of [0.6, dh * 0.5, dh - 1.2]) { const band = new THREE.Mesh(new THREE.BoxGeometry(dw * 0.9, 0.1, 0.03), ironM()); band.position.set(s * -dw / 2, y, 0.14); piv.add(band); } }
+  for (const s of [-1, 1]) K.torch(cx + s * (w / 2 + P + 0.1), 1.8, cz - 1.0);
+  return K.out;
+}
