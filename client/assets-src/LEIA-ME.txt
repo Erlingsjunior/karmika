@@ -1,0 +1,4 @@
+Fontes de arte que o jogo NÃO carrega (02/11/2026):
+- "Bestiary - Dungeon Monsters Kit[Standard]": o kit original; os .glb usados estão em public/models/bestiary.
+- humano/ e humana/: modelos antigos de humano/humana (FBX); o jogo usa public/models/personagens (GLB do Herik) e public/models/humanos.
+Ficam fora de public/ para não irem no build (eram 35 MB a mais em cada deploy).

@@ -48,6 +48,8 @@ export interface Prop {
   /** ângulo (rad, no mundo) do lado em que a água está — a roda do moinho da marcenaria fica virada para lá */ wdir?: number;
   /** peças que seguem um traçado (muros, cercas, pórticos): centro exato dentro da casa (m, a partir do canto), comprimento (m) e quanto desmoronou (0–1) */ ox?: number; oz?: number; len?: number; broken?: number;
   variant?: number;       // tipo da árvore (0 carvalho, 1 seca, 2 pinheiro) / modelo da pedra / etc.
+  /** loja (casa com balcão): chave do comércio — escolhe o interior próprio (alquimista, mercador, domador, oficina, estábulo) */
+  shop?: string;
   /** giro (radianos) para peças que olham para algum lugar (pontos de trabalho olham para o centro da vila) */
   ry?: number;
   /** estilo de construção da cultura (casas das vilas): 1 nórdico · 2 anão · 3 élfico · 4 sombrio · 5 tribal · 6 pacto · 7 vapor */
@@ -478,8 +480,18 @@ export function stairDeck(xm: number, zm: number): number | null {
 export function stairTopAt(tx: number, ty: number): boolean {
   for (const r of rampartsRef) for (const f of r.flights) { const [x, y] = f.tiles[f.tiles.length - 1]; if (x === tx && y === ty) return true; } return false; }
 const BRIDGE_HALF = 1.9;
+/* índice de células (64 m) das pontes — bridgeDeck roda em todo heightAt (por vértice do terreno e por entidade por quadro);
+   varrer as ~200 pontes a cada chamada era a parte mais cara da função. O índice refaz sozinho quando a lista muda. */
+let bridgeIdxOf: Bridge[] | null = null, bridgeIdxN = -1; const bridgeIdx = new Map<number, Bridge[]>();
+function bridgesNear(xm: number, zm: number): Bridge[] {
+  if (bridgeIdxOf !== bridgesRef || bridgeIdxN !== bridgesRef.length) { bridgeIdx.clear(); bridgeIdxOf = bridgesRef; bridgeIdxN = bridgesRef.length;
+    for (const b of bridgesRef) { const x0 = Math.min(b.ax, b.bx) * T - 6, x1 = Math.max(b.ax, b.bx) * T + 6, z0 = Math.min(b.ay, b.by) * T - 6, z1 = Math.max(b.ay, b.by) * T + 6;
+      for (let cy = Math.floor(z0 / PADC); cy <= Math.floor(z1 / PADC); cy++) for (let cx = Math.floor(x0 / PADC); cx <= Math.floor(x1 / PADC); cx++) { const k = cy * 4096 + cx; (bridgeIdx.get(k) ?? bridgeIdx.set(k, []).get(k)!).push(b); } } }
+  return bridgeIdx.get(Math.floor(zm / PADC) * 4096 + Math.floor(xm / PADC)) ?? EMPTY_BR;
+}
+const EMPTY_BR: Bridge[] = [];
 export function bridgeDeck(xm: number, zm: number): number | null {
-  for (const b of bridgesRef) {
+  for (const b of bridgesNear(xm, zm)) {
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T;
     const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = ((xm - ax) * dx + (zm - az) * dz) / L2;
@@ -503,6 +515,7 @@ export function restoreWorldState(st: { pads: { x: number; z: number; r: number;
   DRY.length = 0; for (const v of VILL) DRY.push({ x: v[1], y: v[2], r: 17 });
 }
 /* ---------- geração do mundo ---------- */
+const SOFT_KINDS = ['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch', 'fogpatch'] as const; /* o que sai do caminho quando um prédio precisa do lugar (bush/flower/grass/stump/barrel/crate/lamp são nomes antigos mantidos por segurança) */
 export function buildCity(): World {
   const map: Tile[][] = [];
   const biome: Biome[][] = [];
@@ -566,17 +579,16 @@ export function buildCity(): World {
       const a = samples[Math.max(0, i - 3)], b = samples[Math.min(samples.length - 1, j + 3)];
       // só vira ponte se a estrada realmente ATRAVESSA a água (andar pela margem não é ponte)
       let wet = false; for (let k = i; k <= j && !wet; k++) if (waterSD(samples[k].x * T, samples[k].y * T) < 0.2) wet = true;
-      if (wet && Math.hypot(b.x - a.x, b.y - a.y) > 2.5 && Math.abs(riverSlopeMagnitude(a, b)) >= 0) {
+      if (wet && Math.hypot(b.x - a.x, b.y - a.y) > 2.5) {
         // várias rotas cruzam o rio no mesmo lugar: uma ponte só (fica a mais longa, que cobre toda a água)
         const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2, len = Math.hypot(b.x - a.x, b.y - a.y);
         const dup = bridges.find((e) => Math.hypot((e.ax + e.bx) / 2 - mx, (e.ay + e.by) / 2 - my) < 8);
         if (!dup) bridges.push({ ax: a.x, ay: a.y, bx: b.x, by: b.y, hA: 0, hB: 0 });
-        else if (len > Math.hypot(dup.bx - dup.ax, dup.by - dup.ay) + 0.5) Object.assign(dup, { ax: a.x, ay: a.y, bx: b.x, by: b.y });
+        else if (len > Math.hypot(dup.bx - dup.ax, dup.by - dup.ay) + 0.5) { Object.assign(dup, { ax: a.x, ay: a.y, bx: b.x, by: b.y }); bridgeIdxN = -1; /* a ponte mudou de lugar: refaz o índice */ }
       }
       i = j + 1;
     }
   };
-  const riverSlopeMagnitude = (_a: { x: number; y: number }, _b: { x: number; y: number }) => 0;
 
   bridgesRef = bridges; // alturas das pontas: terreno cru nas pontas
   for (const b of bridges) {
@@ -654,8 +666,7 @@ export function buildCity(): World {
   const CULT: Record<string, number> = { Jarlsheim: 1, Skjoldvik: 1, Hrimgard: 1, Nordvik: 1, 'Fjallbrún': 1, Kaldrfoss: 1, 'Hvítadalr': 1, Bjarnholt: 1, Ulfheim: 1, 'Mýrarvik': 1, Midvangr: 1, 'Hrafnhöfn': 1,
     Brasaforja: 2, Cinzalto: 2, Lithendel: 3, Lumenhal: 3, Corvoscuro: 4, 'Uivo Antigo': 5, Gorvath: 6, Vaporeira: 7, 'Porto Caldeira': 7, Ferrugem: 7 };
   /** o marco do mestre de cada caminho (fica logo ao norte da vila, ligado por estrada) */
-  const LANDMARK_AT: Record<string, number> = {}; // Corvoscuro e Lumenhal: monumentos próprios (montanha e lagoa), mais abaixo
-  const LM_SIZE: Record<number, [number, number, string]> = { 8: [13, 13, 'Ruínas de Aravel'], 1: [14, 10, 'Fortaleza de Odin'], 2: [12, 11, 'Abadia da Aurora'], 3: [12, 12, 'Bastião de Prata'], 4: [9, 9, 'Pináculo de Marfim'], 5: [13, 12, 'Castelo da Colina Vampírica'], 6: [12, 12, 'Vale da Desgraça'], 7: [11, 11, 'Grande Toca do Uivo'] };
+  /* (os monumentos de cada região moram em monuments3d/world mais abaixo; o antigo mapa LANDMARK_AT ficava sempre vazio e foi removido) */
   const landmarkDoor: Record<string, { x: number; y: number }> = {};
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
@@ -692,13 +703,6 @@ export function buildCity(): World {
     if (cult === 1 || cult === 5) { // paliçada de estacas em volta (nórdicos e Uivo), aberta nas estradas
       const PR = R0 + 1; for (let k = -PR; k <= PR; k++) for (const [x, y, ns] of [[cx + k, cy - PR, false], [cx + k, cy + PR, false], [cx - PR, cy + k, true], [cx + PR, cy + k, true]] as [number, number, boolean][]) {
         if (!inb(x, y) || map[y][x] !== 'grass' || Math.abs(k) <= 2) continue; props.push({ kind: 'palisade', gx: x, gy: y, w: 1, h: 1, height: 2.8, wall: 0x5a4030, roof: 0, variant: ns ? 1 : 0 }); map[y][x] = 'wall'; } }
-    { const lm = LANDMARK_AT[name]; if (lm) { const [lw, lh, lname] = LM_SIZE[lm]; let gx = cx - Math.floor(lw / 2), gy = cy - R0 - 3 - lh; // ao norte; se não couber, ao sul
-        const fits = (gx0: number, gy0: number) => { for (let y = gy0 - 1; y <= gy0 + lh; y++) for (let x = gx0 - 1; x <= gx0 + lw; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; } return true; };
-        if (!fits(gx, gy)) gy = cy + R0 + 3; if (!fits(gx, gy)) { gx = cx + R0 + 3; gy = cy - Math.floor(lh / 2); }
-        if (fits(gx, gy)) { flatten(gx + lw / 2, gy + lh / 2, Math.max(lw, lh) / 2 + 3); for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx >= gx - 1 && q.gx <= gx + lw && q.gy >= gy - 1 && q.gy <= gy + lh + 2 && (q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb')) props.splice(i, 1); }
-          block({ kind: 'landmark', gx, gy, w: lw, h: lh, height: 20, wall: 0, roof: 0, variant: lm });
-          const dx = gx + Math.floor(lw / 2); for (let y = gy + lh; y !== cy; y += Math.sign(cy - (gy + lh)) || 1) { if (!inb(dx, y)) break; for (const ox of [0, 1]) if (map[y][dx + ox] === 'grass' || map[y][dx + ox] === 'tree') map[y][dx + ox] = 'road'; if (Math.abs(y - cy) < 2) break; }
-          landmarkDoor[name] = { x: gx + lw / 2 + 1.6, y: gy + lh + 1.2 }; pois.push({ name: lname, x: gx + lw / 2, y: gy + lh + 1, biome: biomeAt(cx, cy) }); } } }
     for (const [tx, ty] of [[cx - 3, cy - 3], [cx + 3, cy + 3], [cx - 3, cy + 3], [cx + 3, cy - 3]]) if (inb(tx, ty) && map[ty][tx] !== 'water' && map[ty][tx] !== 'wall') props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a });
     decorAt('bench', cx + 2, cy + 3, 1, 1, 0, 0x6a4528, 0x8a3b2e); decorAt('bench', cx - 2, cy - 3, 1, 1, 1, 0x6a4528, 0x8a3b2e);
     if (hs[0]) decorAt('chest', hs[0].gx - 1, hs[0].gy + hs[0].h - 1, 1, 1, seed % 5, 0x6a4528, 0x8a3b2e);
@@ -796,7 +800,11 @@ export function buildCity(): World {
     rect(-43, -5, -31, 5, 'plaza'); props.push({ kind: 'shopfront', gx: cx - 38, gy: cy - 1, w: 2, h: 2, height: 3, wall: 0x3a2050, roof: 0xd9b45a, variant: 0 });
     for (const [x, y] of [[-43, -5], [-31, -5], [-43, 5], [-31, 5]]) lit(x, y);
     const shops: { x: number; y: number; rot: number; v: number; key: string }[] = [];
-    const shopAt = (gx: number, gy: number, w: number, h: number, rot: number, v: number, key: string) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) { const q = at(x, y); if (q !== 'grass' && q !== 'tree') return; } block({ kind: 'house', gx: cx + gx, gy: cy + gy, w, h, height: 3.6, wall: [0xc2a679, 0xb0a898, 0x9a9a96, 0xa89078][shops.length % 4], roof: [0x6d3a28, 0x4e5f7a, 0x5a5a6a, 0x7a4a2a][shops.length % 4], variant: v, rot }); shops.push({ x: gx, y: gy, rot, v, key }); };
+    const shopAt = (gx0: number, gy0: number, w: number, h: number, rot: number, v: number, key: string) => { /* 02/11: procura o lugar livre mais perto (ver Askavik) */
+      const fits = (gx: number, gy: number) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) { const q = at(x, y); if (q !== 'grass' && q !== 'tree') return false; } return true; };
+      let gx = gx0, gy = gy0, ok = fits(gx, gy);
+      for (let rr = 1; rr <= 7 && !ok; rr++) for (let dy = -rr; dy <= rr && !ok; dy++) for (let dx = -rr; dx <= rr && !ok; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== rr) continue; if (fits(gx0 + dx, gy0 + dy)) { gx = gx0 + dx; gy = gy0 + dy; ok = true; } }
+      if (!ok) return; block({ kind: 'house', gx: cx + gx, gy: cy + gy, w, h, height: 3.6, wall: [0xc2a679, 0xb0a898, 0x9a9a96, 0xa89078][shops.length % 4], roof: [0x6d3a28, 0x4e5f7a, 0x5a5a6a, 0x7a4a2a][shops.length % 4], variant: v, rot, shop: key }); shops.push({ x: gx, y: gy, rot, v, key }); };
     rect(-44, -5, -44, 12, 'plaza'); rect(-44, 6, -31, 8, 'plaza'); // a calçada das lojas do lado oeste e o passeio do sul (com árvores)
     for (let x = -42; x <= -32; x += 3) tree(x, 9);
     // todas as fachadas viradas para a câmera (sul ou leste): a fileira do norte olha a praça, a coluna do oeste olha a praça
@@ -829,7 +837,7 @@ export function buildCity(): World {
     // 10) lampiões ao longo das avenidas
     for (let k = -52; k <= 52; k += 6) { if (Math.abs(k) < 24) continue; lit(k, -2); lit(k, 2); lit(-2, k); lit(2, k); }
     for (const b of bridgesC) bridges.push({ ax: cx + b.x0 + 0.5, ay: cy + b.y0 + 0.5, bx: cx + b.x1 + 0.5, by: cy + b.y1 + 0.5, hA: 0, hB: 0, stone: true, half: b.half * T, hump: b.hump });
-    const shopNpc = (key: string) => { const sh = shops.find((q) => q.key === key); if (!sh) return null; const w = sh.rot % 2 ? 4 : 4; void w; const fx = sh.rot === 1 ? sh.x + 4.9 : sh.x + 1.5, fy = sh.rot === 1 ? sh.y + 2.5 : sh.y + 4.9; return { x: cx + fx, y: cy + fy }; };
+    const shopNpc = (key: string) => { const sh = shops.find((q) => q.key === key); if (!sh) return null; const fx = sh.rot === 1 ? sh.x + 4.9 : sh.x + 1.5, fy = sh.rot === 1 ? sh.y + 2.5 : sh.y + 4.9; return { x: cx + fx, y: cy + fy }; };
     // NPCs da cidade
     const SN = (key: string, fx: number, fy: number) => shopNpc(key) ?? { x: fx, y: fy };
     const P = (name: string, role: string, kind: 'nordic' | 'dwarf' | 'technocrat', x: number, y: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind, x, y, radius: 2, tint, scale: 1.0, lines, shop });
@@ -910,8 +918,14 @@ export function buildCity(): World {
     rect(10, -16, 28, -13); rect(10, -13, 13, -7); // a Rua da Fábrica e a descida até a Rua Leste
     /* 5) a Rua das Válvulas: as lojas, de frente para a avenida (oeste olha para o leste) e para a rua das lojas (sul) */
     const shops: { x: number; y: number; rot: number; key: string }[] = [];
-    const shopAt = (gx: number, gy: number, rot: number, v: number, key: string) => { const ww = 4, hh = 4; for (let y = gy - 1; y <= gy + hh; y++) for (let x = gx - 1; x <= gx + ww; x++) { const q = at(x, y); if (q !== 'grass' && q !== 'road' && q !== 'plaza') return; }
-      block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.6, wall: [0x7a4a3a, 0x8a5a3a, 0x6a5a4a][shops.length % 3], roof: [0x3a3d44, 0x4a4e56, 0x5a3a2a][shops.length % 3], variant: v, rot, style: 7 }); shops.push({ x: gx, y: gy, rot, key });
+    /* 02/11: 5 das 8 lojas de Askavik e 5 das 7 do Porto não eram construídas (o lugar marcado já tinha rua/muro) e o lojista ficava
+       sem loja. Agora a loja procura o lugar livre mais perto do marcado (até 7 casas), sem nunca sentar em cima de rua ou praça. */
+    const shopAt = (gx0: number, gy0: number, rot: number, v: number, key: string) => { const ww = 4, hh = 4;
+      const fits = (gx: number, gy: number) => { for (let y = gy - 1; y <= gy + hh; y++) for (let x = gx - 1; x <= gx + ww; x++) { const q = at(x, y); const inner = x >= gx && x < gx + ww && y >= gy && y < gy + hh; if (inner ? q !== 'grass' && q !== 'tree' : q !== 'grass' && q !== 'road' && q !== 'plaza' && q !== 'tree') return false; } return true; };
+      let gx = gx0, gy = gy0, ok = fits(gx, gy);
+      for (let rr = 1; rr <= 7 && !ok; rr++) for (let dy = -rr; dy <= rr && !ok; dy++) for (let dx = -rr; dx <= rr && !ok; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== rr) continue; if (fits(gx0 + dx, gy0 + dy)) { gx = gx0 + dx; gy = gy0 + dy; ok = true; } }
+      if (!ok) return;
+      block({ kind: 'house', gx: cx + gx, gy: cy + gy, w: ww, h: hh, height: 3.6, wall: [0x7a4a3a, 0x8a5a3a, 0x6a5a4a][shops.length % 3], roof: [0x3a3d44, 0x4a4e56, 0x5a3a2a][shops.length % 3], variant: v, rot, style: 7, shop: key }); shops.push({ x: gx, y: gy, rot, key });
       if (rot === 1) rect(gx + ww, gy, gx + ww, gy + hh - 1, 'plaza'); else rect(gx, gy + hh, gx + ww - 1, gy + hh, 'plaza'); };
     shopAt(-8, -31, 1, 4, 'taverna'); shopAt(-8, -25, 1, 1, 'pocoes'); shopAt(-8, -19, 1, 2, 'mercador_cidade');
     rect(3, -26, 24, -23); shopAt(4, -32, 0, 5, 'armeiro'); shopAt(10, -32, 0, 5, 'armaduras'); shopAt(16, -32, 0, 1, 'domador');
@@ -1246,7 +1260,6 @@ export function buildCity(): World {
     const torchAt = (gx: number, gy: number) => { if (inb(gx, gy) && (map[gy][gx] === 'grass' || map[gy][gx] === 'road')) props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 2.2, wall: 0x3a2a1c, roof: 0xff8a2a }); };
     for (let gy = y1 - 2; gy > cat.y + 27; gy -= 4) { torchAt(cat.x + 6 - 2, gy); torchAt(cat.x + 6 + 2, gy); }
     for (let gy = y0 + 4; gy <= y1 - 4; gy += 9) for (let gx = x0 + 4; gx <= x1 - 4; gx += 9) torchAt(gx, gy); /* em grade, não espalhadas a esmo (Erling: 'aleatoriedade que deu errado') */
-    void rg;
     for (const [tx, ty] of [[cat.x + 21, cat.y + 2], [cat.x + 36, cat.y + 2], [cat.x + 21, cat.y + 17], [cat.x + 36, cat.y + 17], [cat.x + 27, cat.y + 17], [cat.x + 31, cat.y + 17]]) torchAt(tx, ty);
     // névoa rasteira pelo cemitério inteiro
     // (névoa rasteira removida: escurecia a região e pesava)
@@ -1302,7 +1315,7 @@ export function buildCity(): World {
   for (let k = 0; k < 9; k++) addRuin(ru.x + Math.round((r() - 0.5) * 16), ru.y + Math.round((r() - 0.5) * 10), 1 + Math.floor(r() * 3), 1);
   { /* o salão caído da Primeira Vigília (26/10): marco próprio no meio das ruínas, as ruínas pequenas em volta cedem o lugar */
     const lw = 13, lh = 13, gx = ru.x - 6, gy = ru.y - 6; for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > gx - 1 && q.gx < gx + lw + 1 && q.gy + q.h > gy - 1 && q.gy < gy + lh + 1 && (q.kind === 'ruin' || q.kind === 'tree' || q.kind === 'rock' || q.kind === 'bones' || q.kind === 'herb')) props.splice(i, 1); }
-    for (let y = gy - 1; y <= gy + lh; y++) for (let x = gx - 1; x <= gx + lw; x++) if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'road') map[y][x] = 'grass' as never;
+    for (let y = gy - 1; y <= gy + lh; y++) for (let x = gx - 1; x <= gx + lw; x++) if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'road') map[y][x] = 'grass';
     props.push({ kind: 'landmark', gx, gy, w: lw, h: lh, height: 12, wall: 0, roof: 0, variant: 8 }); for (let y = gy + 1; y < gy + lh - 1; y++) for (let x = gx + 1; x < gx + lw - 1; x++) if (inb(x, y) && Math.hypot(x - gx - lw / 2, y - gy - lh / 2) > lw / 2 - 1.5 && Math.abs(x - gx - lw / 2) > 2.2) map[y][x] = 'wall' as never; for (let y = gy + 5; y <= gy + 7; y++) for (let x = gx + 5; x <= gx + 7; x++) map[y][x] = 'wall' as never; /* o dais é sólido */ flatten(gx + lw / 2, gy + lh / 2, lw / 2 + 2); /* a colunata bloqueia, o meio (brecha e portão) fica livre */ }
 
   /* trilhas: dos lugares de luta e de mistério até a estrada mais próxima (juntam-se à rede, não fazem estrelas) */
@@ -1413,7 +1426,6 @@ export function buildCity(): World {
   /* placas: nas pontas e cruzamentos das estradas, apontando para o lugar mais próximo e para Karmika */
   const signs: Sign[] = [];
   const nearPoi = (x: number, y: number) => { let best: Poi | null = null, bd = 30; for (const p of pois) { const d = Math.hypot(p.x - x, p.y - y); if (d < bd) { bd = d; best = p; } } return best; };
-  const cityP = { x: CITY.x, y: CITY.y + 3 };
   for (const pts of roads) {
     for (const [i, [x, y]] of pts.entries()) {
       const end = i === 0 || i === pts.length - 1; if (!end && i % 55 !== 27) continue; // as estradas agora são caminhos tile a tile: placa só nas pontas e a cada ~55 tiles
@@ -1424,7 +1436,6 @@ export function buildCity(): World {
       const sx = Math.round(x + px * 1.6), sy = Math.round(y + py * 1.6); if (!inb(sx, sy) || map[sy][sx] !== 'grass') continue;
       const ns = [...settlements].sort((a, b) => Math.hypot(a.x - sx, a.y - sy) - Math.hypot(b.x - sx, b.y - sy)).slice(0, 2);
       const lines: { text: string; dir: number }[] = ns.map((st) => ({ text: st.name, dir: Math.atan2(st.x - sx, st.y - sy) }));
-      void cityP;
       const poi = nearPoi(x, y); if (poi && Math.hypot(poi.x - sx, poi.y - sy) > 4) lines.push({ text: poi.name, dir: Math.atan2(poi.x - sx, poi.y - sy) });
       else if (end) { const far = pts[i === 0 ? pts.length - 1 : 0]; lines.push({ text: 'Estrada', dir: Math.atan2(far[0] - sx, far[1] - sy) }); }
       signs.push({ x: sx, y: sy, yaw: Math.atan2(ax, ay), lines }); map[sy][sx] = 'wall';
@@ -1461,7 +1472,7 @@ export function buildCity(): World {
       let hit = false; for (let y = q.gy - 1; y <= q.gy + q.h && !hit; y++) for (let x = q.gx - 1; x <= q.gx + q.w && !hit; x++) if (seenK.has(y * 4096 + x)) hit = true; if (!hit) continue;
       props.splice(i, 1); for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (inb(x, y) && map[y][x] === 'wall') map[y][x] = 'grass'; }
     // 3) portões: onde uma estrada de verdade (entre povoados) cruza o anel; no máximo 4, bem separados; vão de 5 casas (portão grande)
-    const gateIdx: number[] = []; const idxOf = (x: number, y: number) => ring.findIndex(([qx, qy]) => qx === x && qy === y);
+    const gateIdx: number[] = [];
     const nearestIdx = (x: number, y: number) => { let bi = -1, bd = 9; for (let i = 0; i < N; i++) { const d = Math.hypot(ring[i][0] - x, ring[i][1] - y); if (d < bd) { bd = d; bi = i; } } return bi; };
     const cand: { i: number; far: number }[] = [];
     for (const pts of roads) { for (let s0 = 0; s0 + 1 < pts.length; s0++) { const [ax, ay] = pts[s0], [bx, by] = pts[s0 + 1]; const L = Math.hypot(bx - ax, by - ay); let prev = insideWall(ax, ay);
@@ -1470,7 +1481,6 @@ export function buildCity(): World {
     for (const c of cand) { if (gateIdx.length >= 4) break; if (gateIdx.some((g) => Math.min(Math.abs(g - c.i), N - Math.abs(g - c.i)) < 16)) continue; gateIdx.push(c.i); }
     // onde a estrada cruza o anel num vão de água (o rio de Askavik), a passagem fica aberta; mas toda cidade tem pelo menos 2 portões de pedra
     for (let tries = 0; gateIdx.length < 2 && tries < 16; tries++) { const a = tries / 16 * 6.283 - Math.PI / 2; const i = nearestIdx(Math.round(cx + Math.cos(a) * radAt(a)), Math.round(cy + Math.sin(a) * radAt(a))); if (i < 0 || !wallOk[i]) continue; if ([-3, -2, -1, 1, 2, 3].some((d) => !wallOk[((i + d) % N + N) % N])) continue; if (gateIdx.some((g) => Math.min(Math.abs(g - i), N - Math.abs(g - i)) < N / 4)) continue; gateIdx.push(i); }
-    void idxOf;
     const isGate = new Map<number, number>(); // índice → centro do portão
     for (const g of gateIdx) for (let d = -2; d <= 2; d++) isGate.set(((g + d) % N + N) % N, g);
     /* REGRA DE OURO (Erling, 27/10): TODA estrada que sai da cidade tem passagem aberta no muro. Qualquer rua que cruza o anel e não ganhou
@@ -1533,13 +1543,13 @@ export function buildCity(): World {
       for (let y = c.y - c.R; y <= c.y + c.R; y++) for (let x = c.x - c.R; x <= c.x + c.R; x++) if (inb(x, y) && Math.hypot(x - c.x, y - c.y) < c.R && map[y][x] !== 'water') map[y][x] = 'grass';
       const pts: [number, number][] = []; const a0 = CONDE_ROAD.a0, turns = CONDE_ROAD.turns; // sai do lado de Corvoscuro (oeste) e sobe em caracol até a frente do castelo (sul)
       for (let i = 0; i <= 160; i++) { const t = i / 160, ang = a0 + t * turns * Math.PI * 2, r = (c.R + 3) - t * (c.R + 3 - 15); pts.push([c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r]); } /* raio final 15: passa livre dos cantos do castelo (22×20) */
-      const endA = a0 + turns * Math.PI * 2; road(pts, 1.25, 0);
+      road(pts, 1.25, 0);
       // da vila até o pé da montanha
       { const v = settlements.find((q) => q.name === 'Corvoscuro'); if (v) road([[v.x + 3, v.y], [pts[0][0], pts[0][1]]], 1.1, 0.4); }
       for (let i = 4; i < pts.length; i += 7) { const [x, y] = pts[i], a = Math.atan2(y - c.y, x - c.x); const ox = Math.round(x + Math.cos(a) * 2.2), oy = Math.round(y + Math.sin(a) * 2.2); if (inb(ox, oy) && map[oy][ox] === 'grass') props.push({ kind: 'torch', gx: ox, gy: oy, w: 1, h: 1, height: 2.2, wall: 0x1a1a20, roof: 0xff2a2a }); }
       const W = 22, H = 20, gx = c.x - Math.floor(W / 2), gy = c.y - Math.floor(H / 2) - 1; block({ kind: 'monument', gx, gy, w: W, h: H, height: 60, wall: 0x3a3438, roof: 0x2a1e24, variant: 1 });
       landmarkDoor['Corvoscuro'] = { x: gx + W / 2 + 1.6, y: gy + H + 1.4 };
-      for (let y = gy + H; y <= c.y + 16; y++) for (let x = c.x - 2; x <= c.x + 2; x++) if (inb(x, y) && map[y][x] === 'grass') map[y][x] = 'road'; void endA; /* a faixa da porta desce até encontrar o fim do caracol */
+      for (let y = gy + H; y <= c.y + 16; y++) for (let x = c.x - 2; x <= c.x + 2; x++) if (inb(x, y) && map[y][x] === 'grass') map[y][x] = 'road';
       pois.push({ name: 'Castelo da Colina Vampírica', x: c.x, y: gy + H + 2, biome: 'blight' });
       for (let k = 0; k < 150; k++) { const a = rnd() * 6.283, r = c.top + 2 + rnd() * (c.R + 6 - c.top), x = Math.round(c.x + Math.cos(a) * r), y = Math.round(c.y + Math.sin(a) * r); if (!inb(x, y) || map[y][x] !== 'grass') continue;
         const q = rnd(); if (q < 0.55) { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 4 + rnd() * 4, wall: 0x2a2226, roof: 0x3a2a30, variant: 1 }); map[y][x] = 'tree'; }
@@ -1715,17 +1725,17 @@ export function buildCity(): World {
     const taken = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) taken.add(y * 100000 + x);
     for (const t of settlements) { let ok = false;
       for (let r = 2; r <= 9 && !ok; r++) for (let a = 0; a < 16 && !ok; a++) { const gx = Math.round(hubX(t) + Math.cos(a * 0.3927 + 0.6) * r), gy = Math.round(t.y + Math.sin(a * 0.3927 + 0.6) * r);
-        if (!inb(gx, gy) || taken.has(gy * 100000 + gx) || !['grass', 'plaza', 'dirt'].includes(map[gy][gx] as string)) continue;
+        if (!inb(gx, gy) || taken.has(gy * 100000 + gx) || !(map[gy][gx] === 'grass' || map[gy][gx] === 'plaza')) continue;
         props.push({ kind: 'mailbox', gx, gy, w: 1, h: 1, height: 1.6, wall: 0x3a3f46, roof: 0x8a6a3a, variant: 0 }); taken.add(gy * 100000 + gx); ok = true; }
       /* o Baú do Caminhante: ao lado do correio, o mesmo baú em todo povoado */
       let okv = false; for (let r = 2; r <= 9 && !okv; r++) for (let a = 0; a < 16 && !okv; a++) { const ang = (a % 2 ? 1 : -1) * Math.ceil(a / 2) * 0.3927 + 0.6 + Math.PI, gx = Math.round(hubX(t) + Math.cos(ang) * r), gy = Math.round(t.y + Math.sin(ang) * r); /* do outro lado do centro, de frente para o correio */
-        if (!inb(gx, gy) || taken.has(gy * 100000 + gx) || !['grass', 'plaza', 'dirt'].includes(map[gy][gx] as string)) continue;
+        if (!inb(gx, gy) || taken.has(gy * 100000 + gx) || !(map[gy][gx] === 'grass' || map[gy][gx] === 'plaza')) continue;
         props.push({ kind: 'vault', gx, gy, w: 1, h: 1, height: 1.2, wall: 0x4a3020, roof: 0xb08a40, variant: 0 }); for (let y = gy - 1; y <= gy + 1; y++) for (let x = gx - 1; x <= gx + 1; x++) taken.add(y * 100000 + x); okv = true; } }
     /* lugares de ofício (25/10, Erling: "como eu vou evoluir minhas coisas se a cidade simplesmente não tem?"): TODO povoado tem os cinco.
        Na cidade (Askavik, Karmika) são casas de verdade (Marcenaria, Forja, Curtume, Apotecário, Escola de Cozinha) e mais a Casa de Tecnologia;
        na vila é coisa simples (barracão de corte, forja ao ar livre, mesa do curtidor, apotecário pequeno, a cozinha dos fundos da taverna).
        As vilas de vapor (Porto Caldeira, Ferrugem, Vaporeira) têm também a Oficina de Latão. Árvore e pedra solta cedem o lugar. */
-    const SOFTK = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch', 'fogpatch']);
+    const SOFTK = new Set<string>(SOFT_KINDS);
     const hard = new Set<number>(); for (const p of props) { if (SOFTK.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) hard.add(y * 100000 + x); }
     for (const p of props) if (p.kind === 'vgate' || p.kind === 'gatehouse') { const R = Math.ceil(((p.len ?? 6) / T) / 2) + 2; for (let y = p.gy - R; y <= p.gy + R; y++) for (let x = p.gx - R; x <= p.gx + R; x++) hard.add(y * 100000 + x); } /* pórtico da vila: nada encosta nele */
     const TECH = new Set(['Porto Caldeira', 'Ferrugem', 'Vaporeira']);
@@ -1733,10 +1743,10 @@ export function buildCity(): World {
       const city = t.kind === 'city' || t.name === 'Karmika', names = city ? STATION_NAMES.city : STATION_NAMES.village;
       const vs = t.name === 'Askavik' ? [5] : (city || TECH.has(t.name)) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4]; /* Askavik já tem as cinco na Casa dos Ofícios */
       let S = city ? 3 : 2; const tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
-      const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S && true; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
+      const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
       const put = (v: number, gx: number, gy: number, ry: number) => {
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFTK.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + S + 1 && p.gy + p.h > gy - 1 && p.gy < gy + S + 1) props.splice(i, 1); }
-        for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass' as never;
+        for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass';
         props.push({ kind: 'station', gx, gy, w: S, h: S, height: S === 3 ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
         for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { hard.add(y * 100000 + x); taken.add(y * 100000 + x); } };
       for (const v of vs) { let ok = false; S = city || v === 3 ? 3 : 2;
@@ -1762,11 +1772,11 @@ export function buildCity(): World {
   /* AS BIBLIOTECAS (25/10): a Grande Biblioteca de Askavik (imensa, perto de onde o cronista sempre esteve) e a de Lumenhal (simples, linda).
      Casas comuns cedem o lugar (nunca templo, castelo, escola ou loja com nome); árvore e pedra solta saem. O chão de dentro vira praça. */
   const libs: { gx: number; gy: number; w: number; h: number; v: number; name: string }[] = [];
-  { const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch', 'fogpatch', 'mailbox']);
+  { const SOFT = new Set<string>([...SOFT_KINDS, 'mailbox']);
     const want: [string, number, string, number, number, number][] = [['Askavik', 0, 'Grande Biblioteca de Askavik', -22, 22, 10], ['Lumenhal', 1, 'Biblioteca de Lumenhal', 0, 4, 2]];
     for (const [vila, v, name, ox, oy, maxH] of want) { const t = settlements.find((q) => q.name === vila); if (!t) continue; const W = v ? 11 : 18, H = v ? 9 : 14;
       const busyB = new Set<number>(); for (const p of props) { if (SOFT.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.add(y * 100000 + x); }
-      const okT = (x: number, y: number) => inb(x, y) && !busyB.has(y * 100000 + x) && ['grass', 'plaza', 'dirt', 'road', 'tree'].includes(map[y][x] as string);
+      const okT = (x: number, y: number) => inb(x, y) && !busyB.has(y * 100000 + x) && (['grass', 'plaza', 'road', 'tree'] as Tile[]).includes(map[y][x]);
       search: for (let r = 0; r <= 60; r++) for (let a = 0; a < Math.max(1, r * 6); a++) { const gx = Math.round(t.x + ox + Math.cos(a / Math.max(1, r * 6) * 6.283) * r) - (W >> 1), gy = Math.round(t.y + oy + Math.sin(a / Math.max(1, r * 6) * 6.283) * r) - (H >> 1);
         if (t.kind === 'city' && Math.hypot(gx + W / 2 - t.x, gy + H / 2 - t.y) > t.radius - 12) continue;
         const over = props.filter((p) => p.kind === 'house' && (p.variant ?? 0) < 4 && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1);
@@ -1777,7 +1787,7 @@ export function buildCity(): World {
         if (!ok) { for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.add(y * 100000 + x); continue; }
         for (const p of over) { const i = props.indexOf(p); if (i >= 0) props.splice(i, 1); }
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
-        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza' as never;
+        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza';
         props.push({ kind: 'library', gx, gy, w: W, h: H, height: v ? 9 : 22, wall: 0xd8d0c0, roof: 0x5a9a86, variant: v, ry: 0, label: name });
         libs.push({ gx, gy, w: W, h: H, v, name }); pois.push({ name: v ? name : 'Grande Biblioteca', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
@@ -1812,7 +1822,7 @@ export function buildCity(): World {
   { /* cada um em chão livre de verdade (nada de gente em cima de telhado): procura em espiral o primeiro tile andável fora de qualquer construção */
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
-      if (inb(x, y) && !occ.has(y * 100000 + x) && ['grass', 'plaza', 'road', 'dirt'].includes(map[y][x] as string)) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
+      if (inb(x, y) && !occ.has(y * 100000 + x) && (['grass', 'plaza', 'road'] as Tile[]).includes(map[y][x])) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
     for (const c of CAMPAIGN_NPCS) { const po = settlements.find((q) => q.name === c.vila) ? null : pois.find((q) => q.name === c.vila); const t = settlements.find((q) => q.name === c.vila) ?? (po ? settlements.slice().sort((a2, b2) => Math.hypot(a2.x - po.x, a2.y - po.y) - Math.hypot(b2.x - po.x, b2.y - po.y))[0] : undefined); if (!t) continue; const base = po ?? t; /* quem mora num lugar (a igreja), não numa vila */ const L0 = c.name.includes('Ormund') ? libAt(0) : undefined; const at = L0 ? { x: L0.gx + L0.w / 2, y: L0.gy + L0.h / 2 + 1.5 } /* o cronista dentro da Grande Biblioteca, no balcão diante da rotunda */ : freeAt(base.x + c.dx, base.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : po ? 0.4 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines, onlyQ: c.onlyQ }); }
     /* as casas das necessidades de classe (25/10): Adega do Conde, Sangria dos anões, incensos dos magos e da bruxa, orvalho élfico — em chão livre */
     for (const [vila, dx, dy, n] of ([
@@ -1838,9 +1848,9 @@ export function buildCity(): World {
   /* a Casa dos Ofícios: num lugar livre perto da Praça do Mercado de Askavik, um salão aberto de 14×10 com as cinco bancadas lá dentro */
   let craftHall: { x: number; y: number; w: number; h: number; ry: number } | undefined;
   { const ak = settlements.find((q) => q.name === 'Askavik'); if (ak) { const cx0 = hubX(ak), cy0 = ak.y;
-      const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'grass', 'stump', 'bones', 'bench', 'barrel', 'crate', 'lamp', 'torch']); /* árvore e pedra solta saem para o salão entrar */
+      const SOFT = new Set<string>(SOFT_KINDS.filter((k) => k !== 'fogpatch')); /* árvore e pedra solta saem para o salão entrar */
       const busy = new Set<number>(); for (const p of props) { if (SOFT.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(y * 100000 + x); }
-      const okT = (x: number, y: number) => inb(x, y) && !busy.has(y * 100000 + x) && ['grass', 'plaza', 'dirt', 'road', 'tree'].includes(map[y][x] as string);
+      const okT = (x: number, y: number) => inb(x, y) && !busy.has(y * 100000 + x) && (['grass', 'plaza', 'road', 'tree'] as Tile[]).includes(map[y][x]);
       search: for (const [W2, H2] of [[12, 8], [11, 7], [10, 7]]) for (let r = 4; r <= 60; r++) for (let a = 0; a < 48; a++) { const W = W2, H = H2, gx = Math.round(cx0 + Math.cos(a * 0.1309) * r) - (W >> 1), gy = Math.round(cy0 + Math.sin(a * 0.1309) * r) - (H >> 1); let ok = true;
         if (Math.hypot(gx + W / 2 - ak.x, gy + H / 2 - ak.y) > ak.radius - 9) continue; /* dentro das muralhas */
         /* dentro da cidade não sobra campo: até duas casas comuns cedem o lugar (nunca igreja, castelo, escola ou loja com nome) */
@@ -1851,7 +1861,7 @@ export function buildCity(): World {
         if (!ok) { for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(y * 100000 + x); continue; } craftHall = { x: gx, y: gy, w: W, h: H, ry: 0 };
         for (const p of over) { const i = props.indexOf(p); if (i >= 0) props.splice(i, 1); }
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
-        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza' as never; /* (tile 'tree' também vira piso) */
+        for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza'; /* (tile 'tree' também vira piso) */
         /* as cinco bancadas de verdade (as mesmas das vilas: funcionam para craft), em fileira, de frente para o corredor */
         for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI : 0 }); }
         pois.push({ name: 'Casa dos Ofícios', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
@@ -1886,9 +1896,9 @@ export function buildCity(): World {
      e a pedra em cima saem, e onde a estrada passa sobre água sem ponte, ponte. As caravanas andam exatamente sobre esse leito. */
   { const on = new Set<number>(); for (const rp of roadPaths) for (let i = 0; i < rp.length; i++) { const a = rp[i], b = rp[Math.min(rp.length - 1, i + 1)];
       for (let k = 0; k <= 4; k++) { const x = a.x + (b.x - a.x) * k / 4, y = a.y + (b.y - a.y) * k / 4; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const tx = Math.floor(x) + dx, ty = Math.floor(y) + dy; if (inb(tx, ty) && Math.hypot(tx + 0.5 - x, ty + 0.5 - y) <= 1.05) on.add(ty * 100000 + tx); } } }
-    const LOOSE = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']);
+    const LOOSE = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']); /* o que a estrada atropela (sem banco/tocha: esses ficam à beira) */
     for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (LOOSE.has(p.kind as string) && on.has(p.gy * 100000 + p.gx)) props.splice(i, 1); }
-    for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree' || t === 'dirt') map[y][x] = 'road' as never; }
+    for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree') map[y][x] = 'road'; }
     /* cerca/muro baixo cujo segmento cruza o leito (trilhas e estradas tardias passavam por dentro da cerca da vila sem portão) sai;
        estaca de paliçada e tenda cujo tile virou estrada também (a estrada era pintada por cima e a estaca ficava sem colisão) */
     const onRoad = (x: number, y: number) => on.has(Math.floor(y) * 100000 + Math.floor(x)) || map[Math.floor(y)]?.[Math.floor(x)] === 'road';
@@ -1905,7 +1915,7 @@ export function buildCity(): World {
      (o leito das estradas, adros) abriam chão andável dentro de 18 casas. Casa nunca fica em cima de estrada: a casa que caiu
      sobre o leito anda para o terreno livre mais perto (até 6 tiles); se não houver, sai — a estrada fica aberta. O resto da
      pegada volta a ser parede. */
-  { const SOFT = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch']);
+  { const SOFT = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch']);
     const hard = props.filter((q) => !SOFT.has(q.kind as string));
     const fp = (q: Prop, f: (x: number, y: number) => boolean) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (!f(x, y)) return false; return true; };
     const overlap = (q: Prop, gx: number, gy: number) => hard.some((o) => o !== q && o.gx < gx + q.w + 1 && o.gx + o.w + 1 > gx && o.gy < gy + q.h + 1 && o.gy + o.h + 1 > gy);
@@ -1917,7 +1927,7 @@ export function buildCity(): World {
         let ok = true; for (let y = gy - 1; y <= gy + q.h && ok; y++) for (let x = gx - 1; x <= gx + q.w && ok; x++) { const t = map[y]?.[x] as string; const inside = x >= gx && x < gx + q.w && y >= gy && y < gy + q.h;
           if (inside ? !(t === 'grass' || (t === 'wall' && x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) : t === 'water') ok = false; }
         if (ok && !overlap(q, gx, gy)) best = [gx, gy]; }
-      fp(q, (x, y) => { if (map[y]?.[x] === 'wall') map[y][x] = 'grass' as never; return true; });
+      fp(q, (x, y) => { if (map[y]?.[x] === 'wall') map[y][x] = 'grass'; return true; });
       if (best) { q.gx = best[0]; q.gy = best[1]; fp(q, (x, y) => { map[y][x] = 'wall' as never; return true; }); moved++;
         for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (SOFT.has(o.kind as string) && o.gx >= q.gx && o.gx < q.gx + q.w && o.gy >= q.gy && o.gy < q.gy + q.h) { props.splice(k, 1); if (k < i) i--; } } }
       else { props.splice(i, 1); gone++; } }

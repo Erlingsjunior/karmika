@@ -179,47 +179,11 @@ export function buildWorld(world: World): WorldObjs {
         for (const q of b.torches) L.torches.push({ pos: new THREE.Vector3(p.gx * T + q.pos.x, wy + q.pos.y, p.gy * T + q.pos.z), light: nullLight, base: 46, seed: r() * 50, flame: q.flame, dist: 0 }); }
     } else if (p.kind === 'church' && p.variant === 2) { // a Catedral Abandonada: gótica, altíssima
       g.add(buildGothic(Wm, Dm, p.wall, p.roof));
-    } else if (p.kind === 'church' || (p.kind === 'temple' && true)) {
+    } else if (p.kind === 'church' || p.kind === 'temple') {
       const ruinedC = p.kind === 'church';
       const tp = buildTemple(Wm, Dm, p.wall, p.roof === 0x8f7bff ? 0x4a4468 : p.roof, ruinedC, windows, p.gx * 7 + p.gy * 3);
       g.add(tp.group);
       if (!ruinedC) L.glows.push({ light: nullLight, base: 40, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + tp.glow.x, wy + tp.glow.y, p.gy * T + tp.glow.z), color: 0x8f7bff } as WorldObjs['glowLights'][number]);
-    } else if ((p.kind as string) === 'templeOLD') {
-      const wallH = p.height, temple = (p.kind as string) === 'temple';
-      const bw = Wm - 0.4, bd = Dm - 0.4;
-      const walls = new THREE.Mesh(new THREE.BoxGeometry(bw, wallH, bd), std(p.wall, { map: tex }));
-      ink(walls, 0.06); walls.position.set(Wm / 2, wallH / 2, Dm / 2); walls.castShadow = walls.receiveShadow = true; g.add(walls);
-      const rh = temple ? SCALE.temple.roof : SCALE.roof.height;
-      const roofG = gableRoof(bw, bd, rh, 0.9, p.roof === 0x8f7bff ? 0x4a4468 : p.roof, p.wall, true); roofG.position.set(Wm / 2, wallH, Dm / 2); g.add(roofG);
-      const dw = temple ? 2.4 : SCALE.door.width, dh = temple ? 4.2 : SCALE.door.height;
-      const door = new THREE.Mesh(new THREE.BoxGeometry(dw, dh, 0.12), std(0x1c120c));
-      ink(door, 0.06); door.position.set(Wm / 2, dh / 2, Dm - 0.2 + 0.05); g.add(door);
-      const ww = SCALE.window.width, wh = SCALE.window.height;
-      const nz = Math.max(1, Math.floor(bw / 2.6)), nx = Math.max(1, Math.floor(bd / 2.6));
-      const winY = temple ? 3.6 : SCALE.window.sill + wh / 2;
-      for (let k = 0; k < nz; k++) {
-        const cx = (Wm - bw) / 2 + bw * (k + 0.5) / nz;
-        if (Math.abs(cx - Wm / 2) < dw / 2 + ww / 2 + 0.1) continue;
-        const w = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), windows); w.position.set(cx, winY, Dm - 0.2 + 0.02); g.add(w);
-      }
-      for (let k = 0; k < nx; k++) {
-        const w = new THREE.Mesh(new THREE.PlaneGeometry(ww, wh), windows); w.rotation.y = Math.PI / 2;
-        w.position.set(Wm - 0.2 + 0.02, winY, (Dm - bd) / 2 + bd * (k + 0.5) / nx); g.add(w);
-      }
-      if (!temple) {
-        const ch = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.6, 0.6), std(0x5a4a42));
-        ink(ch, 0.05); ch.position.set(Wm / 2 + bw * 0.28, wallH + rh * 0.7, Dm / 2 - bd * 0.2); ch.castShadow = true; g.add(ch);
-        L.smokers.push(new THREE.Vector3(wx + bw * 0.28, wy + wallH + rh * 0.7 + 0.9, wz - bd * 0.2));
-        const beamM = std(0x2a1b12);
-        for (const sx of [-1, 1]) { const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.16, wallH, 0.16), beamM); b1.position.set(Wm / 2 + sx * (bw / 2 + 0.02), wallH / 2, Dm - 0.2 + 0.03); g.add(b1); }
-        const b2 = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.1, 0.14, 0.14), beamM); b2.position.set(Wm / 2, wallH - 0.15, Dm - 0.2 + 0.03); g.add(b2);
-      }
-      const lp = new THREE.Vector3(wx, wy + 2.2, p.gy * T + Dm + 0.8);
-      L.glows.push({ light: nullLight, base: temple ? 40 : 14, seed: r() * 50, warm: !temple, pos: lp, color: temple ? 0x8f7bff : 0xffbb66 } as WorldObjs['glowLights'][number]);
-      if (temple) {
-        const rune = new THREE.Mesh(new THREE.OctahedronGeometry(0.7), new THREE.MeshBasicMaterial({ color: 0xb9a8ff }));
-        rune.scale.set(1, 1.6, 0.25); rune.position.set(Wm / 2, 6.2, Dm - 0.1); g.add(rune);
-      }
     } else if (p.kind === 'fountain') {
       /* 01/11 (Erling): a fonte da praça refeita pela prancha de referência (imagem 62): tanque redondo de pedra com musgo, calçada em volta,
          taça canelada no meio com três bicas, e em cima a estátua encapuzada segurando o losango com o Olho. */
@@ -638,7 +602,9 @@ export function buildWorld(world: World): WorldObjs {
       if (r() < 0.6) { const sack = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 5), std(0x8a7250)); sack.scale.set(1, 0.8, 1); sack.position.set(-W2 - 0.2, 0.17, L2 / 2 - 0.2); t.add(sack); }
     }
     g.userData.kind = 'prop:' + p.kind;
-    if (p.kind !== 'torch' && p.kind !== 'campfire' && p.kind !== 'tree') mergeStatic(g); // casas, templos, bancos, baús…: um draw call por material
+    /* casas, templos, bancos, baús…: um draw call por material. Os kinds de STATIC_KINDS são fundidos por chunk logo depois (mergeChunkProps),
+       então não passam por esta fusão (eram fundidos duas vezes: clone + re-clone de toda a geometria por chunk) */
+    if (p.kind !== 'torch' && p.kind !== 'campfire' && p.kind !== 'tree' && !STATIC_KINDS.has(p.kind)) mergeStatic(g);
     return g;
   }
 
@@ -758,7 +724,9 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
     bridgeMeshes.add(br);
   }
   /* placas de estrada */
-  const signTex = (text: string) => { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d')!; g.fillStyle = '#8a6a3c'; g.fillRect(0, 0, 256, 64); for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(60,40,20,${0.25 + (i % 2) * 0.2})`; g.fillRect(0, i * 11, 256, 2); } g.fillStyle = '#1a100a'; g.font = 'bold 30px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.length > 16 ? text.slice(0, 15) + '…' : text, 128, 34); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = t.minFilter = THREE.NearestFilter; return t; };
+  const signTexCache = new Map<string, THREE.Texture>(); /* placas repetem o mesmo texto (nome da vila/estrada): uma textura por texto, não por placa */
+  const signTex = (text: string): THREE.Texture => { const hit = signTexCache.get(text); if (hit) return hit; const t = signTex0(text); signTexCache.set(text, t); return t; };
+  const signTex0 = (text: string) => { const c = document.createElement('canvas'); c.width = 256; c.height = 64; const g = c.getContext('2d')!; g.fillStyle = '#8a6a3c'; g.fillRect(0, 0, 256, 64); for (let i = 0; i < 6; i++) { g.fillStyle = `rgba(60,40,20,${0.25 + (i % 2) * 0.2})`; g.fillRect(0, i * 11, 256, 2); } g.fillStyle = '#1a100a'; g.font = 'bold 30px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text.length > 16 ? text.slice(0, 15) + '…' : text, 128, 34); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = t.minFilter = THREE.NearestFilter; return t; };
   for (const sg of world.signs) {
     const g = new THREE.Group(); const x = (sg.x + 0.5) * T, z = (sg.y + 0.5) * T; g.position.set(x, groundH(x, z), z);
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.4, 6), std(0x4a3220)); post.position.y = 1.2; post.castShadow = true; g.add(post);
@@ -830,7 +798,7 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
     if (e.L.staticG && e.L.staticG.includes(e.g)) { e.L.staticG = e.L.staticG.filter((g) => g !== e.g); e.L.trees = e.L.trees.filter((t) => { let o: THREE.Object3D | null = t.obj; while (o) { if (o === e.g) return false; o = o.parent; } return true; }); propG.delete(p); mergeChunkProps(e.L); rebuildLists(); return; }
     e.L.group.remove(e.g); e.L.trees = e.L.trees.filter((t) => { let o: THREE.Object3D | null = t.obj; while (o) { if (o === e.g) return false; o = o.parent; } return true; }); propG.delete(p); rebuildLists();
   }
-  function addProp(p: Prop) { world.props.push(p); const pg = buildProp(p, dynL); dynL.group.add(pg); propG.set(p, { g: pg, L: dynL }); rebuildLists(); }
+  function addProp(p: Prop) { world.props.push(p); const pg = buildProp(p, dynL); if (STATIC_KINDS.has(p.kind)) mergeStatic(pg); /* fora dos chunks não há fusão por chunk */ dynL.group.add(pg); propG.set(p, { g: pg, L: dynL }); rebuildLists(); }
   const fountainPos = () => { for (const L of loaded.values()) if (L.fountain) return L.fountain; return null; };
   return { setRad(n: number) { if (n !== RAD) { RAD = n; lastCx = -9999; } }, fountainPos, removeProp, addProp, group, torches: torchesA, glowLights: glowA, windows, trees: treesA, smokers: smokersA, relics: relicsA, spinners: spinA, update, bridgeMeshes };
 }
