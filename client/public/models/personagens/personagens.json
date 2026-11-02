@@ -1,0 +1,200 @@
+[
+  {
+    "id": "bruxo_h",
+    "arquivo": "bruxo_h.glb",
+    "classe": "bruxo",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 10516,
+    "mb": 0.9
+  },
+  {
+    "id": "bruxo_m",
+    "arquivo": "bruxo_m.glb",
+    "classe": "bruxo",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 10358,
+    "mb": 0.8
+  },
+  {
+    "id": "guerreiro_h_lvl02",
+    "arquivo": "guerreiro_h_lvl02.glb",
+    "classe": "guerreiro",
+    "sexo": "homem",
+    "nivel": 2,
+    "tris": 10966,
+    "mb": 0.9
+  },
+  {
+    "id": "guerreiro_h_lvl03",
+    "arquivo": "guerreiro_h_lvl03.glb",
+    "classe": "guerreiro",
+    "sexo": "homem",
+    "nivel": 3,
+    "tris": 11060,
+    "mb": 1.1
+  },
+  {
+    "id": "guerreiro_m_lvl01",
+    "arquivo": "guerreiro_m_lvl01.glb",
+    "classe": "guerreiro",
+    "sexo": "mulher",
+    "nivel": 1,
+    "tris": 9538,
+    "mb": 0.8
+  },
+  {
+    "id": "guerreiro_m_lvl02",
+    "arquivo": "guerreiro_m_lvl02.glb",
+    "classe": "guerreiro",
+    "sexo": "mulher",
+    "nivel": 2,
+    "tris": 11061,
+    "mb": 1.0
+  },
+  {
+    "id": "guerreiro_m_lvl03",
+    "arquivo": "guerreiro_m_lvl03.glb",
+    "classe": "guerreiro",
+    "sexo": "mulher",
+    "nivel": 3,
+    "tris": 11308,
+    "mb": 1.2
+  },
+  {
+    "id": "humano_h_lvl01",
+    "arquivo": "humano_h_lvl01.glb",
+    "classe": "humano",
+    "sexo": "homem",
+    "nivel": 1,
+    "tris": 9352,
+    "mb": 1.0
+  },
+  {
+    "id": "humano_h_lvl02",
+    "arquivo": "humano_h_lvl02.glb",
+    "classe": "humano",
+    "sexo": "homem",
+    "nivel": 2,
+    "tris": 10828,
+    "mb": 1.1
+  },
+  {
+    "id": "humano_h_lvl03",
+    "arquivo": "humano_h_lvl03.glb",
+    "classe": "humano",
+    "sexo": "homem",
+    "nivel": 3,
+    "tris": 10179,
+    "mb": 0.9
+  },
+  {
+    "id": "humano_m_lvl01",
+    "arquivo": "humano_m_lvl01.glb",
+    "classe": "humano",
+    "sexo": "mulher",
+    "nivel": 1,
+    "tris": 10281,
+    "mb": 1.0
+  },
+  {
+    "id": "humano_m_lvl02",
+    "arquivo": "humano_m_lvl02.glb",
+    "classe": "humano",
+    "sexo": "mulher",
+    "nivel": 2,
+    "tris": 10380,
+    "mb": 1.1
+  },
+  {
+    "id": "lobisomem_h",
+    "arquivo": "lobisomem_h.glb",
+    "classe": "lobisomem",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 10470,
+    "mb": 1.1
+  },
+  {
+    "id": "lobisomem_m",
+    "arquivo": "lobisomem_m.glb",
+    "classe": "lobisomem",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 10414,
+    "mb": 0.9
+  },
+  {
+    "id": "mago_h",
+    "arquivo": "mago_h.glb",
+    "classe": "mago",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 10509,
+    "mb": 0.8
+  },
+  {
+    "id": "mago_m",
+    "arquivo": "mago_m.glb",
+    "classe": "mago",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 10167,
+    "mb": 0.8
+  },
+  {
+    "id": "paladino_h",
+    "arquivo": "paladino_h.glb",
+    "classe": "paladino",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 10328,
+    "mb": 1.0
+  },
+  {
+    "id": "paladino_m",
+    "arquivo": "paladino_m.glb",
+    "classe": "paladino",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 10755,
+    "mb": 1.0
+  },
+  {
+    "id": "technocrata_h",
+    "arquivo": "technocrata_h.glb",
+    "classe": "technocrata",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 10820,
+    "mb": 1.0
+  },
+  {
+    "id": "technocrata_m",
+    "arquivo": "technocrata_m.glb",
+    "classe": "technocrata",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 10306,
+    "mb": 0.9
+  },
+  {
+    "id": "vampiro_h",
+    "arquivo": "vampiro_h.glb",
+    "classe": "vampiro",
+    "sexo": "homem",
+    "nivel": null,
+    "tris": 9738,
+    "mb": 0.8
+  },
+  {
+    "id": "vampiro_m",
+    "arquivo": "vampiro_m.glb",
+    "classe": "vampiro",
+    "sexo": "mulher",
+    "nivel": null,
+    "tris": 9526,
+    "mb": 0.8
+  }
+]
