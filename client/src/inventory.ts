@@ -205,6 +205,8 @@ export const ATTRS: { k: Attr; lab: string; tip: string }[] = [
   { k: 'str', lab: 'Força', tip: '+2% de dano por ponto' }, { k: 'dex', lab: 'Destreza', tip: '+0,4% de crítico e +0,3% de velocidade por ponto' },
   { k: 'vit', lab: 'Vitalidade', tip: '+5 de vida, defesa e regeneração por ponto' }, { k: 'int', lab: 'Energia', tip: '+4 de magia por ponto' },
 ];
+/** família de armas que pode ir uma em cada mão (ou com escudo): bestas de mão e armas de fogo de uma mão */
+export const dualFam = (b?: string | null) => !b ? null : /Besta de Mão/.test(b) ? 'xb' : /Pistola|Escopeta/.test(b) ? 'gun' : null;
 const SLOTS: Slot[] = ['helm', 'earring', 'earring2', 'amulet', 'shoulders', 'cape', 'armor', 'weapon', 'shield', 'ring', 'ring2', 'boots', 'relic'];
 
 interface St {
@@ -278,7 +280,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const has = (id: string, n = 1) => (bag[id] ?? 0) >= n;
   const count = (id: string) => bag[id] ?? 0;
   const st = game.st;
-  const total = () => { const t: Partial<Record<StatKey, number>> = {}; for (const g of Object.values(eqG)) if (g) for (const [k, v] of Object.entries(g.stats) as [StatKey, number][]) t[k] = (t[k] ?? 0) + v; return t; };
+  /* 02/11: a arma da outra mão (segunda besta de mão, pistola ou escopeta no espaço do escudo) conta pela metade — o tiro dela já dobra os disparos */
+  const total = () => { const t: Partial<Record<StatKey, number>> = {}; for (const [sl, g] of Object.entries(eqG)) if (g) { const k0 = sl === 'shield' && g.slot === 'weapon' ? 0.5 : 1; for (const [k, v] of Object.entries(g.stats) as [StatKey, number][]) t[k] = (t[k] ?? 0) + v * k0; } return t; };
 
   function recalc() {
     const t = total(), A = st.attrs, b = (k: Attr) => A[k] + (t[k] ?? 0);
@@ -337,11 +340,15 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const buyP = (i: string) => Math.max(1, Math.round(PRICES[i] * pk()));
   const shopPrice = (g: Gear) => Math.round((g.fac ? FAC_PRICE[g.slot as 'cape' | 'shield' | 'relic'] : Math.max(6, g.value * 3)) * pk());
   /** onde a peça entra: anéis e brincos têm dois espaços (o vazio primeiro) */
-  const slotFor = (g: Gear): Slot => g.slot === 'ring' ? (!eqG.ring ? 'ring' : !eqG.ring2 ? 'ring2' : 'ring') : g.slot === 'earring' ? (!eqG.earring ? 'earring' : !eqG.earring2 ? 'earring2' : 'earring') : g.slot;
+  /* 02/11 (Erling): besta de mão com escudo ou uma em cada mão; pistola e escopeta de cano duplo com escudo, ou duas (pistolas, escopetas ou uma de cada).
+     A segunda arma vai para o espaço do escudo (mão esquerda) quando a da mão direita é da mesma família e esse espaço está livre */
+  const slotFor = (g: Gear): Slot => g.slot === 'weapon' && dualFam(g.base) && eqG.weapon && dualFam(eqG.weapon.base) === dualFam(g.base) && !eqG.shield ? 'shield' : g.slot === 'ring' ? (!eqG.ring ? 'ring' : !eqG.ring2 ? 'ring2' : 'ring') : g.slot === 'earring' ? (!eqG.earring ? 'earring' : !eqG.earring2 ? 'earring2' : 'earring') : g.slot;
   function equip(uid: number) {
     const i = gearBag.findIndex((g) => g.uid === uid); if (i < 0) return;
     { const g0 = gearBag[i]; if (st.lvl < reqLvl(g0)) { game.logMsg(`Você precisa do nível ${reqLvl(g0)} para usar ${g0.name}.`, '#ff9a8a'); game.snd?.('error'); return; } { const why = hooks.canWear?.(g0); if (why) { game.logMsg(why, '#ff9a8a'); game.snd?.('error'); return; } } if (g0.fac && myFac() !== g0.fac) { game.logMsg(`⚑ Só quem jurou ${FAC[g0.fac].name} pode vestir este brasão. Os lados se escolhem no nível ${FAC_LVL}.`, '#ff9a8a'); game.snd?.('error'); return; } }
     const g = gearBag.splice(i, 1)[0], tg = slotFor(g), old = eqG[tg]; eqG[tg] = g; if (old) gearBag.push(old); hooks.feel?.('equip', String(g.slot));
+    { const off = eqG.shield; if (tg === 'weapon' && off && off.slot === 'weapon' && dualFam(off.base) !== dualFam(g.base)) { eqG.shield = null; gearBag.push(off); game.logMsg(`${off.name} voltou para a bolsa: não combina com ${g.name} na outra mão.`, '#c8c0b0'); } }
+    if (tg === 'shield' && g.slot === 'weapon') game.logMsg(`✦ ${g.name} na mão esquerda: uma arma em cada mão.`, '#ffe08a');
     if ((g.shop || g.fac) && !g.bound) { g.bound = true; game.logMsg(`🔒 ${g.name} agora está vinculado a você (não vai mais ao Leilão).`, '#b9c6e0'); }
     game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save(); swapFx(tg, !!old);
   }
@@ -353,7 +360,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     setTimeout(() => { const e2 = ch.querySelector(`.eqs.${slot}`) as HTMLElement | null; if (!e2) return; e2.classList.remove('swapout'); void e2.offsetWidth; e2.classList.add('swapin'); setTimeout(() => e2.classList.remove('swapin'), 650); }, 500);
     void had;
   }
-  function unequip(slot: Slot) { const g = eqG[slot]; if (!g) return; eqG[slot] = null; gearBag.push(g); recalc(); render(); save(); }
+  function unequip(slot: Slot) { const g = eqG[slot]; if (!g) return; eqG[slot] = null; gearBag.push(g); if (slot === 'weapon' && eqG.shield?.slot === 'weapon') { eqG.weapon = eqG.shield; eqG.shield = null; } /* sem a da direita, a da esquerda passa para a mão boa */ recalc(); render(); save(); }
   function craft(rid: string) {
     const r = RECIPES.find((x) => x.id === rid)!; if (!r.need.every(([i, n]) => has(i, n)) || !(r.keep ?? []).every((k) => has(k))) { game.logMsg('Faltam materiais.', '#ff9a8a'); return; }
     if (r.out === 'fire') { if (!hooks.placeFire()) return; for (const [i, n] of r.need) take(i, n); game.logMsg('🔥 Fogueira acesa!', '#ffb060'); close(); return; }
@@ -592,7 +599,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       open = true; shop = id; vaultOpen = false; shopTitle = title ?? null; shopTab = 0; // a mochila abre junto com a loja (arrasta para vender)
       const sd = SHOPDEF[id]; if (sd?.fac) stock = facSet(sd.fac, FAC_ILVL); else if (sd?.gear) { stock = sd.gear.map((s, i) => genGear(Math.max(1, st.lvl + (i % 3)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), s));
         /* 29/10 (Erling): "o armeiro da cidade não tem metralhadora nem pistola para vender" — todo armeiro passa a ter a prateleira de latão dos tecnocratas */
-        if (id === 'armeiro') for (const [i, b] of ['Pistola de Latão', 'Metralhadora de Mão', 'Lança-Chamas de Mão', 'Lança-Veneno de Mão'].entries()) stock.push(genGear(Math.max(1, st.lvl + (i % 2)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), 'weapon', b)); }
+        if (id === 'armeiro') for (const [i, b] of ['Pistola de Latão', 'Escopeta de Cano Duplo', 'Metralhadora de Mão', 'Lança-Chamas de Mão', 'Lança-Veneno de Mão'].entries()) stock.push(genGear(Math.max(1, st.lvl + (i % 2)), rollRarity({ rare: 0.5, legendary: 0.04, epic: 0, unique: 0, relic: 0 }), 'weapon', b)); }
       else stock = [];
       render();
     },

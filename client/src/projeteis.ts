@@ -10,7 +10,7 @@
      nele por um instante. Bala: rastro de luz, faísca e poeira no impacto. */
 import * as THREE from 'three';
 
-export type ShotKind = 'arrow' | 'longarrow' | 'bolt' | 'hbolt' | 'kunai' | 'bullet';
+export type ShotKind = 'arrow' | 'longarrow' | 'bolt' | 'hbolt' | 'kunai' | 'bullet' | 'pellet';
 interface Spec { v: number; g: number; drag: number; range: number; len: number; spin: number }
 const SPEC: Record<ShotKind, Spec> = {
   arrow: { v: 34, g: 9.8, drag: 0.04, range: 30, len: 0.75, spin: 0 },
@@ -19,6 +19,7 @@ const SPEC: Record<ShotKind, Spec> = {
   hbolt: { v: 48, g: 9.8, drag: 0.03, range: 24, len: 0.3, spin: 0 },
   kunai: { v: 26, g: 9.8, drag: 0.05, range: 17, len: 0.24, spin: 26 },
   bullet: { v: 115, g: 2.5, drag: 0.0, range: 28, len: 0.9, spin: 0 },
+  pellet: { v: 80, g: 6, drag: 1.2, range: 13, len: 0.45, spin: 0 }, /* chumbo da escopeta: abre em leque, perde força e cai rápido */
 };
 export interface ShotTarget { pos: THREE.Vector3; alive: boolean; active: boolean; def: { radius: number; scale?: number }; root?: THREE.Object3D | null }
 export interface ShotCtx {
@@ -89,7 +90,7 @@ export function createShots(ctx: ShotCtx) {
     } else dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(0.04), Math.sin(0.04), Math.cos(yaw) * Math.cos(0.04));
     const sp = o.spread ?? 0; if (sp > 0) { dir.x += (Math.random() - 0.5) * 2 * sp; dir.y += (Math.random() - 0.5) * sp; dir.z += (Math.random() - 0.5) * 2 * sp; dir.normalize(); }
     const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m);
-    shots.push({ kind, p: from.clone(), v: dir.multiplyScalar(v), life: kind === 'bullet' ? 0.6 : 3.2, mul: o.mul, m: b.m, from: from.clone(), data: o.data, spinA: 0, trailT: 0, tracer: b.tracer });
+    shots.push({ kind, p: from.clone(), v: dir.multiplyScalar(v), life: kind === 'bullet' ? 0.6 : kind === 'pellet' ? 0.3 : 3.2, mul: o.mul, m: b.m, from: from.clone(), data: o.data, spinA: 0, trailT: 0, tracer: b.tracer });
     return tgt;
   }
   /** flecha que sai de `from` e cai exatamente em `to` depois de `t` segundos (chuva de flechas, tiro para o alto) */
@@ -111,14 +112,14 @@ export function createShots(ctx: ShotCtx) {
       let done = false; const seg = tA.distanceTo(tB), n = Math.max(1, Math.ceil(seg / 0.25));
       for (let k = 1; k <= n && !done; k++) { const p = tA.clone().lerp(tB, k / n);
         // inimigos (cilindro: raio do bicho, da canela ao topo)
-        for (const e of ctx.targets()) { if (!e.alive || !e.active) continue; const r = (e.def.radius || 0.5) + (s.kind === 'bullet' ? 0.05 : 0.12), top = e.pos.y + Math.max(1.4, r * 3.2); if (p.y < e.pos.y + 0.1 || p.y > top) continue;
+        for (const e of ctx.targets()) { if (!e.alive || !e.active) continue; const r = (e.def.radius || 0.5) + ((s.kind === 'bullet' || s.kind === 'pellet') ? 0.05 : 0.12), top = e.pos.y + Math.max(1.4, r * 3.2); if (p.y < e.pos.y + 0.1 || p.y > top) continue;
           if ((p.x - e.pos.x) ** 2 + (p.z - e.pos.z) ** 2 > r * r) continue;
           s.p.copy(p); ctx.hit(e, { mul: s.mul, kind: s.kind, point: p.clone(), from: s.from, data: s.data }); ctx.spark(p, 'blood', s.v.clone().normalize()); ctx.sound?.('hit');
-          if (s.kind === 'bullet') { ctx.scene.remove(s.m); } else stick(s, e.root ?? null); done = true; break; }
+          if ((s.kind === 'bullet' || s.kind === 'pellet')) { ctx.scene.remove(s.m); } else stick(s, e.root ?? null); done = true; break; }
         if (done) break;
-        const dm = ctx.dummyAt?.(p.x, p.z, 0.5); if (dm && p.y < ctx.heightAt(p.x, p.z) + 2.0) { s.p.copy(p); dm.hit(p.clone(), s.mul); ctx.spark(p, 'wood', s.v.clone().normalize()); ctx.sound?.('thud'); if (s.kind === 'bullet') ctx.scene.remove(s.m); else stick(s); done = true; break; }
-        const gy = ctx.heightAt(p.x, p.z); if (p.y <= gy + 0.02) { p.y = gy + 0.02; s.p.copy(p); ctx.spark(p, s.kind === 'bullet' ? 'dust' : 'dust', s.v.clone().normalize()); ctx.sound?.(s.kind === 'bullet' ? 'ric' : 'thud'); if (s.kind === 'bullet') ctx.scene.remove(s.m); else stick(s); done = true; break; }
-        if (p.y < gy + 3.5 && ctx.isWall(p.x, p.z)) { s.p.copy(p); ctx.spark(p, s.kind === 'bullet' ? 'metal' : 'wood', s.v.clone().normalize()); ctx.sound?.(s.kind === 'bullet' ? 'ric' : 'thud'); if (s.kind === 'bullet') ctx.scene.remove(s.m); else stick(s); done = true; break; }
+        const dm = ctx.dummyAt?.(p.x, p.z, 0.5); if (dm && p.y < ctx.heightAt(p.x, p.z) + 2.0) { s.p.copy(p); dm.hit(p.clone(), s.mul); ctx.spark(p, 'wood', s.v.clone().normalize()); ctx.sound?.('thud'); if ((s.kind === 'bullet' || s.kind === 'pellet')) ctx.scene.remove(s.m); else stick(s); done = true; break; }
+        const gy = ctx.heightAt(p.x, p.z); if (p.y <= gy + 0.02) { p.y = gy + 0.02; s.p.copy(p); ctx.spark(p, (s.kind === 'bullet' || s.kind === 'pellet') ? 'dust' : 'dust', s.v.clone().normalize()); ctx.sound?.((s.kind === 'bullet' || s.kind === 'pellet') ? 'ric' : 'thud'); if ((s.kind === 'bullet' || s.kind === 'pellet')) ctx.scene.remove(s.m); else stick(s); done = true; break; }
+        if (p.y < gy + 3.5 && ctx.isWall(p.x, p.z)) { s.p.copy(p); ctx.spark(p, (s.kind === 'bullet' || s.kind === 'pellet') ? 'metal' : 'wood', s.v.clone().normalize()); ctx.sound?.((s.kind === 'bullet' || s.kind === 'pellet') ? 'ric' : 'thud'); if ((s.kind === 'bullet' || s.kind === 'pellet')) ctx.scene.remove(s.m); else stick(s); done = true; break; }
       }
       if (done) { shots.splice(i, 1); continue; }
       s.p.copy(tB); s.m.position.copy(s.p);

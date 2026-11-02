@@ -24,7 +24,8 @@ function wrapGrip(sw: THREE.Group, c: SwordCtx, col: number, L: number, r = 0.01
 }
 export const REF_SWORDS = ['Espada Longa', 'Espada Nórdica', 'Espadão Anão', 'Lâmina Élfica', 'Cimitarra', 'Espada de Espinhos',
   /* prancha 48 (curtas) e 50 (especiais), 01/11 */ 'Adaga', 'Espada Curta', 'Espada Curta Anã', 'Adaga Élfica', 'Sabre', 'Flamberge', 'Montante', 'Katana', 'Facão', 'Lâmina Serrilhada', 'Espada de Duelo', 'Adaga Fina',
-  /* 02/11 (Erling): armas de classe — vampiro (florete), lobisomem (garras), caçador (besta de mão, kunai, adaga de prata) */ 'Florete', 'Garras de Ferro', 'Besta de Mão', 'Kunai', 'Adaga de Prata'] as const;
+  /* 02/11 (Erling): armas de classe — vampiro (florete), lobisomem (garras), caçador (besta de mão, kunai, adaga de prata) */ 'Florete', 'Garras de Ferro', 'Besta de Mão', 'Kunai', 'Adaga de Prata',
+  /* 02/11 (Erling): armas de fogo de uma mão — escudo na outra mão, ou uma em cada mão */ 'Pistola de Latão', 'Escopeta de Cano Duplo'] as const;
 export type RefSword = (typeof REF_SWORDS)[number];
 /** monta a espada no grupo (que já tem a empunhadura simples e o pomo padrão: removemos e refazemos). Devolve o comprimento da lâmina */
 export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): number {
@@ -157,6 +158,26 @@ export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): num
     const bolt = c.mk(new THREE.CylinderGeometry(0.004, 0.004, 0.22, 4), 0x6a4a2a, 0); bolt.position.set(0, -0.26, 0.026); sw.add(bolt); const bh = c.mk(new THREE.ConeGeometry(0.008, 0.03, 4), 0xc8ccd4, 0); bh.position.set(0, -0.38, 0.026); bh.rotation.x = Math.PI; sw.add(bh);
     const trg = c.mk(new THREE.TorusGeometry(0.014, 0.003, 4, 8), st, 0); trg.position.set(0, 0.01, -0.03); trg.rotation.y = Math.PI / 2; sw.add(trg);
     const sil = c.mk(new THREE.OctahedronGeometry(0.014, 0), GL || 0xd8dde4, 0.002, c.metal(c.rar, 0xd8dde4)); sil.position.set(0, -0.05, 0.03); sw.add(sil); return 0.4; }
+  if (base === 'Pistola de Latão') { // pistola dos tecnocratas, de uma mão: cano de aço escuro, corpo e tambor de latão, cabo de nogueira inclinado (cano em -Y, cabo para baixo em -Z)
+    const br = 0xb08a3c, dk = 0x2e3036, wd = 0x5a3a22;
+    const body = c.mk(new THREE.BoxGeometry(0.04, 0.11, 0.06), br, 0.003, c.metal(c.rar, br)); body.position.set(0, -0.04, 0.012); sw.add(body);
+    const drum = c.mk(new THREE.CylinderGeometry(0.03, 0.03, 0.05, 8), 0xb8743a, 0.003); drum.position.set(0, -0.06, 0.02); sw.add(drum);
+    const bar = c.mk(new THREE.CylinderGeometry(0.012, 0.011, 0.22, 8), dk, 0.003); bar.position.set(0, -0.2, 0.026); sw.add(bar);
+    const ring = c.mk(new THREE.CylinderGeometry(0.017, 0.017, 0.015, 8), br, 0.002); ring.position.set(0, -0.3, 0.026); sw.add(ring);
+    const grip = c.mk(new THREE.BoxGeometry(0.032, 0.05, 0.1), wd, 0.003); grip.position.set(0, 0.035, -0.04); grip.rotation.x = -0.35; sw.add(grip);
+    const trg = c.mk(new THREE.TorusGeometry(0.016, 0.003, 4, 8), dk, 0); trg.position.set(0, -0.015, -0.02); trg.rotation.y = Math.PI / 2; sw.add(trg);
+    const ham = c.mk(new THREE.BoxGeometry(0.012, 0.02, 0.025), dk, 0); ham.position.set(0, 0.025, 0.04); sw.add(ham);
+    if (GL) { const gem = c.mk(new THREE.OctahedronGeometry(0.01, 0), GL, 0); gem.position.set(0.022, -0.04, 0.012); sw.add(gem); } return 0.32; }
+  if (base === 'Escopeta de Cano Duplo') { // escopeta de cano duplo serrada, de uma mão: dois canos lado a lado, báscula de latão, coronha curta de pistola
+    const br = 0xa8823a, dk = 0x2a2c32, wd = 0x4a2e1a;
+    for (const sx of [-1, 1]) { const b = c.mk(new THREE.CylinderGeometry(0.014, 0.014, 0.34, 8), dk, 0.003); b.position.set(sx * 0.015, -0.24, 0.03); sw.add(b); const mz = c.mk(new THREE.CylinderGeometry(0.017, 0.017, 0.02, 8), br, 0); mz.position.set(sx * 0.015, -0.405, 0.03); sw.add(mz); }
+    const rib = c.mk(new THREE.BoxGeometry(0.008, 0.32, 0.008), dk, 0); rib.position.set(0, -0.23, 0.047); sw.add(rib);
+    const act = c.mk(new THREE.BoxGeometry(0.046, 0.1, 0.06), br, 0.003, c.metal(c.rar, br)); act.position.set(0, -0.03, 0.02); sw.add(act);
+    const fore = c.mk(new THREE.BoxGeometry(0.04, 0.12, 0.03), wd, 0.003); fore.position.set(0, -0.15, 0.008); sw.add(fore);
+    const grip = c.mk(new THREE.BoxGeometry(0.034, 0.06, 0.13), wd, 0.003); grip.position.set(0, 0.04, -0.045); grip.rotation.x = -0.5; sw.add(grip);
+    const trg = c.mk(new THREE.TorusGeometry(0.018, 0.003, 4, 8), dk, 0); trg.position.set(0, -0.005, -0.02); trg.rotation.y = Math.PI / 2; sw.add(trg);
+    for (const sx of [-1, 1]) { const hm = c.mk(new THREE.BoxGeometry(0.01, 0.022, 0.03), dk, 0); hm.position.set(sx * 0.012, 0.02, 0.05); hm.rotation.x = 0.4; sw.add(hm); }
+    if (GL) { const gem = c.mk(new THREE.OctahedronGeometry(0.011, 0), GL, 0); gem.position.set(0.026, -0.03, 0.02); sw.add(gem); } return 0.42; }
   if (base === 'Kunai') { // kunai: lâmina losangular curta, cabo enrolado em tecido e argola no pomo (de arremesso)
     const L = 0.2, dk = 0x3a3e46; sw.add(c.mk(bladeGeo([[0.004, 0], [0.024, -L * 0.35], [0.012, -L * 0.8], [0, -L]], 0.005), dk, 0.003, c.metal(c.rar, dk)));
     wrapGrip(sw, c, 0x6a1a1a, 0.11, 0.009, 7, 0x2a2a30); const ring = c.mk(new THREE.TorusGeometry(0.022, 0.005, 5, 12), dk, 0.002, c.metal(c.rar, dk)); ring.position.y = 0.125; sw.add(ring); return L; }

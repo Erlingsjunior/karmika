@@ -500,9 +500,9 @@ export function createGameplay(d: GameplayDeps) {
   const ticks: { t: number; fn: (dt: number, left: number) => void; end?: () => void }[] = [];
   let form: { id: string; t: number; scale: number } | null = null, overT = 0, medicT = 0, flameT = 0, flameYaw = 0, flameKind: 'fire' | 'poison' = 'fire', flameMul = 0.55, flameReach = 9.5;
   /** arma equipada que muda o ataque básico: arco, besta de repetição, metralhadora, lança-chamas, lança-veneno (23/10) */
-  type WMode = 'bow' | 'longbow' | 'xbow' | 'hxbow' | 'kunai' | 'smg' | 'pistol' | 'flame' | 'venom';
+  type WMode = 'bow' | 'longbow' | 'xbow' | 'hxbow' | 'kunai' | 'smg' | 'pistol' | 'shotgun' | 'flame' | 'venom';
   let wmode = null as WMode | null;
-  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Besta de Mão/, 'hxbow'], [/Kunai/, 'kunai'], [/Metralhadora/, 'smg'], [/Pistola/, 'pistol'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
+  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Besta de Mão/, 'hxbow'], [/Kunai/, 'kunai'], [/Metralhadora/, 'smg'], [/Pistola/, 'pistol'], [/Escopeta/, 'shotgun'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
   /* (o mkArrow das flechas retas saiu: as flechas agora são do projeteis.ts, com física — 02/11) */
   const puddles: { x: number; z: number; r: number; t: number; m: THREE.Mesh }[] = [];
   /** gotas do lança-chamas / lança-veneno (física) */ const jets: { p: THREE.Vector3; v: THREE.Vector3; life: number; age: number; pz: boolean; from: THREE.Vector3 }[] = []; const jetHitT = new WeakMap<Enemy, number>(); let lastPuddle = -9; const heroVel = new THREE.Vector3(); const heroPrev = new THREE.Vector3();
@@ -1045,12 +1045,21 @@ export function createGameplay(d: GameplayDeps) {
           pending.push({ at: now + TEMPO * 0.24, fn: () => { shots.fire(L ? 'longarrow' : 'arrow', from0(), h.root.rotation.y, { mul: L ? 1.55 : 1.25 }); d.audio.parry(); } }); return true; }
         if (wmode === 'xbow') { cd.attack = 0.6 * TEMPO; // besta de repetição: três virotes em sequência
           for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { shots.fire('bolt', from0(), h.root.rotation.y, { mul: 0.62, spread: 0.02 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
-        if (wmode === 'hxbow') { cd.attack = 0.55 * TEMPO; // besta de mão: um virote certeiro, braço estendido
-          pending.push({ at: now + TEMPO * 0.06, fn: () => { shots.fire('hbolt', from0(), h.root.rotation.y, { mul: 1.05 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.03); } }); return true; }
+        /* 02/11 (Erling): uma em cada mão — a da esquerda dispara logo depois da direita, da boca dela */
+        const offFrom = () => { const f = h.offTip?.(new THREE.Vector3()); if (!f) return null; f.y = Math.max(f.y, 1.0); return f; };
+        const flash = (f: THREE.Vector3, n = 6) => { for (let k = 0; k < n; k++) d.particles.spawn(f.x, f.y, f.z, { vx: Math.sin(yaw) * rnd(2, 5) + rnd(-0.6, 0.6), vy: rnd(-0.3, 0.8), vz: Math.cos(yaw) * rnd(2, 5) + rnd(-0.6, 0.6), life: 0.12, s0: 0.3, s1: 0.05, c0: 0xfff2c0, c1: 0xff8a20, a: 1, drag: 4 }); };
+        const dual = !!h.dual;
+        if (wmode === 'hxbow') { cd.attack = (dual ? 0.62 : 0.55) * TEMPO; // besta de mão: um virote certeiro, braço estendido
+          pending.push({ at: now + TEMPO * 0.06, fn: () => { shots.fire('hbolt', from0(), h.root.rotation.y, { mul: dual ? 0.85 : 1.05 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.03); } });
+          if (dual) pending.push({ at: now + TEMPO * 0.2, fn: () => { const f = offFrom(); if (!f) return; shots.fire('hbolt', f, h.root.rotation.y, { mul: 0.85 }); d.audio.parry(); } });
+          return true; }
+        if (wmode === 'shotgun') { cd.attack = (dual ? 0.95 : 0.85) * TEMPO; // escopeta de cano duplo: um estouro de chumbo em leque, curto alcance, empurra
+          const blast = (f: THREE.Vector3 | null) => { if (!f) return; h.muzzle(); flash(f, 10); d.audio.hit(); d.audio.boom(); st.shake = Math.max(st.shake, 0.16); for (let k = 0; k < 8; k++) shots.fire('pellet', f, h.root.rotation.y, { mul: dual ? 0.17 : 0.21, spread: 0.1 }); shell(); };
+          pending.push({ at: now + TEMPO * 0.07, fn: () => blast(from0()) }); if (dual) pending.push({ at: now + TEMPO * 0.22, fn: () => blast(offFrom()) }); return true; }
         if (wmode === 'kunai') { cd.attack = 0.5 * TEMPO; d.audio.swing(); // kunai: dois arremessos rápidos, girando no ar
           for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.12 + i * 0.09, fn: () => { shots.fire('kunai', from0(), h.root.rotation.y + (i ? 0.05 : -0.05), { mul: 0.6, spread: 0.015 }); } }); return true; }
-        if (wmode === 'pistol') { cd.attack = 0.42 * TEMPO; // pistola de latão: dois tiros certeiros e pesados
-          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.16, fn: () => { const from = from0(); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.07); shots.fire('bullet', from, h.root.rotation.y, { mul: 0.78, spread: 0.008 });
+        if (wmode === 'pistol') { cd.attack = 0.42 * TEMPO; // pistola de latão: dois tiros certeiros e pesados (com duas: direita, esquerda, direita, esquerda)
+          for (let i = 0; i < (dual ? 4 : 2); i++) pending.push({ at: now + TEMPO * 0.08 + i * (dual ? 0.09 : 0.16), fn: () => { const L = dual && i % 2 === 1; const from = L ? offFrom() : from0(); if (!from) return; if (!L) h.muzzle(); flash(from, L ? 6 : 3); d.audio.hit(); st.shake = Math.max(st.shake, 0.07); shots.fire('bullet', from, h.root.rotation.y, { mul: dual ? 0.6 : 0.78, spread: 0.008 });
             beam(from, from.clone().addScaledVector(dir0(0), 0.9), 0xffe0a0, 0.04, 0.05); shell(); } }); return true; }
         if (wmode === 'smg') { cd.attack = 0.55 * TEMPO; // metralhadora de mão: seis balas rápidas e espalhadas
           for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.05); shots.fire('bullet', from, h.root.rotation.y, { mul: 0.34, spread: 0.05 });

@@ -251,7 +251,13 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, -(restK > 0.5 ? 0.06 : 0.15) * sc.x); armIK('Left', R.armL, lt); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!);
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
-    gripK[swordSide] = stowed && !tool ? 0.42 : 1; gripK[shieldSide] = stowed ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
+    const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
+    gripK[swordSide] = stowed && !tool ? 0.42 : 1; gripK[shieldSide] = stowed && !offOn ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
+    if (offOn && offW && offW.parent) { /* 02/11: arma na mão esquerda (arco, segunda besta de mão, pistola ou escopeta) — presa na mão do modelo, na direção que o esqueleto calcula */
+      W(hH, vH); W(hI, vI); W(hP, vP); W(hM, vM); const f2 = vM.clone().sub(vH).normalize();
+      const g2 = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(f2, -0.01 * sc.x);
+      const qw = offW.parent.getWorldQuaternion(new THREE.Quaternion()).multiply(offW.quaternion);
+      root.matrixWorld.decompose(vF, tq, sc); mw.compose(g2, qw, sc); offW.parent.updateWorldMatrix(true, false); mi.copy(offW.parent.matrixWorld).invert(); offW.matrixAutoUpdate = false; offW.matrix.multiplyMatrices(mi, mw); offW.updateMatrixWorld(true); }
     if (twoDone) { if (stowed && sockets) placeSock(R.shield(), sockets.back); return; } /* arma de duas mãos já posta acima */
     /* 02/11: a espada só vai para a bainha fora de combate; sem escudo (florete, garras, besta de mão, kunai, arco) o escudo fica nas costas e a arma na mão */
     const sheath = stowed && !tool && !hero.acting && !hero.combat && !hero.guard;

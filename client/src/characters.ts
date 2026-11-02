@@ -20,10 +20,10 @@ export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'sla
 export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
 export function weaponClass(base: string | null | undefined): WClass {
   const b = base ?? ''; if (/Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana/.test(b)) return 'two'; if (/Florete|Espada de Duelo/.test(b)) return 'fence';
-  if (/Garras/.test(b)) return 'claw'; if (/Porrete|Maça/.test(b)) return 'club'; if (/Besta de Mão/.test(b)) return 'hxbow'; if (/Kunai/.test(b)) return 'kunai'; if (/Arco/.test(b)) return 'bow';
+  if (/Garras/.test(b)) return 'claw'; if (/Porrete|Maça/.test(b)) return 'club'; if (/Besta de Mão|Pistola|Escopeta/.test(b)) return 'hxbow'; if (/Kunai/.test(b)) return 'kunai'; if (/Arco/.test(b)) return 'bow';
   if (/Adaga|Faca de Caça/.test(b)) return 'dagger'; return 'one'; }
 /** armas que deixam a mão do escudo livre (o escudo vai para as costas) */
-export const SHIELDLESS = new Set<WClass>(['two', 'fence', 'dagger', 'claw', 'club', 'hxbow', 'kunai', 'bow']); /* só a arma de uma mão comum (espada, machado de mão) vai com escudo no braço */
+export const SHIELDLESS = new Set<WClass>(['two', 'fence', 'dagger', 'claw', 'club', 'kunai', 'bow']); /* 02/11: besta de mão, pistola e escopeta de uma mão aceitam escudo (ou outra arma igual na mão esquerda) */ /* só a arma de uma mão comum (espada, machado de mão) vai com escudo no braço */
 export interface Hero3D {
   root: THREE.Group;
   /** mps = velocidade real em metros/segundo */
@@ -65,6 +65,10 @@ export interface Hero3D {
   droneFlash: number;
   /** flash no cano do rifle (tecnocrata) */
   muzzle(): void;
+  /** a boca/ponta da arma da mão esquerda (segunda besta de mão, pistola ou escopeta; ou o arco), ou null */
+  offTip(out: THREE.Vector3): THREE.Vector3 | null;
+  /** há arma na mão esquerda (uma em cada mão) */
+  readonly dual: boolean;
   /** corte rápido da espada durante a investida (nórdica) */
   slash(): void;
   blockHit(): void;
@@ -446,7 +450,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   };
   let gearSword: THREE.Group | null = null, gearShield: THREE.Group | null = null; const helmParts: THREE.Object3D[] = [];
   let weaponInner: THREE.Group | null = null, weaponRig: THREE.Group | null = null, weaponRigged = false, rigK = 0, innerRotX = 0;
-  const rigPos = new THREE.Vector3(), rigDir = new THREE.Vector3(0, 0, 1), rigQ = new THREE.Quaternion(), rigTmp = new THREE.Vector3();
+  /* 02/11 (Erling): a mão esquerda também segura arma — o arco (a direita puxa a corda) ou uma segunda besta de mão/pistola/escopeta */
+  let offSw: THREE.Group | null = null, offHolder: THREE.Group | null = null, offRig: THREE.Group | null = null, offRigged = false, offSrc: 'bow' | 'dual' | null = null, mainTip: THREE.Object3D | null = null;
+  const offTipO = new THREE.Object3D();
+  const rigPos = new THREE.Vector3(), rigDir = new THREE.Vector3(0, 0, 1), rigQ = new THREE.Quaternion(), rigTmp = new THREE.Vector3(), rigTmp2 = new THREE.Vector3();
   let restL = { x: -0.15, z: 0.12, e: 0.3 }, restR = { x: -0.15, z: -0.12, e: 0.3 };
   let swingL = 1, swingR = 1;
   let glowMats: THREE.MeshBasicMaterial[] = [];
@@ -573,7 +580,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     const tip = new THREE.Object3D(); tip.position.y = -1.08; sw.add(tip); weaponTipObj = tip;
     const wb = new THREE.Object3D(); wb.position.y = -0.38; sw.add(wb); weaponBaseObj = wb;
     swordHolder = new THREE.Group(); swordHolder.add(sw); armR.wr.add(swordHolder); swordHolder.rotation.set(-1.9, 0, 0);
-    weaponInner = sw; innerRotX = -Math.PI / 2; weaponRig = new THREE.Group(); chest.add(weaponRig); gearSword = sw;
+    weaponInner = sw; innerRotX = -Math.PI / 2; weaponRig = new THREE.Group(); chest.add(weaponRig); gearSword = sw; mainTip = tip;
+    offSw = new THREE.Group(); offSw.add(offTipO); offHolder = new THREE.Group(); offHolder.rotation.set(-1.9, 0, 0); offHolder.add(offSw); armL.wr.add(offHolder); offSw.visible = false; offRig = new THREE.Group(); chest.add(offRig);
     // escudo redondo no braço esquerdo
     const shGeo = new THREE.CylinderGeometry(0.37, 0.37, 0.055, 28); shGeo.rotateZ(Math.PI / 2);
     const shMat = [toon(0x3a2a1c), toon(0xffffff, { map: shieldTexture() }), toon(0x3a2a1c)];
@@ -1042,7 +1050,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       shLX: [[0, -1.0], [.3, -1.3], [.5, -0.4], [1, -1.0]], elL: [[0, -0.6], [1, -0.6]], vel: [[0, 0], [.42, 0], [.5, 1.5], [.6, 0]],
     },
     draw: { // arco: de lado para o alvo, o braço do arco estende à frente e a outra mão puxa a corda até o rosto; solta e segue a linha
-      twist: [[0, -0.9], [.2, -1.05], [.85, -1.05], [1, -0.6]], lean: [[0, 0], [.6, -0.05], [.7, 0.04], [1, 0]], crouch: [[0, 0.05], [1, 0.05]],
+      twist: [[0, 0.9], [.2, 1.05], [.85, 1.05], [1, 0.6]], lean: [[0, 0], [.6, -0.05], [.7, 0.04], [1, 0]], crouch: [[0, 0.05], [1, 0.05]], /* 02/11: o arco na mão esquerda — o ombro esquerdo vira para o alvo */
       shX: [[0, -1.3], [.2, -1.55], [.85, -1.55], [1, -1.2]], el: [[0, -0.2], [.2, -0.02], [.85, -0.02], [1, -0.3]], shZ: [[0, 0.05], [1, 0.05]],
       shLX: [[0, -1.2], [.2, -1.45], [.6, -1.5], [.66, -1.2], [1, -1.1]], shLZ: [[0, -0.3], [.6, -0.45], [.66, -0.2], [1, -0.2]], elL: [[0, -1.2], [.2, -2.3], [.6, -2.5], [.66, -1.0], [1, -1.0]], head: [[0, -0.05], [.85, -0.05], [1, 0]],
     },
@@ -1154,6 +1162,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     riding: false,
     droneTo: null, droneFlash: 0, actSpeed: 1,
     muzzle() { muzzleK = 1; },
+    offTip(out) { if (!offSw || !offSrc || !offSw.visible) return null; return offTipO.getWorldPosition(out); },
+    get dual() { return offSrc === 'dual'; },
     slash() { slashK = 1; },
     dronePos(out) { return droneObj ? droneObj.getWorldPosition(out) : out.copy(root.position).add(tmp.set(0, 1.6, 0)); },
     blockHit() { recoil = 1; },
@@ -1303,12 +1313,17 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const fuller = mk(new THREE.BoxGeometry(wid * 0.23, len * 0.84, 0.019), 0x8a929e, 0.0); fuller.position.y = -0.1 - len / 2; sw.add(fuller);
           const pt = new THREE.ConeGeometry(wid * 0.72, 0.22, 4); pt.scale(1, 1, 0.3); pt.rotateZ(Math.PI); pt.rotateY(Math.PI / 4); const ptM = mk(pt, 0xc9d0da, 0.004, metal(rar, 0xc9d0da)); ptM.position.y = -0.1 - len - 0.1; sw.add(ptM);
         }
+        if (mainTip && weaponTipObj === offTipO) weaponTipObj = mainTip; if (offSrc === 'bow' && offSw) { for (const c of [...offSw.children]) if (c !== offTipO) offSw.remove(c); offSw.visible = false; offSrc = null; }
         if (weaponTipObj) weaponTipObj.position.set(0, -0.14 - len, 0); if (weaponBaseObj) weaponBaseObj.position.set(0, -0.1 - len * 0.35, 0);
         if (RG) { // a boca do cano no suporte (o tiro sai dali)
           if (!gunTip0) { gunTip0 = weaponTipObj; gunBase0 = weaponBaseObj; }
           const mt = new THREE.Object3D(); mt.position.set(0, 0.045, 0.14 + len); gunHolder.add(mt); const mb = new THREE.Object3D(); mb.position.set(0, 0.03, 0.15); gunHolder.add(mb);
           weaponTipObj = mt; weaponBaseObj = mb; gunOn = true; gunHolder.visible = true; } else gunHolder.visible = false;
         mergeStatic(sw, ramp); fine(sw);
+        if (wcls === 'bow' && offSw) { /* 02/11 (Erling): o arco vai para a mão esquerda; a direita fica livre para puxar a corda até o rosto */
+          for (const c of [...offSw.children]) if (c !== offTipO) offSw.remove(c);
+          for (const c of [...sw.children]) if ((c as THREE.Mesh).isMesh || (c as THREE.Group).isGroup) offSw.add(c);
+          offTipO.position.set(0, -0.14 - len, 0); weaponTipObj = offTipO; offSw.visible = true; offSrc = 'bow'; }
       }
       /* anão: as armas de duas mãos da raça trocam a cabeça do martelo (o cabo, as mãos e o golpe continuam os mesmos) */
       if (dwarfAxe && g.weapon !== undefined) {
@@ -1337,7 +1352,13 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         } else for (const c of dwarfDefault) ax.add(c); // o martelo de sempre
       }
       /* escudo */
-      if (gearShield && g.shield !== undefined) {
+      if (offSw && g.shield !== undefined && offSrc !== 'bow') { /* 02/11: arma no espaço do escudo = arma na mão esquerda */
+        for (const c of [...offSw.children]) if (c !== offTipO) offSw.remove(c);
+        const ob = g.shield?.base ?? ''; if (g.shield && /Besta de Mão|Pistola|Escopeta/.test(ob) && (REF_SWORDS as readonly string[]).includes(ob)) {
+          const rr = g.shield.rarity ?? 'normal'; const L2 = buildRefSword(offSw, ob as RefSword, { mk, metal, toon, glow: glowOf(rr), rar: rr }); offSw.add(offTipO); offTipO.position.set(0, -0.14 - L2, 0);
+          mergeStatic(offSw, ramp); fine(offSw); offSw.visible = true; offSrc = 'dual'; } else { offSw.visible = false; offSrc = null; } }
+      if (gearShield && g.shield !== undefined && offSrc === 'dual') { for (const c of [...gearShield.children]) gearShield.remove(c); } /* sem escudo: a mão esquerda está armada */
+      else if (gearShield && g.shield !== undefined) {
         const sh = gearShield; for (const c of [...sh.children]) sh.remove(c);
         const base = g.shield?.base ?? 'Escudo Nórdico', rar = g.shield?.rarity ?? 'normal';
         let shield: THREE.Mesh;
@@ -1520,9 +1541,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           else if (wcls === 'dagger') { aCrouch += 0.07 * cK; aLean += 0.12 * cK; aTwist += 0.12 * cK; aShL += -0.8 * cK; aElL += -1.45 * cK; aShLz += 0.1 * cK; } // baixo, as duas mãos à frente
           else if (wcls === 'claw') { aCrouch += 0.06 * cK; aLean += 0.22 * cK; aShL += -0.9 * cK; aShLz += 0.5 * cK; aElL += -0.9 * cK; aHeadX += 0.18 * cK; } // curvado, garras abertas
           else if (wcls === 'club') { aLean += 0.12 * cK; aCrouch += 0.03 * cK; aTwist += 0.2 * cK; aShL += -0.6 * cK; aShLz += 0.35 * cK; aElL += -0.8 * cK; } // porrete no ombro, a outra mão à frente
-          else if (wcls === 'hxbow') { aTwist += -0.55 * cK; aLean += -0.12 * cK; aShL += -0.25 * cK; aShLz += 0.25 * cK; aElL += -1.3 * cK; } // de lado, braço da besta estendido
+          else if (wcls === 'hxbow') { aTwist += (offSrc === 'dual' ? 0 : -0.55) * cK; /* duas armas: de frente, os dois braços estendidos */ aLean += -0.12 * cK; aShL += -0.25 * cK; aShLz += 0.25 * cK; aElL += -1.3 * cK; } // de lado, braço da besta estendido
           else if (wcls === 'kunai') { aCrouch += 0.08 * cK; aLean += 0.15 * cK; aShL += -1.0 * cK; aElL += -0.7 * cK; aShLz += 0.2 * cK; } // agachado, a mão livre à frente
-          else if (wcls === 'bow') { aTwist += -0.5 * cK; aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
+          else if (wcls === 'bow') { aTwist += 0.5 * cK; /* arco na esquerda: ombro esquerdo à frente */ aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
         }
         else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += 0.55 * cK; aElR += -0.95 * cK; aShRz += -0.1 * cK; }
         else if (kind === 'dwarf') { aTwist += 0.35 * cK; aShR += -0.8 * cK; aElR += -0.45 * cK; aShRz += -0.12 * cK; aSwX += 2.35 * cK; aLean += 0.05 * cK; } // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
@@ -1684,7 +1705,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           club: [[0.26, 0.3, -0.02], [0.15, 0.85, -0.5]], // porrete apoiado no ombro
           hxbow: [[0.24, 0.05, 0.42], [0, 0.05, 1]], // besta de mão já apontada
           kunai: [[0.22, -0.08, 0.28], [0.05, -0.9, 0.3]], // kunai em pegada invertida, lâmina para baixo
-          bow: [[0.2, -0.1, 0.36], [0, -1, 0.15]], // arco de pé à frente, na mão
+          bow: [[0.22, -0.12, 0.34], [0.2, -0.7, 0.68]], // arco baixo à frente, inclinado, flecha pronta (na mão esquerda: espelhado)
         };
         const guardHold = kind === 'dwarf' && guardK > 0.3;
         const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : kind === 'dwarf' ? [[0.25, 0.05, 0.25], [0.9, 0.1, 0.4]] : null;
@@ -1692,6 +1713,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const want = kfW ? 1 : guardHold ? 1 : (!act && hero.combat && guardK < 0.3 && HOLD) ? combatK : 0;
         rigK += (want - rigK) * Math.min(1, dt * 12);
         const useRig = rigK > 0.03;
+        if (!useRig && offRigged && offSw && offHolder) { offRigged = false; offHolder.add(offSw); offSw.position.set(0, 0, 0); offSw.rotation.set(0, 0, 0); }
         if (useRig !== weaponRigged) { weaponRigged = useRig; if (useRig) { weaponRig.add(weaponInner); weaponInner.position.set(0, 0, 0); weaponInner.rotation.set(innerRotX, 0, 0); } else { swordHolder.add(weaponInner); weaponInner.position.set(0, 0, 0); weaponInner.rotation.set(0, 0, 0); } }
         if (useRig) {
           let g: [number, number, number] = HOLD ? HOLD[0] : [0.4, 0.15, 0], dd: [number, number, number] = HOLD ? HOLD[1] : [1, 0, 0];
@@ -1706,7 +1728,16 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           weaponRig.position.copy(rigPos); rigQ.setFromUnitVectors(rigTmp.set(0, 0, 1), rigDir); weaponRig.quaternion.copy(rigQ);
           chest.updateWorldMatrix(true, true);
           const tR = weaponRig.getWorldPosition(new V()); chest.worldToLocal(tR);
-          armIK(armR.sh, armR.el, tR, S.upper, S.fore, tmp.set(0.7, -0.8, 0.1), rigK);
+          const bowL = offSrc === 'bow' && wcls === 'bow';
+          if (offSw && offRig && offHolder && offSrc) { /* a mão esquerda: espelho da direita (duas armas) ou o arco estendido */
+            if (!offRigged) { offRigged = true; offRig.add(offSw); offSw.position.set(0, 0, 0); offSw.rotation.set(innerRotX, 0, 0); }
+            offRig.position.set(-rigPos.x, rigPos.y, rigPos.z); rigQ.setFromUnitVectors(rigTmp.set(0, 0, 1), rigTmp2.set(-rigDir.x, rigDir.y, rigDir.z)); offRig.quaternion.copy(rigQ);
+            const tL = offRig.position.clone(); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.7, -0.8, 0.1), rigK); }
+          if (bowL) { /* a direita na corda: encaixa a flecha junto ao arco e puxa até o rosto; solta na hora do disparo */
+            let pull = 0.12; if (act && act.a === 'draw') { const p = clamp(act.t / act.dur, 0, 1); pull = p < 0.2 ? lerp(0.12, 0.45, p / 0.2) : p < 0.6 ? lerp(0.45, 1, (p - 0.2) / 0.4) : p < 0.66 ? lerp(1, 0.05, (p - 0.6) / 0.06) : lerp(0.05, 0.12, (p - 0.66) / 0.34); }
+            const bp = offRig!.position, cheek = rigTmp.set(0.12, 0.38, -0.03); const tS = new V(bp.x, bp.y, bp.z).lerp(cheek, 0.12 + 0.82 * pull);
+            armIK(armR.sh, armR.el, tS, S.upper, S.fore, tmp.set(0.9, -0.3, -0.2), rigK);
+          } else armIK(armR.sh, armR.el, tR, S.upper, S.fore, tmp.set(0.7, -0.8, 0.1), rigK);
           if (wcls === 'two' && !(act && (act.a === 'chop' || act.a === 'mine'))) { const tL = rigPos.clone().addScaledVector(rigDir, -0.16); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.6, -0.9, 0.1), rigK); } /* espadão: as duas mãos no cabo */
           if (act && (act.a === 'chop' || act.a === 'mine')) { // ferramenta de duas mãos: a esquerda corre pelo cabo
             const tL = rigPos.clone().addScaledVector(rigDir, -0.2); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.6, -0.9, 0.1), rigK); /* a mão esquerda segura o fim do cabo, abaixo da direita */
@@ -1768,6 +1799,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   root.updateMatrixWorld(true);
   const rigJ = { hips, spine, chest, neck: neckG, head, armL, armR, legL, legR };
   root.add(gunHolder); gunHolder.visible = false;
-  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe ?? (wcls === 'two' ? gearSword : null), swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
+  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, off: () => (offSrc && offSw ? offSw : null), /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe ?? (wcls === 'two' ? gearSword : null), swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, offHolder, offRig, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
   return hero;
 }

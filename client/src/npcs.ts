@@ -3,20 +3,35 @@ import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag } from './barks';
 
 export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
-interface Npc { lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
+interface Npc { built: boolean; lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
-  const npcs: Npc[] = defs.map((def) => {
+  /* 02/11 (Erling, item 8): o NPC só é montado quando o jogador chega na região dele (a 60 m), aos poucos (2 por quadro), o mais perto primeiro.
+     Antes os ~380 bonecos eram montados todos na abertura do jogo. Até montar, ele é um marcador vazio (posição, nome, falas e rota funcionam igual). */
+  const BUILD_R = 60, PER_FRAME = 2;
+  function makeHero(def: NpcDef): Hero3D {
     const hero = createCharacter(def.civil ? 'nordic' : def.kind, { static: true, civil: def.civil, cloth: def.civil ? def.tint : undefined });
     hero.root.scale.setScalar(def.scale); hero.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); // NPCs sem sombra (desempenho)
     const tint = new THREE.Color(def.tint);
     hero.root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; const mats = Array.isArray(m.material) ? m.material : [m.material]; m.material = (mats.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color || t.side === THREE.BackSide || (t as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) return mt; const c = t.clone(); c.color.lerp(tint, 0.38); return c; }) as THREE.Material[]); const arr = m.material as unknown as THREE.Material[]; if (arr.length === 1) m.material = arr[0]; });
-    scene.add(hero.root);
+    return hero;
+  }
+  /** marcador leve até o boneco ser montado: só a raiz (invisível) e um "act" que não faz nada */
+  const stub = (): Hero3D => { const root = new THREE.Group(); root.visible = false; scene.add(root); return { root, acting: false, act: () => false } as unknown as Hero3D; };
+  function build(n: Npc) { if (n.built) return; n.built = true; const was = n.hero.root; const h = makeHero(n.def); h.root.visible = was.visible; h.root.position.copy(n.pos); h.root.rotation.y = n.yaw; scene.remove(was); scene.add(h.root); n.hero = h; }
+  const npcs: Npc[] = defs.map((def) => {
+    const hero = stub();
     const el = document.createElement('div'); el.className = 'npc'; el.innerHTML = `<i class="qm"></i><b>${def.name}</b><small>${def.role}</small><p></p>`; document.body.appendChild(el);
     const pos = new THREE.Vector3(def.x, 0, def.z);
     const ri = def.route ? (def.ri0 !== undefined ? Math.min(def.route.length - 1, def.ri0) : Math.floor(Math.random() * def.route.length)) : 0; if (def.route) pos.set(def.route[ri].x, 0, def.route[ri].z);
-    return { def, hero, pos, yaw: Math.random() * 6.28, target: null, wait: Math.random() * 3, el, line: 0, lineT: 0, spd: 0, ri, rdir: 1 };
+    return { def, hero, pos, yaw: Math.random() * 6.28, target: null, wait: Math.random() * 3, el, line: 0, lineT: 0, spd: 0, ri, rdir: 1, built: false };
   });
+  let firstBuild = true;
+  /** monta os NPCs da região do jogador: na primeira chamada (tela de carregamento) todos de uma vez; depois 2 por quadro */
+  function buildNear(heroPos: THREE.Vector3) {
+    const want: [Npc, number][] = []; for (const n of npcs) { if (n.built) continue; const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); if (dd < BUILD_R) want.push([n, dd]); }
+    if (!want.length) { firstBuild = false; return; } want.sort((a, b) => a[1] - b[1]); const k = firstBuild ? want.length : Math.min(PER_FRAME, want.length); for (let i = 0; i < k; i++) build(want[i][0]); firstBuild = false;
+  }
   const v = new THREE.Vector3();
   /* falas soltas: uma de cada vez, a cada 8–16 s, de alguém entre 3 e 18 m; a situação mais específica pesa mais */
   let barkT = 5; const recent: string[] = [];
@@ -24,7 +39,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     if (!tags.length) return null; for (let tries = 0; tries < 6; tries++) { const tg = tags[Math.floor(Math.random() * tags.length)], L = BARKS[tg], l = L[Math.floor(Math.random() * L.length)]; if (recent.includes(l)) continue; recent.push(l); if (recent.length > 14) recent.shift(); return l.replace(/\{nome\}/g, S.nome).replace(/\{pet\}/g, S.pet || 'bichinho'); } return null; }
   let placed = false;
   function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
-    const r = ctx.canvas.getBoundingClientRect();
+    const r = ctx.canvas.getBoundingClientRect(); buildNear(heroPos);
     if (!placed) { placed = true; /* regra 19 (27/10): NPC nunca fica dentro de parede nem em cima de mobília — se o lugar marcado está ocupado, vai para o chão livre mais perto */
       for (const n of npcs) { const d = n.def; if (d.route || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
     barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
@@ -44,7 +59,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
-      if (dH > 48) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
+      if (dH > 48 || !n.built) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
       if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
@@ -83,5 +98,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   const talk = (n: Npc) => { n.line = (n.line + 1) % n.def.lines.length; n.lineT = 0; return n.def.lines[n.line]; };
   /** fala forçada (recepção, festa): o NPC visível mais perto do herói, entre 2 e 14 m, diz a linha */
   function say(line: string, heroPos: THREE.Vector3) { let best: Npc | null = null, bd = 14; for (const n of npcs) { if (!n.hero.root.visible || n.def.route) continue; const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); if (dd > 2 && dd < bd) { bd = dd; best = n; } } if (best) { best.bark = line; best.barkT = 5; } return !!best; }
-  return { npcs, update, talk, say };
+  /** monta já (quem precisa do boneco de verdade longe do jogador: retrato, festa) */
+  const ensure = (n: Npc) => build(n);
+  return { npcs, update, talk, say, ensure, builtCount: () => npcs.filter((n) => n.built).length };
 }

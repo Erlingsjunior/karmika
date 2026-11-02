@@ -690,11 +690,11 @@ function petSkills(dt: number, ps: NonNullable<ReturnType<typeof stable.petStats
 const CLASS_WEAPONS: Partial<Record<string, { re: RegExp; msg: string; noShield?: string }>> = {
   vam: { re: /Florete|Espada de Duelo|Adaga/, msg: 'Vampiros lutam de florete ou de adaga.', noShield: 'Vampiros lutam sem escudo: a mão livre equilibra a estocada.' },
   lob: { re: /Porrete|Maça|Garras|Alabarda/, msg: 'Licantropos lutam de porrete ou de garras.', noShield: 'Licantropos não carregam escudo.' },
-  cac: { re: /Besta|Kunai|Adaga/, msg: 'Caçadores de demônios usam bestas, kunais e adagas.', noShield: 'Caçadores não carregam escudo: a outra mão segura a besta ou o próximo kunai.' },
+  cac: { re: /Besta|Kunai|Adaga/, msg: 'Caçadores de demônios usam bestas, kunais e adagas.', noShield: 'Caçadores só levam escudo com a besta de mão (ou uma besta de mão em cada mão). Com a besta de repetição, o kunai e a adaga, a outra mão fica livre.' },
 };
 const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno', charge: game.reactor().charge, cap: game.reactorCap() }), fuse: () => { game.fuseReactor(); for (let i = 0; i < 40; i++) particles.spawn(heroPosNow().x, heroPosNow().y + 1.2, heroPosNow().z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x5ae0ff, a: 1, g: 2 }); },
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
-  canWear: (g) => { const W = CLASS_WEAPONS[kitRace()]; if (W && g.slot === 'weapon' && !W.re.test(g.base)) return W.msg; if (W && g.slot === 'shield' && W.noShield) return W.noShield;
+  canWear: (g) => { const W = CLASS_WEAPONS[kitRace()]; if (W && g.slot === 'weapon' && !W.re.test(g.base)) return W.msg; if (W && g.slot === 'shield' && W.noShield && !(kitRace() === 'cac' && /Besta de Mão/.test(inv.eq.weapon?.base ?? ''))) return W.noShield; /* 02/11: besta de mão aceita escudo */
     return kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null; },
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
   /* usar e vestir com corpo e som (25/10): gole, mastigada, pano, couro, metal, joia — e um brilho no herói */
@@ -932,7 +932,7 @@ function betaCommand(cmd: string, a: string[]): string | null {
       return `🧪 (teste) ${n} peças na mochila${over ? ` (+${over} não couberam: esvazie a mochila e repita)` : ''}.`; }
     /* /arma <nome>: cria e veste a arma (teste, 02/11) — /arma Florete, /arma Besta de Mão, /arma Kunai, /arma Garras de Ferro */
     if (cmd === 'arma') { const nm = a.join(' ').trim().toLowerCase(); const b = BASES.weapon.find((x) => x.n.toLowerCase() === nm) ?? BASES.weapon.find((x) => x.n.toLowerCase().startsWith(nm)); if (!b) return `Não conheço "${nm}". Tenho: ${BASES.weapon.map((x) => x.n).join(', ')}`;
-      const g = genGear(Math.max(1, game.st.lvl), 'rare' as never, 'weapon', b.n); if (!inv.addGear(g)) return '🎒 Mochila cheia.'; const logs: string[] = []; const lm0 = game.logMsg; (game as unknown as { logMsg: (t: string, c?: string) => void }).logMsg = (t: string, c?: string) => { logs.push(t); lm0(t, c); }; try { inv.equipGear(g.uid); } finally { (game as unknown as { logMsg: typeof lm0 }).logMsg = lm0; } const why = (inv.eq as Record<string, { uid?: number } | undefined>).weapon?.uid === g.uid ? '' : ` — não vestiu: ${(g.only && !walksPath(g.only)) ? 'caminho não liberado (' + g.only + ', path=' + (profile?.path ?? '—') + ')' : 'regra da classe ' + kitRace() + ' · ' + logs.join(' | ')}`; return `🧪 (teste) ${b.n}${why || ' na mão.'}`; }
+      const g = genGear(Math.max(1, game.st.lvl), 'rare' as never, 'weapon', b.n); if (!inv.addGear(g)) return '🎒 Mochila cheia.'; const logs: string[] = []; const lm0 = game.logMsg; (game as unknown as { logMsg: (t: string, c?: string) => void }).logMsg = (t: string, c?: string) => { logs.push(t); lm0(t, c); }; try { inv.equipGear(g.uid); } finally { (game as unknown as { logMsg: typeof lm0 }).logMsg = lm0; } const EQ = inv.eq as Record<string, { uid?: number } | undefined>, inL = EQ.shield?.uid === g.uid; const why = EQ.weapon?.uid === g.uid || inL ? '' : ` — não vestiu: ${(g.only && !walksPath(g.only)) ? 'caminho não liberado (' + g.only + ', path=' + (profile?.path ?? '—') + ')' : 'regra da classe ' + kitRace() + ' · ' + logs.join(' | ')}`; return `🧪 (teste) ${b.n}${why || (inL ? ' na mão esquerda.' : ' na mão.')}`; }
     if (cmd === 'gold' || cmd === 'ouro') { const q = n > 0 ? n : 10000; game.st.gold += q; return `🧪 (teste) +${q} 🪙 ouro.`; } }
   if (cmd === 'som') { const r = `🔊 ${audio.whatPlays()} · lua=${luaK.toFixed(2)} aurora=${aurK.toFixed(2)} global=${gCur ?? '—'}`; console.log(r); return r; }
   if (cmd === 'perf') { const r = perfReport(); console.log(r); return r; }
@@ -1459,7 +1459,7 @@ function startFesta(stName = 'Karmika', paid?: FestaOpts) { const stS = city.set
     h.root.add(im); bards.push({ h, inst, ph: i * 1.3 }); }
   /* o povo da vila vem para a praça: em roda, de frente para o palco e para a fonte (volta para casa quando a festa acaba) */
   const crowd: { n: (typeof npcSys.npcs)[number]; ox: number; oz: number; or: number }[] = [];
-  { const mine = npcSys.npcs.filter((n) => !n.def.route && settleAt(n.def.x / T, n.def.z / T, 6)?.name === stName).slice(0, 18);
+  { const mine = npcSys.npcs.filter((n) => !n.def.route && settleAt(n.def.x / T, n.def.z / T, 6)?.name === stName).slice(0, 18); for (const n of mine) npcSys.ensure(n);
     const fr = Math.max(fo.w, fo.h) * T * 0.5 + 2.0; mine.forEach((n, i) => { crowd.push({ n, ox: n.def.x, oz: n.def.z, or: n.def.radius }); const a = (i / Math.max(1, mine.length)) * 6.283 + 0.3, rr = fr + (i % 3) * 1.0; /* em volta da fonte, nunca dentro */ n.def.x = cx + Math.cos(a) * rr; n.def.z = cz + Math.sin(a) * rr; n.def.radius = 0.6; n.target = null; n.wait = 0; }); }
   nightOverride = 1; nightTarget = 1; /* a festa é de noite: lanternas, fogos e brindes */
   { const L1 = new THREE.PointLight(0xffb060, 30, 26, 1.6); L1.position.set(0, 4.5, 0); g.add(L1); const L2 = new THREE.PointLight(0xff8a50, 18, 16, 1.6); L2.position.set(0, 3, -R + 2); g.add(L2); } /* duas luzes só (desempenho) */
@@ -1519,7 +1519,7 @@ function festaTalk(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const 
     { t: '🍻 Um brinde! A Karmika e a todos vocês!', a: `À sua saúde, ${me}! Que a estrada seja leve e a caneca nunca vazia! 🍻`, flag: 'brinde' },
     { t: 'Vou sentir falta de vocês.', a: `E nós de você. ${own[1] ?? ''} Agora brinda comigo, vai! 🍻`, flag: 'brinde' },
     { t: 'Conta de novo aquela história.', a: `${deed.replace(/^Eu vi! /, '') || 'Você não lembra? A vila inteira lembra.'} E todo mundo aplaudiu! Brinda comigo! 🍻`, flag: 'brinde' } ] }];
-  let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
+  let pr: string | null = null; try { pr = portraitOf(nm, (npcSys.ensure(n), n.hero.root)); } catch { pr = null; }
   openDlg({ name: nm, role: `${n.def.role} · na festa`, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: { id: 'festa', name: '🎉 A festa de despedida', giver: nm, objs: [], lvl: 1, xp: 0, gold: 0, text: '' } as never, steps, onEnd: () => festaToast(n) } }); }
 function festaToast(n: (typeof npcSys.npcs)[number]) { if (!festa) return; const nm = n.def.name;
   if (!hero.acting) hero.act('drink'); n.hero.act('drink'); audio.equip('jewel'); setTimeout(() => audio.equip('metal'), 120);
@@ -1983,7 +1983,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
   const nm = n.def.name, shopId = SHOP_OF[nm] ?? SHOP_BY_NAME.get(nm) ?? null;
   { /* encontro de missão (24/10): quem a missão mandou procurar tem conversa própria; no fim, o objetivo conta */
     const mq = Object.keys(quests.q.active).map((id) => quests.def(id)).find((d) => !!d?.meet?.[nm] && d.objs.some((o, i) => o.kind === 'talk' && o.npc === nm && quests.objProg(d, i) < 1));
-    if (mq) { let pr: string | null = null; try { pr = portraitOf(nm, n.hero.root); } catch { pr = null; }
+    if (mq) { let pr: string | null = null; try { pr = portraitOf(nm, (npcSys.ensure(n), n.hero.root)); } catch { pr = null; }
       openDlg({ name: nm, role: n.def.role, portrait: pr, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, meet: { quest: mq, steps: mq.meet![nm], onEnd: () => { quests.onTalk(nm); setTimeout(() => { if (quests.turnins(nm).length) talkTo(n); }, 200); } } }); return; } }
   if (festa && !festa.done && festa.crowd.some((c) => c.n === n)) { festaTalk(n); return; }
   quests.onTalk(nm); /* conversar conta antes de listar as entregas */
@@ -2008,7 +2008,7 @@ function talkTo(n: (typeof npcSys.npcs)[number]) {
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => dlg.setText(npcSys.talk(n)) });
   choices.push({ kind: 'close', label: 'Até logo' });
   quests.onTalk(nm);
-  let portrait: string | null = null; try { portrait = portraitOf(nm, n.hero.root); } catch { portrait = null; }
+  let portrait: string | null = null; try { portrait = portraitOf(nm, (npcSys.ensure(n), n.hero.root)); } catch { portrait = null; }
   const eco = (() => { if (ti.length || of.length) return null; for (const m of soul.s.marks ?? []) { const t = ECOS[m]?.[nm], key = `eco:${m}:${nm}`; if (t && !hasMark(key)) { (soul.s.marks ??= []).push(key); soul.save(); return t; } } return null; })();
   const frio = (() => { const L = soulLean(); if (!L || ti.length || of.length || eco) return null; const f = FRIO[L]; return f.quem.includes(nm) && Math.random() < 0.5 ? f.falas[Math.floor(Math.random() * f.falas.length)] : null; })();
   openDlg({ name: nm, role: n.def.role, portrait, text: (eco || frio) ? (eco || frio)!.replace(/\{nome\}/g, profile?.name || 'Caminhante') : ti.length ? 'Você voltou. Conseguiu?' : of.length ? (of[0].talk ? `${profile?.name ? profile.name + ', ' : ''}preciso falar com você.` : of[0].text) : (nm === 'Orm' && !quests.q.done.includes('o01') && quests.q.active['o01']) ? 'Enquanto o Torturador viver, nenhum cavalo sai daqui. A clareira fica no meio da floresta, a leste.' : n.def.lines[n.line], choices,
@@ -2039,7 +2039,7 @@ function eliteForge(n: (typeof npcSys.npcs)[number]) {
     audio.hit(); setTimeout(() => audio.hit(), 280); setTimeout(() => audio.craftDone?.(), 700); dlg.setText(`${r.say} (${r.label} foi para a sua mochila.)`); game.logMsg(`⚒ Brokki forjou: ${r.label}.`, '#ffb060');
   } })) as Choice[];
   ch.push({ kind: 'close', label: 'Até logo' });
-  let pr: string | null = null; try { pr = portraitOf(n.def.name, n.hero.root); } catch { pr = null; }
+  let pr: string | null = null; try { pr = portraitOf(n.def.name, (npcSys.ensure(n), n.hero.root)); } catch { pr = null; }
   openDlg({ name: n.def.name, role: n.def.role, portrait: pr, text: 'Mostra o que você trouxe. Presa, couro, chifre, casco, cerne: material de elite. O resto eu tenho.', choices: ch, onAccept: () => {}, onTurnIn: () => {} });
 }
 const compendium = createCompendium({ where: () => zoneName(), day: () => dayIndex(), lvl: () => game.st.lvl });
