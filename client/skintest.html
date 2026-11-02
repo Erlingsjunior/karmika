@@ -24,7 +24,7 @@ async function run() {
     if (TOOLB[p]) { h.holdTool = true; h.setGear({ weapon: { base: TOOLB[p][0], rarity: 'normal', tint: TOOLB[p][1] } }); if (p === 'skin' || p === 'herb' || p === 'kneel') { h.kneel = true; for (let k = 0; k < 90; k++) h.update(dt, 1 + k * dt, 0, null); } }
     if (['combo1', 'combo2', 'combo4', 'rush', 'slam', 'cast', 'parry', 'dodge', 'block', 'chop', 'mine', 'skin', 'herb', 'kick', 'lowcut', 'plant', 'breath', 'skyraise', 'stance'].includes(p)) { h.act(p); }
     const TS = (new URLSearchParams(location.search).get('ts') || '').split(',').filter(Boolean).map(Number); const steps = Math.round((TS[i] ?? T) / dt); for (let k = 0; k < steps; k++) h.update(dt, 1 + k * dt, mps, null);
-    h._tick?.(); }
+    { const NT = +(new URLSearchParams(location.search).get('ticks') || 1); for (let q = 0; q < NT; q++) h._tick?.(); } }
   r.clear();
   for (let i = 0; i < PO.length; i++) { heroes.forEach((h, j) => h.root.visible = j === i); const cx = i % cols, cy = Math.floor(i / cols);
     const yaw = +(new URLSearchParams(location.search).get('yaw') || 0.6); const DS = +(new URLSearchParams(location.search).get('dist') || 5.2), TY = +(new URLSearchParams(location.search).get('ty') || 0.95); const EL = +(new URLSearchParams(location.search).get('el') || 0.31); cam.position.set(Math.sin(yaw) * DS * Math.cos(EL), TY + Math.sin(EL) * DS, Math.cos(yaw) * DS * Math.cos(EL)); cam.lookAt(0, TY, 0); cam.aspect = cw / ch; cam.updateProjectionMatrix();

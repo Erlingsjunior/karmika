@@ -189,7 +189,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     obj.matrixAutoUpdate = false; obj.matrix.multiplyMatrices(mi, mw); obj.updateMatrixWorld(true);
   }
   // repouso da espada no procedural: suporte em (-1.9, 0, 0) e lâmina sem giro interno
-  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null;
+  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0;
   // onde fica a cabeça da arma (fora do eixo do cabo, em Y local): só existe em machado/martelo; espada dá nulo
   function measureHead(o: THREE.Object3D): THREE.Vector3 | null {
     if (!o.parent) return null; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true);
@@ -217,6 +217,27 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       if (RG2.gun?.() && RG2.placeGun) { // arma de duas mãos: entre as mãos do modelo de arte (a direita na empunhadura, a esquerda no guarda-mão)
         W(sI, vI); W(sP, vP); W(sM, vM); const gR = vI.clone().add(vP).add(vM).multiplyScalar(1 / 3); W(hI, vI); W(hP, vP); W(hM, vM); const gL = vI.clone().add(vP).add(vM).multiplyScalar(1 / 3);
         root.matrixWorld.decompose(vF, tq, sc); RG2.placeGun(gR, gL, tq, sc.x); } }
+    { /* 02/11 (Erling: "a ponta do cabo na palma da mão, não atravessando a axila"): a arma de duas mãos do anão (martelo/machado) é
+         recolocada na mão do modelo: o cabo passa pelo punho (como a espada) e a pegada escorrega até a ponta do cabo quando ele
+         está parado fora de combate (martelo apoiado no chão ao lado, cabeça para baixo), como nas referências */
+      const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th && th.parent) {
+        W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); root.matrixWorld.decompose(vF, tq, sc);
+        const a = ay.subVectors(vI, vP).normalize().multiplyScalar(-1), f = new THREE.Vector3().subVectors(vM, vH).normalize();
+        const k = f.clone().sub(a.clone().multiplyScalar(f.dot(a))).normalize(); const palm = new THREE.Vector3().crossVectors(a, f).normalize();
+        const grip = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(palm, 0.012 * sc.x);
+        const idle = !hero.acting && !hero.combat && Math.abs(hero.stepVel) < 0.05; restK += ((idle ? 1 : 0) - restK) * 0.12;
+        /* eixo do cabo: fora de combate, vertical (cabeça no chão); senão, atravessa o punho (do mindinho ao indicador, como a espada) */
+        const rq = root.getWorldQuaternion(new THREE.Quaternion()), fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rq), right = new THREE.Vector3(1, 0, 0).applyQuaternion(rq), up = new THREE.Vector3(0, 1, 0);
+        /* parado: cabeça no chão ao lado do pé — o cabo inclina o que for preciso para a cabeça tocar o chão (o martelo é mais comprido que a altura da mão) */
+        const rootY = root.getWorldPosition(new THREE.Vector3()).y, hy = Math.max(0.05, grip.y - rootY), Lh = 1.1 * sc.x, cosT = Math.min(1, hy / Lh), sinT = Math.sqrt(1 - cosT * cosT);
+        const restDir = new THREE.Vector3(0, -cosT, 0).addScaledVector(right, sinT * 0.8).addScaledVector(fwd, sinT * 0.6).normalize();
+        /* em combate (sem golpe): diagonal pelo corpo, cabeça para cima e para fora (referências do Erling) */
+        const cmbDir = right.clone().multiplyScalar(0.8).addScaledVector(up, 0.55).addScaledVector(fwd, 0.25).normalize();
+        const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
+        const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
+        const kk = k.clone().lerp(fwd, Math.max(restK, cmbK));
+        /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, 0.26 * sc.x * restK);
+        place(th, kk, handle, gp); } }
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!);
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     gripK[swordSide] = stowed && !tool ? 0.42 : 1; gripK[shieldSide] = stowed ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
