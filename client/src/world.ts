@@ -1611,7 +1611,7 @@ export function buildCity(): World {
       for (let r = 1; r < (wantRoad ? 14 : 26); r++) for (let k = 0; k < r * 8; k++) { const a = (k / (r * 8)) * 6.283, x = Math.round(x0 + Math.cos(a) * r), y = Math.round(y0 + Math.sin(a) * r); /* 27/10: sem estrada por perto, procura mais longe (a Colina Vampírica ficava sem pedra) */
         if (!okT(x, y) || (wantRoad && !nearRoad(x, y, 2)) || nearRoad(x, y, 0)) continue;
         if (settlements.some((t) => t.kind === 'city' && Math.abs(t.x - x) <= t.radius + 4 && Math.abs(t.y - y) <= t.radius + 4)) continue; // fora da muralha
-        block({ kind: 'relic', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0x6a6a72, roof: 0x4a9aff, label: name.startsWith('Relíquia de ') ? name.slice(12) : undefined }); relics.push({ name, x, y }); return true; } /* label = vila: ganha o portal da prancha 33 */
+        block({ kind: 'relic', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0x6a6a72, roof: 0x4a9aff }); relics.push({ name, x, y }); return true; } /* a pedra rúnica (prancha 34) em todo lugar; os portais da prancha 33 (portais3d.ts) ficam guardados, sem uso (Erling, 01/11) */
       return false; };
     /** a saída de um assentamento: o primeiro trecho de estrada logo fora dele (de preferência ao sul, de frente para a câmera) */
     const exitOf = (t: Settlement): [number, number] => { const R = t.kind === 'city' ? t.radius + 3 : t.radius; let best: [number, number] | null = null, bs = 1e9;
