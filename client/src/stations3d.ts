@@ -135,6 +135,10 @@ export function buildStation(v: number, rnd: () => number, bare = false, wdirLoc
     for (let k = 0; k < 3; k++) add(C(0.04, 0.04, 2.2, 6), copper, -1.3, 1.1, -0.7 + k * 0.12, false);
     add(C(0.25, 0.28, 0.6, 10), iron, -1.2, 0.3, 0.5); add(new THREE.CircleGeometry(0.22, 10), glowM(0x5ad0ff), -1.2, 0.61, 0.5, false).rotation.x = -Math.PI / 2;
     sign(2.6, 0x6ae0ff, (c) => { c.strokeStyle = '#c8a050'; c.lineWidth = 5; c.beginPath(); c.arc(32, 32, 14, 0, 6.283); c.stroke(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283; c.fillStyle = '#c8a050'; c.fillRect(32 + Math.cos(a) * 18 - 3, 32 + Math.sin(a) * 18 - 3, 6, 6); } c.fillStyle = '#8af0ff'; c.beginPath(); c.arc(32, 32, 5, 0, 6.283); c.fill(); });
+    /* bancada tecnocrata da prancha 60 (01/11): tampo de aço escuro, manômetro de latão num pedestal, engrenagens soltas, manivela */
+    add(B(2.0, 0.08, 0.8), std(0x3a3e46), -0.3, 0.9, -0.3, false); add(C(0.03, 0.03, 0.35, 5), brass, 0.35, 1.1, -0.55, false); const gauge = add(C(0.13, 0.13, 0.05, 12), std(0xe8e0c8), 0.35, 1.3, -0.55, false); gauge.rotation.x = Math.PI / 2; add(new THREE.TorusGeometry(0.13, 0.02, 4, 12), brass, 0.35, 1.3, -0.55, false); add(B(0.02, 0.1, 0.01), std(0x8a2020), 0.37, 1.34, -0.52, false);
+    for (let k = 0; k < 3; k++) { const gr = add(new THREE.TorusGeometry(0.07 + k * 0.03, 0.03, 4, 8), k % 2 ? copper : brass, -1.05 + k * 0.2, 0.96, -0.1 + k * 0.12, false); gr.rotation.x = Math.PI / 2; for (let t = 0; t < 6; t++) add(B(0.05, 0.03, 0.05), k % 2 ? copper : brass, -1.05 + k * 0.2 + Math.cos(t * 1.05) * (0.1 + k * 0.03), 0.96, -0.1 + k * 0.12 + Math.sin(t * 1.05) * (0.1 + k * 0.03), false); }
+    const crank = add(C(0.02, 0.02, 0.3, 5), iron, 0.6, 1.05, -0.1, false); crank.rotation.z = Math.PI / 2; add(B(0.05, 0.2, 0.05), iron, 0.75, 1.15, -0.1, false); add(C(0.03, 0.03, 0.12, 5), std(0x6a3a22), 0.75, 1.28, -0.1, false).rotation.x = Math.PI / 2;
     out.glow = { x: 1.0, y: 1.3, z: -0.5, color: 0x6ae0ff, base: 22 }; out.smoke = { x: -1.2, y: 0.7, z: 0.5 };
   } else { // Cozinha: forno de barro abobadado com fogo, caldeirão no tripé, mesa com legumes, linguiças penduradas
     canopy(3.4, 2.2, 2.5, 0x7a3a2a);
@@ -258,6 +262,16 @@ export function buildWorkshop(v: number, rnd: () => number, label: string, wdirL
     for (const [x, z] of [[2.6, -2.2], [2.6, 2.2], [-2.6, 2.2], [0, 2.2]] as const) post(x, z, 3.3, 0.15);
     M(B(0.4, 2.0, 2.8), stone, -2.6, 1.0, -0.9); into = cut; M(B(0.4, 1.4, 2.8), stone, -2.6, 2.7, -0.9); into = g;
     roof(5.4, 4.6, 3.35, 0.5, 0x3a3a40, -0.1);
+    /* peças da prancha 60 (01/11): bigorna principal com faixa dourada sobre bloco de pedra, barril de têmpera com cintas, bancada com torno e avental,
+       pilha de lingotes, caixas de carvão (azul da Companhia e em brasa), cadinho pendurado no tripé */
+    M(B(0.3, 0.05, 0.26), brass, 0.9, 0.78, 0.3, 0, 0, 0, false); // faixa dourada da bigorna
+    { const bx = 1.0, bz = 1.55; M(B(1.5, 0.1, 0.7), plank, bx, 0.86, bz); for (const sx of [-1, 1]) for (const sz of [-1, 1]) M(B(0.1, 0.84, 0.1), beam, bx + sx * 0.65, 0.42, bz + sz * 0.28); M(B(1.3, 0.06, 0.5), plank, bx, 0.35, bz);
+      M(B(0.22, 0.16, 0.14), iron, bx - 0.5, 0.98, bz - 0.15); M(B(0.08, 0.3, 0.08), iron, bx - 0.5, 1.1, bz - 0.15, 0, 0, 0, false); M(C(0.03, 0.03, 0.3, 5), steel, bx - 0.5, 1.0, bz - 0.15, Math.PI / 2, 0, 0, false); // torno de bancada
+      const ap = M(B(0.42, 0.62, 0.02), std(0x6a3a22), bx + 0.45, 0.5, bz + 0.36, 0, 0, 0, false); ap.rotation.x = 0.05; // avental pendurado na frente
+      M(B(0.04, 0.5, 0.04), beamL, bx + 0.1, 0.95, bz + 0.1, 0, 0, 1.1, false); M(B(0.1, 0.08, 0.08), iron, bx - 0.1, 1.1, bz + 0.1, 0, 0, 0, false); }
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 3 - row; k++) M(B(0.32, 0.1, 0.14), steel, 2.1 + (k - (2 - row) / 2) * 0.34, 0.06 + row * 0.11, 0.0 + (row % 2) * 0.05, 0, 0, 0, false); // lingotes em pirâmide
+    for (const [bz, glowC, coalC] of [[0.5, 0x4ad0ff, 0x101418], [1.5, 0xff5a10, 0x1a1210]] as [number, number, number][]) { M(B(0.8, 0.5, 0.6), iron, -2.0, 0.25, bz); for (let k = 0; k < 10; k++) { const c = M(new THREE.IcosahedronGeometry(0.08 + rnd() * 0.05, 0), std(coalC), -2.0 + (rnd() - 0.5) * 0.6, 0.5 + rnd() * 0.12, bz + (rnd() - 0.5) * 0.4, 0, 0, 0, false); void c; if (k % 3 === 0) M(new THREE.IcosahedronGeometry(0.05, 0), glow(glowC), -2.0 + (rnd() - 0.5) * 0.6, 0.57, bz + (rnd() - 0.5) * 0.4, 0, 0, 0, false); } }
+    { const cx = -0.9, cz = -0.45; for (const a of [0, 2.1, 4.2]) M(C(0.025, 0.03, 1.5, 5), iron, cx + Math.sin(a) * 0.3, 0.72, cz + Math.cos(a) * 0.3, 0.28 * Math.cos(a), 0, -0.28 * Math.sin(a), false); M(C(0.02, 0.02, 0.5, 4), iron, cx, 1.2, cz, 0, 0, 0, false); M(C(0.14, 0.1, 0.26, 8), std(0xa8623a), cx, 0.85, cz, 0, 0, 0, false); M(new THREE.TorusGeometry(0.15, 0.015, 4, 10), iron, cx, 0.96, cz, Math.PI / 2, 0, 0, false); } // cadinho pendurado no tripé
     lantern(1.4, 2.7, 1.6, 0xffa060);
     board(4.2, 2.35, 2.6, '#1e1a1a', '#ffb86a', 0x4a1a08);
     out.glow = { x: 0, y: 1.4, z: -0.6, color: 0xff7a2a, base: 34 }; out.smoke = { x: 0, y: 6.4, z: -1.9 };
