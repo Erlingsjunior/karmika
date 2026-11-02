@@ -407,15 +407,40 @@ export function buildQuay(pts: { x: number; z: number }[], side: number): Built 
    torre de vigia enxaimel com sacada e telhado pontudo de ardósia; portão de dois pilares de pedra com ponte de madeira em cima e porta dupla em arco. */
 const kitStone = () => stone(0x8a8680), kitMoss = () => stone(0x6e7a62), kitWood = () => wood(0x6a4a2c), kitPlank = () => planks(0x8a6a40), kitStake = () => wood(0x7a5a34);
 /** trecho de muro ao longo do eixo x local (len m); lado de fora = −z. H = altura do caminho de ronda */
-export function buildKitWall(H: number, len: number, seed: number, water = false): Built {
-  const K = kit(), c = T / 2, L = len + 0.6, SH = H - 0.1, r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
-  if (water) { /* portão d'água: pilares de pedra na água com arcos, o caminho de ronda por cima */ const np = Math.max(2, Math.round(L / 2)); for (let k = 0; k <= np; k++) K.box(0.6, SH, 1.5, c - L / 2 + k * (L / np), -1.5, c, kitStone()); K.box(L, 0.6, 1.5, c, SH - 0.6, c, kitStone()); for (let k = 0; k < np; k++) { const x = c - L / 2 + (k + 0.5) * (L / np); K.add(new THREE.TorusGeometry(L / np * 0.42, 0.14, 5, 10, Math.PI), kitStone(), x, SH - 0.6, c); } for (let k = 0; k < 6; k++) K.box(0.05, SH - 1.2, 0.05, c - L / 2 + (k + 0.5) * (L / 6), -0.2, c, ironM()); }
-  else { K.box(L, SH, 1.5, c, 0, c, kitStone()); K.box(L, 0.5, 1.7, c, 0, c, kitMoss()); } K.box(L, 0.3, 1.6, c, SH - 0.3, c, stone(0x7a766e)); // corpo, pé com musgo, cordão
+/** o caminho de ronda do kit de Karmika: tábuas, mãos-francesas por fora, estacas apontadas e guarda-corpo por dentro */
+function kitWalk(K: ReturnType<typeof kit>, c: number, L: number, SH: number, r: (k: number) => number) {
   K.box(L, 0.12, 2.0, c, SH, c + 0.1, kitPlank()); // tábuas do caminho (sobram para fora, apoiadas nas mãos-francesas)
   const n = Math.max(1, Math.round(L / 1.3)); for (let k = 0; k < n; k++) { const x = c - L / 2 + (k + 0.5) * (L / n); const br = K.add(new THREE.BoxGeometry(0.12, 0.12, 0.9), kitWood(), x, SH - 0.45, c - 0.75 - 0.2); br.rotation.x = 0.8; } // mãos-francesas por fora
   const ns = Math.max(2, Math.round(L / 0.36)); for (let k = 0; k < ns; k++) { const x = c - L / 2 + (k + 0.5) * (L / ns), h = 1.5 + r(k) * 0.3; K.cyl(0.13, 0.15, h, x, SH, c - 0.85, kitStake(), 6); K.cone(0.14, 0.3, x, SH + h, c - 0.85, kitStake(), 6, 0); } // estacas apontadas
   K.box(L, 0.1, 0.1, c, SH + 1.1, c - 0.85, kitWood()); // travessa das estacas
   for (const y of [0.45, 0.95]) K.box(L, 0.07, 0.07, c, SH + y, c + 0.95, kitWood()); const np = Math.max(2, Math.round(L / 1.5)); for (let k = 0; k <= np; k++) K.box(0.1, 1.05, 0.1, c - L / 2 + k * (L / np), SH, c + 0.95, kitWood()); // guarda-corpo por dentro
+}
+export function buildKitWall(H: number, len: number, seed: number, water = false): Built {
+  const K = kit(), c = T / 2, L = len + 0.6, SH = H - 0.1, r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+  if (water) { /* portão d'água: pilares de pedra na água com arcos, o caminho de ronda por cima */ const np = Math.max(2, Math.round(L / 2)); for (let k = 0; k <= np; k++) K.box(0.6, SH, 1.5, c - L / 2 + k * (L / np), -1.5, c, kitStone()); K.box(L, 0.6, 1.5, c, SH - 0.6, c, kitStone()); for (let k = 0; k < np; k++) { const x = c - L / 2 + (k + 0.5) * (L / np); K.add(new THREE.TorusGeometry(L / np * 0.42, 0.14, 5, 10, Math.PI), kitStone(), x, SH - 0.6, c); } for (let k = 0; k < 6; k++) K.box(0.05, SH - 1.2, 0.05, c - L / 2 + (k + 0.5) * (L / 6), -0.2, c, ironM()); }
+  else { K.box(L, SH, 1.5, c, 0, c, kitStone()); K.box(L, 0.5, 1.7, c, 0, c, kitMoss()); } K.box(L, 0.3, 1.6, c, SH - 0.3, c, stone(0x7a766e)); // corpo, pé com musgo, cordão
+  kitWalk(K, c, L, SH, r);
+  return K.out;
+}
+/** 02/11 (Erling: "duas colunas com um arco de pedras em baixo para passar o rio e continue com o muro, seja elegante"):
+ *  o trecho da muralha sobre o rio é uma peça só — duas colunas quadradas nas margens (com ameias), um arco de pedra
+ *  (dois, com pilar no meio, se o vão passa de 13 m), tabuleiro de pedra e o mesmo caminho de ronda por cima */
+export function buildKitSpan(H: number, len: number, seed: number): Built {
+  const K = kit(), c = T / 2, L = len, SH = H - 0.1, r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
+  const st = kitStone(), dk = stone(0x7a766e), base = -2.2; /* as colunas descem até abaixo do leito */
+  const CW = 1.7, colH = SH + 1.4 - base;
+  const column = (x: number) => { K.box(CW, colH, 2.1, x, base, c, st); K.box(CW + 0.3, 0.35, 2.4, x, SH - 0.25, c, dk); K.box(CW + 0.3, 0.35, 2.4, x, base + 1.2, c, dk); /* cordões */
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) K.box(0.4, 0.55, 0.4, x + sx * (CW / 2 - 0.2), SH + 1.4, c + sz * (1.05 - 0.2), dk); /* ameias nos cantos */ };
+  const xa = c - L / 2 + CW / 2, xb = c + L / 2 - CW / 2; column(xa); column(xb);
+  const piers = L > 13 ? 1 : 0; const span = (xb - xa) / (piers + 1);
+  if (piers) { const xm = (xa + xb) / 2; K.box(1.2, SH - 0.4 - base, 2.0, xm, base, c, st); K.box(1.5, 0.3, 2.2, xm, base + 1.2, c, dk); }
+  for (let k = 0; k <= piers; k++) { const x0 = xa + span * k + (k === 0 ? CW / 2 : 0.6), x1 = xa + span * (k + 1) - (k === piers ? CW / 2 : 0.6), R = (x1 - x0) / 2, xm = (x0 + x1) / 2;
+    /* o arco: meia-torus de pedra; a coroa fica logo abaixo do tabuleiro */
+    K.add(new THREE.TorusGeometry(R, 0.42, 6, 18, Math.PI), st, xm, SH - 0.75 - R, c); K.add(new THREE.TorusGeometry(R + 0.3, 0.16, 5, 18, Math.PI), dk, xm, SH - 0.75 - R, c + 1.0); K.add(new THREE.TorusGeometry(R + 0.3, 0.16, 5, 18, Math.PI), dk, xm, SH - 0.75 - R, c - 1.0); /* aduelas de fora */
+    /* tímpanos: pedra entre o arco e o tabuleiro */ K.box(x1 - x0, 0.9, 1.6, xm, SH - 1.2, c, st); }
+  K.box(L - CW * 2 + 0.2, 0.5, 1.7, c, SH - 0.5, c, st); K.box(L - CW * 2 + 0.2, 0.3, 1.9, c, SH - 0.3, c, dk); /* tabuleiro e cordão */
+  for (let k = 0; k < 5; k++) { const x = c - L / 2 + CW + r(k) * (L - CW * 2); K.add(new THREE.SphereGeometry(0.18 + r(k + 9) * 0.1, 5, 4), kitMoss(), x, SH - 0.9, c + 0.85 * (r(k + 3) < 0.5 ? 1 : -1)); } /* musgo nas pedras */
+  kitWalk(K, c, L - CW * 2 + 0.2, SH, r);
   return K.out;
 }
 /** torre de vigia enxaimel: base de pedra até o caminho, andar enxaimel com sacada, telhado pontudo */

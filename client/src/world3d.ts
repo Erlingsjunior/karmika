@@ -5,7 +5,7 @@ import { SCALE, TILE_M as T } from '@karmika/shared';
 import { type World, type Prop, MAP_W, MAP_H, groundH, rng, edgeK, WL, veinOf, rotLocal, canalX, CANAL_HW } from './world';
 import { buildTree } from './trees3d';
 
-import { buildKitWall, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
+import { buildKitWall, buildKitSpan, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildSpecies } from './flora3d';
@@ -162,7 +162,7 @@ export function buildWorld(world: World): WorldObjs {
       if (p.kind === 'monument') { b = buildMonument(v, Wm, Dm); if (v === 10) { const beams: THREE.Object3D[] = []; b.group.traverse((o) => { if (o.userData.beam) beams.push(o); }); for (const o of beams) (L.spin ??= []).push([o, 'y', 0.35]); { const foams: THREE.Object3D[] = []; b.group.traverse((o) => { if (o.userData.foam !== undefined) foams.push(o); }); for (const o of foams) { const piv = new THREE.Group(); piv.position.copy(o.position); o.position.set(0, 0, 0); o.parent?.add(piv); piv.add(o); piv.userData.dyn = true; L.trees.push({ obj: piv, ph: o.userData.foam * 1.3 }); } } /* a espuma balança como as copas */ } } /* o feixe do farol gira */ else if (p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico') b = buildVapor(p.kind, v, Wm, Dm, p.gx * 31 + p.gy * 17); else
       if (p.kind === 'vgate') b = buildVillageGate(p.label ?? '', v, p.ry ?? 0, p.len ?? 6, p.ox ?? 1, p.oz ?? 1); else if (p.kind === 'lowwall') b = buildLowWall(v, p.ry ?? 0, p.gx * 31 + p.gy * 17, p.len, p.broken ?? 0, p.ox ?? 1, p.oz ?? 1); else
       if (p.kind === 'landmark') b = buildLandmark(v, Wm, Dm); else if (p.kind === 'palisade') b = buildPalisade(v === 1, p.gx * 3 + p.gy); else if (p.kind === 'totem') b = buildTotem(v); else
-      if (p.kind === 'rwall') b = p.ry !== undefined ? spinB(v >= 20 ? buildKitWall(p.height, p.len ?? T, p.gx * 7 + p.gy * 13, v === 23) : buildRampartSeg(p.height, p.len ?? T, p.gx * 7 + p.gy * 13, v), p.ry, T / 2, T / 2) : buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
+      if (p.kind === 'rwall') b = p.ry !== undefined ? spinB(v === 24 ? buildKitSpan(p.height, p.len ?? T, p.gx * 7 + p.gy * 13) : v >= 20 ? buildKitWall(p.height, p.len ?? T, p.gx * 7 + p.gy * 13, v === 23) : buildRampartSeg(p.height, p.len ?? T, p.gx * 7 + p.gy * 13, v), p.ry, T / 2, T / 2) : buildRampart(v & 3, p.height, p.gx * 7 + p.gy * 13);
       else if (p.kind === 'rtower') b = p.ry !== undefined ? spinB(v === 20 ? buildKitTower(p.height, p.gx + p.gy) : v >= 8 && v < 12 ? buildRoundTower(p.height, p.len ?? 3, p.roof, v === 10, p.gx * 7 + p.gy * 13) : buildWallTower(0, p.height, v === 12, p.roof), p.ry, T / 2, T / 2) : buildWallTower(v & 3, p.height, v >= 4, p.roof);
       else if (p.kind === 'gatehouse') b = p.ry !== undefined ? spinB(v === 20 ? buildKitGate(p.len ?? 5, p.height) : buildGatehouse(0, p.len ?? 5, p.height, p.roof), p.ry, (p.len ?? 5) * T / 2, T / 2) : buildGatehouse(v, Math.max(p.w, p.h), p.height, p.roof);
       else if (p.kind === 'wstair') b = buildWallStair(v >> 1, Math.max(p.w, p.h), v & 1 ? 1 : -1, p.height);

@@ -114,7 +114,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const hand = B(`${side}Hand`), i1 = B(`${side}HandIndex1`), p1 = B(`${side}HandPinky1`), m1 = B(`${side}HandMiddle1`); if (!hand || !i1 || !p1 || !m1) continue;
     const wp = (o: THREE.Object3D) => o.getWorldPosition(new THREE.Vector3());
     const fd = wp(m1).sub(wp(hand)).normalize(), ac = wp(i1).sub(wp(p1)).normalize();
-    const palm = new THREE.Vector3().crossVectors(fd, ac).normalize(); if (palm.y > 0) palm.negate(); // palma para baixo na pose de bind
+    let palm = new THREE.Vector3().crossVectors(fd, ac).normalize(); if (palm.y > 0) palm.negate(); // palma para baixo na pose de bind (reserva)
+    { /* 02/11 (Erling: "dedos virados para trás" no elfo): a palma é para onde os dedos JÁ dobram na pose de bind (todos os modelos do Herik
+         vêm com as falanges ~30° dobradas) — isso vale para qualquer orientação de mão, sem adivinhar pelo eixo Y */
+      const i2 = B(`${side}HandIndex2`), i3 = B(`${side}HandIndex3`), m2 = B(`${side}HandMiddle2`), m3 = B(`${side}HandMiddle3`);
+      if (i2 && i3 && m2 && m3) { const d1 = wp(i2).sub(wp(i1)).normalize(), d2 = wp(i3).sub(wp(i2)).normalize(), e1 = wp(m2).sub(wp(m1)).normalize(), e2 = wp(m3).sub(wp(m2)).normalize();
+        const bend = d2.sub(d1).add(e2.sub(e1)); bend.addScaledVector(fd, -bend.dot(fd)); if (bend.length() > 0.08) palm = bend.normalize(); } }
     const curlBone = (b: THREE.Bone, ang: number, toward: THREE.Vector3) => {
       const ch = b.children.find((c) => (c as THREE.Bone).isBone); const d = ch ? wp(ch).sub(wp(b)) : wp(b).sub(wp(b.parent!)); d.normalize();
       const ax = new THREE.Vector3().crossVectors(d, toward); if (ax.lengthSq() < 1e-6) return; ax.normalize();

@@ -25,7 +25,7 @@ export const DG_TIERS = [
   { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. Só épicas para cima no baú.' },
   { id: 'doido', name: 'Coisa de Doido', col: '#d070ff', lv: 22, hp: 3, dmg: 1.9, xp: 5, gold: 7, loot: 5, extra: 2, min: 'epic', uq: 0.45, note: '+22 níveis. Quem sai vivo conta história.' },
 ] as const;
-export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) */ maxR?: number;
+export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) */ maxR?: number; /** a entrada fica exatamente em near+dx,dy (o mundo já reservou o lugar — ex.: dentro do cemitério) */ spot?: boolean;
   id: string; name: string; kind: 'grupo' | 'caverna' | 'subsolo'; lvl: [number, number] | null; theme: DgTheme; near: string; dx?: number; dy?: number;
   main: number; side: number; mobs: EnemyType[]; players: string;
   elite: { type: EnemyType; name: string; scale: number };
@@ -111,7 +111,7 @@ export const DUNGEONS: DgDef[] = [
     uniq: [{ name: 'Garfo da Fome', slot: 'weapon', icon: '🔱', lore: 'Quem empunha nunca se sente satisfeito. Nem com a vitória.' }], title: 'O Que Não Foi Comido', pet: { id: 'pet_caozinho_inferno', p: 0.16 } },
   /* OS TÚNEIS DE ORRUKH (26/10, Erling: "fala de uma cripta que desce, com infinitos túneis e tesouros, mas não tem nada"): a cova aberta do
      Mausoléu do Bispo. Cada nível vencido abre uma escada para um nível mais fundo — mais bichos, mais níveis, baús mais ricos — e o chefe muda. */
-  { id: 'orrukh', name: 'Túneis de Orrukh', kind: 'grupo', lvl: null, theme: 'cripta', near: 'Mausoléu do Bispo', dx: 5, dy: 3, main: 7, side: 4, mobs: ['skeleton', 'skel_arch', 'ghoul', 'skull_fire'], players: 'sozinho a 5 · sem fundo',
+  { id: 'orrukh', name: 'Túneis de Orrukh', kind: 'grupo', lvl: null, theme: 'cripta', near: 'Mausoléu do Bispo', dx: 5, dy: 1, spot: true, /* 02/11 (Erling): dentro do cemitério, ao lado do mausoléu — o mundo reserva a clareira */ main: 7, side: 4, mobs: ['skeleton', 'skel_arch', 'ghoul', 'skull_fire'], players: 'sozinho a 5 · sem fundo',
     elite: { type: 'necro', name: 'Necromante do Campo Santo', scale: 1.2 },
     boss: { type: 'lich', name: 'Lich dos Esquecidos', scale: 1.5, hp: 10, dmg: 1.6, mech: { ...MECH_GROUP('Grito da Cova', 0x6ad0ff, 'Toque Gélido'), adds: { at: [0.6, 0.3], type: 'skull_frost', n: 3, line: 'O Lich ergue o livro: caveiras de gelo saem das paredes!' } },
       hello: 'A cova desce em espiral. Lá embaixo, túneis sem fim — e alguém que contou cada moeda que entrou aqui.', bye: 'O guardião do nível cai. Atrás dele, uma escada desce mais fundo.' },
@@ -124,7 +124,7 @@ export const DUNGEONS: DgDef[] = [
         { type: 'suplicio', name: 'Senhor do Suplício', scale: 1.3, hp: 14, dmg: 2.0, mech: { ...MECH_GROUP('Ganchos', 0xff3a1a, 'O Peso da Culpa'), enrage: 'As correntes se soltam todas de uma vez.' }, hello: 'Correntes pendem do teto. Algumas ainda balançam.', bye: 'O Senhor do Suplício cai sob as próprias correntes. Uma escada desce mais fundo.' },
         { type: 'jotun', name: 'Jotun Menor', scale: 1.2, hp: 15, dmg: 2.1, mech: { ...MECH_GROUP('Inverno', 0x9ad7ff, 'Clava de Gelo') }, hello: 'Tão fundo que a terra congela. Um gigante dorme encostado na parede.', bye: 'O gigante cai e a parede racha. Uma escada desce mais fundo.' }] } },
   /* criptas e mausoléus malditos (23/10): a entrada é um mausoléu de pedra com grade de ferro; dentro, a cripta */
-  { id: 'esquecidos', name: 'Mausoléu dos Esquecidos', kind: 'subsolo', lvl: [6, 10], theme: 'cripta', near: 'Cemitério Esquecido', dx: -7, dy: -3, main: 2, side: 1, mobs: ['skeleton', 'rat'], players: 'sozinho ou em dupla',
+  { id: 'esquecidos', name: 'Mausoléu dos Esquecidos', kind: 'subsolo', lvl: [6, 10], theme: 'cripta', near: 'Igreja Abandonada', dx: 1, dy: 9, main: 2, side: 1, mobs: ['skeleton', 'rat'], /* 02/11: mudou para o cemitério da Igreja Abandonada (o Cemitério Esquecido já tem a Toca — dois calabouços colados) */ players: 'sozinho ou em dupla',
     elite: { type: 'skeleton', name: 'Guardião do Ossuário', scale: 1.4 }, boss: { type: 'tormentor', name: 'Sacristão Sem Rosto', scale: 1.3, hp: 5, dmg: 1.1, mech: { adds: { at: [0.5], type: 'skeleton', n: 3, line: 'O Sacristão toca o sino de ossos: os esquecidos se levantam!' } }, hello: 'Nomes raspados das lápides. Alguém não quer que eles sejam lembrados.', bye: 'O Sacristão cai. Os nomes voltam às pedras.' } },
   { id: 'hemara', name: 'Cripta de Hemara', kind: 'grupo', lvl: [14, 18], theme: 'cripta', near: 'Cripta de Hemara', dx: 4, dy: 4, main: 4, side: 2, mobs: ['skeleton', 'zombie', 'bat'], players: 'grupo de 3',
     elite: { type: 'zombie', name: 'Noivo de Hemara', scale: 1.6 },
@@ -156,7 +156,7 @@ export const DUNGEONS: DgDef[] = [
 ];
 
 export interface DgCtx {
-  scene: THREE.Scene; T: number; city: { map: string[][]; props: { gx: number; gy: number; w: number; h: number }[]; pois: { name: string; x: number; y: number; biome: string }[]; settlements: { name: string; x: number; y: number; radius: number }[] };
+  scene: THREE.Scene; T: number; city: { dgSpots?: Record<string, { x: number; y: number }>; map: string[][]; props: { gx: number; gy: number; w: number; h: number }[]; pois: { name: string; x: number; y: number; biome: string }[]; settlements: { name: string; x: number; y: number; radius: number }[] };
   heightAt(x: number, z: number): number; regionLvl(x: number, y: number): [number, number];
   game: { st: { lvl: number; gold: number; hp: number; hpMax: number; dead: boolean }; damage(n: number, at: THREE.Vector3, from?: THREE.Vector3): void; logMsg(t: string, c?: string): void; gainXp(n: number): void;
     enemies: { list: { alive: boolean; hp: number; hpMax: number; pos: THREE.Vector3; def: { name: string; dmg: number; speed: number }; type: EnemyType; state: string }[]; spawn(type: EnemyType, x: number, z: number, o: Record<string, unknown>): unknown; clearTag(tag: string): void };
@@ -178,12 +178,14 @@ export function createMasmorras(ctx: DgCtx) {
   const busy = new Set<string>(); for (const p of ctx.city.props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busy.add(x + ',' + y);
   const target = (nm: string) => ctx.city.pois.find((p) => p.name === nm) ?? ctx.city.settlements.find((s) => s.name === nm) ?? null;
   const spotOk = (x: number, y: number, loose = false) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = ctx.city.map[y + dy]?.[x + dx], core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core ? t !== 'grass' && t !== 'road' && t !== 'plaza' : !t || t === 'water' || t === 'wall') return false; if (core) { const g = ctx.heightAt((x + dx) * T, (y + dy) * T); if (g <= -3.6 || (g >= 10.5 && t === 'grass')) return false; } /* 27/10: a boca só onde o herói pisa (grama alta ilha a entrada) */ if ((!loose || core) && busy.has(x + dx + ',' + (y + dy))) return false; }
-    return !ctx.city.settlements.some((s) => Math.hypot(s.x - x, s.y - y) < s.radius + 2); };
+    /* 02/11 (Erling: "calabouços nunca próximos uns dos outros, nem na saída da cidade"): ≥ 18 casas além do raio do povoado (Karmika: 28, fora da muralha) e ≥ 40 casas (80 m) de outra entrada */
+    if (ctx.city.settlements.some((s) => Math.hypot(s.x - x, s.y - y) < s.radius + (s.name === 'Karmika' ? 28 : 18))) return false;
+    return !entrances.some((e) => Math.hypot(e.x - x, e.y - y) < 40); };
   const entrances: { d: DgDef; x: number; y: number; lvl: [number, number]; root: THREE.Group; sign?: { x: number; z: number } }[] = [];
   /** a dificuldade escolhida na placa (Erling, 25/10): a masmorra acompanha o seu nível, mas você pode pedir mais — e o prêmio cresce junto */
   for (const d of DUNGEONS) {
     if (d.fixed) { const t1 = target(d.near); if (!t1) continue; const fx0 = t1.x + (d.dx ?? 0), fy0 = t1.y + (d.dy ?? 0); const root = mouthFixed(d, fx0 * T, fy0 * T); entrances.push({ d, x: Math.floor(fx0), y: Math.floor(fy0), lvl: d.lvl ?? [1, 5], root }); continue; }
-    const t0 = target(d.near); if (!t0) continue; const bx = Math.round(t0.x + (d.dx ?? 0)), by = Math.round(t0.y + (d.dy ?? 6)); let at: { x: number; y: number } | null = null;
+    const t0 = target(d.near); if (!t0) continue; const bx = Math.round(t0.x + (d.dx ?? 0)), by = Math.round(t0.y + (d.dy ?? 6)); let at: { x: number; y: number } | null = ctx.city.dgSpots?.[d.id] ?? (d.spot ? { x: bx, y: by } : null); /* 02/11: o mundo decide o lugar (world.ts, com as regras de distância); a busca abaixo é só o reserva */
     const RMAX = d.maxR ?? 48; for (let r = 0; r < RMAX && !at; r++) for (let a = 0; a < 24 && !at; a++) { const x = Math.round(bx + Math.cos((a / 24) * 6.283) * r), y = Math.round(by + Math.sin((a / 24) * 6.283) * r); if (spotOk(x, y)) at = { x, y }; }
     for (let r = 1; r < Math.min(44, RMAX) && !at; r++) for (let a = 0; a < r * 8 && !at; a++) { const x = Math.round(bx + Math.cos((a / (r * 8)) * 6.283) * r), y = Math.round(by + Math.sin((a / (r * 8)) * 6.283) * r); if (spotOk(x, y, true)) at = { x, y }; } // 2ª passada: aceita árvores e cercas em volta
     if (!at) continue; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) busy.add(at.x + dx + ',' + (at.y + dy));

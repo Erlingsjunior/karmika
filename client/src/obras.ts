@@ -31,6 +31,8 @@ export const loadHome = (): HomeSave | null => { try { const h = JSON.parse(loca
 /** quem ouve as mudanças da casa (o main.ts manda para o servidor) */
 let onSaveFn: ((h: HomeSave | null) => void) | null = null;
 export const onHomeSave = (f: (h: HomeSave | null) => void) => { onSaveFn = f; };
+/** reassenta a casa (o muro da cidade passou por cima dela depois de construída): muda a posição e salva */
+export const moveHome = (h: HomeSave, gx: number, gy: number) => { h.gx = gx; h.gy = gy; saveHome(h); };
 const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } try { onSaveFn?.(h); } catch { /* */ } };
 
 export function createObras(ctx: { /** o modelo da casa pronta (para ela subir do chão durante a obra) */ siteModel?(h: HomeSave): THREE.Group | null; /** a variante do modelo da casa pronta (para achar a porta) */ variantOf?(h: HomeSave): number;

@@ -34,6 +34,8 @@ export interface Hero3D {
   setNight(n: number): void;
   setWind(w: number): void;
   weaponTip(out: THREE.Vector3): THREE.Vector3;
+  /** mostra/esconde arma e escudo (retrato da criação de personagem: o martelo do anão tapava o corpo) */
+  gearVisible(on: boolean): void;
   weaponBase(out: THREE.Vector3): THREE.Vector3;
   handPos(out: THREE.Vector3): THREE.Vector3;
   onStep?: (foot: number) => void;
@@ -1346,6 +1348,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     setNight(n) { night = n; },
     setWind(w) { wind = w; },
     weaponTip(out) { return weaponTipObj.getWorldPosition(out); },
+    gearVisible(on) { for (const g of [gearSword, gearShield, dwarfAxe, gunHolder]) if (g) g.visible = on; },
     weaponBase(out) { return (weaponBaseObj ?? armR.wr).getWorldPosition(out); },
     handPos(out) { return armR.wr.getWorldPosition(out); },
     update(dt, t, mps, heading) {
