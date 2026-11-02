@@ -124,6 +124,14 @@ export function buildSteamWagon(): Wagon {
   { const cap = add(new THREE.CircleGeometry(0.88, 14, 0, Math.PI), M.canvasD, 0, 1.42, -2.06); cap.rotation.y = Math.PI; cap.scale.y = 1.38; } // fundo fechado
   // carga visível pela boca da lona: barris e caixas com cintas
   add(new THREE.CylinderGeometry(0.24, 0.24, 0.55, 10), M.oak, -0.42, 1.62, 0.2); add(new THREE.TorusGeometry(0.245, 0.02, 3, 12).rotateX(Math.PI / 2), M.iron, -0.42, 1.72, 0.2);
+  /* prancha 35 (01/11), carroça da Companhia: armário lateral aberto com prateleiras de frascos e engenhocas, aba levantada, manômetro grande e a placa do globo pendurada atrás */
+  { const cab = new THREE.Group(); cab.position.set(0.9, 1.6, -0.9); body.add(cab); const A = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => add(geo, m, x, y, z, cab);
+    A(new THREE.BoxGeometry(0.06, 0.9, 1.5), M.dark, 0, 0, 0); for (const yy of [-0.35, 0.0, 0.35]) A(new THREE.BoxGeometry(0.3, 0.04, 1.5), M.oak, 0.15, yy, 0); for (const zz of [-0.75, 0.75]) A(new THREE.BoxGeometry(0.3, 0.9, 0.04), M.oak, 0.15, 0, zz);
+    const flap = A(new THREE.BoxGeometry(0.04, 0.9, 1.5), M.brass, 0.42, 0.75, 0); flap.rotation.z = -1.2; // aba de latão levantada (toldo)
+    const cols = [0x3ad0ff, 0xff4a4a, 0xc060ff, 0x60ff80, 0xffd040]; for (let k = 0; k < 10; k++) { const yy = k < 5 ? -0.28 : 0.07, zz = -0.6 + (k % 5) * 0.3; A(new THREE.CylinderGeometry(0.045, 0.05, 0.14, 6), new THREE.MeshBasicMaterial({ color: cols[k % 5] }), 0.17, yy + 0.03, zz); A(new THREE.CylinderGeometry(0.02, 0.02, 0.06, 5), M.brassD, 0.17, yy + 0.13, zz); }
+    for (let k = 0; k < 4; k++) { const gr = A(new THREE.TorusGeometry(0.05 + (k % 2) * 0.02, 0.018, 4, 8), k % 2 ? M.brassD : M.brass, 0.17, 0.4, -0.5 + k * 0.33); gr.rotation.x = Math.PI / 2; } }
+  add(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 14).rotateX(Math.PI / 2), M.brassD, -0.3, 2.1, 1.66); add(new THREE.CylinderGeometry(0.13, 0.13, 0.02, 14).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xe8e0c8 }), -0.3, 2.1, 1.7); add(new THREE.BoxGeometry(0.02, 0.1, 0.01), M.red, -0.27, 2.14, 1.71); // manômetro grande na frente da caldeira
+  { const arm = add(new THREE.BoxGeometry(0.05, 0.05, 0.7), M.dark, -0.98, 2.3, -1.6); void arm; const sg = add(new THREE.BoxGeometry(0.04, 0.5, 0.5), M.oak, -0.98, 1.95, -1.9); void sg; add(new THREE.SphereGeometry(0.16, 10, 8), M.brass, -1.01, 1.95, -1.9); } // placa do globo pendurada
   // brasão da Companhia nos dois lados e a flâmula
   for (const sx of [-1, 1]) { const cr = add(new THREE.PlaneGeometry(0.5, 0.5), M.crest, sx * 0.93, 1.42, 0.02); cr.rotation.y = sx * Math.PI / 2; }
   add(new THREE.CylinderGeometry(0.025, 0.025, 1.4, 5), M.dark, -0.75, 2.55, -2.0);
@@ -162,6 +170,15 @@ export function buildOreCart(): Wagon {
   const team: Horse4[] = []; for (const [sx, zz] of [[-0.6, 3.4], [0.6, 3.4], [-0.6, 5.6], [0.6, 5.6]] as [number, number][]) { const h = buildHorse({ coat: [0x5a4030, 0x4a3426, 0x6a4a34, 0x3a2a20][team.length], mane: 0x201410 }); h.root.position.set(sx, 0, zz); h.root.scale.setScalar(1.05); body.add(h.root); team.push(h); }
   for (const sx of [-0.6, 0.6]) add(new THREE.CylinderGeometry(0.03, 0.03, 2.3, 5).rotateX(Math.PI / 2), M.dark, sx, 0.95, 4.5); /* tirantes entre as duas parelhas */
   add(new THREE.BoxGeometry(1.5, 0.08, 0.08), M.dark, 0, 0.95, 2.3); const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
+  /* prancha 35 (01/11), carroça mercante dos anões: telhado de lajes de pedra sobre quatro postes, balcão lateral com bandejas de joias em veludo roxo,
+     estante de ferramentas no fundo, alforjes pendurados e a placa da bigorna */
+  { const stoneM = std(0xffffff, { map: plankTex(0x6a6a70) }); for (const sx of [-1, 1]) for (const zz of [-1.55, 1.1]) add(new THREE.BoxGeometry(0.1, 1.3, 0.1), M.dark, sx * 0.8, 2.0, zz);
+    const roof = add(new THREE.CylinderGeometry(1.0, 1.0, 3.0, 10, 1, true, -Math.PI / 2 + 0.35, Math.PI - 0.7).rotateX(-Math.PI / 2), stoneM, 0, 2.15, -0.2); roof.scale.y = 0.6; (roof.material as THREE.MeshToonMaterial).side = THREE.DoubleSide;
+    const counter = add(new THREE.BoxGeometry(0.5, 0.06, 2.4), M.oak, 1.1, 1.5, -0.3); void counter; add(new THREE.BoxGeometry(0.06, 0.7, 2.4), M.oak, 0.88, 1.15, -0.3);
+    for (const zz of [-1.0, -0.3, 0.4]) { add(new THREE.BoxGeometry(0.36, 0.06, 0.5), M.dark, 1.1, 1.56, zz); add(new THREE.BoxGeometry(0.3, 0.02, 0.44), std(0x6a2a7a), 1.1, 1.6, zz); for (let k = 0; k < 4; k++) add(new THREE.OctahedronGeometry(0.03, 0), new THREE.MeshBasicMaterial({ color: [0xffd040, 0x60ff80, 0x60a0ff, 0xff60a0][k] }), 1.02 + (k % 2) * 0.16, 1.64, zz - 0.14 + Math.floor(k / 2) * 0.28); }
+    add(new THREE.BoxGeometry(1.6, 0.9, 0.05), M.oak, 0, 2.0, -1.72); for (let k = 0; k < 6; k++) { add(new THREE.BoxGeometry(0.03, 0.35, 0.03), M.dark, -0.6 + k * 0.24, 1.95, -1.68); add(new THREE.BoxGeometry(0.08, 0.06, 0.05), M.iron, -0.6 + k * 0.24, 2.15, -1.67); } // estante de ferramentas
+    for (const zz of [0.5, 0.9]) add(new THREE.BoxGeometry(0.2, 0.28, 0.14), std(0x6a3a22), -0.9, 1.55, zz); // alforjes
+    add(new THREE.BoxGeometry(0.04, 0.04, 0.5), M.dark, -0.88, 2.35, 1.3); const sign = add(new THREE.BoxGeometry(0.03, 0.4, 0.4), M.oak, -0.88, 2.05, 1.5); void sign; add(new THREE.BoxGeometry(0.02, 0.1, 0.26), M.iron, -0.9, 2.08, 1.5); add(new THREE.BoxGeometry(0.02, 0.08, 0.1), M.iron, -0.9, 2.0, 1.5); } // placa da bigorna
   /* estandarte dos anões */
   add(new THREE.CylinderGeometry(0.025, 0.025, 1.3, 5), M.dark, 0.7, 2.1, -1.6);
   const flag = add(new THREE.PlaneGeometry(0.5, 0.3, 4, 1), std(0x8a3a1c, { side: THREE.DoubleSide }), 0.7, 2.6, -1.85); flag.rotation.y = Math.PI / 2;
