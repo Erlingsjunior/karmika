@@ -14,8 +14,16 @@ import { radialTexture } from './fx3d';
    ============================================================ */
 
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
-export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'skyraise' | 'stance' | 'dance';
+export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'thrust1' | 'thrust2' | 'claw1' | 'claw2' | 'stab' | 'clubsm' | 'aim1' | 'kthrow' | 'draw' | 'skyraise' | 'stance' | 'dance';
 
+/** classe da arma (02/11, Erling): uma mão + escudo · duas mãos · florete (esgrima) · adaga · garras · porrete · besta de mão · kunai · arco */
+export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
+export function weaponClass(base: string | null | undefined): WClass {
+  const b = base ?? ''; if (/Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana/.test(b)) return 'two'; if (/Florete|Espada de Duelo/.test(b)) return 'fence';
+  if (/Garras/.test(b)) return 'claw'; if (/Porrete|Maça/.test(b)) return 'club'; if (/Besta de Mão/.test(b)) return 'hxbow'; if (/Kunai/.test(b)) return 'kunai'; if (/Arco/.test(b)) return 'bow';
+  if (/Adaga|Faca de Caça/.test(b)) return 'dagger'; return 'one'; }
+/** armas que deixam a mão do escudo livre (o escudo vai para as costas) */
+export const SHIELDLESS = new Set<WClass>(['two', 'fence', 'dagger', 'claw', 'club', 'hxbow', 'kunai', 'bow']); /* só a arma de uma mão comum (espada, machado de mão) vai com escudo no braço */
 export interface Hero3D {
   root: THREE.Group;
   /** mps = velocidade real em metros/segundo */
@@ -61,6 +69,8 @@ export interface Hero3D {
   slash(): void;
   blockHit(): void;
   readonly guarding: boolean;
+  /** classe da arma na mão (02/11): decide postura, golpes e se o escudo vai para as costas */
+  readonly wcls: WClass;
   freeze: boolean;
   /** ferramenta na mão fora de combate (vara de pesca, machado do lenhador): não vai para a cintura */
   holdTool: boolean;
@@ -425,6 +435,15 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
      a mão direita vai à empunhadura e a esquerda ao guarda-mão por IK, e a arma é colocada entre as duas mãos, mirando para a frente */
   const gunHolder = new THREE.Group(); let gunK = 0, gunTip0: THREE.Object3D | null = null, gunBase0: THREE.Object3D | null = null, gunOn = false;
   let dwarfAxe: THREE.Group | null = null, dwarfDefault: THREE.Object3D[] | null = null;
+  let wcls: WClass = 'one';
+  /** o combo da classe trocado pelo golpe da arma (02/11) */
+  const ACT_BY_W: Partial<Record<WClass, Partial<Record<Action, Action>>>> = {
+    fence: { combo1: 'thrust1', combo2: 'thrust2', combo3: 'thrust1' },
+    dagger: { combo1: 'stab', combo2: 'stab', combo3: 'stab' },
+    claw: { combo1: 'claw1', combo2: 'claw2', combo3: 'claw1', combo4: 'claw2' },
+    club: { combo1: 'clubsm', combo3: 'clubsm' },
+    hxbow: { shoot: 'aim1' }, kunai: { shoot: 'kthrow' }, bow: { shoot: 'draw' },
+  };
   let gearSword: THREE.Group | null = null, gearShield: THREE.Group | null = null; const helmParts: THREE.Object3D[] = [];
   let weaponInner: THREE.Group | null = null, weaponRig: THREE.Group | null = null, weaponRigged = false, rigK = 0, innerRotX = 0;
   const rigPos = new THREE.Vector3(), rigDir = new THREE.Vector3(0, 0, 1), rigQ = new THREE.Quaternion(), rigTmp = new THREE.Vector3();
@@ -895,12 +914,12 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
   let dodgeSide = 1;
-  const COMBO = new Set<Action>(['combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'shoot', 'charge']);
+  const COMBO = new Set<Action>(['combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'shoot', 'charge', 'thrust1', 'thrust2', 'claw1', 'claw2', 'stab', 'clubsm', 'aim1', 'kthrow', 'draw']);
   type Ch = 'shX' | 'shZ' | 'el' | 'swX' | 'swZ' | 'twist' | 'lean' | 'lunge' | 'crouch' | 'jump' | 'spin' | 'shLX' | 'shLZ' | 'elL' | 'face' | 'vel' | 'tilt' | 'head' | 'lgLH' | 'lgLK' | 'lgRH' | 'lgRK' | 'kn';
   type KF = Partial<Record<Ch, [number, number][]>>;
   const PI2 = Math.PI * 2;
@@ -981,6 +1000,51 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       shLX: [[0, 0], [.28, -2.15], [.45, -2.15], [.58, -1.55], [.86, -1.5], [1, 0]], elL: [[0, 0], [.28, -1.95], [.45, -1.95], [.58, -0.05], [.86, -0.1], [1, 0]], shLZ: [[0, 0], [.28, -0.4], [.58, 0.05], [1, 0]],
       head: [[0, 0], [.28, -0.12], [.45, 0.06], [.58, -0.06], [1, 0]], lean: [[0, 0], [.28, -0.1], [.45, -0.14], [.58, 0.24], [.86, 0.2], [1, 0]], twist: [[0, 0], [.28, -0.15], [.58, -0.5], [.86, -0.45], [1, 0]],
       lunge: [[0, 0], [.5, 0], [.6, 0.65], [.86, 0.6], [1, 0]], shX: [[0, 0], [.4, 0.6], [.86, 0.55], [1, 0]], el: [[0, 0], [.4, -1.0], [1, 0]], crouch: [[0, 0], [.58, 0.06], [.86, 0.05], [1, 0]],
+    },
+    /* ---- 02/11 (Erling): golpes por classe de arma (o combo da classe é trocado por estes em act()) ---- */
+    thrust1: { // estocada de esgrima (florete): ombro da arma à frente, recolhe e avança em lunge com o braço todo estendido; a outra mão ergue atrás para equilibrar
+      twist: [[0, -0.45], [.25, -0.55], [.45, -0.8], [.75, -0.75], [1, -0.45]], lunge: [[0, 0], [.25, -0.1], [.45, 1.0], [.75, 0.9], [1, 0]], crouch: [[0, 0.06], [.45, 0.12], [1, 0.06]], lean: [[0, 0.05], [.45, 0.18], [1, 0.05]],
+      shX: [[0, -1.1], [.25, -0.7], [.45, -1.5], [.75, -1.45], [1, -1.1]], el: [[0, -0.5], [.25, -1.2], [.45, -0.05], [.75, -0.08], [1, -0.5]], shZ: [[0, -0.1], [1, -0.1]],
+      shLX: [[0, 0.45], [.45, 0.75], [1, 0.45]], shLZ: [[0, 0.75], [.45, 0.95], [1, 0.75]], elL: [[0, -1.45], [.45, -1.65], [1, -1.45]], vel: [[0, 0], [.4, 0], [.48, 4.5], [.6, 0]],
+    },
+    thrust2: { // estocada alta em linha: desvia por cima e fura no peito, com um passo curto
+      twist: [[0, -0.45], [.3, -0.3], [.5, -0.85], [.8, -0.8], [1, -0.45]], lunge: [[0, 0], [.3, 0.1], [.5, 0.8], [.8, 0.7], [1, 0]], crouch: [[0, 0.06], [.5, 0.1], [1, 0.06]],
+      shX: [[0, -1.1], [.3, -1.9], [.5, -1.6], [.8, -1.55], [1, -1.1]], el: [[0, -0.5], [.3, -1.0], [.5, -0.05], [1, -0.5]], shZ: [[0, -0.1], [.3, 0.2], [.5, -0.15], [1, -0.1]],
+      shLX: [[0, 0.45], [1, 0.45]], shLZ: [[0, 0.75], [1, 0.75]], elL: [[0, -1.45], [1, -1.45]], vel: [[0, 0], [.45, 0], [.52, 3.5], [.62, 0]],
+    },
+    claw1: { // garrada da direita: corpo curvado, a mão abre de cima e rasga em diagonal para baixo e para dentro
+      lean: [[0, 0.3], [.3, 0.2], [.5, 0.45], [1, 0.3]], crouch: [[0, 0.12], [.5, 0.16], [1, 0.12]], twist: [[0, 0.1], [.3, -0.5], [.55, 0.55], [1, 0.1]],
+      shX: [[0, -0.9], [.3, -2.0], [.55, -0.6], [1, -0.9]], shZ: [[0, -0.5], [.3, -0.9], [.55, 0.25], [1, -0.5]], el: [[0, -0.9], [.3, -0.6], [.55, -0.2], [1, -0.9]],
+      shLX: [[0, -0.9], [1, -0.9]], shLZ: [[0, 0.5], [1, 0.5]], elL: [[0, -0.9], [1, -0.9]], vel: [[0, 0], [.4, 0], [.48, 3], [.6, 0]], head: [[0, 0.2], [1, 0.2]],
+    },
+    claw2: { // garrada da esquerda (a mão nua do licantropo rasga também), a direita recolhe
+      lean: [[0, 0.3], [.3, 0.2], [.5, 0.45], [1, 0.3]], crouch: [[0, 0.12], [.5, 0.16], [1, 0.12]], twist: [[0, 0.1], [.3, 0.55], [.55, -0.55], [1, 0.1]],
+      shLX: [[0, -0.9], [.3, -2.0], [.55, -0.6], [1, -0.9]], shLZ: [[0, 0.5], [.3, 0.9], [.55, -0.25], [1, 0.5]], elL: [[0, -0.9], [.3, -0.6], [.55, -0.2], [1, -0.9]],
+      shX: [[0, -0.9], [.5, -0.5], [1, -0.9]], shZ: [[0, -0.5], [1, -0.5]], el: [[0, -0.9], [.5, -1.4], [1, -0.9]], vel: [[0, 0], [.4, 0], [.48, 3], [.6, 0]], head: [[0, 0.2], [1, 0.2]],
+    },
+    stab: { // facada curta: guarda baixa, a mão sai como um soco e volta
+      crouch: [[0, 0.14], [.4, 0.18], [1, 0.14]], lean: [[0, 0.2], [.4, 0.32], [1, 0.2]], twist: [[0, 0.15], [.2, 0.3], [.42, -0.35], [1, 0.15]],
+      shX: [[0, -0.75], [.2, -0.4], [.42, -1.45], [.65, -1.4], [1, -0.75]], el: [[0, -1.25], [.2, -1.9], [.42, -0.1], [1, -1.25]],
+      shLX: [[0, -0.8], [.42, -0.5], [1, -0.8]], elL: [[0, -1.4], [.42, -1.7], [1, -1.4]], vel: [[0, 0], [.35, 0], [.42, 3.5], [.55, 0]],
+    },
+    clubsm: { // porretada: ergue o porrete por cima da cabeça com o corpo para trás e desce esmagando, com o peso todo
+      lean: [[0, 0.15], [.35, -0.2], [.58, 0.5], [.85, 0.45], [1, 0.15]], crouch: [[0, 0.08], [.35, 0.0], [.58, 0.2], [.85, 0.18], [1, 0.08]], twist: [[0, 0.2], [.35, 0.4], [.58, -0.2], [1, 0.2]],
+      shX: [[0, -0.7], [.35, -2.7], [.58, -1.1], [.85, -0.9], [1, -0.7]], el: [[0, -1.0], [.35, -1.3], [.58, -0.1], [1, -1.0]], shZ: [[0, -0.2], [.35, 0.1], [.58, -0.1], [1, -0.2]],
+      shLX: [[0, -0.6], [.35, -1.5], [.58, -0.7], [1, -0.6]], shLZ: [[0, 0.35], [1, 0.35]], elL: [[0, -0.9], [.35, -0.6], [.58, -0.4], [1, -0.9]], jump: [[0, 0], [.4, 0.04], [.58, 0], [1, 0]], vel: [[0, 0], [.5, 0], [.58, 2.5], [.7, 0]],
+    },
+    aim1: { // besta de mão: braço estendido à frente na altura dos olhos, tronco de lado, coice curto no disparo
+      twist: [[0, -0.6], [.15, -0.75], [.8, -0.7], [1, -0.4]], shX: [[0, -1.2], [.15, -1.55], [.22, -1.75], [.32, -1.55], [.8, -1.55], [1, -1.2]], el: [[0, -0.4], [.15, -0.05], [.8, -0.05], [1, -0.4]],
+      shZ: [[0, -0.05], [1, -0.05]], shLX: [[0, -0.3], [1, -0.3]], shLZ: [[0, 0.25], [1, 0.25]], elL: [[0, -1.3], [1, -1.3]], head: [[0, 0.08], [.8, 0.08], [1, 0]], lean: [[0, 0], [.22, -0.06], [.4, 0.03], [1, 0]],
+    },
+    kthrow: { // kunai: recua a mão para trás da orelha e arremessa por cima, o corpo acompanha
+      twist: [[0, 0], [.3, 0.6], [.5, -0.55], [1, 0]], lean: [[0, 0.1], [.3, -0.08], [.5, 0.3], [1, 0.1]], crouch: [[0, 0.08], [.5, 0.14], [1, 0.08]],
+      shX: [[0, -0.6], [.3, -2.5], [.5, -1.3], [.7, -0.9], [1, -0.6]], el: [[0, -1.0], [.3, -2.1], [.5, -0.15], [1, -1.0]], shZ: [[0, -0.2], [.3, -0.6], [.5, 0.1], [1, -0.2]],
+      shLX: [[0, -1.0], [.3, -1.3], [.5, -0.4], [1, -1.0]], elL: [[0, -0.6], [1, -0.6]], vel: [[0, 0], [.42, 0], [.5, 1.5], [.6, 0]],
+    },
+    draw: { // arco: de lado para o alvo, o braço do arco estende à frente e a outra mão puxa a corda até o rosto; solta e segue a linha
+      twist: [[0, -0.9], [.2, -1.05], [.85, -1.05], [1, -0.6]], lean: [[0, 0], [.6, -0.05], [.7, 0.04], [1, 0]], crouch: [[0, 0.05], [1, 0.05]],
+      shX: [[0, -1.3], [.2, -1.55], [.85, -1.55], [1, -1.2]], el: [[0, -0.2], [.2, -0.02], [.85, -0.02], [1, -0.3]], shZ: [[0, 0.05], [1, 0.05]],
+      shLX: [[0, -1.2], [.2, -1.45], [.6, -1.5], [.66, -1.2], [1, -1.1]], shLZ: [[0, -0.3], [.6, -0.45], [.66, -0.2], [1, -0.2]], elL: [[0, -1.2], [.2, -2.3], [.6, -2.5], [.66, -1.0], [1, -1.0]], head: [[0, -0.05], [.85, -0.05], [1, 0]],
     },
     bite: { // mordida (vampiro/lobisomem): agacha, dá o bote com a cabeça à frente e as duas mãos em garra, e recua
       crouch: [[0, 0], [.2, 0.16], [.42, 0.02], [.6, 0.04], [1, 0]], lean: [[0, 0], [.2, -0.1], [.42, 0.55], [.62, 0.5], [1, 0]], head: [[0, 0], [.2, 0.25], [.42, -0.45], [.62, -0.4], [1, 0]],
@@ -1094,11 +1158,13 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     dronePos(out) { return droneObj ? droneObj.getWorldPosition(out) : out.copy(root.position).add(tmp.set(0, 1.6, 0)); },
     blockHit() { recoil = 1; },
     get guarding() { return guardK > 0.6; },
+    get wcls() { return wcls; },
     freeze: false,
     holdTool: false,
     kneel: false, swim: false,
     scrub(a, p) { act = { a, t: p * DUR[a], dur: DUR[a] }; },
     act(a, force) {
+      if (kind === 'nordic') { const m = ACT_BY_W[wcls]?.[a]; if (m) a = m; } /* 02/11: o golpe muda com a arma na mão */
       if (!force && act && act.a !== 'dash' && act.a !== 'hit' && a !== 'hit' && a !== 'dash') {
         /* magias e golpes especiais têm prioridade: cortam o ataque básico na hora (a resposta tem que ser imediata) */
         const canCancel = (COMBO.has(act.a) && COMBO.has(a) && act.t / act.dur > 0.62) || (COMBO.has(act.a) && !COMBO.has(a));
@@ -1117,7 +1183,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       if (gearSword && g.weapon !== undefined) {
         const sw = gearSword; for (const c of [...sw.children]) if ((c as THREE.Mesh).isMesh || (c as THREE.Group).isGroup) sw.remove(c); let RG: THREE.Group | null = null; // RG: armas de duas mãos (fogo e besta), no suporte da raiz
         for (const c of [...gunHolder.children]) gunHolder.remove(c); if (gunOn) { gunOn = false; if (gunTip0) weaponTipObj = gunTip0; if (gunBase0) weaponBaseObj = gunBase0; }
-        const base = g.weapon?.base ?? 'Espada Longa', rar = g.weapon?.rarity ?? 'normal', tint = g.weapon?.tint, tglow = g.weapon?.glow ?? 0;
+        const base = g.weapon?.base ?? 'Espada Longa', rar = g.weapon?.rarity ?? 'normal', tint = g.weapon?.tint, tglow = g.weapon?.glow ?? 0; wcls = g.weapon ? weaponClass(base) : 'one';
         const tMat = (def: number) => toon(tint ?? def, tglow ? { emissive: new THREE.Color(tglow).multiplyScalar(0.45) } : {}); // ferramentas: o metal diz o nível (pedra, ferro, aço, anão)
         const grip = mk(new THREE.CylinderGeometry(0.016, 0.016, 0.17, 6), 0x3a2a1c, 0.004); sw.add(grip);
         const pom = mk(new THREE.SphereGeometry(0.034, 6, 5), glowOf(rar) || gold, 0.004); pom.position.y = 0.105; sw.add(pom);
@@ -1347,7 +1413,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     },
     setNight(n) { night = n; },
     setWind(w) { wind = w; },
-    weaponTip(out) { return weaponTipObj.getWorldPosition(out); },
+    weaponTip(out) { let q: THREE.Object3D | null = weaponTipObj; while (q && q.parent) q = q.parent; if (q === root.parent || (q as THREE.Scene | null)?.isScene) return weaponTipObj.getWorldPosition(out);
+      /* a ponta solta (arma trocada/escondida pela pele de artista): sai da mão da frente, na altura do peito */
+      root.updateWorldMatrix(true, false); const y = root.rotation.y; return out.set(root.position.x + Math.sin(y) * 0.5, root.position.y + 1.25, root.position.z + Math.cos(y) * 0.5); },
     gearVisible(on) { for (const g of [gearSword, gearShield, dwarfAxe, gunHolder]) if (g) g.visible = on; },
     weaponBase(out) { return (weaponBaseObj ?? armR.wr).getWorldPosition(out); },
     handPos(out) { return armR.wr.getWorldPosition(out); },
@@ -1425,6 +1493,12 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       if (kneelK > 0.01) { aLean += 0.95 * kneelK; aShL += -0.7 * kneelK; aElL += -0.55 * kneelK; aShLz += 0.12 * kneelK; aCrouch *= 1 - kneelK; aHeadX += 0.15 * kneelK; } // ajoelhado: tronco sobre o trabalho, mão esquerda segura a peça
       const idleK = smooth1('idle', (1 - walkK) * (act ? 0 : 1), dt, 7);
       const restK = idleK * (1 - combatK);
+      if (kind === 'nordic' && restK > 0.01 && wcls !== 'one') { /* pausa fora de combate pela arma (02/11) */
+        if (wcls === 'fence') { aShLz += 0.25 * restK; aElL += -0.7 * restK; aShL += 0.2 * restK; } // a mão livre na cintura, florete pendendo
+        else if (wcls === 'claw') { aLean += 0.08 * restK; aShR += -0.2 * restK; aShL += -0.2 * restK; aElR += -0.4 * restK; aElL += -0.4 * restK; } // ombros caídos, mãos à frente
+        else if (wcls === 'club') { aShR += -0.3 * restK; aShRz += -0.25 * restK; aElR += -1.9 * restK; } // porrete no ombro
+        else if (wcls === 'kunai' || wcls === 'dagger') { aShL += -0.15 * restK; aElL += -0.5 * restK; }
+      }
       aShR -= 0.08 * restK; aElR -= 0.12 * restK; aShL -= 0.06 * restK; aElL -= 0.15 * restK; aShRz += -0.08 * restK; aShLz += 0.08 * restK; aLean += 0.04 * restK; aTwist += 0.06 * restK; aCrouch += 0.015 * restK;
       /* POSTURA ESCOLHIDA (25/10, Erling: "a mudança de postura não muda a postura do personagem"): o corpo assume a postura, parado ou andando */
       { const want = act ? 0 : 1 - 0.5 * walkK; stK += (want - stK) * Math.min(1, dt * 6); const k = stK, sr = hero.stance;
@@ -1440,7 +1514,17 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const cK = combatK * (1 - 0.65 * runK * walkK);
       if (cK > 0.01) {
         aCrouch += 0.085 * cK; aLean += 0.2 * cK; aHeadX += -0.12 * cK;
-        if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += 0.55 * cK; aElR += -0.95 * cK; aShRz += -0.1 * cK; }
+        if (kind === 'nordic' && wcls !== 'one') { /* 02/11 (Erling): postura de combate pela arma (referências) */
+          if (wcls === 'two') { aTwist += 0.25 * cK; aCrouch += 0.05 * cK; aShL += -0.7 * cK; aElL += -1.0 * cK; aShLz += -0.1 * cK; }
+          else if (wcls === 'fence') { aTwist += -0.75 * cK; aCrouch += 0.04 * cK; aLean += -0.08 * cK; aShL += 0.5 * cK; aShLz += 0.85 * cK; aElL += -1.5 * cK; aHeadX += 0.05 * cK; } // de lado, ombro da arma à frente, a outra mão erguida atrás (esgrimista)
+          else if (wcls === 'dagger') { aCrouch += 0.07 * cK; aLean += 0.12 * cK; aTwist += 0.12 * cK; aShL += -0.8 * cK; aElL += -1.45 * cK; aShLz += 0.1 * cK; } // baixo, as duas mãos à frente
+          else if (wcls === 'claw') { aCrouch += 0.06 * cK; aLean += 0.22 * cK; aShL += -0.9 * cK; aShLz += 0.5 * cK; aElL += -0.9 * cK; aHeadX += 0.18 * cK; } // curvado, garras abertas
+          else if (wcls === 'club') { aLean += 0.12 * cK; aCrouch += 0.03 * cK; aTwist += 0.2 * cK; aShL += -0.6 * cK; aShLz += 0.35 * cK; aElL += -0.8 * cK; } // porrete no ombro, a outra mão à frente
+          else if (wcls === 'hxbow') { aTwist += -0.55 * cK; aLean += -0.12 * cK; aShL += -0.25 * cK; aShLz += 0.25 * cK; aElL += -1.3 * cK; } // de lado, braço da besta estendido
+          else if (wcls === 'kunai') { aCrouch += 0.08 * cK; aLean += 0.15 * cK; aShL += -1.0 * cK; aElL += -0.7 * cK; aShLz += 0.2 * cK; } // agachado, a mão livre à frente
+          else if (wcls === 'bow') { aTwist += -0.5 * cK; aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
+        }
+        else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += 0.55 * cK; aElR += -0.95 * cK; aShRz += -0.1 * cK; }
         else if (kind === 'dwarf') { aTwist += 0.35 * cK; aShR += -0.8 * cK; aElR += -0.45 * cK; aShRz += -0.12 * cK; aSwX += 2.35 * cK; aLean += 0.05 * cK; } // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
         else { aTwist += 0.55 * cK; aCrouch += 0.05 * cK; aLean += 0.08 * cK; aHeadX += 0.22 * cK; }
       }
@@ -1455,10 +1539,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       } else if (guardK > 0.01) { aShL += -1.25 * guardK; aShLz += 0.18 * guardK; aElL += -1.7 * guardK; aFace = Math.max(aFace, guardK); aLean += -0.04 * guardK; aCrouch += (0.15 + 0.03 * recoil) * guardK; aShR += 0.35 * guardK; aTwist += 0.25 * guardK; aLean += (-0.08 * recoil) * guardK; aShL += 0.35 * recoil * guardK; aElL += 0.3 * recoil * guardK; }
       slashK = Math.max(0, slashK - dt * 7); if (slashK > 0) { const w = Math.sin(Math.min(1, 1 - slashK) * Math.PI); aShR += -1.1 * w; aShRz += -0.9 * w; aElR += 0.3 * w; aSwX += -1.2 * w; aTwist += 0.5 * w; }
       const rK = runK * walkK * (1 - (act ? 1 : 0));
-      if (kind === 'nordic' && rK > 0.01) { aShR += 0.95 * rK; aElR += 0.3 * rK; aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
+      if (kind === 'nordic' && rK > 0.01 && wcls === 'one') { aShR += 0.95 * rK; aElR += 0.3 * rK; aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
       root.rotation.y = yaw + aSpin;
       // sem ação a espada descansa apontando para o chão, ligeiramente para trás e afastada da perna
-      const hang = kind === 'nordic' ? smooth1('hang', act || guardK > 0.5 ? 0 : 1, dt, 9) * (1 - 0.62 * combatK) : 0;
+      const hang = kind === 'nordic' ? smooth1('hang', act || guardK > 0.5 || wcls === 'club' ? 0 : 1, dt, 9) * (1 - 0.62 * combatK) : 0;
       if (rifleHolder && rifleBack) { // rifle: em combate fica ao peito (mãos por IK); fora, às costas
         const want = combatK > 0.35 || !!(act && (act.a === 'shoot' || act.a === 'throw' || act.a === 'cast'));
         aimRK += ((want ? 1 : 0) - aimRK) * Math.min(1, dt * 10);
@@ -1570,6 +1654,14 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           combo2: [{ p: 0, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }, { p: .2, g: [0.5, 0.4, -0.2], d: [0.8, 0.2, -0.6] }, { p: .45, g: [-0.25, 0.3, 0.45], d: [-0.8, -0.1, 0.6] }, { p: .7, g: [-0.4, 0.25, 0.3], d: [-0.95, 0, 0.3] }, { p: 1, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }],
           combo4: [{ p: 0, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }, { p: .12, g: [0.2, 0.6, -0.15], d: [0, 1, -0.35] }, { p: .3, g: [0.1, 0.05, 0.5], d: [0, -0.55, 0.85] }, { p: .46, g: [0.52, 0.3, 0.05], d: [1, 0, 0.1] }, { p: .82, g: [0.52, 0.3, 0.05], d: [1, 0, 0.1] }, { p: 1, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }],
           slam: [{ p: 0, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }, { p: .3, g: [0.2, 0.55, -0.1], d: [0.1, 1, -0.3] }, { p: .5, g: [0.2, 0.62, 0.0], d: [0, 1, -0.2] }, { p: .68, g: [0.1, -0.05, 0.5], d: [0, -1, 0.35] }, { p: .88, g: [0.1, -0.05, 0.5], d: [0, -1, 0.35] }, { p: 1, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }],
+          thrust1: [{ p: 0, g: [0.26, 0.02, 0.4], d: [0.02, 0.12, 1] }, { p: .25, g: [0.24, 0.06, 0.12], d: [0, 0.15, 1] }, { p: .45, g: [0.14, 0.08, 0.78], d: [0, 0.02, 1] }, { p: .75, g: [0.14, 0.08, 0.74], d: [0, 0.02, 1] }, { p: 1, g: [0.26, 0.02, 0.4], d: [0.02, 0.12, 1] }],
+          thrust2: [{ p: 0, g: [0.26, 0.02, 0.4], d: [0.02, 0.12, 1] }, { p: .3, g: [0.22, 0.4, 0.2], d: [0.1, 0.5, 0.85] }, { p: .5, g: [0.1, 0.22, 0.74], d: [-0.05, -0.08, 1] }, { p: .8, g: [0.1, 0.2, 0.7], d: [0, -0.05, 1] }, { p: 1, g: [0.26, 0.02, 0.4], d: [0.02, 0.12, 1] }],
+          stab: [{ p: 0, g: [0.24, -0.16, 0.32], d: [0.05, 0.25, 1] }, { p: .2, g: [0.22, -0.1, 0.08], d: [0, 0.3, 1] }, { p: .42, g: [0.1, -0.02, 0.66], d: [0, 0.05, 1] }, { p: .65, g: [0.12, -0.04, 0.6], d: [0, 0.05, 1] }, { p: 1, g: [0.24, -0.16, 0.32], d: [0.05, 0.25, 1] }],
+          claw1: [{ p: 0, g: [0.32, -0.05, 0.34], d: [0.1, 0.1, 1] }, { p: .3, g: [0.42, 0.42, 0.1], d: [0.3, 0.7, 0.6] }, { p: .55, g: [-0.15, -0.15, 0.5], d: [-0.5, -0.45, 0.75] }, { p: .75, g: [-0.1, -0.12, 0.45], d: [-0.4, -0.4, 0.8] }, { p: 1, g: [0.32, -0.05, 0.34], d: [0.1, 0.1, 1] }],
+          clubsm: [{ p: 0, g: [0.26, 0.3, -0.02], d: [0.15, 0.85, -0.5] }, { p: .35, g: [0.16, 0.62, -0.12], d: [0, 0.75, -0.65] }, { p: .58, g: [0.1, -0.08, 0.56], d: [0, -0.75, 0.65] }, { p: .85, g: [0.1, -0.1, 0.52], d: [0, -0.8, 0.6] }, { p: 1, g: [0.26, 0.3, -0.02], d: [0.15, 0.85, -0.5] }],
+          aim1: [{ p: 0, g: [0.24, 0.05, 0.42], d: [0, 0.05, 1] }, { p: .15, g: [0.18, 0.18, 0.58], d: [0, 0.02, 1] }, { p: .22, g: [0.18, 0.24, 0.5], d: [0, 0.2, 1] }, { p: .32, g: [0.18, 0.18, 0.58], d: [0, 0.02, 1] }, { p: 1, g: [0.24, 0.05, 0.42], d: [0, 0.05, 1] }],
+          kthrow: [{ p: 0, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }, { p: .3, g: [0.3, 0.42, -0.12], d: [0, 0.9, -0.4] }, { p: .5, g: [0.15, 0.2, 0.55], d: [0, -0.2, 1] }, { p: 1, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }],
+          draw: [{ p: 0, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }, { p: .2, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: .85, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: 1, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }],
           chop: [{ p: 0, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }, { p: .38, g: [0.36, 0.2, -0.02], d: [0.7, 0.3, -0.65] }, { p: .56, g: [0.04, 0.0, 0.46], d: [-0.45, -0.08, 0.89] }, { p: .74, g: [0.02, -0.02, 0.46], d: [-0.5, -0.1, 0.86] }, { p: 1, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }], /* lenhador de verdade: duas mãos no cabo, recua sobre o ombro direito e corta na horizontal na altura da cintura */
           mine: [{ p: 0, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }, { p: .4, g: [0.14, 0.62, -0.06], d: [0.05, 0.92, -0.38] }, { p: .58, g: [0.1, -0.12, 0.46], d: [0.02, -0.78, 0.62] }, { p: .76, g: [0.1, -0.14, 0.45], d: [0.02, -0.8, 0.6] }, { p: 1, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }],
           skin: [{ p: 0, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }, { p: .3, g: [0.2, 0.22, 0.62], d: [-0.55, 0.3, 0.78] }, { p: .6, g: [-0.1, 0.18, 0.64], d: [0.1, 0.25, 0.96] }, { p: 1, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }],
@@ -1583,8 +1675,19 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           quake: [{ p: 0, g: [0.25, 0.05, 0.25], d: [0.9, 0.1, 0.4] }, { p: .3, g: [0.12, 0.62, -0.2], d: [0, 1, -0.4] }, { p: .5, g: [0.12, 0.66, -0.1], d: [0, 1, -0.3] }, { p: .68, g: [0.15, -0.02, 0.55], d: [0, -0.85, 0.55] }, { p: .9, g: [0.15, -0.02, 0.55], d: [0, -0.85, 0.55] }, { p: 1, g: [0.25, 0.05, 0.25], d: [0.9, 0.1, 0.4] }],
           charge: [{ p: 0, g: [0.25, 0.05, 0.25], d: [0.9, 0.1, 0.4] }, { p: .1, g: [0.42, 0.0, -0.3], d: [0.35, 0.35, -0.85] }, { p: .62, g: [0.42, 0.0, -0.3], d: [0.35, 0.35, -0.85] }, { p: .8, g: [0.12, 0.6, -0.2], d: [0, 1, -0.4] }, { p: 1, g: [0.25, 0.05, 0.25], d: [0.9, 0.1, 0.4] }],
         } : {};
+        /* postura de combate por arma (02/11, referências): [pegada no peito, direção da lâmina] */
+        const W_HOLD: Partial<Record<WClass, [number, number, number][]>> = {
+          two: [[0.12, -0.12, 0.34], [0.2, 0.9, 0.38]], // espadão em pé à frente, as duas mãos no cabo
+          fence: [[0.26, 0.02, 0.4], [0.02, 0.12, 1]], // florete apontado para o inimigo, braço meio estendido
+          dagger: [[0.24, -0.16, 0.32], [0.05, 0.25, 1]], // adaga baixa, ponta à frente
+          claw: [[0.32, -0.05, 0.34], [0.1, 0.1, 1]], // garras abertas à frente
+          club: [[0.26, 0.3, -0.02], [0.15, 0.85, -0.5]], // porrete apoiado no ombro
+          hxbow: [[0.24, 0.05, 0.42], [0, 0.05, 1]], // besta de mão já apontada
+          kunai: [[0.22, -0.08, 0.28], [0.05, -0.9, 0.3]], // kunai em pegada invertida, lâmina para baixo
+          bow: [[0.2, -0.1, 0.36], [0, -1, 0.15]], // arco de pé à frente, na mão
+        };
         const guardHold = kind === 'dwarf' && guardK > 0.3;
-        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]] : kind === 'dwarf' ? [[0.25, 0.05, 0.25], [0.9, 0.1, 0.4]] : null;
+        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : kind === 'dwarf' ? [[0.25, 0.05, 0.25], [0.9, 0.1, 0.4]] : null;
         const kfW = act ? WKF[act.a] : undefined;
         const want = kfW ? 1 : guardHold ? 1 : (!act && hero.combat && guardK < 0.3 && HOLD) ? combatK : 0;
         rigK += (want - rigK) * Math.min(1, dt * 12);
@@ -1604,6 +1707,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           chest.updateWorldMatrix(true, true);
           const tR = weaponRig.getWorldPosition(new V()); chest.worldToLocal(tR);
           armIK(armR.sh, armR.el, tR, S.upper, S.fore, tmp.set(0.7, -0.8, 0.1), rigK);
+          if (wcls === 'two' && !(act && (act.a === 'chop' || act.a === 'mine'))) { const tL = rigPos.clone().addScaledVector(rigDir, -0.16); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.6, -0.9, 0.1), rigK); } /* espadão: as duas mãos no cabo */
           if (act && (act.a === 'chop' || act.a === 'mine')) { // ferramenta de duas mãos: a esquerda corre pelo cabo
             const tL = rigPos.clone().addScaledVector(rigDir, -0.2); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.6, -0.9, 0.1), rigK); /* a mão esquerda segura o fim do cabo, abaixo da direita */
           }
@@ -1634,7 +1738,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       }
 
       if (shieldHolder && backAnchor) { // fora de combate o escudo vai para as costas
-        const wantStow = gunOn || (combatK < 0.35 && !hero.guard && (!act || act.a === 'chop' || act.a === 'mine' || act.a === 'skin' || act.a === 'herb')); // arma de duas mãos: escudo sempre nas costas // nos ofícios o escudo fica nas costas
+        const wantStow = gunOn || SHIELDLESS.has(wcls) || (combatK < 0.35 && !hero.guard && (!act || act.a === 'chop' || act.a === 'mine' || act.a === 'skin' || act.a === 'herb')); // arma de duas mãos: escudo sempre nas costas // nos ofícios o escudo fica nas costas
         if (wantStow !== stowed) { stowed = wantStow; if (stowed) { backAnchor.add(shieldHolder); shieldHolder.position.set(0, 0, 0); shieldHolder.quaternion.identity(); shieldF = 0; } else { armL.el.add(shieldHolder); shieldHolder.position.set(-0.08, -S.fore * 0.5, 0.06); shieldHolder.quaternion.identity(); } }
       }
       if (shieldHolder && !stowed) {
@@ -1664,6 +1768,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   root.updateMatrixWorld(true);
   const rigJ = { hips, spine, chest, neck: neckG, head, armL, armR, legL, legR };
   root.add(gunHolder); gunHolder.visible = false;
-  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe, swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
+  (hero as unknown as { rig: unknown }).rig = { ...rigJ, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe ?? (wcls === 'two' ? gearSword : null), swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
   return hero;
 }

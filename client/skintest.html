@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;background:#222}canvas{display:block}</style></head><body><canvas id="c" width="1600" height="800"></canvas>
 <script type="module">
-import * as THREE from 'three';
+import * as THREE from 'three'; window.__THREE = THREE;
 import { createCharacter } from '/src/characters.ts';
 import { attachSkin } from '/src/skin3d.ts';
 const cv = document.getElementById('c'); const r = new THREE.WebGLRenderer({ canvas: cv, antialias: false }); r.setSize(1600, 800, false); r.autoClear = false;
@@ -22,7 +22,7 @@ async function run() {
     for (let k = 0; k < 60; k++) h.update(dt, k * dt, mps, null);
     const TOOLB = { chop: ['Machado de Lenhador', 0x8a929e], mine: ['Picareta', 0xdde3ec], skin: ['Faca de Caça', 0xdde3ec], herb: ['Alicate de Ervas', 0xe8eef6], kneel: ['Faca de Caça', 0xdde3ec] };
     if (TOOLB[p]) { h.holdTool = true; h.setGear({ weapon: { base: TOOLB[p][0], rarity: 'normal', tint: TOOLB[p][1] } }); if (p === 'skin' || p === 'herb' || p === 'kneel') { h.kneel = true; for (let k = 0; k < 90; k++) h.update(dt, 1 + k * dt, 0, null); } }
-    if (['combo1', 'combo2', 'combo4', 'rush', 'slam', 'cast', 'parry', 'dodge', 'block', 'chop', 'mine', 'skin', 'herb', 'kick', 'lowcut', 'plant', 'breath', 'skyraise', 'stance'].includes(p)) { h.act(p); }
+    if (['combo1', 'combo2', 'combo3', 'combo4', 'shoot', 'rush', 'slam', 'cast', 'parry', 'dodge', 'block', 'chop', 'mine', 'skin', 'herb', 'kick', 'lowcut', 'plant', 'breath', 'skyraise', 'stance'].includes(p)) { if (p === 'combo1' || p === 'combo2' || p === 'combo3' || p === 'shoot') h.combat = true; h.act(p); }
     const TS = (new URLSearchParams(location.search).get('ts') || '').split(',').filter(Boolean).map(Number); const steps = Math.round((TS[i] ?? T) / dt); for (let k = 0; k < steps; k++) h.update(dt, 1 + k * dt, mps, null);
     { const NT = +(new URLSearchParams(location.search).get('ticks') || 1); for (let q = 0; q < NT; q++) h._tick?.(); } }
   r.clear();

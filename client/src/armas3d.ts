@@ -23,11 +23,12 @@ function wrapGrip(sw: THREE.Group, c: SwordCtx, col: number, L: number, r = 0.01
   for (let i = 0; i < turns; i++) { const ring = c.mk(new THREE.TorusGeometry(r + 0.002, 0.0035, 4, 10), wire ?? col, 0, wire ? c.metal(c.rar, wire, 0.2) : undefined); ring.rotation.x = Math.PI / 2; ring.position.y = -0.01 + (i + 0.5) * (L / turns); sw.add(ring); }
 }
 export const REF_SWORDS = ['Espada Longa', 'Espada Nórdica', 'Espadão Anão', 'Lâmina Élfica', 'Cimitarra', 'Espada de Espinhos',
-  /* prancha 48 (curtas) e 50 (especiais), 01/11 */ 'Adaga', 'Espada Curta', 'Espada Curta Anã', 'Adaga Élfica', 'Sabre', 'Flamberge', 'Montante', 'Katana', 'Facão', 'Lâmina Serrilhada', 'Espada de Duelo', 'Adaga Fina'] as const;
+  /* prancha 48 (curtas) e 50 (especiais), 01/11 */ 'Adaga', 'Espada Curta', 'Espada Curta Anã', 'Adaga Élfica', 'Sabre', 'Flamberge', 'Montante', 'Katana', 'Facão', 'Lâmina Serrilhada', 'Espada de Duelo', 'Adaga Fina',
+  /* 02/11 (Erling): armas de classe — vampiro (florete), lobisomem (garras), caçador (besta de mão, kunai, adaga de prata) */ 'Florete', 'Garras de Ferro', 'Besta de Mão', 'Kunai', 'Adaga de Prata'] as const;
 export type RefSword = (typeof REF_SWORDS)[number];
 /** monta a espada no grupo (que já tem a empunhadura simples e o pomo padrão: removemos e refazemos). Devolve o comprimento da lâmina */
 export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): number {
-  for (const o of [...sw.children]) sw.remove(o);
+  for (const o of [...sw.children]) if ((o as THREE.Mesh).isMesh || (o as THREE.Group).isGroup) sw.remove(o); /* 02/11: os marcadores (ponta e base da arma, Object3D vazios) ficam — sem eles o tiro saía da origem do mundo */
   const steel = 0xc9ced6, GL = c.glow;
   if (base === 'Espada Longa') { // 49.1: lâmina reta de dois gumes, canaleta, guarda reta de aço, cabo de couro marrom, pomo redondo
     const L = 0.86; sw.add(c.mk(bladeGeo([[0.035, 0], [0.034, -L * 0.72], [0.026, -L * 0.9], [0, -L]], 0.008), steel, 0.004, c.metal(c.rar, steel)));
@@ -137,6 +138,33 @@ export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): num
     const bow = c.mk(new THREE.TorusGeometry(0.1, 0.005, 5, 16, Math.PI), 0x9aa2ae, 0.002, c.metal(c.rar, 0x9aa2ae)); bow.position.set(0.02, 0.1, 0); bow.rotation.z = -Math.PI / 2 + 0.3; sw.add(bow); // arco de mão até o pomo
     const grip = c.mk(new THREE.CylinderGeometry(0.012, 0.013, 0.16, 8), 0x8a8e96, 0.003, c.metal(c.rar, 0x8a8e96)); grip.position.y = 0.1; sw.add(grip); for (let i = 0; i < 6; i++) { const rr = c.mk(new THREE.TorusGeometry(0.014, 0.002, 4, 10), 0x5a5e66, 0); rr.rotation.x = Math.PI / 2; rr.position.y = 0.03 + i * 0.025; sw.add(rr); }
     const pm = c.mk(new THREE.SphereGeometry(0.02, 8, 6), GL || 0x9aa2ae, 0.003, c.metal(c.rar, 0x9aa2ae)); pm.position.y = 0.2; sw.add(pm); return L; }
+  if (base === 'Florete') { // florete de esgrima: lâmina quadrada finíssima e longa, guarda em concha (copo), cabo reto com arame, pomo em pera
+    const L = 1.02, st = 0xe4e8ee; sw.add(c.mk(bladeGeo([[0.008, 0], [0.007, -L * 0.75], [0.004, -L * 0.94], [0, -L]], 0.007), st, 0.003, c.metal(c.rar, st)));
+    const cup = c.mk(new THREE.SphereGeometry(0.06, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.42), 0xb8bec8, 0.002, c.metal(c.rar, 0xb8bec8)); cup.rotation.x = Math.PI; cup.position.y = 0.0; sw.add(cup); // a concha abre para a lâmina
+    const qn = c.mk(new THREE.BoxGeometry(0.11, 0.008, 0.008), 0x9aa2ae, 0.002, c.metal(c.rar, 0x9aa2ae)); qn.position.y = 0.012; sw.add(qn);
+    wrapGrip(sw, c, 0x2a2228, 0.14, 0.011, 8, 0xb8bec8);
+    const pm = c.mk(new THREE.SphereGeometry(0.018, 8, 6), GL || 0xb8bec8, 0.003, c.metal(c.rar, 0xb8bec8)); pm.scale.set(1, 1.4, 1); pm.position.y = 0.15; sw.add(pm); return L; }
+  if (base === 'Garras de Ferro') { // garras do licantropo: manopla de couro na mão com três lâminas curvas saindo dos nós dos dedos
+    const dk = 0x5a5e66; const band = c.mk(new THREE.BoxGeometry(0.1, 0.07, 0.05), 0x3a2a1e, 0.003); band.position.y = 0.02; sw.add(band);
+    for (let i = -1; i <= 1; i++) { const cv = new THREE.CatmullRomCurve3([new THREE.Vector3(i * 0.032, -0.01, 0), new THREE.Vector3(i * 0.036, -0.14, 0.015), new THREE.Vector3(i * 0.04, -0.26, 0.05), new THREE.Vector3(i * 0.042, -0.33, 0.1)]);
+      const cl = c.mk(new THREE.TubeGeometry(cv, 8, 0.009, 4), dk, 0.002, c.metal(c.rar, dk)); sw.add(cl); const tip = c.mk(new THREE.ConeGeometry(0.009, 0.05, 4), 0xc8ccd4, 0, c.metal(c.rar, 0xc8ccd4)); tip.position.set(i * 0.042, -0.35, 0.115); tip.rotation.x = Math.PI - 0.5; sw.add(tip); }
+    for (let i = 0; i < 3; i++) { const st = c.mk(new THREE.CylinderGeometry(0.006, 0.006, 0.012, 5), 0x9aa0a8, 0); st.rotation.z = Math.PI / 2; st.position.set(-0.03 + i * 0.03, 0.045, 0.026); sw.add(st); } return 0.33; }
+  if (base === 'Besta de Mão') { // besta de uma mão do caçador: coronha curta de nogueira, arco de aço pequeno na ponta, corda, virote carregado e gatilho
+    const wd = 0x5a3a22, st = 0x8a8e96; const stock = c.mk(new THREE.BoxGeometry(0.035, 0.36, 0.045), wd, 0.003); stock.position.y = -0.12; sw.add(stock);
+    const grip = c.mk(new THREE.BoxGeometry(0.03, 0.11, 0.04), wd, 0.003); grip.position.set(0, 0.05, -0.025); grip.rotation.x = 0.4; sw.add(grip);
+    for (const sx of [-1, 1]) { const cv = new THREE.CatmullRomCurve3([new THREE.Vector3(0, -0.28, 0), new THREE.Vector3(sx * 0.1, -0.27, 0), new THREE.Vector3(sx * 0.17, -0.23, 0)]); sw.add(c.mk(new THREE.TubeGeometry(cv, 6, 0.007, 4), st, 0.002, c.metal(c.rar, st))); }
+    const str = c.mk(new THREE.BoxGeometry(0.34, 0.003, 0.003), 0xc8c0a8, 0); str.position.y = -0.2; sw.add(str);
+    const bolt = c.mk(new THREE.CylinderGeometry(0.004, 0.004, 0.22, 4), 0x6a4a2a, 0); bolt.position.set(0, -0.26, 0.026); sw.add(bolt); const bh = c.mk(new THREE.ConeGeometry(0.008, 0.03, 4), 0xc8ccd4, 0); bh.position.set(0, -0.38, 0.026); bh.rotation.x = Math.PI; sw.add(bh);
+    const trg = c.mk(new THREE.TorusGeometry(0.014, 0.003, 4, 8), st, 0); trg.position.set(0, 0.01, -0.03); trg.rotation.y = Math.PI / 2; sw.add(trg);
+    const sil = c.mk(new THREE.OctahedronGeometry(0.014, 0), GL || 0xd8dde4, 0.002, c.metal(c.rar, 0xd8dde4)); sil.position.set(0, -0.05, 0.03); sw.add(sil); return 0.4; }
+  if (base === 'Kunai') { // kunai: lâmina losangular curta, cabo enrolado em tecido e argola no pomo (de arremesso)
+    const L = 0.2, dk = 0x3a3e46; sw.add(c.mk(bladeGeo([[0.004, 0], [0.024, -L * 0.35], [0.012, -L * 0.8], [0, -L]], 0.005), dk, 0.003, c.metal(c.rar, dk)));
+    wrapGrip(sw, c, 0x6a1a1a, 0.11, 0.009, 7, 0x2a2a30); const ring = c.mk(new THREE.TorusGeometry(0.022, 0.005, 5, 12), dk, 0.002, c.metal(c.rar, dk)); ring.position.y = 0.125; sw.add(ring); return L; }
+  if (base === 'Adaga de Prata') { // adaga de prata dos caçadores: lâmina larga clara com runa, guarda reta curta, cabo de couro e pomo com o olho
+    const L = 0.36, sv = 0xe8ecf2; sw.add(c.mk(bladeGeo([[0.026, 0], [0.024, -L * 0.6], [0.014, -L * 0.88], [0, -L]], 0.007), sv, 0.003, c.metal(c.rar, sv, 0.5)));
+    const rn = c.mk(new THREE.BoxGeometry(0.006, L * 0.4, 0.009), GL || 0x6ab0ff, 0, c.toon(GL || 0x6ab0ff, { emissive: new THREE.Color(GL || 0x2a5aa0) })); rn.position.y = -L * 0.32; sw.add(rn);
+    const gd = c.mk(new THREE.BoxGeometry(0.1, 0.016, 0.024), 0x6e747c, 0.003, c.metal(c.rar, 0x6e747c)); sw.add(gd);
+    wrapGrip(sw, c, 0x3a2a1e, 0.11, 0.012, 6); const pm = c.mk(new THREE.SphereGeometry(0.018, 8, 6), 0xd8dde4, 0.003, c.metal(c.rar, 0xd8dde4)); pm.position.y = 0.12; sw.add(pm); return L; }
   if (base === 'Adaga Fina') { // 48.6: adaga vampírica — lâmina escura com sangue, guarda em galhos de espinho, cabo preto, gema vermelha no pomo em espigão
     const L = 0.44, dk = 0x6a6e78; sw.add(c.mk(bladeGeo([[0.02, 0], [0.02, -L * 0.7], [0.014, -L * 0.88], [0, -L]], 0.006), dk, 0.003, c.metal(c.rar, dk)));
     const blood = c.mk(new THREE.BoxGeometry(0.008, L * 0.3, 0.008), 0x7a0e14, 0, c.toon(0x7a0e14, { emissive: new THREE.Color(0x3a0408) })); blood.position.set(0.004, -L * 0.12, 0); sw.add(blood);

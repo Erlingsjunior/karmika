@@ -2,6 +2,7 @@ import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS } from './festim
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
+import { createShots, type ShotTarget } from './projeteis';
 import { buildHealDrone, buildShieldBot, buildDome, type HealDrone, type ShieldBot, type Dome } from './drones3d';
 import { fine } from './dual3d';
 import type { Hero3D } from './characters';
@@ -19,7 +20,7 @@ export interface GameplayDeps { /** multiplicador do dano recebido de fora (Inst
   scene: THREE.Scene; particles: Particles; camera: THREE.Camera; audio: AudioEngine;
   getHero: () => Hero3D; getRaceColor: () => number; canvas: HTMLCanvasElement;
   /** bonecos de treino do Quartel (01/11): um grupo por posição */ dummies: THREE.Vector3[];
-  world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; townAt?(x: number, z: number): boolean; guardNear?(x: number, z: number): boolean };
+  world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; /** tile de muro/parede no ponto (m) — projéteis cravam */ isWall?(x: number, z: number): boolean; walkable(x: number, z: number): boolean; townAt?(x: number, z: number): boolean; guardNear?(x: number, z: number): boolean };
 }
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -499,15 +500,19 @@ export function createGameplay(d: GameplayDeps) {
   const ticks: { t: number; fn: (dt: number, left: number) => void; end?: () => void }[] = [];
   let form: { id: string; t: number; scale: number } | null = null, overT = 0, medicT = 0, flameT = 0, flameYaw = 0, flameKind: 'fire' | 'poison' = 'fire', flameMul = 0.55, flameReach = 9.5;
   /** arma equipada que muda o ataque básico: arco, besta de repetição, metralhadora, lança-chamas, lança-veneno (23/10) */
-  type WMode = 'bow' | 'longbow' | 'xbow' | 'smg' | 'pistol' | 'flame' | 'venom';
+  type WMode = 'bow' | 'longbow' | 'xbow' | 'hxbow' | 'kunai' | 'smg' | 'pistol' | 'flame' | 'venom';
   let wmode = null as WMode | null;
-  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Metralhadora/, 'smg'], [/Pistola/, 'pistol'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
-  function mkArrow(col: number) { const g = new THREE.Group(), tm = (c: number) => new THREE.MeshToonMaterial({ color: c, gradientMap: ramp });
-    const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.7, 5), tm(0x8a6a40)); sh.rotation.x = Math.PI / 2; g.add(sh);
-    const hd = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.09, 4), tm(0xb8c0c8)); hd.rotation.x = Math.PI / 2; hd.position.z = 0.38; g.add(hd);
-    for (const a of [0, 2.1, 4.2]) { const f = new THREE.Mesh(new THREE.PlaneGeometry(0.05, 0.12), new THREE.MeshBasicMaterial({ color: col, side: THREE.DoubleSide })); f.position.set(Math.cos(a) * 0.025, Math.sin(a) * 0.025, -0.3); f.rotation.set(Math.PI / 2, 0, a); g.add(f); }
-    g.scale.setScalar(1.4); fxAdd(g); return g; }
+  const WMODE: [RegExp, WMode][] = [[/Arco Longo/, 'longbow'], [/Arco/, 'bow'], [/Besta de Repetição/, 'xbow'], [/Besta de Mão/, 'hxbow'], [/Kunai/, 'kunai'], [/Metralhadora/, 'smg'], [/Pistola/, 'pistol'], [/Lança-Chamas/, 'flame'], [/Lança-Veneno/, 'venom']];
+  /* (o mkArrow das flechas retas saiu: as flechas agora são do projeteis.ts, com física — 02/11) */
   const puddles: { x: number; z: number; r: number; t: number; m: THREE.Mesh }[] = [];
+  /** gotas do lança-chamas / lança-veneno (física) */ const jets: { p: THREE.Vector3; v: THREE.Vector3; life: number; age: number; pz: boolean; from: THREE.Vector3 }[] = []; const jetHitT = new WeakMap<Enemy, number>(); let lastPuddle = -9; const heroVel = new THREE.Vector3(); const heroPrev = new THREE.Vector3();
+  /* 02/11: projéteis das armas de longo alcance com física (projeteis.ts): arco, besta, besta de mão, kunai, pistola e metralhadora */
+  const shots = createShots({ scene: d.scene, heightAt: (x, z) => d.world.heightAt(x, z), isWall: (x, z) => d.world.isWall?.(x, z) ?? false, targets: () => enemies.list as unknown as ShotTarget[],
+    hit: (e0, h0) => { const e = e0 as unknown as Enemy; skill = (h0.data as { sk?: SkillId } | undefined)?.sk ?? 'combo'; hitEnemy(e, h0.mul, h0.kind !== 'bullet', h0.from); skill = null; if (e.alive && h0.kind === 'kunai' && st.sp.has('burn')) { e.burn = 3; e.burnTick = 0; } },
+    dummyAt: (x, z, r) => { const dm = dummyNear(x, z, r); return dm ? { hit: (pt, mul) => { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, pt.clone().setY(pt.y - 0.2)); } } : null; },
+    spark: (p, k, dir) => { const n = k === 'blood' ? 10 : 7, c0 = k === 'blood' ? 0xc0101a : k === 'metal' ? 0xffe8a0 : k === 'wood' ? 0xd8b080 : 0xb8a888, c1 = k === 'blood' ? 0x3a0006 : k === 'metal' ? 0xff8a20 : k === 'wood' ? 0x6a4a2a : 0x6a5a48;
+      for (let q = 0; q < n; q++) d.particles.spawn(p.x, p.y, p.z, { vx: -(dir?.x ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), vy: rnd(0.4, 2.6), vz: -(dir?.z ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), life: rnd(0.25, 0.5), s0: k === 'dust' ? 0.35 : 0.16, s1: k === 'dust' ? 0.7 : 0.04, c0, c1, a: 1, drag: 2.5, g: k === 'dust' ? -1 : 8 }); },
+    sound: (k) => { if (k === 'ric') d.audio.parry(); else d.audio.hit(); } });
   const zones: { x: number; z: number; r: number; t: number; m: THREE.Mesh }[] = [];
   const pillars: { m: THREE.Mesh; t: number; y0: number }[] = [];
   /* granadas de plasma (tecnocrata) */
@@ -914,9 +919,17 @@ export function createGameplay(d: GameplayDeps) {
     skill = null; return n;
   }
   /** raio que salta da lâmina carregada */
+  /* 02/11 (Erling: "raios com física aprimorada"): o raio é um caminho fractal (desvio proporcional ao comprimento, maior no meio), com miolo branco fino e
+     halo colorido largo, 1–3 galhos que se soltam do caminho, e cintila: é redesenhado mais duas vezes em ~0,1 s com outro desvio; luz no ponto de impacto */
   function bolt3d(a: THREE.Vector3, b: THREE.Vector3, col = 0x9ad0ff) {
-    const pts: THREE.Vector3[] = []; const n = 7; for (let i = 0; i <= n; i++) { const k = i / n; const p = a.clone().lerp(b, k); if (i > 0 && i < n) p.add(new THREE.Vector3(rnd(-0.35, 0.35), rnd(-0.3, 0.3), rnd(-0.35, 0.35))); pts.push(p); }
-    for (let i = 0; i < n; i++) beam(pts[i], pts[i + 1], col, 0.06, 0.16);
+    const draw = (life: number, wk: number) => { const L = a.distanceTo(b), n = Math.max(5, Math.min(18, Math.round(L / 0.55))); const dir = b.clone().sub(a).normalize(); const sd = new THREE.Vector3(-dir.z, 0, dir.x).normalize(), up = new THREE.Vector3().crossVectors(dir, sd).normalize();
+      const pts: THREE.Vector3[] = []; for (let i = 0; i <= n; i++) { const k = i / n, env = Math.sin(Math.PI * k), amp = Math.min(0.9, L * 0.09) * env; const p = a.clone().lerp(b, k); if (i > 0 && i < n) p.addScaledVector(sd, rnd(-amp, amp)).addScaledVector(up, rnd(-amp, amp) * 0.8); pts.push(p); }
+      for (let i = 0; i < n; i++) { beam(pts[i], pts[i + 1], col, 0.11 * wk, life); beam(pts[i], pts[i + 1], 0xffffff, 0.035 * wk, life * 0.8); }
+      const nb = 1 + Math.floor(Math.random() * Math.min(3, n / 4)); for (let q = 0; q < nb; q++) { const s0 = 1 + Math.floor(Math.random() * (n - 2)); let p0 = pts[s0].clone(); const bd = dir.clone().addScaledVector(sd, rnd(-1.2, 1.2)).addScaledVector(up, rnd(-0.6, 0.6)).normalize(); const m = 2 + Math.floor(Math.random() * 3);
+        for (let k = 0; k < m; k++) { const p1 = p0.clone().addScaledVector(bd, rnd(0.25, 0.55) * (1 - k / (m + 1))).addScaledVector(sd, rnd(-0.15, 0.15)); beam(p0, p1, col, 0.05 * wk, life * 0.8); p0 = p1; } } };
+    draw(0.16, 1); for (const [ms, wk] of [[45, 0.8], [95, 0.6]] as [number, number][]) pending.push({ at: now + ms / 1000, fn: () => draw(0.08, wk) });
+    for (let q = 0; q < 10; q++) d.particles.spawn(b.x, b.y, b.z, { vx: rnd(-3, 3), vy: rnd(-0.5, 3), vz: rnd(-3, 3), life: rnd(0.15, 0.35), s0: 0.25, s1: 0.03, c0: 0xffffff, c1: col, a: 1, drag: 3 });
+    d.particles.spawn(b.x, b.y, b.z, { life: 0.18, s0: 1.6, s1: 0.4, c0: 0xffffff, c1: col, a: 0.9 });
   }
   function thunderProc(e: Enemy) {
     thunderN--; const dm = Math.round((8 + st.lvl * 3) * skillScale('thunder').dmg); const top = e.pos.clone().setY(e.pos.y + 1.2);
@@ -985,7 +998,7 @@ export function createGameplay(d: GameplayDeps) {
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
     /** um companheiro de grupo matou um bicho perto de mim: XP, missão e o meu próprio saque */
     sharedKill(e: Enemy) { killEnemy(e, true); },
-    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); },
+    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); },
     get menuOpen() { return st.menuOpen; },
     /** alvo mais próximo ao alcance (trava automática dos golpes) */
     timeScale() { return performance.now() < hitstop ? 0.1 : 1; },
@@ -1025,18 +1038,23 @@ export function createGameplay(d: GameplayDeps) {
         if (!h.act('shoot')) return false; lastCombo = now; slotFlash('combo');
         const dir0 = (sp: number) => new THREE.Vector3(Math.sin(yaw + rnd(-sp, sp)), 0, Math.cos(yaw + rnd(-sp, sp)));
         const from0 = () => { const f = h.weaponTip(new THREE.Vector3()); f.y = Math.max(f.y, 1.0); return f; };
+        /* 02/11 (Erling: "as flechas têm que voar até os alvos"): flecha, virote, kunai e bala saem pelo projeteis.ts — mira no inimigo à frente,
+           adianta o alvo, arco balístico com gravidade, crava no chão/muro/bicho. O tempo do disparo segue o golpe da arma (soltar a corda, arremessar) */
+        const shell = () => { const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2 + rnd(-0.5, 0.5), vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); };
         if (wmode === 'bow' || wmode === 'longbow') { const L = wmode === 'longbow'; cd.attack = (L ? 1.05 : 0.8) * TEMPO; d.audio.swing();
-          pending.push({ at: now + TEMPO * 0.22, fn: () => { const from = from0(), dir = dir0(0.01); bolts.push({ p: from, v: dir.multiplyScalar(L ? 40 : 34), life: L ? 0.6 : 0.5, mul: L ? 1.55 : 1.25, pulse: true, straight: true, quiet: true, m: mkArrow(0xe8d8b0), col: 0xe8d8b0 }); d.audio.parry(); } }); return true; }
+          pending.push({ at: now + TEMPO * 0.24, fn: () => { shots.fire(L ? 'longarrow' : 'arrow', from0(), h.root.rotation.y, { mul: L ? 1.55 : 1.25 }); d.audio.parry(); } }); return true; }
         if (wmode === 'xbow') { cd.attack = 0.6 * TEMPO; // besta de repetição: três virotes em sequência
-          for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { const from = from0(), dir = dir0(0.03); bolts.push({ p: from, v: dir.multiplyScalar(46), life: 0.42, mul: 0.62, pulse: true, straight: true, quiet: true, m: mkArrow(0x9a2a2a), col: 0xc8d8ff }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
+          for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { shots.fire('bolt', from0(), h.root.rotation.y, { mul: 0.62, spread: 0.02 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
+        if (wmode === 'hxbow') { cd.attack = 0.55 * TEMPO; // besta de mão: um virote certeiro, braço estendido
+          pending.push({ at: now + TEMPO * 0.06, fn: () => { shots.fire('hbolt', from0(), h.root.rotation.y, { mul: 1.05 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.03); } }); return true; }
+        if (wmode === 'kunai') { cd.attack = 0.5 * TEMPO; d.audio.swing(); // kunai: dois arremessos rápidos, girando no ar
+          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.12 + i * 0.09, fn: () => { shots.fire('kunai', from0(), h.root.rotation.y + (i ? 0.05 : -0.05), { mul: 0.6, spread: 0.015 }); } }); return true; }
         if (wmode === 'pistol') { cd.attack = 0.42 * TEMPO; // pistola de latão: dois tiros certeiros e pesados
-          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.16, fn: () => { const from = from0(), dir = dir0(0.012); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.07);
-            bolts.push({ p: from, v: dir.clone().multiplyScalar(60), life: 0.32, mul: 0.78, pulse: true, quiet: true, col: 0xffd080 }); beam(from, from.clone().addScaledVector(dir, 1.6), 0xffe0a0, 0.025, 0.06);
-            const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2, vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); } }); return true; }
+          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.16, fn: () => { const from = from0(); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.07); shots.fire('bullet', from, h.root.rotation.y, { mul: 0.78, spread: 0.008 });
+            beam(from, from.clone().addScaledVector(dir0(0), 0.9), 0xffe0a0, 0.04, 0.05); shell(); } }); return true; }
         if (wmode === 'smg') { cd.attack = 0.55 * TEMPO; // metralhadora de mão: seis balas rápidas e espalhadas
-          for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(), dir = dir0(0.06); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.05);
-            bolts.push({ p: from, v: dir.clone().multiplyScalar(52), life: 0.3, mul: 0.34, pulse: true, quiet: true, col: 0xffd080 }); beam(from, from.clone().addScaledVector(dir, 1.2), 0xffe0a0, 0.02, 0.05);
-            const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2 + rnd(-0.5, 0.5), vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); } }); return true; }
+          for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.05); shots.fire('bullet', from, h.root.rotation.y, { mul: 0.34, spread: 0.05 });
+            beam(from, from.clone().addScaledVector(dir0(0), 0.7), 0xffe0a0, 0.03, 0.04); shell(); } }); return true; }
         // lança-chamas / lança-veneno de mão: jato curto de 5 m enquanto o botão fica apertado (cada clique, 0,8 s)
         cd.attack = 0.7 * TEMPO; flameT = 0.8; flameYaw = yaw; flameKind = wmode === 'venom' ? 'poison' : 'fire'; flameMul = 0.22; flameReach = 5.5; d.audio.cast(); return true;
       }
@@ -1045,11 +1063,11 @@ export function createGameplay(d: GameplayDeps) {
         if (!h.act('shoot')) return false;
         cd.attack = 0.5 * TEMPO; lastCombo = now; slotFlash('combo');
         const over = overcharge; overcharge = false; if (over) logMsg('⚡ Sobrecarga: Rajada ×2,5', '#8af0ff');
-        const shots = form?.id === 'mech' ? 5 : 3;
-        for (let i = 0; i < shots; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.09, fn: () => {
+        const nShots = form?.id === 'mech' ? 5 : 3;
+        for (let i = 0; i < nShots; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.09, fn: () => {
           const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 0.9); h.muzzle(); d.audio.hit(); d.audio.swing(); st.shake = Math.max(st.shake, 0.08);
           const sp = 0.025, dir = new THREE.Vector3(Math.sin(yaw + rnd(-sp, sp)), 0, Math.cos(yaw + rnd(-sp, sp)));
-          bolts.push({ p: from.clone(), v: dir.clone().multiplyScalar(48), life: 0.38, mul: over ? 1.6 : 0.62, pulse: true, col: 0xffd080 });
+          shots.fire('bullet', from, h.root.rotation.y, { mul: over ? 1.6 : 0.62, spread: 0.025 }); /* 02/11: bala de rifle com física (mira, rastro, impacto) */
           beam(from, from.clone().addScaledVector(dir, 1.6), 0xffe0a0, 0.03, 0.08);
           for (let k = 0; k < 6; k++) d.particles.spawn(from.x, from.y, from.z, { vx: dir.x * rnd(3, 9) + rnd(-2, 2), vy: rnd(-0.5, 1.5), vz: dir.z * rnd(3, 9) + rnd(-2, 2), life: 0.2, s0: 0.6, s1: 0.05, c0: 0xfff0c0, c1: 0xff8a20, a: 1, drag: 3 });
           for (let k = 0; k < 3; k++) d.particles.spawn(from.x, from.y + 0.05, from.z, { vx: rnd(-0.5, 0.5), vy: rnd(0.5, 1.2), vz: rnd(-0.5, 0.5), life: 0.6, s0: 0.35, s1: 0.3, c0: 0x8a8a8a, c1: 0x444444, a: 0.4, drag: 1 });
@@ -1485,9 +1503,10 @@ export function createGameplay(d: GameplayDeps) {
                 tk2 -= d3; if (tk2 <= 0) { tk2 = 0.5; for (const e of enemies.list) if (e.alive && e.active && DARK_T.has(e.type) && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) { const dm = Math.round((4 + st.lvl * 1.2) * sc.dmg); if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#bfe8ff'); } } }, end: () => { d.scene.remove(m); } }); } }, end: () => { if (fl.parent) d.scene.remove(fl); } }); return true; }
         case 'volley': { if (!ok('shoot')) return false; const x = tx, z = tz, rad = 3.2 * sc.area; ringFx(x, z, 0xd8dce8, rad / 1.2); const from = h.weaponTip(new THREE.Vector3());
           for (let k = 0; k < 3; k++) beam(from, from.clone().add(new THREE.Vector3(rnd(-0.5, 0.5), 8, rnd(-0.5, 0.5))), 0xe8ecf4, 0.03, 0.2); d.audio.swing();
-          for (let i = 0; i < 14; i++) pending.push({ at: now + 0.45 + i * 0.07, fn: () => { const a = rnd(0, 6.283), rr2 = Math.sqrt(Math.random()) * rad, px = x + Math.cos(a) * rr2, pz = z + Math.sin(a) * rr2, py = d.world.heightAt(px, pz);
-            beam(new THREE.Vector3(px - 1, py + 9, pz - 0.6), new THREE.Vector3(px, py + 0.1, pz), 0xf0f4ff, 0.035, 0.12); d.audio.hit(); for (let q = 0; q < 5; q++) d.particles.spawn(px, py + 0.1, pz, { vx: rnd(-1.5, 1.5), vy: rnd(1, 3), vz: rnd(-1.5, 1.5), life: 0.35, s0: 0.15, s1: 0.03, c0: 0xffffff, c1: 0xb8bcc8, a: 1, g: 6 });
-            hitArc('volley', px, pz, 0, 1.0, Math.PI, 0.55, false); } }); return true; }
+          /* 02/11: flechas de verdade — sobem do arco e caem em arco sobre a área; ferem quem estiver embaixo e cravam no chão (projeteis.ts) */
+          for (let i = 0; i < 14; i++) pending.push({ at: now + 0.15 + i * 0.07, fn: () => { const a = rnd(0, 6.283), rr2 = Math.sqrt(Math.random()) * rad, px = x + Math.cos(a) * rr2, pz = z + Math.sin(a) * rr2, py = d.world.heightAt(px, pz);
+            const tgt = enemies.list.find((e) => e.alive && e.active && Math.hypot(e.pos.x - px, e.pos.z - pz) < 1.2); const to = tgt ? new THREE.Vector3(tgt.pos.x, tgt.pos.y + 1.0, tgt.pos.z) : new THREE.Vector3(px, py, pz);
+            const src = h.weaponTip(new THREE.Vector3()); src.y = Math.max(src.y, 1.2); shots.lob('arrow', src, to, 1.05 + rnd(-0.08, 0.12), { mul: 0.55, data: { sk: 'volley' as SkillId } }); if (i % 3 === 0) d.audio.swing(); } }); return true; }
         case 'huntform': { if (!ok('cast')) return false; form = { id: 'huntform', t: 12, scale: 1.0 }; buff.dmg = 1.8; buff.dmgT = 12; buff.move = Math.max(buff.move, 1.2); buff.moveT = 12; h.setAura(true); d.audio.boom(); ringFx(hp.x, hp.z, 0xd8dce8, 2.2); let n = 0;
           for (const e of enemies.list) if (e.alive && e.active && DARK_T.has(e.type) && Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) < 15) { e.mark = now + 12; n++; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'VISTO', false, '#e8ecf4'); }
           logMsg(`👁 Vigília de Aravel: dano ×1,8, +20% de velocidade${n ? `; ${n} criatura(s) da escuridão marcada(s)` : ''}`, '#e8ecf4');
@@ -1709,13 +1728,27 @@ export function createGameplay(d: GameplayDeps) {
       if (flameT > 0) { // lança-chamas: jato denso de 9 m que acompanha o mouse; dá para andar enquanto queima
         flameT -= dt; const h = d.getHero(); flameYaw = h.root.rotation.y; const from = kitKey === 'tecno' && techLook && !wmode ? techLook.gauntlet(new THREE.Vector3()) : h.weaponTip(new THREE.Vector3()); /* tecnocrata sem arma da Academia: o bocal da manopla */ const dir = new THREE.Vector3(Math.sin(flameYaw), 0, Math.cos(flameYaw)); h.muzzle();
         const side = new THREE.Vector3(dir.z, 0, -dir.x);
-        const PZ = flameKind === 'poison', FR = flameReach / 9.5; for (let k = 0; k < (FR < 1 ? 9 : 14); k++) { const sp = rnd(11, 19) * FR, lat = rnd(-1.4, 1.4) * FR; d.particles.spawn(from.x, from.y + rnd(-0.05, 0.05), from.z, { vx: dir.x * sp + side.x * lat, vy: rnd(0.2, 2.2), vz: dir.z * sp + side.z * lat, life: rnd(0.45, 0.8), s0: 0.45, s1: rnd(1.8, 2.8), c0: PZ ? (k % 3 ? 0xc8ff6a : 0xeaffc0) : k % 3 ? 0xffd060 : 0xffffff, c1: PZ ? (k % 2 ? 0x2a8a1a : 0x6ad02a) : k % 2 ? 0xff3a10 : 0xff7a10, a: 0.95, drag: 1.5, g: PZ ? 1.5 : -2.5 }); }
+        /* 02/11 (Erling: física no lança-chamas/lança-veneno): o jato é feito de gotas com velocidade, arrasto e gravidade (o fogo sobe, o veneno cai em arco),
+           que esbarram em muro, caem no chão (veneno vira poça; fogo deixa o chão queimando) e só ferem o bicho que tocam */
+        const PZ = flameKind === 'poison', FR = flameReach / 9.5, hv = heroVel; for (let k = 0; k < (FR < 1 ? 5 : 7); k++) { const sp = rnd(11, 19) * FR, lat = rnd(-1.4, 1.4) * FR; jets.push({ p: from.clone(), v: new THREE.Vector3(dir.x * sp + side.x * lat + hv.x, PZ ? rnd(1.5, 3.2) : rnd(0.2, 2.2), dir.z * sp + side.z * lat + hv.z), life: PZ ? rnd(0.7, 1.0) : rnd(0.45, 0.75), age: 0, pz: PZ, from: from.clone() }); }
         for (let k = 0; k < 3; k++) { const sp = rnd(8, 14) * FR; d.particles.spawn(from.x, from.y, from.z, { vx: dir.x * sp + rnd(-2, 2), vy: rnd(1, 4), vz: dir.z * sp + rnd(-2, 2), life: rnd(0.8, 1.4), s0: 0.25, s1: 0.05, c0: PZ ? 0xd8ff8a : 0xffe8a0, c1: PZ ? 0x3a9a2a : 0xff5a10, a: 1, drag: 1.2, g: 4 }); } // brasas (ou gotas de veneno)
         if (Math.random() < dt * 14) { const sp = rnd(5, 9); d.particles.spawn(from.x + dir.x * 2, from.y + 0.4, from.z + dir.z * 2, { vx: dir.x * sp, vy: rnd(1.5, 3), vz: dir.z * sp, life: 1.6, s0: 1.2, s1: 2.6, c0: 0x5a5a5a, c1: 0x1a1a1a, a: 0.35, drag: 1 }); } // fumaça
-        if (Math.random() < dt * 20) { const r = rnd(2, 9); d.particles.spawn(from.x + dir.x * r + rnd(-0.8, 0.8), 0.15, from.z + dir.z * r + rnd(-0.8, 0.8), { vy: rnd(0.8, 2.2), life: rnd(0.5, 1.1), s0: 0.6, s1: 1.4, c0: 0xffb040, c1: 0xff3a10, a: 0.8, g: -1 }); } // chão pegando fogo
+        /* (o chão pegando fogo agora nasce onde a gota de fogo cai) */
         spellLight.position.copy(from).addScaledVector(dir, 3).setY(1.2); spellLight.color.setHex(PZ ? 0x8aff4a : 0xff8a30); spellLight.intensity = 50 + 20 * Math.sin(now * 40);
-        if (Math.random() < dt * 8) for (const e of enemies.list) { if (!e.alive || !e.active) continue; const tx2 = e.pos.x - from.x, tz2 = e.pos.z - from.z, dd = Math.hypot(tx2, tz2); if (dd > flameReach + e.def.radius) continue; let ea = Math.atan2(tx2, tz2) - flameYaw; while (ea > Math.PI) ea -= Math.PI * 2; while (ea < -Math.PI) ea += Math.PI * 2; if (Math.abs(ea) < 0.42 + 0.6 / Math.max(1, dd)) { skill = 'combo'; hitEnemy(e, flameMul, false, from); skill = null; if (e.alive) { e.burn = 5; e.burnTick = e.burnTick ?? 0; e.psn = PZ; if (PZ) e.slow = 0.55; } } }
+        /* (o dano em cone saiu: quem fere são as gotas do jato, abaixo) */
         if (flameT <= 0) { h.freeze = false; flameMul = 0.55; flameReach = 9.5; flameKind = 'fire'; } }
+      { /* o jato: gotas de fogo/veneno com física */ for (let i = jets.length - 1; i >= 0; i--) { const j = jets[i]; j.life -= dt; j.age += dt; const PZj = j.pz;
+          j.v.y += (PZj ? -7.5 : 1.6) * dt; j.v.multiplyScalar(1 - (PZj ? 0.9 : 1.7) * dt); const p0 = j.p.clone(); j.p.addScaledVector(j.v, dt);
+          const gy = d.world.heightAt(j.p.x, j.p.z); let dead = j.life <= 0;
+          if (!dead && d.world.isWall?.(j.p.x, j.p.z) && j.p.y < gy + 3.5) { j.p.copy(p0); dead = true; for (let q = 0; q < 3; q++) d.particles.spawn(j.p.x, j.p.y, j.p.z, { vx: rnd(-1, 1), vy: rnd(0.5, 2), vz: rnd(-1, 1), life: 0.4, s0: 0.5, s1: 1.1, c0: PZj ? 0xc8ff6a : 0xffb040, c1: PZj ? 0x2a8a1a : 0xff3a10, a: 0.8, drag: 2 }); } // esbarra no muro e espalha
+          if (!dead && j.p.y <= gy + 0.05) { j.p.y = gy + 0.05; dead = true;
+            if (PZj) { if (now - lastPuddle > 0.22) { lastPuddle = now; const near = puddles.find((q) => Math.hypot(q.x - j.p.x, q.z - j.p.z) < 1.3); if (near) near.t = Math.max(near.t, 3.5); else { const pm = new THREE.Mesh(new THREE.CircleGeometry(1.0, 20).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5ad04a, transparent: true, opacity: 0.32, depthWrite: false, fog: false })); pm.position.set(j.p.x, gy + 0.07, j.p.z); fxAdd(pm); puddles.push({ x: j.p.x, z: j.p.z, r: 1.0, t: 3.5, m: pm }); } }
+              for (let q = 0; q < 2; q++) d.particles.spawn(j.p.x, gy + 0.1, j.p.z, { vx: rnd(-1.2, 1.2), vy: rnd(0.4, 1.4), vz: rnd(-1.2, 1.2), life: 0.35, s0: 0.25, s1: 0.06, c0: 0xd8ff8a, c1: 0x2a8a1a, a: 1, g: 6 }); } // respingo
+            else if (Math.random() < 0.35) d.particles.spawn(j.p.x, gy + 0.15, j.p.z, { vy: rnd(0.8, 2.2), life: rnd(0.6, 1.2), s0: 0.6, s1: 1.4, c0: 0xffb040, c1: 0xff3a10, a: 0.8, g: -1 }); } // o chão pega fogo onde a gota cai
+          if (!dead) for (const e of enemies.list) { if (!e.alive || !e.active) continue; const r = e.def.radius + 0.25; if ((j.p.x - e.pos.x) ** 2 + (j.p.z - e.pos.z) ** 2 > r * r || j.p.y < e.pos.y - 0.1 || j.p.y > e.pos.y + Math.max(1.6, r * 3)) continue;
+            dead = true; const lt = jetHitT.get(e) ?? -9; if (now - lt >= 0.12) { jetHitT.set(e, now); skill = 'combo'; hitEnemy(e, flameMul, false, j.from); skill = null; if (e.alive) { e.burn = 5; e.burnTick = e.burnTick ?? 0; e.psn = PZj; if (PZj) e.slow = 0.55; } } break; }
+          if (dead) { jets.splice(i, 1); continue; }
+          d.particles.spawn(j.p.x, j.p.y, j.p.z, { vx: j.v.x * 0.3, vy: j.v.y * 0.3, vz: j.v.z * 0.3, life: 0.16, s0: 0.45 + j.age * 3.2, s1: 0.8 + j.age * 4, c0: PZj ? (i % 3 ? 0xc8ff6a : 0xeaffc0) : i % 3 ? 0xffd060 : 0xffffff, c1: PZj ? (i % 2 ? 0x2a8a1a : 0x6ad02a) : i % 2 ? 0xff3a10 : 0xff7a10, a: 0.9 }); } }
       for (let i = puddles.length - 1; i >= 0; i--) { const pd = puddles[i]; pd.t -= dt; (pd.m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.1 * Math.sin(now * 5); if (Math.random() < dt * 10) { const a = rnd(0, 6.283), r = rnd(0, pd.r); d.particles.spawn(pd.x + Math.cos(a) * r, 0.2, pd.z + Math.sin(a) * r, { vy: rnd(0.3, 0.9), life: 1, s0: 0.3, s1: 0.5, c0: 0x9aff8a, c1: 0x1a5a1a, a: 0.5 }); } for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - pd.x, e.pos.z - pd.z) < pd.r + e.def.radius) { e.slow = 0.3; if (Math.random() < dt * 1.6) { const dm = 5 + st.lvl * 2; if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.0), dm, false, '#8aff6a'); } } if (pd.t <= 0) { d.scene.remove(pd.m); puddles.splice(i, 1); } }
       if (overT > 0) { overT -= dt; const h = d.getHero(); const e = enemies.nearest(heroPos, 11); if (e && Math.random() < dt * 12) { const dp = h.dronePos(new THREE.Vector3()); h.droneFlash = 1; beam(dp, e.pos.clone().setY(e.pos.y + 1), 0x8af0ff, 0.07, 0.12); skill = 'combo'; hitEnemy(e, 0.3, false, dp); skill = null; } }
       if (medicT > 0) { medicT -= dt; if (Math.random() < dt * 30) d.particles.spawn(heroPos.x + Math.cos(now * 3) * 1.2, 1.6 + Math.sin(now * 5) * 0.2, heroPos.z + Math.sin(now * 3) * 1.2, { life: 0.5, s0: 0.5, s1: 0.1, c0: 0xffffff, c1: 0x7affd0, a: 0.9 }); }
@@ -1756,6 +1789,8 @@ export function createGameplay(d: GameplayDeps) {
           if (b.tier >= 2) { const fr = b.tier >= 3 ? 2 : 1; e.root2 = fr; e.state = 'hurt'; e.t = -fr; dmgText(e.pos.clone().setY(e.pos.y + 2.7), 'CONGELADO', false, '#cfe8ff'); for (let q = 0; q < 14; q++) d.particles.spawn(e.pos.x + rnd(-0.4, 0.4), e.pos.y + rnd(0.2, 1.6), e.pos.z + rnd(-0.4, 0.4), { life: fr, s0: 0.3, s1: 0.2, c0: 0xffffff, c1: 0xbfe8ff, a: 0.8 });
             if (b.tier >= 3) pending.push({ at: now + fr, fn: () => { if (!e.alive) return; const dm = Math.round((10 + st.lvl * 3) * skillScale('winter').dmg); if (enemies.hurt(e, dm, e.pos, 2)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.3), dm, true, '#cfe8ff'); d.audio.spell('ice'); for (let q = 0; q < 30; q++) { const a = rnd(0, 6.283); d.particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: Math.cos(a) * rnd(2, 6), vy: rnd(1, 5), vz: Math.sin(a) * rnd(2, 6), life: 0.7, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x9ad7ff, a: 1, g: 8, drag: 1.5 }); } } }); } }
         if (b.t >= b.dur) breaths.splice(i, 1); }
+      shots.update(dt); // flechas, virotes, kunais e balas (física)
+      if (dt > 0) { heroVel.subVectors(heroPos, heroPrev).divideScalar(dt); if (heroVel.lengthSq() > 200) heroVel.set(0, 0, 0); heroVel.y = 0; heroPrev.copy(heroPos); } // o jato herda o passo de quem atira
       // projéteis
       const col = d.getRaceColor();
       let first = true;

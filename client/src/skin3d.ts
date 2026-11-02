@@ -189,7 +189,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     obj.matrixAutoUpdate = false; obj.matrix.multiplyMatrices(mi, mw); obj.updateMatrixWorld(true);
   }
   // repouso da espada no procedural: suporte em (-1.9, 0, 0) e lâmina sem giro interno
-  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0;
+  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0, twoDone = false, reach = 0.9, reachKey = '';
+  /** comprimento da arma do pegador até a ponta (lado da lâmina/cabeça), na escala local */
+  function measureReach(o: THREE.Object3D, sgn: number) { if (!o.parent) return 0.9; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(o, true); o.matrix.copy(m); o.matrixAutoUpdate = au; o.updateMatrixWorld(true); return Math.max(0.2, sgn > 0 ? e.max.y : -e.min.y); }
   // onde fica a cabeça da arma (fora do eixo do cabo, em Y local): só existe em machado/martelo; espada dá nulo
   function measureHead(o: THREE.Object3D): THREE.Vector3 | null {
     if (!o.parent) return null; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true);
@@ -220,7 +222,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     { /* 02/11 (Erling: "a ponta do cabo na palma da mão, não atravessando a axila"): a arma de duas mãos do anão (martelo/machado) é
          recolocada na mão do modelo: o cabo passa pelo punho (como a espada) e a pegada escorrega até a ponta do cabo quando ele
          está parado fora de combate (martelo apoiado no chão ao lado, cabeça para baixo), como nas referências */
-      const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th && th.parent) {
+      const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); twoDone = false; if (th && th.parent) { twoDone = true;
+        const isSw = th === R.sword(), hs = isSw ? -1 : 1, key = th.children.map((c) => c.uuid).join(); if (key !== reachKey) { reachKey = key; reach = measureReach(th, hs); }
         W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); root.matrixWorld.decompose(vF, tq, sc);
         const a = ay.subVectors(vI, vP).normalize().multiplyScalar(-1), f = new THREE.Vector3().subVectors(vM, vH).normalize();
         const k = f.clone().sub(a.clone().multiplyScalar(f.dot(a))).normalize(); const palm = new THREE.Vector3().crossVectors(a, f).normalize();
@@ -229,7 +232,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         /* eixo do cabo: fora de combate, vertical (cabeça no chão); senão, atravessa o punho (do mindinho ao indicador, como a espada) */
         const rq = root.getWorldQuaternion(new THREE.Quaternion()), fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(rq), right = new THREE.Vector3(1, 0, 0).applyQuaternion(rq), up = new THREE.Vector3(0, 1, 0);
         /* parado: cabeça no chão ao lado do pé — o cabo inclina o que for preciso para a cabeça tocar o chão (o martelo é mais comprido que a altura da mão) */
-        const rootY = root.getWorldPosition(new THREE.Vector3()).y, hy = Math.max(0.05, grip.y - rootY), Lh = 1.1 * sc.x, cosT = Math.min(1, hy / Lh), sinT = Math.sqrt(1 - cosT * cosT);
+        const rootY = root.getWorldPosition(new THREE.Vector3()).y, hy = Math.max(0.05, grip.y - rootY), Lh = (isSw ? reach + 0.15 : 1.1) * sc.x, cosT = Math.min(1, hy / Lh), sinT = Math.sqrt(1 - cosT * cosT);
         const restDir = new THREE.Vector3(0, -cosT, 0).addScaledVector(right, sinT * 0.8).addScaledVector(fwd, sinT * 0.6).normalize();
         /* em combate (sem golpe): diagonal pelo corpo, cabeça para cima e para fora (referências do Erling) */
         const cmbDir = right.clone().multiplyScalar(0.8).addScaledVector(up, 0.55).addScaledVector(fwd, 0.25).normalize();
@@ -237,18 +240,22 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
         { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
              da raiz (raio ~0,3 m, da cintura ao ombro); cada ponto do cabo que cair dentro empurra a direção para fora, até sair */
-          const ax0 = root.getWorldPosition(new THREE.Vector3()), R0 = 0.3 * sc.x, y0 = ax0.y + 0.35 * sc.x, y1 = ax0.y + 1.45 * sc.x, Lw = 0.85 * sc.x;
+          const ax0 = root.getWorldPosition(new THREE.Vector3()), R0 = 0.3 * sc.x, y0 = ax0.y + 0.35 * sc.x, y1 = ax0.y + 1.45 * sc.x, Lw = (isSw ? reach : 0.85) * sc.x;
           for (let it = 0; it < 6; it++) { let push: THREE.Vector3 | null = null;
             for (let t = 0.15; t <= 1.0001; t += 0.17) { const pnt = grip.clone().addScaledVector(handle, Lw * t); if (pnt.y < y0 || pnt.y > y1) continue; const hx = pnt.x - ax0.x, hz = pnt.z - ax0.z, dd = Math.hypot(hx, hz); if (dd >= R0) continue;
               const out = dd > 1e-3 ? new THREE.Vector3(hx / dd, 0, hz / dd) : fwd.clone(); push = (push ?? new THREE.Vector3()).addScaledVector(out, (R0 - dd) / R0 + 0.15); }
             if (!push) break; handle.addScaledVector(push, 0.6).normalize(); } }
         const kk = k.clone().lerp(fwd, Math.max(restK, cmbK));
-        /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, 0.26 * sc.x * restK);
-        place(th, kk, handle, gp); } }
+        /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, (isSw ? 0.15 : 0.26) * sc.x * restK);
+        place(th, kk, handle.clone().multiplyScalar(hs), gp);
+        /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, -(restK > 0.5 ? 0.06 : 0.15) * sc.x); armIK('Left', R.armL, lt); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!);
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     gripK[swordSide] = stowed && !tool ? 0.42 : 1; gripK[shieldSide] = stowed ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
-    if (stowed && sockets) { placeSock(R.shield(), sockets.back); if (!tool) { placeSock(R.sword(), sockets.hip); return; } }
+    if (twoDone) { if (stowed && sockets) placeSock(R.shield(), sockets.back); return; } /* arma de duas mãos já posta acima */
+    /* 02/11: a espada só vai para a bainha fora de combate; sem escudo (florete, garras, besta de mão, kunai, arco) o escudo fica nas costas e a arma na mão */
+    const sheath = stowed && !tool && !hero.acting && !hero.combat && !hero.guard;
+    if (stowed && sockets) { placeSock(R.shield(), sockets.back); if (sheath) { placeSock(R.sword(), sockets.hip); return; } }
     // espada
     W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM);
     const a = ay.subVectors(vI, vP).normalize().multiplyScalar(DBG.__bladeSg ?? -1); // sai pelo lado do indicador/polegar
@@ -258,7 +265,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const grip = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(palm, 0.012 * sc.x).addScaledVector(f, -0.01 * sc.x);
     place(R.sword(), k.clone(), a.clone().negate(), grip);
     // ofícios (machado, picareta, faca, alicate): a ferramenta segue exatamente a orientação do esqueleto procedural (espelhada como o resto), presa na mão do modelo
-    const TA = hero.actName; if (tool && (TA === 'chop' || TA === 'mine' || TA === 'skin' || TA === 'herb')) { const swT = R.sword(); if (swT && swT.parent) {
+    const TA = hero.actName, wcN = (hero as unknown as { wcls?: string }).wcls ?? 'one'; /* 02/11: florete, adaga, garras, porrete, besta de mão, kunai e arco seguem a direção que o esqueleto calcula para a arma (estocada reta, garrada, arremesso) */
+    if ((tool && (TA === 'chop' || TA === 'mine' || TA === 'skin' || TA === 'herb')) || (!tool && wcN !== 'one' && wcN !== 'two')) { const swT = R.sword(); if (swT && swT.parent) {
       const pw = swT.parent.getWorldQuaternion(new THREE.Quaternion()).multiply(swT.quaternion), rq = root.getWorldQuaternion(new THREE.Quaternion());
       const qw = pw; void rq; /* o esqueleto procedural e o modelo dividem o mesmo mundo: a orientação vale como está */
       root.matrixWorld.decompose(vF, tq, sc); mw.compose(grip, qw, sc); swT.parent.updateWorldMatrix(true, false); mi.copy(swT.parent.matrixWorld).invert(); swT.matrixAutoUpdate = false; swT.matrix.multiplyMatrices(mi, mw); swT.updateMatrixWorld(true); }
@@ -275,7 +283,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     if (sw && bladeSign) { const want = hero.acting ? 0 : 1; leanK += (want - leanK) * 0.2;
       if (leanK > 0.01) { const e = sw.matrixWorld.elements; const bd = new THREE.Vector3(e[4], e[5], e[6]).normalize().multiplyScalar(bladeSign);
         const fw = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(tq)), up = new THREE.Vector3(0, 1, 0);
-        const target = fw.clone().multiplyScalar(0.55).addScaledVector(up, 0.83).normalize();
+        const wc = (hero as unknown as { wcls?: string }).wcls ?? 'one'; /* 02/11: florete, adaga, garras e besta de mão apontam para o inimigo; kunai em pegada invertida; porrete para o alto */
+        const target = (wc === 'fence' || wc === 'dagger' || wc === 'claw' || wc === 'hxbow' ? fw.clone().multiplyScalar(0.97).addScaledVector(up, 0.12) : wc === 'kunai' ? fw.clone().multiplyScalar(0.3).addScaledVector(up, -0.95) : wc === 'club' ? fw.clone().multiplyScalar(-0.35).addScaledVector(up, 0.9) : fw.clone().multiplyScalar(0.55).addScaledVector(up, 0.83)).normalize();
         const q = new THREE.Quaternion().setFromUnitVectors(bd, target); q.slerp(new THREE.Quaternion(), 1 - leanK * 0.85);
         sw.matrix.decompose(vF, tq, sc); const pw = sw.parent!.getWorldQuaternion(new THREE.Quaternion()); const wq = pw.clone().multiply(tq); wq.premultiply(q); tq.copy(pw.invert().multiply(wq));
         sw.matrix.compose(vF, tq, sc); sw.updateMatrixWorld(true); } }
@@ -339,11 +348,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const fm = new THREE.Matrix4(), fi = new THREE.Matrix4();
   function placeFitted() { for (const f of fitted) { if (!f.o.parent) continue; f.o.parent.updateWorldMatrix(true, false); fm.multiplyMatrices(f.b.matrixWorld, f.C); fi.copy(f.o.parent.matrixWorld).invert(); f.o.matrixAutoUpdate = false; f.o.matrix.multiplyMatrices(fi, fm); f.o.updateMatrixWorld(true); } }
   /** IK de dois ossos (ombro/cotovelo) do modelo até a posição do punho procedural, no espaço da raiz; `arm` = junta procedural {sh, el, wr} */
-  function armIK(sideM: 'Right' | 'Left', arm: { sh?: THREE.Object3D | null; el?: THREE.Object3D | null; wr?: THREE.Object3D | null }) {
+  function armIK(sideM: 'Right' | 'Left', arm: { sh?: THREE.Object3D | null; el?: THREE.Object3D | null; wr?: THREE.Object3D | null }, targetW?: THREE.Vector3) {
     const bS = B(sideM + 'Arm'), bE = B(sideM + 'ForeArm'), bH = B(sideM + 'Hand'); if (!bS || !bE || !bH || !arm.wr || !arm.el) return;
     root.updateMatrixWorld(true); const invR = root.getWorldQuaternion(new THREE.Quaternion()).invert();
     const S = rootP(bS, root), E0 = rootP(bE, root), H0 = rootP(bH, root); const L1 = S.distanceTo(E0), L2 = E0.distanceTo(H0); if (L1 < 1e-4 || L2 < 1e-4) return;
-    const T = rootP(arm.wr, root), P = rootP(arm.el, root); if (MIRROR) { T.x = -T.x; P.x = -P.x; }
+    const T = targetW ? root.worldToLocal(targetW.clone()) : rootP(arm.wr, root), P = rootP(arm.el, root); if (MIRROR) { if (!targetW) T.x = -T.x; P.x = -P.x; }
     const D = T.clone().sub(S); let d = D.length(); if (d < 1e-4) return; const maxD = (L1 + L2) * 0.995; if (d > maxD) { D.multiplyScalar(maxD / d); d = maxD; } const Dh = D.clone().normalize();
     const cosA = Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
     let v = P.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); if (v.lengthSq() < 1e-6) { v = E0.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); } if (v.lengthSq() < 1e-6) { v.set(0, -1, 0); v.addScaledVector(Dh, -v.dot(Dh)); } v.normalize();
