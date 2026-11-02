@@ -917,6 +917,8 @@ function betaCommand(cmd: string, a: string[]): string | null {
   if (cmd === 'morrer') { if (game.st.dead) return 'Você já caiu.'; game.st.hp = 1; game.damage(99999, hero.root.position); return `☠ Você caiu de propósito. Fôlegos antes da queda: ${soul.s.breaths}/${MAX_BREATHS}${game.st.lvl < FRAY_LVL ? ` (antes do nível ${FRAY_LVL}, com o Olho ainda dormindo, o Fio não se gasta: use /nivel ${FRAY_LVL})` : ''}.`; }
   if (cmd === 'folegos' || cmd === 'fôlegos') { if (!(n >= 0 && n <= MAX_BREATHS)) return `Uso: /folegos 0-${MAX_BREATHS}`; soul.s.breaths = n; soul.s.regenAt = Date.now(); soul.save(); return `🕯 Fio da Vida: ${n}/${MAX_BREATHS}.`; }
   if (cmd === 'lagrimas' || cmd === 'lágrimas') { if (!(n >= 0 && n <= 9)) return 'Uso: /lagrimas 0-9'; const c = inv.count('lagrima'); if (n > c) inv.add('lagrima', n - c, true); else if (n < c) inv.take('lagrima', c - n); return `💧 Lágrimas do Olho na mochila: ${n}.`; }
+  if (cmd === 'pele') { /* 01/11: veste qualquer modelo do Herik para teste (/pele vampiro_m, /pele mago_h, /pele auto para voltar à regra) */
+    const id = (a[0] ?? '').trim(); if (!id || id === 'auto') { forcedSkin = null; skinKey = ''; applyArtSkin(); return 'Pele pela regra do jogo.'; } if (!ART_SET.has(id)) return `Não existe "${id}". Tenho: ${[...ART_SET].join(', ')}`; forcedSkin = id; skinKey = ''; applyArtSkin(); return `Pele: ${id}.`; }
   if (cmd === 'nivel' || cmd === 'nível') { if (!(n >= 1 && n <= 60)) return 'Uso: /nivel 1-60'; const d = n - game.st.lvl; game.st.lvl = n; game.st.xp = 0; if (d > 0) game.st.points += d * 3; game.st.recalc?.(); game.st.hp = game.st.hpMax; inv.save?.();
     if (n < FRAY_LVL && profile?.eye) { profile.eye = false; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); crestEl.classList.remove('awake'); return `★ Nível ${n} (teste). O Olho voltou a dormir: ele abre de novo no nível ${FRAY_LVL}.`; }
     return `★ Nível ${n} (teste).${n >= FRAY_LVL && !profile?.eye ? ' O Olho vai abrir.' : ''}`; }
@@ -2944,7 +2946,9 @@ const HERO_SKIN: Record<string, SkinDef> = { guerreiro_m: { fbx: '/models/heroes
 const ART_SET = new Set<string>(); let artSetReady = false;
 fetch('/models/personagens/personagens.json').then((r) => (r.ok ? r.json() : [])).then((l: { id: string }[]) => { for (const e of l) ART_SET.add(e.id); artSetReady = true; if (ART_SET.size) { skinKey = ''; applyArtSkin(); } }).catch(() => { artSetReady = true; });
 /** qual GLB novo veste o herói agora (null = nenhum; continua no FBX): classe pelo caminho já provado, nível da roupa pelo nível do herói */
+let forcedSkin: string | null = null; /* /pele */
 function artSkinId(): string | null {
+  if (forcedSkin && ART_SET.has(forcedSkin)) return forcedSkin;
   if (!ART_SET.size || (profile?.origin ?? 'human') !== 'human') return null;
   const sx = (profile?.sex ?? 'm') === 'm' ? 'h' : 'm'; let lvl = 1; try { lvl = game.st.lvl; } catch { /* */ }
   let pth = ''; try { pth = profile?.path ?? ''; if (!(pth && quests.q.done.includes('v_' + pth))) pth = ''; } catch { pth = ''; }
