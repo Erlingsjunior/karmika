@@ -3089,6 +3089,9 @@ const solidAdd = (c: { x: number; y: number; r: number }) => { for (let ty = Mat
 for (const p of city.props) if (p.kind === 'monument' && p.variant === 7) for (let k = 0; k < 6; k++) solidAdd({ x: p.gx + 1.5 + k * 3.1, y: p.gy + p.h / 2 - 1, r: 2.8 });
 for (const p of city.props) { const r0 = p.kind === 'vprop' && (p.variant === 2 || p.variant === 6) ? 0.7 : SOLID_R[p.kind]; if (r0 === undefined) continue; /* poço e feno: sólidos inteiros */ const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }
+/* pórtico com nome da vila (vgate): os dois troncos barram (círculos nas pontas do vão); o vão fica livre — regra 12 */
+for (const p of city.props) { if (p.kind !== 'vgate') continue; const cx = p.gx + (p.ox ?? T) / T, cy = p.gy + (p.oz ?? T) / T, hl = (p.len ?? 5) / 2 / T, ry = p.ry ?? 0, ux = Math.cos(ry), uy = -Math.sin(ry);
+  for (const sgn of [-1, 1]) solidAdd({ x: cx + ux * hl * sgn, y: cy + uy * hl * sgn, r: 0.3 }); }
 /* as casas de ofício da cidade (25/10) têm paredes de fundo e laterais: corpo de verdade, a frente fica aberta */
 for (const p of city.props) { if (!(p.kind === 'library' || (p.kind === 'station' && p.w >= 3))) continue; const ry = p.ry ?? 0, cs = Math.cos(ry), sn = Math.sin(ry), cx = p.gx + p.w / 2, cy = p.gy + p.h / 2;
   const wall = (x0: number, z0: number, x1: number, z1: number) => { const n = Math.ceil(Math.hypot(x1 - x0, z1 - z0) / 0.55); for (let i = 0; i <= n; i++) { const lx = x0 + (x1 - x0) * i / n, lz = z0 + (z1 - z0) * i / n, c = { x: cx + (lx * cs + lz * sn) / T, y: cy + (-lx * sn + lz * cs) / T, r: 0.26 };

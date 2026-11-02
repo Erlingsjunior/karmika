@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { windify } from './terrain3d';
+import { cutoutify } from './toon3d';
 
 export type Species = 'oak' | 'pineRed' | 'birchWhite' | 'willowIce' | 'ancient' | 'birchYellow' | 'burnt' | 'fir'
   | 'twisted' | 'cypress' | 'acacia' | 'larch' | 'baobab' | 'blackRed' | 'palm' | 'whiteSnow';
@@ -53,9 +54,10 @@ const BARK = {
   palm: barkTex('#6a4a28', 'rgba(20,10,5,.6)', 'rgba(170,130,80,.3)', true),
   baobab: barkTex('#a89478', 'rgba(60,45,30,.5)', 'rgba(220,205,180,.3)', true),
 };
-const toon = (map: THREE.Texture, color = 0xffffff) => new THREE.MeshToonMaterial({ map, color, gradientMap: ramp });
+/* cutoutify: a copa/tronco entre a câmera e o herói abre o recorte da aura (sem isso só o x-ray de copa ajudava) */
+const toon = (map: THREE.Texture, color = 0xffffff) => cutoutify(new THREE.MeshToonMaterial({ map, color, gradientMap: ramp }));
 /* vento discreto (Erling, 01/11: "movimento das copas muito longo"): amplitude bem menor e balanço lento */
-const leaf = (color: number, amp = 0.06, freq = 1.2) => windify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, side: THREE.DoubleSide }), amp * 0.35, freq * 0.7);
+const leaf = (color: number, amp = 0.06, freq = 1.2) => cutoutify(windify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, side: THREE.DoubleSide }), amp * 0.35, freq * 0.7));
 const BM: Record<string, THREE.Material> = { brown: toon(BARK.brown), red: toon(BARK.red), white: toon(BARK.white), moss: toon(BARK.moss), burnt: toon(BARK.burnt), grey: toon(BARK.grey), black: toon(BARK.black), ice: toon(BARK.ice), palm: toon(BARK.palm), baobab: toon(BARK.baobab) };
 const LM: Record<string, THREE.Material> = {
   oak: leaf(0x4c7a34), oakDark: leaf(0x35602a), yellow: leaf(0xd6c62a), blueGreen: leaf(0x3f7a74), birch: leaf(0x9cb88c), ice: leaf(0x9ae0e8, 0.1, 1.0),

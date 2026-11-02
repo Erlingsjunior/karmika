@@ -521,7 +521,7 @@ export function createGameplay(d: GameplayDeps) {
     for (let k = 0; k < 14; k++) d.particles.spawn(cx + rnd(-0.3, 0.3), cy + 0.3, cz + rnd(-0.3, 0.3), { vy: rnd(3, 7), life: 0.5, s0: 1.4, s1: 0.2, c0: 0xffffff, c1: col, a: 0.9 });
     for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < r + e.def.radius) { skill = sk; hitEnemy(e, mul, true, from); skill = null; if (burn && e.alive) { e.burn = 5; e.burnTick = 0; } if (stun > 0 && e.alive) { e.state = 'hurt'; e.t = -stun; } }
     { const p = pvpDmg(mul); pvpHit(cx, cz, 0, r, Math.PI, p.n, p.crit); }
-    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < r) { const crit = Math.random() < 0.15; hitDummy(dm, Math.round(rnd(20, 34) * mul * (crit ? 1.7 : 1)), crit, from, col, true); }
+    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < r) { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul * 2.25, crit), crit, from, col, true); /* explosão: ~2,25× o golpe básico, como antes (20–34 vs 9–15) */ }
   }
   /* cura ao longo do tempo (nanitos) e golpes de trajeto (jato / investida de ombro) */
   let turretAt: { x: number; z: number } | null = null;
@@ -609,6 +609,8 @@ export function createGameplay(d: GameplayDeps) {
     el.style.color = color; if (crit) el.style.fontSize = '28px';
     document.body.appendChild(el); setTimeout(() => el.remove(), 1000);
   }
+  /** dano no boneco de treino com a MESMA conta do golpe real (nível, ataque, buffs, crítico do personagem) — antes era 9–15 fixo com 12% de crítico ×1.8 */
+  const dummyDmg = (mul: number, crit: boolean) => { const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1))); return Math.max(1, Math.round((rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1))); };
   function hitDummy(dummy: Dummy, dmg: number, crit: boolean, from: THREE.Vector3, col = 0xffd27a, stop = false) {
     st.hits++; dummy.wob = 1; dummy.dir.copy(dummy.position).sub(from).setY(0).normalize();
     const p = tmp2.copy(dummy.position).setY(dummy.position.y + 1.4);
@@ -627,7 +629,7 @@ export function createGameplay(d: GameplayDeps) {
     const hp = h.root.position;
     for (const dm of dummies) { const to = tmp.copy(dm.position).sub(hp).setY(0); const dist = to.length(); if (dist >= reach) continue;
       const ang = Math.atan2(to.x, to.z); let da = ang - yaw; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
-      if (Math.abs(da) < arc) { const crit = Math.random() < 0.12; hitDummy(dm, Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, hp.clone(), 0xffd27a, stop); } }
+      if (Math.abs(da) < arc) { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, hp.clone(), 0xffd27a, stop); } }
     for (const e of enemies.list) {
       if (!e.alive || !e.active) continue;
       const tx = e.pos.x - hp.x, tz = e.pos.z - hp.z, dd = Math.hypot(tx, tz);
@@ -907,7 +909,7 @@ export function createGameplay(d: GameplayDeps) {
       let ea = Math.atan2(tx, tz) - yaw; while (ea > Math.PI) ea -= Math.PI * 2; while (ea < -Math.PI) ea += Math.PI * 2; if (dd > 1.2 && Math.abs(ea) > arc) continue;
       const hp0 = e.hp; hitEnemy(e, mul, stop, from); if (e.hp < hp0 || !e.alive) { n++; if (e.alive && fx) fx(e); }
     }
-    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < reach) { const crit = Math.random() < 0.12; hitDummy(dm, Math.round(rnd(9, 15) * mul * (crit ? 1.8 : 1)), crit, from, 0xffd27a, stop); n++; }
+    for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < reach) { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, from, 0xffd27a, stop); n++; }
     { const p = pvpDmg(mul); pvpHit(cx, cz, yaw, reach, arc, p.n, p.crit); }
     skill = null; return n;
   }

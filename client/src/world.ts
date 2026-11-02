@@ -1366,8 +1366,9 @@ export function buildCity(): World {
     if (map[y][x] !== 'grass') continue;
     if (r() > rockDens[biome[y][x]]) continue;
     if (Math.hypot(x - CITY.x, y - CITY.y - 3) < 14) continue;
-    if (nearSettle(x, y, 2)) continue;
+    if (nearSettle(x, y, 3)) continue;
     if (waterSD((x + 0.5) * T, (y + 0.5) * T) < 2.5) continue;
+    { /* pedra não encosta em casa nem em estrada (vizinhança livre) */ let near = false; for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) { const tt = map[y + dy]?.[x + dx]; if (tt && tt !== 'grass' && tt !== 'tree') { near = true; break; } } if (near) continue; }
     addRock(x, y, r() < 0.25);
   }
 
@@ -1464,7 +1465,9 @@ export function buildCity(): World {
     const nearWater = (x: number, y: number, d: number) => { for (let yy = y - d; yy <= y + d; yy++) for (let xx = x - d; xx <= x + d; xx++) if (map[yy]?.[xx] === 'water') return true; return false; };
     const wallOk = ring.map(([x, y]) => !nearWater(x, y, kitS ? 0 : 2)); // onde a costa chega, o muro para
     const waterGate = new Set<number>(); if (kitS) { /* 01/11 (Erling: "precisa conectar os muros"): um rio que cruza o anel ganha um portão d'água — o muro continua por cima, em arcos */
-      let i = 0; while (i < N) { if (wallOk[i]) { i++; continue; } let j = i; while (j < N && !wallOk[j]) j++; const len = j - i; if (len <= 9 && i > 0 && j < N) for (let k = i; k < j; k++) { waterGate.add(k); wallOk[k] = true; } i = j; } }
+      /* o anel é circular: um trecho de água que passa pelo índice 0 (leste) é tratado como um só (antes ficava sem muro e sem arcos) */
+      let start = 0; while (start < N && !wallOk[start]) start++; if (start < N) {
+        let i = start; let seen = 0; while (seen < N) { const ii = i % N; if (wallOk[ii]) { i++; seen++; continue; } let j = i; while (j - i < N && !wallOk[j % N]) j++; const len = j - i; if (len <= 9) for (let k = i; k < j; k++) { waterGate.add(k % N); wallOk[k % N] = true; } seen += len; i = j; } } }
     // 2) casas dentro do anel: grama de cidade, sem mata nem pedra; casas e barracas em cima do muro somem
     for (let y = cy - Rb - 12; y <= cy + Rb + 12; y++) for (let x = cx - Rb - 12; x <= cx + Rb + 12; x++) { if (!inb(x, y) || !insideWall(x, y)) continue; if (biome[y][x] !== 'meadow' && biome[y][x] !== 'coast') biome[y][x] = 'meadow'; if (map[y][x] === 'tree') map[y][x] = 'grass'; }
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock') && insideWall(q.gx, q.gy) && !(q.kind === 'tree' && q.style === 1)) props.splice(i, 1); }
@@ -1690,7 +1693,9 @@ export function buildCity(): World {
       for (let k = 0, tries = 0; k < n && tries < n * 5; tries++) { const a = rp() * 6.283, d = Math.sqrt(rp()) * 1.6, px = Math.round(x + Math.cos(a) * d), py = Math.round(y + Math.sin(a) * d); if (!okG(px, py)) continue; props.push({ kind: 'plant', plant: pl, gx: px, gy: py, w: 1, h: 1, height: 0.6, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); taken.add(py * 100000 + px); k++; }
     }
     for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) { const wp = WATER_PLANTS[biome[y][x]]; if (!wp || map[y][x] !== 'water' || rp() > 0.004) continue;
-      if (!(map[y - 1][x] === 'grass' || map[y + 1][x] === 'grass' || map[y][x - 1] === 'grass' || map[y][x + 1] === 'grass')) continue; props.push({ kind: 'plant', plant: wp, gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); }
+      if (!(map[y - 1][x] === 'grass' || map[y + 1][x] === 'grass' || map[y][x - 1] === 'grass' || map[y][x + 1] === 'grass')) continue;
+      if (waterSD((x + 0.5) * T, (y + 0.5) * T) > -0.05) continue; /* a faixa 'water' inclui 1,3 m de margem acima d'água: ali o nenúfar ficava enterrado no barranco */
+      props.push({ kind: 'plant', plant: wp, gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); }
   }
   for (const sp of spawns) { const rg = regionAt(sp.x, sp.y), k = RANK[sp.type] ?? 0.5; sp.lvl = sp.fixLvl ?? Math.max(rg.lo, Math.min(rg.hi, Math.round(rg.lo + k * (rg.hi - rg.lo)))); }
   { /* mestres dos caminhos (a Vidente de Askavik manda o jogador até eles no nível 30) */
