@@ -1,5 +1,71 @@
 [
   {
+    "id": "anao_h_lvl01",
+    "arquivo": "anao_h_lvl01.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "homem",
+    "nivel": 1,
+    "tris": 10103,
+    "mb": 0.8,
+    "altura": 1.3
+  },
+  {
+    "id": "anao_h_lvl02",
+    "arquivo": "anao_h_lvl02.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "homem",
+    "nivel": 2,
+    "tris": 11107,
+    "mb": 0.9,
+    "altura": 1.3
+  },
+  {
+    "id": "anao_h_lvl03",
+    "arquivo": "anao_h_lvl03.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "homem",
+    "nivel": 3,
+    "tris": 10579,
+    "mb": 1.0,
+    "altura": 1.3
+  },
+  {
+    "id": "anao_m_lvl01",
+    "arquivo": "anao_m_lvl01.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "mulher",
+    "nivel": 1,
+    "tris": 10570,
+    "mb": 0.8,
+    "altura": 1.3
+  },
+  {
+    "id": "anao_m_lvl02",
+    "arquivo": "anao_m_lvl02.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "mulher",
+    "nivel": 2,
+    "tris": 10901,
+    "mb": 0.9,
+    "altura": 1.3
+  },
+  {
+    "id": "anao_m_lvl03",
+    "arquivo": "anao_m_lvl03.glb",
+    "classe": "anao",
+    "raca": "anão",
+    "sexo": "mulher",
+    "nivel": 3,
+    "tris": 10594,
+    "mb": 1.0,
+    "altura": 1.3
+  },
+  {
     "id": "bruxo_h",
     "arquivo": "bruxo_h.glb",
     "classe": "bruxo",
@@ -16,6 +82,72 @@
     "nivel": null,
     "tris": 10358,
     "mb": 0.8
+  },
+  {
+    "id": "elfo_h_lvl01",
+    "arquivo": "elfo_h_lvl01.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "homem",
+    "nivel": 1,
+    "tris": 10018,
+    "mb": 0.8,
+    "altura": 2.1
+  },
+  {
+    "id": "elfo_h_lvl02",
+    "arquivo": "elfo_h_lvl02.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "homem",
+    "nivel": 2,
+    "tris": 10578,
+    "mb": 0.8,
+    "altura": 2.1
+  },
+  {
+    "id": "elfo_h_lvl03",
+    "arquivo": "elfo_h_lvl03.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "homem",
+    "nivel": 3,
+    "tris": 10206,
+    "mb": 1.0,
+    "altura": 2.1
+  },
+  {
+    "id": "elfo_m_lvl01",
+    "arquivo": "elfo_m_lvl01.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "mulher",
+    "nivel": 1,
+    "tris": 10170,
+    "mb": 0.8,
+    "altura": 2.1
+  },
+  {
+    "id": "elfo_m_lvl02",
+    "arquivo": "elfo_m_lvl02.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "mulher",
+    "nivel": 2,
+    "tris": 10336,
+    "mb": 0.9,
+    "altura": 2.1
+  },
+  {
+    "id": "elfo_m_lvl03",
+    "arquivo": "elfo_m_lvl03.glb",
+    "classe": "elfo",
+    "raca": "elfo",
+    "sexo": "mulher",
+    "nivel": 3,
+    "tris": 10577,
+    "mb": 0.9,
+    "altura": 2.1
   },
   {
     "id": "guerreiro_h_lvl02",

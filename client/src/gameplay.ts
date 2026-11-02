@@ -667,7 +667,7 @@ export function createGameplay(d: GameplayDeps) {
      tecnocrata: torre metralhadora, torre tesla, morteiro e a esfera que voa ao lado, ilumina o escuro, pega itens e ajuda no trabalho."
      ===================================================================================================== */
   const convertedL: { e: Enemy; until: number }[] = [];
-  let skyNight = 0, skyShade = false, sunK = 0, sunVeilT = 0, sunMsgT = -99, nightOn: boolean | null = null, baseScale = 1; const cmod = { dmg: 0, move: 1 };
+  let skyNight = 0, skyShade = false, sunK = 0, sunVeilT = 0, sunMsgT = -99, nightOn: boolean | null = null, baseScale = 1, raceScale = 1; /* elfo 1,1 (o modelo do Herik tem 2,10 m): escala o rig inteiro, arma na mão */ const cmod = { dmg: 0, move: 1 };
   let techLook: { gauntlet(out: THREE.Vector3): THREE.Vector3; setMech(on: boolean): void; charge(k: number): void } | null = null, medicDrone: THREE.Group | null = null, medicBeamT = 0;
   /* a esfera do tecnocrata formado: OU ataca OU defende (Erling, 25/10). Na guarda ela voa para a frente e projeta o
      escudo de favos; na Bolha de Escudos ela sobe acima da cabeça e mantém seis escudos transparentes girando em volta */
@@ -1508,7 +1508,7 @@ export function createGameplay(d: GameplayDeps) {
     get buffMove() { return buff.move * (1 + stance.move) * cmod.move; },
     /** postura de batalha: troca as somas fixas (posturas.ts) */
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
-    setKit(k: string) { kitKey = k; },
+    setKit(k: string) { kitKey = k; }, setRaceScale(k: number) { raceScale = k; },
     kit() { return kitKey; },
     /** chegada do Piscar: o clarão no ponto novo */
     blinkArrive() { const hh = d.getHero().root.position; for (let k = 0; k < 34; k++) d.particles.spawn(hh.x + rnd(-0.4, 0.4), hh.y + rnd(0.1, 1.9), hh.z + rnd(-0.4, 0.4), { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.35, s1: 0.04, c0: 0xffffff, c1: blinkCol, a: 1, drag: 3 }); },
@@ -1623,7 +1623,7 @@ export function createGameplay(d: GameplayDeps) {
       { const h = d.getHero(); heroMps += (Math.hypot(heroPos.x - lastHeroP.x, heroPos.z - lastHeroP.z) / Math.max(1e-3, dt) - heroMps) * Math.min(1, dt * 10); lastHeroP.copy(heroPos); if (heroMps > 30) heroMps = 0;
         /* dia e noite (Erling, 25/10): o lobisomem de dia é o licantropo (homem maior e mais forte; a Besta só à noite);
            o vampiro queima ao sol fora da sombra (casas, masmorras, mata fechada, Corvoscuro) e à noite fica mais feroz e mais rápido */
-        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = isL ? 1.1 : 1; if (isL) cmod.dmg += 0.1;
+        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = (isL ? 1.1 : 1) * raceScale; if (isL) cmod.dmg += 0.1;
           { const k3 = n3Key(); if (k3 && !st.dead) { if (st.lastCast !== n3Cast) { if (st.lastCast > n3Cast && k3 !== 'cac') need3[k3] = Math.min(1, need3[k3] + (k3 === 'bru' ? 0.0012 : 0.0009) * (n3Calm > 0 ? 0.4 : 1)); n3Cast = st.lastCast; }
             need3[k3] = Math.min(1, need3[k3] + dt / (30 * TURN_S)); n3Calm = Math.max(0, n3Calm - dt); const v3 = need3[k3]; n3SaveT -= dt; if (n3SaveT <= 0) { n3SaveT = 6; try { localStorage.setItem(NEED3_KEY, JSON.stringify(need3)); } catch { /* */ } }
             if (v3 > 0.5) { if (k3 === 'mag' || k3 === 'cac') cmod.dmg -= 0.04; if (k3 === 'bru' && st.hp > st.hpMax * 0.9) st.hp = st.hpMax * 0.9; }

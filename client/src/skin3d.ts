@@ -13,7 +13,7 @@ import { fine } from './dual3d';
 type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip?: THREE.Object3D; knee?: THREE.Object3D; ankle?: THREE.Object3D };
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
 
-export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number }
+export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number; /** escala extra depois do encaixe pelo quadril (elfo 2,10 m sobre o rig de 1,80: 1,167) */ hscale?: number }
 const cache = new Map<string, Promise<THREE.Group>>();
 /* material do jogo (Lambert com a textura de cor) em cima da malha do artista: o GLB já traz a textura embutida (JPEG 2048, só cor) */
 function dress(obj: THREE.Object3D, def: SkinDef, tex: THREE.Texture | null) {
@@ -69,7 +69,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   root.add(model); model.updateMatrixWorld(true);
   const hipsM = B('Hips'); if (!hipsM) { root.remove(model); return null; }
   const ourHipY = rootP(rig.hips, root).y, mixHipY = rootP(hipsM, root).y;
-  model.scale.multiplyScalar(ourHipY / Math.max(0.01, mixHipY)); model.updateMatrixWorld(true);
+  model.scale.multiplyScalar(ourHipY / Math.max(0.01, mixHipY) * (def.hscale ?? 1)); model.updateMatrixWorld(true);
   // lado: Left do Mixamo é o lado +X ou -X? casa pela posição do ombro
   const lArmX = rootP(B('LeftArm')!, root).x, ourLX = rootP(rig.armL.sh!, root).x;
   // O procedural segura a espada no braço armR. Queremos a espada na mão DIREITA do modelo: se o armR do procedural

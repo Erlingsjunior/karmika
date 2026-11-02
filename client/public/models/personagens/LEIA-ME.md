@@ -33,3 +33,9 @@ Para vários do mesmo modelo na tela, clone com `SkeletonUtils.clone(scene)`. Um
 ## Nomes
 
 `classe_sexo` ou `classe_sexo_lvlNN`, com `h` para homem e `m` para mulher. Exemplos: `vampiro_h`, `guerreiro_m_lvl03`.
+
+## Anões e elfos (02/11/2026)
+
+12 arquivos novos: `anao_{h,m}_lvl0{1,2,3}.glb` e `elfo_{h,m}_lvl0{1,2,3}.glb`. Mesmo esqueleto Mixamo de 65 ossos.
+Alturas: anão 1,30 m; elfo 2,10 m (pés em Y = 0). O jogo encaixa pelo quadril do rig e, no elfo, aplica 2,10/1,80 de altura extra.
+No jogo: nível 1 até 19 = `lvl01`, 20 a 39 = `lvl02`, 40+ = `lvl03`; depois de um Caminho concluído entra o modelo da classe.

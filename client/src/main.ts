@@ -2963,13 +2963,15 @@ fetch('/models/personagens/personagens.json').then((r) => (r.ok ? r.json() : [])
 let forcedSkin: string | null = null; /* /pele */
 function artSkinId(): string | null {
   if (forcedSkin && ART_SET.has(forcedSkin)) return forcedSkin;
-  if (!ART_SET.size || (profile?.origin ?? 'human') !== 'human') return null;
+  if (!ART_SET.size) return null; const origin = profile?.origin ?? 'human';
   const sx = (profile?.sex ?? 'm') === 'm' ? 'h' : 'm'; let lvl = 1; try { lvl = game.st.lvl; } catch { /* */ }
   let pth = ''; try { pth = profile?.path ?? ''; if (!(pth && quests.q.done.includes('v_' + pth))) pth = ''; } catch { pth = ''; }
   const CL: Record<string, string> = { vam: 'vampiro', lob: 'lobisomem', mag: 'mago', bru: 'bruxo', pal: 'paladino', tec: 'technocrata' };
   const pick = (ids: string[]) => ids.find((i) => ART_SET.has(i)) ?? null;
   if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : lvl >= 35 ? 2 : 1}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl01`, `guerreiro_${sx}_lvl03`]);
   if (CL[pth]) return pick([`${CL[pth]}_${sx}`]);
+  /* anão e elfo (02/11, modelos do Herik): lvl01 até o nível 19, lvl02 de 20 a 39, lvl03 de 40 em diante */
+  if (origin === 'dwarf' || origin === 'elf') { const rc = origin === 'dwarf' ? 'anao' : 'elfo', n = lvl >= 40 ? 3 : lvl >= 20 ? 2 : 1; return pick([`${rc}_${sx}_lvl0${n}`, `${rc}_${sx}_lvl02`, `${rc}_${sx}_lvl01`, `${rc}_${sx}_lvl03`]); }
   let dressed = false; if (!creating) try { dressed = CLOTH_SLOTS.some((sl) => !!(inv.eq as Record<string, unknown>)[sl]); } catch { /* */ }
   /* humano: 1 = sem roupa, 2 = vestido. O lvl03 do Drive é da expansão (Erling, 01/11): não entra agora */
   return pick([`humano_${sx}_lvl0${dressed ? 2 : 1}`, `humano_${sx}_lvl01`]);
@@ -3001,7 +3003,7 @@ function swapHero() {
 }
 tree.migrate(); applyKitAll();
 /** recurso do caminho: o orbe da direita muda de nome, de cor e de regra (guerreiros: Ímpeto, que enche lutando) */
-function applyRes() { setTimeout(applyLook, 0); setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); game.setKit(kitRace()); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
+function applyRes() { setTimeout(applyLook, 0); game.setRaceScale(profile?.origin === 'elf' ? 1.1 : 1); setCulture(state.race === 'technocrat' ? 'technocrat' : state.race === 'dwarf' ? 'dwarf' : 'nordic'); game.setKit(kitRace()); const r = resOf(kitRace()); game.setResource(r); globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
 /* antes da Vidente (nível 30), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
