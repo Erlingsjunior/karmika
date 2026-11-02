@@ -310,6 +310,20 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   }
   const fm = new THREE.Matrix4(), fi = new THREE.Matrix4();
   function placeFitted() { for (const f of fitted) { if (!f.o.parent) continue; f.o.parent.updateWorldMatrix(true, false); fm.multiplyMatrices(f.b.matrixWorld, f.C); fi.copy(f.o.parent.matrixWorld).invert(); f.o.matrixAutoUpdate = false; f.o.matrix.multiplyMatrices(fi, fm); f.o.updateMatrixWorld(true); } }
+  /** IK de dois ossos (ombro/cotovelo) do modelo até a posição do punho procedural, no espaço da raiz; `arm` = junta procedural {sh, el, wr} */
+  function armIK(sideM: 'Right' | 'Left', arm: { sh?: THREE.Object3D | null; el?: THREE.Object3D | null; wr?: THREE.Object3D | null }) {
+    const bS = B(sideM + 'Arm'), bE = B(sideM + 'ForeArm'), bH = B(sideM + 'Hand'); if (!bS || !bE || !bH || !arm.wr || !arm.el) return;
+    root.updateMatrixWorld(true); const invR = root.getWorldQuaternion(new THREE.Quaternion()).invert();
+    const S = rootP(bS, root), E0 = rootP(bE, root), H0 = rootP(bH, root); const L1 = S.distanceTo(E0), L2 = E0.distanceTo(H0); if (L1 < 1e-4 || L2 < 1e-4) return;
+    const T = rootP(arm.wr, root), P = rootP(arm.el, root); if (MIRROR) { T.x = -T.x; P.x = -P.x; }
+    const D = T.clone().sub(S); let d = D.length(); if (d < 1e-4) return; const maxD = (L1 + L2) * 0.995; if (d > maxD) { D.multiplyScalar(maxD / d); d = maxD; } const Dh = D.clone().normalize();
+    const cosA = Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+    let v = P.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); if (v.lengthSq() < 1e-6) { v = E0.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); } if (v.lengthSq() < 1e-6) { v.set(0, -1, 0); v.addScaledVector(Dh, -v.dot(Dh)); } v.normalize();
+    const E = S.clone().addScaledVector(Dh, L1 * cosA).addScaledVector(v, L1 * sinA);
+    const aim = (b: THREE.Bone, child: THREE.Bone, to: THREE.Vector3) => { const from = rootP(b, root), cur = rootP(child, root).sub(from).normalize(), des = to.clone().sub(from).normalize();
+      const q = new THREE.Quaternion().setFromUnitVectors(cur, des); const wq = rootQ(b, invR).premultiply(q); const pq2 = rootQ(b.parent!, invR).invert(); b.quaternion.copy(pq2.multiply(wq)); b.updateMatrixWorld(true); };
+    aim(bS, bE, E); aim(bE, bH, S.clone().addScaledVector(Dh, d));
+  }
   function tick() {
     root.updateMatrixWorld(true);
     const inv = root.getWorldQuaternion(tq).invert().clone();
@@ -324,6 +338,10 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     }
     // giro do antebraço (pronação/supinação): o procedural não tem esse grau; sem ele as palmas ficam viradas para cima/fora
     for (const [b, q] of roll) { b.quaternion.multiply(q); b.updateMatrixWorld(true); }
+    /* 02/11 (Erling, referências do anão): arma de duas mãos — as duas mãos do modelo vão para onde estão as mãos do esqueleto procedural
+       (que já segura o cabo por IK, com as poses: parado, combate, golpes). IK de dois ossos em cada braço do modelo, cotovelo pelo lado do
+       cotovelo do procedural; sem isto os braços copiavam só as rotações e, com outras proporções, cruzavam o corpo longe do martelo. */
+    if ((R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.()) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; }
     holdGear(); placeCups(); placeFitted();
   }
   return { tick, model };
