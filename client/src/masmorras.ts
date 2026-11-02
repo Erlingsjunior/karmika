@@ -25,7 +25,7 @@ export const DG_TIERS = [
   { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. Só épicas para cima no baú.' },
   { id: 'doido', name: 'Coisa de Doido', col: '#d070ff', lv: 22, hp: 3, dmg: 1.9, xp: 5, gold: 7, loot: 5, extra: 2, min: 'epic', uq: 0.45, note: '+22 níveis. Quem sai vivo conta história.' },
 ] as const;
-export interface DgDef {
+export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) */ maxR?: number;
   id: string; name: string; kind: 'grupo' | 'caverna' | 'subsolo'; lvl: [number, number] | null; theme: DgTheme; near: string; dx?: number; dy?: number;
   main: number; side: number; mobs: EnemyType[]; players: string;
   elite: { type: EnemyType; name: string; scale: number };
@@ -143,7 +143,7 @@ export const DUNGEONS: DgDef[] = [
     elite: { type: 'skeleton', name: 'Sentinela de Ossos', scale: 1.4 }, boss: { type: 'tormentor', name: 'O Eco da Garganta', scale: 1.3, hp: 6, dmg: 1.4, mech: { aoe: { every: 10, r: 5, k: 1.2, name: 'Grito do Eco', col: 0xc8b8ff } }, hello: 'A Garganta ecoa a sua respiração. Depois, outra respiração.', bye: 'O eco se cala.' } },
   { id: 'lobos', name: 'Toca do Covil dos Lobos', kind: 'caverna', lvl: null, theme: 'mata', near: 'Covil dos Lobos', dx: -6, dy: 3, main: 2, side: 1, mobs: ['wolf', 'wolf'], players: 'sozinho ou em dupla',
     elite: { type: 'wolf', name: 'Lobo de Guarda', scale: 1.2 }, boss: { type: 'werewolf', name: 'Lobo Cinzento', scale: 1.2, hp: 5, dmg: 1.2, mech: { heavy: { every: 12, mul: 2.4, name: 'Bote do Lobo Cinzento' } }, hello: 'Olhos amarelos no escuro. Muitos.', bye: 'O Lobo Cinzento cai. A matilha some.' } },
-  { id: 'cume', name: 'Fenda do Cume Gelado', kind: 'caverna', lvl: null, theme: 'gelo', near: 'Cume Gelado', dx: 5, dy: 5, main: 2, side: 1, mobs: ['frostwolf', 'frostwolf'], players: 'sozinho ou em dupla',
+  { id: 'cume', name: 'Fenda do Cume Gelado', kind: 'caverna', lvl: null, theme: 'gelo', near: 'Cume Gelado', dx: 16, dy: -14, /* 01/11 (Erling): do outro lado do lago, longe do portão de Karmika */ maxR: 14, main: 2, side: 1, mobs: ['frostwolf', 'frostwolf'], players: 'sozinho ou em dupla',
     elite: { type: 'frostwolf', name: 'Lobo Branco', scale: 1.2 }, boss: { type: 'frostwolf', name: 'Mãe do Gelo', scale: 1.7, hp: 6, dmg: 1.4, mech: { aoe: { every: 9, r: 5, k: 1.1, name: 'Sopro Gelado', col: 0x9ad7ff } }, hello: 'A fenda estala. O frio tem forma.', bye: 'A Mãe do Gelo se desfaz em neve.' } },
   { id: 'atoleiro', name: 'Poço do Atoleiro', kind: 'caverna', lvl: null, theme: 'mata', near: 'Atoleiro de Zerath', dx: 6, dy: -4, main: 2, side: 1, mobs: ['ghoul', 'bat'], players: 'sozinho ou em dupla',
     elite: { type: 'ghoul', name: 'Afogado do Brejo', scale: 1.4 }, boss: { type: 'ghoul', name: 'O Que Bebe o Brejo', scale: 1.9, hp: 6, dmg: 1.3, mech: { pools: { every: 10, n: 2, k: 0.35, name: 'Lodo', col: 0x7aff6a } }, hello: 'O lodo borbulha. Algo bebe o brejo de baixo para cima.', bye: 'O lodo fica parado, enfim.' } },
@@ -184,8 +184,8 @@ export function createMasmorras(ctx: DgCtx) {
   for (const d of DUNGEONS) {
     if (d.fixed) { const t1 = target(d.near); if (!t1) continue; const fx0 = t1.x + (d.dx ?? 0), fy0 = t1.y + (d.dy ?? 0); const root = mouthFixed(d, fx0 * T, fy0 * T); entrances.push({ d, x: Math.floor(fx0), y: Math.floor(fy0), lvl: d.lvl ?? [1, 5], root }); continue; }
     const t0 = target(d.near); if (!t0) continue; const bx = Math.round(t0.x + (d.dx ?? 0)), by = Math.round(t0.y + (d.dy ?? 6)); let at: { x: number; y: number } | null = null;
-    for (let r = 0; r < 48 && !at; r++) for (let a = 0; a < 24 && !at; a++) { const x = Math.round(bx + Math.cos((a / 24) * 6.283) * r), y = Math.round(by + Math.sin((a / 24) * 6.283) * r); if (spotOk(x, y)) at = { x, y }; }
-    for (let r = 1; r < 44 && !at; r++) for (let a = 0; a < r * 8 && !at; a++) { const x = Math.round(bx + Math.cos((a / (r * 8)) * 6.283) * r), y = Math.round(by + Math.sin((a / (r * 8)) * 6.283) * r); if (spotOk(x, y, true)) at = { x, y }; } // 2ª passada: aceita árvores e cercas em volta
+    const RMAX = d.maxR ?? 48; for (let r = 0; r < RMAX && !at; r++) for (let a = 0; a < 24 && !at; a++) { const x = Math.round(bx + Math.cos((a / 24) * 6.283) * r), y = Math.round(by + Math.sin((a / 24) * 6.283) * r); if (spotOk(x, y)) at = { x, y }; }
+    for (let r = 1; r < Math.min(44, RMAX) && !at; r++) for (let a = 0; a < r * 8 && !at; a++) { const x = Math.round(bx + Math.cos((a / (r * 8)) * 6.283) * r), y = Math.round(by + Math.sin((a / (r * 8)) * 6.283) * r); if (spotOk(x, y, true)) at = { x, y }; } // 2ª passada: aceita árvores e cercas em volta
     if (!at) continue; for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) busy.add(at.x + dx + ',' + (at.y + dy));
     const lvl: [number, number] = d.lvl ?? (() => { const [lo, hi] = ctx.regionLvl(at!.x, at!.y); const m = Math.round((lo + hi) / 2); return [Math.max(1, m - 2), m + 2]; })();
     const root = mouth(d, at.x * T, at.y * T); const big = d.kind === 'grupo' ? 1.3 : 1, lx = -3.9 * big - 0.4, lz = 3.6 * big, ca = Math.cos(Math.PI / 4), sa = Math.sin(Math.PI / 4); /* a placa entalhada (entradas.ts), girada com a boca */

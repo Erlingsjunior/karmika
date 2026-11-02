@@ -398,7 +398,10 @@ function zoneW0(ax: number, ay: number): ZoneW {
 const ridged = (x: number, y: number, s: number) => 1 - Math.abs(2 * fbm(x, y, s) - 1);
 export function mountainH(tx: number, ty: number, z: ZoneW): number {
   let h = 0;
-  if (z.snow > 0.05) h += Math.pow(z.snow, 1.4) * (2.5 + 8 * ridged(tx * 0.045, ty * 0.045, 61)) + 9 * smoothstep(34, 0, Math.hypot(tx - 211 - SH, ty - 156 - SH)) * z.snow;
+  if (z.snow > 0.05) { /* o Cume Gelado (01/11, Erling: "não gosto dessa subida"): em vez de um cone liso, o pico sobe em patamares de rocha —
+       degraus largos com uma rampa suave entre eles, e uma crista de ruído para a encosta não ser lisa */
+    const dC = Math.hypot(tx - 211 - SH, ty - 156 - SH), sC = smoothstep(34, 0, dC), steps = 4, q = sC * steps, fl = Math.floor(q), fr = q - fl, tread = smoothstep(0.35, 0.65, fr);
+    const terr = (fl + tread) / steps; h += Math.pow(z.snow, 1.4) * (2.5 + 8 * ridged(tx * 0.045, ty * 0.045, 61)) + 9 * (0.55 * sC + 0.45 * terr) * z.snow + 0.6 * ridged(tx * 0.2, ty * 0.2, 64) * sC * z.snow; }
   if (z.rock > 0.05) h += Math.pow(z.rock, 1.3) * (1.5 + 6 * ridged(tx * 0.06, ty * 0.06, 62));
   if (z.volcanic > 0.05) { // Montanha Negra: cristas negras e o cone que pulsa lava, com cratera no topo
     const dV = Math.hypot(tx - LORE.negra.x, ty - LORE.negra.y + 8); h += Math.pow(z.volcanic, 1.2) * (4 + 10 * ridged(tx * 0.04, ty * 0.04, 63)) + 26 * smoothstep(70, 6, dV) - 9 * smoothstep(9, 2, dV); }
@@ -1309,8 +1312,12 @@ export function buildCity(): World {
   /* árvores, pedras e vegetação por bioma */
   /* 27/10 (Erling: "não precisa ser tão fechada; clareiras, espaços, não um monte de mato que não conseguimos sequer ver o jogo"):
      mata e selva mais abertas, e CLAREIRAS de verdade: onde o ruído largo passa do limiar, não nasce árvore (bolsões de 10–30 casas) */
-  const dens: Record<Biome, number> = { meadow: 0.04, forest: 0.22, swamp: 0.09, snow: 0.09, ruins: 0.05, rock: 0.02, volcanic: 0.02, enchanted: 0.2, blight: 0.06, jungle: 0.3, coast: 0.015 };
-  const clearing = (x: number, y: number) => fbm(x * 0.045, y * 0.045, 58) > 0.62 || fbm(x * 0.02, y * 0.02, 59) > 0.66;
+  /* 01/11 (Erling): florestas densas com 25% menos árvores e sem árvore encostada na outra; e pelo menos duas clareiras de luta por região de mata */
+  const dens: Record<Biome, number> = { meadow: 0.04, forest: 0.165, swamp: 0.09, snow: 0.09, ruins: 0.05, rock: 0.02, volcanic: 0.02, enchanted: 0.15, blight: 0.06, jungle: 0.225, coast: 0.015 };
+  const DENSE = new Set<Biome>(['forest', 'enchanted', 'jungle']);
+  const arenas: { x: number; y: number; r: number }[] = []; for (const rg of REGIONS) { const cx = Math.round(rg.x), cy = Math.round(rg.y); if (!DENSE.has(biomeAt(cx, cy))) continue; const rr = rng(rg.id * 977 + 5); for (const [ox, oy] of [[-1, -0.6], [1, 0.7]]) { const ax = Math.round(cx + ox * (12 + rr() * 10)), ay = Math.round(cy + oy * (10 + rr() * 8)); if (inb(ax, ay) && map[ay]?.[ax] !== 'water') arenas.push({ x: ax, y: ay, r: 7 + Math.floor(rr() * 3) }); } }
+  const inArena = (x: number, y: number) => arenas.some((a) => Math.hypot(a.x - x, a.y - y) < a.r);
+  const clearing = (x: number, y: number) => inArena(x, y) || fbm(x * 0.045, y * 0.045, 58) > 0.62 || fbm(x * 0.02, y * 0.02, 59) > 0.66;
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
     if (map[y][x] !== 'grass') continue;
     const bm = biome[y][x];
@@ -1322,7 +1329,7 @@ export function buildCity(): World {
     let near = false;
     for (let dy = -1; dy <= 1 && !near; dy++) for (let dx = -1; dx <= 1; dx++) { const tt = map[y + dy][x + dx]; if (tt !== 'grass' && tt !== 'tree') { near = true; break; } }
     if (near) continue;
-    if (bm !== 'forest' && (map[y][x - 1] === 'tree' || map[y - 1][x] === 'tree')) continue; // fora da floresta, árvores espaçadas
+    if (map[y][x - 1] === 'tree' || map[y - 1][x] === 'tree') continue; // árvores nunca encostadas (01/11); a densidade vem do sorteio
     if (waterSD((x + 0.5) * T, (y + 0.5) * T) < 3.0) continue; // margens ficam para juncos e pedras
     const v = r();
     const kind = bm === 'volcanic' || bm === 'blight' ? 1 : bm === 'jungle' || bm === 'enchanted' || bm === 'coast' ? (v < 0.85 ? 0 : 2) : bm === 'snow' ? 2 : bm === 'swamp' ? (v < 0.7 ? 1 : 0) : bm === 'ruins' ? (v < 0.75 ? 1 : 0) : bm === 'forest' ? (v < 0.55 ? 2 : v < 0.8 ? 0 : 1) : bm === 'rock' ? (v < 0.6 ? 1 : 2) : (v < 0.8 ? 0 : v < 0.9 ? 2 : 1);
@@ -1333,7 +1340,7 @@ export function buildCity(): World {
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
     if (map[y][x] !== 'grass' || nearSettle(x, y, 0)) continue;
     const ek = edgeK(x, y);
-    if (ek.east > 0.35 && r() < ek.east * 0.95) { const pine = r() < 0.5; props.push({ kind: 'tree', sp: pickSpecies('forest', r()), gx: x, gy: y, w: 1, h: 1, height: pine ? 7 + r() * 4 : 5 + r() * 3, wall: 0x4b2f1c, roof: r() < 0.5 ? 0x2f6a2e : 0x3f7a3a, variant: pine ? 2 : 0 }); map[y][x] = 'tree'; continue; }
+    if (ek.east > 0.35 && r() < ek.east * 0.72 && !clearing(x, y) && map[y][x - 1] !== 'tree' && map[y - 1][x] !== 'tree') { const pine = r() < 0.5; props.push({ kind: 'tree', sp: pickSpecies('forest', r()), gx: x, gy: y, w: 1, h: 1, height: pine ? 7 + r() * 4 : 5 + r() * 3, wall: 0x4b2f1c, roof: r() < 0.5 ? 0x2f6a2e : 0x3f7a3a, variant: pine ? 2 : 0 }); map[y][x] = 'tree'; continue; }
     if (ek.north > 0.4 && r() < ek.north * 0.35) { props.push({ kind: 'rock', gx: x, gy: y, w: 1, h: 1, height: 1 + r() * 2.5 * ek.north, wall: 0x6b6a68, roof: 0, variant: Math.floor(r() * 4) }); }
   }
   const rockDens: Record<Biome, number> = { meadow: 0.004, forest: 0.012, swamp: 0.006, snow: 0.02, ruins: 0.02, rock: 0.07, volcanic: 0.06, enchanted: 0.006, blight: 0.02, jungle: 0.008, coast: 0.01 };
@@ -1607,10 +1614,13 @@ export function buildCity(): World {
     const okT = (x: number, y: number) => inb(x, y) && map[y][x] === 'grass' && map[y + 1]?.[x] === 'grass' && map[y]?.[x + 1] === 'grass' && !props.some((q) => q.gx === x && q.gy === y);
     const nearRoad = (x: number, y: number, r: number) => { for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (map[y + dy]?.[x + dx] === 'road') return true; return false; };
     const place = (name: string, x0: number, y0: number, wantRoad: boolean, minGap = 22) => {
-      if (relics.some((q) => Math.hypot(q.x - x0, q.y - y0) < minGap)) return false;
-      for (let r = 1; r < (wantRoad ? 14 : 26); r++) for (let k = 0; k < r * 8; k++) { const a = (k / (r * 8)) * 6.283, x = Math.round(x0 + Math.cos(a) * r), y = Math.round(y0 + Math.sin(a) * r); /* 27/10: sem estrada por perto, procura mais longe (a Colina Vampírica ficava sem pedra) */
+      /* 01/11 (Erling: "pedra muito próxima uma da outra não pode"): a folga mínima (≥30 casas = 60 m) vale para o LUGAR ESCOLHIDO, não só para o alvo */
+      minGap = Math.max(minGap, 30); if (relics.some((q) => Math.hypot(q.x - x0, q.y - y0) < minGap * 0.5)) return false;
+      for (let r = 1; r < (wantRoad ? 14 : 26); r++) for (let k = 0; k < r * 8; k++) { const a = (k / (r * 8)) * 6.283, x = Math.round(x0 + Math.cos(a) * r), y = Math.round(y0 + Math.sin(a) * r); if (relics.some((q) => Math.hypot(q.x - x, q.y - y) < minGap)) continue; /* 27/10: sem estrada por perto, procura mais longe (a Colina Vampírica ficava sem pedra) */
         if (!okT(x, y) || (wantRoad && !nearRoad(x, y, 2)) || nearRoad(x, y, 0)) continue;
         if (settlements.some((t) => t.kind === 'city' && Math.abs(t.x - x) <= t.radius + 4 && Math.abs(t.y - y) <= t.radius + 4)) continue; // fora da muralha
+        /* pedra escondida atrás de árvore NÃO PODE (Erling, 01/11): limpa árvores, pedras e ervas num raio de 3 casas em volta */
+        for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'plant' || q.kind === 'bones') && Math.hypot(q.gx - x, q.gy - y) <= 3.2) { if (q.kind === 'tree' && map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; props.splice(i, 1); } }
         block({ kind: 'relic', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0x6a6a72, roof: 0x4a9aff }); relics.push({ name, x, y }); return true; } /* a pedra rúnica (prancha 34) em todo lugar; os portais da prancha 33 (portais3d.ts) ficam guardados, sem uso (Erling, 01/11) */
       return false; };
     /** a saída de um assentamento: o primeiro trecho de estrada logo fora dele (de preferência ao sul, de frente para a câmera) */
