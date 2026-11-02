@@ -59,7 +59,7 @@ const BM: Record<string, THREE.Material> = { brown: toon(BARK.brown), red: toon(
 const LM: Record<string, THREE.Material> = {
   oak: leaf(0x4c7a34), oakDark: leaf(0x35602a), yellow: leaf(0xd6c62a), blueGreen: leaf(0x3f7a74), birch: leaf(0x9cb88c), ice: leaf(0x9ae0e8, 0.1, 1.0),
   moss: leaf(0x5a7a34), fir: leaf(0x2c5a44), snow: leaf(0xf0f6ff, 0.02, 0.8), jungle: leaf(0x3a8a3a), cypress: leaf(0x7a9a60), hang: leaf(0xa8b890, 0.12, 0.9),
-  acacia: leaf(0xa8b848), gold: leaf(0xe0a020, 0.1), red: leaf(0xb01830, 0.1), palm: leaf(0x4a9a3a, 0.09, 1.1), baobab: leaf(0x6aa040),
+  acacia: leaf(0xa8b848), gold: leaf(0xe0a020, 0.1), red: leaf(0x8a1224, 0.1), palm: leaf(0x4a9a3a, 0.09, 1.1), baobab: leaf(0x6aa040),
 };
 
 /** tubo cônico ao longo de uma curva */
@@ -181,10 +181,11 @@ function baobab(rnd: () => number): Made { // 55.5: baobá de tronco gordo, galh
     B.push(tube([new THREE.Vector3(0, 4.0, 0), new THREE.Vector3(x * 0.6, y - 0.2, z * 0.6), new THREE.Vector3(x, y, z)], (t) => 0.2 * (1 - t * 0.6), 5, 4)); L.push(blob(rnd, x, y + 0.25, z, 0.5 + rnd() * 0.2)); }
   return M(B, BM.baobab, L, LM.baobab);
 }
-function blackRed(rnd: () => number): Made { // 55.6: árvore negra de Corvoscuro, galhos em espiral, folhas vermelhas em cartas
+function blackRed(rnd: () => number): Made { // 55.6: espinheiro de Corvoscuro — tronco fino e torcido, galhos em espiral, poucas folhas vermelhas pequenas
   const B: THREE.BufferGeometry[] = [], tips: { p: THREE.Vector3; d: THREE.Vector3 }[] = [];
-  grow(rnd, B, tips, new THREE.Vector3(0, -0.2, 0), new THREE.Vector3(0.2, 1, 0), 2.8, 0.3, 3, 0.75, 0.25); roots(rnd, B, 0.3, 5, 0.8);
-  const L: THREE.BufferGeometry[] = []; for (const t of tips) { if (t.p.y < 1.5) continue; for (let k = 0; k < 2; k++) { const q = new THREE.PlaneGeometry(0.5 + rnd() * 0.3, 0.4 + rnd() * 0.3); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.2); q.translate(t.p.x + (rnd() - 0.5) * 0.4, t.p.y + (rnd() - 0.3) * 0.4, t.p.z + (rnd() - 0.5) * 0.4); L.push(q); } }
+  grow(rnd, B, tips, new THREE.Vector3(0, -0.2, 0), new THREE.Vector3(0.25, 1, 0.05), 2.6, 0.2, 3, 0.9, 0.3); roots(rnd, B, 0.2, 5, 0.7);
+  const L: THREE.BufferGeometry[] = []; for (const t of tips) { if (t.p.y < 1.8 || rnd() < 0.45) continue; const n = 1 + (rnd() < 0.4 ? 1 : 0);
+    for (let k = 0; k < n; k++) { const q = new THREE.PlaneGeometry(0.22 + rnd() * 0.12, 0.3 + rnd() * 0.14); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.4); q.rotateZ((rnd() - 0.5) * 0.8); q.translate(t.p.x + (rnd() - 0.5) * 0.3, t.p.y + 0.05 + rnd() * 0.2, t.p.z + (rnd() - 0.5) * 0.3); L.push(q); } }
   return M(B, BM.black, L, LM.red);
 }
 function palm(rnd: () => number): Made { // 55.7: palmeira baixa, tronco anelado, frondes arqueadas
