@@ -32,7 +32,9 @@ export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer
   | 'draugr_arch' | 'draugr_bers' | 'troll' | 'harpy' | 'jotun' | 'alpha'
   | 'automaton' | 'turret' | 'tinker' | 'colossus'
   | 'elfscout' | 'inquisitor' | 'slaver' | 'thrall'
-  | 'drowner' | 'drowner_old' | 'scorpion' | 'scorpion_king';
+  | 'drowner' | 'drowner_old' | 'scorpion' | 'scorpion_king'
+  /* 02/11 (Erling): os lugares novos do mapa vazio — sereias canibais nos lagos, goblins nas matas, espíritos nas grutas e o Gênio do oásis */
+  | 'siren' | 'siren_queen' | 'goblin' | 'goblin_shaman' | 'goblin_chief' | 'spirit' | 'spirit_lord' | 'djinn';
 const T = 2; // metros por tile (igual a TILE_M)
 
 export interface Prop {
@@ -113,6 +115,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
   /* a safra nova: dentro da faixa da região, do mais fraco ao mais forte; elites sempre no topo */
   spiderling: 0.05, drowner: 0.35, swampsnake: 0.4, mudzombie: 0.45, spider: 0.5, skel_arch: 0.55, bear: 0.6, scorpion: 0.55, harpy: 0.6, fungus: 0.6, skull_fire: 0.6, skull_frost: 0.65, automaton: 0.6, turret: 0.55, tinker: 0.7,
   hellhound: 0.65, imp_bomb: 0.6, draugr_arch: 0.6, draugr_bers: 0.75, elfscout: 0.7, slaver: 0.5, thrall: 0.6, inquisitor: 0.8, troll: 0.85, succubus: 0.8, pactbroken: 0.85,
+  siren: 0.6, goblin: 0.25, goblin_shaman: 0.45, spirit: 0.55, siren_queen: 1, goblin_chief: 1, spirit_lord: 1, djinn: 1,
   alpha: 1, necro: 1, headless: 1, cavebear: 1, giantsnake: 1, drowner_old: 1, scorpion_king: 1, glutton: 1, suplicio: 1, jotun: 1, colossus: 1, ent: 1, fairyqueen: 1, broodmother: 1, lich: 1 };
 export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number } // tiles
 export interface World {
@@ -306,7 +309,32 @@ const ORIVERS: { p: [number, number][]; w: number }[] = [
   { p: [[142, 300], [130, 380], [158, 470], [150, 560], [148, 598]], w: 1.0 }, // das Élficas ao lago da Floresta Encantada
   { p: [[740, 450], [760, 530], [730, 610], [700, 690], [690, 790], [700, 840]], w: 1.5 }, // do Vale, pela Selva Licantropa, até o mar
 ];
-const OLAKES = [{ x: 742, y: 440, r: 15 }, { x: 150, y: 604, r: 17 }, { x: 702, y: 704, r: 12 }, { x: 384, y: 742, r: 10 }, { x: 92, y: 336, r: 10 }, { x: 300, y: 70, r: 11 }, { x: 560, y: 60, r: 8 }];
+/* ---------- LUGARES NOVOS NO MAPA VAZIO (02/11, Erling: "temos muito espaço não aproveitado no mapa; faça lugares seguindo as regras") ----------
+   Cada um foi escolhido numa varredura do mundo (o ponto mais longe de tudo) e respeita as regras dos lugares marcados:
+   ≥ 30 casas além do raio de qualquer povoado, ≥ 40 de outro lugar/calabouço, ≥ 56 entre si, sem estrada nem rio por cima.
+   - sereias: clareira com lago e as Sereias Canibais (escondidas na água; saem quando você chega perto), a rainha no meio do lago;
+   - goblins: acampamento na mata (barracas, fogueira, ossos, totens) com o chefe;
+   - grutas: a boca de uma caverna (calabouço, masmorras.ts) com espíritos malignos rondando à noite;
+   - oásis: o lago no meio da areia, cercado de palmeiras e verde — e o Gênio da Ilusão escondido na água. */
+export interface WildPlace { name: string; kind: 'sereias' | 'goblins' | 'gruta' | 'oasis'; x: number; y: number; /** raio do lago (casas) */ lake?: number; /** raio sem árvore sorteada */ clear: number }
+export const WILD: WildPlace[] = [
+  { name: 'Lago das Sereias de Prata', kind: 'sereias', x: 84, y: 624, lake: 7, clear: 16 },
+  { name: 'Lago da Névoa Doce', kind: 'sereias', x: 476, y: 96, lake: 6, clear: 14 },
+  { name: 'Lagoa do Canto Afogado', kind: 'sereias', x: 132, y: 496, lake: 6, clear: 14 },
+  { name: 'Lagoa das Fauces', kind: 'sereias', x: 788, y: 580, lake: 7, clear: 16 },
+  { name: 'Mata dos Goblins Ladrões', kind: 'goblins', x: 164, y: 448, clear: 10 },
+  { name: 'Toca dos Goblins de Musgo', kind: 'goblins', x: 152, y: 300, clear: 10 },
+  { name: 'Aldeia Goblin da Selva', kind: 'goblins', x: 772, y: 704, clear: 11 },
+  { name: 'Covil Goblin do Passo', kind: 'goblins', x: 384, y: 52, clear: 10 },
+  { name: 'Bosque dos Goblins Afogadiços', kind: 'goblins', x: 196, y: 784, clear: 10 },
+  { name: 'Gruta das Cinzas que Choram', kind: 'gruta', x: 680, y: 52, clear: 8 },
+  { name: 'Caverna dos Lamentos', kind: 'gruta', x: 704, y: 388, clear: 8 },
+  { name: 'Gruta do Sopro Gelado', kind: 'gruta', x: 296, y: 176, clear: 8 },
+  { name: 'Caverna das Vozes', kind: 'gruta', x: 52, y: 672, clear: 8 },
+  { name: 'Gruta dos Sussurros', kind: 'gruta', x: 788, y: 364, clear: 8 },
+  { name: 'Oásis da Miragem', kind: 'oasis', x: 424, y: 704, lake: 6, clear: 13 },
+];
+const OLAKES = [{ x: 742, y: 440, r: 15 }, { x: 150, y: 604, r: 17 }, { x: 702, y: 704, r: 12 }, { x: 384, y: 742, r: 10 }, { x: 92, y: 336, r: 10 }, { x: 300, y: 70, r: 11 }, { x: 560, y: 60, r: 8 }, ...WILD.filter((w) => w.lake).map((w) => ({ x: w.x, y: w.y, r: w.lake! }))];
 export function outerWaterSD(tx: number, ty: number): number {
   let sd = 1e9; for (const r of ORIVERS) sd = Math.min(sd, (segD(tx + (fbm(tx * 0.06, ty * 0.06, 151) - 0.5) * 9, ty + (fbm(tx * 0.06 + 4, ty * 0.06, 152) - 0.5) * 9, r.p) - r.w) * T);
   for (const l of OLAKES) sd = Math.min(sd, (Math.hypot(tx - l.x, ty - l.y) - l.r - (fbm(tx * 0.3, ty * 0.3, 153) - 0.5) * 3.4) * T);
@@ -1220,6 +1248,34 @@ export function buildCity(): World {
     spawns.push({ type: 'wolf', x: v.x + 6, y: v.y + 6, r: 5, n: 4 }); }
   /* 26/10 (Erling: "todas as vilas têm que estar ligadas por estradas e pontes"): a Cripta de Hemara e a Clareira de Selvar ganham a sua estrada */
   for (const [nm, to] of [['Cripta de Hemara', 'Myrbakki'], ['Clareira de Selvar', 'Austrvik']] as [string, string][]) { const st = settlements.find((q) => q.name === nm); if (st) { PLACE[nm] = [st.x, st.y + 2]; route(nm, to, 1.05); } }
+  /* 02/11: os lugares novos do mapa vazio (WILD, lá em cima): clareira, enfeites, bichos e o dono do lugar */
+  for (const w of WILD) { const c = { x: w.x, y: w.y }, rw = rng(w.x * 131 + w.y * 7 + 5), L = w.lake ?? 0;
+    const at = (d0: number, d1: number) => { const a = rw() * 6.283, d = d0 + rw() * (d1 - d0); return [Math.round(c.x + Math.cos(a) * d), Math.round(c.y + Math.sin(a) * d)] as const; };
+    for (let y = c.y - w.clear; y <= c.y + w.clear; y++) for (let x = c.x - w.clear; x <= c.x + w.clear; x++) if (inb(x, y) && map[y][x] === 'tree' && Math.hypot(x - c.x, y - c.y) <= w.clear) { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
+    pois.push({ name: w.name, x: c.x, y: c.y, biome: biomeAt(c.x, c.y) });
+    if (w.kind === 'sereias') { /* pedras de sentar na margem (é dali que elas cantam) e os ossos roídos de quem chegou perto */
+      for (let k = 0; k < 6; k++) { const a = (k / 6) * 6.283 + rw() * 0.5, d = L + 1.5 + rw() * 1.5; addRock(Math.round(c.x + Math.cos(a) * d), Math.round(c.y + Math.sin(a) * d), k % 3 === 0); }
+      for (let k = 0; k < 12; k++) { const [x, y] = at(L + 1.5, L + 6); addBones(x, y); }
+      spawns.push({ type: 'siren', x: c.x, y: c.y, r: L, n: 4, keep: true }, { type: 'siren_queen', x: c.x, y: c.y, r: 1, n: 1, keep: true });
+    } else if (w.kind === 'goblins') { /* barracas de couro remendado, fogueira, totens de caveira (tochas) e o lixo dos saques */
+      for (const [ox, oy] of [[-5, -4], [3, -5], [4, 2], [-6, 2]]) addTent(c.x + ox, c.y + oy, 0x5a6a2a);
+      addFire(c.x, c.y);
+      for (let k = 0; k < 9; k++) { const [x, y] = at(2, 8); addBones(x, y); }
+      for (let k = 0; k < 4; k++) { const [x, y] = at(5, 7); if (free(x, y)) props.push({ kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 1.8, wall: 0x3a2a1c, roof: 0x9aff5a }); }
+      spawns.push({ type: 'goblin', x: c.x, y: c.y, r: 7, n: 6, keep: true }, { type: 'goblin_shaman', x: c.x, y: c.y, r: 5, n: 2, keep: true }, { type: 'goblin_chief', x: c.x, y: c.y, r: 1, n: 1, keep: true });
+    } else if (w.kind === 'gruta') { /* pedras em volta da boca, ossos e duas lápides sem nome; os espíritos rondam à noite (a entrada é um calabouço) */
+      for (let k = 0; k < 6; k++) { const [x, y] = at(3, 7); addRock(x, y, k < 2); }
+      for (let k = 0; k < 7; k++) { const [x, y] = at(2, 8); addBones(x, y); }
+      for (let k = 0; k < 2; k++) { const [x, y] = at(4, 7); addGrave(x, y); }
+      spawns.push({ type: 'spirit', x: c.x, y: c.y, r: 8, n: 4, night: true });
+    } else { /* o oásis: palmeiras em anel, verde na margem — e, mais longe, os ossos de quem bebeu a areia */
+      for (let k = 0; k < 20; k++) { const a = (k / 20) * 6.283 + rw() * 0.25, d = L + 2 + rw() * 3, x = Math.round(c.x + Math.cos(a) * d), y = Math.round(c.y + Math.sin(a) * d);
+        if (free(x, y) && map[y][x - 1] !== 'tree' && map[y - 1]?.[x] !== 'tree') { props.push({ kind: 'tree', sp: 'palm', gx: x, gy: y, w: 1, h: 1, height: 5.5 + rw() * 3, wall: 0x6a4a2a, roof: 0x3f8a3a, variant: 0 }); map[y][x] = 'tree'; } }
+      for (let k = 0; k < 16; k++) { const [x, y] = at(L + 1, L + 6); if (free(x, y)) props.push({ kind: 'plant', plant: pickPlant('jungle', rw()), gx: x, gy: y, w: 1, h: 1, height: 0.6, wall: 0, roof: 0, variant: Math.floor(rw() * 3) }); }
+      for (let k = 0; k < 10; k++) { const [x, y] = at(L + 7, L + 12); addBones(x, y); }
+      for (let k = 0; k < 4; k++) { const [x, y] = at(L + 8, L + 12); addRock(x, y, k === 0); }
+      spawns.push({ type: 'djinn', x: c.x, y: c.y, r: 1, n: 1, keep: true }, { type: 'scorpion', x: c.x, y: c.y, r: 14, n: 4 });
+    } }
   // Catedral Abandonada (sul, terras antigas): 3 criptas descendo até o santuário do Sacerdote Maldito
   const cat = safe(CATHEDRAL.x, CATHEDRAL.y, 12);
   for (let y = cat.y - 10; y <= cat.y + 22; y++) for (let x = cat.x - 10; x <= cat.x + 18; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
@@ -1351,6 +1407,7 @@ export function buildCity(): World {
     const cluster = 0.35 + 1.3 * fbm(x * 0.12, y * 0.12, 21);
     if (r() > dens[bm] * cluster) continue;
     if ((bm === 'forest' || bm === 'jungle' || bm === 'enchanted') && clearing(x, y)) continue;
+    if (WILD.some((w) => Math.hypot(w.x - x, w.y - y) < w.clear)) continue; /* 02/11: as clareiras dos lugares novos */
     if (Math.hypot(x - CITY.x, y - CITY.y - 3) < 12) continue; // praça e arredores livres
     if (nearSettle(x, y, 0)) continue;
     let near = false;
@@ -1689,6 +1746,7 @@ export function buildCity(): World {
         if (!at) { console.warn('calabouço sem lugar:', d.name); continue; } dgSpots[d.id] = at; placed.push(at); for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) occ.add(y * 100000 + x);
         /* a árvore/pedra que estava no lugar sai; a casa vira capim */ for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'plant' || q.kind === 'bones' || q.kind === 'grave') && Math.abs(q.gx - at.x) <= 2 && Math.abs(q.gy - at.y) <= 2) props.splice(i, 1); } for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass';
         if (!relics.some((r) => Math.hypot(r.x - at!.x, r.y - at!.y) < 26)) place(`Relíquia: ${d.name}`, at.x, at.y + 6, false, 24); } } /* uma pedra de regresso perto de cada calabouço */
+    for (const w of WILD) if (w.kind !== 'gruta' && !relics.some((r) => Math.hypot(r.x - w.x, r.y - w.y) < 24)) place(`Relíquia: ${w.name}`, w.x, w.y + (w.lake ?? 0) + 6, false, 24); /* 02/11: pedra de regresso perto de cada lugar novo (as grutas ganham a do calabouço) */
     for (const pn of ['Mausoléu do Bispo', 'Catedral Abandonada', 'Ruínas de Aravel', 'Cripta de Hemara', 'Fortaleza de Odin', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn) ?? settlements.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 24)) place(`Relíquia: ${pn}`, q.x, q.y + 6, false, 24); }
     for (const rg of REGIONS) { const rx = rg.name === 'Colina Vampírica' ? 764 : Math.round(rg.x), ry = rg.name === 'Colina Vampírica' ? 270 : Math.round(rg.y); /* 27/10: a pedra da Colina fica na frente do castelo (perto demais da de Corvoscuro no sopé) */ place(`Relíquia: ${rg.name}`, rx, ry, true) || place(`Relíquia: ${rg.name}`, rx, ry, false); }
   }
@@ -1756,6 +1814,8 @@ export function buildCity(): World {
       ex('Lithendel', { name: 'Anciã Faelwen', role: 'Anciã de Lithendel', kind: 'nordic', x: 84 - 2.5, y: 404 + 2, radius: 1.2, tint: 0x5a8a6a, scale: 1.0, lines: ['As árvores daqui eram velhas quando os reis dos homens eram crianças.', 'A mata fala. Pouca gente escuta.'] });
       ex('Brasaforja', { name: 'Mestre-Forjador Brokki', role: 'Mestre da Forja de Elite', kind: 'dwarf', x: 560 - 3.5, y: 186 + 2.5, radius: 1.2, tint: 0x8a3a1a, scale: 1.05, lines: ['Ferro qualquer um bate. Presa de alfa, só eu.', 'Me traga o que os bichos grandes deixam, e eu te faço o que nenhuma loja vende.'] });
       ex('Brasaforja', { name: 'Mestre-Mineiro Dvalin', role: 'Mestre das Galerias', kind: 'dwarf', x: 560 + 3, y: 186 + 2.5, radius: 1.5, tint: 0x6a4a2a, scale: 1.0, lines: ['Pedra boa canta quando você bate. Pedra ruim chora.', 'Meu avô dizia: escute a montanha antes de cavar nela.'] });
+      /* 02/11: o Cameleiro de Vindholt — a missão do Gênio do oásis (quests.ts, "O Gênio do Lago") */
+      ex('Vindholt', { name: 'Yusuf, o Cameleiro', role: 'Guia das Caravanas do Deserto', kind: 'nordic', x: 470 + 3.5, y: 640 - 2, radius: 1.5, tint: 0xc8a060, scale: 1.0, lines: ['Três caravanas foram ao Oásis da Miragem. Voltaram dois camelos e nenhum homem.', 'No deserto, a água que chama você pelo nome não é água.'] });
       ex('Austrvik', { name: 'Irmão Tobias', role: 'Sineiro da Abadia da Aurora', kind: 'nordic', x: 392 + SH - 2, y: 292 + SH + 2.5, radius: 1.5, tint: 0xd8c89a, scale: 0.95, lines: ['Os sinos da Abadia eram de bronze. Agora são de engrenagem. Funcionam melhor, quando funcionam.', 'Toco antes do sol. Sempre antes.'] }); }
     /* a campanha que viaja (25/10): uma pessoa nova em cada vila do roteiro do Caminho do Norte (campanha.ts) */
     const ak = settlements.find((q) => q.name === 'Askavik'); if (ak) { /* Hrefna e o santuário da Deusa dos Caminhos: pedras de pé em roda, no lado oeste da praça */

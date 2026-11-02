@@ -8,7 +8,7 @@ import { loadModel, Puppet } from './models3d';
 import { mergeStatic } from './merge3d';
 import { fine } from './dual3d';
 import { rng } from './world';
-import { buildSpider, buildScorpion, buildSnake, buildSkull, buildHarpy, buildFungus, buildAutomaton, buildTurret, buildBear, buildHeadless } from './bestas3d';
+import { buildSpider, buildScorpion, buildSnake, buildSkull, buildHarpy, buildFungus, buildAutomaton, buildTurret, buildBear, buildHeadless, buildSiren, buildGoblin } from './bestas3d';
 
 export interface EnemyCtx { outMul?: () => number;
   scene: THREE.Scene;
@@ -154,6 +154,15 @@ export const DEFS: Record<EnemyType, Def> = {
   drowner_old: { name: 'Afogador Antigo', lvl: 30, hp: 600, dmg: 36, speed: 3.0, aggro: 12, range: 2.2, windup: 0.7, cd: 1.6, xp: 600, gold: [40, 90], rig: 'zombie', scale: 1.35, radius: 0.9, tint: 0x2a5a4a, ambush: 'water', elite: 3 },
   scorpion: { name: 'Escorpião das Dunas', lvl: 22, hp: 220, dmg: 22, speed: 3.8, aggro: 10, range: 2.0, windup: 0.6, cd: 1.3, xp: 120, gold: [3, 9], make: () => buildScorpion(0xb8864a, 0x8a5a2a), scale: 1.5, radius: 0.85, ambush: 'sand' },
   scorpion_king: { name: 'Escorpião-Rei', lvl: 36, hp: 1100, dmg: 46, speed: 3.4, aggro: 14, range: 3.0, windup: 0.85, cd: 1.8, xp: 1600, gold: [120, 260], make: () => buildScorpion(0x2a1a14, 0x6a2a14, 0xff3a1a), scale: 2.6, radius: 1.8, ambush: 'sand', elite: 3 },
+  /* 02/11 (Erling): os lugares novos do mapa — sereias canibais nos lagos, goblins nas matas, espíritos nas grutas e o Gênio do oásis */
+  siren: { name: 'Sereia Canibal', lvl: 24, hp: 210, dmg: 24, speed: 3.6, aggro: 13, range: 2.0, windup: 0.5, cd: 1.2, xp: 150, gold: [6, 16], make: () => buildSiren(0x9ac8b0, 0x2a7a7a), scale: 1.15, radius: 0.6, ambush: 'water' },
+  siren_queen: { name: 'Rainha das Sereias', lvl: 32, hp: 900, dmg: 38, speed: 3.4, aggro: 15, range: 2.4, windup: 0.7, cd: 1.6, xp: 900, gold: [60, 140], make: () => buildSiren(0xb8d8d0, 0x3a3a8a, 0x1a3a5a, true), scale: 1.6, radius: 0.9, ambush: 'water', elite: 3 },
+  goblin: { name: 'Goblin Saqueador', lvl: 6, hp: 70, dmg: 10, speed: 3.7, aggro: 14, range: 1.6, windup: 0.45, cd: 1.1, xp: 30, gold: [3, 9], make: () => buildGoblin(0x6a8a3a, 'faca'), scale: 0.9, radius: 0.45 },
+  goblin_shaman: { name: 'Xamã Goblin', lvl: 9, hp: 80, dmg: 14, speed: 3.0, aggro: 16, range: 1.6, windup: 0.6, cd: 1.6, xp: 55, gold: [5, 14], make: () => buildGoblin(0x5a7a4a, 'cajado'), scale: 0.95, radius: 0.45, kite: 7 },
+  goblin_chief: { name: 'Chefe Goblin', lvl: 12, hp: 420, dmg: 24, speed: 3.4, aggro: 15, range: 2.2, windup: 0.7, cd: 1.6, xp: 400, gold: [40, 90], make: () => buildGoblin(0x4a6a2a, 'machado', true), scale: 1.35, radius: 0.7, elite: 3 },
+  spirit: { name: 'Espírito Maligno', lvl: 22, hp: 160, dmg: 22, speed: 4.2, aggro: 16, range: 1.9, windup: 0.5, cd: 1.2, xp: 120, gold: [4, 10], rig: 'zombie', fly: 0.6, scale: 1, radius: 0.5, tint: 0x6a4a9a },
+  spirit_lord: { name: 'Senhor dos Lamentos', lvl: 30, hp: 800, dmg: 34, speed: 3.6, aggro: 18, range: 2.4, windup: 0.7, cd: 1.5, xp: 900, gold: [60, 140], rig: 'zombie', fly: 0.8, scale: 1.4, radius: 0.9, tint: 0x4a2a7a, elite: 3 },
+  djinn: { name: 'Sheitã, o Gênio da Ilusão', lvl: 28, hp: 1200, dmg: 40, speed: 3.6, aggro: 12, range: 2.6, windup: 0.7, cd: 1.5, xp: 1800, gold: [150, 320], rig: 'zombie', fly: 0.9, scale: 1.7, radius: 1.0, tint: 0x2a6a8a, ambush: 'water', elite: 3 },
 };
 /** elites do mundo (corpo maior, vida e golpe a mais, renascem devagar): os de sempre e todo bicho com `elite` */
 export const ELITE_TYPES = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'bandit_chief', ...(Object.keys(DEFS) as EnemyType[]).filter((k) => DEFS[k].elite)]);
@@ -711,7 +720,7 @@ export function createEnemies(ctx: EnemyCtx) {
       const tx = foeOn ? fo!.pos.x : hero.x, tz = foeOn ? fo!.pos.z : hero.z, dT = foeOn ? Math.hypot(tx - e.pos.x, tz - e.pos.z) : dHero, aliveT = foeOn || alive;
       switch (e.state) {
         case 'idle': {
-          if (D.ambush && !foeOn) { const hid = !(aliveT && dT < D.aggro * 0.75); if (hid !== !!(e as Enemy & { hid?: boolean }).hid) { (e as Enemy & { hid?: boolean }).hid = hid; if (!hid) { ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); ctx.onSpell?.(e, D.ambush === 'water' ? 'Sai da água!' : 'Sai da areia!'); e.state = 'chase'; e.t = 0; } } if (hid) break; }
+          if (D.ambush && !foeOn) { const hid = !(aliveT && dT < D.aggro * 0.75) && !(e as Enemy & { woke?: boolean }).woke; /* woke: chamado para fora (o Gênio do oásis, sistemas/oasis.ts) */ if (hid !== !!(e as Enemy & { hid?: boolean }).hid) { (e as Enemy & { hid?: boolean }).hid = hid; if (!hid) { ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); ctx.onSpell?.(e, D.ambush === 'water' ? 'Sai da água!' : 'Sai da areia!'); e.state = 'chase'; e.t = 0; } } if (hid) break; }
           if (D.lawful && (enemyHooks.karma?.() ?? 0) > -150) { /* o Inquisidor só caça quem deve: com você em paz, ele só vigia */ e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + Math.random() * 3; face(e, hero.x, hero.z, 1, 1); } break; }
           if (!D.passive && aliveT && dT < (foeOn ? 40 : D.aggro)) { e.state = 'chase'; e.t = 0; break; }
           if (D.passive && dHero < D.aggro) { e.state = 'flee'; e.t = 0; break; }

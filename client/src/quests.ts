@@ -152,6 +152,22 @@ export const WARRIOR: QuestDef[] = [
       { label: 'Aceita o duelo final e dá a ele a morte honrosa.', karma: 6, say: '(Um golpe limpo. Thorgrim abaixa a cabeça antes de cair.) “Bom golpe.”', why: 'Foi o mais difícil, e você não fugiu. A morte pedida e dada com respeito não pesa contra quem a dá.' } ] } },
 ];
 export const SIDE: QuestDef[] = [
+  /* ---------- O Gênio do Lago (02/11, Erling): Sheitã, o Gênio da Ilusão, escondido no lago do Oásis da Miragem (sistemas/oasis.ts) ---------- */
+  { id: 'dj1', chain: 'O Gênio do Lago', name: 'A Água que Não Mata a Sede', lvl: 24, giver: 'Yusuf, o Cameleiro', next: 'dj2', xp: 900, gold: 90,
+    text: 'Três caravanas pararam no Oásis da Miragem, a sudoeste de Vindholt, no meio da areia. Os que voltaram tinham a boca cheia de areia e não falaram nunca mais. Vá até o oásis e veja com os seus olhos. E escute bem: não beba nada que lhe oferecerem.',
+    objs: [{ kind: 'visit', poi: 'Oásis da Miragem' }],
+    talk: ['Você tem cara de quem atravessa deserto. Então escute um velho que já atravessou mil.', 'Existe um lago no meio da areia, cercado de palmeiras. Verde demais para ser verdade.', 'Quem chega lá ouve uma voz que oferece água. Doce, fria, de graça.', 'Meu irmão bebeu. Voltou com a boca cheia de areia. Morreu em três dias, sem uma palavra.'],
+    done: ['Você viu as palmeiras, os ossos em volta. E ouviu a voz, não ouviu?', 'Chamam aquilo de Sheitã. O Gênio da Ilusão. Ele não quer o seu ouro: quer a sua sede.'] },
+  { id: 'dj2', chain: 'O Gênio do Lago', name: 'Sheitã, o Gênio da Ilusão', lvl: 26, giver: 'Yusuf, o Cameleiro', xp: 3200, gold: 320, gear: 1, title: 'O Que Não Bebeu',
+    text: 'O Gênio dorme no fundo do lago e só sobe quando alguém tem sede. Volte ao oásis, deixe que ele ofereça a água e derrote-o quando sair. Cuidado com a Miragem: ela troca o que é perto pelo que é longe.',
+    objs: [{ kind: 'kill', type: 'djinn', n: 1 }],
+    talk: ['Ele vai oferecer a água de novo. Recuse se for esperto. Beba se for tolo: vai doer, mas ele sobe do mesmo jeito.', 'Quando sair, não olhe nos olhos dele. A areia que ele sopra cega e a miragem engana os pés.'],
+    done: ['O lago está calmo? Então acabou. Meu irmão pode dormir.'],
+    choice: { q: 'No fundo do lago, onde o Gênio morava, brilha uma lâmpada de latão cheia de areia. Ela ainda está quente. Você…', opts: [
+      { label: 'Quebra a lâmpada contra uma pedra.', karma: 4, say: 'Então ele não volta. Nem para você, nem para ninguém. Obrigado.', why: 'Você teve na mão um gênio que realiza desejos e escolheu que ninguém mais morresse de sede por causa dele.' },
+      { label: 'Devolve a lâmpada ao fundo do lago.', karma: 1, say: 'Um dia alguém acha de novo. Mas talvez esse alguém seja melhor do que nós.', why: 'Você não quis o poder, mas também não quis decidir pelo mundo. Marghar anota a dúvida.' },
+      { label: 'Guarda a lâmpada na mochila.', karma: -4, say: 'Hm. Cuidado com o que você pede a ela.', why: 'Você trouxe para casa a coisa que matou três caravanas. Gênios lembram de quem os carrega.', flag: 'lampada_sheita' } ] } },
+
   /* ---------- guildas (26/10): nível 20, a Carta Patente de Askavik e o Magistrado de Lumenhal ---------- */
   { id: 'gu1', chain: 'A Fundação', name: 'O Peso de um Estandarte', lvl: 20, xp: 1, gold: 0, giver: 'Escrivão-Mor Aldric', turnin: 'Magistrado Corvin Aldmar', give: [['carta_patente', 1]],
     text: 'Quer fundar uma guilda? Askavik escreve a Carta Patente, mas quem registra é o Magistrado de Lumenhal, a cidade média, desde o tempo dos primeiros mercadores. Leve a carta lacrada até ele. A taxa do registro são 500 de ouro: tenha-os na bolsa.',

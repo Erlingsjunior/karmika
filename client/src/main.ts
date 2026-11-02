@@ -146,6 +146,7 @@ import { createOlho } from './sistemas/olho';
 import { createCacaElite } from './sistemas/caca-elite';
 import { createConversaNpc } from './sistemas/conversa-npc';
 import { createSegredosInstinto } from './sistemas/segredos-instinto';
+import { createOasis } from './sistemas/oasis';
 import { createInstintoPosturas } from './sistemas/instinto-posturas';
 import { createEventosUi } from './sistemas/eventos-ui';
 import { createDecoracao } from './sistemas/decoracao';
@@ -875,6 +876,9 @@ export interface RedeCtx {
   readonly social: Widen<typeof social>;
   readonly inicio: Widen<typeof inicio>;
 }
+/* O OÁSIS DA MIRAGEM (02/11): a voz do Gênio oferece de beber a quem chega na beira — sistemas/oasis.ts */
+const oasisSys = createOasis({ game, heroPos: () => heroPosNow(), openDlg: (o) => openDlg(o), busy: () => !!inside || !!cinemaSys?.cine || dlg.isOpen, shake: (k) => { game.st.shake = Math.max(game.st.shake ?? 0, k); } });
+setInterval(() => oasisSys.tick(), 400);
 var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
 function mk_redeSys() { return createRede({ get scene() { return scene; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();

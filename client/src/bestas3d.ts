@@ -335,3 +335,75 @@ export function buildDog(o: DogOpt): { root: THREE.Group; mats: THREE.MeshToonMa
     tail.rotation.x = 0.6 - S2 * 0.4; tail.rotation.y = Math.sin(st.t * (S2 > 0.5 ? 6 : 10)) * (0.5 + 0.3 * spd); /* o rabinho abana o tempo todo */
   } };
 }
+
+/* ======================= SEREIA CANIBAL (02/11) ======================= */
+/** a sereia dos lagos: torso de mulher pálido-esverdeado, cabelo comprido de alga, olhos amarelos e boca de dentes de peixe;
+ *  da cintura para baixo, cauda de escamas que serpenteia e termina em barbatana. Nada de pé: ela desliza (e se ergue para o bote).
+ *  A rainha tem coroa de coral e conchas e cauda mais longa. */
+export function buildSiren(skin: number, tail: number, hair = 0x2a5a3a, queen = false): BRig {
+  const { mats, M, G, mesh } = kit(); const root = new THREE.Group(), body = new THREE.Group(); body.position.y = 0.45; root.add(body);
+  const sk = M(skin), tl = M(tail), tlD = M(new THREE.Color(tail).multiplyScalar(0.6).getHex()), hr = M(hair), fin = M(new THREE.Color(tail).lerp(new THREE.Color(0xd8f0ff), 0.35).getHex()), dark = M(0x0c0a0e);
+  // cauda: segmentos que afinam, cada um num grupo encadeado (a onda passa de um para o outro)
+  const segs: THREE.Group[] = []; let parent: THREE.Object3D = body; const N = queen ? 7 : 6;
+  for (let i = 0; i < N; i++) { const g = new THREE.Group(); g.position.set(0, i === 0 ? 0 : -0.02, i === 0 ? 0 : -0.2); parent.add(g); segs.push(g); parent = g;
+    const r0 = 0.17 - i * 0.02; const sg = mesh(new THREE.CapsuleGeometry(Math.max(0.04, r0), 0.12, 4, 8).rotateX(Math.PI / 2), i % 2 ? tl : tlD, 1, 0.85, 1); sg.position.z = -0.08; g.add(sg); }
+  { const tip = segs[segs.length - 1]; for (const s of [-1, 1]) { const f = mesh(new THREE.ConeGeometry(0.12, 0.38, 3), fin, 0.5, 1, 1.4); f.rotation.set(Math.PI / 2, 0, s * 0.7); f.position.set(s * 0.1, 0, -0.32); tip.add(f); } }
+  // torso de pé sobre a cauda
+  const torso = new THREE.Group(); body.add(torso);
+  const hip = mesh(S(0.17, 12, 8), tlD, 1, 0.8, 0.9); torso.add(hip);
+  const chest = mesh(new THREE.CapsuleGeometry(0.14, 0.3, 4, 10), sk, 1, 1, 0.75); chest.position.y = 0.3; torso.add(chest);
+  for (const s of [-1, 1]) { const sh = mesh(S(0.055, 8, 6), fin); sh.position.set(s * 0.07, 0.36, 0.1); torso.add(sh); } // conchas
+  const head = new THREE.Group(); head.position.y = 0.66; torso.add(head);
+  head.add(mesh(S(0.12, 12, 10), sk, 0.92, 1.1, 1));
+  for (const s of [-1, 1]) { const ey = new THREE.Mesh(S(0.024, 6, 4), G(0xffe060)); ey.position.set(s * 0.045, 0.02, 0.105); head.add(ey); const ear = mesh(new THREE.ConeGeometry(0.035, 0.12, 3), fin); ear.rotation.z = s * -1.2; ear.position.set(s * 0.12, 0.02, -0.01); head.add(ear); }
+  const jaw = mesh(new THREE.BoxGeometry(0.08, 0.02, 0.03), dark); jaw.position.set(0, -0.06, 0.1); head.add(jaw);
+  for (let k = 0; k < 4; k++) { const t = new THREE.Mesh(new THREE.ConeGeometry(0.008, 0.03, 3), new THREE.MeshBasicMaterial({ color: 0xf0ece0 })); t.position.set(-0.03 + k * 0.02, -0.055, 0.115); t.rotation.x = Math.PI; head.add(t); }
+  // cabelo de alga: mechas que caem pelas costas
+  const locks: THREE.Mesh[] = []; for (let k = 0; k < 7; k++) { const a = (k / 6 - 0.5) * 2.2, m = mesh(down(C(0.03, 0.012, 0.55 + (k % 3) * 0.12, 5), 0.55), hr); m.position.set(Math.sin(a) * 0.1, 0.06, -Math.cos(a) * 0.07 - 0.02); m.rotation.x = 0.35; head.add(m); locks.push(m); }
+  if (queen) { const cr = new THREE.Group(); cr.position.y = 0.12; head.add(cr); for (let k = 0; k < 7; k++) { const a = (k / 7) * 6.283, sp = mesh(new THREE.ConeGeometry(0.02, 0.12 + (k % 2) * 0.06, 4), M(0xff7a6a, 0.3)); sp.position.set(Math.cos(a) * 0.1, 0.04, Math.sin(a) * 0.1); cr.add(sp); } const pearl = new THREE.Mesh(S(0.025, 8, 6), G(0xfff6e0)); pearl.position.set(0, 0.05, 0.11); cr.add(pearl); }
+  // braços longos de garras
+  const arms: THREE.Group[] = []; for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.15, 0.45, 0); torso.add(a); arms.push(a);
+    const up = mesh(down(C(0.035, 0.03, 0.26, 6), 0.26), sk); a.add(up); const fo = new THREE.Group(); fo.position.y = -0.26; a.add(fo); fo.add(mesh(down(C(0.03, 0.025, 0.24, 6), 0.24), sk));
+    for (let k = 0; k < 3; k++) { const c = mesh(new THREE.ConeGeometry(0.01, 0.07, 3), dark); c.position.set((k - 1) * 0.018, -0.29, 0.02); c.rotation.x = Math.PI; fo.add(c); } }
+  return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) { void dt;
+    const sw = e.t * (2 + Math.min(3, mv)) + e.id; segs.forEach((g, i) => { g.rotation.y = Math.sin(sw - i * 0.7) * (0.18 + i * 0.04); g.rotation.x = i === 0 ? 0 : Math.sin(sw * 0.5 - i * 0.5) * 0.05; });
+    torso.rotation.x = -windK * 0.5 + strikeK * 0.75 - hurtK * 0.3; torso.position.y = windK * 0.18; body.position.y = 0.45 + Math.sin(e.t * 1.6 + e.id) * 0.03;
+    arms.forEach((a, i) => { const s = i ? 1 : -1; a.rotation.x = -0.4 - windK * 1.8 + strikeK * 1.5; a.rotation.z = s * (0.25 + windK * 0.4); });
+    locks.forEach((l, k) => { l.rotation.z = Math.sin(e.t * 1.3 + k) * 0.12; });
+    head.rotation.x = strikeK * 0.4 - windK * 0.2; jaw.position.y = -0.06 - strikeK * 0.03;
+  } };
+}
+
+/* ======================= GOBLINS (02/11) ======================= */
+/** goblin: baixinho e curvado, cabeça grande, orelhas compridas de morcego, nariz de gancho, olhos que brilham;
+ *  tanga e bracelete de couro; faca de lâmina torta, cajado de osso com uma caveira acesa (xamã) ou machado (chefe, maior e com peles). */
+export function buildGoblin(skin: number, weapon: 'faca' | 'cajado' | 'machado', chief = false): BRig {
+  const { mats, M, G, mesh } = kit(); const root = new THREE.Group(), body = new THREE.Group(); body.position.y = 0.52; root.add(body);
+  const sk = M(skin), skD = M(new THREE.Color(skin).multiplyScalar(0.7).getHex()), lea = M(0x4a321e), bone = M(0xd8ccb0), steel = M(0x8a8e96), wood = M(0x5a3a22);
+  const torso = mesh(S(0.2, 12, 9), sk, 0.95, 1.05, 0.85); torso.position.y = 0.22; torso.rotation.x = 0.35; body.add(torso);
+  const belly = mesh(S(0.16, 10, 8), skD, 1, 0.9, 0.9); belly.position.set(0, 0.1, 0.05); body.add(belly);
+  const loin = mesh(C(0.17, 0.2, 0.14, 8), lea); loin.position.y = 0.0; body.add(loin);
+  if (chief) { const pelt = mesh(S(0.24, 10, 8), M(0x6a5a48), 1.2, 0.5, 1); pelt.position.set(0, 0.4, -0.05); body.add(pelt); for (let k = 0; k < 4; k++) { const t = mesh(new THREE.ConeGeometry(0.02, 0.09, 4), bone); t.position.set(-0.12 + k * 0.08, 0.48, 0.08); body.add(t); } }
+  const head = new THREE.Group(); head.position.set(0, 0.5, 0.1); body.add(head);
+  head.add(mesh(S(0.17, 12, 10), sk, 1.05, 0.92, 1));
+  const nose = mesh(new THREE.ConeGeometry(0.035, 0.14, 5), skD); nose.rotation.x = Math.PI / 2 + 0.5; nose.position.set(0, -0.02, 0.18); head.add(nose);
+  for (const s of [-1, 1]) { const ear = mesh(new THREE.ConeGeometry(0.06, 0.32, 4), sk, 1, 1, 0.35); ear.rotation.z = s * -1.25; ear.position.set(s * 0.22, 0.04, -0.02); head.add(ear);
+    const ey = new THREE.Mesh(S(0.026, 6, 4), G(chief ? 0xff4a2a : 0xffd040)); ey.position.set(s * 0.065, 0.03, 0.14); head.add(ey); }
+  const mouth = mesh(new THREE.BoxGeometry(0.12, 0.02, 0.02), M(0x1a0a0a)); mouth.position.set(0, -0.08, 0.14); head.add(mouth);
+  for (const s of [-1, 1]) { const tk = new THREE.Mesh(new THREE.ConeGeometry(0.01, 0.04, 3), new THREE.MeshBasicMaterial({ color: 0xe8e0c8 })); tk.position.set(s * 0.04, -0.06, 0.15); head.add(tk); }
+  const arms: THREE.Group[] = [], legs: THREE.Group[] = [];
+  for (const s of [-1, 1]) { const a = new THREE.Group(); a.position.set(s * 0.2, 0.34, 0.05); body.add(a); arms.push(a); a.add(mesh(down(C(0.04, 0.035, 0.24, 6), 0.24), sk)); const f = new THREE.Group(); f.position.y = -0.24; a.add(f); f.add(mesh(down(C(0.035, 0.03, 0.22, 6), 0.22), sk)); const br = mesh(C(0.045, 0.045, 0.06, 6), lea); br.position.y = -0.15; f.add(br);
+    if (s > 0) { const w = new THREE.Group(); w.position.set(0, -0.24, 0.02); f.add(w);
+      if (weapon === 'faca') { const bl = mesh(new THREE.BoxGeometry(0.03, 0.26, 0.012), steel); bl.position.set(0, -0.1, 0.04); bl.rotation.x = -1.2; w.add(bl); }
+      else if (weapon === 'machado') { const hf = mesh(C(0.02, 0.02, 0.6, 5), wood); hf.rotation.x = -1.3; hf.position.z = 0.2; w.add(hf); const hd = mesh(new THREE.BoxGeometry(0.03, 0.2, 0.18), steel); hd.position.set(0, 0.05, 0.46); w.add(hd); }
+      else { const st = mesh(C(0.018, 0.022, 0.95, 5), bone); st.position.y = 0.2; w.add(st); const sk2 = mesh(S(0.06, 8, 6), bone); sk2.position.y = 0.7; w.add(sk2); const gl = new THREE.Mesh(S(0.05, 8, 6), G(0x9aff5a, 0.7)); gl.position.y = 0.7; w.add(gl); } } }
+  for (const s of [-1, 1]) { const l = new THREE.Group(); l.position.set(s * 0.1, -0.02, 0); body.add(l); legs.push(l); l.add(mesh(down(C(0.05, 0.04, 0.24, 6), 0.24), sk)); const sh = mesh(down(C(0.04, 0.035, 0.22, 6), 0.22), skD); sh.position.y = -0.24; sh.rotation.x = -0.3; l.add(sh); const ft = mesh(new THREE.BoxGeometry(0.08, 0.04, 0.16), skD); ft.position.set(0, -0.46, 0.08); l.add(ft); }
+  let ph = 0;
+  return { root, mats, update(e, dt, windK, strikeK, hurtK, mv) {
+    ph += dt * (3 + mv * 3); const spd = Math.min(1, mv / 2);
+    legs.forEach((l, i) => { l.rotation.x = Math.sin(ph + i * Math.PI) * 0.7 * spd; });
+    arms.forEach((a, i) => { a.rotation.x = i ? -0.3 - windK * 2.2 + strikeK * 2.6 : Math.sin(ph + Math.PI) * 0.5 * spd - 0.2; a.rotation.z = (i ? 1 : -1) * 0.2; });
+    body.position.y = 0.52 + Math.abs(Math.sin(ph)) * 0.04 * spd - windK * 0.06; body.rotation.x = strikeK * 0.4 - hurtK * 0.3 + windK * -0.15;
+    head.rotation.y = e.state === 'idle' ? Math.sin(e.t * 0.9 + e.id) * 0.5 : 0; head.rotation.x = e.state === 'idle' ? Math.sin(e.t * 1.7 + e.id) * 0.1 : 0;
+  } };
+}
