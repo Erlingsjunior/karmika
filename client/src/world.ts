@@ -1427,9 +1427,9 @@ export function buildCity(): World {
   for (const st of settlements) {
     const kitS = st.name === 'Karmika'; /* 01/11: Karmika ganha a muralha da prancha 53 (pedra + paliçada de madeira, torres enxaimel, portão com ponte), mais baixa */
     if (st.kind !== 'city' && !kitS) continue;
-    const cx = st.x, cy = st.y, H = kitS ? 3.4 : RAMPART_H, Rb = st.radius + (kitS ? 8 : 4), rw = rng(st.x * 3 + st.y * 5 + 11);
+    const cx = st.x, cy = st.y, H = kitS ? 3.4 : RAMPART_H, Rb = st.radius + (kitS ? 18 : 4), /* Karmika: o anel fica além da faixa onde se constrói (raio+2 em diante), com ≥10 m de folga das casas (Erling, 01/11) */ rw = rng(st.x * 3 + st.y * 5 + 11);
     const ph = [rw() * 6.283, rw() * 6.283, rw() * 6.283];
-    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return Math.max(Rb * sq * (1 + nz), kitS ? Rb - 2 : 0); }; /* Karmika: raio mínimo para o anel não passar por cima do Quartel */
+    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return Math.max(Rb * sq * (1 + nz), kitS ? Rb - 2 : 0); }; /* Karmika: raio mínimo (≥ 38 casas) para o anel não passar por cima do Quartel nem das casas dos jogadores */
     const insideWall = (x: number, y: number) => { const dx = x - cx, dy = y - cy; return Math.hypot(dx, dy) < radAt(Math.atan2(dy, dx)) - 0.5; };
     const clearAt = (x: number, y: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx === x && q.gy === y && (q.kind === 'tree' || q.kind === 'rock' || q.kind === 'grave' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree')) props.splice(i, 1); } };
     // 1) o anel rasterizado: casas em ordem, sem repetição

@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { SCALE, TILE_M as T } from '@karmika/shared';
 import { type World, type Prop, MAP_W, MAP_H, groundH, rng, edgeK, WL, veinOf, rotLocal, canalX, CANAL_HW } from './world';
 import { buildTree } from './trees3d';
-import { RUNAS } from './runas';
+
 import { buildKitWall, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
@@ -560,21 +560,31 @@ export function buildWorld(world: World): WorldObjs {
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes: veil, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
       L.glows.push({ light: nullLight, base: 30, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + height * 0.45, p.gy * T + Dm / 2), color: G } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'relic') {
-      /* pedra do teleporte (prancha 34, 01/11): menir facetado cinza-azulado com uma rachadura, runas em brasa na face da frente
-         (apagadas até o caminhante tocar; acesas depois, com fogo subindo), musgo e seixos ao pé */
-      const stoneM = std(0xffffff, { map: stoneTex(0x5e6878) });
-      const geo = new THREE.IcosahedronGeometry(1, 2), pa = geo.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); const k = 0.86 + 0.2 * (Math.sin(x * 4.1 + y * 2.3) * Math.cos(z * 3.7 + 1.2) * 0.6 + Math.sin((x + z) * 6.1 + y) * 0.4); pa.setXYZ(i, x * k * (0.55 + 0.25 * (1 - y)), y * k * 1.55 + 0.1 * Math.max(0, y), z * k * (0.45 + 0.2 * (1 - y))); } geo.computeVertexNormals(); L.own.push(geo);
-      const mono = new THREE.Mesh(geo, stoneM); mono.position.set(Wm / 2, 1.5, Dm / 2); mono.rotation.y = Math.PI / 4 + 0.15; mono.castShadow = mono.receiveShadow = true; g.add(mono);
-      const runeC = document.createElement('canvas'); runeC.width = 128; runeC.height = 192; const rg = runeC.getContext('2d')!; rg.strokeStyle = '#ff9a30'; rg.fillStyle = '#ff9a30'; rg.lineWidth = 3; rg.lineJoin = rg.lineCap = 'round'; rg.shadowColor = '#ff5a10'; rg.shadowBlur = 8;
-      for (let col = 0; col < 2; col++) for (let row = 0; row < 3; row++) { const ru = RUNAS[(col * 3 + row + Math.floor(r() * 16)) % RUNAS.length]; rg.save(); rg.translate(14 + col * 56, 12 + row * 58); rg.scale(1.4, 1.6); rg.stroke(new Path2D(ru.d)); if (ru.fill) rg.fill(new Path2D(ru.fill)); rg.restore(); }
+      /* pedra rúnica (prancha 47, 01/11, Erling: "pedra rúnica para substituir as atuais"): menir azul facetado com os seis símbolos em vermelho na face
+         da frente (gota, labirinto, KK com o olho, círculo, ampulheta, cruz-seta), base de pedra parda com musgo e lascas azuis em volta;
+         símbolos apagados até o caminhante tocar, acesos depois */
+      const stoneM = std(0x8090d8, { map: stoneTex(0x5868b8), emissive: new THREE.Color(0x101838) });
+      const geo = new THREE.IcosahedronGeometry(1, 2), pa = geo.attributes.position; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i); const k = 0.86 + 0.2 * (Math.sin(x * 4.1 + y * 2.3) * Math.cos(z * 3.7 + 1.2) * 0.6 + Math.sin((x + z) * 6.1 + y) * 0.4); pa.setXYZ(i, x * k * (0.6 + 0.2 * (1 - y)), y * k * 1.6 + 0.15 * Math.max(0, y), z * k * (0.5 + 0.2 * (1 - y))); } geo.computeVertexNormals(); L.own.push(geo);
+      const mono = new THREE.Mesh(geo, stoneM); mono.position.set(Wm / 2, 1.55, Dm / 2); mono.rotation.y = Math.PI / 4 + 0.15; mono.castShadow = mono.receiveShadow = true; g.add(mono);
+      const base = new THREE.Mesh(new THREE.IcosahedronGeometry(0.9, 1), std(0x6a5a44)); base.scale.set(1.2, 0.4, 1.0); base.position.set(Wm / 2, 0.15, Dm / 2); g.add(base);
+      const runeC = document.createElement('canvas'); runeC.width = 128; runeC.height = 192; const rg = runeC.getContext('2d')!; rg.strokeStyle = '#ff6a40'; rg.lineWidth = 4; rg.lineJoin = rg.lineCap = 'round'; rg.shadowColor = '#ff3a20'; rg.shadowBlur = 8;
+      const SYM: ((x: number, y: number) => void)[] = [
+        (x, y) => { rg.beginPath(); rg.moveTo(x, y - 18); rg.quadraticCurveTo(x + 16, y + 6, x, y + 16); rg.quadraticCurveTo(x - 16, y + 6, x, y - 18); rg.stroke(); }, // gota
+        (x, y) => { rg.beginPath(); for (let k = 0; k < 4; k++) { const d = 18 - k * 5; rg.moveTo(x - d, y - d); rg.lineTo(x + d, y - d); rg.lineTo(x + d, y + d); rg.lineTo(x - d + 3, y + d); } rg.stroke(); }, // labirinto
+        (x, y) => { rg.beginPath(); rg.moveTo(x - 20, y - 14); rg.lineTo(x - 10, y); rg.lineTo(x - 20, y + 14); rg.moveTo(x + 20, y - 14); rg.lineTo(x + 10, y); rg.lineTo(x + 20, y + 14); rg.moveTo(x - 10, y); rg.quadraticCurveTo(x, y - 9, x + 10, y); rg.quadraticCurveTo(x, y + 9, x - 10, y); rg.stroke(); rg.beginPath(); rg.arc(x, y, 2.5, 0, 7); rg.stroke(); }, // KK com o olho
+        (x, y) => { rg.beginPath(); rg.arc(x, y, 15, 0.4, 6.0); rg.stroke(); }, // círculo aberto
+        (x, y) => { rg.beginPath(); rg.moveTo(x - 14, y - 16); rg.lineTo(x + 14, y - 16); rg.lineTo(x - 14, y + 16); rg.lineTo(x + 14, y + 16); rg.closePath(); rg.stroke(); }, // ampulheta
+        (x, y) => { rg.beginPath(); rg.moveTo(x, y - 18); rg.lineTo(x, y + 18); rg.moveTo(x - 10, y - 6); rg.lineTo(x + 10, y - 2); rg.moveTo(x - 10, y + 6); rg.lineTo(x + 10, y + 2); rg.stroke(); }, // cruz-seta
+      ];
+      SYM.forEach((f, i) => f(32 + (i % 2) * 64, 36 + Math.floor(i / 2) * 60));
       const runeT = new THREE.CanvasTexture(runeC); runeT.magFilter = runeT.minFilter = THREE.NearestFilter;
-      const runes = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.3), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2 + 0.5, 1.45, Dm / 2 + 0.5); runes.rotation.y = Math.PI / 4; g.add(runes);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff9a40, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff9a40; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
+      const runes = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2 + 0.52, 1.5, Dm / 2 + 0.52); runes.rotation.y = Math.PI / 4; g.add(runes);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
       const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
-      for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x6e7888)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
+      for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x5a68b8)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
       g.scale.setScalar(1.3); g.position.x -= Wm * 0.15; g.position.z -= Dm * 0.15;
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
-      L.glows.push({ light: nullLight, base: 12, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.0, p.gy * T + Dm / 2 + 0.9), color: 0xff8a30 } as WorldObjs['glowLights'][number]);
+      L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.2, p.gy * T + Dm / 2 + 0.9), color: 0x6a6aff } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'grave') {
       const v = p.variant ?? 0;
       const base = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.1, 0.9), std(0x5a5448)); base.position.set(Wm / 2, 0.05, Dm / 2 + 0.3); g.add(base);

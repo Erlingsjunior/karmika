@@ -90,6 +90,11 @@ export function buildStation(v: number, rnd: () => number, bare = false, wdirLoc
     for (let k = 0; k < 3; k++) { const t = add(B(0.03, 0.7, 0.03), iron, -1.35, 1.1, -0.2 + k * 0.18, false); t.rotation.z = 0.1; }
     sign(2.4, 0xff8040, (c) => { c.fillStyle = '#9aa0aa'; c.fillRect(14, 30, 36, 10); c.fillRect(24, 40, 16, 12); c.beginPath(); c.moveTo(50, 30); c.lineTo(58, 34); c.lineTo(50, 38); c.fill(); c.fillStyle = '#ff8a3a'; c.fillRect(26, 14, 4, 4); c.fillRect(36, 10, 3, 3); });
     if (!bare) { for (const sx of [-1, 1]) add(C(0.07, 0.08, 2.4, 6), dark, sx * 1.4, 1.2, 0.95); add(B(3.0, 0.08, 0.15), dark, 0, 2.35, 0.95, false); }
+    /* prancha 60 (01/11, anões ferreiros): faixa dourada na bigorna, barril de têmpera com cintas, pilha de lingotes, caixa de carvão em brasa, estante de ferramentas */
+    add(B(0.3, 0.04, 0.2), std(0xc8a050), 0.85, 0.56, 0.3, false);
+    for (const y of [0.1, 0.44]) add(new THREE.TorusGeometry(0.31, 0.02, 4, 12), iron, 0.9, y, -0.75, false).rotation.x = Math.PI / 2;
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 3 - row; k++) add(B(0.26, 0.08, 0.12), std(0xc8ccd4), 1.35 + (k - (2 - row) / 2) * 0.28, 0.05 + row * 0.09, 0.9, false);
+    add(B(0.6, 0.36, 0.45), iron, -1.3, 0.18, 0.75); for (let k = 0; k < 7; k++) add(new THREE.IcosahedronGeometry(0.07, 0), k % 3 ? std(0x1a1210) : glowM(0xff5a10), -1.3 + (rnd() - 0.5) * 0.45, 0.4, 0.75 + (rnd() - 0.5) * 0.3, false);
     out.glow = { x: -0.55, y: 1.3, z: -0.1, color: 0xff7a2a, base: 26 }; out.smoke = { x: -0.55, y: 3.85, z: -0.45, strong: true };
   } else if (v === 2) { // Mesa do Curtidor: armação com couro esticado, mesa com faca e linha, balde, peles penduradas
     canopy(3.0, 2.0, 2.4, 0x5a4a3a);
