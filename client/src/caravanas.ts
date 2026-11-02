@@ -119,7 +119,7 @@ export function buildSteamWagon(): Wagon {
   add(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.88, 0.3); add(new THREE.CylinderGeometry(0.03, 0.03, 0.7, 5), M.brass, 0.35, 1.95, 0.5).rotation.x = -0.4;
   // lona da carga: arcos de madeira e o pano esticado entre eles
   const cover = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.88, 2.2, 14, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2), M.canvas); /* meia-calha deitada ao longo da carroça, arqueada para cima */ cover.position.set(0, 1.42, -0.95); cover.scale.y = 1.38; cover.castShadow = true; body.add(cover);
-  (cover.material as THREE.MeshToonMaterial).side = THREE.DoubleSide;
+  cover.material = std(0xd8c8a0, { side: THREE.DoubleSide }); /* o pano é visto por dentro e por fora (material próprio, não mexe no compartilhado) */
   for (const zz of [-2.0, -1.3, -0.6, 0.1]) { const arc = add(new THREE.TorusGeometry(0.9, 0.045, 4, 14, Math.PI), M.dark, 0, 1.42, zz); arc.scale.y = 1.38; }
   { const cap = add(new THREE.CircleGeometry(0.88, 14, 0, Math.PI), M.canvasD, 0, 1.42, -2.06); cap.rotation.y = Math.PI; cap.scale.y = 1.38; } // fundo fechado
   // carga visível pela boca da lona: barris e caixas com cintas

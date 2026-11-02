@@ -33,7 +33,10 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
   add(B(W, 0.2, 0.08), wood(0x3a2616), W / 2, 0.1, 0.04); add(B(0.08, 0.2, D), wood(0x3a2616), 0.04, 0.1, D / 2);
 
   /* ---- peças ---- */
-  const light = (x: number, y: number, z: number, c: number, i: number, dist = 14) => { const l = new THREE.PointLight(c, i, dist, 1.6); l.position.set(x, y, z); g.add(l); lights.push({ l, base: i, ph: r() * 9 }); return l; };
+  /* no máximo 4 luzes pontuais por interior: cada quantidade diferente de luzes na cena recompila os shaders de tudo
+     (travada de ~1 s ao entrar) — a 5ª em diante vira só o brilho emissivo do próprio objeto (a luz devolvida fica fora do grupo) */
+  const MAX_LIGHTS = 4;
+  const light = (x: number, y: number, z: number, c: number, i: number, dist = 14) => { const l = new THREE.PointLight(c, i, dist, 1.6); l.position.set(x, y, z); if (lights.length < MAX_LIGHTS) { g.add(l); lights.push({ l, base: i, ph: r() * 9 }); } return l; };
   const flame = (x: number, y: number, z: number, s = 1) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.12 * s, 0.4 * s, 6), new THREE.MeshBasicMaterial({ color: 0xffb040 })); f.position.set(x, y, z); g.add(f); return f; };
   const rug = (x: number, z: number, w: number, d: number, c: number) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshToonMaterial({ color: c })); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); g.add(m); const m2 = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.8, d * 0.78), new THREE.MeshToonMaterial({ color: new THREE.Color(c).multiplyScalar(0.6) })); m2.rotation.x = -Math.PI / 2; m2.position.set(x, 0.025, z); g.add(m2); };
   /* nada divide o mesmo pedaço de parede: janelas, vitrais, lareiras, estantes e bandeiras reservam o seu trecho; quem chega depois procura outro lugar (ou fica de fora) */
@@ -47,7 +50,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
     add(B(0.14, 0.14, 0.9), wood(0x3a2616), x - 0.3, 0.2, 0.9); add(B(0.14, 0.14, 0.9), wood(0x3a2616), x + 0.3, 0.22, 0.9).rotation.y = 0.5;
     flame(x - 0.1, 0.45, 0.85, 1.4); flame(x + 0.25, 0.4, 0.85, 1.0); light(x, 1.1, 1.4, 0xff8a3a, 55, 16); solid(x, 1.0, 1.1);
   };
-  const table = (x: number, z: number, w = 1.8, d = 1.0, ry = 0) => { const t = new THREE.Group(); t.position.set(x, 0, z); t.rotation.y = ry; g.add(t); add(B(w, 0.1, d), plank(0x7a5532), 0, 0.82, 0, true, 0, t); for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(B(0.1, 0.8, 0.1), wood(0x3a2616), sx * (w / 2 - 0.1), 0.4, sz * (d / 2 - 0.1), true, 0, t); solid(x, z, Math.max(w, d) * 0.5); return t; };
+  const table = (x: number, z: number, w = 1.8, d = 1.0, ry = 0) => { const t = new THREE.Group(); t.position.set(x, 0, z); t.rotation.y = ry; g.add(t); add(B(w, 0.1, d), plank(0x7a5532), 0, 0.82, 0, true, 0, t); for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(B(0.1, 0.8, 0.1), wood(0x3a2616), sx * (w / 2 - 0.1), 0.4, sz * (d / 2 - 0.1), true, 0, t); { /* mesa comprida: círculos ao longo do eixo maior (um só círculo do tamanho da mesa bloqueava as cadeiras) */ const L = Math.max(w, d), S = Math.min(w, d), n = Math.max(1, Math.round(L / S)), ax = w >= d ? Math.cos(ry) : Math.sin(ry), az = w >= d ? -Math.sin(ry) : Math.cos(ry); for (let k = 0; k < n; k++) { const t = n === 1 ? 0 : (k / (n - 1) - 0.5) * (L - S); solid(x + ax * t, z + az * t, S * 0.5); } } return t; };
   const mug = (x: number, y: number, z: number) => add(new THREE.CylinderGeometry(0.07, 0.06, 0.14, 8), std(0xc9a24a), x, y + 0.07, z, false);
   const plate = (x: number, y: number, z: number) => add(new THREE.CylinderGeometry(0.14, 0.12, 0.03, 8), std(0xe8dcc0), x, y + 0.02, z, false);
   const chair = (x: number, z: number, ry = 0) => { const c = new THREE.Group(); c.position.set(x, 0, z); c.rotation.y = ry; g.add(c); add(B(0.5, 0.08, 0.5), plank(0x6a4528), 0, 0.5, 0, true, 0, c); add(B(0.5, 0.55, 0.07), plank(0x6a4528), 0, 0.8, -0.24, true, 0, c); for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(B(0.07, 0.5, 0.07), wood(0x3a2616), sx * 0.21, 0.25, sz * 0.21, false, 0, c); solid(x, z, 0.28); };
@@ -75,6 +78,10 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
     shelf(1.0, 3.2, Math.PI / 2, 2.2); shelf(1.0, D - 3.0, Math.PI / 2, 2.2, 2.4, false);
     // escada para o andar de cima
     for (let i = 0; i < 8; i++) add(B(1.2, 0.2, 0.38), plank(0x5a3a22), W - 1.3, 0.12 + i * 0.3, 0.6 + i * 0.4, true); solid(W - 1.3, 1.8, 1.4);
+    { /* a escada leva a um sótão de verdade: mezanino de tábuas com corrimão (antes subia para o nada) */ const ly = 2.52, lw = Math.min(3.2, W * 0.4), ld = 2.4;
+      add(B(lw, 0.12, ld), plank(0x5a3a22), W - lw / 2, ly, 3.4 + ld / 2 - 0.2, false); add(B(0.06, 0.7, ld), wood(0x3a2616), W - lw + 0.03, ly + 0.4, 3.4 + ld / 2 - 0.2, false); add(B(0.06, 0.06, ld), wood(0x5a3a22), W - lw + 0.03, ly + 0.76, 3.4 + ld / 2 - 0.2, false);
+      add(B(lw - 1.3, 0.06, 0.06), wood(0x5a3a22), W - (lw - 1.3) / 2, ly + 0.76, 3.4 - 0.2, false); add(B(lw - 1.3, 0.7, 0.06), wood(0x3a2616), W - (lw - 1.3) / 2, ly + 0.4, 3.4 - 0.2, false);
+      add(B(0.9, 0.5, 0.9), plank(0x6a4528), W - 0.7, ly + 0.31, 3.4 + ld - 0.8, false); add(B(1.6, 0.25, 0.9), std(0x8a6a4a), W - lw + 1.0, ly + 0.18, 3.4 + ld - 0.8, false); }
     barrel(W - 0.9, D - 1.0); crate(W - 1.9, D - 0.9); chestI(1.2, D - 1.2); plant(W - 0.8, D * 0.5); hang(cx - 2, D * 0.55, 0xffc070, 34); hang(cx + 2, D * 0.55, 0xffc070, 34); banner(W * 0.35, 0x2a4a8a); banner(W * 0.65, 0x8a2a2a);
   } else if (variant === 2) { // casa em L: quarto + cozinha
     fireplace(W * 0.78); window_(W * 0.3, 'n'); window_(D * 0.3, 'w');
@@ -123,7 +130,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
     // bancos (bancos quebrados na igreja abandonada)
     for (let row = 0; row < 4; row++) { const z = D * 0.42 + row * 1.3; for (const sx of [-1, 1]) { const x = cx + sx * (W * 0.19); const broken = ruined && (row * 3 + sx) % 4 === 0; const pw = W * 0.28;
       add(B(pw, 0.08, 0.5), plank(ruined ? 0x3a2e24 : 0x6a4528), x, 0.5, z, true, broken ? 0.3 : 0); if (!broken) { add(B(pw, 0.5, 0.08), plank(ruined ? 0x3a2e24 : 0x6a4528), x, 0.78, z + 0.25); add(B(0.08, 0.5, 0.5), wood(0x3a2616), x - pw / 2, 0.25, z, false); add(B(0.08, 0.5, 0.5), wood(0x3a2616), x + pw / 2, 0.25, z, false); }
-      solid(x - pw * 0.3, z, 0.55); solid(x + pw * 0.3, z, 0.55); } }
+      for (const f of [-0.34, 0, 0.34]) solid(x + pw * f, z, Math.max(0.4, pw * 0.2)); } } /* banco inteiro barra (antes dava para atravessar pelo meio) */
     // vitrais: três na parede norte (médio, rosácea, médio) e dois na oeste; a luz colorida desenha o chão
     { const fm = std(0xffffff, { map: stoneTex(0x4a4640) }), md = ruined ? 'ruin' : 'in', k0 = Math.abs(seed) % 4;
       const N: [Tam, number][] = [['m', 0.2], ['g', 0.5], ['m', 0.8]];
@@ -181,7 +188,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
   /* móveis bloqueiam só o miolo (regra de ouro: mobilidade acima da física); squeeze = espremer-se entre eles quando travou */
   const free = (x: number, z: number, squeeze = false) => {
     if (x < 0.45 || x > W - 0.45 || z < 0.45) return false;
-    if (z > D - 0.1) return Math.abs(x - dx0) < dw / 2 - 0.25 || z <= D + 0.9 && false;
+    if (z > D - 0.1) return Math.abs(x - dx0) < dw / 2 - 0.25; /* na parede da porta só o vão da porta é passagem */
     if (!squeeze) for (const [cx2, cz2, rad] of cols) if (Math.hypot(x - cx2, z - cz2) < rad * 0.7) return false;
     return true;
   };

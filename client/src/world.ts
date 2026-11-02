@@ -279,10 +279,7 @@ function waterSD1(xm: number, zm: number): number {
     if (dd * T < sd) sd = dd * T;
   }
   if (centerW(tx, ty) < 0.98) sd = Math.min(sd, outerWaterSD(tx, ty));
-  { // oceano ao sul (costa irregular) e alagados do pântano a oeste
-    const ek = edgeK(tx, ty);
-    void ek; sd = Math.min(sd, oceanSD(tx, ty));
-  }
+  sd = Math.min(sd, oceanSD(tx, ty)); // oceano ao sul (costa irregular) e alagados do pântano a oeste
   const out = sd + (fbm(tx * 0.45, ty * 0.45, 9) - 0.5) * 2.2;
   return out * (1 - dryK) + 8 * dryK;
 }
@@ -457,7 +454,7 @@ export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): n
 /** escadaria da muralha: casas do lance, da mais baixa para a mais alta; axis = eixo ao longo do qual sobe; dir = +1 sobe no sentido +eixo */
 export interface Flight { tiles: [number, number][]; axis: 'x' | 'y'; dir: 1 | -1 }
 /** muralha orgânica (27/10, regra 19): o conjunto de casas do anel (chave ty*4096+tx), a altura do caminho de ronda e as escadarias */
-export interface Rampart { cx: number; cy: number; R: number; top: number; H: number; flights: Flight[]; /** chaves ty*4096+tx (array: sobrevive ao cache JSON do mundo) */ tiles: number[] }
+export interface Rampart { cx: number; cy: number; R: number; top: number; H: number; flights: Flight[]; /** chaves ty*4096+tx (array: sobrevive ao cache JSON do mundo) */ tiles: number[]; /** altura do caminho de ronda casa a casa (paralelo a `tiles`): as peças seguem o terreno, o herói também */ tops?: number[] }
 const rampSets = new WeakMap<Rampart, Set<number>>();
 const rampSet = (r: Rampart) => { let s = rampSets.get(r); if (!s) { s = new Set(r.tiles); rampSets.set(r, s); } return s; };
 export const RAMPART_H = 6;
@@ -466,6 +463,10 @@ export function setRamparts(r: Rampart[]) { rampartsRef = r; }
 /** a muralha cujo anel passa por esta casa (ou null) */
 export function rampartAt(tx: number, ty: number): Rampart | null {
   const k = ty * 4096 + tx; for (const r of rampartsRef) if (rampSet(r).has(k)) return r; return null; }
+const rampTops = new WeakMap<Rampart, Map<number, number>>();
+/** altura do caminho de ronda nesta casa (a peça do muro está em groundH da casa + H; um valor só para o anel inteiro deixava o herói no ar) */
+export function rampartTop(r: Rampart, tx: number, ty: number): number {
+  if (!r.tops) return r.top; let m = rampTops.get(r); if (!m) { m = new Map(); r.tiles.forEach((k, i) => m!.set(k, r.tops![i])); rampTops.set(r, m); } return m.get(ty * 4096 + tx) ?? r.top; }
 /** casa de escada? devolve a altura do degrau (absoluta) no ponto (m) — ou null */
 export function stairDeck(xm: number, zm: number): number | null {
   const fx = xm / T, fy = zm / T, tx = Math.floor(fx), ty = Math.floor(fy);
@@ -1079,10 +1080,11 @@ export function buildCity(): World {
         if (runOn) for (const sd of [-1, 1]) { /* um pedaço contínuo do ponto até o próximo, ao lado da estrada (sem emendas nem blocos soltos) */
           const ax = p.x + nx * sd * 2.6, ay = p.y + ny * sd * 2.6, bx = q1.x + nx * sd * 2.6, by = q1.y + ny * sd * 2.6, mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my), SL = Math.hypot(bx - ax, by - ay);
           if (!inb(gx, gy) || map[gy][gx] !== 'grass' || SL < 0.3) continue;
+          { /* as duas pontas também têm de estar em capim: nas junções de estradas uma ponta caía em cima da rua lateral */ const ex = Math.floor(ax), ey = Math.floor(ay), fx2 = Math.floor(bx), fy2 = Math.floor(by); if (!inb(ex, ey) || !inb(fx2, fy2) || map[ey][ex] !== 'grass' || map[fy2][fx2] !== 'grass') continue; }
           if (props.some((o) => o.gx === gx && o.gy === gy && o.kind !== 'tree' && o.kind !== 'rock' && o.kind !== 'herb')) continue;
           for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (Math.hypot(o.gx + 0.5 - mx, o.gy + 0.5 - my) < 1.4 && (o.kind === 'tree' || o.kind === 'rock' || o.kind === 'herb')) props.splice(k, 1); }
           const hb = ((h >>> 3) % 100) / 100; if (tier < 2 && hb < 0.1) continue; // um vão aqui e ali
-          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : tier === 1 ? 13 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); }
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: tier === 2 ? 20 : 13, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: SL * T + 0.1, broken: tier === 0 ? 0.3 + hb * 0.6 : tier === 1 && hb < 0.3 ? 0.4 : 0 }); }
         /* forte de vigia à beira da estrada: torre de pedra (perto da cidade) ou posto de madeira (no ermo), com dois soldados */
         if (--sinceFort <= 0 && posts < 40) { const sd = (h & 1) ? 1 : -1, fx = Math.round(p.x + nx * sd * 6), fy = Math.round(p.y + ny * sd * 6);
           let ok = true; for (let y = fy - 2; y <= fy + 2 && ok; y++) for (let x = fx - 2; x <= fx + 2; x++) { if (!inb(x, y) || map[y][x] !== 'grass') { ok = false; break; } const g = groundH((x + 0.5) * T, (y + 0.5) * T); if (g >= 10.5 || g <= WL - 2.4) { ok = false; break; } } /* 27/10: posto só onde dá para pisar (grama alta demais ilha os vigias) */
@@ -1213,12 +1215,12 @@ export function buildCity(): World {
     const rg = rng(77);
     for (let k = 0; k < 9; k++) { const px = x0 + 4 + Math.floor(rg() * (x1 - x0 - 8)), py = y0 + 4 + Math.floor(rg() * (y1 - y0 - 8)), rad = 2 + Math.floor(rg() * 2); if (Math.abs(px - (cat.x + 6)) < 12 && py > cat.y - 4 && py < cat.y + 30) continue; for (let y = py - rad; y <= py + rad; y++) for (let x = px - rad; x <= px + rad; x++) if (inb(x, y) && Math.hypot(x - px, y - py) <= rad + (rg() - 0.5) && map[y][x] === 'grass') map[y][x] = 'water'; }
     // 300% mais: túmulos, caixões, ossadas, anjos, santos, obeliscos, mausoléus e árvores mortas — o campo santo inteiro
-    const solid = (kind: PropKind, gx: number, gy: number, w: number, h: number, height: number, variant: number) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) if (!inb(x, y) || map[y][x] !== 'grass') return false; props.push({ kind, gx, gy, w, h, height, wall: 0x6a6660, roof: 0x3a3640, variant }); for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) map[y][x] = 'wall'; return true; };
+    const solid = (kind: PropKind, gx: number, gy: number, w: number, h: number, height: number, variant: number) => { for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) if (!inb(x, y) || map[y][x] !== 'grass') return false; props.push({ kind, gx, gy, w, h, height, wall: 0x6a6660, roof: 0x3a3640, variant }); /* só o mausoléu tranca o tile; anjo/santo/obelisco/árvore morta barram só o miolo (SOLID_R no main) — regra 12 */ if (kind === 'mausoleum') for (let y = gy; y < gy + h; y++) for (let x = gx; x < gx + w; x++) map[y][x] = 'wall'; return true; };
     const inCat = (gx: number, gy: number) => gx >= cat.x - 5 && gx <= cat.x + 17 && gy >= cat.y - 3 && gy <= cat.y + 28;
     const aisle = (gx: number) => Math.abs(gx - (cat.x + 6)) <= 2; // avenida central do portão até a escadaria fica livre
     for (let k = 0; k < 340; k++) { const gx = x0 + 2 + Math.floor(rg() * (x1 - x0 - 4)), gy = y0 + 2 + Math.floor(rg() * (y1 - y0 - 4)); if (inCat(gx, gy) || (aisle(gx) && gy > cat.y + 20)) continue; const v = rg();
       if (v < 0.42) addGrave(gx, gy);
-      else if (v < 0.54 && free(gx, gy)) { props.push({ kind: 'coffin', gx, gy, w: 1, h: 1, height: 0.6, wall: 0x3a2a1c, roof: 0x2a1a10, variant: Math.floor(rg() * 3) }); map[gy][gx] = 'wall'; }
+      else if (v < 0.54 && free(gx, gy)) { props.push({ kind: 'coffin', gx, gy, w: 1, h: 1, height: 0.6, wall: 0x3a2a1c, roof: 0x2a1a10, variant: Math.floor(rg() * 3) }); }
       else if (v < 0.66) addBones(gx, gy);
       else if (v < 0.74) solid('angel', gx, gy, 1, 1, rg(), rg() < 0.15 ? 2 : rg() < 0.5 ? 1 : 0);
       else if (v < 0.8) solid('obelisk', gx, gy, 1, 1, 1, Math.floor(rg() * 3));
@@ -1229,7 +1231,8 @@ export function buildCity(): World {
     // avenida dos anjos: pares de anjos guardiões do portão até a escadaria
     for (let gy = y1 - 3; gy > cat.y + 27; gy -= 3) for (const s2 of [-3, 3]) solid('angel', cat.x + 6 + s2, gy, 1, 1, s2 < 0 ? 0.25 : 0.75, 2);
     // O MAUSOLÉU: grande sepulcro do Bispo (com a cova para as profundezas) cercado por sua própria grade gigante
-    { const mx = cat.x + 26, my = cat.y + 6; for (let y = my - 6; y <= my + 11; y++) for (let x = mx - 6; x <= mx + 11; x++) if (inb(x, y) && map[y][x] === 'wall') { const pi = props.findIndex((q) => q.gx === x && q.gy === y && q.kind !== 'church' && q.kind !== 'tower'); if (pi >= 0 && ['grave', 'coffin', 'bones', 'angel', 'obelisk', 'saint', 'deadtree', 'mausoleum', 'corpse'].includes(props[pi].kind)) { const q = props.splice(pi, 1)[0]; for (let yy = q.gy; yy < q.gy + q.h; yy++) for (let xx = q.gx; xx < q.gx + q.w; xx++) if (inb(xx, yy)) map[yy][xx] = 'grass'; } }
+    { const mx = cat.x + 26, my = cat.y + 6; const GONE_M = new Set(['grave', 'coffin', 'bones', 'angel', 'obelisk', 'saint', 'deadtree', 'mausoleum', 'corpse']); /* limpa o terreno do mausoléu (pelos props, não pelo mapa: estátuas já não marcam 'wall') */
+      for (let pi = props.length - 1; pi >= 0; pi--) { const q = props[pi]; if (!GONE_M.has(q.kind) || q.gx < mx - 6 || q.gx > mx + 11 || q.gy < my - 6 || q.gy > my + 11) continue; props.splice(pi, 1); for (let yy = q.gy; yy < q.gy + q.h; yy++) for (let xx = q.gx; xx < q.gx + q.w; xx++) if (inb(xx, yy) && map[yy][xx] === 'wall') map[yy][xx] = 'grass'; }
       for (let y = my - 6; y <= my + 11; y++) for (let x = mx - 6; x <= mx + 11; x++) if (inb(x, y) && map[y][x] === 'wall' && !props.some((q) => q.gx <= x && x < q.gx + q.w && q.gy <= y && y < q.gy + q.h)) map[y][x] = 'grass';
       solid('mausoleum', mx, my, 6, 6, 7, 1); pois.push({ name: 'Mausoléu do Bispo', x: mx + 3, y: my + 7, biome: 'ruins' });
       for (const [ax, ay] of [[mx - 2, my + 7], [mx + 7, my + 7], [mx - 2, my - 2], [mx + 7, my - 2]]) solid('angel', ax, ay, 1, 1, 0.5, 2);
@@ -1267,7 +1270,7 @@ export function buildCity(): World {
     for (let k = 0; k < 10; k++) { const a = rc() * 6.283, d = 14 + rc() * 5, gx = Math.round(cx + Math.cos(a) * d) - 1, gy = Math.round(cy + Math.sin(a) * d) - 1; if (freeRect(gx, gy, 3, 3)) block({ kind: 'house', gx, gy, w: 3, h: 3, height: 2.4, wall: [0x6a5a48, 0x5a4c3e, 0x74644e][k % 3], roof: [0x3a3430, 0x4a3a2e, 0x2e2a28][k % 3], variant: [0, 2, 1][k % 3] }); }
     for (let k = 0; k < 2; k++) { const a = rc() * 6.283, gx = Math.round(cx + Math.cos(a) * 7), gy = Math.round(cy + Math.sin(a) * 7); if (freeRect(gx, gy, 2, 2)) decorAt('stall', gx, gy, 2, 2, 0, 0x4a3a2a, 0x3a3430); }
     for (let f = 0; f < 3; f++) { const a = rc() * 6.283, d = 19 + rc() * 5, fx = Math.round(cx + Math.cos(a) * d), fy = Math.round(cy + Math.sin(a) * d); for (let y = fy; y < fy + 3; y++) for (let x = fx; x < fx + 5; x++) if (free(x, y)) props.push({ kind: 'deadcrop', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 0 }); }
-    for (let k = 0; k < 12; k++) { const a = rc() * 6.283, d = 9 + rc() * 14, gx = Math.round(cx + Math.cos(a) * d), gy = Math.round(cy + Math.sin(a) * d); if (free(gx, gy)) { props.push({ kind: 'deadtree', gx, gy, w: 1, h: 1, height: 4.5 + rc() * 3, wall: 0, roof: 0, variant: k < 5 ? 1 : 0 }); map[gy][gx] = 'wall'; } }
+    for (let k = 0; k < 12; k++) { const a = rc() * 6.283, d = 9 + rc() * 14, gx = Math.round(cx + Math.cos(a) * d), gy = Math.round(cy + Math.sin(a) * d); if (free(gx, gy)) { props.push({ kind: 'deadtree', gx, gy, w: 1, h: 1, height: 4.5 + rc() * 3, wall: 0, roof: 0, variant: k < 5 ? 1 : 0 }); } }
     for (let k = 0; k < 9; k++) { const a = rc() * 6.283, d = 3 + rc() * 9, gx = Math.round(cx + Math.cos(a) * d), gy = Math.round(cy + Math.sin(a) * d); if (inb(gx, gy) && (map[gy][gx] === 'grass' || map[gy][gx] === 'road')) props.push({ kind: 'corpse', gx, gy, w: 1, h: 1, height: 0.3, wall: 0, roof: 0, variant: 0 }); }
     { const a = rc() * 6.283, gx = Math.round(cx + Math.cos(a) * 12), gy = Math.round(cy + Math.sin(a) * 12); if (free(gx, gy)) { props.push({ kind: 'altar', gx, gy, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: 0 }); map[gy][gx] = 'wall'; } }
     for (let k = 0; k < 8; k++) addGrave(cx + Math.round((rc() - 0.5) * 30), cy + Math.round((rc() - 0.5) * 30));
@@ -1318,8 +1321,10 @@ export function buildCity(): World {
   const arenas: { x: number; y: number; r: number }[] = []; for (const rg of REGIONS) { const cx = Math.round(rg.x), cy = Math.round(rg.y); if (!DENSE.has(biomeAt(cx, cy))) continue; const rr = rng(rg.id * 977 + 5); for (const [ox, oy] of [[-1, -0.6], [1, 0.7]]) { const ax = Math.round(cx + ox * (12 + rr() * 10)), ay = Math.round(cy + oy * (10 + rr() * 8)); if (inb(ax, ay) && map[ay]?.[ax] !== 'water') arenas.push({ x: ax, y: ay, r: 7 + Math.floor(rr() * 3) }); } }
   const inArena = (x: number, y: number) => arenas.some((a) => Math.hypot(a.x - x, a.y - y) < a.r);
   const clearing = (x: number, y: number) => inArena(x, y) || fbm(x * 0.045, y * 0.045, 58) > 0.62 || fbm(x * 0.02, y * 0.02, 59) > 0.66;
+  /* tiles já ocupados por lápides, ossadas, tochas, corpos, névoa… (props que não marcam o mapa): árvore não nasce em cima deles */
+  const occupied = new Set<number>(); for (const p of props) for (let yy = p.gy; yy < p.gy + p.h; yy++) for (let xx = p.gx; xx < p.gx + p.w; xx++) occupied.add(yy * 100000 + xx);
   for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) {
-    if (map[y][x] !== 'grass') continue;
+    if (map[y][x] !== 'grass' || occupied.has(y * 100000 + x)) continue;
     const bm = biome[y][x];
     const cluster = 0.35 + 1.3 * fbm(x * 0.12, y * 0.12, 21);
     if (r() > dens[bm] * cluster) continue;
@@ -1511,7 +1516,7 @@ export function buildCity(): World {
         flights.push({ tiles: picked, axis, dir }); n++; i += 12; } }
     /* 01/11 (Erling: "não consigo passar entre a torre e a placa"): placa de estrada colada no muro sai (o tile dela volta a ser grama) */
     for (let i = signs.length - 1; i >= 0; i--) { const sg = signs[i]; let near = false; for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (tiles.has((sg.y + dy) * 4096 + sg.x + dx)) { near = true; break; } if (near) { if (map[sg.y][sg.x] === 'wall') map[sg.y][sg.x] = 'grass'; signs.splice(i, 1); } }
-    ramparts.push({ cx, cy, R: Rb + 6, top: groundH(cx * T, cy * T) + H, H, flights, tiles: [...tiles] });
+    { const tl = [...tiles]; ramparts.push({ cx, cy, R: Rb + 6, top: groundH(cx * T, cy * T) + H, H, flights, tiles: tl, tops: tl.map((k) => groundH(((k % 4096) + 0.5) * T, (Math.floor(k / 4096) + 0.5) * T) + H) }); }
     // 8) do lado de fora: dois assentamentos pequenos e distantes (regra 19: nada de fila de tendas nem mendigo com missão)
     for (let k = 0; k < 2; k++) { const a = rw() * 6.283; let hx = 0, hy = 0, ok = false; for (let tries = 0; tries < 30 && !ok; tries++) { const r = Rb + 16 + rw() * 10, aa = a + (tries * 0.7); hx = Math.round(cx + Math.cos(aa) * r); hy = Math.round(cy + Math.sin(aa) * r); ok = inb(hx, hy) && !nearWater(hx, hy, 3) && !insideWall(hx, hy) && map[hy][hx] === 'grass'; }
       if (!ok) continue; const nh = 2 + Math.floor(rw() * 2); for (let q = 0; q < nh; q++) { const ang = q / nh * 6.283 + rw(), d = 4 + rw() * 3, gx = Math.round(hx + Math.cos(ang) * d) - 2, gy = Math.round(hy + Math.sin(ang) * d) - 2, w = 3 + Math.floor(rw() * 2), h = 3; let free2 = true; for (let y = gy - 1; y <= gy + h && free2; y++) for (let x = gx - 1; x <= gx + w && free2; x++) if (!inb(x, y) || map[y][x] !== 'grass') free2 = false; if (!free2) continue;
@@ -1643,7 +1648,8 @@ export function buildCity(): World {
     for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) {
       const v = rh(), w = rh(); if (map[y][x] !== 'grass') continue; const bm = biome[y][x];
       const nearRelic = relics.some((q) => Math.abs(q.x - x) < 9 && Math.abs(q.y - y) < 9);
-      if (v > HD[bm] * (nearRelic ? 2.5 : 0.3)) continue; // soltas são raras (achado): o grosso nasce em canteiros, logo abaixo if (nearSettle(x, y, 1)) continue;
+      if (v > HD[bm] * (nearRelic ? 2.5 : 0.3)) continue; // soltas são raras (achado): o grosso nasce em canteiros, logo abaixo
+      if (nearSettle(x, y, 1)) continue;
       let kind = bm === 'swamp' ? (w < 0.45 ? 1 : w < 0.8 ? 2 : 0) : bm === 'forest' ? (w < 0.6 ? 0 : w < 0.9 ? 1 : 2) : bm === 'ruins' || bm === 'rock' ? (w < 0.55 ? 2 : 0) : 0;
       if (rh() < (nearRelic ? 0.2 : 0.025)) kind = 3;
       props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: kind });
@@ -1883,6 +1889,13 @@ export function buildCity(): World {
     const LOOSE = new Set(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']);
     for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (LOOSE.has(p.kind as string) && on.has(p.gy * 100000 + p.gx)) props.splice(i, 1); }
     for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree' || t === 'dirt') map[y][x] = 'road' as never; }
+    /* cerca/muro baixo cujo segmento cruza o leito (trilhas e estradas tardias passavam por dentro da cerca da vila sem portão) sai;
+       estaca de paliçada e tenda cujo tile virou estrada também (a estrada era pintada por cima e a estaca ficava sem colisão) */
+    const onRoad = (x: number, y: number) => on.has(Math.floor(y) * 100000 + Math.floor(x)) || map[Math.floor(y)]?.[Math.floor(x)] === 'road';
+    for (let i = props.length - 1; i >= 0; i--) { const p = props[i];
+      if (p.kind === 'lowwall') { const cx = p.gx + (p.ox ?? T) / T, cy = p.gy + (p.oz ?? T) / T, L = (p.len ?? 2.95) / T, ry = p.ry ?? 0, ux = Math.cos(ry), uy = -Math.sin(ry); let cross = false;
+        for (let k = -2; k <= 2 && !cross; k++) if (onRoad(cx + ux * L * k / 4, cy + uy * L * k / 4)) cross = true; if (cross) props.splice(i, 1); }
+      else if ((p.kind === 'palisade' || p.kind === 'tent') && map[p.gy]?.[p.gx] === 'road') props.splice(i, 1); }
     for (const rp of roadPaths) { let i = 0; while (i < rp.length) { const wet = (q: { x: number; y: number }) => map[Math.floor(q.y)]?.[Math.floor(q.x)] === 'water'; if (!wet(rp[i])) { i++; continue; } let j = i; while (j + 1 < rp.length && wet(rp[j + 1])) j++;
         const a = rp[Math.max(0, i - 2)], b = rp[Math.min(rp.length - 1, j + 2)], mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
         if (!bridges.some((e) => { const L = Math.hypot(e.bx - e.ax, e.by - e.ay) || 1, t2 = Math.max(0, Math.min(1, ((mx - e.ax) * (e.bx - e.ax) + (my - e.ay) * (e.by - e.ay)) / (L * L))); return Math.hypot(e.ax + (e.bx - e.ax) * t2 - mx, e.ay + (e.by - e.ay) * t2 - my) < 3; })) {

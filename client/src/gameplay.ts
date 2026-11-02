@@ -356,7 +356,21 @@ export function createGameplay(d: GameplayDeps) {
   const ELITE_T = new Set(['prince', 'tormentor', 'treant', 'werewolf', 'bishop']);
   const isElite = (e: Enemy) => ELITE_T.has(e.type) || ELITE_TYPES.has(e.type) || !!(e as Enemy & { tag?: string }).tag && (e.hpMax > 1500);
   /** tipo do dano de cada magia (a arma muda o golpe básico: martelo = impacto, lança = perfuração) */
-  const dmgTypeOf = (sk: string | null): DmgType => { const k = d.getHero().kind; if (st.sp.has('u_excal') && (sk === 'combo' || sk === null)) return 'sagrado'; if (sk === 'slam') return k === 'dwarf' ? 'fogo' : k === 'technocrat' ? 'fogo' : 'gelo'; if (sk === 'spear' || sk === 'railgun') return 'perfuracao'; if (sk === 'bash' || sk === 'hammerthrow' || sk === 'mountain' || sk === 'kick' || sk === 'shieldwall') return 'impacto'; if (sk === 'winter') return 'gelo'; if (sk === 'mark' || sk === 'smite' || sk === 'consecrate') return 'sagrado'; if (kitKey === 'pal' && (sk === 'combo' || sk === null || sk === 'bash' || sk === 'kick')) return 'sagrado'; if (sk === 'flame' || sk === 'forge') return 'fogo'; if (sk === 'shocktrap') return 'impacto'; return k === 'dwarf' ? 'impacto' : k === 'technocrat' ? 'perfuracao' : 'corte'; };
+  /** tipo de dano de cada magia (tabela única; o que não está aqui segue a arma: anão impacto, tecnocrata perfuração, resto corte) */
+  const DMG_TYPE: Record<string, DmgType> = {
+    spear: 'perfuracao', railgun: 'perfuracao', volley: 'perfuracao', gunturret: 'perfuracao', mortar: 'fogo', shocktrap: 'impacto', teslatower: 'impacto', overcharge: 'impacto', mech: 'impacto',
+    bash: 'impacto', hammerthrow: 'impacto', mountain: 'impacto', kick: 'impacto', shieldwall: 'impacto', stonerune: 'impacto', shieldthrow: 'impacto', aegis: 'impacto', pounce: 'impacto',
+    winter: 'gelo', blizzard: 'gelo', frostnova: 'gelo', chainlight: 'impacto', thunder: 'impacto',
+    mark: 'sagrado', smite: 'sagrado', consecrate: 'sagrado', holyflask: 'sagrado', avenging: 'sagrado', archon: 'sagrado', conversion: 'sagrado',
+    flame: 'fogo', forge: 'fogo', fireball: 'fogo', meteor: 'fogo', hellhound: 'fogo', demonform: 'fogo',
+    poison: 'corte', venomclaw: 'corte', bite: 'corte', rend: 'corte', drain: 'corte', batswarm: 'corte', bloodnova: 'corte', curse: 'corte', valkyrie: 'corte', whirl: 'corte', hatchet: 'corte', hamstring: 'corte', fenrir: 'corte', howl: 'corte',
+  };
+  const dmgTypeOf = (sk: string | null): DmgType => { const k = d.getHero().kind;
+    if (sk === 'slam') return k === 'dwarf' || k === 'technocrat' ? 'fogo' : 'gelo';
+    const basic = sk === null || sk === 'combo'; if (basic && st.sp.has('u_excal')) return 'sagrado';
+    if (kitKey === 'pal' && (basic || sk === 'bash' || sk === 'kick')) return 'sagrado'; /* paladino: golpes básicos são sagrados (antes do tipo da arma) */
+    if (sk && DMG_TYPE[sk]) return DMG_TYPE[sk];
+    return k === 'dwarf' ? 'impacto' : k === 'technocrat' ? 'perfuracao' : 'corte'; };
   /** postura dos elites: enche de novo 8 s depois de quebrada */
   function poiseHit(e: Enemy, amount: number) {
     if (!isElite(e)) return; const ep = e as Enemy & { poise?: number; poiseMax?: number; poiseT?: number };
@@ -381,14 +395,14 @@ export function createGameplay(d: GameplayDeps) {
   let lastFight = -99;
   function gainRes(n: number) { lastFight = now; if (st.res.mode !== 'fight') return; st.mp = Math.min(st.mpMax, st.mp + n * (1 + st.gen) * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
-    if (kitKey === 'cac' && DARK_T.has(e.type)) mul *= 1.25; /* caçador: prata em demônio, morto-vivo e fera da noite */
+    const silver = kitKey === 'cac' && DARK_T.has(e.type) ? 0.25 : 0; /* caçador: prata em demônio, morto-vivo e fera da noite — SOMA no balde (regra 8) */
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
     let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
       st.fury = Math.min(5, st.fury + 1);
-    } else if (skill === 'slam') { bonus *= 1 + 0.3 * slamFury; e.burn = 5; e.burnTick = 0; }
+    } else if (skill === 'slam') { bonus *= 1 + 0.3 * slamFury; }
     else if (skill === 'bash' && counterBash) { bonus *= 2.2; st.fury = Math.min(5, st.fury + 2); e.state = 'hurt'; e.t = -1.4; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'CONTRA-GOLPE!', true, '#ffd24a'); }
     if (st.sp.has('r_livro') && spell) bonus += 0.35; // Livro Sem Passos
     if (st.sp.has('m_staff') && spell) bonus += 0.25; if (st.sp.has('dh_silver') && DARK) bonus += 0.6; if (st.sp.has('w_moon') && st.hp < st.hpMax * 0.5) bonus += 0.3; if (huntT > now) bonus += 0.06 * huntN;
@@ -399,7 +413,7 @@ export function createGameplay(d: GameplayDeps) {
        SOMA num balde só e o balde tem teto: no máximo +30% e no mínimo −30%. Nada disso multiplica com nada; assim,
        no nível 100, ninguém vira indestrutível por estar na noite certa, no evento certo e na postura certa. */
     const sit = Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1)));
-    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1);
+    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver;
     let dmg = (rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1);
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
@@ -470,6 +484,18 @@ export function createGameplay(d: GameplayDeps) {
   let stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0 };
   /** efeitos que duram (solo consagrado, enxame, dreno, asas): roda fn a cada quadro até t acabar */
   let kitKey = '';
+  /* guarda dos conjuradores (mago/bruxo/paladino sem escudo): o rig não tem escudo pra erguer, então a guarda ganha um
+     escudo arcano — esfera translúcida com anel no chão que acompanha o herói enquanto a tecla está presa */
+  let ward: THREE.Group | null = null;
+  const WARD_KITS = new Set(['mag', 'bru']);
+  function wardSet(on: boolean) {
+    if (on && !ward && WARD_KITS.has(kitKey)) {
+      const col = kitKey === 'bru' ? 0xb07aff : 0x7ac8ff; ward = new THREE.Group();
+      const sh = new THREE.Mesh(new THREE.SphereGeometry(1.1, 18, 12), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.11, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sh.position.y = 1.1; ward.add(sh);
+      const rg = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.3, 28), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide, fog: false })); rg.rotation.x = -Math.PI / 2; rg.position.y = 0.06; ward.add(rg);
+      fxAdd(ward); d.audio.cast();
+    } else if (!on && ward) { d.scene.remove(ward); ward.traverse((q) => { const m = q as THREE.Mesh; if (m.isMesh) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); } }); ward = null; }
+  }
   const ticks: { t: number; fn: (dt: number, left: number) => void; end?: () => void }[] = [];
   let form: { id: string; t: number; scale: number } | null = null, overT = 0, medicT = 0, flameT = 0, flameYaw = 0, flameKind: 'fire' | 'poison' = 'fire', flameMul = 0.55, flameReach = 9.5;
   /** arma equipada que muda o ataque básico: arco, besta de repetição, metralhadora, lança-chamas, lança-veneno (23/10) */
@@ -487,12 +513,13 @@ export function createGameplay(d: GameplayDeps) {
   /* granadas de plasma (tecnocrata) */
   const grenades: { m: THREE.Group; p: THREE.Vector3; v: THREE.Vector3; t: number; dur: number; tx: number; tz: number; r: number; mul: number }[] = [];
   const gMat = new THREE.MeshBasicMaterial({ color: 0x9ff4ff, fog: false }); void gMat;
-  function explode(cx: number, cz: number, cy: number, r: number, mul: number, col: number, stun: number, from: THREE.Vector3) {
+  /** explosão em área; `sk` = a magia de origem (tipo de dano e ranque dela), `burn` = incendeia (lava/fogo); sem `sk` conta como Salto Glacial */
+  function explode(cx: number, cz: number, cy: number, r: number, mul: number, col: number, stun: number, from: THREE.Vector3, sk: SkillId | null = 'slam', burn = sk === 'slam' || sk === 'fireball' || sk === 'meteor' || sk === 'flame') {
     d.audio.boom(); st.shake = Math.max(st.shake, 0.45); impactK = 1; impactLight.position.set(cx, cy + 1, cz); impactLight.color.setHex(col);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(cx, cy + 0.12, cz); fxAdd(ring); rings.push({ m: ring, t: 0 });
     for (let k = 0; k < 46; k++) { const a = rnd(0, 6.283), sp = rnd(2, 7); d.particles.spawn(cx, cy + 0.6, cz, { vx: Math.cos(a) * sp, vy: rnd(0.5, 5), vz: Math.sin(a) * sp, life: rnd(0.4, 0.9), s0: 0.6, s1: 0.06, c0: 0xffffff, c1: col, a: 1, drag: 2.2, g: 5 }); }
     for (let k = 0; k < 14; k++) d.particles.spawn(cx + rnd(-0.3, 0.3), cy + 0.3, cz + rnd(-0.3, 0.3), { vy: rnd(3, 7), life: 0.5, s0: 1.4, s1: 0.2, c0: 0xffffff, c1: col, a: 0.9 });
-    for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < r + e.def.radius) { skill = 'slam'; hitEnemy(e, mul, true, from); skill = null; if (stun > 0 && e.alive) { e.state = 'hurt'; e.t = -stun; } }
+    for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < r + e.def.radius) { skill = sk; hitEnemy(e, mul, true, from); skill = null; if (burn && e.alive) { e.burn = 5; e.burnTick = 0; } if (stun > 0 && e.alive) { e.state = 'hurt'; e.t = -stun; } }
     { const p = pvpDmg(mul); pvpHit(cx, cz, 0, r, Math.PI, p.n, p.crit); }
     for (const dm of dummies) if (Math.hypot(dm.position.x - cx, dm.position.z - cz) < r) { const crit = Math.random() < 0.15; hitDummy(dm, Math.round(rnd(20, 34) * mul * (crit ? 1.7 : 1)), crit, from, col, true); }
   }
@@ -866,7 +893,7 @@ export function createGameplay(d: GameplayDeps) {
         if (kind === 'mortar' && target && fireT <= 0) { fireT = 1.8; const from = T0.muzzle.getWorldPosition(new THREE.Vector3()), tx2 = target.pos.x + target.vel.x * 0.6 + rnd(-0.6, 0.6), tz2 = target.pos.z + target.vel.y * 0.6 + rnd(-0.6, 0.6), gy2 = d.world.heightAt(tx2, tz2), dur2 = 1.25, G = 18;
           const v = new THREE.Vector3((tx2 - from.x) / dur2, (gy2 - from.y) / dur2 + 0.5 * G * dur2, (tz2 - from.z) / dur2);
           const sm = new THREE.Group(); const ball = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), new THREE.MeshToonMaterial({ color: 0x2a2e36, gradientMap: ramp })); ball.scale.y = 1.4; sm.add(ball); const fin = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.14, 4), new THREE.MeshToonMaterial({ color: 0xc9a050, gradientMap: ramp })); fin.position.y = -0.18; fin.rotation.x = Math.PI; sm.add(fin); sm.position.copy(from); fxAdd(sm);
-          shells.push({ p: from.clone(), v, t: 0, dur: dur2, tx: tx2, tz: tz2, m: sm, mul: 1.5 * sc.dmg }); d.audio.boom(); st.shake = Math.max(st.shake, 0.12);
+          shells.push({ p: from.clone(), v, t: 0, dur: dur2, tx: tx2, tz: tz2, m: sm, mul: 1.5 }); d.audio.boom(); st.shake = Math.max(st.shake, 0.12);
           if (T0.tube) T0.tube.position.y = -0.08; for (let k = 0; k < 16; k++) d.particles.spawn(from.x, from.y, from.z, { vx: v.x * 0.05 + rnd(-1, 1), vy: rnd(1, 3), vz: v.z * 0.05 + rnd(-1, 1), life: rnd(0.6, 1.2), s0: 0.4, s1: 1.4, c0: 0xdddddd, c1: 0x555555, a: 0.45, drag: 1.2 });
           for (let k = 0; k < 8; k++) d.particles.spawn(from.x, from.y, from.z, { vx: rnd(-1, 1), vy: rnd(2, 4), vz: rnd(-1, 1), life: 0.18, s0: 0.6, s1: 0.1, c0: 0xffffff, c1: 0xffa040, a: 1 }); }
         if (kind === 'mortar' && T0.tube) T0.tube.position.y += (0 - T0.tube.position.y) * Math.min(1, dt2 * 6);
@@ -1063,7 +1090,7 @@ export function createGameplay(d: GameplayDeps) {
       }
       return true;
     },
-    guard(on: boolean) { const h = d.getHero(); if (on && form?.id === 'fenrir') return; if (on && !h.guard) guardAt = now; h.guard = on && !st.menuOpen; document.querySelector('.slot[data-id="guard"]')?.classList.toggle('on', h.guard); },
+    guard(on: boolean) { const h = d.getHero(); if (on && form?.id === 'fenrir') return; if (on && !h.guard) guardAt = now; h.guard = on && !st.menuOpen; document.querySelector('.slot[data-id="guard"]')?.classList.toggle('on', h.guard); wardSet(h.guard); },
     bash(_yaw?: number, target?: { x: number; z: number }) {
       if (target) rainAt = target;
       const h = d.getHero(); if ((cd.bash > 0 && st.counterT <= 0) || st.menuOpen) return false;
@@ -1137,7 +1164,7 @@ export function createGameplay(d: GameplayDeps) {
         teleT = -1; teleG.visible = false;
         const cx = slamAt ? slamAt.x : p.x + Math.sin(yaw) * 0.9, cz = slamAt ? slamAt.z : p.z + Math.cos(yaw) * 0.9; slamAt = null;
         crack.position.set(cx, d.world.heightAt(cx, cz) + 0.07, cz); crack.rotation.z = Math.random() * 6; crackT = 0; (crack.material as THREE.MeshBasicMaterial).color.setHex(0x9ad7ff);
-        { const rI = 5.2 * skillScale('slam').area; skStrike('quake', h, yaw, 2.4, rI + 1, Math.PI, true); iceBurst(cx, cz, d.world.heightAt(cx, cz), rI);
+        { const rI = 5.2 * skillScale('slam').area; skStrike('slam', h, yaw, 2.4, rI + 1, Math.PI, true); iceBurst(cx, cz, d.world.heightAt(cx, cz), rI);
         for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < rI + e.def.radius) { e.slow = 4 * skillScale('slam').dur; if (e.alive) { e.state = 'hurt'; e.t = -0.6; } } }
         d.audio.boom(); d.audio.spell('ice'); st.shake = Math.max(st.shake, 0.55);
       } });
@@ -1169,6 +1196,7 @@ export function createGameplay(d: GameplayDeps) {
         pending.push({ at: now + TEMPO * 0.55, fn: () => { st.hp = Math.min(st.hpMax, st.hp + (st.hpMax * 0.28 + 8 * st.fury) * (st.sp.has('r_calice') ? 2 : 1) * (1 + stance.heal)); d.audio.heal(); if (st.fury) { st.serene = 3; st.fury = 0; logMsg('🍺 Hidromel: próximos 3 golpes críticos', '#ffc860'); } st.fury = Math.min(5, st.fury + 2); for (let i = 0; i < 20; i++) d.particles.spawn(heroPos.x + rnd(-0.4, 0.4), 1.4, heroPos.z + rnd(-0.4, 0.4), { vx: rnd(-0.5, 0.5), vy: rnd(1, 2.5), vz: rnd(-0.5, 0.5), life: 0.8, s0: 0.3, s1: 0.05, c0: 0xfff2c8, c1: 0xffb040, a: 0.9 }); } });
         return true;
       }
+      if (!hk.act('cast')) return false; /* cura genérica: pose de conjuração (antes não tinha animação em 8 kits) */
       st.mp -= 40; st.lastCast = now; cd.heal = CD.heal; st.hp = Math.min(st.hpMax, st.hp + (35 + 10 * st.fury) * (st.sp.has('r_calice') ? 2 : 1) * (1 + stance.heal)); if (st.fury) { st.serene = 3; logMsg(`✚ Cura +${10 * st.fury} (Fúria). Próximos 3 golpes: críticos`, '#7aff9a'); st.fury = 0; } slotFlash('heal'); d.audio.heal();
       for (let i = 0; i < 26; i++) { const a = (i / 26) * 6.283; d.particles.spawn(heroPos.x + Math.cos(a) * 0.8, 0.1, heroPos.z + Math.sin(a) * 0.8, { vx: 0, vy: rnd(1.1, 1.9), vz: 0, life: 1.1, s0: 0.3, s1: 0.06, c0: 0xfff0bd, c1: 0x7aff9a, a: 0.9, drag: 0.4 }); }
       return true;
@@ -1273,7 +1301,7 @@ export function createGameplay(d: GameplayDeps) {
           thunderN = 3 + (sc.tier >= 1 ? 1 : 0); thunderT = 10 * sc.dur; thunderTier = sc.tier; h.setAura(true); logMsg(`⚡ Lâmina Trovejante: os próximos ${thunderN} golpes eletrificam`, '#9ad0ff');
           if (sc.tier >= 3) { const p0 = h.root.position; for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - p0.x, e.pos.z - p0.z) < 3.8 + e.def.radius) { const ep = e.pos.clone().setY(e.pos.y + 1); bolt3d(ep.clone().setY(ep.y + 14), ep, 0xcfe6ff); const dm = Math.round((14 + st.lvl * 4) * sc.dmg); if (enemies.hurt(e, dm, p0, 2)) killEnemy(e); dmgText(ep.clone().setY(ep.y + 1.5), dm, true, '#9ad0ff'); } } } }); return true;
         case 'valkyrie': if (!ok('stance')) return false; valkT = 1.5; valkTier = st.sp.has('r_pena') ? 3 : sc.tier; ringFx(hp.x, hp.z, 0xffe08a, 1.2); d.audio.chime(); dmgText(hp.clone().setY(2.6), 'EM GUARDA', false, '#ffe08a'); return true;
-        case 'warcry': if (!ok('cast')) return false; buff.dmg = 1.25; buff.dmgT = 8; d.audio.boom(); st.shake = Math.max(st.shake, 0.3); ringFx(hp.x, hp.z, 0xffb070, 1.5); logMsg('📣 Grito de Guerra: +25% de dano por 8 s', '#ffb070');
+        case 'warcry': if (!ok('cast')) return false; buff.dmg = Math.max(buff.dmg, 1.25); buff.dmgT = Math.max(buff.dmgT, 8); d.audio.boom(); st.shake = Math.max(st.shake, 0.3); ringFx(hp.x, hp.z, 0xffb070, 1.5); logMsg('📣 Grito de Guerra: +25% de dano por 8 s', '#ffb070');
           for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) < 8 && !e.def.passive) { e.state = 'chase'; e.t = 0; } for (let i = 0; i < 40; i++) { const a = rnd(0, 6.283); d.particles.spawn(hp.x, 1.5, hp.z, { vx: Math.cos(a) * rnd(3, 8), vy: rnd(0, 2), vz: Math.sin(a) * rnd(3, 8), life: 0.6, s0: 0.6, s1: 0.05, c0: 0xffffff, c1: 0xffb070, a: 1, drag: 2.5 }); } return true;
         case 'spear': if (!ok('throw')) return false; d.audio.swing(); pending.push({ at: now + TEMPO * 0.44, fn: () => { const from = h.handPos(new THREE.Vector3()); from.y = Math.max(from.y, 1.2); const gn = st.sp.has('u_gungnir'); bolts.push({ p: from, v: dir.clone().multiplyScalar(28), life: gn ? 0.9 : 0.5, mul: gn ? 4.4 : 2.2, pierce: true, hit: new Set(), rootLast: 3, col: gn ? 0xffe9a0 : 0xcfe0ff, big: true, boomer: gn ? 0.45 : undefined }); } }); return true;
         case 'whirl': if (!ok('combo4')) return false; d.audio.swing(); pending.push({ at: now + TEMPO * 0.95, fn: () => { h.act('combo4'); } }); for (const t of [0.3, 0.72, 1.2, 1.62]) pending.push({ at: now + TEMPO * t, fn: () => { skStrike('combo', h, h.root.rotation.y, 1.3, 3.4, Math.PI, t > 1.5); d.audio.swing(); } }); return true;
@@ -1289,9 +1317,9 @@ export function createGameplay(d: GameplayDeps) {
         case 'overcharge': if (!ok('cast')) return false; overT = 3; d.audio.cast(); return true;
         case 'shocktrap': { if (mines.length >= 4) { logMsg('Máximo de 4 armadilhas/minas.', '#ff9a8a'); return false; } if (!ok('throw')) return false; const m = mkMine(tx, tz); (m.userData.lamp as THREE.Mesh).material = new THREE.MeshBasicMaterial({ color: 0xc8e8ff }); mines.push({ m, x: tx, z: tz, t: 0, r: 2.0, mul: 0.4 }); m.userData.shock = true; d.audio.swing(); return true; }
         case 'medic': if (!ok('cast')) return false; medicT = 10; hot = { t: 10, per: st.hpMax * 0.4 / 10 }; for (const e of enemies.list) if (e.burn) e.burn = 0; d.audio.heal(); logMsg('🩺 Drone Médico: cura por 10 s', '#7affd0'); return true;
-        case 'railgun': if (!ok('shoot')) return false; h.freeze = true; setTimeout(() => { h.freeze = false; }, 900); for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * i * 0.15, fn: () => { const from = h.weaponTip(new THREE.Vector3()); d.particles.spawn(from.x, from.y, from.z, { life: 0.3, s0: 0.6 + i * 0.25, s1: 0.1, c0: 0xffffff, c1: 0xffd070, a: 1 }); } });
+        case 'railgun': if (!ok('shoot')) return false; h.freeze = true; pending.push({ at: now + 0.9, fn: () => { h.freeze = false; } }); for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * i * 0.15, fn: () => { const from = h.weaponTip(new THREE.Vector3()); d.particles.spawn(from.x, from.y, from.z, { life: 0.3, s0: 0.6 + i * 0.25, s1: 0.1, c0: 0xffffff, c1: 0xffd070, a: 1 }); } });
           pending.push({ at: now + TEMPO * 1.0, fn: () => { const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 1.0); const to = from.clone().addScaledVector(dir, 18); beam(from, to, 0xffd070, 0.12, 0.35); bolts.push({ p: from.clone(), v: dir.clone().multiplyScalar(60), life: 0.32, mul: 5, pierce: true, hit: new Set(), col: 0xffd070, big: true }); d.audio.boom(); st.shake = Math.max(st.shake, 0.5); } }); return true;
-        case 'mech': if (!ok('cast')) return false; form = { id: 'mech', t: 12, scale: 1.25 }; buff.dmg = 2; buff.dmgT = 12; buff.def = 0.4; buff.defT = 12; h.setAura(true); d.audio.boom(); st.shake = Math.max(st.shake, 0.5); ringFx(hp.x, hp.z, 0x9ad7ff, 2); logMsg('🤖 Mecha de Combate: dano ×2, +40% de defesa', '#9ad7ff'); return true;
+        case 'mech': if (!ok('cast')) return false; form = { id: 'mech', t: 12, scale: 1.25 }; buff.dmg = 2; buff.dmgT = 12; buff.def = 0.3; buff.defT = 12; h.setAura(true); d.audio.boom(); st.shake = Math.max(st.shake, 0.5); ringFx(hp.x, hp.z, 0x9ad7ff, 2); logMsg('🤖 Mecha de Combate: dano ×2, +40% de defesa', '#9ad7ff'); return true;
         /* ---- 25/10: golpes próprios do Paladino, do Vampiro e do Lobisomem ---- */
         case 'smite': { if (!ok('cast')) return false; const x = tx, z = tz, rad = 2.6 * sc.area; pending.push({ at: now + TEMPO * 0.45, fn: () => { const gy = d.world.heightAt(x, z), top = new THREE.Vector3(x, gy + 16, z), bot = new THREE.Vector3(x, gy + 0.1, z);
             beam(top, bot, 0xfff0b0, 0.55, 0.32); beam(top, bot, 0xffd24a, 1.1, 0.22); spellLight.position.set(x, gy + 2, z); spellLight.color.setHex(0xffe08a); spellLight.intensity = 70; d.audio.boom(); st.shake = Math.max(st.shake, 0.45); ringFx(x, z, 0xffe08a, rad / 1.6);
@@ -1348,7 +1376,7 @@ export function createGameplay(d: GameplayDeps) {
             if (dd > stp) { disc.position.addScaledVector(dv.normalize(), stp); return; }
             disc.position.copy(goal);
             if (back) { life = -1; return; }
-            if (cur && cur.alive) { const e = cur; hit.add(e); skill = 'shieldthrow'; hitEnemy(e, 1.3 * sc.dmg, true, disc.position.clone()); skill = null; d.audio.block(); st.shake = Math.max(st.shake, 0.15);
+            if (cur && cur.alive) { const e = cur; hit.add(e); skill = 'shieldthrow'; hitEnemy(e, 1.3, true, disc.position.clone()); skill = null; d.audio.block(); st.shake = Math.max(st.shake, 0.15);
               if (e.alive) { enemies.interrupt(e); e.state = 'hurt'; e.t = -0.8; dmgText(e.pos.clone().setY(e.pos.y + 2.7), 'ATORDOADO', false, '#ffe08a'); }
               for (let k = 0; k < 14; k++) d.particles.spawn(goal.x, goal.y, goal.z, { vx: rnd(-3, 3), vy: rnd(0, 3), vz: rnd(-3, 3), life: 0.35, s0: 0.3, s1: 0.03, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 });
               left--; let nx: Enemy | null = null, bd = 7; if (left > 0) for (const o of enemies.list) if (o.alive && o.active && !hit.has(o) && !o.def.passive) { const q2 = Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z); if (q2 < bd) { bd = q2; nx = o; } } cur = nx; if (!nx) back = true; }
@@ -1391,18 +1419,18 @@ export function createGameplay(d: GameplayDeps) {
         case 'venomclaw': { if (!ok('combo1')) return false; const yy = h.root.rotation.y;
           for (let k = 0; k < 4; k++) pending.push({ at: now + TEMPO * (0.1 + k * 0.15), fn: () => { if (k) h.act((['combo1', 'combo2', 'combo3', 'combo2'] as const)[k], true); d.audio.swing(); const p0 = h.root.position, sd = k % 2 ? -1 : 1;
             clawFx(sd, 0xb47aff, 3); streak(p0.x, p0.y + 1.1, p0.z, h.root.rotation.y, sd, 0x7aff5a, { n: 1, r: 1.45, w: 0.035, life: 0.32 });
-            hitArc('venomclaw', p0.x, p0.z, yy, 2.6 * sc.range, 0.95, 0.6 * sc.dmg, k === 3, (e) => { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; e.psn = true; for (let q = 0; q < 6; q++) d.particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: rnd(-1, 1), vy: rnd(0, 1.5), vz: rnd(-1, 1), life: 0.5, s0: 0.18, s1: 0.04, c0: 0xc8ff6a, c1: 0x5a1a8a, a: 1, g: 4 }); }); } }); return true; }
+            hitArc('venomclaw', p0.x, p0.z, yy, 2.6 * sc.range, 0.95, 0.6, k === 3, (e) => { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; e.psn = true; for (let q = 0; q < 6; q++) d.particles.spawn(e.pos.x, e.pos.y + 1, e.pos.z, { vx: rnd(-1, 1), vy: rnd(0, 1.5), vz: rnd(-1, 1), life: 0.5, s0: 0.18, s1: 0.04, c0: 0xc8ff6a, c1: 0x5a1a8a, a: 1, g: 4 }); }); } }); return true; }
         /* ---- Lobisomem: Mordida, Salto da Fera, Uivo da Matilha ---- */
-        case 'bite': { if (!ok('kick')) return false; pending.push({ at: now + TEMPO * 0.62 * 0.4, fn: () => { const p0 = h.root.position, y = h.root.rotation.y, mx = p0.x + Math.sin(y) * 1.3, mz = p0.z + Math.cos(y) * 1.3, my = p0.y + 1.25;
+        case 'bite': { if (!ok('bite')) return false; pending.push({ at: now + TEMPO * 0.62 * 0.4, fn: () => { const p0 = h.root.position, y = h.root.rotation.y, mx = p0.x + Math.sin(y) * 1.3, mz = p0.z + Math.cos(y) * 1.3, my = p0.y + 1.25;
             for (const s of [-1, 1]) for (let i = 0; i < 7; i++) { const a = (i / 6 - 0.5) * 1.6; d.particles.spawn(mx + Math.cos(y) * a * 0.4, my + s * 0.35, mz - Math.sin(y) * a * 0.4, { vx: 0, vy: -s * 3.5, vz: 0, life: 0.14, s0: 0.12, s1: 0.06, c0: 0xffffff, c1: 0xe8e0d0, a: 1 }); }
             d.audio.hit(); st.shake = Math.max(st.shake, 0.2);
-            hitArc('bite', p0.x, p0.z, y, 2.4 * sc.range, 0.7, 1.7 * sc.dmg, true, (e) => { bleed(e, 4, (3 + st.lvl * 1.2) * sc.dmg); dmgText(e.pos.clone().setY(e.pos.y + 2.8), 'MORDIDO', false, '#ff6a6a'); for (let q = 0; q < 16; q++) d.particles.spawn(e.pos.x, e.pos.y + 1.1, e.pos.z, { vx: rnd(-2.5, 2.5), vy: rnd(0, 3), vz: rnd(-2.5, 2.5), life: 0.6, s0: 0.2, s1: 0.05, c0: 0xff2a3a, c1: 0x4a0006, a: 1, g: 10 }); const heal = Math.round((10 + st.lvl * 3) * 0.5 * sc.dmg * (1 + stance.heal)); st.hp = Math.min(st.hpMax, st.hp + heal); }); } }); return true; }
+            hitArc('bite', p0.x, p0.z, y, 2.4 * sc.range, 0.7, 1.7, true, (e) => { bleed(e, 4, (3 + st.lvl * 1.2) * sc.dmg); dmgText(e.pos.clone().setY(e.pos.y + 2.8), 'MORDIDO', false, '#ff6a6a'); for (let q = 0; q < 16; q++) d.particles.spawn(e.pos.x, e.pos.y + 1.1, e.pos.z, { vx: rnd(-2.5, 2.5), vy: rnd(0, 3), vz: rnd(-2.5, 2.5), life: 0.6, s0: 0.2, s1: 0.05, c0: 0xff2a3a, c1: 0x4a0006, a: 1, g: 10 }); const heal = Math.round((10 + st.lvl * 3) * 0.5 * sc.dmg * (1 + stance.heal)); st.hp = Math.min(st.hpMax, st.hp + heal); }); } }); return true; }
         case 'pounce': { if (!ok('slam')) return false; d.audio.swing(); const x = tx, z = tz; pending.push({ at: now + TEMPO * 1.15 * 0.66, fn: () => { const p0 = h.root.position, gy = d.world.heightAt(p0.x, p0.z), rad = 2.6 * sc.area; d.audio.boom(); st.shake = Math.max(st.shake, 0.55); ringFx(p0.x, p0.z, 0xc8a070, rad / 1.5);
             for (let i = 0; i < 40; i++) { const a = rnd(0, 6.283); d.particles.spawn(p0.x + Math.cos(a) * 0.6, gy + 0.15, p0.z + Math.sin(a) * 0.6, { vx: Math.cos(a) * rnd(2, 6), vy: rnd(0.5, 2.5), vz: Math.sin(a) * rnd(2, 6), life: 0.9, s0: 0.5, s1: 1.3, c0: 0xc9b088, c1: 0x5a4a30, a: 0.4, drag: 2 }); }
             for (const sd of [-1, 1]) streak(p0.x, p0.y + 0.9, p0.z, h.root.rotation.y, sd, 0xffd0b0, { n: 3, r: 1.2, tilt: 0.9, span: 1.1, life: 0.3 });
             const main = enemies.nearest(new THREE.Vector3(x, 0, z), rad + 1.5);
-            hitArc('pounce', p0.x, p0.z, 0, rad, Math.PI, 1.9 * sc.dmg, true, (e) => { e.state = 'hurt'; e.t = -1.2; dmgText(e.pos.clone().setY(e.pos.y + 2.7), 'DERRUBADO', false, '#e8d8b0'); });
-            if (main && main.alive) { skill = 'pounce'; hitEnemy(main, 1.9 * sc.dmg, true, p0.clone()); skill = null; } } }); return true; }
+            hitArc('pounce', p0.x, p0.z, 0, rad, Math.PI, 1.9, true, (e) => { e.state = 'hurt'; e.t = -1.2; dmgText(e.pos.clone().setY(e.pos.y + 2.7), 'DERRUBADO', false, '#e8d8b0'); });
+            if (main && main.alive) { skill = 'pounce'; hitEnemy(main, 1.9, true, p0.clone()); skill = null; } } }); return true; }
         case 'packhowl': { if (!ok('cast')) return false; d.audio.boom(); st.shake = Math.max(st.shake, 0.3); const D = 12 * sc.dur; buff.dmg = Math.max(buff.dmg, 1.3); buff.dmgT = Math.max(buff.dmgT, D); buff.move = Math.max(buff.move, 1.2); buff.moveT = Math.max(buff.moveT, D); buff.def = Math.max(buff.def, 0.15); buff.defT = Math.max(buff.defT, D); ringFx(hp.x, hp.z, 0x9ac8ff, 2.4);
           for (let i = 0; i < 40; i++) d.particles.spawn(hp.x, hp.y + 1.9, hp.z, { vx: rnd(-1.2, 1.2), vy: rnd(2, 4.5), vz: rnd(-1.2, 1.2), life: 1.2, s0: 0.35, s1: 1.0, c0: 0xdde8ff, c1: 0x4a6aa0, a: 0.5, drag: 1.5 });
           for (let i = 0; i < 2; i++) pending.push({ at: now + 0.35 + i * 0.3, fn: () => spiritWolf(i, D, sc.dmg) }); logMsg('🐺 Uivo da Matilha: dois lobos espirituais lutam ao seu lado; +30% dano, +20% velocidade, +15% defesa', '#9ac8ff'); return true; }
@@ -1412,7 +1440,7 @@ export function createGameplay(d: GameplayDeps) {
           beam(p0.clone().setY(p0.y + 1), new THREE.Vector3(tx, d.world.heightAt(tx, tz) + 1, tz), col, 0.05, 0.25); ringFx(p0.x, p0.z, col, 0.8); blinkCol = col; return true; }
         case 'fireball': { if (!ok('cast')) return false; pending.push({ at: now + TEMPO * 0.3, fn: () => { const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 1.2); const dx = tx - from.x, dz = tz - from.z, L = Math.max(1, Math.hypot(dx, dz)), sp = 17;
             const fb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffd070 })); fxAdd(fb);
-            bolts.push({ p: from, v: new THREE.Vector3(dx / L * sp, 0, dz / L * sp), life: L / sp, mul: 1.0, col: 0xff6a1a, big: true, m: fb, straight: true, boom: { r: 2.6 * sc.area, mul: 1.7 * sc.dmg, fn: (x, z) => { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - x, e.pos.z - z) < 2.6 * sc.area + e.def.radius) e.burn = Math.max(e.burn ?? 0, 3); } } }); } }); return true; }
+            bolts.push({ p: from, v: new THREE.Vector3(dx / L * sp, 0, dz / L * sp), life: L / sp, mul: 1.0, col: 0xff6a1a, big: true, m: fb, straight: true, sk: 'fireball', boom: { r: 2.6 * sc.area, mul: 1.7, fn: (x, z) => { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - x, e.pos.z - z) < 2.6 * sc.area + e.def.radius) e.burn = Math.max(e.burn ?? 0, 3); } } }); } }); return true; }
         case 'chainlight': { const first = enemies.nearest(hp, 10 * sc.range); if (!first) { logMsg('Nenhum inimigo perto para o raio.', '#ff9a8a'); return false; } if (!ok('cast')) return false;
           const hops = 4 + (sc.tier >= 1 ? 1 : 0), hit = new Set<Enemy>(); let cur: Enemy | null = first, from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 1.2);
           for (let k = 0; k < hops && cur; k++) { const e: Enemy = cur; const a0 = from.clone(); pending.push({ at: now + TEMPO * 0.25 + k * 0.09, fn: () => { if (!e.alive) return; const b0 = e.pos.clone().setY(e.pos.y + 1.1); beam(a0, b0, 0xdff4ff, 0.06, 0.22); beam(a0, b0, 0x6ab0ff, 0.14, 0.16); skill = 'chainlight'; hitEnemy(e, 1.1 * Math.pow(0.88, k), false, a0); skill = null; if (e.alive) { e.slow = Math.max(e.slow ?? 0, 0.4); } d.audio.spell('shock'); for (let q = 0; q < 10; q++) d.particles.spawn(b0.x, b0.y, b0.z, { vx: rnd(-3, 3), vy: rnd(-1, 3), vz: rnd(-3, 3), life: 0.3, s0: 0.25, s1: 0.03, c0: 0xffffff, c1: 0x6ab0ff, a: 1, drag: 3 }); } });
@@ -1432,7 +1460,7 @@ export function createGameplay(d: GameplayDeps) {
           ticks.push({ t: 1.6, fn: (dt2) => { t += dt2; if (t < 0.9) { if (Math.random() < dt2 * 20) { const a = rnd(0, 6.283); d.particles.spawn(x + Math.cos(a) * rad, gy + 0.2, z + Math.sin(a) * rad, { vy: 1, life: 0.4, s0: 0.25, s1: 0.04, c0: 0xffd070, c1: 0xff4a1a, a: 1 }); } return; }
             const k = Math.min(1, (t - 0.9) / 0.6); mk.visible = k < 1; mk.position.lerpVectors(p0, new THREE.Vector3(x, gy + 0.5, z), k * k); mk.rotation.x += dt2 * 8;
             for (let q = 0; q < 4; q++) d.particles.spawn(mk.position.x + rnd(-0.4, 0.4), mk.position.y + rnd(-0.4, 0.4), mk.position.z + rnd(-0.4, 0.4), { vx: rnd(-1, 1), vy: rnd(0, 2), vz: rnd(-1, 1), life: 0.6, s0: 1.0, s1: 0.2, c0: 0xffe0a0, c1: 0xff3a0a, a: 0.9 });
-            if (k >= 1 && mk.parent) { d.scene.remove(mk); explode(x, z, gy, rad, 3.2 * sc.dmg, 0xff5a1a, 1.2, new THREE.Vector3(x - 1, gy, z - 1)); st.shake = Math.max(st.shake, 0.9); for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) e.burn = Math.max(e.burn ?? 0, 4);
+            if (k >= 1 && mk.parent) { d.scene.remove(mk); explode(x, z, gy, rad, 3.2, 0xff5a1a, 1.2, new THREE.Vector3(x - 1, gy, z - 1), 'meteor'); st.shake = Math.max(st.shake, 0.9); for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) e.burn = Math.max(e.burn ?? 0, 4);
               for (let q = 0; q < 50; q++) { const a = rnd(0, 6.283), rr2 = rnd(0, rad); d.particles.spawn(x + Math.cos(a) * rr2, gy + 0.2, z + Math.sin(a) * rr2, { vy: rnd(0.5, 2), life: rnd(1.5, 3), s0: 0.4, s1: 0.9, c0: 0x6a6a6a, c1: 0x2a2a2a, a: 0.5, drag: 1 }); } } }, end: () => { if (mk.parent) d.scene.remove(mk); } }); return true; }
         case 'archon': { if (!ok('cast')) return false; form = { id: 'archon', t: 12, scale: 1.06 }; buff.dmg = 1.8; buff.dmgT = 12; buff.def = 0.2; buff.defT = 12; h.setAura(true); d.audio.boom(); ringFx(hp.x, hp.z, 0x7ab8ff, 2); logMsg('🔮 Avatar Arcano: dano ×1,8, +20% de defesa, mísseis triplos', '#9ad0ff');
           ticks.push({ t: 12, fn: (dt2) => { const hh = d.getHero().root.position; for (let k = 0; k < 3; k++) { const a = now * 2.4 + k * 2.094; if (Math.random() < dt2 * 30) d.particles.spawn(hh.x + Math.cos(a) * 1.1, hh.y + 1.2 + Math.sin(now * 3 + k) * 0.3, hh.z + Math.sin(a) * 1.1, { life: 0.4, s0: 0.22, s1: 0.04, c0: 0xffffff, c1: 0x6ab0ff, a: 1 }); } } }); return true; }
@@ -1449,7 +1477,7 @@ export function createGameplay(d: GameplayDeps) {
         case 'holyflask': { if (!ok('throw')) return false; d.audio.swing(); const x = tx, z = tz, gy = d.world.heightAt(x, z), rad = 2.8 * sc.area;
           const fl = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), new THREE.MeshBasicMaterial({ color: 0xdff4ff })); fl.visible = false; fxAdd(fl); let t = 0; const from = h.handPos(new THREE.Vector3());
           ticks.push({ t: 0.95, fn: (dt2) => { t += dt2; const k = Math.min(1, Math.max(0, (t - 0.25) / 0.6)); if (t < 0.25) return; fl.visible = true; fl.position.set(from.x + (x - from.x) * k, from.y + (gy + 0.2 - from.y) * k + Math.sin(k * Math.PI) * 2.6, from.z + (z - from.z) * k); d.particles.spawn(fl.position.x, fl.position.y, fl.position.z, { life: 0.25, s0: 0.2, s1: 0.04, c0: 0xffffff, c1: 0x9ad0ff, a: 1 });
-            if (k >= 1 && fl.parent) { d.scene.remove(fl); explode(x, z, gy, rad, 1.4 * sc.dmg, 0xbfe8ff, 0, new THREE.Vector3(x, gy, z)); for (const e of enemies.list) if (e.alive && e.active && DARK_T.has(e.type) && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) { skill = 'holyflask'; hitEnemy(e, 1.4 * sc.dmg, false, new THREE.Vector3(x, gy, z)); skill = null; if (e.alive) e.burn = Math.max(e.burn ?? 0, 3); }
+            if (k >= 1 && fl.parent) { d.scene.remove(fl); explode(x, z, gy, rad, 1.4, 0xbfe8ff, 0, new THREE.Vector3(x, gy, z), 'holyflask', false); for (const e of enemies.list) if (e.alive && e.active && DARK_T.has(e.type) && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) { skill = 'holyflask'; hitEnemy(e, 1.4, false, new THREE.Vector3(x, gy, z)); skill = null; if (e.alive) e.burn = Math.max(e.burn ?? 0, 3); }
               const m = new THREE.Mesh(new THREE.CircleGeometry(rad, 36).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); m.position.set(x, gy + 0.06, z); fxAdd(m); let tk2 = 0;
               ticks.push({ t: 4 * sc.dur, fn: (d3, left) => { (m.material as THREE.MeshBasicMaterial).opacity = Math.min(0.2, left * 0.2); if (Math.random() < d3 * 14) { const a = rnd(0, 6.283), rr2 = rnd(0, rad); d.particles.spawn(x + Math.cos(a) * rr2, gy + 0.1, z + Math.sin(a) * rr2, { vy: rnd(0.6, 1.4), life: 0.9, s0: 0.15, s1: 0.03, c0: 0xffffff, c1: 0x9ad0ff, a: 0.9 }); }
                 tk2 -= d3; if (tk2 <= 0) { tk2 = 0.5; for (const e of enemies.list) if (e.alive && e.active && DARK_T.has(e.type) && Math.hypot(e.pos.x - x, e.pos.z - z) < rad + e.def.radius) { const dm = Math.round((4 + st.lvl * 1.2) * sc.dmg); if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#bfe8ff'); } } }, end: () => { d.scene.remove(m); } }); } }, end: () => { if (fl.parent) d.scene.remove(fl); } }); return true; }
@@ -1666,13 +1694,14 @@ export function createGameplay(d: GameplayDeps) {
         for (let i = convertedL.length - 1; i >= 0; i--) { const c = convertedL[i]; if (!c.e.alive || now > c.until) { convertedL.splice(i, 1); continue; } if (c.e.state === 'chase' || c.e.state === 'windup' || c.e.state === 'recover') { c.e.state = 'flee'; c.e.t = 0; } if (Math.random() < dt * 4) d.particles.spawn(c.e.pos.x, c.e.pos.y + 2.3, c.e.pos.z, { vy: 0.6, life: 0.8, s0: 0.15, s1: 0.03, c0: 0xffffff, c1: 0xffe08a, a: 0.9 }); }
         for (let i = shells.length - 1; i >= 0; i--) { const s2 = shells[i]; s2.t += dt; s2.v.y -= 18 * dt; s2.p.addScaledVector(s2.v, dt); s2.m.position.copy(s2.p); s2.m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), s2.v.clone().normalize());
           if (Math.random() < dt * 40) d.particles.spawn(s2.p.x, s2.p.y, s2.p.z, { vx: rnd(-0.2, 0.2), vy: rnd(0, 0.3), vz: rnd(-0.2, 0.2), life: 0.6, s0: 0.25, s1: 0.6, c0: 0xcccccc, c1: 0x555555, a: 0.4 });
-          const gy = d.world.heightAt(s2.p.x, s2.p.z); if (s2.t >= s2.dur || (s2.v.y < 0 && s2.p.y <= gy + 0.1)) { shells.splice(i, 1); d.scene.remove(s2.m); explode(s2.tx, s2.tz, d.world.heightAt(s2.tx, s2.tz), 2.2, s2.mul, 0xffa040, 1.0, s2.p.clone());
+          const gy = d.world.heightAt(s2.p.x, s2.p.z); if (s2.t >= s2.dur || (s2.v.y < 0 && s2.p.y <= gy + 0.1)) { shells.splice(i, 1); d.scene.remove(s2.m); explode(s2.tx, s2.tz, d.world.heightAt(s2.tx, s2.tz), 2.2, s2.mul, 0xffa040, 1.0, s2.p.clone(), 'mortar', true);
             for (let q = 0; q < 24; q++) { const a = rnd(0, 6.283); d.particles.spawn(s2.tx, gy + 0.2, s2.tz, { vx: Math.cos(a) * rnd(1, 4), vy: rnd(2, 6), vz: Math.sin(a) * rnd(1, 4), life: 1, s0: 0.18, s1: 0.1, c0: 0x6a5a40, c1: 0x3a3026, a: 1, g: 14 }); } } }
       }
       // fôlego: volta devagar (mais rápido parado)
       if (st.stam < st.stamMax) st.stam = Math.min(st.stamMax, st.stam + dt * (heroMoving ? 9 : 16) * (st.god ? 10 : 1));
-      if (buff.dmgT > 0) { buff.dmgT -= dt; if (buff.dmgT <= 0) buff.dmg = 1; } if (buff.defT > 0) { buff.defT -= dt; if (buff.defT <= 0) buff.def = 0; } if (buff.moveT > 0) { buff.moveT -= dt; if (buff.moveT <= 0) buff.move = 1; } if (buff.burnT > 0) buff.burnT -= dt;
-      { const h = d.getHero(); if (form) { form.t -= dt; const sc = 1 + (form.scale - 1) * Math.min(1, (10 - Math.max(0, form.t - 0.5) * 0) * 0.3); h.root.scale.setScalar(sc * baseScale); if (Math.random() < dt * 25) d.particles.spawn(heroPos.x + rnd(-0.5, 0.5), rnd(0.1, 2.2), heroPos.z + rnd(-0.5, 0.5), { vy: rnd(0.5, 2), life: 0.6, s0: 0.4, s1: 0.05, c0: form.id === 'fenrir' ? 0xff6a4a : form.id === 'mech' ? 0x9ad7ff : form.id === 'avenging' ? 0xffe08a : form.id === 'nightform' ? 0x8a0a1a : 0xd8c8a8, c1: 0x000000, a: 0.9 }); if (form.t <= 0) { form = null; h.root.scale.setScalar(baseScale); buff.leech = 0; h.setAura(false); logMsg('A transformação acabou.', '#c8d8f0'); } } else if (buff.burnT <= 0 && h.root.scale.x !== baseScale) h.root.scale.setScalar(baseScale); if (buff.burnT > 0 && Math.random() < dt * 20) { const tp = h.weaponTip(new THREE.Vector3()); d.particles.spawn(tp.x, tp.y, tp.z, { vy: rnd(0.5, 1.5), life: 0.4, s0: 0.4, s1: 0.05, c0: 0xffd070, c1: 0xff3a10, a: 0.9 }); } if (!form && buff.burnT <= 0 && h.actName !== 'cast') { /* aura só durante formas/forja */ } }
+      if (buff.dmgT > 0) { buff.dmgT -= dt; if (buff.dmgT <= 0) buff.dmg = 1; } if (buff.defT > 0) { buff.defT -= dt; if (buff.defT <= 0) buff.def = 0; } if (buff.moveT > 0) { buff.moveT -= dt; if (buff.moveT <= 0) buff.move = 1; } if (ward) { const hh = d.getHero(); if (!hh.guard) wardSet(false); else { ward.position.copy(hh.root.position); ward.rotation.y = now * 1.2; const sh = ward.children[0] as THREE.Mesh; sh.scale.setScalar(1 + 0.04 * Math.sin(now * 7)); } }
+      if (buff.burnT > 0) { buff.burnT -= dt; if (buff.burnT <= 0 && !form) d.getHero().setAura(false); }
+      { const h = d.getHero(); if (form) { form.t -= dt; h.root.scale.setScalar(form.scale * baseScale); if (Math.random() < dt * 25) d.particles.spawn(heroPos.x + rnd(-0.5, 0.5), rnd(0.1, 2.2), heroPos.z + rnd(-0.5, 0.5), { vy: rnd(0.5, 2), life: 0.6, s0: 0.4, s1: 0.05, c0: form.id === 'fenrir' ? 0xff6a4a : form.id === 'mech' ? 0x9ad7ff : form.id === 'avenging' ? 0xffe08a : form.id === 'nightform' ? 0x8a0a1a : 0xd8c8a8, c1: 0x000000, a: 0.9 }); if (form.t <= 0) { form = null; h.root.scale.setScalar(baseScale); buff.leech = 0; h.setAura(false); logMsg('A transformação acabou.', '#c8d8f0'); } } else if (buff.burnT <= 0 && h.root.scale.x !== baseScale) h.root.scale.setScalar(baseScale); if (buff.burnT > 0 && Math.random() < dt * 20) { const tp = h.weaponTip(new THREE.Vector3()); d.particles.spawn(tp.x, tp.y, tp.z, { vy: rnd(0.5, 1.5), life: 0.4, s0: 0.4, s1: 0.05, c0: 0xffd070, c1: 0xff3a10, a: 0.9 }); } if (!form && buff.burnT <= 0 && h.actName !== 'cast') { /* aura só durante formas/forja */ } }
       for (let i = zones.length - 1; i >= 0; i--) { const z = zones[i]; z.t -= dt; (z.m.material as THREE.MeshBasicMaterial).opacity = 0.2 + 0.1 * Math.sin(now * 6); if (Math.random() < dt * 12) { const a = rnd(0, 6.283), r = rnd(0, z.r); d.particles.spawn(z.x + Math.cos(a) * r, 0.2, z.z + Math.sin(a) * r, { vy: rnd(0.5, 1.5), life: 0.8, s0: 0.3, s1: 0.05, c0: 0xffd070, c1: 0xc8a050, a: 0.8 }); } for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - z.x, e.pos.z - z.z) < z.r) e.slow = 0.3; if (Math.hypot(heroPos.x - z.x, heroPos.z - z.z) < z.r) { buff.def = Math.max(buff.def, 0.3); buff.defT = Math.max(buff.defT, 0.2); } if (z.t <= 0) { d.scene.remove(z.m); zones.splice(i, 1); } }
       for (let i = pillars.length - 1; i >= 0; i--) { const p = pillars[i]; p.t += dt; const k = p.t < 0 ? 0 : Math.min(1, p.t / 0.25); p.m.position.y = p.y0 + 2.0 * k - (p.t > 5 ? (p.t - 5) * 2 : 0); if (p.t > 6.2) { d.scene.remove(p.m); p.m.geometry.dispose(); pillars.splice(i, 1); } }
       if (flameT > 0) { // lança-chamas: jato denso de 9 m que acompanha o mouse; dá para andar enquanto queima
@@ -1748,7 +1777,7 @@ export function createGameplay(d: GameplayDeps) {
           if (dmN) { const crit = Math.random() < 0.15; hitDummy(dmN, Math.round(rnd(24, 38) * (crit ? 1.7 : 1)), crit, b.p.clone().sub(b.v), col); }
           if (!b.quiet) { d.audio.boom(); st.shake = Math.max(st.shake, 0.25); }
           if (!b.quiet) for (let k = 0; k < 18; k++) d.particles.spawn(b.p.x, b.p.y, b.p.z, { vx: rnd(-3, 3), vy: rnd(-1, 3), vz: rnd(-3, 3), life: 0.6, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: b.col ?? col, a: 1, drag: 2.5 });
-          if (b.boom) { const bb = b.boom; b.boom = undefined; explode(b.p.x, b.p.z, d.world.heightAt(b.p.x, b.p.z), bb.r, bb.mul, b.col ?? col, bb.stun ?? 0, b.p.clone().sub(b.v)); bb.fn?.(b.p.x, b.p.z); }
+          if (b.boom) { const bb = b.boom; b.boom = undefined; explode(b.p.x, b.p.z, d.world.heightAt(b.p.x, b.p.z), bb.r, bb.mul, b.col ?? col, bb.stun ?? 0, b.p.clone().sub(b.v), (b.sk as SkillId | undefined) ?? 'slam'); bb.fn?.(b.p.x, b.p.z); }
           if (b.m) d.scene.remove(b.m);
           bolts.splice(i, 1);
         }
@@ -1864,7 +1893,7 @@ export function createGameplay(d: GameplayDeps) {
           const ms = missiles[i]; ms.t += dt; ms.v.y -= 22 * dt; ms.p.addScaledVector(ms.v, dt);
           d.particles.spawn(ms.p.x, ms.p.y, ms.p.z, { life: 0.3, s0: 0.45, s1: 0.08, c0: 0xffffff, c1: 0xffa040, a: 0.9 });
           const gy = d.world.heightAt(ms.p.x, ms.p.z);
-          if (ms.t >= ms.dur || ms.p.y <= gy + 0.1) { missiles.splice(i, 1); explode(ms.tx, ms.tz, gy, ms.napalm ? 2.0 : 1.5, ms.napalm ? 0.9 : 0.75, ms.napalm ? 0xff7a20 : 0xffb060, 0, ms.p.clone()); if (ms.napalm) napalmAt(ms.tx, ms.tz, gy); }
+          if (ms.t >= ms.dur || ms.p.y <= gy + 0.1) { missiles.splice(i, 1); explode(ms.tx, ms.tz, gy, ms.napalm ? 2.0 : 1.5, ms.napalm ? 0.9 : 0.75, ms.napalm ? 0xff7a20 : 0xffb060, 0, ms.p.clone(), 'slam', ms.napalm); if (ms.napalm) napalmAt(ms.tx, ms.tz, gy); }
         }
         for (let i = turrets.length - 1; i >= 0; i--) { // torre lança-chamas: jato denso de 16 m que varre atrás do inimigo e incendeia o cone
           const tr = turrets[i]; tr.t += dt; tr.shotT -= dt;

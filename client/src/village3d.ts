@@ -272,21 +272,10 @@ function woodFence(K: ReturnType<typeof kit>, len: number, broken: number, seed:
 export function buildLowWall(cult: number, ry: number, seed: number, len = 2.95, broken = 0, ox = 1, oz = 1): Built {
   if (cult >= 20) { const K = kit(); dryStoneWall(K, len, broken, seed, cult - 20); return spin(K, ry, ox, oz); }
   if (cult === 13) { const K = kit(); woodFence(K, len, broken, seed); return spin(K, ry, ox, oz); }
+  /* cult 10 = muro do adro (catedral/academias/biblioteca/estação): pedra lavrada com capa, no comprimento real do segmento
+     (antes era um modelo fixo de 2,98 m centrado no tile enquanto a colisão usava o segmento de ~5 m → vãos "invisíveis") */
   const K = kit(), r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
-  if (cult === 11 || cult === 12) { /* cercas de estrada: 11 = cerca de varas com mourões (perto das vilas grandes), 12 = cerca torta do ermo */
-    const post = wood(cult === 11 ? 0x5a4030 : 0x4a3a28), rail = wood(cult === 11 ? 0x7a5a38 : 0x6a5030), jit = (k: number) => (r(k) - 0.5) * (cult === 12 ? 0.18 : 0.04);
-    for (const x of [-1.4, 0, 1.4]) { const pp = K.add(new THREE.CylinderGeometry(0.08, 0.1, 1.15, 6), post, x, 0.55, 0); pp.rotation.z = jit(x * 5); pp.rotation.x = jit(x * 3 + 1); }
-    for (const y of cult === 11 ? [0.45, 0.85] : [0.62]) { const rl = K.add(new THREE.CylinderGeometry(0.05, 0.055, 2.95, 5), rail, 0, y + jit(y * 9), 0); rl.rotation.z = Math.PI / 2 + jit(y * 11); }
-    return spin(K, ry); }
-  if (cult === 10) { /* muro médio de pedra lavrada da estrada real (perto da cidade grande) */
-    const sm = stone(0x8a857e), cap = stone(0xa8a298);
-    for (let row = 0; row < 4; row++) { let x = -1.46 + (row % 2) * 0.3; while (x < 1.44) { const w = Math.min(0.55 + r(x * 5 + row) * 0.15, 1.46 - x); if (w > 0.1) K.box(w - 0.03, 0.27, 0.6, x + w / 2, row * 0.28, 0, sm); x += w; } }
-    K.box(2.98, 0.14, 0.72, 0, 1.12, 0, cap); return spin(K, ry); }
-  if (cult === 4 || cult === 6) { const post = wood(0x3a2a1c), twig = wood(0x5a4a30);
-    for (const x of [-1.4, -0.47, 0.47, 1.4]) K.cyl(0.07, 0.08, 1.05, x, 0, 0, post, 5);
-    for (let k = 0; k < 5; k++) { const b = K.add(new THREE.CylinderGeometry(0.035, 0.035, 2.95, 4), twig, 0, 0.22 + k * 0.16, (k % 2 ? 0.05 : -0.05)); b.rotation.z = Math.PI / 2; }
-  } else { const sc = cult === 3 ? 0xa8a090 : cult === 2 ? 0x6a5e52 : 0x8a8276, sm = stone(sc), cap = stone(cult === 3 ? 0xc0b8a8 : 0x9a9488);
-    let x = -1.46; let row = 0; for (let y = 0; y < 0.7; y += 0.24, row++) { x = -1.46 + (row % 2) * 0.18; while (x < 1.44) { const w = 0.32 + r(x * 7 + y * 3) * 0.3, h = 0.2 + r(x + y) * 0.06; const ww = Math.min(w, 1.46 - x); if (ww > 0.08) { const b = K.box(ww, h, 0.5 + r(x * y + 1) * 0.08, x + ww / 2, y, (r(x * 3) - 0.5) * 0.06, sm); b.rotation.y = (r(x + 9) - 0.5) * 0.12; } x += w + 0.02; } }
-    K.box(2.94, 0.12, 0.62, 0, 0.72, 0, cap); }
-  return spin(K, ry);
+  const sm = stone(0x8a857e), cap = stone(0xa8a298), hl = len / 2;
+  for (let row = 0; row < 4; row++) { let x = -hl + 0.02 + (row % 2) * 0.3; while (x < hl - 0.02) { const w = Math.min(0.55 + r(x * 5 + row) * 0.15, hl - 0.02 - x); if (w > 0.1) K.box(w - 0.03, 0.27, 0.6, x + w / 2, row * 0.28, 0, sm); x += w; } }
+  K.box(len + 0.02, 0.14, 0.72, 0, 1.12, 0, cap); return spin(K, ry, ox, oz);
 }

@@ -22,7 +22,17 @@ export function cutoutify<M extends THREE.Material>(m: M): M {
   m.customProgramCacheKey = () => 'cut' + ((m as unknown as { map?: unknown }).map ? 't' : '') + m.type;
   return m;
 }
-export const std = (color: number, extra: THREE.MeshToonMaterialParameters = {}) => cutoutify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra }));
+/* material toon padrão. Com textura (`map`), o material é cacheado por (cor, textura, lado, emissivo): a fusão por chunk
+   agrupa malhas texturizadas pelo material, então 300 telhados com 300 materiais iguais viravam 300 draw calls. Quem
+   precisa mexer num material texturizado depois (opacidade, cor) deve clonar. Sem textura não cacheia (a fusão usa cor por vértice). */
+const STD_CACHE = new Map<string, THREE.MeshToonMaterial>();
+export const std = (color: number, extra: THREE.MeshToonMaterialParameters = {}) => {
+  const ks = Object.keys(extra); const cacheable = extra.map && ks.every((k) => k === 'map' || k === 'side' || k === 'emissive' || k === 'emissiveIntensity');
+  if (!cacheable) return cutoutify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra }));
+  const em = extra.emissive === undefined ? '' : typeof extra.emissive === 'number' ? extra.emissive.toString(16) : (extra.emissive as THREE.Color).getHexString?.() ?? String(extra.emissive);
+  const key = `${color}|${(extra.map as THREE.Texture).uuid}|${extra.side ?? 0}|${em}|${extra.emissiveIntensity ?? 1}`;
+  let m = STD_CACHE.get(key); if (!m) { m = cutoutify(new THREE.MeshToonMaterial({ color, gradientMap: ramp, ...extra })); STD_CACHE.set(key, m); } return m;
+};
 export const inkMat = new THREE.MeshBasicMaterial({ color: 0x07060c, side: THREE.BackSide });
 export function ink(m: THREE.Mesh, w = 0.07) {
   if (!OUTLINES) return m; void w;

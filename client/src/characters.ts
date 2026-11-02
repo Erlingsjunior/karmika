@@ -14,7 +14,7 @@ import { radialTexture } from './fx3d';
    ============================================================ */
 
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
-export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'skyraise' | 'stance' | 'dance';
+export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'skyraise' | 'stance' | 'dance';
 
 export interface Hero3D {
   root: THREE.Group;
@@ -893,7 +893,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -979,6 +979,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       shLX: [[0, 0], [.28, -2.15], [.45, -2.15], [.58, -1.55], [.86, -1.5], [1, 0]], elL: [[0, 0], [.28, -1.95], [.45, -1.95], [.58, -0.05], [.86, -0.1], [1, 0]], shLZ: [[0, 0], [.28, -0.4], [.58, 0.05], [1, 0]],
       head: [[0, 0], [.28, -0.12], [.45, 0.06], [.58, -0.06], [1, 0]], lean: [[0, 0], [.28, -0.1], [.45, -0.14], [.58, 0.24], [.86, 0.2], [1, 0]], twist: [[0, 0], [.28, -0.15], [.58, -0.5], [.86, -0.45], [1, 0]],
       lunge: [[0, 0], [.5, 0], [.6, 0.65], [.86, 0.6], [1, 0]], shX: [[0, 0], [.4, 0.6], [.86, 0.55], [1, 0]], el: [[0, 0], [.4, -1.0], [1, 0]], crouch: [[0, 0], [.58, 0.06], [.86, 0.05], [1, 0]],
+    },
+    bite: { // mordida (vampiro/lobisomem): agacha, dá o bote com a cabeça à frente e as duas mãos em garra, e recua
+      crouch: [[0, 0], [.2, 0.16], [.42, 0.02], [.6, 0.04], [1, 0]], lean: [[0, 0], [.2, -0.1], [.42, 0.55], [.62, 0.5], [1, 0]], head: [[0, 0], [.2, 0.25], [.42, -0.45], [.62, -0.4], [1, 0]],
+      shX: [[0, 0], [.2, 0.4], [.42, -1.1], [.62, -1.0], [1, 0]], el: [[0, 0], [.2, -1.2], [.42, -0.5], [1, 0]], shLX: [[0, 0], [.2, 0.4], [.42, -1.1], [.62, -1.0], [1, 0]], elL: [[0, 0], [.2, -1.2], [.42, -0.5], [1, 0]],
+      shLZ: [[0, 0], [.42, 0.35], [1, 0]], lunge: [[0, 0], [.2, -0.1], [.42, 0.9], [.62, 0.8], [1, 0]], twist: [[0, 0], [.42, 0.1], [1, 0]],
     },
     skyraise: { // lâmina trovejante: ergue a espada ao céu, o raio desce, e ela abaixa a lâmina carregada em guarda
       shX: [[0, 0], [.28, -3.05], [.66, -3.1], [.82, -1.1], [1, 0]], shZ: [[0, 0], [.28, 0.12], [.66, 0.1], [1, 0]], el: [[0, 0], [.28, -0.08], [.66, -0.08], [.82, -0.6], [1, 0]],

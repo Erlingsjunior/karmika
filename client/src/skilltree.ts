@@ -39,7 +39,8 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'bash', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
     { id: 'smite', col: 2, row: 0, req: [['bash', REQ_RANK]] }, { id: 'kick', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'consecrate', col: 2, row: 2, req: [['heal', REQ_RANK]] },
     { id: 'mark', col: 3, row: 0, req: [['smite', REQ_RANK]] }, { id: 'shieldwall', col: 3, row: 1, req: [['kick', REQ_RANK]] }, { id: 'warcry', col: 3, row: 2, req: [['consecrate', REQ_RANK]] },
-    { id: 'valkyrie', col: 4, row: 1, req: [['shieldwall', REQ_RANK]] },
+    { id: 'valkyrie', col: 4, row: 1, req: [['shieldwall', REQ_RANK]] }, { id: 'shieldthrow', col: 4, row: 0, req: [['mark', REQ_RANK]] }, { id: 'conversion', col: 4, row: 2, req: [['warcry', REQ_RANK]] },
+    { id: 'aegis', col: 2, row: 3, req: [['guard', REQ_RANK]] }, /* 02/11: Égide, Arremesso do Escudo e Conversão não tinham nó — nunca podiam ser aprendidas */
     { id: 'avenging', col: 5, row: 1, req: [['mark', 5], ['valkyrie', 5], ['warcry', 5]] },
   ],
   vam: [ // Vampiro: Lâmina (velocidade), Sangue (roubo de vida), Noite (morcegos); no fim, a Forma do Conde
@@ -47,6 +48,7 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'bash', col: 1, row: 0, req: [['combo', 1]] }, { id: 'drain', col: 1, row: 1, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 2, req: [['combo', 1]] },
     { id: 'hamstring', col: 2, row: 0, req: [['bash', REQ_RANK]] }, { id: 'bloodnova', col: 2, row: 1, req: [['drain', REQ_RANK]] }, { id: 'batswarm', col: 2, row: 2, req: [['guard', REQ_RANK]] },
     { id: 'whirl', col: 3, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'mark', col: 3, row: 1, req: [['bloodnova', REQ_RANK]] }, { id: 'valkyrie', col: 3, row: 2, req: [['batswarm', REQ_RANK]] },
+    { id: 'clot', col: 2, row: 3, req: [['drain', REQ_RANK]] }, { id: 'venomclaw', col: 3, row: 3, req: [['clot', REQ_RANK]] }, /* 02/11: Coágulo e Garra Venenosa não tinham nó */
     { id: 'nightform', col: 4, row: 1, req: [['whirl', 5], ['mark', 5], ['valkyrie', 5]] },
   ],
   lob: [ // Lobisomem: Garra (dano), Pele (tanque), Lua (uivo e cura); no fim, a Forma da Besta
@@ -54,7 +56,31 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'rend', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'howl', col: 1, row: 2, req: [['combo', 1]] },
     { id: 'hamstring', col: 2, row: 0, req: [['rend', REQ_RANK]] }, { id: 'bash', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'heal', col: 2, row: 2, req: [['howl', REQ_RANK]] },
     { id: 'whirl', col: 3, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'kick', col: 3, row: 1, req: [['bash', REQ_RANK]] }, { id: 'mark', col: 3, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'bite', col: 1, row: 3, req: [['combo', 1]] }, { id: 'pounce', col: 2, row: 3, req: [['bite', REQ_RANK]] }, { id: 'packhowl', col: 3, row: 3, req: [['pounce', REQ_RANK]] }, /* 02/11: Mordida, Salto da Fera e Uivo da Matilha não tinham nó */
     { id: 'fenrir', col: 4, row: 1, req: [['whirl', 5], ['kick', 5], ['mark', 5]] },
+  ],
+  mag: [ // Mago (02/11: a classe não tinha árvore — nada podia ser aprendido): Fogo (dano), Gelo (controle), Arcano (defesa e cura); no fim, o Arconte
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'fireball', col: 1, row: 0, req: [['combo', 1]] }, { id: 'blink', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'chainlight', col: 2, row: 0, req: [['fireball', REQ_RANK]] }, { id: 'guard', col: 2, row: 1, req: [['blink', REQ_RANK]] }, { id: 'winter', col: 2, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'meteor', col: 3, row: 0, req: [['chainlight', REQ_RANK]] }, { id: 'mark', col: 3, row: 1, req: [['guard', REQ_RANK]] }, { id: 'blizzard', col: 3, row: 2, req: [['winter', REQ_RANK]] },
+    { id: 'shocktrap', col: 4, row: 1, req: [['mark', REQ_RANK]] }, { id: 'frostnova', col: 4, row: 2, req: [['blizzard', REQ_RANK]] },
+    { id: 'archon', col: 5, row: 1, req: [['meteor', 5], ['shocktrap', 5], ['frostnova', 5]] },
+  ],
+  bru: [ // Bruxo (02/11: sem árvore até aqui): Maldição (veneno e praga), Pacto (sangue e cães), Véu (defesa e cura); no fim, a Forma Demoníaca
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'curse', col: 1, row: 0, req: [['combo', 1]] }, { id: 'blink', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'poison', col: 2, row: 0, req: [['curse', REQ_RANK]] }, { id: 'drain', col: 2, row: 1, req: [['blink', REQ_RANK]] }, { id: 'guard', col: 2, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'howl', col: 3, row: 0, req: [['poison', REQ_RANK]] }, { id: 'hellhound', col: 3, row: 1, req: [['drain', REQ_RANK]] }, { id: 'mark', col: 3, row: 2, req: [['guard', REQ_RANK]] },
+    { id: 'demonform', col: 4, row: 1, req: [['howl', 5], ['hellhound', 5], ['mark', 5]] },
+  ],
+  cac: [ // Caçador (02/11: sem árvore até aqui): Armas (lança, machadinha), Armadilhas (choque, frasco), Rastro (marca, cura); no fim, a Forma do Caçador
+    { id: 'combo', col: 0, row: 1, req: [] },
+    { id: 'spear', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
+    { id: 'hatchet', col: 2, row: 0, req: [['spear', REQ_RANK]] }, { id: 'bash', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'shocktrap', col: 2, row: 2, req: [['heal', REQ_RANK]] },
+    { id: 'hamstring', col: 3, row: 0, req: [['hatchet', REQ_RANK]] }, { id: 'kick', col: 3, row: 1, req: [['bash', REQ_RANK]] }, { id: 'holyflask', col: 3, row: 2, req: [['shocktrap', REQ_RANK]] },
+    { id: 'volley', col: 4, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'mark', col: 4, row: 2, req: [['holyflask', REQ_RANK]] },
+    { id: 'huntform', col: 5, row: 1, req: [['volley', 5], ['kick', 5], ['mark', 5]] },
   ],
   tecno: [ // Tecnocrata formado: Engenharia de Campo (choque), Suporte (drone, minas), Química (fogo e ácido); no fim, o exoesqueleto
     { id: 'combo', col: 0, row: 1, req: [] },
@@ -111,7 +137,7 @@ export const STATS: Record<string, Stat> = {
   'technocrat:shocktrap': { dmg: 0.4, area: 2, dur: 60, cd: 8, note: 'Até 4 armadilhas; paralisam quem pisar.' },
   'technocrat:poison': { dmg: 0.3, area: 2.8, dur: 7, cd: 9, note: 'Poça de veneno: corrói e retarda por 7 s.' },
   'technocrat:railgun': { dmg: 4, range: 18, area: 1.2, cast: 1, cd: 9, note: 'Disparo que atravessa tudo na linha.' },
-  'technocrat:mech': { dmg: 2, dur: 12, cd: 50, note: 'Mecha: dano ×2, +40% defesa, Rajadas de 5 tiros.' },
+  'technocrat:mech': { dmg: 2, dur: 12, cd: 50, note: 'Mecha: dano ×2, +30% defesa, Rajadas de 5 tiros.' },
 };
 for (const [k, v] of Object.entries(STATS)) if (k.startsWith('nordic:')) STATS['human:' + k.slice(7)] = { ...v, note: v.note?.replace(/Fúria/g, 'Determinação') };
 /* fichas das magias novas (25/10) e das que os kits formados emprestam */

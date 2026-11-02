@@ -1,13 +1,12 @@
 /* Cache do mundo (22/10/2026): gerar o mundo de 840×840 é a parte mais pesada da abertura (vários segundos de CPU).
    Como o mundo é sempre o mesmo (mesma semente), a primeira abertura gera e guarda no IndexedDB; as próximas só leem.
-   A assinatura é o texto do próprio world.ts: qualquer mudança no gerador invalida o cache sozinha. */
-import worldSrc0 from './world.ts?raw';
-import campSrc from './campanha.ts?raw';
-const worldSrc = worldSrc0 + campSrc; /* a campanha põe gente nas vilas: mudar a campanha também refaz o mundo */
+   A assinatura é o hash do texto de world.ts + campanha.ts, calculado no build (vite.config.ts, __WORLD_SIG__): qualquer mudança
+   no gerador ou na campanha (que põe gente nas vilas) invalida o cache sozinha — sem mandar o código-fonte para o pacote. */
+declare const __WORLD_SIG__: string;
 import { buildCity, worldState, restoreWorldState, type World } from './world';
 
 const DB = 'karmika-cache', STORE = 'kv', KEY = 'world';
-function sig(): string { let h = 2166136261; for (let i = 0; i < worldSrc.length; i++) { h ^= worldSrc.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + ':' + worldSrc.length; }
+function sig(): string { return typeof __WORLD_SIG__ !== 'undefined' ? __WORLD_SIG__ : 'dev'; }
 function db(): Promise<IDBDatabase> { return new Promise((res, rej) => { const r = indexedDB.open(DB, 1); r.onupgradeneeded = () => r.result.createObjectStore(STORE); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
 async function get<T>(k: string): Promise<T | undefined> { const d = await db(); return new Promise((res, rej) => { const q = d.transaction(STORE).objectStore(STORE).get(k); q.onsuccess = () => res(q.result as T); q.onerror = () => rej(q.error); }); }
 async function put(k: string, v: unknown) { const d = await db(); return new Promise<void>((res, rej) => { const t = d.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(v, k); t.oncomplete = () => res(); t.onerror = () => rej(t.error); }); }
