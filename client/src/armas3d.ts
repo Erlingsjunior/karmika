@@ -23,7 +23,7 @@ function wrapGrip(sw: THREE.Group, c: SwordCtx, col: number, L: number, r = 0.01
   for (let i = 0; i < turns; i++) { const ring = c.mk(new THREE.TorusGeometry(r + 0.002, 0.0035, 4, 10), wire ?? col, 0, wire ? c.metal(c.rar, wire, 0.2) : undefined); ring.rotation.x = Math.PI / 2; ring.position.y = -0.01 + (i + 0.5) * (L / turns); sw.add(ring); }
 }
 export const REF_SWORDS = ['Espada Longa', 'Espada Nórdica', 'Espadão Anão', 'Lâmina Élfica', 'Cimitarra', 'Espada de Espinhos',
-  /* prancha 48 (curtas) e 50 (especiais), 01/11 */ 'Adaga', 'Espada Curta', 'Espada Curta Anã', 'Adaga Élfica', 'Sabre', 'Flamberge', 'Montante', 'Katana', 'Facão', 'Lâmina Serrilhada'] as const;
+  /* prancha 48 (curtas) e 50 (especiais), 01/11 */ 'Adaga', 'Espada Curta', 'Espada Curta Anã', 'Adaga Élfica', 'Sabre', 'Flamberge', 'Montante', 'Katana', 'Facão', 'Lâmina Serrilhada', 'Espada de Duelo', 'Adaga Fina'] as const;
 export type RefSword = (typeof REF_SWORDS)[number];
 /** monta a espada no grupo (que já tem a empunhadura simples e o pomo padrão: removemos e refazemos). Devolve o comprimento da lâmina */
 export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): number {
@@ -130,6 +130,19 @@ export function buildRefSword(sw: THREE.Group, base: RefSword, c: SwordCtx): num
     const gd = c.mk(new THREE.BoxGeometry(0.1, 0.03, 0.036), 0x3a3e46, 0.004, c.metal(c.rar, 0x3a3e46)); sw.add(gd);
     for (const sx of [-1, 1]) { const horn = c.mk(new THREE.ConeGeometry(0.012, 0.08, 6), 0xe8dcc0, 0.003, c.toon(0xe8dcc0)); horn.position.set(sx * 0.065, -0.02, 0); horn.rotation.z = sx * 0.9; sw.add(horn); }
     wrapGrip(sw, c, 0x8a7a5a, 0.22, 0.016, 5, 0x6a5a40); const pm = c.mk(new THREE.ConeGeometry(0.012, 0.06, 6), GL || 0x50545e, 0.003, c.metal(c.rar, 0x50545e)); pm.position.y = 0.25; sw.add(pm); return L; }
+  if (base === 'Espada de Duelo') { // 50.3: rapieira — lâmina longa e finíssima, guarda varrida de anéis e arcos entrelaçados, cabo canelado, pomo redondo
+    const L = 1.0; sw.add(c.mk(bladeGeo([[0.011, 0], [0.009, -L * 0.7], [0.005, -L * 0.92], [0, -L]], 0.006), 0xdde3ec, 0.003, c.metal(c.rar, 0xdde3ec)));
+    const gd = c.mk(new THREE.BoxGeometry(0.16, 0.012, 0.016), 0x9aa2ae, 0.002, c.metal(c.rar, 0x9aa2ae)); sw.add(gd);
+    for (const [rad, x, y, rx] of [[0.04, 0, -0.03, 0], [0.055, 0.03, 0.06, 0.8], [0.055, -0.03, 0.06, -0.8], [0.07, 0.0, 0.1, 1.5]] as [number, number, number, number][]) { const rg = c.mk(new THREE.TorusGeometry(rad, 0.005, 5, 14), 0x9aa2ae, 0.002, c.metal(c.rar, 0x9aa2ae)); rg.position.set(x, y, 0); rg.rotation.set(rx, Math.PI / 2, 0); sw.add(rg); }
+    const bow = c.mk(new THREE.TorusGeometry(0.1, 0.005, 5, 16, Math.PI), 0x9aa2ae, 0.002, c.metal(c.rar, 0x9aa2ae)); bow.position.set(0.02, 0.1, 0); bow.rotation.z = -Math.PI / 2 + 0.3; sw.add(bow); // arco de mão até o pomo
+    const grip = c.mk(new THREE.CylinderGeometry(0.012, 0.013, 0.16, 8), 0x8a8e96, 0.003, c.metal(c.rar, 0x8a8e96)); grip.position.y = 0.1; sw.add(grip); for (let i = 0; i < 6; i++) { const rr = c.mk(new THREE.TorusGeometry(0.014, 0.002, 4, 10), 0x5a5e66, 0); rr.rotation.x = Math.PI / 2; rr.position.y = 0.03 + i * 0.025; sw.add(rr); }
+    const pm = c.mk(new THREE.SphereGeometry(0.02, 8, 6), GL || 0x9aa2ae, 0.003, c.metal(c.rar, 0x9aa2ae)); pm.position.y = 0.2; sw.add(pm); return L; }
+  if (base === 'Adaga Fina') { // 48.6: adaga vampírica — lâmina escura com sangue, guarda em galhos de espinho, cabo preto, gema vermelha no pomo em espigão
+    const L = 0.44, dk = 0x6a6e78; sw.add(c.mk(bladeGeo([[0.02, 0], [0.02, -L * 0.7], [0.014, -L * 0.88], [0, -L]], 0.006), dk, 0.003, c.metal(c.rar, dk)));
+    const blood = c.mk(new THREE.BoxGeometry(0.008, L * 0.3, 0.008), 0x7a0e14, 0, c.toon(0x7a0e14, { emissive: new THREE.Color(0x3a0408) })); blood.position.set(0.004, -L * 0.12, 0); sw.add(blood);
+    for (const sx of [-1, 1]) { const br = c.mk(new THREE.TorusGeometry(0.035, 0.005, 4, 10, 1.6), 0x2a2a32, 0.002, c.metal(c.rar, 0x3a3440)); br.position.set(sx * 0.02, 0.0, 0); br.rotation.z = sx > 0 ? -0.3 : Math.PI - 1.3; sw.add(br); for (let i = 0; i < 2; i++) { const th = c.mk(new THREE.ConeGeometry(0.004, 0.02, 4), 0x2a2a32, 0); th.position.set(sx * (0.035 + i * 0.02), -0.012 - i * 0.01, 0); th.rotation.z = sx * -0.9; sw.add(th); } }
+    wrapGrip(sw, c, 0x1a1a1e, 0.12, 0.011, 6, 0x3a3a44); const pm = c.mk(new THREE.ConeGeometry(0.01, 0.045, 6), 0x50545e, 0.002, c.metal(c.rar, 0x50545e)); pm.position.y = 0.13; sw.add(pm);
+    const gem = c.mk(new THREE.OctahedronGeometry(0.014, 0), GL || 0xc01a2a, 0.002, c.toon(0xc01a2a, { emissive: new THREE.Color(0x500810) })); gem.position.y = 0.12; sw.add(gem); return L; }
   // 49.6 Espada de Espinhos: lâmina reta de aço escuro com sangue, guarda em ramos de espinho, cabo preto enrolado, pomo em espigão
   const L = 0.92, dark = 0x7a7e88; sw.add(c.mk(bladeGeo([[0.03, 0], [0.03, -L * 0.75], [0.022, -L * 0.9], [0, -L]], 0.008), dark, 0.004, c.metal(c.rar, dark)));
   const blood = c.mk(new THREE.BoxGeometry(0.012, L * 0.3, 0.01), 0x7a0e14, 0, c.toon(0x7a0e14, { emissive: new THREE.Color(0x3a0408) })); blood.position.set(0.006, -L * 0.1, 0); sw.add(blood);
