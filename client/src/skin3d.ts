@@ -235,6 +235,13 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const cmbDir = right.clone().multiplyScalar(0.8).addScaledVector(up, 0.55).addScaledVector(fwd, 0.25).normalize();
         const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
+        { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
+             da raiz (raio ~0,3 m, da cintura ao ombro); cada ponto do cabo que cair dentro empurra a direção para fora, até sair */
+          const ax0 = root.getWorldPosition(new THREE.Vector3()), R0 = 0.3 * sc.x, y0 = ax0.y + 0.35 * sc.x, y1 = ax0.y + 1.45 * sc.x, Lw = 0.85 * sc.x;
+          for (let it = 0; it < 6; it++) { let push: THREE.Vector3 | null = null;
+            for (let t = 0.15; t <= 1.0001; t += 0.17) { const pnt = grip.clone().addScaledVector(handle, Lw * t); if (pnt.y < y0 || pnt.y > y1) continue; const hx = pnt.x - ax0.x, hz = pnt.z - ax0.z, dd = Math.hypot(hx, hz); if (dd >= R0) continue;
+              const out = dd > 1e-3 ? new THREE.Vector3(hx / dd, 0, hz / dd) : fwd.clone(); push = (push ?? new THREE.Vector3()).addScaledVector(out, (R0 - dd) / R0 + 0.15); }
+            if (!push) break; handle.addScaledVector(push, 0.6).normalize(); } }
         const kk = k.clone().lerp(fwd, Math.max(restK, cmbK));
         /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, 0.26 * sc.x * restK);
         place(th, kk, handle, gp); } }
