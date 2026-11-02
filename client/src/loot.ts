@@ -134,7 +134,7 @@ const SLOT_AFF: Record<Slot, StatKey[]> = {
 export type Only = 'cac' | 'tec' | 'dwarf' | 'vam' | 'lob' | 'pal';
 export const ONLY_NAME: Record<Only, string> = { cac: 'Caçadores de Demônios', tec: 'Tecnocratas', dwarf: 'Anões', vam: 'Vampiros', lob: 'Licantropos', pal: 'Paladinos' };
 interface Base { n: string; g: 'm' | 'f'; icon: string; s?: Partial<Record<StatKey, number>>; only?: Only }
-const BASES: Record<Slot, Base[]> = {
+export const BASES: Record<Slot, Base[]> = {
   relic: [{ n: 'Relíquia', g: 'f', icon: '🏺' }], ring2: [], earring2: [],
   earring: [{ n: 'Brinco de Osso', g: 'm', icon: '✦' }, { n: 'Brinco de Prata', g: 'm', icon: '✦' }, { n: 'Argola Rúnica', g: 'f', icon: '✦', s: { crit: 1 } }],
   shoulders: [{ n: 'Ombreiras de Couro', g: 'f', icon: '✦', s: { def: 3 } }, { n: 'Ombreiras de Pele de Lobo', g: 'f', icon: '✦', s: { def: 4, hp: 6 } }, { n: 'Ombreiras de Ferro', g: 'f', icon: '✦', s: { def: 6 } }, { n: 'Ombreiras Escamadas', g: 'f', icon: '✦', s: { def: 6, hp: 4 } }, { n: 'Ombreiras de Crânio', g: 'f', icon: '✦', s: { def: 7 } }, { n: 'Ombreiras Cravejadas', g: 'f', icon: '✦', s: { def: 8 } }, { n: 'Ombreiras de Chifres', g: 'f', icon: '✦', s: { def: 8 } }, { n: 'Ombreiras de Placas', g: 'f', icon: '✦', s: { def: 9 } }, { n: 'Ombreiras do Guardião', g: 'f', icon: '✦', s: { def: 10 } }],

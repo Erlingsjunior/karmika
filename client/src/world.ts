@@ -622,7 +622,7 @@ export function buildCity(): World {
   /* ---- o Quartel de Karmika (Erling, 01/11: "uma zona de treinamento um pouco depois da igreja, um quartel com um quintal com pelo menos 4 bonecos"):
      prédio de pedra logo a oeste da igreja, pátio calçado e murado com portão para o sul, quatro bonecos de palha em fila,
      estantes de armas encostadas no prédio, baú, bancos e tochas no portão. O boneco que ficava escondido atrás da casa veio para cá. ---- */
-  const QX = 2 + OX, QY = 0 + OY; // canto noroeste do terreno (8 × 7 tiles); o prédio ocupa 4 × 3 no canto
+  const QX = -5 + OX, QY = 9 + OY; // canto noroeste do terreno (8 × 7 tiles), a sudoeste da praça, de frente para a câmera (01/11: atrás da igreja ficava escondido); o prédio ocupa 4 × 3 no canto
   for (let y = 0; y < 7; y++) for (let x = 0; x < 8; x++) if (inb(QX + x, QY + y) && map[QY + y][QX + x] !== 'water') map[QY + y][QX + x] = 'plaza';
   block({ kind: 'house', gx: QX, gy: QY, w: 4, h: 3, height: 4.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 3 });
   const qwall = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy)) return;
@@ -1434,9 +1434,9 @@ export function buildCity(): World {
   for (const st of settlements) {
     const kitS = st.name === 'Karmika'; /* 01/11: Karmika ganha a muralha da prancha 53 (pedra + paliçada de madeira, torres enxaimel, portão com ponte), mais baixa */
     if (st.kind !== 'city' && !kitS) continue;
-    const cx = st.x, cy = st.y, H = kitS ? 3.4 : RAMPART_H, Rb = st.radius + (kitS ? 18 : 4), /* Karmika: o anel fica além da faixa onde se constrói (raio+2 em diante), com ≥10 m de folga das casas (Erling, 01/11) */ rw = rng(st.x * 3 + st.y * 5 + 11);
+    const cx = st.x, cy = st.y, H = kitS ? 3.4 : RAMPART_H, Rb = st.radius + (kitS ? 9 : 4), /* Karmika (Erling, 01/11): muro a ~10 m da vila, não mais; quem constrói fica a ≥10 m do muro (canBuildAt) */ rw = rng(st.x * 3 + st.y * 5 + 11);
     const ph = [rw() * 6.283, rw() * 6.283, rw() * 6.283];
-    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return Math.max(Rb * sq * (1 + nz), kitS ? Rb - 2 : 0); }; /* Karmika: raio mínimo (≥ 38 casas) para o anel não passar por cima do Quartel nem das casas dos jogadores */
+    const radAt = (a: number) => { const c = Math.abs(Math.cos(a)), sn = Math.abs(Math.sin(a)); const sq = 1 / Math.pow(Math.pow(c, 5) + Math.pow(sn, 5), 0.2); const nz = 0.07 * Math.sin(a * 2 + ph[0]) + 0.06 * Math.sin(a * 3 + ph[1]) + 0.045 * Math.sin(a * 5 + ph[2]) + 0.03 * Math.sin(a * 7 + ph[0] * 2); return kitS ? Math.min(Rb + 3, Math.max(Rb * sq * (1 + nz), Rb - 1)) : Rb * sq * (1 + nz); }; /* Karmika: raio quase constante (vila redonda, muro a ~10 m dela) */
     const insideWall = (x: number, y: number) => { const dx = x - cx, dy = y - cy; return Math.hypot(dx, dy) < radAt(Math.atan2(dy, dx)) - 0.5; };
     const clearAt = (x: number, y: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx === x && q.gy === y && (q.kind === 'tree' || q.kind === 'rock' || q.kind === 'grave' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree')) props.splice(i, 1); } };
     // 1) o anel rasterizado: casas em ordem, sem repetição
@@ -1446,7 +1446,9 @@ export function buildCity(): World {
       seenK.add(k); ring.push([x, y]); }
     const N = ring.length; if (!N) { console.warn('muralha: anel vazio em', st.name, cx, cy, Rb); continue; }
     const nearWater = (x: number, y: number, d: number) => { for (let yy = y - d; yy <= y + d; yy++) for (let xx = x - d; xx <= x + d; xx++) if (map[yy]?.[xx] === 'water') return true; return false; };
-    const wallOk = ring.map(([x, y]) => !nearWater(x, y, 2)); // onde a costa chega, o muro para
+    const wallOk = ring.map(([x, y]) => !nearWater(x, y, kitS ? 0 : 2)); // onde a costa chega, o muro para
+    const waterGate = new Set<number>(); if (kitS) { /* 01/11 (Erling: "precisa conectar os muros"): um rio que cruza o anel ganha um portão d'água — o muro continua por cima, em arcos */
+      let i = 0; while (i < N) { if (wallOk[i]) { i++; continue; } let j = i; while (j < N && !wallOk[j]) j++; const len = j - i; if (len <= 9 && i > 0 && j < N) for (let k = i; k < j; k++) { waterGate.add(k); wallOk[k] = true; } i = j; } }
     // 2) casas dentro do anel: grama de cidade, sem mata nem pedra; casas e barracas em cima do muro somem
     for (let y = cy - Rb - 12; y <= cy + Rb + 12; y++) for (let x = cx - Rb - 12; x <= cx + Rb + 12; x++) { if (!inb(x, y) || !insideWall(x, y)) continue; if (biome[y][x] !== 'meadow' && biome[y][x] !== 'coast') biome[y][x] = 'meadow'; if (map[y][x] === 'tree') map[y][x] = 'grass'; }
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock') && insideWall(q.gx, q.gy) && !(q.kind === 'tree' && q.style === 1)) props.splice(i, 1); }
@@ -1481,7 +1483,8 @@ export function buildCity(): World {
     for (let i = 0; i < N; i++) { const i0 = ((i - 1) % N + N) % N, i1 = (i + 1) % N; if (wallOk[i] && (!wallOk[i0] || !wallOk[i1])) towerAt.set(i, 8); } // ponta do muro na água: torre redonda de guarda
     for (let i = 0; i < N; i++) { const i0 = ((i - 1) % N + N) % N, i1 = (i + 1) % N; if (!opening.has(i) && wallOk[i] && !isGate.has(i) && (opening.has(i0) || opening.has(i1))) towerAt.set(i, 2); } // torre aberta de guarda ao lado de cada abertura
     // 5) as peças
-    for (let i = 0; i < N; i++) { const [x, y] = ring[i]; if (!wallOk[i]) continue; const t = map[y][x]; if (t === 'water') continue;
+    for (let i = 0; i < N; i++) { const [x, y] = ring[i]; if (!wallOk[i]) continue; const t = map[y][x]; if (t === 'water' && !waterGate.has(i)) continue;
+      if (waterGate.has(i)) { const nx = ring[(i + 1) % N]; const len = Math.hypot(nx[0] - x, nx[1] - y) * T; props.push({ kind: 'rwall', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: 0x34445e, variant: 23, ry: outRy(i), len }); continue; } // portão d'água: arcos sobre o rio, sem tile de parede (a água continua)
       const gc = isGate.get(i); if (gc !== undefined) { if (gc === i) { const ry = outRy(i); props.push({ kind: 'gatehouse', gx: x, gy: y, w: 1, h: 1, height: kitS ? H : H + 1.5, wall: 0x8a857e, roof: [0x34445e, 0x5a3a28, 0x3a4a3a][gateIdx.indexOf(gc) % 3], variant: kitS ? 20 : 0, ry, len: 5 }); }
         // sob o arco a estrada passa (3 casas do meio); as 2 de cada lado são corpo do portão
         const d = Math.min(Math.abs(i - gc), N - Math.abs(i - gc)); clearAt(x, y); if (d <= 1) { if (t !== 'road' && t !== 'plaza') map[y][x] = 'road'; } else map[y][x] = 'wall'; tiles.add(y * 4096 + x); continue; }
@@ -1506,6 +1509,8 @@ export function buildCity(): World {
         const side = Math.abs(ox) > Math.abs(oy) ? (ox > 0 ? 3 : 2) : (oy > 0 ? 1 : 0); const minx = Math.min(...picked.map((q) => q[0])), miny = Math.min(...picked.map((q) => q[1]));
         props.push({ kind: 'wstair', gx: minx, gy: miny, w: axis === 'x' ? L : 1, h: axis === 'x' ? 1 : L, height: H, wall: 0x8a857e, roof: 0, variant: side * 2 + (dir > 0 ? 1 : 0) });
         flights.push({ tiles: picked, axis, dir }); n++; i += 12; } }
+    /* 01/11 (Erling: "não consigo passar entre a torre e a placa"): placa de estrada colada no muro sai (o tile dela volta a ser grama) */
+    for (let i = signs.length - 1; i >= 0; i--) { const sg = signs[i]; let near = false; for (let dy = -2; dy <= 2 && !near; dy++) for (let dx = -2; dx <= 2; dx++) if (tiles.has((sg.y + dy) * 4096 + sg.x + dx)) { near = true; break; } if (near) { if (map[sg.y][sg.x] === 'wall') map[sg.y][sg.x] = 'grass'; signs.splice(i, 1); } }
     ramparts.push({ cx, cy, R: Rb + 6, top: groundH(cx * T, cy * T) + H, H, flights, tiles: [...tiles] });
     // 8) do lado de fora: dois assentamentos pequenos e distantes (regra 19: nada de fila de tendas nem mendigo com missão)
     for (let k = 0; k < 2; k++) { const a = rw() * 6.283; let hx = 0, hy = 0, ok = false; for (let tries = 0; tries < 30 && !ok; tries++) { const r = Rb + 16 + rw() * 10, aa = a + (tries * 0.7); hx = Math.round(cx + Math.cos(aa) * r); hy = Math.round(cy + Math.sin(aa) * r); ok = inb(hx, hy) && !nearWater(hx, hy, 3) && !insideWall(hx, hy) && map[hy][hx] === 'grass'; }

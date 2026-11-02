@@ -55,7 +55,7 @@ const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '�
 import { createAim, type AimSpec } from './aim';
 import { vampireLook, technoLook, type Look } from './looks3d';
 import { ramp as toonRamp } from './toon3d';
-import { setCulture, genGear, RARITY, ONLY_NAME, tipCtx, type Slot, type Only } from './loot';
+import { setCulture, genGear, BASES, RARITY, ONLY_NAME, tipCtx, type Slot, type Only } from './loot';
 import type { PathId } from './vidente';
 import { createStances, STANCE_QUESTS, ROLE_NAME, type Stance } from './posturas';
 import { applyKit, refreshLocks, skillAt, barRows, setBarRows, resOf, setKitExtras, KITS, type SkillDef, type KitKey } from './kits';
@@ -908,9 +908,13 @@ function betaCommand(cmd: string, a: string[]): string | null {
   if (cmd === 'dance' || cmd === 'dancar' || cmd === 'dançar' || cmd === 'danca' || cmd === 'dança') { if (inside && !inside.prop) return '💃 Aqui não dá para dançar.'; emote.dance = true; emote.x = state.fx; emote.y = state.fy; hero.stopAct?.(); return '💃 Você começa a dançar. (ande para parar)'; }
   if (cmd === 'beber' || cmd === 'brinde' || cmd === 'cerveja' || cmd === 'drink') { emote.dance = false; hero.stopAct?.(); hero.drinkProp = 'mug'; hero.act('drink', true); netRef?.act('drink'); audio.gulp(); setTimeout(() => audio.gulp(), 380); return '🍺 Você vira uma caneca de cerveja. Saúde!'; }
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
-  if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /pele <id|auto> (modelo do Herik) · /armas [rara|epica] (todas as armas e escudos) · /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-60 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
   { const MAT: Record<string, string> = { prego: 'nail', pregos: 'nail', madeira: 'wood', tabua: 'plank', tabuas: 'plank', 'tábuas': 'plank', pedra: 'stone', pedras: 'stone', corda: 'rope', cordas: 'rope', galho: 'stick', galhos: 'stick' };
     if (MAT[cmd]) { const id = MAT[cmd], q = n > 0 ? n : 1000; inv.grant(id, q); return `🧪 (teste) +${q} ${ITEMS_TBL[id]?.icon ?? ''} ${ITEMS_TBL[id]?.name ?? id}.`; }
+    /* /armas: uma de cada arma e escudo na mochila (teste de visual, Erling 01/11); /armas rara, /armas epica… escolhe a raridade; o baú recebe o que não couber */
+    if (cmd === 'armas' || cmd === 'arsenal') { const rr = ({ magica: 'magic', mágica: 'magic', rara: 'rare', epica: 'epic', épica: 'epic', lendaria: 'legendary', lendária: 'legendary' } as Record<string, string>)[a[0] ?? ''] ?? 'normal'; let n = 0, over = 0;
+      for (const sl of ['weapon', 'shield'] as const) for (const b of BASES[sl]) { const g = genGear(Math.max(1, game.st.lvl), rr as never, sl, b.n); if (inv.addGear(g)) n++; else over++; }
+      return `🧪 (teste) ${n} peças na mochila${over ? ` (+${over} não couberam: esvazie a mochila e repita)` : ''}.`; }
     if (cmd === 'gold' || cmd === 'ouro') { const q = n > 0 ? n : 10000; game.st.gold += q; return `🧪 (teste) +${q} 🪙 ouro.`; } }
   if (cmd === 'som') { const r = `🔊 ${audio.whatPlays()} · lua=${luaK.toFixed(2)} aurora=${aurK.toFixed(2)} global=${gCur ?? '—'}`; console.log(r); return r; }
   if (cmd === 'perf') { const r = perfReport(); console.log(r); return r; }

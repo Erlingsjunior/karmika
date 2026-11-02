@@ -407,9 +407,10 @@ export function buildQuay(pts: { x: number; z: number }[], side: number): Built 
    torre de vigia enxaimel com sacada e telhado pontudo de ardósia; portão de dois pilares de pedra com ponte de madeira em cima e porta dupla em arco. */
 const kitStone = () => stone(0x8a8680), kitMoss = () => stone(0x6e7a62), kitWood = () => wood(0x6a4a2c), kitPlank = () => planks(0x8a6a40), kitStake = () => wood(0x7a5a34);
 /** trecho de muro ao longo do eixo x local (len m); lado de fora = −z. H = altura do caminho de ronda */
-export function buildKitWall(H: number, len: number, seed: number): Built {
+export function buildKitWall(H: number, len: number, seed: number, water = false): Built {
   const K = kit(), c = T / 2, L = len + 0.6, SH = H - 0.1, r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1;
-  K.box(L, SH, 1.5, c, 0, c, kitStone()); K.box(L, 0.5, 1.7, c, 0, c, kitMoss()); K.box(L, 0.3, 1.6, c, SH - 0.3, c, stone(0x7a766e)); // corpo, pé com musgo, cordão
+  if (water) { /* portão d'água: pilares de pedra na água com arcos, o caminho de ronda por cima */ const np = Math.max(2, Math.round(L / 2)); for (let k = 0; k <= np; k++) K.box(0.6, SH, 1.5, c - L / 2 + k * (L / np), -1.5, c, kitStone()); K.box(L, 0.6, 1.5, c, SH - 0.6, c, kitStone()); for (let k = 0; k < np; k++) { const x = c - L / 2 + (k + 0.5) * (L / np); K.add(new THREE.TorusGeometry(L / np * 0.42, 0.14, 5, 10, Math.PI), kitStone(), x, SH - 0.6, c); } for (let k = 0; k < 6; k++) K.box(0.05, SH - 1.2, 0.05, c - L / 2 + (k + 0.5) * (L / 6), -0.2, c, ironM()); }
+  else { K.box(L, SH, 1.5, c, 0, c, kitStone()); K.box(L, 0.5, 1.7, c, 0, c, kitMoss()); } K.box(L, 0.3, 1.6, c, SH - 0.3, c, stone(0x7a766e)); // corpo, pé com musgo, cordão
   K.box(L, 0.12, 2.0, c, SH, c + 0.1, kitPlank()); // tábuas do caminho (sobram para fora, apoiadas nas mãos-francesas)
   const n = Math.max(1, Math.round(L / 1.3)); for (let k = 0; k < n; k++) { const x = c - L / 2 + (k + 0.5) * (L / n); const br = K.add(new THREE.BoxGeometry(0.12, 0.12, 0.9), kitWood(), x, SH - 0.45, c - 0.75 - 0.2); br.rotation.x = 0.8; } // mãos-francesas por fora
   const ns = Math.max(2, Math.round(L / 0.36)); for (let k = 0; k < ns; k++) { const x = c - L / 2 + (k + 0.5) * (L / ns), h = 1.5 + r(k) * 0.3; K.cyl(0.13, 0.15, h, x, SH, c - 0.85, kitStake(), 6); K.cone(0.14, 0.3, x, SH + h, c - 0.85, kitStake(), 6, 0); } // estacas apontadas
