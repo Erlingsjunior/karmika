@@ -7,6 +7,7 @@ const symOf = (n: TNode) => { if (n.kind === 'start') return '☯'; const ks = O
 
 const CSS = `<style>
 .talw{position:relative;margin:2px auto 0;max-width:640px}
+.talw .tzoom{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:4px;z-index:3}.talw .tzoom button{width:26px;height:26px;background:rgba(20,12,6,.85);border:1px solid #5a4a30;color:#e8d8a8;font:700 14px Georgia,serif;cursor:pointer;border-radius:3px;line-height:1}.talw .tzoom button:hover{border-color:#ffe08a;color:#ffe08a}
 .talw .tsvg{display:block;width:100%;height:auto;max-height:calc(70vh / var(--ui,1))}
 .talw .tnd{cursor:pointer}.talw .tnd:hover>circle:not([filter]),.talw .tnd:hover>polygon{stroke:#ffe08a}
 .ttip{position:absolute;pointer-events:none;min-width:180px;max-width:250px;background:rgba(12,8,16,.97);border:1px solid #c9a24a;border-left-width:2px;padding:8px 10px;font-size:12.5px;color:#d8c8a6;box-shadow:0 6px 18px rgba(0,0,0,.6);z-index:5;border-radius:2px}
@@ -20,8 +21,12 @@ const CSS = `<style>
 .tdet .evo span{--c:#c9a24a}.tdet .evo span.on{color:var(--c);border-color:var(--c);text-shadow:none}
 </style>`;
 
+/* 03/11 (Erling: "árvore de talentos pode receber zoom, olhar mais de perto"): roda do mouse aproxima no ponto do cursor, arrastar o fundo
+   passeia, botões ＋ － ⤢; o zoom continua igual entre um clique e outro */
+const VZ = { z: 1, cx: 300, cy: 280 };
+const vbOf = (W: number, H: number) => { const w = W / VZ.z, h = H / VZ.z; VZ.cx = Math.max(w / 2, Math.min(W - w / 2, VZ.cx)); VZ.cy = Math.max(h / 2, Math.min(H - h / 2, VZ.cy)); return `${(VZ.cx - w / 2).toFixed(1)} ${(VZ.cy - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`; };
 export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: number, sel: { id: string | null }, rerender: () => void) {
-  const nodes = T.nodes(), L = T.lit(), B = branchesOf(kit), W = 600, H = 560;
+  const nodes = T.nodes(), L = T.lit(), B = branchesOf(kit), W = 600, H = 560; const vb = () => vbOf(W, H);
   /* a constelação ocupa a tela inteira, com margem para os nomes dos braços */
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
   const S = Math.min((W - 110) / (x1 - x0), (H - 90) / (y1 - y0)), ox = W / 2 - ((x0 + x1) / 2) * S, oy = H / 2 - ((y0 + y1) / 2) * S + 6;
@@ -58,11 +63,21 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
   det += `<h4>Tudo o que está aceso</h4><div class="lines sum">${sumL}</div>`;
   el.innerHTML = `${CSS}<div class="pn skpn"><h2>🌳 Árvore Kármica — ${classNameOf(kit)} <button data-x>✕</button></h2>
     <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Nível ${lvl} · 1 ponto no começo, +1 a cada 2 níveis e +1 a cada 10 · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
-    <div class="tree-body"><div class="treew"><div class="talw"><svg class="tsvg" viewBox="0 0 ${W} ${H}"><defs><filter id="tglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>${stars}${lines}${dots}${labels}</svg><div class="ttip" hidden></div></div></div>
+    <div class="tree-body"><div class="treew"><div class="talw"><div class="tzoom"><button data-tz="1" title="Aproximar (roda do mouse)">＋</button><button data-tz="-1" title="Afastar">－</button><button data-tz="0" title="Ver a árvore inteira">⤢</button></div><svg class="tsvg" viewBox="${vb()}"><defs><filter id="tglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>${stars}${lines}${dots}${labels}</svg><div class="ttip" hidden></div></div></div>
     <div class="tdet">${det}</div></div>
     <small class="ft">Clique num ponto para ver a ficha e acender · botão direito apaga · Esc fecha</small></div>`;
   el.style.display = 'flex';
   const tip = el.querySelector('.ttip') as HTMLElement, wrap = el.querySelector('.talw') as HTMLElement;
+  { const svg = el.querySelector('.tsvg') as SVGSVGElement; const apply = () => svg.setAttribute('viewBox', vb());
+    const toSvg = (cx: number, cy: number) => { const r = svg.getBoundingClientRect(), [x0, y0, w, h] = vb().split(' ').map(Number); return [x0 + ((cx - r.left) / r.width) * w, y0 + ((cy - r.top) / r.height) * h]; };
+    const zoomAt = (f: number, cx?: number, cy?: number) => { const nz = Math.max(1, Math.min(3.5, VZ.z * f)); if (cx !== undefined && cy !== undefined) { const [px, py] = toSvg(cx, cy); VZ.cx = px + (VZ.cx - px) * (VZ.z / nz); VZ.cy = py + (VZ.cy - py) * (VZ.z / nz); } VZ.z = nz; apply(); tip.hidden = true; };
+    svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX, e.clientY); }, { passive: false });
+    let drag: { x: number; y: number } | null = null;
+    svg.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest('[data-t]') || VZ.z <= 1) return; drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
+    svg.addEventListener('pointermove', (e) => { if (!drag) return; const r = svg.getBoundingClientRect(), k = W / VZ.z / r.width; VZ.cx -= (e.clientX - drag.x) * k; VZ.cy -= (e.clientY - drag.y) * k; drag = { x: e.clientX, y: e.clientY }; apply(); });
+    svg.addEventListener('pointerup', () => { drag = null; svg.style.cursor = ''; });
+    svg.style.cursor = VZ.z > 1 ? 'grab' : '';
+    el.querySelectorAll<HTMLButtonElement>('[data-tz]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const d = +b.dataset.tz!; if (!d) { VZ.z = 1; apply(); } else zoomAt(d > 0 ? 1.35 : 1 / 1.35); svg.style.cursor = VZ.z > 1 ? 'grab' : ''; })); }
   el.querySelectorAll<SVGGElement>('[data-t]').forEach((g) => { const n = T.byId(g.dataset.t!)!;
     g.addEventListener('mouseenter', () => { const on = L.has(n.id), can = T.canTake(n.id); const kind = n.kind === 'key' ? 'Pedra-chave' : n.kind === 'notable' ? 'Notável' : n.kind === 'start' ? 'Origem' : 'Ponto';
       tip.innerHTML = `<i>${kind}${n.branch >= 0 && n.branch < 3 ? ' · ' + B[n.branch].name : n.branch === 3 ? ' · Anel dos Atributos' : ''}</i><b>${n.name}</b>${Object.keys(n.eff).length ? `<div class="ef">${effTxt(n.eff).split(' · ').join('<br>')}</div>` : ''}${n.tip ? `<div class="tp">${n.tip}</div>` : ''}<div class="st" style="color:${on ? '#ffd24a' : can ? '#9affb0' : '#a08a60'}">${on ? '✔ aceso · botão direito apaga' : can ? '➤ clique para acender (1 ponto)' : T.avail() ? 'ligue a um ponto aceso primeiro' : 'sem pontos de talento'}</div>`;

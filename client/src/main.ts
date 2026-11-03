@@ -28,6 +28,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { RACES, TILE_M as T, isWalkable, type Race, type Vec } from '@karmika/shared';
 
 import { createInventory, ITEMS as ITEMS_TBL, SHOPDEF, SHOPS, PRICES, deedIdOf } from './inventory';
@@ -77,7 +78,7 @@ import { buildInterior, type Interior } from './interiors3d';
 
 
 import { CASTLE_FLOORS } from './castelo3d';
-import { CUT } from './toon3d';
+import { CUT, ramp as toonRamp } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
 import { createDialog } from './dialog';
@@ -239,8 +240,8 @@ setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
-export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number }
-const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240 };
+export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
+const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0 };
 const opts: Opts = (() => { try { return { ...OPT_DEF, ...(JSON.parse(localStorage.getItem('karmika.opts.v1') || 'null') ?? { pix: Number(localStorage.getItem('karmika.pix') || 0) || 2, shadows: localStorage.getItem('karmika.shadows') !== '0', music: localStorage.getItem('karmika.music') === '0' ? 0 : 1 }) }; } catch { return { ...OPT_DEF }; } })();
 const saveOpts = () => localStorage.setItem('karmika.opts.v1', JSON.stringify(opts));
 let PIX = Number(new URLSearchParams(location.search).get('pix')) || opts.pix;
@@ -1393,6 +1394,7 @@ function showCreate(...a: Parameters<ReturnType<typeof createCriacao>['showCreat
 /* PÁGINA DE OPÇÕES (gráficos, som e jogo, ao vivo) e ACESSIBILIDADE (escala do texto). Saiu do main.ts (02/11). → sistemas/opcoes.ts */
 export interface OpcoesCtx {
   readonly saveOpts: Widen<typeof saveOpts>;
+  readonly applyGfx: typeof applyGfx;
   PIX: Widen<typeof PIX>;
   readonly opts: Widen<typeof opts>;
   WORLD_RATIO: Widen<typeof WORLD_RATIO>;
@@ -1412,7 +1414,7 @@ export interface OpcoesCtx {
   readonly applyArtSkin: typeof applyArtSkin;
 }
 var opcoesSys: ReturnType<typeof createOpcoes>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_opcoesSys() { return createOpcoes({ get saveOpts() { return saveOpts; }, get PIX() { return PIX; }, set PIX(v) { PIX = v; }, get opts() { return opts; }, get WORLD_RATIO() { return WORLD_RATIO; }, set WORLD_RATIO(v) { WORLD_RATIO = v; }, get dual() { return dual; }, get resize() { return resize; }, get renderer() { return renderer; }, get scene() { return scene; }, get hero() { return hero; }, get npcSys() { return npcSys; }, get sun() { return sun; }, get particles() { return particles; }, get audio() { return audio; }, get uiScale() { return uiScale; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get game() { return game; }, get OPT_DEF() { return OPT_DEF; }, get applyArtSkin() { return applyArtSkin; } }); }
+function mk_opcoesSys() { return createOpcoes({ get saveOpts() { return saveOpts; }, get applyGfx() { return applyGfx; }, get PIX() { return PIX; }, set PIX(v) { PIX = v; }, get opts() { return opts; }, get WORLD_RATIO() { return WORLD_RATIO; }, set WORLD_RATIO(v) { WORLD_RATIO = v; }, get dual() { return dual; }, get resize() { return resize; }, get renderer() { return renderer; }, get scene() { return scene; }, get hero() { return hero; }, get npcSys() { return npcSys; }, get sun() { return sun; }, get particles() { return particles; }, get audio() { return audio; }, get uiScale() { return uiScale; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get game() { return game; }, get OPT_DEF() { return OPT_DEF; }, get applyArtSkin() { return applyArtSkin; } }); }
 opcoesSys ??= mk_opcoesSys();
  // depois de o renderizador/composer existirem
 setInterval(() => inv.save(), 8000);
@@ -1555,9 +1557,9 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93)
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 const finish = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, levels: { value: new THREE.Vector3(31, 63, 31) }, uMul: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: new THREE.Vector3(0, 0, 0) }, uSat: { value: 1 }, uVig: { value: 0.6 } },
+  uniforms: { tDiffuse: { value: null }, uQuant: { value: 1 }, levels: { value: new THREE.Vector3(31, 63, 31) }, uMul: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: new THREE.Vector3(0, 0, 0) }, uSat: { value: 1 }, uVig: { value: 0.6 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 levels; uniform vec3 uMul; uniform vec3 uLift; uniform float uSat; uniform float uVig; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uQuant; uniform vec3 levels; uniform vec3 uMul; uniform vec3 uLift; uniform float uSat; uniform float uVig; varying vec2 vUv;
     void main(){
       vec4 c = texture2D(tDiffuse, vUv);
       float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
@@ -1569,11 +1571,21 @@ const finish = new ShaderPass({
          dos consoles (Bayer 4×4), que funde os degraus em gradiente em vez de quadrados */
       vec2 q = mod(floor(gl_FragCoord.xy), 4.0); int i = int(q.x) + int(q.y) * 4;
       float bay = i==0?0.0:i==1?8.0:i==2?2.0:i==3?10.0:i==4?12.0:i==5?4.0:i==6?14.0:i==7?6.0:i==8?3.0:i==9?11.0:i==10?1.0:i==11?9.0:i==12?15.0:i==13?7.0:i==14?13.0:5.0;
-      c.rgb = floor(clamp(c.rgb, 0.0, 1.0) * levels + (bay + 0.5) / 16.0) / levels;
+      if (uQuant > 0.5) c.rgb = floor(clamp(c.rgb, 0.0, 1.0) * levels + (bay + 0.5) / 16.0) / levels; /* no gráfico Moderno a cor corre sem degrau */
       gl_FragColor = c;
     }`,
 });
 composer.addPass(finish);
+/* 03/11 (Erling: "se eu pedir para deixar o jogo lindo, num 3D desses modernos… seria fácil de voltar depois? faça essa alteração em configurações:
+   posso escolher esses dois tipos de gráficos"): o GRÁFICO MODERNO é só o jeito de desenhar — o mundo, os modelos e o jogo são os mesmos.
+   Pixel: o de sempre (mundo em baixa resolução, 16 bits com pontilhado, sombra dura). Moderno: resolução cheia, cenário na mesma nitidez
+   dos personagens, cor sem quantização, sombra suave, brilho (bloom) mais largo nos fogos, auras e magias, e borda alisada (FXAA). */
+const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(fxaa);
+let gfxBloom = 1;
+function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
+  const st = m ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
+  { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
+  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.72 : 0.93; gfxBloom = m ? 3.4 : 1; document.body.classList.toggle('gfx-moderno', m); resize(); }
 /* /perf: tempo de cada passada do desenho (bloom, saída, etc.) */
 const PM: Record<string, number> = {};
 DualRenderPass.timer = (k, ms) => { PM[k] = (PM[k] ?? 0) + ms; };
@@ -1594,7 +1606,7 @@ function resize() {
   const w = Math.max(160, Math.floor(innerWidth / k / PIX / step) * step), h = Math.max(120, Math.floor(innerHeight / k / PIX / step) * step);
   renderer.setSize(w, h, false); dual.setSize(w, h);
   canvas.style.width = '100%'; canvas.style.height = '100%';
-  composer.setSize(w, h);
+  composer.setSize(w, h); fxaa.material.uniforms.resolution.value.set(1 / w, 1 / h);
   applyZoom(w, h);
 }
 const camDist = () => 60;
@@ -1605,7 +1617,7 @@ function applyZoom(w = renderer.domElement.width, h = renderer.domElement.height
   particles.uniforms.uPx.value = h / zoom; particles.uniforms.uDist.value = 60;
 }
 addEventListener('resize', resize);
-resize();
+resize(); if (opts.gfx === 1) applyGfx(); /* 03/11: começa no estilo escolhido */
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). → sistemas/entrada.ts */
 export interface EntradaCtx {
   readonly state: Widen<typeof state>;
@@ -2413,7 +2425,7 @@ function frameBody() {
   { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
     perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
-  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
+  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
   geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
   t += dt;
@@ -2726,7 +2738,7 @@ function frameBody() {
   particles.update(dt);
 
   pm('atmos/partículas');
-  bloom.strength = mix(0.07, 0.03, day) * opts.bloom;
+  bloom.strength = mix(0.07, 0.03, day) * opts.bloom * gfxBloom;
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();

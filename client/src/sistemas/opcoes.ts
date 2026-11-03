@@ -8,7 +8,7 @@ export function createOpcoes(K: OpcoesCtx) {
 /* ---------- página de opções: gráficos, som e jogo, tudo ao vivo ---------- */
 function applyOpts(k?: keyof Opts) {
   K.saveOpts();
-  if (!k || k === 'pix' || k === 'wratio' || k === 'ui' || k === 'uis' || k === 'res') { K.PIX = K.opts.pix; K.WORLD_RATIO = K.opts.wratio; K.dual.ratio = K.WORLD_RATIO; K.resize(); }
+  if (!k || k === 'pix' || k === 'wratio' || k === 'ui' || k === 'uis' || k === 'res' || k === 'gfx') K.applyGfx(); /* 03/11: o estilo do gráfico decide o pixel e o detalhe (Moderno = resolução cheia) */
   if (!k || k === 'shadows') { K.renderer.shadowMap.enabled = K.opts.shadows; K.scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
   if (!k || k === 'charShadows') { charShadow.on = K.opts.charShadows; const setCast = (root: THREE.Object3D) => root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite && (m.material as THREE.Material)?.type !== 'MeshBasicMaterial') m.castShadow = K.opts.charShadows; }); setCast(K.hero.root); for (const n of K.npcSys.npcs) setCast(n.hero.root); }
   if (!k || k === 'shadowRes') { K.sun.shadow.mapSize.set(K.opts.shadowRes, K.opts.shadowRes); if (K.sun.shadow.map) { K.sun.shadow.map.dispose(); (K.sun.shadow as unknown as { map: null }).map = null; } }
@@ -47,6 +47,7 @@ function renderOptions() {
     <div class="stat"><span>Tamanho da interface <small>Janelas, ícones e texto juntos. Acompanha o seu monitor sozinho (Full HD, Quad HD, 4K). 1,00 é o padrão</small></span>${seg('uis', [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5, 2].map((v) => [v, v.toFixed(2).replace('.', ',')] as [number, string]))}</div>
     <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']])}</div>
     <h3>Gráficos</h3>
+    <div class="stat"><span>Estilo do gráfico <small>Pixel: o visual de pixel art do Karmika · Moderno: resolução cheia, cores sem degrau, brilho e sombras suaves (mais pesado). Dá para trocar quando quiser.</small></span>${seg('gfx', [[0, 'Pixel'], [1, 'Moderno']])}</div>
     <div class="stat"><span>Tamanho do pixel <small>1 = nítido (pesado) · 4 = pixel grosso (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
     <div class="stat"><span>Detalhe do cenário <small>cenário em 1/N da resolução dos personagens</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
