@@ -18,6 +18,7 @@ import { eyeSees } from './surrender';
   mv('karmika.hunt', (h) => { if (h) { h.x += SHF * T2; h.z += SHF * T2; } }); localStorage.setItem(W2, '2'); } }
 import * as THREE from 'three';
 import { gaitOf } from './andar';
+import { premiumWelcome } from './celebrate';
 /* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
    e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
 { const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
@@ -632,7 +633,12 @@ const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno',
     if (id === 'reator_1' || id === 'reator_2') { if (kitRace() !== 'tecno' && state.race !== 'technocrat') { game.logMsg('Só tecnocratas carregam um reator pessoal.', '#ff9a8a'); return true; } if (game.installReactor(id === 'reator_2' ? 2 : 1, game.classInfo?.name === 'Engenheiro-Chefe' ? 2 : 1)) inv.take?.(id); return true; }
     const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>60 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(60); game.logMsg('💧 A Lágrima se desfaz em luz: +60 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
-    if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff'); return true; }
+    if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff');
+      /* 03/11: a comemoração — o herói dança, o brilho violeta e dourado sobe em volta dele e chega a mensagem de boas-vindas */
+      hero.act('dance', true); audio.chime(); const hp = hero.root.position;
+      for (let w = 0; w < 4; w++) setTimeout(() => { for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283; particles.spawn(hp.x + Math.cos(a) * 0.8, hp.y + 0.2, hp.z + Math.sin(a) * 0.8, { vx: Math.cos(a) * 1.6, vy: 1.5 + Math.random() * 2.5, vz: Math.sin(a) * 1.6, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: w % 2 ? 0xffd24a : 0xc9a0ff, a: 1, drag: 1.2, g: -0.3 }); } }, w * 500);
+      dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0xc9a0ff, n: 180 } }));
+      setTimeout(() => premiumWelcome(SEAL[id], d), 900); return true; }
     if (id === 'scroll_return') {
     if (inside) { game.logMsg('📜 O caminho não se abre entre paredes. Saia para o céu aberto.', '#ff9a8a'); return true; }
     const hp = heroPosNow(), hunted = game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) < 16);
