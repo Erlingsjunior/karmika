@@ -113,7 +113,7 @@ import { waterU } from './chunks3d';
 import { windU, gustU, heroU } from './terrain3d';
 import { artPreload } from './arte3d';
 import { horsesPreload } from './montarias3d';
-import { stockAllMounts } from './sistemas/montarias-loja';
+import { stockAllMounts, shopMounts } from './sistemas/montarias-loja';
 stockAllMounts(); /* 03/11: todas as montarias e pets nas lojas */
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
@@ -485,7 +485,7 @@ function roastAt(...a: Parameters<ReturnType<typeof createBancada>['roastAt']>):
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
 const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some((g) => g?.uniq === u);
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cinemaSys.cine) cinemaSys.cine.t = t; }; }
-const loja = createLoja({ isPremium, fac: myFac, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
+const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
   deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
     /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →

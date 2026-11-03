@@ -4,7 +4,7 @@
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
 
-type Prod = { id: string; kind: 'prem' | 'fac'; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
+type Prod = { id: string; kind: 'prem' | 'fac' | 'mount'; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
 const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const brl = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
 export const PREM_PLANS: Prod[] = [
@@ -41,13 +41,16 @@ function art(f: Fac, slot: 'cape' | 'shield' | 'relic') {
 }
 const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#c9a0ff"/><circle cx="16" cy="16" r="1.8" fill="#140a1e"/><path d="M16 2v4M16 26v4M4 6l3 3M28 6l-3 3" stroke="#e6c46a" stroke-width="1.2"/></svg>`;
 
+export type ShopMount = { id: string; name: string; icon: string; where: string; lvl: number; blurb: string; col: number };
+/** 03/11: preço das montarias do Shop pelo nível que o bicho pede (são aparências: todas correm igual ao Corcel Negro do Orm) */
+export const mountBRL = (lvl: number) => (lvl >= 45 ? 49.9 : lvl >= 30 ? 39.9 : lvl >= 15 ? 29.9 : 19.9);
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
-  owns: (uniq: string) => boolean; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
+  owns: (uniq: string) => boolean; mounts: () => ShopMount[]; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
-  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
+  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
   const until = ctx.until;
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
@@ -70,12 +73,22 @@ export function createLoja(ctx: {
           <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : ''}<button data-buy="${p.id}">Comprar</button>${own ? '<i>✓ você já tem</i>' : ''}</div>
           <small class="lj-gold">ou 🪙 ${gold.toLocaleString('pt-BR')} na tecelagem</small></div>`; }).join('')}</div>`;
   }
+  /* 03/11 (Erling): "o nome: Estábulo do Domador" — as montarias raras das terras de Karmika, por Pix. Só aparência: correm igual ao melhor cavalo de ouro */
+  const mountProd = (m: ShopMount): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: mountBRL(m.lvl), desc: m.blurb });
+  function mountCard() {
+    const L = ctx.mounts(), lands = [...new Set(L.map((m) => m.where))], hx = (n: number) => '#' + n.toString(16).padStart(6, '0');
+    return `<div class="lj-hero mont"><div class="lj-eye" style="font-size:42px;display:grid;place-items:center">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika: o pônei das Cinzas, o cervo de Lithendel, o corcel templário, o alce do Norte, o pesadelo do Conde… <b>Nunca dão força:</b> todas correm igual ao Corcel Negro do Orm, que qualquer um compra com ouro. O que muda é o bicho, a sela e o olhar de quem vê você passar.</p><p class="lj-on">A montaria chega no correio do personagem que você escolher. Cada uma pede o nível dela para aceitar quem monta.</p></div></div>
+      ${lands.map((w) => `<h4 class="lj-land">${w}</h4><div class="lj-items">${L.filter((m) => m.where === w).map((m) => { const p = mountProd(m);
+        return `<div class="lj-item"><div class="lj-art"><div style="width:84px;height:84px;margin:auto;border-radius:50%;display:grid;place-items:center;font-size:46px;background:radial-gradient(circle at 50% 35%, ${hx(m.col)}88, #1a120a 72%);box-shadow:0 0 18px ${hx(m.col)}55">${m.icon}</div></div>
+          <span class="lj-rar unique">MONTARIA${m.lvl ? ` · nível ${m.lvl}` : ''}</span><b>${m.name}</b><small>${m.blurb}</small>
+          <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}`;
+  }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
       Quando o Pix ligar, é só trocar para false. */
   const BETA_FREE = true;
   function checkout() {
     if (!cart) return '';
-    const f = side, what = cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
+    const f = side, what = cart.kind === 'mount' ? `${cart.name} (montaria)` : cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
     return `<div class="lj-co"><div class="lj-copn"><h3>${paid ? '✦ Pagamento aprovado' : 'Pagar com Pix'}</h3>
       ${paid && ctx.inMenu() ? `<p>${what} já é seu. Está no <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio): escolha lá para qual personagem mandar, ou dê de presente a um amigo.</p><button data-co-ok>Fechar</button>` : paid ? `<p>${what} já é seu. Chega na caixa de correio de <b>${esc2(ctx.chars().find((c) => c.i === (recip ?? -1))?.name ?? ctx.chars().find((c) => c.active)?.name ?? 'seu personagem')}</b>: retire em qualquer povoado.${cart.kind === 'prem' ? ' Use o selo para ativar o Premium da conta, guarde, ou venda a outro jogador.' : ''}</p><button data-co-ok>Fechar</button>`
       : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div>${ctx.inMenu() ? '<p class="lj-warn">Comprando pelo menu: a compra vai para o <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio). De lá você manda para qualquer personagem seu, ou de presente para um amigo.</p>' : ''}<div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
@@ -89,8 +102,8 @@ export function createLoja(ctx: {
   function render() {
     if (!open) { el.style.display = 'none'; return; }
     el.innerHTML = `<div class="pn ljpn"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
-      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button disabled title="Em breve: aparências por cultura, montarias e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
-      <div class="lj-body">${tab === 'prem' ? premCard() : facCard()}</div>${checkout()}</div>`;
+      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
+      <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'mont' ? mountCard() : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex';
   }
   function approve() {
@@ -98,16 +111,17 @@ export function createLoja(ctx: {
     /* 26/10 (Erling): o Premium vem como Selo de Marghar no correio do personagem que o jogador escolher; ele usa, guarda ou vende
        (e o ouro da venda fica com esse personagem). As peças com brasão também vão para quem ele escolher */
     const to = recip ?? ctx.chars().find((c) => c.active)?.i ?? 0, toName = ctx.chars().find((c) => c.i === to)?.name ?? 'você';
-    if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam e valem para a conta inteira, todos os seus personagens) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }], to); ctx.log(ctx.inMenu() ? `📮 Selo de Marghar (${cart.name}) no inventário da conta (Correio).` : `📮 Selo de Marghar (${cart.name}) a caminho da caixa de correio de ${toName}.`, '#c9a0ff'); }
+    if (cart.kind === 'mount') { const c = cart; ctx.deliver(`${c.name} · Estábulo do Domador`, `Obrigado pela compra! ${c.name} chegou com sela e manta. Use o item para levar ao Estábulo (X) e monte com Z. ${c.desc}`, [{ seal: c.id }], to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
+    else if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam e valem para a conta inteira, todos os seus personagens) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }], to); ctx.log(ctx.inMenu() ? `📮 Selo de Marghar (${cart.name}) no inventário da conta (Correio).` : `📮 Selo de Marghar (${cart.name}) a caminho da caixa de correio de ${toName}.`, '#c9a0ff'); }
     else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })), to);
       ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da caixa de correio de ${toName}.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
     paid = true; render();
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
     if (t.closest('[data-lx]') || t === el) { api.close(); return; }
-    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac'; render(); return; }
+    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont'; render(); return; }
     const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
-    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS].find((p) => p.id === b) ?? null; paid = false; render(); return; }
+    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ctx.mounts().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
     const tp = (t.closest('[data-to]') as HTMLElement | null)?.dataset.to; if (tp !== undefined) { recip = +tp; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
     if (t.closest('[data-co-sim]')) approve(); });
