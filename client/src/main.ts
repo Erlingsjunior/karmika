@@ -1597,13 +1597,34 @@ composer.addPass(finish);
    dos personagens, cor sem quantização, sombra suave, brilho (bloom) mais largo nos fogos, auras e magias, e borda alisada (FXAA). */
 const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(fxaa);
 /* WebGPU: o mesmo quadro (brilho, cor do dia e da noite, vinheta, 16 bits) montado em nós — gpu/impl.ts */
-if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => gp.render(); composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState }; }
+if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => gp.render(); composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState, limOpen: (i: Parameters<typeof limiar.open>[0]) => limiar.open(i, () => { /* teste */ }), limShot: () => { limiarGL(true); return limGL!.domElement.toDataURL('image/png'); } }; }
 let gfxBloom = 1;
 function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
   const st = m ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
   { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
   fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.72 : 0.93; gfxBloom = m ? 3.4 : 1; document.body.classList.toggle('gfx-moderno', m); resize(); }
+/* WebGPU: o LIMIAR (a cena da alma, limiar.ts) tem 19 efeitos próprios em GLSL. Enquanto ele não é traduzido, a cena é desenhada por um
+   WebGL à parte num canvas por cima (o mesmo caminho de antes: pixel em duas resoluções, brilho, acabamento) — o mundo espera lá embaixo,
+   então só um dos dois desenha de cada vez. Quando a alma volta, o canvas some e o WebGPU segue. */
+/* RESGUARDO: se o WebGPU errar seguido neste PC (driver, placa, navegador), o jogo anota e reabre em WebGL sozinho — o jogador não fica
+   com tela preta. A escolha WebGPU continua salva; na próxima abertura ele tenta de novo só se o jogador pedir (Opções → Renderizador). */
+let gpuFails = 0, gpuFailT = 0;
+function gpuFail(m: string) { const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
+  if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
+setInterval(() => { if (gpuImpl && gpuState.errs > 60) gpuFail('erros seguidos do WebGPU'); }, 2000);
+setTimeout(() => { try { const f = sessionStorage.getItem('karmika.gpuFallback'); if (f) { sessionStorage.removeItem('karmika.gpuFallback'); game.logMsg('⚙ O WebGPU deu erro neste PC e o jogo voltou para o WebGL (Opções → Renderizador). Detalhe: ' + f.split('\n')[0], '#ffb27a'); } } catch { /* */ } }, 4000);
+let limGL: THREE.WebGLRenderer | null = null, limComp: EffectComposer | null = null;
+function limiarGL(on: boolean) {
+  if (!on) { if (limGL) limGL.domElement.style.display = 'none'; canvas.style.visibility = ''; return; }
+  const w = renderer.domElement.width, h = renderer.domElement.height;
+  if (!limGL) { limGL = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' }); limGL.setPixelRatio(1); limGL.toneMapping = renderer.toneMapping; limGL.outputColorSpace = renderer.outputColorSpace; limGL.shadowMap.enabled = false;
+    const el = limGL.domElement; el.className = canvas.className; el.style.cssText = canvas.style.cssText + ';position:absolute;left:0;top:0;pointer-events:none'; canvas.after(el);
+    limComp = new EffectComposer(limGL); limComp.addPass(dual); limComp.addPass(bloom); limComp.addPass(new OutputPass()); limComp.addPass(finish); limComp.addPass(fxaa); }
+  limGL.toneMappingExposure = renderer.toneMappingExposure;
+  if (limGL.domElement.width !== w || limGL.domElement.height !== h) { limGL.setSize(w, h, false); limComp!.setSize(w, h); }
+  limGL.domElement.style.display = ''; canvas.style.visibility = 'hidden'; limComp!.render();
+}
 /* /perf: tempo de cada passada do desenho (bloom, saída, etc.) */
 const PM: Record<string, number> = {};
 DualRenderPass.timer = (k, ms) => { PM[k] = (PM[k] ?? 0) + ms; };
@@ -2427,7 +2448,7 @@ function frame() {
   const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF;
   if (socialSys.bootFrames < 12 && ++socialSys.bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
   gpuPoll(); const c0 = performance.now();
-  try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
+  try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (gpuImpl) gpuFail(m); else if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   perf.cpuS += performance.now() - c0; perf.n++;
 }
 declare const __BUILD_ID__: string;
@@ -2444,7 +2465,8 @@ function frameBody() {
   { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
     perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
-  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); composer.render(); return; } // o mundo espera lá embaixo
+  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else composer.render(); return; }
+  if (limGL) limiarGL(false); // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
   geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
   t += dt;

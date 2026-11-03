@@ -17,6 +17,8 @@ type Ref = { value: any };
 /** uniforme ligado a um {value} do jogo: número lido a cada desenho; objeto (vetor, cor, textura) vivo pela referência */
 const U = (o: Ref) => (typeof o.value === 'number' ? uniform(o.value).onRenderUpdate(() => o.value) : uniform(o.value));
 const pending = new Set<string>();
+/** erros do WebGPU contados: se o WebGPU não se acerta neste PC, o jogo volta sozinho para o WebGL (main.ts lê gpuState.errs) */
+export function gpuErr(e: unknown) { gpuState.errs = (gpuState.errs ?? 0) + 1; if (gpuState.errs < 4) console.warn('[WebGPU]', e); }
 export const gpuPending = () => [...pending];
 
 /* ---------- os efeitos anotados nos materiais do jogo ---------- */
@@ -146,7 +148,7 @@ const PORTS: Record<string, (nm: any, d: any, b: any) => void> = {
 class ShaderPort extends (W as any).MeshBasicNodeMaterial {
   setup(b: any) { const t = gpuTagsOf(b.material) as any, key = t && Object.keys(t).find((k) => PORTS[k]);
     if (key) PORTS[key](this, t[key], b);
-    else { const nm = String(b.material.name || b.material.userData?.fx || b.object?.name || b.material.uuid.slice(0, 6)); pending.add(nm); this.colorNode = vec4(0); this.opacityNode = float(0); this.alphaTestNode = float(0.5); }
+    else { const nm = String(b.material.name || b.material.userData?.fx || b.object?.name || String(b.material.fragmentShader ?? '').replace(/\s+/g, ' ').slice(0, 70)); pending.add(nm); this.colorNode = vec4(0); this.opacityNode = float(0); this.alphaTestNode = float(0.5); }
     return super.setup(b); }
 }
 
@@ -183,8 +185,17 @@ function patchRenderer(R: any) {
       if (d.initialized && was && was !== k) { R.backend.destroySampler(t); R.backend.destroyTexture(t); R.backend.createSampler(t); d.isDefaultTexture = true; } SZ.set(t, k); } return oUp(t, o); };
   /* 2) atributo que cresceu (array trocado por um maior): o buffer é refeito com o mesmo uso */
   const AU = R.backend.attributeUtils, oUA = AU.updateAttribute.bind(AU);
+  /* 2b) trechos de atualização (updateRanges) que passam do fim do array: o WebGL ignora, o WebGPU derruba o quadro — o trecho é cortado */
   AU.updateAttribute = (a: any) => { const ba = a.isInterleavedBufferAttribute ? a.data : a, bd = R.backend.get(ba), buf = bd.buffer;
-    if (buf && ba.array.byteLength > buf.size) { const use = buf.usage; buf.destroy(); bd.buffer = undefined; AU.createAttribute(a, use); return; } return oUA(a); };
+    if (!buf) return oUA(a);
+    if (ba.array.byteLength > buf.size) { const use = buf.usage; buf.destroy(); bd.buffer = undefined; AU.createAttribute(a, use); return; }
+    const n = ba.array.length, maxEl = Math.floor(buf.size / ba.array.BYTES_PER_ELEMENT);
+    if (ba.updateRanges?.length) ba.updateRanges = ba.updateRanges.filter((r: { start: number; count: number }) => r.start < n && r.count > 0).map((r: { start: number; count: number }) => ({ start: r.start, count: Math.min(r.count, n - r.start, maxEl - r.start) })).filter((r: { count: number }) => r.count > 0);
+    /* o three r170 escreve os trechos com a posição em bytes onde o WebGPU espera elementos (e sempre no começo do buffer): escrevemos certo */
+    if (ba.updateRanges?.length) { try { const BPE = ba.array.BYTES_PER_ELEMENT; for (const r of ba.updateRanges) R.backend.device.queue.writeBuffer(buf, r.start * BPE, ba.array, r.start, r.count); } catch (e) { gpuErr(e); } ba.clearUpdateRanges(); return; }
+    try { return oUA(a); } catch (e) { ba.clearUpdateRanges?.(); try { R.backend.device.queue.writeBuffer(buf, 0, ba.array, 0, Math.min(n, maxEl)); } catch { /* */ } gpuErr(e); } };
+  /* 2c) textura destruída duas vezes (dispose de alvo que o WebGPU já soltou): o three r170 quebrava no destroy de undefined */
+  for (const k of ['destroyTexture', 'destroySampler']) { const o = R.backend[k].bind(R.backend); R.backend[k] = (t: unknown) => { try { o(t); } catch (e) { gpuErr(e); } }; }
   /* 3) InstancedMesh com count menor que a capacidade: o three r170 criava o buffer das matrizes do tamanho do count de então */
   const IN = (W as any).InstanceNode.prototype, oIS = IN.setup;
   IN.setup = function (this: any, b: any) { const m = this.instanceMesh, c = m.count; if (this.instanceMatrixNode === null) m.count = m.instanceMatrix.count; try { return oIS.call(this, b); } finally { m.count = c; } };
