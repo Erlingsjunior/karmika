@@ -6,12 +6,18 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { ramp } from './toon3d';
 
-export const HORSE_ART = ['cavalo_orm', 'cavalo_jarlsheim', 'cavalo_porto_caldeira', 'corcel_askavik', 'pesadelo_conde'] as const;
+export const HORSE_ART = ['cavalo_orm', 'cavalo_jarlsheim', 'cavalo_porto_caldeira', 'corcel_askavik', 'pesadelo_conde',
+  /* 03/11: as montarias de casco (cervo, carneiro, javali) e de garras (lobo da lua, tigre-dentes-de-sabre) do Herik — mesmos nomes de ossos */
+  'cervo_lithendel', 'carneiro_brasaforja', 'javali_ulfheim', 'lobo_lua', 'tigre_sabre'] as const;
+/** a pasta de cada modelo (public/models/montarias/…) */
+const FOLDER: Record<string, string> = { cervo_lithendel: 'casco', carneiro_brasaforja: 'casco', javali_ulfheim: 'casco', lobo_lua: 'garras', tigre_sabre: 'garras' };
+/** cavalo (a sela na altura de 1,55 m) ou bicho de tamanho natural (1 unidade = 1 m, sela no lombo) */
+export const isHorseArt = (id: string) => !FOLDER[id];
 export type HorseArt = (typeof HORSE_ART)[number];
 const tpl = new Map<string, THREE.Group>();
 let preP: Promise<void> | null = null;
 export function horsesPreload(): Promise<void> {
-  return (preP ??= Promise.all(HORSE_ART.map((id) => new GLTFLoader().loadAsync(`/models/montarias/cavalos/${id}.glb`).then((g) => {
+  return (preP ??= Promise.all(HORSE_ART.map((id) => new GLTFLoader().loadAsync(`/models/montarias/${FOLDER[id] ?? 'cavalos'}/${id}.glb`).then((g) => {
     g.scene.traverse((o) => { const m = o as THREE.SkinnedMesh; if (!m.isMesh) return; const old = m.material as THREE.MeshStandardMaterial; if (old.map) old.map.colorSpace = THREE.SRGBColorSpace;
       m.material = new THREE.MeshToonMaterial({ map: old.map ?? null, gradientMap: ramp }); m.castShadow = true; m.frustumCulled = false; });
     tpl.set(id, g.scene); }).catch(() => undefined))).then(() => undefined));
