@@ -25,6 +25,10 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'hamstring', col: 3, row: 0, req: [['hatchet', REQ_RANK]] }, { id: 'shieldwall', col: 3, row: 1, req: [['kick', REQ_RANK]] }, { id: 'spear', col: 3, row: 2, req: [['warcry', REQ_RANK]] },
     { id: 'whirl', col: 4, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'valkyrie', col: 4, row: 1, req: [['shieldwall', REQ_RANK]] }, { id: 'mark', col: 4, row: 2, req: [['spear', REQ_RANK]] },
     { id: 'fenrir', col: 5, row: 1, req: [['whirl', 5], ['mark', 5]] },
+    /* 03/11: as novas do compêndio — a quarta linha (o povo da vila) e a suprema Mil Vidas */
+    { id: 'oilfire', col: 1, row: 3, req: [['heal', REQ_RANK]] }, { id: 'farmdog', col: 2, row: 3, req: [['warcry', REQ_RANK]] }, { id: 'lasso', col: 3, row: 3, req: [['spear', REQ_RANK]] },
+    { id: 'alarmbell', col: 4, row: 3, req: [['mark', REQ_RANK]] }, { id: 'bonfire', col: 5, row: 3, req: [['alarmbell', REQ_RANK]] },
+    { id: 'milvidas', col: 6, row: 1, req: [['fenrir', 5]] },
   ],
   dwarf: [
     { id: 'combo', col: 0, row: 1, req: [] },
