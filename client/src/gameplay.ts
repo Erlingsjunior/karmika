@@ -1591,6 +1591,7 @@ export function createGameplay(d: GameplayDeps) {
     /** ponto do trabalho em curso (corte, mina, esfola, colheita): a esfera do tecnocrata vai ajudar */
     setWork(p: { x: number; z: number } | null) { workAt = p; },
     setStance(e: Partial<typeof stance>) { stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0, ...e }; },
+    /** está de noite (para quem depende da lua) */ isNight() { return skyNight > 0.5; },
     /** efeitos de comidas e bebidas (cerveja, hidromel, tônico, antídoto) */
     /** a Sentinela de pé (para o "E — Desmontar") */
     /** a Sentinela de pé mais perto do ponto (para o "E — Desmontar") */
@@ -1659,7 +1660,7 @@ export function createGameplay(d: GameplayDeps) {
       { const h = d.getHero(); heroMps += (Math.hypot(heroPos.x - lastHeroP.x, heroPos.z - lastHeroP.z) / Math.max(1e-3, dt) - heroMps) * Math.min(1, dt * 10); lastHeroP.copy(heroPos); if (heroMps > 30) heroMps = 0;
         /* dia e noite (Erling, 25/10): o lobisomem de dia é o licantropo (homem maior e mais forte; a Besta só à noite);
            o vampiro queima ao sol fora da sombra (casas, masmorras, mata fechada, Corvoscuro) e à noite fica mais feroz e mais rápido */
-        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = (isL ? 1.1 : 1) * raceScale; if (isL) cmod.dmg += 0.1;
+        { const isV = kitKey === 'vam', isL = kitKey === 'lob', nightNow = skyNight > 0.5; cmod.dmg = 0; cmod.move = 1; baseScale = (isL ? 1.1 : 1) * raceScale; if (isL) cmod.dmg += 0.1 + (nightNow ? 0.12 : 0); /* de noite, mais feroz */ if (isL && nightNow) cmod.move *= 1.08;
           { const k3 = n3Key(); if (k3 && !st.dead) { if (st.lastCast !== n3Cast) { if (st.lastCast > n3Cast && k3 !== 'cac') need3[k3] = Math.min(1, need3[k3] + (k3 === 'bru' ? 0.0012 : 0.0009) * (n3Calm > 0 ? 0.4 : 1)); n3Cast = st.lastCast; }
             need3[k3] = Math.min(1, need3[k3] + dt / (30 * TURN_S)); n3Calm = Math.max(0, n3Calm - dt); const v3 = need3[k3]; n3SaveT -= dt; if (n3SaveT <= 0) { n3SaveT = 6; try { localStorage.setItem(NEED3_KEY, JSON.stringify(need3)); } catch { /* */ } }
             if (v3 > 0.5) { if (k3 === 'mag' || k3 === 'cac') cmod.dmg -= 0.04; if (k3 === 'bru' && st.hp > st.hpMax * 0.9) st.hp = st.hpMax * 0.9; }
@@ -1784,7 +1785,10 @@ export function createGameplay(d: GameplayDeps) {
       if (st.res.mode === 'regen' && kitKey !== 'tecno') { const rk = 1 * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
       else if (st.res.mode !== 'regen' && now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia (29/10: só esses — a Magia e a Energia não esvaziavam e enchiam ao mesmo tempo)
-      st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * dt);
+      /* 03/11 (Erling: "de dia precisa usar postura de defesa mais contida, usar mais curas e comer mais carnes de cura"): o lobisomem de dia
+         é o homem — a carne e a regeneração rendem 60% mais; de noite a fera não precisa disso */
+      const lobDay = kitKey === 'lob' && skyNight <= 0.5; if (lobDay && st.mp > st.mpMax * 0.5) st.mp = st.mpMax * 0.5; /* a lua pela metade */
+      st.hp = Math.min(st.hpMax, st.hp + st.regen * (1 + stance.regen) * (lobDay ? 1.6 : 1) * dt);
       /* auras dos Únicos e Relíquias: partículas da cor do item em volta do herói */
       if (st.sp.has('r_surtr')) buff.burnT = Math.max(buff.burnT, 0.3);
       for (const [i, c] of (st.auras ?? []).entries()) if (Math.random() < dt * (i === 0 ? 16 : 9)) { const a2 = rnd(0, 6.283), r2 = rnd(0.5, 1.0); d.particles.spawn(heroPos.x + Math.cos(a2) * r2, rnd(0.1, 1.9), heroPos.z + Math.sin(a2) * r2, { vx: -Math.sin(a2) * 0.6, vy: rnd(0.4, 1.1), vz: Math.cos(a2) * 0.6, life: rnd(0.7, 1.3), s0: 0.2, s1: 0.03, c0: 0xffffff, c1: c, a: 0.85 }); }

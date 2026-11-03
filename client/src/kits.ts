@@ -64,7 +64,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   impeto: { name: 'Ímpeto', label: 'ÍMPETO', style: 'impeto', mode: 'fight', tip: 'Ímpeto: começa vazio e enche a cada golpe dado ou recebido. Fora da luta, esfria e esvazia. Itens de Geração de Ímpeto enchem mais rápido.' },
   energia: { name: 'Energia', label: 'ENERGIA', style: 'energia', mode: 'regen', tip: 'Energia: vem da bateria do reator (Mk I: 50.000; Mk II: 120.000). Não recarrega sozinha e só gasta com as magias — quando acabar, troque a bateria (Núcleo de Reator) ou monte uma nova na aba ⚛ Reator da mochila.' },
   sangue: { name: 'Sangue', label: 'SANGUE', style: 'sangue', mode: 'fight', tip: 'Sangue: enche ao ferir e ao beber das vítimas; seca com o tempo.' },
-  furia: { name: 'Fúria', label: 'FÚRIA', style: 'furia', mode: 'fight', tip: 'Fúria: a besta acorda com a dor e com a caça.' },
+  furia: { name: 'Lua', label: 'LUA', style: 'furia', mode: 'fight', tip: 'Lua: a besta acorda com a dor e com a caça. De dia o orbe só enche até a metade (o homem segura a fera); de noite enche inteiro e o lobisomem fica feroz — a Fúria da Lua e a Forma da Besta só despertam à noite.' },
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };

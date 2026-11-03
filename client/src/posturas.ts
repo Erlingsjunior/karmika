@@ -82,7 +82,7 @@ export const STANCE_QUESTS: QuestDef[] = (() => {
   return out;
 })();
 
-export interface StanceCtx { path(): PathId | null; isDone(qid: string): boolean; isActive(qid: string): boolean; apply(e: StanceEff): void; onChange(s: Stance, first: boolean): void; log(t: string, c?: string): void }
+export interface StanceCtx { path(): PathId | null; isDone(qid: string): boolean; isActive(qid: string): boolean; apply(e: StanceEff): void; onChange(s: Stance, first: boolean): void; log(t: string, c?: string): void; /** é noite? (a Fúria da Lua) */ night?(): boolean }
 export function createStances(ctx: StanceCtx) {
   let cur: string | null = null; try { cur = localStorage.getItem('karmika.stance'); } catch { /* */ }
   let cdUntil = 0;
@@ -90,11 +90,16 @@ export function createStances(ctx: StanceCtx) {
   const list = () => STANCES[setKey()];
   /** liberada: a primeira do caminho, as que já foram entregues, e a da missão que você está fazendo (treino) */
   const open = (s: Stance) => !s.quest || ctx.isDone(s.quest) || ctx.isActive(s.quest);
-  function current(): Stance { const L = list(); const s = L.find((x) => x.id === cur && open(x)); return s ?? L[0]; }
+  /* 03/11 (Erling: "a postura despertar da besta só funciona à noite"): a Fúria da Lua do lobisomem só vale de noite; de dia ele cai para a
+     postura contida (Pele Velha, ou Matilha se for a única aberta) */
+  const NIGHT_ONLY = new Set(['furialua']);
+  const timeOk = (s: Stance) => !NIGHT_ONLY.has(s.id) || (ctx.night?.() ?? true);
+  function current(): Stance { const L = list(); const s = L.find((x) => x.id === cur && open(x) && timeOk(x)); return s ?? L.find((x) => open(x) && timeOk(x) && x.role === 'tank') ?? L.find((x) => open(x) && timeOk(x)) ?? L[0]; }
   let applied = '';
-  function sync() { const s = current(); if (s.id !== applied) { const first = applied === ''; applied = s.id; ctx.apply(s.eff); if (!first) ctx.onChange(s, false); } }
+  function sync() { const s = current(); if (s.id !== applied) { const first = applied === ''; const was = applied; applied = s.id; ctx.apply(s.eff); if (!first) { ctx.onChange(s, false); if (NIGHT_ONLY.has(was) && cur === was) ctx.log('☀ O dia nasceu: a Fúria da Lua recua e o homem volta a mandar.', '#e8c890'); } } }
   function pick(id: string): boolean { const s = list().find((x) => x.id === id); if (!s) return false;
     if (!open(s)) { ctx.log(`🔒 ${s.name}: ${s.quest ? 'abre numa missão de postura' : ''}.`, '#c8b890'); return false; }
+    if (!timeOk(s)) { ctx.log(`🌕 ${s.name}: a besta só desperta à noite. De dia, segure-se na Pele Velha, use as curas e coma carne.`, '#c8a070'); return false; }
     if (performance.now() < cdUntil) return false; if (current().id === s.id) return false;
     cdUntil = performance.now() + 1000; cur = s.id; try { localStorage.setItem('karmika.stance', cur); } catch { /* */ } sync(); return true; }
   function cycle() { const L = list().filter(open); if (L.length < 2) { ctx.log('Você só conhece uma postura por enquanto. As outras se aprendem em missões.', '#c8b890'); return; } const i = L.findIndex((x) => x.id === current().id); pick(L[(i + 1) % L.length].id); }
