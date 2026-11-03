@@ -47,7 +47,7 @@ export const mountBRL = (lvl: number) => (lvl >= 45 ? 49.9 : lvl >= 30 ? 39.9 : 
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
-  owns: (uniq: string) => boolean; mounts: () => ShopMount[]; preview: (m: ShopMount, price: string, buy: () => void) => void; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
+  owns: (uniq: string) => boolean; mounts: () => ShopMount[]; preview: (m: ShopMount, price: string, buy: () => void) => void; thumb: (id: string, cb: (url: string) => void) => void; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
   let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
@@ -80,7 +80,7 @@ export function createLoja(ctx: {
     const L = ctx.mounts(), lands = [...new Set(L.map((m) => m.where))], hx = (n: number) => '#' + n.toString(16).padStart(6, '0');
     return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika. <b>Nunca dão força:</b> correm igual ao Corcel Negro do Orm (2,4× mais rápido que a pé), que qualquer um compra com ouro. Chegam no correio; os <b>filhotes de chefe</b> também caem do chefe. Clique no 👁 para ver o bicho de perto.</p></div></div>
       <div class="lj-mscroll">${lands.map((w) => `<h4 class="lj-land">${w}</h4><div class="lj-mgrid">${L.filter((m) => m.where === w).map((m) => { const p = mountProd(m);
-        return `<div class="lj-mc" title="${esc2(m.blurb)}"><button class="lj-eyeb" data-view="${m.id}" title="Ver em 3D">👁</button><div class="lj-mart" data-view="${m.id}" style="background:radial-gradient(circle at 50% 38%, ${hx(m.col)}99, #1a120a 70%);box-shadow:0 0 14px ${hx(m.col)}44">${m.icon}</div>
+        return `<div class="lj-mc" title="${esc2(m.blurb)}"><button class="lj-eyeb" data-view="${m.id}" title="Ver em 3D">👁</button><div class="lj-mart" data-view="${m.id}" style="background:radial-gradient(circle at 50% 38%, ${hx(m.col)}99, #1a120a 70%);box-shadow:0 0 14px ${hx(m.col)}44"><img data-th="${m.id}" alt="" hidden><span>${m.icon}</span></div>
           <span class="lj-rar">${m.kind === 'pet' ? 'FILHOTE' : 'MONTARIA'}${m.lvl ? ` · nv ${m.lvl}` : ''}</span><b>${m.name}</b><div class="lj-mbuy"><span>${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}</div>`;
   }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
@@ -105,6 +105,7 @@ export function createLoja(ctx: {
       <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'mont' ? mountCard() : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex';
+    if (tab === 'mont') el.querySelectorAll<HTMLImageElement>('img[data-th]').forEach((im) => ctx.thumb(im.dataset.th!, (u) => { im.src = u; im.hidden = false; (im.nextElementSibling as HTMLElement | null)?.remove(); }));
   }
   function approve() {
     if (!cart) return;

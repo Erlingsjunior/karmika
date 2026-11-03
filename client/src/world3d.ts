@@ -575,10 +575,15 @@ export function buildWorld(world: World): WorldObjs {
       const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); ring.visible = false; ring.userData.stone = true; /* 03/11 (Erling: "esse círculo em volta da pedra não é necessário") */ g.add(ring);
       const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
       for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x5a68b8)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
+      let relicRunes: THREE.Mesh | null = null;
       { const tm = artMesh('pedra_teleporte'); /* 03/11: a Pedra de Teleporte do Herik no lugar do menir; os símbolos já vêm pintados nela, o anel no chão continua */
-        if (tm) { for (const o of [mono, base, groove, moss]) g.remove(o); runes.position.set(Wm / 2 + 0.46, 1.25, Dm / 2 + 0.46); runes.scale.setScalar(0.9); /* as runas acendem por cima dos símbolos pintados na pedra */ tm.scale.setScalar(2.5 / artGeo('pedra_teleporte')!.userData.h); tm.position.set(Wm / 2, 0, Dm / 2); tm.rotation.y = Math.PI / 4; g.add(tm); } }
+        if (tm) { for (const o of [mono, base, groove, moss, runes]) g.remove(o); tm.scale.setScalar(2.5 / artGeo('pedra_teleporte')!.userData.h); tm.position.set(Wm / 2, 0, Dm / 2); tm.rotation.y = Math.PI / 4;
+          /* 03/11 (Erling: "eu consigo ver as runas na pedra perfeitas, seguindo o relevo… a linha que é vermelha na pedra precisa ser azul brilhante,
+             e não símbolos flutuantes"): as runas ESCULPIDAS no modelo acendem — máscara tirada da própria textura (o vermelho das runas,
+             tex/pedra_teleporte_runas.png) vira o mapa de brilho; amarelo chamando antes de marcar, azul mágico depois (main anima a cor) */
+          const sm = (tm.material as THREE.MeshToonMaterial).clone(); sm.emissiveMap = stoneRuneMask(); sm.emissive = new THREE.Color(0xffc83a); sm.emissiveIntensity = 1.6; sm.userData.stoneGlow = true; tm.material = sm; tm.userData.dyn = true; g.add(tm); relicRunes = tm; } }
       g.scale.setScalar(1.3); g.position.x -= Wm * 0.15; g.position.z -= Dm * 0.15;
-      (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
+      (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes: relicRunes ?? runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.2, p.gy * T + Dm / 2 + 0.9), color: 0x6a6aff } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'grave') {
       const v = p.variant ?? 0;
@@ -639,6 +644,10 @@ function stripMeshes(g: THREE.Object3D, keep?: (o: THREE.Object3D) => boolean) {
   for (const o of out) o.parent?.remove(o);
 }
 var artWorld: World | null = null;
+var lampHaloT: THREE.Texture | null = null;
+var runeMaskT: THREE.Texture | null = null;
+function stoneRuneMask() { if (!runeMaskT) { runeMaskT = new THREE.TextureLoader().load('/models/cenario/tex/pedra_teleporte_runas.png'); runeMaskT.flipY = false; runeMaskT.colorSpace = THREE.NoColorSpace; } return runeMaskT; }
+function lampHalo() { if (lampHaloT) return lampHaloT; const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d')!; const gr = x.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,200,1)'); gr.addColorStop(0.25, 'rgba(255,190,110,.55)'); gr.addColorStop(1, 'rgba(255,140,40,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); lampHaloT = new THREE.CanvasTexture(c); return lampHaloT; }
 function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number, wx: number, wy: number, wz: number) {
   const W = artWorld; const put = (id: string, x: number, z: number, ry: number, k: number | THREE.Vector3 = 1) => { const m = artMarker(id); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; if (typeof k === 'number') m.scale.setScalar(k); else m.scale.copy(k); g.add(m); return m; };
   const firstRot = () => { for (const c of g.children) if ((c as THREE.Group).isGroup) return c.rotation.y; return 0; };
@@ -649,11 +658,13 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
     const ry = firstRot(); stripMeshes(g, (o) => !!o.userData.vbase); const m = put('biblioteca_bau', Wm / 2, Dm / 2, ry, 1.6); if (m) m.position.y = 0.14; }
   else if (p.kind === 'tower' && artGeo('muralha_02')) { stripMeshes(g); const k = (p.height + 3) / artGeo('muralha_02')!.userData.h; put('muralha_02', Wm / 2, Dm / 2, 0, k);
     g.traverse((o) => { if (o.userData.dyn) o.visible = false; }); const tc = L.torches[L.torches.length - 1]; if (tc) tc.pos.set(wx, wy + (p.height + 3) * 0.62, wz); }
-  else if (p.kind === 'torch' && W && W.settlements.some((st) => st.radius >= 12 && Math.hypot(p.gx - st.x, p.gy - st.y) < st.radius + 6) && artGeo('porto_poste_lampiao')) { /* só vilas médias e cidades; vila bem pequena e estrada continuam na tocha */ /* 03/11 (Erling: "substitua tochas… lâmpadas de fogo, muito mais bonito e condizente com uma cidade"):
+  else if (p.kind === 'torch' && artGeo('porto_poste_lampiao')) { /* 03/11 (Erling: "troque todas as tochas por essas lamparinas"): toda tocha, em qualquer lugar */ /* 03/11 (Erling: "substitua tochas… lâmpadas de fogo, muito mais bonito e condizente com uma cidade"):
        toda tocha vira o poste com lampião de fogo pendurado no braço; a chama (com a cor dela) acende dentro do vidro */
     stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785, k = 0.9; put('porto_poste_lampiao', Wm / 2, Dm / 2, ry, k);
     const lx = 0.54 * k, ly = 2.58 * k, lz = 0.21 * k, ox = lx * Math.cos(ry) + lz * Math.sin(ry), oz = -lx * Math.sin(ry) + lz * Math.cos(ry);
-    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.42); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); } }
+    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.5); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); tc.base = Math.max(tc.base, 52); }
+    /* 03/11 (Erling: "a lamparina não tem luz… mal podemos ver, se confunde com os outros itens"): halo quente em volta do vidro, que se vê de longe */
+    { const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampHalo(), color: 0xffb860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.75, fog: false })); halo.scale.setScalar(1.5); halo.position.set(Wm / 2 + ox, ly - 0.05, Dm / 2 + oz); halo.userData.dyn = true; halo.raycast = () => {}; /* o raio-x atravessa (Sprite pede câmera no raycast) */ g.add(halo); } }
   else if (p.kind === 'palisade' && W && artGeo('muralha_01')) { /* paliçada: o muro do Herik cobre duas casas por peça (5 m comprimido para 4 m) */
     if (!palSet) { palSet = new Set(); for (const q of W.props) if (q.kind === 'palisade') palSet.add(q.gx * 4096 + q.gy); }
     const ns = (p.variant ?? 0) === 1, idx = ns ? p.gy : p.gx, nx = ns ? p.gx : p.gx + 1, ny = ns ? p.gy + 1 : p.gy, px = ns ? p.gx : p.gx - 1, py = ns ? p.gy - 1 : p.gy;

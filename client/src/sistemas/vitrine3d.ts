@@ -50,3 +50,21 @@ function frame(t: number) {
   const d = H * 4.3 * zoom; cam.position.set(0, H * 0.45 + Math.sin(pitch) * d, Math.cos(pitch) * d); cam.lookAt(0, H * 0.42, 0);
   R.render(sc, cam);
 }
+/* 03/11 (Erling: "no card pequeno a imagem real da montaria também, senão não chama atenção para a compra"): retrato de cada bicho,
+   desenhado uma vez num renderer próprio e guardado (dataURL) — de três quartos, a mesma luz da vitrine */
+const thumbs = new Map<string, string>(); let TR: THREE.WebGLRenderer | null = null; const tq: [string, (u: string) => void][] = []; let tBusy = false;
+const tcam = new THREE.PerspectiveCamera(28, 1.25, 0.1, 80);
+export function mountThumb(id: string, cb: (url: string) => void) {
+  const c = thumbs.get(id); if (c) { cb(c); return; } tq.push([id, cb]); if (!tBusy) { tBusy = true; requestAnimationFrame(thumbNext); }
+}
+function thumbNext() {
+  const job = tq.shift(); if (!job) { tBusy = false; return; } const [id, cb] = job; const have = thumbs.get(id); if (have) { cb(have); requestAnimationFrame(thumbNext); return; }
+  try { if (!TR) { const cv = document.createElement('canvas'); TR = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); TR.setPixelRatio(1); TR.setSize(200, 160, false); TR.outputColorSpace = THREE.SRGBColorSpace; } } catch { tBusy = false; return; }
+  const pk = PETS[id], mk = MOUNTS[id]; let root: THREE.Object3D | null = null;
+  if (pk) root = petModel(pk).root; else if (mk) root = mountModel(mk).root;
+  if (root) { const was = [floor.visible, rim.visible]; floor.visible = rim.visible = false; const keep = model?.root; if (keep) keep.visible = false;
+    sc.add(root); root.rotation.y = 0.75; const box = new THREE.Box3().setFromObject(root), sz = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3()), h = Math.max(sz.y, sz.z * 0.8, sz.x * 0.8, 0.3);
+    tcam.position.set(ctr.x + h * 0.4, ctr.y + h * 0.55, ctr.z + h * 2.9); tcam.lookAt(ctr.x, ctr.y, ctr.z); TR.render(sc, tcam);
+    const url = TR.domElement.toDataURL('image/png'); thumbs.set(id, url); sc.remove(root); floor.visible = was[0]; rim.visible = was[1]; if (keep) keep.visible = true; cb(url); }
+  requestAnimationFrame(thumbNext);
+}

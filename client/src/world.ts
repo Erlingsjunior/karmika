@@ -2101,7 +2101,17 @@ export function buildCity(): World {
     /* 03/11 (Erling: "mude a posição dele segundo a imagem"): o poço da praça de Karmika sai de perto da pedra e vai para o gramado entre as
        duas ruas, ao norte (o lugar livre mais perto de lá) */
     { const kr = relics.find((r) => r.name === 'Relíquia: Vale de Karmika'); const well = kr && props.find((q) => q.kind === 'vprop' && q.variant === 2 && Math.hypot(q.gx - kr.x, q.gy - kr.y) < 4);
-      if (kr && well) { mark(well, false); const tx = kr.x - 3, ty = kr.y - 2; let best: [number, number] | null = null; for (let r = 0; r <= 4 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && okAt(tx + dx, ty + dy, 1, 1)) best = [tx + dx, ty + dy]; if (best) { well.gx = best[0]; well.gy = best[1]; } mark(well, true); } } }
+      if (kr && well) { mark(well, false); const tx = kr.x - 3, ty = kr.y - 2; let best: [number, number] | null = null; for (let r = 0; r <= 4 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && okAt(tx + dx, ty + dy, 1, 1)) best = [tx + dx, ty + dy]; if (best) { well.gx = best[0]; well.gy = best[1]; } mark(well, true); } }
+    /* 03/11 (Erling: "troque todas as tochas por essas lamparinas… e essa especificamente mude mais para o lado, para não ficar na linha da vendinha
+       que está em cima"): o poste com lanterna da prancha 59 vira tocha (o mundo 3D troca toda tocha pelo poste com lampião aceso), e poste colado
+       numa barraca (a 2 casas ou menos) vai para o lado, para o lugar livre mais perto — de preferência na mesma linha, longe das barracas */
+    for (const q of props) if (q.kind === 'vprop' && q.variant === 4) { (q as { kind: string }).kind = 'torch'; q.variant = 0; }
+    const stalls = props.filter((o) => o.kind === 'stall' || o.kind === 'noticeboard' || o.kind === 'mailbox');
+    const nearStall = (x: number, y: number) => stalls.some((o) => x >= o.gx - 2 && x < o.gx + o.w + 2 && y >= o.gy - 1 && y < o.gy + o.h + 3);
+    for (const q of props) { if (q.kind !== 'torch' || !nearStall(q.gx, q.gy)) continue; mark(q, false); let best: [number, number] | null = null, bs = 1e9;
+      for (let dy = -4; dy <= 4; dy++) for (let dx = -5; dx <= 5; dx++) { const x = q.gx + dx, y = q.gy + dy; if ((!dx && !dy) || !okAt(x, y, 1, 1) || nearStall(x, y)) continue; const sc = Math.abs(dx) + Math.abs(dy) * 1.6; if (sc < bs) { bs = sc; best = [x, y]; } }
+      if (best) { q.gx = best[0]; q.gy = best[1]; } mark(q, true); }
+  }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */

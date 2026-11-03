@@ -114,8 +114,7 @@ import { windU, gustU, heroU } from './terrain3d';
 import { artPreload } from './arte3d';
 import { horsesPreload } from './montarias3d';
 import { stockAllMounts, shopMounts } from './sistemas/montarias-loja';
-import { runeHud } from './sistemas/runas-hud';
-import { openVitrine } from './sistemas/vitrine3d';
+import { openVitrine, mountThumb } from './sistemas/vitrine3d';
 stockAllMounts(); /* 03/11: todas as montarias e pets nas lojas */
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
@@ -487,7 +486,7 @@ function roastAt(...a: Parameters<ReturnType<typeof createBancada>['roastAt']>):
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
 const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some((g) => g?.uniq === u);
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cinemaSys.cine) cinemaSys.cine.t = t; }; }
-const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, preview: (m, price, buy) => openVitrine({ id: m.id, name: m.name, where: m.where, lvl: m.lvl, blurb: m.blurb, price, tag: m.kind === 'pet' ? 'Filhote de chefe' : 'Montaria' }, buy), lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
+const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, preview: (m, price, buy) => openVitrine({ id: m.id, name: m.name, where: m.where, lvl: m.lvl, blurb: m.blurb, price, tag: m.kind === 'pet' ? 'Filhote de chefe' : 'Montaria' }, buy), thumb: mountThumb, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
   deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
     /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →
@@ -2661,12 +2660,11 @@ function frameBody() {
     if (strong && Math.random() < 0.3) particles.spawn(sm.x, sm.y, sm.z, { vx: (Math.random() - 0.5) * 1.2, vy: 2 + Math.random() * 1.5, vz: (Math.random() - 0.5) * 1.2, life: 0.9, s0: 0.08, s1: 0.02, c0: 0xffd070, c1: 0xff5a1a, a: 1, drag: 0.6 }); }
   /* relíquias dos caminhantes: runas pulsam; as já marcadas ganham aura dourada e fagulhas */
   for (const [o, ax, w] of objs.spinners) o.rotation[ax] += w * dt; /* moinho da marcenaria */
-  runeHud(objs.relics, camera, (rl) => { const q = rl as (typeof objs.relics)[number]; const nm = relicNameAt(q.gx, q.gy); return !!nm && knowsRelic(nm); }, t, !!inside || document.body.classList.contains('mvista')); /* 03/11: runas nítidas, fora do pixel do jogo */
   for (const rl of objs.relics) {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */
     /* 03/11 (Erling: "as runas brilhantes… amarelo antes de marcar, azul depois de marcar"): as runas sempre brilham — douradas chamando, azul mágico depois */
-    { const rm = rl.runes.material as THREE.MeshBasicMaterial; if (rl.ring.userData.stone) { rm.color.setHex(known ? 0x4ab0ff : 0xffc83a); rm.opacity = known ? 0.85 + 0.15 * k : 0.55 + 0.4 * k; } else rm.opacity = known ? 0.8 + 0.2 * k : 0.04; }
+    { const rm = rl.runes.material as THREE.MeshBasicMaterial; if ((rl.runes.material as THREE.Material).userData.stoneGlow) { const sm = rl.runes.material as THREE.MeshToonMaterial; sm.emissive.setHex(known ? 0x3aa8ff : 0xffc83a); sm.emissiveIntensity = known ? 1.15 + 0.35 * k : 0.7 + 0.45 * k; } else if (rl.ring.userData.stone) { rm.color.setHex(known ? 0x4ab0ff : 0xffc83a); rm.opacity = known ? 0.85 + 0.15 * k : 0.55 + 0.4 * k; } else rm.opacity = known ? 0.8 + 0.2 * k : 0.04; }
     (rl.ring.material as THREE.MeshBasicMaterial).color.setHex(known ? (rl.ring.userData.col as number | undefined) ?? 0x5aa8ff : 0xffc83a); (rl.ring.material as THREE.MeshBasicMaterial).opacity = known ? 0.35 + 0.2 * k : 0.55 + 0.4 * k;
     rl.ring.scale.setScalar(known ? 0.72 + 0.04 * k : 1.0 + 0.12 * k); rl.ring.rotation.y = t * (known ? 0.25 : 0.5);
     if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: rl.ring.userData.stone ? 0xbfe6ff : 0xffe0a0, c1: rl.ring.userData.stone ? 0x3a8aff : (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
