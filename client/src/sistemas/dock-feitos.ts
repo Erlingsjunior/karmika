@@ -23,8 +23,8 @@ setTimeout(() => { const ql = document.getElementById('qlog'); if (ql) floatWin(
 let skillsOpen = false, featsOpen = false;
 let skView: 'mag' | 'tal' = 'mag'; const talSel = { id: null as string | null };
 /** as abas no alto da janela: Magias (a Árvore Kármica) e Talentos (a constelação de atributos e passivas) */
-function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; const d = document.createElement('div'); d.className = 'sktabs'; d.style.cssText = 'display:flex;gap:6px;margin:0 0 8px';
-  const bt = (v: 'mag' | 'tal', t: string, n: number) => `<button data-skv="${v}" style="padding:5px 12px;border-radius:6px;cursor:pointer;border:1px solid ${skView === v ? '#ffd24a' : '#6a5030'};background:${skView === v ? '#3a2a12' : '#1a120a'};color:${skView === v ? '#ffd27a' : '#c8b890'}">${t}${n ? ` <b style="color:#ffd24a">(${n})</b>` : ''}</button>`;
+function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; const d = document.createElement('div'); d.className = 'ktabs sktabs';
+  const bt = (v: 'mag' | 'tal', t: string, n: number) => `<button data-skv="${v}" class="${skView === v ? 'on' : ''}">${t}${n ? ` <i>${n} livre${n === 1 ? '' : 's'}</i>` : ''}</button>`;
   d.innerHTML = bt('mag', '🌳 Magias', K.tree.available()) + bt('tal', '✧ Talentos', K.talents.avail()); h.after(d);
   d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal'; renderSkills(); })); }
 function renderSkills() {
