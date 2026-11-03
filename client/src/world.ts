@@ -2107,10 +2107,14 @@ export function buildCity(): World {
        numa barraca (a 2 casas ou menos) vai para o lado, para o lugar livre mais perto — de preferência na mesma linha, longe das barracas */
     for (const q of props) if (q.kind === 'vprop' && q.variant === 4) { (q as { kind: string }).kind = 'torch'; q.variant = 0; }
     const stalls = props.filter((o) => o.kind === 'stall' || o.kind === 'noticeboard' || o.kind === 'mailbox');
-    const nearStall = (x: number, y: number) => stalls.some((o) => x >= o.gx - 2 && x < o.gx + o.w + 2 && y >= o.gy - 1 && y < o.gy + o.h + 3);
+    const nearStall = (x: number, y: number) => stalls.some((o) => x >= o.gx - 3 && x < o.gx + o.w + 3 && y >= o.gy - 3 && y < o.gy + o.h + 3);
+    /* a câmera olha de +x+z: "para o lado direito da tela" é +gx/−gy — o poste sai para lá, para o gramado aberto (Erling desenhou a seta) */
     for (const q of props) { if (q.kind !== 'torch' || !nearStall(q.gx, q.gy)) continue; mark(q, false); let best: [number, number] | null = null, bs = 1e9;
-      for (let dy = -4; dy <= 4; dy++) for (let dx = -5; dx <= 5; dx++) { const x = q.gx + dx, y = q.gy + dy; if ((!dx && !dy) || !okAt(x, y, 1, 1) || nearStall(x, y)) continue; const sc = Math.abs(dx) + Math.abs(dy) * 1.6; if (sc < bs) { bs = sc; best = [x, y]; } }
+      for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const x = q.gx + dx, y = q.gy + dy; if ((!dx && !dy) || !okAt(x, y, 1, 1) || nearStall(x, y)) continue; const sc = Math.hypot(dx, dy) - (dx - dy) * 0.35; if (sc < bs) { bs = sc; best = [x, y]; } }
       if (best) { q.gx = best[0]; q.gy = best[1]; } mark(q, true); }
+    /* 03/11 (Erling: "arrume o banco"): o poste com lampião é largo; banco colado nele (a 1 casa) dá um passo para longe, se houver lugar */
+    for (const t of props) { if (t.kind !== 'torch') continue; for (const q of props) { if (q.kind !== 'bench' || Math.max(Math.abs(q.gx - t.gx), Math.abs(q.gy - t.gy)) > 1) continue;
+      const sx = Math.sign(q.gx - t.gx), sy = Math.sign(q.gy - t.gy); mark(q, false); for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]] as [number, number][]) { if (!ax && !ay) continue; if (okAt(q.gx + ax, q.gy + ay, 1, 1) || ['grass', 'plaza', 'road'].includes(String(map[q.gy + ay]?.[q.gx + ax])) && !occ.has((q.gy + ay) * 4096 + q.gx + ax)) { q.gx += ax; q.gy += ay; break; } } mark(q, true); } }
   }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
