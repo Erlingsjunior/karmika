@@ -1372,8 +1372,12 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       /* escudo */
       if (offSw && g.shield !== undefined && offSrc !== 'bow') { /* 02/11: arma no espaço do escudo = arma na mão esquerda */
         for (const c of [...offSw.children]) if (c !== offTipO) offSw.remove(c);
-        const ob = g.shield?.base ?? ''; if (g.shield && /Besta de Mão|Pistola|Escopeta/.test(ob) && (REF_SWORDS as readonly string[]).includes(ob)) {
-          const rr = g.shield.rarity ?? 'normal'; const L2 = buildRefSword(offSw, ob as RefSword, { mk, metal, toon, glow: glowOf(rr), rar: rr }); offSw.add(offTipO); offTipO.position.set(0, -0.14 - L2, 0);
+        const ob = g.shield?.base ?? ''; const isW = !!ob && !/Escudo|Broquel|Pavês/.test(ob); /* 03/11 (Erling: "duas espadas, uma maça e uma espada, duas pistolas, duas bestas de repetição"): qualquer arma de uma mão vai na esquerda */
+        if (g.shield && isW) { const rr = g.shield.rarity ?? 'normal'; let L2 = 0.8;
+          if (SWORD_ART[ob] && artGeo(SWORD_ART[ob])) { const id = SWORD_ART[ob], gy = artGuardY(id), kL = /Adaga/.test(ob) ? 0.75 : 1, am = artMesh(id)!; am.userData.keep = true; am.rotation.x = Math.PI; am.scale.setScalar(kL); am.position.y = gy * kL; offSw.add(am); L2 = (artGeo(id)!.userData.h - gy) * kL; }
+          else if (FIRE_ART[ob] && artGeo(FIRE_ART[ob][0])) { const [fid, fk = 1] = FIRE_ART[ob], fm = artMesh(fid)!; fm.userData.keep = true; fm.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(-1, 0, 0))); fm.scale.setScalar(fk); fm.position.set(0, 0.07, -0.04); offSw.add(fm); const FG = artGeo(fid)!; FG.computeBoundingBox(); L2 = FG.boundingBox!.max.x * fk; }
+          else L2 = buildRefSword(offSw, ((REF_SWORDS as readonly string[]).includes(ob) ? ob : 'Espada Longa') as RefSword, { mk, metal, toon, glow: glowOf(rr), rar: rr });
+          offSw.add(offTipO); offTipO.position.set(0, -0.14 - L2, 0);
           mergeStatic(offSw, ramp); fine(offSw); offSw.visible = true; offSrc = 'dual'; } else { offSw.visible = false; offSrc = null; } }
       if (gearShield && g.shield !== undefined && offSrc === 'dual') { for (const c of [...gearShield.children]) gearShield.remove(c); } /* sem escudo: a mão esquerda está armada */
       else if (gearShield && g.shield !== undefined) {

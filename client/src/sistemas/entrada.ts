@@ -183,6 +183,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'F7' && e.shiftKey) { e.preventDefault(); swapTo('dwarf'); return; }
   if (/^F[1-8]$/.test(e.key)) { e.preventDefault(); K.useQuick(+e.key.slice(1) - 1); return; }
   if (e.key === 'Tab') setCombat(!combatMode);
+  if (e.code === 'Backquote' && !e.repeat) dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.shiftKey ? -1 : 1 })); /* 03/11: a tecla ao lado do 1 (' no teclado ABNT) troca o jeito de segurar */
   void ORDER;
 });
 addEventListener('keyup', (e) => { const kk = e.key.toLowerCase(); if (CAM_FREE && kk === 'e' && keys.has('e') && !eRot && !K.inv.isOpen && !K.quests.isOpen && !K.dlg.isOpen) K.interact(); keys.delete(kk); });
@@ -201,10 +202,13 @@ addEventListener('pointermove', (e) => {
   drag = { x: e.clientX, y: e.clientY };
 });
 addEventListener('pointerup', () => { drag = null; });
+let wswapT = 0;
 addEventListener('wheel', (e) => {
+  /* 03/11 (Erling): Ctrl + roda = troca rápida do jeito de segurar (duas armas · arma e escudo · duas mãos); o Ctrl+roda do navegador (zoom da página) fica bloqueado no jogo */
+  if (e.ctrlKey) { e.preventDefault(); const now = performance.now(); if (now - wswapT > 280) { wswapT = now; dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.deltaY > 0 ? 1 : -1 })); } return; }
   if ((e.target as HTMLElement | null)?.tagName !== 'CANVAS') return; // roda em cima de janela/painel: rola a janela, nunca dá zoom no jogo de trás
   K.zoomTarget = THREE.MathUtils.clamp(K.zoomTarget * Math.exp(e.deltaY * 0.0009), K.ZOOM_MIN, K.ZOOM_MAX);
-}, { passive: true });
+}, { passive: false });
 let nightTarget = 1;
   return { heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
 }

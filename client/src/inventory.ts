@@ -206,7 +206,10 @@ export const ATTRS: { k: Attr; lab: string; tip: string }[] = [
   { k: 'vit', lab: 'Vitalidade', tip: '+5 de vida, defesa e regeneração por ponto' }, { k: 'int', lab: 'Energia', tip: '+4 de magia por ponto' },
 ];
 /** família de armas que pode ir uma em cada mão (ou com escudo): bestas de mão e armas de fogo de uma mão */
-export const dualFam = (b?: string | null) => !b ? null : /Besta de Mão/.test(b) ? 'xb' : /Pistola|Escopeta/.test(b) ? 'gun' : null;
+/* 03/11 (Erling: "armas de uma mão podem ser usadas uma em cada mão: duas espadas, uma maça e uma espada, duas pistolas, duas bestas de
+   repetição"): família da arma para o par — corpo a corpo com corpo a corpo, arma de fogo com arma de fogo, besta com besta; arma de duas mãos não faz par */
+export const TWO_HANDED = /Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana|Arco|Gatling|Lança-Chamas|Lança-Veneno|Metralhadora|Rifle|Canhão|Cajado|Bastão|Lança\b|Picareta|Machado de Lenhador/;
+export const dualFam = (b?: string | null) => !b || TWO_HANDED.test(b) || /Escudo|Broquel|Pavês/.test(b) ? null : /Besta/.test(b) ? 'xb' : /Pistola|Escopeta|Revólver/.test(b) ? 'gun' : /Garras/.test(b) ? null : 'mel';
 const SLOTS: Slot[] = ['helm', 'earring', 'earring2', 'amulet', 'shoulders', 'cape', 'armor', 'weapon', 'shield', 'ring', 'ring2', 'boots', 'relic'];
 
 interface St {
@@ -357,6 +360,30 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     if ((g.shop || g.fac) && !g.bound) { g.bound = true; game.logMsg(`🔒 ${g.name} agora está vinculado a você (não vai mais ao Leilão).`, '#b9c6e0'); }
     game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save(); swapFx(tg, !!old);
   }
+  /** 03/11 (Erling: "um botão de trocar equipamento rápido: uma arma em cada mão, ou uma arma e um escudo, ou arma de duas mãos — Ctrl + roda do
+   *  mouse, e apertando um botão do teclado também"): os três jeitos de segurar, montados com o que está vestido e com o que está na bolsa.
+   *  Lembra a última peça de cada jeito; sem lembrança, pega a de mais dano que você pode usar. */
+  const SETK = 'karmika.wsets.v1'; let wmem: Record<string, number[]> = {}; try { wmem = JSON.parse(localStorage.getItem(SETK) || '{}'); } catch { /* */ }
+  const isShieldG = (g: Gear) => g.slot === 'shield';
+  const dmgOf = (g: Gear) => (g.stats.dmg ?? 0) + (g.stats.crit ?? 0) * 0.5 + g.ilvl * 0.01;
+  const usable = (g: Gear) => st.lvl >= reqLvl(g) && !hooks.canWear?.(g) && !(g.fac && myFac() !== g.fac);
+  function setMode(): 'dual' | 'shield' | 'two' | 'one' { const w = eqG.weapon, o = eqG.shield; if (o && o.slot === 'weapon') return 'dual'; if (o) return 'shield'; if (w && TWO_HANDED.test(w.base)) return 'two'; return 'one'; }
+  function cycleWeapons(dir = 1) {
+    const pool = [...gearBag, ...[eqG.weapon, eqG.shield].filter(Boolean) as Gear[]].filter(usable), mem = (k: string) => (wmem[k] ?? []).map((u) => pool.find((g) => g.uid === u)).filter(Boolean) as Gear[];
+    const ones = pool.filter((g) => g.slot === 'weapon' && dualFam(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), twos = pool.filter((g) => g.slot === 'weapon' && TWO_HANDED.test(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), shields = pool.filter(isShieldG).sort((a, b) => (b.stats.def ?? 0) - (a.stats.def ?? 0));
+    const plan: Record<string, Gear[] | null> = {
+      dual: (() => { const m = mem('dual'); if (m.length === 2) return m; const a = ones[0]; if (!a) return null; const b = ones.find((g) => g !== a && dualFam(g.base) === dualFam(a.base)); return b ? [a, b] : null; })(),
+      shield: (() => { const m = mem('shield'); if (m.length === 2) return m; const a = eqG.weapon && dualFam(eqG.weapon.base) ? eqG.weapon : ones[0]; return a && shields[0] ? [a, shields[0]] : null; })(),
+      two: (() => { const m = mem('two'); if (m.length === 1) return m; return twos[0] ? [twos[0]] : null; })(),
+    };
+    const order = ['dual', 'shield', 'two'].filter((k) => plan[k]); if (!order.length) { game.logMsg('⚔ Nada para trocar: leve na bolsa outra arma de uma mão, um escudo ou uma arma de duas mãos.', '#c8b890'); return; }
+    /* guarda o jeito atual antes de sair dele */ const cur = setMode(); if (cur !== 'one') { wmem[cur] = [eqG.weapon, eqG.shield].filter(Boolean).map((g) => g!.uid); }
+    const i = order.indexOf(cur), next = order[((i < 0 ? (dir > 0 ? -1 : 0) : i) + dir + order.length) % order.length]; if (next === cur && order.length === 1) { game.logMsg('⚔ Só existe um jeito de segurar com o que você tem.', '#c8b890'); return; }
+    const want = plan[next]!; for (const sl of ['weapon', 'shield'] as const) { const g = eqG[sl]; if (g) { eqG[sl] = null; gearBag.push(g); } }
+    for (const [k, g] of want.entries()) { const j = gearBag.indexOf(g); if (j >= 0) gearBag.splice(j, 1); eqG[k === 0 ? 'weapon' : 'shield'] = g; }
+    wmem[next] = want.map((g) => g.uid); try { localStorage.setItem(SETK, JSON.stringify(wmem)); } catch { /* */ }
+    const L = { dual: '⚔ Uma arma em cada mão', shield: '🛡 Arma e escudo', two: '🗡 Arma de duas mãos' }[next as 'dual' | 'shield' | 'two'];
+    game.logMsg(`${L}: ${want.map((g) => g.name).join(' + ')}`, '#ffe08a'); hooks.feel?.('equip', 'weapon'); recalc(); render(); save(); swapFx('weapon', true); }
   /** troca visível (25/10): a peça some do espaço por meio segundo e volta brilhando, com som de troca */
   function swapFx(slot: Slot, had: boolean) {
     game.snd?.('swap');
@@ -584,7 +611,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   return {
     /** comando de teste (/tabuas, /prego…): põe direto na mochila, sem olhar espaço */
     grant(id: string, n: number) { bag[id] = (bag[id] ?? 0) + n; recalc(); render(); save(); },
-    bag, eq: eqG, gearBag, tools, equipTool, unequip,
+    bag, eq: eqG, gearBag, tools, equipTool, unequip, cycleWeapons, setMode,
     /** a ferramenta no espaço (ou null): id e números */
     tool(sl: ToolSlot) { const id = tools[sl]; return id ? { id, ...TOOLS[id], name: ITEMS[id].name } : null; },
     /** 02/11: motivo de a classe atual não vestir a peça (null = serve) */

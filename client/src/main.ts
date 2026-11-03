@@ -504,6 +504,7 @@ if (IS_DEV) { const sw = document.createElement('div'); sw.id = 'devsw'; const d
       else game.logMsg('⚑ DEV: sem lado. As peças com brasão ficam na mochila, mas não podem ser vestidas.', '#b9c6e0');
       draw(); return; }
     if (el.closest('[data-prem]')) { setPremium(!isPremium()); draw(); } }); document.getElementById('mini')?.appendChild(sw); onFac(() => draw()); onPremium(() => draw()); }
+addEventListener('karmika:wswap', (e) => { if (game.st.dead || dlg.isOpen) return; inv.cycleWeapons((e as CustomEvent<number>).detail ?? 1); });
 onPremium((v) => { inv.refresh(); quests.render(); game.logMsg(v ? '✦ Premium ativo: Bolsa do Caminhante (36), Bolsa Mágica, Bolsa de Ofício, 10 missões.' : 'Premium desligado: bolsas Premium lacradas (nada se perde), 5 missões.', v ? '#c9a0ff' : '#b9c6e0'); });
 /* BUFFS NA TELA e SIGILOS NO CHÃO: o eco (alcançar o grupo), a bênção global, a runa da bênção, o brasão da facção e o sinal do renegado/desgarrado. Saiu do main.ts (02/11). → sistemas/buffs-sigilos.ts */
 export interface BuffsSigilosCtx {
