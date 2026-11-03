@@ -226,7 +226,10 @@ export function buildMerchantWagon(): Wagon {
   const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); lamp.position.set(0.65, 1.9, 1.3); lamp.scale.setScalar(1.6); lamp.visible = false; body.add(lamp);
   const stack = new THREE.Group(); stack.visible = false; body.add(stack); const { hpBar, hpFill } = hpBarFor(); root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
-  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'human' };
+  /* 03/11 (Erling: "tem que ser TODAS"): a carroça das estradas humanas também vira a carroça do Herik (os dois cavalos continuam) */
+  const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'human' };
+  const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 2.0) || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
+  return artBody(W0, 'carroca_anao', keepH, 1.15, ART_FLIP.dwarf);
 }
 /** a carroça caída: tomba de lado, uma roda solta, carga espalhada (resgate e emboscada perdida) */
 function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotation.z = 0.42; w.body.position.y = -0.25; const lost = w.wheels[1].m.parent!; w.body.remove(lost); w.root.add(lost); lost.rotation.set(Math.PI / 2 - 0.2, 0, 0); lost.position.set(1.9, 0.1, -2.6); w.lamp.visible = false;
