@@ -370,7 +370,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
 
   const bar = (v: number, m: number, c: string) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, v / m * 100))}%;background:${c}"></i></div>`;
   // (resumo de status dos itens: hoje mostrado só no tooltip)
-  const cell = (g: Gear, attrs: string) => { const bad = st.lvl < reqLvl(g) || (!!g.fac && myFac() !== g.fac); return `<div class="it gi ${bad ? 'noreq' : ''}" draggable="true" data-drag="g:${g.uid}" ${attrs} style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${bad ? '#c0202a66' : RARITY[g.rarity].col + '44'}"><span>${gearIcon(g)}</span><b style="color:${bad ? '#ff4a4a' : RARITY[g.rarity].col}" title="nível de uso">${reqLvl(g)}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small></div>`; };
+  const cell = (g: Gear, attrs: string) => { const bad = st.lvl < reqLvl(g) || (!!g.fac && myFac() !== g.fac) || !!hooks.canWear?.(g); /* 02/11: arma que a classe não usa também fica vermelha */ return `<div class="it gi ${bad ? 'noreq' : ''}" draggable="true" data-drag="g:${g.uid}" ${attrs} style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${bad ? '#c0202a66' : RARITY[g.rarity].col + '44'}"><span>${gearIcon(g)}</span><b style="color:${bad ? '#ff4a4a' : RARITY[g.rarity].col}" title="nível de uso">${reqLvl(g)}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small></div>`; };
   /** a aba ⚛ Reator: o cilindro cortado no meio e os seis encaixes em volta */
   function reactorTab() { const R = hooks.reactor!(), P = loadParts(), filled = REACTOR_PARTS.filter((q) => (P[q.id] ?? 0) >= q.n).length;
     const slot = (q: ReactorPart) => { const have = P[q.id] ?? 0, inBag = bag[q.id] ?? 0, it = ITEMS[q.id], ok = have >= q.n;
@@ -378,7 +378,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     return `<div class="rtab"><div class="rcol">${REACTOR_PARTS.slice(0, 3).map(slot).join('')}</div><div class="rmid">${reactorSvg(R.charge, fusing, filled)}<div class="rinfo"><b>${Math.round(R.charge * R.cap).toLocaleString('pt-BR')}</b> / ${R.cap.toLocaleString('pt-BR')} de Energia</div></div><div class="rcol">${REACTOR_PARTS.slice(3).map(slot).join('')}</div>
       <p class="rhint">Clique num encaixe para pôr a peça da mochila. Com os seis cheios, as peças se fundem no cilindro e o reator volta à carga máxima. A Energia só gasta com as magias — o Núcleo de Reator pronto (Companhia de Latão) também enche.</p></div>`; }
   function render() {
-    tipCtx.lvl = st.lvl; tipCtx.fac = myFac();
+    tipCtx.lvl = st.lvl; tipCtx.fac = myFac(); tipCtx.why = hooks.canWear;
     tip.style.display = 'none'; hooks.onBag?.();
     if (open) {
       const order = ['relic', 'unique', 'epic', 'legendary', 'rare', 'magic', 'normal'];
@@ -463,7 +463,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     return `<hr><small>Comparado a <b style="color:${RARITY[o.rarity].col}">${o.name}</b>:</small><br>${lines.join('<br>') || '<small>igual</small>'}`;
   }
   const tip2 = document.createElement('div'); tip2.id = 'tip2'; document.body.appendChild(tip2); let lastTipEv: MouseEvent | null = null, lastTipT: HTMLElement | null = null;
-  const showTip = (e: MouseEvent) => { tipCtx.lvl = st.lvl; tipCtx.fac = myFac();
+  const showTip = (e: MouseEvent) => { tipCtx.lvl = st.lvl; tipCtx.fac = myFac(); tipCtx.why = hooks.canWear;
     const t = (e.target as HTMLElement).closest('[data-g]') as HTMLElement | null;
     if (!t) { tip.style.display = 'none'; tip2.style.display = 'none'; lastTipEv = null; return; }
     const g = findG(t.dataset.g!); if (!g) { tip.style.display = 'none'; return; }
@@ -582,6 +582,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     bag, eq: eqG, gearBag, tools, equipTool, unequip,
     /** a ferramenta no espaço (ou null): id e números */
     tool(sl: ToolSlot) { const id = tools[sl]; return id ? { id, ...TOOLS[id], name: ITEMS[id].name } : null; },
+    /** 02/11: motivo de a classe atual não vestir a peça (null = serve) */
+    whyNot: (g: Gear) => hooks.canWear?.(g) || null,
     has, count, add, addGear, equipGear: equip, take, save, recalc, use, craft,
     get isOpen() { return open || charOpen || !!shop || vaultOpen; },
     /** abre o Baú do Caminhante junto com a mochila */

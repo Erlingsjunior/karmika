@@ -32,7 +32,7 @@ export interface ShotCtx {
   /** bonecos de treino (posição e tocar) */
   dummyAt?(x: number, z: number, r: number): { hit(point: THREE.Vector3, mul: number): void } | null;
   spark(p: THREE.Vector3, kind: 'blood' | 'metal' | 'dust' | 'wood', dir?: THREE.Vector3): void;
-  sound?(k: 'hit' | 'thud' | 'ric'): void;
+  sound?(k: 'hit' | 'thud' | 'ric' | 'bhit'): void;
 }
 interface Shot { kind: ShotKind; p: THREE.Vector3; v: THREE.Vector3; life: number; mul: number; m: THREE.Object3D; from: THREE.Vector3; data?: unknown; spinA: number; trailT: number; tracer?: THREE.Mesh }
 interface Stuck { m: THREE.Object3D; t: number; host?: THREE.Object3D; loc?: THREE.Vector3; locQ?: THREE.Quaternion }
@@ -114,7 +114,7 @@ export function createShots(ctx: ShotCtx) {
         // inimigos (cilindro: raio do bicho, da canela ao topo)
         for (const e of ctx.targets()) { if (!e.alive || !e.active) continue; const r = (e.def.radius || 0.5) + ((s.kind === 'bullet' || s.kind === 'pellet') ? 0.05 : 0.12), top = e.pos.y + Math.max(1.4, r * 3.2); if (p.y < e.pos.y + 0.1 || p.y > top) continue;
           if ((p.x - e.pos.x) ** 2 + (p.z - e.pos.z) ** 2 > r * r) continue;
-          s.p.copy(p); ctx.hit(e, { mul: s.mul, kind: s.kind, point: p.clone(), from: s.from, data: s.data }); ctx.spark(p, 'blood', s.v.clone().normalize()); ctx.sound?.('hit');
+          s.p.copy(p); ctx.hit(e, { mul: s.mul, kind: s.kind, point: p.clone(), from: s.from, data: s.data }); ctx.spark(p, 'blood', s.v.clone().normalize()); ctx.sound?.(s.kind === 'bullet' || s.kind === 'pellet' ? 'bhit' : 'hit');
           if ((s.kind === 'bullet' || s.kind === 'pellet')) { ctx.scene.remove(s.m); } else stick(s, e.root ?? null); done = true; break; }
         if (done) break;
         const dm = ctx.dummyAt?.(p.x, p.z, 0.5); if (dm && p.y < ctx.heightAt(p.x, p.z) + 2.0) { s.p.copy(p); dm.hit(p.clone(), s.mul); ctx.spark(p, 'wood', s.v.clone().normalize()); ctx.sound?.('thud'); if ((s.kind === 'bullet' || s.kind === 'pellet')) ctx.scene.remove(s.m); else stick(s); done = true; break; }

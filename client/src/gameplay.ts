@@ -284,11 +284,15 @@ export function createGameplay(d: GameplayDeps) {
   }
   /* ---- equipamentos no chão ---- */
   const gearLabels: HTMLElement[] = [], labelSpots: [number, number][] = [];
+  /* 02/11 (Erling: "a cada 3 peças aleatórias que caírem, pelo menos uma tem que servir para a classe que estamos jogando"): peças de outras
+     classes continuam caindo (alimentam o comércio), mas depois de 2 seguidas que não servem, a 3ª é sorteada de novo até servir */
+  let fitsMe: ((g: Gear) => boolean) | null = null, missStreak = 0;
   function spawnGear(x: number, z: number, y: number, ilvl: number, boost: Partial<Record<Rarity, number>> = {}, n = 1, rarityMin?: Rarity, preset?: Gear[]) {
     if (preset) n = preset.length;
     for (let k = 0; k < n; k++) {
       let g = preset ? preset[k] : genGear(ilvl, rollRarity(boost)); const order: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique', 'relic'];
       if (rarityMin && order.indexOf(g.rarity) < order.indexOf(rarityMin)) g = genGear(ilvl, rarityMin, g.slot);
+      if (!preset && fitsMe) { if (missStreak >= 2) for (let t = 0; t < 40 && !fitsMe(g); t++) g = genGear(ilvl, g.rarity === 'unique' || g.rarity === 'relic' ? 'epic' : g.rarity); missStreak = fitsMe(g) ? 0 : missStreak + 1; }
       const R = RARITY[g.rarity], col = parseInt(R.col.slice(1), 16), rich = g.rarity !== 'normal' && g.rarity !== 'magic';
       const grp = new THREE.Group();
       const gem = new THREE.Mesh(new THREE.OctahedronGeometry(g.rarity === 'relic' ? 0.42 : g.rarity === 'unique' ? 0.36 : rich ? 0.28 : 0.2, 0), new THREE.MeshBasicMaterial({ color: col })); gem.scale.y = 1.3; grp.add(gem);
@@ -512,7 +516,7 @@ export function createGameplay(d: GameplayDeps) {
     dummyAt: (x, z, r) => { const dm = dummyNear(x, z, r); return dm ? { hit: (pt, mul) => { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, pt.clone().setY(pt.y - 0.2)); } } : null; },
     spark: (p, k, dir) => { const n = k === 'blood' ? 10 : 7, c0 = k === 'blood' ? 0xc0101a : k === 'metal' ? 0xffe8a0 : k === 'wood' ? 0xd8b080 : 0xb8a888, c1 = k === 'blood' ? 0x3a0006 : k === 'metal' ? 0xff8a20 : k === 'wood' ? 0x6a4a2a : 0x6a5a48;
       for (let q = 0; q < n; q++) d.particles.spawn(p.x, p.y, p.z, { vx: -(dir?.x ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), vy: rnd(0.4, 2.6), vz: -(dir?.z ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), life: rnd(0.25, 0.5), s0: k === 'dust' ? 0.35 : 0.16, s1: k === 'dust' ? 0.7 : 0.04, c0, c1, a: 1, drag: 2.5, g: k === 'dust' ? -1 : 8 }); },
-    sound: (k) => { if (k === 'ric') d.audio.parry(); else d.audio.hit(); } });
+    sound: (k) => { if (k === 'ric') d.audio.ric(); else if (k === 'bhit') d.audio.bulletHit(); else d.audio.hit(); } }); /* 02/11: bala sem o ping agudo de metal */
   const zones: { x: number; z: number; r: number; t: number; m: THREE.Mesh }[] = [];
   const pillars: { m: THREE.Mesh; t: number; y0: number }[] = [];
   /* granadas de plasma (tecnocrata) */
@@ -890,7 +894,7 @@ export function createGameplay(d: GameplayDeps) {
         if (kind === 'gun') { // rajadas de 5 balas, cano gira, cápsulas saltam
           if (target && fireT <= 0 && burst === 0) { burst = 5; burstT = 0; fireT = 1.15; }
           if (burst > 0) { burstT -= dt2; if (burstT <= 0 && target) { burst--; burstT = 0.075; const from = T0.muzzle.getWorldPosition(new THREE.Vector3()), to = target.pos.clone().setY(target.pos.y + 1.0), dir = to.sub(from).normalize(); dir.x += rnd(-0.03, 0.03); dir.z += rnd(-0.03, 0.03); dir.normalize();
-              bolts.push({ p: from.clone(), v: dir.clone().multiplyScalar(50), life: 0.34, mul: 0.32 * sc.dmg, pulse: true, quiet: true, col: 0xffd080, sk: 'gunturret' }); beam(from, from.clone().addScaledVector(dir, 1.3), 0xffe0a0, 0.025, 0.05); d.audio.hit();
+              bolts.push({ p: from.clone(), v: dir.clone().multiplyScalar(50), life: 0.34, mul: 0.32 * sc.dmg, pulse: true, quiet: true, col: 0xffd080, sk: 'gunturret' }); beam(from, from.clone().addScaledVector(dir, 1.3), 0xffe0a0, 0.025, 0.05); d.audio.gun('turret');
               for (let k = 0; k < 4; k++) d.particles.spawn(from.x, from.y, from.z, { vx: dir.x * rnd(2, 7) + rnd(-1, 1), vy: rnd(-0.3, 1), vz: dir.z * rnd(2, 7) + rnd(-1, 1), life: 0.16, s0: 0.45, s1: 0.04, c0: 0xfff0c0, c1: 0xff8a20, a: 1, drag: 3 });
               const hp2 = T0.head.getWorldPosition(new THREE.Vector3()); d.particles.spawn(hp2.x, hp2.y, hp2.z, { vx: rnd(-1.5, 1.5), vy: 2.4, vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.08, s1: 0.07, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); } else if (!target) burst = 0; } }
         if (kind === 'tesla' && target && fireT <= 0) { fireT = 1.2; const o = T0.muzzle.getWorldPosition(new THREE.Vector3()); let from = o; const hit = new Set<Enemy>(); let cur: Enemy | null = target; d.audio.spell('shock'); spellLight.position.copy(o); spellLight.color.setHex(0xbff4ff); spellLight.intensity = 40;
@@ -993,6 +997,10 @@ export function createGameplay(d: GameplayDeps) {
     /** a água em que o herói está (a bobina de choque mata) */
     setWaterCheck(f: () => boolean) { inWater = f; },
     gadState() { return { ...gad, sentries: gad.sentries.length, zapDeath }; },
+    /** 02/11: diz ao sorteio de peças o que serve para a classe atual (regra 1 em 3) */
+    setFits(f: ((g: Gear) => boolean) | null) { fitsMe = f; },
+    /** 02/11: só para os comandos de teste — apaga o histórico de classes (a Árvore mostra só a classe atual) */
+    clearClassPast() { cls = { ...cls, past: [] }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } },
     changeClass(n: string) { if (st.lvl < 30) { logMsg('A mudança de classe só se abre no nível 30.', '#ff9a8a'); return false; } cls.past = [...(cls.past ?? []), { name: cls.name, lvl: cls.lvl }]; cls = { name: n, lvl: 0, xp: 0, past: cls.past }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } logMsg(`✦ Você agora segue o caminho de ${n}. O que aprendeu antes fica com você.`, '#c9a0ff'); return true; }, setResource(r: { name: string; label: string; style: string; mode: 'regen' | 'fight' }) { const was = st.res.mode; st.res = r; st.recalc?.(); if (r.mode === 'fight' && was !== 'fight') st.mp = 0; st.mp = Math.min(st.mp, st.mpMax); }, ambush() { st.ambushT = 0.9; }, xpNeed, xpNeedAt, setOnItem(f: (id: string, n: number) => boolean | void) { onItem = f; }, setOnDeath(f: (revive: () => void) => void) { onDeath = f; }, snd(k: 'coins' | 'error' | 'pickup' | 'click' | 'swap') { d.audio[k](); }, setMoving(m: boolean) { heroMoving = m; }, setSkillScale(f: (id: string) => SScale) { skillScale = f; }, setOnGear(f: (g: Gear) => boolean | void) { onGear = f; }, setOnKill(f: (t: Enemy['type'], e: Enemy) => void) { onKill = f; },
     /** jogar junto: liga os avisos da rede e o tamanho do grupo por perto */
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
@@ -1042,27 +1050,27 @@ export function createGameplay(d: GameplayDeps) {
            adianta o alvo, arco balístico com gravidade, crava no chão/muro/bicho. O tempo do disparo segue o golpe da arma (soltar a corda, arremessar) */
         const shell = () => { const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2 + rnd(-0.5, 0.5), vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); };
         if (wmode === 'bow' || wmode === 'longbow') { const L = wmode === 'longbow'; cd.attack = (L ? 1.05 : 0.8) * TEMPO; d.audio.swing();
-          pending.push({ at: now + TEMPO * 0.24, fn: () => { shots.fire(L ? 'longarrow' : 'arrow', from0(), h.root.rotation.y, { mul: L ? 1.55 : 1.25 }); d.audio.parry(); } }); return true; }
+          pending.push({ at: now + TEMPO * 0.24, fn: () => { shots.fire(L ? 'longarrow' : 'arrow', from0(), yaw, { mul: L ? 1.55 : 1.25 }); d.audio.parry(); } }); return true; }
         if (wmode === 'xbow') { cd.attack = 0.6 * TEMPO; // besta de repetição: três virotes em sequência
-          for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { shots.fire('bolt', from0(), h.root.rotation.y, { mul: 0.62, spread: 0.02 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
+          for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { shots.fire('bolt', from0(), yaw, { mul: 0.62, spread: 0.02 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
         /* 02/11 (Erling): uma em cada mão — a da esquerda dispara logo depois da direita, da boca dela */
         const offFrom = () => { const f = h.offTip?.(new THREE.Vector3()); if (!f) return null; f.y = Math.max(f.y, 1.0); return f; };
         const flash = (f: THREE.Vector3, n = 6) => { for (let k = 0; k < n; k++) d.particles.spawn(f.x, f.y, f.z, { vx: Math.sin(yaw) * rnd(2, 5) + rnd(-0.6, 0.6), vy: rnd(-0.3, 0.8), vz: Math.cos(yaw) * rnd(2, 5) + rnd(-0.6, 0.6), life: 0.12, s0: 0.3, s1: 0.05, c0: 0xfff2c0, c1: 0xff8a20, a: 1, drag: 4 }); };
         const dual = !!h.dual;
         if (wmode === 'hxbow') { cd.attack = (dual ? 0.62 : 0.55) * TEMPO; // besta de mão: um virote certeiro, braço estendido
-          pending.push({ at: now + TEMPO * 0.06, fn: () => { shots.fire('hbolt', from0(), h.root.rotation.y, { mul: dual ? 0.85 : 1.05 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.03); } });
-          if (dual) pending.push({ at: now + TEMPO * 0.2, fn: () => { const f = offFrom(); if (!f) return; shots.fire('hbolt', f, h.root.rotation.y, { mul: 0.85 }); d.audio.parry(); } });
+          pending.push({ at: now + TEMPO * 0.06, fn: () => { shots.fire('hbolt', from0(), yaw, { mul: dual ? 0.85 : 1.05 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.03); } });
+          if (dual) pending.push({ at: now + TEMPO * 0.2, fn: () => { const f = offFrom(); if (!f) return; shots.fire('hbolt', f, yaw, { mul: 0.85 }); d.audio.parry(); } });
           return true; }
         if (wmode === 'shotgun') { cd.attack = (dual ? 0.95 : 0.85) * TEMPO; // escopeta de cano duplo: um estouro de chumbo em leque, curto alcance, empurra
-          const blast = (f: THREE.Vector3 | null) => { if (!f) return; h.muzzle(); flash(f, 10); d.audio.hit(); d.audio.boom(); st.shake = Math.max(st.shake, 0.16); for (let k = 0; k < 8; k++) shots.fire('pellet', f, h.root.rotation.y, { mul: dual ? 0.17 : 0.21, spread: 0.1 }); shell(); };
+          const blast = (f: THREE.Vector3 | null) => { if (!f) return; h.muzzle(); flash(f, 10); d.audio.gun('shotgun'); st.shake = Math.max(st.shake, 0.16); for (let k = 0; k < 8; k++) shots.fire('pellet', f, yaw, { mul: dual ? 0.17 : 0.21, spread: 0.1 }); shell(); };
           pending.push({ at: now + TEMPO * 0.07, fn: () => blast(from0()) }); if (dual) pending.push({ at: now + TEMPO * 0.22, fn: () => blast(offFrom()) }); return true; }
         if (wmode === 'kunai') { cd.attack = 0.5 * TEMPO; d.audio.swing(); // kunai: dois arremessos rápidos, girando no ar
-          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.12 + i * 0.09, fn: () => { shots.fire('kunai', from0(), h.root.rotation.y + (i ? 0.05 : -0.05), { mul: 0.6, spread: 0.015 }); } }); return true; }
+          for (let i = 0; i < 2; i++) pending.push({ at: now + TEMPO * 0.12 + i * 0.09, fn: () => { shots.fire('kunai', from0(), yaw + (i ? 0.05 : -0.05), { mul: 0.6, spread: 0.015 }); } }); return true; }
         if (wmode === 'pistol') { cd.attack = 0.42 * TEMPO; // pistola de latão: dois tiros certeiros e pesados (com duas: direita, esquerda, direita, esquerda)
-          for (let i = 0; i < (dual ? 4 : 2); i++) pending.push({ at: now + TEMPO * 0.08 + i * (dual ? 0.09 : 0.16), fn: () => { const L = dual && i % 2 === 1; const from = L ? offFrom() : from0(); if (!from) return; if (!L) h.muzzle(); flash(from, L ? 6 : 3); d.audio.hit(); st.shake = Math.max(st.shake, 0.07); shots.fire('bullet', from, h.root.rotation.y, { mul: dual ? 0.6 : 0.78, spread: 0.008 });
+          for (let i = 0; i < (dual ? 4 : 2); i++) pending.push({ at: now + TEMPO * 0.08 + i * (dual ? 0.09 : 0.16), fn: () => { const L = dual && i % 2 === 1; const from = L ? offFrom() : from0(); if (!from) return; if (!L) h.muzzle(); flash(from, L ? 6 : 3); d.audio.gun('pistol'); st.shake = Math.max(st.shake, 0.07); shots.fire('bullet', from, yaw, { mul: dual ? 0.6 : 0.78, spread: 0.008 });
             beam(from, from.clone().addScaledVector(dir0(0), 0.9), 0xffe0a0, 0.04, 0.05); shell(); } }); return true; }
         if (wmode === 'smg') { cd.attack = 0.55 * TEMPO; // metralhadora de mão: seis balas rápidas e espalhadas
-          for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(); h.muzzle(); d.audio.hit(); st.shake = Math.max(st.shake, 0.05); shots.fire('bullet', from, h.root.rotation.y, { mul: 0.34, spread: 0.05 });
+          for (let i = 0; i < 6; i++) pending.push({ at: now + TEMPO * 0.08 + i * 0.065, fn: () => { const from = from0(); h.muzzle(); d.audio.gun('smg'); st.shake = Math.max(st.shake, 0.05); shots.fire('bullet', from, yaw, { mul: 0.34, spread: 0.05 });
             beam(from, from.clone().addScaledVector(dir0(0), 0.7), 0xffe0a0, 0.03, 0.04); shell(); } }); return true; }
         // lança-chamas / lança-veneno de mão: jato curto de 5 m enquanto o botão fica apertado (cada clique, 0,8 s)
         cd.attack = 0.7 * TEMPO; flameT = 0.8; flameYaw = yaw; flameKind = wmode === 'venom' ? 'poison' : 'fire'; flameMul = 0.22; flameReach = 5.5; d.audio.cast(); return true;
@@ -1074,9 +1082,9 @@ export function createGameplay(d: GameplayDeps) {
         const over = overcharge; overcharge = false; if (over) logMsg('⚡ Sobrecarga: Rajada ×2,5', '#8af0ff');
         const nShots = form?.id === 'mech' ? 5 : 3;
         for (let i = 0; i < nShots; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.09, fn: () => {
-          const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 0.9); h.muzzle(); d.audio.hit(); d.audio.swing(); st.shake = Math.max(st.shake, 0.08);
+          const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 0.9); h.muzzle(); d.audio.gun('rifle'); st.shake = Math.max(st.shake, 0.08);
           const sp = 0.025, dir = new THREE.Vector3(Math.sin(yaw + rnd(-sp, sp)), 0, Math.cos(yaw + rnd(-sp, sp)));
-          shots.fire('bullet', from, h.root.rotation.y, { mul: over ? 1.6 : 0.62, spread: 0.025 }); /* 02/11: bala de rifle com física (mira, rastro, impacto) */
+          shots.fire('bullet', from, yaw, { mul: over ? 1.6 : 0.62, spread: 0.025 }); /* 02/11: bala de rifle com física (mira, rastro, impacto) */
           beam(from, from.clone().addScaledVector(dir, 1.6), 0xffe0a0, 0.03, 0.08);
           for (let k = 0; k < 6; k++) d.particles.spawn(from.x, from.y, from.z, { vx: dir.x * rnd(3, 9) + rnd(-2, 2), vy: rnd(-0.5, 1.5), vz: dir.z * rnd(3, 9) + rnd(-2, 2), life: 0.2, s0: 0.6, s1: 0.05, c0: 0xfff0c0, c1: 0xff8a20, a: 1, drag: 3 });
           for (let k = 0; k < 3; k++) d.particles.spawn(from.x, from.y + 0.05, from.z, { vx: rnd(-0.5, 0.5), vy: rnd(0.5, 1.2), vz: rnd(-0.5, 0.5), life: 0.6, s0: 0.35, s1: 0.3, c0: 0x8a8a8a, c1: 0x444444, a: 0.4, drag: 1 });
@@ -2043,7 +2051,7 @@ export function createGameplay(d: GameplayDeps) {
       const hp = $('hp'), mp = $('mp');
       hp.style.setProperty('--f', String(st.hp / st.hpMax)); hp.style.setProperty('--l', String(st.hpLag / st.hpMax)); mp.style.setProperty('--f', String(st.mp / st.mpMax)); mp.style.setProperty('--l', String(st.mpLag / st.mpMax));
       { const a = `${Math.round(st.hp)}`, b = `${Math.round(st.mp)}`, ha = hp.querySelector('b')!, hb = mp.querySelector('b')!; if (ha.textContent !== a) ha.textContent = a; if (hb.textContent !== b) hb.textContent = b; } /* mexer no DOM só quando o número muda (perfil: layout a cada quadro) */ // o número de verdade (o canvas do globo é o 1º filho)
-      const setCd = (k: string, v: number, tot: number) => { const e = document.querySelector(`.slot[data-id="${k}"] .cd`) as HTMLElement | null; if (e) e.style.transform = `scaleY(${v / tot})`; };
+      const setCd = (k: string, v: number, tot: number) => { const e = document.querySelector(`.slot[data-id="${k}"] .cd`) as HTMLElement | null; if (e) e.style.setProperty('--cd', String(Math.max(0, Math.min(1, v / tot)))); }; /* 02/11 (Erling): recarga em volta circular dentro do quadrado, não barra descendo */
       setCd('combo', cd.attack, CD.attack); setCd('slam', Math.max(cd.cast, cd.slam), CD.slam); setCd('bash', st.counterT > 0 ? 0 : cd.bash, CD.bash); setCd('heal', cd.heal, CD.heal); for (const id of Object.keys(cdX)) setCd(id, cdX[id], CDX[id] ?? 10);
       const slot = (k: string) => document.querySelector(`.slot[data-id="${k}"]`) as HTMLElement | null;
       const setT = (k: string, v: number) => { const t = slot(k)?.querySelector('.cdt') as HTMLElement | null; if (t) t.textContent = v > 0.05 ? (v >= 10 ? String(Math.ceil(v)) : v.toFixed(1)) : ''; };

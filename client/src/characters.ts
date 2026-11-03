@@ -438,7 +438,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   /* arma de fogo / besta: segura com as DUAS mãos, como o rifle do tecnocrata (23/10). A arma vive num suporte próprio na raiz;
      a mão direita vai à empunhadura e a esquerda ao guarda-mão por IK, e a arma é colocada entre as duas mãos, mirando para a frente */
   const gunHolder = new THREE.Group(); let gunK = 0, gunTip0: THREE.Object3D | null = null, gunBase0: THREE.Object3D | null = null, gunOn = false;
-  let dwarfAxe: THREE.Group | null = null, dwarfDefault: THREE.Object3D[] | null = null;
+  let dwarfAxe: THREE.Group | null = null, dwarfDefault: THREE.Object3D[] | null = null, dwarfUnarmed = false, gearOn = true; /* 02/11 (Erling: "tiro a arma do anão e ele continua com uma arma?"): sem arma equipada, o anão fica de mãos vazias */
   let wcls: WClass = 'one';
   /** o combo da classe trocado pelo golpe da arma (02/11) */
   const ACT_BY_W: Partial<Record<WClass, Partial<Record<Action, Action>>>> = {
@@ -788,7 +788,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     const bsBoss = mk(new THREE.SphereGeometry(0.08, 8, 6), iron, 0.004); bsBoss.position.set(0, S.torso * 0.35, -S.chestR * 1.12); chest.add(bsBoss);
     addLantern(hips, [-S.pelvisW * 0.72, 0.0, -0.1]);
     extraUpdate = (t) => { gmR.color.setHSL(0.07, 1, 0.5 + 0.12 * Math.sin(t * 3)); };
-    restL = { x: -0.2, z: 0.42, e: 0.5 }; restR = { x: -0.15, z: -0.42, e: 0.35 };
+    restL = { x: -0.08, z: -0.22, e: 0.32 }; restR = { x: -0.08, z: 0.22, e: 0.32 }; /* 02/11 (Erling: "braços esticados normal, igual ao humano"): soltos ao lado do corpo largo, nada de mãos juntas na frente */
     swingL = 0.75; swingR = 0.35; styleAtk = 'chop';
   }
 
@@ -1326,7 +1326,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           offTipO.position.set(0, -0.14 - len, 0); weaponTipObj = offTipO; offSw.visible = true; offSrc = 'bow'; }
       }
       /* anão: as armas de duas mãos da raça trocam a cabeça do martelo (o cabo, as mãos e o golpe continuam os mesmos) */
-      if (dwarfAxe && g.weapon !== undefined) {
+      if (dwarfAxe && g.weapon !== undefined) { dwarfUnarmed = g.weapon === null; dwarfAxe.visible = gearOn && !dwarfUnarmed;
         const ax = dwarfAxe, base = g.weapon?.base ?? '', rar = g.weapon?.rarity ?? 'normal', GL = glowOf(rar) || undefined;
         if (!dwarfDefault) dwarfDefault = ax.children.filter((c) => (c as THREE.Mesh).isMesh);
         for (const c of [...ax.children]) if ((c as THREE.Mesh).isMesh) ax.remove(c);
@@ -1437,7 +1437,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     weaponTip(out) { let q: THREE.Object3D | null = weaponTipObj; while (q && q.parent) q = q.parent; if (q === root.parent || (q as THREE.Scene | null)?.isScene) return weaponTipObj.getWorldPosition(out);
       /* a ponta solta (arma trocada/escondida pela pele de artista): sai da mão da frente, na altura do peito */
       root.updateWorldMatrix(true, false); const y = root.rotation.y; return out.set(root.position.x + Math.sin(y) * 0.5, root.position.y + 1.25, root.position.z + Math.cos(y) * 0.5); },
-    gearVisible(on) { for (const g of [gearSword, gearShield, dwarfAxe, gunHolder]) if (g) g.visible = on; },
+    gearVisible(on) { gearOn = on; for (const g of [gearSword, gearShield, dwarfAxe, gunHolder]) if (g) g.visible = on && !(g === dwarfAxe && dwarfUnarmed); },
     weaponBase(out) { return (weaponBaseObj ?? armR.wr).getWorldPosition(out); },
     handPos(out) { return armR.wr.getWorldPosition(out); },
     update(dt, t, mps, heading) {
@@ -1586,7 +1586,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const fm = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.062, 0.035, 10), foam); fm.position.y = 0.085; mug.add(fm); const fb = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 5), foam); fb.position.set(0.03, 0.1, 0.02); mug.add(fb);
           const hd = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 5, 10, Math.PI), wd); hd.rotation.z = -Math.PI / 2; hd.position.x = -0.062; mug.add(hd);
           mug.position.set(0.02, -0.1, 0.075); armR.wr.add(mug); }
-        if (mug) mug.visible = mugOn; if (swordHolder) swordHolder.visible = !freeH; if (weaponInner) weaponInner.visible = !freeH; if (freeH && gunHolder.visible) gunHolder.visible = false; else if (!freeH && !gunHolder.visible) gunHolder.visible = true; }
+        if (mug) mug.visible = mugOn; if (swordHolder) swordHolder.visible = !freeH; if (weaponInner) weaponInner.visible = !freeH && gearOn && !(weaponInner === dwarfAxe && dwarfUnarmed); /* 02/11: arma escondida/desarmado continua escondida */ if (freeH && gunHolder.visible) gunHolder.visible = false; else if (!freeH && !gunHolder.visible) gunHolder.visible = true; }
       { /* 28/10 (Erling: "devia ficar uma bobina azul como um relógio ou um bracelete no meu pulso, pulsando azul") */
         const on = !!(hero as { cuffOn?: boolean }).cuffOn; if (on && !cuff) { cuff = new THREE.Group(); cuffMat = toon(0x3a9aff, { emissive: new THREE.Color(0x2a8aff) }); const band = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.02, 6, 16), toon(0x8a6a3a)); band.rotation.x = Math.PI / 2; cuff.add(band);
           const ring = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.009, 4, 16), cuffMat); ring.rotation.x = Math.PI / 2; ring.position.y = 0.012; cuff.add(ring); const ring2 = ring.clone(); ring2.position.y = -0.012; cuff.add(ring2);
@@ -1744,7 +1744,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           }
         }
       }
-      if (kind === 'dwarf' && gripL) { // mão esquerda segura o cabo do martelo nos golpes e na postura de combate
+      if (kind === 'dwarf' && gripL && !dwarfUnarmed && gearOn) { // mão esquerda segura o cabo do martelo nos golpes e na postura de combate
         const two = act && (act.a === 'cleave1' || act.a === 'cleave2' || act.a === 'quake' || act.a === 'charge') ? 1 : 0;
         const k2 = smooth1('twoH', Math.max(two, guardK, combatK * (1 - walkK * 0.5)), dt, 12);
         if (k2 > 0.01) { chest.updateWorldMatrix(true, true); const tL = gripL.getWorldPosition(new V()); chest.worldToLocal(tL); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.8, -0.8, 0.2), k2); }

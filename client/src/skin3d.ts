@@ -222,8 +222,15 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     { /* 02/11 (Erling: "a ponta do cabo na palma da mão, não atravessando a axila"): a arma de duas mãos do anão (martelo/machado) é
          recolocada na mão do modelo: o cabo passa pelo punho (como a espada) e a pegada escorrega até a ponta do cabo quando ele
          está parado fora de combate (martelo apoiado no chão ao lado, cabeça para baixo), como nas referências */
-      const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); twoDone = false; if (th && th.parent) { twoDone = true;
+      const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); twoDone = false; if (th && th.parent && th.visible) { twoDone = true; /* 02/11: arma escondida (tela de criação) = braços soltos, sem segurar o cabo */
         const isSw = th === R.sword(), hs = isSw ? -1 : 1, key = th.children.map((c) => c.uuid).join(); if (key !== reachKey) { reachKey = key; reach = measureReach(th, hs); }
+        /* 02/11 (Erling: "em modo de descanso ele não coloca a marreta nas costas?"): fora do modo de combate a arma de duas mãos vai para as
+           costas, na diagonal (cabeça por cima do ombro, cabo para o quadril), por fora do escudo; as mãos ficam livres */
+        if (!hero.combat && !hero.acting && !hero.guard && sockets) {
+          const an = 0.62, X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, Math.cos(an), Math.sin(an)).multiplyScalar(hs), Z = new THREE.Vector3().crossVectors(X, Y);
+          const ex = new THREE.Matrix4().makeBasis(X, Y, Z).setPosition(-0.13, -0.04, 0); sockM.multiplyMatrices(sockets.back.b.matrixWorld, sockets.back.rel).multiply(ex);
+          th.parent.updateWorldMatrix(true, false); th.matrixAutoUpdate = false; th.matrix.copy(th.parent.matrixWorld).invert().multiply(sockM); th.updateMatrixWorld(true);
+          restK = 0; cmbK = 0; gripK.Left = 0; gripK[swordSide] = 0; setFingers(); model.updateMatrixWorld(true); if (sockets) placeSock(R.shield(), sockets.back); return; }
         W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); root.matrixWorld.decompose(vF, tq, sc);
         const a = ay.subVectors(vI, vP).normalize().multiplyScalar(-1), f = new THREE.Vector3().subVectors(vM, vH).normalize();
         const k = f.clone().sub(a.clone().multiplyScalar(f.dot(a))).normalize(); const palm = new THREE.Vector3().crossVectors(a, f).normalize();
@@ -252,7 +259,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!);
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
-    gripK[swordSide] = stowed && !tool ? 0.42 : 1; gripK[shieldSide] = stowed && !offOn ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
+    /* 02/11 (Erling: "dedos virados para trás" na elfa, na tela de criação): mão vazia = dedos no repouso do próprio modelo, sem fechar */
+    const swVis = !!R.sword()?.visible || tool, shVis = !!R.shield()?.visible;
+    gripK[swordSide] = !swVis ? 0 : stowed && !tool ? 0.42 : 1; gripK[shieldSide] = !shVis && !offOn ? 0 : stowed && !offOn ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
     if (offOn && offW && offW.parent) { /* 02/11: arma na mão esquerda (arco, segunda besta de mão, pistola ou escopeta) — presa na mão do modelo, na direção que o esqueleto calcula */
       W(hH, vH); W(hI, vI); W(hP, vP); W(hM, vM); const f2 = vM.clone().sub(vH).normalize();
       const g2 = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(f2, -0.01 * sc.x);
@@ -384,7 +393,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     /* 02/11 (Erling, referências do anão): arma de duas mãos — as duas mãos do modelo vão para onde estão as mãos do esqueleto procedural
        (que já segura o cabo por IK, com as poses: parado, combate, golpes). IK de dois ossos em cada braço do modelo, cotovelo pelo lado do
        cotovelo do procedural; sem isto os braços copiavam só as rotações e, com outras proporções, cruzavam o corpo longe do martelo. */
-    if ((R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.()) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; }
+    /* 02/11 (Erling: "anões com essa posição ridícula de braços… braços esticados normal"): só segura o cabo quando a arma está à mostra e
+       na mão (combate, golpe, guarda); arma escondida (tela de criação), desarmado ou guardada nas costas = braços soltos como o humano */
+    { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
     holdGear(); placeCups(); placeFitted();
   }
   return { tick, model };

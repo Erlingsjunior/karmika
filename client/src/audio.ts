@@ -131,6 +131,21 @@ export class AudioEngine {
   /* ---------- combate ---------- */
   swing() { if (!this.ctx) return; this.effort('atk'); const c = this.ctx.currentTime, k = 0.85 + Math.random() * 0.3; const f = this.burst('bandpass', 700 * k, 1.4, 0.32, 0.1, 0.9 * k); f.frequency.setValueAtTime(380, c); f.frequency.exponentialRampToValueAtTime(1500, c + 0.14); f.frequency.exponentialRampToValueAtTime(520, c + 0.3); /* lâmina pesada cortando o ar */ }
   hit() { if (!this.ctx) return; this.metal(1700 + Math.random() * 400, 0.18, 0.05); this.burst('bandpass', 2500, 2, 0.05, 0.1); this.burst('lowpass', 500, 0.8, 0.12, 0.12); this.tone(160, 60, 0.14, 0.1); }
+  /** 02/11 (Erling: "som legal de tiros com pólvora"): estalo seco da espoleta + estouro grave da pólvora (o filtro fecha rápido) +
+      soco no peito (seno caindo) + cauda abafada do eco. Sem o "ping" metálico. pistola < metralhadora (curto) < rifle < escopeta (gordo) */
+  gun(kind: 'pistol' | 'smg' | 'rifle' | 'shotgun' | 'turret' = 'pistol') { if (!this.ctx) return;
+    const P = { pistol: [1, 1, 1], smg: [0.75, 0.65, 0.8], rifle: [1.1, 1.15, 1.05], shotgun: [1.35, 1.6, 0.8], turret: [0.55, 0.6, 0.9] }[kind], v = P[0], L = P[1], k = P[2] * (0.94 + Math.random() * 0.12);
+    const c = this.ctx.currentTime;
+    this.burst('highpass', 2200 * k, 0.6, 0.03, 0.09 * v, 1.2, this.sfx, 0, 0.001); // espoleta
+    const b = this.burst('lowpass', 2600 * k, 0.8, 0.16 * L, 0.24 * v, 0.9, this.sfx, 0, 0.001); b.frequency.setValueAtTime(2600 * k, c); b.frequency.exponentialRampToValueAtTime(240, c + 0.12 * L); // estouro
+    this.tone(170 * k, 38, 0.15 * L, 0.2 * v, 'sine', 0, this.sfx, 0, 0.002); // soco grave
+    this.burst('lowpass', 420 * k, 0.4, 0.5 * L, 0.045 * v, 0.7, this.sfx, 0, 0.03); // eco abafado
+    if (kind === 'shotgun') this.tone(90, 30, 0.3, 0.14, 'sine', 0.01, this.sfx, 0, 0.004);
+  }
+  /** bala acertando carne: baque curto e úmido, grave, sem metal */
+  bulletHit() { if (!this.ctx) return; this.burst('lowpass', 900, 0.7, 0.07, 0.11, 0.8); this.tone(130, 55, 0.08, 0.07, 'sine', 0, this.sfx, 0, 0.003); }
+  /** bala na pedra/parede: estalo seco de lasca, médio (sem o assobio agudo) */
+  ric() { if (!this.ctx) return; this.burst('bandpass', 1300 + Math.random() * 300, 1.1, 0.06, 0.07, 1); this.burst('lowpass', 500, 0.6, 0.1, 0.05, 0.8); }
   /** lâmina cortando carne: mordida aguda do fio + rasgo úmido descendo + baque do corpo — nada de metal batendo */
   slash(crit = false) {
     if (!this.ctx) return; if (crit) this.effort('heavy'); const c = this.ctx.currentTime, k = crit ? 1.35 : 1;

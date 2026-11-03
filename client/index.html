@@ -417,7 +417,7 @@
   .slot.aim { outline: 2px solid #fff0bd; box-shadow: 0 0 18px #ffe08a, inset 0 0 12px rgba(255,224,138,.5); animation: aimp .7s infinite alternate; } @keyframes aimp { to { box-shadow: 0 0 6px #ffe08a; } }
   .slot svg { width: 30px; height: 30px; stroke: #f2cf8a; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .slot kbd { position: absolute; left: 4px; top: 2px; font: 600 10px Cinzel, serif; color: #d9a24f; }
-  .slot .cd { position: absolute; inset: 0; background: rgba(0,0,0,.65); transform-origin: bottom; transform: scaleY(0); border-radius: 5px; }
+  .slot .cd { --cd: 0; position: absolute; inset: 0; background: conic-gradient(from 0deg, transparent 0 calc((1 - var(--cd)) * 360deg), rgba(0,0,0,.68) calc((1 - var(--cd)) * 360deg) 360deg); border-radius: 5px; pointer-events: none; } /* 02/11: sombra em leque que gira no sentido horário até sumir */
   .slot .cost { position: absolute; right: 4px; bottom: 2px; font: 600 9px Cinzel, serif; color: #7fb8ff; }
   /* números de dano */
   .dmg { position: fixed; z-index: 5; pointer-events: none; font: 700 20px Cinzel, serif; color: #ffe08a; text-shadow: 0 0 6px #a33, 0 2px 0 #000; animation: dmg 1s ease-out forwards; }
@@ -473,7 +473,7 @@
   .slot.locked.ready, .slot.locked.on { animation: none; border-color: inherit; transform: none; box-shadow: none; } /* magia que você ainda não tem não pisca (avisava 'pronta' por causa da Fúria) */
   @keyframes rdy { 50% { box-shadow: 0 0 0 1px #000, 0 0 18px var(--c), inset 0 0 12px color-mix(in srgb, var(--c) 50%, transparent); } }
   .slot kbd { left: 4px; top: 2px; font: 700 9px Cinzel, serif; color: #f0d08a; text-shadow: 0 1px 2px #000; z-index: 3; }
-  .slot .cd { background: rgba(0,0,0,.55); border-radius: 6px; }
+  .slot .cd { border-radius: 6px; }
   .slot .cdt { position: absolute; inset: 0; display: grid; place-items: center; font: 700 15px Cinzel, serif; color: #fff; text-shadow: 0 0 4px #000, 0 1px 2px #000; z-index: 4; pointer-events: none; }
   .slot .cost { z-index: 3; text-shadow: 0 1px 2px #000; font-size: 9px; right: 3px; bottom: 1px; }
   #crest { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); width: 142px; height: 82px; z-index: 3; filter: drop-shadow(0 0 10px rgba(0,0,0,.9)); }

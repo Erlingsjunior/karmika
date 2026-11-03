@@ -76,7 +76,7 @@ const FONT_R = new Map<string, number>();
   for (const st of K.city.settlements) {
     let f: (typeof K.city.props)[number] | null = null, bd = st.radius; for (const q of K.city.props) { if (q.kind !== 'fountain') continue; const d = Math.hypot(q.gx + q.w / 2 - st.x, q.gy + q.h / 2 - st.y); if (d < bd) { bd = d; f = q; } }
     if (!f) continue; const fx = f.gx + f.w / 2 - 0.5, fy = f.gy + f.h / 2 - 0.5;
-    const old = CINE.vistas.find((v) => v.title.endsWith(`— ${st.name}`) && !FONT_R.has(v.id));
+    const old = CINE.vistas.find((v) => v.title.endsWith(`— ${st.name}`) && !FONT_R.has(v.id)) ?? CINE.vistas.find((v) => !FONT_R.has(v.id) && Math.hypot(v.at.x - st.x, v.at.y - st.y) < st.radius + 2); /* 02/11 (Erling: "a fonte da praça já é a Fonte da Visão; por que outra do lado?"): a visão que cai dentro da vila vai para a fonte da praça (Brasaforja: A Montanha Negra) */
     if (old) { old.at = { x: fx, y: fy }; old.shots[0] = shot(fx, fy, 22, 45); FONT_R.set(old.id, f.w); continue; }
     const lore = (st.npcs[0]?.lines[0] ?? '').replace(`Bem-vindo a ${st.name}. `, '');
     const id = 'v_st_' + st.name; FONT_R.set(id, f.w);
