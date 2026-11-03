@@ -28,12 +28,55 @@ function tileW(w: World, tx: number, ty: number, pred: (t: string) => boolean) {
 }
 
 let groundMat: THREE.MeshLambertMaterial | null = null;
+/* AS TEXTURAS DO CHÃO (03/11, Herik/Erling, models/cenario/chao): uma pilha de 12 texturas (DataArrayTexture, 512²) e o terreno escolhe por
+   peso de vértice. Para não repetir: cada textura é lida duas vezes, em escalas e ângulos diferentes, e um ruído grande troca de uma para a
+   outra; a grama alterna entre lisa e com trevo, a estrada e o calçamento entre as duas versões. No chão natural, a textura entra como
+   DETALHE sobre a cor do bioma (a paleta e a luz do jogo ficam); estrada, calçamento, lama, seixo, rocha e areia entram com a cor delas. */
+const GROUND_TEX = ['grama_01', 'grama_trevo_01', 'estrada_terra_01', 'estrada_terra_02', 'paralelepipedo_01', 'paralelepipedo_02', 'caminho_lama_01', 'chao_floresta_01', 'seixos_molhados_01', 'rocha_musgo_01', 'cascalho_areia_01', 'chao_floresta_02'];
+const groundU = { tGround: { value: null as THREE.DataArrayTexture | null }, uMean: { value: GROUND_TEX.map(() => new THREE.Vector3(0.5, 0.5, 0.5)) }, uTexOn: { value: 0 } };
+let groundTexP: Promise<void> | null = null;
+function loadGroundTex() {
+  if (groundTexP) return groundTexP; const S = 512, L = GROUND_TEX.length, data = new Uint8Array(S * S * 4 * L);
+  groundTexP = Promise.all(GROUND_TEX.map((n, li) => new Promise<void>((res) => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d')!; g.drawImage(im, 0, 0, S, S);
+      const px = g.getImageData(0, 0, S, S).data; data.set(px, li * S * S * 4); let r = 0, gg = 0, b = 0; for (let q = 0; q < px.length; q += 16) { r += px[q]; gg += px[q + 1]; b += px[q + 2]; } const nn = px.length / 16;
+      /* média em espaço linear (a textura é lida como sRGB) */ const lin = (v: number) => Math.pow(v / nn / 255, 2.2); groundU.uMean.value[li].set(lin(r), lin(gg), lin(b)); res(); }; im.onerror = () => res(); im.src = `/models/cenario/chao/${n}.jpg`; })))
+    .then(() => { const t = new THREE.DataArrayTexture(data, S, S, L); t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
+      groundU.tGround.value = t; groundU.uTexOn.value = 1; });
+  return groundTexP;
+}
 function getGroundMat() {
   if (groundMat) return groundMat;
-  groundMat = new THREE.MeshLambertMaterial({ vertexColors: true });
+  groundMat = new THREE.MeshLambertMaterial({ vertexColors: true }); loadGroundTex();
   groundMat.onBeforeCompile = (sh) => {
-    sh.vertexShader = 'attribute float aPl; varying float vPl; varying vec3 vWp;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
-    sh.fragmentShader = 'varying float vPl; varying vec3 vWp;\n' + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+    Object.assign(sh.uniforms, groundU);
+    sh.vertexShader = 'attribute float aPl; attribute vec4 aSp1; attribute vec4 aSp2; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vSp1 = aSp1; vSp2 = aSp2; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
+    sh.fragmentShader = `precision highp sampler2DArray; uniform sampler2DArray tGround; uniform vec3 uMean[12]; uniform float uTexOn; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;
+      float gHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y); }
+      /* a textura sem repetir: duas leituras (escala e ângulo diferentes) trocadas por um ruído largo */
+      vec3 gTex(float L, float sc) { vec2 p = vWp.xz / sc; vec2 q = mat2(0.809, -0.588, 0.588, 0.809) * vWp.xz / (sc * 1.37) + vec2(0.37, 0.71);
+        float n = smoothstep(0.32, 0.68, gNoise(vWp.xz * 0.045 + L * 7.3));
+        return mix(texture(tGround, vec3(p, L)).rgb, texture(tGround, vec3(q, L)).rgb, n); }
+      vec3 gPair(float A, float B, float sc, float seed) { float n = smoothstep(0.38, 0.62, gNoise(vWp.xz * 0.028 + seed)); return mix(gTex(A, sc) / uMean[int(A)], gTex(B, sc) / uMean[int(B)], n); }
+      ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      if (uTexOn > 0.5) {
+        vec3 base = diffuseColor.rgb;
+        /* chão natural: a textura como detalhe sobre a cor do bioma (grama lisa/trevo; na mata, o chão de folhas) */
+        vec3 det = mix(gPair(0.0, 1.0, 3.2, 1.7), gPair(7.0, 11.0, 3.6, 4.1), clamp(vSp1.w, 0.0, 1.0));
+        det = mix(vec3(1.0), clamp(det, 0.35, 1.9), 0.85 * vSp2.w);
+        base *= det;
+        /* rocha das encostas, seixos e areia: com a cor delas, puxada um pouco para a luz do bioma */
+        base = mix(base, gTex(9.0, 4.0) * mix(vec3(1.0), diffuseColor.rgb / max(uMean[9], vec3(0.02)), 0.35), clamp(vSp2.y, 0.0, 1.0) * 0.85);
+        base = mix(base, gTex(10.0, 3.0), clamp(vSp2.z, 0.0, 1.0) * 0.8);
+        base = mix(base, gTex(6.0, 2.6), clamp(vSp1.z, 0.0, 1.0) * 0.85);
+        base = mix(base, gTex(8.0, 1.8), clamp(vSp2.x, 0.0, 1.0) * 0.9);
+        /* estrada de terra (as duas versões) e o calçamento de pedra */
+        vec3 road = mix(gTex(2.0, 3.0), gTex(3.0, 3.0), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.06 + 9.0)));
+        base = mix(base, road * 0.92, clamp(vSp1.x, 0.0, 1.0));
+        vec3 cob = mix(gTex(4.0, 2.4), gTex(5.0, 2.4), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.05 + 3.0)));
+        base = mix(base, cob * 0.95, clamp(vSp1.y, 0.0, 1.0));
+        diffuseColor.rgb = base;
+      } else {
       vec2 gq = floor(vWp.xz * 5.0);
       float gh = fract(sin(dot(gq, vec2(12.9898, 78.233))) * 43758.5453);
       diffuseColor.rgb *= 0.90 + 0.2 * gh;
@@ -44,7 +87,7 @@ function getGroundMat() {
         float e = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
         float j = smoothstep(0.05, 0.14, e);
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * (0.78 + 0.4 * h) * mix(0.45, 1.0, j), vPl);
-      }`);
+      } }`);
   };
   return groundMat;
 }
@@ -147,7 +190,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   /* alturas com margem de 1 vértice (normais por diferença central) */
   const W2 = SEG + 3, hs = new Float32Array(W2 * W2);
   for (let j = 0; j < W2; j++) for (let i = 0; i < W2; i++) hs[j * W2 + i] = groundH(ox + (i - 1) * d, oz + (j - 1) * d);
-  const pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), pl = new Float32Array(N * N), dep = new Float32Array(N * N), sds = new Float32Array(N * N);
+  const pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), pl = new Float32Array(N * N), dep = new Float32Array(N * N), sds = new Float32Array(N * N), sp1 = new Float32Array(N * N * 4), sp2 = new Float32Array(N * N * 4);
   let anyWater = false;
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const k = j * N + i, xm = ox + i * d, zm = oz + j * d, h = hs[(j + 1) * W2 + (i + 1)];
@@ -166,13 +209,14 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     const slope = 1 - nor[k * 3 + 1];
     const sk = smoothstep(0.1, 0.32, slope + (vnoise(xm * 0.9, zm * 0.9, 8) - 0.5) * 0.08);
     if (sk > 0) tmpC.lerp(tmpD.copy(CLIFF).lerp(CLIFF2, vnoise(xm * 1.6, zm * 1.6, 3)), sk * (zw.snow > 0.5 ? 0.7 : 1));
+    let wMud = 0, wPeb = 0;
     // margem: musgo, terra, lama, seixos
     if (sd < 5) {
       const nz2 = vnoise(xm * 1.1, zm * 1.1, 12), nz3 = vnoise(xm * 3.1, zm * 3.1, 17);
       const m1 = smoothstep(5, 1.2, sd) * (0.35 + 0.65 * nz2); tmpC.lerp(MOSS, Math.min(0.85, m1 * 0.8));
       const m2 = smoothstep(2.1 + (nz2 - 0.5) * 1.2, 0.5, sd); tmpC.lerp(DIRT, m2);
-      const m3 = smoothstep(0.9, -0.2, sd); tmpC.lerp(MUD, m3 * 0.9);
-      if (nz3 > 0.66 && sd > -1.6 && sd < 3.0) tmpC.lerp(PEBBLE, 0.8);
+      const m3 = smoothstep(0.9, -0.2, sd); tmpC.lerp(MUD, m3 * 0.9); wMud = Math.max(m2 * 0.55, m3);
+      if (nz3 > 0.66 && sd > -1.6 && sd < 3.0) { tmpC.lerp(PEBBLE, 0.8); wPeb = smoothstep(0.66, 0.74, nz3); }
       if (sd < 0) tmpC.lerp(BED, smoothstep(0, 1.0, -sd) * 0.7);
       tmpC.multiplyScalar(1 - 0.22 * smoothstep(2.0, 0, sd));
     }
@@ -185,12 +229,17 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     if (rw > 0) { tmpD.copy(ROAD).lerp(ROAD2, vnoise(xm * 1.3, zm * 1.3, 2)); tmpC.lerp(tmpD, rw * 0.95); }
     if (pw > 0) tmpC.lerp(PLAZA, pw);
     pl[k] = pw;
+    /* 03/11 (Erling: "capricha para ficar lindo e não ficar uma textura repetitiva"): pesos das texturas do chão (getGroundMat) —
+       estrada de terra, calçamento, lama da margem, chão de floresta | seixos, rocha, areia, e quanto o chão natural usa a textura */
+    { const roadW = Math.max(0, rw * 0.95 - pw), forestW = Math.min(1, (zw.forest ?? 0) + (zw.jungle ?? 0) * 0.7 + (zw.swamp ?? 0) * 0.4) * (1 - rw), wild = 1 - Math.min(1, (zw.snow ?? 0) + (zw.volcanic ?? 0) * 0.7 + (zw.blight ?? 0) * 0.5 + (zw.enchanted ?? 0) * 0.5);
+      sp1[k * 4] = roadW; sp1[k * 4 + 1] = pw; sp1[k * 4 + 2] = wMud * (1 - rw); sp1[k * 4 + 3] = forestW * (1 - wMud);
+      sp2[k * 4] = wPeb * (1 - rw); sp2[k * 4 + 1] = sk; sp2[k * 4 + 2] = Math.min(1, (zw.coast ?? 0) * 1.2) * (1 - rw); sp2[k * 4 + 3] = wild; }
     col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
   }
   const idx: number[] = [];
   for (let j = 0; j < SEG; j++) for (let i = 0; i < SEG; i++) { const a = j * N + i, b = a + 1, c = a + N, e = c + 1; idx.push(a, c, b, b, c, e); }
   const gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); gg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); gg.setAttribute('color', new THREE.BufferAttribute(col, 3)); gg.setAttribute('aPl', new THREE.BufferAttribute(pl, 1)); gg.setIndex(idx);
+  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); gg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); gg.setAttribute('color', new THREE.BufferAttribute(col, 3)); gg.setAttribute('aPl', new THREE.BufferAttribute(pl, 1)); gg.setAttribute('aSp1', new THREE.BufferAttribute(sp1, 4)); gg.setAttribute('aSp2', new THREE.BufferAttribute(sp2, 4)); gg.setIndex(idx);
   gg.computeBoundingSphere(); own.push(gg);
   grp.userData.kind = 'chunk'; const ground = new THREE.Mesh(gg, getGroundMat()); ground.position.set(ox, 0, oz); ground.receiveShadow = true; grp.add(ground);
 
