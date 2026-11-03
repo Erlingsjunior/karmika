@@ -207,7 +207,9 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
   const spent1 = (r: Race) => (TREES[r] ?? []).reduce((a, n) => a + rankIn(n.id, r), 0);
   const spent = () => ownedL().reduce((a, r) => a + spent1(r), 0);
   const total = () => 2 + lvl() * PER_LEVEL + bonus; // 3 no nível 1 (as três magias básicas), depois 1 por nível
-  const available = () => Math.max(0, total() - spent());
+  /** 03/11: os pontos que as passivas do compêndio gastam saem do mesmo monte (passivas.ts) */
+  let extraSpent = () => 0;
+  const available = () => Math.max(0, total() - spent() - extraSpent());
   const node = (id: string, r = vr()) => (TREES[r] ?? []).find((n) => n.id === id);
   const def = (id: string, r = vr()) => (KITS[r] ?? []).find((s) => s.id === id) as SkillDef | undefined;
   /* teto por magia: 1 + nível/8 (regra 8) — mas um ponto ganho NUNCA fica preso. Se as magias que já abriram não comportam
@@ -282,5 +284,5 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
   const startClass = () => { const r = race(); if (!migrated.includes(r)) migrated.push(r); if (!ranks[key(r, 'combo')]) ranks[key(r, 'combo')] = 1; save(); };
   /** a aba aberta (null = a da classe atual) */
   const setView = (r: Race | null) => { view = r; };
-  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL };
+  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL, setExtraSpent(f: () => number) { extraSpent = f; }, view: () => vr(), lvl };
 }

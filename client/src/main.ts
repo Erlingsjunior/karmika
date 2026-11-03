@@ -618,7 +618,7 @@ function updateCompanions(...a: Parameters<ReturnType<typeof createCompanheiros>
    O que já estava vestido continua; a regra vale ao vestir. Escudo: essas três classes lutam sem escudo. */
 const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno', charge: game.reactor().charge, cap: game.reactorCap() }), fuse: () => { game.fuseReactor(); for (let i = 0; i < 40; i++) particles.spawn(heroPosNow().x, heroPosNow().y + 1.2, heroPosNow().z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x5ae0ff, a: 1, g: 2 }); },
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
-  talents: () => talents.stats() as Partial<Record<string, number>>,
+  talents: () => { const a = talents.stats() as Record<string, number>, b = arvoreSys.classPassStats(); const o: Record<string, number> = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = (o[k] ?? 0) + v; return o as Partial<Record<string, number>>; }, /* 03/11: talentos + passivas de classe do compêndio */
   canWear: (g) => { const W = CLASS_WEAPONS[kitRace()]; if (W && g.slot === 'weapon' && !W.re.test(g.base)) return W.msg; if (W && g.slot === 'shield' && W.noShield && !(kitRace() === 'cac' && /Besta de Mão/.test(inv.eq.weapon?.base ?? ''))) return W.noShield; /* 02/11: besta de mão aceita escudo */
     return kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null; },
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
@@ -698,6 +698,9 @@ export interface DockFeitosCtx {
   readonly talents: Widen<typeof talents>;
   readonly talentKit: Widen<typeof talentKit>;
   readonly kitRace: Widen<typeof kitRace>;
+  readonly compKit: () => string;
+  readonly kitSkills: () => { id: string; name: string; k: string }[];
+  readonly compTitle: () => string;
   treeSel: string | null;
   readonly applyKitAll: typeof applyKitAll;
   readonly myInstinct: Widen<typeof myInstinct>;
@@ -720,7 +723,7 @@ export interface DockFeitosCtx {
   readonly social: Widen<typeof social>;
 }
 var dockSys: ReturnType<typeof createDockFeitos>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get kitRace() { return kitRace; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; } }); }
+function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get kitRace() { return kitRace; }, get compKit() { return arvoreSys.compKit; }, get kitSkills() { return arvoreSys.kitSkills; }, get compTitle() { return () => { try { return game.classInfo.name || 'Humano'; } catch { return 'Humano'; } }; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; } }); }
 dockSys ??= mk_dockSys();
 const { feats, dockEl } = dockSys;
 function toggleSkills(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleSkills']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleSkills']> { return (dockSys ??= mk_dockSys()).toggleSkills(...a); }

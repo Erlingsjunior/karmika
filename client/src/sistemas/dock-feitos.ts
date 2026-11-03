@@ -4,6 +4,7 @@ import { type Feat, CATS, createFeats, FEATS } from '../feats';
 import { floatWin } from '../windows';
 import { renderTalents } from './talentos-ui';
 import { runeSlots } from './runas-ui';
+import { renderPassives, renderCompendium, runeTextFor } from './passivas-ui';
 import type { DockFeitosCtx } from '../main';
 
 export function createDockFeitos(K: DockFeitosCtx) {
@@ -22,20 +23,22 @@ const feats = createFeats({ xp: (f) => K.game.gainXp(Math.max(5, Math.round(K.ga
 floatWin(skillsEl, 'skills', { left: '22vw', top: '5vh' }); floatWin(featsEl, 'feats', { left: '30vw', top: '8vh' });
 setTimeout(() => { const ql = document.getElementById('qlog'); if (ql) floatWin(ql, 'qlog', { left: '34vw', top: '9vh' }); }, 0);
 let skillsOpen = false, featsOpen = false;
-let skView: 'mag' | 'tal' = 'mag'; const talSel = { id: null as string | null };
+let skView: 'mag' | 'tal' | 'pas' | 'comp' = 'mag'; const talSel = { id: null as string | null };
 /** as abas no alto da janela: Magias (a Árvore Kármica) e Talentos (a constelação de atributos e passivas) */
 function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; const d = document.createElement('div'); d.className = 'ktabs sktabs';
-  const bt = (v: 'mag' | 'tal', t: string, n: number) => `<button data-skv="${v}" class="${skView === v ? 'on' : ''}">${t}${n ? ` <i>${n} livre${n === 1 ? '' : 's'}</i>` : ''}</button>`;
-  d.innerHTML = bt('mag', '🌳 Magias', K.tree.available()) + bt('tal', '✧ Talentos', K.talents.avail()); h.after(d);
-  d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal'; renderSkills(); })); }
+  const bt = (v: 'mag' | 'tal' | 'pas' | 'comp', t: string, n: number) => `<button data-skv="${v}" class="${skView === v ? 'on' : ''}">${t}${n ? ` <i>${n} livre${n === 1 ? '' : 's'}</i>` : ''}</button>`;
+  d.innerHTML = bt('mag', '🌳 Magias', K.tree.available()) + bt('pas', '✦ Passivas', 0) + bt('tal', '✧ Talentos', K.talents.avail()) + bt('comp', '📖 Compêndio', 0); h.after(d);
+  d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal' | 'pas' | 'comp'; renderSkills(); })); }
 function renderSkills() {
+  if (skView === 'pas' || skView === 'comp') { const ctx = { kit: K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => K.game.st.recalc?.() };
+    if (skView === 'pas') renderPassives(skillsEl, ctx); else renderCompendium(skillsEl, ctx); skTabs(); return; }
   if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), K.game.st.lvl, talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
   K.tree.migrate();
   K.tree.render(skillsEl, K.treeSel, (id) => { K.treeSel = id; renderSkills(); }, (id) => { const r0 = K.tree.rank(id); if (K.tree.invest(id)) { const r1 = K.tree.rank(id); K.audio.rune([3, 6, 10].includes(r1) && r1 > r0 ? 1 : 0); K.applyKitAll(); renderSkills(); } });
   { /* a passiva de classe mora aqui também: um clique liga/desliga (igual a tecla F) */ const top = skillsEl.querySelector('.tree-top'); if (top) { const I = K.myInstinct(), d = document.createElement('div'); d.className = 'instcard' + (K.instintoSys.instinctOn ? ' on' : ''); d.style.setProperty('--ic', I.css);
     d.innerHTML = `<i>✧</i><div><b>${I.name}</b><small>Passiva de classe · ${K.instintoSys.instinctOn ? 'ligada' : 'desligada'} · tecla F</small><p>${I.desc} Com ela ligada você vê rastros, espíritos, dispositivos perdidos e esconderijos que ninguém mais vê; desligada, só a ameaça de verdade te acorda.</p></div><button data-inst>${K.instintoSys.instinctOn ? 'Desligar' : 'Ligar'}</button>`;
     top.after(d); d.querySelector('[data-inst]')!.addEventListener('click', (e) => { e.stopPropagation(); K.toggleInstinct(); renderSkills(); }); } }
-  runeSlots(skillsEl, { id: K.treeSel ?? 'combo', kit: K.kitRace(), rank: K.tree.rank(K.treeSel ?? 'combo'), inv: K.inv, game: K.game, sfx: () => K.audio.rune(1), rerender: renderSkills });
+  runeSlots(skillsEl, { id: K.treeSel ?? 'combo', kit: K.kitRace(), rank: K.tree.rank(K.treeSel ?? 'combo'), txt: (() => { const sk = K.kitSkills().find((q) => q.id === (K.treeSel ?? 'combo')); return sk ? runeTextFor(K.compKit(), sk) : null; })(), inv: K.inv, game: K.game, sfx: () => K.audio.rune(1), rerender: renderSkills });
   skTabs();
   skillsEl.style.display = 'flex';
 }

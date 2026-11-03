@@ -4,6 +4,7 @@ import { type KitKey, setKitExtras, KITS, applyKit } from '../kits';
 import { type Race, RACES } from '@karmika/shared';
 import { createSkillTree } from '../skilltree';
 import { createTalents } from '../talentos';
+import { loadComp, onCompLoad, passMods, passSpent, classStats } from '../passivas';
 import { createMail } from '../mail';
 import { isTool as isToolId } from '../tools';
 import { ITEMS as ITEMS_TBL } from '../inventory';
@@ -29,7 +30,12 @@ const kitName = (k: KitKey): string => { let ci: { name: string; past?: { name: 
 /** a barra da classe atual + as magias aprendidas nas abas anteriores (nos espaços livres) */
 function applyKitAll() { const cur = kitRace(); setKitExtras(cur, ownedKits().filter((k) => k !== cur).flatMap((k) => (KITS[k] ?? []).filter((d) => tree.rank(d.id, k) > 0))); applyKit(cur, K.game.st.lvl, (k) => tree.rank(k)); }
 const tree = createSkillTree(kitRace, () => K.game.st.lvl, (t, c) => K.game.logMsg(t, c), treeTitle, ownedKits, kitName);
-K.game.setSkillScale((id) => tree.scale(id));
+/* 03/11: as passivas do compêndio (passivas.ts) somam por cima do rank da magia */
+const compKit = (): string => { const k = kitRace() as string; return k === 'human' && K.profile?.origin === 'elf' ? 'elf' : k === 'human' && K.profile?.origin === 'dwarf' ? 'dwarf' : k; };
+const kitSkills = () => (KITS[kitRace()] ?? []).map((d) => ({ id: d.id as string, name: d.name, k: d.k }));
+tree.setExtraSpent(() => passSpent([compKit()]));
+loadComp(compKit()); onCompLoad(() => K.game.st.recalc?.());
+K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(compKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 const talentKit = (): string => { const k = kitRace() as string; const o = K.profile?.origin; return ['nordic', 'human', 'dwarf', 'elf'].includes(k) && (o === 'elf' || o === 'dwarf') ? o : k; };
 const talents = createTalents(talentKit, () => K.game.st.lvl, () => { K.game.st.recalc?.(); });
@@ -77,5 +83,6 @@ const profs = createProfessions({ cls: () => { try { return K.game.classInfo.nam
     for (let i = 0; i < n; i++) K.particles.spawn(st.x + (Math.random() - 0.5) * 1.2, heightAt(st.x, st.z) + 1.0, st.z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: up + Math.random() * up, vz: (Math.random() - 0.5) * 2, life: 0.7, s0: 0.12, s1: 0.02, c0, c1, a: 1, drag: 1.4 });
     if (prof === 'ferreiro') K.audio.hit(); else if (prof === 'alquimista') K.audio.cast(); else K.audio.thud(); }, onLevel: (_id, name, icon, l) => { profLevelUp(icon, name, l); K.audio.chime(); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xfff0b0, c1: 0x7ac85a, n: 26, small: true } })); }, has: (id, n) => K.inv.has(id, n), count: (id) => K.inv.count(id), take: (id, n) => K.inv.take(id, n), add: (id, n) => K.inv.add(id, n, true), addGear: (g) => K.inv.addGear(g),
   craftJob: (j) => K.craftJob(j), invCraft: (id) => K.inv.craft(id), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', heroLvl: () => K.game.st.lvl, log: (t, c) => K.game.logMsg(t, c), onCraft: (n) => K.quests.onCraft(n) });
-  return { tree, talents, talentKit, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
+  const classPassStats = () => classStats(compKit());
+  return { tree, talents, talentKit, compKit, kitSkills, classPassStats, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
 }

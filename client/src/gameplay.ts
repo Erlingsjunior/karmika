@@ -41,7 +41,7 @@ export function createGameplay(d: GameplayDeps) {
   let heroMoving = false; // informado pelo main (anda/corre)
   let inStrike = false, skill: string | null = null, slamFury = 0, counterBash = false, guardAt = -9, overcharge = false;
   /* árvore kármica: multiplicadores por magia (dano, alcance, área, duração, custo, tier visual) */
-  type SScale = { dmg: number; range: number; area: number; dur: number; cost: number; tier: number; rank: number };
+  type SScale = { dmg: number; range: number; area: number; dur: number; cost: number; tier: number; rank: number; /** passivas (03/11) */ crit?: number; cdr?: number; heal?: number };
   let skillScale: (id: string) => SScale = () => ({ dmg: 1, range: 1, area: 1, dur: 1, cost: 1, tier: 0, rank: 0 }), lastExtra: string | null = null;
   const ssOf = (id: string | null) => skillScale(id ?? lastExtra ?? 'combo');
   /* REGRA IMUTÁVEL — evoluir leva tempo e premia bem: a curva cresce com o quadrado do nível
@@ -434,7 +434,7 @@ export function createGameplay(d: GameplayDeps) {
     const silver = kitKey === 'cac' && DARK_T.has(e.type) ? 0.25 : 0; /* caçador: prata em demônio, morto-vivo e fera da noite — SOMA no balde (regra 8) */
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
     const RF = fams(kitKey, skill); /* 03/11: as runas encaixadas nesta magia */
-    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
+    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
@@ -1340,7 +1340,7 @@ export function createGameplay(d: GameplayDeps) {
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
       const sc = skillScale(id); cost = Math.round(cost * sc.cost * (st.sp.has('m_staff') ? 0.8 : 1));
       const SND: Record<string, 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy'> = { smite: 'holy', consecrate: 'holy', avenging: 'holy', drain: 'arcane', batswarm: 'arcane', bloodnova: 'fire', nightform: 'arcane', howl: 'earth', rend: 'earth', kick: 'earth', hamstring: 'arcane', hatchet: 'arcane', shieldwall: 'holy', winter: 'ice', thunder: 'shock', valkyrie: 'holy', flame: 'fire', forge: 'fire', poison: 'earth', warcry: 'holy', spear: 'arcane', whirl: 'arcane', mark: 'holy', fenrir: 'earth', hammerthrow: 'earth', stonerune: 'earth', mountain: 'earth', avatar: 'earth', overcharge: 'shock', shocktrap: 'shock', medic: 'holy', railgun: 'shock', mech: 'shock', fireball: 'fire', meteor: 'fire', chainlight: 'shock', blizzard: 'ice', frostnova: 'ice', archon: 'arcane', blink: 'arcane', curse: 'arcane', hellhound: 'fire', demonform: 'fire', holyflask: 'holy', volley: 'arcane', huntform: 'holy' };
-      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm; const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
+      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm * (1 - (sc.cdr ?? 0)); const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
       const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(new THREE.RingGeometry(0.8 * r, 1.0 * r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0 }); };
       switch (id) {
         /* ---- Guerreira Nórdica 1–20 ---- */

@@ -3,7 +3,7 @@
 import { RFAM, RNAME, RNAT, RCOL, RICON, GRAUS, GMUL, parseRune, runesOf, setRune, slotsFor, unslotCost, frestaSoul, frestaText } from '../runas-magia';
 import { runaSvg, runaIdx } from '../runas';
 
-interface Ctx { id: string; kit: string; rank: number; inv: { bag: Record<string, number>; take(id: string, n?: number): boolean; grant(id: string, n: number): void }; game: { st: { gold: number }; logMsg(t: string, c?: string): void }; sfx(): void; rerender(): void }
+interface Ctx { id: string; kit: string; rank: number; /** o texto próprio de cada runa nesta magia (compêndio) */ txt?: Record<string, string> | null; inv: { bag: Record<string, number>; take(id: string, n?: number): boolean; grant(id: string, n: number): void }; game: { st: { gold: number }; logMsg(t: string, c?: string): void }; sfx(): void; rerender(): void }
 const CSS = `<style id="rncss">
 .tdet .rnh{display:block;font:600 10px Cinzel,serif;letter-spacing:.12em;text-transform:uppercase;color:#a08a60;margin:12px 0 6px}.tdet .rnh small{display:block;margin-top:2px;font:11px Georgia,serif;letter-spacing:0;text-transform:none;color:#8a7a5a}
 .tdet .rns{display:flex;gap:8px;margin-bottom:6px}
@@ -39,7 +39,7 @@ export function runeSlots(root: HTMLElement, c: Ctx) {
     const have = Object.keys(c.inv.bag).filter((k) => parseRune(k) && c.inv.bag[k] > 0).sort((a, b) => RFAM.indexOf(parseRune(a)!.f) - RFAM.indexOf(parseRune(b)!.f) || parseRune(b)!.g - parseRune(a)!.g);
     pick = `<div class="rnp">${have.length ? have.map((k) => { const r = parseRune(k)!, dup = used.has(r.f); return `<button data-rin="${k}" ${dup ? 'disabled style="opacity:.4"' : ''} style="--c:${hex(RCOL[r.f])}">${runaSvg(runaIdx(r.f), 18).replace('<svg', `<svg style="color:${hex(RCOL[r.f])}"`)}<span><b>${RNAME[r.f]}</b> ${GRAUS[r.g]} ×${c.inv.bag[k]}${dup ? ' — já está nesta magia' : ''}</span></button>`; }).join('') : '<div class="none">Nenhuma runa na mochila. As runas são do jogo avançado: só caem de monstros do nível 20 para cima, e muito mais de elites e chefes.</div>'}</div>`;
   }
-  const fx = cur.map((x) => (x ? parseRune(x) : null)).filter((r): r is NonNullable<ReturnType<typeof parseRune>> => !!r).map((r) => `<div style="--c:${hex(RCOL[r.f])}"><b>${RICON[r.f]} ${RNAME[r.f]}:</b> ${RNAT[r.f]}</div>`).join('');
+  const fx = cur.map((x) => (x ? parseRune(x) : null)).filter((r): r is NonNullable<ReturnType<typeof parseRune>> => !!r).map((r) => `<div style="--c:${hex(RCOL[r.f])}"><b>${RICON[r.f]} ${RNAME[r.f]}:</b> ${c.txt?.[r.f] ?? RNAT[r.f]}</div>`).join('');
   const box = document.createElement('div'); box.className = 'rnbox';
   box.innerHTML = `<div class="rnh">Runas kármicas <small>1º encaixe no rank 3 · 2º no rank 7</small></div><div class="rns">${slot(0)}${slot(1)}</div>${pick}${fx ? `<div class="rnfx">${fx}</div>` : ''}${cur.some((x) => x && parseRune(x)?.f === 'fresta') ? `<div class="rnsoul">A tua alma está ${frestaText(frestaSoul())}.</div>` : ''}`;
   const btn = det.querySelector('.inv'); if (btn) det.insertBefore(box, btn); else det.appendChild(box);
