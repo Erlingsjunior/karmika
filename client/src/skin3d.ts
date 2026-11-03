@@ -141,7 +141,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const sk = model.getObjectByProperty('isSkinnedMesh', true) as THREE.SkinnedMesh | undefined; if (!sk) return null;
     root.updateMatrixWorld(true); const pos = sk.geometry.attributes.position as THREE.BufferAttribute, v = new THREE.Vector3(), pts: THREE.Vector3[] = [];
     for (let i = 0; i < pos.count; i += 2) { v.fromBufferAttribute(pos, i); sk.applyBoneTransform(i, v); pts.push(root.worldToLocal(sk.localToWorld(v.clone()))); }
-    const bb = new THREE.Box3().setFromPoints(pts), Hm = bb.max.y - bb.min.y, gap = Hm * 0.012;
+    const bb = new THREE.Box3().setFromPoints(pts), Hm = bb.max.y - bb.min.y, gap = Hm * 0.034; /* 03/11: o escudo nas costas fica POR CIMA da capa (a capa presa entre o corpo e o escudo) */
     const lp = (n: string) => { const b = B(n); return b ? rootP(b, root) : new THREE.Vector3(); };
     // extensão local (nativa) de um objeto de equipamento
     const extent = (o: THREE.Object3D | null) => { if (!o || !o.parent) return null; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false);

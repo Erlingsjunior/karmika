@@ -1466,7 +1466,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     weaponBase(out) { return (weaponBaseObj ?? armR.wr).getWorldPosition(out); },
     handPos(out) { return armR.wr.getWorldPosition(out); },
     update(dt, t, mps, heading) {
-      if (capeObj) capeObj.rotation.x = 0.05 + Math.min(1, mps / 6) * 0.38 + Math.sin(t * 2.1) * 0.025 * (0.4 + Math.min(1, mps / 3)); // a capa balança e voa para trás ao correr
+      /* 03/11 (Erling: "capa atravessando escudo não pode: a capa fica presa entre o corpo do caminhante e o escudo, como aconteceria na realidade"):
+         com o escudo nas costas a capa fica presa por baixo dele — encostada, sem voar; só a barra balança um pouco */
+      if (capeObj) { const pinned = stowed && !!shieldHolder; const want = pinned ? 0.03 + Math.sin(t * 2.1) * 0.008 : 0.05 + Math.min(1, mps / 6) * 0.38 + Math.sin(t * 2.1) * 0.025 * (0.4 + Math.min(1, mps / 3));
+        capeObj.rotation.x += (want - capeObj.rotation.x) * Math.min(1, dt * 8); capeObj.scale.z = pinned ? 0.6 : 1; } // a capa balança e voa para trás ao correr
       if (heading !== null) {
         let d = heading - yaw; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2;
         yaw += d * Math.min(1, dt * (act?.a === 'attack' ? 4 : 13));

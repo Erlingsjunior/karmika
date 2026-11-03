@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>pedra</title><style>body{margin:0;background:#20242a}</style></head><body><canvas id="c" width="600" height="700"></canvas>
+<script type="module">
+/* teste (03/11): a pedra de teleporte com as runas esculpidas acesas (?k=1 azul, marcada) */
+import * as THREE from 'three';
+import { artReady, artMesh } from '/src/arte3d.ts';
+await artReady(['carroca_tecnocrata']);
+const q = new URLSearchParams(location.search), known = q.get('k') === '1';
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true }); r.outputColorSpace = THREE.SRGBColorSpace;
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x3a5a2a); sc.add(new THREE.HemisphereLight(0xdde8ff, 0x3a3020, 1.6)); const d = new THREE.DirectionalLight(0xfff0d0, 2.4); d.position.set(5, 9, 7); sc.add(d);
+const m = artMesh('carroca_tecnocrata'); const mk = (x,y,z,c) => { const s = new THREE.Mesh(new THREE.SphereGeometry(0.06), new THREE.MeshBasicMaterial({ color: c })); s.position.set(x,y,z); sc.add(s); }; (q.get('pts')||'').split(';').filter(Boolean).forEach((t,i) => { const [x,y,z] = t.split(',').map(Number); mk(x,y,z,[0xff0000,0x00ff00,0x0000ff,0xffff00][i%4]); });
+m.rotation.y = +(q.get('ry') || 0); sc.add(m); const box = new THREE.Box3().setFromObject(m), c = box.getCenter(new THREE.Vector3()), s = box.getSize(new THREE.Vector3());
+const cam = new THREE.PerspectiveCamera(30, 600 / 700, 0.01, 100); cam.position.set(c.x, c.y + s.y * 0.2, c.z + s.y * 2.4); cam.lookAt(c);
+setTimeout(() => { r.render(sc, cam); window.__ready = true; }, 800);
+</script></body></html>

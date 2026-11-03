@@ -203,13 +203,17 @@ export function buildSteamWagon(): Wagon {
   const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
   /* 03/11 (Erling: "coloca 2 cavalos de latão na carroça a vapor"): a parelha da Companhia — os cavalos de Porto Caldeira com a pelagem de latão */
-  const team: Horse4[] = []; for (const sx of [-0.66, 0.66]) { const h = teamHorse('cavalo_porto_caldeira', 0xc89a48, { coat: 0xb08a40, mane: 0x5a4a3a, barding: 0x8a6a3a }); h.root.position.set(sx, 0, 3.7); body.add(h.root); team.push(h); }
+  const team: Horse4[] = []; for (const sx of [-0.66, 0.66]) { const h = teamHorse('cavalo_porto_caldeira', 0xf0b040, { coat: 0xb08a40, mane: 0x5a4a3a, barding: 0x8a6a3a }); h.root.position.set(sx, 0, 3.7); body.add(h.root); team.push(h); }
   const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'steam' };
   /* 03/11 (Erling: "aumenta um pouco e ela precisa soltar fumaça, é a vapor"): 45% maior, e a fumaça sai da chaminé do modelo */
   /* 03/11 (Erling: "precisam ser carroças grandes… podem ser 3 ou 4× maior"): ~3× — rodas de 1,7 m, a carroça bem mais alta que um homem */
   const KS = 1.9; if (artMesh('carroca_tecnocrata')) { (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = artPt('carroca_tecnocrata', new THREE.Vector3(-0.5, 1.9, -0.12), KS, ART_FLIP.steam).add(new THREE.Vector3(0, 0.2, 0)); lamp.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 1.2, -1.1), KS, ART_FLIP.steam)); }
-  return artBody(W0, 'carroca_tecnocrata', (o) => team.some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root)), KS, ART_FLIP.steam, -1);
+  const W1 = artBody(W0, 'carroca_tecnocrata', (o) => team.some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root)), KS, ART_FLIP.steam, -1);
+  /* 03/11 (Erling: "brilho de brasa saindo da fornalha, fogo, fumaça da chaminé não seria nada mal"): a boca da fornalha da caldeira (atrás) acende e pisca, e solta brasas */
+  if (artMesh('carroca_tecnocrata')) { const fire = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0xff7a2a, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    fire.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 0.55, 1.5), KS, ART_FLIP.steam)); fire.scale.setScalar(1.25); fire.raycast = () => {}; body.add(fire); (W1 as Wagon & { fire?: THREE.Sprite }).fire = fire; }
+  return W1;
 }
 /** barra de vida da carroça (igual nas três) */
 function hpBarFor(): { hpBar: THREE.Group; hpFill: THREE.Mesh } {
@@ -299,7 +303,7 @@ export interface CaravanCtx {
   scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; night(): number; inside(): boolean; lvl(): number;
   spawn(type: EnemyType, x: number, z: number, o: { name: string; lvl: number; tag: string; aggro: number; hpMul: number }): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number; def: { name: string } };
   clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void; /** a janela da loja está aberta (a carroça espera) */ shopOpen?(): boolean; /** o ponto (m) está em cima de uma ponte ou nas cabeceiras dela */ onBridge?(x: number, z: number): boolean;
-  smoke(x: number, y: number, z: number, dark: boolean): void; bubble(x: number, y: number, z: number, t: string): void;
+  smoke(x: number, y: number, z: number, dark: boolean): void; /** brasa saindo da fornalha */ ember?(x: number, y: number, z: number): void; bubble(x: number, y: number, z: number, t: string): void;
   log(t: string, c?: string): void; onEscort(id: string): void; onRescue(id: string): void;
   onEvent(r: Route, how: 'salva' | 'saque' | 'perdida'): void; lean(): 'luz' | 'sombra' | null;
   /** conversar com o cocheiro de uma caravana que passa: comerciar com a Companhia na estrada */ trade?(r: Route, carroca: 'carrocaAVapor' | 'carrocaDosAnoes'): void;
@@ -428,7 +432,9 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;
       { const fp = w.flag.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < fp.count; i++) { const x0 = (i % 5) / 4; fp.setZ(i, Math.sin(t * 6 + x0 * 3) * 0.06 * x0); } fp.needsUpdate = true; }
       if (w.horse) for (const h of (w.horse as Horse4 & { team?: Horse4[] }).team ?? [w.horse]) h.pose({ dt, mv: moving ? c.speed : 0, idle: !moving });
-      if (w.kind === 'steam' && Math.random() < (moving ? 0.75 : w.fallen ? 0.35 : 0.3)) { const s = ((w as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt?.clone() ?? new THREE.Vector3(0, 3.4, 1.25)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
+      if (w.kind === 'steam') { const fa = (w as Wagon & { fire?: THREE.Sprite }).fire; if (fa) { const fl = 0.75 + 0.25 * Math.sin(performance.now() / 90 + p.x) * Math.sin(performance.now() / 37); (fa.material as THREE.SpriteMaterial).opacity = w.fallen ? 0.2 : fl; fa.scale.setScalar(1.25 * (0.9 + 0.15 * fl));
+          if (!w.fallen && ctx.ember && Math.random() < (moving ? 0.35 : 0.18)) { const q = fa.getWorldPosition(new THREE.Vector3()); ctx.ember(q.x, q.y, q.z); } } }
+      if (w.kind === 'steam' && Math.random() < (moving ? 0.95 : w.fallen ? 0.35 : 0.6)) { const s = ((w as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt?.clone() ?? new THREE.Vector3(0, 3.4, 1.25)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
       if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); }
