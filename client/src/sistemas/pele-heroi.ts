@@ -38,7 +38,9 @@ function artSkinId(): string | null {
   let pth = ''; try { pth = K.profile?.path ?? ''; if (!(pth && K.quests.q.done.includes('v_' + pth))) pth = ''; } catch { pth = ''; }
   const CL: Record<string, string> = { vam: 'vampiro', lob: 'lobisomem', mag: 'mago', bru: 'bruxo', pal: 'paladino', tec: 'technocrata' };
   const pick = (ids: string[]) => ids.find((i) => ART_SET.has(i)) ?? null;
-  if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : lvl >= 35 ? 2 : 1}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl01`, `guerreiro_${sx}_lvl03`]);
+  /* 03/11 (Erling: "o level 1 de guerreiro é a própria raça pura"): o lvl01 do Drive é o humano/anão/elfo de antes da classe e não veste o
+     guerreiro. Virou guerreiro no nível 30 = guerreiro 1 (modelo lvl02); nível 40 = guerreiro 2 (modelo lvl03) */
+  if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : 2}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl03`]);
   if (CL[pth]) return pick([`${CL[pth]}_${sx}`]);
   /* anão e elfo (02/11, modelos do Herik): lvl01 até o nível 19, lvl02 de 20 a 39, lvl03 de 40 em diante */
   if (origin === 'dwarf' || origin === 'elf') { /* como o humano: 1 = sem roupa, 2 = vestido (qualquer peça de roupa); 3 = armadura, do nível 40 em diante */ let dressed2 = false; if (!creating) try { dressed2 = CLOTH_SLOTS.some((sl) => !!(K.inv.eq as Record<string, unknown>)[sl]); } catch { /* */ } const rc = origin === 'dwarf' ? 'anao' : 'elfo', n = lvl >= 40 ? 3 : dressed2 ? 2 : 1; return pick([`${rc}_${sx}_lvl0${n}`, `${rc}_${sx}_lvl02`, `${rc}_${sx}_lvl01`, `${rc}_${sx}_lvl03`]); }
