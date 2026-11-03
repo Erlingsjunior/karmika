@@ -2,6 +2,7 @@
 import { DOCK_ICONS } from '../ui/icones';
 import { type Feat, CATS, createFeats, FEATS } from '../feats';
 import { floatWin } from '../windows';
+import { renderTalents } from './talentos-ui';
 import type { DockFeitosCtx } from '../main';
 
 export function createDockFeitos(K: DockFeitosCtx) {
@@ -20,12 +21,20 @@ const feats = createFeats({ xp: (f) => K.game.gainXp(Math.max(5, Math.round(K.ga
 floatWin(skillsEl, 'skills', { left: '22vw', top: '5vh' }); floatWin(featsEl, 'feats', { left: '30vw', top: '8vh' });
 setTimeout(() => { const ql = document.getElementById('qlog'); if (ql) floatWin(ql, 'qlog', { left: '34vw', top: '9vh' }); }, 0);
 let skillsOpen = false, featsOpen = false;
+let skView: 'mag' | 'tal' = 'mag'; const talSel = { id: null as string | null };
+/** as abas no alto da janela: Magias (a Árvore Kármica) e Talentos (a constelação de atributos e passivas) */
+function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; const d = document.createElement('div'); d.className = 'sktabs'; d.style.cssText = 'display:flex;gap:6px;margin:0 0 8px';
+  const bt = (v: 'mag' | 'tal', t: string, n: number) => `<button data-skv="${v}" style="padding:5px 12px;border-radius:6px;cursor:pointer;border:1px solid ${skView === v ? '#ffd24a' : '#6a5030'};background:${skView === v ? '#3a2a12' : '#1a120a'};color:${skView === v ? '#ffd27a' : '#c8b890'}">${t}${n ? ` <b style="color:#ffd24a">(${n})</b>` : ''}</button>`;
+  d.innerHTML = bt('mag', '🌳 Magias', K.tree.available()) + bt('tal', '✧ Talentos', K.talents.avail()); h.after(d);
+  d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal'; renderSkills(); })); }
 function renderSkills() {
+  if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), K.game.st.lvl, talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
   K.tree.migrate();
   K.tree.render(skillsEl, K.treeSel, (id) => { K.treeSel = id; renderSkills(); }, (id) => { const r0 = K.tree.rank(id); if (K.tree.invest(id)) { const r1 = K.tree.rank(id); K.audio.rune([3, 6, 10].includes(r1) && r1 > r0 ? 1 : 0); K.applyKitAll(); renderSkills(); } });
   { /* a passiva de classe mora aqui também: um clique liga/desliga (igual a tecla F) */ const top = skillsEl.querySelector('.tree-top'); if (top) { const I = K.myInstinct(), d = document.createElement('div'); d.className = 'instcard' + (K.instintoSys.instinctOn ? ' on' : ''); d.style.setProperty('--ic', I.css);
     d.innerHTML = `<i>✧</i><div><b>${I.name}</b><small>Passiva de classe · ${K.instintoSys.instinctOn ? 'ligada' : 'desligada'} · tecla F</small><p>${I.desc} Com ela ligada você vê rastros, espíritos, dispositivos perdidos e esconderijos que ninguém mais vê; desligada, só a ameaça de verdade te acorda.</p></div><button data-inst>${K.instintoSys.instinctOn ? 'Desligar' : 'Ligar'}</button>`;
     top.after(d); d.querySelector('[data-inst]')!.addEventListener('click', (e) => { e.stopPropagation(); K.toggleInstinct(); renderSkills(); }); } }
+  skTabs();
   skillsEl.style.display = 'flex';
 }
 let featTab: keyof typeof CATS | null = null;

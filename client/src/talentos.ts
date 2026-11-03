@@ -1,0 +1,135 @@
+/* ÁRVORE DE TALENTOS (03/11, Erling: "um sistema de árvores mais complexo, com skills que não são apenas magias — que dão destreza, força,
+   vitalidade, energia; recarga mais rápida, conjuração mais veloz, andar mais rápido… cada classe com a sua força e uma árvore bem legal para
+   gastar pontos e fazer uma jornada").
+   Modelo (estudo: Path of Exile 2, Diablo IV e WoW, ver claude/mercenario-e-arvores-03-11.md e claude/arvore-de-talentos-03-11.md):
+   - uma constelação por classe, com o CENTRO aceso; três braços, um para cada papel da classe (o mesmo das posturas: ataque, defesa e o
+     terceiro jeito dela), e um anel de atributos ligando os braços (dá para cruzar de um braço para o outro);
+   - pontos PEQUENOS (+atributo ou +%), pontos NOTÁVEIS (com nome, efeito maior) e, na ponta de cada braço, uma PEDRA-CHAVE (troca forte:
+     ganha muito e perde alguma coisa);
+   - só se acende um ponto ligado a outro já aceso; tirar um ponto só se ele não segurar outros;
+   - pontos de talento: 1 a cada 2 níveis e +1 a cada 10 (no 60 dá ~35, o que fecha uma árvore quase inteira — mas não as três pedras de uma vez sem abrir mão de algo).
+   Os efeitos somam no recalc da mochila (inventory.ts) e no gameplay (recarga e velocidade de golpe/conjuração). */
+export type TStat = 'str' | 'dex' | 'vit' | 'int' | 'hp' | 'dmg' | 'crit' | 'arm' | 'move' | 'aspd' | 'cdr' | 'regen' | 'gen' | 'leech' | 'heal' | 'mp';
+export const TSTAT_TXT: Record<TStat, (v: number) => string> = {
+  str: (v) => `+${v} de Força`, dex: (v) => `+${v} de Destreza`, vit: (v) => `+${v} de Vitalidade`, int: (v) => `+${v} de Energia`,
+  hp: (v) => `${v > 0 ? '+' : ''}${v}% de vida máxima`, dmg: (v) => `${v > 0 ? '+' : ''}${v}% de dano`, crit: (v) => `${v > 0 ? '+' : ''}${v}% de crítico`,
+  arm: (v) => `${v > 0 ? '+' : ''}${v} de armadura`, move: (v) => `${v > 0 ? '+' : ''}${v}% de velocidade de movimento`, aspd: (v) => `${v > 0 ? '+' : ''}${v}% de velocidade de golpe e conjuração`,
+  cdr: (v) => `${v > 0 ? '+' : ''}${v}% de velocidade de recarga das magias`, regen: (v) => `+${v} de vida por segundo`, gen: (v) => `+${v}% de geração do recurso`,
+  leech: (v) => `+${v}% de roubo de vida`, heal: (v) => `+${v}% de cura recebida`, mp: (v) => `+${v} de recurso máximo`,
+};
+export type Eff = Partial<Record<TStat, number>>;
+export interface TNode { id: string; x: number; y: number; kind: 'start' | 'small' | 'notable' | 'key'; name: string; eff: Eff; tip?: string; links: string[]; branch: number }
+interface Branch { name: string; col: string; small: Eff[]; notables: [string, Eff][]; key: [string, Eff, string] }
+interface ClassDef { name: string; ring: Eff[]; branches: [Branch, Branch, Branch] }
+
+const A = (k: TStat, v: number): Eff => ({ [k]: v });
+const C: Record<string, ClassDef> = {
+  human: { name: 'Humano', ring: [A('str', 5), A('vit', 5), A('dex', 5), A('int', 5)], branches: [
+    { name: 'Armas do Povo', col: '#e8b870', small: [A('str', 5), A('dmg', 3), A('crit', 2)], notables: [['Mão Calejada', { dmg: 8, aspd: 5 }], ['Golpe de Lavrador', { str: 10, crit: 4 }]], key: ['Teimosia Humana', { dmg: 18, hp: 10, move: -5 }, 'Não sabe fugir: mais dano e vida, anda um pouco mais devagar.'] },
+    { name: 'Defesa', col: '#8ab8e8', small: [A('vit', 5), A('arm', 12), A('hp', 3)], notables: [['Couro Grosso', { arm: 40, hp: 6 }], ['De Pé até o Fim', { vit: 10, regen: 1 }]], key: ['Muro de Aldeia', { arm: 120, hp: 15, dmg: -10 }, 'Aguenta tudo, bate menos.'] },
+    { name: 'Comunidade', col: '#7aff9a', small: [A('dex', 5), A('move', 2), A('heal', 4)], notables: [['Pés de Estrada', { move: 6, dex: 6 }], ['Remédio de Vó', { heal: 15, regen: 1 }]], key: ['Vizinho de Todos', { heal: 30, cdr: 10, dmg: -6 }, 'Cura e magias voltam mais rápido; menos dano.'] },
+  ] },
+  nordic: { name: 'Guerreiro do Norte', ring: [A('str', 5), A('vit', 5), A('str', 5), A('dex', 5)], branches: [
+    { name: 'Berserker', col: '#ff6a4a', small: [A('str', 6), A('dmg', 3), A('aspd', 2)], notables: [['Sangue Quente', { dmg: 10, aspd: 6 }], ['Machado Faminto', { leech: 2, crit: 5 }]], key: ['Berserkir', { dmg: 25, aspd: 10, arm: -60 }, 'Sem medo: muito mais dano e velocidade de golpe, armadura cai.'] },
+    { name: 'Guardião do Escudo', col: '#9ad7ff', small: [A('vit', 6), A('arm', 15), A('hp', 3)], notables: [['Parede de Tílias', { arm: 50, hp: 6 }], ['Juramento de Ulfar', { vit: 12, regen: 1.5 }]], key: ['Muralha de Escudos', { arm: 150, hp: 18, move: -8 }, 'Ninguém passa: armadura e vida enormes, anda mais devagar.'] },
+    { name: 'Skald', col: '#ffe08a', small: [A('int', 5), A('cdr', 3), A('heal', 4)], notables: [['Canção de Bravura', { cdr: 8, gen: 10 }], ['Hino de Eir', { heal: 18, regen: 1 }]], key: ['Voz de Odin', { cdr: 18, gen: 20, dmg: -8 }, 'Gritos e curas voltam muito mais rápido; menos dano direto.'] },
+  ] },
+  dwarf: { name: 'Anão', ring: [A('str', 5), A('vit', 6), A('str', 5), A('vit', 6)], branches: [
+    { name: 'Quebra-Montanhas', col: '#ff8a3a', small: [A('str', 6), A('dmg', 3), A('crit', 2)], notables: [['Martelo Pesado', { dmg: 12 }], ['Racha-Rocha', { crit: 6, str: 8 }]], key: ['Colosso', { dmg: 28, aspd: -10, hp: 10 }, 'Cada martelada é um terremoto: muito mais dano, golpe mais lento.'] },
+    { name: 'Guardião do Salão', col: '#9aa4b4', small: [A('vit', 6), A('arm', 18), A('hp', 3)], notables: [['Pé de Pedra', { arm: 60, vit: 8 }], ['Barba de Ferro', { hp: 10, regen: 1 }]], key: ['Portão de Ferro', { arm: 180, hp: 15, move: -10 }, 'Vira uma porta de fortaleza: imenso de defesa, lento para andar.'] },
+    { name: 'Ferreiro Rúnico', col: '#ffd24a', small: [A('int', 5), A('cdr', 3), A('gen', 4)], notables: [['Runas Quentes', { cdr: 8, dmg: 5 }], ['Forja Viva', { gen: 15, aspd: 4 }]], key: ['Forja Eterna', { cdr: 15, gen: 25, hp: -8 }, 'As runas nunca esfriam: recurso e recarga voando, menos vida.'] },
+  ] },
+  elf: { name: 'Elfa', ring: [A('dex', 6), A('int', 5), A('dex', 6), A('vit', 4)], branches: [
+    { name: 'Olho de Falcão', col: '#9aff8a', small: [A('dex', 6), A('crit', 2), A('dmg', 3)], notables: [['Mira Firme', { crit: 8, dmg: 6 }], ['Flecha Funda', { dmg: 10, dex: 8 }]], key: ['Olho de Falcão', { crit: 14, dmg: 18, arm: -50 }, 'Cada flecha procura o coração: crítico e dano muito altos, quase sem armadura.'] },
+    { name: 'Dança do Vento', col: '#8ad0ff', small: [A('move', 2), A('dex', 5), A('aspd', 2)], notables: [['Passo de Folha', { move: 6, aspd: 5 }], ['Arco Ligeiro', { aspd: 8, dex: 6 }]], key: ['Dança do Vento', { move: 12, aspd: 12, dmg: -10 }, 'Atira e corre sem parar: muito mais veloz, menos dano por flecha.'] },
+    { name: 'Espírito da Mata', col: '#c8e8a0', small: [A('int', 5), A('heal', 4), A('regen', 0.5)], notables: [['Seiva', { regen: 1.5, heal: 12 }], ['Voz da Floresta', { cdr: 10, int: 8 }]], key: ['Filha da Mata', { heal: 30, regen: 3, dmg: -8 }, 'A mata cura quem a respeita: muita cura, menos dano.'] },
+  ] },
+  tecno: { name: 'Tecnocrata', ring: [A('int', 6), A('dex', 5), A('int', 6), A('vit', 5)], branches: [
+    { name: 'Artilheiro', col: '#6ae0ff', small: [A('int', 6), A('dmg', 3), A('crit', 2)], notables: [['Cano Longo', { dmg: 10, crit: 4 }], ['Sobrepressão', { dmg: 8, gen: 10 }]], key: ['Posto Fixo', { dmg: 25, cdr: 10, move: -12 }, 'Planta os pés e despeja: muito dano e recarga, anda bem mais devagar.'] },
+    { name: 'Engenheiro de Cerco', col: '#9aa4b4', small: [A('vit', 5), A('arm', 14), A('cdr', 3)], notables: [['Caldeira Reforçada', { arm: 45, hp: 6 }], ['Engrenagem Fina', { cdr: 10, aspd: 4 }]], key: ['Engenheiro Andarilho', { cdr: 20, move: 6, dmg: -8 }, 'As engenhocas voltam muito mais rápido e ele anda leve; menos dano.'] },
+    { name: 'Granadeiro', col: '#ffb04a', small: [A('dex', 5), A('aspd', 2), A('gen', 4)], notables: [['Pavio Curto', { aspd: 8, dmg: 5 }], ['Válvula Aberta', { gen: 15, cdr: 5 }]], key: ['Caldeira Instável', { dmg: 20, aspd: 10, hp: -12 }, 'A caldeira no limite: mais dano e velocidade, menos vida.'] },
+  ] },
+  pal: { name: 'Paladino', ring: [A('str', 5), A('vit', 6), A('int', 5), A('vit', 6)], branches: [
+    { name: 'Vingança', col: '#ffd24a', small: [A('str', 6), A('dmg', 3), A('crit', 2)], notables: [['Juízo', { dmg: 10, crit: 4 }], ['Lâmina Sagrada', { dmg: 8, str: 8 }]], key: ['Fogo Sagrado', { dmg: 24, heal: -15 }, 'A luz que corta: muito mais dano, cura menos.'] },
+    { name: 'Bastião', col: '#fff0c0', small: [A('vit', 6), A('arm', 16), A('hp', 3)], notables: [['Fé de Ferro', { arm: 55, hp: 6 }], ['Escudo da Aurora', { vit: 12, regen: 1 }]], key: ['Juramento', { arm: 160, hp: 18, move: -6 }, 'Não recua: armadura e vida enormes, anda mais devagar.'] },
+    { name: 'Graça', col: '#bfffd0', small: [A('int', 5), A('heal', 5), A('cdr', 3)], notables: [['Mão que Cura', { heal: 18, regen: 1 }], ['Oração Rápida', { cdr: 10, gen: 8 }]], key: ['Martírio', { heal: 35, cdr: 12, hp: -10 }, 'Dá a própria vida pela dos outros: cura e recarga altas, menos vida.'] },
+  ] },
+  vam: { name: 'Vampiro', ring: [A('dex', 6), A('str', 5), A('dex', 6), A('int', 4)], branches: [
+    { name: 'Caçada Noturna', col: '#c84a6a', small: [A('dex', 6), A('move', 2), A('aspd', 2)], notables: [['Sombra Rápida', { move: 6, aspd: 6 }], ['Presas', { crit: 6, dmg: 6 }]], key: ['Filho da Noite', { aspd: 14, move: 8, arm: -50 }, 'Rápido como a sombra: velocidade enorme, quase sem armadura.'] },
+    { name: 'Sangue Antigo', col: '#8a0a1a', small: [A('vit', 5), A('leech', 1), A('heal', 4)], notables: [['Gole Lento', { leech: 3, regen: 1 }], ['Sangue do Conde', { hp: 10, leech: 2 }]], key: ['Banquete', { leech: 6, heal: 20, regen: -1 }, 'Cura só bebendo: roubo de vida enorme, a vida não volta sozinha.'] },
+    { name: 'Fúria Rubra', col: '#ff3a4a', small: [A('str', 6), A('dmg', 3), A('crit', 2)], notables: [['Sede', { dmg: 10, gen: 10 }], ['Garras de Sangue', { crit: 6, str: 8 }]], key: ['Fome Cega', { dmg: 26, crit: 8, hp: -12 }, 'A sede vence a razão: muito dano, menos vida.'] },
+  ] },
+  lob: { name: 'Lobisomem', ring: [A('str', 6), A('vit', 6), A('dex', 5), A('vit', 6)], branches: [
+    { name: 'Fúria da Lua', col: '#ff8a4a', small: [A('str', 6), A('dmg', 3), A('aspd', 2)], notables: [['Garra Larga', { dmg: 10, aspd: 4 }], ['Uivo', { crit: 5, gen: 10 }]], key: ['Sem Correntes', { dmg: 26, aspd: 10, arm: -60 }, 'A besta solta: muito dano e velocidade, armadura cai.'] },
+    { name: 'Pele Velha', col: '#a08060', small: [A('vit', 6), A('arm', 16), A('hp', 3)], notables: [['Couro de Ancião', { arm: 55, hp: 6 }], ['Carne Dura', { regen: 1.5, vit: 10 }]], key: ['Pele de Prata', { arm: 150, hp: 18, dmg: -8 }, 'Couro que até a prata respeita: defesa enorme, bate menos.'] },
+    { name: 'Matilha', col: '#c8e8a0', small: [A('dex', 5), A('heal', 4), A('move', 2)], notables: [['Lamber Feridas', { heal: 18, regen: 1 }], ['Faro', { move: 6, crit: 4 }]], key: ['Alfa', { heal: 25, move: 8, dmg: -6 }, 'A matilha cuida do alfa: cura e velocidade, um pouco menos de dano.'] },
+  ] },
+  mag: { name: 'Mago', ring: [A('int', 6), A('int', 6), A('dex', 4), A('vit', 4)], branches: [
+    { name: 'Tempestade', col: '#8ab0ff', small: [A('int', 6), A('dmg', 3), A('crit', 2)], notables: [['Raio Fino', { crit: 6, dmg: 6 }], ['Fogo Vivo', { dmg: 12 }]], key: ['Mente Única', { dmg: 28, cdr: -10 }, 'Um só elemento, até o fim: muito dano, recarga mais lenta.'] },
+    { name: 'Égide', col: '#c8d8ff', small: [A('vit', 5), A('arm', 12), A('mp', 6)], notables: [['Véu de Força', { arm: 45, hp: 8 }], ['Mana Funda', { mp: 25, regen: 0.8 }]], key: ['Égide de Mana', { arm: 120, mp: 40, dmg: -10 }, 'A mana vira couraça: defesa e mana altas, menos dano.'] },
+    { name: 'Fonte', col: '#9affea', small: [A('int', 5), A('cdr', 3), A('aspd', 2)], notables: [['Palavra Rápida', { aspd: 10, cdr: 4 }], ['Fluxo', { cdr: 10, gen: 10 }]], key: ['Sobrecarga', { aspd: 16, cdr: 16, hp: -12 }, 'Conjura sem parar: velocidade e recarga enormes, menos vida.'] },
+  ] },
+  bru: { name: 'Bruxo', ring: [A('int', 6), A('vit', 5), A('int', 6), A('str', 4)], branches: [
+    { name: 'Praga', col: '#9aff4a', small: [A('int', 6), A('dmg', 3), A('crit', 2)], notables: [['Peste', { dmg: 10, cdr: 4 }], ['Olho Mau', { crit: 6, int: 8 }]], key: ['Credor', { dmg: 26, crit: 6, heal: -15 }, 'A praga cobra caro: muito dano, cura menos.'] },
+    { name: 'Pacto de Sangue', col: '#a01a3a', small: [A('vit', 5), A('leech', 1), A('hp', 3)], notables: [['Sangue Emprestado', { leech: 3, hp: 6 }], ['Contrato', { gen: 12, regen: 1 }]], key: ['Corte de Demônios', { leech: 5, hp: 15, cdr: -8 }, 'Os demônios pagam a sua vida: roubo e vida altos, recarga mais lenta.'] },
+    { name: 'Círculo', col: '#b08ae8', small: [A('vit', 5), A('arm', 12), A('cdr', 3)], notables: [['Sal e Sombra', { arm: 45, cdr: 5 }], ['Selo', { hp: 8, regen: 1 }]], key: ['Círculo Fechado', { arm: 140, hp: 12, move: -8 }, 'Dentro do círculo ninguém entra inteiro: defesa enorme, mais lento.'] },
+  ] },
+  cac: { name: 'Caçador de Demônios', ring: [A('dex', 6), A('int', 4), A('dex', 6), A('vit', 5)], branches: [
+    { name: 'Prata', col: '#e8f0ff', small: [A('dex', 6), A('crit', 2), A('dmg', 3)], notables: [['Bala de Prata', { dmg: 10, crit: 4 }], ['Execução', { crit: 8, dmg: 4 }]], key: ['Prata Pura', { dmg: 25, crit: 8, hp: -10 }, 'Feito para matar o que não devia existir: muito dano, menos vida.'] },
+    { name: 'Emboscada', col: '#8ad0a0', small: [A('move', 2), A('dex', 5), A('aspd', 2)], notables: [['Pés Leves', { move: 7, aspd: 4 }], ['Rearmar Rápido', { aspd: 8, cdr: 6 }]], key: ['Ermitão', { move: 10, aspd: 12, arm: -50 }, 'Ninguém o vê chegar: velocidade enorme, quase sem armadura.'] },
+    { name: 'Vigília', col: '#b0b8c8', small: [A('vit', 6), A('arm', 14), A('cdr', 3)], notables: [['Noite em Claro', { arm: 45, regen: 1 }], ['Armadilheiro', { cdr: 12, int: 6 }]], key: ['Vigília Eterna', { arm: 130, cdr: 12, dmg: -8 }, 'A noite inteira de pé: defesa e armadilhas que voltam rápido, menos dano.'] },
+  ] },
+};
+C.technocrat = C.tecno;
+
+const cacheT = new Map<string, TNode[]>();
+/** monta a constelação da classe (posições em uma grade de -10 a 10) */
+export function treeOf(kit: string): TNode[] {
+  const k = C[kit] ? kit : 'human'; const hit = cacheT.get(k); if (hit) return hit; const D = C[k]; const N: TNode[] = [];
+  const add = (n: Omit<TNode, 'links'>) => { const q = { ...n, links: [] as string[] }; N.push(q); return q; };
+  const link = (a: TNode, b: TNode) => { a.links.push(b.id); b.links.push(a.id); };
+  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: `Coração de ${D.name}`, eff: {}, branch: -1 });
+  const ANG = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]; /* em cima, embaixo à direita, embaixo à esquerda */
+  const ringNodes: TNode[][] = [];
+  D.branches.forEach((B, bi) => { const a = ANG[bi], ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux; let prev = start; const R: TNode[] = [];
+    const seq: ('s' | 'n' | 'k')[] = ['s', 's', 'n', 's', 's', 'n', 'k']; let si = 0, ni = 0;
+    seq.forEach((t, i) => { const r = 1.3 + i * 1.15, bend = Math.sin(i * 0.9) * 0.35; const x = ux * r + px * bend, y = uy * r + py * bend;
+      const n = t === 's' ? add({ id: `b${bi}s${i}`, x, y, kind: 'small', name: B.name, eff: B.small[si++ % B.small.length], branch: bi })
+        : t === 'n' ? add({ id: `b${bi}n${ni}`, x, y, kind: 'notable', name: B.notables[ni][0], eff: B.notables[ni++][1], branch: bi })
+        : add({ id: `b${bi}k`, x, y, kind: 'key', name: B.key[0], eff: B.key[1], tip: B.key[2], branch: bi });
+      link(prev, n); prev = n; R.push(n);
+      /* galhos laterais nos pontos 2 e 5: um ponto pequeno de cada lado */
+      if (i === 1 || i === 4) for (const sd of [-1, 1]) { const tw = add({ id: `b${bi}t${i}${sd > 0 ? 'r' : 'l'}`, x: x + px * sd * 1.05 + ux * 0.35, y: y + py * sd * 1.05 + uy * 0.35, kind: 'small', name: B.name, eff: B.small[(si++) % B.small.length], branch: bi }); link(n, tw); } });
+    ringNodes.push(R); });
+  /* o anel de atributos: entre um braço e o seguinte, dois pontos que ligam o 3º ponto de um ao 3º do outro */
+  for (let bi = 0; bi < 3; bi++) { const a = ringNodes[bi][2], b = ringNodes[(bi + 1) % 3][2]; let prev = a;
+    for (let j = 1; j <= 2; j++) { const t = j / 3, mx = a.x + (b.x - a.x) * t, my = a.y + (b.y - a.y) * t, out = 1.25; const L = Math.hypot(mx, my) || 1;
+      const n = add({ id: `r${bi}${j}`, x: mx / L * (L * out), y: my / L * (L * out), kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2 + j) % D.ring.length], branch: 3 }); link(prev, n); prev = n; }
+    link(prev, b); }
+  cacheT.set(k, N); return N;
+}
+export const branchesOf = (kit: string) => (C[kit] ?? C.human).branches;
+export const classNameOf = (kit: string) => (C[kit] ?? C.human).name;
+/** pontos de talento: 1 a cada 2 níveis e +1 a cada 10 */
+export const talentPoints = (lvl: number) => Math.floor(Math.max(0, lvl - 1) / 2) + Math.floor(lvl / 10);
+
+export function createTalents(kit: () => string, lvl: () => number, onChange: () => void) {
+  const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* */ } };
+  const lit = (): Set<string> => new Set(['o', ...(all[kit()] ?? [])]);
+  const spent = () => (all[kit()] ?? []).length, avail = () => Math.max(0, talentPoints(lvl()) - spent());
+  const nodes = () => treeOf(kit()), byId = (id: string) => nodes().find((n) => n.id === id);
+  /** dá para acender: ligado a um aceso e há ponto */
+  const canTake = (id: string) => { const L = lit(), n = byId(id); return !!n && !L.has(id) && avail() > 0 && n.links.some((q) => L.has(q)); };
+  /** dá para apagar: sem ele, todos os acesos continuam ligados ao centro */
+  const canDrop = (id: string) => { const L = lit(); if (id === 'o' || !L.has(id)) return false; L.delete(id); const seen = new Set(['o']), q = ['o'];
+    while (q.length) { const c = byId(q.pop()!)!; for (const l of c.links) if (L.has(l) && !seen.has(l)) { seen.add(l); q.push(l); } } return [...L].every((x) => seen.has(x)); };
+  function take(id: string) { if (!canTake(id)) return false; (all[kit()] ??= []).push(id); save(); onChange(); return true; }
+  function drop(id: string) { if (!canDrop(id)) return false; all[kit()] = (all[kit()] ?? []).filter((x) => x !== id); save(); onChange(); return true; }
+  function reset() { all[kit()] = []; save(); onChange(); }
+  /** a soma de tudo o que está aceso */
+  function stats(): Eff { const out: Eff = {}; const L = lit(); for (const n of nodes()) if (L.has(n.id)) for (const [k, v] of Object.entries(n.eff) as [TStat, number][]) out[k] = (out[k] ?? 0) + v; return out; }
+  return { nodes, lit, spent, avail, canTake, canDrop, take, drop, reset, stats, byId };
+}
+export type Talents = ReturnType<typeof createTalents>;
+export const effTxt = (e: Eff) => (Object.entries(e) as [TStat, number][]).map(([k, v]) => TSTAT_TXT[k](Math.round(v * 10) / 10)).join(' · ');

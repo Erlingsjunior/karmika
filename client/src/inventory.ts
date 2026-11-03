@@ -231,7 +231,7 @@ const freeBag = (id: string) => isPremium() && (CRAFT_BAG.has(id) || MAGIC_BAG.h
 export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, bag_xl: 36, bag_mg: 68 };
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
-export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Reator (só para o tecnocrata) */ reactor?(): { on: boolean; charge: number; cap: number }; fuse?(): void; placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null }) {
+export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Reator (só para o tecnocrata) */ reactor?(): { on: boolean; charge: number; cap: number }; fuse?(): void; placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null; /** 03/11: a soma da árvore de talentos (talentos.ts) */ talents?(): Partial<Record<string, number>> }) {
   let alOpen = false; /* a coluna do alinhamento kármico na tela do personagem */
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
@@ -284,7 +284,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const total = () => { const t: Partial<Record<StatKey, number>> = {}; for (const [sl, g] of Object.entries(eqG)) if (g) { const k0 = sl === 'shield' && g.slot === 'weapon' ? 0.5 : 1; for (const [k, v] of Object.entries(g.stats) as [StatKey, number][]) t[k] = (t[k] ?? 0) + v * k0; } return t; };
 
   function recalc() {
-    const t = total(), A = st.attrs, b = (k: Attr) => A[k] + (t[k] ?? 0);
+    const t = total(), A = st.attrs, TL = hooks.talents?.() ?? {}, b = (k: Attr) => A[k] + (t[k] ?? 0) + (TL[k] ?? 0);
     const keepHp = st.hpMax > 0 ? st.hp / st.hpMax : 1, keepMp = st.mpMax > 0 ? st.mp / st.mpMax : 1;
     st.hpMax = Math.round(100 + 12 * (st.lvl - 1) + 5 * b('vit') + (t.hp ?? 0));
     st.mpMax = st.res?.mode === 'fight' ? Math.round(100 + (t.mp ?? 0) * 0.4) : Math.round(100 + 6 * (st.lvl - 1) + 4 * b('int') + (t.mp ?? 0)); // recurso de luta: teto fixo, o que cresce é a geração
@@ -296,7 +296,12 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     st.move = 1 + (t.move ?? 0) / 100 + 0.003 * b('dex');
     const armor = (t.def ?? 0) + 0.6 * b('vit'); st.def = Math.min(0.7, armor / (armor + 70 + 8 * st.lvl));
     st.regen = 0.35 + (t.regen ?? 0) + 0.04 * b('vit');
-    st.leech = (t.leech ?? 0) / 100; st.xpMul = 1 + (t.xp ?? 0) / 100 + (hooks.xpBonus?.() ?? 0); st.goldMul = 1 + (t.gold ?? 0) / 100 + (Object.values(eqG).some((g) => g?.special === 'u_andvari') ? 0.6 : 0);
+    /* a árvore de talentos (03/11) */
+    st.hpMax = Math.round(st.hpMax * (1 + (TL.hp ?? 0) / 100)); if (st.res?.mode !== 'fight') st.mpMax += Math.round(TL.mp ?? 0); st.hp = Math.min(st.hp, st.hpMax); st.mp = Math.min(st.mp, st.mpMax);
+    st.atk *= 1 + (TL.dmg ?? 0) / 100; st.crit = Math.min(0.6, st.crit + (TL.crit ?? 0) / 100); st.move += (TL.move ?? 0) / 100; st.gen += (TL.gen ?? 0) / 100;
+    if (TL.arm) { const ar = armor + TL.arm; st.def = Math.max(0, Math.min(0.75, ar / (Math.max(1, ar) + 70 + 8 * st.lvl))); }
+    st.regen += TL.regen ?? 0; (st as St & { aspd?: number; cdr?: number; tHeal?: number }).aspd = (TL.aspd ?? 0) / 100; (st as St & { cdr?: number }).cdr = (TL.cdr ?? 0) / 100; (st as St & { tHeal?: number }).tHeal = (TL.heal ?? 0) / 100;
+    st.leech = (t.leech ?? 0) / 100 + (TL.leech ?? 0) / 100; st.xpMul = 1 + (t.xp ?? 0) / 100 + (hooks.xpBonus?.() ?? 0); st.goldMul = 1 + (t.gold ?? 0) / 100 + (Object.values(eqG).some((g) => g?.special === 'u_andvari') ? 0.6 : 0);
     st.auras = SLOTS.map((sl) => eqG[sl]).filter((g): g is Gear => !!g?.aura).sort((a, b) => (b.rarity === 'relic' ? 1 : 0) - (a.rarity === 'relic' ? 1 : 0)).map((g) => g.aura!);
     st.sp = new Set(Object.values(eqG).map((g) => g?.special).filter(Boolean) as string[]);
     { /* a mesa dos anões: prato e bebida ativos (15 min) */ const now = Date.now(); let hp = 0, stam = 0;

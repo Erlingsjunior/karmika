@@ -3,6 +3,7 @@ import { type Only, tipCtx } from '../loot';
 import { type KitKey, setKitExtras, KITS, applyKit } from '../kits';
 import { type Race, RACES } from '@karmika/shared';
 import { createSkillTree } from '../skilltree';
+import { createTalents } from '../talentos';
 import { createMail } from '../mail';
 import { isTool as isToolId } from '../tools';
 import { ITEMS as ITEMS_TBL } from '../inventory';
@@ -29,6 +30,9 @@ const kitName = (k: KitKey): string => { let ci: { name: string; past?: { name: 
 function applyKitAll() { const cur = kitRace(); setKitExtras(cur, ownedKits().filter((k) => k !== cur).flatMap((k) => (KITS[k] ?? []).filter((d) => tree.rank(d.id, k) > 0))); applyKit(cur, K.game.st.lvl, (k) => tree.rank(k)); }
 const tree = createSkillTree(kitRace, () => K.game.st.lvl, (t, c) => K.game.logMsg(t, c), treeTitle, ownedKits, kitName);
 K.game.setSkillScale((id) => tree.scale(id));
+/* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
+const talentKit = (): string => { const k = kitRace() as string; const o = K.profile?.origin; return ['nordic', 'human', 'dwarf', 'elf'].includes(k) && (o === 'elf' || o === 'dwarf') ? o : k; };
+const talents = createTalents(talentKit, () => K.game.st.lvl, () => { K.game.st.recalc?.(); });
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
 /** guerreiro do Norte: classe ou caminho validado */
@@ -73,5 +77,5 @@ const profs = createProfessions({ cls: () => { try { return K.game.classInfo.nam
     for (let i = 0; i < n; i++) K.particles.spawn(st.x + (Math.random() - 0.5) * 1.2, heightAt(st.x, st.z) + 1.0, st.z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: up + Math.random() * up, vz: (Math.random() - 0.5) * 2, life: 0.7, s0: 0.12, s1: 0.02, c0, c1, a: 1, drag: 1.4 });
     if (prof === 'ferreiro') K.audio.hit(); else if (prof === 'alquimista') K.audio.cast(); else K.audio.thud(); }, onLevel: (_id, name, icon, l) => { profLevelUp(icon, name, l); K.audio.chime(); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xfff0b0, c1: 0x7ac85a, n: 26, small: true } })); }, has: (id, n) => K.inv.has(id, n), count: (id) => K.inv.count(id), take: (id, n) => K.inv.take(id, n), add: (id, n) => K.inv.add(id, n, true), addGear: (g) => K.inv.addGear(g),
   craftJob: (j) => K.craftJob(j), invCraft: (id) => K.inv.craft(id), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', heroLvl: () => K.game.st.lvl, log: (t, c) => K.game.logMsg(t, c), onCraft: (n) => K.quests.onCraft(n) });
-  return { tree, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
+  return { tree, talents, talentKit, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
 }
