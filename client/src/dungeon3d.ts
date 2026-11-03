@@ -4,7 +4,7 @@
  *  Câmera olha de sudeste: a rocha ao norte/oeste do chão é alta; ao sul/leste fica baixa para nunca esconder o herói.
  *  Origem local (0,0) = canto noroeste; a saída fica em (W/2, D), como nas outras construções por dentro. */
 import * as THREE from 'three';
-import { std, ramp } from './toon3d';
+import { std, ramp, photoDetail } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
 
@@ -27,7 +27,10 @@ function ctex(key: string, draw: (g: CanvasRenderingContext2D, r: () => number) 
 }
 const hex = (c: number, k = 1) => `rgb(${Math.min(255, ((c >> 16) & 255) * k) | 0},${Math.min(255, ((c >> 8) & 255) * k) | 0},${Math.min(255, (c & 255) * k) | 0})`;
 /** chão: terra, pedra, gelo, basalto rachado de lava, lajes de cripta, musgo */
-const floorTex = (theme: DgTheme, base: number) => ctex('dgf' + theme, (g, r) => {
+/* 03/11: o chão de cada masmorra com a foto por cima (laje na cripta, cascalho na mina, lama na toca, folhas na mata, rocha com musgo no resto) */
+const DG_PHOTO: Partial<Record<string, string>> = { cripta: 'laje_pedra_02', mina: 'cascalho_areia_02', toca: 'caminho_lama_02', mata: 'chao_floresta_02', magma: 'rocha_musgo_02', gelo: 'seixos_molhados_02' };
+const floorTex = (theme: DgTheme, base: number) => photoDetail(floorTex0(theme, base), [DG_PHOTO[theme] ?? 'rocha_musgo_01'], 0, 0.55);
+const floorTex0 = (theme: DgTheme, base: number) => ctex('dgf' + theme, (g, r) => {
   g.fillStyle = hex(base); g.fillRect(0, 0, 64, 64);
   for (let i = 0; i < 260; i++) { g.fillStyle = hex(base, 0.7 + r() * 0.5); g.fillRect(r() * 64, r() * 64, 1 + r() * 3, 1 + r() * 2); }
   if (theme === 'cripta' || theme === 'mina') { g.strokeStyle = 'rgba(0,0,0,.45)'; g.lineWidth = 1.5; for (let i = 0; i <= 2; i++) { g.beginPath(); g.moveTo(0, i * 32); g.lineTo(64, i * 32); g.stroke(); g.beginPath(); g.moveTo(i * 32 + (i % 2) * 8, 0); g.lineTo(i * 32 + (i % 2) * 8, 64); g.stroke(); } }

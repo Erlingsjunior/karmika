@@ -32,7 +32,8 @@ let groundMat: THREE.MeshLambertMaterial | null = null;
    peso de vértice. Para não repetir: cada textura é lida duas vezes, em escalas e ângulos diferentes, e um ruído grande troca de uma para a
    outra; a grama alterna entre lisa e com trevo, a estrada e o calçamento entre as duas versões. No chão natural, a textura entra como
    DETALHE sobre a cor do bioma (a paleta e a luz do jogo ficam); estrada, calçamento, lama, seixo, rocha e areia entram com a cor delas. */
-const GROUND_TEX = ['grama_01', 'grama_trevo_01', 'estrada_terra_01', 'estrada_terra_02', 'paralelepipedo_01', 'paralelepipedo_02', 'caminho_lama_01', 'chao_floresta_01', 'seixos_molhados_01', 'rocha_musgo_01', 'cascalho_areia_01', 'chao_floresta_02'];
+const GROUND_TEX = ['grama_01', 'grama_trevo_01', 'estrada_terra_01', 'estrada_terra_02', 'paralelepipedo_01', 'paralelepipedo_02', 'caminho_lama_01', 'chao_floresta_01', 'seixos_molhados_01', 'rocha_musgo_01', 'cascalho_areia_01', 'chao_floresta_02',
+  'laje_pedra_01', 'terra_arada_01', 'caminho_lama_02', 'seixos_molhados_02', 'rocha_musgo_02', 'cascalho_areia_02'];
 const groundU = { tGround: { value: null as THREE.DataArrayTexture | null }, uMean: { value: GROUND_TEX.map(() => new THREE.Vector3(0.5, 0.5, 0.5)) }, uTexOn: { value: 0 } };
 let groundTexP: Promise<void> | null = null;
 function loadGroundTex() {
@@ -50,7 +51,7 @@ function getGroundMat() {
   groundMat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, groundU);
     sh.vertexShader = 'attribute float aPl; attribute vec4 aSp1; attribute vec4 aSp2; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vSp1 = aSp1; vSp2 = aSp2; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
-    sh.fragmentShader = `precision highp sampler2DArray; uniform sampler2DArray tGround; uniform vec3 uMean[12]; uniform float uTexOn; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;
+    sh.fragmentShader = `precision highp sampler2DArray; uniform sampler2DArray tGround; uniform vec3 uMean[18]; uniform float uTexOn; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;
       float gHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y); }
       /* a textura sem repetir: duas leituras (escala e ângulo diferentes) trocadas por um ruído largo */
@@ -64,16 +65,19 @@ function getGroundMat() {
         /* chão natural: a textura como detalhe sobre a cor do bioma (grama lisa/trevo; na mata, o chão de folhas) */
         vec3 det = mix(gPair(0.0, 1.0, 3.2, 1.7), gPair(7.0, 11.0, 3.6, 4.1), clamp(vSp1.w, 0.0, 1.0));
         det = mix(vec3(1.0), clamp(det, 0.35, 1.9), 0.85 * vSp2.w);
-        base *= det;
+        /* manchas de terra nua (terra arada) no campo aberto, raras e grandes */
+        float bare = smoothstep(0.7, 0.82, gNoise(vWp.xz * 0.035 + 17.0)) * (1.0 - clamp(vSp1.w, 0.0, 1.0)) * vSp2.w * 0.55;
+        base *= det; base = mix(base, gTex(13.0, 3.4) * 0.9, bare);
         /* rocha das encostas, seixos e areia: com a cor delas, puxada um pouco para a luz do bioma */
-        base = mix(base, gTex(9.0, 4.0) * mix(vec3(1.0), diffuseColor.rgb / max(uMean[9], vec3(0.02)), 0.35), clamp(vSp2.y, 0.0, 1.0) * 0.85);
-        base = mix(base, gTex(10.0, 3.0), clamp(vSp2.z, 0.0, 1.0) * 0.8);
-        base = mix(base, gTex(6.0, 2.6), clamp(vSp1.z, 0.0, 1.0) * 0.85);
-        base = mix(base, gTex(8.0, 1.8), clamp(vSp2.x, 0.0, 1.0) * 0.9);
+        base = mix(base, mix(gTex(9.0, 4.0), gTex(16.0, 4.4), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.04 + 5.0))) * mix(vec3(1.0), diffuseColor.rgb / max(uMean[9], vec3(0.02)), 0.35), clamp(vSp2.y, 0.0, 1.0) * 0.85);
+        base = mix(base, mix(gTex(10.0, 3.0), gTex(17.0, 3.3), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.05 + 8.0))), clamp(vSp2.z, 0.0, 1.0) * 0.8);
+        base = mix(base, mix(gTex(6.0, 2.6), gTex(14.0, 2.9), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.06 + 2.0))), clamp(vSp1.z, 0.0, 1.0) * 0.85);
+        base = mix(base, mix(gTex(8.0, 1.8), gTex(15.0, 2.0), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.07 + 6.0))), clamp(vSp2.x, 0.0, 1.0) * 0.9);
         /* estrada de terra (as duas versões) e o calçamento de pedra */
         vec3 road = mix(gTex(2.0, 3.0), gTex(3.0, 3.0), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.06 + 9.0)));
         base = mix(base, road * 0.92, clamp(vSp1.x, 0.0, 1.0));
         vec3 cob = mix(gTex(4.0, 2.4), gTex(5.0, 2.4), smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.05 + 3.0)));
+        /* nas cidades grandes, a praça é de laje (vPl = cidade) */ cob = mix(cob, gTex(12.0, 3.2), vPl * smoothstep(0.3, 0.7, gNoise(vWp.xz * 0.02 + 11.0)));
         base = mix(base, cob * 0.95, clamp(vSp1.y, 0.0, 1.0));
         diffuseColor.rgb = base;
       } else {
@@ -228,7 +232,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     if (rw > 0.05) { const pv = paveAt(w, tx, ty); if (pv > 0) { const n = vnoise(xm * 0.55, zm * 0.55, 33) * 0.8 + vnoise(xm * 2.2, zm * 2.2, 34) * 0.2; pw = Math.max(pw, rw * smoothstep(n - 0.05, n + 0.05, pv)); } }
     if (rw > 0) { tmpD.copy(ROAD).lerp(ROAD2, vnoise(xm * 1.3, zm * 1.3, 2)); tmpC.lerp(tmpD, rw * 0.95); }
     if (pw > 0) tmpC.lerp(PLAZA, pw);
-    pl[k] = pw;
+    pl[k] = pw > 0.05 ? smoothstep(0.85, 1, paveAt(w, tx, ty)) : 0; /* 03/11: aPl virou "é cidade grande" (a praça de laje) */
     /* 03/11 (Erling: "capricha para ficar lindo e não ficar uma textura repetitiva"): pesos das texturas do chão (getGroundMat) —
        estrada de terra, calçamento, lama da margem, chão de floresta | seixos, rocha, areia, e quanto o chão natural usa a textura */
     { const roadW = Math.max(0, rw * 0.95 - pw), forestW = Math.min(1, (zw.forest ?? 0) + (zw.jungle ?? 0) * 0.7 + (zw.swamp ?? 0) * 0.4) * (1 - rw), wild = 1 - Math.min(1, (zw.snow ?? 0) + (zw.volcanic ?? 0) * 0.7 + (zw.blight ?? 0) * 0.5 + (zw.enchanted ?? 0) * 0.5);

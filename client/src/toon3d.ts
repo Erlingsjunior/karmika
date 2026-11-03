@@ -50,12 +50,26 @@ function tex(key: string, size: number, draw: (g: CanvasRenderingContext2D, s: n
   t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = t.minFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace;
   texCache.set(key, t); return t;
 }
+const texRaw = (key: string, size: number, draw: (g: CanvasRenderingContext2D, s: number) => void) => { const had = texCache.has(key); const t = tex(key, size, draw); (t.userData as { fresh?: boolean }).fresh = !had; return t; };
 const rr = (a: number, b: number) => a + Math.random() * (b - a);
 const sh = (c: number, k: number) => `rgb(${Math.min(255, ((c >> 16) & 255) * k) | 0},${Math.min(255, ((c >> 8) & 255) * k) | 0},${Math.min(255, (c & 255) * k) | 0})`;
 /** tábuas verticais */
-export const plankTex = (c: number) => tex('pl' + c, 64, (g, s) => { for (let i = 0; i < 8; i++) { g.fillStyle = sh(c, rr(0.75, 1.1)); g.fillRect(i * s / 8, 0, s / 8, s); g.fillStyle = 'rgba(10,6,4,.55)'; g.fillRect(i * s / 8, 0, 1.5, s); } for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(20,12,6,.25)'; g.fillRect(rr(0, s), rr(0, s), 1, rr(3, 9)); } });
+/* 03/11 (Erling: "são muitas texturas e boas para serem utilizadas"): as texturas fotográficas do Herik (models/cenario/chao) entram POR CIMA
+   das desenhadas — o desenho (tábuas, fiadas de pedra, cor) fica, e a foto em "overlay" põe veio de madeira, poro de pedra e sujeira.
+   Tábua → assoalho de madeira; pedra aparelhada → laje de pedra; chão de masmorra → laje / rocha com musgo. Duas versões, pela cor. */
+const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
+const loadImg = (n: string) => { let p = imgCache.get(n); if (!p) { p = new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `/models/cenario/chao/${n}.jpg`; }); imgCache.set(n, p); } return p; };
+export function photoDetail(t: THREE.Texture, imgs: string[], k: number, alpha = 0.62, rep = 1) {
+  if ((t.userData as { photo?: boolean }).photo) return t; (t.userData as { photo?: boolean }).photo = true;
+  const src = t.image as HTMLCanvasElement; if (typeof document === 'undefined' || !src) return t; const pick = imgs[Math.abs(k) % imgs.length];
+  loadImg(pick).then((im) => { if (!im) return; const S = 256, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d')!; g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, S, S);
+    g.globalCompositeOperation = 'overlay'; g.globalAlpha = alpha; for (let y = 0; y < rep; y++) for (let x = 0; x < rep; x++) g.drawImage(im, x * S / rep, y * S / rep, S / rep, S / rep);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; t.image = c; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.needsUpdate = true; });
+  return t;
+}
+export const plankTex = (c: number) => photoDetail(texRaw('pl' + c, 64, (g, s) => { for (let i = 0; i < 8; i++) { g.fillStyle = sh(c, rr(0.75, 1.1)); g.fillRect(i * s / 8, 0, s / 8, s); g.fillStyle = 'rgba(10,6,4,.55)'; g.fillRect(i * s / 8, 0, 1.5, s); } for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(20,12,6,.25)'; g.fillRect(rr(0, s), rr(0, s), 1, rr(3, 9)); } }), ['assoalho_madeira_01', 'assoalho_madeira_02'], c, 0.6);
 /** pedra aparelhada */
-export const stoneTex = (c: number) => tex('st' + c, 64, (g, s) => { g.fillStyle = sh(c, 0.7); g.fillRect(0, 0, s, s); for (let y = 0; y < 4; y++) { let x = -rr(0, 10); while (x < s) { const w = rr(12, 22); g.fillStyle = sh(c, rr(0.8, 1.2)); g.fillRect(x + 1, y * 16 + 1, w - 2, 14); x += w; } } });
+export const stoneTex = (c: number) => photoDetail(texRaw('st' + c, 64, (g, s) => { g.fillStyle = sh(c, 0.7); g.fillRect(0, 0, s, s); for (let y = 0; y < 4; y++) { let x = -rr(0, 10); while (x < s) { const w = rr(12, 22); g.fillStyle = sh(c, rr(0.8, 1.2)); g.fillRect(x + 1, y * 16 + 1, w - 2, 14); x += w; } } }), ['laje_pedra_01', 'laje_pedra_02'], c, 0.55);
 /** reboco com enxaimel */
 export const plasterTex = (c: number) => tex('pa' + c, 64, (g, s) => { g.fillStyle = sh(c, 1); g.fillRect(0, 0, s, s); for (let i = 0; i < 60; i++) { g.fillStyle = sh(c, rr(0.85, 1.05)); g.fillRect(rr(0, s), rr(0, s), rr(2, 6), rr(2, 5)); } g.fillStyle = '#3a2a1c'; g.fillRect(0, 0, s, 5); g.fillRect(0, s - 5, s, 5); g.fillRect(0, 0, 5, s); g.fillRect(s - 5, 0, 5, s); g.fillRect(s / 2 - 2, 0, 4, s); });
 /** telhas / sapê */
