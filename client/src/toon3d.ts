@@ -16,7 +16,7 @@ export function cutoutify<M extends THREE.Material>(m: M): M {
   const prev = m.onBeforeCompile;
   m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut; sh.uniforms.uCutF = CUT.uCutF;
     sh.vertexShader = sh.vertexShader.replace('#include <clipping_planes_pars_vertex>', '#include <clipping_planes_pars_vertex>\nvarying vec2 vCutW;')
-      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 cw = modelMatrix * vec4( transformed, 1.0 ); vCutW = cw.xz; }');
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 cp = vec4( transformed, 1.0 );\n#ifdef USE_INSTANCING\ncp = instanceMatrix * cp;\n#endif\nvec4 cw = modelMatrix * cp; vCutW = cw.xz; }' /* 03/11: com instancing, a posição de cada cópia entra no corte */);
     sh.fragmentShader = sh.fragmentShader.replace('#include <clipping_planes_pars_fragment>', '#include <clipping_planes_pars_fragment>\nuniform vec4 uCut; uniform vec3 uCutF; varying vec2 vCutW;')
       .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\n{ float dCut = distance(gl_FragCoord.xy, uCut.xy); if (uCut.w > 0.0 && dCut < uCut.z && dot(vCutW, uCutF.xy) < uCutF.z) { if (dCut < uCut.z * 0.86 || mod(floor(gl_FragCoord.x * 0.5) + floor(gl_FragCoord.y * 0.5), 2.0) < 1.0) discard; } }'); };
   m.customProgramCacheKey = () => 'cut' + ((m as unknown as { map?: unknown }).map ? 't' : '') + m.type;

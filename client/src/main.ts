@@ -109,6 +109,7 @@ import { createNpcs, type NpcDef } from './npcs';
 import { Mist, Particles } from './fx3d';
 import { waterU } from './chunks3d';
 import { windU, gustU, heroU } from './terrain3d';
+import { artPreload } from './arte3d';
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
 
@@ -169,7 +170,8 @@ import { createArvoreClasse } from './sistemas/arvore-classe';
 /** tipo declarado de um let (sem o estreitamento do fluxo: false → boolean, 30 → number) — usado nos contextos dos sistemas */
 type Widen<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : T;
 
-const __t0 = performance.now(); const city = await loadWorld(); setRamparts(city.ramparts ?? []); (window as unknown as { __tcity?: number }).__tcity = performance.now() - __t0; // mundo do cache (só a 1ª abertura gera)
+const __artP = artPreload(); /* 03/11: modelos do Herik (vegetação, pedras, vila) baixam junto com o mundo */
+const __t0 = performance.now(); const city = await loadWorld(); await __artP; setRamparts(city.ramparts ?? []); (window as unknown as { __tcity?: number }).__tcity = performance.now() - __t0; // mundo do cache (só a 1ª abertura gera)
 /* relevo do mapa grande (176 mil alturas), também do cache. Os dois 'await' ficam aqui no topo: depois deles o resto do arquivo roda de uma vez, sem pausa no meio */
 const MM_HG = 2, mmHw = Math.ceil(MAP_W / MM_HG);
 const mmHgt = await cachedArray('mmhgt', () => { const a = new Float32Array(mmHw * mmHw); for (let y = 0; y < mmHw; y++) for (let x = 0; x < mmHw; x++) a[y * mmHw + x] = groundH((x * MM_HG + 1) * T, (y * MM_HG + 1) * T); return a; });

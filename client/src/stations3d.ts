@@ -1,3 +1,4 @@
+import { artGeo, artMarker } from './arte3d';
 /* Pontos de trabalho das vilas e cidades: cada ofício tem o seu lugar. Ninguém aplaina tábua no meio do mato.
    0 Bancada de Corte (marceneiro) · 1 Forja (ferreiro) · 2 Mesa do Curtidor (costureiro) · 3 Laboratório (alquimista) · 4 Cozinha (cozinheiro)
    Tudo em volta de (0,0), com a frente virada para +z; quem chama posiciona e gira. */
@@ -77,6 +78,13 @@ export function buildStation(v: number, rnd: () => number, bare = false, wdirLoc
     add(C(0.3, 0.32, 0.5, 10), std(0xffffff, { map: woodTex(0x6a4a2a) }), 1.25, 0.25, 0.55); const axe = add(B(0.05, 0.6, 0.05), dark, 1.25, 0.72, 0.55, false); axe.rotation.z = 0.5; add(B(0.2, 0.14, 0.03), iron, 1.12, 0.98, 0.55, false);
     if (!bare && wdirLocal !== undefined) { out.spin = buildMill(g, wdirLocal, ry, 2.7, { x: 0.2, y: 1.18, z: 0.05 }); saw.visible = false; /* a serra de mão cede o lugar à serra circular movida pelo eixo */ }
     sign(2.5, 0xffd080, (c) => { c.strokeStyle = '#e8dcc0'; c.lineWidth = 4; c.beginPath(); c.moveTo(14, 46); c.lineTo(46, 18); c.stroke(); c.fillStyle = '#c8ccd4'; c.beginPath(); c.moveTo(20, 50); c.lineTo(52, 22); c.lineTo(54, 30); c.lineTo(24, 54); c.fill(); });
+  } else if (v === 1 && artGeo('forja_fornalha')) { /* 03/11: a forja com as peças do Herik (fornalha, bigorna, tina, ferramentas, carvão e minério) */
+    const P = (id: string, x: number, z: number, ry = 0, k = 1) => { const m = artMarker(id); if (!m) return; m.position.set(x, 0, z); m.rotation.y = ry; m.scale.setScalar(k); g.add(m); };
+    P('forja_fornalha', -0.45, -0.55, 0, 0.85); P('forja_bigorna', 0.6, 0.3, -0.4); P('forja_tina', 0.95, -0.65, 0.3, 0.75); P('forja_rack_ferramentas', -1.35, -0.1, Math.PI / 2, 0.8);
+    P('forja_monte_carvao', -0.9, 0.55, 0.4, 0.75); P('forja_caixa_minerio_vermelho', 0.95, 0.6, 0.2, 0.6); if (!bare) P('forja_amolador', -0.15, 0.62, Math.PI, 0.75);
+    sign(2.4, 0xff8040, (c) => { c.fillStyle = '#9aa0aa'; c.fillRect(14, 30, 36, 10); c.fillRect(24, 40, 16, 12); c.beginPath(); c.moveTo(50, 30); c.lineTo(58, 34); c.lineTo(50, 38); c.fill(); c.fillStyle = '#ff8a3a'; c.fillRect(26, 14, 4, 4); c.fillRect(36, 10, 3, 3); });
+    if (!bare) { for (const sx of [-1, 1]) add(C(0.07, 0.08, 2.4, 6), dark, sx * 1.4, 1.2, 0.95); add(B(3.0, 0.08, 0.15), dark, 0, 2.35, 0.95, false); }
+    out.glow = { x: -0.45, y: 0.9, z: -0.25, color: 0xff7a2a, base: 26 }; out.smoke = { x: -0.45, y: 2.3, z: -0.6, strong: true };
   } else if (v === 1) { // Forja: lareira de pedra com brasas, coifa e chaminé, bigorna no toco, tina d'água, ferramentas
     add(B(1.5, 0.9, 1.1), stone, -0.55, 0.45, -0.35);
     const coals = add(B(1.1, 0.06, 0.7), glowM(0xff6a1a), -0.55, 0.93, -0.35, false); void coals;

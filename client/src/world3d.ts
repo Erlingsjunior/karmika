@@ -23,6 +23,7 @@ import { buildLibrary } from './library3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
 import { windU } from './terrain3d';
+import { ArtBatch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
 import { buildChunkTerrain, CS, CSM, type ChunkTerrain } from './chunks3d';
 
 export interface Torch { pos: THREE.Vector3; light: THREE.PointLight; base: number; seed: number; flame: THREE.Mesh; dist: number }
@@ -67,7 +68,7 @@ export const FOUNTAIN = { rim: 0.9, bowl: 2.1, top: 2.12, rad: 2.2 }; /* 01/11: 
 const fountainWater = new THREE.ShaderMaterial({ transparent: true, uniforms: { uT: windU, uL: { value: 1 } },
   vertexShader: 'varying vec3 vP; void main(){ vP = (modelMatrix*vec4(position,1.)).xyz; gl_Position = projectionMatrix*viewMatrix*vec4(vP,1.); }',
   fragmentShader: 'uniform float uT; varying vec3 vP; void main(){ vec2 c = vP.xz - floor(vP.xz*0.0); float r = length(vP.xz - vec2(0.0)); float w = sin(vP.x*3.1+uT*1.7)*sin(vP.z*2.7-uT*1.3)*0.5+0.5; float rg = smoothstep(0.9,1.0,sin(length(fract(vP.xz*0.25)-0.5)*40.0 - uT*5.0)); vec3 col = mix(vec3(0.08,0.35,0.5), vec3(0.3,0.7,0.85), w*0.6) + rg*0.18; gl_FragColor = vec4(col, 0.92); }' });
-interface Loaded { terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; glows: WorldObjs['glowLights'][number][]; trees: { obj: THREE.Object3D; ph: number }[]; smokers: THREE.Vector3[]; relics?: WorldObjs['relics']; own: THREE.BufferGeometry[]; fountain?: THREE.Vector3; treeG?: THREE.Group[]; treeMerged?: THREE.Mesh[]; staticG?: THREE.Group[]; staticMerged?: THREE.Mesh[]; spin?: [THREE.Object3D, 'x' | 'y' | 'z', number][] }
+interface Loaded { artB?: ArtBatch; artPG?: [Prop, THREE.Object3D][]; terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; glows: WorldObjs['glowLights'][number][]; trees: { obj: THREE.Object3D; ph: number }[]; smokers: THREE.Vector3[]; relics?: WorldObjs['relics']; own: THREE.BufferGeometry[]; fountain?: THREE.Vector3; treeG?: THREE.Group[]; treeMerged?: THREE.Mesh[]; staticG?: THREE.Group[]; staticMerged?: THREE.Mesh[]; spin?: [THREE.Object3D, 'x' | 'y' | 'z', number][] }
 
 /* ---------- degraus pisáveis (Erling, 23/10: "não consigo subir a escada, fico atravessando ela" — em todos os prédios grandes).
    As escadarias, plintos e patamares dos prédios eram só desenho: o chão do herói continuava o terreno. Agora, quando um prédio
@@ -184,6 +185,10 @@ export function buildWorld(world: World): WorldObjs {
       const tp = buildTemple(Wm, Dm, p.wall, p.roof === 0x8f7bff ? 0x4a4468 : p.roof, ruinedC, windows, p.gx * 7 + p.gy * 3);
       g.add(tp.group);
       if (!ruinedC) L.glows.push({ light: nullLight, base: 40, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + tp.glow.x, wy + tp.glow.y, p.gy * T + tp.glow.z), color: 0x8f7bff } as WorldObjs['glowLights'][number]);
+    } else if (p.kind === 'fountain' && artGeo('fonte_praca')) { /* 03/11: a Fonte da Praça do Herik (tanque, taça e a estátua encapuzada) */
+      const fm = artMesh('fonte_praca')!; const k = (SCALE.fountain.radius + 0.1) / artGeo('fonte_praca')!.userData.r; fm.scale.setScalar(k); fm.position.set(Wm / 2, 0, Dm / 2); fm.rotation.y = Math.PI / 4; g.add(fm);
+      L.glows.push({ light: nullLight, base: 8, seed: r() * 50, warm: false, pos: new THREE.Vector3(wx, wy + 3.2 * k, wz + 1.2), color: 0x6fc7ff } as WorldObjs['glowLights'][number]);
+      L.fountain = new THREE.Vector3(wx, wy, wz);
     } else if (p.kind === 'fountain') {
       /* 01/11 (Erling): a fonte da praça refeita pela prancha de referência (imagem 62): tanque redondo de pedra com musgo, calçada em volta,
          taça canelada no meio com três bicas, e em cima a estátua encapuzada segurando o losango com o Olho. */
@@ -368,8 +373,11 @@ export function buildWorld(world: World): WorldObjs {
       for (let i = 0; i < 6; i++) { const it = new THREE.Mesh(i % 2 ? new THREE.SphereGeometry(0.14, 6, 5) : new THREE.BoxGeometry(0.22, 0.2, 0.22), std([0xc23a2a, 0xe0b040, 0x5a9a40, 0xa06ad0, 0xd87030, 0x4a8ad0][i])); it.position.set(Wm / 2 - 1.0 + i * 0.4, 1.02, Dm / 2 + 0.1); g.add(it); }
     } else if (p.kind === 'tree') {
       const hsh = Math.abs(Math.sin(p.gx * 12.9898 + p.gy * 78.233) * 43758.5453) % 1;
-      const obj = p.sp ? buildSpecies(p.sp, p.height, hsh) : buildTree(p.height, p.variant === 2 ? 0.9 : p.variant === 1 ? 0.5 : hsh * 0.3).obj;
       g.position.set(wx, gy0 - 0.08, wz); g.rotation.y = hsh * 40;
+      /* 03/11: árvore do Herik (uma por espécie), desenhada em lote por chunk; o desenho procedural fica de reserva */
+      { const aid = p.style === 2 ? null : TREE_ART[p.sp ?? (p.variant === 2 ? 'fir' : p.variant === 1 ? 'pineRed' : 'oak')]; const G0 = aid ? artGeo(aid) : null; const mk = G0 && aid ? artMarker(aid, { wind: 0.035 }) : null;
+        if (mk && G0) { /* um pouco menores que a altura do prop e com a copa limitada: a mata não vira parede (regra de 27/10) */ const ks = Math.min(p.height * 0.85 / G0.userData.h, p.height * 0.42 / G0.userData.r); mk.scale.setScalar(Math.max(0.35, ks) * (0.92 + hsh * 0.16)); g.add(mk); return g; } }
+      const obj = p.sp ? buildSpecies(p.sp, p.height, hsh) : buildTree(p.height, p.variant === 2 ? 0.9 : p.variant === 1 ? 0.5 : hsh * 0.3).obj;
       if (p.style === 2) obj.traverse((o) => { const mm = o as THREE.Mesh; if (mm.isMesh && o !== obj.children[0]) mm.material = blossomMat(p.roof); }); // árvores de flor (ilhas do Pináculo)
       L.trees.push({ obj, ph: r() * 6 }); obj.userData.sway = true; g.add(obj);
     } else if (p.kind === 'torch') {
@@ -417,12 +425,15 @@ export function buildWorld(world: World): WorldObjs {
         geo.setAttribute('color', new THREE.BufferAttribute(cols, 3)); L.own.push(geo); return geo;
       };
       const rm = cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp }));
-      const m = new THREE.Mesh(mkRock(p.gx * 13 + p.gy, RS === 'slab' ? 0.3 : RS === 'peak' || RS === 'menhir' ? 1.2 : 0.62), rm);
       const sx = Wm * 0.52 * (0.85 + r() * 0.3) * (RS === 'menhir' ? 0.45 : RS === 'pebbles' ? 0.6 : 1), sy = p.height * 0.55, sz = Dm * 0.52 * (0.85 + r() * 0.3) * (RS === 'menhir' ? 0.6 : RS === 'pebbles' ? 0.6 : 1);
-      m.scale.set(sx, sy, sz); m.position.set(Wm / 2, sy * 0.45, Dm / 2); m.rotation.y = r() * 6; m.castShadow = m.receiveShadow = true; g.add(m);
-      if (RS === 'ice') for (let k = 0; k < 5; k++) { const a = r() * 6.283; const ic = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.25 + r() * 0.3, 5), std(0xd8f0ff)); ic.rotation.x = Math.PI; ic.position.set(Wm / 2 + Math.cos(a) * sx * 0.8, sy * 0.4, Dm / 2 + Math.sin(a) * sz * 0.8); g.add(ic); } // pingentes de gelo
-      if (RS === 'mossball') for (let k = 0; k < 3; k++) { const a = r() * 6.283; const f = buildPlant('fern', p.gx + k); f.scale.setScalar(0.7); f.position.set(Wm / 2 + Math.cos(a) * sx * 1.05, 0, Dm / 2 + Math.sin(a) * sz * 1.05); g.add(f); } // samambaias ao pé
-      const nSmall = RS === 'pebbles' ? 6 : p.w === 1 ? 2 : 4;
+      /* 03/11: pedra do Herik (uma por estilo da prancha 58); sem estilo, a cinza com musgo (01) ou a lascada (09) */
+      const rid = ROCK_ART[RS ?? ((p.variant ?? 0) % 2 ? 'copper' : 'mossy')], RG = rid ? artGeo(rid) : null, rmk = RG && rid ? artMarker(rid) : null;
+      if (rmk && RG) { const bb = RG.boundingBox!, dxz = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z), kxz = (Math.max(sx, sz) * 2.05) / dxz, ky = THREE.MathUtils.clamp((RS === 'menhir' || RS === 'peak' ? p.height : p.height * 0.62) / RG.userData.h, kxz * 0.6, kxz * 1.7);
+        rmk.scale.set(kxz, ky, kxz); rmk.position.set(Wm / 2, -0.05, Dm / 2); rmk.rotation.y = r() * 6.283; g.add(rmk); }
+      else { const m = new THREE.Mesh(mkRock(p.gx * 13 + p.gy, RS === 'slab' ? 0.3 : RS === 'peak' || RS === 'menhir' ? 1.2 : 0.62), rm); m.scale.set(sx, sy, sz); m.position.set(Wm / 2, sy * 0.45, Dm / 2); m.rotation.y = r() * 6; m.castShadow = m.receiveShadow = true; g.add(m); }
+      if (RS === 'ice' && !rmk) for (let k = 0; k < 5; k++) { const a = r() * 6.283; const ic = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.25 + r() * 0.3, 5), std(0xd8f0ff)); ic.rotation.x = Math.PI; ic.position.set(Wm / 2 + Math.cos(a) * sx * 0.8, sy * 0.4, Dm / 2 + Math.sin(a) * sz * 0.8); g.add(ic); } // pingentes de gelo
+      if (RS === 'mossball' && !rmk) for (let k = 0; k < 3; k++) { const a = r() * 6.283; const f = buildPlant('fern', p.gx + k); f.scale.setScalar(0.7); f.position.set(Wm / 2 + Math.cos(a) * sx * 1.05, 0, Dm / 2 + Math.sin(a) * sz * 1.05); g.add(f); } // samambaias ao pé
+      const nSmall = rmk ? 0 : RS === 'pebbles' ? 6 : p.w === 1 ? 2 : 4; /* o modelo do Herik já traz as pedrinhas em volta */
       for (let k = 0; k < nSmall; k++) { const a = r() * 6.283, d = Math.max(sx, sz) * (0.95 + r() * 0.5); const m2 = new THREE.Mesh(mkRock(p.gx * 31 + p.gy * 7 + k, 0.7), rm); const s2 = 0.18 + r() * 0.3; m2.scale.set(s2 * 1.3, s2 * 0.8, s2); m2.position.set(Wm / 2 + Math.cos(a) * d, s2 * 0.3, Dm / 2 + Math.sin(a) * d); m2.rotation.y = r() * 6; m2.castShadow = true; g.add(m2); }
       { const vein = veinOf(p); if (vein) { const nN = p.w > 1 ? 9 : 5; // veio de minério: pepitas cravadas na rocha (ferrugem = ferro, brilho = prata)
         for (let k = 0; k < nN; k++) { const a = r() * 6.283, hh = 0.25 + r() * 0.5; const nug = new THREE.Mesh(new THREE.OctahedronGeometry(0.09 + r() * 0.08, 0), vein === 2 ? glowSilver : std(0xa0582e)); nug.position.set(Wm / 2 + Math.cos(a) * sx * 0.86 * (1 - hh * 0.4), sy * 0.45 + sy * hh * 0.5, Dm / 2 + Math.sin(a) * sz * 0.86 * (1 - hh * 0.4)); nug.rotation.set(r() * 3, r() * 3, 0); g.add(nug); } } }
@@ -464,11 +475,14 @@ export function buildWorld(world: World): WorldObjs {
       else if (p.kind === 'bfence') { const fg = new THREE.Group(); fg.position.set(Wm / 2, 0, Dm / 2); fg.rotation.y = v * Math.PI / 2; g.add(fg); for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 0.14), dark); post.position.set(sx * (Wm / 2 - 0.1), 0.5, -Dm / 2 + 0.1); post.castShadow = true; fg.add(post); } for (const y of [0.4, 0.8]) { const rail = new THREE.Mesh(new THREE.BoxGeometry(Wm, 0.08, 0.06), logM); rail.position.set(0, y, -Dm / 2 + 0.1); fg.add(rail); } }
       else { const roof = gableRoof(Wm + 0.3, Dm + 0.3, 0.9, 0.15, 0x6d3a28, 0x4a3220, v % 2 === 0); roof.position.set(Wm / 2, 2.1, Dm / 2); g.add(roof); }
     } else if (p.kind === 'plant' && p.plant) { /* planta de cenário (pranchas 56/57): parada, mesclada no estático; nenúfar fica na linha da água */
-      const pl = buildPlant(p.plant, p.gx * 7 + p.gy * 13 + (p.variant ?? 0)); pl.position.set(Wm / 2, p.plant === 'lilypad' ? WL - gy0 + 0.03 : 0, Dm / 2); pl.rotation.y = r() * 6.283; const sc = 0.85 + r() * 0.3; pl.scale.set(sc, sc, sc); g.add(pl);
+      const seed = p.gx * 7 + p.gy * 13 + (p.variant ?? 0), PA = PLANT_ART[p.plant], aid = PA ? PA[seed % PA.length] : null, mk = aid ? artMarker(aid, { wind: p.plant === 'lilypad' || p.plant === 'mossRock' || p.plant === 'cactus' ? 0 : 0.12, shadow: false }) : null;
+      const pl = mk ?? buildPlant(p.plant, seed); pl.position.set(Wm / 2, p.plant === 'lilypad' ? WL - gy0 + 0.03 : 0, Dm / 2); pl.rotation.y = r() * 6.283; const sc = (0.85 + r() * 0.3) * (mk ? 1.25 : 1); pl.scale.set(sc, sc, sc); g.add(pl);
     } else if (p.kind === 'vprop') { /* props de vila da prancha 59 (01/11): 0 barril · 1 caixotes · 2 poço com telhado · 3 banco de toras · 4 poste com lanterna · 5 placa de direções · 6 feno com forcado · 7 carroça de mão · 8 cocho · 9 bigorna no toco */
       const v = p.variant ?? 0, wd = std(0xffffff, { map: plankTex(0x8a6a40) }), wdD = std(0xffffff, { map: plankTex(0x5a3a20) }), iron = std(0x3a3f46), stoneT = std(0xffffff, { map: stoneTex(0x8a857e) }), hay = std(0xd8b048), water = std(0x4a7a9a);
       const G = new THREE.Group(); G.position.set(Wm / 2, 0, Dm / 2); G.rotation.y = (p.ry ?? 0) + (r() - 0.5) * 0.3; g.add(G); const A = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; G.add(o); return o; };
-      if (v === 0) { A(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 10), wd, 0, 0.4, 0); A(new THREE.CylinderGeometry(0.34, 0.34, 0.9, 10, 1, true), wd, 0, 0.45, 0).scale.set(1, 1, 1); for (const y of [0.12, 0.42, 0.72]) A(new THREE.TorusGeometry(0.33, 0.02, 4, 12), iron, 0, y, 0).rotation.x = Math.PI / 2; if (r() < 0.5) { A(new THREE.CylinderGeometry(0.22, 0.22, 0.6, 9), wd, 0.55, 0.3, 0.2); for (const y of [0.1, 0.5]) A(new THREE.TorusGeometry(0.24, 0.016, 4, 12), iron, 0.55, y, 0.2).rotation.x = Math.PI / 2; } }
+      const vmk = VPROP_ART[v] ? artMarker(VPROP_ART[v]) : null; /* 03/11: modelo do Herik quando existe; o desenho fica de reserva */
+      if (vmk) { G.add(vmk); if (v === 4) L.glows.push({ light: nullLight, base: 10, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 2.9, wz), color: 0xffbb66 } as WorldObjs['glowLights'][number]); }
+      else if (v === 0) { A(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 10), wd, 0, 0.4, 0); A(new THREE.CylinderGeometry(0.34, 0.34, 0.9, 10, 1, true), wd, 0, 0.45, 0).scale.set(1, 1, 1); for (const y of [0.12, 0.42, 0.72]) A(new THREE.TorusGeometry(0.33, 0.02, 4, 12), iron, 0, y, 0).rotation.x = Math.PI / 2; if (r() < 0.5) { A(new THREE.CylinderGeometry(0.22, 0.22, 0.6, 9), wd, 0.55, 0.3, 0.2); for (const y of [0.1, 0.5]) A(new THREE.TorusGeometry(0.24, 0.016, 4, 12), iron, 0.55, y, 0.2).rotation.x = Math.PI / 2; } }
       else if (v === 1) { const bx = (x: number, y: number, z: number, s2: number, ry: number) => { const b = A(new THREE.BoxGeometry(s2, s2, s2), wd, x, y, z); b.rotation.y = ry; ink(b, 0.02); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const c = A(new THREE.BoxGeometry(0.06, s2 * 0.96, 0.06), std(0x7a2a2a), x + sx * s2 * 0.47, y, z + sz * s2 * 0.47); c.rotation.y = ry; } };
         bx(0, 0.3, 0, 0.6, 0); bx(0.1, 0.8, -0.05, 0.42, 0.3); bx(0.62, 0.22, 0.25, 0.44, -0.4); }
       else if (v === 2) { const ring = new THREE.Shape(); ring.absarc(0, 0, 0.62, 0, Math.PI * 2, false); const hole = new THREE.Path(); hole.absarc(0, 0, 0.44, 0, Math.PI * 2, true); ring.holes.push(hole); const wallG = new THREE.ExtrudeGeometry(ring, { depth: 0.9, bevelEnabled: false, curveSegments: 12 }); wallG.rotateX(-Math.PI / 2); A(wallG, stoneT, 0, 0, 0); /* parede em anel: o poço tem buraco (Erling, 01/11) */
@@ -638,6 +652,9 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
       }
     }
     for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; if (NOCUT_KINDS.has(p.kind)) noCut(pg); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
+    /* 03/11: modelos do Herik marcados pelos props (árvores, plantas, pedras, vila) viram UM InstancedMesh por modelo no chunk */
+    L.artPG = []; for (const [pp, e] of propG) if (e.L === L) { let has = false; e.g.traverse((o) => { if (o.userData.art) has = true; }); if (has) L.artPG.push([pp, e.g]); }
+    rebuildArt(L);
     L.trees.length = 0; mergeTrees(L); mergeChunkProps(L);
     /* congela as matrizes do que não se mexe: com ~30 mil objetos no mundo, recalcular todas a cada quadro custava ~20 ms */
     L.group.updateMatrixWorld(true);
@@ -650,8 +667,13 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
     for (const c of L.group.children) freeze(c);
     group.add(L.group); loaded.set(k, L); rebuildLists();
   }
+  function rebuildArt(L: Loaded) {
+    if (!L.artB) L.artB = new ArtBatch(); L.artB.dispose(L.group); L.artB.clear();
+    for (const [, pg] of L.artPG ?? []) collectMarkers(pg, L.group, L.artB);
+    L.artB.build(L.group);
+  }
   function unloadChunk(k: number) {
-    const L = loaded.get(k)!; group.remove(L.group); L.terrain.dispose(); for (const g of L.own) g.dispose(); loaded.delete(k);
+    const L = loaded.get(k)!; L.artB?.dispose(L.group); L.artPG = []; group.remove(L.group); L.terrain.dispose(); for (const g of L.own) g.dispose(); loaded.delete(k);
     /* VAZAMENTO (26/10, "Array buffer allocation failed" depois de horas): o mapa prop→grupo guardava cada chunk já visitado inteiro.
        Ao descarregar, solta as entradas desse chunk e as geometrias fundidas (árvores e estáticos) */
     for (const [p, e] of propG) if (e.L === L) propG.delete(p);
@@ -794,11 +816,12 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
   }
   function removeProp(p: Prop) {
     (p as Prop & { gone?: boolean }).gone = true; const e = propG.get(p); if (!e) return;
+    if (e.L.artPG?.some((q) => q[0] === p)) { e.L.artPG = e.L.artPG.filter((q) => q[0] !== p); rebuildArt(e.L); }
     if (p.kind === 'tree' && e.L.treeG) { e.L.treeG = e.L.treeG.filter((g) => g !== e.g); propG.delete(p); mergeTrees(e.L); rebuildLists(); return; }
     if (e.L.staticG && e.L.staticG.includes(e.g)) { e.L.staticG = e.L.staticG.filter((g) => g !== e.g); e.L.trees = e.L.trees.filter((t) => { let o: THREE.Object3D | null = t.obj; while (o) { if (o === e.g) return false; o = o.parent; } return true; }); propG.delete(p); mergeChunkProps(e.L); rebuildLists(); return; }
     e.L.group.remove(e.g); e.L.trees = e.L.trees.filter((t) => { let o: THREE.Object3D | null = t.obj; while (o) { if (o === e.g) return false; o = o.parent; } return true; }); propG.delete(p); rebuildLists();
   }
-  function addProp(p: Prop) { world.props.push(p); const pg = buildProp(p, dynL); if (STATIC_KINDS.has(p.kind)) mergeStatic(pg); /* fora dos chunks não há fusão por chunk */ dynL.group.add(pg); propG.set(p, { g: pg, L: dynL }); rebuildLists(); }
+  function addProp(p: Prop) { world.props.push(p); const pg = buildProp(p, dynL); realizeMarkers(pg); if (STATIC_KINDS.has(p.kind)) mergeStatic(pg); /* fora dos chunks não há fusão por chunk */ dynL.group.add(pg); propG.set(p, { g: pg, L: dynL }); rebuildLists(); }
   const fountainPos = () => { for (const L of loaded.values()) if (L.fountain) return L.fountain; return null; };
   return { setRad(n: number) { if (n !== RAD) { RAD = n; lastCx = -9999; } }, fountainPos, removeProp, addProp, group, torches: torchesA, glowLights: glowA, windows, trees: treesA, smokers: smokersA, relics: relicsA, spinners: spinA, update, bridgeMeshes };
 }
