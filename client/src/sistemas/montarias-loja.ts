@@ -16,9 +16,12 @@ export const ORM_MOUNTS = ['mount_horse', 'mount_grey', 'mount_black'];
 export function shopMounts() {
   const mounts = Object.values(MOUNTS).filter((m) => !ORM_MOUNTS.includes(m.id)).map((m) => { const mm = m as typeof m & { lvl?: number }; const boss = isBoss(m.where);
     return { id: m.id, name: m.name, icon: String(ITEMS[m.id]?.icon ?? '🐎'), where: boss ? 'Montarias de chefe' : m.where ?? '', lvl: mm.lvl ?? 0, blurb: (m.blurb ?? '') + (boss ? ` Também cai do chefe: ${m.where}.` : ''), col: m.tint ?? 0x6a4a2e, kind: 'mount' as const }; });
-  const pets = Object.values(PETS).filter((p) => isBoss(p.where)).map((p) => { const pp = p as typeof p & { blurb?: string };
-    return { id: p.id, name: p.name, icon: String(ITEMS[p.id]?.icon ?? '🐾'), where: 'Filhotes de chefe', lvl: 0, blurb: `${pp.blurb ?? ''} Também cai do chefe: ${String(p.where).replace(/ \(.*\)$/, '')}.`.trim(), col: p.tint ?? 0x8a6a4a, kind: 'pet' as const }; });
-  return [...mounts, ...pets];
+  return mounts;
+}
+/** 03/11 (Erling: "filhotes de chefes vão para a aba Pets do Shop; pode colocar os pets que existem hoje"): todos os pets, por origem */
+export function shopPets() {
+  return Object.values(PETS).map((p) => { const pp = p as typeof p & { blurb?: string }; const boss = isBoss(p.where);
+    return { id: p.id, name: p.name, icon: String(ITEMS[p.id]?.icon ?? '🐾'), where: boss ? 'Filhotes de chefe' : /Corwin/.test(String(p.where)) ? 'Do Corwin' : String(p.where ?? ''), lvl: 0, blurb: `${pp.blurb ?? ''}${boss ? ` Também cai do chefe: ${String(p.where).replace(/ \(.*\)$/, '')}.` : ''}`.trim(), col: p.tint ?? 0x8a6a4a, kind: 'pet' as const, boss }; });
 }
 const ICON_M: Record<string, string> = { boar: '🐗', wolf: '🐺', cat: '🐅' };
 const LANDS = ['Brasaforja', 'Lithendel', 'Askavik', 'Porto Caldeira', 'Jarlsheim', 'Lumenhal', 'Corvoscuro', 'Uivo Antigo'];
