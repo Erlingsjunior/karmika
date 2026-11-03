@@ -61,7 +61,8 @@
       "installerLanguages": [
         "pt_BR"
       ],
-      "language": "1046"
+      "language": "1046",
+      "include": "build/installer.nsh"
     },
     "asar": true,
     "mac": {
