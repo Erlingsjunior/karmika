@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { artMesh, artGeo, artGuardY, SWORD_ART, SHIELD_ART } from './arte3d';
+import { artMesh, artGeo, artGuardY, SWORD_ART, SHIELD_ART, FIRE_ART } from './arte3d';
 import { REF_SWORDS, buildRefSword, type RefSword, REF_SHIELD_STYLE, refShieldFace } from './armas3d';
 import { mergeStatic } from './merge3d';
 import { crestTexture, facOf } from './faccoes';
@@ -21,7 +21,7 @@ export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'sla
 export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
 export function weaponClass(base: string | null | undefined): WClass {
   const b = base ?? ''; if (/Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana/.test(b)) return 'two'; if (/Florete|Espada de Duelo/.test(b)) return 'fence';
-  if (/Garras/.test(b)) return 'claw'; if (/Porrete|Maça/.test(b)) return 'club'; if (/Besta de Mão|Pistola|Escopeta/.test(b)) return 'hxbow'; if (/Kunai/.test(b)) return 'kunai'; if (/Arco/.test(b)) return 'bow';
+  if (/Garras/.test(b)) return 'claw'; if (/Porrete|Maça/.test(b)) return 'club'; if (/Besta de Mão|Pistola|Escopeta|Revólver/.test(b)) return 'hxbow'; if (/Kunai/.test(b)) return 'kunai'; if (/Arco/.test(b)) return 'bow';
   if (/Adaga|Faca de Caça/.test(b)) return 'dagger'; return 'one'; }
 /** armas que deixam a mão do escudo livre (o escudo vai para as costas) */
 export const SHIELDLESS = new Set<WClass>(['two', 'fence', 'dagger', 'claw', 'club', 'kunai', 'bow']); /* 02/11: besta de mão, pistola e escopeta de uma mão aceitam escudo (ou outra arma igual na mão esquerda) */ /* só a arma de uma mão comum (espada, machado de mão) vai com escudo no braço */
@@ -1212,6 +1212,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const id = SWORD_ART[base], G = artGeo(id)!, gy = artGuardY(id), kL = base === 'Adaga Élfica' || base === 'Adaga Fina' ? 0.75 : 1; swArt.userData.keep = true; swArt.rotation.x = Math.PI; swArt.scale.setScalar(kL); swArt.position.y = gy * kL; sw.add(swArt);
           if (glowOf(rar)) { const gm2 = (swArt.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.25); swArt.material = gm2; }
           len = (G.userData.h - gy) * kL;
+        } else if (FIRE_ART[base] && artGeo(FIRE_ART[base][0])) { /* 03/11: arma de fogo do Herik — no suporte das armas de fogo (o cano para a frente), a mão no meio do cabo */
+          sw.remove(pom); sw.remove(grip); RG = new THREE.Group(); gunHolder.add(RG); const [fid, fk = 1] = FIRE_ART[base], fm = artMesh(fid)!, FG = artGeo(fid)!; FG.computeBoundingBox();
+          fm.userData.keep = true; fm.rotation.y = -Math.PI / 2; fm.scale.setScalar(fk); fm.position.set(0, -0.07 * fk - Math.max(0, FG.boundingBox!.max.y - 0.3) * 0.5 * fk, 0); RG.add(fm); /* tanque alto (lança-chamas, Gatling): desce para não subir no rosto */
+          if (glowOf(rar)) { const gm2 = (fm.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.22); fm.material = gm2; }
+          len = Math.max(0.1, FG.boundingBox!.max.x * fk - 0.14);
         } else if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
           len = buildRefSword(sw, base as RefSword, { mk, metal, toon, glow: glowOf(rar), rar });
         } else if (base === 'Machado de Guerra') {

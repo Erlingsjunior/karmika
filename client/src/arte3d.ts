@@ -117,6 +117,9 @@ export const SWORD_ART: Record<string, string> = { 'Espada Longa': 'espada_longa
   'Espada Curta': 'espada_curta_01', 'Espada Curta Anã': 'espada_curta_03', 'Adaga Élfica': 'espada_curta_04', 'Sabre': 'espada_curta_05', 'Adaga Fina': 'espada_curta_06' };
 export const SHIELD_ART: Record<string, [string, number?]> = { 'Escudo Redondo': ['escudo_01'], 'Broquel': ['escudo_01', 0.55], 'Escudo Nórdico': ['escudo_02'], 'Escudo Torre': ['escudo_03'], 'Escudo Élfico': ['escudo_04'],
   'Escudo Ogival': ['escudo_05'], 'Escudo de Espinhos': ['escudo_06'], 'Escudo Pavês': ['escudo_07'], 'Escudo de Pipa': ['escudo_08'], 'Escudo Solar': ['escudo_09'], 'Escudo de Vime': ['escudo_10'], 'Escudo de Bronze': ['escudo_11'], 'Escudo de Engrenagens': ['escudo_12'] };
+/* 03/11: armas de fogo do Herik (armas/armas_de_fogo): cano para +X, origem na base do cabo */
+export const FIRE_ART: Record<string, [string, number?]> = { 'Pistola de Latão': ['pistola_latao'], 'Revólver': ['revolver'], 'Escopeta de Cano Duplo': ['escopeta_cano_duplo'], 'Escopeta de Repetição': ['escopeta_repeticao'],
+  'Metralhadora de Mão': ['metralhadora_gatling', 0.8], 'Metralhadora Gatling': ['metralhadora_gatling'], 'Besta de Repetição': ['besta_repeticao'], 'Lança-Chamas de Mão': ['lanca_chamas', 0.85], 'Lança-Veneno de Mão': ['pulverizador_veneno'] };
 /** altura da guarda da espada (a parte mais larga perto do pomo): é onde a mão segura logo abaixo */
 const guardOf = new Map<string, number>();
 export function artGuardY(id: string): number {
