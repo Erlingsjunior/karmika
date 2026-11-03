@@ -23,7 +23,7 @@ export function createOasis(K: OasisCtx) {
   const cx = O.x * T, cz = O.y * T, R = ((O.lake ?? 6) + 5) * T; // a voz chega na beira (11 casas do centro)
   let offered = false;
   const djinn = () => K.game.enemies.list.find((e) => e.type === 'djinn' && e.alive && Math.hypot(e.pos.x - cx, e.pos.z - cz) < 30);
-  function wake(e: NonNullable<ReturnType<typeof djinn>>) { (e as unknown as { woke: boolean }).woke = true; e.state = 'chase'; e.t = 0; setTimeout(() => { (e as unknown as { woke: boolean }).woke = false; }, 20000); }
+  function wake(e: NonNullable<ReturnType<typeof djinn>>) { (e as unknown as { woke: boolean }).woke = true; if (e.state !== 'idle') { e.state = 'idle'; e.t = 0; } /* no 'idle' o bicho de tocaia sai da água e já parte para cima (enemies.ts) */ setTimeout(() => { (e as unknown as { woke: boolean }).woke = false; }, 20000); }
   function tick() {
     if (K.busy() || K.game.st.dead) return; const h = K.heroPos(), d = Math.hypot(h.x - cx, h.z - cz);
     if (d > R * 2.7) { offered = false; return; } if (offered || d > R) return;
