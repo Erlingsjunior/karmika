@@ -154,7 +154,9 @@ export function buildSteamWagon(): Wagon {
   const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
-  if (artMesh('carroca_tecnocrata')) lamp.position.set(0.45, 1.6, 1.95); return artBody(W0, 'carroca_tecnocrata', () => false, 1.2, ART_FLIP.steam);
+  /* 03/11 (Erling: "aumenta um pouco e ela precisa soltar fumaça, é a vapor"): 45% maior, e a fumaça sai da chaminé do modelo */
+  const KS = 1.45; if (artMesh('carroca_tecnocrata')) { lamp.position.set(0.55, 1.9, 2.3); (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = new THREE.Vector3(-0.5 * KS, 1.9 * KS + 0.15, -0.12 * KS); }
+  return artBody(W0, 'carroca_tecnocrata', () => false, KS, ART_FLIP.steam);
 }
 /** barra de vida da carroça (igual nas três) */
 function hpBarFor(): { hpBar: THREE.Group; hpFill: THREE.Mesh } {
@@ -371,7 +373,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;
       { const fp = w.flag.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < fp.count; i++) { const x0 = (i % 5) / 4; fp.setZ(i, Math.sin(t * 6 + x0 * 3) * 0.06 * x0); } fp.needsUpdate = true; }
       if (w.horse) for (const h of (w.horse as Horse4 & { team?: Horse4[] }).team ?? [w.horse]) h.pose({ dt, mv: moving ? c.speed : 0, idle: !moving });
-      if (w.kind === 'steam' && Math.random() < (moving ? 0.5 : w.fallen ? 0.35 : 0.12)) { const s = new THREE.Vector3(0, 3.4, 1.25).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
+      if (w.kind === 'steam' && Math.random() < (moving ? 0.75 : w.fallen ? 0.35 : 0.3)) { const s = ((w as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt?.clone() ?? new THREE.Vector3(0, 3.4, 1.25)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
       if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); }
