@@ -12,70 +12,69 @@ export function radialTexture(size: number, stops: [number, string][]): THREE.Te
   return t;
 }
 
-/** Partículas aditivas (chamas, brasas, aura, poeira) em um único draw call. */
+/** Partículas aditivas (chamas, brasas, aura, poeira) em um único draw call.
+ *  03/11 (Erling: "jogar coisas do processador para a GPU"): o movimento é calculado na placa de vídeo. O processador só escreve
+ *  a partícula quando ela nasce (posição, velocidade, cores, tempos); a cada quadro sobe só um número (o relógio). Antes eram
+ *  7.000 partículas atualizadas uma a uma no processador e ~4 buffers inteiros reenviados por quadro. */
 export class Particles {
   /** densidade global (opções): abaixo de 1 descarta parte das partículas sorteadas */
   density = 1;
   readonly points: THREE.Points;
   private n: number;
-  private pos: Float32Array; private col: Float32Array; private size: Float32Array; private alpha: Float32Array;
-  private vel: Float32Array; private life: Float32Array; private max: Float32Array;
-  private s0: Float32Array; private s1: Float32Array; private c0: Float32Array; private c1: Float32Array; private a0: Float32Array; private drag: Float32Array; private grav: Float32Array; private flit: Float32Array;
-  private cursor = 0;
-  readonly uniforms = { uPx: { value: 20 }, uDist: { value: 60 }, uMap: { value: radialTexture(64, [[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,.5)'], [1, 'rgba(255,255,255,0)']]) } };
-
+  private p0: Float32Array; private v0: Float32Array; private tl: Float32Array; private sz: Float32Array; private c0: Float32Array; private c1: Float32Array; private ph: Float32Array;
+  private cursor = 0; private t = 0; private lo = -1; private hi = -1; private wrapped = false;
+  readonly uniforms = { uPx: { value: 20 }, uDist: { value: 60 }, uMap: { value: radialTexture(64, [[0, 'rgba(255,255,255,1)'], [0.4, 'rgba(255,255,255,.5)'], [1, 'rgba(255,255,255,0)']]) }, uT: { value: 0 }, uWind: { value: new THREE.Vector2() } };
   readonly wind = { x: 0, z: 0 };
-  private wfac: Float32Array;
   constructor(n = 4200) {
     this.n = n;
     const f = (k: number) => new Float32Array(n * k);
-    this.pos = f(3); this.col = f(3); this.size = f(1); this.alpha = f(1); this.vel = f(3); this.life = f(1); this.max = f(1);
-    this.wfac = f(1); this.s0 = f(1); this.s1 = f(1); this.c0 = f(3); this.c1 = f(3); this.a0 = f(1); this.drag = f(1); this.grav = f(1); this.flit = f(1);
+    this.p0 = f(3); this.v0 = f(3); this.tl = f(3); this.sz = f(2); this.c0 = f(3); this.c1 = f(3); this.ph = f(4);
+    for (let i = 0; i < n; i++) this.tl[i * 3 + 1] = -1; /* vida < 0 = apagada */
     const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
-    g.setAttribute('aColor', new THREE.BufferAttribute(this.col, 3));
-    g.setAttribute('aSize', new THREE.BufferAttribute(this.size, 1));
-    g.setAttribute('aAlpha', new THREE.BufferAttribute(this.alpha, 1));
+    const A = (a: Float32Array, k: number) => { const b = new THREE.BufferAttribute(a, k); b.setUsage(THREE.DynamicDrawUsage); return b; };
+    g.setAttribute('position', A(this.p0, 3)); g.setAttribute('aV0', A(this.v0, 3)); g.setAttribute('aTL', A(this.tl, 3)); g.setAttribute('aSz', A(this.sz, 2));
+    g.setAttribute('aC0', A(this.c0, 3)); g.setAttribute('aC1', A(this.c1, 3)); g.setAttribute('aPh', A(this.ph, 4));
     const m = new THREE.ShaderMaterial({
       uniforms: this.uniforms, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
-      vertexShader: 'attribute vec3 aColor; attribute float aSize; attribute float aAlpha; varying vec3 vC; varying float vA; uniform float uPx; uniform float uDist; void main(){ vC=aColor; vA=aAlpha; vec4 mv = modelViewMatrix*vec4(position,1.0); gl_PointSize = aSize*uPx*uDist/max(1.0,-mv.z); gl_Position = projectionMatrix*mv; }',
+      vertexShader: `attribute vec3 aV0; attribute vec3 aTL; attribute vec2 aSz; attribute vec3 aC0; attribute vec3 aC1; attribute vec4 aPh;
+        uniform float uPx; uniform float uDist; uniform float uT; uniform vec2 uWind; varying vec3 vC; varying float vA;
+        /* dv/dt = A - r·v  →  x(t) = x0 + (A/r)·t + (v0 - A/r)·(1 - e^(-r·t))/r  (r = arrasto, +1,4 do vento no plano) */
+        float mv1(float x0, float v0, float A, float r, float t) { if (r < 1e-4) return x0 + v0 * t + 0.5 * A * t * t; float vi = A / r; return x0 + vi * t + (v0 - vi) * (1.0 - exp(-r * t)) / r; }
+        void main(){
+          float age = uT - aTL.x, life = aTL.y; float k = age / max(life, 1e-4);
+          if (life <= 0.0 || age < 0.0 || k >= 1.0) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; vC = vec3(0.0); return; }
+          float drag = aPh.x, grav = aPh.y, wf = aPh.z, flit = aPh.w, kw = wf > 0.0 ? 1.4 : 0.0;
+          vec3 p; p.x = mv1(position.x, aV0.x, kw * uWind.x * wf, drag + kw, age); p.z = mv1(position.z, aV0.z, kw * uWind.y * wf, drag + kw, age); p.y = mv1(position.y, aV0.y, -grav, drag, age);
+          if (flit > 0.0) { float ph = aTL.z; p += flit * 0.12 * vec3(sin(age * 5.0 + ph), 0.6 * sin(age * 7.0 + ph * 1.3), cos(age * 4.0 + ph)); }
+          vC = mix(aC0, aC1, k); vA = k < 0.15 ? k / 0.15 : 1.0 - (k - 0.15) / 0.85;
+          float size = mix(aSz.x, aSz.y, k);
+          vec4 mvp = modelViewMatrix * vec4(p, 1.0); gl_PointSize = size * uPx * uDist / max(1.0, -mvp.z); gl_Position = projectionMatrix * mvp; }`,
       fragmentShader: 'uniform sampler2D uMap; varying vec3 vC; varying float vA; void main(){ float a = texture2D(uMap, gl_PointCoord).a * vA; if(a<0.01) discard; gl_FragColor = vec4(vC*a, a); }',
     });
     this.points = new THREE.Points(g, m);
     this.points.frustumCulled = false;
-    for (let i = 0; i < n; i++) this.life[i] = 0;
   }
 
   spawn(x: number, y: number, z: number, o: { vx?: number; vy?: number; vz?: number; life: number; s0: number; s1: number; c0: number; c1: number; a?: number; drag?: number; w?: number; g?: number; flit?: number }) {
     if (this.density < 1 && Math.random() > this.density) return;
-    const i = this.cursor; this.cursor = (this.cursor + 1) % this.n;
-    this.pos[i * 3] = x; this.pos[i * 3 + 1] = y; this.pos[i * 3 + 2] = z;
-    this.vel[i * 3] = o.vx ?? 0; this.vel[i * 3 + 1] = o.vy ?? 0; this.vel[i * 3 + 2] = o.vz ?? 0;
-    this.life[i] = this.max[i] = o.life; this.s0[i] = o.s0; this.s1[i] = o.s1; this.a0[i] = o.a ?? 1; this.drag[i] = o.drag ?? 0; this.wfac[i] = o.w ?? 0; this.grav[i] = o.g ?? 0; this.flit[i] = o.flit ?? 0;
-    const a = new THREE.Color(o.c0), b = new THREE.Color(o.c1);
-    this.c0.set([a.r, a.g, a.b], i * 3); this.c1.set([b.r, b.g, b.b], i * 3);
+    const i = this.cursor; this.cursor = (this.cursor + 1) % this.n; if (this.cursor === 0) this.wrapped = true;
+    if (this.lo < 0) this.lo = i; this.hi = i;
+    this.p0[i * 3] = x; this.p0[i * 3 + 1] = y; this.p0[i * 3 + 2] = z;
+    this.v0[i * 3] = o.vx ?? 0; this.v0[i * 3 + 1] = o.vy ?? 0; this.v0[i * 3 + 2] = o.vz ?? 0;
+    this.tl[i * 3] = this.t; this.tl[i * 3 + 1] = o.life; this.tl[i * 3 + 2] = i * 1.7;
+    this.sz[i * 2] = o.s0; this.sz[i * 2 + 1] = o.s1;
+    const a = new THREE.Color(o.c0), b = new THREE.Color(o.c1), al = (o.a ?? 1) * (o.a ?? 1); /* a transparência inicial entra na cor ao quadrado: na mistura aditiva dá o mesmo brilho de antes (cor × a²) */
+    this.c0[i * 3] = a.r * al; this.c0[i * 3 + 1] = a.g * al; this.c0[i * 3 + 2] = a.b * al; this.c1[i * 3] = b.r * al; this.c1[i * 3 + 1] = b.g * al; this.c1[i * 3 + 2] = b.b * al;
+    this.ph[i * 4] = o.drag ?? 0; this.ph[i * 4 + 1] = o.g ?? 0; this.ph[i * 4 + 2] = o.w ?? 0; this.ph[i * 4 + 3] = o.flit ?? 0;
   }
 
   update(dt: number) {
-    for (let i = 0; i < this.n; i++) {
-      if (this.life[i] <= 0) { this.alpha[i] = 0; continue; }
-      this.life[i] -= dt;
-      const k = 1 - Math.max(0, this.life[i]) / this.max[i];
-      const wf = this.wfac[i];
-      if (wf > 0) { const k2 = Math.min(1, dt * 1.4); this.vel[i * 3] += (this.wind.x * wf - this.vel[i * 3]) * k2; this.vel[i * 3 + 2] += (this.wind.z * wf - this.vel[i * 3 + 2]) * k2; }
-      if (this.grav[i]) this.vel[i * 3 + 1] -= this.grav[i] * dt;
-      if (this.flit[i]) { const f = this.flit[i], ph = i * 1.7; this.vel[i * 3] += Math.sin(this.max[i] * 9 - this.life[i] * (5 + (i % 5)) + ph) * f * dt; this.vel[i * 3 + 2] += Math.cos(this.life[i] * (4 + (i % 3)) + ph) * f * dt; this.vel[i * 3 + 1] += Math.sin(this.life[i] * (7 + (i % 4)) + ph) * f * 0.6 * dt; }
-      const d = 1 - this.drag[i] * dt;
-      for (let a = 0; a < 3; a++) { this.vel[i * 3 + a] *= d; this.pos[i * 3 + a] += this.vel[i * 3 + a] * dt; }
-      this.size[i] = this.s0[i] + (this.s1[i] - this.s0[i]) * k;
-      for (let a = 0; a < 3; a++) this.col[i * 3 + a] = this.c0[i * 3 + a] + (this.c1[i * 3 + a] - this.c0[i * 3 + a]) * k;
-      this.alpha[i] = this.a0[i] * (k < 0.15 ? k / 0.15 : 1 - (k - 0.15) / 0.85);
-    }
-    const g = this.points.geometry;
-    (g.attributes.position as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.aColor as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.aSize as THREE.BufferAttribute).needsUpdate = true;
-    (g.attributes.aAlpha as THREE.BufferAttribute).needsUpdate = true;
+    this.t += dt; this.uniforms.uT.value = this.t; this.uniforms.uWind.value.set(this.wind.x, this.wind.z);
+    if (this.lo < 0) return;
+    const g = this.points.geometry, names = ['position', 'aV0', 'aTL', 'aSz', 'aC0', 'aC1', 'aPh'];
+    for (const nm of names) { const at = g.attributes[nm] as THREE.BufferAttribute; at.clearUpdateRanges();
+      if (this.wrapped || this.hi < this.lo) at.addUpdateRange(0, this.n * at.itemSize); else at.addUpdateRange(this.lo * at.itemSize, (this.hi - this.lo + 1) * at.itemSize); at.needsUpdate = true; }
+    this.lo = this.hi = -1; this.wrapped = false;
   }
 }
 

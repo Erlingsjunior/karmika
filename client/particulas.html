@@ -1,0 +1,13 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Karmika — partículas na GPU</title><style>body{margin:0;background:#111}canvas{display:block}</style></head><body><canvas id="c"></canvas>
+<script type="module">
+/* página de teste (03/11): partículas calculadas na placa (fx3d.Particles) — chafariz com gravidade, arrasto, vento e "flit" */
+import * as THREE from 'three';
+import { Particles } from '/src/fx3d.ts';
+const cv = document.getElementById('c'); const r = new THREE.WebGLRenderer({ canvas: cv }); r.setSize(900, 600, false);
+const sc = new THREE.Scene(); const P = new Particles(3000); sc.add(P.points); P.uniforms.uPx.value = 600 / 12; P.wind.x = 3;
+const cam = new THREE.PerspectiveCamera(40, 1.5, 0.1, 100); cam.position.set(0, 3, 12); cam.lookAt(0, 2, 0);
+const T = +(new URLSearchParams(location.search).get('t') || 3);
+for (let f = 0; f < T * 60; f++) { for (let i = 0; i < 6; i++) { const a = Math.random() * 6.28; P.spawn(-3, 0, 0, { vx: Math.cos(a) * 1.2, vy: 6, vz: Math.sin(a) * 1.2, life: 2, s0: 0.35, s1: 0.1, c0: 0x80c8ff, c1: 0x2040ff, drag: 0.4, g: 6 });
+  P.spawn(3, 0.5, 0, { vx: 0, vy: 1, vz: 0, life: 2.5, s0: 0.4, s1: 0.8, c0: 0xffa040, c1: 0x401000, a: 0.8, drag: 0.5, w: 1, flit: 3 }); } P.update(1 / 60); }
+r.render(sc, cam); window.__ready = true;
+</script></body></html>
