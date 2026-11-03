@@ -147,7 +147,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const extent = (o: THREE.Object3D | null) => { if (!o || !o.parent) return null; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false);
       o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(o, true); o.matrix.copy(m); o.matrixAutoUpdate = au; o.updateMatrixWorld(true); return e; };
     const toBone = (bn: string, x: THREE.Vector3, y: THREE.Vector3, p: THREE.Vector3) => { const b = B(bn)!; const z = new THREE.Vector3().crossVectors(x, y).normalize(); x = new THREE.Vector3().crossVectors(y, z).normalize();
-      const mw = new THREE.Matrix4().makeBasis(x, y, z).setPosition(p).premultiply(root.matrixWorld); return { b, rel: b.matrixWorld.clone().invert().multiply(mw) }; };
+      const bas = new THREE.Matrix4().makeBasis(x, y, z), mw = bas.clone().setPosition(p).premultiply(root.matrixWorld); return { b, rel: b.matrixWorld.clone().invert().multiply(mw), q0: new THREE.Quaternion().setFromRotationMatrix(bas) }; };
     // costas: ponto mais recuado do tronco na altura do peito
     const sp = lp('Spine2');
     const se = extent(rig.shield()); const inward = se ? se.max.x : 0.05; // lado da alça (+X local) fica voltado para o corpo
@@ -167,8 +167,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     return { back, hip };
   })();
   const sockM = new THREE.Matrix4();
-  function placeSock(obj: THREE.Object3D | null, s: { b: THREE.Bone; rel: THREE.Matrix4 }) {
+  const skP = new THREE.Vector3(), skQ = new THREE.Quaternion(), skS = new THREE.Vector3(), skR = new THREE.Quaternion();
+  function placeSock(obj: THREE.Object3D | null, s: { b: THREE.Bone; rel: THREE.Matrix4; q0?: THREE.Quaternion }) {
     if (!obj || !obj.parent) return; sockM.multiplyMatrices(s.b.matrixWorld, s.rel);
+    /* 03/11 (Erling: "o escudo mexendo está top… só virar um pouco menos"): nas costas a peça acompanha só metade do giro da coluna — balança
+       ao andar, mas a borda de cima de um escudo alto não varre a cabeça */
+    if (s === sockets?.back && s.q0) { sockM.decompose(skP, skQ, skS); skR.copy(root.getWorldQuaternion(new THREE.Quaternion())).multiply(s.q0); skQ.slerp(skR, 0.5); sockM.compose(skP, skQ, skS); }
     // mantém a escala do mundo do personagem (o encaixe foi medido no espaço da raiz)
     obj.parent.updateWorldMatrix(true, false); obj.matrixAutoUpdate = false; obj.matrix.copy(obj.parent.matrixWorld).invert().multiply(sockM); obj.updateMatrixWorld(true);
   }
@@ -213,6 +217,35 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     for (const c of cups) { if (!c || !c.visible) continue; model.updateMatrixWorld(true); W(sI, vI); W(sP, vP); W(sM, vM); W(sH, vH);
       const up = vI.clone().sub(vP).normalize(), fd = vM.clone().sub(vH).normalize(), g = vI.clone().add(vP).add(vM).multiplyScalar(1 / 3);
       root.matrixWorld.decompose(vF, tq, sc); const pos = g.addScaledVector(fd, 0.07 * sc.x); place(c, fd.clone(), up.clone(), pos); } }
+  /* 03/11 (Erling: "o corpo de cada classe é físico e não pode ser atravessado pelas armas"): depois de pôr cada peça (escudo no braço ou
+     nas costas, arma na mão, na bainha ou nas costas), confere pontos da própria malha contra o corpo — tronco (cápsula do quadril ao
+     pescoço) e cabeça (esfera). O que entrar sai: escudo e peças guardadas andam para fora; arma na mão gira em volta da pegada até a
+     ponta sair do corpo (a mão continua segurando). */
+  const clipPts = new Map<THREE.Object3D, { key: string; pts: THREE.Vector3[] }>();
+  function ptsOf(o: THREE.Object3D): THREE.Vector3[] {
+    const key = o.children.map((c) => c.uuid).join(); const c0 = clipPts.get(o); if (c0 && c0.key === key) return c0.pts;
+    o.updateMatrixWorld(true); const inv = o.matrixWorld.clone().invert(), pts: THREE.Vector3[] = [], v = new THREE.Vector3();
+    o.traverse((m) => { const ms = m as THREE.Mesh; if (!ms.isMesh || !ms.geometry?.attributes.position) return; const pa = ms.geometry.attributes.position, st = Math.max(1, Math.floor(pa.count / 48)); for (let i = 0; i < pa.count; i += st) pts.push(v.fromBufferAttribute(pa, i).applyMatrix4(ms.matrixWorld).applyMatrix4(inv).clone()); });
+    clipPts.set(o, { key, pts }); return pts; }
+  const cpA = new THREE.Vector3(), cpB = new THREE.Vector3(), cpH = new THREE.Vector3(), cpQ = new THREE.Vector3(), cpD = new THREE.Vector3();
+  function deClip(o: THREE.Object3D | null, rot: boolean) {
+    if (!o || !o.parent || !o.visible) return; const hb = B('Hips'), nb = B('Neck') ?? B('Spine2'), hd = B('Head'); if (!hb || !nb) return;
+    const s = root.getWorldScale(new THREE.Vector3()).x, rT = 0.19 * s, rH = 0.15 * s; const pts = ptsOf(o); if (!pts.length) return;
+    for (let it = 0; it < 5; it++) { hb.getWorldPosition(cpA); nb.getWorldPosition(cpB); const hasH = !!hd; if (hd) { hd.getWorldPosition(cpH); cpH.y += 0.1 * s; }
+      const ab = cpB.clone().sub(cpA), L2 = ab.lengthSq() || 1; let best = 0; const dir = new THREE.Vector3(); let deep: THREE.Vector3 | null = null;
+      for (const p0 of pts) { const p = cpQ.copy(p0).applyMatrix4(o.matrixWorld); const t = Math.max(0, Math.min(1, p.clone().sub(cpA).dot(ab) / L2)); const c = cpA.clone().addScaledVector(ab, t); cpD.subVectors(p, c); let d = cpD.length(), dep = rT - d, n = cpD.clone();
+        if (hasH) { const dh = p.distanceTo(cpH); if (rH - dh > dep) { dep = rH - dh; n.subVectors(p, cpH); d = dh; } }
+        if (dep <= 0) continue; if (d < 1e-4) n.set(0, 0, -1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion())); n.normalize(); dir.addScaledVector(n, dep); if (dep > best) { best = dep; deep = p.clone(); } }
+      if (best < 0.004 * s || !deep) break; dir.normalize();
+      const W0 = o.matrixWorld.clone(); let Wn: THREE.Matrix4;
+      if (rot) { const piv = new THREE.Vector3().setFromMatrixPosition(W0), r = deep.clone().sub(piv), rl = r.length(); if (rl < 0.05 * s) break; const ax = new THREE.Vector3().crossVectors(r, dir).normalize(); if (ax.lengthSq() < 1e-6) break;
+        const ang = Math.atan2(best + 0.012 * s, rl); Wn = new THREE.Matrix4().makeTranslation(piv.x, piv.y, piv.z).multiply(new THREE.Matrix4().makeRotationAxis(ax, ang)).multiply(new THREE.Matrix4().makeTranslation(-piv.x, -piv.y, -piv.z)).multiply(W0); }
+      else Wn = new THREE.Matrix4().makeTranslation(dir.x * (best + 0.012 * s), dir.y * (best + 0.012 * s), dir.z * (best + 0.012 * s)).multiply(W0);
+      o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert().multiply(Wn); o.updateMatrixWorld(true); } }
+  function deClipAll() { const shp = R.shield()?.parent, held = !!shp && isUnder(shp, R.armL.el!); deClip(R.shield(), false);
+    const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); const sw = R.sword(); const swHeld = !!sw?.parent && isUnder(sw.parent, R.armR.el!);
+    if (th && th !== sw) deClip(th, !!th.parent && isUnder(th.parent, R.armR.el!)); deClip(sw, swHeld); void held;
+    const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null; deClip(offW, true); }
   function holdGear() {
     model.updateMatrixWorld(true);
     { const RG2 = R as unknown as { gun?: () => THREE.Object3D | null; placeGun?: (a: THREE.Vector3, b: THREE.Vector3, q: THREE.Quaternion, s: number) => void };
@@ -402,7 +435,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     /* 02/11 (Erling: "anões com essa posição ridícula de braços… braços esticados normal"): só segura o cabo quando a arma está à mostra e
        na mão (combate, golpe, guarda); arma escondida (tela de criação), desarmado ou guardada nas costas = braços soltos como o humano */
     { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
-    holdGear(); placeCups(); placeFitted();
+    holdGear(); deClipAll(); placeCups(); placeFitted();
   }
   return { tick, model };
 }
