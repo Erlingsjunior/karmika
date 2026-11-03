@@ -1,0 +1,267 @@
+# Compêndio — Elfo e Elfa (raça pura)
+> Arqueira e arqueiro de Lithendel: alcance longo, tática e paciência. O jogo é **recuar atirando**: saltar para trás, armar a mata no caminho do inimigo e deixar que ele corra para dentro das armadilhas, enquanto o animal domado (falcão, lobo ou cervo) segura a frente.
+> O recurso é o orbe de **Foco** (verde-folha, 0 a 100): parado ou recuando sem levar dano, sobe 15 por segundo; cada golpe recebido tira 25. **Foco cheio:** o próximo tiro é crítico garantido e atravessa todos os inimigos na linha (a flecha deixa um risco de luz verde no ar).
+> Papel no grupo: **dano à distância e controle** (cipós, raízes, armadilhas), com um pouco de cura de seiva. Fraco quando pego de perto, forte quando tem espaço.
+> Hoje o elfo usa o kit do humano. Este compêndio troca tudo: o **Disparo Élfico** substitui o Golpe Firme na tecla 1, e as outras teclas recebem as magias novas (as teclas indicadas são sugestão, já que nenhuma destas existe ainda no jogo).
+
+## Ativas
+
+### 1. Disparo Élfico · projétil · nível 1 (substitui o Golpe Firme do humano, tecla 1)
+Atirar sem parar com o arco longo: 100% do dano da arma por flecha, 2 flechas por segundo, alcance 22 m. A cada 3ª flecha seguida no mesmo alvo, ela sai com uma pena de vento (+40%). Sem custo, sem recarga.
+- **Lágrima:** as flechas viram ponta de gelo; cada acerto retarda 8% (acumula até 40%), e no 5º acerto o alvo congela 0,8 s.
+- **Olho Kármico:** a 3ª flecha persegue o alvo mesmo que ele se esconda atrás de outro; com karma bom ela sai dourada e cega 0,5 s, com karma mau sai negra e tira 3% da armadura por acerto.
+- **Ampulheta:** cada flecha deixa um eco transparente que acerta o mesmo ponto 1 s depois com 35% do dano.
+- **Labirinto:** a cada disparo, sai uma 2ª flecha em leve curva que procura o inimigo mais perto do alvo.
+- **Fome:** as flechas acendem na corda; queimam 20% do dano por 3 s e quem morrer em chamas solta uma brasa que acende o próximo inimigo.
+- **Fresta:** a flecha some ao sair do arco e reaparece a 1 m do alvo, impossível de bloquear ou desviar. Preço: 1 marca de Fresta a cada 40 flechas.
+- **Desperta (Labirinto):** a 3ª flecha se divide em 3 ao tocar o alvo, num leque de penas verdes que ricocheteia nos inimigos ao redor.
+
+### 2. Salto de Recuo · movimento · nível 2 (tecla 2)
+Dá um salto mortal de costas de 7 m e solta uma flecha no ar enquanto está de cabeça para baixo (150%). Durante o salto o Foco não para de subir. Recarga 6 s, 2 cargas.
+- **Lágrima:** no ponto de onde saltou fica uma poça de orvalho por 4 s que retarda 40%; se você voltar para ela, cura 4% da vida.
+- **Olho Kármico:** a flecha do salto é sempre crítica se o alvo estava a menos de 5 m de você (o castigo a quem chegou perto).
+- **Ampulheta:** ganha uma 3ª carga e, se usar as duas primeiras em menos de 2 s, a terceira é grátis.
+- **Labirinto:** solta 3 flechas no ar em vez de uma, uma para cada inimigo mais próximo.
+- **Fome:** o pé de apoio deixa uma pegada de fogo que explode 1 s depois (200%) em quem pisou ali para seguir você.
+- **Fresta:** em vez de saltar, você atravessa uma fresta e aparece 10 m atrás, deixando no lugar um eco sombrio que atira 2 flechas e some. Preço: 3% da vida máxima.
+- **Desperta (Lágrima):** o salto vira uma onda de orvalho em arco; aliados que estejam no caminho são curados 6% e empurrados para longe com você.
+
+### 3. Flecha de Vento · projétil · nível 3 (tecla 3)
+Puxa a corda até o vento enrolar na ponta: a flecha atravessa todos na linha (280%), empurra 3 m e deixa um rastro de vento branco no ar. Alcance 30 m. Recarga 5 s.
+- **Lágrima:** o vento vira neblina gelada; o rastro fica no chão por 3 s e quem cruza fica lento 35%.
+- **Olho Kármico:** a flecha faz curva sozinha para passar pelo ponto fraco do maior inimigo da linha (+60% de dano nele).
+- **Ampulheta:** o rastro de vento fica 2 s no ar e, ao sumir, sopra de volta pelo mesmo caminho acertando de novo (50%).
+- **Labirinto:** saem 3 flechas de vento em leque estreito, que se cruzam no meio formando um X.
+- **Fome:** o vento vira uma lança de fogo; o rastro arde no chão 3 s e explode no fim do alcance (180%).
+- **Fresta:** a flecha abre uma fresta no fim da linha; ela puxa todos os atingidos de volta para o meio da linha, amontoados. Preço: 1 marca de Fresta.
+- **Desperta (Ampulheta):** se a Flecha de Vento sair com o Foco cheio, ela vira um tufão estreito que fica 3 s correndo de um lado para o outro da linha.
+
+### 4. Laço de Cipó · controle · nível 5 (tecla 4)
+Flecha com semente de cipó: ao tocar o alvo, cipós saem do chão e prendem por 2 s (130%). Recarga 10 s.
+- **Lágrima:** os cipós escorrem seiva azul; o preso fica lento 50% por 3 s depois de solto e aliados que tocarem nele curam 3%.
+- **Olho Kármico:** os cipós ficam presos à alma do alvo; enquanto preso, ele recebe +25% de dano de todas as suas flechas.
+- **Ampulheta:** os cipós soltam e voltam a prender 1,5 s depois, uma segunda vez (1 s).
+- **Labirinto:** os cipós se espalham pelo chão e prendem também até 3 inimigos a 4 m do alvo.
+- **Fome:** viram cipós de espinho-de-brasa; o preso sangra 40% por segundo e, se morrer, os cipós explodem em farpas.
+- **Fresta:** os cipós arrastam o alvo para debaixo da terra por 1,5 s (ele some do mapa e não age) e ele volta atordoado. Preço: 4% da vida.
+- **Desperta (Labirinto):** os cipós sobem em um arco entre o alvo e o inimigo mais perto e os amarram juntos: cada dano em um é dividido entre os dois.
+
+### 5. Chuva de Flechas · área · nível 8 (tecla 5)
+Atira para o céu e uma chuva de 24 flechas cai num círculo de 5 m durante 3 s (420% no total). Recarga 12 s. No rank 10, escolha: **Chuva de Fogo** (o chão arde) ou **Chuva Fina** (o dobro de flechas, menores).
+- **Lágrima:** a chuva vira granizo; o chão fica coberto de gelo por 4 s, lento 40% e quem ficar 2 s seguidos congela.
+- **Olho Kármico:** as flechas não caem ao acaso: procuram os inimigos dentro do círculo, e quem for acertado 6 vezes leva um crítico de brinde.
+- **Ampulheta:** 2 s depois de acabar, cai uma segunda chuva mais fina no mesmo lugar (50%).
+- **Labirinto:** em vez de um círculo, abrem 3 círculos menores que se movem devagar em espiral para o centro.
+- **Fome:** as flechas caem em chamas e ficam fincadas no chão como velas; quando a chuva acaba, todas explodem ao mesmo tempo (150%).
+- **Fresta:** a chuva cai de frestas no céu bem acima de cada inimigo dentro de 12 m, não de uma área só. Preço: 1 marca de Fresta e 5 de karma por uso.
+- **Desperta (Fome):** a chuva cai em forma de anel de fogo; quem tentar sair do anel cruzando a borda queima 100% e é empurrado de volta.
+
+### 6. Armadilha de Raiz-Espinho · torre · nível 10 (tecla 6)
+Planta uma semente de espinheiro no chão (até 2 ao mesmo tempo). Quando um inimigo pisa, a raiz explode em espinhos (300%) e prende 1,5 s. Fica armada 30 s, invisível para monstros. Recarga 8 s.
+- **Lágrima:** a raiz vira uma flor d'água; ao estourar deixa uma poça de 3 m por 5 s que retarda e cura aliados 2% por segundo.
+- **Olho Kármico:** a armadilha enxerga: avisa no mapa quem se aproxima e dispara sozinha um espinho (150%) em quem estiver a 6 m, mesmo sem pisar.
+- **Ampulheta:** a raiz estoura duas vezes: na pisada e de novo 2 s depois, num círculo maior.
+- **Labirinto:** até 4 armadilhas ao mesmo tempo, e cada uma que estoura liga um cipó até a mais perto, fazendo-a estourar também (cadeia).
+- **Fome:** os espinhos pegam fogo e o mato em volta arde por 4 s; quem morre na armadilha vira adubo e planta uma nova semente ali, de graça.
+- **Fresta:** a armadilha abre uma fresta no chão; quem pisa cai e reaparece 8 m para trás, de costas para você e atordoado. Preço: 3% da vida por armadilha que disparar.
+- **Desperta (Ampulheta):** a armadilha nunca se gasta; depois de estourar, ela brota de novo em 4 s, até o fim dos 30 s.
+
+### 7. Chamado do Companheiro · invocação · nível 12 (tecla 7)
+Assobia e o animal domado sai da mata. Escolha na primeira vez (troca no estábulo de Lithendel): **Falcão** (voa, ataca de longe, 60% por bicada, cega), **Lobo** (segura a frente, 90% por mordida, derruba) ou **Cervo** (cura 2% por segundo em volta e dá uma chifrada que empurra). Fica até morrer; volta em 20 s.
+- **Lágrima:** o animal ganha a pelagem de orvalho; seus ataques retardam 20% e, quando você cura, ele cura junto.
+- **Olho Kármico:** o animal enxerga o alvo da sua flecha e ataca sempre o mesmo; seus críticos te dão 10 de Foco.
+- **Ampulheta:** quando morre, o animal deixa um espírito de folhas que luta mais 8 s, e ele volta em 10 s em vez de 20.
+- **Labirinto:** chama 2 animais da mesma espécie (cada um com 65% da força); no rank 10, chama 3.
+- **Fome:** o animal fica selvagem: rouba 8% da vida por ataque e, ao matar, uiva e ganha +30% de velocidade por 4 s.
+- **Fresta:** o animal anda entre frestas, piscando para trás de quem ele ataca; seus ataques pelas costas fazem o dobro. Preço: ele perde 1% da vida por segundo e cada morte dele te dá 1 marca de Fresta.
+- **Desperta (Olho Kármico):** o animal ganha um irmão espiritual de luz (ou de sombra, se o karma for mau), uma cópia transparente que repete cada ataque dele com 50%.
+
+### 8. Arco Tenso · projétil · nível 14 (tecla 8)
+Segure por até 1,5 s puxando o arco até a orelha (você fica parada e o Foco sobe em dobro). Solte: flecha pesada de 200% a 550%, conforme o tempo, alcance 40 m. Recarga 7 s.
+- **Lágrima:** a flecha leva um cristal de gelo; ao acertar, estilhaça em 6 lascas que retardam e ferem quem estiver atrás.
+- **Olho Kármico:** carregada até o fim, ela mira o coração: crítico garantido e, se o alvo estiver abaixo de 25%, ele cai na hora (não vale para chefes; neles, +80%).
+- **Ampulheta:** você pode guardar o tiro carregado até 3 s sem soltar e se mexer devagar; ao soltar, um eco do mesmo tiro sai 1 s depois (40%).
+- **Labirinto:** ao acertar, a flecha ricocheteia até 3 vezes, perdendo 20% a cada salto.
+- **Fome:** a flecha entra em brasa e explode dentro do alvo depois de 1 s (+150% em área de 3 m).
+- **Fresta:** a flecha atravessa paredes e terreno até o alcance máximo. Preço: 6% da vida, e cada tiro carregado até o fim dá 1 marca de Fresta.
+- **Desperta (Fresta):** se você for atingido enquanto carrega, some numa fresta, reaparece 5 m para trás e solta o tiro na hora, já no máximo.
+
+### 9. Leque de Penas · projétil · nível 16 (tecla 9)
+Abre a mão na corda e solta 5 flechas em leque de 50° (160% cada). De perto, várias acertam o mesmo alvo. Recarga 6 s.
+- **Lágrima:** as flechas viram gotas de chuva cortante; cada uma que acerta deixa uma pocinha que retarda 15% (as pocinhas se somam).
+- **Olho Kármico:** as 5 flechas se espalham no ar e depois se fecham sobre o alvo mais perto da mira; cada acerto seguido no mesmo alvo dá +10% de crítico na próxima.
+- **Ampulheta:** o leque é solto duas vezes, a segunda 0,6 s depois e virada 25° para o lado (cobre o dobro).
+- **Labirinto:** 9 flechas em vez de 5, num leque de 120°, e as das pontas fazem curva para dentro.
+- **Fome:** as flechas são farpas em brasa que ficam cravadas; a cada 3 farpas no mesmo inimigo, ele explode (120%).
+- **Fresta:** o leque sai de uma fresta atrás do alvo, acertando-o pelas costas, de você para ele e dele para você. Preço: 2% da vida.
+- **Desperta (Labirinto):** as flechas do leque, ao errarem, cravam no chão como mudas e, 2 s depois, disparam de novo sozinhas no inimigo mais perto.
+
+### 10. Cura da Seiva · defesa · nível 18 (tecla 0)
+Crava uma muda no chão e encosta a mão: a seiva sobe pelo braço e cura 25% da vida em 3 s. Você pode continuar atirando, mas só parada (e o Foco sobe normalmente). Recarga 20 s.
+- **Lágrima:** a seiva escorre para fora; aliados a 6 m também curam 15% em 3 s.
+- **Olho Kármico:** a muda enxerga o que te feriu: os 2 últimos inimigos que te acertaram ficam marcados de folha e recebem +20% de dano por 6 s.
+- **Ampulheta:** a cura passa a ser em 6 s, mas cura 40% e a muda continua de pé 6 s depois, curando 1% por segundo quem estiver perto.
+- **Labirinto:** a muda brota em 3 pontos ao seu redor; ficar em cima de qualquer um deles cura.
+- **Fome:** em vez de seiva, a muda bebe dos inimigos: quem estiver a 5 m perde 30% por segundo e você cura o dobro do que eles perdem.
+- **Fresta:** a cura vem toda de uma vez, instantânea (30%), e você não precisa parar. Preço: 10 de karma e 1 marca de Fresta.
+- **Desperta (Lágrima):** a muda vira uma árvore pequena por 10 s; quem fica na sombra dela não pode ser crítico e cura 2% por segundo.
+
+### 11. Folha ao Vento · movimento · nível 20 (⇧1)
+Você vira um redemoinho de folhas e reaparece até 10 m na direção que escolher; no lugar de onde saiu fica um boneco de folhas que os inimigos atacam por 3 s. Recarga 12 s.
+- **Lágrima:** o boneco é de folhas molhadas; quem o atacar fica lento 40% e, ao se desfazer, ele cura você 5%.
+- **Olho Kármico:** ao reaparecer, você ganha 50 de Foco na hora e o primeiro tiro depois enxerga o ponto fraco (+40% de crítico).
+- **Ampulheta:** 2 cargas, e o boneco dura 5 s.
+- **Labirinto:** ficam 3 bonecos, espalhados em leque, e os inimigos se dividem entre eles.
+- **Fome:** o boneco é de folhas secas: quando se desfaz, explode em fogo (250%) e incendeia o mato.
+- **Fresta:** você não aparece em lugar nenhum por 1 s (fica dentro da fresta, intocável) e escolhe onde sair, até 15 m. Preço: 4% da vida.
+- **Desperta (Fome):** o redemoinho de folhas arrasta brasas pelo caminho; tudo entre o ponto de saída e o de chegada queima 3 s.
+
+### 12. Pena do Falcão · controle · nível 22 (⇧2)
+Uma flecha leve com uma pena branca no alvo (90%). Por 8 s: você e o seu animal enxergam o alvo mesmo escondido, suas flechas nele ganham +30% de dano e o animal corre para ele. Recarga 10 s.
+- **Lágrima:** a pena pinga; o alvo deixa um rastro de gotas e fica lento 20%, e quem o matar cura 8%.
+- **Olho Kármico:** a pena vira um olho que brilha; os críticos nele fazem +50% e, com karma bom, todos os aliados também enxergam o alvo.
+- **Ampulheta:** quando a pena cai (fim dos 8 s ou morte), ela voa sozinha para o inimigo mais perto e recomeça, uma vez.
+- **Labirinto:** solta 3 penas em 3 alvos diferentes, cada uma com +20%.
+- **Fome:** a pena é de fênix; o alvo queima de leve o tempo todo e, se morrer com ela, explode em penas de fogo que passam a pena para quem estiver perto.
+- **Fresta:** a pena puxa o alvo para a sua linha de tiro: a cada 2 s ele é arrastado 2 m na sua direção, querendo ou não. Preço: 1 marca de Fresta e 3% da vida.
+- **Desperta (Olho Kármico):** um falcão espiritual dourado desce do céu a cada 2 s e bica o alvo marcado (120%), mesmo que você não tenha o falcão como animal.
+
+### 13. Vagem Estourante · área · nível 25 (⇧3)
+Arremessa uma vagem gorda da mata que rola até 12 m e estoura em sementes duras (320% em 4 m), derrubando quem estiver no meio. Se ninguém estiver perto, ela espera armada no chão por 15 s. Recarga 9 s.
+- **Lágrima:** a vagem é cheia de seiva fria; a área fica grudenta por 5 s (lento 60%).
+- **Olho Kármico:** a vagem rola sozinha atrás do inimigo mais forte da tela e estoura nele com +50%.
+- **Ampulheta:** em vez de estourar, a vagem racha e 2 s depois estoura maior (6 m, +40%).
+- **Labirinto:** estoura em 4 vagens menores, que rolam para 4 lados e estouram cada uma (150%).
+- **Fome:** as sementes são de pimenta-de-fogo; a área arde 4 s e quem respirar ali tosse e erra 25% dos ataques.
+- **Fresta:** a vagem abre uma fresta ao estourar que suga todos a 7 m para o centro, e só então estoura. Preço: 5% da vida.
+- **Desperta (Labirinto):** depois de estourar, das sementes brotam 3 armadilhas de Raiz-Espinho pequenas (150%) que duram 10 s.
+
+### 14. Lanterna de Fogo-Fátuo · torre · nível 28 (⇧4)
+Chama um espírito da floresta, uma luzinha verde que flutua parada no lugar por 15 s e atira faíscas no inimigo mais perto (70% por faísca, 2 por segundo, 18 m). Recarga 16 s.
+- **Lágrima:** o fogo-fátuo vira azul; suas faíscas retardam e, a cada 3 s, ele solta uma gota de cura (4%) no aliado mais ferido.
+- **Olho Kármico:** ele ilumina 10 m em volta: revela invisíveis, e inimigos na luz recebem +15% de crítico das suas flechas.
+- **Ampulheta:** dura 25 s e, ao apagar, solta uma explosão de luz (200%) que cega 1 s.
+- **Labirinto:** chama 2 fogos-fátuos (no rank 10, 3), que giram em volta um do outro e trocam de alvo.
+- **Fome:** o fogo-fátuo vira vermelho e cresce cada vez que mata algo (+10% de dano por morte, até 5).
+- **Fresta:** o fogo-fátuo segue você em vez de ficar parado e pisca para perto de quem você atira. Preço: ele bebe 1% da sua vida a cada 2 s.
+- **Desperta (Ampulheta):** quando você acerta uma flecha com Foco cheio, o fogo-fátuo copia o tiro na hora, com os mesmos efeitos.
+
+### 15. Muro de Espinheiro · defesa · nível 30 (⇧5)
+Puxa um cipó do chão e ergue uma cerca de espinheiro de 8 m por 5 s, na linha que você marcar. Ninguém atravessa; quem encosta leva 80% por segundo. Suas flechas passam por cima. Recarga 18 s.
+- **Lágrima:** o espinheiro dá flores azuis; aliados atrás dele curam 2% por segundo.
+- **Olho Kármico:** o muro tem olhos de seiva: devolve uma flecha de espinho (120%) em quem atirar nele.
+- **Ampulheta:** dura 9 s e, no fim, cai para a frente como uma onda de espinhos (250%).
+- **Labirinto:** o muro nasce em arco em volta de você, fechando 3 lados (12 m), e deixa a frente aberta para atirar.
+- **Fome:** o espinheiro pega fogo; o calor queima quem estiver a 3 m e as flechas que passam por cima saem em chamas.
+- **Fresta:** o muro é feito de frestas; quem tentar atravessar é jogado para trás 6 m e perde 1 s. Preço: 2 marcas de Fresta.
+- **Desperta (Labirinto):** o muro anda: ele avança 1 m por segundo empurrando os inimigos para longe de você.
+
+### 16. Ciclone de Penas · área · nível 34 (⇧6)
+Atira uma flecha com penas de vento num ponto: ela abre um ciclone de 4 m que puxa os inimigos para o meio e corta por 4 s (90% por segundo). Atire flechas no ciclone e elas giram dentro dele, acertando todos (+50%). Recarga 15 s.
+- **Lágrima:** vira um ciclone de chuva; quem estiver dentro fica lento 50% e sai molhado (o próximo gelo congela na hora).
+- **Olho Kármico:** o ciclone tem um olho no meio; quem fica no olho recebe todo o dano como crítico.
+- **Ampulheta:** o ciclone dura 7 s e cresce 1 m por segundo.
+- **Labirinto:** o ciclone anda devagar em espiral, e as flechas que saem dele pelo outro lado ricocheteiam em mais 2 inimigos.
+- **Fome:** vira um tornado de fogo; no fim, explode para fora jogando brasas (300%) num círculo de 6 m.
+- **Fresta:** o meio do ciclone é uma fresta; inimigos pequenos são engolidos (somem 2 s e voltam com 20% menos de vida). Preço: 8% da vida e 1 marca de Fresta.
+- **Desperta (Ampulheta):** ao acabar, o ciclone deixa uma semente de vento; aperte de novo em até 10 s para reabrir o ciclone em outro lugar.
+
+## Bênçãos e auras
+
+### 17. Canção de Lithendel · aura · nível 15 (⇧7)
+Canta a velha canção da cidade élfica, e notas verdes flutuam em volta do grupo: por 10 s, todos a 12 m ganham +15% de velocidade de ataque, +10% de alcance e o Foco sobe 25% mais rápido. Recarga 30 s.
+- **Lágrima:** a canção é de chuva; cada nota que toca um aliado cura 1% por segundo e tira 1 lentidão.
+- **Olho Kármico:** com karma bom, os aliados ganham +10% de crítico; com karma mau, os inimigos a 12 m perdem 10% de precisão.
+- **Ampulheta:** a canção ecoa: dura 16 s, e quem entrar no meio dela a pega pela duração inteira.
+- **Labirinto:** as notas pulam de aliado em aliado: quem está fora do raio também ganha, se um aliado de dentro estiver a 6 m dele.
+- **Fome:** vira canção de guerra; +20% de dano em vez de alcance, mas cada aliado perde 0,5% da vida por segundo.
+- **Fresta:** a canção é ouvida do outro lado; aliados mortos a 12 m ouvem e podem levantar uma vez com 20% da vida. Preço: 15 de karma e 2 marcas de Fresta.
+- **Desperta (Lágrima):** no fim, a última nota explode em gotas azuis e cura todo o grupo em 15%.
+
+### 18. Casca dos Ancestrais · bênção · nível 26 (⇧8)
+Chama os espíritos das árvores velhas da mata: você e até 4 aliados ganham uma casca de madeira clara que absorve 18% da vida máxima por 8 s. Recarga 25 s.
+- **Lágrima:** a casca é de bétula molhada; enquanto durar, cura 1,5% por segundo e não deixa congelar.
+- **Olho Kármico:** quem tem a casca vê as armadilhas e emboscadas a 15 m, e o primeiro golpe que receber nunca é crítico.
+- **Ampulheta:** quando a casca quebra, ela volta 3 s depois com metade da força, uma vez.
+- **Labirinto:** a casca se espalha para todos os aliados a 15 m (até 8), cada uma com 70% da força.
+- **Fome:** a casca vira espinhenta; quem bater em você ou num aliado com ela leva 40% do golpe de volta.
+- **Fresta:** a casca é de sombra; enquanto durar, 30% dos golpes simplesmente passam pelo aliado. Preço: cada aliado perde 5% da vida máxima até o fim da luta.
+- **Desperta (Ampulheta):** quando a casca de alguém quebra, ela brota numa muda que cura todos em volta 10%.
+
+## Supremas
+
+### 19. Caçada Selvagem · invocação · nível 40 (⇧9)
+O chifre de caça de Lithendel soa e a mata inteira responde: por 15 s, os três animais (falcão, lobo e cervo) correm ao seu lado, feitos de luz verde e folhas, junto com o seu animal de verdade. Durante a Caçada, o seu Foco não cai quando você leva dano e enche em 3 s; a cada flecha com Foco cheio, os três animais saltam no mesmo alvo. Recarga 90 s. 3 encaixes.
+- **Lágrima:** os animais deixam pegadas de orvalho; o grupo que pisa nelas cura 3% por segundo e os inimigos ficam lentos.
+- **Olho Kármico:** todos os animais caçam o mesmo alvo que você; cada um que o morde abre um ponto fraco (+10% de crítico, até +40%).
+- **Ampulheta:** a Caçada dura 22 s, e cada inimigo morto durante ela soma +1 s.
+- **Labirinto:** vêm dois de cada animal (seis espíritos), e o bando se divide sozinho entre os inimigos.
+- **Fome:** os espíritos viram feras em chamas; quem é mordido queima e, ao matar, cada fera explode em brasas e volta em 2 s.
+- **Fresta:** os animais saem de frestas por todo o campo e caçam até 30 m de você, inclusive atrás de paredes. Preço: 20 de karma, 3 marcas de Fresta e, no fim, você fica 5 s sem Foco nenhum.
+- **Desperta (Labirinto):** no fim da Caçada, os espíritos não somem: se juntam num grande alce de luz que dá um galope pelo campo (800%) e derruba tudo no caminho.
+
+### 20. Flecha do Carvalho-Mãe · projétil · nível 60 (⇧0)
+Você finca os pés, e raízes de luz sobem pelas pernas até o arco: 2 s de carga (intocável a empurrões), e então solta uma flecha feita de um galho do Carvalho-Mãe de Lithendel, que atravessa a tela inteira (60 m) com 1.200% de dano, deixando no chão uma linha de flores, cipós e luz que prende por 2 s quem estava nela. Gasta todo o Foco: cada 10 de Foco dá +5% de dano. Recarga 120 s. 3 encaixes.
+- **Lágrima:** a linha de flores vira um rio de seiva por 8 s; aliados nele curam 4% por segundo e inimigos ficam lentos 60%.
+- **Olho Kármico:** a flecha faz uma curva para passar por até 5 inimigos marcados ou de elite, onde quer que estejam na tela; com karma bom, a luz é dourada e cura aliados no caminho; com karma mau, é negra e tira 20% da armadura de todos os acertados.
+- **Ampulheta:** 3 s depois, a flecha volta pelo mesmo caminho, de trás para a frente, com 60% do dano.
+- **Labirinto:** ao chegar no fim, o galho se abre em 8 ramos que voltam em leque, cada um com 200%.
+- **Fome:** a linha inteira explode em chamas no fim (400% em 3 m para cada lado) e o chão arde por 6 s.
+- **Fresta:** a flecha atravessa o Entre: sai de uma fresta em qualquer ponto que você marcar no mapa (até 80 m) e ignora paredes e defesas. Preço: 15% da vida máxima, 30 de karma e 5 marcas de Fresta.
+- **Desperta (Lágrima):** da linha nasce uma fileira de mudas do Carvalho-Mãe que ficam 15 s; cada uma é uma Cura da Seiva pequena e atira espinhos (100%) em quem passar.
+
+## Passivas de magia
+| # | Passiva | Melhora | Nível 1 | Nível 2 | Nível 3 |
+|---|---|---|---|---|---|
+| 21 | Corda Afinada | Disparo Élfico | +5% de velocidade de tiro | +10% | +15%; nível 3: a 3ª flecha da série também dá 5 de Foco |
+| 22 | Pena Certeira | Disparo Élfico | +4% de crítico | +8% | +12%; nível 3: críticos empurram 1 m |
+| 23 | Pés de Gato | Salto de Recuo | distância +1 m | +2 m | +3 m; nível 3: aterrissar dá 15 de Foco |
+| 24 | Flecha de Cabeça para Baixo | Salto de Recuo | flecha do salto +20% | +40% | +60%; nível 3: a flecha atravessa |
+| 25 | Sopro de Lithendel | Flecha de Vento | empurrão +1 m | +2 m | +3 m; nível 3: quem bate numa parede fica atordoado 1 s |
+| 26 | Corredor de Vento | Flecha de Vento | recarga −0,5 s | −1 s | −1,5 s; nível 3: você anda 20% mais rápido sobre o rastro de vento |
+| 27 | Nó de Cipó | Laço de Cipó | prisão +0,3 s | +0,6 s | +1 s |
+| 28 | Seiva Grudenta | Laço de Cipó | ao soltar, lento 15% por 2 s | 25% | 35%; nível 3: o cipó prende de novo quem tentar fugir com movimento |
+| 29 | Céu Carregado | Chuva de Flechas | +4 flechas | +8 | +12 |
+| 30 | Nuvem Larga | Chuva de Flechas | raio +10% | +20% | +30%; nível 3: você pode lançá-la a 30 m |
+| 31 | Raiz Funda | Armadilha de Raiz-Espinho | +1 armadilha armada | +1 e dano +20% | +2 e dano +40% |
+| 32 | Mato Fechado | Armadilha de Raiz-Espinho | armar leva 0,5 s a menos | e dura +10 s | e quem pisa revela os inimigos a 8 m |
+| 33 | Laço de Confiança | Chamado do Companheiro | vida do animal +15% | +30% | +45% |
+| 34 | Instinto Compartilhado | Chamado do Companheiro | dano do animal +10% | +20% | +30%; nível 3: quando você salta para trás, o animal ataca na hora |
+| 35 | Braço de Arqueira | Arco Tenso | carga completa em 1,3 s | 1,1 s | 0,9 s |
+| 36 | Ponta de Obsidiana | Arco Tenso | dano máximo +40% | +80% | +120%; nível 3: com Foco cheio, ele não é gasto pelo Arco Tenso |
+| 37 | Mão Aberta | Leque de Penas | +1 flecha | +2 | +3 |
+| 38 | Penas Coladas | Leque de Penas | leque 10° mais fechado | 20° | 30°; nível 3: a menos de 5 m, todas acertam o mesmo alvo |
+| 39 | Seiva Velha | Cura da Seiva | cura +5% | +10% | +15% |
+| 40 | Raiz que Ouve | Cura da Seiva | recarga −2 s | −4 s | −6 s; nível 3: a cura começa sozinha (metade) quando a vida cai abaixo de 30%, uma vez por minuto |
+| 41 | Folhas Teimosas | Folha ao Vento | boneco +1 s | +2 s | +3 s; nível 3: o boneco provoca os inimigos a 8 m |
+| 42 | Olho do Gavião | Pena do Falcão | bônus de dano +10% | +20% | +30% |
+| 43 | Vagem Madura | Vagem Estourante | dano +20% | +40% | +60%; nível 3: derruba por 1,5 s |
+| 44 | Lume Amigo | Lanterna de Fogo-Fátuo | duração +3 s | +6 s | +9 s; nível 3: o fogo-fátuo te dá 3 de Foco por faísca que acerta |
+| 45 | Olho do Furacão | Ciclone de Penas | puxão +20% | +40% | +60%; nível 3: as flechas que giram no ciclone dão +75% em vez de +50% |
+
+## Passivas de classe
+| # | Passiva | Níveis | Efeito por nível |
+|---|---|---|---|
+| 46 | Respiração Lenta | 5 | o Foco sobe +6% mais rápido por nível (até +30%) |
+| 47 | Pele de Folha | 5 | cada golpe recebido tira 3 a menos de Foco por nível (de 25 até 10) |
+| 48 | Tiro Limpo | 5 | o tiro de Foco cheio faz +10% de dano por nível (até +50%) |
+| 49 | Recuar é Vencer | 5 | andando para trás, +3% de esquiva por nível (até +15%) |
+| 50 | Olho de Falcão (pedra-chave) | 3 | alcance de todas as flechas +40% e o Foco sobe também andando de lado; mas a menos de 4 m o dano cai 30%. Nível 2: o alcance a mais dá +1% de dano por metro além de 15 m (até +20%). Nível 3: inimigos a mais de 25 m não te veem chegar e levam o 1º tiro como crítico |
+| 51 | Dança do Vento (pedra-chave) | 3 | atira andando em qualquer direção sem perder velocidade e o Foco sobe andando (metade); o dano cai 15%. Nível 2: cada Salto de Recuo ou Folha ao Vento dá +10% de velocidade por 3 s. Nível 3: um tiro com Foco cheio dado em movimento solta uma rajada de vento que empurra 3 m |
+| 52 | Espírito da Mata (pedra-chave) | 3 | o animal domado ganha o seu Foco: o tiro cheio passa para ele (a mordida, a bicada ou a chifrada é crítica e atravessa uma fila); você perde 20% de dano próprio. Nível 2: o animal ganha +25% de vida e 10% da sua armadura. Nível 3: enquanto o animal estiver vivo, você cura 1% por segundo |
+| 53 | Sangue de Lithendel | 5 | +3% de vida máxima e +2% de resistência a magias da natureza e veneno por nível |
+| 54 | Passo sem Rastro | 4 | +4% de velocidade fora de combate por nível; nível 4: em mata e bosque, monstros te notam a metade da distância |
+| 55 | Aljava Funda | 4 | +5% de dano dos projéteis por nível; nível 4: 1 em cada 10 flechas não conta para a recarga e volta à aljava (as habilidades com recarga ficam 0,5 s mais curtas) |
+| 56 | Leitura do Terreno | 3 | armadilhas e muros de mata duram +10% por nível; nível 3: você vê o caminho que os monstros vão fazer (setas de folha no chão) |
+| 57 | Pacto com o Animal | 4 | o animal volta 3 s mais rápido por nível; nível 4: se ele morrer, você ganha Foco cheio na hora |
+| 58 | Fúria Calma | 3 | quando a vida cai abaixo de 35%, o Foco enche 50% / 75% / 100% de uma vez (uma vez a cada 60 s) |
+| 59 | Ouvido Élfico | 3 | ouve inimigos escondidos a 8 / 12 / 16 m (uma folha aparece onde eles estão) |
+| 60 | Memória das Mil Estações | 5 | o elfo vive muito: +2% de experiência por nível; nível 5: ao reencarnar, a nova vida humana herda "Olhos da Mata" (enxerga um pouco melhor à noite e o primeiro arco que pegar dá +5% de crítico) |
+
+## Combinações assinatura
+- **A Que Nunca Para:** Disparo Élfico + Labirinto + Olho Kármico + Dança do Vento + Corda Afinada + Pena Certeira → corre em volta do chefe sem parar de atirar, com duas flechas por disparo procurando alvos diferentes (Caçada); quem chega perto leva o Salto de Recuo na cara.
+- **Jardim de Espinhos:** Armadilha de Raiz-Espinho + Labirinto + Fome + Raiz Funda + Leitura do Terreno → planta 6 armadilhas em cadeia num corredor; o primeiro passo do monstro acende todas, o mato arde (Rastro de fogo) e cada morte replanta uma semente. A elfa só recua e espera.
+- **Olho de Falcão de Lithendel:** Arco Tenso + Olho Kármico + Ampulheta + Olho de Falcão + Ponta de Obsidiana + Tiro Limpo → de 50 m, um tiro carregado sai crítico garantido (Previsão) e o eco repete; com Foco cheio, atravessa a fila inteira e derruba quem estava abaixo de 25%.
+- **Mãe da Matilha:** Chamado do Companheiro (Lobo) + Labirinto + Fome + Espírito da Mata + Instinto Compartilhado + Pacto com o Animal → três lobos selvagens na frente roubando vida, cada um com o seu Foco; quando um cai, você enche o Foco e o tiro cheio passa para os que sobraram.
+- **Chuva no Furacão:** Ciclone de Penas + Lágrima + Ampulheta, e por cima a Chuva de Flechas + Fome + Ampulheta → o ciclone de chuva puxa e retarda por 7 s (Geada lenta), a chuva de fogo cai em cima e explode duas vezes (Pavio); onde fogo e chuva se encontram sobe o Vapor e os inimigos erram 30%.
+- **Sombra da Mata (karma mau):** Pena do Falcão + Fresta + Olho Kármico + Leque de Penas + Fresta → a pena arrasta o alvo para você, o leque sai de frestas atrás dele e acerta até quem está atrás de paredes (Olhar do Entre). Poder fácil, mas a alma se enche de Fresta e a Ordem do Fio vem bater na porta.
