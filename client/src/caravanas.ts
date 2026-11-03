@@ -1,4 +1,4 @@
-import { artMesh } from './arte3d';
+import { artMesh, artGeo, artMat } from './arte3d';
 /* ---------- A Companhia das Caravanas de Latão (Erling, 24/10: "paladinos, vampiros e tecnocratas com caravanas, resgates e escoltas").
    A Academia de Ylva financia a pesquisa VENDENDO, e quem leva a mercadoria é a Companhia: carroças a vapor de latão e
    carvalho que andam de verdade pelas estradas, com um cocheiro e dois guardas a pé.
@@ -70,7 +70,7 @@ function at(r: Route, s: number) { s = Math.max(0, Math.min(r.len - 0.01, s)); l
   const a = r.pts[lo], b = r.pts[lo + 1] ?? a, L = r.cum[lo + 1] - r.cum[lo] || 1, k = (s - r.cum[lo]) / L; return { x: a.x + (b.x - a.x) * k, z: a.z + (b.z - a.z) * k, yaw: Math.atan2(b.x - a.x, b.z - a.z) }; }
 
 /* ================= o modelo: carroça a vapor da Companhia ================= */
-interface Wagon { root: THREE.Group; body: THREE.Group; wheels: { m: THREE.Object3D; r: number }[]; stack: THREE.Object3D; lamp: THREE.Sprite; flag: THREE.Mesh; fallen: boolean; hpBar: THREE.Group; hpFill: THREE.Mesh; /** carroça puxada a cavalo (anões e mercadores): o cavalo anda na frente */ horse?: Horse4; kind: 'steam' | 'dwarf' | 'human' }
+interface Wagon { /** caixa que barra o herói (m, no espaço da carroça: meia largura, meia profundidade, centro em z) */ box?: { hw: number; hl: number; zc: number }; /** banco do cocheiro (m, no espaço da carroça) */ seat?: THREE.Vector3; root: THREE.Group; body: THREE.Group; wheels: { m: THREE.Object3D; r: number }[]; stack: THREE.Object3D; lamp: THREE.Sprite; flag: THREE.Mesh; fallen: boolean; hpBar: THREE.Group; hpFill: THREE.Mesh; /** carroça puxada a cavalo (anões e mercadores): o cavalo anda na frente */ horse?: Horse4; kind: 'steam' | 'dwarf' | 'human' }
 const glowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!, gr = g.createRadialGradient(32, 32, 1, 32, 32, 31); gr.addColorStop(0, 'rgba(255,230,160,1)'); gr.addColorStop(0.3, 'rgba(255,170,60,.55)'); gr.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
 /** brasão da Companhia: engrenagem de latão sobre carvalho */
 const crestTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!; g.fillStyle = '#5a1e14'; g.fillRect(0, 0, 64, 64); g.fillStyle = '#7a2a1c'; g.fillRect(0, 44, 64, 20);
@@ -88,12 +88,56 @@ function wheel(r: number, w: number): THREE.Group {
   for (let i = 0; i < 10; i++) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, r * 0.85, 5), M.dark); const a = i / 10 * Math.PI * 2; sp.position.set(Math.sin(a) * r * 0.5, Math.cos(a) * r * 0.5, 0); sp.rotation.z = -a; g.add(sp); }
   return g;
 }
-/** 03/11: troca a carroceria desenhada pelo modelo do Herik (rodas, cavalos, varais, bandeira e lanterna continuam) */
-function artBody(w: Wagon, id: string, keep: (o: THREE.Object3D) => boolean, k = 1.15, flip = false) {
-  const m = artMesh(id); if (!m) return w;
-  w.body.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep(o)) o.visible = false; });
-  m.scale.setScalar(k); if (flip) m.rotation.y = Math.PI; w.body.add(m); return w;
+/** 03/11 (Erling: "as rodas precisam girar quando anda"): o modelo do Herik vem numa malha só. Aqui ele é separado em pedaços ligados
+ *  (componentes); os que tocam o chão com cara de disco são as rodas (com o cubo e os raios que estão dentro delas). O modelo também vinha
+ *  girado uns graus na base (a carroça andava de lado em relação aos cavalos): o eixo das rodas diz o ângulo certo, e tudo é endireitado e
+ *  centrado entre as rodas. */
+interface ArtSplit { body: THREE.BufferGeometry; wheels: { geo: THREE.BufferGeometry; c: THREE.Vector3; r: number }[]; tx: (v: THREE.Vector3) => THREE.Vector3; box: THREE.Box3 }
+const splitC = new Map<string, ArtSplit | null>();
+function splitArt(id: string): ArtSplit | null {
+  if (splitC.has(id)) return splitC.get(id)!; const G0 = artGeo(id); if (!G0) return null;
+  const G = G0.index ? G0.toNonIndexed() : G0.clone(); const P = G.attributes.position as THREE.BufferAttribute, nT = P.count / 3;
+  const par = new Int32Array(nT).map((_, i) => i), f = (i: number) => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+  const owner = new Map<string, number>(); for (let v = 0; v < P.count; v++) { const key = `${Math.round(P.getX(v) * 500)},${Math.round(P.getY(v) * 500)},${Math.round(P.getZ(v) * 500)}`, t = (v / 3) | 0, o = owner.get(key); if (o === undefined) owner.set(key, t); else { const a = f(o), b = f(t); if (a !== b) par[b] = a; } }
+  const comps = new Map<number, { tris: number[]; bb: THREE.Box3 }>(), tmp = new THREE.Vector3();
+  for (let t = 0; t < nT; t++) { const r = f(t); let c = comps.get(r); if (!c) comps.set(r, (c = { tris: [], bb: new THREE.Box3() })); c.tris.push(t); for (let k = 0; k < 3; k++) c.bb.expandByPoint(tmp.fromBufferAttribute(P, t * 3 + k)); }
+  const all = new THREE.Box3().setFromBufferAttribute(P), Hh = all.max.y - all.min.y;
+  const isWheel = (c: { tris: number[]; bb: THREE.Box3 }) => { const sz = c.bb.getSize(new THREE.Vector3()); return c.tris.length >= 60 && c.bb.min.y < all.min.y + 0.08 && sz.y > 0.25 && sz.y < Hh * 0.55 && Math.max(sz.x, sz.z) < sz.y * 1.25; };
+  const wl = [...comps.values()].filter(isWheel); if (wl.length < 2) { splitC.set(id, null); return null; }
+  const wheelOf = new Map<number, number>(); wl.forEach((c, i) => c.tris.forEach((t) => wheelOf.set(t, i)));
+  for (const c of comps.values()) { if (wl.includes(c)) continue; const cc = c.bb.getCenter(new THREE.Vector3()); const i = wl.findIndex((w) => w.bb.clone().expandByScalar(0.03).containsBox(c.bb) || w.bb.containsPoint(cc) && c.bb.getSize(tmp).length() < w.bb.getSize(new THREE.Vector3()).length() * 0.8); if (i >= 0) c.tris.forEach((t) => wheelOf.set(t, i)); }
+  /* o eixo: a direção no chão em que a roda é mais fina */
+  let sx = 0, sz2 = 0; for (let i = 0; i < wl.length; i++) { let best = 1e9, bt = 0; for (let a = 0; a < 180; a += 2) { const th = (a * Math.PI) / 180, cx = Math.cos(th), cz = Math.sin(th); let lo = 1e9, hi = -1e9; for (const t of wl[i].tris) for (let k = 0; k < 3; k++) { const v = t * 3 + k, d = P.getX(v) * cx + P.getZ(v) * cz; lo = Math.min(lo, d); hi = Math.max(hi, d); } if (hi - lo < best) { best = hi - lo; bt = th; } } sx += Math.cos(bt * 2); sz2 += Math.sin(bt * 2); }
+  const th = Math.atan2(sz2, sx) / 2; /* eixo médio (ângulo dobrado: a direção não tem sinal) */
+  const rot = new THREE.Matrix4().makeRotationY(th); /* leva o eixo das rodas para o x do modelo */
+  const cen = new THREE.Vector3(); wl.forEach((c) => cen.add(c.bb.getCenter(new THREE.Vector3()).applyMatrix4(rot))); cen.divideScalar(wl.length); cen.y = 0;
+  const M = new THREE.Matrix4().makeTranslation(-cen.x, -all.min.y, -cen.z).multiply(rot), tx = (v: THREE.Vector3) => v.clone().applyMatrix4(M);
+  const pick = (want: (t: number) => boolean) => { const idx: number[] = []; for (let t = 0; t < nT; t++) if (want(t)) idx.push(t); const g = new THREE.BufferGeometry(); for (const n of Object.keys(G.attributes)) { const A = G.attributes[n] as THREE.BufferAttribute, it = A.itemSize, arr = new Float32Array(idx.length * 3 * it); idx.forEach((t, j) => { for (let k = 0; k < 3 * it; k++) arr[j * 3 * it + k] = A.array[t * 3 * it + k] as number; }); g.setAttribute(n, new THREE.BufferAttribute(arr, it)); } g.applyMatrix4(M); return g; };
+  const body = pick((t) => !wheelOf.has(t)); body.computeBoundingBox();
+  const wheels = wl.map((_, i) => { const g = pick((t) => wheelOf.get(t) === i); g.computeBoundingBox(); const c = g.boundingBox!.getCenter(new THREE.Vector3()), r = (g.boundingBox!.max.y - g.boundingBox!.min.y) / 2; g.translate(-c.x, -c.y, -c.z); return { geo: g, c, r }; });
+  const box = body.boundingBox!.clone(); for (const q of wheels) box.expandByPoint(q.c.clone().addScalar(q.r)).expandByPoint(q.c.clone().subScalar(q.r));
+  const out = { body, wheels, tx, box }; splitC.set(id, out); return out;
 }
+/** 03/11: troca a carroceria desenhada pelo modelo do Herik (rodas, cavalos, varais, bandeira e lanterna continuam). push = quanto os
+ *  cavalos e varais andam para a frente (a carroça grande não pode engolir a parelha) */
+function artBody(w: Wagon, id: string, keep: (o: THREE.Object3D) => boolean, k = 1.15, flip = false, push = 0) {
+  const S = splitArt(id); const m = S ? null : artMesh(id); if (!S && !m) return w;
+  w.body.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep(o)) o.visible = false; });
+  if (push < 0 && S) { const b = S.box, front = (flip ? -b.min.z : b.max.z) * k; push = Math.max(0, front + 0.2 - 1.3); /* os varais começam em z≈1,3: passam a começar na frente da carroça */ }
+  if (push > 0) for (const o of [...w.body.children]) if (keep(o) || o.children.some((q) => keep(q))) o.position.z += push;
+  if (!S) { m!.scale.setScalar(k); if (flip) m!.rotation.y = Math.PI; w.body.add(m!); return w; }
+  const hold = new THREE.Group(); hold.scale.setScalar(k); if (flip) hold.rotation.y = Math.PI; w.body.add(hold);
+  const mat = artMat(id); const bm = new THREE.Mesh(S.body, mat); bm.castShadow = bm.receiveShadow = true; hold.add(bm);
+  w.wheels = S.wheels.map((q) => { const piv = new THREE.Group(); piv.position.copy(q.c); piv.rotation.y = Math.PI / 2; const spin = new THREE.Group(); piv.add(spin); const wm = new THREE.Mesh(q.geo, mat); wm.rotation.y = -Math.PI / 2; wm.castShadow = true; spin.add(wm); hold.add(piv); return { m: spin, r: q.r * k * (flip ? -1 : 1) }; });
+  const b = S.box, z0 = flip ? -b.max.z : b.min.z, z1 = flip ? -b.min.z : b.max.z; w.box = { hw: Math.max(-b.min.x, b.max.x) * k, hl: ((z1 - z0) / 2) * k, zc: ((z0 + z1) / 2) * k };
+  /* o cocheiro: no meio, sobre o eixo da frente, a ~45% da altura (o banco dos dois modelos fica ali) */
+  { const fz = Math.max(...S.wheels.map((q) => (flip ? -q.c.z : q.c.z))) * k; w.seat = new THREE.Vector3(0, b.max.y * k * 0.45, fz); }
+  w.hpBar.position.y = b.max.y * k + 0.7; return w;
+}
+/** onde caem os pontos do modelo original depois de endireitado (chaminé, banco) */
+function artPt(id: string, v: THREE.Vector3, k: number, flip: boolean) { const S = splitArt(id); const p = S ? S.tx(v) : v.clone(); p.multiplyScalar(k); if (flip) { p.x = -p.x; p.z = -p.z; } return p; }
+/** 03/11 (Erling: "não posso atravessar carroças"): as carroças do quadro, para a colisão do herói (m, mundo) */
+export const WAGON_BLOCK: { x: number; z: number; yaw: number; hw: number; hl: number; zc: number }[] = [];
 const isIn = (o: THREE.Object3D, p: THREE.Object3D | null | undefined) => { let q: THREE.Object3D | null = o; while (q) { if (q === p) return true; q = q.parent; } return false; };
 /** de que lado fica a frente do modelo (conferido em carrocas.html) */
 export const ART_FLIP = { steam: false, dwarf: true };
@@ -155,7 +199,8 @@ export function buildSteamWagon(): Wagon {
   root.traverse((o) => { o.frustumCulled = true; });
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
   /* 03/11 (Erling: "aumenta um pouco e ela precisa soltar fumaça, é a vapor"): 45% maior, e a fumaça sai da chaminé do modelo */
-  const KS = 1.45; if (artMesh('carroca_tecnocrata')) { lamp.position.set(0.55, 1.9, 2.3); (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = new THREE.Vector3(-0.5 * KS, 1.9 * KS + 0.15, -0.12 * KS); }
+  /* 03/11 (Erling: "precisam ser carroças grandes… podem ser 3 ou 4× maior"): ~3× — rodas de 1,7 m, a carroça bem mais alta que um homem */
+  const KS = 3.2; if (artMesh('carroca_tecnocrata')) { (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = artPt('carroca_tecnocrata', new THREE.Vector3(-0.5, 1.9, -0.12), KS, ART_FLIP.steam).add(new THREE.Vector3(0, 0.2, 0)); lamp.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 1.2, 1.1), KS, ART_FLIP.steam)); }
   return artBody(W0, 'carroca_tecnocrata', () => false, KS, ART_FLIP.steam);
 }
 /** barra de vida da carroça (igual nas três) */
@@ -201,7 +246,7 @@ export function buildOreCart(): Wagon {
   root.traverse((o) => { o.frustumCulled = true; });
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'dwarf' };
   const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 2.0) /* varais e tirantes até os cavalos */ || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
-  return artBody(W0, 'carroca_anao', keepH, 1.15, ART_FLIP.dwarf);
+  return artBody(W0, 'carroca_anao', keepH, 3.0, ART_FLIP.dwarf, -1);
 }
 /** a carroça coberta dos mercadores humanos: caixa de tábuas, lona em arcos, sacos e caixotes, puxada por um cavalo baio */
 export function buildMerchantWagon(): Wagon {
@@ -231,7 +276,7 @@ export function buildMerchantWagon(): Wagon {
   /* 03/11 (Erling: "tem que ser TODAS"): a carroça das estradas humanas também vira a carroça do Herik (os dois cavalos continuam) */
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'human' };
   const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 2.0) || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
-  return artBody(W0, 'carroca_anao', keepH, 1.15, ART_FLIP.dwarf);
+  return artBody(W0, 'carroca_anao', keepH, 3.0, ART_FLIP.dwarf, -1);
 }
 /** a carroça caída: tomba de lado, uma roda solta, carga espalhada (resgate e emboscada perdida) */
 function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotation.z = 0.42; w.body.position.y = -0.25; const lost = w.wheels[1].m.parent!; w.body.remove(lost); w.root.add(lost); lost.rotation.set(Math.PI / 2 - 0.2, 0, 0); lost.position.set(1.9, 0.1, -2.6); w.lamp.visible = false;
@@ -336,7 +381,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     if (ev && !saved.done.includes(ev.slot)) { const key = 'ev:' + ev.slot; if (!cars.has(key)) { for (const k of [...cars.keys()]) if (k.startsWith('ev:')) { const o = cars.get(k)!; dropModel(o); ctx.clearTag('car:' + k); cars.delete(k); }
         cars.set(key, { key, mode: 'event', route: ev.r, s: ev.s, dir: 1, w: null, crew: [], hp: 1, stop: true, speed: 0, foes: [], bubbleT: 0, slot: ev.slot }); }
       evShown = { slot: ev.slot, r: ev.r, s: ev.s }; } else evShown = null;
-    const placed: { x: number; z: number }[] = [];
+    const placed: { x: number; z: number }[] = []; WAGON_BLOCK.length = 0;
     for (const c of [...cars.values()]) {
       const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) + (c.w ? 20 : 0) && !inside; /* +20 m para quem já está montada: não monta e desmonta na borda */
       if (!near) { if (c.w) dropModel(c); if (c.mode === 'event' && c.spawned && !c.cleared && ev && c.slot !== ev.slot) { ctx.clearTag('car:' + c.key); cars.delete(c.key); } continue; }
@@ -365,9 +410,9 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       const yaw = p.yaw + (c.dir < 0 ? Math.PI : 0), ca = Math.sin(yaw), cb = Math.cos(yaw);
       /* 26/10 (Erling: "carroças não se atravessam assim"): cada uma anda pela sua mão (direita no sentido em que vai); as que
          se cruzam passam lado a lado, e as que vão juntas na mesma rota já saem em horários diferentes */
-      if (c.mode === 'ambient') { const crowd = placed.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < 5.5), want = ctx.onBridge?.(p.x, p.z) ? 0.3 : c.stop && !c.trading ? 4.8 : crowd ? 4.6 : 1.7; /* 27/10 (Erling: as carroças paradas tapavam o portão): estacionada, encosta no acostamento, fora do vão da estrada */ /* outra carroça ali: encosta mais para a direita e passa ao lado */ /* na ponte, manobra para o meio: a ponte é estreita (Erling: "passar certinho pelas pontes") */ c.off = (c.off ?? want) + (want - (c.off ?? want)) * Math.min(1, dt * 1.6); p.x += cb * c.off; p.z -= ca * c.off; }
-      const hF = ctx.heightAt(p.x + ca * 1.3, p.z + cb * 1.3), hB = ctx.heightAt(p.x - ca * 1.3, p.z - cb * 1.3);
-      w.root.position.set(p.x, (hF + hB) / 2, p.z); placed.push({ x: p.x, z: p.z }); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, 2.6) * 0.9;
+      if (c.mode === 'ambient') { const crowd = placed.some((q) => Math.hypot(q.x - p.x, q.z - p.z) < Math.max(5.5, (w.box?.hl ?? 2) * 2 + 1)), want = ctx.onBridge?.(p.x, p.z) ? 0.3 : c.stop && !c.trading ? Math.max(4.8, (w.box?.hw ?? 1) + 3) : crowd ? Math.max(4.6, (w.box?.hw ?? 1) * 2 + 0.8) : 1.7; /* 27/10 (Erling: as carroças paradas tapavam o portão): estacionada, encosta no acostamento, fora do vão da estrada */ /* outra carroça ali: encosta mais para a direita e passa ao lado */ /* na ponte, manobra para o meio: a ponte é estreita (Erling: "passar certinho pelas pontes") */ c.off = (c.off ?? want) + (want - (c.off ?? want)) * Math.min(1, dt * 1.6); p.x += cb * c.off; p.z -= ca * c.off; }
+      const hl0 = Math.min(3, w.box?.hl ?? 1.3), hF = ctx.heightAt(p.x + ca * hl0, p.z + cb * hl0), hB = ctx.heightAt(p.x - ca * hl0, p.z - cb * hl0);
+      w.root.position.set(p.x, (hF + hB) / 2, p.z); placed.push({ x: p.x, z: p.z }); if (w.box && !w.fallen) WAGON_BLOCK.push({ x: p.x, z: p.z, yaw, ...w.box }); w.root.rotation.set(0, 0, 0); w.root.rotation.y = yaw; if (!w.fallen) w.body.rotation.x = -Math.atan2(hF - hB, hl0 * 2) * 0.9;
       const moving = !c.stop && !w.fallen && !(c.mode === 'ambient' && c.stop);
       if (moving) for (const wh of w.wheels) wh.m.rotation.z += (c.speed * dt) / wh.r;
       w.lamp.visible = !w.fallen && night > 0.35; (w.lamp.material as THREE.SpriteMaterial).opacity = 0.6 + Math.sin(t * 9) * 0.08;
@@ -377,9 +422,9 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
       if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); }
-        else { const sp = new THREE.Vector3(0, 1.45, 0.3).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); } }
+        else { const sp = (w.seat?.clone() ?? new THREE.Vector3(0, 1.45, 0.3)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); } }
       let foe: { pos: THREE.Vector3; hp: number; hpMax: number } | null = null, fd = 1e9; for (const f of c.foes) if (f.alive) { const d = f.pos.distanceTo(w.root.position); if (d < fd) { fd = d; foe = f; } }
-      [g1, g2].forEach((g, k) => { if (!g) return; const sd = k ? -1.6 : 1.6, back = k ? 0.6 : -0.8; let gx = p.x + cb * sd - ca * back, gz = p.z - ca * sd - cb * back, mps = moving ? c.speed : 0, face = yaw;
+      [g1, g2].forEach((g, k) => { if (!g) return; const sd = (k ? -1 : 1) * Math.max(1.6, (w.box?.hw ?? 1) + 0.7), back = k ? 0.6 : -0.8; let gx = p.x + cb * sd - ca * back, gz = p.z - ca * sd - cb * back, mps = moving ? c.speed : 0, face = yaw;
         if (foe && fd < 16) { const dx = foe.pos.x - gx, dz = foe.pos.z - gz, l = Math.hypot(dx, dz); face = Math.atan2(dx, dz); if (l > 1.6 && l < 7) { gx += dx / l * Math.min(l - 1.6, 2.5); gz += dz / l * Math.min(l - 1.6, 2.5); } g.combat = true; if (Math.random() < dt * 0.8) g.act('combo1'); } else g.combat = false;
         if (w.fallen && !foe) { face = yaw + (k ? 2.4 : -2.4); }
         g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.update(dt, t, mps, face); /* o boneco só vira pelo heading: antes olhava sempre para o norte (Erling: "os NPC de lado?") */ });

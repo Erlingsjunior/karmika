@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 
 export const OUTLINES = false; // sem contorno: os pixels definem as formas (estilo Eitr)
-export const ramp = new THREE.DataTexture(new Uint8Array([60, 60, 60, 255, 130, 130, 130, 255, 200, 200, 200, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
+/* 03/11 (Erling: "quero a sensação de 16 bit cor"): a luz em 8 faixas em vez de 4 — mesma curva de antes (60 → 255), sem o salto seco que
+   manchava pedra e lona; continua em faixas (sem degradê liso), como a sombra pintada dos jogos de 16 bits */
+export const ramp = new THREE.DataTexture(new Uint8Array([60, 78, 112, 148, 182, 214, 241, 255].flatMap((v) => [v, v, v, 255])), 8, 1, THREE.RGBAFormat);
 ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
 /* Corte de visão (Erling, 27/10: "toda vez que tivermos elementos que impedem a visão eles são cortados em um círculo que permite ver o que está atrás"):
    todo material toon do cenário descarta os pixels dentro de um círculo na tela em volta do herói, só para o que está ENTRE a câmera e ele

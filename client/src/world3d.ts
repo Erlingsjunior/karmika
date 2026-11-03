@@ -2,10 +2,10 @@ import * as THREE from 'three';
 import { mergeStatic } from './merge3d';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SCALE, TILE_M as T } from '@karmika/shared';
-import { type World, type Prop, MAP_W, MAP_H, groundH, rng, edgeK, WL, veinOf, rotLocal, canalX, CANAL_HW } from './world';
+import { type World, type Prop, MAP_W, MAP_H, groundH, forkH, rng, edgeK, WL, veinOf, rotLocal, canalX, CANAL_HW } from './world';
 import { buildTree } from './trees3d';
 
-import { buildKitWall, buildKitSpan, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildQuay, type Built } from './city3d';
+import { buildKitWall, buildKitSpan, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildBridgeFork, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
 import { buildHouse, buildStyledHouse } from './houses3d';
 import { buildSpecies } from './flora3d';
@@ -171,7 +171,7 @@ export function buildWorld(world: World): WorldObjs {
       else if (p.kind === 'castle') b = buildCastle(Wm, Dm, p.wall, p.roof);
       else if (v === 20) { g.add(buildGothic(Wm, Dm, p.wall, p.roof, true)); L.glows.push({ light: nullLight, base: 44, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 6, p.gy * T + Dm + 3), color: 0xffb060 } as WorldObjs['glowLights'][number]); }
       else b = buildAcademy(v, Wm, Dm, p.wall);
-      if (b) { g.add(b.group);
+      if (b) { if (p.kind === 'rwall' && p.ox !== undefined && p.ry !== undefined) b.group.position.add(new THREE.Vector3(p.ox - T / 2, 0, (p.oz ?? T / 2) - T / 2)); /* peça fora do centro da casa (ligação do portão, vão do rio) */ g.add(b.group);
         /* GRAVIDADE (28/10, Erling: "esse muro flutuando"): o muro baixo acompanha o chão pedra por pedra — cada peça desce ou sobe
            até o terreno embaixo dela (e afunda um dedo), em vez de o muro inteiro ficar na altura do centro */
         if (p.kind === 'lowwall') { g.updateMatrixWorld(true); const v3 = new THREE.Vector3(), bx = new THREE.Box3(); const ms: THREE.Mesh[] = []; b.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) ms.push(o as THREE.Mesh); });
@@ -305,7 +305,7 @@ export function buildWorld(world: World): WorldObjs {
       // Baú do Caminhante: arca grande de carvalho com cintas de ferro, cantoneiras de bronze, o Olho de Marghar na tampa, sobre um tablado de pedra
       const wood = std(0xffffff, { map: plankTex(0x5a3a20) }), iron = std(0x2e3238), bronze = std(0xb08a40), stone = std(0x7a766e);
       const bg = new THREE.Group(); bg.position.set(Wm / 2, 0, Dm / 2); g.add(bg);
-      const base = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.14, 0.95), stone); ink(base, 0.02); base.position.y = 0.07; bg.add(base);
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.14, 0.95), stone); ink(base, 0.02); base.position.y = 0.07; base.userData.vbase = true; bg.add(base);
       const box = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.72), wood); ink(box, 0.02); box.position.y = 0.42; box.castShadow = true; bg.add(box);
       const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 1.1, 12, 1, false, 0, Math.PI), wood); lid.rotation.z = Math.PI / 2; lid.position.y = 0.7; ink(lid, 0.02); lid.castShadow = true; bg.add(lid);
       for (const x of [-0.38, 0, 0.38]) { const b2 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.56, 0.74), iron); b2.position.set(x, 0.42, 0); bg.add(b2); const b3 = new THREE.Mesh(new THREE.CylinderGeometry(0.375, 0.375, 0.07, 12, 1, false, 0, Math.PI), iron); b3.rotation.z = Math.PI / 2; b3.position.set(x, 0.7, 0); bg.add(b3); }
@@ -482,7 +482,7 @@ export function buildWorld(world: World): WorldObjs {
       const v = p.variant ?? 0, wd = std(0xffffff, { map: plankTex(0x8a6a40) }), wdD = std(0xffffff, { map: plankTex(0x5a3a20) }), iron = std(0x3a3f46), stoneT = std(0xffffff, { map: stoneTex(0x8a857e) }), hay = std(0xd8b048), water = std(0x4a7a9a);
       const G = new THREE.Group(); G.position.set(Wm / 2, 0, Dm / 2); G.rotation.y = (p.ry ?? 0) + (r() - 0.5) * 0.3; g.add(G); const A = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; G.add(o); return o; };
       const vmk = VPROP_ART[v] ? artMarker(VPROP_ART[v]) : null; /* 03/11: modelo do Herik quando existe; o desenho fica de reserva */
-      if (vmk) { G.add(vmk); if (v === 4) L.glows.push({ light: nullLight, base: 10, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 2.9, wz), color: 0xffbb66 } as WorldObjs['glowLights'][number]); }
+      if (vmk) { if (v === 2) vmk.scale.multiplyScalar(1.5); /* 03/11 (Erling: "o poço em relação ao personagem está pequeno") */ G.add(vmk); if (v === 4) L.glows.push({ light: nullLight, base: 10, seed: r() * 50, warm: true, pos: new THREE.Vector3(wx, wy + 2.9, wz), color: 0xffbb66 } as WorldObjs['glowLights'][number]); }
       else if (v === 0) { A(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 10), wd, 0, 0.4, 0); A(new THREE.CylinderGeometry(0.34, 0.34, 0.9, 10, 1, true), wd, 0, 0.45, 0).scale.set(1, 1, 1); for (const y of [0.12, 0.42, 0.72]) A(new THREE.TorusGeometry(0.33, 0.02, 4, 12), iron, 0, y, 0).rotation.x = Math.PI / 2; if (r() < 0.5) { A(new THREE.CylinderGeometry(0.22, 0.22, 0.6, 9), wd, 0.55, 0.3, 0.2); for (const y of [0.1, 0.5]) A(new THREE.TorusGeometry(0.24, 0.016, 4, 12), iron, 0.55, y, 0.2).rotation.x = Math.PI / 2; } }
       else if (v === 1) { const bx = (x: number, y: number, z: number, s2: number, ry: number) => { const b = A(new THREE.BoxGeometry(s2, s2, s2), wd, x, y, z); b.rotation.y = ry; ink(b, 0.02); for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const c = A(new THREE.BoxGeometry(0.06, s2 * 0.96, 0.06), std(0x7a2a2a), x + sx * s2 * 0.47, y, z + sz * s2 * 0.47); c.rotation.y = ry; } };
         bx(0, 0.3, 0, 0.6, 0); bx(0.1, 0.8, -0.05, 0.42, 0.3); bx(0.62, 0.22, 0.25, 0.44, -0.4); }
@@ -567,10 +567,10 @@ export function buildWorld(world: World): WorldObjs {
       rg.strokeStyle = '#140a28'; rg.lineWidth = 7; rg.shadowBlur = 0; symAll(rg); rg.strokeStyle = '#6a2426'; rg.lineWidth = 3; symAll(rg);
       const grooveT = new THREE.CanvasTexture(runeC); grooveT.magFilter = THREE.LinearFilter; grooveT.minFilter = THREE.LinearMipmapLinearFilter; const groove = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({ map: grooveT, transparent: true, side: THREE.DoubleSide, depthWrite: false })); groove.position.set(Wm / 2 + 0.515, 1.5, Dm / 2 + 0.515); groove.rotation.y = Math.PI / 4; g.add(groove);
       // o brilho (anima com o conhecido), numa segunda tela
-      const runeC2 = document.createElement('canvas'); runeC2.width = 128; runeC2.height = 192; const rg2 = runeC2.getContext('2d')!; rg2.lineJoin = rg2.lineCap = 'round'; rg2.strokeStyle = '#ff5a30'; rg2.lineWidth = 3; rg2.shadowColor = '#ff2a10'; rg2.shadowBlur = 7; symAll(rg2);
+      const runeC2 = document.createElement('canvas'); runeC2.width = 128; runeC2.height = 192; const rg2 = runeC2.getContext('2d')!; rg2.lineJoin = rg2.lineCap = 'round'; rg2.strokeStyle = '#ffffff'; rg2.lineWidth = 3.4; rg2.shadowColor = '#ffffff'; rg2.shadowBlur = 9; symAll(rg2); symAll(rg2); /* branco: a cor vem do material (amarelo antes de marcar, azul mágico depois) */
       const runeT = new THREE.CanvasTexture(runeC2); runeT.magFilter = THREE.LinearFilter; runeT.minFilter = THREE.LinearMipmapLinearFilter;
       const runes = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2 + 0.52, 1.5, Dm / 2 + 0.52); runes.rotation.y = Math.PI / 4; g.add(runes);
-      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); ring.visible = false; ring.userData.stone = true; /* 03/11 (Erling: "esse círculo em volta da pedra não é necessário") */ g.add(ring);
       const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
       for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x5a68b8)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
       { const tm = artMesh('pedra_teleporte'); /* 03/11: a Pedra de Teleporte do Herik no lugar do menir; os símbolos já vêm pintados nela, o anel no chão continua */
@@ -636,7 +636,6 @@ function stripMeshes(g: THREE.Object3D, keep?: (o: THREE.Object3D) => boolean) {
   const out: THREE.Object3D[] = []; g.traverse((o) => { if (!(o as THREE.Mesh).isMesh || o.userData.dyn || keep?.(o)) return; let q: THREE.Object3D | null = o.parent; while (q && q !== g) { if (q.userData.dyn) return; q = q.parent; } out.push(o); });
   for (const o of out) o.parent?.remove(o);
 }
-function nearTown(world: World, gx: number, gy: number, pad = 6) { for (const st of world.settlements) if (Math.hypot(gx - st.x, gy - st.y) < st.radius + pad) return true; return false; }
 var artWorld: World | null = null;
 function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number, wx: number, wy: number, wz: number) {
   const W = artWorld; const put = (id: string, x: number, z: number, ry: number, k: number | THREE.Vector3 = 1) => { const m = artMarker(id); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; if (typeof k === 'number') m.scale.setScalar(k); else m.scale.copy(k); g.add(m); return m; };
@@ -644,11 +643,15 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
   if (p.kind === 'bench' && artGeo('vila_balanco')) { const ry = firstRot(); stripMeshes(g); put('vila_balanco', Wm / 2, Dm / 2, ry, 0.95); }
   else if (p.kind === 'stall' && artGeo('vila_barraca')) { stripMeshes(g); put('vila_barraca', Wm / 2, Dm / 2, p.ry ?? 0, 0.9); }
   else if (p.kind === 'chest' && artGeo('biblioteca_bau')) { const ry = firstRot(); stripMeshes(g); g.traverse((o) => { if (o.userData.dyn) o.traverse((c) => { if ((c as THREE.Mesh).isMesh) c.visible = false; }); }); put('biblioteca_bau', Wm / 2, Dm / 2, ry, 0.85); }
+  else if (p.kind === 'vault' && artGeo('biblioteca_bau')) { /* 03/11 (Erling: "nosso baú grande é só pegar o asset do baú e aumentar ele em escala"): o Baú do Caminhante é o baú do Herik, 1,6× maior, sobre o tablado de pedra */
+    const ry = firstRot(); stripMeshes(g, (o) => !!o.userData.vbase); const m = put('biblioteca_bau', Wm / 2, Dm / 2, ry, 1.6); if (m) m.position.y = 0.14; }
   else if (p.kind === 'tower' && artGeo('muralha_02')) { stripMeshes(g); const k = (p.height + 3) / artGeo('muralha_02')!.userData.h; put('muralha_02', Wm / 2, Dm / 2, 0, k);
     g.traverse((o) => { if (o.userData.dyn) o.visible = false; }); const tc = L.torches[L.torches.length - 1]; if (tc) tc.pos.set(wx, wy + (p.height + 3) * 0.62, wz); }
-  else if (p.kind === 'torch' && W && nearTown(W, p.gx, p.gy) && artGeo('vila_poste_lampiao')) { /* nas cidades e vilas a tocha vira o poste com lampião; a chama fica dentro do lampião */
-    stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785; put('vila_poste_lampiao', Wm / 2, Dm / 2, ry, 0.9);
-    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.45); tc.flame.position.set(Wm / 2, 2.75, Dm / 2); tc.pos.set(wx, wy + 2.8, wz); } }
+  else if (p.kind === 'torch' && W && W.settlements.some((st) => st.radius >= 12 && Math.hypot(p.gx - st.x, p.gy - st.y) < st.radius + 6) && artGeo('porto_poste_lampiao')) { /* só vilas médias e cidades; vila bem pequena e estrada continuam na tocha */ /* 03/11 (Erling: "substitua tochas… lâmpadas de fogo, muito mais bonito e condizente com uma cidade"):
+       toda tocha vira o poste com lampião de fogo pendurado no braço; a chama (com a cor dela) acende dentro do vidro */
+    stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785, k = 0.9; put('porto_poste_lampiao', Wm / 2, Dm / 2, ry, k);
+    const lx = 0.54 * k, ly = 2.58 * k, lz = 0.21 * k, ox = lx * Math.cos(ry) + lz * Math.sin(ry), oz = -lx * Math.sin(ry) + lz * Math.cos(ry);
+    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.42); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); } }
   else if (p.kind === 'palisade' && W && artGeo('muralha_01')) { /* paliçada: o muro do Herik cobre duas casas por peça (5 m comprimido para 4 m) */
     if (!palSet) { palSet = new Set(); for (const q of W.props) if (q.kind === 'palisade') palSet.add(q.gx * 4096 + q.gy); }
     const ns = (p.variant ?? 0) === 1, idx = ns ? p.gy : p.gx, nx = ns ? p.gx : p.gx + 1, ny = ns ? p.gy + 1 : p.gy, px = ns ? p.gx : p.gx - 1, py = ns ? p.gy - 1 : p.gy;
@@ -752,6 +755,10 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
 
   /* pontes: tabuleiro, guarda-corpo, base de colunas de madeira com travessas e (nas longas) cobertura */
   for (const [bi, b] of world.bridges.entries()) {
+    if (b.poly && b.ends) { /* encaixe de pedra da ponte (bocas = lados 1 e 4; a junção com a ponte = lado 6; o V = vértice 3) */
+      const ox = b.ax * T, oz = b.ay * T, oy = b.hA; const pts: { x: number; z: number }[] = []; for (let i = 0; i < b.poly.length; i += 2) pts.push({ x: b.poly[i] * T - ox, z: b.poly[i + 1] * T - oz });
+      const fb = buildBridgeFork(pts, new Set([1, 4, pts.length - 1]), (x, z) => forkH(b, (x + ox) / T, (z + oz) / T) - oy, 3);
+      const br = new THREE.Group(); br.position.set(ox, oy, oz); br.add(fb.group); br.userData.kind = 'prop:bridge'; mergeStatic(br); bridgeMeshes.add(br); continue; }
     if (b.stone) { const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T, len = Math.hypot(bx - ax, bz - az); const sb = buildStoneBridge(len, b.half ?? 3, b.hump ?? 1);
       const br = new THREE.Group(); br.position.set((ax + bx) / 2, (b.hA + b.hB) / 2 + 0.12, (az + bz) / 2); br.rotation.y = Math.atan2(bx - ax, bz - az); br.add(sb.group); br.userData.kind = 'prop:bridge'; mergeStatic(br); bridgeMeshes.add(br); continue; }
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T, len = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);

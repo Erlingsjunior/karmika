@@ -52,11 +52,16 @@ let skinTick: (() => void) | null = null, skinToken = 0, skinKey = '', skinModel
 /** visual do caminho (vampiro: pele pálida, olhos em brasa, névoa rubra à noite) */
 let look: Look | null = null, lookFor: string = '';
 function applyLook() { const kr = K.kitRace(); const want = kr === 'vam' ? 'vam' : kr === 'tecno' ? 'tecno' : ''; const key = want + ':' + (skinModel?.uuid ?? K.hero.root.uuid); if (key === lookFor) return; look?.dispose(); look = null; lookFor = key; if (want === 'vam') look = vampireLook(K.hero.root, skinModel); if (want === 'tecno') { const tl = technoLook(K.hero.root, skinModel, { fine, ramp: toonRamp }); look = tl; K.game.setTechLook(tl); } else K.game.setTechLook(null); }
+/* 03/11 (Erling: "magos estão com a pele muito escura… deixe igual o bruxo"): a textura do mago é morena e as luvas escuras — na luz quente
+   do entardecer a pele e as mãos viravam mancha. Ganha a mesma leitura do bruxo: a própria textura acende um pouco nas sombras (emissiva
+   fraca) e a cor sobe 15% */
+function liftSkin(id: string, model: THREE.Object3D) { if (!id.startsWith('mago_')) return;
+  model.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshToonMaterial | undefined; if (!(o as THREE.Mesh).isMesh || !m || !('emissive' in m)) return; const mm = m.clone(); mm.color.multiplyScalar(1.15); if (mm.map) { mm.emissiveMap = mm.map; mm.emissive.setRGB(0.32, 0.29, 0.27); } (o as THREE.Mesh).material = mm; }); }
 function applyArtSkin() {
   skinTick = null; netSkin = null; if (skinModel) { skinModel.parent?.remove(skinModel); skinModel = null; } skinKey = '';
   if (localStorage.getItem('karmika.artskin') === '0') return;
   const art = artSkinId(); if (art) { skinKey = 'glb:' + art; const my = ++skinToken, h = K.hero; void artSetReady;
-    attachSkin(h, { fbx: `/models/personagens/${art}.glb`, tex: '' }).then((r) => { if (!r || my !== skinToken || h !== K.hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; applyLook(); netSkin = { fbx: `/models/personagens/${art}.glb`, tex: '' }; K.netRef?.lookNow(); K.portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); }); return; }
+    attachSkin(h, { fbx: `/models/personagens/${art}.glb`, tex: '' }).then((r) => { if (!r || my !== skinToken || h !== K.hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; liftSkin(art, r.model); applyLook(); netSkin = { fbx: `/models/personagens/${art}.glb`, tex: '' }; K.netRef?.lookNow(); K.portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); }); return; }
   const hk = humanSkinKey(), k = K.kindOf(K.state.race), def: SkinDef | undefined = hk ? HERO_SKIN[hk] ?? { fbx: `/models/humanos/${hk}.fbx`, tex: `/models/humanos/${hk}.jpg` } : SKINS_ART[k]; if (!def) return;
   skinKey = hk ?? k; const my = ++skinToken, h = K.hero;
   attachSkin(h, def).then((r) => { if (!r || my !== skinToken || h !== K.hero) { if (r) h.root.remove(r.model); return; } if (skinModel && skinModel !== r.model) skinModel.parent?.remove(skinModel); skinModel = r.model; skinTick = r.tick; applyLook(); netSkin = def; K.netRef?.lookNow(); K.portraits.delete('hero'); dispatchEvent(new Event('karmika:skinready')); });

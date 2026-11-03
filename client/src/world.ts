@@ -117,7 +117,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
   hellhound: 0.65, imp_bomb: 0.6, draugr_arch: 0.6, draugr_bers: 0.75, elfscout: 0.7, slaver: 0.5, thrall: 0.6, inquisitor: 0.8, troll: 0.85, succubus: 0.8, pactbroken: 0.85,
   siren: 0.6, goblin: 0.25, goblin_shaman: 0.45, spirit: 0.55, siren_queen: 1, goblin_chief: 1, spirit_lord: 1, djinn: 1,
   alpha: 1, necro: 1, headless: 1, cavebear: 1, giantsnake: 1, drowner_old: 1, scorpion_king: 1, glutton: 1, suplicio: 1, jotun: 1, colossus: 1, ent: 1, fairyqueen: 1, broodmother: 1, lich: 1 };
-export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number } // tiles
+export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number; /** 03/11: encaixe de pedra (bifurcação) — a borda em casas [x,y,...], as bocas e a altura de cada boca; (ax,ay) = junção, hA = altura nela */ poly?: number[]; ends?: number[] } // tiles
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
   /** o Quartel de Karmika (01/11): pátio de treino murado depois da igreja, com os bonecos de palha (posições em tiles, centro do boneco) */ quartel: { x: number; y: number; dummies: { x: number; y: number }[] };
@@ -515,13 +515,21 @@ const BRIDGE_HALF = 1.9;
 let bridgeIdxOf: Bridge[] | null = null, bridgeIdxN = -1; const bridgeIdx = new Map<number, Bridge[]>();
 function bridgesNear(xm: number, zm: number): Bridge[] {
   if (bridgeIdxOf !== bridgesRef || bridgeIdxN !== bridgesRef.length) { bridgeIdx.clear(); bridgeIdxOf = bridgesRef; bridgeIdxN = bridgesRef.length;
-    for (const b of bridgesRef) { const x0 = Math.min(b.ax, b.bx) * T - 6, x1 = Math.max(b.ax, b.bx) * T + 6, z0 = Math.min(b.ay, b.by) * T - 6, z1 = Math.max(b.ay, b.by) * T + 6;
+    for (const b of bridgesRef) { let x0 = Math.min(b.ax, b.bx) * T - 6, x1 = Math.max(b.ax, b.bx) * T + 6, z0 = Math.min(b.ay, b.by) * T - 6, z1 = Math.max(b.ay, b.by) * T + 6;
+      if (b.poly) for (let i = 0; i < b.poly.length; i += 2) { x0 = Math.min(x0, b.poly[i] * T - 2); x1 = Math.max(x1, b.poly[i] * T + 2); z0 = Math.min(z0, b.poly[i + 1] * T - 2); z1 = Math.max(z1, b.poly[i + 1] * T + 2); }
       for (let cy = Math.floor(z0 / PADC); cy <= Math.floor(z1 / PADC); cy++) for (let cx = Math.floor(x0 / PADC); cx <= Math.floor(x1 / PADC); cx++) { const k = cy * 4096 + cx; (bridgeIdx.get(k) ?? bridgeIdx.set(k, []).get(k)!).push(b); } } }
   return bridgeIdx.get(Math.floor(zm / PADC) * 4096 + Math.floor(xm / PADC)) ?? EMPTY_BR;
 }
 const EMPTY_BR: Bridge[] = [];
+/** dentro do polígono (casas)? */
+export function inPoly(poly: number[], x: number, y: number): boolean { let c = false; for (let i = 0, j = poly.length - 2; i < poly.length; j = i, i += 2) { const xi = poly[i], yi = poly[i + 1], xj = poly[j], yj = poly[j + 1]; if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c; } return c; }
+/** altura do tabuleiro do encaixe num ponto (casas): cada boca puxa a altura da junção para a sua, pesada pela proximidade do eixo */
+export function forkH(b: Bridge, x: number, y: number): number { const E = b.ends!; let ws = 0, hs = 0;
+  for (let i = 0; i < E.length; i += 3) { const dx = E[i] - b.ax, dy = E[i + 1] - b.ay, L2 = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((x - b.ax) * dx + (y - b.ay) * dy) / L2)); const d = Math.hypot(b.ax + dx * t - x, b.ay + dy * t - y); const w = 1 / (d * d + 0.3); ws += w; hs += w * (b.hA + (E[i + 2] - b.hA) * t); }
+  return ws ? hs / ws : b.hA; }
 export function bridgeDeck(xm: number, zm: number): number | null {
   for (const b of bridgesNear(xm, zm)) {
+    if (b.poly) { if (inPoly(b.poly, xm / T, zm / T)) return forkH(b, xm / T, zm / T) + 0.12; continue; }
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T;
     const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = ((xm - ax) * dx + (zm - az) * dz) / L2;
@@ -1590,6 +1598,15 @@ export function buildCity(): World {
       if (ts !== undefined) { const v = kitS ? 20 : ts === 8 ? 8 : [8, 9, 10, 12][ts]; props.push({ kind: 'rtower', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: [0x34445e, 0x5a3a28, 0x3a4a3a, 0x4a4a52][Math.floor(rw() * 4)], variant: v, ry, len: v === 12 ? 0 : 2.4 + rw() * 2.6 }); }
       const nx = ring[(i + 1) % N]; const len = wallOk[(i + 1) % N] ? Math.hypot(nx[0] - x, nx[1] - y) * T : T;
       props.push({ kind: 'rwall', gx: x, gy: y, w: 1, h: 1, height: H, wall: 0x7a7672, roof: 0x34445e, variant: (kitS ? 20 : 0) + Math.floor(rw() * 3), ry, len }); }
+    /* 03/11 (Erling: "não esqueça de fechar os lados do muro"): o portão é reto e o anel faz curva — entre a coluna do portão e o primeiro
+       trecho do muro ficava um vão. Uma peça de muro liga a ponta do portão ao centro da casa vizinha do anel, dos dois lados. */
+    if (kitS) for (const gc of gateIdx) { const [gx0, gy0] = ring[gc], ry = outRy(gc), dx = Math.cos(ry), dy = -Math.sin(ry), half = 5 / 2, c0 = { x: gx0 + 0.5, y: gy0 + 0.5 };
+      for (const sgn of [-1, 1]) { const j = ((gc + sgn * 3) % N + N) % N; if (!wallOk[j] || isGate.has(j) || opening.has(j)) continue; const nc = { x: ring[j][0] + 0.5, y: ring[j][1] + 0.5 };
+        const e1 = { x: c0.x + dx * half, y: c0.y + dy * half }, e2 = { x: c0.x - dx * half, y: c0.y - dy * half }; const E = Math.hypot(e1.x - nc.x, e1.y - nc.y) < Math.hypot(e2.x - nc.x, e2.y - nc.y) ? e1 : e2;
+        const D = Math.hypot(E.x - nc.x, E.y - nc.y); if (D < 0.35) continue;
+        const a0 = sgn > 0 ? E : nc, b0 = sgn > 0 ? nc : E, mx = (a0.x + b0.x) / 2, my = (a0.y + b0.y) / 2;
+        props.push({ kind: 'rwall', gx: Math.floor(mx), gy: Math.floor(my), w: 1, h: 1, height: H, wall: 0x7a7672, roof: 0x34445e, variant: 20 + Math.floor(rw() * 3), ry: Math.atan2(-(b0.y - a0.y), b0.x - a0.x), ox: (mx - Math.floor(mx)) * T, oz: (my - Math.floor(my)) * T, len: D * T + 0.4 });
+        for (let t = 0; t <= 1.001; t += 0.25) { const x = Math.floor(E.x + (nc.x - E.x) * t), y = Math.floor(E.y + (nc.y - E.y) * t); if (!inb(x, y) || Math.hypot(x + 0.5 - c0.x, y + 0.5 - c0.y) < 2.1 || map[y][x] === 'water') continue; clearAt(x, y); map[y][x] = 'wall'; tiles.add(y * 4096 + x); } } }
     // 6) a estrada de cada portão continua para dentro até a primeira rua e para fora até a estrada
     for (const g of gateIdx) { const [gx0, gy0] = ring[g], [tx, ty] = tangent(g); const ox = ty, oy = -tx; /* fora */
       for (const sgn of [-1, 1]) for (let d = 1; d <= (sgn > 0 ? 20 : 24); d++) { /* 02/11: para dentro até achar uma rua de verdade (até 24 casas), para fora até a estrada (20) */ const x = Math.round(gx0 + ox * d * sgn), y = Math.round(gy0 + oy * d * sgn); if (!inb(x, y)) break; const t = map[y][x]; if (t === 'water') break; if (d > 2 && (t === 'road' || t === 'plaza')) break; if (t === 'wall' && !tiles.has(y * 4096 + x)) break; clearAt(x, y); map[y][x] = 'road'; for (const [px2, py2] of [[Math.round(x + tx), Math.round(y + ty)], [Math.round(x - tx), Math.round(y - ty)]]) if (inb(px2, py2) && (map[py2][px2] === 'grass' || map[py2][px2] === 'tree')) { clearAt(px2, py2); map[py2][px2] = 'road'; } } }
@@ -1603,10 +1620,26 @@ export function buildCity(): World {
       const i0 = bridges.indexOf(br); bridges.splice(i0, 1);
       const save = bridgesRef; bridgesRef = [];
       bridges.push({ ax: top.x, ay: top.y, bx: F.x, by: F.y, hA: up, hB: hF, stone: true, half: 2.9, hump: 1.1 });
-      for (const g of gs) { const L = Math.hypot(g.x - F.x, g.y - F.y) || 1, ux = (g.x - F.x) / L, uy = (g.y - F.y) / L, E2 = { x: F.x + ux * Math.min(5, L * 0.55), y: F.y + uy * Math.min(5, L * 0.55) };
-        bridges.push({ ax: F.x, ay: F.y, bx: E2.x, by: E2.y, hA: hF, hB: groundH(E2.x * T, E2.y * T), stone: true, half: 2.2, hump: 0.45 });
-        for (let t = 0; t <= Math.hypot(g.x - E2.x, g.y - E2.y); t += 0.5) { const x = Math.floor(E2.x + (g.x - E2.x) * t / Math.max(0.01, Math.hypot(g.x - E2.x, g.y - E2.y))), y = Math.floor(E2.y + (g.y - E2.y) * t / Math.max(0.01, Math.hypot(g.x - E2.x, g.y - E2.y)));
-          for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (inb(x + dx, y + dy) && (map[y + dy][x + dx] === 'grass' || map[y + dy][x + dx] === 'tree')) map[y + dy][x + dx] = 'road'; } }
+      /* 03/11 (Erling: "tira o cruzamento das pontes, faça um modelo de encaixe novo com duas entradas que se ligam à ponte do rio"): no lugar
+         de dois braços que se cruzavam, UMA peça — o largo de pedra que sai da ponte e se abre até as duas bocas, com o parapeito só por fora
+         e um V em volta da torre entre os portões */
+      { const u0x = (F.x - top.x) / (Math.hypot(F.x - top.x, F.y - top.y) || 1), u0y = (F.y - top.y) / (Math.hypot(F.x - top.x, F.y - top.y) || 1), n0 = { x: -u0y, y: u0x };
+        const h0 = 2.9 / T, w = 2.5 / T;
+        const legs = gs.map((g) => { const L = Math.hypot(g.x - F.x, g.y - F.y) || 1, ux = (g.x - F.x) / L, uy = (g.y - F.y) / L, k = Math.max(2.5, L - 1.7); const E = { x: F.x + ux * k, y: F.y + uy * k }; return { E, u: { x: ux, y: uy }, n: { x: -uy, y: ux }, side: ux * n0.x + uy * n0.y, g }; }).sort((p, q) => q.side - p.side);
+        const [A, B] = legs; const P = (o: { x: number; y: number }, n: { x: number; y: number }, k: number) => ({ x: o.x + n.x * k, y: o.y + n.y * k });
+        /* o vértice do V: onde a borda de dentro de A (−nA) encontra a de dentro de B (+nB) */
+        const pa = P(F, A.n, -w), pb = P(F, B.n, w), den = A.u.x * B.u.y - A.u.y * B.u.x; let V = { x: (A.E.x + B.E.x) / 2, y: (A.E.y + B.E.y) / 2 };
+        if (Math.abs(den) > 1e-3) { const t = ((pb.x - pa.x) * B.u.y - (pb.y - pa.y) * B.u.x) / den; if (t > 0.3) V = { x: pa.x + A.u.x * t, y: pa.y + A.u.y * t }; }
+        const pts = [P(F, n0, h0), P(A.E, A.n, w), P(A.E, A.n, -w), V, P(B.E, B.n, w), P(B.E, B.n, -w), P(F, n0, -h0)];
+        const hE = (e: { x: number; y: number }) => Math.max(WL + 0.15, groundH(e.x * T, e.y * T));
+        bridges.push({ ax: F.x, ay: F.y, bx: (A.E.x + B.E.x) / 2, by: (A.E.y + B.E.y) / 2, hA: hF, hB: hF, stone: true, half: 2.9, hump: 0, poly: pts.flatMap((q) => [q.x, q.y]), ends: [A.E.x, A.E.y, hE(A.E), B.E.x, B.E.y, hE(B.E)] });
+        const poly = pts.flatMap((q) => [q.x, q.y]); const bx0 = Math.floor(Math.min(...pts.map((q) => q.x))), bx1 = Math.ceil(Math.max(...pts.map((q) => q.x))), by0 = Math.floor(Math.min(...pts.map((q) => q.y))), by1 = Math.ceil(Math.max(...pts.map((q) => q.y)));
+        for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) if (inb(x, y) && inPoly(poly, x + 0.5, y + 0.5) && (map[y][x] === 'grass' || map[y][x] === 'tree')) { clearAt(x, y); map[y][x] = 'road'; }
+        /* nada de tocha, banco ou placa em cima do largo */
+        for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if (['torch', 'bench', 'sign', 'barrel', 'crate', 'flowers', 'bush', 'rock', 'vprop', 'lamppost'].includes(q.kind) && inPoly(poly, q.gx + 0.5, q.gy + 0.5)) props.splice(k, 1); }
+        for (const L0 of legs) { const g = L0.g, E2 = L0.E, LL = Math.hypot(g.x - E2.x, g.y - E2.y) || 0.01;
+          for (let t = 0; t <= LL; t += 0.5) { const x = Math.floor(E2.x + (g.x - E2.x) * t / LL), y = Math.floor(E2.y + (g.y - E2.y) * t / LL);
+            for (const [dx, dy] of [[0, 0], [1, 0], [0, 1]]) if (inb(x + dx, y + dy) && (map[y + dy][x + dx] === 'grass' || map[y + dy][x + dx] === 'tree')) map[y + dy][x + dx] = 'road'; } } }
       bridgesRef = save; bridgeIdxN = -1; break; }
     // 7) escadarias por dentro: trechos retos (6 casas na mesma linha) longe dos portões, até 4 por cidade
     { let n = 0; for (let i = 0; i < N && n < 4; i++) { const run: number[] = []; for (let d = 0; d < 6; d++) { const j = (i + d) % N; if (!wallOk[j] || isGate.has(j) || towerAt.has(j)) break; run.push(j); } if (run.length < 6) continue;
@@ -2051,6 +2084,24 @@ export function buildCity(): World {
         for (let k = props.length - 1; k >= 0; k--) { const o = props[k]; if (SOFT.has(o.kind as string) && o.gx >= q.gx && o.gx < q.gx + q.w && o.gy >= q.gy && o.gy < q.gy + q.h) { props.splice(k, 1); if (k < i) i--; } } }
       else { props.splice(i, 1); gone++; } }
     if (moved || gone) console.info(`[mundo] casas sobre a estrada: ${moved} mudaram de lugar, ${gone} saíram`); }
+  /* 03/11 (Erling: "alinhe essas lojas deixando-as um pouco mais longe da pedra de teleporte"): barraca colada numa pedra rúnica (menos de
+     4 casas) ou em cima de uma casa sai dali — vai para o lugar livre mais perto, de preferência na mesma linha de outra barraca vizinha */
+  { const LOW = new Set(['tree', 'plant', 'rock', 'grass', 'flowers', 'herb', 'bush', 'bones', 'deadtree']);
+    const occ = new Set<number>(); const mark = (q: Prop, v: boolean) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) { if (v) occ.add(y * 4096 + x); else occ.delete(y * 4096 + x); } };
+    for (const q of props) if (!LOW.has(q.kind)) mark(q, true);
+    const nearRelic = (x: number, y: number, w: number, h: number) => relics.some((r) => Math.hypot(r.x - (x + w / 2 - 0.5), r.y - (y + h / 2 - 0.5)) < 4.2);
+    const okAt = (x: number, y: number, w: number, h: number) => { for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) { if (!inb(xx, yy)) return false; const t = map[yy][xx]; const inside = xx >= x && xx < x + w && yy >= y && yy < y + h; if (inside && !(t === 'grass' || t === 'plaza')) return false; if (t === 'wall' || t === 'water') return false; if (occ.has(yy * 4096 + xx)) return false; } return !nearRelic(x, y, w, h); };
+    const onHouse = (q: Prop) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (inb(x, y) && map[y][x] === 'wall') return true; return props.some((o) => o !== q && o.kind === 'house' && q.gx < o.gx + o.w && q.gx + q.w > o.gx && q.gy < o.gy + o.h && q.gy + q.h > o.gy); };
+    for (const q of props) { if (q.kind !== 'stall') continue; if (!nearRelic(q.gx, q.gy, q.w, q.h) && !onHouse(q)) continue;
+      mark(q, false); const mates = props.filter((o) => o !== q && o.kind === 'stall' && Math.hypot(o.gx - q.gx, o.gy - q.gy) < 14);
+      let best: [number, number] | null = null, bs = 1e9;
+      for (let r = 1; r <= 10; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const x = q.gx + dx, y = q.gy + dy; if (!okAt(x, y, q.w, q.h)) continue;
+        const align = mates.some((o) => o.gy === y || o.gx === x) ? -3 : 0; const sc = Math.hypot(dx, dy) + align; if (sc < bs) { bs = sc; best = [x, y]; } }
+      if (best) { q.gx = best[0]; q.gy = best[1]; } mark(q, true); }
+    /* 03/11 (Erling: "mude a posição dele segundo a imagem"): o poço da praça de Karmika sai de perto da pedra e vai para o gramado entre as
+       duas ruas, ao norte (o lugar livre mais perto de lá) */
+    { const kr = relics.find((r) => r.name === 'Relíquia: Vale de Karmika'); const well = kr && props.find((q) => q.kind === 'vprop' && q.variant === 2 && Math.hypot(q.gx - kr.x, q.gy - kr.y) < 4);
+      if (kr && well) { mark(well, false); const tx = kr.x - 3, ty = kr.y - 2; let best: [number, number] | null = null; for (let r = 0; r <= 4 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) if (Math.max(Math.abs(dx), Math.abs(dy)) === r && okAt(tx + dx, ty + dy, 1, 1)) best = [tx + dx, ty + dy]; if (best) { well.gx = best[0]; well.gy = best[1]; } mark(well, true); } } }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */

@@ -105,7 +105,7 @@ export const PLANT_ART: Record<string, string[]> = { raspberry: ['planta_01', 'p
 export const ROCK_ART: Record<string, string> = { mossy: 'rocha_01', slab: 'rocha_02', menhir: 'rocha_03', pebbles: 'rocha_04', mossball: 'rocha_05', peak: 'rocha_06', obsidian: 'rocha_07', sandstone: 'rocha_08',
   copper: 'rocha_09', ice: 'rocha_10', darkSmooth: 'rocha_11', volcanic: 'rocha_12' };
 /** props de vila (prancha 59): variante → modelo (3 = banco de toras fica no desenho do jogo) */
-export const VPROP_ART: Record<number, string> = { 0: 'vila_barril', 1: 'vila_caixas', 2: 'vila_poco', 4: 'vila_poste_lampiao', 5: 'vila_placa', 6: 'vila_feno', 7: 'vila_carrinho', 8: 'vila_tronco', 9: 'vila_bigorna' };
+export const VPROP_ART: Record<number, string> = { 0: 'vila_barril', 1: 'vila_caixas', 2: 'vila_poco', 4: 'porto_poste_lampiao', 5: 'vila_placa', 6: 'vila_feno', 7: 'vila_carrinho', 8: 'vila_tronco', 9: 'vila_bigorna' };
 /** carrega o que o mapa usa antes do primeiro chunk (vegetação, pedras, vila, forja, porto, biblioteca, fonte, carroças, armas) */
 export function artPreload(): Promise<void> {
   return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/(casas|muralha|casa_modular)/.test(e.pasta)).map((e) => e.id))).catch(() => undefined);

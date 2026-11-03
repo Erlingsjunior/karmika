@@ -390,6 +390,43 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
   return K.out;
 }
 
+/** 03/11 (Erling: "um modelo de encaixe novo com duas entradas que se ligam à ponte do rio… arquitetura de qualidade"): o largo de pedra
+ *  que recebe a ponte e se abre em duas bocas. pts = contorno (m, locais, y = altura do tabuleiro), open = lados sem parapeito (as bocas e a
+ *  junção com a ponte), H(x,z) = altura do tabuleiro. Lajes com juntas, testa de pedra até o chão, parapeito com balaústres e corrimão,
+ *  pilares com lampião nas quinas das bocas e um pilar mais alto no vértice do V. */
+export function buildBridgeFork(pts: { x: number; z: number }[], open: Set<number>, H: (x: number, z: number) => number, vIdx: number): Built {
+  const K = kit(), sm = stone(0x9a948a), dk = stone(0x6a645c), lt = stone(0xb0a898), jt = stone(0x7a746c);
+  /* tabuleiro: o contorno triangulado e subdividido (lados de até 0,8 m) para seguir a rampa */
+  const sh = new THREE.Shape(pts.map((q) => new THREE.Vector2(q.x, -q.z)));
+  let geo: THREE.BufferGeometry = new THREE.ShapeGeometry(sh).toNonIndexed();
+  for (let pass = 0; pass < 6; pass++) { const pa = geo.attributes.position, out: number[] = []; let split = false;
+    for (let i = 0; i < pa.count; i += 3) { const v = [0, 1, 2].map((k) => new THREE.Vector3().fromBufferAttribute(pa, i + k)); const d = [v[0].distanceTo(v[1]), v[1].distanceTo(v[2]), v[2].distanceTo(v[0])], m = Math.max(...d);
+      if (m <= 0.8) { for (const q of v) out.push(q.x, q.y, q.z); continue; } split = true; const e = d.indexOf(m), a = v[e], b = v[(e + 1) % 3], c = v[(e + 2) % 3], mid = a.clone().add(b).multiplyScalar(0.5);
+      out.push(a.x, a.y, a.z, mid.x, mid.y, mid.z, c.x, c.y, c.z, mid.x, mid.y, mid.z, b.x, b.y, b.z, c.x, c.y, c.z); }
+    geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(out, 3)); if (!split) break; }
+  { const pa = geo.attributes.position, uv: number[] = []; for (let i = 0; i < pa.count; i++) { const x = pa.getX(i), z = -pa.getY(i); pa.setXYZ(i, x, H(x, z) + 0.1, z); uv.push(x / 2, z / 2); }
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals(); }
+  const deck = new THREE.Mesh(geo, sm); deck.receiveShadow = true; K.g.add(deck);
+  /* juntas das lajes: faixas finas em grade de 1,2 m dentro do contorno */
+  { const xs = pts.map((q) => q.x), zs = pts.map((q) => q.z), inside = (x: number, z: number) => { let c = false; for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) { const a = pts[i], b = pts[j]; if ((a.z > z) !== (b.z > z) && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) c = !c; } return c; };
+    for (let x = Math.ceil(Math.min(...xs) / 1.2) * 1.2; x < Math.max(...xs); x += 1.2) for (let z = Math.ceil(Math.min(...zs) / 1.2) * 1.2; z < Math.max(...zs); z += 1.2) { if (!inside(x, z) || !inside(x + 0.6, z) || !inside(x, z + 0.6)) continue; const y = H(x, z) + 0.115; K.add(new THREE.BoxGeometry(1.2, 0.02, 0.05), jt, x + 0.6, y, z, 0, false); K.add(new THREE.BoxGeometry(0.05, 0.02, 1.2), jt, x, y, z + 0.6, 0, false); } }
+  /* bordas: testa de pedra até o chão em volta toda; parapeito nos lados fechados */
+  const n = pts.length;
+  for (let i = 0; i < n; i++) { const a = pts[i], b = pts[(i + 1) % n], L = Math.hypot(b.x - a.x, b.z - a.z); if (L < 0.05) continue; const ry = Math.atan2(b.x - a.x, b.z - a.z), N = Math.max(1, Math.round(L / 0.6));
+    const closed = !open.has(i);
+    for (let k = 0; k < N; k++) { const t0 = k / N, t1 = (k + 1) / N, x0 = a.x + (b.x - a.x) * t0, z0 = a.z + (b.z - a.z) * t0, x1 = a.x + (b.x - a.x) * t1, z1 = a.z + (b.z - a.z) * t1, y0 = H(x0, z0), y1 = H(x1, z1), mx = (x0 + x1) / 2, mz = (z0 + z1) / 2, ym = (y0 + y1) / 2, sl = Math.atan2(y1 - y0, L / N);
+      if (closed || open.size === 0) { const f = K.add(new THREE.BoxGeometry(0.42, 1.9, L / N + 0.03), dk, mx, ym - 0.85, mz, ry); f.rotation.x = -sl; f.rotation.order = 'YXZ'; }
+      if (!closed) continue;
+      const rl = K.add(new THREE.BoxGeometry(0.34, 0.2, L / N + 0.03), lt, mx, ym + 1.02, mz, ry); rl.rotation.order = 'YXZ'; rl.rotation.x = -sl;
+      const pl = K.add(new THREE.BoxGeometry(0.42, 0.16, L / N + 0.03), jt, mx, ym + 0.18, mz, ry); pl.rotation.order = 'YXZ'; pl.rotation.x = -sl; /* rodapé */
+      K.add(new THREE.CylinderGeometry(0.08, 0.12, 0.76, 6), lt, mx, ym + 0.54, mz); } }
+  /* pilares: nas quinas das bocas (lampião) e no vértice do V (mais alto, com capitel e lanterna) */
+  for (let i = 0; i < n; i++) { const prev = (i - 1 + n) % n, isMouth = open.has(i) !== open.has(prev); if (!isMouth && i !== vIdx) continue; const q = pts[i], y = H(q.x, q.z);
+    if (i === vIdx) { K.box(0.95, 1.2, 0.95, q.x, y - 1.0, q.z, dk); K.box(0.75, 2.1, 0.75, q.x, y, q.z, sm); K.box(0.95, 0.22, 0.95, q.x, y + 2.1, q.z, lt); K.add(new THREE.ConeGeometry(0.62, 0.5, 4), dk, q.x, y + 2.57, q.z, Math.PI / 4); K.torch(q.x, y + 2.3, q.z); continue; }
+    K.box(0.72, 1.3, 0.72, q.x, y, q.z, lt); K.box(0.86, 0.18, 0.86, q.x, y + 1.3, q.z, dk); K.torch(q.x, y + 1.48, q.z); }
+  return K.out;
+}
+
 /** cais de pedra: muro a prumo do chão até a água e parapeito baixo com balaústres, seguindo a curva do canal.
  *  pts = pontos da borda (m, locais), lado da água = `side` (+1 → +x) */
 export function buildQuay(pts: { x: number; z: number }[], side: number): Built {

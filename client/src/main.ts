@@ -1540,17 +1540,21 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93)
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 const finish = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, levels: { value: 20 }, uMul: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: new THREE.Vector3(0, 0, 0) }, uSat: { value: 1 }, uVig: { value: 0.6 } },
+  uniforms: { tDiffuse: { value: null }, levels: { value: new THREE.Vector3(31, 63, 31) }, uMul: { value: new THREE.Vector3(1, 1, 1) }, uLift: { value: new THREE.Vector3(0, 0, 0) }, uSat: { value: 1 }, uVig: { value: 0.6 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float levels; uniform vec3 uMul; uniform vec3 uLift; uniform float uSat; uniform float uVig; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform vec3 levels; uniform vec3 uMul; uniform vec3 uLift; uniform float uSat; uniform float uVig; varying vec2 vUv;
     void main(){
       vec4 c = texture2D(tDiffuse, vUv);
       float lum = dot(c.rgb, vec3(0.299, 0.587, 0.114));
       c.rgb = mix(vec3(lum), c.rgb, uSat) * uMul + uLift * (1.0 - lum); /* grade de cor: dia quente, noite fria, Lua de Sangue, Aurora */
       float v = smoothstep(0.38, 0.98, length((vUv - 0.5) * vec2(1.1, 1.0)));
       c.rgb *= 1.0 - v * uVig;
-      float b = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
-      c.rgb = floor(c.rgb * levels + 0.5 + b * 0.4) / levels;
+      /* 03/11 (Erling: "essa sensação de 256 cores… quero a sensação de 16 bit cor"): eram 20 tons por canal com ruído — no escuro virava
+         degrau e mancha. Agora é a profundidade do 16 bits (5-6-5: 32 tons de vermelho e azul, 64 de verde) com o pontilhado ordenado
+         dos consoles (Bayer 4×4), que funde os degraus em gradiente em vez de quadrados */
+      vec2 q = mod(floor(gl_FragCoord.xy), 4.0); int i = int(q.x) + int(q.y) * 4;
+      float bay = i==0?0.0:i==1?8.0:i==2?2.0:i==3?10.0:i==4?12.0:i==5?4.0:i==6?14.0:i==7?6.0:i==8?3.0:i==9?11.0:i==10?1.0:i==11?9.0:i==12?15.0:i==13?7.0:i==14?13.0:5.0;
+      c.rgb = floor(clamp(c.rgb, 0.0, 1.0) * levels + (bay + 0.5) / 16.0) / levels;
       gl_FragColor = c;
     }`,
 });
@@ -2635,10 +2639,11 @@ function frameBody() {
   for (const rl of objs.relics) {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */
-    (rl.runes.material as THREE.MeshBasicMaterial).opacity = known ? 0.8 + 0.2 * k : 0.04;
+    /* 03/11 (Erling: "as runas brilhantes… amarelo antes de marcar, azul depois de marcar"): as runas sempre brilham — douradas chamando, azul mágico depois */
+    { const rm = rl.runes.material as THREE.MeshBasicMaterial; if (rl.ring.userData.stone) { rm.color.setHex(known ? 0x4ab0ff : 0xffc83a); rm.opacity = known ? 0.85 + 0.15 * k : 0.55 + 0.4 * k; } else rm.opacity = known ? 0.8 + 0.2 * k : 0.04; }
     (rl.ring.material as THREE.MeshBasicMaterial).color.setHex(known ? (rl.ring.userData.col as number | undefined) ?? 0x5aa8ff : 0xffc83a); (rl.ring.material as THREE.MeshBasicMaterial).opacity = known ? 0.35 + 0.2 * k : 0.55 + 0.4 * k;
     rl.ring.scale.setScalar(known ? 0.72 + 0.04 * k : 1.0 + 0.12 * k); rl.ring.rotation.y = t * (known ? 0.25 : 0.5);
-    if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: 0xffe0a0, c1: (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
+    if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: rl.ring.userData.stone ? 0xbfe6ff : 0xffe0a0, c1: rl.ring.userData.stone ? 0x3a8aff : (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
   }
   /* tochas, chamas, brasas */
   const litSources: { pos: THREE.Vector3; r: number }[] = [];

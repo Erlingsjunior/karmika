@@ -1,3 +1,4 @@
+import { WAGON_BLOCK } from '../caravanas';
 /* COLISÃO DO HERÓI (regra de ouro: mobilidade acima da física): cantos do corpo, muralhas e caminho de ronda, degraus, muros baixos e cercas, guarda-peito das pontes, sólidos do cenário, pontos de trabalho, troncos e bichos. Saiu do main.ts (02/11). */
 import { rampartAt, stairTopAt, stairDeck, heightAt, bridgeDeck, waterSD, groundH, WL } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
@@ -60,7 +61,9 @@ for (const p of K.city.props) { if (!(p.kind === 'library' || (p.kind === 'stati
     for (let ty = Math.floor(c.y - 0.6); ty <= Math.floor(c.y + 0.6); ty++) for (let tx = Math.floor(c.x - 0.6); tx <= Math.floor(c.x + 0.6); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } } };
   for (const [x0, z0, x1, z1] of (p.kind === 'library' ? LIB_WALLS : HALL_WALLS)[p.variant ?? 0] ?? []) wall(x0, z0, x1, z1); }
 /** bichos são corpos: o herói não entra neles (só atravessa na investida e na esquiva); afastar-se é sempre livre */
-function enemyBlock(x: number, y: number) { const n = K.hero.actName; if (n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge') return false;
+/** 03/11 (Erling: "não posso atravessar carroças"): dentro da caixa da carroça (com folga do corpo do herói)? */
+function inWagon(x: number, y: number) { const xm = x * T, zm = y * T, rr = R * T * 0.8; for (const b of WAGON_BLOCK) { const dx = xm - b.x, dz = zm - b.z, s = Math.sin(b.yaw), c = Math.cos(b.yaw), lx = dx * c - dz * s, lz = dx * s + dz * c - b.zc; if (Math.abs(lx) < b.hw + rr && Math.abs(lz) < b.hl + rr) return true; } return false; }
+function enemyBlock(x: number, y: number) { if (WAGON_BLOCK.length && inWagon(x, y) && !inWagon(K.state.fx, K.state.fy)) return true; const n = K.hero.actName; if (n === 'dash' || n === 'jet' || n === 'rush' || n === 'charge') return false;
   for (const e of K.game.enemies.list) { if (!e.active || !e.alive || e.state === 'dead') continue; const ex = e.pos.x / T, ey = e.pos.z / T, m = (e.def.radius * 0.8 + 0.45) / T, dn = Math.hypot(x - ex, y - ey); if (dn < m && dn < Math.hypot(K.state.fx - ex, K.state.fy - ey)) return true; } return false; }
 /** big = só os sólidos grandes (fonte, poço, barraca, mausoléu, loja, ponto de trabalho): esses nunca se atravessam, nem se espremendo */
 function solidHit(x: number, y: number, big = false) { const l = solids.get(Math.floor(y) * 4096 + Math.floor(x)); if (!l) return false; for (const c of l) if ((!big || c.r >= 0.7) && Math.hypot(x - c.x, y - c.y) < c.r + R) return true; return false; }
