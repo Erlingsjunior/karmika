@@ -1,5 +1,6 @@
+import { badge } from '../celebrate';
 /* ÍNDICE DE PROPS POR TILE, BAÚS, KIT INICIAL E PESCA: a vara, a boia, a linha e a fisgada. Saiu do main.ts (02/11). */
-import { type Slot, genGear } from '../loot';
+// (03/11: o kit não traz mais equipamento)
 import * as THREE from 'three';
 import { fine } from '../dual3d';
 import { WL } from '../world';
@@ -14,16 +15,16 @@ const chestsOpen = new Set<(typeof K.city.props)[number]>();
 function welcomeKit(_cx: number, _cz: number, _cy: number): boolean { return false; } // o kit agora mora no Baú do Caminhante
 /** presentes de começo de jornada: vão direto para o Baú do Caminhante (uma vez por personagem) */
 function giveStartKit() {
-  try { if (localStorage.getItem('karmika.startkit')) return; localStorage.setItem('karmika.startkit', '1'); } catch { return; }
-  const L = K.game.st.lvl, slots: Slot[] = ['weapon', 'shield', 'armor', 'helm', 'boots', 'cape', 'shoulders'];
-  /* 26/10 (Erling: "o personagem não pode receber de kit de início itens que ele não pode usar — metralhadora, itens de anão, de guerreiro;
-     somos humanos puros"): o kit é de aprendiz e da raça. Peças simples (couro, broquel, capuz), arma leve que qualquer um maneja;
-     o anão ganha o martelo da Forja, o elfo um arco. Nada de arma de caminho (Tecnocrata, Caçador, Vampiro, Lobisomem) */
-  const o = K.profile?.origin ?? 'human', pk = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
-  const KIT: Partial<Record<Slot, string>> = { weapon: o === 'dwarf' ? 'Martelo' : o === 'elf' ? 'Arco Curto' : pk(['Espada Curta', 'Machado de Mão', 'Adaga']), armor: 'Gibão de Couro', shield: 'Broquel', helm: pk(['Capuz', 'Elmo de Couro']), boots: 'Botas de Couro', cape: pk(['Capa de Lã', 'Capa Curta de Viagem']), shoulders: 'Ombreiras de Couro' };
-  const kit = slots.filter((sl) => !(o === 'elf' && sl === 'shield')).map((sl) => genGear(Math.max(2, L + 1), sl === 'weapon' || sl === 'armor' ? 'magic' : 'normal', sl, KIT[sl])).filter((g) => !g.only || K.walksPath(g.only));
-  K.inv.vaultPut([['potion', 5], ['bread', 10], ['scroll_return', 1]], kit);
-  K.game.logMsg('🎁 Presentes de começo de jornada no seu Baú do Caminhante, perto do centro da vila.', '#ffe08a');
+  /* 03/11 (Erling: "o kit de boas-vindas nunca chega… tem que vir os itens de gathering e um kit iniciante, mas sem armas, armaduras e
+     escudos: ferramentas, poções de vida, carnes, um drone de vida e um robô de defesa nível 2 que duram 15 dias cada"): vai DIRETO para a
+     mochila (o baú da praça ninguém via), as ferramentas já entram nas mãos, e chega também para quem já tinha personagem (marca nova). */
+  try { if (localStorage.getItem('karmika.startkit.v2')) return; localStorage.setItem('karmika.startkit.v2', '1'); } catch { return; }
+  const tools = ['axe_s', 'pick_s', 'knife_f', 'rod'];
+  const items: [string, number][] = [['potion', 8], ['cooked', 6], ['jerky', 6], ['skewer', 4], ['bread', 6], ['scroll_return', 1], ['drone_cura_k', 1], ['escudo_auto_k', 1]];
+  for (const id of tools) { K.inv.grant(id, 1); try { K.inv.equipTool(id, true); } catch { /* espaço já ocupado: fica na mochila */ } }
+  for (const [id, n] of items) K.inv.grant(id, n);
+  K.game.logMsg('🎁 Presente de começo de jornada na sua mochila: machado, picareta, faca de esfolar e vara de pesca (já nas mãos), 8 poções de vida, carnes e pães, um Pergaminho do Regresso, um Drone de Cura e um Escudo Automatizado Mk II que duram 15 dias cada — use um, o outro ou os dois juntos.', '#ffe08a');
+  badge('🎁', 'Presente de começo de jornada', 'olhe a mochila (I)');
 }
 setTimeout(giveStartKit, 1500);
 

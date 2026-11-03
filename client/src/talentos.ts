@@ -111,7 +111,7 @@ export function treeOf(kit: string): TNode[] {
 export const branchesOf = (kit: string) => (C[kit] ?? C.human).branches;
 export const classNameOf = (kit: string) => (C[kit] ?? C.human).name;
 /** pontos de talento: 1 a cada 2 níveis e +1 a cada 10 */
-export const talentPoints = (lvl: number) => Math.floor(Math.max(0, lvl - 1) / 2) + Math.floor(lvl / 10);
+export const talentPoints = (lvl: number) => 1 + Math.floor(Math.max(0, lvl - 1) / 2) + Math.floor(lvl / 10); /* 1 já no nível 1 */
 
 export function createTalents(kit: () => string, lvl: () => number, onChange: () => void) {
   const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }
