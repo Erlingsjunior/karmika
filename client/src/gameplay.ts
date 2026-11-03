@@ -11,6 +11,7 @@ import type { AudioEngine } from './audio';
 import { genGear, rollRarity, RARITY, type Gear, type Rarity } from './loot';
 import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
+import { fams, runeDrop, frestaMark, RCOL, RNAME, parseRune, type RFam } from './runas-magia';
 import type { SkillId } from './kits';
 import { createEnemies, ELITE_TYPES, type Enemy } from './enemies';
 import { buildBeast, buildWolf, type Beast } from './werewolf3d';
@@ -336,6 +337,7 @@ export function createGameplay(d: GameplayDeps) {
       if (pn > 1) for (const k of Object.keys(boost) as Rarity[]) boost[k] = (boost[k] ?? 1) * (1 + 0.1 * (pn - 1)); /* grupo: raridade melhor */
       if (n) spawnGear(e.pos.x, e.pos.z, e.pos.y, ilvl, boost, n, elite ? 'rare' : undefined);
       if (elite && Math.random() < 0.35) dropItem(e, 'tome', 1);
+      { const rn = runeDrop(tier, big); if (rn) { dropItem(e, rn, 1); const p = parseRune(rn)!; logMsg(`ᛟ Uma runa caiu: ${RNAME[p.f]}`, '#' + RCOL[p.f].toString(16).padStart(6, '0')); } } /* 03/11: runas kármicas no loot */
     }
     if (shared) return;
     if (st.sp.has('frenzy')) { st.fury = Math.min(5, st.fury + 2); logMsg('✦ Frenesi: +2 de Fúria', '#ffb060'); }
@@ -399,10 +401,40 @@ export function createGameplay(d: GameplayDeps) {
   /** recursos de luta (Ímpeto etc.): enchem ao dar e receber golpes; itens de Geração aumentam */
   let lastFight = -99;
   function gainRes(n: number) { lastFight = now; if (st.res.mode !== 'fight') return; st.mp = Math.min(st.mpMax, st.mp + n * (1 + st.gen) * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
+  /* ===== RUNAS KÁRMICAS NAS MAGIAS (03/11) — o que cada runa faz em qualquer magia ativa; os efeitos próprios de cada magia
+     (Escudo Arremessado com a Fome, torres com o Labirinto…) estão no código da magia. Regras: runas-magia.ts e o compêndio. */
+  let runeJump = false;
+  const hexC = (f: RFam) => RCOL[f];
+  function runeSpark(e: Enemy, f: RFam, n = 6) { const c = hexC(f); for (let i = 0; i < n; i++) d.particles.spawn(e.pos.x, e.pos.y + 1.1, e.pos.z, { vx: rnd(-1.6, 1.6), vy: rnd(0.5, 2.4), vz: rnd(-1.6, 1.6), life: 0.5, s0: 0.24, s1: 0.03, c0: 0xffffff, c1: c, a: 0.95, drag: 1.5 }); }
+  function runeHit(e: Enemy, dmg: number, RF: Partial<Record<RFam, number>>, crit: boolean) {
+    if (RF.lagrima) { e.slow = Math.max(e.slow ?? 0, 1.4 * RF.lagrima); runeSpark(e, 'lagrima', 3); }
+    if (RF.fome) { e.burn = Math.max(e.burn ?? 0, 2 + RF.fome); e.burnTick = e.burnTick ?? 0; st.hp = Math.min(st.hpMax, st.hp + dmg * 0.04 * RF.fome); runeSpark(e, 'fome', 3); }
+    if (RF.olho && crit) { e.mark = Math.max(e.mark ?? 0, now + 1.5 * RF.olho); runeSpark(e, 'olho', 5); }
+    if (RF.fresta) runeSpark(e, 'fresta', 2);
+    if (RF.labirinto && !runeJump && Math.random() < 0.3 * RF.labirinto) { /* o Labirinto: o acerto salta para mais um inimigo perto, com metade da força */
+      let nx: Enemy | null = null, bd = 6; for (const o of enemies.list) if (o !== e && o.alive && o.active && !o.def.passive) { const q = Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z); if (q < bd) { bd = q; nx = o; } }
+      if (nx) { const a = e.pos.clone().setY(e.pos.y + 1.1), b = nx.pos.clone().setY(nx.pos.y + 1.1); for (let i = 0; i <= 8; i++) { const p2 = a.clone().lerp(b, i / 8); d.particles.spawn(p2.x, p2.y, p2.z, { vx: 0, vy: 0.3, vz: 0, life: 0.4, s0: 0.2, s1: 0.04, c0: 0xffffff, c1: hexC('labirinto'), a: 0.9 }); }
+        runeJump = true; try { hitEnemy(nx, 0.5, false, a); } finally { runeJump = false; } } }
+  }
+  /** ao lançar uma magia com runa: a Ampulheta encurta a recarga, a Lágrima cura um pouco, a Fresta cobra vida e marca a alma */
+  function runeCast(id: string, hp: THREE.Vector3) {
+    const RF = fams(kitKey, id), ks = Object.keys(RF) as RFam[]; if (!ks.length) return;
+    if (RF.ampulheta && cdX[id]) cdX[id] *= Math.max(0.5, 1 - 0.15 * RF.ampulheta);
+    if (RF.lagrima) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02 * RF.lagrima * (1 + stance.heal));
+    if (RF.fresta) { st.hp = Math.max(1, st.hp - st.hpMax * 0.03); const v = frestaMark(); if (v === 20 || v === 120 || v === 400) logMsg(v >= 400 ? '🌑 A tua alma está aberta para o entre. Os Desfiados sabem o teu nome.' : v >= 120 ? '🌑 A Fresta racha a tua alma: a Ordem do Fio passou a te olhar torto.' : '🌑 Um fio de cinza na alma: a Fresta cobra o que dá.', '#a890d8'); }
+    for (const f of ks) { const c = hexC(f); for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; d.particles.spawn(hp.x + Math.cos(a) * 0.9, hp.y + 0.2, hp.z + Math.sin(a) * 0.9, { vx: Math.cos(a) * 0.4, vy: rnd(1.2, 2.4), vz: Math.sin(a) * 0.4, life: 0.7, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: c, a: 0.85 }); } }
+  }
+  /** chão em chamas (a Fome): queima quem pisar por `dur` s */
+  function fireGround(x: number, z: number, r: number, dur: number, pw: number) {
+    const y = d.world.heightAt(x, z); let t = dur, tk = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t -= dt2; tk -= dt2; if (Math.random() < dt2 * 26 * r) { const a = Math.random() * 6.283, q = Math.sqrt(Math.random()) * r; d.particles.spawn(x + Math.cos(a) * q, y + 0.1, z + Math.sin(a) * q, { vx: 0, vy: rnd(0.8, 1.8), vz: 0, life: 0.55, s0: 0.32, s1: 0.04, c0: 0xffe08a, c1: 0xff4a1a, a: 0.9 }); }
+      if (tk <= 0) { tk = 0.5; for (const e of enemies.list) if (e.alive && e.active && !e.def.passive && Math.hypot(e.pos.x - x, e.pos.z - z) < r + e.def.radius) { e.burn = Math.max(e.burn ?? 0, 2); e.burnTick = e.burnTick ?? 0; const dm = Math.round((2 + st.lvl * 0.9) * pw); if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#ff9a4a'); } } } });
+  }
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
     const silver = kitKey === 'cac' && DARK_T.has(e.type) ? 0.25 : 0; /* caçador: prata em demônio, morto-vivo e fera da noite — SOMA no balde (regra 8) */
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
-    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
+    const RF = fams(kitKey, skill); /* 03/11: as runas encaixadas nesta magia */
+    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
@@ -418,7 +450,7 @@ export function createGameplay(d: GameplayDeps) {
        SOMA num balde só e o balde tem teto: no máximo +30% e no mínimo −30%. Nada disso multiplica com nada; assim,
        no nível 100, ninguém vira indestrutível por estar na noite certa, no evento certo e na postura certa. */
     const sit = Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1)));
-    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver;
+    const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver + 0.3 * (RF.fresta ?? 0);
     let dmg = (rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1);
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
@@ -433,6 +465,7 @@ export function createGameplay(d: GameplayDeps) {
     { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1 && !e.def.passive) dmg /= 1 + 0.5 * (pn - 1); } /* GRUPO (26/10): bicho que enfrenta um grupo aguenta mais — cada companheiro perto vale +50% de vida (o golpe de cada um entra dividido, e assim fica igual nas duas máquinas) */
     dmg = dmg <= 0 ? 0 : Math.max(1, Math.round(dmg));
     if (marked) st.hp = Math.min(st.hpMax, st.hp + dmg * 0.25);
+    if (dmg > 0 && e.alive) runeHit(e, dmg, RF, crit);
     if (inStrike && thunderN > 0 && thunderT > 0 && e.alive) thunderProc(e);
     if (buff.burnT > 0 && e.alive) { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; }
     if (skill === 'combo' && comboIdx === 3 && (e.burn ?? 0) > 0) { // detonação das brasas
@@ -885,8 +918,8 @@ export function createGameplay(d: GameplayDeps) {
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.62, 0.7, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6ae0ff, transparent: true, opacity: 0.3, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.y = 0.04; g.add(ring);
     g.scale.set(1, 0.01, 1); fxAdd(g); g.userData.dyn = true; return { g, head, muzzle, coil, orb, tube };
   }
-  function placeTower(kind: 'gun' | 'tesla' | 'mortar', x: number, z: number, sc: { dmg: number; dur: number; tier: number }) {
-    towers[kind]?.end(); const T0 = mkTower(kind, x, z), dur = (kind === 'gun' ? 16 : kind === 'tesla' ? 14 : 15) * sc.dur; let fireT = 0.6, t = 0, alive = true, burst = 0, burstT = 0, target: Enemy | null = null;
+  function placeTower(kind: 'gun' | 'tesla' | 'mortar', x: number, z: number, sc: { dmg: number; dur: number; tier: number }, copy = 0) {
+    if (!copy) { towers[kind]?.end(); for (let c = 1; c <= 2; c++) towers[kind + c]?.end(); } /* as cópias do Labirinto saem junto com a torre nova */ const T0 = mkTower(kind, x, z), dur = (kind === 'gun' ? 16 : kind === 'tesla' ? 14 : 15) * sc.dur; let fireT = 0.6, t = 0, alive = true, burst = 0, burstT = 0, target: Enemy | null = null;
     const gy = d.world.heightAt(x, z); d.audio.block(); for (let i = 0; i < 26; i++) { const a = rnd(0, 6.283); d.particles.spawn(x + Math.cos(a) * 0.5, gy + 0.1, z + Math.sin(a) * 0.5, { vx: Math.cos(a) * rnd(1, 3), vy: rnd(0.5, 2), vz: Math.sin(a) * rnd(1, 3), life: 0.7, s0: 0.35, s1: 0.8, c0: 0xc9b088, c1: 0x6a5a40, a: 0.35, drag: 2 }); }
     const tk = { t: dur, fn: (dt2: number, left: number) => { if (!alive) return; t += dt2; fireT -= dt2; const g = T0.g; g.scale.y = Math.min(1, 0.01 + t * 2.6) * (left < 0.4 ? left / 0.4 : 1);
         const tp = new THREE.Vector3(x, 0, z), range = kind === 'gun' ? 14 : kind === 'tesla' ? 9 : 26; if (!target || !target.alive || Math.hypot(target.pos.x - x, target.pos.z - z) > range + 1) target = enemies.nearest(tp, range);
@@ -912,7 +945,7 @@ export function createGameplay(d: GameplayDeps) {
           for (let k = 0; k < 8; k++) d.particles.spawn(from.x, from.y, from.z, { vx: rnd(-1, 1), vy: rnd(2, 4), vz: rnd(-1, 1), life: 0.18, s0: 0.6, s1: 0.1, c0: 0xffffff, c1: 0xffa040, a: 1 }); }
         if (kind === 'mortar' && T0.tube) T0.tube.position.y += (0 - T0.tube.position.y) * Math.min(1, dt2 * 6);
       }, end: () => { alive = false; const p = T0.g.position; for (let k = 0; k < 16; k++) d.particles.spawn(p.x + rnd(-0.4, 0.4), p.y + 0.5, p.z + rnd(-0.4, 0.4), { vx: rnd(-1, 1), vy: rnd(0.5, 2), vz: rnd(-1, 1), life: 0.6, s0: 0.3, s1: 0.05, c0: 0xaaaaaa, c1: 0x444444, a: 0.7 }); d.scene.remove(T0.g); if (towers[kind] === handle) towers[kind] = undefined; } };
-    const handle = { end: () => { tk.t = 0; } }; towers[kind] = handle; ticks.push(tk);
+    const handle = { end: () => { tk.t = 0; } }; towers[copy ? kind + copy : kind] = handle; ticks.push(tk);
   }
   function hitArc(sk: string, cx: number, cz: number, yaw: number, reach: number, arc: number, mul: number, stop: boolean, fx?: (e: Enemy) => void) {
     const from = new THREE.Vector3(cx, 0, cz); let n = 0; skill = sk;
@@ -1307,7 +1340,7 @@ export function createGameplay(d: GameplayDeps) {
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
       const sc = skillScale(id); cost = Math.round(cost * sc.cost * (st.sp.has('m_staff') ? 0.8 : 1));
       const SND: Record<string, 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy'> = { smite: 'holy', consecrate: 'holy', avenging: 'holy', drain: 'arcane', batswarm: 'arcane', bloodnova: 'fire', nightform: 'arcane', howl: 'earth', rend: 'earth', kick: 'earth', hamstring: 'arcane', hatchet: 'arcane', shieldwall: 'holy', winter: 'ice', thunder: 'shock', valkyrie: 'holy', flame: 'fire', forge: 'fire', poison: 'earth', warcry: 'holy', spear: 'arcane', whirl: 'arcane', mark: 'holy', fenrir: 'earth', hammerthrow: 'earth', stonerune: 'earth', mountain: 'earth', avatar: 'earth', overcharge: 'shock', shocktrap: 'shock', medic: 'holy', railgun: 'shock', mech: 'shock', fireball: 'fire', meteor: 'fire', chainlight: 'shock', blizzard: 'ice', frostnova: 'ice', archon: 'arcane', blink: 'arcane', curse: 'arcane', hellhound: 'fire', demonform: 'fire', holyflask: 'holy', volley: 'arcane', huntform: 'holy' };
-      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm; const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); d.audio.spell(SND[id] ?? 'arcane'); return true; };
+      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm; const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
       const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(new THREE.RingGeometry(0.8 * r, 1.0 * r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0 }); };
       switch (id) {
         /* ---- Guerreira Nórdica 1–20 ---- */
@@ -1407,9 +1440,16 @@ export function createGameplay(d: GameplayDeps) {
           else { spinner = new THREE.Group(); const lm = new THREE.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }); const face = new THREE.Mesh(new THREE.CircleGeometry(0.38, 28), lm); face.rotation.x = -Math.PI / 2; spinner.add(face); const rim = new THREE.Mesh(new THREE.TorusGeometry(0.38, 0.04, 6, 28), new THREE.MeshBasicMaterial({ color: 0xfff6d0 })); rim.rotation.x = Math.PI / 2; spinner.add(rim); }
           disc.add(spinner); const pos = h.handPos(new THREE.Vector3()); pos.y = Math.max(pos.y, 1.15); disc.position.copy(pos); fxAdd(disc);
           const hit = new Set<Enemy>(); let left = 3 + (sc.tier >= 2 ? 1 : 0), back = false, life = 4, cur: Enemy | null = null; const range = 10 * sc.range;
+          /* 03/11 (Erling: "um escudo arremessado pode agora fazer um rastro de fogo no chão, queimar os inimigos e explodir no fim, deixando o chão pegando fogo"): a Fome no Escudo Arremessado */
+          const RFs = fams(kitKey, 'shieldthrow'); let trailT = 0, boomed = false;
           { let best: Enemy | null = null, bs = 1e9; for (const e of enemies.list) { if (!e.alive || !e.active || e.def.passive) continue; const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z, along = dx * dir.x + dz * dir.z, lat = Math.abs(dx * dir.z - dz * dir.x); if (along < 0 || along > range || lat > 2.4 + e.def.radius) continue; const sco = along + lat * 2; if (sco < bs) { bs = sco; best = e; } } cur = best; }
           const free = new THREE.Vector3(pos.x + dir.x * range, pos.y, pos.z + dir.z * range);
           ticks.push({ t: 5, fn: (dt2) => { life -= dt2; spinner.rotation.y += dt2 * 22; const hh = d.getHero(); let goal: THREE.Vector3;
+            if (RFs.fome) { if (!back) { trailT -= dt2; if (trailT <= 0) { trailT = 0.12; fireGround(disc.position.x, disc.position.z, 0.85, 2.5 * RFs.fome, 0.5 * RFs.fome); } }
+              else if (!boomed) { boomed = true; const bx = disc.position.x, bz = disc.position.z, by = d.world.heightAt(bx, bz); st.shake = Math.max(st.shake, 0.3); d.audio.spell('fire');
+                for (let k = 0; k < 40; k++) d.particles.spawn(bx, by + 1, bz, { vx: rnd(-5, 5), vy: rnd(1, 6), vz: rnd(-5, 5), life: 0.7, s0: 0.5, s1: 0.05, c0: 0xffe08a, c1: 0xff3a10, a: 1, drag: 2, g: 3 });
+                for (const e of enemies.list) if (e.alive && e.active && !e.def.passive && Math.hypot(e.pos.x - bx, e.pos.z - bz) < 3 + e.def.radius) { const dm = Math.round((10 + st.lvl * 3) * sc.dmg * RFs.fome); e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.4), dm, true, '#ff7a3a'); }
+                fireGround(bx, bz, 2.6, 4 * RFs.fome, 0.8 * RFs.fome); } }
             if (back || life < 0.6) { back = true; goal = hh.handPos(new THREE.Vector3()); goal.y = Math.max(goal.y, 1.1); } else if (cur && cur.alive) goal = cur.pos.clone().setY(cur.pos.y + 1.1); else goal = free;
             const dv = goal.clone().sub(disc.position), dd = dv.length(), stp = 21 * dt2;
             if (Math.random() < dt2 * 50) d.particles.spawn(disc.position.x, disc.position.y, disc.position.z, { vx: rnd(-0.3, 0.3), vy: rnd(-0.1, 0.3), vz: rnd(-0.3, 0.3), life: 0.35, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: 0xffd24a, a: 0.9 });
@@ -1540,7 +1580,10 @@ export function createGameplay(d: GameplayDeps) {
         /* ---- Tecnocrata formado: torres ---- */
         case 'gunturret': case 'teslatower': case 'mortar': { if (!ok('throw')) return false; const kind = id === 'gunturret' ? 'gun' : id === 'teslatower' ? 'tesla' : 'mortar'; const x = tx, z = tz; d.audio.swing();
           droneGo.set(x, d.world.heightAt(x, z) + 1.4, z); droneGoT = TEMPO * 0.55; if (sideDrone) sideDrone.droneFlash = 1;
-          pending.push({ at: now + TEMPO * 0.5, fn: () => { placeTower(kind, x, z, sc); } }); logMsg(kind === 'gun' ? '🔫 Torre Metralhadora armada' : kind === 'tesla' ? '⚡ Torre Tesla armada' : '💣 Morteiro armado', '#6ae0ff'); return true; }
+          pending.push({ at: now + TEMPO * 0.5, fn: () => { placeTower(kind, x, z, sc);
+            /* 03/11 (Erling: "a torre que coloco no chão, posso colocar duas agora, ou três"): o Labirinto arma cópias da torre em volta (Viva ou Desperta: duas cópias) */
+            const L2 = fams(kitKey, id).labirinto ?? 0, nC = L2 >= 2 ? 2 : L2 > 0 ? 1 : 0; for (let c = 0; c < nC; c++) { const a = yaw + (c === 0 ? Math.PI / 2 : -Math.PI / 2), cx2 = x + Math.sin(a) * 2.6, cz2 = z + Math.cos(a) * 2.6;
+              for (let k = 0; k < 16; k++) d.particles.spawn(cx2, d.world.heightAt(cx2, cz2) + 0.3, cz2, { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 0.6, s0: 0.25, s1: 0.03, c0: 0xffffff, c1: RCOL.labirinto, a: 0.9 }); placeTower(kind, cx2, cz2, sc, c + 1); } } }); logMsg(kind === 'gun' ? '🔫 Torre Metralhadora armada' : kind === 'tesla' ? '⚡ Torre Tesla armada' : '💣 Morteiro armado', '#6ae0ff'); return true; }
         default: return false;
       }
     },

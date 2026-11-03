@@ -145,7 +145,7 @@ function artPt(id: string, v: THREE.Vector3, k: number, flip: boolean) { const S
 export const WAGON_BLOCK: { x: number; z: number; yaw: number; hw: number; hl: number; zc: number }[] = [];
 const isIn = (o: THREE.Object3D, p: THREE.Object3D | null | undefined) => { let q: THREE.Object3D | null = o; while (q) { if (q === p) return true; q = q.parent; } return false; };
 /** de que lado fica a frente do modelo (conferido em carrocas.html) */
-export const ART_FLIP = { steam: false, dwarf: true };
+export const ART_FLIP = { steam: true, dwarf: true }; /* 03/11 (Erling): a de vapor andava de ré — a frente é o lado dos varais */
 export function buildSteamWagon(): Wagon {
   const M = mats(), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, p: THREE.Object3D = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; p.add(o); return o; };
@@ -205,7 +205,7 @@ export function buildSteamWagon(): Wagon {
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
   /* 03/11 (Erling: "aumenta um pouco e ela precisa soltar fumaça, é a vapor"): 45% maior, e a fumaça sai da chaminé do modelo */
   /* 03/11 (Erling: "precisam ser carroças grandes… podem ser 3 ou 4× maior"): ~3× — rodas de 1,7 m, a carroça bem mais alta que um homem */
-  const KS = 1.9; if (artMesh('carroca_tecnocrata')) { (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = artPt('carroca_tecnocrata', new THREE.Vector3(-0.5, 1.9, -0.12), KS, ART_FLIP.steam).add(new THREE.Vector3(0, 0.2, 0)); lamp.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 1.2, 1.1), KS, ART_FLIP.steam)); }
+  const KS = 1.9; if (artMesh('carroca_tecnocrata')) { (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = artPt('carroca_tecnocrata', new THREE.Vector3(-0.5, 1.9, -0.12), KS, ART_FLIP.steam).add(new THREE.Vector3(0, 0.2, 0)); lamp.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 1.2, -1.1), KS, ART_FLIP.steam)); }
   return artBody(W0, 'carroca_tecnocrata', () => false, KS, ART_FLIP.steam);
 }
 /** barra de vida da carroça (igual nas três) */
@@ -253,7 +253,7 @@ export function buildOreCart(): Wagon {
   const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 4.2) /* só os tirantes entre as parelhas: os varais são os do modelo */ || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
   return artBody(W0, 'carroca_anao', keepH, 1.8, ART_FLIP.dwarf, -1);
 }
-/** a carroça coberta dos mercadores humanos: caixa de tábuas, lona em arcos, sacos e caixotes, puxada por um cavalo baio */
+/** a carroça coberta dos mercadores humanos: caixa de tábuas, lona em arcos, sacos e caixotes, puxada por quatro cavalos */
 export function buildMerchantWagon(): Wagon {
   const M = mats(), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, p: THREE.Object3D = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; p.add(o); return o; };
@@ -270,7 +270,9 @@ export function buildMerchantWagon(): Wagon {
   add(new THREE.CylinderGeometry(0.06, 0.06, 1.1, 6).rotateZ(Math.PI / 2), M.dark, 0, 1.4, 1.2);
   for (const sx of [-1, 1]) add(new THREE.CylinderGeometry(0.035, 0.035, 2.4, 5).rotateX(Math.PI / 2), M.dark, sx * 0.5, 0.9, 2.6);
   /* parelha: dois cavalos lado a lado */
-  const team: Horse4[] = []; for (const sx of [-0.62, 0.62]) { const h = teamHorse(sx < 0 ? 'cavalo_orm' : 'cavalo_porto_caldeira', undefined, { coat: sx < 0 ? 0x8a5a34 : 0x6a4a30, mane: 0x2a1a10, socks: sx < 0 }); h.root.position.set(sx, 0, 3.7); body.add(h.root); team.push(h); }
+  const team: Horse4[] = []; /* 03/11 (Erling: "4 cavalos melhor que 2, gostei mais"): duas parelhas, como a dos anões */
+  for (const [sx, zz] of [[-0.66, 3.7], [0.66, 3.7], [-0.66, 6.5], [0.66, 6.5]] as [number, number][]) { const i = team.length, h = teamHorse(i % 2 ? 'cavalo_porto_caldeira' : 'cavalo_orm', [undefined, undefined, 0xd8c8b0, 0x8a7a6a][i], { coat: sx < 0 ? 0x8a5a34 : 0x6a4a30, mane: 0x2a1a10, socks: sx < 0 }); h.root.position.set(sx, 0, zz); body.add(h.root); team.push(h); }
+  for (const sx of [-0.66, 0.66]) add(new THREE.CylinderGeometry(0.03, 0.03, 2.8, 5).rotateX(Math.PI / 2), M.dark, sx, 0.95, 5.1); /* tirantes entre as parelhas */
   add(new THREE.BoxGeometry(1.4, 0.08, 0.08), M.dark, 0, 0.95, 2.5); const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
   add(new THREE.CylinderGeometry(0.025, 0.025, 1.2, 5), M.dark, -0.65, 2.0, -1.7);
   const flag = add(new THREE.PlaneGeometry(0.45, 0.28, 4, 1), std(0x3a6a9a, { side: THREE.DoubleSide }), -0.65, 2.45, -1.92); flag.rotation.y = Math.PI / 2;
@@ -280,7 +282,7 @@ export function buildMerchantWagon(): Wagon {
   root.traverse((o) => { o.frustumCulled = true; });
   /* 03/11 (Erling: "tem que ser TODAS"): a carroça das estradas humanas também vira a carroça do Herik (os dois cavalos continuam) */
   const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'human' };
-  const keepH = (o: THREE.Object3D) => ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
+  const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 4.5) || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
   return artBody(W0, 'carroca_anao', keepH, 1.8, ART_FLIP.dwarf, -1);
 }
 /** a carroça caída: tomba de lado, uma roda solta, carga espalhada (resgate e emboscada perdida) */

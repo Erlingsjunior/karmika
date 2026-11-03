@@ -1193,7 +1193,7 @@
   .orb u { left: 17%; right: 17%; bottom: 20px; white-space: nowrap; overflow: hidden; letter-spacing: .16em; text-indent: .16em; } /* o nome do recurso cabe dentro do globo, em qualquer classe */
   #skills { gap: 6px; margin-bottom: 14px; } #skills .srow { gap: 6px; } #skills .srow .slot:nth-child(5) { margin-right: 244px; }
   #skills .slot { width: 40px; height: 40px; border-radius: 7px; } #skills .slot svg { width: 25px; height: 25px; } #skills .slot kbd { font-size: 8px; left: 3px; top: 1px; } #skills .slot .cost { font-size: 8px; }
-  #bar::before { content: ''; display: none; position: absolute; left: 150px; right: 150px; bottom: calc(80px + (var(--rows) - 1) * 46px); height: 14px; z-index: 1; pointer-events: none;
+  #bar::before { content: ''; display: none; position: absolute; left: 150px; right: 150px; bottom: calc(89px + (var(--rows) - 1) * 46px); height: 14px; /* 03/11 (Erling): respiro de 9 px acima do andar de cima */ z-index: 1; pointer-events: none;
     background: radial-gradient(circle at 7px 50%, #ffe08a 0 3.5px, #8a6a28 4.5px, transparent 5.5px), radial-gradient(circle at calc(100% - 7px) 50%, #ffe08a 0 3.5px, #8a6a28 4.5px, transparent 5.5px), linear-gradient(180deg, transparent 5.5px, #5a4222 5.5px 6px, #c9a24a 6px 8px, #5a4222 8px 8.5px, transparent 8.5px); filter: drop-shadow(0 2px 3px #000); }
   :root[data-rows="2"] #bar::before, :root[data-rows="3"] #bar::before { display: block; }
   /* com 2 ou 3 andares o fundo sobe junto, cada andar mais transparente que o de baixo (degradê): não some, mas não tapa a visão */

@@ -1,3 +1,4 @@
+import { runeItems } from './runas-magia';
 import { REACTOR_PARTS, type ReactorPart, loadParts, saveParts, partsFull, reactorSvg } from './reator';
 import { potionPulse } from './celebrate';
 import { FEASTS, feastEff, FEAST_MIN, GADGETS } from './festim';
@@ -182,6 +183,8 @@ export const SHOPDEF: Record<string, ShopDef> = {
 };
 /* a mesa dos anões (festim.ts, 27/10): carnes, cervejas e vinhos viram itens de comer e beber; as carroças dos anões vendem isso */
 for (const [k, f] of Object.entries(FEASTS)) { ITEMS[k] = { name: f.name, icon: f.icon, kind: 'food', col: f.slot === 'meal' ? 0xb05a2a : 0xd8a040, desc: `${f.desc}\n${f.slot === 'meal' ? 'Prato' : 'Bebida'} · ${FEAST_MIN} min: ${feastEff(f)}. Um prato e uma bebida por vez.`, heal: f.slot === 'meal' ? 40 : 12, buff: 'feast:' + k, sell: Math.round(f.price / 3) } as Item; PRICES[k] = f.price; }
+/* 03/11: as runas kármicas que caem no loot e se encaixam nas magias (runas-magia.ts) */
+for (const [k, r] of Object.entries(runeItems())) ITEMS[k] = r as Item;
 for (const [k, g] of Object.entries(GADGETS)) { ITEMS[k] = { name: g.name, icon: g.icon, kind: g.kind, col: g.col, desc: g.desc, tier: 3, sell: Math.round(g.price / 3) } as Item; PRICES[k] = g.price; }
 SHOPDEF.latao.items = ['sentinela', 'sentinela_2', 'sentinela_3', 'ajudante_obra', 'ajudante_obra_2', 'ajudante_obra_3', 'drone_cura', 'drone_cura_2', 'drone_cura_3', 'drone_choque', 'drone_choque_2', 'drone_choque_3', 'escudo_auto', 'escudo_auto_2', 'escudo_auto_3', 'obra_auto', 'reacao_azul', 'reacao_amarela', 'reacao_vermelha', 'carvao_azul', 'carvao_amarelo', 'carvao_vermelho', 'pet_cao_latao', 'pet_robo_faisca', ...SHOPDEF.latao.items];
 SHOPDEF.latao.tabs = [{ name: '🤖 Engenhocas', items: ['sentinela', 'sentinela_2', 'sentinela_3', 'ajudante_obra', 'ajudante_obra_2', 'ajudante_obra_3', 'drone_cura', 'drone_cura_2', 'drone_cura_3', 'drone_choque', 'drone_choque_2', 'drone_choque_3', 'escudo_auto', 'escudo_auto_2', 'escudo_auto_3', 'obra_auto'] }, { name: '🧪 Reações e carvão', items: ['reacao_azul', 'reacao_amarela', 'reacao_vermelha', 'carvao_azul', 'carvao_amarelo', 'carvao_vermelho'] }, { name: '🐕 Companheiros', items: ['pet_cao_latao', 'pet_robo_faisca'] }, { name: '📦 Mercadoria', items: ['reator_1', 'reator_2', 'cristal_arcano', 'inj_s', 'semente_mod', 'sino_guarda', 'potion_g', 'mana', 'tonic', 'antidote', 'rope', 'scroll_return', 'bag_l'] }];

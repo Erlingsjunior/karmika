@@ -3,6 +3,7 @@ import { DOCK_ICONS } from '../ui/icones';
 import { type Feat, CATS, createFeats, FEATS } from '../feats';
 import { floatWin } from '../windows';
 import { renderTalents } from './talentos-ui';
+import { runeSlots } from './runas-ui';
 import type { DockFeitosCtx } from '../main';
 
 export function createDockFeitos(K: DockFeitosCtx) {
@@ -34,6 +35,7 @@ function renderSkills() {
   { /* a passiva de classe mora aqui também: um clique liga/desliga (igual a tecla F) */ const top = skillsEl.querySelector('.tree-top'); if (top) { const I = K.myInstinct(), d = document.createElement('div'); d.className = 'instcard' + (K.instintoSys.instinctOn ? ' on' : ''); d.style.setProperty('--ic', I.css);
     d.innerHTML = `<i>✧</i><div><b>${I.name}</b><small>Passiva de classe · ${K.instintoSys.instinctOn ? 'ligada' : 'desligada'} · tecla F</small><p>${I.desc} Com ela ligada você vê rastros, espíritos, dispositivos perdidos e esconderijos que ninguém mais vê; desligada, só a ameaça de verdade te acorda.</p></div><button data-inst>${K.instintoSys.instinctOn ? 'Desligar' : 'Ligar'}</button>`;
     top.after(d); d.querySelector('[data-inst]')!.addEventListener('click', (e) => { e.stopPropagation(); K.toggleInstinct(); renderSkills(); }); } }
+  runeSlots(skillsEl, { id: K.treeSel ?? 'combo', kit: K.kitRace(), rank: K.tree.rank(K.treeSel ?? 'combo'), inv: K.inv, game: K.game, sfx: () => K.audio.rune(1), rerender: renderSkills });
   skTabs();
   skillsEl.style.display = 'flex';
 }

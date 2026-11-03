@@ -693,6 +693,7 @@ export interface DockFeitosCtx {
   readonly tree: Widen<typeof tree>;
   readonly talents: Widen<typeof talents>;
   readonly talentKit: Widen<typeof talentKit>;
+  readonly kitRace: Widen<typeof kitRace>;
   treeSel: string | null;
   readonly applyKitAll: typeof applyKitAll;
   readonly myInstinct: Widen<typeof myInstinct>;
@@ -715,7 +716,7 @@ export interface DockFeitosCtx {
   readonly social: Widen<typeof social>;
 }
 var dockSys: ReturnType<typeof createDockFeitos>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; } }); }
+function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get kitRace() { return kitRace; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; } }); }
 dockSys ??= mk_dockSys();
 const { feats, dockEl } = dockSys;
 function toggleSkills(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleSkills']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleSkills']> { return (dockSys ??= mk_dockSys()).toggleSkills(...a); }
