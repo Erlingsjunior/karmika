@@ -48,7 +48,7 @@ import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil,
   for (const k of Object.values(MOUNTS)) if (!ITEMS_TBL[k.id]) { ITEMS_TBL[k.id] = { name: k.name, icon: k.body === 'wolf' ? '🐺' : k.body === 'boar' ? '🐗' : k.body === 'cat' ? '🐅' : k.horse?.horn ? '🦄' : k.horse?.antlers ? '🦌' : '🐎', kind: 'misc', col: k.tint ?? 0x6a4a2e, desc: `Montaria (Z): +${Math.round((k.speed - 1) * 100)}% de velocidade fora de combate.${k.lvl ? ` Precisa do nível ${k.lvl}.` : ''} ${k.blurb ?? ''} Use para levar ao Estábulo (X).`, tier: 2 } as never; PRICES[k.id] ??= 900 + (k.lvl ?? 1) * 140; }
   SHOPDEF.domador.items.splice(2, 0, 'pet_boxer', 'pet_cat_grey'); SHOPS.domador = SHOPDEF.domador.items;
   const STALLS: Record<string, [string, string[]]> = { baias_brasa: ['Baias de Brasaforja', ['mount_pony', 'mount_warboar', 'pet_javali_cinza', 'feno']], baias_lithen: ['Clareira dos Cervos de Lithendel', ['mount_whitestag', 'pet_raposa_prata', 'apple']],
-    estrebaria_real: ['Estrebaria Real de Askavik', ['mount_palfrey', 'mount_templar', 'feno']], baias_jarl: ['Baias de Jarlsheim', ['mount_elk', 'mount_snowwolf', 'pet_lobo_neve', 'feno']], baias_latao: ['Garagem da Companhia de Latão', ['mount_brass', 'pet_aranha_latao']],
+    estrebaria_real: ['Estrebaria Real de Askavik', ['mount_palfrey', 'mount_templar', 'feno']], baias_jarl: ['Baias de Jarlsheim', ['mount_jarlsheim', 'mount_elk', 'mount_snowwolf', 'pet_lobo_neve', 'feno']], baias_latao: ['Garagem da Companhia de Latão', ['mount_brass', 'pet_aranha_latao']],
     baias_lumen: ['Jardim do Pináculo', ['mount_unicorn', 'pet_fada', 'apple']], baias_conde: ['Cocheira do Conde', ['mount_nightmare', 'feno']], baias_uivo: ['Covil dos Domadores do Uivo', ['mount_moonwolf', 'mount_sabre', 'pet_pantera', 'meat']] };
   for (const [id, [title, items]] of Object.entries(STALLS)) { SHOPDEF[id] = { title, items, note: 'Montarias: Z para montar e desmontar. Pets: use para levar ao Estábulo (X).' } as never; SHOPS[id] = items; } }
 const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '❔' };
@@ -110,6 +110,7 @@ import { Mist, Particles } from './fx3d';
 import { waterU } from './chunks3d';
 import { windU, gustU, heroU } from './terrain3d';
 import { artPreload } from './arte3d';
+import { horsesPreload } from './montarias3d';
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
 
@@ -170,7 +171,7 @@ import { createArvoreClasse } from './sistemas/arvore-classe';
 /** tipo declarado de um let (sem o estreitamento do fluxo: false → boolean, 30 → number) — usado nos contextos dos sistemas */
 type Widen<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : T;
 
-const __artP = artPreload(); /* 03/11: modelos do Herik (vegetação, pedras, vila) baixam junto com o mundo */
+const __artP = Promise.all([artPreload(), horsesPreload()]); /* 03/11: modelos do Herik (vegetação, pedras, vila) baixam junto com o mundo */
 const __t0 = performance.now(); const city = await loadWorld(); await __artP; setRamparts(city.ramparts ?? []); (window as unknown as { __tcity?: number }).__tcity = performance.now() - __t0; // mundo do cache (só a 1ª abertura gera)
 /* relevo do mapa grande (176 mil alturas), também do cache. Os dois 'await' ficam aqui no topo: depois deles o resto do arquivo roda de uma vez, sem pausa no meio */
 const MM_HG = 2, mmHw = Math.ceil(MAP_W / MM_HG);

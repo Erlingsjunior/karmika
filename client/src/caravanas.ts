@@ -1,3 +1,4 @@
+import { artMesh } from './arte3d';
 /* ---------- A Companhia das Caravanas de Latão (Erling, 24/10: "paladinos, vampiros e tecnocratas com caravanas, resgates e escoltas").
    A Academia de Ylva financia a pesquisa VENDENDO, e quem leva a mercadoria é a Companhia: carroças a vapor de latão e
    carvalho que andam de verdade pelas estradas, com um cocheiro e dois guardas a pé.
@@ -87,6 +88,15 @@ function wheel(r: number, w: number): THREE.Group {
   for (let i = 0; i < 10; i++) { const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.03, r * 0.85, 5), M.dark); const a = i / 10 * Math.PI * 2; sp.position.set(Math.sin(a) * r * 0.5, Math.cos(a) * r * 0.5, 0); sp.rotation.z = -a; g.add(sp); }
   return g;
 }
+/** 03/11: troca a carroceria desenhada pelo modelo do Herik (rodas, cavalos, varais, bandeira e lanterna continuam) */
+function artBody(w: Wagon, id: string, keep: (o: THREE.Object3D) => boolean, k = 1.15, flip = false) {
+  const m = artMesh(id); if (!m) return w;
+  w.body.traverse((o) => { if ((o as THREE.Mesh).isMesh && !keep(o)) o.visible = false; });
+  m.scale.setScalar(k); if (flip) m.rotation.y = Math.PI; w.body.add(m); return w;
+}
+const isIn = (o: THREE.Object3D, p: THREE.Object3D | null | undefined) => { let q: THREE.Object3D | null = o; while (q) { if (q === p) return true; q = q.parent; } return false; };
+/** de que lado fica a frente do modelo (conferido em carrocas.html) */
+export const ART_FLIP = { steam: false, dwarf: true };
 export function buildSteamWagon(): Wagon {
   const M = mats(), root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, p: THREE.Object3D = body) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; p.add(o); return o; };
@@ -143,7 +153,8 @@ export function buildSteamWagon(): Wagon {
   const hpBar = new THREE.Group(); hpBar.position.set(0, 3.7, 0); const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.16), new THREE.MeshBasicMaterial({ color: 0x1a0e08, transparent: true, opacity: 0.8, depthTest: false })); bg.renderOrder = 30; hpBar.add(bg);
   const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
-  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
+  const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
+  if (artMesh('carroca_tecnocrata')) lamp.position.set(0.45, 1.6, 1.95); return artBody(W0, 'carroca_tecnocrata', () => false, 1.2, ART_FLIP.steam);
 }
 /** barra de vida da carroça (igual nas três) */
 function hpBarFor(): { hpBar: THREE.Group; hpFill: THREE.Mesh } {
@@ -186,7 +197,9 @@ export function buildOreCart(): Wagon {
   const lamp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); lamp.position.set(-0.7, 1.9, 1.2); lamp.scale.setScalar(1.6); lamp.visible = false; body.add(lamp);
   const stack = new THREE.Group(); stack.visible = false; body.add(stack); const { hpBar, hpFill } = hpBarFor(); root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
-  return { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'dwarf' };
+  const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'dwarf' };
+  const keepH = (o: THREE.Object3D) => (o.parent === body && o.position.z > 2.0) /* varais e tirantes até os cavalos */ || ((horse as Horse4 & { team?: Horse4[] }).team ?? [horse]).some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root));
+  return artBody(W0, 'carroca_anao', keepH, 1.15, ART_FLIP.dwarf);
 }
 /** a carroça coberta dos mercadores humanos: caixa de tábuas, lona em arcos, sacos e caixotes, puxada por um cavalo baio */
 export function buildMerchantWagon(): Wagon {

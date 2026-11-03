@@ -572,6 +572,8 @@ export function buildWorld(world: World): WorldObjs {
       const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); g.add(ring);
       const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
       for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x5a68b8)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
+      { const tm = artMesh('pedra_teleporte'); /* 03/11: a Pedra de Teleporte do Herik no lugar do menir; os símbolos já vêm pintados nela, o anel no chão continua */
+        if (tm) { for (const o of [mono, base, groove, moss]) g.remove(o); runes.scale.setScalar(0.001); tm.scale.setScalar(2.5 / artGeo('pedra_teleporte')!.userData.h); tm.position.set(Wm / 2, 0, Dm / 2); tm.rotation.y = Math.PI / 4; g.add(tm); } }
       g.scale.setScalar(1.3); g.position.x -= Wm * 0.15; g.position.z -= Dm * 0.15;
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.2, p.gy * T + Dm / 2 + 0.9), color: 0x6a6aff } as WorldObjs['glowLights'][number]);

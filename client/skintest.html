@@ -3,6 +3,7 @@
 import * as THREE from 'three'; window.__THREE = THREE;
 import { createCharacter } from '/src/characters.ts';
 import { attachSkin } from '/src/skin3d.ts';
+import { artPreload } from '/src/arte3d.ts'; await artPreload();
 const cv = document.getElementById('c'); const r = new THREE.WebGLRenderer({ canvas: cv, antialias: false }); r.setSize(1600, 800, false); r.autoClear = false;
 const sc = new THREE.Scene(); sc.background = new THREE.Color(0x30343a);
 sc.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.6)); const d = new THREE.DirectionalLight(0xffffff, 1.6); d.position.set(3, 5, 4); sc.add(d);

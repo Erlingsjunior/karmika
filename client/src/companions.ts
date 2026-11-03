@@ -39,23 +39,24 @@ export const PETS: Record<string, PetKind> = {
   pet_caozinho_inferno: { id: 'pet_caozinho_inferno', name: 'Cãozinho do Inferno', quad: 'wolf', tint: 0x2a0e08, scale: 0.55, speed: 6.6, skill: 'mordida', eats: 'carne', where: 'Despensa da Fome Sem Fim (chefe)', blurb: 'Come sobras e fagulhas. Os olhos brilham no escuro.' },
   pet_caveirinha: { id: 'pet_caveirinha', name: 'Caveirinha de Orrukh', quad: 'bestia', make: 'skull', tint: 0x9a6aff, scale: 0.55, speed: 6.4, float: 1.0, skill: 'faro', eats: 'tudo', where: 'Túneis de Orrukh (guardião de um nível)', blurb: 'Bate os dentes quando há ouro por perto. Ninguém sabe de quem ela era.' },
 };
-export interface MountKind { id: string; name: string; tint?: number; scale: number; speed: number; where?: string; blurb?: string;
+export interface MountKind { id: string; name: string; /** 03/11: modelo do Herik (montarias3d) */ art?: string; artTint?: number; tint?: number; scale: number; speed: number; where?: string; blurb?: string;
   /** corpo: cavalo (com variantes) ou fera de montaria */ body?: 'horse' | 'wolf' | 'boar' | 'cat'; /** variantes do cavalo */ horse?: { mane?: number; socks?: boolean; horn?: number; antlers?: number; barding?: number; fire?: number; shaggy?: boolean }; /** nível para montar */ lvl?: number; /** cor da manta */ cloth?: number }
 export const MOUNTS: Record<string, MountKind> = {
-  mount_horse: { id: 'mount_horse', name: 'Cavalo Baio', scale: 1.0, speed: 1.75, where: 'Orm, o Estalajadeiro', blurb: 'Manso e firme na estrada.' },
-  mount_grey: { id: 'mount_grey', name: 'Cavalo Ruço', tint: 0x9a968e, scale: 1.0, speed: 1.8, where: 'Orm, o Estalajadeiro', blurb: 'Pelagem cinza das montanhas; não estranha frio.' },
-  mount_black: { id: 'mount_black', name: 'Corcel Negro', tint: 0x1a1612, scale: 1.05, speed: 1.9, where: 'Orm, o Estalajadeiro', blurb: 'Rápido e nervoso. Quem monta precisa merecer.', lvl: 8 },
+  mount_horse: { id: 'mount_horse', art: 'cavalo_orm', name: 'Cavalo Baio', scale: 1.0, speed: 1.75, where: 'Orm, o Estalajadeiro', blurb: 'Manso e firme na estrada.' },
+  mount_grey: { id: 'mount_grey', art: 'cavalo_orm', artTint: 0xb8b4ac, name: 'Cavalo Ruço', tint: 0x9a968e, scale: 1.0, speed: 1.8, where: 'Orm, o Estalajadeiro', blurb: 'Pelagem cinza das montanhas; não estranha frio.' },
+  mount_black: { id: 'mount_black', art: 'cavalo_orm', artTint: 0x4a4440, name: 'Corcel Negro', tint: 0x1a1612, scale: 1.05, speed: 1.9, where: 'Orm, o Estalajadeiro', blurb: 'Rápido e nervoso. Quem monta precisa merecer.', lvl: 8 },
   /* 26/10 (Erling: "mais montarias legais dependendo da cidade e do nível do lugar"): cada estábulo tem as suas */
   mount_pony: { id: 'mount_pony', name: 'Pônei das Cinzas', tint: 0x6a4a34, scale: 0.82, speed: 1.65, where: 'Brasaforja', horse: { mane: 0x1a1210, socks: true, shaggy: true }, cloth: 0x8a3a1a, blurb: 'Baixinho, peludo e teimoso como um anão. Sobe qualquer ladeira.' },
   mount_warboar: { id: 'mount_warboar', name: 'Javali de Guerra Anão', body: 'boar', tint: 0x4a3a2c, scale: 1, speed: 1.85, where: 'Brasaforja', lvl: 12, cloth: 0x8a3a1a, blurb: 'Presas com anel de bronze. Atravessa cerca em vez de pular.' },
   mount_whitestag: { id: 'mount_whitestag', name: 'Cervo Branco de Lithendel', tint: 0xf0ece4, scale: 0.95, speed: 1.85, where: 'Lithendel', lvl: 5, horse: { mane: 0xd8d0c0, antlers: 0xe8dcc0 }, cloth: 0x3a6a4a, blurb: 'Os elfos não domam, pedem. Ele aceita levar você, por enquanto.' },
-  mount_palfrey: { id: 'mount_palfrey', name: 'Palafrém Real', tint: 0xeee6da, scale: 1.0, speed: 1.9, where: 'Askavik', lvl: 12, horse: { mane: 0xd8b860, socks: false }, cloth: 0x2a3a7a, blurb: 'Da estrebaria do castelo. Passo macio, crina de ouro.' },
-  mount_templar: { id: 'mount_templar', name: 'Corcel de Guerra Templário', tint: 0x8a8278, scale: 1.08, speed: 2.0, where: 'Askavik', lvl: 18, horse: { mane: 0x2a2420, barding: 0xc8ccd4 }, cloth: 0xe8dcb0, blurb: 'Bardas de aço e o sol de Auréon na testa. Não recua.' },
-  mount_brass: { id: 'mount_brass', name: 'Cavalo de Latão', tint: 0xb08a40, scale: 1.05, speed: 2.05, where: 'Porto Caldeira', lvl: 25, horse: { mane: 0x5a4a3a, barding: 0x8a6a3a }, cloth: 0x5a1e14, blurb: 'Feito na Companhia. Não come, não cansa, mas pede óleo e chia na subida.' },
+  mount_palfrey: { id: 'mount_palfrey', art: 'corcel_askavik', name: 'Palafrém Real', tint: 0xeee6da, scale: 1.0, speed: 1.9, where: 'Askavik', lvl: 12, horse: { mane: 0xd8b860, socks: false }, cloth: 0x2a3a7a, blurb: 'Da estrebaria do castelo. Passo macio, crina de ouro.' },
+  mount_templar: { id: 'mount_templar', art: 'corcel_askavik', artTint: 0xc8ccd4, name: 'Corcel de Guerra Templário', tint: 0x8a8278, scale: 1.08, speed: 2.0, where: 'Askavik', lvl: 18, horse: { mane: 0x2a2420, barding: 0xc8ccd4 }, cloth: 0xe8dcb0, blurb: 'Bardas de aço e o sol de Auréon na testa. Não recua.' },
+  mount_brass: { id: 'mount_brass', art: 'cavalo_porto_caldeira', name: 'Cavalo de Latão', tint: 0xb08a40, scale: 1.05, speed: 2.05, where: 'Porto Caldeira', lvl: 25, horse: { mane: 0x5a4a3a, barding: 0x8a6a3a }, cloth: 0x5a1e14, blurb: 'Feito na Companhia. Não come, não cansa, mas pede óleo e chia na subida.' },
+  mount_jarlsheim: { id: 'mount_jarlsheim', art: 'cavalo_jarlsheim', name: 'Cavalo de Guerra de Jarlsheim', tint: 0x5a4030, scale: 1.08, speed: 2.0, where: 'Jarlsheim', lvl: 28, horse: { mane: 0x2a1e14, shaggy: true }, cloth: 0x3a4a6a, blurb: 'Peito largo e crina trançada. Os jarls atravessam a neve funda nele.' }, /* 03/11: modelo do Herik */
   mount_elk: { id: 'mount_elk', name: 'Alce do Norte', tint: 0x5a3e28, scale: 1.12, speed: 2.0, where: 'Jarlsheim', lvl: 30, horse: { mane: 0x2a1e14, antlers: 0xc8b898, shaggy: true }, cloth: 0x3a4a6a, blurb: 'Galhada de rei e pernas de neve funda. Os vikings juram que entende runas.' },
   mount_snowwolf: { id: 'mount_snowwolf', name: 'Lobo das Neves', body: 'wolf', tint: 0xe8eef4, scale: 1, speed: 2.1, where: 'Jarlsheim', lvl: 35, cloth: 0x3a4a6a, blurb: 'Um lobo grande o bastante para uma sela. Morde quem chega perto de você.' },
   mount_unicorn: { id: 'mount_unicorn', name: 'Unicórnio do Pináculo', tint: 0xf8f6ff, scale: 1.02, speed: 2.15, where: 'Lumenhal', lvl: 42, horse: { mane: 0xd8c8ff, horn: 0xffe8a0 }, cloth: 0x6a4aaa, blurb: 'O chifre brilha quando há magia perto. Só deixa montar quem nunca maltratou um bicho.' },
-  mount_nightmare: { id: 'mount_nightmare', name: 'Pesadelo do Conde', tint: 0x120e10, scale: 1.08, speed: 2.25, where: 'Corvoscuro', lvl: 52, horse: { mane: 0x2a0a08, fire: 0xff4a1a }, cloth: 0x4a0a14, blurb: 'Olhos de brasa e crina que queima sem consumir. Os cavalos normais fogem dele.' },
+  mount_nightmare: { id: 'mount_nightmare', art: 'pesadelo_conde', name: 'Pesadelo do Conde', tint: 0x120e10, scale: 1.08, speed: 2.25, where: 'Corvoscuro', lvl: 52, horse: { mane: 0x2a0a08, fire: 0xff4a1a }, cloth: 0x4a0a14, blurb: 'Olhos de brasa e crina que queima sem consumir. Os cavalos normais fogem dele.' },
   mount_moonwolf: { id: 'mount_moonwolf', name: 'Lobo da Lua', body: 'wolf', tint: 0x6a6a78, scale: 1.08, speed: 2.25, where: 'Uivo Antigo', lvl: 50, cloth: 0x2a2a3a, blurb: 'Da matilha da Lua Velha. Corre mais quando é noite.' },
   mount_sabre: { id: 'mount_sabre', name: 'Tigre-Dentes-de-Sabre', body: 'cat', tint: 0xc8782a, scale: 1, speed: 2.3, where: 'Uivo Antigo', lvl: 55, cloth: 0x3a1a0a, blurb: 'O maior gato da Selva Licantropa. Ronrona como um trovão.' },
 };
@@ -85,11 +86,16 @@ function bestiaPet(kind: PetKind) {
    (~1,6 m); a do pônei, no peito. As feras de montaria (lobo, javali, tigre) são do mesmo porte. */
 export const MOUNT_K = 1.22;
 type MountRig = { pose(p: { dt: number; mv: number; idle?: boolean }): void; seat: number; body: THREE.Object3D; neck?: THREE.Object3D };
+import { buildArtHorse } from './montarias3d';
 export function mountModel(kind: MountKind) {
   const root = new THREE.Group(); root.scale.setScalar(kind.scale * MOUNT_K);
   const tm = (c: number) => new THREE.MeshToonMaterial({ color: c, gradientMap: ramp });
   let hz: MountRig, inner: THREE.Object3D;
-  if (!kind.body || kind.body === 'horse') { const h = buildHorse({ coat: kind.tint ?? 0x6a4630, ...(kind.horse ?? {}) }); hz = h; inner = h.root; }
+  const ah = kind.art ? buildArtHorse(kind.art, kind.artTint) : null;
+  if (ah) { /* 03/11: cavalo do Herik, na mesma altura de sela do desenhado (1,55 m antes da escala da montaria) */ const k = 1.55 / ah.seat; ah.root.scale.setScalar(k);
+    const body = new THREE.Group(); body.position.copy(ah.body.position).multiplyScalar(k); const neck = new THREE.Group(); neck.position.copy(ah.neck.position).multiplyScalar(k); const wrap = new THREE.Group(); wrap.add(ah.root, body, neck);
+    const by0 = body.position.y; hz = { seat: 1.55 + 0.02, body, neck, pose: (p) => { ah.pose(p); body.position.y = by0 + (ah.body.position.y - ah.body.userData.y0) * k; } }; ah.body.userData.y0 = ah.body.position.y; inner = wrap; }
+  else if (!kind.body || kind.body === 'horse') { const h = buildHorse({ coat: kind.tint ?? 0x6a4630, ...(kind.horse ?? {}) }); hz = h; inner = h.root; }
   else { /* fera de montaria: o corpo de bicho em escala de cavalo; a sela vai no lombo (altura medida) */
     const W = kind.body === 'wolf' ? buildWolf({ fur: kind.tint ?? 0x8a847c }) : kind.body === 'boar' ? buildBoar({ fur: kind.tint }) : buildCat({ coat: kind.tint, stripes: true, eye: 0xffc040 });
     const holder = new THREE.Group(), K = kind.body === 'wolf' ? 1.75 : kind.body === 'boar' ? 2.3 : 5.6; holder.scale.setScalar(K); holder.add(W.root);
@@ -98,6 +104,7 @@ export function mountModel(kind: MountKind) {
     const maxMv = kind.body === 'wolf' ? 6.5 : kind.body === 'boar' ? 4.5 : 5.5; /* a passada da fera tem limite: o resto é chão passando */
     hz = { seat: top, body: back, pose: (p) => (W.pose as (q: { dt: number; mv: number; wind: number; strike: number; hurt: number; idle?: boolean }) => void)({ dt: p.dt, mv: Math.min(maxMv, p.mv * 0.6), wind: 0, strike: 0, hurt: 0, idle: p.idle }) };
     inner = wrap; }
+  if (ah) { /* o cavalo do Herik já vem selado: só as rédeas do jogo não entram */ root.add(inner); return { root, hz }; }
   const sb = hz.body, sy = !kind.body || kind.body === 'horse' ? 0.3 : 0.02, sz = !kind.body || kind.body === 'horse' ? 0.12 : 0, sK = !kind.body || kind.body === 'horse' ? 1 : 1.2;
   const seatG = new THREE.SphereGeometry(0.22 * sK, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2); const saddle = new THREE.Mesh(seatG, tm(0x4a2a16)); saddle.scale.set(1.05, 0.35, 1.45); saddle.position.set(0, sy, sz); sb.add(saddle);
   const pommel = new THREE.Mesh(new THREE.TorusGeometry(0.1 * sK, 0.035, 6, 12, Math.PI), tm(0x3a2010)); pommel.position.set(0, sy + 0.06, sz + 0.28 * sK); sb.add(pommel);

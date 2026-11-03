@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { artMesh, artGeo, artGuardY, SWORD_ART, SHIELD_ART } from './arte3d';
 import { REF_SWORDS, buildRefSword, type RefSword, REF_SHIELD_STYLE, refShieldFace } from './armas3d';
 import { mergeStatic } from './merge3d';
 import { crestTexture, facOf } from './faccoes';
@@ -1199,7 +1200,13 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const pom = mk(new THREE.SphereGeometry(0.034, 6, 5), glowOf(rar) || gold, 0.004); pom.position.y = 0.105; sw.add(pom);
         let len = 0.84, wid = 0.07;
         if (base === 'Adaga') { len = 0.42; wid = 0.05; } else if (base === 'Espada Curta') { len = 0.62; wid = 0.065; } else if (base === 'Montante') { len = 1.12; wid = 0.085; } else if (base === 'Lança') { len = 1.3; wid = 0.04; }
-        if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
+        const swArt = SWORD_ART[base] ? artMesh(SWORD_ART[base]) : null;
+        if (swArt) { /* 03/11: espada do Herik — virada com a ponta para baixo (o eixo da arma), a guarda na mão */
+          for (const o of [...sw.children]) if ((o as THREE.Mesh).isMesh || (o as THREE.Group).isGroup) sw.remove(o);
+          const id = SWORD_ART[base], G = artGeo(id)!, gy = artGuardY(id), kL = base === 'Adaga Élfica' || base === 'Adaga Fina' ? 0.75 : 1; swArt.userData.keep = true; swArt.rotation.x = Math.PI; swArt.scale.setScalar(kL); swArt.position.y = gy * kL; sw.add(swArt);
+          if (glowOf(rar)) { const gm2 = (swArt.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.25); swArt.material = gm2; }
+          len = (G.userData.h - gy) * kL;
+        } else if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
           len = buildRefSword(sw, base as RefSword, { mk, metal, toon, glow: glowOf(rar), rar });
         } else if (base === 'Machado de Guerra') {
           const haft = mk(new THREE.CylinderGeometry(0.02, 0.022, 0.9, 7), 0x4a3220, 0.004); haft.position.y = -0.45; sw.add(haft);
@@ -1415,6 +1422,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           }
         }
         shield.castShadow = true; sh.add(shield); if (!(g.shield)) { /* sem escudo equipado: mantém o nórdico padrão */ }
+        { const SA = SHIELD_ART[base], am = SA && !facOf(base) ? artMesh(SA[0]) : null; /* 03/11: escudo do Herik (os de facção continuam com o brasão pintado) */
+          if (am && SA) { sh.remove(shield); const G = artGeo(SA[0])!, k = SA[1] ?? 1; am.userData.keep = true; am.scale.setScalar(k); am.rotation.y = -Math.PI / 2; am.position.set(0, -G.userData.h * k / 2, 0); am.castShadow = true;
+            if (glowOf(rar)) { const gm2 = (am.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.2); am.material = gm2; } sh.add(am); } }
         mergeStatic(sh, ramp); fine(sh);
       }
       /* elmo */

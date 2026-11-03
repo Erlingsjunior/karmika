@@ -110,3 +110,18 @@ export const VPROP_ART: Record<number, string> = { 0: 'vila_barril', 1: 'vila_ca
 export function artPreload(): Promise<void> {
   return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/(casas|muralha|casa_modular)/.test(e.pasta)).map((e) => e.id))).catch(() => undefined);
 }
+
+/* ---------- armas (prancha 48/49/50 e escudos 51/52): nome da base → modelo ---------- */
+export const SWORD_ART: Record<string, string> = { 'Espada Longa': 'espada_longa_01', 'Espada Nórdica': 'espada_longa_02', 'Espadão Anão': 'espada_longa_03', 'Lâmina Élfica': 'espada_longa_04', 'Cimitarra': 'espada_longa_05',
+  'Espada de Espinhos': 'espada_longa_06', 'Flamberge': 'espada_longa_07', 'Montante': 'espada_longa_08', 'Espada de Duelo': 'espada_longa_09', 'Katana': 'espada_longa_10', 'Facão': 'espada_longa_11', 'Lâmina Serrilhada': 'espada_longa_12',
+  'Espada Curta': 'espada_curta_01', 'Espada Curta Anã': 'espada_curta_03', 'Adaga Élfica': 'espada_curta_04', 'Sabre': 'espada_curta_05', 'Adaga Fina': 'espada_curta_06' };
+export const SHIELD_ART: Record<string, [string, number?]> = { 'Escudo Redondo': ['escudo_01'], 'Broquel': ['escudo_01', 0.55], 'Escudo Nórdico': ['escudo_02'], 'Escudo Torre': ['escudo_03'], 'Escudo Élfico': ['escudo_04'],
+  'Escudo Ogival': ['escudo_05'], 'Escudo de Espinhos': ['escudo_06'], 'Escudo Pavês': ['escudo_07'], 'Escudo de Pipa': ['escudo_08'], 'Escudo Solar': ['escudo_09'], 'Escudo de Vime': ['escudo_10'], 'Escudo de Bronze': ['escudo_11'], 'Escudo de Engrenagens': ['escudo_12'] };
+/** altura da guarda da espada (a parte mais larga perto do pomo): é onde a mão segura logo abaixo */
+const guardOf = new Map<string, number>();
+export function artGuardY(id: string): number {
+  const c = guardOf.get(id); if (c !== undefined) return c; const g = geos.get(id); if (!g) return 0.18;
+  const pa = g.attributes.position, h = g.userData.h as number, N = 24, w = new Array(N).fill(0);
+  for (let i = 0; i < pa.count; i++) { const y = pa.getY(i); if (y > h * 0.4) continue; const k = Math.min(N - 1, Math.floor((y / (h * 0.4)) * N)); w[k] = Math.max(w[k], Math.abs(pa.getX(i)), Math.abs(pa.getZ(i))); }
+  let best = 0; for (let k = 1; k < N; k++) if (w[k] > w[best]) best = k; const gy = ((best + 0.5) / N) * h * 0.4; guardOf.set(id, gy); return gy;
+}

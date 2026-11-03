@@ -2,6 +2,8 @@
 <script type="module">
 import * as THREE from 'three';
 import { buildSteamWagon, buildOreCart } from '/src/caravanas.ts';
+import { artPreload } from '/src/arte3d.ts';
+await artPreload();
 const q = new URLSearchParams(location.search);
 const ALL = ['steam','dwarf'];
 const SP = (q.get('sp') || ALL.join(',')).split(','), H = 1.2;
