@@ -55,6 +55,10 @@ export interface Hero3D {
   readonly actName: Action | null;
   readonly actP: number;
   guard: boolean;
+  /** 03/11 (andar de costas, como no Path of Exile 2): direção em que os pés andam (yaw no mundo) quando ela é diferente de para onde o corpo olha; null = anda para onde olha */
+  moveYaw: number | null;
+  /** jeito de andar da classe × arma × postura (andar.ts); null = o andar de base do corpo */
+  gait: import('./andar').Gait | null;
   /** true quando há inimigo perto ou lutou há pouco: entra em postura de combate */
   combat: boolean;
   /** postura de batalha (posturas.ts): muda o corpo de verdade — ataque inclina e ergue a arma, tanque agacha atrás do escudo, cura abre os braços… */ stance: string;
@@ -1143,7 +1147,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   };
   const sm: Record<string, number> = {};
   const smooth1 = (key: string, v: number, dt: number, rate = 26) => (sm[key] = (sm[key] ?? v) + (v - (sm[key] ?? v)) * Math.min(1, dt * rate));
-  let stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
+  let backSm = 0, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
   const qRoot = new THREE.Quaternion(), qPar = new THREE.Quaternion(), qDes = new THREE.Quaternion(), qLoc = new THREE.Quaternion(), eDes = new THREE.Euler();
   const tmp = new V();
   const smooth = { lean: 0, hipRoll: 0, tilt: 0 };
@@ -1159,6 +1163,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
     get stepVel() { return stepVel; },
     guard: false,
+    moveYaw: null,
+    gait: null,
     combat: false, stance: 'bal',
     riding: false,
     droneTo: null, droneFlash: 0, actSpeed: 1,
@@ -1461,14 +1467,16 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       walkK += ((moving ? clamp(mps / S.walkSpeed, 0, 1) : 0) - walkK) * Math.min(1, dt * 10);
       runK += ((clamp((mps - S.walkSpeed) / (S.runSpeed - S.walkSpeed), 0, 1)) - runK) * Math.min(1, dt * 7);
       // passada casada com a velocidade: um passo = π de fase
-      const strideLen = S.stride * (1 + 1.2 * runK);
-      if (moving) phase += (Math.PI * mps / strideLen) * dt;
+      const GT = hero.gait; const strideLen = S.stride * (GT?.stride ?? 1) * (1 + 1.2 * runK);
+      /* andando de costas (encarando o inimigo e recuando): a passada roda ao contrário e o tronco não inclina para a frente */
+      const backK = hero.moveYaw !== null && moving ? clamp(-Math.cos(hero.moveYaw - yaw) * 1.6 - 0.2, 0, 1) : 0; backSm += (backK - backSm) * Math.min(1, dt * 8);
+      if (moving) phase += (Math.PI * mps / strideLen) * dt * (backSm > 0.5 ? -1 : 1);
       const A = lerp(S.A[0], S.A[1], runK) * walkK, K = lerp(S.K[0], S.K[1], runK) * walkK;
-      const armA = lerp(S.armA[0], S.armA[1], runK) * walkK;
+      const armA = lerp(S.armA[0], S.armA[1], runK) * walkK * (GT?.arm ?? 1);
       const eb = lerp(S.eb[0], S.eb[1], runK);
-      const leanT = lerp(S.lean[0], S.lean[1], runK) * walkK;
-      const bobA = lerp(S.bob[0], S.bob[1] * 0.3, runK) * walkK * 0.55;
-      const tw = lerp(S.twist[0], S.twist[1], runK) * walkK;
+      const leanT = lerp(S.lean[0], S.lean[1], runK) * walkK * (1 - 1.5 * backSm) * (GT?.lean ?? 1); /* de costas: o peso vai um pouco para trás */
+      const bobA = lerp(S.bob[0], S.bob[1] * 0.3, runK) * walkK * 0.55 * (GT?.bob ?? 1);
+      const tw = lerp(S.twist[0], S.twist[1], runK) * walkK * (GT?.twist ?? 1);
 
       // ações
       let aSide = 0, aRoll = 0, aBack = 0, aLean = 0, aTwist = 0, aShR = 0, aElR = 0, aShL = 0, aElL = 0, aShRz = 0, aShLz = 0, aHeadX = 0, aCrouch = 0, aLungeLeg = 0, aSwX = 0, aSwZ = 0, aJump = 0, aSpin = 0, aFace = 0, aTilt = 0;
@@ -1531,6 +1539,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         else if (wcls === 'kunai' || wcls === 'dagger') { aShL += -0.15 * restK; aElL += -0.5 * restK; }
       }
       aShR -= 0.08 * restK; aElR -= 0.12 * restK; aShL -= 0.06 * restK; aElL -= 0.15 * restK; aShRz += -0.08 * restK; aShLz += 0.08 * restK; aLean += 0.04 * restK; aTwist += 0.06 * restK; aCrouch += 0.015 * restK;
+      aCrouch += (hero.gait?.crouch ?? 0) * (0.5 + 0.5 * walkK); /* andar baixo da classe (vampiro, caçador, lobisomem) */
       /* POSTURA ESCOLHIDA (25/10, Erling: "a mudança de postura não muda a postura do personagem"): o corpo assume a postura, parado ou andando */
       { const want = act ? 0 : 1 - 0.5 * walkK; stK += (want - stK) * Math.min(1, dt * 6); const k = stK, sr = hero.stance;
         if (k > 0.01) {
@@ -1608,10 +1617,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
 
       /* quadril: salto/oscilação + balanço lateral + giro */
       const c2 = Math.cos(2 * phase);
-      const bobY = lerp(c2 * bobA, -c2 * bobA * 0.6, runK) - 0.045 * runK - (S.stomp * 0.012) * Math.abs(Math.sin(phase)) * walkK;
+      const bobY = lerp(c2 * bobA, -c2 * bobA * 0.6, runK) - 0.045 * runK - (S.stomp * (hero.gait?.stomp ?? 1) * 0.012) * Math.abs(Math.sin(phase)) * walkK;
       const idleY = Math.sin(breath) * 0.01 * (1 - walkK);
       body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE;
-      hips.position.x = Math.cos(phase) * S.sway * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
+      hips.position.x = Math.cos(phase) * S.sway * (hero.gait?.sway ?? 1) * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
       hips.rotation.y = -Math.sin(phase) * tw * 0.6 - aTwist * 0.4 + 0.3 * idleK;
       hips.rotation.z = Math.cos(phase) * 0.03 * walkK + smooth1('roll', aRoll, dt, 18);
       hips.position.z = smooth1('back', aBack, dt, 18);

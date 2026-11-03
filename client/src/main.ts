@@ -17,6 +17,7 @@ import { eyeSees } from './surrender';
   mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } }); mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } });
   mv('karmika.hunt', (h) => { if (h) { h.x += SHF * T2; h.z += SHF * T2; } }); localStorage.setItem(W2, '2'); } }
 import * as THREE from 'three';
+import { gaitOf } from './andar';
 /* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
    e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
 { const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
@@ -1817,7 +1818,7 @@ let instK = 0, gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL 
 const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s < G_OPEN_FULL ? 1 : Math.max(0, 1 - (s - G_OPEN_FULL) / G_OPEN_FADE); }; /* relógio de verdade: não depende do passo do quadro */
 const clock = new THREE.Clock();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
-let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0;
+let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpT = 0, bpYaw: number | null = null; /* recuo de costas (estilo Path of Exile 2) */
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
@@ -2438,7 +2439,7 @@ function frameBody() {
   if (emote.dance && (ix || iy)) { emote.dance = false; if (hero.actName === 'dance') hero.stopAct?.(); } /* andar para a dança na hora */
   if (casteloSys.sitting && (ix || iy || hero.acting)) { casteloSys.sitting = null; }
   const forced = !!hero.actName && ['slam', 'bash', 'combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'rush', 'quake', 'charge', 'jet', 'throw'].includes(hero.actName);
-  const actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? 0.3 : hero.guard ? 0.45 : 1;
+  let actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? 0.3 : hero.guard ? 0.45 : 1;
   let gdx = 0, gdy = 0;
   if (ix || iy) {
     state.path = []; marker.visible = false;
@@ -2449,6 +2450,15 @@ function frameBody() {
   state.moving = !!(gdx || gdy);
   if (keys.has(' ') && dashCd <= 0 && !hero.acting) { const f = hero.facing; startDash(state.moving ? gdx : Math.sin(f), state.moving ? gdy : Math.cos(f)); }
   dashCd -= dt;
+  /* 03/11 (Erling: "no Path of Exile 2, com monstro na tela, clicar para longe faz o herói andar de costas um tempo"): ao começar a se afastar
+     de um inimigo perto (até 11 m), o herói continua de frente para ele e recua de costas (82% da velocidade) por até 1,3 s; de lado, anda
+     meio virado (de frente para o inimigo, os pés na direção do clique). Passado o tempo — ou longe dele — vira e corre. Indo para cima do
+     inimigo, anda normal. A janela recomeça quando ele para. */
+  bpYaw = null; hero.moveYaw = null; const gaitNow = gaitOf(((k0) => ['nordic', 'dwarf', 'human', 'elf'].includes(k0) && (profile?.origin === 'elf' || profile?.origin === 'dwarf') ? profile!.origin : k0)(kitRace() as string), (hero as unknown as { wcls?: string }).wcls ?? 'one', hero.stance); hero.gait = gaitNow;
+  if (!state.moving) bpT = 0; else if (dashT <= 0 && !inside && !compSys.riding && !swimming) { bpT += dt; const hx = state.fx * T, hz = state.fy * T; let fp: { x: number; z: number } | null = null, fd = 11;
+    for (const e of game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d < fd) { fd = d; fp = e.pos; } }
+    if (fp && bpT < gaitNow.bp[0]) { const fy = Math.atan2(fp.x - hx, fp.z - hz), my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
+      if (c < -0.35) { bpYaw = fy; hero.moveYaw = my; actSlow *= gaitNow.bp[1]; } else if (c < 0.45) { bpYaw = fy + rel * 0.5; hero.moveYaw = my; actSlow *= (1 + gaitNow.bp[1]) / 2; } } }
   let boost = 1;
   if (dashT > 0) { dashT -= dt; boost = 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
   vel += ((state.moving ? 1 : 0) - vel) * Math.min(1, dt * (state.moving ? 14 : 18));
@@ -2492,7 +2502,7 @@ function frameBody() {
   pm('chunks');
   if (wade > 0.15 && state.moving) { wadeAcc += dt; if (wadeAcc > 0.09) { wadeAcc = 0; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.4, WL + 0.03, heroPos.z + Math.sin(a) * 0.4, { vx: Math.cos(a) * 0.8, vy: 0.9 + Math.random(), vz: Math.sin(a) * 0.8, life: 0.5, s0: 0.18, s1: 0.05, c0: 0xe8f4ff, c1: 0x9ac8e8, a: 0.7, g: 6 }); } } }
   if (swimming) { swimAcc += dt; if (swimAcc > (state.moving ? 0.12 : 0.45)) { swimAcc = 0; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.5, WL + 0.03, heroPos.z + Math.sin(a) * 0.5, { vx: Math.cos(a) * 0.8, vy: 0.05, vz: Math.sin(a) * 0.8, life: 0.9, s0: 0.18, s1: 0.5, c0: 0xdff4ff, c1: 0x9cd0ff, a: 0.5, drag: 1.5 }); } } }
-  hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : entradaSys.lockYaw !== null && aiming ? entradaSys.lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : pescaSys.fishing ? Math.atan2(pescaSys.fishing.at.x - state.fx * T, pescaSys.fishing.at.z - state.fy * T) : oficiosSys.work ? Math.atan2(oficiosSys.work.x - state.fx * T, oficiosSys.work.z - state.fy * T) : casteloSys.sitting ? casteloSys.sitting.yaw : state.moving ? Math.atan2(gdx, gdy) : entradaSys.combatMode ? nearYaw() : null);
+  hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : entradaSys.lockYaw !== null && aiming ? entradaSys.lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : pescaSys.fishing ? Math.atan2(pescaSys.fishing.at.x - state.fx * T, pescaSys.fishing.at.z - state.fy * T) : oficiosSys.work ? Math.atan2(oficiosSys.work.x - state.fx * T, oficiosSys.work.z - state.fy * T) : casteloSys.sitting ? casteloSys.sitting.yaw : state.moving ? (bpYaw ?? Math.atan2(gdx, gdy)) : entradaSys.combatMode ? nearYaw() : null);
   { /* 26/10 (Erling: "o corpo precisa morrer, cair no chão morto"): o corpo tomba e fica lá até o jogador escolher ressurgir */
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
