@@ -1,3 +1,4 @@
+import { RUNAS } from './runas';
 import * as THREE from 'three';
 import { mergeStatic } from './merge3d';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -562,12 +563,13 @@ export function buildWorld(world: World): WorldObjs {
         (x, y) => { RG().beginPath(); RG().moveTo(x, y - 18); RG().lineTo(x, y + 18); RG().moveTo(x - 10, y - 6); RG().lineTo(x + 10, y - 2); RG().moveTo(x - 10, y + 6); RG().lineTo(x + 10, y + 2); RG().stroke(); }, // cruz-seta
       ];
       /* escavadas: primeiro o sulco escuro e largo, depois o vermelho mais fino por dentro (brilha quando a pedra é conhecida) */
-      const symAll = (ctx: CanvasRenderingContext2D) => { const save = rgRef.c; rgRef.c = ctx; SYM.forEach((f, i) => f(32 + (i % 2) * 64, 36 + Math.floor(i / 2) * 60)); rgRef.c = save; };
+      /* 03/11 (Erling: "as runas precisam ser legíveis"): as seis runas OFICIAIS de Karmika (runas.ts), na mesma ordem do overlay nítido (main, runeHud) */
+      void SYM; const symAll = (ctx: CanvasRenderingContext2D) => { RUNAS.forEach((r, i) => { const x = 32 + (i % 2) * 64, y = 36 + Math.floor(i / 2) * 60; ctx.save(); ctx.translate(x - 21, y - 21); ctx.scale(1.5, 1.5); ctx.stroke(new Path2D(r.d)); if (r.fill) { ctx.fillStyle = ctx.strokeStyle; ctx.fill(new Path2D(r.fill)); } ctx.restore(); }); };
       // o sulco escavado (sempre visível): traço escuro largo e um vermelho apagado por dentro
-      rg.strokeStyle = '#140a28'; rg.lineWidth = 7; rg.shadowBlur = 0; symAll(rg); rg.strokeStyle = '#6a2426'; rg.lineWidth = 3; symAll(rg);
+      rg.strokeStyle = '#140a28'; rg.lineWidth = 5; rg.shadowBlur = 0; symAll(rg); rg.strokeStyle = '#6a2426'; rg.lineWidth = 3; symAll(rg);
       const grooveT = new THREE.CanvasTexture(runeC); grooveT.magFilter = THREE.LinearFilter; grooveT.minFilter = THREE.LinearMipmapLinearFilter; const groove = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({ map: grooveT, transparent: true, side: THREE.DoubleSide, depthWrite: false })); groove.position.set(Wm / 2 + 0.515, 1.5, Dm / 2 + 0.515); groove.rotation.y = Math.PI / 4; g.add(groove);
       // o brilho (anima com o conhecido), numa segunda tela
-      const runeC2 = document.createElement('canvas'); runeC2.width = 128; runeC2.height = 192; const rg2 = runeC2.getContext('2d')!; rg2.lineJoin = rg2.lineCap = 'round'; rg2.strokeStyle = '#ffffff'; rg2.lineWidth = 3.4; rg2.shadowColor = '#ffffff'; rg2.shadowBlur = 9; symAll(rg2); symAll(rg2); /* branco: a cor vem do material (amarelo antes de marcar, azul mágico depois) */
+      const runeC2 = document.createElement('canvas'); runeC2.width = 128; runeC2.height = 192; const rg2 = runeC2.getContext('2d')!; rg2.lineJoin = rg2.lineCap = 'round'; rg2.strokeStyle = '#ffffff'; rg2.lineWidth = 2.2; rg2.shadowColor = '#ffffff'; rg2.shadowBlur = 9; symAll(rg2); symAll(rg2); /* branco: a cor vem do material (amarelo antes de marcar, azul mágico depois) */
       const runeT = new THREE.CanvasTexture(runeC2); runeT.magFilter = THREE.LinearFilter; runeT.minFilter = THREE.LinearMipmapLinearFilter;
       const runes = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.2), new THREE.MeshBasicMaterial({ map: runeT, transparent: true, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending })); runes.userData.dyn = true; runes.position.set(Wm / 2 + 0.52, 1.5, Dm / 2 + 0.52); runes.rotation.y = Math.PI / 4; g.add(runes);
       const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.45, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x8a7aff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); ring.userData.dyn = true; ring.userData.col = 0xff6a40; ring.position.set(Wm / 2, 0.08, Dm / 2); ring.visible = false; ring.userData.stone = true; /* 03/11 (Erling: "esse círculo em volta da pedra não é necessário") */ g.add(ring);

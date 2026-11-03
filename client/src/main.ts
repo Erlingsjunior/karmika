@@ -114,6 +114,8 @@ import { windU, gustU, heroU } from './terrain3d';
 import { artPreload } from './arte3d';
 import { horsesPreload } from './montarias3d';
 import { stockAllMounts, shopMounts } from './sistemas/montarias-loja';
+import { runeHud } from './sistemas/runas-hud';
+import { openVitrine } from './sistemas/vitrine3d';
 stockAllMounts(); /* 03/11: todas as montarias e pets nas lojas */
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
@@ -485,7 +487,7 @@ function roastAt(...a: Parameters<ReturnType<typeof createBancada>['roastAt']>):
 /* Shop: a loja (Premium e brasões). Pix ainda não ligado; no DEV simula o pagamento */
 const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some((g) => g?.uniq === u);
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cinemaSys.cine) cinemaSys.cine.t = t; }; }
-const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
+const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, preview: (m, price, buy) => openVitrine({ id: m.id, name: m.name, where: m.where, lvl: m.lvl, blurb: m.blurb, price, tag: m.kind === 'pet' ? 'Filhote de chefe' : 'Montaria' }, buy), lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
   deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
     /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →
@@ -2659,6 +2661,7 @@ function frameBody() {
     if (strong && Math.random() < 0.3) particles.spawn(sm.x, sm.y, sm.z, { vx: (Math.random() - 0.5) * 1.2, vy: 2 + Math.random() * 1.5, vz: (Math.random() - 0.5) * 1.2, life: 0.9, s0: 0.08, s1: 0.02, c0: 0xffd070, c1: 0xff5a1a, a: 1, drag: 0.6 }); }
   /* relíquias dos caminhantes: runas pulsam; as já marcadas ganham aura dourada e fagulhas */
   for (const [o, ax, w] of objs.spinners) o.rotation[ax] += w * dt; /* moinho da marcenaria */
+  runeHud(objs.relics, camera, (rl) => { const q = rl as (typeof objs.relics)[number]; const nm = relicNameAt(q.gx, q.gy); return !!nm && knowsRelic(nm); }, t, !!inside || document.body.classList.contains('mvista')); /* 03/11: runas nítidas, fora do pixel do jogo */
   for (const rl of objs.relics) {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */

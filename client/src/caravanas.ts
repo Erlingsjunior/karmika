@@ -202,11 +202,14 @@ export function buildSteamWagon(): Wagon {
   const hpBar = new THREE.Group(); hpBar.position.set(0, 3.7, 0); const bg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.16), new THREE.MeshBasicMaterial({ color: 0x1a0e08, transparent: true, opacity: 0.8, depthTest: false })); bg.renderOrder = 30; hpBar.add(bg);
   const hpFill = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.1), new THREE.MeshBasicMaterial({ color: 0xe0b048, depthTest: false })); hpFill.renderOrder = 31; hpBar.add(hpFill); hpBar.visible = false; root.add(hpBar);
   root.traverse((o) => { o.frustumCulled = true; });
-  const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, kind: 'steam' };
+  /* 03/11 (Erling: "coloca 2 cavalos de latão na carroça a vapor"): a parelha da Companhia — os cavalos de Porto Caldeira com a pelagem de latão */
+  const team: Horse4[] = []; for (const sx of [-0.66, 0.66]) { const h = teamHorse('cavalo_porto_caldeira', 0xc89a48, { coat: 0xb08a40, mane: 0x5a4a3a, barding: 0x8a6a3a }); h.root.position.set(sx, 0, 3.7); body.add(h.root); team.push(h); }
+  const horse = team[0]; (horse as Horse4 & { team?: Horse4[] }).team = team;
+  const W0: Wagon = { root, body, wheels, stack, lamp, flag, fallen: false, hpBar, hpFill, horse, kind: 'steam' };
   /* 03/11 (Erling: "aumenta um pouco e ela precisa soltar fumaça, é a vapor"): 45% maior, e a fumaça sai da chaminé do modelo */
   /* 03/11 (Erling: "precisam ser carroças grandes… podem ser 3 ou 4× maior"): ~3× — rodas de 1,7 m, a carroça bem mais alta que um homem */
   const KS = 1.9; if (artMesh('carroca_tecnocrata')) { (W0 as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt = artPt('carroca_tecnocrata', new THREE.Vector3(-0.5, 1.9, -0.12), KS, ART_FLIP.steam).add(new THREE.Vector3(0, 0.2, 0)); lamp.position.copy(artPt('carroca_tecnocrata', new THREE.Vector3(0.3, 1.2, -1.1), KS, ART_FLIP.steam)); }
-  return artBody(W0, 'carroca_tecnocrata', () => false, KS, ART_FLIP.steam);
+  return artBody(W0, 'carroca_tecnocrata', (o) => team.some((h) => isIn(o, (h as unknown as { root: THREE.Object3D }).root)), KS, ART_FLIP.steam, -1);
 }
 /** barra de vida da carroça (igual nas três) */
 function hpBarFor(): { hpBar: THREE.Group; hpFill: THREE.Mesh } {

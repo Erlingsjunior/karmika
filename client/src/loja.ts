@@ -47,7 +47,7 @@ export const mountBRL = (lvl: number) => (lvl >= 45 ? 49.9 : lvl >= 30 ? 39.9 : 
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
-  owns: (uniq: string) => boolean; mounts: () => ShopMount[]; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
+  owns: (uniq: string) => boolean; mounts: () => ShopMount[]; preview: (m: ShopMount, price: string, buy: () => void) => void; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
   let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
@@ -75,13 +75,13 @@ export function createLoja(ctx: {
   }
   /* 03/11 (Erling): "o nome: Estábulo do Domador" — as montarias raras das terras de Karmika, por Pix. Só aparência: correm igual ao melhor cavalo de ouro */
   const mountProd = (m: ShopMount): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: m.kind === 'pet' ? 14.9 : mountBRL(m.lvl), desc: m.blurb });
+  /* 03/11 (Erling): "a janela não precisa aumentar, a modal fica igual: diminuir os cards e colocar um olho no card que abre a montaria em 3D" */
   function mountCard() {
     const L = ctx.mounts(), lands = [...new Set(L.map((m) => m.where))], hx = (n: number) => '#' + n.toString(16).padStart(6, '0');
-    return `<div class="lj-hero mont"><div class="lj-eye" style="font-size:42px;display:grid;place-items:center">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika: o pônei das Cinzas, o cervo de Lithendel, o corcel templário, o alce do Norte, o pesadelo do Conde… <b>Nunca dão força:</b> todas correm igual ao Corcel Negro do Orm, que qualquer um compra com ouro (2,4× mais rápido que a pé). O que muda é o bicho, a sela e o olhar de quem vê você passar.</p><p class="lj-on">A montaria chega no correio do personagem que você escolher. Cada uma pede o nível dela para aceitar quem monta. Os <b>filhotes de chefe</b> também caem dos chefes: quem joga e derruba o chefe ganha igual a quem compra.</p></div></div>
-      ${lands.map((w) => `<h4 class="lj-land">${w}</h4><div class="lj-items">${L.filter((m) => m.where === w).map((m) => { const p = mountProd(m);
-        return `<div class="lj-item"><div class="lj-art"><div style="width:84px;height:84px;margin:auto;border-radius:50%;display:grid;place-items:center;font-size:46px;background:radial-gradient(circle at 50% 35%, ${hx(m.col)}88, #1a120a 72%);box-shadow:0 0 18px ${hx(m.col)}55">${m.icon}</div></div>
-          <span class="lj-rar unique">${m.kind === 'pet' ? 'FILHOTE DE CHEFE' : 'MONTARIA'}${m.lvl ? ` · nível ${m.lvl}` : ''}</span><b>${m.name}</b><small>${m.blurb}</small>
-          <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}`;
+    return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika. <b>Nunca dão força:</b> correm igual ao Corcel Negro do Orm (2,4× mais rápido que a pé), que qualquer um compra com ouro. Chegam no correio; os <b>filhotes de chefe</b> também caem do chefe. Clique no 👁 para ver o bicho de perto.</p></div></div>
+      <div class="lj-mscroll">${lands.map((w) => `<h4 class="lj-land">${w}</h4><div class="lj-mgrid">${L.filter((m) => m.where === w).map((m) => { const p = mountProd(m);
+        return `<div class="lj-mc" title="${esc2(m.blurb)}"><button class="lj-eyeb" data-view="${m.id}" title="Ver em 3D">👁</button><div class="lj-mart" data-view="${m.id}" style="background:radial-gradient(circle at 50% 38%, ${hx(m.col)}99, #1a120a 70%);box-shadow:0 0 14px ${hx(m.col)}44">${m.icon}</div>
+          <span class="lj-rar">${m.kind === 'pet' ? 'FILHOTE' : 'MONTARIA'}${m.lvl ? ` · nv ${m.lvl}` : ''}</span><b>${m.name}</b><div class="lj-mbuy"><span>${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}</div>`;
   }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
       Quando o Pix ligar, é só trocar para false. */
@@ -101,7 +101,7 @@ export function createLoja(ctx: {
     return `<rect width="21" height="21" fill="#f3ead6"/>${s}${fin(0, 0)}${fin(14, 0)}${fin(0, 14)}`; }
   function render() {
     if (!open) { el.style.display = 'none'; return; }
-    el.innerHTML = `<div class="pn ljpn"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
+    el.innerHTML = `<div class="pn ljpn ${tab === 'mont' ? 'mont' : ''}"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
       <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'mont' ? mountCard() : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex';
@@ -121,6 +121,7 @@ export function createLoja(ctx: {
     if (t.closest('[data-lx]') || t === el) { api.close(); return; }
     const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont'; render(); return; }
     const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
+    const vw = (t.closest('[data-view]') as HTMLElement | null)?.dataset.view; if (vw) { const m = ctx.mounts().find((q) => q.id === vw); if (m) { const p = mountProd(m); ctx.preview(m, brl(p.brl), () => { cart = p; paid = false; render(); }); } return; }
     const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ctx.mounts().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
     const tp = (t.closest('[data-to]') as HTMLElement | null)?.dataset.to; if (tp !== undefined) { recip = +tp; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
