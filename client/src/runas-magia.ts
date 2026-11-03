@@ -26,15 +26,16 @@ export function parseRune(id: string): { f: RFam; g: number } | null { const m =
 export function runeItems(): Record<string, { name: string; icon: string; kind: 'misc'; col: number; desc: string; tier: number; sell: number }> {
   const o: Record<string, { name: string; icon: string; kind: 'misc'; col: number; desc: string; tier: number; sell: number }> = {};
   for (const f of RFAM) for (let g = 0; g < 4; g++) o[runeId(f, g)] = { name: `Runa ${GRAUS[g]}: ${RNAME[f]}`, icon: RICON[f], kind: 'misc', col: RCOL[f], tier: g + 1, sell: [12, 45, 160, 600][g],
-    desc: `${RNAT[f]}\nGrau ${GRAUS[g]} (efeito ×${GMUL[g]}). Encaixe numa magia ativa na Árvore Kármica (K): o 1º encaixe abre no rank 3 e o 2º no rank 7. Tirar custa ouro e a runa volta inteira. Três iguais viram uma do grau seguinte no Gravador de Runas.${f === 'fresta' ? '\nA Fresta cobra: vida a cada lançamento e a marca na alma.' : ''}` };
+    desc: `${RNAT[f]}\nGrau ${GRAUS[g]} (efeito ×${GMUL[g]}). Encaixe numa magia ativa na Árvore Kármica (K): o 1º encaixe abre no rank 3 e o 2º no rank 7. Tirar custa ouro e a runa volta inteira. Três iguais viram uma do grau seguinte no Gravador de Runas. Só caem de monstros do nível 20 para cima: Lascada a partir do 20, Gravada do 35, Viva do 50 e Desperta do 100.${f === 'fresta' ? '\nA Fresta cobra: vida a cada lançamento e a marca na alma.' : ''}` };
   return o;
 }
 /** a runa que cai do monstro (ou null). tier = nível do bicho; elite/chefe pesa muito */
 export function runeDrop(tier: number, big: boolean, boss = false): string | null {
-  if (tier < 5 && !big) return null;
-  const p = boss ? 1 : big ? 0.09 + tier * 0.0015 : 0.008 + tier * 0.00025; if (Math.random() > p) return null;
+  /* 03/11 (Erling: "caem de monstros a partir do level 20: as runas são transformações para o jogo mais avançado"): nada abaixo do 20, nem de chefe */
+  if (tier < 20) return null;
+  const p = boss ? 1 : big ? 0.06 + tier * 0.0012 : 0.006 + tier * 0.0002; if (Math.random() > p) return null;
   const f = RFAM[Math.floor(Math.random() * 6)]; let g = 0; const r = Math.random();
-  if (boss) g = tier >= 100 && r < 0.25 ? 3 : tier >= 50 ? 2 : tier >= 20 ? 1 : 0; else if (tier >= 50 && r < 0.12) g = 2; else if (tier >= 20 && r < (big ? 0.45 : 0.18)) g = 1;
+  if (boss) g = tier >= 100 && r < 0.25 ? 3 : tier >= 50 ? 2 : tier >= 35 ? 1 : 0; else if (tier >= 100 && big && r < 0.04) g = 3; else if (tier >= 50 && r < (big ? 0.3 : 0.12)) g = 2; else if (tier >= 35 && r < (big ? 0.45 : 0.18)) g = 1;
   return runeId(f, g);
 }
 /** encaixes que a magia tem agora pelo rank (passivas não têm: o gameplay só chama para ativas) */

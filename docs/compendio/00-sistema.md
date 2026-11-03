@@ -26,12 +26,14 @@ As runas são as letras que já estão no jogo (`runas.ts`). Cada uma tem uma **
 
 ## 2. Graus da runa (o loot)
 
+**As runas são do jogo avançado** (Erling, 03/11): elas só caem de monstros do **nível 20 para cima**, nem chefes soltam antes disso. É a virada do jogo: até o 20 você aprende a classe; dali em diante, as runas começam a transformá-la.
+
 | Grau | Onde cai | Força do efeito |
 |---|---|---|
-| **Lascada** | qualquer monstro a partir do nível 5 (raro) | efeito base |
-| **Gravada** | monstros 20+, elites, baús de masmorra | efeito +50% |
-| **Viva** | chefes (garantida no 1º abate do dia), masmorras 50+ | efeito +100% e o brilho da runa aparece na magia |
-| **Desperta** | chefes de mundo 100+, eventos, a Vela | efeito +150% e **um efeito extra único** (escrito em cada magia como "Desperta:") |
+| **Lascada** | monstros 20+ (raro), elites e chefes 20+ | efeito base |
+| **Gravada** | monstros 35+, elites, baús de masmorra | efeito +50% |
+| **Viva** | chefes 50+ (garantida no 1º abate do dia), masmorras 50+, elites 50+ | efeito +100% e o brilho da runa aparece na magia |
+| **Desperta** | chefes de mundo 100+, elites 100+ (muito raro), eventos, a Vela | efeito +150% e **um efeito extra único** (escrito em cada magia como "Desperta:") |
 
 - **Juntar:** 3 runas iguais do mesmo grau viram 1 do grau seguinte, na mesa do **Gravador de Runas**, em todas as cidades grandes.
 - **Tirar:** tirar uma runa de uma magia ou arma no Gravador custa ouro (proporcional ao grau). A runa volta inteira, nunca se perde: errar uma escolha não pode doer para sempre (o jogo é de anos).
