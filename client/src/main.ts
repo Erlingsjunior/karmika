@@ -113,6 +113,8 @@ import { waterU } from './chunks3d';
 import { windU, gustU, heroU } from './terrain3d';
 import { artPreload } from './arte3d';
 import { horsesPreload } from './montarias3d';
+import { stockAllMounts } from './sistemas/montarias-loja';
+stockAllMounts(); /* 03/11: todas as montarias e pets nas lojas */
 import { AudioEngine, type Surface } from './audio';
 import { createLimiar } from './limiar';
 
