@@ -221,14 +221,14 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
      nas costas, arma na mão, na bainha ou nas costas), confere pontos da própria malha contra o corpo — tronco (cápsula do quadril ao
      pescoço) e cabeça (esfera). O que entrar sai: escudo e peças guardadas andam para fora; arma na mão gira em volta da pegada até a
      ponta sair do corpo (a mão continua segurando). */
-  const clipPts = new Map<THREE.Object3D, { key: string; pts: THREE.Vector3[] }>();
+  let stowedNow = false; const clipPts = new Map<THREE.Object3D, { key: string; pts: THREE.Vector3[] }>();
   function ptsOf(o: THREE.Object3D): THREE.Vector3[] {
     const key = o.children.map((c) => c.uuid).join(); const c0 = clipPts.get(o); if (c0 && c0.key === key) return c0.pts;
     o.updateMatrixWorld(true); const inv = o.matrixWorld.clone().invert(), pts: THREE.Vector3[] = [], v = new THREE.Vector3();
     o.traverse((m) => { const ms = m as THREE.Mesh; if (!ms.isMesh || !ms.geometry?.attributes.position) return; const pa = ms.geometry.attributes.position, st = Math.max(1, Math.floor(pa.count / 48)); for (let i = 0; i < pa.count; i += st) pts.push(v.fromBufferAttribute(pa, i).applyMatrix4(ms.matrixWorld).applyMatrix4(inv).clone()); });
     clipPts.set(o, { key, pts }); return pts; }
   const cpA = new THREE.Vector3(), cpB = new THREE.Vector3(), cpH = new THREE.Vector3(), cpQ = new THREE.Vector3(), cpD = new THREE.Vector3();
-  function deClip(o: THREE.Object3D | null, rot: boolean) {
+  function deClip(o: THREE.Object3D | null, rot: boolean, along?: THREE.Vector3) {
     if (!o || !o.parent || !o.visible) return; const hb = B('Hips'), nb = B('Neck') ?? B('Spine2'), hd = B('Head'); if (!hb || !nb) return;
     const s = root.getWorldScale(new THREE.Vector3()).x, rT = 0.19 * s, rH = 0.15 * s; const pts = ptsOf(o); if (!pts.length) return;
     for (let it = 0; it < 5; it++) { hb.getWorldPosition(cpA); nb.getWorldPosition(cpB); const hasH = !!hd; if (hd) { hd.getWorldPosition(cpH); cpH.y += 0.1 * s; }
@@ -236,13 +236,13 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       for (const p0 of pts) { const p = cpQ.copy(p0).applyMatrix4(o.matrixWorld); const t = Math.max(0, Math.min(1, p.clone().sub(cpA).dot(ab) / L2)); const c = cpA.clone().addScaledVector(ab, t); cpD.subVectors(p, c); let d = cpD.length(), dep = rT - d, n = cpD.clone();
         if (hasH) { const dh = p.distanceTo(cpH); if (rH - dh > dep) { dep = rH - dh; n.subVectors(p, cpH); d = dh; } }
         if (dep <= 0) continue; if (d < 1e-4) n.set(0, 0, -1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion())); n.normalize(); dir.addScaledVector(n, dep); if (dep > best) { best = dep; deep = p.clone(); } }
-      if (best < 0.004 * s || !deep) break; dir.normalize();
+      if (best < 0.004 * s || !deep) break; dir.normalize(); if (along) { const k = Math.max(0.6, dir.dot(along)); best = Math.min(best / k, 0.12 * s); dir.copy(along); } /* escudo no braço: sai pela frente (face de fora), nunca de lado para fora do braço */
       const W0 = o.matrixWorld.clone(); let Wn: THREE.Matrix4;
       if (rot) { const piv = new THREE.Vector3().setFromMatrixPosition(W0), r = deep.clone().sub(piv), rl = r.length(); if (rl < 0.05 * s) break; const ax = new THREE.Vector3().crossVectors(r, dir).normalize(); if (ax.lengthSq() < 1e-6) break;
         const ang = Math.atan2(best + 0.012 * s, rl); Wn = new THREE.Matrix4().makeTranslation(piv.x, piv.y, piv.z).multiply(new THREE.Matrix4().makeRotationAxis(ax, ang)).multiply(new THREE.Matrix4().makeTranslation(-piv.x, -piv.y, -piv.z)).multiply(W0); }
       else Wn = new THREE.Matrix4().makeTranslation(dir.x * (best + 0.012 * s), dir.y * (best + 0.012 * s), dir.z * (best + 0.012 * s)).multiply(W0);
       o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert().multiply(Wn); o.updateMatrixWorld(true); } }
-  function deClipAll() { const shp = R.shield()?.parent, held = !!shp && isUnder(shp, R.armL.el!); deClip(R.shield(), false);
+  function deClipAll() { const shp = R.shield()?.parent, held = !!shp && isUnder(shp, R.armL.el!) && !stowedNow; const shO = R.shield(); deClip(shO, false, held && shO ? new THREE.Vector3(-1, 0, 0).transformDirection(shO.matrixWorld) : undefined);
     const th = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); const sw = R.sword(); const swHeld = !!sw?.parent && isUnder(sw.parent, R.armR.el!);
     if (th && th !== sw) deClip(th, !!th.parent && isUnder(th.parent, R.armR.el!)); deClip(sw, swHeld); void held;
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null; deClip(offW, true); }
@@ -289,7 +289,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, (isSw ? 0.15 : 0.26) * sc.x * restK);
         place(th, kk, handle.clone().multiplyScalar(hs), gp);
         /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, -(restK > 0.5 ? 0.06 : 0.15) * sc.x); armIK('Left', R.armL, lt); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
-    const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!);
+    const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!); stowedNow = stowed;
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
     /* 02/11 (Erling: "dedos virados para trás" na elfa, na tela de criação): mão vazia = dedos no repouso do próprio modelo, sem fechar */
@@ -354,17 +354,21 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     // escudo sempre de pé (vertical): face para fora do antebraço puxada para a frente do herói, borda de cima para o céu;
     // o centro acompanha o antebraço, então ele balança junto com o braço
     const fwS = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(tq));
-    const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.45).setY(back.y * 0.25).normalize();
+    const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.3).setY(back.y * 0.25).normalize(); /* 03/11: gira menos para a frente ("virar um pouco menos o escudo"): a borda de dentro não varre o rosto */
     const upS = new THREE.Vector3(0, 1, 0).addScaledVector(u, 0.15); upS.addScaledVector(nS, -upS.dot(nS)).normalize();
     const ctrS = vF.clone().lerp(vH, 0.62).addScaledVector(nS, (0.17 + (rig?.bodyHolder?.()?.children.some((c) => c.userData.pauldron) ? 0.08 : 0)) * root.getWorldScale(new THREE.Vector3()).x); // com ombreiras, o escudo vai mais à frente e não atravessa // a face fica à frente do antebraço (alça + braço por trás)
-    /* 03/11 (Erling: "escudo atravessando a cabeça"): escudo alto (o retangular de legião passa de 1 m) no braço subia acima do queixo. A borda
-       de cima fica abaixo do queixo; se para isso a de baixo encostaria no chão, ele vai mais para a frente em vez de descer */
-    { const shO = R.shield(); if (shO) { const key = shO.children.map((c) => c.uuid).join(); if (key !== shKey) { shKey = key; const m0 = shO.matrix.clone(), au = shO.matrixAutoUpdate; shO.parent?.updateWorldMatrix(true, false); shO.matrixAutoUpdate = false; shO.matrix.copy(shO.parent ? shO.parent.matrixWorld.clone().invert() : new THREE.Matrix4()); shO.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(shO, true); shO.matrix.copy(m0); shO.matrixAutoUpdate = au; shO.updateMatrixWorld(true); shExt = e && !e.isEmpty() ? [e.min.y, e.max.y] : null; if (!shExt) shKey = ""; }
-      const hb = B('Head'); if (shExt && hb) { const s = root.getWorldScale(new THREE.Vector3()).y, chin = hb.getWorldPosition(new THREE.Vector3()).y - 0.04 * s, floor = root.getWorldPosition(new THREE.Vector3()).y + 0.08 * s;
-        const top = ctrS.y + shExt[1] * s; if (top > chin) { let dy = top - chin; const bot = ctrS.y + shExt[0] * s - dy; if (bot < floor) { dy -= floor - bot; ctrS.addScaledVector(nS, Math.min(0.35, (floor - bot) * 0.8 + 0.12) * s); } ctrS.y -= Math.max(0, dy); } } } }
+    /* 03/11 (Erling: "ele não segura por fora do escudo e sim por dentro"): o escudo é preso no antebraço por dentro (alça no braço, mão na
+       empunhadura) — o centro fica SEMPRE no antebraço e todo o braço (mão, cotovelo e o começo do braço) fica atrás da face de dentro.
+       Escudo alto: a borda de cima não passa da altura dos olhos (desce no máximo um palmo, senão o braço apareceria por cima). */
+    { const shO = R.shield(); if (shO) { const key = shO.children.map((c) => c.uuid).join(); if (key !== shKey) { shKey = key; const m0 = shO.matrix.clone(), au = shO.matrixAutoUpdate; shO.parent?.updateWorldMatrix(true, false); shO.matrixAutoUpdate = false; shO.matrix.copy(shO.parent ? shO.parent.matrixWorld.clone().invert() : new THREE.Matrix4()); shO.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(shO, true); shO.matrix.copy(m0); shO.matrixAutoUpdate = au; shO.updateMatrixWorld(true); shExt = e && !e.isEmpty() ? [e.min.y, e.max.y, e.max.x] : null; if (!shExt) shKey = ""; }
+      const hb = B('Head'); if (shExt && hb) { const s = root.getWorldScale(new THREE.Vector3()).y, eye = hb.getWorldPosition(new THREE.Vector3()).y + 0.06 * s;
+        const top = ctrS.y + shExt[1] * s; if (top > eye) ctrS.y -= Math.min(top - eye, 0.14 * s);
+        /* braço atrás da face de dentro (+X local = lado do braço, a face de dentro fica em max.x) */
+        const inner = (shExt[2] + 0.05) * s, sh0 = B(shieldSide + 'Arm'); const armPts = [vH.clone(), vF.clone(), vF.clone().lerp(vH, 0.5)]; void sh0;
+        let need = 0; for (const q of armPts) { const d = q.clone().sub(ctrS).dot(nS); need = Math.max(need, d + inner); } if (need > 0) ctrS.addScaledVector(nS, Math.min(need, 0.25 * s)); } } }
     place(R.shield(), nS.clone().negate(), upS, ctrS);
   }
-  let shKey = '', shExt: [number, number] | null = null;
+  let shKey = '', shExt: [number, number, number] | null = null;
   const RW = window as unknown as { __rollL?: number; __rollR?: number };
   const roll: [THREE.Bone, THREE.Quaternion][] = (['Left', 'Right'] as const).map((side) => { const b = B(side + 'ForeArm')!; const ch = B(side + 'Hand')!;
     const ax = ch.position.clone().normalize(); const ang = side === 'Left' ? (RW.__rollL ?? 0.8) : (RW.__rollR ?? -0.8);
