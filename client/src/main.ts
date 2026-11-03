@@ -1574,6 +1574,7 @@ const finish = new ShaderPass({
          dos consoles (Bayer 4×4), que funde os degraus em gradiente em vez de quadrados */
       vec2 q = mod(floor(gl_FragCoord.xy), 4.0); int i = int(q.x) + int(q.y) * 4;
       float bay = i==0?0.0:i==1?8.0:i==2?2.0:i==3?10.0:i==4?12.0:i==5?4.0:i==6?14.0:i==7?6.0:i==8?3.0:i==9?11.0:i==10?1.0:i==11?9.0:i==12?15.0:i==13?7.0:i==14?13.0:5.0;
+      if (uQuant < 0.5) { /* Moderno: um pouco mais de contraste e cor (curva suave), o resto é a luz em degradê e o bloom */ float l2 = dot(c.rgb, vec3(0.299, 0.587, 0.114)); c.rgb = mix(vec3(l2), c.rgb, 1.14); c.rgb = c.rgb * c.rgb * (3.0 - 2.0 * c.rgb) * 0.35 + c.rgb * 0.65; }
       if (uQuant > 0.5) c.rgb = floor(clamp(c.rgb, 0.0, 1.0) * levels + (bay + 0.5) / 16.0) / levels; /* no gráfico Moderno a cor corre sem degrau */
       gl_FragColor = c;
     }`,
@@ -1588,6 +1589,7 @@ let gfxBloom = 1;
 function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
   const st = m ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
+  { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
   fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.72 : 0.93; gfxBloom = m ? 3.4 : 1; document.body.classList.toggle('gfx-moderno', m); resize(); }
 /* /perf: tempo de cada passada do desenho (bloom, saída, etc.) */
 const PM: Record<string, number> = {};
@@ -1604,7 +1606,8 @@ const limiar = createLimiar({ use: (s, c) => dual.use(s, c), restore: () => dual
 function uiScale() { const base = Math.max(0.85, Math.min(2, Math.min(innerHeight / 1080, innerWidth / 1560))); /* 1,00 = tamanho pensado para Full HD; em janela pequena não encolhe abaixo de 0,85 (senão não dá para ler) */ return Math.max(0.7, base * (opts.uis || 1)); }
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
-  const refH = opts.res > 0 ? Math.min(innerHeight, opts.res) : innerHeight, k = innerHeight / refH; // k > 1: desenha menos pixels e estica
+  const rr = opts.gfx === 1 ? 0 : opts.res; /* Moderno: sempre na resolução nativa do monitor (Quad HD e 4K ficam nítidos de verdade) */
+  const refH = rr > 0 ? Math.min(innerHeight, rr) : innerHeight, k = innerHeight / refH; // k > 1: desenha menos pixels e estica
   const step = Number.isInteger(WORLD_RATIO) ? WORLD_RATIO : WORLD_RATIO * 2; /* 2/3: múltiplo de 3 para o cenário cair em pixel inteiro */
   const w = Math.max(160, Math.floor(innerWidth / k / PIX / step) * step), h = Math.max(120, Math.floor(innerHeight / k / PIX / step) * step);
   renderer.setSize(w, h, false); dual.setSize(w, h);
