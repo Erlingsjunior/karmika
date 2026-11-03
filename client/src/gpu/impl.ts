@@ -15,10 +15,12 @@ const L: any = TSL;
 const { Fn, uniform, vec2, vec3, vec4, float, attribute, positionWorld, positionLocal, normalLocal, screenCoordinate, screenSize, texture, sin, cos, fract, floor, dot, mix, smoothstep, clamp, distance, max, min, exp, length, abs, pow, uv, vertexIndex, diffuseColor, Discard, select, cameraProjectionMatrix, modelViewMatrix, modelWorldMatrix, cameraViewMatrix, normalView, positionView, instancedBufferAttribute, pass, renderOutput, mod, step } = L;
 type Ref = { value: any };
 /** uniforme ligado a um {value} do jogo: número lido a cada desenho; objeto (vetor, cor, textura) vivo pela referência */
+/** textura usada só pelos nós (não está em material.map): a varredura de memória do main.ts não pode soltá-la */
+const keep = <T extends THREE.Texture>(t: T): T => { t.userData.keep = true; return t; };
 const U = (o: Ref) => (typeof o.value === 'number' ? uniform(o.value).onRenderUpdate(() => o.value) : uniform(o.value));
 const pending = new Set<string>();
 /** erros do WebGPU contados: se o WebGPU não se acerta neste PC, o jogo volta sozinho para o WebGL (main.ts lê gpuState.errs) */
-export function gpuErr(e: unknown) { gpuState.errs = (gpuState.errs ?? 0) + 1; if (gpuState.errs < 4) console.warn('[WebGPU]', e); }
+export function gpuErr(e: unknown) { gpuState.errs = (gpuState.errs ?? 0) + 1; const m = String((e as { message?: string })?.message ?? e).slice(0, 400); if (!gpuState.log.includes(m) && gpuState.log.length < 60) gpuState.log.push(m); if (gpuState.errs < 4) console.warn('[WebGPU]', m); }
 export const gpuPending = () => [...pending];
 
 /* ---------- os efeitos anotados nos materiais do jogo ---------- */
@@ -38,7 +40,7 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
     c = mix(c, c.mul(h.mul(0.4).add(0.78)).mul(mix(0.45, 1.0, j)), pl);
     diffuseColor.rgb.assign(c); return;
   }
-  const tex = G.tGround.value as THREE.DataArrayTexture, mean = (G.uMean.value as THREE.Vector3[]).map((v) => uniform(v));
+  const tex = keep(G.tGround.value as THREE.DataArrayTexture), mean = (G.uMean.value as THREE.Vector3[]).map((v) => uniform(v));
   const gTex = (Ly: number, sc: number) => { const p = wp.div(sc), q = vec2(wp.x.mul(0.809).add(wp.y.mul(0.588)), wp.x.mul(-0.588).add(wp.y.mul(0.809))).div(sc * 1.37).add(vec2(0.37, 0.71));
     const n = smoothstep(0.32, 0.68, gNoise(wp.mul(0.045).add(Ly * 7.3)));
     return mix(texture(tex, p).depth(Ly).rgb, texture(tex, q).depth(Ly).rgb, n); };
@@ -128,7 +130,7 @@ const PORTS: Record<string, (nm: any, d: any, b: any) => void> = {
   /** a Égide de Auréon (gameplay): cúpula de favos */
   aegis(nm, u) { const t = U(u.t), hit = U(u.hit), op = U(u.op), col = uniform(u.col.value as THREE.Color), vU = uv();
     const f = pow(float(1).sub(abs(dot(normalView, positionView.normalize().negate()))), 2.4);
-    const hx = texture(u.map.value as THREE.Texture, vU.mul(vec2(7, 3.5)).add(vec2(0, t.mul(-0.06)))).r, fb = fract(vU.y.mul(2).sub(t.mul(0.35)));
+    const hx = texture(keep(u.map.value as THREE.Texture), vU.mul(vec2(7, 3.5)).add(vec2(0, t.mul(-0.06)))).r, fb = fract(vU.y.mul(2).sub(t.mul(0.35)));
     const band = smoothstep(0.0, 0.08, fb).mul(float(1).sub(smoothstep(0.08, 0.3, fb))), base = smoothstep(-0.05, 0.25, positionLocal.y);
     const a = float(0.015).add(f.mul(0.65)).add(hx.mul(f.mul(0.45).add(0.035))).add(band.mul(f).mul(0.25)).add(hit.mul(hx.mul(0.5).add(0.2))).mul(op).mul(base.mul(0.65).add(0.35));
     nm.colorNode = col.mul(f.mul(0.6).add(0.7).add(hit.mul(0.9))).add(vec3(hit.mul(0.3))); nm.opacityNode = a; },
@@ -171,38 +173,18 @@ function particles(geo: THREE.BufferGeometry, u: Record<string, Ref>, n: number)
   const vi = vertexIndex, cx = select(vi.equal(1).or(vi.equal(2)).or(vi.equal(4)), float(1), float(-1)), cy = select(vi.equal(2).or(vi.equal(4)).or(vi.equal(5)), float(1), float(-1));
   const off = vec2(cx, cy).mul(px).div(screenSize).mul(clip.w);
   m.vertexNode = select(alive, vec4(clip.xy.add(off), clip.z, clip.w), vec4(2, 2, 2, 1));
-  const vA = select(k.lessThan(0.15), k.div(0.15), float(1).sub(k.sub(0.15).div(0.85))), vUv = vec2(cx, cy).mul(0.5).add(0.5).varying('vPc');
-  const a = texture(u.uMap.value as THREE.Texture, vUv).a.mul(vA.varying('vPa'));
-  m.colorNode = mix(c0, c1, k).varying('vPcol').mul(a); m.opacityNode = a; m.alphaTestNode = float(0.01);
+  const vA = select(k.lessThan(0.15), k.div(0.15), float(1).sub(k.sub(0.15).div(0.85))), vUv = vec2(cx, cy).mul(0.5).add(0.5).toVarying('vPc');
+  const a = texture(keep(u.uMap.value as THREE.Texture), vUv).a.mul(vA.toVarying('vPa'));
+  m.colorNode = mix(c0, c1, k).toVarying('vPcol').mul(a); m.opacityNode = a; m.alphaTestNode = float(0.01);
   const mesh = new THREE.Mesh(ig, m); mesh.frustumCulled = false; return mesh;
-}
-
-/* ---------- remendos do three r170 no WebGPU (o jogo faz coisas que o WebGL aceita e o WebGPU não) ---------- */
-function patchRenderer(R: any) {
-  /* 1) textura que muda de tamanho (canvas de placa, nome, mapa): o WebGPU não redimensiona — a textura é refeita */
-  const TX = R._textures, oUp = TX.updateTexture.bind(TX), SZ = new WeakMap<object, string>();
-  TX.updateTexture = (t: any, o: any) => { if (!(t.isRenderTargetTexture || t.isDepthTexture || t.isFramebufferTexture)) { const d = TX.get(t), z = TX.getSize(t), k = `${z.width}x${z.height}x${z.depth}`, was = SZ.get(t);
-      if (d.initialized && was && was !== k) { R.backend.destroySampler(t); R.backend.destroyTexture(t); R.backend.createSampler(t); d.isDefaultTexture = true; } SZ.set(t, k); } return oUp(t, o); };
-  /* 2) atributo que cresceu (array trocado por um maior): o buffer é refeito com o mesmo uso */
-  const AU = R.backend.attributeUtils, oUA = AU.updateAttribute.bind(AU);
-  /* 2b) trechos de atualização (updateRanges) que passam do fim do array: o WebGL ignora, o WebGPU derruba o quadro — o trecho é cortado */
-  AU.updateAttribute = (a: any) => { const ba = a.isInterleavedBufferAttribute ? a.data : a, bd = R.backend.get(ba), buf = bd.buffer;
-    if (!buf) return oUA(a);
-    if (ba.array.byteLength > buf.size) { const use = buf.usage; buf.destroy(); bd.buffer = undefined; AU.createAttribute(a, use); return; }
-    const n = ba.array.length, maxEl = Math.floor(buf.size / ba.array.BYTES_PER_ELEMENT);
-    if (ba.updateRanges?.length) ba.updateRanges = ba.updateRanges.filter((r: { start: number; count: number }) => r.start < n && r.count > 0).map((r: { start: number; count: number }) => ({ start: r.start, count: Math.min(r.count, n - r.start, maxEl - r.start) })).filter((r: { count: number }) => r.count > 0);
-    /* o three r170 escreve os trechos com a posição em bytes onde o WebGPU espera elementos (e sempre no começo do buffer): escrevemos certo */
-    if (ba.updateRanges?.length) { try { const BPE = ba.array.BYTES_PER_ELEMENT; for (const r of ba.updateRanges) R.backend.device.queue.writeBuffer(buf, r.start * BPE, ba.array, r.start, r.count); } catch (e) { gpuErr(e); } ba.clearUpdateRanges(); return; }
-    try { return oUA(a); } catch (e) { ba.clearUpdateRanges?.(); try { R.backend.device.queue.writeBuffer(buf, 0, ba.array, 0, Math.min(n, maxEl)); } catch { /* */ } gpuErr(e); } };
-  /* 2c) textura destruída duas vezes (dispose de alvo que o WebGPU já soltou): o three r170 quebrava no destroy de undefined */
-  for (const k of ['destroyTexture', 'destroySampler']) { const o = R.backend[k].bind(R.backend); R.backend[k] = (t: unknown) => { try { o(t); } catch (e) { gpuErr(e); } }; }
-  /* 3) InstancedMesh com count menor que a capacidade: o three r170 criava o buffer das matrizes do tamanho do count de então */
-  const IN = (W as any).InstanceNode.prototype, oIS = IN.setup;
-  IN.setup = function (this: any, b: any) { const m = this.instanceMesh, c = m.count; if (this.instanceMatrixNode === null) m.count = m.instanceMatrix.count; try { return oIS.call(this, b); } finally { m.count = c; } };
 }
 
 /* ---------- o renderizador ---------- */
 export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
+  /* compatibilidade: o three 0.186 manda 'swizzle' em toda vista de textura; o Chrome 141/142 (e o Electron 45 do Karmika) ainda conhece
+     esse campo com outro tipo e recusa a vista inteira. Sem o recurso 'texture-component-swizzle' ligado, o campo não tem efeito: sai. */
+  const GT = (globalThis as any).GPUTexture?.prototype;
+  if (GT && !GT.__kSw) { const cv = GT.createView; GT.createView = function (this: any, d?: any) { if (d && 'swizzle' in d && !this.__kSwOk) { const { swizzle: _s, ...rest } = d; void _s; return cv.call(this, rest); } return cv.call(this, d); }; GT.__kSw = true; }
   const R = new (W as any).WebGPURenderer({ antialias: false, powerPreference: 'high-performance' });
   await R.init();
   if (!R.backend?.isWebGPUBackend) { R.dispose?.(); gpuState.why = 'o navegador não liberou o WebGPU'; return null; }
@@ -210,9 +192,19 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   for (const [type, cls] of [...mats.entries()]) mats.set(type, wrapClass(cls));
   mats.set('ShaderMaterial', ShaderPort);
   gpuHooks.particles = particles;
-  patchRenderer(R);
+  /* GEOMETRIA DIVIDIDA COM O WEBGL: o three 0.186 trocava, no próprio atributo do jogo, os índices de osso de 16 bits (skinIndex) por 32 bits
+     ao subir para o WebGPU. Os WebGL à parte (retratos, Limiar, boneco da ficha, vitrine) desenham a MESMA geometria e passavam a ver
+     inteiros de 32 bits onde o shader espera vec4 — GL_INVALID_OPERATION. O WebGPU aceita 16 bits (uint16x2/x4, com o passo alinhado em 4),
+     então o array do jogo fica como está; só o índice de 8 bits (que o WebGPU não tem) continua sendo convertido. */
+  { const AU = R.backend.attributeUtils, oCA = AU.createAttribute.bind(AU), IDX = (globalThis as any).GPUBufferUsage?.INDEX ?? 16;
+    AU.createAttribute = (a: any, usage: number) => { const arr = a.isInterleavedBufferAttribute ? null : a.array, C = arr?.constructor;
+      const keep16 = a.normalized === false && (C === Uint16Array || C === Int16Array || ((C === Uint8Array || C === Int8Array) && !(usage & IDX) && (a.itemSize === 2 || a.itemSize === 4)));
+      if (!keep16) return oCA(a, usage); a.normalized = null; try { return oCA(a, usage); } finally { a.normalized = false; } }; }
   gpuState.on = true; gpuState.backend = 'webgpu';
-  R.backend.device?.lost?.then((i: { message: string }) => { gpuState.why = 'perdido: ' + i.message + ' @' + Math.round(performance.now()); console.warn('[WebGPU] dispositivo perdido:', i.message); });
+  /* qualquer erro do WebGPU (validação, memória) é contado em silêncio; se a placa "se perder" (driver reiniciou, placa saiu), o jogo
+     volta para o WebGL na hora (main.ts: gpuState.lost) */
+  const dev = R.backend.device; if (dev) dev.onuncapturederror = (ev: { error: unknown }) => gpuErr(ev.error);
+  dev?.lost?.then((i: { message: string; reason?: string }) => { if (i.reason === 'destroyed') return; gpuState.why = 'perdido: ' + i.message; gpuState.lost = true; console.warn('[WebGPU] dispositivo perdido:', i.message); });
   return R as THREE.WebGLRenderer;
 }
 
@@ -234,15 +226,15 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
   const out = select(uQ.greaterThan(0.5), cq, cm);
   /* teste sem tela (Playwright): ?gpuoff=1 desenha num alvo fora da tela — no navegador sem monitor, apresentar no canvas derruba o WebGPU */
   const OFF = /[?&]gpuoff=1/.test(location.search); let offRT: any = null;
-  const post = new (W as any).PostProcessing(R); post.outputColorTransform = false; const DBG = Number(new URLSearchParams(location.search).get('gpudbg') || 0); const cg = c; post.outputNode = DBG === 5 ? vec4(cg, 1) : DBG === 6 ? vec4(cm, 1) : DBG === 7 ? vec4(cq, 1) : DBG === 3 ? vec4(renderOutput(lin).rgb, 1) : DBG === 4 ? vec4(bn.rgb, 1) : DBG === 1 ? vec4(renderOutput(col).rgb, 1) : DBG === 2 ? vec4(col.rgb, 1) : vec4(out, 1);
+  const post = new (W as any).RenderPipeline(R); post.outputColorTransform = false; const DBG = Number(new URLSearchParams(location.search).get('gpudbg') || 0); const cg = c; post.outputNode = DBG === 5 ? vec4(cg, 1) : DBG === 6 ? vec4(cm, 1) : DBG === 7 ? vec4(cq, 1) : DBG === 3 ? vec4(renderOutput(lin).rgb, 1) : DBG === 4 ? vec4(bn.rgb, 1) : DBG === 1 ? vec4(renderOutput(col).rgb, 1) : DBG === 2 ? vec4(col.rgb, 1) : vec4(out, 1);
   return {
     passes: [] as unknown[], addPass(p: unknown) { this.passes.push(p); }, setSize() { /* o PassNode acompanha o tamanho do renderizador */ },
     render() { const [s, cam] = getSC(); if (sp.scene !== s) sp.scene = s; if (sp.camera !== cam) sp.camera = cam; cam.layers.enableAll();
       if (OFF && R.getRenderTarget() === null) { const cw = R.domElement.width, ch = R.domElement.height; if (!offRT || offRT.width !== cw || offRT.height !== ch) { offRT?.dispose(); offRT = new THREE.RenderTarget(cw, ch); } R.setRenderTarget(offRT); }
       bn.strength.value = bl.strength; bn.radius.value = bl.radius; bn.threshold.value = bl.threshold; post.render(); if (OFF && R.getRenderTarget() === offRT) R.setRenderTarget(null); },
     /** teste: o quadro final lido de volta (o WebGPU não deixa ler o canvas depois de apresentado) → dataURL */
-    async shot(w = 640) { const cw = R.domElement.width, ch = R.domElement.height, h = Math.round(w * ch / cw); const rt = new THREE.RenderTarget(cw, ch);
-      R.setRenderTarget(rt); this.render(); R.setRenderTarget(null); const px: Uint8Array = await R.readRenderTargetPixelsAsync(rt, 0, 0, cw, ch); rt.dispose();
+    async shot(w = 640) { const cw = R.domElement.width, ch = R.domElement.height, h = Math.round(w * ch / cw); if (!OFF) throw new Error('shot: só no modo de teste (?gpuoff=1)'); this.render(); const rt = offRT; /* lê o próprio quadro fora da tela (sem trocar de alvo) */
+      const px: Uint8Array = await R.readRenderTargetPixelsAsync(rt, 0, 0, cw, ch);
       const c = document.createElement('canvas'); c.width = cw; c.height = ch; const g = c.getContext('2d')!, im = g.createImageData(cw, ch); im.data.set(px); g.putImageData(im, 0, 0);
       const o = document.createElement('canvas'); o.width = w; o.height = h; o.getContext('2d')!.drawImage(c, 0, 0, w, h); return o.toDataURL('image/png'); },
   };

@@ -15,9 +15,9 @@ export default defineConfig({
        (three/webgpu, carregado só quando é usado) e o WebGL dividem as mesmas classes (Mesh, Material, Texture…) */
     alias: [
       { find: '@karmika/shared', replacement: fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
-      { find: /^three$/, replacement: fileURLToPath(new URL('./src/gpu/three-shim.js', import.meta.url)) },
+      { find: /^three$/, replacement: 'three/src/Three.js' },
       { find: /^three\/webgpu$/, replacement: 'three/src/Three.WebGPU.js' },
-      { find: /^three\/tsl$/, replacement: 'three/src/Three.WebGPU.js' },
+      { find: /^three\/tsl$/, replacement: 'three/src/Three.TSL.js' },
     ],
   },
   server: { port: 5173, open: false },

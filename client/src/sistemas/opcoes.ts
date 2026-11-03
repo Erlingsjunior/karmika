@@ -12,7 +12,7 @@ function applyOpts(k?: keyof Opts) {
   if (!k || k === 'pix' || k === 'wratio' || k === 'ui' || k === 'uis' || k === 'res' || k === 'gfx') K.applyGfx(); /* 03/11: o estilo do gráfico decide o pixel e o detalhe (Moderno = resolução cheia) */
   if (!k || k === 'shadows') { K.renderer.shadowMap.enabled = K.opts.shadows; K.scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
   if (!k || k === 'charShadows') { charShadow.on = K.opts.charShadows; const setCast = (root: THREE.Object3D) => root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite && (m.material as THREE.Material)?.type !== 'MeshBasicMaterial') m.castShadow = K.opts.charShadows; }); setCast(K.hero.root); for (const n of K.npcSys.npcs) setCast(n.hero.root); }
-  if (!k || k === 'shadowRes') { K.sun.shadow.mapSize.set(K.opts.shadowRes, K.opts.shadowRes); if (K.sun.shadow.map) { K.sun.shadow.map.dispose(); (K.sun.shadow as unknown as { map: null }).map = null; } }
+  if (!k || k === 'shadowRes') { K.sun.shadow.mapSize.set(K.opts.shadowRes, K.opts.shadowRes); if (K.sun.shadow.map && !gpuState.on) { K.sun.shadow.map.dispose(); (K.sun.shadow as unknown as { map: null }).map = null; } }
   if (!k || k === 'particles') K.particles.density = K.opts.particles;
   if (!k || k === 'master' || k === 'music' || k === 'sfx' || k === 'amb') K.audio.setVolumes(K.opts.master, K.opts.music, K.opts.sfx, K.opts.amb);
   if (!k || k === 'dmgText') document.body.classList.toggle('nodmg', !K.opts.dmgText);

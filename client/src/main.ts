@@ -82,6 +82,7 @@ import { CUT, ramp as toonRamp } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
 import { gpuState } from './gpu/tags';
+const gpuErr = (e: unknown) => { gpuState.errs++; const m = String((e as Error)?.stack ?? e).slice(0, 400); if (!gpuState.log.includes(m) && gpuState.log.length < 60) gpuState.log.push(m); };
 import { createDialog } from './dialog';
 
 
@@ -280,7 +281,7 @@ document.getElementById('game')!.appendChild(canvas);
    depois largado sem dispose() — efeito de golpe, corpo de bicho, placa de ofício, item no chão — fica preso dentro do WebGLRenderer para sempre, e a memória
    só cresce. De 30 em 30 s marcamos o que ainda está na cena e soltamos o resto; o que for reaproveitado (cache de corpos, geometria compartilhada) é só
    enviado de novo à placa quando voltar a aparecer. */
-const GEO_REG = new Set<THREE.BufferGeometry>(), TEX_REG = new Set<THREE.Texture>();
+const GEO_REG = new Set<THREE.BufferGeometry>(), TEX_REG = new Set<THREE.Texture>(), SEEN_G = new WeakSet<THREE.BufferGeometry>(), SEEN_T = new WeakSet<THREE.Texture>();
 { const bs = THREE.BufferGeometry.prototype.computeBoundingSphere; THREE.BufferGeometry.prototype.computeBoundingSphere = function (this: THREE.BufferGeometry) { GEO_REG.add(this); return bs.call(this); };
   const d = Object.getOwnPropertyDescriptor(THREE.Texture.prototype, 'needsUpdate')!; Object.defineProperty(THREE.Texture.prototype, 'needsUpdate', { configurable: true, set(this: THREE.Texture, v: boolean) { if (!(this as THREE.Texture & { isRenderTargetTexture?: boolean; isDepthTexture?: boolean }).isRenderTargetTexture && !(this as THREE.Texture & { isDepthTexture?: boolean }).isDepthTexture) TEX_REG.add(this); d.set!.call(this, v); } }); } /* toda CanvasTexture passa por needsUpdate=true ao nascer */
 const TEX_KEYS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'gradientMap', 'bumpMap'] as const;
@@ -288,8 +289,11 @@ function geoSweep(roots: THREE.Object3D[]): { geo: number; tex: number } {
   const live = new Set<THREE.BufferGeometry>(), tlive = new Set<THREE.Texture>();
   const mat = (m: THREE.Material) => { for (const k of TEX_KEYS) { const t = (m as unknown as Record<string, THREE.Texture | null>)[k]; if (t) tlive.add(t); } const u = (m as THREE.ShaderMaterial).uniforms; if (u) for (const key in u) { const v = u[key].value; if (v && (v as THREE.Texture).isTexture) tlive.add(v as THREE.Texture); } };
   for (const r of roots) r.traverse((o) => { const m = o as THREE.Mesh; if (m.geometry) live.add(m.geometry); if (m.material) { if (Array.isArray(m.material)) m.material.forEach(mat); else mat(m.material); } if ((o as THREE.Sprite).isSprite) mat((o as THREE.Sprite).material); });
-  let geo = 0, tex = 0; for (const g of GEO_REG) { if (live.has(g)) continue; GEO_REG.delete(g); if (!(g.userData as { keep?: boolean }).keep) { g.dispose(); geo++; } }
-  for (const t of TEX_REG) { if (tlive.has(t) || (t.userData as { keep?: boolean }).keep) continue; TEX_REG.delete(t); t.dispose(); tex++; }
+  /* 03/11 (WebGPU): só se solta o que JÁ ESTEVE na cena e saiu. O que o próprio renderizador cria por dentro (alvos do brilho, mapa de sombra,
+     o quadro do pós-processamento) nunca passa pela cena — antes a varredura soltava isso também, e o WebGPU desenhava com textura destruída */
+  for (const g of live) SEEN_G.add(g); for (const t of tlive) SEEN_T.add(t);
+  let geo = 0, tex = 0; for (const g of GEO_REG) { if (live.has(g) || !SEEN_G.has(g)) continue; GEO_REG.delete(g); SEEN_G.delete(g); if (!(g.userData as { keep?: boolean }).keep) { g.dispose(); geo++; } }
+  for (const t of TEX_REG) { const tt = t as THREE.Texture & { isRenderTargetTexture?: boolean; renderTarget?: unknown }; if (tlive.has(t) || !SEEN_T.has(t) || tt.isRenderTargetTexture || tt.renderTarget || (t.userData as { keep?: boolean }).keep) continue; TEX_REG.delete(t); SEEN_T.delete(t); t.dispose(); tex++; }
   return { geo, tex };
 }
 let geoSweepT = 30;
@@ -1597,12 +1601,12 @@ composer.addPass(finish);
    dos personagens, cor sem quantização, sombra suave, brilho (bloom) mais largo nos fogos, auras e magias, e borda alisada (FXAA). */
 const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(fxaa);
 /* WebGPU: o mesmo quadro (brilho, cor do dia e da noite, vinheta, 16 bits) montado em nós — gpu/impl.ts */
-if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => gp.render(); composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState, limOpen: (i: Parameters<typeof limiar.open>[0]) => limiar.open(i, () => { /* teste */ }), limShot: () => { limiarGL(true); return limGL!.domElement.toDataURL('image/png'); } }; }
+if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => { try { gp.render(); } catch (e) { gpuErr(e); } }; composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState, limOpen: (i: Parameters<typeof limiar.open>[0]) => limiar.open(i, () => { /* teste */ }), limShot: () => { limiarGL(true); return limGL!.domElement.toDataURL('image/png'); } }; }
 let gfxBloom = 1;
 function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
-  const st = m ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
+  const st = m ? THREE.PCFShadowMap /* three 0.18x: o PCFSoft saiu; o PCF com radius faz a borda macia */ : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
-  { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
+  { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuImpl) { /* WebGPU: o ShadowNode acompanha o mapSize sozinho; soltar o alvo deixava a sombra apontando para textura destruída */ sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
   fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.72 : 0.93; gfxBloom = m ? 3.4 : 1; document.body.classList.toggle('gfx-moderno', m); resize(); }
 /* WebGPU: o LIMIAR (a cena da alma, limiar.ts) tem 19 efeitos próprios em GLSL. Enquanto ele não é traduzido, a cena é desenhada por um
    WebGL à parte num canvas por cima (o mesmo caminho de antes: pixel em duas resoluções, brilho, acabamento) — o mundo espera lá embaixo,
@@ -1610,9 +1614,9 @@ function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RA
 /* RESGUARDO: se o WebGPU errar seguido neste PC (driver, placa, navegador), o jogo anota e reabre em WebGL sozinho — o jogador não fica
    com tela preta. A escolha WebGPU continua salva; na próxima abertura ele tenta de novo só se o jogador pedir (Opções → Renderizador). */
 let gpuFails = 0, gpuFailT = 0;
-function gpuFail(m: string) { const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
+function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
-setInterval(() => { if (gpuImpl && gpuState.errs > 60) gpuFail('erros seguidos do WebGPU'); }, 2000);
+setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
 setTimeout(() => { try { const f = sessionStorage.getItem('karmika.gpuFallback'); if (f) { sessionStorage.removeItem('karmika.gpuFallback'); game.logMsg('⚙ O WebGPU deu erro neste PC e o jogo voltou para o WebGL (Opções → Renderizador). Detalhe: ' + f.split('\n')[0], '#ffb27a'); } } catch { /* */ } }, 4000);
 let limGL: THREE.WebGLRenderer | null = null, limComp: EffectComposer | null = null;
 function limiarGL(on: boolean) {
@@ -1882,7 +1886,8 @@ let gChkT = 0, gCur: string | null = null, gForce: string | null | undefined = u
    o mundo assenta: fica só mais cor no dia, uma brisa leve, o coral quase sumindo ao longe. O efeito (buff) fica na barra de efeitos. */
 let instK = 0, gOpenId: string | null = null, gOpenAt = -1e9; const G_OPEN_FULL = 12, G_OPEN_FADE = 8;
 const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s < G_OPEN_FULL ? 1 : Math.max(0, 1 - (s - G_OPEN_FULL) / G_OPEN_FADE); }; /* relógio de verdade: não depende do passo do quadro */
-const clock = new THREE.Clock();
+/* o relógio do quadro (o THREE.Clock saiu do three 0.18x): segundos desde o quadro anterior */
+const clock = (() => { let last = performance.now(); return { getDelta() { const n = performance.now(), d = (n - last) / 1000; last = n; return d; } }; })();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
 let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpT = 0, bpYaw: number | null = null; /* recuo de costas (estilo Path of Exile 2) */
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
