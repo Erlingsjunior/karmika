@@ -324,8 +324,14 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.45).setY(back.y * 0.25).normalize();
     const upS = new THREE.Vector3(0, 1, 0).addScaledVector(u, 0.15); upS.addScaledVector(nS, -upS.dot(nS)).normalize();
     const ctrS = vF.clone().lerp(vH, 0.62).addScaledVector(nS, (0.17 + (rig?.bodyHolder?.()?.children.some((c) => c.userData.pauldron) ? 0.08 : 0)) * root.getWorldScale(new THREE.Vector3()).x); // com ombreiras, o escudo vai mais à frente e não atravessa // a face fica à frente do antebraço (alça + braço por trás)
+    /* 03/11 (Erling: "escudo atravessando a cabeça"): escudo alto (o retangular de legião passa de 1 m) no braço subia acima do queixo. A borda
+       de cima fica abaixo do queixo; se para isso a de baixo encostaria no chão, ele vai mais para a frente em vez de descer */
+    { const shO = R.shield(); if (shO) { const key = shO.children.map((c) => c.uuid).join(); if (key !== shKey) { shKey = key; const m0 = shO.matrix.clone(), au = shO.matrixAutoUpdate; shO.parent?.updateWorldMatrix(true, false); shO.matrixAutoUpdate = false; shO.matrix.copy(shO.parent ? shO.parent.matrixWorld.clone().invert() : new THREE.Matrix4()); shO.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(shO, true); shO.matrix.copy(m0); shO.matrixAutoUpdate = au; shO.updateMatrixWorld(true); shExt = e && !e.isEmpty() ? [e.min.y, e.max.y] : null; if (!shExt) shKey = ""; }
+      const hb = B('Head'); if (shExt && hb) { const s = root.getWorldScale(new THREE.Vector3()).y, chin = hb.getWorldPosition(new THREE.Vector3()).y - 0.04 * s, floor = root.getWorldPosition(new THREE.Vector3()).y + 0.08 * s;
+        const top = ctrS.y + shExt[1] * s; if (top > chin) { let dy = top - chin; const bot = ctrS.y + shExt[0] * s - dy; if (bot < floor) { dy -= floor - bot; ctrS.addScaledVector(nS, Math.min(0.35, (floor - bot) * 0.8 + 0.12) * s); } ctrS.y -= Math.max(0, dy); } } } }
     place(R.shield(), nS.clone().negate(), upS, ctrS);
   }
+  let shKey = '', shExt: [number, number] | null = null;
   const RW = window as unknown as { __rollL?: number; __rollR?: number };
   const roll: [THREE.Bone, THREE.Quaternion][] = (['Left', 'Right'] as const).map((side) => { const b = B(side + 'ForeArm')!; const ch = B(side + 'Hand')!;
     const ax = ch.position.clone().normalize(); const ang = side === 'Left' ? (RW.__rollL ?? 0.8) : (RW.__rollR ?? -0.8);
