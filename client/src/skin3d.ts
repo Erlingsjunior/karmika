@@ -236,7 +236,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       for (const p0 of pts) { const p = cpQ.copy(p0).applyMatrix4(o.matrixWorld); const t = Math.max(0, Math.min(1, p.clone().sub(cpA).dot(ab) / L2)); const c = cpA.clone().addScaledVector(ab, t); cpD.subVectors(p, c); let d = cpD.length(), dep = rT - d, n = cpD.clone();
         if (hasH) { const dh = p.distanceTo(cpH); if (rH - dh > dep) { dep = rH - dh; n.subVectors(p, cpH); d = dh; } }
         if (dep <= 0) continue; if (d < 1e-4) n.set(0, 0, -1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion())); n.normalize(); dir.addScaledVector(n, dep); if (dep > best) { best = dep; deep = p.clone(); } }
-      if (best < 0.004 * s || !deep) break; dir.normalize(); if (along) { const k = Math.max(0.6, dir.dot(along)); best = Math.min(best / k, 0.12 * s); dir.copy(along); } /* escudo no braço: sai pela frente (face de fora), nunca de lado para fora do braço */
+      if (best < 0.004 * s || !deep) break; dir.normalize(); if (along) { const k = Math.max(0.6, dir.dot(along)); best = Math.min(best / k, 0.05 * s); dir.copy(along); } /* escudo no braço: sai pela frente (face de fora), nunca de lado para fora do braço */
       const W0 = o.matrixWorld.clone(); let Wn: THREE.Matrix4;
       if (rot) { const piv = new THREE.Vector3().setFromMatrixPosition(W0), r = deep.clone().sub(piv), rl = r.length(); if (rl < 0.05 * s) break; const ax = new THREE.Vector3().crossVectors(r, dir).normalize(); if (ax.lengthSq() < 1e-6) break;
         const ang = Math.atan2(best + 0.012 * s, rl); Wn = new THREE.Matrix4().makeTranslation(piv.x, piv.y, piv.z).multiply(new THREE.Matrix4().makeRotationAxis(ax, ang)).multiply(new THREE.Matrix4().makeTranslation(-piv.x, -piv.y, -piv.z)).multiply(W0); }
@@ -347,6 +347,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
           const wq = pw.clone().multiply(tq).premultiply(q); tq.copy(pw.invert().multiply(wq)); sw.matrix.compose(vF, tq, sc); sw.updateMatrixWorld(true); } } }
     // escudo
     if (stowed) return; // nas costas (já posto acima)
+    /* 03/11 (Erling: "o escudo prende no antebraço do herói"): em combate o braço do escudo não cruza o peito — o antebraço vai para a frente
+       e para o lado do escudo (em guarda, mais alto e mais ao centro, cobrindo o peito), e o escudo segue preso nele */
+    if ((hero.combat || hero.guard) && !hero.acting) { const bS = B(shieldSide + 'Arm'), nk = B('Neck'); if (bS && nk) { const s = root.getWorldScale(new THREE.Vector3()).x, fw = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+      const spW = bS.getWorldPosition(new THREE.Vector3()), lat = spW.clone().sub(nk.getWorldPosition(new THREE.Vector3())).setY(0); if (lat.lengthSq() > 1e-6) { lat.normalize(); const g = !!hero.guard;
+        const tgt = spW.addScaledVector(fw, (g ? 0.42 : 0.33) * s).addScaledVector(lat, (g ? 0.0 : 0.1) * s); tgt.y -= (g ? 0.1 : 0.3) * s; armIK(shieldSide, R.armL, tgt); model.updateMatrixWorld(true); } } }
     W(hH, vH); W(hF, vF); W(hI, vI); W(hP, vP); W(hM, vM);
     const u = new THREE.Vector3().subVectors(vH, vF).normalize();
     const a2 = new THREE.Vector3().subVectors(vI, vP).normalize(), f2 = new THREE.Vector3().subVectors(vM, vH).normalize();
@@ -365,7 +370,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const top = ctrS.y + shExt[1] * s; if (top > eye) ctrS.y -= Math.min(top - eye, 0.14 * s);
         /* braço atrás da face de dentro (+X local = lado do braço, a face de dentro fica em max.x) */
         const inner = (shExt[2] + 0.05) * s, sh0 = B(shieldSide + 'Arm'); const armPts = [vH.clone(), vF.clone(), vF.clone().lerp(vH, 0.5)]; void sh0;
-        let need = 0; for (const q of armPts) { const d = q.clone().sub(ctrS).dot(nS); need = Math.max(need, d + inner); } if (need > 0) ctrS.addScaledVector(nS, Math.min(need, 0.25 * s)); } } }
+        let need = 0; for (const q of armPts) { const d = q.clone().sub(ctrS).dot(nS); need = Math.max(need, d + inner); } if (need > 0) ctrS.addScaledVector(nS, Math.min(need, 0.08 * s)); /* só a folga da alça: o escudo não solta do braço */ } } }
     place(R.shield(), nS.clone().negate(), upS, ctrS);
   }
   let shKey = '', shExt: [number, number, number] | null = null;
