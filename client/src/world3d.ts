@@ -1,5 +1,6 @@
 import { RUNAS } from './runas';
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { mergeStatic } from './merge3d';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SCALE, TILE_M as T } from '@karmika/shared';
@@ -68,7 +69,7 @@ const nullLight = new THREE.PointLight(0xffffff, 0, 1, 2);
 export const FOUNTAIN = { rim: 0.9, bowl: 2.1, top: 2.12, rad: 2.2 }; /* 01/11: top = o espelho d'água da taça (a estátua não jorra) */
 const fountainWater = new THREE.ShaderMaterial({ transparent: true, uniforms: { uT: windU, uL: { value: 1 } },
   vertexShader: 'varying vec3 vP; void main(){ vP = (modelMatrix*vec4(position,1.)).xyz; gl_Position = projectionMatrix*viewMatrix*vec4(vP,1.); }',
-  fragmentShader: 'uniform float uT; varying vec3 vP; void main(){ vec2 c = vP.xz - floor(vP.xz*0.0); float r = length(vP.xz - vec2(0.0)); float w = sin(vP.x*3.1+uT*1.7)*sin(vP.z*2.7-uT*1.3)*0.5+0.5; float rg = smoothstep(0.9,1.0,sin(length(fract(vP.xz*0.25)-0.5)*40.0 - uT*5.0)); vec3 col = mix(vec3(0.08,0.35,0.5), vec3(0.3,0.7,0.85), w*0.6) + rg*0.18; gl_FragColor = vec4(col, 0.92); }' });
+  fragmentShader: 'uniform float uT; varying vec3 vP; void main(){ vec2 c = vP.xz - floor(vP.xz*0.0); float r = length(vP.xz - vec2(0.0)); float w = sin(vP.x*3.1+uT*1.7)*sin(vP.z*2.7-uT*1.3)*0.5+0.5; float rg = smoothstep(0.9,1.0,sin(length(fract(vP.xz*0.25)-0.5)*40.0 - uT*5.0)); vec3 col = mix(vec3(0.08,0.35,0.5), vec3(0.3,0.7,0.85), w*0.6) + rg*0.18; gl_FragColor = vec4(col, 0.92); }' }); gpuTag(fountainWater, 'fountain', fountainWater.uniforms);
 interface Loaded { artB?: ArtBatch; artPG?: [Prop, THREE.Object3D][]; terrain: ChunkTerrain; group: THREE.Group; torches: Torch[]; glows: WorldObjs['glowLights'][number][]; trees: { obj: THREE.Object3D; ph: number }[]; smokers: THREE.Vector3[]; relics?: WorldObjs['relics']; own: THREE.BufferGeometry[]; fountain?: THREE.Vector3; treeG?: THREE.Group[]; treeMerged?: THREE.Mesh[]; staticG?: THREE.Group[]; staticMerged?: THREE.Mesh[]; spin?: [THREE.Object3D, 'x' | 'y' | 'z', number][] }
 
 /* ---------- degraus pisáveis (Erling, 23/10: "não consigo subir a escada, fico atravessando ela" — em todos os prédios grandes).

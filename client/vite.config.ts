@@ -11,7 +11,14 @@ const worldSig = (() => { const src = ['./src/world.ts', './src/campanha.ts'].ma
 export default defineConfig({
   define: { __BUILD_ID__: JSON.stringify(`${stamp} · ${gitHash}`), __WORLD_SIG__: JSON.stringify(worldSig) },
   resolve: {
-    alias: { '@karmika/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
+    /* 03/11 (WebGPU com resguardo de WebGL): o three.js vem das FONTES (three/src), numa cópia só — assim o renderizador WebGPU
+       (three/webgpu, carregado só quando é usado) e o WebGL dividem as mesmas classes (Mesh, Material, Texture…) */
+    alias: [
+      { find: '@karmika/shared', replacement: fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)) },
+      { find: /^three$/, replacement: fileURLToPath(new URL('./src/gpu/three-shim.js', import.meta.url)) },
+      { find: /^three\/webgpu$/, replacement: 'three/src/Three.WebGPU.js' },
+      { find: /^three\/tsl$/, replacement: 'three/src/Three.WebGPU.js' },
+    ],
   },
   server: { port: 5173, open: false },
   // o jogo é um app instalado (não um site): um pacote de ~1 MB é normal, então o aviso de "chunk grande" só faz barulho

@@ -81,6 +81,7 @@ import { CASTLE_FLOORS } from './castelo3d';
 import { CUT, ramp as toonRamp } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
+import { gpuState } from './gpu/tags';
 import { createDialog } from './dialog';
 
 
@@ -240,8 +241,8 @@ setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
-export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
-const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0 };
+export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; /** 03/11: renderizador — 0 Automático, 1 WebGPU, 2 WebGL (vale ao reabrir) */ rend: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
+const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, rend: 0, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0 };
 const opts: Opts = (() => { try { return { ...OPT_DEF, ...(JSON.parse(localStorage.getItem('karmika.opts.v1') || 'null') ?? { pix: Number(localStorage.getItem('karmika.pix') || 0) || 2, shadows: localStorage.getItem('karmika.shadows') !== '0', music: localStorage.getItem('karmika.music') === '0' ? 0 : 1 }) }; } catch { return { ...OPT_DEF }; } })();
 const saveOpts = () => localStorage.setItem('karmika.opts.v1', JSON.stringify(opts));
 let PIX = Number(new URLSearchParams(location.search).get('pix')) || opts.pix;
@@ -249,7 +250,17 @@ let WORLD_RATIO = opts.wratio; // cenário em 1/WORLD_RATIO da resolução dos p
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /* ---------- renderer em baixa resolução ---------- */
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+/* 03/11 (Erling: "foque totalmente em WebGPU com resguardo de WebGL para rodar em todos os PCs e com qualidade"): o jogo abre em WebGPU
+   quando o jogador escolhe (Opções → Renderizador) e o navegador oferece; senão, o WebGL de sempre. Automático fica no WebGL enquanto
+   houver efeito ainda não traduzido para o WebGPU (gpuPending()); ?rend=webgpu / ?rend=webgl força na barra de endereço. */
+const REND = (() => { const q = new URLSearchParams(location.search).get('rend'); return q === 'webgpu' ? 1 : q === 'webgl' ? 2 : opts.rend ?? 0; })();
+let gpuImpl: typeof import('./gpu/impl') | null = null, gpuR: THREE.WebGLRenderer | null = null;
+if (REND === 1 && 'gpu' in navigator) { try { gpuImpl = await import('./gpu/impl'); gpuR = await gpuImpl.createGPURenderer(); if (!gpuR) gpuImpl = null; } catch (e) { gpuImpl = null; gpuState.why = String(e); console.warn('[WebGPU] não abriu, fica o WebGL:', e); } }
+else if (REND === 1) gpuState.why = 'este navegador não tem WebGPU';
+const renderer = gpuR ?? new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
+/* WebGPU: as fotos (retratos dos NPCs, da guilda, da morte) leem os pixels na hora — o WebGPU só lê de forma assíncrona, então elas usam um WebGL pequeno à parte */
+let snapGL: THREE.WebGLRenderer | null = null;
+const snapR = (): THREE.WebGLRenderer => { if (!gpuImpl) return renderer; if (!snapGL) { snapGL = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: 'low-power' }); snapGL.setPixelRatio(1); snapGL.outputColorSpace = renderer.outputColorSpace; snapGL.toneMapping = renderer.toneMapping; snapGL.toneMappingExposure = renderer.toneMappingExposure; snapGL.shadowMap.enabled = false; } return snapGL; };
 /* 26/10 (perfil do Erling: 5% da CPU era getBoundingClientRect do canvas, pedido dezenas de vezes por quadro por barras, balões e dicas,
    e cada pedido obriga o navegador a refazer o layout): o retângulo do canvas é guardado e só se refaz ao mudar o tamanho */
 { const cv = renderer.domElement; let cr: DOMRect | null = null; const orig = cv.getBoundingClientRect.bind(cv); cv.getBoundingClientRect = () => cr ?? (cr = orig()); const drop = () => { cr = null; }; addEventListener('resize', drop); setInterval(drop, 1000); }
@@ -258,7 +269,7 @@ renderer.shadowMap.enabled = opts.shadows; renderer.info.autoReset = false;
 renderer.shadowMap.type = THREE.BasicShadowMap; // sombra dura: combina com pixel art e custa 1/4 do PCF
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 0.78;
-if (import.meta.env.PROD) renderer.debug.checkShaderErrors = false; // no jogo instalado não confere cada shader (economiza ~1 s na abertura); no dev continua conferindo
+if (import.meta.env.PROD && !gpuImpl) renderer.debug.checkShaderErrors = false; // no jogo instalado não confere cada shader (economiza ~1 s na abertura); no dev continua conferindo
 const canvas = renderer.domElement;
 const kshow = (s: string) => (window as unknown as { __kshow?: (m: string) => void }).__kshow?.(s);
 renderer.debug.onShaderError = (gl, prog, vs, fs) => kshow('SHADER falhou:\n' + (gl.getProgramInfoLog(prog) || '') + '\n' + (gl.getShaderInfoLog(vs) || '') + '\n' + (gl.getShaderInfoLog(fs) || ''));
@@ -375,7 +386,7 @@ function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): st
   const box = new THREE.Box3(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.visible) return; const mt = (Array.isArray(m.material) ? m.material[0] : m.material) as THREE.MeshBasicMaterial; if (mt?.transparent || mt?.blending === THREE.AdditiveBlending) return; box.expandByObject(m); }); if (box.isEmpty()) box.setFromObject(root); /* anéis e auras no chão não contam no enquadramento */
   const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3()), R = Math.max(sz.x, sz.y, sz.z) * 0.62 + 0.05;
   const cam = new THREE.PerspectiveCamera(28, 1, 0.05, 200), dist = R / Math.sin(14 * Math.PI / 180) * 1.05; cam.position.set(c.x + Math.sin(yaw) * Math.cos(pitch) * dist, c.y + Math.sin(pitch) * dist, c.z + Math.cos(yaw) * Math.cos(pitch) * dist); cam.lookAt(c); cam.layers.enableAll();
-  const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 }); const old = renderer.getRenderTarget(), oc = new THREE.Color(); renderer.getClearColor(oc); const oa = renderer.getClearAlpha();
+  const renderer = snapR(); const rt = new THREE.WebGLRenderTarget(size, size, { samples: 4 }); const old = renderer.getRenderTarget(), oc = new THREE.Color(); renderer.getClearColor(oc); const oa = renderer.getClearAlpha();
   renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(sc, cam); const px = new Uint8Array(size * size * 4); renderer.readRenderTargetPixels(rt, 0, 0, size, size, px); renderer.setRenderTarget(old); renderer.setClearColor(oc, oa); rt.dispose();
   const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d')!, im = g.createImageData(size, size); for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4); g.putImageData(im, 0, 0);
   for (const q of hid) q.visible = true; sc.remove(root); if (par) par.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; return cv.toDataURL('image/png');
@@ -949,7 +960,7 @@ export interface SocialGuildasCtx {
   readonly renderer: Widen<typeof renderer>;
 }
 var socialSys: ReturnType<typeof createSocialGuildas>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_socialSys() { return createSocialGuildas({ get profile() { return profile; }, get peleSys() { return peleSys; }, get city() { return city; }, get obras() { return obras; }, get inv() { return inv; }, get game() { return game; }, get objs() { return objs; }, get decoRenderOthers() { return decoRenderOthers; }, get scene() { return scene; }, get build() { return build; }, get mail() { return mail; }, get audio() { return audio; }, get coop() { return coop; }, get mapV() { return mapV; }, get minimapaSys() { return minimapaSys; }, get toggleBigMap() { return toggleBigMap; }, get updateWho() { return updateWho; }, get caravans() { return caravans; }, get perfReport() { return perfReport; }, get festaStatus() { return festaStatus; }, get net() { return net; }, get inside() { return inside; }, get pvpOn() { return pvpOn; }, set pvpOn(v) { pvpOn = v; }, get addKarma() { return addKarma; }, get hero() { return hero; }, get quests() { return quests; }, get feats() { return feats; }, get kitRace() { return kitRace; }, get chat() { return chat; }, get particles() { return particles; }, get loja() { return loja; }, get showCreate() { return showCreate; }, get withFade() { return withFade; }, get state() { return state; }, get resumeSoul() { return resumeSoul; }, get classOfRace() { return classOfRace; }, get humanSkinKey() { return humanSkinKey; }, get renderer() { return renderer; } }); }
+function mk_socialSys() { return createSocialGuildas({ get profile() { return profile; }, get peleSys() { return peleSys; }, get city() { return city; }, get obras() { return obras; }, get inv() { return inv; }, get game() { return game; }, get objs() { return objs; }, get decoRenderOthers() { return decoRenderOthers; }, get scene() { return scene; }, get build() { return build; }, get mail() { return mail; }, get audio() { return audio; }, get coop() { return coop; }, get mapV() { return mapV; }, get minimapaSys() { return minimapaSys; }, get toggleBigMap() { return toggleBigMap; }, get updateWho() { return updateWho; }, get caravans() { return caravans; }, get perfReport() { return perfReport; }, get festaStatus() { return festaStatus; }, get net() { return net; }, get inside() { return inside; }, get pvpOn() { return pvpOn; }, set pvpOn(v) { pvpOn = v; }, get addKarma() { return addKarma; }, get hero() { return hero; }, get quests() { return quests; }, get feats() { return feats; }, get kitRace() { return kitRace; }, get chat() { return chat; }, get particles() { return particles; }, get loja() { return loja; }, get showCreate() { return showCreate; }, get withFade() { return withFade; }, get state() { return state; }, get resumeSoul() { return resumeSoul; }, get classOfRace() { return classOfRace; }, get humanSkinKey() { return humanSkinKey; }, get renderer() { return snapR(); } }); }
 socialSys ??= mk_socialSys();
 const { inicio, social, otherHouses, hub, pvp, CARTA_K, otherDecor, bubbleEl } = socialSys;
 function slotPic(...a: Parameters<ReturnType<typeof createSocialGuildas>['slotPic']>): ReturnType<ReturnType<typeof createSocialGuildas>['slotPic']> { return (socialSys ??= mk_socialSys()).slotPic(...a); }
@@ -1285,7 +1296,7 @@ export interface ConversaNpcCtx {
   readonly audio: Widen<typeof audio>;
 }
 var conversaSys: ReturnType<typeof createConversaNpc>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_conversaSys() { return createConversaNpc({ get peleSys() { return peleSys; }, get hero() { return hero; }, get renderer() { return renderer; }, get npcSys() { return npcSys; }, get SHOP_BY_NAME() { return SHOP_BY_NAME; }, get quests() { return quests; }, get openDlg() { return openDlg; }, get festaSys() { return festaSys; }, get festaTalk() { return festaTalk; }, get inv() { return inv; }, get game() { return game; }, get prepLatao() { return prepLatao; }, get shopLeanK() { return shopLeanK; }, get dlg() { return dlg; }, get loja() { return loja; }, get hereSettle() { return hereSettle; }, get align() { return align; }, get leavingQuest() { return leavingQuest; }, get festaFade() { return festaFade; }, get profile() { return profile; }, get startFesta() { return startFesta; }, get CARTA_K() { return CARTA_K; }, get social() { return social; }, get vid() { return vid; }, get soul() { return soul; }, get hasMark() { return hasMark; }, get soulLean() { return soulLean; }, get applyReply() { return applyReply; }, get addKarma() { return addKarma; }, get state() { return state; }, get audio() { return audio; } }); }
+function mk_conversaSys() { return createConversaNpc({ get peleSys() { return peleSys; }, get hero() { return hero; }, get renderer() { return snapR(); }, get npcSys() { return npcSys; }, get SHOP_BY_NAME() { return SHOP_BY_NAME; }, get quests() { return quests; }, get openDlg() { return openDlg; }, get festaSys() { return festaSys; }, get festaTalk() { return festaTalk; }, get inv() { return inv; }, get game() { return game; }, get prepLatao() { return prepLatao; }, get shopLeanK() { return shopLeanK; }, get dlg() { return dlg; }, get loja() { return loja; }, get hereSettle() { return hereSettle; }, get align() { return align; }, get leavingQuest() { return leavingQuest; }, get festaFade() { return festaFade; }, get profile() { return profile; }, get startFesta() { return startFesta; }, get CARTA_K() { return CARTA_K; }, get social() { return social; }, get vid() { return vid; }, get soul() { return soul; }, get hasMark() { return hasMark; }, get soulLean() { return soulLean; }, get applyReply() { return applyReply; }, get addKarma() { return addKarma; }, get state() { return state; }, get audio() { return audio; } }); }
 conversaSys ??= mk_conversaSys();
 const { portraits } = conversaSys;
 function portraitOf(...a: Parameters<ReturnType<typeof createConversaNpc>['portraitOf']>): ReturnType<ReturnType<typeof createConversaNpc>['portraitOf']> { return (conversaSys ??= mk_conversaSys()).portraitOf(...a); }
@@ -1585,6 +1596,8 @@ composer.addPass(finish);
    Pixel: o de sempre (mundo em baixa resolução, 16 bits com pontilhado, sombra dura). Moderno: resolução cheia, cenário na mesma nitidez
    dos personagens, cor sem quantização, sombra suave, brilho (bloom) mais largo nos fogos, auras e magias, e borda alisada (FXAA). */
 const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(fxaa);
+/* WebGPU: o mesmo quadro (brilho, cor do dia e da noite, vinheta, 16 bits) montado em nós — gpu/impl.ts */
+if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => gp.render(); composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState }; }
 let gfxBloom = 1;
 function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
   const st = m ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
@@ -1596,7 +1609,7 @@ const PM: Record<string, number> = {};
 DualRenderPass.timer = (k, ms) => { PM[k] = (PM[k] ?? 0) + ms; };
 for (const ps of composer.passes) { if (ps === dual) continue; const nm = 'desenho:' + (ps === bloom ? 'bloom' : ps === finish ? 'acabamento' : ps.constructor.name.replace(/Pass$/, '').toLowerCase()); const orig = ps.render.bind(ps); ps.render = ((...a: Parameters<typeof orig>) => { const t0 = performance.now(); orig(...a); PM[nm] = (PM[nm] ?? 0) + performance.now() - t0; }) as typeof ps.render; }
 /* o Limiar: para onde a alma sobe quando o Fio da Vida se rompe (limiar.ts) */
-const limiar = createLimiar({ use: (s, c) => dual.use(s, c), restore: () => dual.use(scene, camera), compile: (s, c) => renderer.compile(s, c),
+const limiar = createLimiar({ use: (s, c) => dual.use(s, c), restore: () => dual.use(scene, camera), compile: (s, c) => { if (!gpuImpl) renderer.compile(s, c); },
   makeSoul: () => createCharacter(kindOf(state.race), profile ? { hair: profile.hair, skin: profile.skin, hairStyle: profile.hairStyle, beard: profile.beard, ears: profile.origin === 'elf' } : {}), audio });
 
 /** Tela responsiva: o jogo é pensado em Full HD (1080 de altura).
@@ -1865,7 +1878,7 @@ function withFade(fn: () => void, label?: string, after?: () => void) {
   fadeEl.classList.add('on'); fadeEl.style.pointerEvents = 'auto'; fadeEl.style.opacity = '1';
   setTimeout(() => { requestAnimationFrame(() => {
     try { fn(); } catch (err) { console.error(err); }
-    try { renderer.compile(scene, camera); } catch { /* */ }
+    if (!gpuImpl) try { renderer.compile(scene, camera); } catch { /* */ }
     let last = performance.now(), calm = 0; const t0 = last;
     const check = () => { const now = performance.now(), dtm = now - last; last = now; calm = dtm < 45 ? calm + 1 : 0;
       if (calm >= 6 || now - t0 > 8000) { fadeEl.style.opacity = '0'; fadeEl.style.pointerEvents = 'none'; setTimeout(() => { fadeEl.classList.remove('on'); fading = false; after?.(); }, 260); } else requestAnimationFrame(check); };
@@ -2087,7 +2100,7 @@ export interface LarMorteCtx {
   readonly renderer: Widen<typeof renderer>;
 }
 var larSys: ReturnType<typeof createLarMorte>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_larSys() { return createLarMorte({ get profile() { return profile; }, get city() { return city; }, get state() { return state; }, get objs() { return objs; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get feats() { return feats; }, get game() { return game; }, get inside() { return inside; }, set inside(v) { inside = v; }, get dgs() { return dgs; }, get cryptInt() { return catedralSys.cryptInt; }, set cryptInt(v) { catedralSys.cryptInt = v; }, get bishop() { return catedralSys.bishop; }, set bishop(v) { catedralSys.bishop = v; }, get spirit() { return dgSys.spirit; }, set spirit(v) { dgSys.spirit = v; }, get scene() { return scene; }, get decoOut() { return decoOut; }, get decoOthers() { return decoOthers; }, get decoCancel() { return decoCancel; }, get npcSys() { return npcSys; }, get particles() { return particles; }, get withFade() { return withFade; }, get soul() { return soul; }, get limiar() { return limiar; }, get audio() { return audio; }, get hero() { return hero; }, get net() { return net; }, get hub() { return hub; }, get quests() { return quests; }, get inv() { return inv; }, get showCreate() { return showCreate; }, get skinModel() { return peleSys.skinModel; }, get renderer() { return renderer; } }); }
+function mk_larSys() { return createLarMorte({ get profile() { return profile; }, get city() { return city; }, get state() { return state; }, get objs() { return objs; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get feats() { return feats; }, get game() { return game; }, get inside() { return inside; }, set inside(v) { inside = v; }, get dgs() { return dgs; }, get cryptInt() { return catedralSys.cryptInt; }, set cryptInt(v) { catedralSys.cryptInt = v; }, get bishop() { return catedralSys.bishop; }, set bishop(v) { catedralSys.bishop = v; }, get spirit() { return dgSys.spirit; }, set spirit(v) { dgSys.spirit = v; }, get scene() { return scene; }, get decoOut() { return decoOut; }, get decoOthers() { return decoOthers; }, get decoCancel() { return decoCancel; }, get npcSys() { return npcSys; }, get particles() { return particles; }, get withFade() { return withFade; }, get soul() { return soul; }, get limiar() { return limiar; }, get audio() { return audio; }, get hero() { return hero; }, get net() { return net; }, get hub() { return hub; }, get quests() { return quests; }, get inv() { return inv; }, get showCreate() { return showCreate; }, get skinModel() { return peleSys.skinModel; }, get renderer() { return snapR(); } }); }
 larSys ??= mk_larSys();
 const { originName, srvWait, HOME_KEY, defaultHome } = larSys;
 function leaveInteriorNow(...a: Parameters<ReturnType<typeof createLarMorte>['leaveInteriorNow']>): ReturnType<ReturnType<typeof createLarMorte>['leaveInteriorNow']> { return (larSys ??= mk_larSys()).leaveInteriorNow(...a); }

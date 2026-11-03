@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { radialTexture } from './fx3d';
 
 /** Raios de luz volumétricos (god rays) que descem diagonalmente, estilo Eitr/Hades. */
@@ -23,7 +24,7 @@ export class LightShafts {
             gl_FragColor = vec4(uC * a, a);
           }`,
       });
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
+      gpuTag(mat, 'shaft', mat.uniforms); const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
       m.frustumCulled = false; m.renderOrder = 5;
       this.items.push({ m, mat, seed: i, sx: 2.4 + (i % 4) * 0.9 });
       this.group.add(m);

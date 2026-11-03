@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag, gpuUntag } from './gpu/tags';
 import { TILE_M as T, type Tile } from '@karmika/shared';
 import type { Prop } from './world';
 
@@ -10,6 +11,7 @@ export const heroU = { value: new THREE.Vector3(0, 0, 0) };
 
 /** faz o material balançar com o vento (base presa no chão, topo se move) */
 export function windify(m: THREE.Material, amp = 0.12, freq = 1.6, o: { hero?: boolean } = {}) {
+  gpuUntag(m, 'cut'); gpuTag(m, 'wind', { amp, freq, hero: !!o.hero, windU, gustU, heroU }); /* WebGPU: gpu/impl.ts */
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uWind = windU; sh.uniforms.uGust = gustU; sh.uniforms.uHero = heroU;
     sh.vertexShader = 'uniform float uWind; uniform float uGust; uniform vec3 uHero;\n' + sh.vertexShader.replace(
@@ -135,7 +137,7 @@ export function buildWater(map: Tile[][]) {
         c += spark * vec3(0.55,0.75,0.9);
         gl_FragColor = vec4(c, 0.93);
       }`,
-  });
+  }); gpuTag(mat, 'water0', mat.uniforms);
   const geo: THREE.PlaneGeometry[] = [];
   const grp = new THREE.Group();
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (map[y][x] === 'water') {

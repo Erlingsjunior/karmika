@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { charShadow } from '../characters';
 import { installTitleTips } from '../dicas';
 import type { OpcoesCtx, Opts } from '../main';
+import { gpuState } from '../gpu/tags';
 
 export function createOpcoes(K: OpcoesCtx) {
 /* ---------- página de opções: gráficos, som e jogo, tudo ao vivo ---------- */
@@ -48,6 +49,7 @@ function renderOptions() {
     <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']])}</div>
     <h3>Gráficos</h3>
     <div class="stat"><span>Estilo do gráfico <small>Pixel: o visual de pixel art do Karmika · Moderno: resolução nativa do monitor (ignora 'Resolução do mundo' e 'Tamanho do pixel'), cor sem degrau de 16 bits, luz em degradê nos modelos, sombra com o dobro de detalhe e borda macia, brilho largo e borda alisada (mais pesado). Dá para trocar quando quiser.</small></span>${seg('gfx', [[0, 'Pixel'], [1, 'Moderno']])}</div>
+    <div class="stat"><span>Renderizador <small>WebGPU: o motor gráfico novo dos navegadores (mais rápido nas placas de vídeo de hoje) · WebGL: o de sempre, roda em qualquer PC · Automático: o WebGL enquanto o WebGPU do Karmika está em teste. Se o WebGPU não abrir, o jogo volta sozinho para o WebGL. Agora: <b>${gpuState.on ? 'WebGPU' : 'WebGL'}</b>${gpuState.why ? ` (${gpuState.why})` : ''}${(K.opts.rend === 1) !== gpuState.on && !(K.opts.rend === 1 && gpuState.why) ? ' · <b style="color:#ffd27a">vale ao reabrir o jogo</b> <button data-act="reopen" style="margin-left:4px">Reabrir agora</button>' : ''}</small></span>${seg('rend', [[0, 'Automático'], [1, 'WebGPU'], [2, 'WebGL']])}</div>
     <div class="stat"><span>Tamanho do pixel <small>1 = nítido (pesado) · 4 = pixel grosso (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
     <div class="stat"><span>Detalhe do cenário <small>cenário em 1/N da resolução dos personagens</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
@@ -73,6 +75,7 @@ document.getElementById('p-opt')?.addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
   if (b.dataset.ok) { const k = b.dataset.ok as keyof Opts, raw = b.dataset.ov!; (K.opts as unknown as Record<string, unknown>)[k] = raw === 'true' ? true : raw === 'false' ? false : Number(raw); applyOpts(k); renderOptions(); K.audio.click(); return; }
   const a = b.dataset.act;
+  if (a === 'reopen') { location.reload(); return; }
   if (a === 'night') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
   if (a === 'zoom') { K.zoomTarget = 17; }
   if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }

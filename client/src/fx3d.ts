@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuHooks } from './gpu/tags';
 
 export function radialTexture(size: number, stops: [number, string][]): THREE.Texture {
   const c = document.createElement('canvas');
@@ -52,6 +53,7 @@ export class Particles {
       fragmentShader: 'uniform sampler2D uMap; varying vec3 vC; varying float vA; void main(){ float a = texture2D(uMap, gl_PointCoord).a * vA; if(a<0.01) discard; gl_FragColor = vec4(vC*a, a); }',
     });
     this.points = new THREE.Points(g, m);
+    if (gpuHooks.particles) this.points = gpuHooks.particles(g, this.uniforms, n) as unknown as THREE.Points; /* WebGPU: quadradinhos por instância (o ponto do WebGPU tem 1 pixel) */
     this.points.frustumCulled = false;
   }
 

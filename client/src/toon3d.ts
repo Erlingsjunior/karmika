@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 
 export const OUTLINES = false; // sem contorno: os pixels definem as formas (estilo Eitr)
 /* 03/11 (Erling: "quero a sensação de 16 bit cor"): a luz em 8 faixas em vez de 4 — mesma curva de antes (60 → 255), sem o salto seco que
@@ -15,7 +16,7 @@ export function setCutout(px: number, py: number, radiusPx: number, heroDist: nu
 export function setCutoutPlane(fwdX: number, fwdZ: number, heroDepth: number) { CUT.uCutF.value.set(fwdX, fwdZ, heroDepth); }
 export function cutoutify<M extends THREE.Material>(m: M): M {
   if ((m as THREE.Material & { userData: { noCut?: boolean } }).userData.noCut) return m;
-  const prev = m.onBeforeCompile;
+  const prev = m.onBeforeCompile; gpuTag(m, 'cut', CUT); /* WebGPU: gpu/impl.ts */
   m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut; sh.uniforms.uCutF = CUT.uCutF;
     sh.vertexShader = sh.vertexShader.replace('#include <clipping_planes_pars_vertex>', '#include <clipping_planes_pars_vertex>\nvarying vec2 vCutW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 cp = vec4( transformed, 1.0 );\n#ifdef USE_INSTANCING\ncp = instanceMatrix * cp;\n#endif\nvec4 cw = modelMatrix * cp; vCutW = cw.xz; }' /* 03/11: com instancing, a posição de cada cópia entra no corte */);

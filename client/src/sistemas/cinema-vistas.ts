@@ -4,6 +4,7 @@ import { TILE_M as T } from '@karmika/shared';
 import { CATHEDRAL, ASKAVIK, CITY, heightAt, localDims, rotLocal } from '../world';
 import { waterU } from '../chunks3d';
 import * as THREE from 'three';
+import { gpuTag } from '../gpu/tags';
 import { fine } from '../dual3d';
 import { houseDoor } from '../houses3d';
 import type { CinemaVistasCtx } from '../main';
@@ -151,7 +152,7 @@ const marks = CINE_MARKS.filter((m) => !cineSeen.has(m.id)).map((m) => {
   const beam = new THREE.Mesh(beamG, new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uT: { value: 0 } },
     vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
     fragmentShader: 'varying vec2 vU; uniform float uT; void main(){ float a = pow(1.0 - vU.y, 2.2) * (0.55 + 0.25*sin(vU.x*37.7 + uT*2.0)); gl_FragColor = vec4(vec3(1.0,0.78,0.38)*a, a); }' }));
-  grp.add(beam); const lamp = new THREE.PointLight(0xffc860, 3, 12); lamp.position.y = 1.5; grp.add(lamp);
+  gpuTag(beam.material, 'beam', (beam.material as THREE.ShaderMaterial).uniforms); grp.add(beam); const lamp = new THREE.PointLight(0xffc860, 3, 12); lamp.position.y = 1.5; grp.add(lamp);
   return { ...m, grp, disc, beam, warned: false, gone: false };
 });
 function updateMarks(dt: number, t: number) {

@@ -35,6 +35,8 @@ export class DualRenderPass extends Pass {
   }
   /** troca a cena desenhada (o Limiar usa o mesmo caminho de pixel art do mundo) */
   use(scene: THREE.Scene, camera: THREE.Camera) { this.scene = scene; this.camera = camera; }
+  /** a cena e a câmera que estão sendo desenhadas (o WebGPU desenha por fora do composer) */
+  cur(): [THREE.Scene, THREE.Camera] { return [this.scene, this.camera]; }
   setSize(w: number, h: number) { this.rt.setSize(Math.max(1, Math.floor(w / this.ratio)), Math.max(1, Math.floor(h / this.ratio))); }
   render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget) {
     void writeBuffer;

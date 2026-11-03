@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { windify } from './terrain3d';
 
@@ -125,7 +126,7 @@ function makePine(seed: number): Made {
 
 const barkMat = new THREE.MeshToonMaterial({ map: barkTexture(), color: 0xffffff, gradientMap: ramp });
 const inkHull = new THREE.MeshBasicMaterial({ color: 0x07060c, side: THREE.BackSide });
-inkHull.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normal * 0.045;'); };
+gpuTag(inkHull, 'hull', 0.045); inkHull.onBeforeCompile = (sh) => { sh.vertexShader = sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n transformed += normal * 0.045;'); };
 const leafMats = [
   windify(new THREE.MeshToonMaterial({ map: leafTexture(['#355a2e', '#2a4a28', '#4a6a30']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp }), 0.07, 1.2),
   windify(new THREE.MeshToonMaterial({ map: leafTexture(['#6a4a22', '#8a5a26', '#3a4a26']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp }), 0.07, 1.2),

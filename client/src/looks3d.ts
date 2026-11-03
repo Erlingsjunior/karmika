@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { radialTexture } from './fx3d';
 
 /* =====================================================================================================
@@ -10,7 +11,7 @@ import { radialTexture } from './fx3d';
 
 function paleMat(m: THREE.Material, PALE: { value: number }) {
   const mm = m as THREE.MeshToonMaterial;
-  const prev = mm.onBeforeCompile;
+  const prev = mm.onBeforeCompile; gpuTag(mm, 'pale', PALE);
   mm.onBeforeCompile = (sh, r) => {
     prev?.call(mm, sh, r);
     sh.uniforms.uVamp = PALE;

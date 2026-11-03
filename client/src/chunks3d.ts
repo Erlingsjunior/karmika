@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { TILE_M as T } from '@karmika/shared';
 import { type World, type Biome, MAP_W, MAP_H, groundH, waterSD, zoneW, WL, fbm, vnoise, smoothstep, rng } from './world';
 import { windU, windify } from './terrain3d';
@@ -42,12 +43,12 @@ function loadGroundTex() {
       const px = g.getImageData(0, 0, S, S).data; data.set(px, li * S * S * 4); let r = 0, gg = 0, b = 0; for (let q = 0; q < px.length; q += 16) { r += px[q]; gg += px[q + 1]; b += px[q + 2]; } const nn = px.length / 16;
       /* média em espaço linear (a textura é lida como sRGB) */ const lin = (v: number) => Math.pow(v / nn / 255, 2.2); groundU.uMean.value[li].set(lin(r), lin(gg), lin(b)); res(); }; im.onerror = () => res(); im.src = `/models/cenario/chao/${n}.jpg`; })))
     .then(() => { const t = new THREE.DataArrayTexture(data, S, S, L); t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
-      groundU.tGround.value = t; groundU.uTexOn.value = 1; });
+      groundU.tGround.value = t; groundU.uTexOn.value = 1; if (groundMat) groundMat.needsUpdate = true; /* WebGPU: o chão se refaz com as texturas */ });
   return groundTexP;
 }
 function getGroundMat() {
   if (groundMat) return groundMat;
-  groundMat = new THREE.MeshLambertMaterial({ vertexColors: true }); loadGroundTex();
+  groundMat = new THREE.MeshLambertMaterial({ vertexColors: true }); gpuTag(groundMat, 'ground', groundU); loadGroundTex();
   groundMat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, groundU);
     sh.vertexShader = 'attribute float aPl; attribute vec4 aSp1; attribute vec4 aSp2; varying float vPl; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vSp1 = aSp1; vSp2 = aSp2; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
@@ -131,6 +132,7 @@ function getWaterMat() {
         gl_FragColor = vec4(c, mix(0.55, 0.95, smoothstep(0.0, 0.5, vD)) );
       }`,
   });
+  gpuTag(waterMat, 'water', waterMat.uniforms);
   return waterMat;
 }
 

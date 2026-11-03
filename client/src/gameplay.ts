@@ -2,6 +2,7 @@ import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
+import { gpuTag } from './gpu/tags';
 import { createShots, type ShotTarget } from './projeteis';
 import { buildHealDrone, buildShieldBot, buildDome, type HealDrone, type ShieldBot, type Dome } from './drones3d';
 import { fine } from './dual3d';
@@ -813,7 +814,7 @@ export function createGameplay(d: GameplayDeps) {
     const mat = new THREE.ShaderMaterial({ uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
       vertexShader: 'varying vec3 vN; varying vec3 vV; varying vec2 vU; varying float vY; void main(){ vU = uv; vY = position.y; vec4 mv = modelViewMatrix * vec4(position,1.0); vN = normalize(normalMatrix * normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix * mv; }',
       fragmentShader: 'uniform float t; uniform float hit; uniform float op; uniform sampler2D map; uniform vec3 col; varying vec3 vN; varying vec3 vV; varying vec2 vU; varying float vY; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 2.4); float hx = texture2D(map, vU * vec2(7.0, 3.5) + vec2(0.0, -t * 0.06)).r; float band = smoothstep(0.0, 0.08, fract(vU.y * 2.0 - t * 0.35)) * (1.0 - smoothstep(0.08, 0.3, fract(vU.y * 2.0 - t * 0.35))); float base = smoothstep(-0.05, 0.25, vY); float a = (0.015 + f * 0.65 + hx * (0.035 + f * 0.45) + band * f * 0.25 + hit * (0.2 + hx * 0.5)) * op * (0.35 + 0.65 * base); gl_FragColor = vec4(col * (0.7 + f * 0.6 + hit * 0.9) + vec3(hit * 0.3), a); }' });
-    const m = new THREE.Mesh(new THREE.SphereGeometry(1.45, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.62), mat); m.scale.set(1, 1.25, 1); m.renderOrder = 5; fxAdd(m);
+    gpuTag(mat, 'aegis', u); const m = new THREE.Mesh(new THREE.SphereGeometry(1.45, 40, 24, 0, Math.PI * 2, 0, Math.PI * 0.62), mat); m.scale.set(1, 1.25, 1); m.renderOrder = 5; fxAdd(m);
     return { m, u };
   }
   function aegisBreak() { if (!aegis) return; const a = aegis; aegis = null; const p = d.getHero().root.position; d.audio.boom(); st.shake = Math.max(st.shake, 0.35);
