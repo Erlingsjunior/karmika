@@ -22,8 +22,12 @@ export function stockAllMounts() {
     if (isBoss(m.where)) continue;
     if (!ORM_MOUNTS.includes(m.id)) m.speed = Math.min(m.speed, SHOP_MOUNT_SPEED);
     const mm = m as typeof m & { body?: string; lvl?: number; horse?: { antlers?: number; horn?: number } };
+    /* 03/11 (Erling: "a montaria anda mais devagar que a pé? ou é 90% a mais?"): o texto diz quantas vezes mais rápido que A PÉ
+       (a pé o herói anda a 80% do passo de base; montado, o passo de base × a velocidade da montaria) */
+    const xF = (m.speed / 0.8).toFixed(1).replace('.', ',');
+    if (ITEMS[m.id]) ITEMS[m.id].desc = ITEMS[m.id].desc.replace(/^Montaria \(Z\): \+\d+% de velocidade fora de combate\./, `Montaria (Z): fora de combate, anda ${xF}× mais rápido que a pé.`);
     if (!ITEMS[m.id]) ITEMS[m.id] = { name: m.name, icon: mm.horse?.horn ? '🦄' : mm.horse?.antlers ? '🦌' : ICON_M[mm.body ?? ''] ?? '🐎', kind: 'misc', col: m.tint ?? 0x6a4a2e,
-      desc: `Montaria (Z): +${Math.round((m.speed - 1) * 100)}% de velocidade fora de combate.${mm.lvl ? ` Aceita quem tem nível ${mm.lvl} ou mais.` : ''}${m.blurb ? '\n' + m.blurb : ''}${ORM_MOUNTS.includes(m.id) ? '' : '\nDo Shop: aparência rara, corre igual ao Corcel Negro.'}\nUse para levar ao Estábulo (X).`, tier: (mm.lvl ?? 0) >= 40 ? 4 : (mm.lvl ?? 0) >= 20 ? 3 : 2 } as Item;
+      desc: `Montaria (Z): fora de combate, anda ${xF}× mais rápido que a pé.${mm.lvl ? ` Aceita quem tem nível ${mm.lvl} ou mais.` : ''}${m.blurb ? '\n' + m.blurb : ''}${ORM_MOUNTS.includes(m.id) ? '' : '\nDo Shop: aparência rara, corre igual ao Corcel Negro.'}\nUse para levar ao Estábulo (X).`, tier: (mm.lvl ?? 0) >= 40 ? 4 : (mm.lvl ?? 0) >= 20 ? 3 : 2 } as Item;
     if (PRICES[m.id] === undefined) PRICES[m.id] = Math.round((700 + (mm.lvl ?? 0) * 110 + (m.speed - 1.75) * 5000) / 50) * 50;
   }
   for (const p of Object.values(PETS)) {
