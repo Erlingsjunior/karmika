@@ -106,6 +106,7 @@ function registerSteps(g: THREE.Object3D, p: Prop) {
 }
 
 export function buildWorld(world: World): WorldObjs {
+  artWorld = world; palSet = null;
   const fountainRef = (() => { const f = world.props.find((q) => q.kind === 'fountain'); return f ? { x: (f.gx + f.w / 2) * T, z: (f.gy + f.h / 2) * T } : null; })();
   const group = new THREE.Group();
   const tex = noiseTex();
@@ -573,7 +574,7 @@ export function buildWorld(world: World): WorldObjs {
       const mossG = new THREE.CylinderGeometry(1.1, 1.3, 0.12, 10); const moss = new THREE.Mesh(mossG, std(0x4e6a26)); moss.position.set(Wm / 2, 0.06, Dm / 2); g.add(moss);
       for (let k = 0; k < 6; k++) { const a = k * 1.05 + 0.3; const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12 + (k % 2) * 0.08, 0), std(0x5a68b8)); st.position.set(Wm / 2 + Math.cos(a) * (0.9 + (k % 3) * 0.15), 0.14, Dm / 2 + Math.sin(a) * (0.9 + (k % 3) * 0.15)); st.rotation.y = a; g.add(st); }
       { const tm = artMesh('pedra_teleporte'); /* 03/11: a Pedra de Teleporte do Herik no lugar do menir; os símbolos já vêm pintados nela, o anel no chão continua */
-        if (tm) { for (const o of [mono, base, groove, moss]) g.remove(o); runes.scale.setScalar(0.001); tm.scale.setScalar(2.5 / artGeo('pedra_teleporte')!.userData.h); tm.position.set(Wm / 2, 0, Dm / 2); tm.rotation.y = Math.PI / 4; g.add(tm); } }
+        if (tm) { for (const o of [mono, base, groove, moss]) g.remove(o); runes.position.set(Wm / 2 + 0.46, 1.25, Dm / 2 + 0.46); runes.scale.setScalar(0.9); /* as runas acendem por cima dos símbolos pintados na pedra */ tm.scale.setScalar(2.5 / artGeo('pedra_teleporte')!.userData.h); tm.position.set(Wm / 2, 0, Dm / 2); tm.rotation.y = Math.PI / 4; g.add(tm); } }
       g.scale.setScalar(1.3); g.position.x -= Wm * 0.15; g.position.z -= Dm * 0.15;
       (L.relics ??= []).push({ gx: p.gx, gy: p.gy, runes, ring, pos: new THREE.Vector3(p.gx * T + Wm / 2, wy + 1.6, p.gy * T + Dm / 2), seed: r() * 50 });
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: false, pos: new THREE.Vector3(p.gx * T + Wm / 2 + 0.9, wy + 1.2, p.gy * T + Dm / 2 + 0.9), color: 0x6a6aff } as WorldObjs['glowLights'][number]);
@@ -617,6 +618,9 @@ export function buildWorld(world: World): WorldObjs {
       const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.8, 8), std(0x7a5a3a)); roll.rotation.z = Math.PI / 2; roll.position.set(0.3, 0.16, L2 / 2 + 0.55); t.add(roll); // saco de dormir enrolado
       if (r() < 0.6) { const sack = new THREE.Mesh(new THREE.SphereGeometry(0.22, 7, 5), std(0x8a7250)); sack.scale.set(1, 0.8, 1); sack.position.set(-W2 - 0.2, 0.17, L2 / 2 - 0.2); t.add(sack); }
     }
+    /* 03/11 (Erling: "bancos, barracas, baús, torres, muralhas, iluminação — tudo que é decoração vira o modelo novo"): troca o desenho do prop pelo modelo
+       do Herik depois de montado (o que mexe — chama, tampa — e o que o jogo usa continuam) */
+    artOverride(p, g, L, Wm, Dm, wx, wy, wz);
     g.userData.kind = 'prop:' + p.kind;
     /* casas, templos, bancos, baús…: um draw call por material. Os kinds de STATIC_KINDS são fundidos por chunk logo depois (mergeChunkProps),
        então não passam por esta fusão (eram fundidos duas vezes: clone + re-clone de toda a geometria por chunk) */
@@ -626,6 +630,34 @@ export function buildWorld(world: World): WorldObjs {
 
   /* REGRA DA AURA (Erling, 28/10): o corte de visão NUNCA come o que o jogador usa — correio, fonte (e a Fonte da Visão), baú, cofre,
    pedra de teletransporte (relíquia), quadro de avisos, estação da carroça. Essas peças ficam fora da fusão e com material sem o corte. */
+/* ---------- 03/11: troca de props desenhados pelos modelos do Herik ---------- */
+var palSet: Set<number> | null = null; // var: buildWorld zera antes desta linha rodar
+function stripMeshes(g: THREE.Object3D, keep?: (o: THREE.Object3D) => boolean) {
+  const out: THREE.Object3D[] = []; g.traverse((o) => { if (!(o as THREE.Mesh).isMesh || o.userData.dyn || keep?.(o)) return; let q: THREE.Object3D | null = o.parent; while (q && q !== g) { if (q.userData.dyn) return; q = q.parent; } out.push(o); });
+  for (const o of out) o.parent?.remove(o);
+}
+function nearTown(world: World, gx: number, gy: number, pad = 6) { for (const st of world.settlements) if (Math.hypot(gx - st.x, gy - st.y) < st.radius + pad) return true; return false; }
+var artWorld: World | null = null;
+function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number, wx: number, wy: number, wz: number) {
+  const W = artWorld; const put = (id: string, x: number, z: number, ry: number, k: number | THREE.Vector3 = 1) => { const m = artMarker(id); if (!m) return null; m.position.set(x, 0, z); m.rotation.y = ry; if (typeof k === 'number') m.scale.setScalar(k); else m.scale.copy(k); g.add(m); return m; };
+  const firstRot = () => { for (const c of g.children) if ((c as THREE.Group).isGroup) return c.rotation.y; return 0; };
+  if (p.kind === 'bench' && artGeo('vila_balanco')) { const ry = firstRot(); stripMeshes(g); put('vila_balanco', Wm / 2, Dm / 2, ry, 0.95); }
+  else if (p.kind === 'stall' && artGeo('vila_barraca')) { stripMeshes(g); put('vila_barraca', Wm / 2, Dm / 2, p.ry ?? 0, 0.9); }
+  else if (p.kind === 'chest' && artGeo('biblioteca_bau')) { const ry = firstRot(); stripMeshes(g); g.traverse((o) => { if (o.userData.dyn) o.traverse((c) => { if ((c as THREE.Mesh).isMesh) c.visible = false; }); }); put('biblioteca_bau', Wm / 2, Dm / 2, ry, 0.85); }
+  else if (p.kind === 'tower' && artGeo('muralha_02')) { stripMeshes(g); const k = (p.height + 3) / artGeo('muralha_02')!.userData.h; put('muralha_02', Wm / 2, Dm / 2, 0, k);
+    g.traverse((o) => { if (o.userData.dyn) o.visible = false; }); const tc = L.torches[L.torches.length - 1]; if (tc) tc.pos.set(wx, wy + (p.height + 3) * 0.62, wz); }
+  else if (p.kind === 'torch' && W && nearTown(W, p.gx, p.gy) && artGeo('vila_poste_lampiao')) { /* nas cidades e vilas a tocha vira o poste com lampião; a chama fica dentro do lampião */
+    stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785; put('vila_poste_lampiao', Wm / 2, Dm / 2, ry, 0.9);
+    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.45); tc.flame.position.set(Wm / 2, 2.75, Dm / 2); tc.pos.set(wx, wy + 2.8, wz); } }
+  else if (p.kind === 'palisade' && W && artGeo('muralha_01')) { /* paliçada: o muro do Herik cobre duas casas por peça (5 m comprimido para 4 m) */
+    if (!palSet) { palSet = new Set(); for (const q of W.props) if (q.kind === 'palisade') palSet.add(q.gx * 4096 + q.gy); }
+    const ns = (p.variant ?? 0) === 1, idx = ns ? p.gy : p.gx, nx = ns ? p.gx : p.gx + 1, ny = ns ? p.gy + 1 : p.gy, px = ns ? p.gx : p.gx - 1, py = ns ? p.gy - 1 : p.gy;
+    const hasNext = palSet.has(nx * 4096 + ny), hasPrev = palSet.has(px * 4096 + py); stripMeshes(g);
+    const G = artGeo('muralha_01')!, bb = G.boundingBox!, wid = bb.max.x - bb.min.x, ky = 2.9 / G.userData.h;
+    if (idx % 2 === 0 && hasNext) put('muralha_01', ns ? Wm / 2 : Wm, ns ? Dm : Dm / 2, ns ? Math.PI / 2 : 0, new THREE.Vector3(4.05 / wid, ky, 0.75));
+    else if (!(idx % 2 === 1 && hasPrev)) put('muralha_01', Wm / 2, Dm / 2, ns ? Math.PI / 2 : 0, new THREE.Vector3(2.05 / wid, ky, 0.75)); }
+}
+
 const NOCUT_KINDS = new Set(['mailbox', 'fountain', 'chest', 'vault', 'relic', 'noticeboard', 'station', 'deadwell', 'shopfront', 'campfire']);
 function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
   const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop']);

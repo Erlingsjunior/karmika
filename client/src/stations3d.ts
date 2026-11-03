@@ -54,16 +54,16 @@ export function buildStation(v: number, rnd: () => number, bare = false, wdirLoc
   const glowM = (c: number) => new THREE.MeshBasicMaterial({ color: c });
   /** cobertura de madeira em quatro pés: todo ponto de trabalho tem a sua, para ler de longe como "lugar de ofício" */
   const canopy = (w: number, d: number, h: number, roofC: number) => { if (bare) return;
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(C(0.07, 0.08, h, 6), dark, sx * (w / 2 - 0.1), h / 2, sz * (d / 2 - 0.1));
-    const roof = add(B(w + 0.5, 0.08, d + 0.5), std(0xffffff, { map: shingleTex(roofC) }), 0, h + 0.15, 0); roof.rotation.x = -0.12;
-    for (const sz of [-1, 1]) add(B(w + 0.1, 0.1, 0.1), dark, 0, h - 0.02, sz * (d / 2 - 0.1), false);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) add(C(0.07, 0.08, h, 6), dark, sx * (w / 2 - 0.1), h / 2, sz * (d / 2 - 0.1)).userData.frame = true;
+    const roof = add(B(w + 0.5, 0.08, d + 0.5), std(0xffffff, { map: shingleTex(roofC) }), 0, h + 0.15, 0); roof.rotation.x = -0.12; roof.userData.frame = true;
+    for (const sz of [-1, 1]) add(B(w + 0.1, 0.1, 0.1), dark, 0, h - 0.02, sz * (d / 2 - 0.1), false).userData.frame = true;
   };
   /** placa pendurada com o símbolo do ofício */
   const sign = (h: number, color: number, draw: (c: CanvasRenderingContext2D) => void) => { if (bare) return;
     const cv = document.createElement('canvas'); cv.width = cv.height = 64; const c = cv.getContext('2d')!; c.fillStyle = '#3a2614'; c.fillRect(0, 0, 64, 64); c.strokeStyle = '#c9a24a'; c.lineWidth = 3; c.strokeRect(3, 3, 58, 58); draw(c);
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter;
-    const s = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), std(0xffffff, { map: t, emissive: new THREE.Color(color), emissiveIntensity: 0.08 })); s.position.set(0, h - 0.45, 1.06); g.add(s);
-    for (const sx of [-0.2, 0.2]) add(C(0.008, 0.008, 0.3, 3), iron, sx, h - 0.06, 1.06, false);
+    const s = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.55), std(0xffffff, { map: t, emissive: new THREE.Color(color), emissiveIntensity: 0.08 })); s.position.set(0, h - 0.45, 1.06); s.userData.frame = true; g.add(s);
+    for (const sx of [-0.2, 0.2]) add(C(0.008, 0.008, 0.3, 3), iron, sx, h - 0.06, 1.06, false).userData.frame = true;
   };
   const out: Out = { group: g };
 
@@ -167,6 +167,20 @@ export function buildStation(v: number, rnd: () => number, bare = false, wdirLoc
     sign(2.5, 0xffa040, (c) => { c.fillStyle = '#2e3238'; c.beginPath(); c.arc(32, 36, 14, 0, Math.PI); c.fill(); c.fillRect(16, 32, 32, 4); c.strokeStyle = '#e8dcc0'; c.lineWidth = 2; for (const x of [26, 32, 38]) { c.beginPath(); c.moveTo(x, 28); c.quadraticCurveTo(x + 4, 22, x, 14); c.stroke(); } });
     out.glow = { x: -0.85, y: 0.7, z: 0.6, color: 0xff8a3a, base: 20 }; out.smoke = { x: 0.7, y: 1.0, z: 0.3 };
   }
+  /* 03/11 (Erling: "tudo itens de profissão"): os pontos de ofício montados com as peças do Herik; a cobertura e a placa continuam */
+  { const LAY: Record<number, [string, number, number, number?, number?][]> = {
+      0: [['forja_bancada', 0.1, -0.45, 0, 0.9], ['vila_toco', 0.95, 0.35, 0.4, 0.8], ['vila_tronco', -0.75, 0.35, 0.3, 0.75], ['vila_caixas', -1.1, -0.55, 0.2, 0.55]],
+      2: [['porto_varal_redes', -0.55, -0.45, 0, 0.8], ['forja_mesa', 0.75, 0.05, -0.3, 0.85], ['vila_barril', 1.05, -0.65, 0, 0.75]],
+      3: [['forja_caldeirao', 0.6, 0.25, 0, 0.85], ['biblioteca_estante_pergaminhos', -0.85, -0.6, 0, 0.75], ['biblioteca_atril', -0.2, 0.45, 0.4, 0.8], ['biblioteca_mesa_mapas', 0.4, -0.55, 0, 0.6]],
+      4: [['forja_caldeirao', -0.6, -0.3, 0, 0.85], ['forja_mesa', 0.35, 0.4, 0, 0.8], ['vila_barril', 1.1, -0.55, 0, 0.75], ['vila_caixas', 1.15, 0.6, 0.3, 0.6]],
+      5: [['porto_guincho', -0.6, -0.45, 0, 0.8], ['porto_caldeira', 1.0, -0.5, 0, 0.75], ['forja_bancada', 0.3, 0.5, Math.PI, 0.85]] };
+    const L = LAY[v]; if (L && L.every(([id]) => artGeo(id))) {
+      for (const o of [...g.children]) if ((o as THREE.Mesh).isMesh && !o.userData.frame) g.remove(o);
+      for (const [id, x, z, ry2, k] of L) { const m = artMarker(id); if (!m) continue; m.position.set(x, 0, z); m.rotation.y = ry2 ?? 0; m.scale.setScalar(k ?? 1); g.add(m); }
+      if (v === 3) { out.glow = { x: 0.6, y: 1.0, z: 0.25, color: 0x6aff9a, base: 18 }; out.smoke = { x: 0.6, y: 1.2, z: 0.25 }; }
+      if (v === 4) { out.glow = { x: -0.6, y: 0.8, z: -0.3, color: 0xff8a3a, base: 22 }; out.smoke = { x: -0.6, y: 1.3, z: -0.3 }; }
+      if (v === 5) { out.smoke = { x: 1.0, y: 1.7, z: -0.5 }; }
+    } }
   return out;
 }
 

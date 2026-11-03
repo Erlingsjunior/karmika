@@ -92,7 +92,7 @@ const vistaObjs: { v: (typeof CINE.vistas)[number]; eye: THREE.Mesh; ring: THREE
 for (const v of CINE.vistas) {
   const g = new THREE.Group(), x = (v.at.x + 0.5) * T, z = (v.at.y + 0.5) * T, y = heightAt(x, z);
   const fw = FONT_R.get(v.id); if (fw) { /* na fonte da praça: só o Olho flutuando sobre a água e um anel dourado em volta da borda */
-    const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3 + fw * 0.35; g.add(eye);
+    const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.26), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3 + fw * 0.35; eye.visible = false; /* 03/11 (Erling): o losango flutuando na cintura da estátua nova saiu; o anel dourado continua */ g.add(eye);
     const R0 = fw * T * 0.62; const ring = new THREE.Mesh(new THREE.RingGeometry(R0, R0 + 0.22, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; g.add(ring);
     g.position.set(x, y, z); K.scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y, r: R0 + 1.6 }); continue; }
   const st = new THREE.MeshToonMaterial({ color: 0x8a8680 }), sd = new THREE.MeshToonMaterial({ color: 0x5a5650 });
