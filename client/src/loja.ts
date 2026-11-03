@@ -19,7 +19,7 @@ export const FAC_PRODS: Prod[] = [
   { id: 'all', kind: 'fac', name: 'Juramento Completo', brl: 39.9, was: 54.7, slots: ['cape', 'shield', 'relic'], tag: '−27%', desc: 'Manto, escudo e relíquia, com a aura.' },
 ];
 const PREM_PERKS: [string, string][] = [
-  ['📜', '10 missões ao mesmo tempo no diário (free: 5)'],
+  ['📜', '8 missões ao mesmo tempo no diário (free: 4)'],
   ['🎒', 'Bolsa do Caminhante de 36 espaços enquanto o plano durar'],
   ['✨', 'Bolsa Mágica: gemas, ervas raras, pó, seiva, tomos e pergaminhos'],
   ['🪵', 'Bolsa de Ofício: madeira, pedra, couro e materiais de profissão'],

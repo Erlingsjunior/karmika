@@ -54,7 +54,7 @@ export function premiumWelcome(days: number, total: number) {
   const sparks = Array.from({ length: 14 }, (_, i) => `<i class="spark" style="left:${6 + (i * 37) % 88}%;top:${8 + (i * 53) % 80}%;animation-delay:${(i * 0.17).toFixed(2)}s"></i>`).join('');
   w.innerHTML = `<div class="card">${sparks}<div class="seal">✦</div><small>O SELO DE MARGHAR FOI ROMPIDO</small><h1>Bem-vindo ao Premium!</h1>
     <p>Marghar abriu os olhos e sorriu para você. A partir de agora a sua jornada em Karmika fica mais confortável:</p>
-    <ul><li>✦ Bolsa do Caminhante de presente (36 espaços), Bolsa Mágica e Bolsa de Ofício</li><li>✦ 10 missões ao mesmo tempo no diário (em vez de 5)</li></ul>
+    <ul><li>✦ Bolsa do Caminhante de presente (36 espaços), Bolsa Mágica e Bolsa de Ofício</li><li>✦ 8 missões ao mesmo tempo no diário (em vez de 4)</li></ul>
     <p><b>Mas nada disso compra poder.</b> Em Karmika não existe pay to win: nenhuma espada, nenhum nível e nenhuma vitória se vende. O que você vale aqui continua sendo o que você escolhe, o que você enfrenta e o karma que carrega.</p>
     <p class="joke">Afinal, o Premium deixa a viagem mais macia — mas as más escolhas você continua pagando sozinho, nesta vida e na próxima. 😉</p>
     <div class="days">+${days} dias · ${total} dias de Premium no total</div><button>Que o Olho me guie</button></div>`;

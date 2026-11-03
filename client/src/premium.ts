@@ -7,7 +7,7 @@ export const isPremium = () => on;
 export function setPremium(v: boolean) { on = v; try { localStorage.setItem(KEY, v ? '1' : '0'); } catch { /* */ } for (const f of subs) f(v); }
 export const onPremium = (f: (v: boolean) => void) => { subs.push(f); };
 /** limites do plano */
-export const questLimit = () => (on ? 10 : 5);
+export const questLimit = () => (on ? 8 : 4); /* 03/11 (Erling: "8 missões em vez de 4; dez jogando percebi que é muito") */
 export const GIFT_BAG = 36; // bolsa de presente enquanto o Premium estiver ativo
 export const IS_DEV = !!(import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV;
 /** dias de Premium: usar um Selo de Marghar soma dias ao que já existe (o interruptor do dev não tem data) */
