@@ -11,7 +11,15 @@ import { MOUNTS, PETS } from '../companions';
  *  elas correm igual ao Corcel Negro do Orm (o mais rápido que se compra com ouro); o que muda é o bicho, a sela e o nível que ele pede */
 export const SHOP_MOUNT_SPEED = 1.9;
 export const ORM_MOUNTS = ['mount_horse', 'mount_grey', 'mount_black'];
-export function shopMounts() { return Object.values(MOUNTS).filter((m) => !ORM_MOUNTS.includes(m.id) && !isBoss(m.where)).map((m) => { const mm = m as typeof m & { lvl?: number }; return { id: m.id, name: m.name, icon: String(ITEMS[m.id]?.icon ?? '🐎'), where: m.where ?? '', lvl: mm.lvl ?? 0, blurb: m.blurb ?? '', col: m.tint ?? 0x6a4a2e }; }); }
+/* 03/11 (Erling: "montarias que o chefe solta ficam no chefe E no Shop: assim quem não tem dinheiro pode jogar e dropar, mas quem tem dinheiro pode ter").
+   Hoje os chefes soltam filhotes (pets); toda montaria de chefe que nascer entra aqui sozinha, com a mesma regra. */
+export function shopMounts() {
+  const mounts = Object.values(MOUNTS).filter((m) => !ORM_MOUNTS.includes(m.id)).map((m) => { const mm = m as typeof m & { lvl?: number }; const boss = isBoss(m.where);
+    return { id: m.id, name: m.name, icon: String(ITEMS[m.id]?.icon ?? '🐎'), where: boss ? 'Montarias de chefe' : m.where ?? '', lvl: mm.lvl ?? 0, blurb: (m.blurb ?? '') + (boss ? ` Também cai do chefe: ${m.where}.` : ''), col: m.tint ?? 0x6a4a2e, kind: 'mount' as const }; });
+  const pets = Object.values(PETS).filter((p) => isBoss(p.where)).map((p) => { const pp = p as typeof p & { blurb?: string };
+    return { id: p.id, name: p.name, icon: String(ITEMS[p.id]?.icon ?? '🐾'), where: 'Filhotes de chefe', lvl: 0, blurb: `${pp.blurb ?? ''} Também cai do chefe: ${String(p.where).replace(/ \(.*\)$/, '')}.`.trim(), col: p.tint ?? 0x8a6a4a, kind: 'pet' as const }; });
+  return [...mounts, ...pets];
+}
 const ICON_M: Record<string, string> = { boar: '🐗', wolf: '🐺', cat: '🐅' };
 const LANDS = ['Brasaforja', 'Lithendel', 'Askavik', 'Porto Caldeira', 'Jarlsheim', 'Lumenhal', 'Corvoscuro', 'Uivo Antigo'];
 const isBoss = (w?: string) => !!w && /chefe|guardião/.test(w);
@@ -19,7 +27,6 @@ const isBoss = (w?: string) => !!w && /chefe|guardião/.test(w);
 export function stockAllMounts() {
   /* montarias: preço pelo nível e pela velocidade (o Baio do Orm, +75%, custa 900) */
   for (const m of Object.values(MOUNTS)) {
-    if (isBoss(m.where)) continue;
     if (!ORM_MOUNTS.includes(m.id)) m.speed = Math.min(m.speed, SHOP_MOUNT_SPEED);
     const mm = m as typeof m & { body?: string; lvl?: number; horse?: { antlers?: number; horn?: number } };
     /* 03/11 (Erling: "a montaria anda mais devagar que a pé? ou é 90% a mais?"): o texto diz quantas vezes mais rápido que A PÉ
@@ -31,15 +38,14 @@ export function stockAllMounts() {
     if (PRICES[m.id] === undefined) PRICES[m.id] = Math.round((700 + (mm.lvl ?? 0) * 110 + (m.speed - 1.75) * 5000) / 50) * 50;
   }
   for (const p of Object.values(PETS)) {
-    if (isBoss(p.where)) continue;
     const pp = p as typeof p & { blurb?: string; quad: string };
     if (!ITEMS[p.id]) ITEMS[p.id] = { name: p.name, icon: ({ fox: '🦊', wolf: '🐺', rat: '🐀', horse: '🐴', boar: '🐗', cat: '🐈', dog: '🐕', bestia: '🕷' } as Record<string, string>)[pp.quad] ?? '🐾', kind: 'misc', col: p.tint ?? 0x8a6a4a,
-      desc: `${pp.blurb ?? 'Um companheiro que busca o que cai no chão.'}\nUse para levar ao Estábulo (X).`, tier: 2 } as Item;
-    if (PRICES[p.id] === undefined) PRICES[p.id] = 400;
+      desc: `${pp.blurb ?? 'Um companheiro que busca o que cai no chão.'}${isBoss(p.where) ? `\nFilhote de chefe: cai do ${String(p.where).replace(/ \(.*\)$/, '')} e também está no Shop (T).` : ''}\nUse para levar ao Estábulo (X).`, tier: isBoss(p.where) ? 4 : 2 } as Item;
+    if (PRICES[p.id] === undefined && !isBoss(p.where)) PRICES[p.id] = 400; /* o de chefe não se compra com ouro: cai do chefe ou vem do Shop */
   }
   /* as prateleiras, por terra */
   const byLand = (src: Record<string, { id: string; where?: string }>, base: string) => {
-    const tabs: { name: string; items: string[] }[] = []; const home = Object.values(src).filter((k) => k.where === base).map((k) => k.id);
+    const tabs: { name: string; items: string[] }[] = []; const home = Object.values(src).filter((k) => k.where === base && !isBoss(k.where)).map((k) => k.id);
     for (const L of LANDS) { const ids = Object.values(src).filter((k) => k.where === L).map((k) => k.id); if (ids.length) tabs.push({ name: L, items: ids }); }
     return { home, tabs };
   };

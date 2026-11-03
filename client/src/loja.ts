@@ -41,7 +41,7 @@ function art(f: Fac, slot: 'cape' | 'shield' | 'relic') {
 }
 const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.6"/><circle cx="16" cy="16" r="4.5" fill="#c9a0ff"/><circle cx="16" cy="16" r="1.8" fill="#140a1e"/><path d="M16 2v4M16 26v4M4 6l3 3M28 6l-3 3" stroke="#e6c46a" stroke-width="1.2"/></svg>`;
 
-export type ShopMount = { id: string; name: string; icon: string; where: string; lvl: number; blurb: string; col: number };
+export type ShopMount = { id: string; name: string; icon: string; where: string; lvl: number; blurb: string; col: number; kind?: 'mount' | 'pet' };
 /** 03/11: preço das montarias do Shop pelo nível que o bicho pede (são aparências: todas correm igual ao Corcel Negro do Orm) */
 export const mountBRL = (lvl: number) => (lvl >= 45 ? 49.9 : lvl >= 30 ? 39.9 : lvl >= 15 ? 29.9 : 19.9);
 export type Deliv = { seal?: string; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
@@ -74,13 +74,13 @@ export function createLoja(ctx: {
           <small class="lj-gold">ou 🪙 ${gold.toLocaleString('pt-BR')} na tecelagem</small></div>`; }).join('')}</div>`;
   }
   /* 03/11 (Erling): "o nome: Estábulo do Domador" — as montarias raras das terras de Karmika, por Pix. Só aparência: correm igual ao melhor cavalo de ouro */
-  const mountProd = (m: ShopMount): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: mountBRL(m.lvl), desc: m.blurb });
+  const mountProd = (m: ShopMount): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: m.kind === 'pet' ? 14.9 : mountBRL(m.lvl), desc: m.blurb });
   function mountCard() {
     const L = ctx.mounts(), lands = [...new Set(L.map((m) => m.where))], hx = (n: number) => '#' + n.toString(16).padStart(6, '0');
-    return `<div class="lj-hero mont"><div class="lj-eye" style="font-size:42px;display:grid;place-items:center">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika: o pônei das Cinzas, o cervo de Lithendel, o corcel templário, o alce do Norte, o pesadelo do Conde… <b>Nunca dão força:</b> todas correm igual ao Corcel Negro do Orm, que qualquer um compra com ouro (2,4× mais rápido que a pé). O que muda é o bicho, a sela e o olhar de quem vê você passar.</p><p class="lj-on">A montaria chega no correio do personagem que você escolher. Cada uma pede o nível dela para aceitar quem monta.</p></div></div>
+    return `<div class="lj-hero mont"><div class="lj-eye" style="font-size:42px;display:grid;place-items:center">🐎</div><div><h3>Estábulo do Domador</h3><p>As montarias raras de cada terra de Karmika: o pônei das Cinzas, o cervo de Lithendel, o corcel templário, o alce do Norte, o pesadelo do Conde… <b>Nunca dão força:</b> todas correm igual ao Corcel Negro do Orm, que qualquer um compra com ouro (2,4× mais rápido que a pé). O que muda é o bicho, a sela e o olhar de quem vê você passar.</p><p class="lj-on">A montaria chega no correio do personagem que você escolher. Cada uma pede o nível dela para aceitar quem monta. Os <b>filhotes de chefe</b> também caem dos chefes: quem joga e derruba o chefe ganha igual a quem compra.</p></div></div>
       ${lands.map((w) => `<h4 class="lj-land">${w}</h4><div class="lj-items">${L.filter((m) => m.where === w).map((m) => { const p = mountProd(m);
         return `<div class="lj-item"><div class="lj-art"><div style="width:84px;height:84px;margin:auto;border-radius:50%;display:grid;place-items:center;font-size:46px;background:radial-gradient(circle at 50% 35%, ${hx(m.col)}88, #1a120a 72%);box-shadow:0 0 18px ${hx(m.col)}55">${m.icon}</div></div>
-          <span class="lj-rar unique">MONTARIA${m.lvl ? ` · nível ${m.lvl}` : ''}</span><b>${m.name}</b><small>${m.blurb}</small>
+          <span class="lj-rar unique">${m.kind === 'pet' ? 'FILHOTE DE CHEFE' : 'MONTARIA'}${m.lvl ? ` · nível ${m.lvl}` : ''}</span><b>${m.name}</b><small>${m.blurb}</small>
           <div class="lj-buy"><span class="lj-price">${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}`;
   }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
@@ -111,7 +111,7 @@ export function createLoja(ctx: {
     /* 26/10 (Erling): o Premium vem como Selo de Marghar no correio do personagem que o jogador escolher; ele usa, guarda ou vende
        (e o ouro da venda fica com esse personagem). As peças com brasão também vão para quem ele escolher */
     const to = recip ?? ctx.chars().find((c) => c.active)?.i ?? 0, toName = ctx.chars().find((c) => c.i === to)?.name ?? 'você';
-    if (cart.kind === 'mount') { const c = cart; ctx.deliver(`${c.name} · Estábulo do Domador`, `Obrigado pela compra! ${c.name} chegou com sela e manta. Use o item para levar ao Estábulo (X) e monte com Z. ${c.desc}`, [{ seal: c.id }], to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
+    if (cart.kind === 'mount') { const c = cart; ctx.deliver(`${c.name} · Estábulo do Domador`, `Obrigado pela compra! ${c.name} chegou${c.id.startsWith('mount_') ? ' com sela e manta' : ''}. Use o item para levar ao Estábulo (X) e monte com Z. ${c.desc}`, [{ seal: c.id }], to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
     else if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam e valem para a conta inteira, todos os seus personagens) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }], to); ctx.log(ctx.inMenu() ? `📮 Selo de Marghar (${cart.name}) no inventário da conta (Correio).` : `📮 Selo de Marghar (${cart.name}) a caminho da caixa de correio de ${toName}.`, '#c9a0ff'); }
     else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })), to);
       ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da caixa de correio de ${toName}.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
