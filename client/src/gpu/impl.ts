@@ -12,12 +12,18 @@ import { gpuState, gpuTagsOf, gpuHooks } from './tags';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const L: any = TSL;
-const { Fn, uniform, vec2, vec3, vec4, float, attribute, positionWorld, positionLocal, normalLocal, screenCoordinate, screenSize, texture, sin, cos, fract, floor, dot, mix, smoothstep, clamp, distance, max, min, exp, length, abs, pow, uv, vertexIndex, diffuseColor, Discard, select, cameraProjectionMatrix, modelViewMatrix, modelWorldMatrix, cameraViewMatrix, normalView, positionView, instancedBufferAttribute, pass, renderOutput, mod, step } = L;
+const { Fn, uniform, vec2, vec3, vec4, float, attribute, positionWorld, positionLocal, normalLocal, screenCoordinate, screenSize, texture, sin, cos, fract, floor, dot, mix, smoothstep, clamp, distance, max, min, exp, length, abs, pow, uv, vertexIndex, diffuseColor, Discard, select, cameraProjectionMatrix, modelViewMatrix, modelWorldMatrix, cameraViewMatrix, normalView, positionView, instancedBufferAttribute, renderOutput, mod, step } = L;
 type Ref = { value: any };
 /** uniforme ligado a um {value} do jogo: número lido a cada desenho; objeto (vetor, cor, textura) vivo pela referência */
 /** textura usada só pelos nós (não está em material.map): a varredura de memória do main.ts não pode soltá-la */
 const keep = <T extends THREE.Texture>(t: T): T => { t.userData.keep = true; return t; };
 const U = (o: Ref) => (typeof o.value === 'number' ? uniform(o.value).onRenderUpdate(() => o.value) : uniform(o.value));
+/** uniforme lido DO MATERIAL QUE ESTÁ SENDO DESENHADO (o three reaproveita a montagem entre materiais iguais: um valor capturado na
+ *  montagem ficaria preso ao primeiro material — duas Égides, dois vampiros, dois fantasmas leriam o mesmo brilho) */
+const PU = (key: string, name: string | null, init: unknown) => { const v0 = init as any; const n = uniform(typeof v0 === 'number' ? v0 : v0?.clone ? v0.clone() : v0);
+  return n.onObjectUpdate(({ material }: { material: THREE.Material }) => { const t = gpuTagsOf(material)?.[key] as any; const r = name === null ? t : t?.[name]; return r?.value; }); };
+/** a parte da chave de reaproveitamento que vem das anotações (materiais com efeitos diferentes não podem dividir a montagem) */
+export function tagKey(m: object) { const t = gpuTagsOf(m) as any; if (!t) return ''; return Object.keys(t).sort().map((k) => k === 'wind' ? `wind${t.wind.amp},${t.wind.freq},${t.wind.hero ? 1 : 0}` : k === 'hull' ? `hull${t.hull}` : k).join('|'); }
 const pending = new Set<string>();
 /** erros do WebGPU contados: se o WebGPU não se acerta neste PC, o jogo volta sozinho para o WebGL (main.ts lê gpuState.errs) */
 export function gpuErr(e: unknown) { gpuState.errs = (gpuState.errs ?? 0) + 1; const m = String((e as { message?: string })?.message ?? e).slice(0, 400); if (!gpuState.log.includes(m) && gpuState.log.length < 60) gpuState.log.push(m); if (gpuState.errs < 4) console.warn('[WebGPU]', m); }
@@ -72,7 +78,7 @@ function cutFrag(C: { uCut: Ref; uCutF: Ref }) {
 }
 /** pele do vampiro (looks3d) */
 function paleFrag(P: Ref) {
-  const k = U(P), c = diffuseColor.rgb, mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = mx.sub(mn).div(max(mx, 1e-3));
+  const k = PU('pale', null, P.value), c = diffuseColor.rgb, mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)), sat = mx.sub(mn).div(max(mx, 1e-3));
   const warm = step(c.g, c.r).mul(smoothstep(0.02, 0.07, c.r.sub(c.b))).mul(smoothstep(0.55, 0.75, c.r.sub(c.g).div(max(c.r.sub(c.b), 1e-3))));
   const skin = warm.mul(smoothstep(0.1, 0.2, mx)).mul(float(1).sub(smoothstep(0.7, 0.88, sat))), l = dot(c, vec3(0.32, 0.5, 0.18));
   diffuseColor.rgb.assign(mix(c, vec3(0.86, 0.84, 0.93).mul(clamp(l.mul(1.7).add(0.06), 0, 1)), skin.mul(k)));
@@ -100,9 +106,9 @@ function wrapClass(Base: any) {
 }
 
 /* ---------- os ShaderMaterial do jogo, um a um ---------- */
-const PORTS: Record<string, (nm: any, d: any, b: any) => void> = {
+const PORTS: Record<string, (nm: any, u: any, b: any, Q: (name: string) => any) => void> = {
   /** a água dos rios e lagos (chunks3d) */
-  water(nm, u) { const t = U(u.uT), li = U(u.uLight), fo0 = uniform(u.uFoul.value as THREE.Vector3), vD = attribute('aDepth', 'float'), P = positionWorld;
+  water(nm, u, _b, Q) { const t = Q('uT'), li = Q('uLight'), fo0 = Q('uFoul'), vD = attribute('aDepth', 'float'), P = positionWorld;
     const n2 = (p: any) => fract(sin(dot(floor(p), vec2(12.9898, 78.233))).mul(43758.5453));
     const w = sin(P.x.mul(1.7).add(t.mul(1.1)).add(sin(P.z.mul(0.9).add(t.mul(0.7))).mul(2))).mul(0.5).add(0.5);
     const w2 = sin(P.z.mul(2.3).sub(t.mul(1.4)).add(sin(P.x.mul(1.1)).mul(2))).mul(0.5).add(0.5);
@@ -118,38 +124,38 @@ const PORTS: Record<string, (nm: any, d: any, b: any) => void> = {
     mud = mix(mud, vec3(0.55, 0.54, 0.44), fo.mul(0.6)); c = mix(c, mud, fk).mul(li);
     nm.colorNode = c; nm.opacityNode = mix(0.55, 0.95, smoothstep(0.0, 0.5, vD)); },
   /** a água antiga do mapa (terrain3d) */
-  water0(nm, u) { const t = U(u.uT), P = positionWorld;
+  water0(nm, u, _b, Q) { const t = Q('uT'), P = positionWorld;
     const w = sin(P.x.mul(1.7).add(t.mul(1.1)).add(sin(P.z.mul(0.9).add(t.mul(0.7))).mul(2))).mul(0.5).add(0.5), w2 = sin(P.z.mul(2.3).sub(t.mul(1.4)).add(sin(P.x.mul(1.1)).mul(2))).mul(0.5).add(0.5);
     const spark = smoothstep(0.93, 1.0, w.mul(w2).add(sin(t.mul(3).add(P.x.mul(5)).add(P.z.mul(4))).mul(0.25)));
     nm.colorNode = mix(vec3(0.04, 0.18, 0.30), vec3(0.10, 0.36, 0.50), w.mul(0.6).add(w2.mul(0.4))).add(vec3(0.55, 0.75, 0.9).mul(spark)); nm.opacityNode = float(0.93); },
   /** o chafariz da praça (world3d) */
-  fountain(nm, u) { const t = U(u.uT), P = positionWorld;
+  fountain(nm, u, _b, Q) { const t = Q('uT'), P = positionWorld;
     const w = sin(P.x.mul(3.1).add(t.mul(1.7))).mul(sin(P.z.mul(2.7).sub(t.mul(1.3)))).mul(0.5).add(0.5);
     const rg = smoothstep(0.9, 1.0, sin(length(fract(P.xz.mul(0.25)).sub(0.5)).mul(40).sub(t.mul(5))));
     nm.colorNode = mix(vec3(0.08, 0.35, 0.5), vec3(0.3, 0.7, 0.85), w.mul(0.6)).add(rg.mul(0.18)); nm.opacityNode = float(0.92); },
   /** a Égide de Auréon (gameplay): cúpula de favos */
-  aegis(nm, u) { const t = U(u.t), hit = U(u.hit), op = U(u.op), col = uniform(u.col.value as THREE.Color), vU = uv();
+  aegis(nm, u, _b, Q) { const t = Q('t'), hit = Q('hit'), op = Q('op'), col = Q('col'), vU = uv();
     const f = pow(float(1).sub(abs(dot(normalView, positionView.normalize().negate()))), 2.4);
     const hx = texture(keep(u.map.value as THREE.Texture), vU.mul(vec2(7, 3.5)).add(vec2(0, t.mul(-0.06)))).r, fb = fract(vU.y.mul(2).sub(t.mul(0.35)));
     const band = smoothstep(0.0, 0.08, fb).mul(float(1).sub(smoothstep(0.08, 0.3, fb))), base = smoothstep(-0.05, 0.25, positionLocal.y);
     const a = float(0.015).add(f.mul(0.65)).add(hx.mul(f.mul(0.45).add(0.035))).add(band.mul(f).mul(0.25)).add(hit.mul(hx.mul(0.5).add(0.2))).mul(op).mul(base.mul(0.65).add(0.35));
     nm.colorNode = col.mul(f.mul(0.6).add(0.7).add(hit.mul(0.9))).add(vec3(hit.mul(0.3))); nm.opacityNode = a; },
   /** a alma/fantasma (fx/fantasma3d): brilho na borda, some nos pés */
-  ghost(nm, u) { const C = uniform(u.uC.value as THREE.Color), A = U(u.uA), t = U(u.uT), base = U(u.uBase), y = positionWorld.y;
+  ghost(nm, u, _b, Q) { const C = Q('uC'), A = Q('uA'), t = Q('uT'), base = Q('uBase'), y = positionWorld.y;
     const rim = pow(float(1).sub(abs(dot(normalView, positionView.normalize().negate()))), 2.2), feet = smoothstep(base.sub(0.05), base.add(0.85), y), fl = sin(t.mul(6).add(y.mul(7))).mul(0.14).add(0.86);
     nm.colorNode = C.mul(rim.mul(1.3).add(0.55)); nm.opacityNode = rim.mul(0.8).add(0.07).mul(feet).mul(fl).mul(A); },
   /** os fachos de luz (volume3d) */
-  shaft(nm, u) { const t = U(u.uT), C = uniform(u.uC.value as THREE.Color), I = U(u.uI), S = U(u.uS), q = uv();
+  shaft(nm, u, _b, Q) { const t = Q('uT'), C = Q('uC'), I = Q('uI'), S = Q('uS'), q = uv();
     let a = smoothstep(0.0, 0.12, q.y).mul(float(1).sub(smoothstep(0.45, 1.0, q.y))).mul(pow(max(float(1).sub(abs(q.x.sub(0.5)).mul(2)), 0), 1.6));
     a = a.mul(sin(q.y.mul(7).add(t.mul(0.08)).add(S)).mul(sin(q.x.mul(9).sub(t.mul(0.05)).add(S.mul(1.7)))).mul(0.4).add(0.6)).mul(sin(t.mul(0.25).add(S)).mul(0.04).add(0.96)).mul(I);
     nm.colorNode = C.mul(a); nm.opacityNode = a; },
   /** o facho dourado do ponto da cena (cinema-vistas) */
-  beam(nm, u) { const t = U(u.uT), q = uv(), a = pow(float(1).sub(q.y), 2.2).mul(sin(q.x.mul(37.7).add(t.mul(2))).mul(0.25).add(0.55));
+  beam(nm, u, _b, Q) { const t = Q('uT'), q = uv(), a = pow(float(1).sub(q.y), 2.2).mul(sin(q.x.mul(37.7).add(t.mul(2))).mul(0.25).add(0.55));
     nm.colorNode = vec3(1.0, 0.78, 0.38).mul(a); nm.opacityNode = a; },
 };
 class ShaderPort extends (W as any).MeshBasicNodeMaterial {
   setup(b: any) { const t = gpuTagsOf(b.material) as any, key = t && Object.keys(t).find((k) => PORTS[k]);
-    if (key) PORTS[key](this, t[key], b);
+    if (key) PORTS[key](this, t[key], b, (name: string) => PU(key, name, t[key][name]?.value));
     else { const nm = String(b.material.name || b.material.userData?.fx || b.object?.name || String(b.material.fragmentShader ?? '').replace(/\s+/g, ' ').slice(0, 70)); pending.add(nm); this.colorNode = vec4(0); this.opacityNode = float(0); this.alphaTestNode = float(0.5); }
     return super.setup(b); }
 }
@@ -192,6 +198,27 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   for (const [type, cls] of [...mats.entries()]) mats.set(type, wrapClass(cls));
   mats.set('ShaderMaterial', ShaderPort);
   gpuHooks.particles = particles;
+
+  /* a chave de reaproveitamento da montagem inclui as anotações (gpu/tags): um material toon com corte de visão e outro sem não podem
+     dividir o mesmo programa. O RenderObject não é exportado: o remendo entra no primeiro objeto criado */
+  { const RO = R._objects, oGet = RO.get.bind(RO); let done = false;
+    RO.get = (...a: unknown[]) => { const ro = oGet(...a); if (!done) { done = true; const P = Object.getPrototypeOf(ro); if (!P.__kTag) { const o = P.getMaterialCacheKey; P.getMaterialCacheKey = function (this: any) { return o.call(this) + '#' + tagKey(this.material); }; P.__kTag = true; } } return ro; }; }
+  /* só as luzes fixas entram na iluminação: luz pontual nova (de golpe, NPC, bloco do mundo) é ignorada na hora em que entra — antes ela
+     contava até a varredura seguinte e, nesse meio-tempo, remontava todos os materiais (createGPUPost → lightsFrame copia as reais) */
+  /* (o RenderList não é exportado: o remendo entra no primeiro quadro, em lightsFrame) */
+  /* UM PROGRAMA POR TIPO, NÃO POR OBJETO (03/11): o three escrevia no programa o número exato de cópias de cada InstancedMesh (capim,
+     árvores, pedras de cada bloco do mundo) e de ossos de cada esqueleto — array<mat4, N> —, então cada bloco com uma contagem diferente
+     virava um programa novo: 149 programas de vértice com o jogador parado, e o quadro travava a cada bloco que entrava. Com o limite do
+     buffer uniforme em zero, o three usa o caminho que não depende da contagem (matrizes como atributo por instância, ossos numa textura):
+     os blocos iguais passam a dividir o mesmo programa. */
+  R.backend.capabilities.getUniformBufferLimit = () => 0;
+  /* SEM ENGASGO (03/11, Erling: "a cada 5 segundos os frames travam"): cada material novo que entra na tela (bloco de chão, casa, NPC, golpe)
+     pede um programa novo à placa, e montar programa de forma síncrona para o quadro por dezenas de ms. O three já sabe montar em segundo
+     plano (createRenderPipelineAsync) e pular o objeto até ficar pronto — só não fazia isso fora do compileAsync. Agora faz sempre:
+     o objeto novo aparece um ou dois quadros depois, e o jogo não para. */
+  { const P = R._pipelines, sink: unknown[] = []; P.updateForRender = function (this: any, ro: any) { this.getForRender(ro, sink); if (sink.length > 256) sink.length = 0; }; }
+  /* medidor: quantos programas (pipelines) o WebGPU montou e de quê — montar programa no meio do jogo é o que engasga o quadro */
+  { const B = R.backend, o = B.createRenderPipeline.bind(B); B.createRenderPipeline = (ro: any, p: any) => { gpuState.pipes++; const m = ro?.material; if (gpuState.pipeLog.length < 400) gpuState.pipeLog.push(`${Math.round(performance.now())} ${m?.type}:${m?.name || ''}:${ro?.object?.name || ro?.object?.type}`); return o(ro, p); }; }
   /* GEOMETRIA DIVIDIDA COM O WEBGL: o three 0.186 trocava, no próprio atributo do jogo, os índices de osso de 16 bits (skinIndex) por 32 bits
      ao subir para o WebGPU. Os WebGL à parte (retratos, Limiar, boneco da ficha, vitrine) desenham a MESMA geometria e passavam a ver
      inteiros de 32 bits onde o shader espera vec4 — GL_INVALID_OPERATION. O WebGPU aceita 16 bits (uint16x2/x4, com o passo alinhado em 4),
@@ -210,7 +237,30 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
 
 /** o pós-processamento do WebGPU com a mesma cara do composer do WebGL: brilho, grade de cor, vinheta, 16 bits com pontilhado (Pixel) */
 export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], bl: { strength: number; radius: number; threshold: number }, fin: Record<string, Ref>) {
-  const [s0, c0] = getSC(); const sp = pass(s0, c0); const col = sp.getTextureNode('output');
+  /* o quadro em DUAS etapas, como o DualRenderPass do WebGL: primeiro o cenário (camada 0: chão, casas, anéis e marcas no chão), depois os
+     personagens, bichos e efeitos (camada 1) por cima, com a profundidade do cenário. Assim o que é do chão e desenha sem profundidade
+     (o anel de vida/estamina do herói) fica ATRÁS do herói, e não por cima (Erling, 03/11: "a barra está passando por cima do personagem") */
+  const sceneRT = new THREE.RenderTarget(2, 2, { type: THREE.HalfFloatType, depthBuffer: true }); const col = texture(sceneRT.texture);
+  const shadowLights: THREE.Light[] = []; let tick = 0;
+  /* LUZES FIXAS (03/11, Erling: "travando a cada 5 segundos"): no WebGPU, cada vez que o CONJUNTO de luzes da cena muda (uma tocha que
+     entra com o bloco do mundo, a lanterna de um NPC, a luz de um golpe), todos os materiais na tela são remontados — 1 a 2 s parado.
+     Agora o WebGPU vê sempre as mesmas 24 luzes pontuais: a cada quadro elas copiam posição, cor, força e alcance das luzes reais mais perto
+     do centro da tela. As luzes reais ficam numa camada que a câmera não desenha (31). Muda só valor de uniforme: nada é remontado. */
+  const POOL_N = 24, pool: THREE.PointLight[] = []; let poolScene: THREE.Scene | null = null, reals: THREE.PointLight[] = [], rlPatched = false;
+  const tgt = new THREE.Vector3(), dir = new THREE.Vector3(), cand: { d: number; l: THREE.PointLight; p: THREE.Vector3 }[] = [], wps: THREE.Vector3[] = [];
+  const onStage = (o: THREE.Object3D, sc: THREE.Scene) => { let q: THREE.Object3D | null = o; while (q) { if (!q.visible) return false; if (q === sc) return true; q = q.parent; } return false; };
+  function lightsFrame(s: THREE.Scene, cam: THREE.Camera) {
+    if (!rlPatched) { const inst = R._renderLists?.get?.(s, cam, R.lighting), RL = inst && Object.getPrototypeOf(inst); if (RL && !RL.__kPool) { const o = RL.pushLight; RL.pushLight = function (this: any, l: any) { if (l.isPointLight && !l.userData.gpuPool) return; return o.call(this, l); }; RL.__kPool = true; } rlPatched = true; }
+    if (poolScene !== s) { if (!pool.length) for (let i = 0; i < POOL_N; i++) { const p = new THREE.PointLight(0xffffff, 0, 1, 2); p.userData.gpuPool = true; p.castShadow = false; pool.push(p); }
+      for (const p of pool) { p.removeFromParent(); s.add(p); p.layers.enableAll(); } poolScene = s; tick = 0; }
+    if ((tick % 10) === 0) { reals = []; shadowLights.length = 0;
+      s.traverse((o) => { const l = o as THREE.PointLight; if (!l.isLight || l.userData.gpuPool) return; if (l.isPointLight) { reals.push(l); return; }
+        l.layers.enableAll(); const sl = l as unknown as THREE.DirectionalLight; if (sl.shadow) { sl.shadow.camera?.layers.enableAll(); if (sl.castShadow) shadowLights.push(sl); } }); }
+    (cam as THREE.PerspectiveCamera).getWorldDirection(dir); tgt.copy(cam.position).addScaledVector(dir, 60); cand.length = 0;
+    for (let i = 0; i < reals.length; i++) { const l = reals[i]; if (l.intensity <= 0 || !onStage(l, s)) continue; const w = wps[i] ?? (wps[i] = new THREE.Vector3()); l.getWorldPosition(w); cand.push({ d: w.distanceTo(tgt) - (l.distance || 30) * 0.5, l, p: w }); }
+    cand.sort((a, b) => a.d - b.d);
+    for (let i = 0; i < POOL_N; i++) { const p = pool[i], c = cand[i]; if (c) { p.position.copy(c.p); p.color.copy(c.l.color); p.intensity = c.l.intensity; p.distance = c.l.distance; p.decay = c.l.decay; } else p.intensity = 0; p.updateMatrixWorld(true); }
+  }
   const bn = bloomNode(col, bl.strength, bl.radius, bl.threshold);
   const uQ = U(fin.uQuant), lv = uniform(fin.levels.value), mul = uniform(fin.uMul.value), lift = uniform(fin.uLift.value), sat = U(fin.uSat), vig = U(fin.uVig);
   const lin = col.add(bn); let c = renderOutput(lin).rgb; /* tom (ACES) e sRGB aqui, antes da grade — como o OutputPass do WebGL */
@@ -229,7 +279,13 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
   const post = new (W as any).RenderPipeline(R); post.outputColorTransform = false; const DBG = Number(new URLSearchParams(location.search).get('gpudbg') || 0); const cg = c; post.outputNode = DBG === 5 ? vec4(cg, 1) : DBG === 6 ? vec4(cm, 1) : DBG === 7 ? vec4(cq, 1) : DBG === 3 ? vec4(renderOutput(lin).rgb, 1) : DBG === 4 ? vec4(bn.rgb, 1) : DBG === 1 ? vec4(renderOutput(col).rgb, 1) : DBG === 2 ? vec4(col.rgb, 1) : vec4(out, 1);
   return {
     passes: [] as unknown[], addPass(p: unknown) { this.passes.push(p); }, setSize() { /* o PassNode acompanha o tamanho do renderizador */ },
-    render() { const [s, cam] = getSC(); if (sp.scene !== s) sp.scene = s; if (sp.camera !== cam) sp.camera = cam; cam.layers.enableAll();
+    render() { const [s, cam] = getSC(); const cw = R.domElement.width, ch = R.domElement.height; if (sceneRT.width !== cw || sceneRT.height !== ch) sceneRT.setSize(cw, ch);
+      lightsFrame(s, cam); tick++; gpuState.frame++;
+      const prev = R.getRenderTarget(), ac = R.autoClear;
+      R.setRenderTarget(sceneRT); R.autoClear = true; cam.layers.set(0); R.render(s, cam);
+      const bg = s.background; s.background = null; R.autoClear = false; for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = false; /* a sombra já saiu na 1ª etapa */
+      cam.layers.set(1); R.render(s, cam);
+      for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = true; s.background = bg; cam.layers.enableAll(); R.autoClear = ac; R.setRenderTarget(prev);
       if (OFF && R.getRenderTarget() === null) { const cw = R.domElement.width, ch = R.domElement.height; if (!offRT || offRT.width !== cw || offRT.height !== ch) { offRT?.dispose(); offRT = new THREE.RenderTarget(cw, ch); } R.setRenderTarget(offRT); }
       bn.strength.value = bl.strength; bn.radius.value = bl.radius; bn.threshold.value = bl.threshold; post.render(); if (OFF && R.getRenderTarget() === offRT) R.setRenderTarget(null); },
     /** teste: o quadro final lido de volta (o WebGPU não deixa ler o canvas depois de apresentado) → dataURL */

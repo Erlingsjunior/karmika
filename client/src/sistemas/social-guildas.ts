@@ -6,6 +6,7 @@ import { badge } from '../celebrate';
 import { wholeOf } from '../build';
 import { type Guild, createSocial } from '../social';
 import * as THREE from 'three';
+import { gpuState } from '../gpu/tags';
 import { TILE_M as T } from '@karmika/shared';
 import { heightAt } from '../world';
 import { buyFxLast } from '../windows';
@@ -231,7 +232,11 @@ function heroCard(root: THREE.Object3D): string | null {
 /* o retrato do cartão lê pixels da placa (trava o quadro): só tira de novo quando muda nível, classe ou a cada 5 min, não a cada 20 s */
 let picKey = '', picAt = 0;
 function saveSlotMeta() { if (!K.profile || inicio.isOpen || K.peleSys.creating) return;
-  const pk = `${K.game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`, needPic = pk !== picKey || performance.now() - picAt > 300000; if (needPic) { picKey = pk; picAt = performance.now(); }
+  const pk = `${K.game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`;
+  /* WebGPU: a foto sai por um WebGL à parte, que monta o herói do zero (meio segundo parado). Então só tira quando muda nível ou classe —
+     não na primeira gravação (fica a foto que já estava no cartão) nem a cada 5 min */
+  if (gpuState.on && !picKey) picKey = pk;
+  const needPic = pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000); if (needPic) { picKey = pk; picAt = performance.now(); }
   (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (K.profile) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic, server: K.net.state === 'on' ? `karmika://${K.net.address}/${K.net.code}` : null }); }); }
 setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
