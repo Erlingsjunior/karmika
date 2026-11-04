@@ -33,12 +33,19 @@ const tree = createSkillTree(kitRace, () => K.game.st.lvl, (t, c) => K.game.logM
 /* 03/11: as passivas do compêndio (passivas.ts) somam por cima do rank da magia */
 const compKit = (): string => { const k = kitRace() as string; return k === 'human' && K.profile?.origin === 'elf' ? 'elf' : k === 'human' && K.profile?.origin === 'dwarf' ? 'dwarf' : k; };
 const kitSkills = () => (KITS[kitRace()] ?? []).map((d) => ({ id: d.id as string, name: d.name, k: d.k }));
-tree.setExtraSpent(() => passSpent([compKit()]));
-loadComp(compKit()); onCompLoad(() => K.game.st.recalc?.());
-K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(compKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
+/* 04/11 (Erling: "as passivas não mudam com a classe, mudam de raça para raça: humanos têm Determinação, Não se Entrega, Firmeza do Povo…
+   anões têm outras, elfos outras"): as PASSIVAS são da RAÇA de nascimento (humano, anão ou elfo), em qualquer classe e grau de classe.
+   As MAGIAS continuam da classe (e do grau da classe); os TALENTOS são uma árvore só, igual para todos. */
+const passKit = (): string => { const o = K.profile?.origin; return o === 'elf' || o === 'dwarf' ? o : 'human'; };
+tree.setExtraSpent(() => passSpent([passKit()]));
+loadComp(compKit()); loadComp(passKit()); onCompLoad(() => K.game.st.recalc?.());
+K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(passKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
-const talentKit = (): string => { const k = kitRace() as string; const o = K.profile?.origin; return ['nordic', 'human', 'dwarf', 'elf'].includes(k) && (o === 'elf' || o === 'dwarf') ? o : k; };
-const clsLvl = () => { try { return K.game.classInfo.lvl; } catch { return 1; } };
+/* 04/11 (Erling: "a árvore de talentos dá velocidade, defesa, vitalidade, força, destreza… pode ser a mesma em todas as classes e níveis
+   de classe, ela vai subindo e auxiliando o personagem"): UMA árvore para todos (raça e classe não mudam a árvore) */
+const talentKit = (): string => 'geral';
+/** os níveis de classe da vida inteira: a classe atual + as que vieram antes (a árvore é uma só e continua subindo) */
+const clsLvl = () => { try { const c = K.game.classInfo; return c.lvl + (c.past ?? []).reduce((a: number, q: { lvl: number }) => a + (q.lvl ?? 0), 0); } catch { return 1; } };
 const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); });
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
@@ -84,6 +91,6 @@ const profs = createProfessions({ cls: () => { try { return K.game.classInfo.nam
     for (let i = 0; i < n; i++) K.particles.spawn(st.x + (Math.random() - 0.5) * 1.2, heightAt(st.x, st.z) + 1.0, st.z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: up + Math.random() * up, vz: (Math.random() - 0.5) * 2, life: 0.7, s0: 0.12, s1: 0.02, c0, c1, a: 1, drag: 1.4 });
     if (prof === 'ferreiro') K.audio.hit(); else if (prof === 'alquimista') K.audio.cast(); else K.audio.thud(); }, onLevel: (_id, name, icon, l) => { profLevelUp(icon, name, l); K.audio.chime(); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xfff0b0, c1: 0x7ac85a, n: 26, small: true } })); }, has: (id, n) => K.inv.has(id, n), count: (id) => K.inv.count(id), take: (id, n) => K.inv.take(id, n), add: (id, n) => K.inv.add(id, n, true), addGear: (g) => K.inv.addGear(g),
   craftJob: (j) => K.craftJob(j), invCraft: (id) => K.inv.craft(id), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', heroLvl: () => K.game.st.lvl, log: (t, c) => K.game.logMsg(t, c), onCraft: (n) => K.quests.onCraft(n) });
-  const classPassStats = () => classStats(compKit());
-  return { tree, talents, talentKit, compKit, kitSkills, classPassStats, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
+  const classPassStats = () => classStats(passKit());
+  return { tree, talents, talentKit, compKit, passKit, kitSkills, classPassStats, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
 }

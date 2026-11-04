@@ -81,6 +81,13 @@ const C: Record<string, ClassDef> = {
   ] },
 };
 C.technocrat = C.tecno;
+/* 04/11: A ÁRVORE DE TODOS — a mesma para qualquer raça, classe e grau de classe. Três braços da tríade (ataque, defesa, cura) e o anel dos
+   quatro atributos. O centro é o Olho Kármico. */
+C.geral = { name: 'Karmika', ring: [A('str', 5), A('vit', 5), A('dex', 5), A('int', 5)], branches: [
+  { name: 'Ataque', col: '#ff8a5a', small: [A('str', 5), A('dmg', 3), A('crit', 2), A('dex', 5), A('aspd', 2)], notables: [['Mão Calejada', { dmg: 8, aspd: 5 }], ['Olho no Alvo', { crit: 6, dex: 6 }]], key: ['Fúria do Caminho', { dmg: 18, aspd: 6, arm: -40 }, 'Tudo no golpe: muito mais dano e velocidade, menos armadura.'] },
+  { name: 'Defesa', col: '#8ab8e8', small: [A('vit', 5), A('arm', 12), A('hp', 3), A('str', 4)], notables: [['Couro Grosso', { arm: 40, hp: 6 }], ['De Pé até o Fim', { vit: 10, regen: 1 }]], key: ['Muralha Viva', { arm: 130, hp: 15, move: -6 }, 'Aguenta tudo: armadura e vida enormes, anda mais devagar.'] },
+  { name: 'Cura', col: '#7aff9a', small: [A('int', 5), A('heal', 4), A('regen', 0.5), A('move', 2), A('cdr', 3)], notables: [['Remédio de Vó', { heal: 15, regen: 1 }], ['Pés de Estrada', { move: 6, dex: 5 }]], key: ['Fonte Interior', { heal: 30, cdr: 10, dmg: -8 }, 'Cura forte e magias que voltam rápido; menos dano.'] },
+] };
 
 const cacheT = new Map<string, TNode[]>();
 /** monta a constelação da classe (posições em uma grade de -10 a 10) */
@@ -88,7 +95,7 @@ export function treeOf(kit: string): TNode[] {
   const k = C[kit] ? kit : 'human'; const hit = cacheT.get(k); if (hit) return hit; const D = C[k]; const N: TNode[] = [];
   const add = (n: Omit<TNode, 'links'>) => { const q = { ...n, links: [] as string[] }; N.push(q); return q; };
   const link = (a: TNode, b: TNode) => { a.links.push(b.id); b.links.push(a.id); };
-  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: `Coração de ${D.name}`, eff: {}, branch: -1 });
+  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: k === 'geral' ? 'Olho Kármico' : `Coração de ${D.name}`, eff: {}, branch: -1 });
   const ANG = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]; /* em cima, embaixo à direita, embaixo à esquerda */
   const ringNodes: TNode[][] = [];
   D.branches.forEach((B, bi) => { const a = ANG[bi], ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux; let prev = start; const R: TNode[] = [];

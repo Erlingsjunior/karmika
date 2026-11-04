@@ -3,7 +3,9 @@
 import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, talentPoints } from '../talentos';
 /* símbolo de cada atributo, desenhado dentro do círculo */
 const SYM: Record<TStat, string> = { str: '✊', dex: '➹', vit: '❤', int: '✦', hp: '❤', dmg: '⚔', crit: '✶', arm: '⛨', move: '➶', aspd: '⚡', cdr: '⟳', regen: '✚', gen: '◈', leech: '♦', heal: '✚', mp: '◆' };
-const symOf = (n: TNode) => { if (n.kind === 'start') return '☯'; const ks = Object.keys(n.eff) as TStat[]; if (!ks.length) return '•'; const best = ks.reduce((a, b) => (Math.abs(n.eff[b]!) > Math.abs(n.eff[a]!) && n.eff[b]! > 0 ? b : a), ks[0]); return SYM[best]; };
+/* o centro é o OLHO KÁRMICO (04/11, Erling: "o símbolo do meio não é um yin-yang, é o olho karmiko") */
+const EYE = '👁';
+const symOf = (n: TNode) => { if (n.kind === 'start') return EYE; const ks = Object.keys(n.eff) as TStat[]; if (!ks.length) return '•'; const best = ks.reduce((a, b) => (Math.abs(n.eff[b]!) > Math.abs(n.eff[a]!) && n.eff[b]! > 0 ? b : a), ks[0]); return SYM[best]; };
 
 const CSS = `<style>
 .talw{position:relative;margin:2px auto 0;max-width:640px}
@@ -57,12 +59,12 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
       <div class="evo">${prog}</div>
       <small class="nx">${sn.kind === 'key' ? 'Pedra-chave: muda uma regra da classe. Leia o preço antes de acender.' : sn.kind === 'notable' ? 'Notável: o ponto forte do braço.' : 'Cada ponto aceso abre os vizinhos ligados a ele.'}</small>
       ${on ? `<button class="inv ${why ? 'off' : ''}" data-drop ${why ? 'disabled' : ''}>${why || 'Apagar (devolve 1 ponto)'}</button>` : `<button class="inv ${why ? 'off' : ''}" data-take ${why ? 'disabled' : ''}>${why || `Acender ${sn.name} (1 ponto)`}</button>`}`;
-  } else det = `<div class="th"><div class="ic sym" style="--c:#ffe08a">☯</div><div><b>${classNameOf(kit)}</b><small>Árvore de Talentos</small></div></div>
-      <p class="tip">Clique num ponto ligado a um aceso para acendê-lo; botão direito apaga. Os três braços seguem os papéis da classe — os mesmos das posturas —, e o anel liga um braço ao outro.</p>
+  } else det = `<div class="th"><div class="ic sym" style="--c:#ffe08a">${EYE}</div><div><b>Olho Kármico</b><small>Árvore de Talentos · a mesma para todas as raças e classes</small></div></div>
+      <p class="tip">Clique num ponto ligado a um aceso para acendê-lo; botão direito apaga. A mesma árvore para todas as raças e classes, e ela continua subindo com você: ataque, defesa e cura, e o anel dos atributos liga um braço ao outro.</p>
       <div class="evo">${prog}</div>`;
   det += `<h4>Tudo o que está aceso</h4><div class="lines sum">${sumL}</div>`;
-  el.innerHTML = `${CSS}<div class="pn skpn"><h2>🌳 Árvore Kármica — ${classNameOf(kit)} <button data-x>✕</button></h2>
-    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Nível de classe ${lvl} · 3 pontos por nível de classe · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
+  el.innerHTML = `${CSS}<div class="pn skpn"><h2>🌳 Árvore Kármica — ${kit === 'geral' ? 'Talentos' : classNameOf(kit)} <button data-x>✕</button></h2>
+    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Níveis de classe (todas as classes da vida) ${lvl} · 3 pontos por nível de classe · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
     <div class="tree-body"><div class="treew"><div class="talw"><div class="tzoom"><button data-tz="1" title="Aproximar (roda do mouse)">＋</button><button data-tz="-1" title="Afastar">－</button><button data-tz="0" title="Ver a árvore inteira">⤢</button></div><svg class="tsvg" viewBox="${vb()}"><defs><filter id="tglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>${stars}${lines}${dots}${labels}</svg><div class="ttip" hidden></div></div></div>
     <div class="tdet">${det}</div></div>
     <small class="ft">Clique num ponto para ver a ficha e acender · botão direito apaga · Esc fecha</small></div>`;

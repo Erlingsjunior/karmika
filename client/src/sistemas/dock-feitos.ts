@@ -30,7 +30,7 @@ function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; cons
   d.innerHTML = bt('mag', '🌳 Magias', K.tree.available()) + bt('pas', '✦ Passivas', 0) + bt('tal', '✧ Talentos', K.talents.avail()) + bt('comp', '📖 Compêndio', 0); h.after(d);
   d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal' | 'pas' | 'comp'; renderSkills(); })); }
 function renderSkills() {
-  if (skView === 'pas' || skView === 'comp') { const ctx = { kit: K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => K.game.st.recalc?.() };
+  if (skView === 'pas' || skView === 'comp') { const ctx = { kit: skView === 'pas' ? K.passKit() : K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => K.game.st.recalc?.() };
     if (skView === 'pas') renderPassives(skillsEl, ctx); else renderCompendium(skillsEl, ctx); skTabs(); return; }
   if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), (() => { try { return K.game.classInfo.lvl; } catch { return 1; } })(), talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
   K.tree.migrate();
