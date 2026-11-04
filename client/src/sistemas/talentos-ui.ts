@@ -31,13 +31,15 @@ const CSS = `<style>
 /* 03/11 (Erling: "árvore de talentos pode receber zoom, olhar mais de perto"): roda do mouse aproxima no ponto do cursor, arrastar o fundo
    passeia, botões ＋ － ⤢; o zoom continua igual entre um clique e outro */
 const VZ = { z: 1, cx: 380, cy: 320 };
-const vbOf = (W: number, H: number) => { const w = W / VZ.z, h = H / VZ.z; VZ.cx = Math.max(w / 2, Math.min(W - w / 2, VZ.cx)); VZ.cy = Math.max(h / 2, Math.min(H - h / 2, VZ.cy)); return `${(VZ.cx - w / 2).toFixed(1)} ${(VZ.cy - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`; };
+const vbOf = (W: number, H: number) => { const w = W / VZ.z, h = H / VZ.z; VZ.cx = Math.max(-W * 0.25, Math.min(W * 1.25, VZ.cx)); VZ.cy = Math.max(-H * 0.25, Math.min(H * 1.25, VZ.cy)); /* arrastar livre, com limite folgado */ return `${(VZ.cx - w / 2).toFixed(1)} ${(VZ.cy - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`; };
 export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: number, sel: { id: string | null }, rerender: () => void) {
   let sealSeen = 1; try { sealSeen = +(localStorage.getItem('karmika.talSeal') || '1') || 1; } catch { /* */ }
   const nodes = T.nodes(), L = T.lit(), B = branchesOf(kit), W = 760, H = 640; const vb = () => vbOf(W, H);
   /* a constelação ocupa a tela inteira, com margem para os nomes dos braços */
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const S = Math.min((W - 210) / (x1 - x0), (H - 70) / (y1 - y0)), ox = W / 2 - ((x0 + x1) / 2) * S, oy = H / 2 - ((y0 + y1) / 2) * S + 6;
+  /* 04/11 (Erling: "não está centralizado e não consigo puxar para cima"): o Olho fica no centro da tela e o círculo inteiro (até o último arco) cabe, com folga para os nomes dos braços */
+  void x0; void x1; void y0; void y1; const Rm = Math.max(...GATES.map((g) => g.r), ...nodes.map((n) => Math.hypot(n.x, n.y) + 0.6));
+  const S = (Math.min(W, H) / 2 - 34) / Rm, ox = W / 2, oy = H / 2;
   const X = (n: TNode) => ox + n.x * S, Y = (n: TNode) => oy + n.y * S;
   const col = (n: TNode) => n.branch >= 0 && n.branch < 3 ? B[n.branch].col : '#e8dcc0';
   const seen = new Set<string>(); let lines = '';
@@ -98,14 +100,14 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
   const tip = el.querySelector('.ttip') as HTMLElement, wrap = el.querySelector('.talw') as HTMLElement;
   { const svg = el.querySelector('.tsvg') as SVGSVGElement; const apply = () => svg.setAttribute('viewBox', vb());
     const toSvg = (cx: number, cy: number) => { const r = svg.getBoundingClientRect(), [x0, y0, w, h] = vb().split(' ').map(Number); return [x0 + ((cx - r.left) / r.width) * w, y0 + ((cy - r.top) / r.height) * h]; };
-    const zoomAt = (f: number, cx?: number, cy?: number) => { const nz = Math.max(1, Math.min(3.5, VZ.z * f)); if (cx !== undefined && cy !== undefined) { const [px, py] = toSvg(cx, cy); VZ.cx = px + (VZ.cx - px) * (VZ.z / nz); VZ.cy = py + (VZ.cy - py) * (VZ.z / nz); } VZ.z = nz; apply(); tip.hidden = true; };
+    const zoomAt = (f: number, cx?: number, cy?: number) => { const nz = Math.max(0.7, Math.min(3.5, VZ.z * f)); if (cx !== undefined && cy !== undefined) { const [px, py] = toSvg(cx, cy); VZ.cx = px + (VZ.cx - px) * (VZ.z / nz); VZ.cy = py + (VZ.cy - py) * (VZ.z / nz); } VZ.z = nz; apply(); tip.hidden = true; };
     svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX, e.clientY); }, { passive: false });
     let drag: { x: number; y: number } | null = null;
-    svg.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest('[data-t]') || VZ.z <= 1) return; drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
+    svg.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest('[data-t]')) return; drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
     svg.addEventListener('pointermove', (e) => { if (!drag) return; const r = svg.getBoundingClientRect(), k = W / VZ.z / r.width; VZ.cx -= (e.clientX - drag.x) * k; VZ.cy -= (e.clientY - drag.y) * k; drag = { x: e.clientX, y: e.clientY }; apply(); });
     svg.addEventListener('pointerup', () => { drag = null; svg.style.cursor = ''; });
-    svg.style.cursor = VZ.z > 1 ? 'grab' : '';
-    el.querySelectorAll<HTMLButtonElement>('[data-tz]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const d = +b.dataset.tz!; if (!d) { VZ.z = 1; apply(); } else zoomAt(d > 0 ? 1.35 : 1 / 1.35); svg.style.cursor = VZ.z > 1 ? 'grab' : ''; })); }
+    svg.style.cursor = 'grab';
+    el.querySelectorAll<HTMLButtonElement>('[data-tz]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); const d = +b.dataset.tz!; if (!d) { VZ.z = 1; VZ.cx = W / 2; VZ.cy = H / 2; apply(); } else zoomAt(d > 0 ? 1.35 : 1 / 1.35); })); }
   el.querySelectorAll<SVGGElement>('[data-t]').forEach((g) => { const n = T.byId(g.dataset.t!)!;
     g.addEventListener('mouseenter', () => { const on = L.has(n.id), can = T.canTake(n.id); const kind = n.kind === 'socket' ? 'Encaixe de runa' : n.kind === 'key' ? 'Pedra-chave' : n.kind === 'notable' ? 'Notável' : n.kind === 'start' ? 'Origem' : 'Ponto';
       tip.innerHTML = `<i>${kind}${n.branch >= 0 && n.branch < 3 ? ' · ' + B[n.branch].name : n.branch === 3 ? ' · Anel dos Atributos' : ''}</i><b>${n.name}</b>${Object.keys(n.eff).length ? `<div class="ef">${effTxt(n.eff).split(' · ').join('<br>')}</div>` : ''}${n.tip ? `<div class="tp">${n.tip}</div>` : ''}<div class="st" style="color:${on ? '#ffd24a' : can ? '#9affb0' : '#a08a60'}">${on ? '✔ aceso · botão direito apaga' : can ? '➤ clique para acender (1 ponto)' : T.gateLeft(n.id) ? `🔒 faltam ${T.gateLeft(n.id)} pontos neste braço` : T.avail() ? 'ligue a um ponto aceso primeiro' : 'sem pontos de talento'}</div>`;

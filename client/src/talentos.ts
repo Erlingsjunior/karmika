@@ -222,7 +222,16 @@ export function createTalents(kit: () => string, lvl: () => number, onChange: ()
   const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* */ } };
   /* 04/11: a árvore cresceu (10 anéis); pontos de ids que não existem mais não contam */
-  const known = () => new Set(treeOf(kit()).map((n) => n.id)), mine = () => { const K2 = known(); return (all[kit()] ?? []).filter((id) => K2.has(id)); };
+  /* 04/11 (Erling: "como posso estar com pontos em talentos de nível 35 trancados?"): os pontos acesos antes dos arcos de nível valem só se o
+     anel já abriu para o seu nível de classe e o braço tem os pontos dele; o resto volta sozinho para o monte (sem precisar de personagem novo) */
+  let memo: { key: string; ids: string[] } | null = null;
+  const mine = (): string[] => { const raw = all[kit()] ?? [], L0 = lvl(), key = kit() + '|' + L0 + '|' + raw.join(','); if (memo && memo.key === key) return memo.ids;
+    const T0 = treeOf(kit()), by = new Map(T0.map((n) => [n.id, n])); let ids = raw.filter((id) => { const n = by.get(id); return !!n && (n.lvl ?? 0) <= L0; });
+    for (let pass = 0; pass < 6; pass++) { const set = new Set(['o', ...ids]), cnt = [0, 0, 0, 0]; for (const id of ids) { const b = by.get(id)!.branch; if (b >= 0 && b < 4) cnt[b]++; }
+      const seen = new Set(['o']), q = ['o']; while (q.length) { const c = by.get(q.pop()!); if (!c) continue; for (const l of c.links) if (set.has(l) && !seen.has(l)) { seen.add(l); q.push(l); } }
+      const nx = ids.filter((id) => { const n = by.get(id)!; return seen.has(id) && (n.req ?? 0) <= (n.branch >= 0 && n.branch < 3 ? cnt[n.branch] : 99); }); if (nx.length === ids.length) break; ids = nx; }
+    if (ids.length !== raw.length && L0 >= 2) { all[kit()] = ids; save(); } /* (com nível 1 pode ser o jogo ainda carregando: só esconde, não apaga) */
+    memo = { key: kit() + '|' + L0 + '|' + ids.join(','), ids }; return ids; };
   const lit = (): Set<string> => new Set(['o', ...mine()]);
   const spent = () => mine().length, avail = () => pool ? Math.max(0, pool()) : Math.max(0, talentPoints(lvl()) - spent()); /* pool = os pontos livres do monte único (habilidades + passivas + talentos) */
   const nodes = () => treeOf(kit()), byId = (id: string) => nodes().find((n) => n.id === id);
