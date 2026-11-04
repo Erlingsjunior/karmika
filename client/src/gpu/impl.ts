@@ -233,12 +233,21 @@ function mineColor(src: any) {
   return e.a;
 }
 
+const lateQ: { o: any; f: number; real: () => void }[] = []; let lateFrame = 0;
+/** fim do quadro: destrói de verdade o que foi pedido há 3 quadros ou mais (ver createGPURenderer) */
+export function gpuFlushDestroy() { lateFrame++; let n = 0; while (n < lateQ.length && lateFrame - lateQ[n].f >= 3) { try { lateQ[n].real.call(lateQ[n].o); } catch { /* */ } n++; } if (n) lateQ.splice(0, n); }
 /* ---------- o renderizador ---------- */
 export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   /* compatibilidade: o three 0.186 manda 'swizzle' em toda vista de textura; o Chrome 141/142 (e o Electron 45 do Karmika) ainda conhece
      esse campo com outro tipo e recusa a vista inteira. Sem o recurso 'texture-component-swizzle' ligado, o campo não tem efeito: sai. */
   const GT = (globalThis as any).GPUTexture?.prototype;
   if (GT && !GT.__kSw) { const cv = GT.createView; GT.createView = function (this: any, d?: any) { if (d && 'swizzle' in d && !this.__kSwOk) { const { swizzle: _s, ...rest } = d; void _s; return cv.call(this, rest); } return cv.call(this, d); }; GT.__kSw = true; }
+  /* 04/11 (erro do PC do Erling: "[Buffer] used in submit while destroyed"): o three destrói buffers e texturas da placa NA HORA em que um
+     objeto/material/geometria muda ou some — às vezes no meio do quadro, com o comando que ainda usa aquele buffer (a sombra, a 1ª etapa)
+     esperando para ser enviado. No WebGL isso não importa; no WebGPU o envio inteiro é recusado e, depois de alguns, o jogo caía para o
+     WebGL. Agora destruir é ADIADO: o buffer/textura vai para uma fila e só é destruído 3 quadros depois (gpuFlushDestroy, no fim do quadro). */
+  { const GB = (globalThis as any).GPUBuffer?.prototype, GT2 = (globalThis as any).GPUTexture?.prototype;
+    for (const P of [GB, GT2]) if (P && !P.__kLate) { const real = P.destroy; P.__kLate = true; P.__kReal = real; P.destroy = function (this: any) { if (this.__kGone) return; this.__kGone = true; lateQ.push({ o: this, f: lateFrame, real }); }; } }
   const R = new (W as any).WebGPURenderer({ antialias: false, powerPreference: 'high-performance' });
   await R.init();
   if (!R.backend?.isWebGPUBackend) { R.dispose?.(); gpuState.why = 'o navegador não liberou o WebGPU'; return null; }
@@ -352,7 +361,7 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
       cam.layers.set(1); R.render(s, cam); { const d = gpuState.dc; d.push(R.info.render.drawCalls); if (d.length > 900) d.splice(0, 300); }
       for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = true; s.background = bg; cam.layers.enableAll(); R.autoClear = ac; R.setRenderTarget(prev);
       if (OFF && R.getRenderTarget() === null) { const cw = R.domElement.width, ch = R.domElement.height; if (!offRT || offRT.width !== cw || offRT.height !== ch) { offRT?.dispose(); offRT = new THREE.RenderTarget(cw, ch); } R.setRenderTarget(offRT); }
-      bn.strength.value = bl.strength; bn.radius.value = bl.radius; bn.threshold.value = bl.threshold; post.render(); if (OFF && R.getRenderTarget() === offRT) R.setRenderTarget(null); },
+      bn.strength.value = bl.strength; bn.radius.value = bl.radius; bn.threshold.value = bl.threshold; post.render(); gpuFlushDestroy(); if (OFF && R.getRenderTarget() === offRT) R.setRenderTarget(null); },
     /** teste: o quadro final lido de volta (o WebGPU não deixa ler o canvas depois de apresentado) → dataURL */
     async shot(w = 640) { const cw = R.domElement.width, ch = R.domElement.height, h = Math.round(w * ch / cw); if (!OFF) throw new Error('shot: só no modo de teste (?gpuoff=1)'); this.render(); const rt = offRT; /* lê o próprio quadro fora da tela (sem trocar de alvo) */
       const px: Uint8Array = await R.readRenderTargetPixelsAsync(rt, 0, 0, cw, ch);

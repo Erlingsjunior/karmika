@@ -1,6 +1,6 @@
 /* a janela da ÁRVORE DE TALENTOS (aba ao lado das magias, tecla K): constelação em SVG. Clique acende (se ligado a um aceso e houver ponto),
    botão direito apaga (se não segurar outros). O painel do lado mostra o ponto e a soma de tudo. (03/11) */
-import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, RUNE_TALENT, GATES, ANGS, TREE_RING, NR } from '../talentos';
+import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, RUNE_TALENT, GATES, ANGS, NR } from '../talentos';
 import { RUNAS } from '../runas';
 import { useScroll } from '../esquecimento';
 /* símbolo de cada atributo, desenhado dentro do círculo */
@@ -10,9 +10,9 @@ const EYE = '👁';
 const symOf = (n: TNode) => { if (n.kind === 'start') return EYE; const ks = Object.keys(n.eff) as TStat[]; if (!ks.length) return '•'; const best = ks.reduce((a, b) => (Math.abs(n.eff[b]!) > Math.abs(n.eff[a]!) && n.eff[b]! > 0 ? b : a), ks[0]); return SYM[best]; };
 
 const CSS = `<style>
-.talw{position:relative;margin:2px auto 0;max-width:640px}
+.talw{position:relative;margin:2px 0 0;width:100%;background:radial-gradient(ellipse at 50% 50%,rgba(60,44,20,.35),rgba(10,6,4,.25) 70%);border-radius:6px}
 .talw .tzoom{position:absolute;right:6px;top:6px;display:flex;flex-direction:column;gap:4px;z-index:3}.talw .tzoom button{width:26px;height:26px;background:rgba(20,12,6,.85);border:1px solid #5a4a30;color:#e8d8a8;font:700 14px Georgia,serif;cursor:pointer;border-radius:3px;line-height:1}.talw .tzoom button:hover{border-color:#ffe08a;color:#ffe08a}
-.talw .tsvg{display:block;width:100%;height:auto;max-height:calc(70vh / var(--ui,1))}
+.talw .tsvg{display:block;width:100%;height:calc(76vh / var(--ui,1));min-height:440px}
 .talw .tnd{cursor:pointer}.talw .tnd:hover>circle:not([filter]),.talw .tnd:hover>polygon{stroke:#ffe08a}
 .ttip{position:absolute;pointer-events:none;min-width:180px;max-width:250px;background:rgba(12,8,16,.97);border:1px solid #c9a24a;border-left-width:2px;padding:8px 10px;font-size:12.5px;color:#d8c8a6;box-shadow:0 6px 18px rgba(0,0,0,.6);z-index:5;border-radius:2px}
 .ttip b{display:block;font:700 14px Cinzel,serif;color:#ffe08a}.ttip i{display:block;font:600 9.5px Cinzel,serif;font-style:normal;letter-spacing:.1em;text-transform:uppercase;color:#a08a60;margin-bottom:3px}.ttip .ef{color:#9affb0;margin-top:4px}.ttip .tp{color:#c8b890;font-style:italic;margin-top:4px}.ttip .st{margin-top:6px;font-size:11.5px}
@@ -28,13 +28,13 @@ const CSS = `<style>
 
 /* 03/11 (Erling: "árvore de talentos pode receber zoom, olhar mais de perto"): roda do mouse aproxima no ponto do cursor, arrastar o fundo
    passeia, botões ＋ － ⤢; o zoom continua igual entre um clique e outro */
-const VZ = { z: 1, cx: 300, cy: 280 };
+const VZ = { z: 1, cx: 480, cy: 320 };
 const vbOf = (W: number, H: number) => { const w = W / VZ.z, h = H / VZ.z; VZ.cx = Math.max(w / 2, Math.min(W - w / 2, VZ.cx)); VZ.cy = Math.max(h / 2, Math.min(H - h / 2, VZ.cy)); return `${(VZ.cx - w / 2).toFixed(1)} ${(VZ.cy - h / 2).toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`; };
 export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: number, sel: { id: string | null }, rerender: () => void) {
-  const nodes = T.nodes(), L = T.lit(), B = branchesOf(kit), W = 600, H = 560; const vb = () => vbOf(W, H);
+  const nodes = T.nodes(), L = T.lit(), B = branchesOf(kit), W = 960, H = 640; const vb = () => vbOf(W, H);
   /* a constelação ocupa a tela inteira, com margem para os nomes dos braços */
   const xs = nodes.map((n) => n.x), ys = nodes.map((n) => n.y), x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const S = Math.min((W - 110) / (x1 - x0), (H - 90) / (y1 - y0)), ox = W / 2 - ((x0 + x1) / 2) * S, oy = H / 2 - ((y0 + y1) / 2) * S + 6;
+  const S = Math.min((W - 110) / (x1 - x0), (H - 46) / (y1 - y0)), ox = W / 2 - ((x0 + x1) / 2) * S, oy = H / 2 - ((y0 + y1) / 2) * S + 6;
   const X = (n: TNode) => ox + n.x * S, Y = (n: TNode) => oy + n.y * S;
   const col = (n: TNode) => n.branch >= 0 && n.branch < 3 ? B[n.branch].col : '#e8dcc0';
   const seen = new Set<string>(); let lines = '';
@@ -44,10 +44,11 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
     lines += `<line x1="${X(n)}" y1="${Y(n)}" x2="${X(m)}" y2="${Y(m)}" stroke="${on ? '#e8c870' : half ? '#7a6438' : '#3a2e1e'}" stroke-width="${on ? 1.5 : 1.1}"${on ? '' : ' stroke-dasharray="2 4"'}/>`;
     if (on) lines += `<line x1="${X(n)}" y1="${Y(n)}" x2="${X(m)}" y2="${Y(m)}" stroke="#fffaf0" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="5 ${Math.max(20, len).toFixed(0)}" opacity=".9"><animate attributeName="stroke-dashoffset" from="${(len + 5).toFixed(0)}" to="0" dur="${dur}s" repeatCount="indefinite"/></line>`; }
   /* fundo: as órbitas (anéis) bem fracas, e os PORTÕES como um arco tracejado em cada braço, com o cadeado e os pontos que pedem */
-  let orbits = ''; if (kit === 'geral') { const cx = ox, cy = oy; for (let k = 1; k <= NR; k++) orbits += `<circle cx="${cx}" cy="${cy}" r="${(0.6 + TREE_RING * k) * S}" fill="none" stroke="#c9a24a" stroke-opacity=".07" stroke-width="1"/>`;
-    for (let bi = 0; bi < 3; bi++) for (const G of GATES) { const R = G.r * S, a0 = ANGS[bi] - 0.95, a1 = ANGS[bi] + 0.95, inB = T.inBranch(bi), open = inB >= G.req && T.lvl() >= G.lvl, c2 = open ? B[bi].col : '#8a7040';
-      orbits += `<path d="M${cx + Math.cos(a0) * R} ${cy + Math.sin(a0) * R} A${R} ${R} 0 0 1 ${cx + Math.cos(a1) * R} ${cy + Math.sin(a1) * R}" fill="none" stroke="${c2}" stroke-opacity="${open ? 0.5 : 0.35}" stroke-width="1.4" stroke-dasharray="${open ? '' : '5 5'}"/>`;
-      const la = ANGS[bi] + 1.0, lx = cx + Math.cos(la) * R, ly = cy + Math.sin(la) * R; if (bi === 0) orbits += `<text x="${lx}" y="${ly + 3}" font-size="9" fill="${c2}" text-anchor="middle">${open ? '✔' : '🔒'} Nv ${G.lvl}${G.req ? ` · ${G.req} no braço` : ''}</text>`; } }
+  let orbits = ''; if (kit === 'geral') { const cx = ox, cy = oy; void NR; /* os anéis em si não têm mais círculo: só os arcos de nível */
+    /* 04/11 (Erling: "uma linha circular elegante separando, sem tanto texto: um cadeado com o nível do lado e o jogador entende") */
+    for (const G of GATES) { const R = G.r * S, open = T.lvl() >= G.lvl, la = ANGS[0] + Math.PI / 3, lx = cx + Math.cos(la) * R, ly = cy + Math.sin(la) * R;
+      orbits += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#d9a24f" stroke-opacity="${open ? 0.5 : 0.38}" stroke-width="${open ? 1.2 : 1}"${open ? '' : ' stroke-dasharray="2 5"'}/>`;
+      if (!open) orbits += `<g transform="translate(${lx.toFixed(1)},${ly.toFixed(1)})"><title>Abre no nível de classe ${G.lvl}</title><rect x="-17" y="-7.5" width="34" height="15" rx="7.5" fill="#140e08" stroke="#d9a24f" stroke-opacity=".5"/><text x="0" y="3.6" font-size="9.5" fill="#e8c870" text-anchor="middle">🔒${G.lvl}</text></g>`; } }
   let dots = '';
   const RS = T.runes();
   for (const n of nodes) { const on = L.has(n.id), can = T.canTake(n.id), r = n.rad ? n.rad * S : n.kind === 'key' ? 19 : n.kind === 'notable' ? 15 : n.kind === 'start' ? 17 : 10, c = col(n), isSel = sel.id === n.id, gate = T.gateLeft(n.id) || T.lvlLeft(n.id);

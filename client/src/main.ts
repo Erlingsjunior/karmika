@@ -528,6 +528,8 @@ if (IS_DEV) { const sw = document.createElement('div'); sw.id = 'devsw'; const d
       else game.logMsg('⚑ DEV: sem lado. As peças com brasão ficam na mochila, mas não podem ser vestidas.', '#b9c6e0');
       draw(); return; }
     if (el.closest('[data-prem]')) { setPremium(!isPremium()); draw(); } }); document.getElementById('mini')?.appendChild(sw); onFac(() => draw()); onPremium(() => draw()); }
+/* 04/11: arrastar o mouse não seleciona texto em menu nenhum (só no chat e nos campos de digitar) */
+document.addEventListener('selectstart', (e) => { const t = e.target as Node | null, el = (t && (t.nodeType === 1 ? t : t.parentNode)) as HTMLElement | null; if (el?.closest?.('input, textarea, [contenteditable="true"], #chat')) return; e.preventDefault(); }, { capture: true });
 /* moldura das janelas acompanha a rolagem (04/11): o contorno pontilhado e as runas são desenhados por cima, presos à janela, não ao conteúdo */
 document.addEventListener('scroll', (e) => { const t = e.target; if (t instanceof HTMLElement && t.matches('.pn, .dp, .panel')) { t.style.setProperty('--sy', `${t.scrollTop}px`); t.style.setProperty('--sx', `${t.scrollLeft}px`); } }, { capture: true, passive: true });
 addEventListener('karmika:wswap', (e) => { if (game.st.dead || dlg.isOpen) return; inv.cycleWeapons((e as CustomEvent<number>).detail ?? 1); });
