@@ -245,9 +245,13 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   /* 04/11 (erro do PC do Erling: "[Buffer] used in submit while destroyed"): o three destrói buffers e texturas da placa NA HORA em que um
      objeto/material/geometria muda ou some — às vezes no meio do quadro, com o comando que ainda usa aquele buffer (a sombra, a 1ª etapa)
      esperando para ser enviado. No WebGL isso não importa; no WebGPU o envio inteiro é recusado e, depois de alguns, o jogo caía para o
-     WebGL. Agora destruir é ADIADO: o buffer/textura vai para uma fila e só é destruído 3 quadros depois (gpuFlushDestroy, no fim do quadro). */
+     WebGL. (1ª tentativa: adiar 3 quadros — não bastou; ver abaixo) */
   { const GB = (globalThis as any).GPUBuffer?.prototype, GT2 = (globalThis as any).GPUTexture?.prototype;
-    for (const P of [GB, GT2]) if (P && !P.__kLate) { const real = P.destroy; P.__kLate = true; P.__kReal = real; P.destroy = function (this: any) { if (this.__kGone) return; this.__kGone = true; lateQ.push({ o: this, f: lateFrame, real }); }; } }
+    /* 2ª tentativa (04/11, mesmo erro no PC do Erling com o adiamento de 3 quadros): o three continua usando o buffer DEPOIS de pedir para
+       destruí-lo (referência velha guardada). Então destruir vira só uma marca: o buffer some sozinho quando ninguém mais aponta para ele
+       (o navegador libera a memória da placa no coletor de lixo). Se alguém ainda usar um buffer "destruído", conta e guarda de onde veio. */
+    for (const P of [GB, GT2]) if (P && !P.__kLate) { P.__kLate = true; P.destroy = function (this: any) { if (this.__kGone) return; this.__kGone = true; if (gpuState.staleLog.length < 4) this.__kWhy = (new Error().stack || '').split('\n').slice(2, 7).map((x) => x.trim()).join(' < '); }; }
+    const RP = (globalThis as any).GPURenderPassEncoder?.prototype; if (RP && !RP.__kChk) { RP.__kChk = true; for (const fn of ['setVertexBuffer', 'setIndexBuffer']) { const o = RP[fn]; RP[fn] = function (this: any, ...a: any[]) { const b = fn === 'setVertexBuffer' ? a[1] : a[0]; if (b?.__kGone) { gpuState.stale++; if (gpuState.staleLog.length < 4) { const m = `buffer velho em ${fn}: ${b.__kWhy ?? '?'}`; gpuState.staleLog.push(m); gpuState.log.unshift(m.slice(0, 400)); } } return o.apply(this, a); }; } } }
   const R = new (W as any).WebGPURenderer({ antialias: false, powerPreference: 'high-performance' });
   await R.init();
   if (!R.backend?.isWebGPUBackend) { R.dispose?.(); gpuState.why = 'o navegador não liberou o WebGPU'; return null; }

@@ -453,7 +453,7 @@ const npcSys = createNpcs(scene, [
     if (g === 'lua') tags.push('lua', 'lua'); if (g === 'aurora') tags.push('aurora', 'aurora');
     if (entradaSys.combatMode || game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 14)) tags.push('combate', 'combate', 'combate');
     if (game.st.hp < game.st.hpMax * 0.35) tags.push('ferido', 'ferido'); if (compSys.riding) tags.push('montado'); if (compSys.pet) tags.push('pet');
-    { const st = hereSettle(); if (st) { const v = align.get('vila', st.name); if (v >= 30) tags.push('rep_alta', 'rep_alta'); else if (v <= -25) tags.push('rep_baixa', 'rep_baixa');
+    { const st = hereSettle(); if (st) { const v = align.get('vila', st.name); if (v >= 300) tags.push('rep_alta', 'rep_alta'); else if (v <= -250) tags.push('rep_baixa', 'rep_baixa');
       if (v >= (st.name === 'Karmika' ? 10 : 30) && !align.flag('festa_' + st.name) && leavingQuest(st.name)) tags.push('despedida', 'despedida', 'despedida'); if (align.flag('festa_' + st.name) === 1 && !festaSys.festa) tags.push('volta'); if (festaSys.festa) tags.push('festa', 'festa', 'festa', 'festa'); } }
     if (game.st.lvl < 5) tags.push('novato'); else if (game.st.lvl >= 30) tags.push('veterano'); if (k >= 100) tags.push('luz'); if (k <= -100) tags.push('sombra', 'sombra');
     const P: Record<string, string> = { vam: 'vam', lob: 'lob', mag: 'mag', bru: 'bru', pal: 'pal', cac: 'cac', tec: 'tecno' }; if (pth && P[pth]) tags.push(P[pth], P[pth]); else if (isWarrior()) tags.push('gue'); } catch { /* ainda carregando */ }

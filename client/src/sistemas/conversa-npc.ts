@@ -57,7 +57,7 @@ function talkTo(n: (typeof K.npcSys.npcs)[number]) {
   if (nm === 'Elowen' || nm === 'Elowen do Porto') choices.push({ kind: 'custom', label: 'Abrir o Shop', hint: 'Premium e brasões', cb: () => { K.dlg.close(); K.loja.toggle('prem'); } });
   if (nm === 'Mestre-Forjador Brokki') choices.push({ kind: 'custom', label: 'Forja de Elite', hint: 'peças lendárias', cb: () => eliteForge(n) });
   { /* a festa também é um assunto de conversa: quem fechou o convite (ou clicou fora dele) ainda pode aceitar falando com quem deu a missão */
-    const stF = K.hereSettle()?.name ?? '', dF = stF && !K.festaSys.festa && !K.align.flag('festa_' + stF) && K.align.get('vila', stF) >= (stF === 'Karmika' ? 10 : 30) ? K.leavingQuest(stF) : null;
+    const stF = K.hereSettle()?.name ?? '', dF = stF && !K.festaSys.festa && !K.align.flag('festa_' + stF) && K.align.get('vila', stF) >= (stF === 'Karmika' ? 100 : 300) ? K.leavingQuest(stF) : null;
     if (dF && dF.giver === nm) choices.push({ kind: 'custom', label: '🎉 Aceitar a festa de despedida', hint: `${stF} quer se despedir de você`, cb: () => { K.dlg.close(); K.festaSys.festaAsked = stF; K.festaFade([`A notícia correu de casa em casa: ${K.profile?.name || 'o caminhante'} vai partir.`, `Ao cair da tarde, a praça de ${stF} se encheu de gente, de música e de cheiro de churrasco.`], () => K.startFesta(stF)); } }); }
   if (nm === 'Magistrado Corvin Aldmar' && localStorage.getItem(K.CARTA_K) === '1' && !K.social.guild) choices.push({ kind: 'custom', label: 'Registrar a minha guilda', hint: 'Carta Patente + 500 de ouro', cb: () => { K.dlg.close(); K.social.startFounding(); } });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => K.quests.openBoard() });

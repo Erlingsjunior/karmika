@@ -1,5 +1,5 @@
 /* ALINHAMENTO KÁRMICO (Erling, 25/10): "o que os outros jogos chamam de reputação, no nosso é o alinhamento kármico com o lugar".
-   Cada vila e cidade, cada região e cada facção guarda o quanto a sua alma combina com ela (−100 a +100).
+   Cada vila e cidade, cada região e cada facção guarda o quanto a sua alma combina com ela (−10.000 a +10.000).
    - Sobe: missões dadas por gente do lugar (+6 história, +3 as outras), bichos derrubados perto das casas (+0,25), eventos vencidos
      do lado da luz no lugar (+5). A região sobe junto, mais devagar. A facção a que você jurou sobe +1 a cada missão (a outra cai −1).
    - Desce: comer gente no lugar (−20), sangue de gente nas ruas, eventos vencidos do lado da sombra (−5).
@@ -8,11 +8,15 @@
 import { floatWin } from './windows';
 
 export interface AlignTier { min: number; name: string; col: string; price: number }
+/* 04/11 (Erling: "já sou lenda viva no level 7? para alcançar Lenda Viva preciso de uns 5 mil pontos na vila"): escala de −10.000 a +10.000.
+   Cada ganho vale 10× (missão da história +60, outra +30, evento +50, festa +100) e o bicho perto das casas quase nada (+0,5). Lenda Viva = 5.000:
+   umas cem missões e muitos eventos pela vila. Os valores antigos (−100 a +100) são multiplicados por 10 uma vez. */
+export const ALIGN_SC = 10, ALIGN_MAX = 10000;
 export const TIERS: AlignTier[] = [
-  { min: -101, name: 'Odiado', col: '#c03a3a', price: 1.25 }, { min: -60, name: 'Hostil', col: '#e06a4a', price: 1.15 },
-  { min: -25, name: 'Desconfiado', col: '#d8a060', price: 1.05 }, { min: -5, name: 'Neutro', col: '#b8a888', price: 1 },
-  { min: 10, name: 'Conhecido', col: '#c8d890', price: 1 }, { min: 30, name: 'Amigo', col: '#8ad08a', price: 0.95 },
-  { min: 60, name: 'Honrado', col: '#6ab4ff', price: 0.92 }, { min: 85, name: 'Lenda Viva', col: '#ffd24a', price: 0.88 },
+  { min: -10001, name: 'Odiado', col: '#c03a3a', price: 1.25 }, { min: -5000, name: 'Hostil', col: '#e06a4a', price: 1.15 },
+  { min: -1500, name: 'Desconfiado', col: '#d8a060', price: 1.05 }, { min: -250, name: 'Neutro', col: '#b8a888', price: 1 },
+  { min: 500, name: 'Conhecido', col: '#c8d890', price: 1 }, { min: 1500, name: 'Amigo', col: '#8ad08a', price: 0.95 },
+  { min: 3000, name: 'Honrado', col: '#6ab4ff', price: 0.92 }, { min: 5000, name: 'Lenda Viva', col: '#ffd24a', price: 0.88 },
 ];
 export const tierOf = (v: number) => { let t = TIERS[0]; for (const x of TIERS) if (v >= x.min) t = x; return t; };
 type Kind = 'vila' | 'regiao' | 'faccao';
@@ -20,16 +24,17 @@ interface St { v: Record<string, number>; seen: Record<string, number>; flags: R
 const KEY = 'karmika.align.v1';
 export function createAlign(ctx: { places(): { name: string; kind: 'city' | 'village' }[]; regions(): string[]; factions(): { id: string; name: string }[]; myFac(): string | null; log(t: string, c?: string): void; /** uma linha sobre o lugar onde você está agora (festa, por que sim, por que não) */ status?(): string }) {
   let S: St = { v: {}, seen: {}, flags: {} }; try { const o = JSON.parse(localStorage.getItem(KEY) || 'null'); if (o?.v) S = { ...S, ...o }; } catch { /* */ }
+  if (!S.flags.x10) { for (const kk of Object.keys(S.v)) S.v[kk] = Math.max(-ALIGN_MAX, Math.min(ALIGN_MAX, S.v[kk] * ALIGN_SC)); S.flags.x10 = 1; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* */ } }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* */ } };
   const k = (kind: Kind, name: string) => `${kind}:${name}`;
   const get = (kind: Kind, name: string) => S.v[k(kind, name)] ?? 0;
   /** muda e avisa quando passa de faixa */
-  function add(kind: Kind, name: string, dv: number, why?: string, quiet = false) { if (!name || !dv) return; const key = k(kind, name), a = S.v[key] ?? 0, b = Math.max(-100, Math.min(100, a + dv)); S.v[key] = b;
+  function add(kind: Kind, name: string, dv: number, why?: string, quiet = false) { if (!name || !dv) return; const key = k(kind, name), a = S.v[key] ?? 0, b = Math.max(-ALIGN_MAX, Math.min(ALIGN_MAX, a + dv * ALIGN_SC)); S.v[key] = b;
     const ta = tierOf(a), tb = tierOf(b); if (ta !== tb && !quiet) ctx.log(`${b > a ? '▲' : '▼'} Alinhamento Kármico com ${name}: agora ${tb.name}${why ? ` (${why})` : ''}.`, tb.col); save(); if (open) render(); }
   /* ---------- a janela ---------- */
   const el = document.createElement('div'); el.id = 'alignw'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'align', { left: '30vw', top: '8vh' }), 0);
   let open = false, tab: Kind = 'vila';
-  const row = (name: string, v: number, sub = '') => { const t = tierOf(v), pct = (v + 100) / 2; return `<div class="alr"><div class="alh"><b>${name}</b><span style="color:${t.col}">${t.name}</span><em>${v > 0 ? '+' : ''}${Math.round(v)}</em></div><div class="albar"><i style="left:50%;width:0"></i><u style="left:${Math.min(50, pct)}%;width:${Math.abs(pct - 50)}%;background:${t.col}"></u></div>${sub ? `<small>${sub}</small>` : ''}</div>`; };
+  const row = (name: string, v: number, sub = '') => { const t = tierOf(v), pct = (v + ALIGN_MAX) / (ALIGN_MAX * 2) * 100; return `<div class="alr"><div class="alh"><b>${name}</b><span style="color:${t.col}">${t.name}</span><em>${v > 0 ? '+' : ''}${Math.round(v)}</em></div><div class="albar"><i style="left:50%;width:0"></i><u style="left:${Math.min(50, pct)}%;width:${Math.abs(pct - 50)}%;background:${t.col}"></u></div>${sub ? `<small>${sub}</small>` : ''}</div>`; };
   function render() { if (!open) { el.style.display = 'none'; return; }
     let body = '';
     if (tab === 'vila') { const P = ctx.places().slice().sort((a, b) => get('vila', b.name) - get('vila', a.name) || a.name.localeCompare(b.name)); body = P.map((p) => { const v = get('vila', p.name), t = tierOf(v); return row(`${p.kind === 'city' ? '🏰' : '🏘'} ${p.name}`, v, t.price !== 1 ? `Lojas daqui: ${t.price < 1 ? '−' : '+'}${Math.round(Math.abs(1 - t.price) * 100)}%` : S.seen[p.name] ? '' : 'Ainda não te conhecem.'); }).join(''); }

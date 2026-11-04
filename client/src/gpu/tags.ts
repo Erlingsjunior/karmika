@@ -4,7 +4,7 @@
    o mesmo efeito em nós (TSL), que o WebGPU entende. */
 const TAGS = new WeakMap<object, Record<string, unknown>>();
 /** o renderizador do jogo é WebGPU? (decidido na abertura, antes de o mundo ser montado) */
-export const gpuState = { on: false, backend: 'webgl' as 'webgl' | 'webgpu', why: '', errs: 0, lost: false, log: [] as string[], pipes: 0, pipeLog: [] as string[], snaps: 0, snapLog: [] as string[], frame: 0, dc: [] as number[] };
+export const gpuState = { on: false, backend: 'webgl' as 'webgl' | 'webgpu', why: '', errs: 0, lost: false, log: [] as string[], pipes: 0, pipeLog: [] as string[], snaps: 0, snapLog: [] as string[], frame: 0, dc: [] as number[], stale: 0, staleLog: [] as string[] };
 export function gpuTag<T extends object>(m: T, key: string, data: unknown = true): T { let r = TAGS.get(m); if (!r) TAGS.set(m, (r = {})); r[key] = data; return m; }
 export const gpuTagsOf = (m: object) => TAGS.get(m);
 export function gpuUntag(m: object, key: string) { const r = TAGS.get(m); if (r) delete r[key]; }

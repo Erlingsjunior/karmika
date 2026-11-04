@@ -29,7 +29,7 @@ queueMicrotask(() => K.quests.addDoneHook((d) => { if (d.id === 'gu1') { try { l
   if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
   const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));
 /** quem defende as casas: bicho derrubado perto do povoado soma um pouquinho */
-function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | undefined) { if (!e?.pos || e.def?.passive) return; const st = settleAt(e.pos.x / T, e.pos.z / T, 25); if (st) align.add('vila', st.name, 0.25); }
+function alignKill(e: { pos?: THREE.Vector3; def?: { passive?: boolean } } | undefined) { if (!e?.pos || e.def?.passive) return; const st = settleAt(e.pos.x / T, e.pos.z / T, 25); if (st) align.add('vila', st.name, 0.05); }
 /* chegada e volta: quem é querido é recebido; a festa só acontece uma vez */
 let alignChk = 0, alignHere = '';
 function alignTick(dt: number) { void dt; const nowA = performance.now(); if (nowA < alignChk) return; alignChk = nowA + 1000; /* relógio de verdade */ alignCatchup(); const st = hereSettle(), nm = st?.name ?? '';
