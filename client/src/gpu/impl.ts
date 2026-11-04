@@ -173,19 +173,47 @@ function particles(geo: THREE.BufferGeometry, u: Record<string, Ref>, n: number)
   const uPx = U(u.uPx), uDist = U(u.uDist), uT = U(u.uT), uWind = uniform(u.uWind.value as THREE.Vector2);
   const p0 = attribute('position', 'vec3'), v0 = attribute('aV0', 'vec3'), tl = attribute('aTL', 'vec3'), sz = attribute('aSz', 'vec2'), c0 = attribute('aC0', 'vec3'), c1 = attribute('aC1', 'vec3'), ph = attribute('aPh', 'vec4');
   const mv1 = (x0: any, vv: any, A: any, r: any, t: any) => select(r.lessThan(1e-4), x0.add(vv.mul(t)).add(A.mul(t).mul(t).mul(0.5)), x0.add(A.div(max(r, 1e-4)).mul(t)).add(vv.sub(A.div(max(r, 1e-4))).mul(float(1).sub(exp(r.negate().mul(t)))).div(max(r, 1e-4))));
+  /* a velocidade AGORA (derivada de mv1): a faísca estica na direção em que voa */
+  const vel1 = (vv: any, A: any, r: any, t: any) => select(r.lessThan(1e-4), vv.add(A.mul(t)), A.div(max(r, 1e-4)).add(vv.sub(A.div(max(r, 1e-4))).mul(exp(r.negate().mul(t)))));
   const age = uT.sub(tl.x), life = tl.y, k = age.div(max(life, 1e-4)), alive = life.greaterThan(0).and(age.greaterThanEqual(0)).and(k.lessThan(1));
+  /* formato (04/11, Erling: "partículas, magias, projéteis, fogo na placa de vídeo"): 0 brilho, 1 faísca, 2 chama — vem em aTL.z junto da fase */
+  const kind = floor(tl.z.div(10000)), phs = tl.z.sub(kind.mul(10000)), isSpark = kind.equal(1), isFlame = kind.equal(2);
   const drag = ph.x, grav = ph.y, wf = ph.z, flit = ph.w, kw = select(wf.greaterThan(0), float(1.4), float(0));
   let p = vec3(mv1(p0.x, v0.x, kw.mul(uWind.x).mul(wf), drag.add(kw), age), mv1(p0.y, v0.y, grav.negate(), drag, age), mv1(p0.z, v0.z, kw.mul(uWind.y).mul(wf), drag.add(kw), age));
-  p = p.add(vec3(sin(age.mul(5).add(tl.z)), sin(age.mul(7).add(tl.z.mul(1.3))).mul(0.6), cos(age.mul(4).add(tl.z))).mul(flit.mul(0.12)));
+  p = p.add(vec3(sin(age.mul(5).add(phs)), sin(age.mul(7).add(phs.mul(1.3))).mul(0.6), cos(age.mul(4).add(phs))).mul(flit.mul(0.12)));
+  /* a chama sobe se enroscando: turbulência que cresce com a idade (o fogo de verdade não sobe reto) */
+  const turb = vec3(sin(p.y.mul(2.3).add(uT.mul(3.1)).add(phs)), float(0), cos(p.y.mul(2.7).add(uT.mul(2.6)).add(phs.mul(1.7)))).mul(age.mul(0.22));
+  p = select(isFlame, p.add(turb), p);
+  const vel = vec3(vel1(v0.x, kw.mul(uWind.x).mul(wf), drag.add(kw), age), vel1(v0.y, grav.negate(), drag, age), vel1(v0.z, kw.mul(uWind.y).mul(wf), drag.add(kw), age));
   const size = mix(sz.x, sz.y, k), mvp = modelViewMatrix.mul(vec4(p, 1));
   /* o tamanho em pixels igual ao do gl_PointSize do WebGL: px na tela → metade do lado em espaço de recorte */
-  const px = size.mul(uPx).mul(uDist).div(max(1, mvp.z.negate())), clip = cameraProjectionMatrix.mul(mvp);
+  const px = min(size.mul(uPx).mul(uDist).div(max(1, mvp.z.negate())), 200), clip = cameraProjectionMatrix.mul(mvp);
   const vi = vertexIndex, cx = select(vi.equal(1).or(vi.equal(2)).or(vi.equal(4)), float(1), float(-1)), cy = select(vi.equal(2).or(vi.equal(4)).or(vi.equal(5)), float(1), float(-1));
-  const off = vec2(cx, cy).mul(px).div(screenSize).mul(clip.w);
-  m.vertexNode = select(alive, vec4(clip.xy.add(off), clip.z, clip.w), vec4(2, 2, 2, 1));
+  /* faísca: o quadrado vira um risco ao longo da velocidade na tela (o rastro de 1/20 s) */
+  const clip2 = cameraProjectionMatrix.mul(modelViewMatrix.mul(vec4(p.add(vel.mul(0.05)), 1)));
+  const dpx = clip2.xy.div(max(clip2.w, 1e-3)).sub(clip.xy.div(max(clip.w, 1e-3))).mul(screenSize).mul(0.5), dl = length(dpx);
+  const ax = select(dl.greaterThan(1e-3), dpx.div(max(dl, 1e-3)), vec2(1, 0)), pr = vec2(ax.y.negate(), ax.x);
+  const sparkHalf = ax.mul(cx).mul(px.mul(0.5).add(min(dl, px.mul(6)))).add(pr.mul(cy).mul(px.mul(0.32)));
+  /* chama: mais alta que larga, a base perto do ponto */
+  const flameHalf = vec2(cx.mul(px.mul(0.45)), cy.mul(px.mul(0.8)).add(px.mul(0.3)));
+  const half = select(isSpark, sparkHalf, select(isFlame, flameHalf, vec2(cx, cy).mul(px.mul(0.5))));
+  const off = half.mul(2).div(screenSize).mul(clip.w);
+  /* colada na câmera (zoom bem perto): o WebGL limita o tamanho do ponto; aqui some, senão vira um retângulo na tela inteira */
+  m.vertexNode = select(alive.and(mvp.z.lessThan(-0.6)), vec4(clip.xy.add(off), clip.z, clip.w), vec4(2, 2, 2, 1));
   const vA = select(k.lessThan(0.15), k.div(0.15), float(1).sub(k.sub(0.15).div(0.85))), vUv = vec2(cx, cy).mul(0.5).add(0.5).toVarying('vPc');
-  const a = texture(keep(u.uMap.value as THREE.Texture), vUv).a.mul(vA.toVarying('vPa'));
-  m.colorNode = mix(c0, c1, k).toVarying('vPcol').mul(a); m.opacityNode = a; m.alphaTestNode = float(0.01);
+  const vKind = kind.toVarying('vPk'), vPh = phs.toVarying('vPh'), vK = k.toVarying('vPkk');
+  const base = texture(keep(u.uMap.value as THREE.Texture), vUv).a;
+  /* língua de fogo: gota que afina para cima e ondula; o miolo é mais quente (mais claro) no começo da vida */
+  const q = vUv.mul(2).sub(1), fy = q.y.mul(0.5).add(0.5);
+  const qx = q.x.add(sin(q.y.mul(3.2).add(uT.mul(9)).add(vPh)).mul(0.22).mul(fy));
+  const fw = mix(float(0.95), float(0.22), fy), fd = length(vec2(qx.div(fw), q.y.mul(select(q.y.lessThan(0), float(1.25), float(0.9)))));
+  const flame = smoothstep(1.0, 0.15, fd).mul(float(0.85).add(sin(uT.mul(17).add(vPh.mul(3))).mul(0.15)));
+  const shape = select(vKind.equal(2), flame, base), a = shape.mul(vA.toVarying('vPa'));
+  const col = mix(c0, c1, k).toVarying('vPcol');
+  /* miolo quente: o centro de toda partícula brilha um pouco mais (o bloom pega), e a chama clareia para o branco-amarelado */
+  const hot = pow(shape, 3).mul(select(vKind.equal(2), float(1).sub(vK).mul(0.9), float(0.35)));
+  const hotCol = select(vKind.equal(2), vec3(1, 0.85, 0.55).mul(max(col.x, max(col.y, col.z))), col);
+  m.colorNode = col.mul(a).add(hotCol.mul(hot).mul(a)); m.opacityNode = a; m.alphaTestNode = float(0.01);
   const mesh = new THREE.Mesh(ig, m); mesh.frustumCulled = false; return mesh;
 }
 
