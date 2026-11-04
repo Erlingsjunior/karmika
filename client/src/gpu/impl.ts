@@ -185,6 +185,22 @@ function particles(geo: THREE.BufferGeometry, u: Record<string, Ref>, n: number)
   const mesh = new THREE.Mesh(ig, m); mesh.frustumCulled = false; return mesh;
 }
 
+/* ---------- cópias (InstancedMesh) dividindo o mesmo programa ---------- */
+const sharable = (obj: any) => !!(obj && obj.isInstancedMesh && obj.instanceMatrix?.isInstancedBufferAttribute && !obj.instanceMatrix.isStorageInstancedBufferAttribute && !obj.isSkinnedMesh && !obj.morphTargetInfluences && !obj.isBatchedMesh);
+const MINE = new WeakMap<object, { arr: unknown; ib: Map<object, any>; at: Map<string, any> }>();
+/** as matrizes DESTE objeto no mesmo formato que o programa compartilhado espera (vec4 lado a lado, uma por cópia); a versão segue a do jogo.
+ *  Um buffer próprio para CADA buffer do programa original (o vento lê a 4ª coluna de um buffer à parte): o desenho liga os buffers por posição */
+function mineAttr(src: any, orig: any, stride: number, offset: number, size: number) {
+  let e = MINE.get(src); if (!e || e.arr !== src.array) { e = { arr: src.array, ib: new Map(), at: new Map() }; MINE.set(src, e); }
+  let ib = e.ib.get(orig); if (!ib) { ib = new THREE.InstancedInterleavedBuffer(src.array, stride, 1); ib.setUsage(src.usage); Object.defineProperty(ib, 'version', { get: () => src.version, set: () => {} }); e.ib.set(orig, ib); }
+  const k = (orig.uuid as string) + ':' + offset + ':' + size; let a = e.at.get(k); if (!a) e.at.set(k, (a = new THREE.InterleavedBufferAttribute(ib, size, offset))); return a;
+}
+const MINEC = new WeakMap<object, { arr: unknown; a: any }>();
+function mineColor(src: any) {
+  let e = MINEC.get(src); if (!e || e.arr !== src.array) { const a: any = new THREE.InstancedBufferAttribute(src.array, 3); a.setUsage(src.usage); Object.defineProperty(a, 'version', { get: () => src.version, set: () => {} }); e = { arr: src.array, a }; MINEC.set(src, e); }
+  return e.a;
+}
+
 /* ---------- o renderizador ---------- */
 export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   /* compatibilidade: o three 0.186 manda 'swizzle' em toda vista de textura; o Chrome 141/142 (e o Electron 45 do Karmika) ainda conhece
@@ -202,7 +218,19 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
   /* a chave de reaproveitamento da montagem inclui as anotações (gpu/tags): um material toon com corte de visão e outro sem não podem
      dividir o mesmo programa. O RenderObject não é exportado: o remendo entra no primeiro objeto criado */
   { const RO = R._objects, oGet = RO.get.bind(RO); let done = false;
-    RO.get = (...a: unknown[]) => { const ro = oGet(...a); if (!done) { done = true; const P = Object.getPrototypeOf(ro); if (!P.__kTag) { const o = P.getMaterialCacheKey; P.getMaterialCacheKey = function (this: any) { return o.call(this) + '#' + tagKey(this.material); }; P.__kTag = true; } } return ro; }; }
+    RO.get = (...a: unknown[]) => { const ro = oGet(...a); if (!done) { done = true; const P = Object.getPrototypeOf(ro); if (!P.__kTag) { const o = P.getMaterialCacheKey; P.getMaterialCacheKey = function (this: any) { const obj = this.object; if (!sharable(obj)) return o.call(this) + '#' + tagKey(this.material);
+          /* cópias (InstancedMesh): o three põe o uuid de cada uma na chave — cada grupo de capim/árvores/pedras de cada bloco montava o seu
+             programa do zero. A chave passa a ser a do tipo (sem uuid) e cada objeto liga as SUAS matrizes no lugar (getAttributes abaixo) */
+          const st = Object.create(obj); st.isInstancedMesh = false; st.count = 1; this.object = st; let k; try { k = o.call(this); } finally { this.object = obj; }
+          return k + '#I' + (obj.instanceColor ? 'c' + obj.instanceColor.usage : '') + ':' + obj.instanceMatrix.usage + '#' + tagKey(this.material); };
+        const oA = P.getAttributes; P.getAttributes = function (this: any) { if (this.attributes !== null) return this.attributes; const list = oA.call(this), obj = this.object; if (!sharable(obj)) return list;
+          const own = new Set(Object.values(this.geometry.attributes)); let ch = false;
+          for (let i = 0; i < list.length; i++) { const a = list[i]; if (own.has(a)) continue;
+            if (a.isInterleavedBufferAttribute && a.data.isInstancedInterleavedBuffer && a.data.stride === 16 && a.data.array !== obj.instanceMatrix.array) { list[i] = mineAttr(obj.instanceMatrix, a.data, 16, a.offset, a.itemSize); ch = true; }
+            else if (!a.isInterleavedBufferAttribute && a.isInstancedBufferAttribute && a.itemSize === 3 && obj.instanceColor && a.array !== obj.instanceColor.array) { list[i] = mineColor(obj.instanceColor); ch = true; } }
+          if (ch) this.vertexBuffers = [...new Set(list.map((a: any) => (a.isInterleavedBufferAttribute ? a.data : a)))];
+          return list; };
+        P.__kTag = true; } } return ro; }; }
   /* só as luzes fixas entram na iluminação: luz pontual nova (de golpe, NPC, bloco do mundo) é ignorada na hora em que entra — antes ela
      contava até a varredura seguinte e, nesse meio-tempo, remontava todos os materiais (createGPUPost → lightsFrame copia as reais) */
   /* (o RenderList não é exportado: o remendo entra no primeiro quadro, em lightsFrame) */
@@ -244,9 +272,9 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
   const shadowLights: THREE.Light[] = []; let tick = 0;
   /* LUZES FIXAS (03/11, Erling: "travando a cada 5 segundos"): no WebGPU, cada vez que o CONJUNTO de luzes da cena muda (uma tocha que
      entra com o bloco do mundo, a lanterna de um NPC, a luz de um golpe), todos os materiais na tela são remontados — 1 a 2 s parado.
-     Agora o WebGPU vê sempre as mesmas 24 luzes pontuais: a cada quadro elas copiam posição, cor, força e alcance das luzes reais mais perto
+     Agora o WebGPU vê sempre as mesmas 14 luzes pontuais (as mesmas 14 que o WebGL acende): a cada quadro elas copiam posição, cor, força e alcance das luzes reais mais perto
      do centro da tela. As luzes reais ficam numa camada que a câmera não desenha (31). Muda só valor de uniforme: nada é remontado. */
-  const POOL_N = 24, pool: THREE.PointLight[] = []; let poolScene: THREE.Scene | null = null, reals: THREE.PointLight[] = [], rlPatched = false;
+  const POOL_N = 14, pool: THREE.PointLight[] = []; let poolScene: THREE.Scene | null = null, reals: THREE.PointLight[] = [], rlPatched = false;
   const tgt = new THREE.Vector3(), dir = new THREE.Vector3(), cand: { d: number; l: THREE.PointLight; p: THREE.Vector3 }[] = [], wps: THREE.Vector3[] = [];
   const onStage = (o: THREE.Object3D, sc: THREE.Scene) => { let q: THREE.Object3D | null = o; while (q) { if (!q.visible) return false; if (q === sc) return true; q = q.parent; } return false; };
   function lightsFrame(s: THREE.Scene, cam: THREE.Camera) {
@@ -284,7 +312,7 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
       const prev = R.getRenderTarget(), ac = R.autoClear;
       R.setRenderTarget(sceneRT); R.autoClear = true; cam.layers.set(0); R.render(s, cam);
       const bg = s.background; s.background = null; R.autoClear = false; for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = false; /* a sombra já saiu na 1ª etapa */
-      cam.layers.set(1); R.render(s, cam);
+      cam.layers.set(1); R.render(s, cam); { const d = gpuState.dc; d.push(R.info.render.drawCalls); if (d.length > 900) d.splice(0, 300); }
       for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = true; s.background = bg; cam.layers.enableAll(); R.autoClear = ac; R.setRenderTarget(prev);
       if (OFF && R.getRenderTarget() === null) { const cw = R.domElement.width, ch = R.domElement.height; if (!offRT || offRT.width !== cw || offRT.height !== ch) { offRT?.dispose(); offRT = new THREE.RenderTarget(cw, ch); } R.setRenderTarget(offRT); }
       bn.strength.value = bl.strength; bn.radius.value = bl.radius; bn.threshold.value = bl.threshold; post.render(); if (OFF && R.getRenderTarget() === offRT) R.setRenderTarget(null); },

@@ -46,17 +46,17 @@ const guideEl = document.createElement('div'); guideEl.id = 'guide'; guideEl.inn
 const guideLbl = guideEl.querySelector('.lbl span') as HTMLElement, guideDist = guideEl.querySelector('.lbl small') as HTMLElement;
 /* fôlego: arco amarelo no pé do herói (voltado para a câmera), esvazia ao correr e ao dar dash */
 const stamG = new THREE.Group(); K.scene.add(fine(stamG));
-const stamArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf4f0e6, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false, fog: false, toneMapped: false, side: THREE.DoubleSide })); stamArc.renderOrder = 5; stamG.add(stamArc);
-const stamBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide })); stamBg.renderOrder = 4; stamG.add(stamBg);
+const stamArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf4f0e6, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, fog: false, toneMapped: false, side: THREE.DoubleSide })); stamArc.renderOrder = 5; stamG.add(stamArc);
+const stamBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, fog: false, side: THREE.DoubleSide })); stamBg.renderOrder = 4; stamG.add(stamBg);
 /* 27/10 (Erling): fôlego BRANCO (o amarelo confundia com a missão de história) e, ao lado dele, a barra curva de VIDA (vermelha) */
-const hpArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd83a3a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: false, fog: false, toneMapped: false, side: THREE.DoubleSide })); hpArc.renderOrder = 5; stamG.add(hpArc);
-const hpBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide })); hpBg.renderOrder = 4; stamG.add(hpBg);
+const hpArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd83a3a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, fog: false, toneMapped: false, side: THREE.DoubleSide })); hpArc.renderOrder = 5; stamG.add(hpArc);
+const hpBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, fog: false, side: THREE.DoubleSide })); hpBg.renderOrder = 4; stamG.add(hpBg);
 let stamShow = 0;
 function updateStamRing(dt: number) {
   const k = K.game.st.stam / Math.max(1, K.game.st.stamMax), want = 1; /* 26/10 (Erling): o fôlego não some — fica sempre no pé, cheio ou não */
   stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !K.inside && !K.game.st.dead;
   if (!stamG.visible) return;
-  stamG.position.set(K.heroPos.x, K.heroPos.y + 0.05, K.heroPos.z); stamG.rotation.y = K.az; // arco virado para a câmera, à frente dos pés
+  stamG.position.set(K.heroPos.x, K.heroPos.y + 0.08, K.heroPos.z); stamG.rotation.y = K.az; /* 03/11 (Erling: "a aura do personagem não se esconde atrás dos itens"): as barras e a bússola agora respeitam a profundidade — somem atrás da fonte, de casas e de pedras; o empurrão de profundidade só as mantém por cima do próprio chão */ // arco virado para a câmera, à frente dos pés
   const SPAN = 1.05, GAP = 0.12, start = -Math.PI / 2 + GAP / 2; // fôlego à direita da direção da câmera, vida à esquerda, com um vão entre os dois
   stamArc.geometry.dispose(); stamArc.geometry = new THREE.RingGeometry(0.97, 1.07, 48, 1, start + SPAN * (1 - k), Math.max(0.001, SPAN * k)).rotateX(-Math.PI / 2);
   stamBg.geometry.dispose(); stamBg.geometry = new THREE.RingGeometry(0.95, 1.09, 48, 1, start - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
@@ -71,10 +71,10 @@ const guide3d = new THREE.Group(); guide3d.visible = false; K.scene.add(fine(gui
 /* 27/10 (Erling): segunda bússola — outra missão guiada, de outra cor (história + extra/mundo), lado a lado no pé do herói */
 const guide3dB = new THREE.Group(); guide3dB.visible = false; K.scene.add(fine(guide3dB));
 /* mistura normal (não aditiva): no chão claro, verde-claro e laranja somados à luz viravam quase branco — a cor da missão tem que aparecer como é */
-const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, depthTest: false, blending: THREE.NormalBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
+const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, blending: THREE.NormalBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
 /* 26/10 (Erling: "a bússola some no chão da floresta, precisa ficar mais viva"): desenhada por cima do chão e da grama (sem teste de profundidade),
    com uma sombra escura por baixo do arco e das setas — a cor da missão lê em qualquer fundo — e pulsando */
-const gInk = (op: number) => new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: op, depthWrite: false, depthTest: false, fog: false, side: THREE.DoubleSide, userData: { ink: true } } as THREE.MeshBasicMaterialParameters);
+const gInk = (op: number) => new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: op, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40, fog: false, side: THREE.DoubleSide, userData: { ink: true } } as THREE.MeshBasicMaterialParameters);
 for (const gg of [guide3d, guide3dB]) { const ink = new THREE.Mesh(new THREE.RingGeometry(1.34, 1.56, 40, 1, -Math.PI / 2 - 0.74, 1.48).rotateX(-Math.PI / 2), gInk(0.55)); /* 27/10: a bússola fica por fora das barras */ ink.renderOrder = 6; ink.userData.ink = true; gg.add(ink);
   const arc2 = new THREE.Mesh(new THREE.RingGeometry(1.38, 1.52, 40, 1, -Math.PI / 2 - 0.7, 1.4).rotateX(-Math.PI / 2), gMat(1)); arc2.name = 'garc'; arc2.renderOrder = 7; gg.add(arc2);
   for (let i = 0; i < 3; i++) { const sh = new THREE.Shape(); sh.moveTo(-0.24, -0.17); sh.lineTo(0, 0.11); sh.lineTo(0.24, -0.17); sh.lineTo(0, -0.02); sh.closePath();
