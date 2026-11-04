@@ -276,17 +276,25 @@ export function createGameplay(d: GameplayDeps) {
   /* ---- nível de classe (caminho): segunda barra abaixo do XP ---- */
   /* 03/11 (Erling: "os pontos de classe não deveriam ser mais fáceis que os de nível? o humano é a classe base, segue a mesma regra"): a classe
      usa a MESMA tabela do nível e ganha o XP inteiro (antes: 45% do XP e uma tabela ~50% mais cara — a classe andava 3× mais devagar) */
-  const clsNeed = (l: number) => xpNeedAt(l);
+  /* 04/11 (Erling: "o level de classe limite será 240 agora e 350 na expansão, relacionado a 120 de base: quase 3 para 1 — cada level de XP
+     são quase 3 levels de classe… precisamos de mais pontos de classe para tantas magias, talentos e passivas"). O nível de classe custa o
+     XP de UM NÍVEL BASE dividido por 350/120 (≈2,92): a classe anda ~3 níveis a cada nível base, em qualquer classe. Ao trocar de classe a
+     barra zera, mas o custo continua pelo nível base (não volta a ser barato). Teto de cada grau de classe: 120 (Classe I e II; a III, elite,
+     vai até 350 na expansão). */
+  const CLS_RATIO = 350 / 120, CLS_CAP = 120;
+  const clsNeed = (_l: number) => Math.max(20, Math.round(xpNeedAt(st.lvl) / CLS_RATIO));
   let cls: { name: string; lvl: number; xp: number; past?: { name: string; lvl: number }[] } = { name: 'Humano', lvl: 1, xp: 0, past: [] };
   try { const s0 = JSON.parse(localStorage.getItem('karmika.class.v1') || 'null'); if (s0?.name && typeof s0.lvl === 'number') cls = s0; } catch { /* */ } // antes era s0?.lvl: quem mudava de classe e recarregava antes do 1º nível de classe voltava a Humano
   /** a alma filtra o XP: Dívida Kármica (come uma parte) e o eco da vida passada (multiplica o XP de classe) */
+  let capWarned = false;
   let xpFilter: ((n: number, c: { name: string; lvl: number }) => { n: number; paid: number; cmul: number }) | null = null;
   function gainXp(n0: number, p: THREE.Vector3) {
     const gross = Math.round(n0 * st.xpMul), f = xpFilter ? xpFilter(gross, cls) : { n: gross, paid: 0, cmul: 1 }, n = f.n;
     st.xp += n; dmgText(p.clone().setY(2.6), `+${n} XP`, false, '#9ad7ff'); logMsg(`+${n} XP${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');
     { // XP de classe: a segunda contagem — o seu caminho (Caminhante, depois a classe da academia) evolui junto, mais devagar
       const c = cls; c.xp += Math.round(gross * f.cmul);
-      while (c.xp >= clsNeed(c.lvl)) { c.xp -= clsNeed(c.lvl); c.lvl++; dmgText(p.clone().setY(3.4), `${c.name.toUpperCase()} ${c.lvl}`, true, '#c9a0ff'); logMsg(`✦ Nível de classe ${c.lvl} — ${c.name} · +3 pontos de talento (K, aba Talentos)`, '#c9a0ff'); d.audio.chime(); classLevelUp(c.name, c.lvl); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xe8d0ff, c1: 0x8a4aff, n: 70 } })); }
+      if (c.lvl >= CLS_CAP) { c.xp = Math.min(c.xp, clsNeed(c.lvl) - 1); if (!capWarned) { capWarned = true; logMsg(`✦ ${c.name} chegou ao teto do grau (${CLS_CAP}). O próximo grau da classe abre por missão.`, '#c9a0ff'); } }
+      while (c.lvl < CLS_CAP && c.xp >= clsNeed(c.lvl)) { c.xp -= clsNeed(c.lvl); c.lvl++; dmgText(p.clone().setY(3.4), `${c.name.toUpperCase()} ${c.lvl}`, true, '#c9a0ff'); logMsg(`✦ Nível de classe ${c.lvl} — ${c.name} · +3 pontos de talento (K, aba Talentos)`, '#c9a0ff'); d.audio.chime(); classLevelUp(c.name, c.lvl); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xe8d0ff, c1: 0x8a4aff, n: 70 } })); }
       try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ }
     }
     while (st.xp >= xpNeed()) {
