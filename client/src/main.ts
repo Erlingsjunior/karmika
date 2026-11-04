@@ -1632,7 +1632,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono };
+(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);

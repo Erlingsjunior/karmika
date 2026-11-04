@@ -32,7 +32,7 @@ function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; cons
 function renderSkills() {
   if (skView === 'pas' || skView === 'comp') { const ctx = { kit: K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => K.game.st.recalc?.() };
     if (skView === 'pas') renderPassives(skillsEl, ctx); else renderCompendium(skillsEl, ctx); skTabs(); return; }
-  if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), K.game.st.lvl, talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
+  if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), (() => { try { return K.game.classInfo.lvl; } catch { return 1; } })(), talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
   K.tree.migrate();
   K.tree.render(skillsEl, K.treeSel, (id) => { K.treeSel = id; renderSkills(); }, (id) => { const r0 = K.tree.rank(id); if (K.tree.invest(id)) { const r1 = K.tree.rank(id); K.audio.rune([3, 6, 10].includes(r1) && r1 > r0 ? 1 : 0); K.applyKitAll(); renderSkills(); } });
   { /* a passiva de classe mora aqui também: um clique liga/desliga (igual a tecla F) */ const top = skillsEl.querySelector('.tree-top'); if (top) { const I = K.myInstinct(), d = document.createElement('div'); d.className = 'instcard' + (K.instintoSys.instinctOn ? ' on' : ''); d.style.setProperty('--ic', I.css);

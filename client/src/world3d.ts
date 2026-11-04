@@ -353,7 +353,7 @@ export function buildWorld(world: World): WorldObjs {
     } else if (p.kind === 'noticeboard') {
       // tábua de avisos: dois postes, telhadinho, papéis pregados (contratos, recompensas, um cartaz de procurado)
       const wood = std(0xffffff, { map: plankTex(0x5a3a20) }), dark = std(0x3a2414), iron = std(0x3a3a40);
-      const bg = new THREE.Group(); bg.position.set(Wm / 2, 0, Dm / 2); g.add(bg);
+      const bg = new THREE.Group(); bg.position.set(Wm / 2, 0, Dm / 2); bg.rotation.y = [0, Math.PI / 2, Math.PI, -Math.PI / 2][p.variant ?? 0] ?? 0; /* de frente para a rua (world.ts) */ g.add(bg);
       for (const sx of [-1, 1]) { const po = new THREE.Mesh(new THREE.BoxGeometry(0.14, 2.55, 0.14), dark); ink(po, 0.02); po.position.set(sx * 0.95, 1.27, 0); po.castShadow = true; bg.add(po); }
       const bd = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.15, 0.08), wood); ink(bd, 0.02); bd.position.set(0, 1.55, 0); bd.castShadow = true; bg.add(bd);
       for (const y of [0.97, 2.13]) { const tr = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.08, 0.12), dark); tr.position.set(0, y, 0.01); bg.add(tr); }

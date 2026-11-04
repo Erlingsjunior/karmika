@@ -38,7 +38,8 @@ loadComp(compKit()); onCompLoad(() => K.game.st.recalc?.());
 K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(compKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 const talentKit = (): string => { const k = kitRace() as string; const o = K.profile?.origin; return ['nordic', 'human', 'dwarf', 'elf'].includes(k) && (o === 'elf' || o === 'dwarf') ? o : k; };
-const talents = createTalents(talentKit, () => K.game.st.lvl, () => { K.game.st.recalc?.(); });
+const clsLvl = () => { try { return K.game.classInfo.lvl; } catch { return 1; } };
+const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); });
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
 /** guerreiro do Norte: classe ou caminho validado */

@@ -2,6 +2,7 @@
 import { instinctOf } from '../instinto';
 import { INSTINCT_GLYPH, INST_GLYPH_BASE, ROLE_SVG, THIRD_EYE } from '../ui/icones';
 import * as THREE from 'three';
+import { CUT } from '../toon3d';
 import { createStances, type Stance, ROLE_NAME } from '../posturas';
 import { stanceTex, ST_ICON } from '../fx/posturas-tex';
 import { type PathId } from '../vidente';
@@ -62,8 +63,8 @@ var stanceSys: ReturnType<typeof createStances> | null = null;
 /* (a origem do herói para o círculo da postura agora vai como parâmetro de stanceTex — fx/posturas-tex.ts) */
 /* o brilho por baixo (aditivo, gradiente radial): só aparece forte quando a postura acabou de mudar */
 const stGlowTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; const gr = g.createRadialGradient(64, 64, 8, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.62, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.86, 'rgba(255,255,255,0.75)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); const t = new THREE.CanvasTexture(c); t.userData.keep = true; return t; })();
-const stGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 3.1), new THREE.MeshBasicMaterial({ map: stGlowTex, transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending, opacity: 0, fog: false, toneMapped: false })); stGlow.rotation.x = -Math.PI / 2; stGlow.renderOrder = 2; K.scene.add(stGlow);
-const stRing = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), /* 27/10: aura menor, acaba antes das barras de fôlego/vida */ new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: false, opacity: 0.8, fog: false, toneMapped: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 3; /* depthTest off: a grama alta não come o anel */ K.scene.add(stRing);
+const stGlow = new THREE.Mesh(new THREE.PlaneGeometry(3.1, 3.1), new THREE.MeshBasicMaterial({ map: stGlowTex, transparent: true, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, blending: THREE.AdditiveBlending, opacity: 0, fog: false, toneMapped: false })); stGlow.rotation.x = -Math.PI / 2; stGlow.renderOrder = 2; K.scene.add(stGlow);
+const stRing = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.9), /* 27/10: aura menor, acaba antes das barras de fôlego/vida */ new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, opacity: 0.8, fog: false, toneMapped: false })); stRing.rotation.x = -Math.PI / 2; stRing.renderOrder = 3; /* 04/11 (Erling: "a aura passa por cima dos inimigos e dos objetos — ajuste para tudo, absolutamente tudo"): agora respeita a profundidade; bicho, baú, pedra e casa ficam na frente */ K.scene.add(stRing);
 /* forte por 2 minutos depois de trocar; depois esmaece em 6 s até ficar discreta (não atrapalha a visão) */
 const ST_STRONG = 120, ST_FADE = 6;
 let stRingId = '', stPop = 0, stAge = 0;
@@ -75,7 +76,7 @@ function stanceRing(st: { id: string; role: string; col: string } | null, dt: nu
   stAge += dt; stPop = Math.max(0, stPop - dt * 1.5);
   const k = stAge < ST_STRONG ? 1 : Math.max(0, 1 - (stAge - ST_STRONG) / ST_FADE); /* 1 = forte, 0 = discreta */
   const p = K.hero.root.position, vis = !K.riding; stRing.visible = vis; /* 28/10 (Erling): o halo brilhante em volta da postura é só de quem tem alinhamento de luz +2000 (a mesma regra das auras do mundo); os outros veem só a aura de runas */ stGlow.visible = vis && (K.soul.s.luzT ?? 0) - (K.soul.s.sombraT ?? 0) >= 2000;
-  stRing.position.set(p.x, p.y + 0.06, p.z); stGlow.position.set(p.x, p.y + 0.05, p.z);
+  stRing.position.set(p.x, p.y + 0.11, p.z); stGlow.position.set(p.x, p.y + 0.1, p.z); if (CUT.uCut.value.w > 0) { stRing.visible = stGlow.visible = false; return; } /* herói atrás de construção: a aura some junto com as barras */
   stRing.rotation.z += dt * (0.18 + 0.22 * k); stGlow.rotation.z -= dt * 0.1;
   const pulse = 0.5 + 0.5 * Math.sin(stAge * 2.4);
   stRing.scale.setScalar(1 + stPop * 0.9 - stPop * stPop * 0.5);

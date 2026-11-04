@@ -62,7 +62,7 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
       <div class="evo">${prog}</div>`;
   det += `<h4>Tudo o que está aceso</h4><div class="lines sum">${sumL}</div>`;
   el.innerHTML = `${CSS}<div class="pn skpn"><h2>🌳 Árvore Kármica — ${classNameOf(kit)} <button data-x>✕</button></h2>
-    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Nível ${lvl} · 1 ponto no começo, +1 a cada 2 níveis e +1 a cada 10 · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
+    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Nível de classe ${lvl} · 1 ponto por nível de classe · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
     <div class="tree-body"><div class="treew"><div class="talw"><div class="tzoom"><button data-tz="1" title="Aproximar (roda do mouse)">＋</button><button data-tz="-1" title="Afastar">－</button><button data-tz="0" title="Ver a árvore inteira">⤢</button></div><svg class="tsvg" viewBox="${vb()}"><defs><filter id="tglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>${stars}${lines}${dots}${labels}</svg><div class="ttip" hidden></div></div></div>
     <div class="tdet">${det}</div></div>
     <small class="ft">Clique num ponto para ver a ficha e acender · botão direito apaga · Esc fecha</small></div>`;

@@ -663,8 +663,8 @@ export function buildCity(): World {
   // praça: bancos e barracas de mercado
   for (const [bx, by, v] of [[14, 15, 0], [21, 15, 0], [14, 20, 0], [21, 20, 0], [16, 14, 1], [19, 14, 1], [16, 21, 1], [19, 21, 1]] as [number, number, number][]) decor('bench', bx + OX, by + OY, 1, 1, v);
   decor('stall', 12 + OX, 12 + OY, 2, 2, 0, 0x7a5a38, 0x8a3b2e);
-  // quadro de avisos de madeira, ao lado do guarda Garrick: contratos pregados para quem passa
-  decor('noticeboard', 13 + OX, 17 + OY, 1, 1, 0, 0x5a3a20, 0x4a3020);
+  /* o quadro de avisos do Vale saiu daqui (04/11): ficava no meio da rua das carroças. Agora todas as cidades e vilas ganham o seu,
+     no centro mas fora da rua (ver "QUADRO DE AVISOS" mais abaixo) */
   // barracas dos comércios da vila
   decor('stall', 25 + OX, 19 + OY, 2, 2, 0, 0x6a4a6c, 0x5a3a7a); decor('stall', 9 + OX, 9 + OY, 2, 2, 0, 0x6a4a2c, 0x5d6b3a); decor('stall', 1 + OX, 24 + OY, 2, 2, 0, 0x5a6a4a, 0x3a4a2a); decor('stall', 31 + OX, 8 + OY, 2, 2, 0, 0x7a6a5a, 0x6a5a4a); decor('stall', 7 + OX, 24 + OY, 2, 2, 0, 0x7a4a3a, 0x8a3b2e); decor('stall', 35 + OX, 23 + OY, 2, 2, 0, 0x8a5a2a, 0xd0702a); decor('stall', 28 + OX, 10 + OY, 2, 2, 0, 0x7a7a7a, 0x4e5f7a);
   if (map[26 + OY][28 + OX] === 'grass') block({ kind: 'campfire', gx: 28 + OX, gy: 26 + OY, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }); decor('stall', 24 + OX, 13 + OY, 2, 2, 0, 0x6a4a2c, 0x4e5f7a); decor('stall', 12 + OX, 19 + OY, 2, 2, 0, 0x7a5a38, 0x5d6b3a);
@@ -2118,6 +2118,24 @@ export function buildCity(): World {
     for (const t of props) { if (t.kind !== 'torch') continue; for (const q of props) { if (q.kind !== 'bench' || Math.max(Math.abs(q.gx - t.gx), Math.abs(q.gy - t.gy)) > 1) continue;
       const sx = Math.sign(q.gx - t.gx), sy = Math.sign(q.gy - t.gy); mark(q, false); for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]] as [number, number][]) { if (!ax && !ay) continue; if (okAt(q.gx + ax, q.gy + ay, 1, 1) || ['grass', 'plaza', 'road'].includes(String(map[q.gy + ay]?.[q.gx + ax])) && !occ.has((q.gy + ay) * 4096 + q.gx + ax)) { q.gx += ax; q.gy += ay; break; } } mark(q, true); } }
   }
+  /* QUADRO DE AVISOS EM TODA CIDADE E VILA (04/11, Erling: "a placa mural de missões da cidade, e de todas as cidades, pode ficar no
+     centro, num lugar que não atrapalhe as carroças — elas não deveriam atravessar a placa"): o quadro vai para a grama, na beira da praça
+     ou da rua, o mais perto do centro que der, com folga de uma casa de tudo o que já está construído e virado para a rua. */
+  { const occ = new Set<number>(); const key = (x: number, y: number) => y * 4096 + x;
+    for (const q of props) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ.add(key(x, y));
+    const street = (x: number, y: number) => inb(x, y) && (map[y][x] === 'road' || map[y][x] === 'plaza');
+    const centers: { x: number; y: number; r: number }[] = [{ x: CITY.x, y: CITY.y, r: 16 }];
+    for (const st of settlements) { const nh = props.filter((q) => q.kind === 'house' && Math.hypot(q.gx - st.x, q.gy - st.y) < st.radius + 4).length; if (nh < 3) continue; if (Math.hypot(st.x - CITY.x, st.y - CITY.y) < 20) continue; centers.push({ x: st.x, y: st.y, r: st.radius + 4 }); }
+    for (const c of centers) { let best: { x: number; y: number; d: number; dir: number } | null = null;
+      for (let y = Math.round(c.y - c.r); y <= c.y + c.r; y++) for (let x = Math.round(c.x - c.r); x <= c.x + c.r; x++) {
+        if (!inb(x, y) || map[y][x] !== 'grass') continue; const d = Math.hypot(x - c.x, y - c.y); if (d > c.r || (best && d >= best.d)) continue;
+        let free = true; for (let yy = y - 1; yy <= y + 1 && free; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (occ.has(key(xx, yy)) || (inb(xx, yy) && (map[yy][xx] === 'water' || map[yy][xx] === 'wall'))) { free = false; break; }
+        if (!free) continue;
+        /* de frente para a rua (um vizinho é rua ou praça), mas sem rua dos dois lados (seria um canteiro no meio do caminho) */
+        const dirs: [number, number, number][] = [[0, 1, 0], [1, 0, 1], [0, -1, 2], [-1, 0, 3]]; const face = dirs.filter(([dx, dy]) => street(x + dx, y + dy)); if (!face.length || face.length > 2) continue;
+        if (street(x - face[0][0], y - face[0][1])) continue;
+        best = { x, y, d, dir: face[0][2] }; }
+      if (!best) continue; props.push({ kind: 'noticeboard', gx: best.x, gy: best.y, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: best.dir }); occ.add(key(best.x, best.y)); } }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX, y: 75.5 + OFY }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX, y: 75.5 + OFY, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
