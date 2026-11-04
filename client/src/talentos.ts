@@ -18,7 +18,7 @@ export const TSTAT_TXT: Record<TStat, (v: number) => string> = {
   leech: (v) => `+${v}% de roubo de vida`, heal: (v) => `+${v}% de cura recebida`, mp: (v) => `+${v} de recurso máximo`,
 };
 export type Eff = Partial<Record<TStat, number>>;
-export interface TNode { id: string; x: number; y: number; kind: 'start' | 'small' | 'notable' | 'key' | 'socket'; name: string; eff: Eff; tip?: string; links: string[]; branch: number; /** pontos já gastos NESTE braço para abrir (portão) */ req?: number; /** raio no desenho, em unidades da árvore */ rad?: number }
+export interface TNode { id: string; x: number; y: number; kind: 'start' | 'small' | 'notable' | 'key' | 'socket'; name: string; eff: Eff; tip?: string; links: string[]; branch: number; /** pontos já gastos NESTE braço para abrir (portão) */ req?: number; /** nível de classe que abre o anel */ lvl?: number; /** raio no desenho, em unidades da árvore */ rad?: number }
 interface Branch { name: string; col: string; small: Eff[]; notables: [string, Eff][]; key: [string, Eff, string] }
 interface ClassDef { name: string; ring: Eff[]; branches: [Branch, Branch, Branch] }
 
@@ -148,28 +148,28 @@ function treeGeral(): TNode[] {
   const add = (n: Omit<TNode, 'links'>) => { const q = { ...n, links: [] as string[] }; N.push(q); return q; };
   const link = (a: TNode, b: TNode) => { if (a.links.includes(b.id)) return; a.links.push(b.id); b.links.push(a.id); };
   const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: 'Olho Kármico', eff: {}, branch: -1, rad: 1.0 });
-  const ANG = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6], HALF = 0.86, RING = 2.05, GAP = 2.3;
+  const ANG = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6], HALF = TREE_HALF, RING = TREE_RING, GAP = TREE_GAP;
   const rings: TNode[][][] = [];
   D.branches.forEach((B, bi) => { const role: Role = (['atk', 'def', 'sup'] as Role[])[bi], P = POOL[role], R: TNode[][] = []; let si = 0, ni = 0, mi = 0;
     const own = B.notables.map((q) => q) as [string, Eff][]; const nots = [...own, ...P.notables];
-    for (let k = 1; k <= 8; k++) { const r = 0.6 + RING * k, m = k === 8 ? 3 : Math.max(0, Math.floor((HALF * r) / GAP)), cols: number[] = [];
-      if (k === 8) cols.push(-3, 0, 3); else for (let c = -m; c <= m; c++) cols.push(c);
+    for (let k = 1; k <= NR; k++) { const r = 0.6 + RING * k, m = k === NR ? 3 : Math.max(0, Math.floor((HALF * r) / GAP)), cols: number[] = [];
+      if (k === NR) cols.push(-3, 0, 3); else for (let c = -m; c <= m; c++) cols.push(c);
       const step = GAP / r, row: TNode[] = [];
       for (const c of cols) { const a = ANG[bi] + c * step, x = Math.cos(a) * r, y = Math.sin(a) * r, id = `b${bi}g${k}_${c + 9}`;
-        const req = k >= 8 ? (c === 0 ? 26 : 22) : k >= 6 ? 15 : k >= 4 ? 6 : 0;
+        const req = k === NR ? (c === 0 ? KEY_REQ : RING_REQ[k]) : RING_REQ[k], lvl = k === NR && c === 0 ? KEY_LVL : RING_LVL[k];
         let n: TNode;
-        if (k === 8 && c === 0) n = add({ id: `b${bi}k`, x, y, kind: 'key', name: B.key[0], eff: B.key[1], tip: B.key[2], branch: bi, req, rad: 0.95 });
-        else if (k === 8) { const M = P.master[mi++ % P.master.length]; n = add({ id, x, y, kind: 'notable', name: `${M[0]} de ${B.name}`, eff: M[1], tip: M[2], branch: bi, req, rad: 0.8 }); }
-        else if ((k === 4 && Math.abs(c) === 2) || (k === 6 && c === 0)) n = add({ id, x, y, kind: 'socket', name: 'Encaixe de Runa Kármica', eff: {}, tip: 'Acenda e encaixe uma das seis runas de Karmika: ela reforça os pontos acesos ligados a este encaixe.', branch: bi, req, rad: 0.62 });
-        else if ((k === 3 && c === 0) || (k === 5 && Math.abs(c) === 3) || (k === 7 && (Math.abs(c) === 2 || Math.abs(c) === 5)) || (k === 6 && Math.abs(c) === 3)) { const q = nots[ni++ % nots.length]; n = add({ id, x, y, kind: 'notable', name: q[0], eff: q[1], branch: bi, req, rad: 0.7 }); }
-        else n = add({ id, x, y, kind: 'small', name: B.name, eff: B.small[si++ % B.small.length], branch: bi, req, rad: 0.46 });
+        if (k === NR && c === 0) n = add({ id: `b${bi}k`, x, y, kind: 'key', name: B.key[0], eff: B.key[1], tip: B.key[2], branch: bi, req, lvl, rad: 0.95 });
+        else if (k === NR) { const M = P.master[mi++ % P.master.length]; n = add({ id, x, y, kind: 'notable', name: `${M[0]} de ${B.name}`, eff: M[1], tip: M[2], branch: bi, req, lvl, rad: 0.8 }); }
+        else if ((k === 4 && Math.abs(c) === 2) || (k === 6 && c === 0) || (k === 9 && Math.abs(c) === 4)) n = add({ id, x, y, kind: 'socket', name: 'Encaixe de Runa Kármica', eff: {}, tip: 'Acenda e encaixe uma das seis runas de Karmika: ela reforça os pontos acesos ligados a este encaixe.', branch: bi, req, lvl, rad: 0.62 });
+        else if ((k === 3 && c === 0) || (k === 5 && Math.abs(c) === 3) || (k === 7 && (Math.abs(c) === 2 || Math.abs(c) === 5)) || (k === 6 && Math.abs(c) === 3) || (k === 8 && (c === 0 || Math.abs(c) === 5)) || (k === 9 && (c === 0 || Math.abs(c) === 7))) { const q = nots[ni++ % nots.length]; n = add({ id, x, y, kind: 'notable', name: q[0], eff: q[1], branch: bi, req, lvl, rad: 0.7 }); }
+        else n = add({ id, x, y, kind: 'small', name: B.name, eff: B.small[si++ % B.small.length], branch: bi, req, lvl, rad: 0.46 });
         row.push(n); }
       R.push(row); }
     /* caminhos: cada ponto liga ao mais perto (em ângulo) do anel de dentro; o anel 1 liga ao Olho */
     for (const n of R[0]) link(start, n);
     for (let k = 1; k < R.length; k++) for (const n of R[k]) { let best = R[k - 1][0], bd = 1e9; for (const q of R[k - 1]) { const d = Math.hypot(q.x - n.x, q.y - n.y); if (d < bd) { bd = d; best = q; } } link(best, n); }
     /* rotas de lado nos anéis 3 e 6 */
-    for (const k of [2, 5]) for (let i = 1; i < R[k].length; i++) link(R[k][i - 1], R[k][i]);
+    for (const k of [2, 5, 7]) for (let i = 1; i < R[k].length; i++) link(R[k][i - 1], R[k][i]);
     rings.push(R); });
   /* o anel dos atributos, na folga entre as fatias: liga a ponta do anel 2 de um braço à do seguinte */
   for (let bi = 0; bi < 3; bi++) { const a = rings[bi][1][rings[bi][1].length - 1], b = rings[(bi + 1) % 3][1][0], am = ANG[bi] + Math.PI / 3, r = 0.6 + RING * 2.15;
@@ -180,7 +180,15 @@ function treeGeral(): TNode[] {
 }
 /* AS SEIS RUNAS KÁRMICAS no encaixe: cada uma reforça um tipo de bônus dos pontos ACESOS ligados ao encaixe (em % do valor deles) */
 /** onde ficam os portões (raio entre os anéis) e quantos pontos cada um pede — para o desenho */
-export const GATES = [{ r: 0.6 + 2.05 * 3.5, req: 6 }, { r: 0.6 + 2.05 * 5.5, req: 15 }, { r: 0.6 + 2.05 * 7.5, req: 22 }];
+/* 04/11 (Erling: "os arcos de level devem chegar até o level ±160: 60 de classe do humano + 120 da Classe I"): 10 anéis; cada anel abre num
+   NÍVEL DE CLASSE (somado entre as classes) e, do 5º para fora, também pede pontos já gastos no braço (escolher um caminho é largar outro).
+   Conta da balança em docs/classes-graus-e-pontos.md: no nível de classe 180 há 543 pontos para ~1.000 de procura (habilidades + passivas + talentos). */
+export const TREE_RING = 2.5, TREE_GAP = 2.4, TREE_HALF = 0.9, NR = 10;
+/** nível de classe que abre cada anel (índice = anel 1..10) e pontos no braço que ele pede */
+export const RING_LVL = [0, 1, 1, 10, 20, 35, 50, 70, 95, 125, 140], KEY_LVL = 160;
+export const RING_REQ = [0, 0, 0, 0, 0, 8, 8, 20, 20, 35, 45], KEY_REQ = 50;
+/** onde ficam os arcos (raio entre os anéis), o nível e os pontos que pedem — para o desenho */
+export const GATES = [3, 4, 5, 6, 7, 8, 9, 10].map((k) => ({ r: 0.6 + TREE_RING * (k - 0.5), lvl: RING_LVL[k], req: RING_REQ[k], k })).concat([{ r: 0.6 + TREE_RING * (NR + 0.45), lvl: KEY_LVL, req: KEY_REQ, k: NR + 1 }]);
 export const ANGS = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
 export const RUNE_TALENT: Record<string, { nome: string; txt: string; mul: Partial<Record<TStat, number>>; add?: Eff }> = {
   lagrima: { nome: 'A Lágrima', txt: 'cura e regeneração dos vizinhos +100%', mul: { heal: 1, regen: 1 } },
@@ -213,15 +221,19 @@ export const talentPoints = (clsLvl: number) => Math.max(3, clsLvl * 3);
 export function createTalents(kit: () => string, lvl: () => number, onChange: () => void, pool?: () => number) {
   const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* */ } };
-  const lit = (): Set<string> => new Set(['o', ...(all[kit()] ?? [])]);
-  const spent = () => (all[kit()] ?? []).length, avail = () => pool ? Math.max(0, pool()) : Math.max(0, talentPoints(lvl()) - spent()); /* pool = os pontos livres do monte único (habilidades + passivas + talentos) */
+  /* 04/11: a árvore cresceu (10 anéis); pontos de ids que não existem mais não contam */
+  const known = () => new Set(treeOf(kit()).map((n) => n.id)), mine = () => { const K2 = known(); return (all[kit()] ?? []).filter((id) => K2.has(id)); };
+  const lit = (): Set<string> => new Set(['o', ...mine()]);
+  const spent = () => mine().length, avail = () => pool ? Math.max(0, pool()) : Math.max(0, talentPoints(lvl()) - spent()); /* pool = os pontos livres do monte único (habilidades + passivas + talentos) */
   const nodes = () => treeOf(kit()), byId = (id: string) => nodes().find((n) => n.id === id);
   /** dá para acender: ligado a um aceso e há ponto */
   /** pontos gastos num braço */
   const inBranch = (bi: number) => { const L = lit(); return nodes().filter((n) => n.branch === bi && L.has(n.id)).length; };
   /** o portão do ponto: quantos pontos do braço ainda faltam (0 = aberto) */
   const gateLeft = (id: string) => { const n = byId(id); if (!n?.req) return 0; return Math.max(0, n.req - inBranch(n.branch)); };
-  const canTake = (id: string) => { const L = lit(), n = byId(id); return !!n && !L.has(id) && avail() > 0 && gateLeft(id) === 0 && n.links.some((q) => L.has(q)); };
+  /** o arco de nível: quantos níveis de classe ainda faltam (0 = aberto) */
+  const lvlLeft = (id: string) => { const n = byId(id); return n?.lvl ? Math.max(0, n.lvl - lvl()) : 0; };
+  const canTake = (id: string) => { const L = lit(), n = byId(id); return !!n && !L.has(id) && avail() > 0 && gateLeft(id) === 0 && lvlLeft(id) === 0 && n.links.some((q) => L.has(q)); };
   /** dá para apagar: sem ele, todos os acesos continuam ligados ao centro */
   const canDrop = (id: string) => { const L = lit(); if (id === 'o' || !L.has(id)) return false; L.delete(id);
     /* o portão continua de pé: os pontos de fora do braço ainda têm os pontos que pediram */
@@ -241,7 +253,7 @@ export function createTalents(kit: () => string, lvl: () => number, onChange: ()
       for (const l of sk.links) { const nb = byId(l); if (!nb || !L.has(l)) continue; for (const [k, v] of Object.entries(nb.eff) as [TStat, number][]) { const m = RT.mul[k]; if (m) out[k] = (out[k] ?? 0) + v * m; } }
       if (RT.add) for (const [k, v] of Object.entries(RT.add) as [TStat, number][]) out[k] = (out[k] ?? 0) + v; }
     return out; }
-  return { nodes, lit, spent, avail, canTake, canDrop, take, drop, reset, stats, byId, gateLeft, inBranch, runes, setRune };
+  return { nodes, lit, spent, avail, canTake, canDrop, take, drop, reset, stats, byId, gateLeft, lvlLeft, inBranch, runes, setRune, lvl };
 }
 export type Talents = ReturnType<typeof createTalents>;
 export const effTxt = (e: Eff) => (Object.entries(e) as [TStat, number][]).map(([k, v]) => TSTAT_TXT[k](Math.round(v * 10) / 10)).join(' · ');

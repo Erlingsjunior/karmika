@@ -1,6 +1,6 @@
 /* a janela da ÁRVORE DE TALENTOS (aba ao lado das magias, tecla K): constelação em SVG. Clique acende (se ligado a um aceso e houver ponto),
    botão direito apaga (se não segurar outros). O painel do lado mostra o ponto e a soma de tudo. (03/11) */
-import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, RUNE_TALENT, GATES, ANGS } from '../talentos';
+import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, RUNE_TALENT, GATES, ANGS, TREE_RING, NR } from '../talentos';
 import { RUNAS } from '../runas';
 import { useScroll } from '../esquecimento';
 /* símbolo de cada atributo, desenhado dentro do círculo */
@@ -39,15 +39,18 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
   const col = (n: TNode) => n.branch >= 0 && n.branch < 3 ? B[n.branch].col : '#e8dcc0';
   const seen = new Set<string>(); let lines = '';
   for (const n of nodes) for (const l of n.links) { const k = [n.id, l].sort().join('|'); if (seen.has(k)) continue; seen.add(k); const m = T.byId(l)!; const on = L.has(n.id) && L.has(m.id), half = L.has(n.id) || L.has(m.id);
-    lines += `<line x1="${X(n)}" y1="${Y(n)}" x2="${X(m)}" y2="${Y(m)}" stroke="${on ? '#ffd24a' : half ? '#8a7040' : '#3a2e1e'}" stroke-width="${on ? 3.2 : 2}"${on ? '' : ' stroke-dasharray="3 4"'}/>`; }
+    /* 04/11 (Erling: "a linha de ligação mais fina, quase dourada, com uma luz branca que vai percorrendo de um ponto ao outro") */
+    const len = Math.hypot(X(m) - X(n), Y(m) - Y(n)), dur = (1.4 + len / 90).toFixed(2);
+    lines += `<line x1="${X(n)}" y1="${Y(n)}" x2="${X(m)}" y2="${Y(m)}" stroke="${on ? '#e8c870' : half ? '#7a6438' : '#3a2e1e'}" stroke-width="${on ? 1.5 : 1.1}"${on ? '' : ' stroke-dasharray="2 4"'}/>`;
+    if (on) lines += `<line x1="${X(n)}" y1="${Y(n)}" x2="${X(m)}" y2="${Y(m)}" stroke="#fffaf0" stroke-width="1.8" stroke-linecap="round" stroke-dasharray="5 ${Math.max(20, len).toFixed(0)}" opacity=".9"><animate attributeName="stroke-dashoffset" from="${(len + 5).toFixed(0)}" to="0" dur="${dur}s" repeatCount="indefinite"/></line>`; }
   /* fundo: as órbitas (anéis) bem fracas, e os PORTÕES como um arco tracejado em cada braço, com o cadeado e os pontos que pedem */
-  let orbits = ''; if (kit === 'geral') { const cx = ox, cy = oy; for (let k = 1; k <= 8; k++) orbits += `<circle cx="${cx}" cy="${cy}" r="${(0.6 + 2.05 * k) * S}" fill="none" stroke="#c9a24a" stroke-opacity=".07" stroke-width="1"/>`;
-    for (let bi = 0; bi < 3; bi++) for (const G of GATES) { const R = G.r * S, a0 = ANGS[bi] - 0.95, a1 = ANGS[bi] + 0.95, inB = T.inBranch(bi), open = inB >= G.req, c2 = open ? B[bi].col : '#8a7040';
+  let orbits = ''; if (kit === 'geral') { const cx = ox, cy = oy; for (let k = 1; k <= NR; k++) orbits += `<circle cx="${cx}" cy="${cy}" r="${(0.6 + TREE_RING * k) * S}" fill="none" stroke="#c9a24a" stroke-opacity=".07" stroke-width="1"/>`;
+    for (let bi = 0; bi < 3; bi++) for (const G of GATES) { const R = G.r * S, a0 = ANGS[bi] - 0.95, a1 = ANGS[bi] + 0.95, inB = T.inBranch(bi), open = inB >= G.req && T.lvl() >= G.lvl, c2 = open ? B[bi].col : '#8a7040';
       orbits += `<path d="M${cx + Math.cos(a0) * R} ${cy + Math.sin(a0) * R} A${R} ${R} 0 0 1 ${cx + Math.cos(a1) * R} ${cy + Math.sin(a1) * R}" fill="none" stroke="${c2}" stroke-opacity="${open ? 0.5 : 0.35}" stroke-width="1.4" stroke-dasharray="${open ? '' : '5 5'}"/>`;
-      const la = ANGS[bi] + 1.0, lx = cx + Math.cos(la) * R, ly = cy + Math.sin(la) * R; orbits += `<text x="${lx}" y="${ly + 3}" font-size="9.5" fill="${c2}" text-anchor="middle">${open ? '✔' : '🔒'} ${G.req}</text>`; } }
+      const la = ANGS[bi] + 1.0, lx = cx + Math.cos(la) * R, ly = cy + Math.sin(la) * R; if (bi === 0) orbits += `<text x="${lx}" y="${ly + 3}" font-size="9" fill="${c2}" text-anchor="middle">${open ? '✔' : '🔒'} Nv ${G.lvl}${G.req ? ` · ${G.req} no braço` : ''}</text>`; } }
   let dots = '';
   const RS = T.runes();
-  for (const n of nodes) { const on = L.has(n.id), can = T.canTake(n.id), r = n.rad ? n.rad * S : n.kind === 'key' ? 19 : n.kind === 'notable' ? 15 : n.kind === 'start' ? 17 : 10, c = col(n), isSel = sel.id === n.id, gate = T.gateLeft(n.id);
+  for (const n of nodes) { const on = L.has(n.id), can = T.canTake(n.id), r = n.rad ? n.rad * S : n.kind === 'key' ? 19 : n.kind === 'notable' ? 15 : n.kind === 'start' ? 17 : 10, c = col(n), isSel = sel.id === n.id, gate = T.gateLeft(n.id) || T.lvlLeft(n.id);
     if (n.kind === 'socket') { /* encaixe de runa: losango; com runa, o desenho dela dentro */ const rid = RS[n.id], ri = RUNAS.findIndex((q) => q.id === rid), cx = X(n), cy = Y(n), s2 = r * 1.15;
       dots += `<g class="tnd" data-t="${n.id}"${gate && !on ? ' opacity=".42"' : ''}>${on ? `<circle cx="${cx}" cy="${cy}" r="${r + 5}" fill="${c}" opacity=".45" filter="url(#tglow)"/>` : ''}<polygon points="${cx},${cy - s2} ${cx + s2},${cy} ${cx},${cy + s2} ${cx - s2},${cy}" fill="${on ? '#2a1e0c' : '#140e08'}" stroke="${isSel ? '#fff' : on ? '#ffd24a' : can ? c : '#5a4a30'}" stroke-width="${on ? 2.4 : 1.6}"${gate ? ' opacity=".45"' : ''}/>${ri >= 0 ? `<g transform="translate(${cx - r * 0.8},${cy - r * 0.8}) scale(${(r * 1.6) / 28})"><path d="${RUNAS[ri].d}" fill="none" stroke="#ffd24a" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></g>` : `<circle cx="${cx}" cy="${cy}" r="${r * 0.28}" fill="none" stroke="${on ? '#ffd24a' : '#6a5a3a'}" stroke-width="1.2" stroke-dasharray="2 2"/>`}</g>`; continue; }
     const shape = n.kind === 'key' ? `<polygon points="${[0, 1, 2, 3, 4, 5].map((i) => `${X(n) + Math.cos(i * Math.PI / 3 + Math.PI / 6) * r},${Y(n) + Math.sin(i * Math.PI / 3 + Math.PI / 6) * r}`).join(' ')}"` : `<circle cx="${X(n)}" cy="${Y(n)}" r="${r}"`;
@@ -64,7 +67,7 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
   let det: string;
   if (sn) { const on = L.has(sn.id), can = T.canTake(sn.id), dropOk = T.canDrop(sn.id);
     const gl = T.gateLeft(sn.id), bn = sn.branch >= 0 && sn.branch < 3 ? B[sn.branch].name : '';
-    const why = on ? (dropOk ? '' : 'Segura outros pontos acesos') : gl ? `Faltam ${gl} pontos em ${bn} (portão)` : !T.avail() ? 'Sem pontos de talento' : can ? '' : 'Ligue a um ponto aceso primeiro';
+    const ll = T.lvlLeft(sn.id); const why = on ? (dropOk ? '' : 'Segura outros pontos acesos') : ll ? `Abre no nível de classe ${sn.lvl} (faltam ${ll})` : gl ? `Faltam ${gl} pontos em ${bn} (portão)` : !T.avail() ? 'Sem pontos de talento' : can ? '' : 'Ligue a um ponto aceso primeiro';
     det = `<div class="th"><div class="ic sym ${sn.kind === 'key' ? 'key' : ''}" style="--c:${col(sn)}">${symOf(sn)}</div><div><b>${sn.name}</b><small>${kindOf(sn)} · ${whereOf(sn)} · ${on ? 'aceso' : 'apagado'}</small></div></div>
       ${sn.tip ? `<p class="tip">${sn.tip}</p>` : Object.keys(sn.eff).length ? '' : '<p class="tip">O coração da árvore: daqui saem os três braços.</p>'}
       ${Object.keys(sn.eff).length ? `<div class="lines ef">${effTxt(sn.eff).split(' · ').map((x) => `<div>${x}</div>`).join('')}</div>` : ''}
