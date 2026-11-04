@@ -72,7 +72,7 @@ function buildHuman(h: HumanLook): Rig {
     void hurtK; hero.update(dt, t0, mv, null); hero.root.rotation.set(0, 0, 0); } };
 }
 /** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
-export const enemyHooks: { dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void; /** o cérebro dos kits passa a cuidar deste bicho (magias) */ track?: (e: Enemy) => void; /** karma do herói (o Inquisidor só caça quem deve) */ karma?: () => number } = {};
+export const enemyHooks: { /** o herói (ou golpe dele) feriu este bicho: o alvo invisível trava nele (alvo-preso.ts) */ struck?: (e: Enemy) => void; dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void; /** o cérebro dos kits passa a cuidar deste bicho (magias) */ track?: (e: Enemy) => void; /** karma do herói (o Inquisidor só caça quem deve) */ karma?: () => number } = {};
 export const HPK = 5.2; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos
 export const DEFS: Record<EnemyType, Def> = {
   puglin: { name: 'Puglin', lvl: 1, hp: 42, dmg: 7, speed: 2.7, aggro: 12, range: 1.7, windup: 0.6, cd: 1.5, xp: 12, gold: [1, 4], model: 'Puglin', scale: 1.3, radius: 0.6 },
@@ -619,7 +619,7 @@ export function createEnemies(ctx: EnemyCtx) {
     if ((e as Enemy & { ally?: boolean }).ally && !byUnit) return false;
     if ((e as Enemy & { kneel?: boolean }).kneel) return false; /* de joelhos: nenhum golpe, brasa ou veneno mexe nele até a escolha */
     if (!byUnit && ctx.outMul) n = Math.max(1, Math.round(n * ctx.outMul()));
-    e.hp -= n; e.flash = 1;
+    e.hp -= n; e.flash = 1; if (!byUnit) enemyHooks.struck?.(e);
     const nk = (e as NetE).net; if (nk && ctx.sync) { ctx.sync.hit(nk, n); if (e.hp <= 0) ctx.sync.die(nk); }
     const dx = e.pos.x - from.x, dz = e.pos.z - from.z, l = Math.hypot(dx, dz) || 1;
     e.vel.set((dx / l) * knock, (dz / l) * knock);

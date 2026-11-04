@@ -105,7 +105,8 @@ import { createFalls } from './cachoeiras';
 
 import { createChat } from './chat';
 
-import { DEFS } from './enemies';
+import { DEFS, enemyHooks } from './enemies';
+import { createLock } from './alvo-preso';
 import { biomeAt, heightAt, groundH, rampartAt, rampartTop, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 
@@ -1632,7 +1633,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles };
+(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
@@ -1908,7 +1909,7 @@ const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s <
 /* o relógio do quadro (o THREE.Clock saiu do three 0.18x): segundos desde o quadro anterior */
 const clock = (() => { let last = performance.now(); return { getDelta() { const n = performance.now(), d = (n - last) / 1000; last = n; return d; } }; })();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
-let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpT = 0, bpYaw: number | null = null; /* recuo de costas (estilo Path of Exile 2) */
+let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpYaw: number | null = null, lockYaw: number | null = null; const lockSys = createLock(); enemyHooks.struck = (e) => lockSys.struck(e); /* recuo de costas (estilo Path of Exile 2) */
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
@@ -2546,10 +2547,13 @@ function frameBody() {
      meio virado (de frente para o inimigo, os pés na direção do clique). Passado o tempo — ou longe dele — vira e corre. Indo para cima do
      inimigo, anda normal. A janela recomeça quando ele para. */
   bpYaw = null; hero.moveYaw = null; const gaitNow = gaitOf(((k0) => ['nordic', 'dwarf', 'human', 'elf'].includes(k0) && (profile?.origin === 'elf' || profile?.origin === 'dwarf') ? profile!.origin : k0)(kitRace() as string), (hero as unknown as { wcls?: string }).wcls ?? 'one', hero.stance); hero.gait = gaitNow;
-  if (!state.moving) bpT = 0; else if (dashT <= 0 && !inside && !compSys.riding && !swimming) { bpT += dt; const hx = state.fx * T, hz = state.fy * T; let fp: { x: number; z: number } | null = null, fd = 11;
-    for (const e of game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d < fd) { fd = d; fp = e.pos; } }
-    if (fp && bpT < gaitNow.bp[0]) { const fy = Math.atan2(fp.x - hx, fp.z - hz), my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
-      if (c < -0.35) { bpYaw = fy; hero.moveYaw = my; actSlow *= gaitNow.bp[1]; } else if (c < 0.45) { bpYaw = fy + rel * 0.5; hero.moveYaw = my; actSlow *= (1 + gaitNow.bp[1]) / 2; } } }
+  /* 04/11: ALVO PRESO INVISÍVEL (alvo-preso.ts) no lugar da janela curta de recuo. Preso a um bicho, o corpo fica de frente para ele e os pés
+     vão para o clique: de costas (mais devagar, pela classe), de lado e na diagonal (meio caminho). Indo para cima dele, anda normal. */
+  { const hx = state.fx * T, hz = state.fy * T; const lk = (dashT > 0 || inside || compSys.riding || swimming) ? null : lockSys.update(dt, hx, hz, game.enemies.list, 10 + gaitNow.bp[0] * 2);
+    lockYaw = lk ? Math.atan2(lk.pos.x - hx, lk.pos.z - hz) : null;
+    if (lk && state.moving) { const fy = lockYaw!, my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
+      bpYaw = fy; hero.moveYaw = Math.abs(rel) > 0.2 ? my : null;
+      if (c < -0.35) actSlow *= gaitNow.bp[1]; else if (c < 0.6) actSlow *= (1 + gaitNow.bp[1]) / 2; } }
   let boost = 1;
   if (dashT > 0) { dashT -= dt; boost = 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
   vel += ((state.moving ? 1 : 0) - vel) * Math.min(1, dt * (state.moving ? 14 : 18));
@@ -2571,7 +2575,7 @@ function frameBody() {
   }
   if (!inside) { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); if (colisaoSys.onWall && !rp) colisaoSys.onWall = false; else if (!colisaoSys.onWall && rp && heroY > rampartTop(rp, tx, ty) - 1.5) colisaoSys.onWall = true; } else colisaoSys.onWall = false;
   const wallTop = colisaoSys.onWall ? (() => { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); return rp ? rampartTop(rp, tx, ty) : null; })() : null;
-  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH + (casteloSys.sitting ? -0.28 : 0); /* nadando: água no peito; andando: pés no leito (até a cintura) */
+  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting ? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
   heroY += (tgtY - heroY) * Math.min(1, dt * (swimming ? 6 : 18) + (dt > 0 ? 0 : 1));
   heroPos.set(state.fx * T, heroY, state.fy * T);
   pm('entrada/física');
@@ -2593,7 +2597,7 @@ function frameBody() {
   pm('chunks');
   if (wade > 0.15 && state.moving) { wadeAcc += dt; if (wadeAcc > 0.09) { wadeAcc = 0; for (let i = 0; i < 2; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.4, WL + 0.03, heroPos.z + Math.sin(a) * 0.4, { vx: Math.cos(a) * 0.8, vy: 0.9 + Math.random(), vz: Math.sin(a) * 0.8, life: 0.5, s0: 0.18, s1: 0.05, c0: 0xe8f4ff, c1: 0x9ac8e8, a: 0.7, g: 6 }); } } }
   if (swimming) { swimAcc += dt; if (swimAcc > (state.moving ? 0.12 : 0.45)) { swimAcc = 0; for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283; particles.spawn(heroPos.x + Math.cos(a) * 0.5, WL + 0.03, heroPos.z + Math.sin(a) * 0.5, { vx: Math.cos(a) * 0.8, vy: 0.05, vz: Math.sin(a) * 0.8, life: 0.9, s0: 0.18, s1: 0.5, c0: 0xdff4ff, c1: 0x9cd0ff, a: 0.5, drag: 1.5 }); } } }
-  hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : entradaSys.lockYaw !== null && aiming ? entradaSys.lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : pescaSys.fishing ? Math.atan2(pescaSys.fishing.at.x - state.fx * T, pescaSys.fishing.at.z - state.fy * T) : oficiosSys.work ? Math.atan2(oficiosSys.work.x - state.fx * T, oficiosSys.work.z - state.fy * T) : casteloSys.sitting ? casteloSys.sitting.yaw : state.moving ? (bpYaw ?? Math.atan2(gdx, gdy)) : entradaSys.combatMode ? nearYaw() : null);
+  hero.update(dt, t, swimming ? Math.min(mps, 2.2) : mps, dashT > 0 ? Math.atan2(dx0, dy0) : entradaSys.lockYaw !== null && aiming ? entradaSys.lockYaw : aiming ? aimYaw() : aimNow ? aimNow.yaw : hero.guard ? mouseYaw : pescaSys.fishing ? Math.atan2(pescaSys.fishing.at.x - state.fx * T, pescaSys.fishing.at.z - state.fy * T) : oficiosSys.work ? Math.atan2(oficiosSys.work.x - state.fx * T, oficiosSys.work.z - state.fy * T) : casteloSys.sitting ? casteloSys.sitting.yaw : state.moving ? (bpYaw ?? Math.atan2(gdx, gdy)) : lockYaw !== null && !hero.acting ? lockYaw : entradaSys.combatMode ? nearYaw() : null);
   { /* 26/10 (Erling: "o corpo precisa morrer, cair no chão morto"): o corpo tomba e fica lá até o jogador escolher ressurgir */
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }

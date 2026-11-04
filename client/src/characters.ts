@@ -64,6 +64,8 @@ export interface Hero3D {
   /** postura de batalha (posturas.ts): muda o corpo de verdade — ataque inclina e ergue a arma, tanque agacha atrás do escudo, cura abre os braços… */ stance: string;
   /** montado: pernas abertas sobre a sela, braços à frente nas rédeas */
   riding: boolean;
+  /** 04/11 sentado num banco/cadeira: altura do assento em metros acima do chão onde estão os pés (0 = em pé) */
+  sit: number;
   /** esfera do tecnocrata: alvo no mundo (null = orbita o herói), posição atual e brilho de disparo */
   droneTo: THREE.Vector3 | null;
   dronePos(out: THREE.Vector3): THREE.Vector3;
@@ -1147,7 +1149,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   };
   const sm: Record<string, number> = {};
   const smooth1 = (key: string, v: number, dt: number, rate = 26) => (sm[key] = (sm[key] ?? v) + (v - (sm[key] ?? v)) * Math.min(1, dt * rate));
-  let backSm = 0, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
+  let backSm = 0, strafeSm = 0, sitK = 0, seatH = 0.55, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
   const qRoot = new THREE.Quaternion(), qPar = new THREE.Quaternion(), qDes = new THREE.Quaternion(), qLoc = new THREE.Quaternion(), eDes = new THREE.Euler();
   const tmp = new V();
   const smooth = { lean: 0, hipRoll: 0, tilt: 0 };
@@ -1166,7 +1168,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     moveYaw: null,
     gait: null,
     combat: false, stance: 'bal',
-    riding: false,
+    riding: false, sit: 0,
     droneTo: null, droneFlash: 0, actSpeed: 1,
     muzzle() { muzzleK = 1; },
     offTip(out) { if (!offSw || !offSrc || !offSw.visible) return null; return offTipO.getWorldPosition(out); },
@@ -1482,6 +1484,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const GT = hero.gait; const strideLen = S.stride * (GT?.stride ?? 1) * (1 + 1.2 * runK);
       /* andando de costas (encarando o inimigo e recuando): a passada roda ao contrário e o tronco não inclina para a frente */
       const backK = hero.moveYaw !== null && moving ? clamp(-Math.cos(hero.moveYaw - yaw) * 1.6 - 0.2, 0, 1) : 0; backSm += (backK - backSm) * Math.min(1, dt * 8);
+      /* 04/11 passo de lado (alvo preso): o quadril e as pernas viram para onde os pés vão (até ~55°), o tronco gira de volta e o peito
+         continua no monstro. De costas na diagonal, o quadril vira pelo lado de trás. Sem isso o herói deslizava de lado com as pernas de frente. */
+      { let sT = 0; if (hero.moveYaw !== null && moving) { let r = hero.moveYaw - yaw; while (r > Math.PI) r -= PI2; while (r < -Math.PI) r += PI2; const lr = Math.abs(r) > Math.PI / 2 ? r - Math.sign(r) * Math.PI : r; sT = clamp(lr, -0.95, 0.95); }
+        strafeSm += (sT - strafeSm) * Math.min(1, dt * 7); }
       if (moving) phase += (Math.PI * mps / strideLen) * dt * (backSm > 0.5 ? -1 : 1);
       const A = lerp(S.A[0], S.A[1], runK) * walkK, K = lerp(S.K[0], S.K[1], runK) * walkK;
       const armA = lerp(S.armA[0], S.armA[1], runK) * walkK * (GT?.arm ?? 1);
@@ -1633,16 +1639,16 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const idleY = Math.sin(breath) * 0.01 * (1 - walkK);
       body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE;
       hips.position.x = Math.cos(phase) * S.sway * (hero.gait?.sway ?? 1) * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
-      hips.rotation.y = -Math.sin(phase) * tw * 0.6 - aTwist * 0.4 + 0.3 * idleK;
+      hips.rotation.y = -Math.sin(phase) * tw * 0.6 - aTwist * 0.4 + 0.3 * idleK + strafeSm;
       hips.rotation.z = Math.cos(phase) * 0.03 * walkK + smooth1('roll', aRoll, dt, 18);
       hips.position.z = smooth1('back', aBack, dt, 18);
       smooth.tilt += (aTilt - smooth.tilt) * Math.min(1, dt * 22); hips.rotation.x = smooth.tilt;
-      spine.rotation.y = Math.sin(phase) * tw + aTwist;
+      spine.rotation.y = Math.sin(phase) * tw + aTwist - strafeSm; /* a coluna desfaz o giro do quadril do passo de lado */
       smooth.lean += ((leanT + aLean + (dashing ? 0.0 : 0)) - smooth.lean) * Math.min(1, dt * 14);
       spine.rotation.x = smooth.lean + Math.sin(breath) * 0.006;
       spine.rotation.z = -Math.cos(phase) * 0.018 * walkK;
       head.rotation.x = -smooth.lean * 0.85 - smooth.tilt * 0.9 + aHeadX + Math.sin(breath + 0.7) * 0.01;
-      head.rotation.y = Math.sin(t * 0.4) * 0.08 * (1 - walkK) - spine.rotation.y * 0.6 - (kind === 'technocrat' ? 0.35 * combatK : 0);
+      head.rotation.y = Math.sin(t * 0.4) * 0.08 * (1 - walkK) - (spine.rotation.y + strafeSm) * 0.6 - (kind === 'technocrat' ? 0.35 * combatK : 0);
       head.rotation.z = kind === 'technocrat' ? 0.12 * combatK : 0;
       const br = Math.sin(breath);
       chest.scale.set(1 + br * 0.018, 1 + br * 0.03, 1 + br * 0.02);
@@ -1674,6 +1680,17 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         legL.hip.rotation.z *= 1 - k * 0.5; legR.hip.rotation.z *= 1 - k * 0.5;
       }
       if (hero.riding) { for (const leg of [legL, legR]) { const sx = leg === legL ? -1 : 1; leg.hip.rotation.x = -1.15; leg.hip.rotation.z = -sx * 0.55; leg.knee.rotation.x = 1.35; leg.ankle.rotation.x = -0.2; } }
+      /* SENTADO (04/11, Erling: "faça os personagens sentarem na cadeira, ele preso na cadeira atravessando ela em pé"): a pelve desce até o
+         assento e fica um pouco para trás do meio dele; as coxas vão para a frente quase na horizontal (o ângulo sai da conta: coxa × cos(a)
+         + canela + tornozelo = altura da pelve, para o pé tocar o chão), a canela desce quase reta e o pé fica plano. Tronco reto com um
+         leve peso à frente; a mão da arma no joelho e a do escudo solta do lado, para o escudo não entrar na coxa. */
+      if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && !act ? 1 : 0) - sitK) * Math.min(1, dt * 5);
+      if (sitK > 0.01) { const k = sitK, P = seatH + 0.07, ca = clamp((P - S.shin - S.ankle) / S.thigh, 0.02, 0.45), a = Math.acos(ca);
+        const L = (o: THREE.Object3D, v: number) => { o.rotation.x += (v - o.rotation.x) * k; };
+        for (const leg of [legL, legR]) { const sx = leg === legL ? -1 : 1; L(leg.hip, -a); L(leg.knee, a - 0.12); L(leg.ankle, 0.1); leg.hip.rotation.z += (-sx * 0.1 - leg.hip.rotation.z) * k; leg.hip.rotation.y += (sx * 0.06 - leg.hip.rotation.y) * k; }
+        body.position.y += (P - pelvisY - body.position.y) * k; body.position.z += (-0.1 - body.position.z) * k;
+        hips.rotation.y *= 1 - k; hips.rotation.z *= 1 - k; spine.rotation.y *= 1 - k; spine.rotation.x += (0.07 - spine.rotation.x) * k;
+      } else if (body.position.z !== 0) body.position.z = 0;
 
       /* braços (contra-balanço das pernas) */
       const sL = Math.sin(phase), sR = Math.sin(phase + Math.PI);
@@ -1681,6 +1698,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       armL.el.rotation.x = -(restL.e + (0.18 + 0.22 * (1 - sL) * 0.5) * walkK) + aElL;
       armR.sh.rotation.x = restR.x + armA * sR * swingR * (1 - 0.7 * rK) + aShR; armR.sh.rotation.z = restR.z + aShRz;
       armR.el.rotation.x = -(restR.e + (0.18 + 0.22 * (1 - sR) * 0.5) * walkK) + aElR;
+      if (sitK > 0.01) { const k = sitK, L = (o: THREE.Object3D, ax: 'x' | 'z', v: number) => { o.rotation[ax] += (v - o.rotation[ax]) * k; };
+        L(armR.sh, 'x', -0.62); L(armR.sh, 'z', -0.12); L(armR.el, 'x', -0.7); L(armL.sh, 'x', -0.12); L(armL.sh, 'z', 0.32); L(armL.el, 'x', -0.35); }
       if (hero.riding && !act) { armL.sh.rotation.x = -0.55; armL.sh.rotation.z = 0.18; armL.el.rotation.x = -0.9; armR.sh.rotation.x = -0.55; armR.sh.rotation.z = -0.18; armR.el.rotation.x = -0.9; }
       if (runK > 0.05) { // na corrida os cotovelos fecham em ~90°
         armL.el.rotation.x -= (eb - restL.e) * runK * swingL * 0.9;
