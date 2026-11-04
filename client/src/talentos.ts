@@ -106,14 +106,44 @@ export function treeOf(kit: string): TNode[] {
     for (let j = 1; j <= 2; j++) { const t = j / 3, mx = a.x + (b.x - a.x) * t, my = a.y + (b.y - a.y) * t, out = 1.25; const L = Math.hypot(mx, my) || 1;
       const n = add({ id: `r${bi}${j}`, x: mx / L * (L * out), y: my / L * (L * out), kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2 + j) % D.ring.length], branch: 3 }); link(prev, n); prev = n; }
     link(prev, b); }
+  /* 04/11 (Erling: "coloque mais 40 em cada ponto da tríade… do mesmo jeito que está, só acrescente mais coisas legais"): cada braço ganha
+     5 CONSTELAÇÕES de 8 pontos (40) que saem dos galhos e da pedra-chave para fora. Cada constelação: entra por um ponto pequeno, tem dois
+     notáveis no caminho e termina num MESTRE (notável grande). Os bônus são do papel do braço (ataque, defesa ou o terceiro jeito da classe)
+     e só usam o que o jogo já aplica de verdade. */
+  D.branches.forEach((B, bi) => { const role = roleOf(B), P = POOL[role], R = ringNodes[bi];
+    const anchors: TNode[] = [N.find((q) => q.id === `b${bi}t1l`)!, N.find((q) => q.id === `b${bi}t1r`)!, N.find((q) => q.id === `b${bi}t4l`)!, N.find((q) => q.id === `b${bi}t4r`)!, R[R.length - 1]];
+    const a0 = ANG[bi];
+    anchors.forEach((an, ci) => { const side = ci === 4 ? 0 : ci % 2 ? 1 : -1, ang = a0 + side * (ci < 2 ? 1.15 : 0.62), dd = ci < 2 ? 3.0 : ci < 4 ? 3.6 : 3.3, cx = an.x + Math.cos(ang) * dd, cy = an.y + Math.sin(ang) * dd;
+      const seq: ('s' | 'n' | 'm')[] = ['s', 's', 'n', 's', 's', 'n', 's', 'm']; let prev = an;
+      seq.forEach((t, j) => { const th = ang + Math.PI + 0.55 + j * ((Math.PI * 2 - 1.1) / 7), rr = 1.5; const x = cx + Math.cos(th) * rr * (j === 7 ? 0 : 1), y = cy + Math.sin(th) * rr * (j === 7 ? 0 : 1);
+        const id = `b${bi}c${ci}${j}`, nm = (P.notables[(ci * 2 + (j === 5 ? 1 : 0)) % P.notables.length]);
+        const n = t === 's' ? add({ id, x, y, kind: 'small', name: B.name, eff: B.small[(ci + j) % B.small.length], branch: bi })
+          : t === 'n' ? add({ id, x, y, kind: 'notable', name: nm[0], eff: nm[1], branch: bi })
+          : add({ id, x, y, kind: 'notable', name: `${P.master[ci % P.master.length][0]} de ${B.name}`, eff: P.master[ci % P.master.length][1], tip: P.master[ci % P.master.length][2], branch: bi });
+        link(prev, n); prev = n; });
+      /* o mestre também liga de volta ao 2º ponto da constelação: dá para entrar pelos dois lados do anel */
+      link(prev, N.find((q) => q.id === `b${bi}c${ci}1`)!); }); });
   cacheT.set(k, N); return N;
 }
+type Role = 'atk' | 'def' | 'sup';
+/** o papel do braço sai dos bônus pequenos dele: dano/crítico = ataque; armadura/vida = defesa; o resto = o terceiro jeito (cura, recarga, velocidade) */
+function roleOf(B: Branch): Role { const k = B.small.flatMap((e) => Object.keys(e)); if (k.includes('dmg') || k.includes('crit')) return 'atk'; if (k.includes('arm') || k.includes('hp') && !k.includes('heal')) return 'def'; return 'sup'; }
+const POOL: Record<Role, { notables: [string, Eff][]; master: [string, Eff, string][] }> = {
+  atk: { notables: [['Ritmo de Batalha', { aspd: 6, dmg: 4 }], ['Golpe Certeiro', { crit: 5, dmg: 4 }], ['Ferida Aberta', { dmg: 8 }], ['Olhar de Caçador', { crit: 6, dex: 4 }], ['Peso do Braço', { str: 8, dmg: 4 }], ['Fio Afiado', { crit: 4, aspd: 4 }], ['Sem Piedade', { dmg: 6, leech: 1 }], ['Ímpeto', { gen: 10, dmg: 4 }], ['Investida Feroz', { move: 3, dmg: 6 }], ['Mão Pesada', { dmg: 10, aspd: -2 }]],
+    master: [['Mestre', { dmg: 12, crit: 4 }, 'O braço inteiro responde: dano e crítico.'], ['Lâmina', { aspd: 8, crit: 5 }, 'Rápido e preciso.'], ['Carrasco', { dmg: 15, hp: -3 }, 'Bate muito mais, guarda um pouco menos.'], ['Tempestade', { aspd: 10, dmg: 6, arm: -15 }, 'Golpes em cascata, menos armadura.'], ['Coração', { dmg: 10, leech: 2, gen: 8 }, 'Cada golpe alimenta o próximo.']] },
+  def: { notables: [['Ombro Firme', { arm: 30, vit: 4 }], ['Pele Curtida', { hp: 5, arm: 15 }], ['Fôlego Longo', { regen: 1, vit: 4 }], ['Pé Plantado', { arm: 25, move: -1 }], ['Cicatrizes', { hp: 6, regen: 0.5 }], ['Escudo Erguido', { arm: 35 }], ['Teimoso', { vit: 8, hp: 3 }], ['Sangue Grosso', { hp: 8 }], ['Guarda Alta', { arm: 25, heal: 5 }], ['Raiz', { arm: 40, aspd: -2 }]],
+    master: [['Bastião', { arm: 60, hp: 6 }, 'Uma parede de carne e ferro.'], ['Sentinela', { hp: 10, regen: 1.5 }, 'Aguenta a noite inteira.'], ['Rochedo', { arm: 90, move: -4 }, 'Quase nada atravessa; anda mais devagar.'], ['Vigia', { arm: 40, cdr: 6 }, 'Defende e reage rápido.'], ['Carvalho', { vit: 12, hp: 8, regen: 1 }, 'Raízes fundas: vida que não acaba.']] },
+  sup: { notables: [['Mão Calma', { heal: 10, regen: 0.5 }], ['Passo Leve', { move: 4, dex: 4 }], ['Respiração', { cdr: 6, gen: 6 }], ['Mente Clara', { int: 8, cdr: 3 }], ['Água da Fonte', { heal: 12 }], ['Fluxo', { gen: 12, mp: 6 }], ['Pés de Vento', { move: 5, aspd: 3 }], ['Bálsamo', { regen: 1, heal: 6 }], ['Paciência', { cdr: 8 }], ['Vontade', { mp: 15, int: 4 }]],
+    master: [['Guardião', { heal: 20, cdr: 6 }, 'Cura forte e magias que voltam.'], ['Andarilho', { move: 8, aspd: 6 }, 'Sempre um passo à frente.'], ['Sábio', { cdr: 12, gen: 12 }, 'Recarga e recurso fluindo.'], ['Fonte Viva', { regen: 2, heal: 12, mp: 10 }, 'A vida volta sozinha.'], ['Eco', { cdr: 10, heal: 10, dmg: -4 }, 'Ajuda muito, bate um pouco menos.']] },
+};
 export const branchesOf = (kit: string) => (C[kit] ?? C.human).branches;
 export const classNameOf = (kit: string) => (C[kit] ?? C.human).name;
 /** pontos de talento: 1 a cada 2 níveis e +1 a cada 10 */
 /* 03/11 (Erling: "quando passo de nível de classe preciso ganhar pontos da minha classe para distribuir"): 1 ponto por NÍVEL DE CLASSE
    (antes: pelo nível geral, 1 a cada 2) */
-export const talentPoints = (clsLvl: number) => Math.max(1, clsLvl);
+/* 04/11 (Erling: "3 pontos por nível de classe: evoluir classe dá ponto de classe, evoluir nível base dá ponto de força, vitalidade etc.;
+   cada level up pontua uma coisa diferente… precisamos de mais escolhas, mais builds"): 3 pontos de talento por NÍVEL DE CLASSE */
+export const talentPoints = (clsLvl: number) => Math.max(3, clsLvl * 3);
 
 export function createTalents(kit: () => string, lvl: () => number, onChange: () => void) {
   const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }

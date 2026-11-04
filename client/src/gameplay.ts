@@ -286,7 +286,7 @@ export function createGameplay(d: GameplayDeps) {
     st.xp += n; dmgText(p.clone().setY(2.6), `+${n} XP`, false, '#9ad7ff'); logMsg(`+${n} XP${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');
     { // XP de classe: a segunda contagem — o seu caminho (Caminhante, depois a classe da academia) evolui junto, mais devagar
       const c = cls; c.xp += Math.round(gross * f.cmul);
-      while (c.xp >= clsNeed(c.lvl)) { c.xp -= clsNeed(c.lvl); c.lvl++; dmgText(p.clone().setY(3.4), `${c.name.toUpperCase()} ${c.lvl}`, true, '#c9a0ff'); logMsg(`✦ Nível de classe ${c.lvl} — ${c.name} · +1 ponto de talento (K, aba Talentos)`, '#c9a0ff'); d.audio.chime(); classLevelUp(c.name, c.lvl); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xe8d0ff, c1: 0x8a4aff, n: 70 } })); }
+      while (c.xp >= clsNeed(c.lvl)) { c.xp -= clsNeed(c.lvl); c.lvl++; dmgText(p.clone().setY(3.4), `${c.name.toUpperCase()} ${c.lvl}`, true, '#c9a0ff'); logMsg(`✦ Nível de classe ${c.lvl} — ${c.name} · +3 pontos de talento (K, aba Talentos)`, '#c9a0ff'); d.audio.chime(); classLevelUp(c.name, c.lvl); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xe8d0ff, c1: 0x8a4aff, n: 70 } })); }
       try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ }
     }
     while (st.xp >= xpNeed()) {
