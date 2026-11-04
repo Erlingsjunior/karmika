@@ -24,6 +24,9 @@ const secrets = createSecrets({ ghost: () => makeGhost(), scene: K.scene, height
     const [it, nm] = LOOT[Math.floor(Math.random() * LOOT.length)]; K.inv.add(it, 1); K.game.logMsg(`🐀 No ninho: ${g} moedas e ${nm}.`, '#ffc070');
     if (Math.random() < 0.3) { K.game.spawnGear(x, z, y, lv, { rare: 2 }, 1); K.game.logMsg('🐀 Entre a palha, alguma coisa brilha: uma peça de equipamento!', '#ffd890'); }
     for (let i = 0; i < 18; i++) K.particles.spawn(x + (Math.random() - 0.5) * 1.2, y + 0.3, z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 2, vy: 1 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.9, s0: 0.18, s1: 0.04, c0: 0xffe0a0, c1: 0xc08040, a: 1, g: 4 }); },
+  wisp: (x, y, z, kind) => kind === 0
+    ? K.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.25, vy: 0.55 + Math.random() * 0.35, vz: (Math.random() - 0.5) * 0.25, life: 2.6 + Math.random(), s0: 0.32, s1: 1.1, c0: 0xffe6a0, c1: 0x6a4a9a, a: 0.32, drag: 0.4, flit: 2.5, k: 0 })
+    : K.particles.spawn(x, y, z, { vy: 0.15, life: 0.9 + Math.random() * 0.6, s0: 0.09, s1: 0.01, c0: 0xffffff, c1: 0xffd070, a: 0.9, flit: 1, k: 0 }),
   fx: (x, y, z, col) => K.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.3, vy: 0.9, vz: (Math.random() - 0.5) * 0.3, life: 1.6, s0: 0.22, s1: 0.04, c0: col, c1: col, a: 0.8, drag: 0.6 }) }, CACHES);
 secrets.setOnSense((id) => K.quests.onSense(id));
 /* o Caderno de Ormund: as notas e páginas soltas da Bíblia, no mundo (ormund.ts) */
@@ -32,7 +35,7 @@ const ormund = createOrmund({ scene: K.scene, heightAt, free: (tx, ty) => K.free
     const st = K.city.settlements.find((v) => v.name === nm); if (st) return { x: st.x, y: st.y }; const po = K.city.pois.find((v) => v.name === nm); if (po) return { x: po.x, y: po.y };
     const n = K.npcSys.npcs.find((q) => q.def.name.includes(nm)); if (n) return { x: n.def.x / T, y: n.def.z / T }; for (const v of K.city.settlements) { const m = v.npcs.find((q) => q.name.includes(nm)); if (m) return { x: m.x, y: m.y }; } return null; },
   onRead: (e, n, tot) => { K.game.logMsg(`📜 Caderno de Ormund ${n}/${tot}: ${e.book}`, '#e8d8b0'); K.audio.chime?.(); } });
-(window as unknown as { __orm: unknown }).__orm = ormund;
+(window as unknown as { __orm: unknown; __caches: unknown }).__orm = ormund; (window as unknown as { __caches: unknown }).__caches = CACHES;
 const placeT = (name: string) => { const st = K.city.settlements.find((q) => q.name === name); if (st) return { x: st.x, y: st.y }; const p = K.city.pois.find((q) => q.name === name); return p ? { x: p.x, y: p.y } : null; };
 /** os rastros que as missões ativas pedem (o lugar do alvo vem do mapa; o rastro começa ~30 casas antes) */
 function senseGoals(): SenseGoal[] { const out: SenseGoal[] = [];
