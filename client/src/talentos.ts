@@ -172,9 +172,9 @@ function treeGeral(): TNode[] {
     for (const k of [2, 5, 7]) for (let i = 1; i < R[k].length; i++) link(R[k][i - 1], R[k][i]);
     rings.push(R); });
   /* o anel dos atributos, na folga entre as fatias: liga a ponta do anel 2 de um braço à do seguinte */
-  for (let bi = 0; bi < 3; bi++) { const a = rings[bi][1][rings[bi][1].length - 1], b = rings[(bi + 1) % 3][1][0], am = ANG[bi] + Math.PI / 3, r = 0.6 + RING * 2.15;
-    const n1 = add({ id: `r${bi}1`, x: Math.cos(am - 0.2) * r, y: Math.sin(am - 0.2) * r, kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2) % 4], branch: 3, rad: 0.46 });
-    const n2 = add({ id: `r${bi}2`, x: Math.cos(am + 0.2) * r, y: Math.sin(am + 0.2) * r, kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2 + 1) % 4], branch: 3, rad: 0.46 });
+  for (let bi = 0; bi < 3; bi++) { const a = rings[bi][1][rings[bi][1].length - 1], b = rings[(bi + 1) % 3][1][0], am = ANG[bi] + Math.PI / 3, r = 0.6 + RING * 2.5; /* 04/11: entre os anéis 2 e 3, sem encostar nos pontos dos braços */
+    const n1 = add({ id: `r${bi}1`, x: Math.cos(am - 0.12) * r, y: Math.sin(am - 0.12) * r, kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2) % 4], branch: 3, rad: 0.46 });
+    const n2 = add({ id: `r${bi}2`, x: Math.cos(am + 0.12) * r, y: Math.sin(am + 0.12) * r, kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2 + 1) % 4], branch: 3, rad: 0.46 });
     link(a, n1); link(n1, n2); link(n2, b); }
   cacheG.n = N; return N;
 }
