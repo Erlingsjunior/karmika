@@ -129,8 +129,15 @@ export const BASE_PURE = ['Humano', 'Anão', 'Elfo'];
 export const CLASS_PROFS: Record<string, ProfId[]> = {
   'Guerreiro do Norte': ['ferreiro', 'cozinheiro'], 'Paladino de Auréon': ['ferreiro', 'alquimista'], 'Caçador de Demônios': ['alquimista', 'costureiro'],
   'Tecnocrata': ['ferreiro', 'marceneiro'], 'Vampiro': ['costureiro', 'cozinheiro'], 'Lobisomem': ['costureiro', 'marceneiro'], 'Mago': ['alquimista', 'costureiro'], 'Bruxo': ['alquimista', 'costureiro'] };
+/* NÍVEL EXTRA DA CLASSE NO OFÍCIO (04/11, Erling): cada caminho tem o ofício em que é mestre e ganha +10 níveis nele (abre receitas antes e
+   dá mais chance de peça rara). Anão, Guerreiro do Norte e Paladino: forja · Vampiro: cozinha (carnes curtidas e vinhos) · Lobisomem: costura
+   (peles de animais selvagens) · Mago, Bruxo e Caçador de Demônios: alquimia · Tecnocrata: engenharia (ofício próprio, ainda por fazer). */
+export const CLASS_SPEC: Record<string, ProfId> = { 'Anão': 'ferreiro', 'Guerreiro do Norte': 'ferreiro', 'Paladino de Auréon': 'ferreiro', 'Vampiro': 'cozinheiro', 'Lobisomem': 'costureiro', 'Mago': 'alquimista', 'Bruxo': 'alquimista', 'Caçador de Demônios': 'alquimista' };
+export const SPEC_BONUS = 10;
 export function createProfessions(ctx: Ctx) {
   const myCls = () => ctx.cls?.() ?? 'Humano';
+  /** o nível que conta no ofício: o próprio + 10 se for o ofício-mestre da classe */
+  const effL = (id: ProfId) => (lv[id]?.l ?? 1) + (CLASS_SPEC[myCls()] === id ? SPEC_BONUS : 0);
   /** motivo de não poder fazer esta receita por causa da classe (ou null) */
   const clsBlock = (r: Recipe): string | null => { const c = myCls();
     if (r.cls) return r.cls.includes(c) ? null : `Especialização de ${r.cls.length > 1 ? r.cls.slice(0, -1).join(', ') + ' e ' + r.cls[r.cls.length - 1] : r.cls[0]}: compre de quem faz.`;
@@ -143,17 +150,17 @@ export function createProfessions(ctx: Ctx) {
   const el = document.createElement('div'); el.id = 'profw'; document.body.appendChild(el);
   function gain(id: ProfId, n: number) { const p = lv[id]; if (!p || p.l >= 100) return; p.x += n; let up = false; while (p.x >= need(p.l) && p.l < 100) { p.x -= need(p.l); p.l++; up = true; }
     if (up) { const P = PROFS.find((q) => q.id === id)!; ctx.log(`✦ ${P.name} subiu para o nível ${p.l}`, '#ffe08a'); ctx.onLevel?.(id, P.name, P.ic, p.l); } save(); if (open) render(); }
-  const ready = (r: Recipe) => !clsBlock(r) && lv[r.prof].l >= r.lvl && r.need.every(([i, n]) => ctx.has(i, n)) && (r.keep ?? []).every((k) => ctx.has(k));
+  const ready = (r: Recipe) => !clsBlock(r) && effL(r.prof) >= r.lvl && r.need.every(([i, n]) => ctx.has(i, n)) && (r.keep ?? []).every((k) => ctx.has(k));
   function rarityFor(l: number): Rarity { const x = Math.random(); return x < l / 400 ? 'rare' : x < l / 90 ? 'magic' : 'normal'; }
   /** faz UMA peça; devolve false se não deu (e já avisou o motivo) */
   function one(r: Recipe, first: boolean): boolean {
     { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return false; } }
-    if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return false; }
+    if (effL(r.prof) < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return false; }
     { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem, em volta da praça (veja no mapa).`, '#ff9a8a'); return false; } }
     if (!ready(r)) { if (first) ctx.log('Faltam materiais.', '#ff9a8a'); return false; }
     if (r.inv) { ctx.invCraft(r.inv); gain(r.prof, 4); if (r.inv === 'fire') api.close(); return r.inv !== 'fire'; }
     for (const [i, n] of r.need) ctx.take(i, n);
-    if (r.gear) { const L = lv[r.prof].l, RK: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique'], r0 = rarityFor(L), rr = r.minR && RK.indexOf(r0) < RK.indexOf(r.minR) ? r.minR : r0, g = genGear(Math.max(2, Math.min(ctx.heroLvl() + 2, Math.round(L * 0.6) + 2)), rr, r.gear); if (!ctx.addGear(g)) { for (const [i, n] of r.need) ctx.add(i, n); ctx.log('🎒 Sem espaço para equipamento.', '#ff9a8a'); return false; } ctx.log(`⚒ Você fez ${g.name}`, '#ffe08a'); ctx.onCraft?.(g.name); }
+    if (r.gear) { const L = effL(r.prof), RK: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique'], r0 = rarityFor(L), rr = r.minR && RK.indexOf(r0) < RK.indexOf(r.minR) ? r.minR : r0, g = genGear(Math.max(2, Math.min(ctx.heroLvl() + 2, Math.round(L * 0.6) + 2)), rr, r.gear); if (!ctx.addGear(g)) { for (const [i, n] of r.need) ctx.add(i, n); ctx.log('🎒 Sem espaço para equipamento.', '#ff9a8a'); return false; } ctx.log(`⚒ Você fez ${g.name}`, '#ffe08a'); ctx.onCraft?.(g.name); }
     else if (r.out) { ctx.add(r.out[0], r.out[1]); ctx.log(`⚒ Você fez ${r.out[1] > 1 ? r.out[1] + '× ' : ''}${ctx.itemName(r.out[0])}`, '#ffe08a'); ctx.onCraft?.(ctx.itemName(r.out[0])); }
     gain(r.prof, 5 + Math.round(r.lvl * 0.6)); ctx.craftFx?.(r.prof);
     return true;
@@ -164,7 +171,7 @@ export function createProfessions(ctx: Ctx) {
     if (ctx.craftJob && !r.inv) {
       /* confere antes de começar (sem gastar nada): classe, nível, bancada e materiais */
       { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return; } }
-      if (lv[r.prof].l < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return; }
+      if (effL(r.prof) < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return; }
       { const S = STATION_OF[r.prof]; if (S && ctx.atStation && !ctx.atStation(r.prof)) { ctx.log(`${S.icon} Isso se faz na ${S.name}. Toda vila e cidade tem, em volta da praça (veja no mapa).`, '#ff9a8a'); return; } }
       if (!ready(r)) { ctx.log('Faltam materiais.', '#ff9a8a'); return; }
       ctx.craftJob({ prof: r.prof, name: nm, icon: ic, times, step: (k) => { const ok = one(r, k === 0); render(); return ok; }, can: () => ready(r) && (!ctx.atStation || !STATION_OF[r.prof] || ctx.atStation(r.prof)) });
@@ -181,14 +188,14 @@ export function createProfessions(ctx: Ctx) {
     const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
     const pair = P.pair ? PROFS.find((q) => q.id === P.pair)! : null;
     /* abas (Erling, 25/10: "modais quadradas com abas, e não essa linguiça"): o que dá para fazer agora, o que vem com nível e as especializações */
-    const tabOf = (r: Recipe) => (r.cls ? 'spec' : L.l < r.lvl ? 'next' : 'now'), cnt = { now: 0, next: 0, spec: 0 } as Record<string, number>; for (const r of rs) cnt[tabOf(r)]++;
+    const EL = effL(sel); const tabOf = (r: Recipe) => (r.cls ? 'spec' : EL < r.lvl ? 'next' : 'now'), cnt = { now: 0, next: 0, spec: 0 } as Record<string, number>; for (const r of rs) cnt[tabOf(r)]++;
     if (!cnt[ptab] && rs.length) ptab = cnt.now ? 'now' : cnt.next ? 'next' : 'spec';
     const tabs = rs.length ? `<div class="pftabs">${([['now', '⚒ Pode fazer'], ['next', '🔒 Próximas'], ['spec', '✦ Especialização']] as const).map(([k, t]) => `<button data-ptab="${k}" class="${ptab === k ? 'on' : ''}" ${cnt[k] ? '' : 'disabled'}>${t} <small>${cnt[k]}</small></button>`).join('')}</div>` : '';
-    const list = rs.length ? rs.filter((r) => tabOf(r) === ptab).map((r) => { const cb = clsBlock(r), ok = ready(r), lock = L.l < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
+    const list = rs.length ? rs.filter((r) => tabOf(r) === ptab).map((r) => { const cb = clsBlock(r), ok = ready(r), lock = EL < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
       return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${cb ? `<small class="n">${r.cls ? '✦ ' : ''}${cb}</small>` : L.l < r.lvl ? `<small class="n">nível ${r.lvl}</small>` : r.cls ? '<small class="y">✦ especialização</small>' : ''}<small>${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemName(i)} ${ctx.count(i)}/${n}</span>`).join(' · ')}${(r.keep ?? []).map((k) => ` · <span class="${ctx.has(k) ? 'y' : 'n'}">${ctx.itemName(k)} (ferramenta)</span>`).join('')}${r.gear ? ' · <em>peça aleatória; ofício alto dá mágicas e raras</em>' : ''}</small></div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
       : `<em class="emptyb">${P.name} é coleta: sobe trabalhando no mundo${pair ? ` e abastece o ${pair.name}` : ''}.</em>`;
     el.innerHTML = `<div class="pn profpn"><h2>⚒ Profissões <button data-px>✕</button></h2><div class="pfwrap"><nav class="pfnav">${nav}</nav>
-      <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
+      <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100${EL > L.l ? ` <b style="color:#9affb0">+${EL - L.l} da classe (${myCls()})</b>` : ''}</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
       ${(() => { const S = STATION_OF[sel]; if (!S) return ''; const here = !ctx.atStation || ctx.atStation(sel); return `<div class="pfst ${here ? 'here' : 'away'}">${S.icon} ${here ? `Você está na <b>${S.name}</b>: mãos à obra.` : `Só se faz na <b>${S.name}</b>. Toda vila e cidade tem, em volta da praça (veja no mapa).`}</div>`; })()}
       ${tabs}<div class="pflist pfgrid ${STATION_OF[sel] && ctx.atStation && !ctx.atStation(sel) ? 'away' : ''}">${list}</div></div></div><small class="ft">Y abre e fecha · Esc fecha</small></div>`;
     el.style.display = 'flex';

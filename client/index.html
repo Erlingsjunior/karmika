@@ -214,7 +214,7 @@
   .mk-why { display: block; color: #b4a68e; font-size: 12px; line-height: 1.4; } .mk-why b { color: #eadfca; }
   .mk-use { margin-top: 6px; background: linear-gradient(#5a4220, #3a2a14); border: 1px solid #ffe08a; color: #fff0bd; font: 600 11px Cinzel, serif; padding: 4px 10px; cursor: pointer; }
   .mk-pill { display: inline-block; margin-top: 2px; font-size: 11px; color: #c9b890; border: 1px solid #5a4a30; border-radius: 8px; padding: 0 6px; } .mk-pill.cheap { color: #7aff9a; border-color: #3a7a4a; } .mk-pill.dear { color: #ff9a8a; border-color: #7a3a30; }
-  .rbind { font-size: 11px; color: #ff9a8a; margin: 2px 0 4px; } .rbind.free { color: #9ad7ff; }
+  .rbind { font-size: 11px; color: #ff9a8a; margin: 2px 0 4px; } .rbind.free { color: #9ad7ff; } .hand2 { color: #ffb070; font-weight: 700; } .hand1 { color: #b9d8ff; font-weight: 700; }
   /* masmorra: nome, portão do chefe e a vida do chefe */
   #dghud { position: fixed; top: 64px; left: 50%; transform: translateX(-50%) scale(var(--ui, 1)); transform-origin: 50% 0; z-index: 8; display: none; min-width: 300px; text-align: center; padding: 8px 18px 10px; background: rgba(14,10,6,.78); border: 1px solid rgba(255,106,90,.55); border-radius: 4px; font-family: Georgia, serif; color: #eadfca; pointer-events: none; }
   #dghud > b { display: block; font: 700 15px Cinzel, serif; letter-spacing: .1em; color: #ffd27a; } #dghud > small { color: #b4a68e; font-size: 11.5px; }
@@ -974,6 +974,13 @@
   @keyframes wkRune { 0%, 60%, 100% { opacity: .5; } 72% { opacity: 1; filter: drop-shadow(0 0 4px #ffcf7a); } }
   @keyframes wkSweep { 0% { background-position: 150% 0; } 100% { background-position: -150% 0; } }
   .pn, #qlog .pn { padding: 18px 34px 16px; font-size: 14.5px; line-height: 1.4; }
+  /* respiro (04/11, "nenhum texto encoste no contorno"): o conteúdo fica longe da moldura pontilhada e das runas laterais em todas as janelas */
+  .pn, #qlog .pn, #qlog .pn.qlogpn, .pn.ftpn2, .kbug .pn, .kdono-w .pn { padding: 28px 46px 24px !important; }
+  #dlg .dp, #menu .panel { padding-left: max(46px, 1em) !important; padding-right: max(46px, 1em) !important; padding-top: max(26px, 1em) !important; padding-bottom: max(22px, 1em) !important; }
+  /* a moldura acompanha a rolagem (--sy/--sx vêm do script de rolagem): antes ela ficava presa no topo e o conteúdo passava dela */
+  .pn::before, #dlg .dp::before, #menu .panel::before, #qlog .pn::before { top: calc(7px + var(--sy, 0px)); bottom: calc(7px - var(--sy, 0px)); left: calc(7px + var(--sx, 0px)); right: calc(7px - var(--sx, 0px)); }
+  .pn::after, #dlg .dp::after, #menu .panel::after, #qlog .pn::after { top: calc(12px + var(--sy, 0px)); bottom: calc(12px - var(--sy, 0px)); left: calc(12px + var(--sx, 0px)); right: calc(12px - var(--sx, 0px)); }
+  .charpn h2 .wset { font: 600 13px Cinzel, serif; color: #ffe08a; margin-right: 12px; padding: 1px 8px; border: 1px solid var(--wk-gold-lo); border-radius: 3px; background: rgba(217,162,79,.10); letter-spacing: .08em; } .charpn h2 .wset small { color: #9a8a6a; font-size: 10px; }
   .pn h2 { font: 700 19px "Cinzel Decorative", Cinzel, serif; color: #f6e4bb; text-shadow: 0 0 18px rgba(217,162,79,.3); letter-spacing: .06em; }
   .pn h2 button { font-family: Cinzel, serif; background: transparent; border: 1px solid var(--wk-gold-lo); color: var(--wk-ink); border-radius: 2px; padding: 3px 8px; } .pn h2 button:hover { background: rgba(217,162,79,.14); }
   .pn h3 { font: 600 12px Cinzel, serif; letter-spacing: .18em; color: var(--wk-gold); }

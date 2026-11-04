@@ -347,7 +347,7 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
     render() { const [s, cam] = getSC(); const cw = R.domElement.width, ch = R.domElement.height; if (sceneRT.width !== cw || sceneRT.height !== ch) sceneRT.setSize(cw, ch);
       lightsFrame(s, cam); tick++; gpuState.frame++;
       const prev = R.getRenderTarget(), ac = R.autoClear;
-      R.setRenderTarget(sceneRT); R.autoClear = true; cam.layers.set(0); R.render(s, cam);
+      R.setRenderTarget(sceneRT); R.autoClear = true; R.clear(true, true, true); /* 04/11 (Erling: "um arrasto cabuloso quando ando"): limpa cor e profundidade do quadro na mão — em algumas placas o quadro anterior ficava e o chão novo não passava no teste de profundidade onde o personagem esteve, deixando um rastro */ cam.layers.set(0); R.render(s, cam);
       const bg = s.background; s.background = null; R.autoClear = false; for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = false; /* a sombra já saiu na 1ª etapa */
       cam.layers.set(1); R.render(s, cam); { const d = gpuState.dc; d.push(R.info.render.drawCalls); if (d.length > 900) d.splice(0, 300); }
       for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = true; s.background = bg; cam.layers.enableAll(); R.autoClear = ac; R.setRenderTarget(prev);

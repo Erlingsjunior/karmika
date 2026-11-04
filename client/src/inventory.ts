@@ -214,7 +214,8 @@ export const ATTRS: { k: Attr; lab: string; tip: string }[] = [
 /** família de armas que pode ir uma em cada mão (ou com escudo): bestas de mão e armas de fogo de uma mão */
 /* 03/11 (Erling: "armas de uma mão podem ser usadas uma em cada mão: duas espadas, uma maça e uma espada, duas pistolas, duas bestas de
    repetição"): família da arma para o par — corpo a corpo com corpo a corpo, arma de fogo com arma de fogo, besta com besta; arma de duas mãos não faz par */
-export const TWO_HANDED = /Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana|Arco|Gatling|Lança-Chamas|Lança-Veneno|Metralhadora|Rifle|Canhão|Cajado|Bastão|Lança\b|Picareta|Machado de Lenhador/;
+export { TWO_HANDED } from './loot'; /* moveu para loot.ts (a dica do item diz Uma mão / Duas mãos) */
+import { TWO_HANDED } from './loot';
 export const dualFam = (b?: string | null) => !b || TWO_HANDED.test(b) || /Escudo|Broquel|Pavês/.test(b) ? null : /Besta/.test(b) ? 'xb' : /Pistola|Escopeta|Revólver/.test(b) ? 'gun' : /Garras/.test(b) ? null : 'mel';
 const SLOTS: Slot[] = ['helm', 'earring', 'earring2', 'amulet', 'shoulders', 'cape', 'armor', 'weapon', 'shield', 'ring', 'ring2', 'boots', 'relic'];
 
@@ -374,7 +375,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const dmgOf = (g: Gear) => (g.stats.dmg ?? 0) + (g.stats.crit ?? 0) * 0.5 + g.ilvl * 0.01;
   const usable = (g: Gear) => st.lvl >= reqLvl(g) && !hooks.canWear?.(g) && !(g.fac && myFac() !== g.fac);
   function setMode(): 'dual' | 'shield' | 'two' | 'one' { const w = eqG.weapon, o = eqG.shield; if (o && o.slot === 'weapon') return 'dual'; if (o) return 'shield'; if (w && TWO_HANDED.test(w.base)) return 'two'; return 'one'; }
-  function cycleWeapons(dir = 1) {
+  function wPlan() {
     const pool = [...gearBag, ...[eqG.weapon, eqG.shield].filter(Boolean) as Gear[]].filter(usable), mem = (k: string) => (wmem[k] ?? []).map((u) => pool.find((g) => g.uid === u)).filter(Boolean) as Gear[];
     const ones = pool.filter((g) => g.slot === 'weapon' && dualFam(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), twos = pool.filter((g) => g.slot === 'weapon' && TWO_HANDED.test(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), shields = pool.filter(isShieldG).sort((a, b) => (b.stats.def ?? 0) - (a.stats.def ?? 0));
     const plan: Record<string, Gear[] | null> = {
@@ -382,6 +383,11 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       shield: (() => { const m = mem('shield'); if (m.length === 2) return m; const a = eqG.weapon && dualFam(eqG.weapon.base) ? eqG.weapon : ones[0]; return a && shields[0] ? [a, shields[0]] : null; })(),
       two: (() => { const m = mem('two'); if (m.length === 1) return m; return twos[0] ? [twos[0]] : null; })(),
     };
+    return plan; }
+  /** número do conjunto de armas que está na mão (I, II, III), na ordem da troca Ctrl+roda */
+  function wSetNo() { const plan = wPlan(), order = ['dual', 'shield', 'two'].filter((k) => plan[k]), i = order.indexOf(setMode()); return { n: i < 0 ? 1 : i + 1, of: Math.max(1, order.length) }; }
+  function cycleWeapons(dir = 1) {
+    const plan = wPlan();
     const order = ['dual', 'shield', 'two'].filter((k) => plan[k]); if (!order.length) { game.logMsg('⚔ Nada para trocar: leve na bolsa outra arma de uma mão, um escudo ou uma arma de duas mãos.', '#c8b890'); return; }
     /* guarda o jeito atual antes de sair dele */ const cur = setMode(); if (cur !== 'one') { wmem[cur] = [eqG.weapon, eqG.shield].filter(Boolean).map((g) => g!.uid); }
     const i = order.indexOf(cur), next = order[((i < 0 ? (dir > 0 ? -1 : 0) : i) + dir + order.length) % order.length]; if (next === cur && order.length === 1) { game.logMsg('⚔ Só existe um jeito de segurar com o que você tem.', '#c8b890'); return; }
@@ -452,7 +458,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       const slot = (s: Slot) => { const g = eqG[s], [x, y] = POS[s]; return `<div class="eqs ${g ? 'on' : ''} ${s}" style="left:${x - 24}px;top:${y - 24}px;${g ? `--rc:${RARITY[g.rarity].col}` : ''}" ${g ? `draggable="true" data-drag="e:${s}" data-g="e:${s}" data-un="${s}"` : `title="${RSLOT[s]} — vazio. Arraste uma peça para cá."`}>${gearIcon(g, s)}<small>${RSLOT[s]}</small></div>`; };
       const row = (l: string, v: string) => `<div class="stt"><span>${l}</span><b>${v}</b></div>`;
       const pic = hooks.portrait?.() ?? null;
-      ch.innerHTML = `<div class="charwrap"><div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span>${hooks.alignHtml ? `<button class="alx ${alOpen ? 'on' : ''}" data-alx title="Os seus pontos de karma com cada vila, cidade, região e facção por onde você passou">🏘 Alinhamento ${alOpen ? '◂' : '▸'}</button>` : ''}<button data-x>✕</button></h2>
+      ch.innerHTML = `<div class="charwrap"><div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span><span class="wset" title="Conjunto de armas na mão — troque com Ctrl + roda do mouse">⚔ ${(() => { const w = wSetNo(); return `${['I', 'II', 'III'][w.n - 1]}<small>/${['I', 'II', 'III'][w.of - 1]}</small>`; })()}</span>${hooks.alignHtml ? `<button class="alx ${alOpen ? 'on' : ''}" data-alx title="Os seus pontos de karma com cada vila, cidade, região e facção por onde você passou">🏘 Alinhamento ${alOpen ? '◂' : '▸'}</button>` : ''}<button data-x>✕</button></h2>
         <div class="paper2" style="width:${W}px;height:${H}px"><svg class="eqlines" width="${W}" height="${H}"><defs><filter id="eqglow"><feGaussianBlur stdDeviation="1.6"/></filter></defs>${lines}</svg>
           <div class="doll" style="position:absolute;left:${DX}px;top:${DY}px;width:${DW}px;height:${DH}px">${pic ? `<img src="${pic}" alt="">` : ''}<div class="pw">⚔ Poder ${power()}</div></div>
           ${SLOTS.map(slot).join('')}

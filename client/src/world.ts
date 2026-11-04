@@ -1571,7 +1571,13 @@ export function buildCity(): World {
     const opening = new Set<number>();
     { const isRd = (i: number) => { const [x, y] = ring[i]; const t = map[y]?.[x]; if (t === 'road' || t === 'plaza') return true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (map[y + dy]?.[x + dx] === 'road' && map[y - dy]?.[x - dx] === 'road') return true; return false; };
       let i = 0; while (i < N) { if (!wallOk[i] || isGate.has(i) || !isRd(i)) { i++; continue; } let j = i; while (j + 1 < N && isRd(j + 1)) j++; const c = Math.floor((i + j) / 2);
-        if (![...isGate.keys()].some((g) => Math.min(Math.abs(g - c), N - Math.abs(g - c)) < 5)) for (let d = -1; d <= 1; d++) opening.add(((c + d) % N + N) % N); i = j + 1; } }
+        /* 04/11 (Erling: "arco de entrada faltando, tá feia essa entrada e apertada"): a abertura vira PORTÃO de verdade — arco de pedra,
+           5 casas (a estrada passa pelas 3 do meio, as colunas nas pontas) — e não um vão de 3 casas com uma torre do lado. Só fica vão aberto
+           quando não cabe o portão (muro curto ou água perto). */
+        if (![...isGate.keys()].some((g) => Math.min(Math.abs(g - c), N - Math.abs(g - c)) < 5)) {
+          if ([-2, -1, 0, 1, 2].every((d) => wallOk[((c + d) % N + N) % N] && !waterGate.has(((c + d) % N + N) % N))) { gateIdx.push(c); for (let d = -2; d <= 2; d++) isGate.set(((c + d) % N + N) % N, c); }
+          else for (let d = -1; d <= 1; d++) opening.add(((c + d) % N + N) % N); }
+        i = j + 1; } }
     const tiles = new Set<number>(); const flights: Flight[] = [];
     const tangent = (i: number) => { const a = ring[((i - 3) % N + N) % N], b = ring[(i + 3) % N]; let tx = b[0] - a[0], ty = b[1] - a[1]; const L = Math.hypot(tx, ty) || 1; tx /= L; ty /= L; const ri = ring[((i % N) + N) % N], ox = ri[0] - cx, oy = ri[1] - cy; if (ty * ox - tx * oy < 0) { tx = -tx; ty = -ty; } /* fora = tangente girada −90° */ return [tx, ty]; };
     const outRy = (i: number) => { const [tx, ty] = tangent(i); return Math.atan2(-(ty), tx); }; // +x local = tangente; −z local = fora

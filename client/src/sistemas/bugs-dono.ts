@@ -1,11 +1,11 @@
 /* RELATAR BUG E O PAINEL DO DONO (03/11, Erling: "um ícone abaixo do mapa com o desenho de um inseto, tooltip Reportar um bug: a pessoa
    coloca um print e explica o bug, eu recebo isso na minha tela. Cada bug terá um número de id específico; eu faço as branches com esses
    números e vou atacando os bugs." / "uma tela onde posso ver jogadores online, o que estão fazendo, enviar mensagens no jogo").
-   - O inseto 🐞 embaixo do minimapa (ou F8): print da tela já anexado, outra imagem (arquivo ou Ctrl+V), categoria e a explicação.
+   - O inseto 🐞 embaixo do minimapa (ou F10): print da tela já anexado, outra imagem (arquivo ou Ctrl+V), categoria e a explicação.
      Junto vai sozinho: onde o herói está (tile e região), nível, classe, modo de desenho, FPS e a versão. A sala devolve o número
      (KB-0001…). Sem sala, o relatório espera guardado nesta máquina e sai quando entrar.
    - O dono entra com /dono CHAVE (a chave está em dono-chave.txt, ao lado dos dados da sala, e aparece no log da sala ao abrir).
-     O painel (a coroa embaixo do minimapa, ou F9): quem está online e o que está fazendo, mensagem para um ou para todos, e a caixa de
+     O painel (a coroa embaixo do minimapa, ou F11): quem está online e o que está fazendo, mensagem para um ou para todos, e a caixa de
      bugs com print, contexto, estado (novo, vendo, corrigido, não é bug) e uma resposta que chega para quem relatou. */
 import type { Net } from '../net';
 
@@ -85,8 +85,8 @@ export function createBugsDono(K: BugCtx) {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   /* os dois botões embaixo do minimapa */
   const btns = document.getElementById('btns');
-  const bugBtn = document.createElement('button'); bugBtn.dataset.b = 'bug'; bugBtn.title = 'Reportar um bug (F8)'; bugBtn.innerHTML = BUG_SVG;
-  const donoBtn = document.createElement('button'); donoBtn.dataset.b = 'dono'; donoBtn.title = 'Painel do dono (F9)'; donoBtn.innerHTML = CROWN_SVG;
+  const bugBtn = document.createElement('button'); bugBtn.dataset.b = 'bug'; bugBtn.title = 'Reportar um bug (F10)'; bugBtn.innerHTML = BUG_SVG;
+  const donoBtn = document.createElement('button'); donoBtn.dataset.b = 'dono'; donoBtn.title = 'Painel do dono (F11)'; donoBtn.innerHTML = CROWN_SVG;
   btns?.appendChild(bugBtn); btns?.appendChild(donoBtn);
   bugBtn.addEventListener('click', (e) => { e.stopPropagation(); openReport(); });
   donoBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel(); });
@@ -217,15 +217,15 @@ export function createBugsDono(K: BugCtx) {
     try { n.raw({ t: 'doing', w: K.doing() }); } catch { /* */ } }, 5000);
 
   addEventListener('keydown', (e) => { const tg = e.target as HTMLElement | null; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.isContentEditable)) return;
-    if (e.key === 'F8') { e.preventDefault(); if (rep.classList.contains('on')) closeReport(); else void openReport(); }
-    if (e.key === 'F9' && own()) { e.preventDefault(); if (pan.classList.contains('on')) closePanel(); else openPanel(); }
+    if (e.key === 'F10') { e.preventDefault(); if (rep.classList.contains('on')) closeReport(); else void openReport(); }
+    if (e.key === 'F11' && own()) { e.preventDefault(); if (pan.classList.contains('on')) closePanel(); else openPanel(); }
     if (e.key === 'Escape') { if (rep.classList.contains('on')) closeReport(); if (pan.classList.contains('on')) closePanel(); } });
 
   return {
     open: openReport, panel: openPanel,
     /** /dono CHAVE (chat) */
     command(cmd: string, a: string[]): string | null {
-      if (cmd !== 'dono') return null; const k = a.join('').trim(); if (!k) return own() ? '👑 Você já está no painel do dono (F9).' : '👑 Uso: /dono CHAVE (está no log da sala e em dono-chave.txt).';
+      if (cmd !== 'dono') return null; const k = a.join('').trim(); if (!k) return own() ? '👑 Você já está no painel do dono (F11).' : '👑 Uso: /dono CHAVE (está no log da sala e em dono-chave.txt).';
       keep(OK, k.toUpperCase()); const n = K.net(); if (n?.state === 'on') { wire(); n.raw({ t: 'adm:hello', key: k.toUpperCase() }); return '👑 Conferindo a chave com a sala…'; } return '👑 Chave guardada: o painel abre quando você entrar na sala.';
     },
   };
