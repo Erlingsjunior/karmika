@@ -999,7 +999,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     kick: { // chute de escudo: gira o quadril, sobe o joelho da frente e estica a perna contra a borda do escudo
       lgLH: [[0, 0], [.28, -1.25], [.42, -1.55], [.62, -1.45], [.82, -0.3], [1, 0]], lgLK: [[0, 0], [.28, 1.7], [.42, 0.12], [.62, 0.2], [.82, 0.7], [1, 0]], lgRK: [[0, 0], [.3, 0.22], [.7, 0.2], [1, 0]],
       lean: [[0, 0], [.28, -0.18], [.42, -0.32], [.7, -0.22], [1, 0]], twist: [[0, 0], [.28, 0.35], [.42, -0.15], [1, 0]], shLX: [[0, 0], [.28, -1.2], [.42, -1.5], [.75, -1.2], [1, 0]], elL: [[0, 0], [.28, -0.8], [.42, -0.2], [1, 0]], face: [[0, 0], [.15, 1], [.85, 1], [1, 0]],
-      shX: [[0, 0], [.3, 0.7], [.8, 0.6], [1, 0]], el: [[0, 0], [.3, -1.0], [.8, -0.9], [1, 0]], vel: [[0, 0], [.36, 0], [.42, 3], [.55, 0]], jump: [[0, 0], [.4, 0.04], [.6, 0.02], [1, 0]],
+      shX: [[0, 0], [.3, 0.7], [.8, 0.6], [1, 0]], el: [[0, 0], [.3, -1.0], [.8, -0.9], [1, 0]], vel: [[0, 0], [.36, 0], [.42, 3], [.55, 0]], /* 04/11: sem pulinho — o pé de apoio fica plantado (o chute real não sai do chão) */
     },
     lowcut: { // corte nos tendões: cai num joelho e varre a lâmina rente ao chão, da direita para a esquerda
       kn: [[0, 0], [.22, 0.9], [.72, 0.9], [1, 0]], shX: [[0, 0], [.22, -1.0], [.48, -0.85], [.72, -0.8], [1, 0]], shZ: [[0, 0], [.22, 0.85], [.48, -0.85], [.72, -0.95], [1, 0]], el: [[0, 0], [.22, -0.35], [.48, 0.2], [1, 0]],
@@ -1149,6 +1149,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   };
   const sm: Record<string, number> = {};
   const smooth1 = (key: string, v: number, dt: number, rate = 26) => (sm[key] = (sm[key] ?? v) + (v - (sm[key] ?? v)) * Math.min(1, dt * rate));
+  const ikA = new THREE.Vector3(), ikB = new THREE.Vector3(), ikT = new THREE.Vector3(); const feet = [0, 1].map(() => ({ lock: null as THREE.Vector3 | null, from: new THREE.Vector3(), st: -1, lift: 0 }));
   let backSm = 0, strafeSm = 0, sitK = 0, seatH = 0.55, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
   const qRoot = new THREE.Quaternion(), qPar = new THREE.Quaternion(), qDes = new THREE.Quaternion(), qLoc = new THREE.Quaternion(), eDes = new THREE.Euler();
   const tmp = new V();
@@ -1498,7 +1499,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
 
       // ações
       let aSide = 0, aRoll = 0, aBack = 0, aLean = 0, aTwist = 0, aShR = 0, aElR = 0, aShL = 0, aElL = 0, aShRz = 0, aShLz = 0, aHeadX = 0, aCrouch = 0, aLungeLeg = 0, aSwX = 0, aSwZ = 0, aJump = 0, aSpin = 0, aFace = 0, aTilt = 0;
-      let dashing = false, tgtVel = 0, dashP = 0, lgLH = 0, lgLK = 0, lgRH = 0, lgRK = 0, aKn = 0;
+      let dashing = false, twLead = 0, tgtVel = 0, dashP = 0, lgLH = 0, lgLK = 0, lgRH = 0, lgRK = 0, aKn = 0;
       if (act) {
         if (!hero.freeze) act.t += dt;
         const p = clamp(act.t / act.dur, 0, 1);
@@ -1507,6 +1508,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           aShR = kf(p, K.shX); aShRz = kf(p, K.shZ); aElR = kf(p, K.el); aSwX = kf(p, K.swX); aSwZ = kf(p, K.swZ);
           aTwist = kf(p, K.twist); aLean = kf(p, K.lean); aLungeLeg = kf(p, K.lunge); aCrouch = kf(p, K.crouch); aJump = kf(p, K.jump);
           aShL = kf(p, K.shLX); aShLz = kf(p, K.shLZ); aElL = kf(p, K.elL); aFace = kf(p, K.face); tgtVel = kf(p, K.vel);
+          twLead = kf(Math.min(1, p + 0.06), K.twist) - aTwist; /* o quadril puxa o giro ~1/16 do golpe antes do peito (cadeia cinética) */
           aSpin = K.spin ? kf(p, K.spin) : 0; aTilt = kf(p, K.tilt); aHeadX = kf(p, K.head);
           lgLH = kf(p, K.lgLH); lgLK = kf(p, K.lgLK); lgRH = kf(p, K.lgRH); lgRK = kf(p, K.lgRK); aKn = kf(p, K.kn);
           // suaviza (exceto giro) para encadear golpes sem tranco
@@ -1639,11 +1641,15 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const idleY = Math.sin(breath) * 0.01 * (1 - walkK);
       body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE;
       hips.position.x = Math.cos(phase) * S.sway * (hero.gait?.sway ?? 1) * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
-      hips.rotation.y = -Math.sin(phase) * tw * 0.6 - aTwist * 0.4 + 0.3 * idleK + strafeSm;
+      /* 04/11 CADEIA CINÉTICA: antes o quadril girava ao CONTRÁRIO do peito (−0,4 do giro) — a torção ficava toda na cintura, um corpo de
+         boneco. No golpe de verdade o quadril vai para o MESMO lado e na frente (puxa), o peito vem atrás e gira mais. O peito continua com o
+         mesmo giro final de antes (0,6 do canal), só que agora 0,35 vem do quadril e 0,25 da coluna. */
+      const hipTw = 0.35 * (aTwist + twLead);
+      hips.rotation.y = -Math.sin(phase) * tw * 0.6 + hipTw + 0.3 * idleK + strafeSm;
       hips.rotation.z = Math.cos(phase) * 0.03 * walkK + smooth1('roll', aRoll, dt, 18);
       hips.position.z = smooth1('back', aBack, dt, 18);
       smooth.tilt += (aTilt - smooth.tilt) * Math.min(1, dt * 22); hips.rotation.x = smooth.tilt;
-      spine.rotation.y = Math.sin(phase) * tw + aTwist - strafeSm; /* a coluna desfaz o giro do quadril do passo de lado */
+      spine.rotation.y = Math.sin(phase) * tw + 0.6 * aTwist - hipTw - strafeSm; /* a coluna desfaz o giro do quadril do passo de lado */
       smooth.lean += ((leanT + aLean + (dashing ? 0.0 : 0)) - smooth.lean) * Math.min(1, dt * 14);
       spine.rotation.x = smooth.lean + Math.sin(breath) * 0.006;
       spine.rotation.z = -Math.cos(phase) * 0.018 * walkK;
@@ -1691,7 +1697,37 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         body.position.y += (P - pelvisY - body.position.y) * k; body.position.z += (-0.1 - body.position.z) * k;
         hips.rotation.y *= 1 - k; hips.rotation.z *= 1 - k; spine.rotation.y *= 1 - k; spine.rotation.x += (0.07 - spine.rotation.x) * k;
       } else if (body.position.z !== 0) body.position.z = 0;
-
+      /* PÉ NO CHÃO DE VERDADE (IK de perna, 04/11 — Erling: "cuidado com anatomia, coisas que o corpo não pode fazer, física, dobras estranhas").
+         O medidor de anatomia (auditoria quadro a quadro) achou dois defeitos em quase todo golpe:
+         1) o pé AFUNDAVA no chão até 8 cm quando o corpo abaixava (agachar, investida, golpe pesado) — as pernas só eram giradas por conta;
+         2) o pé PATINAVA de 20 a 60 cm no chão sem levantar (o quadril girava e a perna arrastava o pé junto) — o "boneco de patins".
+         Agora, durante o golpe (parado, sem andar):
+         - o pé que está no chão fica PRESO naquele ponto do mundo; o quadril gira e abaixa por cima dele e o joelho dobra na medida certa
+           (IK de duas juntas: coxa e canela não esticam, lei dos cossenos, com o afastamento lateral resolvido no quadril);
+         - se o golpe pede o pé em outro lugar (estocada, passo da investida, giro), o pé DÁ UM PASSO: levanta ~9 cm, vai e pisa (0,16 s);
+         - fora do golpe, só corrige o pé que afundou.
+         Fica de fora: andando, montado, sentado, nadando, no ar (salto), chute (a perna do chute é do golpe) e a perna de trás ao ajoelhar. */
+      if (!hero.riding && sitK < 0.5 && swimK < 0.3 && aJump < 0.02) {
+        root.updateMatrixWorld(true); const gA = S.ankle * 0.97, a = S.thigh, b = S.shin;
+        const plantedAll = !!act && Math.max(0, mps - Math.abs(stepVel)) < 0.6 && !dashing, /* o avanço do próprio golpe (vel) não conta como andar: o pé de trás fica preso e o corpo dá o passo */ kickL = Math.abs(lgLH) > 0.05, kickR = Math.abs(lgRH) > 0.05; /* só a coxa que sobe solta o pé; a perna de apoio que só dobra o joelho continua presa */
+        for (let li = 0; li < 2; li++) { const leg = li ? legR : legL, F = feet[li]; if (leg === legR && kneelE > 0.3) { F.lock = null; continue; }
+          leg.ankle.getWorldPosition(ikA); /* onde a pose quer o pé (mundo) */ ikB.copy(ikA); root.worldToLocal(ikB); const gW = root.localToWorld(ikT.set(0, gA, 0)).y;
+          let tgt: THREE.Vector3 | null = null; const planted = plantedAll && !(li ? kickR : kickL); /* no chute, só a perna do chute fica livre: a de apoio fica presa */
+          if (planted) {
+            if (!F.lock) { F.lock = new THREE.Vector3(ikA.x, gW, ikA.z); F.st = -1; }
+            const far = Math.hypot(ikA.x - F.lock.x, ikA.z - F.lock.z);
+            if (F.st < 0 && far > 0.16) { F.st = 0; F.from.copy(F.lock); } /* começa um passo */
+            if (F.st >= 0) { F.st = Math.min(1, F.st + dt / 0.16); const e = F.st * F.st * (3 - 2 * F.st); F.lock.lerpVectors(F.from, ikT.set(ikA.x, gW, ikA.z), e); F.lift = Math.sin(F.st * Math.PI) * 0.09; if (F.st >= 1) { F.st = -1; F.lift = 0; } }
+            tgt = ikT.set(F.lock.x, F.lock.y + F.lift, F.lock.z);
+          } else { F.lock = null; F.st = -1; F.lift = 0; if (ikB.y < gA) tgt = ikT.set(ikA.x, gW, ikA.z); }
+          if (!tgt) continue;
+          leg.hip.parent!.worldToLocal(tgt); tgt.sub(leg.hip.position);
+          const d = clamp(tgt.length(), Math.abs(a - b) + 0.02, a + b - 0.002);
+          const kn = Math.PI - Math.acos(clamp((a * a + b * b - d * d) / (2 * a * b), -1, 1));
+          const Yv = -a - b * Math.cos(kn), Zv = -b * Math.sin(kn), sz = clamp(-tgt.x / Yv, -0.6, 0.6), z = Math.asin(sz);
+          let hx = Math.atan2(tgt.z, tgt.y) - Math.atan2(Zv, Yv * Math.cos(z)); while (hx > Math.PI) hx -= PI2; while (hx < -Math.PI) hx += PI2; leg.hip.rotation.set(hx, 0, z); leg.knee.rotation.x = kn;
+          leg.ankle.rotation.x = clamp(-(leg.hip.rotation.x + kn + smooth.tilt), -0.9, 0.6) - (F.lift > 0 ? F.lift * 2 : 0); }
+      } else { feet[0].lock = feet[1].lock = null; }
       /* braços (contra-balanço das pernas) */
       const sL = Math.sin(phase), sR = Math.sin(phase + Math.PI);
       armL.sh.rotation.x = restL.x + armA * sL * swingL * (1 - 0.8 * cK) + aShL; armL.sh.rotation.z = restL.z + aShLz;
@@ -1772,6 +1808,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             const a = kfW[i - 1], b = kfW[i], u = ease(clamp((p - a.p) / Math.max(1e-4, b.p - a.p), 0, 1));
             g = [lerp(a.g[0], b.g[0], u), lerp(a.g[1], b.g[1], u), lerp(a.g[2], b.g[2], u)]; dd = [lerp(a.d[0], b.d[0], u), lerp(a.d[1], b.d[1], u), lerp(a.d[2], b.d[2], u)];
           }
+          /* 04/11 golpe de PONTA (estocada, florete, adaga, besta): a direção da lâmina era medida no peito, e o peito gira no golpe (o ombro
+             vai à frente) — a ponta saía ~35° do alvo. Agora a ponta mira à frente do CORPO (raiz): desfaz o giro do peito na direção. */
+          if (act && (act.a === 'combo1' || act.a === 'thrust1' || act.a === 'thrust2' || act.a === 'stab' || act.a === 'aim1')) { const cy = hips.rotation.y + spine.rotation.y, c = Math.cos(-cy), s2 = Math.sin(-cy); dd = [dd[0] * c + dd[2] * s2, dd[1], -dd[0] * s2 + dd[2] * c]; }
           if (slashK > 0 && kind === 'nordic') { const w = Math.sin(Math.min(1, 1 - slashK) * Math.PI); g = [g[0] - 0.5 * w, g[1], g[2] + 0.5 * w]; dd = [dd[0] - 1.6 * w, dd[1], dd[2] + 0.9 * w]; }
           const sm2 = Math.min(1, dt * 30);
           rigPos.lerp(rigTmp.set(g[0], g[1], g[2]), sm2); rigDir.lerp(rigTmp.set(dd[0], dd[1], dd[2]).normalize(), sm2).normalize();
@@ -1822,6 +1861,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const wantStow = gunOn || SHIELDLESS.has(wcls) || (combatK < 0.35 && !hero.guard && (!act || act.a === 'chop' || act.a === 'mine' || act.a === 'skin' || act.a === 'herb')); // arma de duas mãos: escudo sempre nas costas // nos ofícios o escudo fica nas costas
         if (wantStow !== stowed) { stowed = wantStow; if (stowed) { backAnchor.add(shieldHolder); shieldHolder.position.set(0, 0, 0); shieldHolder.quaternion.identity(); shieldF = 0; } else { armL.el.add(shieldHolder); shieldHolder.position.set(-0.08, -S.fore * 0.5, 0.06); shieldHolder.quaternion.identity(); } }
       }
+      /* TRAVA DE ANATOMIA (04/11): rede de segurança no fim da pose. Cotovelo e joelho são dobradiças: não dobram para trás (mais que ~6°)
+         nem fecham além do que o braço e a perna humanos fecham (~146° no cotovelo, ~150° no joelho). Pose nenhuma, mistura de posturas ou
+         canal somado passa disso. */
+      for (const arm of [armL, armR]) arm.el.rotation.x = clamp(arm.el.rotation.x, -2.55, 0.1);
+      for (const leg of [legL, legR]) leg.knee.rotation.x = clamp(leg.knee.rotation.x, -0.08, 2.62);
       if (shieldHolder && !stowed) {
         // com a face (boss) apontando sempre para a frente do herói, qualquer que seja a pose do braço
         root.updateWorldMatrix(true, false); armL.el.updateWorldMatrix(true, false);

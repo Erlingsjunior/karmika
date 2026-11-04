@@ -333,7 +333,12 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
   const bx = mod(floor(screenCoordinate.x), 4), by = mod(floor(screenCoordinate.y), 4), b0 = (n: any) => mod(n, 2), b1 = (n: any) => mod(floor(n.div(2)), 2);
   const bay = abs(b0(bx).sub(b0(by))).mul(8).add(b0(by).mul(4)).add(abs(b1(bx).sub(b1(by))).mul(2)).add(b1(by));
   const cq = floor(clamp(c, 0, 1).mul(lv).add(bay.add(0.5).div(16))).div(lv);
-  const out = select(uQ.greaterThan(0.5), cq, cm);
+  /* 04/11 (Erling: "a luminosidade está estourando no personagem e em superfícies como papel… a lâmpada tão brilhante que não vemos a
+     armação"): ombro suave nas altas luzes — acima de 0,78 a cor cresce cada vez menos (nunca chega no branco chapado), então o vidro do
+     lampião, o papel e a pele perto da luz guardam forma e textura. Abaixo de 0,78 nada muda: o resto da imagem fica igual. */
+  const knee = (x: any) => { const k = max(x.sub(0.78), 0); return x.sub(k).add(k.div(k.mul(2.6).add(1))); };
+  const cmS = vec3(knee(cm.x), knee(cm.y), knee(cm.z));
+  const out = select(uQ.greaterThan(0.5), cq, cmS);
   /* teste sem tela (Playwright): ?gpuoff=1 desenha num alvo fora da tela — no navegador sem monitor, apresentar no canvas derruba o WebGPU */
   const OFF = /[?&]gpuoff=1/.test(location.search); let offRT: any = null;
   const post = new (W as any).RenderPipeline(R); post.outputColorTransform = false; const DBG = Number(new URLSearchParams(location.search).get('gpudbg') || 0); const cg = c; post.outputNode = DBG === 5 ? vec4(cg, 1) : DBG === 6 ? vec4(cm, 1) : DBG === 7 ? vec4(cq, 1) : DBG === 3 ? vec4(renderOutput(lin).rgb, 1) : DBG === 4 ? vec4(bn.rgb, 1) : DBG === 1 ? vec4(renderOutput(col).rgb, 1) : DBG === 2 ? vec4(col.rgb, 1) : vec4(out, 1);

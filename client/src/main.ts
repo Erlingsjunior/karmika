@@ -1620,7 +1620,7 @@ function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RA
   const st = m ? THREE.PCFShadowMap /* three 0.18x: o PCFSoft saiu; o PCF com radius faz a borda macia */ : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
   { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuImpl) { /* WebGPU: o ShadowNode acompanha o mapSize sozinho; soltar o alvo deixava a sombra apontando para textura destruída */ sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
-  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.72 : 0.93; gfxBloom = m ? 3.4 : 1; document.body.classList.toggle('gfx-moderno', m); resize(); }
+  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.8 : 0.93; gfxBloom = m ? 2.6 : 1; /* 04/11: brilho menos estourado no modo moderno (lampião, papel, drone) */ document.body.classList.toggle('gfx-moderno', m); resize(); }
 /* WebGPU: o LIMIAR (a cena da alma, limiar.ts) tem 19 efeitos próprios em GLSL. Enquanto ele não é traduzido, a cena é desenhada por um
    WebGL à parte num canvas por cima (o mesmo caminho de antes: pixel em duas resoluções, brilho, acabamento) — o mundo espera lá embaixo,
    então só um dos dois desenha de cada vez. Quando a alma volta, o canvas some e o WebGPU segue. */
@@ -1633,7 +1633,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys };
+(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
@@ -1909,7 +1909,7 @@ const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s <
 /* o relógio do quadro (o THREE.Clock saiu do three 0.18x): segundos desde o quadro anterior */
 const clock = (() => { let last = performance.now(); return { getDelta() { const n = performance.now(), d = (n - last) / 1000; last = n; return d; } }; })();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
-let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpYaw: number | null = null, lockYaw: number | null = null; const lockSys = createLock(); enemyHooks.struck = (e) => lockSys.struck(e); /* recuo de costas (estilo Path of Exile 2) */
+let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpYaw: number | null = null, lockYaw: number | null = null; const lockSys = createLock(); let lockActWas = false; enemyHooks.struck = (e) => lockSys.struck(e); /* recuo de costas (estilo Path of Exile 2) */
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
@@ -2529,7 +2529,10 @@ function frameBody() {
   const run = runningNow() && (game.st.stam > 0.5 || game.st.god) ? 1.5 : 1;
   game.setMoving(!!(ix || iy));
   if (emote.dance && (ix || iy)) { emote.dance = false; if (hero.actName === 'dance') hero.stopAct?.(); } /* andar para a dança na hora */
-  if (casteloSys.sitting && (ix || iy || hero.acting)) { casteloSys.sitting = null; }
+  /* 04/11 (Erling: "o guerreiro está fora da escala, super pequeno… todos com braços pra cima"): levantar do banco com QUALQUER movimento —
+     tecla, clique no chão (caminho), esquiva, golpe, combate, morte, teleporte, troca de classe. Antes só a tecla levantava: andando com o
+     mouse o herói ficava "sentado" em pé (corpo abaixado e braço no joelho). */
+  if (casteloSys.sitting && (ix || iy || hero.acting || state.path.length > 0 || dashT > 0 || hero.combat || game.st.dead || Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) > 0.8)) { casteloSys.sitting = null; }
   const forced = !!hero.actName && ['slam', 'bash', 'combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'rush', 'quake', 'charge', 'jet', 'throw'].includes(hero.actName);
   let actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? 0.3 : hero.guard ? 0.45 : 1;
   let gdx = 0, gdy = 0;
@@ -2550,8 +2553,14 @@ function frameBody() {
   /* 04/11: ALVO PRESO INVISÍVEL (alvo-preso.ts) no lugar da janela curta de recuo. Preso a um bicho, o corpo fica de frente para ele e os pés
      vão para o clique: de costas (mais devagar, pela classe), de lado e na diagonal (meio caminho). Indo para cima dele, anda normal. */
   { const hx = state.fx * T, hz = state.fy * T; const lk = (dashT > 0 || inside || compSys.riding || swimming) ? null : lockSys.update(dt, hx, hz, game.enemies.list, 10 + gaitNow.bp[0] * 2);
-    lockYaw = lk ? Math.atan2(lk.pos.x - hx, lk.pos.z - hz) : null;
-    if (lk && state.moving) { const fy = lockYaw!, my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
+    /* a intenção manda: golpe começando virado para outro bicho troca o alvo (o rosto do golpe já foi para onde o jogador mirou) */
+    if (lk && hero.acting && !lockActWas) lockSys.retarget(lockSys.inCone(hx, hz, entradaSys.aimYaw(), game.enemies.list, 0.77, 9)); /* a mira do golpe (mouse, encaixada no bicho do cone) */
+    lockActWas = hero.acting;
+    /* andando na direção de outro bicho, com o alvo atual de lado ou atrás: troca */
+    if (lk && state.moving) { const my = Math.atan2(gdx, gdy), toL = Math.atan2(lk.pos.x - hx, lk.pos.z - hz); if (Math.cos(my - toL) < 0.3) { const o = lockSys.inCone(hx, hz, my, game.enemies.list, 0.9, 7); if (o && o !== lk) lockSys.retarget(o); } }
+    const lk2 = lockSys.target;
+    lockYaw = lk2 ? Math.atan2(lk2.pos.x - hx, lk2.pos.z - hz) : null;
+    if (lk2 && state.moving) { const fy = lockYaw!, my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
       bpYaw = fy; hero.moveYaw = Math.abs(rel) > 0.2 ? my : null;
       if (c < -0.35) actSlow *= gaitNow.bp[1]; else if (c < 0.6) actSlow *= (1 + gaitNow.bp[1]) / 2; } }
   let boost = 1;
@@ -2575,7 +2584,7 @@ function frameBody() {
   }
   if (!inside) { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); if (colisaoSys.onWall && !rp) colisaoSys.onWall = false; else if (!colisaoSys.onWall && rp && heroY > rampartTop(rp, tx, ty) - 1.5) colisaoSys.onWall = true; } else colisaoSys.onWall = false;
   const wallTop = colisaoSys.onWall ? (() => { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); return rp ? rampartTop(rp, tx, ty) : null; })() : null;
-  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting ? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
+  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting && Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) < 0.3 ? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
   heroY += (tgtY - heroY) * Math.min(1, dt * (swimming ? 6 : 18) + (dt > 0 ? 0 : 1));
   heroPos.set(state.fx * T, heroY, state.fy * T);
   pm('entrada/física');

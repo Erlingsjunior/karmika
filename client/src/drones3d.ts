@@ -10,7 +10,7 @@ const glow = (c: number, o = 1) => new THREE.MeshBasicMaterial({ color: c, trans
 
 export interface HealDrone { g: THREE.Group; rotors: THREE.Object3D[]; lens: THREE.Mesh; beam: THREE.Mesh; beamT: number; tier: number }
 export function buildHealDrone(tier: number): HealDrone {
-  const g = new THREE.Group(), s = 1 + tier * 0.18, trim = std(tier === 2 ? 0xe0c060 : tier === 1 ? COPPER : BRASS), body = std(tier === 2 ? 0xe8efe8 : 0x6a8a7a), dark = std(IRON);
+  const g = new THREE.Group(), s = 1 + tier * 0.18, trim = std(tier === 2 ? 0xe0c060 : tier === 1 ? COPPER : BRASS), body = std(tier === 2 ? 0xbcc4bc : 0x6a8a7a), dark = std(IRON);
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); g.add(o); return o; };
   const core = add(new THREE.SphereGeometry(0.22 * s, 12, 8), body, 0, 0, 0); core.scale.y = 0.62;
   add(new THREE.TorusGeometry(0.22 * s, 0.035 * s, 6, 16), trim, 0, 0, 0).rotation.x = Math.PI / 2;
@@ -22,8 +22,8 @@ export function buildHealDrone(tier: number): HealDrone {
     const arm = add(new THREE.BoxGeometry(0.3 * s, 0.03 * s, 0.04 * s), dark, Math.cos(a) * 0.2 * s, 0.02, Math.sin(a) * 0.2 * s); arm.rotation.y = -a;
     add(new THREE.CylinderGeometry(0.035 * s, 0.035 * s, 0.07 * s, 8), trim, x, 0.04 * s, z);
     const r = new THREE.Group(); r.position.set(x, 0.09 * s, z); g.add(r); rotors.push(r);
-    for (let b = 0; b < 2; b++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.26 * s, 0.008, 0.035 * s), std(0xd8d8d0)); bl.rotation.y = b * Math.PI / 2; r.add(bl); }
-    r.add(new THREE.Mesh(new THREE.CircleGeometry(0.14 * s, 12).rotateX(-Math.PI / 2), glow(0xffffff, 0.12))); }
+    for (let b = 0; b < 2; b++) { const bl = new THREE.Mesh(new THREE.BoxGeometry(0.26 * s, 0.008, 0.035 * s), std(0x9c9c94)); bl.rotation.y = b * Math.PI / 2; r.add(bl); }
+    r.add(new THREE.Mesh(new THREE.CircleGeometry(0.14 * s, 12).rotateX(-Math.PI / 2), glow(0xb8c4cc, 0.06))); } /* 04/11: hélices e o borrão delas mais escuros — o drone branco estourava no brilho */
   if (tier >= 1) for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; add(new THREE.SphereGeometry(0.025 * s, 6, 4), glow(0x7affd0), Math.cos(a) * 0.17 * s, 0.03, Math.sin(a) * 0.17 * s); } // luzes de status
   if (tier >= 2) add(new THREE.ConeGeometry(0.025 * s, 0.2 * s, 5), trim, 0, 0.26 * s, 0); // antena do Mk III
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.12, 1, 8, 1, true).translate(0, -0.5, 0), glow(0x7affd0, 0.0)); beam.visible = false; g.add(beam);

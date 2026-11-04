@@ -5,6 +5,9 @@
      Golpe em área que acerta vários de uma vez não fica pulando: vale o primeiro, e o alvo só troca se o atual ficou 0,6 s sem ser ferido;
    - sem ter ferido ninguém ainda, o bicho hostil mais perto que está vindo (até 7 m);
    - quando o alvo morre, passa para o mais perto (até 9 m), para a luta seguir sem o herói virar de costas no meio do bando.
+   O alvo NÃO prende o jogador (Erling: "tem que respeitar nosso movimento: se a gente se virar pra outro monstro e atacar, o target muda"):
+   - começou um golpe ou magia virado para outro bicho (cone de ~40° na direção do golpe, até 9 m) → o alvo troca para ele na hora;
+   - andou na direção de outro bicho (até 7 m, dentro de ~25° do caminho) e o alvo atual ficou para o lado ou para trás → troca também.
    Solta quando: você se afasta além do alcance da classe (arqueira e caçador seguram de mais longe), ou fica 5 s sem ferir e já está a
    mais de 9 m. Enquanto preso: parado ou andando, o corpo olha para o alvo; os pés vão para onde você manda (de costas, de lado, na diagonal). */
 import type { Enemy } from './enemies';
@@ -30,6 +33,12 @@ export function createLock() {
       function nearest(r: number) { let b: Enemy | null = null, bd = r; for (const e of list) { if (!hostile(e)) continue; const d = dist(e); if (d < bd) { bd = d; b = e; } } return b; }
       return cur;
     },
+    /** o bicho mais perto da linha `yaw` (dentro do cone `cosMin`, até `r` m), ou null */
+    inCone(hx: number, hz: number, yaw: number, list: Enemy[], cosMin: number, r: number) { const fx = Math.sin(yaw), fz = Math.cos(yaw); let b: Enemy | null = null, bs = 1e9;
+      for (const e of list) { if (!hostile(e)) continue; const dx = e.pos.x - hx, dz = e.pos.z - hz, d = Math.hypot(dx, dz); if (d > r || d < 0.2) continue; const c = (dx * fx + dz * fz) / d; if (c < cosMin) continue; const sc = d * (2 - c); if (sc < bs) { bs = sc; b = e; } }
+      return b; },
+    /** a intenção do jogador manda: atacou virado para outro bicho, ou andou na direção dele → o alvo passa a ser esse */
+    retarget(e: Enemy | null) { if (!e || e === cur || !hostile(e)) return; cur = e; hitT = t; },
     clear() { cur = null; },
   };
 }

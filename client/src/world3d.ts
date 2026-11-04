@@ -358,7 +358,7 @@ export function buildWorld(world: World): WorldObjs {
       const bd = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.15, 0.08), wood); ink(bd, 0.02); bd.position.set(0, 1.55, 0); bd.castShadow = true; bg.add(bd);
       for (const y of [0.97, 2.13]) { const tr = new THREE.Mesh(new THREE.BoxGeometry(1.95, 0.08, 0.12), dark); tr.position.set(0, y, 0.01); bg.add(tr); }
       for (const sx of [-1, 1]) { const rf = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.05, 0.5), std(0xffffff, { map: shingleTex(0x4a3020) })); ink(rf, 0.02); rf.position.set(sx * 0.5, 2.62 - 0.12, 0); rf.rotation.z = -sx * 0.32; rf.castShadow = true; bg.add(rf); }
-      const PAPER = [0xe8dcb8, 0xd8c79c, 0xf0e6c8, 0xcdb88e, 0xe2d2a8], rr = (a: number) => (Math.sin(a * 91.7 + wx * 3.1) * 0.5 + 0.5);
+      const PAPER = [0xc9bc98, 0xbcab80, 0xd0c4a2, 0xb19d74, 0xc4b48a] /* 04/11: papel velho, um tom abaixo — sob o lampião ficava branco estourado (Erling: "papel não deveria ser tão reflexivo") */, rr = (a: number) => (Math.sin(a * 91.7 + wx * 3.1) * 0.5 + 0.5);
       const spots: [number, number, number, number][] = [[-0.6, 1.78, 0.42, 0.5], [-0.12, 1.84, 0.36, 0.44], [0.34, 1.74, 0.44, 0.56], [0.7, 1.86, 0.28, 0.36], [-0.66, 1.26, 0.36, 0.42], [-0.2, 1.3, 0.44, 0.36], [0.24, 1.26, 0.3, 0.4], [0.64, 1.3, 0.4, 0.46]];
       spots.forEach(([x, y, w2, h2], i) => {
         const pm = new THREE.Mesh(new THREE.PlaneGeometry(w2, h2), std(PAPER[i % PAPER.length], { side: THREE.DoubleSide })); pm.position.set(x, y, 0.05 + i * 0.002); pm.rotation.z = (rr(i) - 0.5) * 0.3; bg.add(pm);
@@ -663,9 +663,9 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
        toda tocha vira o poste com lampião de fogo pendurado no braço; a chama (com a cor dela) acende dentro do vidro */
     stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785, k = 0.9; put('porto_poste_lampiao', Wm / 2, Dm / 2, ry, k);
     const lx = 0.54 * k, ly = 2.58 * k, lz = 0.21 * k, ox = lx * Math.cos(ry) + lz * Math.sin(ry), oz = -lx * Math.sin(ry) + lz * Math.cos(ry);
-    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.5); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); tc.base = Math.max(tc.base, 52); }
+    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.5); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); tc.base = Math.max(tc.base, 34); } /* 04/11: 52 estourava a armação do lampião, o papel do quadro e quem passa embaixo */
     /* 03/11 (Erling: "a lamparina não tem luz… mal podemos ver, se confunde com os outros itens"): halo quente em volta do vidro, que se vê de longe */
-    { const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampHalo(), color: 0xffb860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.75, fog: false })); halo.scale.setScalar(1.5); halo.position.set(Wm / 2 + ox, ly - 0.05, Dm / 2 + oz); halo.userData.dyn = true; halo.raycast = () => {}; /* o raio-x atravessa (Sprite pede câmera no raycast) */ g.add(halo); } }
+    { const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampHalo(), color: 0xffb860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.42, fog: false })); halo.scale.setScalar(1.15); /* 04/11: mais fraco e menor — a armação de ferro aparece através do brilho */ halo.position.set(Wm / 2 + ox, ly - 0.05, Dm / 2 + oz); halo.userData.dyn = true; halo.raycast = () => {}; /* o raio-x atravessa (Sprite pede câmera no raycast) */ g.add(halo); } }
   else if (p.kind === 'palisade' && W && artGeo('muralha_01')) { /* paliçada: o muro do Herik cobre duas casas por peça (5 m comprimido para 4 m) */
     if (!palSet) { palSet = new Set(); for (const q of W.props) if (q.kind === 'palisade') palSet.add(q.gx * 4096 + q.gy); }
     const ns = (p.variant ?? 0) === 1, idx = ns ? p.gy : p.gx, nx = ns ? p.gx : p.gx + 1, ny = ns ? p.gy + 1 : p.gy, px = ns ? p.gx : p.gx - 1, py = ns ? p.gy - 1 : p.gy;

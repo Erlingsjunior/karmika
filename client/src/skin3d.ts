@@ -14,6 +14,9 @@ type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
 
 export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number; /** escala extra depois do encaixe pelo quadril (elfo 2,10 m sobre o rig de 1,80: 1,167) */ hscale?: number }
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+/** tangente do ângulo do cabo na palma (35°): 0 = cabo atravessado reto */
+const GRIP_DIAG = 0.7;
 const cache = new Map<string, Promise<THREE.Group>>();
 /* material do jogo (Lambert com a textura de cor) em cima da malha do artista: o GLB já traz a textura embutida (JPEG 2048, só cor) */
 function dress(obj: THREE.Object3D, def: SkinDef, tex: THREE.Texture | null) {
@@ -196,6 +199,36 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0, twoDone = false, reach = 0.9, reachKey = '';
   /** comprimento da arma do pegador até a ponta (lado da lâmina/cabeça), na escala local */
   function measureReach(o: THREE.Object3D, sgn: number) { if (!o.parent) return 0.9; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(o, true); o.matrix.copy(m); o.matrixAutoUpdate = au; o.updateMatrixWorld(true); return Math.max(0.2, sgn > 0 ? e.max.y : -e.min.y); }
+  /* ENCAIXE DA PALMA (04/11, Erling: "crie um ponto de colagem no centro da palma da mão e coloque o cabo lá como um encaixe de ímã… isso vale
+     para todas as armas, elas têm o lugar certo de se segurar"). Cada modelo de arma é medido UMA vez: fatias ao longo do comprimento (Y local),
+     a largura de cada fatia; do lado do cabo (o contrário da lâmina/cabeça) acha a parte mais fina e contínua — o cabo. Espada: o meio do cabo,
+     entre o pomo e a guarda. Cabo longo (machado, martelo, maça): a mão vai perto do fim, a um terço do cabo a partir da ponta. Devolve o ponto
+     do cabo em coordenadas da arma; ele é colado no centro da palma. */
+  const gripCache = new Map<string, THREE.Vector3>();
+  function measureGrip(o: THREE.Object3D, sgn: number): THREE.Vector3 {
+    const key = o.children.map((c) => c.uuid).join() + ':' + sgn; const hit = gripCache.get(key); if (hit) return hit;
+    /* em coordenadas da própria arma: ponto_local = (mundo da arma)⁻¹ · (mundo da peça) · vértice */
+    o.updateWorldMatrix(true, true); const inv = o.matrixWorld.clone().invert(), M2 = new THREE.Matrix4();
+    const pts: THREE.Vector3[] = []; const v = new THREE.Vector3();
+    o.traverse((c) => { const g = (c as THREE.Mesh).geometry as THREE.BufferGeometry | undefined; if (!(c as THREE.Mesh).isMesh || !g?.attributes.position) return; const pa = g.attributes.position, st = Math.max(1, Math.floor(pa.count / 3000)); M2.multiplyMatrices(inv, c.matrixWorld);
+      for (let i = 0; i < pa.count; i += st) { v.fromBufferAttribute(pa, i).applyMatrix4(M2); pts.push(v.clone()); } });
+    let out = new THREE.Vector3();
+    if (pts.length > 20) { let y0 = Infinity, y1 = -Infinity; for (const q of pts) { y0 = Math.min(y0, q.y); y1 = Math.max(y1, q.y); }
+      const N = 48, L = y1 - y0 || 1, wid = new Array(N).fill(0), cx = new Array(N).fill(0), cz = new Array(N).fill(0), cnt = new Array(N).fill(0), mnx = new Array(N).fill(Infinity), mxx = new Array(N).fill(-Infinity), mnz = new Array(N).fill(Infinity), mxz = new Array(N).fill(-Infinity);
+      for (const q of pts) { const i = Math.min(N - 1, Math.floor(((q.y - y0) / L) * N)); mnx[i] = Math.min(mnx[i], q.x); mxx[i] = Math.max(mxx[i], q.x); mnz[i] = Math.min(mnz[i], q.z); mxz[i] = Math.max(mxz[i], q.z); cx[i] += q.x; cz[i] += q.z; cnt[i]++; }
+      for (let i = 0; i < N; i++) wid[i] = cnt[i] ? Math.max(mxx[i] - mnx[i], mxz[i] - mnz[i]) : Infinity;
+      /* lado do cabo: o contrário da lâmina (+Y·sgn) */ const idx = (k: number) => (sgn > 0 ? k : N - 1 - k);
+      /* espada: a GUARDA é a fatia mais larga da metade do cabo (a cruzeta); o cabo fica só do lado de fora dela (k menor que a guarda).
+         Sem guarda clara (machado, martelo, maça): procura a parte fina na metade do cabo inteira. */
+      let gk = -1, gw = 0; const H = Math.floor(N * 0.5); for (let k = 0; k < H; k++) { const i = idx(k); if (cnt[i] && wid[i] > gw) { gw = wid[i]; gk = k; } }
+      const ws = [] as number[]; for (let k = 0; k < H; k++) if (cnt[idx(k)]) ws.push(wid[idx(k)]); ws.sort((x, y) => x - y); const med = ws.length ? ws[Math.floor(ws.length / 2)] : 0;
+      const lim = gk > 1 && gw > med * 2.2 ? gk : H; /* com guarda: só procura entre o pomo e a guarda */
+      let best = -1, bw = Infinity; for (let k = 0; k < lim; k++) { const i = idx(k); if (cnt[i] && wid[i] < bw) { bw = wid[i]; best = k; } }
+      if (best >= 0) { let a = best, b = best; while (a > 0 && cnt[idx(a - 1)] && wid[idx(a - 1)] < bw * 1.7) a--; while (b < lim - 1 && cnt[idx(b + 1)] && wid[idx(b + 1)] < bw * 1.7) b++;
+        const run = b - a + 1, kk = run > N * 0.35 ? a + run * 0.3 : (a + b) / 2; /* cabo longo: perto da ponta; espada: o meio */
+        const i = idx(Math.round(kk)), yy = y0 + ((sgn > 0 ? kk : N - 1 - kk) + 0.5) / N * L; out = new THREE.Vector3(cnt[i] ? cx[i] / cnt[i] : 0, yy, cnt[i] ? cz[i] / cnt[i] : 0); } }
+    gripCache.set(key, out); return out;
+  }
   // onde fica a cabeça da arma (fora do eixo do cabo, em Y local): só existe em machado/martelo; espada dá nulo
   function measureHead(o: THREE.Object3D): THREE.Vector3 | null {
     if (!o.parent) return null; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true);
@@ -312,23 +345,69 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const palm = new THREE.Vector3().crossVectors(a, f).normalize().multiplyScalar(DBG.__palmSg ?? 1);
     const grip = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(palm, 0.012 * sc.x).addScaledVector(f, -0.01 * sc.x);
     place(R.sword(), k.clone(), a.clone().negate(), grip);
+    /* PEGADA ANATÔMICA (04/11, Erling: "preste muita atenção no giro do pulso, o pulso não condiz com a segurada da espada… crie as regras
+       de movimento do esqueleto músculo-esquelético"). Antes a arma era encaixada no punho e DEPOIS girada sozinha para a direção que o
+       esqueleto pedia — o cabo atravessava a mão torto. Agora é o corpo que leva a arma, na ordem da anatomia:
+       1) o ANTEBRAÇO gira no próprio eixo (pronação/supinação, até ~75° de cada lado) para pôr o fio no plano certo;
+       2) o PULSO desvia para o lado do mindinho (ulnar, até 30°) ou do polegar (radial, até 20°) para apontar a lâmina;
+       3) a arma sai do punho fechado: o cabo atravessa a mão do mindinho ao indicador, sempre.
+       O que passar desses limites a arma não alcança — vale a anatomia, nunca uma dobra que a mão não faz. (regras-imutaveis.md, regra do esqueleto) */
+    const TA0 = hero.actName, toolAct = tool && (TA0 === 'chop' || TA0 === 'mine' || TA0 === 'skin' || TA0 === 'herb');
+    const swA = R.sword(); let anatDone = false;
+    if (!toolAct && swA && swA.parent && bladeSign && !(window as unknown as { __oldGrip?: number }).__oldGrip) {
+      const rqA = root.getWorldQuaternion(new THREE.Quaternion());
+      const D = new THREE.Vector3(0, bladeSign, 0).applyQuaternion(swA.parent.getWorldQuaternion(new THREE.Quaternion()).multiply(swA.quaternion)).normalize();
+      if (MIRROR) { D.applyQuaternion(rqA.clone().invert()); D.x = -D.x; D.applyQuaternion(rqA); }
+      if (!hero.acting) { /* em guarda: a lâmina de pé à frente (florete, adaga, garras e besta apontam para o inimigo; kunai invertida; porrete ao alto) */
+        const wc = (hero as unknown as { wcls?: string }).wcls ?? 'one', fw = new THREE.Vector3(0, 0, 1).applyQuaternion(rqA), up = new THREE.Vector3(0, 1, 0);
+        const tgG = wc === 'fence' || wc === 'dagger' || wc === 'claw' || wc === 'hxbow' ? fw.clone().multiplyScalar(0.97).addScaledVector(up, 0.12) : wc === 'kunai' ? fw.clone().multiplyScalar(0.3).addScaledVector(up, -0.95) : wc === 'club' ? fw.clone().multiplyScalar(-0.35).addScaledVector(up, 0.9) : fw.clone().multiplyScalar(0.55).addScaledVector(up, 0.83);
+        const kG = hero.combat || hero.guard ? 0.85 : 0.35; D.lerp(tgG.normalize(), kG).normalize(); }
+      const bladeNow = () => { const e = swA.matrixWorld.elements; return new THREE.Vector3(e[4], e[5], e[6]).normalize().multiplyScalar(bladeSign); };
+      const reGrip = () => { model.updateMatrixWorld(true); W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); const a1 = ay.subVectors(vI, vP).normalize().multiplyScalar(DBG.__bladeSg ?? -1), f1 = new THREE.Vector3().subVectors(vM, vH).normalize();
+        const k1 = f1.clone().sub(a1.clone().multiplyScalar(f1.dot(a1))).normalize(), pm = new THREE.Vector3().crossVectors(a1, f1).normalize().multiplyScalar(DBG.__palmSg ?? 1);
+        const g1 = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(pm, 0.012 * sc.x).addScaledVector(f1, -0.01 * sc.x);
+        /* o cabo corre na DIAGONAL da palma: da base do indicador até a base da mão do lado do mindinho (~35°) — a lâmina sai inclinada
+           para o lado dos dedos; com o desvio ulnar, fica a ~25° da linha do antebraço (é assim que a estocada sai reta) */
+        const thumb = vI.clone().sub(vP).normalize(), tb = thumb.clone().addScaledVector(k1, GRIP_DIAG).normalize(); /* a lâmina sai do lado do POLEGAR (o modelo da espada tem a lâmina em ±Y: bladeSign) */
+        /* o centro do PUNHO FECHADO: o buraco que os dedos dobrados fazem — a média das três juntas do dedo médio (já dobradas) e de um ponto da palma
+           logo atrás dos nós. É ali que o cabo passa. */
+        const m2 = B(swordSide + 'HandMiddle2'), m3 = B(swordSide + 'HandMiddle3');
+        const palmC = m2 && m3 ? vM.clone().add(W(m2, new THREE.Vector3())).add(W(m3, new THREE.Vector3())).add(vM.clone().lerp(vH, 0.15)).multiplyScalar(0.25) : vH.clone().lerp(vM, 0.55).addScaledVector(pm, 0.024 * sc.x);
+        const yA = tb.clone().multiplyScalar(bladeSign), xA = k1.clone().addScaledVector(thumb, -GRIP_DIAG).normalize();
+        place(swA, xA.clone(), yA.clone(), palmC);
+        const gl = swA.localToWorld(measureGrip(swA, bladeSign).clone()).sub(palmC); /* onde caiu o ponto do cabo: puxa a arma até ele colar na palma */
+        place(swA, xA.clone(), yA.clone(), palmC.clone().sub(gl)); void g1; return f1; };
+      const rotW = (b: THREE.Object3D, axis: THREE.Vector3, ang: number) => { b.updateWorldMatrix(true, false); const pw = b.parent!.getWorldQuaternion(new THREE.Quaternion()), bw = b.getWorldQuaternion(new THREE.Quaternion());
+        b.quaternion.copy(pw.invert().multiply(new THREE.Quaternion().setFromAxisAngle(axis, ang).multiply(bw))); b.updateMatrixWorld(true); };
+      const sgnAng = (u: THREE.Vector3, v: THREE.Vector3, n: THREE.Vector3) => Math.atan2(new THREE.Vector3().crossVectors(u, v).dot(n), u.dot(v));
+      const fore = B(swordSide + 'ForeArm');
+      if (fore) { /* 1) pronação/supinação: o antebraço gira no eixo dele até o plano da lâmina bater com o pedido */
+        const fa = W(sH, new THREE.Vector3()).sub(W(fore, new THREE.Vector3())).normalize(); let bd = bladeNow();
+        const pB = bd.clone().addScaledVector(fa, -bd.dot(fa)), pD = D.clone().addScaledVector(fa, -D.dot(fa));
+        const wD = clamp(pD.length() / 0.45, 0, 1); /* lâmina pedida quase na linha do antebraço: o giro do antebraço não decide nada (o plano fica indefinido) — some suave */
+        if (pB.lengthSq() > 1e-4 && pD.lengthSq() > 1e-4) { const tau = clamp(sgnAng(pB.normalize(), pD.normalize(), fa), -1.55, 1.55) * wD; rotW(fore, fa, tau); }
+        /* 2) desvio do pulso, no plano da lâmina com os dedos: + para o lado dos dedos = ulnar (até 30°), − = radial (até 20°) */
+        const f1 = reGrip(); bd = bladeNow(); const fp = f1.clone().addScaledVector(bd, -f1.dot(bd)); if (fp.lengthSq() > 1e-4) { fp.normalize(); const n = new THREE.Vector3().crossVectors(bd, fp).normalize();
+          const want = Math.atan2(D.dot(fp), D.dot(bd)), dev = clamp(want, -0.35, 0.52); rotW(sH, n, dev); }
+        reGrip(); anatDone = true; }
+    }
     // ofícios (machado, picareta, faca, alicate): a ferramenta segue exatamente a orientação do esqueleto procedural (espelhada como o resto), presa na mão do modelo
     const TA = hero.actName, wcN = (hero as unknown as { wcls?: string }).wcls ?? 'one'; /* 02/11: florete, adaga, garras, porrete, besta de mão, kunai e arco seguem a direção que o esqueleto calcula para a arma (estocada reta, garrada, arremesso) */
-    if ((tool && (TA === 'chop' || TA === 'mine' || TA === 'skin' || TA === 'herb')) || (!tool && wcN !== 'one' && wcN !== 'two')) { const swT = R.sword(); if (swT && swT.parent) {
+    if ((tool && (TA === 'chop' || TA === 'mine' || TA === 'skin' || TA === 'herb')) || (!anatDone && !tool && wcN !== 'one' && wcN !== 'two')) { const swT = R.sword(); if (swT && swT.parent) {
       const pw = swT.parent.getWorldQuaternion(new THREE.Quaternion()).multiply(swT.quaternion), rq = root.getWorldQuaternion(new THREE.Quaternion());
       const qw = pw; void rq; /* o esqueleto procedural e o modelo dividem o mesmo mundo: a orientação vale como está */
       root.matrixWorld.decompose(vF, tq, sc); mw.compose(grip, qw, sc); swT.parent.updateWorldMatrix(true, false); mi.copy(swT.parent.matrixWorld).invert(); swT.matrixAutoUpdate = false; swT.matrix.multiplyMatrices(mi, mw); swT.updateMatrixWorld(true); }
       return; }
     // inclinação da espada vinda do procedural (pulso/“hang”/golpes): rotação relativa ao pulso, calibrada no repouso
     const sw = R.sword(), wr = R.armR.wr!;
-    if (sw && sw.parent && R0inv && !(window as unknown as { __norel?: number }).__norel) {
+    if (!anatDone && sw && sw.parent && R0inv && !(window as unknown as { __norel?: number }).__norel) {
       const proc = sw.parent.getWorldQuaternion(new THREE.Quaternion()).multiply(sw.quaternion);
       const rel = wr.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(proc).premultiply(R0inv); // desvio desde o repouso, no referencial do pulso
       if (MIRROR && ((window as unknown as { __mrel?: number }).__mrel ?? 1)) rel.set(rel.x, -rel.y, -rel.z, rel.w);
       sw.matrix.decompose(vF, tq, sc); sw.matrix.compose(vF, tq.multiply(rel), sc); sw.updateMatrixWorld(true);
     }
     // em guarda (sem golpe): a lâmina nunca fica tombada para trás; sobe e aponta para a frente do herói
-    if (sw && bladeSign) { const want = hero.acting ? 0 : 1; leanK += (want - leanK) * 0.2;
+    if (!anatDone && sw && bladeSign) { const want = hero.acting ? 0 : 1; leanK += (want - leanK) * 0.2;
       if (leanK > 0.01) { const e = sw.matrixWorld.elements; const bd = new THREE.Vector3(e[4], e[5], e[6]).normalize().multiplyScalar(bladeSign);
         const fw = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(tq)), up = new THREE.Vector3(0, 1, 0);
         const wc = (hero as unknown as { wcls?: string }).wcls ?? 'one'; /* 02/11: florete, adaga, garras e besta de mão apontam para o inimigo; kunai em pegada invertida; porrete para o alto */
