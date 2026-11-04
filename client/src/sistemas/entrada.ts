@@ -56,9 +56,12 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
   } else if (sk.id === 'pounce') { // Salto da Fera: o mesmo arco do salto marcado
     let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = K.game.useExtra('pounce', yaw, sk.cost, { x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
-  } else if (sk.id === 'blink') { // Piscar / Passo Sombrio: some e reaparece até 8 m à frente, em chão livre
-    const dl = Math.min(8 * 1, Math.hypot(a.x - hx, a.z - hz) || 8), dx = Math.sin(yaw), dz = Math.cos(yaw); let tx = hx + dx * dl, tz = hz + dz * dl; for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
-    ok = K.game.useExtra('blink', yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); }
+  } else if (sk.id === 'backleap') { // 04/11 Salto de Recuo (elfo): 7 m para trás, sem virar as costas; a flecha sai no ar
+    const bx = -Math.sin(yaw), bz = -Math.cos(yaw); let tx = hx + bx * 7, tz = hz + bz * 7; for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
+    ok = K.game.useExtra('backleap', yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.path = []; const x0 = hx, z0 = hz, t0 = performance.now(), D = 340; const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - (1 - k) * (1 - k); const x = x0 + (tx - x0) * e, z = z0 + (tz - z0) * e; K.hero.root.position.x = x; K.hero.root.position.z = z; K.state.fx = x / T; K.state.fy = z / T; if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+  } else if (sk.id === 'blink' || sk.id === 'leafstep') { // Piscar / Passo Sombrio / Folha ao Vento: some e reaparece à frente, em chão livre
+    const dl = Math.min((sk.id === 'leafstep' ? 10 : 8) * 1, Math.hypot(a.x - hx, a.z - hz) || 8), dx = Math.sin(yaw), dz = Math.cos(yaw); let tx = hx + dx * dl, tz = hz + dz * dl; for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
+    ok = K.game.useExtra(sk.id, yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); }
   } else if (sk.id === 'bash') ok = K.game.bash(yaw, { x: a.x, z: a.z });
   else if (sk.id === 'heal') ok = K.game.heal(heroPosNow(), { x: a.x, z: a.z });
   else ok = K.game.useExtra(sk.id, yaw, sk.cost, { x: a.x, z: a.z });
