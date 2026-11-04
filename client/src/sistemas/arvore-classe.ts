@@ -29,6 +29,8 @@ const ownedKits = (): KitKey[] => { let ci: { name: string; past?: { name: strin
 const kitName = (k: KitKey): string => { let ci: { name: string; past?: { name: string }[] } = { name: 'Humano' }; try { ci = K.game.classInfo; } catch { /* */ } const n = ['Humano', ...(ci.past ?? []).map((p) => p.name), ci.name].find((x) => x && kitOfClass(x) === k) ?? 'Humano'; return K.profile?.sex === 'f' ? FEM[n] ?? n : n; };
 /** a barra da classe atual + as magias aprendidas nas abas anteriores (nos espaços livres) */
 function applyKitAll() { const cur = kitRace(); setKitExtras(cur, ownedKits().filter((k) => k !== cur).flatMap((k) => (KITS[k] ?? []).filter((d) => tree.rank(d.id, k) > 0))); applyKit(cur, K.game.st.lvl, (k) => tree.rank(k)); }
+/** os níveis de classe da vida inteira: a classe atual + as que vieram antes (a árvore é uma só e continua subindo) */
+const clsLvl = () => { try { const c = K.game.classInfo; return c.lvl + (c.past ?? []).reduce((a: number, q: { lvl: number }) => a + (q.lvl ?? 0), 0); } catch { return 1; } };
 const tree = createSkillTree(kitRace, () => K.game.st.lvl, (t, c) => K.game.logMsg(t, c), treeTitle, ownedKits, kitName);
 /* 03/11: as passivas do compêndio (passivas.ts) somam por cima do rank da magia */
 const compKit = (): string => { const k = kitRace() as string; return k === 'human' && K.profile?.origin === 'elf' ? 'elf' : k === 'human' && K.profile?.origin === 'dwarf' ? 'dwarf' : k; };
@@ -37,16 +39,17 @@ const kitSkills = () => (KITS[kitRace()] ?? []).map((d) => ({ id: d.id as string
    anões têm outras, elfos outras"): as PASSIVAS são da RAÇA de nascimento (humano, anão ou elfo), em qualquer classe e grau de classe.
    As MAGIAS continuam da classe (e do grau da classe); os TALENTOS são uma árvore só, igual para todos. */
 const passKit = (): string => { const o = K.profile?.origin; return o === 'elf' || o === 'dwarf' ? o : 'human'; };
-tree.setExtraSpent(() => passSpent([passKit()]));
+/* O MONTE ÚNICO (04/11): 3 pontos por nível de classe (somando as classes da vida) + 3 do começo (as três básicas); gastos em habilidades,
+   passivas ou talentos — o que sobra aparece nas três abas */
+tree.setTotal(() => 3 + 3 * clsLvl());
+tree.setExtraSpent(() => passSpent([passKit()]) + talents.spent());
 loadComp(compKit()); loadComp(passKit()); onCompLoad(() => K.game.st.recalc?.());
 K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(passKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 /* 04/11 (Erling: "a árvore de talentos dá velocidade, defesa, vitalidade, força, destreza… pode ser a mesma em todas as classes e níveis
    de classe, ela vai subindo e auxiliando o personagem"): UMA árvore para todos (raça e classe não mudam a árvore) */
 const talentKit = (): string => 'geral';
-/** os níveis de classe da vida inteira: a classe atual + as que vieram antes (a árvore é uma só e continua subindo) */
-const clsLvl = () => { try { const c = K.game.classInfo; return c.lvl + (c.past ?? []).reduce((a: number, q: { lvl: number }) => a + (q.lvl ?? 0), 0); } catch { return 1; } };
-const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); });
+const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); }, () => tree.available());
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
 /** guerreiro do Norte: classe ou caminho validado */

@@ -1,3 +1,4 @@
+import { useScroll } from './esquecimento';
 import { confirmBox } from './windows';
 /** Árvore Kármica de magias: 1 ponto por nível, caminhos que abrem magias, até 10 pontos por magia (Bronze 3, Prata 6, Ouro 10).
  *  Cada ponto deixa a magia mais forte, longa e larga; a cada 5 pontos ela sobe de "tier" e muda a apresentação. */
@@ -210,7 +211,10 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
   const rkV = (id: string) => rankIn(id, vr());
   const spent1 = (r: Race) => (TREES[r] ?? []).reduce((a, n) => a + rankIn(n.id, r), 0);
   const spent = () => ownedL().reduce((a, r) => a + spent1(r), 0);
-  const total = () => 2 + lvl() * PER_LEVEL + bonus; // 3 no nível 1 (as três magias básicas), depois 1 por nível
+  /* 04/11 (Erling: "quando subimos de classe recebemos 3 pontos; os MESMOS 3 pontos podem ser usados nas 3 abas: habilidades, passivas ou
+     talentos — o jogador escolhe"): o total vem de fora (arvore-classe.ts: 3 por nível de classe da vida); sem isso, o antigo (1 por nível) */
+  let totalF: (() => number) | null = null;
+  const total = () => (totalF ? totalF() : 2 + lvl() * PER_LEVEL) + bonus;
   /** 03/11: os pontos que as passivas do compêndio gastam saem do mesmo monte (passivas.ts) */
   let extraSpent = () => 0;
   const available = () => Math.max(0, total() - spent() - extraSpent());
@@ -273,7 +277,7 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
     const sc = scale(selId), why = blocked(selId), rk = rkV(selId);
     const next = rk < 3 ? 3 : rk < 6 ? 6 : 10;
     el.innerHTML = `<div class="pn skpn"><h2>🌳 Árvore Kármica — ${nameOf && ownedL().length > 1 ? nameOf(r) : title ? title() : r === 'human' ? 'Humano' : r === 'nordic' ? 'Guerreira Nórdica' : r === 'dwarf' ? 'Anão' : 'Tecnocrata'} <button data-x>✕</button></h2>
-      ${ownedL().length > 1 ? `<div class="ktabs">${ownedL().map((q, i) => `${i ? '<span class="karr" title="mudança de classe">➜</span>' : ''}<button data-tab="${q}" class="${q === r ? 'on' : ''}">${nameOf ? nameOf(q) : q}${q === race() ? ' <i>· atual</i>' : ''}</button>`).join('')}</div>` : ''}<div class="tree-top"><span class="pts ${available() ? 'on' : ''}">${available()} ponto${available() === 1 ? '' : 's'} para gastar</span><small>Nível ${lvl()} · 1 ponto por nível · máx. ${cap()} por magia agora · ${spent()} gastos</small><button data-reset title="Redistribuir todos os pontos">↺ Redistribuir</button></div>
+      ${ownedL().length > 1 ? `<div class="ktabs">${ownedL().map((q, i) => `${i ? '<span class="karr" title="mudança de classe">➜</span>' : ''}<button data-tab="${q}" class="${q === r ? 'on' : ''}">${nameOf ? nameOf(q) : q}${q === race() ? ' <i>· atual</i>' : ''}</button>`).join('')}</div>` : ''}<div class="tree-top"><span class="pts ${available() ? 'on' : ''}">${available()} ponto${available() === 1 ? '' : 's'} para gastar</span><small>3 pontos por nível de classe, o mesmo monte das Passivas e dos Talentos · máx. ${cap()} por habilidade agora · ${spent()} nas habilidades</small><button data-reset title="Redistribuir (gasta um Pergaminho do Esquecimento das Habilidades)">↺ Redistribuir</button></div>
       <div class="tree-body"><div class="treew"><div class="tree" style="width:${cols * W}px;height:${rows * H}px"><svg width="${cols * W}" height="${rows * H}">${lines.join('')}</svg>${html}</div></div>
       <div class="tdet">${d ? `<div class="th"><div class="ic" style="--c:${d.c}">${d.svg}</div><div><b>${d.name}</b><small>Tecla [${keyOf(race(), d.id)}] · ${rk ? `${rk}/${MAX_RANK} · ${TIER_NAMES[sc.tier]}` : 'não aprendida'}</small></div></div>
         <p class="tip">${d.tip}</p>
@@ -282,11 +286,11 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
         <small class="nx">${rk >= MAX_RANK ? 'Magia no máximo.' : `Próxima evolução visual em ${next} ponto${next > 1 ? 's' : ''}. Cada ponto: +4% de dano (somado), +4% alcance e área, +5% duração, −2% custo.`}</small>
         <button class="inv ${why ? 'off' : ''}" data-inv="${selId}" ${why ? 'disabled' : ''}>${why ? why : rk ? `+1 ponto em ${d.name}` : `Aprender ${d.name} (1 ponto)`}</button>` : ''}</div></div>
       ${(() => { const L = ownedL(), at = L.indexOf(r); return at >= 0 && at < L.length - 1 ? `<button class="knext" data-tab="${L[at + 1]}">⬇ Mudança de classe: <b>${nameOf ? nameOf(L[at + 1]) : L[at + 1]}</b> — as magias daqui continuam suas</button>` : ''; })()}<small class="ft">Clique numa magia para ver a ficha · Esc fecha${ownedL().length > 1 ? ' · os pontos são um monte só, para todas as abas' : ''}</small></div>`;
-    el.onclick = (e) => { const t = e.target as HTMLElement; { const tb = t.closest('[data-tab]') as HTMLElement | null; if (tb) { view = tb.dataset.tab as Race; onSel('combo'); return; } } const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { confirmBox('Redistribuir todos os pontos desta personagem?', 'Redistribuir', () => { reset(); onSel(selId); }); } };
+    el.onclick = (e) => { const t = e.target as HTMLElement; { const tb = t.closest('[data-tab]') as HTMLElement | null; if (tb) { view = tb.dataset.tab as Race; onSel('combo'); return; } } const n = t.closest('[data-n]') as HTMLElement | null; if (n) { onSel(n.dataset.n!); return; } const b = t.closest('[data-inv]') as HTMLElement | null; if (b && !b.hasAttribute('disabled')) { onInvest(b.dataset.inv!); return; } if (t.closest('[data-reset]')) { confirmBox('Redistribuir as habilidades? Gasta um Pergaminho do Esquecimento das Habilidades.', 'Redistribuir', () => { if (!useScroll('esq_hab')) return; reset(); onSel(selId); }); } };
   }
   /** classe nova (29/10): a aba nova começa só com o golpe básico — os pontos ficam livres para você escolher (o migrate antigo dava 1 ponto em tudo) */
   const startClass = () => { const r = race(); if (!migrated.includes(r)) migrated.push(r); if (!ranks[key(r, 'combo')]) ranks[key(r, 'combo')] = 1; save(); };
   /** a aba aberta (null = a da classe atual) */
   const setView = (r: Race | null) => { view = r; };
-  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL, setExtraSpent(f: () => number) { extraSpent = f; }, view: () => vr(), lvl };
+  return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL, setExtraSpent(f: () => number) { extraSpent = f; }, setTotal(f: () => number) { totalF = f; }, view: () => vr(), lvl };
 }

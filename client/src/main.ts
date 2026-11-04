@@ -107,6 +107,7 @@ import { createChat } from './chat';
 
 import { DEFS, enemyHooks } from './enemies';
 import { createLock } from './alvo-preso';
+import { bindScrolls } from './esquecimento';
 import { biomeAt, heightAt, groundH, rampartAt, rampartTop, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 
@@ -678,6 +679,7 @@ const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno',
     return r; }, onCraft: (n) => { quests?.onCraft(n); feats.bump('crafts'); },
   placeFire: () => { const gx = Math.floor(state.fx), gy = Math.floor(state.fy); const t0 = city.map[gy]?.[gx]; if (t0 !== 'grass' && t0 !== 'road') { game.logMsg('Não dá para acender aqui.', '#ff9a8a'); return false; } if (nearProps(gx, gy, ['campfire'], 1).length) { game.logMsg('Já existe uma fogueira aqui.', '#ff9a8a'); return false; } const p = { kind: 'campfire' as const, gx, gy, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }; objs.addProp(p); idx(p); return true; },
 });
+bindScrolls(inv, (t, c) => game.logMsg(t, c)); /* 04/11: os Pergaminhos do Esquecimento (esquecimento.ts) */
 game.setFits((g) => !inv.whyNot(g)); /* 02/11: regra 1 em 3 — ver spawnGear */
 { const orig = game.logMsg; game.logMsg = (t: string, c?: string) => { orig(t, c); if (t.startsWith('📜') || t.startsWith('✅') || t.startsWith('👁') || t.startsWith('✦') || t.startsWith('🏅')) chat.sys(t); }; }
 syncGear(); renderQuick();

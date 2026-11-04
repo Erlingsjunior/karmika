@@ -210,11 +210,11 @@ export const classNameOf = (kit: string) => (C[kit] ?? C.human).name;
    cada level up pontua uma coisa diferente… precisamos de mais escolhas, mais builds"): 3 pontos de talento por NÍVEL DE CLASSE */
 export const talentPoints = (clsLvl: number) => Math.max(3, clsLvl * 3);
 
-export function createTalents(kit: () => string, lvl: () => number, onChange: () => void) {
+export function createTalents(kit: () => string, lvl: () => number, onChange: () => void, pool?: () => number) {
   const KEY = 'karmika.talents.v1'; let all: Record<string, string[]> = {}; try { all = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { /* */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* */ } };
   const lit = (): Set<string> => new Set(['o', ...(all[kit()] ?? [])]);
-  const spent = () => (all[kit()] ?? []).length, avail = () => Math.max(0, talentPoints(lvl()) - spent());
+  const spent = () => (all[kit()] ?? []).length, avail = () => pool ? Math.max(0, pool()) : Math.max(0, talentPoints(lvl()) - spent()); /* pool = os pontos livres do monte único (habilidades + passivas + talentos) */
   const nodes = () => treeOf(kit()), byId = (id: string) => nodes().find((n) => n.id === id);
   /** dá para acender: ligado a um aceso e há ponto */
   /** pontos gastos num braço */

@@ -21,6 +21,9 @@ export const PROFS: Prof[] = [
 interface Recipe { id: string; prof: ProfId; lvl: number; /** receita de especialização: só estas classes fazem (25/10) */ cls?: string[]; need: [string, number][]; keep?: string[]; out?: [string, number]; gear?: Slot; label?: string; inv?: string; /** fornalha quente (carvão potencializado): a peça sai no mínimo desta raridade */ minR?: Rarity }
 export const RECIPES2: Recipe[] = [
   /* RECEITAS DE ESPECIALIZAÇÃO (Erling, 25/10): de alto nível, e só quem tem a classe certa faz. É o que cura a fraqueza de outro caminho. */
+  { id: 'esq_hab', prof: 'alquimista', lvl: 25, cls: ['Mago', 'Bruxo'], need: [['herb_m', 3], ['dust', 2], ['hide', 1]], out: ['esq_hab', 1], label: 'Pergaminho do Esquecimento das Habilidades (magos e bruxos)' },
+  { id: 'esq_pas', prof: 'alquimista', lvl: 25, cls: ['Mago', 'Bruxo'], need: [['herb_m', 3], ['dust', 2], ['hide', 1]], out: ['esq_pas', 1], label: 'Pergaminho do Esquecimento das Passivas (magos e bruxos)' },
+  { id: 'esq_tal', prof: 'alquimista', lvl: 30, cls: ['Mago', 'Bruxo'], need: [['herb_m', 4], ['dust', 3], ['hide', 1]], out: ['esq_tal', 1], label: 'Pergaminho do Esquecimento dos Talentos (magos e bruxos)' },
   { id: 'areia_astral', prof: 'alquimista', lvl: 30, cls: ['Mago'], need: [['dust', 3], ['gem', 1]], out: ['areia_astral', 2], label: 'Areia da Iluminação Astral (só magos)' },
   { id: 'cinzas_mortos', prof: 'alquimista', lvl: 30, cls: ['Bruxo'], need: [['wood', 4], ['dust', 2]], out: ['cinzas_mortos', 2], label: 'Cinzas dos Mortos (só bruxos)' },
   { id: 'incenso_m', prof: 'alquimista', lvl: 35, cls: ['Mago', 'Bruxo'], need: [['areia_astral', 1], ['cinzas_mortos', 1], ['herb_m', 2], ['sap', 1]], out: ['incenso_m', 1], label: 'Kit de Incensos de Mortificação (magos e bruxos)' },

@@ -1,7 +1,8 @@
 /* a janela da ÁRVORE DE TALENTOS (aba ao lado das magias, tecla K): constelação em SVG. Clique acende (se ligado a um aceso e houver ponto),
    botão direito apaga (se não segurar outros). O painel do lado mostra o ponto e a soma de tudo. (03/11) */
-import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, talentPoints, RUNE_TALENT, GATES, ANGS } from '../talentos';
+import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, RUNE_TALENT, GATES, ANGS } from '../talentos';
 import { RUNAS } from '../runas';
+import { useScroll } from '../esquecimento';
 /* símbolo de cada atributo, desenhado dentro do círculo */
 const SYM: Record<TStat, string> = { str: '✊', dex: '➹', vit: '❤', int: '✦', hp: '❤', dmg: '⚔', crit: '✶', arm: '⛨', move: '➶', aspd: '⚡', cdr: '⟳', regen: '✚', gen: '◈', leech: '♦', heal: '✚', mp: '◆' };
 /* o centro é o OLHO KÁRMICO (04/11, Erling: "o símbolo do meio não é um yin-yang, é o olho karmiko") */
@@ -76,7 +77,7 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
       <div class="evo">${prog}</div>`;
   det += `<h4>Tudo o que está aceso</h4><div class="lines sum">${sumL}</div>`;
   el.innerHTML = `${CSS}<div class="pn skpn"><h2>🌳 Árvore Kármica — ${kit === 'geral' ? 'Talentos' : classNameOf(kit)} <button data-x>✕</button></h2>
-    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Níveis de classe (todas as classes da vida) ${lvl} · 3 pontos por nível de classe · ${talentPoints(lvl)} no total · ${T.spent()} gastos</small><button data-treset title="Apagar tudo e devolver os pontos">↺ Redistribuir</button></div>
+    <div class="tree-top"><span class="pts ${T.avail() ? 'on' : ''}">${T.avail()} ponto${T.avail() === 1 ? '' : 's'} para gastar</span><small>Níveis de classe da vida ${lvl} · 3 pontos por nível de classe, o mesmo monte das Habilidades e Passivas · ${T.spent()} nos talentos</small><button data-treset title="Redistribuir (gasta um Pergaminho do Esquecimento dos Talentos)">↺ Redistribuir</button></div>
     <div class="tree-body"><div class="treew"><div class="talw"><div class="tzoom"><button data-tz="1" title="Aproximar (roda do mouse)">＋</button><button data-tz="-1" title="Afastar">－</button><button data-tz="0" title="Ver a árvore inteira">⤢</button></div><svg class="tsvg" viewBox="${vb()}"><defs><filter id="tglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="4"/></filter></defs>${stars}${orbits}${lines}${dots}${labels}</svg><div class="ttip" hidden></div></div></div>
     <div class="tdet">${det}</div></div>
     <small class="ft">Clique num ponto para ver a ficha e acender · botão direito apaga · Esc fecha</small></div>`;
@@ -102,5 +103,5 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
   el.querySelector('[data-take]')?.addEventListener('click', (e) => { e.stopPropagation(); if (sel.id) T.take(sel.id); rerender(); });
   el.querySelector('[data-drop]')?.addEventListener('click', (e) => { e.stopPropagation(); if (sel.id) T.drop(sel.id); rerender(); });
   el.querySelectorAll<HTMLButtonElement>('[data-rune]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); if (sel.id) T.setRune(sel.id, b.dataset.rune || null); rerender(); }));
-  el.querySelector('[data-treset]')?.addEventListener('click', (e) => { e.stopPropagation(); T.reset(); sel.id = null; rerender(); });
+  el.querySelector('[data-treset]')?.addEventListener('click', (e) => { e.stopPropagation(); if (!useScroll('esq_tal')) return; T.reset(); sel.id = null; rerender(); });
 }
