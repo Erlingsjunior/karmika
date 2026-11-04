@@ -85,6 +85,8 @@ export function createNet(ctx: NetCtx) {
   const changed = () => { for (const f of listeners) f(); };
   const xh = new Map<string, (from: number, m: Record<string, unknown>) => void>(); // eventos da etapa 2 (monstros, ...): o servidor só repassa
   const send = (m: object) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); };
+  /** mensagens da sala que não são do mundo (relatório de bug, painel do dono, aviso do criador) */
+  const mh = new Map<string, (m: Record<string, unknown>) => void>();
 
   function buildHero(r: Remote) {
     if (r.hero) { ctx.scene.remove(r.hero.root); r.hero = null; r.skinTick = null; }
@@ -148,7 +150,7 @@ export function createNet(ctx: NetCtx) {
         if (r) { const p = r.el.querySelector('p') as HTMLElement; p.textContent = m.text as string; p.style.display = 'block'; r.bubbleT = 5; }
         break;
       }
-      default: if (typeof m.t === 'string' && m.t.startsWith('x:')) { try { xh.get(m.t)?.(m.id as number, m); } catch (err) { console.warn('[net]', m.t, err); } } break;
+      default: { const mh0 = mh.get(String(m.t)); if (mh0) { try { mh0(m); } catch (err) { console.warn('[net]', m.t, err); } } else if (typeof m.t === 'string' && m.t.startsWith('x:')) { try { xh.get(m.t)?.(m.id as number, m); } catch (err) { console.warn('[net]', m.t, err); } } break; }
       case 'mail': ctx.mail?.(m.letter); break;
       case 'mail:ok': if (!m.online) ctx.sys(`📮 ${m.to} não está na sala: a carta fica guardada no servidor e chega quando entrar.`, '#c8d8f0'); break;
       case 'posts': posts = (m.list as NetPost[]) ?? []; ctx.posts?.(posts); break;
@@ -246,6 +248,10 @@ export function createNet(ctx: NetCtx) {
         for (const yy of [0.2, 0.9, 1.6]) { tmpB.set(p.x, p.y + yy, p.z).project(ctx.camera); const sx = rc.left + (tmpB.x * 0.5 + 0.5) * rc.width, sy = rc.top + (-tmpB.y * 0.5 + 0.5) * rc.height; const d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = r.id; } } }
       tmpB.set(0, 0, 0); return bd < 46 ? best : 0;
     },
+    /** manda uma mensagem crua para a sala (false = não está conectado) */
+    raw(m: Record<string, unknown>) { if (!ws || ws.readyState !== 1) return false; send(m); return true; },
+    /** ouve um tipo de mensagem da sala */
+    on(t: string, f: (m: Record<string, unknown>) => void) { mh.set(t, f); },
     /** força reenviar a roupa já (troca de equipamento) */
     lookNow() { lookT = 0; },
     get state() { return state; }, get isHost() { return amHost; }, get ping() { return ping; }, get address() { return addr; }, get code() { return code; },

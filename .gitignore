@@ -6,3 +6,5 @@ desktop/release/
 *.log
 .DS_Store
 desktop/sala-dados.json
+desktop/bugs/
+desktop/dono-chave.txt

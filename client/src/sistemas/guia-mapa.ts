@@ -4,6 +4,9 @@ import { TILE_M as T } from '@karmika/shared';
 import { DEFS } from '../enemies';
 import * as THREE from 'three';
 import { fine } from '../dual3d';
+import { CUT } from '../toon3d';
+/** 03/11 (Erling: "minha aura aparece atrás das construções, não é para aparecer"): com o herói escondido atrás de casa (o corte de visão ligado), as barras e as bússolas do pé somem */
+const heroBehind = () => CUT.uCut.value.w > 0;
 import { questCat } from '../quests';
 import { type DungeonFloor } from '../dungeon3d';
 import { STATION_INFO } from '../stations3d';
@@ -54,7 +57,7 @@ const hpBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rota
 let stamShow = 0;
 function updateStamRing(dt: number) {
   const k = K.game.st.stam / Math.max(1, K.game.st.stamMax), want = 1; /* 26/10 (Erling): o fôlego não some — fica sempre no pé, cheio ou não */
-  stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !K.inside && !K.game.st.dead;
+  stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !K.inside && !K.game.st.dead && !heroBehind();
   if (!stamG.visible) return;
   stamG.position.set(K.heroPos.x, K.heroPos.y + 0.08, K.heroPos.z); stamG.rotation.y = K.az; /* 03/11 (Erling: "a aura do personagem não se esconde atrás dos itens"): as barras e a bússola agora respeitam a profundidade — somem atrás da fonte, de casas e de pedras; o empurrão de profundidade só as mantém por cima do próprio chão */ // arco virado para a câmera, à frente dos pés
   const SPAN = 1.05, GAP = 0.12, start = -Math.PI / 2 + GAP / 2; // fôlego à direita da direção da câmera, vida à esquerda, com um vão entre os dois
@@ -94,6 +97,7 @@ function updateGuide(dt: number) {
   const tx = guideT.x * T, tz = guideT.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz);
   if (dist < 5) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
   const ang = Math.atan2(tx - hx, tz - hz), t = performance.now() / 1000;
+  if (heroBehind()) { guide3d.visible = false; guideEl.style.display = 'none'; return; }
   guide3d.visible = true; guide3d.position.set(K.heroPos.x, K.heroPos.y + 0.06, K.heroPos.z); guide3d.rotation.y = ang;
   for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, 1.75 + k * 0.9); ch.scale.setScalar(0.8 + k * 0.5); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.5 * op; }
   { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.95; ga.scale.setScalar(1); } /* 28/10 (Erling): o arco da bússola fica parado, sem pulsar */
@@ -109,6 +113,7 @@ function updateGuideB(t: number) {
   guideTickB -= 1 / 60; if (guideTickB <= 0) { guideTickB = 0.5; const d2 = K.quests.tracked2; guideTB = d2 ? questTarget(d2, false) : null; const c = d2 ? GUIDE_COL[questCat(d2)] : ''; if (c && c !== guideColB) { guideColB = c; guide3dB.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color && !o.userData.ink) m.color.set(c); }); } }
   if (!guideTB || K.inside || K.dlg.isOpen) { guide3dB.visible = false; return; }
   const tx = guideTB.x * T, tz = guideTB.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz); if (dist < 5) { guide3dB.visible = false; return; }
+  if (heroBehind()) { guide3dB.visible = false; return; }
   guide3dB.visible = true; guide3dB.position.set(K.heroPos.x, K.heroPos.y + 0.06, K.heroPos.z); guide3dB.rotation.y = Math.atan2(tx - hx, tz - hz); guide3dB.scale.setScalar(0.86); /* 28/10: a 2ª bússola gira entre as barras (finas, coladas na aura) e a 1ª */
   for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, 1.75 + k * 0.9); ch.scale.setScalar(0.8 + k * 0.5); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = op * 0.5; }
   { const ga = guide3dB.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.75 + 0.15 * Math.sin(t * 4 + 1); }

@@ -60,7 +60,7 @@ function startServer(opts = {}) {
       if (u.pathname === '/karmika/info') { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(infoNow())); return; } // o jogo no navegador confere salas neste PC
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' }); res.end('Karmika: servidor ligado.');
     });
-    const wss = new WebSocketServer({ server: web, maxPayload: 512 * 1024 });
+    const wss = new WebSocketServer({ server: web, maxPayload: 4 * 1024 * 1024 }); /* 03/11: o relatório de bug traz o print (até ~3 MB) */
     /** @type {Map<number, {ws: any, id: number, name: string, look: any, st: any, host: boolean}>} */
     const players = new Map();
     let nid = 1;
@@ -90,6 +90,33 @@ function startServer(opts = {}) {
     const sysLetter = (to, subj, text, att) => ({ id: 's' + Date.now() + Math.random().toString(36).slice(2, 6), from: 'Correio de Karmika', to, subj, text, att: att || [], cod: 0, t: Date.now() });
     const postsMsg = () => ({ t: 'posts', list: store.posts });
     const roomName = String(opts.name || '').slice(0, 32);
+    /* ---- RELATÓRIOS DE BUG E O PAINEL DO DONO (03/11, Erling: "um sistema de recebimento de mensagens para mim como dono do game: ver os
+       jogadores online, o que estão fazendo, enviar mensagens no jogo e receber os bugs dos beta testers; cada bug com um número de id
+       específico, eu faço as branches com esses números"). Cada relatório vira bugs/KB-0001.json (+ KB-0001.jpg, o print), numa pasta ao
+       lado dos dados da sala, que NUNCA é apagada junto com eles. O dono entra no painel com a chave de dono-chave.txt (a sala cria na
+       primeira vez e mostra no log): no chat do jogo, /dono CHAVE. */
+    const baseDir = dataFile ? path.dirname(dataFile) : process.cwd();
+    const bugsDir = opts.bugsDir || path.join(baseDir, 'bugs');
+    try { fs.mkdirSync(bugsDir, { recursive: true }); } catch (e) { log('não deu para criar a pasta dos bugs:', e.message); }
+    const keyFile = path.join(baseDir, 'dono-chave.txt');
+    let ownerKey = String(opts.ownerKey || process.env.KARMIKA_DONO || '').trim();
+    if (!ownerKey) { try { ownerKey = fs.readFileSync(keyFile, 'utf8').trim(); } catch { /* primeira vez */ } }
+    if (!ownerKey) { ownerKey = [0, 1, 2].map(() => crypto.randomBytes(3).toString('hex').toUpperCase()).join('-'); try { fs.writeFileSync(keyFile, ownerKey + '\n'); } catch (e) { log('não deu para salvar a chave do dono:', e.message); } }
+    log(`chave do dono: ${ownerKey}  ·  no chat do jogo: /dono ${ownerKey}  ·  bugs em ${bugsDir}`);
+    const bugs = []; let bugN = 0;
+    try { for (const f of fs.readdirSync(bugsDir)) { if (!/^KB-\d+\.json$/.test(f)) continue; try { const b = JSON.parse(fs.readFileSync(path.join(bugsDir, f), 'utf8')); bugs.push(b); bugN = Math.max(bugN, b.n || 0); } catch { /* arquivo estragado: fica de fora */ } } } catch { /* sem pasta */ }
+    bugs.sort((a, b) => a.n - b.n);
+    const bugId = (n) => 'KB-' + String(n).padStart(4, '0');
+    const bugMeta = (b) => ({ id: b.id, n: b.n, at: b.at, by: b.by, cat: b.cat, title: b.title, status: b.status, note: b.note || '', img: !!b.img, img2: !!b.img2, ctx: b.ctx });
+    const saveBug = (b) => { try { const tmp = path.join(bugsDir, b.id + '.json.tmp'); fs.writeFileSync(tmp, JSON.stringify(b, null, 1)); fs.renameSync(tmp, path.join(bugsDir, b.id + '.json')); } catch (e) { log('não deu para salvar o bug', b.id, e.message); } };
+    const saveImg = (name, dataUrl) => { const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || '')); if (!m) return null; const buf = Buffer.from(m[2], 'base64'); if (buf.length > 3 * 1024 * 1024) return null; const f = `${name}.${m[1] === 'jpeg' ? 'jpg' : m[1]}`; try { fs.writeFileSync(path.join(bugsDir, f), buf); return f; } catch { return null; } };
+    const readImg = (f) => { if (!f || !/^KB-\d+(-b)?\.(jpg|png|webp)$/.test(f)) return null; try { const ext = f.split('.').pop(); return `data:image/${ext === 'jpg' ? 'jpeg' : ext};base64,` + fs.readFileSync(path.join(bugsDir, f)).toString('base64'); } catch { return null; } };
+    const BUG_STATUS = ['novo', 'vendo', 'corrigido', 'nao-e-bug'];
+    const owners = () => [...players.values()].filter((p) => p.owner);
+    const toOwners = (m) => { for (const p of owners()) send(p.ws, m); };
+    const clip = (v, n) => String(v == null ? '' : v).slice(0, n);
+    const playersAdm = () => [...players.values()].map((p) => ({ id: p.id, name: p.name, host: p.host, owner: !!p.owner, lvl: lvlOf(p), cls: (p.look && p.look.cls) || '', st: p.st, doing: p.doing || null, since: p.since, lastAct: p.lastAct || null, party: p.party ? p.party.id : 0 }));
+
     function infoNow() { const host = [...players.values()].find((p) => p.host); return { karmika: 1, proto: PROTO, port, code, name: roomName || (host ? `Sala de ${host.name}` : 'Sala Karmika'), players: players.size, max: MAX, pass: !!opts.password }; }
     /* anúncio na rede local a cada 2 s (UDP broadcast) */
     let udp = null; try { udp = dgram.createSocket({ type: 'udp4', reuseAddr: true }); udp.on('error', () => { try { udp.close(); } catch { /* */ } udp = null; }); udp.bind(() => { try { udp.setBroadcast(true); } catch { /* */ } }); } catch { udp = null; }
@@ -244,7 +271,7 @@ function startServer(opts = {}) {
           if (players.size >= MAX) { send(ws, { t: 'deny', why: `A sala está cheia (${MAX}).` }); ws.close(); return; }
           if (m.world && opts.world && m.world !== opts.world) { send(ws, { t: 'deny', why: 'Mundo diferente do anfitrião. Atualize o Karmika.' }); ws.close(); return; }
           clearTimeout(bye);
-          me = { ws, id: nid++, name: String(m.name || 'Caminhante').slice(0, 24), look: m.look || null, st: null, host: players.size === 0 };
+          me = { ws, id: nid++, name: String(m.name || 'Caminhante').slice(0, 24), look: m.look || null, st: null, host: players.size === 0, since: Date.now() };
           players.set(me.id, me);
           send(ws, { t: 'welcome', id: me.id, host: me.host, code, players: [...players.values()].filter((p) => p !== me).map(info) });
           others(me.id, { t: 'join', ...info(me) });
@@ -255,7 +282,7 @@ function startServer(opts = {}) {
         }
         switch (m.t) {
           case 'st': me.st = m.s; others(me.id, { t: 'st', id: me.id, s: m.s }); break; // posição, direção, velocidade, zona
-          case 'act': others(me.id, { t: 'act', id: me.id, a: String(m.a).slice(0, 24) }); break; // golpe/magia/esquiva
+          case 'act': me.lastAct = { a: String(m.a).slice(0, 24), at: Date.now() }; others(me.id, { t: 'act', id: me.id, a: String(m.a).slice(0, 24) }); break; // golpe/magia/esquiva
           case 'look': me.look = m.look; others(me.id, { t: 'look', id: me.id, look: m.look }); break; // roupa/arma mudou
           case 'chat': { const text = String(m.text || '').slice(0, 240).trim(); if (text) { const msg = { t: 'chat', id: me.id, name: me.name, text }; others(me.id, msg); } break; }
           case 'ping': send(ws, { t: 'pong', at: m.at }); break;
@@ -304,6 +331,22 @@ function startServer(opts = {}) {
             post(sysLetter(me.name, 'Pedido retirado do quadro', `Você retirou o pedido de ${P.n}× ${P.name}. O ouro da recompensa voltou.`, [{ gold: P.gold }])); for (const p of players.values()) send(p.ws, postsMsg()); break; }
           case 'prof:req': { const to = players.get(m.to); if (to) send(to.ws, { t: 'prof:req', from: me.id }); break; } // pede o perfil: quem responde é o próprio jogador
           case 'prof:res': { const to = players.get(m.to); if (to) send(to.ws, { t: 'prof:res', id: me.id, data: m.data }); break; }
+          case 'doing': me.doing = { ...(typeof m.w === 'object' && m.w ? Object.fromEntries(Object.entries(m.w).slice(0, 12).map(([k, v]) => [clip(k, 16), typeof v === 'number' ? v : clip(v, 80)])) : {}), at: Date.now() }; break; // o que está fazendo (para o painel do dono)
+          case 'bug:new': { const text = clip(m.text, 4000).trim(); if (text.length < 4) { send(ws, { t: 'sys', text: 'Conte um pouco do que aconteceu para mandar o relatório.' }); break; }
+            const n = ++bugN, id = bugId(n), ctx = typeof m.ctx === 'object' && m.ctx ? Object.fromEntries(Object.entries(m.ctx).slice(0, 40).map(([k, v]) => [clip(k, 24), typeof v === 'number' || typeof v === 'boolean' ? v : clip(v, 300)])) : {};
+            const b = { id, n, at: Date.now(), by: { name: me.name, lvl: lvlOf(me), cls: (me.look && me.look.cls) || '' }, cat: clip(m.cat, 30) || 'outro', title: clip(m.title || text.split('\n')[0], 90), text, ctx, img: saveImg(id, m.img), img2: saveImg(id + '-b', m.img2), status: 'novo', note: '', hist: [{ at: Date.now(), status: 'novo' }] };
+            bugs.push(b); saveBug(b); send(ws, { t: 'bug:ok', id, ref: m.ref || null }); toOwners({ t: 'adm:bugnew', bug: bugMeta(b) }); log(`bug ${id} de ${me.name}: ${b.title}`); break; }
+          case 'bug:mine': send(ws, { t: 'bug:mine', list: bugs.filter((b) => lc(b.by.name) === lc(me.name)).slice(-50).map((b) => ({ id: b.id, title: b.title, status: b.status, note: b.note || '', at: b.at })) }); break;
+          case 'adm:hello': { if (!ownerKey || String(m.key || '').trim().toUpperCase() !== ownerKey.toUpperCase()) { send(ws, { t: 'adm:no' }); log(`${me.name} tentou entrar no painel do dono com uma chave errada`); break; }
+            me.owner = true; send(ws, { t: 'adm:ok', bugs: bugs.slice(-300).map(bugMeta), players: playersAdm() }); log(`${me.name} entrou no painel do dono`); break; }
+          case 'adm:players': if (me.owner) send(ws, { t: 'adm:players', list: playersAdm() }); break;
+          case 'adm:bugs': if (me.owner) send(ws, { t: 'adm:bugs', list: bugs.slice(-300).map(bugMeta) }); break;
+          case 'adm:bug': { if (!me.owner) break; const b = bugs.find((x) => x.id === m.id); if (b) send(ws, { t: 'adm:bug', bug: { ...bugMeta(b), text: b.text, hist: b.hist }, img: readImg(b.img), img2: readImg(b.img2) }); break; }
+          case 'adm:set': { if (!me.owner) break; const b = bugs.find((x) => x.id === m.id); if (!b) break; const st = BUG_STATUS.includes(m.status) ? m.status : b.status; const note = clip(m.note, 600);
+            b.status = st; if (m.note !== undefined) b.note = note; b.hist.push({ at: Date.now(), status: st, note }); saveBug(b); toOwners({ t: 'adm:bugupd', bug: bugMeta(b) });
+            const rep = byName(b.by.name); if (rep) send(rep.ws, { t: 'bug:upd', id: b.id, title: b.title, status: st, note: b.note }); break; }
+          case 'adm:say': { if (!me.owner) break; const text = clip(m.text, 500).trim(); if (!text) break; const msg = { t: 'say', text, from: 'Criador de Karmika' };
+            if (!m.to) { for (const p of players.values()) send(p.ws, msg); log(`aviso do dono para todos: ${text}`); } else { const to = players.get(m.to); if (to) { send(to.ws, msg); send(ws, { t: 'sys', text: `Mensagem entregue para ${to.name}.` }); } else send(ws, { t: 'sys', text: 'Esse jogador já saiu.' }); } break; }
           default: if (typeof m.t === 'string' && m.t.startsWith('x:')) others(me.id, { ...m, id: me.id }); // eventos novos (etapa 2) passam direto
         }
       });

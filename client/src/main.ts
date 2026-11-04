@@ -20,6 +20,7 @@ import * as THREE from 'three';
 import { gaitOf } from './andar';
 import { premiumWelcome } from './celebrate';
 import { createFixedLights } from './luzes-fixas';
+import { createBugsDono } from './sistemas/bugs-dono';
 /* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
    e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
 { const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
@@ -873,7 +874,16 @@ function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['be
    quem já tinha o Olho aberto recebe a Lágrima do nascimento que não ganhou */
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
-const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda') { const tx = a.join(' ').trim(); if (tx) social.guildChat(tx); else social.toggle(true, 'guilda'); return '⚑ (guilda)'; } return betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda') { const tx = a.join(' ').trim(); if (tx) social.guildChat(tx); else social.toggle(true, 'guilda'); return '⚑ (guilda)'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+/* 03/11: o inseto 🐞 (relatar bug) e o painel do dono (sistemas/bugs-dono.ts) */
+const shotReq: ((u: string) => void)[] = [];
+const bugsDono = createBugsDono({ net: () => netRef,
+  shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
+  info: () => { const rg = (() => { try { return regionAt(state.fx, state.fy).name; } catch { return '?'; } })(); let cls = ''; try { cls = game.classInfo.name; } catch { /* */ }
+    return { tx: Math.round(state.fx * 10) / 10, ty: Math.round(state.fy * 10) / 10, reg: rg, inside: inside ? `${inside.prop.kind}${inside.crypt ? ' (cripta ' + inside.crypt + ')' : ''}` : '', lvl: game.st.lvl, cls, race: state.race, rend: gpuState.on ? 'WebGPU' : 'WebGL', fps: lastFps, pix: opts.pix ? 'Pixel' : 'Moderno', build: __BUILD__, q: quests?.tracked?.title ?? '', res: `${innerWidth}x${innerHeight}`, ua: navigator.userAgent.slice(0, 160) }; },
+  doing: () => { let reg = '?'; try { reg = regionAt(state.fx, state.fy).name; } catch { /* */ } const act = game.st.dead ? 'morto' : inside ? `dentro (${inside.prop.kind})` : hero.combat ? 'lutando' : inicio.isOpen ? 'no menu' : 'explorando';
+    return { reg, act, q: quests?.tracked?.title ?? '', fps: lastFps, rend: gpuState.on ? 'WebGPU' : 'WebGL', lvl: game.st.lvl }; },
+  log: (t, c) => game.logMsg(t, c) });
 /* 28/10 (Erling): o registro de acontecimentos mostra só as 5 últimas linhas e tudo fica guardado na aba Sistema do chat;
    o botão 📜 recolhe o registro (aí ele só aparece no chat) */
 (game as unknown as { setLogHook(f: (t: string) => void): void }).setLogHook((t) => chat.sysLog(t));
@@ -1622,7 +1632,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero };
+(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
@@ -2467,7 +2477,7 @@ function frame() {
 }
 declare const __BUILD_ID__: string;
 const __BUILD__ = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
-let fpsN = 0, fpsT = 0, poiTick = -1;
+let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0;
 /* medidor por seção do quadro (/perf no chat): quanto da CPU vai para cada parte */
 let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
 const pm = (k: string) => { const n = performance.now(); PM[k] = (PM[k] ?? 0) + n - pmLast; pmLast = n; };
@@ -2477,7 +2487,7 @@ function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[
 function frameBody() {
   pmLast = performance.now(); pmFrames++;
   { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
-    perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
+    lastFps = fpsN; perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }
   if (limGL) limiarGL(false); // o mundo espera lá embaixo
@@ -2797,7 +2807,7 @@ function frameBody() {
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
-  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
+  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } gpuBegin(); composer.render(); gpuEnd(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
   pm('desenho');
   dollTick(rawDt);
   pm('boneco');
