@@ -440,7 +440,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     // escudo sempre de pé (vertical): face para fora do antebraço puxada para a frente do herói, borda de cima para o céu;
     // o centro acompanha o antebraço, então ele balança junto com o braço
     const fwS = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(tq));
-    const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.3).setY(back.y * 0.25).normalize(); /* 03/11: gira menos para a frente ("virar um pouco menos o escudo"): a borda de dentro não varre o rosto */
+    const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.3).setY(back.y * 0.25).normalize();
+    /* 04/11 (Erling: "o escudo está balançando de um lado para o outro demais… diminuir 50%"): a direção da face vai MAIS para a frente do
+       herói (metade do balanço do braço e do tronco) e é filtrada no tempo, no espaço da raiz — o escudo acompanha a passada sem chacoalhar */
+    { nS.lerp(fwS, 0.5).normalize(); const rqi = root.getWorldQuaternion(new THREE.Quaternion()), loc = nS.clone().applyQuaternion(rqi.clone().invert());
+      shN.lerp(loc, shN.lengthSq() < 0.5 ? 1 : 0.18).normalize(); nS.copy(shN).applyQuaternion(rqi); } /* 03/11: gira menos para a frente ("virar um pouco menos o escudo"): a borda de dentro não varre o rosto */
     const upS = new THREE.Vector3(0, 1, 0).addScaledVector(u, 0.15); upS.addScaledVector(nS, -upS.dot(nS)).normalize();
     const ctrS = vF.clone().lerp(vH, 0.5).addScaledVector(nS, (0.06 + (rig?.bodyHolder?.()?.children.some((c) => c.userData.pauldron) ? 0.05 : 0)) * root.getWorldScale(new THREE.Vector3()).x); // com ombreiras, o escudo vai mais à frente e não atravessa // a face fica à frente do antebraço (alça + braço por trás)
     /* 03/11 (Erling: "ele não segura por fora do escudo e sim por dentro"): o escudo é preso no antebraço por dentro (alça no braço, mão na
@@ -454,7 +458,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         let need = 0; for (const q of armPts) { const d = q.clone().sub(ctrS).dot(nS); need = Math.max(need, d + inner); } if (need > 0) ctrS.addScaledVector(nS, Math.min(need, 0.06 * s)); /* 04/11 (Erling: "o braço segura nos dois couros do escudo… você está fazendo solto"): o antebraço ENCOSTA na face de dentro — as duas tiras no antebraço e a mão na alça; a folga é só a espessura do braço */ } } }
     place(R.shield(), nS.clone().negate(), upS, ctrS);
   }
-  let shKey = '', shExt: [number, number, number] | null = null;
+  let shKey = '', shExt: [number, number, number] | null = null; const shN = new THREE.Vector3();
   const RW = window as unknown as { __rollL?: number; __rollR?: number };
   const roll: [THREE.Bone, THREE.Quaternion][] = (['Left', 'Right'] as const).map((side) => { const b = B(side + 'ForeArm')!; const ch = B(side + 'Hand')!;
     const ax = ch.position.clone().normalize(); const ang = side === 'Left' ? (RW.__rollL ?? 0.8) : (RW.__rollR ?? -0.8);
