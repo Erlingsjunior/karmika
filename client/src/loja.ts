@@ -99,12 +99,15 @@ export function createLoja(ctx: {
   function qr() { let s = ''; const on = (x: number, y: number) => ((x * 7 + y * 13 + x * y) % 5) < 2; const fin = (x: number, y: number) => `<path d="M${x} ${y}h7v7h-7z M${x + 1} ${y + 1}v5h5v-5z" fill="#140e08" fill-rule="evenodd"/><rect x="${x + 2}" y="${y + 2}" width="3" height="3" fill="#140e08"/>`;
     for (let y = 0; y < 21; y++) for (let x = 0; x < 21; x++) { const inF = (x < 8 && y < 8) || (x > 12 && y < 8) || (x < 8 && y > 12); if (!inF && on(x, y)) s += `<rect x="${x}" y="${y}" width="1" height="1" fill="#140e08"/>`; }
     return `<rect width="21" height="21" fill="#f3ead6"/>${s}${fin(0, 0)}${fin(14, 0)}${fin(0, 14)}`; }
+  let lastTab = '';
   function render() {
     if (!open) { el.style.display = 'none'; return; }
+    /* a rolagem fica onde estava quando a aba é a mesma (comprar, voltar, trocar de lado) */
+    const sc = tab === lastTab ? (el.querySelector('.lj-body') as HTMLElement | null)?.scrollTop ?? 0 : 0; lastTab = tab;
     el.innerHTML = `<div class="pn ljpn ${tab === 'mont' || tab === 'pets' ? 'mont' : ''}"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
       <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
-    el.style.display = 'flex';
+    el.style.display = 'flex'; { const b = el.querySelector('.lj-body') as HTMLElement | null; if (b && sc) b.scrollTop = sc; }
     if (tab === 'mont' || tab === 'pets') el.querySelectorAll<HTMLImageElement>('img[data-th]').forEach((im) => ctx.thumb(im.dataset.th!, (u) => { im.src = u; im.hidden = false; (im.nextElementSibling as HTMLElement | null)?.remove(); }));
   }
   function approve() {

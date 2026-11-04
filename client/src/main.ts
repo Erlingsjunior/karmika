@@ -19,6 +19,7 @@ import { eyeSees } from './surrender';
 import * as THREE from 'three';
 import { gaitOf } from './andar';
 import { premiumWelcome } from './celebrate';
+import { createFixedLights } from './luzes-fixas';
 /* DESEMPENHO (25/10, 10 fps no evento): o three.js recalcula a matriz de TODO objeto da cena a cada quadro, mesmo escondido —
    e são ~29 mil peças de NPCs longe (visible=false). Escondido não recalcula; ao reaparecer, recalcula no mesmo quadro. */
 { const P = THREE.Object3D.prototype as THREE.Object3D & { __umw?: boolean }; if (!P.__umw) { P.__umw = true; const orig = P.updateMatrixWorld;
@@ -297,6 +298,7 @@ function geoSweep(roots: THREE.Object3D[]): { geo: number; tex: number } {
   return { geo, tex };
 }
 let geoSweepT = 30;
+const fixedL = gpuImpl ? null : createFixedLights(15); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
 scene.fog = new THREE.FogExp2(0x050814, 0.02);
@@ -655,7 +657,7 @@ const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno',
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>60 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(60); game.logMsg('💧 A Lágrima se desfaz em luz: +60 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
     if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff');
       /* 03/11: a comemoração — o herói dança, o brilho violeta e dourado sobe em volta dele e chega a mensagem de boas-vindas */
-      hero.act('dance', true); audio.chime(); const hp = hero.root.position;
+      dispatchEvent(new CustomEvent('karmika:celebrate')); hero.act('dance', true); audio.chime(); const hp = hero.root.position;
       for (let w = 0; w < 4; w++) setTimeout(() => { for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283; particles.spawn(hp.x + Math.cos(a) * 0.8, hp.y + 0.2, hp.z + Math.sin(a) * 0.8, { vx: Math.cos(a) * 1.6, vy: 1.5 + Math.random() * 2.5, vz: Math.sin(a) * 1.6, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: w % 2 ? 0xffd24a : 0xc9a0ff, a: 1, drag: 1.2, g: -0.3 }); } }, w * 500);
       dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0xc9a0ff, n: 180 } }));
       setTimeout(() => premiumWelcome(SEAL[id], d), 900); return true; }
@@ -1614,6 +1616,13 @@ function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RA
 /* RESGUARDO: se o WebGPU errar seguido neste PC (driver, placa, navegador), o jogo anota e reabre em WebGL sozinho — o jogador não fica
    com tela preta. A escolha WebGPU continua salva; na próxima abertura ele tenta de novo só se o jogador pedir (Opções → Renderizador). */
 let gpuFails = 0, gpuFailT = 0;
+/* PRÉ-AQUECIMENTO (03/11, Erling: "não quero que o jogo trave quando passa de level nem quando compra premium… um pré-carregamento quando o
+   XP estiver perto de 90%"): os materiais dos efeitos de festa são compilados com antecedência, em segundo plano — 20 s depois de entrar no
+   mundo e de novo quando o XP passa de 85% (o que já foi compilado não custa nada). No WebGPU os programas já são montados em segundo plano. */
+{ let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
+  setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
+/* teste (Playwright): subir de nível e usar item sem jogar até lá */
+(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); } catch { /* */ } opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
@@ -2431,7 +2440,7 @@ function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 
 const LUZES_ATIVAS = 14;
 let poolT = 0, poolList: THREE.PointLight[] = [], poolScanT = 0;
 function lightPool(dt: number) {
-  poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean; gpuPool?: boolean }).keep && !(l.userData as { gpuPool?: boolean }).gpuPool) poolList.push(l); /* 03/11: as 24 luzes fixas do WebGPU ficam fora deste rodízio — apagar uma delas mudava o conjunto de luzes e remontava TODOS os materiais (tela preta de 1 s) */
+  poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean; gpuPool?: boolean }).keep && !(l.userData as { gpuPool?: boolean }).gpuPool && !(l.userData as { fixedLight?: boolean }).fixedLight) poolList.push(l); /* 03/11: as 24 luzes fixas do WebGPU ficam fora deste rodízio — apagar uma delas mudava o conjunto de luzes e remontava TODOS os materiais (tela preta de 1 s) */
       /* sombra só para o que tem tamanho de fazer sombra: capim, flor, pedrinha e vela não entram no mapa de sombras (eram milhares) */
       const m = o as THREE.Mesh; if (m.isMesh && m.castShadow && !(m.userData as { shadowChecked?: boolean }).shadowChecked) { (m.userData as { shadowChecked?: boolean }).shadowChecked = true; const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); const sc = Math.max(m.scale.x, m.scale.y, m.scale.z); if ((g.boundingSphere?.radius ?? 1) * sc < 0.28 && !(m as unknown as { isSkinnedMesh?: boolean }).isSkinnedMesh) m.castShadow = false; } }); }
   poolT -= dt; if (poolT > 0) return; poolT = 0.2;
@@ -2470,7 +2479,7 @@ function frameBody() {
   { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
     perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
-  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else composer.render(); return; }
+  if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }
   if (limGL) limiarGL(false); // o mundo espera lá embaixo
   const dt = rawDt * game.timeScale() * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
   geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
@@ -2722,7 +2731,7 @@ function frameBody() {
     const nm = relicNameAt(rl.gx, rl.gy), known = !!nm && knowsRelic(nm), k = 0.5 + 0.5 * Math.sin(t * 2.2 + rl.seed);
     /* não marcada: chamado dourado no chão, pedra lisa. Marcada: as runas kármicas se gravam na pedra em azul e fica uma aura azul pequena */
     /* 03/11 (Erling: "as runas brilhantes… amarelo antes de marcar, azul depois de marcar"): as runas sempre brilham — douradas chamando, azul mágico depois */
-    { const rm = rl.runes.material as THREE.MeshBasicMaterial; if ((rl.runes.material as THREE.Material).userData.stoneGlow) { const sm = rl.runes.material as THREE.MeshToonMaterial; sm.emissive.setHex(known ? 0x3aa8ff : 0xffc83a); sm.emissiveIntensity = known ? 1.15 + 0.35 * k : 0.7 + 0.45 * k; } else if (rl.ring.userData.stone) { rm.color.setHex(known ? 0x4ab0ff : 0xffc83a); rm.opacity = known ? 0.85 + 0.15 * k : 0.55 + 0.4 * k; } else rm.opacity = known ? 0.8 + 0.2 * k : 0.04; }
+    { const rm = rl.runes.material as THREE.MeshBasicMaterial; if ((rl.runes.material as THREE.Material).userData.stoneGlow) { const sm = rl.runes.material as THREE.MeshToonMaterial; sm.emissive.setHex(known ? 0x5ab8ff : 0xffc83a); sm.emissiveIntensity = known ? 2.6 + 0.8 * k : 1.6 + 0.8 * k; /* 03/11 (Erling: "as cores dentro da pedra mais brilhantes, em tudo, mais para fora da cavidade"): máscara refeita (traço inteiro + halo em volta) e o dobro do brilho — o bloom espalha */ } else if (rl.ring.userData.stone) { rm.color.setHex(known ? 0x4ab0ff : 0xffc83a); rm.opacity = known ? 0.85 + 0.15 * k : 0.55 + 0.4 * k; } else rm.opacity = known ? 0.8 + 0.2 * k : 0.04; }
     (rl.ring.material as THREE.MeshBasicMaterial).color.setHex(known ? (rl.ring.userData.col as number | undefined) ?? 0x5aa8ff : 0xffc83a); (rl.ring.material as THREE.MeshBasicMaterial).opacity = known ? 0.35 + 0.2 * k : 0.55 + 0.4 * k;
     rl.ring.scale.setScalar(known ? 0.72 + 0.04 * k : 1.0 + 0.12 * k); rl.ring.rotation.y = t * (known ? 0.25 : 0.5);
     if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: rl.ring.userData.stone ? 0xbfe6ff : 0xffe0a0, c1: rl.ring.userData.stone ? 0x3a8aff : (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
@@ -2788,7 +2797,7 @@ function frameBody() {
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
-  { const d0 = performance.now(); gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
+  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } gpuBegin(); composer.render(); gpuEnd(); perf.drawS += performance.now() - d0; }
   pm('desenho');
   dollTick(rawDt);
   pm('boneco');

@@ -1070,13 +1070,14 @@
   .qchoice { display: flex; flex-direction: column; gap: 6px; width: 100%; margin-bottom: 6px; } .qchoice p { margin: 0 0 4px; font: italic 14px Georgia, serif; color: #f0d890; } .qchoice button { text-align: left; white-space: normal; }
   /* Shop */
   #lojaw { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20,10,30,.55), rgba(0,0,0,.72)); z-index: 27; font-family: Georgia, serif; color: #e8dcc0; }
-  .ljpn { position: relative; width: min(940px, calc(94vw / var(--ui))); max-height: calc(90vh / var(--ui)); display: flex; flex-direction: column; background: linear-gradient(180deg, #1c140c 0%, #120c08 100%); border: 1px solid #8a6a3a; box-shadow: 0 0 0 1px #2a1e10, 0 0 40px rgba(201,160,255,.12), 0 20px 60px #000; border-radius: 4px; overflow: hidden; }
+  /* 03/11 (Erling: "toda vez que clico em itens ou abas do Shop ele mexe, como se mudasse de tamanho"): tamanho FIXO — cada aba tinha uma altura e a janela pulava */
+  .ljpn { position: relative; width: min(940px, calc(94vw / var(--ui))); height: min(780px, calc(90vh / var(--ui))); max-height: calc(90vh / var(--ui)); display: flex; flex-direction: column; background: linear-gradient(180deg, #1c140c 0%, #120c08 100%); border: 1px solid #8a6a3a; box-shadow: 0 0 0 1px #2a1e10, 0 0 40px rgba(201,160,255,.12), 0 20px 60px #000; border-radius: 4px; overflow: hidden; }
   .ljpn h2 { display: flex; align-items: center; gap: 12px; margin: 0; padding: 14px 18px; border-bottom: 1px solid #4a3a22; background: linear-gradient(90deg, #2a1a10, #1a1008 60%, #2a1a10); font: 600 20px Cinzel, serif; letter-spacing: .08em; color: #f0d890; }
   .ljpn h2 .lj-t { display: flex; align-items: center; gap: 10px; } .ljpn h2 .lj-t svg { width: 30px; height: 30px; filter: drop-shadow(0 0 6px #c9a0ff88); }
   .ljpn h2 small { font: italic 12px Georgia, serif; color: #a8987a; letter-spacing: 0; flex: 1; } .ljpn h2 button { background: none; border: 1px solid #5a4a30; color: #c8b890; width: 28px; height: 28px; cursor: pointer; border-radius: 3px; }
   .lj-tabs { display: flex; gap: 2px; padding: 10px 18px 0; border-bottom: 1px solid #3a2c1a; } .lj-tabs button { background: #1a120a; border: 1px solid #3a2c1a; border-bottom: 0; color: #a8987a; font: 600 12px Cinzel, serif; letter-spacing: .06em; padding: 8px 16px; cursor: pointer; border-radius: 3px 3px 0 0; }
   .lj-tabs button.on { background: #2a1e12; color: #f0d890; border-color: #8a6a3a; } .lj-tabs button:disabled { opacity: .45; cursor: default; } .lj-tabs small { font: 10px Georgia, serif; color: #7a6a50; }
-  .lj-body { padding: 16px 18px 18px; overflow: auto; }
+  .lj-body { padding: 16px 18px 18px; overflow: auto; flex: 1; min-height: 0; scrollbar-gutter: stable; }
   .ljpn.mont .lj-body { display: flex; flex-direction: column; } .lj-mhero { padding: 10px 14px; } .lj-mhero .lj-eye { font-size: 34px; display: grid; place-items: center; } .lj-mhero h3 { margin: 0 0 2px; } .lj-mhero p { margin: 0; font-size: 13px; }
   .lj-mscroll { height: min(470px, calc(52vh / var(--ui))); overflow-y: auto; padding-right: 6px; margin-top: 4px; }
   .lj-mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }

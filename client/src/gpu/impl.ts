@@ -47,7 +47,7 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
     diffuseColor.rgb.assign(c); return;
   }
   const tex = keep(G.tGround.value as THREE.DataArrayTexture), mean = (G.uMean.value as THREE.Vector3[]).map((v) => uniform(v));
-  const gTex = (Ly: number, sc: number) => { const p = wp.div(sc), q = vec2(wp.x.mul(0.809).add(wp.y.mul(0.588)), wp.x.mul(-0.588).add(wp.y.mul(0.809))).div(sc * 1.37).add(vec2(0.37, 0.71));
+  const gTex = (Ly: number, sc0: any) => { const sc = typeof sc0 === 'number' ? float(sc0) : sc0, p = wp.div(sc), q = vec2(wp.x.mul(0.809).add(wp.y.mul(0.588)), wp.x.mul(-0.588).add(wp.y.mul(0.809))).div(sc.mul(1.37)).add(vec2(0.37, 0.71));
     const n = smoothstep(0.32, 0.68, gNoise(wp.mul(0.045).add(Ly * 7.3)));
     return mix(texture(tex, p).depth(Ly).rgb, texture(tex, q).depth(Ly).rgb, n); };
   const gPair = (A: number, B: number, sc: number, seed: number) => { const n = smoothstep(0.38, 0.62, gNoise(wp.mul(0.028).add(seed))); return mix(gTex(A, sc).div(mean[A]), gTex(B, sc).div(mean[B]), n); };
@@ -62,7 +62,11 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
   base = mix(base, mix(gTex(8, 1.8), gTex(15, 2.0), nz(0.07, 6)), clamp(sp2.x, 0, 1).mul(0.9));
   const road = mix(gTex(2, 3.0), gTex(3, 3.0), nz(0.06, 9));
   base = mix(base, road.mul(0.92), clamp(sp1.x, 0, 1));
-  let cob = mix(gTex(4, 2.4), gTex(5, 2.4), nz(0.05, 3));
+  /* três tamanhos de pedra, do centro da cidade para fora (o mesmo do WebGL em chunks3d) */
+  const cu = clamp(attribute('aCs', 'float'), 0, 1).mul(2), big = cu.greaterThanEqual(2), cf = select(big, float(0), smoothstep(0.3, 0.7, fract(cu)));
+  const cn = nz(0.05, 3), cobAt = (sc: any) => mix(gTex(4, sc), gTex(5, sc), cn);
+  const sA = select(big, float(3.4), select(cu.lessThan(1), float(1.6), float(2.4))), sB = select(cu.lessThan(1), float(2.4), float(3.4));
+  let cob = mix(cobAt(sA), cobAt(sB), cf);
   cob = mix(cob, gTex(12, 3.2), pl.mul(smoothstep(0.3, 0.7, gNoise(wp.mul(0.02).add(11)))));
   base = mix(base, cob.mul(0.95), clamp(sp1.y, 0, 1));
   diffuseColor.rgb.assign(base);

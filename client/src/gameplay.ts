@@ -222,7 +222,19 @@ export function createGameplay(d: GameplayDeps) {
     for (let i = 0; i < 36; i++) { const a = rnd(0, 6.283), sp = rnd(1, 4); d.particles.spawn(cx, cy, cz, { vx: Math.cos(a) * sp, vy: rnd(-1, 2), vz: Math.sin(a) * sp, life: 2.6, s0: 0.7, s1: 0.05, c0: 0xfff2c0, c1: col, a: 0.9, drag: 0.8, g: 2.2, flit: 3 }); }
     d.audio.boom();
   }
+  /** 03/11 (Erling: "um pré-carregamento desses eventos antes de acontecerem"): uma amostra de cada material dos efeitos de festa (pilar e
+   *  anéis da subida de nível, clarão, anel de choque) — o main compila com antecedência, e a primeira subida de nível não para o jogo */
+  function prewarmGroup() {
+    const g = new THREE.Group(), geo = new THREE.PlaneGeometry(0.1, 0.1);
+    const add = (m: THREE.Material) => { const o = (m as THREE.SpriteMaterial).isSpriteMaterial ? new THREE.Sprite(m as THREE.SpriteMaterial) : new THREE.Mesh(geo, m); g.add(o); };
+    add(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    add(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    add(new THREE.SpriteMaterial({ map: flashTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    add(new THREE.SpriteMaterial({ map: PLUS_TEX, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    return g;
+  }
   function levelFx(hp: THREE.Vector3) {
+    dispatchEvent(new CustomEvent('karmika:celebrate'));
     const mat = (c: number) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
     const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.6, 28, 20, 1, true), mat(0xffe9a0)); pil.position.set(hp.x, hp.y + 14, hp.z);
     const pil2 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.55, 32, 12, 1, true), mat(0xffffff)); pil2.position.set(hp.x, hp.y + 16, hp.z);
@@ -262,7 +274,9 @@ export function createGameplay(d: GameplayDeps) {
     m.position.set(dx, e.pos.y + 0.5, dz); fxAdd(m); drops.push({ m, x: dx, z: dz, y: e.pos.y, kind: 'item', n, t: 0, id });
   }
   /* ---- nível de classe (caminho): segunda barra abaixo do XP ---- */
-  const clsNeed = (l: number) => 90 + 70 * l + 9 * l * l;
+  /* 03/11 (Erling: "os pontos de classe não deveriam ser mais fáceis que os de nível? o humano é a classe base, segue a mesma regra"): a classe
+     usa a MESMA tabela do nível e ganha o XP inteiro (antes: 45% do XP e uma tabela ~50% mais cara — a classe andava 3× mais devagar) */
+  const clsNeed = (l: number) => xpNeedAt(l);
   let cls: { name: string; lvl: number; xp: number; past?: { name: string; lvl: number }[] } = { name: 'Humano', lvl: 1, xp: 0, past: [] };
   try { const s0 = JSON.parse(localStorage.getItem('karmika.class.v1') || 'null'); if (s0?.name && typeof s0.lvl === 'number') cls = s0; } catch { /* */ } // antes era s0?.lvl: quem mudava de classe e recarregava antes do 1º nível de classe voltava a Humano
   /** a alma filtra o XP: Dívida Kármica (come uma parte) e o eco da vida passada (multiplica o XP de classe) */
@@ -271,7 +285,7 @@ export function createGameplay(d: GameplayDeps) {
     const gross = Math.round(n0 * st.xpMul), f = xpFilter ? xpFilter(gross, cls) : { n: gross, paid: 0, cmul: 1 }, n = f.n;
     st.xp += n; dmgText(p.clone().setY(2.6), `+${n} XP`, false, '#9ad7ff'); logMsg(`+${n} XP${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');
     { // XP de classe: a segunda contagem — o seu caminho (Caminhante, depois a classe da academia) evolui junto, mais devagar
-      const c = cls; c.xp += Math.round(gross * 0.45 * f.cmul);
+      const c = cls; c.xp += Math.round(gross * f.cmul);
       while (c.xp >= clsNeed(c.lvl)) { c.xp -= clsNeed(c.lvl); c.lvl++; dmgText(p.clone().setY(3.4), `${c.name.toUpperCase()} ${c.lvl}`, true, '#c9a0ff'); logMsg(`✦ Nível de classe ${c.lvl} — ${c.name}`, '#c9a0ff'); d.audio.chime(); classLevelUp(c.name, c.lvl); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xe8d0ff, c1: 0x8a4aff, n: 70 } })); }
       try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ }
     }
@@ -1082,7 +1096,7 @@ export function createGameplay(d: GameplayDeps) {
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
     /** um companheiro de grupo matou um bicho perto de mim: XP, missão e o meu próprio saque */
     sharedKill(e: Enemy) { killEnemy(e, true); },
-    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); },
+    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); }, prewarmGroup,
     get menuOpen() { return st.menuOpen; },
     /** alvo mais próximo ao alcance (trava automática dos golpes) */
     timeScale() { return performance.now() < hitstop ? 0.1 : 1; },

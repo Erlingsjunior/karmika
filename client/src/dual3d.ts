@@ -9,7 +9,9 @@ import { Pass, FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
  * personagem atrás de uma casa continua escondido por ela. O mapa de sombras é calculado UMA vez por quadro e reaproveitado.
  */
 export const LAYER_WORLD = 0, LAYER_FINE = 1;
-export function fine(o: THREE.Object3D) { o.traverse((c) => { if ((c as THREE.Light).isLight) c.layers.enableAll(); else c.layers.set(LAYER_FINE); }); return o; }
+/** luz pontual real (as fixas copiam dela; ela mesma fica na camada escondida — luzes-fixas.ts) */
+const realPoint = (o: THREE.Object3D) => !!(o as THREE.PointLight).isPointLight && !o.userData.fixedLight && !o.userData.gpuPool;
+export function fine(o: THREE.Object3D) { o.traverse((c) => { if ((c as THREE.Light).isLight) { if (!realPoint(c)) c.layers.enableAll(); } else c.layers.set(LAYER_FINE); }); return o; }
 
 export class DualRenderPass extends Pass {
   rt: THREE.WebGLRenderTarget;
@@ -48,7 +50,7 @@ export class DualRenderPass extends Pass {
        respeito: o cenário (milhares de objetos) some da passada fina, e os personagens somem da passada do cenário. */
     if ((this.tick % 30) === 0) { this.onlyW.clear(); this.onlyF.clear(); const W = 1 << LAYER_WORLD, F = 1 << LAYER_FINE;
       for (const r of this.scene.children) { let m = 0, cs = false; r.traverse((o) => { if (!(o as THREE.Light).isLight) { m |= o.layers.mask; if (o.castShadow && (o as THREE.Mesh).isMesh) cs = true; } }); if ((m & F) && !(m & W) && !cs) this.onlyF.add(r); /* quem projeta sombra fica: o mapa de sombra é desenhado na passada do cenário */ else if ((m & W) && !(m & F)) this.onlyW.add(r); } }
-    if ((this.tick++ % 30) === 0) this.scene.traverse((o) => { if ((o as THREE.Light).isLight) { o.layers.enableAll(); const l = o as THREE.DirectionalLight; if (l.shadow && l.shadow.camera) l.shadow.camera.layers.enableAll(); } });
+    if ((this.tick++ % 30) === 0) this.scene.traverse((o) => { if ((o as THREE.Light).isLight) { if (!realPoint(o)) o.layers.enableAll(); const l = o as THREE.DirectionalLight; if (l.shadow && l.shadow.camera) l.shadow.camera.layers.enableAll(); } });
     const autoSM = sm.autoUpdate; sm.autoUpdate = false; sm.needsUpdate = true; // sombras: 1× por quadro
     const oldAC = renderer.autoClear; renderer.autoClear = true;
     // 1) cenário em meia resolução

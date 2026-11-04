@@ -197,10 +197,10 @@ const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => s
   onPlay: (server, isNew) => { pendingServer = server; if (isNew || !K.profile) K.showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else K.withFade(() => { K.objs.update(K.state.fx * T, K.state.fy * T, true); joinServer(); }, server ? 'Entrando no servidor…' : 'Entrando em Karmika…', () => setTimeout(K.resumeSoul, 300)); },
   fresh: async () => K.profile ? { lvl: K.game.st.lvl, cls: K.classOfRace(K.state.race), pic: await slotPic() } : null });
 /** retrato pequeno (96×120) do herói carregado, para o card do personagem */
-function slotPic(): Promise<string | null> { return new Promise((res) => { try { if (K.humanSkinKey() && !K.peleSys.skinModel) { res(null); return; } /* o modelo do artista ainda não chegou: fica a foto anterior */ res(heroCard(K.hero.root)); } catch { res(null); } }); }
+function slotPic(): Promise<string | null> { return new Promise((res) => { try { if (K.humanSkinKey() && !K.peleSys.skinModel) { res(null); return; } /* o modelo do artista ainda não chegou: fica a foto anterior */ const c = heroCard(K.hero.root); if (!c) { res(null); return; } c.then(res, () => res(null)); } catch { res(null); } }); }
 /** retrato do Caminhante para a tela de personagens (25/10): estúdio próprio — luz de frente, contraluz, cores em sRGB,
  *  fundo de pergaminho escuro com brilho dourado e sombra no chão. Antes saía escuro e indecifrável (render target linear, sem fundo). */
-function heroCard(root: THREE.Object3D): string | null {
+function heroCard(root: THREE.Object3D): Promise<string | null> | null {
   const W = 264, H = 330, S = 2, rw = W * S, rh = H * S, rt = new THREE.WebGLRenderTarget(rw, rh); rt.texture.colorSpace = THREE.SRGBColorSpace;
   const ps = new THREE.Scene(); ps.environment = K.scene.environment;
   ps.add(new THREE.HemisphereLight(0xfff2dc, 0x6a5a50, 4.2)); ps.add(new THREE.AmbientLight(0xffffff, 1.4));
@@ -214,12 +214,18 @@ function heroCard(root: THREE.Object3D): string | null {
   const cam = new THREE.PerspectiveCamera(26, W / H, 0.05, 40), dist = (top * 0.56) / Math.tan((26 / 2) * Math.PI / 180) + 0.3; cam.position.set(0.25, cy + 0.12, dist); cam.lookAt(0, cy, 0); cam.layers.enableAll();
   const bgc = new THREE.Color(); K.renderer.getClearColor(bgc); const alpha = K.renderer.getClearAlpha(), sm = K.renderer.shadowMap.autoUpdate;
   K.renderer.shadowMap.autoUpdate = false; K.renderer.setRenderTarget(rt); K.renderer.setClearColor(0x000000, 0); K.renderer.clear(); K.renderer.render(ps, cam);
-  const px = new Uint8Array(rw * rh * 4); K.renderer.readRenderTargetPixels(rt, 0, 0, rw, rh, px);
-  K.renderer.setRenderTarget(null); K.renderer.setClearColor(bgc, alpha); K.renderer.shadowMap.autoUpdate = sm; rt.dispose();
+  K.renderer.setRenderTarget(null); K.renderer.setClearColor(bgc, alpha); K.renderer.shadowMap.autoUpdate = sm;
   for (const o of xr) o.visible = true; ps.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis;
-  const fig = document.createElement('canvas'); fig.width = rw; fig.height = rh; const fg = fig.getContext('2d')!, im = fg.createImageData(rw, rh);
-  let any = 0; for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) { const si = ((rh - 1 - y) * rw + x) * 4, di = (y * rw + x) * 4; im.data[di] = px[si]; im.data[di + 1] = px[si + 1]; im.data[di + 2] = px[si + 2]; im.data[di + 3] = px[si + 3]; any += px[si + 3] > 0 ? 1 : 0; }
-  if (any < 200) return null; fg.putImageData(im, 0, 0);
+  /* 03/11 (Erling: "não quero que o jogo trave quando passa de level"): os pixels voltam da placa SEM parar o quadro (leitura assíncrona);
+     o resto (fundo, moldura, JPEG) é feito quando chegam */
+  const px = new Uint8Array(rw * rh * 4), R = K.renderer as THREE.WebGLRenderer & { readRenderTargetPixelsAsync?: (rt: THREE.WebGLRenderTarget, x: number, y: number, w: number, h: number, b: Uint8Array) => Promise<unknown> };
+  const read: Promise<unknown> = R.readRenderTargetPixelsAsync ? R.readRenderTargetPixelsAsync(rt, 0, 0, rw, rh, px) : Promise.resolve(R.readRenderTargetPixels(rt, 0, 0, rw, rh, px));
+  return read.then(() => { rt.dispose(); return cardFinish(px, rw, rh, W, H, top, cy); }, () => { rt.dispose(); return null; });
+}
+function cardFinish(px: Uint8Array, rw: number, rh: number, W: number, H: number, top: number, cy: number): string | null {
+  let any = 0; for (let i = 3; i < px.length; i += 16) if (px[i] > 0) any++; if (any < 50) return null;
+  const flip = document.createElement('canvas'); flip.width = rw; flip.height = rh; flip.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer), rw, rh), 0, 0);
+  const fig = document.createElement('canvas'); fig.width = rw; fig.height = rh; const fg = fig.getContext('2d')!; fg.translate(0, rh); fg.scale(1, -1); fg.drawImage(flip, 0, 0); /* a placa lê de baixo para cima */
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d')!;
   const bg = g.createRadialGradient(W / 2, H * 0.42, 10, W / 2, H * 0.5, H * 0.75); bg.addColorStop(0, '#5a4226'); bg.addColorStop(0.45, '#2a1e14'); bg.addColorStop(1, '#0c0806'); g.fillStyle = bg; g.fillRect(0, 0, W, H);
   g.globalAlpha = 0.18; g.strokeStyle = '#e0b45a'; g.lineWidth = 1; for (let k = 0; k < 7; k++) { g.beginPath(); g.arc(W / 2, H * 0.4, 30 + k * 26, 0, Math.PI * 2); g.stroke(); } g.globalAlpha = 1;
@@ -230,13 +236,16 @@ function heroCard(root: THREE.Object3D): string | null {
   return cv.toDataURL('image/jpeg', 0.86);
 }
 /* o retrato do cartão lê pixels da placa (trava o quadro): só tira de novo quando muda nível, classe ou a cada 5 min, não a cada 20 s */
-let picKey = '', picAt = 0;
+let picKey = '', picAt = 0, celebAt = 0;
+addEventListener('karmika:celebrate', () => { celebAt = performance.now(); });
 function saveSlotMeta() { if (!K.profile || inicio.isOpen || K.peleSys.creating) return;
   const pk = `${K.game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`;
   /* WebGPU: a foto sai por um WebGL à parte, que monta o herói do zero (meio segundo parado). Então só tira quando muda nível ou classe —
      não na primeira gravação (fica a foto que já estava no cartão) nem a cada 5 min */
   if (gpuState.on && !picKey) picKey = pk;
-  const needPic = pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000); if (needPic) { picKey = pk; picAt = performance.now(); }
+  /* a foto espera a festa acabar: nada de tirar retrato no meio do pilar de luz da subida de nível ou de uma luta */
+  const busy = performance.now() - celebAt < 12000 || !!K.hero.combat;
+  const needPic = !busy && (pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000)); if (needPic) { picKey = pk; picAt = performance.now(); }
   (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (K.profile) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic, server: K.net.state === 'on' ? `karmika://${K.net.address}/${K.net.code}` : null }); }); }
 setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
