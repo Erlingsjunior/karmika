@@ -37,6 +37,8 @@ const TEX = {
 };
 const KCOL: Record<SenseKind, number> = { rastro: 0xffe8b0, sangue: 0xff3a3a, espirito: 0x9affd0, dispositivo: 0x8af0ff, cheiro: 0xd0a0ff, ninho: 0xffc070 };
 
+/** o que o Instinto revelou agora (para o minimapa): posição em casas */
+export const INSTINCT_MARKS: { x: number; y: number; col: string; kind: string }[] = [];
 export function createSecrets(ctx: Ctx, caches: Cache[]) {
   let found: string[] = []; try { found = JSON.parse(localStorage.getItem('karmika.segredos.v1') || '[]'); } catch { /* */ }
   const saveFound = () => { try { localStorage.setItem('karmika.segredos.v1', JSON.stringify(found)); } catch { /* */ } };
@@ -69,11 +71,11 @@ export function createSecrets(ctx: Ctx, caches: Cache[]) {
   const cacheObjs = new Map<string, { c: Cache; s: THREE.Sprite; g: THREE.Sprite }>();
   let onSense: (id: string) => void = () => {};
   function update(dt: number, t: number, on: boolean) {
-    const hp = ctx.hero(), col = ctx.color(), inside = ctx.inside();
+    const hp = ctx.hero(), col = ctx.color(), inside = ctx.inside(); INSTINCT_MARKS.length = 0;
     self.visible = on && !inside; if (self.visible) { self.position.set(hp.x, hp.y + 0.04, hp.z); (ring.material as THREE.MeshBasicMaterial).color.setHex(col); (halo.material as THREE.SpriteMaterial).color.setHex(col); (ring.material as THREE.MeshBasicMaterial).opacity = 0.32 + 0.16 * Math.sin(t * 2.4); ring.rotation.y = t * 0.4; halo.material.opacity = 0.1 + 0.05 * Math.sin(t * 1.7); if (Math.random() < dt * 5) ctx.fx(hp.x + (Math.random() - 0.5) * 1.4, hp.y + 0.2, hp.z + (Math.random() - 0.5) * 1.4, col); }
     for (const tr of trails.values()) { if (tr.done) continue; const g = tr.g, tx = (g.to.x + 0.5) * T, tz = (g.to.y + 0.5) * T, dT = Math.hypot(tx - hp.x, tz - hp.z);
       tr.marks.forEach((m, i) => { const d = m.position.distanceTo(hp), vis = on && !inside && d < 46; m.visible = vis; if (vis) m.material.opacity = Math.min(1, (1 - d / 46) * 1.8) * (0.6 + 0.4 * Math.max(0, Math.sin(t * 2.4 - i * 0.42)) ** 2); }); /* um brilho que anda pelas pegadas, na direção do alvo */
-      const tv = on && !inside && dT < 60; tr.target.visible = tv && !tr.ghost; if (tv) { tr.target.material.opacity = 0.55 + 0.35 * Math.sin(t * 4); tr.target.material.rotation = t * 0.6; }
+      const tv = on && !inside && dT < 60; tr.target.visible = tv && !tr.ghost; if (tv) INSTINCT_MARKS.push({ x: g.to.x + 0.5, y: g.to.y + 0.5, col: '#' + KCOL[g.kind].toString(16).padStart(6, '0'), kind: g.kind }); if (tv) { tr.target.material.opacity = 0.55 + 0.35 * Math.sin(t * 4); tr.target.material.rotation = t * 0.6; }
       if (g.kind === 'ninho' && on && !inside && dT < 26) { tr.sq -= dt; if (tr.sq <= 0) { tr.sq = 2.2 + Math.random() * 3 * (0.4 + dT / 26); ctx.squeak?.(1 - dT / 26); if (dT < 12 && Math.random() < 0.35) ctx.bubble(tx, ctx.heightAt(tx, tz) + 1.2, tz, Math.random() < 0.5 ? 'iiiik!' : 'iik… iik…'); } if (tv) tr.target.material.rotation = 0; }
       if (tr.ghost) { tr.ghost.root.visible = tv; if (tv) { tr.ghost.root.position.y = ctx.heightAt(tx, tz) + 0.15 + Math.sin(t * 1.1) * 0.12; tr.ghost.set(Math.min(1, (1 - dT / 60) * 2.2), t); if (Math.random() < dt * 6) ctx.fx(tx + (Math.random() - 0.5) * 0.8, ctx.heightAt(tx, tz) + 0.2 + Math.random() * 1.6, tz + (Math.random() - 0.5) * 0.8, KCOL.espirito); } }
       if (dT < 4.5 && on && !inside) { tr.done = true; if (g.spirit) { g.spirit.lines.forEach((l, i) => setTimeout(() => { ctx.bubble(tx, ctx.heightAt(tx, tz) + 2.6, tz, l); ctx.log(`👻 ${g.spirit!.name}: “${l}”`, '#9affd0'); }, i * 4200)); }
@@ -82,8 +84,8 @@ export function createSecrets(ctx: Ctx, caches: Cache[]) {
     // esconderijos perto
     for (const c of caches) { if (found.includes(c.id)) continue; const x = (c.x + 0.5) * T, z = (c.y + 0.5) * T, d = Math.hypot(x - hp.x, z - hp.z); let o = cacheObjs.get(c.id);
       if (d > 60 || inside) { if (o) { ctx.scene.remove(o.s); ctx.scene.remove(o.g); cacheObjs.delete(c.id); } continue; }
-      if (!o) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.sigil, color: 0xffd890, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); s.scale.setScalar(1.2); s.position.set(x, ctx.heightAt(x, z) + 0.75, z); /* inteiro acima do chão (antes saía cortado ao meio) */ const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xffc860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); gl.scale.setScalar(2.2); gl.position.copy(s.position).setY(s.position.y + 0.5); ctx.scene.add(fine(s)); ctx.scene.add(fine(gl)); o = { c, s, g: gl }; cacheObjs.set(c.id, o); }
-      const vis = on && d < 32; o.s.visible = o.g.visible = vis; if (vis) { o.s.material.opacity = 0.5 + 0.3 * Math.sin(t * 2.5 + c.x); o.s.material.rotation = t * 0.3; o.g.material.opacity = 0.18 + 0.1 * Math.sin(t * 2); } }
+      if (!o) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.sigil, color: 0xffd890, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); s.scale.setScalar(1.7); s.position.set(x, ctx.heightAt(x, z) + 1.0, z); /* inteiro acima do chão (antes saía cortado ao meio) */ const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: 0xffc860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, opacity: 0 })); gl.scale.setScalar(3.2); gl.position.copy(s.position).setY(s.position.y + 0.5); ctx.scene.add(fine(s)); ctx.scene.add(fine(gl)); o = { c, s, g: gl }; cacheObjs.set(c.id, o); }
+      const vis = on && d < 44; o.s.visible = o.g.visible = vis; if (vis) INSTINCT_MARKS.push({ x: c.x + 0.5, y: c.y + 0.5, col: '#ffd890', kind: 'cache' }); /* 04/11: visto de 44 m (a fala do herói avisa a 28 m) e marcado no minimapa */ if (vis) { o.s.material.opacity = 0.5 + 0.3 * Math.sin(t * 2.5 + c.x); o.s.material.rotation = t * 0.3; o.g.material.opacity = 0.18 + 0.1 * Math.sin(t * 2); } }
   }
   /** o E num esconderijo */
   function interact(hx: number, hz: number, on: boolean, dig: (c: Cache) => void): { d: number; label: string; act: () => void } | null {

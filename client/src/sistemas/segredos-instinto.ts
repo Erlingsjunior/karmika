@@ -46,7 +46,7 @@ let instHintT = 3;
 function updateSecrets(dt: number) { senseT -= dt; if (senseT <= 0) { senseT = 1; secrets.sync(senseGoals()); } secrets.update(dt, K.t, K.instinctOn);
   /* a dica de ligar o Instinto: perto de um segredo ainda não achado ou do rastro que a missão pede, o herói fala */
   instHintT -= dt; if (instHintT <= 0) { instHintT = 2; if (!K.instinctOn && !K.inside && !K.game.st.dead) { const hx = K.state.fx, hy = K.state.fy; let key = '';
-      for (const c of CACHES) if (!secrets.isFound(c.id) && Math.hypot(c.x - hx, c.y - hy) < 16) { key = c.id; break; }
+      for (const c of CACHES) if (!secrets.isFound(c.id) && Math.hypot(c.x - hx, c.y - hy) < 14) { key = c.id; break; }
       if (!key) for (const g of senseGoals()) if (Math.hypot(g.from.x - hx, g.from.y - hy) < 14 || Math.hypot(g.to.x - hx, g.to.y - hy) < 14) { key = 'q:' + g.id; break; }
       if (key) { const race = K.profile?.origin === 'dwarf' ? 'anao' : K.profile?.origin === 'elf' ? 'elfo' : 'humano', ph = instinctHint(race, K.myPath(), key); if (ph) { K.bubble(ph); K.game.logMsg(`${K.profile?.name ?? 'Você'}: “${ph}” — aperte F para ligar o ${K.myInstinct().name}.`, K.myInstinct().css); } } } } }
 function digCache(c: Cache) { const lv = Math.max(K.game.st.lvl, c.tier), g = 15 + Math.round(lv * (3 + Math.random() * 3)); K.game.st.gold += g; K.game.gainXp(Math.round(K.game.xpNeedAt(lv) * 0.05));
