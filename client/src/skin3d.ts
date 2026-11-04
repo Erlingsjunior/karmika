@@ -368,7 +368,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const g1 = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(pm, 0.012 * sc.x).addScaledVector(f1, -0.01 * sc.x);
         /* o cabo corre na DIAGONAL da palma: da base do indicador até a base da mão do lado do mindinho (~35°) — a lâmina sai inclinada
            para o lado dos dedos; com o desvio ulnar, fica a ~25° da linha do antebraço (é assim que a estocada sai reta) */
-        const thumb = vI.clone().sub(vP).normalize(), tb = thumb.clone().addScaledVector(k1, GRIP_DIAG).normalize(); /* a lâmina sai do lado do POLEGAR (o modelo da espada tem a lâmina em ±Y: bladeSign) */
+        const thumb = vI.clone().sub(vP).normalize(); { const t1 = B(swordSide + 'HandThumb1'); if (t1) { const tp = W(t1, new THREE.Vector3()).sub(vM); if (tp.dot(thumb) < 0) thumb.negate(); } } /* o lado do POLEGAR medido pelo osso do polegar (04/11, Erling: "tira a espada da mão, vira e coloca de volta virada para cima") */
+        const tb = thumb.clone().addScaledVector(k1, GRIP_DIAG).normalize(); /* a lâmina sai do lado do POLEGAR (o modelo da espada tem a lâmina em ±Y: bladeSign) */
         /* o centro do PUNHO FECHADO: o buraco que os dedos dobrados fazem — a média das três juntas do dedo médio (já dobradas) e de um ponto da palma
            logo atrás dos nós. É ali que o cabo passa. */
         const m2 = B(swordSide + 'HandMiddle2'), m3 = B(swordSide + 'HandMiddle3');
@@ -382,10 +383,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       const sgnAng = (u: THREE.Vector3, v: THREE.Vector3, n: THREE.Vector3) => Math.atan2(new THREE.Vector3().crossVectors(u, v).dot(n), u.dot(v));
       const fore = B(swordSide + 'ForeArm');
       if (fore) { /* 1) pronação/supinação: o antebraço gira no eixo dele até o plano da lâmina bater com o pedido */
+        reGrip(); /* a lâmina já no punho do jeito novo (lado do polegar), antes de medir quanto o antebraço precisa girar */
         const fa = W(sH, new THREE.Vector3()).sub(W(fore, new THREE.Vector3())).normalize(); let bd = bladeNow();
         const pB = bd.clone().addScaledVector(fa, -bd.dot(fa)), pD = D.clone().addScaledVector(fa, -D.dot(fa));
         const wD = clamp(pD.length() / 0.45, 0, 1); /* lâmina pedida quase na linha do antebraço: o giro do antebraço não decide nada (o plano fica indefinido) — some suave */
-        if (pB.lengthSq() > 1e-4 && pD.lengthSq() > 1e-4) { const tau = clamp(sgnAng(pB.normalize(), pD.normalize(), fa), -1.55, 1.55) * wD; rotW(fore, fa, tau); }
+        if (pB.lengthSq() > 1e-4 && pD.lengthSq() > 1e-4) { const tau = clamp(sgnAng(pB.normalize(), pD.normalize(), fa), -3.0, 3.0) * wD; /* o giro do antebraço é medido a partir da pose do modelo (que já vem girada): o braço inteiro (antebraço + rotação do ombro) chega a ~170° — aqui sem trava curta */ rotW(fore, fa, tau); }
         /* 2) desvio do pulso, no plano da lâmina com os dedos: + para o lado dos dedos = ulnar (até 30°), − = radial (até 20°) */
         const f1 = reGrip(); bd = bladeNow(); const fp = f1.clone().addScaledVector(bd, -f1.dot(bd)); if (fp.lengthSq() > 1e-4) { fp.normalize(); const n = new THREE.Vector3().crossVectors(bd, fp).normalize();
           const want = Math.atan2(D.dot(fp), D.dot(bd)), dev = clamp(want, -0.35, 0.52); rotW(sH, n, dev); }

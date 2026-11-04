@@ -1216,8 +1216,8 @@
     background: radial-gradient(circle at 7px 50%, #ffe08a 0 3.5px, #8a6a28 4.5px, transparent 5.5px), radial-gradient(circle at calc(100% - 7px) 50%, #ffe08a 0 3.5px, #8a6a28 4.5px, transparent 5.5px), linear-gradient(180deg, transparent 5.5px, #5a4222 5.5px 6px, #c9a24a 6px 8px, #5a4222 8px 8.5px, transparent 8.5px); filter: drop-shadow(0 2px 3px #000); }
   :root[data-rows="2"] #bar::before, :root[data-rows="3"] #bar::before { display: block; }
   /* com 2 ou 3 andares o fundo sobe junto, cada andar mais transparente que o de baixo (degradê): não some, mas não tapa a visão */
-  :root[data-rows="2"] #panel, :root[data-rows="3"] #panel { height: calc(84px + (var(--rows) - 1) * 46px); border-top-color: transparent; box-shadow: 0 -4px 14px rgba(0,0,0,.25), inset 0 -30px 30px -10px #000;
-    background: linear-gradient(0deg, #120c07 0, #1c130b 66px, rgba(28,19,11,.86) 84px, rgba(32,23,14,.62) 130px, rgba(36,26,16,.40) 176px, rgba(36,26,16,.22) 196px); } :root[data-rows="2"] #panel::before, :root[data-rows="2"] #panel::after, :root[data-rows="3"] #panel::before, :root[data-rows="3"] #panel::after { display: none; } /* uma linha só: a de cima, saindo do K */
+  :root[data-rows="2"] #panel, :root[data-rows="3"] #panel { height: calc(96px + (var(--rows) - 1) * 46px); /* 04/11 (Erling: "subiu a linha dourada 9px mas não subiu o fundo junto"): o fundo vai até a linha dourada de cima */ border-top-color: transparent; box-shadow: 0 -4px 14px rgba(0,0,0,.25), inset 0 -30px 30px -10px #000;
+    background: linear-gradient(0deg, #120c07 0, #1c130b 66px, rgba(28,19,11,.86) 84px, rgba(32,23,14,.62) 130px, rgba(36,26,16,.46) 176px, rgba(36,26,16,.34) 208px); } :root[data-rows="2"] #panel::before, :root[data-rows="2"] #panel::after, :root[data-rows="3"] #panel::before, :root[data-rows="3"] #panel::after { display: none; } /* uma linha só: a de cima, saindo do K */
   #crest { width: 236px; height: 134px; bottom: calc(20px + (var(--rows) - 1) * 22px); }
   #crest::before { left: -14px; right: -14px; top: -10px; bottom: -8px; }
   #sigil { width: 230px; height: 130px; margin-top: 2px; } #eye { width: 230px; height: 130px; }

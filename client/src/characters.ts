@@ -1584,7 +1584,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           else if (wcls === 'kunai') { aCrouch += 0.08 * cK; aLean += 0.15 * cK; aShL += -1.0 * cK; aElL += -0.7 * cK; aShLz += 0.2 * cK; } // agachado, a mão livre à frente
           else if (wcls === 'bow') { aTwist += 0.5 * cK; /* arco na esquerda: ombro esquerdo à frente */ aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
         }
-        else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += 0.55 * cK; aElR += -0.95 * cK; aShRz += -0.1 * cK; }
+        else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += -0.12 * cK; aElR += -1.5 * cK; aShRz += -0.12 * cK; } /* 04/11 (Erling: "segurando espada para baixo em modo batalha? quem faz isso?"): em guarda o antebraço vem à frente, cotovelo a ~90° — com a pegada anatômica é isso que deixa a lâmina de pé */
         else if (kind === 'dwarf') { aTwist += 0.35 * cK; aShR += -0.8 * cK; aElR += -0.45 * cK; aShRz += -0.12 * cK; aSwX += 2.35 * cK; aLean += 0.05 * cK; } // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
         else { aTwist += 0.55 * cK; aCrouch += 0.05 * cK; aLean += 0.08 * cK; aHeadX += 0.22 * cK; }
       }
@@ -1599,7 +1599,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       } else if (guardK > 0.01) { aShL += -1.25 * guardK; aShLz += 0.18 * guardK; aElL += -1.7 * guardK; aFace = Math.max(aFace, guardK); aLean += -0.04 * guardK; aCrouch += (0.15 + 0.03 * recoil) * guardK; aShR += 0.35 * guardK; aTwist += 0.25 * guardK; aLean += (-0.08 * recoil) * guardK; aShL += 0.35 * recoil * guardK; aElL += 0.3 * recoil * guardK; }
       slashK = Math.max(0, slashK - dt * 7); if (slashK > 0) { const w = Math.sin(Math.min(1, 1 - slashK) * Math.PI); aShR += -1.1 * w; aShRz += -0.9 * w; aElR += 0.3 * w; aSwX += -1.2 * w; aTwist += 0.5 * w; }
       const rK = runK * walkK * (1 - (act ? 1 : 0));
-      if (kind === 'nordic' && rK > 0.01 && wcls === 'one') { aShR += 0.95 * rK; aElR += 0.3 * rK; aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
+      if (kind === 'nordic' && rK > 0.01 && wcls === 'one') { const rq = rK * (1 - combatK); aShR += 0.95 * rq - 0.1 * rK * combatK; aElR += 0.3 * rq - 1.3 * rK * combatK; /* correndo em combate: a espada continua de pé à frente do peito */ aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
       root.rotation.y = yaw + aSpin;
       // sem ação a espada descansa apontando para o chão, ligeiramente para trás e afastada da perna
       const hang = kind === 'nordic' ? smooth1('hang', act || guardK > 0.5 || wcls === 'club' ? 0 : 1, dt, 9) * (1 - 0.62 * combatK) : 0;
@@ -1730,7 +1730,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       } else { feet[0].lock = feet[1].lock = null; }
       /* braços (contra-balanço das pernas) */
       const sL = Math.sin(phase), sR = Math.sin(phase + Math.PI);
-      armL.sh.rotation.x = restL.x + armA * sL * swingL * (1 - 0.8 * cK) + aShL; armL.sh.rotation.z = restL.z + aShLz;
+      armL.sh.rotation.x = restL.x + armA * sL * swingL * (1 - 0.8 * cK) * (shieldHolder && !stowed ? 0.5 : 1) + aShL; /* 04/11: com escudo no braço, o balanço da corrida cai pela metade (Erling: "o escudo está balançando demais") */ armL.sh.rotation.z = restL.z + aShLz;
       armL.el.rotation.x = -(restL.e + (0.18 + 0.22 * (1 - sL) * 0.5) * walkK) + aElL;
       armR.sh.rotation.x = restR.x + armA * sR * swingR * (1 - 0.7 * rK) + aShR; armR.sh.rotation.z = restR.z + aShRz;
       armR.el.rotation.x = -(restR.e + (0.18 + 0.22 * (1 - sR) * 0.5) * walkK) + aElR;
