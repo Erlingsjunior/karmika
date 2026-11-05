@@ -225,7 +225,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       const lim = gk > 1 && gw > med * 2.2 ? gk : H; /* com guarda: só procura entre o pomo e a guarda */
       let best = -1, bw = Infinity; for (let k = 0; k < lim; k++) { const i = idx(k); if (cnt[i] && wid[i] < bw) { bw = wid[i]; best = k; } }
       if (best >= 0) { let a = best, b = best; while (a > 0 && cnt[idx(a - 1)] && wid[idx(a - 1)] < bw * 1.7) a--; while (b < lim - 1 && cnt[idx(b + 1)] && wid[idx(b + 1)] < bw * 1.7) b++;
-        const run = b - a + 1, kk = run > N * 0.35 ? a + run * 0.3 : (a + b) / 2; /* cabo longo: perto da ponta; espada: o meio */
+        const run = b - a + 1, kk = run > N * 0.35 ? a + run * 0.44 : (a + b) / 2; /* cabo longo de UMA mão (marreta, maça, machado): quase no meio, para ter balanço (Erling, 05/11: "marreta de uma mão segura mais no meio"); espada: o meio do punho */
         const i = idx(Math.round(kk)), yy = y0 + ((sgn > 0 ? kk : N - 1 - kk) + 0.5) / N * L; out = new THREE.Vector3(cnt[i] ? cx[i] / cnt[i] : 0, yy, cnt[i] ? cz[i] / cnt[i] : 0); } }
     gripCache.set(key, out); return out;
   }
