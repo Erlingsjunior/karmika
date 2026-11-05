@@ -58,10 +58,11 @@ export const KITS: Partial<Record<Race, SkillDef[]>> = {
 
 /** Recurso de cada caminho: magos e bruxos usam Mana; guerreiros, Ímpeto (enche lutando); tecnocratas, Energia;
  *  vampiros, Sangue; lobisomens, Fúria; caçadores de demônios, Ódio; paladinos, Fé. */
-export type ResStyle = 'foco' | 'mana' | 'impeto' | 'energia' | 'sangue' | 'furia' | 'odio' | 'fe' | 'determinacao';
+export type ResStyle = 'mananegra' | 'foco' | 'mana' | 'impeto' | 'energia' | 'sangue' | 'furia' | 'odio' | 'fe' | 'determinacao';
 export interface ResDef { name: string; label: string; style: ResStyle; mode: 'regen' | 'fight'; tip: string }
 export const RESOURCES: Record<ResStyle, ResDef> = {
   mana: { name: 'Mana', label: 'MANA', style: 'mana', mode: 'regen', tip: 'Mana: volta sozinha, devagar, quando você não conjura.' },
+  mananegra: { name: 'Mana Negra', label: 'MANA NEGRA', style: 'mananegra', mode: 'fight', tip: 'Mana Negra (bruxo): a energia lúgubre dos pactos malditos. Não volta sozinha e não esfria: enche ao ferir, ao ser ferido e ao matar. Orbe vazio? Dá para conjurar NO FIADO: Malgrath empresta, mas cobra 34% da sua vida na hora e a Dívida do Pacto sobe em dobro. Três vezes seguidas e ele leva a sua vida inteira.' },
   foco: { name: 'Foco', label: 'FOCO', style: 'foco', mode: 'regen', tip: 'Foco (elfo): parada ou recuando, sem levar dano, sobe 15 por segundo; cada golpe recebido tira 25; correr para cima do inimigo baixa. Os golpes do elfo não gastam Foco: eles têm recarga. Foco cheio: o próximo tiro é crítico garantido e atravessa todos na linha.' },
   determinacao: { name: 'Determinação', label: 'DETERMINAÇÃO', style: 'impeto', mode: 'fight', tip: 'Determinação: a teimosia de quem não nasceu com dom. Enche a cada golpe dado ou recebido; fora da luta, esfria.' },
   impeto: { name: 'Ímpeto', label: 'ÍMPETO', style: 'impeto', mode: 'fight', tip: 'Ímpeto: começa vazio e enche a cada golpe dado ou recebido. Fora da luta, esfria e esvazia. Itens de Geração de Ímpeto enchem mais rápido.' },
@@ -71,7 +72,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };
-export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'cac' ? RESOURCES.odio : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : race === 'elf' ? RESOURCES.foco : RESOURCES.mana; }
+export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'cac' ? RESOURCES.odio : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : race === 'elf' ? RESOURCES.foco : race === 'bru' ? RESOURCES.mananegra : RESOURCES.mana; }
 /* ---- Humano puro: luta com o que tiver na mão, sem magia de deus nenhum. Usa os mesmos movimentos da escola nórdica (sem gelo, raio nem lobo),
    com nomes e jeito de gente comum. Feras, armadilhas e construção entram depois (ver arvore-humano.md) ---- */
 { const N = (id: string) => KITS.nordic!.find((x) => x.id === id)!;

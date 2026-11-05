@@ -49,10 +49,10 @@ function createWindow() {
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, backgroundThrottling: false, spellcheck: false },
   });
-  win.once('ready-to-show', () => { win.maximize(); win.show(); });
+  win.once('ready-to-show', () => { win.setFullScreen(true); win.show(); }); /* 05/11 (Erling: "queria que ele já abrisse em tela inteira"): abre em tela cheia; Alt+Enter alterna */
   win.webContents.on('before-input-event', (e, input) => {
     if (input.type !== 'keyDown') return;
-    if (input.key === 'F11') { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); }
+    if (input.key === 'Enter' && input.alt) { win.setFullScreen(!win.isFullScreen()); e.preventDefault(); } /* Alt+Enter: tela cheia ⇄ janela (o F11 agora é do painel do dono) */
     if (input.key === 'F12' && (DEV || input.control)) win.webContents.toggleDevTools();
   });
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) shell.openExternal(url); return { action: 'deny' }; });

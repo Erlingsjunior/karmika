@@ -349,7 +349,7 @@ export function createGameplay(d: GameplayDeps) {
     if ((e.burn ?? 0) > 0 && st.sp.has('r_surtr')) explode(e.pos.x, e.pos.z, e.pos.y, 2.6, 1.2, 0xff6a1a, 0, e.pos.clone()); // Brasa de Surtr
     if ((e.burn ?? 0) > 0) { st.mp = Math.min(st.mpMax, st.mp + 10); logMsg(`🔥 Brasas: +10 de ${st.res.name}`, '#ffb060'); }
     logMsg(`☠ ${e.def.name} derrotado`, '#ff9a8a'); }
-    st.kills++; { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
+    st.kills++; if (st.res.style === 'mananegra') { st.mp = Math.min(st.mpMax, st.mp + 12); } /* a morte alimenta o pacto */ { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
       const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 5) : Math.max(0, 1 + dl * 0.2);
       const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45 * pk); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
@@ -1155,7 +1155,7 @@ export function createGameplay(d: GameplayDeps) {
       else if (id === 'combo' || id === 'guard') return null;
       else { c = cdX[id] ?? 0; need = Math.round(cost * skillScale(id as SkillId).cost * (st.sp.has('m_staff') ? 0.8 : 1)); if (st.sp.has('u_draupnir') && now >= draupT) need = 0; }
       if (c > 0.05) return 'cd';
-      if (!st.god && st.mp < need) return 'res';
+      if (!st.god && st.mp < need && st.res.style !== 'mananegra') return 'res'; /* o bruxo sempre pode pedir no fiado */
       return null;
     },
     target(p: THREE.Vector3, yaw?: number): THREE.Vector3 | null {
@@ -1435,11 +1435,14 @@ export function createGameplay(d: GameplayDeps) {
       const h = d.getHero(), hp = h.root.position; if (st.menuOpen || st.dead) return false;
       if (n3Key() === 'mag' && need3.mag > 0.8 && Math.random() < 0.08) { st.hp = Math.max(1, st.hp - st.hpMax * 0.04); logMsg('🔮 A magia rachou na sua mão (−4% de vida).', '#ff9a8a'); }
       if (kitKey === 'tecno' && reactor.charge <= 0 && id !== 'kick') { logMsg('⚛ O reator está vazio: as magias da Academia não saem. Troque o Núcleo de Reator.', '#ffb060'); return false; }
-      if ((cdX[id] ?? 0) > 0) return false; if (st.mp < cost && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
+      if ((cdX[id] ?? 0) > 0) return false; const fiado = st.res.style === 'mananegra' && st.mp < cost && !st.god; if (st.mp < cost && !fiado && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
       const sc = skillScale(id); cost = Math.round(cost * sc.cost * (st.sp.has('m_staff') ? 0.8 : 1));
       const SND: Record<string, 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy'> = { smite: 'holy', consecrate: 'holy', avenging: 'holy', drain: 'arcane', batswarm: 'arcane', bloodnova: 'fire', nightform: 'arcane', howl: 'earth', rend: 'earth', kick: 'earth', hamstring: 'arcane', hatchet: 'arcane', shieldwall: 'holy', winter: 'ice', thunder: 'shock', valkyrie: 'holy', flame: 'fire', forge: 'fire', poison: 'earth', warcry: 'holy', spear: 'arcane', whirl: 'arcane', mark: 'holy', fenrir: 'earth', hammerthrow: 'earth', stonerune: 'earth', mountain: 'earth', avatar: 'earth', overcharge: 'shock', shocktrap: 'shock', medic: 'holy', railgun: 'shock', mech: 'shock', fireball: 'fire', meteor: 'fire', chainlight: 'shock', blizzard: 'ice', frostnova: 'ice', archon: 'arcane', blink: 'arcane', curse: 'arcane', hellhound: 'fire', demonform: 'fire', holyflask: 'holy', volley: 'arcane', huntform: 'holy' };
-      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm * (1 - (sc.cdr ?? 0)); const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
+      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm * (1 - (sc.cdr ?? 0)); const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } if (fiado && !free) { /* 05/11 (Erling): NO FIADO — Malgrath empresta a magia e cobra 34% da vida na hora; a Dívida do Pacto sobe em dobro; três seguidas e ele leva tudo */
+            st.hp = Math.max(0, st.hp - st.hpMax * 0.34); need3.bru = Math.min(1, (need3.bru ?? 0) + 0.06); st.shake = Math.max(st.shake, 0.25); logMsg(st.hp <= 0 ? '🜏 Malgrath cobrou tudo. A terceira magia no fiado levou a sua vida.' : `🜏 No fiado: Malgrath cobrou 34% da sua vida (Dívida do Pacto ${Math.round(need3.bru * 100)}%).`, '#c8a0ff');
+            for (let k = 0; k < 18; k++) d.particles.spawn(hp.x + rnd(-0.4, 0.4), hp.y + rnd(0.3, 1.8), hp.z + rnd(-0.4, 0.4), { vy: rnd(0.5, 1.6), life: 0.9, s0: 0.35, s1: 0.06, c0: 0x8a3ad8, c1: 0x1a0428, a: 0.9 }); if (st.hp <= 0) setTimeout(() => heroDie(), 0); }
+          else st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
       const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(new THREE.RingGeometry(0.8 * r, 1.0 * r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0 }); };
       switch (id) {
         /* ---- Elfo (04/11): arcos, adagas, a mata e o vento ---- */
@@ -2027,7 +2030,7 @@ export function createGameplay(d: GameplayDeps) {
         if (now - focoHurt > 1.2) st.mp = fw > 0.5 && mv > 1.5 ? Math.max(0, st.mp - 10 * dt) : Math.min(st.mpMax, st.mp + 15 * (buff.dmgT > 0 && buff.dmg >= 1.15 ? 1.25 : 1) * dt); }
       else if (st.res.mode === 'regen' && kitKey !== 'tecno') { const rk = 1 * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
-      else if (st.res.mode !== 'regen' && now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia (29/10: só esses — a Magia e a Energia não esvaziavam e enchiam ao mesmo tempo)
+      else if (st.res.mode !== 'regen' && st.res.style !== 'mananegra' && now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); /* a Mana Negra não esfria */ // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia (29/10: só esses — a Magia e a Energia não esvaziavam e enchiam ao mesmo tempo)
       /* 03/11 (Erling: "de dia precisa usar postura de defesa mais contida, usar mais curas e comer mais carnes de cura"): o lobisomem de dia
          é o homem — a carne e a regeneração rendem 60% mais; de noite a fera não precisa disso */
       const lobDay = kitKey === 'lob' && skyNight <= 0.5; if (lobDay && st.mp > st.mpMax * 0.5) st.mp = st.mpMax * 0.5; /* a lua pela metade */

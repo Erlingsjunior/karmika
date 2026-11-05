@@ -9,6 +9,7 @@ export function createGlobes() {
   /* cada caminho tem o seu líquido: Mana azul, Ímpeto em brasa, Energia elétrica, Sangue, Fúria, Ódio, Fé */
   const PAL: Record<string, { c: [string, string, string, string]; bg: string; men: string; part: 'bubble' | 'ember' | 'spark' | 'mote' }> = {
     mana: { c: ['#8ad8ff', '#2e78e8', '#142a8a', '#0a1240'], bg: '#0e1830', men: 'rgba(200,240,255,.8)', part: 'bubble' },
+    mananegra: { c: ['#c8a0ff', '#6a2aa8', '#2a0a4a', '#08020e'], bg: '#0c0414', men: 'rgba(200,160,255,.75)', part: 'mote' }, /* 05/11: a Mana Negra do bruxo, roxo-escuro com fumaça */
     foco: { c: ['#e8ffc8', '#8ad860', '#2f7a2a', '#0c2a10'], bg: '#0a1a0c', men: 'rgba(220,255,200,.85)', part: 'mote' }, /* 05/11: o Foco do elfo, verde-folha */
     impeto: { c: ['#ffd27a', '#ff7a1c', '#b8300a', '#4a0c04'], bg: '#2a1008', men: 'rgba(255,220,150,.9)', part: 'ember' },
     energia: { c: ['#e6fdff', '#3ae0ff', '#0a7ab0', '#03304a'], bg: '#04161e', men: 'rgba(220,255,255,.95)', part: 'spark' },
