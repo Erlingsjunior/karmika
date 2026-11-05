@@ -2,6 +2,7 @@
 import { setMyFac } from '../faccoes';
 import { CATCHUP_MUL } from '../soul';
 import { confirmBox } from '../windows';
+import { kkEye } from './talentos-ui';
 import type { CriacaoCtx, Profile } from '../main';
 
 export function createCriacao(K: CriacaoCtx) {
@@ -66,9 +67,15 @@ function showCreate(reborn = false) {
       }, `Preparando o mundo de ${name}…`);
     }
   }, { signal: sig });
-  let pvT = 0;
-  { /* 02/11: o retrato gira devagar enquanto a tela de criação está aberta */ const spin = setInterval(() => { if (el.style.display === 'none' || sig.aborted) { clearInterval(spin); return; } K.portraitYaw += 0.045; try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } }, 90); sig.addEventListener('abort', () => { clearInterval(spin); K.hero.gearVisible(true); }); }
-  addEventListener('karmika:skinready', () => { if (el.style.display === 'none') return; for (const ms of [120, 600, 1500]) setTimeout(() => { try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } }, ms); }, { signal: sig }); /* a textura do modelo chega um pouco depois: tira o retrato de novo */
+  /* 05/11 (Erling: "quando troco de homem para mulher aparece por poucos segundos o personagem quadrado de antes… coloque um loading karmiko"):
+     enquanto o modelo novo carrega, o retrato some e o Olho Kármico pulsa no lugar; o boneco de blocos nunca aparece na tela de criação */
+  let pvT = 0, loading = false, loadT = 0;
+  const cpv = pv.parentElement as HTMLElement;
+  if (!cpv.querySelector('.cpload')) cpv.insertAdjacentHTML('afterbegin', `<div class="cpload"><svg viewBox="0 0 120 90">${kkEye(60, 45, 34)}</svg><span>moldando o corpo…</span></div>`);
+  const setLoading = (on: boolean) => { loading = on; cpv.classList.toggle('loading', on); clearTimeout(loadT); if (on) loadT = window.setTimeout(() => { if (loading) shot(true); }, 7000); };
+  const shot = (done = false) => { try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } if (done) setLoading(false); };
+  { /* 02/11: o retrato gira devagar enquanto a tela de criação está aberta */ const spin = setInterval(() => { if (el.style.display === 'none' || sig.aborted) { clearInterval(spin); return; } K.portraitYaw += 0.045; if (loading) return; try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } }, 90); sig.addEventListener('abort', () => { clearInterval(spin); K.hero.gearVisible(true); }); }
+  addEventListener('karmika:skinready', () => { if (el.style.display === 'none') return; for (const ms of [120, 600, 1500]) setTimeout(() => { if (ms === 120) { shot(true); return; } try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } }, ms); }, { signal: sig }); /* a textura do modelo chega um pouco depois: tira o retrato de novo */
   function preview() {
     K.state.race = K.raceOf(origin); K.profile = { name: '', origin, sex, hair: K.HAIRS[hair], skin: K.SKINS[skin], title: '', hairStyle, beard }; K.swapHero(); K.profile = null;
     /* 02/11 (Erling): as telas das três origens iguais à do humano — cabelo, pele, penteado e barba ainda não existem nos modelos do Herik; o corpo (mulher/homem) vale para todos */
@@ -76,7 +83,7 @@ function showCreate(reborn = false) {
     (el.querySelector('#c-sex') as HTMLElement).style.display = ''; ((el.querySelector('#c-sex') as HTMLElement).previousElementSibling as HTMLElement).style.display = '';
     K.hero.gearVisible(false); K.portraitYaw = 0.42;
     (el.querySelector('#c-note') as HTMLElement).textContent = origin === 'dwarf' ? 'Anões carregam a barba da forja: penteado e barba vêm da raça.' : origin === 'elf' ? 'Elfos: orelhas pontudas e passo leve. Por ora trilham o Caminho do Norte; a Academia abre depois.' : '';
-    clearTimeout(pvT); pvT = window.setTimeout(() => { try { K.portraits.delete('hero'); const src = K.portraitOf('hero', K.hero.root, true); if (src) pv.src = src; } catch { /* */ } }, 150);
+    setLoading(true); clearTimeout(pvT);
   }
   preview();
 }

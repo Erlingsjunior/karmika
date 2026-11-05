@@ -192,6 +192,9 @@
   #qlog { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,.5); z-index: 26; font-family: Georgia, serif; }
   /* criação de personagem */
   #create { position: fixed; inset: 0; display: none; place-items: center; background: radial-gradient(circle at 50% 30%, rgba(40,28,16,.92), rgba(5,4,8,.97)); z-index: 60; font-family: Georgia, serif; color: #e8dcc0; }
+  #create .cpv { position: relative; } #create .cpv .cpload { position: absolute; inset: 8px 8px auto; height: 360px; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #a89870; font: italic 12.5px Georgia, serif; letter-spacing: .08em; }
+  #create .cpv.loading .cpload { display: flex; } #create .cpv.loading img { visibility: hidden; } #create .cpload svg { width: 120px; animation: cpeye 1.6s ease-in-out infinite; filter: drop-shadow(0 0 14px rgba(242,176,74,.45)); }
+  @keyframes cpeye { 0%, 100% { opacity: .55; transform: scale(.94); } 50% { opacity: 1; transform: scale(1.04); } }
   #create .cwrap { display: grid; grid-template-columns: 240px 1fr; gap: 18px; align-items: start; } #create .cpv { border: 1px solid #7d5a2c; background: radial-gradient(circle at 50% 30%, #2a2030, #0c0810); padding: 8px; text-align: center; } #create .cpv img { width: 100%; height: 360px; object-fit: contain; image-rendering: auto; display: block; filter: brightness(1.15) contrast(1.05); } #create .cpv small { display: block; margin-top: 6px; color: #a89878; font-size: 11px; min-height: 28px; }
   #create .box { width: min(760px, 94vw); border: 2px solid #b8924a; background: linear-gradient(#1c1710, #120e0a); box-shadow: 0 0 60px #000; padding: 22px 26px; }
   #create.reborn #c-back { display: none; }

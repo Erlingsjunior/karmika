@@ -326,8 +326,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
     /* 02/11 (Erling: "dedos virados para trás" na elfa, na tela de criação): mão vazia = dedos no repouso do próprio modelo, sem fechar */
-    const swVis = !!R.sword()?.visible || tool, shVis = !!R.shield()?.visible;
-    gripK[swordSide] = !swVis ? 0 : stowed && !tool ? 0.42 : 1; gripK[shieldSide] = !shVis && !offOn ? 0 : stowed && !offOn ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
+    /* 05/11 (Erling: "a elfa na tela de criação com os dedos virados para trás… deixe a mão calma, normal"): o suporte do escudo continua
+       visível quando a tela esconde as armas, e a mão do escudo fechava em volta do nada. Armas escondidas = as duas mãos no repouso */
+    const gearOn = (R as unknown as { gearOn?: () => boolean }).gearOn?.() ?? true;
+    const swVis = gearOn && (!!R.sword()?.visible || tool), shVis = gearOn && !!R.shield()?.visible && !!(R.shield() as THREE.Object3D).children.some((c) => c.visible);
+    gripK[swordSide] = !swVis ? 0 : stowed && !tool ? 0.42 : 1; gripK[shieldSide] = !shVis && !(offOn && gearOn) ? 0 : stowed && !offOn ? 0.42 : 1; setFingers(); model.updateMatrixWorld(true);
     if (offOn && offW && offW.parent) { /* 02/11: arma na mão esquerda (arco, segunda besta de mão, pistola ou escopeta) — presa na mão do modelo, na direção que o esqueleto calcula */
       W(hH, vH); W(hI, vI); W(hP, vP); W(hM, vM); const f2 = vM.clone().sub(vH).normalize();
       const g2 = vI.clone().add(vP).add(vM).add(vM).multiplyScalar(0.25).addScaledVector(f2, -0.01 * sc.x);

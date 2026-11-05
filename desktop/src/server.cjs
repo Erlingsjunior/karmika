@@ -159,12 +159,19 @@ function startServer(opts = {}) {
     function guildOf(char) { const k = charKey(char); for (const g of Object.values(store.guilds)) if (g.members[k]) return g; return null; }
     const RANKS = ['recruta', 'membro', 'oficial', 'lider'];
     const rankN = (g, char) => RANKS.indexOf((g.members[charKey(char)] || {}).rank);
-    function guildMsg(g) { return { t: 'g:info', g: g ? { id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, motd: g.motd, created: g.created, members: Object.entries(g.members).map(([k, m]) => ({ k, name: m.name, rank: m.rank, joined: m.joined, ...(m.acc ? presence(m.acc) : { on: false }) })), market: g.market, log: g.log.slice(-60) } : null }; }
-    function worldGuilds() { return { t: 'g:world', list: Object.values(store.guilds).map((g) => ({ id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, build: g.build })) }; }
+    function guildMsg(g) { return { t: 'g:info', g: g ? { id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, motd: g.motd, created: g.created, members: Object.entries(g.members).map(([k, m]) => ({ k, name: m.name, rank: m.rank, joined: m.joined, ...(m.acc ? presence(m.acc) : { on: false }) })), market: g.market, log: g.log.slice(-60), flag: g.flag || null, icon: g.icon || null, welcome: g.welcome || '', lvl: g.lvl || 1, signed: g.signed || [] } : null }; }
+    function worldGuilds() { return { t: 'g:world', list: Object.values(store.guilds).map((g) => ({ id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, build: g.build, flag: g.flag || null, icon: g.icon || null, lvl: g.lvl || 1, created: g.created, members: Object.keys(g.members).length, signed: g.signed || [] })) }; }
     function toGuild(g, m) { const ks = new Set(Object.keys(g.members)); for (const h of hubs) if (h.char && ks.has(charKey(h.char))) send(h.ws, m); }
     const pushGuild = (g) => toGuild(g, guildMsg(g));
     const pushWorld = () => { const m = worldGuilds(); for (const h of hubs) send(h.ws, m); };
     const ginv = new Map(); // personagem convidado → { gid, from, at }
+    /* 05/11 (Erling): FUNDAÇÃO NOVA — o líder da party leva a Lágrima de Marghar ao Prefeito de Lumenhal com mais 2 da party no salão;
+       o documento só vira guilda quando os três assinam. O NOME nunca muda depois; bandeira e ícone podem mudar (g:flag). */
+    const gprop = new Map(); // id → { leader, name, tag, col, flag, icon, signers: { nomeMinúsculo: { name, ok } }, at }
+    let gpseq = 1;
+    const FLAG_PAT = ['liso', 'faixa', 'cruz', 'diagonal', 'chevron', 'quartel'];
+    const cleanFlag = (f) => ({ pat: FLAG_PAT.includes(f?.pat) ? f.pat : 'liso', c1: /^#[0-9a-f]{6}$/i.test(f?.c1) ? f.c1 : '#b8924a', c2: /^#[0-9a-f]{6}$/i.test(f?.c2) ? f.c2 : '#2a1a10' });
+    const cleanIcon = (i) => String(i || '⚔').slice(0, 4);
     function hubMsg(h, m) {
       const me = A(h.acc); if (!me) return; me.seen = Date.now();
       switch (m.t) {
@@ -220,6 +227,33 @@ function startServer(opts = {}) {
           const used = new Set(Object.values(store.guilds).map((g) => g.plot)); let plot = 0; while (used.has(plot)) plot++;
           const g = { id: store.gseq++, name, tag, col: /^#[0-9a-f]{6}$/i.test(m.col) ? m.col : '#b8924a', created: Date.now(), plot, motd: 'Bem-vindos.', members: { [charKey(char)]: { name: char, acc: h.acc, rank: 'lider', joined: Date.now() } }, market: [], build: Array.isArray(m.seed) ? m.seed.slice(0, 120) : [], log: [{ at: Date.now(), sys: 1, text: `${char} fundou a guilda ${name}.` }] };
           store.guilds[g.id] = g; saveStore(); send(h.ws, { t: 'g:ok', id: g.id }); pushGuild(g); pushWorld(); break; }
+        case 'g:propose': { const char = h.char; if (!char) break; if (guildOf(char)) { send(h.ws, { t: 'g:fail', why: 'Você já está em uma guilda.' }); break; }
+          const name = String(m.name || '').replace(/[<>]/g, '').slice(0, 28).trim(), tag = String(m.tag || '').replace(/[^\p{L}\p{N}]/gu, '').slice(0, 4).toUpperCase();
+          if (name.length < 3 || tag.length < 2) { send(h.ws, { t: 'g:fail', why: 'O nome precisa de 3 letras e a sigla de 2 a 4.' }); break; }
+          if (Object.values(store.guilds).some((g) => g.name.toLowerCase() === name.toLowerCase() || g.tag === tag)) { send(h.ws, { t: 'g:fail', why: 'Já existe uma guilda com esse nome ou essa sigla.' }); break; }
+          const names = [...new Set((Array.isArray(m.signers) ? m.signers : []).map((x) => String(x)).filter((x) => x && lc(x) !== lc(char)))].slice(0, 5);
+          if (names.length < 2) { send(h.ws, { t: 'g:fail', why: 'O documento pede a assinatura de mais 2 da sua party.' }); break; }
+          for (const nm of names) { if (guildOf(nm)) { send(h.ws, { t: 'g:fail', why: `${nm} já está numa guilda.` }); return; } if (![...hubs].some((x) => x.char && lc(x.char) === lc(nm))) { send(h.ws, { t: 'g:fail', why: `${nm} não está conectado agora.` }); return; } }
+          const id = gpseq++, P = { id, leader: char, leaderAcc: h.acc, name, tag, col: /^#[0-9a-f]{6}$/i.test(m.col) ? m.col : '#b8924a', flag: cleanFlag(m.flag), icon: cleanIcon(m.icon), signers: {}, at: Date.now() };
+          for (const nm of names) P.signers[lc(nm)] = { name: nm, ok: false }; gprop.set(id, P);
+          const view = { t: 'g:sign', id, name, tag, col: P.col, flag: P.flag, icon: P.icon, leader: char, signers: names };
+          for (const x of hubs) if (x.char && P.signers[lc(x.char)]) send(x.ws, view);
+          send(h.ws, { t: 'g:propst', id, signers: Object.values(P.signers) }); break; }
+        case 'g:signans': { const P = gprop.get(m.id); if (!P || !h.char) break; const S = P.signers[lc(h.char)]; if (!S) break;
+          const L = [...hubs].filter((x) => x.char && lc(x.char) === lc(P.leader));
+          if (Date.now() - P.at > 5 * 60000) { gprop.delete(P.id); for (const x of L) send(x.ws, { t: 'g:fail', why: 'O documento da guilda expirou: chamem o Prefeito de novo.' }); break; }
+          if (!m.ok) { gprop.delete(P.id); for (const x of L) send(x.ws, { t: 'g:fail', why: `${h.char} não quis assinar o documento da guilda.` }); break; }
+          if (guildOf(h.char)) { gprop.delete(P.id); for (const x of L) send(x.ws, { t: 'g:fail', why: `${h.char} já entrou em outra guilda.` }); break; }
+          S.ok = true; S.acc = h.acc; S.at = Date.now(); for (const x of L) send(x.ws, { t: 'g:propst', id: P.id, signers: Object.values(P.signers).map((q) => ({ name: q.name, ok: q.ok })) });
+          if (!Object.values(P.signers).every((q) => q.ok)) break;
+          gprop.delete(P.id); if (guildOf(P.leader) || Object.values(store.guilds).some((g) => g.name.toLowerCase() === P.name.toLowerCase() || g.tag === P.tag)) { for (const x of L) send(x.ws, { t: 'g:fail', why: 'Alguém registrou esse nome antes de vocês terminarem.' }); break; }
+          const used = new Set(Object.values(store.guilds).map((g) => g.plot)); let plot = 0; while (used.has(plot)) plot++; const now = Date.now();
+          const members = { [charKey(P.leader)]: { name: P.leader, acc: P.leaderAcc, rank: 'lider', joined: now } }; for (const q of Object.values(P.signers)) members[charKey(q.name)] = { name: q.name, acc: q.acc, rank: 'membro', joined: now };
+          const signed = [{ name: P.leader, at: P.at, lider: 1 }, ...Object.values(P.signers).map((q) => ({ name: q.name, at: q.at }))];
+          const g = { id: store.gseq++, name: P.name, tag: P.tag, col: P.col, flag: P.flag, icon: P.icon, lvl: 1, welcome: 'Bem-vindo à guilda. Leia a mensagem do dia e diga oi no chat.', created: now, plot, motd: 'Bem-vindos.', members, signed, market: [], build: [], log: [{ at: now, sys: 1, text: `${P.name} foi registrada no Livro de Guildas de Karmika pelo Prefeito de Lumenhal. Assinaram: ${signed.map((q) => q.name).join(', ')}.` }] };
+          store.guilds[g.id] = g; saveStore(); for (const x of L) send(x.ws, { t: 'g:ok', id: g.id, lider: 1 }); for (const x of hubs) if (x.char && Object.values(P.signers).some((q) => lc(q.name) === lc(x.char))) send(x.ws, { t: 'g:ok', id: g.id });
+          pushGuild(g); pushWorld(); break; }
+        case 'g:flag': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 3) { send(h.ws, { t: 'a:sys', text: 'Só o líder troca a bandeira e o ícone.' }); break; } g.flag = cleanFlag(m.flag); g.icon = cleanIcon(m.icon); if (/^#[0-9a-f]{6}$/i.test(m.col)) g.col = m.col; const L2 = { at: Date.now(), sys: 1, text: `${h.char} trocou a bandeira da guilda.` }; g.log.push(L2); saveStore(); toGuild(g, { t: 'g:chat', ...L2 }); pushGuild(g); pushWorld(); break; }
         case 'g:inv': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 2) { send(h.ws, { t: 'a:sys', text: 'Só líder e oficiais convidam para a guilda.' }); break; } const to = String(m.char || ''); if (guildOf(to)) { send(h.ws, { t: 'a:sys', text: `${to} já está numa guilda.` }); break; }
           const c = [...hubs].filter((x) => x.char && lc(x.char) === lc(to)); if (!c.length) { send(h.ws, { t: 'a:sys', text: `${to} não está conectado agora.` }); break; }
           ginv.set(lc(to), { gid: g.id, from: h.char, at: Date.now() }); for (const x of c) send(x.ws, { t: 'g:inv', gid: g.id, name: g.name, tag: g.tag, col: g.col, from: h.char }); send(h.ws, { t: 'a:sys', text: `Convite da guilda enviado para ${to}.` }); break; }
