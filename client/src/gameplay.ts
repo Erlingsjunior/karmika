@@ -529,11 +529,12 @@ export function createGameplay(d: GameplayDeps) {
     let n = 0; const r = d.canvas.getBoundingClientRect();
     for (const e of enemies.list) {
       const danger = (e.def.lvl ?? 1) >= st.lvl + 5; // forte demais: caveira sobre a cabeça, mesmo parado — melhor correr
-      if (!e.alive || !e.active || (e.root && !e.root.visible) || (e.hp >= e.hpMax && e.state === 'idle' && !(danger && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
+      const qst = !!(e as Enemy & { quest?: boolean }).quest; /* 05/11 (Erling): o bicho da missão mostra o nome sempre (perto), com o selo e o brilho — sem anel no chão */
+      if (!e.alive || !e.active || (e.root && !e.root.visible) || (e.hp >= e.hpMax && e.state === 'idle' && !((danger || qst) && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
       const v = tmp.set(e.pos.x, e.pos.y + 2.1 * e.def.scale, e.pos.z).project(d.camera as THREE.Camera);
       if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
       let el = ebars[n]; if (!el) { el = document.createElement('div'); el.className = 'ebar'; el.innerHTML = '<span></span><i></i><u></u>'; document.body.appendChild(el); ebars[n] = el; }
-      el.style.display = 'block'; el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
+      el.style.display = 'block'; el.classList.toggle('quest', qst); el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
       (el.children[1] as HTMLElement).style.width = Math.max(0, e.hp / e.hpMax) * 100 + '%'; { const ep = e as Enemy & { poise?: number; poiseMax?: number; poiseT?: number }, u = el.children[2] as HTMLElement; if (isElite(e)) { const broken = (ep.poiseT ?? 0) > now, k = broken ? 0 : ep.poiseMax ? (ep.poise ?? 0) / ep.poiseMax : 1; u.style.display = 'block'; u.style.width = Math.max(0, k) * 100 + '%'; u.classList.toggle('broken', broken); } else u.style.display = 'none'; } { const dl2 = (e.def.lvl ?? 1) - st.lvl, lc = dl2 >= 5 ? 'r' : dl2 >= 2 ? 'o' : dl2 >= -2 ? 'y' : dl2 >= -5 ? 'g' : 'z'; const key = `${e.def.name}|${e.def.lvl}|${lc}`; if (el.dataset.k !== key) { el.dataset.k = key; (el.children[0] as HTMLElement).innerHTML = `<b class="lv ${lc}">${danger ? '💀 ' : ''}${e.def.lvl}</b> ${e.def.name}`; } } el.classList.toggle('danger', danger);
       n++;
     }

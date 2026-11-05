@@ -11,7 +11,9 @@ export const FLAG_PATS: { id: string; name: string }[] = [
   { id: 'diagonal', name: 'Banda' }, { id: 'chevron', name: 'Asna' }, { id: 'quartel', name: 'Quartéis' },
 ];
 export const GUILD_ICONS = ['⚔', '🛡', '🏹', '🔥', '❄', '⚡', '🌙', '☀', '🐺', '🦅', '🐉', '💀', '🌿', '⚒', '📜', '👁'];
-export const FOUND_NEAR_M = 14; /* "todos juntos no salão": os três a menos de 14 m um do outro */
+export const FOUND_NEAR_M = 14;
+/** nível BASE pedido para fundar (Erling, 05/11) */
+export const FOUND_LVL = 45; /* "todos juntos no salão": os três a menos de 14 m um do outro */
 
 const esc = (t: string) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
@@ -38,7 +40,7 @@ export interface FoundCheck { lvl: number; tear: boolean; party: { name: string;
 export function reqList(c: FoundCheck): { ok: boolean; html: string }[] {
   const others = c.party.length, near = c.party.filter((p) => p.near).length;
   return [
-    { ok: c.lvl >= 20, html: `<b>Nível 20</b> ou mais ${c.lvl >= 20 ? '' : `<small>você está no ${c.lvl}</small>`}` },
+    { ok: c.lvl >= FOUND_LVL, html: `<b>Nível base ${FOUND_LVL}</b> ou mais ${c.lvl >= FOUND_LVL ? '' : `<small>você está no ${c.lvl}</small>`}` },
     { ok: c.tear, html: `<b>1 Lágrima de Marghar</b> na bolsa <small>${c.tear ? 'ela é entregue ao Prefeito quando a guilda nascer' : 'cai de Marghar, ou se compra no Quadro e no leilão'}</small>` },
     { ok: c.inParty && c.leader && others >= 2, html: `<b>Party de 3</b>, com você na liderança ${!c.inParty ? '<small>você não está numa party</small>' : !c.leader ? '<small>só o líder da party funda</small>' : others < 2 ? `<small>faltam ${2 - others}</small>` : ''}` },
     { ok: others >= 2 && near >= 2, html: `<b>Os três no salão</b>, a menos de ${FOUND_NEAR_M} m ${others ? `<small>${c.party.map((p) => `${esc(p.name)} ${p.near ? '✔' : '✘ longe'}`).join(' · ')}</small>` : ''}` },
@@ -47,7 +49,7 @@ export function reqList(c: FoundCheck): { ok: boolean; html: string }[] {
 
 /** o formulário do líder: nome, sigla, bandeira, ícone e o documento que os outros vão assinar */
 export function foundFormHtml(d: FoundDraft, c: FoundCheck, status: { name: string; ok: boolean }[] | null, leaderName: string): string {
-  const req = reqList(c), ready = req.every((r) => r.ok) && d.name.trim().length >= 3 && d.tag.trim().length >= 2;
+  const req = reqList(c), ready = req.every((r) => r.ok); /* o nome e a sigla são conferidos no clique (o campo muda sem redesenhar a tela) */
   const sign = status ?? c.party.slice(0, 2).map((p) => ({ name: p.name, ok: false }));
   return `<div class="gfnd">
     <h4>Licença de Guilda de Karmika</h4>

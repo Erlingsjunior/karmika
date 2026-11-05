@@ -1,15 +1,17 @@
 /* AMIGOS, CONVERSAS E GUILDA (26/10). Uma janela quadrada com abas (regra das janelas: nunca uma "linguiça").
    - Amigos: da CONTA. Pedido por apelido ou pelo Ctrl+clique num jogador; status (no mundo como X, no menu, visto há…).
    - Conversas: por conta, funcionam no menu e no mundo; quem está fora recebe quando entrar (o servidor guarda).
-   - Guilda: do PERSONAGEM. Fundar pede nível 20, a Carta Patente do Escrivão-Mor de Askavik e o Magistrado de Lumenhal.
+   - Guilda: do PERSONAGEM. Fundar (05/11) pede nível base 45, 1 Lágrima de Marghar, uma party de 3 no salão do Prefeito de Lumenhal
+     e as três assinaturas no documento (guilda-fundacao.ts).
      Membros e postos, mensagem do dia, chat da guilda, mercado só dos membros (sem taxa) e o terreno da guilda. */
 import type { Hub } from './hub';
 import { account, setNick } from './hub';
 import { floatWin, promptBox } from './windows';
+import { foundFormHtml, signHtml, bannerHtml, FOUND_LVL, type FoundDraft, type FoundCheck, type GFlag } from './sistemas/guilda-fundacao';
 
 export interface GMember { k: string; name: string; rank: string; joined: number; on?: boolean; where?: string; char?: string; seen?: number }
 export interface GListing { id: number; by: string; price: number; at: number; att: { item?: { id: string; n: number }; gear?: { name: string; rarity: string; icon: string; uid?: number } } }
-export interface Guild { id: number; name: string; tag: string; col: string; plot: number; motd: string; created: number; members: GMember[]; market: GListing[]; log: { at: number; from?: string; sys?: number; text: string }[] }
+export interface Guild { id: number; name: string; tag: string; col: string; flag?: GFlag | null; icon?: string | null; welcome?: string; lvl?: number; plot: number; motd: string; created: number; members: GMember[]; market: GListing[]; log: { at: number; from?: string; sys?: number; text: string }[] }
 interface Friend { id: string; nick: string; on: boolean; where?: string; char?: string; seen?: number }
 interface AMail { id: number; from: string; fromId?: string; subj: string; text: string; att: { item?: { id: string; n: number }; gear?: { name: string; rarity: string } & Record<string, unknown> }[]; t: number; read?: boolean; local?: boolean }
 interface Dm { from: string; fromNick: string; to: string; text: string; at: number }
@@ -21,12 +23,15 @@ export function createSocial(ctx: {
   hub: Hub; char(): string; lvl(): number; gold(): number; payGold(n: number): boolean; log(t: string, c?: string): void;
   items(): { id: string; n: number; name: string; icon: string }[]; gear(): { uid: number; name: string; rarity: string; icon: string; ilvl: number }[];
   takeItem(id: string, n: number): boolean; takeGear(uid: number): unknown; itemName(id: string): string; itemIcon(id: string): string; rarityCol(r: string): string;
-  ask(title: string, text: string, yes: string, cb: (ok: boolean) => void): void; chars(): { i: number; name: string; lvl: number; active: boolean }[]; toChar(i: number, l: { from: string; subj: string; text: string; att: unknown[] }): boolean; plotText(plot: number): string; markPlot(plot: number): void; hasCarta(): boolean; useCarta(): void; seedHall(plot: number): { kind: string; gx: number; gy: number; v: number }[];
+  ask(title: string, text: string, yes: string, cb: (ok: boolean) => void): void; chars(): { i: number; name: string; lvl: number; active: boolean }[]; toChar(i: number, l: { from: string; subj: string; text: string; att: unknown[] }): boolean; plotText(plot: number): string; markPlot(plot: number): void; hasTear(): boolean; useTear(): void; partyNow(): Omit<FoundCheck, 'lvl' | 'tear'>; seedHall(plot: number): { kind: string; gx: number; gy: number; v: number }[];
   onWorld?(list: { id: number; name: string; tag: string; col: string; plot: number; build: { kind: string; gx: number; gy: number; v: number }[] }[]): void; onGuild?(g: Guild | null): void;
 }) {
   const H = ctx.hub;
   let me: { id: string; nick: string } | null = null, friends: Friend[] = [], reqIn: { id: string; nick: string }[] = [], reqOut: { id: string; nick: string }[] = [];
   let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'membros' | 'chat' | 'mercado' | 'terreno' = 'chat', talk = '', founding = false, unread = 0;
+  let draft: FoundDraft = { name: '', tag: '', flag: { pat: 'liso', c1: '#b8924a', c2: '#2a1a10' }, icon: '⚔' }, propSt: { name: string; ok: boolean }[] | null = null;
+  let signReq: { id: number; name: string; tag: string; col: string; flag: GFlag; icon: string; leader: string; signers: string[] } | null = null;
+  const check = (): FoundCheck => ({ lvl: ctx.lvl(), tear: ctx.hasTear(), ...ctx.partyNow() });
   const DMK = 'karmika.coop.dm'; let dms: Dm[] = (() => { try { return JSON.parse(localStorage.getItem(DMK) || '[]'); } catch { return []; } })();
   const saveDm = () => { try { localStorage.setItem(DMK, JSON.stringify(dms.slice(-400))); } catch { /* */ } };
   const el = document.createElement('div'); el.id = 'socw'; el.className = 'modalw'; document.body.appendChild(el); setTimeout(() => floatWin(el, 'social', { left: '26vw', top: '8vh' }), 0);
@@ -42,8 +47,10 @@ export function createSocial(ctx: {
   H.on('g:world', (m) => ctx.onWorld?.(m.list as never));
   H.on('g:chat', (m) => { const L = m as unknown as Guild['log'][number]; if (guild) guild.log.push(L); ctx.log(L.sys ? `⚑ ${L.text}` : `⚑ [${guild?.tag ?? 'G'}] ${L.from}: ${L.text}`, guild?.col ?? '#e0c070'); if (open && tab === 'guilda') render(); });
   H.on('g:inv', (m) => ctx.ask(`⚑ Convite de guilda`, `${m.from} convida você para a guilda ${m.name} [${m.tag}]. A guilda é deste personagem.`, 'Entrar', (ok) => H.send({ t: 'g:ans', ok })));
-  H.on('g:fail', (m) => { ctx.log(`⚑ ${m.why}`, '#ff9a8a'); founding = true; render(); });
-  H.on('g:ok', () => { founding = false; ctx.useCarta(); ctx.log('⚑ A guilda foi registrada pelo Magistrado. O estandarte já está de pé no seu terreno.', '#ffe08a'); tab = 'guilda'; gtab = 'terreno'; render(); });
+  H.on('g:fail', (m) => { ctx.log(`⚑ ${m.why}`, '#ff9a8a'); propSt = null; if (!signReq) founding = true; render(); });
+  H.on('g:propst', (m) => { propSt = m.signers as typeof propSt; render(); });
+  H.on('g:sign', (m) => { signReq = m as unknown as typeof signReq; ctx.log(`⚑ ${signReq!.leader} pede a sua assinatura no documento da guilda ${signReq!.name}.`, '#ffe08a'); toggle(true, 'guilda'); });
+  H.on('g:ok', (m) => { const lider = !!m.lider; founding = false; propSt = null; signReq = null; if (lider) ctx.useTear(); ctx.log(lider ? '⚑ O Prefeito carimbou o documento: a guilda entrou no Livro de Guildas de Karmika. A Lágrima de Marghar ficou com ele, e o estandarte já está de pé no terreno.' : '⚑ Você assinou: agora é fundador da guilda.', '#ffe08a'); tab = 'guilda'; gtab = 'terreno'; render(); });
   H.on('hub:state', () => render());
   /* 26/10 (Erling: "a aba Correio: recebemos por lá os itens que compramos fora do jogo, já no servidor, e decidimos para qual personagem
      enviar; mandamos e recebemos cartas"). É o correio da CONTA (no servidor); a caixa de correio de cada personagem continua no mundo */
@@ -91,15 +98,18 @@ export function createSocial(ctx: {
   function guildHtml() {
     if (off()) return `<p class="somut">A guilda mora no servidor. Entre numa sala (ou escolha um servidor) para ver a sua.</p>`;
     if (!guild) {
-      if (founding) return `<div class="sofound"><h4>Registrar a guilda</h4><p>O Magistrado abre o livro de registros de Lumenhal. Custa <b>500 de ouro</b> de taxa e a <b>Carta Patente</b>.</p>
-        <label>Nome da guilda<input data-v="gname" maxlength="28" placeholder="Ex.: Os Filhos do Vale"></label><label>Sigla (2 a 4 letras)<input data-v="gtag" maxlength="4" placeholder="FDV"></label>
-        <label>Cor do estandarte<input data-v="gcol" type="color" value="#b8924a"></label><div class="sorow"><button data-a="gfound" class="gold">⚑ Registrar a guilda</button><button data-a="gcancel" class="ghost">Agora não</button></div></div>`;
+      if (signReq) return signHtml(signReq, ctx.char());
+      if (founding) return foundFormHtml(draft, check(), propSt, ctx.char());
+      const c = check(), ok = (v: boolean) => (v ? ' <i class="gok">✔</i>' : '');
       return `<div class="sofound"><h4>Você ainda não tem guilda</h4><p>Entre numa guilda pelo convite de um líder ou oficial, ou funde a sua:</p>
-        <ol><li>Chegue ao <b>nível 20</b> ${ctx.lvl() >= 20 ? '✔' : `(você está no ${ctx.lvl()})`}.</li><li>Fale com o <b>Escrivão-Mor Aldric</b>, em Askavik: a missão <i>O Peso de um Estandarte</i> dá a <b>Carta Patente</b> ${ctx.hasCarta() ? '✔' : ''}.</li>
-        <li>Leve a carta ao <b>Magistrado Corvin Aldmar</b>, em Lumenhal, a cidade média.</li><li>Pague a taxa de <b>500 de ouro</b>, escolha o nome, a sigla e a cor. O terreno da guilda nasce perto de Lumenhal, com o salão já de pé.</li></ol></div>`;
+        <ol><li>Chegue ao <b>nível base ${FOUND_LVL}</b>${c.lvl >= FOUND_LVL ? ok(true) : ` <small>(você está no ${c.lvl})</small>`}.</li>
+        <li>Tenha <b>1 Lágrima de Marghar</b> na bolsa${ok(c.tear)}: cai quando Marghar se emociona, ou se compra no Quadro e no leilão.</li>
+        <li>Forme uma <b>party de 3</b> com você na liderança${ok(c.inParty && c.leader && c.party.length >= 2)}.</li>
+        <li>Os três vão juntos ao salão do <b>Prefeito Corvin Aldmar</b>, em Lumenhal, a cidade média, e compram a <b>Licença de Guilda de Karmika</b>.</li>
+        <li>Você escreve o <b>nome</b> (ele nunca muda), escolhe a <b>bandeira</b> e o <b>ícone</b> (esses mudam depois), e os três <b>assinam</b> o documento. A guilda entra no Livro de Guildas, e o terreno nasce perto de Lumenhal com o salão já de pé.</li></ol></div>`;
     }
     const myR = guild.members.find((m) => m.name.toLowerCase() === ctx.char().toLowerCase())?.rank ?? 'recruta', rk = ['recruta', 'membro', 'oficial', 'lider'].indexOf(myR);
-    const head = `<div class="soghd" style="--gc:${guild.col}"><span class="sogban"></span><div><b>${esc(guild.name)} <em>[${esc(guild.tag)}]</em></b><small>${guild.members.length} membros · você é ${RANK_NAME[myR]}</small></div></div>
+    const head = `<div class="soghd" style="--gc:${guild.col}">${bannerHtml(guild.flag, guild.icon, guild.col)}<div><b>${esc(guild.name)} <em>[${esc(guild.tag)}]</em></b><small>${guild.members.length} membros · você é ${RANK_NAME[myR]}</small></div></div>
       <div class="somotd">${esc(guild.motd || '')}${rk >= 2 ? ` <button class="ghost" data-a="motd">editar</button>` : ''}</div>
       <div class="sostab">${(['chat', 'membros', 'mercado', 'terreno'] as const).map((t) => `<button data-gt="${t}" class="${gtab === t ? 'on' : ''}">${{ chat: '💬 Chat', membros: '👥 Membros', mercado: '⚖ Mercado', terreno: '🏰 Terreno' }[t]}</button>`).join('')}</div>`;
     let body = '';
@@ -158,11 +168,15 @@ export function createSocial(ctx: {
       case 'motd': { promptBox('Mensagem do dia da guilda:', guild?.motd ?? '', (tx) => H.send({ t: 'g:motd', text: tx }), 200); break; }
       case 'gleave': ctx.ask('⚑ Sair da guilda', `Sair da ${guild?.name}? Se você for o último, a guilda acaba.`, 'Sair', (ok) => { if (ok) H.send({ t: 'g:leave' }); }); break;
       case 'plot': if (guild) ctx.markPlot(guild.plot); break;
-      case 'gcancel': founding = false; render(); break;
-      case 'gfound': { const name = val('gname').trim(), tag = val('gtag').trim(), col = val('gcol');
-        if (ctx.lvl() < 20) { ctx.log('⚑ É preciso nível 20 para fundar uma guilda.', '#ff9a8a'); break; } if (!ctx.hasCarta()) { ctx.log('⚑ Falta a Carta Patente do Escrivão-Mor de Askavik.', '#ff9a8a'); break; }
-        if (ctx.gold() < 500) { ctx.log('⚑ A taxa do registro é 500 de ouro.', '#ff9a8a'); break; } if (name.length < 3 || tag.length < 2) { ctx.log('⚑ O nome precisa de 3 letras e a sigla de 2 a 4.', '#ff9a8a'); break; }
-        if (!ctx.payGold(500)) break; founding = false; H.send({ t: 'g:create', name, tag, col, seed: [] }); break; }
+      case 'gcancel': founding = false; propSt = null; render(); break;
+      case 'gpropose': { const c = check(); draft.name = val('gname').trim(); draft.tag = val('gtag').trim().toUpperCase();
+        if (c.lvl < FOUND_LVL) { ctx.log(`⚑ É preciso nível base ${FOUND_LVL} para fundar uma guilda.`, '#ff9a8a'); break; } if (!c.tear) { ctx.log('⚑ Falta a Lágrima de Marghar.', '#ff9a8a'); break; }
+        if (!c.inParty || !c.leader || c.party.length < 2) { ctx.log('⚑ É preciso uma party de 3, com você na liderança.', '#ff9a8a'); break; } if (c.party.some((p) => !p.near)) { ctx.log('⚑ Os três precisam estar juntos no salão do Prefeito.', '#ff9a8a'); break; }
+        if (draft.name.length < 3 || draft.tag.length < 2) { ctx.log('⚑ O nome precisa de 3 letras e a sigla de 2 a 4.', '#ff9a8a'); break; }
+        ctx.ask('⚑ O nome nunca muda', `Registrar "${draft.name}" [${draft.tag}] para sempre? A bandeira e o ícone mudam depois; o nome não.`, 'Pedir as assinaturas', (yes) => { if (!yes) return;
+          propSt = c.party.slice(0, 2).map((p) => ({ name: p.name, ok: false })); H.send({ t: 'g:propose', name: draft.name, tag: draft.tag, col: draft.flag.c1, flag: draft.flag, icon: draft.icon, signers: c.party.map((p) => p.name) }); render(); }); break; }
+      case 'gsign': if (signReq) { H.send({ t: 'g:signans', id: signReq.id, ok: true }); ctx.log('⚑ Assinado. Esperando os outros fundadores.', '#ffe08a'); } break;
+      case 'gnosign': if (signReq) { H.send({ t: 'g:signans', id: signReq.id, ok: false }); signReq = null; render(); } break;
       case 'mkadd': { const w = val('mkwhat'), p = Math.floor(+val('mkp')), n = Math.max(1, Math.floor(+val('mkn') || 1)); if (!w || !(p > 0)) { ctx.log('⚖ Escolha o item e o preço.', '#ff9a8a'); break; }
         if (w.startsWith('i:')) { const id = w.slice(2); if (!ctx.takeItem(id, n)) { ctx.log('⚖ Você não tem tudo isso.', '#ff9a8a'); break; } H.send({ t: 'g:mk:add', att: { item: { id, n } }, price: p }); }
         else { const g = ctx.takeGear(+w.slice(2)); if (!g) break; H.send({ t: 'g:mk:add', att: { gear: g }, price: p }); }
@@ -171,7 +185,12 @@ export function createSocial(ctx: {
   }
   function sendDm() { const tx = val('dm').trim(); if (!tx || !talk) return; H.send({ t: 'a:dm', to: talk, text: tx }); (el.querySelector('[data-v="dm"]') as HTMLInputElement).value = ''; }
   function sendG() { const tx = val('gchat').trim(); if (!tx) return; H.send({ t: 'g:chat', text: tx }); (el.querySelector('[data-v="gchat"]') as HTMLInputElement).value = ''; }
-  el.addEventListener('click', (e) => { const t = (e.target as HTMLElement).closest('button,[data-dm]') as HTMLElement | null; if (t) act(t); });
+  el.addEventListener('click', (e) => { const t = (e.target as HTMLElement).closest('button,[data-dm]') as HTMLElement | null; if (!t) return;
+    if (t.dataset.gpat) { keepDraft(); draft.flag = { ...draft.flag, pat: t.dataset.gpat }; render(); return; } if (t.dataset.gicon) { keepDraft(); draft.icon = t.dataset.gicon; render(); return; } act(t); });
+  /* o rascunho da fundação: lê os campos antes de redesenhar (senão o nome digitado some) e mantém o documento ao vivo */
+  function keepDraft() { const q = (k: string) => el.querySelector(`[data-v="${k}"]`) as HTMLInputElement | null; if (!q('gname')) return; draft.name = q('gname')!.value; draft.tag = q('gtag')!.value.toUpperCase(); draft.flag = { ...draft.flag, c1: q('gc1')!.value, c2: q('gc2')!.value }; }
+  el.addEventListener('input', (e) => { const t = e.target as HTMLInputElement; if (!t.dataset.v || !['gname', 'gtag', 'gc1', 'gc2'].includes(t.dataset.v)) return; keepDraft();
+    const dn = el.querySelector('.gfdn'); if (dn) dn.innerHTML = `${esc(draft.name.trim() || 'Nome da guilda')} <em>[${esc(draft.tag.trim() || '—')}]</em>`; if (t.dataset.v === 'gc1' || t.dataset.v === 'gc2') render(); });
   el.addEventListener('change', (e) => { const t = e.target as HTMLSelectElement; if (t.dataset.rank) H.send({ t: 'g:rank', char: t.dataset.rank, rank: t.value }); });
   el.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key !== 'Enter') return; const t = e.target as HTMLElement; if (t.dataset.v === 'dm') sendDm(); else if (t.dataset.v === 'gchat') sendG(); else if (t.dataset.v === 'nick') act(el.querySelector('[data-a="add"]') as HTMLElement); });
   /* 26/10 (Erling: "um menu do lado esquerdo — encontrar servidor etc. — e do lado direito o nosso chat fora dos servers, a guilda e o chat
@@ -187,7 +206,7 @@ export function createSocial(ctx: {
     toggle, dock, get isOpen() { return open; }, get online() { return H.state === 'on'; }, get guild() { return guild; }, get unread() { return unread; },
     /** Ctrl+clique num jogador */ friendChar(name: string) { if (off()) { ctx.log('👥 Sem servidor: amizades moram no servidor.', '#ff9a8a'); return; } H.send({ t: 'a:freq', char: name }); },
     inviteGuild(name: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:inv', char: name }); },
-    /** o Magistrado abre o livro de registros */ startFounding() { founding = true; toggle(true, 'guilda'); },
+    /** o Prefeito abre o Livro de Guildas */ startFounding() { founding = true; toggle(true, 'guilda'); },
     guildChat(text: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:chat', text }); },
   };
 }

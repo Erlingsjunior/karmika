@@ -24,7 +24,7 @@ function alignCatchup() { if (!K.profile || K.inicio.isOpen || K.peleSys.creatin
   for (const id of K.quests.q.done) { if (align.flag('q:' + id)) continue; const d = K.quests.def(id); if (!d || id.startsWith('b_')) { align.setFlag('q:' + id); continue; } const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); if (!st) continue;
     const story = questCat(d) === 'story'; align.add('vila', st.name, story ? 6 : 3, undefined, true); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1, undefined, true); align.setFlag('q:' + id); n++; }
   if (n) { const h = hereSettle(); K.game.logMsg(`🏘 ${n} missões antigas contaram para o seu Alinhamento Kármico${h ? `: ${h.name} agora te vê como ${align.tier('vila', h.name).name}` : ''}.`, h ? align.tier('vila', h.name).col : '#ffe08a'); } }
-queueMicrotask(() => K.quests.addDoneHook((d) => { if (d.id === 'gu1') { try { localStorage.setItem(K.CARTA_K, '1'); } catch { /* */ } setTimeout(() => K.social.startFounding(), 600); }
+queueMicrotask(() => K.quests.addDoneHook((d) => { /* (05/11: a missão gu1 da Carta Patente saiu; a guilda se funda com o Prefeito de Lumenhal) */
   align.setFlag('q:' + d.id); const st = npcHome(d.turnin ?? d.giver) ?? npcHome(d.giver); const story = questCat(d) === 'story';
   if (st) { align.add('vila', st.name, story ? 6 : 3, d.name); align.add('regiao', regionAt(st.x, st.y).name, story ? 2 : 1); }
   const f = myFac(); if (f) { align.add('faccao', f, 1); for (const k2 of Object.keys(FAC)) if (k2 !== f) align.add('faccao', k2, -1); } }));

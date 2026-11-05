@@ -145,8 +145,10 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
     const tw = Math.min(bw, 4.2), td = Math.min(bd, 4.2);
     volume(g, cx, cz, tw, td, 0, 5.2, 3.0, 0x6a665e, 0x4a4a58, 'stone', true, 0.5);
     door(g, cx, 0, cz + td / 2 + 0.02, 'z', c, 1.2, 2.1);
-    for (const y of [2.4, 4.1]) windowAt(g, cx - tw * 0.25, y, cz + td / 2 + 0.04, 'z', y > 3 && R() < 0.6, c, c.windows);
-    windowAt(g, cx + tw / 2 + 0.03, 3.4, cz, 'x', false, c, c.windows);
+    /* 05/11 (Erling: "a janela está errada, precisa subir"): a sacada fica a 3,2 m — a janela do lado tinha o centro a 3,4 m e o tabuleiro
+       cortava a metade de baixo. As de cima ficam a ~1,1 m acima do piso da sacada, como uma janela de verdade */
+    for (const y of [2.0, 4.3]) windowAt(g, cx - tw * 0.25, y, cz + td / 2 + 0.04, 'z', y > 3 && R() < 0.6, c, c.windows);
+    windowAt(g, cx + tw / 2 + 0.03, 4.3, cz, 'x', false, c, c.windows);
     const bal = new THREE.Mesh(new THREE.BoxGeometry(tw + 1.2, 0.14, td + 1.2), std(0xffffff, { map: plankTex(0x5a3a22) })); bal.position.set(cx, 3.2, cz); ink(bal, 0.03); g.add(bal);
     for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.283; const rx = Math.cos(a) * (tw / 2 + 0.55), rz = Math.sin(a) * (td / 2 + 0.55); const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, 0.08), timberM()); p.position.set(cx + Math.max(-tw / 2 - 0.55, Math.min(tw / 2 + 0.55, rx * 1.4)), 3.7, cz + Math.max(-td / 2 - 0.55, Math.min(td / 2 + 0.55, rz * 1.4))); g.add(p); }
     stairs(g, cx + tw / 2 + 0.75, cz + td / 2 + 0.5, 3.2, false, 0.9);

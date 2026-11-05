@@ -405,6 +405,11 @@
   .ebar { position: fixed; transform: translate(-50%, -100%); pointer-events: none; display: none; text-align: center; font-size: 11px; color: #f0e6cc; text-shadow: 0 1px 2px #000; z-index: 5; width: 90px; margin-left: 0; }
   .ebar i { display: block; height: 5px; background: linear-gradient(180deg, #e04a3a, #8f1e1a); border: 1px solid #000; margin-top: 2px; }
   .ebar u { display: none; height: 3px; margin-top: 1px; background: linear-gradient(90deg, #c9902a, #ffe08a); border: 1px solid #000; text-decoration: none; } /* postura do elite: enquanto cheia, o dano entra pela metade */
+  /* 05/11: o alvo de missão — selo dourado sobre o nome e o nome com um brilho que respira (no lugar do anel amarelo no chão) */
+  .ebar.quest span { color: #ffe9b0; animation: qglow 2.4s ease-in-out infinite; } .ebar.quest::before { content: ''; display: block; width: 46px; height: 9px; margin: 0 auto 1px;
+    background: no-repeat center / contain url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 9'><path d='M2 4.5H16M30 4.5H44' stroke='%23e8c870' stroke-width='.8'/><path d='M23 .6L26.6 4.5 23 8.4 19.4 4.5Z' fill='%23ffd86a'/><circle cx='17.4' cy='4.5' r='.9' fill='%23e8c870'/><circle cx='28.6' cy='4.5' r='.9' fill='%23e8c870'/></svg>");
+    filter: drop-shadow(0 0 3px rgba(255,200,90,.8)); }
+  @keyframes qglow { 0%, 100% { text-shadow: 0 1px 2px #000, 0 0 4px rgba(255,200,90,.35); } 50% { text-shadow: 0 1px 2px #000, 0 0 9px rgba(255,210,110,.9), 0 0 2px #ffd86a; } }
   .ebar.danger span { color: #ff6a5a; font-weight: 700; } .ebar.danger i { box-shadow: 0 0 6px #ff3a2a; }
   /* nível do bicho em destaque: selo com a cor do perigo para o SEU nível (cinza = fácil demais, vermelho = corra) */
   .ebar span b.lv { display: inline-block; min-width: 18px; padding: 0 5px; margin-right: 3px; font: 700 13px/16px Cinzel, Georgia, serif; border-radius: 3px; border: 1px solid; background: rgba(8,6,4,.85); text-shadow: 0 1px 2px #000; }
@@ -1325,6 +1330,23 @@
   .sochat { flex: 1; display: flex; flex-direction: column; min-width: 0; } .solog { flex: 1; overflow-y: auto; background: #0c0806; border: 1px solid #2a2016; border-radius: 4px; padding: 6px 8px; min-height: 260px; max-height: 420px; }
   .solog p { margin: 0 0 5px; } .solog p small { color: #7a6a52; margin-right: 6px; font-size: 10.5px; } .solog p.me { color: #cfe0ff; text-align: right; } .solog p.sys { color: #a8987a; font-style: italic; } .solog.g b { color: #ffd88a; }
   .sofound ol { padding-left: 18px; line-height: 1.6; } .sofound label { display: flex; flex-direction: column; gap: 3px; margin: 8px 0; font-size: 12.5px; color: #c8b898; }
+  /* 05/11: fundação de guilda — requisitos, bandeira, ícone, o documento do Livro de Guildas e a tela de assinar */
+  .gfnd h4 { font: 700 15px Cinzel, serif; color: #ffe8b0; margin: 0 0 4px; } .gfreq { list-style: none; padding: 0; margin: 8px 0 10px; display: grid; gap: 4px; }
+  .gfreq li { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; color: #c8b898; } .gfreq li i { font-style: normal; color: #ff8a7a; width: 14px; } .gfreq li.ok i { color: #8ae08a; } .gfreq small { display: block; color: #8a7a5e; font-size: 11px; }
+  .gfgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; } @media (max-width: 760px) { .gfgrid { grid-template-columns: 1fr; } }
+  .gfcol label { display: flex; flex-direction: column; gap: 3px; margin: 6px 0; font-size: 12.5px; color: #c8b898; } .gfwarn { margin: 0 0 6px; font-size: 11.5px; color: #ffcf7a; }
+  .gflbl { margin: 10px 0 4px; font: 600 10.5px Cinzel, serif; letter-spacing: .12em; text-transform: uppercase; color: #a08a60; }
+  .gfpats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .gfpats button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px; font-size: 11px; }
+  .gfpats span { width: 26px; height: 34px; clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); } .gfpats button.on, .gficons button.on { border-color: #ffe08a; box-shadow: 0 0 8px rgba(255,224,138,.35); }
+  .gfcols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .gficons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; } .gficons button { font-size: 17px; padding: 4px 0; }
+  .gfdoc { min-width: 0; } .gfpaper { position: relative; padding: 16px 18px 14px; background: linear-gradient(180deg, #efe2c2, #d9c69c); color: #3a2a18; border: 1px solid #8a6a3a; border-radius: 3px; box-shadow: inset 0 0 30px rgba(90,60,20,.35), 0 4px 14px rgba(0,0,0,.5); text-align: center; }
+  .gfpaper p { font: italic 12.5px Georgia, serif; margin: 8px 0 12px; } .gfdt { font: 600 10px Cinzel, serif; letter-spacing: .2em; text-transform: uppercase; color: #6a4a22; margin-top: 6px; }
+  .gfdn { font: 700 18px Cinzel, serif; color: #2a1a0a; overflow-wrap: anywhere; } .gfdn em { font-style: normal; color: #8a5a22; }
+  .gfsig { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; border-bottom: 1px dotted #8a6a3a; padding: 6px 2px 2px; font: italic 14px Georgia, serif; text-align: left; } .gfsig small { font: 10.5px Georgia, serif; color: #7a5a32; } .gfsig.ok span { color: #1a3a6a; }
+  .gfday { margin-top: 10px; font: italic 11px Georgia, serif; color: #6a4a22; text-align: right; }
+  .gfban { display: inline-grid; place-items: center; width: 26px; height: 36px; background: var(--gb); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%); box-shadow: 0 0 10px var(--gc); flex: none; }
+  .gfban i { font-style: normal; font-size: 13px; filter: drop-shadow(0 1px 1px #000); margin-top: -4px; } .gfban.big { width: 54px; height: 72px; } .gfban.big i { font-size: 26px; }
+  .gok { font-style: normal; color: #8ae08a; }
   .soghd { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; } .sogban { width: 26px; height: 36px; background: var(--gc); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); box-shadow: 0 0 10px var(--gc); }
   .soghd b { font: 700 16px Cinzel, serif; color: #ffe8b0; } .soghd em { font-style: normal; color: #c9a24a; } .soghd small { display: block; color: #a8987a; font-size: 11.5px; }
   .somotd { background: #160f08; border-left: 3px solid #b8924a; padding: 6px 10px; font-style: italic; color: #d8c8a6; margin: 4px 0 8px; }

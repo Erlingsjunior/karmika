@@ -108,7 +108,7 @@ import { createChat } from './chat';
 import { DEFS, enemyHooks } from './enemies';
 import { createLock } from './alvo-preso';
 import { bindScrolls } from './esquecimento';
-import { biomeAt, heightAt, groundH, rampartAt, rampartTop, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
+import { biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 
 import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
@@ -2439,7 +2439,7 @@ function featsTick(dt: number) { featT -= dt; if (featT > 0) return; featT = 1; 
 /** anel dourado sob os bichos que alguma missão ativa pede (matar ou caçar para juntar couro, carne, garra…) */
 function updateQuestRings(dt: number) { qmarkT -= dt; if (qmarkT > 0) return; qmarkT = 0.5; const want = new Set<string>();
   for (const a of Object.values(quests.q.active) as { prog: number[]; def?: { objs: { kind: string; type?: string; item?: string; n: number }[] } }[]) { const objs = a.def?.objs ?? []; objs.forEach((o, i) => { if ((a.prog[i] ?? 0) >= o.n) return; if (o.kind === 'kill' && o.type) want.add(o.type); if (o.kind === 'collect' && o.item) { const src = DROP_SRC[o.item]; if (Array.isArray(src)) for (const t of src) want.add(t); } }); }
-  for (const e of game.enemies.list) { const ee = e as typeof e & { quest?: boolean; qring?: THREE.Mesh }; ee.quest = want.has(e.type) && e.alive; if (ee.qring) ee.qring.visible = ee.quest; } }
+  for (const e of game.enemies.list) { const ee = e as typeof e & { quest?: boolean; qring?: THREE.Mesh }; ee.quest = want.has(e.type) && e.alive; if (ee.qring) ee.qring.visible = false; /* 05/11 (Erling: "não precisa do círculo amarelo; um detalhe em cima do nome, o nome brilhando"): o anel saiu — o aviso agora é o selo dourado sobre o nome (.ebar.quest) */ } }
 const fireflyK = () => 0.05 + 0.12 * forestK + 0.7 * elfK;
 /** para onde o Olho olha agora (ver hud.ts): inimigo que vem para cima > mouse que acabou de mexer > para onde o herói anda > NPC perto > nada (passeia) */
 let mouseMovedT = 0, eyeNpcT = 0, eyeNpc: THREE.Vector3 | null = null;
@@ -2593,7 +2593,7 @@ function frameBody() {
       if (free(nx, state.fy)) state.fx = nx; if (free(state.fx, ny)) state.fy = ny;
     }
   }
-  if (!inside) { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); if (colisaoSys.onWall && !rp) colisaoSys.onWall = false; else if (!colisaoSys.onWall && rp && heroY > rampartTop(rp, tx, ty) - 1.5) colisaoSys.onWall = true; } else colisaoSys.onWall = false;
+  if (!inside) { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); if (colisaoSys.onWall && !rp) colisaoSys.onWall = false; else if (!colisaoSys.onWall && rp && heroY > rampartTop(rp, tx, ty) - 1.5 && bridgeDeck(state.fx * T, state.fy * T) === null) colisaoSys.onWall = true; } /* 05/11 (relatório KB-0001, "personagem preso na ponte"): a ponte de pedra passa por baixo do caminho de ronda do portão; com o tabuleiro alto, o herói ficava a menos de 1,5 m do topo e virava "em cima do muro" — só andava pelo anel e travava. Agora quem está em cima de uma ponte nunca vira "em cima do muro" (a escada continua subindo como antes) */ else colisaoSys.onWall = false;
   const wallTop = colisaoSys.onWall ? (() => { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); return rp ? rampartTop(rp, tx, ty) : null; })() : null;
   const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting && Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) < 0.3 ? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
   heroY += (tgtY - heroY) * Math.min(1, dt * (swimming ? 6 : 18) + (dt > 0 ? 0 : 1));
