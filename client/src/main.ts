@@ -2545,7 +2545,10 @@ function frameBody() {
      mouse o herói ficava "sentado" em pé (corpo abaixado e braço no joelho). */
   if (casteloSys.sitting && (ix || iy || hero.acting || state.path.length > 0 || dashT > 0 || hero.combat || game.st.dead || Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) > 0.8)) { casteloSys.sitting = null; }
   const forced = !!hero.actName && ['slam', 'bash', 'combo1', 'combo2', 'combo3', 'combo4', 'cleave1', 'cleave2', 'cleave3', 'cleave4', 'rush', 'quake', 'charge', 'jet', 'throw'].includes(hero.actName);
-  let actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? 0.3 : hero.guard ? 0.45 : 1;
+  /* 05/11 (Erling: "elfos, tecnocratas e caçadores de demônio atiram andando — são hábeis com armas de longo alcance; magos conjuram andando"):
+     nesses caminhos o golpe/magia não planta o pé — anda a 85% enquanto atira ou conjura (os outros seguem a 30%) */
+  const mobileCaster = (() => { const k = kitRace() as string; return k === 'elf' || k === 'tecno' || k === 'cac' || k === 'mag' || (k === 'human' && profile?.origin === 'elf'); })();
+  let actSlow = dashT > 0 ? 1 : game.flaming ? 0.75 : forced ? 0 : hero.acting ? (mobileCaster ? 0.85 : 0.3) : hero.guard ? 0.45 : 1;
   let gdx = 0, gdy = 0;
   if (ix || iy) {
     state.path = []; marker.visible = false;

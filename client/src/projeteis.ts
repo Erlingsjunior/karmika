@@ -31,7 +31,7 @@ export interface ShotCtx {
   hit(e: ShotTarget, s: { mul: number; kind: ShotKind; point: THREE.Vector3; from: THREE.Vector3; data?: unknown }): void;
   /** bonecos de treino (posição e tocar) */
   dummyAt?(x: number, z: number, r: number): { hit(point: THREE.Vector3, mul: number): void } | null;
-  spark(p: THREE.Vector3, kind: 'blood' | 'metal' | 'dust' | 'wood', dir?: THREE.Vector3): void;
+  spark(p: THREE.Vector3, kind: 'blood' | 'metal' | 'dust' | 'wood' | 'flash', dir?: THREE.Vector3): void;
   sound?(k: 'hit' | 'thud' | 'ric' | 'bhit'): void;
 }
 interface Shot { kind: ShotKind; p: THREE.Vector3; v: THREE.Vector3; life: number; mul: number; m: THREE.Object3D; from: THREE.Vector3; data?: unknown; spinA: number; trailT: number; tracer?: THREE.Mesh }
@@ -42,11 +42,15 @@ let M: Record<string, THREE.Material> | null = null; let G: Record<string, THREE
 function assets() {
   if (M && G) return { M, G };
   M = { shaft: mat(0x8a6a44), dark: mat(0x3a2e24), head: mat(0xc8ccd4, 0x111111), fletchR: new THREE.MeshToonMaterial({ color: 0xb8302a, side: THREE.DoubleSide }), fletchW: new THREE.MeshToonMaterial({ color: 0xe8e0cc, side: THREE.DoubleSide }), steel: mat(0x6a6e78, 0x0a0a0a), cloth: mat(0x6a1a1a),
-    tracer: new THREE.MeshBasicMaterial({ color: 0xffe8a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }) };
+    tracer: new THREE.MeshBasicMaterial({ color: 0xffe8a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }),
+    /* 05/11 (Erling: "as flechas lançadas têm que aparecer melhor na tela — uma luz mostrando a flecha sendo disparada"): rastro de luz e brilho na ponta */
+    streak: new THREE.MeshBasicMaterial({ color: 0xfff0c8, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }),
+    tipGlow: new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }) };
   G = { shaft: new THREE.CylinderGeometry(0.009, 0.009, 1, 5).rotateX(Math.PI / 2), head: new THREE.ConeGeometry(0.02, 0.07, 4).rotateX(Math.PI / 2), fl: new THREE.PlaneGeometry(0.035, 0.11).rotateX(Math.PI / 2),
     boltShaft: new THREE.CylinderGeometry(0.012, 0.012, 1, 5).rotateX(Math.PI / 2), boltHead: new THREE.ConeGeometry(0.024, 0.06, 4).rotateX(Math.PI / 2),
     kBlade: new THREE.ConeGeometry(0.022, 0.13, 4).rotateX(Math.PI / 2), kGrip: new THREE.CylinderGeometry(0.008, 0.008, 0.09, 5).rotateX(Math.PI / 2), kRing: new THREE.TorusGeometry(0.018, 0.004, 4, 10),
-    tracer: new THREE.CylinderGeometry(0.012, 0.012, 1, 4).rotateX(Math.PI / 2), slug: new THREE.SphereGeometry(0.022, 5, 4) };
+    tracer: new THREE.CylinderGeometry(0.012, 0.012, 1, 4).rotateX(Math.PI / 2), slug: new THREE.SphereGeometry(0.022, 5, 4),
+    streak: new THREE.CylinderGeometry(0.05, 0.006, 1, 6, 1, true).rotateX(Math.PI / 2), glow: new THREE.SphereGeometry(0.07, 8, 6) };
   return { M, G };
 }
 /** a peça visível: +Z local = para onde voa (ponta) */
@@ -57,6 +61,8 @@ function build(kind: ShotKind): { m: THREE.Object3D; tracer?: THREE.Mesh } {
     const sh = new THREE.Mesh(bolt ? G.boltShaft : G.shaft, bolt ? M.dark : M.shaft); sh.scale.z = L; sh.position.z = -L / 2; g.add(sh);
     const hd = new THREE.Mesh(bolt ? G.boltHead : G.head, M.head); hd.position.z = 0.03; g.add(hd);
     for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(G.fl, i === 0 ? M.fletchR : bolt ? M.steel : M.fletchW); f.rotation.z = (i / 3) * Math.PI * 2; f.position.z = -L + 0.08; f.translateY(0.018); if (bolt) f.scale.set(0.8, 0.7, 1); g.add(f); }
+    { const sl = (kind === 'longarrow' ? 2.2 : 1.6), st = new THREE.Mesh(G.streak, M.streak); st.scale.z = sl; st.position.z = -L - sl / 2 + 0.1; st.renderOrder = 5; g.add(st); /* o rastro de luz atrás da flecha (some quando ela crava) */
+      const gl = new THREE.Mesh(G.glow, M.tipGlow); gl.position.z = 0.03; gl.renderOrder = 6; g.add(gl); st.userData.fx = 1; gl.userData.fx = 1; }
   } else if (kind === 'kunai') {
     const bl = new THREE.Mesh(G.kBlade, M.steel); bl.position.z = 0.04; g.add(bl); const gr = new THREE.Mesh(G.kGrip, M.cloth); gr.position.z = -0.07; g.add(gr); const rg = new THREE.Mesh(G.kRing, M.steel); rg.position.z = -0.13; g.add(rg);
   } else { const s = new THREE.Mesh(G.slug, M.head); g.add(s); const tr = new THREE.Mesh(G.tracer, M.tracer); tr.scale.z = S.len; tr.position.z = -S.len / 2; g.add(tr); return { m: g, tracer: tr }; }
@@ -89,7 +95,7 @@ export function createShots(ctx: ShotCtx) {
       dir = new THREE.Vector3(Math.sin(hy) * Math.cos(th), Math.sin(th), Math.cos(hy) * Math.cos(th));
     } else dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(0.04), Math.sin(0.04), Math.cos(yaw) * Math.cos(0.04));
     const sp = o.spread ?? 0; if (sp > 0) { dir.x += (Math.random() - 0.5) * 2 * sp; dir.y += (Math.random() - 0.5) * sp; dir.z += (Math.random() - 0.5) * 2 * sp; dir.normalize(); }
-    const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m);
+    const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m); if (kind === 'arrow' || kind === 'longarrow' || kind === 'bolt' || kind === 'hbolt') ctx.spark(from, 'flash', dir.clone());
     shots.push({ kind, p: from.clone(), v: dir.multiplyScalar(v), life: kind === 'bullet' ? 0.6 : kind === 'pellet' ? 0.3 : 3.2, mul: o.mul, m: b.m, from: from.clone(), data: o.data, spinA: 0, trailT: 0, tracer: b.tracer });
     return tgt;
   }
@@ -99,7 +105,7 @@ export function createShots(ctx: ShotCtx) {
     const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m); const sh: Shot = { kind, p: from.clone(), v, life: t + 1.5, mul: o.mul, m: b.m, from: from.clone(), data: o.data, spinA: 0, trailT: 0, tracer: b.tracer };
     (sh as Shot & { noDrag?: boolean }).noDrag = true; shots.push(sh); }
   function stick(s: Shot, host?: THREE.Object3D | null) {
-    const S = SPEC[s.kind]; const m = s.m; m.position.copy(s.p).addScaledVector(tA.copy(s.v).normalize(), S.len * 0.25); // crava ~1/4 do comprimento
+    const S = SPEC[s.kind]; const m = s.m; for (const c of [...m.children]) if (c.userData.fx) m.remove(c); /* cravada: apaga o rastro e o brilho */ m.position.copy(s.p).addScaledVector(tA.copy(s.v).normalize(), S.len * 0.25); // crava ~1/4 do comprimento
     if (host) { host.updateWorldMatrix(true, false); const inv = new THREE.Matrix4().copy(host.matrixWorld).invert(); const loc = m.position.clone().applyMatrix4(inv); const q = host.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(m.quaternion);
       stuck.push({ m, t: 1.6, host, loc, locQ: q }); } else stuck.push({ m, t: 6 });
     while (stuck.length > 70) { const o = stuck.shift()!; ctx.scene.remove(o.m); }
