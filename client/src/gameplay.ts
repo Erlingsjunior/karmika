@@ -896,6 +896,52 @@ export function createGameplay(d: GameplayDeps) {
         dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#f0d890'); d.audio.hit(); } },
       end: () => { for (let k = 0; k < 14; k++) d.particles.spawn(pos.x, pos.y + 0.5, pos.z, { vx: rnd(-1, 1), vy: rnd(0.5, 1.5), vz: rnd(-1, 1), life: 0.6, s0: 0.3, s1: 0.05, c0: 0xf0e0c0, c1: 0x8a6a4a, a: 0.6 }); d.scene.remove(g); } });
   }
+  /* ---- 05/11: os outros dois animais do elfo (compêndio do Elfo, Chamado do Companheiro): o FALCÃO voa, ataca de longe e cega;
+     o CERVO fica ao seu lado, cura 2% da vida por segundo em volta e dá chifradas que empurram ---- */
+  function elfFalcon(dur: number, dmgK: number) {
+    const g = new THREE.Group(), brown = new THREE.MeshToonMaterial({ color: 0x7a5232 }), cream = new THREE.MeshToonMaterial({ color: 0xe8dcc0 }), gold = new THREE.MeshToonMaterial({ color: 0xe0a83a });
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), brown); body.scale.set(0.8, 0.75, 1.5); g.add(body);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), cream); chest.position.set(0, -0.03, 0.08); chest.scale.set(0.8, 0.8, 1.1); g.add(chest);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), brown); head.position.set(0, 0.06, 0.26); g.add(head);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 5).rotateX(Math.PI / 2), gold); beak.position.set(0, 0.04, 0.37); g.add(beak);
+    const tail = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.22).rotateX(-Math.PI / 2), brown); (tail.material as THREE.Material).side = THREE.DoubleSide; tail.position.set(0, 0, -0.32); g.add(tail);
+    const wing = (s: number) => { const w = new THREE.Group(); const m = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.2).rotateX(-Math.PI / 2).translate(s * 0.28, 0, 0), brown); (m.material as THREE.Material).side = THREE.DoubleSide; w.add(m); w.position.set(s * 0.08, 0.04, 0); g.add(w); return w; };
+    const wl = wing(-1), wr = wing(1); g.scale.setScalar(0.01); fxAdd(g);
+    const pos = d.getHero().root.position.clone().add(new THREE.Vector3(0, 3, 0)); let t = 0, ang = 0, peckT = 0, dive: Enemy | null = null, diveT = 0;
+    ticks.push({ t: dur, fn: (dt2, left) => { t += dt2; peckT -= dt2; g.scale.setScalar(1.6 * Math.max(0.01, Math.min(1, t * 3, left * 2))); const hh = d.getHero().root.position;
+      const flap = Math.sin(t * (dive ? 22 : 11)) * 0.7; wl.rotation.z = flap; wr.rotation.z = -flap;
+      if (!dive && peckT <= 0) { const e = enemies.nearest(hh, 16); if (e) { dive = e; diveT = 0; } }
+      let tx: number, ty: number, tz: number;
+      if (dive && dive.alive) { diveT += dt2; tx = dive.pos.x; tz = dive.pos.z; ty = dive.pos.y + 1.1; if (pos.distanceTo(new THREE.Vector3(tx, ty, tz)) < 0.6 || diveT > 2.5) {
+          if (diveT <= 2.5) { const dm = Math.round((4 + st.lvl * 1.5) * dmgK); if (enemies.hurt(dive, dm, pos, 0.5)) killEnemy(dive); else if (!isElite(dive)) { dive.state = 'hurt'; dive.t = -0.4; } dmgText(dive.pos.clone().setY(dive.pos.y + 2.1), dm, false, '#e8dcc0'); d.audio.hit(); }
+          dive = null; peckT = 1.3; } }
+      else { dive = null; ang += dt2 * 1.4; tx = hh.x + Math.cos(ang) * 2.6; tz = hh.z + Math.sin(ang) * 2.6; ty = hh.y + 3.2 + Math.sin(t * 1.7) * 0.3; }
+      const dx = tx - pos.x, dy = ty - pos.y, dz = tz - pos.z, dd = Math.hypot(dx, dy, dz) || 1, sp = Math.min(dd * 4, dive ? 16 : 9);
+      pos.x += dx / dd * sp * dt2; pos.y += dy / dd * sp * dt2; pos.z += dz / dd * sp * dt2; g.position.copy(pos); g.rotation.y = Math.atan2(dx, dz); g.rotation.x = -Math.atan2(dy, Math.hypot(dx, dz)) * 0.6; },
+      end: () => { for (let k = 0; k < 12; k++) d.particles.spawn(pos.x, pos.y, pos.z, { vx: rnd(-1, 1), vy: rnd(-0.5, 1), vz: rnd(-1, 1), life: 0.7, s0: 0.25, s1: 0.05, c0: 0xe8dcc0, c1: 0x7a5232, a: 0.9, drag: 2 }); g.parent?.remove(g); } });
+  }
+  function elfDeer(dur: number, dmgK: number) {
+    const D = buildDog({ coat: 0xa8743e, patch: 0xf0e6d8, patchEye: 1 }); const g = new THREE.Group(); g.add(D.root); const ant = new THREE.MeshToonMaterial({ color: 0xe8d8b0 });
+    for (const s of [-1, 1]) { const a0 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.42, 5), ant); a0.position.set(s * 0.09, 0.98, 0.5); a0.rotation.z = -s * 0.35; g.add(a0); const a1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.02, 0.2, 5), ant); a1.position.set(s * 0.17, 1.12, 0.55); a1.rotation.set(0.6, 0, -s * 0.8); g.add(a1); }
+    g.scale.set(0.01, 0.01, 0.01); const hp0 = d.getHero().root.position, pos = new THREE.Vector3(hp0.x + 1.4, 0, hp0.z); g.position.copy(pos); fxAdd(g); let t = 0, yaw = 0, buttT = 2, healT = 0;
+    ticks.push({ t: dur, fn: (dt2, left) => { t += dt2; buttT -= dt2; healT -= dt2; g.scale.setScalar(1.25 * Math.max(0.01, Math.min(1, t * 3, left * 2))); const h0 = d.getHero(), hh = h0.root.position;
+      const tx = hh.x + Math.sin(h0.root.rotation.y + 1.7) * 1.5, tz = hh.z + Math.cos(h0.root.rotation.y + 1.7) * 1.5, dx = tx - pos.x, dz = tz - pos.z, dd = Math.hypot(dx, dz) || 1; let sp = 0;
+      if (dd > 0.4) { sp = Math.min(dd * 3, 8); pos.x += dx / dd * sp * dt2; pos.z += dz / dd * sp * dt2; let dy = Math.atan2(dx, dz) - yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; yaw += dy * Math.min(1, dt2 * 8); }
+      pos.y = d.world.heightAt(pos.x, pos.z); g.position.copy(pos); g.rotation.y = yaw; D.pose({ dt: dt2, mv: sp, idle: sp < 0.3 });
+      if (healT <= 0) { healT = 1; if (Math.hypot(hh.x - pos.x, hh.z - pos.z) < 4) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02 * (1 + stance.heal)); for (let k = 0; k < 4; k++) d.particles.spawn(hh.x + rnd(-0.4, 0.4), hh.y + rnd(0.3, 1.6), hh.z + rnd(-0.4, 0.4), { vy: 0.8, life: 0.6, s0: 0.2, s1: 0.04, c0: 0xd8ffd0, c1: 0x5ac85a, a: 1 }); } }
+      if (buttT <= 0) { const e = enemies.nearest(pos, 2.6); if (e) { buttT = 3; const dm = Math.round((4 + st.lvl * 1.4) * dmgK); if (enemies.hurt(e, dm, pos, 2)) killEnemy(e); else if (!isElite(e)) { const ux = e.pos.x - pos.x, uz = e.pos.z - pos.z, ul = Math.hypot(ux, uz) || 1; e.pos.x += ux / ul * 2.5; e.pos.z += uz / ul * 2.5; } dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#c8e0a0'); d.audio.hit(); } else buttT = 0.5; } },
+      end: () => { for (let k = 0; k < 14; k++) d.particles.spawn(pos.x, pos.y + 0.6, pos.z, { vx: rnd(-1, 1), vy: rnd(0.5, 1.5), vz: rnd(-1, 1), life: 0.6, s0: 0.3, s1: 0.05, c0: 0xd8ffd0, c1: 0x5ac85a, a: 0.9, drag: 2 }); g.parent?.remove(g); } });
+  }
+  /** qual animal o elfo domou (Falcão, Lobo ou Cervo): escolhido na primeira vez; trocar fica para o estábulo de Lithendel */
+  const ELF_PET_K = 'karmika.elfPet';
+  const elfPet = (): 'falcao' | 'lobo' | 'cervo' | null => { try { const v = localStorage.getItem(ELF_PET_K); return v === 'falcao' || v === 'lobo' || v === 'cervo' ? v : null; } catch { return null; } };
+  function askElfPet(then: () => void) {
+    if (document.getElementById('elfpet')) return; const el = document.createElement('div'); el.id = 'elfpet'; el.className = 'modalw';
+    el.innerHTML = `<div class="pn" style="width:min(560px,92vw)"><h2>Chamado do Companheiro</h2><p style="margin:0 0 14px;color:#cdbb98">Assobie uma vez e escolha qual animal da mata vai responder. A escolha fica; trocar, só no estábulo de Lithendel.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${([['falcao', '🦅', 'Falcão', 'Voa, ataca de longe com bicadas e cega o alvo por um instante.'], ['lobo', '🐺', 'Lobo', 'Segura a frente: morde, derruba e deixa lento.'], ['cervo', '🦌', 'Cervo', 'Fica ao seu lado, cura 2% da vida por segundo e dá chifradas que empurram.']] as const).map(([k, i, n, t]) => `<button data-pet="${k}" style="display:grid;gap:6px;justify-items:center;padding:14px 10px;background:#1c140c;border:1px solid #6a5030;border-radius:6px;color:#f0e2c0;cursor:pointer;font:inherit"><span style="font-size:30px">${i}</span><b>${n}</b><small style="color:#b8a888;line-height:1.3">${t}</small></button>`).join('')}</div></div>`;
+    Object.assign(el.style, { display: 'block', position: 'fixed', left: '50%', top: '22vh', transform: 'translateX(-50%)', zIndex: '60' }); document.body.appendChild(el); /* no meio da tela */
+    el.querySelectorAll<HTMLButtonElement>('[data-pet]').forEach((b) => b.addEventListener('click', () => { try { localStorage.setItem(ELF_PET_K, b.dataset.pet!); } catch { /* */ } el.remove(); then(); }));
+  }
   /** Mil Vidas: as sombras de quem você já foi (cópias fantasmas do seu corpo) saltam nos inimigos; cada golpe delas cura você */
   function pastEcho(i: number, dur: number, dmgK: number) {
     const h = d.getHero(); let g: THREE.Object3D; try { g = SkeletonUtils.clone(h.root); } catch { g = new THREE.Group(); }
@@ -1480,9 +1526,11 @@ export function createGameplay(d: GameplayDeps) {
           const x = hp.x + Math.sin(yw) * dist, z = hp.z + Math.cos(yw) * dist, sx = Math.cos(yw), sz = -Math.sin(yw);
           if (id === 'arrowwall') { const src = h.weaponTip(new THREE.Vector3()); src.y = Math.max(src.y, 1.4); for (let i = 0; i < 16; i++) { const u = (i / 15 - 0.5) * w, px = x + sx * u, pz = z + sz * u; pending.push({ at: now + 0.1 + i * 0.03, fn: () => shots.lob('arrow', src.clone(), new THREE.Vector3(px, d.world.heightAt(px, pz), pz), 0.85, { mul: 0.4, data: { sk: id } }) }); } d.audio.swing(); }
           pending.push({ at: now + (id === 'arrowwall' ? 1.0 : 0.3), fn: () => { walls.push({ g: mkThornWall(x, z, yw, w, id === 'arrowwall'), x, z, yaw: yw, w, t: 0, dur, tier: 0 }); d.audio.block(); st.shake = Math.max(st.shake, 0.2); } }); return true; }
-        case 'companion': { if (!ok('cast')) return false; d.audio.spell('earth'); logMsg('🐺 Um assobio longo, e o lobo domado sai da mata', '#bfe8a0'); pending.push({ at: now + 0.3, fn: () => farmDog(40 * sc.dur, 1.2 * sc.dmg, { coat: 0x7a7a7a, patch: 0xd8d8d8, patchEye: 1 }) }); return true; }
+        case 'companion': { const pet = elfPet(); if (!pet) { askElfPet(() => logMsg('Escolha feita. Use o Chamado de novo para assobiar.', '#bfe8a0')); return false; } if (!ok('cast')) return false; d.audio.spell('earth');
+          logMsg(pet === 'falcao' ? '🦅 Um assobio curto, e o falcão desce do céu' : pet === 'cervo' ? '🦌 Um assobio baixo, e o cervo sai das árvores' : '🐺 Um assobio longo, e o lobo domado sai da mata', '#bfe8a0');
+          pending.push({ at: now + 0.3, fn: () => pet === 'falcao' ? elfFalcon(40 * sc.dur, 1.0 * sc.dmg) : pet === 'cervo' ? elfDeer(40 * sc.dur, 0.9 * sc.dmg) : farmDog(40 * sc.dur, 1.2 * sc.dmg, { coat: 0x7a7a7a, patch: 0xd8d8d8, patchEye: 1 }) }); return true; }
         case 'wildhunt': { if (!ok('cast')) return false; d.audio.boom(); buff.dmg = Math.max(buff.dmg, 1.3); buff.dmgT = 15; ringFx(hp.x, hp.z, 0x9af0a0, 2.4); logMsg('📯 O chifre de Lithendel soa: a Caçada Selvagem corre com você', '#9af0a0');
-          for (let i = 0; i < 3; i++) pending.push({ at: now + 0.2 + i * 0.25, fn: () => farmDog(15, 1.4 * sc.dmg, { coat: 0x8af08a, patch: 0xe8ffe0, patchEye: 1 }) }); return true; }
+          pending.push({ at: now + 0.2, fn: () => elfFalcon(15, 1.4 * sc.dmg) }); pending.push({ at: now + 0.45, fn: () => farmDog(15, 1.4 * sc.dmg, { coat: 0x8af08a, patch: 0xe8ffe0, patchEye: 1 }) }); pending.push({ at: now + 0.7, fn: () => elfDeer(15, 1.2 * sc.dmg) }); return true; } /* os três animais: falcão, lobo e cervo */
         case 'sapheal': { if (!ok('plant')) return false; const tot = st.hpMax * 0.25 * sc.dmg; ringFx(hp.x, hp.z, 0x7ac860, 1); d.audio.spell('holy');
           ticks.push({ t: 3, fn: (dt2) => { st.hp = Math.min(st.hpMax, st.hp + tot / 3 * dt2); const q = d.getHero().root.position; if (Math.random() < dt2 * 20) d.particles.spawn(q.x + rnd(-0.4, 0.4), q.y + rnd(0.2, 1.6), q.z + rnd(-0.4, 0.4), { vy: 1, life: 0.6, s0: 0.2, s1: 0.04, c0: 0xd8ffd0, c1: 0x5ac85a, a: 1 }); } }); return true; }
         case 'lithsong': { if (!ok('cast')) return false; buff.dmg = Math.max(buff.dmg, 1.15); buff.dmgT = Math.max(buff.dmgT, 10 * sc.dur); buff.move = Math.max(buff.move, 1.1); buff.moveT = Math.max(buff.moveT, 10 * sc.dur); ringFx(hp.x, hp.z, 0x9af0a0, 3); d.audio.spell('holy');
