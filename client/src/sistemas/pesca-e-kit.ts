@@ -4,6 +4,7 @@ import { badge } from '../celebrate';
 import * as THREE from 'three';
 import { fine } from '../dual3d';
 import { WL } from '../world';
+import { plainGear } from '../loot';
 import type { PescaKitCtx } from '../main';
 
 export function createPescaKit(K: PescaKitCtx) {
@@ -14,7 +15,7 @@ const chestsOpen = new Set<(typeof K.city.props)[number]>();
 /** Baú de Boas-Vindas dos Caminhantes: o primeiro baú que um personagem novo abre traz um kit quase completo para começar */
 function welcomeKit(_cx: number, _cz: number, _cy: number): boolean { return false; } // o kit agora mora no Baú do Caminhante
 /** presentes de começo de jornada: vão direto para o Baú do Caminhante (uma vez por personagem) */
-function giveStartKit() {
+function giveStartKit() { setTimeout(giveStartGear, 200);
   /* 03/11 (Erling: "o kit de boas-vindas nunca chega… tem que vir os itens de gathering e um kit iniciante, mas sem armas, armaduras e
      escudos: ferramentas, poções de vida, carnes, um drone de vida e um robô de defesa nível 2 que duram 15 dias cada"): vai DIRETO para a
      mochila (o baú da praça ninguém via), as ferramentas já entram nas mãos, e chega também para quem já tinha personagem (marca nova). */
@@ -26,7 +27,23 @@ function giveStartKit() {
   K.game.logMsg('🎁 Presente de começo de jornada na sua mochila: machado, picareta, faca de esfolar e vara de pesca (já nas mãos), 8 poções de vida, carnes e pães, um Pergaminho do Regresso, um Drone de Cura e um Escudo Automatizado Mk II que duram 15 dias cada — use um, o outro ou os dois juntos.', '#ffe08a');
   badge('🎁', 'Presente de começo de jornada', 'olhe a mochila (I)');
 }
-setTimeout(giveStartKit, 1500);
+/* 05/11 (Erling: "se eu começo com uma espada e um escudo, fracos ou não, eles têm que aparecer nos equipamentos — como posso usar e não ter
+   nada?"): o corpo mostrava a arma da raça mesmo com os espaços vazios. Agora quem nasce de mãos vazias ganha as peças de verdade, fracas,
+   já vestidas: o que se vê no corpo é o que está em Arma e Escudo. Vale uma vez por personagem (e para quem já jogava sem nada nas mãos). */
+const START_GEAR: Record<string, [Parameters<typeof plainGear>, Parameters<typeof plainGear> | null]> = {
+  human: [['weapon', 'Espada Curta', '🗡️', { dmg: 7 }], ['shield', 'Escudo Redondo', '🛡', { def: 4 }]],
+  dwarf: [['weapon', 'Martelo de Guerra Anão', '🔨', { dmg: 9 }], null],
+  elf: [['weapon', 'Arco Curto', '🏹', { dmg: 7, dex: 1 }], null],
+};
+function giveStartGear() {
+  try { if (localStorage.getItem('karmika.startgear.v1')) return; } catch { return; }
+  const eq = K.inv.eq as Record<string, unknown>; if (eq.weapon || eq.shield) { try { localStorage.setItem('karmika.startgear.v1', '1'); } catch { /* */ } return; }
+  const kit = START_GEAR[K.profile?.origin ?? 'human'] ?? START_GEAR.human; const got: string[] = [];
+  for (const a of kit) { if (!a) continue; const g = plainGear(...a); if (!K.inv.addGear(g)) continue; K.inv.equipGear(g.uid); got.push(g.name); }
+  if (!got.length) return; try { localStorage.setItem('karmika.startgear.v1', '1'); } catch { /* */ }
+  K.game.logMsg(`⚔ Você começa com ${got.join(' e ')} — fracos, mas seus. Estão em Arma${got.length > 1 ? ' e Escudo' : ''} (C).`, '#ffe08a');
+}
+setTimeout(giveStartKit, 1500); setTimeout(giveStartGear, 1700);
 
 function nearProps(gx: number, gy: number, kinds: string[], rad = 2) { const out: (typeof K.city.props)[number][] = []; for (let y = gy - rad; y <= gy + rad; y++) for (let x = gx - rad; x <= gx + rad; x++) for (const p of tileIdx.get(y * 1000 + x) ?? []) if (kinds.includes(p.kind) && !(p as { gone?: boolean }).gone) out.push(p); return out; }
 const chop = new Map<object, number>(), twigs = new Map<object, number>();
