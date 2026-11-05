@@ -1631,11 +1631,11 @@ export function buildCity(): World {
          e um V em volta da torre entre os portões */
       { const u0x = (F.x - top.x) / (Math.hypot(F.x - top.x, F.y - top.y) || 1), u0y = (F.y - top.y) / (Math.hypot(F.x - top.x, F.y - top.y) || 1), n0 = { x: -u0y, y: u0x };
         const h0 = 2.9 / T, w = 2.5 / T;
-        const legs = gs.map((g) => { const L = Math.hypot(g.x - F.x, g.y - F.y) || 1, ux = (g.x - F.x) / L, uy = (g.y - F.y) / L, k = Math.max(2.5, L - 1.7); const E = { x: F.x + ux * k, y: F.y + uy * k }; return { E, u: { x: ux, y: uy }, n: { x: -uy, y: ux }, side: ux * n0.x + uy * n0.y, g }; }).sort((p, q) => q.side - p.side);
+        const legs = gs.map((g) => { const L = Math.hypot(g.x - F.x, g.y - F.y) || 1, ux = (g.x - F.x) / L, uy = (g.y - F.y) / L, k = Math.max(2.5, L - 5.6) /* 05/11 (Erling: "a ponte não precisa esticar até a entrada"): o largo acaba na altura da torre, não nos portões */; const E = { x: F.x + ux * k, y: F.y + uy * k }; return { E, u: { x: ux, y: uy }, n: { x: -uy, y: ux }, side: ux * n0.x + uy * n0.y, g }; }).sort((p, q) => q.side - p.side);
         const [A, B] = legs; const P = (o: { x: number; y: number }, n: { x: number; y: number }, k: number) => ({ x: o.x + n.x * k, y: o.y + n.y * k });
         /* o vértice do V: onde a borda de dentro de A (−nA) encontra a de dentro de B (+nB) */
         const pa = P(F, A.n, -w), pb = P(F, B.n, w), den = A.u.x * B.u.y - A.u.y * B.u.x; let V = { x: (A.E.x + B.E.x) / 2, y: (A.E.y + B.E.y) / 2 };
-        if (Math.abs(den) > 1e-3) { const t = ((pb.x - pa.x) * B.u.y - (pb.y - pa.y) * B.u.x) / den; if (t > 0.3) V = { x: pa.x + A.u.x * t, y: pa.y + A.u.y * t }; }
+        if (Math.abs(den) > 1e-3) { const t = ((pb.x - pa.x) * B.u.y - (pb.y - pa.y) * B.u.x) / den; if (t > 0.3) { const kA = Math.hypot(A.E.x - F.x, A.E.y - F.y); V = { x: pa.x + A.u.x * Math.min(t, kA), y: pa.y + A.u.y * Math.min(t, kA) }; } }
         const pts = [P(F, n0, h0), P(A.E, A.n, w), P(A.E, A.n, -w), V, P(B.E, B.n, w), P(B.E, B.n, -w), P(F, n0, -h0)];
         const hE = (e: { x: number; y: number }) => Math.max(WL + 0.15, groundH(e.x * T, e.y * T));
         bridges.push({ ax: F.x, ay: F.y, bx: (A.E.x + B.E.x) / 2, by: (A.E.y + B.E.y) / 2, hA: hF, hB: hF, stone: true, half: 2.9, hump: 0, poly: pts.flatMap((q) => [q.x, q.y]), ends: [A.E.x, A.E.y, hE(A.E), B.E.x, B.E.y, hE(B.E)] });
