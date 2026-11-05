@@ -680,11 +680,11 @@ export function buildCity(): World {
     props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 20, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: Math.hypot(bx - ax, by - ay) * T + 0.12, broken: 0 }); };
   qwall(QX + 4, QY, QX + 8, QY); qwall(QX + 8, QY, QX + 8, QY + 7); qwall(QX, QY + 3, QX, QY + 7); qwall(QX, QY + 7, QX + 3, QY + 7); qwall(QX + 5, QY + 7, QX + 8, QY + 7); // portão: vão de 2 tiles no muro sul
   torch(QX + 2, QY + 7); torch(QX + 5, QY + 7);
-  decor('rack', QX + 5, QY, 1, 1, 0); decor('rack', QX + 6, QY, 1, 1, 1); decor('chest', QX + 7, QY + 2, 1, 1, 2);
+  /* 05/11 (Erling: "os bonecos e a grade de armas estão no meio do caminho"): tudo para o lado oeste do pátio, fora da estrada de terra */ decor('rack', QX + 2, QY + 3, 1, 1, 0); decor('rack', QX + 3, QY + 3, 1, 1, 1); decor('chest', QX + 7, QY + 2, 1, 1, 2);
   decor('bench', QX + 1, QY + 6, 1, 1, 0); decor('bench', QX + 6, QY + 6, 1, 1, 0);
   /* props da prancha 59 na cidade de Karmika: poço, lanternas nas esquinas da praça, placa na saída sul, barris e caixotes junto de quatro casas, feno perto do estábulo */
   for (const [v, x, y] of [[2, 22, 16], [4, 14, 14], [4, 21, 21], [5, 17, 27], [0, 9, 11], [1, 28, 11], [1, 9, 23], [0, 28, 24], [6, 27, 25]] as [number, number, number][]) { const gx = x + OX, gy = y + OY; if (inb(gx, gy) && (map[gy][gx] === 'grass' || map[gy][gx] === 'plaza' || (v === 5 && map[gy][gx] === 'road')) && !props.some((q) => q.gx === gx && q.gy === gy)) props.push({ kind: 'vprop', gx, gy, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v }); }
-  const quartel = { x: QX + 4, y: QY + 5, dummies: [1, 3, 5, 7].map((x) => ({ x: QX + x + 0.5, y: QY + 4.5 })) }; pois.push({ name: 'Quartel de Karmika', x: QX + 4, y: QY + 7, biome: 'meadow' });
+  const quartel = { x: QX + 4, y: QY + 5, dummies: [[1.6, 4.2], [1.6, 5.9], [4.4, 5.3], [4.3, 6.7]].map(([x, y]) => ({ x: QX + x, y: QY + y })) }; pois.push({ name: 'Quartel de Karmika', x: QX + 4, y: QY + 7, biome: 'meadow' });
 
   /* ---------- assentamentos: Karmika (centro), vilas de madeira e Askavik (cidade média de madeira e pedra) ---------- */
   const settlements: Settlement[] = [{ name: 'Karmika', kind: 'village', x: CITY.x, y: CITY.y + 3, radius: 22, npcs: [] }];
