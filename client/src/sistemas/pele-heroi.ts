@@ -72,7 +72,7 @@ function checkSkinLevel() { const art = artSkinId(); if (art) { if ('glb:' + art
 setInterval(() => { try { if (!creating && !K.game.st.dead) checkSkinLevel(); } catch { /* */ } }, 3000);
 function swapHero() {
   K.scene.remove(K.hero.root);
-  K.hero = createCharacter(K.kindOf(K.state.race), K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {});
+  K.hero = createCharacter(K.kindOf(K.state.race), K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}); (K.hero as unknown as { sitNeat?: boolean }).sitNeat = K.profile?.sex === 'f';
   K.hookHero();
   K.scene.add(fine(K.hero.root)); K.syncGear(); applyArtSkin();
   (document.getElementById('who') as HTMLElement).textContent = RACES[K.state.race].label;

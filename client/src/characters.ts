@@ -1696,7 +1696,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && !act ? 1 : 0) - sitK) * Math.min(1, dt * 5);
       if (sitK > 0.01) { const k = sitK, P = seatH + 0.07, ca = clamp((P - S.shin - S.ankle) / S.thigh, 0.02, 0.45), a = Math.acos(ca);
         const L = (o: THREE.Object3D, v: number) => { o.rotation.x += (v - o.rotation.x) * k; };
-        for (const leg of [legL, legR]) { const sx = leg === legL ? -1 : 1; L(leg.hip, -a); L(leg.knee, a - 0.12); L(leg.ankle, 0.1); leg.hip.rotation.z += (-sx * 0.1 - leg.hip.rotation.z) * k; leg.hip.rotation.y += (sx * 0.06 - leg.hip.rotation.y) * k; }
+        /* 05/11 (Erling: "pode sentar de pernas abertas, meio como um guerreiro; personagens femininas podem sentar toda arrumadinha"): homem com os
+           joelhos bem abertos e os pés afastados; mulher com os joelhos juntos e as mãos no colo */
+        const neat = !!(hero as unknown as { sitNeat?: boolean }).sitNeat, abd = neat ? -0.03 : 0.34, rot = neat ? -0.05 : 0.2;
+        for (const leg of [legL, legR]) { const sx = leg === legL ? -1 : 1; L(leg.hip, -a); L(leg.knee, a - 0.12); L(leg.ankle, 0.1); leg.hip.rotation.z += (sx * abd - leg.hip.rotation.z) * k; leg.hip.rotation.y += (sx * rot - leg.hip.rotation.y) * k; }
         body.position.y += (P - pelvisY - body.position.y) * k; body.position.z += (-0.1 - body.position.z) * k;
         hips.rotation.y *= 1 - k; hips.rotation.z *= 1 - k; spine.rotation.y *= 1 - k; spine.rotation.x += (0.07 - spine.rotation.x) * k;
       } else if (body.position.z !== 0) body.position.z = 0;
@@ -1742,7 +1745,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       armR.sh.rotation.x = restR.x + armA * sR * swingR * (1 - 0.7 * rK) + aShR; armR.sh.rotation.z = restR.z + aShRz;
       armR.el.rotation.x = -(restR.e + (0.18 + 0.22 * (1 - sR) * 0.5) * walkK) + aElR;
       if (sitK > 0.01) { const k = sitK, L = (o: THREE.Object3D, ax: 'x' | 'z', v: number) => { o.rotation[ax] += (v - o.rotation[ax]) * k; };
-        L(armR.sh, 'x', -0.62); L(armR.sh, 'z', -0.12); L(armR.el, 'x', -0.7); L(armL.sh, 'x', -0.12); L(armL.sh, 'z', 0.32); L(armL.el, 'x', -0.35); }
+        if ((hero as unknown as { sitNeat?: boolean }).sitNeat) { L(armR.sh, 'x', -0.42); L(armR.sh, 'z', 0.12); L(armR.el, 'x', -0.95); L(armL.sh, 'x', -0.42); L(armL.sh, 'z', -0.12); L(armL.el, 'x', -0.95); } /* as mãos no colo */
+        else { L(armR.sh, 'x', -0.55); L(armR.sh, 'z', -0.22); L(armR.el, 'x', -0.6); L(armL.sh, 'x', -0.55); L(armL.sh, 'z', 0.22); L(armL.el, 'x', -0.6); } /* os antebraços nos joelhos abertos */ }
       if (hero.riding && !act) { armL.sh.rotation.x = -0.55; armL.sh.rotation.z = 0.18; armL.el.rotation.x = -0.9; armR.sh.rotation.x = -0.55; armR.sh.rotation.z = -0.18; armR.el.rotation.x = -0.9; }
       if (runK > 0.05) { // na corrida os cotovelos fecham em ~90°
         armL.el.rotation.x -= (eb - restL.e) * runK * swingL * 0.9;
