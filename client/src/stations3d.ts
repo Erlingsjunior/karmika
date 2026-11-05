@@ -358,19 +358,26 @@ export function buildWorkshop(v: number, rnd: () => number, label: string, wdirL
     lantern(1.4, 2.7, 1.4);
     board(4.25, 2.35, 3.2);
     out.glow = { x: -0.6, y: 0.9, z: -0.4, color: 0xff8a3a, base: 22 }; out.smoke = { x: -1.45, y: 6.2, z: -2.0 };
-  } else { /* CASA DE TECNOLOGIA: paredes de chapas rebitadas, claraboia de vidro, bobina de Tesla no telhado, canos de cobre, engrenagem gigante na fachada */
+  } else { /* CASA DE TECNOLOGIA: paredes de chapas rebitadas, exaustor na cumeeira, bobina de Tesla no telhado, canos de cobre, engrenagem gigante na fachada */
     floor(stoneD);
     const plate = std(0xffffff, { map: stoneTex(0x5a6470) });
     into = cut; M(B(5.6, 3.4, 0.22), plate, 0, 1.86, -2.5); into = g;
     for (const sx of [-1, 1]) { M(B(0.22, 1.1, 4.8), plate, sx * 2.7, 0.71, -0.1); into = cut; M(B(0.22, 2.3, 4.8), plate, sx * 2.7, 2.41, -0.1); into = g; for (let k = 0; k < 6; k++) M(new THREE.SphereGeometry(0.04, 5, 4), brass, sx * 2.82, 0.4 + k * 0.55, 2.25, 0, 0, 0, false); M(B(0.26, 3.4, 0.16), brass, sx * 2.7, 1.86, 2.3); }
-    for (const sx of [-1, 1]) M(new THREE.CircleGeometry(0.4, 12), glow(0x8af0ff), sx * 2.83, 2.2, -0.6, 0, sx * Math.PI / 2, 0, false); // vigias acesas
+    /* 05/11 (Erling: "essa janela e esse vidro em cima da casa não fazem sentido, coloque coisas reais"): no lugar da vigia redonda clarinha,
+       janelas de oficina de verdade — caixilho de latão com cruzeta, vidro com a luz quente da forja lá dentro e grade de ferro por fora */
+    for (const sx of [-1, 1]) { const wx = sx * 2.83, wy = 2.15, wz = -0.6, ry = sx * Math.PI / 2;
+      M(new THREE.PlaneGeometry(0.85, 0.95), glow(0xffb860), wx, wy, wz, 0, ry, 0, false);
+      for (const [dy, dz, h2, w2] of [[0.5, 0, 0.08, 1.0], [-0.5, 0, 0.1, 1.05], [0, 0.46, 1.05, 0.08], [0, -0.46, 1.05, 0.08], [0, 0, 0.05, 0.9], [0.05, 0, 1.0, 0.05]] as const) M(B(0.06, h2, w2), brass, wx + sx * 0.02, wy + dy, wz + dz, 0, 0, 0, false);
+      for (let k = -1; k <= 1; k++) M(C(0.018, 0.018, 0.95, 5), steel, wx + sx * 0.07, wy, wz + k * 0.22, 0, 0, 0, false); }
     const st = buildStation(5, rnd, true); st.group.position.set(0, 0.16, -0.8); g.add(st.group);
     /* canos de cobre correndo pela parede com válvulas */
     for (let k = 0; k < 3; k++) { M(C(0.06, 0.06, 4.6, 8), copper, -2.45, 0.6 + k * 0.5, -0.1, Math.PI / 2); M(new THREE.TorusGeometry(0.1, 0.03, 4, 8), std(0xc83a2a), -2.36, 0.6 + k * 0.5, 0.8 - k * 0.6, 0, Math.PI / 2, 0, false); }
     into = cut; for (let k = 0; k < 3; k++) M(C(0.07, 0.07, 3.0, 8), copper, -1.6 + k * 1.6, 1.9, -2.32); into = g;
     /* telhado: duas águas de chapa com a claraboia de vidro no meio */
     { into = cut; const hw = 3.1, pitch = 0.45, L = hw / Math.cos(pitch), H = 3.55, rm = std(0xffffff, { map: shingleTex(0x3a4a5a) }); for (const sx of [-1, 1]) M(B(L, 0.14, 5.6), rm, sx * hw / 2, H + Math.tan(pitch) * hw / 2, -0.1, 0, 0, -sx * pitch);
-      const gl = new THREE.MeshToonMaterial({ color: 0x9ae0ff, transparent: true, opacity: 0.5, gradientMap: ramp }); M(B(1.4, 0.05, 2.4), gl, 0, H + Math.tan(pitch) * hw + 0.12, -0.1, 0, 0, 0, false);
+      /* no lugar da claraboia de vidro: o exaustor da oficina na cumeeira — caixa de chapa rebitada, grelha de saída e um chapéu de chaminé (a fumaça da forja sai por aqui) */
+      { const ry = H + Math.tan(pitch) * hw; M(B(1.0, 0.55, 1.0), steel, -0.9, ry + 0.2, -0.4, 0, 0, 0, false); for (let k = 0; k < 4; k++) M(B(0.9, 0.05, 0.04), std(0x1a1e24), -0.9, ry + 0.1 + k * 0.1, 0.12, 0, 0, 0, false);
+        M(C(0.16, 0.18, 0.7, 8), copper, -0.9, ry + 0.8, -0.4, 0, 0, 0, false); M(new THREE.ConeGeometry(0.34, 0.22, 8), steel, -0.9, ry + 1.25, -0.4, 0, 0, 0, false); }
       for (const fz of [2.6, -2.8]) { const sh2 = new THREE.Shape(); sh2.moveTo(-2.8, 0); sh2.lineTo(2.8, 0); sh2.lineTo(0, Math.tan(pitch) * 2.8); sh2.lineTo(-2.8, 0); const gm = M(new THREE.ShapeGeometry(sh2), plate, 0, H, fz, 0, 0, 0, false); gm.material = new THREE.MeshToonMaterial({ color: 0x5a6470, gradientMap: ramp, side: THREE.DoubleSide }); }
       into = g; }
     /* bobina de Tesla em cima, fora do corte (é a marca da casa de longe) */

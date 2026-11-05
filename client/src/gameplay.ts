@@ -58,6 +58,7 @@ export function createGameplay(d: GameplayDeps) {
   const CD = { attack: 0.3, cast: 0.75, heal: 1.6, bash: 2.4, slam: 3.2 };
   let comboIdx = -1, lastCombo = -9, lastHurt = -9;
   const fires: { x: number; z: number; t: number }[] = [];
+  const focoP = new THREE.Vector3(); let focoHurt = -9; /* Foco do elfo: onde o herói estava no quadro anterior e quando levou o último golpe */
   /* estalactites de gelo (nórdica) e lava vulcânica (anão) ao bater no chão */
   const spikes: { m: THREE.Mesh; t: number; h: number }[] = [];
   const lavas: { m: THREE.Mesh; gl: THREE.Mesh; x: number; z: number; r: number; t: number }[] = [];
@@ -580,7 +581,12 @@ export function createGameplay(d: GameplayDeps) {
   /* ---- 04/11: flechas do Elfo — o efeito de cada flecha especial quando ela acerta (ricochete, fogo, explosão, cipó, vento, perfurar, pena) ---- */
   type ElfData = { sk: SkillId; fx: 'ric' | 'fire' | 'boom' | 'vine' | 'wind' | 'pierce' | 'oak' | 'feather'; n?: number; hit?: Set<Enemy> };
   const elfRoot = (e: Enemy, dur: number) => { if (!e.alive || isElite(e)) return; e.state = 'hurt'; e.t = -dur; e.vel?.set?.(0, 0); for (let k = 0; k < 10; k++) d.particles.spawn(e.pos.x + rnd(-0.5, 0.5), e.pos.y + 0.1, e.pos.z + rnd(-0.5, 0.5), { vy: rnd(1, 2.4), life: 0.7, s0: 0.3, s1: 0.06, c0: 0x9ae070, c1: 0x3a6a2a, a: 0.9, drag: 2 }); };
-  function elfShoot(from: THREE.Vector3, yaw: number, mul: number, data?: ElfData, kind: 'arrow' | 'longarrow' = 'arrow', spread = 0) { return shots.fire(kind, from, yaw, { mul, spread, data: data ?? { sk: 'combo' } as unknown as ElfData }); }
+  /** Foco cheio (elfo): o próximo tiro é crítico garantido (×1,8 aqui) e atravessa todos na linha, deixando um risco de luz verde */
+  function focoShot(from: THREE.Vector3, yaw: number, mul: number, data?: ElfData): { mul: number; data?: ElfData } {
+    if (st.res.style !== 'foco' || st.mp < st.mpMax - 0.5) return { mul, data }; st.mp = 0;
+    for (let k = 0; k < 22; k++) { const u = k * 1.1; d.particles.spawn(from.x + Math.sin(yaw) * u, from.y, from.z + Math.cos(yaw) * u, { vy: rnd(-0.1, 0.2), life: 0.8, s0: 0.3, s1: 0.04, c0: 0xe8ffc8, c1: 0x5ac85a, a: 0.9 }); }
+    return { mul: mul * 1.8, data: data?.fx ? { ...data, n: Math.max(data.n ?? 0, 6) } : { sk: (data?.sk ?? 'combo') as SkillId, fx: 'pierce', n: 6 } }; }
+  function elfShoot(from: THREE.Vector3, yaw: number, mul: number, data?: ElfData, kind: 'arrow' | 'longarrow' = 'arrow', spread = 0) { const f = focoShot(from, yaw, mul, data); return shots.fire(kind, from, yaw, { mul: f.mul, spread, data: f.data ?? { sk: 'combo' } as unknown as ElfData }); }
   function elfHit(e: Enemy, pt: THREE.Vector3, from: THREE.Vector3, mul: number, D: ElfData) {
     const hit = D.hit ?? new Set<Enemy>(); hit.add(e); const dir = new THREE.Vector3(pt.x - from.x, 0, pt.z - from.z).normalize(), gy = d.world.heightAt(pt.x, pt.z);
     const goOn = (m: number) => { if ((D.n ?? 0) <= 0) return; const f = pt.clone().addScaledVector(dir, (e.def.radius || 0.5) + 0.45); f.y = Math.max(f.y, gy + 0.9); shots.fire(D.fx === 'oak' ? 'longarrow' : 'arrow', f, Math.atan2(dir.x, dir.z), { mul: mul * m, data: { ...D, n: (D.n ?? 0) - 1, hit } }); };
@@ -1178,7 +1184,7 @@ export function createGameplay(d: GameplayDeps) {
            adianta o alvo, arco balístico com gravidade, crava no chão/muro/bicho. O tempo do disparo segue o golpe da arma (soltar a corda, arremessar) */
         const shell = () => { const hand = h.handPos(new THREE.Vector3()); d.particles.spawn(hand.x, hand.y, hand.z, { vx: -Math.cos(yaw) * 2 + rnd(-0.5, 0.5), vy: 2.5, vz: Math.sin(yaw) * 2, life: 0.5, s0: 0.1, s1: 0.08, c0: 0xd8b060, c1: 0xb8903c, a: 1, g: 12 }); };
         if (wmode === 'bow' || wmode === 'longbow') { const L = wmode === 'longbow'; cd.attack = (L ? 1.05 : 0.8) * TEMPO; d.audio.swing();
-          pending.push({ at: now + TEMPO * 0.24, fn: () => { shots.fire(L ? 'longarrow' : 'arrow', from0(), yaw, { mul: L ? 1.55 : 1.25 }); d.audio.parry(); } }); return true; }
+          pending.push({ at: now + TEMPO * 0.24, fn: () => { { const f0 = from0(), fs = focoShot(f0, yaw, L ? 1.55 : 1.25); shots.fire(L ? 'longarrow' : 'arrow', f0, yaw, { mul: fs.mul, data: fs.data }); } d.audio.parry(); } }); return true; }
         if (wmode === 'xbow') { cd.attack = 0.6 * TEMPO; // besta de repetição: três virotes em sequência
           for (let i = 0; i < 3; i++) pending.push({ at: now + TEMPO * 0.1 + i * 0.12, fn: () => { shots.fire('bolt', from0(), yaw, { mul: 0.62, spread: 0.02 }); d.audio.parry(); st.shake = Math.max(st.shake, 0.04); } }); return true; }
         /* 02/11 (Erling): uma em cada mão — a da esquerda dispara logo depois da direita, da boca dela */
@@ -1412,6 +1418,7 @@ export function createGameplay(d: GameplayDeps) {
         dmgText(heroPos.clone().setY(2.4), 'BLOQUEOU', false, '#cfd8e8'); h.blockHit();
         const yw = h.root.rotation.y; for (let i = 0; i < 8; i++) d.particles.spawn(heroPos.x + Math.sin(yw) * 0.7, 1.3, heroPos.z + Math.cos(yw) * 0.7, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.3, s0: 0.18, s1: 0.03, c0: 0xffffff, c1: 0xffb060, a: 0.8, drag: 2 });
       } else {
+        if (st.res.style === 'foco') { st.mp = Math.max(0, st.mp - 25); focoHurt = now; } /* o golpe recebido tira 25 de Foco */
         st.hp = Math.max(0, st.hp - n); if (!h.actName || h.actName === 'hit') h.act('hit'); /* golpes e magias em andamento não são interrompidos */ d.audio.hurt(); st.shake = Math.max(st.shake, 0.3);
         dmgText(heroPos.clone().setY(2.2), n, false, '#ff7a6a');
       }
@@ -2015,7 +2022,10 @@ export function createGameplay(d: GameplayDeps) {
       // regeneração
       if (kitKey === 'tecno') { const CAP = REACT_CAP[reactor.tier] ?? 50000; if (st.mpMax !== CAP) { st.mpMax = CAP; st.mp = Math.round(reactor.charge * CAP); } else reactor.charge = Math.max(0, Math.min(1, st.mp / CAP)); reactSaveT -= dt; if (reactSaveT <= 0) { reactSaveT = 5; try { localStorage.setItem(REACT_KEY, JSON.stringify(reactor)); } catch { /* */ } }
         if (reactor.charge < 0.15 && now > reactWarn) { reactWarn = now + 120; logMsg(reactor.charge <= 0 ? '⚛ O reator está vazio: a Energia não volta e a esfera apagou. Troque o Núcleo de Reator (Companhia de Latão ou um ferreiro).' : `⚛ Reator em ${Math.round(reactor.charge * 100)}%: providencie um Núcleo novo.`, '#ffb060'); } }
-      if (st.res.mode === 'regen' && kitKey !== 'tecno') { const rk = 1 * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
+      /* 05/11: o FOCO do elfo (compêndio do Elfo): parada ou recuando, sem levar dano, sobe 15/s; correndo para a frente, baixa 10/s */
+      if (st.res.style === 'foco') { const hp0 = d.getHero().root.position, mv = Math.hypot(hp0.x - focoP.x, hp0.z - focoP.z) / Math.max(dt, 1e-3), fw = mv > 0.6 ? ((hp0.x - focoP.x) * Math.sin(d.getHero().root.rotation.y) + (hp0.z - focoP.z) * Math.cos(d.getHero().root.rotation.y)) / Math.max(1e-4, mv * dt) : 0; focoP.copy(hp0);
+        if (now - focoHurt > 1.2) st.mp = fw > 0.5 && mv > 1.5 ? Math.max(0, st.mp - 10 * dt) : Math.min(st.mpMax, st.mp + 15 * (buff.dmgT > 0 && buff.dmg >= 1.15 ? 1.25 : 1) * dt); }
+      else if (st.res.mode === 'regen' && kitKey !== 'tecno') { const rk = 1 * (n3Key() === 'mag' && need3.mag > 0.5 ? 0.7 : 1); if (now - st.lastCast > 1.4) st.mp = Math.min(st.mpMax, st.mp + 7 * rk * dt * (st.sp.has('t_core') || st.sp.has('r_lantern') ? 2 : 1)); }
       if (st.sp.has('t_core') && now - lastFight < 4) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.01 * dt);
       else if (st.res.mode !== 'regen' && now - lastFight > 4) st.mp = Math.max(0, st.mp - 7 * dt); // Ímpeto/Fúria/Sangue/Ódio: fora da luta esfria e esvazia (29/10: só esses — a Magia e a Energia não esvaziavam e enchiam ao mesmo tempo)
       /* 03/11 (Erling: "de dia precisa usar postura de defesa mais contida, usar mais curas e comer mais carnes de cura"): o lobisomem de dia

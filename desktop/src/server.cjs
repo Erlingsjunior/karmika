@@ -26,7 +26,7 @@ function gameManifest(dir) {
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.glb': 'model/gltf-binary', '.fbx': 'application/octet-stream', '.woff2': 'font/woff2', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav' };
 
 const PROTO = 1;
-const MAX = 12;       // gente na sala
+const MAX = 200;      // gente na sala (05/11, Erling: "a sala oficial pode caber umas 200 pessoas, não só 12")
 const PARTY_MAX = 6; // gente num grupo
 const PARTY_GAP = 10; // diferença máxima de nível dentro do grupo (ninguém puxa ninguém)
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O/0 e I/1 para não confundir ao ditar
@@ -281,7 +281,12 @@ function startServer(opts = {}) {
           return;
         }
         switch (m.t) {
-          case 'st': me.st = m.s; others(me.id, { t: 'st', id: me.id, s: m.s }); break; // posição, direção, velocidade, zona
+          case 'st': { me.st = m.s; /* com 200 na sala, mandar a posição de todo mundo para todo mundo pesa (200 × 200 por quadro). Quem está perto
+              (mesma zona, até 90 m) recebe sempre; quem está longe recebe 1 em cada 10 — o suficiente para o mapa e a lista, sem afogar a rede. */
+            me.stN = (me.stN || 0) + 1; const js = JSON.stringify({ t: 'st', id: me.id, s: m.s }), far = me.stN % 10 !== 0;
+            for (const p of players.values()) { if (p.id === me.id || p.ws.readyState !== 1) continue; const o = p.st;
+              if (far && o && m.s && (o.zn !== m.s.zn || Math.hypot((o.x || 0) - (m.s.x || 0), (o.z || 0) - (m.s.z || 0)) > 90)) continue; p.ws.send(js); }
+            break; } // posição, direção, velocidade, zona
           case 'act': me.lastAct = { a: String(m.a).slice(0, 24), at: Date.now() }; others(me.id, { t: 'act', id: me.id, a: String(m.a).slice(0, 24) }); break; // golpe/magia/esquiva
           case 'look': me.look = m.look; others(me.id, { t: 'look', id: me.id, look: m.look }); break; // roupa/arma mudou
           case 'chat': { const text = String(m.text || '').slice(0, 240).trim(); if (text) { const msg = { t: 'chat', id: me.id, name: me.name, text }; others(me.id, msg); } break; }

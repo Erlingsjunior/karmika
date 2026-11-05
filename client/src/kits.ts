@@ -58,10 +58,11 @@ export const KITS: Partial<Record<Race, SkillDef[]>> = {
 
 /** Recurso de cada caminho: magos e bruxos usam Mana; guerreiros, Ímpeto (enche lutando); tecnocratas, Energia;
  *  vampiros, Sangue; lobisomens, Fúria; caçadores de demônios, Ódio; paladinos, Fé. */
-export type ResStyle = 'mana' | 'impeto' | 'energia' | 'sangue' | 'furia' | 'odio' | 'fe' | 'determinacao';
+export type ResStyle = 'foco' | 'mana' | 'impeto' | 'energia' | 'sangue' | 'furia' | 'odio' | 'fe' | 'determinacao';
 export interface ResDef { name: string; label: string; style: ResStyle; mode: 'regen' | 'fight'; tip: string }
 export const RESOURCES: Record<ResStyle, ResDef> = {
   mana: { name: 'Mana', label: 'MANA', style: 'mana', mode: 'regen', tip: 'Mana: volta sozinha, devagar, quando você não conjura.' },
+  foco: { name: 'Foco', label: 'FOCO', style: 'foco', mode: 'regen', tip: 'Foco (elfo): parada ou recuando, sem levar dano, sobe 15 por segundo; cada golpe recebido tira 25; correr para cima do inimigo baixa. Os golpes do elfo não gastam Foco: eles têm recarga. Foco cheio: o próximo tiro é crítico garantido e atravessa todos na linha.' },
   determinacao: { name: 'Determinação', label: 'DETERMINAÇÃO', style: 'impeto', mode: 'fight', tip: 'Determinação: a teimosia de quem não nasceu com dom. Enche a cada golpe dado ou recebido; fora da luta, esfria.' },
   impeto: { name: 'Ímpeto', label: 'ÍMPETO', style: 'impeto', mode: 'fight', tip: 'Ímpeto: começa vazio e enche a cada golpe dado ou recebido. Fora da luta, esfria e esvazia. Itens de Geração de Ímpeto enchem mais rápido.' },
   energia: { name: 'Energia', label: 'ENERGIA', style: 'energia', mode: 'regen', tip: 'Energia: vem da bateria do reator (Mk I: 50.000; Mk II: 120.000). Não recarrega sozinha e só gasta com as magias — quando acabar, troque a bateria (Núcleo de Reator) ou monte uma nova na aba ⚛ Reator da mochila.' },
@@ -70,7 +71,7 @@ export const RESOURCES: Record<ResStyle, ResDef> = {
   odio: { name: 'Ódio', label: 'ÓDIO', style: 'odio', mode: 'fight', tip: 'Ódio: cresce a cada demônio ferido; esfria longe deles.' },
   fe: { name: 'Fé', label: 'FÉ', style: 'fe', mode: 'regen', tip: 'Fé (Convicção): volta com a oração e com os atos justos.' },
 };
-export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'cac' ? RESOURCES.odio : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : RESOURCES.mana; }
+export function resOf(race: Race): ResDef { return race === 'human' ? RESOURCES.determinacao : race === 'technocrat' || race === 'tecno' ? RESOURCES.energia : race === 'pal' ? RESOURCES.fe : race === 'vam' ? RESOURCES.sangue : race === 'lob' ? RESOURCES.furia : race === 'cac' ? RESOURCES.odio : race === 'nordic' || race === 'dwarf' ? RESOURCES.impeto : race === 'elf' ? RESOURCES.foco : RESOURCES.mana; }
 /* ---- Humano puro: luta com o que tiver na mão, sem magia de deus nenhum. Usa os mesmos movimentos da escola nórdica (sem gelo, raio nem lobo),
    com nomes e jeito de gente comum. Feras, armadilhas e construção entram depois (ver arvore-humano.md) ---- */
 { const N = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
@@ -161,7 +162,7 @@ const HSVG: Record<string, string> = {
     ['⌃4', 'explarrow', 19, 18, 'Flecha Explosiva', 'A flecha leva um frasco de pólvora élfica e estoura em área (2,8 m) onde acerta, jogando os inimigos longe.', undefined, I(AR(4, 28, 18, 14, '#ffd070') + '<circle cx="22" cy="10" r="6" fill="#ff8a2a"/><circle cx="22" cy="10" r="3" fill="#ffe08a"/>')],
     ['⌃5', 'arrowwall', 24, 25, 'Muralha de Flechas', 'Atira para o alto: as flechas caem 10 m à frente e ficam fincadas em fila, uma barreira de 7 m que os monstros não atravessam por 15 s.', undefined, I('<path d="M5 26V12M10 26V10M15 26V12M20 26V10M25 26V12" stroke="#8a6a44" stroke-width="1.8"/><path d="M3 12l2-3 2 3M8 10l2-3 2 3M13 12l2-3 2 3M18 10l2-3 2 3M23 12l2-3 2 3" stroke="#e8e0cc" stroke-width="1.3" fill="none"/><path d="M2 27h28" stroke="#bfe8a0" stroke-width="2"/>')],
   ];
-  KITS.elf = E.map(([k, id, lvl, cost, name, tip, aim, svg]) => { const b = KITS.nordic!.find((x) => x.id === id); return { ...(b ?? {}), k, id, lvl, cost, name, tip, aim: aim ?? b?.aim, svg: svg || b?.svg || '', c: '#bfe8a0', hold: b?.hold } as SkillDef; });
+  KITS.elf = E.map(([k, id, lvl, cost, name, tip, aim, svg]) => { const b = KITS.nordic!.find((x) => x.id === id); void cost; /* 05/11: o elfo não gasta recurso — o Foco é a recompensa de lutar parada; os golpes têm recarga */ return { ...(b ?? {}), k, id, lvl, cost: 0, name, tip, aim: aim ?? b?.aim, svg: svg || b?.svg || '', c: '#bfe8a0', hold: b?.hold } as SkillDef; });
   /* a guarda do elfo: Passo da Folha (a mesma guarda do humano, com nome élfico) */
   { const g = KITS.nordic!.find((x) => x.id === 'guard'); if (g) KITS.elf.splice(1, 0, { ...g, k: '⌃6', lvl: 1, name: 'Passo da Folha', tip: 'Segure: apara com a lâmina curta ou se desvia de lado.', c: '#bfe8a0' }); } }
 
