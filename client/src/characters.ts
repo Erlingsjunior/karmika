@@ -957,9 +957,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       lunge: [[0, 0], [.2, 0], [.4, 1], [.8, 0.7], [1, 0]], vel: [[0, 0], [.2, 0], [.3, 6], [.45, 0]], crouch: [[0, 0], [.22, 0.03], [.4, 0.07], [1, 0]],
     },
     combo2: { // corte largo da direita para a esquerda, avançando
-      shX: [[0, 0], [.22, -2.3], [.45, -1.45], [1, 0]], shZ: [[0, 0], [.22, 1.1], [.45, -0.7], [1, 0]], el: [[0, 0], [.22, -0.6], [.45, 0.45], [1, 0]],
-      swX: [[0, 0], [.22, -0.3], [.45, 0.25], [1, 0]], twist: [[0, 0], [.22, 0.55], [.45, -0.5], [1, 0]], lean: [[0, -0.05], [.22, -0.1], [.45, 0.3], [1, 0]],
-      lunge: [[0, 0], [.22, 0], [.42, 1], [.75, 0.8], [1, 0]], vel: [[0, 0], [.22, 0], [.34, 4.4], [.52, 0]],
+      shX: [[0, 0], [.22, -2.3], [.45, -1.45], [1, 0]], shZ: [[0, 0], [.22, 1.1], [.45, -0.45], [1, 0]], el: [[0, 0], [.22, -0.6], [.45, 0.45], [1, 0]],
+      swX: [[0, 0], [.22, -0.3], [.45, 0.25], [1, 0]], twist: [[0, 0], [.22, 0.55], [.45, -0.62], [1, 0]], lean: [[0, -0.05], [.22, -0.1], [.45, 0.3], [1, 0]],
+      lunge: [[0, 0], [.22, 0], [.42, 0.6], [.75, 0.45], [1, 0]], vel: [[0, 0], [.22, 0], [.34, 3.0], [.52, 0]], /* 05/11: passada menor (era 1 / 4,4 — "o segundo golpe dá um passo longo") */
     },
     combo3: { // batida: o escudo vai à frente com o peso do corpo
       shLX: [[0, 0], [.2, -0.3], [.4, -1.7], [.7, -1.2], [1, 0]], elL: [[0, 0], [.2, -0.8], [.4, 0.4], [1, 0]], face: [[0, 0], [.15, 1], [.8, 1], [1, 0]],
@@ -1650,7 +1650,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       hips.position.z = smooth1('back', aBack, dt, 18);
       smooth.tilt += (aTilt - smooth.tilt) * Math.min(1, dt * 22); hips.rotation.x = smooth.tilt;
       spine.rotation.y = Math.sin(phase) * tw + 0.6 * aTwist - hipTw - strafeSm; /* a coluna desfaz o giro do quadril do passo de lado */
-      smooth.lean += ((leanT + aLean + (dashing ? 0.0 : 0)) - smooth.lean) * Math.min(1, dt * 14);
+      /* 05/11 (Erling: "a investida inclina demais"): o tronco somava inclinação do golpe + da postura de combate + da corrida + do quadril
+         e passava de 60° — nenhum corpo corre assim. Teto: quadril + coluna até ~43° à frente (ajoelhado/trabalho fica livre) e ~25° para trás. */
+      const leanCap = (kneelK > 0.01 ? 1.5 : 0.75) - Math.max(0, smooth.tilt), leanTgt = Math.max(-0.45, Math.min(leanCap, leanT + aLean));
+      smooth.lean += (leanTgt - smooth.lean) * Math.min(1, dt * 14);
       spine.rotation.x = smooth.lean + Math.sin(breath) * 0.006;
       spine.rotation.z = -Math.cos(phase) * 0.018 * walkK;
       head.rotation.x = -smooth.lean * 0.85 - smooth.tilt * 0.9 + aHeadX + Math.sin(breath + 0.7) * 0.01;

@@ -46,6 +46,13 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
     c = mix(c, c.mul(h.mul(0.4).add(0.78)).mul(mix(0.45, 1.0, j)), pl);
     diffuseColor.rgb.assign(c); return;
   }
+  /* 05/11 (Erling: "onde estão todas as texturas? sumiram"): o material do chão era montado uma vez só, quando as texturas ainda não tinham
+     chegado, e ficava no chão desenhado para sempre. Agora o chão já nasce com a textura (um quadradinho cinza no começo, ver chunks3d.ts) e
+     a troca para a foto de verdade acontece no mesmo objeto de textura; o chão desenhado só aparece enquanto uTexOn = 0. */
+  const fb = (() => { const gq = floor(wp.mul(5)), gh = fract(sin(dot(gq, vec2(12.9898, 78.233))).mul(43758.5453)); let c = base0.mul(gh.mul(0.2).add(0.9));
+    const q0 = wp.mul(2.4), q = vec2(q0.x.add(mod(floor(q0.y), 2).mul(0.5)), q0.y), id = floor(q), f = fract(q);
+    const h = fract(sin(dot(id, vec2(12.9, 78.2))).mul(43758.5)), e = min(min(f.x, float(1).sub(f.x)), min(f.y, float(1).sub(f.y))), j = smoothstep(0.05, 0.14, e);
+    return mix(c, c.mul(h.mul(0.4).add(0.78)).mul(mix(0.45, 1.0, j)), pl); })(), texOn = uniform(G.uTexOn.value as number); gpuTexOn.push({ u: texOn, ref: G.uTexOn });
   const tex = keep(G.tGround.value as THREE.DataArrayTexture), mean = (G.uMean.value as THREE.Vector3[]).map((v) => uniform(v));
   const gTex = (Ly: number, sc0: any) => { const sc = typeof sc0 === 'number' ? float(sc0) : sc0, p = wp.div(sc), q = vec2(wp.x.mul(0.809).add(wp.y.mul(0.588)), wp.x.mul(-0.588).add(wp.y.mul(0.809))).div(sc.mul(1.37)).add(vec2(0.37, 0.71));
     const n = smoothstep(0.32, 0.68, gNoise(wp.mul(0.045).add(Ly * 7.3)));
@@ -69,8 +76,11 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
   let cob = mix(cobAt(sA), cobAt(sB), cf);
   cob = mix(cob, gTex(12, 3.2), pl.mul(smoothstep(0.3, 0.7, gNoise(wp.mul(0.02).add(11)))));
   base = mix(base, cob.mul(0.95), clamp(sp1.y, 0, 1));
-  diffuseColor.rgb.assign(base);
+  diffuseColor.rgb.assign(mix(fb, base, texOn));
 }
+const gpuTexOn: { u: any; ref: Ref }[] = [];
+/** a cada quadro: liga a textura do chão quando ela chega (o nó guarda o valor; aqui ele acompanha o groundU.uTexOn) */
+function syncTexOn() { for (const g of gpuTexOn) if (g.u.value !== g.ref.value) g.u.value = g.ref.value; }
 /** corte de visão (toon3d): um círculo na tela em volta do herói, só no que está entre a câmera e ele. O WebGPU conta a tela de cima
  *  para baixo (o WebGL, de baixo para cima): o y é virado */
 function cutFrag(C: { uCut: Ref; uCutF: Ref }) {
@@ -358,7 +368,7 @@ export function createGPUPost(R: any, getSC: () => [THREE.Scene, THREE.Camera], 
   return {
     passes: [] as unknown[], addPass(p: unknown) { this.passes.push(p); }, setSize() { /* o PassNode acompanha o tamanho do renderizador */ },
     render() { const [s, cam] = getSC(); const cw = R.domElement.width, ch = R.domElement.height; if (sceneRT.width !== cw || sceneRT.height !== ch) sceneRT.setSize(cw, ch);
-      lightsFrame(s, cam); tick++; gpuState.frame++;
+      lightsFrame(s, cam); syncTexOn(); tick++; gpuState.frame++;
       const prev = R.getRenderTarget(), ac = R.autoClear;
       R.setRenderTarget(sceneRT); R.autoClear = true; R.clear(true, true, true); /* 04/11 (Erling: "um arrasto cabuloso quando ando"): limpa cor e profundidade do quadro na mão — em algumas placas o quadro anterior ficava e o chão novo não passava no teste de profundidade onde o personagem esteve, deixando um rastro */ cam.layers.set(0); R.render(s, cam);
       const bg = s.background; s.background = null; R.autoClear = false; for (const l of shadowLights) (l as THREE.DirectionalLight).shadow.autoUpdate = false; /* a sombra já saiu na 1ª etapa */
