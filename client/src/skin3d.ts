@@ -71,7 +71,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   // escala: quadril do modelo na mesma altura do quadril procedural
   root.add(model); model.updateMatrixWorld(true);
   const hipsM = B('Hips'); if (!hipsM) { root.remove(model); return null; }
-  const ourHipY = rootP(rig.hips, root).y, mixHipY = rootP(hipsM, root).y;
+  /* 05/11 (Erling: "coloquei as roupas e fiquei minúsculo"): a altura do quadril procedural era medida NA POSE DO MOMENTO — trocar de roupa
+     no meio de um gesto (o herói agachado ao vestir) encolhia o modelo novo. A altura vem do esqueleto de pé, medida quando o personagem nasce */
+  const rq = rig as unknown as { hipRestY?: number }; const ourHipY = rq.hipRestY !== undefined ? rq.hipRestY * 0.848 /* o tamanho de sempre: o quadril na guarda de pé fica a ~85% da pose reta */ : rootP(rig.hips, root).y, mixHipY = rootP(hipsM, root).y;
   model.scale.multiplyScalar(ourHipY / Math.max(0.01, mixHipY) * (def.hscale ?? 1)); model.updateMatrixWorld(true);
   // lado: Left do Mixamo é o lado +X ou -X? casa pela posição do ombro
   const lArmX = rootP(B('LeftArm')!, root).x, ourLX = rootP(rig.armL.sh!, root).x;
@@ -165,7 +167,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     const ext = extent(rig.sword()); const flat = ext ? Math.max(Math.abs(ext.min.z), Math.abs(ext.max.z)) : 0.02;
     const blade = new THREE.Vector3(0, -0.8, -0.6 * fwd).normalize(); // lâmina para baixo e para trás
     const edge = new THREE.Vector3(0, 0.6, -0.8 * fwd).normalize();
-    const hipP = new THREE.Vector3(hp.x + sx * (outX + gap * 1.6 + flat), hp.y + Hm * 0.07, hp.z + fwd * Hm * 0.03);
+    /* 05/11 (Erling: "aproxime mais a espada do personagem, entre o braço e a coxa"): antes ficava um palmo para fora do quadril */
+    const hipP = new THREE.Vector3(hp.x + sx * (outX * 0.8 + gap * 0.25 + flat * 0.7), hp.y + Hm * 0.05, hp.z + fwd * Hm * 0.02);
     const hip = toBone('Hips', edge, blade.clone().negate(), hipP);
     return { back, hip };
   })();
