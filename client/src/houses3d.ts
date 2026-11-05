@@ -70,8 +70,8 @@ function stairs(parent: THREE.Object3D, x: number, z: number, H: number, dirX: b
   }
   const len = n * sd, ang = Math.atan2(H, len);
   for (const sx of [-1, 1]) {
-    const str = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, Math.hypot(len, H)), timberM()); str.position.set(sx * (width / 2 + 0.04), H / 2 - 0.1, -len / 2); str.rotation.x = -ang; g.add(str);
-    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, Math.hypot(len, H)), timberM()); rail.position.set(sx * (width / 2 + 0.04), H / 2 + 0.85, -len / 2); rail.rotation.x = -ang; g.add(rail);
+    const str = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.22, Math.hypot(len, H)), timberM()); str.position.set(sx * (width / 2 + 0.04), H / 2 - 0.1, -len / 2); str.rotation.x = ang; g.add(str);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, Math.hypot(len, H)), timberM()); rail.position.set(sx * (width / 2 + 0.04), H / 2 + 0.85, -len / 2); rail.rotation.x = ang; g.add(rail);
     for (let i = 0; i <= n; i += 3) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.9, 0.09), timberM()); p.position.set(sx * (width / 2 + 0.04), sh * i + 0.4, -i * sd); g.add(p); }
   }
   const land = new THREE.Mesh(new THREE.BoxGeometry(width + 0.4, 0.14, 1.1), sm); land.position.set(0, H - 0.07, -len - 0.45); g.add(land);
