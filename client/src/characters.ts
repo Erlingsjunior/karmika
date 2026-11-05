@@ -1072,7 +1072,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       shLX: [[0, 0], [.28, -0.7], [.66, -0.6], [1, 0]], shLZ: [[0, 0], [.28, 0.45], [.66, 0.4], [1, 0]], twist: [[0, 0], [.28, 0.12], [.82, 0.3], [1, 0]],
     },
     stance: { // contra-golpe da valquíria: postura de espera, baixa, escudo à frente e espada recolhida atrás
-      shX: [[0, 0], [.1, 0.95], [.9, 0.95], [1, 0]], el: [[0, 0], [.1, -1.25], [.9, -1.25], [1, 0]], shZ: [[0, 0], [.1, -0.2], [.9, -0.2], [1, 0]], swX: [[0, 0], [.1, 0.6], [.9, 0.6], [1, 0]],
+      shX: [[0, 0], [.1, 0.95], [.9, 0.95], [1, 0]], el: [[0, 0], [.05, -0.35], [.12, -1.25], [.9, -1.25], [.96, -0.4], [1, 0]], shZ: [[0, 0], [.05, -0.6], [.12, -0.32], [.9, -0.32], [.95, -0.6], [1, 0]], swX: [[0, 0], [.1, 0.6], [.9, 0.6], [1, 0]], /* 05/11: o braço abre para o lado antes de recolher (a mão passava por dentro do tronco) */
       shLX: [[0, 0], [.1, -1.15], [.9, -1.15], [1, 0]], elL: [[0, 0], [.1, -1.05], [.9, -1.05], [1, 0]], face: [[0, 0], [.08, 1], [.92, 1], [1, 0]],
       crouch: [[0, 0], [.1, 0.17], [.9, 0.17], [1, 0]], lean: [[0, 0], [.1, 0.28], [.9, 0.28], [1, 0]], twist: [[0, 0], [.1, 0.55], [.9, 0.55], [1, 0]], head: [[0, 0], [.1, -0.15], [.9, -0.15], [1, 0]],
       lunge: [[0, 0], [.1, 0.45], [.9, 0.45], [1, 0]],
@@ -1722,6 +1722,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             if (F.st < 0 && far > 0.16) { F.st = 0; F.from.copy(F.lock); } /* começa um passo */
             if (F.st >= 0) { F.st = Math.min(1, F.st + dt / 0.16); const e = F.st * F.st * (3 - 2 * F.st); F.lock.lerpVectors(F.from, ikT.set(ikA.x, gW, ikA.z), e); F.lift = Math.sin(F.st * Math.PI) * 0.09; if (F.st >= 1) { F.st = -1; F.lift = 0; } }
             tgt = ikT.set(F.lock.x, F.lock.y + F.lift, F.lock.z);
+          } else if (F.lock && mps < 0.6 && !dashing) { /* 05/11: o golpe acabou e o pé preso está longe da pose de descanso: em vez de deslizar até ela, DÁ UM PASSO (levanta, vai e pisa) e só então solta */
+            if (F.st < 0) { if (Math.hypot(ikA.x - F.lock.x, ikA.z - F.lock.z) > 0.08) { F.st = 0; F.from.copy(F.lock); } else F.lock = null; }
+            if (F.lock && F.st >= 0) { F.st = Math.min(1, F.st + dt / 0.18); const e = F.st * F.st * (3 - 2 * F.st); F.lock.lerpVectors(F.from, ikT.set(ikA.x, gW, ikA.z), e); F.lift = Math.sin(F.st * Math.PI) * 0.08;
+              tgt = ikT.set(F.lock.x, F.lock.y + F.lift, F.lock.z); if (F.st >= 1) { F.lock = null; F.st = -1; F.lift = 0; } }
           } else { F.lock = null; F.st = -1; F.lift = 0; if (ikB.y < gA) tgt = ikT.set(ikA.x, gW, ikA.z); }
           if (!tgt) continue;
           leg.hip.parent!.worldToLocal(tgt); tgt.sub(leg.hip.position);

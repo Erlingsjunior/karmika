@@ -38,15 +38,16 @@ let groundMat: THREE.MeshLambertMaterial | null = null;
 const GROUND_TEX = ['grama_01', 'grama_trevo_01', 'estrada_terra_01', 'estrada_terra_02', 'paralelepipedo_01', 'paralelepipedo_02', 'caminho_lama_01', 'chao_floresta_01', 'seixos_molhados_01', 'rocha_musgo_01', 'cascalho_areia_01', 'chao_floresta_02',
   'laje_pedra_01', 'terra_arada_01', 'caminho_lama_02', 'seixos_molhados_02', 'rocha_musgo_02', 'cascalho_areia_02'];
 /* 05/11: a textura do chão existe desde o começo (1×1 cinza por camada) e recebe a foto depois no mesmo objeto — o WebGPU monta o material uma vez só */
-const groundTex0 = (() => { const L = GROUND_TEX.length, t = new THREE.DataArrayTexture(new Uint8Array(4 * L).fill(128), 1, 1, L); t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.needsUpdate = true; return t; })();
+const GROUND_S = 512; /* 05/11, 2ª: no WebGPU a textura não muda de tamanho depois de criada (ficava o 1×1 cinza: chão liso) — então já nasce 512×512 e só o conteúdo é trocado */
+const groundTex0 = (() => { const L = GROUND_TEX.length, t = new THREE.DataArrayTexture(new Uint8Array(GROUND_S * GROUND_S * 4 * L).fill(128), GROUND_S, GROUND_S, L); t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.needsUpdate = true; return t; })();
 const groundU = { tGround: { value: groundTex0 as THREE.DataArrayTexture | null }, uMean: { value: GROUND_TEX.map(() => new THREE.Vector3(0.5, 0.5, 0.5)) }, uTexOn: { value: 0 } };
 let groundTexP: Promise<void> | null = null;
 function loadGroundTex() {
-  if (groundTexP) return groundTexP; const S = 512, L = GROUND_TEX.length, data = new Uint8Array(S * S * 4 * L);
+  if (groundTexP) return groundTexP; const S = GROUND_S, data = (groundTex0.image as unknown as { data: Uint8Array }).data;
   groundTexP = Promise.all(GROUND_TEX.map((n, li) => new Promise<void>((res) => { const im = new Image(); im.onload = () => { const c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d')!; g.drawImage(im, 0, 0, S, S);
       const px = g.getImageData(0, 0, S, S).data; data.set(px, li * S * S * 4); let r = 0, gg = 0, b = 0; for (let q = 0; q < px.length; q += 16) { r += px[q]; gg += px[q + 1]; b += px[q + 2]; } const nn = px.length / 16;
       /* média em espaço linear (a textura é lida como sRGB) */ const lin = (v: number) => Math.pow(v / nn / 255, 2.2); groundU.uMean.value[li].set(lin(r), lin(gg), lin(b)); res(); }; im.onerror = () => res(); im.src = `/models/cenario/chao/${n}.jpg`; })))
-    .then(() => { const t = groundTex0; t.image = { data, width: S, height: S, depth: L } as unknown as typeof t.image; t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
+    .then(() => { const t = groundTex0; t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
       groundU.tGround.value = t; groundU.uTexOn.value = 1; if (groundMat) groundMat.needsUpdate = true; /* WebGPU: o chão se refaz com as texturas */ });
   return groundTexP;
 }
