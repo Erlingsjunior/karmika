@@ -832,6 +832,11 @@
   #chat .in .ch { font: 10px Cinzel, serif; color: #c9a24a; letter-spacing: .1em; } #chat .in input { flex: 1; background: none; border: none; color: #f0e6cc; font: 13px Georgia, serif; outline: none; }
   #chat.new .msgs { border-left-color: #ffe08a; }
   /* instinto de classe (24/10) */
+  /* 05/11: as posturas conquistadas embaixo, à esquerda, logo acima da linha dourada da barra (as mesmas peças do topo, clicáveis) */
+  #stancesLow { position: fixed; left: 0; top: 0; display: flex; gap: 7px; pointer-events: auto; z-index: 30; }
+  #stancesLow .stance { position: relative; width: 34px; height: 34px; padding: 0; display: grid; place-items: center; background: rgba(14,10,6,.88); border: 1px solid #5a4a30; border-radius: 50%; color: var(--sc); cursor: pointer; }
+  #stancesLow .stance svg { width: 20px; height: 20px; } #stancesLow .stance.on { border-color: var(--sc); box-shadow: 0 0 8px color-mix(in srgb, var(--sc) 60%, transparent); } #stancesLow .stance:not(.on) { opacity: .72; } #stancesLow .stance:hover { opacity: 1; }
+  #stancesLow .stance .tr { position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%); font: 600 7.5px Georgia, serif; font-style: normal; color: #ffe08a; white-space: nowrap; }
   #stances #instbtn { position: relative; width: 36px; height: 36px; padding: 0; display: inline-grid; place-items: center; vertical-align: top; color: #b8a27a; } #stances #instbtn svg { width: 24px; height: 24px; margin: 0; }
   #stances #instbtn kbd { position: absolute; right: -4px; bottom: -4px; font: 700 8.5px monospace; color: #c8b890; background: #1c130b; border: 1px solid #5a4a30; border-radius: 3px; padding: 0 2px; line-height: 11px; }
   #stances #instbtn em { position: absolute; left: 50%; top: -11px; transform: translateX(-50%); font: 600 8px Georgia, serif; font-style: normal; color: var(--ic); white-space: nowrap; background: rgba(10,8,5,.8); padding: 0 3px; border-radius: 3px; } #stances #instbtn em.cd { color: #8a7a60; } #stances #instbtn.cd { opacity: .55; }

@@ -95,15 +95,19 @@ const stBan = document.createElement('div'); stBan.id = 'stban'; document.body.a
 function stanceBanner(st: Stance, eff: string) { stBan.innerHTML = `<i style="color:${st.col}">${ST_ICON[st.role] ?? '◎'}</i><div><b style="color:${st.col}">${st.name}</b><small>${ROLE_NAME[st.role]} · ${eff}</small><em>${st.tip.split("\n")[0]}</em></div>`; stBan.classList.remove('on'); void stBan.offsetWidth; stBan.classList.add('on'); clearTimeout(stBanT); stBanT = window.setTimeout(() => stBan.classList.remove('on'), 3200); }
 const stanceBar = document.createElement('div'); stanceBar.id = 'stances'; /* 28/10 (Erling): posturas e Instinto moram lá em cima, junto do Premium e dos buffs, com balão explicando */ { const top = document.createElement('div'); top.id = 'topfx'; document.body.appendChild(top); top.appendChild(stanceBar); top.appendChild(K.buffEl); }
 let stanceSig = '';
+const stanceLow = document.createElement('div'); stanceLow.id = 'stancesLow'; document.body.appendChild(stanceLow); /* as posturas conquistadas, junto da barra de magias */
 function renderStances() { if (!stanceSys) return; const L = stanceSys.list(), cur = stanceSys.current();
   const sig = L.map((s) => `${s.id}:${stanceSys!.open(s) ? 1 : 0}`).join(',') + '|' + cur.id; if (sig === stanceSig) return; stanceSig = sig;
-  stanceBar.querySelectorAll('.stance').forEach((e) => e.remove());
+  stanceBar.querySelectorAll('.stance').forEach((e) => e.remove()); stanceLow.innerHTML = '';
+  /* 05/11 (Erling: "o aviso da postura lá em cima está certo, mas a troca fica embaixo, perto da linha dourada, do lado esquerdo, com as
+     posturas que ele for conquistando"): em cima fica só a postura em uso (com a ficha na dica); embaixo, todas as conquistadas, para clicar */
   for (const s of L) { if (!stanceSys.open(s)) continue; /* 28/10 (Erling): postura que ainda não aprendi não aparece */ const b = document.createElement('button'); const op = stanceSys.open(s), on = s.id === cur.id; b.className = `stance ${on ? 'on' : ''} ${op ? '' : 'locked'}`; b.dataset.st = s.id; b.style.setProperty('--sc', s.col);
     const q = s.quest ? K.quests.def(s.quest) : null, trial = s.quest && !K.quests.q.done.includes(s.quest) && !!K.quests.q.active[s.quest];
     b.innerHTML = `${ROLE_SVG[s.role]}${op ? '' : '<i class="lk">🔒</i>'}${trial ? '<i class="tr">treino</i>' : ''}`;
     b.dataset.tip = `${s.name} · ${ROLE_NAME[s.role]}${on ? ' (em uso)' : ''}\n${s.tip}${op ? '\nClique ou V para trocar.' : `\n🔒 Abre na missão “${q?.name ?? 'de postura'}”${q ? ` com ${q.giver}, a partir do nível ${q.lvl}` : ''}.`}`;
-    b.addEventListener('click', (e) => { e.stopPropagation(); stanceSys!.pick(s.id); renderStances(); }); stanceBar.appendChild(b); } }
-function placeStances() { /* 28/10: a barra das posturas foi para o topo (#topfx), não acompanha mais a barra de magias */ }
+    const low = b.cloneNode(true) as HTMLElement; low.addEventListener('click', (e) => { e.stopPropagation(); stanceSys!.pick(s.id); renderStances(); }); stanceLow.appendChild(low);
+    if (on) { b.addEventListener('click', (e) => { e.stopPropagation(); }); stanceBar.insertBefore(b, stanceBar.firstChild); } } }
+function placeStances() { /* 05/11: as posturas de baixo sentam logo acima da linha dourada (o topo da 1ª fileira de magias), à esquerda, com um respiro */ const row = document.querySelector('#skills .srow'); if (!row) return; const r = row.getBoundingClientRect(); stanceLow.style.left = `${Math.round(r.left + 2)}px`; stanceLow.style.top = `${Math.round(r.top - 52)}px`; stanceLow.style.display = (document.getElementById('bar')?.offsetParent ?? null) ? 'flex' : 'none'; }
 addEventListener('resize', () => setTimeout(placeStances, 50));
 const instBtn = document.createElement('button'); instBtn.id = 'instbtn'; instBtn.dataset.b = 'inst'; stanceBar.appendChild(instBtn); instBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleInstinct(); });
 /* terceiro olho do Instinto (25/10): amêndoa, íris e pupila losango com o MESMO centro (16,16), simétrico em cima e embaixo, sem raios que puxem o desenho para cima */
