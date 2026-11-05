@@ -1,4 +1,5 @@
 import type { Race as BaseRace } from '@karmika/shared';
+import { selosHtml } from './sistemas/selos-passivas';
 /** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
 export type KitKey = BaseRace | 'tecno' | 'pal' | 'vam' | 'lob' | 'mag' | 'bru' | 'cac';
 type Race = KitKey;
@@ -379,7 +380,7 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
   const TI = ['', 'I', 'II', 'III', '✦'];
   if (kit.length > 10 && barRows() < 2) { try { if (!localStorage.getItem('karmika.rows2')) { localStorage.setItem('karmika.rows2', '1'); setBarRows(2); } } catch { /* */ } } // magias novas: abre o 2º andar uma vez
   const rows = barRows(); document.documentElement.style.setProperty('--rows', String(rows)); document.documentElement.dataset.rows = String(rows);
-  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${key}</kbd>${s.svg}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
+  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${key}</kbd>${s.svg}${selosHtml(s.id)}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
   let html = '';
   for (let r = rows - 1; r >= 0; r--) {
     const pre = ROW_PRE[r];

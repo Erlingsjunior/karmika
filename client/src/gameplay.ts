@@ -14,7 +14,7 @@ import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
 import { fams, runeDrop, frestaMark, RCOL, RNAME, parseRune, type RFam } from './runas-magia';
 import type { SkillId } from './kits';
-import { createEnemies, ELITE_TYPES, type Enemy } from './enemies';
+import { createEnemies, ELITE_TYPES, EDEF, type Enemy } from './enemies';
 import { buildBeast, buildWolf, type Beast } from './werewolf3d';
 import { buildDog } from './bestas3d';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
@@ -513,8 +513,8 @@ export function createGameplay(d: GameplayDeps) {
         if (r < evade) { dmgText(ep, 'ESQUIVOU', false, '#c8d8f0'); d.audio.swing(); e.vel.set(rnd(-4, 4), rnd(-4, 4)); return; }
         if (r < evade + guardCh) { if (AR.has(e.type)) { dmgText(ep, 'APAROU', false, '#ffe6a0'); d.audio.parry(); st.shake = Math.max(st.shake, 0.12); return; } dmg = Math.round(dmg * 0.4); dmgText(ep, 'DEFENDEU', false, '#d9c08a'); d.audio.block(); } }
     }
-    const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize();
-    const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1)); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
+    const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize(); dmg = Math.max(1, Math.round(dmg * EDEF)); /* defesa do monstro (05/11): descontada aqui para o número na tela ser o que entra */
+    const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1), false); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
     st.hits++; d.audio.slash(crit); onoma(e.pos.clone().setY(e.pos.y + 1.6), crit ? 'crit' : 'hit');
     { const lch = st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0))); }
     if (st.sp.has('burn') && Math.random() < 0.2 && !killed) { e.burn = 4; e.burnTick = 0; }

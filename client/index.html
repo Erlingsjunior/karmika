@@ -406,6 +406,9 @@
   .ebar i { display: block; height: 5px; background: linear-gradient(180deg, #e04a3a, #8f1e1a); border: 1px solid #000; margin-top: 2px; }
   .ebar u { display: none; height: 3px; margin-top: 1px; background: linear-gradient(90deg, #c9902a, #ffe08a); border: 1px solid #000; text-decoration: none; } /* postura do elite: enquanto cheia, o dano entra pela metade */
   /* 05/11: o alvo de missão — selo dourado sobre o nome e o nome com um brilho que respira (no lugar do anel amarelo no chão) */
+  /* 05/11: os selos das passivas no ícone da magia (árvore e barra): os desenhos das passivas acesas, pequenos, no canto de baixo */
+  .pvsel { position: absolute; left: 1px; bottom: 1px; display: flex; gap: 0; pointer-events: auto; z-index: 3; } .pvsel i { font-style: normal; font-size: 10px; line-height: 13px; width: 13px; height: 13px; text-align: center; background: rgba(14,10,6,.85); border: 1px solid #a08050; border-radius: 50%; margin-right: -3px; filter: drop-shadow(0 1px 1px #000); }
+  .pvsel i.max { border-color: #ffe08a; box-shadow: 0 0 4px rgba(255,224,138,.7); }
   .ebar.quest span { color: #ffe9b0; animation: qglow 2.4s ease-in-out infinite; } .ebar.quest::before { content: ''; display: block; width: 46px; height: 9px; margin: 0 auto 1px;
     background: no-repeat center / contain url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 9'><path d='M2 4.5H16M30 4.5H44' stroke='%23e8c870' stroke-width='.8'/><path d='M23 .6L26.6 4.5 23 8.4 19.4 4.5Z' fill='%23ffd86a'/><circle cx='17.4' cy='4.5' r='.9' fill='%23e8c870'/><circle cx='28.6' cy='4.5' r='.9' fill='%23e8c870'/></svg>");
     filter: drop-shadow(0 0 3px rgba(255,200,90,.8)); }

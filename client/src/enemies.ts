@@ -73,7 +73,9 @@ function buildHuman(h: HumanLook): Rig {
 }
 /** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
 export const enemyHooks: { /** o herói (ou golpe dele) feriu este bicho: o alvo invisível trava nele (alvo-preso.ts) */ struck?: (e: Enemy) => void; dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void; /** o cérebro dos kits passa a cuidar deste bicho (magias) */ track?: (e: Enemy) => void; /** karma do herói (o Inquisidor só caça quem deve) */ karma?: () => number } = {};
-export const HPK = 5.2; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos
+export const HPK = 6.5; // vida alta: ninguém derruba um javali com dois golpes — brigas longas, menos bichos (05/11, Erling: +25% de vida em todos: 5,2 → 6,5)
+/** 05/11 (Erling: "aumente a defesa de todos os monstros em 8%"): todo dano que um monstro leva cai 8% (o número que sobe na tela já sai com o desconto) */
+export const EDEF = 0.92;
 export const DEFS: Record<EnemyType, Def> = {
   puglin: { name: 'Puglin', lvl: 1, hp: 42, dmg: 7, speed: 2.7, aggro: 12, range: 1.7, windup: 0.6, cd: 1.5, xp: 12, gold: [1, 4], model: 'Puglin', scale: 1.3, radius: 0.6 },
   imp: { name: 'Diabrete', lvl: 4, hp: 105, dmg: 14, speed: 3.2, aggro: 15, range: 2.1, windup: 0.55, cd: 1.3, xp: 38, gold: [4, 11], model: 'Imp', scale: 1.0, radius: 0.7 },
@@ -614,8 +616,8 @@ export function createEnemies(ctx: EnemyCtx) {
   /** quem luta do seu lado num evento (aliado) não apanha de você; só dos inimigos dele (hurtBy) */
   let byUnit = false;
   function hurtBy(e: Enemy, n: number, from: THREE.Vector3): boolean { byUnit = true; try { return hurt(e, n, from, 1.2); } finally { byUnit = false; } }
-  function hurt(e: Enemy, n: number, from: THREE.Vector3, knock = 3): boolean {
-    if (!e.alive) return false;
+  function hurt(e: Enemy, n: number, from: THREE.Vector3, knock = 3, armored = true): boolean {
+    if (!e.alive) return false; if (armored) n = Math.max(1, Math.round(n * EDEF)); /* a defesa do monstro (o golpe principal já desconta antes, para o número na tela bater) */
     if ((e as Enemy & { ally?: boolean }).ally && !byUnit) return false;
     if ((e as Enemy & { kneel?: boolean }).kneel) return false; /* de joelhos: nenhum golpe, brasa ou veneno mexe nele até a escolha */
     if (!byUnit && ctx.outMul) n = Math.max(1, Math.round(n * ctx.outMul()));

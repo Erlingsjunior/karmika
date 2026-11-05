@@ -47,7 +47,7 @@ const ICO: [RegExp, string][] = [
   [/runa/i, 'ᚱ'], [/raiz|raízes|montanha|granito|basalto|pedra|rocha/i, '🪨'], [/barril|cerveja|chifre/i, '🍺'], [/barba/i, '🧔'], [/mineir/i, '⛏'], [/vento|nuvem|c[ée]u|furac/i, '🌪'],
   [/seiva|grud/i, '💧'], [/gato|leve/i, '🐈'], [/corda afinada|tiro|arqueira/i, '🎯'], [/fúria|furia/i, '😤'], [/recuar/i, '↩'], [/terreno|leitura/i, '🗺'], [/rastro/i, '👣'], [/esta[çc][õo]es/i, '🍂'], [/guarda|av[ôo]/i, '🛡'],
 ];
-function icoOf(name: string): [string, string] { const hits: { i: number; e: string }[] = []; for (const [re, e] of ICO) { const m = re.exec(name); if (m && !hits.some((h) => h.e === e)) hits.push({ i: m.index, e }); }
+export function icoOf(name: string): [string, string] { const hits: { i: number; e: string }[] = []; for (const [re, e] of ICO) { const m = re.exec(name); if (m && !hits.some((h) => h.e === e)) hits.push({ i: m.index, e }); }
   hits.sort((a, b) => a.i - b.i); return [hits[0]?.e ?? '✦', hits[1]?.e ?? '']; }
 const hexPts = (r: number) => Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return `${(Math.cos(a) * r).toFixed(1)},${(Math.sin(a) * r).toFixed(1)}`; }).join(' ');
 const PVCSS = `<style id="pv2css">

@@ -1,3 +1,4 @@
+import { selosHtml } from './sistemas/selos-passivas';
 import { useScroll } from './esquecimento';
 import { confirmBox } from './windows';
 /** Árvore Kármica de magias: 1 ponto por nível, caminhos que abrem magias, até 10 pontos por magia (Bronze 3, Prata 6, Ouro 10).
@@ -301,7 +302,7 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
     const cols = Math.max(...nodes.map((n) => n.col)) + 1, W = cols > 6 ? 104 : 118, H = 96, rows = Math.ceil(Math.max(...nodes.map((n) => n.row)) + 1);
     const cx = (n: Node) => n.col * W + 44, cy = (n: Node) => n.row * H + 40;
     const lines = nodes.flatMap((n) => n.req.map(([p]) => { const pn = node(p)!; const on = rkV(n.id) > 0; return `<line x1="${cx(pn) + 22}" y1="${cy(pn)}" x2="${cx(n) - 22}" y2="${cy(n)}" stroke="${on ? '#ffd24a' : rkV(p) >= (n.req.find((q) => q[0] === p)![1]) ? '#a08a50' : '#4a3a28'}" stroke-width="${on ? 3 : 2}" ${on ? '' : 'stroke-dasharray="4 4"'}/>`; }));
-    const html = nodes.map((n) => { const s = def(n.id)!, rk = rkV(n.id), sc = scaleOf(rk), why = blocked(n.id); return `<div class="tn ${rk ? 'on' : ''} ${n.id === selId ? 'sel' : ''} ${!rk && !why ? 'can' : ''}" style="left:${cx(n) - 22}px;top:${cy(n) - 22}px;--c:${s.c}" data-n="${n.id}" title="${s.name}"><div class="ic">${s.svg}</div><b>${rk}/${MAX_RANK}</b>${sc.tier ? `<i class="tier">${TIER_ICON[sc.tier]}</i>` : ''}<kbd>${s.k}</kbd></div>`; }).join('');
+    const html = nodes.map((n) => { const s = def(n.id)!, rk = rkV(n.id), sc = scaleOf(rk), why = blocked(n.id); return `<div class="tn ${rk ? 'on' : ''} ${n.id === selId ? 'sel' : ''} ${!rk && !why ? 'can' : ''}" style="left:${cx(n) - 22}px;top:${cy(n) - 22}px;--c:${s.c}" data-n="${n.id}" title="${s.name}"><div class="ic">${s.svg}</div>${selosHtml(n.id)}<b>${rk}/${MAX_RANK}</b>${sc.tier ? `<i class="tier">${TIER_ICON[sc.tier]}</i>` : ''}<kbd>${s.k}</kbd></div>`; }).join('');
     const sc = scale(selId), why = blocked(selId), rk = rkV(selId);
     const next = rk < 3 ? 3 : rk < 6 ? 6 : 10;
     el.innerHTML = `<div class="pn skpn"><h2>🌳 Árvore Kármica — ${nameOf && ownedL().length > 1 ? nameOf(r) : title ? title() : r === 'human' ? 'Humano' : r === 'nordic' ? 'Guerreira Nórdica' : r === 'dwarf' ? 'Anão' : 'Tecnocrata'} <button data-x>✕</button></h2>

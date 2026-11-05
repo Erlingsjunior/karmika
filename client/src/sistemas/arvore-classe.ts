@@ -4,7 +4,9 @@ import { type KitKey, setKitExtras, KITS, applyKit } from '../kits';
 import { type Race, RACES } from '@karmika/shared';
 import { createSkillTree } from '../skilltree';
 import { createTalents } from '../talentos';
-import { loadComp, onCompLoad, passMods, passSpent, classStats } from '../passivas';
+import { loadComp, onCompLoad, passMods, passSpent, classStats, compOf, passRank, activeIdOf } from '../passivas';
+import { setSeloProvider } from './selos-passivas';
+import { icoOf } from './passivas-ui';
 import { createMail } from '../mail';
 import { isTool as isToolId } from '../tools';
 import { ITEMS as ITEMS_TBL } from '../inventory';
@@ -43,7 +45,11 @@ const passKit = (): string => { const o = K.profile?.origin; return o === 'elf' 
    passivas ou talentos — o que sobra aparece nas três abas */
 tree.setTotal(() => 3 + 3 * clsLvl());
 tree.setExtraSpent(() => passSpent([passKit()]) + talents.spent());
-loadComp(compKit()); loadComp(passKit()); onCompLoad(() => K.game.st.recalc?.());
+loadComp(compKit()); loadComp(passKit()); onCompLoad(() => { K.game.st.recalc?.(); try { applyKitAll(); } catch { /* ainda montando */ } }); /* 05/11: com o compêndio carregado, a barra ganha os selos das passivas */
+/* os selos das passivas nas magias (árvore e barra): o desenho de cada passiva acesa e a soma do que elas dão */
+setSeloProvider((id) => { const C = compOf(passKit()); if (!C) return { selos: [], soma: '' }; const sk = kitSkills(); const selos = C.spellPassives.filter((p) => passRank(passKit(), p.n) > 0 && activeIdOf(C, sk, p.target) === id).map((p) => ({ ico: icoOf(p.name)[0], name: p.name, rank: passRank(passKit(), p.n), max: p.lv.length || 3 }));
+  const m = passMods(passKit(), id, sk), T: [keyof typeof m, string][] = [['dmg', 'dano'], ['crit', 'crítico'], ['area', 'área'], ['dur', 'duração'], ['cdr', 'recarga'], ['cost', 'custo menor'], ['heal', 'cura']];
+  return { selos, soma: T.filter(([k]) => m[k] > 0).map(([k, n]) => `+${Math.round(m[k] * 100)}% ${n}`).join(', ') }; });
 K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(passKit(), id, kitSkills()); return { ...b, dmg: b.dmg * (1 + m.dmg), area: b.area * (1 + m.area), range: b.range * (1 + m.area * 0.6), dur: b.dur * (1 + m.dur), cost: b.cost * (1 - m.cost), crit: m.crit, cdr: m.cdr, heal: m.heal }; });
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 /* 04/11 (Erling: "a árvore de talentos dá velocidade, defesa, vitalidade, força, destreza… pode ser a mesma em todas as classes e níveis
