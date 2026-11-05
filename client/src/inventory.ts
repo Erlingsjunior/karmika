@@ -447,7 +447,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       el.style.display = 'flex';
     } else el.style.display = 'none';
     if (charOpen) {
-      const t = total(), [lo, hi] = hitRange();
+      const t = total(), [lo, hi] = hitRange(), TLr = (hooks.talents?.() ?? {}) as Partial<Record<string, number>>;
       /* boneco com espaços pequenos em volta; uma linha leve, quase etérea, liga cada espaço ao lugar do corpo onde a peça vai */
       const W = 620, H = 380, DX = 215, DY = 10, DW = 190, DH = 290;
       const POS: Record<Slot, [number, number, number, number]> = { // [x, y do espaço, alvo x, alvo y no boneco (0–1)]
@@ -467,7 +467,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
         <div class="tools"><h3>Ferramentas de ofício</h3><div class="trow">${TOOL_SLOTS.map((s) => { const id = tools[s.k], d = id ? TOOLS[id] : null; return `<div class="tl t${d?.tier ?? 0} ${id ? '' : 'empty'}" ${id ? `data-tun="${s.k}" title="${ITEMS[id].name}: ${ITEMS[id].desc} (clique: guardar na mochila)"` : `title="${s.lab} — ${s.job}. Arraste uma ferramenta para cá."`}><span class="ic">${id ? ITEMS[id].icon : s.icon}</span><small>${id ? ITEMS[id].name : s.lab}</small>${d ? `<b>${'★'.repeat(d.tier)}</b>` : '<em>vazio</em>'}</div>`; }).join('')}</div></div>
         <div class="cols">
           <div class="col"><h3>Atributos <span class="pts ${st.points ? 'on' : ''}">${st.points} ponto${st.points === 1 ? '' : 's'}</span></h3>
-          ${ATTRS.map((a) => `<div class="at" title="${a.tip}"><span>${a.lab}</span><b>${st.attrs[a.k]}${t[a.k] ? ` <i>+${Math.round(t[a.k]!)}</i>` : ''}</b>${st.points > 0 ? `<button data-pt="${a.k}">+</button>` : '<button disabled>+</button>'}</div>`).join('')}
+          ${ATTRS.map((a) => { /* 05/11 (Erling: "recebo pontos de Força nos talentos e não vejo no personagem"): o + mostra equipamento E talentos (e passivas de classe); o detalhe fica na dica */ const ge = Math.round(t[a.k] ?? 0), ta = Math.round(TLr[a.k] ?? 0), ex = ge + ta; return `<div class="at" title="${a.tip}${ex ? ` · base ${st.attrs[a.k]}${ge ? ` + equipamento ${ge}` : ''}${ta ? ` + talentos ${ta}` : ''} = ${st.attrs[a.k] + ex}` : ''}"><span>${a.lab}</span><b>${st.attrs[a.k]}${ex ? ` <i>+${ex}</i>` : ''}</b>${st.points > 0 ? `<button data-pt="${a.k}">+</button>` : '<button disabled>+</button>'}</div>`; }).join('')}
           ${bar(st.xp, hooks.xpNeed(), '#3a7ac0')}<small>XP ${st.xp}/${hooks.xpNeed()} · ${st.kills} abates</small>${hooks.soul ? `<h3 class="soulh">Alma</h3>${hooks.soul().map(([a, b]) => `<div class="stt soulr"><span>${a}</span><b>${b}</b></div>`).join('')}` : ''}</div>
           <div class="col"><h3>Combate</h3>
           ${row('Vida', `${Math.round(st.hp)}/${st.hpMax}`)}${row(st.res?.name ?? 'Magia', `${Math.round(st.mp)}/${st.mpMax}`)}${st.gen ? row(`Geração de ${st.res?.name ?? 'magia'}`, `+${Math.round(st.gen * 100)}%`) : ''}${row('Dano por golpe', `${lo}–${hi}`)}${row('Crítico', `${Math.round(st.crit * 100)}%`)}${row('Defesa', `${Math.round(st.def * 100)}%`)}${row('Velocidade', `+${Math.round((st.move - 1) * 100)}%`)}${row('Regeneração', `${st.regen.toFixed(1)}/s`)}${st.leech ? row('Roubo de vida', `${(st.leech * 100).toFixed(1)}%`) : ''}${st.xpMul > 1 ? row('XP', `+${Math.round((st.xpMul - 1) * 100)}%`) : ''}${st.goldMul > 1 ? row('Ouro', `+${Math.round((st.goldMul - 1) * 100)}%`) : ''}

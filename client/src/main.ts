@@ -2520,7 +2520,7 @@ function frameBody() {
   const wade = !inside && !swimming && depthNow > 0.04 ? Math.min(1, depthNow / 1.0) : 0;
   updateFishing(dt, t); updateWork(); herbSparkle(dt); updateQuestRings(dt); featsTick(dt);
   const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.8) /* 28/10 (Erling): a pé, 20% mais lento; o passo cresce com itens e buffs de velocidade */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
-  if (game.st.lvl !== peleSys.lastLvl) { peleSys.lastLvl = game.st.lvl; refreshLocks(kitRace(), peleSys.lastLvl, (k) => tree.rank(k)); game.logMsg('✨ +1 ponto de magia — abra a Árvore Kármica (K) para gastar.', '#ffe08a'); }
+  if (game.st.lvl !== peleSys.lastLvl) { peleSys.lastLvl = game.st.lvl; refreshLocks(kitRace(), peleSys.lastLvl, (k) => tree.rank(k)); /* 05/11 (Erling: "subir de nível base dá pontos de atributo; subir de classe dá pontos de habilidade, passiva e talento"): o aviso antigo de "+1 ponto de magia" no nível base saiu — a conta já era só pelo nível de classe */ }
   dockEl.querySelector('[data-d="skills"]')?.classList.toggle('pulse', tree.available() > 0 && !dockSys.skillsOpen);
   if (game.hurtNow()) setCombat(true);
   if (((t * 2) | 0) !== poiTick) { poiTick = (t * 2) | 0; for (const p of city.pois) if (Math.hypot(p.x - state.fx, p.y - state.fy) < 4) quests.onVisit(p.name); }

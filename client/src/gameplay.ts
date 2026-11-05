@@ -305,7 +305,7 @@ export function createGameplay(d: GameplayDeps) {
       const dHp = st.hpMax - hp0, dMp = st.mpMax - mp0, dDmg = Math.round((15 + st.dmgFlat) * 0.05);
       void lo0; void hi0;
       levelBanner(st.lvl, [`❤ Vida máxima +${dHp}${st.res.mode === 'regen' ? ` · ✦ ${st.res.name} máxima +${dMp}` : ''}`, `⚔ Dano +${dDmg} por golpe (+5%)`, `★ +3 pontos de atributo — aperte I para distribuir`]);
-      logMsg(`★ Nível ${st.lvl}: Vida +${dHp}${st.res.mode === 'regen' ? `, ${st.res.name} +${dMp}` : ''}, Dano +5%, +3 pontos de atributo (I), +1 ponto de magia (K)`, '#ffe08a');
+      logMsg(`★ Nível ${st.lvl}: Vida +${dHp}${st.res.mode === 'regen' ? `, ${st.res.name} +${dMp}` : ''}, Dano +5%, +3 pontos de atributo (I). Pontos de habilidade, passiva e talento vêm do nível de CLASSE`, '#ffe08a');
       levelFx(hp);
     }
   }

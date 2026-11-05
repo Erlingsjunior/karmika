@@ -183,7 +183,7 @@ function treeGeral(): TNode[] {
 /* 04/11 (Erling: "os arcos de level devem chegar até o level ±160: 60 de classe do humano + 120 da Classe I"): 10 anéis; cada anel abre num
    NÍVEL DE CLASSE (somado entre as classes) e, do 5º para fora, também pede pontos já gastos no braço (escolher um caminho é largar outro).
    Conta da balança em docs/classes-graus-e-pontos.md: no nível de classe 180 há 543 pontos para ~1.000 de procura (habilidades + passivas + talentos). */
-export const TREE_RING = 2.5, TREE_GAP = 2.4, TREE_HALF = 0.9, NR = 10;
+export const TREE_RING = 3.0, TREE_GAP = 2.88, TREE_HALF = 0.9, NR = 10; /* 05/11 (Erling: "os talentos estão muito próximos, dificulta a leitura"): anéis e vãos 20% mais largos — a mesma conta de pontos por anel, os mesmos ids */
 /** nível de classe que abre cada anel (índice = anel 1..10) e pontos no braço que ele pede */
 export const RING_LVL = [0, 1, 1, 10, 20, 35, 50, 70, 95, 125, 140], KEY_LVL = 160;
 export const RING_REQ = [0, 0, 0, 0, 0, 8, 8, 20, 20, 35, 45], KEY_REQ = 50;
