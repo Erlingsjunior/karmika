@@ -140,15 +140,15 @@ interface Spec {
 const SPECS: Record<Kind, Spec> = {
   nordic: { H: 1.92, thigh: 0.49, shin: 0.49, ankle: 0.07, footLen: 0.27, footW: 0.09, pelvisW: 0.2, torso: 0.5, shoulderW: 0.34, neck: 0.1, headR: 0.1, upper: 0.32, fore: 0.31,
     rThigh: [0.07, 0.05], rShin: [0.05, 0.038], rUpper: [0.042, 0.033], rFore: [0.034, 0.028], waistR: 0.1, chestR: 0.14, torsoDepth: 0.7,
-    stride: 0.8, walkSpeed: 1.5, runSpeed: 6.2, A: [0.46, 0.95], K: [0.8, 1.8], armA: [0.5, 0.85], eb: [0.22, 1.45], lean: [0.16, 0.5], bob: [0.026, 0.065], twist: [0.14, 0.28], sway: 0.016, stomp: 0,
+    stride: 0.8, walkSpeed: 1.5, runSpeed: 6.2, A: [0.46, 0.95], K: [0.8, 1.8], armA: [0.5, 0.85], eb: [0.22, 1.45], lean: [0.06, 0.2], bob: [0.026, 0.065], twist: [0.14, 0.28], sway: 0.016, stomp: 0, /* 06/11 (Erling: "está torto, inclinado para a frente"): correndo inclina ~11°, não ~29° */
     skin: 0xe8c8ae, pants: 0xe8c8ae, boots: 0x3a2a1c, top: 0x2a2220 }, // guerreira: braços e pernas à mostra, harness de couro escuro
   technocrat: { H: 1.85, thigh: 0.45, shin: 0.45, ankle: 0.08, footLen: 0.29, footW: 0.11, pelvisW: 0.26, torso: 0.52, shoulderW: 0.46, neck: 0.07, headR: 0.118, upper: 0.31, fore: 0.29,
     rThigh: [0.09, 0.066], rShin: [0.064, 0.05], rUpper: [0.056, 0.045], rFore: [0.045, 0.036], waistR: 0.14, chestR: 0.2, torsoDepth: 0.78,
-    stride: 0.86, walkSpeed: 1.5, runSpeed: 6.4, A: [0.44, 0.88], K: [0.7, 1.7], armA: [0.38, 0.7], eb: [0.3, 1.3], lean: [0.14, 0.42], bob: [0.02, 0.05], twist: [0.08, 0.16], sway: 0.01, stomp: 0.2,
+    stride: 0.86, walkSpeed: 1.5, runSpeed: 6.4, A: [0.44, 0.88], K: [0.7, 1.7], armA: [0.38, 0.7], eb: [0.3, 1.3], lean: [0.06, 0.18], bob: [0.02, 0.05], twist: [0.08, 0.16], sway: 0.01, stomp: 0.2,
     skin: 0xd9b08a, pants: 0x3a3028, boots: 0x4a3222, top: 0x5a3a26 },
   dwarf: { H: 1.5, thigh: 0.28, shin: 0.26, ankle: 0.07, footLen: 0.27, footW: 0.14, pelvisW: 0.34, torso: 0.5, shoulderW: 0.64, neck: 0.02, headR: 0.165, upper: 0.28, fore: 0.26,
     rThigh: [0.12, 0.09], rShin: [0.09, 0.07], rUpper: [0.08, 0.062], rFore: [0.062, 0.05], waistR: 0.23, chestR: 0.28, torsoDepth: 0.82,
-    stride: 0.52, walkSpeed: 1.3, runSpeed: 5.2, A: [0.6, 1.05], K: [0.7, 1.6], armA: [0.42, 0.75], eb: [0.3, 1.35], lean: [0.16, 0.52], bob: [0.04, 0.085], twist: [0.2, 0.34], sway: 0.034, stomp: 1,
+    stride: 0.52, walkSpeed: 1.3, runSpeed: 5.2, A: [0.6, 1.05], K: [0.7, 1.6], armA: [0.42, 0.75], eb: [0.3, 1.35], lean: [0.08, 0.24], bob: [0.04, 0.085], twist: [0.2, 0.34], sway: 0.034, stomp: 1,
     skin: 0xd49a76, pants: 0x3a2a20, boots: 0x2a1c12, top: 0x7a2e24 },
 };
 
@@ -1577,7 +1577,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       combatK += ((act ? 0 : hero.combat ? 1 : 0) - combatK) * Math.min(1, dt * 5);
       const cK = combatK * (1 - 0.65 * runK * walkK);
       if (cK > 0.01) {
-        aCrouch += 0.085 * cK; aLean += 0.2 * cK; aHeadX += -0.12 * cK;
+        aCrouch += 0.035 * cK; aLean += 0.07 * cK; aHeadX += -0.05 * cK; /* 06/11: guarda de combate de pé, peito aberto (antes agachava 8,5 cm e inclinava 11°) */
         if (kind === 'nordic' && wcls !== 'one') { /* 02/11 (Erling): postura de combate pela arma (referências) */
           if (wcls === 'two') { aTwist += 0.25 * cK; aCrouch += 0.05 * cK; aShL += -0.7 * cK; aElL += -1.0 * cK; aShLz += -0.1 * cK; }
           else if (wcls === 'fence') { aTwist += -0.75 * cK; aCrouch += 0.04 * cK; aLean += -0.08 * cK; aShL += 0.5 * cK; aShLz += 0.85 * cK; aElL += -1.5 * cK; aHeadX += 0.05 * cK; } // de lado, ombro da arma à frente, a outra mão erguida atrás (esgrimista)
@@ -1675,7 +1675,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         let knee = K * Math.max(0, Math.cos(ph - 0.3)) + (0.14 + 0.38 * runK) * walkK + 0.12 * (1 - walkK) * 0 + aCrouch * 5;
         if (dashing) { const w = Math.sin(dashP * Math.PI), lead = (leg === legL) === dashLeadL; hip = lead ? -0.85 * w : 0.5 * w; knee = lead ? 1.15 * w : 0.35 * w; }
         hip += lunge * -0.7; knee += lunge * 0.3;
-        const front = leg === legL; hip += (front ? -0.06 : 0.04) * restK + (front ? -0.22 : 0.18) * guardK + (front ? -0.26 : 0.14) * cK * (1 - walkK); knee += (front ? 0.1 : 0.08) * restK + (front ? 0.25 : 0.3) * guardK + (front ? 0.3 : 0.24) * cK * (1 - walkK) + 0.25 * cK * walkK;
+        const front = leg === legL; hip += (front ? -0.06 : 0.04) * restK + (front ? -0.22 : 0.18) * guardK + (front ? -0.18 : 0.1) * cK * (1 - walkK); knee += (front ? 0.1 : 0.08) * restK + (front ? 0.25 : 0.3) * guardK + (front ? 0.2 : 0.16) * cK * (1 - walkK) + 0.08 * cK * walkK;
         leg.hip.rotation.x = hip; leg.knee.rotation.x = knee;
         // pé: plantado no chão (compensa quadril+joelho+inclinação da pelve); na passada solta um pouco para o impulso dos dedos
         // pé: plantado quando a perna está esticada no chão; quanto mais o joelho dobra (passada, salto, agachar), mais o pé acompanha a canela

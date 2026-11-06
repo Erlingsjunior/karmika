@@ -109,6 +109,10 @@ export function dragAll() {
     try { localStorage.setItem(FREE_KEY, JSON.stringify(free)); } catch { /* */ } });
   addEventListener('dblclick', (e) => { const t = e.target as HTMLElement; const head = t?.closest('h2, .ph, .pn-head'); const p = head?.closest('.pn, .panel') as HTMLElement | null; if (!p || p.closest(SKIP)) return;
     const k = keyOf(p); delete free[k]; applyFree(p, k); try { localStorage.setItem(FREE_KEY, JSON.stringify(free)); } catch { /* */ } });
+  /* 06/11 (Erling: "cada vez que clico numa profissão a modal se move e volta"): a janela que se redesenha inteira (innerHTML novo)
+     nasce sem o deslocamento salvo e só voltava ao lugar no próximo giro de 400 ms. Agora volta no mesmo quadro em que nasce */
+  const fix = (p: HTMLElement) => { if (p.closest(SKIP)) return; const k = keyOf(p); if (free[k] && !p.style.translate) applyFree(p, k); };
+  new MutationObserver((ms) => { for (const m of ms) for (const n of Array.from(m.addedNodes)) { if (!(n instanceof HTMLElement)) continue; if (n.matches('.pn, .panel')) fix(n); else if (n.firstElementChild) n.querySelectorAll<HTMLElement>(':scope > .pn, :scope > .panel').forEach(fix); } }).observe(document.body, { childList: true, subtree: true });
   /* janelas que reaparecem (ou são recriadas) voltam ao lugar salvo */
   setInterval(() => { for (const p of Array.from(document.querySelectorAll<HTMLElement>('.pn, #menu .panel'))) { if (p.closest(SKIP) || !p.offsetParent) continue; const k = keyOf(p); if (free[k] && !p.style.translate) applyFree(p, k); } }, 400);
 }
