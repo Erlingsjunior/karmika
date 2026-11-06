@@ -170,6 +170,7 @@ import { createCarrocaAnoes } from './sistemas/carroca-anoes';
 import { createCaravanasUi } from './sistemas/caravanas-ui';
 import { createSocialGuildas } from './sistemas/social-guildas';
 import { artGeo } from './arte3d';
+import { guildStats } from './sistemas/guilda-skills';
 import { createRede } from './sistemas/rede';
 import { createComandosTeste } from './sistemas/comandos-teste';
 import { createVotosAlma } from './sistemas/votos-alma';
@@ -650,7 +651,7 @@ function updateCompanions(...a: Parameters<ReturnType<typeof createCompanheiros>
    O que já estava vestido continua; a regra vale ao vestir. Escudo: essas três classes lutam sem escudo. */
 const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno', charge: game.reactor().charge, cap: game.reactorCap() }), fuse: () => { game.fuseReactor(); for (let i = 0; i < 40; i++) particles.spawn(heroPosNow().x, heroPosNow().y + 1.2, heroPosNow().z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x5ae0ff, a: 1, g: 2 }); },
   priceK: (shop) => shopLeanK(shop), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
-  talents: () => { const a = talents.stats() as Record<string, number>, b = arvoreSys.classPassStats(); const o: Record<string, number> = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = (o[k] ?? 0) + v; return o as Partial<Record<string, number>>; }, /* 03/11: talentos + passivas de classe do compêndio */
+  talents: () => { const a = talents.stats() as Record<string, number>, b = arvoreSys.classPassStats(); const o: Record<string, number> = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = (o[k] ?? 0) + v; for (const [k, v] of Object.entries(guildStats())) o[k] = (o[k] ?? 0) + v; /* 06/11: as habilidades da guilda */ return o as Partial<Record<string, number>>; }, /* 03/11: talentos + passivas de classe do compêndio */
   canWear: (g) => { const W = CLASS_WEAPONS[kitRace()]; if (W && g.slot === 'weapon' && !W.re.test(g.base)) return W.msg; if (W && g.slot === 'shield' && W.noShield && !(kitRace() === 'cac' && /Besta de Mão/.test(inv.eq.weapon?.base ?? ''))) return W.noShield; /* 02/11: besta de mão aceita escudo */
     return kitRace() === 'tecno' && g.slot === 'weapon' && g.only !== 'tec' ? 'Tecnocratas não usam espada, adaga, machado nem arco: só as armas da Academia (metralhadora, lança-chamas, lança-veneno). Sem elas, a Manopla de Tesla.' : g.only && !walksPath(g.only) ? `Só ${ONLY_NAME[g.only]} empunham ${g.name}.${g.only === 'dwarf' ? '' : ' Esse caminho se abre com a Vidente, no nível 30.'}` : null; },
   onGear: () => { syncGear(); dollPulse = performance.now(); }, onBag: () => renderQuick(),
@@ -2432,8 +2433,7 @@ let hintT = 0, regrowT = 1, stamWarnT = 0;
 let elfK = 0, forestK = 0, qmarkT = 0, featT = 0;
 function featKill(t: EnemyType, e: { def: { lvl?: number; name: string } }) {
   feats.bump('kills'); if (t === 'rat') feats.bump('k_rat'); if (t === 'wolf' || t === 'frostwolf') feats.bump('k_wolves'); if (t === 'imp') feats.bump('k_imp'); if (t === 'skeleton' || t === 'zombie' || t === 'ghoul') feats.bump('k_undead'); if (t === 'werewolf') feats.bump('k_werewolf');
-  if ((e.def as { elite?: number }).elite || t === 'prince' || t === 'tormentor' || t === 'treant' || t === 'werewolf') social.prog('elite'); /* 06/11: elite e chefe contam para a missão da guilda */
-  if (t === 'prince' || t === 'tormentor' || t === 'treant' || t === 'werewolf') feats.bump('elites'); if (e.def.name === 'Bispo Caído' || e.def.name === 'Sacerdote Maldito') feats.bump('k_boss_cat');
+    if ((e.def as { elite?: number }).elite || t === 'prince' || t === 'tormentor' || t === 'treant' || t === 'werewolf') feats.bump('elites'); /* 06/11: todo elite conta (feito e missão da guilda) */ if (e.def.name === 'Bispo Caído' || e.def.name === 'Sacerdote Maldito') feats.bump('k_boss_cat');
   const up = (e.def.lvl ?? 1) - game.st.lvl; if (up >= 5) feats.bump('k_up5'); if (up >= 10) feats.bump('k_up10');
 }
 /** a cada segundo: lugares visitados e marcas que se medem (nível, ouro, relíquias…) */

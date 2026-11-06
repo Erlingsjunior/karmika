@@ -9,6 +9,7 @@ import { account, setNick } from './hub';
 import { floatWin, promptBox } from './windows';
 import { openGuildBook, refreshGuildBook, type BookGuild } from './sistemas/livro-guildas';
 import { overviewHtml, welcomeHtml, chestHtml, type GLevelView } from './sistemas/guilda-pagina';
+import { skillsHtml, setGuildSkills } from './sistemas/guilda-skills';
 import { foundFormHtml, signHtml, bannerHtml, FOUND_LVL, type FoundDraft, type FoundCheck, type GFlag } from './sistemas/guilda-fundacao';
 
 export interface GMember { k: string; name: string; rank: string; joined: number; on?: boolean; where?: string; char?: string; seen?: number }
@@ -30,7 +31,7 @@ export function createSocial(ctx: {
 }) {
   const H = ctx.hub;
   let me: { id: string; nick: string } | null = null, friends: Friend[] = [], reqIn: { id: string; nick: string }[] = [], reqOut: { id: string; nick: string }[] = [];
-  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'visao' | 'bau' | 'membros' | 'chat' | 'mercado' | 'terreno' = 'visao', talk = '', founding = false, unread = 0;
+  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'visao' | 'hab' | 'bau' | 'membros' | 'chat' | 'mercado' | 'terreno' = 'visao', talk = '', founding = false, unread = 0;
   let draft: FoundDraft = { name: '', tag: '', flag: { pat: 'liso', c1: '#b8924a', c2: '#2a1a10' }, icon: '⚔' }, propSt: { name: string; ok: boolean }[] | null = null;
   let welcomeMsg: { name: string; text: string } | null = null;
   let signReq: { id: number; name: string; tag: string; col: string; flag: GFlag; icon: string; leader: string; signers: string[] } | null = null;
@@ -46,7 +47,7 @@ export function createSocial(ctx: {
   H.on('a:sys', (m) => ctx.log(`👥 ${m.text}`, '#c8d8f0'));
   H.on('a:deny', (m) => ctx.log(`👥 ${m.why}`, '#ff9a8a'));
   H.on('a:dm', (m) => { const d = m as unknown as Dm; dms.push(d); saveDm(); if (d.from !== me?.id) { ctx.log(`✉ ${d.fromNick}: ${d.text}`, '#b8a8ff'); if (!(open && tab === 'conversa' && talk === d.from)) { unread++; badge(); } } render(); });
-  H.on('g:info', (m) => { guild = (m.g as Guild) ?? null; ctx.onGuild?.(guild); render(); });
+  H.on('g:info', (m) => { guild = (m.g as Guild) ?? null; setGuildSkills(guild?.skills); ctx.onGuild?.(guild); render(); });
   let world: BookGuild[] = [];
   H.on('g:world', (m) => { world = (m.list as BookGuild[]) ?? []; refreshGuildBook(world); ctx.onWorld?.(m.list as never); });
   H.on('g:chat', (m) => { const L = m as unknown as Guild['log'][number]; if (guild) guild.log.push(L); if (L.sys) ctx.log(`⚑ ${L.text}`, guild?.col ?? '#e0c070'); else if (ctx.chatGuild) ctx.chatGuild(L.from ?? '', L.text, guild?.tag ?? 'G'); else ctx.log(`⚑ [${guild?.tag ?? 'G'}] ${L.from}: ${L.text}`, guild?.col ?? '#e0c070'); if (open && tab === 'guilda') render(); });
@@ -119,9 +120,10 @@ export function createSocial(ctx: {
     const myR = guild.members.find((m) => m.name.toLowerCase() === ctx.char().toLowerCase())?.rank ?? 'recruta', rk = ['recruta', 'membro', 'oficial', 'lider'].indexOf(myR);
     const head = `<div class="soghd" style="--gc:${guild.col}">${bannerHtml(guild.flag, guild.icon, guild.col)}<div><b>${esc(guild.name)} <em>[${esc(guild.tag)}]</em></b><small>nível ${['', 'I', 'II', 'III', 'IV', 'V'][guild.lvl ?? 1]} · ${guild.members.length} de ${guild.cap ?? 20} vagas · você é ${RANK_NAME[myR]}</small></div></div>
       <div class="somotd">${esc(guild.motd || '')}${rk >= 2 ? ` <button class="ghost" data-a="motd">editar</button>` : ''}</div>
-      <div class="sostab">${(['visao', 'chat', 'membros', 'bau', 'mercado', 'terreno'] as const).map((t) => `<button data-gt="${t}" class="${gtab === t ? 'on' : ''}">${{ visao: '⚑ Visão', bau: '🧰 Baú', chat: '💬 Chat', membros: '👥 Membros', mercado: '⚖ Mercado', terreno: '🏰 Terreno' }[t]}</button>`).join('')}</div>`;
+      <div class="sostab">${(['visao', 'hab', 'chat', 'membros', 'bau', 'mercado', 'terreno'] as const).map((t) => `<button data-gt="${t}" class="${gtab === t ? 'on' : ''}">${{ visao: '⚑ Visão', hab: `✦ Habilidades${guild?.points ? ` <em>${guild.points}</em>` : ''}`, bau: '🧰 Baú', chat: '💬 Chat', membros: '👥 Membros', mercado: '⚖ Mercado', terreno: '🏰 Terreno' }[t]}</button>`).join('')}</div>`;
     let body = '';
     if (gtab === 'visao') body = overviewHtml(guild, rk, ctx.gold());
+    if (gtab === 'hab') body = skillsHtml(guild.lvl ?? 1, guild.skills ?? {}, guild.points ?? 0, rk === 3);
     if (gtab === 'bau') body = chestHtml(guild, rk, ctx.nearChest?.() ?? false, ctx.items(), ctx.itemName, ctx.itemIcon);
     if (gtab === 'chat') body = `<div class="solog g">${guild.log.slice(-60).map((L) => L.sys ? `<p class="sys">${esc(L.text)}</p>` : `<p><b>${esc(L.from ?? '')}</b> ${esc(L.text)}</p>`).join('')}</div><div class="soin"><input data-v="gchat" placeholder="Fale com a guilda (Enter) · no chat do jogo: /g texto" maxlength="300"><button data-a="gsend">Enviar</button></div>`;
     if (gtab === 'membros') body = [...guild.members].sort((a, b) => ['lider', 'oficial', 'membro', 'recruta'].indexOf(a.rank) - ['lider', 'oficial', 'membro', 'recruta'].indexOf(b.rank) || a.name.localeCompare(b.name)).map((m) => {
@@ -168,6 +170,7 @@ export function createSocial(ctx: {
     if (d.fok) { H.send({ t: 'a:fans', id: d.fok, ok: true }); return; }
     if (d.fno) { H.send({ t: 'a:fans', id: d.fno, ok: false }); return; }
     if (d.kick) { ctx.ask('⚑ Remover da guilda', `Remover ${d.kick} da guilda?`, 'Remover', (ok) => { if (ok) H.send({ t: 'g:kick', char: d.kick }); }); return; }
+    if (d.gsk) { ctx.ask('✦ Habilidade da guilda', `Pôr 1 ponto em <b>${esc(d.gskn ?? d.gsk)}</b>? Não dá para tirar depois.`, 'Fortalecer', (ok) => { if (ok) H.send({ t: 'g:skill', id: d.gsk, name: d.gskn }); }); return; }
     if (d.ctake) { if (!ctx.nearChest?.()) { ctx.log('🧰 Vá até o Baú da Guilda no terreno.', '#ff9a8a'); return; } const n = Math.max(1, Math.floor(+((el.querySelector(`[data-ctn="${d.ctake}"]`) as HTMLInputElement | null)?.value ?? 1))); H.send({ t: 'g:chest:take', id: d.ctake, n, name: ctx.itemName(d.ctake) }); return; }
     if (d.mkdel) { H.send({ t: 'g:mk:del', id: +d.mkdel }); return; }
     if (d.mkbuy) { const p = +d.p!; if (!ctx.payGold(p)) { ctx.log(`⚖ Falta ouro: ${p} 🪙.`, '#ff9a8a'); return; } H.send({ t: 'g:mk:buy', id: +d.mkbuy, paid: p }); ctx.log(`⚖ Compra feita: ${p} 🪙. O item chega pelo correio.`, '#ffe08a'); return; }
@@ -227,7 +230,7 @@ export function createSocial(ctx: {
     /** 06/11: o terreno da minha guilda no mapa (modo de obra → Guilda) */ markMyPlot() { if (guild) ctx.markPlot(guild.plot); },
     /** 06/11: o Livro de Guildas (Biblioteca e Prefeito) */ openBook() { openGuildBook(world, H.state === 'on', guild?.id ?? null); },
     /** 06/11: o esforço do membro nas missões do dia da guilda (o servidor soma e limita) */
-    prog(kind: 'kill' | 'elite' | 'quest' | 'gather', n = 1) { if (guild && H.state === 'on') H.send({ t: 'g:prog', kind, n }); },
+    prog(kind: string, n = 1) { if (guild && H.state === 'on') H.send({ t: 'g:prog', kind, n }); },
     guildChat(text: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:chat', text }); },
   };
 }

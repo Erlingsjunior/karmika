@@ -289,9 +289,11 @@ export function createGameplay(d: GameplayDeps) {
   /** a alma filtra o XP: Dívida Kármica (come uma parte) e o eco da vida passada (multiplica o XP de classe) */
   let capWarned = false;
   let xpFilter: ((n: number, c: { name: string; lvl: number }) => { n: number; paid: number; cmul: number }) | null = null;
+  let xpTithe: ((n: number) => number) | null = null;
   function gainXp(n0: number, p: THREE.Vector3) {
     const gross = Math.round(n0 * st.xpMul), f = xpFilter ? xpFilter(gross, cls) : { n: gross, paid: 0, cmul: 1 }, n = f.n;
-    st.xp += n; dmgText(p.clone().setY(2.6), `+${n} XP`, false, '#9ad7ff'); logMsg(`+${n} XP${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');
+    const tz = xpTithe ? xpTithe(n) : 0; /* 06/11: o dízimo da guilda (4% sai de você e vai para ela) */
+    st.xp += n - tz; dmgText(p.clone().setY(2.6), `+${n - tz} XP`, false, '#9ad7ff'); logMsg(`+${n - tz} XP${tz ? ` · ${tz} para a guilda` : ''}${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');
     { // XP de classe: a segunda contagem — o seu caminho (Caminhante, depois a classe da academia) evolui junto, mais devagar
       const c = cls; c.xp += Math.round(gross * f.cmul);
       if (c.lvl >= CLS_CAP) { c.xp = Math.min(c.xp, clsNeed(c.lvl) - 1); if (!capWarned) { capWarned = true; logMsg(`✦ ${c.name} chegou ao teto do grau (${CLS_CAP}). O próximo grau da classe abre por missão.`, '#c9a0ff'); } }
@@ -1187,7 +1189,7 @@ export function createGameplay(d: GameplayDeps) {
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
     /** um companheiro de grupo matou um bicho perto de mim: XP, missão e o meu próprio saque */
     sharedKill(e: Enemy) { killEnemy(e, true); },
-    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); }, prewarmGroup,
+    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** 06/11: o dízimo da guilda — recebe o XP e devolve quanto vai para a guilda */ setXpTithe(f: ((n: number) => number) | null) { xpTithe = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); }, prewarmGroup,
     get menuOpen() { return st.menuOpen; },
     /** alvo mais próximo ao alcance (trava automática dos golpes) */
     timeScale() { return performance.now() < hitstop ? 0.1 : 1; },
