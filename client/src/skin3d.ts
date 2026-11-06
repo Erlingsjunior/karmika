@@ -227,9 +227,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       const ws = [] as number[]; for (let k = 0; k < H; k++) if (cnt[idx(k)]) ws.push(wid[idx(k)]); ws.sort((x, y) => x - y); const med = ws.length ? ws[Math.floor(ws.length / 2)] : 0;
       const lim = gk > 1 && gw > med * 2.2 ? gk : H; /* com guarda: só procura entre o pomo e a guarda */
       let best = -1, bw = Infinity; for (let k = 0; k < lim; k++) { const i = idx(k); if (cnt[i] && wid[i] < bw) { bw = wid[i]; best = k; } }
-      if (best >= 0) { let a = best, b = best; while (a > 0 && cnt[idx(a - 1)] && wid[idx(a - 1)] < bw * 1.7) a--; while (b < lim - 1 && cnt[idx(b + 1)] && wid[idx(b + 1)] < bw * 1.7) b++;
+      /* 05/11 (Erling: "a mão fechada deveria estar no meio do pegador da espada"): um cabo cilíndrico simples só tem vértices nas duas pontas —
+           as fatias do meio vêm VAZIAS e cortavam a procura, deixando a mão perto do pomo. Fatia vazia entre duas finas é cabo também */
+        if (best >= 0) { const thin = (k: number) => !cnt[idx(k)] || wid[idx(k)] < bw * 1.7; let a = best, b = best; while (a > 0 && thin(a - 1)) a--; while (b < lim - 1 && thin(b + 1)) b++;
+          while (a < b && !cnt[idx(a)]) a++; while (b > a && !cnt[idx(b)]) b--; /* as pontas do trecho são fatias com malha */
         const run = b - a + 1, kk = run > N * 0.35 ? a + run * 0.44 : (a + b) / 2; /* cabo longo de UMA mão (marreta, maça, machado): quase no meio, para ter balanço (Erling, 05/11: "marreta de uma mão segura mais no meio"); espada: o meio do punho */
-        const i = idx(Math.round(kk)), yy = y0 + ((sgn > 0 ? kk : N - 1 - kk) + 0.5) / N * L; out = new THREE.Vector3(cnt[i] ? cx[i] / cnt[i] : 0, yy, cnt[i] ? cz[i] / cnt[i] : 0); } }
+        const i = idx(Math.round(kk)), yy = y0 + ((sgn > 0 ? kk : N - 1 - kk) + 0.5) / N * L; let sx = 0, sz = 0, sn = 0; for (let k = a; k <= b; k++) { const j = idx(k); if (cnt[j]) { sx += cx[j]; sz += cz[j]; sn += cnt[j]; } } void i; out = new THREE.Vector3(sn ? sx / sn : 0, yy, sn ? sz / sn : 0); } }
     gripCache.set(key, out); return out;
   }
   // onde fica a cabeça da arma (fora do eixo do cabo, em Y local): só existe em machado/martelo; espada dá nulo
@@ -436,9 +439,19 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     if (stowed) return; // nas costas (já posto acima)
     /* 03/11 (Erling: "o escudo prende no antebraço do herói"): em combate o braço do escudo não cruza o peito — o antebraço vai para a frente
        e para o lado do escudo (em guarda, mais alto e mais ao centro, cobrindo o peito), e o escudo segue preso nele */
-    if ((hero.combat || hero.guard) && !hero.acting) { const bS = B(shieldSide + 'Arm'), nk = B('Neck'); if (bS && nk) { const s = root.getWorldScale(new THREE.Vector3()).x, fw = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
+    /* 05/11 (Erling: "o braço humano dobra para a frente como um L… ele segura o escudo depois da dobra do braço"): o braço do escudo em
+       combate é um L de verdade — o braço desce do ombro quase reto (o cotovelo abaixo e um pouco atrás do ombro, colado ao corpo) e o
+       antebraço vai para a FRENTE, na horizontal, com o escudo preso nele. O cotovelo é guiado por um polo (para baixo e para trás), nunca
+       aberto para o lado. Em guarda o L sobe: a mão na altura do peito, um pouco para o centro. */
+    if ((hero.combat || hero.guard) && !hero.acting) { const bS = B(shieldSide + 'Arm'), bE = B(shieldSide + 'ForeArm'), bHd = B(shieldSide + 'Hand'), nk = B('Neck'); if (bS && bE && bHd && nk) { const fw = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion()));
       const spW = bS.getWorldPosition(new THREE.Vector3()), lat = spW.clone().sub(nk.getWorldPosition(new THREE.Vector3())).setY(0); if (lat.lengthSq() > 1e-6) { lat.normalize(); const g = !!hero.guard;
-        const tgt = spW.addScaledVector(fw, (g ? 0.42 : 0.33) * s).addScaledVector(lat, (g ? 0.0 : 0.1) * s); tgt.y -= (g ? 0.1 : 0.3) * s; armIK(shieldSide, R.armL, tgt); model.updateMatrixWorld(true); } } }
+        const L1 = spW.distanceTo(bE.getWorldPosition(new THREE.Vector3())), L2 = bE.getWorldPosition(new THREE.Vector3()).distanceTo(bHd.getWorldPosition(new THREE.Vector3()));
+        /* o cotovelo fica à frente e um pouco para fora do ombro; o antebraço ATRAVESSA a frente do corpo (para o centro), na horizontal —
+           assim o escudo, preso no antebraço, fica de frente para o inimigo e a mão segura a alça por trás dele */
+        const down = g ? 0.45 : 0.62, fwd = L1 * (g ? 0.75 : 0.68) + L2 * (g ? 0.4 : 0.36), side = L1 * 0.14 - L2 * (g ? 0.66 : 0.6);
+        const tgt = spW.clone().addScaledVector(fw, fwd).addScaledVector(lat, side); tgt.y -= L1 * down;
+        const pole = new THREE.Vector3(0, -0.55, 0).addScaledVector(lat, 0.75).addScaledVector(fw, 0.25).normalize();
+        armIK(shieldSide, R.armL, tgt, pole); model.updateMatrixWorld(true); } } }
     W(hH, vH); W(hF, vF); W(hI, vI); W(hP, vP); W(hM, vM);
     const u = new THREE.Vector3().subVectors(vH, vF).normalize();
     const a2 = new THREE.Vector3().subVectors(vI, vP).normalize(), f2 = new THREE.Vector3().subVectors(vM, vH).normalize();
@@ -447,6 +460,10 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     // o centro acompanha o antebraço, então ele balança junto com o braço
     const fwS = new THREE.Vector3(0, 0, 1).applyQuaternion(root.getWorldQuaternion(tq));
     const nS = back.clone().setY(0); if (nS.lengthSq() < 1e-4) nS.copy(fwS); nS.normalize().lerp(fwS, 0.3).setY(back.y * 0.25).normalize();
+    /* 05/11: com o braço em L (combate/guarda) o antebraço atravessa a frente do corpo e o dorso da mão pode olhar para cima — a face do
+       escudo vem da frente do herói (tirando a parte ao longo do antebraço, que fica deitado na face de dentro), um pouco para fora */
+    if ((hero.combat || hero.guard) && !hero.acting) { const latS = new THREE.Vector3(1, 0, 0).applyQuaternion(root.getWorldQuaternion(new THREE.Quaternion())); const sg = Math.sign(W(hF, new THREE.Vector3()).sub(W(B('Neck')!, new THREE.Vector3())).dot(latS)) || 1;
+      nS.copy(fwS).addScaledVector(latS, 0.18 * sg); nS.addScaledVector(u, -nS.dot(u)).normalize(); }
     /* 04/11 (Erling: "o escudo está balançando de um lado para o outro demais… diminuir 50%"): a direção da face vai MAIS para a frente do
        herói (metade do balanço do braço e do tronco) e é filtrada no tempo, no espaço da raiz — o escudo acompanha a passada sem chacoalhar */
     { nS.lerp(fwS, 0.5).normalize(); const rqi = root.getWorldQuaternion(new THREE.Quaternion()), loc = nS.clone().applyQuaternion(rqi.clone().invert());
@@ -502,14 +519,14 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const fm = new THREE.Matrix4(), fi = new THREE.Matrix4();
   function placeFitted() { for (const f of fitted) { if (!f.o.parent) continue; f.o.parent.updateWorldMatrix(true, false); fm.multiplyMatrices(f.b.matrixWorld, f.C); fi.copy(f.o.parent.matrixWorld).invert(); f.o.matrixAutoUpdate = false; f.o.matrix.multiplyMatrices(fi, fm); f.o.updateMatrixWorld(true); } }
   /** IK de dois ossos (ombro/cotovelo) do modelo até a posição do punho procedural, no espaço da raiz; `arm` = junta procedural {sh, el, wr} */
-  function armIK(sideM: 'Right' | 'Left', arm: { sh?: THREE.Object3D | null; el?: THREE.Object3D | null; wr?: THREE.Object3D | null }, targetW?: THREE.Vector3) {
+  function armIK(sideM: 'Right' | 'Left', arm: { sh?: THREE.Object3D | null; el?: THREE.Object3D | null; wr?: THREE.Object3D | null }, targetW?: THREE.Vector3, poleW?: THREE.Vector3) {
     const bS = B(sideM + 'Arm'), bE = B(sideM + 'ForeArm'), bH = B(sideM + 'Hand'); if (!bS || !bE || !bH || !arm.wr || !arm.el) return;
     root.updateMatrixWorld(true); const invR = root.getWorldQuaternion(new THREE.Quaternion()).invert();
     const S = rootP(bS, root), E0 = rootP(bE, root), H0 = rootP(bH, root); const L1 = S.distanceTo(E0), L2 = E0.distanceTo(H0); if (L1 < 1e-4 || L2 < 1e-4) return;
     const T = targetW ? root.worldToLocal(targetW.clone()) : rootP(arm.wr, root), P = rootP(arm.el, root); if (MIRROR) { if (!targetW) T.x = -T.x; P.x = -P.x; }
     const D = T.clone().sub(S); let d = D.length(); if (d < 1e-4) return; const maxD = (L1 + L2) * 0.995; if (d > maxD) { D.multiplyScalar(maxD / d); d = maxD; } const Dh = D.clone().normalize();
     const cosA = Math.max(-1, Math.min(1, (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d))), sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
-    let v = P.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); if (v.lengthSq() < 1e-6) { v = E0.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); } if (v.lengthSq() < 1e-6) { v.set(0, -1, 0); v.addScaledVector(Dh, -v.dot(Dh)); } v.normalize();
+    let v = poleW ? poleW.clone().applyQuaternion(invR) : P.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); /* polo dado em direção de mundo: vai para o espaço da raiz */ if (v.lengthSq() < 1e-6) { v = E0.clone().sub(S); v.addScaledVector(Dh, -v.dot(Dh)); } if (v.lengthSq() < 1e-6) { v.set(0, -1, 0); v.addScaledVector(Dh, -v.dot(Dh)); } v.normalize();
     const E = S.clone().addScaledVector(Dh, L1 * cosA).addScaledVector(v, L1 * sinA);
     const aim = (b: THREE.Bone, child: THREE.Bone, to: THREE.Vector3) => { const from = rootP(b, root), cur = rootP(child, root).sub(from).normalize(), des = to.clone().sub(from).normalize();
       const q = new THREE.Quaternion().setFromUnitVectors(cur, des); const wq = rootQ(b, invR).premultiply(q); const pq2 = rootQ(b.parent!, invR).invert(); b.quaternion.copy(pq2.multiply(wq)); b.updateMatrixWorld(true); };
