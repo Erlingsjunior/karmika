@@ -38,7 +38,7 @@ function exitHouse() {
   K.exiting = true;
   K.withFade(() => { K.scene.remove(ins.int.group); K.inside = null; K.objs.group.visible = true; K.decoOut.visible = true; K.decoOthers.visible = true; K.decoCancel(); for (const n of K.npcSys.npcs) n.hero.root.visible = true; K.state.fx = ins.ret.x; K.state.fy = ins.ret.y; K.state.path = []; K.objs.update(K.state.fx * T, K.state.fy * T, true); { const g0 = heightAt(K.state.fx * T, K.state.fy * T), s0 = stepAt(K.state.fx * T, K.state.fy * T); K.heroY = s0 !== null && s0 > g0 ? s0 : g0; } /* 27/10: a porta da catedral fica na escadaria: sair com a altura do degrau, não da terra embaixo */ K.camX = K.state.fx * T; K.camZ = K.state.fy * T; K.camY = K.heroY; K.exiting = false; });
 }
-let sitting: { x: number; y: number; yaw: number } | null = null;
+let sitting: { x: number; y: number; yaw: number; /** altura do assento (m); sem ela, 0,55 */ h?: number } | null = null;
 const hintEl = document.getElementById('act') as HTMLElement;
   return { get castleInt() { return castleInt; }, exitHouse, get sitting() { return sitting; }, set sitting(v: typeof sitting) { sitting = v; }, enterCastle, CASTLE_DOOR, hintEl };
 }

@@ -169,6 +169,7 @@ import { createEventosVivos } from './sistemas/eventos-vivos';
 import { createCarrocaAnoes } from './sistemas/carroca-anoes';
 import { createCaravanasUi } from './sistemas/caravanas-ui';
 import { createSocialGuildas } from './sistemas/social-guildas';
+import { artGeo } from './arte3d';
 import { createRede } from './sistemas/rede';
 import { createComandosTeste } from './sistemas/comandos-teste';
 import { createVotosAlma } from './sistemas/votos-alma';
@@ -611,8 +612,11 @@ function useQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['useQuic
 /** equipamentos visíveis no herói (espada, escudo, elmo) */
 /** 05/11 (Erling: "personagem senta atravessando o banco"): o banco de toras é fundo; sentado no meio dele, as canelas atravessavam a tora
  *  da frente. O quadril vai para a beira de quem olha para a fonte (22 cm à frente do centro), e os joelhos ficam para fora do assento */
+/* 06/11 (Erling: "ainda está entrando no banco"): o banco do artista (vila_balanco, 0,95×) tem o assento mais alto que o banco desenhado:
+   a altura do assento vem da própria malha (o topo do tronco de cima), não de um número fixo */
 function benchSeat(bx: number, bz: number, fp: { gx: number; gy: number }) { const yaw = Math.atan2((fp.gx + 1) * T - bx, (fp.gy + 1) * T - bz), d = 0.22;
-  return { x: (bx + Math.sin(yaw) * d) / T, y: (bz + Math.cos(yaw) * d) / T, yaw }; }
+  const bg = artGeo('vila_balanco'); if (bg && !bg.boundingBox) bg.computeBoundingBox(); const h = bg?.boundingBox ? bg.boundingBox.max.y * 0.95 + 0.02 : 0.55;
+  return { x: (bx + Math.sin(yaw) * d) / T, y: (bz + Math.cos(yaw) * d) / T, yaw, h }; }
 function syncGear() { try { const eq = inv.eq; const wt = oficiosSys.work ? inv.tool(WORK[oficiosSys.work.kind].slot) : pescaSys.fishing ? inv.tool('rod') : null; /* trabalhando: a ferramenta continua na mão */ hero.setGear({ weapon: wt ? { base: wt.base, rarity: 'normal', tint: wt.tint, glow: wt.glow } : eq.weapon ? { base: eq.weapon.base, rarity: eq.weapon.rarity } : null, shield: eq.shield ? { base: eq.shield.base, rarity: eq.shield.rarity, seed: eq.shield.uid } : null, helm: eq.helm && localStorage.getItem('karmika.showHelm') !== '0' ? { base: eq.helm.base, rarity: eq.helm.rarity } : null, cape: eq.cape ? { base: eq.cape.base, rarity: eq.cape.rarity } : null, shoulders: eq.shoulders ? { base: eq.shoulders.base, rarity: eq.shoulders.rarity } : null }); checkSkinLevel(); game.setWeapon(wt ? null : eq.weapon?.base ?? null); } catch { /* inventário ainda não criado */ } }
 /* COMPANHEIROS: o pet coletor, a montaria (montar e desmontar), as mulas das caravanas e as habilidades do pet. Saiu do main.ts (02/11). → sistemas/companheiros.ts */
 export interface CompanheirosCtx {
@@ -2602,7 +2606,7 @@ function frameBody() {
   }
   if (!inside) { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); if (colisaoSys.onWall && !rp) colisaoSys.onWall = false; else if (!colisaoSys.onWall && rp && heroY > rampartTop(rp, tx, ty) - 1.5 && bridgeDeck(state.fx * T, state.fy * T) === null) colisaoSys.onWall = true; } /* 05/11 (relatório KB-0001, "personagem preso na ponte"): a ponte de pedra passa por baixo do caminho de ronda do portão; com o tabuleiro alto, o herói ficava a menos de 1,5 m do topo e virava "em cima do muro" — só andava pelo anel e travava. Agora quem está em cima de uma ponte nunca vira "em cima do muro" (a escada continua subindo como antes) */ else colisaoSys.onWall = false;
   const wallTop = colisaoSys.onWall ? (() => { const tx = Math.floor(state.fx), ty = Math.floor(state.fy), rp = rampartAt(tx, ty); return rp ? rampartTop(rp, tx, ty) : null; })() : null;
-  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting && Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) < 0.3 ? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
+  const gH = inside ? 0 : wallTop !== null ? wallTop + 0.08 : heroGround(state.fx * T, state.fy * T), tgtY = swimming ? WL - (state.moving ? 0.62 : 1.05) + Math.sin(t * 2.4) * 0.05 : gH; hero.sit = casteloSys.sitting && Math.hypot(state.fx - casteloSys.sitting.x, state.fy - casteloSys.sitting.y) < 0.3 ? casteloSys.sitting.h ?? 0.55 : 0; /* sentado: o próprio corpo desce até o assento (characters.ts) */ /* nadando: água no peito; andando: pés no leito (até a cintura) */
   heroY += (tgtY - heroY) * Math.min(1, dt * (swimming ? 6 : 18) + (dt > 0 ? 0 : 1));
   heroPos.set(state.fx * T, heroY, state.fy * T);
   pm('entrada/física');

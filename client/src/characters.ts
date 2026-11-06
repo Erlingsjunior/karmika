@@ -1200,7 +1200,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const glowOf = (rar: string) => RC[rar] ?? 0;
       const metal = (rar: string, base = 0xdde3ec, k = 0.35) => toon(base, glowOf(rar) ? { emissive: new THREE.Color(glowOf(rar)).multiplyScalar(k) } : {});
       /* arma (só a nórdica tem a espada trocável; anão e tecnocrata mantêm martelo e rifle) */
-      if (gearSword && g.weapon !== undefined) {
+      /* 06/11 (Erling: "se começo com espada e escudo eles têm que aparecer; como posso usar e não ter nada?"): mão vazia = nada no corpo.
+         Antes, sem arma, o herói desenhava a Espada Longa padrão (e sem escudo, o Escudo Nórdico) */
+      if (gearSword && g.weapon === null) { for (const c of [...gearSword.children]) if ((c as THREE.Mesh).isMesh || (c as THREE.Group).isGroup) gearSword.remove(c); for (const c of [...gunHolder.children]) gunHolder.remove(c); if (gunOn) { gunOn = false; if (gunTip0) weaponTipObj = gunTip0; if (gunBase0) weaponBaseObj = gunBase0; } wcls = 'one'; }
+      else if (gearSword && g.weapon !== undefined) {
         const sw = gearSword; for (const c of [...sw.children]) if ((c as THREE.Mesh).isMesh || (c as THREE.Group).isGroup) sw.remove(c); let RG: THREE.Group | null = null; // RG: armas de duas mãos (fogo e besta), no suporte da raiz
         for (const c of [...gunHolder.children]) gunHolder.remove(c); if (gunOn) { gunOn = false; if (gunTip0) weaponTipObj = gunTip0; if (gunBase0) weaponBaseObj = gunBase0; }
         const base = g.weapon?.base ?? 'Espada Longa', rar = g.weapon?.rarity ?? 'normal', tint = g.weapon?.tint, tglow = g.weapon?.glow ?? 0; wcls = g.weapon ? weaponClass(base) : 'one';
@@ -1383,6 +1386,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           offSw.add(offTipO); offTipO.position.set(0, -0.14 - L2, 0);
           mergeStatic(offSw, ramp); fine(offSw); offSw.visible = true; offSrc = 'dual'; } else { offSw.visible = false; offSrc = null; } }
       if (gearShield && g.shield !== undefined && offSrc === 'dual') { for (const c of [...gearShield.children]) gearShield.remove(c); } /* sem escudo: a mão esquerda está armada */
+      else if (gearShield && g.shield === null) { for (const c of [...gearShield.children]) gearShield.remove(c); } /* 06/11: sem escudo equipado, nada no braço nem nas costas */
       else if (gearShield && g.shield !== undefined) {
         const sh = gearShield; for (const c of [...sh.children]) sh.remove(c);
         const base = g.shield?.base ?? 'Escudo Nórdico', rar = g.shield?.rarity ?? 'normal';
