@@ -1357,6 +1357,28 @@
   .gok { font-style: normal; color: #8ae08a; }
   .soghd { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; } .sogban { width: 26px; height: 36px; background: var(--gc); clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%); box-shadow: 0 0 10px var(--gc); }
   .soghd b { font: 700 16px Cinzel, serif; color: #ffe8b0; } .soghd em { font-style: normal; color: #c9a24a; } .soghd small { display: block; color: #a8987a; font-size: 11.5px; }
+  /* 06/11: a aba Visão da guilda — nível I a V, glória, cofre e imposto, missões do dia, boas-vindas e a escada de níveis */
+  .gview { display: grid; gap: 10px; } .gview h4 { font: 700 13.5px Cinzel, serif; color: #ffe8b0; margin: 6px 0 0; display: flex; align-items: baseline; gap: 8px; } .gview h4 small { font: 11px Georgia, serif; color: #8a7a5e; } .gview h4 .ghost { margin-left: auto; }
+  .gvlvl { display: flex; gap: 12px; align-items: center; } .gvemb { flex: none; width: 58px; height: 64px; display: grid; place-content: center; text-align: center; background: radial-gradient(circle at 50% 35%, #4a3418, #1a1008); border: 1px solid #c9a24a; clip-path: polygon(0 0, 100% 0, 100% 78%, 50% 100%, 0 78%); }
+  .gvemb b { font: 700 24px Cinzel, serif; color: #ffd98a; text-shadow: 0 0 8px rgba(255,200,90,.5); line-height: 1; } .gvemb small { font-size: 9.5px; color: #b8a078; letter-spacing: .1em; text-transform: uppercase; }
+  .gvbar { flex: 1; min-width: 0; display: grid; gap: 4px; } .gvbt { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #c8b898; } .gvbt b { color: #ffe8b0; } .gvbar > small { font-size: 11px; color: #8a7a5e; }
+  .gvtrack { height: 7px; background: #120c06; border: 1px solid #4a3a22; border-radius: 4px; overflow: hidden; } .gvtrack i { display: block; height: 100%; background: linear-gradient(90deg, #a87a2a, #ffd98a); }
+  .gvcof { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 10px; background: #160f08; border: 1px solid #3a2c18; border-radius: 6px; } .gvcof.debt { border-color: #a04a3a; }
+  .gvcof > div:not(.gvgive) { display: grid; } .gvcof span { font-size: 11px; color: #a8987a; } .gvcof b { font: 700 15px Georgia, serif; color: #ffe8b0; } .gvcof.debt > div:nth-child(3) b { color: #ff9a8a; }
+  .gvgive { display: flex; gap: 6px; margin-left: auto; } .gvgive input { width: 90px; } .gvcof > small { flex-basis: 100%; font-size: 11px; color: #8a7a5e; }
+  .gvmis { display: grid; gap: 6px; } .gvm { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; background: #140d07; border: 1px solid #33261a; border-radius: 6px; }
+  .gvm > i { font-style: normal; font-size: 18px; text-align: center; } .gvm b { font-size: 12.5px; color: #ffe8b0; } .gvm small { display: block; font-size: 11px; color: #9a8a6e; margin-bottom: 4px; } .gvm > span { text-align: right; font-size: 12px; color: #d8c8a6; white-space: nowrap; } .gvm > span em { display: block; font-style: normal; font-size: 10.5px; color: #c9a24a; }
+  .gvm.done { border-color: #4a7a3a; } .gvm.done > span { color: #8ae08a; } .gvm.done .gvtrack i { background: linear-gradient(90deg, #3a7a2a, #8ae08a); }
+  .gvwel { background: #160f08; border-left: 3px solid #6aa85a; padding: 6px 10px; color: #d8c8a6; font-size: 12.5px; }
+  .gvlad { display: grid; gap: 4px; } .gvl { display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 5px 8px; border: 1px solid #2a2016; border-radius: 6px; opacity: .62; } .gvl.on { opacity: 1; } .gvl.cur { border-color: #c9a24a; background: #1a1209; }
+  .gvl > b { font: 700 16px Cinzel, serif; color: #c9a24a; text-align: center; } .gvl small { font-size: 11px; color: #a8987a; } .gvl ul { list-style: none; margin: 2px 0 0; padding: 0; font-size: 12px; color: #c8b898; } .gvl li em { font-style: normal; font-size: 10.5px; color: #8a7a5e; }
+  /* 06/11: o Livro de Guildas (Biblioteca e Prefeito) */
+  #gbook { display: none; position: fixed; z-index: 60; width: 560px; height: 620px; min-width: 380px; min-height: 320px; } #gbook .gbpn { display: flex; flex-direction: column; gap: 8px; height: 100%; }
+  .gbtools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; } .gbtools input { flex: 1; min-width: 160px; } .gbtools span { font-size: 11.5px; color: #8a7a5e; } .gbtools button.on { border-color: #c9a24a; color: #ffe8b0; }
+  .gblist { flex: 1; min-height: 0; overflow: auto; display: grid; align-content: start; gap: 6px; } .gbrow { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 7px 10px; background: #140d07; border: 1px solid #33261a; border-radius: 6px; } .gbrow.mine { border-color: #c9a24a; }
+  .gbrow b { font: 700 14px Cinzel, serif; color: #ffe8b0; } .gbrow em { font-style: normal; color: #c9a24a; } .gbrow small { display: block; font-size: 11px; color: #9a8a6e; }
+  .gblvl { display: grid; text-align: center; font: 700 20px Cinzel, serif; color: #ffd98a; line-height: 1; } .gblvl small { font: 9.5px Georgia, serif; color: #a8987a; text-transform: uppercase; letter-spacing: .1em; }
+  .gwelc .gvwel { margin: 8px 0 12px; font-size: 13.5px; }
   .somotd { background: #160f08; border-left: 3px solid #b8924a; padding: 6px 10px; font-style: italic; color: #d8c8a6; margin: 4px 0 8px; }
   .sostab { display: flex; gap: 4px; margin-bottom: 6px; } .sostab button.on { background: #4a3218; border-color: #d9a24f; }
   .somk { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid #2a2016; } .somk > div { flex: 1; } .somk small { display: block; color: #a8987a; font-size: 11.5px; } .somk b { color: #ffd24a; }

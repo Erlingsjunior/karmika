@@ -104,7 +104,7 @@ const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) =
   items: () => Object.keys(K.inv.bag).filter((k) => K.inv.bag[k] > 0 && !isToolId(k) && !ITEMS_TBL[k]?.quest).map((id) => ({ id, n: K.inv.bag[id], name: ITEMS_TBL[id]?.name ?? id, icon: ITEMS_TBL[id]?.icon ?? '•' })),
   gear: () => K.inv.gearBag, takeItem: (id, n) => K.inv.take(id, n), takeGear: (uid) => { const i = K.inv.gearBag.findIndex((g) => g.uid === uid); if (i < 0) return null; const g = K.inv.gearBag.splice(i, 1)[0]; K.inv.save(); K.inv.refresh(); return g; },
   itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', rarityCol: (r) => (RARITY as Record<string, { col: string }>)[r]?.col ?? '#e8dcc0',
-  ask: (t, x, y, cb) => K.coop.ask(t, x, y, cb, 40), hasTear: () => K.inv.has('lagrima'), useTear: () => { K.inv.take('lagrima', 1); }, seedHall,
+  ask: (t, x, y, cb) => K.coop.ask(t, x, y, cb, 40), chatGuild: (from, text, tag) => K.chat.recv(`[${tag}] ${from}`, text, 'guild'), hasTear: () => K.inv.has('lagrima'), useTear: () => { K.inv.take('lagrima', 1); }, seedHall,
   /* a party agora: os outros dois nomes, se eu lidero, e se estão no salão comigo (a menos de FOUND_NEAR_M) */
   partyNow: () => { const P = K.net.party, me = K.net.myId; if (!P) return { inParty: false, leader: false, party: [] }; const my = K.hero.root.position, rs = K.net.remotes();
     return { inParty: true, leader: P.leader === me, party: P.members.filter((id) => id !== me).map((id) => { const r = rs.find((q) => q.id === id); return { name: K.net.nameOf(id), near: !!r && Math.hypot(r.pos.x - my.x, r.pos.z - my.z) <= FOUND_NEAR_M }; }) }; },
@@ -113,6 +113,9 @@ const social = createSocial({ hub, chars: () => inicio.chars(), toChar: (i, l) =
   onWorld: (list) => { guildWorld = list; drawGuilds(); if (myGuild && seedPending === myGuild.id) { const g = list.find((q) => q.id === myGuild!.id); if (g && !g.build.length) { for (const b of seedHall(g.plot)) hub.send({ t: 'g:build', b }); } seedPending = 0; } },
   onGuild: (g) => { const was = myGuild; myGuild = g; if (g && !was && g.members.length <= 3 && Date.now() - g.created < 60000 && g.members.some((m) => m.rank === 'lider' && m.name.toLowerCase() === (K.profile?.name ?? '').toLowerCase())) seedPending = g.id; /* 05/11: a guilda nasce com 3 fundadores; quem semeia o salão é o líder */ drawGuilds(); K.updateWho(); } });
 let seedPending = 0;
+/* 06/11: o que o membro faz no mundo conta para as missões do dia da guilda (o servidor soma, limita e cobra só quem tem guilda) */
+const GATHER = new Set(['herbs', 'herb_m', 'trees', 'rocks', 'fish', 'fish_g', 'ore_i', 'ore_ag', 'skins', 'gem', 'hide_f']);
+queueMicrotask(() => { K.feats.onBump((k, n) => { if (k === 'kills') social.prog('kill', n); else if (GATHER.has(k)) social.prog('gather', n); }); K.quests.addDoneHook(() => social.prog('quest')); });
 if (IS_DEV) Object.assign(window as object, { __carav: () => K.caravans, __perf: () => K.perfReport(), __festa: () => K.festaStatus(), __inicio: () => inicio, __hub: hub, __social: social, __gplots: guildPlots });
 addEventListener('keydown', (e) => { if (e.key === 'F9') { e.preventDefault(); social.toggle(); } });
 (window as unknown as { __net?: unknown }).__net = K.net;

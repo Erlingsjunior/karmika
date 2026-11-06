@@ -886,7 +886,7 @@ function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['be
    quem já tinha o Olho aberto recebe a Lágrima do nascimento que não ganhou */
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
-const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda') { const tx = a.join(' ').trim(); if (tx) social.guildChat(tx); else social.toggle(true, 'guilda'); return '⚑ (guilda)'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
 /* 03/11: o inseto 🐞 (relatar bug) e o painel do dono (sistemas/bugs-dono.ts) */
 const shotReq: ((u: string) => void)[] = [];
 const bugsDono = createBugsDono({ net: () => netRef,
@@ -2425,6 +2425,7 @@ let hintT = 0, regrowT = 1, stamWarnT = 0;
 let elfK = 0, forestK = 0, qmarkT = 0, featT = 0;
 function featKill(t: EnemyType, e: { def: { lvl?: number; name: string } }) {
   feats.bump('kills'); if (t === 'rat') feats.bump('k_rat'); if (t === 'wolf' || t === 'frostwolf') feats.bump('k_wolves'); if (t === 'imp') feats.bump('k_imp'); if (t === 'skeleton' || t === 'zombie' || t === 'ghoul') feats.bump('k_undead'); if (t === 'werewolf') feats.bump('k_werewolf');
+  if ((e.def as { elite?: number }).elite || t === 'prince' || t === 'tormentor' || t === 'treant' || t === 'werewolf') social.prog('elite'); /* 06/11: elite e chefe contam para a missão da guilda */
   if (t === 'prince' || t === 'tormentor' || t === 'treant' || t === 'werewolf') feats.bump('elites'); if (e.def.name === 'Bispo Caído' || e.def.name === 'Sacerdote Maldito') feats.bump('k_boss_cat');
   const up = (e.def.lvl ?? 1) - game.st.lvl; if (up >= 5) feats.bump('k_up5'); if (up >= 10) feats.bump('k_up10');
 }

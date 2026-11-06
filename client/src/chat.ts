@@ -1,10 +1,10 @@
 /** Chat do jogo: canais Local / Global / Sistema, histórico, balão de fala sobre o herói. Pronto para receber o servidor (send/recv). */
-export type Channel = 'local' | 'global' | 'sys' | 'whisper';
+export type Channel = 'local' | 'global' | 'sys' | 'whisper' | 'guild';
 export interface ChatMsg { ch: Channel; from: string; text: string; t: number; to?: string }
 
 export function createChat(ctx: { me(): string; onSay?(text: string, ch: Channel, to?: string): void; command?(cmd: string, args: string[]): string | null }) {
   const el = document.createElement('div'); el.id = 'chat';
-  el.innerHTML = `<div class="tabs"><button data-t="all" class="on">Tudo</button><button data-t="local">Local</button><button data-t="global">Global</button><button data-t="sys">Sistema</button><button data-t="whisper">Sussurros</button><span class="hint">⠿ arraste · Enter: falar</span></div><div class="msgs"></div><div class="in"><span class="ch">Local</span><input maxlength="160" placeholder="Enter fala · /g global · /l local · /w nome msg"></div><div class="rz" title="Arraste para redimensionar">⤡</div>`;
+  el.innerHTML = `<div class="tabs"><button data-t="all" class="on">Tudo</button><button data-t="local">Local</button><button data-t="global">Global</button><button data-t="sys">Sistema</button><button data-t="whisper">Sussurros</button><button data-t="guild">Guilda</button><span class="hint">⠿ arraste · Enter: falar</span></div><div class="msgs"></div><div class="in"><span class="ch">Local</span><input maxlength="160" placeholder="Enter fala · /g global · /l local · /w nome msg"></div><div class="rz" title="Arraste para redimensionar">⤡</div>`;
   document.body.appendChild(el);
   // posição e tamanho ajustáveis (arraste pela barra de abas; canto inferior direito redimensiona); salvos
   /* o chat é escalado pelo "Tamanho da interface" (transform: scale). Tudo o que se salva é em pixels SEM escala (offsetWidth/Height):
@@ -32,8 +32,8 @@ export function createChat(ctx: { me(): string; onSay?(text: string, ch: Channel
   const msgs = el.querySelector('.msgs') as HTMLElement, input = el.querySelector('input') as HTMLInputElement, chLab = el.querySelector('.in .ch') as HTMLElement;
   let tab: 'all' | Channel = 'all', ch: Channel = 'local', hist: ChatMsg[] = [];
   try { hist = JSON.parse(localStorage.getItem('karmika.chat.v1') || '[]'); } catch { hist = []; }
-  const COL: Record<Channel, string> = { local: '#e8dcc0', global: '#9ad7ff', sys: '#ffe08a', whisper: '#e0a0ff' };
-  const PRE: Record<Channel, string> = { local: '', global: '[G] ', sys: '✦ ', whisper: '[Sussurro] ' };
+  const COL: Record<Channel, string> = { local: '#e8dcc0', global: '#9ad7ff', sys: '#ffe08a', whisper: '#e0a0ff', guild: '#9ee8a8' };
+  const PRE: Record<Channel, string> = { local: '', global: '[G] ', sys: '✦ ', whisper: '[Sussurro] ', guild: '⚑ ' };
   const esc = (s: string) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c] as string));
   function render() {
     const list = hist.filter((m) => tab === 'all' || m.ch === tab).slice(-60);
@@ -49,7 +49,7 @@ export function createChat(ctx: { me(): string; onSay?(text: string, ch: Channel
   function say(text: string) {
     let c = ch; let t = text.trim(); if (!t) return;
     if (t.startsWith('/w ') || t.startsWith('/s ')) { const m = t.slice(3).match(/^(\S+)\s+([\s\S]+)$/); if (!m) { sys('Uso: /w nome mensagem'); return; } lastWhisper = m[1]; push({ ch: 'whisper', from: ctx.me(), to: m[1], text: m[2], t: Date.now() }); ctx.onSay?.(m[2], 'whisper', m[1]); return; }
-    if (t.startsWith('/') && ctx.command) { const [cmd, ...args] = t.slice(1).split(/\s+/); const out = ctx.command(cmd.toLowerCase(), args); if (out !== null) { sys(out); return; } }
+    if (t.startsWith('/') && ctx.command) { const [cmd, ...args] = t.slice(1).split(/\s+/); const out = ctx.command(cmd.toLowerCase(), args); if (out !== null) { if (out) sys(out); return; } } /* '' = comando feito, sem recado */
     if (t.startsWith('/r ')) { if (!lastWhisper) { sys('Ninguém para responder ainda.'); return; } t = `/w ${lastWhisper} ${t.slice(3)}`; say(t); return; }
     if (t.startsWith('/g ')) { c = 'global'; t = t.slice(3); } else if (t.startsWith('/l ')) { c = 'local'; t = t.slice(3); } else if (t === '/g') { ch = 'global'; chLab.textContent = 'Global'; return; } else if (t === '/l') { ch = 'local'; chLab.textContent = 'Local'; return; }
     push({ ch: c, from: ctx.me(), text: t, t: Date.now() }); ctx.onSay?.(t, c);

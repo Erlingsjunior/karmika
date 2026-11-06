@@ -93,7 +93,7 @@ const KEY = 'karmika.feats.v1';
 export function createFeats(ctx: { xp(frac: number): void; gold(n: number): void; toast(f: Feat): void }) {
   let st: { c: Record<string, number>; done: Record<string, number>; seen: string[] } = { c: {}, done: {}, seen: [] };
   try { st = { c: {}, done: {}, seen: [], ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { /* */ }
-  let dirty = false;
+  let dirty = false; const bumpHooks: ((key: string, n: number) => void)[] = [];
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { /* */ } dirty = false; };
   function check(key: string) {
     for (const f of FEATS) if (f.key === key && !st.done[f.id] && (st.c[key] ?? 0) >= f.goal) { st.done[f.id] = Date.now(); if (f.xp) ctx.xp(f.xp); if (f.gold) ctx.gold(f.gold); ctx.toast(f); dirty = true; }
@@ -101,7 +101,9 @@ export function createFeats(ctx: { xp(frac: number): void; gold(n: number): void
   return {
     FEATS, CATS,
     /** soma n ao contador */
-    bump(key: string, n = 1) { st.c[key] = (st.c[key] ?? 0) + n; dirty = true; check(key); },
+    bump(key: string, n = 1) { st.c[key] = (st.c[key] ?? 0) + n; dirty = true; check(key); for (const f of bumpHooks) { try { f(key, n); } catch { /* */ } } },
+    /** 06/11: quem mais quer saber de cada contador (as missões do dia da guilda) */
+    onBump(f: (key: string, n: number) => void) { bumpHooks.push(f); },
     /** guarda o maior valor já visto (nível, ouro, relíquias...) */
     max(key: string, v: number) { if (v > (st.c[key] ?? 0)) { st.c[key] = v; dirty = true; check(key); } },
     /** marca um item único de uma coleção (vila visitada, região pisada) e atualiza a contagem */
