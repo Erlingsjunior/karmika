@@ -440,6 +440,10 @@ export function createGameplay(d: GameplayDeps) {
   /* 06/11: o efeito PRÓPRIO de cada runa em cada magia (por enquanto o Elfo, runas-elfo.ts). Ele entra no lugar do genérico daquela família;
      o eco e o salto (que acertam de novo) não disparam as runas outra vez */
   const freezeHits = new WeakMap<Enemy, number>();
+  /* 06/11: as mecânicas novas das runas — intocável, devolver golpes, imune a projéteis, sumir e reaparecer atrás do alvo (uma vez por
+     lançamento), crescer a cada morte, levantar servo, fazer o inimigo errar, curar aliado (pela rede) */
+  const rs = { phaseUntil: 0, thornsUntil: 0, thornsPct: 0, projUntil: 0, blinkUsed: true, raiseAt: 0 }; const growSt = new Map<string, number>(); const missUntil = new WeakMap<Enemy, number>();
+  let teleportHook: ((x: number, z: number) => boolean) | null = null, allyHealHook: ((pct: number) => boolean) | null = null;
   function runeOps(e: Enemy, ops: ROp[], g: number, f: RFam) {
     const hp0 = d.getHero().root.position, sk = skill;
     for (const o of ops) switch (o.t) {
@@ -450,6 +454,15 @@ export function createGameplay(d: GameplayDeps) {
       case 'root': if (e.alive) { e.state = 'hurt'; e.t = -o.s * g; } break;
       case 'pull': case 'knock': { const dx = hp0.x - e.pos.x, dz = hp0.z - e.pos.z, dd = Math.hypot(dx, dz) || 1, m = Math.min(o.m * g, o.t === 'pull' ? Math.max(0, dd - 1.5) : 99) * (o.t === 'pull' ? 1 : -1); e.pos.x += (dx / dd) * m; e.pos.z += (dz / dd) * m; break; }
       case 'healHit': st.hp = Math.min(st.hpMax, st.hp + st.hpMax * o.pct * g); break;
+      case 'blinkBehind': { if (rs.blinkUsed || !teleportHook || !e.alive) break; const dx = e.pos.x - hp0.x, dz = e.pos.z - hp0.z, dd = Math.hypot(dx, dz); if (dd > 14 || dd < 0.3) break; const k = (dd + e.def.radius + 1.0) / dd, x = hp0.x + dx * k, z = hp0.z + dz * k, p0 = hp0.clone();
+        if (!teleportHook(x, z)) break; rs.blinkUsed = true; rs.phaseUntil = Math.max(rs.phaseUntil, now + 0.5);
+        for (const q of [p0, new THREE.Vector3(x, d.world.heightAt(x, z), z)]) for (let i = 0; i < 22; i++) d.particles.spawn(q.x + rnd(-0.4, 0.4), q.y + rnd(0.1, 1.9), q.z + rnd(-0.4, 0.4), { vx: rnd(-1, 1), vy: rnd(0, 1.5), vz: rnd(-1, 1), life: 0.5, s0: 0.3, s1: 0.04, c0: 0x2a0a3a, c1: 0xb06aff, a: 0.95, drag: 2 });
+        d.audio.dash(); break; }
+      case 'cough': missUntil.set(e, now + o.s * g); break;
+      case 'grow': { const k = sk ?? 'x'; if (!e.alive) { const n = Math.min(5, (growSt.get(k) ?? 0) + 1); growSt.set(k, n); dmgText(hp0.clone().setY(hp0.y + 2.8), `CRESCE ×${n}`, false, '#ffb070'); }
+        else { const n = growSt.get(k) ?? 0; if (n) { runeJump = true; try { hitEnemy(e, 0.08 * n, false, e.pos.clone()); } finally { runeJump = false; } } } break; }
+      case 'raise': if (!e.alive && now >= rs.raiseAt) { rs.raiseAt = now + 4; const x = e.pos.x, z = e.pos.z; for (let i = 0; i < 20; i++) d.particles.spawn(x + rnd(-0.5, 0.5), d.world.heightAt(x, z) + rnd(0, 1.2), z + rnd(-0.5, 0.5), { vy: rnd(0.5, 2), life: 0.7, s0: 0.3, s1: 0.05, c0: 0x8a0a1a, c1: 0x1a0008, a: 0.9 }); spiritWolf(Math.floor(rnd(0, 3)), o.s * g, 0.5, true); logMsg('🩸 Um servo se levanta do cadáver', '#ff8a8a'); } break;
+      case 'allyHeal': allyHealHook?.(o.pct * g); break;
       case 'echo': { const from = e.pos.clone(); pending.push({ at: now + o.d, fn: () => { if (!e.alive) return; runeSpark(e, f, 4); const was = skill; skill = sk; runeJump = true; try { hitEnemy(e, o.mul * g, false, from); } finally { runeJump = false; skill = was; } } }); break; }
       case 'seek': { const near = enemies.list.filter((q) => q !== e && q.alive && q.active && !q.def.passive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < 7).sort((a, b) => Math.hypot(a.pos.x - e.pos.x, a.pos.z - e.pos.z) - Math.hypot(b.pos.x - e.pos.x, b.pos.z - e.pos.z)).slice(0, o.n);
         const a = e.pos.clone().setY(e.pos.y + 1.1); for (const nx of near) { const b = nx.pos.clone().setY(nx.pos.y + 1.1); for (let i = 0; i <= 8; i++) { const p2 = a.clone().lerp(b, i / 8); d.particles.spawn(p2.x, p2.y, p2.z, { life: 0.35, s0: 0.18, s1: 0.03, c0: 0xffffff, c1: hexC(f), a: 0.9 }); } runeJump = true; try { hitEnemy(nx, o.mul * Math.min(g, 1.5), false, a); } finally { runeJump = false; } } break; }
@@ -475,7 +488,8 @@ export function createGameplay(d: GameplayDeps) {
   /** ao lançar uma magia com runa: a Ampulheta encurta a recarga, a Lágrima cura um pouco, a Fresta cobra vida e marca a alma */
   function runeCast(id: string, hp: THREE.Vector3) {
     const RF = fams(kitKey, id), ks = Object.keys(RF) as RFam[]; if (!ks.length) return;
-    for (const f of ks) { const fx = runeFxOf(kitKey, id, f); if (!fx?.cast) continue; for (const o of fx.cast) { if (o.t === 'heal') { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * o.pct * RF[f]! * (1 + stance.heal)); dmgText(hp.clone().setY(hp.y + 2.6), `+${Math.round(st.hpMax * o.pct * RF[f]!)}`, false, '#8ae08a'); } else if (o.t === 'cdr' && cdX[id]) cdX[id] *= Math.max(0.3, 1 - (1 - o.k) * RF[f]!); } }
+    rs.blinkUsed = false; /* um sumiço pela Fresta por lançamento */
+    for (const f of ks) { const fx = runeFxOf(kitKey, id, f); if (!fx?.cast) continue; for (const o of fx.cast) { const g2 = RF[f]!; if (o.t === 'phase') rs.phaseUntil = Math.max(rs.phaseUntil, now + o.s * g2); else if (o.t === 'thorns') { rs.thornsUntil = now + o.s * g2; rs.thornsPct = Math.max(rs.thornsUntil > now ? rs.thornsPct : 0, o.pct * Math.min(g2, 1.6)); } else if (o.t === 'projImmune') rs.projUntil = Math.max(rs.projUntil, now + o.s * g2); else if (o.t === 'allyHeal') allyHealHook?.(o.pct * g2); else if (o.t === 'fillRes') st.mp = Math.min(st.mpMax, st.mp + o.n * g2); else if (o.t === 'heal') { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * o.pct * RF[f]! * (1 + stance.heal)); dmgText(hp.clone().setY(hp.y + 2.6), `+${Math.round(st.hpMax * o.pct * RF[f]!)}`, false, '#8ae08a'); } else if (o.t === 'cdr' && cdX[id]) cdX[id] *= Math.max(0.3, 1 - (1 - o.k) * RF[f]!); } }
     const own = (f: RFam) => !!runeFxOf(kitKey, id, f);
     if (RF.ampulheta && cdX[id] && !own('ampulheta')) cdX[id] *= Math.max(0.5, 1 - 0.15 * RF.ampulheta);
     if (RF.lagrima && !own('lagrima')) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02 * RF.lagrima * (1 + stance.heal));
@@ -1281,7 +1295,7 @@ export function createGameplay(d: GameplayDeps) {
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
     /** um companheiro de grupo matou um bicho perto de mim: XP, missão e o meu próprio saque */
     sharedKill(e: Enemy) { killEnemy(e, true); },
-    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** 06/11: o dízimo da guilda — recebe o XP e devolve quanto vai para a guilda */ setXpTithe(f: ((n: number) => number) | null) { xpTithe = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); }, prewarmGroup,
+    setPvp(f: typeof pvpHit) { pvpHit = f; }, /** 06/11: runas que fazem o herói sumir e reaparecer (o main move o herói e confere o chão livre) */ setTeleport(f: (x: number, z: number) => boolean) { teleportHook = f; }, /** 06/11: runas que curam o aliado (pela rede) */ setAllyHeal(f: (pct: number) => boolean) { allyHealHook = f; }, /** cura que um aliado mandou */ healFrom(pct: number, who: string) { const v = Math.round(st.hpMax * Math.min(0.2, pct)); st.hp = Math.min(st.hpMax, st.hp + v); dmgText(d.getHero().root.position.clone().setY(2.6), `+${v}`, false, '#8ae08a'); logMsg(`✚ ${who} te curou (${v})`, '#8ae08a'); }, /** 06/11: o dízimo da guilda — recebe o XP e devolve quanto vai para a guilda */ setXpTithe(f: ((n: number) => number) | null) { xpTithe = f; }, /** a arma equipada (nome base) decide se o ataque básico é corpo a corpo ou tiro */ setWeapon(base: string | null) { wmode = base ? WMODE.find(([re]) => re.test(base))?.[1] ?? null : null; }, get weaponMode() { return wmode; }, get shotsLive() { return shots.count; }, shotsSys: shots, setOnYield(f: (e: Enemy, decide: (kill: boolean) => void) => void) { onYield = f; }, setXpFilter(f: typeof xpFilter) { xpFilter = f; }, spawnGear, gainXp(n: number) { gainXp(n, d.getHero().root.position); }, prewarmGroup,
     get menuOpen() { return st.menuOpen; },
     /** alvo mais próximo ao alcance (trava automática dos golpes) */
     timeScale() { return performance.now() < hitstop ? 0.1 : 1; },
@@ -1525,6 +1539,11 @@ export function createGameplay(d: GameplayDeps) {
       n = Math.max(1, Math.round(n * st.takenMul * (d.takenK?.() ?? 1))); /* Instinto ligado: a defesa cai (a atenção está em outro lugar) */ /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (gad.shield > Date.now() && gad.shieldReady) { gad.shieldReady = false; gad.shieldT = gad.shieldCd; if (gv.dome) gv.dome.flash = 0.9; logMsg('🛡 Clanc! O Escudo Automatizado segurou o golpe inteiro.', '#9ad7ff'); for (let q = 0; q < 14; q++) { const hp2 = d.getHero().root.position; d.particles.spawn(hp2.x + rnd(-0.6, 0.6), hp2.y + rnd(0.4, 1.8), hp2.z + rnd(-0.6, 0.6), { vy: rnd(0.2, 1), life: 0.5, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0x9ad7ff, a: 0.9 }); } return; }
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
+      /* 06/11: runas — intocável, imune a projéteis, inimigo que erra (tossindo, cego) */
+      if (now < rs.phaseUntil) { dmgText(heroPos.clone().setY(2.5), 'INTOCÁVEL', false, '#c8a0ff'); return; }
+      const atk = from ? enemies.nearest(from, 1.6) : null;
+      if (from && now < rs.projUntil && Math.hypot(from.x - heroPos.x, from.z - heroPos.z) > 4) { dmgText(heroPos.clone().setY(2.5), 'IMUNE', false, '#c8a0ff'); return; }
+      if (atk && (missUntil.get(atk) ?? 0) > now && Math.random() < 0.25) { dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), 'ERROU', false, '#c8d8a0'); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');
         if (from) { const a2 = Math.atan2(from.x - heroPos.x, from.z - heroPos.z); for (let i = 0; i < 12; i++) d.particles.spawn(heroPos.x + Math.sin(a2) * 1.4, heroPos.y + rnd(0.6, 1.8), heroPos.z + Math.cos(a2) * 1.4, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.35, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: 0xffd24a, a: 1, drag: 2 }); }
         if (aegis.hp <= 0) aegisBreak(); if (n <= 0) return; } // Contra-golpe da Valquíria: o golpe some e ela gira por baixo dele
@@ -1536,6 +1555,7 @@ export function createGameplay(d: GameplayDeps) {
       lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.75, st.def + Math.min(0.3, buff.def + stance.def)))))); /* regra 01: defesa de buff/postura com teto de 30%, total com teto de 75% */
       // esquiva pela destreza (até 35%) e bloqueio pela defesa/escudo (até 30%, metade do dano) — a dança da luta
       if (st.sp.has('t_exo')) n = Math.max(1, Math.round(n * 0.8));
+      if (atk && now < rs.thornsUntil && atk.alive) { const rf = Math.max(1, Math.round(n * rs.thornsPct)); if (enemies.hurt(atk, rf, heroPos, 2)) killEnemy(atk); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `↩ ${rf}`, false, '#e8b0ff'); } /* 06/11: runa que devolve o golpe */
       const dodge = Math.min(0.35, 0.04 + (st.attrs?.dex ?? 0) * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0);
       if (!h.guarding && Math.random() < dodge) { dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
       // aparo: só quem luta com lâmina, de frente; desvia o golpe, faísca e deixa o inimigo vulnerável (contra-ataque)

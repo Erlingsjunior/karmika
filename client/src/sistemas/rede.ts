@@ -46,6 +46,9 @@ K.netRef = net;
 { const inParty = (id: number) => !!net.party && net.party.members.includes(id) && id !== net.myId;
   const partyNear = () => { if (!net.party || K.inside) return 1; const p = K.hero.root.position; let n = 1; for (const r of net.remotes()) if (inParty(r.id) && r.zn === 'world' && r.pos.distanceTo(p) < 45) n++; return n; };
   K.game.setNet({ myId: () => net.myId, hit: (id, n) => net.x('x:hit', { e: id, n }), die: (id) => net.x('x:die', { e: id }), cast: (id, x, z, i) => net.x('x:cast', { e: id, x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, i }) }, partyNear);
+  /* 06/11: runas que curam o aliado — o companheiro de grupo mais ferido a até 10 m recebe a cura (só companheiros, nunca estranhos) */
+  let rhAt = 0; K.game.setAllyHeal((pct) => { const t = performance.now(); if (t - rhAt < 1200) return false; if (!net.party || net.state !== 'on') return false; const p = K.hero.root.position; let best: { id: number; d: number } | null = null; for (const r of net.remotes()) { if (!inParty(r.id)) continue; const d = r.pos.distanceTo(p); if (d < 10 && (!best || d < best.d)) best = { id: r.id, d }; } if (!best) return false; rhAt = t; net.x('x:rh', { to: best.id, pct: Math.min(0.2, pct) }); return true; });
+  net.onX('x:rh', (from, m) => { if (m.to !== net.myId || !inParty(from) || K.game.st.dead) return; K.game.healFrom(Number(m.pct) || 0, net.nameOf(from)); });
   net.onX('x:mob', (from, m) => K.game.enemies.netIn(from, m.l as (number | string)[][]));
   net.onX('x:hit', (_f, m) => K.game.enemies.netHit(String(m.e), m.n as number));
   net.onX('x:cast', (_f, m) => { if (!K.inside || K.inside.crypt || K.inside.dg) K.game.enemies.netCast(String(m.e), m.x as number, m.z as number, m.i as number); });

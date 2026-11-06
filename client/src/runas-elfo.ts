@@ -16,8 +16,10 @@ export type ROp =
   | { t: 'slow'; s: number } | { t: 'freezeN'; n: number; s: number } | { t: 'burn'; s: number } | { t: 'echo'; d: number; mul: number }
   | { t: 'seek'; n: number; mul: number } | { t: 'mark'; s: number } | { t: 'pull'; m: number } | { t: 'knock'; m: number } | { t: 'root'; s: number }
   | { t: 'boom'; mul: number; r: number; d?: number } | { t: 'deathBoom'; mul: number; r: number } | { t: 'fireGround'; r: number; s: number }
-  | { t: 'iceGround'; r: number; s: number } | { t: 'healHit'; pct: number };
-export type RCastOp = { t: 'heal'; pct: number } | { t: 'cdr'; k: number };
+  | { t: 'iceGround'; r: number; s: number } | { t: 'healHit'; pct: number }
+  /* 06/11: as mecânicas que faltavam (Erling: "coloque todas as mecânicas necessárias") */
+  | { t: 'blinkBehind' } | { t: 'cough'; s: number } | { t: 'grow' } | { t: 'raise'; s: number } | { t: 'allyHeal'; pct: number };
+export type RCastOp = { t: 'heal'; pct: number } | { t: 'cdr'; k: number } | { t: 'phase'; s: number } | { t: 'thorns'; pct: number; s: number } | { t: 'projImmune'; s: number } | { t: 'allyHeal'; pct: number } | { t: 'fillRes'; n: number };
 export interface RuneFx { txt: string; hit?: ROp[]; cast?: RCastOp[] }
 
 const F = (txt: string, hit?: ROp[], cast?: RCastOp[]): RuneFx => ({ txt, hit, cast });

@@ -37,6 +37,21 @@ export function parseRuneText(f: RFam, raw: string): RuneFx | null {
   if (/\bcura|curam\b|escudo de|regenera/.test(t)) cast.push({ t: 'heal', pct: Math.min(0.12, Math.max(0.03, pct && pct <= 30 ? pct / 100 : 0.04)) });
   if (/recarga|volta mais r[áa]pido|carga extra|\d+ cargas|cargas/.test(t) || (f === 'ampulheta' && !hit.length)) cast.push({ t: 'cdr', k: 0.8 });
   /* não mais que 4 peças: o resto do texto fica como descrição (o efeito não vira uma bola de neve) */
+  /* 06/11: as mecânicas novas — sumir e reaparecer pela Fresta, ficar intocável, devolver golpes, ajudar aliados, crescer com mortes,
+     levantar servos de cadáveres, fazer o inimigo errar e encher o recurso da classe */
+  if (/(some|sumir|aparece|reaparece|sai|entra)[^.]*?(atr[áa]s|pelas costas|nas costas)|aparece direto no fim|trocar de lugar|vira (um )?teleporte|passo pela fresta|joga voc[êe] por uma fresta|corta de dentro da fresta|sai das sombras|sai de uma fresta no ch/.test(t)) { hit.push({ t: 'blinkBehind' }); cast.push({ t: 'phase', s: 0.6 }); }
+  if (/intang[íi]vel|n[ãa]o pode ser alvo|intoc[áa]vel|passam? (simplesmente )?pel[oa]|como fumaça|atravessa (inimigos|paredes)/.test(t)) cast.push({ t: 'phase', s: Math.min(2, secs(1.5)) });
+  if (/n[ãa]o pode ser alvo de proj[ée]teis|proj[ée]teis? n[ãa]o/.test(t)) cast.push({ t: 'projImmune', s: secs(4) });
+  if (/(golpe|magia|golpes|magias)[^.]*(de volta|voltam contra|saem de uma)|leva \d+% do golpe de volta|devolve (o|os) golpe/.test(t)) cast.push({ t: 'thorns', pct: Math.min(0.5, pct && pct <= 60 ? pct / 100 : 0.3), s: 6 });
+  if (/aliado mais ferido|aliados? (atr[áa]s|na aura|perto|em volta|a \d+ m)|para o aliado|nos aliados/.test(t)) cast.push({ t: 'allyHeal', pct: Math.min(0.1, pct && pct <= 20 ? pct / 100 : 0.05) });
+  if (/cresce|devora|come cad[áa]ver|vira adubo|\+\d+% de dano por (morte|cad[áa]ver)/.test(t)) hit.push({ t: 'grow' });
+  if (/levanta (o )?servo|cad[áa]veres? a \d+ m/.test(t)) hit.push({ t: 'raise', s: 10 });
+  if (/tosse|err[ae]m? \d+%|erra(m)? (os )?ataques|perdem? \d+% de precis|n[ãa]o podem teleportar|nem ficar invis/.test(t)) hit.push({ t: 'cough', s: secs(4) });
+  if (/enche a sede|enche o (f[úu]ria|foco|[íi]mpeto)|enche (o recurso|por completo)/.test(t)) cast.push({ t: 'fillRes', n: 40 });
+  if (/ignoram? (o )?bloqueio/.test(t)) hit.push({ t: 'mark', s: 2 });
+  if (/cospe (todos|os)|joga o alvo/.test(t)) hit.push({ t: 'knock', m: 5 });
+  if (/reaparece em cima de outra armadilha/.test(t)) hit.push({ t: 'root', s: 1.5 });
+  if (/risco[^.]*que corta|segue voc[êe]/.test(t)) hit.push({ t: 'fireGround', r: 1.5, s: 3 });
   if (!hit.length && f === 'labirinto') hit.push({ t: 'seek', n: Math.max(1, Math.min(3, num(t, /(\d+)/, 2))), mul: 0.45 }); /* o Labirinto é sempre forma e número: mais alvos */
   if (!hit.length && f === 'olho') hit.push({ t: 'mark', s: 2 }); /* o Olho sempre enxerga o alvo */
   if (!hit.length && f === 'fome' && /sangue|ferve|perde|come/.test(t)) hit.push({ t: 'healHit', pct: 0.01 }, { t: 'burn', s: 2 });
@@ -59,7 +74,7 @@ export function runeFxOf(kit: string, id: string | null | undefined, f: RFam): R
 /** o que o jogo aplica, em poucas palavras (aparece embaixo do texto da runa no encaixe) */
 export function runeAppliedText(kit: string, id: string, f: RFam): string | null {
   const fx = runeFxOf(kit, id, f); if (!fx) return null;
-  const W: Record<string, string> = { slow: 'deixa lento', freezeN: 'congela', burn: 'queima', echo: 'eco do golpe', seek: 'salta para outros', mark: 'marca o ponto fraco', pull: 'puxa', knock: 'empurra', root: 'prende', boom: 'explode', deathBoom: 'explode ao morrer', fireGround: 'chão em chamas', iceGround: 'chão que retarda', healHit: 'rouba vida', heal: 'cura ao lançar', cdr: 'recarga menor' };
+  const W: Record<string, string> = { blinkBehind: 'reaparece atrás do alvo', phase: 'fica intocável', thorns: 'devolve golpes', projImmune: 'imune a projéteis', allyHeal: 'cura aliado', grow: 'cresce a cada morte', raise: 'levanta um servo', cough: 'o inimigo erra', fillRes: 'enche o recurso', slow: 'deixa lento', freezeN: 'congela', burn: 'queima', echo: 'eco do golpe', seek: 'salta para outros', mark: 'marca o ponto fraco', pull: 'puxa', knock: 'empurra', root: 'prende', boom: 'explode', deathBoom: 'explode ao morrer', fireGround: 'chão em chamas', iceGround: 'chão que retarda', healHit: 'rouba vida', heal: 'cura ao lançar', cdr: 'recarga menor' };
   const L = [...new Set([...(fx.hit ?? []), ...(fx.cast ?? [])].map((o) => W[o.t]).filter(Boolean))]; return L.length ? L.join(' · ') : null;
 }
 export { type RuneFx, type ROp };

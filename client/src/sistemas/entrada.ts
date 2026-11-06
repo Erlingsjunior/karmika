@@ -7,6 +7,9 @@ import { heightAt } from '../world';
 import type { EntradaCtx } from '../main';
 
 export function createEntrada(K: EntradaCtx) {
+/* 06/11: runas que fazem sumir e reaparecer atrás do alvo — só em chão livre; se o lugar estiver ocupado, aproxima até achar */
+K.game.setTeleport((x, z) => { const hx = K.hero.root.position.x, hz = K.hero.root.position.z; let tx = x, tz = z, k = 0; for (; k < 10 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; } if (!K.free(tx / T, tz / T)) return false;
+  K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); return true; });
 /* ---------- entrada ---------- */
 const keys = new Set<string>();
 /* R alterna correr/andar (padrão: correr, gasta fôlego); Shift segurado faz o contrário enquanto estiver pressionado.
