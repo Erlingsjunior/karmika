@@ -99,6 +99,7 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'chainlight', col: 2, row: 0, req: [['fireball', REQ_RANK]] }, { id: 'guard', col: 2, row: 1, req: [['blink', REQ_RANK]] }, { id: 'winter', col: 2, row: 2, req: [['heal', REQ_RANK]] },
     { id: 'meteor', col: 3, row: 0, req: [['chainlight', REQ_RANK]] }, { id: 'mark', col: 3, row: 1, req: [['guard', REQ_RANK]] }, { id: 'blizzard', col: 3, row: 2, req: [['winter', REQ_RANK]] },
     { id: 'shocktrap', col: 4, row: 1, req: [['mark', REQ_RANK]] }, { id: 'frostnova', col: 4, row: 2, req: [['blizzard', REQ_RANK]] },
+    { id: 'icewall', col: 4, row: 3, req: [['frostnova', REQ_RANK]] }, { id: 'firewall', col: 3, row: 3, req: [['meteor', REQ_RANK]] }, { id: 'stormwall', col: 5, row: 3, req: [['icewall', REQ_RANK], ['firewall', REQ_RANK]] }, /* 06/11: os três muros do mago */
     { id: 'archon', col: 5, row: 1, req: [['meteor', 5], ['shocktrap', 5], ['frostnova', 5]] },
   ],
   bru: [ // Bruxo (02/11: sem árvore até aqui): Maldição (veneno e praga), Pacto (sangue e cães), Véu (defesa e cura); no fim, a Forma Demoníaca
@@ -106,6 +107,7 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'curse', col: 1, row: 0, req: [['combo', 1]] }, { id: 'blink', col: 1, row: 1, req: [['combo', 1]] }, { id: 'heal', col: 1, row: 2, req: [['combo', 1]] },
     { id: 'poison', col: 2, row: 0, req: [['curse', REQ_RANK]] }, { id: 'drain', col: 2, row: 1, req: [['blink', REQ_RANK]] }, { id: 'guard', col: 2, row: 2, req: [['heal', REQ_RANK]] },
     { id: 'howl', col: 3, row: 0, req: [['poison', REQ_RANK]] }, { id: 'hellhound', col: 3, row: 1, req: [['drain', REQ_RANK]] }, { id: 'mark', col: 3, row: 2, req: [['guard', REQ_RANK]] },
+    { id: 'bonewall', col: 2, row: 3, req: [['drain', REQ_RANK]] }, { id: 'plaguewall', col: 3, row: 3, req: [['poison', REQ_RANK]] }, { id: 'imps', col: 4, row: 3, req: [['hellhound', REQ_RANK]] }, { id: 'locusts', col: 5, row: 3, req: [['plaguewall', REQ_RANK]] }, /* 06/11: muro, praga e invocações do bruxo */
     { id: 'demonform', col: 4, row: 1, req: [['howl', 5], ['hellhound', 5], ['mark', 5]] },
   ],
   cac: [ // Caçador (02/11: sem árvore até aqui): Armas (lança, machadinha), Armadilhas (choque, frasco), Rastro (marca, cura); no fim, a Forma do Caçador
@@ -114,6 +116,7 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'hatchet', col: 2, row: 0, req: [['spear', REQ_RANK]] }, { id: 'bash', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'shocktrap', col: 2, row: 2, req: [['heal', REQ_RANK]] },
     { id: 'hamstring', col: 3, row: 0, req: [['hatchet', REQ_RANK]] }, { id: 'kick', col: 3, row: 1, req: [['bash', REQ_RANK]] }, { id: 'holyflask', col: 3, row: 2, req: [['shocktrap', REQ_RANK]] },
     { id: 'volley', col: 4, row: 0, req: [['hamstring', REQ_RANK]] }, { id: 'mark', col: 4, row: 2, req: [['holyflask', REQ_RANK]] },
+    { id: 'silverwall', col: 4, row: 3, req: [['holyflask', REQ_RANK]] }, /* 06/11: o muro do caçador */
     { id: 'huntform', col: 5, row: 1, req: [['volley', 5], ['kick', 5], ['mark', 5]] },
   ],
   tecno: [ // Tecnocrata formado: Engenharia de Campo (choque), Suporte (drone, minas), Química (fogo e ácido); no fim, o exoesqueleto
@@ -121,6 +124,7 @@ export const TREES: Partial<Record<Race, Node[]>> = {
     { id: 'thunder', col: 1, row: 0, req: [['combo', 1]] }, { id: 'guard', col: 1, row: 1, req: [['combo', 1]] }, { id: 'shocktrap', col: 1, row: 2, req: [['combo', 1]] },
     { id: 'kick', col: 2, row: 0, req: [['thunder', REQ_RANK]] }, { id: 'medic', col: 2, row: 1, req: [['guard', REQ_RANK]] }, { id: 'flame', col: 2, row: 2, req: [['shocktrap', REQ_RANK]] },
     { id: 'mark', col: 3, row: 0, req: [['kick', REQ_RANK]] }, { id: 'railgun', col: 3, row: 1, req: [['medic', REQ_RANK]] }, { id: 'poison', col: 3, row: 2, req: [['flame', REQ_RANK]] },
+    { id: 'steamwall', col: 3, row: 3, req: [['medic', REQ_RANK]] }, /* 06/11: o muro do tecnocrata */
     { id: 'mech', col: 4, row: 1, req: [['railgun', 5], ['mark', 5], ['poison', 5]] },
   ],
   technocrat: [
@@ -210,6 +214,15 @@ Object.assign(STATS, {
   'x:holyflask': { dmg: 1.4, area: 2.8, range: 11, dur: 4, cd: 10, note: 'Estoura em luz; demônios e mortos-vivos levam o dobro; chão bento por 4 s.' },
   'x:volley': { dmg: 0.55, hits: 14, area: 3.2, range: 14, cd: 12, note: 'Chuva de 14 virotes de prata na área.' },
   'x:huntform': { dmg: 1.8, dur: 12, cd: 50, note: 'Vigília de Aravel: dano ×1,8, +20% de velocidade, demônios marcados.' },
+  'x:icewall': { dmg: 0.35, area: 8, range: 8, dur: 6, cd: 16, note: 'Muro de cristais: ninguém atravessa; quem encosta fica lento e, a cada 3 toques, congela 1 s.' },
+  'x:firewall': { dmg: 0.5, area: 8, range: 8, dur: 6, cd: 18, note: 'Cortina de chamas: barra e queima quem encosta (queimadura de 2 s).' },
+  'x:stormwall': { dmg: 0.45, area: 8, range: 8, dur: 7, cd: 22, note: 'Quatro pilares com raios entre si: choque e lentidão em quem encosta.' },
+  'x:bonewall': { dmg: 0.3, area: 8, range: 8, dur: 6, cd: 16, note: 'Muro de ossos: mãos agarram quem encosta (lento 1 s) e roem.' },
+  'x:plaguewall': { dmg: 0.3, area: 9, range: 9, dur: 8, cd: 18, note: 'Cortina de peste: dá para passar, mas quem passa apodrece e anda devagar.' },
+  'x:imps': { dmg: 0.45, dur: 14, cd: 40, note: 'Três diabretes de brasa cospem fogo no inimigo mais perto a cada 1,2 s.' },
+  'x:locusts': { dmg: 0.25, area: 3, range: 12, dur: 5, cd: 24, note: 'A nuvem anda 12 m em 5 s roendo (a cada 0,4 s) e atrasando todos por onde passa.' },
+  'x:silverwall': { dmg: 0.4, area: 7, range: 7, dur: 7, cd: 18, note: 'Paliçada de prata: quem encosta se fere; demônios e mortos-vivos em dobro.' },
+  'x:steamwall': { dmg: 0.35, area: 7, range: 7, dur: 8, cd: 20, note: 'Placas de latão: o vapor queima e empurra para trás quem encosta.' },
   'tecno:medic': { dmg: 0, dur: 10, cd: 18, note: 'Drone médico: cura 40% da vida em 10 s e apaga queimaduras.' },
 });
 for (const kk of ['tecno', 'pal', 'vam', 'lob', 'mag', 'bru', 'cac'] as const) for (const sk of KITS[kk] ?? []) { const key = `${kk}:${sk.id}`; if (STATS[key]) continue; STATS[key] = STATS['x:' + sk.id] ?? STATS[`technocrat:${sk.id}`] ?? STATS[`nordic:${sk.id}`] ?? {}; }
