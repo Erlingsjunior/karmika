@@ -711,9 +711,10 @@ export interface ConstrucaoCtx {
   readonly state: Widen<typeof state>;
   readonly profile: Profile | null;
   readonly decoRender: typeof decoRender;
+  readonly social: Widen<typeof social>;
 }
 var construcaoSys: ReturnType<typeof createConstrucao>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_construcaoSys() { return createConstrucao({ get city() { return city; }, get inv() { return inv; }, get placeDecor() { return placeDecor; }, get otherHouses() { return otherHouses; }, get game() { return game; }, get guildZoneAt() { return guildZoneAt; }, get hub() { return hub; }, get scene() { return scene; }, get objs() { return objs; }, get mail() { return mail; }, get deedItemOf() { return deedItemOf; }, get particles() { return particles; }, get state() { return state; }, get profile() { return profile; }, get decoRender() { return decoRender; } }); }
+function mk_construcaoSys() { return createConstrucao({ get social() { return social; }, get city() { return city; }, get inv() { return inv; }, get placeDecor() { return placeDecor; }, get otherHouses() { return otherHouses; }, get game() { return game; }, get guildZoneAt() { return guildZoneAt; }, get hub() { return hub; }, get scene() { return scene; }, get objs() { return objs; }, get mail() { return mail; }, get deedItemOf() { return deedItemOf; }, get particles() { return particles; }, get state() { return state; }, get profile() { return profile; }, get decoRender() { return decoRender; } }); }
 construcaoSys ??= mk_construcaoSys();
 const { obras, build } = construcaoSys;
 function robotLeftPop(...a: Parameters<ReturnType<typeof createConstrucao>['robotLeftPop']>): ReturnType<ReturnType<typeof createConstrucao>['robotLeftPop']> { return (construcaoSys ??= mk_construcaoSys()).robotLeftPop(...a); }
@@ -2341,6 +2342,8 @@ function findInter(): Inter | null {
     add(df, 2.6, isHome ? '⛲ Esta é sua fonte-lar' : 'E — Tornar esta fonte meu lar', () => { if (!isHome) setHome(p); }); }
   for (const p of city.props) if (p.kind === 'vault') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; add(Math.hypot(bx - hx, bz - hz), 2.2, 'E — Baú do Caminhante', () => inv.openVault()); }
   for (const p of city.props) if (p.kind === 'mailbox') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; const u = mail.unread; add(Math.hypot(bx - hx, bz - hz), 2.2, `E — Caixa de Correio${u ? ` (${u} nova${u > 1 ? 's' : ''})` : ''}`, () => mail.open()); }
+  /* 06/11: as peças da guilda no terreno — o Quadro abre a Visão da guilda, o Baú abre o baú (guardar e tirar só perto dele) */
+  for (const p of city.props) if (p.kind === 'gboard' || p.kind === 'gchest') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T, isB = p.kind === 'gboard'; add(Math.hypot(bx - hx, bz - hz), 2.8, isB ? 'E — Ler o Quadro da Guilda' : 'E — Abrir o Baú da Guilda', () => social.openGuildTab(isB ? 'visao' : 'bau')); }
   for (const p of city.props) if (p.kind === 'noticeboard') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; add(Math.hypot(bx - hx, bz - hz), 2.6, 'E — Ler o Quadro de Avisos', () => quests.openBoard()); }
   if (!casteloSys.sitting) for (const p of city.props) if (p.kind === 'bench') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; add(Math.hypot(bx - hx, bz - hz), 2.2, 'E — Sentar', () => { const fp = city.props.find((q) => q.kind === 'fountain')!; casteloSys.sitting = benchSeat(bx, bz, fp); game.logMsg('Você se senta e descansa...', '#c8d8f0'); }); }
   return best;

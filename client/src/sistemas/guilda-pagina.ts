@@ -3,7 +3,7 @@
    aqui ficam os textos do que cada nível libera e o desenho da página. Quem fala com o servidor é o social.ts. */
 
 export interface GMission { kind: string; name: string; text: string; need: number; n: number; xp: number; done: number }
-export interface GLevelView { lvl?: number; xp?: number; need?: number; prevNeed?: number; max?: boolean; cap?: number; cofre?: number; debt?: number; tax?: number; miss?: { day: string; list: GMission[] } | null; welcome?: string; signed?: { name: string }[] }
+export interface GLevelView { chest?: Record<string, number>; lvl?: number; xp?: number; need?: number; prevNeed?: number; max?: boolean; cap?: number; cofre?: number; debt?: number; tax?: number; miss?: { day: string; list: GMission[] } | null; welcome?: string; signed?: { name: string }[] }
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 /** o que cada nível libera (documento de 05/11). "on" diz se já existe no jogo; o resto aparece como "em breve" */
@@ -39,3 +39,13 @@ export function overviewHtml(g: GLevelView, rk: number, gold: number): string {
 
 /** a carta de boas-vindas para quem acabou de entrar */
 export const welcomeHtml = (name: string, text: string) => `<div class="gfnd gwelc"><h4>⚑ Bem-vindo à ${esc(name)}</h4><div class="gvwel">${esc(text || 'Leia a mensagem do dia e diga oi no chat.').replace(/\n/g, '<br>')}</div><div class="sorow"><button data-a="gwelok" class="gold">Entendi</button></div></div>`;
+
+/** 06/11: o Baú da Guilda (nível II). Qualquer membro guarda; oficial e líder tiram. Guardar e tirar só perto do baú, no terreno */
+export function chestHtml(g: GLevelView, rk: number, near: boolean, bag: { id: string; n: number; name: string; icon: string }[], nameOf: (id: string) => string, iconOf: (id: string) => string): string {
+  if ((g.lvl ?? 1) < 2) return `<p class="somut">O baú da guilda abre no <b>nível II</b>. Depois, ergam o <b>Baú da Guilda</b> no terreno (B → ⚑ Guilda).</p>`;
+  const L = Object.entries(g.chest ?? {}).sort((a, b) => nameOf(a[0]).localeCompare(nameOf(b[0])));
+  const rows = L.map(([id, n]) => `<div class="somk"><div>${iconOf(id)} ${esc(nameOf(id))}<small>${fmt(n)} no baú</small></div>${rk >= 2 ? `<input data-ctn="${esc(id)}" type="number" min="1" max="${n}" value="1"><button data-ctake="${esc(id)}" ${near ? '' : 'disabled title="Vá até o Baú da Guilda no terreno"'}>Tirar</button>` : ''}</div>`).join('');
+  return `<div class="gview"><p class="somut">${near ? '🧰 Você está diante do Baú da Guilda.' : '🧰 Para guardar ou tirar, vá até o <b>Baú da Guilda</b> no terreno e aperte E.'} Todo membro guarda; ${rk >= 2 ? 'você, como oficial ou líder, também tira' : 'só oficiais e o líder tiram'}.</p>
+    <div class="gvmis">${rows || '<p class="somut">O baú está vazio.</p>'}</div>
+    <h4>Guardar</h4><div class="sorow"><select data-v="cput"><option value="">Escolha da mochila…</option>${bag.map((i) => `<option value="${esc(i.id)}">${i.icon} ${esc(i.name)} (${i.n})</option>`).join('')}</select><input data-v="cputn" type="number" min="1" value="1" title="quantidade"><button data-a="cput" ${near ? '' : 'disabled title="Vá até o Baú da Guilda no terreno"'}>Guardar</button></div></div>`;
+}

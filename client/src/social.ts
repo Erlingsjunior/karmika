@@ -8,7 +8,7 @@ import type { Hub } from './hub';
 import { account, setNick } from './hub';
 import { floatWin, promptBox } from './windows';
 import { openGuildBook, refreshGuildBook, type BookGuild } from './sistemas/livro-guildas';
-import { overviewHtml, welcomeHtml, type GLevelView } from './sistemas/guilda-pagina';
+import { overviewHtml, welcomeHtml, chestHtml, type GLevelView } from './sistemas/guilda-pagina';
 import { foundFormHtml, signHtml, bannerHtml, FOUND_LVL, type FoundDraft, type FoundCheck, type GFlag } from './sistemas/guilda-fundacao';
 
 export interface GMember { k: string; name: string; rank: string; joined: number; on?: boolean; where?: string; char?: string; seen?: number }
@@ -26,11 +26,11 @@ export function createSocial(ctx: {
   items(): { id: string; n: number; name: string; icon: string }[]; gear(): { uid: number; name: string; rarity: string; icon: string; ilvl: number }[];
   takeItem(id: string, n: number): boolean; takeGear(uid: number): unknown; itemName(id: string): string; itemIcon(id: string): string; rarityCol(r: string): string;
   ask(title: string, text: string, yes: string, cb: (ok: boolean) => void): void; chars(): { i: number; name: string; lvl: number; active: boolean }[]; toChar(i: number, l: { from: string; subj: string; text: string; att: unknown[] }): boolean; plotText(plot: number): string; markPlot(plot: number): void; hasTear(): boolean; useTear(): void; partyNow(): Omit<FoundCheck, 'lvl' | 'tear'>; seedHall(plot: number): { kind: string; gx: number; gy: number; v: number }[];
-  chatGuild?(from: string, text: string, tag: string): void; onWorld?(list: { id: number; name: string; tag: string; col: string; plot: number; build: { kind: string; gx: number; gy: number; v: number }[] }[]): void; onGuild?(g: Guild | null): void;
+  chatGuild?(from: string, text: string, tag: string): void; nearChest?(): boolean; addItem?(id: string, n: number): void; onWorld?(list: { id: number; name: string; tag: string; col: string; plot: number; build: { kind: string; gx: number; gy: number; v: number }[] }[]): void; onGuild?(g: Guild | null): void;
 }) {
   const H = ctx.hub;
   let me: { id: string; nick: string } | null = null, friends: Friend[] = [], reqIn: { id: string; nick: string }[] = [], reqOut: { id: string; nick: string }[] = [];
-  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'visao' | 'membros' | 'chat' | 'mercado' | 'terreno' = 'visao', talk = '', founding = false, unread = 0;
+  let guild: Guild | null = null, open = false, tab: 'amigos' | 'conversa' | 'correio' | 'guilda' = 'amigos', gtab: 'visao' | 'bau' | 'membros' | 'chat' | 'mercado' | 'terreno' = 'visao', talk = '', founding = false, unread = 0;
   let draft: FoundDraft = { name: '', tag: '', flag: { pat: 'liso', c1: '#b8924a', c2: '#2a1a10' }, icon: '⚔' }, propSt: { name: string; ok: boolean }[] | null = null;
   let welcomeMsg: { name: string; text: string } | null = null;
   let signReq: { id: number; name: string; tag: string; col: string; flag: GFlag; icon: string; leader: string; signers: string[] } | null = null;
@@ -56,6 +56,8 @@ export function createSocial(ctx: {
   H.on('g:sign', (m) => { signReq = m as unknown as typeof signReq; ctx.log(`⚑ ${signReq!.leader} pede a sua assinatura no documento da guilda ${signReq!.name}.`, '#ffe08a'); toggle(true, 'guilda'); });
   H.on('g:ok', (m) => { const lider = !!m.lider; founding = false; propSt = null; signReq = null; if (lider) ctx.useTear(); ctx.log(lider ? '⚑ O Prefeito carimbou o documento: a guilda entrou no Livro de Guildas de Karmika. A Lágrima de Marghar ficou com ele, e o estandarte já está de pé no terreno.' : '⚑ Você assinou: agora é fundador da guilda.', '#ffe08a'); tab = 'guilda'; gtab = 'terreno'; render(); });
   H.on('g:welcome', (m) => { welcomeMsg = { name: String(m.name), text: String(m.text || '') }; gtab = 'visao'; toggle(true, 'guilda'); });
+  H.on('g:chest:got', (m) => { ctx.addItem?.(String(m.id), Number(m.n) || 1); ctx.log(`🧰 Tirado do baú: ${m.n}× ${ctx.itemName(String(m.id))}.`, '#ffe08a'); });
+  H.on('g:chest:back', (m) => ctx.addItem?.(String(m.id), Number(m.n) || 1));
   H.on('hub:state', () => render());
   /* 26/10 (Erling: "a aba Correio: recebemos por lá os itens que compramos fora do jogo, já no servidor, e decidimos para qual personagem
      enviar; mandamos e recebemos cartas"). É o correio da CONTA (no servidor); a caixa de correio de cada personagem continua no mundo */
@@ -117,9 +119,10 @@ export function createSocial(ctx: {
     const myR = guild.members.find((m) => m.name.toLowerCase() === ctx.char().toLowerCase())?.rank ?? 'recruta', rk = ['recruta', 'membro', 'oficial', 'lider'].indexOf(myR);
     const head = `<div class="soghd" style="--gc:${guild.col}">${bannerHtml(guild.flag, guild.icon, guild.col)}<div><b>${esc(guild.name)} <em>[${esc(guild.tag)}]</em></b><small>nível ${['', 'I', 'II', 'III', 'IV', 'V'][guild.lvl ?? 1]} · ${guild.members.length} de ${guild.cap ?? 20} vagas · você é ${RANK_NAME[myR]}</small></div></div>
       <div class="somotd">${esc(guild.motd || '')}${rk >= 2 ? ` <button class="ghost" data-a="motd">editar</button>` : ''}</div>
-      <div class="sostab">${(['visao', 'chat', 'membros', 'mercado', 'terreno'] as const).map((t) => `<button data-gt="${t}" class="${gtab === t ? 'on' : ''}">${{ visao: '⚑ Visão', chat: '💬 Chat', membros: '👥 Membros', mercado: '⚖ Mercado', terreno: '🏰 Terreno' }[t]}</button>`).join('')}</div>`;
+      <div class="sostab">${(['visao', 'chat', 'membros', 'bau', 'mercado', 'terreno'] as const).map((t) => `<button data-gt="${t}" class="${gtab === t ? 'on' : ''}">${{ visao: '⚑ Visão', bau: '🧰 Baú', chat: '💬 Chat', membros: '👥 Membros', mercado: '⚖ Mercado', terreno: '🏰 Terreno' }[t]}</button>`).join('')}</div>`;
     let body = '';
     if (gtab === 'visao') body = overviewHtml(guild, rk, ctx.gold());
+    if (gtab === 'bau') body = chestHtml(guild, rk, ctx.nearChest?.() ?? false, ctx.items(), ctx.itemName, ctx.itemIcon);
     if (gtab === 'chat') body = `<div class="solog g">${guild.log.slice(-60).map((L) => L.sys ? `<p class="sys">${esc(L.text)}</p>` : `<p><b>${esc(L.from ?? '')}</b> ${esc(L.text)}</p>`).join('')}</div><div class="soin"><input data-v="gchat" placeholder="Fale com a guilda (Enter) · no chat do jogo: /g texto" maxlength="300"><button data-a="gsend">Enviar</button></div>`;
     if (gtab === 'membros') body = [...guild.members].sort((a, b) => ['lider', 'oficial', 'membro', 'recruta'].indexOf(a.rank) - ['lider', 'oficial', 'membro', 'recruta'].indexOf(b.rank) || a.name.localeCompare(b.name)).map((m) => {
       const mine = m.name.toLowerCase() === ctx.char().toLowerCase(), r = ['recruta', 'membro', 'oficial', 'lider'].indexOf(m.rank);
@@ -165,6 +168,7 @@ export function createSocial(ctx: {
     if (d.fok) { H.send({ t: 'a:fans', id: d.fok, ok: true }); return; }
     if (d.fno) { H.send({ t: 'a:fans', id: d.fno, ok: false }); return; }
     if (d.kick) { ctx.ask('⚑ Remover da guilda', `Remover ${d.kick} da guilda?`, 'Remover', (ok) => { if (ok) H.send({ t: 'g:kick', char: d.kick }); }); return; }
+    if (d.ctake) { if (!ctx.nearChest?.()) { ctx.log('🧰 Vá até o Baú da Guilda no terreno.', '#ff9a8a'); return; } const n = Math.max(1, Math.floor(+((el.querySelector(`[data-ctn="${d.ctake}"]`) as HTMLInputElement | null)?.value ?? 1))); H.send({ t: 'g:chest:take', id: d.ctake, n, name: ctx.itemName(d.ctake) }); return; }
     if (d.mkdel) { H.send({ t: 'g:mk:del', id: +d.mkdel }); return; }
     if (d.mkbuy) { const p = +d.p!; if (!ctx.payGold(p)) { ctx.log(`⚖ Falta ouro: ${p} 🪙.`, '#ff9a8a'); return; } H.send({ t: 'g:mk:buy', id: +d.mkbuy, paid: p }); ctx.log(`⚖ Compra feita: ${p} 🪙. O item chega pelo correio.`, '#ffe08a'); return; }
     switch (d.a) {
@@ -175,6 +179,7 @@ export function createSocial(ctx: {
       case 'gwelcome': { promptBox('Mensagem de boas-vindas (quem entra lê ao chegar):', guild?.welcome ?? '', (tx) => H.send({ t: 'g:welcome', text: tx }), 400); break; }
       case 'gwelok': welcomeMsg = null; render(); break;
       case 'gdonate': { const n = Math.floor(+val('gdon')); if (!(n > 0)) { ctx.log('🪙 Diga quanto ouro doar.', '#ff9a8a'); break; } if (!ctx.payGold(n)) { ctx.log(`🪙 Falta ouro: você tem ${ctx.gold()}.`, '#ff9a8a'); break; } H.send({ t: 'g:give', gold: n }); break; }
+      case 'cput': { if (!ctx.nearChest?.()) { ctx.log('🧰 Vá até o Baú da Guilda no terreno.', '#ff9a8a'); break; } const id = val('cput'), n = Math.max(1, Math.floor(+val('cputn') || 1)); if (!id) break; if (!ctx.takeItem(id, n)) { ctx.log('🧰 Você não tem tudo isso.', '#ff9a8a'); break; } H.send({ t: 'g:chest:put', id, n, name: ctx.itemName(id) }); break; }
       case 'motd': { promptBox('Mensagem do dia da guilda:', guild?.motd ?? '', (tx) => H.send({ t: 'g:motd', text: tx }), 200); break; }
       case 'gleave': ctx.ask('⚑ Sair da guilda', `Sair da ${guild?.name}? Se você for o último, a guilda acaba.`, 'Sair', (ok) => { if (ok) H.send({ t: 'g:leave' }); }); break;
       case 'plot': if (guild) ctx.markPlot(guild.plot); break;
@@ -217,6 +222,9 @@ export function createSocial(ctx: {
     /** Ctrl+clique num jogador */ friendChar(name: string) { if (off()) { ctx.log('👥 Sem servidor: amizades moram no servidor.', '#ff9a8a'); return; } H.send({ t: 'a:freq', char: name }); },
     inviteGuild(name: string) { if (!guild) { ctx.log('⚑ Você não tem guilda.', '#ff9a8a'); return; } H.send({ t: 'g:inv', char: name }); },
     /** o Prefeito abre o Livro de Guildas */ startFounding() { founding = true; toggle(true, 'guilda'); },
+    /** a guilda como o mundo a vê (com as peças do terreno) */ worldOf(id: number) { return world.find((q) => q.id === id) as (BookGuild & { build?: { kind: string; gx: number; gy: number }[] }) | undefined; },
+    /** 06/11: abre a guilda numa aba (Quadro e Baú da Guilda no terreno) */ openGuildTab(t: 'visao' | 'bau') { gtab = t; toggle(true, 'guilda'); },
+    /** 06/11: o terreno da minha guilda no mapa (modo de obra → Guilda) */ markMyPlot() { if (guild) ctx.markPlot(guild.plot); },
     /** 06/11: o Livro de Guildas (Biblioteca e Prefeito) */ openBook() { openGuildBook(world, H.state === 'on', guild?.id ?? null); },
     /** 06/11: o esforço do membro nas missões do dia da guilda (o servidor soma e limita) */
     prog(kind: 'kill' | 'elite' | 'quest' | 'gather', n = 1) { if (guild && H.state === 'on') H.send({ t: 'g:prog', kind, n }); },

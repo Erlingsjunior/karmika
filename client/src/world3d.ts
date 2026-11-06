@@ -230,7 +230,7 @@ export function buildWorld(world: World): WorldObjs {
       for (let i = 0; i < 5; i++) { const ms = new THREE.Mesh(new THREE.SphereGeometry(0.09, 6, 5), mossM); ms.scale.set(1.2, 0.5, 0.8); ms.position.set(Math.cos(i * 1.9) * 0.36, 0.25 + i * 0.28, Math.sin(i * 1.9) * 0.36); ST.add(ms); } // musgo na estátua
       L.glows.push({ light: nullLight, base: 8, seed: r() * 50, warm: false, pos: new THREE.Vector3(wx, wy + SY + 1.3, wz + 1.2), color: 0x6fc7ff } as WorldObjs['glowLights'][number]);
       L.fountain = new THREE.Vector3(wx, wy, wz);
-    } else if (p.kind === 'chest') {
+    } else if (p.kind === 'chest' || p.kind === 'gchest') { /* 06/11: o Baú da Guilda usa o mesmo baú */
       /* Baú de tesouro (cai item): tábuas DEITADAS, tampa abaulada de verdade, cintas de ferro que abraçam corpo e tampa,
        *  cantoneiras e fechadura de latão. Tudo num subgrupo centrado no tile, para o giro não tirar o baú do lugar. */
       const cg = new THREE.Group(); cg.position.set(Wm / 2, 0, Dm / 2); g.add(cg);
@@ -350,7 +350,7 @@ export function buildWorld(world: World): WorldObjs {
         for (const sx of [-0.4, 0.4]) { const ch2 = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.36, 4), std(0x3a3a40)); ch2.position.set(sx, 2.6, 1.08); bg.add(ch2); } }
       const fp = (typeof fountainRef !== 'undefined' && fountainRef) ? fountainRef : null;
       bg.rotation.y = fp ? Math.atan2(fp.x - wx, fp.z - wz) : 0;
-    } else if (p.kind === 'noticeboard') {
+    } else if (p.kind === 'noticeboard' || p.kind === 'gboard') { /* 06/11: o Quadro da Guilda usa a mesma tábua */
       // tábua de avisos: dois postes, telhadinho, papéis pregados (contratos, recompensas, um cartaz de procurado)
       const wood = std(0xffffff, { map: plankTex(0x5a3a20) }), dark = std(0x3a2414), iron = std(0x3a3a40);
       const bg = new THREE.Group(); bg.position.set(Wm / 2, 0, Dm / 2); bg.rotation.y = [0, Math.PI / 2, Math.PI, -Math.PI / 2][p.variant ?? 0] ?? 0; /* de frente para a rua (world.ts) */ g.add(bg);
@@ -654,7 +654,7 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
   const firstRot = () => { for (const c of g.children) if ((c as THREE.Group).isGroup) return c.rotation.y; return 0; };
   if (p.kind === 'bench' && artGeo('vila_balanco')) { const ry = firstRot(); stripMeshes(g); put('vila_balanco', Wm / 2, Dm / 2, ry, 0.95); }
   else if (p.kind === 'stall' && artGeo('vila_barraca')) { stripMeshes(g); put('vila_barraca', Wm / 2, Dm / 2, p.ry ?? 0, 0.9); }
-  else if (p.kind === 'chest' && artGeo('biblioteca_bau')) { const ry = firstRot(); stripMeshes(g); g.traverse((o) => { if (o.userData.dyn) o.traverse((c) => { if ((c as THREE.Mesh).isMesh) c.visible = false; }); }); put('biblioteca_bau', Wm / 2, Dm / 2, ry, 0.85); }
+  else if ((p.kind === 'chest' || p.kind === 'gchest') && artGeo('biblioteca_bau')) { const ry = firstRot(); stripMeshes(g); g.traverse((o) => { if (o.userData.dyn) o.traverse((c) => { if ((c as THREE.Mesh).isMesh) c.visible = false; }); }); put('biblioteca_bau', Wm / 2, Dm / 2, ry, 0.85); }
   else if (p.kind === 'vault' && artGeo('biblioteca_bau')) { /* 03/11 (Erling: "nosso baú grande é só pegar o asset do baú e aumentar ele em escala"): o Baú do Caminhante é o baú do Herik, 1,6× maior, sobre o tablado de pedra */
     const ry = firstRot(); stripMeshes(g, (o) => !!o.userData.vbase); const m = put('biblioteca_bau', Wm / 2, Dm / 2, ry, 1.6); if (m) m.position.y = 0.14; }
   else if (p.kind === 'tower' && artGeo('muralha_02')) { stripMeshes(g); const k = (p.height + 3) / artGeo('muralha_02')!.userData.h; put('muralha_02', Wm / 2, Dm / 2, 0, k);
