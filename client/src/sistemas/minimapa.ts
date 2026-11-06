@@ -163,7 +163,7 @@ function miniIcons(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (
     else if (p.kind === 'mailbox') ic('📮', p.gx + 0.5, p.gy + 0.5, '#a0d8a0');
     else if (p.kind === 'vault') ic('🏦', p.gx + p.w / 2, p.gy + p.h / 2, '#a0d8a0');
     else if (p.kind === 'noticeboard') ic('📋', p.gx + 0.5, p.gy + 0.5, '#a0d8a0');
-    else if (p.kind === 'library') ic('📚', p.gx + p.w / 2, p.gy + p.h / 2, '#a0d8a0');
+    else if (p.kind === 'library') ic(p.variant === 2 ? '🏛' : '📚', p.gx + p.w / 2, p.gy + p.h / 2, p.variant === 2 ? '#ffd98a' : '#a0d8a0');
     else if (p.kind === 'herb' && !(p as { gone?: boolean }).gone) ic('🌿', p.gx + 0.5, p.gy + 0.5, '#7ad07a', 0.75);
     else if (p.kind === 'rock' && (p.variant ?? 0) >= 2 && !(p as { gone?: boolean }).gone) ic('⛏', p.gx + 0.5, p.gy + 0.5, '#c0b0a0', 0.75);
     else if (p.kind === 'chest' && !(p as { gone?: boolean }).gone) ic('📦', p.gx + 0.5, p.gy + 0.5, '#ffd24a', 0.8);

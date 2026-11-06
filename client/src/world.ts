@@ -2,6 +2,7 @@ import { pickSpecies, type Species } from './flora3d';
 import { pickPlant, WATER_PLANTS, type Plant } from './plantas3d';
 import { CAMPAIGN_NPCS } from './campanha';
 import { DUNGEONS } from './masmorras';
+import { LIB_FOOT, PREF_MAYOR } from './predios-dados';
 import type { Tile } from '@karmika/shared';
 /** os nomes dos lugares de ofício: na cidade são casas de verdade; na vila, coisa simples (Erling, 25/10) */
 export const STATION_NAMES = {
@@ -1933,8 +1934,8 @@ export function buildCity(): World {
      Casas comuns cedem o lugar (nunca templo, castelo, escola ou loja com nome); árvore e pedra solta saem. O chão de dentro vira praça. */
   const libs: { gx: number; gy: number; w: number; h: number; v: number; name: string }[] = [];
   { const SOFT = new Set<string>([...SOFT_KINDS, 'mailbox']);
-    const want: [string, number, string, number, number, number][] = [['Askavik', 0, 'Grande Biblioteca de Askavik', -22, 22, 10], ['Lumenhal', 1, 'Biblioteca de Lumenhal', 0, 4, 2]];
-    for (const [vila, v, name, ox, oy, maxH] of want) { const t = settlements.find((q) => q.name === vila); if (!t) continue; const W = v ? 11 : 18, H = v ? 9 : 14;
+    const want: [string, number, string, number, number, number][] = [['Askavik', 0, 'Grande Biblioteca de Askavik', -22, 22, 10], ['Lumenhal', 1, 'Biblioteca de Lumenhal', 0, 4, 2], ['Lumenhal', 2, 'Prefeitura de Lumenhal', 2, -14, 4]]; /* 06/11: a Prefeitura (salão do Prefeito e do Livro de Guildas) */
+    for (const [vila, v, name, ox, oy, maxH] of want) { const t = settlements.find((q) => q.name === vila); if (!t) continue; const W = LIB_FOOT[v].w, H = LIB_FOOT[v].h;
       const busyB = new Set<number>(); for (const p of props) { if (SOFT.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.add(y * 100000 + x); }
       const okT = (x: number, y: number) => inb(x, y) && !busyB.has(y * 100000 + x) && (['grass', 'plaza', 'road', 'tree'] as Tile[]).includes(map[y][x]);
       search: for (let r = 0; r <= 60; r++) for (let a = 0; a < Math.max(1, r * 6); a++) { const gx = Math.round(t.x + ox + Math.cos(a / Math.max(1, r * 6) * 6.283) * r) - (W >> 1), gy = Math.round(t.y + oy + Math.sin(a / Math.max(1, r * 6) * 6.283) * r) - (H >> 1);
@@ -1948,8 +1949,8 @@ export function buildCity(): World {
         for (const p of over) { const i = props.indexOf(p); if (i >= 0) props.splice(i, 1); }
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza';
-        props.push({ kind: 'library', gx, gy, w: W, h: H, height: v ? 9 : 22, wall: 0xd8d0c0, roof: 0x5a9a86, variant: v, ry: 0, label: name });
-        libs.push({ gx, gy, w: W, h: H, v, name }); pois.push({ name: v ? name : 'Grande Biblioteca', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
+        props.push({ kind: 'library', gx, gy, w: W, h: H, height: v === 2 ? 16 : v ? 9 : 22, wall: 0xd8d0c0, roof: 0x5a9a86, variant: v, ry: 0, label: name });
+        libs.push({ gx, gy, w: W, h: H, v, name }); pois.push({ name: v === 2 ? 'Prefeitura' : v ? name : 'Grande Biblioteca', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
   const libAt = (v: number) => libs.find((q) => q.v === v);
   /* URBANISMO (27/10, Erling: "não podemos ter casas e construções perto de monumentos; cada monumento tem que ter seu espaço reservado,
@@ -1983,7 +1984,7 @@ export function buildCity(): World {
     const occ = new Set<number>(); for (const p of props) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) occ.add(y * 100000 + x);
     const freeAt = (x0: number, y0: number) => { for (let r = 0; r < 14; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.round(x0 + Math.cos((a / Math.max(1, r * 8)) * 6.283) * r), y = Math.round(y0 + Math.sin((a / Math.max(1, r * 8)) * 6.283) * r);
       if (inb(x, y) && !occ.has(y * 100000 + x) && (['grass', 'plaza', 'road'] as Tile[]).includes(map[y][x])) return { x: x + 0.5, y: y + 0.5 }; } return { x: x0, y: y0 }; };
-    for (const c of CAMPAIGN_NPCS) { const po = settlements.find((q) => q.name === c.vila) ? null : pois.find((q) => q.name === c.vila); const t = settlements.find((q) => q.name === c.vila) ?? (po ? settlements.slice().sort((a2, b2) => Math.hypot(a2.x - po.x, a2.y - po.y) - Math.hypot(b2.x - po.x, b2.y - po.y))[0] : undefined); if (!t) continue; const base = po ?? t; /* quem mora num lugar (a igreja), não numa vila */ const L0 = c.name.includes('Ormund') ? libAt(0) : undefined; const at = L0 ? { x: L0.gx + L0.w / 2, y: L0.gy + L0.h / 2 + 1.5 } /* o cronista dentro da Grande Biblioteca, no balcão diante da rotunda */ : freeAt(base.x + c.dx, base.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : po ? 0.4 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines, onlyQ: c.onlyQ }); }
+    for (const c of CAMPAIGN_NPCS) { const po = settlements.find((q) => q.name === c.vila) ? null : pois.find((q) => q.name === c.vila); const t = settlements.find((q) => q.name === c.vila) ?? (po ? settlements.slice().sort((a2, b2) => Math.hypot(a2.x - po.x, a2.y - po.y) - Math.hypot(b2.x - po.x, b2.y - po.y))[0] : undefined); if (!t) continue; const base = po ?? t; /* quem mora num lugar (a igreja), não numa vila */ const L0 = c.name.includes('Ormund') ? libAt(0) : undefined, LP = c.name === 'Prefeito Corvin Aldmar' ? libAt(2) : undefined; const at = L0 ? { x: L0.gx + L0.w / 2, y: L0.gy + L0.h / 2 + 1.5 } /* o cronista dentro da Grande Biblioteca, no balcão diante da rotunda */ : LP ? { x: LP.gx + LP.w / 2 + PREF_MAYOR[0] / 2, y: LP.gy + LP.h / 2 + PREF_MAYOR[1] / 2 } /* 06/11: o Prefeito no salão de atendimento, diante da mesa */ : freeAt(base.x + c.dx, base.y + c.dy); occ.add(Math.floor(at.y) * 100000 + Math.floor(at.x)); t.npcs.push({ name: c.name, role: c.role, kind: c.kind ?? 'nordic', x: at.x, y: at.y, radius: c.kind === 'dwarf' ? 1.5 : po ? 0.4 : 1.2, tint: c.tint, scale: 1.0, lines: c.lines, onlyQ: c.onlyQ }); }
     /* as casas das necessidades de classe (25/10): Adega do Conde, Sangria dos anões, incensos dos magos e da bruxa, orvalho élfico — em chão livre */
     for (const [vila, dx, dy, n] of ([
       ['Uivo Antigo', 3, 2.5, { name: 'Curtidora Rhagna', role: 'Toca das Curtidoras de Selvar', kind: 'nordic', radius: 1.2, tint: 0x5a4030, scale: 1.05, shop: 'toca_selvar', lines: ['Terra de toca e gordura de fera. O mago esqueceu que tem pés.', 'Um mago aqui, de manto limpo? A matilha vai rir a semana inteira.', 'Unguento bom cheira mal. Esse cheira muito mal.'] }],

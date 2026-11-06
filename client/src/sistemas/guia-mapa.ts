@@ -193,7 +193,8 @@ function drawBig() {
     const sz = s0 * 0.6, withLabel = K.mapV.z >= 5.5;
     const put = (glyph: string, x0: number, y0: number, name: string, sub: string, ring: string) => { const x = X(x0), y = Y(y0); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) return; icon(glyph, x, y, sz, ring); if (withLabel) label(name, x, y + sz + 10, 10, '#e8dcc0'); K.mapHits.push({ x, y, r: sz + 2, name, sub }); };
     for (const p of K.city.props) {
-      if (p.kind === 'library') put('📚', p.gx + p.w / 2, p.gy + p.h / 2, p.label || 'Biblioteca', p.variant ? 'Livros, mapas e o orbe dos magos' : 'O cronista, as estantes de dois andares e as três escadas dos subsolos', '#e6c46a');
+      if (p.kind === 'library' && p.variant === 2) put('🏛', p.gx + p.w / 2, p.gy + p.h / 2, p.label || 'Prefeitura', 'O Prefeito Corvin Aldmar: Licença de Guilda e o Livro de Guildas', '#ffd98a');
+      else if (p.kind === 'library') put('📚', p.gx + p.w / 2, p.gy + p.h / 2, p.label || 'Biblioteca', p.variant ? 'Livros, mapas e o orbe dos magos' : 'O cronista, as estantes de dois andares e as três escadas dos subsolos', '#e6c46a');
       if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) put(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, p.label || si.name, `Lugar de trabalho · ${K.PROF_NAME[si.prof] ?? si.prof}`, '#8ab4d8'); }
       else if (p.kind === 'mailbox') put('📮', p.gx + 0.5, p.gy + 0.5, 'Correio', 'Cartas e encomendas', '#a0d8a0');
       else if (p.kind === 'vault') put('🏦', p.gx + p.w / 2, p.gy + p.h / 2, 'Cofre', 'Guarde itens e ouro', '#a0d8a0');

@@ -9,12 +9,15 @@
 import * as THREE from 'three';
 import { std, ink, stoneTex, plankTex, woodTex, shingleTex, ramp } from './toon3d';
 import { CUTAWAYS } from './stations3d';
+import { buildPrefeitura, PREF_WALLS } from './prefeitura3d';
+import { LIB_FOOT } from './predios-dados';
 
 /** pegada em tiles (2 m) e paredes sólidas em metros locais [x0, z0, x1, z1] (com a porta aberta no meio da frente) */
-export const LIB_SIZE: Record<number, { w: number; h: number }> = { 0: { w: 18, h: 14 }, 1: { w: 11, h: 9 } };
+export const LIB_SIZE = LIB_FOOT; /* 2 = a Prefeitura de Lumenhal (prefeitura3d.ts), que usa a mesma colisão, recuo e corte */
 export const LIB_WALLS: Record<number, [number, number, number, number][]> = {
   0: [[-17, -12, 17, -12], [-17, -12, -17, 8.5], [17, -12, 17, 8.5], [-17, 8.5, -3.2, 8.5], [3.2, 8.5, 17, 8.5]],
   1: [[-10, -8, 10, -8], [-10, -8, -10, 6.5], [10, -8, 10, 6.5], [-10, 6.5, -1.8, 6.5], [1.8, 6.5, 10, 6.5]],
+  2: PREF_WALLS,
 };
 /** onde ficam as três escadas dos subsolos da Grande Biblioteca (metros locais) */
 export const LIB_STAIRS: [number, number][] = [[-12.5, -9.5], [0, -10.4], [12.5, -9.5]];
@@ -36,6 +39,7 @@ const nameTex = (label: string, bg: string, fg: string) => tex(1024, 128, (g) =>
 
 type Out = { group: THREE.Group; glows: { x: number; y: number; z: number; color: number; base: number }[] };
 export function buildLibrary(v: number, label: string): Out {
+  if (v === 2) return buildPrefeitura(label);
   seed = 7 + v * 13;
   const g = new THREE.Group(), cut = new THREE.Group(); g.add(cut); CUTAWAYS.push(cut);
   let into: THREE.Object3D = g;
