@@ -1,4 +1,4 @@
-import { runeFxOf, type ROp } from './runas-elfo';
+import { runeFxOf, type ROp } from './runas-classes';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';

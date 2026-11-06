@@ -1,3 +1,4 @@
+import { runeAppliedText } from '../runas-classes';
 /* Os ENCAIXES DE RUNA na ficha da magia (Árvore Kármica, K). 03/11. Clique num encaixe vazio: aparecem as runas da mochila; clique numa
    runa: encaixa. Clique na runa encaixada: tira (custa ouro, a runa volta inteira para a mochila). Regras: runas-magia.ts. */
 import { RFAM, RNAME, RNAT, RCOL, RICON, GRAUS, GMUL, parseRune, runesOf, setRune, slotsFor, unslotCost, frestaSoul, frestaText } from '../runas-magia';
@@ -39,7 +40,7 @@ export function runeSlots(root: HTMLElement, c: Ctx) {
     const have = Object.keys(c.inv.bag).filter((k) => parseRune(k) && c.inv.bag[k] > 0).sort((a, b) => RFAM.indexOf(parseRune(a)!.f) - RFAM.indexOf(parseRune(b)!.f) || parseRune(b)!.g - parseRune(a)!.g);
     pick = `<div class="rnp">${have.length ? have.map((k) => { const r = parseRune(k)!, dup = used.has(r.f); return `<button data-rin="${k}" ${dup ? 'disabled style="opacity:.4"' : ''} style="--c:${hex(RCOL[r.f])}">${runaSvg(runaIdx(r.f), 18).replace('<svg', `<svg style="color:${hex(RCOL[r.f])}"`)}<span><b>${RNAME[r.f]}</b> ${GRAUS[r.g]} ×${c.inv.bag[k]}${dup ? ' — já está nesta magia' : ''}</span></button>`; }).join('') : '<div class="none">Nenhuma runa na mochila. As runas são do jogo avançado: só caem de monstros do nível 20 para cima, e muito mais de elites e chefes.</div>'}</div>`;
   }
-  const fx = cur.map((x) => (x ? parseRune(x) : null)).filter((r): r is NonNullable<ReturnType<typeof parseRune>> => !!r).map((r) => `<div style="--c:${hex(RCOL[r.f])}"><b>${RICON[r.f]} ${RNAME[r.f]}:</b> ${c.txt?.[r.f] ?? RNAT[r.f]}</div>`).join('');
+  const fx = cur.map((x) => (x ? parseRune(x) : null)).filter((r): r is NonNullable<ReturnType<typeof parseRune>> => !!r).map((r) => `<div style="--c:${hex(RCOL[r.f])}"><b>${RICON[r.f]} ${RNAME[r.f]}:</b> ${c.txt?.[r.f] ?? RNAT[r.f]}${(() => { const ap = runeAppliedText(c.kit, c.id, r.f); return ap ? `<small class="rnapp">no jogo: ${ap}</small>` : ''; })()}</div>`).join('');
   const box = document.createElement('div'); box.className = 'rnbox';
   box.innerHTML = `<div class="rnh">Runas kármicas <small>1º encaixe no rank 3 · 2º no rank 7</small></div><div class="rns">${slot(0)}${slot(1)}</div>${pick}${fx ? `<div class="rnfx">${fx}</div>` : ''}${cur.some((x) => x && parseRune(x)?.f === 'fresta') ? `<div class="rnsoul">A tua alma está ${frestaText(frestaSoul())}.</div>` : ''}`;
   const btn = det.querySelector('.inv'); if (btn) det.insertBefore(box, btn); else det.appendChild(box);
