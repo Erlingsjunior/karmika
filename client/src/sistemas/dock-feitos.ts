@@ -1,4 +1,5 @@
 /* DOCK DE JANELAS (canto inferior direito) e as janelas de MAGIAS e FEITOS: os botões, os ícones, o aviso de feito conquistado. Saiu do main.ts (02/11). */
+import { ownRuneText } from '../runas-elfo';
 import { DOCK_ICONS } from '../ui/icones';
 import { type Feat, CATS, createFeats, FEATS } from '../feats';
 import { floatWin } from '../windows';
@@ -38,7 +39,7 @@ function renderSkills() {
   { /* 04/11 (Erling: "não acho que precisamos do aviso do instinto na tela de skills"): o cartão do Instinto saiu desta tela (continua na tecla F e no botão da barra) */ const top = false ? skillsEl.querySelector('.tree-top') : null; if (top) { const I = K.myInstinct(), d = document.createElement('div'); d.className = 'instcard' + (K.instintoSys.instinctOn ? ' on' : ''); d.style.setProperty('--ic', I.css);
     d.innerHTML = `<i>✧</i><div><b>${I.name}</b><small>Passiva de classe · ${K.instintoSys.instinctOn ? 'ligada' : 'desligada'} · tecla F</small><p>${I.desc} Com ela ligada você vê rastros, espíritos, dispositivos perdidos e esconderijos que ninguém mais vê; desligada, só a ameaça de verdade te acorda.</p></div><button data-inst>${K.instintoSys.instinctOn ? 'Desligar' : 'Ligar'}</button>`;
     top.after(d); d.querySelector('[data-inst]')!.addEventListener('click', (e) => { e.stopPropagation(); K.toggleInstinct(); renderSkills(); }); } }
-  runeSlots(skillsEl, { id: K.treeSel ?? 'combo', kit: K.kitRace(), rank: K.tree.rank(K.treeSel ?? 'combo'), txt: (() => { const sk = K.kitSkills().find((q) => q.id === (K.treeSel ?? 'combo')); return sk ? runeTextFor(K.compKit(), sk) : null; })(), inv: K.inv, game: K.game, sfx: () => K.audio.rune(1), rerender: renderSkills });
+  runeSlots(skillsEl, { id: K.treeSel ?? 'combo', kit: K.kitRace(), rank: K.tree.rank(K.treeSel ?? 'combo'), txt: (() => { const sk = K.kitSkills().find((q) => q.id === (K.treeSel ?? 'combo')); return sk ? ownRuneText(K.kitRace(), sk.id) ?? runeTextFor(K.compKit(), sk) : null; })(), /* 06/11: o Elfo mostra o efeito próprio que o jogo aplica */ inv: K.inv, game: K.game, sfx: () => K.audio.rune(1), rerender: renderSkills });
   skTabs();
   skillsEl.style.display = 'flex';
 }

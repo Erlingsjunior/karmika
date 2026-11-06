@@ -1,3 +1,4 @@
+import { runeFxOf, type ROp } from './runas-elfo';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
@@ -436,7 +437,32 @@ export function createGameplay(d: GameplayDeps) {
   let runeJump = false;
   const hexC = (f: RFam) => RCOL[f];
   function runeSpark(e: Enemy, f: RFam, n = 6) { const c = hexC(f); for (let i = 0; i < n; i++) d.particles.spawn(e.pos.x, e.pos.y + 1.1, e.pos.z, { vx: rnd(-1.6, 1.6), vy: rnd(0.5, 2.4), vz: rnd(-1.6, 1.6), life: 0.5, s0: 0.24, s1: 0.03, c0: 0xffffff, c1: c, a: 0.95, drag: 1.5 }); }
-  function runeHit(e: Enemy, dmg: number, RF: Partial<Record<RFam, number>>, crit: boolean) {
+  /* 06/11: o efeito PRÓPRIO de cada runa em cada magia (por enquanto o Elfo, runas-elfo.ts). Ele entra no lugar do genérico daquela família;
+     o eco e o salto (que acertam de novo) não disparam as runas outra vez */
+  const freezeHits = new WeakMap<Enemy, number>();
+  function runeOps(e: Enemy, ops: ROp[], g: number, f: RFam) {
+    const hp0 = d.getHero().root.position, sk = skill;
+    for (const o of ops) switch (o.t) {
+      case 'slow': e.slow = Math.max(e.slow ?? 0, o.s * g); break;
+      case 'freezeN': { const n = (freezeHits.get(e) ?? 0) + 1; freezeHits.set(e, n); if (o.n > 0 && n % o.n === 0) { e.state = 'hurt'; e.t = -o.s * g; dmgText(e.pos.clone().setY(e.pos.y + 2.4), 'CONGELADO', false, '#bfe8ff'); } break; }
+      case 'burn': e.burn = Math.max(e.burn ?? 0, o.s * g); e.burnTick = e.burnTick ?? 0; break;
+      case 'mark': e.mark = Math.max(e.mark ?? 0, now + o.s * g); break;
+      case 'root': if (e.alive) { e.state = 'hurt'; e.t = -o.s * g; } break;
+      case 'pull': case 'knock': { const dx = hp0.x - e.pos.x, dz = hp0.z - e.pos.z, dd = Math.hypot(dx, dz) || 1, m = Math.min(o.m * g, o.t === 'pull' ? Math.max(0, dd - 1.5) : 99) * (o.t === 'pull' ? 1 : -1); e.pos.x += (dx / dd) * m; e.pos.z += (dz / dd) * m; break; }
+      case 'healHit': st.hp = Math.min(st.hpMax, st.hp + st.hpMax * o.pct * g); break;
+      case 'echo': { const from = e.pos.clone(); pending.push({ at: now + o.d, fn: () => { if (!e.alive) return; runeSpark(e, f, 4); const was = skill; skill = sk; runeJump = true; try { hitEnemy(e, o.mul * g, false, from); } finally { runeJump = false; skill = was; } } }); break; }
+      case 'seek': { const near = enemies.list.filter((q) => q !== e && q.alive && q.active && !q.def.passive && Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z) < 7).sort((a, b) => Math.hypot(a.pos.x - e.pos.x, a.pos.z - e.pos.z) - Math.hypot(b.pos.x - e.pos.x, b.pos.z - e.pos.z)).slice(0, o.n);
+        const a = e.pos.clone().setY(e.pos.y + 1.1); for (const nx of near) { const b = nx.pos.clone().setY(nx.pos.y + 1.1); for (let i = 0; i <= 8; i++) { const p2 = a.clone().lerp(b, i / 8); d.particles.spawn(p2.x, p2.y, p2.z, { life: 0.35, s0: 0.18, s1: 0.03, c0: 0xffffff, c1: hexC(f), a: 0.9 }); } runeJump = true; try { hitEnemy(nx, o.mul * Math.min(g, 1.5), false, a); } finally { runeJump = false; } } break; }
+      case 'boom': { const x = e.pos.x, z = e.pos.z, go = () => { const y = d.world.heightAt(x, z); runeJump = true; try { explode(x, z, y, o.r, o.mul * g, RCOL[f], 0, new THREE.Vector3(x, y, z), (sk ?? 'combo') as SkillId, false); } finally { runeJump = false; } }; if (o.d) pending.push({ at: now + o.d, fn: go }); else go(); break; }
+      case 'deathBoom': if (!e.alive) { const x = e.pos.x, z = e.pos.z, y = d.world.heightAt(x, z); runeJump = true; try { explode(x, z, y, o.r, o.mul * g, RCOL[f], 0, new THREE.Vector3(x, y, z), (sk ?? 'combo') as SkillId, false); } finally { runeJump = false; } } break;
+      case 'fireGround': fireGround(e.pos.x, e.pos.z, o.r, o.s, 0.8 * g); break;
+      case 'iceGround': { const x = e.pos.x, z = e.pos.z, y = d.world.heightAt(x, z), r = o.r; let tk = 0; ticks.push({ t: o.s, fn: (dt2) => { if (Math.random() < dt2 * 14 * r) { const a = Math.random() * 6.283, q = Math.sqrt(Math.random()) * r; d.particles.spawn(x + Math.cos(a) * q, y + 0.08, z + Math.sin(a) * q, { vy: rnd(0.1, 0.4), life: 0.7, s0: 0.3, s1: 0.06, c0: 0xffffff, c1: 0x8ad8ff, a: 0.7 }); }
+        tk -= dt2; if (tk <= 0) { tk = 0.4; for (const q of enemies.list) if (q.alive && q.active && Math.hypot(q.pos.x - x, q.pos.z - z) < r + q.def.radius) q.slow = Math.max(q.slow ?? 0, 0.8); } } }); break; }
+    }
+    runeSpark(e, f, 4);
+  }
+  function runeHit(e: Enemy, dmg: number, RF0: Partial<Record<RFam, number>>, crit: boolean) {
+    let RF = RF0; if (!runeJump) { let own = false; const rest: Partial<Record<RFam, number>> = {}; for (const f of Object.keys(RF0) as RFam[]) { const fx = runeFxOf(kitKey, skill, f); if (fx) { own = true; if (fx.hit?.length) runeOps(e, fx.hit, RF0[f]!, f); else if (f === 'fresta') runeSpark(e, f, 3); } else rest[f] = RF0[f]; } if (own) RF = rest; }
     if (RF.lagrima) { e.slow = Math.max(e.slow ?? 0, 1.4 * RF.lagrima); runeSpark(e, 'lagrima', 3); }
     if (RF.fome) { e.burn = Math.max(e.burn ?? 0, 2 + RF.fome); e.burnTick = e.burnTick ?? 0; st.hp = Math.min(st.hpMax, st.hp + dmg * 0.04 * RF.fome); runeSpark(e, 'fome', 3); }
     if (RF.olho && crit) { e.mark = Math.max(e.mark ?? 0, now + 1.5 * RF.olho); runeSpark(e, 'olho', 5); }
@@ -449,8 +475,10 @@ export function createGameplay(d: GameplayDeps) {
   /** ao lançar uma magia com runa: a Ampulheta encurta a recarga, a Lágrima cura um pouco, a Fresta cobra vida e marca a alma */
   function runeCast(id: string, hp: THREE.Vector3) {
     const RF = fams(kitKey, id), ks = Object.keys(RF) as RFam[]; if (!ks.length) return;
-    if (RF.ampulheta && cdX[id]) cdX[id] *= Math.max(0.5, 1 - 0.15 * RF.ampulheta);
-    if (RF.lagrima) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02 * RF.lagrima * (1 + stance.heal));
+    for (const f of ks) { const fx = runeFxOf(kitKey, id, f); if (!fx?.cast) continue; for (const o of fx.cast) { if (o.t === 'heal') { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * o.pct * RF[f]! * (1 + stance.heal)); dmgText(hp.clone().setY(hp.y + 2.6), `+${Math.round(st.hpMax * o.pct * RF[f]!)}`, false, '#8ae08a'); } else if (o.t === 'cdr' && cdX[id]) cdX[id] *= Math.max(0.3, 1 - (1 - o.k) * RF[f]!); } }
+    const own = (f: RFam) => !!runeFxOf(kitKey, id, f);
+    if (RF.ampulheta && cdX[id] && !own('ampulheta')) cdX[id] *= Math.max(0.5, 1 - 0.15 * RF.ampulheta);
+    if (RF.lagrima && !own('lagrima')) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.02 * RF.lagrima * (1 + stance.heal));
     if (RF.fresta) { st.hp = Math.max(1, st.hp - st.hpMax * 0.03); const v = frestaMark(); if (v === 20 || v === 120 || v === 400) logMsg(v >= 400 ? '🌑 A tua alma está aberta para o entre. Os Desfiados sabem o teu nome.' : v >= 120 ? '🌑 A Fresta racha a tua alma: a Ordem do Fio passou a te olhar torto.' : '🌑 Um fio de cinza na alma: a Fresta cobra o que dá.', '#a890d8'); }
     for (const f of ks) { const c = hexC(f); for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; d.particles.spawn(hp.x + Math.cos(a) * 0.9, hp.y + 0.2, hp.z + Math.sin(a) * 0.9, { vx: Math.cos(a) * 0.4, vy: rnd(1.2, 2.4), vz: Math.sin(a) * 0.4, life: 0.7, s0: 0.22, s1: 0.03, c0: 0xffffff, c1: c, a: 0.85 }); } }
   }
