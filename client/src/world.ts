@@ -106,12 +106,11 @@ const REGIONS_L: Region[] = [
   { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 50, hi: 60, col: '#5ab05a' },
   /* 07/11 (Erling: "faltam monstros de nível 120 a 150 para quem está no topo"): AS BORDAS DO MUNDO. Longe dos três berços, nas pontas do
      mapa, a faixa sobe do 60 ao 150. O nível base para no 120: do 120 ao 150 é para grupo e para quem tem a Classe II */
-  { id: 23, name: 'Picos de Jotunheim', x: 792, y: 78, lo: 60, hi: 80, col: '#c8e0ff' },
+  { id: 23, name: 'Picos de Jotunheim', x: 346, y: 52, lo: 60, hi: 80, col: '#c8e0ff' }, /* 07/11: saiu do vulcão; agora é a serra de gelo nórdica ao norte, entre Hrimgard e Midvangr */
   { id: 24, name: 'Pântano do Fim', x: 35, y: 690, lo: 60, hi: 80, col: '#6a8a5a' },
   { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 80, hi: 100, col: '#9a8ab8' },
   { id: 26, name: 'Costa dos Naufrágios', x: 210, y: 822, lo: 80, hi: 100, col: '#7aa8b8' },
   { id: 27, name: 'Ermos de Sheitã', x: 828, y: 560, lo: 100, hi: 125, col: '#c05a3a' },
-  { id: 28, name: 'Trono de Cinzas', x: 480, y: 52, lo: 125, hi: 150, col: '#ff5a2a' },
 ];
 /** região do tile (Voronoi com ruído: bordas que serpenteiam) */
 function regionAt_L(x: number, y: number): Region {
@@ -406,11 +405,25 @@ export function centerW(ax: number, ay: number) {
   const u = (ax - 420) / 222 + (fbm(ax * 0.012, ay * 0.012, 111) - 0.5) * 0.26, v = (ay - 420) / 222 + (fbm(ax * 0.012 + 7, ay * 0.012 + 3, 112) - 0.5) * 0.26;
   return smoothstep(1.08, 0.9, Math.pow(Math.pow(Math.abs(u), 4) + Math.pow(Math.abs(v), 4), 0.25));
 }
+/* 07/11 (Erling: "os Picos de Jotunheim são nórdicos: no gelo, na serra entre Hrimgard e o Passo de Midvangr, até o mar"): uma CORDILHEIRA de
+   gelo que desce da costa norte até a Cordilheira do Norte, separando o gelo viking do verde de Midvangr. Tem passos (gargantas) onde as
+   estradas cruzam e onde há vila, para nenhuma estrada ficar presa. Devolve 0..1 (1 = espinha da serra) */
+const JOT_PL: [number, number][] = [[352, -6], [342, 38], [350, 92], [364, 148], [378, 214]];
+const JOT_GAP: [number, number][] = [[292, 96], [420, 168], [392, 42], [402, 150], [372, 232]];
+const segDj = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => { const dx = bx - ax, dy = by - ay, t = clamp01(((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)); return Math.hypot(px - ax - dx * t, py - ay - dy * t); };
+export function jotunRidge(ax: number, ay: number): number {
+  if (ax < 280 || ax > 440 || ay > 250) return 0;
+  const wx = ax + (fbm(ax * 0.03, ay * 0.03, 171) - 0.5) * 22; let d = 1e9; for (let i = 0; i < JOT_PL.length - 1; i++) d = Math.min(d, segDj(wx, ay, ...JOT_PL[i], ...JOT_PL[i + 1]));
+  let r = smoothstep(26, 10, d);
+  /* gargantas: estrada de Kaldrfoss e de Hrimgard para Midvangr, e as vilas perto da serra */
+  r *= smoothstep(6, 14, segDj(ax, ay, 262, 30, 420, 168)) * smoothstep(6, 14, segDj(ax, ay, 292, 96, 420, 168));
+  for (const [gx, gy] of JOT_GAP) r *= smoothstep(16, 30, Math.hypot(ax - gx, ay - gy));
+  return r; }
 function zoneOuter(ax: number, ay: number): ZoneW {
   const X = ax + (fbm(ax * 0.014, ay * 0.014, 121) - 0.5) * 70 + (fbm(ax * 0.05, ay * 0.05, 123) - 0.5) * 18, Y = ay + (fbm(ax * 0.014 + 5, ay * 0.014 + 9, 122) - 0.5) * 70 + (fbm(ax * 0.05 + 2, ay * 0.05 + 8, 124) - 0.5) * 18;
   const E = (r: { x: number; y: number; rx: number; ry: number }, edge = 0.72) => smoothstep(1, edge, Math.hypot((X - r.x) / r.rx, (Y - r.y) / r.ry));
   const L = LORE;
-  const snow = E(L.viking);
+  const snow = Math.max(E(L.viking), jotunRidge(ax, ay));
   const volcanic = E(L.negra) * (1 - snow);
   const blight = Math.max(E(L.vampira, 0.6), E(L.desgraca)) * (1 - volcanic);
   const enchanted = E(L.encantada) * (1 - snow);
@@ -445,6 +458,7 @@ export function mountainH(tx: number, ty: number, z: ZoneW): number {
        degraus largos com uma rampa suave entre eles, e uma crista de ruído para a encosta não ser lisa */
     const dC = Math.hypot(tx - 211 - SH, ty - 156 - SH), sC = smoothstep(34, 0, dC), steps = 4, q = sC * steps, fl = Math.floor(q), fr = q - fl, tread = smoothstep(0.35, 0.65, fr);
     const terr = (fl + tread) / steps; h += Math.pow(z.snow, 1.4) * (2.5 + 8 * ridged(tx * 0.045, ty * 0.045, 61)) + 9 * (0.55 * sC + 0.45 * terr) * z.snow + 0.6 * ridged(tx * 0.2, ty * 0.2, 64) * sC * z.snow; }
+  { const jr = jotunRidge(tx, ty); if (jr > 0.01) h += Math.pow(jr, 1.3) * (7 + 16 * ridged(tx * 0.07, ty * 0.07, 172)); } /* os Picos de Jotunheim: espinha alta e serrilhada */
   if (z.rock > 0.05) h += Math.pow(z.rock, 1.3) * (1.5 + 6 * ridged(tx * 0.06, ty * 0.06, 62));
   if (z.volcanic > 0.05) { // Montanha Negra: cristas negras e o cone que pulsa lava, com cratera no topo
     const dV = Math.hypot(tx - LORE.negra.x, ty - LORE.negra.y + 8); h += Math.pow(z.volcanic, 1.2) * (4 + 10 * ridged(tx * 0.04, ty * 0.04, 63)) + 26 * smoothstep(70, 6, dV) - 9 * smoothstep(9, 2, dV); }
@@ -2186,7 +2200,7 @@ export const WILD = WILD_L.map((w) => shP(w));
 
 /** os arquipélagos (coordenadas do mundo). Sem cidades: ilhas inóspitas, com os bichos mais fortes de Karmika. Cada uma tem relevo e clima próprios:
     a oeste o frio e a noite, a leste o latão e o fogo. */
-export interface Isle { id: number; name: string; biome: Biome; lo: number; hi: number; col: string; peak: number; blobs: { x: number; y: number; r: number }[]; fauna: EnemyType[]; boss: EnemyType[] }
+export interface Isle { /** 07/11: península presa ao continente (sem navio) */ pen?: boolean; id: number; name: string; biome: Biome; lo: number; hi: number; col: string; peak: number; blobs: { x: number; y: number; r: number }[]; fauna: EnemyType[]; boss: EnemyType[] }
 /* 07/11 (Erling: "as ilhas estão idênticas — tem que ser ORGÂNICO: umas mais perto, outras mais longe, formatos e tamanhos diferentes,
    ilhotas em volta das maiores, arquipélagos"). Cada ilha nasce de uma ESPINHA torta (crescente, gancho, cadeia, maciço), com a largura
    variando ao longo dela, e uma nuvem de ilhotas irregulares em volta — cada uma com a sua semente. */
@@ -2216,7 +2230,18 @@ export const ISLES: Isle[] = [
   { id: 44, name: 'Ilhas de Cinza de Surtr', biome: 'volcanic', lo: 135, hi: 150, col: '#ff6a2a', peak: 40,
     blobs: isleBlobs(4404, 1352, 1240, { len: 130, ang: 2.4, bend: 46, wide: 40, n: 8, islets: 8, spread: 40 }),
     fauna: ['hellhound', 'skull_fire', 'imp_bomb', 'inquisitor', 'pactbroken', 'troll'], boss: ['glutton', 'suplicio'] },
+  /* 07/11 (Erling: "uma península no fim, coroada pelo Trono de Cinzas, uma região inóspita e vulcânica"): sai da costa norte, entre o
+     Passo de Midvangr e o Coração da Montanha Negra, e entra no mar do norte. Presa ao continente: chega-se a pé, sem navio. A ponta é o trono */
+  { id: 45, pen: true, name: 'Trono de Cinzas', biome: 'volcanic', lo: 125, hi: 150, col: '#ff5a2a', peak: 34,
+    blobs: isleBlobs(4505, 902, 338, { len: 250, ang: Math.PI / 2 + 0.1, bend: 22, wide: 32, n: 12, islets: 5, spread: 20 }),
+    fauna: ['hellhound', 'skull_fire', 'imp_bomb', 'pactbroken', 'troll', 'inquisitor'], boss: ['suplicio', 'glutton'] },
 ];
+const PEN = ISLES.find((I) => I.pen)!;
+/** distância com sinal para dentro da península (sem as outras ilhas: é chamado muitas vezes na costa norte) */
+function penSD(tx: number, ty: number) { if (ty > DXW + 150 || Math.abs(tx - 902) > 220) return -99; let acc = -1e9; const wx = tx + (fbm(tx * 0.022, ty * 0.022, 960) - 0.5) * 26, wy = ty + (fbm(tx * 0.022 + 7, ty * 0.022, 961) - 0.5) * 26;
+  for (const b of PEN.blobs) { const dx = wx - b.x, dy = wy - b.y; if (Math.abs(dx) > b.r * 2 + 30 || Math.abs(dy) > b.r * 2 + 30) continue; const wob = (fbm(tx * 0.06 + PEN.id, ty * 0.06, 900 + PEN.id) - 0.5) * 0.7; const d = b.r * (1 + wob) - Math.hypot(dx, dy);
+    const k = 7, h = Math.max(0, Math.min(1, 0.5 + 0.5 * (d - acc) / k)); acc = acc < -1e8 ? d : d * h + acc * (1 - h) + k * h * (1 - h); }
+  return acc; }
 /** ilhotas soltas no mar (sem região, sem bicho): pedras e coqueiros — o mar não é vazio */
 const ISLETS_FREE: { x: number; y: number; r: number }[] = ((() => { const R = rng(4506), L: { x: number; y: number; r: number }[] = [];
   for (let k = 0; k < 60 && L.length < 26; k++) { const x = 40 + R() * 1480, y = 40 + R() * 1480; const inC = x > DXW - 50 && x < DXW + MAP_W_L + 50 && y > DXW - 50 && y < DXW + MAP_H_L + 50; if (inC) continue; L.push({ x: Math.round(x), y: Math.round(y), r: Math.round(3 + R() * R() * 9) }); } return L; })());
@@ -2250,6 +2275,7 @@ function coastK(tx: number, ty: number): number {
   const qx = Math.max(RC - lx, lx - (W1 - RC), 0), qy = Math.max(RC - ly, ly - (H1 - RC), 0); const e = qx > 0 && qy > 0 ? RC - Math.hypot(qx, qy) : Math.min(lx, ly, W1 - lx, H1 - ly);
   if (e > 130) return 0;
   if (Math.hypot(lx - PORTO_L.x, ly - PORTO_L.y) < 95) return 0;
+  if (ly < 150) { const ps = penSD(tx, ty); if (ps > 6) return 0; } /* 07/11: a raiz da península não vira mar */
   const t = 6 + Math.max(0, fbm(tx * 0.0045, ty * 0.0045, 970) - 0.28) * 190 + (fbm(tx * 0.025, ty * 0.025, 972) - 0.5) * 38 + (fbm(tx * 0.08, ty * 0.08, 971) - 0.5) * 9;
   let k = smoothstep(t + 3, t - 3, e); if (k <= 0) return 0;
   for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]) + (fbm(tx * 0.06, ty * 0.06, 973) - 0.5) * 30, r = protPts[i + 2]; if (d < r + 40) k *= smoothstep(r + 4, r + 40, d); } /* o chão protegido também tem borda torta (nada de círculo) */
@@ -2260,15 +2286,15 @@ export function heightAt(xm: number, zm: number): number { const tx = xm / T, ty
 export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = groundH_L(xm - DM, zm - DM, zPre, sdPre); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
 export function waterSD(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return isleAt(tx, ty).sd * T; const k = coastK(tx, ty), w0 = waterSD_L(xm - DM, zm - DM); return k > 0 ? Math.min(w0, (0.5 - k) * 12 * T) : w0; }
 const ZEMPTY = (): ZoneW => ({ meadow: 0, forest: 0, swamp: 0, snow: 0, ruins: 0, rock: 0, volcanic: 0, enchanted: 0, blight: 0, jungle: 0, coast: 0 });
-export function zoneW(ax: number, ay: number): ZoneW { if (inCont(ax, ay)) return zoneW_L(ax - DXW, ay - DXW); const z = ZEMPTY(), I = isleAt(ax, ay); if (I.isle && I.sd > 2) z[I.isle.biome] = 1; else z.coast = 1; return z; }
-export function biomeAt(tx: number, ty: number): Biome { if (inCont(tx, ty)) return coastK(tx, ty) > 0.35 ? 'coast' : biomeAt_L(tx - DXW, ty - DXW); const I = isleAt(tx, ty); return I.isle && I.sd > 3 ? I.isle.biome : 'coast'; }
+export function zoneW(ax: number, ay: number): ZoneW { if (inCont(ax, ay)) { const z0 = zoneW_L(ax - DXW, ay - DXW); const ps = ay < DXW + 150 ? penSD(ax, ay) : -99; if (ps > 0) { const k = smoothstep(0, 14, ps), o = {} as ZoneW; for (const key of Object.keys(z0) as (keyof ZoneW)[]) o[key] = z0[key] * (1 - k); o.volcanic += k; return o; } return z0; } const z = ZEMPTY(), I = isleAt(ax, ay); if (I.isle && I.sd > 2) z[I.isle.biome] = 1; else z.coast = 1; return z; }
+export function biomeAt(tx: number, ty: number): Biome { if (inCont(tx, ty)) { if (ty < DXW + 150 && penSD(tx, ty) > 4) return 'volcanic'; return coastK(tx, ty) > 0.35 ? 'coast' : biomeAt_L(tx - DXW, ty - DXW); } const I = isleAt(tx, ty); return I.isle && I.sd > 3 ? I.isle.biome : 'coast'; }
 export function edgeK(tx: number, ty: number) { return inCont(tx, ty) ? edgeK_L(tx - DXW, ty - DXW) : { north: 0, south: 0, west: 0, east: 0 }; }
 export const canalX = (ty: number) => canalX_L(ty - DXW) + DXW;
 /** as regiões: as do continente (no mundo) e uma por arquipélago; o mar aberto é "Mar de Karmika" */
 const SEA: Region = { id: 40, name: 'Mar de Karmika', x: -999, y: -999, lo: 120, hi: 150, col: '#3a6a9a' };
 export const REGIONS: Region[] = [...REGIONS_L.map((r) => ({ ...r, x: r.x + DXW, y: r.y + DXW })), ...ISLES.map((I) => ({ id: I.id, name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, lo: I.lo, hi: I.hi, col: I.col }))];
 const REG_BY_ID = new Map(REGIONS.map((r) => [r.id, r]));
-export function regionAt(x: number, y: number): Region { if (inCont(x, y)) return REG_BY_ID.get(regionAt_L(x - DXW, y - DXW).id)!; const I = isleAt(x, y); return I.isle && I.isle.id && I.sd > -12 ? REG_BY_ID.get(I.isle.id)! : SEA; }
+export function regionAt(x: number, y: number): Region { if (inCont(x, y)) { if (y < DXW + 150 && penSD(x, y) > 0) return REG_BY_ID.get(PEN.id)!; return REG_BY_ID.get(regionAt_L(x - DXW, y - DXW).id)!; } const I = isleAt(x, y); return I.isle && I.isle.id && I.sd > -12 ? REG_BY_ID.get(I.isle.id)! : SEA; }
 /* as peças que voltam do resto do jogo (muralhas, pontes) chegam nas coordenadas do mundo: aqui voltam para as locais */
 const unRampart = (r: Rampart): Rampart => ({ ...r, wd: undefined, cx: r.cx - DXW, cy: r.cy - DXW, tiles: r.tiles.map((k) => k - DXW * 4096 - DXW), flights: r.flights.map((f) => ({ ...f, tiles: f.tiles.map(([a, b]) => [a - DXW, b - DXW] as [number, number]) })) });
 const shRampart = (r: Rampart): Rampart => ({ ...r, wd: 1, cx: r.cx + DXW, cy: r.cy + DXW, tiles: r.tiles.map((k) => k + DXW * 4096 + DXW), flights: r.flights.map((f) => ({ ...f, tiles: f.tiles.map(([a, b]) => [a + DXW, b + DXW] as [number, number]) })) });
@@ -2325,7 +2351,7 @@ export function buildCity(): World {
     const shipX = sx - ux * 8, shipY = sy - uy * 8; /* ancorado de lado, longe da praia (o casco tem 34 m) */ docks.push({ id, name, x: lx, y: ly, sx: Math.round(shipX), sy: Math.round(shipY), ang: Math.atan2(-ux, -uy), isle }); };
   for (const [nm, r0] of [['Porto Caldeira', 70], ['Skjoldvik', 70], ['Corvoscuro', 70], ['Gorvath', 70], ['Ferrugem', 70]] as const) { const st = w.settlements.find((q) => q.name === nm); if (st) dockFrom('c:' + nm, nm, st.x + D, st.y + D, r0); }
   /* nas ilhas: o desembarque na costa virada para o continente */
-  for (const I of ISLES) { const b = I.blobs.reduce((a, q) => (q.r > a.r ? q : a)); const cx = DXW + MAP_W_L / 2, cy = DXW + MAP_H_L / 2, dd = Math.hypot(cx - b.x, cy - b.y), ux = (cx - b.x) / dd, uy = (cy - b.y) / dd;
+  for (const I of ISLES) { if (I.pen) continue; const b = I.blobs.reduce((a, q) => (q.r > a.r ? q : a)); const cx = DXW + MAP_W_L / 2, cy = DXW + MAP_H_L / 2, dd = Math.hypot(cx - b.x, cy - b.y), ux = (cx - b.x) / dd, uy = (cy - b.y) / dd;
     let lx = b.x, ly = b.y; for (let k = 0; k < 220; k++) { const x = Math.round(b.x + ux * k), y = Math.round(b.y + uy * k); if (map[y]?.[x] === 'water') break; lx = x; ly = y; }
     dockFrom('i:' + I.id, I.name, lx, ly, 40, I.id); const dk = docks[docks.length - 1]; if (dk?.isle === I.id) { let x = dk.x, y = dk.y; for (let k = 0; k < 60 && !landAt(x, y); k++) { x = Math.round(dk.x - ux * k); y = Math.round(dk.y - uy * k); } dk.x = x; dk.y = y; } }
   /* 07/11 (Erling: "todos os lugares que têm porto ganham um farol diferente, com Fonte da Visão contando a viagem; faróis lindos na beirada
