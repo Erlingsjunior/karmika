@@ -423,24 +423,78 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       return `<button class="rslot ${ok ? 'ok' : inBag >= q.n - have ? 'can' : ''}" data-rslot="${q.id}" title="${it?.name ?? q.id}: ${it?.desc ?? ''}"><span class="ic">${it?.icon ?? '?'}</span><b>${q.label}</b><small>${it?.name ?? q.id}</small><i>${ok ? '✔ encaixado' : `${have}/${q.n} · mochila: ${inBag}`}</i></button>`; };
     return `<div class="rtab"><div class="rcol">${REACTOR_PARTS.slice(0, 3).map(slot).join('')}</div><div class="rmid">${reactorSvg(R.charge, fusing, filled)}<div class="rinfo"><b>${Math.round(R.charge * R.cap).toLocaleString('pt-BR')}</b> / ${R.cap.toLocaleString('pt-BR')} de Energia</div></div><div class="rcol">${REACTOR_PARTS.slice(3).map(slot).join('')}</div>
       <p class="rhint">Clique num encaixe para pôr a peça da mochila. Com os seis cheios, as peças se fundem no cilindro e o reator volta à carga máxima. A Energia só gasta com as magias — o Núcleo de Reator pronto (Companhia de Latão) também enche.</p></div>`; }
+  /* 07/11 (Erling: "mudar as bolsas de ordem para não ficar espaços vazios; e do lado de fora uma fileira com o desenho de cada bolsa;
+     clicar numa bolsa abre só ela embaixo da tela, para deixar uma aberta e ir vendo o que pego; a premium aparece, mas apagada se o Premium acabar") */
+  const spF = (id: string) => sellPrice(id);
+  const tagF = (v: number) => shop && v > 0 ? `<i class="ptag">🪙${v}</i>` : '';
+  /** as células da mochila, na ordem: equipamentos, depois pilhas, depois o excesso das bolsas de ofício */
+  function cellsNow(): string[] {
+    const order = ['relic', 'unique', 'epic', 'legendary', 'rare', 'magic', 'normal'];
+    const sorted = [...gearBag].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity) || b.ilvl - a.ilvl);
+    // células: equipamentos primeiro, depois pilhas de até 99 (material: 10.000)
+    const sp = spF;
+    const tag = tagF;
+    const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
+    for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+    { const ov = overflow(); for (let q = 0; q < ov; q++) cells.push(`<div class="it ovf" title="Excesso das Bolsas de Ofício/Mágica: o material que não coube nelas ocupa este espaço da mochila. Venda, use ou guarde no baú para liberar.">📦</div>`); }
+    return cells;
+  }
+  interface BagG { key: string; name: string; icon: string; n: number; on: boolean; why?: string }
+  /** as bolsas na ordem da tela: a mochila primeiro, depois as maiores (sem buraco entre bolsas de tamanhos diferentes). Apagadas = Premium acabou */
+  function bagGroups(): BagG[] {
+    const ext: BagG[] = [{ key: 'gift', name: 'Bolsa do Caminhante (Premium)', icon: '🎁', n: GIFT_BAG, on: isPremium(), why: 'O Premium acabou: a Bolsa do Caminhante volta quando ele voltar.' },
+      ...bags.map((b, i) => ({ key: `x${i}:${b}`, name: ITEMS[b]?.name ?? b, icon: ITEMS[b]?.icon ?? '👝', n: BAGS[b] ?? 0, on: !PREMIUM_BAGS.has(b) || isPremium(), why: PREMIUM_BAGS.has(b) ? 'Bolsa Premium: fica apagada enquanto o Premium estiver desligado.' : undefined }))];
+    ext.sort((a, b) => Number(b.on) - Number(a.on) || b.n - a.n);
+    return [{ key: 'b0', name: 'Mochila', icon: '🎒', n: 16, on: true }, ...ext];
+  }
+  /** as células de cada bolsa ligada */
+  function bagCells(): Map<string, string[]> { const cells = cellsNow(), M = new Map<string, string[]>(); let k = 0; for (const g of bagGroups()) { if (!g.on) continue; M.set(g.key, cells.slice(k, k + g.n)); k += g.n; } return M; }
+  const specialList = () => isPremium() ? [{ key: 'craft', name: 'Bolsa de Ofício', icon: '🧰', set: CRAFT_BAG, cap: CRAFT_CAP }, { key: 'magic', name: 'Bolsa Mágica', icon: '🔮', set: MAGIC_BAG, cap: MAGIC_CAP }] : [];
+  const specialCells = (set: Set<string>) => [...set].filter((k) => (bag[k] ?? 0) > 0).map((i) => `<div class="it ${ITEMS[i]?.kind ?? ''}" draggable="true" data-drag="i:${i}:${bag[i]}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}"><span>${ITEMS[i]?.icon}</span><b>${bag[i]}</b><small>${ITEMS[i]?.name}</small>${tagF(spF(i))}</div>`);
+  /* a fileira de bolsas (embaixo, à direita do orbe) e a bolsa aberta sozinha */
+  const bagBarEl = document.createElement('div'); bagBarEl.id = 'bagbar'; document.body.appendChild(bagBarEl);
+  const mini = document.createElement('div'); mini.id = 'bagmini'; document.body.appendChild(mini);
+  let miniKey: string | null = (() => { try { return localStorage.getItem('karmika.bagmini') || null; } catch { return null; } })();
+  const setMini = (k: string | null) => { miniKey = k; try { if (k) localStorage.setItem('karmika.bagmini', k); else localStorage.removeItem('karmika.bagmini'); } catch { /* */ } render(); };
+  /** a fileira fica colada à direita do orbe do recurso (onde quer que o HUD o ponha) */
+  const placeBar = () => { const o = document.getElementById('mp')?.getBoundingClientRect(); if (!o || !o.width) return; const ui = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+    const bw = bagBarEl.offsetWidth * ui, bh = bagBarEl.offsetHeight * ui;
+    /* à direita do orbe; se não couber (o orbe perto da borda), sobe para cima do orbe, encostada na borda direita */
+    let L = Math.round(o.right + 14), B = Math.round(innerHeight - o.bottom + 4);
+    if (L + bw > innerWidth - 8) { L = Math.round(innerWidth - bw - 10); B = Math.round(innerHeight - o.top + 8); }
+    bagBarEl.style.left = L + 'px'; bagBarEl.style.bottom = B + 'px';
+    const mw = mini.offsetWidth * ui; mini.style.left = Math.max(8, Math.min(L, innerWidth - mw - 10)) + 'px'; mini.style.bottom = (B + bh + 8) + 'px'; };
+  addEventListener('resize', () => requestAnimationFrame(placeBar)); setInterval(placeBar, 2000);
+  function renderBar(M: Map<string, string[]>) {
+    const G = bagGroups(), free = Math.max(0, MAX_BAGS - bags.length);
+    bagBarEl.innerHTML = G.map((g) => { const u = M.get(g.key)?.length ?? 0; return `<button data-bb="${g.key}" class="${g.on ? '' : 'off'} ${miniKey === g.key ? 'cur' : ''} ${g.on && u >= g.n ? 'full' : ''}" title="${g.name}${g.on ? ` — ${u}/${g.n} · clique: abrir só esta bolsa` : ` — ${g.why ?? 'desligada'}`}"><span>${g.icon}</span><i>${g.on ? `${u}/${g.n}` : '✦'}</i></button>`; }).join('')
+      + specialList().map((q) => `<button data-bb="${q.key}" class="spec ${miniKey === q.key ? 'cur' : ''}" title="${q.name} — ${stacksIn(q.set)}/${q.cap} · clique: abrir só esta bolsa"><span>${q.icon}</span><i>${stacksIn(q.set)}/${q.cap}</i></button>`).join('')
+      + Array.from({ length: free }, () => '<button class="slot" disabled title="Lugar livre para bolsa: arraste uma bolsa da mochila para usar"><span>＋</span></button>').join('')
+      + '<button data-bball title="Abrir a mochila inteira (I)" class="all"><span>🗂</span><i>I</i></button>';
+    placeBar();
+  }
+  function renderMini(M: Map<string, string[]>) {
+    if (!miniKey || open) { mini.style.display = 'none'; return; }
+    const sp = specialList().find((q) => q.key === miniKey), g = bagGroups().find((q) => q.key === miniKey);
+    if (!sp && (!g || !g.on)) { mini.style.display = 'none'; return; }
+    const cells = sp ? specialCells(sp.set) : M.get(g!.key) ?? [], n = sp ? Math.max(cells.length, 12) : g!.n, cap = sp ? sp.cap : g!.n;
+    const empties = Array.from({ length: Math.max(0, n - cells.length) }, () => '<div class="it empty"></div>').join('');
+    mini.innerHTML = `<div class="pn"><h2><span>${sp ? sp.icon : g!.icon}</span>${sp ? sp.name : g!.name}<small>${sp ? stacksIn(sp.set) : cells.length}/${cap}</small><button data-mx title="Fechar (a bolsa continua na fileira)">✕</button></h2><div class="grid g6 sc">${cells.join('')}${empties}</div></div>`;
+    mini.style.display = 'block'; placeBar();
+  }
+  bagBarEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-bball]')) { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); return; }
+    const b = t.closest('[data-bb]') as HTMLElement | null; if (!b) return; if (b.classList.contains('off')) { game.logMsg(`✦ ${b.title.split(' — ')[1] ?? 'Bolsa desligada.'}`, '#c9a0ff'); game.snd?.('error'); return; } setMini(miniKey === b.dataset.bb ? null : b.dataset.bb!); });
   function render() {
     tipCtx.lvl = st.lvl; tipCtx.fac = myFac(); tipCtx.why = hooks.canWear;
     tip.style.display = 'none'; hooks.onBag?.();
     if (open) {
-      const order = ['relic', 'unique', 'epic', 'legendary', 'rare', 'magic', 'normal'];
-      const sorted = [...gearBag].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity) || b.ilvl - a.ilvl);
-      // células: equipamentos primeiro, depois pilhas de até 99 (material: 10.000)
-      const sp = (id: string) => sellPrice(id);
-      const tag = (v: number) => shop && v > 0 ? `<i class="ptag">🪙${v}</i>` : '';
-      const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
-      for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+      const cells = cellsNow(), sp = spF, tag = tagF;
       const sec = (key: string, head: string, count: string, body: string, extra = '') => `<section class="acc ${accClosed.has(key) ? 'closed' : ''} ${extra}"><h3 data-acct="${key}"><i class="car">▾</i>${head}<small>${count}</small></h3><div class="accb">${body}</div></section>`;
       const special = (title: string, ic: string, set: Set<string>, hint: string, cap = 0) => { const ids = [...set].filter((k) => (bag[k] ?? 0) > 0); return sec(title, `${ic} ${title}`, `${stacksIn(set)}/${cap} espaços`, `<div class="grid g6 sc" title="${hint}">${ids.map((i) => `<div class="it ${ITEMS[i]?.kind ?? ''}" draggable="true" data-drag="i:${i}:${bag[i]}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${bag[i]}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`).join('') || '<em class="emptyb">vazia</em>'}</div>`, 'spec'); };
-      { const ov = overflow(); for (let q = 0; q < ov; q++) cells.push(`<div class="it ovf" title="Excesso das Bolsas de Ofício/Mágica: o material que não coube nelas ocupa este espaço da mochila. Venda, use ou guarde no baú para liberar.">📦</div>`); }
       const cap = capacity(), used = cells.length;
-      const groups: { name: string; n: number }[] = [{ name: 'Mochila', n: 16 }, ...(isPremium() ? [{ name: '✦ Bolsa do Caminhante (Premium)', n: GIFT_BAG }] : []), ...bags.filter((b) => !PREMIUM_BAGS.has(b) || isPremium()).map((b) => ({ name: ITEMS[b].name, n: BAGS[b] }))];
+      const groups = bagGroups().filter((g) => g.on);
       let k = 0;
-      const bagsHtml = groups.map((gp, gi) => { const mine = cells.slice(k, k + gp.n); k += gp.n; const empties = Array.from({ length: gp.n - mine.length }, () => '<div class="it empty"></div>').join(''); return sec(`b${gi}`, gp.name, `${mine.length}/${gp.n}`, `<div class="grid g6 sc">${mine.join('')}${empties}</div>`); }).join('');
+      const bagsHtml = groups.map((gp) => { const mine = cells.slice(k, k + gp.n); k += gp.n; const empties = Array.from({ length: gp.n - mine.length }, () => '<div class="it empty"></div>').join(''); return sec(`bag:${gp.key.replace(/^x\d+:/, '')}`, `${gp.icon} ${gp.name}`, `${mine.length}/${gp.n}`, `<div class="grid g6 sc">${mine.join('')}${empties}</div>`); }).join('');
       el.innerHTML = `<div class="pn bagpn"><h2>Mochila <span class="cap ${used >= cap ? 'full' : ''}">${used}/${cap} espaços · 🪙 ${st.gold}${shop ? '<button class="sellall" data-sellall2 title="Vende todos os recursos e tralhas (poções, comida, ferramentas e equipamentos ficam)">💰 vender tralha</button>' : ''}<span class="trash" data-trash title="Arraste um item para cá (ou para fora das janelas) para destruí-lo">🗑 destruir</span></span><button data-x>✕</button></h2>
         ${hooks.reactor?.().on && !shop ? `<div class="btabs2"><button data-btab="bag" class="${bagTab === 'bag' ? 'on' : ''}">🎒 Mochila</button><button data-btab="reator" class="${bagTab === 'reator' ? 'on' : ''}">⚛ Reator</button></div>` : ''}
         ${bagTab === 'reator' && hooks.reactor?.().on && !shop ? reactorTab() : `<div class="bagsx">${bagsHtml}${isPremium() ? special('Bolsa de Ofício', '🧰', CRAFT_BAG, `pedra, madeira, couro e material de construção — ${CRAFT_CAP} espaços (Premium); o que passar vai para a mochila`, CRAFT_CAP) + special('Bolsa Mágica', '🔮', MAGIC_BAG, `reagentes, tomos, selos e pergaminhos — ${MAGIC_CAP} espaços (Premium); o que passar vai para a mochila`, MAGIC_CAP) : ''}
@@ -448,6 +502,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
         <small class="ft">${bags.length < MAX_BAGS ? `${MAX_BAGS - bags.length} de ${MAX_BAGS} lugares para bolsas livres · ` : ''}clique no título da bolsa: abrir/fechar · arraste: equipar, vender, 🗑 destruir</small></div>`;
       el.style.display = 'flex';
     } else el.style.display = 'none';
+    { const M = bagCells(); renderBar(M); renderMini(M); }
     if (charOpen) {
       const t = total(), [lo, hi] = hitRange(), TLr = (hooks.talents?.() ?? {}) as Partial<Record<string, number>>;
       /* boneco com espaços pequenos em volta; uma linha leve, quase etérea, liga cada espaço ao lugar do corpo onde a peça vai */
@@ -521,7 +576,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   };
   ch.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-alx]')) { e.stopPropagation(); alOpen = !alOpen; render(); return; } });
   ch.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('[data-helm]')) return; e.stopPropagation(); const show = localStorage.getItem('karmika.showHelm') === '0'; localStorage.setItem('karmika.showHelm', show ? '1' : '0'); game.logMsg(show ? '⛑ Elmo à mostra.' : '⛑ Elmo escondido: o rosto fica sempre à mostra (os atributos continuam valendo).', '#b9c6e0'); hooks.onGear?.(); render(); });
-  el.addEventListener('mousemove', showTip); sh.addEventListener('mousemove', showTip); ch.addEventListener('mousemove', showTip);
+  el.addEventListener('mousemove', showTip); mini.addEventListener('mousemove', showTip); mini.addEventListener('mouseleave', () => { tip.style.display = 'none'; tip2.style.display = 'none'; });
+  mini.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-mx]')) { setMini(null); return; } onPanelClick(e); }); sh.addEventListener('mousemove', showTip); ch.addEventListener('mousemove', showTip);
   for (const kk of ['keydown', 'keyup'] as const) addEventListener(kk, (ev) => { if (ev.key === 'Shift' && lastTipEv && lastTipT && lastTipT.isConnected && tip.style.display === 'block') lastTipT.dispatchEvent(new MouseEvent('mousemove', { clientX: lastTipEv.clientX, clientY: lastTipEv.clientY, shiftKey: kk === 'keydown', bubbles: true })); });
   el.addEventListener('mouseleave', () => { tip.style.display = 'none'; tip2.style.display = 'none'; }); sh.addEventListener('mouseleave', () => { tip.style.display = 'none'; }); ch.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
 
@@ -585,8 +641,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     else return;
     game.snd?.('coins'); render(); save();
   }
-  for (const box of [el, ch]) box.addEventListener('dragstart', (e) => { const t = (e.target as HTMLElement).closest('[data-drag]') as HTMLElement | null; if (!t) return; dragRef = t.dataset.drag!; dropped = false; e.dataTransfer?.setData('text/plain', dragRef); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; t.classList.add('dragging'); tip.style.display = 'none'; });
-  const targetOf = (e: DragEvent): string | null => { const t = e.target as HTMLElement; if (t.closest('[data-trash]')) return 'trash'; if (t.closest('#quick')) return 'quick'; if (sh.contains(t) && shop) return 'shop'; if (ch.contains(t) && charOpen) return 'char'; if (el.contains(t) && open) return 'bag'; if (t.closest('.pn,#bar,#chat,#dlg')) return null; return 'out'; };
+  for (const box of [el, ch, mini]) box.addEventListener('dragstart', (e) => { const t = (e.target as HTMLElement).closest('[data-drag]') as HTMLElement | null; if (!t) return; dragRef = t.dataset.drag!; dropped = false; e.dataTransfer?.setData('text/plain', dragRef); if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'; t.classList.add('dragging'); tip.style.display = 'none'; });
+  const targetOf = (e: DragEvent): string | null => { const t = e.target as HTMLElement; if (t.closest('[data-trash]')) return 'trash'; if (t.closest('#quick')) return 'quick'; if (sh.contains(t) && shop) return 'shop'; if (ch.contains(t) && charOpen) return 'char'; if ((el.contains(t) && open) || mini.contains(t)) return 'bag'; if (t.closest('.pn,#bar,#chat,#dlg')) return null; return 'out'; };
   const okFor = (tg: string | null, ref: string) => (tg === 'quick' && ref.startsWith('i:') && !isTool(ref.split(':')[1])) || tg === 'trash' || tg === 'out' || (tg === 'char' && (ref.startsWith('g:') || (ref.startsWith('i:') && isTool(ref.split(':')[1])))) || (tg === 'bag' && ref.startsWith('e:')) || (tg === 'shop' && !ref.startsWith('e:'));
   addEventListener('dragover', (e) => { if (!dragRef) return; const tg = targetOf(e); if (okFor(tg, dragRef)) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; } document.querySelectorAll('.dropok').forEach((x) => x.classList.remove('dropok')); const hl = tg === 'trash' ? (e.target as HTMLElement).closest('[data-trash]') : tg === 'char' ? ch.querySelector('.pn') : tg === 'bag' ? el.querySelector('.pn') : tg === 'shop' ? sh.querySelector('.pn') : tg === 'quick' ? ((e.target as HTMLElement).closest('.slot.q') ?? document.getElementById('quick')) : null; if (hl && okFor(tg, dragRef)) hl.classList.add('dropok'); });
   addEventListener('drop', (e) => { if (!dragRef) return; e.preventDefault(); const tg = targetOf(e), ref = dragRef; dropped = true; dragRef = null; document.querySelectorAll('.dropok').forEach((x) => x.classList.remove('dropok'));

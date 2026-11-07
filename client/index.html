@@ -694,6 +694,19 @@
   .bagpn h2 { flex-wrap: wrap; row-gap: 4px; } .bagpn h2 .cap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); gap: 8px; align-content: start; align-items: start; }
   .bagsx > .profgo { grid-column: 1 / -1; }
+  /* 07/11: as bolsas em colunas que se encaixam (sem buraco entre bolsa pequena e grande) */
+  .bagsx { display: block; columns: 372px; column-gap: 8px; } .bagsx > section, .bagsx > .profgo { break-inside: avoid; margin-bottom: 8px; width: 100%; } .bagsx > .profgo { column-span: all; }
+  /* 07/11: a fileira de bolsas (à direita do orbe) e a bolsa aberta sozinha, logo acima dela */
+  #bagbar { position: fixed; left: calc(50% + 205px * var(--ui, 1)); bottom: calc(10px * var(--ui, 1)); z-index: 9; display: flex; gap: 5px; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
+  body:not(.ready) #bagbar, body:not(.ready) #bagmini { display: none !important; }
+  #bagbar button { position: relative; width: 40px; height: 40px; padding: 0; border: 1px solid #8a6a32; border-radius: 6px; background: radial-gradient(circle at 40% 30%, #3a2a18, #120c07); box-shadow: 0 2px 6px #000, inset 0 0 0 1px rgba(255,224,138,.08); cursor: pointer; display: grid; place-items: center; }
+  #bagbar button span { font-size: 20px; line-height: 1; } #bagbar button i { position: absolute; left: 0; right: 0; bottom: -1px; font: 600 9px Georgia, serif; font-style: normal; color: #e8d8b0; text-shadow: 0 1px 2px #000; text-align: center; }
+  #bagbar button:hover { border-color: #ffe08a; } #bagbar button.cur { border-color: #ffd24a; box-shadow: 0 0 10px rgba(255,210,74,.5), 0 2px 6px #000; } #bagbar button.full i { color: #ff8a7a; }
+  #bagbar button.off { filter: grayscale(1) brightness(.55); border-style: dashed; } #bagbar button.slot { opacity: .45; cursor: default; border-style: dashed; } #bagbar button.slot span { font-size: 15px; color: #8a6a32; }
+  #bagbar button.spec { border-color: #8a62c8; } #bagbar button.all { margin-left: 4px; }
+  #bagmini { position: fixed; left: calc(50% + 205px * var(--ui, 1)); bottom: calc(60px * var(--ui, 1)); z-index: 9; display: none; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
+  #bagmini .pn { padding: 8px 10px 10px; min-width: 0; } #bagmini h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 6px; } #bagmini h2 small { margin-left: auto; color: #c9a24a; font-size: 11px; } #bagmini h2 button { margin-left: 6px; }
+  #bagmini .grid.g6 { max-height: 248px; overflow-y: auto; padding-right: 4px; }
   .acc { background: rgba(0,0,0,.25); border: 1px solid #4a3c28; } .acc.spec { border-color: #6a5430; }
   .acc > h3 { margin: 0; padding: 6px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; } .acc > h3:hover { background: rgba(255,224,138,.06); }
   .acc > h3 small { margin-left: auto; color: #a89878; font-size: 11px; letter-spacing: 1px; } .acc .car { font-style: normal; display: inline-block; transition: transform .15s; color: #c9a24a; }
