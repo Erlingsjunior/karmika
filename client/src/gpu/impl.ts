@@ -75,6 +75,9 @@ function groundFrag(G: { tGround: Ref; uMean: Ref; uTexOn: Ref }) {
   const sA = select(big, float(3.4), select(cu.lessThan(1), float(1.6), float(2.4))), sB = select(cu.lessThan(1), float(2.4), float(3.4));
   let cob = mix(cobAt(sA), cobAt(sB), cf);
   cob = mix(cob, gTex(12, 3.2), pl.mul(smoothstep(0.3, 0.7, gNoise(wp.mul(0.02).add(11)))));
+  { const cuW = attribute('aCu', 'vec4'), cn2 = nz(0.05, 13); /* 07/11: o chão da vila segue o povo dela (mesmo do WebGL) */
+    cob = mix(cob, mix(gTex(8, 2.2), gTex(15, 2.4), cn2), clamp(cuW.x, 0, 1)); cob = mix(cob, mix(gTex(12, 2.8), gTex(18, 2.8), cn2), clamp(cuW.y, 0, 1));
+    cob = mix(cob, mix(gTex(9, 3.0), gTex(16, 3.0), cn2), clamp(cuW.z, 0, 1)); cob = mix(cob, mix(gTex(6, 2.6), gTex(19, 3.0), cn2), clamp(cuW.w, 0, 1)); }
   base = mix(base, cob.mul(0.95), clamp(sp1.y, 0, 1));
   diffuseColor.rgb.assign(mix(fb, base, texOn));
 }

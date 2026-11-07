@@ -152,7 +152,7 @@ const OFX_L = 140 + SH, OFY_L = 140 + SH;
 const CITY_L = { x: 70 + OFX_L, y: 72 + OFY_L };
 export type SettleKind = 'village' | 'city';
 export interface NpcSpec { name: string; role: string; kind: 'nordic' | 'dwarf' | 'technocrat'; x: number; y: number; radius: number; tint: number; scale: number; lines: string[]; shop?: string; /** só aparece à noite (a Corte de Vladislav) */ night?: boolean; /** só aparece com esta missão no diário */ onlyQ?: string }
-export interface Settlement { name: string; kind: SettleKind; x: number; y: number; radius: number; npcs: NpcSpec[] }
+export interface Settlement { name: string; kind: SettleKind; x: number; y: number; radius: number; npcs: NpcSpec[]; /** 07/11: povo da vila (estilo das casas e do chão): 1 nórdico · 2 anão · 3 élfico · 4 sombrio · 5 tribal · 6 pacto · 7 vapor */ cult?: number }
 
 /* ---------- ruído determinístico ---------- */
 export const hash = (x: number, y: number, s = 0) => {
@@ -737,7 +737,7 @@ function buildCity_L(): World {
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
     const rr = rng(seed); const R0 = 13; clearWater(cx, cy, R0 + 2); flatten(cx, cy, R0 + 4);
-    const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
+    const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [], cult }; settlements.push(st);
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) if (inb(x, y)) map[y][x] = 'plaza';
     for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) if (inb(x, y) && map[y][x] === 'grass' && (Math.abs(x - cx) <= 1 || Math.abs(y - cy) <= 1)) map[y][x] = 'road';
     /* 25/10: toda vila tem a sua fonte no centro da praça — o marco da vila e a sua Fonte da Visão; os povos do fogo mantêm a fogueira ao lado */
@@ -788,7 +788,7 @@ function buildCity_L(): World {
    *  verdade em volta da Praça do Mercado; o castelo do Jarl no alto do norte; casas viradas para as ruas, becos até a porta. */
   const city = (name: string, cx: number, cy: number) => {
     const rr = rng(4242); const R0 = 52; clearWater(cx, cy, 80); flatten(cx, cy, 82);
-    const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
+    const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [], cult: CULT[name] ?? 0 }; settlements.push(st);
     const inLot = (x: number, y: number) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < 57 + 6 * Math.sin(a * 3 + 0.7) + 4 * Math.sin(a * 5 + 2.1); }; /* regra 19: o terreno limpo da cidade tem contorno irregular, não quadrado */
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (inLot(q.gx, q.gy)) props.splice(i, 1); } // o terreno da cidade começa limpo
     for (let y = cy - 66; y <= cy + 66; y++) for (let x = cx - 66; x <= cx + 66; x++) if (inb(x, y) && inLot(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
@@ -944,7 +944,7 @@ function buildCity_L(): World {
        casas afastadas; o Farol Tecnocrático na ilha de pedras ao largo. A muralha (orgânica, só do lado da terra) é feita depois. */
     const rr = rng(7272); const R0 = PORTO_L.r;
     pads.push({ x: cx * T, z: cy * T, r: (R0 + 9) * T, h: WL + 2.1 }); // a cidade é um platô baixo e plano, pouco acima do mar
-    const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [] }; settlements.push(st);
+    const st: Settlement = { name, kind: 'city', x: cx, y: cy, radius: R0, npcs: [], cult: CULT[name] ?? 0 }; settlements.push(st);
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) <= R0 + 8 && Math.abs(q.gy - cy) <= R0 + 8) props.splice(i, 1); }
     for (let y = cy - R0 - 8; y <= cy + R0 + 8; y++) for (let x = cx - R0 - 8; x <= cx + R0 + 8; x++) if (inb(x, y) && map[y][x] !== 'water') map[y][x] = 'grass';
     const at = (x: number, y: number) => map[cy + y]?.[cx + x];
@@ -2386,7 +2386,7 @@ export function buildCity(): World {
       /* a pedra rúnica da vila, num canto da praça */
       { let ok = false; for (const [ox, oy] of [[4, -4], [-4, -4], [4, 4], [-4, 4], [6, 0], [0, 6]]) { const x = cx + ox, y = cy + oy; if (map[y]?.[x] === 'grass' || map[y]?.[x] === 'road') { props.push({ kind: 'relic', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0x6a6a72, roof: 0x4a9aff }); map[y][x] = 'wall'; relics.push({ name: `Pedra de ${sp.name}`, x, y }); ok = true; break; } } void ok; }
       const g = (n: number) => ['Hroald', 'Sigrun', 'Vaela', 'Brann', 'Ilsa', 'Corvin', 'Thora', 'Kael', 'Mirela', 'Dorn'][(n + I.id) % 10];
-      const st: Settlement = { name: sp.name, kind: sp.city ? 'city' : 'village', x: cx, y: cy, radius: R, npcs: [
+      const st: Settlement = { name: sp.name, kind: sp.city ? 'city' : 'village', x: cx, y: cy, radius: R, cult: TW.style, npcs: [
         { name: g(hn), role: `Guarda de ${sp.name}`, kind: TW.kind, x: cx + 2.5, y: cy - 2.5, radius: 3, tint: TW.tint, scale: 1, lines: [`${sp.name}, na ${I.name}. ${TW.lore}`, 'Aqui o monstro mais fraco derruba um herói de Karmika. Não saia da estrada sem o seu grupo.', 'As pedras rúnicas daqui só levam para outros cantos desta ilha. Para o continente, só de navio.'] },
         { name: g(hn + 3), role: 'Mercador', kind: TW.kind === 'technocrat' ? 'technocrat' : 'dwarf', x: cx + 4, y: cy + 2.5, radius: 1.5, tint: 0xb08a40, scale: 1, lines: ['Tudo aqui chega de navio. Por isso custa o que custa.', 'Os comboios da Companhia de Latão e as barcaças dos anões passam por aqui de tempos em tempos.'] },
         ...(sp.city ? [{ name: g(hn + 6), role: 'Capitão do Porto', kind: 'technocrat' as const, x: cx - 3, y: cy + 3.5, radius: 3, tint: 0x8a6a30, scale: 1, lines: ['Os navios da Companhia de Latão saem do cais da ilha. A volta já vem paga na passagem.', `Esta é ${sp.name}, a maior cidade da ${I.name}.`] }] : []) ] };

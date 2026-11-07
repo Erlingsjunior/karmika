@@ -8,6 +8,12 @@ import { windU, windify } from './terrain3d';
 function stoneSize(w: World, x: number, y: number) { let p = 0; for (const st of w.settlements) { const d = Math.hypot(x - st.x, y - st.y); p = Math.max(p, st.kind === 'city' ? 1 - smoothstep(5, 34, d) : 0.85 * (1 - smoothstep(2, 18, d))); } return p; }
 function paveAt(w: World, x: number, y: number) { let p = 0; for (const st of w.settlements) { const d = Math.hypot(x - st.x, y - st.y); if (st.kind === 'city') p = Math.max(p, 1 - smoothstep(80, 170, d)); else p = Math.max(p, 0.55 * (1 - smoothstep(st.radius + 4, st.radius + 26, d))); } return p; }
 
+/* 07/11 (Erling: "em todas as cidades e vilas use as texturas de chão que temos"): o chão da vila segue o povo dela — nórdico: seixos;
+   anão, sombrio e pacto: laje de pedra; élfico: pedra com musgo; tribal: terra batida e lama; humano e vapor: paralelepípedo. Pesos (x,y,z,w) */
+function cultW(w: World, x: number, y: number, out: number[]) { out[0] = out[1] = out[2] = out[3] = 0; let bd = 1e9, c = 0;
+  for (const st of w.settlements) { const d = Math.hypot(x - st.x, y - st.y) - (st.kind === 'city' ? 60 : st.radius + 6); if (d < bd) { bd = d; c = st.cult ?? 0; } }
+  if (bd > 14) return out; const k = 1 - smoothstep(0, 14, bd), i = c === 1 ? 0 : c === 2 || c === 4 || c === 6 ? 1 : c === 3 ? 2 : c === 5 ? 3 : -1; if (i >= 0) out[i] = k; return out; }
+const CW = [0, 0, 0, 0];
 export const CS = 20;               // tiles por chunk
 export const CSM = CS * T;          // metros
 const SEG = 60;                     // quadrados por lado do chunk (0,67 m)
@@ -36,7 +42,7 @@ let groundMat: THREE.MeshLambertMaterial | null = null;
    outra; a grama alterna entre lisa e com trevo, a estrada e o calçamento entre as duas versões. No chão natural, a textura entra como
    DETALHE sobre a cor do bioma (a paleta e a luz do jogo ficam); estrada, calçamento, lama, seixo, rocha e areia entram com a cor delas. */
 const GROUND_TEX = ['grama_01', 'grama_trevo_01', 'estrada_terra_01', 'estrada_terra_02', 'paralelepipedo_01', 'paralelepipedo_02', 'caminho_lama_01', 'chao_floresta_01', 'seixos_molhados_01', 'rocha_musgo_01', 'cascalho_areia_01', 'chao_floresta_02',
-  'laje_pedra_01', 'terra_arada_01', 'caminho_lama_02', 'seixos_molhados_02', 'rocha_musgo_02', 'cascalho_areia_02'];
+  'laje_pedra_01', 'terra_arada_01', 'caminho_lama_02', 'seixos_molhados_02', 'rocha_musgo_02', 'cascalho_areia_02', 'laje_pedra_02', 'terra_arada_02'];
 /* 05/11: a textura do chão existe desde o começo (1×1 cinza por camada) e recebe a foto depois no mesmo objeto — o WebGPU monta o material uma vez só */
 const GROUND_S = 512; /* 05/11, 2ª: no WebGPU a textura não muda de tamanho depois de criada (ficava o 1×1 cinza: chão liso) — então já nasce 512×512 e só o conteúdo é trocado */
 const groundTex0 = (() => { const L = GROUND_TEX.length, t = new THREE.DataArrayTexture(new Uint8Array(GROUND_S * GROUND_S * 4 * L).fill(128), GROUND_S, GROUND_S, L); t.format = THREE.RGBAFormat; t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.needsUpdate = true; return t; })();
@@ -56,8 +62,8 @@ function getGroundMat() {
   groundMat = new THREE.MeshLambertMaterial({ vertexColors: true }); gpuTag(groundMat, 'ground', groundU); loadGroundTex();
   groundMat.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, groundU);
-    sh.vertexShader = 'attribute float aPl; attribute float aCs; attribute vec4 aSp1; attribute vec4 aSp2; varying float vPl; varying float vCs; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vCs = aCs; vSp1 = aSp1; vSp2 = aSp2; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
-    sh.fragmentShader = `precision highp sampler2DArray; uniform sampler2DArray tGround; uniform vec3 uMean[18]; uniform float uTexOn; varying float vPl; varying float vCs; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;
+    sh.vertexShader = 'attribute float aPl; attribute float aCs; attribute vec4 aSp1; attribute vec4 aSp2; attribute vec4 aCu; varying vec4 vCu; varying float vPl; varying float vCs; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n vPl = aPl; vCs = aCs; vCu = aCu; vSp1 = aSp1; vSp2 = aSp2; vWp = (modelMatrix * vec4(position,1.0)).xyz;');
+    sh.fragmentShader = `precision highp sampler2DArray; uniform sampler2DArray tGround; uniform vec3 uMean[20]; uniform float uTexOn; varying vec4 vCu; varying float vPl; varying float vCs; varying vec3 vWp; varying vec4 vSp1; varying vec4 vSp2;
       float gHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
       float gNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(gHash(i), gHash(i + vec2(1, 0)), f.x), mix(gHash(i + vec2(0, 1)), gHash(i + vec2(1, 1)), f.x), f.y); }
       /* a textura sem repetir: duas leituras (escala e ângulo diferentes) trocadas por um ruído largo */
@@ -87,6 +93,11 @@ function getGroundMat() {
         float cn = smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.05 + 3.0));
         vec3 cob = mix(mix(gTex(4.0, sA), gTex(5.0, sA), cn), mix(gTex(4.0, sB), gTex(5.0, sB), cn), cf);
         /* nas cidades grandes, a praça é de laje (vPl = cidade) */ cob = mix(cob, gTex(12.0, 3.2), vPl * smoothstep(0.3, 0.7, gNoise(vWp.xz * 0.02 + 11.0)));
+        { float cn2 = smoothstep(0.4, 0.6, gNoise(vWp.xz * 0.05 + 13.0));
+          cob = mix(cob, mix(gTex(8.0, 2.2), gTex(15.0, 2.4), cn2), clamp(vCu.x, 0.0, 1.0));
+          cob = mix(cob, mix(gTex(12.0, 2.8), gTex(18.0, 2.8), cn2), clamp(vCu.y, 0.0, 1.0));
+          cob = mix(cob, mix(gTex(9.0, 3.0), gTex(16.0, 3.0), cn2), clamp(vCu.z, 0.0, 1.0));
+          cob = mix(cob, mix(gTex(6.0, 2.6), gTex(19.0, 3.0), cn2), clamp(vCu.w, 0.0, 1.0)); }
         base = mix(base, cob * 0.95, clamp(vSp1.y, 0.0, 1.0));
         diffuseColor.rgb = base;
       } else {
@@ -204,7 +215,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   /* alturas com margem de 1 vértice (normais por diferença central) */
   const W2 = SEG + 3, hs = new Float32Array(W2 * W2);
   for (let j = 0; j < W2; j++) for (let i = 0; i < W2; i++) hs[j * W2 + i] = groundH(ox + (i - 1) * d, oz + (j - 1) * d);
-  const pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), pl = new Float32Array(N * N), cs = new Float32Array(N * N), dep = new Float32Array(N * N), sds = new Float32Array(N * N), sp1 = new Float32Array(N * N * 4), sp2 = new Float32Array(N * N * 4);
+  const cuA = new Float32Array(N * N * 4), pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), pl = new Float32Array(N * N), cs = new Float32Array(N * N), dep = new Float32Array(N * N), sds = new Float32Array(N * N), sp1 = new Float32Array(N * N * 4), sp2 = new Float32Array(N * N * 4);
   let anyWater = false;
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const k = j * N + i, xm = ox + i * d, zm = oz + j * d, h = hs[(j + 1) * W2 + (i + 1)];
@@ -242,7 +253,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     if (rw > 0.05) { const pv = paveAt(w, tx, ty); if (pv > 0) { const n = vnoise(xm * 0.55, zm * 0.55, 33) * 0.8 + vnoise(xm * 2.2, zm * 2.2, 34) * 0.2; pw = Math.max(pw, rw * smoothstep(n - 0.05, n + 0.05, pv)); } }
     if (rw > 0) { tmpD.copy(ROAD).lerp(ROAD2, vnoise(xm * 1.3, zm * 1.3, 2)); tmpC.lerp(tmpD, rw * 0.95); }
     if (pw > 0) tmpC.lerp(PLAZA, pw);
-    cs[k] = pw > 0.05 ? stoneSize(w, tx, ty) : 0;
+    cs[k] = pw > 0.05 ? stoneSize(w, tx, ty) : 0; if (pw > 0.05) { cultW(w, tx, ty, CW); cuA.set(CW, k * 4); }
     pl[k] = pw > 0.05 ? smoothstep(0.85, 1, paveAt(w, tx, ty)) : 0; /* 03/11: aPl virou "é cidade grande" (a praça de laje) */
     /* 03/11 (Erling: "capricha para ficar lindo e não ficar uma textura repetitiva"): pesos das texturas do chão (getGroundMat) —
        estrada de terra, calçamento, lama da margem, chão de floresta | seixos, rocha, areia, e quanto o chão natural usa a textura */
@@ -254,7 +265,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   const idx: number[] = [];
   for (let j = 0; j < SEG; j++) for (let i = 0; i < SEG; i++) { const a = j * N + i, b = a + 1, c = a + N, e = c + 1; idx.push(a, c, b, b, c, e); }
   const gg = new THREE.BufferGeometry();
-  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); gg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); gg.setAttribute('color', new THREE.BufferAttribute(col, 3)); gg.setAttribute('aPl', new THREE.BufferAttribute(pl, 1)); gg.setAttribute('aCs', new THREE.BufferAttribute(cs, 1)); gg.setAttribute('aSp1', new THREE.BufferAttribute(sp1, 4)); gg.setAttribute('aSp2', new THREE.BufferAttribute(sp2, 4)); gg.setIndex(idx);
+  gg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); gg.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); gg.setAttribute('color', new THREE.BufferAttribute(col, 3)); gg.setAttribute('aPl', new THREE.BufferAttribute(pl, 1)); gg.setAttribute('aCu', new THREE.BufferAttribute(cuA, 4)); gg.setAttribute('aCs', new THREE.BufferAttribute(cs, 1)); gg.setAttribute('aSp1', new THREE.BufferAttribute(sp1, 4)); gg.setAttribute('aSp2', new THREE.BufferAttribute(sp2, 4)); gg.setIndex(idx);
   gg.computeBoundingSphere(); own.push(gg);
   grp.userData.kind = 'chunk'; const ground = new THREE.Mesh(gg, getGroundMat()); ground.position.set(ox, 0, oz); ground.receiveShadow = true; grp.add(ground);
 
