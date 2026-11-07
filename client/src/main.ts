@@ -17,10 +17,10 @@ import { eyeSees } from './surrender';
   mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } }); mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } });
   mv('karmika.hunt', (h) => { if (h) { h.x += SHF * T2; h.z += SHF * T2; } }); localStorage.setItem(W2, '2'); } }
 /* 07/11/2026: o mundo ganhou o MAR em volta (DXW casas de cada lado) — o continente anda DXW; a fonte-lar, a casa, as obras, o que nasceu de novo e a caçada andam junto */
-{ const W2 = 'karmika.world', S = 300, T2 = 2; if (+(localStorage.getItem(W2) || 0) < 3) { const mv = (k: string, f: (o: any) => void) => { try { const raw = localStorage.getItem(k); if (!raw) return; const o = JSON.parse(raw); f(o); localStorage.setItem(k, JSON.stringify(o)); } catch { /* */ } };
+{ const W2 = 'karmika.world', V = +(localStorage.getItem(W2) || 0), S = V >= 3 ? 80 : 380, T2 = 2; /* quem já tinha andado 300 (v3) anda só mais 80 */ if (V < 4) { const mv = (k: string, f: (o: any) => void) => { try { const raw = localStorage.getItem(k); if (!raw) return; const o = JSON.parse(raw); f(o); localStorage.setItem(k, JSON.stringify(o)); } catch { /* */ } };
   mv('karmika.home.v1', (o) => { if (o && Number.isFinite(o.x)) { o.x += S; o.y += S; } }); mv('karmika.casa.v1', (o) => { if (o && Number.isFinite(o.gx)) { o.gx += S; o.gy += S; } });
   mv('karmika.build.v1', (a) => { for (const b of a ?? []) { b.gx += S; b.gy += S; } }); mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } });
-  mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } }); mv('karmika.hunt', (h) => { if (h && Number.isFinite(h.x)) { h.x += S * T2; h.z += S * T2; } }); localStorage.setItem(W2, '3'); } }
+  mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } }); mv('karmika.hunt', (h) => { if (h && Number.isFinite(h.x)) { h.x += S * T2; h.z += S * T2; } }); localStorage.setItem(W2, '4'); } }
 import * as THREE from 'three';
 import { gaitOf } from './andar';
 import { premiumWelcome } from './celebrate';
@@ -69,6 +69,7 @@ import { ONLY_NAME, type Slot } from './loot';
 
 import { STANCE_QUESTS } from './posturas';
 import { refreshLocks, KITS } from './kits';
+import { createNavios } from './sistemas/navios';
 
 import { type CathedralFloor } from './cathedral3d';
 
@@ -2282,10 +2283,14 @@ function travelRelic(...a: Parameters<ReturnType<typeof createReliquias>['travel
 function closeRelics(...a: Parameters<ReturnType<typeof createReliquias>['closeRelics']>): ReturnType<ReturnType<typeof createReliquias>['closeRelics']> { return (reliquiasSys ??= mk_reliquiasSys()).closeRelics(...a); }
 function openRelics(...a: Parameters<ReturnType<typeof createReliquias>['openRelics']>): ReturnType<ReturnType<typeof createReliquias>['openRelics']> { return (reliquiasSys ??= mk_reliquiasSys()).openRelics(...a); }
 
+/* 07/11: os navios da Companhia de Latão (cais no continente e nas ilhas) — criado na primeira vez que o quadro pede */
+let naviosSys: ReturnType<typeof createNavios> | null = null;
+const navios = () => (naviosSys ??= createNavios({ scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
 function findInter(): Inter | null {
   const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null;
   const add = (d: number, max: number, label: string, act: () => void) => { if (d < max && (!best || d < best.d)) best = { d, label, act }; };
   { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); }
+  if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); }
   { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); }
   { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); }
   { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); }
@@ -2638,6 +2643,7 @@ function frameBody() {
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
+  if (!inside) navios().update(dt);
   peleSys.skinTick?.(); // copia a pose procedural para o modelo do artista
   peleSys.look?.tick(dt, state.night);
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }

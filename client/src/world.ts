@@ -135,7 +135,10 @@ export interface World {
   pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; /** acampamentos de salteadores e as torres de vigia (26/10) */ bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
+  /** 07/11: os cais dos navios da Companhia de Latão — no continente (vila/cidade) e nas ilhas (desembarque). x,y = onde o herói fica; sx,sy = o navio; ang = a proa */
+  docks?: Dock[];
 }
+export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
 
 /** MUNDO GRANDE (21/10/2026): 840×840 tiles. As Terras dos Homens (o mapa antigo de 420) ficam no centro, deslocadas de SH;
@@ -2169,7 +2172,7 @@ function veinOf_L(p: { gx: number; gy: number; w: number }) { const h = Math.abs
    jogo já vem nas coordenadas do MUNDO; as funções abaixo traduzem de um para o outro. Para crescer de novo, basta aumentar DXW
    (e o save converte sozinho em main.ts).
    ===================================================================================================================== */
-export const DXW = 300;
+export const DXW = 380;
 const DM = DXW * T;
 export const MAP_W = MAP_W_L + 2 * DXW, MAP_H = MAP_H_L + 2 * DXW;
 const inCont = (tx: number, ty: number) => tx >= DXW && ty >= DXW && tx < DXW + MAP_W_L && ty < DXW + MAP_H_L;
@@ -2182,26 +2185,49 @@ export const WILD = WILD_L.map((w) => shP(w));
 /** os arquipélagos (coordenadas do mundo). Sem cidades: ilhas inóspitas, com os bichos mais fortes de Karmika. Cada uma tem relevo e clima próprios:
     a oeste o frio e a noite, a leste o latão e o fogo. */
 export interface Isle { id: number; name: string; biome: Biome; lo: number; hi: number; col: string; peak: number; blobs: { x: number; y: number; r: number }[]; fauna: EnemyType[]; boss: EnemyType[] }
+/* 07/11 (Erling: "as ilhas estão idênticas — tem que ser ORGÂNICO: umas mais perto, outras mais longe, formatos e tamanhos diferentes,
+   ilhotas em volta das maiores, arquipélagos"). Cada ilha nasce de uma ESPINHA torta (crescente, gancho, cadeia, maciço), com a largura
+   variando ao longo dela, e uma nuvem de ilhotas irregulares em volta — cada uma com a sua semente. */
+function isleBlobs(seed: number, cx: number, cy: number, o: { len: number; ang: number; bend: number; wide: number; n: number; islets: number; spread: number }) {
+  const R = rng(seed), B: { x: number; y: number; r: number }[] = [], dx = Math.cos(o.ang), dy = Math.sin(o.ang);
+  for (let i = 0; i < o.n; i++) { const t = o.n === 1 ? 0.5 : i / (o.n - 1), along = (t - 0.5) * o.len, side = Math.sin(Math.PI * t) * o.bend + (R() - 0.5) * o.wide * 0.5;
+    const r = o.wide * (0.45 + 0.75 * Math.sin(Math.PI * (0.15 + 0.7 * t))) * (0.65 + 0.7 * R());
+    B.push({ x: Math.round(cx + dx * along - dy * side), y: Math.round(cy + dy * along + dx * side), r: Math.max(5, Math.round(r)) }); }
+  for (let k = 0; k < o.islets; k++) { const base = B[Math.floor(R() * B.length)], a = R() * 6.283, d = base.r + 6 + R() * o.spread;
+    B.push({ x: Math.round(base.x + Math.cos(a) * d), y: Math.round(base.y + Math.sin(a) * d), r: Math.round(3 + R() * R() * 17) }); }
+  return B;
+}
 export const ISLES: Isle[] = [
+  /* longe, a noroeste: uma ilha grande em gancho, escura, com poucas ilhotas */
   { id: 41, name: 'Ilha da Noite Eterna', biome: 'blight', lo: 130, hi: 150, col: '#8a2a4a', peak: 26,
-    blobs: [{ x: 96, y: 472, r: 52 }, { x: 128, y: 418, r: 30 }, { x: 70, y: 530, r: 24 }, { x: 150, y: 520, r: 14 }, { x: 40, y: 430, r: 12 }],
+    blobs: isleBlobs(4101, 118, 290, { len: 150, ang: 1.15, bend: 42, wide: 34, n: 9, islets: 5, spread: 30 }),
     fauna: ['ghoul', 'bat', 'succubus', 'pactbroken', 'werewolf', 'thrall'], boss: ['lich', 'headless'] },
+  /* perto, a sudoeste: um arquipélago comprido, cadeia de ilhas médias e muitas ilhotas, como contas soltas */
   { id: 42, name: 'Arquipélago do Gelo Eterno', biome: 'snow', lo: 120, hi: 140, col: '#c8e8ff', peak: 34,
-    blobs: [{ x: 100, y: 960, r: 48 }, { x: 60, y: 900, r: 26 }, { x: 146, y: 912, r: 22 }, { x: 128, y: 1024, r: 26 }, { x: 52, y: 1020, r: 15 }, { x: 170, y: 980, r: 12 }],
+    blobs: isleBlobs(4202, 190, 1060, { len: 210, ang: 0.55, bend: -28, wide: 20, n: 7, islets: 16, spread: 34 }),
     fauna: ['frostwolf', 'troll', 'draugr_bers', 'draugr_arch', 'skull_frost', 'harpy'], boss: ['jotun', 'cavebear'] },
+  /* no meio do caminho, a leste: pequena, rochosa, retorcida, cercada de rochedos */
   { id: 43, name: 'Ilha de Latão Perdida', biome: 'rock', lo: 125, hi: 145, col: '#d0a060', peak: 22,
-    blobs: [{ x: 1346, y: 480, r: 50 }, { x: 1312, y: 426, r: 24 }, { x: 1386, y: 540, r: 26 }, { x: 1300, y: 530, r: 14 }, { x: 1400, y: 430, r: 12 }],
+    blobs: isleBlobs(4303, 1268, 560, { len: 70, ang: -0.4, bend: 16, wide: 22, n: 5, islets: 10, spread: 22 }),
     fauna: ['automaton', 'turret', 'tinker', 'scorpion', 'skel_arch', 'harpy'], boss: ['colossus', 'scorpion_king'] },
+  /* a mais longe de todas, a sudeste: um maciço vulcânico largo, em crescente, com cones soltos em volta */
   { id: 44, name: 'Ilhas de Cinza de Surtr', biome: 'volcanic', lo: 135, hi: 150, col: '#ff6a2a', peak: 40,
-    blobs: [{ x: 1340, y: 960, r: 54 }, { x: 1294, y: 1020, r: 22 }, { x: 1392, y: 900, r: 24 }, { x: 1380, y: 1030, r: 16 }, { x: 1286, y: 906, r: 13 }],
+    blobs: isleBlobs(4404, 1352, 1240, { len: 130, ang: 2.4, bend: 46, wide: 40, n: 8, islets: 8, spread: 40 }),
     fauna: ['hellhound', 'skull_fire', 'imp_bomb', 'inquisitor', 'pactbroken', 'troll'], boss: ['glutton', 'suplicio'] },
 ];
+/** ilhotas soltas no mar (sem região, sem bicho): pedras e coqueiros — o mar não é vazio */
+const ISLETS_FREE: { x: number; y: number; r: number }[] = ((() => { const R = rng(4506), L: { x: number; y: number; r: number }[] = [];
+  for (let k = 0; k < 60 && L.length < 26; k++) { const x = 40 + R() * 1480, y = 40 + R() * 1480; const inC = x > DXW - 50 && x < DXW + MAP_W_L + 50 && y > DXW - 50 && y < DXW + MAP_H_L + 50; if (inC) continue; L.push({ x: Math.round(x), y: Math.round(y), r: Math.round(3 + R() * R() * 9) }); } return L; })());
+const FREE_ISLE: Isle = { id: 0, name: 'Ilhota', biome: 'rock', lo: 0, hi: 0, col: '#888', peak: 5, blobs: ISLETS_FREE, fauna: [], boss: [] };
 /** quanto se está dentro de uma ilha (casas até a costa; negativo = mar) e qual ilha */
 function isleAt(tx: number, ty: number): { sd: number; isle: Isle | null } {
+  /* costa orgânica: as coordenadas são entortadas por ruído (domain warp) e os pedaços da ilha se fundem suavemente (união macia), com baías e pontas */
+  const wx = tx + (fbm(tx * 0.022, ty * 0.022, 960) - 0.5) * 26, wy = ty + (fbm(tx * 0.022 + 7, ty * 0.022, 961) - 0.5) * 26;
   let best = -1e9, bi: Isle | null = null;
-  for (const I of ISLES) for (const b of I.blobs) { const dx = tx - b.x, dy = ty - b.y; if (Math.abs(dx) > b.r * 1.6 || Math.abs(dy) > b.r * 1.6) continue;
-    const wob = (fbm(tx * 0.045 + I.id, ty * 0.045, 900 + I.id) - 0.5) * 0.55 + (fbm(tx * 0.16, ty * 0.16, 910 + I.id) - 0.5) * 0.16; const sd = b.r * (1 + wob) - Math.hypot(dx, dy);
-    if (sd > best) { best = sd; bi = I; } }
+  for (const I of [...ISLES, FREE_ISLE]) { let acc = -1e9; for (const b of I.blobs) { const dx = wx - b.x, dy = wy - b.y; if (Math.abs(dx) > b.r * 2 + 30 || Math.abs(dy) > b.r * 2 + 30) continue;
+      const wob = (fbm(tx * 0.06 + I.id, ty * 0.06, 900 + I.id) - 0.5) * 0.7 + (fbm(tx * 0.19, ty * 0.19, 910 + I.id) - 0.5) * 0.22; const d = b.r * (1 + wob) - Math.hypot(dx, dy);
+      const k = 7; const h = Math.max(0, Math.min(1, 0.5 + 0.5 * (d - acc) / k)); acc = acc < -1e8 ? d : d * h + acc * (1 - h) + k * h * (1 - h); }
+    if (acc > best) { best = acc; bi = I; } }
   return { sd: best, isle: best > -40 ? bi : null };
 }
 /** o chão fora do continente: fundo do mar, praia, e o relevo de cada ilha (cada uma com o seu pico) */
@@ -2212,19 +2238,35 @@ function outerGround(tx: number, ty: number): number {
   const ridge = 1 - Math.abs(2 * fbm(tx * 0.035 + isle.id, ty * 0.035, 940 + isle.id) - 1);
   return WL + 0.35 + coast * 1.4 + inner * (isle.peak * (0.35 + 0.65 * ridge * ridge)) + (fbm(tx * 0.12, ty * 0.12, 950) - 0.5) * 1.6 * coast;
 }
-export function heightAt(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; return inCont(tx, ty) ? heightAt_L(xm - DM, zm - DM) : outerGround(tx, ty); }
-export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): number { const tx = xm / T, ty = zm / T; return inCont(tx, ty) ? groundH_L(xm - DM, zm - DM, zPre, sdPre) : outerGround(tx, ty); }
-export function waterSD(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; return inCont(tx, ty) ? waterSD_L(xm - DM, zm - DM) : isleAt(tx, ty).sd * T; }
+/* 07/11 (Erling: "precisa ser orgânico"): o continente não pode terminar numa linha reta no mar. Perto da borda do quadrado antigo, uma
+   costa de ruído come a terra (de 10 a 40 casas, mudando ao longo da costa): falésias na cordilheira do norte, praias e baías no resto.
+   O porto de Porto Caldeira (e o farol) ficam como estão. */
+let protPts: number[] = []; /* vilas, cidades e lugares: a costa nova nunca come o chão deles (vai no cache do mundo, em worldState) */
+function coastK(tx: number, ty: number): number {
+  const lx = tx - DXW, ly = ty - DXW, W1 = MAP_W_L - 1, H1 = MAP_H_L - 1, RC = 150;
+  /* distância para dentro de um retângulo de cantos bem redondos (raio 150): nada de quina reta no mar */
+  const qx = Math.max(RC - lx, lx - (W1 - RC), 0), qy = Math.max(RC - ly, ly - (H1 - RC), 0); const e = qx > 0 && qy > 0 ? RC - Math.hypot(qx, qy) : Math.min(lx, ly, W1 - lx, H1 - ly);
+  if (e > 130) return 0;
+  if (Math.hypot(lx - PORTO_L.x, ly - PORTO_L.y) < 95) return 0;
+  const t = 6 + Math.max(0, fbm(tx * 0.0045, ty * 0.0045, 970) - 0.28) * 190 + (fbm(tx * 0.025, ty * 0.025, 972) - 0.5) * 38 + (fbm(tx * 0.08, ty * 0.08, 971) - 0.5) * 9;
+  let k = smoothstep(t + 3, t - 3, e); if (k <= 0) return 0;
+  for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]) + (fbm(tx * 0.06, ty * 0.06, 973) - 0.5) * 30, r = protPts[i + 2]; if (d < r + 40) k *= smoothstep(r + 4, r + 40, d); } /* o chão protegido também tem borda torta (nada de círculo) */
+  return k;
+}
+const SEABED = WL - 4.5;
+export function heightAt(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = heightAt_L(xm - DM, zm - DM); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
+export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = groundH_L(xm - DM, zm - DM, zPre, sdPre); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
+export function waterSD(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return isleAt(tx, ty).sd * T; const k = coastK(tx, ty), w0 = waterSD_L(xm - DM, zm - DM); return k > 0 ? Math.min(w0, (0.5 - k) * 12 * T) : w0; }
 const ZEMPTY = (): ZoneW => ({ meadow: 0, forest: 0, swamp: 0, snow: 0, ruins: 0, rock: 0, volcanic: 0, enchanted: 0, blight: 0, jungle: 0, coast: 0 });
 export function zoneW(ax: number, ay: number): ZoneW { if (inCont(ax, ay)) return zoneW_L(ax - DXW, ay - DXW); const z = ZEMPTY(), I = isleAt(ax, ay); if (I.isle && I.sd > 2) z[I.isle.biome] = 1; else z.coast = 1; return z; }
-export function biomeAt(tx: number, ty: number): Biome { if (inCont(tx, ty)) return biomeAt_L(tx - DXW, ty - DXW); const I = isleAt(tx, ty); return I.isle && I.sd > 3 ? I.isle.biome : 'coast'; }
+export function biomeAt(tx: number, ty: number): Biome { if (inCont(tx, ty)) return coastK(tx, ty) > 0.35 ? 'coast' : biomeAt_L(tx - DXW, ty - DXW); const I = isleAt(tx, ty); return I.isle && I.sd > 3 ? I.isle.biome : 'coast'; }
 export function edgeK(tx: number, ty: number) { return inCont(tx, ty) ? edgeK_L(tx - DXW, ty - DXW) : { north: 0, south: 0, west: 0, east: 0 }; }
 export const canalX = (ty: number) => canalX_L(ty - DXW) + DXW;
 /** as regiões: as do continente (no mundo) e uma por arquipélago; o mar aberto é "Mar de Karmika" */
 const SEA: Region = { id: 40, name: 'Mar de Karmika', x: -999, y: -999, lo: 120, hi: 150, col: '#3a6a9a' };
 export const REGIONS: Region[] = [...REGIONS_L.map((r) => ({ ...r, x: r.x + DXW, y: r.y + DXW })), ...ISLES.map((I) => ({ id: I.id, name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, lo: I.lo, hi: I.hi, col: I.col }))];
 const REG_BY_ID = new Map(REGIONS.map((r) => [r.id, r]));
-export function regionAt(x: number, y: number): Region { if (inCont(x, y)) return REG_BY_ID.get(regionAt_L(x - DXW, y - DXW).id)!; const I = isleAt(x, y); return I.isle && I.sd > -12 ? REG_BY_ID.get(I.isle.id)! : SEA; }
+export function regionAt(x: number, y: number): Region { if (inCont(x, y)) return REG_BY_ID.get(regionAt_L(x - DXW, y - DXW).id)!; const I = isleAt(x, y); return I.isle && I.isle.id && I.sd > -12 ? REG_BY_ID.get(I.isle.id)! : SEA; }
 /* as peças que voltam do resto do jogo (muralhas, pontes) chegam nas coordenadas do mundo: aqui voltam para as locais */
 const unRampart = (r: Rampart): Rampart => ({ ...r, wd: undefined, cx: r.cx - DXW, cy: r.cy - DXW, tiles: r.tiles.map((k) => k - DXW * 4096 - DXW), flights: r.flights.map((f) => ({ ...f, tiles: f.tiles.map(([a, b]) => [a - DXW, b - DXW] as [number, number]) })) });
 const shRampart = (r: Rampart): Rampart => ({ ...r, wd: 1, cx: r.cx + DXW, cy: r.cy + DXW, tiles: r.tiles.map((k) => k + DXW * 4096 + DXW), flights: r.flights.map((f) => ({ ...f, tiles: f.tiles.map(([a, b]) => [a + DXW, b + DXW] as [number, number]) })) });
@@ -2240,19 +2282,20 @@ export function stairTopAt(tx: number, ty: number): boolean { return stairTopAt_
 export function bridgeDeck(xm: number, zm: number): number | null { return bridgeDeck_L(xm - DM, zm - DM); }
 export function forkH(b: Bridge, x: number, y: number): number { return forkH_L(shBridge(b, -DXW), x - DXW, y - DXW); }
 export function veinOf(p: { gx: number; gy: number; w: number }) { return veinOf_L({ ...p, gx: p.gx - DXW, gy: p.gy - DXW }); }
-export function worldState() { return worldState_L(); }
-export function restoreWorldState(st: ReturnType<typeof worldState_L>, w: World) { restoreWorldState_L(st, { ...w, bridges: w.bridges.map((b) => shBridge(b, -DXW)), ramparts: (w.ramparts ?? []).map((q) => (q.wd ? unRampart(q) : q)) }); }
+export function worldState() { return { ...worldState_L(), prot: protPts }; }
+export function restoreWorldState(st: ReturnType<typeof worldState_L> & { prot?: number[] }, w: World) { protPts = st.prot ?? []; restoreWorldState_L(st, { ...w, bridges: w.bridges.map((b) => shBridge(b, -DXW)), ramparts: (w.ramparts ?? []).map((q) => (q.wd ? unRampart(q) : q)) }); }
 /** o mundo inteiro: o continente (gerado como sempre) no meio do mar, e os arquipélagos em volta */
 export function buildCity(): World {
   const w = buildCity_L(), N = MAP_W, D = DXW;
+  protPts = [...w.settlements.flatMap((q) => [q.x + D, q.y + D, q.radius + 4]), ...w.pois.flatMap((q) => [q.x + D, q.y + D, 6]), ...Object.values(w.dgSpots).flatMap((q) => [q.x + D, q.y + D, 6])];
   const map: Tile[][] = new Array(N), biome: Biome[][] = new Array(N);
   for (let y = 0; y < N; y++) { const mr: Tile[] = new Array(N), br: Biome[] = new Array(N); const ly = y - D, inY = ly >= 0 && ly < MAP_H_L;
-    for (let x = 0; x < N; x++) { const lx = x - D; if (inY && lx >= 0 && lx < MAP_W_L) { mr[x] = w.map[ly][lx]; br[x] = w.biome[ly][lx]; continue; }
-      const I = isleAt(x + 0.5, y + 0.5); if (I.isle && I.sd > 0.6) { mr[x] = 'grass'; br[x] = I.sd > 3 ? I.isle.biome : 'coast'; } else { mr[x] = 'water'; br[x] = 'coast'; } }
+    for (let x = 0; x < N; x++) { const lx = x - D; if (inY && lx >= 0 && lx < MAP_W_L) { const k = coastK(x + 0.5, y + 0.5); if (k > 0.5) { mr[x] = 'water'; br[x] = 'coast'; } else { mr[x] = w.map[ly][lx]; br[x] = k > 0.35 ? 'coast' : w.biome[ly][lx]; } continue; }
+      const I = isleAt(x + 0.5, y + 0.5); if (I.isle && I.sd > 0.6) { mr[x] = 'grass'; br[x] = I.sd > 3 && I.isle.id ? I.isle.biome : I.isle.id ? 'coast' : 'rock'; } else { mr[x] = 'water'; br[x] = 'coast'; } }
     map[y] = mr; biome[y] = br; }
   const sxy = <P extends { x: number; y: number }>(p: P) => ({ ...p, x: p.x + D, y: p.y + D });
-  const props: Prop[] = w.props.map((p) => ({ ...p, gx: p.gx + D, gy: p.gy + D }));
-  const spawns: SpawnDef[] = w.spawns.map(sxy);
+  const props: Prop[] = w.props.map((p) => ({ ...p, gx: p.gx + D, gy: p.gy + D })).filter((p) => coastK(p.gx + p.w / 2, p.gy + p.h / 2) < 0.4); /* o que ficou no mar comido pela costa sai */
+  const spawns: SpawnDef[] = w.spawns.map(sxy).filter((q) => coastK(q.x, q.y) < 0.3);
   /* os arquipélagos: mato, pedra e árvores pelo clima de cada ilha; bichos fortes espalhados, e os chefes no alto */
   const R = rng(4242);
   for (const I of ISLES) { const b0 = I.blobs[0];
@@ -2267,8 +2310,23 @@ export function buildCity(): World {
       if (isleAt(x, y).isle !== I || isleAt(x, y).sd < 4 || map[y]?.[x] !== 'grass') continue; const lvl = Math.round(I.lo + R() * (I.hi - I.lo));
       spawns.push({ type: I.fauna[Math.floor(R() * I.fauna.length)], x, y, r: 6, n: 2 + Math.floor(R() * 3), lvl, keep: true }); }
     I.boss.forEach((bt, i) => { const a = i * 2.4 + 0.6, x = Math.round(b0.x + Math.cos(a) * b0.r * 0.3), y = Math.round(b0.y + Math.sin(a) * b0.r * 0.3); spawns.push({ type: bt, x, y, r: 3, n: 1, fixLvl: I.hi, keep: true }); }); }
-  const relics: Relic[] = [...w.relics.map(sxy), ...ISLES.map((I) => { const b = I.blobs[0]; let best = { x: b.x, y: b.y }, bs = -1; for (let a = 0; a < 6.283; a += 0.2) for (const f of [0.55, 0.65, 0.75]) { const x = Math.round(b.x + Math.cos(a) * b.r * f), y = Math.round(b.y + Math.sin(a) * b.r * f), s2 = isleAt(x, y).sd; if (map[y]?.[x] === 'grass' && s2 > bs && s2 < 14) { bs = s2; best = { x, y }; } } return { name: `Relíquia: ${I.name}`, x: best.x, y: best.y }; })];
-  return { ...w, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
+  /* 07/11 (Erling): nas ilhas NÃO há pedra de teleporte — só se chega de navio (a Companhia de Latão vende a passagem) */
+  const relics: Relic[] = w.relics.map(sxy);
+  /* 07/11 (Erling: "só o serviço de barcos dos tecnocratas, em 4 regiões costeiras mais a cidade dos tecnocratas, vende a passagem — 10 mil
+     de ouro — e embarcações gigantes levam os jogadores"): o cais fica no mar FUNDO mais perto da vila; o herói espera na terra firme ao lado */
+  const docks: Dock[] = [];
+  const deep = (x: number, y: number) => map[y]?.[x] === 'water' && heightAt((x + 0.5) * T, (y + 0.5) * T) < WL - 3.5;
+  const landAt = (x: number, y: number) => { const t2 = map[y]?.[x]; return !!t2 && t2 !== 'water' && t2 !== 'wall' && t2 !== 'tree'; };
+  const dockFrom = (id: string, name: string, cx: number, cy: number, R0: number, isle?: number) => { let best = 1e9, sx = 0, sy = 0;
+    for (let y = cy - R0; y <= cy + R0; y += 2) for (let x = cx - R0; x <= cx + R0; x += 2) if (deep(x, y)) { let ok = true; for (const [ax, ay] of [[6, 0], [-6, 0], [0, 6], [0, -6]]) if (!deep(x + ax, y + ay)) { ok = false; break; } if (!ok) continue; const d = Math.hypot(x - cx, y - cy); if (d < best) { best = d; sx = x; sy = y; } }
+    if (best > 1e8) return; const ux = (cx - sx) / best, uy = (cy - sy) / best; let lx = sx, ly = sy; for (let k = 0; k < best; k++) { const x = Math.round(sx + ux * k), y = Math.round(sy + uy * k); if (landAt(x, y)) { lx = x; ly = y; break; } }
+    const shipX = sx - ux * 8, shipY = sy - uy * 8; /* ancorado de lado, longe da praia (o casco tem 34 m) */ docks.push({ id, name, x: lx, y: ly, sx: Math.round(shipX), sy: Math.round(shipY), ang: Math.atan2(-ux, -uy), isle }); };
+  for (const [nm, r0] of [['Porto Caldeira', 70], ['Skjoldvik', 70], ['Corvoscuro', 70], ['Gorvath', 70], ['Ferrugem', 70]] as const) { const st = w.settlements.find((q) => q.name === nm); if (st) dockFrom('c:' + nm, nm, st.x + D, st.y + D, r0); }
+  /* nas ilhas: o desembarque na costa virada para o continente */
+  for (const I of ISLES) { const b = I.blobs.reduce((a, q) => (q.r > a.r ? q : a)); const cx = DXW + MAP_W_L / 2, cy = DXW + MAP_H_L / 2, dd = Math.hypot(cx - b.x, cy - b.y), ux = (cx - b.x) / dd, uy = (cy - b.y) / dd;
+    let lx = b.x, ly = b.y; for (let k = 0; k < 220; k++) { const x = Math.round(b.x + ux * k), y = Math.round(b.y + uy * k); if (map[y]?.[x] === 'water') break; lx = x; ly = y; }
+    dockFrom('i:' + I.id, I.name, lx, ly, 40, I.id); const dk = docks[docks.length - 1]; if (dk?.isle === I.id) { let x = dk.x, y = dk.y; for (let k = 0; k < 60 && !landAt(x, y); k++) { x = Math.round(dk.x - ux * k); y = Math.round(dk.y - uy * k); } dk.x = x; dk.y = y; } }
+  return { ...w, docks, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
     pois: [...w.pois.map(sxy), ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome }))], bridges: w.bridges.map((b) => shBridge(b, D)), signs: w.signs.map(sxy),
     settlements: w.settlements.map((st) => ({ ...sxy(st), npcs: st.npcs.map(sxy) })), ramparts: w.ramparts.map(shRampart),

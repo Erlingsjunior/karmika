@@ -53,6 +53,7 @@ function betaCommand(cmd: string, a: string[]): string | null {
   if (cmd === 'ir') { const q = a.join(' ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), nz = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (!q) return 'Uso: /ir <NPC ou lugar> — ex.: /ir hrefna · /ir askavik · /ir brasaforja'; if (K.inside) return 'Saia do interior primeiro.';
     const n = K.npcSys.npcs.find((v) => nz(v.def.name).includes(q)); if (n) { K.state.fx = n.pos.x / T; K.state.fy = n.pos.z / T + 1.2; return `🧭 Você está ao lado de ${n.def.name}. Aperte E para conversar.`; }
+    if (q.startsWith('cais ')) { const dk = (K.city.docks ?? []).find((v) => nz(v.name).includes(q.slice(5))); if (dk) { K.state.fx = dk.x + 0.5; K.state.fy = dk.y + 0.5; return `⚓ Você está no cais de ${dk.name}.`; } }
     const p = K.city.settlements.find((v) => nz(v.name).includes(q)) ?? K.city.pois.find((v) => nz(v.name).includes(q)); if (p) { K.state.fx = p.x + 0.5; K.state.fy = p.y + 2; return `🧭 Você chegou a ${p.name}.`; }
     return `Não achei “${a.join(' ')}”.`; }
   /* 29/10 (Erling): /guerreiro, /paladino, /cacador, /tecnocrata, /vampiro, /lobisomem, /mago, /bruxo — teste: sobe para o
