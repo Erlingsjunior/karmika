@@ -140,6 +140,32 @@ export function scenes(T: number, CAT: { x: number; y: number }, ASK: { x: numbe
     'A Árvore-Mãe já era velha quando Selvar, o Pai da Matilha, deitou à sombra dela pela primeira vez. As raízes formam arcos onde os filhotes aprendem a caçar, e dentro do tronco fica a toca de Ulfrun, a Mãe-Alfa.',
     'Na pedra da lua, ao lado, a luz cai sempre do mesmo jeito, haja lua no céu ou não. É ali que a matilha escolhe quem recebe a marca.',
     'A tribo diz que a árvore também caça: as raízes avançam um palmo por ano. Quando chegarem ao mar, a lua vai descer para morar entre os galhos.'], 4, 10);
+  /* 07/11 (Erling: "um farol diferente em cada porto, com Fonte da Visão contando o porquê da viagem e para onde leva") */
+  big('v_farol_caldeira', 'Farol Tecnocrático', 'O Farol Tecnocrático', 'Porto Caldeira · Companhia de Latão', 'bright', [
+    'O primeiro farol elétrico de Karmika foi aceso numa noite de tempestade, com metade da Academia segurando os cabos e a outra metade rezando para Mekhanos. Funcionou. Desde então, nenhum navio da Companhia afundou na Baía de Caldeira.',
+    'Daqui parte a maior das embarcações a vapor: a que vai mais longe, até as Ilhas de Cinza de Surtr, onde o mar ferve ao redor dos cones e a lava escorre para dentro da água. Os capitães contam que lá o horizonte fica vermelho até de dia.',
+    'A passagem custa dez mil de ouro. Não pelo carvão: pelo seguro. A Companhia paga a família de quem não volta, e quase todo mundo que vai às ilhas é alguém que já não tinha muito a perder.',
+    'O facho gira a noite inteira. Os tecnocratas dizem que ele não ilumina o mar: ilumina a pergunta que todo passageiro faz no cais — por que eu quero ir para onde ninguém volta igual?'], 4, 8);
+  big('v_farol_skjold', 'Farol de Skjoldvik', 'O Farol de Skjoldvik', 'Costa Oeste · Rumo à Noite Eterna', 'dark', [
+    'Os nórdicos de Skjoldvik acendem o braseiro do farol com a gordura das baleias que encalham na praia. Cada baleia é um presente do mar, e cada presente se paga com luz para quem ainda está lá fora.',
+    'As runas da torre não são enfeite: são nomes. Cada faixa guarda os nomes dos barqueiros que foram até a Ilha da Noite Eterna e não voltaram. A última faixa ainda tem espaço.',
+    'É daqui que o navio da Companhia sai para o noroeste, cortando a névoa até a ilha onde o sol não nasce. Lá, dizem, os primeiros vampiros dormiam antes de existir o Conde — e alguns ainda dormem.',
+    'Os velhos do porto dizem que quem olha o facho girar até ele passar três vezes por cima da ilha escura vê, por um instante, uma janela acesa lá longe. Ninguém mora lá.'], 4, 6);
+  big('v_farol_corvo', 'Farol de Corvoscuro', 'O Farol de Corvoscuro', 'Costa Leste · Rumo à Ilha de Latão', 'dark', [
+    'A luz vermelha de Corvoscuro foi paga pelo Conde Vladislav. Ninguém perguntou por quê. Os pescadores aceitam a luz e não olham para o castelo enquanto trabalham.',
+    'Os vitrais da lanterna mostram corvos voando sobre o mar, todos na mesma direção: leste, para a Ilha de Latão Perdida, onde uma oficina da primeira Academia afundou com os seus mestres dentro. As máquinas de lá continuam trabalhando.',
+    'O navio da Companhia que sai daqui leva caçadores de sucata, engenheiros com dívidas e curiosos sem juízo. Volta com engrenagens que ninguém sabe montar — e às vezes com uma que se monta sozinha.',
+    'Quando a luz pisca duas vezes seguidas, os velhos de Corvoscuro fecham as janelas. Dizem que é o Conde lembrando que também é dono do mar.'], 4, 6);
+  big('v_farol_gorvath', 'Farol de Gorvath', 'O Farol de Gorvath', 'Costa do Vale · O farol acorrentado', 'dark', [
+    'Gorvath vive à sombra do Vale da Desgraça, e o farol daqui também tem contrato. As correntes que o prendem não seguram a torre: seguram o que está dentro do cristal, um olho que Malgrath ganhou num pacto e nunca quis usar.',
+    'A luz verde não mostra o caminho. Mostra quem está no caminho. Os navios que passam por ela sabem quantos passageiros levam a mais do que compraram passagem.',
+    'Daqui a Companhia leva bruxos e caçadores para o sul e para o leste, rumo às ilhas, contornando os redemoinhos que os mapas tecnocratas desenham com tanto cuidado. Os bruxos dizem que os redemoinhos são cláusulas.',
+    'Se o olho do farol se fechar uma noite, o pacto acaba. Os de Gorvath não sabem se isso seria bom.'], 4, 6);
+  big('v_farol_ferrugem', 'Farol de Ferrugem', 'O Farol de Ferrugem', 'Costa do Vapor · Rumo ao Gelo Eterno', 'bright', [
+    'Ferrugem é a vila onde os tecnocratas testam o que ainda não deu certo em Porto Caldeira. O farol dela já explodiu duas vezes, e as duas vezes foi reconstruído mais alto. As engrenagens giram só para mostrar que ainda podem.',
+    'A lente de Fresnel foi polida por um aprendiz durante sete anos. Ele dizia que, quando ficasse perfeita, daria para ver do alto o Arquipélago do Gelo Eterno, a sudoeste, com os gigantes de gelo andando entre as ilhas. Ficou perfeita. Ele parou de falar disso.',
+    'O navio que sai daqui leva casacos, óleo de baleia e gente que acha que aguenta o frio. Os jotuns do arquipélago não são inimigos dos homens: são mais velhos que eles, e não gostam de ser lembrados de que o mundo mudou.',
+    'Toda noite, o facho de Ferrugem e o do Farol Tecnocrático se cruzam no mar escuro. Os marinheiros chamam esse ponto de "o aperto de mão", e quem passa por ele no instante certo tem viagem boa.'], 4, 6);
   return { list, vistas };
 }
 

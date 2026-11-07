@@ -137,6 +137,8 @@ export interface World {
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
   /** 07/11: os cais dos navios da Companhia de Latão — no continente (vila/cidade) e nas ilhas (desembarque). x,y = onde o herói fica; sx,sy = o navio; ang = a proa */
   docks?: Dock[];
+  /** 07/11: os faróis dos portos (um diferente em cada um) — x,y = a base da torre; style = o desenho; old = já existe o modelo (o Farol Tecnocrático) */
+  lights?: { name: string; port: string; x: number; y: number; style: 'nordico' | 'gotico' | 'pacto' | 'vapor'; old?: boolean }[];
 }
 export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
@@ -2326,9 +2328,19 @@ export function buildCity(): World {
   for (const I of ISLES) { const b = I.blobs.reduce((a, q) => (q.r > a.r ? q : a)); const cx = DXW + MAP_W_L / 2, cy = DXW + MAP_H_L / 2, dd = Math.hypot(cx - b.x, cy - b.y), ux = (cx - b.x) / dd, uy = (cy - b.y) / dd;
     let lx = b.x, ly = b.y; for (let k = 0; k < 220; k++) { const x = Math.round(b.x + ux * k), y = Math.round(b.y + uy * k); if (map[y]?.[x] === 'water') break; lx = x; ly = y; }
     dockFrom('i:' + I.id, I.name, lx, ly, 40, I.id); const dk = docks[docks.length - 1]; if (dk?.isle === I.id) { let x = dk.x, y = dk.y; for (let k = 0; k < 60 && !landAt(x, y); k++) { x = Math.round(dk.x - ux * k); y = Math.round(dk.y - uy * k); } dk.x = x; dk.y = y; } }
-  return { ...w, docks, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
+  /* 07/11 (Erling: "todos os lugares que têm porto ganham um farol diferente, com Fonte da Visão contando a viagem; faróis lindos na beirada
+     iluminando o horizonte"): o farol fica na ponta de terra mais exposta ao mar perto do cais */
+  const lights: NonNullable<World['lights']> = [{ name: 'Farol Tecnocrático', port: 'Porto Caldeira', x: PORTO.farol.x, y: PORTO.farol.y, style: 'vapor', old: true }];
+  const STY: Record<string, 'nordico' | 'gotico' | 'pacto' | 'vapor'> = { Skjoldvik: 'nordico', Corvoscuro: 'gotico', Gorvath: 'pacto', Ferrugem: 'vapor' };
+  for (const d of docks) { if (d.isle || d.name === 'Porto Caldeira') continue; let best = -1e9, bx = d.x, by = d.y;
+    for (let y = d.y - 26; y <= d.y + 26; y++) for (let x = d.x - 26; x <= d.x + 26; x++) { if (!landAt(x, y) || map[y][x] === 'road' || heightAt((x + 0.5) * T, (y + 0.5) * T) < WL + 0.9) continue; let wn = 0, n = 0; for (let yy = -4; yy <= 4; yy += 2) for (let xx = -4; xx <= 4; xx += 2) { n++; if (map[y + yy]?.[x + xx] === 'water') wn++; }
+      let nearProp = false; for (let yy = -2; yy <= 2 && !nearProp; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { nearProp = true; break; }
+      const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004 - (nearProp ? 1 : 0) - (wn / n > 0.62 ? 1 : 0); if (sc > best) { best = sc; bx = x; by = y; } }
+    const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico' }); }
+  const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
+  return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
-    pois: [...w.pois.map(sxy), ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome }))], bridges: w.bridges.map((b) => shBridge(b, D)), signs: w.signs.map(sxy),
+    pois: [...w.pois.map(sxy), ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: w.bridges.map((b) => shBridge(b, D)), signs: w.signs.map(sxy),
     settlements: w.settlements.map((st) => ({ ...sxy(st), npcs: st.npcs.map(sxy) })), ramparts: w.ramparts.map(shRampart),
     bandits: w.bandits.map((b) => ({ ...sxy(b), tower: b.tower ? sxy(b.tower) : null })), roadPaths: w.roadPaths.map((r) => r.map(sxy)),
     starts: { human: sxy(w.starts.human), dwarf: sxy(w.starts.dwarf), elf: sxy(w.starts.elf) } };

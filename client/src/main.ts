@@ -70,6 +70,7 @@ import { ONLY_NAME, type Slot } from './loot';
 import { STANCE_QUESTS } from './posturas';
 import { refreshLocks, KITS } from './kits';
 import { createNavios } from './sistemas/navios';
+import { createFarois } from './sistemas/farois';
 
 import { type CathedralFloor } from './cathedral3d';
 
@@ -2284,7 +2285,7 @@ function closeRelics(...a: Parameters<ReturnType<typeof createReliquias>['closeR
 function openRelics(...a: Parameters<ReturnType<typeof createReliquias>['openRelics']>): ReturnType<ReturnType<typeof createReliquias>['openRelics']> { return (reliquiasSys ??= mk_reliquiasSys()).openRelics(...a); }
 
 /* 07/11: os navios da Companhia de Latão (cais no continente e nas ilhas) — criado na primeira vez que o quadro pede */
-let naviosSys: ReturnType<typeof createNavios> | null = null;
+let naviosSys: ReturnType<typeof createNavios> | null = null, faroisSys: ReturnType<typeof createFarois> | null = null;
 const navios = () => (naviosSys ??= createNavios({ scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
 function findInter(): Inter | null {
   const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null;
@@ -2643,7 +2644,7 @@ function frameBody() {
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
-  if (!inside) navios().update(dt);
+  if (!inside) { navios().update(dt); (faroisSys ??= createFarois(scene, city)).update(dt, camX, camZ, state.night); }
   peleSys.skinTick?.(); // copia a pose procedural para o modelo do artista
   peleSys.look?.tick(dt, state.night);
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }
