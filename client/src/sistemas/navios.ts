@@ -9,7 +9,7 @@ import { TILE_M as T } from '@karmika/shared';
 import { heightAt, WL, ISLES, type Dock, type World } from '../world';
 
 export interface NaviosCtx {
-  readonly scene: THREE.Scene; readonly city: World; readonly game: { st: { gold: number; dead?: boolean }; logMsg(t: string, c?: string): void };
+  readonly scene: THREE.Scene; readonly city: World; readonly game: { st: { gold: number; lvl: number; dead?: boolean }; logMsg(t: string, c?: string): void };
   readonly state: { fx: number; fy: number; path: unknown[] }; readonly withFade: (fn: () => void, label?: string) => void;
   readonly objs: { update(x: number, z: number, force?: boolean): void }; heroY: number; camX: number; camZ: number; camY: number;
   readonly inside: unknown; readonly combatMode: boolean; readonly audio?: { coin?(): void };
@@ -52,17 +52,27 @@ export function createNavios(K: NaviosCtx) {
   const el = document.createElement('div'); el.id = 'navios'; el.className = 'pn'; document.body.appendChild(el); let openAt: Dock | null = null;
   const fmt = (n: number) => n.toLocaleString('pt-BR');
   function open(d: Dock) { openAt = d; const g = K.game.st.gold;
-    if (d.isle) { el.innerHTML = `<h2>⚓ Navio da Companhia de Latão<button data-x>✕</button></h2><p class="nvtxt">O contramestre confere a sua passagem: <i>"A volta já está paga, Caminhante. Para onde?"</i></p><div class="nvlist"><button data-back class="gold">⛴ Voltar para ${backName()}</button></div><small class="nvft">${ISLES.find((q) => q.id === d.isle)?.name ?? ''} · sem relíquia: daqui só se sai de navio.</small>`; }
-    else el.innerHTML = `<h2>⚓ Bilheteria da Companhia de Latão — ${d.name}<button data-x>✕</button></h2>
-      <p class="nvtxt">As embarcações a vapor da Academia levam Caminhantes às ilhas inóspitas do Mar de Karmika. Lá não há relíquia nem vila: só o navio traz de volta. <b>Ida e volta: ${fmt(PRICE)} de ouro.</b></p>
+    if (d.isle) { el.innerHTML = `<h2>⚓ Navio da Companhia de Latão<button data-x>✕</button></h2><p class="nvtxt">O contramestre confere a sua passagem: <i>"A volta já está paga, Caminhante. Para onde?"</i></p><div class="nvlist"><button data-back class="gold">⛴ Voltar para ${backName()}</button></div>${routes(d)}<small class="nvft">${ISLES.find((q) => q.id === d.isle)?.name ?? ''} · sem relíquia: daqui só se sai de navio.</small>`; }
+    else el.innerHTML = `<h2>⚓ Bilheteria da Companhia de Latão — ${d.name}<button data-x>✕</button></h2>${routes(d)}
+      <p class="nvtxt">As embarcações a vapor da Academia levam Caminhantes às ilhas inóspitas do Mar de Karmika. Cada ilha tem uma cidade, vilas e pedras rúnicas próprias (que só ligam a mesma ilha); para voltar ao continente, só de navio. <b>Ida e volta: ${fmt(PRICE)} de ouro.</b></p>
       <div class="nvlist">${ISLES.filter((I) => !I.pen).map((I) => `<div class="nvrow"><div><b>${I.name}</b><small>Nível ${I.lo}–${I.hi} · ${I.biome === 'snow' ? 'gelo eterno' : I.biome === 'volcanic' ? 'vulcão' : I.biome === 'blight' ? 'noite eterna' : 'rocha e latão'}</small></div><button data-go="${I.id}" class="gold" ${g < PRICE ? `disabled title="Você tem ${fmt(g)} de ouro"` : ''}>🎟 ${fmt(PRICE)}</button></div>`).join('')}</div>
       <small class="nvft">Você tem ${fmt(g)} de ouro.${g < PRICE ? ' Junte mais e volte.' : ''}</small>`;
     el.style.display = 'block'; }
+  /* 07/11 (Erling: "temos a rota comercial dos anões e dos tecnocratas de barco, que só abre para jogadores de nível alto, feita por NPC também"):
+     os comboios mercantes ligam as ilhas entre si. Só aceitam Caminhante de nível 100 ou mais (o mar entre as ilhas é dos piratas e das serpentes) */
+  const ROUTE_LV = 100, ROUTE_PRICE = 6000;
+  const ROUTES = [{ k: 'anao', name: 'Barcaça dos Anões de Brasaforja', who: 'Capitã Hildra Malhofundo', isles: [44, 42] }, { k: 'tec', name: 'Comboio da Companhia de Latão', who: 'Comodoro Ezequiel Vapor', isles: [43, 41] }];
+  function routes(d: Dock) { const lv = K.game.st.lvl, hereI = d.isle ?? 0;
+    const rows = ROUTES.map((r) => { const dest = ISLES.filter((I) => !I.pen && r.isles.includes(I.id) && I.id !== hereI); if (!dest.length) return '';
+      return `<div class="nvrt"><b>⚓ ${r.name}</b><small>${r.who} · leva carga e Caminhantes entre as ilhas</small>${dest.map((I) => `<div class="nvrow"><div><b>${I.name}</b><small>Nível ${I.lo}–${I.hi}</small></div><button data-rt="${I.id}" class="gold" ${lv < ROUTE_LV ? 'disabled' : ''}>${lv < ROUTE_LV ? `nível ${ROUTE_LV}+` : `${fmt(ROUTE_PRICE)} 🪙`}</button></div>`).join('')}</div>`; }).join('');
+    return rows ? `<div class="nvroutes"><h3>Rotas comerciais</h3>${lv < ROUTE_LV ? `<p class="nvtxt">Os capitães dos comboios só embarcam Caminhantes de nível ${ROUTE_LV} ou mais.</p>` : ''}${rows}</div>` : ''; }
   const close = () => { openAt = null; el.style.display = 'none'; };
   const backName = () => { try { return docks.find((q) => q.id === localStorage.getItem(KEY_FROM))?.name ?? 'Porto Caldeira'; } catch { return 'Porto Caldeira'; } };
   function sail(to: Dock, msg: string) { K.withFade(() => { K.state.fx = to.x + 0.5; K.state.fy = to.y + 0.5; K.state.path = []; K.objs.update(K.state.fx * T, K.state.fy * T, true); K.heroY = heightAt(K.state.fx * T, K.state.fy * T); K.camX = K.state.fx * T; K.camZ = K.state.fy * T; K.camY = K.heroY; K.game.logMsg(msg, '#8ad0ff'); }, '⛴ A viagem pelo Mar de Karmika…'); }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]')) { close(); return; }
     if (t.closest('[data-back]') && openAt) { const to = docks.find((q) => q.id === localStorage.getItem(KEY_FROM)) ?? docks.find((q) => q.id === 'c:Porto Caldeira'); close(); if (to) sail(to, `⛴ O navio a vapor atraca em ${to.name}. Bem-vindo de volta ao continente.`); return; }
+    const rt = (t.closest('[data-rt]') as HTMLElement | null)?.dataset.rt; if (rt && openAt) { if (K.game.st.lvl < ROUTE_LV) return; if (K.game.st.gold < ROUTE_PRICE) { K.game.logMsg(`🎟 O comboio cobra ${fmt(ROUTE_PRICE)} de ouro.`, '#ff9a8a'); return; } const to = docks.find((q) => q.isle === +rt); if (!to) return;
+      K.game.st.gold -= ROUTE_PRICE; K.audio?.coin?.(); if (!openAt.isle) try { localStorage.setItem(KEY_FROM, openAt.id); } catch { /* */ } close(); sail(to, `⚓ O comboio mercante ancora diante de ${to.name}, descarrega a carga e segue viagem.`); return; }
     const go = (t.closest('[data-go]') as HTMLElement | null)?.dataset.go; if (go && openAt) { if (K.game.st.gold < PRICE) { K.game.logMsg(`🎟 A passagem custa ${fmt(PRICE)} de ouro.`, '#ff9a8a'); return; } const to = docks.find((q) => q.isle === +go); if (!to) return;
       K.game.st.gold -= PRICE; K.audio?.coin?.(); try { localStorage.setItem(KEY_FROM, openAt.id); } catch { /* */ } close(); sail(to, `⛴ Depois de dias de mar, o navio lança âncora diante de ${to.name}. Cuidado: aqui tudo é nível ${ISLES.find((q) => q.id === to.isle)?.lo}+.`); } });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && openAt) close(); });
@@ -71,8 +81,14 @@ export function createNavios(K: NaviosCtx) {
     let best: Dock | null = null, bd = 1e9; for (const d of docks) { const dd = Math.hypot((d.x + 0.5) * T - hx, (d.y + 0.5) * T - hz); if (dd < bd) { bd = dd; best = d; } }
     if (!best || bd > 7) return null; const d = best; return { d: bd, label: d.isle ? `E — Navio da Companhia: voltar para ${backName()}` : `E — Navio da Companhia: passagens para as ilhas (${fmt(PRICE)})`, act: () => open(d) };
   }
+  /* os comboios navegam de verdade: dois navios mercantes (NPC) indo e voltando entre o continente e as ilhas, por fora da costa */
+  const conv: { g: THREE.Group; a: Dock; b: Dock; t: number; sp: number }[] = [];
+  { const cont = docks.filter((q) => !q.isle), isl = docks.filter((q) => q.isle); for (let i = 0; i < Math.min(4, isl.length); i++) { const a = cont[i % Math.max(1, cont.length)], b = isl[i]; if (!a || !b) continue; const g = mkShip(90 + i); g.scale.setScalar(0.8); K.scene.add(g); conv.push({ g, a, b, t: i * 0.27, sp: 1 / (240 + i * 40) }); } }
   let tt = 0;
-  function update(dt: number) { tt += dt; for (const s of ships) { const near = Math.abs(s.g.position.x - K.camX) < 220 && Math.abs(s.g.position.z - K.camZ) < 220; s.g.visible = near; s.smoke.visible = near; if (!near) continue;
+  function update(dt: number) { tt += dt;
+    for (const c of conv) { c.t = (c.t + dt * c.sp) % 2; const f = c.t < 1 ? c.t : 2 - c.t, e = f * f * (3 - 2 * f), ax = (c.a.sx + 0.5) * T, az = (c.a.sy + 0.5) * T, bx = (c.b.sx + 0.5) * T, bz = (c.b.sy + 0.5) * T;
+      const x = ax + (bx - ax) * e, z = az + (bz - az) * e, near = Math.abs(x - K.camX) < 260 && Math.abs(z - K.camZ) < 260; c.g.visible = near; if (!near) continue;
+      c.g.position.set(x, WL - 0.6 + Math.sin(tt * 0.7 + c.t * 9) * 0.18, z); c.g.rotation.y = Math.atan2(bx - ax, bz - az) * (c.t < 1 ? 1 : 1) + (c.t < 1 ? Math.PI / 2 : -Math.PI / 2); c.g.updateMatrixWorld(true); } for (const s of ships) { const near = Math.abs(s.g.position.x - K.camX) < 220 && Math.abs(s.g.position.z - K.camZ) < 220; s.g.visible = near; s.smoke.visible = near; if (!near) continue;
       s.g.position.y = WL - 0.6 + Math.sin(tt * 0.7 + s.g.userData.seed) * 0.18; s.g.rotation.z = Math.sin(tt * 0.5 + s.g.userData.seed) * 0.015; s.g.rotation.x = Math.sin(tt * 0.43) * 0.01;
       const a = s.smoke.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < a.count; i++) { const f = ((tt * 0.25 + i / a.count) % 1), stack = i % 3, lx = [-2, 2.2, 6.4][stack], h = [9, 10, 8.5][stack]; const c = Math.cos(s.g.rotation.y), sn = Math.sin(s.g.rotation.y);
         const px = lx + f * 3, py = 2.6 + h + f * 7, pz = Math.sin(i * 1.7) * f * 1.5; a.setXYZ(i, s.g.position.x + px * c + pz * sn, s.g.position.y + py, s.g.position.z - px * sn + pz * c); } a.needsUpdate = true; } }

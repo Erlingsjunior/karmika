@@ -1,4 +1,5 @@
 /* RELÍQUIAS DOS CAMINHANTES: tocar, a janela das relíquias (mapa das conhecidas, vilas, masmorras, lugares, Ormund) e a viagem rápida. Saiu do main.ts (02/11). */
+import { landOf } from '../world';
 import { TILE_M as T } from '@karmika/shared';
 import { heightAt } from '../world';
 import type { ReliquiasCtx } from '../main';
@@ -21,7 +22,7 @@ setInterval(() => { if (K.inside) return; const hx = K.state.fx, hy = K.state.fy
   if (ch) try { localStorage.setItem('karmika.descobertos.v1', JSON.stringify([...discovered])); } catch { /* */ } }, 1000);
 let relTab: 'rel' | 'vil' | 'dg' | 'poi' | 'orm' = 'rel', relZoom = 1, relCx = 0.5, relCy = 0.5, relSel: { x: number; y: number; name: string } | null = null;
 function openRelics(from: string) {
-  const others = K.city.relics.filter((r) => K.knowsRelic(r.name) && r.name !== from), here = K.city.relics.find((r) => r.name === from);
+  const here = K.city.relics.find((r) => r.name === from), land = here ? landOf(here.x, here.y) : 0, others = K.city.relics.filter((r) => K.knowsRelic(r.name) && r.name !== from && landOf(r.x, r.y) === land); /* 07/11: as pedras de uma ilha só levam para a mesma ilha; as do continente não levam para as ilhas */
   relicOpen = true; relZoom = 1; relCx = 0.5; relCy = 0.5; relSel = null;
   const S = 520;
   const places = () => { const h0 = K.hereT(), dist = (x: number, y: number) => Math.hypot(x - h0.x, y - h0.y) * T;
@@ -70,7 +71,9 @@ function openRelics(from: string) {
     const pin = t.closest('[data-pin]') as HTMLElement | null; if (pin) { e.stopPropagation(); const [x, y] = pin.dataset.pin!.split(',').map(Number); K.pinT = { x, y, label: pin.dataset.nm! }; K.updateBanner(); closeRelics(); K.game.logMsg(`🧭 Guia marcada: ${pin.dataset.nm}.`, '#c8d2e8'); return; }
     const see = t.closest('[data-see]') as HTMLElement | null; if (see) { e.stopPropagation(); const [x, y] = see.dataset.see!.split(',').map(Number); relSel = { x, y, name: see.dataset.nm! }; relZoom = Math.max(relZoom, 3); relCx = x / K.MMS; relCy = y / K.MMS; draw(); relicEl.querySelector('.rlist')!.innerHTML = listHtml(); } };
 }
-function travelRelic(go: string) { const r = K.city.relics.find((q) => q.name === go); if (!r) return; closeRelics();
+function travelRelic(go: string) { const r = K.city.relics.find((q) => q.name === go); if (!r) return;
+  if (landOf(r.x, r.y) !== landOf(K.state.fx, K.state.fy)) { K.game.logMsg(landOf(K.state.fx, K.state.fy) ? '✦ As pedras desta ilha só levam a outros cantos da ilha. Para o continente, só de navio.' : '✦ O véu não atravessa o mar: às ilhas só se chega de navio (Companhia de Latão).', '#ffb070'); return; }
+  closeRelics();
   K.withFade(() => { K.state.fx = r.x + 0.5; K.state.fy = r.y + 2.2; K.state.path = []; K.objs.update(K.state.fx * T, K.state.fy * T, true); K.heroY = heightAt(K.state.fx * T, K.state.fy * T); K.camX = K.state.fx * T; K.camZ = K.state.fy * T; K.camY = K.heroY; K.game.logMsg(`✦ Você atravessa o véu até ${go}.`, '#8ad0ff'); for (let i = 0; i < 40; i++) K.particles.spawn(K.state.fx * T, 0.5, K.state.fy * T, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.05, c0: 0xffffff, c1: 0x4a9aff, a: 1 }); });
 }
 function closeRelics() { relicOpen = false; relicEl.style.display = 'none'; }
