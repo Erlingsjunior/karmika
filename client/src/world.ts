@@ -104,6 +104,14 @@ export const REGIONS: Region[] = [
   { id: 14, name: 'Colina Vampírica', x: 760, y: 280, lo: 50, hi: 60, col: '#e05a6a' },
   { id: 15, name: 'Vale da Desgraça', x: 752, y: 450, lo: 50, hi: 60, col: '#b07ad0' },
   { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 50, hi: 60, col: '#5ab05a' },
+  /* 07/11 (Erling: "faltam monstros de nível 120 a 150 para quem está no topo"): AS BORDAS DO MUNDO. Longe dos três berços, nas pontas do
+     mapa, a faixa sobe do 60 ao 150. O nível base para no 120: do 120 ao 150 é para grupo e para quem tem a Classe II */
+  { id: 23, name: 'Picos de Jotunheim', x: 800, y: 50, lo: 60, hi: 80, col: '#c8e0ff' },
+  { id: 24, name: 'Pântano do Fim', x: 35, y: 690, lo: 60, hi: 80, col: '#6a8a5a' },
+  { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 80, hi: 100, col: '#9a8ab8' },
+  { id: 26, name: 'Costa dos Naufrágios', x: 210, y: 822, lo: 80, hi: 100, col: '#7aa8b8' },
+  { id: 27, name: 'Ermos de Sheitã', x: 828, y: 560, lo: 100, hi: 125, col: '#c05a3a' },
+  { id: 28, name: 'Trono de Cinzas', x: 480, y: 16, lo: 125, hi: 150, col: '#ff5a2a' },
 ];
 /** região do tile (Voronoi com ruído: bordas que serpenteiam) */
 export function regionAt(x: number, y: number): Region {
@@ -1476,6 +1484,10 @@ export function buildCity(): World {
     11: ['automaton', 'turret', 'tinker', 'scorpion', 'rat'], 9: ['draugr_arch', 'draugr_bers', 'frostwolf', 'troll', 'harpy', 'skull_frost'], 22: ['automaton', 'tinker', 'scorpion', 'turret', 'drowner'],
     12: ['fairy', 'fungus', 'spider', 'harpy', 'elfscout', 'treant'], 13: ['imp_bomb', 'skull_fire', 'hellhound', 'pactbroken', 'imp'],
     14: ['bat', 'thrall', 'succubus', 'vampire', 'skull_frost'], 15: ['pactbroken', 'succubus', 'hellhound', 'imp_bomb', 'cultist'], 16: ['werewolf', 'swampsnake', 'spider', 'wolf', 'boar'],
+    /* 07/11: as bordas do mundo (60 → 150) */
+    23: ['frostwolf', 'troll', 'draugr_bers', 'draugr_arch', 'harpy', 'skull_frost'], 24: ['drowner', 'swampsnake', 'mudzombie', 'spider', 'fungus', 'troll'],
+    25: ['spirit', 'pactbroken', 'succubus', 'hellhound', 'skull_fire', 'thrall'], 26: ['siren', 'drowner', 'goblin_shaman', 'goblin', 'skel_arch', 'scorpion'],
+    27: ['pactbroken', 'succubus', 'imp_bomb', 'hellhound', 'cultist', 'inquisitor'], 28: ['troll', 'draugr_bers', 'inquisitor', 'pactbroken', 'skull_fire', 'hellhound'],
   };
   for (let gy = 7; gy < MAP_H - 6; gy += 9) for (let gx = 7; gx < MAP_W - 6; gx += 9) {
     const px = gx + Math.round((rs() - 0.5) * 6), py = gy + Math.round((rs() - 0.5) * 6);
@@ -1487,7 +1499,7 @@ export function buildCity(): World {
     if (!c || nearSettle(c.x, c.y, 10)) continue;
     const bm = biome[c.y][c.x], tb = TBL[bm];
     const n = 2 + Math.floor(rs() * 3);
-    const fa = FAUNA[regionAt(c.x, c.y).id], pick = () => dc < 50 ? EASY[Math.floor(rs() * EASY.length)] : fa && rs() < 0.6 ? fa[Math.floor(rs() * fa.length)] : tb[Math.floor(rs() * tb.length)];
+    const rgn = regionAt(c.x, c.y), fa = FAUNA[rgn.id], faK = rgn.lo >= 60 ? 0.92 : 0.6 /* 07/11: nas bordas do mundo quase só a fauna própria (nada de ratazana nível 140) */, pick = () => dc < 50 ? EASY[Math.floor(rs() * EASY.length)] : fa && rs() < faK ? fa[Math.floor(rs() * fa.length)] : tb[Math.floor(rs() * tb.length)];
     let t1 = pick(); if ((bm === 'coast' || bm === 'rock') && [8, 11, 22, 3].includes(regionAt(c.x, c.y).id) && rs() < 0.35) t1 = 'scorpion'; /* areia e pedra seca do sul: escorpiões enterrados */
     sp(t1, c, 7, ['turret', 'troll'].includes(t1) ? 1 : n);
     if (rs() < 0.55) sp(pick(), { x: c.x + 3, y: c.y - 2 }, 6, 1 + Math.floor(rs() * 2));
@@ -1807,7 +1819,7 @@ export function buildCity(): World {
         if (!relics.some((r) => Math.hypot(r.x - at!.x, r.y - at!.y) < 26)) place(`Relíquia: ${d.name}`, at.x, at.y + 6, false, 24); } } /* uma pedra de regresso perto de cada calabouço */
     for (const w of WILD) if (w.kind !== 'gruta' && !relics.some((r) => Math.hypot(r.x - w.x, r.y - w.y) < 24)) place(`Relíquia: ${w.name}`, w.x, w.y + (w.lake ?? 0) + 6, false, 24); /* 02/11: pedra de regresso perto de cada lugar novo (as grutas ganham a do calabouço) */
     for (const pn of ['Mausoléu do Bispo', 'Catedral Abandonada', 'Ruínas de Aravel', 'Cripta de Hemara', 'Fortaleza de Odin', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn) ?? settlements.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 24)) place(`Relíquia: ${pn}`, q.x, q.y + 6, false, 24); }
-    for (const rg of REGIONS) { const rx = rg.name === 'Colina Vampírica' ? 764 : Math.round(rg.x), ry = rg.name === 'Colina Vampírica' ? 270 : Math.round(rg.y); /* 27/10: a pedra da Colina fica na frente do castelo (perto demais da de Corvoscuro no sopé) */ place(`Relíquia: ${rg.name}`, rx, ry, true) || place(`Relíquia: ${rg.name}`, rx, ry, false); }
+    for (const rg of REGIONS) { const edge = rg.id >= 23 ? 48 / Math.max(1, Math.hypot(420 - rg.x, 420 - rg.y)) : 0 /* 07/11: as regiões das bordas têm o centro na beira do mapa; a pedra entra 48 casas para dentro */; const rx = rg.name === 'Colina Vampírica' ? 764 : Math.round(rg.x + (420 - rg.x) * edge), ry = rg.name === 'Colina Vampírica' ? 270 : Math.round(rg.y + (420 - rg.y) * edge); /* 27/10: a pedra da Colina fica na frente do castelo (perto demais da de Corvoscuro no sopé) */ place(`Relíquia: ${rg.name}`, rx, ry, true) || place(`Relíquia: ${rg.name}`, rx, ry, false); }
   }
   /* ervas (herborismo): não bloqueiam o caminho; gerador próprio para não mexer no resto do mundo.
      0 Folha-de-Prata (campos e matas) · 1 Cogumelo-Lamparina (pântano e mata fechada) · 2 Raiz-Sangue (pântano, ruínas, rocha) · 3 Flor-de-Marghar (rara, perto das relíquias) */

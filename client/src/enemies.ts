@@ -469,7 +469,7 @@ export function createEnemies(ctx: EnemyCtx) {
       }
       const elite = ELITE_TYPES.has(s.type), B = DEFS[s.type], EM = B.elite ?? 4.2;
       // nível pela região (faixa de 10): vida, dano e XP acompanham; elites ficam no topo da faixa (+2)
-      const L = s.lvl ? Math.max(1, s.lvl + (elite ? 2 : Math.round((R() - 0.5) * 2.4))) : B.lvl, dL = L - B.lvl, hi = Math.max(0, L - 20), kH = Math.max(0.35, 1 + 0.12 * dL + 0.03 * hi * dL), kD = Math.max(0.4, 1 + 0.085 * dL + 0.02 * hi * dL); /* depois do 20 a vida e o golpe crescem mais rápido, para acompanhar equipamento, Força e magias (até o 20 nada muda) */
+      const L = s.lvl ? Math.max(1, s.lvl + (elite ? 2 : Math.round((R() - 0.5) * 2.4))) : B.lvl, dL = L - B.lvl, hi = Math.max(0, L - 20), kH = Math.max(0.35, 1 + 0.12 * dL + LV_KH * hi * dL), kD = Math.max(0.4, 1 + 0.085 * dL + LV_KD * hi * dL); /* depois do 20 a vida e o golpe crescem mais rápido, para acompanhar equipamento, Força e magias (até o 20 nada muda) */
       const def = { ...B, lvl: L, hp: Math.round(B.hp * kH), dmg: Math.round(B.dmg * kD * (elite ? 1.35 : 1)), xp: Math.round(B.xp * Math.max(0.4, 1 + 0.1 * dL)), scale: B.scale * (elite ? (B.elite ? 1.25 : 1.3) : 1), ...(s.fixLvl ? { aggro: Math.min(B.aggro, 8) } : {}) } as Def; /* guardião de lugar marcado: só ataca quem chega perto */ // elites: enormes e assustadores
       const e: Enemy = { id: nid++, type: s.type, def, home: new THREE.Vector2(x * 2, y * 2), pos: new THREE.Vector3(x * 2, 0, y * 2), yaw: R() * 6.28, hp: Math.round(def.hp * HPK * (elite ? EM : 1)), hpMax: Math.round(def.hp * HPK * (elite ? EM : 1)), state: 'idle', t: 0, alive: true, active: false, vel: new THREE.Vector2(), root: null, pup: null, quad: null, rig: null, wanderTo: null, wanderT: R() * 3, phase: R() * 6, respawn: 0, hurtT: 0, tele: null, flash: 0, mats: [] };
       e.slot = i; e.groupN = s.n; (e as Enemy & { night?: boolean }).night = !!s.night; (e as NetE).net = String(e.id); list.push(e); // mesmo mundo, mesma semente: o id é igual em todas as máquinas
@@ -892,4 +892,9 @@ export function animQuadWalk(q: Quad, ph: number, moveSp: number, t: number, see
   for (let i = 0; i < q.ears.length; i++) q.ears[i].rotation.x = Math.sin(t * 1.7 + i * 2 + seed) * 0.1;
 }
 /** multiplicadores de vida e golpe para um bicho no nível L (a mesma curva do mundo: mais forte por nível, e mais ainda depois do 20) */
-export function lvlScale(type: EnemyType, L: number) { const dL = L - DEFS[type].lvl, hi = Math.max(0, L - 20); return { hp: Math.max(0.35, 1 + 0.12 * dL + 0.03 * hi * dL), dmg: Math.max(0.4, 1 + 0.085 * dL + 0.02 * hi * dL) }; }
+/* 07/11 EQUILÍBRIO (item 4 da programação; simulação em balanca-07-11): acima do nível 20 a vida e o dano dos bichos crescem com o QUADRADO
+   do nível. Antes (0,03 / 0,02) um bicho comum do nível 120 matava um herói 120 de equipamento raro em ~4 s, e a partir do 60 o 1 contra 1
+   já era perdido. Agora, herói de raro contra bicho do mesmo nível: ~5 s para matar e ~20–45 s para morrer, do nível 30 ao 120;
+   cada nível acima ainda pesa (herói 120 épico: contra 130 ganha suando, contra 150 só em grupo). */
+export const LV_KH = 0.022, LV_KD = 0.003;
+export function lvlScale(type: EnemyType, L: number) { const dL = L - DEFS[type].lvl, hi = Math.max(0, L - 20); return { hp: Math.max(0.35, 1 + 0.12 * dL + LV_KH * hi * dL), dmg: Math.max(0.4, 1 + 0.085 * dL + LV_KD * hi * dL) }; }

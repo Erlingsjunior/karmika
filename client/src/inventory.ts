@@ -298,7 +298,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   function recalc() {
     const t = total(), A = st.attrs, TL = hooks.talents?.() ?? {}, b = (k: Attr) => A[k] + (t[k] ?? 0) + (TL[k] ?? 0);
     const keepHp = st.hpMax > 0 ? st.hp / st.hpMax : 1, keepMp = st.mpMax > 0 ? st.mp / st.mpMax : 1;
-    st.hpMax = Math.round(100 + 12 * (st.lvl - 1) + 5 * b('vit') + (t.hp ?? 0));
+    st.hpMax = Math.round(100 + 12 * (st.lvl - 1) + 8 * Math.max(0, st.lvl - 40) + 5 * b('vit') + (t.hp ?? 0)); /* 07/11 equilíbrio: do 40 em diante, +8 de vida por nível (o dano dos bichos cresce mais rápido lá em cima) */
     st.mpMax = st.res?.mode === 'fight' ? Math.round(100 + (t.mp ?? 0) * 0.4) : Math.round(100 + 6 * (st.lvl - 1) + 4 * b('int') + (t.mp ?? 0)); // recurso de luta: teto fixo, o que cresce é a geração
     st.gen = (t.gen ?? 0) / 100;
     st.hp = Math.min(st.hpMax, Math.max(1, Math.round(st.hpMax * keepHp))); st.mp = Math.min(st.mpMax, Math.round(st.mpMax * keepMp));
