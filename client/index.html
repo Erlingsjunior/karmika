@@ -392,11 +392,15 @@
   .pn h3 { margin: 6px 0; font-size: 13px; color: #c9a24a; text-transform: uppercase; letter-spacing: 2px; }
   .pn .cols { display: flex; gap: 18px; flex-wrap: wrap; }
   .pn .col { min-width: 220px; max-width: 300px; flex: 1; }
-  /* 07/11: a ficha de mesa (os dados por trás de cada número de Combate) */
-  .pn .col.dsheet { min-width: 230px; max-width: 280px; padding: 8px 10px; border: 1px solid #5a4424; border-radius: 6px; background: linear-gradient(180deg, rgba(40,28,14,.55), rgba(14,10,6,.55)); align-self: flex-start; }
-  .dsheet .dsi { margin: 0 0 6px; font: italic 11px/1.35 Georgia, serif; color: #b8a888; } .dsheet h4 { margin: 8px 0 3px; font: 700 10px Cinzel, serif; letter-spacing: .12em; text-transform: uppercase; color: #c9a24a; }
-  .dsr { display: grid; grid-template-columns: 1fr auto; column-gap: 8px; padding: 4px 0; border-bottom: 1px solid #3a2a1855; } .dsr span { color: #e8dcc0; font-size: 12px; } .dsr b { font: 700 12px Cinzel, Georgia, serif; color: #ffe08a; white-space: nowrap; }
-  .dsr small { grid-column: 1 / -1; font-size: 10px; line-height: 1.3; color: #a89878; }
+  /* 07/11: a ficha de mesa, aba ao lado da ficha do personagem */
+  .charpn h2 .sidebtns { margin-left: auto; display: flex; flex-direction: column; gap: 3px; align-items: stretch; margin-right: 6px; } .charpn h2 .sidebtns .alx { margin: 0; text-align: left; }
+  .dside { width: 340px; } .dlegend { display: grid; gap: 4px; margin: 6px 0 2px; padding: 7px 9px; border-left: 2px solid #c9a24a; background: rgba(201,162,74,.07); font-size: 11px; line-height: 1.4; color: #c8bca0; } .dlegend b { font: 700 10px Cinzel, serif; letter-spacing: .1em; color: #f2cf8a; text-transform: uppercase; } .dlegend em { font-style: normal; font-weight: 700; color: #ffe08a; } .dside .dhead { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin: 8px 0 4px; } .dside .dhead div { text-align: center; padding: 6px 2px; border: 1px solid #5a4424; border-radius: 5px; background: linear-gradient(180deg, #2a1e10, #120c06); }
+  .dside .dhead small { display: block; font: 9px Cinzel, serif; letter-spacing: .1em; text-transform: uppercase; color: #a89878; } .dside .dhead b { font: 700 14px Cinzel, serif; color: #ffe08a; }
+  .dside h4 em { float: right; font: italic 10px Georgia, serif; color: #8a7a5a; text-transform: none; letter-spacing: 0; }
+  .dcard { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: start; padding: 7px 8px; margin: 4px 0; border: 1px solid #3a2a18; border-radius: 5px; background: rgba(0,0,0,.25); }
+  .dcard > i { font-style: normal; color: #c9a24a; font: 700 14px Cinzel, serif; line-height: 1.2; } .dcard span { display: block; font-size: 12.5px; color: #e8dcc0; } .dcard small { display: block; font-size: 10.5px; line-height: 1.35; color: #a89878; margin-top: 2px; }
+  .dcard > b { font: 700 13px Cinzel, Georgia, serif; color: #ffe08a; white-space: nowrap; padding: 2px 6px; border-radius: 4px; background: rgba(255,224,138,.08); border: 1px solid #6a5430; }
+  .dmesa { margin: 4px 0 0; padding-left: 16px; font-size: 12px; line-height: 1.5; color: #d8ccb0; } .dmesa b { color: #ffe08a; }
   .pn p { margin: 4px 0; font-size: 13px; } .pn small { color: #a89878; font-size: 11px; display: block; }
   .pn .bar { height: 8px; background: #000; border: 1px solid #5a4a30; margin-top: 4px; } .pn .bar i { display: block; height: 100%; }
   .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
@@ -1042,7 +1046,7 @@
   /* a moldura acompanha a rolagem (--sy/--sx vêm do script de rolagem): antes ela ficava presa no topo e o conteúdo passava dela */
   .pn::before, #dlg .dp::before, #menu .panel::before, #qlog .pn::before { top: calc(7px + var(--sy, 0px)); bottom: calc(7px - var(--sy, 0px)); left: calc(7px + var(--sx, 0px)); right: calc(7px - var(--sx, 0px)); }
   .pn::after, #dlg .dp::after, #menu .panel::after, #qlog .pn::after { top: calc(12px + var(--sy, 0px)); bottom: calc(12px - var(--sy, 0px)); left: calc(12px + var(--sx, 0px)); right: calc(12px - var(--sx, 0px)); }
-  .charpn h2 .wset { font: 600 13px Cinzel, serif; color: #ffe08a; margin-right: 12px; padding: 1px 8px; border: 1px solid var(--wk-gold-lo); border-radius: 3px; background: rgba(217,162,79,.10); letter-spacing: .08em; } .charpn h2 .wset small { color: #9a8a6a; font-size: 10px; }
+  .charpn h2 .wset { font: 600 13px Cinzel, serif; color: #ffe08a; margin-right: 12px; padding: 1px 8px; border: 1px solid var(--wk-gold-lo); border-radius: 3px; background: rgba(217,162,79,.10); letter-spacing: .08em; } .charpn h2 .wset small { color: #9a8a6a; font-size: 9px; margin-left: 6px; letter-spacing: .04em; } .charpn h2 .wset { cursor: pointer; } .charpn h2 .wset:hover { border-color: #ffe08a; } .charpn h2 .wset.other { background: rgba(90,140,220,.16); border-color: #6a9ad8; } .eqs.wview { outline: 1px dashed #6a9ad8; outline-offset: 2px; }
   .pn h2 { font: 700 19px "Cinzel Decorative", Cinzel, serif; color: #f6e4bb; text-shadow: 0 0 18px rgba(217,162,79,.3); letter-spacing: .06em; }
   .pn h2 button { font-family: Cinzel, serif; background: transparent; border: 1px solid var(--wk-gold-lo); color: var(--wk-ink); border-radius: 2px; padding: 3px 8px; } .pn h2 button:hover { background: rgba(217,162,79,.14); }
   .pn h3 { font: 600 12px Cinzel, serif; letter-spacing: .18em; color: var(--wk-gold); }
@@ -1134,6 +1138,13 @@
   /* 07/11: a peça na mochila do mesmo jeito dos itens — fundo escuro, desenho colorido menor, moldura fina na cor da raridade e uma pedrinha no canto */
   .it.gi.gi2 { background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--rc) 16%, #241c12), #17110b 72%) !important; border: 1px solid color-mix(in srgb, var(--rc) 70%, #3a2e1e) !important; box-shadow: inset 0 0 0 1px #0008, inset 0 -8px 12px -8px color-mix(in srgb, var(--rc) 45%, transparent) !important; padding-bottom: 2px; }
   .it.gi.gi2:hover { border-color: var(--rc) !important; box-shadow: inset 0 0 0 1px #0008, 0 0 8px color-mix(in srgb, var(--rc) 45%, transparent) !important; }
+  /* 07/11 (Erling: "os equipamentos precisam se diferenciar dos usáveis, dos itens de ofício e dos de missão"): cada tipo tem o seu fundo e a sua marca no canto.
+     Equipamento: moldura da raridade (já tinha). Consumível: fundo verde-água e marca de gota. Ofício: fundo de madeira e marca de martelo. Missão: borda dourada tracejada e "!" */
+  .it.c-consumo { background: radial-gradient(circle at 50% 30%, rgba(60,140,120,.28), rgba(10,24,20,.9) 75%) !important; border-radius: 10px !important; }
+  .it.c-material { background: linear-gradient(160deg, rgba(110,78,44,.40), rgba(28,18,10,.92)) !important; border-radius: 2px !important; }
+  .it.c-missao { border: 1px dashed #e8c060 !important; background: radial-gradient(circle at 50% 35%, rgba(200,150,40,.25), rgba(24,16,6,.92) 75%) !important; }
+  .it.c-consumo::before, .it.c-material::before, .it.c-missao::before { position: absolute; left: 2px; top: 1px; font: 700 8px/1 Georgia, serif; pointer-events: none; opacity: .85; }
+  .it.c-consumo::before { content: '💧'; font-size: 7px; } .it.c-material::before { content: '⚒'; color: #d8b080; } .it.c-missao::before { content: '!'; color: #ffd24a; font-size: 10px; left: 3px; }
   .it.gi.gi2 > span { font-size: 22px; filter: drop-shadow(0 1px 1px #000a); } .grid.g6 .it.gi.gi2 > span { font-size: 22px; } #bagmini .grid.g6 .it.gi.gi2 > span { font-size: 15px; }
   .it.gi.gi2 .rgem { position: absolute; left: 3px; bottom: 3px; width: 5px; height: 5px; transform: rotate(45deg); background: var(--rc); box-shadow: 0 0 4px var(--rc); }
   .it.gi.gi2.r-normal .rgem { display: none; } .it.gi.gi2 b { font-size: 9px !important; text-shadow: 0 1px 2px #000; }
@@ -1316,6 +1327,7 @@
   .paper2 .eqlines { position: absolute; left: 0; top: 0; pointer-events: none; }
   .eqs { position: absolute; width: 48px; height: 48px; box-sizing: border-box; border: 1px solid rgba(201,162,74,.35); border-radius: 7px; background: radial-gradient(circle at 50% 35%, #241a12, #0e0a08 75%); box-shadow: inset 0 0 12px #000; display: grid; place-items: center; cursor: default; transition: transform .12s, box-shadow .2s; }
   .eqs .gico { width: 32px; height: 32px; } .eqs:not(.on) .gico { opacity: .45; }
+  .eqs .gem { font-size: 24px; line-height: 1; filter: drop-shadow(0 1px 1px #000a); } .eqs .gem img { width: 30px; height: 30px; } .eqs .ilv { position: absolute; right: 2px; bottom: 1px; font: 700 9px Cinzel, serif; color: var(--rc, #e8dcc0); text-shadow: 0 1px 1px #000; }
   .eqs small { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; font: 600 8px Cinzel, serif; letter-spacing: .12em; text-transform: uppercase; color: #7a6a50; pointer-events: none; }
   .eqs.on { border-color: var(--rc); box-shadow: inset 0 0 14px color-mix(in srgb, var(--rc) 35%, transparent), 0 0 10px color-mix(in srgb, var(--rc) 30%, transparent); cursor: pointer; } .eqs.on small { color: var(--rc); opacity: .8; }
   .eqs:hover { transform: scale(1.08); } .eqs.relic { width: 52px; height: 52px; border-radius: 50%; }

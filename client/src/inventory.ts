@@ -242,7 +242,7 @@ export const BAGS: Record<string, number> = { bag_s: 8, bag_m: 12, bag_l: 24, ba
 /** bolsas que só funcionam com o Premium ativo (sem ele ficam lacradas: não contam espaço) */
 export const PREMIUM_BAGS = new Set(['bag_mg']);
 export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Reator (só para o tecnocrata) */ reactor?(): { on: boolean; charge: number; cap: number }; fuse?(): void; placeFire(): boolean; raceLabel(): string; karma(): number; xpNeed(): number; onCraft?(name: string): void; /** destruiu o item de uma missão: a missão é abandonada */ questItemLost?(quest: string, item: string): void; /** a lista do alinhamento kármico (tela do personagem) */ alignHtml?(): string; /** usar/vestir: animação e som (main.ts) */ feel?(kind: string, id: string): void; portrait?(): string | null; soul?(): [string, string][]; title?(): string; onUse?(id: string): boolean; onGear?(): void; onBag?(): void; /** bônus de XP fora do equipamento (bênção do voto) */ xpBonus?(): number; /** multiplicador de preço desta loja para este herói */ priceK?(shop: string): number; /** 06/11: quanto a loja paga a mais por este item vindo deste herói (o tecnocrata vende engenhocas à Caravana de Latão pelo dobro) */ sellK?(shop: string, id: string): number; /** arma de caminho: devolve o motivo se este herói não pode empunhar */ canWear?(g: Gear): string | null; /** 03/11: a soma da árvore de talentos (talentos.ts) */ talents?(): Partial<Record<string, number>> }) {
-  let alOpen = false; /* a coluna do alinhamento kármico na tela do personagem */
+  let alOpen = false, dsOpen = false; /* a coluna do alinhamento kármico na tela do personagem */
   const bag: Record<string, number> = { potion: 2, bread: 3, flint: 1, rope: 2 };
   let gearBag: Gear[] = [];
   const tools: Record<ToolSlot, string | null> = { axe: null, pick: null, knife: null, shears: null, rod: null };
@@ -330,21 +330,26 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
      bater com os valores do jogo"). A ficha de mesa traduz em dados EXATAMENTE as contas que o combate faz hoje (gameplay.ts):
      golpe = sorteio uniforme entre o mínimo e o máximo (= 1dN + K), crítico/esquiva/bloqueio = d100 contra a chance, defesa = redução */
   function diceSheet(lo: number, hi: number) {
-    const lp = 0.05 * (st.lvl - 1), dex = st.attrs?.dex ?? 0, n = hi - lo + 1, avg = (lo + hi) / 2, pc = (v: number) => Math.round(v * 100);
+    const lp = 0.05 * (st.lvl - 1), dex = st.attrs?.dex ?? 0, n = hi - lo + 1, avg = (lo + hi) / 2, pc = (v: number) => Math.round(v * 100), br = (v: number | string) => String(v).replace('.', ',');
     const critM = st.sp.has('r_mimir') ? 2.3 : 1.7, dodge = Math.min(0.35, 0.04 + dex * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0), block = Math.min(0.3, 0.03 + st.def * 0.5);
     const evade = Math.max(0.02, Math.min(0.3, 0.05 - 0.004 * dex)), evadeAg = Math.max(0.02, Math.min(0.3, 0.14 - 0.004 * dex)), def = Math.max(-0.3, Math.min(0.75, st.def));
-    const dr = (t: string, d: string, sub: string) => `<div class="dsr"><span>${t}</span><b>${d}</b><small>${sub}</small></div>`;
-    return `<div class="col dsheet"><h3>🎲 Ficha de mesa</h3>
-      <p class="dsi">Cada golpe é uma rolagem: o alvo tenta esquivar, você rola o dano, rola o crítico, e a armadura dele desconta.</p>
-      <h4>Ao atacar</h4>
-      ${dr('Dano do golpe', `1d${n} + ${lo - 1}`, `${lo} a ${hi}, média ${avg.toFixed(1).replace('.', ',')} · dado-base 1d7+8 da mão, ×${(1 + lp).toFixed(2).replace('.', ',')} pelo nível${st.dmgFlat ? `, + ${Math.round(st.dmgFlat * (1 + 0.5 * lp))} da arma` : ''}, ×${st.atk.toFixed(2).replace('.', ',')} de ataque`)}
-      ${dr('Crítico', `d100 ≤ ${pc(st.crit)}`, `acertou: dano ×${String(critM).replace('.', ',')} → ${Math.round(lo * critM)} a ${Math.round(hi * critM)}`)}
-      ${dr('Esquiva do alvo', `d100 ≤ ${pc(evade)}`, `bicho ágil: ≤ ${pc(evadeAg)} · +2 por nível que ele tiver acima de você · a sua Destreza tira 0,4 cada`)}
-      ${dr('Armadura do alvo', '−6% a −60%', 'cresce 2,5% por nível que ele tiver acima de você, e cada bicho ainda absorve alguns pontos por golpe')}
-      <h4>Ao ser atacado</h4>
-      ${dr('Sua esquiva', `d100 ≤ ${pc(dodge)}`, `4% + 1,2% por ponto de Destreza${st.sp.has('dh_cloak') ? ' + 12% da capa' : ''} (teto 35%)`)}
-      ${dr('Bloqueio', `d100 ≤ ${pc(block)}`, 'leva só 45% do dano · erguendo a guarda: até 30%')}
-      ${dr('Defesa', `−${pc(def)}% do dano`, 'cada golpe que passa perde essa parte (teto 75%)')}
+    const card = (ic: string, t: string, d: string, sub: string) => `<div class="dcard"><i>${ic}</i><div><span>${t}</span><small>${sub}</small></div><b>${d}</b></div>`;
+    const t = total();
+    return `<div class="pn alside dside"><h3>🎲 Ficha de Mesa</h3>
+      <p class="alsd">Tudo o que acontece numa luta é uma rolagem de dados. Esta ficha mostra, em dados, exatamente as contas que o jogo faz agora com o seu personagem — e serve para jogar KARMIKA numa mesa de verdade.</p>
+      <div class="dlegend"><b>Como ler os dados</b><span><em>1d7</em> = um dado de 7 lados (sai de 1 a 7). <em>1d7 + 15</em> = rola e soma 15.</span><span><em>d100</em> = um dado de 100 lados: é a porcentagem. Na mesa se joga com dois d10, um para a dezena e outro para a unidade (0 e 0 = 100). <em>d100 ≤ 12</em> quer dizer: tirou 12 ou menos, aconteceu — ou seja, 12% de chance.</span></div>
+      <div class="dhead"><div><small>Vida</small><b>${st.hpMax}</b></div><div><small>Defesa</small><b>${pc(def)}%</b></div><div><small>Golpe</small><b>${lo}–${hi}</b></div><div><small>Crítico</small><b>${pc(st.crit)}%</b></div></div>
+      <h4>⚔ Quando você ataca <em>na ordem</em></h4>
+      ${card('①', 'O alvo tenta esquivar', `d100 ≤ ${pc(evade)}`, `bicho ágil ≤ ${pc(evadeAg)} · +2 por nível que ele tiver acima de você · cada ponto da sua Destreza tira 0,4`)}
+      ${card('②', 'Você rola o dano', `1d${n} + ${lo - 1}`, `de ${lo} a ${hi}, média ${br(avg.toFixed(1))}. Vem do dado-base 1d7+8 da mão ×${br((1 + lp).toFixed(2))} pelo nível${st.dmgFlat ? ` + ${Math.round(st.dmgFlat * (1 + 0.5 * lp))} da arma` : ''}, tudo ×${br(st.atk.toFixed(2))} de ataque`)}
+      ${card('③', 'Você rola o crítico', `d100 ≤ ${pc(st.crit)}`, `acertou: o dano vira ×${br(critM)} (${Math.round(lo * critM)} a ${Math.round(hi * critM)})`)}
+      ${card('④', 'A armadura dele desconta', '−6% a −60%', 'sobe 2,5% por nível que ele tiver acima de você; cada bicho ainda absorve alguns pontos por golpe')}
+      <h4>🛡 Quando você é atacado <em>na ordem</em></h4>
+      ${card('①', 'Você tenta esquivar', `d100 ≤ ${pc(dodge)}`, `4% + 1,2% por ponto de Destreza da sua base${st.sp.has('dh_cloak') ? ' + 12% da capa' : ''} · teto 35%`)}
+      ${card('②', 'Você tenta bloquear', `d100 ≤ ${pc(block)}`, 'bloqueou: leva só 45% do golpe · com a guarda erguida chega a 30%')}
+      ${card('③', 'A defesa desconta', `−${pc(def)}%`, 'o que passa perde essa parte · teto 75%')}
+      <h4>📜 Para jogar na mesa</h4>
+      <ul class="dmesa"><li>Precisa de <b>1d100</b> (ou dois d10) e <b>1d${n}</b> — ou qualquer dado e some <b>${lo - 1}</b>.</li><li>Atributos: Força ${st.attrs.str + Math.round(t.str ?? 0)} · Destreza ${st.attrs.dex + Math.round(t.dex ?? 0)} · Vitalidade ${st.attrs.vit + Math.round(t.vit ?? 0)} · Energia ${st.attrs.int + Math.round(t.int ?? 0)}.</li><li>Os monstros usam a mesma ficha: a do bestiário diz a esquiva, a armadura e o dano de cada um.</li></ul>
     </div>`;
   }
   const power = () => { const [a, z] = hitRange(); return Math.round(((a + z) / 2) * (1 + st.crit * 0.8) * 4 + (st.hpMax / (1 - st.def)) * 0.5); };
@@ -386,6 +391,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const slotFor = (g: Gear): Slot => g.slot === 'weapon' && dualFam(g.base) && eqG.weapon && dualFam(eqG.weapon.base) === dualFam(g.base) && !eqG.shield ? 'shield' : g.slot === 'ring' ? (!eqG.ring ? 'ring' : !eqG.ring2 ? 'ring2' : 'ring') : g.slot === 'earring' ? (!eqG.earring ? 'earring' : !eqG.earring2 ? 'earring2' : 'earring') : g.slot;
   function equip(uid: number) {
     const i = gearBag.findIndex((g) => g.uid === uid); if (i < 0) return;
+    if (wView !== wsets.act && (gearBag[i].slot === 'weapon' || gearBag[i].slot === 'shield')) { if (!usable(gearBag[i])) { game.logMsg(`Você ainda não pode usar ${gearBag[i].name}.`, '#ff9a8a'); return; } assignToView(gearBag[i]); return; }
     { const g0 = gearBag[i]; if (st.lvl < reqLvl(g0)) { game.logMsg(`Você precisa do nível ${reqLvl(g0)} para usar ${g0.name}.`, '#ff9a8a'); game.snd?.('error'); return; } { const why = hooks.canWear?.(g0); if (why) { game.logMsg(why, '#ff9a8a'); game.snd?.('error'); return; } } if (g0.fac && myFac() !== g0.fac) { game.logMsg(`⚑ Só quem jurou ${FAC[g0.fac].name} pode vestir este brasão. Os lados se escolhem no nível ${FAC_LVL}.`, '#ff9a8a'); game.snd?.('error'); return; } }
     const g = gearBag.splice(i, 1)[0], tg = slotFor(g), old = eqG[tg]; eqG[tg] = g; if (old) gearBag.push(old); hooks.feel?.('equip', String(g.slot));
     { const off = eqG.shield; if (tg === 'weapon' && off && off.slot === 'weapon' && dualFam(off.base) !== dualFam(g.base)) { eqG.shield = null; gearBag.push(off); game.logMsg(`${off.name} voltou para a bolsa: não combina com ${g.name} na outra mão.`, '#c8c0b0'); } }
@@ -393,35 +399,40 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     if ((g.shop || g.fac) && !g.bound) { g.bound = true; game.logMsg(`🔒 ${g.name} agora está vinculado a você (não vai mais ao Leilão).`, '#b9c6e0'); }
     game.logMsg(`Equipou ${g.name}`, RARITY[g.rarity].col); recalc(); render(); save(); swapFx(tg, !!old);
   }
-  /** 03/11 (Erling: "um botão de trocar equipamento rápido: uma arma em cada mão, ou uma arma e um escudo, ou arma de duas mãos — Ctrl + roda do
-   *  mouse, e apertando um botão do teclado também"): os três jeitos de segurar, montados com o que está vestido e com o que está na bolsa.
-   *  Lembra a última peça de cada jeito; sem lembrança, pega a de mais dano que você pode usar. */
-  const SETK = 'karmika.wsets.v1'; let wmem: Record<string, number[]> = {}; try { wmem = JSON.parse(localStorage.getItem(SETK) || '{}'); } catch { /* */ }
-  const isShieldG = (g: Gear) => g.slot === 'shield';
-  const dmgOf = (g: Gear) => (g.stats.dmg ?? 0) + (g.stats.crit ?? 0) * 0.5 + g.ilvl * 0.01;
   const usable = (g: Gear) => st.lvl >= reqLvl(g) && !hooks.canWear?.(g) && !(g.fac && myFac() !== g.fac);
   function setMode(): 'dual' | 'shield' | 'two' | 'one' { const w = eqG.weapon, o = eqG.shield; if (o && o.slot === 'weapon') return 'dual'; if (o) return 'shield'; if (w && TWO_HANDED.test(w.base)) return 'two'; return 'one'; }
-  function wPlan() {
-    const pool = [...gearBag, ...[eqG.weapon, eqG.shield].filter(Boolean) as Gear[]].filter(usable), mem = (k: string) => (wmem[k] ?? []).map((u) => pool.find((g) => g.uid === u)).filter(Boolean) as Gear[];
-    const ones = pool.filter((g) => g.slot === 'weapon' && dualFam(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), twos = pool.filter((g) => g.slot === 'weapon' && TWO_HANDED.test(g.base)).sort((a, b) => dmgOf(b) - dmgOf(a)), shields = pool.filter(isShieldG).sort((a, b) => (b.stats.def ?? 0) - (a.stats.def ?? 0));
-    const plan: Record<string, Gear[] | null> = {
-      dual: (() => { const m = mem('dual'); if (m.length === 2) return m; const a = ones[0]; if (!a) return null; const b = ones.find((g) => g !== a && dualFam(g.base) === dualFam(a.base)); return b ? [a, b] : null; })(),
-      shield: (() => { const m = mem('shield'); if (m.length === 2) return m; const a = eqG.weapon && dualFam(eqG.weapon.base) ? eqG.weapon : ones[0]; return a && shields[0] ? [a, shields[0]] : null; })(),
-      two: (() => { const m = mem('two'); if (m.length === 1) return m; return twos[0] ? [twos[0]] : null; })(),
-    };
-    return plan; }
-  /** número do conjunto de armas que está na mão (I, II, III), na ordem da troca Ctrl+roda */
-  function wSetNo() { const plan = wPlan(), order = ['dual', 'shield', 'two'].filter((k) => plan[k]), i = order.indexOf(setMode()); return { n: i < 0 ? 1 : i + 1, of: Math.max(1, order.length) }; }
+  /* 07/11 (Erling: "tem que ser conjunto 1, 2 e 3; Ctrl+roda só muda de um conjunto para o outro; clicando eu vejo os espaços de cada conjunto
+     para pôr itens diferentes; os espaços são só mão 1 e mão 2, não conjuntos completos"). Cada conjunto guarda duas peças (mão 1, mão 2) por uid.
+     O conjunto em uso está nas mãos (eqG.weapon/eqG.shield); os outros ficam na bolsa, reservados. */
+  type WSet = { w: number | null; o: number | null };
+  const SETK2 = 'karmika.wsets.v2';
+  let wsets: { sets: WSet[]; act: number } = (() => { try { const v = JSON.parse(localStorage.getItem(SETK2) || 'null'); if (v && Array.isArray(v.sets) && v.sets.length === 3) return v; } catch { /* */ } const sets: WSet[] = [{ w: null, o: null }, { w: null, o: null }, { w: null, o: null }]; /* vinda do jeito antigo (dual/escudo/duas mãos): cada jeito lembrado vira um conjunto */
+    try { const m = JSON.parse(localStorage.getItem('karmika.wsets.v1') || '{}') as Record<string, number[]>; let k = 1; for (const key of ['dual', 'shield', 'two']) { const u = m[key]; if (!u?.length || k > 2) continue; sets[k] = { w: u[0] ?? null, o: u[1] ?? null }; k++; } } catch { /* */ }
+    return { sets, act: 0 }; })();
+  let wView = wsets.act;
+  const saveSets = () => { try { localStorage.setItem(SETK2, JSON.stringify(wsets)); } catch { /* */ } };
+  const byUid = (u: number | null) => u == null ? null : gearBag.find((g) => g.uid === u) ?? [eqG.weapon, eqG.shield].find((g) => g?.uid === u) ?? null;
+  /** o conjunto em uso sempre espelha o que está nas mãos */
+  const syncAct = () => { const a = wsets.sets[wsets.act]; a.w = eqG.weapon?.uid ?? null; a.o = eqG.shield?.uid ?? null; };
+  /** a peça de uma mão do conjunto mostrado na ficha (o em uso = as mãos; os outros = da bolsa) */
+  function setHand(sl: 'weapon' | 'shield'): Gear | null { if (wView === wsets.act) return eqG[sl]; const z = wsets.sets[wView]; return byUid(sl === 'weapon' ? z.w : z.o); }
+  /** pôr uma peça da bolsa num conjunto que não está em uso */
+  function assignToView(g: Gear) { const z = wsets.sets[wView]; for (const q of wsets.sets) { if (q.w === g.uid) q.w = null; if (q.o === g.uid) q.o = null; }
+    const w = byUid(z.w); if (g.slot === 'shield') { if (w && TWO_HANDED.test(w.base)) z.w = null; z.o = g.uid; }
+    else if (TWO_HANDED.test(g.base)) { z.w = g.uid; z.o = null; }
+    else if (w && !z.o && dualFam(w.base) && dualFam(w.base) === dualFam(g.base)) z.o = g.uid; else z.w = g.uid;
+    { const o = byUid(z.o), w2 = byUid(z.w); if (o && o.slot === 'weapon' && (!w2 || dualFam(o.base) !== dualFam(w2.base))) z.o = null; }
+    saveSets(); game.logMsg(`⚔ ${g.name} no conjunto ${['I', 'II', 'III'][wView]}.`, '#ffe08a'); render(); }
   function cycleWeapons(dir = 1) {
-    const plan = wPlan();
-    const order = ['dual', 'shield', 'two'].filter((k) => plan[k]); if (!order.length) { game.logMsg('⚔ Nada para trocar: leve na bolsa outra arma de uma mão, um escudo ou uma arma de duas mãos.', '#c8b890'); return; }
-    /* guarda o jeito atual antes de sair dele */ const cur = setMode(); if (cur !== 'one') { wmem[cur] = [eqG.weapon, eqG.shield].filter(Boolean).map((g) => g!.uid); }
-    const i = order.indexOf(cur), next = order[((i < 0 ? (dir > 0 ? -1 : 0) : i) + dir + order.length) % order.length]; if (next === cur && order.length === 1) { game.logMsg('⚔ Só existe um jeito de segurar com o que você tem.', '#c8b890'); return; }
-    const want = plan[next]!; for (const sl of ['weapon', 'shield'] as const) { const g = eqG[sl]; if (g) { eqG[sl] = null; gearBag.push(g); } }
-    for (const [k, g] of want.entries()) { const j = gearBag.indexOf(g); if (j >= 0) gearBag.splice(j, 1); eqG[k === 0 ? 'weapon' : 'shield'] = g; }
-    wmem[next] = want.map((g) => g.uid); try { localStorage.setItem(SETK, JSON.stringify(wmem)); } catch { /* */ }
-    const L = { dual: '⚔ Uma arma em cada mão', shield: '🛡 Arma e escudo', two: '🗡 Arma de duas mãos' }[next as 'dual' | 'shield' | 'two'];
-    game.logMsg(`${L}: ${want.map((g) => g.name).join(' + ')}`, '#ffe08a'); hooks.feel?.('equip', 'weapon'); recalc(); render(); save(); swapFx('weapon', true); }
+    syncAct(); const filled = (i: number) => !!(byUid(wsets.sets[i].w) || byUid(wsets.sets[i].o));
+    let nx = wsets.act; for (let k = 1; k <= 3; k++) { const c = (wsets.act + dir * k + 9) % 3; if (filled(c)) { nx = c; break; } }
+    if (nx === wsets.act) { game.logMsg('⚔ Só um conjunto montado. Abra o personagem (C) e clique no ⚔ para montar os conjuntos II e III.', '#c8b890'); return; }
+    const want = wsets.sets[nx], gw = byUid(want.w), go = byUid(want.o);
+    for (const g of [gw, go]) if (g && !usable(g)) { game.logMsg(`⚔ Você ainda não pode usar ${g.name}.`, '#ff9a8a'); return; }
+    for (const sl of ['weapon', 'shield'] as const) { const g = eqG[sl]; if (g) { eqG[sl] = null; gearBag.push(g); } }
+    for (const [sl, g] of [['weapon', gw], ['shield', go]] as const) if (g) { const j = gearBag.indexOf(g); if (j >= 0) gearBag.splice(j, 1); eqG[sl] = g; }
+    if (wView === wsets.act) wView = nx; wsets.act = nx; saveSets();
+    game.logMsg(`⚔ Conjunto ${['I', 'II', 'III'][nx]}: ${[gw, go].filter(Boolean).map((g) => g!.name).join(' + ') || 'mãos vazias'}`, '#ffe08a'); hooks.feel?.('equip', 'weapon'); recalc(); render(); save(); swapFx('weapon', true); }
   /** troca visível (25/10): a peça some do espaço por meio segundo e volta brilhando, com som de troca */
   function swapFx(slot: Slot, had: boolean) {
     game.snd?.('swap');
@@ -430,7 +441,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     setTimeout(() => { const e2 = ch.querySelector(`.eqs.${slot}`) as HTMLElement | null; if (!e2) return; e2.classList.remove('swapout'); void e2.offsetWidth; e2.classList.add('swapin'); setTimeout(() => e2.classList.remove('swapin'), 650); }, 500);
     void had;
   }
-  function unequip(slot: Slot) { const g = eqG[slot]; if (!g) return; eqG[slot] = null; gearBag.push(g); if (slot === 'weapon' && eqG.shield?.slot === 'weapon') { eqG.weapon = eqG.shield; eqG.shield = null; } /* sem a da direita, a da esquerda passa para a mão boa */ recalc(); render(); save(); }
+  function unequip(slot: Slot) { if (wView !== wsets.act && (slot === 'weapon' || slot === 'shield')) { const z = wsets.sets[wView]; if (slot === 'weapon') z.w = null; else z.o = null; saveSets(); render(); return; } const g = eqG[slot]; if (!g) return; eqG[slot] = null; gearBag.push(g); if (slot === 'weapon' && eqG.shield?.slot === 'weapon') { eqG.weapon = eqG.shield; eqG.shield = null; } /* sem a da direita, a da esquerda passa para a mão boa */ recalc(); render(); save(); }
   function craft(rid: string) {
     const r = RECIPES.find((x) => x.id === rid)!; if (!r.need.every(([i, n]) => has(i, n)) || !(r.keep ?? []).every((k) => has(k))) { game.logMsg('Faltam materiais.', '#ff9a8a'); return; }
     if (r.out === 'fire') { if (!hooks.placeFire()) return; for (const [i, n] of r.need) take(i, n); game.logMsg('🔥 Fogueira acesa!', '#ffb060'); close(); return; }
@@ -466,7 +477,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     const sp = spF;
     const tag = tagF;
     const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
-    for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => bagCfg.sort === 'nome' ? (ITEMS[a]?.name ?? a).localeCompare(ITEMS[b]?.name ?? b) : bagCfg.sort === 'valor' ? spF(b) - spF(a) : (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+    for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => bagCfg.sort === 'nome' ? (ITEMS[a]?.name ?? a).localeCompare(ITEMS[b]?.name ?? b) : bagCfg.sort === 'valor' ? spF(b) - spF(a) : (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''} c-${catOf('i:' + i)}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
     { const ov = overflow(); for (let q = 0; q < ov; q++) cells.push(`<div class="it ovf" title="Excesso das Bolsas de Ofício/Mágica: o material que não coube nelas ocupa este espaço da mochila. Venda, use ou guarde no baú para liberar.">📦</div>`); }
     return cells;
   }
@@ -611,12 +622,13 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       const POS: Record<Slot, [number, number, number, number]> = { // [x, y do espaço, alvo x, alvo y no boneco (0–1)]
         helm: [60, 34, 0.5, 0.11], earring: [60, 92, 0.42, 0.16], amulet: [60, 150, 0.5, 0.24], shoulders: [60, 208, 0.31, 0.29], armor: [60, 266, 0.5, 0.38], weapon: [60, 324, 0.22, 0.56],
         cape: [560, 34, 0.68, 0.3], earring2: [560, 92, 0.58, 0.16], shield: [560, 150, 0.78, 0.52], ring: [560, 208, 0.75, 0.6], ring2: [560, 266, 0.25, 0.61], boots: [560, 324, 0.56, 0.95], relic: [310, 346, 0.5, 0.45] };
-      const lines = SLOTS.map((s) => { const [x, y, fx, fy] = POS[s], g = eqG[s], tx = DX + fx * DW, ty = DY + fy * DH, sx = s === 'relic' ? x : x < W / 2 ? x + 25 : x - 25, sy = s === 'relic' ? y - 25 : y, col = g ? RARITY[g.rarity].col : '#e8d6a0';
+      const eqV = (sl: Slot) => sl === 'weapon' || sl === 'shield' ? setHand(sl) : eqG[sl], viewOther = wView !== wsets.act;
+      const lines = SLOTS.map((s) => { const [x, y, fx, fy] = POS[s], g = eqV(s), tx = DX + fx * DW, ty = DY + fy * DH, sx = s === 'relic' ? x : x < W / 2 ? x + 25 : x - 25, sy = s === 'relic' ? y - 25 : y, col = g ? RARITY[g.rarity].col : '#e8d6a0';
         const mx = s === 'relic' ? sx : (sx + tx) / 2; return `<path d="M${sx} ${sy} C${mx} ${s === 'relic' ? (sy + ty) / 2 : sy} ${mx} ${s === 'relic' ? (sy + ty) / 2 : ty} ${tx} ${ty}" stroke="${col}" stroke-opacity="${g ? 0.42 : 0.14}" stroke-width="${g ? 1.2 : 0.8}" fill="none" ${g ? '' : 'stroke-dasharray="2 4"'}/><circle cx="${tx}" cy="${ty}" r="${g ? 2.6 : 1.8}" fill="${col}" fill-opacity="${g ? 0.75 : 0.25}" filter="url(#eqglow)"/>`; }).join('');
-      const slot = (s: Slot) => { const g = eqG[s], [x, y] = POS[s]; return `<div class="eqs ${g ? 'on' : ''} ${s}" style="left:${x - 24}px;top:${y - 24}px;${g ? `--rc:${RARITY[g.rarity].col}` : ''}" ${g ? `draggable="true" data-drag="e:${s}" data-g="e:${s}" data-un="${s}"` : `title="${RSLOT[s]} — vazio. Arraste uma peça para cá."`}>${gearIcon(g, s)}<small>${RSLOT[s]}</small></div>`; };
+      const slot = (s: Slot) => { const g = eqV(s), [x, y] = POS[s], vo = viewOther && (s === 'weapon' || s === 'shield'); return `<div class="eqs ${g ? 'on' : ''} ${s} ${vo ? 'wview' : ''}" style="left:${x - 24}px;top:${y - 24}px;${g ? `--rc:${RARITY[g.rarity].col}` : ''}" ${g ? (vo ? `data-g="g:${g.uid}" data-un="${s}" title="Conjunto ${['I', 'II', 'III'][wView]} — clique para tirar do conjunto"` : `draggable="true" data-drag="e:${s}" data-g="e:${s}" data-un="${s}"`) : `title="${RSLOT[s]} — vazio. Arraste uma peça para cá."`}>${g ? `<span class="gem">${gearEmoji(g)}</span><b class="ilv">${g.ilvl}</b>` : gearIcon(null, s)}<small>${g ? (g.name.length > 14 ? g.name.slice(0, 13) + '…' : g.name) : RSLOT[s]}</small></div>`; }; /* 07/11 (Erling: "não vejo os ícones trocando"): o espaço mostra o desenho da peça (como na mochila), o nível dela e o nome */
       const row = (l: string, v: string) => `<div class="stt"><span>${l}</span><b>${v}</b></div>`;
       const pic = hooks.portrait?.() ?? null;
-      ch.innerHTML = `<div class="charwrap"><div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span><span class="wset" title="Conjunto de armas na mão — troque com Ctrl + roda do mouse">⚔ ${(() => { const w = wSetNo(); return `${['I', 'II', 'III'][w.n - 1]}<small>/${['I', 'II', 'III'][w.of - 1]}</small>`; })()}</span>${hooks.alignHtml ? `<button class="alx ${alOpen ? 'on' : ''}" data-alx title="Os seus pontos de karma com cada vila, cidade, região e facção por onde você passou">🏘 Alinhamento ${alOpen ? '◂' : '▸'}</button>` : ''}<button data-x>✕</button></h2>
+      ch.innerHTML = `<div class="charwrap"><div class="pn charpn"><h2>${hooks.title?.() || hooks.raceLabel()} <span class="lv">Nível ${st.lvl}</span><button class="wset ${viewOther ? 'other' : ''}" data-wsv title="Conjuntos de armas (mão 1 e mão 2). Clique para ver e montar o conjunto I, II ou III; Ctrl + roda do mouse troca o conjunto em uso. Em uso agora: ${['I', 'II', 'III'][wsets.act]}">⚔ ${['I', 'II', 'III'][wView]}<small>${viewOther ? `vendo · em uso ${['I', 'II', 'III'][wsets.act]}` : 'em uso'}</small></button><span class="sidebtns">${hooks.alignHtml ? `<button class="alx ${alOpen ? 'on' : ''}" data-alx title="Os seus pontos de karma com cada vila, cidade, região e facção por onde você passou">🏘 Alinhamento ${alOpen ? '◂' : '▸'}</button>` : ''}<button class="alx ${dsOpen ? 'on' : ''}" data-dsx title="Os dados por trás de cada número de Combate — a ficha para jogar KARMIKA na mesa">🎲 Ficha de mesa ${dsOpen ? '◂' : '▸'}</button></span><button data-x>✕</button></h2>
         <div class="paper2" style="width:${W}px;height:${H}px"><svg class="eqlines" width="${W}" height="${H}"><defs><filter id="eqglow"><feGaussianBlur stdDeviation="1.6"/></filter></defs>${lines}</svg>
           <div class="doll" style="position:absolute;left:${DX}px;top:${DY}px;width:${DW}px;height:${DH}px">${pic ? `<img src="${pic}" alt="">` : ''}<div class="pw">⚔ Poder ${power()}</div></div>
           ${SLOTS.map(slot).join('')}
@@ -630,8 +642,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
           <div class="col"><h3>Combate</h3>
           ${row('Vida', `${Math.round(st.hp)}/${st.hpMax}`)}${row(st.res?.name ?? 'Magia', `${Math.round(st.mp)}/${st.mpMax}`)}${st.gen ? row(`Geração de ${st.res?.name ?? 'magia'}`, `+${Math.round(st.gen * 100)}%`) : ''}${row('Dano por golpe', `${lo}–${hi}`)}${row('Crítico', `${Math.round(st.crit * 100)}%`)}${row('Defesa', `${Math.round(st.def * 100)}%`)}${row('Velocidade', `+${Math.round((st.move - 1) * 100)}%`)}${row('Regeneração', `${st.regen.toFixed(1)}/s`)}${st.leech ? row('Roubo de vida', `${(st.leech * 100).toFixed(1)}%`) : ''}${st.xpMul > 1 ? row('XP', `+${Math.round((st.xpMul - 1) * 100)}%`) : ''}${st.goldMul > 1 ? row('Ouro', `+${Math.round((st.goldMul - 1) * 100)}%`) : ''}
           ${row('Karma', String(Math.round(hooks.karma())))}${row('Ouro', `🪙 ${st.gold}`)}</div>
-          ${diceSheet(lo, hi)}
-        </div><small class="ft">C: fechar · I: mochila · arraste da mochila para o boneco para equipar · clique ou arraste para a mochila para desequipar</small></div>${alOpen && hooks.alignHtml ? `<div class="pn alside"><h3>Alinhamento Kármico</h3><p class="alsd">Os lugares por onde você passou como caminhante e o quanto a sua alma combina com cada um.</p>${hooks.alignHtml()}</div>` : ''}</div>`;
+        </div><small class="ft">C: fechar · I: mochila · arraste da mochila para o boneco para equipar · clique ou arraste para a mochila para desequipar</small></div>${dsOpen ? diceSheet(lo, hi) : ''}${alOpen && hooks.alignHtml ? `<div class="pn alside"><h3>Alinhamento Kármico</h3><p class="alsd">Os lugares por onde você passou como caminhante e o quanto a sua alma combina com cada um.</p>${hooks.alignHtml()}</div>` : ''}</div>`;
       ch.style.display = 'flex';
     } else ch.style.display = 'none';
     if (shop) {
@@ -676,8 +687,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     if (e.shiftKey && other) { tip2.innerHTML = `<span class="eqh">Equipado</span>` + gearTip(other); tip2.style.display = 'block'; tip2.style.borderColor = RARITY[other.rarity].col; const w2 = tip2.offsetWidth; if (x + w + w2 + 8 > innerWidth) x = Math.max(8, e.clientX - 16 - w - w2 - 6); tip2.style.left = x + w + 6 + 'px'; tip2.style.top = y + 'px'; } else tip2.style.display = 'none';
     tip.style.left = x + 'px'; tip.style.top = y + 'px'; lastTipEv = e; lastTipT = t;
   };
-  ch.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-alx]')) { e.stopPropagation(); alOpen = !alOpen; render(); return; } });
-  ch.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('[data-helm]')) return; e.stopPropagation(); const show = localStorage.getItem('karmika.showHelm') === '0'; localStorage.setItem('karmika.showHelm', show ? '1' : '0'); game.logMsg(show ? '⛑ Elmo à mostra.' : '⛑ Elmo escondido: o rosto fica sempre à mostra (os atributos continuam valendo).', '#b9c6e0'); hooks.onGear?.(); render(); });
+  ch.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-alx]')) { e.stopPropagation(); alOpen = !alOpen; if (alOpen) dsOpen = false; render(); return; } if ((e.target as HTMLElement).closest('[data-dsx]')) { e.stopPropagation(); dsOpen = !dsOpen; if (dsOpen) alOpen = false; render(); return; } });
+  ch.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-wsv]')) { e.stopPropagation(); syncAct(); wView = (wView + 1) % 3; render(); return; } if (!(e.target as HTMLElement).closest('[data-helm]')) return; e.stopPropagation(); const show = localStorage.getItem('karmika.showHelm') === '0'; localStorage.setItem('karmika.showHelm', show ? '1' : '0'); game.logMsg(show ? '⛑ Elmo à mostra.' : '⛑ Elmo escondido: o rosto fica sempre à mostra (os atributos continuam valendo).', '#b9c6e0'); hooks.onGear?.(); render(); });
   el.addEventListener('mousemove', showTip); mini.addEventListener('mousemove', showTip); mini.addEventListener('mouseleave', () => { tip.style.display = 'none'; tip2.style.display = 'none'; });
   mini.addEventListener('click', (e) => { const x = (e.target as HTMLElement).closest('[data-mx]') as HTMLElement | null; if (x) { toggleBag(x.dataset.mx!, true); return; } onPanelClick(e); }); sh.addEventListener('mousemove', showTip); ch.addEventListener('mousemove', showTip);
   for (const kk of ['keydown', 'keyup'] as const) addEventListener(kk, (ev) => { if (ev.key === 'Shift' && lastTipEv && lastTipT && lastTipT.isConnected && tip.style.display === 'block') lastTipT.dispatchEvent(new MouseEvent('mousemove', { clientX: lastTipEv.clientX, clientY: lastTipEv.clientY, shiftKey: kk === 'keydown', bubbles: true })); });
@@ -756,7 +767,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   function close() { open = false; charOpen = false; render(); }
 
   const SAVE = 'karmika.save.v2', OLD = 'karmika.save.v1';
-  function save() { try { localStorage.setItem(SAVE, JSON.stringify({ bag, bags, tools, gear: gearBag, eqG, attrs: st.attrs, points: st.points, gold: st.gold, lvl: st.lvl, xp: st.xp, kills: st.kills })); } catch { /* sem storage */ } }
+  function save() { syncAct(); saveSets(); try { localStorage.setItem(SAVE, JSON.stringify({ bag, bags, tools, gear: gearBag, eqG, attrs: st.attrs, points: st.points, gold: st.gold, lvl: st.lvl, xp: st.xp, kills: st.kills })); } catch { /* sem storage */ } }
   function load() {
     try {
       let s = JSON.parse(localStorage.getItem(SAVE) || 'null'); const old = !s; if (!s) s = JSON.parse(localStorage.getItem(OLD) || 'null'); if (!s) return;
