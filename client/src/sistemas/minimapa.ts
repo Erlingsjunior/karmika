@@ -96,7 +96,7 @@ function sideHtml() {
   const rel = K.city.relics.filter((r) => K.knowsRelic(r.name)).sort((a, b) => dist(a.x, a.y) - dist(b.x, b.y)).map((r) => `<button data-see="${r.x},${r.y}" data-nm="${r.name}"><b>${r.name.replace(/^Relíquia(:| de) /, '')}</b><small>Relíquia · ${fmtDist(dist(r.x, r.y))}</small><i data-trav="${r.name}" title="Atravessar o véu">✦</i></button>`);
   return `<div class="mside-h">Lugares de Karmika <button data-side title="Esconder a lista">‹</button></div><div class="mside-l">${sec('✨ Maravilhas', won)}${sec('🏰 Cidades', cid)}${sec('🏘 Vilas', vil)}${sec('🕳 Masmorras', dg)}${sec('◆ Lugares', poi)}${sec('✦ Relíquias', rel)}${won.length + cid.length + vil.length + dg.length + poi.length + rel.length ? '' : '<em>Os lugares entram aqui quando você chega perto deles.</em>'}</div>`;
 }
-function drawSide() { const el = bigEl.querySelector('.mside') as HTMLElement | null; if (!el) return; el.classList.toggle('closed', !sideOpen); if (sideOpen) el.innerHTML = sideHtml(); else el.innerHTML = '<button data-side class="mside-open" title="Lugares de Karmika">☰ Lugares</button>'; }
+function drawSide() { const el = bigEl.querySelector('.mside') as HTMLElement | null; if (!el) return; el.classList.toggle('closed', !sideOpen); el.parentElement?.classList.toggle('sideon', sideOpen); /* 07/11: com a lista aberta o mapa começa depois dela (antes ficava por baixo e o centro saía torto) */ if (sideOpen) el.innerHTML = sideHtml(); else el.innerHTML = '<button data-side class="mside-open" title="Lugares de Karmika">☰ Lugares</button>'; }
 function toggleBigMap() { bigOpen = !bigOpen; bigEl.style.display = bigOpen ? 'block' : 'none'; if (bigOpen) { bigEl.dispatchEvent(new Event('karmika:open')); const h0 = K.hereT(); mapV.cx = h0.x; mapV.cy = h0.y; mapV.z = Math.max(mapV.z, 6.4); /* abre perto: lugares, níveis e região legíveis */ K.drawBig(); drawSide(); } }
 setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh' }), 0);
 { const ms = bigEl.querySelector('.mside') as HTMLElement | null; if (ms) { ms.addEventListener('pointerdown', (e) => e.stopPropagation()); ms.addEventListener('wheel', (e) => e.stopPropagation(), { passive: true }); } } // a lista não arrasta nem dá zoom no mapa
@@ -115,7 +115,7 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
   };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ w: size.w, h: size.h })); } catch { /* */ } };
   // o canvas acompanha o tamanho real da janela (sem esticar): mais espaço = mais mapa à vista
-  new ResizeObserver(() => { const w = Math.max(1, Math.round(mv.clientWidth)), h = Math.max(1, Math.round(mv.clientHeight)); if (bmEl.width !== w || bmEl.height !== h) { bmEl.width = w; bmEl.height = h; mapV.z = Math.max(mapV.z, mapZMin()); if (bigOpen) K.drawBig(); } }).observe(mv);
+  const ro = new ResizeObserver(() => { const w = Math.max(1, Math.round(bmEl.clientWidth || mv.clientWidth)), h = Math.max(1, Math.round(mv.clientHeight)); if (bmEl.width !== w || bmEl.height !== h) { bmEl.width = w; bmEl.height = h; mapV.z = Math.max(mapV.z, mapZMin()); if (bigOpen) K.drawBig(); } }); ro.observe(mv); ro.observe(bmEl);
   apply();
   let rs: { x: number; y: number; w: number; h: number } | null = null;
   grip.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); maxed = null; rs = { x: e.clientX, y: e.clientY, w: size.w, h: size.h }; grip.setPointerCapture(e.pointerId); });

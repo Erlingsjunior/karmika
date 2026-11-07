@@ -36,7 +36,9 @@ export function drawSeaArt(g: CanvasRenderingContext2D, X: XY, Y: XY, k: number,
   serpent(g, X(985), Y(1395), k, t); kraken(g, X(1480), Y(1010), k, t); whale(g, X(118), Y(690), k); leviathan(g, X(520), Y(232), k, t);
   /* os ventos: rostos de nuvem soprando dos quatro cantos para dentro */
   wind(g, X(60), Y(60), k, Math.PI * 0.25); wind(g, X(MAP_W - 60), Y(60), k, Math.PI * 0.75); wind(g, X(60), Y(MAP_W - 60), k, -Math.PI * 0.25); wind(g, X(MAP_W - 60), Y(MAP_W - 60), k, -Math.PI * 0.75);
-  rose(g, X(230), Y(1330), 70 * k, t); cartouche(g, X(560), Y(64), k); gearsCorner(g, X(MAP_W - 230), Y(MAP_W - 120), k, t);
+  rose(g, X(230), Y(1330), 70 * k, t); gearsCorner(g, X(MAP_W - 230), Y(MAP_W - 120), k, t);
+  /* a cártula fica centrada sobre o continente principal, no mar do norte */
+  cartouche(g, X(MAP_W / 2), Y(150), Math.max(0.45, Math.min(1.1, k)), t);
   g.restore();
 }
 function serpent(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = k * 1.2; g.save(); g.translate(x, y); g.lineWidth = Math.max(1.2, s * 1.1); g.strokeStyle = INK + '.85)'; g.fillStyle = 'rgba(60,110,90,.75)';
@@ -70,13 +72,17 @@ function rose(g: CanvasRenderingContext2D, x: number, y: number, R: number, t: n
 function gear(g: CanvasRenderingContext2D, x: number, y: number, r: number, teeth: number, rot: number, c1: string, c2: string) { g.save(); g.translate(x, y); g.rotate(rot); g.beginPath();
   for (let i = 0; i < teeth * 2; i++) { const a0 = (i / (teeth * 2)) * 6.283, a1 = ((i + 1) / (teeth * 2)) * 6.283, rr = i % 2 === 0 ? r : r * 0.8; g.lineTo(Math.cos(a0) * rr, Math.sin(a0) * rr); g.lineTo(Math.cos(a1) * rr, Math.sin(a1) * rr); }
   g.closePath(); g.fillStyle = c1; g.fill(); g.strokeStyle = c2; g.lineWidth = 1; g.stroke(); g.beginPath(); g.arc(0, 0, r * 0.35, 0, 6.283); g.fillStyle = c2; g.fill(); g.restore(); }
-function cartouche(g: CanvasRenderingContext2D, x: number, y: number, k: number) { const s = Math.max(0.45, k), w = 420 * s, h = 92 * s; g.save(); g.translate(x, y);
+function cartouche(g: CanvasRenderingContext2D, x: number, y: number, s: number, t: number) { g.save(); g.translate(x, y);
+  /* 07/11: o tamanho segue o texto (antes o subtítulo vazava da moldura) e as engrenagens giram */
+  const T1 = 'CARTA NÁUTICA DO MAR DE KARMIKA', T2 = 'levantada pela Companhia de Latão · Academia Tecnocrata de Askavik · Ano 188', f1 = `700 ${20 * s}px Cinzel, Georgia, serif`, f2 = `italic ${11.5 * s}px Georgia, serif`;
+  g.font = f1; const w1 = g.measureText(T1).width; g.font = f2; const w2 = g.measureText(T2).width; const w = Math.max(w1, w2) + 70 * s, h = 70 * s;
   const gr = g.createLinearGradient(0, -h / 2, 0, h / 2); gr.addColorStop(0, '#3a2a16'); gr.addColorStop(1, '#1e150b'); g.fillStyle = gr; g.strokeStyle = BRASS; g.lineWidth = 2 * s;
   g.beginPath(); g.moveTo(-w / 2 + 20 * s, -h / 2); g.lineTo(w / 2 - 20 * s, -h / 2); g.quadraticCurveTo(w / 2, -h / 2, w / 2 + 14 * s, 0); g.quadraticCurveTo(w / 2, h / 2, w / 2 - 20 * s, h / 2); g.lineTo(-w / 2 + 20 * s, h / 2); g.quadraticCurveTo(-w / 2, h / 2, -w / 2 - 14 * s, 0); g.quadraticCurveTo(-w / 2, -h / 2, -w / 2 + 20 * s, -h / 2); g.fill(); g.stroke();
   g.strokeStyle = BRASS2; g.lineWidth = 1; g.strokeRect(-w / 2 + 12 * s, -h / 2 + 7 * s, w - 24 * s, h - 14 * s);
-  for (const [gx, gr2] of [[-w / 2 - 6 * s, 22 * s], [w / 2 + 6 * s, 22 * s]] as const) gear(g, gx, 0, gr2, 12, 0.2, BRASS, BRASS2);
+  gear(g, -w / 2 - 10 * s, 0, 22 * s, 12, t * 0.5, BRASS, BRASS2); gear(g, -w / 2 - 22 * s, -24 * s, 12 * s, 8, -t * 0.9, BRASS, BRASS2);
+  gear(g, w / 2 + 10 * s, 0, 22 * s, 12, -t * 0.5, BRASS, BRASS2); gear(g, w / 2 + 22 * s, 24 * s, 12 * s, 8, t * 0.9, BRASS, BRASS2);
   for (const rx of [-w / 2 + 22 * s, w / 2 - 22 * s]) for (const ry of [-h / 2 + 14 * s, h / 2 - 14 * s]) { g.beginPath(); g.arc(rx, ry, 2.6 * s, 0, 6.283); g.fillStyle = BRASS; g.fill(); } /* rebites */
-  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f0dca0'; g.font = `700 ${22 * s}px Cinzel, Georgia, serif`; g.fillText('CARTA NÁUTICA DO MAR DE KARMIKA', 0, -10 * s);
-  g.font = `italic ${12 * s}px Georgia, serif`; g.fillStyle = '#d8c090'; g.fillText('levantada pela Companhia de Latão · Academia Tecnocrata de Askavik · Ano 188', 0, 16 * s); g.restore(); }
+  g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f0dca0'; g.font = f1; g.fillText(T1, 0, -9 * s);
+  g.font = f2; g.fillStyle = '#d8c090'; g.fillText(T2, 0, 15 * s); g.restore(); }
 function gearsCorner(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = Math.max(0.45, k); gear(g, x, y, 40 * s, 14, t * 0.2, 'rgba(200,150,58,.85)', BRASS2); gear(g, x + 58 * s, y - 22 * s, 24 * s, 10, -t * 0.33, 'rgba(200,150,58,.85)', BRASS2); gear(g, x + 34 * s, y + 44 * s, 18 * s, 8, -t * 0.45, 'rgba(200,150,58,.85)', BRASS2);
   g.save(); g.font = `italic ${11 * s}px Georgia, serif`; g.fillStyle = INK + '.8)'; g.textAlign = 'center'; g.fillText('escala: 100 casas', x + 10 * s, y + 80 * s); g.strokeStyle = INK + '.8)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x - 40 * s, y + 66 * s); g.lineTo(x - 40 * s + 100 * k, y + 66 * s); g.stroke(); for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(x - 40 * s + i * 25 * k, y + 62 * s); g.lineTo(x - 40 * s + i * 25 * k, y + 70 * s); g.stroke(); } g.restore(); }

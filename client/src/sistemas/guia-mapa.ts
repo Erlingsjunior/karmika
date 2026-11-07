@@ -168,17 +168,27 @@ function drawMini() {
   K.mg.drawImage(K.mmBase, C - h0.x * S, C - h0.y * S, K.MMS * S, K.MMS * S); K.markers(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); if (mmZoom >= 1.4) K.miniIcons(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, S, D); heroArrow(K.mg, C, C, 1); K.mg.restore();
 }
 let seaPat: CanvasPattern | null = null;
+/* 07/11: cópia do mapa com as bordas esmaecendo — o mar desenhado vira só a água da carta, sem retângulo em volta */
+let soft: HTMLCanvasElement | null = null;
+function softBase(src: HTMLCanvasElement) { if (soft) return soft; soft = document.createElement('canvas'); soft.width = src.width; soft.height = src.height;
+  const g = soft.getContext('2d')!, W = soft.width, H = soft.height, F = W * 0.16; g.drawImage(src, 0, 0); const im = g.getImageData(0, 0, W, H), d = im.data;
+  /* só a água esmaece (terra das ilhas da beirada fica inteira); a borda some num degradê largo */
+  for (let y = 0; y < H; y++) { const ey = Math.min(y, H - 1 - y); for (let x = 0; x < W; x++) { const e = Math.min(ey, x, W - 1 - x); if (e >= F) continue; const o = (y * W + x) * 4, r = d[o], gg = d[o + 1], b = d[o + 2];
+    if (b > r + 12 && b >= gg) { const u = e / F; d[o + 3] = Math.round(d[o + 3] * u * u * (3 - 2 * u)); } } }
+  g.putImageData(im, 0, 0); return soft; }
 function drawBig() {
   if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width, H = K.bmEl.height, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
   K.mapV.z = Math.max(K.mapV.z, K.mapZMin());
   const W = K.bmEl.width, H = K.bmEl.height, k = K.pxPerTile(), L = K.mapV.layers;
   { /* 07/11: o centro só anda até a borda do mapa encostar na moldura; se o mapa inteiro cabe (zoom mínimo), fica no meio */ const hw = W / 2 / k, hh = H / 2 / k;
     const pad = MAP_W * 0.07; /* 07/11: dá para passar um pouco da borda, para os nomes e os bichos da beirada (Trono de Cinzas, Picos) não ficarem cortados */
-    K.mapV.cx = hw * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cx, hw - pad, MAP_W - hw + pad); K.mapV.cy = hh * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cy, hh - pad, MAP_W - hh + pad); }
+    /* 07/11: dá para arrastar até a beirada do mapa chegar perto do meio da tela — as ilhas da borda ficam visíveis */
+    const lim = (c: number, h: number) => { if (h * 2 >= MAP_W * 0.98) return MAP_W / 2; const lo = Math.min(h - pad, MAP_W * 0.22), hi = Math.max(MAP_W - h + pad, MAP_W * 0.78); return lo > hi ? MAP_W / 2 : THREE.MathUtils.clamp(c, lo, hi); };
+    K.mapV.cx = lim(K.mapV.cx, hw); K.mapV.cy = lim(K.mapV.cy, hh); }
   const X = (x: number) => W / 2 + (x - K.mapV.cx) * k, Y = (y: number) => H / 2 + (y - K.mapV.cy) * k;
   /* 07/11: a carta náutica — o mar enche a tela inteira (a mesma trama além do quadrado do mundo), e por cima do mar a arte dos tecnocratas */
   K.bg.imageSmoothingEnabled = false; seaPat ??= oceanPattern(K.bg); if (seaPat) { try { seaPat.setTransform(new DOMMatrix().translateSelf(X(0), Y(0)).scaleSelf(Math.max(0.35, k / 2))); } catch { /* */ } K.bg.fillStyle = seaPat; } else K.bg.fillStyle = '#1d3f6a'; K.bg.fillRect(0, 0, W, H);
-  K.bg.drawImage(K.mmBase, X(0), Y(0), MAP_W * k, MAP_W * k); drawSeaArt(K.bg, X, Y, k, K.mapV.z, W, H, performance.now() / 1000);
+  K.bg.drawImage(softBase(K.mmBase as HTMLCanvasElement), X(0), Y(0), MAP_W * k, MAP_W * k); drawSeaArt(K.bg, X, Y, k, K.mapV.z, W, H, performance.now() / 1000);
   K.bg.fillStyle = 'rgba(10,8,4,.18)'; K.bg.fillRect(0, 0, W, H);
   K.mapHits = []; const placed: [number, number, number, number][] = [];
   const label = (txt: string, x: number, y: number, size: number, col: string, force = false) => { K.bg.font = `600 ${size}px Cinzel, Georgia, serif`; const w = K.bg.measureText(txt).width, bx: [number, number, number, number] = [x - w / 2 - 2, y - size, w + 4, size + 4];
