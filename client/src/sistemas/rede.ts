@@ -48,6 +48,17 @@ K.netRef = net;
   K.game.setNet({ myId: () => net.myId, hit: (id, n) => net.x('x:hit', { e: id, n }), die: (id) => net.x('x:die', { e: id }), cast: (id, x, z, i) => net.x('x:cast', { e: id, x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, i }) }, partyNear);
   /* 06/11: runas que curam o aliado — o companheiro de grupo mais ferido a até 10 m recebe a cura (só companheiros, nunca estranhos) */
   let rhAt = 0; K.game.setAllyHeal((pct) => { const t = performance.now(); if (t - rhAt < 1200) return false; if (!net.party || net.state !== 'on') return false; const p = K.hero.root.position; let best: { id: number; d: number } | null = null; for (const r of net.remotes()) { if (!inParty(r.id)) continue; const d = r.pos.distanceTo(p); if (d < 10 && (!best || d < best.d)) best = { id: r.id, d }; } if (!best) return false; rhAt = t; net.x('x:rh', { to: best.id, pct: Math.min(0.2, pct) }); return true; });
+  /* 07/11 (Erling: "cura em massa, cura que pula de um para o outro, aumentar defesa e ataque do grupo"): a cura que o herói faz chega nos
+     companheiros de grupo perto (em massa) ou pula de um para o outro (runa do Labirinto na cura: 95%, 80%, 65%); e as auras de grupo */
+  K.game.setGroupHeal((v, r, chain) => { if (!net.party || net.state !== 'on') return 0; const p = K.hero.root.position; const mates = net.remotes().filter((q) => inParty(q.id) && q.pos.distanceTo(p) < (chain ? r + 8 : r));
+    if (!mates.length) return 0;
+    if (!chain) { for (const q of mates) { net.x('x:gh', { to: q.id, v: Math.round(v) }); K.game.beam(p.clone().setY(p.y + 1.3), q.pos.clone().setY(q.pos.y + 1.3), 0x9affb0); } return mates.length; }
+    let from = p.clone(), k = 1, n = 0; const left = [...mates]; while (left.length && n < 3) { left.sort((a, b) => a.pos.distanceTo(from) - b.pos.distanceTo(from)); const q = left.shift()!; if (q.pos.distanceTo(from) > 9) break;
+      net.x('x:gh', { to: q.id, v: Math.round(v * k) }); K.game.beam(from.clone().setY(from.y + 1.3), q.pos.clone().setY(q.pos.y + 1.3), 0xb0ffc0); from = q.pos.clone(); k -= 0.15; n++; }
+    return n; });
+  net.onX('x:gh', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.game.healAbs(Math.max(0, Number(m.v) || 0), net.nameOf(from)); });
+  setInterval(() => { if (!net.party || net.state !== 'on') return; const a = K.game.groupAuraOut(); if (a.def <= 0 && a.dmg <= 0) return; net.x('x:aura', { d: a.def, a: a.dmg }); }, 2500);
+  net.onX('x:aura', (from, m) => { if (!inParty(from)) return; const q = net.remotes().find((r) => r.id === from); if (!q || q.pos.distanceTo(K.hero.root.position) > 14) return; K.game.groupAuraIn(Math.max(0, Number(m.d) || 0), Math.max(0, Number(m.a) || 0)); });
   net.onX('x:rh', (from, m) => { if (m.to !== net.myId || !inParty(from) || K.game.st.dead) return; K.game.healFrom(Number(m.pct) || 0, net.nameOf(from)); });
   net.onX('x:mob', (from, m) => K.game.enemies.netIn(from, m.l as (number | string)[][]));
   net.onX('x:hit', (_f, m) => K.game.enemies.netHit(String(m.e), m.n as number));

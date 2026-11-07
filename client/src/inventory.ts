@@ -305,14 +305,17 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     const axe = tools.axe ? TOOLS[tools.axe].tier * 1.2 : 0; // sem arma, o machado de ofício ainda bate
     { const S = b('str'), eff = S <= 20 ? S : S <= 60 ? 20 + (S - 20) * 0.6 : 44 + (S - 60) * 0.3; st.atk = 1 + 0.02 * eff; } /* Força rende cada vez menos (retorno decrescente) */ st.dmgFlat = (t.dmg ?? 0) + (eqG.weapon ? 0 : axe);
     st.crit = Math.min(0.5, 0.12 + 0.004 * b('dex') + (t.crit ?? 0) / 100);
-    st.move = 1 + (t.move ?? 0) / 100 + 0.003 * b('dex');
+    let mvRaw = (t.move ?? 0) / 100 + 0.0012 * b('dex'); /* 07/11: a soma crua (itens + Destreza + talentos) passa pela curva lá embaixo */
     const armor = (t.def ?? 0) + 0.6 * b('vit'); st.def = Math.min(0.7, armor / (armor + 70 + 8 * st.lvl));
     st.regen = 0.35 + (t.regen ?? 0) + 0.04 * b('vit');
     /* a árvore de talentos (03/11) */
     st.hpMax = Math.round(st.hpMax * (1 + (TL.hp ?? 0) / 100)); if (st.res?.mode !== 'fight') st.mpMax += Math.round(TL.mp ?? 0); st.hp = Math.min(st.hp, st.hpMax); st.mp = Math.min(st.mp, st.mpMax);
-    st.atk *= 1 + (TL.dmg ?? 0) / 100; st.crit = Math.min(0.6, st.crit + (TL.crit ?? 0) / 100); st.move += (TL.move ?? 0) / 100; st.gen += (TL.gen ?? 0) / 100;
+    st.atk *= 1 + (TL.dmg ?? 0) / 100; st.crit = Math.min(0.6, st.crit + (TL.crit ?? 0) / 100); mvRaw += (TL.move ?? 0) / 100;
+    /* 07/11 (Erling: "muitos talentos e itens de velocidade, estou super veloz no nível 10"): a velocidade cresce com retorno decrescente e
+       nunca passa de +40% (somando itens, Destreza e talentos). +10% cru ≈ +9%; +30% ≈ +21%; +60% ≈ +31%; +100% ≈ +37%. Velocidade negativa vale cheia */
+    st.move = 1 + (mvRaw > 0 ? 0.4 * (1 - Math.exp(-mvRaw / 0.4)) : mvRaw); st.gen += (TL.gen ?? 0) / 100;
     if (TL.arm) { const ar = armor + TL.arm; st.def = Math.max(0, Math.min(0.75, ar / (Math.max(1, ar) + 70 + 8 * st.lvl))); }
-    st.regen += TL.regen ?? 0; (st as St & { aspd?: number; cdr?: number; tHeal?: number }).aspd = (TL.aspd ?? 0) / 100; (st as St & { cdr?: number }).cdr = (TL.cdr ?? 0) / 100; (st as St & { tHeal?: number }).tHeal = (TL.heal ?? 0) / 100;
+    st.regen += TL.regen ?? 0; { const a = (TL.aspd ?? 0) / 100; (st as St & { aspd?: number }).aspd = a > 0 ? 0.35 * (1 - Math.exp(-a / 0.35)) : a; } /* 07/11: velocidade de golpe também com teto (+35%) */ (st as St & { cdr?: number }).cdr = (TL.cdr ?? 0) / 100; (st as St & { tHeal?: number }).tHeal = (TL.heal ?? 0) / 100; { const S2 = st as St & { hpow?: number; gdef?: number; gdmg?: number }; S2.hpow = (TL.hpow ?? 0) / 100; S2.gdef = Math.min(20, TL.gdef ?? 0) / 100; S2.gdmg = Math.min(20, TL.gdmg ?? 0) / 100; } /* 07/11: cura que você faz e auras de grupo */
     st.leech = (t.leech ?? 0) / 100 + (TL.leech ?? 0) / 100; st.xpMul = 1 + (t.xp ?? 0) / 100 + (hooks.xpBonus?.() ?? 0); st.goldMul = 1 + (t.gold ?? 0) / 100 + (Object.values(eqG).some((g) => g?.special === 'u_andvari') ? 0.6 : 0);
     st.auras = SLOTS.map((sl) => eqG[sl]).filter((g): g is Gear => !!g?.aura).sort((a, b) => (b.rarity === 'relic' ? 1 : 0) - (a.rarity === 'relic' ? 1 : 0)).map((g) => g.aura!);
     st.sp = new Set(Object.values(eqG).map((g) => g?.special).filter(Boolean) as string[]);

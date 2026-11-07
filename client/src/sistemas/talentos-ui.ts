@@ -4,7 +4,7 @@ import { type Talents, type TNode, type TStat, effTxt, branchesOf, classNameOf, 
 import { RUNAS } from '../runas';
 import { useScroll } from '../esquecimento';
 /* símbolo de cada atributo, desenhado dentro do círculo */
-const SYM: Record<TStat, string> = { str: '✊', dex: '➹', vit: '❤', int: '✦', hp: '❤', dmg: '⚔', crit: '✶', arm: '⛨', move: '➶', aspd: '⚡', cdr: '⟳', regen: '✚', gen: '◈', leech: '♦', heal: '✚', mp: '◆' };
+const SYM: Record<TStat, string> = { str: '✊', dex: '➹', vit: '❤', int: '✦', hp: '❤', dmg: '⚔', crit: '✶', arm: '⛨', move: '➶', aspd: '⚡', cdr: '⟳', regen: '✚', gen: '◈', leech: '♦', heal: '✚', mp: '◆', hpow: '✚', gdef: '⛨', gdmg: '⚔' };
 /* o centro é o OLHO KÁRMICO (04/11, Erling: "o símbolo do meio não é um yin-yang, é o olho karmiko") */
 const EYE = '👁';
 const symOf = (n: TNode) => { if (n.kind === 'start') return EYE; const ks = Object.keys(n.eff) as TStat[]; if (!ks.length) return '•'; const best = ks.reduce((a, b) => (Math.abs(n.eff[b]!) > Math.abs(n.eff[a]!) && n.eff[b]! > 0 ? b : a), ks[0]); return SYM[best]; };
