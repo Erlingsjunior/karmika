@@ -42,8 +42,8 @@ const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) &
    O que continua passável de propósito: grama, ervas, ossos e o meio das árvores da floresta (só o tronco bloqueia) */
 /** pontos de trabalho do mapa (centro em metros) */
 const STATIONS = K.city.props.filter((p) => p.kind === 'station').map((p) => ({ x: (p.gx + p.w / 2) * T, z: (p.gy + p.h / 2) * T, v: p.variant ?? 0, label: p.label || STATION_INFO[p.variant ?? 0].name }));
-const PROF_NAME: Record<string, string> = { marceneiro: 'Marceneiro', ferreiro: 'Ferreiro', costureiro: 'Costureiro', alquimista: 'Alquimista', cozinheiro: 'Cozinheiro' };
-function stationNear(prof: string, reach = 6) { if (K.inside) return null; const hx = K.state.fx * T, hz = K.state.fy * T; return STATIONS.find((s2) => (STATION_INFO[s2.v].prof === prof || (s2.v === 5 && (prof === 'ferreiro' || prof === 'marceneiro'))) && Math.hypot(s2.x - hx, s2.z - hz) < reach) ?? null; }
+const PROF_NAME: Record<string, string> = { marceneiro: 'Marceneiro', ferreiro: 'Ferreiro', costureiro: 'Costureiro', alquimista: 'Alquimista', cozinheiro: 'Cozinheiro', engenheiro: 'Engenheiro do Mundo' };
+function stationNear(prof: string, reach = 6) { if (K.inside) return null; const hx = K.state.fx * T, hz = K.state.fy * T; return STATIONS.find((s2) => (STATION_INFO[s2.v].prof === prof || (s2.v === 5 && (prof === 'ferreiro' || prof === 'marceneiro')) || (s2.v === 1 && prof === 'engenheiro')) && Math.hypot(s2.x - hx, s2.z - hz) < reach) ?? null; }
 const cutV = new THREE.Vector3();
 const SOLID_R: Record<string, number> = { rock: 0.32, chimney: 0.5, crane: 0.7, boat: -1, station: 0.72, noticeboard: 0.3, mailbox: 0.2, vault: 0.36, shopfront: 1.2, fountain: -1, deadwell: -1, bench: 0.24, stall: -1, chest: 0.24, torch: 0.1, relic: 0.4, tent: 0.85, grave: 0.18, angel: 0.38, obelisk: 0.34, saint: 0.38, altar: 0.55, campfire: 0.26, gpillar: 0.24, mausoleum: -1, vprop: 0.3, rack: 0.3, coffin: 0.3, deadtree: 0.22, totem: 0.3 };
 const solids = new Map<number, { x: number; y: number; r: number }[]>();

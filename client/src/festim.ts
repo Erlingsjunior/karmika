@@ -61,6 +61,14 @@ export const GADGETS: Record<string, Gadget> = {
   reacao_vermelha: { name: 'Reação Química Vermelha', icon: '🌋', price: 140, kind: 'misc', col: 0xff3a1a, desc: 'O que você quer, criar um vulcão em casa? Ok, nós te ajudamos. Abre um vulcão de bolso: erupção de 6 m, lava no chão por alguns segundos e um susto que a vila vai lembrar.' },
   porca_perfeita: { name: 'A Porca Perfeita', icon: '🔩', price: 30, kind: 'res', col: 0xc8c8d0, desc: 'Forjada em Brasaforja e medida com o fio de cabelo da barba do mestre. Não afrouxa nem em terremoto. Os tecnocratas montam robôs e torres com ela.' },
   parafuso_inexp: { name: 'O Parafuso Inespanável', icon: '🔧', price: 32, kind: 'res', col: 0xb8b8c8, desc: 'A rosca é tão justa que a chave cansa antes dele. Diz a lenda que um anão foi enterrado com um, para o caixão nunca abrir.' },
+  /* 06/11: ENGENHEIRO DO MUNDO — as peças que o tecnocrata faz na própria bancada e as engenhocas novas */
+  mola_aco: { name: 'Mola de Aço', icon: '➰', price: 14, kind: 'res', col: 0x9aa0a8, desc: 'Enrolada a quente na bancada do engenheiro. Toda engenhoca tem pelo menos uma; os robôs, dezenas.' },
+  bobina_cobre: { name: 'Bobina de Cobre', icon: '🧲', price: 16, kind: 'res', col: 0xd08040, desc: 'Fio enrolado em volta de um núcleo de ferro. É onde mora o choque das pulseiras, das torres e das armas eletrificadas.' },
+  valvula_vapor: { name: 'Válvula de Vapor', icon: '🔘', price: 22, kind: 'res', col: 0xb08a40, desc: 'Segura a pressão até a hora certa. Sem ela, o lança-chamas lança é o engenheiro.' },
+  pulseira_choque: { name: 'Pulseira de Choque', icon: '📿', price: 160, kind: 'misc', col: 0x6ad0ff, desc: 'Presa no pulso por 1 turno: quem te acerta de perto leva uma descarga (20% do golpe de volta) e trava por um instante. Uma por vez.' },
+  eletrificador: { name: 'Eletrificador de Arma', icon: '🏹', price: 240, kind: 'misc', col: 0x9ad0ff, desc: 'Bobinas presas à arma por 1 turno — arco, besta, espada ou cajado. Cada golpe solta +15% de dano em choque e, às vezes, um raio pula para outro inimigo perto.' },
+  lanca_chamas: { name: 'Lança-Chamas de Bolso', icon: '🔥', price: 70, kind: 'misc', col: 0xff7a2a, desc: 'Um jato de fogo em leque à sua frente (7 m): queima quem estiver no caminho e deixa o chão em brasa. Uma carga por uso.' },
+  lanca_veneno: { name: 'Lança-Veneno', icon: '🧪', price: 70, kind: 'misc', col: 0x7ad04a, desc: 'Borrifa uma névoa verde em leque à sua frente (7 m): o veneno corrói por 6 s e deixa todos lentos. Uma carga por uso.' },
   engrenagem_diam: { name: 'A Engrenagem Diamantada', icon: '⚙', price: 70, kind: 'res', col: 0xd8e8ff, desc: 'Dentes com pó de diamante: nunca gasta. A Companhia de Latão compra todas que os anões fazem, e os anões cobram cada vez mais.' },
 };
 

@@ -3,7 +3,7 @@
    Sobe com o uso (nível 1–100). Ofício alto abre receitas melhores e dá chance de peças mágicas e raras. */
 import { genGear, type Gear, type Slot, type Rarity } from './loot';
 
-export type ProfId = 'sobrevivencia' | 'lenhador' | 'marceneiro' | 'minerador' | 'ferreiro' | 'esfolador' | 'costureiro' | 'herbalista' | 'alquimista' | 'pescador' | 'cozinheiro';
+export type ProfId = 'sobrevivencia' | 'lenhador' | 'marceneiro' | 'minerador' | 'ferreiro' | 'esfolador' | 'costureiro' | 'herbalista' | 'alquimista' | 'pescador' | 'cozinheiro' | 'engenheiro';
 interface Prof { id: ProfId; name: string; ic: string; kind: 'coleta' | 'oficio' | 'base'; pair?: ProfId; desc: string }
 export const PROFS: Prof[] = [
   { id: 'sobrevivencia', name: 'Sobrevivência', ic: '🔥', kind: 'base', desc: 'O que todo caminhante sabe fazer com galhos, pedras e corda: as primeiras ferramentas e a fogueira.' },
@@ -17,6 +17,8 @@ export const PROFS: Prof[] = [
   { id: 'alquimista', name: 'Alquimista', ic: '⚗', kind: 'oficio', pair: 'herbalista', desc: 'Destila as ervas: poções de vida e de magia, tônicos e antídotos.' },
   { id: 'pescador', name: 'Pescador', ic: '🎣', kind: 'coleta', pair: 'cozinheiro', desc: 'Pesca nos rios, lagos e no mar. A paciência rende peixes raros.' },
   { id: 'cozinheiro', name: 'Cozinheiro', ic: '🍲', kind: 'oficio', pair: 'pescador', desc: 'Assa, defuma e cozinha: comida que cura e dura na estrada.' },
+  /* 06/11 (Erling, item 6 da programação): o ofício próprio do Tecnocrata. Só quem entrou na Academia faz; os outros compram na Caravana de Latão */
+  { id: 'engenheiro', name: 'Engenheiro do Mundo', ic: '⚙', kind: 'oficio', desc: 'O ofício da Academia Tecnocrata: molas, válvulas e bobinas viram torres de defesa, drones de cura, robôs que erguem casas, pets de latão, pulseira de choque, eletrificador de arma, lança-chamas e lança-veneno. Só tecnocratas. A Caravana de Latão compra o que você monta pelo dobro do preço de quem não é da Academia.' },
 ];
 interface Recipe { id: string; prof: ProfId; lvl: number; /** receita de especialização: só estas classes fazem (25/10) */ cls?: string[]; need: [string, number][]; keep?: string[]; out?: [string, number]; gear?: Slot; label?: string; inv?: string; /** fornalha quente (carvão potencializado): a peça sai no mínimo desta raridade */ minR?: Rarity }
 export const RECIPES2: Recipe[] = [
@@ -76,19 +78,35 @@ export const RECIPES2: Recipe[] = [
   { id: 'weapon_vermelho', prof: 'ferreiro', lvl: 60, need: [['ore_ag', 8], ['gem', 4], ['sap', 2], ['carvao_vermelho', 3]], gear: 'weapon', minR: 'unique', label: 'Arma na fornalha vermelha (Carvão Vermelho: única)' },
   { id: 'armor_vermelho', prof: 'ferreiro', lvl: 62, need: [['ore_ag', 10], ['gem', 4], ['hide', 6], ['carvao_vermelho', 3]], gear: 'armor', minR: 'unique', label: 'Peitoral na fornalha vermelha (Carvão Vermelho: único)' },
   /* engenhocas dos tecnocratas, montadas com as peças finas dos anões */
-  { id: 'sentinela', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['porca_perfeita', 2], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 4]], out: ['sentinela', 1], label: 'Robô Sentinela de Latão (tecnocratas)' },
-  { id: 'drone_cura', prof: 'ferreiro', lvl: 30, cls: ['Tecnocrata'], need: [['porca_perfeita', 1], ['parafuso_inexp', 1], ['engrenagem_diam', 1], ['herb_g', 3]], out: ['drone_cura', 1], label: 'Drone de Cura Automatizada (tecnocratas)' },
-  { id: 'drone_choque', prof: 'ferreiro', lvl: 32, cls: ['Tecnocrata'], need: [['porca_perfeita', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 2]], out: ['drone_choque', 1], label: 'Bobina de Choque Automatizado (tecnocratas)' },
-  { id: 'escudo_auto', prof: 'ferreiro', lvl: 34, cls: ['Tecnocrata'], need: [['porca_perfeita', 2], ['parafuso_inexp', 1], ['engrenagem_diam', 2], ['ore_i', 3]], out: ['escudo_auto', 1], label: 'Escudo Automatizado (tecnocratas)' },
+  { id: 'sentinela', prof: 'engenheiro', lvl: 20, need: [['porca_perfeita', 2], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 4]], out: ['sentinela', 1], label: 'Robô Sentinela de Latão (tecnocratas)' },
+  { id: 'drone_cura', prof: 'engenheiro', lvl: 15, need: [['porca_perfeita', 1], ['parafuso_inexp', 1], ['engrenagem_diam', 1], ['herb_g', 3]], out: ['drone_cura', 1], label: 'Drone de Cura Automatizada (tecnocratas)' },
+  { id: 'drone_choque', prof: 'engenheiro', lvl: 18, need: [['porca_perfeita', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1], ['ore_i', 2]], out: ['drone_choque', 1], label: 'Bobina de Choque Automatizado (tecnocratas)' },
+  { id: 'escudo_auto', prof: 'engenheiro', lvl: 22, need: [['porca_perfeita', 2], ['parafuso_inexp', 1], ['engrenagem_diam', 2], ['ore_i', 3]], out: ['escudo_auto', 1], label: 'Escudo Automatizado (tecnocratas)' },
   /* Mk II e Mk III (27/10): mais turnos e mais força, mais peças dos anões */
-  { id: 'sentinela_2', prof: 'ferreiro', lvl: 42, cls: ['Tecnocrata'], need: [['sentinela', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2], ['ore_ag', 2]], out: ['sentinela_2', 1], label: 'Robô Sentinela Mk II (tecnocratas)' },
-  { id: 'sentinela_3', prof: 'ferreiro', lvl: 55, cls: ['Tecnocrata'], need: [['sentinela_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 3], ['gem', 2]], out: ['sentinela_3', 1], label: 'Robô Sentinela Mk III (tecnocratas)' },
-  { id: 'drone_cura_2', prof: 'ferreiro', lvl: 42, cls: ['Tecnocrata'], need: [['drone_cura', 1], ['engrenagem_diam', 1], ['herb_m', 2]], out: ['drone_cura_2', 1], label: 'Drone de Cura Mk II (tecnocratas)' },
-  { id: 'drone_cura_3', prof: 'ferreiro', lvl: 55, cls: ['Tecnocrata'], need: [['drone_cura_2', 1], ['engrenagem_diam', 2], ['sap', 2]], out: ['drone_cura_3', 1], label: 'Drone de Cura Mk III (tecnocratas)' },
-  { id: 'drone_choque_2', prof: 'ferreiro', lvl: 44, cls: ['Tecnocrata'], need: [['drone_choque', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1]], out: ['drone_choque_2', 1], label: 'Bobina de Choque Mk II (tecnocratas)' },
-  { id: 'drone_choque_3', prof: 'ferreiro', lvl: 56, cls: ['Tecnocrata'], need: [['drone_choque_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 2], ['gem', 1]], out: ['drone_choque_3', 1], label: 'Bobina de Choque Mk III (tecnocratas)' },
-  { id: 'escudo_auto_2', prof: 'ferreiro', lvl: 46, cls: ['Tecnocrata'], need: [['escudo_auto', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2]], out: ['escudo_auto_2', 1], label: 'Escudo Automatizado Mk II (tecnocratas)' },
-  { id: 'escudo_auto_3', prof: 'ferreiro', lvl: 58, cls: ['Tecnocrata'], need: [['escudo_auto_2', 1], ['porca_perfeita', 3], ['engrenagem_diam', 3], ['ore_ag', 3]], out: ['escudo_auto_3', 1], label: 'Escudo Automatizado Mk III (tecnocratas)' },
+  { id: 'sentinela_2', prof: 'engenheiro', lvl: 42, need: [['sentinela', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2], ['ore_ag', 2]], out: ['sentinela_2', 1], label: 'Robô Sentinela Mk II (tecnocratas)' },
+  { id: 'sentinela_3', prof: 'engenheiro', lvl: 55, need: [['sentinela_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 3], ['gem', 2]], out: ['sentinela_3', 1], label: 'Robô Sentinela Mk III (tecnocratas)' },
+  { id: 'drone_cura_2', prof: 'engenheiro', lvl: 40, need: [['drone_cura', 1], ['engrenagem_diam', 1], ['herb_m', 2]], out: ['drone_cura_2', 1], label: 'Drone de Cura Mk II (tecnocratas)' },
+  { id: 'drone_cura_3', prof: 'engenheiro', lvl: 52, need: [['drone_cura_2', 1], ['engrenagem_diam', 2], ['sap', 2]], out: ['drone_cura_3', 1], label: 'Drone de Cura Mk III (tecnocratas)' },
+  { id: 'drone_choque_2', prof: 'engenheiro', lvl: 44, need: [['drone_choque', 1], ['parafuso_inexp', 2], ['engrenagem_diam', 1]], out: ['drone_choque_2', 1], label: 'Bobina de Choque Mk II (tecnocratas)' },
+  { id: 'drone_choque_3', prof: 'engenheiro', lvl: 56, need: [['drone_choque_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 2], ['gem', 1]], out: ['drone_choque_3', 1], label: 'Bobina de Choque Mk III (tecnocratas)' },
+  { id: 'escudo_auto_2', prof: 'engenheiro', lvl: 46, need: [['escudo_auto', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2]], out: ['escudo_auto_2', 1], label: 'Escudo Automatizado Mk II (tecnocratas)' },
+  { id: 'escudo_auto_3', prof: 'engenheiro', lvl: 58, need: [['escudo_auto_2', 1], ['porca_perfeita', 3], ['engrenagem_diam', 3], ['ore_ag', 3]], out: ['escudo_auto_3', 1], label: 'Escudo Automatizado Mk III (tecnocratas)' },
+  /* ENGENHEIRO DO MUNDO (06/11): as peças básicas saem de minério, couro e madeira; as engenhocas finas pedem as peças dos anões */
+  { id: 'mola_aco', prof: 'engenheiro', lvl: 1, need: [['ore_i', 2]], out: ['mola_aco', 2] },
+  { id: 'bobina_cobre', prof: 'engenheiro', lvl: 1, need: [['ore_i', 1], ['rope', 1]], out: ['bobina_cobre', 2] },
+  { id: 'valvula_vapor', prof: 'engenheiro', lvl: 3, need: [['ore_i', 2], ['plank', 1]], out: ['valvula_vapor', 1] },
+  { id: 'reacao_azul', prof: 'engenheiro', lvl: 5, need: [['dust', 1], ['herb_g', 1]], out: ['reacao_azul', 2] },
+  { id: 'pulseira_choque', prof: 'engenheiro', lvl: 8, need: [['bobina_cobre', 2], ['mola_aco', 1], ['hide', 1]], out: ['pulseira_choque', 1] },
+  { id: 'lanca_chamas', prof: 'engenheiro', lvl: 10, need: [['valvula_vapor', 1], ['mola_aco', 1], ['ore_i', 2], ['sap', 1]], out: ['lanca_chamas', 2] },
+  { id: 'lanca_veneno', prof: 'engenheiro', lvl: 12, need: [['valvula_vapor', 1], ['mola_aco', 1], ['herb_s', 2]], out: ['lanca_veneno', 2] },
+  { id: 'eletrificador', prof: 'engenheiro', lvl: 16, need: [['bobina_cobre', 3], ['valvula_vapor', 1], ['ore_ag', 1]], out: ['eletrificador', 1] },
+  { id: 'reacao_amarela', prof: 'engenheiro', lvl: 20, need: [['dust', 2], ['sap', 1], ['herb_r', 1]], out: ['reacao_amarela', 2] },
+  { id: 'ajudante_obra', prof: 'engenheiro', lvl: 25, need: [['porca_perfeita', 2], ['mola_aco', 3], ['valvula_vapor', 2], ['engrenagem_diam', 1], ['plank', 4]], out: ['ajudante_obra', 1], label: 'Ajudante de Obra (robô que ergue casas)' },
+  { id: 'pet_cao_latao', prof: 'engenheiro', lvl: 28, need: [['mola_aco', 4], ['ore_i', 4], ['bobina_cobre', 1], ['engrenagem_diam', 1]], out: ['pet_cao_latao', 1], label: 'Latãozinho (pet robótico)' },
+  { id: 'pet_robo_faisca', prof: 'engenheiro', lvl: 32, need: [['bobina_cobre', 3], ['valvula_vapor', 1], ['engrenagem_diam', 1], ['ore_ag', 1]], out: ['pet_robo_faisca', 1], label: 'Robozinho Faísca (pet robótico)' },
+  { id: 'reacao_vermelha', prof: 'engenheiro', lvl: 40, need: [['dust', 3], ['gem', 1], ['sap', 2]], out: ['reacao_vermelha', 1] },
+  { id: 'ajudante_obra_2', prof: 'engenheiro', lvl: 45, need: [['ajudante_obra', 1], ['porca_perfeita', 2], ['engrenagem_diam', 2], ['valvula_vapor', 2]], out: ['ajudante_obra_2', 1], label: 'Ajudante de Obra Mk II' },
+  { id: 'ajudante_obra_3', prof: 'engenheiro', lvl: 60, need: [['ajudante_obra_2', 1], ['parafuso_inexp', 3], ['engrenagem_diam', 3], ['gem', 1]], out: ['ajudante_obra_3', 1], label: 'Ajudante de Obra Mk III' },
   { id: 'axe_st', prof: 'ferreiro', lvl: 30, need: [['ore_i', 10], ['ore_ag', 2], ['plank', 2]], out: ['axe_st', 1] },
   { id: 'pick_st', prof: 'ferreiro', lvl: 30, need: [['ore_i', 10], ['ore_ag', 2], ['plank', 2]], out: ['pick_st', 1] },
   // costureiro
@@ -117,7 +135,7 @@ export const RECIPES2: Recipe[] = [
 ];
 const need = (l: number) => 20 + l * 12;
 /** ofícios que só se fazem no ponto de trabalho certo (as vilas e cidades têm um de cada) */
-export const STATION_OF: Partial<Record<ProfId, { name: string; icon: string }>> = { marceneiro: { name: 'Marcenaria (na vila, o Barracão de Corte)', icon: '🪚' }, ferreiro: { name: 'Forja', icon: '⚒' }, costureiro: { name: 'Curtume (na vila, a Mesa do Curtidor)', icon: '🧵' }, alquimista: { name: 'Apotecário', icon: '⚗' }, cozinheiro: { name: 'Escola de Cozinha (na vila, a cozinha nos fundos da taverna)', icon: '🍲' } };
+export const STATION_OF: Partial<Record<ProfId, { name: string; icon: string }>> = { engenheiro: { name: 'Casa de Tecnologia (ou na Forja)', icon: '⚙' }, marceneiro: { name: 'Marcenaria (na vila, o Barracão de Corte)', icon: '🪚' }, ferreiro: { name: 'Forja', icon: '⚒' }, costureiro: { name: 'Curtume (na vila, a Mesa do Curtidor)', icon: '🧵' }, alquimista: { name: 'Apotecário', icon: '⚗' }, cozinheiro: { name: 'Escola de Cozinha (na vila, a cozinha nos fundos da taverna)', icon: '🍲' } };
 interface Ctx { /** trabalho na bancada: barra em volta do ícone, som e animação; step(k) faz a peça k e diz se deu */ craftJob?(j: { prof: string; name: string; icon: string; times: number; step(k: number): boolean; can(): boolean }): void; onLevel?(id: string, name: string, icon: string, lvl: number): void; /** o herói está no ponto de trabalho deste ofício? */ atStation?(prof: string): boolean; /** efeito na bancada quando algo fica pronto */ craftFx?(prof: string): void;
   has(id: string, n?: number): boolean; count(id: string): number; take(id: string, n: number): boolean; add(id: string, n: number): void; addGear(g: Gear): boolean;
   invCraft(id: string): void; itemName(id: string): string; itemIcon(id: string): string; heroLvl(): number;
@@ -128,11 +146,11 @@ interface Ctx { /** trabalho na bancada: barra em volta do ícone, som e animaç
 export const BASE_PURE = ['Humano', 'Anão', 'Elfo'];
 export const CLASS_PROFS: Record<string, ProfId[]> = {
   'Guerreiro do Norte': ['ferreiro', 'cozinheiro'], 'Paladino de Auréon': ['ferreiro', 'alquimista'], 'Caçador de Demônios': ['alquimista', 'costureiro'],
-  'Tecnocrata': ['ferreiro', 'marceneiro'], 'Vampiro': ['costureiro', 'cozinheiro'], 'Lobisomem': ['costureiro', 'marceneiro'], 'Mago': ['alquimista', 'costureiro'], 'Bruxo': ['alquimista', 'costureiro'] };
+  'Tecnocrata': ['ferreiro', 'marceneiro', 'engenheiro'], 'Vampiro': ['costureiro', 'cozinheiro'], 'Lobisomem': ['costureiro', 'marceneiro'], 'Mago': ['alquimista', 'costureiro'], 'Bruxo': ['alquimista', 'costureiro'] };
 /* NÍVEL EXTRA DA CLASSE NO OFÍCIO (04/11, Erling): cada caminho tem o ofício em que é mestre e ganha +10 níveis nele (abre receitas antes e
    dá mais chance de peça rara). Anão, Guerreiro do Norte e Paladino: forja · Vampiro: cozinha (carnes curtidas e vinhos) · Lobisomem: costura
-   (peles de animais selvagens) · Mago, Bruxo e Caçador de Demônios: alquimia · Tecnocrata: engenharia (ofício próprio, ainda por fazer). */
-export const CLASS_SPEC: Record<string, ProfId> = { 'Anão': 'ferreiro', 'Guerreiro do Norte': 'ferreiro', 'Paladino de Auréon': 'ferreiro', 'Vampiro': 'cozinheiro', 'Lobisomem': 'costureiro', 'Mago': 'alquimista', 'Bruxo': 'alquimista', 'Caçador de Demônios': 'alquimista' };
+   (peles de animais selvagens) · Mago, Bruxo e Caçador de Demônios: alquimia · Tecnocrata: Engenheiro do Mundo (06/11, ofício próprio). */
+export const CLASS_SPEC: Record<string, ProfId> = { 'Anão': 'ferreiro', 'Guerreiro do Norte': 'ferreiro', 'Paladino de Auréon': 'ferreiro', 'Vampiro': 'cozinheiro', 'Lobisomem': 'costureiro', 'Mago': 'alquimista', 'Bruxo': 'alquimista', 'Caçador de Demônios': 'alquimista', 'Tecnocrata': 'engenheiro' };
 export const SPEC_BONUS = 10;
 export function createProfessions(ctx: Ctx) {
   const myCls = () => ctx.cls?.() ?? 'Humano';
@@ -141,6 +159,7 @@ export function createProfessions(ctx: Ctx) {
   /** motivo de não poder fazer esta receita por causa da classe (ou null) */
   const clsBlock = (r: Recipe): string | null => { const c = myCls();
     if (r.cls) return r.cls.includes(c) ? null : `Especialização de ${r.cls.length > 1 ? r.cls.slice(0, -1).join(', ') + ' e ' + r.cls[r.cls.length - 1] : r.cls[0]}: compre de quem faz.`;
+    if (r.prof === 'engenheiro' && c !== 'Tecnocrata') return 'O Engenheiro do Mundo é o ofício da Academia Tecnocrata. Compre as engenhocas na Caravana de Latão.';
     if (r.prof === 'sobrevivencia' || BASE_PURE.includes(c)) return null; const keep = CLASS_PROFS[c]; if (!keep || keep.includes(r.prof)) return null;
     return `Ao seguir o caminho de ${c}, você deixou este ofício para trás.`; };
   const lv: Record<string, { l: number; x: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.prof.v1') || '{}'); } catch { return {}; } })();
@@ -184,7 +203,7 @@ export function createProfessions(ctx: Ctx) {
   function render() {
     if (!open) { el.style.display = 'none'; return; }
     const P = PROFS.find((p) => p.id === sel)!, L = lv[sel], rs = RECIPES2.filter((r) => r.prof === sel).sort((a, b) => a.lvl - b.lvl);
-    const pairs: ProfId[][] = [['sobrevivencia'], ['lenhador', 'marceneiro'], ['minerador', 'ferreiro'], ['esfolador', 'costureiro'], ['herbalista', 'alquimista'], ['pescador', 'cozinheiro']];
+    const pairs: ProfId[][] = [['sobrevivencia'], ['lenhador', 'marceneiro'], ['minerador', 'ferreiro'], ['esfolador', 'costureiro'], ['herbalista', 'alquimista'], ['pescador', 'cozinheiro'], ['engenheiro']];
     const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
     const pair = P.pair ? PROFS.find((q) => q.id === P.pair)! : null;
     /* abas (Erling, 25/10: "modais quadradas com abas, e não essa linguiça"): o que dá para fazer agora, o que vem com nível e as especializações */

@@ -502,6 +502,26 @@ export function createGameplay(d: GameplayDeps) {
     ticks.push({ t: dur, fn: (dt2) => { t -= dt2; tk -= dt2; if (Math.random() < dt2 * 26 * r) { const a = Math.random() * 6.283, q = Math.sqrt(Math.random()) * r; d.particles.spawn(x + Math.cos(a) * q, y + 0.1, z + Math.sin(a) * q, { vx: 0, vy: rnd(0.8, 1.8), vz: 0, life: 0.55, s0: 0.32, s1: 0.04, c0: 0xffe08a, c1: 0xff4a1a, a: 0.9 }); }
       if (tk <= 0) { tk = 0.5; for (const e of enemies.list) if (e.alive && e.active && !e.def.passive && Math.hypot(e.pos.x - x, e.pos.z - z) < r + e.def.radius) { e.burn = Math.max(e.burn ?? 0, 2); e.burnTick = e.burnTick ?? 0; const dm = Math.round((2 + st.lvl * 0.9) * pw); if (enemies.hurt(e, dm, e.pos, 0)) killEnemy(e); dmgText(e.pos.clone().setY(e.pos.y + 2.1), dm, false, '#ff9a4a'); } } } });
   }
+  /* 06/11 ENGENHEIRO DO MUNDO: arma eletrificada — +15% do golpe em choque no alvo e, em 30% das vezes, um raio pula para outro inimigo a até 6 m */
+  let arcBusy = false;
+  function arcHit(e: Enemy, dmg: number) { arcBusy = true; try {
+    const hp0 = d.getHero().root.position;
+    if (e.alive) { const v = Math.max(1, Math.round(dmg * 0.15)); zap(e.pos.x, e.pos.y + 1.6, e.pos.z, e.pos.x, e.pos.y + 0.2, e.pos.z, 0x9ad0ff); if (enemies.hurt(e, v, hp0, 0)) killEnemy(e); }
+    if (Math.random() < 0.3) { let o: Enemy | null = null, bd = 6; for (const q of enemies.list) { if (q === e || !q.alive || !q.active || q.def.passive) continue; const dd = Math.hypot(q.pos.x - e.pos.x, q.pos.z - e.pos.z); if (dd < bd) { bd = dd; o = q; } }
+      if (o) { bolt3d(e.pos.clone().setY(e.pos.y + 1.1), o.pos.clone().setY(o.pos.y + 1.1), 0x9ad0ff); d.audio.spell('shock'); const v = Math.max(1, Math.round(dmg * 0.3)); dmgText(o.pos.clone().setY(o.pos.y + 2.4), `⚡ ${v}`, false, '#9ad0ff'); if (enemies.hurt(o, v, e.pos, 0)) killEnemy(o); } }
+  } finally { arcBusy = false; } }
+  /* 06/11 ENGENHEIRO DO MUNDO: lança-chamas e lança-veneno — jato em leque de 7 m à frente */
+  function sprayCone(fire: boolean) {
+    const h = d.getHero(), hp = h.root.position, yaw = h.root.rotation.y, fx = Math.sin(yaw), fz = Math.cos(yaw), gy = d.world.heightAt(hp.x, hp.z), R = 7, col0 = fire ? 0xffe070 : 0xd8ff9a, col1 = fire ? 0xff3a10 : 0x3a8a1a;
+    h.act?.('cast'); d.audio.spell(fire ? 'fire' : 'arcane');
+    for (let i = 0; i < 70; i++) { const a = yaw + rnd(-0.55, 0.55), v = rnd(6, 12); d.particles.spawn(hp.x + fx * 0.8, gy + 1.2, hp.z + fz * 0.8, { vx: Math.sin(a) * v, vy: rnd(-0.3, 0.8), vz: Math.cos(a) * v, life: rnd(0.4, 0.7), s0: 0.15, s1: rnd(0.5, 0.9), c0: col0, c1: col1, a: 0.9, drag: 2.2 }); }
+    const from = new THREE.Vector3(hp.x, gy, hp.z); skill = 'combo';
+    try { for (const e of enemies.list) { if (!e.alive || !e.active || e.def.passive) continue; const dx = e.pos.x - hp.x, dz = e.pos.z - hp.z, dd = Math.hypot(dx, dz); if (dd > R + e.def.radius || dd < 0.01) continue; if ((dx * fx + dz * fz) / dd < Math.cos(0.62)) continue;
+      hitEnemy(e, fire ? 0.9 : 0.6, false, from); if (!e.alive) continue;
+      if (fire) { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; } else { e.burn = Math.max(e.burn ?? 0, 6); e.burnTick = e.burnTick ?? 0; e.slow = Math.max(e.slow ?? 0, 4); dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'ENVENENADO', false, '#9adf6a'); } } }
+    finally { skill = null; }
+    if (fire) for (const k of [3, 5.5]) { const x = hp.x + fx * k, z = hp.z + fz * k; napalmAt(x, z, d.world.heightAt(x, z)); }
+  }
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
     const silver = kitKey === 'cac' && DARK_T.has(e.type) ? 0.25 : 0; /* caçador: prata em demônio, morto-vivo e fera da noite — SOMA no balde (regra 8) */
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
@@ -538,6 +558,7 @@ export function createGameplay(d: GameplayDeps) {
     dmg = dmg <= 0 ? 0 : Math.max(1, Math.round(dmg));
     if (marked) st.hp = Math.min(st.hpMax, st.hp + dmg * 0.25);
     if (dmg > 0 && e.alive) runeHit(e, dmg, RF, crit);
+    if (dmg > 0 && !arcBusy && gad.arc > Date.now()) arcHit(e, dmg); /* 06/11: Eletrificador de Arma */
     if (inStrike && thunderN > 0 && thunderT > 0 && e.alive) thunderProc(e);
     if (buff.burnT > 0 && e.alive) { e.burn = Math.max(e.burn ?? 0, 4); e.burnTick = e.burnTick ?? 0; }
     if (skill === 'combo' && comboIdx === 3 && (e.burn ?? 0) > 0) { // detonação das brasas
@@ -703,8 +724,8 @@ export function createGameplay(d: GameplayDeps) {
   function plusFx(p: THREE.Vector3, n: number) { for (let i = 0; i < n; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: PLUS_TEX, transparent: true, depthWrite: false, color: i % 3 ? 0x7affd0 : 0x6ad0ff, blending: THREE.AdditiveBlending })); s.scale.setScalar(rnd(0.18, 0.3)); d.scene.add(s); pluses.push({ s, t: 0, life: rnd(1.0, 1.6), a: i / n * 6.283, r: rnd(0.45, 0.7), y: rnd(0.2, 1.4) }); } }
   /* 03/11: o drone e o escudo de longa duração (kit de começo, 15 dias) sobrevivem a fechar o jogo */
   const GAD_KEY = 'karmika.gad.v1'; let gadTier = { heal: 0, shield: 0 }, gadRestored = false;
-  const gadSave = (ht: number | null, st2: number | null) => { if (ht !== null) gadTier.heal = ht; if (st2 !== null) gadTier.shield = st2; try { localStorage.setItem(GAD_KEY, JSON.stringify({ heal: gad.heal, healK: gad.healK, shield: gad.shield, shieldCd: gad.shieldCd, tier: gadTier })); } catch { /* */ } };
-  const gad = { heal: 0, healT: 6, healK: 0.05, shock: 0, shockT: 4, shockI: 4, shockR: 7, shockK: 0.35, shield: 0, shieldReady: true, shieldT: 0, shieldCd: 25, sentries: [] as { id: string; m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number; iv: number; r: number; k: number }[] };
+  const gadSave = (ht: number | null, st2: number | null) => { if (ht !== null) gadTier.heal = ht; if (st2 !== null) gadTier.shield = st2; try { localStorage.setItem(GAD_KEY, JSON.stringify({ heal: gad.heal, healK: gad.healK, shield: gad.shield, shieldCd: gad.shieldCd, bracelet: gad.bracelet, arc: gad.arc, tier: gadTier })); } catch { /* */ } };
+  const gad = { heal: 0, healT: 6, healK: 0.05, shock: 0, shockT: 4, shockI: 4, shockR: 7, shockK: 0.35, shield: 0, shieldReady: true, shieldT: 0, shieldCd: 25, /** 06/11 Engenheiro do Mundo: pulseira de choque e arma eletrificada (fim, em ms) */ bracelet: 0, arc: 0, sentries: [] as { id: string; m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number; iv: number; r: number; k: number }[] };
   setTimeout(loadSentries, 0);
   function zap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, col: number) { const n = 9; for (let k = 0; k <= n; k++) { const t = k / n; d.particles.spawn(ax + (bx - ax) * t + rnd(-0.18, 0.18), ay + (by - ay) * t + rnd(-0.18, 0.18), az + (bz - az) * t + rnd(-0.18, 0.18), { life: 0.22, s0: 0.35, s1: 0.05, c0: 0xffffff, c1: col, a: 1 }); } }
   const beams: { m: THREE.Mesh; t: number; life: number }[] = [];
@@ -1274,7 +1295,7 @@ export function createGameplay(d: GameplayDeps) {
       if (buff.defT > 0) L.push({ id: 'def', name: 'Muralha', ic: '🛡', t: buff.defT, good: true, tip: `+${Math.round(buff.def * 100)}% de defesa` });
       if (buff.moveT > 0) L.push({ id: 'move', name: 'Pés Ligeiros', ic: '➶', t: buff.moveT, good: buff.move >= 1, tip: `${buff.move >= 1 ? '+' : ''}${Math.round((buff.move - 1) * 100)}% de velocidade` });
       { const fe = (st as typeof st & { feast?: Record<string, { id: string; until: number } | undefined> }).feast; if (fe) for (const sl of ['meal', 'brew']) { const e = fe[sl]; if (!e) continue; const left = (e.until - Date.now()) / 1000; const f = FEASTS[e.id]; if (left > 0 && f) L.push({ id: 'feast_' + sl, name: f.name, ic: f.icon, t: left, good: true, tip: feastEff(f) }); } }
-      { const nw = Date.now(); if (gad.heal > nw) L.push({ id: 'g_heal', name: 'Drone de Cura', ic: '🛸', t: (gad.heal - nw) / 1000, good: true, tip: `+${Math.round(gad.healK * 100)}% de vida a cada 6 s` }); if (gad.shock > nw) L.push({ id: 'g_shock', name: 'Bobina de Choque', ic: '⚡', t: (gad.shock - nw) / 1000, good: true, tip: `raio no inimigo mais perto a cada ${gad.shockI} s` }); if (gad.shield > nw) L.push({ id: 'g_shield', name: 'Escudo Automatizado', ic: '🛡', t: (gad.shield - nw) / 1000, good: true, tip: gad.shieldReady ? 'barreira pronta' : 'recarregando' }); if (gad.sentries.length) L.push({ id: 'g_sentry', name: `Robô Sentinela${gad.sentries.length > 1 ? ` ×${gad.sentries.length}` : ''}`, ic: '🤖', t: (Math.min(...gad.sentries.map((q) => q.until)) - nw) / 1000, good: true, tip: `guarda${gad.sentries.length > 1 ? 'm' : ''} o lugar onde ${gad.sentries.length > 1 ? 'foram plantadas' : 'foi plantada'} (até 5 de pé)` }); }
+      { const nw = Date.now(); if (gad.heal > nw) L.push({ id: 'g_heal', name: 'Drone de Cura', ic: '🛸', t: (gad.heal - nw) / 1000, good: true, tip: `+${Math.round(gad.healK * 100)}% de vida a cada 6 s` }); if (gad.shock > nw) L.push({ id: 'g_shock', name: 'Bobina de Choque', ic: '⚡', t: (gad.shock - nw) / 1000, good: true, tip: `raio no inimigo mais perto a cada ${gad.shockI} s` }); if (gad.bracelet > nw) L.push({ id: 'g_brace', name: 'Pulseira de Choque', ic: '📿', t: (gad.bracelet - nw) / 1000, good: true, tip: 'quem te acerta de perto leva 20% do golpe em choque' }); if (gad.arc > nw) L.push({ id: 'g_arc', name: 'Arma Eletrificada', ic: '🏹', t: (gad.arc - nw) / 1000, good: true, tip: '+15% de dano em choque; raios pulam para outro inimigo' }); if (gad.shield > nw) L.push({ id: 'g_shield', name: 'Escudo Automatizado', ic: '🛡', t: (gad.shield - nw) / 1000, good: true, tip: gad.shieldReady ? 'barreira pronta' : 'recarregando' }); if (gad.sentries.length) L.push({ id: 'g_sentry', name: `Robô Sentinela${gad.sentries.length > 1 ? ` ×${gad.sentries.length}` : ''}`, ic: '🤖', t: (Math.min(...gad.sentries.map((q) => q.until)) - nw) / 1000, good: true, tip: `guarda${gad.sentries.length > 1 ? 'm' : ''} o lugar onde ${gad.sentries.length > 1 ? 'foram plantadas' : 'foi plantada'} (até 5 de pé)` }); }
       { const jy = (st as typeof st & { joy?: number }).joy ?? 0, nw = Date.now(); if (jy > nw) L.push({ id: 'joy', name: 'Aura de Alegria', ic: '🎉', t: (jy - nw) / 1000, good: true, tip: '+10% em vida, vigor, dano, defesa, crítico, velocidade, XP e ouro (1 turno, da festa)' }); }
       if (hot.t > 0) L.push({ id: 'hot', name: 'Cura contínua', ic: '✚', t: hot.t, good: true, tip: `+${Math.round(hot.per)} de vida por segundo` });
       if (form) L.push({ id: 'form', name: 'Transformação', ic: '✷', t: form.t, good: true, tip: 'forma de batalha ativa' });
@@ -1555,6 +1576,7 @@ export function createGameplay(d: GameplayDeps) {
       lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.75, st.def + Math.min(0.3, buff.def + stance.def)))))); /* regra 01: defesa de buff/postura com teto de 30%, total com teto de 75% */
       // esquiva pela destreza (até 35%) e bloqueio pela defesa/escudo (até 30%, metade do dano) — a dança da luta
       if (st.sp.has('t_exo')) n = Math.max(1, Math.round(n * 0.8));
+      if (atk && atk.alive && gad.bracelet > Date.now() && Math.hypot(atk.pos.x - heroPos.x, atk.pos.z - heroPos.z) < 3.5) { const rf = Math.max(1, Math.round(n * 0.2)); zap(heroPos.x, heroPos.y + 1.1, heroPos.z, atk.pos.x, atk.pos.y + 1.1, atk.pos.z, 0x6ad0ff); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `⚡ ${rf}`, false, '#6ad0ff'); if (enemies.hurt(atk, rf, heroPos, 0)) killEnemy(atk); else { atk.state = 'hurt'; atk.t = -0.5; } } /* 06/11: Pulseira de Choque */
       if (atk && now < rs.thornsUntil && atk.alive) { const rf = Math.max(1, Math.round(n * rs.thornsPct)); if (enemies.hurt(atk, rf, heroPos, 2)) killEnemy(atk); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `↩ ${rf}`, false, '#e8b0ff'); } /* 06/11: runa que devolve o golpe */
       const dodge = Math.min(0.35, 0.04 + (st.attrs?.dex ?? 0) * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0);
       if (!h.guarding && Math.random() < dodge) { dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
@@ -2026,6 +2048,10 @@ export function createGameplay(d: GameplayDeps) {
       /* 28/10 (Erling): um de cada por vez — um Drone de Cura, um Escudo, uma Bobina. O segundo não é gasto */
       if (b === 'drone_cura' && gad.heal > now2) { logMsg(`🛸 Você já tem um Drone de Cura voando (mais ${Math.ceil((gad.heal - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       if (b === 'escudo_auto' && gad.shield > now2) { logMsg(`🛡 Você já tem um Escudo Automatizado (mais ${Math.ceil((gad.shield - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
+      /* 06/11 Engenheiro do Mundo */
+      if (b === 'pulseira_choque') { if (gad.bracelet > now2) { logMsg(`📿 A Pulseira de Choque já está no pulso (mais ${Math.ceil((gad.bracelet - now2) / 60000)} min). Só uma por vez.`, '#ff9a8a'); return false; } gad.bracelet = now2 + dur; gadSave(null, null); logMsg(`📿 Pulseira de Choque no pulso por ${tl}: quem te acerta de perto leva a descarga.`, '#6ad0ff'); d.audio.spell('shock'); return true; }
+      if (b === 'eletrificador') { if (gad.arc > now2) { logMsg(`🏹 A arma já está eletrificada (mais ${Math.ceil((gad.arc - now2) / 60000)} min).`, '#ff9a8a'); return false; } gad.arc = now2 + dur; gadSave(null, null); logMsg(`🏹 Arma eletrificada por ${tl}: +15% de dano em choque e raios que pulam.`, '#9ad0ff'); d.audio.spell('shock'); return true; }
+      if (b === 'lanca_chamas' || b === 'lanca_veneno') { sprayCone(b === 'lanca_chamas'); return true; }
       if (b === 'drone_choque' && gad.shock > now2) { logMsg(`⚡ A Bobina de Choque já está no cinto (mais ${Math.ceil((gad.shock - now2) / 60000)} min). Só uma por vez.`, '#ff9a8a'); return false; }
       if (b === 'drone_cura') { gvDrop('heal'); gv.heal = buildHealDrone(t); gv.heal.g.position.set(hp.x, gy + 2.6, hp.z); d.scene.add(gv.heal.g); for (let i = 0; i < 14; i++) d.particles.spawn(hp.x, gy + 2.4, hp.z, { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.6, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x7affd0, a: 0.9 }); gad.heal = now2 + dur; gad.healK = [0.05, 0.06, 0.07][t]; gadSave(t, null); logMsg(`🛸 Drone de Cura ${mk} no ombro por ${tl}: +${Math.round(gad.healK * 100)}% de vida a cada 6 s.`, '#7affd0'); return true; }
       if (b === 'drone_choque') { gad.shock = now2 + dur; gad.shockI = [4, 3.5, 3][t]; gad.shockR = [7, 8, 9][t]; gad.shockK = [0.35, 0.5, 0.65][t]; logMsg(`⚡ Bobina de Choque ${mk} no cinto por ${tl}: raio a cada ${gad.shockI} s (${gad.shockR} m).`, '#6ad0ff'); return true; }
@@ -2294,6 +2320,7 @@ export function createGameplay(d: GameplayDeps) {
           for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; d.particles.spawn(e.pos.x + Math.cos(a) * 0.3, e.pos.y + 0.15, e.pos.z + Math.sin(a) * 0.3, { vx: Math.cos(a) * 3, vy: 0.6, vz: Math.sin(a) * 3, life: 0.35, s0: 0.2, s1: 0.03, c0: 0xffffff, c1: 0x6ad0ff, a: 1, g: 0 }); }
           skill = 'combo'; hitEnemy(e, gad.shockK, false, hpp); skill = null; } } }
         if (!gadRestored) { gadRestored = true; try { const S = JSON.parse(localStorage.getItem(GAD_KEY) || 'null'); if (S) { gadTier = S.tier ?? gadTier; const hh = d.getHero().root.position;
+          if (S.bracelet > nw) gad.bracelet = S.bracelet; if (S.arc > nw) gad.arc = S.arc;
           if (S.heal > nw && !gv.heal) { gad.heal = S.heal; gad.healK = S.healK; gv.heal = buildHealDrone(gadTier.heal); gv.heal.g.position.set(hh.x, hh.y + 2.6, hh.z); d.scene.add(gv.heal.g); }
           if (S.shield > nw && !gv.bot) { gad.shield = S.shield; gad.shieldCd = S.shieldCd; gad.shieldReady = true; gv.bot = buildShieldBot(gadTier.shield); gv.bot.g.position.set(hh.x + 1.3, hh.y, hh.z); d.scene.add(gv.bot.g); gv.dome = buildDome(gadTier.shield); gv.dome.g.position.set(hh.x, hh.y, hh.z); d.scene.add(gv.dome.g); } } } catch { /* */ } }
         if (gad.shield > nw && !gad.shieldReady) { gad.shieldT -= dt; if (gad.shieldT <= 0) gad.shieldReady = true; }

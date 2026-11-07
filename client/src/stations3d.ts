@@ -11,7 +11,7 @@ export const STATION_INFO = [
   { name: 'Mesa do Curtidor', prof: 'costureiro', icon: '🧵' },
   { name: 'Laboratório', prof: 'alquimista', icon: '⚗' },
   { name: 'Cozinha', prof: 'cozinheiro', icon: '🍲' },
-  { name: 'Casa de Tecnologia', prof: 'ferreiro', icon: '⚙' },
+  { name: 'Casa de Tecnologia', prof: 'engenheiro', icon: '⚙' }, /* 06/11: a bancada do Engenheiro do Mundo (a forja de lá continua servindo ao ferreiro) */
 ] as const;
 
 
