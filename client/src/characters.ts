@@ -1606,7 +1606,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       } else if (guardK > 0.01) { aShL += -1.25 * guardK; aShLz += 0.18 * guardK; aElL += -1.7 * guardK; aFace = Math.max(aFace, guardK); aLean += -0.04 * guardK; aCrouch += (0.15 + 0.03 * recoil) * guardK; aShR += 0.35 * guardK; aTwist += 0.25 * guardK; aLean += (-0.08 * recoil) * guardK; aShL += 0.35 * recoil * guardK; aElL += 0.3 * recoil * guardK; }
       slashK = Math.max(0, slashK - dt * 7); if (slashK > 0) { const w = Math.sin(Math.min(1, 1 - slashK) * Math.PI); aShR += -1.1 * w; aShRz += -0.9 * w; aElR += 0.3 * w; aSwX += -1.2 * w; aTwist += 0.5 * w; }
       const rK = runK * walkK * (1 - (act ? 1 : 0));
-      if (kind === 'nordic' && rK > 0.01 && wcls === 'one') { const rq = rK * (1 - combatK); aShR += 0.95 * rq - 0.1 * rK * combatK; aElR += 0.3 * rq - 1.3 * rK * combatK; /* correndo em combate: a espada continua de pé à frente do peito */ aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
+      /* 07/11 (Erling: "corrida egípcia: é só dobrar os dois braços e mover para frente e para trás como qualquer ser humano"): fora de combate não há mais pose de espada à frente nem corpo de lado; a pose de guarda correndo só vale em combate */
+      if (kind === 'nordic' && rK > 0.01 && wcls === 'one' && combatK > 0.5) { const rq = 0; aShR += 0.95 * rq - 0.1 * rK * combatK; aElR += 0.3 * rq - 1.3 * rK * combatK; /* correndo em combate: a espada continua de pé à frente do peito */ aShRz += -0.18 * rK; aShL += -0.45 * rK; aElL += -0.85 * rK; aShLz += 0.18 * rK; aFace = Math.max(aFace, 0.6 * rK); aLean += 0.1 * rK; }
       root.rotation.y = yaw + aSpin;
       // sem ação a espada descansa apontando para o chão, ligeiramente para trás e afastada da perna
       const hang = kind === 'nordic' ? smooth1('hang', act || guardK > 0.5 || wcls === 'club' ? 0 : 1, dt, 9) * (1 - 0.62 * combatK) : 0;
@@ -1644,7 +1645,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
 
       /* quadril: salto/oscilação + balanço lateral + giro */
       const c2 = Math.cos(2 * phase);
-      const bobY = lerp(c2 * bobA, -c2 * bobA * 0.6, runK) - 0.045 * runK - (S.stomp * (hero.gait?.stomp ?? 1) * 0.012) * Math.abs(Math.sin(phase)) * walkK;
+      const bobY = lerp(c2 * bobA, -c2 * bobA * 0.6, runK) - 0.02 * runK - (S.stomp * (hero.gait?.stomp ?? 1) * 0.012) * Math.abs(Math.sin(phase)) * walkK;
       const idleY = Math.sin(breath) * 0.01 * (1 - walkK);
       /* 06/11 (Erling: "de pé ele fica com as pernas dobradas, ninguém fica de pé assim"): parado (guarda, postura de instinto, escudo,
          descanso) as pernas ficam ESTICADAS — só um leve destravar do joelho. O corpo baixo fica para o andar das classes e para os golpes */
@@ -1678,7 +1679,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const setLeg = (leg: typeof legL, ph: number, lunge: number) => {
         const sA = Math.sin(ph), cA = Math.cos(ph);
         let hip = -A * sA + smooth.lean * 0.15;
-        let knee = K * Math.max(0, Math.cos(ph - 0.3)) + (0.14 + 0.38 * runK) * walkK + 0.12 * (1 - walkK) * 0 + aCrouch * 5;
+        /* 07/11 (Erling: "parece que ele corre agachado"): a dobra fixa dos joelhos na corrida era 0,52 rad (30°) nas DUAS pernas o tempo todo — o corpo afundava. Agora a perna de apoio quase estica (≈11°) e só a perna que volta dobra */
+        let knee = K * 0.85 * Math.max(0, Math.cos(ph - 0.3)) + (0.12 + 0.08 * runK) * walkK + aCrouch * 5;
         if (dashing) { const w = Math.sin(dashP * Math.PI), lead = (leg === legL) === dashLeadL; hip = lead ? -0.85 * w : 0.5 * w; knee = lead ? 1.15 * w : 0.35 * w; }
         hip += lunge * -0.7; knee += lunge * 0.3;
         const front = leg === legL; hip += (front ? -0.06 : 0.04) * restK + (front ? -0.14 : 0.1) * guardK + (front ? -0.12 : 0.07) * cK * (1 - walkK); knee += (front ? 0.03 : 0.02) * restK + (front ? 0.06 : 0.08) * guardK + (front ? 0.05 : 0.04) * cK * (1 - walkK) + 0.08 * cK * walkK;
@@ -1752,15 +1754,18 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const sL = Math.sin(phase), sR = Math.sin(phase + Math.PI);
       armL.sh.rotation.x = restL.x + armA * sL * swingL * (1 - 0.8 * cK) * (shieldHolder && !stowed ? 0.5 : 1) + aShL; /* 04/11: com escudo no braço, o balanço da corrida cai pela metade (Erling: "o escudo está balançando demais") */ armL.sh.rotation.z = restL.z + aShLz;
       armL.el.rotation.x = -(restL.e + (0.18 + 0.22 * (1 - sL) * 0.5) * walkK) + aElL;
-      armR.sh.rotation.x = restR.x + armA * sR * swingR * (1 - 0.7 * rK) + aShR; armR.sh.rotation.z = restR.z + aShRz;
+      armR.sh.rotation.x = restR.x + armA * sR * swingR * (1 - 0.7 * rK * combatK) + aShR; armR.sh.rotation.z = restR.z + aShRz;
       armR.el.rotation.x = -(restR.e + (0.18 + 0.22 * (1 - sR) * 0.5) * walkK) + aElR;
       if (sitK > 0.01) { const k = sitK, L = (o: THREE.Object3D, ax: 'x' | 'z', v: number) => { o.rotation[ax] += (v - o.rotation[ax]) * k; };
         if ((hero as unknown as { sitNeat?: boolean }).sitNeat) { L(armR.sh, 'x', -0.42); L(armR.sh, 'z', 0.12); L(armR.el, 'x', -0.95); L(armL.sh, 'x', -0.42); L(armL.sh, 'z', -0.12); L(armL.el, 'x', -0.95); } /* as mãos no colo */
         else { L(armR.sh, 'x', -0.55); L(armR.sh, 'z', -0.22); L(armR.el, 'x', -0.6); L(armL.sh, 'x', -0.55); L(armL.sh, 'z', 0.22); L(armL.el, 'x', -0.6); } /* os antebraços nos joelhos abertos */ }
       if (hero.riding && !act) { armL.sh.rotation.x = -0.55; armL.sh.rotation.z = 0.18; armL.el.rotation.x = -0.9; armR.sh.rotation.x = -0.55; armR.sh.rotation.z = -0.18; armR.el.rotation.x = -0.9; }
       if (runK > 0.05) { // na corrida os cotovelos fecham em ~90°
-        armL.el.rotation.x -= (eb - restL.e) * runK * swingL * 0.9;
-        armR.el.rotation.x -= (eb - restR.e) * runK * swingR * 0.9;
+        /* os dois cotovelos dobram ~80° e os braços balançam juntos, opostos às pernas (07/11) */
+        const nc = runK * (1 - combatK) * (act ? 0 : 1);
+        armL.el.rotation.x -= (eb - restL.e) * runK * Math.max(swingL, nc) * 0.9; armR.el.rotation.x -= (eb - restR.e) * runK * Math.max(swingR, nc) * 0.9;
+        armL.el.rotation.x += (-1.4 - armL.el.rotation.x) * nc * 0.8; armR.el.rotation.x += (-1.4 - armR.el.rotation.x) * nc * 0.8;
+        armL.sh.rotation.z += (-0.08 - armL.sh.rotation.z) * nc * 0.7; armR.sh.rotation.z += (0.08 - armR.sh.rotation.z) * nc * 0.7;
       }
       if (kind === 'nordic' && !hero.riding) { // escudo sacado: antebraço atravessado à frente do corpo, face do escudo para a frente, cotovelo afastado
         const k = combatK * (act ? 0.6 : 1) * (1 - guardK);
