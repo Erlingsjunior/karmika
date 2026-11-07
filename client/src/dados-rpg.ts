@@ -30,7 +30,7 @@ export function monDice(avg: number, lvl: number) { const k = `${Math.round(avg)
 /** rola o golpe de um monstro (média = o dano dele) e guarda a descrição para o registro de rolagens */
 export let lastMon: { at: number; txt: string } = { at: 0, txt: '' };
 export function monRoll(avg: number, lvl: number, name: string) { const dice = monDice(avg, lvl), r = rollDice(dice), bonus = avg - diceAvg(dice), v = Math.max(1, Math.round(r.sum + bonus));
-  lastMon = { at: performance.now(), txt: `${name}: ${fmtDice(dice)} (${r.faces.join(',')})${bonus >= 0 ? '+' : ''}${Math.round(bonus)} = ${v}` }; return v; }
+  lastMon = { at: performance.now(), txt: `${fmtDice(dice)} (${r.faces.join(',')})` }; void name; return v; }
 
 /* ---------- acerto contra defesa ---------- */
 export const heroAcc = (L: number, dex: number) => 8 + L / 2.5 + dex / 12;
@@ -45,8 +45,10 @@ export const needOf = (cd: number, acc: number, lo: number, hi: number) => Math.
 let box: HTMLElement | null = null; let on = (() => { try { return localStorage.getItem('karmika.rolls') !== '0'; } catch { return true; } })();
 function ensure() { if (box) return box; box = document.createElement('div'); box.id = 'rolls'; box.innerHTML = MV_GRIP('l') + '<button class="rtog" title="Registro de Rolagens: cada golpe é um d20 contra a Defesa e os dados de dano. Clique para mostrar/esconder">🎲</button><div class="rl"></div>'; document.body.appendChild(box); movable(box, 'rolls');
   box.classList.toggle('off', !on); box.querySelector('.rtog')!.addEventListener('click', () => { on = !on; try { localStorage.setItem('karmika.rolls', on ? '1' : '0'); } catch { /* */ } box!.classList.toggle('off', !on); }); return box; }
-/** kind: 'crit' (20 natural / crítico), 'fail' (1 natural), 'miss', 'hit', 'hurt' (você apanhou) */
-export function rollLog(html: string, kind: 'crit' | 'fail' | 'miss' | 'hit' | 'hurt' = 'hit') {
+/** 07/11 (Erling: "nome do monstro e algumas coisas na linha de cima, outras na de baixo; acerto crítico em verde, erro crítico em vermelho; mais curto"):
+    linha 1 = quem (⚔ você bate / 🛡 você apanha) e o veredito; linha 2 = os dados, curtos */
+export type RollKind = 'crit' | 'fail' | 'miss' | 'hit' | 'hurt';
+export function rollLog(who: string, verdict: string, kind: RollKind, dice: string, mine = true) {
   if (!document.body.classList.contains('ready')) return; const b = ensure(); if (!on) return; const l = b.querySelector('.rl')!;
-  const p = document.createElement('p'); p.className = kind; p.innerHTML = html; l.appendChild(p); while (l.children.length > 7) l.firstElementChild!.remove();
-  setTimeout(() => p.classList.add('old'), 6000); }
+  const p = document.createElement('p'); p.className = kind; p.innerHTML = `<span class="r1"><i class="ic">${mine ? '⚔' : '🛡'}</i><b class="who">${who}</b><em class="vd">${verdict}</em></span><span class="r2">🎲 ${dice}</span>`;
+  l.appendChild(p); while (l.children.length > 6) l.firstElementChild!.remove(); setTimeout(() => p.classList.add('old'), 6000); }

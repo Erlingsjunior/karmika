@@ -518,6 +518,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   let barPos: { l: number; b: number } | null = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagbarpos') || 'null'); } catch { return null; } })();
   const uiK = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
   let bagPos: Record<string, { l: number; b: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagpos') || '{}'); } catch { return {}; } })();
+  let scaleC: { ui: number; w: number; h: number; kx: number; x0: number; y0: number } | null = null; /* 07/11: a escala medida uma vez (não a cada 2 s: medir força o navegador a recalcular a página) */
   const placeBar = () => { const ui = uiK(), bw = bagBarEl.offsetWidth * ui, bh = bagBarEl.offsetHeight * ui; let L: number, B: number;
     if (barPos) { L = barPos.l; B = barPos.b; } else { const o = document.getElementById('mp')?.getBoundingClientRect(); if (!o || !o.width) return; L = Math.round(o.right + 14); B = Math.round(innerHeight - o.bottom + 4); if (L + bw > innerWidth - 8) { L = Math.round(innerWidth - bw - 10); B = Math.round(innerHeight - o.top + 8); } }
     L = Math.max(4, Math.min(innerWidth - bw - 4, L)); B = Math.max(2, Math.min(innerHeight - bh - 4, B));
@@ -526,7 +527,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
        pela direita; quando a pilha chega no alto da tela, começa outra coluna à esquerda */
     const ps = Array.from(mini.querySelectorAll<HTMLElement>('.pn.bm')); let right = Math.min(innerWidth - 4, L + bw), y = B + bh + 6, colW = 0, n = 0;
     /* a escala real das coordenadas (a interface tem zoom/escala): mede uma vez, colocando a primeira bolsa em 0 e em 100 */
-    let kx = ui, x0 = 0, y0 = 0; if (ps[0]) { ps[0].style.transition = 'none'; const p = ps[0]; p.style.left = '0px'; p.style.bottom = '0px'; const a = p.getBoundingClientRect(); p.style.left = '100px'; const b2 = p.getBoundingClientRect(); kx = (b2.left - a.left) / 100 || ui; x0 = a.left; y0 = innerHeight - a.bottom; }
+    let kx = ui, x0 = 0, y0 = 0; if (scaleC && scaleC.ui === ui && scaleC.w === innerWidth && scaleC.h === innerHeight) ({ kx, x0, y0 } = scaleC); else if (ps[0]) { ps[0].style.transition = 'none'; const p = ps[0]; p.style.left = '0px'; p.style.bottom = '0px'; const a = p.getBoundingClientRect(); p.style.left = '100px'; const b2 = p.getBoundingClientRect(); kx = (b2.left - a.left) / 100 || ui; x0 = a.left; y0 = innerHeight - a.bottom; scaleC = { ui, w: innerWidth, h: innerHeight, kx, x0, y0 }; }
     for (const p of ps) { const rr = p.getBoundingClientRect(), w = rr.width, h = rr.height;
       { const fp = bagPos[p.dataset.bmk!]; if (fp) { const x = Math.max(0, Math.min(innerWidth - w, fp.l)), yy = Math.max(0, Math.min(innerHeight - h, fp.b)); p.style.left = (x - x0) / kx + 'px'; p.style.bottom = (yy - y0) / kx + 'px'; continue; } }
       if (n && y + h > innerHeight - 6) { right -= colW + 6; y = B + bh + 6; colW = 0; n = 0; }

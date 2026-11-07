@@ -1011,11 +1011,13 @@
   #quick .qrows { width: 22px; height: 22px; padding: 0; background: rgba(14,10,6,.85); border: 1px solid #7a5a30; color: #c9a24a; cursor: pointer; font: 700 11px Cinzel, serif; border-radius: 4px; margin-right: 4px; align-self: flex-end; margin-bottom: 9px; }
   #quick .qside { display: flex; align-items: center; align-self: flex-end; height: 40px; } #quick .qbtns { display: flex; flex-direction: column; gap: 2px; margin-right: 4px; } #quick .qbtns .qtog, #quick .qbtns .qrows { width: 18px; height: 18px; margin: 0; align-self: auto; font-size: 10px; line-height: 16px; } /* 07/11: os dois botões empilhados, do mesmo tamanho */ #quick .qrows:hover, #quick .qtog:hover { border-color: #ffe08a; color: #ffe08a; }
   /* 07/11: o Registro de Rolagens (dados de cada golpe) */
-  #rolls { position: fixed; right: 14px; top: 340px; z-index: 6; width: 310px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; pointer-events: auto; font: 11px/1.35 Georgia, serif; }
+  #rolls { position: fixed; right: 14px; top: 340px; z-index: 6; width: 236px; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px; pointer-events: auto; font: 11px/1.3 Georgia, serif; }
   #rolls .rtog { width: 22px; height: 22px; padding: 0; border-radius: 4px; border: 1px solid #7a5a30; background: rgba(14,10,6,.85); cursor: pointer; font-size: 12px; } #rolls.off .rl { display: none; } #rolls.off { width: auto; }
-  #rolls .rl { flex: 1 1 100%; display: flex; flex-direction: column; gap: 2px; } #rolls .rl p { margin: 0; padding: 3px 7px; border-left: 2px solid #8a7a5a; background: rgba(10,8,6,.62); color: #d8ccb0; border-radius: 0 4px 4px 0; transition: opacity 1.5s; }
-  #rolls .rl p b { color: #ffe08a; } #rolls .rl p i { font-style: normal; font-weight: 700; } #rolls .rl p.crit { border-color: #ffd24a; } #rolls .rl p.crit i { color: #ffd24a; } #rolls .rl p.fail { border-color: #ff6a4a; } #rolls .rl p.fail i { color: #ff8a6a; }
-  #rolls .rl p.miss { border-color: #6a8ab0; color: #a8b8c8; } #rolls .rl p.hurt { border-color: #c03a3a; } #rolls .rl p.old { opacity: .35; } body:not(.ready) #rolls { display: none; }
+  #rolls .rl { flex: 1 1 100%; display: flex; flex-direction: column; gap: 3px; } #rolls .rl p { margin: 0; padding: 4px 8px 4px 7px; border-left: 3px solid #8a7a5a; background: rgba(10,8,6,.7); border-radius: 0 5px 5px 0; transition: opacity 1.5s; display: flex; flex-direction: column; gap: 1px; }
+  #rolls .r1 { display: flex; align-items: baseline; gap: 5px; } #rolls .r1 .ic { font-style: normal; font-size: 10px; opacity: .8; } #rolls .who { font: 600 11px Cinzel, Georgia, serif; color: #e8dcc0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+  #rolls .vd { font: normal 700 11px Cinzel, Georgia, serif; color: #ffe08a; white-space: nowrap; } #rolls .r2 { font-size: 10px; color: #a89878; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #rolls p.crit { border-color: #5ad07a; } #rolls p.crit .vd { color: #6ae08a; } #rolls p.fail { border-color: #e04a3a; } #rolls p.fail .vd { color: #ff6a5a; }
+  #rolls p.miss { border-color: #6a8ab0; } #rolls p.miss .vd { color: #a8c0d8; font-weight: 400; } #rolls p.hurt { border-color: #c03a3a; } #rolls p.hurt .vd { color: #ff8a7a; } #rolls p.old { opacity: .4; } body:not(.ready) #rolls { display: none; }
   .mvgrip { align-self: center; display: grid; place-items: center; width: 12px; height: 26px; font: 700 15px/1 Georgia, serif; color: #c9a24a; cursor: grab; user-select: none; border-radius: 3px; opacity: .6; font-style: normal; } .mvgrip:hover { opacity: 1; background: #ffffff10; } .mvgrip:active { cursor: grabbing; }
   #quick .qside .mvgrip { align-self: center; margin: 0 2px 0 0; } #dock .mvgrip { margin-left: 2px; }
   #quick .slot.q.qtool { background: linear-gradient(#2a1e10, #120c06); border-color: #7a5a30; } #quick .slot.q.qtool.lit { border-color: #ffe08a; box-shadow: 0 0 12px #ffd86a88, inset 0 0 10px #ffe08a44; } #quick .slot.q.qtool:not(.lit):not(.rx) .ic { filter: grayscale(1) brightness(.6); }
@@ -1057,6 +1059,7 @@
   .pn h2 button { font-family: Cinzel, serif; background: transparent; border: 1px solid var(--wk-gold-lo); color: var(--wk-ink); border-radius: 2px; padding: 3px 8px; } .pn h2 button:hover { background: rgba(217,162,79,.14); }
   .pn h3 { font: 600 12px Cinzel, serif; letter-spacing: .18em; color: var(--wk-gold); }
   .pn p { font-size: 14.5px; } .pn small { font-size: 12.5px; color: #b4a68e; } .pn small.ft { margin-top: 10px; text-align: center; font: 600 10px Cinzel, serif; letter-spacing: .24em; text-transform: uppercase; color: #8a7a5a; }
+  #menu .panel { position: relative; } #menu .mclose { position: absolute; top: 14px; right: 18px; z-index: 3; width: 30px; height: 30px; padding: 0; border: 1px solid #8a6a38; border-radius: 4px; background: rgba(20,14,8,.9); color: #f2cf8a; font-size: 14px; cursor: pointer; } #menu .mclose:hover { border-color: #ffe08a; color: #ffe08a; }
   #menu .panel { font-size: 15px; } #menu .page { color: var(--wk-ink); font-family: Georgia, serif; font-size: 15px; } #menu .stat { font-size: 15px; }
   #dlg .dp { font-size: 15px; } #dlg .say { font-size: 16px; } #dlg .c { font-size: 15px; }
   /* fontes um pouco maiores dentro do jogo */
@@ -1260,7 +1263,7 @@
   .bf.echo.off { opacity: .55; filter: grayscale(.6); } #buffs .bf.echo:not(.off) svg { animation: echoSpin 9s linear infinite; } @keyframes echoSpin { to { transform: rotate(360deg); } }
   #buffs .bf i { position: absolute; right: -2px; bottom: -6px; font: 700 9px Georgia, serif; font-style: normal; color: #f0e6cc; text-shadow: 0 0 2px #000, 0 0 2px #000; }
   #banner { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 8; pointer-events: none; font-family: Georgia, serif; text-align: center; }
-  #banner .bn { pointer-events: auto; } #banner a { cursor: pointer; color: inherit; } #banner a:hover { color: #ffe08a; text-shadow: 0 0 8px rgba(255,220,120,.6); }
+  #banner .bn, #banner a, #banner [data-pin] { pointer-events: auto; } #banner a { cursor: pointer; color: inherit; } #banner a:hover { color: #ffe08a; text-shadow: 0 0 8px rgba(255,220,120,.6); }
   #banner .dd { position: relative; cursor: pointer; } #banner .dd .menu { display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 6px; min-width: 220px; background: rgba(27,20,39,.96); border: 1px solid #7d5a2c; padding: 6px 0; text-align: left; box-shadow: 0 10px 30px rgba(0,0,0,.6); z-index: 9; } #banner .dd:hover .menu { display: block; }
   #banner .dd .menu a { display: block; padding: 5px 12px; font-size: 13px; white-space: nowrap; } #banner .dd .menu a:hover { background: rgba(217,162,79,.14); } #banner .dd .menu small { color: #a89878; margin-left: 6px; }
   #banner .loc { display: inline-flex; gap: 10px; align-items: center; margin-top: 4px; padding: 3px 14px; font-size: 12px; color: #e8dcc0; background: rgba(27,20,39,.8); border: 1px solid #7d5a2c; border-top: none; pointer-events: auto; } #banner .loc b { color: #ffe08a; } #banner .loc a { color: #a89878; cursor: pointer; } #banner .loc a:hover { color: #ff9a8a; }
@@ -1542,6 +1545,7 @@
 </div></div>
 <div id="menu">
   <div class="panel">
+    <button class="mclose" data-mclose title="Fechar (Esc)">✕</button>
     <nav><button class="on" data-p="p-opt">Opções</button><button data-p="p-char">Conta</button><button data-go="back">Voltar ao jogo</button><button data-go="exit">Sair para o menu</button><button data-go="quit" id="m-quit">Fechar o jogo</button><span class="hint2">ESC FECHA</span></nav>
     <div>
       <div class="page" id="p-char"><h2>Conta</h2>

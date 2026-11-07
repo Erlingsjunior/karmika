@@ -598,6 +598,7 @@ function takeClass(p: (typeof PATHS)[number]) { if (game.changeClass(p.cls)) { t
 /* menu do Esc: atalhos para as janelas de verdade */
 setInterval(() => { if (!game.st.menuOpen) return; const set = (id: string, t: string) => { const el = document.getElementById(id); if (el) el.textContent = t; };
   set('m-acc', profile?.name ? `${profile.name} (local)` : 'local'); set('m-plan', isPremium() ? '✦ Premium' : 'Gratuito'); set('m-name', profile?.name || RACES[state.race].label); set('m-lvl', `${game.st.lvl} · ${game.classInfo.name}`); set('m-karma', String(Math.round(state.karma))); set('m-gold', String(game.st.gold)); }, 500);
+document.querySelector('#menu [data-mclose]')?.addEventListener('click', () => { game.toggleMenu(false); keys.clear(); }); /* 07/11: o ✕ das opções */
 document.querySelectorAll<HTMLButtonElement>('#menu nav button[data-go]').forEach((b) => b.addEventListener('click', () => { const g = b.dataset.go; game.toggleMenu(false); keys.clear();
   if (g === 'exit') exitToMenu(); else if (g === 'quit') { saveAllNow(); setTimeout(() => window.close(), 150); } }));
 /* sair do jogo: guarda tudo e volta à tela inicial (escolha de personagem e de sala) */
@@ -1685,7 +1686,10 @@ const limiar = createLimiar({ use: (s, c) => dual.use(s, c), restore: () => dual
  *  - Escala da interface: Auto acompanha a altura da tela (Quad HD = 133%, 4K = 200%); ou fixa.
  *  - Resolução do mundo: em Full HD o mundo é desenhado como em 1080p e esticado (mesmo visual e o mesmo FPS em qualquer monitor);
  *    Quad HD fica mais nítido; Nativa usa todos os pixels do monitor (o mais pesado). */
-function uiScale() { const base = Math.max(0.85, Math.min(2, Math.min(innerHeight / 1080, innerWidth / 1560))); /* 1,00 = tamanho pensado para Full HD; em janela pequena não encolhe abaixo de 0,85 (senão não dá para ler) */ return Math.max(0.7, base * (opts.uis || 1)); }
+function uiScale() { const base = Math.max(0.85, Math.min(2, Math.min(innerHeight / 1080, innerWidth / 1560))); /* 1,00 = tamanho pensado para Full HD; em janela pequena não encolhe abaixo de 0,85 (senão não dá para ler) */ return Math.max(0.7, Math.min(uiFitMax(), base * (opts.uis || 1))); }
+/** 07/11 (Erling: "1,50 e 2,00 não cabem na tela e estão como opção?"): o maior tamanho de interface em que o jogo ainda cabe nesta tela (a barra de baixo e as janelas pedem ~1250×760 na escala 1) */
+export function uiFitMax() { return Math.min(innerWidth / 1250, innerHeight / 760); }
+export function uiBase() { return Math.max(0.85, Math.min(2, Math.min(innerHeight / 1080, innerWidth / 1560))); }
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
   const rr = opts.gfx === 1 ? 0 : opts.res; /* Moderno: sempre na resolução nativa do monitor (Quad HD e 4K ficam nítidos de verdade) */

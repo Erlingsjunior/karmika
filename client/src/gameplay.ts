@@ -542,10 +542,10 @@ export function createGameplay(d: GameplayDeps) {
     /* 07/11 DADOS: d20 + Acerto contra a Defesa (CD) do bicho. 1 natural = erro crítico; 20 natural = acerto crítico; a faixa de crítico cresce com a chance */
     const AGILE = AGILE_T.has(e.type), dlv0 = (e.def.lvl ?? 1) - st.lvl, dex0 = st.attrs?.dex ?? 0, nat = d20(), acc = heroAcc(st.lvl, dex0), cdv = monCD(e.def.lvl ?? 1, AGILE, dlv0), need = needOf(cdv, acc, 2, 12);
     const pCrit = st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0), cF = critFaces(pCrit);
-    const rollTxt = `d20 <b>${nat}</b> + ${Math.round(acc)} vs CD ${Math.round(cdv)}`;
+    const rollTxt = `${nat}+${Math.round(acc)} vs ${Math.round(cdv)}`;
     if (nat === 1 || (nat < 20 && e.state !== 'hurt' && nat < need)) { const ep0 = e.pos.clone().setY(e.pos.y + 2.4);
-      if (nat === 1) { dmgText(ep0, 'ERRO CRÍTICO', false, '#ff8a6a'); openUntil = now + 0.4; rollLog(`⚔ ${e.def.name}: ${rollTxt} → <i>erro crítico</i> (você fica aberto)`, 'fail'); }
-      else { dmgText(ep0, AGILE ? 'ESQUIVOU' : 'ERROU', false, '#c8d8f0'); e.vel.set(rnd(-4, 4), rnd(-4, 4)); rollLog(`⚔ ${e.def.name}: ${rollTxt} → errou (precisava ${need})`, 'miss'); }
+      if (nat === 1) { dmgText(ep0, 'ERRO CRÍTICO', false, '#ff8a6a'); openUntil = now + 0.4; rollLog(e.def.name, 'ERRO CRÍTICO', 'fail', `${rollTxt} · você fica aberto`); }
+      else { dmgText(ep0, AGILE ? 'ESQUIVOU' : 'ERROU', false, '#c8d8f0'); e.vel.set(rnd(-4, 4), rnd(-4, 4)); rollLog(e.def.name, 'errou', 'miss', `${rollTxt} · precisava ${need}`); }
       d.audio.swing(); return; }
     let crit = nat >= 21 - cF; if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
@@ -601,7 +601,7 @@ export function createGameplay(d: GameplayDeps) {
         if (Math.random() < guardCh) { if (AR.has(e.type)) { dmgText(ep, 'APAROU', false, '#ffe6a0'); d.audio.parry(); st.shake = Math.max(st.shake, 0.12); return; } dmg = Math.round(dmg * 0.4); dmgText(ep, 'DEFENDEU', false, '#d9c08a'); d.audio.block(); } }
     }
     const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize(); dmg = Math.max(1, Math.round(dmg * EDEF)); /* defesa do monstro (05/11): descontada aqui para o número na tela ser o que entra */
-    rollLog(`⚔ ${e.def.name}: ${rollTxt} → ${crit ? '<i>CRÍTICO</i>' : 'acerto'} · ${fmtDice(H.dice)}${rk.length ? ' + ' + fmtDice(rk) : ''} (${[...hr.faces, ...rr.faces].join(',')}) → <b>${dmg}</b>`, crit ? 'crit' : 'hit');
+    rollLog(e.def.name, `${crit ? 'CRÍTICO ' : ''}−${dmg}`, crit ? 'crit' : 'hit', `${rollTxt} · ${fmtDice(H.dice)}${rk.length ? '+' + fmtDice(rk) : ''} (${[...hr.faces, ...rr.faces].join(',')})`);
     const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1), false); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
     st.hits++; d.audio.slash(crit); onoma(e.pos.clone().setY(e.pos.y + 1.6), crit ? 'crit' : 'hit');
     { const lch = st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0))); }
@@ -1611,7 +1611,7 @@ export function createGameplay(d: GameplayDeps) {
       /* 07/11 DADOS: o bicho rola d20 + Acerto contra a sua Defesa (CD). 1 natural dele = erra; 20 = acerta. Depois do seu erro crítico você fica aberto */
       const mL = atk?.def.lvl ?? st.lvl, mNat = d20(), hcd = heroCD(st.lvl, st.attrs?.dex ?? 0, st.sp.has('dh_cloak')), mac = monAcc(mL), mNeed = needOf(hcd, mac, 2, 8);
       const fresh = performance.now() - lastMon.at < 50 ? ` · ${lastMon.txt}` : '';
-      if (!h.guarding && now >= openUntil && (mNat === 1 || (mNat < 20 && mNat < mNeed))) { rollLog(`🛡 ${atk?.def.name ?? 'Golpe'}: d20 <b>${mNat}</b> + ${Math.round(mac)} vs sua CD ${Math.round(hcd)} → você esquivou`, 'miss'); dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
+      if (!h.guarding && now >= openUntil && (mNat === 1 || (mNat < 20 && mNat < mNeed))) { rollLog(atk?.def.name ?? 'Golpe', 'você esquivou', 'miss', `${mNat}+${Math.round(mac)} vs sua ${Math.round(hcd)}`, false); dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
       // aparo: só quem luta com lâmina, de frente; desvia o golpe, faísca e deixa o inimigo vulnerável (contra-ataque)
       const parryCh = h.kind === 'nordic' && !h.guarding ? Math.min(0.2, 0.05 + (st.attrs?.str ?? 0) * 0.006) : 0;
       if (parryCh > 0 && !h.actName && Math.random() < parryCh) {
@@ -1621,7 +1621,7 @@ export function createGameplay(d: GameplayDeps) {
         return;
       }
       const blockCh = Math.min(0.3, 0.03 + st.def * 0.5 + (h.guarding ? 0.3 : 0));
-      const bNat = d20(); if (!(h.guarding && now - guardAt < 0.5) && bNat >= 21 - critFaces(blockCh)) { rollLog(`🛡 ${atk?.def.name ?? 'Golpe'}: bloqueio d20 <b>${bNat}</b> → leva 45%`, 'miss'); n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); onoma(heroPos.clone().setY(1.8), 'block'); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
+      const bNat = d20(); if (!(h.guarding && now - guardAt < 0.5) && bNat >= 21 - critFaces(blockCh)) { rollLog(atk?.def.name ?? 'Golpe', 'bloqueou', 'miss', `bloqueio ${bNat} · leva 45%`, false); n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); onoma(heroPos.clone().setY(1.8), 'block'); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
       if (h.guarding && now - guardAt < 0.5) { // bloqueio perfeito
         d.audio.hit(); h.blockHit(); st.counterT = 3.5; st.mp = Math.min(st.mpMax, st.mp + 15); if (st.sp.has('aegis')) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.1); logMsg('✦ Égide: +10% de vida', '#7aff9a'); } if (st.sp.has('u_egide')) { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 3.5 + e.def.radius) { if (enemies.hurt(e, n, heroPos, 4)) killEnemy(e); else { e.state = 'hurt'; e.t = -2; } dmgText(e.pos.clone().setY(e.pos.y + 2.4), `↩ ${n}`, true, '#ffe08a'); } } if (h.kind === 'technocrat') overcharge = true; st.fury = Math.min(5, st.fury + 1); st.shake = Math.max(st.shake, 0.2); hitstop = Math.max(hitstop, performance.now() + 60);
         dmgText(heroPos.clone().setY(2.5), 'PERFEITO!', true, '#ffe08a'); logMsg('🛡 Bloqueio perfeito: Investida liberada', '#ffe08a'); for (const e of enemies.list) if (e.alive && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 4 + e.def.radius) poiseHit(e, e.hpMax * 0.09);
@@ -1634,7 +1634,7 @@ export function createGameplay(d: GameplayDeps) {
         const yw = h.root.rotation.y; for (let i = 0; i < 8; i++) d.particles.spawn(heroPos.x + Math.sin(yw) * 0.7, 1.3, heroPos.z + Math.cos(yw) * 0.7, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.3, s0: 0.18, s1: 0.03, c0: 0xffffff, c1: 0xffb060, a: 0.8, drag: 2 });
       } else {
         if (st.res.style === 'foco') { st.mp = Math.max(0, st.mp - 25); focoHurt = now; } /* o golpe recebido tira 25 de Foco */
-        rollLog(`🩸 ${atk?.def.name ?? 'Golpe'}: d20 <b>${mNat}</b> + ${Math.round(mac)} vs sua CD ${Math.round(hcd)} → acertou${fresh} → você perde <b>${n}</b>`, 'hurt');
+        rollLog(atk?.def.name ?? 'Golpe', `${mNat === 20 ? 'CRÍTICO ' : ''}−${n} em você`, 'hurt', `${mNat}+${Math.round(mac)} vs sua ${Math.round(hcd)}${fresh}`, false);
         st.hp = Math.max(0, st.hp - n); if (!h.actName || h.actName === 'hit') h.act('hit'); /* golpes e magias em andamento não são interrompidos */ d.audio.hurt(); st.shake = Math.max(st.shake, 0.3);
         dmgText(heroPos.clone().setY(2.2), n, false, '#ff7a6a');
       }

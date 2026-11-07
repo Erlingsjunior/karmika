@@ -62,8 +62,8 @@ function updateQuestMarks() {
     n.el.dataset.qm = (ti.length ? 'done' : 'offer') + '-' + cat; qm.textContent = ti.length ? '!' : '?'; }
 }
 function regionInfo() {
-  const h0 = K.hereT(); let elite: { name: string; d: number; alive: boolean } | null = null; const rg = regionAt(h0.x, h0.y);
-  for (const sp of K.city.spawns) { const d = Math.hypot(sp.x - h0.x, sp.y - h0.y); const def = DEFS[sp.type]; if (!def) continue; if ((sp.type === 'prince' || sp.type === 'tormentor' || sp.type === 'treant') && d < 110 && regionAt(sp.x, sp.y) === rg && (!elite || d < elite.d)) elite = { name: def.name, d: d * T, alive: K.game.enemies.list.some((e) => e.type === sp.type && e.alive && Math.hypot(e.home.x / T - sp.x, e.home.y / T - sp.y) < sp.r + 1) }; }
+  const h0 = K.hereT(); let elite: { name: string; d: number; alive: boolean; x: number; y: number } | null = null; const rg = regionAt(h0.x, h0.y);
+  for (const sp of K.city.spawns) { const d = Math.hypot(sp.x - h0.x, sp.y - h0.y); const def = DEFS[sp.type]; if (!def) continue; if ((sp.type === 'prince' || sp.type === 'tormentor' || sp.type === 'treant') && d < 110 && regionAt(sp.x, sp.y) === rg && (!elite || d < elite.d)) elite = { name: def.name, d: d * T, x: sp.x, y: sp.y, alive: K.game.enemies.list.some((e) => e.type === sp.type && e.alive && Math.hypot(e.home.x / T - sp.x, e.home.y / T - sp.y) < sp.r + 1) }; }
   return { lvl: rg.lo, lo: rg.lo, hi: rg.hi, region: rg.name, elite };
 }
 function temperature() {
@@ -107,7 +107,7 @@ function updateBanner() {
   ].filter(Boolean);
   const loc = K.pinT ? `<div class="loc"><span>🔍 Indo para <b>${K.pinT.label}</b> · ${K.fmtDist(Math.hypot(K.pinT.x - K.state.fx, K.pinT.y - K.state.fy) * T)}</span><a data-pin="clear" title="Parar de guiar">✕</a></div>` : K.quests.tracked && K.guideT ? `<div class="loc"><span>🔍 Missão: <b>${K.guideT.label}</b> · ${K.fmtDist(Math.hypot(K.guideT.x - K.state.fx, K.guideT.y - K.state.fy) * T)}</span></div>` : '';
   bannerEl.innerHTML = `<div class="bn">${parts.join('<em>◆</em>')}</div>${loc}`;
-  bannerEl.dataset.eliteName = ri.elite?.name ?? ''; bannerEl.dataset.eliteX = eliteSp ? String(eliteSp.x) : ''; bannerEl.dataset.eliteY = eliteSp ? String(eliteSp.y) : ''; bannerEl.dataset.tavX = tav ? String(tav.gx + tav.w / 2) : ''; bannerEl.dataset.tavY = tav ? String(tav.gy + tav.h + 1) : '';
+  bannerEl.dataset.eliteName = ri.elite?.name ?? ''; bannerEl.dataset.eliteX = eliteSp ? String(eliteSp.x) : ri.elite ? String((ri.elite as { x?: number }).x ?? '') : ''; bannerEl.dataset.eliteY = eliteSp ? String(eliteSp.y) : ri.elite ? String((ri.elite as { y?: number }).y ?? '') : ''; bannerEl.dataset.tavX = tav ? String(tav.gx + tav.w / 2) : ''; bannerEl.dataset.tavY = tav ? String(tav.gy + tav.h + 1) : '';
 }
 bannerEl.addEventListener('click', (e) => {
   if ((e.target as HTMLElement).closest('[data-gev]')) { openGev(); return; }
