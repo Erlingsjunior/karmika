@@ -430,15 +430,22 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
      clicar numa bolsa abre só ela embaixo da tela, para deixar uma aberta e ir vendo o que pego; a premium aparece, mas apagada se o Premium acabar") */
   const spF = (id: string) => sellPrice(id);
   const tagF = (v: number) => shop && v > 0 ? `<i class="ptag">🪙${v}</i>` : '';
+  /* 07/11 (Erling: "um botão de configuração das bolsas: transparência, que bolsa recebe o quê, a ordem dos itens; e trocar as bolsas de lugar") */
+  type BagCat = 'equip' | 'consumo' | 'material' | 'missao' | 'outros';
+  const CATS: { k: BagCat; n: string; ic: string }[] = [{ k: 'equip', n: 'Equipamentos', ic: '⚔' }, { k: 'consumo', n: 'Comida e poções', ic: '🍖' }, { k: 'material', n: 'Materiais', ic: '🪵' }, { k: 'missao', n: 'Itens de missão', ic: '📜' }, { k: 'outros', n: 'O resto', ic: '✦' }];
+  interface BagCfg { op: number; sort: 'tipo' | 'nome' | 'valor'; route: Record<string, BagCat[]>; order: string[] }
+  let bagCfg: BagCfg = (() => { const d: BagCfg = { op: 1, sort: 'tipo', route: {}, order: [] }; try { return { ...d, ...JSON.parse(localStorage.getItem('karmika.bagcfg') || '{}') }; } catch { return d; } })();
+  const saveCfg = () => { try { localStorage.setItem('karmika.bagcfg', JSON.stringify(bagCfg)); } catch { /* */ } };
+  const catOf = (ref: string): BagCat => { if (ref.startsWith('g:')) return 'equip'; const it = ITEMS[ref.slice(2)]; if (!it) return 'outros'; if (it.quest) return 'missao'; if (it.kind === 'food') return 'consumo'; if (it.kind === 'res' || CRAFT_BAG.has(ref.slice(2)) || MAGIC_BAG.has(ref.slice(2))) return 'material'; return 'outros'; };
   /** as células da mochila, na ordem: equipamentos, depois pilhas, depois o excesso das bolsas de ofício */
   function cellsNow(): string[] {
     const order = ['relic', 'unique', 'epic', 'legendary', 'rare', 'magic', 'normal'];
-    const sorted = [...gearBag].sort((a, b) => order.indexOf(a.rarity) - order.indexOf(b.rarity) || b.ilvl - a.ilvl);
+    const sorted = [...gearBag].sort((a, b) => bagCfg.sort === 'nome' ? a.name.localeCompare(b.name) : bagCfg.sort === 'valor' ? (b.value ?? 0) - (a.value ?? 0) : order.indexOf(a.rarity) - order.indexOf(b.rarity) || b.ilvl - a.ilvl);
     // células: equipamentos primeiro, depois pilhas de até 99 (material: 10.000)
     const sp = spF;
     const tag = tagF;
     const cells: string[] = sorted.map((g) => cell(g, `data-g="b:${g.uid}" data-eq="${g.uid}"`).replace('</div>', `${tag(g.value)}</div>`));
-    for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
+    for (const i of Object.keys(bag).filter((k) => bag[k] > 0 && !freeBag(k)).sort((a, b) => bagCfg.sort === 'nome' ? (ITEMS[a]?.name ?? a).localeCompare(ITEMS[b]?.name ?? b) : bagCfg.sort === 'valor' ? spF(b) - spF(a) : (ITEMS[a]?.kind ?? '').localeCompare(ITEMS[b]?.kind ?? '') || a.localeCompare(b))) { let left = bag[i]; while (left > 0) { const n = Math.min(stackOf(i), left); left -= n; cells.push(`<div class="it ${ITEMS[i]?.kind ?? ''} ${ITEMS[i]?.quest ? 'qitem' : ''}" draggable="true" data-drag="i:${i}:${n}" data-use="${i}" title="${ITEMS[i]?.name}: ${ITEMS[i]?.desc}${shop ? (sp(i) > 0 ? ` — vende por ${sp(i)} cada (clique: 1 · Ctrl: 50 · Shift: tudo)` : ' — este comerciante não compra') : ''}"><span>${ITEMS[i]?.icon}</span><b>${n}</b><small>${ITEMS[i]?.name}</small>${tag(sp(i))}</div>`); } }
     { const ov = overflow(); for (let q = 0; q < ov; q++) cells.push(`<div class="it ovf" title="Excesso das Bolsas de Ofício/Mágica: o material que não coube nelas ocupa este espaço da mochila. Venda, use ou guarde no baú para liberar.">📦</div>`); }
     return cells;
   }
@@ -448,6 +455,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     const ext: BagG[] = [{ key: 'gift', name: 'Bolsa do Caminhante (Premium)', icon: '🎁', n: GIFT_BAG, on: isPremium(), why: 'O Premium acabou: a Bolsa do Caminhante volta quando ele voltar.' },
       ...bags.map((b, i) => ({ key: `x${i}:${b}`, name: ITEMS[b]?.name ?? b, icon: ITEMS[b]?.icon ?? '👝', n: BAGS[b] ?? 0, on: !PREMIUM_BAGS.has(b) || isPremium(), why: PREMIUM_BAGS.has(b) ? 'Bolsa Premium: fica apagada enquanto o Premium estiver desligado.' : undefined }))];
     ext.sort((a, b) => Number(b.on) - Number(a.on) || b.n - a.n);
+    if (bagCfg.order.length) { const ix = (k: string) => { const i = bagCfg.order.indexOf(k); return i < 0 ? 999 : i; }; const all = [{ key: 'b0', name: 'Mochila', icon: '🎒', n: 16, on: true } as BagG, ...ext].sort((a, b) => ix(a.key) - ix(b.key)); return all; } /* a ordem que o jogador arrastou na fileira */
     return [{ key: 'b0', name: 'Mochila', icon: '🎒', n: 16, on: true }, ...ext];
   }
   /** as células de cada bolsa ligada */
@@ -457,7 +465,8 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   const refKey = (c: string) => { const m = /data-drag="([ig]):([^:"]+)/.exec(c); return m ? `${m[1]}:${m[2]}` : null; };
   function bagCells(): Map<string, string[]> {
     const cells = cellsNow(), G = bagGroups().filter((g) => g.on), M = new Map<string, string[]>(G.map((g) => [g.key, []])), rest: string[] = [];
-    for (const c of cells) { const k = refKey(c), pk = k ? pins[k] : undefined, L = pk ? M.get(pk) : undefined, g = pk ? G.find((x) => x.key === pk) : undefined; if (L && g && L.length < g.n) L.push(c); else rest.push(c); }
+    const routed = (k: string | null) => { if (!k) return undefined; const c = catOf(k); return G.find((g) => (bagCfg.route[g.key] ?? []).includes(c))?.key; }; /* a bolsa que recebe esta categoria */
+    for (const c of cells) { const k = refKey(c), pk = (k ? pins[k] : undefined) ?? routed(k), L = pk ? M.get(pk) : undefined, g = pk ? G.find((x) => x.key === pk) : undefined; if (L && g && L.length < g.n) L.push(c); else rest.push(c); }
     for (const g of G) { const L = M.get(g.key)!; while (L.length < g.n && rest.length) L.push(rest.shift()!); }
     return M;
   }
@@ -482,10 +491,10 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   addEventListener('resize', () => requestAnimationFrame(placeBar)); setInterval(placeBar, 2000);
   function renderBar(M: Map<string, string[]>) {
     const G = bagGroups(), free = Math.max(0, MAX_BAGS - bags.length), cur = (k: string) => openBags.includes(k) ? 'cur' : '';
-    bagBarEl.innerHTML = '<i class="bbgrip" title="Arraste para mover a fileira de bolsas · clique duplo: volta para o lugar de sempre">⋮</i>' + G.map((g) => { const u = M.get(g.key)?.length ?? 0; return `<button data-bb="${g.key}" class="${g.on ? '' : 'off'} ${cur(g.key)} ${g.on && u >= g.n ? 'full' : ''}" title="${g.name}${g.on ? ` — ${u}/${g.n} · clique: abrir · Ctrl+clique: abrir junto com as outras` : ` — ${g.why ?? 'desligada'}`}"><span>${g.icon}</span><i>${g.on ? `${u}/${g.n}` : '✦'}</i></button>`; }).join('')
+    bagBarEl.innerHTML = '<i class="bbgrip" title="Arraste para mover a fileira de bolsas · clique duplo: volta para o lugar de sempre">⋮</i>' + G.map((g) => { const u = M.get(g.key)?.length ?? 0; return `<button data-bb="${g.key}" draggable="true" class="${g.on ? '' : 'off'} ${cur(g.key)} ${g.on && u >= g.n ? 'full' : ''}" title="${g.name}${g.on ? ` — ${u}/${g.n} · clique: abrir · Ctrl+clique: abrir junto com as outras` : ` — ${g.why ?? 'desligada'}`}"><span>${g.icon}</span><i>${g.on ? `${u}/${g.n}` : '✦'}</i></button>`; }).join('')
       + specialList().map((q) => `<button data-bb="${q.key}" class="spec ${cur(q.key)}" title="${q.name} — ${stacksIn(q.set)}/${q.cap} · clique: abrir · Ctrl+clique: abrir junto"><span>${q.icon}</span><i>${stacksIn(q.set)}/${q.cap}</i></button>`).join('')
       + Array.from({ length: free }, () => '<button class="slot" disabled title="Lugar livre para bolsa: pegue uma bolsa e ela se equipa sozinha"><span>＋</span></button>').join('')
-      + '<button data-bball title="Abrir a mochila inteira (I)" class="all"><span>🗂</span><i>I</i></button>';
+      + '<button data-bbcfg title="Configurar as bolsas: transparência, o que cada uma recebe e a ordem dos itens" class="cfg"><span>⚙</span></button><button data-bball title="Abrir a mochila inteira (I)" class="all"><span>🗂</span><i>I</i></button>';
   }
   /** o tamanho de cada bolsa aberta, quando o jogador estica pelo canto */
   let bagSize: Record<string, { w: number; h: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagsize') || '{}'); } catch { return {}; } })();
@@ -502,7 +511,35 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       return `<div class="pn bm ${sz ? 'sized' : ''}" data-bmk="${k}"${st2}><h2><span>${sp ? sp.icon : g!.icon}</span>${sp ? sp.name : g!.name}<small>${sp ? `${stacksIn(sp.set)}/${sp.cap}` : `${cells.length}/${g!.n}`}</small><button data-mx="${k}" title="Fechar esta bolsa">✕</button></h2><div class="grid g6 ${n > 32 ? 'tall' : ''}" ${sp ? '' : `data-bagkey="${k}"`}>${cells.join('')}${empties}</div></div>`; }).join('');
     mini.style.display = 'flex'; requestAnimationFrame(placeBar);
   }
-  bagBarEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-bball]')) { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); return; }
+  /* a janelinha de configuração das bolsas (⚙ na fileira) */
+  const cfgEl = document.createElement('div'); cfgEl.id = 'bagcfg'; cfgEl.className = 'pn'; document.body.appendChild(cfgEl); let cfgOpen = false;
+  function renderCfg() {
+    if (!cfgOpen) { cfgEl.style.display = 'none'; return; }
+    const G = bagGroups().filter((g) => g.on);
+    cfgEl.innerHTML = `<h2>⚙ Bolsas<button data-cfgx title="Fechar">✕</button></h2>
+      <label class="bcrow"><span>Transparência das bolsas abertas</span><input type="range" min="30" max="100" step="5" value="${Math.round(bagCfg.op * 100)}" data-cfgop><b>${Math.round(bagCfg.op * 100)}%</b></label>
+      <label class="bcrow"><span>Ordem dos itens</span><select data-cfgsort><option value="tipo" ${bagCfg.sort === 'tipo' ? 'selected' : ''}>por tipo e raridade</option><option value="nome" ${bagCfg.sort === 'nome' ? 'selected' : ''}>por nome</option><option value="valor" ${bagCfg.sort === 'valor' ? 'selected' : ''}>por valor (o mais caro primeiro)</option></select></label>
+      <h3>O que cada bolsa recebe</h3><small class="bchint">Marque as categorias: o que for pego vai primeiro para essa bolsa (se tiver espaço). Item arrastado para uma bolsa fica preso nela.</small>
+      <div class="bcroutes">${G.map((g) => `<div class="bcr"><b>${g.icon} ${g.name}</b><span>${CATS.map((c) => `<button data-rt="${g.key}|${c.k}" class="${(bagCfg.route[g.key] ?? []).includes(c.k) ? 'on' : ''}" title="${c.n}">${c.ic}</button>`).join('')}</span></div>`).join('')}</div>
+      <small class="bchint">Para trocar as bolsas de lugar, arraste os botões na fileira.</small>
+      <div class="sorow"><button data-cfgreset class="ghost">Restaurar o padrão</button></div>`;
+    cfgEl.style.display = 'block'; const r = bagBarEl.getBoundingClientRect(); cfgEl.style.left = Math.max(6, Math.min(innerWidth - cfgEl.offsetWidth - 6, r.right - cfgEl.offsetWidth)) + 'px'; cfgEl.style.bottom = (innerHeight - r.top + 8) + 'px';
+  }
+  cfgEl.addEventListener('click', (e) => { const t = e.target as HTMLElement;
+    if (t.closest('[data-cfgx]')) { cfgOpen = false; renderCfg(); return; }
+    if (t.closest('[data-cfgreset]')) { bagCfg = { op: 1, sort: 'tipo', route: {}, order: [] }; pins = {}; savePins(); saveCfg(); render(); return; }
+    const rt = (t.closest('[data-rt]') as HTMLElement | null)?.dataset.rt; if (rt) { const [k, c] = rt.split('|') as [string, BagCat]; const on = (bagCfg.route[k] ?? []).includes(c); /* uma categoria vai para uma bolsa só */ for (const kk of Object.keys(bagCfg.route)) { bagCfg.route[kk] = bagCfg.route[kk].filter((x) => x !== c); if (!bagCfg.route[kk].length) delete bagCfg.route[kk]; } if (!on) bagCfg.route[k] = [...(bagCfg.route[k] ?? []), c]; saveCfg(); render(); } });
+  cfgEl.addEventListener('input', (e) => { const t = e.target as HTMLInputElement; if (t.dataset.cfgop !== undefined) { bagCfg.op = +t.value / 100; (t.nextElementSibling as HTMLElement).textContent = t.value + '%'; mini.style.setProperty('--bmop', String(bagCfg.op)); saveCfg(); } });
+  cfgEl.addEventListener('change', (e) => { const t = e.target as HTMLSelectElement; if (t.dataset.cfgsort !== undefined) { bagCfg.sort = t.value as BagCfg['sort']; saveCfg(); render(); } });
+  mini.style.setProperty('--bmop', String(bagCfg.op));
+  /* trocar as bolsas de lugar: arrastar um botão da fileira para cima de outro */
+  let barDrag: string | null = null;
+  bagBarEl.addEventListener('dragstart', (e) => { const b = (e.target as HTMLElement).closest('[data-bb]') as HTMLElement | null; if (!b) return; barDrag = b.dataset.bb!; e.dataTransfer?.setData('text/plain', 'bag'); e.stopPropagation(); });
+  bagBarEl.addEventListener('dragover', (e) => { if (barDrag && (e.target as HTMLElement).closest('[data-bb]')) e.preventDefault(); });
+  bagBarEl.addEventListener('drop', (e) => { const b = (e.target as HTMLElement).closest('[data-bb]') as HTMLElement | null; if (!barDrag || !b) return; e.preventDefault(); e.stopPropagation(); const to = b.dataset.bb!, cur = bagGroups().map((g) => g.key); const from = barDrag; barDrag = null; if (from === to) return;
+    const L = cur.filter((k) => k !== from); L.splice(L.indexOf(to) + (cur.indexOf(from) < cur.indexOf(to) ? 1 : 0), 0, from); bagCfg.order = L; saveCfg(); render(); });
+  bagBarEl.addEventListener('dragend', () => { barDrag = null; });
+  bagBarEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-bbcfg]')) { cfgOpen = !cfgOpen; renderCfg(); return; } if (t.closest('[data-bball]')) { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); return; }
     const b = t.closest('[data-bb]') as HTMLElement | null; if (!b) return; if (b.classList.contains('off')) { game.logMsg(`✦ ${b.title.split(' — ')[1] ?? 'Bolsa desligada.'}`, '#c9a0ff'); return; } toggleBag(b.dataset.bb!, e.ctrlKey || e.metaKey); });
   /* arrastar a fileira pela alça ⋮ (fica guardado); clique duplo na alça devolve ao lugar de sempre */
   bagBarEl.addEventListener('pointerdown', (e) => { if (!(e.target as HTMLElement).closest('.bbgrip')) return; e.preventDefault(); const r = bagBarEl.getBoundingClientRect(), dx = e.clientX - r.left, dy = r.bottom - e.clientY;
@@ -531,7 +568,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
         <small class="ft">${bags.length < MAX_BAGS ? `${MAX_BAGS - bags.length} de ${MAX_BAGS} lugares para bolsas livres · ` : ''}clique no título da bolsa: abrir/fechar · arraste: equipar, vender, 🗑 destruir</small></div>`;
       el.style.display = 'flex';
     } else el.style.display = 'none';
-    { const M = bagCells(); renderBar(M); renderMini(M); }
+    { const M = bagCells(); renderBar(M); renderMini(M); renderCfg(); }
     if (charOpen) {
       const t = total(), [lo, hi] = hitRange(), TLr = (hooks.talents?.() ?? {}) as Partial<Record<string, number>>;
       /* boneco com espaços pequenos em volta; uma linha leve, quase etérea, liga cada espaço ao lugar do corpo onde a peça vai */

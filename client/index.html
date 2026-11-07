@@ -714,6 +714,15 @@
   #bagmini .grid.g6 { grid-template-columns: repeat(auto-fill, 33px); width: calc(8 * 33px + 7 * 3px); gap: 3px; max-height: none; overflow: visible; padding-right: 0; flex: 1 1 auto; align-content: start; }
   #bagmini .pn.bm.sized .grid.g6 { width: auto; overflow-y: auto; } #bagmini .pn.bm:not(.sized) .grid.g6.tall { max-height: 222px; overflow-y: auto; padding-right: 3px; } #bagmini .grid.g6 .it { width: 33px; height: 33px; padding: 1px; } #bagmini .grid.g6 .it span { font-size: 15px; } #bagmini .grid.g6 .it span img, #bagmini .grid.g6 .it img { max-width: 24px; max-height: 24px; } #bagmini .grid.g6 .it b { font-size: 8.5px; right: 2px; top: 0; }
   [data-bagkey].dropok, #bagmini [data-bagkey]:hover { outline: 1px dashed #c9a24a55; }
+  /* 07/11: a transparência das bolsas abertas (⚙) — com o mouse em cima, fica inteira; cantos iguais dos dois lados */
+  #bagmini .pn.bm { opacity: var(--bmop, 1); border-radius: 6px !important; transition: opacity .15s; } #bagmini .pn.bm:hover { opacity: 1; }
+  #bagmini .pn.bm::before, #bagmini .pn.bm::after { content: none !important; }
+  #bagbar button.cfg span { font-size: 14px; color: #c9a24a; } #bagbar button[draggable="true"] { cursor: pointer; }
+  #bagcfg { position: fixed; z-index: 30; display: none; width: 330px; padding: 10px 12px !important; font-size: 12px; }
+  #bagcfg h2 { display: flex; align-items: center; font-size: 14px; margin: 0 0 8px; } #bagcfg h2 button { margin-left: auto; } #bagcfg h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #c9a24a; margin: 10px 0 4px; }
+  #bagcfg .bcrow { display: flex; align-items: center; gap: 8px; margin: 6px 0; } #bagcfg .bcrow span { flex: 1; } #bagcfg .bcrow input[type=range] { width: 110px; } #bagcfg .bcrow b { width: 34px; text-align: right; color: #ffe08a; }
+  #bagcfg .bchint { display: block; color: #a8957a; font-size: 10.5px; line-height: 1.35; margin: 2px 0 6px; }
+  #bagcfg .bcr { display: flex; align-items: center; gap: 6px; padding: 3px 0; border-bottom: 1px solid #ffffff0d; } #bagcfg .bcr b { flex: 1; font-weight: 500; } #bagcfg .bcr button { width: 24px; height: 22px; padding: 0; margin-left: 2px; opacity: .45; filter: grayscale(.8); } #bagcfg .bcr button.on { opacity: 1; filter: none; border-color: #ffd24a; box-shadow: 0 0 6px #ffd24a55; }
   .acc { background: rgba(0,0,0,.25); border: 1px solid #4a3c28; } .acc.spec { border-color: #6a5430; }
   .acc > h3 { margin: 0; padding: 6px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; } .acc > h3:hover { background: rgba(255,224,138,.06); }
   .acc > h3 small { margin-left: auto; color: #a89878; font-size: 11px; letter-spacing: 1px; } .acc .car { font-style: normal; display: inline-block; transition: transform .15s; color: #c9a24a; }

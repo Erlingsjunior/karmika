@@ -186,7 +186,7 @@ function drawBig() {
   const far = K.mapV.z < 1.8;
   { // regiões: fronteiras pontilhadas e o nome com a faixa de nível dos bichos (cor = perigo para o seu nível)
     const st = 3; K.bg.fillStyle = 'rgba(255,236,190,.38)';
-    for (let ty = 0; ty < MAP_W; ty += st) for (let tx = 0; tx < MAP_W; tx += st) { const a = regionAt(tx, ty); if (regionAt(tx + st, ty) !== a || regionAt(tx, ty + st) !== a) { const x = X(tx + st / 2), y = Y(ty + st / 2); if (x > -4 && y > -4 && x < W + 4 && y < H + 4) K.bg.fillRect(x - 1, y - 1, 2.2, 2.2); } }
+    for (let ty = 0; ty < MAP_W; ty += st) for (let tx = 0; tx < MAP_W; tx += st) { if (K.city.map[ty]?.[tx] === 'water') continue; /* 07/11: fronteira de região só em terra (no mar parecia estrada) */ const a = regionAt(tx, ty); if (regionAt(tx + st, ty) !== a || regionAt(tx, ty + st) !== a) { const x = X(tx + st / 2), y = Y(ty + st / 2); if (x > -4 && y > -4 && x < W + 4 && y < H + 4) K.bg.fillRect(x - 1, y - 1, 2.2, 2.2); } }
     for (const rg of REGIONS) { const x = X(rg.x), y = Y(rg.y - 16) - s0 * 2.6, lv = K.game.st.lvl, c = rg.lo > lv + 3 ? '#ff8a7a' : rg.hi < lv - 2 ? '#a8a8a8' : '#ffe08a';
       if (K.mapV.z < 0.9) { if (rg.id > 40) label(rg.name.toUpperCase(), X(rg.x), Y(rg.y) - 10, 10, 'rgba(255,214,170,.9)', true); continue; } /* 07/11: o mundo inteiro — só os nomes das ilhas (e o do continente, lá embaixo); o resto aparece ao aproximar */
       K.bg.font = `italic 600 ${11 + K.mapV.z * 2.2}px Cinzel, Georgia, serif`; label(rg.name.toUpperCase(), x, y, 11 + K.mapV.z * 2.2, 'rgba(240,226,190,.8)', true); label(`Nv ${rg.lo}–${rg.hi}${rg.lo > lv + 3 ? ' · ☠' : ''}`, x, y + 13 + K.mapV.z * 2, 10 + K.mapV.z * 1.4, c, true); } }
