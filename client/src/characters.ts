@@ -1768,7 +1768,8 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         armL.sh.rotation.z += (-0.08 - armL.sh.rotation.z) * nc * 0.7; armR.sh.rotation.z += (0.08 - armR.sh.rotation.z) * nc * 0.7;
       }
       if (kind === 'nordic' && !hero.riding) { // escudo sacado: antebraço atravessado à frente do corpo, face do escudo para a frente, cotovelo afastado
-        const k = combatK * (act ? 0.6 : 1) * (1 - guardK);
+        /* 07/11 (Erling: "essa mãozinha pra frente, por quê?"): a pose do braço do escudo só vale com o escudo NO braço; escudo nas costas (ou sem escudo), a mão fica solta ao lado do corpo */
+        const k = combatK * (act ? 0.6 : 1) * (1 - guardK) * (shieldHolder && !stowed ? 1 : 0);
         armL.sh.rotation.x += (-0.5 - armL.sh.rotation.x) * k; armL.sh.rotation.z += (-0.55 - armL.sh.rotation.z) * k;
         armL.sh.rotation.y = (window as unknown as { __twY?: number }).__twY !== undefined ? (window as unknown as { __twY: number }).__twY * k : 0.75 * k;
         armL.el.rotation.x += (-1.5 - armL.el.rotation.x) * k;
