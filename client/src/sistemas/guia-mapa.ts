@@ -1,6 +1,6 @@
 /* GUIA DE MISSÃO E MAPA GRANDE: onde fica o objetivo rastreado, a seta, o alfinete, os marcadores e o mapa do mundo. Saiu do main.ts (02/11). */
 import { type EnemyType, MAP_W, regionAt, REGIONS, CITY } from '../world';
-import { oceanPattern, drawSeaArt } from './mapa-arte';
+import { oceanPattern, drawSeaArt, drawMapFrame } from './mapa-arte';
 import { TILE_M as T } from '@karmika/shared';
 import { DEFS } from '../enemies';
 import * as THREE from 'three';
@@ -233,6 +233,7 @@ function drawBig() {
   if (L.npc) for (const n of K.npcSys.npcs) { K.bg.fillStyle = '#7ad0ff'; K.bg.beginPath(); K.bg.arc(X(n.pos.x / T), Y(n.pos.z / T), 2.4, 0, 6.283); K.bg.fill(); }
   if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); K.bg.strokeStyle = guideCol; K.bg.lineWidth = 2.5; K.bg.beginPath(); K.bg.arc(x, y, pr, 0, 6.283); K.bg.stroke(); }
   const h0 = hereT(); heroArrow(K.bg, X(h0.x), Y(h0.y), 2.2);
+  drawMapFrame(K.bg, W, H, performance.now() / 1000);
   (K.bigEl.querySelector('.mzone') as HTMLElement).textContent = zoneName();
 }
 function zoneName() { const h0 = hereT(); for (const st of K.city.settlements) if (Math.hypot(h0.x - st.x, h0.y - st.y) < st.radius) return st.name; if (Math.hypot(h0.x - CITY.x, h0.y - CITY.y) < 22) return 'Karmika'; let best: string | null = null, bd = 24; for (const p of K.city.pois) { const d = Math.hypot(p.x - h0.x, p.y - h0.y); if (d < bd) { bd = d; best = p.name; } } return best ?? K.BNAME[K.city.biome[Math.floor(h0.y)]?.[Math.floor(h0.x)] ?? 'meadow']; }

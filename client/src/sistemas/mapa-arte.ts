@@ -3,7 +3,7 @@
    sem camadas, redemoinhos, tempestades e mudança de cor fica sem graça").
    Tudo aqui é desenhado com tinta de nanquim clara e latão sobre o mar, nas coordenadas do MUNDO (casas): cresce e diminui com o zoom e some
    quando se aproxima demais (a carta é a visão de longe). O mar fora do quadrado do mundo continua com a mesma trama. */
-import { MAP_W } from '../world';
+/* 07/11: os bichos do mar saíram (Erling: ficaram feios); ficam tempestades, pedras e redemoinhos. A moldura de cobre é presa à tela */
 
 const INK = 'rgba(232,218,180,', BRASS = '#c8963a', BRASS2 = '#8a6224';
 /** a trama do mar: um ladrilho com ondinhas de gravura (para o mar fora do mundo e o fundo) */
@@ -32,36 +32,8 @@ export function drawSeaArt(g: CanvasRenderingContext2D, X: XY, Y: XY, k: number,
     g.strokeStyle = 'rgba(190,210,235,.35)'; g.lineWidth = 1; for (let i = 0; i < 14; i++) { const px = cx + (i / 13 - 0.5) * R * 1.1; g.beginPath(); g.moveTo(px, cy + R * 0.05); g.lineTo(px - R * 0.12, cy + R * 0.5); g.stroke(); }
     if (Math.sin(t * 3.1 + x) > 0.6) { g.strokeStyle = 'rgba(255,240,170,.9)'; g.lineWidth = Math.max(1.2, k); g.beginPath(); g.moveTo(cx + R * 0.05, cy); g.lineTo(cx - R * 0.08, cy + R * 0.22); g.lineTo(cx + R * 0.04, cy + R * 0.24); g.lineTo(cx - R * 0.1, cy + R * 0.5); g.stroke(); }
     g.font = `italic ${Math.max(9, 7 * k)}px Georgia, serif`; g.fillStyle = INK + '.7)'; g.textAlign = 'center'; g.fillText('tempestade', cx, cy + R * 0.72); }
-  /* monstros marinhos */
-  serpent(g, X(985), Y(1395), k, t); kraken(g, X(1480), Y(1010), k, t); whale(g, X(118), Y(690), k); leviathan(g, X(520), Y(232), k, t);
-  /* os ventos: rostos de nuvem soprando dos quatro cantos para dentro */
-  wind(g, X(60), Y(60), k, Math.PI * 0.25); wind(g, X(MAP_W - 60), Y(60), k, Math.PI * 0.75); wind(g, X(60), Y(MAP_W - 60), k, -Math.PI * 0.25); wind(g, X(MAP_W - 60), Y(MAP_W - 60), k, -Math.PI * 0.75);
-  rose(g, X(230), Y(1330), 70 * k, t); gearsCorner(g, X(MAP_W - 230), Y(MAP_W - 120), k, t);
-  /* a cártula fica centrada sobre o continente principal, no mar do norte */
-  cartouche(g, X(MAP_W / 2), Y(150), Math.max(0.45, Math.min(1.1, k)), t);
   g.restore();
 }
-function serpent(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = k * 1.2; g.save(); g.translate(x, y); g.lineWidth = Math.max(1.2, s * 1.1); g.strokeStyle = INK + '.85)'; g.fillStyle = 'rgba(60,110,90,.75)';
-  for (let i = 0; i < 4; i++) { const hx = i * 26 * s; g.beginPath(); g.moveTo(hx - 10 * s, 0); g.bezierCurveTo(hx - 8 * s, -16 * s - Math.sin(t + i) * 2 * s, hx + 8 * s, -16 * s - Math.sin(t + i) * 2 * s, hx + 10 * s, 0); g.closePath(); g.fill(); g.stroke(); for (let f = -1; f <= 1; f++) { g.beginPath(); g.moveTo(hx + f * 4 * s, -12 * s); g.lineTo(hx + f * 4 * s + 2 * s, -18 * s); g.stroke(); } }
-  g.beginPath(); g.moveTo(-14 * s, 0); g.bezierCurveTo(-22 * s, -10 * s, -26 * s, -26 * s, -16 * s, -32 * s); g.bezierCurveTo(-6 * s, -36 * s, 0, -28 * s, -8 * s, -22 * s); g.stroke(); /* pescoço */
-  g.beginPath(); g.ellipse(-12 * s, -32 * s, 8 * s, 5 * s, -0.3, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(-9 * s, -33 * s, 1.2 * s, 0, 6.283); g.fill();
-  g.strokeStyle = INK + '.5)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(-20 * s + i * 24 * s, 3 * s); g.quadraticCurveTo(-14 * s + i * 24 * s, 6 * s, -8 * s + i * 24 * s, 3 * s); g.stroke(); } g.restore(); }
-function kraken(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = k * 1.1; g.save(); g.translate(x, y); g.lineWidth = Math.max(1.2, s); g.strokeStyle = INK + '.85)'; g.fillStyle = 'rgba(120,50,70,.75)';
-  for (let i = 0; i < 6; i++) { const bx = (i - 2.5) * 12 * s, w = Math.sin(t * 1.3 + i) * 4 * s; g.beginPath(); g.moveTo(bx - 3 * s, 0); g.bezierCurveTo(bx - 6 * s + w, -20 * s, bx + 10 * s + w, -30 * s, bx + 4 * s + w, -40 * s); g.bezierCurveTo(bx + 14 * s + w, -32 * s, bx + 6 * s, -18 * s, bx + 3 * s, 0); g.closePath(); g.fill(); g.stroke();
-    for (let q = 1; q < 4; q++) { g.beginPath(); g.arc(bx + 2 * s + w * q / 4, -q * 9 * s, 1.1 * s, 0, 6.283); g.stroke(); } }
-  g.strokeStyle = INK + '.5)'; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-36 * s + i * 22 * s, 3 * s); g.quadraticCurveTo(-30 * s + i * 22 * s, 6 * s, -24 * s + i * 22 * s, 3 * s); g.stroke(); } g.restore(); }
-function whale(g: CanvasRenderingContext2D, x: number, y: number, k: number) { const s = k * 1.15; g.save(); g.translate(x, y); g.lineWidth = Math.max(1.2, s); g.strokeStyle = INK + '.85)'; g.fillStyle = 'rgba(70,90,120,.8)';
-  g.beginPath(); g.moveTo(-40 * s, 0); g.bezierCurveTo(-36 * s, -20 * s, 10 * s, -24 * s, 30 * s, -6 * s); g.lineTo(42 * s, -16 * s); g.lineTo(40 * s, 0); g.lineTo(44 * s, 10 * s); g.lineTo(30 * s, 2 * s); g.bezierCurveTo(10 * s, 8 * s, -30 * s, 8 * s, -40 * s, 0); g.fill(); g.stroke();
-  g.beginPath(); g.arc(-30 * s, -6 * s, 1.4 * s, 0, 6.283); g.fillStyle = '#e8dab4'; g.fill(); for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(-28 * s, -18 * s); g.quadraticCurveTo(-30 * s + (i - 2) * 5 * s, -32 * s, -28 * s + (i - 2) * 8 * s, -34 * s); g.stroke(); } g.restore(); }
-function leviathan(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = k; g.save(); g.translate(x, y); g.lineWidth = Math.max(1.2, s); g.strokeStyle = INK + '.8)'; g.fillStyle = 'rgba(40,70,60,.75)';
-  g.beginPath(); g.moveTo(-50 * s, 0); for (let i = 0; i <= 20; i++) { const px = -50 * s + i * 5 * s; g.lineTo(px, -Math.abs(Math.sin(i * 0.9 + t)) * 7 * s - (i > 14 ? (i - 14) * 2 * s : 0)); } g.lineTo(52 * s, 0); g.closePath(); g.fill(); g.stroke();
-  g.beginPath(); g.moveTo(48 * s, -14 * s); g.lineTo(62 * s, -22 * s); g.lineTo(58 * s, -10 * s); g.stroke(); g.restore(); }
-function wind(g: CanvasRenderingContext2D, x: number, y: number, k: number, ang: number) { const s = k * 1.1; g.save(); g.translate(x, y); g.rotate(ang); g.lineWidth = Math.max(1.2, s); g.strokeStyle = INK + '.85)';
-  g.fillStyle = 'rgba(220,226,236,.85)'; for (const [dx, dy, r] of [[-14, -8, 14], [-2, -14, 13], [-16, 8, 12], [-26, 0, 11]]) { g.beginPath(); g.arc(dx * s, dy * s, r * s, 0, 6.283); g.fill(); g.stroke(); }
-  g.fillStyle = 'rgba(240,230,210,.95)'; g.beginPath(); g.arc(0, 0, 13 * s, 0, 6.283); g.fill(); g.stroke(); /* o rosto: olhos fechados, bochechas cheias, boca soprando */
-  g.beginPath(); g.arc(-3 * s, -4 * s, 2.4 * s, Math.PI * 1.1, Math.PI * 1.9); g.stroke(); g.beginPath(); g.arc(4 * s, -4 * s, 2.4 * s, Math.PI * 1.1, Math.PI * 1.9); g.stroke();
-  g.beginPath(); g.arc(9 * s, 3 * s, 3.4 * s, 0, 6.283); g.stroke(); g.beginPath(); g.arc(-7 * s, 4 * s, 3 * s, 0, 6.283); g.fillStyle = 'rgba(230,140,120,.5)'; g.fill();
-  g.strokeStyle = INK + '.6)'; for (let i = -2; i <= 2; i++) { g.beginPath(); g.moveTo(14 * s, 3 * s + i * 4 * s); g.bezierCurveTo(30 * s, i * 8 * s, 46 * s, i * 12 * s - 6 * s, 66 * s, i * 14 * s); g.stroke(); } g.restore(); }
 function rose(g: CanvasRenderingContext2D, x: number, y: number, R: number, t: number) { g.save(); g.translate(x, y); g.lineWidth = 1.2;
   g.strokeStyle = BRASS; g.beginPath(); g.arc(0, 0, R, 0, 6.283); g.stroke(); g.beginPath(); g.arc(0, 0, R * 0.86, 0, 6.283); g.stroke();
   for (let i = 0; i < 64; i++) { const a = (i / 64) * 6.283, l = i % 8 === 0 ? 0.1 : 0.05; g.beginPath(); g.moveTo(Math.cos(a) * R * 0.86, Math.sin(a) * R * 0.86); g.lineTo(Math.cos(a) * R * (0.86 + l), Math.sin(a) * R * (0.86 + l)); g.stroke(); }
@@ -84,5 +56,36 @@ function cartouche(g: CanvasRenderingContext2D, x: number, y: number, s: number,
   for (const rx of [-w / 2 + 22 * s, w / 2 - 22 * s]) for (const ry of [-h / 2 + 14 * s, h / 2 - 14 * s]) { g.beginPath(); g.arc(rx, ry, 2.6 * s, 0, 6.283); g.fillStyle = BRASS; g.fill(); } /* rebites */
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#f0dca0'; g.font = f1; g.fillText(T1, 0, -9 * s);
   g.font = f2; g.fillStyle = '#d8c090'; g.fillText(T2, 0, 15 * s); g.restore(); }
-function gearsCorner(g: CanvasRenderingContext2D, x: number, y: number, k: number, t: number) { const s = Math.max(0.45, k); gear(g, x, y, 40 * s, 14, t * 0.2, 'rgba(200,150,58,.85)', BRASS2); gear(g, x + 58 * s, y - 22 * s, 24 * s, 10, -t * 0.33, 'rgba(200,150,58,.85)', BRASS2); gear(g, x + 34 * s, y + 44 * s, 18 * s, 8, -t * 0.45, 'rgba(200,150,58,.85)', BRASS2);
-  g.save(); g.font = `italic ${11 * s}px Georgia, serif`; g.fillStyle = INK + '.8)'; g.textAlign = 'center'; g.fillText('escala: 100 casas', x + 10 * s, y + 80 * s); g.strokeStyle = INK + '.8)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x - 40 * s, y + 66 * s); g.lineTo(x - 40 * s + 100 * k, y + 66 * s); g.stroke(); for (let i = 0; i <= 4; i++) { g.beginPath(); g.moveTo(x - 40 * s + i * 25 * k, y + 62 * s); g.lineTo(x - 40 * s + i * 25 * k, y + 70 * s); g.stroke(); } g.restore(); }
+
+/* 07/11 (Erling: "uma moldura de canos de cobre com engrenagens em volta de todo o mapa; o banner nasce dentro dela; a moldura não sofre
+   zoom nem nada, está sempre lá emoldurando; a rosa dos ventos no canto inferior direito, também fixa"). Desenhada por último, presa à tela */
+const CU = ['#5a2a12', '#b8642e', '#f0a868', '#c87038', '#6a3216'];
+function pipe(g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, r: number) { const hz = y0 === y1, gr = hz ? g.createLinearGradient(0, y0 - r, 0, y0 + r) : g.createLinearGradient(x0 - r, 0, x0 + r, 0);
+  CU.forEach((c, i) => gr.addColorStop(i / (CU.length - 1), c)); g.fillStyle = gr; if (hz) g.fillRect(Math.min(x0, x1), y0 - r, Math.abs(x1 - x0), r * 2); else g.fillRect(x0 - r, Math.min(y0, y1), r * 2, Math.abs(y1 - y0)); }
+function flange(g: CanvasRenderingContext2D, x: number, y: number, r: number, hz: boolean) { const w = r * 0.9, h = r * 2.9; g.save(); g.translate(x, y); if (!hz) g.rotate(Math.PI / 2);
+  const gr = g.createLinearGradient(0, -h / 2, 0, h / 2); gr.addColorStop(0, '#4a2210'); gr.addColorStop(0.45, '#e09a5a'); gr.addColorStop(1, '#4a2210'); g.fillStyle = gr; g.fillRect(-w / 2, -h / 2, w, h);
+  g.fillStyle = '#2a1408'; for (const yy of [-h / 2 + 3, h / 2 - 3]) { g.beginPath(); g.arc(0, yy, 1.4, 0, 6.283); g.fill(); } g.restore(); }
+export function drawMapFrame(g: CanvasRenderingContext2D, W: number, H: number, t: number) {
+  const R = 7, M = 11; g.save();
+  /* sombra para dentro, a carta parece afundada na moldura */
+  const sh = 26; for (const [x0, y0, x1, y1, w, h] of [[0, M, 0, M + sh, W, sh], [0, H - M, 0, H - M - sh, W, sh], [M, 0, M + sh, 0, sh, H], [W - M, 0, W - M - sh, 0, sh, H]] as const) {
+    const gr = g.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, 'rgba(0,0,0,.55)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(Math.min(x0, x1, W - w), Math.min(y0, y1), w, h); }
+  /* faixa escura atrás dos canos, até a borda */
+  g.fillStyle = '#140c06'; g.fillRect(0, 0, W, M - 3); g.fillRect(0, H - M + 3, W, M); g.fillRect(0, 0, M - 3, H); g.fillRect(W - M + 3, 0, M, H);
+  /* dois canos paralelos em cada lado: um grosso de cobre e um fino de latão por dentro */
+  pipe(g, 0, M, W, M, R); pipe(g, 0, H - M, W, H - M, R); pipe(g, M, 0, M, H, R); pipe(g, W - M, 0, W - M, H, R);
+  const r2 = 2.6, I = M + R + 3; g.globalAlpha = 0.9; pipe(g, I, I, W - I, I, r2); pipe(g, I, H - I, W - I, H - I, r2); pipe(g, I, I, I, H - I, r2); pipe(g, W - I, I, W - I, H - I, r2); g.globalAlpha = 1;
+  /* juntas com parafusos ao longo dos canos */
+  const step = 140; for (let x = 90; x < W - 80; x += step) { flange(g, x, M, R, true); flange(g, x + 40, H - M, R, true); }
+  for (let y = 90; y < H - 80; y += step) { flange(g, M, y, R, false); flange(g, W - M, y + 50, R, false); }
+  /* válvulas e manômetros pelo caminho */
+  for (const [x, y] of [[W * 0.25, H - M], [W * 0.75, M], [M, H * 0.6], [W - M, H * 0.35]] as const) { g.fillStyle = '#2a1408'; g.beginPath(); g.arc(x, y, 9, 0, 6.283); g.fill(); g.fillStyle = '#e8dcc0'; g.beginPath(); g.arc(x, y, 7, 0, 6.283); g.fill();
+    g.strokeStyle = '#b8642e'; g.lineWidth = 2; g.stroke(); const a = -2.2 + Math.sin(t * 0.9 + x) * 0.5 + 1.6; g.strokeStyle = '#8a1a10'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 5.5, y + Math.sin(a) * 5.5); g.stroke(); }
+  /* engrenagens nos quatro cantos, girando engatadas */
+  for (const [cx, cy, d] of [[M, M, 1], [W - M, M, -1], [M, H - M, -1], [W - M, H - M, 1]] as const) { gear(g, cx, cy, 24, 14, t * 0.35 * d, '#c87038', '#5a2a12'); gear(g, cx + (cx < W / 2 ? 34 : -34), cy + (cy < H / 2 ? 14 : -14), 13, 9, -t * 0.65 * d + 0.2, BRASS, BRASS2);
+    g.fillStyle = '#2a1408'; g.beginPath(); g.arc(cx, cy, 6, 0, 6.283); g.fill(); g.fillStyle = '#e09a5a'; g.beginPath(); g.arc(cx, cy, 3, 0, 6.283); g.fill(); }
+  /* o banner nasce no cano de cima, centralizado */
+  const sc = Math.min(1, Math.max(0.62, W / 1000)); cartouche(g, W / 2, M + 30 * sc, sc, t);
+  /* a rosa dos ventos presa no canto de baixo à direita */
+  const rr = Math.min(58, Math.max(36, Math.min(W, H) * 0.075)); g.fillStyle = 'rgba(10,16,30,.55)'; g.beginPath(); g.arc(W - M - rr - 30, H - M - rr - 32, rr + 12, 0, 6.283); g.fill(); rose(g, W - M - rr - 30, H - M - rr - 32, rr, t);
+  g.restore(); }
