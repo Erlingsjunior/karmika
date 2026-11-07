@@ -171,7 +171,8 @@ function drawBig() {
   K.mapV.z = Math.max(K.mapV.z, K.mapZMin());
   const W = K.bmEl.width, H = K.bmEl.height, k = K.pxPerTile(), L = K.mapV.layers;
   { /* 07/11: o centro só anda até a borda do mapa encostar na moldura; se o mapa inteiro cabe (zoom mínimo), fica no meio */ const hw = W / 2 / k, hh = H / 2 / k;
-    K.mapV.cx = hw * 2 >= MAP_W ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cx, hw, MAP_W - hw); K.mapV.cy = hh * 2 >= MAP_W ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cy, hh, MAP_W - hh); }
+    const pad = MAP_W * 0.07; /* 07/11: dá para passar um pouco da borda, para os nomes e os bichos da beirada (Trono de Cinzas, Picos) não ficarem cortados */
+    K.mapV.cx = hw * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cx, hw - pad, MAP_W - hw + pad); K.mapV.cy = hh * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cy, hh - pad, MAP_W - hh + pad); }
   const X = (x: number) => W / 2 + (x - K.mapV.cx) * k, Y = (y: number) => H / 2 + (y - K.mapV.cy) * k;
   K.bg.imageSmoothingEnabled = false; K.bg.fillStyle = '#0c1018'; K.bg.fillRect(0, 0, W, H); K.bg.drawImage(K.mmBase, X(0), Y(0), MAP_W * k, MAP_W * k);
   K.bg.fillStyle = 'rgba(10,8,4,.18)'; K.bg.fillRect(0, 0, W, H);

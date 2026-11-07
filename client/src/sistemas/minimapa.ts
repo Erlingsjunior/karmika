@@ -135,7 +135,7 @@ const mapPx = (e: MouseEvent) => { const r = bmEl.getBoundingClientRect(); retur
 const pxPerTile = () => (bmEl.height / MAP_W) * mapV.z;
 /** zoom mínimo: o mapa sempre cobre a largura da moldura (nada de faixa vazia dos lados) */
 /* 07/11 (Erling: "o zoom do mapa pode sair até eu ver o mapa inteiro de longe"): no zoom mínimo o mapa INTEIRO cabe na moldura */
-const mapZMin = () => Math.min(1, bmEl.width / bmEl.height) * 0.98;
+const mapZMin = () => Math.min(1, bmEl.width / bmEl.height) * 0.86; /* com folga: o mapa inteiro e a moldura em volta */
 mview.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const m = mapPx(e), k = pxPerTile(), wx = mapV.cx + (m.x - bmEl.width / 2) / k, wy = mapV.cy + (m.y - bmEl.height / 2) / k; mapV.z = THREE.MathUtils.clamp(mapV.z * Math.exp(-e.deltaY * 0.0015), mapZMin(), 14); const k2 = pxPerTile(); mapV.cx = wx - (m.x - bmEl.width / 2) / k2; mapV.cy = wy - (m.y - bmEl.height / 2) / k2; K.drawBig(); }, { passive: false });
 mview.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button, .mzoom')) return; /* botões de zoom não são clique no mapa */ mapDrag = { x: e.clientX, y: e.clientY, cx: mapV.cx, cy: mapV.cy, moved: false }; mview.setPointerCapture(e.pointerId); mview.classList.add('drag'); });
 mview.addEventListener('pointermove', (e) => {

@@ -694,19 +694,22 @@
   .bagpn h2 { flex-wrap: wrap; row-gap: 4px; } .bagpn h2 .cap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
   .bagsx { overflow-y: auto; overflow-x: hidden; flex: 1 1 auto; min-height: 0; padding-right: 4px; display: grid; grid-template-columns: repeat(auto-fill, minmax(372px, 1fr)); gap: 8px; align-content: start; align-items: start; }
   .bagsx > .profgo { grid-column: 1 / -1; }
-  /* 07/11: as bolsas em colunas que se encaixam (sem buraco entre bolsa pequena e grande) */
-  .bagsx { display: block; columns: 372px; column-gap: 8px; } .bagsx > section, .bagsx > .profgo { break-inside: avoid; margin-bottom: 8px; width: 100%; } .bagsx > .profgo { column-span: all; }
-  /* 07/11: a fileira de bolsas (à direita do orbe) e a bolsa aberta sozinha, logo acima dela */
-  #bagbar { position: fixed; left: calc(50% + 205px * var(--ui, 1)); bottom: calc(10px * var(--ui, 1)); z-index: 9; display: flex; gap: 5px; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
+  /* 07/11: as bolsas em duas colunas montadas pelo jogo (a mais baixa recebe a próxima): nada some, nada sobra */
+  .bagsx { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; } .bagsx > .bagcol { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 8px; } .bagsx > .profgo { flex: 1 1 100%; }
+  /* 07/11: a fileira de bolsas — do tamanho do acesso rápido, móvel pela alça ⋮ — e as bolsas abertas, pequenas, lado a lado em cima dela */
+  #bagbar { position: fixed; z-index: 9; display: flex; align-items: center; gap: 3px; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
   body:not(.ready) #bagbar, body:not(.ready) #bagmini { display: none !important; }
-  #bagbar button { position: relative; width: 40px; height: 40px; padding: 0; border: 1px solid #8a6a32; border-radius: 6px; background: radial-gradient(circle at 40% 30%, #3a2a18, #120c07); box-shadow: 0 2px 6px #000, inset 0 0 0 1px rgba(255,224,138,.08); cursor: pointer; display: grid; place-items: center; }
-  #bagbar button span { font-size: 20px; line-height: 1; } #bagbar button i { position: absolute; left: 0; right: 0; bottom: -1px; font: 600 9px Georgia, serif; font-style: normal; color: #e8d8b0; text-shadow: 0 1px 2px #000; text-align: center; }
-  #bagbar button:hover { border-color: #ffe08a; } #bagbar button.cur { border-color: #ffd24a; box-shadow: 0 0 10px rgba(255,210,74,.5), 0 2px 6px #000; } #bagbar button.full i { color: #ff8a7a; }
-  #bagbar button.off { filter: grayscale(1) brightness(.55); border-style: dashed; } #bagbar button.slot { opacity: .45; cursor: default; border-style: dashed; } #bagbar button.slot span { font-size: 15px; color: #8a6a32; }
-  #bagbar button.spec { border-color: #8a62c8; } #bagbar button.all { margin-left: 4px; }
-  #bagmini { position: fixed; left: calc(50% + 205px * var(--ui, 1)); bottom: calc(60px * var(--ui, 1)); z-index: 9; display: none; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
-  #bagmini .pn { padding: 8px 10px 10px; min-width: 0; } #bagmini h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; margin: 0 0 6px; } #bagmini h2 small { margin-left: auto; color: #c9a24a; font-size: 11px; } #bagmini h2 button { margin-left: 6px; }
-  #bagmini .grid.g6 { max-height: 248px; overflow-y: auto; padding-right: 4px; }
+  #bagbar .bbgrip { cursor: grab; color: #8a6a32; font: 700 14px Georgia, serif; padding: 0 2px; user-select: none; } #bagbar .bbgrip:hover { color: #ffe08a; }
+  #bagbar button { position: relative; width: 30px; height: 30px; padding: 0; border: 1px solid #8a6a32; border-radius: 5px; background: radial-gradient(circle at 40% 30%, #3a2a18, #120c07); box-shadow: 0 1px 4px #000; cursor: pointer; display: grid; place-items: center; }
+  #bagbar button span { font-size: 15px; line-height: 1; } #bagbar button i { position: absolute; left: 0; right: 0; bottom: -2px; font: 600 7.5px Georgia, serif; font-style: normal; color: #e8d8b0; text-shadow: 0 1px 2px #000, 0 0 2px #000; text-align: center; }
+  #bagbar button:hover { border-color: #ffe08a; } #bagbar button.cur { border-color: #ffd24a; box-shadow: 0 0 8px rgba(255,210,74,.5), 0 1px 4px #000; } #bagbar button.full i { color: #ff8a7a; }
+  #bagbar button.off { filter: grayscale(1) brightness(.55); border-style: dashed; } #bagbar button.slot { opacity: .4; cursor: default; border-style: dashed; } #bagbar button.slot span { font-size: 12px; color: #8a6a32; }
+  #bagbar button.spec { border-color: #8a62c8; } #bagbar button.all { margin-left: 3px; }
+  #bagmini { position: fixed; z-index: 9; display: none; flex-wrap: wrap-reverse; justify-content: flex-end; align-items: flex-end; gap: 6px; max-width: calc(96vw / var(--ui, 1)); transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
+  #bagmini { width: max-content; } #bagmini .pn.bm { padding: 4px 6px 6px !important; min-width: 0; width: auto; max-width: none; border-width: 1px; margin: 0; } #bagmini .pn.bm::before, #bagmini .pn.bm::after { display: none; }
+  #bagmini h2 { display: flex; align-items: center; gap: 5px; font-size: 11px; margin: 0 0 4px; letter-spacing: .04em; } #bagmini h2 span { font-size: 12px; } #bagmini h2 small { margin-left: auto; color: #c9a24a; font-size: 9px; } #bagmini h2 button { margin-left: 4px; padding: 0 5px; min-width: 0; height: 16px; font-size: 10px; line-height: 14px; }
+  #bagmini .grid.g6 { grid-template-columns: repeat(6, 33px); gap: 3px; max-height: 146px; overflow-y: auto; padding-right: 2px; } #bagmini .grid.g6 .it { width: 33px; height: 33px; padding: 1px; } #bagmini .grid.g6 .it span { font-size: 15px; } #bagmini .grid.g6 .it span img, #bagmini .grid.g6 .it img { max-width: 24px; max-height: 24px; } #bagmini .grid.g6 .it b { font-size: 8.5px; right: 2px; top: 0; }
+  [data-bagkey].dropok, #bagmini [data-bagkey]:hover { outline: 1px dashed #c9a24a55; }
   .acc { background: rgba(0,0,0,.25); border: 1px solid #4a3c28; } .acc.spec { border-color: #6a5430; }
   .acc > h3 { margin: 0; padding: 6px 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; } .acc > h3:hover { background: rgba(255,224,138,.06); }
   .acc > h3 small { margin-left: auto; color: #a89878; font-size: 11px; letter-spacing: 1px; } .acc .car { font-style: normal; display: inline-block; transition: transform .15s; color: #c9a24a; }
