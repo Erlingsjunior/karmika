@@ -326,6 +326,27 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     hooks.onGear?.();
   }
   const hitRange = () => { const lp = 0.05 * (st.lvl - 1), m = st.atk; /* mesma conta do combate: nível cheio no golpe base, metade no dano da arma */ return [Math.round((9 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m), Math.round((15 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m)]; };
+  /* 07/11 (Erling: "do lado de Combate, uma ficha menor explicando isso dentro do conceito RPG: quantos dados e de quê, e os dados têm que
+     bater com os valores do jogo"). A ficha de mesa traduz em dados EXATAMENTE as contas que o combate faz hoje (gameplay.ts):
+     golpe = sorteio uniforme entre o mínimo e o máximo (= 1dN + K), crítico/esquiva/bloqueio = d100 contra a chance, defesa = redução */
+  function diceSheet(lo: number, hi: number) {
+    const lp = 0.05 * (st.lvl - 1), dex = st.attrs?.dex ?? 0, n = hi - lo + 1, avg = (lo + hi) / 2, pc = (v: number) => Math.round(v * 100);
+    const critM = st.sp.has('r_mimir') ? 2.3 : 1.7, dodge = Math.min(0.35, 0.04 + dex * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0), block = Math.min(0.3, 0.03 + st.def * 0.5);
+    const evade = Math.max(0.02, Math.min(0.3, 0.05 - 0.004 * dex)), evadeAg = Math.max(0.02, Math.min(0.3, 0.14 - 0.004 * dex)), def = Math.max(-0.3, Math.min(0.75, st.def));
+    const dr = (t: string, d: string, sub: string) => `<div class="dsr"><span>${t}</span><b>${d}</b><small>${sub}</small></div>`;
+    return `<div class="col dsheet"><h3>🎲 Ficha de mesa</h3>
+      <p class="dsi">Cada golpe é uma rolagem: o alvo tenta esquivar, você rola o dano, rola o crítico, e a armadura dele desconta.</p>
+      <h4>Ao atacar</h4>
+      ${dr('Dano do golpe', `1d${n} + ${lo - 1}`, `${lo} a ${hi}, média ${avg.toFixed(1).replace('.', ',')} · dado-base 1d7+8 da mão, ×${(1 + lp).toFixed(2).replace('.', ',')} pelo nível${st.dmgFlat ? `, + ${Math.round(st.dmgFlat * (1 + 0.5 * lp))} da arma` : ''}, ×${st.atk.toFixed(2).replace('.', ',')} de ataque`)}
+      ${dr('Crítico', `d100 ≤ ${pc(st.crit)}`, `acertou: dano ×${String(critM).replace('.', ',')} → ${Math.round(lo * critM)} a ${Math.round(hi * critM)}`)}
+      ${dr('Esquiva do alvo', `d100 ≤ ${pc(evade)}`, `bicho ágil: ≤ ${pc(evadeAg)} · +2 por nível que ele tiver acima de você · a sua Destreza tira 0,4 cada`)}
+      ${dr('Armadura do alvo', '−6% a −60%', 'cresce 2,5% por nível que ele tiver acima de você, e cada bicho ainda absorve alguns pontos por golpe')}
+      <h4>Ao ser atacado</h4>
+      ${dr('Sua esquiva', `d100 ≤ ${pc(dodge)}`, `4% + 1,2% por ponto de Destreza${st.sp.has('dh_cloak') ? ' + 12% da capa' : ''} (teto 35%)`)}
+      ${dr('Bloqueio', `d100 ≤ ${pc(block)}`, 'leva só 45% do dano · erguendo a guarda: até 30%')}
+      ${dr('Defesa', `−${pc(def)}% do dano`, 'cada golpe que passa perde essa parte (teto 75%)')}
+    </div>`;
+  }
   const power = () => { const [a, z] = hitRange(); return Math.round(((a + z) / 2) * (1 + st.crit * 0.8) * 4 + (st.hpMax / (1 - st.def)) * 0.5); };
 
   /** coloca a ferramenta no espaço dela; a que estava lá volta para a mochila */
@@ -609,6 +630,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
           <div class="col"><h3>Combate</h3>
           ${row('Vida', `${Math.round(st.hp)}/${st.hpMax}`)}${row(st.res?.name ?? 'Magia', `${Math.round(st.mp)}/${st.mpMax}`)}${st.gen ? row(`Geração de ${st.res?.name ?? 'magia'}`, `+${Math.round(st.gen * 100)}%`) : ''}${row('Dano por golpe', `${lo}–${hi}`)}${row('Crítico', `${Math.round(st.crit * 100)}%`)}${row('Defesa', `${Math.round(st.def * 100)}%`)}${row('Velocidade', `+${Math.round((st.move - 1) * 100)}%`)}${row('Regeneração', `${st.regen.toFixed(1)}/s`)}${st.leech ? row('Roubo de vida', `${(st.leech * 100).toFixed(1)}%`) : ''}${st.xpMul > 1 ? row('XP', `+${Math.round((st.xpMul - 1) * 100)}%`) : ''}${st.goldMul > 1 ? row('Ouro', `+${Math.round((st.goldMul - 1) * 100)}%`) : ''}
           ${row('Karma', String(Math.round(hooks.karma())))}${row('Ouro', `🪙 ${st.gold}`)}</div>
+          ${diceSheet(lo, hi)}
         </div><small class="ft">C: fechar · I: mochila · arraste da mochila para o boneco para equipar · clique ou arraste para a mochila para desequipar</small></div>${alOpen && hooks.alignHtml ? `<div class="pn alside"><h3>Alinhamento Kármico</h3><p class="alsd">Os lugares por onde você passou como caminhante e o quanto a sua alma combina com cada um.</p>${hooks.alignHtml()}</div>` : ''}</div>`;
       ch.style.display = 'flex';
     } else ch.style.display = 'none';
