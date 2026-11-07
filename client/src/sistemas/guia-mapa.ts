@@ -1,5 +1,6 @@
 /* GUIA DE MISSÃO E MAPA GRANDE: onde fica o objetivo rastreado, a seta, o alfinete, os marcadores e o mapa do mundo. Saiu do main.ts (02/11). */
 import { type EnemyType, MAP_W, regionAt, REGIONS, CITY } from '../world';
+import { oceanPattern, drawSeaArt } from './mapa-arte';
 import { TILE_M as T } from '@karmika/shared';
 import { DEFS } from '../enemies';
 import * as THREE from 'three';
@@ -166,6 +167,7 @@ function drawMini() {
   const S = 2.4 * mmZoom, h0 = hereT(), D = K.mmEl.width, C = D / 2; K.mg.save(); K.mg.imageSmoothingEnabled = false; K.mg.clearRect(0, 0, D, D); K.mg.beginPath(); K.mg.arc(C, C, C, 0, 6.283); K.mg.clip(); K.mg.fillStyle = '#0a0810'; K.mg.fillRect(0, 0, D, D);
   K.mg.drawImage(K.mmBase, C - h0.x * S, C - h0.y * S, K.MMS * S, K.MMS * S); K.markers(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); if (mmZoom >= 1.4) K.miniIcons(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, S, D); heroArrow(K.mg, C, C, 1); K.mg.restore();
 }
+let seaPat: CanvasPattern | null = null;
 function drawBig() {
   if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width, H = K.bmEl.height, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
   K.mapV.z = Math.max(K.mapV.z, K.mapZMin());
@@ -174,7 +176,9 @@ function drawBig() {
     const pad = MAP_W * 0.07; /* 07/11: dá para passar um pouco da borda, para os nomes e os bichos da beirada (Trono de Cinzas, Picos) não ficarem cortados */
     K.mapV.cx = hw * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cx, hw - pad, MAP_W - hw + pad); K.mapV.cy = hh * 2 >= MAP_W + pad * 2 ? MAP_W / 2 : THREE.MathUtils.clamp(K.mapV.cy, hh - pad, MAP_W - hh + pad); }
   const X = (x: number) => W / 2 + (x - K.mapV.cx) * k, Y = (y: number) => H / 2 + (y - K.mapV.cy) * k;
-  K.bg.imageSmoothingEnabled = false; K.bg.fillStyle = '#0c1018'; K.bg.fillRect(0, 0, W, H); K.bg.drawImage(K.mmBase, X(0), Y(0), MAP_W * k, MAP_W * k);
+  /* 07/11: a carta náutica — o mar enche a tela inteira (a mesma trama além do quadrado do mundo), e por cima do mar a arte dos tecnocratas */
+  K.bg.imageSmoothingEnabled = false; seaPat ??= oceanPattern(K.bg); if (seaPat) { try { seaPat.setTransform(new DOMMatrix().translateSelf(X(0), Y(0)).scaleSelf(Math.max(0.35, k / 2))); } catch { /* */ } K.bg.fillStyle = seaPat; } else K.bg.fillStyle = '#1d3f6a'; K.bg.fillRect(0, 0, W, H);
+  K.bg.drawImage(K.mmBase, X(0), Y(0), MAP_W * k, MAP_W * k); drawSeaArt(K.bg, X, Y, k, K.mapV.z, W, H, performance.now() / 1000);
   K.bg.fillStyle = 'rgba(10,8,4,.18)'; K.bg.fillRect(0, 0, W, H);
   K.mapHits = []; const placed: [number, number, number, number][] = [];
   const label = (txt: string, x: number, y: number, size: number, col: string, force = false) => { K.bg.font = `600 ${size}px Cinzel, Georgia, serif`; const w = K.bg.measureText(txt).width, bx: [number, number, number, number] = [x - w / 2 - 2, y - size, w + 4, size + 4];

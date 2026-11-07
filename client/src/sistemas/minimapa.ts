@@ -1,6 +1,6 @@
 import { INSTINCT_MARKS } from '../segredos';
 /* MINIMAPA: a imagem base do mundo, o zoom, os ícones e marcadores, o mapa grande (janela) e seus cliques. Saiu do main.ts (02/11). */
-import { MAP_W, groundH, WL, heightAt } from '../world';
+import { MAP_W, groundH, WL, heightAt, fbm, ISLES } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
 import { floatWin } from '../windows';
 import * as THREE from 'three';
@@ -19,8 +19,22 @@ const mmBase = document.createElement('canvas'); mmBase.width = mmBase.height = 
   const hAt = (x: number, y: number) => hgt[Math.max(0, Math.min(hw - 1, Math.floor(y / HG))) * hw + Math.max(0, Math.min(hw - 1, Math.floor(x / HG)))];
   const id = g.createImageData(MMS, MMS), D = id.data, rgb = (h: string) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const BCR: Record<string, number[]> = Object.fromEntries(Object.entries(BC).map(([k, v]) => [k, rgb(v)]));
+  /* a profundidade do mar pela DISTÂNCIA até a terra (chanfro em duas passadas): o mesmo azul no continente e no oceano novo, sem quadrado claro */
+  const DST = new Float32Array(MMS * MMS); for (let y = 0; y < MMS; y++) for (let x = 0; x < MMS; x++) DST[y * MMS + x] = K.city.map[y]?.[x] === 'water' ? 1e6 : 0;
+  for (let y = 0; y < MMS; y++) for (let x = 0; x < MMS; x++) { const i = y * MMS + x; let v = DST[i]; if (!v) continue; if (x > 0) v = Math.min(v, DST[i - 1] + 1); if (y > 0) { v = Math.min(v, DST[i - MMS] + 1); if (x > 0) v = Math.min(v, DST[i - MMS - 1] + 1.414); if (x < MMS - 1) v = Math.min(v, DST[i - MMS + 1] + 1.414); } DST[i] = v; }
+  for (let y = MMS - 1; y >= 0; y--) for (let x = MMS - 1; x >= 0; x--) { const i = y * MMS + x; let v = DST[i]; if (!v) continue; if (x < MMS - 1) v = Math.min(v, DST[i + 1] + 1); if (y < MMS - 1) { v = Math.min(v, DST[i + MMS] + 1); if (x < MMS - 1) v = Math.min(v, DST[i + MMS + 1] + 1.414); if (x > 0) v = Math.min(v, DST[i + MMS - 1] + 1.414); } DST[i] = v; }
+  /* o ruído do mar numa grade de 4×4 (rápido: o mapa tem 2,5 milhões de casas) */
+  const NQ = Math.ceil(MMS / 4), NZ = new Float32Array(NQ * NQ), NZ2 = new Float32Array(NQ * NQ), NZ3 = new Float32Array(NQ * NQ);
+  for (let qy = 0; qy < NQ; qy++) for (let qx = 0; qx < NQ; qx++) { const x = qx * 4 + 2, y = qy * 4 + 2, i = qy * NQ + qx; NZ[i] = fbm(x * 0.012, y * 0.012, 811); NZ2[i] = fbm(x * 0.05, y * 0.05, 812); NZ3[i] = fbm(x * 0.03, y * 0.03, 813); }
   for (let y = 0; y < MMS; y++) for (let x = 0; x < MMS; x++) { const t = K.city.map[y]?.[x]; let c: number[]; let sh = 1;
-    if (t === 'water') { let shore = 0; for (let k = 1; k <= 3 && !shore; k++) if (K.city.map[y - k]?.[x] !== 'water' || K.city.map[y + k]?.[x] !== 'water' || K.city.map[y]?.[x - k] !== 'water' || K.city.map[y]?.[x + k] !== 'water') shore = k; c = shore === 1 ? [70, 120, 170] : shore ? [52, 100, 156] : [38, 78, 130]; }
+    if (t === 'water') { let shore = 0; for (let k = 1; k <= 3 && !shore; k++) if (K.city.map[y - k]?.[x] !== 'water' || K.city.map[y + k]?.[x] !== 'water' || K.city.map[y]?.[x - k] !== 'water' || K.city.map[y]?.[x + k] !== 'water') shore = k;
+      /* 07/11 (Erling: "a água toda lisa fica sem graça"): o mar tem fundo — raso turquesa, fundo azul-noite —, manchas de cor que mudam devagar,
+         o tom de cada ilha tingindo as águas em volta e as ondinhas de gravura no mar aberto */
+      const dep = Math.max(0, Math.min(1, DST[y * MMS + x] / 45)) ** 0.8, ci = (y >> 2) * NQ + (x >> 2), n = NZ[ci], n2 = NZ2[ci];
+      c = [Math.round(78 - 60 * dep + (n - 0.5) * 26), Math.round(146 - 98 * dep + (n2 - 0.5) * 18), Math.round(176 - 82 * dep + (n - 0.5) * 20)];
+      for (const I of ISLES) { const b = I.blobs[0], d = Math.hypot(x - b.x, y - b.y); if (d > 230) continue; const w = (1 - d / 230) * 0.45, tc = I.biome === 'blight' ? [70, 30, 70] : I.biome === 'volcanic' ? [90, 40, 30] : I.biome === 'snow' ? [150, 200, 220] : [110, 100, 70]; c = c.map((v, i) => v * (1 - w) + tc[i] * w); }
+      if (shore === 1) c = [96, 160, 180]; else if (shore) c = c.map((v, i) => v * 0.6 + [80, 150, 175][i] * 0.4);
+      else if (dep > 0.45 && ((y + Math.sin(x * 0.13) * 3 + n2 * 14) % 11) < 0.9 && NZ3[ci] > 0.52) c = c.map((v) => v * 1.28); }
     else { c = t === 'road' ? [160, 134, 94] : t === 'plaza' ? [184, 166, 128] : BCR[K.city.biome[y]?.[x] ?? 'meadow'] ?? BCR.meadow; if (t === 'tree') c = c.map((v) => v * 0.72); sh = Math.max(0.6, Math.min(1.45, 1 + (hAt(x - 2, y - 2) - hAt(x + 2, y + 2)) * 0.32)); }
     const o = (y * MMS + x) * 4; D[o] = Math.min(255, c[0] * sh); D[o + 1] = Math.min(255, c[1] * sh); D[o + 2] = Math.min(255, c[2] * sh); D[o + 3] = 255; }
   g.putImageData(id, 0, 0);
