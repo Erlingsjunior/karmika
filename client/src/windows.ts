@@ -89,7 +89,7 @@ const FREE_KEY = 'karmika.win.free';
 let free: Record<string, { x: number; y: number }> = {};
 try { free = JSON.parse(localStorage.getItem(FREE_KEY) || '{}'); } catch { free = {}; }
 const uiK = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
-const SKIP = '#create, #inicio, #limiar, #soul, #chat, #dlg, .fw, #boot, #awaken, #bigmap'; // o mapa grande tem o próprio arrasto e o botão de maximizar
+const SKIP = '#bagmini, #create, #inicio, #limiar, #soul, #chat, #dlg, .fw, #boot, #awaken, #bigmap'; // o mapa grande tem o próprio arrasto e o botão de maximizar
 function keyOf(p: HTMLElement) { const host = p.id ? p : (p.parentElement?.closest('[id]') as HTMLElement | null); const h = p.querySelector('h2'); return (host?.id || 'win') + (p.id ? '' : ':' + (p.className.split(' ')[0] || 'pn')) + (host?.id ? '' : ':' + (h?.textContent || '').trim().slice(0, 18)); }
 function zoomOf(p: HTMLElement) { const z = parseFloat(getComputedStyle(p).zoom || '1'); return z > 0 ? z : 1; }
 function applyFree(p: HTMLElement, k: string) { const o = free[k]; const z = zoomOf(p) || uiK(); p.style.translate = o ? `${o.x / z}px ${o.y / z}px` : ''; }

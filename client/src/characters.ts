@@ -1493,7 +1493,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
          continua no monstro. De costas na diagonal, o quadril vira pelo lado de trás. Sem isso o herói deslizava de lado com as pernas de frente. */
       { let sT = 0; if (hero.moveYaw !== null && moving) { let r = hero.moveYaw - yaw; while (r > Math.PI) r -= PI2; while (r < -Math.PI) r += PI2; const lr = Math.abs(r) > Math.PI / 2 ? r - Math.sign(r) * Math.PI : r; sT = clamp(lr, -0.95, 0.95); }
         strafeSm += (sT - strafeSm) * Math.min(1, dt * 7); }
-      if (moving) phase += (Math.PI * mps / strideLen) * dt * (backSm > 0.5 ? -1 : 1);
+      /* 07/11 (Erling: "com velocidade alta ele anda mais rápido na tela, mas as pernas não precisam mexer muito mais rápido"): acima da corrida
+         normal, o passo fica mais LONGO em vez de mais rápido — a cadência das pernas sobe só com a raiz quarta do excesso */
+      const overK = Math.max(1, mps / S.runSpeed), strideEff = strideLen * Math.pow(overK, 0.75);
+      if (moving) phase += (Math.PI * mps / strideEff) * dt * (backSm > 0.5 ? -1 : 1);
       const A = lerp(S.A[0], S.A[1], runK) * walkK, K = lerp(S.K[0], S.K[1], runK) * walkK;
       const armA = lerp(S.armA[0], S.armA[1], runK) * walkK * (GT?.arm ?? 1);
       const eb = lerp(S.eb[0], S.eb[1], runK);

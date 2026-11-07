@@ -1,4 +1,5 @@
 import { runeFxOf, type ROp } from './runas-classes';
+import { d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
@@ -53,7 +54,11 @@ export function createGameplay(d: GameplayDeps) {
   const xpNeedAt = (l: number) => Math.round(60 + 45 * l + 6 * l * l);
   const xpNeed = () => xpNeedAt(st.lvl);
   const pending: { at: number; fn: () => void }[] = [];
-  const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
+  const TEMPO0 = 1.65 * 1.1; let TEMPO = TEMPO0; /* 28/10: a luta 10% mais lenta.
+     07/11 (Erling: "a batalha tem que ser mais lenta, mais encadeada no começo; com mais destreza e nível vai acelerando"): o andamento (cadência)
+     começa em 80% no nível 1 e chega a 100% no 40; a Destreza da base soma até +15% e os talentos de velocidade de golpe até +35%.
+     Golpe e animação andam juntos: o TEMPO (quando o golpe acerta) e a velocidade da animação usam a mesma cadência */
+  const cadence = () => (0.8 + 0.2 * Math.min(1, (st.lvl - 1) / 39)) * (1 + 0.15 * (st.attrs?.dex ?? 0) / ((st.attrs?.dex ?? 0) + 60)) * (1 + ((st as { aspd?: number }).aspd ?? 0)); // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
   let now = 0;
   const cd = { attack: 0, cast: 0, heal: 0, bash: 0, slam: 0 };
   const CD = { attack: 0.3, cast: 0.75, heal: 1.6, bash: 2.4, slam: 3.2 };
@@ -170,7 +175,7 @@ export function createGameplay(d: GameplayDeps) {
   let partyN = () => 1;
   /** PvP: main.ts confere quem (jogador de verdade) está no golpe e manda o dano pela rede */
   let pvpHit: (cx: number, cz: number, yaw: number, reach: number, arc: number, dmg: number, crit: boolean) => void = () => {};
-  const pvpDmg = (mul: number) => { const crit = Math.random() < st.crit; return { n: Math.max(1, Math.round((5 + st.lvl * 2.2 + st.attrs.str * 1.2) * st.atk * mul * (crit ? 1.5 : 1) * 0.6)), crit }; }; // entre jogadores o golpe pesa menos que num bicho: a luta dura // quantos do meu grupo estão perto (eu incluso): bônus de XP e de equipamento
+  const pvpDmg = (mul: number) => { const crit = d20() >= 21 - critFaces(st.crit); /* 07/11: crítico pela faixa do d20 */ return { n: Math.max(1, Math.round((5 + st.lvl * 2.2 + st.attrs.str * 1.2) * st.atk * mul * (crit ? 1.5 : 1) * 0.6)), crit }; }; // entre jogadores o golpe pesa menos que num bicho: a luta dura // quantos do meu grupo estão perto (eu incluso): bônus de XP e de equipamento
   const enemies = createEnemies({ level: () => st.lvl, outMul: () => 1 /* o bônus do evento entra no balde da situação (regra 01) */, sync: { myId: () => netHooks.myId(), hit: (i, n) => netHooks.hit(i, n), die: (i) => netHooks.die(i), cast: (i, x, z, k) => netHooks.cast(i, x, z, k) },
     trail: (x, y, z, col) => { for (let q = 0; q < 2; q++) d.particles.spawn(x + rnd(-0.1, 0.1), y + rnd(-0.1, 0.1), z + rnd(-0.1, 0.1), { vx: rnd(-0.4, 0.4), vy: rnd(0.2, 0.9), vz: rnd(-0.4, 0.4), life: 0.45, s0: 0.32, s1: 0.04, c0: 0xffe0a0, c1: col, a: 0.95, drag: 1.5 }); }, night: () => (window as unknown as { __night?: number }).__night ?? 0,
     scene: d.scene, heightAt: d.world.heightAt, walkable: d.world.walkable, townAt: d.world.townAt, guardNear: d.world.guardNear, spawns: d.world.spawns,
@@ -529,11 +534,20 @@ export function createGameplay(d: GameplayDeps) {
     finally { skill = null; }
     if (fire) for (const k of [3, 5.5]) { const x = hp.x + fx * k, z = hp.z + fz * k; napalmAt(x, z, d.world.heightAt(x, z)); }
   }
+  const AGILE_T = new Set(['wolf', 'frostwolf', 'coyote', 'fairy', 'rat', 'deer', 'imp']); let openUntil = 0; /* 07/11 dados: bichos ágeis (+2 na CD) e o erro crítico (você fica aberto) */
   function hitEnemy(e: Enemy, mul: number, stop: boolean, from: THREE.Vector3) {
     const silver = kitKey === 'cac' && DARK_T.has(e.type) ? 0.25 : 0; /* caçador: prata em demônio, morto-vivo e fera da noite — SOMA no balde (regra 8) */
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
     const RF = fams(kitKey, skill); /* 03/11: as runas encaixadas nesta magia */
-    let crit = Math.random() < st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0); if (st.serene > 0 && skill) { crit = true; st.serene--; }
+    /* 07/11 DADOS: d20 + Acerto contra a Defesa (CD) do bicho. 1 natural = erro crítico; 20 natural = acerto crítico; a faixa de crítico cresce com a chance */
+    const AGILE = AGILE_T.has(e.type), dlv0 = (e.def.lvl ?? 1) - st.lvl, dex0 = st.attrs?.dex ?? 0, nat = d20(), acc = heroAcc(st.lvl, dex0), cdv = monCD(e.def.lvl ?? 1, AGILE, dlv0), need = needOf(cdv, acc, 2, 12);
+    const pCrit = st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0), cF = critFaces(pCrit);
+    const rollTxt = `d20 <b>${nat}</b> + ${Math.round(acc)} vs CD ${Math.round(cdv)}`;
+    if (nat === 1 || (nat < 20 && e.state !== 'hurt' && nat < need)) { const ep0 = e.pos.clone().setY(e.pos.y + 2.4);
+      if (nat === 1) { dmgText(ep0, 'ERRO CRÍTICO', false, '#ff8a6a'); openUntil = now + 0.4; rollLog(`⚔ ${e.def.name}: ${rollTxt} → <i>erro crítico</i> (você fica aberto)`, 'fail'); }
+      else { dmgText(ep0, AGILE ? 'ESQUIVOU' : 'ERROU', false, '#c8d8f0'); e.vel.set(rnd(-4, 4), rnd(-4, 4)); rollLog(`⚔ ${e.def.name}: ${rollTxt} → errou (precisava ${need})`, 'miss'); }
+      d.audio.swing(); return; }
+    let crit = nat >= 21 - cF; if (st.serene > 0 && skill) { crit = true; st.serene--; }
     let bonus = 1;
     if (skill === 'combo') {
       if (st.ambushT > 0) { bonus *= 1.5; st.fury = Math.min(5, st.fury + 1); st.ambushT = 0; dmgText(e.pos.clone().setY(e.pos.y + 2.6), 'EMBOSCADA!', true, '#9ad7ff'); }
@@ -550,7 +564,9 @@ export function createGameplay(d: GameplayDeps) {
        no nível 100, ninguém vira indestrutível por estar na noite certa, no evento certo e na postura certa. */
     const sit = Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1)));
     const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver + 0.3 * (RF.fresta ?? 0);
-    let dmg = (rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; /* 07/11: aura de dano de um companheiro */
+    const H = heroHand(st.lvl), hr = rollDice(H.dice), rk = spell ? rankDice(ssOf(skill).rank ?? 0) : [], rr = rollDice(rk), rkAvg = diceAvg(rk); /* o grau da magia soma dados, com a média de sempre */
+    const handV = (hr.sum + H.bonus + rr.sum) * H.avg / (H.avg + rkAvg);
+    let dmg = (handV + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; /* 07/11: aura de dano de um companheiro */
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
       const arm = Math.max(0, Math.min(0.6, 0.06 + cp.arm + 0.025 * dlv)), absb = cp.abs * (1 + 0.12 * el), ty = dmgTypeOf(skill), rs = cp.res?.[ty] ?? 1;
@@ -560,7 +576,7 @@ export function createGameplay(d: GameplayDeps) {
       if (rs >= 1.25 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'FRAQUEZA', false, '#ffb060'); else if (rs <= 0.6 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'RESISTE', false, '#a8b0c0');
     }
     { const dl = (e.def.lvl ?? 1) - st.lvl; if (dl > 2) { /* acima de você: golpes escorregam e erram */ dmg *= Math.max(0.65, 1 - 0.035 * dl);
-        if (Math.random() < Math.min(0.3, 0.03 * (dl - 2))) { dmgText(e.pos.clone().setY(e.pos.y + 2.4), 'ERROU', false, '#a8b0c0'); dmg = 0; } } }
+        /* 07/11: o "ERROU" de bicho bem acima do seu nível agora está na CD do d20 */ } }
     { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1 && !e.def.passive) dmg /= 1 + 0.5 * (pn - 1); } /* GRUPO (26/10): bicho que enfrenta um grupo aguenta mais — cada companheiro perto vale +50% de vida (o golpe de cada um entra dividido, e assim fica igual nas duas máquinas) */
     dmg = dmg <= 0 ? 0 : Math.max(1, Math.round(dmg));
     if (marked) st.hp = Math.min(st.hpMax, st.hp + dmg * 0.25);
@@ -581,11 +597,11 @@ export function createGameplay(d: GameplayDeps) {
       const evade = Math.max(0.02, Math.min(0.3, (AG.has(e.type) ? 0.14 : 0.05) + 0.02 * dl - 0.004 * dex));
       const guardCh = Math.max(0, Math.min(0.28, (AR.has(e.type) ? 0.16 : BIG.has(e.type) ? 0.12 : 0.02) + 0.02 * dl - 0.004 * str));
       if (e.state !== 'hurt' && !crit) {
-        const r = Math.random();
-        if (r < evade) { dmgText(ep, 'ESQUIVOU', false, '#c8d8f0'); d.audio.swing(); e.vel.set(rnd(-4, 4), rnd(-4, 4)); return; }
-        if (r < evade + guardCh) { if (AR.has(e.type)) { dmgText(ep, 'APAROU', false, '#ffe6a0'); d.audio.parry(); st.shake = Math.max(st.shake, 0.12); return; } dmg = Math.round(dmg * 0.4); dmgText(ep, 'DEFENDEU', false, '#d9c08a'); d.audio.block(); } }
+        /* 07/11: a esquiva do bicho virou a CD do d20 (lá em cima); aqui fica só a guarda (aparo / defesa) */ void evade;
+        if (Math.random() < guardCh) { if (AR.has(e.type)) { dmgText(ep, 'APAROU', false, '#ffe6a0'); d.audio.parry(); st.shake = Math.max(st.shake, 0.12); return; } dmg = Math.round(dmg * 0.4); dmgText(ep, 'DEFENDEU', false, '#d9c08a'); d.audio.block(); } }
     }
     const dir = new THREE.Vector3(e.pos.x - from.x, 0, e.pos.z - from.z).normalize(); dmg = Math.max(1, Math.round(dmg * EDEF)); /* defesa do monstro (05/11): descontada aqui para o número na tela ser o que entra */
+    rollLog(`⚔ ${e.def.name}: ${rollTxt} → ${crit ? '<i>CRÍTICO</i>' : 'acerto'} · ${fmtDice(H.dice)}${rk.length ? ' + ' + fmtDice(rk) : ''} (${[...hr.faces, ...rr.faces].join(',')}) → <b>${dmg}</b>`, crit ? 'crit' : 'hit');
     const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1), false); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
     st.hits++; d.audio.slash(crit); onoma(e.pos.clone().setY(e.pos.y + 1.6), crit ? 'crit' : 'hit');
     { const lch = st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0))); }
@@ -1592,8 +1608,10 @@ export function createGameplay(d: GameplayDeps) {
       if (groupAura.until > now && groupAura.def > 0) n = Math.max(1, Math.round(n * (1 - groupAura.def))); /* 07/11: aura de defesa de um companheiro */
       if (atk && atk.alive && gad.bracelet > Date.now() && Math.hypot(atk.pos.x - heroPos.x, atk.pos.z - heroPos.z) < 3.5) { const rf = Math.max(1, Math.round(n * 0.2)); zap(heroPos.x, heroPos.y + 1.1, heroPos.z, atk.pos.x, atk.pos.y + 1.1, atk.pos.z, 0x6ad0ff); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `⚡ ${rf}`, false, '#6ad0ff'); if (enemies.hurt(atk, rf, heroPos, 0)) killEnemy(atk); else { atk.state = 'hurt'; atk.t = -0.5; } } /* 06/11: Pulseira de Choque */
       if (atk && now < rs.thornsUntil && atk.alive) { const rf = Math.max(1, Math.round(n * rs.thornsPct)); if (enemies.hurt(atk, rf, heroPos, 2)) killEnemy(atk); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `↩ ${rf}`, false, '#e8b0ff'); } /* 06/11: runa que devolve o golpe */
-      const dodge = Math.min(0.35, 0.04 + (st.attrs?.dex ?? 0) * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0);
-      if (!h.guarding && Math.random() < dodge) { dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
+      /* 07/11 DADOS: o bicho rola d20 + Acerto contra a sua Defesa (CD). 1 natural dele = erra; 20 = acerta. Depois do seu erro crítico você fica aberto */
+      const mL = atk?.def.lvl ?? st.lvl, mNat = d20(), hcd = heroCD(st.lvl, st.attrs?.dex ?? 0, st.sp.has('dh_cloak')), mac = monAcc(mL), mNeed = needOf(hcd, mac, 2, 8);
+      const fresh = performance.now() - lastMon.at < 50 ? ` · ${lastMon.txt}` : '';
+      if (!h.guarding && now >= openUntil && (mNat === 1 || (mNat < 20 && mNat < mNeed))) { rollLog(`🛡 ${atk?.def.name ?? 'Golpe'}: d20 <b>${mNat}</b> + ${Math.round(mac)} vs sua CD ${Math.round(hcd)} → você esquivou`, 'miss'); dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
       // aparo: só quem luta com lâmina, de frente; desvia o golpe, faísca e deixa o inimigo vulnerável (contra-ataque)
       const parryCh = h.kind === 'nordic' && !h.guarding ? Math.min(0.2, 0.05 + (st.attrs?.str ?? 0) * 0.006) : 0;
       if (parryCh > 0 && !h.actName && Math.random() < parryCh) {
@@ -1603,7 +1621,7 @@ export function createGameplay(d: GameplayDeps) {
         return;
       }
       const blockCh = Math.min(0.3, 0.03 + st.def * 0.5 + (h.guarding ? 0.3 : 0));
-      if (!(h.guarding && now - guardAt < 0.5) && Math.random() < blockCh) { n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); onoma(heroPos.clone().setY(1.8), 'block'); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
+      const bNat = d20(); if (!(h.guarding && now - guardAt < 0.5) && bNat >= 21 - critFaces(blockCh)) { rollLog(`🛡 ${atk?.def.name ?? 'Golpe'}: bloqueio d20 <b>${bNat}</b> → leva 45%`, 'miss'); n = Math.max(1, Math.round(n * 0.45)); dmgText(heroPos.clone().setY(2.5), 'BLOQUEIO', false, '#d9c08a'); d.audio.block(); onoma(heroPos.clone().setY(1.8), 'block'); h.blockHit(); if (!h.actName) h.act('block'); st.fury = Math.min(5, st.fury + 1); }
       if (h.guarding && now - guardAt < 0.5) { // bloqueio perfeito
         d.audio.hit(); h.blockHit(); st.counterT = 3.5; st.mp = Math.min(st.mpMax, st.mp + 15); if (st.sp.has('aegis')) { st.hp = Math.min(st.hpMax, st.hp + st.hpMax * 0.1); logMsg('✦ Égide: +10% de vida', '#7aff9a'); } if (st.sp.has('u_egide')) { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 3.5 + e.def.radius) { if (enemies.hurt(e, n, heroPos, 4)) killEnemy(e); else { e.state = 'hurt'; e.t = -2; } dmgText(e.pos.clone().setY(e.pos.y + 2.4), `↩ ${n}`, true, '#ffe08a'); } } if (h.kind === 'technocrat') overcharge = true; st.fury = Math.min(5, st.fury + 1); st.shake = Math.max(st.shake, 0.2); hitstop = Math.max(hitstop, performance.now() + 60);
         dmgText(heroPos.clone().setY(2.5), 'PERFEITO!', true, '#ffe08a'); logMsg('🛡 Bloqueio perfeito: Investida liberada', '#ffe08a'); for (const e of enemies.list) if (e.alive && Math.hypot(e.pos.x - heroPos.x, e.pos.z - heroPos.z) < 4 + e.def.radius) poiseHit(e, e.hpMax * 0.09);
@@ -1616,6 +1634,7 @@ export function createGameplay(d: GameplayDeps) {
         const yw = h.root.rotation.y; for (let i = 0; i < 8; i++) d.particles.spawn(heroPos.x + Math.sin(yw) * 0.7, 1.3, heroPos.z + Math.cos(yw) * 0.7, { vx: rnd(-2, 2), vy: rnd(0, 2), vz: rnd(-2, 2), life: 0.3, s0: 0.18, s1: 0.03, c0: 0xffffff, c1: 0xffb060, a: 0.8, drag: 2 });
       } else {
         if (st.res.style === 'foco') { st.mp = Math.max(0, st.mp - 25); focoHurt = now; } /* o golpe recebido tira 25 de Foco */
+        rollLog(`🩸 ${atk?.def.name ?? 'Golpe'}: d20 <b>${mNat}</b> + ${Math.round(mac)} vs sua CD ${Math.round(hcd)} → acertou${fresh} → você perde <b>${n}</b>`, 'hurt');
         st.hp = Math.max(0, st.hp - n); if (!h.actName || h.actName === 'hit') h.act('hit'); /* golpes e magias em andamento não são interrompidos */ d.audio.hurt(); st.shake = Math.max(st.shake, 0.3);
         dmgText(heroPos.clone().setY(2.2), n, false, '#ff7a6a');
       }
@@ -2146,7 +2165,7 @@ export function createGameplay(d: GameplayDeps) {
             if (!first && isV) logMsg(nightNow ? '🌙 A noite acorda o sangue: +15% de dano, +12% de velocidade, golpes mais rápidos.' : '☀ O dia nasce. Sombra, ou sangue diluído.', nightNow ? '#ff6a7a' : '#ffb070');
             if (!first && isL) logMsg(nightNow ? '🌕 A noite chegou: a Forma da Besta pode despertar (0).' : '☀ O dia nasce: o lobo recua para dentro do homem.', '#c8a070');
             if (isL && !nightNow && form?.id === 'fenrir') form.t = 0.01; } }
-        h.actSpeed = (kitKey === 'vam' ? (skyNight > 0.5 ? 1.55 : 1.45) : kitKey === 'lob' && beastOn ? 1.2 : 1) * (1 + ((st as { aspd?: number }).aspd ?? 0)); /* talentos: velocidade de golpe e conjuração */
+        { const cad = cadence(); TEMPO = TEMPO0 / cad; h.actSpeed = (kitKey === 'vam' ? (skyNight > 0.5 ? 1.55 : 1.45) : kitKey === 'lob' && beastOn ? 1.2 : 1) * cad; } /* talentos: velocidade de golpe e conjuração */
         techLook?.setMech(form?.id === 'mech');
         if (techLook && thunderN > 0 && Math.random() < dt * 8) { const gp = techLook.gauntlet(new THREE.Vector3()); const a2 = rnd(0, 6.283); bolt3d(gp, gp.clone().add(new THREE.Vector3(Math.cos(a2) * 0.35, rnd(-0.3, 0.3), Math.sin(a2) * 0.35)), 0xbff4ff); techLook.charge(0.6); }
         // Drone Médico: um drone de verdade (casco branco, cruz verde, quatro rotores) que orbita e manda o feixe de cura

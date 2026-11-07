@@ -1,4 +1,5 @@
 import { RUNAS } from './runas';
+import { monRoll } from './dados-rpg';
 import * as THREE from 'three';
 import { buildBeast, buildWolf, buildBoar, buildDeer } from './werewolf3d';
 import { buildUndead } from './undead3d';
@@ -758,8 +759,8 @@ export function createEnemies(ctx: EnemyCtx) {
             (e.tele.material as THREE.MeshBasicMaterial).opacity = 0.45 + 0.55 * k; (fill.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.3 * k; }
           if (e.t >= WU) {
             if (e.tele) e.tele.visible = false;
-            if (alive && D.aggro >= 0.5 && inStrike(e, hero.x, hero.z) && !ctx.heroInvuln()) ctx.damageHero(Math.round(D.dmg * (0.85 + Math.random() * 0.3)), e.pos);
-            if (foeOn && inStrike(e, tx, tz)) fo!.hit(Math.round(D.dmg * (0.85 + Math.random() * 0.3)));
+            if (alive && D.aggro >= 0.5 && inStrike(e, hero.x, hero.z) && !ctx.heroInvuln()) ctx.damageHero(monRoll(D.dmg, D.lvl ?? 1, D.name), e.pos); /* 07/11: os dados de ataque do bicho, com a média de sempre */
+            if (foeOn && inStrike(e, tx, tz)) fo!.hit(monRoll(D.dmg, D.lvl ?? 1, D.name));
             e.vel.set(Math.sin(e.yaw) * 9, Math.cos(e.yaw) * 9);
             e.state = 'recover'; e.t = 0;
           }

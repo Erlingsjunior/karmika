@@ -1,4 +1,5 @@
 import { runeItems } from './runas-magia';
+import { heroHand, heroAcc, monCD, monAcc, heroCD, needOf, critFaces, fmtDice } from './dados-rpg';
 import { REACTOR_PARTS, type ReactorPart, loadParts, saveParts, partsFull, reactorSvg } from './reator';
 import { potionPulse } from './celebrate';
 import { FEASTS, feastEff, FEAST_MIN, GADGETS } from './festim';
@@ -325,31 +326,33 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       if (hp) { st.hpMax = Math.round(st.hpMax * (1 + hp)); st.hp = Math.min(st.hp, st.hpMax); } (st as St & { feastStam?: number }).feastStam = stam; }
     hooks.onGear?.();
   }
-  const hitRange = () => { const lp = 0.05 * (st.lvl - 1), m = st.atk; /* mesma conta do combate: nível cheio no golpe base, metade no dano da arma */ return [Math.round((9 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m), Math.round((15 * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * m)]; };
+  const hitRange = () => { const lp = 0.05 * (st.lvl - 1), m = st.atk, H = heroHand(st.lvl), fl = st.dmgFlat * (1 + 0.5 * lp); /* 07/11: mínimo e máximo dos dados da mão (mesma conta do combate) */ return [Math.max(1, Math.round((H.dice.length + H.bonus + fl) * m)), Math.round((H.dice.reduce((a, b) => a + b, 0) + H.bonus + fl) * m)]; };
   /* 07/11 (Erling: "do lado de Combate, uma ficha menor explicando isso dentro do conceito RPG: quantos dados e de quê, e os dados têm que
      bater com os valores do jogo"). A ficha de mesa traduz em dados EXATAMENTE as contas que o combate faz hoje (gameplay.ts):
      golpe = sorteio uniforme entre o mínimo e o máximo (= 1dN + K), crítico/esquiva/bloqueio = d100 contra a chance, defesa = redução */
   function diceSheet(lo: number, hi: number) {
-    const lp = 0.05 * (st.lvl - 1), dex = st.attrs?.dex ?? 0, n = hi - lo + 1, avg = (lo + hi) / 2, pc = (v: number) => Math.round(v * 100), br = (v: number | string) => String(v).replace('.', ',');
-    const critM = st.sp.has('r_mimir') ? 2.3 : 1.7, dodge = Math.min(0.35, 0.04 + dex * 0.012) + (st.sp.has('dh_cloak') ? 0.12 : 0), block = Math.min(0.3, 0.03 + st.def * 0.5);
-    const evade = Math.max(0.02, Math.min(0.3, 0.05 - 0.004 * dex)), evadeAg = Math.max(0.02, Math.min(0.3, 0.14 - 0.004 * dex)), def = Math.max(-0.3, Math.min(0.75, st.def));
-    const card = (ic: string, t: string, d: string, sub: string) => `<div class="dcard"><i>${ic}</i><div><span>${t}</span><small>${sub}</small></div><b>${d}</b></div>`;
-    const t = total();
+    const lp = 0.05 * (st.lvl - 1), dex = st.attrs?.dex ?? 0, L = st.lvl, br = (v: number | string) => String(v).replace('.', ','), pc = (v: number) => Math.round(v * 100);
+    const H = heroHand(L), acc = heroAcc(L, dex), cdSame = monCD(L, false, 0), need = needOf(cdSame, acc, 2, 12), needAg = needOf(monCD(L, true, 0), acc, 2, 12);
+    const cF = critFaces(st.crit), critM = st.sp.has('r_mimir') ? 2.3 : 1.7, hcd = heroCD(L, dex, st.sp.has('dh_cloak')), mNeed = needOf(hcd, monAcc(L), 2, 8), bF = critFaces(Math.min(0.3, 0.03 + st.def * 0.5)), def = Math.max(-0.3, Math.min(0.75, st.def));
+    const flat = Math.round(st.dmgFlat * (1 + 0.5 * lp)), bonus = Math.round(H.bonus);
+    const card = (ic: string, t: string, dd: string, sub: string) => `<div class="dcard"><i>${ic}</i><div><span>${t}</span><small>${sub}</small></div><b>${dd}</b></div>`;
+    const t = total(), face = (f: number) => f >= 20 ? '20' : `${f}–20`;
     return `<div class="pn alside dside"><h3>🎲 Ficha de Mesa</h3>
-      <p class="alsd">Tudo o que acontece numa luta é uma rolagem de dados. Esta ficha mostra, em dados, exatamente as contas que o jogo faz agora com o seu personagem — e serve para jogar KARMIKA numa mesa de verdade.</p>
-      <div class="dlegend"><b>Como ler os dados</b><span><em>1d7</em> = um dado de 7 lados (sai de 1 a 7). <em>1d7 + 15</em> = rola e soma 15.</span><span><em>d100</em> = um dado de 100 lados: é a porcentagem. Na mesa se joga com dois d10, um para a dezena e outro para a unidade (0 e 0 = 100). <em>d100 ≤ 12</em> quer dizer: tirou 12 ou menos, aconteceu — ou seja, 12% de chance.</span></div>
-      <div class="dhead"><div><small>Vida</small><b>${st.hpMax}</b></div><div><small>Defesa</small><b>${pc(def)}%</b></div><div><small>Golpe</small><b>${lo}–${hi}</b></div><div><small>Crítico</small><b>${pc(st.crit)}%</b></div></div>
+      <p class="alsd">Toda luta é rolagem de dados. Esta ficha mostra os dados que o jogo rola agora para o seu personagem — e serve para jogar KARMIKA numa mesa de verdade.</p>
+      <div class="dlegend"><b>Como ler os dados</b><span><em>d20</em> = dado de 20 lados. <em>2d4</em> = dois dados de 4 lados somados. <em>+9</em> = some 9 ao que saiu.</span><span>Para acertar, role <em>d20 + Acerto</em>: se chegar na <em>CD</em> (a Defesa do alvo), acertou. <em>20</em> natural é sempre acerto crítico; <em>1</em> natural é sempre erro crítico.</span></div>
+      <div class="dhead"><div><small>Vida</small><b>${st.hpMax}</b></div><div><small>Acerto</small><b>+${Math.round(acc)}</b></div><div><small>Sua CD</small><b>${Math.round(hcd)}</b></div><div><small>Crítico</small><b>${face(21 - cF)}</b></div></div>
       <h4>⚔ Quando você ataca <em>na ordem</em></h4>
-      ${card('①', 'O alvo tenta esquivar', `d100 ≤ ${pc(evade)}`, `bicho ágil ≤ ${pc(evadeAg)} · +2 por nível que ele tiver acima de você · cada ponto da sua Destreza tira 0,4`)}
-      ${card('②', 'Você rola o dano', `1d${n} + ${lo - 1}`, `de ${lo} a ${hi}, média ${br(avg.toFixed(1))}. Vem do dado-base 1d7+8 da mão ×${br((1 + lp).toFixed(2))} pelo nível${st.dmgFlat ? ` + ${Math.round(st.dmgFlat * (1 + 0.5 * lp))} da arma` : ''}, tudo ×${br(st.atk.toFixed(2))} de ataque`)}
-      ${card('③', 'Você rola o crítico', `d100 ≤ ${pc(st.crit)}`, `acertou: o dano vira ×${br(critM)} (${Math.round(lo * critM)} a ${Math.round(hi * critM)})`)}
-      ${card('④', 'A armadura dele desconta', '−6% a −60%', 'sobe 2,5% por nível que ele tiver acima de você; cada bicho ainda absorve alguns pontos por golpe')}
+      ${card('①', 'Rolagem de ataque', `d20 + ${Math.round(acc)}`, `contra um bicho do seu nível (CD ${Math.round(cdSame)}) você acerta tirando <b>${need}+</b>; bicho ágil: ${needAg}+. Cada 2,5 níveis que ele tiver acima de você: +1. Acerto = 8 + nível ÷ 2,5 + Destreza ÷ 12`)}
+      ${card('②', 'Dano', `${fmtDice(H.dice)} + ${bonus}${flat ? ` + ${flat}` : ''}`, `${lo} a ${hi} depois do ataque ×${br(st.atk.toFixed(2))}${flat ? ` · +${flat} é a arma` : ''}. A cada faixa de nível a mão ganha dados (nv 10: +1d8 · nv 20: +1d12 · nv 40: +1d20). Magias rolam o golpe × a força delas e o grau soma +1d4/+1d8/+1d12/+1d20`)}
+      ${card('③', 'Crítico', `${face(21 - cF)} no d20`, `o dano vira ×${br(critM)} (${Math.round(lo * critM)} a ${Math.round(hi * critM)}). Cada 5% de crítico abre mais uma face`)}
+      ${card('④', 'Erro crítico', '1 no d20', 'sempre erra e você fica aberto por um instante: o próximo golpe do bicho não pode ser esquivado')}
+      ${card('⑤', 'Armadura do alvo', '−6% a −60%', 'sobe 2,5% por nível que ele tiver acima de você; cada bicho ainda absorve alguns pontos por golpe')}
       <h4>🛡 Quando você é atacado <em>na ordem</em></h4>
-      ${card('①', 'Você tenta esquivar', `d100 ≤ ${pc(dodge)}`, `4% + 1,2% por ponto de Destreza da sua base${st.sp.has('dh_cloak') ? ' + 12% da capa' : ''} · teto 35%`)}
-      ${card('②', 'Você tenta bloquear', `d100 ≤ ${pc(block)}`, 'bloqueou: leva só 45% do golpe · com a guarda erguida chega a 30%')}
-      ${card('③', 'A defesa desconta', `−${pc(def)}%`, 'o que passa perde essa parte · teto 75%')}
+      ${card('①', 'O bicho rola contra a sua CD', `CD ${Math.round(hcd)}`, `um bicho do seu nível precisa de <b>${mNeed}+</b> no d20 para te acertar (1 natural dele sempre erra). Sua CD = 10 + nível ÷ 2,5 + Destreza ÷ 4${st.sp.has('dh_cloak') ? ' + 2 da capa' : ''}`)}
+      ${card('②', 'Bloqueio', `${face(21 - bF)} no d20`, 'um segundo d20: bloqueou, leva só 45% do golpe')}
+      ${card('③', 'Defesa', `−${pc(def)}%`, 'o que passa perde essa parte · teto 75%')}
       <h4>📜 Para jogar na mesa</h4>
-      <ul class="dmesa"><li>Precisa de <b>1d100</b> (ou dois d10) e <b>1d${n}</b> — ou qualquer dado e some <b>${lo - 1}</b>.</li><li>Atributos: Força ${st.attrs.str + Math.round(t.str ?? 0)} · Destreza ${st.attrs.dex + Math.round(t.dex ?? 0)} · Vitalidade ${st.attrs.vit + Math.round(t.vit ?? 0)} · Energia ${st.attrs.int + Math.round(t.int ?? 0)}.</li><li>Os monstros usam a mesma ficha: a do bestiário diz a esquiva, a armadura e o dano de cada um.</li></ul>
+      <ul class="dmesa"><li>Dados: <b>1d20</b> e <b>${fmtDice(H.dice)}</b>.</li><li>Atributos: Força ${st.attrs.str + Math.round(t.str ?? 0)} · Destreza ${st.attrs.dex + Math.round(t.dex ?? 0)} · Vitalidade ${st.attrs.vit + Math.round(t.vit ?? 0)} · Energia ${st.attrs.int + Math.round(t.int ?? 0)}.</li><li>Os monstros usam a mesma regra: CD, dados de ataque e dados de vida estão no bestiário.</li></ul>
     </div>`;
   }
   const power = () => { const [a, z] = hitRange(); return Math.round(((a + z) / 2) * (1 + st.crit * 0.8) * 4 + (st.hpMax / (1 - st.def)) * 0.5); };
@@ -514,6 +517,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   /** onde a fileira está: arrastada pelo jogador (guardado) ou, sem isso, colada à direita do orbe do recurso */
   let barPos: { l: number; b: number } | null = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagbarpos') || 'null'); } catch { return null; } })();
   const uiK = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+  let bagPos: Record<string, { l: number; b: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagpos') || '{}'); } catch { return {}; } })();
   const placeBar = () => { const ui = uiK(), bw = bagBarEl.offsetWidth * ui, bh = bagBarEl.offsetHeight * ui; let L: number, B: number;
     if (barPos) { L = barPos.l; B = barPos.b; } else { const o = document.getElementById('mp')?.getBoundingClientRect(); if (!o || !o.width) return; L = Math.round(o.right + 14); B = Math.round(innerHeight - o.bottom + 4); if (L + bw > innerWidth - 8) { L = Math.round(innerWidth - bw - 10); B = Math.round(innerHeight - o.top + 8); } }
     L = Math.max(4, Math.min(innerWidth - bw - 4, L)); B = Math.max(2, Math.min(innerHeight - bh - 4, B));
@@ -522,8 +526,9 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
        pela direita; quando a pilha chega no alto da tela, começa outra coluna à esquerda */
     const ps = Array.from(mini.querySelectorAll<HTMLElement>('.pn.bm')); let right = Math.min(innerWidth - 4, L + bw), y = B + bh + 6, colW = 0, n = 0;
     /* a escala real das coordenadas (a interface tem zoom/escala): mede uma vez, colocando a primeira bolsa em 0 e em 100 */
-    let kx = ui, x0 = 0, y0 = 0; if (ps[0]) { const p = ps[0]; p.style.left = '0px'; p.style.bottom = '0px'; const a = p.getBoundingClientRect(); p.style.left = '100px'; const b2 = p.getBoundingClientRect(); kx = (b2.left - a.left) / 100 || ui; x0 = a.left; y0 = innerHeight - a.bottom; }
+    let kx = ui, x0 = 0, y0 = 0; if (ps[0]) { ps[0].style.transition = 'none'; const p = ps[0]; p.style.left = '0px'; p.style.bottom = '0px'; const a = p.getBoundingClientRect(); p.style.left = '100px'; const b2 = p.getBoundingClientRect(); kx = (b2.left - a.left) / 100 || ui; x0 = a.left; y0 = innerHeight - a.bottom; }
     for (const p of ps) { const rr = p.getBoundingClientRect(), w = rr.width, h = rr.height;
+      { const fp = bagPos[p.dataset.bmk!]; if (fp) { const x = Math.max(0, Math.min(innerWidth - w, fp.l)), yy = Math.max(0, Math.min(innerHeight - h, fp.b)); p.style.left = (x - x0) / kx + 'px'; p.style.bottom = (yy - y0) / kx + 'px'; continue; } }
       if (n && y + h > innerHeight - 6) { right -= colW + 6; y = B + bh + 6; colW = 0; n = 0; }
       const x = Math.max(4, right - w), yy = Math.max(2, Math.min(innerHeight - h - 4, y)); p.style.left = (x - x0) / kx + 'px'; p.style.bottom = (yy - y0) / kx + 'px'; y = yy + h + 6; colW = Math.max(colW, w); n++; } };
   addEventListener('resize', () => requestAnimationFrame(placeBar)); setInterval(placeBar, 2000);
@@ -538,7 +543,16 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   let bagSize: Record<string, { w: number; h: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagsize') || '{}'); } catch { return {}; } })();
   mini.addEventListener('pointerup', () => { let ch = false; mini.querySelectorAll<HTMLElement>('.pn.bm').forEach((p) => { const k = p.dataset.bmk!, w = Math.round(p.offsetWidth), h = Math.round(p.offsetHeight), o = bagSize[k];
     if (p.style.width || p.style.height) { if (!o || Math.abs(o.w - w) > 2 || Math.abs(o.h - h) > 2) { bagSize[k] = { w, h }; p.classList.add('sized'); ch = true; } } }); if (ch) { try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } placeBar(); } });
-  mini.addEventListener('dblclick', (e) => { const h = (e.target as HTMLElement).closest('.pn.bm h2'), p = h?.parentElement as HTMLElement | null; if (!p) return; delete bagSize[p.dataset.bmk!]; try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } render(); }); /* clique duplo no título: volta ao tamanho certo */
+  /* 07/11 (Erling: "deixar a bolsa aberta onde eu quiser; a posição fica lembrada mesmo fechando ou saindo do jogo; pode ter uma grade invisível"):
+     arrastar pelo título solta a bolsa no lugar, encaixando numa grade invisível de 12 px. Clique duplo no título devolve à pilha e ao tamanho certo */
+  const GRID = 12;
+  mini.addEventListener('pointerdown', (e) => { const t = e.target as HTMLElement; if (t.closest('button')) return; const h = t.closest('.pn.bm h2') as HTMLElement | null, p = h?.parentElement as HTMLElement | null; if (!p) return; e.preventDefault(); e.stopPropagation();
+    const k = p.dataset.bmk!, r0 = p.getBoundingClientRect(), dx = e.clientX - r0.left, dy = r0.bottom - e.clientY; p.classList.add('dragging');
+    const mv = (ev: PointerEvent) => { const r = p.getBoundingClientRect(); let l = ev.clientX - dx, b = innerHeight - ev.clientY - dy; l = Math.round(l / GRID) * GRID; b = Math.round(b / GRID) * GRID;
+      l = Math.max(0, Math.min(innerWidth - r.width, l)); b = Math.max(0, Math.min(innerHeight - r.height, b)); bagPos[k] = { l, b }; placeBar(); };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); p.classList.remove('dragging'); try { localStorage.setItem('karmika.bagpos', JSON.stringify(bagPos)); } catch { /* */ } };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); });
+  mini.addEventListener('dblclick', (e) => { const h = (e.target as HTMLElement).closest('.pn.bm h2'), p = h?.parentElement as HTMLElement | null; if (!p) return; delete bagSize[p.dataset.bmk!]; delete bagPos[p.dataset.bmk!]; try { localStorage.setItem('karmika.bagpos', JSON.stringify(bagPos)); } catch { /* */ } try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } render(); }); /* clique duplo no título: volta ao tamanho certo */
   /* 07/11 (Erling: "se eu redimensiono a bolsa, redimensiona os quadrados dos slots"): a bolsa esticada pelo canto recalcula colunas e
      o tamanho de cada casa para encher a janela, sem sobrar fundo vazio */
   const fitCells = (p: HTMLElement) => { const gr = p.querySelector<HTMLElement>('.grid'); if (!gr) return;
