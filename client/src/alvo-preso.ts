@@ -13,11 +13,11 @@
 import type { Enemy } from './enemies';
 
 export function createLock() {
-  let cur: Enemy | null = null, hitT = -99, t = 0;
+  let cur: Enemy | null = null, hitT = -99, t = 0, quiet = 0;
   const hostile = (e: Enemy | null): e is Enemy => !!e && e.alive && e.active && !e.def.passive && !(e as Enemy & { ally?: boolean }).ally;
   return {
     /** o herói feriu este bicho */
-    struck(e: Enemy) { if (!hostile(e)) return;
+    struck(e: Enemy) { if (!hostile(e)) return; quiet = 0;
       /* golpe em área, bola de fogo, raio em cadeia, chumbo de escopeta: acertam vários no mesmo instante. O alvo só troca se o atual NÃO
          foi ferido nos últimos 0,6 s — o primeiro atingido da rajada fica, e a mira não pula de bicho em bicho a cada faísca */
       if (cur !== e && hostile(cur) && t - hitT < 0.6) return;
@@ -29,7 +29,9 @@ export function createLock() {
       const dist = (e: Enemy) => Math.hypot(e.pos.x - hx, e.pos.z - hz);
       const lost = cur && (!hostile(cur) || dist(cur) > hold || (t - hitT > 5 && dist(cur) > 9));
       if (lost) { const died = !!cur && !cur.alive; cur = null; if (died) { cur = nearest(9); if (cur) hitT = t; } }
-      if (!cur) { cur = nearest(7); if (cur) hitT = t - 2; }
+      /* 07/11: o bicho que está correndo atrás de você conta de mais longe (12 m); parado, só até 7 m. Depois de você soltar fugindo, nada prende sozinho por um tempo */
+      if (!cur && t >= quiet) { cur = chaser(12) ?? nearest(7); if (cur) hitT = t - 2; }
+      function chaser(r: number) { let b: Enemy | null = null, bd = r; for (const e of list) { if (!hostile(e) || (e.state !== 'chase' && e.state !== 'windup')) continue; const d = dist(e); if (d < bd) { bd = d; b = e; } } return b; }
       function nearest(r: number) { let b: Enemy | null = null, bd = r; for (const e of list) { if (!hostile(e)) continue; const d = dist(e); if (d < bd) { bd = d; b = e; } } return b; }
       return cur;
     },
@@ -40,5 +42,7 @@ export function createLock() {
     /** a intenção do jogador manda: atacou virado para outro bicho, ou andou na direção dele → o alvo passa a ser esse */
     retarget(e: Enemy | null) { if (!e || e === cur || !hostile(e)) return; cur = e; hitT = t; },
     clear() { cur = null; },
+    /** 07/11 (Erling: "você corre de costas para ele por 1,5 s; se continua indo em frente, descola o foco e segue"): solta e não prende sozinho por `sec` s (ferir um bicho prende de novo) */
+    release(sec: number) { cur = null; quiet = t + sec; },
   };
 }

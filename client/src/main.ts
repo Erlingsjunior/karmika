@@ -1937,7 +1937,7 @@ const gOpen = () => { const s = (performance.now() - gOpenAt) / 1000; return s <
 /* o relógio do quadro (o THREE.Clock saiu do three 0.18x): segundos desde o quadro anterior */
 const clock = (() => { let last = performance.now(); return { getDelta() { const n = performance.now(), d = (n - last) / 1000; last = n; return d; } }; })();
 let heroY = heightAt(city.spawn.x * T, city.spawn.y * T), camY = heroY;
-let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpYaw: number | null = null, lockYaw: number | null = null; const lockSys = createLock(); let lockActWas = false; enemyHooks.struck = (e) => lockSys.struck(e); /* recuo de costas (estilo Path of Exile 2) */
+let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let bpYaw: number | null = null, lockYaw: number | null = null; const lockSys = createLock(); let lockActWas = false; let awayT = 0; enemyHooks.struck = (e) => lockSys.struck(e); /* recuo de costas (estilo Path of Exile 2) */
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
@@ -2599,7 +2599,9 @@ function frameBody() {
     lockYaw = lk2 ? Math.atan2(lk2.pos.x - hx, lk2.pos.z - hz) : null;
     if (lk2 && state.moving) { const fy = lockYaw!, my = Math.atan2(gdx, gdy); let rel = my - fy; while (rel > Math.PI) rel -= Math.PI * 2; while (rel < -Math.PI) rel += Math.PI * 2; const c = Math.cos(rel);
       bpYaw = fy; hero.moveYaw = Math.abs(rel) > 0.2 ? my : null;
-      if (c < -0.35) actSlow *= gaitNow.bp[1]; else if (c < 0.6) actSlow *= (1 + gaitNow.bp[1]) / 2; } }
+      if (c < -0.35) actSlow *= gaitNow.bp[1]; else if (c < 0.6) actSlow *= (1 + gaitNow.bp[1]) / 2;
+      /* 07/11 (Erling): indo para longe do alvo, você recua de costas por 1,5 s; se continuar, o foco descola e o herói vira e corre */
+      awayT = c < -0.35 && !hero.acting ? awayT + dt : 0; if (awayT > 1.5) { lockSys.release(4); awayT = 0; lockYaw = null; bpYaw = null; hero.moveYaw = null; } } else awayT = 0; }
   let boost = 1;
   if (dashT > 0) { dashT -= dt; boost = 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
   vel += ((state.moving ? 1 : 0) - vel) * Math.min(1, dt * (state.moving ? 14 : 18));
