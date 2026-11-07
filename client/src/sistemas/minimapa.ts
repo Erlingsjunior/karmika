@@ -93,9 +93,10 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
   const defSize = () => { const w = Math.min(940, innerWidth * 0.96); return { w, h: Math.min(w * 0.68, innerHeight - 220) }; };
   let size = defSize(), maxed: { w: number; h: number; l: string; t: string } | null = null;
   try { const s0 = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s0?.w && s0?.h) size = s0; } catch { /* */ }
+  const zk = () => parseFloat(getComputedStyle(pn).zoom || '1') || 1; /* 07/11: o painel tem o zoom do "Tamanho da interface": as contas de tela dividem por ele */
   const apply = () => {
-    const ch = chrome() || 150;
-    size.w = Math.round(Math.max(420, Math.min(innerWidth - 8, size.w))); size.h = Math.round(Math.max(260, Math.min(innerHeight - ch - 8, size.h)));
+    const ch = chrome() || 150, z = zk();
+    size.w = Math.round(Math.max(420, Math.min((innerWidth - 8) / z, size.w))); size.h = Math.round(Math.max(260, Math.min((innerHeight - 8) / z - ch, size.h)));
     pn.style.width = size.w + 'px'; mv.style.height = size.h + 'px';
   };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ w: size.w, h: size.h })); } catch { /* */ } };
@@ -111,10 +112,11 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
     e.stopPropagation();
     pn.style.translate = ''; bigEl.style.translate = ''; // sem deslocamento extra: o botão de restaurar nunca sai da tela
     if (maxed) { size = { w: maxed.w, h: maxed.h }; bigEl.style.left = maxed.l; bigEl.style.top = maxed.t; maxed = null; }
-    else { maxed = { w: size.w, h: size.h, l: bigEl.style.left, t: bigEl.style.top }; bigEl.style.left = '4px'; bigEl.style.top = '4px'; bigEl.style.right = 'auto'; size = { w: innerWidth - 8, h: innerHeight - chrome() - 12 }; }
+    else { maxed = { w: size.w, h: size.h, l: bigEl.style.left, t: bigEl.style.top }; bigEl.style.left = '4px'; bigEl.style.top = '4px'; bigEl.style.right = 'auto'; size = { w: (innerWidth - 8) / zk(), h: (innerHeight - 12) / zk() - chrome() }; }
+    /* o tamanho do canto geral das janelas sai da frente: quem manda agora é o ⛶ */ bigEl.classList.remove('sized'); bigEl.style.removeProperty('--fw-w'); bigEl.style.removeProperty('--fw-h');
     apply(); if (!maxed) save();
   });
-  addEventListener('resize', () => { if (maxed) size = { w: innerWidth - 8, h: innerHeight - chrome() - 12 }; apply(); });
+  addEventListener('resize', () => { if (maxed) size = { w: (innerWidth - 8) / zk(), h: (innerHeight - 12) / zk() - chrome() }; apply(); });
   { const h2 = pn.querySelector('h2') as HTMLElement; let dg: { x: number; y: number; l: number; t: number } | null = null; h2.style.cursor = 'grab';
     h2.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button') || maxed) return; const r = bigEl.getBoundingClientRect(); dg = { x: e.clientX, y: e.clientY, l: r.left, t: r.top }; h2.setPointerCapture(e.pointerId); });
     h2.addEventListener('pointermove', (e) => { if (!dg) return; const z = parseFloat(getComputedStyle(bigEl).zoom || '1') || 1; bigEl.style.right = 'auto';
@@ -132,7 +134,8 @@ const mview = bigEl.querySelector('.mview') as HTMLElement, mtip = bigEl.querySe
 const mapPx = (e: MouseEvent) => { const r = bmEl.getBoundingClientRect(); return { x: (e.clientX - r.left) * bmEl.width / r.width, y: (e.clientY - r.top) * bmEl.height / r.height }; };
 const pxPerTile = () => (bmEl.height / MAP_W) * mapV.z;
 /** zoom mínimo: o mapa sempre cobre a largura da moldura (nada de faixa vazia dos lados) */
-const mapZMin = () => Math.max(1, bmEl.width / bmEl.height);
+/* 07/11 (Erling: "o zoom do mapa pode sair até eu ver o mapa inteiro de longe"): no zoom mínimo o mapa INTEIRO cabe na moldura */
+const mapZMin = () => Math.min(1, bmEl.width / bmEl.height) * 0.98;
 mview.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const m = mapPx(e), k = pxPerTile(), wx = mapV.cx + (m.x - bmEl.width / 2) / k, wy = mapV.cy + (m.y - bmEl.height / 2) / k; mapV.z = THREE.MathUtils.clamp(mapV.z * Math.exp(-e.deltaY * 0.0015), mapZMin(), 14); const k2 = pxPerTile(); mapV.cx = wx - (m.x - bmEl.width / 2) / k2; mapV.cy = wy - (m.y - bmEl.height / 2) / k2; K.drawBig(); }, { passive: false });
 mview.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button, .mzoom')) return; /* botões de zoom não são clique no mapa */ mapDrag = { x: e.clientX, y: e.clientY, cx: mapV.cx, cy: mapV.cy, moved: false }; mview.setPointerCapture(e.pointerId); mview.classList.add('drag'); });
 mview.addEventListener('pointermove', (e) => {
