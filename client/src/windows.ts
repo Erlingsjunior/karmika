@@ -136,3 +136,21 @@ export function buyFx(target: Element | null, label = '') {
 /* o último botão clicado: compras feitas longe do clique (leilão, estábulo, festa) brilham nele */
 let lastHit: Element | null = null; addEventListener('pointerdown', (e) => { lastHit = (e.target as Element)?.closest?.('button,[data-buy],.it,.card') ?? (e.target as Element); }, true);
 export function buyFxLast(label = '') { buyFx(lastHit, label); }
+/* 07/11 (Erling: "o menu também pode ser movido com 3 pontinhos na direita, assim como as bolsas têm na esquerda; o menu rápido também"):
+   barras presas na tela que o jogador arrasta por um puxador ⋮. O deslocamento vai na propriedade `translate` (soma com o transform da barra),
+   fica salvo e nunca deixa a barra sair da tela. Clique duplo no puxador devolve ao lugar de sempre. */
+export function movable(el: HTMLElement, key: string) {
+  const SK = 'karmika.mv.' + key; let o: { x: number; y: number } = { x: 0, y: 0 };
+  try { o = JSON.parse(localStorage.getItem(SK) || 'null') ?? o; } catch { /* */ }
+  const apply = () => { const z = parseFloat(getComputedStyle(el).zoom || '1') || 1; el.style.translate = o.x || o.y ? `${o.x / z}px ${o.y / z}px` : ''; };
+  const clamp = () => { const r = el.getBoundingClientRect(); if (!r.width) return; let dx = 0, dy = 0; if (r.left < 0) dx = -r.left; else if (r.right > innerWidth) dx = innerWidth - r.right; if (r.top < 0) dy = -r.top; else if (r.bottom > innerHeight) dy = innerHeight - r.bottom; if (dx || dy) { o.x += dx; o.y += dy; apply(); } };
+  const save = () => { try { localStorage.setItem(SK, JSON.stringify(o)); } catch { /* */ } };
+  apply(); requestAnimationFrame(clamp);
+  el.addEventListener('pointerdown', (e) => { if (!(e.target as HTMLElement).closest('.mvgrip')) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = o.x, oy = o.y;
+    const mv = (ev: PointerEvent) => { o = { x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }; apply(); clamp(); };
+    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); save(); };
+    addEventListener('pointermove', mv); addEventListener('pointerup', up); });
+  el.addEventListener('dblclick', (e) => { if (!(e.target as HTMLElement).closest('.mvgrip')) return; o = { x: 0, y: 0 }; apply(); save(); });
+  addEventListener('resize', () => requestAnimationFrame(clamp));
+}
+export const MV_GRIP = (side: 'l' | 'r') => `<i class="mvgrip ${side}" title="Arraste para mover · clique duplo: volta para o lugar de sempre">⋮</i>`;

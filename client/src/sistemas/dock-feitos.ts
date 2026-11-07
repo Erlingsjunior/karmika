@@ -2,7 +2,7 @@
 import { ownRuneText } from '../runas-elfo';
 import { DOCK_ICONS } from '../ui/icones';
 import { type Feat, CATS, createFeats, FEATS } from '../feats';
-import { floatWin } from '../windows';
+import { floatWin, movable, MV_GRIP } from '../windows';
 import { renderTalents } from './talentos-ui';
 import { runeSlots } from './runas-ui';
 import { renderPassives, renderCompendium, runeTextFor } from './passivas-ui';
@@ -14,7 +14,7 @@ const dockEl = document.createElement('div'); dockEl.id = 'dock';
 /* dock em quadradinhos, embaixo do chat (canto inferior esquerdo): um quadrado para cada janela do jogo */
 const DOCK: [string, string, string][] = [['inv', 'Mochila', 'I'], ['char', 'Personagem', 'C'], ['skills', 'Árvore Kármica (magias)', 'K'], ['quests', 'Missões', 'J'], ['feats', 'Conquistas — Inscrições de Marghar', 'L'], ['karma', 'Compêndio do Karma', 'U'], ['prof', 'Profissões', 'Y'], ['loja', 'Shop — Premium e brasões', 'T'], ['map', 'Mapa', 'M'], ['stable', 'Estábulo e Companheiros — pets e montarias', 'X'], ['coop', 'Jogar junto — abrir sala ou entrar com convite', 'F4'], ['social', 'Amigos, conversas e guilda', 'F9'], ['opts', 'Opções e configurações', 'Esc']];
 dockEl.innerHTML = DOCK.map(([d, t, k]) => `<button data-d="${d}" title="${t} (${k})">${DOCK_ICONS[d] ?? ''}<small>${k}</small></button>`).join('');
-document.body.appendChild(dockEl);
+dockEl.insertAdjacentHTML('beforeend', MV_GRIP('r')); document.body.appendChild(dockEl); movable(dockEl, 'dock');
 const skillsEl = document.createElement('div'); skillsEl.id = 'skillsw'; skillsEl.className = 'modalw'; document.body.appendChild(skillsEl);
 const featsEl = document.createElement('div'); featsEl.id = 'featsw'; featsEl.className = 'modalw'; document.body.appendChild(featsEl);
 /* Inscrições de Marghar (conquistas): aviso dourado no alto da tela quando uma se grava */

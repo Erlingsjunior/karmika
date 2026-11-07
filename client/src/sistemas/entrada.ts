@@ -187,7 +187,7 @@ addEventListener('keydown', (e) => {
   if (e.key === 'F5' && e.shiftKey) { e.preventDefault(); swapTo('nordic'); return; }
   if (e.key === 'F6' && e.shiftKey) { e.preventDefault(); swapTo('technocrat'); return; }
   if (e.key === 'F7' && e.shiftKey) { e.preventDefault(); swapTo('dwarf'); return; }
-  if (/^F[1-8]$/.test(e.key)) { e.preventDefault(); K.useQuick(+e.key.slice(1) - 1); return; }
+  if (/^F[1-8]$/.test(e.key)) { e.preventDefault(); K.useQuick(+e.key.slice(1) - 1 + (e.shiftKey ? 8 : 0)); return; }
   if (e.key === 'Tab') setCombat(!combatMode);
   if (e.code === 'Backquote' && !e.repeat) dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.shiftKey ? -1 : 1 })); /* 03/11: a tecla ao lado do 1 (' no teclado ABNT) troca o jeito de segurar */
   void ORDER;
