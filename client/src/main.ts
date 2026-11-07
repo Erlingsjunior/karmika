@@ -12,10 +12,15 @@ import { eyeSees } from './surrender';
 
 
 /* o mundo cresceu (21/10/2026): as Terras dos Homens foram para o centro do mapa de 840 — tudo que o save guarda em tiles anda SH */
-{ const W2 = 'karmika.world', SHF = 210, T2 = 2; if (localStorage.getItem(W2) !== '2') { const mv = (k: string, f: (o: any) => void) => { try { const raw = localStorage.getItem(k); if (!raw) return; const o = JSON.parse(raw); f(o); localStorage.setItem(k, JSON.stringify(o)); } catch { /* */ } };
+{ const W2 = 'karmika.world', SHF = 210, T2 = 2; if (+(localStorage.getItem(W2) || 0) < 2) { const mv = (k: string, f: (o: any) => void) => { try { const raw = localStorage.getItem(k); if (!raw) return; const o = JSON.parse(raw); f(o); localStorage.setItem(k, JSON.stringify(o)); } catch { /* */ } };
   mv('karmika.home.v1', (o) => { if (o) { o.x += SHF; o.y += SHF; } }); mv('karmika.build.v1', (a) => { for (const b of a ?? []) { b.gx += SHF; b.gy += SHF; } });
   mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } }); mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += SHF; r.gy += SHF; } });
   mv('karmika.hunt', (h) => { if (h) { h.x += SHF * T2; h.z += SHF * T2; } }); localStorage.setItem(W2, '2'); } }
+/* 07/11/2026: o mundo ganhou o MAR em volta (DXW casas de cada lado) — o continente anda DXW; a fonte-lar, a casa, as obras, o que nasceu de novo e a caçada andam junto */
+{ const W2 = 'karmika.world', S = 300, T2 = 2; if (+(localStorage.getItem(W2) || 0) < 3) { const mv = (k: string, f: (o: any) => void) => { try { const raw = localStorage.getItem(k); if (!raw) return; const o = JSON.parse(raw); f(o); localStorage.setItem(k, JSON.stringify(o)); } catch { /* */ } };
+  mv('karmika.home.v1', (o) => { if (o && Number.isFinite(o.x)) { o.x += S; o.y += S; } }); mv('karmika.casa.v1', (o) => { if (o && Number.isFinite(o.gx)) { o.gx += S; o.gy += S; } });
+  mv('karmika.build.v1', (a) => { for (const b of a ?? []) { b.gx += S; b.gy += S; } }); mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } });
+  mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } }); mv('karmika.hunt', (h) => { if (h && Number.isFinite(h.x)) { h.x += S * T2; h.z += S * T2; } }); localStorage.setItem(W2, '3'); } }
 import * as THREE from 'three';
 import { gaitOf } from './andar';
 import { premiumWelcome } from './celebrate';

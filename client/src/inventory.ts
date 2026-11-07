@@ -6,7 +6,7 @@ import { isPremium, GIFT_BAG } from './premium';
 import { floatWin, buyFx, confirmBox } from './windows';
 import { TOOLS, TOOL_SLOTS, TIER_NAME, isTool, toolDesc, type ToolSlot } from './tools';
 import { facSet, myFac, setMyFac, FAC, FAC_LVL, FAC_ILVL, FAC_PRICE, type Fac } from './faccoes';
-import { reqLvl, tipCtx, genGear, gearTip, gearIcon, plainGear, syncUid, rollRarity, RARITY, RSLOT, STAT_LABEL, SPECIAL, type Gear, type Slot, type StatKey } from './loot';
+import { reqLvl, tipCtx, genGear, gearTip, gearIcon, gearEmoji, plainGear, syncUid, rollRarity, RARITY, RSLOT, STAT_LABEL, SPECIAL, type Gear, type Slot, type StatKey } from './loot';
 
 export type ItemKind = 'res' | 'food' | 'tool' | 'weapon' | 'armor' | 'shield' | 'misc';
 export interface Item { name: string; icon: string; kind: ItemKind; col: number; desc: string; /** item de missão: não se vende, não se dá, não vai ao leilão nem ao correio; destruir abandona a missão */ quest?: string; heal?: number; mp?: number; buff?: string; atk?: number; def?: number; tier?: number; sell?: number }
@@ -419,7 +419,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
 
   const bar = (v: number, m: number, c: string) => `<div class="bar"><i style="width:${Math.max(0, Math.min(100, v / m * 100))}%;background:${c}"></i></div>`;
   // (resumo de status dos itens: hoje mostrado só no tooltip)
-  const cell = (g: Gear, attrs: string) => { const bad = st.lvl < reqLvl(g) || (!!g.fac && myFac() !== g.fac) || !!hooks.canWear?.(g); /* 02/11: arma que a classe não usa também fica vermelha */ return `<div class="it gi ${bad ? 'noreq' : ''}" draggable="true" data-drag="g:${g.uid}" ${attrs} style="border-color:${RARITY[g.rarity].col};box-shadow:inset 0 0 10px ${bad ? '#c0202a66' : RARITY[g.rarity].col + '44'}"><span>${gearIcon(g)}</span><b style="color:${bad ? '#ff4a4a' : RARITY[g.rarity].col}" title="nível de uso">${reqLvl(g)}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small></div>`; };
+  const cell = (g: Gear, attrs: string) => { const bad = st.lvl < reqLvl(g) || (!!g.fac && myFac() !== g.fac) || !!hooks.canWear?.(g); /* 02/11: arma que a classe não usa também fica vermelha */ return `<div class="it gi gi2 r-${g.rarity} ${bad ? 'noreq' : ''}" draggable="true" data-drag="g:${g.uid}" ${attrs} style="--rc:${RARITY[g.rarity].col}"><span>${gearEmoji(g)}</span><i class="rgem"></i><b style="color:${bad ? '#ff4a4a' : RARITY[g.rarity].col}" title="nível de uso">${reqLvl(g)}</b><small style="color:${RARITY[g.rarity].col}">${g.name}</small></div>`; };
   /** a aba ⚛ Reator: o cilindro cortado no meio e os seis encaixes em volta */
   function reactorTab() { const R = hooks.reactor!(), P = loadParts(), filled = REACTOR_PARTS.filter((q) => (P[q.id] ?? 0) >= q.n).length;
     const slot = (q: ReactorPart) => { const have = P[q.id] ?? 0, inBag = bag[q.id] ?? 0, it = ITEMS[q.id], ok = have >= q.n;
@@ -487,13 +487,19 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       + Array.from({ length: free }, () => '<button class="slot" disabled title="Lugar livre para bolsa: pegue uma bolsa e ela se equipa sozinha"><span>＋</span></button>').join('')
       + '<button data-bball title="Abrir a mochila inteira (I)" class="all"><span>🗂</span><i>I</i></button>';
   }
+  /** o tamanho de cada bolsa aberta, quando o jogador estica pelo canto */
+  let bagSize: Record<string, { w: number; h: number }> = (() => { try { return JSON.parse(localStorage.getItem('karmika.bagsize') || '{}'); } catch { return {}; } })();
+  mini.addEventListener('pointerup', () => { let ch = false; mini.querySelectorAll<HTMLElement>('.pn.bm').forEach((p) => { const k = p.dataset.bmk!, w = Math.round(p.offsetWidth), h = Math.round(p.offsetHeight), o = bagSize[k];
+    if (p.style.width || p.style.height) { if (!o || Math.abs(o.w - w) > 2 || Math.abs(o.h - h) > 2) { bagSize[k] = { w, h }; p.classList.add('sized'); ch = true; } } }); if (ch) { try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } placeBar(); } });
+  mini.addEventListener('dblclick', (e) => { const h = (e.target as HTMLElement).closest('.pn.bm h2'), p = h?.parentElement as HTMLElement | null; if (!p) return; delete bagSize[p.dataset.bmk!]; try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } render(); }); /* clique duplo no título: volta ao tamanho certo */
   function renderMini(M: Map<string, string[]>) {
     const SP = specialList(), G = bagGroups(); openBags = openBags.filter((k) => SP.some((q) => q.key === k) || G.some((g) => g.key === k && g.on));
     if (!openBags.length || open) { mini.style.display = 'none'; return; }
     mini.innerHTML = openBags.map((k) => { const sp = SP.find((q) => q.key === k), g = G.find((q) => q.key === k);
       const cells = sp ? specialCells(sp.set) : M.get(k) ?? [], n = sp ? Math.max(6, Math.ceil(cells.length / 6) * 6) : g!.n;
       const empties = Array.from({ length: Math.max(0, n - cells.length) }, () => '<div class="it empty"></div>').join('');
-      return `<div class="pn bm"><h2><span>${sp ? sp.icon : g!.icon}</span>${sp ? sp.name : g!.name}<small>${sp ? `${stacksIn(sp.set)}/${sp.cap}` : `${cells.length}/${g!.n}`}</small><button data-mx="${k}" title="Fechar esta bolsa">✕</button></h2><div class="grid g6 sc" ${sp ? '' : `data-bagkey="${k}"`}>${cells.join('')}${empties}</div></div>`; }).join('');
+      const sz = bagSize[k]; const st2 = sz ? ` style="width:${sz.w}px;height:${sz.h}px"` : '';
+      return `<div class="pn bm ${sz ? 'sized' : ''}" data-bmk="${k}"${st2}><h2><span>${sp ? sp.icon : g!.icon}</span>${sp ? sp.name : g!.name}<small>${sp ? `${stacksIn(sp.set)}/${sp.cap}` : `${cells.length}/${g!.n}`}</small><button data-mx="${k}" title="Fechar esta bolsa">✕</button></h2><div class="grid g6 ${n > 32 ? 'tall' : ''}" ${sp ? '' : `data-bagkey="${k}"`}>${cells.join('')}${empties}</div></div>`; }).join('');
     mini.style.display = 'flex'; requestAnimationFrame(placeBar);
   }
   bagBarEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-bball]')) { open = !open; if (!open) { shop = null; vaultOpen = false; } render(); return; }

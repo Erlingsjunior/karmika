@@ -255,6 +255,15 @@ const svgOf = (k: string, col = 'currentColor') => `<svg class="gico" viewBox="0
 /** ícone desenhado de uma peça (ou de um espaço vazio) */
 /** brasões das facções (preenchido por faccoes.ts): peças com brasão mostram o brasão como ícone */
 export const FAC_ICON: Record<string, string> = {};
+/* 07/11 (Erling: "os equipamentos precisam ser representados como os itens — menores dentro do quadrado, bonitos e elegantes"):
+   na mochila e nas bolsas a peça usa um desenho colorido do mesmo estilo dos itens; a raridade fica na moldura fina e numa pedrinha */
+const EMO: Record<string, string> = { flamer: '🔥', rapier: '🤺', hammer: '🔨', axe: '🪓', dagger: '🔪', greatsword: '⚔️', sword: '🗡️', spear: '🔱', rifle: '🔫', staff: '🪄', crossbow: '🏹', bow: '🏹', gun: '🔫', claw: '🐾',
+  tower: '🛡️', heater: '🛡️', shield: '🛡️', hood: '🧕', winghelm: '⛑️', helm: '⛑️', mail: '🥋', plate: '🦺', tunic: '👘', chest: '🦺', chalice: '🏆', book: '📕', eye: '🧿', heart: '❤️‍🔥', feather: '🪶', ember: '☄️', gear: '⚙️', skull: '💀', cross: '✝️', fang: '🦷',
+  boots: '🥾', ring: '💍', amulet: '📿', earring: '💎', shoulders: '🪖', cape: '🧣' };
+export function gearEmoji(g: Gear): string { if (g.fac && FAC_ICON[g.fac]) return `<img class="gico fac" src="${FAC_ICON[g.fac]}" alt="" draggable="false">`;
+  const byBase = KEY_BY_BASE.find(([re]) => re.test(g.base) || (!!g.uniq && re.test(g.name)))?.[1];
+  const k = g.slot === 'relic' || g.slot === 'weapon' || g.slot === 'helm' || g.slot === 'armor' || g.slot === 'shield' ? byBase ?? KEY_BY_SLOT[g.slot] : KEY_BY_SLOT[g.slot];
+  return EMO[k] ?? '🗡️'; }
 export function gearIcon(g: Gear | null, slot?: Slot): string {
   if (!g) return svgOf(KEY_BY_SLOT[slot ?? 'weapon'], '#6a5a40');
   if (g.fac && FAC_ICON[g.fac]) return `<img class="gico fac" src="${FAC_ICON[g.fac]}" alt="" draggable="false">`;

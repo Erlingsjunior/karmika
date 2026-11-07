@@ -75,8 +75,11 @@ function startServer(opts = {}) {
        save deve manter os dados de casa"). Arquivo próprio, ao lado dos dados da sala e NUNCA apagado junto com eles. O servidor é
        a referência (o "de-para"): posição, tamanho, andamento, dono. O chão é disputado: dois terrenos não se sobrepõem. ---- */
     const casasFile = opts.casasFile || (dataFile ? path.join(path.dirname(dataFile), 'casas-dados.json') : null);
-    let casas = {}, sold = {}; try { if (casasFile && fs.existsSync(casasFile)) { const j = JSON.parse(fs.readFileSync(casasFile, 'utf8')) || {}; if (j.v === 2) { casas = j.houses || {}; sold = j.sold || {}; } else casas = j; } } catch (e) { log('não deu para ler as casas:', e.message); }
-    let casaT = null; const saveCasas = () => { if (!casasFile || casaT) return; casaT = setTimeout(() => { casaT = null; try { const tmp = casasFile + '.tmp'; fs.writeFileSync(tmp, JSON.stringify({ v: 2, houses: casas, sold }, null, 1)); fs.renameSync(tmp, casasFile); } catch (e) { log('não deu para salvar as casas:', e.message); } }, 800); };
+    let casas = {}, sold = {}, saveCasasSoon = false; try { if (casasFile && fs.existsSync(casasFile)) { const j = JSON.parse(fs.readFileSync(casasFile, 'utf8')) || {}; if (j.v === 2 || j.v === 3) { casas = j.houses || {}; sold = j.sold || {}; } else casas = j;
+      /* 07/11/2026: o mundo ganhou o mar em volta (300 casas de cada lado): as casas de antes (v2) andam junto com o continente */
+      if (j.v !== 3) { for (const c of Object.values(casas)) if (c && Number.isFinite(c.gx)) { c.gx += 300; c.gy += 300; } for (const c of Object.values(sold)) if (c && Number.isFinite(c.gx)) { c.gx += 300; c.gy += 300; } saveCasasSoon = true; } } } catch (e) { log('não deu para ler as casas:', e.message); }
+    let casaT = null; const saveCasas = () => { if (!casasFile || casaT) return; casaT = setTimeout(() => { casaT = null; try { const tmp = casasFile + '.tmp'; fs.writeFileSync(tmp, JSON.stringify({ v: 3, houses: casas, sold }, null, 1)); fs.renameSync(tmp, casasFile); } catch (e) { log('não deu para salvar as casas:', e.message); } }, 800); };
+    if (saveCasasSoon) saveCasas();
     const casaKey = (acc, char) => acc + '|' + lc(char);
     const num = (v) => Number.isFinite(+v) ? +v : null;
     const casaOf = (h) => casas[casaKey(h.acc, h.char)] || null;
