@@ -102,7 +102,13 @@ export function dragAll() {
     const k = keyOf(p), o = free[k] ?? { x: 0, y: 0 }; d = { p, k, x: e.clientX, y: e.clientY, ox: o.x, oy: o.y }; p.classList.add('dragging'); e.preventDefault();
     const host = p.closest('.modalw, .kconf, #menu, [id]') as HTMLElement | null; if (host) bringFront(host);
   }, true);
-  addEventListener('pointermove', (e) => { if (!d) return; free[d.k] = { x: d.ox + e.clientX - d.x, y: d.oy + e.clientY - d.y }; applyFree(d.p, d.k); });
+  /* 07/11 (Erling: "não pode jogar janelas fora da área do jogo, só o mouse sai"): a janela fica presa na tela enquanto é arrastada */
+  const clampIn = (p: HTMLElement, k: string) => { const o = free[k]; if (!o) return; const r = p.getBoundingClientRect(); if (!r.width) return; let dx = 0, dy = 0;
+    if (r.width <= innerWidth) { if (r.left < 0) dx = -r.left; else if (r.right > innerWidth) dx = innerWidth - r.right; } else dx = -r.left;
+    if (r.height <= innerHeight) { if (r.top < 0) dy = -r.top; else if (r.bottom > innerHeight) dy = innerHeight - r.bottom; } else dy = -r.top;
+    if (dx || dy) { o.x += dx; o.y += dy; applyFree(p, k); } };
+  addEventListener('pointermove', (e) => { if (!d) return; free[d.k] = { x: d.ox + e.clientX - d.x, y: d.oy + e.clientY - d.y }; applyFree(d.p, d.k); clampIn(d.p, d.k); });
+  addEventListener('resize', () => requestAnimationFrame(() => { for (const p of Array.from(document.querySelectorAll<HTMLElement>('.pn, #menu .panel'))) { if (p.closest(SKIP) || !p.offsetParent) continue; clampIn(p, keyOf(p)); } }));
   let dragEnd = 0; addEventListener('click', (e) => { if (performance.now() - dragEnd < 250) { e.stopPropagation(); e.preventDefault(); } }, true); // soltar o arrasto não conta como clique (não fecha a janela)
   addEventListener('pointerup', () => { if (!d) return; const { p, k } = d; d = null; p.classList.remove('dragging'); dragEnd = performance.now();
     const r = p.getBoundingClientRect(), o = free[k]; if (o) { /* a janela inteira dentro da tela */ if (r.width <= innerWidth) { if (r.left < 0) o.x -= r.left; else if (r.right > innerWidth) o.x -= r.right - innerWidth; } if (r.height <= innerHeight) { if (r.top < 0) o.y -= r.top; else if (r.bottom > innerHeight) o.y -= r.bottom - innerHeight; } else if (r.top < 0) o.y -= r.top; applyFree(p, k); }

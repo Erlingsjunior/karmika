@@ -486,8 +486,14 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     if (barPos) { L = barPos.l; B = barPos.b; } else { const o = document.getElementById('mp')?.getBoundingClientRect(); if (!o || !o.width) return; L = Math.round(o.right + 14); B = Math.round(innerHeight - o.bottom + 4); if (L + bw > innerWidth - 8) { L = Math.round(innerWidth - bw - 10); B = Math.round(innerHeight - o.top + 8); } }
     L = Math.max(4, Math.min(innerWidth - bw - 4, L)); B = Math.max(2, Math.min(innerHeight - bh - 4, B));
     bagBarEl.style.left = L + 'px'; bagBarEl.style.bottom = B + 'px';
-    /* as bolsas abertas ficam em cima da fileira, da direita para a esquerda, e sobem quando não cabem */
-    const mw = mini.offsetWidth * ui; mini.style.left = Math.max(4, Math.min(L + bw - mw, innerWidth - mw - 6)) + 'px'; mini.style.bottom = (B + bh + 6) + 'px'; };
+    /* 07/11 (Erling: "devia abrir para cima e não para o lado"): as bolsas abertas se empilham para CIMA a partir da fileira, alinhadas
+       pela direita; quando a pilha chega no alto da tela, começa outra coluna à esquerda */
+    const ps = Array.from(mini.querySelectorAll<HTMLElement>('.pn.bm')); let right = Math.min(innerWidth - 4, L + bw), y = B + bh + 6, colW = 0, n = 0;
+    /* a escala real das coordenadas (a interface tem zoom/escala): mede uma vez, colocando a primeira bolsa em 0 e em 100 */
+    let kx = ui, x0 = 0, y0 = 0; if (ps[0]) { const p = ps[0]; p.style.left = '0px'; p.style.bottom = '0px'; const a = p.getBoundingClientRect(); p.style.left = '100px'; const b2 = p.getBoundingClientRect(); kx = (b2.left - a.left) / 100 || ui; x0 = a.left; y0 = innerHeight - a.bottom; }
+    for (const p of ps) { const rr = p.getBoundingClientRect(), w = rr.width, h = rr.height;
+      if (n && y + h > innerHeight - 6) { right -= colW + 6; y = B + bh + 6; colW = 0; n = 0; }
+      const x = Math.max(4, right - w), yy = Math.max(2, Math.min(innerHeight - h - 4, y)); p.style.left = (x - x0) / kx + 'px'; p.style.bottom = (yy - y0) / kx + 'px'; y = yy + h + 6; colW = Math.max(colW, w); n++; } };
   addEventListener('resize', () => requestAnimationFrame(placeBar)); setInterval(placeBar, 2000);
   function renderBar(M: Map<string, string[]>) {
     const G = bagGroups(), free = Math.max(0, MAX_BAGS - bags.length), cur = (k: string) => openBags.includes(k) ? 'cur' : '';
@@ -501,6 +507,14 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   mini.addEventListener('pointerup', () => { let ch = false; mini.querySelectorAll<HTMLElement>('.pn.bm').forEach((p) => { const k = p.dataset.bmk!, w = Math.round(p.offsetWidth), h = Math.round(p.offsetHeight), o = bagSize[k];
     if (p.style.width || p.style.height) { if (!o || Math.abs(o.w - w) > 2 || Math.abs(o.h - h) > 2) { bagSize[k] = { w, h }; p.classList.add('sized'); ch = true; } } }); if (ch) { try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } placeBar(); } });
   mini.addEventListener('dblclick', (e) => { const h = (e.target as HTMLElement).closest('.pn.bm h2'), p = h?.parentElement as HTMLElement | null; if (!p) return; delete bagSize[p.dataset.bmk!]; try { localStorage.setItem('karmika.bagsize', JSON.stringify(bagSize)); } catch { /* */ } render(); }); /* clique duplo no título: volta ao tamanho certo */
+  /* 07/11 (Erling: "se eu redimensiono a bolsa, redimensiona os quadrados dos slots"): a bolsa esticada pelo canto recalcula colunas e
+     o tamanho de cada casa para encher a janela, sem sobrar fundo vazio */
+  const fitCells = (p: HTMLElement) => { const gr = p.querySelector<HTMLElement>('.grid'); if (!gr) return;
+    if (!p.classList.contains('sized') && !p.style.width && !p.style.height) { gr.style.gridTemplateColumns = ''; gr.style.removeProperty('--cs'); gr.classList.remove('fit'); return; }
+    const n = gr.children.length, hh = (p.querySelector('h2') as HTMLElement | null)?.offsetHeight ?? 18, W = p.clientWidth - 12, H = p.clientHeight - hh - 12, G = 3; if (!n || W < 20 || H < 20) return;
+    let best = 0, bc = 1; for (let c = 1; c <= n; c++) { const r = Math.ceil(n / c), sz = Math.min((W - (c - 1) * G) / c, (H - (r - 1) * G) / r); if (sz > best) { best = sz; bc = c; } }
+    const sz = Math.max(20, Math.min(72, Math.floor(best))); gr.style.gridTemplateColumns = `repeat(${bc}, ${sz}px)`; gr.style.setProperty('--cs', sz + 'px'); gr.classList.add('fit'); };
+  const cellRO = new ResizeObserver((es) => { for (const e of es) fitCells(e.target as HTMLElement); });
   function renderMini(M: Map<string, string[]>) {
     const SP = specialList(), G = bagGroups(); openBags = openBags.filter((k) => SP.some((q) => q.key === k) || G.some((g) => g.key === k && g.on));
     if (!openBags.length || open) { mini.style.display = 'none'; return; }
@@ -509,7 +523,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
       const empties = Array.from({ length: Math.max(0, n - cells.length) }, () => '<div class="it empty"></div>').join('');
       const sz = bagSize[k]; const st2 = sz ? ` style="width:${sz.w}px;height:${sz.h}px"` : '';
       return `<div class="pn bm ${sz ? 'sized' : ''}" data-bmk="${k}"${st2}><h2><span>${sp ? sp.icon : g!.icon}</span>${sp ? sp.name : g!.name}<small>${sp ? `${stacksIn(sp.set)}/${sp.cap}` : `${cells.length}/${g!.n}`}</small><button data-mx="${k}" title="Fechar esta bolsa">✕</button></h2><div class="grid g6 ${n > 32 ? 'tall' : ''}" ${sp ? '' : `data-bagkey="${k}"`}>${cells.join('')}${empties}</div></div>`; }).join('');
-    mini.style.display = 'flex'; requestAnimationFrame(placeBar);
+    mini.style.display = 'block'; cellRO.disconnect(); mini.querySelectorAll<HTMLElement>('.pn.bm').forEach((p) => { fitCells(p); cellRO.observe(p); }); requestAnimationFrame(placeBar);
   }
   /* a janelinha de configuração das bolsas (⚙ na fileira) */
   const cfgEl = document.createElement('div'); cfgEl.id = 'bagcfg'; cfgEl.className = 'pn'; document.body.appendChild(cfgEl); let cfgOpen = false;
