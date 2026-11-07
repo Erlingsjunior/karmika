@@ -5,13 +5,18 @@ import { BARKS, roleTag } from './barks';
 export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
 interface Npc { built: boolean; lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
+/* 06/11 (Erling: "a altura média do jogo é 1,70; o herói tem que ser maior, mais heroico"): os modelos crus medem humano/elfo civil e
+   nórdico ~1,87 m, tecnocrata ~2,10 m e anão ~1,63 m. Aqui eles voltam para a média do mundo: gente 1,70 m, anão 1,40 m.
+   O "scale" de cada NPC continua valendo por cima (a moça 0,92, o grandalhão 1,1). */
+const KIND_NORM: Record<string, number> = { technocrat: 0.81, dwarf: 0.86 };
+export const npcScale = (def: { kind: string; civil?: string; scale: number }) => def.scale * (def.civil ? 0.91 : KIND_NORM[def.kind] ?? 0.91);
 export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   /* 02/11 (Erling, item 8): o NPC só é montado quando o jogador chega na região dele (a 60 m), aos poucos (2 por quadro), o mais perto primeiro.
      Antes os ~380 bonecos eram montados todos na abertura do jogo. Até montar, ele é um marcador vazio (posição, nome, falas e rota funcionam igual). */
   const BUILD_R = 60, PER_FRAME = 2;
   function makeHero(def: NpcDef): Hero3D {
     const hero = createCharacter(def.civil ? 'nordic' : def.kind, { static: true, civil: def.civil, cloth: def.civil ? def.tint : undefined });
-    hero.root.scale.setScalar(def.scale); hero.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); // NPCs sem sombra (desempenho)
+    hero.root.scale.setScalar(npcScale(def)); hero.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); // NPCs sem sombra (desempenho)
     const tint = new THREE.Color(def.tint);
     hero.root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; const mats = Array.isArray(m.material) ? m.material : [m.material]; m.material = (mats.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color || t.side === THREE.BackSide || (t as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) return mt; const c = t.clone(); c.color.lerp(tint, 0.38); return c; }) as THREE.Material[]); const arr = m.material as unknown as THREE.Material[]; if (arr.length === 1) m.material = arr[0]; });
     return hero;
@@ -47,7 +52,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     /* 26/10 noite (Erling: "dois NPCs grudados um dentro do outro"): ninguém ocupa o mesmo lugar. Quem está perto demais
        é empurrado para fora devagar (quem anda numa rota de patrulha cede menos), sempre para chão andável. */
     { const vis = npcs.filter((n) => n.hero.root.visible);
-      for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) { const a = vis[i], b = vis[j], min = 0.85 * Math.max(a.def.scale, b.def.scale) + 0.25;
+      for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) { const a = vis[i], b = vis[j], min = 0.85 * Math.max(npcScale(a.def), npcScale(b.def)) + 0.25;
         let dx = b.pos.x - a.pos.x, dz = b.pos.z - a.pos.z, l = Math.hypot(dx, dz); if (l >= min) continue;
         if (l < 1e-3) { const g = (i * 7 + j * 13) % 6.283; dx = Math.cos(g); dz = Math.sin(g); l = 1; }
         const push = Math.min(min - l, 2.5 * dt + (min - l) * 0.2), ka = a.def.route ? 0.15 : b.def.route ? 0.85 : 0.5, kb = 1 - ka;
@@ -84,7 +89,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */
       n.hero.root.rotation.y = n.yaw;
       // nome e fala
-      v.set(n.pos.x, n.pos.y + 2.3 * d.scale, n.pos.z).project(ctx.camera);
+      v.set(n.pos.x, n.pos.y + 2.3 * npcScale(d), n.pos.z).project(ctx.camera);
       const show = dH < 22 && v.z < 1;
       n.el.style.display = show ? 'block' : 'none';
       if (show) {

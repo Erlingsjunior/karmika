@@ -1643,6 +1643,9 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       const c2 = Math.cos(2 * phase);
       const bobY = lerp(c2 * bobA, -c2 * bobA * 0.6, runK) - 0.045 * runK - (S.stomp * (hero.gait?.stomp ?? 1) * 0.012) * Math.abs(Math.sin(phase)) * walkK;
       const idleY = Math.sin(breath) * 0.01 * (1 - walkK);
+      /* 06/11 (Erling: "de pé ele fica com as pernas dobradas, ninguém fica de pé assim"): parado (guarda, postura de instinto, escudo,
+         descanso) as pernas ficam ESTICADAS — só um leve destravar do joelho. O corpo baixo fica para o andar das classes e para os golpes */
+      if (!act && !dashing && kneelE < 0.01) aCrouch = Math.min(aCrouch, 0.008 + 0.2 * walkK);
       body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE;
       hips.position.x = Math.cos(phase) * S.sway * (hero.gait?.sway ?? 1) * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
       /* 04/11 CADEIA CINÉTICA: antes o quadril girava ao CONTRÁRIO do peito (−0,4 do giro) — a torção ficava toda na cintura, um corpo de
@@ -1675,7 +1678,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         let knee = K * Math.max(0, Math.cos(ph - 0.3)) + (0.14 + 0.38 * runK) * walkK + 0.12 * (1 - walkK) * 0 + aCrouch * 5;
         if (dashing) { const w = Math.sin(dashP * Math.PI), lead = (leg === legL) === dashLeadL; hip = lead ? -0.85 * w : 0.5 * w; knee = lead ? 1.15 * w : 0.35 * w; }
         hip += lunge * -0.7; knee += lunge * 0.3;
-        const front = leg === legL; hip += (front ? -0.06 : 0.04) * restK + (front ? -0.22 : 0.18) * guardK + (front ? -0.18 : 0.1) * cK * (1 - walkK); knee += (front ? 0.1 : 0.08) * restK + (front ? 0.25 : 0.3) * guardK + (front ? 0.2 : 0.16) * cK * (1 - walkK) + 0.08 * cK * walkK;
+        const front = leg === legL; hip += (front ? -0.06 : 0.04) * restK + (front ? -0.14 : 0.1) * guardK + (front ? -0.12 : 0.07) * cK * (1 - walkK); knee += (front ? 0.03 : 0.02) * restK + (front ? 0.06 : 0.08) * guardK + (front ? 0.05 : 0.04) * cK * (1 - walkK) + 0.08 * cK * walkK;
         leg.hip.rotation.x = hip; leg.knee.rotation.x = knee;
         // pé: plantado no chão (compensa quadril+joelho+inclinação da pelve); na passada solta um pouco para o impulso dos dedos
         // pé: plantado quando a perna está esticada no chão; quanto mais o joelho dobra (passada, salto, agachar), mais o pé acompanha a canela
