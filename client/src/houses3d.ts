@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { std, ink, texBox, plankTex, stoneTex, plasterTex, woodTex, gableRoof, scaleUV } from './toon3d';
+import { std, ink, texBox, plankTex, stoneTex, plasterTex, woodTex, gableRoof, scaleUV, brickTex } from './toon3d';
 
 /** onde fica a porta da frente de cada modelo de casa (coordenadas locais da casa, chão): a luz da porta usa isto */
 export function houseDoor(variant: number, Wm: number, Dm: number): { x: number; z: number; y: number; w: number; h: number } {
@@ -13,7 +13,7 @@ export function houseDoor(variant: number, Wm: number, Dm: number): { x: number;
   return { x: cx - bw * 0.15, z: front + 0.04, y: 0, w: 1.5, h: 2.3 };
 }
 export interface HouseOut { group: THREE.Group; chimneys: THREE.Vector3[]; lantern: THREE.Vector3 }
-interface Ctx { windows: THREE.MeshBasicMaterial; rnd: () => number }
+interface Ctx { windows: THREE.MeshBasicMaterial; rnd: () => number; /** 08/11: loja (casa com placa pendurada): chave do comércio */ shop?: string }
 
 const dark = std(0x0c0a0e);
 const timberM = () => std(0xffffff, { map: woodTex(0x4a3220) });
@@ -245,19 +245,40 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
     chim.push(new THREE.Vector3(cx - bw * 0.15, wallH + roofH + 0.2, cz)); // fumaça pelo buraco do teto (sem chaminé)
     barrels(g, cx - bw * 0.42, front + 0.7, c, 1);
   } else if (style === 2) { // ANÃO
-    const wallH = 2.6, st = M(0x6a5e52, 'stone'), dk = M(0x4a423a, 'stone'), cu = std(0xb06a3a);
-    mesh(texBox(bw + 0.3, 0.6, bd + 0.3, 1.6), dk, cx, 0.3, cz);
-    mesh(texBox(bw, wallH, bd, 1.6), st, cx, wallH / 2 + 0.3, cz);
-    mesh(texBox(bw + 0.4, 0.35, bd + 0.4, 1.6), dk, cx, wallH + 0.47, cz);
-    mesh(texBox(bw - 1.0, 0.9, bd - 1.0, 1.6), st, cx, wallH + 1.1, cz);
-    mesh(texBox(bw - 0.8, 0.25, bd - 0.8, 1.6), dk, cx, wallH + 1.67, cz);
-    mesh(new THREE.BoxGeometry(bw + 0.02, 0.22, 0.05), cu, cx, wallH - 0.2, front + 0.01);
-    for (let i = 0; i < 5; i++) { const r = mesh(new THREE.PlaneGeometry(0.22, 0.22), std(0xffd27a), cx - bw / 2 + 0.6 + i * (bw - 1.2) / 4, wallH - 0.2, front + 0.05); r.rotation.z = Math.PI / 4; }
-    const a = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.16, 6, 12, Math.PI), dk); a.position.set(dr.x, 1.9, dz + 0.08); g.add(a);
-    door(g, dr.x, 0.3, dz, 'z', c, 1.4, 1.9);
-    glowW(0.6, 0.5, cx + bw * 0.28, 1.6, front + 0.03, 0xff8a3a);
-    const ch = mesh(new THREE.CylinderGeometry(0.42, 0.55, 2.4, 8), dk, cx + bw * 0.3, wallH + 1.9, cz - bd * 0.2); void ch; glowW(0.4, 0.4, cx + bw * 0.3, wallH + 3.12, cz - bd * 0.2, 0xff6a20).rotation.x = -Math.PI / 2; chim.push(new THREE.Vector3(cx + bw * 0.3, wallH + 3.3, cz - bd * 0.2));
-    lantern = new THREE.Vector3(dr.x + 1.0, 1.9, front + 0.5);
+    /* 08/11 (Erling: "casas do povo anão com os assets de tijolo e madeira; porta não vai até o chão — degrau; chaminé sem fumaça; primeira cidade dos anões
+       tem que ser bonita"): embasamento de pedra escura com DEGRAUS até a porta, paredes de TIJOLO assentado com vigas de carvalho nos cantos e no meio,
+       faixa de runas de cobre, telhado de laje em degraus com beiral de madeira, chaminé de tijolo (com fumaça), janelas acesas com grade de ferro,
+       porta em arco com bandas de ferro, e placa pendurada quando é loja */
+    const wallH = 2.7, pl = 0.45, bk = M(0x8a5a44, 'stone'), bk2 = std(0xffffff, { map: brickTex((variant % 2) ? 0x8c5a42 : 0x7a5240) }), dk = M(0x4a423a, 'stone'), oak = M(0x4a3220, 'wood'), oakL = M(0x6a4a2c), cu = std(0xb06a3a), iron = std(0x2c2a2a);
+    void bk;
+    mesh(texBox(bw + 0.3, pl, bd + 0.3, 1.6), dk, cx, pl / 2, cz); /* embasamento */
+    mesh(texBox(bw, wallH, bd, 1.4), bk2, cx, pl + wallH / 2, cz); /* paredes de tijolo */
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.22, wallH + 0.1, 0.22), oak, cx + sx * (bw / 2 - 0.02), pl + wallH / 2, cz + sz * (bd / 2 - 0.02)); /* vigas de canto */
+    mesh(new THREE.BoxGeometry(bw + 0.1, 0.18, 0.2), oak, cx, pl + wallH * 0.55, front + 0.02); mesh(new THREE.BoxGeometry(bw + 0.1, 0.16, 0.16), oak, cx, pl + wallH - 0.08, front + 0.02); /* vigas da fachada */
+    mesh(new THREE.BoxGeometry(bw + 0.02, 0.2, 0.05), cu, cx, pl + wallH * 0.55 + 0.19, front + 0.08); /* faixa de cobre com runas */
+    for (let i = 0; i < 5; i++) { const r = mesh(new THREE.PlaneGeometry(0.18, 0.18), std(0xffd27a), cx - bw / 2 + 0.6 + i * (bw - 1.2) / 4, pl + wallH * 0.55 + 0.19, front + 0.115); r.rotation.z = Math.PI / 4; }
+    /* telhado: lajes em degraus com beiral de carvalho */
+    mesh(texBox(bw + 0.6, 0.22, bd + 0.6, 1.6), oakL, cx, pl + wallH + 0.11, cz);
+    mesh(texBox(bw + 0.4, 0.35, bd + 0.4, 1.6), dk, cx, pl + wallH + 0.4, cz);
+    mesh(texBox(bw - 0.9, 0.85, bd - 0.9, 1.6), bk2, cx, pl + wallH + 1.0, cz);
+    mesh(texBox(bw - 0.6, 0.25, bd - 0.6, 1.6), dk, cx, pl + wallH + 1.55, cz);
+    mesh(texBox(bw - 1.8, 0.3, bd - 1.8, 1.6), dk, cx, pl + wallH + 1.82, cz);
+    /* degraus até a porta (o embasamento é alto) */
+    for (let k = 0; k < 3; k++) { const sy = pl * (k + 1) / 3; mesh(new THREE.BoxGeometry(2.0 - k * 0.25, sy, 0.42), dk, dr.x, sy / 2, front + 0.15 + (2 - k) * 0.4 + 0.21); }
+    const a = new THREE.Mesh(new THREE.TorusGeometry(0.78, 0.17, 6, 12, Math.PI), dk); a.position.set(dr.x, pl + 1.9, dz + 0.08); g.add(a); /* arco da porta */
+    door(g, dr.x, pl, dz, 'z', c, 1.4, 1.9);
+    for (const y of [pl + 0.6, pl + 1.4]) mesh(new THREE.BoxGeometry(1.42, 0.08, 0.04), iron, dr.x, y, dz + 0.1); /* bandas de ferro */
+    /* janelas acesas com grade */
+    for (const wx of [cx + bw * 0.3, cx - bw * 0.32]) { if (Math.abs(wx - dr.x) < 1.2) continue; glowW(0.6, 0.7, wx, pl + 1.6, front + 0.03, 0xff9a3a); mesh(new THREE.BoxGeometry(0.72, 0.82, 0.06), oak, wx, pl + 1.6, front + 0.01); glowW(0.6, 0.7, wx, pl + 1.6, front + 0.05, 0xff9a3a); mesh(new THREE.BoxGeometry(0.04, 0.7, 0.03), iron, wx, pl + 1.6, front + 0.09); mesh(new THREE.BoxGeometry(0.6, 0.04, 0.03), iron, wx, pl + 1.6, front + 0.09); }
+    glowW(0.5, 0.6, cx + bw / 2 + 0.03, pl + 1.6, cz - bd * 0.2, 0xff9a3a, Math.PI / 2);
+    /* chaminé de tijolo com coroa de pedra — a fumaça sai de cima */
+    const chx = cx - bw * 0.3, chz = cz - bd * 0.2; mesh(texBox(0.7, 2.6, 0.7, 1.4), bk2, chx, pl + wallH + 1.9, chz); mesh(new THREE.BoxGeometry(0.9, 0.18, 0.9), dk, chx, pl + wallH + 3.25, chz); chim.push(new THREE.Vector3(chx, pl + wallH + 3.4, chz));
+    /* loja: placa pendurada no braço de ferro */
+    if (c.shop) { const SG: Record<string, [string, string]> = { armeiro: ['ARMEIRO', '⚔'], armaduras: ['ARMADURAS', '🛡'], mercador: ['MERCADOR', '🧺'], taverna: ['TAVERNA', '🍺'], cervejaria: ['CERVEJARIA', '🍺'], pocoes: ['POÇÕES', '⚗'], honra_anao: ['HONRA', '🏅'], construtor: ['CONSTRUTOR', '🧱'], lenhador: ['LENHADOR', '🪓'], cozinha: ['COZINHA', '🍲'], domador: ['DOMADOR', '🐾'] };
+      const [tx, ic] = SG[c.shop] ?? [c.shop.toUpperCase().slice(0, 10), '✦']; const sx = dr.x + 1.5 < cx + bw / 2 ? dr.x + 1.5 : dr.x - 1.5;
+      mesh(new THREE.BoxGeometry(0.06, 0.06, 0.9), iron, sx, pl + 2.55, front + 0.45); mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), iron, sx, pl + 2.3, front + 0.1);
+      const sg = mesh(new THREE.BoxGeometry(1.0, 0.6, 0.07), std(0xffffff, { map: signTex(tx, ic) }), sx, pl + 2.15, front + 0.75); ink(sg, 0.02); sg.rotation.y = Math.PI / 2; }
+    lantern = new THREE.Vector3(dr.x + 1.0, pl + 1.9, front + 0.5);
   } else if (style === 3) { // ÉLFICO
     const iv = M(0xe8e0cc, 'plaster'), lf = std(0x3a7a5a), wd = M(0x8a6a4a, 'wood'), r0 = Math.min(bw, bd) / 2;
     mesh(new THREE.CylinderGeometry(r0 + 0.3, r0 + 0.4, 0.4, 16), M(0xb8b0a0, 'stone'), cx, 0.2, cz);

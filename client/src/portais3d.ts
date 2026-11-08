@@ -2,6 +2,7 @@
  *  Forma paramétrica: um aro (blocos em círculo) ou um arco (dois pilares e um arco), com as peças de cada vila em volta,
  *  e o "véu" luminoso dentro (o disco que a lógica do teletransporte anima). O plano do portal olha para a câmera (+x+z). */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, stoneTex, plankTex } from './toon3d';
 
 export type PortalStyle = 'karmika' | 'brasaforja' | 'ulfheim' | 'lithendel' | 'lundr' | 'askavik' | 'cinzalto' | 'midvangr' | 'portocaldeira' | 'ferrugem' | 'jarlsheim' | 'hrimgard' | 'lumenhal' | 'corvoscuro' | 'uivoantigo' | 'gorvath';
@@ -32,7 +33,20 @@ export function buildPortal(style: PortalStyle, seed: number): { g: THREE.Group;
   let R = 1.5, yc = R + 0.4, veilR = R - 0.3, H = 4.2;
   switch (style) {
     case 'karmika': { ringBlocks(A, stone(0x8a8678), R, 14, 0.42, r, 0.5); runesOn(A, G, R, 8, yc, 0.27); for (let k = 0; k < 4; k++) A(new THREE.IcosahedronGeometry(0.2, 0), flat(0x5a7a34), -R - 0.2 + k * 0.3, 0.2 + (k % 2) * 0.2, 0.3); A(new THREE.CylinderGeometry(0.03, 0.03, 1.2, 4), wood(0x5a3a20), R + 0.5, 0.6, 0.3); A(new THREE.BoxGeometry(0.16, 0.2, 0.16), runeMat(0xffc060), R + 0.5, 1.1, 0.3); break; }
-    case 'brasaforja': { ringBlocks(A, flat(0x3a3a3e), R, 16, 0.4, r, 0.6); runesOn(A, G, R, 12, yc, 0.32); for (const s of [-1, 1]) { A(new THREE.BoxGeometry(0.7, 0.2, 0.3), flat(0x2a2a2e), s * (R + 0.3), 0.45, 0.2); A(new THREE.BoxGeometry(0.3, 0.35, 0.25), flat(0x2a2a2e), s * (R + 0.3), 0.18, 0.2); } break; }
+    case 'brasaforja': {
+      /* 08/11 (Erling: "essas peças que vêm do livro estão extremamente feias; algo belo, monumental"): o Portal dos Anões — um aro grande de
+         pedra aparelhada (16 blocos com bandas de ferro), sobre um embasamento de três degraus, flanqueado por dois pilares quadrados com
+         capitel de ferro e braseiros de forja acesos; runas de cobre no aro e duas bandeiras vermelhas do clã nas laterais. */
+      R = 2.2; yc = R + 0.9; veilR = R - 0.35; H = 6.2;
+      const dks = stone(0x4a4440), bl = stone(0x605850), ir = flat(0x2a282a), cu = flat(0xb06a3a), red = std(0x8a1a1a, { side: THREE.DoubleSide });
+      for (let k = 0; k < 3; k++) A(new THREE.BoxGeometry(7.4 - k * 0.8, 0.3, 2.6 - k * 0.5, 1, 1, 1), k % 2 ? bl : dks, 0, 0.15 + k * 0.3, 0); /* degraus */
+      ringBlocks(A, bl, R, 16, 0.5, r, 0.7, yc); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + Math.PI / 16; const b = A(new THREE.BoxGeometry(0.26, 0.6, 0.76), ir, Math.cos(a) * R, yc + Math.sin(a) * R, 0); b.rotation.z = a + Math.PI / 2; } /* bandas de ferro */
+      runesOn(A, G, R, 16, yc, 0.37); runesOn(A, cu.color.getHex(), R - 0.02, 16, yc, -0.37);
+      A(new THREE.BoxGeometry(2.4, 0.9, 0.9), dks, 0, 0.9 + 0.45, 0); /* a base do aro */
+      for (const s of [-1, 1]) { const px = s * (R + 1.5); A(new THREE.BoxGeometry(0.9, 4.6, 0.9), bl, px, 0.9 + 2.3, 0); A(new THREE.BoxGeometry(1.1, 0.25, 1.1), ir, px, 0.9 + 4.72, 0); A(new THREE.BoxGeometry(1.0, 0.3, 1.0), dks, px, 0.9 + 0.15, 0); for (const y of [1.6, 3.2]) A(new THREE.BoxGeometry(0.96, 0.1, 0.96), ir, px, 0.9 + y, 0);
+        A(new THREE.CylinderGeometry(0.42, 0.28, 0.45, 8), ir, px, 0.9 + 5.05, 0); const fl = makeFire(0.8, 'forge', 'brazier', 77 + s); fl.position.set(px, 0.9 + 5.2, 0); g.add(fl);
+        const bn = A(new THREE.PlaneGeometry(0.7, 2.6), red, px + s * 0.6, 0.9 + 2.6, 0.1); bn.rotation.y = 0.15 * s; const em = A(new THREE.PlaneGeometry(0.36, 0.36), cu, px + s * 0.6, 0.9 + 2.9, 0.12); em.rotation.z = Math.PI / 4; }
+      break; }
     case 'ulfheim': { ringBlocks(A, stone(0x9a9aa0), R, 12, 0.46, r, 0.55); runesOn(A, G, R, 8, yc, 0.3); for (const s of [-1, 1]) { A(new THREE.BoxGeometry(0.7, 0.6, 0.9), flat(0xe8e8f0), s * (R + 0.1), yc + R - 0.1, 0); A(new THREE.BoxGeometry(0.35, 0.3, 0.5), flat(0xe8e8f0), s * (R + 0.1), yc + R + 0.3, 0.35); A(new THREE.ConeGeometry(0.06, 0.18, 4), flat(0xd8d8e0), s * (R + 0.05), yc + R + 0.5, 0.2); for (let k = 0; k < 3; k++) A(new THREE.ConeGeometry(0.08, 1.2 + k * 0.3, 5), wood(0x5a4a3a), s * (R + 0.8 + k * 0.35), 0.6 + k * 0.15, 0.4 - k * 0.3); } break; }
     case 'lithendel': { const wm = flat(0xe8e4d8); for (const s of [-1, 1]) { const pts = [new THREE.Vector3(s * 1.4, 0, 0), new THREE.Vector3(s * 1.5, 1.5, 0.1), new THREE.Vector3(s * 1.0, 3.0, 0), new THREE.Vector3(0, 3.9, 0)]; const tg = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, 0.16, 6, false); A(tg, wm, 0, 0, 0); const tg2 = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map((p) => p.clone().add(new THREE.Vector3(s * 0.25, 0.1, 0.15)))), 10, 0.1, 5, false); A(tg2, wm, 0, 0, 0); for (let k = 0; k < 4; k++) A(new THREE.IcosahedronGeometry(0.14, 0), flat(0x5a8a34), s * (1.3 - k * 0.2), 0.3 + k * 0.9, 0.2); } R = 1.35; yc = 2.0; veilR = 1.2; break; }
     case 'lundr': { const wm = wood(0x5a4a2c); for (const s of [-1, 1]) A(new THREE.CylinderGeometry(0.18, 0.22, 3.4, 7), wm, s * 1.4, 1.7, 0); const top = A(new THREE.CylinderGeometry(0.16, 0.16, 3.2, 7), wm, 0, 3.4, 0); top.rotation.z = Math.PI / 2; for (const s of [-1, 1]) for (let k = 0; k < 3; k++) { const h = A(new THREE.CylinderGeometry(0.03, 0.05, 0.5 + k * 0.2, 4), flat(0xd8d0b8), s * (0.5 + k * 0.25), 3.7 + k * 0.25, 0); h.rotation.z = s * (0.6 - k * 0.3); } runesOn(A, G, 1.4, 6, 1.7, 0.22); A(new THREE.CylinderGeometry(0.22, 0.26, 1.6, 6), wood(0x6a4a2a), 2.1, 0.8, 0.3); A(new THREE.BoxGeometry(0.3, 0.26, 0.3), flat(0xd8c080), 2.1, 1.75, 0.3); R = 1.4; yc = 1.9; veilR = 1.2; break; }

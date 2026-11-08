@@ -156,7 +156,7 @@ export function buildWorld(world: World): WorldObjs {
     const r = rng(p.gx * 977 + p.gy * 131);
     const wx = p.gx * T + Wm / 2, wz = p.gy * T + Dm / 2, wy = g.position.y;
     if (p.kind === 'house') {
-      const hs = p.style ? buildStyledHouse(p.style, p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r }) : buildHouse(p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r });
+      const hs = p.style ? buildStyledHouse(p.style, p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r, shop: p.shop }) : buildHouse(p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r });
       g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + ch.y, p.gy * T + ch.z));
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);

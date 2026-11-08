@@ -274,15 +274,18 @@ function woodFence(K: ReturnType<typeof kit>, len: number, broken: number, seed:
    madeira"): a muralhinha anã — blocos de pedra lavrada em fiadas, capa de laje com friso, pilastras de pedra com cinta de ferro nas
    pontas e, de vez em quando, uma viga de carvalho com rebites atravessando o topo */
 function dwarfWall(K: ReturnType<typeof kit>, len: number, seed: number) {
+  /* 08/11 (Erling: "que brilho é esse nas muretas?"): os blocos soltos deixavam a luz passar pelas juntas e a sombra recortava em escada.
+     Agora o muro é UM bloco maciço com a textura de pedra aparelhada (as fiadas vêm do desenho da textura), sapata, cordão de ferro,
+     coroamento em laje e pilares com bandas de ferro e botões de latão nas pontas; às vezes uma viga de carvalho por cima. */
   const r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, L = len, hl = L / 2;
-  const blk = [stone(0x6a625a), stone(0x5e5850), stone(0x726a60)], cap = stone(0x847a6e), iron = flat(0x2c2a2a), oak = wood(0x5a3c22), brass = flat(0xb08a40);
-  K.box(L, 0.12, 0.62, 0, 0.06, 0, stone(0x4a4440)); /* sapata */
-  K.box(L - 0.04, 0.9, 0.44, 0, 0.55, 0, stone(0x3a3632)); /* miolo maciço: sem ele a luz do outro lado vazava pelas juntas entre os blocos (o brilho branco nas muretas) */
-  for (let row = 0; row < 3; row++) { let x = -hl + 0.02 + (row % 2) * 0.22; while (x < hl - 0.02) { const w = Math.min(0.42 + r(x * 7 + row) * 0.2, hl - 0.02 - x); if (w > 0.08) K.box(w - 0.03, 0.25, 0.52, x + w / 2, 0.24 + row * 0.27, 0, blk[(row + Math.floor(x * 3)) % 3]); x += w; } }
-  K.box(L + 0.06, 0.1, 0.66, 0, 1.03, 0, cap); K.box(L + 0.02, 0.05, 0.7, 0, 0.96, 0, stone(0x3e3a36));
-  for (const sx of [-1, 1]) { const px = sx * (hl - 0.18); K.box(0.42, 1.4, 0.72, px, 0.7, 0, blk[1]); K.box(0.5, 0.12, 0.8, px, 1.44, 0, cap); K.box(0.46, 0.06, 0.76, px, 0.95, 0, iron); K.box(0.46, 0.06, 0.76, px, 0.45, 0, iron);
-    for (const sz of [-1, 1]) K.add(new THREE.SphereGeometry(0.03, 5, 4), brass, px + 0.18, 0.95, sz * 0.38); }
-  if (r(9) < 0.45 && L > 2) { K.box(L - 0.6, 0.16, 0.18, 0, 1.17, 0, oak); for (let i = 0; i < 4; i++) K.add(new THREE.SphereGeometry(0.03, 5, 4), iron, -hl + 0.6 + i * (L - 1.2) / 3, 1.25, 0); }
+  const body = stone(0x625a52), cap = stone(0x7e746a), base = stone(0x443e3a), iron = flat(0x2c2a2a), oak = wood(0x5a3c22), brass = flat(0xb08a40);
+  K.box(L, 0.14, 0.7, 0, 0.07, 0, base); /* sapata */
+  K.box(L - 0.02, 0.86, 0.5, 0, 0.14 + 0.43, 0, body); /* o corpo maciço */
+  K.box(L + 0.02, 0.06, 0.56, 0, 0.62, 0, iron); /* cordão de ferro a meia altura */
+  K.box(L + 0.06, 0.12, 0.64, 0, 1.06, 0, cap); K.box(L, 0.05, 0.58, 0, 0.98, 0, base); /* coroamento */
+  for (const sx of [-1, 1]) { const px = sx * (hl - 0.18); K.box(0.44, 1.42, 0.7, px, 0.71, 0, body); K.box(0.52, 0.12, 0.78, px, 1.46, 0, cap); K.box(0.48, 0.06, 0.74, px, 0.95, 0, iron); K.box(0.48, 0.06, 0.74, px, 0.45, 0, iron);
+    for (const sz of [-1, 1]) K.add(new THREE.SphereGeometry(0.035, 5, 4), brass, px + 0.2 * sx, 0.95, sz * 0.37); }
+  if (r(9) < 0.45 && L > 2) { K.box(L - 0.6, 0.16, 0.18, 0, 1.2, 0, oak); for (let i = 0; i < 4; i++) K.add(new THREE.SphereGeometry(0.03, 5, 4), iron, -hl + 0.6 + i * (L - 1.2) / 3, 1.28, 0); }
 }
 export function buildLowWall(cult: number, ry: number, seed: number, len = 2.95, broken = 0, ox = 1, oz = 1): Built {
   if (cult === 22) { const K = kit(); dwarfWall(K, len, seed); return spin(K, ry, ox, oz); }

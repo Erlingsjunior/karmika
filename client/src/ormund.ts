@@ -10,6 +10,8 @@
    ===================================================================================================== */
 import * as THREE from 'three';
 import { fine } from './dual3d';
+import { stoneTex } from './toon3d';
+import { makeFire } from './sistemas/fogo';
 
 const T = 2;
 type Prop = 'page' | 'stone' | 'door' | 'niches' | 'shield' | 'candles' | 'desk' | 'circle' | 'carved';
@@ -40,7 +42,7 @@ export const ORMUND: OrmundEntry[] = [
   { id: 'p_orvalen', book: 'Livro XXI · Páginas soltas', src: 'Fragmento atribuído a Orvalen, sob uma pedra no rastro mais antigo', at: 'Lithendel', dx: -9, dy: -7, prop: 'stone', text: 'Nos rastros mais antigos, os que ninguém pisou depois, há uma pegada que aponta para fora do labirinto. Não para o centro. Para fora.' },
   { id: 'p_lista', book: 'Livro XXI · Páginas soltas', src: 'Lista sem título achada na sala dos príncipes', at: 'Ormund Salveth', dx: -5.5, dy: -1.5, prop: 'page', text: 'Pacto. Loucura. Cinza. Sussurro. Banquete. Esquecimento. Podridão. Corrente. Traição.\nE o décimo anda pelo' },
   { id: 'p_ninar', book: 'Livro XXI · Páginas soltas', src: 'Canção de ninar das vilas do vale, escrita a giz num berço velho', at: 'Skógar', dx: 3, dy: -3, prop: 'page', text: 'Dorme, que o Olho vela,\ndorme, que o fio é forte.\nSe um dia o Olho fechar, criança,\nnão chore: alguém vai ter que chorar por ele.' },
-  { id: 'p_thrain', book: 'Livro XXI · Páginas soltas', src: 'Entalhado na pedra da porta das galerias de Brasaforja, do lado de dentro', at: 'Brasaforja', dx: -7, dy: -6, prop: 'door', text: 'Thrain, se você ler isto, não abra. Nós não somos os que batem.' },
+  { id: 'p_thrain', book: 'Livro XXI · Páginas soltas', src: 'Entalhado na pedra da porta das galerias de Brasaforja, do lado de dentro', at: 'Brasaforja', dx: -12, dy: -24, prop: 'door', text: 'Thrain, se você ler isto, não abra. Nós não somos os que batem.' },
 ];
 /** a terceira porta (a da Biblioteca) não tem nota própria: o texto é o do Livro XVI, lido na pedra */
 const DOOR3: OrmundEntry = { id: 'x_porta3', book: 'Livro XVI · Askavik', src: 'A porta ao fim da escada, abaixo do terceiro subsolo', at: 'Ormund Salveth', dx: -7.5, dy: -4.5, prop: 'door', text: 'É a terceira vez que escrevo sobre uma porta assim. Hedda falou de uma debaixo do Cemitério Esquecido; Thrain assentou outra no fundo da Montanha Negra. Esta não tem maçaneta, nem fechadura, nem dobradiça. Não sei se é a mesma porta em três lugares ou três portas iguais. Não sei qual das duas respostas me assusta mais.' };
@@ -70,11 +72,23 @@ export function createOrmund(ctx: Ctx) {
     if (e.prop === 'page') page(g);
     else if (e.prop === 'stone') { const st = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35, 1), toon(0x76716a)); st.scale.set(1.2, 0.55, 0.9); st.position.y = 0.12; st.castShadow = true; g.add(st); const pp = page(g); pp.position.set(0.25, 0.03, 0.2); }
     else if (e.prop === 'carved') { const geo = new THREE.BoxGeometry(1.6, 1.9, 0.35, 4, 4, 1); const pp = geo.attributes.position as THREE.BufferAttribute; for (let i = 0; i < pp.count; i++) { pp.setX(i, pp.getX(i) * (1 + Math.sin(pp.getY(i) * 3) * 0.04)); pp.setZ(i, pp.getZ(i) + Math.sin(pp.getX(i) * 5 + pp.getY(i) * 3) * 0.03); } geo.computeVertexNormals(); const w = new THREE.Mesh(geo, [toon(0x5a5650), toon(0x5a5650), toon(0x5a5650), toon(0x5a5650), toon(0xffffff, TALLY), toon(0x5a5650)]); w.position.y = 0.95; w.castShadow = true; g.add(w); }
-    else if (e.prop === 'door') { const frame = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.12, 8, 24, Math.PI), toon(0x5a1a14)); frame.position.y = 1.45; g.add(frame); for (const s of [-1, 1]) { const jamb = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 1.45, 10), toon(0x5a1a14)); jamb.position.set(s * 0.9, 0.72, 0); jamb.castShadow = true; g.add(jamb); }
-      const slab = new THREE.Mesh(new THREE.CylinderGeometry(0.78, 0.78, 0.18, 24, 1, false, 0, Math.PI), toon(0x1a1a1e)); slab.rotation.set(Math.PI / 2, 0, Math.PI / 2); slab.position.set(0, 1.45, 0); g.add(slab);
-      const face = new THREE.Mesh(new THREE.PlaneGeometry(1.56, 2.3), toon(0xffffff, DOORTEX)); face.position.set(0, 1.15, 0.1); g.add(face);
-      const back = new THREE.Mesh(new THREE.DodecahedronGeometry(1.5, 1), toon(0x4a4640)); back.scale.set(1.0, 1.0, 0.45); back.position.set(0, 1.1, -0.55); back.castShadow = true; g.add(back);
-      for (let i = 0; i < 6; i++) { const rb = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18 + (i % 3) * 0.06, 0), toon(0x5a5650)); rb.position.set(-1.1 + i * 0.45, 0.1, 0.3 + (i % 2) * 0.2); g.add(rb); } }
+    else if (e.prop === 'door') {
+      /* 08/11 (Erling: "essas peças que vêm do livro estão extremamente feias; faça algo belo, monumental"): a PORTA DE PEDRA PRETA — um portal
+         anão de pedra aparelhada com lintel em degraus, duas colunas com capitéis de ferro, a laje negra em arco com o Olho fechado, bandas de
+         ferro rebitadas, soleira de três degraus, runas de cobre que brilham e dois braseiros acesos. Fechada por dentro, como diz a nota. */
+      const st = toon(0xffffff, stoneTex(0x5e5852)), dk = toon(0xffffff, stoneTex(0x3a3632)), iron = toon(0x2a282a), cu = toon(0xb06a3a), blk = toon(0x141418);
+      const M = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; g.add(o); return o; };
+      for (let k = 0; k < 3; k++) M(new THREE.BoxGeometry(4.6 - k * 0.5, 0.18, 1.6 - k * 0.35), k ? st : dk, 0, 0.09 + k * 0.18, 0.5 - k * 0.2); /* soleira em degraus */
+      M(new THREE.BoxGeometry(4.2, 4.6, 1.4), dk, 0, 0.54 + 2.3, -0.6); /* o maciço de pedra atrás */
+      for (const sx of [-1, 1]) { M(new THREE.BoxGeometry(0.7, 3.6, 0.7), st, sx * 1.55, 0.54 + 1.8, 0.2); M(new THREE.BoxGeometry(0.9, 0.22, 0.9), iron, sx * 1.55, 0.54 + 3.7, 0.2); M(new THREE.BoxGeometry(0.8, 0.3, 0.8), dk, sx * 1.55, 0.54 + 0.15, 0.2); for (const y of [1.2, 2.4]) M(new THREE.BoxGeometry(0.76, 0.1, 0.76), iron, sx * 1.55, 0.54 + y, 0.2); }
+      M(new THREE.BoxGeometry(4.4, 0.5, 1.0), st, 0, 0.54 + 4.05, 0.2); M(new THREE.BoxGeometry(3.6, 0.4, 0.9), dk, 0, 0.54 + 4.5, 0.2); M(new THREE.BoxGeometry(2.6, 0.35, 0.8), st, 0, 0.54 + 4.87, 0.2); /* lintel em degraus */
+      const arch = M(new THREE.CylinderGeometry(1.15, 1.15, 0.5, 24, 1, false, 0, Math.PI), blk, 0, 0, 0); arch.rotation.set(Math.PI / 2, 0, Math.PI / 2); arch.position.set(0, 0.54 + 2.5, 0.2); /* topo em arco da laje negra */
+      M(new THREE.BoxGeometry(2.3, 2.5, 0.5), blk, 0, 0.54 + 1.25, 0.2); /* a laje negra */
+      const face = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 3.2), toon(0xffffff, DOORTEX)); face.position.set(0, 0.54 + 1.75, 0.47); g.add(face); /* o Olho fechado */
+      for (const y of [0.6, 1.6, 2.6]) { M(new THREE.BoxGeometry(2.34, 0.14, 0.06), iron, 0, 0.54 + y, 0.48); for (const x of [-0.95, -0.32, 0.32, 0.95]) M(new THREE.SphereGeometry(0.045, 6, 5), iron, x, 0.54 + y, 0.52); } /* bandas rebitadas */
+      for (let k = 0; k < 7; k++) { const a = Math.PI * (0.12 + 0.76 * k / 6), rx = Math.cos(a) * 1.5, ry = Math.sin(a) * 1.5; const ru = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 0.22), new THREE.MeshBasicMaterial({ color: 0xff8a3a, toneMapped: false })); ru.position.set(rx, 0.54 + 2.5 + ry, 0.46); ru.rotation.z = Math.PI / 4; g.add(ru); } /* runas de cobre em arco */
+      M(new THREE.BoxGeometry(0.16, 2.2, 0.04), cu, -1.22, 0.54 + 1.3, 0.49); M(new THREE.BoxGeometry(0.16, 2.2, 0.04), cu, 1.22, 0.54 + 1.3, 0.49);
+      for (const sx of [-1, 1]) { M(new THREE.CylinderGeometry(0.42, 0.3, 0.5, 8), iron, sx * 2.6, 0.9, 0.9); M(new THREE.CylinderGeometry(0.12, 0.16, 0.7, 6), iron, sx * 2.6, 0.35, 0.9); const fl = makeFire(0.7, 'forge', 'brazier', e.id.length * 31 + sx); fl.position.set(sx * 2.6, 1.05, 0.9); g.add(fl); const lt = new THREE.PointLight(0xff8a3a, 2.2, 7, 2); lt.position.set(sx * 2.6, 1.6, 1.1); g.add(lt); } }
     else if (e.prop === 'niches') { const wall = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 0.5), [toon(0x6a645a), toon(0x6a645a), toon(0x6a645a), toon(0x6a645a), toon(0xffffff, NICHE), toon(0x6a645a)]); wall.position.y = 0.8; wall.castShadow = true; g.add(wall); const pp = page(g); pp.position.set(1.3, 0.03, 0.6); }
     else if (e.prop === 'shield') { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 2.4, 8), toon(0x4a3220)); post.position.y = 1.2; post.castShadow = true; g.add(post);
       const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.07, 24), toon(0x5a3a22)); sh.rotation.x = Math.PI / 2; sh.position.set(0, 2.0, 0.1); sh.castShadow = true; g.add(sh);

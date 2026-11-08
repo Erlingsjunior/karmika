@@ -734,10 +734,69 @@ function buildCity_L(): World {
   /** o marco do mestre de cada caminho (fica logo ao norte da vila, ligado por estrada) */
   /* (os monumentos de cada região moram em monuments3d/world mais abaixo; o antigo mapa LANDMARK_AT ficava sempre vazio e foi removido) */
   const landmarkDoor: Record<string, { x: number; y: number }> = {};
+  /* 08/11 BRASAFORJA, a primeira cidade dos anões (Erling: "a cidade dos anões está muito menor que Karmika; aumentar, puxar para fora, MUITO mais
+     elementos, mais NPCs, mais gente morando, lojas; piso bem colocado, madeira sob as lojas e recorte de madeira em volta; anões cuidam das suas cidades,
+     nada de ruína; poço à vista; primeira cidade dos anões tem que ser bonita").
+     Planta: praça de laje maciça em volta da fonte e da fogueira; a Rua das Forjas ao norte (lojas viradas para a praça) e a Rua do Cobre a oeste;
+     anel de casas de tijolo e vigas; quatro saídas (norte = o Grande Salão); tablados de madeira sob as lojas; postes, barris, caixas, feno,
+     carrinhos, bigornas e bancos por toda parte; o povo anão trabalhando e morando. O muro de pedra e os portões vêm da passada geral de muros. */
+  const brasaforja = (st: Settlement, rr: () => number, lore: string) => {
+    const cx = st.x, cy = st.y, R0 = 19; st.radius = R0; clearWater(cx, cy, R0 + 4); flatten(cx, cy, R0 + 6);
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.hypot(q.gx - cx, q.gy - cy) < R0 + 6 && q.kind !== 'fountain') props.splice(i, 1); } /* o terreno começa limpo */
+    const inTown = (x: number, y: number) => { const dx = x - cx, dy = y - cy, a = Math.atan2(dy, dx); return Math.hypot(dx, dy * 1.12) < 16.5 + 1.4 * Math.sin(a * 3 + 0.8) + 0.9 * Math.sin(a * 7 + 2.3); };
+    /* o piso: laje de pedra inteira, sem remendo de terra (o chão de cultura dos anões pinta a laje assentada por cima) */
+    for (let y = cy - 20; y <= cy + 20; y++) for (let x = cx - 20; x <= cx + 20; x++) if (inb(x, y) && inTown(x, y) && map[y][x] !== 'water') map[y][x] = 'plaza';
+    /* quatro saídas: ramais de estrada para fora (viram portões no muro); ao norte, a avenida do Grande Salão */
+    for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) for (let d = 1; d <= R0 + 10; d++) for (const o of [-1, 0, 1]) { const x = cx + ux * d + uy * o, y = cy + uy * d + ux * o; if (!inb(x, y) || map[y][x] === 'water' || map[y][x] === 'wall') continue; if (!inTown(x, y) || map[y][x] !== 'plaza') map[y][x] = 'road'; }
+    props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: 0x6a5e52, roof: 0xff9a40, variant: 1 });
+    props.push({ kind: 'campfire', gx: cx - 3, gy: cy + 3, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a });
+    const W2 = [0x8a5a44, 0x7a5240, 0x6a5e52], R2 = [0x4a423a, 0x3e3a36, 0x55504a];
+    const free = (gx: number, gy: number, w: number, h: number) => { for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; if (!(y < gy || y >= gy + h || x < gx || x >= gx + w) && t === 'road') return false; } return !props.some((q) => q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
+    let nh = 0; const house = (gx: number, gy: number, w: number, h: number, rot: number, variant: number, shop?: string) => { if (!free(gx, gy, w, h)) return false;
+      block({ kind: 'house', gx, gy, w, h, height: 3.2, wall: W2[nh % 3], roof: R2[nh % 3], variant, rot, style: 2, ...(shop ? { shop } : {}) }); nh++;
+      /* tablado de madeira na frente das lojas e recorte de madeira em volta (bfloor é o assoalho de tábuas) */
+      if (shop) { const fx = rot === 1 ? gx + w : gx, fy = rot === 1 ? gy : gy + h, fw = rot === 1 ? 2 : w, fh = rot === 1 ? h : 2; for (let y = fy; y < fy + fh; y++) for (let x = fx; x < fx + fw; x++) if (inb(x, y) && map[y][x] === 'plaza') props.push({ kind: 'bfloor', gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0x6a4a2c, roof: 0, variant: 2 }); }
+      return true; };
+    /* a Rua das Forjas (norte da praça, fachadas para o sul) e a Rua do Cobre (oeste, fachadas para o leste): as lojas */
+    const SHOPS: [number, number, number, number, number, number, string][] = [[cx - 14, cy - 11, 5, 4, 0, 5, 'armeiro'], [cx - 8, cy - 11, 5, 4, 0, 2, 'armaduras'], [cx - 2, cy - 11, 5, 4, 0, 1, 'mercador'], [cx + 4, cy - 11, 6, 4, 0, 4, 'cervejaria'], [cx - 15, cy - 5, 4, 5, 1, 1, 'pocoes'], [cx - 15, cy + 1, 4, 5, 1, 2, 'honra_anao']];
+    for (const [gx, gy, w, h, rot, v, key] of SHOPS) house(gx, gy, w, h, rot, v, key);
+    /* o anel de casas (moradias): duas fileiras, mais apertadas que as outras vilas — anão mora junto */
+    const ring: [number, number, number, number, number][] = [[cx + 11, cy - 5, 5, 4, 1], [cx + 11, cy + 1, 4, 4, 1], [cx + 12, cy + 7, 5, 4, 0], [cx + 5, cy + 8, 4, 4, 0], [cx - 1, cy + 9, 5, 4, 0], [cx - 8, cy + 8, 4, 4, 0], [cx - 14, cy + 7, 5, 4, 0], [cx - 16, cy - 12, 4, 4, 1], [cx + 11, cy - 11, 4, 4, 0], [cx + 16, cy - 4, 4, 4, 1], [cx + 16, cy + 2, 4, 5, 1], [cx - 20, cy - 4, 4, 4, 1], [cx - 20, cy + 2, 4, 4, 1], [cx + 1, cy + 14, 5, 4, 0], [cx - 7, cy + 13, 4, 4, 0], [cx + 9, cy + 13, 4, 4, 0]];
+    ring.forEach(([gx, gy, w, h, rot], k) => house(gx, gy, w, h, rot, [0, 2, 1, 3, 2, 0][k % 6]));
+    /* decoração: o que diz "aqui se vive e se trabalha" */
+    const vp = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'plaza' || map[y][x] === 'grass') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
+    vp(2, cx + 5, cy + 4); /* o poço, à vista, na praça */
+    for (const [x, y] of [[cx - 5, cy - 5], [cx + 4, cy - 5], [cx - 5, cy + 5], [cx + 4, cy + 6], [cx - 10, cy - 7], [cx + 1, cy - 7], [cx + 8, cy - 7], [cx - 11, cy - 1], [cx - 11, cy + 4], [cx + 8, cy + 10], [cx - 4, cy + 11], [cx - 11, cy + 10], [cx + 13, cy + 4], [cx + 8, cy - 2]]) vp(4, x, y);
+    for (const [x, y] of [[cx - 13, cy - 6], [cx - 7, cy - 6], [cx + 3, cy - 6], [cx + 9, cy - 6], [cx - 10, cy + 6], [cx + 10, cy + 6], [cx - 12, cy + 2], [cx + 13, cy - 7]]) vp([0, 1, 7, 9, 6, 0, 1, 8][(x + y) % 8], x, y, rr() * 6.283);
+    for (const [x, y] of [[cx + 6, cy - 3], [cx - 6, cy + 1], [cx + 3, cy + 7], [cx - 3, cy - 7], [cx + 10, cy + 2], [cx - 12, cy - 9]]) vp(0, x, y, rr() * 6.283);
+    for (const [x, y] of [[cx - 7, cy - 1], [cx + 7, cy + 1], [cx - 2, cy + 7]]) vp(9, x, y, rr() * 6.283); /* bigornas no toco: cidade de forjadores */
+    vp(5, cx + 1, cy + R0 - 2); vp(5, cx + R0 - 3, cy + 1); vp(5, cx - R0 + 2, cy - 1);
+    for (const [x, y, v] of [[cx + 2, cy + 3, 0], [cx - 3, cy - 3, 1], [cx + 3, cy - 3, 0], [cx - 4, cy + 2, 1], [cx + 7, cy + 5, 0], [cx - 8, cy + 4, 1]] as [number, number, number][]) decorAt('bench', x, y, 1, 1, v, 0x6a4528, 0x4a423a);
+    for (const [tx, ty] of [[cx - 3, cy - 3], [cx + 3, cy + 3], [cx - 3, cy + 3], [cx + 3, cy - 3], [cx, cy - 9], [cx - 9, cy], [cx, cy + 9], [cx + 9, cy]]) if (inb(tx, ty) && map[ty][tx] === 'plaza' && !props.some((q) => q.gx === tx && q.gy === ty)) props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 2.0, wall: 0x3a2a1c, roof: 0xff8a2a });
+    decorAt('chest', cx + 15, cy + 6, 1, 1, 2, 0x6a4528, 0x8a3b2e);
+    pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
+    /* o povo: anões de verdade (o modelo vestido), cada um no seu canto */
+    const D = (name: string, role: string, x: number, y: number, radius: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind: 'dwarf', x, y, radius, tint, scale: 0.98, lines, ...(shop ? { shop } : {}) });
+    D('Armeiro Grimnir Punho-de-Aço', 'Armeiro de Brasaforja', cx - 11.5, cy - 6.2, 1.2, 0x6a3a2a, ['Machado anão não quebra. Quem quebra é o braço de quem segura errado.', 'Aço da Montanha Negra, cabo de carvalho do Sopé. Não existe melhor.'], 'armeiro');
+    D('Armadureira Sigrún Couraça', 'Armaduras de Brasaforja', cx - 5.5, cy - 6.2, 1.2, 0x4a4a5a, ['Placa boa é a que você esquece que está vestindo.', 'Couro para quem corre, aço para quem fica.'], 'armaduras');
+    D('Mercadora Dísa Bolso-Fundo', 'Mercadora de Brasaforja', cx + 0.5, cy - 6.2, 1.2, 0xb08a40, ['Pão, corda, tocha e poção. O que a montanha não dá, eu trago de carroça.', 'Preço justo. Anão não rouba anão. Humano… a gente conversa.'], 'mercador');
+    D('Taverneiro Orik Barril-Cheio', 'A Bigorna Molhada', cx + 7, cy - 6.2, 1.4, 0x8a3a3a, ['Cerveja preta, hidromel e a sopa que o Rei elogiou. Senta.', 'Quem bebe duas, canta. Quem bebe quatro, dorme no estábulo.'], 'cervejaria');
+    D('Alquimista Vígdís Caldeirão', 'Poções de Brasaforja', cx - 10.4, cy - 2.5, 1.2, 0x3a6a4a, ['Poção vermelha fecha ferida. Poção azul acende a Brasa. Não misture.', 'Musgo da caverna, cinza do vulcão. A montanha é a minha despensa.'], 'pocoes');
+    D('Thrúd Marca-de-Ferro', 'Guardiã da Honra Kármica', cx - 10.4, cy + 3.5, 1.2, 0xc0a040, ['Honra não se compra com ouro. Ganha-se fazendo o que precisa ser feito.', 'Traga a sua honra e eu mostro o que os anões guardam para quem merece.']);
+    D('Mineiro Bofur Pó-de-Pedra', 'Mineiro', cx + 6, cy + 3, 2.5, 0x5a4a3a, ['Hoje a veia cantou. Amanhã ela cobra.', 'Pedra boa é pesada. Pedra ruim é mais pesada ainda.']);
+    D('Mineira Hildr Veia-Funda', 'Mineira', cx - 4, cy + 6, 2.5, 0x6a4a3a, ['Lá embaixo não tem dia nem noite. Só o martelo e a respiração.', 'Encontrei prata ontem. O Thane já sabe. Todo mundo já sabe.']);
+    D('Aprendiz Snorri Fagulha', 'Aprendiz de Forja', cx - 7, cy - 3, 2.5, 0x8a5a2a, ['O Mestre Brokki disse que eu queimo mais carvão do que ferro. Ele tem razão.', 'Um dia eu forjo um martelo digno do Rei. Um dia.']);
+    D('Cervejeira Gudrún Espuma', 'Cervejeira', cx + 9, cy - 3, 2, 0xa06a3a, ['A cevada da encosta dá a melhor espuma do continente. Pergunta para qualquer um.', 'Cerveja quente é crime. Em Brasaforja a gente leva isso a sério.']);
+    D('Anciã Frída Canta-Pedra', 'Guardiã das Histórias', cx + 2, cy + 5, 1.5, 0x8a8a9a, [lore, 'Antes do Grande Salão havia só a caverna. Antes da caverna, só o fogo.', 'Os humanos chamam de Montanha Negra. Nós chamamos de Mãe.']);
+    D('Pequeno Dori', 'Criança de Brasaforja', cx + 4, cy + 1, 3, 0xd0a060, ['Quando eu crescer vou ser forjador que nem o Brokki!', 'Você já viu o Rei? Ele tem uma barba até o chão!']);
+    D('Carregador Nori Costas-Largas', 'Carregador', cx - 2, cy - 4, 3, 0x6a5a4a, ['Caixa vai, caixa vem. A carroça dos anões não espera ninguém.', 'Esse barril pesa como um anão bêbado. Ou seja, muito.']);
+    D('Guarda Hreidmar Olho-de-Ferro', 'Guarda da Praça', cx + 3, cy - 1.5, 2, 0x5a6a8a, ['Na praça, arma guardada. Isso vale para você também.', 'Brasaforja não cai. Nunca caiu. Não vai ser hoje.']);
+  };
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
     const rr = rng(seed); const R0 = 13; clearWater(cx, cy, R0 + 2); flatten(cx, cy, R0 + 4);
     const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [], cult }; settlements.push(st);
+    if (name === 'Brasaforja') { brasaforja(st, rr, lore); return st; } /* 08/11: a cidade dos anões tem planta própria (abaixo) */
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) if (inb(x, y)) map[y][x] = 'plaza';
     for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) if (inb(x, y) && map[y][x] === 'grass' && (Math.abs(x - cx) <= 1 || Math.abs(y - cy) <= 1)) map[y][x] = 'road';
     /* 25/10: toda vila tem a sua fonte no centro da praça — o marco da vila e a sua Fonte da Visão; os povos do fogo mantêm a fogueira ao lado */
@@ -1139,6 +1198,13 @@ function buildCity_L(): World {
           for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx + 0.5 - mx, q.gy + 0.5 - my) < 1.3) props.splice(k, 1); }
           props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: cult !== 2 && hv < 0.32 ? 0.35 + hv : 0 });
           /* o muro baixo não trava mais tiles inteiros: o main.ts colide com o segmento de verdade (regra: nunca travar onde se vê espaço) */ } }
+      /* 08/11 (Erling: "colocar luminosidade nas estradas próximas às vilas, todas elas"): postes de lampião ao longo das estradas que saem
+         da vila, do muro até ~28 m fora, um a cada ~8 m, alternando o lado */
+      { const lamps: [number, number][] = []; const R1 = st.radius + 2, R2 = st.radius + 15;
+        for (let y = cy - R2; y <= cy + R2; y++) for (let x = cx - R2; x <= cx + R2; x++) { if (!inb(x, y) || map[y][x] !== 'road') continue; const d = Math.hypot(x - cx, y - cy); if (d < R1 || d > R2) continue;
+          if (lamps.some(([lx, ly]) => Math.hypot(lx - x, ly - y) < 4)) continue; const side = lamps.length % 2 ? 1 : -1;
+          const cand: [number, number][] = Math.abs(x - cx) > Math.abs(y - cy) ? [[x, y + side], [x, y - side]] : [[x + side, y], [x - side, y]];
+          for (const [tx, ty] of cand) { if (!inb(tx, ty) || map[ty][tx] !== 'grass' || props.some((q) => q.gx === tx && q.gy === ty)) continue; props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 2.0, wall: 0x3a2a1c, roof: 0xffb050 }); lamps.push([x, y]); break; } } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
       gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });
         if (gi < 3) { const nx = -gt.uy, ny = gt.ux, toC = Math.sign((cx - gt.x) * nx + (cy - gt.y) * ny) || 1, side = gi % 2 ? -1 : 1, ox = gt.x + gt.ux * side * (gt.w / 2 + 1.6) + nx * toC * 0.9, oy = gt.y + gt.uy * side * (gt.w / 2 + 1.6) + ny * toC * 0.9;
