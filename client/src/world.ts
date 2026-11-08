@@ -1775,6 +1775,8 @@ function buildCity_L(): World {
         for (let yy = gy - 3; yy <= bf.y - 12; yy++) for (let xx = gx - 4; xx <= gx + W + 4; xx++) if (inb(xx, yy) && map[yy][xx] !== 'water') map[yy][xx] = 'grass';
         for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx >= gx - 4 && q.gx <= gx + W + 4 && q.gy >= gy - 3 && q.gy <= bf.y - 12) props.splice(i, 1); }
         block({ kind: 'monument', gx, gy, w: W, h: H, height: 30, wall: 0, roof: 0, variant: 9 });
+        /* 08/11 (Erling: "não consigo passar aqui, trava"): o bloco de 16 tiles era mais largo que a fachada — as laterais da frente voltam a ser chão livre */
+        for (let yy = gy + 5; yy <= gy + H - 1; yy++) for (const xx of [gx, gx + 1, gx + 2, gx + W - 3, gx + W - 2, gx + W - 1]) if (inb(xx, yy)) map[yy][xx] = 'grass';
         for (let yy = gy + 8; yy <= gy + H - 1; yy++) for (let xx = gx + 3; xx <= gx + W - 4; xx++) if (inb(xx, yy)) map[yy][xx] = 'plaza'; /* a escadaria e o patamar se sobem: dá para encostar na porta */
         for (let yy = gy + H; yy <= gy + H + 3; yy++) for (let xx = gx + 3; xx <= gx + W - 4; xx++) if (inb(xx, yy)) map[yy][xx] = 'plaza';
         for (let yy = gy + H + 4; yy <= bf.y - 2; yy++) for (const ox of [-1, 0, 1]) if (inb(bf.x + ox, yy) && map[yy][bf.x + ox] !== 'wall') map[yy][bf.x + ox] = 'road';
