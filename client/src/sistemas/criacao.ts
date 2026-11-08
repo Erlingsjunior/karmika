@@ -12,7 +12,7 @@ let createAC: AbortController | null = null;
 function rebirth(name: string, np: Profile) {
   const past = K.soul.s.lives[K.soul.s.lives.length - 1];
   K.profile = np; localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); // sem path: Hrefna lê o caminho de novo
-  K.state.race = K.raceOf(np.origin); K.game.resetClass(K.classOfRace(K.state.race)); K.game.setClassName(K.classOfRace(K.state.race));
+  K.state.race = K.raceOf(np.origin); K.game.resetClass(K.classOfRace(K.state.race, np.origin));
   setMyFac(null); K.quests.forget((id) => id.startsWith('v_'));
   K.tree.wipe(); const pts = K.inv.respec(); K.swapHero(); K.updateWho(); K.checkSkinLevel();
   K.soul.s.pending = null; K.soul.save();
@@ -58,7 +58,7 @@ function showCreate(reborn = false) {
       K.withFade(() => {
       /* 27/10 (Erling): nasce-se neutro. Luz e sombra são posições, não bem e mal. Só o elfo nasce um pouco pendendo à luz (+35) */
       K.soul.reset(); K.state.karma = origin === 'elf' ? 35 : 0; K.soul.s.karma = K.state.karma; K.soul.s.luzT = 0; K.soul.s.sombraT = 0; K.soul.save();
-      K.game.resetClass(K.classOfRace(K.raceOf(origin)));
+      K.game.resetClass(K.classOfRace(K.raceOf(origin), origin));
       try { localStorage.removeItem('karmika.welcome'); localStorage.removeItem('karmika.startkit'); localStorage.removeItem('karmika.startkit.v2'); localStorage.removeItem('karmika.startgear.v1'); } catch { /* */ } // personagem novo: o Baú de Boas-Vindas espera de novo
       K.profile = { name, origin, sex, hair: K.HAIRS[hair], skin: K.SKINS[skin], title: '', hairStyle, beard }; localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile));
       K.inv.reset(); K.quests.reset(); K.state.race = K.raceOf(origin); K.swapHero(); K.updateWho(); { const s0 = K.city.starts[origin]; K.state.fx = s0.x; K.state.fy = s0.y; localStorage.removeItem(K.HOME_KEY); K.larSys.home = K.defaultHome(); if (origin !== 'human') K.game.logMsg(origin === 'dwarf' ? '⛏ Você nasce em Brasaforja, no sopé da Montanha Negra. As estradas levam a Askavik, onde as academias esperam.' : '🌿 Você nasce em Lithendel, sob as árvores mais velhas do mundo. As estradas levam a Askavik, onde as academias esperam.', '#ffe08a'); } K.setCombat(false, true);

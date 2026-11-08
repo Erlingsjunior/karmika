@@ -84,8 +84,10 @@ function applyRes() { setTimeout(applyLook, 0); K.game.setRaceScale(K.profile?.o
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
 /* antes da Vidente (nível 30), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
-const classOfRace = (r: Race) => K.kindOf(r) === 'technocrat' ? 'Tecnocrata' : (K.profile?.origin ?? 'human') === 'dwarf' ? 'Anão' : K.profile?.origin === 'elf' ? 'Elfo' : 'Humano';
+const classOfRace = (r: Race, origin?: string) => { const o = origin ?? (r === 'dwarf' ? 'dwarf' : r === 'elf' ? 'elf' : K.profile?.origin ?? 'human'); return K.kindOf(r) === 'technocrat' ? 'Tecnocrata' : o === 'dwarf' ? 'Anão' : o === 'elf' ? 'Elfo' : 'Humano'; };
 K.game.setClassName(classOfRace(K.state.race));
+/* 07/11 (Erling: "jogo com um anão e está escrito Humano"): a classe de base (Humano/Anão/Elfo) sempre bate com o corpo — mesmo depois de reencarnar */
+{ const ci = K.game.classInfo, want = classOfRace(K.state.race); if (['Humano', 'Anão', 'Elfo'].includes(ci.name) && ci.name !== want) K.game.fixBaseClass(want); }
 let lastLvl = K.game.st.lvl;
   return { applyRes, checkSkinLevel, get forcedSkin() { return forcedSkin; }, set forcedSkin(v: typeof forcedSkin) { forcedSkin = v; }, get skinKey() { return skinKey; }, set skinKey(v: typeof skinKey) { skinKey = v; }, applyArtSkin, ART_SET, get netSkin() { return netSkin; }, get creating() { return creating; }, set creating(v: typeof creating) { creating = v; }, classOfRace, humanSkinKey, get skinModel() { return skinModel; }, swapHero, get lastLvl() { return lastLvl; }, set lastLvl(v: typeof lastLvl) { lastLvl = v; }, get deadK() { return deadK; }, set deadK(v: typeof deadK) { deadK = v; }, get skinTick() { return skinTick; }, get look() { return look; } };
 }

@@ -929,7 +929,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 1.05, cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 1.15, charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -1592,7 +1592,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           else if (wcls === 'bow') { aTwist += 0.5 * cK; /* arco na esquerda: ombro esquerdo à frente */ aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
         }
         else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += -0.12 * cK; aElR += -1.5 * cK; aShRz += -0.12 * cK; } /* 04/11 (Erling: "segurando espada para baixo em modo batalha? quem faz isso?"): em guarda o antebraço vem à frente, cotovelo a ~90° — com a pegada anatômica é isso que deixa a lâmina de pé */
-        else if (kind === 'dwarf') { aTwist += 0.35 * cK; aShR += -0.8 * cK; aElR += -0.45 * cK; aShRz += -0.12 * cK; aSwX += 2.35 * cK; aLean += 0.05 * cK; } // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
+        else if (kind === 'dwarf') { aTwist += 0.25 * cK; aShR += -0.5 * cK; aElR += -0.9 * cK; aShRz += -0.3 * cK; aSwX += 1.25 * cK; aSwZ += -0.55 * cK; aLean += 0.12 * cK; aCrouch += 0.07 * cK; } /* 07/11 (Erling: "braço colado no corpo segurando o porrete, horrível; usa a postura do anão do WoW"): base larga e baixa, cotovelos abertos, o martelo em diagonal à frente do peito com as duas mãos e a cabeça para cima ao lado do ombro — o rosto livre */ // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
         else { aTwist += 0.55 * cK; aCrouch += 0.05 * cK; aLean += 0.08 * cK; aHeadX += 0.22 * cK; }
       }
       // guarda: escudo erguido à frente
@@ -1821,7 +1821,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           bow: [[0.22, -0.12, 0.34], [0.2, -0.7, 0.68]], // arco baixo à frente, inclinado, flecha pronta (na mão esquerda: espelhado)
         };
         const guardHold = kind === 'dwarf' && guardK > 0.3;
-        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : kind === 'dwarf' ? [[0.25, 0.05, 0.25], [0.9, 0.1, 0.4]] : null;
+        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : kind === 'dwarf' ? [[0.16, -0.2, 0.32], [-0.38, -0.86, 0.22]] : null;
         const kfW = act ? WKF[act.a] : undefined;
         const want = kfW ? 1 : guardHold ? 1 : (!act && hero.combat && guardK < 0.3 && HOLD) ? combatK : 0;
         rigK += (want - rigK) * Math.min(1, dt * 12);

@@ -1,6 +1,7 @@
 import { buildSpecies } from './flora3d';
 
 
+import { updateCharLod } from './sistemas/lod-personagens';
 import { type Guild } from './social';
 
 
@@ -2517,6 +2518,12 @@ let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0;
 let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
 const pm = (k: string) => { const n = performance.now(); PM[k] = (PM[k] ?? 0) + n - pmLast; pmLast = n; };
 function pmFlush() { const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
+/** 07/11: quem está gastando desenhos — malhas dentro da câmera por grupo de topo da cena (nome, ou o nome do 1º filho com nome) */
+function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)); const out: [string, number][] = [];
+  for (const ch of scene.children) { if (!ch.visible) continue; let n = 0, lab = ch.name; ch.traverseVisible((o) => { if (!lab && o.name) lab = o.name; const m = o as THREE.Mesh; if ((m.isMesh || (o as THREE.Sprite).isSprite) && m.geometry) { if (!m.geometry.boundingSphere) m.geometry.computeBoundingSphere(); const bs = m.geometry.boundingSphere!.clone().applyMatrix4(m.matrixWorld); if (fr.intersectsSphere(bs)) n += (m as THREE.InstancedMesh).isInstancedMesh ? 1 : 1; } });
+    if (n) out.push([(lab || ch.type) + (ch.userData?.kind ? ':' + ch.userData.kind : ''), n]); }
+  const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
+(window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
   return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · '); }
 function frameBody() {
@@ -2589,6 +2596,7 @@ function frameBody() {
   bpYaw = null; hero.moveYaw = null; const gaitNow = gaitOf(((k0) => ['nordic', 'dwarf', 'human', 'elf'].includes(k0) && (profile?.origin === 'elf' || profile?.origin === 'dwarf') ? profile!.origin : k0)(kitRace() as string), (hero as unknown as { wcls?: string }).wcls ?? 'one', hero.stance); hero.gait = gaitNow;
   /* 04/11: ALVO PRESO INVISÍVEL (alvo-preso.ts) no lugar da janela curta de recuo. Preso a um bicho, o corpo fica de frente para ele e os pés
      vão para o clique: de costas (mais devagar, pela classe), de lado e na diagonal (meio caminho). Indo para cima dele, anda normal. */
+  updateCharLod(scene, hero.root, dt);
   { const hx = state.fx * T, hz = state.fy * T; const lk = (dashT > 0 || inside || compSys.riding || swimming) ? null : lockSys.update(dt, hx, hz, game.enemies.list, 10 + gaitNow.bp[0] * 2);
     /* a intenção manda: golpe começando virado para outro bicho troca o alvo (o rosto do golpe já foi para onde o jogador mirou) */
     if (lk && hero.acting && !lockActWas) lockSys.retarget(lockSys.inCone(hx, hz, entradaSys.aimYaw(), game.enemies.list, 0.77, 9)); /* a mira do golpe (mouse, encaixada no bicho do cone) */
