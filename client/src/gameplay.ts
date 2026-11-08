@@ -58,7 +58,7 @@ export function createGameplay(d: GameplayDeps) {
      07/11 (Erling: "a batalha tem que ser mais lenta, mais encadeada no começo; com mais destreza e nível vai acelerando"): o andamento (cadência)
      começa em 80% no nível 1 e chega a 100% no 40; a Destreza da base soma até +15% e os talentos de velocidade de golpe até +35%.
      Golpe e animação andam juntos: o TEMPO (quando o golpe acerta) e a velocidade da animação usam a mesma cadência */
-  const cadence = () => (0.8 + 0.2 * Math.min(1, (st.lvl - 1) / 39)) * (1 + 0.15 * (st.attrs?.dex ?? 0) / ((st.attrs?.dex ?? 0) + 60)) * (1 + ((st as { aspd?: number }).aspd ?? 0)); // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
+  const cadence = () => 1.07 /* 07/11: +7% (Erling: "lenta demais agora") */ * (0.8 + 0.2 * Math.min(1, (st.lvl - 1) / 39)) * (1 + 0.15 * (st.attrs?.dex ?? 0) / ((st.attrs?.dex ?? 0) + 60)) * (1 + ((st as { aspd?: number }).aspd ?? 0)); // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
   let now = 0;
   const cd = { attack: 0, cast: 0, heal: 0, bash: 0, slam: 0 };
   const CD = { attack: 0.3, cast: 0.75, heal: 1.6, bash: 2.4, slam: 3.2 };
