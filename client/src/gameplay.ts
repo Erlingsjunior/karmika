@@ -15,7 +15,9 @@ import { genGear, rollRarity, RARITY, type Gear, type Rarity } from './loot';
 import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
 import { fams, runeDrop, frestaMark, RCOL, RNAME, parseRune, type RFam } from './runas-magia';
-import type { SkillId } from './kits';
+import { kitOf, type SkillId } from './kits';
+import { vfxCast, vfxImpact, elementOf } from './sistemas/vfx';
+import { makeFire } from './sistemas/fogo';
 import { createEnemies, ELITE_TYPES, EDEF, type Enemy } from './enemies';
 import { buildBeast, buildWolf, type Beast } from './werewolf3d';
 import { buildDog } from './bestas3d';
@@ -711,6 +713,7 @@ export function createGameplay(d: GameplayDeps) {
   /** explosão em área; `sk` = a magia de origem (tipo de dano e ranque dela), `burn` = incendeia (lava/fogo); sem `sk` conta como Salto Glacial */
   function explode(cx: number, cz: number, cy: number, r: number, mul: number, col: number, stun: number, from: THREE.Vector3, sk: SkillId | null = 'slam', burn = sk === 'slam' || sk === 'fireball' || sk === 'meteor' || sk === 'flame') {
     d.audio.boom(); st.shake = Math.max(st.shake, 0.45); impactK = 1; impactLight.position.set(cx, cy + 1, cz); impactLight.color.setHex(col);
+    try { vfxImpact(new THREE.Vector3(cx, cy, cz), burn ? 'fire' : elementOf(col), Math.max(0.6, Math.min(2.2, r / 2.6))); } catch { /* */ } /* 08/11: clarão, onda, fumaça/lascas/raios pelo elemento */
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(cx, cy + 0.12, cz); fxAdd(ring); rings.push({ m: ring, t: 0 });
     for (let k = 0; k < 46; k++) { const a = rnd(0, 6.283), sp = rnd(2, 7); d.particles.spawn(cx, cy + 0.6, cz, { vx: Math.cos(a) * sp, vy: rnd(0.5, 5), vz: Math.sin(a) * sp, life: rnd(0.4, 0.9), s0: 0.6, s1: 0.06, c0: 0xffffff, c1: col, a: 1, drag: 2.2, g: 5 }); }
     for (let k = 0; k < 14; k++) d.particles.spawn(cx + rnd(-0.3, 0.3), cy + 0.3, cz + rnd(-0.3, 0.3), { vy: rnd(3, 7), life: 0.5, s0: 1.4, s1: 0.2, c0: 0xffffff, c1: col, a: 0.9 });
@@ -850,7 +853,9 @@ export function createGameplay(d: GameplayDeps) {
     const r = 2.3 * skillScale('bash').area, m = new THREE.Mesh(new THREE.CircleGeometry(r, 24).rotateX(-Math.PI / 2), napalmMat.clone()); m.position.set(x, gy + 0.06, z); m.renderOrder = 2; fxAdd(m);
     napalms.push({ x, z, r, t: 0, dur: 6 * skillScale('bash').dur, m }); fires.push({ x, z, t: 0 }); fireK = 1;
   }
-  function slotFlash(k: string) { const s = document.querySelector(`.slot[data-id="${k}"]`); if (!s) return; s.classList.add('on'); setTimeout(() => s.classList.remove('on'), 160); }
+  function slotFlash(k: string) { const s = document.querySelector(`.slot[data-id="${k}"]`); if (s) { s.classList.add('on'); setTimeout(() => s.classList.remove('on'), 160); }
+    /* 08/11 efeitos: toda magia com custo acende o círculo de conjuração aos pés, na cor da magia (sistemas/vfx.ts) */
+    try { const def = kitOf(kitKey as never)?.find((q) => q.id === k); if (def && def.cost > 0) { const p = d.getHero().root.position; vfxCast(new THREE.Vector3(p.x, p.y + 0.02, p.z), parseInt(def.c.replace('#', ''), 16) || 0xffffff, 1); } } catch { /* */ } }
 
 
   /* ---- Guerreira Nórdica, faixa 1–20: Chute de Escudo, Corte nos Tendões, Machadinha, Parede de Escudos, Sopro do Inverno, Lâmina Trovejante, Contra-golpe da Valquíria ---- */
@@ -1268,7 +1273,7 @@ export function createGameplay(d: GameplayDeps) {
     if (kind === 'icewall') { const ice = tm(0x8ac8f0, { transparent: true, opacity: 0.85, emissive: new THREE.Color(0x1a5a9a), emissiveIntensity: 0.45 });
       step(0.42, (u) => { const hgt = rnd(1.3, 2.3), c = new THREE.Mesh(new THREE.ConeGeometry(rnd(0.24, 0.38), hgt, 5), ice); c.position.set(u + rnd(-0.1, 0.1), hgt / 2, rnd(-0.18, 0.18)); c.rotation.set(rnd(-0.18, 0.18), rnd(0, 6), rnd(-0.15, 0.15)); g.add(c);
         const core = new THREE.Mesh(new THREE.ConeGeometry(0.1, hgt * 0.8, 4), glowM(0x9ad7ff, 0.5)); core.position.copy(c.position); core.rotation.copy(c.rotation); g.add(core); }); }
-    else if (kind === 'firewall') step(0.36, (u, i) => { for (let k = 0; k < 2; k++) { const hgt = rnd(1.2, 2.2) * (k ? 0.6 : 1), f = new THREE.Mesh(new THREE.ConeGeometry(k ? 0.16 : 0.28, hgt, 6), glowM(k ? 0xffb030 : 0xe0400a, k ? 0.55 : 0.42)); f.position.set(u + rnd(-0.08, 0.08), hgt / 2, rnd(-0.1, 0.1)); f.userData.flick = i * 1.7 + k; g.add(f); } });
+    else if (kind === 'firewall') step(0.42, (u, i) => { const f = makeFire(rnd(1.1, 1.7), i % 3 ? 'warm' : 'red', 'camp', i * 7.3 + u); f.position.set(u + rnd(-0.08, 0.08), 0.02, rnd(-0.12, 0.12)); f.userData.baseS = 1; g.add(f); }); /* 08/11: a Muralha de Fogo usa as chamas de cartão do sistema de fogo */
     else if (kind === 'stormwall') { const cu = tm(0xc8925a), n = 4; for (let i = 0; i < n; i++) { const u = (i / (n - 1) - 0.5) * w, p = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, 2.4, 8), cu); p.position.set(u, 1.2, 0); g.add(p);
         for (let r = 0; r < 3; r++) { const ring = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.035, 5, 12), cu); ring.rotation.x = Math.PI / 2; ring.position.set(u, 0.8 + r * 0.45, 0); g.add(ring); }
         const orb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8), glowM(0x9ad7ff, 0.95)); orb.position.set(u, 2.55, 0); g.add(orb); pyl.push(new THREE.Vector3(x + Math.cos(yaw) * u, g.position.y + 2.55, z - Math.sin(yaw) * u)); } }

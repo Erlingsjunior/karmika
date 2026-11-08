@@ -123,6 +123,9 @@ import { loadWorld, cachedArray } from './worldcache';
 import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { honorLog } from './sistemas/honra';
+import { vfxAttach, vfxTick } from './sistemas/vfx';
+import { skyAt, lightDirAt, createWorldMist } from './sistemas/ceu';
+import { radialTexture } from './fx3d';
 import { createGameplay } from './gameplay';
 import { createNpcs, type NpcDef } from './npcs';
 import { Mist, Particles } from './fx3d';
@@ -316,7 +319,7 @@ let geoSweepT = 30;
 const fixedL = gpuImpl ? null : createFixedLights(15); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
-scene.fog = new THREE.FogExp2(0x050814, 0.02);
+scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene);
 
 /* ---------- câmera isométrica (ortográfica) ---------- */
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -80, 160); // isométrica fixa (o Erling preferiu assim)
@@ -334,6 +337,7 @@ objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(gpuImpl ? 12000 : 7000); /* WebGPU aguenta mais: fogo e magia sem apagar as partículas mais velhas no meio da luta */
 const atmos = createAtmos(scene, particles, fine);
+const worldMist = createWorldMist(scene, radialTexture(256, [[0, 'rgba(255,255,255,.6)'], [0.55, 'rgba(255,255,255,.2)'], [1, 'rgba(255,255,255,0)']]), (x, z) => biomeAt(Math.floor(x / T), Math.floor(z / T)), (x, z) => heightAt(x, z)); /* 08/11 a névoa rasteira do mundo (ceu.ts) */
 
 scene.add(fine(particles.points));
 void Mist;
@@ -2758,15 +2762,18 @@ function frameBody() {
      Dentro de um evento aceito, o rubro e o coração voltam a pesar. */
   engK += ((eventos.engaged() ? 1 : 0) - engK) * Math.min(1, rawDt * 0.5);
   const luaV = luaK * Math.min(1, 0.25 + 0.75 * Math.max(op, engK * 0.85));
-  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(LUA_C.sky, luaV * 0.85).lerp(AUR_C.sky, aurV * 0.35);
-  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(LUA_C.fog, luaV * 0.8).lerp(AUR_C.fog, aurV * 0.4);
-  (scene.fog as THREE.FogExp2).density = mix(0.012, 0.0022, day) * (cinemaSys.cine ? 0.35 : 1) * (1 + luaV * 0.5);
+  /* 08/11 (sistemas/ceu.ts): o céu, a névoa e a luz seguem a HORA do jogo — aurora rosada, poente cobre, noite de luar. O 'night' forçado (teste, N)
+     e as transições continuam valendo pelo 'day': a paleta da hora pesa (1 − |night − nightAt(hora)|), senão vale a mistura antiga */
+  const SKY = skyAt(gameHour()), hourK = nightOverride === null && !inside ? 1 - Math.min(1, Math.abs(state.night - entradaSys.nightTarget) * 3) : 0;
+  scene.background = (scene.background as THREE.Color).copy(nightC.sky).lerp(dayC.sky, day).lerp(SKY.sky, hourK).lerp(LUA_C.sky, luaV * 0.85).lerp(AUR_C.sky, aurV * 0.35);
+  (scene.fog as THREE.FogExp2).color.copy(nightC.fog).lerp(dayC.fog, day).lerp(SKY.fog, hourK).lerp(LUA_C.fog, luaV * 0.8).lerp(AUR_C.fog, aurV * 0.4);
+  (scene.fog as THREE.FogExp2).density = mix(mix(0.012, 0.0022, day), SKY.fogD, hourK) * (cinemaSys.cine ? 0.35 : 1) * (1 + luaV * 0.5);
   letreiroSys.curseNow += ((inside ? 0 : curseK()) - letreiroSys.curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
-  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
-  hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(LUA_C.ground, luaV * 0.6);
+  hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(SKY.hemi, hourK * 0.8).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
+  hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(SKY.ground, hourK * 0.6).lerp(LUA_C.ground, luaV * 0.6);
   hemi.intensity = mix(0.9, 1.12, day) + (cinemaSys.cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
-  sun.color.copy(sunNight).lerp(sunDay, day).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
-  sun.intensity = mix(0.8, 2.4, day) + (cinemaSys.cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
+  sun.color.copy(sunNight).lerp(sunDay, day).lerp(SKY.sun, hourK).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
+  sun.intensity = mix(mix(0.8, 2.4, day), SKY.sunI, hourK) + (cinemaSys.cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
   renderer.toneMappingExposure = mix(0.9, 0.96, day); finish.uniforms.uVig.value = mix(0.48, 0.38, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
     (u.uMul.value as THREE.Vector3).set(mix(0.92, 1.07, dayW), mix(0.98, 1.0, dayW), mix(1.12, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
@@ -2775,7 +2782,7 @@ function frameBody() {
   audio.choir(aurK * (0.08 + 0.92 * op) * (inside ? 0.35 : 1), rawDt); /* coral: forte na abertura, depois quase imperceptível ao longe */ audio.blood(luaK * (0.12 + 0.88 * Math.max(op, engK)) * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42 * Math.pow(1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01, 1.6); } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
-    const dir = new THREE.Vector3(-18, 28, 10).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2;
+    const dir = (hourK > 0.5 ? lightDirAt(gameHour()).clone() : new THREE.Vector3(-18, 28, 10)).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2; /* 08/11: o sol anda com a hora (ceu.ts) */
     const a = Math.round(heroPos.dot(lr) / tex) * tex, b = Math.round(heroPos.dot(lu) / tex) * tex, c = heroPos.dot(dir);
     sun.target.position.set(0, 0, 0).addScaledVector(lr, a).addScaledVector(lu, b).addScaledVector(dir, c);
     sun.position.copy(sun.target.position).addScaledVector(dir, 40);
@@ -2885,8 +2892,9 @@ function frameBody() {
   updateInstFx(rawDt);
   pm('instfx');
   atmos.update(rawDt, t, heroPos, aurFx, luaV, gust, (x, z) => heightAt(x, z), !!inside);
+  worldMist.update(t, rawDt, heroPos, gameHour(), !!inside, (scene.fog as THREE.FogExp2).color, gust); /* 08/11 névoa rasteira por bioma e hora (ceu.ts) */
   if (!inside) craftHall?.update(dt, heroPos);
-  particles.update(dt);
+  particles.update(dt); vfxTick(dt); /* 08/11 efeitos (sistemas/vfx.ts) */
 
   pm('atmos/partículas');
   bloom.strength = mix(0.07, 0.03, day) * opts.bloom * gfxBloom;
