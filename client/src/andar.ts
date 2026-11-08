@@ -31,7 +31,8 @@ const BY_KIT: Partial<Record<KitKey, Gait>> = {
   /* anão: passo curto e rápido, balança de um lado ao outro, pé pesado */
   dwarf: G(0.92, 1.0, 1.0, 1.15, 1.2, 1.5, 1.6, 0, [1.2, 0.76]),
   /* elfa arqueira: leve, longa, quase sem sobe-e-desce; recuar atirando é o estilo dela (o ranger do PoE2) */
-  elf: G(1.12, 0.85, 0.85, 0.6, 0.9, 0.7, 0.3, 0, [2.6, 0.92]),
+  /* 08/11 (Erling: "elfos não correm, apenas andam rápido — elfos precisam correr como todos"): corrida de verdade (sobe-e-desce, braços e tronco de quem corre), só mais leve no pé */
+  elf: G(1.1, 1.0, 1.0, 0.95, 1.0, 0.8, 0.5, 0, [2.6, 0.92]),
   /* tecnocrata: passo medido, corpo reto, braços curtos (a manopla pesa) */
   tecno: G(0.96, 0.7, 0.8, 0.8, 0.7, 0.8, 1.1, 0, [1.6, 0.85]),
   technocrat: G(0.96, 0.7, 0.8, 0.8, 0.7, 0.8, 1.1, 0, [1.6, 0.85]),
