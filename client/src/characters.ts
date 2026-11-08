@@ -1592,7 +1592,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           else if (wcls === 'bow') { aTwist += 0.5 * cK; /* arco na esquerda: ombro esquerdo à frente */ aLean += -0.12 * cK; aShL += -0.4 * cK; aElL += -0.9 * cK; } // de lado, arco à frente
         }
         else if (kind === 'nordic') { aTwist += 0.4 * cK; aShL += -0.95 * cK; aElL += -1.35 * cK; aShLz += 0.12 * cK; aFace = Math.max(aFace, 0.85 * cK); aShR += -0.12 * cK; aElR += -1.5 * cK; aShRz += -0.12 * cK; } /* 04/11 (Erling: "segurando espada para baixo em modo batalha? quem faz isso?"): em guarda o antebraço vem à frente, cotovelo a ~90° — com a pegada anatômica é isso que deixa a lâmina de pé */
-        else if (kind === 'dwarf') { const W = [0.2, -0.35, -1.45, -0.25, 1.55, 0]; /* 07/11 (Erling: "cotovelo para fora, mão por cima"): martelo numa mão, em pé à frente do ombro, cotovelo aberto; ajustar no jogo */ aTwist += W[0] * cK; aShR += W[1] * cK; aElR += W[2] * cK; aShRz += W[3] * cK; aSwX += W[4] * cK; aSwZ += W[5] * cK; aLean += 0.12 * cK; aCrouch += 0.07 * cK; } /* 07/11 (Erling: "braço colado no corpo segurando o porrete, horrível; usa a postura do anão do WoW"): base larga e baixa, cotovelos abertos, o martelo em diagonal à frente do peito com as duas mãos e a cabeça para cima ao lado do ombro — o rosto livre */ // martelo na horizontal à frente, cabeça apontando o inimigo; a mão esquerda vai ao cabo por IK
+        else if (kind === 'dwarf') { aTwist += 0.35 * cK; aShR += -0.8 * cK; aElR += -0.45 * cK; aShRz += -0.12 * cK; aSwX += 2.35 * cK; aLean += 0.05 * cK; } // a pose final do anão em guarda (duas mãos, diagonal) é feita no modelo de arte (skin3d.holdGear)
         else { aTwist += 0.55 * cK; aCrouch += 0.05 * cK; aLean += 0.08 * cK; aHeadX += 0.22 * cK; }
       }
       // guarda: escudo erguido à frente
@@ -1765,7 +1765,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const nc = runK * (1 - combatK) * (act ? 0 : 1);
         armL.el.rotation.x -= (eb - restL.e) * runK * Math.max(swingL, nc) * 0.9; armR.el.rotation.x -= (eb - restR.e) * runK * Math.max(swingR, nc) * 0.9;
         armL.el.rotation.x += (-1.4 - armL.el.rotation.x) * nc * 0.8; armR.el.rotation.x += (-1.4 - armR.el.rotation.x) * nc * 0.8;
-        armL.sh.rotation.z += (-0.08 - armL.sh.rotation.z) * nc * 0.7; armR.sh.rotation.z += (0.08 - armR.sh.rotation.z) * nc * 0.7;
       }
       if (kind === 'nordic' && !hero.riding) { // escudo sacado: antebraço atravessado à frente do corpo, face do escudo para a frente, cotovelo afastado
         /* 07/11 (Erling: "essa mãozinha pra frente, por quê?"): a pose do braço do escudo só vale com o escudo NO braço; escudo nas costas (ou sem escudo), a mão fica solta ao lado do corpo */
@@ -1821,7 +1820,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           bow: [[0.22, -0.12, 0.34], [0.2, -0.7, 0.68]], // arco baixo à frente, inclinado, flecha pronta (na mão esquerda: espelhado)
         };
         const guardHold = kind === 'dwarf' && guardK > 0.3;
-        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : null; /* 07/11: o anão em guarda segura o martelo numa mão só, em pé (pose de braço abaixo), sem o rig de duas mãos */
+        const HOLD: [number, number, number][] | null = guardHold ? [[0.05, 0.28, 0.4], [1, 0.05, 0]] : kind === 'nordic' ? (W_HOLD[wcls] ?? [[0.34, -0.2, 0.3], [0.2, 0.78, 0.6]]) : null;
         const kfW = act ? WKF[act.a] : undefined;
         const want = kfW ? 1 : guardHold ? 1 : (!act && hero.combat && guardK < 0.3 && HOLD) ? combatK : 0;
         rigK += (want - rigK) * Math.min(1, dt * 12);
@@ -1853,12 +1852,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
             let pull = 0.12; if (act && act.a === 'draw') { const p = clamp(act.t / act.dur, 0, 1); pull = p < 0.2 ? lerp(0.12, 0.45, p / 0.2) : p < 0.6 ? lerp(0.45, 1, (p - 0.2) / 0.4) : p < 0.66 ? lerp(1, 0.05, (p - 0.6) / 0.06) : lerp(0.05, 0.12, (p - 0.66) / 0.34); }
             const bp = offRig!.position, cheek = rigTmp.set(0.12, 0.38, -0.03); const tS = new V(bp.x, bp.y, bp.z).lerp(cheek, 0.12 + 0.82 * pull);
             armIK(armR.sh, armR.el, tS, S.upper, S.fore, tmp.set(0.9, -0.3, -0.2), rigK);
-          } else if (kind === 'dwarf' && !act) {
-            /* 07/11 (Erling, desenho: "cotovelo para fora, mão por cima; cotovelo para baixo, braço subindo, mão por fora"): o martelo em diagonal,
-               cabeça no alto junto do ombro direito. A mão de cima (direita) pega por cima com o cotovelo aberto para o lado; a de baixo (esquerda)
-               pega mais embaixo no cabo, por fora, com o cotovelo para baixo e o antebraço subindo */
-            armIK(armR.sh, armR.el, tR, S.upper, S.fore, tmp.set(1, 0.25, -0.3), rigK);
-            const tL = rigPos.clone().addScaledVector(rigDir, -0.36); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.25, -1, 0.15), rigK);
           } else armIK(armR.sh, armR.el, tR, S.upper, S.fore, tmp.set(0.7, -0.8, 0.1), rigK);
           if (wcls === 'two' && !(act && (act.a === 'chop' || act.a === 'mine'))) { const tL = rigPos.clone().addScaledVector(rigDir, -0.16); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.6, -0.9, 0.1), rigK); } /* espadão: as duas mãos no cabo */
           if (act && (act.a === 'chop' || act.a === 'mine')) { // ferramenta de duas mãos: a esquerda corre pelo cabo
@@ -1866,7 +1859,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           }
         }
       }
-      if (kind === 'dwarf' && gripL && !dwarfUnarmed && gearOn && act) { // mão esquerda segura o cabo do martelo nos golpes e na postura de combate
+      if (kind === 'dwarf' && gripL && !dwarfUnarmed && gearOn) { // mão esquerda segura o cabo do martelo nos golpes e na postura de combate
         const two = act && (act.a === 'cleave1' || act.a === 'cleave2' || act.a === 'quake' || act.a === 'charge') ? 1 : 0;
         const k2 = smooth1('twoH', Math.max(two, guardK, combatK * (1 - walkK * 0.5)), dt, 12);
         if (k2 > 0.01) { chest.updateWorldMatrix(true, true); const tL = gripL.getWorldPosition(new V()); chest.worldToLocal(tL); armIK(armL.sh, armL.el, tL, S.upper, S.fore, tmp.set(-0.8, -0.8, 0.2), k2); }

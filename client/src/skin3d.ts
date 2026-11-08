@@ -199,7 +199,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     obj.matrixAutoUpdate = false; obj.matrix.multiplyMatrices(mi, mw); obj.updateMatrixWorld(true);
   }
   // repouso da espada no procedural: suporte em (-1.9, 0, 0) e lâmina sem giro interno
-  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0, twoDone = false, reach = 0.9, reachKey = '';
+  let R0inv: THREE.Quaternion | null = null, leanK = 1, headKey = '', headDir: THREE.Vector3 | null = null, restK = 0, cmbK = 0, gK2 = 0, twoDone = false, reach = 0.9, reachKey = '';
   /** comprimento da arma do pegador até a ponta (lado da lâmina/cabeça), na escala local */
   function measureReach(o: THREE.Object3D, sgn: number) { if (!o.parent) return 0.9; const m = o.matrix.clone(), au = o.matrixAutoUpdate; o.parent.updateWorldMatrix(true, false); o.matrixAutoUpdate = false; o.matrix.copy(o.parent.matrixWorld).invert(); o.updateMatrixWorld(true); const e = new THREE.Box3().setFromObject(o, true); o.matrix.copy(m); o.matrixAutoUpdate = au; o.updateMatrixWorld(true); return Math.max(0.2, sgn > 0 ? e.max.y : -e.min.y); }
   /* ENCAIXE DA PALMA (04/11, Erling: "crie um ponto de colagem no centro da palma da mão e coloque o cabo lá como um encaixe de ímã… isso vale
@@ -303,6 +303,15 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
           const ex = new THREE.Matrix4().makeBasis(X, Y, Z).setPosition(-0.13, -0.04, 0); sockM.multiplyMatrices(sockets.back.b.matrixWorld, sockets.back.rel).multiply(ex);
           th.parent.updateWorldMatrix(true, false); th.matrixAutoUpdate = false; th.matrix.copy(th.parent.matrixWorld).invert().multiply(sockM); th.updateMatrixWorld(true);
           restK = 0; cmbK = 0; gripK.Left = 0; gripK[swordSide] = 0; setFingers(); model.updateMatrixWorld(true); if (sockets) placeSock(R.shield(), sockets.back); return; }
+        /* 08/11 (Erling, desenho e referências do anão do WoW): em guarda o martelo atravessa a frente do corpo na diagonal, a cabeça alta do lado
+           ESQUERDO. A mão direita pega embaixo, perto do fim do cabo, por cima, com o cotovelo aberto para fora; a esquerda pega mais em cima,
+           perto da cabeça, por fora, com o cotovelo para baixo e o antebraço subindo */
+        const guardOn = hero.combat && !hero.acting && !hero.guard; gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
+        const rq0 = root.getWorldQuaternion(new THREE.Quaternion()), fw0 = new THREE.Vector3(0, 0, 1).applyQuaternion(rq0), rt0 = new THREE.Vector3(1, 0, 0).applyQuaternion(rq0), up0 = new THREE.Vector3(0, 1, 0);
+        const sc0 = root.getWorldScale(new THREE.Vector3()).x, base0 = root.getWorldPosition(new THREE.Vector3());
+        const gDir = rt0.clone().multiplyScalar(-0.85).addScaledVector(up0, 0.32).addScaledVector(fw0, 0.22).normalize();
+        const gR = base0.clone().addScaledVector(up0, 0.8 * sc0).addScaledVector(fw0, 0.38 * sc0).addScaledVector(rt0, 0.2 * sc0);
+        if (gK2 > 0.02) { const cur = new THREE.Vector3(); W(sM, cur); armIK(swordSide, R.armR, cur.lerp(gR, gK2), rt0.clone().addScaledVector(up0, 0.45).addScaledVector(fw0, -0.2)); model.updateMatrixWorld(true); }
         W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); root.matrixWorld.decompose(vF, tq, sc);
         const a = ay.subVectors(vI, vP).normalize().multiplyScalar(-1), f = new THREE.Vector3().subVectors(vM, vH).normalize();
         const k = f.clone().sub(a.clone().multiplyScalar(f.dot(a))).normalize(); const palm = new THREE.Vector3().crossVectors(a, f).normalize();
@@ -314,7 +323,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const rootY = root.getWorldPosition(new THREE.Vector3()).y, hy = Math.max(0.05, grip.y - rootY), Lh = (isSw ? reach + 0.15 : 1.1) * sc.x, cosT = Math.min(1, hy / Lh), sinT = Math.sqrt(1 - cosT * cosT);
         const restDir = new THREE.Vector3(0, -cosT, 0).addScaledVector(right, sinT * 0.8).addScaledVector(fwd, sinT * 0.6).normalize();
         /* em combate (sem golpe): diagonal pelo corpo, cabeça para cima e para fora (referências do Erling) */
-        const cmbDir = right.clone().multiplyScalar(0.8).addScaledVector(up, 0.55).addScaledVector(fwd, 0.25).normalize();
+        const cmbDir = gDir.clone();
         const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
         { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
@@ -327,7 +336,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const kk = k.clone().lerp(fwd, Math.max(restK, cmbK));
         /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, (isSw ? 0.15 : 0.26) * sc.x * restK);
         place(th, kk, handle.clone().multiplyScalar(hs), gp);
-        /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, -(restK > 0.5 ? 0.06 : 0.15) * sc.x); armIK('Left', R.armL, lt); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
+        /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, (-(restK > 0.5 ? 0.06 : 0.15) * (1 - gK2) + 0.36 * gK2) * sc.x); armIK('Left', R.armL, lt, gK2 > 0.5 ? up.clone().multiplyScalar(-1).addScaledVector(right, -0.35).addScaledVector(fwd, 0.15) : undefined); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!); stowedNow = stowed;
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
