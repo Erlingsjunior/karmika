@@ -1,5 +1,5 @@
 import { runeFxOf, type ROp } from './runas-classes';
-import { d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
+import { KIT_BAL, d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
@@ -566,7 +566,7 @@ export function createGameplay(d: GameplayDeps) {
     const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver + 0.3 * (RF.fresta ?? 0);
     const H = heroHand(st.lvl), hr = rollDice(H.dice), rk = spell ? rankDice(ssOf(skill).rank ?? 0) : [], rr = rollDice(rk), rkAvg = diceAvg(rk); /* o grau da magia soma dados, com a média de sempre */
     const handV = (hr.sum + H.bonus + rr.sum) * H.avg / (H.avg + rkAvg);
-    let dmg = (handV + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; /* 07/11: aura de dano de um companheiro */
+    let dmg = (handV + st.dmgFlat * (1 + 0.5 * lp)) * mul * (KIT_BAL[kitKey] ?? 1) * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; /* 07/11: aura de dano de um companheiro */
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
       const arm = Math.max(0, Math.min(0.6, 0.06 + cp.arm + 0.025 * dlv)), absb = cp.abs * (1 + 0.12 * el), ty = dmgTypeOf(skill), rs = cp.res?.[ty] ?? 1;

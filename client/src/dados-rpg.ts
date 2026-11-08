@@ -52,3 +52,8 @@ export function rollLog(who: string, verdict: string, kind: RollKind, dice: stri
   if (!document.body.classList.contains('ready')) return; const b = ensure(); if (!on) return; const l = b.querySelector('.rl')!;
   const p = document.createElement('p'); p.className = kind; p.innerHTML = `<span class="r1"><i class="ic">${mine ? '⚔' : '🛡'}</i><b class="who">${who}</b><em class="vd">${verdict}</em></span><span class="r2">🎲 ${dice}</span>`;
   l.appendChild(p); while (l.children.length > 6) l.firstElementChild!.remove(); setTimeout(() => p.classList.add('old'), 6000); }
+
+/* 07/11 EQUILÍBRIO ENTRE CLASSES (simulação: claude/regras-matematicas-07-11.md): o dano por segundo de cada caminho, com as magias de verdade,
+   contra um alvo, de equipamento raro. Meta: corpo a corpo = 1,00 do Guerreiro do Norte; à distância = 0,90 (bate sem apanhar).
+   Este número corrige quem saía muito acima ou muito abaixo; as magias de área e de controle continuam valendo por cima. */
+export const KIT_BAL: Record<string, number> = { nordic: 1, human: 1.12, dwarf: 0.96, technocrat: 0.53, tecno: 0.95, pal: 0.81, vam: 0.66, lob: 0.76, cac: 0.68, mag: 1.5, bru: 1.75, elf: 1.5 };

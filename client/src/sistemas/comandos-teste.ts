@@ -21,6 +21,10 @@ function betaCommand(cmd: string, a: string[]): string | null {
   { const MAT: Record<string, string> = { prego: 'nail', pregos: 'nail', madeira: 'wood', tabua: 'plank', tabuas: 'plank', 'tábuas': 'plank', pedra: 'stone', pedras: 'stone', corda: 'rope', cordas: 'rope', galho: 'stick', galhos: 'stick' };
     if (MAT[cmd]) { const id = MAT[cmd], q = n > 0 ? n : 1000; K.inv.grant(id, q); return `🧪 (teste) +${q} ${ITEMS_TBL[id]?.icon ?? ''} ${ITEMS_TBL[id]?.name ?? id}.`; }
     /* /armas: uma de cada arma e escudo na mochila (teste de visual, Erling 01/11); /armas rara, /armas epica… escolhe a raridade; o baú recebe o que não couber */
+    /* /equipar [rara|epica|lendaria]: um conjunto inteiro do seu nível vestido (teste de equilíbrio, 07/11) */
+    if (cmd === 'equipar' || cmd === 'conjunto') { const rr = ({ magica: 'magic', rara: 'rare', epica: 'epic', épica: 'epic', lendaria: 'legendary', lendária: 'legendary' } as Record<string, string>)[a[0] ?? ''] ?? 'rare'; let n = 0; K.inv.wipeGear?.();
+      for (const sl of ['weapon', 'shield', 'helm', 'armor', 'boots', 'ring', 'ring2', 'amulet', 'earring', 'earring2', 'shoulders', 'cape'] as const) { const g = genGear(Math.max(1, K.game.st.lvl), rr as never, sl === 'ring2' ? 'ring' : sl === 'earring2' ? 'earring' : sl); (g as { slot: string }).slot = sl === 'ring2' ? 'ring' : sl === 'earring2' ? 'earring' : sl; if (K.inv.addGear(g)) { K.inv.equipGear(g.uid); n++; } }
+      K.inv.recalc?.(); return `🧪 (teste) ${n} peças ${rr} do nível ${K.game.st.lvl} vestidas.`; }
     if (cmd === 'armas' || cmd === 'arsenal') { const rr = ({ magica: 'magic', mágica: 'magic', rara: 'rare', epica: 'epic', épica: 'epic', lendaria: 'legendary', lendária: 'legendary' } as Record<string, string>)[a[0] ?? ''] ?? 'normal'; let n = 0, over = 0;
       for (const sl of ['weapon', 'shield'] as const) for (const b of BASES[sl]) { const g = genGear(Math.max(1, K.game.st.lvl), rr as never, sl, b.n); if (K.inv.addGear(g)) n++; else over++; }
       return `🧪 (teste) ${n} peças na mochila${over ? ` (+${over} não couberam: esvazie a mochila e repita)` : ''}.`; }

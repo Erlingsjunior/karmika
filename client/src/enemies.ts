@@ -898,4 +898,19 @@ export function animQuadWalk(q: Quad, ph: number, moveSp: number, t: number, see
    já era perdido. Agora, herói de raro contra bicho do mesmo nível: ~5 s para matar e ~20–45 s para morrer, do nível 30 ao 120;
    cada nível acima ainda pesa (herói 120 épico: contra 130 ganha suando, contra 150 só em grupo). */
 export const LV_KH = 0.022, LV_KD = 0.003;
-export function lvlScale(type: EnemyType, L: number) { const dL = L - DEFS[type].lvl, hi = Math.max(0, L - 20); return { hp: Math.max(0.35, 1 + 0.12 * dL + LV_KH * hi * dL), dmg: Math.max(0.4, 1 + 0.085 * dL + LV_KD * hi * dL) }; }
+/* 07/11 REGRA MATEMÁTICA (Erling: "precisamos criar as regras matemáticas do game"; doc claude/regras-matematicas-07-11.md): a curva do bicho
+   sai de duas tabelas medidas no jogo (herói de equipamento raro do mesmo nível, simulação por classe):
+   - VIDA alvo = tempo para matar × dano por segundo de referência → um bicho comum cai em 2,5 s no nível 1 e 6,5 s no 150;
+   - GOLPE alvo = vida efetiva do herói ÷ golpes para morrer → 14 golpes no nível 1, 9 no 150.
+   Um bicho no nível L vale a sua ficha × (alvo em L ÷ alvo no nível da ficha). Interpolação logarítmica entre as linhas. */
+const CURVE_L = [1, 10, 20, 30, 40, 60, 80, 100, 120, 150];
+const CURVE_HP = [172, 402, 1117, 1778, 2924, 5679, 9490, 15032, 27558, 55614];
+const CURVE_DMG = [30, 56, 95, 124, 182, 283, 406, 467, 670, 918];
+function curveAt(T: number[], L: number) { if (L <= CURVE_L[0]) return T[0] * Math.pow(T[1] / T[0], (L - 1) / 9); const n = CURVE_L.length; if (L >= CURVE_L[n - 1]) return T[n - 1] * Math.pow(T[n - 1] / T[n - 2], (L - CURVE_L[n - 1]) / (CURVE_L[n - 1] - CURVE_L[n - 2]));
+  let i = 0; while (CURVE_L[i + 1] < L) i++; const u = (L - CURVE_L[i]) / (CURVE_L[i + 1] - CURVE_L[i]); return T[i] * Math.pow(T[i + 1] / T[i], u); }
+/* as fichas dos bichos foram escritas fracas para o meio do jogo (a simulação deu 1,5 s para matar e ~30 golpes para morrer): este fator
+   leva à meta. No começo fica quase igual (o novato ainda não tem equipamento raro); do 30 em diante, vida ×2,5 e golpe ×2,2 */
+const F_L = [1, 10, 20, 30, 40], F_HP = [1, 1.3, 1.8, 2.5, 2.5], F_DMG = [1.2, 1.5, 1.9, 2.1, 2.2];
+const fAt = (T: number[], L: number) => { if (L >= 40) return T[4]; let i = 0; while (F_L[i + 1] < L) i++; const u = Math.max(0, (L - F_L[i]) / (F_L[i + 1] - F_L[i])); return T[i] + (T[i + 1] - T[i]) * u; };
+export function lvlScale(type: EnemyType, L: number) { const b = DEFS[type].lvl; void LV_KH; void LV_KD; return { hp: Math.max(0.35, curveAt(CURVE_HP, L) / curveAt(CURVE_HP, b) * fAt(F_HP, L)), dmg: Math.max(0.4, curveAt(CURVE_DMG, L) / curveAt(CURVE_DMG, b) * fAt(F_DMG, L)) }; }
+(globalThis as unknown as { __mdefs?: unknown }).__mdefs = { DEFS, lvlScale }; /* teste de equilíbrio (07/11) */

@@ -338,3 +338,4 @@ export function createSkillTree(race: () => Race, lvl: () => number, log: (t: st
   const setView = (r: Race | null) => { view = r; };
   return { rank, scale, has, wipe, available, spent, blocked, invest, addBonus, migrate, reset, sheet, render, def, setView, startClass, owned: ownedL, setExtraSpent(f: () => number) { extraSpent = f; }, setTotal(f: () => number) { totalF = f; }, view: () => vr(), lvl };
 }
+(globalThis as unknown as { __stats?: unknown }).__stats = STATS; /* teste de equilíbrio (07/11) */

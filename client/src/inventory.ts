@@ -815,6 +815,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     tool(sl: ToolSlot) { const id = tools[sl]; return id ? { id, ...TOOLS[id], name: ITEMS[id].name } : null; },
     /** 02/11: motivo de a classe atual não vestir a peça (null = serve) */
     whyNot: (g: Gear) => hooks.canWear?.(g) || null,
+    /** teste (/equipar): tira e apaga todo o equipamento vestido e o da mochila */ wipeGear() { gearBag.length = 0; for (const k of Object.keys(eqG) as Slot[]) eqG[k] = null; recalc(); render(); },
     has, count, add, addGear, equipGear: equip, take, save, recalc, use, craft,
     get isOpen() { return open || charOpen || !!shop || vaultOpen; },
     /** abre o Baú do Caminhante junto com a mochila */
