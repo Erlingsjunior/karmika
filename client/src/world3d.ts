@@ -1,5 +1,6 @@
 import { RUNAS } from './runas';
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { gpuTag } from './gpu/tags';
 import { mergeStatic } from './merge3d';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -390,16 +391,12 @@ export function buildWorld(world: World): WorldObjs {
       const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.12, 0.3, 8), std(0x2a1c12));
       ink(bowl, 0.06); bowl.position.set(Wm / 2, h - 0.15, Dm / 2); g.add(bowl);
       const fc = p.roof && p.roof !== 0xff8a2a && p.roof !== 0xffb050 ? p.roof : 0xffb040; // lanterna vermelha (Conde) ou azul (Pináculo)
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.46, 7), new THREE.MeshBasicMaterial({ color: fc }));
-      flame.position.set(Wm / 2, h + 0.12, Dm / 2); flame.userData.dyn = true; g.add(flame);
-      const core = new THREE.Mesh(new THREE.ConeGeometry(0.06, 0.26, 6), new THREE.MeshBasicMaterial({ color: 0xfff6c0 })); core.position.y = -0.06; flame.add(core);
+      const flame = makeFire(0.5, fc, 'torch', r() * 999); flame.position.set(Wm / 2, h - 0.08, Dm / 2); g.add(flame); /* 08/11: chama de cartão (sistemas/fogo.ts) */
       L.torches.push({ pos: new THREE.Vector3(wx, wy + h + 0.25, wz), light: nullLight, base: 75, seed: r() * 50, flame, dist: 0 });
     } else if (p.kind === 'campfire') {
       for (let i = 0; i < 7; i++) { const a = (i / 7) * 6.283; const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), rockMat(0x6a6864)); s.scale.y = 0.7; s.position.set(Wm / 2 + Math.cos(a) * 0.55, 0.1, Dm / 2 + Math.sin(a) * 0.55); g.add(s); }
       for (let i = 0; i < 4; i++) { const lg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.9, 6), std(0x4a3220)); lg.rotation.set(Math.PI / 2 - 0.5, i * 1.57, 0); lg.position.set(Wm / 2, 0.18, Dm / 2); g.add(lg); }
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.75, 7), new THREE.MeshBasicMaterial({ color: 0xffb040 }));
-      flame.position.set(Wm / 2, 0.55, Dm / 2); flame.userData.dyn = true; g.add(flame);
-      const core = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.4, 6), new THREE.MeshBasicMaterial({ color: 0xfff6c0 })); core.position.y = -0.1; flame.add(core);
+      const flame = makeFire(0.8, 'warm', 'camp', r() * 999); flame.position.set(Wm / 2, 0.12, Dm / 2); g.add(flame); /* 08/11: fogueira de várias línguas */
       L.torches.push({ pos: new THREE.Vector3(wx, wy + 0.7, wz), light: nullLight, base: 62, seed: r() * 50, flame, dist: 0 });
     } else if (p.kind === 'rock') {
       const x4 = (i: number, pa: THREE.BufferAttribute | THREE.InterleavedBufferAttribute) => pa.getX(i) + pa.getZ(i) * 0.7;
@@ -533,7 +530,7 @@ export function buildWorld(world: World): WorldObjs {
       for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; const m = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.3), sm); m.position.set(Wm / 2 + Math.cos(a) * 1.4, H + 1.0, Dm / 2 + Math.sin(a) * 1.4); m.rotation.y = -a; g.add(m); }
       const roof = new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.0, 10), std(p.roof)); roof.position.set(Wm / 2, H + 1.75, Dm / 2); g.add(roof);
       for (let k = 0; k < 3; k++) { const w = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.6, 0.1), std(0x1a1410)); const a = k * 2.1; w.position.set(Wm / 2 + Math.cos(a) * 1.3, H * (0.4 + k * 0.2), Dm / 2 + Math.sin(a) * 1.3); w.rotation.y = -a + Math.PI / 2; g.add(w); }
-      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.46, 7), new THREE.MeshBasicMaterial({ color: 0xffb040 })); flame.position.set(Wm / 2 + 1.0, H + 1.2, Dm / 2 + 0.8); flame.userData.dyn = true; g.add(flame);
+      const flame = makeFire(0.5, 'warm', 'torch', r() * 999); flame.position.set(Wm / 2 + 1.0, H + 0.97, Dm / 2 + 0.8); g.add(flame);
       L.torches.push({ pos: new THREE.Vector3(wx + 1.0, wy + H + 1.3, wz + 0.8), light: nullLight, base: 70, seed: r() * 50, flame, dist: 0 });
     } else if (p.kind === 'relic' && p.label && PORTAL_OF[p.label]) { /* portal da vila (prancha 33, 01/11): o anel/arco do povo no lugar do monólito */
       const ps = PORTAL_OF[p.label], { g: pg, veil, height } = buildPortal(ps, p.gx * 7 + p.gy * 13); pg.position.set(Wm / 2, 0, Dm / 2); g.add(pg); const G = PORTAL_GLOW[ps];
@@ -663,7 +660,7 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
        toda tocha vira o poste com lampião de fogo pendurado no braço; a chama (com a cor dela) acende dentro do vidro */
     stripMeshes(g); const ry = ((p.gx * 7 + p.gy * 13) % 8) * 0.785, k = 0.9; put('porto_poste_lampiao', Wm / 2, Dm / 2, ry, k);
     const lx = 0.54 * k, ly = 2.58 * k, lz = 0.21 * k, ox = lx * Math.cos(ry) + lz * Math.sin(ry), oz = -lx * Math.sin(ry) + lz * Math.cos(ry);
-    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.5); tc.flame.position.set(Wm / 2 + ox, ly - 0.12, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); tc.base = Math.max(tc.base, 34); } /* 04/11: 52 estourava a armação do lampião, o papel do quadro e quem passa embaixo */
+    const tc = L.torches[L.torches.length - 1]; if (tc) { tc.flame.scale.setScalar(0.5); tc.flame.userData.baseS = 0.5; tc.flame.position.set(Wm / 2 + ox, ly - 0.24, Dm / 2 + oz); tc.pos.set(wx + ox, wy + ly, wz + oz); tc.base = Math.max(tc.base, 34); } /* 04/11: 52 estourava a armação do lampião, o papel do quadro e quem passa embaixo */
     /* 03/11 (Erling: "a lamparina não tem luz… mal podemos ver, se confunde com os outros itens"): halo quente em volta do vidro, que se vê de longe */
     { const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: lampHalo(), color: 0xffb860, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.42, fog: false })); halo.scale.setScalar(1.15); /* 04/11: mais fraco e menor — a armação de ferro aparece através do brilho */ halo.position.set(Wm / 2 + ox, ly - 0.05, Dm / 2 + oz); halo.userData.dyn = true; halo.raycast = () => {}; /* o raio-x atravessa (Sprite pede câmera no raycast) */ g.add(halo); } }
   else if (p.kind === 'palisade' && W && artGeo('muralha_01')) { /* paliçada: o muro do Herik cobre duas casas por peça (5 m comprimido para 4 m) */

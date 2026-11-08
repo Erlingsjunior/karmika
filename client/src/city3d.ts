@@ -2,6 +2,7 @@
    passa por dentro), portões com pórtico em arco e torres de flanco, escadarias de pedra por dentro da muralha,
    o castelo e as quatro academias. Origem de cada peça no canto (0,0) do terreno dela; a frente olha para +z (sul). */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, texBox, stoneTex, shingleTex, woodTex, plankTex } from './toon3d';
 import { vitral, TEMAS, type Tam } from './vitrais';
 import { TILE_M as T } from '@karmika/shared';
@@ -36,7 +37,7 @@ function kit() {
   };
   const window_ = (w: number, h: number, x: number, y: number, z: number, ry: number, c = 0xffc070) => { const m = add(new THREE.PlaneGeometry(w, h), glowM(c), x, y, z, ry, false); return m; };
   const slit = (x: number, y: number, z: number, ry: number) => add(new THREE.PlaneGeometry(0.22, 0.9), darkM(), x, y, z, ry, false);
-  const torch = (x: number, y: number, z: number) => { add(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 5), wood(0x3a2a1c), x, y, z); add(new THREE.CylinderGeometry(0.16, 0.1, 0.18, 6), ironM(), x, y + 0.42, z); const f = add(new THREE.ConeGeometry(0.14, 0.42, 6), new THREE.MeshBasicMaterial({ color: 0xffb040 }), x, y + 0.72, z, 0, false); f.userData.dyn = true; out.torches.push({ pos: new THREE.Vector3(x, y + 0.8, z), flame: f }); };
+  const torch = (x: number, y: number, z: number) => { add(new THREE.CylinderGeometry(0.06, 0.08, 0.7, 5), wood(0x3a2a1c), x, y, z); add(new THREE.CylinderGeometry(0.16, 0.1, 0.18, 6), ironM(), x, y + 0.42, z); const f = makeFire(0.46, 'warm', 'torch', x * 7 + z * 13); f.position.set(x, y + 0.51, z); g.add(f); out.torches.push({ pos: new THREE.Vector3(x, y + 0.8, z), flame: f }); };
   /** estandarte pendurado na face (ry = direção para fora) com o losango do Olho */
   const banner = (x: number, y: number, z: number, ry: number, c = 0x8a2a2a, w = 1.1, h = 2.6) => {
     const b = add(new THREE.PlaneGeometry(w, h), clothM(c), x, y - h / 2, z, ry, false);

@@ -5,6 +5,7 @@
  *  nichos, lustres de ferro com velas, estandartes e as bancas do Mercado das Galerias. Origem local (0,0) = canto noroeste;
  *  saída ao sul (z > D). A câmera olha de sudeste: paredes norte e oeste altas, sul e leste baixas. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, ink, stoneTex, woodTex, plankTex, ramp } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -22,7 +23,7 @@ export function buildDwarfHall(seed = 5): Interior & { lavaTick(t: number): void
   const solid = (x: number, z: number, rad: number) => cols.push([x, z, rad]);
   const fixtures: { x: number; y: number; z: number; c: number; i: number; dist: number }[] = [];
   const light = (x: number, y: number, z: number, c: number, i: number, dist = 16) => fixtures.push({ x, y, z, c, i, dist });
-  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.14 * s, 0.5 * s, 6), glow(c)); f.position.set(x, y, z); f.userData.dyn = true; g.add(f); return f; };
+  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = makeFire(0.52 * s, c, s < 0.75 ? 'candle' : s >= 1.5 ? 'brazier' : 'torch', x * 7 + z * 13 + y); f.position.set(x, y - 0.25 * s, z); g.add(f); return f; }; /* 08/11: chama de cartão */
 
   // chão: lajes de basalto e a passadeira dourada do portão ao estrado; base escura em volta
   { const dark = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshBasicMaterial({ color: 0x07060a })); dark.rotation.x = -Math.PI / 2; dark.position.set(W / 2, -0.08, D / 2); g.add(dark);

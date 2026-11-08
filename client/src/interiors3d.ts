@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { vitral, floorGlow, TEMAS, type Tam } from './vitrais';
 import { std, ink, plankTex, stoneTex, woodTex, plasterTex } from './toon3d';
 
@@ -37,7 +38,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
      (travada de ~1 s ao entrar) — a 5ª em diante vira só o brilho emissivo do próprio objeto (a luz devolvida fica fora do grupo) */
   const MAX_LIGHTS = 4;
   const light = (x: number, y: number, z: number, c: number, i: number, dist = 14) => { const l = new THREE.PointLight(c, i, dist, 1.6); l.position.set(x, y, z); if (lights.length < MAX_LIGHTS) { g.add(l); lights.push({ l, base: i, ph: r() * 9 }); } return l; };
-  const flame = (x: number, y: number, z: number, s = 1) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.12 * s, 0.4 * s, 6), new THREE.MeshBasicMaterial({ color: 0xffb040 })); f.position.set(x, y, z); g.add(f); return f; };
+  const flame = (x: number, y: number, z: number, s = 1) => { const f = makeFire(0.42 * s, s < 0.75 ? 'candle' : 'warm', s < 0.75 ? 'candle' : 'torch', x * 7 + z * 13 + y); f.position.set(x, y - 0.2 * s, z); g.add(f); return f; }; /* 08/11: chama de cartão */
   const rug = (x: number, z: number, w: number, d: number, c: number) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshToonMaterial({ color: c })); m.rotation.x = -Math.PI / 2; m.position.set(x, 0.02, z); g.add(m); const m2 = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.8, d * 0.78), new THREE.MeshToonMaterial({ color: new THREE.Color(c).multiplyScalar(0.6) })); m2.rotation.x = -Math.PI / 2; m2.position.set(x, 0.025, z); g.add(m2); };
   /* nada divide o mesmo pedaço de parede: janelas, vitrais, lareiras, estantes e bandeiras reservam o seu trecho; quem chega depois procura outro lugar (ou fica de fora) */
   const wallUse: Record<'n' | 'w', [number, number][]> = { n: [], w: [] };

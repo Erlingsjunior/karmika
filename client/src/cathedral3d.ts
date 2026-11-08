@@ -5,6 +5,7 @@
  *  sarcófagos com efígies. Andar 5: o santuário profano do Bispo. Origem local (0,0) = canto noroeste; saída ao sul (z > D).
  *  Câmera olha de sudeste: paredes norte/oeste altas, sul/leste baixas. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, ink, stoneTex, plankTex, woodTex, ramp } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -92,7 +93,7 @@ export function buildCathedralFloor(floor: number, seed = 11): CathedralFloor {
   const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
   const solid = (x: number, z: number, rad: number) => cols.push([x, z, rad]);
   const light = (x: number, y: number, z: number, c: number, i: number, dist = 16) => { fixtures.push({ x, y, z, c, i, dist, ph: r() * 9 }); };
-  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.12 * s, 0.4 * s, 6), new THREE.MeshBasicMaterial({ color: c })); f.position.set(x, y, z); g.add(f); const core = new THREE.Mesh(new THREE.ConeGeometry(0.05 * s, 0.22 * s, 6), new THREE.MeshBasicMaterial({ color: 0xfff6c0 })); core.position.y = -0.05 * s; f.add(core); return f; };
+  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = makeFire(0.42 * s, c, s < 0.75 ? 'candle' : s >= 1.5 ? 'brazier' : 'torch', x * 7 + z * 13 + y); f.position.set(x, y - 0.2 * s, z); g.add(f); return f; }; /* 08/11: chama de cartão */
   const glow = (x: number, y: number, z: number, w: number, h: number, c: number, op = 0.35, ry = 0, flat = false) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })); m.position.set(x, y, z); if (flat) m.rotation.x = -Math.PI / 2; m.rotation.y = ry; m.renderOrder = 3; g.add(m); return m; };
   const wall = (x0: number, z0: number, x1: number, z1: number, h: number, th = 0.8, m: THREE.Material = sm) => { const len = Math.hypot(x1 - x0, z1 - z0), a = Math.atan2(x1 - x0, z1 - z0); add(B(th, h, len), m, (x0 + x1) / 2, h / 2, (z0 + z1) / 2, true, a); for (let d = 0; d <= len; d += 0.8) solid(x0 + Math.sin(a) * d, z0 + Math.cos(a) * d, th * 0.55 + 0.3); };
   const arcWall = (cx: number, cz: number, rad: number, a0: number, a1: number, h: number) => { const n = Math.max(8, Math.round((a1 - a0) * rad / 2)); for (let i = 0; i < n; i++) { const t0 = a0 + (a1 - a0) * i / n, t1 = a0 + (a1 - a0) * (i + 1) / n; wall(cx + Math.sin(t0) * rad, cz - Math.cos(t0) * rad, cx + Math.sin(t1) * rad, cz - Math.cos(t1) * rad, h, 1.0); } };

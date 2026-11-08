@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { createCharacter, type Hero3D } from './characters';
 
 /* =====================================================================================================
@@ -78,7 +79,7 @@ export function createCraftHall(ctx: { scene: THREE.Scene; T: number; heightAt(x
   { const tx = cx + 1.6, tz = Z0 + D - 2.0; for (const sx of [-0.7, 0.7]) add(B(0.1, 1.6, 0.1, wood), tx + sx, y0 + 0.9, tz); add(B(1.6, 0.1, 0.1, wood), tx, y0 + 1.7, tz); add(B(1.3, 1.1, 0.02, toon(0xa83a3a)), tx, y0 + 1.1, tz);
     for (let i = 0; i < 3; i++) add(B(0.7, 0.9, 0.03, toon([0x8a5a3a, 0x6a4a2a, 0x9a6a40][i])), X0 + 1.2 + i * 0.9, y0 + 1.9, Z0 + D - 0.7); add(new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 3.4, 5).rotateZ(Math.PI / 2), woodD), X0 + 2.1, y0 + 2.4, Z0 + D - 0.7); }
   const pot = add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8, 0, 6.283, 0, 2.0), iron), X0 + 1.4, y0 + 0.8, cz + 1.0); pot.rotation.x = Math.PI;
-  const potFire = add(new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.55, 7), new THREE.MeshBasicMaterial({ color: 0xff9a30, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })), X0 + 1.4, y0 + 0.45, cz + 1.0);
+  { const pf = makeFire(0.5, 'warm', 'camp', 77); pf.position.set(X0 + 1.4, y0 + 0.18, cz + 1.0); g.add(pf); } /* 08/11: fogo de cartão sob o caldeirão */
 
   /* ---------- quem trabalha aqui ---------- */
   const helpers: Helper[] = [];
@@ -109,7 +110,7 @@ export function createCraftHall(ctx: { scene: THREE.Scene; T: number; heightAt(x
     { const inH = hero.x > X0 - 1 && hero.x < X0 + W + 1 && hero.z > Z0 - 1 && hero.z < Z0 + D + 1, want = inH ? 0.08 : 1; roofM.opacity += (want - roofM.opacity) * Math.min(1, dt * 5); roofM.depthWrite = roofM.opacity > 0.9; beamM.opacity = Math.max(0.18, roofM.opacity); beamM.depthWrite = beamM.opacity > 0.9; for (const r of roofs) r.castShadow = roofM.opacity > 0.5; }
     for (const s of saws) s.rotation.y += dt * 18;
     const k = 0.5 + 0.5 * Math.sin(t * 2.1); (coal.material as THREE.MeshBasicMaterial).color.setHSL(0.05, 1, 0.42 + k * 0.12); forgeL.intensity = 6 + k * 4; bellows.scale.y = 0.75 + 0.35 * Math.abs(Math.sin(t * 1.4));
-    alchL.intensity = 3 + Math.sin(t * 5) * 0.6; potFire.scale.y = 0.9 + Math.sin(t * 11) * 0.12;
+    alchL.intensity = 3 + Math.sin(t * 5) * 0.6; 
     if (Math.random() < dt * 6) ctx.particles.spawn(lx + (Math.random() - 0.5) * 0.3, y0 + 1.5, lz + (Math.random() - 0.5) * 0.3, { vy: 0.6, life: 1.4, s0: 0.08, s1: 0.3, c0: 0xc8ffd8, c1: 0x3a8a5a, a: 0.5, flit: 0.8 }); /* bolhas do alambique */
     if (Math.random() < dt * 5) ctx.particles.spawn(fx0, y0 + 4.3, fz0 - 0.3, { vy: 1.2, life: 2.5, s0: 0.3, s1: 1.1, c0: 0x8a8a8a, c1: 0x3a3a3a, a: 0.35, w: 0.6 }); /* fumaça da chaminé */
     sawT -= dt; if (sawT <= 0) { sawT = 0.08; for (const s of saws) ctx.particles.spawn(s.position.x - 0.3, s.position.y - 0.1, s.position.z + 0.3, { vx: -1 - Math.random(), vy: 0.6 + Math.random(), vz: (Math.random() - 0.5), life: 0.7, s0: 0.06, s1: 0.02, c0: 0xf0d8a0, c1: 0xb08a50, a: 0.9, g: 4 }); }

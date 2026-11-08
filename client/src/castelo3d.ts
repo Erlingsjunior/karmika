@@ -4,6 +4,7 @@
  *  Origem local (0,0) = canto noroeste; saída ao sul (z > D) só no térreo. A câmera olha de sudeste: paredes norte e
  *  oeste altas, sul e leste baixas. Cada andar devolve as escadas (subir/descer) e os pontos de spawn. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, ink, stoneTex, woodTex, plankTex, plasterTex, ramp } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -33,7 +34,7 @@ export function buildCastleFloor(F: number, seed = 5): CastleFloor {
   const rect = (x0: number, z0: number, x1: number, z1: number) => rects.push([x0, z0, x1, z1]);
   const fixtures: { x: number; y: number; z: number; c: number; i: number; dist: number }[] = [];
   const light = (x: number, y: number, z: number, c: number, i: number, dist = 14) => fixtures.push({ x, y, z, c, i, dist });
-  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = new THREE.Mesh(new THREE.ConeGeometry(0.13 * s, 0.46 * s, 6), glow(c)); f.position.set(x, y, z); f.userData.dyn = true; g.add(f); return f; };
+  const flame = (x: number, y: number, z: number, s = 1, c = 0xffb040) => { const f = makeFire(0.48 * s, c, s < 0.75 ? 'candle' : s >= 1.5 ? 'brazier' : 'torch', x * 7 + z * 13 + y); f.position.set(x, y - 0.23 * s, z); g.add(f); return f; }; /* 08/11: chama de cartão */
   const candle = (x: number, y: number, z: number, s = 1) => { add(new THREE.CylinderGeometry(0.05 * s, 0.05 * s, 0.3 * s, 5), std(0xe8dcc0), x, y + 0.15 * s, z, false); flame(x, y + 0.42 * s, z, 0.45 * s, 0xffd080); };
   const torch = (x: number, z: number, dx: number, dz: number) => { cyl(0.08, 0.1, 0.55, x, 2.6, z, iron, 6); flame(x, 3.25, z, 1.1); light(x + dx, 3.2, z + dz, 0xffa050, 22, 11); };
   const sconce = (x: number, z: number, dx: number, dz: number, c = 0xff9a60) => { add(B(0.3, 0.5, 0.2), iron, x, 2.5, z, false); for (let k = -1; k <= 1; k++) candle(x + dx * 0.25 + (dz ? k * 0.18 : 0), 2.7, z + dz * 0.25 + (dx ? k * 0.18 : 0), 0.9); light(x + dx, 3.0, z + dz, c, 14, 9); };

@@ -1,6 +1,7 @@
 /* Os marcos dos caminhos (cada vila de mestre tem o seu lugar de verdade) e as peças de cultura das vilas:
    paliçada nórdica/tribal, totem do Uivo, pedra-runa. Origem no canto do terreno; a frente olha para +z. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, texBox, stoneTex, shingleTex, woodTex, plankTex } from './toon3d';
 import type { Built } from './city3d';
 import { fine } from './dual3d';
@@ -23,8 +24,8 @@ function kit() {
   const cyl = (rt: number, rb: number, h: number, x: number, y: number, z: number, m: THREE.Material, seg = 12) => add(new THREE.CylinderGeometry(rt, rb, h, seg), m, x, y + h / 2, z);
   const cone = (r: number, h: number, x: number, y: number, z: number, m: THREE.Material, seg = 4, ry = Math.PI / 4) => add(new THREE.ConeGeometry(r, h, seg), m, x, y + h / 2, z, ry);
   const plane = (w: number, h: number, x: number, y: number, z: number, m: THREE.Material, ry = 0) => add(new THREE.PlaneGeometry(w, h), m, x, y, z, ry, false);
-  const torch = (x: number, y: number, z: number) => { add(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 5), wood(0x3a2a1c), x, y + 0.4, z); add(new THREE.CylinderGeometry(0.18, 0.1, 0.2, 6), flat(0x2a2a30), x, y + 0.85, z); const f = add(new THREE.ConeGeometry(0.15, 0.45, 6), new THREE.MeshBasicMaterial({ color: 0xffb040 }), x, y + 1.15, z, 0, false); f.userData.dyn = true; out.torches.push({ pos: new THREE.Vector3(x, y + 1.2, z), flame: f }); };
-  const brazier = (x: number, y: number, z: number, col = 0xff8a30) => { add(new THREE.CylinderGeometry(0.5, 0.3, 0.6, 8), flat(0x2a2a30), x, y + 0.9, z); add(new THREE.CylinderGeometry(0.08, 0.12, 0.7, 5), flat(0x2a2a30), x, y + 0.35, z); const f = add(new THREE.ConeGeometry(0.4, 0.9, 7), new THREE.MeshBasicMaterial({ color: col }), x, y + 1.6, z, 0, false); f.userData.dyn = true; out.torches.push({ pos: new THREE.Vector3(x, y + 1.6, z), flame: f }); };
+  const torch = (x: number, y: number, z: number) => { add(new THREE.CylinderGeometry(0.06, 0.08, 0.8, 5), wood(0x3a2a1c), x, y + 0.4, z); add(new THREE.CylinderGeometry(0.18, 0.1, 0.2, 6), flat(0x2a2a30), x, y + 0.85, z); const f = makeFire(0.5, 'warm', 'torch', x * 7 + z * 13); f.position.set(x, y + 0.93, z); g.add(f); out.torches.push({ pos: new THREE.Vector3(x, y + 1.2, z), flame: f }); };
+  const brazier = (x: number, y: number, z: number, col = 0xff8a30) => { add(new THREE.CylinderGeometry(0.5, 0.3, 0.6, 8), flat(0x2a2a30), x, y + 0.9, z); add(new THREE.CylinderGeometry(0.08, 0.12, 0.7, 5), flat(0x2a2a30), x, y + 0.35, z); const f = makeFire(0.8, col, 'brazier', x * 7 + z * 13); f.position.set(x, y + 1.12, z); g.add(f); out.torches.push({ pos: new THREE.Vector3(x, y + 1.6, z), flame: f }); };
   const gable = (w: number, d: number, h: number, x: number, y: number, z: number, m: THREE.Material, wallM: THREE.Material, alongX = true, over = 0.6) => { // telhado de 2 águas com empenas; cumeeira ao longo de x
     const span = alongX ? d : w, len = alongX ? w : d, a = Math.atan2(h, span / 2), L = (span / 2 + over) / Math.cos(a);
     for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(x, y + h, z); if (alongX) piv.rotation.x = s * a; else piv.rotation.z = -s * a; const sl = new THREE.Mesh(texBox(alongX ? len + over * 2 : L, 0.22, alongX ? L : len + over * 2, 2), m); if (alongX) sl.position.z = s * L / 2; else sl.position.x = s * L / 2; sl.castShadow = true; piv.add(sl); g.add(piv); }

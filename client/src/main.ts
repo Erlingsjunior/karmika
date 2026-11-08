@@ -23,6 +23,7 @@ import { eyeSees } from './surrender';
   mv('karmika.build.v1', (a) => { for (const b of a ?? []) { b.gx += S; b.gy += S; } }); mv('karmika.regrow.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } });
   mv('karmika.picked.v1', (a) => { for (const r of a ?? []) { r.gx += S; r.gy += S; } }); mv('karmika.hunt', (h) => { if (h && Number.isFinite(h.x)) { h.x += S * T2; h.z += S * T2; } }); localStorage.setItem(W2, '4'); } }
 import * as THREE from 'three';
+import { tickFire } from './sistemas/fogo';
 import { gaitOf } from './andar';
 import { premiumWelcome } from './celebrate';
 import { createFixedLights } from './luzes-fixas';
@@ -2808,11 +2809,12 @@ function frameBody() {
     if (Math.random() < dt * (known ? 4 : 5) && rl.pos.distanceTo(heroPos) < 50) { const a = Math.random() * 6.283, rr = known ? 0.5 + Math.random() * 0.4 : 0.8 + Math.random() * 1.2; particles.spawn(rl.pos.x + Math.cos(a) * rr, rl.pos.y - (known ? 0.6 : 1.4), rl.pos.z + Math.sin(a) * rr, known ? { vy: 0.5 + Math.random() * 0.6, life: 1.3, s0: 0.12, s1: 0.02, c0: rl.ring.userData.stone ? 0xbfe6ff : 0xffe0a0, c1: rl.ring.userData.stone ? 0x3a8aff : (rl.ring.userData.col as number | undefined) ?? 0x4a9aff, a: 0.9 } : { vy: 0.8 + Math.random() * 0.8, life: 1.6, s0: 0.14, s1: 0.02, c0: 0xfff0bd, c1: 0xffd24a, a: 1 }); }
   }
   /* tochas, chamas, brasas */
+  tickFire(t, camera, heroPos); /* 08/11: as chamas de cartão (sistemas/fogo.ts) */
   const litSources: { pos: THREE.Vector3; r: number }[] = [];
   for (const tc of objs.torches) {
     const f = 1 + Math.sin(t * 1.3 + tc.seed) * 0.018 + Math.sin(t * 2.9 + tc.seed * 1.7) * 0.012;
     tc.light.intensity = tc.base * f * fl;
-    { const fk = 0.5 + 0.5 * Math.sin(t * 9 + tc.seed) * Math.sin(t * 3.7 + tc.seed * 2.1); tc.flame.scale.set(0.9 + fk * 0.15, 0.85 + fk * 0.35, 0.9 + fk * 0.15); tc.flame.rotation.y = t * 0.8 + tc.seed; (tc.flame.material as THREE.MeshBasicMaterial).color.setHex(fk > 0.75 ? 0xfff0a0 : fk > 0.45 ? 0xffc040 : fk > 0.2 ? 0xff8a20 : 0xff5a10); } // a chama vive no pavio: pulsa e muda entre amarelo e vermelho
+    if (!tc.flame.userData.fire) { const fk = 0.5 + 0.5 * Math.sin(t * 9 + tc.seed) * Math.sin(t * 3.7 + tc.seed * 2.1); tc.flame.scale.set(0.9 + fk * 0.15, 0.85 + fk * 0.35, 0.9 + fk * 0.15); tc.flame.rotation.y = t * 0.8 + tc.seed; (tc.flame.material as THREE.MeshBasicMaterial).color.setHex(fk > 0.75 ? 0xfff0a0 : fk > 0.45 ? 0xffc040 : fk > 0.2 ? 0xff8a20 : 0xff5a10); } // a chama vive no pavio: pulsa e muda entre amarelo e vermelho
     litSources.push({ pos: tc.pos, r: 14 });
     const p = tc.pos; const dT = Math.hypot(p.x - heroPos.x, p.z - heroPos.z); if (dT > 42) continue; const nearK = dT < 24 ? 1 : 1 - (dT - 24) / 18;
     if (Math.random() < 0.14 * nearK) particles.spawn(p.x + (Math.random() - 0.5) * 0.08, p.y + 0.1, p.z + (Math.random() - 0.5) * 0.08, { vx: (Math.random() - 0.5) * 0.2, vy: 0.9 + Math.random() * 0.6, vz: (Math.random() - 0.5) * 0.2, life: 0.35 + Math.random() * 0.25, s0: 0.45, s1: 0.1, c0: 0xffe080, c1: 0xff4a10, a: 0.6 }); // um estalo de chama de vez em quando

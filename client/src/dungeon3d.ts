@@ -4,6 +4,7 @@
  *  Câmera olha de sudeste: a rocha ao norte/oeste do chão é alta; ao sul/leste fica baixa para nunca esconder o herói.
  *  Origem local (0,0) = canto noroeste; a saída fica em (W/2, D), como nas outras construções por dentro. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, ramp, photoDetail } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -194,7 +195,7 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
   const glowM = (c: number) => new THREE.MeshBasicMaterial({ color: c });
   const put = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.rotation.y = ry; g.add(k); return k; };
   const light = (x: number, y: number, z: number, c = th.light, i = 2.2, dist = 14) => fixtures.push({ x, y, z, c, i, dist, ph: r() * 9 });
-  const torch = (x: number, z: number, c = th.light) => { put(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), M(0x3a2414), x, 0.8, z); put(new THREE.ConeGeometry(0.16, 0.42, 6), glowM(c), x, 1.75, z); light(x, 2.1, z, c, 2.9, 14); cols.push([x, z, 0.35]); };
+  const torch = (x: number, z: number, c = th.light) => { put(new THREE.CylinderGeometry(0.06, 0.08, 1.6, 6), M(0x3a2414), x, 0.8, z); { const fl = makeFire(0.46, c, 'torch', x * 7 + z * 13); fl.position.set(x, 1.54, z); g.add(fl); } light(x, 2.1, z, c, 2.9, 14); cols.push([x, z, 0.35]); };
   const crystal = (x: number, z: number, c: number, s = 1) => { const k = put(new THREE.OctahedronGeometry(0.35 * s, 0), glowM(c), x, 0.45 * s, z); k.scale.y = 2.2; k.rotation.z = (r() - 0.5) * 0.5; cols.push([x, z, 0.4 * s]); if (r() < 0.5) light(x, 1.2, z, c, 1.5, 9); };
   const bones = (x: number, z: number) => { const bm = M(0xd8d0b8); for (let i = 0; i < 4; i++) { const k = put(new THREE.CylinderGeometry(0.04, 0.04, 0.5, 5), bm, x + (r() - 0.5) * 0.8, 0.05, z + (r() - 0.5) * 0.8); k.rotation.set(Math.PI / 2, 0, r() * 3); } put(new THREE.SphereGeometry(0.13, 7, 6), bm, x, 0.12, z); };
   const nest = (x: number, z: number, s = 1) => { put(new THREE.CylinderGeometry(0.9 * s, 1.1 * s, 0.35 * s, 10), M(0x8a6a3a), x, 0.17 * s, z); put(new THREE.CylinderGeometry(0.6 * s, 0.8 * s, 0.2, 10), M(0x5a3a22), x, 0.36 * s, z); cols.push([x, z, 1.0 * s]); };

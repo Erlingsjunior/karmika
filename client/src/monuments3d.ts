@@ -6,6 +6,7 @@
      douradas, nervuras, arcos voadores, e no alto uma coroa de chifres de marfim segurando o cristal aceso com anéis de runas.
    Origem no canto do terreno; frente para +z. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, texBox, stoneTex, shingleTex } from './toon3d';
 import type { Built } from './city3d';
 
@@ -26,7 +27,7 @@ function kit() {
   const cyl = (rt: number, rb: number, h: number, x: number, y: number, z: number, m: THREE.Material, seg = 12) => add(new THREE.CylinderGeometry(rt, rb, h, seg), m, x, y + h / 2, z);
   const cone = (r: number, h: number, x: number, y: number, z: number, m: THREE.Material, seg = 8, ry = 0) => add(new THREE.ConeGeometry(r, h, seg), m, x, y + h / 2, z, ry);
   const plane = (w: number, h: number, x: number, y: number, z: number, m: THREE.Material, ry = 0) => add(new THREE.PlaneGeometry(w, h), m, x, y, z, ry, false);
-  const torch = (x: number, y: number, z: number, col = 0xff3a2a) => { add(new THREE.CylinderGeometry(0.4, 0.25, 0.5, 8), flat(0x1a1a20), x, y + 0.25, z); const f = add(new THREE.ConeGeometry(0.34, 0.9, 7), new THREE.MeshBasicMaterial({ color: col }), x, y + 0.9, z, 0, false); f.userData.dyn = true; out.torches.push({ pos: new THREE.Vector3(x, y + 1, z), flame: f }); };
+  const torch = (x: number, y: number, z: number, col = 0xff3a2a) => { add(new THREE.CylinderGeometry(0.4, 0.25, 0.5, 8), flat(0x1a1a20), x, y + 0.25, z); const f = makeFire(0.85, col, 'brazier', x * 7 + z * 13); f.position.set(x, y + 0.48, z); g.add(f); out.torches.push({ pos: new THREE.Vector3(x, y + 1, z), flame: f }); };
   const arch = (W: number, H: number, d: number, w: number, spring: number, m: THREE.Material, pointed = false) => { const s = new THREE.Shape(); s.moveTo(-W / 2, 0); s.lineTo(W / 2, 0); s.lineTo(W / 2, H); s.lineTo(-W / 2, H); s.lineTo(-W / 2, 0); const hole = new THREE.Path(); hole.moveTo(-w / 2, 0); hole.lineTo(-w / 2, spring);
     if (pointed) { hole.quadraticCurveTo(-w / 2, spring + w * 0.55, 0, spring + w * 0.9); hole.quadraticCurveTo(w / 2, spring + w * 0.55, w / 2, spring); } else hole.absarc(0, spring, w / 2, Math.PI, 0, true);
     hole.lineTo(w / 2, 0); hole.lineTo(-w / 2, 0); s.holes.push(hole); const geo = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false, curveSegments: 10 }); geo.translate(0, 0, -d / 2); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 2, uv.getY(i) / 2); const mm = new THREE.Mesh(geo, m); mm.castShadow = mm.receiveShadow = true; g.add(mm); return mm; };
@@ -203,7 +204,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const x = cx + sx * (Wm / 2 - 0.9), z = cz + sz * (Dm / 2 - 0.9); K.cyl(0.08, 0.11, 3.4, x, 1.9, z, iron, 6); K.add(new THREE.BoxGeometry(0.36, 0.44, 0.36), glow(0xffd27a), x, 5.5, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 5.6, z), color: 0xffc070, base: 12 }); }
     K.plane(2.2, 0.6, cx, 1.1, cz + Dm / 2 - 0.48, brass);
   } else if (id === 9) { // OS PORTÕES DE BRASAFORJA (27/10): a face da Montanha Negra escavada, o portão colossal com as portas de ferro abertas, dois Ancestrais de pedra de 14 m com machado e martelo, runas acesas, braseiros e a escadaria
-    const rock = stone(0x4a443e), rock2 = stone(0x5e5850), gd = flat(0xd9b45a), iron = flat(0x3a3d44), rune = glow(0xff9a3a), fire = glow(0xff6a2a);
+    const rock = stone(0x4a443e), rock2 = stone(0x5e5850), gd = flat(0xd9b45a), iron = flat(0x3a3d44), rune = glow(0xff9a3a);
     // a montanha: um maciço que sobe atrás do portão e se funde com a encosta (blocos e dodecaedros irregulares)
     K.box(Wm, 30, Dm * 0.62, cx, -6, Dm * 0.31, rock); K.box(Wm + 6, 22, Dm * 0.5, cx, -6, Dm * 0.2, rock); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI, rr0 = Wm * 0.5 - 1 + (k % 3); K.add(new THREE.DodecahedronGeometry(3.4 + (k % 3) * 1.6, 0), k % 2 ? rock : rock2, cx + Math.cos(a) * rr0 * 0.95, 22 + (k % 4) * 2.6, Dm * 0.2 + Math.sin(a) * 2); }
     for (let k = 0; k < 8; k++) K.add(new THREE.DodecahedronGeometry(2.8 + (k % 3), 0), rock2, cx - Wm / 2 + 2 + k * (Wm - 4) / 7, 26 + (k % 2) * 3, Dm * 0.3 + (k % 3) - 2);
@@ -223,7 +224,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
       K.box(0.5, 10, 0.5, x + sx * 2.9, 2.4, z + 0.8, flat(0x4a3220)); if (sx < 0) { K.box(2.8, 2.2, 0.5, x + sx * 2.9, 11.8, z + 0.8, iron); } else { K.box(2.4, 1.6, 1.6, x + sx * 2.9, 12.0, z + 0.8, iron); }
       K.add(new THREE.BoxGeometry(0.6, 0.3, 0.12), rune, x - 0.7, 14.3, z + 1.45, 0, false); K.add(new THREE.BoxGeometry(0.6, 0.3, 0.12), rune, x + 0.7, 14.3, z + 1.45, 0, false); }
     // braseiros de ferro na escadaria e tochas na face da rocha; fumaça das chaminés da forja lá no alto
-    for (const sx of [-1, 1]) { const x = cx + sx * 8.6, z = Dm - 1.2; K.cyl(0.8, 0.5, 1.6, x, 0, z, iron, 8); K.cyl(1.1, 0.8, 0.4, x, 1.6, z, iron, 8); K.add(new THREE.ConeGeometry(0.7, 1.8, 7), fire, x, 2.9, z, 0, false); K.out.glows.push({ pos: new THREE.Vector3(x, 2.8, z), color: 0xff7a2a, base: 42 }); }
+    for (const sx of [-1, 1]) { const x = cx + sx * 8.6, z = Dm - 1.2; K.cyl(0.8, 0.5, 1.6, x, 0, z, iron, 8); K.cyl(1.1, 0.8, 0.4, x, 1.6, z, iron, 8); { const fl = makeFire(1.5, 'forge', 'brazier', x * 7 + z); fl.position.set(x, 1.95, z); K.g.add(fl); } K.out.glows.push({ pos: new THREE.Vector3(x, 2.8, z), color: 0xff7a2a, base: 42 }); }
     for (let k = 0; k < 4; k++) { const x = cx - Wm * 0.36 + k * (Wm * 0.72 / 3); K.torch(x, 2 + 9, Dm * 0.62 + 1.6, 0xff8a3a); }
     for (const sx of [-1, 1]) { K.cyl(0.6, 0.8, 4, cx + sx * Wm * 0.22, 22, Dm * 0.25, stone(0x4a3a30), 8); K.out.smoke.push(new THREE.Vector3(cx + sx * Wm * 0.22, 26.4, Dm * 0.25)); }
   } else if (id === 2) { // PINÁCULO DE MARFIM

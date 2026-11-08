@@ -2,6 +2,7 @@
  *  e a desgraça das vilas de karma negativo (árvores mortas com enforcados, corpos, trigo morto, poços secos, altares,
  *  névoa rasteira e a água negra e fétida). Tudo em coordenadas locais do tile: [0, Wm] × [0, Dm]. */
 import * as THREE from 'three';
+import { makeFire } from './sistemas/fogo';
 import { std, ink, stoneTex, plankTex, gableRoof } from './toon3d';
 import type { Prop } from './world';
 
@@ -160,7 +161,7 @@ export function buildCursed(p: Prop, g: THREE.Group, Wm: number, Dm: number, r: 
       box(g, 2.0, 0.9, 1.0, SD(), cx, 0.45, cz); box(g, 2.2, 0.14, 1.2, S(), cx, 0.95, cz);
       const st = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.6).rotateX(-Math.PI / 2), blood); st.position.set(cx, 1.03, cz); g.add(st);
       const circ = new THREE.Mesh(new THREE.RingGeometry(1.9, 2.05, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x5a0a0a })); circ.position.set(cx, 0.04, cz); g.add(circ);
-      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; const c = cyl(g, 0.05, 0.06, 0.25 + r() * 0.2, wax, cx + Math.cos(a) * 1.7, 0.15, cz + Math.sin(a) * 1.7, 5); const f = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.12, 5), flameM); f.position.set(c.position.x, 0.38, c.position.z); f.userData.dyn = true; g.add(f); }
+      for (let k = 0; k < 6; k++) { const a = k / 6 * 6.28; const c = cyl(g, 0.05, 0.06, 0.25 + r() * 0.2, wax, cx + Math.cos(a) * 1.7, 0.15, cz + Math.sin(a) * 1.7, 5); const f = makeFire(0.16, (flameM as THREE.MeshBasicMaterial).color.getHex(), 'candle', a * 99 + cx); f.position.set(c.position.x, 0.32, c.position.z); g.add(f); }
       figure(g, cx, 1.02, cz, true, Math.PI / 2, r);
       break; }
     case 'fogpatch': { // névoa rasteira: lençóis translúcidos sobrepostos, baixos
