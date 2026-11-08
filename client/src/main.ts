@@ -397,7 +397,7 @@ function hookHero() {
 }
 hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
-let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null = null;
+let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; /** 08/11: o Grande Salão de Brasaforja (NPCs de dentro: npcs.ts inside) */ hall?: boolean } | null = null;
 const game = createGameplay({ takenK: () => (instintoSys.instinctOn && !inside ? 1.1 : 1), scene, particles, camera, audio, canvas, getHero: () => hero, getRaceColor: () => RACE_COL[kindOf(state.race)], dummies: city.quartel.dummies.map((q) => new THREE.Vector3(q.x * T, 0, q.y * T)), world: { spawns: city.spawns, isWall: (x, z) => !inside && city.map[Math.floor(z / T)]?.[Math.floor(x / T)] === 'wall', townAt: (x, z) => { if (inside) return false; const tx = x / T, ty = z / T; for (const st of city.settlements) if (Math.hypot(st.x - tx, st.y - ty) < st.radius + (st.kind === 'city' ? 4 : 1.5)) return true; return Math.hypot(CITY.x - tx, CITY.y - ty) < 24; }, guardNear: (x, z) => { if (inside) return false; for (const n of npcSys.npcs) { if (!n.hero.root.visible || !/^(Guarda|Capit[ãa]o|Vigia|Sentinela)/.test(n.def.role) && !/^(Guarda|Capit[ãa]o|Vigia)/.test(n.def.name)) continue; const dx = n.pos.x - x, dz = n.pos.z - z; if (dx * dx + dz * dz < 49) return true; } return false; }, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; return !!t && isWalkable(t); } } });
 /** retrato isolado (bestiário e compêndio): renderiza um objeto sozinho, fundo transparente, luz de estúdio, e devolve um PNG */
 function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): string {
@@ -411,7 +411,7 @@ function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): st
   const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d')!, im = g.createImageData(size, size); for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4); g.putImageData(im, 0, 0);
   for (const q of hid) q.visible = true; sc.remove(root); if (par) par.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; return cv.toDataURL('image/png');
 }
-(window as unknown as { __k: unknown }).__k = { kits: () => KITS, particles: () => particles, closeDlg: () => dlg.close(), showCreate: () => showCreate(false), tree: () => tree, cmd: (line: string) => { const [c, ...rest] = line.replace(/^\//, '').split(/\s+/); return betaCommand(c, rest); }, carav: () => caravans, obras: () => obras, kbuild: () => build, cutOn: () => cliqueSys.cutOn, kgame: () => game, perf: () => perfReport(), objStats: () => { const by = new Map<string, number>(); let n = 0; const kindOf2 = (o: THREE.Object3D) => { let q: THREE.Object3D | null = o; while (q) { if (q.userData.kind) return q.userData.kind as string; q = q.parent; } let top: THREE.Object3D = o; while (top.parent && top.parent !== scene) top = top.parent; return '?' + (top.name || top.type) + (top === objs.group ? ':objs' : '') + ':' + (o.name || ''); }; scene.traverseVisible((o) => { n++; if (!(o as THREE.Mesh).isMesh && o.type !== 'Group') return; const k = kindOf2(o) + ':' + o.type; by.set(k, (by.get(k) ?? 0) + 1); }); return { n, by: Object.fromEntries([...by.entries()].sort((a, b) => b[1] - a[1])), calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; }, mmBase: () => mmBase, castleF: () => inside?.castle ?? null, castleInt: () => casteloSys.castleInt, cut: () => CUT.uCut.value.toArray(), cutSet: (x: number, y: number, r: number, d: number) => CUT.uCut.value.set(x, y, r, d), sweep: () => geoSweep([scene]), objs: () => objs, dwarf: (r: string) => openDwarfCart(r), festaNow: (st: string, o: FestaOpts) => startFesta(st, o), karmaSet: (v: number) => { state.karma = v; }, karmaAdd: (v: number) => addKarma(v), ritual: () => checkRitual(), cross: (back: boolean) => { const p = myPath(); if (p) crossOver(p, back); }, soulS: () => soul.s, portrait, THREE, stable: () => stable, night: (v: number | null) => { nightOverride = v; if (v !== null) entradaSys.nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKitAll(); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; entradaSys.nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enterHome: () => { if (construcaoSys.homeProp) enterHouse(construcaoSys.homeProp); }, place: (id: string) => placeDecor(id), enterProp: (p: (typeof city.props)[number]) => enterHouse(p), enter: (v: number | string) => { const p = city.props.find((q) => q.kind === 'house' && (typeof v === 'string' ? q.shop === v : q.variant === v)); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, exit: () => exitHouse(), heroY: () => heroY, sitBench: (i: number) => { const bs = city.props.filter((q) => q.kind === 'bench'); const p = bs[i]; if (!p) return null; const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T, fp = city.props.find((q) => q.kind === 'fountain')!; casteloSys.sitting = benchSeat(bx, bz, fp); state.fx = casteloSys.sitting.x; state.fy = casteloSys.sitting.y; return p; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { kits: () => KITS, particles: () => particles, closeDlg: () => dlg.close(), showCreate: () => showCreate(false), tree: () => tree, cmd: (line: string) => { const [c, ...rest] = line.replace(/^\//, '').split(/\s+/); return betaCommand(c, rest); }, carav: () => caravans, obras: () => obras, kbuild: () => build, cutOn: () => cliqueSys.cutOn, kgame: () => game, perf: () => perfReport(), objStats: () => { const by = new Map<string, number>(); let n = 0; const kindOf2 = (o: THREE.Object3D) => { let q: THREE.Object3D | null = o; while (q) { if (q.userData.kind) return q.userData.kind as string; q = q.parent; } let top: THREE.Object3D = o; while (top.parent && top.parent !== scene) top = top.parent; return '?' + (top.name || top.type) + (top === objs.group ? ':objs' : '') + ':' + (o.name || ''); }; scene.traverseVisible((o) => { n++; if (!(o as THREE.Mesh).isMesh && o.type !== 'Group') return; const k = kindOf2(o) + ':' + o.type; by.set(k, (by.get(k) ?? 0) + 1); }); return { n, by: Object.fromEntries([...by.entries()].sort((a, b) => b[1] - a[1])), calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; }, mmBase: () => mmBase, castleF: () => inside?.castle ?? null, castleInt: () => casteloSys.castleInt, cut: () => CUT.uCut.value.toArray(), cutSet: (x: number, y: number, r: number, d: number) => CUT.uCut.value.set(x, y, r, d), sweep: () => geoSweep([scene]), objs: () => objs, dwarf: (r: string) => openDwarfCart(r), festaNow: (st: string, o: FestaOpts) => startFesta(st, o), karmaSet: (v: number) => { state.karma = v; }, karmaAdd: (v: number) => addKarma(v), ritual: () => checkRitual(), cross: (back: boolean) => { const p = myPath(); if (p) crossOver(p, back); }, soulS: () => soul.s, portrait, THREE, stable: () => stable, night: (v: number | null) => { nightOverride = v; if (v !== null) entradaSys.nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKitAll(); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; entradaSys.nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enterHome: () => { if (construcaoSys.homeProp) enterHouse(construcaoSys.homeProp); }, place: (id: string) => placeDecor(id), enterProp: (p: (typeof city.props)[number]) => enterHouse(p), enter: (v: number | string) => { const p = city.props.find((q) => q.kind === 'house' && (typeof v === 'string' ? q.shop === v : q.variant === v)); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, exit: () => exitHouse(), hall: () => { if (HALL_GATE) enterHall(HALL_GATE); return !!HALL_GATE; }, heroY: () => heroY, sitBench: (i: number) => { const bs = city.props.filter((q) => q.kind === 'bench'); const p = bs[i]; if (!p) return null; const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T, fp = city.props.find((q) => q.kind === 'fountain')!; casteloSys.sitting = benchSeat(bx, bz, fp); state.fx = casteloSys.sitting.x; state.fy = casteloSys.sitting.y; return p; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -455,9 +455,27 @@ const npcSys = createNpcs(scene, [
       for (let k = 0; k < 3; k++) out.push({ name: `${RANK[k]} ${NM[pi % NM.length][k]}`, role: `Patrulha de ${a}`, kind: 'nordic', x: route[0].x, z: route[0].z, radius: 0, tint: 0x5a6a8a, scale: 1.0, pace: 2.1, ri0: Math.min(route.length - 3, Math.floor(route.length * ((0.23 + pi * 0.37) % 0.8)) + Math.max(0, 2 - k * 2)), /* cada patrulha começa num ponto da estrada (antes as 9 nasciam juntas dentro de Karmika: ~550 desenhos na praça) */
         lines: k === 0 ? [`Patrulha de ${a}. A estrada até ${b} está sob nossa vista.`, 'Fique na estrada, caminhante. No mato ninguém ouve você gritar.', 'Se vir fumaça fora da estrada, não vá olhar. Avise a torre.'] : ['Marchando desde a alvorada. As botas é que sabem.', `O sargento diz que ${b} nos espera com cerveja. Duvido.`, 'Ontem foram lobos. Hoje, salteadores. Amanhã, quem sabe.'], route }); });
     return out; })(),
+  /* 08/11 O GRANDE SALÃO DE BRASAFORJA por dentro (Erling: "nem tem NPC trabalhando nem o rei anão para falar comigo e me dar missões de história;
+     fornalhas com anões trabalhando; lojinhas"): o Rei no estrado, os forjadores nas fornalhas e nos caldeirões, as vendedoras do Mercado das Galerias.
+     Coordenadas do salão (salao3d.ts: W 54 × D 42, origem no canto noroeste) somadas ao canto do interior (4000, 4000). */
+  ...([
+    ['Rei Thrain Coroa-de-Ferro', 'Rei dos Anões de Brasaforja', 27, 11.5, 0.6, 0xc8a040, 1.12, ['Aproxime-se. A montanha ouve tudo o que se diz debaixo dela.', 'Meu pai fechou a porta das galerias de baixo. Eu a mantenho fechada. Um dia alguém vai ter que descer.', 'Ouro compra ferro. Honra compra o resto.']],
+    ['Conselheira Brynja Olho-de-Prata', 'Conselheira do Rei', 24, 12.5, 1.0, 0x8a8aa0, 0.98, ['O Rei fala pouco. Eu falo o que ele não diz.', 'As veias da montanha estão mudando de cor. Isso nunca é bom.']],
+    ['Guarda Real Dagr', 'Guarda Real', 31.5, 13.5, 0.4, 0x5a6a8a, 1.05, ['Fale com o Rei com a arma guardada.', 'Ninguém passa do estrado. Nem anão.']],
+    ['Guarda Real Hallvard', 'Guarda Real', 22.5, 13.5, 0.4, 0x5a6a8a, 1.05, ['Já vi essa porta de ferro aguentar um dragão. Aguenta você também.']],
+    ['Mestre-Fundidor Ragnvald', 'Mestre da Fundição', 13, 9.5, 1.2, 0x7a3a1a, 1.0, ['O ferro desce pela calha quando a montanha quer. Nós só seguramos o caldeirão.', 'Cuidado com os respingos. Já vi barba pegar fogo por menos.']],
+    ['Fundidora Ásta Respingo', 'Fundidora', 41, 9.5, 1.2, 0x8a4a2a, 0.96, ['Caldeirão cheio, barra nova. Caldeirão vazio, cerveja.', 'O ferro de Brasaforja não enferruja. É o calor da Mãe que fica dentro dele.']],
+    ['Ferreiro Kolli Mão-Queimada', 'Ferreiro do Salão', 9, 19, 1.5, 0x6a4a2a, 1.0, ['Mil marteladas para uma lâmina. Novecentas e noventa e nove para quem tem pressa.', 'O Rei quer um machado novo. O Rei vai esperar como todo mundo.']],
+    ['Ferreira Yrsa Faísca', 'Ferreira do Salão', 45, 19, 1.5, 0x7a4a3a, 0.96, ['Ouve o ferro cantar? Está quase na hora de temperar.', 'Minha avó forjou a coroa do avô do Rei. A família não parou.']],
+    ['Aprendiz Kjell', 'Aprendiz de Fundição', 13, 14, 2.0, 0x8a6a3a, 0.9, ['O Mestre mandou eu olhar o caldeirão. Faz três horas que eu olho.', 'Um dia eu também vou ter a mão queimada. É sinal de ferreiro de verdade.']],
+    ['Vendedora Gunnhild Trança-de-Ferro', 'Armaria Real', 44, 33, 1.0, 0x6a3a2a, 0.98, ['Aço do próprio Salão. Não tem melhor em Karmika inteira.', 'Cada peça aqui passou pela mão de um mestre. Por isso custa o que custa.'], 'armeiro'],
+    ['Vendedor Bombur Pança-Larga', 'Despensa do Salão', 47, 29, 1.0, 0xa06a3a, 1.0, ['Carne defumada, cerveja preta e pão de pedra. Comida de anão: pesa e aquece.', 'O Rei come o mesmo que eu. Só que mais.'], 'cervejaria'],
+    ['Vendedora Eir Pó-de-Gema', 'Gemas e Poções', 41, 37, 1.0, 0x4a6a8a, 0.95, ['Poção azul da Brasa e gemas da veia funda. Para quem tem ouro.', 'Essa aqui brilha no escuro. Essa outra só brilha quando mente perto dela.'], 'pocoes'],
+    ['Escriba Hákon Pena-de-Ferro', 'Escriba Real', 7, 30, 1.2, 0x5a5a6a, 0.95, ['Cada barra que sai daqui está neste livro. Cada anão também.', 'A Porta de Pedra Preta está no livro mais velho. E está escrita: não abrir.']],
+  ] as [string, string, number, number, number, number, number, string[], string?][]).map(([name, role, x, z, radius, tint, scale, lines, shop]) => ({ name, role, kind: 'dwarf' as const, inside: 'hall', x: 4000 + x, z: 4000 + z, radius, tint, scale, lines, ...(shop ? { shop } : {}) })),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
-], { heightAt, walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
+], { heightAt, insideId: () => (inside?.hall ? 'hall' : null), insideFree: (x, z) => !!inside && inside.int.free(x - 4000, z - 4000), walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
   questOn: (id) => { try { return !!quests.q.active[id]; } catch { return false; } },
   situ: () => { const tags: string[] = []; try { const hr = gameHour(), g = globalNow()?.id, k = state.karma, pth = myPath(), tp = temperature();
     tags.push(hr >= 5 && hr < 9 ? 'manha' : state.night > 0.5 ? 'noite' : 'dia'); if (tp < 3) tags.push('frio'); if (tp > 24) tags.push('calor');
@@ -549,7 +567,7 @@ onPremium((v) => { inv.refresh(); quests.render(); game.logMsg(v ? '✦ Premium 
 export interface BuffsSigilosCtx {
   readonly soul: Widen<typeof soul>;
   readonly game: Widen<typeof game>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly profile: Profile | null;
   readonly limiar: Widen<typeof limiar>;
   readonly hero: Hero3D;
@@ -637,7 +655,7 @@ export interface CompanheirosCtx {
   readonly npcSys: Widen<typeof npcSys>;
   readonly scene: Widen<typeof scene>;
   readonly heroPos: Widen<typeof heroPos>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly camera: Widen<typeof camera>;
   readonly canvas: Widen<typeof canvas>;
   readonly stable: Widen<typeof stable>;
@@ -863,7 +881,7 @@ const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.n
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). → sistemas/comandos-teste.ts */
 export interface ComandosTesteCtx {
   readonly obras: Widen<typeof obras>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly emote: Widen<typeof emote>;
   readonly state: Widen<typeof state>;
   readonly hero: Hero3D;
@@ -933,7 +951,7 @@ export interface RedeCtx {
   readonly soulLean: typeof soulLean;
   readonly makeBlessRune: typeof makeBlessRune;
   readonly hero: Hero3D;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly netMps: Widen<typeof netMps>;
   readonly pvpOn: Widen<typeof pvpOn>;
   readonly chat: Widen<typeof chat>;
@@ -985,7 +1003,7 @@ export interface SocialGuildasCtx {
   readonly perfReport: typeof perfReport;
   readonly festaStatus: typeof festaStatus;
   readonly net: Widen<typeof net>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   pvpOn: Widen<typeof pvpOn>;
   readonly addKarma: typeof addKarma;
   readonly hero: Hero3D;
@@ -1020,7 +1038,7 @@ function hideBoot(...a: Parameters<ReturnType<typeof createSocialGuildas>['hideB
 export interface CaravanasUiCtx {
   readonly canvas: Widen<typeof canvas>;
   readonly camera: Widen<typeof camera>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly city: Widen<typeof city>;
   readonly inv: Widen<typeof inv>;
   readonly openDwarfCart: typeof openDwarfCart;
@@ -1053,7 +1071,7 @@ export interface CarrocaAnoesCtx {
   readonly game: Widen<typeof game>;
   readonly festaSys: ReturnType<typeof createFesta>;
   readonly audio: Widen<typeof audio>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly hereSettle: Widen<typeof hereSettle>;
   readonly startFesta: typeof startFesta;
   readonly caravans: Widen<typeof caravans>;
@@ -1077,7 +1095,7 @@ export interface EventosVivosCtx {
   readonly audio: Widen<typeof audio>;
   readonly scene: Widen<typeof scene>;
   readonly heroPos: Widen<typeof heroPos>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly game: Widen<typeof game>;
   readonly state: Widen<typeof state>;
   readonly myPath: typeof myPath;
@@ -1151,7 +1169,7 @@ export interface FestaCtx {
   readonly particles: Widen<typeof particles>;
   readonly netRef: Net | null;
   readonly net: Widen<typeof net>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly dwarfEl: Widen<typeof dwarfEl>;
 }
 var festaSys: ReturnType<typeof createFesta>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
@@ -1172,7 +1190,7 @@ function festaAnim(...a: Parameters<ReturnType<typeof createFesta>['festaAnim']>
 export interface DecoracaoCtx {
   readonly scene: Widen<typeof scene>;
   readonly obras: Widen<typeof obras>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly homeProp: (typeof city.props)[number] | null;
   readonly game: Widen<typeof game>;
   readonly heroPosNow: Widen<typeof heroPosNow>;
@@ -1223,7 +1241,7 @@ export interface EventosUiCtx {
   readonly guiaSys: ReturnType<typeof createGuiaMapa>;
   readonly openDlg: Widen<typeof openDlg>;
   readonly dlg: Widen<typeof dlg>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly t: Widen<typeof t>;
   readonly hereT: typeof hereT;
   readonly evTrkEl: Widen<typeof evTrkEl>;
@@ -1251,7 +1269,7 @@ export interface InstintoPosturasCtx {
   readonly canvas: Widen<typeof canvas>;
   readonly heroPosNow: Widen<typeof heroPosNow>;
   readonly objs: Widen<typeof objs>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly hero: Hero3D;
   readonly riding: Widen<typeof compSys.riding>;
   readonly soul: Widen<typeof soul>;
@@ -1276,7 +1294,7 @@ export interface SegredosInstintoCtx {
   readonly scene: Widen<typeof scene>;
   readonly heroPos: Widen<typeof heroPos>;
   readonly myInstinct: Widen<typeof myInstinct>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly carBubble: typeof carBubble;
   readonly game: Widen<typeof game>;
   readonly audio: Widen<typeof audio>;
@@ -1513,7 +1531,7 @@ export interface MinimapaCtx {
   readonly city: Widen<typeof city>;
   readonly guiaSys: ReturnType<typeof createGuiaMapa>;
   readonly drawMini: typeof drawMini;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly game: Widen<typeof game>;
   readonly combatMode: Widen<typeof entradaSys.combatMode>;
   readonly heroPosNow: Widen<typeof heroPosNow>;
@@ -1561,7 +1579,7 @@ export interface GuiaMapaCtx {
   readonly instinctOn: Widen<typeof instintoSys.instinctOn>;
   readonly caravans: Widen<typeof caravans>;
   readonly scene: Widen<typeof scene>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly heroPos: Widen<typeof heroPos>;
   readonly az: Widen<typeof az>;
   readonly fmtDist: Widen<typeof fmtDist>;
@@ -1722,7 +1740,7 @@ export interface EntradaCtx {
   readonly dockEl: Widen<typeof dockEl>;
   readonly kitRace: Widen<typeof kitRace>;
   readonly mouse: Widen<typeof mouse>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly free: Widen<typeof free>;
   readonly audio: Widen<typeof audio>;
   readonly az: Widen<typeof az>;
@@ -1839,7 +1857,7 @@ export interface MouseCliqueCtx {
   readonly mouse: Widen<typeof mouse>;
   mouseMovedT: Widen<typeof mouseMovedT>;
   readonly cliqueSys: ReturnType<typeof createCliqueAndar>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly cinemaSys: ReturnType<typeof createCinemaVistas>;
   readonly game: Widen<typeof game>;
   readonly build: Widen<typeof build>;
@@ -1861,7 +1879,7 @@ function updateClickMarks(...a: Parameters<ReturnType<typeof createMouseClique>[
 export interface ColisaoCtx {
   readonly state: Widen<typeof state>;
   readonly heroY: Widen<typeof heroY>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly IX: Widen<typeof IX>;
   readonly IZ: Widen<typeof IZ>;
   readonly city: Widen<typeof city>;
@@ -1891,7 +1909,7 @@ export interface CliqueAndarCtx {
   readonly enemyBlock: typeof enemyBlock;
   readonly free: Widen<typeof free>;
   readonly onWall: Widen<typeof colisaoSys.onWall>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly IX: Widen<typeof IX>;
   readonly IZ: Widen<typeof IZ>;
   readonly wallFree: Widen<typeof wallFree>;
@@ -1983,7 +2001,7 @@ function enterHouse(p: (typeof city.props)[number]) {
 }
 /* CATEDRAL ABANDONADA: a nave, as 3 criptas, a Porta do Bispo (3 selos) e o salão do Bispo; entrar e descer nas criptas, o sermão e o espírito. Saiu do main.ts (02/11). → sistemas/catedral.ts */
 export interface CatedralCtx {
-  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly IX: Widen<typeof IX>;
   readonly IZ: Widen<typeof IZ>;
   readonly particles: Widen<typeof particles>;
@@ -2038,7 +2056,7 @@ export interface MasmorrasEntrarCtx {
   readonly openDlg: Widen<typeof openDlg>;
   readonly solids: Widen<typeof solids>;
   readonly withFade: typeof withFade;
-  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly IX: Widen<typeof IX>;
   readonly IZ: Widen<typeof IZ>;
   readonly objs: Widen<typeof objs>;
@@ -2075,7 +2093,7 @@ export interface CasteloCtx {
   readonly city: Widen<typeof city>;
   readonly feats: Widen<typeof feats>;
   readonly withFade: typeof withFade;
-  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly scene: Widen<typeof scene>;
   readonly game: Widen<typeof game>;
   readonly IX: Widen<typeof IX>;
@@ -2151,7 +2169,7 @@ export interface LarMorteCtx {
   camY: Widen<typeof camY>;
   readonly feats: Widen<typeof feats>;
   readonly game: Widen<typeof game>;
-  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly dgs: Widen<typeof dgs>;
   cryptInt: CathedralFloor | null;
   bishop: ReturnType<typeof game.enemies.spawn> | null;
@@ -2231,7 +2249,7 @@ export interface CinemaVistasCtx {
   azT: Widen<typeof azT>;
   readonly inicio: Widen<typeof inicio>;
   readonly creating: Widen<typeof peleSys.creating>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly social: Widen<typeof social>;
   zoom: Widen<typeof zoom>;
   camY: Widen<typeof camY>;
@@ -2264,7 +2282,7 @@ export interface ReliquiasCtx {
   readonly particles: Widen<typeof particles>;
   readonly heroPos: Widen<typeof heroPos>;
   readonly city: Widen<typeof city>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly state: Widen<typeof state>;
   readonly dgs: Widen<typeof dgs>;
   readonly hereT: typeof hereT;
@@ -2416,7 +2434,7 @@ export interface OficiosCtx {
   readonly fishing: { t: number; bite: number; at: { x: number; z: number }; total: number } | null;
   readonly syncGear: typeof syncGear;
   readonly keys: Widen<typeof keys>;
-  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number } | null;
+  readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean } | null;
   readonly kitRace: Widen<typeof kitRace>;
   readonly profs: Widen<typeof profs>;
   readonly audio: Widen<typeof audio>;
@@ -2770,7 +2788,7 @@ function frameBody() {
   { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
     const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
     const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); }
-  if (!inside) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none';
+  if (!inside || inside.hall) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none'; /* 08/11: dentro do Grande Salão os NPCs de interior vivem (npcs.ts inside) */
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);
   void shaftCol;

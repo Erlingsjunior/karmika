@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag } from './barks';
 
-export interface NpcDef { name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
+export interface NpcDef { /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
 interface Npc { built: boolean; lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói tem que ser maior, mais heroico"): os modelos crus medem humano/elfo civil e
@@ -10,7 +10,7 @@ interface Npc { built: boolean; lodT?: number; def: NpcDef; hero: Hero3D; pos: T
    O "scale" de cada NPC continua valendo por cima (a moça 0,92, o grandalhão 1,1). */
 const KIND_NORM: Record<string, number> = { technocrat: 0.81, dwarf: 0.86 };
 export const npcScale = (def: { kind: string; civil?: string; scale: number }) => def.scale * (def.civil ? 0.91 : KIND_NORM[def.kind] ?? 0.91);
-export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
+export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** 08/11: qual interior o herói está (null = mundo) e se um ponto dele é livre */ insideId?: () => string | null; insideFree?: (x: number, z: number) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   /* 02/11 (Erling, item 8): o NPC só é montado quando o jogador chega na região dele (a 60 m), aos poucos (2 por quadro), o mais perto primeiro.
      Antes os ~380 bonecos eram montados todos na abertura do jogo. Até montar, ele é um marcador vazio (posição, nome, falas e rota funcionam igual). */
   const BUILD_R = 60, PER_FRAME = 2;
@@ -46,7 +46,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
     const r = ctx.canvas.getBoundingClientRect(); buildNear(heroPos);
     if (!placed) { placed = true; /* regra 19 (27/10): NPC nunca fica dentro de parede nem em cima de mobília — se o lugar marcado está ocupado, vai para o chão livre mais perto */
-      for (const n of npcs) { const d = n.def; if (d.route || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
+      for (const n of npcs) { const d = n.def; if (d.route || d.inside || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
     barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
       if (cand.length) { const n = cand[Math.floor(Math.random() * cand.length)], l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.8; } } }
     /* 26/10 noite (Erling: "dois NPCs grudados um dentro do outro"): ninguém ocupa o mesmo lugar. Quem está perto demais
@@ -60,12 +60,15 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
         if (ctx.walkable(ax, az)) { a.pos.x = ax; a.pos.z = az; } if (ctx.walkable(bx, bz)) { b.pos.x = bx; b.pos.z = bz; }
         /* quem estava parado ali arruma outro canto para ficar */
         if (!a.def.route && !a.target) a.wait = Math.min(a.wait, 0.5); if (!b.def.route && !b.target) b.wait = Math.min(b.wait, 0.5); } }
+    const here = ctx.insideId?.() ?? null;
+    const walk = (n: Npc, x: number, z: number) => n.def.inside ? (ctx.insideFree?.(x, z) ?? true) : ctx.walkable(x, z);
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
+      if ((d.inside ?? null) !== here) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } /* NPC de interior só aparece dentro dele; os de fora somem lá dentro */
       if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
       if (dH > 48 || !n.built) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
-      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
+      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);
@@ -77,13 +80,13 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
         const dx = n.target.x - n.pos.x, dz = n.target.y - n.pos.z, l = Math.hypot(dx, dz);
         if (l < 0.3) { n.target = null; n.wait = 2 + Math.random() * 5; } else {
           const sp = 1.2 * dt, nx = n.pos.x + dx / l * sp, nz = n.pos.z + dz / l * sp;
-          if (ctx.walkable(nx, nz)) { n.pos.x = nx; n.pos.z = nz; mps = 1.2; n.yaw = Math.atan2(dx, dz); head = n.yaw; } else n.target = null;
+          if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; mps = 1.2; n.yaw = Math.atan2(dx, dz); head = n.yaw; } else n.target = null;
         }
       } else {
         n.wait -= dt;
-        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (ctx.walkable(tx, tz) && !npcs.some((o) => o !== n && o.hero.root.visible && Math.hypot(o.pos.x - tx, o.pos.z - tz) < 1.2)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
+        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (walk(n, tx, tz) && !npcs.some((o) => o !== n && o.hero.root.visible && Math.hypot(o.pos.x - tx, o.pos.z - tz) < 1.2)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
       }
-      n.pos.y = ctx.heightAt(n.pos.x, n.pos.z);
+      n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z);
       n.hero.root.position.copy(n.pos);
       n.hero.setNight(night); n.hero.setWind(gust);
       if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */

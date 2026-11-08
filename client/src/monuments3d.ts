@@ -20,6 +20,16 @@ const glowA = (c: number, o: number) => mat('ga' + c + o, () => new THREE.MeshBa
 const cloth = (c: number) => mat('c' + c, () => std(c, { side: THREE.DoubleSide }));
 const dark = () => mat('dk', () => new THREE.MeshBasicMaterial({ color: 0x08060a }));
 
+let railT: THREE.Texture | null = null;
+/** painel de ferro vazado: bigorna, martelos cruzados e o rosto barbado do clã (desenho em pixel, fundo transparente) */
+function ironRailTex() { if (railT) return railT; const cv = document.createElement('canvas'); cv.width = 256; cv.height = 64; const g = cv.getContext('2d')!; g.clearRect(0, 0, 256, 64);
+  const I = '#2a2628', B = '#b08a40'; const R = (x: number, y: number, w: number, h: number, c = I) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  R(0, 2, 256, 4); R(0, 58, 256, 4); for (let x = 6; x < 256; x += 32) R(x, 2, 3, 60); /* barras */
+  for (let x = 22; x < 256; x += 64) { /* bigorna */ R(x, 40, 28, 5); R(x + 8, 45, 12, 10); R(x + 4, 55, 20, 3); R(x - 2, 36, 32, 4); R(x + 30, 38, 6, 3); }
+  for (let x = 54; x < 256; x += 64) { /* martelos cruzados */ for (let k = 0; k < 22; k++) { R(x + k, 18 + k, 3, 3); R(x + 22 - k, 18 + k, 3, 3); } R(x - 2, 14, 9, 7); R(x + 20, 14, 9, 7); }
+  for (let x = 22; x < 256; x += 64) { /* o rosto barbado: elmo, olhos, barba trançada */ R(x + 6, 10, 16, 6); R(x + 4, 16, 20, 4); R(x + 8, 21, 3, 3); R(x + 17, 21, 3, 3); R(x + 10, 26, 8, 3); R(x + 8, 29, 12, 6); R(x + 11, 33, 6, 3, B); }
+  for (let x = 6; x < 256; x += 32) { R(x - 1, 28, 5, 5, B); } /* botões de latão */
+  railT = new THREE.CanvasTexture(cv); railT.magFilter = THREE.NearestFilter; railT.colorSpace = THREE.SRGBColorSpace; return railT; }
 function kit() {
   const g = new THREE.Group(); const out: Built = { group: g, glows: [], smoke: [], torches: [] };
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, ry = 0, sh = true) => { const b = new THREE.Mesh(geo, m); b.position.set(x, y, z); b.rotation.y = ry; if (sh) { b.castShadow = true; b.receiveShadow = true; } g.add(b); return b; };
@@ -218,6 +228,17 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
       K.add(new THREE.BoxGeometry(0.5, 1.6, 0.2), gd, cx, 2 + 8.6, gz + 0.5, 0, false); K.add(new THREE.BoxGeometry(1.4, 0.6, 0.2), gd, cx, 2 + 9.5, gz + 0.5, 0, false); dark();
       for (let k = 0; k < 7; k++) { const t = k / 6, x = cx - 5.4 + t * 10.8, y = 2 + 8.2 + Math.sin(t * Math.PI) * 4.2; K.add(new THREE.BoxGeometry(0.7, 0.7, 0.12), rune, x, y, gz + 1.45, 0, false); }
       K.out.glows.push({ pos: new THREE.Vector3(cx, 8, gz + 2), color: 0xff8a3a, base: 48 }); }
+    /* 08/11 (Erling: "um gradil de ferro para a subida, bonito, cheio de detalhes em ferro bem feito, desenho de anões e forjas"): balaustradas
+       de ferro forjado nos dois lados da escadaria e do patamar — pilaretes com cabeça de martelo, corrimão duplo, painéis vazados com
+       bigorna, martelo cruzado e o rosto barbado do clã, botões de latão e um braseiro pequeno no pilar de cada ponta */
+    { const rail = ironRailTex(), railM = std(0xffffff, { map: rail, transparent: true, alphaTest: 0.5, side: THREE.DoubleSide }), brass = flat(0xb08a40);
+      for (const sx of [-1, 1]) { const xs = cx + sx * (Wm * 0.3 + 0.45); const z0 = Dm + 0.2, z1 = Dm * 0.62 + 1.6 + Dm * 0.1; const n = Math.round((z0 - z1) / 1.3);
+        for (let k = 0; k <= n; k++) { const t = k / n, z = z0 + (z1 - z0) * t, y = t < 0.5 ? Math.min(1.6, Math.floor(t * 2 * 4) * 0.4) : 1.6; /* acompanha os degraus e o patamar */
+          K.box(0.14, 1.15, 0.14, xs, y, z, iron); K.box(0.3, 0.16, 0.22, xs, y + 1.15, z, iron); K.add(new THREE.SphereGeometry(0.05, 6, 5), brass, xs, y + 1.36, z, 0, false);
+          if (k < n) { const zn = z0 + (z1 - z0) * (k + 1) / n, yn = (k + 1) / n < 0.5 ? Math.min(1.6, Math.floor((k + 1) / n * 2 * 4) * 0.4) : 1.6, zm = (z + zn) / 2, ym = (y + yn) / 2, L = Math.hypot(zn - z, yn - y), tilt = Math.atan2(yn - y, zn - z);
+            for (const h of [1.1, 0.55]) { const r = K.add(new THREE.BoxGeometry(0.08, 0.08, L), iron, xs, ym + h, zm, 0); r.rotation.x = -tilt; }
+            const pn = K.add(new THREE.PlaneGeometry(L - 0.2, 0.5), railM, xs, ym + 0.8, zm, Math.PI / 2, false); pn.rotation.x = -tilt; } }
+        for (const z of [z0, z1]) { K.box(0.5, 1.5, 0.5, xs, z === z0 ? 0 : 1.6, z, rock2); K.cyl(0.26, 0.18, 0.3, xs, (z === z0 ? 0 : 1.6) + 1.5, z, iron, 8); const fl = makeFire(0.45, 'forge', 'torch', xs * 3 + z); fl.position.set(xs, (z === z0 ? 0 : 1.6) + 1.78, z); K.g.add(fl); } } }
     // os dois Ancestrais: botas, túnica, barba trançada, elmo com chifres, um com o machado e outro com o martelo
     for (const sx of [-1, 1]) { const x = cx + sx * (Wm * 0.5 - 4.2), z = Dm * 0.62 + 1.2, m = rock2; K.box(5, 2.4, 5, x, 2, z, rock); K.box(1.3, 2.2, 1.6, x - 1, 4.4, z, m); K.box(1.3, 2.2, 1.6, x + 1, 4.4, z, m); K.box(3.8, 5.2, 2.6, x, 6.6, z, m); K.box(4.6, 1.2, 3.0, x, 11.6, z, m); K.add(new THREE.SphereGeometry(1.5, 9, 7), m, x, 14.2, z); K.box(3.0, 1.6, 2.6, x, 14.9, z, iron); for (const hx of [-1, 1]) K.add(new THREE.ConeGeometry(0.45, 2.4, 6), gd, x + hx * 1.9, 16.2, z, 0).rotation.z = -hx * 0.7;
       K.box(2.2, 3.4, 0.9, x, 9.4, z + 1.5, rock); for (let k = 0; k < 3; k++) K.box(0.5, 0.5, 0.3, x - 0.6 + k * 0.6, 8.4 - k * 0.3, z + 1.95, gd); // barba trançada com anéis

@@ -318,6 +318,27 @@ export const ELF_ROAD: QuestDef[] = [
 ];
 
 /* a Chamada de Askavik de cada povo: leva às mesmas missões de Askavik (a02 em diante) */
+/* 08/11 A COROA DA MONTANHA (Erling: "o rei anão para falar comigo e me dar missões de história"): a história do Rei Thrain Coroa-de-Ferro,
+   dentro do Grande Salão de Brasaforja, para qualquer povo (nível 8+). Três missões: a audiência, o Coração que avermelha e o que bate na porta. */
+export const RT = 'Rei Thrain Coroa-de-Ferro', BR = 'Conselheira Brynja Olho-de-Prata', RGV = 'Mestre-Fundidor Ragnvald', HK = 'Escriba Hákon Pena-de-Ferro';
+export const KING_ROAD: QuestDef[] = [
+  { id: 'k01', chain: 'A Coroa da Montanha', name: 'Audiência com o Rei', lvl: 8, giver: BR, turnin: RT, next: 'k02', xp: 1, gold: 40,
+    text: 'O Rei recebe poucos. A Conselheira Brynja quer que ele receba você: suba ao estrado e fale com Thrain Coroa-de-Ferro.',
+    objs: [{ kind: 'talk', npc: RT }],
+    talk: ['Você não é daqui, ou é novo demais para o Rei lembrar. Tanto faz: a montanha está inquieta, e o Rei precisa de braços que não tremam.', 'Suba ao estrado. Fale alto, olhe nos olhos dele e não encoste no trono.'],
+    done: ['Brynja disse que você não treme. Veremos.', 'O Coração da Montanha, acima da Forja-Mãe, avermelha de noite. Meu pai dizia que é a montanha com febre. Eu digo que é alguém cavando onde não devia.'] },
+  { id: 'k02', chain: 'A Coroa da Montanha', name: 'O Coração que avermelha', lvl: 9, giver: RT, turnin: RGV, req: 'k01', next: 'k03', xp: 1, gold: 60, items: [['ore_i', 2]],
+    text: 'O Rei quer saber se a febre está no ferro. Traga seis minérios de ferro das rochas em volta de Brasaforja ao Mestre-Fundidor Ragnvald, para ele fundir e ler a cor da escória.',
+    objs: [{ kind: 'collect', item: 'ore_i', n: 6 }, { kind: 'talk', npc: RGV }],
+    talk: ['Ragnvald lê o ferro como o Escriba lê o livro. Leve minério das pedras do Sopé: se a febre está na montanha, está na escória também.'],
+    done: ['Vermelha. A escória saiu vermelha como vinho. Isso só aconteceu uma vez, e meu avô não gostava de falar nisso.', 'Conte ao Rei. E pergunte ao Escriba sobre a porta.'] },
+  { id: 'k03', chain: 'A Coroa da Montanha', name: 'Os que batem na porta', lvl: 10, giver: HK, turnin: RT, req: 'k02', xp: 1, gold: 120, gear: 2,
+    text: 'O Escriba Hákon leu no livro mais velho: "Thrain, não abra. Nós não somos os que batem." As Galerias de Brasaforja ficam logo acima da Porta de Pedra Preta. Desça, limpe o que anda por lá e volte ao Rei com o que ouviu.',
+    objs: [{ kind: 'dungeon', id: 'galerias', name: 'Galerias de Brasaforja' }, { kind: 'talk', npc: RT }],
+    talk: ['Está aqui, com a letra do primeiro Thrain. Não é lenda. Alguma coisa bate na porta de baixo há trezentos anos, e nós fingimos que é o vento.', 'As Galerias ficam por cima dela. Se a febre vem de lá, você vai ouvir.'],
+    done: ['Você ouviu. Dá para ver na sua cara.', 'Então é verdade: eles ainda batem. Pegue isto, da armaria do meu pai. Quando a porta abrir — e vai abrir — quero você do lado de cá dela.'],
+    choice: { q: 'O Rei pergunta se você contou a alguém o que ouviu na porta.', opts: [{ label: 'Não. É assunto do Rei.', karma: 5, say: 'Bom. Um segredo guardado é uma porta a mais.', why: 'Você respeitou a palavra do Rei e a paz do povo.' }, { label: 'Contei na taverna. O povo tem direito.', karma: -3, say: 'Agora metade de Brasaforja não vai dormir. Obrigado.', why: 'Você espalhou medo antes de entender.' }] } },
+];
 export const RACE_CALLS: QuestDef[] = [
   { id: 'a01an', chain: 'A Chamada de Askavik', origin: 'dwarf', name: 'A Chamada de Askavik', lvl: 25, giver: BO, turnin: 'Mestre Halvard', req: 'd25', next: 'a02', xp: 1, gold: 60,
     text: 'O Olho despertou em você, e Brasaforja já não tem o que lhe ensinar. Leve a carta do Thane aos mestres de Askavik. O Mestre Halvard, na Escola de Guerra, recebe quem chega.',

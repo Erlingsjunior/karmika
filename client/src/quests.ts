@@ -1,6 +1,6 @@
 import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
-import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES } from './racas';
+import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES, KING_ROAD } from './racas';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
 import { FALAS } from './falas';
@@ -78,7 +78,7 @@ export const STORY_THREADS: Record<'human' | 'dwarf' | 'elf', string[]> = {
   dwarf: [...DWARF_ROAD.map((d) => d.id), 'a01an', 'a02', 'a03', 'a04', 'p01'],
   elf: [...ELF_ROAD.map((d) => d.id), 'a01el', 'a02', 'a03', 'a04', 'p01'],
 };
-export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS];
+export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS, ...KING_ROAD];
 /** a Chamada de Askavik vale para os três povos: quem fez a do seu povo conta como quem fez 'a01' */
 const DONE_ALIAS: Record<string, string[]> = { a01: ['a01an', 'a01el'] };
 /** saves antigos: quem já passou de 'Os Caminhos' não recebe as missões de Askavik que entraram depois (23/10) */

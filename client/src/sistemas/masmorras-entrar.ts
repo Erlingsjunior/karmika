@@ -131,7 +131,7 @@ function enterHall(p: (typeof K.city.props)[number]) {
   K.withFade(() => {
     const int = buildDwarfHall(p.gx * 31 + p.gy);
     int.group.position.set(K.IX, 0, K.IZ); K.scene.add(int.group);
-    K.inside = { int, ret: { x: p.gx + p.w / 2 + 0.5, y: p.gy + 9.2 }, prop: p };
+    K.inside = { int, ret: { x: p.gx + p.w / 2 + 0.5, y: p.gy + 9.2 }, prop: p, hall: true };
     K.objs.group.visible = false; K.casteloSys.sitting = null; for (const n of K.npcSys.npcs) n.hero.root.visible = false;
     K.state.fx = (K.IX + int.W / 2) / T; K.state.fy = (K.IZ + int.D - 0.8) / T; K.state.path = [];
     K.heroY = 0; K.camX = K.IX + int.W / 2; K.camZ = K.IZ + int.D / 2; K.camY = 0;
