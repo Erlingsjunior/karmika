@@ -276,6 +276,7 @@ function dwarfWall(K: ReturnType<typeof kit>, len: number, seed: number) {
   const r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, L = len, hl = L / 2;
   const blk = [stone(0x6a625a), stone(0x5e5850), stone(0x726a60)], cap = stone(0x847a6e), iron = flat(0x2c2a2a), oak = wood(0x5a3c22), brass = flat(0xb08a40);
   K.box(L, 0.12, 0.62, 0, 0.06, 0, stone(0x4a4440)); /* sapata */
+  K.box(L - 0.04, 0.9, 0.44, 0, 0.55, 0, stone(0x3a3632)); /* miolo maciço: sem ele a luz do outro lado vazava pelas juntas entre os blocos (o brilho branco nas muretas) */
   for (let row = 0; row < 3; row++) { let x = -hl + 0.02 + (row % 2) * 0.22; while (x < hl - 0.02) { const w = Math.min(0.42 + r(x * 7 + row) * 0.2, hl - 0.02 - x); if (w > 0.08) K.box(w - 0.03, 0.25, 0.52, x + w / 2, 0.24 + row * 0.27, 0, blk[(row + Math.floor(x * 3)) % 3]); x += w; } }
   K.box(L + 0.06, 0.1, 0.66, 0, 1.03, 0, cap); K.box(L + 0.02, 0.05, 0.7, 0, 0.96, 0, stone(0x3e3a36));
   for (const sx of [-1, 1]) { const px = sx * (hl - 0.18); K.box(0.42, 1.4, 0.72, px, 0.7, 0, blk[1]); K.box(0.5, 0.12, 0.8, px, 1.44, 0, cap); K.box(0.46, 0.06, 0.76, px, 0.95, 0, iron); K.box(0.46, 0.06, 0.76, px, 0.45, 0, iron);
