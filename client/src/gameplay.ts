@@ -68,8 +68,18 @@ export function createGameplay(d: GameplayDeps) {
   /* estalactites de gelo (nórdica) e lava vulcânica (anão) ao bater no chão */
   const spikes: { m: THREE.Mesh; t: number; h: number }[] = [];
   const lavas: { m: THREE.Mesh; gl: THREE.Mesh; x: number; z: number; r: number; t: number }[] = [];
+  const quakeRings: { m: THREE.Mesh; t: number; r: number }[] = [];
   let iceMatC: THREE.MeshToonMaterial | null = null; const iceMatF = () => iceMatC ?? (iceMatC = new THREE.MeshToonMaterial({ color: 0xcfeeff, gradientMap: ramp, emissive: 0x2a5a8a, transparent: true, opacity: 0.9 }));
-  const lavaMat = new THREE.MeshBasicMaterial({ color: 0xff6a18, transparent: true, opacity: 0.85, depthWrite: false, fog: false });
+  /* 07/11 (Erling: "o efeito da magia no chão está horrível"): a lava não é mais um disco liso — são rachaduras incandescentes que se abrem
+     do centro (textura de fendas desenhada uma vez), com o miolo mais quente */
+  const fissTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d')!; const R = () => Math.random();
+    const grd = g.createRadialGradient(128, 128, 0, 128, 128, 60); grd.addColorStop(0, 'rgba(255,220,140,1)'); grd.addColorStop(1, 'rgba(255,120,30,0)'); g.fillStyle = grd; g.fillRect(0, 0, 256, 256);
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for (let k = 0; k < 11; k++) { let a = k / 11 * 6.283 + R() * 0.4, x = 128, y = 128, w = 9; g.beginPath(); g.moveTo(x, y);
+      for (let s2 = 0; s2 < 9; s2++) { a += (R() - 0.5) * 0.9; const L = 10 + R() * 8; x += Math.cos(a) * L; y += Math.sin(a) * L; g.lineTo(x, y); if (R() < 0.3) { const bx = x, by = y, ba = a + (R() < 0.5 ? 0.9 : -0.9); g.moveTo(bx, by); g.lineTo(bx + Math.cos(ba) * 18, by + Math.sin(ba) * 18); g.moveTo(x, y); } }
+      g.strokeStyle = 'rgba(255,150,40,.95)'; g.lineWidth = w; g.stroke(); g.strokeStyle = 'rgba(255,240,180,1)'; g.lineWidth = w * 0.35; g.stroke(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const lavaMat = new THREE.MeshBasicMaterial({ color: 0xffffff, map: fissTex, transparent: true, opacity: 0.95, depthWrite: false, fog: false, blending: THREE.AdditiveBlending });
   const lavaGlowMat = new THREE.MeshBasicMaterial({ color: 0xffb040, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
   const frosts: { m: THREE.Mesh; x: number; z: number; r: number; t: number }[] = [];
   const frostMat = new THREE.MeshBasicMaterial({ color: 0xbfe8ff, transparent: true, opacity: 0.32, depthWrite: false, fog: false });
@@ -85,7 +95,8 @@ export function createGameplay(d: GameplayDeps) {
     impactLight.position.set(cx, gy + 1.5, cz); impactLight.color.setHex(0x9ad7ff); impactK = 1;
   }
   function lavaBurst(cx: number, cz: number, gy: number, r: number) {
-    const m = new THREE.Mesh(new THREE.CircleGeometry(r, 36).rotateX(-Math.PI / 2), lavaMat.clone()); m.position.set(cx, gy + 0.06, cz); m.renderOrder = 2; fxAdd(m);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2.3, r * 2.3).rotateX(-Math.PI / 2).rotateY(Math.random() * 6.283), lavaMat.clone());
+    /* a onda de choque: dois anéis que correm para fora em 0,35 s */ for (const k of [0.75, 1.25]) { const rg = new THREE.Mesh(new THREE.RingGeometry(0.8, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffc070, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); rg.position.set(cx, gy + 0.1, cz); rg.scale.setScalar(0.4); fxAdd(rg); quakeRings.push({ m: rg, t: 0, r: r * k }); } m.position.set(cx, gy + 0.06, cz); m.renderOrder = 2; fxAdd(m);
     const gl = new THREE.Mesh(new THREE.CircleGeometry(r * 1.5, 36).rotateX(-Math.PI / 2), lavaGlowMat.clone()); gl.position.set(cx, gy + 0.07, cz); gl.renderOrder = 2; fxAdd(gl);
     lavas.push({ m, gl, x: cx, z: cz, r, t: 0 }); fires.push({ x: cx, z: cz, t: 0 }); fireK = 1;
     for (let i = 0; i < 70; i++) { const a = rnd(0, 6.283), sp = rnd(1, 6); d.particles.spawn(cx, gy + 0.2, cz, { vx: Math.cos(a) * sp, vy: rnd(3, 9), vz: Math.sin(a) * sp, life: rnd(0.6, 1.4), s0: 0.5, s1: 0.1, c0: 0xffe080, c1: 0xff3a00, a: 1, drag: 1, g: 9 }); }
@@ -1522,7 +1533,7 @@ export function createGameplay(d: GameplayDeps) {
       }
       if (h.kind === 'dwarf') { // Terremoto
         if (!h.act('quake')) return false; teleT = 0; slamAt = target ?? null; cd.slam = 3.5; st.mp -= cost; slamFury = st.fury; st.fury = 0; st.lastCast = now; slotFlash('slam'); d.audio.swing();
-        pending.push({ at: now + TEMPO * 0.74, fn: () => {
+        pending.push({ at: now + TEMPO * 0.52, fn: () => {
           const p = h.root.position; const yaw = h.root.rotation.y; teleT = -1; teleG.visible = false; slamAt = null;
           const cx = p.x + Math.sin(yaw) * 0.8, cz = p.z + Math.cos(yaw) * 0.8, gy = d.world.heightAt(cx, cz);
           crack.position.set(cx, gy + 0.07, cz); crack.rotation.z = Math.random() * 6; crackT = 0; (crack.material as THREE.MeshBasicMaterial).color.setHex(0xff8a30);
@@ -2513,6 +2524,7 @@ export function createGameplay(d: GameplayDeps) {
       const sc = Math.min(1, 0.3 + crackT * 5); crack.scale.set(sc, sc, 1);
       fireK *= Math.exp(-dt * 1.6); fireLight.intensity = 38 * fireK; if (fires[0] && !turrets.length) fireLight.position.set(fires[0].x, 1.2, fires[0].z);
       for (let i = spikes.length - 1; i >= 0; i--) { const sp = spikes[i]; sp.t += dt; const k = sp.t < 0 ? 0 : sp.t < 0.1 ? sp.t / 0.1 * 1.15 : sp.t < 0.25 ? 1.15 - (sp.t - 0.1) : 1; const sink = sp.t > 4.5 ? Math.min(1, (sp.t - 4.5) / 0.8) : 0; sp.m.position.y = (sp.m.userData.gy ?? (sp.m.userData.gy = sp.m.position.y + sp.h * 0.5)) - sp.h * 0.5 + sp.h * (k - sink) * 0.98; if (sp.t > 5.3) { d.scene.remove(sp.m); sp.m.geometry.dispose(); spikes.splice(i, 1); } }
+      for (let i = quakeRings.length - 1; i >= 0; i--) { const q = quakeRings[i]; q.t += dt; const u = Math.min(1, q.t / 0.35); q.m.scale.setScalar(0.4 + (q.r - 0.4) * (1 - (1 - u) * (1 - u))); (q.m.material as THREE.MeshBasicMaterial).opacity = 0.85 * (1 - u); if (u >= 1) { d.scene.remove(q.m); q.m.geometry.dispose(); quakeRings.splice(i, 1); } }
       for (let i = lavas.length - 1; i >= 0; i--) { const lv = lavas[i]; lv.t += dt; const LD = 8 * skillScale('slam').dur; const k = lv.t > LD ? Math.max(0, 1 - (lv.t - LD) / 1.5) : 1; (lv.m.material as THREE.MeshBasicMaterial).opacity = 0.85 * k; (lv.gl.material as THREE.MeshBasicMaterial).opacity = (0.3 + 0.12 * Math.sin(now * 7)) * k;
         if (Math.random() < dt * 14 * k) { const a = rnd(0, 6.283), rr = rnd(0, lv.r); d.particles.spawn(lv.x + Math.cos(a) * rr, lv.m.position.y + 0.05, lv.z + Math.sin(a) * rr, { vy: rnd(1, 3), life: rnd(0.4, 0.9), s0: 0.35, s1: 0.05, c0: 0xffe080, c1: 0xff3a00, a: 1, g: 5 }); }
         if (k > 0) for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - lv.x, e.pos.z - lv.z) < lv.r + e.def.radius * 0.5) { e.burn = Math.max(e.burn ?? 0, 2); e.burnTick = e.burnTick ?? 0; }
