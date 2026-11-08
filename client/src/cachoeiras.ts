@@ -30,14 +30,14 @@ export function createFalls(o: { scene: THREE.Scene; map: string[][]; T: number;
     const bot = new THREE.Vector3((c.bx + 0.5) * T, WL + 0.05, (c.by + 0.5) * T), top0 = new THREE.Vector3((c.tx + 0.5) * T, WL + c.h, (c.ty + 0.5) * T);
     const hor = new THREE.Vector3(top0.x - bot.x, 0, top0.z - bot.z).normalize(), side = new THREE.Vector3(-hor.z, 0, hor.x), up = new THREE.Vector3(0, 1, 0), nrm = hor.clone().negate();
     /* a borda: um pouco à frente do alto, para a cortina cair reta até a água */
-    const lipP = top0.clone().addScaledVector(hor, -1.2), drop = lipP.y - WL, top = lipP;
+    const lipP = top0.clone().addScaledVector(hor, -1.2), drop = Math.max(1, lipP.y - WL), top = lipP;
     const grp = new THREE.Group(); o.scene.add(grp);
     const wdt = 5 + (i % 3) * 1.2, t2 = tex.clone(); t2.needsUpdate = true; t2.repeat.set(wdt / 3, drop / 6);
     const layers: THREE.Texture[] = [t2];
     for (const [off, k, op] of [[0.15, 1, 0.92], [0.45, 0.82, 0.7], [-0.1, 0.62, 0.55]] as const) { const tl = off === 0.15 ? t2 : tex.clone(); tl.needsUpdate = true; tl.repeat.set(wdt * k / 3, drop / (5 + k * 2)); if (tl !== t2) layers.push(tl);
       const vm = veilM.clone(); vm.map = tl; vm.opacity = op; const pl = new THREE.Mesh(new THREE.PlaneGeometry(wdt * k, drop, 6, 10), vm);
       pl.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(side, up, nrm)); pl.position.copy(lipP).addScaledVector(up, -drop / 2).addScaledVector(nrm, off);
-      /* a água sai da borda com um pouco de arco e se abre ao cair */ const pa = pl.geometry.attributes.position as THREE.BufferAttribute; for (let v = 0; v < pa.count; v++) { const yy = pa.getY(v) / drop + 0.5, fall = 1 - yy; pa.setX(v, pa.getX(v) * (1 + 0.22 * fall)); pa.setZ(v, Math.sin(Math.min(1, yy * 6) * Math.PI / 2) * 0 + (1 - Math.pow(yy, 0.5)) * 0.9 + (yy > 0.93 ? (yy - 0.93) * 6 : 0)); } pa.needsUpdate = true;
+      /* a água sai da borda com um pouco de arco e se abre ao cair */ const pa = pl.geometry.attributes.position as THREE.BufferAttribute; for (let v = 0; v < pa.count; v++) { const yy = Math.min(1, Math.max(0, pa.getY(v) / drop + 0.5)), fall = 1 - yy; pa.setX(v, pa.getX(v) * (1 + 0.22 * fall)); pa.setZ(v, Math.sin(Math.min(1, yy * 6) * Math.PI / 2) * 0 + (1 - Math.pow(yy, 0.5)) * 0.9 + (yy > 0.93 ? (yy - 0.93) * 6 : 0)); } pa.needsUpdate = true;
       grp.add(pl); }
     /* o rio chegando na borda */ { const vm = veilM.clone(); vm.map = layers[0]; const r = new THREE.Mesh(new THREE.PlaneGeometry(wdt * 0.95, 4.5), vm); r.rotation.x = -Math.PI / 2; r.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), hor.clone().negate().applyAxisAngle(up, 0))); r.position.copy(lipP).addScaledVector(hor, 2.2).setY(lipP.y + 0.08); grp.add(r); }
     const lip = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, wdt - 0.4, 4, 8), foamM); lip.rotation.z = Math.PI / 2; lip.quaternion.premultiply(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(1, 0, 0), side)); lip.position.copy(lipP).addScaledVector(nrm, 0.25); grp.add(lip);

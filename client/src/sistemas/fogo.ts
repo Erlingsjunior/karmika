@@ -27,7 +27,7 @@ function drawAtlas(pal: FirePal) {
   const cx = cv.getContext('2d')!, img = cx.createImageData(W, H), px = img.data, R = RAMP[pal].map((c) => [(c >> 16) & 255, (c >> 8) & 255, c & 255]);
   for (let row = 0; row < ROWS; row++) for (let f = 0; f < FR; f++) {
     const ph = (f / FR) * Math.PI * 2;
-    for (let j = 1; j < FH - 1; j++) for (let i = 1; i < FW - 1; i++) {
+    for (let j = 3; j < FH - 3; j++) for (let i = 1; i < FW - 1; i++) {
       const u = (i + 0.5) / FW - 0.5, v = 1 - (j + 0.5) / FH; // v = 0 na base, 1 no topo
       const vv = (v - 0.04) / 0.94; if (vv <= 0) continue;
       /* o corpo balança: uma onda longa que sobe e uma curta por cima */
@@ -84,7 +84,7 @@ export function palOf(col?: number): FirePal {
 
 /** um quadrado de chama: largura w, altura h, centro x, profundidade z, formato e quadro inicial */
 function quad(pos: number[], uv: number[], idx: number[], x: number, z: number, w: number, h: number, row: number, col: number) {
-  const b = pos.length / 3, u0 = col / FR + 0.5 / (FW * FR), u1 = (col + 1) / FR - 0.5 / (FW * FR), v0 = 1 - (row + 1) / ROWS, v1 = 1 - row / ROWS;
+  const b = pos.length / 3, u0 = col / FR + 0.5 / (FW * FR), u1 = (col + 1) / FR - 0.5 / (FW * FR), pv = 2.5 / (FH * ROWS), v0 = 1 - (row + 1) / ROWS + pv, v1 = 1 - row / ROWS - pv; /* 08/11 (Erling: "barras" em cima do fogo): recua 2,5 px para a base da chama de cima não vazar no quadro */
   pos.push(x - w / 2, 0, z, x + w / 2, 0, z, x + w / 2, h, z, x - w / 2, h, z);
   uv.push(u0, v0, u1, v0, u1, v1, u0, v1);
   idx.push(b, b + 1, b + 2, b, b + 2, b + 3);

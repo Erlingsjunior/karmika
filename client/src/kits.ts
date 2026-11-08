@@ -228,7 +228,7 @@ const HSVG: Record<string, string> = {
 
 /* ---- 25/10: Paladino, Vampiro e Lobisomem formados ganham golpes próprios (antes usavam os do guerreiro nórdico: gelo e Odin) ---- */
 { const Nn = (id: string) => KITS.nordic!.find((x) => x.id === id)!;
-  const I = (body: string, c: string) => `<svg viewBox="0 0 32 32">${body.replace(/C/g, c)}</svg>`;
+  const I = (body: string, c: string) => `<svg viewBox="0 0 32 32">${body.replace(/"C"/g, `"${c}"`)}</svg>`;
   const ICON: Record<string, string> = {
     smite: I('<path d="M13 3h6v8h5l-8 9-8-9h5z" fill="C"/><path d="M6 26h20M9 29h14" stroke="C" stroke-width="2" stroke-linecap="round"/><path d="M5 20l4 2M27 20l-4 2" stroke="#fff6d0" stroke-width="1.5"/>', '#ffd24a'),
     consecrate: I('<ellipse cx="16" cy="22" rx="12" ry="5" fill="none" stroke="C" stroke-width="2"/><path d="M16 6v14M10 11h12" stroke="C" stroke-width="2.4"/><path d="M8 24l-1 4M24 24l1 4M16 27v3" stroke="#fff0b0" stroke-width="1.4"/>', '#ffe08a'),

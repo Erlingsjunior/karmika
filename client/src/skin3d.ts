@@ -309,8 +309,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const guardOn = hero.combat && !hero.acting && !hero.guard; gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
         const rq0 = root.getWorldQuaternion(new THREE.Quaternion()), fw0 = new THREE.Vector3(0, 0, 1).applyQuaternion(rq0), rt0 = new THREE.Vector3(1, 0, 0).applyQuaternion(rq0), up0 = new THREE.Vector3(0, 1, 0);
         const sc0 = root.getWorldScale(new THREE.Vector3()).x, base0 = root.getWorldPosition(new THREE.Vector3());
-        const gDir = rt0.clone().multiplyScalar(-0.85).addScaledVector(up0, 0.32).addScaledVector(fw0, 0.22).normalize();
-        const gR = base0.clone().addScaledVector(up0, 0.8 * sc0).addScaledVector(fw0, 0.38 * sc0).addScaledVector(rt0, 0.2 * sc0);
+        const gDir = rt0.clone().multiplyScalar(0.85).addScaledVector(up0, 0.5).addScaledVector(fw0, 0.22).normalize();
+        const gR = base0.clone().addScaledVector(up0, 0.8 * sc0).addScaledVector(fw0, 0.38 * sc0).addScaledVector(rt0, -0.2 * sc0);
         if (gK2 > 0.02) { const cur = new THREE.Vector3(); W(sM, cur); armIK(swordSide, R.armR, cur.lerp(gR, gK2), rt0.clone().addScaledVector(up0, 0.45).addScaledVector(fw0, -0.2)); model.updateMatrixWorld(true); }
         W(sH, vH); W(sI, vI); W(sP, vP); W(sM, vM); root.matrixWorld.decompose(vF, tq, sc);
         const a = ay.subVectors(vI, vP).normalize().multiplyScalar(-1), f = new THREE.Vector3().subVectors(vM, vH).normalize();
