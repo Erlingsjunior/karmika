@@ -310,8 +310,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const rq0 = root.getWorldQuaternion(new THREE.Quaternion()), fw0 = new THREE.Vector3(0, 0, 1).applyQuaternion(rq0), rt0 = new THREE.Vector3(1, 0, 0).applyQuaternion(rq0), up0 = new THREE.Vector3(0, 1, 0);
         const sc0 = root.getWorldScale(new THREE.Vector3()).x, base0 = root.getWorldPosition(new THREE.Vector3());
         const GD = (window as unknown as { __gd?: number[] }).__gd ?? [0.85, 0.5, 0.22]; const gDir = rt0.clone().multiplyScalar(GD[0]).addScaledVector(up0, GD[1]).addScaledVector(fw0, GD[2]).normalize();
-        const gR = base0.clone().addScaledVector(up0, 0.62 * sc0).addScaledVector(fw0, 0.36 * sc0).addScaledVector(rt0, -0.34 * sc0); /* 08/11: a mão direita embaixo, no lado direito do corpo (o modelo é espelhado: −rt0 é o lado direito visível), na altura do quadril — o braço sai do corpo em vez de grudar no peito */ /* 08/11: mais perto do corpo — braços dobrados, não esticados */
-        if (gK2 > 0.02) { const cur = new THREE.Vector3(); W(sM, cur); armIK(swordSide, R.armR, cur.lerp(gR, gK2), rt0.clone().multiplyScalar(-1).addScaledVector(up0, 0.35).addScaledVector(fw0, -0.1)); /* cotovelo para FORA (lado direito visível) */ model.updateMatrixWorld(true); }
+        /* 08/11 (Erling: "braço esticado grudado ao peito e a mão não está no ponto da arma"): agora as DUAS mãos têm alvo fixo no espaço do corpo e o cabo
+           é a reta entre elas — assim as duas mãos ficam, por construção, em cima do cabo. Direita (lado direito visível = −rt0): na altura do quadril,
+           afastada do corpo, cotovelo para fora. Esquerda: na altura do peito, à frente, cotovelo para baixo. */
+        const gR = base0.clone().addScaledVector(up0, 0.8 * sc0).addScaledVector(fw0, 0.36 * sc0).addScaledVector(rt0, -0.42 * sc0);
+        const gL = base0.clone().addScaledVector(up0, 1.08 * sc0).addScaledVector(fw0, 0.42 * sc0).addScaledVector(rt0, 0.02 * sc0);
+        if (gK2 > 0.02) { const cur = new THREE.Vector3(); W(sM, cur); armIK(swordSide, R.armR, cur.lerp(gR, gK2), rt0.clone().multiplyScalar(-1).addScaledVector(up0, 0.3).addScaledVector(fw0, -0.05)); /* cotovelo para FORA (lado direito visível) */ model.updateMatrixWorld(true); }
         /* 08/11 (Erling: "o braço direito dobrado, cotovelo para fora, segura com o DORSO da mão para cima; o esquerdo dobra para baixo e segura com o dorso para a frente"):
            o giro do antebraço (pronação) de cada mão na guarda — o IK não mexe no giro, então é dado aqui, em volta do eixo do antebraço */
         const gRoll = (side: 'Right' | 'Left', ang: number) => { const fb = B(side + 'ForeArm'), hb = B(side + 'Hand'); if (!fb || !hb || Math.abs(ang) < 1e-3) return; fb.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(hb.position.clone().normalize(), ang)); fb.updateMatrixWorld(true); };
@@ -330,7 +334,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const cmbDir = gDir.clone();
         const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
-        { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
+        if (gK2 > 0.5) handle.copy(gL).sub(grip).normalize(); /* 08/11: na guarda o cabo é a reta da mão direita à esquerda */
+        if (gK2 <= 0.5) { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
              da raiz (raio ~0,3 m, da cintura ao ombro); cada ponto do cabo que cair dentro empurra a direção para fora, até sair */
           const ax0 = root.getWorldPosition(new THREE.Vector3()), R0 = 0.3 * sc.x, y0 = ax0.y + 0.35 * sc.x, y1 = ax0.y + 1.45 * sc.x, Lw = (isSw ? reach : 0.85) * sc.x;
           for (let it = 0; it < 6; it++) { let push: THREE.Vector3 | null = null;
@@ -338,9 +343,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
               const out = dd > 1e-3 ? new THREE.Vector3(hx / dd, 0, hz / dd) : fwd.clone(); push = (push ?? new THREE.Vector3()).addScaledVector(out, (R0 - dd) / R0 + 0.15); }
             if (!push) break; handle.addScaledVector(push, 0.6).normalize(); } }
         const kk = k.clone().lerp(fwd, Math.max(restK, cmbK));
-        /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, ((isSw ? 0.15 : 0.26) * restK + 0.28 * gK2) * sc.x); /* 08/11: na guarda a mão direita pega perto do pomo (0,28 m abaixo do meio) */
+        /* pegada: no meio do cabo em combate (y local 0), na ponta (pomo, y −0.26) parada */ const gp = grip.clone().addScaledVector(handle, ((isSw ? 0.15 : 0.26) * restK + 0.3 * gK2) * sc.x); /* 08/11: na guarda a mão direita pega perto do pomo (0,28 m abaixo do meio) */
         place(th, kk, handle.clone().multiplyScalar(hs), gp);
-        /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gp.clone().addScaledVector(handle, (-(restK > 0.5 ? 0.06 : 0.15) * (1 - gK2) + 0.3 * gK2) * sc.x); armIK('Left', R.armL, lt, gK2 > 0.5 ? up.clone().multiplyScalar(-1).addScaledVector(right, -0.35).addScaledVector(fwd, 0.15) : undefined); if (gK2 > 0.02) gRoll('Left', ((window as unknown as { __gRollL?: number }).__gRollL ?? -1.1) * gK2); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
+        /* a mão esquerda no cabo, abaixo da direita (em pausa, por cima dela no pomo) */ const lt = gK2 > 0.5 ? gL.clone() : gp.clone().addScaledVector(handle, (-(restK > 0.5 ? 0.06 : 0.15) * (1 - gK2)) * sc.x); armIK('Left', R.armL, lt, gK2 > 0.5 ? up.clone().multiplyScalar(-1).addScaledVector(right, 0.2).addScaledVector(fwd, 0.25) : undefined); if (gK2 > 0.02) gRoll('Left', ((window as unknown as { __gRollL?: number }).__gRollL ?? -1.1) * gK2); gripK.Left = 1; setFingers(); model.updateMatrixWorld(true); } }
     const shp = R.shield()?.parent; const stowed = !!shp && !isUnder(shp, R.armL.el!); stowedNow = stowed;
     const tool = !!(R as unknown as { holdTool?: () => boolean }).holdTool?.();
     const offW = (R as unknown as { off?: () => THREE.Object3D | null }).off?.() ?? null, offOn = !!offW && !!offW.parent && offW.visible;
