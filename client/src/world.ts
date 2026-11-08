@@ -1131,13 +1131,13 @@ function buildCity_L(): World {
             if (inb(ox2, oy2) && map[oy2][ox2] === 'road' && !gates.some((q) => Math.hypot(q.x - mid.x, q.y - mid.y) < 9)) gates.push({ x: mid.x, y: mid.y, ux: mid.ux, uy: mid.uy, w: len * 0.5 }); }
           for (let q = i0 - 3; q < j + 3; q++) gateAt[((start + q) % S + S) % S] = 1; i0 = -1; } } }
       /* o muro (ou a cerca): pedaços de ~2,4 m seguindo o contorno, sem emenda; alguns faltando, outros desmoronados */
-      const fence = pal || st.name === 'Karmika' ? -1 : nHouse <= 4 || cult === 4 || cult === 6 ? 1 : 0; // paliçada já existe · cerca de madeira · muro de pedra · Karmika tem a muralha (02/11: os muros de pedrão saem)
+      const fence = pal || st.name === 'Karmika' ? -1 : cult === 2 ? 0 : nHouse <= 4 || cult === 4 || cult === 6 ? 1 : 0; /* 08/11 (Erling: "anão é pedra, ferro e forja — murinho de madeira tosco não"): vila anã sempre com muro baixo de pedra, inteiro */ // paliçada já existe · cerca de madeira · muro de pedra · Karmika tem a muralha (02/11: os muros de pedrão saem)
       if (fence >= 0) { const STEPS = 5; for (let i = 0; i + STEPS <= samp.length; i += STEPS) { let blocked = false; for (let q = i; q <= i + STEPS && !blocked; q++) if (gateAt[q % samp.length] || samp[q % samp.length].road) blocked = true; if (blocked) continue;
           const A = samp[i], B = samp[(i + STEPS) % samp.length], mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, L = Math.hypot(B.x - A.x, B.y - A.y), hv = hs(i * 3.7 + 1);
-          if (L < 0.2) continue; if (hv < (fence ? 0.08 : 0.13)) continue; // trecho que caiu de vez
+          if (L < 0.2) continue; if (cult !== 2 && hv < (fence ? 0.08 : 0.13)) continue; // trecho que caiu de vez
           const gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy) || map[gy][gx] === 'water' || map[gy][gx] === 'wall') continue;
           for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx + 0.5 - mx, q.gy + 0.5 - my) < 1.3) props.splice(k, 1); }
-          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: hv < 0.32 ? 0.35 + hv : 0 });
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: cult !== 2 && hv < 0.32 ? 0.35 + hv : 0 });
           /* o muro baixo não trava mais tiles inteiros: o main.ts colide com o segmento de verdade (regra: nunca travar onde se vê espaço) */ } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
       gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });

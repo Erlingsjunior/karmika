@@ -269,7 +269,21 @@ function woodFence(K: ReturnType<typeof kit>, len: number, broken: number, seed:
   for (const [y, k0] of [[0.42, 10], [0.82, 20]] as [number, number][]) { if (broken && r(k0) < broken) { const fallen = K.add(new THREE.CylinderGeometry(0.045, 0.05, L * 0.7, 5), rail, (r(k0 + 1) - 0.5) * 0.4, 0.06, 0.35); fallen.rotation.z = Math.PI / 2; fallen.rotation.y = (r(k0 + 2) - 0.5) * 0.6; continue; }
     const rl = K.add(new THREE.CylinderGeometry(0.045, 0.05, L + 0.1, 5), rail, 0, y + (r(k0 + 3) - 0.5) * 0.06, 0.02); rl.rotation.z = Math.PI / 2 + (r(k0 + 4) - 0.5) * 0.06; }
 }
+/* 08/11 (Erling: "anão é pedra, ferro e forja; nada de murinho de madeira tosco — muros baixos de pedra ou pequenas muralhas de pedra e
+   madeira"): a muralhinha anã — blocos de pedra lavrada em fiadas, capa de laje com friso, pilastras de pedra com cinta de ferro nas
+   pontas e, de vez em quando, uma viga de carvalho com rebites atravessando o topo */
+function dwarfWall(K: ReturnType<typeof kit>, len: number, seed: number) {
+  const r = (k: number) => ((Math.sin(seed * 12.9898 + k * 78.233) * 43758.5453) % 1 + 1) % 1, L = len, hl = L / 2;
+  const blk = [stone(0x6a625a), stone(0x5e5850), stone(0x726a60)], cap = stone(0x847a6e), iron = flat(0x2c2a2a), oak = wood(0x5a3c22), brass = flat(0xb08a40);
+  K.box(L, 0.12, 0.62, 0, 0.06, 0, stone(0x4a4440)); /* sapata */
+  for (let row = 0; row < 3; row++) { let x = -hl + 0.02 + (row % 2) * 0.22; while (x < hl - 0.02) { const w = Math.min(0.42 + r(x * 7 + row) * 0.2, hl - 0.02 - x); if (w > 0.08) K.box(w - 0.03, 0.25, 0.52, x + w / 2, 0.24 + row * 0.27, 0, blk[(row + Math.floor(x * 3)) % 3]); x += w; } }
+  K.box(L + 0.06, 0.1, 0.66, 0, 1.03, 0, cap); K.box(L + 0.02, 0.05, 0.7, 0, 0.96, 0, stone(0x3e3a36));
+  for (const sx of [-1, 1]) { const px = sx * (hl - 0.18); K.box(0.42, 1.4, 0.72, px, 0.7, 0, blk[1]); K.box(0.5, 0.12, 0.8, px, 1.44, 0, cap); K.box(0.46, 0.06, 0.76, px, 0.95, 0, iron); K.box(0.46, 0.06, 0.76, px, 0.45, 0, iron);
+    for (const sz of [-1, 1]) K.add(new THREE.SphereGeometry(0.03, 5, 4), brass, px + 0.18, 0.95, sz * 0.38); }
+  if (r(9) < 0.45 && L > 2) { K.box(L - 0.6, 0.16, 0.18, 0, 1.17, 0, oak); for (let i = 0; i < 4; i++) K.add(new THREE.SphereGeometry(0.03, 5, 4), iron, -hl + 0.6 + i * (L - 1.2) / 3, 1.25, 0); }
+}
 export function buildLowWall(cult: number, ry: number, seed: number, len = 2.95, broken = 0, ox = 1, oz = 1): Built {
+  if (cult === 22) { const K = kit(); dwarfWall(K, len, seed); return spin(K, ry, ox, oz); }
   if (cult >= 20) { const K = kit(); dryStoneWall(K, len, broken, seed, cult - 20); return spin(K, ry, ox, oz); }
   if (cult === 13) { const K = kit(); woodFence(K, len, broken, seed); return spin(K, ry, ox, oz); }
   /* cult 10 = muro do adro (catedral/academias/biblioteca/estação): pedra lavrada com capa, no comprimento real do segmento
