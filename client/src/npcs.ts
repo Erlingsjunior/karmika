@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag } from './barks';
+import { attachSkin, type SkinDef } from './skin3d';
 
-export interface NpcDef { /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
-interface Npc { built: boolean; lodT?: number; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
+export interface NpcDef { /** 08/11: sexo (escolhe o modelo de arte); sem ele, pelo nome */ sex?: 'm' | 'f'; /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
+interface Npc { built: boolean; lodT?: number; /** 08/11: o modelo de arte vestido (skin3d) e o seu tique */ skin?: 0 | 1 | 2; skinTick?: (() => void) | null; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói tem que ser maior, mais heroico"): os modelos crus medem humano/elfo civil e
    nórdico ~1,87 m, tecnocrata ~2,10 m e anão ~1,63 m. Aqui eles voltam para a média do mundo: gente 1,70 m, anão 1,40 m.
@@ -17,13 +18,28 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   function makeHero(def: NpcDef): Hero3D {
     const hero = createCharacter(def.civil ? 'nordic' : def.kind, { static: true, civil: def.civil, cloth: def.civil ? def.tint : undefined });
     hero.root.scale.setScalar(npcScale(def)); hero.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); // NPCs sem sombra (desempenho)
+    /* 08/11: gente comum anda desarmada; só guardas, soldados, caçadores e armeiros carregam arma */
+    if (!/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela|Caçad|Guerreir|Armeir|Mercenári|Lenhador|Mestre-Forjador|Ferreir|Thane|Rei\b/.test(def.role + ' ' + def.name)) { try { hero.setGear({ weapon: null, shield: null }); } catch { /* */ } }
     const tint = new THREE.Color(def.tint);
     hero.root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; const mats = Array.isArray(m.material) ? m.material : [m.material]; m.material = (mats.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color || t.side === THREE.BackSide || (t as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) return mt; const c = t.clone(); c.color.lerp(tint, 0.38); return c; }) as THREE.Material[]); const arr = m.material as unknown as THREE.Material[]; if (arr.length === 1) m.material = arr[0]; });
     return hero;
   }
   /** marcador leve até o boneco ser montado: só a raiz (invisível) e um "act" que não faz nada */
   const stub = (): Hero3D => { const root = new THREE.Group(); root.visible = false; scene.add(root); return { root, acting: false, act: () => false } as unknown as Hero3D; };
-  function build(n: Npc) { if (n.built) return; n.built = true; const was = n.hero.root; const h = makeHero(n.def); h.root.visible = was.visible; h.root.position.copy(n.pos); h.root.rotation.y = n.yaw; scene.remove(was); scene.add(h.root); n.hero = h; }
+  /* 08/11 (Erling: "os NPCs anões podem ser todos personagens com roupas; não precisava mais ser bonecos blocados; os que acompanham as carroças também"):
+     o NPC ganha o MODELO DE ARTE vestido quando chega a 30 m do herói — anão e anã (lvl01; mestres, reis e guardas reais com o lvl02), humanos e humanas
+     comuns (humano_2/humana_2), elfos. O procedural continua por baixo movendo o esqueleto; o modelo só acompanha. Longe, nem anima. */
+  const FEM = /a$|ís$|ún$|úd$|^Eir$|^Hildr$|^Brynja$|^Ásta$|^Yrsa$|^Teresa$|^Luísa$|^Lúcia$|^Maren$|^Tessa$|^Rosália$|^Kaela$|^Morwen$/;
+  const npcSkin = (d: NpcDef): SkinDef | null => { const first = d.name.replace(/^(Mestre-Forjador|Mestre-Mineiro|Mestre-Fundidor|Mestra|Mestre|Guarda Real|Guarda|Sangradora|Domadora|Armeiro|Armadureira|Mercadora|Mercador|Taverneiro|Alquimista|Mineira|Mineiro|Aprendiz|Cervejeira|Anciã|Pequeno|Carregador|Conselheira|Fundidora|Ferreiro|Ferreira|Vendedora|Vendedor|Escriba|Comendador|Rei|Thane|Velha|Capataz|Barqueira|Guarda-Passo|Caçador|Curandeira|Vigia|Pastora|Cronista|Juíza|Patrulheira|Soldado|Soldada|Capitã|Capitão)\s+/, '').split(' ')[0];
+    const fem = d.sex ? d.sex === 'f' : FEM.test(first) || FEM.test(d.name.split(' ')[0]);
+    if (d.kind === 'dwarf') { const elite = /^(Rei|Mestre|Guarda Real|Thane|Conselheira)/.test(d.name); return { fbx: `/models/personagens/anao_${fem ? 'm' : 'h'}_lvl0${elite ? 3 : 2}.glb`, tex: '' }; } /* lvl02 = vestido de couro; lvl03 = com armadura */
+    if (d.civil === 'elf') return { fbx: `/models/personagens/elfo_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
+    if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
+    return null; };
+  const SKIN_R = 30;
+  function skinNear(n: Npc, dH: number) { if (n.skin || dH > SKIN_R || n.def.route) return; const def = npcSkin(n.def); if (!def) { n.skin = 2; return; } n.skin = 1; const h = n.hero;
+    attachSkin(h, def).then((r) => { if (!r) { n.skin = 2; return; } if (n.hero !== h) { h.root.remove(r.model); n.skin = 0; return; } r.model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } }); n.skinTick = r.tick; }).catch(() => { n.skin = 2; }); }
+  function build(n: Npc) { if (n.built) return; n.built = true; n.skin = 0; n.skinTick = null; const was = n.hero.root; const h = makeHero(n.def); h.root.visible = was.visible; h.root.position.copy(n.pos); h.root.rotation.y = n.yaw; scene.remove(was); scene.add(h.root); n.hero = h; }
   const npcs: Npc[] = defs.map((def) => {
     const hero = stub();
     const el = document.createElement('div'); el.className = 'npc'; el.innerHTML = `<i class="qm"></i><b>${def.name}</b><small>${def.role}</small><p></p>`; document.body.appendChild(el);
@@ -69,6 +85,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
       if (dH > 48 || !n.built) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
       if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
+      skinNear(n, dH);
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);
@@ -89,7 +106,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z);
       n.hero.root.position.copy(n.pos);
       n.hero.setNight(night); n.hero.setWind(gust);
-      if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */
+      if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); n.skinTick?.(); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */
       n.hero.root.rotation.y = n.yaw;
       // nome e fala
       v.set(n.pos.x, n.pos.y + 2.3 * npcScale(d), n.pos.z).project(ctx.camera);

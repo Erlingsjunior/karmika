@@ -1,5 +1,7 @@
 /* 08/11 O CÉU: dia e noite de verdade (Erling: "efeitos especiais bem detalhados: névoa, dia e noite… sem quebrar FPS, WebGL e WebGPU").
    - O SOL ANDA: nasce a leste às 6h, culmina ao meio-dia, se põe a oeste às 18h; à noite quem ilumina é a LUA, baixa, azulada, do outro lado.
+   - A névoa de distância só engrossa quando a cor dela é ESCURA (noite): na câmera isométrica a distância até o chão é grande e fixa, e uma névoa clara
+     densa lavava o mundo inteiro de pêssego na aurora (visto no teste de 08/11).
    - A PALETA DO DIA tem sete momentos (madrugada, aurora, manhã, meio-dia, tarde, poente, noite) para o céu, a névoa, o sol e a luz do ambiente,
      interpolados pela hora do jogo — o nascer é rosado e laranja, o poente é cobre e vinho, a noite é azul de luar.
    - A NÉVOA RASTEIRA segue o herói: lençóis de névoa (sprites, baratos nos dois renderizadores) que aparecem conforme o bioma e a hora —
@@ -11,13 +13,13 @@ export interface SkyKey { h: number; sky: number; fog: number; sun: number; hemi
 const K: SkyKey[] = [
   { h: 0, sky: 0x050814, fog: 0x070a18, sun: 0x6a88d0, hemi: 0x4668b0, ground: 0x1a2030, sunI: 0.8, fogD: 0.012 },
   { h: 4.5, sky: 0x0a0c20, fog: 0x0e1024, sun: 0x7a90d0, hemi: 0x5070b0, ground: 0x202436, sunI: 0.85, fogD: 0.0125 },
-  { h: 6.0, sky: 0x7a5a78, fog: 0xa07a80, sun: 0xff9a60, hemi: 0xd0a0b0, ground: 0x4a3a40, sunI: 1.3, fogD: 0.0105 }, /* a aurora: céu rosado, névoa cor de pêssego */
-  { h: 7.2, sky: 0xd8a888, fog: 0xe0b89a, sun: 0xffc080, hemi: 0xf0d0c0, ground: 0x6a5a48, sunI: 1.9, fogD: 0.0065 },
+  { h: 6.0, sky: 0x7a5a78, fog: 0x8a6a74, sun: 0xff9a60, hemi: 0xd0a0b0, ground: 0x4a3a40, sunI: 1.3, fogD: 0.0048 }, /* a aurora: céu rosado, névoa cor de pêssego */
+  { h: 7.2, sky: 0xd8a888, fog: 0xd0a890, sun: 0xffc080, hemi: 0xf0d0c0, ground: 0x6a5a48, sunI: 1.9, fogD: 0.0034 },
   { h: 9.0, sky: 0x9bbad8, fog: 0xa8c0d8, sun: 0xffe0b0, hemi: 0xf4e6cc, ground: 0x4a5a40, sunI: 2.3, fogD: 0.0032 },
   { h: 12.5, sky: 0x9bbad8, fog: 0x9bbad8, sun: 0xfff2d8, hemi: 0xf8f0e0, ground: 0x506048, sunI: 2.45, fogD: 0.0022 },
   { h: 16.0, sky: 0xa8b8d0, fog: 0xb0b8c8, sun: 0xffe0a8, hemi: 0xf4e0c8, ground: 0x4e5844, sunI: 2.2, fogD: 0.0030 },
-  { h: 17.6, sky: 0xd09070, fog: 0xd8a080, sun: 0xffa050, hemi: 0xf0c0a0, ground: 0x5a4a3c, sunI: 1.8, fogD: 0.0055 }, /* o poente: cobre */
-  { h: 18.8, sky: 0x6a3a4a, fog: 0x7a4a52, sun: 0xff7a40, hemi: 0xb08090, ground: 0x3a2a30, sunI: 1.2, fogD: 0.0085 }, /* vinho e brasa */
+  { h: 17.6, sky: 0xd09070, fog: 0xc89078, sun: 0xffa050, hemi: 0xf0c0a0, ground: 0x5a4a3c, sunI: 1.8, fogD: 0.0036 }, /* o poente: cobre */
+  { h: 18.8, sky: 0x6a3a4a, fog: 0x5a3640, sun: 0xff7a40, hemi: 0xb08090, ground: 0x3a2a30, sunI: 1.2, fogD: 0.0062 }, /* vinho e brasa */
   { h: 20.0, sky: 0x0c0c22, fog: 0x101226, sun: 0x7a90d0, hemi: 0x5070b0, ground: 0x202436, sunI: 0.85, fogD: 0.012 },
   { h: 24, sky: 0x050814, fog: 0x070a18, sun: 0x6a88d0, hemi: 0x4668b0, ground: 0x1a2030, sunI: 0.8, fogD: 0.012 },
 ];
@@ -47,7 +49,7 @@ const MIST_BIOME: Record<Biome, [number, number]> = { /* [força, cor] */
   volcanic: [0.7, 0x4a3a36], enchanted: [0.6, 0xb8a8e0], blight: [0.9, 0x8a7a90], jungle: [0.7, 0xb8d0a8], coast: [0.4, 0xe0e8f0] };
 export function createWorldMist(scene: THREE.Scene, radial: THREE.Texture, biomeAt: (x: number, z: number) => Biome, heightAt: (x: number, z: number) => number, n = 22) {
   const g = new THREE.Group(); g.name = 'mist'; scene.add(g);
-  const items = Array.from({ length: n }, (_, i) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: radial, transparent: true, depthWrite: false, opacity: 0, fog: true })); s.raycast = () => {}; s.frustumCulled = false; g.add(s); return { s, ox: 0, oz: 0, sc: 9 + (i % 5) * 2.4, ph: i * 1.37, sp: 0.04 + (i % 4) * 0.012, a: 0 }; });
+  const items = Array.from({ length: n }, (_, i) => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: radial, transparent: true, depthWrite: false, opacity: 0, fog: false, toneMapped: false })); s.raycast = () => {}; s.frustumCulled = false; s.userData.keep = true; s.renderOrder = 5; g.add(s); return { s, ox: 0, oz: 0, sc: 9 + (i % 5) * 2.4, ph: i * 1.37, sp: 0.04 + (i % 4) * 0.012, a: 0 }; });
   let placed = false; const tmp = new THREE.Color(), base = new THREE.Color();
   function place(it: (typeof items)[number], hx: number, hz: number) { const a = Math.random() * 6.283, d = 8 + Math.random() * 30; it.ox = hx + Math.cos(a) * d; it.oz = hz + Math.sin(a) * d; }
   return { group: g, update(t: number, dt: number, hero: THREE.Vector3, hour: number, inside: boolean, fogCol: THREE.Color, wind: number) {

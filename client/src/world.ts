@@ -824,7 +824,11 @@ function buildCity_L(): World {
        e ao lado de metade das casas um barril, caixotes, feno, cocho ou carroça de mão (quem passa lê que ali se vive) */
     const vp = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza' || (variant === 5 && map[y][x] === 'road')) && !props.some((q) => q.gx === x && q.gy === y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
     vp(2, cx + 3, cy + 3); vp(4, cx + 5, cy - 4); vp(5, cx + 1, cy + R0 - 1); vp(4, cx - 6, cy + 2);
-    hs.forEach((hh, i) => { if (rr() < 0.55) vp([0, 1, 6, 8, 7, 0, 1][i % 7], hh.gx + hh.w, hh.gy + hh.h - 1, rr() * 6.283); });
+    /* 08/11 (Erling: "todas as vilas com atrativos e decoração; postes, barris, caixas, feno, carroças de mão, bigornas"): cada casa ganha algo ao lado
+       (antes era metade), e a praça ganha mais quatro postes, uma carroça de mão e feno */
+    hs.forEach((hh, i) => { vp([0, 1, 6, 8, 7, 0, 1, 9][i % 8], hh.gx + hh.w, hh.gy + hh.h - 1, rr() * 6.283); if (rr() < 0.5) vp([1, 0, 6][i % 3], hh.gx - 1, hh.gy + hh.h - 1, rr() * 6.283); });
+    vp(4, cx - 5, cy - 4); vp(4, cx + 5, cy + 4); vp(4, cx - 5, cy + 5); vp(7, cx + 6, cy - 1, rr() * 6.283); vp(6, cx - 6, cy - 1, rr() * 6.283); vp(0, cx + 4, cy + 5, rr() * 6.283);
+    decorAt('bench', cx - 2, cy + 3, 1, 1, 0, 0x6a4528, 0x8a3b2e); decorAt('bench', cx + 2, cy - 3, 1, 1, 1, 0x6a4528, 0x8a3b2e);
     if (cult === 1 || cult === 5) { // paliçada de estacas em volta (nórdicos e Uivo), aberta nas estradas
       const PR = R0 + 1; for (let k = -PR; k <= PR; k++) for (const [x, y, ns] of [[cx + k, cy - PR, false], [cx + k, cy + PR, false], [cx - PR, cy + k, true], [cx + PR, cy + k, true]] as [number, number, boolean][]) {
         if (!inb(x, y) || map[y][x] !== 'grass' || Math.abs(k) <= 2) continue; props.push({ kind: 'palisade', gx: x, gy: y, w: 1, h: 1, height: 2.8, wall: 0x5a4030, roof: 0, variant: ns ? 1 : 0 }); map[y][x] = 'wall'; } }
@@ -1205,6 +1209,10 @@ function buildCity_L(): World {
           if (lamps.some(([lx, ly]) => Math.hypot(lx - x, ly - y) < 4)) continue; const side = lamps.length % 2 ? 1 : -1;
           const cand: [number, number][] = Math.abs(x - cx) > Math.abs(y - cy) ? [[x, y + side], [x, y - side]] : [[x + side, y], [x - side, y]];
           for (const [tx, ty] of cand) { if (!inb(tx, ty) || map[ty][tx] !== 'grass' || props.some((q) => q.gx === tx && q.gy === ty)) continue; props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 2.0, wall: 0x3a2a1c, roof: 0xffb050 }); lamps.push([x, y]); break; } } }
+      /* 08/11 (Erling: "bonecos de treino em toda vila"): dois bonecos de palha num canto livre da praça, perto do guarda */
+      { let put = 0; for (let r0 = 4; r0 <= 8 && put < 2; r0++) for (let a = 0; a < 12 && put < 2; a++) { const ang = a / 12 * Math.PI * 2 + 0.3, x = Math.round(cx + Math.cos(ang) * r0), y = Math.round(cy + Math.sin(ang) * r0);
+          if (!inb(x, y) || !(map[y][x] === 'grass' || map[y][x] === 'plaza') || props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y) || quartel.dummies.some((d) => Math.hypot(d.x - x - 0.5, d.y - y - 0.5) < 1.6)) continue;
+          quartel.dummies.push({ x: x + 0.5, y: y + 0.5 }); put++; } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
       gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });
         if (gi < 3) { const nx = -gt.uy, ny = gt.ux, toC = Math.sign((cx - gt.x) * nx + (cy - gt.y) * ny) || 1, side = gi % 2 ? -1 : 1, ox = gt.x + gt.ux * side * (gt.w / 2 + 1.6) + nx * toC * 0.9, oy = gt.y + gt.uy * side * (gt.w / 2 + 1.6) + ny * toC * 0.9;
@@ -1970,6 +1978,8 @@ function buildCity_L(): World {
       ex('Porto Caldeira', { name: 'Mestre Orvald', role: 'Mestre-Caravaneiro da Companhia', kind: 'dwarf', x: PORTO_L.x + 11.5, y: PORTO_L.y + 9.5, radius: 1.5, tint: 0x7a4a2a, scale: 1.0, lines: ['Cada carroça que sai deste porto leva o nome da Companhia. E o meu.', 'Vapor, graxa e contas certas. O resto é conversa.'] });
       /* as missões do instinto da raça (24/10) */
       ex('Skógar', { name: 'Marta, a Moleira', role: 'Moleira de Skógar', kind: 'nordic', x: 128 + SH + 2.5, y: 262 + SH - 2, radius: 1.5, tint: 0x9a7a5a, scale: 0.95, lines: ['O moinho não para. Nem quando o coração para.', 'A minha Nina conhece cada pedra desta mata.'] });
+      ex('Askavik', { name: 'Marechal Heloísa Brandão', role: 'Guardiã da Honra Kármica', kind: 'nordic', x: ASKAVIK_L.x - 36, y: ASKAVIK_L.y + 10, radius: 1.0, tint: 0xc0a040, scale: 1.02, lines: ['Na capital a honra pesa mais que o ouro. Aqui ela compra o que o ouro não alcança.', 'Cada peça desta mesa veio de alguém que fez o que precisava ser feito.'], shop: 'honra_humano' });
+      ex('Porto Caldeira', { name: 'Intendente Cassius Volt', role: 'Guardião da Honra Kármica', kind: 'technocrat', x: PORTO_L.x - 8, y: PORTO_L.y + 6, radius: 1.0, tint: 0xc0a040, scale: 1.0, lines: ['A Companhia mede tudo em latão. Eu meço em honra. Dá mais trabalho e vale mais.', 'Traga feitos, não moedas.'], shop: 'honra_humano' });
       ex('Lithendel', { name: 'Sílvathir Lúmenar', role: 'Guardião do Juramento · Honra Kármica', kind: 'nordic', x: 84 + 3.5, y: 404 + 3, radius: 1.0, tint: 0x9ad8a0, scale: 1.02, lines: ['O Juramento não se vende. O que está nesta mesa é devolvido a quem o honrou.', 'Honra Kármica é o que fica quando o ouro acaba.'], shop: 'honra_elfo' });
       ex('Lithendel', { name: 'Anciã Faelwen', role: 'Anciã de Lithendel', kind: 'nordic', x: 84 - 2.5, y: 404 + 2, radius: 1.2, tint: 0x5a8a6a, scale: 1.0, lines: ['As árvores daqui eram velhas quando os reis dos homens eram crianças.', 'A mata fala. Pouca gente escuta.'] });
       ex('Brasaforja', { name: 'Mestre-Forjador Brokki', role: 'Mestre da Forja de Elite', kind: 'dwarf', x: 560 - 3.5, y: 186 + 2.5, radius: 1.2, tint: 0x8a3a1a, scale: 1.05, lines: ['Ferro qualquer um bate. Presa de alfa, só eu.', 'Me traga o que os bichos grandes deixam, e eu te faço o que nenhuma loja vende.'] });
@@ -2242,7 +2252,8 @@ function buildCity_L(): World {
         /* de frente para a rua (um vizinho é rua ou praça), mas sem rua dos dois lados (seria um canteiro no meio do caminho) */
         const dirs: [number, number, number][] = [[0, 1, 0], [1, 0, 1], [0, -1, 2], [-1, 0, 3]]; const face = dirs.filter(([dx, dy]) => street(x + dx, y + dy)); if (!face.length || face.length > 2) continue;
         if (street(x - face[0][0], y - face[0][1])) continue;
-        best = { x, y, d, dir: face[0][2] }; }
+        /* 08/11 (Erling: "a placa está virada para um lado que não se vê bem; vira ela para a visão do jogador"): a câmera olha de sudeste — o quadro sempre olha para o sul ou para o leste (o lado da rua, se der; senão, o lado que se vê) */
+        const vis = face.find(([, , d2]) => d2 === 0 || d2 === 1); best = { x, y, d, dir: vis ? vis[2] : face[0][2] === 2 ? 0 : 1 }; }
       if (!best) continue; props.push({ kind: 'noticeboard', gx: best.x, gy: best.y, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: best.dir }); occ.add(key(best.x, best.y)); } }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }

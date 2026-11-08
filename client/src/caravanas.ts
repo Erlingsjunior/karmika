@@ -13,6 +13,7 @@ import { artMesh, artGeo, artMat } from './arte3d';
 import * as THREE from 'three';
 import { std, plankTex, woodTex } from './toon3d';
 import { createCharacter, type Hero3D } from './characters';
+import { attachSkin } from './skin3d';
 import { fine } from './dual3d';
 import { buildHorse, type Horse4 } from './werewolf3d';
 import { buildArtHorse, type HorseArt } from './montarias3d';
@@ -349,7 +350,11 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     const g1 = kind === 'steam' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true }), g2 = createCharacter('dwarf', { static: true });
     for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); h.root.userData.farCull = true; ctx.scene.add(h.root); }
     try { g1.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); g2.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
-    c.crew = [drv, g1, g2]; }
+    c.crew = [drv, g1, g2];
+    /* 08/11 (Erling: "os que acompanham as carroças também" com o modelo vestido): cocheiro de couro, guardas com armadura (anões); o tecnocrata e o nórdico do vapor com os seus */
+    const SK: Record<string, string> = { dwarfDrv: '/models/personagens/anao_h_lvl02.glb', dwarfG: '/models/personagens/anao_h_lvl03.glb', nordic: '/models/personagens/guerreiro_h_lvl02.glb', technocrat: '/models/personagens/technocrata_h.glb' };
+    const want: [Hero3D, string][] = [[drv, kind === 'steam' ? SK.technocrat : SK.dwarfDrv], [g1, kind === 'steam' ? SK.nordic : SK.dwarfG], [g2, SK.dwarfG]];
+    for (const [h, fbx] of want) attachSkin(h, { fbx, tex: '' }).then((r) => { if (!r) return; if (!c.crew.includes(h)) { h.root.remove(r.model); return; } r.model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); (h as Hero3D & { skinTick?: () => void }).skinTick = r.tick; }).catch(() => { /* fica o procedural */ }); }
   /* 26/10 noite (desempenho): a carroça das rotas do mundo que sai de perto fica GUARDADA (fora da cena) e volta igual quando você
      chega — antes ela era montada de novo (carroça, cavalos e tripulação) toda vez que cruzava os 120 m, um soluço de vários ms. */
   const parked = new Map<string, { w: NonNullable<Car['w']>; crew: Car['crew'] }>();
@@ -437,13 +442,13 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       if (w.kind === 'steam' && Math.random() < (moving ? 0.95 : w.fallen ? 0.35 : 0.6)) { const s = ((w as Wagon & { smokeAt?: THREE.Vector3 }).smokeAt?.clone() ?? new THREE.Vector3(0, 3.4, 1.25)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, w.body.rotation.z)); ctx.smoke(p.x + s.x, w.root.position.y + s.y, p.z + s.z, w.fallen); }
       // a tripulação: cocheiro no banco, guardas a pé dos dois lados (de frente para a luta quando há luta)
       const [drv, g1, g2] = c.crew;
-      if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); }
-        else { const sp = (w.seat?.clone() ?? new THREE.Vector3(0, 1.45, 0.3)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); } }
+      if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); (drv as Hero3D & { skinTick?: () => void }).skinTick?.(); }
+        else { const sp = (w.seat?.clone() ?? new THREE.Vector3(0, 1.45, 0.3)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); (drv as Hero3D & { skinTick?: () => void }).skinTick?.(); } }
       let foe: { pos: THREE.Vector3; hp: number; hpMax: number } | null = null, fd = 1e9; for (const f of c.foes) if (f.alive) { const d = f.pos.distanceTo(w.root.position); if (d < fd) { fd = d; foe = f; } }
       [g1, g2].forEach((g, k) => { if (!g) return; const sd = (k ? -1 : 1) * Math.max(1.6, (w.box?.hw ?? 1) + 0.7), back = k ? 0.6 : -0.8; let gx = p.x + cb * sd - ca * back, gz = p.z - ca * sd - cb * back, mps = moving ? c.speed : 0, face = yaw;
         if (foe && fd < 16) { const dx = foe.pos.x - gx, dz = foe.pos.z - gz, l = Math.hypot(dx, dz); face = Math.atan2(dx, dz); if (l > 1.6 && l < 7) { gx += dx / l * Math.min(l - 1.6, 2.5); gz += dz / l * Math.min(l - 1.6, 2.5); } g.combat = true; if (Math.random() < dt * 0.8) g.act('combo1'); } else g.combat = false;
         if (w.fallen && !foe) { face = yaw + (k ? 2.4 : -2.4); }
-        g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.update(dt, t, mps, face); /* o boneco só vira pelo heading: antes olhava sempre para o norte (Erling: "os NPC de lado?") */ });
+        g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.update(dt, t, mps, face); (g as Hero3D & { skinTick?: () => void }).skinTick?.(); /* o boneco só vira pelo heading: antes olhava sempre para o norte (Erling: "os NPC de lado?") */ });
       // os guardas também batem (de leve: o golpe que mata é seu)
       if (foe && fd < 3.2 && ctx.hurt && Math.random() < dt * 0.7) { const f = foe; if (f.hp > f.hpMax * 0.25) ctx.hurt(foe, Math.max(1, Math.round(f.hpMax * 0.06)), w.root.position); }
       if (c.bubbleT > 0) c.bubbleT -= dt;
