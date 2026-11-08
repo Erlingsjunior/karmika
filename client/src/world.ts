@@ -751,17 +751,17 @@ function buildCity_L(): World {
     props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: 0x6a5e52, roof: 0xff9a40, variant: 1 });
     props.push({ kind: 'campfire', gx: cx - 3, gy: cy + 3, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a });
     const W2 = [0x8a5a44, 0x7a5240, 0x6a5e52], R2 = [0x4a423a, 0x3e3a36, 0x55504a];
-    const free = (gx: number, gy: number, w: number, h: number) => { for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; if (!(y < gy || y >= gy + h || x < gx || x >= gx + w) && t === 'road') return false; } return !props.some((q) => q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
+    const free = (gx: number, gy: number, w: number, h: number) => { if ((gx - 1 <= cx + 1 && gx + w >= cx - 1) || (gy - 1 <= cy + 1 && gy + h >= cy - 1)) return false; /* 08/11 (Erling: "essa casa está atrapalhando a entrada"): nada em cima dos eixos das quatro saídas */ for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; if (!(y < gy || y >= gy + h || x < gx || x >= gx + w) && t === 'road') return false; } return !props.some((q) => q.kind !== 'bfloor' && q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
     let nh = 0; const house = (gx: number, gy: number, w: number, h: number, rot: number, variant: number, shop?: string) => { if (!free(gx, gy, w, h)) return false;
       block({ kind: 'house', gx, gy, w, h, height: 3.2, wall: W2[nh % 3], roof: R2[nh % 3], variant, rot, style: 2, ...(shop ? { shop } : {}) }); nh++;
       /* tablado de madeira na frente das lojas e recorte de madeira em volta (bfloor é o assoalho de tábuas) */
       if (shop) { const fx = rot === 1 ? gx + w : gx, fy = rot === 1 ? gy : gy + h, fw = rot === 1 ? 2 : w, fh = rot === 1 ? h : 2; for (let y = fy; y < fy + fh; y++) for (let x = fx; x < fx + fw; x++) if (inb(x, y) && map[y][x] === 'plaza') props.push({ kind: 'bfloor', gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0x6a4a2c, roof: 0, variant: 2 }); }
       return true; };
     /* a Rua das Forjas (norte da praça, fachadas para o sul) e a Rua do Cobre (oeste, fachadas para o leste): as lojas */
-    const SHOPS: [number, number, number, number, number, number, string][] = [[cx - 14, cy - 11, 5, 4, 0, 5, 'armeiro'], [cx - 8, cy - 11, 5, 4, 0, 2, 'armaduras'], [cx - 2, cy - 11, 5, 4, 0, 1, 'mercador'], [cx + 4, cy - 11, 6, 4, 0, 4, 'cervejaria'], [cx - 15, cy - 5, 4, 5, 1, 1, 'pocoes'], [cx - 15, cy + 1, 4, 5, 1, 2, 'honra_anao']];
+    const SHOPS: [number, number, number, number, number, number, string][] = [[cx - 17, cy - 11, 5, 4, 0, 5, 'armeiro'], [cx - 11, cy - 11, 4, 4, 0, 2, 'armaduras'], [cx - 6, cy - 11, 4, 4, 0, 1, 'mercador'], [cx + 3, cy - 11, 8, 5, 0, 4, 'cervejaria'], [cx - 15, cy - 6, 4, 4, 1, 1, 'pocoes'], [cx - 15, cy + 3, 4, 5, 1, 2, 'honra_anao']];
     for (const [gx, gy, w, h, rot, v, key] of SHOPS) house(gx, gy, w, h, rot, v, key);
     /* o anel de casas (moradias): duas fileiras, mais apertadas que as outras vilas — anão mora junto */
-    const ring: [number, number, number, number, number][] = [[cx + 11, cy - 5, 5, 4, 1], [cx + 11, cy + 1, 4, 4, 1], [cx + 12, cy + 7, 5, 4, 0], [cx + 5, cy + 8, 4, 4, 0], [cx - 1, cy + 9, 5, 4, 0], [cx - 8, cy + 8, 4, 4, 0], [cx - 14, cy + 7, 5, 4, 0], [cx - 16, cy - 12, 4, 4, 1], [cx + 11, cy - 11, 4, 4, 0], [cx + 16, cy - 4, 4, 4, 1], [cx + 16, cy + 2, 4, 5, 1], [cx - 20, cy - 4, 4, 4, 1], [cx - 20, cy + 2, 4, 4, 1], [cx + 1, cy + 14, 5, 4, 0], [cx - 7, cy + 13, 4, 4, 0], [cx + 9, cy + 13, 4, 4, 0]];
+    const ring: [number, number, number, number, number][] = [[cx + 12, cy - 6, 5, 4, 1], [cx + 12, cy + 3, 4, 4, 1], [cx + 12, cy + 7, 5, 4, 0], [cx + 5, cy + 8, 4, 4, 0], [cx + 3, cy + 9, 5, 4, 0], [cx - 8, cy + 8, 4, 4, 0], [cx - 14, cy + 7, 5, 4, 0], [cx - 22, cy - 12, 4, 4, 1], [cx + 12, cy - 11, 4, 4, 0], [cx + 16, cy - 7, 4, 4, 1], [cx + 16, cy + 3, 4, 5, 1], [cx - 20, cy - 7, 4, 4, 1], [cx - 20, cy + 3, 4, 4, 1], [cx + 3, cy + 15, 5, 4, 0], [cx - 7, cy + 13, 4, 4, 0], [cx + 9, cy + 13, 4, 4, 0]];
     ring.forEach(([gx, gy, w, h, rot], k) => house(gx, gy, w, h, rot, [0, 2, 1, 3, 2, 0][k % 6]));
     /* decoração: o que diz "aqui se vive e se trabalha" */
     const vp = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'plaza' || map[y][x] === 'grass') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
@@ -777,12 +777,12 @@ function buildCity_L(): World {
     pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
     /* o povo: anões de verdade (o modelo vestido), cada um no seu canto */
     const D = (name: string, role: string, x: number, y: number, radius: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind: 'dwarf', x, y, radius, tint, scale: 0.98, lines, ...(shop ? { shop } : {}) });
-    D('Armeiro Grimnir Punho-de-Aço', 'Armeiro de Brasaforja', cx - 11.5, cy - 6.2, 1.2, 0x6a3a2a, ['Machado anão não quebra. Quem quebra é o braço de quem segura errado.', 'Aço da Montanha Negra, cabo de carvalho do Sopé. Não existe melhor.'], 'armeiro');
-    D('Armadureira Sigrún Couraça', 'Armaduras de Brasaforja', cx - 5.5, cy - 6.2, 1.2, 0x4a4a5a, ['Placa boa é a que você esquece que está vestindo.', 'Couro para quem corre, aço para quem fica.'], 'armaduras');
-    D('Mercadora Dísa Bolso-Fundo', 'Mercadora de Brasaforja', cx + 0.5, cy - 6.2, 1.2, 0xb08a40, ['Pão, corda, tocha e poção. O que a montanha não dá, eu trago de carroça.', 'Preço justo. Anão não rouba anão. Humano… a gente conversa.'], 'mercador');
-    D('Taverneiro Orik Barril-Cheio', 'A Bigorna Molhada', cx + 7, cy - 6.2, 1.4, 0x8a3a3a, ['Cerveja preta, hidromel e a sopa que o Rei elogiou. Senta.', 'Quem bebe duas, canta. Quem bebe quatro, dorme no estábulo.'], 'cervejaria');
-    D('Alquimista Vígdís Caldeirão', 'Poções de Brasaforja', cx - 10.4, cy - 2.5, 1.2, 0x3a6a4a, ['Poção vermelha fecha ferida. Poção azul acende a Brasa. Não misture.', 'Musgo da caverna, cinza do vulcão. A montanha é a minha despensa.'], 'pocoes');
-    D('Thrúd Marca-de-Ferro', 'Guardiã da Honra Kármica', cx - 10.4, cy + 3.5, 1.2, 0xc0a040, ['Honra não se compra com ouro. Ganha-se fazendo o que precisa ser feito.', 'Traga a sua honra e eu mostro o que os anões guardam para quem merece.'], 'honra_anao');
+    D('Armeiro Grimnir Punho-de-Aço', 'Armeiro de Brasaforja', cx - 14.5, cy - 6.2, 1.2, 0x6a3a2a, ['Machado anão não quebra. Quem quebra é o braço de quem segura errado.', 'Aço da Montanha Negra, cabo de carvalho do Sopé. Não existe melhor.'], 'armeiro');
+    D('Armadureira Sigrún Couraça', 'Armaduras de Brasaforja', cx - 9, cy - 6.2, 1.2, 0x4a4a5a, ['Placa boa é a que você esquece que está vestindo.', 'Couro para quem corre, aço para quem fica.'], 'armaduras');
+    D('Mercadora Dísa Bolso-Fundo', 'Mercadora de Brasaforja', cx - 4, cy - 6.2, 1.2, 0xb08a40, ['Pão, corda, tocha e poção. O que a montanha não dá, eu trago de carroça.', 'Preço justo. Anão não rouba anão. Humano… a gente conversa.'], 'mercador');
+    D('Taverneiro Orik Barril-Cheio', 'A Bigorna Molhada', cx + 7, cy - 5.2, 1.4, 0x8a3a3a, ['Cerveja preta, hidromel e a sopa que o Rei elogiou. Senta.', 'Quem bebe duas, canta. Quem bebe quatro, dorme no estábulo.'], 'cervejaria');
+    D('Alquimista Vígdís Caldeirão', 'Poções de Brasaforja', cx - 10.4, cy - 4, 1.2, 0x3a6a4a, ['Poção vermelha fecha ferida. Poção azul acende a Brasa. Não misture.', 'Musgo da caverna, cinza do vulcão. A montanha é a minha despensa.'], 'pocoes');
+    D('Thrúd Marca-de-Ferro', 'Guardiã da Honra Kármica', cx - 10.4, cy + 5.5, 1.2, 0xc0a040, ['Honra não se compra com ouro. Ganha-se fazendo o que precisa ser feito.', 'Traga a sua honra e eu mostro o que os anões guardam para quem merece.'], 'honra_anao');
     D('Mineiro Bofur Pó-de-Pedra', 'Mineiro', cx + 6, cy + 3, 2.5, 0x5a4a3a, ['Hoje a veia cantou. Amanhã ela cobra.', 'Pedra boa é pesada. Pedra ruim é mais pesada ainda.']);
     D('Mineira Hildr Veia-Funda', 'Mineira', cx - 4, cy + 6, 2.5, 0x6a4a3a, ['Lá embaixo não tem dia nem noite. Só o martelo e a respiração.', 'Encontrei prata ontem. O Thane já sabe. Todo mundo já sabe.']);
     D('Aprendiz Snorri Fagulha', 'Aprendiz de Forja', cx - 7, cy - 3, 2.5, 0x8a5a2a, ['O Mestre Brokki disse que eu queimo mais carvão do que ferro. Ele tem razão.', 'Um dia eu forjo um martelo digno do Rei. Um dia.']);
@@ -2051,7 +2051,7 @@ function buildCity_L(): World {
       const okT = (x: number, y: number) => inb(x, y) && !busyB.has(y * 100000 + x) && (['grass', 'plaza', 'road', 'tree'] as Tile[]).includes(map[y][x]);
       search: for (let r = 0; r <= 60; r++) for (let a = 0; a < Math.max(1, r * 6); a++) { const gx = Math.round(t.x + ox + Math.cos(a / Math.max(1, r * 6) * 6.283) * r) - (W >> 1), gy = Math.round(t.y + oy + Math.sin(a / Math.max(1, r * 6) * 6.283) * r) - (H >> 1);
         if (t.kind === 'city' && Math.hypot(gx + W / 2 - t.x, gy + H / 2 - t.y) > t.radius - 12) continue;
-        const over = props.filter((p) => p.kind === 'house' && (p.variant ?? 0) < 4 && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1);
+        const over = props.filter((p) => p.kind === 'house' && !p.shop && (p.variant ?? 0) < 4 && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1);
         if (over.length > maxH) continue;
         for (const p of over) for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) busyB.delete(y * 100000 + x);
         const underH = (x: number, y: number) => over.some((p) => x >= p.gx && x < p.gx + p.w && y >= p.gy && y < p.gy + p.h); /* o chão da casa que cede vira praça */
@@ -2076,7 +2076,7 @@ function buildCity_L(): World {
     for (const m of big) { const wild = WILD_L.has(m.kind); const sb = wild ? [4, 4, 4, 4] : [3, 4, 5, 3].map((v) => v + Math.floor(ru() * 2)); // recuo norte, leste, sul, oeste
       const x0 = m.gx - sb[3], y0 = m.gy - sb[0], x1 = m.gx + m.w + sb[1], y1 = m.gy + m.h + sb[2], ch = wild ? 0 : 2 + Math.floor(ru() * 2); // chanfro dos cantos
       const inAdro = (x: number, y: number) => x >= x0 && x < x1 && y >= y0 && y < y1 && (Math.min(x - x0, x1 - 1 - x) + Math.min(y - y0, y1 - 1 - y) >= ch);
-      for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (p === m || !GONE.has(p.kind)) continue; if (wild && (p.kind === 'tree' || p.kind === 'rock' || p.kind === 'herb' || p.kind === 'bones' || p.kind === 'grave' || p.kind === 'deadtree' || p.kind === 'lowwall')) continue;
+      for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (p === m || !GONE.has(p.kind)) continue; if (p.kind === 'house' && p.shop) continue; /* 08/11: loja com placa não sai do lugar por adro de prédio grande */ if (wild && (p.kind === 'tree' || p.kind === 'rock' || p.kind === 'herb' || p.kind === 'bones' || p.kind === 'grave' || p.kind === 'deadtree' || p.kind === 'lowwall')) continue;
         let hit = false; for (let y = p.gy - 1; y <= p.gy + p.h && !hit; y++) for (let x = p.gx - 1; x <= p.gx + p.w && !hit; x++) if (inAdro(x, y)) hit = true; if (!hit) continue;
         props.splice(i, 1); for (let y = p.gy; y < p.gy + p.h; y++) for (let x = p.gx; x < p.gx + p.w; x++) if (inb(x, y) && map[y][x] === 'wall' && !big.some((q) => x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) map[y][x] = wild ? 'grass' : 'plaza'; }
       if (wild) continue;
@@ -2193,7 +2193,7 @@ function buildCity_L(): World {
     const overlap = (q: Prop, gx: number, gy: number) => hard.some((o) => o !== q && o.gx < gx + q.w + 1 && o.gx + o.w + 1 > gx && o.gy < gy + q.h + 1 && o.gy + o.h + 1 > gy);
     let moved = 0, gone = 0;
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind !== 'house') continue;
-      const onRoad = !fp(q, (x, y) => (map[y]?.[x] as string) !== 'road'); if (!onRoad) { fp(q, (x, y) => { if (map[y]?.[x] === 'grass') map[y][x] = 'wall' as never; return true; }); continue; }
+      const onRoad = !fp(q, (x, y) => (map[y]?.[x] as string) !== 'road'); if (onRoad && q.shop && q.style === 2) { fp(q, (x, y) => { map[y][x] = 'wall' as never; return true; }); continue; } /* 08/11: em Brasaforja (praça de laje inteira) a loja com placa vence a estrada que a cortou — quem anda contorna pela laje */ if (!onRoad) { fp(q, (x, y) => { if (map[y]?.[x] === 'grass') map[y][x] = 'wall' as never; return true; }); continue; }
       let best: [number, number] | null = null;
       for (let r = 1; r <= 6 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const gx = q.gx + dx, gy = q.gy + dy;
         let ok = true; for (let y = gy - 1; y <= gy + q.h && ok; y++) for (let x = gx - 1; x <= gx + q.w && ok; x++) { const t = map[y]?.[x] as string; const inside = x >= gx && x < gx + q.w && y >= gy && y < gy + q.h;

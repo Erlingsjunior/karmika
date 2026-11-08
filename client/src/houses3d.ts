@@ -274,10 +274,13 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
     /* chaminé de tijolo com coroa de pedra — a fumaça sai de cima */
     const chx = cx - bw * 0.3, chz = cz - bd * 0.2; mesh(texBox(0.7, 2.6, 0.7, 1.4), bk2, chx, pl + wallH + 1.9, chz); mesh(new THREE.BoxGeometry(0.9, 0.18, 0.9), dk, chx, pl + wallH + 3.25, chz); chim.push(new THREE.Vector3(chx, pl + wallH + 3.4, chz));
     /* loja: placa pendurada no braço de ferro */
-    if (c.shop) { const SG: Record<string, [string, string]> = { armeiro: ['ARMEIRO', '⚔'], armaduras: ['ARMADURAS', '🛡'], mercador: ['MERCADOR', '🧺'], taverna: ['TAVERNA', '🍺'], cervejaria: ['CERVEJARIA', '🍺'], pocoes: ['POÇÕES', '⚗'], honra_anao: ['HONRA', '🏅'], construtor: ['CONSTRUTOR', '🧱'], lenhador: ['LENHADOR', '🪓'], cozinha: ['COZINHA', '🍲'], domador: ['DOMADOR', '🐾'] };
+    if (c.shop) { const SG: Record<string, [string, string]> = { armeiro: ['ARMEIRO', '⚔'], armaduras: ['ARMADURAS', '🛡'], mercador: ['MERCADOR', '🧺'], taverna: ['TAVERNA', '🍺'], cervejaria: ['A BIGORNA MOLHADA', '🍺'], pocoes: ['POÇÕES', '⚗'], honra_anao: ['HONRA', '🏅'], construtor: ['CONSTRUTOR', '🧱'], lenhador: ['LENHADOR', '🪓'], cozinha: ['COZINHA', '🍲'], domador: ['DOMADOR', '🐾'] };
       const [tx, ic] = SG[c.shop] ?? [c.shop.toUpperCase().slice(0, 10), '✦']; const sx = dr.x + 1.5 < cx + bw / 2 ? dr.x + 1.5 : dr.x - 1.5;
       mesh(new THREE.BoxGeometry(0.06, 0.06, 0.9), iron, sx, pl + 2.55, front + 0.45); mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), iron, sx, pl + 2.3, front + 0.1);
-      const sg = mesh(new THREE.BoxGeometry(1.0, 0.6, 0.07), std(0xffffff, { map: signTex(tx, ic) }), sx, pl + 2.15, front + 0.75); ink(sg, 0.02); sg.rotation.y = Math.PI / 2; }
+      const big = c.shop === 'cervejaria'; const sg = mesh(new THREE.BoxGeometry(big ? 1.7 : 1.0, big ? 0.8 : 0.6, 0.07), std(0xffffff, { map: signTex(tx, ic) }), sx, pl + 2.15, front + (big ? 1.1 : 0.75)); ink(sg, 0.02); sg.rotation.y = Math.PI / 2;
+      if (big) { /* a taverna tem também o letreiro sobre a porta, barris e canecas na frente e dois lampiões */ const top = mesh(new THREE.BoxGeometry(3.2, 0.7, 0.1), std(0xffffff, { map: signTex(tx, ic) }), dr.x, pl + wallH - 0.35, front + 0.12); ink(top, 0.02);
+        for (const s2 of [-1, 1]) { mesh(new THREE.CylinderGeometry(0.34, 0.3, 0.8, 10), M(0x6a4a2c, 'wood'), dr.x + s2 * 2.2, 0.4, front + 0.9); for (const y of [0.18, 0.62]) mesh(new THREE.TorusGeometry(0.34, 0.025, 6, 14).rotateX(Math.PI / 2), iron, dr.x + s2 * 2.2, y, front + 0.9); }
+        glowW(0.22, 0.3, dr.x - 1.1, pl + 2.3, front + 0.15, 0xffc070); glowW(0.22, 0.3, dr.x + 1.1, pl + 2.3, front + 0.15, 0xffc070); } }
     lantern = new THREE.Vector3(dr.x + 1.0, pl + 1.9, front + 0.5);
   } else if (style === 3) { // ÉLFICO
     const iv = M(0xe8e0cc, 'plaster'), lf = std(0x3a7a5a), wd = M(0x8a6a4a, 'wood'), r0 = Math.min(bw, bd) / 2;

@@ -251,6 +251,35 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7): 
     add(B(W * 0.5, 1.0, 0.8), plank(0x5a3a22), cx, 0.5, D * 0.66, true); add(B(W * 0.5 + 0.2, 0.08, 1.0), brass, cx, 1.05, D * 0.66, true); for (const f of [-0.3, 0, 0.3]) solid(cx + W * 0.5 * f, D * 0.66, 0.9);
     add(new THREE.CylinderGeometry(0.16, 0.16, 0.05, 8), brass, cx - 1.0, 1.12, D * 0.66, false); add(B(0.4, 0.14, 0.26), iron, cx + 0.2, 1.16, D * 0.66, false); add(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0x6ad0ff }), cx + 1.1, 1.2, D * 0.66, false);
     barrel(W - 0.9, D - 1.0, 0.9); crate(1.0, D - 1.0, 0.7); hang(cx, D * 0.5, 0x9ad7ff, 34);
+  } else if (variant === 15) { // 08/11 A BIGORNA MOLHADA — o salão de cerveja dos anões (Erling: "uma taverna para entrar, beber e comer carne, típico de anões")
+    /* piso de laje, pilares de pedra com runas de cobre, mesas compridas com bancos, fogo no meio com carne no espeto, barris empilhados, balcão de carvalho,
+       escudos e machados na parede, lustres de roda com velas */
+    const sm = std(0xffffff, { map: stoneTex(0x5a544c) }), cu = std(0xb06a3a), iron = std(0x2c2a2a);
+    const st = new THREE.Mesh(new THREE.PlaneGeometry(W, D), std(0xffffff, { map: (() => { const t = stoneTex(0x6a6458).clone(); t.repeat.set(W / 2, D / 2); t.needsUpdate = true; return t; })() })); st.rotation.x = -Math.PI / 2; st.position.set(W / 2, 0.01, D / 2); st.receiveShadow = true; g.add(st);
+    for (const sx of [0.2, 0.8]) for (const sz of [0.3, 0.7]) { const x = W * sx, z = D * sz; add(B(0.5, H, 0.5), sm, x, H / 2, z); add(B(0.62, 0.3, 0.62), sm, x, 0.15, z); add(B(0.56, 0.12, 0.56), cu, x, 1.7, z, false); solid(x, z, 0.4); }
+    fireplace(W * 0.5); window_(W * 0.18, 'n'); window_(D * 0.5, 'w');
+    /* a cova de fogo no meio com o espeto e a carne */
+    { const fx = W * 0.5, fz = D * 0.5; add(new THREE.CylinderGeometry(1.0, 1.05, 0.3, 10), sm, fx, 0.15, fz); add(new THREE.CylinderGeometry(0.8, 0.8, 0.06, 10), std(0x2a1a10), fx, 0.3, fz, false); solid(fx, fz, 1.05);
+      const f = flame(fx, 0.55, fz, 1.6); void f; light(fx, 1.4, fz, 0xff9a40, 46, 12);
+      for (const sx of [-1, 1]) add(B(0.08, 1.1, 0.08), iron, fx + sx * 0.9, 0.85, fz, false); add(new THREE.CylinderGeometry(0.03, 0.03, 2.0, 6).rotateZ(Math.PI / 2), iron, fx, 1.35, fz, false);
+      const meat = add(new THREE.CylinderGeometry(0.22, 0.26, 0.9, 8).rotateZ(Math.PI / 2), std(0x8a4a2a), fx, 1.35, fz); meat.scale.set(1, 1.1, 0.9); add(new THREE.SphereGeometry(0.2, 8, 6), std(0x9a5530), fx + 0.5, 1.35, fz); }
+    /* mesas compridas com bancos */
+    const bench = (x: number, z: number, L: number) => { add(B(L, 0.08, 0.34), plank(0x5a3a22), x, 0.46, z); for (const sx of [-1, 1]) add(B(0.1, 0.44, 0.3), wood(0x3a2616), x + sx * (L / 2 - 0.2), 0.22, z, false); };
+    for (const [tx, tz, L] of [[W * 0.5, D * 0.2, W * 0.48], [W * 0.5, D * 0.8, W * 0.48], [W * 0.14, D * 0.5, D * 0.42]] as [number, number, number][]) { const vert = tx < W * 0.3;
+      const t = new THREE.Group(); t.position.set(tx, 0, tz); t.rotation.y = vert ? Math.PI / 2 : 0; g.add(t);
+      add(B(L, 0.12, 1.0), plank(0x6a4528), 0, 0.78, 0, true, 0, t); for (const sx of [-1, 1]) add(B(0.16, 0.72, 0.8), wood(0x3a2616), sx * (L / 2 - 0.35), 0.36, 0, true, 0, t);
+      for (let k = 0; k < 4; k++) { const mx = -L / 2 + 0.5 + k * (L - 1) / 3; add(new THREE.CylinderGeometry(0.08, 0.07, 0.16, 8), std(0xc9a24a), mx, 0.92, 0.25 - (k % 2) * 0.5, false, 0, t); if (k % 2 === 0) add(new THREE.CylinderGeometry(0.3, 0.3, 0.05, 10), std(0xd8c8a0), mx + 0.5, 0.87, 0, false, 0, t); }
+      for (const sz of [-1, 1]) { const b = new THREE.Group(); b.position.set(0, 0, sz * 0.85); t.add(b); add(B(L - 0.4, 0.08, 0.34), plank(0x5a3a22), 0, 0.46, 0, true, 0, b); for (const sx of [-1, 1]) add(B(0.1, 0.44, 0.3), wood(0x3a2616), sx * (L / 2 - 0.4), 0.22, 0, false, 0, b); }
+      if (vert) { solid(tx, tz - L / 2 + 0.6, 0.7); solid(tx, tz, 0.7); solid(tx, tz + L / 2 - 0.6, 0.7); } else { solid(tx - L / 2 + 0.6, tz, 0.7); solid(tx, tz, 0.7); solid(tx + L / 2 - 0.6, tz, 0.7); } }
+    void bench;
+    /* balcão de carvalho ao fundo direito com barris empilhados atrás */
+    add(B(W * 0.34, 1.05, 0.9), plank(0x5a3a22), W * 0.78, 0.52, D * 0.12, true); add(B(W * 0.34 + 0.2, 0.1, 1.05), plank(0x7a5532), W * 0.78, 1.08, D * 0.12, true); solid(W * 0.7, D * 0.12, 1.0); solid(W * 0.86, D * 0.12, 1.0);
+    for (let k = 0; k < 3; k++) mug(W * 0.66 + k * 0.6, 1.13, D * 0.12 + (k % 2) * 0.1);
+    for (let k = 0; k < 3; k++) { barrel(W - 0.7, 0.8 + k * 0.95); } barrel(W - 1.6, 0.8); add(new THREE.CylinderGeometry(0.36, 0.32, 0.9, 10).rotateZ(Math.PI / 2), wood(0x6a4a2c), W - 1.2, 1.35, 0.8);
+    /* escudos redondos e machados cruzados na parede norte; lustres de roda */
+    for (const [x, c] of [[W * 0.3, 0x8a2a22], [W * 0.72, 0x2a4a7a]] as [number, number][]) { add(new THREE.CylinderGeometry(0.42, 0.42, 0.08, 10).rotateX(Math.PI / 2), std(c), x, 2.3, 0.08); add(new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8).rotateX(Math.PI / 2), std(0x8a8a90), x, 2.3, 0.14, false); for (const s of [-1, 1]) { const ax = add(B(0.05, 1.1, 0.05), wood(0x3a2616), x + s * 0.3, 2.3, 0.1, false); ax.rotation.z = s * 0.6; add(B(0.32, 0.22, 0.04), iron, x + s * 0.58, 2.78, 0.1, false).rotation.z = s * 0.6; } }
+    for (const [x, z] of [[W * 0.5, D * 0.2], [W * 0.5, D * 0.8]]) { add(new THREE.TorusGeometry(0.7, 0.05, 6, 16).rotateX(Math.PI / 2), wood(0x3a2616), x, H - 0.9, z, false); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; flame(x + Math.cos(a) * 0.7, H - 0.78, z + Math.sin(a) * 0.7, 0.5); } hang(x, z, 0xffb060, 30); }
+    banner(W * 0.08, 0x8a2a2a); banner(W * 0.92, 0x8a2a2a); rug(W * 0.5, D * 0.5, 2.6, 2.6, 0x5a2a22);
   } else if (variant === 14) { // ESTÁBULO (02/11): baias com feno e cocho, ferraduras na parede, selas, e o balcão do estalajadeiro
     window_(W * 0.5, 'n');
     const hay2 = (x: number, z: number, s = 1) => { add(new THREE.SphereGeometry(0.5 * s, 8, 6), std(0xd4b25a), x, 0.3 * s, z).scale.set(1.2, 0.6, 1); solid(x, z, 0.5 * s); };
