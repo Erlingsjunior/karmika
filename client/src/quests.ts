@@ -1,6 +1,7 @@
 import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
 import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES, KING_ROAD } from './racas';
+import { addHonor, HONOR_FOR } from './sistemas/honra';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
 import { FALAS } from './falas';
@@ -351,6 +352,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
     delete q.active[d.id]; q.done.push(d.id);
     ctx.st.gold += Math.round(d.gold * 0.6); ctx.gainXp(d.xp); for (const [it, n] of d.items ?? []) ctx.add(it, n); if (d.gear) ctx.gear(d.gear, d.lvl);
     if (d.title) { q.title = d.title; ctx.onTitle(d.title); }
+    addHonor(HONOR_FOR.quest(d.lvl), `missão: ${d.name}`); /* 08/11 Honra Kármica */
     ctx.onDone?.(d); onDoneCb?.(d); for (const f of doneHooks) { try { f(d); } catch { /* */ } }
     ctx.log(`✅ Missão concluída: ${d.name} (+${d.xp} XP, +${Math.round(d.gold * 0.6)} ouro)`, '#7aff9a'); save(); render();
     /* a próxima missão NÃO entra sozinha: quem dá a missão precisa contar do que se trata (o diálogo reabre com a oferta). Só o Olho, que não tem boca, entrega direto */

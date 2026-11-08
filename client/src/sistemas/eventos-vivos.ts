@@ -1,4 +1,5 @@
 /* EVENTOS VIVOS (eventos.ts): os lugares dos eventos, os efeitos (fogos, pétalas, incenso, velas), os painéis e o sistema de eventos. Saiu do main.ts (02/11). */
+import { addHonor, HONOR_FOR } from './honra';
 import { regionAt, MAP_W, heightAt } from '../world';
 import { createEvents } from '../eventos';
 import { type Reply } from '../dialog';
@@ -30,6 +31,6 @@ const eventos = createEvents({ scene: K.scene, heightAt, hero: () => K.heroPos, 
   region: (x, y) => regionAt(x, y), fx: evFx, bubble: K.carBubble, log: (t, c) => K.game.logMsg(t, c),
   project: (p) => { const v = p.clone().project(K.camera); if (v.z > 1) return null; const r = K.canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
   converse: (o) => { let picked: Reply | null = null; K.openDlg({ name: o.name, role: o.role, portrait: null, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, onReply: (r) => { if (r.flag?.startsWith('ev:')) picked = r; else K.applyReply(r); }, meet: { quest: { id: 'ev', name: o.title, lvl: 1, giver: o.name, text: '', objs: [], xp: 0, gold: 0 }, steps: o.steps, onEnd: () => o.onPick(picked) } }); },
-  count: (it) => K.inv.count(it), take: (it, n) => K.inv.take(it, n), act: (a) => { K.hero.act(a as never, true); }, result: (r) => K.showEvResult(r) }, evSites);
+  count: (it) => K.inv.count(it), take: (it, n) => K.inv.take(it, n), act: (a) => { K.hero.act(a as never, true); }, result: (r) => { if (r.won) addHonor(HONOR_FOR.event, `evento: ${r.name}`); K.showEvResult(r); } }, evSites);
   return { evFx, evResEl, eventos, evTrkEl, evBanEl, evSites };
 }

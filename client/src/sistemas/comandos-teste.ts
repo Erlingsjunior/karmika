@@ -1,4 +1,5 @@
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). */
+import { addHonor, honor } from './honra';
 import { ITEMS as ITEMS_TBL } from '../inventory';
 import { BASES, genGear } from '../loot';
 import { MAX_BREATHS, FRAY_LVL } from '../soul';
@@ -45,6 +46,8 @@ function betaCommand(cmd: string, a: string[]): string | null {
   const cleanSwitch = () => { const n = K.inv.respec?.() ?? 0; (K.game as unknown as { clearClassPast?: () => void }).clearClassPast?.();
     K.tree.wipe(); K.tree.setView(null); K.applyKitAll(); return ` Atributos zerados (${n} pontos de volta) e Árvore zerada: ${K.tree.available()} pontos livres em K.`; };
   /* /classe <vam|lob|mag|bru|pal|cac|tec|hum>: vira a classe na hora (teste, 02/11) — para provar as magias e poses de cada caminho sem fazer a missão */
+  /* 08/11: /honra N dá N pontos de Honra Kármica (teste das lojas de honra) */
+  if (cmd === 'honra') { const n = Math.max(1, Math.min(5000, Math.round(Number(a[0]) || 100))); addHonor(n, 'teste'); return `🏅 (teste) +${n} de Honra Kármica (${honor()} no total).`; }
   if (cmd === 'classe' || cmd === 'class') { const id = (a[0] ?? '').toLowerCase(); const p = PATHS.find((x) => x.id === id || x.cls.toLowerCase().startsWith(id)); if (!p) return `Uso: /classe ${PATHS.map((x) => x.id).join('|')}`; if (K.profile) { K.profile.path = p.id; try { localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); } catch { /* */ } } try { if (!K.quests.q.done.includes('v_' + p.id)) K.quests.q.done.push('v_' + p.id); } catch { /* */ } /* as armas do caminho (only) ficam liberadas como para quem fez a missão */ if (K.game.st.lvl < 30) { const d = 30 - K.game.st.lvl; K.game.st.lvl = 30; K.game.st.xp = 0; K.game.st.points += d * 3; K.game.st.recalc?.(); } K.takeClass(p); return `🧪 (teste) classe: ${p.cls}.` + cleanSwitch(); }
   /* /aprender: investe 1 ponto em cada magia da classe que já pode (teste, 02/11) — para ver todas as poses e magias de uma vez */
   if (cmd === 'aprender' || cmd === 'learn') { let n = 0; for (let pass = 0; pass < 3; pass++) for (const d of KITS[K.kitRace()] ?? []) if (!K.tree.has(d.id) && K.tree.invest(d.id)) n++; K.applyKitAll(); refreshLocks(K.kitRace(), K.game.st.lvl, (k) => K.tree.rank(k)); return `🧪 (teste) ${n} magias aprendidas (pontos: ${K.tree.available()}).`; }

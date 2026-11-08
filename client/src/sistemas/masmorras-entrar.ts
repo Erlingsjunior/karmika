@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createCharacter } from '../characters';
 import { type Choice } from '../dialog';
 import { buildDwarfHall } from '../salao3d';
+import { addHonor, HONOR_FOR } from './honra';
 import type { MasmorrasEntrarCtx } from '../main';
 
 export function createMasmorrasEntrar(K: MasmorrasEntrarCtx) {
@@ -18,7 +19,7 @@ export function createMasmorrasEntrar(K: MasmorrasEntrarCtx) {
 const dgs = createMasmorras({ scene: K.scene, T, city: K.city as never, heightAt, regionLvl: (x, y) => { const r = regionAt(x, y); return [r.lo, r.hi]; }, game: K.game as never, particles: K.particles, audio: K.audio as never,
   heroPos: () => K.heroPosNow(), project: (p) => { const v = p.clone().project(K.camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = K.canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; }, partySize: () => K.netRef?.party ? K.netRef.party.members.length : 1, partyLvl: () => { const P = K.netRef?.party; if (!P) return K.game.st.lvl; const ls = P.members.map((id) => id === K.netRef!.myId ? K.game.st.lvl : K.netRef!.infoOf(id)?.lvl ?? K.game.st.lvl); return ls.reduce((a, b) => a + b, 0) / Math.max(1, ls.length); }, say: (t) => K.chat.sys(t), fine,
   onKit: (e) => brain.track(e as never), onStop: () => brain.untrackAll(), descend: (depth, tier) => { const R = dgs.run, en = R && dgs.entrances.find((q) => q.d.id === R.d.id); if (en) enterDungeon(en, tier, depth); },
-  onClear: (d, first) => { K.quests.onDungeon(d.id); K.feats.bump('dungeons'); if (first && d.kind === 'grupo') K.heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && K.profile) { K.profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); K.updateWho(); K.game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } K.netRef?.x('x:dgwin', { id: d.id }); } });
+  onClear: (d, first) => { K.quests.onDungeon(d.id); K.feats.bump('dungeons'); addHonor(d.kind === 'grupo' ? HONOR_FOR.raid : HONOR_FOR.dungeon + HONOR_FOR.boss, `${d.name} vencida`); /* 08/11 Honra Kármica */ if (first && d.kind === 'grupo') K.heroicAct(`${d.name} vencida pela primeira vez`); if (first && d.title && K.profile) { K.profile.title = d.title; localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); K.updateWho(); K.game.logMsg(`🏅 Título: ${d.title}`, '#ffe08a'); } K.netRef?.x('x:dgwin', { id: d.id }); } });
 /* chefes e elites com história (chefes.ts): roupa ao montar o corpo, magias e jeito de andar */
 enemyHooks.spark = (x, y, z, col) => { if (Math.random() > K.opts.particles) return; K.particles.spawn(x + (Math.random() - 0.5) * 0.2, y, z + (Math.random() - 0.5) * 0.2, { vx: (Math.random() - 0.5) * 0.3, vy: -0.2 - Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.3, life: 0.6 + Math.random() * 0.4, s0: 0.07, s1: 0.01, c0: 0xffffff, c1: col, a: 0.9 }); };
 enemyHooks.dress = (e, g) => dressEnemy(e as never, g); enemyHooks.body = (e) => bossBody(e as never) as never;
