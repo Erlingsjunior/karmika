@@ -299,7 +299,7 @@ export function buildWorld(world: World): WorldObjs {
       for (const gl of lb.glows) L.glows.push({ light: nullLight, base: gl.base, seed: r() * 50, warm: true, pos: new THREE.Vector3(gl.x, gl.y, gl.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz)), color: gl.color } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'station') { // pontos de trabalho dos ofícios
       const st = p.w >= 3 ? buildWorkshop(p.variant ?? 0, r, p.label ?? '', p.wdir !== undefined ? p.wdir - (p.ry ?? 0) : undefined, p.ry ?? 0) : buildStation(p.variant ?? 0, r, false, p.wdir !== undefined ? p.wdir - (p.ry ?? 0) : undefined, p.ry ?? 0); st.group.position.set(Wm / 2, 0, Dm / 2); st.group.rotation.y = p.ry ?? 0; g.add(st.group);
-      if (st.spin) (L.spin ??= []).push(...st.spin);
+      if (st.spin) { (L.spin ??= []).push(...st.spin); for (const [o] of st.spin) o.userData.dyn = true; }
       const loc = (v: { x: number; y: number; z: number }) => new THREE.Vector3(v.x, v.y, v.z).applyAxisAngle(new THREE.Vector3(0, 1, 0), p.ry ?? 0).add(new THREE.Vector3(wx, wy, wz));
       if (st.glow) L.glows.push({ light: nullLight, base: st.glow.base, seed: r() * 50, warm: true, pos: loc(st.glow), color: st.glow.color } as WorldObjs['glowLights'][number]);
       if (st.smoke) { const v = loc(st.smoke); if ((st.smoke as { strong?: boolean }).strong) (v as THREE.Vector3 & { strong?: boolean }).strong = true; L.smokers.push(v); }
@@ -676,7 +676,9 @@ function artOverride(p: Prop, g: THREE.Group, L: Loaded, Wm: number, Dm: number,
 }
 
 const NOCUT_KINDS = new Set(['mailbox', 'fountain', 'chest', 'vault', 'relic', 'noticeboard', 'station', 'deadwell', 'shopfront', 'campfire']);
-function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
+/* 07/11 FPS: nos postos de ofício o 'sem corte' não impede mais a fusão (eram ~100 desenhos por posto); a fusão faz um material sem corte para eles */
+const NOCUT_MERGE = new Set(['station', 'noticeboard', 'shopfront']);
+function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; if (merge) o.userData.nocut = true; else o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
   const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
@@ -702,7 +704,7 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
         else if (ek.west > 0.5 && R() < 0.25) extra.push({ kind: 'tree', gx, gy, w: 1, h: 1, height: 4 + R() * 2, wall: 0x3a2a1c, roof: 0x2a3a22, variant: 1 });
       }
     }
-    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; if (NOCUT_KINDS.has(p.kind)) noCut(pg); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
+    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; if (NOCUT_KINDS.has(p.kind)) noCut(pg, NOCUT_MERGE.has(p.kind)); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
     /* 03/11: modelos do Herik marcados pelos props (árvores, plantas, pedras, vila) viram UM InstancedMesh por modelo no chunk */
     L.artPG = []; for (const [pp, e] of propG) if (e.L === L) { let has = false; e.g.traverse((o) => { if (o.userData.art) has = true; }); if (has) L.artPG.push([pp, e.g]); }
     rebuildArt(L);
@@ -847,9 +849,9 @@ function noCut(g: THREE.Object3D) { g.traverse((o) => { const m = o as THREE.Mes
         const m = o as THREE.Mesh; if (!m.isMesh || skip.has(m) || Array.isArray(m.material) || !m.geometry.attributes.position || (!m.visible && !m.userData.merged)) return;
         const mat = m.material as THREE.MeshToonMaterial; if (mat.transparent || (mat as THREE.Material & { isSprite?: boolean }).isSprite) return;
         const toon = (mat as THREE.Material & { isMeshToonMaterial?: boolean }).isMeshToonMaterial === true;
-        const key = toon ? `t|${mat.map ? mat.map.uuid : ''}|${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}` : `i|${mat.uuid}|${m.castShadow ? 1 : 0}`;
+        const nc = m.userData.nocut ? 1 : 0, key = toon ? `t|${mat.map ? mat.map.uuid : ''}|${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}|${nc}` : `i|${mat.uuid}|${m.castShadow ? 1 : 0}`;
         let b = buckets!.get(key);
-        if (!b) { b = { mat: toon ? cutoutify(new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined })) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
+        if (!b) { const tm = toon ? new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined }) : null; if (tm && nc) tm.userData.noCut = true; b = { mat: toon ? (nc ? tm! : cutoutify(tm!)) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
         const gg = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
         for (const n of Object.keys(gg.attributes)) if (n !== 'position' && n !== 'normal' && n !== 'uv' && n !== 'color') gg.deleteAttribute(n);
         if (!gg.attributes.normal) gg.computeVertexNormals();
