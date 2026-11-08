@@ -1265,12 +1265,21 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const sock = gm(new THREE.CylinderGeometry(0.03, 0.03, 0.12, 8), 'dark'); sock.position.y = -L + 0.06; sw.add(sock);
           const ed = gm(new THREE.TorusGeometry(0.2 * a, 0.006, 3, 10, 1.6), 'steel'); ed.position.set(0.04 * a, -L + 0.02, 0); ed.rotation.z = -0.75; sw.add(ed);
           len = L;
-        } else if (base === 'Arco Curto' || base === 'Arco Longo') { // arco recurvo: braços de madeira com pontas viradas, empunhadura de couro, corda
-          sw.remove(pom); const H = base === 'Arco Longo' ? 0.78 : 0.55, bw = new THREE.Group(); bw.position.y = -0.06; bw.rotation.y = Math.PI / 2; sw.add(bw); // braços na vertical, barriga para a frente, corda do lado do arqueiro
-          for (const sy of [-1, 1]) { const cv = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0.05, sy * H * 0.45, 0), new THREE.Vector3(0.03, sy * H * 0.85, 0), new THREE.Vector3(-0.03, sy * H, 0)]);
-            const limb = gm(new THREE.TubeGeometry(cv, 10, 0.016, 5), base === 'Arco Longo' ? 'leather' : 'leatherD'); bw.add(limb); const nock = gm(new THREE.SphereGeometry(0.014, 5, 4), 'bone'); nock.position.set(-0.03, sy * H, 0); bw.add(nock); }
-          const grp2 = gm(new THREE.CylinderGeometry(0.024, 0.024, 0.12, 7), 'leatherD'); bw.add(grp2);
-          const str = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, H * 2, 3), new THREE.MeshBasicMaterial({ color: 0xd8cfb8 })); str.position.x = -0.03; bw.add(str);
+        } else if (base === 'Arco Curto' || base === 'Arco Longo') { /* 08/11 (Erling: "os arcos estão feios"): arco recurvo élfico — braços afilados de madeira clara
+             com nervura, pontas (siyahs) viradas com ponteira de ouro, anéis de ouro no terço, punho de couro enrolado com folha de ouro na frente, corda com serving e ponto de nock */
+          sw.remove(pom); const long = base === 'Arco Longo', H = long ? 0.8 : 0.58, bw = new THREE.Group(); bw.position.y = -0.06; bw.rotation.y = Math.PI / 2; sw.add(bw); // braços na vertical, barriga para a frente, corda do lado do arqueiro
+          for (const sy of [-1, 1]) { const cv = new THREE.CatmullRomCurve3([new THREE.Vector3(0.01, 0, 0), new THREE.Vector3(0.06, sy * H * 0.4, 0), new THREE.Vector3(0.04, sy * H * 0.8, 0), new THREE.Vector3(-0.045, sy * H * 1.0, 0)]);
+            const N = 7; for (let k = 0; k < N; k++) { const t0 = k / N, t1 = (k + 1) / N, p0 = cv.getPoint(t0), p1 = cv.getPoint(t1), r0 = 0.026 - 0.016 * t0, r1 = 0.026 - 0.016 * t1, L = p0.distanceTo(p1);
+              const seg = gm(new THREE.CylinderGeometry(r1 * (long ? 1.05 : 1), r0 * (long ? 1.05 : 1), L + 0.004, 7), long ? 'leather' : 'leatherD'); seg.scale.z = 0.7; /* braço chato, mais largo que fundo */
+              seg.position.copy(p0).lerp(p1, 0.5); seg.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), p1.clone().sub(p0).normalize()); bw.add(seg); }
+            const ring = gm(new THREE.TorusGeometry(0.021, 0.004, 5, 10), 'gold'); ring.position.copy(cv.getPoint(0.36)); ring.rotation.x = Math.PI / 2; bw.add(ring); /* anel de ouro no terço */
+            const tip = gm(new THREE.ConeGeometry(0.014, 0.06, 6), 'gold'); tip.position.copy(cv.getPoint(1)).add(new THREE.Vector3(-0.012, sy * 0.02, 0)); tip.rotation.z = -sy * 0.5; bw.add(tip); /* ponteira */
+            const nock = gm(new THREE.TorusGeometry(0.012, 0.004, 5, 8), 'bone'); nock.position.copy(cv.getPoint(0.96)); nock.rotation.x = Math.PI / 2; bw.add(nock); }
+          const riser = gm(new THREE.BoxGeometry(0.03, 0.2, 0.04), long ? 'leatherD' : 'dark'); riser.position.set(0.012, 0, 0); bw.add(riser); /* o punho */
+          for (let k = -2; k <= 2; k++) { const wrap = gm(new THREE.TorusGeometry(0.022, 0.005, 5, 10), 'leatherD'); wrap.position.set(0.012, k * 0.03, 0); wrap.rotation.x = Math.PI / 2; bw.add(wrap); }
+          const leaf = gm(new THREE.SphereGeometry(0.02, 6, 5), 'gold'); leaf.scale.set(0.5, 1.6, 0.35); leaf.position.set(0.04, 0.0, 0); bw.add(leaf); /* folha de ouro na frente do punho */
+          const str = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, H * 1.98, 3), new THREE.MeshBasicMaterial({ color: 0xe8e0c8 })); str.position.x = -0.045; bw.add(str);
+          const serv = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.07, 5), new THREE.MeshBasicMaterial({ color: 0x8a2a22 })); serv.position.x = -0.045; bw.add(serv); /* serving vermelho no meio da corda */
           len = 0.1;
         } else if (base === 'Besta de Repetição') { // dos caçadores de demônios: coronha escura, arco de aço, carregador de virotes em cima e alavanca
           sw.remove(pom); sw.remove(grip); RG = new THREE.Group(); RG.rotation.x = -Math.PI / 2; gunHolder.add(RG); const st2 = gm(new THREE.BoxGeometry(0.05, 0.62, 0.06), 'leatherD'); st2.position.y = -0.24; RG.add(st2);
