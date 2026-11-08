@@ -28,7 +28,7 @@ export interface NetCtx {
   /** cria o olho do Premium (a mesma runa que o próprio jogador vê em volta de si) */
   premRune?(): THREE.Object3D;
   st(): NetSt;
-  chat(name: string, text: string, whisper?: boolean): void;
+  chat(name: string, text: string, whisper?: boolean, party?: boolean, lvl?: number): void;
   sys(text: string, color?: string): void;
   /** alguém entrou no mundo (aviso, som, notificação do sistema) */
   joined?(name: string): void;
@@ -146,7 +146,7 @@ export function createNet(ctx: NetCtx) {
       case 'prof:req': { let data: NetProfile | null = null; try { data = ctx.profile(); } catch (err) { console.warn('[net] perfil', err); } if (data) send({ t: 'prof:res', to: m.from, data }); break; }
       case 'prof:res': ctx.showProfile(m.id as number, m.data as NetProfile); break;
       case 'chat': {
-        const r = remotes.get(m.id as number); const name = (m.name as string) || r?.name || '?'; ctx.chat(name, m.text as string, !!m.w); if (m.w) break;
+        const r = remotes.get(m.id as number); const name = (m.name as string) || r?.name || '?'; ctx.chat(name, m.text as string, !!m.w, !!m.p, m.lvl as number | undefined); if (m.w || m.p) break;
         if (r) { const p = r.el.querySelector('p') as HTMLElement; p.textContent = m.text as string; p.style.display = 'block'; r.bubbleT = 5; }
         break;
       }
@@ -232,6 +232,7 @@ export function createNet(ctx: NetCtx) {
     act(a: string) { if (state === 'on') send({ t: 'act', a }); },
     say(text: string) { if (state === 'on') send({ t: 'chat', text }); },
     whisper(to: string, text: string) { if (state !== 'on') { ctx.sys('Você não está em nenhuma sala.'); return; } const nrm = (x: string) => x.replace(/[\s_]+/g, '_').toLowerCase(); const r = [...remotes.values()].find((q) => nrm(q.name) === nrm(to)); send({ t: 'w', to: r ? r.id : to, text }); },
+    /** 08/11: fala só para o grupo */ partyChat(text: string) { send({ t: 'pchat', text }); },
     inviteParty(id: number) { send({ t: 'party:invite', to: id }); },
     answerParty(from: number, ok: boolean, auto = false) { send({ t: 'party:answer', from, ok, auto }); },
     leaveParty() { send({ t: 'party:leave' }); },

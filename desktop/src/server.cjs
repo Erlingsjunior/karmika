@@ -28,7 +28,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 
 const PROTO = 1;
 const MAX = 200;      // gente na sala (05/11, Erling: "a sala oficial pode caber umas 200 pessoas, não só 12")
-const PARTY_MAX = 6; // gente num grupo
+const PARTY_MAX = 8; // gente num grupo (08/11, Erling: grupos até 8)
 const PARTY_GAP = 10; // diferença máxima de nível dentro do grupo (ninguém puxa ninguém)
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O/0 e I/1 para não confundir ao ditar
 
@@ -354,6 +354,8 @@ function startServer(opts = {}) {
           case 'act': me.lastAct = { a: String(m.a).slice(0, 24), at: Date.now() }; others(me.id, { t: 'act', id: me.id, a: String(m.a).slice(0, 24) }); break; // golpe/magia/esquiva
           case 'look': me.look = m.look; others(me.id, { t: 'look', id: me.id, look: m.look }); break; // roupa/arma mudou
           case 'chat': { const text = String(m.text || '').slice(0, 240).trim(); if (text) { const msg = { t: 'chat', id: me.id, name: me.name, text }; others(me.id, msg); } break; }
+          /* 08/11 chat de GRUPO: só os membros da party recebem */
+          case 'pchat': { const text = String(m.text || '').slice(0, 240).trim(); if (!text) break; if (!me.party) { send(ws, { t: 'sys', text: 'Você não está em um grupo.' }); break; } const msg = { t: 'chat', p: 1, id: me.id, name: me.name, lvl: lvlOf(me), text }; for (const id of me.party.members) { if (id === me.id) continue; const q = players.get(id); if (q) send(q.ws, msg); } break; }
           case 'ping': send(ws, { t: 'pong', at: m.at }); break;
           case 'w': { const to = [...players.values()].find((p) => p.id === m.to || p.name.toLowerCase() === String(m.to || '').toLowerCase()); const text = String(m.text || '').slice(0, 240).trim();
             if (!to) { send(ws, { t: 'sys', text: `Ninguém chamado ${m.to} está na sala.` }); break; } if (text) send(to.ws, { t: 'chat', w: 1, id: me.id, name: me.name, text }); break; }

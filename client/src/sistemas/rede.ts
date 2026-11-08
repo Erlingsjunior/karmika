@@ -17,7 +17,7 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
   premRune: () => { const sp = K.makeBlessRune(); sp.visible = true; return sp; },
   st: () => { const p = K.hero.root.position; const zn = K.inside ? (K.inside.crypt ? `crypt:${K.inside.crypt}` : `in:${K.inside.prop.gx},${K.inside.prop.gy}`) : 'world';
     return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), f: +K.hero.root.rotation.y.toFixed(3), m: +K.netMps.toFixed(2), zn, hp: Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), ...(K.hero.combat ? { cb: 1 as const } : {}), ...(K.hero.guard ? { gd: 1 as const } : {}), ...(K.hero.riding ? { rd: 1 as const } : {}), ...(K.hero.kneel ? { kn: 1 as const } : {}), ...(K.pvpOn ? { ag: 1 as const } : {}) }; },
-  chat: (name, text, w) => K.chat.recv(name, text, w ? 'whisper' : 'local', w ? (K.profile?.name || '') : undefined),
+  chat: (name, text, w, p, lvl) => { const r = net.peers().find((q) => q.name === name && !q.me); const tag = lvl || r ? `Nv ${lvl ?? r?.lvl ?? '?'}${r?.cls ? ' · ' + r.cls : ''}` : undefined; K.chat.recv(name, text, p ? 'party' : w ? 'whisper' : 'local', w ? (K.profile?.name || '') : undefined, tag); }, /* 08/11: quem fala, com nível e classe; grupo tem canal próprio */
   sys: (text, color) => { K.game.logMsg(text, color); },
   joined: (name) => { // aviso de chegada: som, um selo na tela e, se a janela estiver em segundo plano, notificação do sistema
     K.audio.chime(); badge('✧', 'chegou ao mundo', name, 'join');
@@ -68,7 +68,8 @@ K.netRef = net;
   /* missões do grupo: o que eu pego aparece para os companheiros (com "Pegar também") */
   K.quests.setOnAccept((d) => { if (net.state === 'on' && net.party && d.giver !== 'O Olho') net.x('x:pq', { d }); });
   /* masmorra em grupo: quem chega pede o estado; quem já está dentro conta o que caiu e se o portão abriu */
-  net.onX('x:dgin', (from, m) => { if (!inParty(from) || !K.inside?.dg || K.inside.dg !== m.id || m.inst !== K.dgInst()) return; const sn = K.dgs.snapshot(); if (sn) net.x('x:dgsnap', { to: from, ...sn }); K.game.logMsg(`⚔ ${net.nameOf(from)} entrou na masmorra.`, '#ffd27a'); });
+  net.onX('x:dgin', (from, m) => { if (inParty(from) && !K.inside && !K.game.st.dead) { const en = K.dgs.entrances.find((e) => e.d.id === m.id); if (en) coop.ask('⚔ Masmorra do grupo', `${net.nameOf(from)} entrou em ${en.d.name}. Seguir o grupo para dentro?`, 'Seguir', (ok) => { if (ok) K.enterDungeon(en); }, 40); } /* 08/11: party dentro das dungeons — quem está fora é chamado */
+    if (!inParty(from) || !K.inside?.dg || K.inside.dg !== m.id || m.inst !== K.dgInst()) return; const sn = K.dgs.snapshot(); if (sn) net.x('x:dgsnap', { to: from, ...sn }); K.game.logMsg(`⚔ ${net.nameOf(from)} entrou na masmorra.`, '#ffd27a'); });
   net.onX('x:dgsnap', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.dgs.applySnapshot(m as never); });
   net.onX('x:dgwin', (from, m) => { if (inParty(from)) K.game.logMsg(`🏆 ${net.nameOf(from)} e o grupo venceram ${K.dgs.entrances.find((e) => e.d.id === m.id)?.d.name ?? 'a masmorra'}!`, '#ffd24a'); });
   net.onX('x:pq', (from, m) => { if (!inParty(from)) return; const d = m.d as Parameters<typeof K.quests.accept>[0], nm = net.nameOf(from); coop.questShare(nm, d, K.quests.shareState(d), () => K.quests.accept(d, nm)); });

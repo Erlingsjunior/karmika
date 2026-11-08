@@ -924,7 +924,7 @@ function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['be
    quem já tinha o Olho aberto recebe a Lágrima do nascimento que não ganhou */
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
-const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } bubble(text); netRef?.say(text); } });
+const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } if (ch === 'party') { if (!netRef?.party) { chat.sys('Você não está em um grupo. Ctrl + clique num jogador para convidar.'); return; } bubble(text); netRef.partyChat(text); return; } bubble(text); netRef?.say(text); } });
 /* 03/11: o inseto 🐞 (relatar bug) e o painel do dono (sistemas/bugs-dono.ts) */
 const shotReq: ((u: string) => void)[] = [];
 const bugsDono = createBugsDono({ net: () => netRef,
@@ -971,6 +971,7 @@ export interface RedeCtx {
   readonly originName: Widen<typeof originName>;
   netRef: Net | null;
   readonly dgInst: typeof dgInst;
+  readonly enterDungeon: typeof enterDungeon;
   readonly dgs: Widen<typeof dgs>;
   readonly pvp: Widen<typeof pvp>;
   readonly social: Widen<typeof social>;
@@ -980,7 +981,7 @@ export interface RedeCtx {
 const oasisSys = createOasis({ game, heroPos: () => heroPosNow(), openDlg: (o) => openDlg(o), busy: () => !!inside || !!cinemaSys?.cine || dlg.isOpen, shake: (k) => { game.st.shake = Math.max(game.st.shake ?? 0, k); } });
 setInterval(() => oasisSys.tick(), 400);
 var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_redeSys() { return createRede({ get scene() { return scene; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
+function mk_redeSys() { return createRede({ get scene() { return scene; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();
 const { coop, net } = redeSys;
 
