@@ -872,9 +872,11 @@ function buildCity_L(): World {
     hs.forEach((hh, i) => { vp([0, 1, 6, 8, 7, 0, 1, 9][i % 8], hh.gx + hh.w, hh.gy + hh.h - 1, rr() * 6.283); if (rr() < 0.5) vp([1, 0, 6][i % 3], hh.gx - 1, hh.gy + hh.h - 1, rr() * 6.283); });
     vp(4, cx - 5, cy - 4); vp(4, cx + 5, cy + 4); vp(4, cx - 5, cy + 5); vp(7, cx + 6, cy - 1, rr() * 6.283); vp(6, cx - 6, cy - 1, rr() * 6.283); vp(0, cx + 4, cy + 5, rr() * 6.283);
     decorAt('bench', cx - 2, cy + 3, 1, 1, 0, 0x6a4528, 0x8a3b2e); decorAt('bench', cx + 2, cy - 3, 1, 1, 1, 0x6a4528, 0x8a3b2e);
-    if (cult === 1 || cult === 5) { // paliçada de estacas em volta (nórdicos e Uivo), aberta nas estradas
-      const PR = R0 + 1; for (let k = -PR; k <= PR; k++) for (const [x, y, ns] of [[cx + k, cy - PR, false], [cx + k, cy + PR, false], [cx - PR, cy + k, true], [cx + PR, cy + k, true]] as [number, number, boolean][]) {
-        if (!inb(x, y) || map[y][x] !== 'grass' || Math.abs(k) <= 2) continue; props.push({ kind: 'palisade', gx: x, gy: y, w: 1, h: 1, height: 2.8, wall: 0x5a4030, roof: 0, variant: ns ? 1 : 0 }); map[y][x] = 'wall'; } }
+    if (cult === 1 || cult === 5) { // paliçada de estacas em volta (nórdicos e Uivo), aberta nas estradas — 08/11: anel ORGÂNICO (regra imutável), não um quadrado
+      const PR = R0 + 1.5, ph1 = rr() * 6.283, ph2 = rr() * 6.283, seen = new Set<number>();
+      for (let i = 0; i < 360; i++) { const a = i / 360 * 6.283, r = PR + 1.3 * Math.sin(a * 3 + ph1) + 0.8 * Math.sin(a * 5 + ph2); const x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r), key = y * 100000 + x; if (seen.has(key)) continue; seen.add(key);
+        if (!inb(x, y) || map[y][x] !== 'grass') continue; let nearRoad = false; for (let yy = y - 1; yy <= y + 1 && !nearRoad; yy++) for (let xx = x - 1; xx <= x + 1 && !nearRoad; xx++) if (map[yy]?.[xx] === 'road' || map[yy]?.[xx] === 'plaza') nearRoad = true; if (nearRoad) continue;
+        const ns = Math.abs(Math.cos(a)) > Math.abs(Math.sin(a)); props.push({ kind: 'palisade', gx: x, gy: y, w: 1, h: 1, height: 2.8, wall: 0x5a4030, roof: 0, variant: ns ? 1 : 0 }); map[y][x] = 'wall'; } }
     for (const [tx, ty] of [[cx - 3, cy - 3], [cx + 3, cy + 3], [cx - 3, cy + 3], [cx + 3, cy - 3]]) if (inb(tx, ty) && map[ty][tx] !== 'water' && map[ty][tx] !== 'wall') props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a });
     decorAt('bench', cx + 2, cy + 3, 1, 1, 0, 0x6a4528, 0x8a3b2e); decorAt('bench', cx - 2, cy - 3, 1, 1, 1, 0x6a4528, 0x8a3b2e);
     if (hs[0]) decorAt('chest', hs[0].gx - 1, hs[0].gy + hs[0].h - 1, 1, 1, seed % 5, 0x6a4528, 0x8a3b2e);
