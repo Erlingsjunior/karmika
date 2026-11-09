@@ -16,7 +16,8 @@ import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
 import { fams, runeDrop, frestaMark, RCOL, RNAME, parseRune, type RFam } from './runas-magia';
 import { kitOf, type SkillId } from './kits';
-import { vfxCast, vfxImpact, elementOf } from './sistemas/vfx';
+import { vfxCast, vfxImpact, elementOf, vfxProjectile, vfxProjectileFree, vfxTrail } from './sistemas/vfx';
+import type { Element } from './sistemas/vfx';
 import { makeFire } from './sistemas/fogo';
 import { createEnemies, ELITE_TYPES, EDEF, type Enemy } from './enemies';
 import { buildBeast, buildWolf, type Beast } from './werewolf3d';
@@ -1919,7 +1920,7 @@ export function createGameplay(d: GameplayDeps) {
           for (let k = 0; k < 34; k++) d.particles.spawn(p0.x + rnd(-0.4, 0.4), p0.y + rnd(0.1, 1.9), p0.z + rnd(-0.4, 0.4), { vx: rnd(-1.2, 1.2), vy: rnd(0, 2), vz: rnd(-1.2, 1.2), life: 0.6, s0: 0.32, s1: 0.04, c0: kitKey === 'bru' ? 0x1a0a20 : 0xffffff, c1: col, a: 1, drag: 2 });
           beam(p0.clone().setY(p0.y + 1), new THREE.Vector3(tx, d.world.heightAt(tx, tz) + 1, tz), col, 0.05, 0.25); ringFx(p0.x, p0.z, col, 0.8); blinkCol = col; return true; }
         case 'fireball': { if (!ok('cast')) return false; pending.push({ at: now + TEMPO * 0.3, fn: () => { const from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 1.2); const dx = tx - from.x, dz = tz - from.z, L = Math.max(1, Math.hypot(dx, dz)), sp = 17;
-            const fb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffd070 })); fxAdd(fb);
+            const fb = vfxProjectile('fire', 0.34); fxAdd(fb); /* 08/11: bola de fogo com chamas de cartão (sistemas/vfx.ts) */
             bolts.push({ p: from, v: new THREE.Vector3(dx / L * sp, 0, dz / L * sp), life: L / sp, mul: 1.0, col: 0xff6a1a, big: true, m: fb, straight: true, sk: 'fireball', boom: { r: 2.6 * sc.area, mul: 1.7, fn: (x, z) => { for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - x, e.pos.z - z) < 2.6 * sc.area + e.def.radius) e.burn = Math.max(e.burn ?? 0, 3); } } }); } }); return true; }
         case 'chainlight': { const first = enemies.nearest(hp, 10 * sc.range); if (!first) { logMsg('Nenhum inimigo perto para o raio.', '#ff9a8a'); return false; } if (!ok('cast')) return false;
           const hops = 4 + (sc.tier >= 1 ? 1 : 0), hit = new Set<Enemy>(); let cur: Enemy | null = first, from = h.weaponTip(new THREE.Vector3()); from.y = Math.max(from.y, 1.2);
@@ -2318,7 +2319,7 @@ export function createGameplay(d: GameplayDeps) {
       for (const b of bolts) if (b.big && Math.random() < 0.9) d.particles.spawn(b.p.x + rnd(-0.3, 0.3), b.p.y + rnd(-0.3, 0.3), b.p.z + rnd(-0.3, 0.3), { life: 0.35, s0: 1.2, s1: 0.2, c0: 0xffffff, c1: b.col ?? col, a: 1 });
       for (let i = bolts.length - 1; i >= 0; i--) {
         const b = bolts[i]; b.life -= dt; b.p.addScaledVector(b.v, dt);
-        if (b.m && b.straight) { b.m.position.copy(b.p); b.m.rotation.set(0, Math.atan2(b.v.x, b.v.z), 0); }
+        if (b.m && b.straight) { b.m.position.copy(b.p); if (!b.m.userData.proj) b.m.rotation.set(0, Math.atan2(b.v.x, b.v.z), 0); else if (Math.random() < 0.35) vfxTrail(b.p, (b.m.userData.proj as { el: Element }).el, 1); }
         else if (b.m) { b.m.position.copy(b.p); b.m.rotation.set(-now * 22, Math.atan2(b.v.x, b.v.z), 0, 'YXZ'); if (Math.random() < 0.5) d.particles.spawn(b.p.x, b.p.y, b.p.z, { life: 0.18, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: 0x9aa8c0, a: 0.6 }); }
         else if (!b.quiet) d.particles.spawn(b.p.x, b.p.y, b.p.z, { vx: rnd(-0.3, 0.3), vy: rnd(-0.2, 0.3), vz: rnd(-0.3, 0.3), life: 0.4, s0: 0.5, s1: 0.08, c0: b.col ?? col, c1: 0x203050, a: 0.9, drag: 2 });
         if (!b.quiet) d.particles.spawn(b.p.x, b.p.y, b.p.z, { life: 0.12, s0: 0.7, s1: 0.5, c0: 0xffffff, c1: b.col ?? col, a: 1 }); else if (!b.m) d.particles.spawn(b.p.x, b.p.y, b.p.z, { life: 0.08, s0: 0.35, s1: 0.1, c0: 0xffffff, c1: b.col ?? col, a: 1 });
@@ -2336,7 +2337,7 @@ export function createGameplay(d: GameplayDeps) {
           if (!b.quiet) { d.audio.boom(); st.shake = Math.max(st.shake, 0.25); }
           if (!b.quiet) for (let k = 0; k < 18; k++) d.particles.spawn(b.p.x, b.p.y, b.p.z, { vx: rnd(-3, 3), vy: rnd(-1, 3), vz: rnd(-3, 3), life: 0.6, s0: 0.5, s1: 0.05, c0: 0xffffff, c1: b.col ?? col, a: 1, drag: 2.5 });
           if (b.boom) { const bb = b.boom; b.boom = undefined; explode(b.p.x, b.p.z, d.world.heightAt(b.p.x, b.p.z), bb.r, bb.mul, b.col ?? col, bb.stun ?? 0, b.p.clone().sub(b.v), (b.sk as SkillId | undefined) ?? 'slam'); bb.fn?.(b.p.x, b.p.z); }
-          if (b.m) d.scene.remove(b.m);
+          if (b.m) { if (b.m.userData.proj) vfxProjectileFree(b.m); else d.scene.remove(b.m); }
           bolts.splice(i, 1);
         }
       }

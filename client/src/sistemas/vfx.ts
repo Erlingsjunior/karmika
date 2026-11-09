@@ -7,6 +7,7 @@
    - um orçamento por quadro: no máximo N efeitos vivos; o mais velho sai primeiro;
    - texturas compartilhadas: um anel, uma rajada, um pilar, um círculo de runas, um raio — a cor vem do material. */
 import * as THREE from 'three';
+import { makeFire } from './fogo';
 
 const ADD = THREE.AdditiveBlending;
 function cv(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d')!); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
@@ -107,6 +108,41 @@ export function vfxTick(dt: number) {
     else { m.opacity = u < 0.2 ? 1 : 1 - (u - 0.2) / 0.8; const s = f.s0 + (f.s1 - f.s0) * ease(Math.min(1, u * 3)); f.o.scale.set(0.5 + s * 0.4, s, 1); } }
 }
 export const vfxCount = () => live.length;
+
+/* ---------- PROJÉTEIS POR ELEMENTO (08/11: "os projéteis antigos no sistema novo de efeitos") ----------
+   Antes toda bola de magia era uma esfera clara com um halo. Agora cada elemento tem corpo próprio, feito das mesmas peças baratas:
+   fogo = miolo + halo + duas chamas de cartão (as do sistema de fogo) que lambem para trás e tremulam;
+   gelo = cristal (octaedro) com brilho e três estilhaços girando em volta;
+   raio = miolo branco com faíscas que piscam;  sagrado = esfera dourada com anel em halo;
+   sombra/arcano/veneno = miolo escuro com halo da cor e fumaça que fica para trás.
+   O grupo gira sozinho (vfxProjTick); o rastro vem de vfxTrail a cada poucos quadros. */
+const projGeo = { ball: new THREE.SphereGeometry(1, 10, 8), oct: new THREE.OctahedronGeometry(1, 0), ring: new THREE.TorusGeometry(1, 0.08, 6, 20) };
+const projLive = new Set<THREE.Group>();
+export function vfxProjectile(el: Element, r = 0.35): THREE.Group {
+  const g = new THREE.Group(); const c = ELEMENT_COLOR[el]; g.userData.proj = { el, t: Math.random() * 9 }; g.userData.dyn = true;
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: T_FLASH, color: c, transparent: true, opacity: 0.55, depthWrite: false, blending: ADD, fog: false })); halo.scale.setScalar(r * 2.8); g.add(halo);
+  const core = (col: number, geo: THREE.BufferGeometry, k: number, solid = false) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, fog: false, toneMapped: false, transparent: !solid, opacity: solid ? 1 : 0.85, blending: solid ? THREE.NormalBlending : ADD, depthWrite: solid })); m.scale.setScalar(r * k); g.add(m); return m; };
+  if (el === 'fire') { core(0xffd080, projGeo.ball, 0.4); for (let i = 0; i < 2; i++) { const f = makeFire(r * 2.4, i ? 'red' : 'warm', 'torch', i * 7 + 3); f.position.set(0, -r * 0.9, 0); f.userData.baseS = 1; g.add(f); } }
+  else if (el === 'ice') { core(0xbfe8ff, projGeo.oct, 0.6).userData.spin = 2; for (let i = 0; i < 3; i++) { const sh = core(0xa8e0ff, projGeo.oct, 0.2); sh.userData.orbit = i / 3 * 6.283; sh.userData.orbR = r * 1.5; } }
+  else if (el === 'shock') { core(0xe0f4ff, projGeo.ball, 0.3); for (let i = 0; i < 3; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: T_FLASH, color: 0xd8f0ff, transparent: true, depthWrite: false, blending: ADD, fog: false })); sp.scale.setScalar(r * 1.6); sp.userData.flick = i; g.add(sp); } }
+  else if (el === 'holy') { core(0xfff0c0, projGeo.ball, 0.4); const rg = core(0xffe08a, projGeo.ring, 1.0); rg.userData.spin = 1.5; rg.rotation.x = 1.2; }
+  else if (el === 'earth') { core(0x8a6a4a, projGeo.oct, 0.75, true).userData.spin = 3; const sh = core(0xc89a5a, projGeo.oct, 0.3, true); sh.userData.orbit = 1.5; sh.userData.orbR = r * 1.5; }
+  else { core(el === 'blood' ? 0x5a0a12 : 0x160a24, projGeo.ball, 0.45, true); const rg = core(c, projGeo.ring, 0.8); rg.userData.spin = -2.2; rg.rotation.x = 0.8; }
+  projLive.add(g); return g;
+}
+/** solta o grupo do projétil (devolve as chamas ao nada; o resto é lixo barato) */
+export function vfxProjectileFree(g: THREE.Object3D) { projLive.delete(g as THREE.Group); g.parent?.remove(g); }
+/** rastro atrás de um projétil (chame a cada ~50 ms) */
+export function vfxTrail(pos: THREE.Vector3, el: Element, k = 1) {
+  if (el === 'fire') vfxSmoke(pos, 0x3a2420, 0.7 * k, 0.7, 0.5); else if (el === 'ice') vfxSmoke(pos, 0xd8f0ff, 0.6 * k, 0.5, 0.2); else if (el === 'shock') vfxFlash(pos, 0xd8f0ff, 0.5 * k, 0.12);
+  else if (el === 'holy') vfxFlash(pos, 0xfff0c0, 0.6 * k, 0.2); else vfxSmoke(pos, ELEMENT_COLOR[el], 0.7 * k, 0.8, 0.3);
+}
+export function vfxProjTick(dt: number) {
+  for (const g of projLive) { if (!g.parent) { projLive.delete(g); continue; } const d = g.userData.proj as { t: number }; d.t += dt;
+    for (const ch of g.children) { const u = ch.userData as { spin?: number; orbit?: number; flick?: number }; if (u.spin) { ch.rotation.y += dt * u.spin; ch.rotation.x += dt * u.spin * 0.6; }
+      if (u.orbit !== undefined) { const a = u.orbit + d.t * 4, R = (u as { orbR?: number }).orbR ?? 0.5; ch.position.set(Math.cos(a) * R, Math.sin(a * 1.7) * R * 0.5, Math.sin(a) * R); ch.rotation.y += dt * 5; }
+      if (u.flick !== undefined) { const on = Math.sin(d.t * 23 + u.flick * 2.1) > 0.3; ch.visible = on; ch.position.set((Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6, (Math.random() - 0.5) * 0.6); } } }
+}
 
 /** o elemento mais parecido com uma cor (para magias antigas que só têm a cor do golpe) */
 export function elementOf(col: number): Element { const c = new THREE.Color(col), h = { h: 0, s: 0, l: 0 }; c.getHSL(h);

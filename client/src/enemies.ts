@@ -1,6 +1,8 @@
 import { RUNAS } from './runas';
 import { monRoll } from './dados-rpg';
 import * as THREE from 'three';
+import { vfxProjectile, vfxProjectileFree, vfxTrail, elementOf } from './sistemas/vfx';
+import type { Element } from './sistemas/vfx';
 import { buildBeast, buildWolf, buildBoar, buildDeer } from './werewolf3d';
 import { buildUndead } from './undead3d';
 import { charShadow, createCharacter, type Hero3D } from './characters';
@@ -504,13 +506,9 @@ export function createEnemies(ctx: EnemyCtx) {
   /* 28/10 (Erling): o preparo das magias dos monstros 10% mais longo (dá para desviar) */
   for (const sp of Object.values(SPELLS)) if (sp) sp.delay *= 1.1;
   const casts: { m: THREE.Mesh; x: number; z: number; t: number; s: Spell; dmg: number; from: THREE.Vector3; src?: Enemy; ball?: THREE.Object3D }[] = [];
-  const ballGeo = new THREE.SphereGeometry(1, 12, 8);
   /** bola de fogo: miolo claro + halo da cor da magia; nasce na mão de quem conjura e voa em arco até o círculo */
-  function makeBall(s: Spell) {
-    const g = new THREE.Group();
-    const core = new THREE.Mesh(ballGeo, new THREE.MeshBasicMaterial({ color: 0xfff0c0, fog: false })); core.scale.setScalar(s.proj! * 0.55);
-    const halo = new THREE.Mesh(ballGeo, new THREE.MeshBasicMaterial({ color: s.col, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); halo.scale.setScalar(s.proj!);
-    g.add(core, halo); g.scale.setScalar(0.3); ctx.scene.add(fine(g)); return g;
+  function makeBall(s: Spell) { /* 08/11: corpo por elemento (sistemas/vfx.ts) — fogo com chamas, gelo em cristal, raio em faíscas… */
+    const g = vfxProjectile(elementOf(s.col), s.proj! * 0.9); g.scale.setScalar(0.3); ctx.scene.add(fine(g)); return g;
   }
   function castSpell(e: Enemy, s: Spell, hero: THREE.Vector3) {
     const n = s.n ?? 1;
@@ -540,11 +538,11 @@ export function createEnemies(ctx: EnemyCtx) {
         const T0 = c.s.delay * 0.35, f = Math.max(0, Math.min(1, (c.t - T0) / (c.s.delay - T0))), gy = ctx.heightAt(c.x, c.z);
         if (c.t < T0) { c.ball.position.set(hx, hy, hz); c.ball.scale.setScalar(Math.max(0.05, c.t / T0) * (1 + 0.15 * Math.sin(c.t * 30))); if (c.src) c.from.copy(c.src.pos); }
         else { const fe = f * f * (3 - 2 * f) * 0.4 + f * 0.6; c.ball.position.set(hx + (c.x - hx) * fe, hy + (gy + 0.3 - hy) * fe + Math.sin(fe * Math.PI) * 2.2, hz + (c.z - hz) * fe); c.ball.scale.setScalar(1);
-          ctx.trail?.(c.ball.position.x, c.ball.position.y, c.ball.position.z, c.s.col); }
+          ctx.trail?.(c.ball.position.x, c.ball.position.y, c.ball.position.z, c.s.col); if (Math.random() < 0.3) vfxTrail(c.ball.position, (c.ball.userData.proj as { el: Element }).el, 0.8); }
         c.ball.rotation.y += dt * 9; c.ball.visible = c.t >= 0;
       }
       if (c.t >= c.s.delay) {
-        if (c.ball) { ctx.scene.remove(c.ball); c.ball = undefined; }
+        if (c.ball) { vfxProjectileFree(c.ball); c.ball = undefined; }
         if (ctx.heroAlive() && Math.hypot(hero.x - c.x, hero.z - c.z) < c.s.r && !ctx.heroInvuln()) ctx.damageHero(c.dmg, c.from);
         ctx.spellFx?.(c.x, c.z, c.s.col, c.s.r);
         ctx.scene.remove(c.m); casts.splice(i, 1);
