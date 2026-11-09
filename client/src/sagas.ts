@@ -13,7 +13,7 @@ const CS = 'Grão-Mestre Cassius', MI = 'Lady Mirela', YL = 'Arquiteta Ylva', BR
 /* ======================= O PALADINO — "A Luz que Guarda" ======================= */
 const PC = 'A Luz que Guarda';
 export const PALADIN: QuestDef[] = [
-  { id: 'pa1', chain: PC, name: 'O Voto da Aurora', lvl: 30, giver: CS, req: 'v_pal', next: 'pa2', xp: 0, gold: 220, items: [['potion_g', 3]],
+  { id: 'pa1', chain: PC, name: 'O Voto da Aurora', lvl: 20, giver: CS, req: 'v_pal', next: 'pa2', xp: 0, gold: 220, items: [['potion_g', 3]],
     text: 'Vigília na Abadia da Aurora até o amanhecer. Os mortos sobem a colina para apagar as velas: dez deles não podem chegar à capela.',
     objs: [{ kind: 'visit', poi: 'Abadia da Aurora' }, { kind: 'kill', type: 'zombie', n: 10 }],
     talk: [
@@ -35,7 +35,7 @@ export const PALADIN: QuestDef[] = [
       { label: '“…os que merecem.”', karma: 2, flag: 'pal_voto_merecem', say: 'Então você vai ter que julgar. Julgue devagar, criança. A espada é rápida demais.', why: 'Proteger quem merece ainda é proteger. Mas quem decide o merecimento carrega um peso que a luz não divide.' },
       { label: '“…a Ordem, acima de tudo.”', karma: -2, flag: 'pal_voto_ordem', say: '…A Ordem agradece. Eu, menos. Ordens erram, {nome}. Pessoas também. Mas pessoas pedem desculpas.', why: 'Lealdade a uma instituição não é crime. Mas você jurou por paredes, não por gente.' } ] } },
 
-  { id: 'pa2', chain: PC, name: 'Sinos que Não Tocam', lvl: 31, giver: CS, next: 'pa3', xp: 0, gold: 230,
+  { id: 'pa2', chain: PC, name: 'Sinos que Não Tocam', lvl: 21, giver: CS, next: 'pa3', xp: 0, gold: 230,
     text: 'Os sinos mecânicos da Abadia pararam. O Irmão Tobias, o sineiro, sabe qual peça quebrou. Leve o recado dele à Feitora Brunna, no balcão da Companhia de Latão, fora do portão sul de Askavik.',
     objs: [{ kind: 'talk', npc: TB }, { kind: 'talk', npc: BR }],
     talk: [
@@ -75,7 +75,7 @@ export const PALADIN: QuestDef[] = [
         { t: 'Talvez seja melhor deixar. Comércio é comércio.', a: 'Comércio é comércio até a encomenda ser um relógio que avisa a um vampiro quando o sol vai nascer.' } ] },
     ] },
 
-  { id: 'pa3', chain: PC, name: 'A Caravana Que Cheirava a Sangue', lvl: 32, giver: CS, next: 'pa4', xp: 0, gold: 260,
+  { id: 'pa3', chain: PC, name: 'A Caravana Que Cheirava a Sangue', lvl: 22, giver: CS, next: 'pa4', xp: 0, gold: 260,
     text: 'Uma carroça da Companhia foi parada na rota noturna de Corvoscuro, depois de Hrafnhöfn. Os carniçais do Conde guardam a carga até a Corte mandar buscar. Chegue antes.',
     objs: [{ kind: 'rescue', route: 'ak-cv', label: 'rota noturna de Corvoscuro', at: 0.62, note: 'Debaixo da lona, seis caixas lacradas com cera vermelha. Numa delas, um relógio de latão sem ponteiros: em vez das horas, ele marca quanto falta para o sol nascer. Endereçado: “Ao Conde, com os cumprimentos da Academia.”' }],
     talk: [
@@ -96,7 +96,7 @@ export const PALADIN: QuestDef[] = [
       { label: 'Deixa a carroça seguir e traz o aviso a Cassius.', karma: 4, flag: 'pal_avisou', say: 'Você deixou o mundo como estava e trouxe a verdade para casa. Isso é mais difícil do que queimar.', why: 'Você escolheu saber em vez de punir. A verdade nas mãos certas pesa mais que uma fogueira.' },
       { label: 'Confisca a carga e vende o relógio em Hrafnhöfn.', karma: -5, flag: 'pal_vendeu_relogio', say: '…Vendeu. Para quem, {nome}? Quem compra um relógio desses em Hrafnhöfn? Eu vou rezar para você não descobrir.', why: 'Você tirou a arma de um vampiro e a vendeu ao primeiro que pagou. Ganhou ouro; a luz perdeu um pouco de você.' } ] } },
 
-  { id: 'pa4', chain: PC, name: 'O Ninho do Cemitério', lvl: 33, giver: CS, turnin: SO, next: 'pa5', xp: 0, gold: 280, gear: 1,
+  { id: 'pa4', chain: PC, name: 'O Ninho do Cemitério', lvl: 23, giver: CS, turnin: SO, next: 'pa5', xp: 0, gold: 280, gear: 1,
     text: 'As Catacumbas de Askavik estão sendo abertas por dentro: alguém vende ossos de jarls a um bruxo. Desça, limpe os corredores e leve o relato à Bispa Solveig, na Igreja Kármica de Askavik.',
     objs: [{ kind: 'visit', poi: 'Catacumbas de Askavik' }, { kind: 'kill', type: 'skeleton', n: 10 }, { kind: 'kill', type: 'ghoul', n: 4 }],
     talk: [
@@ -115,7 +115,7 @@ export const PALADIN: QuestDef[] = [
         { t: 'Quem fez isso merece a forca.', a: 'Talvez. Mas antes da forca, a pergunta: por quê? Cassius ensinou você a perguntar, espero.' } ] },
     ] },
 
-  { id: 'pa5', chain: PC, name: 'A Penitente', lvl: 34, giver: CS, next: 'pa6', xp: 0, gold: 300,
+  { id: 'pa5', chain: PC, name: 'A Penitente', lvl: 24, giver: CS, next: 'pa6', xp: 0, gold: 300,
     text: 'Edda, uma mulher mordida por um vampiro, fugiu sangrando e se escondeu perto da Igreja Abandonada. Os morcegos da Corte já a encontraram. Ligue a Vigília da Fé (F): as gotas de sangue dela só aparecem para quem vela. A Ordem manda "purificar". Vá, e decida com o seu voto.',
     objs: [{ kind: 'kill', type: 'bat', n: 8 }, { kind: 'sense', what: 'sangue', label: 'Seguir as gotas de sangue de Edda', at: 'Igreja Abandonada', dx: 6, dy: 9, from: 'Cemitério Esquecido' }],
     talk: [
@@ -136,7 +136,7 @@ export const PALADIN: QuestDef[] = [
       { label: 'Leva Edda à Abadia para a cura arriscada.', karma: 8, flag: 'pal_curou', say: 'Ela está na cela da aurora, rezando. Uma em três, {nome}. Se ela virar lá dentro, a culpa é minha também. Eu aceito.', why: 'Você arriscou a si mesmo e à Ordem por uma chance para alguém que pediu ajuda. É exatamente isso que o voto significa.' },
       { label: 'Deixa Edda fugir para a noite.', karma: -2, flag: 'pal_deixou_fugir', say: '…Ela vai virar. E vai lembrar de você. Torça para que seja com gratidão.', why: 'Você não quis matar e não quis arriscar. Deu a ela a liberdade, e ao mundo um vampiro a mais.' } ] } },
 
-  { id: 'pa6', chain: PC, name: 'A Catedral Precisa de Luz', lvl: 35, giver: CS, turnin: SO, next: 'pa7', xp: 0, gold: 320, items: [['potion_g', 3]],
+  { id: 'pa6', chain: PC, name: 'A Catedral Precisa de Luz', lvl: 26, giver: CS, turnin: SO, next: 'pa7', xp: 0, gold: 320, items: [['potion_g', 3]],
     text: 'A Companhia leva o novo órgão a vapor e os vitrais da Catedral de Askavik pela estrada de Austrvik. Os mortos que os Desfiados erguem rondam o caminho. Escolte a caravana desde Austrvik até a Catedral e entregue à Bispa Solveig.',
     objs: [{ kind: 'escort', route: 'au-ak', label: 'o órgão da Catedral (Austrvik → Askavik)' }],
     talk: [
@@ -156,7 +156,7 @@ export const PALADIN: QuestDef[] = [
         { t: 'Fique de olho na tecnocrata.', a: 'Fico de olho em todo mundo. É o meu ofício e o do Olho.' } ] },
     ] },
 
-  { id: 'pa7', chain: PC, name: 'O Bastião de Prata', lvl: 36, giver: CS, turnin: IL, next: 'pa8', xp: 0, gold: 340, gear: 1,
+  { id: 'pa7', chain: PC, name: 'O Bastião de Prata', lvl: 27, giver: CS, turnin: IL, next: 'pa8', xp: 0, gold: 340, gear: 1,
     text: 'A Ordem e o Clã Helsing não caçam juntos há vinte anos. Os lobisomens da estrada mudaram isso. Encontre a Mestra Ilsa Van Rhal em Sudrholt e cace com os caçadores.',
     objs: [{ kind: 'talk', npc: IL }, { kind: 'kill', type: 'werewolf', n: 6 }],
     talk: [
@@ -183,7 +183,7 @@ export const PALADIN: QuestDef[] = [
       'Diga ao Cassius que o Bastião de Prata caça com a Ordem de novo. E diga que eu não esqueci. Mas que está perdoado.',
     ] },
 
-  { id: 'pa8', chain: PC, name: 'Diabos na Fornalha', lvl: 37, giver: CS, next: 'pa9', xp: 0, gold: 360, items: [['potion_g', 3]],
+  { id: 'pa8', chain: PC, name: 'Diabos na Fornalha', lvl: 28, giver: CS, next: 'pa9', xp: 0, gold: 360, items: [['potion_g', 3]],
     text: 'Diabretes saem do Coração da Montanha, perto de Brasaforja: os anões cavaram fundo demais e abriram uma fenda. Afaste-os da entrada antes que desçam até as vilas.',
     objs: [{ kind: 'visit', poi: 'Coração da Montanha' }, { kind: 'kill', type: 'imp', n: 12 }],
     talk: [
@@ -199,7 +199,7 @@ export const PALADIN: QuestDef[] = [
       'Por enquanto a porta está segura. Um dia a Ordem vai ter que descer. Talvez você esteja lá.',
     ] },
 
-  { id: 'pa9', chain: PC, name: 'A Carta do Conde', lvl: 38, giver: CS, next: 'pa10', xp: 0, gold: 380,
+  { id: 'pa9', chain: PC, name: 'A Carta do Conde', lvl: 29, giver: CS, next: 'pa10', xp: 0, gold: 380,
     text: 'O Conde Vladislav mandou dizer que quer conversar. Lady Mirela, a emissária da Corte, espera um paladino em Corvoscuro, à noite. Vá, ouça, e traga a carta.',
     objs: [{ kind: 'talk', npc: MI }],
     talk: [
@@ -234,9 +234,9 @@ export const PALADIN: QuestDef[] = [
       { label: '“Recuse. Não negociamos com quem bebe sangue.”', karma: 1, flag: 'pal_recusou', say: 'É o que eu diria aos trinta anos. Não sei se é o que eu diria hoje. Mas a voz é sua.', why: 'Você foi fiel ao que a Ordem sempre foi. Fidelidade conta. Mas a guerra também.' },
       { label: '“Finja aceitar. Quando baixarem a guarda, atacamos.”', karma: -8, flag: 'pal_traiu', say: '…Você quer que a Ordem de Auréon minta com a mão sobre o escudo. Saia daqui antes que eu esqueça que te ensinei.', why: 'Uma trégua falsa é a pior das traições: usa a esperança do outro como arma. A luz não mente nem para vampiros.' } ] } },
 
-  { id: 'pa10', chain: PC, name: 'O Escudo de Auréon', lvl: 40, giver: CS, xp: 0, gold: 500, gear: 2, title: 'Escudo da Aurora',
+  { id: 'pa10', chain: PC, name: 'O Escudo de Auréon', lvl: 31, giver: CS, xp: 0, gold: 500, gear: 2, title: 'Escudo da Aurora',
     text: 'Os Desfiados atacam a Abadia com um exército de mortos erguidos. Esta é a noite em que a Ordem descobre se você é um escudo ou um nome bonito. Segure a colina e volte para o juramento final.',
-    objs: [{ kind: 'level', n: 40 }, { kind: 'kill', type: 'skeleton', n: 12 }, { kind: 'kill', type: 'zombie', n: 10 }, { kind: 'kill', type: 'ghoul', n: 6 }, { kind: 'talk', npc: CS }],
+    objs: [{ kind: 'level', n: 31 }, { kind: 'kill', type: 'skeleton', n: 12 }, { kind: 'kill', type: 'zombie', n: 10 }, { kind: 'kill', type: 'ghoul', n: 6 }, { kind: 'talk', npc: CS }],
     talk: [
       'Chegou a noite que eu esperava desde que te vi pela primeira vez.',
       'Os Desfiados ergueram um exército de mortos e mandaram contra a Abadia. Querem apagar a vela que nunca se apagou. Querem que o mundo veja a luz cair.',
@@ -258,7 +258,7 @@ export const PALADIN: QuestDef[] = [
 /* ======================= O VAMPIRO — "A Sede Educada" ======================= */
 const VC = 'A Sede Educada';
 export const VAMPIRE: QuestDef[] = [
-  { id: 'va1', chain: VC, name: 'O Convite de Cera Vermelha', lvl: 30, giver: MI, req: 'v_vam', next: 'va2', xp: 0, gold: 220, items: [['potion_g', 3]],
+  { id: 'va1', chain: VC, name: 'O Convite de Cera Vermelha', lvl: 20, giver: MI, req: 'v_vam', next: 'va2', xp: 0, gold: 220, items: [['potion_g', 3]],
     text: 'A noite de Corvoscuro precisa saber que você pertence a ela. Oito morcegos da colina obedecem a quem tem o sangue do Conde. Prove, e volte para dizer por que aceitou.',
     objs: [{ kind: 'kill', type: 'bat', n: 8 }],
     talk: [
@@ -280,7 +280,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: '“Por alguém que amo, que já foi mordido.”', karma: 2, flag: 'vam_amor', say: 'Ah. Para não deixar alguém sozinho na noite eterna. Esse é o motivo mais antigo da Corte. O do próprio Conde, dizem.', why: 'Você atravessou uma porta sem volta para não abandonar alguém. O motivo pesa a favor, mesmo que a porta pese contra.' },
       { label: '“Por vingança. Tenho uma conta a cobrar.”', karma: -1, flag: 'vam_vinganca', say: 'Vingança é paciente. Nós também. Combina. Só cuidado: a conta sempre sai maior do que a dívida.', why: 'A vingança tem um motivo, e motivos contam. Mas ela costuma cobrar de quem não devia nada.' } ] } },
 
-  { id: 'va2', chain: VC, name: 'A Primeira Sede', lvl: 31, giver: MI, next: 'va3', xp: 0, gold: 230,
+  { id: 'va2', chain: VC, name: 'A Primeira Sede', lvl: 21, giver: MI, next: 'va3', xp: 0, gold: 230,
     text: 'A sede chegou. A Corte tem regras: bebe-se de bichos, de quem consente, de quem tentou matar você. Nunca de inocentes. Cace javalis e lobos para aprender a beber sem matar gente.',
     objs: [{ kind: 'kill', type: 'boar', n: 5 }, { kind: 'kill', type: 'wolf', n: 5 }],
     talk: [
@@ -302,7 +302,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: '“Bebi de alguém que deixou. Um viajante, por uma moeda.”', karma: 2, flag: 'vam_consentiu', say: 'Pediu, pagou e ele disse sim. Isso é a Corte. Isso é civilização.', why: 'Você matou a sede respeitando a vontade do outro. Não é pureza, mas é honra.' },
       { label: '“Bebi de um pastor que dormia no campo. Até o fim.”', karma: -10, flag: 'vam_matou_inocente', say: '…Então você quebrou a primeira regra na primeira noite. A Corte vai anotar isso também. E a Ordem vai saber o caminho até você.', why: 'Um inocente dormindo, sem chance de dizer não. É o ato que transforma alguém em monstro. O Olho guardou.' } ] } },
 
-  { id: 'va3', chain: VC, name: 'Encomenda de Latão', lvl: 32, giver: MI, next: 'va4', xp: 0, gold: 260,
+  { id: 'va3', chain: VC, name: 'Encomenda de Latão', lvl: 22, giver: MI, next: 'va4', xp: 0, gold: 260,
     text: 'O Conde encomendou à Academia um relógio de sangue. A Companhia de Latão traz pela rota noturna. Fale com a Feitora Brunna, fora do portão sul de Askavik, e escolte a carroça desde o portão leste até Corvoscuro.',
     objs: [{ kind: 'talk', npc: BR }, { kind: 'escort', route: 'ak-cv', label: 'a encomenda do Conde (rota noturna de Corvoscuro)' }],
     talk: [
@@ -332,7 +332,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: 'Protegeu a caixa até o fim, sem tocar no lacre.', karma: 1, flag: 'vam_leal', say: 'Lacre inteiro. A Corte confia em você um pouco mais esta noite.', why: 'Cumprir o que prometeu, mesmo podendo bisbilhotar, é a base de qualquer confiança.' },
       { label: 'Abriu a caixa para ver o que a Academia vende ao Conde.', karma: -1, flag: 'vam_espiou', say: '…E o que você viu? Ah. As engrenagens têm a marca da Ordem por dentro. A Academia vende para os dois lados. Guarde isso. Para mim.', why: 'Curiosidade não é maldade. Mas você quebrou um lacre que prometeu proteger.' } ] } },
 
-  { id: 'va4', chain: VC, name: 'O Sol Filtrado', lvl: 33, giver: MI, turnin: MI, next: 'va5', xp: 0, gold: 280,
+  { id: 'va4', chain: VC, name: 'O Sol Filtrado', lvl: 23, giver: MI, turnin: MI, next: 'va5', xp: 0, gold: 280,
     text: 'O Conde quer vitrais que filtram o sol para o castelo. A Arquiteta Ylva, na Academia da Graxa de Porto Caldeira, sabe fazer, mas cobra caro. Vá ouvir o preço.',
     objs: [{ kind: 'talk', npc: YL }],
     talk: [
@@ -362,7 +362,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: 'Rouba o sangue de um vampiro selvagem preso nas masmorras da Corte.', karma: -4, flag: 'vam_roubou_sangue', say: 'Discreto e eficiente. O pobre selvagem não vai reclamar. Nem tem mais voz.', why: 'Você pagou com o corpo de alguém que não podia dizer não. Que ele fosse um monstro não muda o que você fez.' },
       { label: 'Negocia: troca o sangue por um segredo da Corte, sem valor real.', karma: 2, flag: 'vam_negociou', say: 'Uma meia-verdade bem contada vale mais que um frasco. Você vai longe na Corte, {nome}.', why: 'Você encontrou um caminho sem sangue nenhum. A esperteza que não fere ninguém pesa a favor.' } ] } },
 
-  { id: 'va5', chain: VC, name: 'Os Filhos Perdidos', lvl: 34, giver: MI, next: 'va6', xp: 0, gold: 300, gear: 1,
+  { id: 'va5', chain: VC, name: 'Os Filhos Perdidos', lvl: 24, giver: MI, next: 'va6', xp: 0, gold: 300, gear: 1,
     text: 'Vampiros que quebraram as regras viraram selvagens e matam vilas inteiras. Eles se escondem perto da Catedral Abandonada: ligue a Sede de Sangue (F) e siga o cheiro. São filhos do Conde. Decida o que fazer com eles.',
     objs: [{ kind: 'sense', what: 'cheiro', label: 'Farejar o sangue dos filhos perdidos', at: 'Catedral Abandonada', dx: -8, dy: 10 }, { kind: 'kill', type: 'ghoul', n: 10 }],
     talk: [
@@ -381,7 +381,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: 'Acaba com ele. Não há volta para quem caiu tanto.', karma: 3, flag: 'vam_matou_filhos', say: 'Fez o que a Ordem faria. Rápido e limpo. Às vezes é misericórdia.', why: 'Você parou alguém que matava vilas inteiras, e fez sem crueldade. Pesa a favor de quem foi salvo.' },
       { label: 'Traz ele de volta à Corte, acorrentado, para tentar a cura.', karma: 5, flag: 'vam_trouxe', say: 'Um filho perdido de volta à mesa. O Conde vai lembrar disso por um século. E eu também.', why: 'Você deu uma chance a quem já não tinha nenhuma. É mais difícil e mais perigoso que matar.' } ] } },
 
-  { id: 'va6', chain: VC, name: 'O Paladino na Estrada', lvl: 35, giver: MI, next: 'va7', xp: 0, gold: 320,
+  { id: 'va6', chain: VC, name: 'O Paladino na Estrada', lvl: 26, giver: MI, next: 'va7', xp: 0, gold: 320,
     text: 'O Paladino Aldric está perguntando por você em Askavik. Sabe o que você é. A cidade é terra de paz: ninguém se fere lá dentro. Vá ouvir o que ele quer. Depois conte à Corte.',
     objs: [{ kind: 'talk', npc: AL }],
     talk: [
@@ -413,7 +413,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: '“Ameacei. Ele vai pensar duas vezes antes de procurar a Corte.”', karma: 0, flag: 'vam_ameacou_aldric', say: 'Uma ameaça bem feita salva mais vidas do que uma espada. Às vezes.', why: 'Você não feriu ninguém, mas trocou uma mão estendida por medo.' },
       { label: '“Esperei ele sair da cidade e bebi dele. Quase até o fim.”', karma: -8, flag: 'vam_bebeu_aldric', say: '…Ele sobreviveu? Ótimo para ele. Péssimo para nós. A Ordem inteira vai saber o seu nome amanhã.', why: 'Ele ofereceu conversa e você respondeu com os dentes. Atacar quem veio em paz é das sombras mais fundas.' } ] } },
 
-  { id: 'va7', chain: VC, name: 'Banquete em Corvoscuro', lvl: 36, giver: MI, next: 'va8', xp: 0, gold: 340,
+  { id: 'va7', chain: VC, name: 'Banquete em Corvoscuro', lvl: 27, giver: MI, next: 'va8', xp: 0, gold: 340,
     text: 'O Conde dá um banquete em Corvoscuro para os filhos da Corte. Você foi convidado. Alguém na mesa trouxe veneno para a taça do Conde. Fale com Vladislav à mesa e afaste os morcegos do envenenador.',
     objs: [{ kind: 'talk', npc: VL }, { kind: 'kill', type: 'bat', n: 10 }],
     talk: [
@@ -443,7 +443,7 @@ export const VAMPIRE: QuestDef[] = [
       { label: 'Chantageia o traidor em segredo: agora ele te deve tudo.', karma: -4, flag: 'vam_chantagem', say: 'Um devedor dentro da Corte. Útil. Perigoso. Muito Corte.', why: 'Você transformou um crime em moeda. Guardou um assassino perto do Conde para lucrar com ele.' },
       { label: 'Troca as taças e deixa o traidor beber o próprio veneno.', karma: -2, flag: 'vam_trocou_tacas', say: 'Poético. O Conde aplaudiu. Eu também. Mas lave as mãos: prata deixa marca.', why: 'Era um assassino, e morreu pela arma que trouxe. Mas você foi juiz e carrasco sozinho.' } ] } },
 
-  { id: 'va8', chain: VC, name: 'Sangue de Hemara', lvl: 37, giver: MI, next: 'va9', xp: 0, gold: 360, gear: 1,
+  { id: 'va8', chain: VC, name: 'Sangue de Hemara', lvl: 28, giver: MI, next: 'va9', xp: 0, gold: 360, gear: 1,
     text: 'Na Cripta de Hemara dorme a noiva morta que guardava um véu que acalma a sede. O véu está lá embaixo, entre os mortos que ela não deixa descansar. Traga notícias do véu.',
     objs: [{ kind: 'visit', poi: 'Cripta de Hemara' }, { kind: 'kill', type: 'skeleton', n: 10 }, { kind: 'kill', type: 'zombie', n: 6 }],
     talk: [
@@ -462,7 +462,7 @@ export const VAMPIRE: QuestDef[] = [
         { t: 'Ainda não decidi.', a: 'O véu espera. Hemara esperou a vida inteira; pode esperar mais um pouco.' } ] },
     ] },
 
-  { id: 'va9', chain: VC, name: 'A Trégua', lvl: 38, giver: MI, next: 'va10', xp: 0, gold: 380,
+  { id: 'va9', chain: VC, name: 'A Trégua', lvl: 29, giver: MI, next: 'va10', xp: 0, gold: 380,
     text: 'O Conde escreveu uma carta de trégua à Ordem de Auréon. Alguém da Corte precisa entregá-la nas mãos do Grão-Mestre Cassius, na Abadia de Austrvik. Você.',
     objs: [{ kind: 'talk', npc: CS }],
     talk: [
@@ -494,9 +494,9 @@ export const VAMPIRE: QuestDef[] = [
       { label: '“Abri e acrescentei uma ameaça, para eles levarem a sério.”', karma: -3, flag: 'vam_ameacou_carta', say: '…Você acrescentou. Ótimo. Agora a carta de paz parece uma carta de guerra. Bom trabalho.', why: 'Você colocou o seu orgulho dentro de uma carta de paz. Uma ameaça escondida envenena qualquer trégua.' },
       { label: '“Rasguei no caminho. A Corte não precisa de paz com assassinos.”', karma: -5, flag: 'vam_rasgou_carta', say: 'Então você mentiu ao Conde e à Ordem de uma vez. Talento. Terrível, mas talento.', why: 'Você decidiu sozinho que a guerra devia continuar e mentiu para os dois lados. Muitas vidas pesam nisso.' } ] } },
 
-  { id: 'va10', chain: VC, name: 'A Subida ao Castelo', lvl: 40, giver: MI, turnin: VL, xp: 0, gold: 500, gear: 2, title: 'Sangue da Corte',
+  { id: 'va10', chain: VC, name: 'A Subida ao Castelo', lvl: 31, giver: MI, turnin: VL, xp: 0, gold: 500, gear: 2, title: 'Sangue da Corte',
     text: 'O Conde convida você a subir a colina. A estrada até o castelo é guardada por carniçais que não respeitam ninguém. Chegue ao portão do Castelo da Colina Vampírica e volte para receber o nome da Corte das mãos do Conde.',
-    objs: [{ kind: 'level', n: 40 }, { kind: 'kill', type: 'ghoul', n: 8 }, { kind: 'visit', poi: 'Castelo da Colina Vampírica' }, { kind: 'talk', npc: VL }],
+    objs: [{ kind: 'level', n: 31 }, { kind: 'kill', type: 'ghoul', n: 8 }, { kind: 'visit', poi: 'Castelo da Colina Vampírica' }, { kind: 'talk', npc: VL }],
     talk: [
       'Chegou a noite. O Conde vai receber você no alto da colina. Nem todos os filhos sobem. A maioria nunca vê o castelo de perto.',
       'O caminho é perigoso. Os carniçais da colina não reconhecem ninguém. Nem o próprio Conde, às vezes.',
@@ -516,7 +516,7 @@ export const VAMPIRE: QuestDef[] = [
 /* ======================= O TECNOCRATA — "O Preço do Progresso" ======================= */
 const TC = 'O Preço do Progresso';
 export const TECHNO: QuestDef[] = [
-  { id: 'te1', chain: TC, name: 'A Matrícula', lvl: 30, giver: YL, req: 'v_tec', next: 'te2', xp: 0, gold: 220, items: [['potion_g', 3]],
+  { id: 'te1', chain: TC, name: 'A Matrícula', lvl: 20, giver: YL, req: 'v_tec', next: 'te2', xp: 0, gold: 220, items: [['potion_g', 3]],
     text: 'O teste de campo da Academia: seis diabretes de laboratório escaparam do porão (um aluno abriu a jaula errada). Recapture-os à força e traga minério de ferro para a sua primeira torreta.',
     objs: [{ kind: 'kill', type: 'imp', n: 6 }, { kind: 'collect', item: 'ore_i', n: 6 }],
     talk: [
@@ -537,7 +537,7 @@ export const TECHNO: QuestDef[] = [
         { t: 'Enquanto não custar a mim, tudo bem.', a: 'Vai custar. Um dia. Mas aprecio a franqueza.', sombra: 1 } ] },
     ] },
 
-  { id: 'te2', chain: TC, name: 'Latão e Estrada', lvl: 31, giver: YL, next: 'te3', xp: 0, gold: 240,
+  { id: 'te2', chain: TC, name: 'Latão e Estrada', lvl: 21, giver: YL, next: 'te3', xp: 0, gold: 240,
     text: 'A Companhia das Caravanas de Latão é o braço comercial da Academia. Apresente-se à Feitora Brunna, fora do portão sul, e faça a sua primeira escolta: Askavik → Hrafnhöfn, saindo do portão leste.',
     objs: [{ kind: 'talk', npc: BR }, { kind: 'escort', route: 'ak-hr', label: 'Askavik → Hrafnhöfn' }],
     talk: [
@@ -562,7 +562,7 @@ export const TECHNO: QuestDef[] = [
       'Agora você conhece a estrada. A estrada também conhece você. Isso vai ser útil.',
     ] },
 
-  { id: 'te3', chain: TC, name: 'O Órgão da Catedral', lvl: 32, giver: YL, next: 'te4', xp: 0, gold: 260,
+  { id: 'te3', chain: TC, name: 'O Órgão da Catedral', lvl: 22, giver: YL, next: 'te4', xp: 0, gold: 260,
     text: 'O órgão a vapor e os sinos novos da Catedral de Askavik precisam de instalação. A Bispa Solveig não confia em engrenagens. Vá à Catedral e fale com ela.',
     objs: [{ kind: 'visit', poi: 'Catedral de Askavik' }, { kind: 'talk', npc: SO }],
     talk: [
@@ -594,7 +594,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Instalou só o órgão. Honesto, como prometeu à Bispa.', karma: 3, flag: 'tec_honesto', say: 'Sem ouvido. Hm. Vou fingir que não estou decepcionada. A Bispa vai confiar em você, e isso também é um recurso.', why: 'Você teve a chance de espionar quem confiou a casa a você e não espionou. Confiança respeitada pesa a favor.' },
       { label: 'Escondeu o "ouvido" no fole, como a Academia pediu.', karma: -3, flag: 'tec_ouvido', say: 'Perfeito. A partir de hoje, a Academia escuta as rezas da Catedral. E os planos. Sobretudo os planos.', why: 'Você usou a confiança de uma casa de fé para espionar. O Olho viu o tubo escondido.' } ] } },
 
-  { id: 'te4', chain: TC, name: 'Relógio de Sangue', lvl: 33, giver: YL, next: 'te5', xp: 0, gold: 280,
+  { id: 'te4', chain: TC, name: 'Relógio de Sangue', lvl: 23, giver: YL, next: 'te5', xp: 0, gold: 280,
     text: 'O Conde quer um segundo relógio de sangue. Lady Mirela, a emissária da Corte, recebe em Corvoscuro, só à noite. Os paladinos pediram em segredo que você sabote o mecanismo. Leve o relógio e decida.',
     objs: [{ kind: 'talk', npc: MI }],
     talk: [
@@ -623,7 +623,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Funciona perfeitamente. Você não sabotou.', karma: 0, flag: 'tec_entregou', say: 'Neutro. Como a Academia. O Conde vai continuar comprando, a Ordem vai continuar reclamando. Equilíbrio.', why: 'Você não feriu ninguém e não tomou lado. O Olho anota que você é fiel ao trato.' },
       { label: 'Atrasa vinte minutos, como a Ordem pediu.', karma: -2, flag: 'tec_sabotou', say: 'Vinte minutos. Algum vampiro vai queimar numa manhã. Talvez um que merecia. Talvez não. Você nunca vai saber.', why: 'Você matou à distância, com uma engrenagem, alguém que nunca viu. A Ordem agradece; o Olho pesa.' } ] } },
 
-  { id: 'te5', chain: TC, name: 'Caravana Caída', lvl: 34, giver: YL, next: 'te6', xp: 0, gold: 300, gear: 1,
+  { id: 'te5', chain: TC, name: 'Caravana Caída', lvl: 24, giver: YL, next: 'te6', xp: 0, gold: 300, gear: 1,
     text: 'Uma caravana da Companhia caiu no Passo de Midvangr, entre Kaldrfoss e Brasaforja. Os lobos do passo e diabretes cercam os destroços. Limpe e examine: a Brunna acha que foi traição.',
     objs: [{ kind: 'rescue', route: 'kf-bf', label: 'Passo de Midvangr', at: 0.42, note: 'No livro de bordo, a letra da cocheira: “Rota e horário passados por um tal de V., em Askavik, por trinta moedas.” Embaixo, o lacre de um anel com um corvo. Vesna Corvo-Negro, a agiota da praça.' }],
     talk: [
@@ -641,7 +641,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Entrega a prova à Guarda de Askavik.', karma: 3, flag: 'tec_denunciou_vesna', say: 'O Capitão Eirik prendeu a Vesna esta manhã. A Companhia perdeu uma informante e ganhou estradas mais seguras.', why: 'Você escolheu a lei e a segurança de quem anda nas estradas. Justiça pública pesa a favor.' },
       { label: 'Chantageia a Vesna: o silêncio custa uma parte do lucro dela.', karma: -4, flag: 'tec_chantagem_vesna', say: 'Uma sócia nova, hm? A Vesna paga bem e esquece pouco. Cuidado com as costas.', why: 'Você transformou a morte do Ivo em renda. As estradas continuam vendidas, agora com você no meio.' } ] } },
 
-  { id: 'te6', chain: TC, name: 'O Neutro Verdadeiro', lvl: 35, giver: YL, next: 'te7', xp: 0, gold: 320,
+  { id: 'te6', chain: TC, name: 'O Neutro Verdadeiro', lvl: 26, giver: YL, next: 'te7', xp: 0, gold: 320,
     text: 'A Academia precisa provar que não tem dono. Lady Mirela (Corvoscuro, à noite) e a Bispa Solveig (Askavik) vão fazer encomendas grandes. Ouça as duas. Depois decida se a Academia recusa as duas, ou escolhe um lado.',
     objs: [{ kind: 'talk', npc: MI }, { kind: 'talk', npc: SO }],
     talk: [
@@ -679,7 +679,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Aceita a Igreja: o guardião e os arquivos proibidos.', karma: -2, flag: 'tec_lado_igreja', say: 'Os arquivos proibidos… está bem. A Corte não vai gostar. E a Corte não esquece.', why: 'Você escolheu um lado por conhecimento. A Academia virou arma da Igreja contra a noite.' },
       { label: 'Aceita a Corte: o triplo do ouro.', karma: -2, flag: 'tec_lado_corte', say: 'O triplo. A Academia vai ter o melhor laboratório do mundo. E a Bispa vai pregar contra nós todo domingo.', why: 'Você escolheu um lado por ouro. A Academia virou arma da Corte contra a luz.' } ] } },
 
-  { id: 'te7', chain: TC, name: 'Engrenagens nos Recifes', lvl: 36, giver: YL, turnin: OR, next: 'te8', xp: 0, gold: 340, gear: 1,
+  { id: 'te7', chain: TC, name: 'Engrenagens nos Recifes', lvl: 27, giver: YL, turnin: OR, next: 'te8', xp: 0, gold: 340, gear: 1,
     text: 'O primeiro navio a vapor da Companhia afundou nos Recifes da Graxa com a caldeira-protótipo. O Mestre Orvald, em Porto Caldeira, quer as peças de volta, sobretudo a válvula-mestra, que a maré enterrou na praia: ligue a Lógica do Mundo (F) para achá-la. Os afogados de lá não querem devolver.',
     objs: [{ kind: 'visit', poi: 'Porto Caldeira' }, { kind: 'kill', type: 'skeleton', n: 10 }, { kind: 'sense', what: 'dispositivo', label: 'Achar a válvula-mestra da caldeira na areia', at: 'Porto Caldeira', dx: 16, dy: 12 }, { kind: 'talk', npc: OR }],
     talk: [
@@ -699,7 +699,7 @@ export const TECHNO: QuestDef[] = [
         { t: 'A Academia agradece pela devolução.', a: 'A Academia não agradece nada. Agradeça você, e eu acredito.' } ] },
     ] },
 
-  { id: 'te8', chain: TC, name: 'O Autômato do Bispo', lvl: 37, giver: YL, turnin: SO, next: 'te9', xp: 0, gold: 360,
+  { id: 'te8', chain: TC, name: 'O Autômato do Bispo', lvl: 28, giver: YL, turnin: SO, next: 'te9', xp: 0, gold: 360,
     text: 'Mesmo depois de tudo, a Catedral ainda precisa de um guardião contra os Desfiados. Junte o ferro para o autômato e leve a proposta final à Bispa Solveig.',
     objs: [{ kind: 'collect', item: 'ore_i', n: 10 }],
     talk: [
@@ -718,7 +718,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Recusa a chave. O autômato foi presente.', karma: 2, flag: 'tec_recusou_arquivos', say: 'Recusou. Então era mesmo presente. O Olho viu, tecnocrata. Eu também.', why: 'Você deixou um gesto bom ser só bom, sem cobrar depois. É raro e pesa a favor.' },
       { label: 'Aceita a chave para a Academia.', karma: -1, flag: 'tec_arquivos', say: 'Confiança, então. Espero que ela não vire arma nas mãos da sua mestra.', why: 'Você aceitou o que foi dado livremente. Não é crime, mas um presente que vira troca perde um pouco da luz.' } ] } },
 
-  { id: 'te9', chain: TC, name: 'Sabotagem', lvl: 38, giver: YL, next: 'te10', xp: 0, gold: 380,
+  { id: 'te9', chain: TC, name: 'Sabotagem', lvl: 29, giver: YL, next: 'te10', xp: 0, gold: 380,
     text: 'Alguém está explodindo caravanas da Companhia na Grande Rota (Askavik → Austrvik). Os Desfiados, a Ordem ou alguém de dentro? Vá ao ponto da última explosão, limpe os saqueadores e examine os destroços.',
     objs: [{ kind: 'rescue', route: 'ak-au', label: 'a Grande Rota', at: 0.55, note: 'Entre a lona queimada, um pavio de pólvora da própria Academia, cortado na medida certa. E um bilhete: “Sem estradas, sem vendas ao Conde. Sem vendas ao Conde, sem relógios. — Um amigo da Ordem que não usa escudo.” Alguém de dentro da Academia, a mando de um paladino.' }],
     talk: [
@@ -737,9 +737,9 @@ export const TECHNO: QuestDef[] = [
       { label: 'Culpa os Desfiados em público para proteger a Academia.', karma: -5, flag: 'tec_culpou_desfiados', say: 'Os Desfiados levam a culpa, a Academia fica limpa. E o aluno… vai fazer de novo. Eles sempre fazem.', why: 'Você mentiu para salvar a reputação da Academia, e o verdadeiro culpado continua livre para explodir outras carroças.' },
       { label: 'Resolve em silêncio: expulsa o aluno, sem contar a ninguém.', karma: 1, flag: 'tec_silencio', say: 'Discreto. A Academia agradece. A Ordem nunca vai saber o que um amigo dela fez.', why: 'Você parou o crime sem guerra entre os lados. Mas três cocheiros morreram, e as famílias nunca vão saber por quê.' } ] } },
 
-  { id: 'te10', chain: TC, name: 'A Grande Rota', lvl: 40, giver: YL, xp: 0, gold: 500, gear: 2, title: 'Mestre de Rota',
+  { id: 'te10', chain: TC, name: 'A Grande Rota', lvl: 31, giver: YL, xp: 0, gold: 500, gear: 2, title: 'Mestre de Rota',
     text: 'A Grande Rota, Askavik → Austrvik, vai ser inaugurada com escolta própria. A caravana leva carga para os dois lados: a Abadia e a Corte. Leve-a até o fim. A primeira rota com o seu nome.',
-    objs: [{ kind: 'level', n: 40 }, { kind: 'escort', route: 'ak-au', label: 'A Grande Rota (Askavik → Austrvik)' }, { kind: 'talk', npc: YL }],
+    objs: [{ kind: 'level', n: 31 }, { kind: 'escort', route: 'ak-au', label: 'A Grande Rota (Askavik → Austrvik)' }, { kind: 'talk', npc: YL }],
     talk: [
       'A Grande Rota. Askavik até Austrvik, passando por Lundr e Eikvik. A estrada mais longa da Companhia.',
       'A primeira caravana leva carga para todo mundo: sinos para a Abadia, vidros para o Conde, ferramentas para os anões, remédio para os vilarejos. Neutra. Como tem que ser.',
@@ -784,7 +784,7 @@ Object.assign(ECOS, {
 });
 
 /* ======================= as missões do instinto da raça (24/10) =======================
-   Cada raça aprende a ligar o seu Instinto (F) numa história curta, antes do nível 30: o humano rastreia um sequestro,
+   Cada raça aprende a ligar o seu Instinto (F) numa história curta, antes do nível 20: o humano rastreia um sequestro,
    o elfo conversa com um espírito da mata, o anão escuta a montanha. Depois disso, o mundo inteiro tem segredos esperando. */
 export const RACE_INSTINCT: QuestDef[] = [
   { id: 'hu1', chain: 'Instinto de Sobrevivência', name: 'O Sequestro de Skógar', lvl: 12, origin: 'human', giver: 'Marta, a Moleira', xp: 0, gold: 90, items: [['potion', 3]],
@@ -852,7 +852,7 @@ export const RACE_INSTINCT: QuestDef[] = [
    O Faro da Lua (o Instinto do lobisomem, tecla F) é a alma desta saga: a matilha caça pelo nariz. */
 const UL = 'Ulfrun, a Mãe-Alfa', UK = 'Ulfrik', LC = 'A Lua que Chama';
 export const WEREWOLF: QuestDef[] = [
-  { id: 'la1', chain: LC, name: 'O Primeiro Uivo', lvl: 30, giver: UL, req: 'v_lob', next: 'la2', xp: 0, gold: 220, items: [['potion_g', 3]],
+  { id: 'la1', chain: LC, name: 'O Primeiro Uivo', lvl: 20, giver: UL, req: 'v_lob', next: 'la2', xp: 0, gold: 220, items: [['potion_g', 3]],
     text: 'A primeira caçada com a matilha. Quatro cervos e quatro javalis: o que se mata, se come, e o que se come, se divide.',
     objs: [{ kind: 'kill', type: 'deer', n: 4 }, { kind: 'kill', type: 'boar', n: 4 }],
     talk: [
@@ -873,7 +873,7 @@ export const WEREWOLF: QuestDef[] = [
       { label: 'Come primeiro. Quem caçou, come.', karma: -1, flag: 'lob_primeiro', say: 'Justo, pela lei das feras. Pela nossa, menos. Os filhotes vão lembrar.', why: 'Não houve crueldade, só fome. Mas a matilha mede quem você é pelo que você divide.' },
       { label: 'Deixa uma parte para os corvos e para a mata.', karma: 2, flag: 'lob_mata', say: 'A mata devolve o que recebe. Selvar fazia assim. Faz tempo que ninguém faz.', why: 'Você devolveu à terra uma parte do que tirou dela. Respeito pelo que alimenta pesa a favor.' } ] } },
 
-  { id: 'la2', chain: LC, name: 'O Filhote Perdido', lvl: 31, giver: UL, next: 'la3', xp: 0, gold: 230,
+  { id: 'la2', chain: LC, name: 'O Filhote Perdido', lvl: 21, giver: UL, next: 'la3', xp: 0, gold: 230,
     text: 'Bran, um filhote de três luas, fugiu de medo da primeira transformação e se perdeu perto de Dalborg. Ligue o Faro da Lua (F) e siga o cheiro dele antes que os lobos selvagens o achem.',
     objs: [{ kind: 'sense', what: 'cheiro', label: 'Farejar o rastro do filhote Bran', at: 'Dalborg', dx: -18, dy: -16 }, { kind: 'kill', type: 'wolf', n: 6 }],
     talk: [
@@ -890,7 +890,7 @@ export const WEREWOLF: QuestDef[] = [
       'Você trouxe um filhote de volta, {nome}. Na matilha isso vale mais do que dez cabeças de caçador.',
     ] },
 
-  { id: 'la3', chain: LC, name: 'Prata na Estrada', lvl: 32, giver: UL, next: 'la4', xp: 0, gold: 260,
+  { id: 'la3', chain: LC, name: 'Prata na Estrada', lvl: 22, giver: UL, next: 'la4', xp: 0, gold: 260,
     text: 'O Clã Helsing espalhou armadilhas de prata nas trilhas da matilha. A Mãe-Alfa quer que alguém vá a Sudrholt falar com a Mestra Ilsa Van Rhal. Falar. Por enquanto.',
     objs: [{ kind: 'talk', npc: IL }],
     talk: [
@@ -919,7 +919,7 @@ export const WEREWOLF: QuestDef[] = [
       { label: 'Assusta o caçador e quebra a besta dele.', karma: -2, flag: 'lob_assustou', say: 'Sem sangue, pelo menos. Mas o Bastião vai ouvir que um lobo rosnou depois de conversar.', why: 'Você não feriu ninguém, mas trocou a palavra por medo.' },
       { label: 'Ataca. Um caçador a menos.', karma: -8, flag: 'lob_matou_cacador', say: '…Você manchou a trégua no mesmo dia. A prata vai cair na nossa mata como chuva.', why: 'Você matou quem não te atacou, logo depois de conversar em paz. A traição pesa duas vezes.' } ] } },
 
-  { id: 'la4', chain: LC, name: 'O Cheiro do Conde', lvl: 33, giver: UL, next: 'la5', xp: 0, gold: 280,
+  { id: 'la4', chain: LC, name: 'O Cheiro do Conde', lvl: 23, giver: UL, next: 'la5', xp: 0, gold: 280,
     text: 'Crias do Conde caçam na mata da matilha à noite. Ligue o Faro da Lua (F) perto do Covil dos Lobisomens e siga o cheiro de sangue velho até elas. Depois derrube os morcegos que vigiam a trilha.',
     objs: [{ kind: 'sense', what: 'cheiro', label: 'Farejar o sangue velho das crias do Conde', at: 'Covil dos Lobisomens', dx: 16, dy: -12 }, { kind: 'kill', type: 'bat', n: 10 }],
     talk: [
@@ -934,7 +934,7 @@ export const WEREWOLF: QuestDef[] = [
       'Vou mandar um corvo a Lady Mirela. Ela vai fingir surpresa. Ela é boa nisso.',
     ] },
 
-  { id: 'la5', chain: LC, name: 'A Fome', lvl: 34, giver: UL, next: 'la6', xp: 0, gold: 300, gear: 1,
+  { id: 'la5', chain: LC, name: 'A Fome', lvl: 24, giver: UL, next: 'la6', xp: 0, gold: 300, gear: 1,
     text: 'Os selvagens do Covil, lobisomens que a lua quebrou e ninguém foi buscar, mataram a família do moleiro de Dalborg. Quatro deles. Vá ao Covil e decida o que a matilha faz com os seus quebrados.',
     objs: [{ kind: 'visit', poi: 'Covil dos Lobisomens' }, { kind: 'kill', type: 'werewolf', n: 4 }],
     talk: [
@@ -950,7 +950,7 @@ export const WEREWOLF: QuestDef[] = [
       { label: 'Leva ele preso à Árvore-Mãe, para tentar trazê-lo de volta.', karma: 5, flag: 'lob_selvagem_salvo', say: 'Ele dorme acorrentado na raiz mais grossa. Talvez lembre de quem é Hilda. Talvez não. Você deu a chance.', why: 'Você deu ao quebrado a chance que alguém deu a você. É a misericórdia mais difícil, porque é perigosa.' },
       { label: 'Deixa ele fugir. Ele é da matilha, aconteça o que acontecer.', karma: -4, flag: 'lob_selvagem_solto', say: '…Ele vai matar de novo, {nome}. E desta vez a prata vem com razão.', why: 'Lealdade cega a quem mata inocentes é cumplicidade. A matilha não é desculpa para tudo.' } ] } },
 
-  { id: 'la6', chain: LC, name: 'O Caçador Ferido', lvl: 35, giver: UL, next: 'la7', xp: 0, gold: 320,
+  { id: 'la6', chain: LC, name: 'O Caçador Ferido', lvl: 26, giver: UL, next: 'la7', xp: 0, gold: 320,
     text: 'Um caçador do Clã Helsing caiu numa ravina perto da Clareira de Selvar e sangra há uma noite. A matilha sentiu o cheiro. Ligue o Faro da Lua (F), siga o sangue e decida o que fazer com ele.',
     objs: [{ kind: 'sense', what: 'sangue', label: 'Seguir o sangue do caçador ferido', at: 'Clareira de Selvar', dx: -16, dy: 14 }],
     talk: [
@@ -967,7 +967,7 @@ export const WEREWOLF: QuestDef[] = [
       { label: 'Deixa água, a besta dele, e vai embora.', karma: 2, flag: 'lob_deixou_agua', say: 'Água e a arma. Se ele sobreviver, vai saber quem deixou. Se não, a mata decide.', why: 'Você não matou nem abandonou de todo. Uma bondade com distância ainda é bondade.' },
       { label: 'A fome fala mais alto.', karma: -10, flag: 'lob_comeu_cacador', say: '…A trégua acabou, {nome}. Acabou na sua boca.', why: 'Você matou um homem indefeso para saciar a fome. É exatamente o que os caçadores dizem que somos.' } ] } },
 
-  { id: 'la7', chain: LC, name: 'O Alfa de Selvar', lvl: 36, giver: UL, turnin: UK, next: 'la8', xp: 0, gold: 340, gear: 1,
+  { id: 'la7', chain: LC, name: 'O Alfa de Selvar', lvl: 27, giver: UL, turnin: UK, next: 'la8', xp: 0, gold: 340, gear: 1,
     text: 'Ulfrik, o alfa da Clareira de Selvar, nunca se curvou ao Uivo Antigo. A Mãe-Alfa quer as duas matilhas juntas antes da próxima lua de sangue. Prove o seu valor na neve (oito lobos gélidos) e fale com Ulfrik.',
     objs: [{ kind: 'kill', type: 'frostwolf', n: 8 }, { kind: 'talk', npc: UK }],
     talk: [
@@ -991,7 +991,7 @@ export const WEREWOLF: QuestDef[] = [
       'Selvar vai uivar com a gente. Não para a gente: com a gente. Você conseguiu o que eu não consegui em cem anos.',
     ] },
 
-  { id: 'la8', chain: LC, name: 'A Noite Sem Lua', lvl: 37, giver: UL, next: 'la9', xp: 0, gold: 360, items: [['potion_g', 3]],
+  { id: 'la8', chain: LC, name: 'A Noite Sem Lua', lvl: 28, giver: UL, next: 'la9', xp: 0, gold: 360, items: [['potion_g', 3]],
     text: 'Na lua nova os lobisomens ficam fracos, e os carniçais da Terra Maldita sabem disso. Eles cercam a mata da matilha toda lua nova. Desta vez, a matilha espera por eles.',
     objs: [{ kind: 'kill', type: 'ghoul', n: 10 }],
     talk: [
@@ -1003,7 +1003,7 @@ export const WEREWOLF: QuestDef[] = [
     ],
     done: ['Dez carniçais a menos e nenhum filhote ferido. Na lua nova. Isso vai para as canções da Árvore-Mãe.'] },
 
-  { id: 'la9', chain: LC, name: 'Sangue Velho', lvl: 38, giver: UL, next: 'la10', xp: 0, gold: 380,
+  { id: 'la9', chain: LC, name: 'Sangue Velho', lvl: 29, giver: UL, next: 'la10', xp: 0, gold: 380,
     text: 'Lady Mirela, a emissária da Corte, mandou chamar um lobo da Ulfrun em Corvoscuro, à noite. Os vampiros querem algo da matilha. Vá ouvir. E não morda.',
     objs: [{ kind: 'talk', npc: MI }],
     talk: [
@@ -1029,9 +1029,9 @@ export const WEREWOLF: QuestDef[] = [
       { label: 'Conta tudo e aconselha aceitar: a colina vale o risco.', karma: -3, flag: 'lob_conselho_aceita', say: '…A colina. Por um paladino. Eu vou pensar, {nome}. Mas não gostei de ouvir isso da sua boca.', why: 'Você foi honesto, e isso conta. Mas aconselhou trocar uma vida por terra.' },
       { label: 'Esconde a proposta e diz que a Corte só queria ameaçar.', karma: -5, flag: 'mentiu_ulfrun', say: 'Só ameaça? Hm. A sua voz tremeu na palavra "só". Eu vou descobrir, filhote. Sempre descubro.', why: 'Você mentiu para a sua alfa sobre algo que mexe com a vida da matilha inteira.' } ] } },
 
-  { id: 'la10', chain: LC, name: 'O Uivo Antigo', lvl: 40, giver: UL, xp: 0, gold: 500, gear: 2, title: 'Filho da Lua',
+  { id: 'la10', chain: LC, name: 'O Uivo Antigo', lvl: 31, giver: UL, xp: 0, gold: 500, gear: 2, title: 'Filho da Lua',
     text: 'A Lua de Sangue chega e todas as patrulhas descem para a mata. Corra com as duas matilhas juntas. Seis lobisomens selvagens, enlouquecidos pela lua, avançam sobre a Árvore-Mãe: pare-os, e volte para o uivo que dá o nome.',
-    objs: [{ kind: 'level', n: 40 }, { kind: 'kill', type: 'werewolf', n: 6 }, { kind: 'talk', npc: UL }],
+    objs: [{ kind: 'level', n: 31 }, { kind: 'kill', type: 'werewolf', n: 6 }, { kind: 'talk', npc: UL }],
     talk: [
       'Hoje a lua sangra. Hoje Selvar e o Uivo Antigo correm juntos pela primeira vez em duzentos anos. E você corre na frente.',
       'Os selvagens enlouquecem na lua de sangue. Eles vêm para a Árvore-Mãe, onde os filhotes dormem.',

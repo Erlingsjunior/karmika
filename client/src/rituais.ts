@@ -60,7 +60,7 @@ const REAL: Record<Madness, { name: string; text: string; objs: QuestDef['objs']
   louco: { name: 'Realinhamento do Cientista Louco', text: 'As suas criaturas andam soltas. Derrube os engenhoqueiros que enlouqueceram como você e leve as anotações à Grande Biblioteca, onde a ciência ainda tem limites.', objs: [{ kind: 'kill', type: 'tinker', n: 4 }, { kind: 'kill', type: 'automaton', n: 4 }, { kind: 'visit', poi: 'Grande Biblioteca' }] },
   academico: { name: 'Realinhamento do Acadêmico', text: 'Os cadernos não protegem ninguém. Volte ao campo: as torretas da Ferrugem atiram em quem passa, e só um tecnocrata sabe desligá-las.', objs: [{ kind: 'kill', type: 'turret', n: 4 }, { kind: 'kill', type: 'automaton', n: 6 }, { kind: 'visit', poi: 'Ferrugem' }] },
 };
-export function realignFor(m: Madness): QuestDef { const r = REAL[m]; return { id: 'real_' + m, name: r.name, lvl: 30, giver: 'O Olho', turnin: 'O Olho', text: r.text + '\nCumprido o realinhamento, a alma volta ao meio (0).', objs: r.objs, xp: 2000, gold: 0 } as QuestDef; }
+export function realignFor(m: Madness): QuestDef { const r = REAL[m]; return { id: 'real_' + m, name: r.name, lvl: 20, giver: 'O Olho', turnin: 'O Olho', text: r.text + '\nCumprido o realinhamento, a alma volta ao meio (0).', objs: r.objs, xp: 2000, gold: 0 } as QuestDef; }
 const M = (id: string, madness: Madness, giver: string, lvl: number, name: string, text: string, objs: QuestDef['objs'], talk: string[], done: string): QuestDef =>
   ({ id, chain: 'Loucura kármica', madness, name, lvl, giver, text, objs, xp: 500 + lvl * 20, gold: 30 + lvl * 3, talk, done: [done] } as QuestDef);
 export const MADNESS_QUESTS: QuestDef[] = [

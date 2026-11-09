@@ -622,8 +622,13 @@ const vid = createVidente({ karma: () => state.karma, name: () => profile?.name 
   onChoose: (p, rev) => {
     if (!profile) return; profile.path = p ? p.id : 'humano'; localStorage.setItem('karmika.char.v1', JSON.stringify(profile));
     if (!quests.q.done.includes('p01') && quests.q.active['p01'] && quests.complete(quests.def('p01'))) quests.turnIn(quests.def('p01'));
-    if (!p) { quests.accept({ id: 'v_hum', chain: 'O Caminho Humano', name: 'A Beleza de Ser Comum', lvl: 30, giver: 'Hrefna', turnin: 'Gunnar', text: `A Deusa viu em você o ${rev.name}, mas você escolheu esperar. Isso também é um caminho, e dos mais difíceis: o de quem não tem dom e mesmo assim fica de pé. Volte a Karmika e procure Gunnar, o construtor. Toda vida comum começa com uma casa.`, objs: [{ kind: 'talk', npc: 'Gunnar' }], xp: 900, gold: 80 });
-      game.logMsg('👁 Hrefna: “Esperar também é escolher. A vida comum tem a sua própria beleza.”', '#c9a0ff'); return; }
+    if (!p) { /* 09/11: cada povo puro tem a sua missão de primeiros passos (e de destravamento do XP de classe) */
+      const o = profile.origin ?? 'human';
+      const PURE = o === 'dwarf' ? { chain: 'Fio de Bigode', name: 'A Promessa do Bigode', turnin: 'Thane Borin Barba-Longa', text: `A Deusa viu em você o ${rev.name}, mas você escolheu ficar anão. Anão não vira outra coisa por capricho: promessa de anão é fio de bigode, e você acabou de fazer uma. Volte a Brasaforja e diga ao Thane Borin que ficou. Ele vai medir.` }
+        : o === 'elf' ? { chain: 'O Ciclo de Aliança', name: 'A Palavra da Mata', turnin: 'Anciã Faelwen', text: `A Deusa viu em você o ${rev.name}, mas você escolheu ficar elfo. A mata não pede que você seja outra coisa; pede que não traia o que é. Volte a Lithendel e diga à Anciã Faelwen que ficou. O ciclo de aliança continua com você.` }
+        : { chain: 'O Caminho Humano', name: 'A Beleza de Ser Comum', turnin: 'Gunnar', text: `A Deusa viu em você o ${rev.name}, mas você escolheu esperar. Isso também é um caminho, e dos mais difíceis: o de quem não tem dom e mesmo assim fica de pé. Volte a Karmika e procure Gunnar, o construtor. Toda vida comum começa com uma casa.` };
+      quests.accept({ id: 'v_hum', chain: PURE.chain, name: PURE.name, lvl: 20, giver: 'Hrefna', turnin: PURE.turnin, text: PURE.text, objs: [{ kind: 'talk', npc: PURE.turnin }], xp: 900, gold: 80 });
+      game.logMsg(o === 'dwarf' ? '👁 Hrefna: “Ficar também é escolher. Fio de bigode não se mexe.”' : o === 'elf' ? '👁 Hrefna: “Ficar também é escolher. A mata lembra de quem fica.”' : '👁 Hrefna: “Esperar também é escolher. A vida comum tem a sua própria beleza.”', '#c9a0ff'); return; }
     const objs: { kind: 'talk' | 'visit'; npc?: string; poi?: string }[] = [];
     if (p.id === 'pal') objs.push({ kind: 'talk', npc: 'Paladino Aldric' });
     if (p.id !== 'tec') objs.push({ kind: 'visit', poi: p.village });
@@ -631,10 +636,14 @@ const vid = createVidente({ karma: () => state.karma, name: () => profile?.name 
     /* a prova do mestre: cada caminho tem a sua */
     const TRIAL: Record<string, [string, unknown]> = { gue: ['6× Lobo Gélido', { kind: 'kill', type: 'frostwolf', n: 6 }], pal: ['8× Zumbi', { kind: 'kill', type: 'zombie', n: 8 }], cac: ['6× Carniçal', { kind: 'kill', type: 'ghoul', n: 6 }], tec: ['forjar 3 vezes Pregos', { kind: 'craft', recipe: 'Pregos', n: 3 }], vam: ['6× Morcego', { kind: 'kill', type: 'bat', n: 6 }], lob: ['1× Lobisomem', { kind: 'kill', type: 'werewolf', n: 1 }], mag: ['6× Fada Maliciosa', { kind: 'kill', type: 'fairy', n: 6 }], bru: ['6× Diabrete', { kind: 'kill', type: 'imp', n: 6 }] };
     (objs as unknown[]).push(TRIAL[p.id][1]);
-    quests.accept({ id: 'v_' + p.id, chain: 'O Caminho: ' + p.name, name: `O Caminho do ${p.name}`, lvl: 30, giver: 'Hrefna', turnin: mentor, text: `${p.line} Vá até ${p.place}${p.id === 'pal' ? ', levado pelo Paladino Aldric,' : ''} e apresente-se a ${mentor}. A prova: ${TRIAL[p.id][0]}. Ao passar e aceitar o mestre, a sua barra de classe recomeça do zero, sem volta.`, objs: objs as never, xp: 1200, gold: 100 });
+    quests.accept({ id: 'v_' + p.id, chain: 'O Caminho: ' + p.name, name: `O Caminho do ${p.name}`, lvl: 20, giver: 'Hrefna', turnin: mentor, text: `${p.line} Vá até ${p.place}${p.id === 'pal' ? ', levado pelo Paladino Aldric,' : ''} e apresente-se a ${mentor}. A prova: ${TRIAL[p.id][0]}. Ao passar e aceitar o mestre, a sua barra de classe recomeça do zero, sem volta.`, objs: objs as never, xp: 1200, gold: 100 });
     game.logMsg(`👁 Hrefna: “${p.mentor} espera por você. Que a Deusa encurte a sua estrada.”`, '#c9a0ff');
   } });
-queueMicrotask(() => quests.setOnDone?.((d) => { if (!d.id.startsWith('v_') || d.id === 'v_hum') { if (d.id === 'v_hum') game.logMsg('🏠 O Caminho Humano começa: casa, ofício, terra e gente.', '#ffe08a'); return; }
+/* 09/11 (proposta A): a missão da Vidente é a missão de DESTRAVAMENTO do XP de classe. A raça sobe até 60; quando a missão termina
+   (classe nova ou puro), o teto vai a 120. O id da missão (v_pal, v_hum…) diz o caminho escolhido. */
+const unlockCls = () => { const done = quests.q.done.some((id) => id.startsWith('v_')); game.setClsCap(done || (profile?.path && profile.path !== 'humano' && game.classInfo.name !== RACES[state.race].label) ? 120 : 60); };
+queueMicrotask(unlockCls);
+queueMicrotask(() => quests.setOnDone?.((d) => { if (d.id.startsWith('v_')) unlockCls(); if (!d.id.startsWith('v_') || d.id === 'v_hum') { if (d.id === 'v_hum') game.logMsg('🏠 O caminho do seu povo começa de verdade: o nível de classe sobe agora até 120.', '#ffe08a'); return; }
   const p = PATHS.find((x) => 'v_' + x.id === d.id); if (!p) return; takeClass(p); }));
 /** tornar-se a classe do caminho (a prova do mestre, ou o comando de teste /guerreiro, /paladino…) */
 function takeClass(p: (typeof PATHS)[number]) { if (game.changeClass(p.cls)) { tree.startClass(); applyKitAll(); applyRes(); setTimeout(() => offerVow(p.id), 3500); game.logMsg(`✦ Você agora trilha o caminho de ${p.cls}. A barra de classe recomeça do zero e a Árvore Kármica é a da sua classe.`, p.col); game.dmgText(heroPosNow().clone().setY(heroPosNow().y + 3), p.cls.toUpperCase(), true, p.col);

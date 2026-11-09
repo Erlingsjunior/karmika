@@ -1,6 +1,6 @@
 /* ---------- A alma: Fio da Vida, desencarne e reencarnação (Erling, 23/10) ----------
    - Fio da Vida: 3 fôlegos. Morrer com fôlego é uma QUEDA (volta na fonte, como sempre) e gasta um.
-     Um fôlego volta a cada dia real. Antes do nível 20 (o Olho ainda dorme) o Fio não se desgasta.
+     Um fôlego volta a cada dia real. Antes do nível 15 (o Olho ainda dorme) o Fio não se desgasta.
    - Sem fôlego, a alma DESENCARNA e escolhe:
        1. Mesmo corpo: volta igual, devendo uma Dívida Kármica de XP (2 níveis). Metade do XP ganho paga a dívida.
        2. Reencarnar: nova raça e aparência, mesmo nível, mochila, ouro, cofre e missões; volta SEM classe.
@@ -15,7 +15,7 @@ export type Soul = { breaths: number; regenAt: number; tears: number; debt: numb
   /** marcas que o mundo lembra (respostas, promessas, mentiras): os NPCs comentam */ marks?: string[] };
 
 const KEY = 'karmika.soul.v1';
-export const MAX_BREATHS = 3, MAX_TEARS = 3, FRAY_LVL = 20, CATCHUP_MUL = 4, DEBT_SHARE = 0.5;
+export const MAX_BREATHS = 3, MAX_TEARS = 3, FRAY_LVL = 15, CATCHUP_MUL = 4, DEBT_SHARE = 0.5;
 const DAY = 86_400_000;
 /** classes de raça (antes da Vidente): reencarnar numa raça diferente ainda conta como "a mesma classe" */
 export const BASE_CLASSES = ['Humano', 'Anão', 'Elfo'];

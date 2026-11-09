@@ -31,8 +31,8 @@ K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen();
     /* 26/10 (Erling): o corpo cai, o Olho vira Ampulheta, e a gente fica ali, morto, vendo a cena — até clicar e escolher ressurgir na cidade */
     const sub = left === undefined ? `O Olho guarda o que viu${K.profile ? `, <b>${K.profile.name}</b>` : ''}.` : left > 0 ? `O Fio da Vida perde um fôlego. Restam <b>${left}</b> de ${MAX_BREATHS}.` : 'Era o último fôlego. Se cair de novo, a alma desencarna.';
     deathPanel(sub, () => { if (K.profile?.eye) playDeath(K.profile.name, home.name, after, { title: 'Você ressurge', sub }); else after(); }); };
-  /* Fio da Vida: antes do Olho abrir (nível 20) não se desgasta; com fôlego é só uma queda; sem fôlego a alma desencarna */
-  if (!K.profile || K.game.st.lvl < FRAY_LVL || !K.profile.eye) { fall(); return; } /* o Fio só se gasta depois que o Olho abre (nível 20) */
+  /* Fio da Vida: antes do Olho abrir (nível 15) não se desgasta; com fôlego é só uma queda; sem fôlego a alma desencarna */
+  if (!K.profile || K.game.st.lvl < FRAY_LVL || !K.profile.eye) { fall(); return; } /* o Fio só se gasta depois que o Olho abre (nível 15) */
   if (K.soul.s.breaths > 0) { K.soul.s.breaths--; K.soul.save(); const b = K.soul.s.breaths;
     fall(b > 0 ? `🕯 Fio da Vida: restam ${b} de ${MAX_BREATHS} fôlegos. Um volta a cada dia.` : '🕯 Fio da Vida: este era o último fôlego. Se cair de novo antes de um voltar, a alma desencarna.', b); return; }
   K.soul.s.pending = 'choose'; K.soul.save(); K.limiar.prepare(); K.audio.soulRise(0.3);

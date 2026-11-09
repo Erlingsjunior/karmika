@@ -15,7 +15,7 @@ export interface SurrenderCtx {
   record(e: { title: string; what: string; delta: number; sealed?: boolean }): void;
   /** ele fugiu: abre a missão de busca e captura */
   fled(): void;
-  /** antes do nível 20 o Olho dorme: nada de julgamento na tela; a escolha fica guardada e é cobrada quando ele abrir */
+  /** antes do nível 15 o Olho dorme: nada de julgamento na tela; a escolha fica guardada e é cobrada quando ele abrir */
   sealed?: boolean;
 }
 const GOD = 'Marghar, o dos Caminhos';

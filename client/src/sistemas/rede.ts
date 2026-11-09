@@ -62,7 +62,7 @@ function chamado(id: number, name: string, fac: Fac, same: boolean, mine: boolea
   else if (same) K.game.logMsg(`⚑ ${name} ergueu o brasão de ${FAC[fac].name} aqui perto.`, fac === 'fio' ? '#d9b45a' : '#e0303a');
 }
 K.canvas.addEventListener('pointerdown', (e) => { if (e.button !== 1) return; e.preventDefault();
-  const f = myFac(); if (!f) { K.game.logMsg('⚑ O Chamado da Bandeira é só de quem jurou uma bandeira (nível 30, com a classe).', '#c8d8f0'); return; }
+  const f = myFac(); if (!f) { K.game.logMsg('⚑ O Chamado da Bandeira é só de quem jurou uma bandeira (nível 20, com a classe).', '#c8d8f0'); return; }
   if (net.state !== 'on') { K.game.logMsg('⚑ O Chamado só ecoa numa sala com outros caminhantes.', '#c8d8f0'); crestOver(K.hero.root, f); K.audio.horn(f); return; }
   const left = CALL_CD - (performance.now() - lastCall); if (lastCall && left > 0) { K.game.logMsg(`⚑ O Chamado descansa por mais ${Math.ceil(left / 60000)} min.`, '#c8d8f0'); return; }
   net.call(); });

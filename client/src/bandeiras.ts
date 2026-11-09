@@ -10,7 +10,7 @@ export const HV = 'Mestre Halvard', AL = 'Paladino Aldric', IG = 'Mestra Ingebor
 const BC = 'As Duas Bandeiras';
 
 export const BANNERS: QuestDef[] = [
-  { id: 'b01', chain: BC, name: 'O Fio de Ouro', lvl: 28, giver: HV, turnin: AL, req: 'a04', next: 'b02', xp: 1, gold: 160,
+  { id: 'b01', chain: BC, name: 'O Fio de Ouro', lvl: 19, giver: HV, turnin: AL, req: 'a04', next: 'b02', xp: 1, gold: 160,
     text: 'Antes de saber o que você vai ser, saiba por quem se luta nesta cidade. A Mestra Ingeborg, da Tecelagem Real do Fio, e o Paladino Aldric, emissário da Ordem, vão lhe mostrar o lado deles. Depois, prove que entendeu: os carniçais voltaram à estrada de Selvar. Oito a menos, e ninguém atravessa sozinho hoje.',
     objs: [{ kind: 'talk', npc: IG }, { kind: 'kill', type: 'ghoul', n: 8 }],
     talk: [
@@ -46,7 +46,7 @@ export const BANNERS: QuestDef[] = [
       'Agora atravesse a rua. A Corvina vai lhe dizer que eu sou um carcereiro gentil. Ouça. Ela não é má. Ela só está errada, e eu rezo todo dia para que seja eu o errado, porque assim ninguém precisaria morrer para sair.',
     ] },
 
-  { id: 'b02', chain: BC, name: 'O Fio Cortado', lvl: 28, giver: CV, turnin: MI, next: 'b03', xp: 1, gold: 160,
+  { id: 'b02', chain: BC, name: 'O Fio Cortado', lvl: 19, giver: CV, turnin: MI, next: 'b03', xp: 1, gold: 160,
     text: 'Corvina, a Desfiadora, tem a outra metade da história, e Lady Mirela, da Casa Noctavar, está em Askavik para contar a parte que Corvina não conta. Depois prove que entendeu: os mortos do campo santo fecharam a estrada de Grenivik de novo. Oito esqueletos a menos, e a passagem fica aberta para quem quiser ir.',
     objs: [{ kind: 'talk', npc: MI }, { kind: 'kill', type: 'skeleton', n: 8 }],
     talk: [
@@ -81,7 +81,7 @@ export const BANNERS: QuestDef[] = [
       'Agora, uma coisa que nem a Corvina nem a Ingeborg vão lhe dizer: procure a Velha Gunnhild. Ela guarda as relíquias e guarda outra coisa, mais antiga do que as duas bandeiras. Ela não gosta de falar. Insista.',
     ] },
 
-  { id: 'b03', chain: BC, name: 'A Porta Que Ninguém Abre', lvl: 29, giver: GU, turnin: GU, next: 'b04', xp: 1, gold: 120,
+  { id: 'b03', chain: BC, name: 'A Porta Que Ninguém Abre', lvl: 19, giver: GU, turnin: GU, next: 'b04', xp: 1, gold: 120,
     text: 'A Velha Gunnhild quer que você veja uma coisa antes de a Vidente ler a sua alma. No Cemitério Esquecido, perto de Karmika, há uma porta de pedra preta que não tem maçaneta. Ligue o Instinto (F) diante dela, olhe, e volte. Não bata.',
     objs: [{ kind: 'visit', poi: 'Cemitério Esquecido' }, { kind: 'sense', what: 'dispositivo', label: 'A porta de pedra preta sem maçaneta', at: 'Cemitério Esquecido', dx: 6, dy: -5 }],
     talk: [
@@ -103,7 +103,7 @@ export const BANNERS: QuestDef[] = [
       'Agora vá ao Halvard. Ele tem uma pergunta. E depois a Hrefna vai ter doze. Guarde a sua para o fim: as perguntas de quem ainda não jurou são as melhores.',
     ] },
 
-  { id: 'b04', chain: BC, name: 'A Pergunta', lvl: 29, giver: HV, turnin: HV, next: 'p01', xp: 1, gold: 140,
+  { id: 'b04', chain: BC, name: 'A Pergunta', lvl: 19, giver: HV, turnin: HV, next: 'p01', xp: 1, gold: 140,
     text: 'Você ouviu o Fio e os Desfiados, e viu o que não tem bandeira. Antes de a Vidente ler a sua alma, o Cronista Ormund Salveth, na Grande Biblioteca, quer anotar o que você viu; ele anota tudo. Depois volte ao Mestre Halvard: ele tem uma pergunta só, e ninguém responde por você.',
     objs: [{ kind: 'talk', npc: OS }],
     talk: [

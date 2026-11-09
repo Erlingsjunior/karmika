@@ -67,7 +67,7 @@ function talkTo(n: (typeof K.npcSys.npcs)[number]) {
   /* 06/11: o Livro de Guildas fica nas bibliotecas e com o Prefeito */
   if (nm === 'Prefeito Corvin Aldmar' || /Bibliotec|Cronista/i.test(n.def.role ?? '')) choices.push({ kind: 'custom', label: '📖 Ler o Livro de Guildas', hint: 'todas as guildas de Karmika', cb: () => { K.dlg.close(); K.social.openBook(); } });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => K.quests.openBoard() });
-  if (nm === 'Hrefna') { if (K.game.st.lvl >= 30 && (!K.profile?.path || K.profile.path === 'humano')) choices.push({ kind: 'custom', label: K.profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { K.dlg.close(); K.vid.open(); } }); else if (K.game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => K.dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
+  if (nm === 'Hrefna') { if (K.game.st.lvl >= 20 && (!K.profile?.path || K.profile.path === 'humano')) choices.push({ kind: 'custom', label: K.profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { K.dlg.close(); K.vid.open(); } }); else if (K.game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => K.dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => K.dlg.setText(K.npcSys.talk(n)) });
   choices.push({ kind: 'close', label: 'Até logo' });
   K.quests.onTalk(nm);

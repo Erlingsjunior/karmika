@@ -79,38 +79,38 @@ const REGIONS_L: Region[] = [
      elfos em Lithendel — e não do centro do mapa. Perto de cada berço e das cidades, bichos fracos; quanto mais longe, mais fortes.
      As três rotas de missão levam cada raça até Askavik, onde as academias recebem todos para escolher a classe. */
   // berço humano
-  { id: 1, name: 'Vale de Karmika', x: 212 + SH, y: 210 + SH, lo: 1, hi: 10, col: '#8fd08a' },
-  { id: 2, name: 'Bosques de Lundr', x: 296 + SH, y: 214 + SH, lo: 10, hi: 20, col: '#c8d870' },
-  { id: 3, name: 'Terra Maldita', x: 262 + SH, y: 318 + SH, lo: 10, hi: 20, col: '#d8a070' },
-  { id: 4, name: 'Charcos do Oeste', x: 92 + SH, y: 236 + SH, lo: 10, hi: 20, col: '#a0b878' },
-  { id: 5, name: 'Planalto de Askavik', x: 322 + SH, y: 112 + SH, lo: 10, hi: 20, col: '#e0c070' },
-  { id: 6, name: 'Cordilheira do Norte', x: 168 + SH, y: 62 + SH, lo: 20, hi: 30, col: '#b8c8e0' },
-  { id: 7, name: 'Mata do Leste', x: 386 + SH, y: 244 + SH, lo: 20, hi: 30, col: '#70c8a0' },
-  { id: 8, name: 'Colinas do Sul', x: 190 + SH, y: 384 + SH, lo: 20, hi: 30, col: '#e08a70' },
+  { id: 1, name: 'Vale de Karmika', x: 212 + SH, y: 210 + SH, lo: 1, hi: 7, col: '#8fd08a' },
+  { id: 2, name: 'Bosques de Lundr', x: 296 + SH, y: 214 + SH, lo: 7, hi: 13, col: '#c8d870' },
+  { id: 3, name: 'Terra Maldita', x: 262 + SH, y: 318 + SH, lo: 7, hi: 13, col: '#d8a070' },
+  { id: 4, name: 'Charcos do Oeste', x: 92 + SH, y: 236 + SH, lo: 7, hi: 13, col: '#a0b878' },
+  { id: 5, name: 'Planalto de Askavik', x: 322 + SH, y: 112 + SH, lo: 7, hi: 13, col: '#e0c070' },
+  { id: 6, name: 'Cordilheira do Norte', x: 168 + SH, y: 62 + SH, lo: 13, hi: 20, col: '#b8c8e0' },
+  { id: 7, name: 'Mata do Leste', x: 386 + SH, y: 244 + SH, lo: 13, hi: 20, col: '#70c8a0' },
+  { id: 8, name: 'Colinas do Sul', x: 190 + SH, y: 384 + SH, lo: 13, hi: 20, col: '#e08a70' },
   // berço anão (Montanha Negra): o sopé é fácil; o coração do vulcão, não
-  { id: 17, name: 'Sopé de Brasaforja', x: 556, y: 196, lo: 1, hi: 10, col: '#e0a070' },
-  { id: 18, name: 'Minas de Cinzalto', x: 700, y: 186, lo: 10, hi: 20, col: '#c08a60' },
-  { id: 19, name: 'Passo de Midvangr', x: 432, y: 176, lo: 10, hi: 20, col: '#c8c0a0' },
-  { id: 13, name: 'Coração da Montanha Negra', x: 645, y: 100, lo: 40, hi: 50, col: '#ff8a4a' },
+  { id: 17, name: 'Sopé de Brasaforja', x: 556, y: 196, lo: 1, hi: 7, col: '#e0a070' },
+  { id: 18, name: 'Minas de Cinzalto', x: 700, y: 186, lo: 7, hi: 13, col: '#c08a60' },
+  { id: 19, name: 'Passo de Midvangr', x: 432, y: 176, lo: 7, hi: 13, col: '#c8c0a0' },
+  { id: 13, name: 'Coração da Montanha Negra', x: 645, y: 100, lo: 31, hi: 42, col: '#ff8a4a' },
   // berço élfico
-  { id: 20, name: 'Bosque de Lithendel', x: 84, y: 406, lo: 1, hi: 10, col: '#9ae0a0' },
-  { id: 10, name: 'Florestas Élficas', x: 110, y: 300, lo: 10, hi: 20, col: '#7ad09a' },
-  { id: 21, name: 'Raízes Antigas', x: 60, y: 480, lo: 20, hi: 30, col: '#6ab08a' },
+  { id: 20, name: 'Bosque de Lithendel', x: 84, y: 406, lo: 1, hi: 7, col: '#9ae0a0' },
+  { id: 10, name: 'Florestas Élficas', x: 110, y: 300, lo: 7, hi: 13, col: '#7ad09a' },
+  { id: 21, name: 'Raízes Antigas', x: 60, y: 480, lo: 13, hi: 20, col: '#6ab08a' },
   // o mundo selvagem, longe dos berços
-  { id: 9, name: 'Montanha Viking', x: 190, y: 140, lo: 30, hi: 40, col: '#d8e4f0' },
-  { id: 11, name: 'Costa do Vapor e da Graxa', x: 432, y: 760, lo: 20, hi: 30, col: '#e0b878' },
-  { id: 22, name: 'Recifes da Graxa', x: 590, y: 770, lo: 30, hi: 40, col: '#d0a060' },
-  { id: 12, name: 'Floresta Encantada', x: 152, y: 575, lo: 40, hi: 50, col: '#b89aff' },
-  { id: 14, name: 'Colina Vampírica', x: 760, y: 280, lo: 50, hi: 60, col: '#e05a6a' },
-  { id: 15, name: 'Vale da Desgraça', x: 752, y: 450, lo: 50, hi: 60, col: '#b07ad0' },
-  { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 50, hi: 60, col: '#5ab05a' },
+  { id: 9, name: 'Montanha Viking', x: 190, y: 140, lo: 20, hi: 31, col: '#d8e4f0' },
+  { id: 11, name: 'Costa do Vapor e da Graxa', x: 432, y: 760, lo: 13, hi: 20, col: '#e0b878' },
+  { id: 22, name: 'Recifes da Graxa', x: 590, y: 770, lo: 20, hi: 31, col: '#d0a060' },
+  { id: 12, name: 'Floresta Encantada', x: 152, y: 575, lo: 31, hi: 42, col: '#b89aff' },
+  { id: 14, name: 'Colina Vampírica', x: 760, y: 280, lo: 42, hi: 53, col: '#e05a6a' },
+  { id: 15, name: 'Vale da Desgraça', x: 752, y: 450, lo: 42, hi: 53, col: '#b07ad0' },
+  { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 42, hi: 53, col: '#5ab05a' },
   /* 07/11 (Erling: "faltam monstros de nível 120 a 150 para quem está no topo"): AS BORDAS DO MUNDO. Longe dos três berços, nas pontas do
      mapa, a faixa sobe do 60 ao 150. O nível base para no 120: do 120 ao 150 é para grupo e para quem tem a Classe II */
-  { id: 23, name: 'Picos de Jotunheim', x: 346, y: 52, lo: 60, hi: 80, col: '#c8e0ff' }, /* 07/11: saiu do vulcão; agora é a serra de gelo nórdica ao norte, entre Hrimgard e Midvangr */
-  { id: 24, name: 'Pântano do Fim', x: 35, y: 690, lo: 60, hi: 80, col: '#6a8a5a' },
-  { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 80, hi: 100, col: '#9a8ab8' },
-  { id: 26, name: 'Costa dos Naufrágios', x: 210, y: 822, lo: 80, hi: 100, col: '#7aa8b8' },
-  { id: 27, name: 'Ermos de Sheitã', x: 828, y: 560, lo: 100, hi: 125, col: '#c05a3a' },
+  { id: 23, name: 'Picos de Jotunheim', x: 346, y: 52, lo: 53, hi: 76, col: '#c8e0ff' }, /* 07/11: saiu do vulcão; agora é a serra de gelo nórdica ao norte, entre Hrimgard e Midvangr */
+  { id: 24, name: 'Pântano do Fim', x: 35, y: 690, lo: 53, hi: 76, col: '#6a8a5a' },
+  { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 76, hi: 98, col: '#9a8ab8' },
+  { id: 26, name: 'Costa dos Naufrágios', x: 210, y: 822, lo: 76, hi: 98, col: '#7aa8b8' },
+  { id: 27, name: 'Ermos de Sheitã', x: 828, y: 560, lo: 98, hi: 125, col: '#c05a3a' },
 ];
 /** região do tile (Voronoi com ruído: bordas que serpenteiam) */
 function regionAt_L(x: number, y: number): Region {
@@ -1369,7 +1369,7 @@ function buildCity_L(): World {
       if (!c) return;
       const name = CAMPN[bi % CAMPN.length]; camp(name, c, 'forest', 3, 0x5a4a30); addFire(c.x + 3, c.y - 2);
       if (free(c.x - 3, c.y + 2)) block({ kind: 'chest', gx: c.x - 3, gy: c.y + 2, w: 1, h: 1, height: 0.6, wall: 0x5a3a1a, roof: 0xd9a441 });
-      spawns.push({ type: 'bandit', x: c.x, y: c.y, r: 5, n: 4, fixLvl: 8 + bi }, { type: 'bandit_arch', x: c.x + 2, y: c.y - 2, r: 4, n: 2, fixLvl: 8 + bi }, { type: 'bandit_chief', x: c.x, y: c.y + 1, r: 1, n: 1, fixLvl: 10 + bi });
+      spawns.push({ type: 'bandit', x: c.x, y: c.y, r: 5, n: 4, fixLvl: 5 + bi }, { type: 'bandit_arch', x: c.x + 2, y: c.y - 2, r: 4, n: 2, fixLvl: 5 + bi }, { type: 'bandit_chief', x: c.x, y: c.y + 1, r: 1, n: 1, fixLvl: 7 + bi });
       /* a torre: no quarto do caminho mais perto da vila de origem (a), encostada na estrada */
       const q = path[Math.floor(path.length * (l.a === a ? 0.22 : 0.78))], q2 = path[Math.min(path.length - 1, Math.floor(path.length * (l.a === a ? 0.22 : 0.78)) + 4)];
       const ddx = q2.x - q.x, ddy = q2.y - q.y, LL = Math.hypot(ddx, ddy) || 1, tnx = -ddy / LL, tny = ddx / LL; let tw: { x: number; y: number } | null = null;
@@ -1547,7 +1547,7 @@ function buildCity_L(): World {
   spawns.push({ type: 'imp', x: cat.x + 6, y: cat.y + 30, r: 6, n: 4 }, { type: 'rat', x: cat.x - 8, y: cat.y + 6, r: 5, n: 4 }, { type: 'imp', x: cat.x + 20, y: cat.y + 8, r: 5, n: 3 });
   for (let k = 0; k < 34; k++) addGrave(ch0.x - 4 + Math.round(r() * 16), ch0.y + 5 + Math.round(r() * 7));
   for (let k = 0; k < 6; k++) addBones(ch0.x - 3 + Math.round(r() * 14), ch0.y + 5 + Math.round(r() * 7));
-  spawns.push({ type: 'rat', x: ch0.x + 3, y: ch0.y + 8, r: 7, n: 4 }, { type: 'puglin', x: ch0.x + 4, y: ch0.y + 9, r: 6, n: 2 }, { type: 'fairy', x: ch0.x + 1, y: ch0.y + 6, r: 6, n: 2 }, { type: 'prince', x: ch0.x + 2, y: ch0.y - 3, r: 1, n: 1, fixLvl: 24 }); /* o Príncipe guarda a nave pelo lado norte, longe do cemitério dos aprendizes: é o chefe da missão de nível 24 */
+  spawns.push({ type: 'rat', x: ch0.x + 3, y: ch0.y + 8, r: 7, n: 4 }, { type: 'puglin', x: ch0.x + 4, y: ch0.y + 9, r: 6, n: 2 }, { type: 'fairy', x: ch0.x + 1, y: ch0.y + 6, r: 6, n: 2 }, { type: 'prince', x: ch0.x + 2, y: ch0.y - 3, r: 1, n: 1, fixLvl: 16 }); /* o Príncipe guarda a nave pelo lado norte, longe do cemitério dos aprendizes: é o chefe da missão de nível 24 */
   const ru = safe(92 + OFX_L, 126 + OFY_L);
   pois.push({ name: 'Ruínas de Aravel', x: ru.x, y: ru.y, biome: 'ruins' });
   for (let k = 0; k < 8; k++) addBones(ru.x + Math.round((r() - 0.5) * 18), ru.y + Math.round((r() - 0.5) * 12));
@@ -2024,7 +2024,7 @@ function buildCity_L(): World {
       props.push({ kind: 'plant', plant: wp, gx: x, gy: y, w: 1, h: 1, height: 0.1, wall: 0, roof: 0, variant: Math.floor(rp() * 3) }); }
   }
   for (const sp of spawns) { const rg = regionAt_L(sp.x, sp.y), k = RANK[sp.type] ?? 0.5; sp.lvl = sp.fixLvl ?? Math.max(rg.lo, Math.min(rg.hi, Math.round(rg.lo + k * (rg.hi - rg.lo)))); }
-  { /* mestres dos caminhos (a Vidente de Askavik manda o jogador até eles no nível 30) */
+  { /* mestres dos caminhos (a Vidente de Askavik manda o jogador até eles no nível 20) */
     const M: [string, string, string, 'nordic' | 'dwarf' | 'technocrat', number, string[]][] = [
       ['Jarlsheim', 'Thorgrim Mão-de-Ferro', 'Mestre de Armas do Clã do Corvo', 'nordic', 0x6a4a3a, ['A Fortaleza de Odin não recebe turistas. Recebe guerreiros.', 'Mostre-me as mãos. Calo de machado não se finge.', 'A sexta runa? Está na pedra de Odin desde antes do meu avô. Guerreiro não pergunta à pedra o que ela quer dizer.']],
       ['Austrvik', 'Grão-Mestre Cassius', 'Grão-Mestre da Ordem de Auréon', 'nordic', 0xe8d8a8, ['A Abadia da Aurora acende a vela antes do sol. Sempre antes.', 'Auréon não pede que você seja puro. Pede que você fique.', 'A sexta runa é da liturgia, e liturgia não se discute. Traçamos no batismo e na ordenação. Sempre traçamos.']],

@@ -344,7 +344,7 @@ export const FALAS: Record<string, { talk?: Step[]; done?: Step[] }> = {
         { t: 'Eu sei quem sou.', a: 'Todo mundo acha que sabe, até a Vidente abrir a boca.' },
         { t: 'Tenho medo do que a Vidente vai ver.', a: 'Medo é bom. Quem não tem medo da própria alma não olhou direito para ela.', luz: 2 },
         { t: 'Só quero o poder que vem com a escolha.', a: 'Poder vem. Mas cada caminho cobra o seu preço. Lembre-se disso quando ela falar.', sombra: 2 } ] },
-      'No santuário de pedras a oeste da praça mora Hrefna, a Vidente da Deusa dos Caminhos. No nível 30, ela lê a sua alma.',
+      'No santuário de pedras a oeste da praça mora Hrefna, a Vidente da Deusa dos Caminhos. No nível 20, ela lê a sua alma.',
     ],
     done: [
       'A Deusa leu você, então.',

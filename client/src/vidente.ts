@@ -1,4 +1,4 @@
-/* Hrefna, a Vidente dos Caminhos (Askavik, nível 30): doze perguntas, a revelação e a escolha livre.
+/* Hrefna, a Vidente dos Caminhos (Askavik, nível 20): doze perguntas, a revelação e a escolha livre.
    "O que eu vi é o que a sua alma inclina, não uma corrente. Em Karmika, quem escolhe é você." */
 export type PathId = 'gue' | 'pal' | 'cac' | 'tec' | 'vam' | 'lob' | 'mag' | 'bru';
 export interface PathDef { id: PathId; name: string; cls: string; mentor: string; place: string; village: string; col: string; line: string }

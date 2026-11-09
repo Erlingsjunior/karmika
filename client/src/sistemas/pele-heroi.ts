@@ -39,8 +39,8 @@ function artSkinId(): string | null {
   const CL: Record<string, string> = { vam: 'vampiro', lob: 'lobisomem', mag: 'mago', bru: 'bruxo', pal: 'paladino', tec: 'technocrata' };
   const pick = (ids: string[]) => ids.find((i) => ART_SET.has(i)) ?? null;
   /* 03/11 (Erling: "o level 1 de guerreiro é a própria raça pura"): o lvl01 do Drive é o humano/anão/elfo de antes da classe e não veste o
-     guerreiro. Virou guerreiro no nível 30 = guerreiro 1 (modelo lvl02); nível 40 = guerreiro 2 (modelo lvl03) */
-  if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 40 ? 3 : 2}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl03`]);
+     guerreiro. Virou guerreiro no nível 20 = guerreiro 1 (modelo lvl02); nível 31 = guerreiro 2 (modelo lvl03) */
+  if (pth === 'gue') return pick([`guerreiro_${sx}_lvl0${lvl >= 31 ? 3 : 2}`, `guerreiro_${sx}_lvl02`, `guerreiro_${sx}_lvl03`]);
   if (CL[pth]) return pick([`${CL[pth]}_${sx}`]);
   /* anão e elfo (02/11, modelos do Herik): lvl01 até o nível 19, lvl02 de 20 a 39, lvl03 de 40 em diante */
   if (origin === 'dwarf' || origin === 'elf') { /* como o humano: 1 = sem roupa, 2 = vestido (qualquer peça de roupa); 3 = armadura, do nível 40 em diante */ let dressed2 = false; if (!creating) try { dressed2 = CLOTH_SLOTS.some((sl) => !!(K.inv.eq as Record<string, unknown>)[sl]); } catch { /* */ } const rc = origin === 'dwarf' ? 'anao' : 'elfo', n = lvl >= 40 ? 3 : dressed2 ? 2 : (origin === 'elf' && sx === 'm') ? 2 /* 05/11 (Erling): a elfa sem roupa (elfo_m_lvl01) vem do arquivo com os dedos amassados; na criação e no jogo ela usa a vestida até o Herik reexportar */ : 1; return pick([`${rc}_${sx}_lvl0${n}`, `${rc}_${sx}_lvl02`, `${rc}_${sx}_lvl01`, `${rc}_${sx}_lvl03`]); }
@@ -83,7 +83,7 @@ K.tree.migrate(); K.applyKitAll();
 function applyRes() { setTimeout(applyLook, 0); K.game.setRaceScale(K.profile?.origin === 'elf' ? 1.1 : K.profile?.origin === 'dwarf' ? 1 : 1.09); /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói humano ~1,90" → "está MUITO pequeno, mais heroico"): o modelo humano mede 1,83 m de pé; o herói vai a ~2,0 m e os NPCs voltaram para 1,70 m (npcs.ts) */ setCulture(K.state.race === 'technocrat' ? 'technocrat' : K.state.race === 'dwarf' ? 'dwarf' : 'nordic'); K.game.setKit(K.kitRace()); const r = resOf(K.kitRace()); K.game.setResource(r); K.globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
-/* antes da Vidente (nível 30), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
+/* antes da Vidente (nível 20), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
 const classOfRace = (r: Race, origin?: string) => { const o = origin ?? (r === 'dwarf' ? 'dwarf' : r === 'elf' ? 'elf' : K.profile?.origin ?? 'human'); return K.kindOf(r) === 'technocrat' ? 'Tecnocrata' : o === 'dwarf' ? 'Anão' : o === 'elf' ? 'Elfo' : 'Humano'; };
 K.game.setClassName(classOfRace(K.state.race));
 /* 07/11 (Erling: "jogo com um anão e está escrito Humano"): a classe de base (Humano/Anão/Elfo) sempre bate com o corpo — mesmo depois de reencarnar */

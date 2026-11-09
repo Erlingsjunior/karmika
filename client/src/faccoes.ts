@@ -113,10 +113,10 @@ export const FAC_GEAR: Record<Fac, FacDef[]> = {
   ],
 };
 /* ---------- o lado do jogador ---------- */
-/** as peças só existem para quem já escolheu um lado (nível 30); antes disso, nem à venda aparecem */
-export const FAC_LVL = 30;
-/** os atributos ficam presos ao nível 30: no começo ajudam, com o tempo viram mais beleza do que luta */
-export const FAC_ILVL = 30;
+/** as peças só existem para quem já escolheu um lado (nível 20); antes disso, nem à venda aparecem */
+export const FAC_LVL = 20;
+/** os atributos ficam presos ao nível 20: no começo ajudam, com o tempo viram mais beleza do que luta */
+export const FAC_ILVL = 20;
 /** preço na Tecelagem Real (ouro). Âncora: o Selo de Marghar vale ~30.000 (10 h de caça no nível 30) */
 export const FAC_PRICE: Record<'cape' | 'shield' | 'relic', number> = { cape: 18000, shield: 24000, relic: 45000 };
 const FK = 'karmika.fac.v1'; let mine: Fac | null = null; try { const v = localStorage.getItem(FK); mine = v === 'fio' || v === 'desf' ? v : null; } catch { /* */ }

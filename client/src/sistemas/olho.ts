@@ -1,4 +1,4 @@
-/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 20, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). */
+/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 15, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). */
 import { createGlobes, createEye, playAwakening } from '../hud';
 import { RACES } from '@karmika/shared';
 import { PATH_NAME, bandOf, NATURE, CHAOS, MADNESS, type Madness, strainOf } from '../karma';
@@ -8,11 +8,11 @@ import type { OlhoCtx } from '../main';
 export function createOlho(K: OlhoCtx) {
 const globes = createGlobes(), eyeSys = createEye();
 /** ato heroico: o Olho Kármico enche e transborda numa lágrima; karma sobe */
-/* nível 20: o Olho desperta uma vez; o centro da barra vira o menu do Olho */
+/* nível 15: o Olho desperta uma vez; o centro da barra vira o menu do Olho */
 let awakening = false;
 const crestEl = document.getElementById('crest') as HTMLElement, olhoEl = document.createElement('div'); olhoEl.id = 'olho'; document.body.appendChild(olhoEl);
 function checkAwakening() {
-  if (awakening || !K.profile || K.profile.eye || K.game.st.lvl < 20) { crestEl.classList.toggle('awake', !!K.profile?.eye); return; }
+  if (awakening || !K.profile || K.profile.eye || K.game.st.lvl < 15) { crestEl.classList.toggle('awake', !!K.profile?.eye); return; }
   awakening = true; K.game.logMsg('👁 Algo desperta...', '#ffe08a'); const bornTear = !K.soul.s.born; K.soul.s.born = true; K.soul.save(); // marca já: recarregar no meio da animação não dá uma 2ª lágrima
   const sealedNow = K.compendium.unseal(); const owed = sealedNow.reduce((a, e) => a + e.delta, 0);
   playAwakening(K.profile.name || RACES[K.state.race].label, sealedNow, () => { K.feats.max('eye', 1); if (bornTear) { setTimeout(() => { giveTear('💧 Marghar se emociona: você acaba de nascer para o karma. Uma Lágrima do Olho é sua. Guarde para a morte, troque por Premium ou venda.'); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 90 } })); }, 1800); } K.addKarma(owed); if (owed) K.game.logMsg(`👁 O Olho cobra o que guardou: karma ${owed > 0 ? '+' : ''}${owed}.`, owed > 0 ? '#9ad7ff' : '#ff8a7a'); K.profile!.eye = true; localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); awakening = false; crestEl.classList.add('awake'); heroicAct('O Olho Kármico despertou', false); }); // a Lágrima do despertar já é a do nascimento (antes vinham duas)
@@ -32,9 +32,9 @@ function toggleOlho(on?: boolean) { olhoOpen = on ?? !olhoOpen; if (olhoOpen) re
 olhoEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === olhoEl) toggleOlho(false); });
 document.getElementById('sigil')?.addEventListener('click', () => { if (K.profile?.eye) toggleOlho(); else K.game.logMsg(`O Olho ainda dorme. Ele desperta no nível 20 (você está no ${K.game.st.lvl}).`, '#b9c6e0'); });
 function heroicAct(why: string, tear = true) { K.feats.bump('heroic'); eyeSys.heroic(); K.addKarma(25); K.game.logMsg(`👁 ${why} — o Olho Kármico transborda.`, '#ffe08a');
-  /* o Olho dormindo (antes do nível 20) não chora: o ato fica guardado no Compêndio, mas não vira Lágrima */
+  /* o Olho dormindo (antes do nível 15) não chora: o ato fica guardado no Compêndio, mas não vira Lágrima */
   if (!tear) return;
-  if (!K.profile?.eye) { K.game.logMsg('👁 O Olho ainda dorme: este ato fica guardado, mas só o Olho aberto chora Lágrimas (nível 20).', '#b9c6e0'); return; }
+  if (!K.profile?.eye) { K.game.logMsg('👁 O Olho ainda dorme: este ato fica guardado, mas só o Olho aberto chora Lágrimas (nível 15).', '#b9c6e0'); return; }
   giveTear('💧 Uma Lágrima do Olho cai na sua mão. Guardada, ela paga uma volta da alma sem penalidade; também vale ouro e Premium.'); }
 function giveTear(msg: string) { K.inv.add('lagrima', 1, true); K.game.logMsg(msg, '#9ad7ff'); K.audio.chime(); }
 function updateWho() {

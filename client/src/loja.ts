@@ -1,6 +1,6 @@
 /* Shop: a loja do jogo (dinheiro real, por Pix). Botão no menu de baixo (T) e a loja da Elowen em Askavik.
    Regra de ouro: conforto e beleza, nunca força. Premium não dá atributo; as peças com brasão são as mesmas da Tecelagem Real
-   (que também vende por ouro), presas ao nível 30 e só para quem escolheu o lado.
+   (que também vende por ouro), presas ao nível 20 e só para quem escolheu o lado.
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
 
