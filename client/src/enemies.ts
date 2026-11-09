@@ -786,7 +786,7 @@ export function createEnemies(ctx: EnemyCtx) {
       if (e.root) {
         e.root.position.copy(e.pos); if (D.fly) e.root.position.y += D.fly; e.root.rotation.y = e.yaw;
         if (D.ambush) e.root.visible = !(e as Enemy & { hid?: boolean }).hid || e.state === 'dead';
-        else if (D.stealth) e.root.visible = dHero < D.stealth || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt' || e.state === 'dead' || e.flash > 0;
+        else if (D.stealth) e.root.visible = dHero < D.stealth + (e.root.visible ? 1.5 : 0) /* 09/11: folga para não piscar na borda do alcance */ || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt' || e.state === 'dead' || e.flash > 0;
         { const near = charShadow.on && dHero < 14; if (e.root.userData.sh !== near) { e.root.userData.sh = near; e.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite) m.castShadow = near; }); } }
         if (e.state === 'dead') { const k = Math.min(1, e.t / 0.55); e.root.rotation.x = -k * 1.45; e.root.position.y = e.pos.y - 0.12 * k; const lim = ((e as Enemy & { corpse?: number }).corpse ?? 4) - 1; if (e.t > lim) e.root.scale.setScalar(e.def.scale * Math.max(0, 1 - (e.t - lim))); }
         else e.root.rotation.x = 0;

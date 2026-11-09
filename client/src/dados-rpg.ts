@@ -48,9 +48,8 @@ let tog: HTMLButtonElement | null = null;
 /* 09/11 (Erling: "as mensagens vindo ABAIXO dos ícones e não do lado; a de sistema pequena como a dos dados, mais discreta; e os dados vêm primeiro
    para não ficar a tela vazia"): os dois ícones ficam no alto; embaixo deles a lista dos dados; e logo abaixo dela, o registro do sistema, do mesmo
    tamanho e na mesma letra. Se os dados estão desligados (ou vazios), o registro sobe e encosta nos ícones. */
-function layout() { if (!box) return; const lg = document.getElementById('log'); const TOP = 84, LEFT = 14;
-  box.style.left = LEFT + 'px'; box.style.top = TOP + 'px'; box.style.right = 'auto';
-  if (lg) { const has = on && !!box.querySelector('.rl p'); const y = has ? Math.round(box.getBoundingClientRect().bottom + 6) : TOP; lg.style.setProperty('top', y + 'px', 'important'); lg.style.setProperty('left', LEFT + 'px', 'important'); } }
+function layout() { if (!box) return; const lg = document.getElementById('log'), ic = document.getElementById('logtog'); /* 09/11: a lista única começa 10 px abaixo dos ícones */ const TOP = ic ? Math.round(ic.getBoundingClientRect().bottom + 10) : 84, LEFT = 14;
+  box.style.display = 'none'; if (lg) { lg.style.setProperty('top', TOP + 'px', 'important'); lg.style.setProperty('left', LEFT + 'px', 'important'); } }
 function ensure() { if (box) return box; box = document.createElement('div'); box.id = 'rolls'; box.innerHTML = '<div class="rl"></div>'; document.body.appendChild(box);
   tog = document.createElement('button'); tog.id = 'rolltog'; tog.textContent = '🎲'; document.body.appendChild(tog);
   const apply = () => { box!.classList.toggle('off', !on); tog!.classList.toggle('off', !on); tog!.title = on ? 'Esconder o Registro de Rolagens (cada golpe é um d20 contra a Defesa e os dados de dano)' : 'Mostrar o Registro de Rolagens: cada golpe é um d20 contra a Defesa e os dados de dano'; layout(); };
@@ -61,9 +60,12 @@ if (typeof document !== 'undefined') { const boot = () => { if (document.body.cl
     linha 1 = quem (⚔ você bate / 🛡 você apanha) e o veredito; linha 2 = os dados, curtos */
 export type RollKind = 'crit' | 'fail' | 'miss' | 'hit' | 'hurt';
 export function rollLog(who: string, verdict: string, kind: RollKind, dice: string, mine = true) {
-  if (!document.body.classList.contains('ready')) return; const b = ensure(); if (!on) return; const l = b.querySelector('.rl')!;
-  const p = document.createElement('p'); p.className = kind; p.innerHTML = `<span class="r1"><i class="ic">${mine ? '⚔' : '🛡'}</i><b class="who">${who}</b><em class="vd">${verdict}</em></span><span class="r2">🎲 ${dice}</span>`;
-  l.appendChild(p); while (l.children.length > 6) l.firstElementChild!.remove(); setTimeout(() => p.classList.add('old'), 6000); layout(); }
+  if (!document.body.classList.contains('ready')) return; ensure(); if (!on) return;
+  /* 09/11 (Erling: "as mensagens uma a uma no mesmo espaço, dado, sistema, dado, sistema… tudo junto intercalado"): a rolagem entra na MESMA lista
+     do registro do sistema (#log), na ordem em que acontece */
+  const l = document.getElementById('log'); if (!l) return;
+  const p = document.createElement('div'); p.className = `roll ${kind}`; p.innerHTML = `<span class="r1"><i class="ic">${mine ? '⚔' : '🛡'}</i><b class="who">${who}</b><em class="vd">${verdict}</em></span><span class="r2">🎲 ${dice}</span>`;
+  l.appendChild(p); while (l.children.length > 8) l.firstElementChild!.remove(); setTimeout(() => { p.style.opacity = '0'; setTimeout(() => p.remove(), 600); }, 7000); }
 
 /* 07/11 EQUILÍBRIO ENTRE CLASSES (simulação: claude/regras-matematicas-07-11.md): o dano por segundo de cada caminho, com as magias de verdade,
    contra um alvo, de equipamento raro. Meta: corpo a corpo = 1,00 do Guerreiro do Norte; à distância = 0,90 (bate sem apanhar).
