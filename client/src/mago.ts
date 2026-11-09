@@ -213,5 +213,5 @@ export const MAGE_I: QuestDef[] = [
 /** as pessoas novas do capítulo: a Ísold junto do Arquimago e o Corin (só enquanto mg7 está no diário) */
 export const MAGE_I_NPCS = [
   { vila: 'Lumenhal', name: IS, role: 'Portadora do Pináculo · Copista', dx: 9.5, dy: 75, tint: 0x6a7ad8, lines: ['A cópia não mente. O original, sim.', 'Eu só rio de quem merece. É muita gente.', 'Proibir é sempre mais fácil que ler.'] },
-  { vila: 'Lumenhal', name: CO, role: 'Aprendiz do Pináculo', dx: 14, dy: 40, tint: 0x8a8ab8, onlyQ: 'mg7', lines: ['Eu só queria ver o que a sexta fazia.', 'Não me entregue ao Conselho.'] },
+  { vila: 'Lumenhal', name: CO, role: 'Aprendiz do Pináculo', dx: 14, dy: 40, tint: 0x8a8ab8, onlyQ: 'mg7,mj8,mk3', lines: ['Eu só queria ver o que a sexta fazia.', 'Não me entregue ao Conselho.'] },
 ];

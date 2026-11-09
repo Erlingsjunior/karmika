@@ -218,5 +218,5 @@ export const HUNTER_I: QuestDef[] = [
 /** as pessoas novas do capítulo: a Vesna no Bastião e o Pip (só a partir do órfão) */
 export const HUNTER_I_NPCS = [
   { vila: 'Sudrholt', name: VH, role: 'Portadora do Clã Helsing', dx: 1.5, dy: -21.5, tint: 0x3a3a46, lines: ['Mil e doze pedras. A Ilsa diz mil e onze. Uma de nós mente.', 'Eu durmo de olho aberto. É mentira. Fica bonito no relatório.', 'Escoteiros. Servem sopa para o demônio.'] },
-  { vila: 'Sudrholt', name: PIP, role: 'Órfão do Bastião', dx: -2.5, dy: -20.5, tint: 0x6a5a4a, onlyQ: 'hc3', lines: ['A vela apagou sozinha.', 'Você é caçador? Vocês acham gente?'] },
+  { vila: 'Sudrholt', name: PIP, role: 'Órfão do Bastião', dx: -2.5, dy: -20.5, tint: 0x6a5a4a, onlyQ: 'hc3,cj3,ck2', lines: ['A vela apagou sozinha.', 'Você é caçador? Vocês acham gente?'] },
 ];

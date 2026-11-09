@@ -103,7 +103,7 @@ export function createSecrets(ctx: Ctx, caches: Cache[]) {
 
 /* ---------- os esconderijos do mundo: nomes e histórias (o lugar é sorteado uma vez, igual para todo mundo) ---------- */
 export const CACHE_LORE: [string, string][] = [
-  ['A Bolsa do Contrabandista', 'Um saco de couro enterrado raso, com um bilhete: "Se eu não voltar, é de quem achar. Só não conte à Vesna."'],
+  ['A Bolsa do Contrabandista', 'Um saco de couro enterrado raso, com um bilhete: "Se eu não voltar, é de quem achar. Só não conte à Margit."'],
   ['O Altar do Andarilho', 'Pedras empilhadas por mãos antigas. Debaixo da última, uma oferenda que ninguém veio buscar.'],
   ['A Caixa de Música Enterrada', 'Uma caixinha de latão com a marca da Academia. Ainda toca três notas e para.'],
   ['O Tesouro do Cão Fiel', 'Ossos de um cão enrolados num manto, e debaixo deles as moedas que ele guardou até o fim.'],

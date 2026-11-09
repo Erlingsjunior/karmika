@@ -93,7 +93,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if ((d.inside ?? null) !== here) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } /* NPC de interior só aparece dentro dele; os de fora somem lá dentro */
-      if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
+      if ((d as NpcDef & { onlyQ?: string }).onlyQ && !(d as NpcDef & { onlyQ?: string }).onlyQ!.split(',').some((id) => ctx.questOn?.(id))) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
       if (dH > 48 || !n.built) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
       /* 09/11 (Erling: "os NPCs blocados aparecem e depois viram os bonitos, às vezes os dois juntos"): quem tem modelo de arte só aparece

@@ -382,11 +382,11 @@ export const FALAS: Record<string, { talk?: Step[]; done?: Step[] }> = {
       'Ele não falou nada a viagem inteira, não foi? Mas segurou a sua mão. Eu vi da janela.',
     ],
   },
-  /* ---------------- Sombra: a Dívida de Vesna ---------------- */
+  /* ---------------- Sombra: a Dívida de Margit ---------------- */
   sh1: {
     talk: [
       'Ora, ora. Os olhos de quem já fez escolhas de que não se orgulha. Eu reconheço de longe.',
-      'Vesna Corvo-Negro. Empresto dinheiro a quem os santos não emprestam. E cobro de quem os santos perdoam.',
+      'Margit Corvo-Negro. Empresto dinheiro a quem os santos não emprestam. E cobro de quem os santos perdoam.',
       'Um ferreiro de Hrafnhöfn me deve trinta moedas e um favor. Faz seis meses. Ele acha que eu esqueci.',
       { r: [
         { t: 'Trinta moedas não valem a viagem.', a: 'Não são as moedas, querido. É o recado. Se um não paga, nenhum paga.' },
@@ -428,7 +428,7 @@ export const ECOS: Record<string, Record<string, string>> = {
   jurou_si: { Garrick: 'Você jurou proteger o que é seu. Espero que um dia Karmika seja sua.' },
   visitou_soldado: { 'Mestre Halvard': 'O soldado que voltou da clareira desenhou uma coisa nova ontem: um escudo. Acho que foi por sua causa.' },
   ferreiro_martelo: { 'Irmã Maela': 'Um ferreiro de Hrafnhöfn veio pedir pão na Igreja. Disse que alguém levou o martelo dele. Você sabe quem foi?' },
-  voto_quebrado: { Eldrin: 'Você jurou. Ninguém pediu, e você jurou. É por isso que pesa tanto quando quebra.', Garrick: 'Dizem que você quebrou um voto. Aqui no norte, isso se carrega até o túmulo.', 'Vesna Corvo-Negro': 'Ouvi dizer que você quebrou um voto. Bem-vindo ao mundo real, querido.' },
+  voto_quebrado: { Eldrin: 'Você jurou. Ninguém pediu, e você jurou. É por isso que pesa tanto quando quebra.', Garrick: 'Dizem que você quebrou um voto. Aqui no norte, isso se carrega até o túmulo.', 'Margit Corvo-Negro': 'Ouvi dizer que você quebrou um voto. Bem-vindo ao mundo real, querido.' },
   carnical_alimentado: { 'Jarl Haakon': 'Mandei olhos descobrirem quem alimenta os carniçais de Selvar. Ainda nada. Mas você estava certo, e eu não esqueço quem está certo.' },
 };
 /** quem fica frio com quem tem a alma pendendo para o outro lado (fala de abertura, às vezes) */

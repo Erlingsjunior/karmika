@@ -625,7 +625,7 @@ export const TECHNO: QuestDef[] = [
 
   { id: 'te5', chain: TC, name: 'Caravana Caída', lvl: 24, giver: YL, next: 'te6', xp: 0, gold: 300, gear: 1,
     text: 'Uma caravana da Companhia caiu no Passo de Midvangr, entre Kaldrfoss e Brasaforja. Os lobos do passo e diabretes cercam os destroços. Limpe e examine: a Brunna acha que foi traição.',
-    objs: [{ kind: 'rescue', route: 'kf-bf', label: 'Passo de Midvangr', at: 0.42, note: 'No livro de bordo, a letra da cocheira: “Rota e horário passados por um tal de V., em Askavik, por trinta moedas.” Embaixo, o lacre de um anel com um corvo. Vesna Corvo-Negro, a agiota da praça.' }],
+    objs: [{ kind: 'rescue', route: 'kf-bf', label: 'Passo de Midvangr', at: 0.42, note: 'No livro de bordo, a letra da cocheira: “Rota e horário passados por uma tal de M., em Askavik, por trinta moedas.” Embaixo, o lacre de um anel com um corvo. Margit Corvo-Negro, a agiota da praça.' }],
     talk: [
       'Uma caravana caiu no Passo de Midvangr. Peças de caldeira para Brasaforja, três cocheiros. Dois voltaram.',
       'A Brunna diz que os lobos estavam esperando no ponto exato, na hora exata. Lobos não leem horários.',
@@ -634,12 +634,12 @@ export const TECHNO: QuestDef[] = [
         { t: 'E o terceiro cocheiro?', a: 'Chama-se Ivo. Não voltou. Se achar alguma coisa dele, traga para a família.', luz: 1 } ] },
     ],
     done: [
-      'Vesna Corvo-Negro. A agiota da praça vendendo horários de caravana a quem paga. Lobos não leem, mas quem solta os lobos lê.',
+      'Margit Corvo-Negro. A agiota da praça vendendo horários de caravana a quem paga. Lobos não leem, mas quem solta os lobos lê.',
       'A Companhia pode resolver de dois jeitos. O jeito certo e o jeito lucrativo. Você achou a prova: você decide.',
     ],
     choice: { q: 'Com o livro de bordo na mão, você…', opts: [
-      { label: 'Entrega a prova à Guarda de Askavik.', karma: 3, flag: 'tec_denunciou_vesna', say: 'O Capitão Eirik prendeu a Vesna esta manhã. A Companhia perdeu uma informante e ganhou estradas mais seguras.', why: 'Você escolheu a lei e a segurança de quem anda nas estradas. Justiça pública pesa a favor.' },
-      { label: 'Chantageia a Vesna: o silêncio custa uma parte do lucro dela.', karma: -4, flag: 'tec_chantagem_vesna', say: 'Uma sócia nova, hm? A Vesna paga bem e esquece pouco. Cuidado com as costas.', why: 'Você transformou a morte do Ivo em renda. As estradas continuam vendidas, agora com você no meio.' } ] } },
+      { label: 'Entrega a prova à Guarda de Askavik.', karma: 3, flag: 'tec_denunciou_vesna', say: 'O Capitão Eirik prendeu a Margit esta manhã. A Companhia perdeu uma informante e ganhou estradas mais seguras.', why: 'Você escolheu a lei e a segurança de quem anda nas estradas. Justiça pública pesa a favor.' },
+      { label: 'Chantageia a Margit: o silêncio custa uma parte do lucro dela.', karma: -4, flag: 'tec_chantagem_vesna', say: 'Uma sócia nova, hm? A Margit paga bem e esquece pouco. Cuidado com as costas.', why: 'Você transformou a morte do Ivo em renda. As estradas continuam vendidas, agora com você no meio.' } ] } },
 
   { id: 'te6', chain: TC, name: 'O Neutro Verdadeiro', lvl: 26, giver: YL, next: 'te7', xp: 0, gold: 320,
     text: 'A Academia precisa provar que não tem dono. Lady Mirela (Corvoscuro, à noite) e a Bispa Solveig (Askavik) vão fazer encomendas grandes. Ouça as duas. Depois decida se a Academia recusa as duas, ou escolhe um lado.',
@@ -762,7 +762,7 @@ Object.assign(ECOS, {
   pal_voto_pedem: { [AL]: 'Os noviços falam do seu voto. "Os que pedem." O Cassius chorou quando ouviu, sabia? Ele nega.' },
   pal_voto_ordem: { [AL]: 'Você jurou pela Ordem. Eu entendo. Mas a Ordem são pessoas, {nome}. Não esqueça.' },
   pal_queimou_carga: { [BR]: 'Você é o paladino que queimou a nossa carroça na estrada. A Companhia anota tudo. O seu preço aqui subiu.', [YL]: 'Um paladino queimou um relógio meu na estrada. Três meses de trabalho. Foi você? Hm.' },
-  pal_vendeu_relogio: { 'Vesna Corvo-Negro': 'Um relógio de sangue apareceu em Hrafnhöfn. Quem vendeu tem gosto bom para negócios. Venha me ver.', [CS]: 'Ainda penso no relógio que você vendeu. Peço a Auréon que tenha caído em mãos boas. Duvido.' },
+  pal_vendeu_relogio: { 'Margit Corvo-Negro': 'Um relógio de sangue apareceu em Hrafnhöfn. Quem vendeu tem gosto bom para negócios. Venha me ver.', [CS]: 'Ainda penso no relógio que você vendeu. Peço a Auréon que tenha caído em mãos boas. Duvido.' },
   pal_curou: { [TB]: 'A moça da cela da aurora… a Edda. Ela tocou o sino comigo hoje de manhã. Deu certo, irmão. Deu certo.' },
   pal_deixou_fugir: { [MI]: 'Uma cria nova chegou à Corte dizendo que um paladino a deixou fugir. Ela fala de você com carinho. Curioso.' },
   pal_tregua: { [AL]: 'Você votou pela trégua com o Conde. Metade da Ordem te chama de traidor. A outra metade tem esperança. Eu estou na segunda.' },
@@ -776,8 +776,8 @@ Object.assign(ECOS, {
   tec_honesto: { [SO]: 'O órgão toca bonito. E é só um órgão, não é? Obrigada por isso.' },
   tec_ouvido: { [SO]: 'Às vezes o órgão sussurra quando ninguém está tocando. Engraçado, não acha, tecnocrata?' },
   tec_sabotou: { [MI]: 'Um dos nossos queimou ao amanhecer. O relógio dele atrasava vinte minutos. Que coincidência, não é?' },
-  tec_denunciou_vesna: { 'Guarda Eirik': 'A agiota está na masmorra por sua causa. As estradas agradecem.', [BR]: 'As caravanas rodam mais tranquilas desde que a Vesna caiu. A Companhia tem memória boa.' },
-  tec_chantagem_vesna: { 'Vesna Corvo-Negro': 'Minha sócia preferida. O seu quinhão está no cofre. Não pergunte de onde veio.' },
+  tec_denunciou_vesna: { 'Guarda Eirik': 'A agiota está na masmorra por sua causa. As estradas agradecem.', [BR]: 'As caravanas rodam mais tranquilas desde que a Margit caiu. A Companhia tem memória boa.' },
+  tec_chantagem_vesna: { 'Margit Corvo-Negro': 'Minha sócia preferida. O seu quinhão está no cofre. Não pergunte de onde veio.' },
   tec_neutro: { [MI]: 'A Academia recusou o triplo do ouro. Admito: fiquei impressionada.', [SO]: 'A Academia recusou os arquivos e o Conde. Talvez Ylva tenha alma, afinal.' },
   tec_lado_corte: { [SO]: 'A Academia escolheu o Conde. Não pise mais na minha Catedral com essas botas.' },
   tec_lado_igreja: { [MI]: 'A Academia escolheu a Igreja. A Corte vai comprar vidros em outro lugar. E vai lembrar.' },
