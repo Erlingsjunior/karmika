@@ -708,7 +708,7 @@
   /* 07/11: a fileira de bolsas — do tamanho do acesso rápido, móvel pela alça ⋮ — e as bolsas abertas, pequenas, lado a lado em cima dela */
   #bagbar { position: fixed; z-index: 9; display: flex; align-items: center; gap: 3px; transform: scale(var(--ui, 1)); transform-origin: 0 100%; }
   body:not(.ready) #bagbar, body:not(.ready) #bagmini { display: none !important; }
-  #bagbar .bbgrip { cursor: grab; color: #8a6a32; font: 700 14px Georgia, serif; padding: 0 2px; user-select: none; } #bagbar .bbgrip:hover { color: #ffe08a; }
+  #bagbar .bgprem, .bm h2 .bgprem { vertical-align: -3px; filter: drop-shadow(0 0 3px rgba(255,214,120,.7)); } #bagbar .bbgrip { cursor: grab; color: #8a6a32; font: 700 14px Georgia, serif; padding: 0 2px; user-select: none; } #bagbar .bbgrip:hover { color: #ffe08a; }
   #bagbar button { position: relative; width: 30px; height: 30px; padding: 0; border: 1px solid #8a6a32; border-radius: 5px; background: radial-gradient(circle at 40% 30%, #3a2a18, #120c07); box-shadow: 0 1px 4px #000; cursor: pointer; display: grid; place-items: center; }
   #bagbar button span { font-size: 15px; line-height: 1; } #bagbar button i { position: absolute; left: 0; right: 0; bottom: -2px; font: 600 7.5px Georgia, serif; font-style: normal; color: #e8d8b0; text-shadow: 0 1px 2px #000, 0 0 2px #000; text-align: center; }
   #bagbar button:hover { border-color: #ffe08a; } #bagbar button.cur { border-color: #ffd24a; box-shadow: 0 0 8px rgba(255,210,74,.5), 0 1px 4px #000; } #bagbar button.full i { color: #ff8a7a; }

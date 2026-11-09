@@ -336,7 +336,8 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
     const reeds: { x: number; z: number }[] = [], stones: { x: number; z: number; s: number }[] = [];
     for (let k = 0; k < 1500 && (reeds.length < 260 || stones.length < 90); k++) {
       const x = ox + R() * CSM, z = oz + R() * CSM, sd = waterSD(x, z);
-      if (sd > 0.25 && sd < 2.4 && reeds.length < 260 && tileW(w, x / T, z / T, (t) => t === 'road') < 0.2) reeds.push({ x, z });
+      /* 09/11 (Erling: "esses três matos de rio na praça ficaram feios"): junco só fora das vilas — nunca na praça, na rua ou junto das casas */
+      if (sd > 0.25 && sd < 2.4 && reeds.length < 260 && tileW(w, x / T, z / T, (t) => t === 'road' || t === 'plaza' || t === 'wall') < 0.2 && !w.settlements.some((st) => Math.hypot(x / T - st.x, z / T - st.y) < st.radius + 1)) reeds.push({ x, z });
       else if (sd > -0.8 && sd < 2.8 && stones.length < 90 && R() < 0.5) stones.push({ x, z, s: 0.12 + R() * 0.26 });
     }
     if (reeds.length) {

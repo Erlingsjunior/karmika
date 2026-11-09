@@ -697,7 +697,8 @@ function buildCity_L(): World {
   decor('stall', 25 + OX, 19 + OY, 2, 2, 0, 0x6a4a6c, 0x5a3a7a); decor('stall', 9 + OX, 9 + OY, 2, 2, 0, 0x6a4a2c, 0x5d6b3a); decor('stall', 1 + OX, 24 + OY, 2, 2, 0, 0x5a6a4a, 0x3a4a2a); decor('stall', 31 + OX, 8 + OY, 2, 2, 0, 0x7a6a5a, 0x6a5a4a); decor('stall', 7 + OX, 24 + OY, 2, 2, 0, 0x7a4a3a, 0x8a3b2e); decor('stall', 35 + OX, 23 + OY, 2, 2, 0, 0x8a5a2a, 0xd0702a); decor('stall', 28 + OX, 10 + OY, 2, 2, 0, 0x7a7a7a, 0x4e5f7a);
   if (map[26 + OY][28 + OX] === 'grass') block({ kind: 'campfire', gx: 28 + OX, gy: 26 + OY, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }); decor('stall', 24 + OX, 13 + OY, 2, 2, 0, 0x6a4a2c, 0x4e5f7a); decor('stall', 12 + OX, 19 + OY, 2, 2, 0, 0x7a5a38, 0x5d6b3a);
   const torch = (gx: number, gy: number) => { if (inb(gx, gy) && map[gy][gx] !== 'water') props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a }); };
-  [[15, 15], [20, 15], [15, 20], [20, 20], [9, 7], [15, 7], [16, 25], [19, 25]].forEach(([x, y]) => torch(x + OX, y + OY));
+  /* 09/11 (Erling, foto da praça): os postes saem do meio da praça e vão para as beiradas, dois de cada lado, fora da rua */
+  [[12, 15], [12, 20], [23, 15], [23, 20], [9, 7], [15, 7], [16, 25], [19, 25], [10, 21]].forEach(([x, y]) => torch(x + OX, y + OY)); /* 09/11: + um poste entre as casas do sudoeste, onde ficava o boneco */
   /* 08/11 (Erling: "todas as vilas com atrativos e decoração"; Karmika é a vila de nascimento dos humanos): canteiros de flores em volta da fonte e
      junto das casas, postes de lampião nas esquinas da praça, barris, caixas, feno e carrinhos de mão ao lado das barracas, mais bancos */
   { const okD = (x: number, y: number) => inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y);
@@ -1273,9 +1274,10 @@ function buildCity_L(): World {
           if (lamps.some(([lx, ly]) => Math.hypot(lx - x, ly - y) < 4)) continue; const side = lamps.length % 2 ? 1 : -1;
           const cand: [number, number][] = Math.abs(x - cx) > Math.abs(y - cy) ? [[x, y + side], [x, y - side]] : [[x + side, y], [x - side, y]];
           for (const [tx, ty] of cand) { if (!inb(tx, ty) || map[ty][tx] !== 'grass' || props.some((q) => q.gx === tx && q.gy === ty)) continue; props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 2.0, wall: 0x3a2a1c, roof: 0xffb050 }); lamps.push([x, y]); break; } } }
-      /* 08/11 (Erling: "bonecos de treino em toda vila"): dois bonecos de palha num canto livre da praça, perto do guarda */
-      { let put = 0; for (let r0 = 4; r0 <= 8 && put < 2; r0++) for (let a = 0; a < 12 && put < 2; a++) { const ang = a / 12 * Math.PI * 2 + 0.3, x = Math.round(cx + Math.cos(ang) * r0), y = Math.round(cy + Math.sin(ang) * r0);
-          if (!inb(x, y) || !(map[y][x] === 'grass' || map[y][x] === 'plaza') || props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y) || quartel.dummies.some((d) => Math.hypot(d.x - x - 0.5, d.y - y - 0.5) < 1.6)) continue;
+      /* 08/11 (Erling: "bonecos de treino em toda vila"): dois bonecos de palha num canto de grama da vila. 09/11: nunca na praça nem ao lado da
+         fonte (Erling: "boneco de treino no meio da praça já tínhamos tirado"); ficam a 8–13 tiles do centro, só em grama. Karmika não ganha nenhum: tem o Quartel */
+      if (st.name !== 'Karmika') { let put = 0; for (let r0 = 8; r0 <= 13 && put < 2; r0++) for (let a = 0; a < 12 && put < 2; a++) { const ang = a / 12 * Math.PI * 2 + 0.3, x = Math.round(cx + Math.cos(ang) * r0), y = Math.round(cy + Math.sin(ang) * r0);
+          if (!inb(x, y) || map[y][x] !== 'grass' || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([ox, oy]) => inb(x + ox, y + oy) && (map[y + oy][x + ox] === 'plaza' || map[y + oy][x + ox] === 'road')) || props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y) || quartel.dummies.some((d) => Math.hypot(d.x - x - 0.5, d.y - y - 0.5) < 1.6)) continue;
           quartel.dummies.push({ x: x + 0.5, y: y + 0.5 }); put++; } }
       /* pórtico com o nome e um guarda em cada entrada (até 3 guardas por vila) */
       gates.forEach((gt, gi) => { const gx = Math.floor(gt.x), gy = Math.floor(gt.y); props.push({ kind: 'vgate', gx, gy, w: 1, h: 1, height: 4.4, wall: 0, roof: 0, variant: cult, ry: Math.atan2(-gt.uy, gt.ux), ox: (gt.x - gx) * T, oz: (gt.y - gy) * T, len: Math.max(5, gt.w * T + 1.2), label: st.name });

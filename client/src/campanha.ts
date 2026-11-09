@@ -1,4 +1,5 @@
 import type { QuestDef } from './quests';
+import { INDICE_NPCS } from './indice';
 
 /* =====================================================================================================
    O CAMINHO DO NORTE (humanos, níveis 1–25) — refeito em 25/10/2026
@@ -23,7 +24,7 @@ const IL = 'Sargenta Ilka', OM = 'Velho Ormur', OD = 'Irmã Odila', BR = 'Coveir
 const F = { who: 'Instinto', t: 'Aperte F (ou o terceiro olho, no menu de ações) para ligar o seu Instinto. O que esta missão pede só aparece para quem está atento.' };
 
 /** as pessoas novas que a campanha pôs no mundo (uma por vila do roteiro) — world.ts as coloca de pé */
-export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf'; /** só aparece enquanto esta missão está no diário */ onlyQ?: string }[] = [
+export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: number; dy: number; tint: number; lines: string[]; kind?: 'nordic' | 'dwarf' | 'technocrat'; /** só aparece enquanto esta missão está no diário */ onlyQ?: string }[] = [
   /* guildas: o Prefeito de Lumenhal, a cidade média, registra a guilda (05/11: era o Magistrado; a Carta Patente do Escrivão saiu) */
   { vila: 'Askavik', name: 'Escrivão-Mor Aldric', role: 'Escrivão-Mor de Askavik', dx: 6, dy: 4, tint: 0x3a3a5a, lines: ['Toda guilda começa num papel. A maioria termina em outro: o de dívidas.', 'Assine aqui. E aqui. E aqui também.'] },
   { vila: 'Lumenhal', name: 'Prefeito Corvin Aldmar', role: 'Prefeito de Lumenhal', dx: 4, dy: -3, tint: 0x5a2a2a, lines: ['Lumenhal registra as guildas desde antes de Askavik ter muralha.', 'Um estandarte é uma promessa pendurada num pau. Cuide da promessa.'] },
@@ -49,6 +50,7 @@ export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: numb
   { vila: 'Skjoldvik', name: 'Vigia Eyvind', role: 'Vigia de Skjoldvik', dx: 3, dy: 2.5, tint: 0x4a5a6a, lines: ['Da torre eu vejo o mar, a neve e quem não devia estar em nenhum dos dois.', 'O vento de Skjoldvik corta até pensamento.'] },
   /* 09/11: o Prólogo das Bandeiras — Lady Mirela desce de Corvoscuro para receber quem chega (só enquanto b02 está no diário) */
   { vila: 'Askavik', name: 'Lady Mirela', role: 'Herdeira da Casa Noctavar', dx: -24, dy: 5, tint: 0x6a1424, onlyQ: 'b02', lines: ['Não, eu não mordo. Não antes de ser apresentada.', 'A Casa está de pé há mil anos. Mil anos não erram.'] },
+  ...INDICE_NPCS,
   { vila: 'Askavik', name: 'Cronista Ormund Salveth', role: 'Cronista da Grande Biblioteca', dx: -22, dy: 28, tint: 0x4a3a2a, lines: ['Tudo o que acontece no mundo cabe num livro. Quase tudo.', 'Anotarei a data. Anoto todas.', 'Achou alguma folha minha pelo mundo? Traga. Eu as deixei onde falam do que falam, e depois esqueci metade.', 'Uma porta sem maçaneta, uma vela que não acende, uma runa sem nome, um nicho sem poeira. Não sei o que têm em comum. Ainda não perguntei direito.'] },
 ];
 

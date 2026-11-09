@@ -737,7 +737,7 @@ export const TECHNO: QuestDef[] = [
       { label: 'Culpa os Desfiados em público para proteger a Academia.', karma: -5, flag: 'tec_culpou_desfiados', say: 'Os Desfiados levam a culpa, a Academia fica limpa. E o aluno… vai fazer de novo. Eles sempre fazem.', why: 'Você mentiu para salvar a reputação da Academia, e o verdadeiro culpado continua livre para explodir outras carroças.' },
       { label: 'Resolve em silêncio: expulsa o aluno, sem contar a ninguém.', karma: 1, flag: 'tec_silencio', say: 'Discreto. A Academia agradece. A Ordem nunca vai saber o que um amigo dela fez.', why: 'Você parou o crime sem guerra entre os lados. Mas três cocheiros morreram, e as famílias nunca vão saber por quê.' } ] } },
 
-  { id: 'te10', chain: TC, name: 'A Grande Rota', lvl: 31, giver: YL, xp: 0, gold: 500, gear: 2, title: 'Mestre de Rota',
+  { id: 'te10', chain: TC, name: 'A Grande Rota', lvl: 31, giver: YL, next: 'ti1', xp: 0, gold: 500, gear: 2, title: 'Mestre de Rota', /* 09/11: → O Índice (indice.ts) */
     text: 'A Grande Rota, Askavik → Austrvik, vai ser inaugurada com escolta própria. A caravana leva carga para os dois lados: a Abadia e a Corte. Leve-a até o fim. A primeira rota com o seu nome.',
     objs: [{ kind: 'level', n: 31 }, { kind: 'escort', route: 'ak-au', label: 'A Grande Rota (Askavik → Austrvik)' }, { kind: 'talk', npc: YL }],
     talk: [
