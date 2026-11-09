@@ -204,6 +204,22 @@ export const VILL: [string, number, number, string][] = ([
   ['Corvoscuro', 724, 262, 'Fechem as janelas ao anoitecer. E não convidem ninguém a entrar.'],
   ['Gorvath', 770, 470, 'No Vale, até o trigo nasce de cabeça baixa.'],
   ['Lithendel', 84, 404, 'As árvores aqui são mais velhas que os reis dos homens.'],
+  /* 09/11 (Erling, mapa com os pontos vermelhos: "belas vilas de paz élficas" e "assentamentos de ninhadas de famílias licantropas"): as vilas
+     pequenas dos elfos, ligadas a Lithendel pelo teleférico de cipó, e as ninhadas fiéis à Mãe-Alfa em volta do Uivo Antigo */
+  ['Tirnael', 174, 380, 'Das torres de Tirnael se vê a fumaça dos goblins antes que eles a acendam.'],
+  ['Lindorië', 187, 439, 'Aqui se tece a seda das aranhas da mata. Elas não sabem que trabalham para nós.'],
+  ['Elendor-das-Cinzas', 187, 523, 'A luz roxa da Floresta Encantada chega até as nossas janelas. Os magos do Pináculo dizem que é deles.'],
+  ['Nimbrethil', 81, 514, 'Quem chega ferido sai inteiro. Quem chega inteiro sai calado.'],
+  ['Lómenor-do-Lago', 126, 531, 'A Lagoa do Canto Afogado canta à noite. Os pescadores não respondem.'],
+  ['Sereth', 83, 593, 'As cantoras de Sereth aprenderam com as sereias. As sereias aprenderam a não cantar perto.'],
+  ['Morthil', 139, 657, 'Aqui moram os elfos de karma escuro. A Copa sabe. A Copa permite. Não estranhe.'],
+  ['Ninhada do Rio Torto', 703, 585, 'A Mãe-Alfa manda. Nós obedecemos e caçamos o que ela não come.'],
+  ['Ninhada da Pedra Rachada', 760, 623, 'Família pequena, dente grande.'],
+  ['Ninhada do Charco Fundo', 745, 690, 'O charco esconde o cheiro. É por isso que a ninhada mora aqui.'],
+  ['Ninhada das Três Luas', 658, 659, 'Três filhotes nasceram na mesma lua. A Mãe-Alfa veio pessoalmente.'],
+  ['Ninhada do Osso Branco', 628, 703, 'Os ossos na entrada são de caçador de prata. Não toque.'],
+  ['Ninhada da Clareira Calada', 680, 734, 'Aqui não se uiva de dia. A clareira é calada por respeito.'],
+  ['Ninhada do Vento Norte', 583, 605, 'Somos os primeiros a sentir o cheiro de quem vem de Dalborg.'],
   ['Lumenhal', 226, 604, 'De noite, o Pináculo acende e as corujas param de cantar.'],
   ['Uivo Antigo', 690, 640, 'Na lua cheia, não saia. Na lua nova, não volte.'],
   ['Porto Caldeira', PORTO_L.x, PORTO_L.y, 'Vapor, graxa e barcos que remam sozinhos.'], ['Ferrugem', 566, 742, 'Tudo aqui enferruja, menos a vontade.'], ['Vaporeira', 302, 740, 'O apito da fábrica é o nosso galo.'],
@@ -881,11 +897,53 @@ function buildCity_L(): World {
     E('Vigia Galdor', 'Vigia de Lithendel · élfico', cx - 1, cy - 9, 2.5, 0x4a6a5a, ['Os esqueletos do Campo Santo não sobem até aqui. Mas tentam.', 'Floresta quieta demais é floresta com alguma coisa dentro.']);
   };
   const vpAt = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'plaza' || map[y][x] === 'grass') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
+  /* 09/11 VILAS PEQUENAS DE POVO (elfos e ninhadas licantropas): clareira, casas no estilo do povo em anel, fogueira ou fonte no meio,
+     lanternas, flores/ossos, um líder e dois moradores com história; caminhos nas quatro direções */
+  type HamletNpc = [string, string, string[]];
+  const HAMLET: Record<string, { cult: number; wolf?: boolean; npcs: HamletNpc[] }> = {
+    'Tirnael': { cult: 3, npcs: [['Capitã Faenor', 'Patrulheira-Mor de Tirnael · élfica', ['Torre por torre, a mata inteira se vigia.', 'Os goblins ladrões aprenderam a contar as nossas flechas. Erram sempre por uma.']], ['Vigia Hallas', 'Vigia de Tirnael · élfico', ['Do alto eu vejo a fumaça antes do fogo.']], ['Flecheira Idril', 'Flecheira de Tirnael · élfica', ['Pena de coruja, ponta de osso. Nunca de ferro: o ferro faz barulho.']]] },
+    'Lindorië': { cult: 3, npcs: [['Tecelã Nerwen', 'Mestra da Seda de Lindorië · élfica', ['A seda das aranhas segura mais que corrente. E pesa menos que uma folha.', 'A Rainha veste a nossa seda. Os goblins tentam roubá-la toda lua.']], ['Aprendiz Celebrin', 'Tecelão aprendiz · élfico', ['Já fui picado onze vezes. A Nerwen diz que na vigésima eu aprendo.']], ['Coletor Mablin', 'Coletor de teias · élfico', ['Teia de manhã, com orvalho. De noite, a aranha está em casa.']]] },
+    'Elendor-das-Cinzas': { cult: 3, npcs: [['Mago Ithron Cinza-Clara', 'Mago Élfico de Elendor', ['Os magos de Lumenhal leem os livros. Nós lemos as árvores que viraram livro.', 'A luz roxa da Floresta é magia que vazou. Alguém deixou um círculo aberto.']], ['Leitora Maelis', 'Leitora de Elendor · élfica', ['Nesta vila ninguém corrige livro. Copiamos com os erros.']], ['Guardiã Aerith do Fogo Azul', 'Guardiã do Fogo Azul · élfica', ['O fogo azul não queima. Lembra.']]] },
+    'Nimbrethil': { cult: 3, npcs: [['Curandeira Ilyra', 'Curandeira de Nimbrethil · élfica', ['Quem chega ferido sai inteiro. A Ithilwen aprendeu comigo, e ela não admite.', 'Erva boa cresce onde alguém chorou. Aqui cresce muita erva.']], ['Druida Thalanor', 'Druida de Nimbrethil · élfico', ['A mata não cura. A mata lembra como era antes. Eu só ajudo a lembrar.']], ['Pequena Ninniel', 'Criança élfica', ['Minha mãe cura bicho também! Até goblin, uma vez. Ele mordeu ela.']]] },
+    'Lómenor-do-Lago': { cult: 3, npcs: [['Barqueira Siriel', 'Barqueira do Lago · élfica', ['A Lagoa do Canto Afogado canta à noite. Quem responde, não volta.', 'Alguma coisa grande mora no fundo. Os pescadores chamam de Velho do Lago. Ninguém o derrotou.']], ['Pescador Arvel', 'Pescador de Lómenor · élfico', ['Peixe daqui brilha no escuro. Não coma de noite: a barriga acende.']], ['Remendeira Tauriel', 'Remendeira de redes · élfica', ['Rede rasgada por dente de peixe é normal. Rede rasgada por mão é outra coisa.']]] },
+    'Sereth': { cult: 3, npcs: [['Cantora Ylmeth', 'Mestra-Cantora de Sereth · élfica', ['As sereias cantaram para nós primeiro. Depois nós cantamos melhor. Elas não perdoaram.', 'A Aelith, da Copa, aprendeu aqui. Ela também para na mesma estrofe.']], ['Harpista Ondril', 'Harpista de Sereth · élfico', ['Corda de harpa feita de cabelo de sereia. Não pergunte como.']], ['Velha Lirwen', 'Anciã de Sereth · élfica', ['Já ouvi a décima segunda estrofe. Uma vez. Eu tinha seis anos. Não lembro.']]] },
+    'Morthil': { cult: 3, npcs: [['Senhora Vaelith Mão-Escura', 'Senhora de Morthil · elfa negra', ['Karma escuro é uma ordem, como o inverno. A Copa sabe. Por isso existimos.', 'Aqui moram os que a sombra aceitou e a mata não expulsou. Não trouxe vampiro, trouxe? Isso a mata não perdoa.']], ['Sentinela Drovan', 'Sentinela de Morthil · elfo negro', ['Quem entra sem cortesia sai sem nome.']], ['Mercadora Nyssa', 'Mercadora de Morthil · elfa negra', ['Vendo para os Desfiados e para a Copa. Os dois fingem que não sabem.']]] },
+    'Ninhada do Rio Torto': { cult: 5, wolf: true, npcs: [['Mãe da Ninhada Bragha', 'Mãe da Ninhada do Rio Torto · licantropa', ['A Mãe-Alfa manda. A ninhada obedece. Os filhotes aprendem.', 'Quer servir à Grande Mãe? Prove aqui primeiro.']], ['Caçador Ruark', 'Caçador da ninhada · licantropo', ['O rio torto esconde o rastro. A gente usa.']], ['Filhote Kael', 'Filhote da ninhada', ['Um dia vou uivar no Uivo Antigo! Na frente da Ulfrun!']]] },
+    'Ninhada da Pedra Rachada': { cult: 5, wolf: true, npcs: [['Pai da Ninhada Gorm', 'Pai da Ninhada da Pedra Rachada · licantropo', ['Família pequena, dente grande.', 'O Varg passou aqui na última lua. Contou dos filhotes que a prata levou.']], ['Rastreadora Sefa', 'Rastreadora · licantropa', ['Cheiro de prata, a três dias daqui. O Bastião manda gente.']], ['Velho Hask', 'Ancião da ninhada · licantropo', ['Eu vi a Mãe-Alfa ser filhote. Ninguém acredita.']]] },
+    'Ninhada do Charco Fundo': { cult: 5, wolf: true, npcs: [['Mãe da Ninhada Orla', 'Mãe da Ninhada do Charco · licantropa', ['O charco esconde o cheiro. É por isso que os caçadores nunca chegaram.', 'Leve isto à Grande Mãe: a ninhada está forte.']], ['Guardião Brum', 'Guardião do charco · licantropo', ['Pise onde eu piso.']], ['Curandeira Ysa', 'Curandeira da ninhada · licantropa', ['Lama de charco fecha mordida de prata. Devagar. Muito devagar.']]] },
+    'Ninhada das Três Luas': { cult: 5, wolf: true, npcs: [['Mãe da Ninhada Tamsin', 'Mãe da Ninhada das Três Luas · licantropa', ['Três filhotes na mesma lua. A Mãe-Alfa veio pessoalmente lamber as orelhas deles.', 'Isso é sinal. Não sei de quê.']], ['Filhote Lua-Um', 'Filhote', ['Eu sou o mais velho. Por dois minutos.']], ['Tio Wulf', 'Tio da ninhada · licantropo', ['Três filhotes, três vezes mais barulho. Ninguém dorme.']]] },
+    'Ninhada do Osso Branco': { cult: 5, wolf: true, npcs: [['Pai da Ninhada Varn', 'Pai da Ninhada do Osso Branco · licantropo', ['Os ossos na entrada são de caçador de prata. Ficam ali para lembrar.', 'A trégua com o Bastião? Eu ouvi falar. Ainda não vi.']], ['Caçadora Rhea', 'Caçadora · licantropa', ['Prata dói. Esquecer dói mais.']], ['Filhote Tor', 'Filhote', ['Esse osso era de um caçador? Posso roer?']]] },
+    'Ninhada da Clareira Calada': { cult: 5, wolf: true, npcs: [['Mãe da Ninhada Silke', 'Mãe da Clareira Calada · licantropa', ['Aqui não se uiva de dia. A clareira é calada por respeito aos que caíram.', 'Fale baixo, ou volte à noite.']], ['Guardiã Muda', 'Guardiã da clareira · licantropa', ['…']], ['Contador Brin', 'Contador de histórias · licantropo', ['Quer ouvir de quando a matilha comeu a lua? Mentira. Mas é bonita.']]] },
+    'Ninhada do Vento Norte': { cult: 5, wolf: true, npcs: [['Pai da Ninhada Ulric', 'Pai da Ninhada do Vento Norte · licantropo', ['Somos os primeiros a sentir quem vem de Dalborg. Os humanos de lá têm cheiro de medo e de tocha.', 'A Grande Mãe confia em nós para a fronteira.']], ['Batedora Kira', 'Batedora · licantropa', ['Dois caçadores ontem. Voltaram para casa. Assustados, não mortos. A Mãe-Alfa prefere assim.']], ['Filhote Bran', 'Filhote', ['Eu farejei um javali sozinho! Ele me farejou também.']]] },
+  };
+  const hamlet = (st: Settlement, rr: () => number, lore: string) => {
+    const H0 = HAMLET[st.name], cx = st.x, cy = st.y, R0 = 10; st.radius = R0; st.cult = H0.cult; clearWater(cx, cy, R0 + 3); flatten(cx, cy, R0 + 4);
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.hypot(q.gx - cx, q.gy - cy) < R0 + 3) props.splice(i, 1); }
+    for (let y = cy - R0 - 2; y <= cy + R0 + 2; y++) for (let x = cx - R0 - 2; x <= cx + R0 + 2; x++) if (inb(x, y) && Math.hypot(x - cx, y - cy) < R0 + 1 && (map[y][x] === 'tree' || map[y][x] === 'wall')) map[y][x] = 'grass';
+    const inClear = (x: number, y: number) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < 4.6 + 0.8 * Math.sin(a * 4 + st.name.length); };
+    for (let y = cy - 6; y <= cy + 6; y++) for (let x = cx - 6; x <= cx + 6; x++) if (inb(x, y) && inClear(x, y) && map[y][x] !== 'water') map[y][x] = 'plaza';
+    for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) for (let d = 4; d <= R0 + 6; d++) { const x = cx + ux * d, y = cy + uy * d; if (!inb(x, y) || map[y][x] === 'water') continue; if (map[y][x] !== 'plaza') map[y][x] = 'road'; }
+    if (H0.wolf) { props.push({ kind: 'campfire', gx: cx, gy: cy, w: 1, h: 1, height: 0.5, wall: 0x3a2a1a, roof: 0xff9a40 }); map[cy][cx] = 'wall'; props.push({ kind: 'totem', gx: cx + 2, gy: cy - 2, w: 1, h: 1, height: 2.6, wall: 0, roof: 0, variant: 1 }); }
+    else props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: 0x8a9a80, roof: 0x9ad8ff, variant: 1 });
+    const freeH = (gx: number, gy: number, w: number, h: number) => { for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y) || map[y][x] === 'water' || map[y][x] === 'road' || map[y][x] === 'plaza' || props.some((q) => q.kind !== 'herb' && x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) return false; } return true; };
+    const nH = H0.wolf ? 4 : 5; let put = 0;
+    for (let k = 0; k < 48 && put < nH; k++) { const a = (k % 24) / 24 * Math.PI * 2 + 0.4, r = k < 24 ? 8.4 : 9.6, gx = Math.round(cx + Math.cos(a) * r) - 2, gy = Math.round(cy + Math.sin(a) * r) - 2; if (!freeH(gx, gy, 4, 4)) continue;
+      block({ kind: 'house', gx, gy, w: 4, h: 4, height: H0.wolf ? 2.8 : 3.2, wall: H0.wolf ? 0x6a5a40 : 0xd8cfb0, roof: H0.wolf ? 0x4a3a2a : [0x6fa66a, 0xa8c060, 0x5a9a6a][put % 3], variant: put % 3, rot: k % 2, style: H0.cult }); put++; }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.25, x = Math.round(cx + Math.cos(a) * 5.4), y = Math.round(cy + Math.sin(a) * 5.4); if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'wall' && !props.some((q) => x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) props.push({ kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 2.0, wall: 0x9a7a52, roof: H0.wolf ? 0xff8a2a : 0x9ad8ff }); }
+    for (let k = 0; k < 14; k++) { const a = rr() * 6.283, r = 3 + rr() * 6, x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r);
+      if (!inb(x, y) || map[y][x] === 'water' || map[y][x] === 'wall' || props.some((q) => x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h)) continue;
+      if (H0.wolf) props.push(k % 3 ? { kind: 'bones', gx: x, gy: y, w: 1, h: 1, height: 0.3, wall: 0xd8d0b8, roof: 0 } : { kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0x6a4528, roof: 0x8a3b2e, variant: [6, 7][k % 2] });
+      else props.push(k % 3 ? { kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.4, wall: 0, roof: 0, variant: 5 } : { kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0x6a4528, roof: 0x8a3b2e, variant: [0, 1, 6][k % 3] }); }
+    if (!H0.wolf) for (const [x, y, v] of [[cx + 3, cy + 1, 0], [cx - 3, cy - 1, 1]] as [number, number, number][]) if (inb(x, y) && map[y][x] !== 'wall') decorAt('bench', x, y, 1, 1, v, 0x9a7a52, 0x8a9a80);
+    pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
+    H0.npcs.forEach(([name, role, lines], i) => { const a = i / 3 * Math.PI * 2 + 0.9, r = i === 0 ? 2.6 : 3.6; st.npcs.push({ name, role, kind: 'nordic', x: cx + 0.5 + Math.cos(a) * r, y: cy + 0.5 + Math.sin(a) * r, radius: i === 0 ? 1.0 : 2.5, tint: H0.wolf ? 0x6a5a40 : 0x5a8a6a, scale: 1.0, lines: i === 0 ? [...lines, lore] : lines }); });
+  };
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
     const rr = rng(seed); const R0 = 13; clearWater(cx, cy, R0 + 2); flatten(cx, cy, R0 + 4);
     const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [], cult }; settlements.push(st);
     if (name === 'Brasaforja') { brasaforja(st, rr, lore); return st; } /* 08/11: a cidade dos anões tem planta própria (abaixo) */
+    if (HAMLET[name]) { hamlet(st, rr, lore); return st; }
     if (name === 'Lithendel') { lithendel(st, rr, lore); return st; } /* 08/11: a vila dos elfos também */
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) if (inb(x, y)) map[y][x] = 'plaza';
     for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) if (inb(x, y) && map[y][x] === 'grass' && (Math.abs(x - cx) <= 1 || Math.abs(y - cy) <= 1)) map[y][x] = 'road';
