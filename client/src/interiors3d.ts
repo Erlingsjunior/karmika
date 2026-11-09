@@ -3,7 +3,7 @@ import { makeFire } from './sistemas/fogo';
 import { vitral, floorGlow, TEMAS, type Tam } from './vitrais';
 import { std, ink, plankTex, stoneTex, woodTex, plasterTex } from './toon3d';
 
-export interface Interior { group: THREE.Group; W: number; D: number; colliders: [number, number, number][]; free(x: number, z: number, squeeze?: boolean): boolean; flicker(t: number, hx?: number, hz?: number): void; shop?: boolean; exitZ: number }
+export interface Interior { group: THREE.Group; W: number; D: number; colliders: [number, number, number][]; free(x: number, z: number, squeeze?: boolean): boolean; flicker(t: number, hx?: number, hz?: number): void; shop?: boolean; exitZ: number; /** 09/11: altura do piso em (x, z) locais — estrados e degraus (o herói pisa em cima, não some dentro) */ floorY?(x: number, z: number): number }
 
 const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
 

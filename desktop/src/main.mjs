@@ -160,6 +160,7 @@ ipcMain.handle('game:update', async (_e, inv) => {
   } catch (e) { fs.rmSync(tmp, { recursive: true, force: true }); return { ok: false, why: String(e?.message || e) }; }
 });
 ipcMain.handle('app:open', (_e, url) => { if (/^https:\/\//.test(url)) shell.openExternal(url); return true; });
+ipcMain.handle('app:quit', () => { setTimeout(() => app.quit(), 100); return true; });
 
 app.whenReady().then(() => {
   pickGameDir();

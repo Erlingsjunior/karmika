@@ -532,7 +532,16 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
           at = new THREE.Vector3((x0 + x1) / 2, top - R * (DW.__hu ?? 1.12), (z0 + z1) / 2 + R * ((window as unknown as { __hz?: number }).__hz ?? 0.06)); } }
       fit(rig.helmHolder?.(), H, at, (size * 0.5 * (DB.__hk ?? 2.15)) / (rig.procHeadR * rs0)); }
     const LA = B('LeftArm'), RA = B('RightArm'), S2 = B('Spine2');
-    if (LA && RA && S2 && rig.procShoulderW) { const l = wp(LA), r = wp(RA); fit(rig.bodyHolder?.(), S2, l.clone().add(r).multiplyScalar(0.5), l.distanceTo(r) / (rig.procShoulderW * rs0)); }
+    if (LA && RA && S2 && rig.procShoulderW) { const l = wp(LA), r = wp(RA); let span = l.distanceTo(r), at = l.clone().add(r).multiplyScalar(0.5);
+      /* 09/11 (Erling: "ombreiras ridículas que não ficam no corpo"): o osso do braço fica por dentro do ombro de verdade (deltoide largo nos anões).
+         Mede o ombro na própria malha: vértices presos aos ossos Arm/Shoulder, a largura externa (percentis) e a altura do alto do ombro */
+      const xs: number[] = [], ys: number[] = [], v = new THREE.Vector3(), SH = [B('LeftShoulder'), B('RightShoulder'), LA, RA].filter(Boolean) as THREE.Bone[];
+      model.traverse((o) => { const m = o as THREE.SkinnedMesh; if (!m.isSkinnedMesh) return; const idx = SH.map((bn) => m.skeleton.bones.indexOf(bn)).filter((i) => i >= 0); if (!idx.length) return;
+        const si = m.geometry.getAttribute('skinIndex'), sw = m.geometry.getAttribute('skinWeight'); if (!si || !sw) return;
+        for (let i = 0; i < si.count; i++) { let w = 0; for (let c = 0; c < 4; c++) if (idx.includes(si.getComponent(i, c))) w += sw.getComponent(i, c); if (w < 0.5) continue; m.getVertexPosition(i, v); m.applyBoneTransform(i, v); v.applyMatrix4(m.matrixWorld); if (v.y < at.y - span * 0.25) continue; xs.push(v.x); ys.push(v.y); } });
+      if (xs.length > 40) { const pc = (arr: number[], q: number) => { const b2 = [...arr].sort((p1, p2) => p1 - p2); return b2[Math.min(b2.length - 1, Math.max(0, Math.round(q * (b2.length - 1))))]; };
+        const x0 = pc(xs, 0.02), x1 = pc(xs, 0.98), top = pc(ys, 0.97); const mSpan = Math.abs(x1 - x0) * 0.92; if (mSpan > span * 0.8 && mSpan < span * 2.2) { span = mSpan; at = new THREE.Vector3((x0 + x1) / 2, top - span * 0.06, at.z); } }
+      fit(rig.bodyHolder?.(), S2, at, span / (rig.procShoulderW * rs0)); }
   }
   const fm = new THREE.Matrix4(), fi = new THREE.Matrix4();
   function placeFitted() { for (const f of fitted) { if (!f.o.parent) continue; f.o.parent.updateWorldMatrix(true, false); fm.multiplyMatrices(f.b.matrixWorld, f.C); fi.copy(f.o.parent.matrixWorld).invert(); f.o.matrixAutoUpdate = false; f.o.matrix.multiplyMatrices(fi, fm); f.o.updateMatrixWorld(true); } }

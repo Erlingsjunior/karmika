@@ -210,5 +210,7 @@ export function buildDwarfHall(seed = 5): Interior & { lavaTick(t: number): void
     return true;
   };
   mergeStatic(g, ramp);
-  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, lavaTick: (t) => flicker(t) };
+  /* 09/11 (Erling: "a escada está cobrindo meu corpo"): o estrado do trono tem 3 degraus de 0,45 m — o pé sobe com eles */
+  const floorY = (x: number, z: number) => { const cx = W / 2, z0 = 5.5; let y = 0; for (let s0 = 0; s0 < 3; s0++) { const hw = (24 - s0 * 2.6) / 2, hd = (8.6 - s0 * 1.4) / 2, zc = z0 + 4.3 - s0 * 0.7; if (Math.abs(x - cx) <= hw && Math.abs(z - zc) <= hd) y = (s0 + 1) * 0.45; } return y; };
+  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, lavaTick: (t) => flicker(t), floorY };
 }

@@ -15,5 +15,7 @@ contextBridge.exposeInMainWorld('karmikaDesktop', {
   onUpdate: (cb) => { const f = (_e, p) => cb(p); ipcRenderer.on('game:progress', f); return () => ipcRenderer.off('game:progress', f); },
   copy: (text) => ipcRenderer.invoke('app:copy', text),
   open: (url) => ipcRenderer.invoke('app:open', url),
+  /** 09/11: fecha o jogo (botão Sair da tela inicial) */
+  quit: () => ipcRenderer.invoke('app:quit'),
   onHostLog: (cb) => { const f = (_e, line) => cb(line); ipcRenderer.on('host:log', f); return () => ipcRenderer.off('host:log', f); },
 });

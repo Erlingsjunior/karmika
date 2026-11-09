@@ -1,4 +1,5 @@
 import { alertBox } from './windows';
+import { isPremium } from './premium';
 import { runaSvg } from './runas';
 /* Tela de boas-vindas e os 3 espaços de personagem.
    Fluxo: abrir o jogo → "Encontrar servidor" (convite), "Abrir meu servidor" (app) ou "Jogar sozinho"
@@ -13,7 +14,8 @@ interface Slots { active: number; meta: (SlotMeta | null)[]; servers: string[] }
 /** chaves que são da máquina (opções, janelas, premium, rede), não do personagem */
 const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.minizoom', 'karmika.minipos', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
 const isChar = (k: string) => k.startsWith('karmika.') && !GLOBAL.some((g) => k === g || k.startsWith(g));
-const NSLOT = 3;
+const NSLOT_FREE = 3, NSLOT_PREMIUM = 5; /* 09/11 (Erling: "usuário premium tem 5 espaços de personagem") */
+const nslot = () => (isPremium() ? NSLOT_PREMIUM : NSLOT_FREE);
 const BOOT = 'karmika.boot';
 
 function read(): Slots {
@@ -23,7 +25,7 @@ function read(): Slots {
     try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) s.meta[0] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'm', pic: null, server: null, t: Date.now() }; } catch { /* */ }
     write(s);
   }
-  while (s.meta.length < NSLOT) s.meta.push(null); s.servers ??= [];
+  while (s.meta.length < nslot()) s.meta.push(null); s.servers ??= [];
   if ((s as Slots & { picv?: number }).picv !== 3) { for (const m of s.meta) if (m) m.pic = null; (s as Slots & { picv?: number }).picv = 3; write(s); } // retratos tirados pela versão antiga (escuros/errados): refaz ao jogar
   if (!s.meta[s.active]) { try { const p = JSON.parse(localStorage.getItem('karmika.char.v1') || 'null'); if (p) { s.meta[s.active] = { name: p.name, lvl: 1, cls: '', origin: p.origin, sex: p.sex ?? 'm', pic: null, server: null, t: Date.now() }; write(s); } } catch { /* */ } }
   return s;
@@ -98,7 +100,8 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         ${o.desk ? `<button data-i="host">⚑ Abrir meu servidor<small>esta máquina vira o mundo; mande o convite para os amigos</small></button>` : ''}
         <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button>
         <button data-i="social">👥 Amigos e Guilda<small>conversas e o chat da guilda, antes de entrar no mundo</small></button>
-        <button data-i="shop">🛍 Shop<small>Premium (Selo de Marghar) e as peças com brasão; comprado aqui, vai para o inventário da conta</small></button></div>`;
+        <button data-i="shop">🛍 Shop<small>Premium (Selo de Marghar) e as peças com brasão; comprado aqui, vai para o inventário da conta</small></button>
+        <button data-i="quit" class="in-quit">⏻ Sair do jogo<small>fecha o Karmika</small></button></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>
         <div class="in-row"><input data-v="inv" placeholder="karmika://IP:7777/CÓDIGO" value="${esc(draftInv || s.servers[0] || '')}" spellcheck="false"></div>
         <div class="in-row" style="margin-top:8px"><input data-v="pass" type="password" placeholder="Senha (só se a sala tiver)" value="${esc(draftPass || passFor(draftInv || s.servers[0] || ''))}"><button data-i="go" class="gold">Continuar</button></div>
@@ -112,7 +115,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <div class="in-bar"><i style="width:${(k * 100).toFixed(1)}%"></i><span>${upd.total ? `${(upd.got / 1048576).toFixed(1)} / ${(upd.total / 1048576).toFixed(1)} MB` : 'conferindo versões…'}</span></div><p class="in-mut">${esc(upd.file)}</p></div>`; }
     if (step === 'chars') refreshActive();
     if (step === 'chars' && server) o.onServer?.(server);
-    if (step === 'chars') body = `<div class="in-chars"><h2>Seus personagens</h2><p class="in-mut">Escolha o seu Caminhante (até ${NSLOT} por máquina). Cada um tem o seu próprio save; depois você volta e escolhe onde jogar.</p><div class="in-slots">${s.meta.map((m, i) => m ? `
+    if (step === 'chars') body = `<div class="in-chars"><h2>Seus personagens</h2><p class="in-mut">Escolha o seu Caminhante (até ${nslot()} por máquina${isPremium() ? ' · ✦ Premium: 5 espaços' : ' · Premium: 5 espaços'}). Cada um tem o seu próprio save; depois você volta e escolhe onde jogar.</p><div class="in-slots">${s.meta.slice(0, nslot()).map((m, i) => m ? `
         <div class="in-slot ${i === s.active ? 'act' : ''}" data-s="${i}"><div class="in-pic">${(m.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${m.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : m.pic ? `<img src="${m.pic}" alt="">` : `<span>${m.origin === 'dwarf' ? '⚒' : m.origin === 'elf' ? '❦' : '⚔'}</span>`}</div>
           <b>${esc(m.name)}</b><small>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}</small><em>${m.origin === 'dwarf' ? 'Anão' : m.origin === 'elf' ? 'Elfo' : 'Humano'} · ${m.sex === 'm' ? 'Homem' : 'Mulher'}</em>
           <button data-play="${i}" class="gold">${i === s.active ? '✔ Escolhido' : 'Escolher'}</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
@@ -169,6 +172,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     if (a === 'find') { step = 'find'; render(); (el.querySelector('[data-v="inv"]') as HTMLInputElement)?.focus(); return; }
     if (a === 'social') { o.social?.(); return; }
     if (a === 'shop') { o.shop?.(); return; }
+    if (a === 'quit') { /* 09/11 (Erling: "não tem a opção de sair na tela principal") */ try { (window as unknown as { karmikaDesktop?: { quit?: () => void } }).karmikaDesktop?.quit?.(); } catch { /* */ } setTimeout(() => window.close(), 120); return; }
     if (a === 'solo') { play(null); return; }
     if (a === 'go') { const v = (el.querySelector('[data-v="inv"]') as HTMLInputElement).value.trim(); const pv = parseInvite(v); if (!pv) { err = 'Convite inválido. O formato é karmika://IP:7777/CÓDIGO'; render(); return; }
       if (!/[.:]/.test(pv.host) && pv.host.toLowerCase() !== 'localhost') { err = `"${pv.host}" não é um endereço. Troque pelo número do computador da sala: no mesmo PC use 127.0.0.1 (karmika://127.0.0.1:${pv.port}/${pv.code}). Ou clique numa sala da lista acima.`; render(); return; }

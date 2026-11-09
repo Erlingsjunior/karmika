@@ -22,7 +22,7 @@ function barkTexture() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
-function leafTexture(hues: string[]) {
+export function leafTexture(hues: string[]) {
   const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d')!;
   for (let i = 0; i < 70; i++) {
@@ -164,7 +164,7 @@ export function buildTree(height: number, h: number): { obj: THREE.Group; kind: 
    copa de cartões de folha em dois tons (verde-prata e verde-dourado), plataformas de madeira em volta do tronco com guarda-corpo de
    galho, escada em espiral de degraus de madeira, lanternas penduradas. Devolve o grupo e os pontos das lanternas (para o fogo e a luz). */
 const elfLeafMat = windify(new THREE.MeshToonMaterial({ map: leafTexture(['#6fa66a', '#a8c870', '#4f8a5c', '#d6c46a']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp }), 0.05, 1.0);
-export function buildGreatTree(scale = 4.6): { obj: THREE.Group; lanterns: THREE.Vector3[]; platforms: { y: number; r: number }[] } {
+export function buildGreatTree(scale = 6): { obj: THREE.Group; lanterns: THREE.Vector3[]; platforms: { y: number; r: number }[] } {
   const g = new THREE.Group(), rnd = mulberry(4242); const lanterns: THREE.Vector3[] = [];
   const out: THREE.BufferGeometry[] = []; const tips: { p: THREE.Vector3; d: THREE.Vector3 }[] = [];
   grow(rnd, out, tips, new THREE.Vector3(0, -0.3, 0), new THREE.Vector3(0.05, 1, 0.02), 3.6, 0.5, 3, 0.4);
@@ -173,7 +173,7 @@ export function buildGreatTree(scale = 4.6): { obj: THREE.Group; lanterns: THREE
   for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + rnd() * 0.3, L = (2.2 + rnd() * 1.6) * scale * 0.5; const root = new THREE.Mesh(new THREE.ConeGeometry(0.45 * scale * 0.5, L, 6), barkMat); root.position.set(Math.cos(a) * L * 0.45, 0.25, Math.sin(a) * L * 0.45); root.rotation.z = Math.PI / 2 + 0.25; root.rotation.y = -a; root.castShadow = true; g.add(root); }
   /* copa: cartões maiores nos galhos, em dois tons */
   const cards: THREE.BufferGeometry[] = [];
-  for (const t of tips) { if (t.p.y < 2.6) continue; for (let k = 0; k < 3; k++) { const q = new THREE.PlaneGeometry(2.0 + rnd() * 1.2, 1.5 + rnd() * 0.9); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.2); q.rotateZ((rnd() - 0.5) * 0.9); q.translate(t.p.x + (rnd() - 0.5) * 0.9, t.p.y + (rnd() - 0.2) * 0.8, t.p.z + (rnd() - 0.5) * 0.9); cards.push(q); } }
+  for (const t of tips) { if (t.p.y < 2.6) continue; for (let k = 0; k < 4; k++) { const q = new THREE.PlaneGeometry(2.0 + rnd() * 1.2, 1.5 + rnd() * 0.9); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.2); q.rotateZ((rnd() - 0.5) * 0.9); q.translate(t.p.x + (rnd() - 0.5) * 0.9, t.p.y + (rnd() - 0.2) * 0.8, t.p.z + (rnd() - 0.5) * 0.9); cards.push(q); } }
   const leaves = new THREE.Mesh(mergeGeometries(cards, false)!, elfLeafMat); leaves.scale.setScalar(scale); leaves.castShadow = true; g.add(leaves);
   /* plataformas e escada em espiral */
   const wood = new THREE.MeshToonMaterial({ color: 0xb8a070, gradientMap: ramp }), rail = new THREE.MeshToonMaterial({ color: 0x7a6a48, gradientMap: ramp });
@@ -184,6 +184,12 @@ export function buildGreatTree(scale = 4.6): { obj: THREE.Group; lanterns: THREE
       if (k % 3 === 0) lanterns.push(new THREE.Vector3(Math.cos(a) * (pf.r + 0.3), pf.y + 1.15, Math.sin(a) * (pf.r + 0.3))); }
     const hand = new THREE.Mesh(new THREE.TorusGeometry(pf.r - 0.15, 0.05, 5, 36), rail); hand.rotation.x = Math.PI / 2; hand.position.y = pf.y + 1.0; g.add(hand);
     for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3; const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, pf.y * 0.55, 5), rail); brace.position.set(Math.cos(a) * (pf.r - 1.0), pf.y - pf.y * 0.27, Math.sin(a) * (pf.r - 1.0)); brace.rotation.z = Math.cos(a) * 0.5; brace.rotation.x = -Math.sin(a) * 0.5; g.add(brace); } }
-  { const steps = 34, r = 0.5 * scale + 0.9, y1 = platforms[0].y; for (let k = 0; k < steps; k++) { const a = -0.4 + k / steps * Math.PI * 1.6, y = 0.3 + (y1 - 0.3) * k / steps; const st = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.42), wood); st.position.set(Math.cos(a) * r, y, Math.sin(a) * r); st.rotation.y = -a; st.castShadow = true; g.add(st); } }
+  /* 09/11 (Erling: "a escada está ruim, não consigo subir; uma passagem e a tela muda"): sai a escada em espiral, entra a PASSAGEM DA RAIZ —
+     um arco escavado no tronco, ao sul, com luz azul por dentro: é a porta para a Copa (copa3d.ts) */
+  { const r0 = 0.5 * scale; const arch = new THREE.Mesh(new THREE.TorusGeometry(0.9, 0.22, 6, 12, Math.PI), rail); arch.position.set(0, 1.9, r0 + 0.1); g.add(arch);
+    const dark = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.0), new THREE.MeshBasicMaterial({ color: 0x0a1418 })); dark.position.set(0, 1.0, r0 + 0.02); g.add(dark);
+    const lum = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.5), new THREE.MeshBasicMaterial({ color: 0x3a90b0, transparent: true, opacity: 0.55 })); lum.position.set(0, 0.95, r0 + 0.04); g.add(lum);
+    for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 2.1, 6), rail); post.position.set(s * 1.0, 1.05, r0 + 0.1); g.add(post); lanterns.push(new THREE.Vector3(s * 1.25, 2.3, r0 + 0.4)); }
+    for (let k = 0; k < 5; k++) { const st = new THREE.Mesh(new THREE.BoxGeometry(2.4 - k * 0.2, 0.14, 0.5), wood); st.position.set(0, 0.07 + k * 0.14, r0 + 1.6 - k * 0.42); g.add(st); } }
   return { obj: g, lanterns, platforms };
 }

@@ -276,7 +276,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     K.out.glows.push({ pos: new THREE.Vector3(cx, 4, cz + 6), color: 0x9ad8ff, base: 40 });
   }
   else if (id === 11) { // 08/11 A ÁRVORE-MÃE DE LITHENDEL: a árvore viva gigante no meio da vila dos elfos, com plataformas, escada em espiral e lanternas
-    const T = buildGreatTree(Math.min(Wm, Dm) * 0.42); T.obj.position.set(cx, -0.1, cz); K.g.add(T.obj);
+    const T = buildGreatTree(Math.min(Wm, Dm) * 0.5); T.obj.position.set(cx, -0.1, cz); K.g.add(T.obj); /* 09/11: mais majestosa (escala 0,5 do lado) */
     const st = stone(0x9a9a8a), mossy = flat(0x5a8a4a);
     K.cyl(Math.min(Wm, Dm) * 0.26, Math.min(Wm, Dm) * 0.28, 0.35, cx, 0, cz, st, 18); /* o pedestal de pedra musgosa em volta das raízes */
     for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2, r = Math.min(Wm, Dm) * 0.27; K.add(new THREE.SphereGeometry(0.5 + (k % 3) * 0.2, 6, 5), mossy, cx + Math.cos(a) * r, 0.3, cz + Math.sin(a) * r).scale.set(1.4, 0.5, 1); }
