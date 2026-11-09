@@ -1108,6 +1108,8 @@ function buildCity_L(): World {
     for (const y of [CB.y0 + 1, CB.y0 + 8]) { B('house', CB.x1 + 5, y, 6, 4, { height: 3.6, wall: 0x7a4a3a, roof: 0x4a4e56, variant: 2, style: 7, rot: 1 }); rect(CB.x1 + 4, y, CB.x1 + 4, y + 3, 'plaza'); }
     rect(CB.x1 + 4, CB.y0 - 4, CB.x1 + 11, CB.y0 - 1); rect(CB.x1 + 11, CB.y0 - 4, CB.x1 + 11, R0 - 2); // a rua dos armazéns
     for (const [x, y] of [[CV.x0 - 8, CV.y0 - 2], [CV.x0 - 9, CV.y0 + 5], [CV.x1 + 4, CV.y0 - 7]]) B('house', x, y, 4, 4, { height: 3.0, wall: [0x8a7a5a, 0x7a6a5a, 0x6a5a4a][(x + y) & 1], roof: [0x4a4e56, 0x5a3a2a][(x + y) & 1], variant: 1, style: 7, rot: 0 });
+    /* 08/11 (Erling: "piso bem colocado"): dentro da muralha do Porto as ruas são calçadas (laje), não terra batida; só a estrada que sai da cidade continua de terra */
+    for (let y = -R0 - 2; y <= R0 + 2; y++) for (let x = -R0 - 2; x <= R0 + 2; x++) if (at(x, y) === 'road' && Math.hypot(x, y) < R0 + 1) set(x, y, 'plaza');
     rect(CV.x0 - 6, CV.y0 - 4, CV.x1 + 4, CV.y0 - 3); rect(-14, 6, -11, 20); // a rua da enseada e a ligação com a Praça do Cais
     /* 7) os bairros: casas de tijolo e ferro viradas para a rua mais perto, com 2 casas de folga entre si (regra 19: ruas largas, nada apertado) */
     { const WALLS = [0x7a4a3a, 0x8a5a4a, 0x6a5a52, 0x5a4a44, 0x8a6a4a], ROOFS = [0x3a3d44, 0x4a4e56, 0x5a3a2a, 0x3a3a3a, 0x4a3a30];

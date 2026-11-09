@@ -12,7 +12,7 @@ function paveAt(w: World, x: number, y: number) { let p = 0; for (const st of w.
    anão, sombrio e pacto: laje de pedra; élfico: pedra com musgo; tribal: terra batida e lama; humano e vapor: paralelepípedo. Pesos (x,y,z,w) */
 function cultW(w: World, x: number, y: number, out: number[]) { out[0] = out[1] = out[2] = out[3] = 0; let bd = 1e9, c = 0;
   for (const st of w.settlements) { const d = Math.hypot(x - st.x, y - st.y) - (st.kind === 'city' ? 60 : st.radius + 6); if (d < bd) { bd = d; c = st.cult ?? 0; } }
-  if (bd > 14) return out; const k = 1 - smoothstep(0, 14, bd), i = c === 1 ? 0 : c === 2 || c === 4 || c === 6 ? 1 : c === 3 ? 2 : c === 5 ? 3 : -1; if (i >= 0) out[i] = k; return out; }
+  if (bd > 14) return out; const k = 1 - smoothstep(0, 14, bd), i = c === 1 ? 0 : c === 2 || c === 4 || c === 6 || c === 7 ? 1 : c === 3 ? 2 : c === 5 ? 3 : -1; /* 08/11: o Porto (vapor) pisa em laje escura */ if (i >= 0) out[i] = k; return out; }
 const CW = [0, 0, 0, 0];
 export const CS = 20;               // tiles por chunk
 export const CSM = CS * T;          // metros
