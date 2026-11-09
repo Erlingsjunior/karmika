@@ -14,7 +14,7 @@ import { TECHNO_II } from './indice';
 import { CAP2_NEW } from './capitulo2-novas';
 import { FALAS_GUERREIRO } from './guerreiro-falas';
 import { HUNTER_II, MAGE_II, HUMAN_II, DWARF_II, ELF_II } from './capitulo2b';
-import { PALADIN_III_NEW, WARRIOR_III, WEREWOLF_III, VAMPIRE_III, TECHNO_III_NEW, WARLOCK_III, HUNTER_III, MAGE_III, HUMAN_III, DWARF_III, ELF_III } from './capitulo3';
+import { PALADIN_III_NEW, WARRIOR_III, WEREWOLF_III, VAMPIRE_III, TECHNO_III_NEW, WARLOCK_III, HUNTER_III, MAGE_III, HUMAN_III, DWARF_III, ELF_III, VELMORA_RECON } from './capitulo3';
 import { HUNTER_I } from './cacador';
 import { MAGE_I } from './mago';
 import { HUMAN_I } from './humano';
@@ -23,7 +23,7 @@ import { ELF_I } from './elfo';
 
 const ALL = new Map<string, QuestDef>([...PALADIN, ...WANDERER, ...WARRIOR, ...WEREWOLF, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...COSTURA_I, ...TECHNO_II, ...CAP2_NEW,
   ...HUNTER_II, ...MAGE_II, ...HUMAN_II, ...DWARF_II, ...ELF_II,
-  ...PALADIN_III_NEW, ...WARRIOR_III, ...WEREWOLF_III, ...VAMPIRE_III, ...TECHNO_III_NEW, ...WARLOCK_III, ...HUNTER_III, ...MAGE_III, ...HUMAN_III, ...DWARF_III, ...ELF_III].map((d) => [d.id, d]));
+  ...PALADIN_III_NEW, ...WARRIOR_III, ...WEREWOLF_III, ...VAMPIRE_III, ...TECHNO_III_NEW, ...WARLOCK_III, ...HUNTER_III, ...MAGE_III, ...HUMAN_III, ...DWARF_III, ...ELF_III, ...VELMORA_RECON].map((d) => [d.id, d]));
 const LV = [20, 21, 22, 23, 24, 26, 27, 28, 29, 31];
 type Ov = { giver?: string; turnin?: string; doneAdd?: string; rep?: [string, string][]; doneLast?: string; title?: string };
 
@@ -192,9 +192,11 @@ export const ELF_II2 = seq(ELF_II.map((d) => d.id), {
 
 /* ======================= CAPÍTULO III — "A GUERRA FRIA" (níveis 44–76), as onze classes (capitulo3.ts) =======================
    As que sobraram dos Capítulos I e II voltam aqui: pa6, pa8 e aw10 no Paladino; te5, te6 e tv6 no Tecnocrata (Erling: nunca perdemos missões). */
-const LV3 = [44, 47, 50, 53, 56, 60, 64, 68, 72, 76];
-const ids = (a: QuestDef[]) => a.map((d) => d.id);
-export const PALADIN_III = seq(['pk1', 'pk2', 'pa6', 'pk3', 'pa8', 'pk4', 'aw10', 'pk6', 'pk5', 'pk7'], {
+/* 09/11: o Capítulo III abre em Velmora (o reconhecimento, uma missão a mais para TODAS as classes: onze no III, iguais para todos) */
+const LV3 = [44, 45, 47, 50, 53, 56, 60, 64, 68, 72, 76];
+const ids = (a: QuestDef[], vel: string) => [vel, ...a.map((d) => d.id)];
+export const PALADIN_III = seq(['vel_pa', 'pk1', 'pk2', 'pa6', 'pk3', 'pa8', 'pk4', 'aw10', 'pk6', 'pk5', 'pk7'], {
+  vel_pa: { doneAdd: 'Agora, um pedido estranho: suba a Colina Vampírica ao meio-dia.' },
   pk1: { doneAdd: 'A Corte vai responder. Hoje à noite, aposto. Fique na Abadia.' },
   pk2: { doneAdd: 'E a vida segue: o órgão novo da Catedral sai de Austrvik amanhã, e os Desfiados sabem. Escolte.' },
   pa6: { rep: [['Os mortos que os Desfiados erguem rondam o caminho.', 'Os mortos que a podridão de Zerath levanta rondam o caminho, e os Desfiados não têm pressa nenhuma em afastá-los.']], doneAdd: 'Antes de ir: as velas que a Abadia comprou queimam azul no altar. As que mandaram para cá também. Fique: preciso de você para isso.' },
@@ -205,19 +207,22 @@ export const PALADIN_III = seq(['pk1', 'pk2', 'pa6', 'pk3', 'pa8', 'pk4', 'aw10'
   pk6: { doneAdd: 'Volte ao Grão-Mestre. O Fio quer o Clã do Corvo na Mesa, e o norte só fala por duelo.' },
   pk5: { doneAdd: 'A Mesa Partida vai se reunir em Askavik. Eu vou. Você vai comigo.' },
 }, LV3, 'A Vigília Dobrada', 'aw11');
-export const WARRIOR_III2 = seq(ids(WARRIOR_III), {
+export const WARRIOR_III2 = seq(ids(WARRIOR_III, 'vel_gu'), {
+  vel_gu: { doneAdd: 'Abri o círculo do rochedo. As duas bandeiras querem o Clã.' },
   gk3: { doneAdd: 'Um rapaz com o machado do meu irmão apareceu em Fjallbrún. Vá você. Eu não vou.' },
   gk4: { doneAdd: 'A Brynhild quer você em Jarlsheim. O skald anda cantando o que não aconteceu.' },
   gk5: { doneAdd: 'A estação acabou. O Clã tem que dizer a quem empresta a lâmina. Suba ao rochedo.' },
   gk7: { doneAdd: 'Leve a moeda ao Jarl. Eu espero aqui.' },
 }, LV3, 'A Balança do Corvo', 'gc5');
-export const WEREWOLF_III2 = seq(ids(WEREWOLF_III), {
+export const WEREWOLF_III2 = seq(ids(WEREWOLF_III, 'vel_lo'), {
+  vel_lo: { doneAdd: 'Eu não dormi. Tem prata na Selva.' },
   lk2: { doneAdd: 'O Varg quer falar com você. É sobre carne. Com o Varg, é sempre sobre carne.' },
   lk4: { doneAdd: 'A Mãe-Alfa precisa de você na Ninhada do Charco Fundo. Os jovens estão comendo errado.' },
   lk7: { doneAdd: 'O Varg tem uma ideia. Isso é perigoso. Vá ouvir antes que ele faça.' },
   lk8: { doneAdd: 'A Mãe-Alfa vai à Mesa Partida. Antes, as sete ninhadas uivam juntas. Venha.' },
 }, LV3, 'O Faro', 'lj5');
-export const VAMPIRE_III2 = seq(ids(VAMPIRE_III), {
+export const VAMPIRE_III2 = seq(ids(VAMPIRE_III, 'vel_va'), {
+  vel_va: { doneAdd: 'E um paladino entrou no castelo ao meio-dia. Nós vamos responder.' },
   vk1: { doneAdd: 'O Conde quer falar com você. É sobre um relógio. Ele está de muito mau humor, que nele parece educação.' },
   vk2: { doneAdd: 'O Vasko ouviu uma história de relógios. Ele está com medo, o que nele parece entusiasmo.' },
   vk3: { doneAdd: 'A senhora Mirela chama. Os caçadores querem cortar o nosso sangue em Brasaforja.' },
@@ -226,7 +231,8 @@ export const VAMPIRE_III2 = seq(ids(VAMPIRE_III), {
   vk7: { doneAdd: 'A senhora Mirela quer você em Hrafnhöfn. Três crias foram à estrada.' },
   vk8: { doneAdd: 'O Conde vai à Mesa Partida e quer levar uma cria de confiança. Ele está olhando para você.' },
 }, LV3, 'A Noite da Abadia', 'vj4');
-export const TECHNO_III = seq(['tk1', 'te5', 'tk2', 'tk3', 'te6', 'tk4', 'tv6', 'tk5', 'tk6', 'tk7'], {
+export const TECHNO_III = seq(['vel_te', 'tk1', 'te5', 'tk2', 'tk3', 'te6', 'tk4', 'tv6', 'tk5', 'tk6', 'tk7'], {
+  vel_te: { doneAdd: 'A Arquiteta Ylva chama. A Brunna abriu uma caixa de música, e não gostou do que tocou.' },
   tk1: { doneAdd: 'E tem mais uma coisa, que não pode esperar: uma caravana nossa caiu no Passo de Midvangr.' },
   te5: { doneAdd: 'Agora as caixas de música. Temos que recolher todas, antes que alguém aperte o botão errado.' },
   tk2: { doneAdd: 'O Doutor Anselm quer você em Porto Caldeira. Achou alguma coisa nos arquivos e não quer dizer por carta.' },
@@ -243,7 +249,8 @@ export const TECHNO_III = seq(['tk1', 'te5', 'tk2', 'tk3', 'te6', 'tk4', 'tv6', 
   tk5: { doneAdd: 'O Anselm está montando uma sentinela para a Mesa Partida. Ajude ele, antes que ele ponha um índice nela.' },
   tk6: { doneAdd: 'A Ylva vai à Mesa e quer você ao lado da sentinela.' },
 }, LV3, 'A Caixa Que Era Arma', 'ti7');
-export const WARLOCK_III2 = seq(ids(WARLOCK_III), {
+export const WARLOCK_III2 = seq(ids(WARLOCK_III, 'vel_bx'), {
+  vel_bx: { doneAdd: 'A Torre vai queimar os nossos pactos. Eu tenho um plano com três sílabas.' },
   bk2: { doneAdd: 'O Malgrath chama. Isso não acontece. Vá.' },
   bk3: { doneAdd: 'A Ravena quer você. A Corte veio pagar uma dívida, e ela quer cobrar de quem escreveu.' },
   bk4: { doneAdd: 'A Bruxa Grisolda tem uma entrega para a Torre. Ela precisa de escolta e não vai pedir duas vezes.' },
@@ -251,7 +258,8 @@ export const WARLOCK_III2 = seq(ids(WARLOCK_III), {
   bk8: { doneAdd: 'O Malgrath vai à Mesa Partida. Duzentos anos. Ele quer você junto.' },
   bk9: { doneAdd: 'A Ravena espera você em Askavik. Leve o acordo.' },
 }, LV3, 'A Última Sílaba', 'bj5');
-export const HUNTER_III2 = seq(ids(HUNTER_III), {
+export const HUNTER_III2 = seq(ids(HUNTER_III, 'vel_ca'), {
+  vel_ca: { doneAdd: 'Agora vou armar a Selva com gaiolas. Prender, não matar.' },
   ck1: { doneAdd: 'Alguém soltou os filhotes de noite. A Vesna quer saber por que ninguém atirou.' },
   ck2: { doneAdd: 'A Mestra Ilsa quer atrasar a remessa de sangue de Brasaforja. Uma noite. Vá com ela.' },
   ck3: { doneAdd: 'A Vesna quer conhecer a Sangradora. Vá junto. Segure a Vesna.' },
@@ -259,7 +267,8 @@ export const HUNTER_III2 = seq(ids(HUNTER_III), {
   ck6: { doneAdd: 'A Vesna precisa de pó do sono para o Pip. Ela não aguenta a Grisolda. Você aguenta.' },
   ck7: { doneAdd: 'A Mestra Ilsa achou uma gaiola que não é nossa, com um filhote dentro.' },
 }, LV3, 'O Capitão do Ninho', 'cj10');
-export const MAGE_III2 = seq(ids(MAGE_III), {
+export const MAGE_III2 = seq(ids(MAGE_III, 'vel_ma'), {
+  vel_ma: { doneAdd: 'Agora quero queimar as cópias dos pactos que circulam na Torre.' },
   mk1: { doneAdd: 'A Ísold quer comparar a letra dos grimórios. Ela parou de rir. Vá.' },
   mk2: { doneAdd: 'A Arquimaga Seline quer que você ouça o Corin. A Torre quer expulsá-lo.' },
   mk3: { doneAdd: 'O Vesk quer você. Um Cobrador anda levando aprendizes.' },
@@ -267,14 +276,16 @@ export const MAGE_III2 = seq(ids(MAGE_III), {
   mk6: { doneAdd: 'A Seline precisa de alguém para uma entrega no Vale. É sobre chá. Não ria.' },
   mk7: { doneAdd: 'O Vesk está olhando o Farol de Lumenhal pela janela há uma hora. Vá ver o que ele vê.' },
 }, LV3, 'A Ata', 'mj10');
-export const HUMAN_III2 = seq(ids(HUMAN_III), {
+export const HUMAN_III2 = seq(ids(HUMAN_III, 'vel_hu'), {
+  vel_hu: { doneAdd: 'Achei uma terra sem dono. E vou pedir a você uma coisa grande.' },
   hx1: { doneAdd: 'O Gunnar já está a caminho com corda e madeira. Vá ajudar.' },
   hx2: { doneAdd: 'O Velho Ansgar quer falar com você sobre quem manda na vila. Não é você.' },
   hx4: { doneAdd: 'O Garrick quer contratar guarda para a vila nova. Vá com ele à estrada.' },
   hx5: { doneAdd: 'O Velho Ansgar recebeu um convite de Corvoscuro com o seu nome. Ele está pálido.' },
   hx7: { doneAdd: 'O Ansgar quer fazer uma guilda. Uma guilda do Comum. Vá a Karmika.' },
 }, LV3, 'A Vila Que Você Fez', 'hk10');
-export const DWARF_III2 = seq(ids(DWARF_III), {
+export const DWARF_III2 = seq(ids(DWARF_III, 'vel_an'), {
+  vel_an: { doneAdd: 'Vou abrir o Mercado das Duas Bandeiras. Preciso de quem segure o balcão.' },
   ax1: { doneAdd: 'Dois espiões querem saber o que o outro comprou. Os dois educados. Venha.' },
   ax2: { doneAdd: 'A Sangradora Ásta quer você do lado dos doadores. Ouça eles.' },
   ax3: { doneAdd: 'A Dagny quer ir ao Bastião “conversar”. Com o martelo. Vá antes dela.' },
@@ -283,7 +294,8 @@ export const DWARF_III2 = seq(ids(DWARF_III), {
   ax7: { doneAdd: 'O Thane quer fazer uma mesa nova para a Mesa Partida. De ferro.' },
   ax8: { doneAdd: 'A Dagny vai levar a mesa a Askavik. Vá com ela. Leve uma lança: harpia gosta de ferro brilhante.' },
 }, LV3, 'Ferro Para os Dois', 'dk10');
-export const ELF_III2 = seq(ids(ELF_III), {
+export const ELF_III2 = seq(ids(ELF_III, 'vel_el'), {
+  vel_el: { doneAdd: 'E agora quero fazer de você o embaixador da Copa.' },
   ex1: { doneAdd: 'A Lirien quer você. Uma carta nossa voltou com uma cláusula que não escrevemos.' },
   ex2: { doneAdd: 'A Senhora Vaelith soube da cláusula. Ela quer ir ao Bastião. Vá com ela.' },
   ex3: { doneAdd: 'A Lirien interceptou outra carta dobrada. Vá a ela.' },
@@ -300,17 +312,17 @@ for (const [a, b] of [[PALADIN_I, PALADIN_II], [WARRIOR_I, WARRIOR_II], [WEREWOL
 link(HUNTER_I, HUNTER_II2); link(MAGE_I, MAGE_II2); link(HUMAN_I, HUMAN_II2);
 link(DWARF_I, DWARF_II2, 'A Dagny quer você no Conselho dos Bigodes. Brasaforja vai escolher bandeira. Ou não.');
 link(ELF_I, ELF_II2, 'A Lirien espera você. A Copa não pede bandeira a ninguém, e é por isso que você vai ter que escolher a sua.');
-link(PALADIN_II, PALADIN_III, 'O Grão-Mestre tem um pedido estranho: subir a Colina Vampírica ao meio-dia.');
-link(WARRIOR_II, WARRIOR_III2, 'A Brynhild abriu o círculo do rochedo. As duas bandeiras querem o Clã.');
-link(WEREWOLF_II, WEREWOLF_III2, 'A Mãe-Alfa não dormiu. Tem prata na Selva.');
-link(VAMPIRE_II, VAMPIRE_III2, 'Um paladino entrou no castelo ao meio-dia. A senhora Mirela quer responder.');
-link(TECHNO_II2, TECHNO_III, 'A Arquiteta Ylva chama. A Brunna abriu uma caixa de música, e não gostou do que tocou.');
-link(WARLOCK_II, WARLOCK_III2, 'A Torre vai queimar os nossos pactos. A Ravena tem um plano com três sílabas.');
-link(HUNTER_II2, HUNTER_III2, 'A Mestra Ilsa vai armar a Selva com gaiolas. Prender, não matar.');
-link(MAGE_II2, MAGE_III2, 'O Vesk quer queimar as cópias dos pactos que circulam na Torre. Vá a ele.');
-link(HUMAN_II2, HUMAN_III2, 'O Ansgar achou uma terra sem dono. Ele está com a cara de quem vai pedir uma coisa grande.');
-link(DWARF_II2, DWARF_III2, 'A Dagny vai abrir o Mercado das Duas Bandeiras. Vai precisar de quem segure o balcão.');
-link(ELF_II2, ELF_III2, 'A Rainha quer fazer de você o embaixador da Copa.');
+link(PALADIN_II, PALADIN_III, 'O Grão-Mestre quer saber de uma vila que não está nos mapas da Abadia. Os peregrinos voltam de lá calados.');
+link(WARRIOR_II, WARRIOR_III2, 'A Brynhild chama. Os corvos de Odin estão voando em círculo sobre uma vila do sul.');
+link(WEREWOLF_II, WEREWOLF_III2, 'O Varg voltou do rio assustado. Diz que achou uma água que não tem cheiro.');
+link(VAMPIRE_II, VAMPIRE_III2, 'A senhora Mirela quer saber de uma vila que deixa as janelas abertas para nós.');
+link(TECHNO_II2, TECHNO_III, 'O índice cai quando o vento vem do leste. Do leste só tem uma vila que não está no mapa.');
+link(WARLOCK_II, WARLOCK_III2, 'A Ravena achou uma linha paga no livro mais velho do Malgrath. Sem devedor. Ela odeia isso.');
+link(HUNTER_II2, HUNTER_III2, 'A Mestra Ilsa ouviu de uma vila onde as crianças dormem a noite inteira, a uma noite do Conde.');
+link(MAGE_II2, MAGE_III2, 'O Vesk leu uma nota do Ormund sobre uma ponte que não está em mapa nenhum. Ele está irritado. Vá.');
+link(HUMAN_II2, HUMAN_III2, 'O Ansgar ouviu dos tropeiros de uma vila sem senhor e sem imposto. Ele quer aprender com ela.');
+link(DWARF_II2, DWARF_III2, 'A Dagny achou no livro de Brasaforja uma encomenda de grampos para uma ponte que nenhum anão conhece.');
+link(ELF_II2, ELF_III2, 'A Cantora Aelith cantou uma linha sobre uma ponte. A Rainha quer saber que ponte é essa.');
 export const CHAPTER_I = [...PALADIN_I, ...WARRIOR_I, ...WEREWOLF_I, ...VAMPIRE_I, ...TECHNO_I, ...WARLOCK_I1, ...PALADIN_II, ...WARRIOR_II, ...WEREWOLF_II, ...VAMPIRE_II, ...TECHNO_II2, ...WARLOCK_II,
   ...HUNTER_II2, ...MAGE_II2, ...HUMAN_II2, ...DWARF_II2, ...ELF_II2,
   ...PALADIN_III, ...WARRIOR_III2, ...WEREWOLF_III2, ...VAMPIRE_III2, ...TECHNO_III, ...WARLOCK_III2, ...HUNTER_III2, ...MAGE_III2, ...HUMAN_III2, ...DWARF_III2, ...ELF_III2];

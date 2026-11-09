@@ -205,6 +205,10 @@ export const VILL: [string, number, number, string][] = ([
   ['Midvangr', 420, 168, 'O passo entre as duas montanhas. Quem cruza, paga pedágio ao vento.'],
   ['Brasaforja', 560, 186, 'A montanha ronca à noite. Os anões dizem que é ela respirando.'], ['Cinzalto', 700, 176, 'Diamantes nas paredes, fuligem nos pulmões.'],
   ['Corvoscuro', 724, 262, 'Fechem as janelas ao anoitecer. E não convidem ninguém a entrar.'],
+  /* 09/11 (Erling: "um lugar totalmente novo, que ninguém visitou ainda, onde as histórias vão convergir"): VELMORA, vila de pescadores no
+     Canal Escuro, na fronteira entre as terras do Fio e as dos Desfiados. Ninguém a punha nos mapas. No Capítulo III todas as classes vão
+     reconhecê-la; no IV, a ponte entra para a história de Karmika. */
+  ['Velmora', 660, 300, 'Os mapas pulam a gente. Os barcos, não.'],
   ['Gorvath', 770, 470, 'No Vale, até o trigo nasce de cabeça baixa.'],
   ['Lithendel', 84, 404, 'As árvores aqui são mais velhas que os reis dos homens.'],
   /* 09/11 (Erling, mapa com os pontos vermelhos: "belas vilas de paz élficas" e "assentamentos de ninhadas de famílias licantropas"): as vilas
@@ -338,8 +342,13 @@ function waterSD1(xm: number, zm: number): number {
   if (centerW(tx, ty) < 0.98) sd = Math.min(sd, outerWaterSD(tx, ty));
   sd = Math.min(sd, oceanSD(tx, ty)); // oceano ao sul (costa irregular) e alagados do pântano a oeste
   const out = sd + (fbm(tx * 0.45, ty * 0.45, 9) - 0.5) * 2.2;
-  return Math.min(out * (1 - dryK) + 8 * dryK, lithBrookSD(tx, ty));
+  return Math.min(out * (1 - dryK) + 8 * dryK, lithBrookSD(tx, ty), velCanalSD(tx, ty));
 }
+/** 09/11: o CANAL ESCURO de Velmora — o rio da Montanha Negra passa pela vila (que seca a água em volta, como toda vila) e aqui alarga, fundo e
+    escuro entre margens de pedra. Mesmo traçado (e mesmo tremor) do rio, para emendar sem degrau nas pontas. */
+export const VEL = { x: 671, y: 297, R: 26 };
+function velCanalSD(tx: number, ty: number): number { const dC = Math.hypot(tx - VEL.x, ty - VEL.y); if (dC > VEL.R) return 99;
+  const w = 1.2 + 1.5 * smoothstep(VEL.R - 2, 14, dC); return (segD(tx + (fbm(tx * 0.06, ty * 0.06, 151) - 0.5) * 9, ty + (fbm(tx * 0.06 + 4, ty * 0.06, 152) - 0.5) * 9, ORIVERS[1].p) - w) * T; }
 /** 09/11 (Erling: "não estou vendo rio nenhum"): o Riacho da Árvore-Mãe de Lithendel era só casa de mapa; agora o chão afunda e a água aparece.
     Mesmo traçado do construtor da vila (brookX), afinando nas pontas, onde nasce e onde some no capim */
 function lithBrookSD(tx: number, ty: number): number { const cx = 84, cy = 404, dy = ty - cy; if (Math.abs(dy) > 30 || Math.abs(tx - cx - 5) > 8) return 99;
@@ -924,6 +933,62 @@ function buildCity_L(): World {
     E('Aerin', 'Jovem Caçadora de Lithendel · élfica', cx - 3, cy + 4.5, 1.5, 0x6a8a5a, ['Pés leves, flecha certa. É assim que se começa.', 'Os javalis andam perto demais da clareira. Alguém precisa lembrá-los do medo.']); /* 09/11: a primeira missão do Caminho da Mata (e01) é dela */
     E('Vigia Galdor', 'Vigia de Lithendel · élfico', cx - 1, cy - 9, 2.5, 0x4a6a5a, ['Os esqueletos do Campo Santo não sobem até aqui. Mas tentam.', 'Floresta quieta demais é floresta com alguma coisa dentro.']);
   };
+  /* 09/11 VELMORA — a vila de pescadores do Canal Escuro (Erling: "um lugar totalmente novo, que não foi visitado ainda, onde as histórias vão
+     convergir"). Duas margens: a da Aurora (oeste, casas claras, a praça e o cais do Barqueiro) e a da Noite (leste, telhados negros, lanternas
+     vermelhas). No meio, a PONTE DE VELMORA, em arco de pedra, larga, a única passagem seca entre as terras do Fio e as dos Desfiados por aqui.
+     Por enquanto é uma vila quieta que os mapas pulam; no Capítulo IV ela entra para a história. Regra 19: nada em fila, nada quadrado. */
+  const velmora = (st: Settlement, rr: () => number, lore: string) => {
+    const cx = st.x, cy = st.y, R0 = 14; st.radius = R0;
+    const ux = 0.4816, uy = 0.8618, nx = 0.8618, ny = -0.4816; /* u: o rumo do canal (desce para o sul); n: atravessa, da Aurora para a Noite */
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.hypot(q.gx - VEL.x, q.gy - VEL.y) < 18) props.splice(i, 1); }
+    for (let y = VEL.y - 20; y <= VEL.y + 20; y++) for (let x = VEL.x - 20; x <= VEL.x + 20; x++) if (inb(x, y) && (map[y][x] === 'tree' || map[y][x] === 'wall') && Math.hypot(x - VEL.x, y - VEL.y) < 18) map[y][x] = 'grass';
+    const wet = (x: number, y: number) => inb(Math.round(x), Math.round(y)) && map[Math.round(y)][Math.round(x)] === 'water';
+    /* a ponte: mede a largura real da água no meio da vila e põe as cabeceiras uma casa e meia dentro da terra */
+    let t0 = 99, t1 = -99; for (let t = -12; t <= 12; t += 0.5) if (wet(VEL.x + nx * t, VEL.y + ny * t)) { t0 = Math.min(t0, t); t1 = Math.max(t1, t); }
+    if (t0 > t1) { t0 = -1; t1 = 1; }
+    const A = { x: VEL.x + nx * (t0 - 2.5), y: VEL.y + ny * (t0 - 2.5) }, B = { x: VEL.x + nx * (t1 + 2.5), y: VEL.y + ny * (t1 + 2.5) };
+    bridges.push({ ax: A.x + 0.5, ay: A.y + 0.5, bx: B.x + 0.5, by: B.y + 0.5, hA: 0, hB: 0, stone: true, half: 2.1, hump: 1.5 });
+    pois.push({ name: 'Ponte de Velmora', x: Math.round(VEL.x + nx * (t0 + t1) / 2), y: Math.round(VEL.y + ny * (t0 + t1) / 2), biome: biomeAt_L(VEL.x, VEL.y) });
+    const pave = (x0: number, y0: number, r: number, t: Tile = 'plaza') => { for (let y = Math.floor(y0 - r); y <= y0 + r; y++) for (let x = Math.floor(x0 - r); x <= x0 + r; x++) if (inb(x, y) && Math.hypot(x - x0, y - y0) <= r && map[y][x] !== 'water') map[y][x] = t; };
+    const line = (ax: number, ay: number, bx: number, by: number, t: Tile = 'road') => { const L = Math.ceil(Math.hypot(bx - ax, by - ay)); for (let i = 0; i <= L; i++) { const x = Math.round(ax + (bx - ax) * i / L), y = Math.round(ay + (by - ay) * i / L); if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'plaza') map[y][x] = t; } };
+    /* as duas praças: a da Aurora, maior, em volta do marco da vila; a da Noite, pequena, na cabeceira leste */
+    const ph = rr() * 6.283; for (let y = cy - 6; y <= cy + 6; y++) for (let x = cx - 6; x <= cx + 6; x++) { const a = Math.atan2(y - cy, x - cx); if (inb(x, y) && map[y][x] !== 'water' && Math.hypot(x - cx, y - cy) < 4.6 + 0.9 * Math.sin(a * 3 + ph)) map[y][x] = 'plaza'; }
+    const E0 = { x: Math.round(B.x + nx * 3), y: Math.round(B.y + ny * 3) }; pave(E0.x, E0.y, 3.2); pave(A.x, A.y, 2.2); pave(B.x, B.y, 2.2);
+    line(cx, cy, A.x, A.y); line(B.x, B.y, E0.x, E0.y);
+    props.push({ kind: 'fountain', gx: cx - 1, gy: cy - 1, w: 2, h: 2, height: 0.7, wall: 0x6a6a72, roof: 0x3a5a7a, variant: 1 });
+    /* as casas: claras na Aurora, negras na Noite; cada uma num ângulo e numa distância sorteados, nunca na água */
+    const freeH = (gx: number, gy: number, w: number, h: number) => { for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'water' || t === 'wall' || t === 'plaza') return false; if (wet(x + nx * 1.5, y + ny * 1.5) || wet(x - nx * 1.5, y - ny * 1.5)) return false; }
+      return !props.some((q) => q.kind !== 'herb' && q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
+    const houses = (ox: number, oy: number, n: number, rMin: number, rMax: number, side: number, dark: boolean) => { let put = 0;
+      for (let k = 0; k < 120 && put < n; k++) { const a = rr() * 6.283, r = rMin + rr() * (rMax - rMin), w = 3 + Math.floor(rr() * 2), h = 3 + Math.floor(rr() * 2), gx = Math.round(ox + Math.cos(a) * r - w / 2), gy = Math.round(oy + Math.sin(a) * r - h / 2);
+        if (((gx + w / 2 - VEL.x) * nx + (gy + h / 2 - VEL.y) * ny) * side < 3) continue; /* do lado certo do canal */
+        if (!freeH(gx, gy, w, h)) continue;
+        block({ kind: 'house', gx, gy, w, h, height: 3 + rr() * 0.9, wall: dark ? [0x3e3a40, 0x34303a][put % 2] : [0xc8c0b0, 0xb8b0a0, 0xd0c8b8][put % 3], roof: dark ? [0x2a2228, 0x3a1a24][put % 2] : [0x4a5a6a, 0x5a4a3a, 0x3a4a5a][put % 3], variant: [0, 2, 1, 4][put % 4], ...(dark ? { style: 4 } : {}) });
+        const dx = gx + Math.floor(w / 2), dy = gy + h; line(dx, dy, ox, oy); put++; } };
+    houses(cx, cy, 7, 7.5, 13, -1, false); houses(E0.x, E0.y, 5, 5, 10, 1, true);
+    /* os barcos do canal, amarrados na margem da Aurora: a água tem de caber o barco inteiro */
+    let boats = 0; const boatsAt: { x: number; y: number }[] = [];
+    for (let k = 0; k < 400 && boats < 3; k++) { const t = -14 + rr() * 28; if (Math.abs(t) < 4) continue; const s0 = t0 + rr() * Math.max(0, t1 - t0); const bx = Math.round(VEL.x + ux * t + nx * s0), by = Math.round(VEL.y + uy * t + ny * s0), bw = 2, bh = 4;
+      let ok = true; for (let y = by - 1; y <= by + bh; y++) for (let x = bx - 1; x <= bx + bw; x++) if (!wet(x, y)) ok = false; if (!ok || props.some((q) => q.kind === 'boat' && Math.abs(q.gx - bx) < 4 && Math.abs(q.gy - by) < 6)) continue;
+      props.push({ kind: 'boat', gx: bx, gy: by, w: bw, h: bh, height: 1, wall: 0x2a2420, roof: 0x4a4038, variant: boats % 3 }); boatsAt.push({ x: bx, y: by }); boats++; }
+    /* lanternas: brancas na Aurora, vermelhas na Noite; tochas nas cabeceiras da ponte */
+    for (const [x, y, red] of [[A.x - nx, A.y - ny + 1, 0], [A.x - nx, A.y - ny - 1, 0], [B.x + nx, B.y + ny + 1, 1], [B.x + nx, B.y + ny - 1, 1]] as [number, number, number][]) { const gx = Math.round(x), gy = Math.round(y); if (inb(gx, gy) && map[gy][gx] !== 'water' && !props.some((q) => q.gx === gx && q.gy === gy)) props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x2a2228, roof: red ? 0xff3a2a : 0xfff0c0 }); }
+    for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + 0.4; const gx = Math.round(cx + Math.cos(a) * 5.6), gy = Math.round(cy + Math.sin(a) * 5.6); if (inb(gx, gy) && map[gy][gx] !== 'water' && map[gy][gx] !== 'wall' && !props.some((q) => gx >= q.gx && gx < q.gx + q.w && gy >= q.gy && gy < q.gy + q.h)) props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a3a40, roof: 0xfff0c0 }); }
+    for (let k = 0; k < 12; k++) { const a = rr() * 6.283, r = 3 + rr() * 9; vpAt([0, 1, 6, 7, 2][k % 5], Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r), rr() * 6.283); }
+    for (let k = 0; k < 6; k++) { const a = rr() * 6.283, r = 2 + rr() * 5; vpAt([1, 6, 0][k % 3], Math.round(E0.x + Math.cos(a) * r), Math.round(E0.y + Math.sin(a) * r), rr() * 6.283); }
+    decorAt('bench', cx + 2, cy + 3, 1, 1, 0, 0x5a4a3a, 0x3a4a5a); decorAt('bench', cx - 3, cy - 2, 1, 1, 1, 0x5a4a3a, 0x3a4a5a);
+    pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
+    /* o povo: o Barqueiro fica na margem, junto do primeiro barco. Táraka (sânscrito tāraka, de tṝ, "atravessar"): o que leva à outra margem,
+       o piloto, o que livra; também a pupila do olho (Erling, 09/11: "um nome místico de quem transporta, nas línguas antigas") */
+    const bq = boatsAt[0] ? (() => { for (let r = 1; r < 6; r++) for (const [dx, dy] of [[-nx, -ny], [nx, ny], [0, 1], [0, -1], [1, 0], [-1, 0]]) { const x = Math.round(boatsAt[0].x + 1 + dx * r), y = Math.round(boatsAt[0].y + 2 + dy * r); if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'wall') return { x, y }; } return { x: A.x - nx * 2, y: A.y - ny * 2 + 2 }; })() : { x: A.x - nx * 2, y: A.y - ny * 2 + 2 };
+    const V = (name: string, role: string, x: number, y: number, radius: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind: 'nordic', x, y, radius, tint, scale: 1.0, lines, ...(shop ? { shop } : {}) });
+    V('Táraka, o Barqueiro', 'Barqueiro do Canal Escuro', bq.x + 0.5, bq.y + 0.5, 1.2, 0x2a2a30, ['Os antigos me chamavam Táraka: o que leva à outra margem. Hoje me chamam de barqueiro. Dá no mesmo.', 'Atravesso quem paga. Quem não paga, eu atravesso também. Só que mais devagar.', 'A lanterna? Está apagada. Sempre esteve. A água conhece o caminho.', 'Tem gente que a água leva e devolve diferente. Não pergunte para onde.']);
+    V('Guardiã da Ponte Edla', 'Guardiã da Ponte de Velmora', A.x - nx * 1.5 + 0.5, A.y - ny * 1.5 + 2.5, 2, 0x5a6a7a, ['A ponte é velha. Mais velha que a vila. Ninguém lembra quem a fez, e ninguém pergunta.', 'Do lado de lá as lanternas são vermelhas. Do lado de cá, brancas. A ponte não escolhe cor.']);
+    V('Pescador Tóki', 'Pescador do Canal', cx + 3.5, cy - 2.5, 3, 0x6a5a48, ['Peixe do Canal Escuro não tem olho. Tem gosto bom. Não pense no olho.', lore]);
+    V('Velha Rúna das Redes', 'Remendeira de redes', cx - 3, cy + 3.5, 2.5, 0x8a7a6a, ['Os mapas pulam a gente. É bom: quem não está no mapa não paga imposto a ninguém.', 'Uma vez veio um homem de capa perguntar pelo Barqueiro. Eu remendei a rede e não olhei para cima. Não olho para cima desde então.']);
+    V('Mercadora Hekla', 'Mercadora de Velmora', cx + 4.5, cy + 1.5, 1.4, 0xb08a40, ['Sal, corda, anzol e pão. O que um pescador precisa, e um viajante perdido também.', 'Os dois lados compram aqui. Ninguém conta ao outro.'], 'mercador');
+    V('Lanterneiro Orri', 'Lanterneiro da Margem da Noite', E0.x + 0.5, E0.y - 1.5, 2.5, 0x5a2a2a, ['Eu acendo as vermelhas ao anoitecer. As brancas, a Edla acende. Nunca no mesmo minuto.', 'Do castelo do Conde dá para ver as nossas luzes. Dizem que ele gosta.']);
+  };
   const vpAt = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'plaza' || map[y][x] === 'grass') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
   /* 09/11 VILAS PEQUENAS DE POVO (elfos e ninhadas licantropas): clareira, casas no estilo do povo em anel, fogueira ou fonte no meio,
      lanternas, flores/ossos, um líder e dois moradores com história; caminhos nas quatro direções */
@@ -988,6 +1053,7 @@ function buildCity_L(): World {
   };
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
+    if (name === 'Velmora') { const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: 14, npcs: [], cult: 0 }; settlements.push(st); velmora(st, rng(seed), lore); return st; }
     const rr = rng(seed); const R0 = 13; clearWater(cx, cy, R0 + 2); flatten(cx, cy, R0 + 4);
     const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [], cult }; settlements.push(st);
     if (name === 'Brasaforja') { brasaforja(st, rr, lore); return st; } /* 08/11: a cidade dos anões tem planta própria (abaixo) */
@@ -1355,7 +1421,7 @@ function buildCity_L(): World {
   for (const [a, b] of [['Askavik', 'Lundr'], ['Lundr', 'Karmika'], ['Karmika', 'Vestheim'], ['Karmika', 'Sudrholt'], ['Askavik', 'Kaldrfoss'], ['Kaldrfoss', 'Fjallbrún'], ['Askavik', 'Hrafnhöfn'], ['Lundr', 'Eikvik'], ['Eikvik', 'Austrvik'], ['Austrvik', 'Steinfoss'], ['Steinfoss', 'Sandvik'], ['Sandvik', 'Sudrholt'], ['Sudrholt', 'Brekkuvik'], ['Brekkuvik', 'Myrbakki'], ['Myrbakki', 'Vatnaholt'], ['Vatnaholt', 'Vestheim'], ['Vestheim', 'Mýrarvik'], ['Mýrarvik', 'Hvítadalr'], ['Hvítadalr', 'Grenivik'], ['Grenivik', 'Fjallbrún']] as [string, string][]) route(a, b, 1.3);
   // ramais (estreitos): vilas pequenas e atalhos
   // o mundo de fora: tronco até as regiões de lore, ligando as vilas delas entre si
-  for (const [a, b] of [['Nordvik', 'Jarlsheim'], ['Jarlsheim', 'Skjoldvik'], ['Jarlsheim', 'Hrimgard'], ['Hrimgard', 'Fjallbrún'], ['Kaldrfoss', 'Midvangr'], ['Midvangr', 'Brasaforja'], ['Ulfheim', 'Brasaforja'], ['Brasaforja', 'Cinzalto'], ['Cinzalto', 'Corvoscuro'], ['Hrafnhöfn', 'Corvoscuro'], ['Corvoscuro', 'Gorvath'], ['Austrvik', 'Gorvath'], ['Austrvik', 'Dalborg'], ['Dalborg', 'Uivo Antigo'], ['Steinfoss', 'Dalborg'], ['Sandvik', 'Ferrugem'], ['Ferrugem', 'Porto Caldeira'], ['Sudrholt', 'Vindholt'], ['Vindholt', 'Porto Caldeira'], ['Brekkuvik', 'Vaporeira'], ['Vaporeira', 'Porto Caldeira'], ['Myrbakki', 'Lumenhal'], ['Vatnaholt', 'Lumenhal'], ['Vestheim', 'Lithendel'], ['Mýrarvik', 'Skjoldvik'], ['Lithendel', 'Skjoldvik']] as [string, string][]) route(a, b, 1.2);
+  for (const [a, b] of [['Nordvik', 'Jarlsheim'], ['Jarlsheim', 'Skjoldvik'], ['Jarlsheim', 'Hrimgard'], ['Hrimgard', 'Fjallbrún'], ['Kaldrfoss', 'Midvangr'], ['Midvangr', 'Brasaforja'], ['Ulfheim', 'Brasaforja'], ['Brasaforja', 'Cinzalto'], ['Cinzalto', 'Corvoscuro'], ['Hrafnhöfn', 'Velmora'], ['Velmora', 'Corvoscuro'], ['Hrafnhöfn', 'Corvoscuro'], ['Corvoscuro', 'Gorvath'], ['Austrvik', 'Gorvath'], ['Austrvik', 'Dalborg'], ['Dalborg', 'Uivo Antigo'], ['Steinfoss', 'Dalborg'], ['Sandvik', 'Ferrugem'], ['Ferrugem', 'Porto Caldeira'], ['Sudrholt', 'Vindholt'], ['Vindholt', 'Porto Caldeira'], ['Brekkuvik', 'Vaporeira'], ['Vaporeira', 'Porto Caldeira'], ['Myrbakki', 'Lumenhal'], ['Vatnaholt', 'Lumenhal'], ['Vestheim', 'Lithendel'], ['Mýrarvik', 'Skjoldvik'], ['Lithendel', 'Skjoldvik']] as [string, string][]) route(a, b, 1.2);
   for (const [a, b] of [['Grenivik', 'Karmika'], ['Hvítadalr', 'Nordvik'], ['Hvítadalr', 'Bjarnholt'], ['Bjarnholt', 'Fjallbrún'], ['Kaldrfoss', 'Ulfheim'], ['Ulfheim', 'Hrafnhöfn'], ['Skógar', 'Vestheim'], ['Skógar', 'Karmika']] as [string, string][]) route(a, b, 1.0);
   bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH_L(b.ax * T, b.ay * T); b.hB = groundH_L(b.bx * T, b.by * T); bridgesRef = save; } b.hA = Math.max(b.hA, WL + 0.15); b.hB = Math.max(b.hB, WL + 0.15); } /* tabuleiro nunca abaixo da água */
   /* 25/10 (Erling: "a estrada da vila não tem uma ponte em curva de pedra bonita para atravessar?"): toda travessia curta de estrada vira
@@ -2489,7 +2555,8 @@ function buildCity_L(): World {
       ['A Capela Virada', 'Grenivik', 4.1, (x, y) => { props.push({ kind: 'church', gx: x - 2, gy: y - 2, w: 4, h: 4, height: 4, wall: 0x6a6070, roof: 0x3a3048 }); props.push({ kind: 'torch', gx: x + 3, gy: y + 2, w: 1, h: 1, height: 1.6, wall: 0x2a2a2a, roof: 0xff3040 }); }]];
     const occS = new Set<number>(); for (const q of props) for (let y = q.gy - 1; y <= q.gy + q.h; y++) for (let x = q.gx - 1; x <= q.gx + q.w; x++) occS.add(y * 4096 + x);
     for (const [nm, near, a0, build] of SECRETS) { const st = settlements.find((q) => q.name === near); if (!st) continue; let spot: { x: number; y: number } | null = null;
-      for (const [rr0, gap, poiGap] of [[22, 4, 18], [14, 3, 12], [10, 3, 8], [10, 2, 6]] as const) for (let r = st.radius + rr0; r <= st.radius + 90 && !spot; r += 2) for (let k = 0; k < 32 && !spot; k++) { const a = a0 + k / 32 * 6.283, x = Math.round(st.x + Math.cos(a) * r), y = Math.round(st.y + Math.sin(a) * r);
+      const maxR = nm === 'A Adega Sem Porta' ? 46 : 90; /* 09/11: com Velmora no mapa, a adega escorregava para a margem do Fio; ela fica perto de Corvoscuro */
+      for (const [rr0, gap, poiGap] of [[22, 4, 18], [14, 3, 12], [10, 3, 8], [10, 2, 6]] as const) for (let r = st.radius + rr0; r <= st.radius + maxR && !spot; r += 2) for (let k = 0; k < 32 && !spot; k++) { const a = a0 + k / 32 * 6.283, x = Math.round(st.x + Math.cos(a) * r), y = Math.round(st.y + Math.sin(a) * r);
         let ok = true; for (let yy = -gap; yy <= gap && ok; yy++) for (let xx = -gap; xx <= gap; xx++) { const t = inb(x + xx, y + yy) ? map[y + yy][x + xx] : null; if (!t || t === 'water' || t === 'road' || t === 'wall' || occS.has((y + yy) * 4096 + x + xx)) { ok = false; break; } }
         if (ok && !pois.some((q) => Math.hypot(q.x - x, q.y - y) < poiGap) && !settlements.some((q) => Math.hypot(q.x - x, q.y - y) < q.radius + 10)) spot = { x, y }; }
       if (!spot) continue; for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) if (map[spot.y + yy][spot.x + xx] === 'tree' && Math.hypot(xx, yy) < 3.2) map[spot.y + yy][spot.x + xx] = 'grass';

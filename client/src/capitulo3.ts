@@ -655,6 +655,76 @@ export const ELF_III = [
     { title: 'Embaixador da Copa', meet: { [OR]: [m(OR, 'Embaixador. Diga o que a Aelith cantou. Não, cante. Eu não sei anotar música. Vou aprender.')] } }),
 ];
 
+/* ======================= VELMORA — o reconhecimento (Capítulo III, abre todas as estradas) =======================
+   Erling (09/11): "um lugar totalmente novo, que não foi visitado ainda, onde as histórias vão convergir; num primeiro momento uma missão de
+   observação e reconhecimento: outras classes passaram por lá. Por quê? O que tem lá?". Cada classe chega por um motivo da sua tradição, e o
+   Barqueiro conta que antes passou gente de todas as cores. No Capítulo IV, a ponte entra para a história de Karmika. */
+const BQ = 'Táraka, o Barqueiro';
+const BQ_MEET = (who: string) => [m(BQ, 'Mais um que veio olhar. Ultimamente vocês todos vêm olhar. De todas as cores.'), m(BQ, who),
+  m(BQ, 'E um homem de capa cinza quis comprar um barco meu. Eu disse que não vendo. Ele disse que espera. Ninguém espera um barco que não está à venda.')];
+const V_ = (id: string, giver: string, text: string, what: Parameters<typeof sense>[0], label: string, dx: number, dy: number, talkL: Parameters<typeof Q>[6], doneL: Parameters<typeof Q>[7], seen: string, spirit?: { name: string; lines: string[] }) =>
+  Q(id, 'Velmora, a Vila Que os Mapas Pulam', giver, giver, text, [visit('Velmora'), sense(what, label, 'Velmora', dx, dy, spirit), talk(BQ)], talkL, doneL, undefined, { meet: { [BQ]: BQ_MEET(seen) } });
+export const VELMORA_RECON = [
+  V_('vel_pa', CS, 'Os peregrinos que descem para rezar pelas almas de Corvoscuro passam por uma vila que não está nos mapas da Abadia: Velmora, no Canal Escuro. O Grão-Mestre quer saber se ela tem capela, e quem reza lá.',
+    'espirito', 'O que fala debaixo da Ponte de Velmora', 13, -2,
+    ['Velmora. Quarenta anos de Abadia e eu nunca ouvi esse nome. Os peregrinos ouviram. Voltam calados.', 'Vá ver se tem capela. Se não tiver, veja quem reza no lugar dela.', r(['E se não tiver ninguém?', 'Então volte e me diga. Vila sem reza não fica vazia muito tempo.'])],
+    ['Nenhuma capela. Nenhuma. A única vila de Karmika onde Auréon não tem casa, e é a vila que os dois lados atravessam.', 'Eu fiquei velho sem conhecer Velmora. Isso me incomoda mais do que eu queria admitir.'],
+    'Antes de você passou uma cria da Corte. Olhou a ponte e foi embora. Vocês dois olham do mesmo jeito.',
+    { name: 'A Voz Sob a Ponte', lines: ['Aqui todo mundo passa.', 'Um dia, todo mundo vai ficar.'] }),
+  V_('vel_ca', IL, 'A Vesna ouviu de um tropeiro que em Velmora, uma vila de pescadores no Canal Escuro, as crianças dormem a noite inteira e ninguém vigia. Fica a uma noite de Corvoscuro. A Mestra Ilsa quer saber por que as crias não vão lá.',
+    'rastro', 'Onde o rastro das crias para, na margem do canal', 9, 6,
+    ['Uma vila sem vigia, a uma noite do Conde, e as crianças dormem. Ou é milagre, ou é armadilha. Eu não acredito em milagre.', 'Siga o rastro das crias até a vila. Veja onde ele termina.', r(['E se for armadilha?', 'Então você volta e a gente arma outra maior. É o que o Clã faz.'])],
+    ['O rastro para na margem? Elas não atravessam a água escura. Ninguém convida, e cria não entra sem convite.', 'A vila mais segura do mundo fica bem no meio dos dois lados. Anote. Um dia alguém vai querer essa ponte.'],
+    'Antes de você passou um paladino. Perguntou da capela. Não tem. Ele ficou triste do jeito que vocês ficam.'),
+  V_('vel_ma', AV, 'No Livro XVI, o Cronista Ormund anotou: "na ponte de Velmora, um homem de capa cinza oferecendo um barco". A Torre não tem Velmora em mapa nenhum. O Arquimago Vesk quer saber se o Ormund inventou, ou se os mapas mentem.',
+    'dispositivo', 'A inscrição gasta na pedra da ponte', 13, -3,
+    ['Ou o Ormund inventou, o que seria a primeira vez em quarenta anos, ou todos os mapas da Torre esqueceram uma vila. Prefiro que ele tenha inventado.', 'Vá. Leia a ponte. Pontes velhas sempre têm alguma coisa escrita, e nunca é o que o construtor quis.', r(['E se a vila existir?', 'Então alguém apagou uma vila de todos os mapas. Isso é correção. E correção é coisa da Torre.'])],
+    ['Existe. E a pedra diz “aqui se passa”, com a última palavra raspada. Raspada com cuidado. Por alguém que sabia qual raspar.', 'A Ísold vai querer ir lá. Não deixe. Ela ri na hora errada perto de água.'],
+    'Antes de você passou um homem com um índice de latão. Mediu a minha lanterna. Disse que falta muito. Eu sei.'),
+  V_('vel_va', MI, 'Existe uma vila a uma noite de Corvoscuro que a Corte nunca visitou: Velmora, no Canal Escuro. Ninguém lá fecha as janelas, e o Lanterneiro acende luzes vermelhas que o Conde vê do castelo. Lady Mirela quer saber por quê.',
+    'sangue', 'O sangue de quem mora na Margem da Noite', 18, -8,
+    ['Uma vila que deixa as janelas abertas para nós. Que deselegância. Ou que convite. Preciso saber qual.', 'Vá à noite, como convém. Não beba de ninguém. É uma visita de cortesia, e a cortesia ainda nem foi oferecida.', r(['O Conde sabe dessa vila?', 'O Conde gosta das luzes vermelhas dela há cem anos. Nunca perguntou de onde vinham. Ele é romântico e preguiçoso.'])],
+    ['Sangue de sal e de rio. Gente que nunca teve medo de nós. Isso não existe, querida. E existe ali.', 'Um lugar que não existe que não fomos nós que fizemos. Não gosto. Vou gostar, talvez. Ainda não.'],
+    'Antes de você passou uma caçadora com dois sinos no pulso. Seguiu um rastro até a minha margem e parou. Vocês dois param no mesmo lugar.'),
+  V_('vel_lo', UL, 'O Varg desceu até o rio da Montanha Negra atrás de um cervo e voltou assustado: numa vila chamada Velmora, a água do canal não tem cheiro. Nenhum. A Mãe-Alfa manda o faro mais fino.',
+    'cheiro', 'A água do Canal Escuro, que não cheira a nada', 11, 4,
+    ['Toda água cheira. A do pântano, a podre. A da neve, a pedra. A do mar, a sal e a peixe morto. O Varg diz que essa não cheira a nada.', 'O Varg exagera em tudo. Menos em cheiro. Vá.', r(['E se ele estiver certo?', 'Então tem alguma coisa nessa água que a matilha não conhece. E o que a matilha não conhece, a matilha vigia.'])],
+    ['Nada. Nem peixe, nem pedra, nem gente. Uma água que não lembra por onde passou.', 'Diga às ninhadas: em Velmora a gente bebe antes de chegar, nunca lá.'],
+    'Antes de você passou um bruxo. Leu o meu contrato de barqueiro. Ficou pálido. Bruxo pálido é raro.'),
+  V_('vel_bx', RV, 'No livro-caixa mais velho de Malgrath, uma linha de pagamento sem devedor: "pago na ponte de Velmora". A Ravena nunca ouviu falar de Velmora. Ela odeia dívida sem nome.',
+    'dispositivo', 'O contrato pregado debaixo da ponte', 12, 0,
+    ['Uma linha paga. Sem nome. Em lugar nenhum. Dívida sem nome é a pior que existe: qualquer um pode ser cobrado por ela.', 'Vá a Velmora. Ache onde se pagou. Pagamento sempre deixa papel.', r(['O Malgrath sabe?', 'O Malgrath disse “não lembro”. O Malgrath lembra de tudo. Então ele não quis lembrar, e isso me assusta.'])],
+    ['Um contrato pregado embaixo da ponte, comido pela água. O barqueiro leva quem paga. A cláusula de quem paga a ele não tem assinatura. Ninguém assinou e todo mundo cumpre.', 'Vou ler isso inteiro um dia. Hoje não. Hoje eu só quero esquecer que vi.'],
+    'Antes de você passou um lobo. Bebeu do canal e cuspiu. Os lobos sempre cospem a minha água.'),
+  V_('vel_gu', BY, 'Os corvos de Odin estão voando em círculo sobre uma vila do sul, no Canal Escuro, que nenhum skald cantou: Velmora. A Brynhild diz que corvo só faz círculo sobre lugar que vai ver sangue. Ela quer um corvo olhando também.',
+    'espirito', 'Os dois corvos sobre a Ponte de Velmora', 13, -4,
+    ['Hugin e Munin não saem do norte. Saíram. Estão em cima de uma ponte. Um pensa e o outro lembra, e os dois estão olhando a mesma ponte.', 'Vá. Olhe a ponte como quem vai ter de segurá-la um dia.', r(['Vai ter guerra lá?', 'Corvo não avisa guerra. Corvo chega antes. É diferente.'])],
+    ['Os dois no mesmo galho, sobre a ponte. Raro. O norte vai ter de pesar essa vila, mais cedo ou mais tarde.', 'Diga ao Hallvard, se o encontrar: ponte boa para um muro. Ele vai entender.'],
+    'Antes de você passou uma elfa cantando uma coisa sobre uma ponte. Desafinada. Bonita. Desafinada.',
+    { name: 'Hugin e Munin', lines: ['(Um corvo grasna uma vez: pensa.)', '(O outro grasna duas vezes: lembra.)'] }),
+  V_('vel_te', AN, 'O índice do Doutor Anselm cai sempre que o vento vem do leste. Do leste, entre Hrafnhöfn e Corvoscuro, só tem uma vila que não está no mapa da Companhia: Velmora. Vá medir.',
+    'dispositivo', 'O lugar onde o índice cai mais', 6, -3,
+    ['Onze anos medindo, e o índice nunca ligou para o vento. Agora liga. Para um vento só.', 'Leve o índice. Ande pela vila até ele cair. Onde cair mais, anote. Não interprete. Eu interpreto.', r(['E se não cair?', 'Então eu fico aliviado e você fica com fama de preguiçoso. Eu topo.'])],
+    ['Caiu na ponte. Exatamente no meio dela. Nem numa margem, nem na outra: no meio.', 'Um lugar que os dois lados usam, e o índice cai justamente ali. Eu não sei o que isso quer dizer. Eu sei que não gosto.'],
+    'Antes de você passou um anão com uma fita métrica. Mediu os grampos da minha ponte. Disse que são anões. Ficou bravo com isso.'),
+  V_('vel_hu', AS, 'Os tropeiros falam de Velmora, uma vila de pescadores no Canal Escuro que não paga imposto a ninguém, não tem bandeira e vive. O Velho Ansgar quer aprender com ela.',
+    'rastro', 'Os barcos sem bandeira que vão e voltam', 9, 8,
+    ['Uma vila sem senhor, sem bandeira e sem imposto, a um dia de Askavik e a uma noite do Conde. Ou eles são muito espertos, ou alguém muito grande está protegendo.', 'Vá. Converse com quem remenda rede. Remendeira sabe tudo e conta metade.', r(['E se for proteção?', 'Então eu quero saber de quem. Proteção sem nome é a mais cara.'])],
+    ['Barcos sem bandeira, uma ponte que os dois lados usam e uma vila que ninguém manda. É o Comum, só que mais velho que a gente.', 'Velmora não está no mapa porque ninguém cobrou nada dela. Quando alguém cobrar, ela entra no mapa. E aí acaba a paz.'],
+    'Antes de você passou um guerreiro do norte. Olhou a ponte como quem conta pedras para um muro.'),
+  V_('vel_an', DG, 'Uma encomenda antiga apareceu no livro de Brasaforja: grampos de ferro para "a ponte de Velmora", pagos em moeda velha. Nenhum anão conhece Velmora. A Dagny quer ver se os grampos são nossos.',
+    'dispositivo', 'Os grampos de ferro da Ponte de Velmora', 14, -2,
+    ['Grampo de ponte é coisa séria. Se um anão fez, o nome dele está no ferro. Se não está, alguém fez parecer anão. As duas coisas me deixam furiosa.', 'Leve a fita. Meça os grampos. E não fique olhando a água: me disseram que ela olha de volta.', r(['Quem encomendou?', 'Moeda velha. Rosto, ninguém lembra. Eu odeio cliente sem rosto: não dá para cobrar o que ele deve.'])],
+    ['Anões. Fundição de antes do Rei Thrain. Sem nome no ferro. Um anão que não assina o próprio grampo? Isso não existe.', 'A ponte é nossa e ninguém sabe. Vou guardar isso na fita. A fita não esquece.'],
+    'Antes de você passou um humano velho fazendo perguntas a todo mundo. Até a mim. Ninguém pergunta ao barqueiro.'),
+  V_('vel_el', RA, 'A Cantora Aelith cantou uma linha que não sabia de onde vinha: “…e a ponte que os dois lados cruzam guarda o choro que ainda não veio…”. A Rainha quer saber que ponte é essa. A Lirien diz que é a de Velmora.',
+    'espirito', 'O choro que ainda não veio, debaixo da ponte', 12, -3,
+    ['A Aelith cantou sem querer. Canção que vem sozinha é aviso, e a Copa ouve aviso.', 'Vá a Velmora. Escute a ponte. Elfo escuta o que ainda não aconteceu, às vezes. É um dom ruim.', r(['O que é o choro que ainda não veio?', 'Se eu soubesse, não mandava você. Mandava todo mundo embora de lá.'])],
+    ['Você ouviu? Choro de muitos, de longe, como se viesse de outro ano. A Copa vai lembrar desta ponte.', 'Não conte à Aelith o que ouviu. Ela vai querer terminar a canção, e essa canção não pode terminar ainda.'],
+    'Antes de você passou um vampiro. Não, uma vampira. Bem-educada. Olhou as minhas luzes vermelhas e sorriu como quem reconhece.',
+    { name: 'O Choro Que Ainda Não Veio', lines: ['(Muitas vozes, de muito longe, chorando baixo.)', '(Um sino toca uma vez. Não há sino nenhum na ponte.)'] }),
+];
+
 /** quem passa a morar no mundo com o Capítulo III: o filho do desertor e o skald de Jarlsheim */
 export const CAP3_NPCS = [
   { vila: 'Fjallbrún', name: HD, role: 'Filho do desertor · conserta telhados', dx: -3, dy: 2.5, tint: 0x5a4a3a, lines: ['Pão é lei também.', 'Se o Labirinto abrir, eu estou no muro.', 'O machado é do meu pai. O braço é meu.'] },
