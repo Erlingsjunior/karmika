@@ -857,12 +857,12 @@ function buildCity_L(): World {
     if (!(cult === 0 || cult === 3 || cult === 7)) { props.push({ kind: 'campfire', gx: cx - 2, gy: cy + 2, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: cult === 6 ? 0xb06aff : cult === 4 ? 0xff3a2a : 0xff8a2a }); // fogueira no centro (nórdicos, anões, sombrios, Uivo, pacto)
       /* 02/11 (Erling: "que torres são essas com um negócio no meio?"): os dois totens de pedra colados na fonte da praça saíram — a fonte é o marco da vila, sozinha */ }
     const PAL: [number[], number[]][] = [[[0xb99a6b, 0xc2a679, 0xa88a60], [0x8a3b2e, 0x7a4a2a, 0x6d3a28, 0x5d6b3a]], [[0x4a3220], [0x5a6a34]], [[0x6a5e52], [0x4a423a]], [[0xe8e0cc], [0x3a7a5a]], [[0x3e3a40], [0x2a2228]], [[0x5a4030], [0x8a7440]], [[0x3a2e3a], [0x2a1a30]], [[0x8a4a3a], [0x4a4e56]]];
-    const nH = 4 + Math.floor(rr() * 3) + (cult === 1 || cult === 5 ? -1 : 0), WALLS = PAL[cult][0], ROOFS = PAL[cult][1];
+    const nH = 6 + Math.floor(rr() * 3) + (cult === 1 || cult === 5 ? -1 : 0), WALLS = PAL[cult][0], ROOFS = PAL[cult][1]; /* 08/11 (Erling: "mais gente morando"): 6–8 casas por vila (eram 4–6) */
     const hs: { gx: number; gy: number; w: number; h: number }[] = [];
     for (let k = 0; k < nH; k++) {
       const a = ((k + 0.5) / nH) * 6.283 + (rr() - 0.5) * 0.3; const w = cult === 1 ? 6 : cult === 3 || cult === 5 ? 4 : 4 + Math.floor(rr() * 2), h = cult === 4 ? 3 : 4; // nórdicos: salões compridos; élficos e tribais: redondos
       let gx = 0, gy = 0, ok = false;
-      for (const d of [7.5 + rr() * 2, 10, 12]) {
+      for (const d of [7.5 + rr() * 2, 10, 12, 14]) {
         gx = Math.round(cx + Math.cos(a) * d) - Math.floor(w / 2); gy = Math.round(cy + Math.sin(a) * d) - 2; ok = true;
         for (let y = gy - 1; y < gy + h + 1 && ok; y++) for (let x = gx - 1; x < gx + w + 1; x++) { if (!inb(x, y)) { ok = false; break; } const tt = map[y][x], edge = y < gy || y >= gy + h || x < gx || x >= gx + w; if (tt !== 'grass' && !(edge && tt === 'road')) { ok = false; break; } }
         if (ok) break;
