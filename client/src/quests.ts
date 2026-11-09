@@ -1,6 +1,7 @@
 import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
 import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES, KING_ROAD } from './racas';
+import { CROSS_ROADS } from './cruzadas';
 import { addHonor, HONOR_FOR } from './sistemas/honra';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
@@ -79,7 +80,7 @@ export const STORY_THREADS: Record<'human' | 'dwarf' | 'elf', string[]> = {
   dwarf: [...DWARF_ROAD.map((d) => d.id), 'a01an', 'a02', 'a03', 'a04', 'p01'],
   elf: [...ELF_ROAD.map((d) => d.id), 'a01el', 'a02', 'a03', 'a04', 'p01'],
 };
-export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS, ...KING_ROAD];
+export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS, ...KING_ROAD, ...CROSS_ROADS]; /* 09/11: + os Caminhos Cruzados (cruzadas.ts) */
 /** a Chamada de Askavik vale para os três povos: quem fez a do seu povo conta como quem fez 'a01' */
 const DONE_ALIAS: Record<string, string[]> = { a01: ['a01an', 'a01el'] };
 /** saves antigos: quem já passou de 'Os Caminhos' não recebe as missões de Askavik que entraram depois (23/10) */
@@ -266,7 +267,7 @@ export function genNpcQuest(npc: string, role: string, lvl: number, seed: number
   return { id, name: `${role}: ${poi}`, lvl, giver: npc, turnin: npc, text: tx.replace('{it}', poi), objs: [{ kind: 'visit', poi }], xp: Math.round(45 * scale), gold: Math.round(16 * scale) };
 }
 /** cor de cada tipo de missão: amarela = história principal, azul = secundária (NPC), verde = repetição (quadro, contratos) */
-export const STORY_CHAINS = new Set(['Caminho do Norte', 'Caminho da Forja', 'Caminho da Mata', 'A Chamada de Askavik', 'Os Caminhos', 'O Guerreiro do Norte', 'A Catedral Abandonada']);
+export const STORY_CHAINS = new Set(['Caminho do Norte', 'Caminho da Forja', 'Caminho da Mata', 'A Chamada de Askavik', 'Os Caminhos', 'O Guerreiro do Norte', 'A Catedral Abandonada', 'A Coroa da Montanha', 'A Voz da Copa', 'A Carta do Rei', 'O Mensageiro do Vale']);
 export type QuestCat = 'story' | 'side' | 'rep';
 /** o caminho de classe (Hrefna → mestre → saga da classe) é história principal: amarela */
 export const questCat = (d: { board?: boolean; chain?: string }): QuestCat => d.board ? 'rep' : d.chain && (STORY_CHAINS.has(d.chain) || d.chain.startsWith('O Caminho')) ? 'story' : 'side';

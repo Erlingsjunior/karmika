@@ -15,7 +15,7 @@ const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 21474
 
 export function buildCanopyHall(seed = 11): Interior & { tick(t: number): void } {
   const W = 44, D = 36, g = new THREE.Group(), cols: [number, number, number][] = [], r = rr(seed * 31 + 7);
-  const plank = std(0xffffff, { map: plankTex(0xd8c8a0) }), plankD = std(0xffffff, { map: plankTex(0xb09a70) }), bark = std(0xffffff, { map: woodTex(0x5a4432) }), barkL = std(0xffffff, { map: woodTex(0x7a6048) }), gold = std(0xd8c070), ivory = std(0xf0e8d8), moss = std(0x5a8a4a);
+  const plankD = std(0xffffff, { map: plankTex(0xb09a70) }), bark = std(0xffffff, { map: woodTex(0x5a4432) }), barkL = std(0xffffff, { map: woodTex(0x7a6048) }), gold = std(0xd8c070), ivory = std(0xf0e8d8), moss = std(0x5a8a4a);
   const glow = (c: number) => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, inked = true, ry = 0) => { const b = new THREE.Mesh(geo, m); if (inked) ink(b, 0.025); b.position.set(x, y, z); b.rotation.y = ry; b.castShadow = true; b.receiveShadow = true; g.add(b); return b; };
   const solid = (x: number, z: number, rad: number) => cols.push([x, z, rad]);
@@ -24,18 +24,20 @@ export function buildCanopyHall(seed = 11): Interior & { tick(t: number): void }
   const cx = W / 2, cz = D / 2;
 
   /* o céu em volta: um disco imenso de folhas por baixo (a copa) e o azul lá embaixo */
-  { const sky = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshBasicMaterial({ color: 0x8fb9d8 })); sky.rotation.x = -Math.PI / 2; sky.position.set(cx, -6, cz); g.add(sky);
+  { const sky = new THREE.Mesh(new THREE.PlaneGeometry(600, 600), new THREE.MeshBasicMaterial({ color: 0x6fa0c8, fog: false })); sky.rotation.x = -Math.PI / 2; sky.position.set(cx, -7, cz); g.add(sky);
+    const amb = new THREE.HemisphereLight(0xdff0ff, 0x4a7a3a, 0.9); g.add(amb); const sun = new THREE.DirectionalLight(0xfff0d0, 0.9); sun.castShadow = false; sun.position.set(cx - 20, 30, cz + 10); sun.target.position.set(cx, 0, cz); g.add(sun); g.add(sun.target);
     const leafM = new THREE.MeshToonMaterial({ map: leafTexture(['#6fa66a', '#a8c870', '#4f8a5c', '#d6c46a']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp });
     for (let k = 0; k < 160; k++) { const a = r() * 6.283, rad = 20 + r() * 26, q = new THREE.Mesh(new THREE.PlaneGeometry(3 + r() * 3, 2.2 + r() * 2), leafM); q.position.set(cx + Math.cos(a) * rad, -3.5 + r() * 3 - (rad - 20) * 0.12, cz + Math.sin(a) * rad); q.rotation.set((r() - 0.5) * 1.4, r() * 3.14, (r() - 0.5) * 0.8); q.userData.dyn = true; g.add(q); }
     for (let k = 0; k < 40; k++) { const a = r() * 6.283, rad = 8 + r() * 14, q = new THREE.Mesh(new THREE.PlaneGeometry(2.5 + r() * 2.5, 1.8 + r() * 1.5), leafM); q.position.set(cx + Math.cos(a) * rad, 9 + r() * 5, cz + Math.sin(a) * rad); q.rotation.set((r() - 0.5) * 1.6, r() * 3.14, (r() - 0.5) * 0.8); q.userData.dyn = true; g.add(q); } }
   /* o tablado: disco de tábuas com lóbulos, pousado em quatro galhos-mestres que saem do tronco (ao norte) */
-  const lobe = (x: number, z: number, rad: number) => { const d = new THREE.Mesh(new THREE.CircleGeometry(rad, 28), plank); d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, z); d.receiveShadow = true; g.add(d); const u = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 0.92, 0.5, 28), plankD); u.position.set(x, -0.25, z); g.add(u); };
-  lobe(cx, cz, 15.5); lobe(cx - 11, cz + 7, 7); lobe(cx + 12, cz + 5, 6.5); lobe(cx, cz - 11, 8);
-  const inside = (x: number, z: number) => Math.hypot(x - cx, z - cz) < 15.2 || Math.hypot(x - cx + 11, z - cz - 7) < 6.7 || Math.hypot(x - cx - 12, z - cz - 5) < 6.2 || Math.hypot(x - cx, z - cz + 11) < 7.7;
+  const deckT = plankTex(0xd8c8a0).clone(); deckT.repeat.set(6, 6); deckT.wrapS = deckT.wrapT = THREE.RepeatWrapping; deckT.needsUpdate = true; const deck = std(0xffffff, { map: deckT });
+  const lobe = (x: number, z: number, rad: number) => { const d = new THREE.Mesh(new THREE.CircleGeometry(rad, 28), deck); d.rotation.x = -Math.PI / 2; d.position.set(x, 0.01, z); d.receiveShadow = true; g.add(d); const u = new THREE.Mesh(new THREE.CylinderGeometry(rad, rad * 0.92, 0.5, 28), plankD); u.position.set(x, -0.25, z); g.add(u); };
+  lobe(cx, cz, 15.5); lobe(cx - 11, cz + 7, 7); lobe(cx + 12, cz + 5, 6.5); lobe(cx, cz - 11, 8); lobe(cx, cz + 15, 5.5); /* o lóbulo da entrada, ao sul */
+  const inside = (x: number, z: number) => Math.hypot(x - cx, z - cz) < 15.2 || Math.hypot(x - cx + 11, z - cz - 7) < 6.7 || Math.hypot(x - cx - 12, z - cz - 5) < 6.2 || Math.hypot(x - cx, z - cz + 11) < 7.7 || Math.hypot(x - cx, z - cz - 15) < 5.2;
   /* o tronco atrás do trono e os galhos que seguram tudo */
   add(new THREE.CylinderGeometry(4.2, 5.2, 30, 14), bark, cx, 4, -4); solid(cx, -4, 5.2);
-  for (const [ax, az, len, ry, rz] of [[cx - 9, cz + 2, 26, 0.9, 0.25], [cx + 10, cz + 1, 26, -1.0, 0.25], [cx - 4, cz + 12, 22, 0.35, 0.2], [cx + 5, cz + 13, 22, -0.3, 0.2]] as number[][]) { const b = add(new THREE.CylinderGeometry(0.7, 1.4, len, 8), bark, ax, -1.6, az, true); b.rotation.set(Math.PI / 2 - rz, ry, 0); }
-  for (let k = 0; k < 6; k++) { const a = -0.5 + k * 0.6, br = add(new THREE.CylinderGeometry(0.35, 0.9, 20, 7), barkL, cx + Math.cos(a) * 5, 11 + k * 0.7, -4 + Math.sin(a) * 5, true); br.rotation.set(Math.PI / 2 - 0.35 - k * 0.05, a, 0); }
+  for (const [ax, az, len, ry, rz] of [[cx - 9, cz + 2, 26, 0.9, 0.25], [cx + 10, cz + 1, 26, -1.0, 0.25], [cx - 4, cz + 12, 22, 0.35, 0.2], [cx + 5, cz + 13, 22, -0.3, 0.2]] as number[][]) { const b = add(new THREE.CylinderGeometry(0.7, 1.4, len, 8), bark, ax, -2.6, az, true); b.rotation.set(Math.PI / 2, ry, 0); void rz; b.castShadow = false; }
+  for (let k = 0; k < 6; k++) { const a = -0.5 + k * 0.6, br = add(new THREE.CylinderGeometry(0.35, 0.9, 20, 7), barkL, cx + Math.cos(a) * 5, 13 + k * 0.7, -4 + Math.sin(a) * 5, true); br.rotation.set(Math.PI / 2 - 0.35 - k * 0.05, a, 0); br.castShadow = false; }
   /* guarda-corpo de galho trançado em toda a borda (deixa a entrada ao sul aberta) */
   { const pts: THREE.Vector3[] = []; for (let i = 0; i <= 120; i++) { const a = i / 120 * 6.283; let rad = 15.0; const px = cx + Math.cos(a) * rad, pz = cz + Math.sin(a) * rad; for (const [lx, lz, lr] of [[cx - 11, cz + 7, 6.6], [cx + 12, cz + 5, 6.1], [cx, cz - 11, 7.6]]) { const d = Math.hypot(px - lx, pz - lz); if (d < lr) rad = Math.max(rad, Math.hypot(lx + (px - lx) / d * lr - cx, lz + (pz - lz) / d * lr - cz)); } pts.push(new THREE.Vector3(cx + Math.cos(a) * rad, 0, cz + Math.sin(a) * rad)); }
     for (let i = 0; i < pts.length - 1; i++) { const p = pts[i]; if (Math.abs(p.x - cx) < 2.6 && p.z > cz + 8) continue; /* a abertura da entrada */ if (i % 2 === 0) { const post = add(new THREE.CylinderGeometry(0.07, 0.1, 1.1, 5), barkL, p.x, 0.55, p.z, false); post.rotation.z = (r() - 0.5) * 0.2; } const q = pts[i + 1], mid = p.clone().lerp(q, 0.5), L = p.distanceTo(q); const rail = add(new THREE.CylinderGeometry(0.06, 0.06, L + 0.05, 5), barkL, mid.x, 1.05, mid.z, false); rail.rotation.set(0, Math.atan2(q.x - p.x, q.z - p.z), Math.PI / 2); rail.rotation.order = 'YXZ'; rail.rotation.set(0, Math.atan2(q.x - p.x, q.z - p.z), 0); rail.rotateX(Math.PI / 2);
@@ -76,11 +78,11 @@ export function buildCanopyHall(seed = 11): Interior & { tick(t: number): void }
     const s = g.userData.spout as THREE.Mesh | undefined; if (s) s.scale.setScalar(1 + 0.12 * Math.sin(t * 3));
   };
   const free = (x: number, z: number) => {
-    if (z > D - 0.1) return Math.abs(x - cx) < 2.4; /* a Passagem da Raiz, ao sul */
+    if (z > cz + 19.5) return Math.abs(x - cx) < 2.4; /* a Passagem da Raiz, ao sul */
     if (!inside(x, z)) return false;
     for (const [qx, qz, rad] of cols) if (Math.hypot(x - qx, z - qz) < rad) return false;
     return true;
   };
   mergeStatic(g, ramp);
-  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, tick: (t) => flicker(t) };
+  return { group: g, W, D, colliders: cols, free, flicker, exitZ: cz + 20.3, tick: (t) => flicker(t) };
 }

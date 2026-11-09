@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { createCharacter } from '../characters';
 import { type Choice } from '../dialog';
 import { buildDwarfHall } from '../salao3d';
+import { buildCanopyHall } from '../copa3d';
 import { addHonor, HONOR_FOR } from './honra';
 import type { MasmorrasEntrarCtx } from '../main';
 
@@ -139,5 +140,18 @@ function enterHall(p: (typeof K.city.props)[number]) {
     K.game.logMsg('⛏ O Grande Salão de Brasaforja: a montanha respira aqui dentro', '#ffb060');
   });
 }
-  return { dgs, dgInst, get heroSlowUntil() { return heroSlowUntil; }, get heroSlowK() { return heroSlowK; }, get heroCharmUntil() { return heroCharmUntil; }, get exiting() { return exiting; }, set exiting(v: typeof exiting) { exiting = v; }, get spirit() { return spirit; }, set spirit(v: typeof spirit) { spirit = v; }, enterDungeon, dungeonBoard, readSign, talkSpirit, SEALS, HALL_GATE, enterHall, updateBishop, updateSpirit, brain };
+/* 09/11 A COPA DA ÁRVORE-MÃE (Lithendel): a Passagem da Raiz, ao sul do tronco, sobe para o salão dos elfos sobre os galhos (copa3d.ts) */
+const TREE_GATE = K.city.props.find((p) => p.kind === 'monument' && p.variant === 11) ?? null;
+function enterCanopy(p: (typeof K.city.props)[number]) {
+  K.withFade(() => {
+    const int = buildCanopyHall(p.gx * 17 + p.gy);
+    int.group.position.set(K.IX, 0, K.IZ); K.scene.add(int.group);
+    K.inside = { int, ret: { x: p.gx + p.w / 2 + 0.5, y: p.gy + p.h / 2 + 3.2 }, prop: p, hall: true, canopy: true };
+    K.objs.group.visible = false; K.casteloSys.sitting = null; for (const n of K.npcSys.npcs) n.hero.root.visible = false;
+    K.state.fx = (K.IX + int.W / 2) / T; K.state.fy = (K.IZ + int.D / 2 + 17) / T; K.state.path = [];
+    K.heroY = 0; K.camX = K.IX + int.W / 2; K.camZ = K.IZ + int.D / 2; K.camY = 0;
+    K.game.logMsg('❦ A Copa da Árvore-Mãe: o vento canta entre as folhas, e a Rainha espera', '#9ad8ff');
+  });
+}
+  return { dgs, dgInst, get heroSlowUntil() { return heroSlowUntil; }, get heroSlowK() { return heroSlowK; }, get heroCharmUntil() { return heroCharmUntil; }, get exiting() { return exiting; }, set exiting(v: typeof exiting) { exiting = v; }, get spirit() { return spirit; }, set spirit(v: typeof spirit) { spirit = v; }, enterDungeon, dungeonBoard, readSign, talkSpirit, SEALS, HALL_GATE, enterHall, TREE_GATE, enterCanopy, updateBishop, updateSpirit, brain };
 }
