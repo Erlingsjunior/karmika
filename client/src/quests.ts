@@ -2,6 +2,7 @@ import { G } from './genero';
 import { HUMAN_ROAD, ROAD_BRIDGES, ROAD_OLD, FALA_ALIAS } from './campanha';
 import { DWARF_ROAD, ELF_ROAD, RACE_CALLS, RACE_BRIDGES, KING_ROAD } from './racas';
 import { CROSS_ROADS } from './cruzadas';
+import { BANNERS, BANNER_BRIDGES } from './bandeiras';
 import { addHonor, HONOR_FOR } from './sistemas/honra';
 import { questLimit, isPremium } from './premium';
 import type { Step } from './dialog';
@@ -73,18 +74,18 @@ export const NORTH: QuestDef[] = [
    a ponte diz isso com todas as letras e manda ajudar o povo (azuis e Quadro) até lá. Dão pouco XP: só costuram a história. */
 /** fração do XP de cada trecho da história que a missão amarela paga (com as pontes, ~60% do total) */
 export const STORY_SHARE = 0.5; /* 25/10: a campanha ganhou o dobro de missões; cada uma paga um pouco menos, a soma fica parecida */
-export const STORY_THREAD = [...HUMAN_ROAD.map((d) => d.id), 'a01', 'a02', 'a03', 'a04', 'p01']; /* o Caminho do Norte agora viaja (campanha.ts) */
+export const STORY_THREAD = [...HUMAN_ROAD.map((d) => d.id), 'a01', 'a02', 'a03', 'a04', 'b01', 'b02', 'b03', 'b04', 'p01']; /* o Caminho do Norte agora viaja (campanha.ts) */
 /** o fio da história de cada povo (25/10): humanos, anões e elfos têm a própria campanha do 1 ao 25 e se encontram em Askavik */
 export const STORY_THREADS: Record<'human' | 'dwarf' | 'elf', string[]> = {
   human: STORY_THREAD,
-  dwarf: [...DWARF_ROAD.map((d) => d.id), 'a01an', 'a02', 'a03', 'a04', 'p01'],
-  elf: [...ELF_ROAD.map((d) => d.id), 'a01el', 'a02', 'a03', 'a04', 'p01'],
+  dwarf: [...DWARF_ROAD.map((d) => d.id), 'a01an', 'a02', 'a03', 'a04', 'b01', 'b02', 'b03', 'b04', 'p01'],
+  elf: [...ELF_ROAD.map((d) => d.id), 'a01el', 'a02', 'a03', 'a04', 'b01', 'b02', 'b03', 'b04', 'p01'],
 };
-export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS, ...KING_ROAD, ...CROSS_ROADS]; /* 09/11: + os Caminhos Cruzados (cruzadas.ts) */
+export const RACE_ROADS: QuestDef[] = [...DWARF_ROAD, ...ELF_ROAD, ...RACE_CALLS, ...KING_ROAD, ...CROSS_ROADS, ...BANNERS]; /* 09/11: + o Prólogo das Bandeiras (bandeiras.ts) */ /* 09/11: + os Caminhos Cruzados (cruzadas.ts) */
 /** a Chamada de Askavik vale para os três povos: quem fez a do seu povo conta como quem fez 'a01' */
 const DONE_ALIAS: Record<string, string[]> = { a01: ['a01an', 'a01el'] };
 /** saves antigos: quem já passou de 'Os Caminhos' não recebe as missões de Askavik que entraram depois (23/10) */
-const THREAD_SKIP: Record<string, string> = { a02: 'p01', a03: 'p01', a04: 'p01', ...ROAD_OLD };
+const THREAD_SKIP: Record<string, string> = { a02: 'p01', a03: 'p01', a04: 'p01', b01: 'p01', b02: 'p01', b03: 'p01', b04: 'p01', ...ROAD_OLD };
 const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = {
   n02: { name: 'Alguém precisa de você', say: 'Você segura a espada direito. Mas Karmika não vive só de espada: a Lúcia está pedindo ajuda.', text: 'Garrick viu do que você é capaz. A Lúcia, a aldeã que fica perto da fonte, está preocupada com o inverno. Você faz diferença aqui: vá até ela.' },
   n03: { name: 'O mercador da praça', say: 'Obrigada, de verdade. O Thorin, o mercador, comentou que precisava de mãos firmes.', text: 'O Thorin, o mercador anão da praça, anda reclamando que ninguém traz couro. Ele paga bem, e um caminhante precisa de ouro.' },
@@ -107,6 +108,7 @@ const BRIDGE_TXT: Record<string, { name: string; say: string; text: string }> = 
   a04: { name: 'Um nome que ninguém diz', say: 'Os lobos recuaram. Agora o pior: há algo na Clareira de Selvar que o Jarl não diz o nome em voz alta.', text: 'O Jarl Haakon tem um último pedido, e é o mais perigoso.' },
   ...ROAD_BRIDGES,
   ...RACE_BRIDGES,
+  ...BANNER_BRIDGES,
   p01: { name: 'A guardiã das relíquias', say: 'Garrick não exagerou: você tem o braço e a cabeça. Antes de qualquer escola, fale com a Velha Gunnhild, aqui mesmo na praça.', text: 'A Velha Gunnhild, guardiã das relíquias de Askavik, conhece quem chega à cidade. Ela vai mostrar o que falta para você descobrir o seu caminho.' },
 };
 /** monta a ponte entre a missão de história anterior e a próxima */
@@ -192,7 +194,7 @@ export const SIDE: QuestDef[] = [
   /* Askavik, níveis 26–28 (23/10): a história amarela não pode sumir entre a chegada à cidade e a Vidente */
   { id: 'a02', chain: 'A Chamada de Askavik', name: 'Ossos em Grenivik', lvl: 26, giver: 'Mestre Halvard', turnin: 'Jarl Haakon', req: 'a01', next: 'a03', text: 'Em Askavik ninguém entra numa escola sem antes servir a cidade. Os mortos do campo santo estão andando pela estrada de Grenivik, na Cordilheira do Norte. Vá até Grenivik, derrube dez esqueletos e leve o relatório ao Jarl Haakon, no castelo.', objs: [{ kind: 'visit', poi: 'Grenivik' }, { kind: 'kill', type: 'skeleton', n: 10 }, { kind: 'talk', npc: 'Jarl Haakon' }], xp: 1, gold: 140 },
   { id: 'a03', chain: 'A Chamada de Askavik', name: 'Os Lobos do Passo', lvl: 27, giver: 'Jarl Haakon', turnin: 'Jarl Haakon', next: 'a04', text: 'Grenivik respira, mas o passo não. Lobos gélidos descem da cordilheira e cercam as caravanas. Dez a menos, e cinco garras para os sentinelas pendurarem nos portões: lobo entende recado.', objs: [{ kind: 'kill', type: 'frostwolf', n: 10 }, { kind: 'collect', item: 'claw', n: 5 }], xp: 1, gold: 160, items: [['potion', 2]] },
-  { id: 'a04', chain: 'A Chamada de Askavik', name: 'O Carniceiro de Selvar', lvl: 28, giver: 'Jarl Haakon', turnin: 'Mestre Halvard', next: 'p01', text: 'Na Clareira de Selvar, na Mata do Leste, os carniçais têm um senhor. Mandei três patrulhas; voltou um homem, e ele não fala mais. Não vá antes do nível 28. Limpe a clareira, doze carniçais, e conte ao Mestre Halvard o que viu. Depois disso, Askavik é sua casa.', objs: [{ kind: 'level', n: 28 }, { kind: 'visit', poi: 'Clareira de Selvar' }, { kind: 'kill', type: 'ghoul', n: 12 }], xp: 1, gold: 260, gear: 2, title: 'Escudo de Askavik' },
+  { id: 'a04', chain: 'A Chamada de Askavik', name: 'O Carniceiro de Selvar', lvl: 28, giver: 'Jarl Haakon', turnin: 'Mestre Halvard', next: 'b01', text: 'Na Clareira de Selvar, na Mata do Leste, os carniçais têm um senhor. Mandei três patrulhas; voltou um homem, e ele não fala mais. Não vá antes do nível 28. Limpe a clareira, doze carniçais, e conte ao Mestre Halvard o que viu. Depois disso, Askavik é sua casa.', objs: [{ kind: 'level', n: 28 }, { kind: 'visit', poi: 'Clareira de Selvar' }, { kind: 'kill', type: 'ghoul', n: 12 }], xp: 1, gold: 260, gear: 2, title: 'Escudo de Askavik' },
   { id: 'p01', chain: 'Os Caminhos', name: 'Os Caminhos', lvl: 28, giver: 'Velha Gunnhild', turnin: 'Hrefna', req: 'a01', text: 'Você já conhece Askavik: as escolas, a igreja, o mercado e os mestres. Falta o mais difícil: saber quem você é. No santuário de pedras a oeste da praça mora Hrefna, a Vidente da Deusa dos Caminhos. Quando chegar ao nível 30, ela lerá a sua alma. O que ela vir não é uma corrente: em Karmika, quem escolhe é você.', objs: [{ kind: 'level', n: 30 }, { kind: 'talk', npc: 'Hrefna' }], xp: 1500, gold: 120 },
   { id: 'a01', chain: 'A Chamada de Askavik', name: 'A Chamada de Askavik', lvl: 25, giver: 'Eldrin', turnin: 'Mestre Halvard', req: 'h30', next: 'a02', text: 'O Olho despertou em você — Karmika já não tem o que lhe ensinar. Em Askavik, a cidade de pedra a nordeste, ficam as escolas de todas as ordens. Siga as placas pela estrada e apresente-se ao Mestre Halvard, na Escola de Guerra. Lá se escolhe o que se será.', objs: [{ kind: 'visit', poi: 'Askavik' }, { kind: 'talk', npc: 'Mestre Halvard' }], xp: 900, gold: 250, gear: 1 },
   { id: 'c01', chain: 'A Catedral Abandonada', name: 'A Prisioneira da Catedral', lvl: 12, giver: 'Irmã Ysolde', turnin: 'Irmã Ysolde', text: 'Eu era freira desta casa quando o Bispo abriu as portas para Gorvak. Minha alma ficou acorrentada à pedra — não desço, não subo, não durmo. Limpe a nave dos mortos que ele ergueu, arranque os três selos dos seus carrascos nas criptas, abra a Porta e dê fim ao Bispo Caído. Só então estas correntes se partem.', objs: [{ kind: 'kill', type: 'zombie', n: 20 }, { kind: 'collect', item: 'seal_1', n: 1 }, { kind: 'collect', item: 'seal_2', n: 1 }, { kind: 'collect', item: 'seal_3', n: 1 }, { kind: 'kill', type: 'bishop', n: 1 }], xp: 3200, gold: 320, items: [['tome', 2]], gear: 2, title: 'Purificador da Catedral' },
