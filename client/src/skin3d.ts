@@ -108,7 +108,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   // esconde a malha procedural, menos o que continua dela (arma, escudo, elmo, sombra, drone)
   const keep = new Set(rig.keepRoots());
   const kept = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (keep.has(p)) return true; if (p === root) return false; } return false; };
-  root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || o === model || model.getObjectById(o.id)) return; if (!kept(m)) m.visible = false; });
+  const modelIds = new Set<number>(); model.traverse((o) => modelIds.add(o.id));
+  const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && !m.userData.keep) m.visible = false; }); };
+  hideProc();
   fine(model);
   // dedos fechados: punho na mão da arma e pegada na alça do escudo (curvatura constante sobre o repouso)
   /* dedos fechados PARA DENTRO da palma: a normal da palma é medida na própria malha (perpendicular ao plano
@@ -532,6 +534,11 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
           at = new THREE.Vector3((x0 + x1) / 2, top - R * (DW.__hu ?? 1.12), (z0 + z1) / 2 + R * ((window as unknown as { __hz?: number }).__hz ?? 0.06)); } }
       fit(rig.helmHolder?.(), H, at, (size * 0.5 * (DB.__hk ?? 2.15)) / (rig.procHeadR * rs0)); }
     const LA = B('LeftArm'), RA = B('RightArm'), S2 = B('Spine2');
+    /* 09/11 (Erling: "roupa nos anões ainda está bugada, ombreiras e braços que não se encaixam no corpo; temos itens que encaixam, use-os e
+       jogue esse modelo fora"): nos modelos de arte do anão e do elfo a armadura vem no próprio modelo (lvl02 vestido, lvl03 armadura).
+       As ombreiras procedurais NUNCA entram neles: ficam invisíveis (o suporte continua encaixado para a capa). */
+    const artArmor = /anao_|elfo_/.test(def.fbx);
+    if (artArmor) { const bh = rig.bodyHolder?.(); if (bh) { for (const c of bh.children) if (c.userData.pauldron) c.visible = false; bh.userData.noPauldrons = true; } }
     if (LA && RA && S2 && rig.procShoulderW) { const l = wp(LA), r = wp(RA); let span = l.distanceTo(r), at = l.clone().add(r).multiplyScalar(0.5);
       /* 09/11 (Erling: "ombreiras ridículas que não ficam no corpo"): o osso do braço fica por dentro do ombro de verdade (deltoide largo nos anões).
          Mede o ombro na própria malha: vértices presos aos ossos Arm/Shoulder, a largura externa (percentis) e a altura do alto do ombro */
@@ -559,7 +566,10 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
       const q = new THREE.Quaternion().setFromUnitVectors(cur, des); const wq = rootQ(b, invR).premultiply(q); const pq2 = rootQ(b.parent!, invR).invert(); b.quaternion.copy(pq2.multiply(wq)); b.updateMatrixWorld(true); };
     aim(bS, bE, E); aim(bE, bH, S.clone().addScaledVector(Dh, d));
   }
-  function tick() {
+  /* 09/11 (Erling: "um humano homem com uma cabeça de mulher em cima da cabeça"): a cabeça/cabelo procedural pode ser REFEITA depois do encaixe
+     (troca de visual do NPC, barba, trança) e voltava a aparecer sobre o modelo. Repete o esconder de tempos em tempos. */
+  let hideT = 0;
+  function tick() { if (++hideT % 45 === 0) hideProc();
     root.updateMatrixWorld(true);
     const inv = root.getWorldQuaternion(tq).invert().clone();
     for (const r of rest) {

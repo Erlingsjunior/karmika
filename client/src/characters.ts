@@ -15,7 +15,7 @@ import { radialTexture } from './fx3d';
    ============================================================ */
 
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
-export type Action = 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'thrust1' | 'thrust2' | 'claw1' | 'claw2' | 'stab' | 'clubsm' | 'aim1' | 'kthrow' | 'draw' | 'skyraise' | 'stance' | 'dance';
+export type Action = 'fishcast' | 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'thrust1' | 'thrust2' | 'claw1' | 'claw2' | 'stab' | 'clubsm' | 'aim1' | 'kthrow' | 'draw' | 'skyraise' | 'stance' | 'dance';
 
 /** classe da arma (02/11, Erling): uma mão + escudo · duas mãos · florete (esgrima) · adaga · garras · porrete · besta de mão · kunai · arco */
 export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
@@ -55,6 +55,7 @@ export interface Hero3D {
   readonly actName: Action | null;
   readonly actP: number;
   guard: boolean;
+  /** 09/11 pesca: segurando a vara (pose) e o puxão quando o peixe morde (0..1) */ fishing: boolean; fishTug: number;
   /** 03/11 (andar de costas, como no Path of Exile 2): direção em que os pés andam (yaw no mundo) quando ela é diferente de para onde o corpo olha; null = anda para onde olha */
   moveYaw: number | null;
   /** jeito de andar da classe × arma × postura (andar.ts); null = o andar de base do corpo */
@@ -883,7 +884,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
         const col = leather ? 0x5a3a22 : V === 'scale' ? 0x7a8088 : V === 'fur' ? 0x6a5a48 : metalC, lames = leather ? 2 : V === 'scale' ? 4 : V === 'plate' || V === 'guard' ? 3 : 2, trim = leather ? 0x2e1c10 : V === 'guard' ? 0xb08a40 : 0x3a3d44;
         const KM: GearKind = leather ? 'leather' : V === 'plate' || V === 'guard' || V === 'spike' ? 'steel' : V === 'horn' ? 'dark' : 'iron', TK: GearKind = V === 'guard' || V === 'plate' ? 'bronze' : 'leatherD'; void col; void trim; void lames; void TK;
         const R0 = S.rUpper[0], big = V === 'guard' ? 1.25 : V === 'spike' || V === 'horn' || V === 'skull' ? 1.1 : 1;
-        for (const sx of [-1, 1]) { const p2 = new THREE.Group(); p2.userData.pauldron = true; p2.userData.keep = true; p2.position.set(sx * S.shoulderW * 0.52, 0.015, 0); p2.rotation.z = sx * -0.38; /* grandes e robustas, assentadas no alto do ombro */ bodyHolder.add(p2);
+        for (const sx of [-1, 1]) { const p2 = new THREE.Group(); p2.userData.pauldron = true; p2.userData.keep = true; p2.visible = !bodyHolder.userData.noPauldrons; /* 09/11: modelos de arte (anão/elfo) têm a armadura no próprio modelo */ p2.position.set(sx * S.shoulderW * 0.52, 0.015, 0); p2.rotation.z = sx * -0.38; /* grandes e robustas, assentadas no alto do ombro */ bodyHolder.add(p2);
           if (V === 'fur') { // manto de pele de lobo sobre o ombro, preso por uma correia
             const fur = gm(new THREE.SphereGeometry(R0 * 2.5, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55), 'fur'); fur.scale.set(1.15, 0.7, 1.25); fur.castShadow = true; p2.add(fur);
             for (let k = 0; k < 10; k++) { const a2 = (k / 10) * Math.PI * 2, tf = gm(new THREE.ConeGeometry(0.022, 0.07, 5), 'fur'); tf.position.set(Math.cos(a2) * R0 * 2.3, -0.02, Math.sin(a2) * R0 * 2.5); tf.rotation.set(Math.sin(a2) * 2.2, 0, -Math.cos(a2) * 2.2); p2.add(tf); }
@@ -929,7 +930,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { fishcast: 1.0, attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -1150,7 +1151,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   const sm: Record<string, number> = {};
   const smooth1 = (key: string, v: number, dt: number, rate = 26) => (sm[key] = (sm[key] ?? v) + (v - (sm[key] ?? v)) * Math.min(1, dt * rate));
   const ikA = new THREE.Vector3(), ikB = new THREE.Vector3(), ikT = new THREE.Vector3(); const feet = [0, 1].map(() => ({ lock: null as THREE.Vector3 | null, from: new THREE.Vector3(), st: -1, lift: 0 }));
-  let backSm = 0, strafeSm = 0, sitK = 0, seatH = 0.55, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
+  let backSm = 0, strafeSm = 0, sitK = 0, fishK = 0, seatH = 0.55, stK = 0, guardK = 0, stepVel = 0, recoil = 0, shieldF = 0, dashLeadL = true, combatK = 0, muzzleK = 0, slashK = 0, kneelK = 0, swimK = 0, swimMv = 0;
   const qRoot = new THREE.Quaternion(), qPar = new THREE.Quaternion(), qDes = new THREE.Quaternion(), qLoc = new THREE.Quaternion(), eDes = new THREE.Euler();
   const tmp = new V();
   const smooth = { lean: 0, hipRoll: 0, tilt: 0 };
@@ -1180,7 +1181,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     get guarding() { return guardK > 0.6; },
     get wcls() { return wcls; },
     freeze: false,
-    holdTool: false,
+    holdTool: false, fishing: false, fishTug: 0,
     kneel: false, swim: false,
     scrub(a, p) { act = { a, t: p * DUR[a], dur: DUR[a] }; },
     act(a, force) {
@@ -1534,6 +1535,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           if (styleAtk === 'thrust') { aShR = (w > 0 ? 0.9 * w : -1.6 * -w); aElR = w > 0 ? 0.5 * w : -0.35 * -w; aTwist = 0.45 * w; aLean = w > 0 ? -0.05 * w : 0.28 * -w; aLungeLeg = w < 0 ? -w : 0; aShL = -0.2 * -w; }
           else if (styleAtk === 'chop') { aShR = w > 0 ? 2.6 * w : -1.0 * -w; aElR = w > 0 ? 0.9 * w : 0.1; aTwist = 0.5 * w; aLean = w > 0 ? -0.2 * w : 0.45 * -w; aCrouch = w < 0 ? 0.05 * -w : 0; aShL = w > 0 ? 0.6 * w : -0.4 * -w; }
           else { aShR = w > 0 ? 0.6 * w : -1.55 * -w; aElR = w > 0 ? 1.0 * w : 0.2; aTwist = 0.5 * w; aLean = w < 0 ? 0.22 * -w : -0.06 * w; aLungeLeg = w < 0 ? -w : 0; }
+        } else if (act.a === 'fishcast') { /* 09/11 (Erling: "melhorar a animação de pescar"): a vara vai para trás por cima do ombro, chicoteia para a frente e assenta */
+          const back = p < 0.42 ? ease(p / 0.42) : 1 - ease(Math.min(1, (p - 0.42) / 0.16)), fwd = p < 0.42 ? 0 : p < 0.58 ? ease((p - 0.42) / 0.16) : 1 - 0.25 * ease((p - 0.58) / 0.42);
+          aShR = -2.75 * back - 0.95 * fwd; aElR = 0.9 * back + 0.25 * fwd; aShRz = -0.25 * back - 0.12 * fwd; aShL = -0.9 * back - 0.7 * fwd; aElL = -0.6 * back - 0.9 * fwd; aShLz = 0.25;
+          aLean = -0.22 * back + 0.1 * fwd; aTwist = 0.35 * back - 0.1 * fwd; aHeadX = -0.25 * back - 0.1 * fwd; aLungeLeg = 0.35 * fwd;
         } else if (act.a === 'cast') {
           const w = Math.sin(p * Math.PI);
           aShR = -2.0 * w; aShL = -2.0 * w; aElR = 0.2 * w; aElL = 0.2 * w; aShRz = 0.15 * w; aShLz = -0.15 * w; aLean = -0.12 * w; aHeadX = -0.2 * w;
@@ -1613,6 +1618,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       } else if (guardK > 0.01 && kind === 'dwarf') { // muralha: machado na horizontal com as duas mãos, corpo baixo
          aShL += -1.0 * guardK; aElL += -1.45 * guardK; aShLz += 0.25 * guardK; aCrouch += (0.13 + 0.03 * recoil) * guardK; aLean += 0.08 * guardK; aShR += 0.3 * recoil * guardK;
       } else if (guardK > 0.01) { aShL += -1.25 * guardK; aShLz += 0.18 * guardK; aElL += -1.7 * guardK; aFace = Math.max(aFace, guardK); aLean += -0.04 * guardK; aCrouch += (0.15 + 0.03 * recoil) * guardK; aShR += 0.35 * guardK; aTwist += 0.25 * guardK; aLean += (-0.08 * recoil) * guardK; aShL += 0.35 * recoil * guardK; aElL += 0.3 * recoil * guardK; }
+      /* 09/11 pesca: parado com a vara à frente, as duas mãos no cabo, balanço leve; quando morde, o corpo recua e puxa */
+      fishK += (((hero.fishing && !act) ? 1 : 0) - fishK) * Math.min(1, dt * 6);
+      if (fishK > 0.01) { const sway = Math.sin(t * 1.3) * 0.05, tug = hero.fishTug; aShR += (-1.05 + sway - 0.4 * tug) * fishK; aElR += (0.3 + 0.35 * tug) * fishK; aShRz += -0.14 * fishK; aShL += (-0.75 + sway) * fishK; aElL += (-0.95 + 0.3 * tug) * fishK; aShLz += 0.3 * fishK;
+        aLean += (-0.05 + 0.22 * tug) * fishK; aCrouch += 0.06 * tug * fishK; aHeadX += (-0.12 - 0.1 * tug) * fishK; aTwist += 0.1 * fishK; }
       slashK = Math.max(0, slashK - dt * 7); if (slashK > 0) { const w = Math.sin(Math.min(1, 1 - slashK) * Math.PI); aShR += -1.1 * w; aShRz += -0.9 * w; aElR += 0.3 * w; aSwX += -1.2 * w; aTwist += 0.5 * w; }
       const rK = runK * walkK * (1 - (act ? 1 : 0));
       /* 07/11 (Erling: "corrida egípcia: é só dobrar os dois braços e mover para frente e para trás como qualquer ser humano"): fora de combate não há mais pose de espada à frente nem corpo de lado; a pose de guarda correndo só vale em combate */

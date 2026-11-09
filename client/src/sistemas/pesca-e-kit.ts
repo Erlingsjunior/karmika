@@ -54,17 +54,17 @@ const fishLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new TH
 function startFishing(at: { x: number; z: number }) {
   if (K.combatMode) K.setCombat(false);
   const rod = K.inv.tool('rod'); if (!rod) return;
-  K.hero.holdTool = true; K.hero.setGear({ weapon: { base: rod.base, rarity: 'normal', tint: rod.tint, glow: rod.glow } }); K.hero.act('cast');
+  K.hero.holdTool = true; K.hero.setGear({ weapon: { base: rod.base, rarity: 'normal', tint: rod.tint, glow: rod.glow } }); K.hero.act('fishcast'); K.hero.fishing = true; K.hero.fishTug = 0;
   const total = (6 + Math.random() * 8) / Math.sqrt(rod.power); fishing = { t: total, bite: 1.3, at, total };
   K.game.logMsg('🎣 Você lançou a linha... espere a boia afundar.', '#9ad7ff'); K.audio.swing();
 }
-function endFishing(msg?: string) { fishing = null; bobber.visible = false; fishLine.visible = false; K.hero.holdTool = false; K.syncGear(); if (msg) K.game.logMsg(msg); }
+function endFishing(msg?: string) { fishing = null; bobber.visible = false; fishLine.visible = false; K.hero.holdTool = false; K.hero.fishing = false; K.hero.fishTug = 0; K.syncGear(); if (msg) K.game.logMsg(msg); }
 function updateFishing(dt: number, t: number) {
   if (!fishing) return;
   if (!bobber.parent) { K.scene.add(fine(bobber)); K.scene.add(fine(fishLine)); }
   if (K.keys.has('w') || K.keys.has('a') || K.keys.has('s') || K.keys.has('d') || K.game.menuOpen || K.combatMode) { endFishing('Você recolheu a linha.'); return; }
   fishing.t -= dt; const since = fishing.total - fishing.t, cast = Math.min(1, since / 0.6);
-  const biting = fishing.t < fishing.bite;
+  const biting = fishing.t < fishing.bite; K.hero.fishTug = biting ? 0.6 + 0.4 * Math.abs(Math.sin(t * 9)) : 0;
   const tip = K.hero.weaponTip(new THREE.Vector3());
   const bx = THREE.MathUtils.lerp(tip.x, fishing.at.x, cast), bz = THREE.MathUtils.lerp(tip.z, fishing.at.z, cast);
   const by = cast < 1 ? THREE.MathUtils.lerp(tip.y, WL, cast) + Math.sin(cast * Math.PI) * 1.2 : WL + 0.02 + Math.sin(t * 3) * 0.025 - (biting ? 0.06 + 0.05 * Math.sin(t * 22) : 0);

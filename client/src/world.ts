@@ -702,7 +702,7 @@ function buildCity_L(): World {
   /* 08/11 (Erling: "todas as vilas com atrativos e decoração"; Karmika é a vila de nascimento dos humanos): canteiros de flores em volta da fonte e
      junto das casas, postes de lampião nas esquinas da praça, barris, caixas, feno e carrinhos de mão ao lado das barracas, mais bancos */
   { const okD = (x: number, y: number) => inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y);
-    const fl = (x: number, y: number) => { if (okD(x, y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 4 }); };
+    const fl = (x: number, y: number) => { if (okD(x, y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 5 }); }; /* 09/11: variante 5 = Flor-de-Campo (a 4 era Junco-do-Rio: "matos de rio na praça") */
     const vpK = (v: number, x: number, y: number, ry = 0) => { if (okD(x, y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v, ry }); };
     for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283; fl(Math.round(18 + OX + Math.cos(a) * 4.2), Math.round(18 + OY + Math.sin(a) * 4.2)); }
     houses.forEach(([gx, gy, w, h], i) => { fl(gx + OX - 1, gy + OY + h); fl(gx + OX + w, gy + OY + h); if (i % 2) fl(gx + OX + Math.floor(w / 2), gy + OY + h + 1); });
@@ -830,7 +830,7 @@ function buildCity_L(): World {
     const H: [number, number, number, number, number, string?][] = [[cx - 14, cy - 11, 4, 4, 0, 'armeiro'], [cx - 8, cy - 11, 4, 4, 0, 'mercador'], [cx + 13, cy - 5, 4, 4, 1, 'pocoes'], [cx + 8, cy - 11, 5, 5, 0, 'taverna'], [cx - 13, cy - 4, 4, 4, 1], [cx - 13, cy + 3, 4, 4, 1], [cx + 13, cy + 2, 4, 4, 1], [cx + 9, cy + 7, 4, 4, 0], [cx - 9, cy + 9, 4, 4, 0], [cx - 3, cy + 11, 4, 4, 0], [cx + 3, cy + 11, 4, 4, 0], [cx + 9, cy + 9, 4, 4, 0], [cx - 16, cy - 9, 4, 4, 1], [cx + 15, cy - 9, 4, 4, 1], [cx - 15, cy + 9, 4, 4, 1], [cx + 15, cy + 8, 4, 4, 1]];
     H.forEach(([gx, gy, w, h, rot, shop], k) => house(gx, gy, w, h, rot, shop === 'taverna' ? 4 : [0, 1, 2][k % 3], shop));
     /* canteiros de flores, lanternas e bancos */
-    const flowerAt = (x: number, y: number) => { if (inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 4 }); };
+    const flowerAt = (x: number, y: number) => { if (inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 5 }); };
     for (let k = 0; k < 28; k++) { const a = k / 28 * 6.283, r = 8.5 + (k % 3) * 0.8; flowerAt(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r)); }
     for (let k = 0; k < 20; k++) { const a = rr() * 6.283, r = 10 + rr() * 6; flowerAt(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r)); }
     for (const [x, y] of [[cx - 5, cy - 5], [cx + 5, cy - 5], [cx - 5, cy + 5], [cx + 7, cy + 7], [cx - 10, cy - 7], [cx + 8, cy - 7], [cx - 10, cy + 6], [cx + 1, cy - 8], [cx - 8, cy + 1], [cx + 8, cy + 1], [cx + 1, cy + 8]]) if (inb(x, y) && map[y][x] !== 'wall' && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 2.0, wall: 0x9a7a52, roof: 0x9ad8ff });
@@ -2308,7 +2308,11 @@ function buildCity_L(): World {
   { const occ = new Set<number>(); const key = (x: number, y: number) => y * 4096 + x;
     for (const q of props) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ.add(key(x, y));
     const street = (x: number, y: number) => inb(x, y) && (map[y][x] === 'road' || map[y][x] === 'plaza');
-    const centers: { x: number; y: number; r: number }[] = [{ x: CITY_L.x, y: CITY_L.y, r: 16 }];
+    /* 09/11 (Erling: "a placa da cidade tem que ficar de frente para a nossa visão", regra imutável): em Karmika o quadro tem lugar FIXO,
+       na beira nordeste da praça, de frente para a fonte e para a câmera; o que estiver ali (canteiro, barril, banco) sai */
+    { const bx = 52 + OFX_L + 21, by = 54 + OFY_L + 14; for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (['herb', 'vprop', 'bench', 'plant'].includes(q.kind) && Math.abs(q.gx - bx) <= 1 && Math.abs(q.gy - by) <= 1) props.splice(i, 1); }
+      if (inb(bx, by) && map[by][bx] !== 'water') { if (map[by][bx] === 'road') map[by][bx] = 'grass'; props.push({ kind: 'noticeboard', gx: bx, gy: by, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: 0 }); occ.add(key(bx, by)); } }
+    const centers: { x: number; y: number; r: number }[] = [];
     for (const st of settlements) { const nh = props.filter((q) => q.kind === 'house' && Math.hypot(q.gx - st.x, q.gy - st.y) < st.radius + 4).length; if (nh < 3) continue; if (Math.hypot(st.x - CITY_L.x, st.y - CITY_L.y) < 20) continue; centers.push({ x: st.x, y: st.y, r: st.radius + 4 }); }
     for (const c of centers) { let best: { x: number; y: number; d: number; dir: number } | null = null;
       for (let y = Math.round(c.y - c.r); y <= c.y + c.r; y++) for (let x = Math.round(c.x - c.r); x <= c.x + c.r; x++) {
