@@ -165,7 +165,10 @@ let mmZoom = (() => { try { return Math.max(0.5, Math.min(4, +(localStorage.getI
 function drawMini() {
   if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, D = K.mmEl.width, C = D / 2; K.mg.save(); K.mg.clearRect(0, 0, D, D); K.mg.beginPath(); K.mg.arc(C, C, C, 0, 6.283); K.mg.clip(); dgDraw(K.mg, int, K.state.fx * T - K.IX, K.state.fy * T - K.IZ, D / 40 * mmZoom, D, D); K.mg.restore(); return; }
   const S = 2.4 * mmZoom, h0 = hereT(), D = K.mmEl.width, C = D / 2; K.mg.save(); K.mg.imageSmoothingEnabled = false; K.mg.clearRect(0, 0, D, D); K.mg.beginPath(); K.mg.arc(C, C, C, 0, 6.283); K.mg.clip(); K.mg.fillStyle = '#0a0810'; K.mg.fillRect(0, 0, D, D);
-  K.mg.drawImage(K.mmBase, C - h0.x * S, C - h0.y * S, K.MMS * S, K.MMS * S); K.markers(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); if (mmZoom >= 1.4) K.miniIcons(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, S, D); heroArrow(K.mg, C, C, 1); K.mg.restore();
+  K.mg.drawImage(K.mmBase, C - h0.x * S, C - h0.y * S, K.MMS * S, K.MMS * S); K.markers(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, 0.9, false); if (mmZoom >= 1.4) K.miniIcons(K.mg, (x) => C + (x - h0.x) * S, (y) => C + (y - h0.y) * S, S, D); { /* 09/11: item poderoso no chão — losango pulsando na cor da raridade */ const pu = 0.6 + 0.4 * Math.sin(performance.now() / 180);
+    for (const m of (K.game as unknown as { lootMarks?: () => { x: number; z: number; col: string }[] }).lootMarks?.() ?? []) { const x = C + (m.x / T - h0.x) * S, y = C + (m.z / T - h0.y) * S, r = 4 + 2 * pu;
+      K.mg.save(); K.mg.translate(x, y); K.mg.rotate(Math.PI / 4); K.mg.globalAlpha = 0.35 * pu; K.mg.fillStyle = m.col; K.mg.fillRect(-r - 3, -r - 3, (r + 3) * 2, (r + 3) * 2); K.mg.globalAlpha = 1; K.mg.fillRect(-r / 2, -r / 2, r, r); K.mg.strokeStyle = '#fff'; K.mg.lineWidth = 1; K.mg.strokeRect(-r / 2, -r / 2, r, r); K.mg.restore(); } }
+  heroArrow(K.mg, C, C, 1); K.mg.restore();
 }
 let seaPat: CanvasPattern | null = null;
 /* 07/11: cópia do mapa com as bordas esmaecendo — o mar desenhado vira só a água da carta, sem retângulo em volta */

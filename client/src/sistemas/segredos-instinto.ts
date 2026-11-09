@@ -37,10 +37,20 @@ const ormund = createOrmund({ scene: K.scene, heightAt, free: (tx, ty) => K.free
   onRead: (e, n, tot) => { K.game.logMsg(`📜 Caderno de Ormund ${n}/${tot}: ${e.book}`, '#e8d8b0'); K.audio.chime?.(); } });
 (window as unknown as { __orm: unknown; __caches: unknown }).__orm = ormund; (window as unknown as { __caches: unknown }).__caches = CACHES;
 const placeT = (name: string) => { const st = K.city.settlements.find((q) => q.name === name); if (st) return { x: st.x, y: st.y }; const p = K.city.pois.find((q) => q.name === name); return p ? { x: p.x, y: p.y } : null; };
+/* 09/11 (Erling: "o espírito do cemitério ficou atrás de uma árvore; ele não aparece"): o alvo do Instinto procura chão livre e À VISTA —
+   sem árvore na casa nem nas vizinhas, e principalmente nenhuma entre ele e a câmera (que olha do sudeste: +x, +y). */
+let treeTiles: Set<number> | null = null;
+function clearSpot(x0: number, y0: number): { x: number; y: number } | null {
+  if (!treeTiles) { treeTiles = new Set(); for (const p of K.city.props) if (p.kind === 'tree' || p.kind === 'bigtree' as never) for (let y = p.gy - 1; y < p.gy + p.h + 1; y++) for (let x = p.gx - 1; x < p.gx + p.w + 1; x++) treeTiles.add(y * 4096 + x); }
+  const M = K.city.map, ok = (x: number, y: number) => { for (let dy = -1; dy <= 3; dy++) for (let dx = -1; dx <= 3; dx++) { const t = M[y + dy]?.[x + dx]; if (t === 'tree' || treeTiles!.has((y + dy) * 4096 + x + dx)) return false; } return true; };
+  for (let r = 0; r <= 7; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const x = Math.floor(x0) + dx, y = Math.floor(y0) + dy;
+    if (!ok(x, y)) continue; const f = nearestFree(K.navProbe, x + 0.5, y + 0.5, 0); if (f) return f; }
+  return null;
+}
 /** os rastros que as missões ativas pedem (o lugar do alvo vem do mapa; o rastro começa ~30 casas antes) */
 function senseGoals(): SenseGoal[] { const out: SenseGoal[] = [];
   for (const id of Object.keys(K.quests.q.active)) { const d = K.quests.def(id); if (!d) continue; d.objs.forEach((o, i) => { if (o.kind !== 'sense' || K.quests.objProg(d, i) >= 1) return; const base = placeT(o.at); if (!base) return;
-    const tx0 = base.x + (o.dx ?? 0), ty0 = base.y + (o.dy ?? 0), fr = nearestFree(K.navProbe, tx0, ty0, 6) ?? { x: tx0, y: ty0 }; const src = o.from ? placeT(o.from) : null;
+    const tx0 = base.x + (o.dx ?? 0), ty0 = base.y + (o.dy ?? 0), fr = clearSpot(tx0, ty0) ?? nearestFree(K.navProbe, tx0, ty0, 6) ?? { x: tx0, y: ty0 }; const src = o.from ? placeT(o.from) : null;
     let ax = fr.x - (o.dx ?? 10), ay = fr.y - (o.dy ?? 10); if (src) { const L = Math.hypot(src.x - fr.x, src.y - fr.y) || 1, k = Math.min(1, 30 / L); ax = fr.x + (src.x - fr.x) * k; ay = fr.y + (src.y - fr.y) * k; } else { const L = Math.hypot(ax - fr.x, ay - fr.y) || 1; ax = fr.x + (ax - fr.x) / L * 30; ay = fr.y + (ay - fr.y) / L * 30; }
     out.push({ id: `${id}:${i}`, kind: o.what, label: o.label, from: { x: ax, y: ay }, to: { x: fr.x, y: fr.y }, spirit: o.spirit }); }); }
   return out; }
