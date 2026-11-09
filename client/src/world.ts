@@ -698,6 +698,16 @@ function buildCity_L(): World {
   if (map[26 + OY][28 + OX] === 'grass') block({ kind: 'campfire', gx: 28 + OX, gy: 26 + OY, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }); decor('stall', 24 + OX, 13 + OY, 2, 2, 0, 0x6a4a2c, 0x4e5f7a); decor('stall', 12 + OX, 19 + OY, 2, 2, 0, 0x7a5a38, 0x5d6b3a);
   const torch = (gx: number, gy: number) => { if (inb(gx, gy) && map[gy][gx] !== 'water') props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a }); };
   [[15, 15], [20, 15], [15, 20], [20, 20], [9, 7], [15, 7], [16, 25], [19, 25]].forEach(([x, y]) => torch(x + OX, y + OY));
+  /* 08/11 (Erling: "todas as vilas com atrativos e decoração"; Karmika é a vila de nascimento dos humanos): canteiros de flores em volta da fonte e
+     junto das casas, postes de lampião nas esquinas da praça, barris, caixas, feno e carrinhos de mão ao lado das barracas, mais bancos */
+  { const okD = (x: number, y: number) => inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y);
+    const fl = (x: number, y: number) => { if (okD(x, y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 4 }); };
+    const vpK = (v: number, x: number, y: number, ry = 0) => { if (okD(x, y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v, ry }); };
+    for (let k = 0; k < 14; k++) { const a = k / 14 * 6.283; fl(Math.round(18 + OX + Math.cos(a) * 4.2), Math.round(18 + OY + Math.sin(a) * 4.2)); }
+    houses.forEach(([gx, gy, w, h], i) => { fl(gx + OX - 1, gy + OY + h); fl(gx + OX + w, gy + OY + h); if (i % 2) fl(gx + OX + Math.floor(w / 2), gy + OY + h + 1); });
+    for (const [x, y] of [[11, 11], [24, 11], [11, 23], [24, 23], [6, 17], [30, 17], [17, 5], [17, 28]]) vpK(4, x + OX, y + OY);
+    for (const st of props.filter((q) => q.kind === 'stall' && Math.abs(q.gx - 18 - OX) < 22 && Math.abs(q.gy - 18 - OY) < 22)) { vpK([0, 1, 6, 7][(st.gx + st.gy) % 4], st.gx + st.w, st.gy + st.h - 1, ((st.gx * 7) % 10) * 0.6); vpK([1, 0][(st.gx) % 2], st.gx - 1, st.gy, ((st.gy * 3) % 10) * 0.6); }
+    for (const [x, y, v] of [[13, 17, 1], [22, 17, 1], [18, 13, 0], [18, 22, 0]] as [number, number, number][]) if (okD(x + OX, y + OY)) decor('bench', x + OX, y + OY, 1, 1, v); }
   /* ---- o Quartel de Karmika (Erling, 01/11: "uma zona de treinamento um pouco depois da igreja, um quartel com um quintal com pelo menos 4 bonecos"):
      prédio de pedra logo a oeste da igreja, pátio calçado e murado com portão para o sul, quatro bonecos de palha em fila,
      estantes de armas encostadas no prédio, baú, bancos e tochas no portão. O boneco que ficava escondido atrás da casa veio para cá. ---- */
