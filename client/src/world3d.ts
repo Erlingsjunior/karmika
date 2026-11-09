@@ -10,7 +10,7 @@ import { buildTree } from './trees3d';
 
 import { buildKitWall, buildKitSpan, buildKitTower, buildKitGate, buildRampart, buildRampartSeg, buildRoundTower, buildWallTower, buildGatehouse, buildWallStair, buildCastle, buildAcademy, buildStoneBridge, buildBridgeFork, buildQuay, type Built } from './city3d';
 import { buildTemple } from './temple3d';
-import { buildHouse, buildStyledHouse } from './houses3d';
+import { buildHouse, buildStyledHouse, houseDoor } from './houses3d';
 import { buildSpecies } from './flora3d';
 import { buildPlant } from './plantas3d';
 import { buildPortal, PORTAL_OF, PORTAL_GLOW } from './portais3d';
@@ -18,7 +18,10 @@ import { buildLandmark, buildPalisade, buildTotem, buildVillageGate, buildLowWal
 import { buildMonument } from './monuments3d';
 import { buildVapor } from './vapor3d';
 import { cutoutify } from './toon3d';
-import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof } from './toon3d';
+import { std, ink, ramp, plankTex, shingleTex, stoneTex, gableRoof, texBox } from './toon3d';
+/* sapata de pedra das casas (09/11): um material só para todas, para juntar na mesma chamada de desenho */
+let plinthM: THREE.Material | null = null, plinthC: THREE.Material | null = null;
+const plinthMat = () => (plinthM ??= std(0xffffff, { map: stoneTex(0x8a847a) })), plinthCap = () => (plinthC ??= std(0xffffff, { map: stoneTex(0xa8a296) }));
 /** tampa de cada baú de tesouro do mundo (por prop), para a tampa abrir quando o jogador saqueia */
 export const chestLids = new Map<object, THREE.Object3D>();
 import { buildStation, buildWorkshop } from './stations3d';
@@ -157,9 +160,17 @@ export function buildWorld(world: World): WorldObjs {
     const wx = p.gx * T + Wm / 2, wz = p.gy * T + Dm / 2, wy = g.position.y;
     if (p.kind === 'house') {
       const hs = p.style ? buildStyledHouse(p.style, p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r, shop: p.shop }) : buildHouse(p.variant ?? 0, Wm, Dm, p.wall, p.roof, { windows, rnd: r });
-      g.add(hs.group);
-      for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + ch.y, p.gy * T + ch.z));
-      L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
+      /* 09/11 (Erling: "falta o assentamento da casa: a parede vem direto na grama; a base de pedra uns 30 cm para fora da parede, a porta mais alta e a
+         casa um nível acima do chão — em todas as casas de todos os modelos"): sapata de pedra 30 cm para fora das paredes e 42 cm de altura (desce
+         até abaixo do chão para cobrir o declive), friso claro em cima, um degrau de pedra na frente da porta; a casa inteira sobe para cima dela. */
+      const PH = 0.42, bw = Wm - 0.5, bd = Dm - 0.5;
+      { const pm = plinthMat(), cap = plinthCap(), dr = houseDoor(p.variant ?? 0, Wm, Dm);
+        const base = new THREE.Mesh(texBox(bw + 0.6, PH + 0.9, bd + 0.6, 2), pm); base.position.set(Wm / 2, (PH - 0.9) / 2, Dm / 2); base.castShadow = base.receiveShadow = true; g.add(base);
+        const top = new THREE.Mesh(texBox(bw + 0.68, 0.09, bd + 0.68, 2), cap); top.position.set(Wm / 2, PH - 0.045, Dm / 2); top.receiveShadow = true; g.add(top);
+        if (dr.y < 0.2) { const st = new THREE.Mesh(texBox(dr.w + 0.7, PH / 2 + 0.5, 0.42, 2), pm); st.position.set(dr.x, (PH / 2 - 0.5) / 2, Dm / 2 + bd / 2 + 0.3 + 0.21); st.castShadow = st.receiveShadow = true; g.add(st); } }
+      hs.group.position.y += PH; g.add(hs.group);
+      for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + PH + ch.y, p.gy * T + ch.z));
+      L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + PH + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
       /* cidade média: muralha com caminho de ronda, torres, portões, escadarias, castelo, academias e a catedral (city3d.ts) */
       const v = p.variant ?? 0; let b: Built | null = null;
