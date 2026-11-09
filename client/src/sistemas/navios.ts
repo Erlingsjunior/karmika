@@ -86,13 +86,27 @@ export function createNavios(K: NaviosCtx) {
     if (!best || bd > 7) return null; const d = best; return { d: bd, label: d.isle ? `E — Navio da Companhia: voltar para ${backName()}` : `E — Navio da Companhia: passagens para as ilhas (${fmt(PRICE)})`, act: () => open(d) };
   }
   /* os comboios navegam de verdade: dois navios mercantes (NPC) indo e voltando entre o continente e as ilhas, por fora da costa */
-  const conv: { g: THREE.Group; a: Dock; b: Dock; t: number; sp: number }[] = [];
-  { const cont = docks.filter((q) => !q.isle), isl = docks.filter((q) => q.isle); for (let i = 0; i < Math.min(4, isl.length); i++) { const a = cont[i % Math.max(1, cont.length)], b = isl[i]; if (!a || !b) continue; const g = mkShip(90 + i); g.scale.setScalar(0.8); K.scene.add(g); conv.push({ g, a, b, t: i * 0.27, sp: 1 / (240 + i * 40) }); } }
+  /* 09/11 (Erling: "que bug é esse de uma embarcação andando no meio do mapa? ela só vai pelo mar"): o comboio não corta mais em linha reta;
+     segue uma rota achada só por água (busca em largura na grade de água, de 2 em 2 tiles). Se não há caminho por água (cais de lago, como
+     Lithendel), não há comboio. */
+  const conv: { g: THREE.Group; pts: THREE.Vector3[]; cum: number[]; len: number; t: number; sp: number }[] = [];
+  const M = K.city.map, H = M.length, W = M[0]?.length ?? 0, S = 2, GW = Math.ceil(W / S), GH = Math.ceil(H / S);
+  const wet = (gx: number, gy: number) => { const x = gx * S, y = gy * S; return M[y]?.[x] === 'water' && M[y + 1]?.[x + 1] === 'water'; };
+  const snap = (x: number, y: number) => { const gx0 = Math.round(x / S), gy0 = Math.round(y / S); for (let r = 0; r < 12; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) if (wet(gx0 + dx, gy0 + dy)) return [gx0 + dx, gy0 + dy]; return null; };
+  function seaPath(a: Dock, b: Dock): THREE.Vector3[] | null { const A = snap(a.sx, a.sy), B = snap(b.sx, b.sy); if (!A || !B) return null;
+    const par = new Int32Array(GW * GH).fill(-1), q = new Int32Array(GW * GH); let h = 0, t2 = 0; const s0 = A[1] * GW + A[0], goal = B[1] * GW + B[0]; par[s0] = s0; q[t2++] = s0;
+    while (h < t2) { const c = q[h++]; if (c === goal) break; const cx = c % GW, cy = (c / GW) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) { const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const n = ny * GW + nx; if (par[n] >= 0 || !wet(nx, ny)) continue; par[n] = c; q[t2++] = n; } }
+    if (par[goal] < 0) return null; const raw: THREE.Vector3[] = []; for (let c = goal; ; c = par[c]) { raw.push(new THREE.Vector3(((c % GW) * S + 1) * T, 0, (((c / GW) | 0) * S + 1) * T)); if (c === s0) break; } raw.reverse();
+    const pts = raw.filter((_, i) => i % 4 === 0 || i === raw.length - 1); return pts.length > 1 ? new THREE.CatmullRomCurve3(pts).getSpacedPoints(Math.max(8, pts.length * 3)) : null; }
+  { const cont = docks.filter((q) => !q.isle && q.name !== 'Lithendel'), isl = docks.filter((q) => q.isle); for (let i = 0; i < Math.min(4, isl.length); i++) { const a = cont[i % Math.max(1, cont.length)], b = isl[i]; if (!a || !b) continue;
+    const pts = seaPath(a, b); if (!pts) continue; const cum = [0]; for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
+    const g = mkShip(90 + i); g.scale.setScalar(0.8); K.scene.add(g); const len = cum[cum.length - 1]; conv.push({ g, pts, cum, len, t: i * 0.27, sp: 6 / Math.max(1, len) }); } }
   let tt = 0;
   function update(dt: number) { tt += dt;
-    for (const c of conv) { c.t = (c.t + dt * c.sp) % 2; const f = c.t < 1 ? c.t : 2 - c.t, e = f * f * (3 - 2 * f), ax = (c.a.sx + 0.5) * T, az = (c.a.sy + 0.5) * T, bx = (c.b.sx + 0.5) * T, bz = (c.b.sy + 0.5) * T;
-      const x = ax + (bx - ax) * e, z = az + (bz - az) * e, near = Math.abs(x - K.camX) < 260 && Math.abs(z - K.camZ) < 260; c.g.visible = near; if (!near) continue;
-      c.g.position.set(x, WL - 0.6 + Math.sin(tt * 0.7 + c.t * 9) * 0.18, z); c.g.rotation.y = Math.atan2(bx - ax, bz - az) * (c.t < 1 ? 1 : 1) + (c.t < 1 ? Math.PI / 2 : -Math.PI / 2); c.g.updateMatrixWorld(true); } for (const s of ships) { const near = Math.abs(s.g.position.x - K.camX) < 220 && Math.abs(s.g.position.z - K.camZ) < 220; s.g.visible = near; s.smoke.visible = near; if (!near) continue;
+    for (const c of conv) { c.t = (c.t + dt * c.sp) % 2; const back = c.t >= 1, f = back ? 2 - c.t : c.t, d = f * c.len; let k = 1; while (k < c.cum.length - 1 && c.cum[k] < d) k++;
+      const p0 = c.pts[k - 1], p1 = c.pts[k], u = (d - c.cum[k - 1]) / Math.max(1e-6, c.cum[k] - c.cum[k - 1]), x = p0.x + (p1.x - p0.x) * u, z = p0.z + (p1.z - p0.z) * u;
+      const near = Math.abs(x - K.camX) < 260 && Math.abs(z - K.camZ) < 260; c.g.visible = near; if (!near) continue;
+      c.g.position.set(x, WL - 0.6 + Math.sin(tt * 0.7 + c.t * 9) * 0.18, z); const hx = (p1.x - p0.x) * (back ? -1 : 1), hz = (p1.z - p0.z) * (back ? -1 : 1); c.g.rotation.y = Math.atan2(hx, hz) + Math.PI / 2; c.g.updateMatrixWorld(true); } for (const s of ships) { const near = Math.abs(s.g.position.x - K.camX) < 220 && Math.abs(s.g.position.z - K.camZ) < 220; s.g.visible = near; s.smoke.visible = near; if (!near) continue;
       s.g.position.y = WL - 0.6 + Math.sin(tt * 0.7 + s.g.userData.seed) * 0.18; s.g.rotation.z = Math.sin(tt * 0.5 + s.g.userData.seed) * 0.015; s.g.rotation.x = Math.sin(tt * 0.43) * 0.01;
       const a = s.smoke.geometry.attributes.position as THREE.BufferAttribute; for (let i = 0; i < a.count; i++) { const f = ((tt * 0.25 + i / a.count) % 1), stack = i % 3, lx = [-2, 2.2, 6.4][stack], h = [9, 10, 8.5][stack]; const c = Math.cos(s.g.rotation.y), sn = Math.sin(s.g.rotation.y);
         const px = lx + f * 3, py = 2.6 + h + f * 7, pz = Math.sin(i * 1.7) * f * 1.5; a.setXYZ(i, s.g.position.x + px * c + pz * sn, s.g.position.y + py, s.g.position.z - px * sn + pz * c); } a.needsUpdate = true; } }

@@ -126,7 +126,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
   hellhound: 0.65, imp_bomb: 0.6, draugr_arch: 0.6, draugr_bers: 0.75, elfscout: 0.7, slaver: 0.5, thrall: 0.6, inquisitor: 0.8, troll: 0.85, succubus: 0.8, pactbroken: 0.85,
   siren: 0.6, goblin: 0.25, goblin_shaman: 0.45, spirit: 0.55, siren_queen: 1, goblin_chief: 1, spirit_lord: 1, djinn: 1,
   alpha: 1, necro: 1, headless: 1, cavebear: 1, giantsnake: 1, drowner_old: 1, scorpion_king: 1, glutton: 1, suplicio: 1, jotun: 1, colossus: 1, ent: 1, fairyqueen: 1, broodmother: 1, lich: 1 };
-export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number; /** 03/11: encaixe de pedra (bifurcação) — a borda em casas [x,y,...], as bocas e a altura de cada boca; (ax,ay) = junção, hA = altura nela */ poly?: number[]; ends?: number[] } // tiles
+export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number; /** 09/11: ponte de raiz da Árvore-Mãe (uma raiz viva atravessa o riacho) */ root?: boolean; /** 09/11: o píer élfico de Lithendel (madeira clara, lanternas azuis, arco de folhas) */ elf?: boolean; /** 03/11: encaixe de pedra (bifurcação) — a borda em casas [x,y,...], as bocas e a altura de cada boca; (ax,ay) = junção, hA = altura nela */ poly?: number[]; ends?: number[] } // tiles
 export interface World {
   map: Tile[][]; biome: Biome[][]; props: Prop[]; spawn: { x: number; y: number };
   /** o Quartel de Karmika (01/11): pátio de treino murado depois da igreja, com os bonecos de palha (posições em tiles, centro do boneco) */ quartel: { x: number; y: number; dummies: { x: number; y: number }[] };
@@ -138,7 +138,7 @@ export interface World {
   /** 07/11: os cais dos navios da Companhia de Latão — no continente (vila/cidade) e nas ilhas (desembarque). x,y = onde o herói fica; sx,sy = o navio; ang = a proa */
   docks?: Dock[];
   /** 07/11: os faróis dos portos (um diferente em cada um) — x,y = a base da torre; style = o desenho; old = já existe o modelo (o Farol Tecnocrático) */
-  lights?: { name: string; port: string; x: number; y: number; style: 'nordico' | 'gotico' | 'pacto' | 'vapor'; old?: boolean }[];
+  lights?: { name: string; port: string; x: number; y: number; style: 'nordico' | 'gotico' | 'pacto' | 'vapor' | 'elfico'; old?: boolean; /** de pé numa ilhota de pedra no meio da água */ islet?: boolean }[];
 }
 export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
@@ -336,8 +336,12 @@ function waterSD1(xm: number, zm: number): number {
   if (centerW(tx, ty) < 0.98) sd = Math.min(sd, outerWaterSD(tx, ty));
   sd = Math.min(sd, oceanSD(tx, ty)); // oceano ao sul (costa irregular) e alagados do pântano a oeste
   const out = sd + (fbm(tx * 0.45, ty * 0.45, 9) - 0.5) * 2.2;
-  return out * (1 - dryK) + 8 * dryK;
+  return Math.min(out * (1 - dryK) + 8 * dryK, lithBrookSD(tx, ty));
 }
+/** 09/11 (Erling: "não estou vendo rio nenhum"): o Riacho da Árvore-Mãe de Lithendel era só casa de mapa; agora o chão afunda e a água aparece.
+    Mesmo traçado do construtor da vila (brookX), afinando nas pontas, onde nasce e onde some no capim */
+function lithBrookSD(tx: number, ty: number): number { const cx = 84, cy = 404, dy = ty - cy; if (Math.abs(dy) > 30 || Math.abs(tx - cx - 5) > 8) return 99;
+  const bx = cx + 4.5 + 1.5 * Math.sin(dy * 0.4) + 0.5, hw = (Math.abs(dy) < 3 ? 1.5 : 1.05) * smoothstep(30, 24, Math.abs(dy)); return (Math.abs(tx - bx) - hw) * T; }
 export const WL = -1.2; // nível da água (m)
 /* ---------- o mar em volta do continente, fiordes no noroeste (Viking) e rios/lagos do mundo de fora ---------- */
 function oceanSD(tx: number, ty: number): number {
@@ -868,7 +872,10 @@ function buildCity_L(): World {
        o Riacho da Árvore-Mãe — nasce ao norte, desce em curva pelo lado leste do tronco (um olho d'água junto das raízes) e sai ao sul */
     const brookX = (y: number) => cx + 4.5 + 1.5 * Math.sin((y - cy) * 0.4);
     for (let y = cy - R0 - 8; y <= cy + R0 + 8; y++) { const bx = brookX(y), wide = Math.abs(y - cy) < 3 ? 2 : 1; for (let x = Math.floor(bx) - (wide - 1); x <= Math.floor(bx) + 1; x++) if (inb(x, y) && Math.hypot(x - cx, y - cy) > 2.6) map[y][x] = 'water'; }
-    for (const by of [cy, cy - 7, cy + 7]) bridges.push({ ax: Math.floor(brookX(by)) - 2 + 0.5, ay: by + 0.5, bx: Math.floor(brookX(by)) + 3 + 0.5, by: by + 0.5, hA: 0, hB: 0, half: 1.3, hump: 0.35 }); /* as passarelas */
+    for (const by of [cy - 7, cy + 7]) bridges.push({ ax: Math.floor(brookX(by)) - 2 + 0.5, ay: by + 0.5, bx: Math.floor(brookX(by)) + 3 + 0.5, by: by + 0.5, hA: 0, hB: 0, half: 1.3, hump: 0.35 }); /* as passarelas */
+    /* 09/11 (Erling: "se tem uma ponte aí não podemos ter raízes; as próprias raízes podem fazer a ponte desse pedaço do rio"): junto do tronco
+       sai a ponte de tábuas e entra a Ponte da Raiz — uma raiz viva que sai da árvore, passa por cima do riacho e mergulha na outra margem */
+    bridges.push({ ax: Math.floor(brookX(cy)) - 2 + 0.5, ay: cy + 0.5, bx: Math.floor(brookX(cy)) + 3 + 0.5, by: cy + 0.5, hA: 0, hB: 0, half: 1.1, hump: 0.6, root: true });
     for (const by of [cy - 7, cy + 7]) for (let x = Math.floor(brookX(by)) - 3; x <= Math.floor(brookX(by)) + 4; x++) if (inb(x, by) && map[by][x] !== 'water' && map[by][x] !== 'wall') map[by][x] = 'plaza';
     props.push({ kind: 'fountain', gx: cx - 7, gy: cy + 4, w: 2, h: 2, height: 0.7, wall: 0x8a9a80, roof: 0x9ad8ff, variant: 1 });
     const free = (gx: number, gy: number, w: number, h: number) => { if ((gx - 1 <= cx && gx + w >= cx) || (gy - 1 <= cy && gy + h >= cy)) return false; for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; } return !props.some((q) => q.kind !== 'herb' && q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
@@ -1351,7 +1358,7 @@ function buildCity_L(): World {
   bridgesRef = bridges; for (const b of bridges) { if (b.hA === 0 && b.hB === 0) { const save = bridgesRef; bridgesRef = []; b.hA = groundH_L(b.ax * T, b.ay * T); b.hB = groundH_L(b.bx * T, b.by * T); bridgesRef = save; } b.hA = Math.max(b.hA, WL + 0.15); b.hB = Math.max(b.hB, WL + 0.15); } /* tabuleiro nunca abaixo da água */
   /* 25/10 (Erling: "a estrada da vila não tem uma ponte em curva de pedra bonita para atravessar?"): toda travessia curta de estrada vira
      ponte de pedra em arco; só as muito longas continuam de madeira (com cobertura) */
-  for (const b of bridges) { if (b.stone) continue; const L = Math.hypot(b.bx - b.ax, b.by - b.ay); if (L * T > 26) continue; b.stone = true; b.half = 2.1; b.hump = Math.min(1.7, 0.45 + L * T * 0.055); }
+  for (const b of bridges) { if (b.stone || b.root) continue; const L = Math.hypot(b.bx - b.ax, b.by - b.ay); if (L * T > 26) continue; b.stone = true; b.half = 2.1; b.hump = Math.min(1.7, 0.45 + L * T * 0.055); }
   /* 25/10 (Erling: "vilas têm proteção: entrada com pórtico de madeira bruta e o nome escrito, muros de meia altura improvisados, soldados
      nas entradas segurando os bichos"): depois que as estradas existem, cada vila ganha um anel de muro baixo com aberturas onde as estradas
      entram; em cada abertura, um pórtico com o nome e um guarda */
@@ -1385,13 +1392,13 @@ function buildCity_L(): World {
             if (inb(ox2, oy2) && map[oy2][ox2] === 'road' && !gates.some((q) => Math.hypot(q.x - mid.x, q.y - mid.y) < 9)) gates.push({ x: mid.x, y: mid.y, ux: mid.ux, uy: mid.uy, w: len * 0.5 }); }
           for (let q = i0 - 3; q < j + 3; q++) gateAt[((start + q) % S + S) % S] = 1; i0 = -1; } } }
       /* o muro (ou a cerca): pedaços de ~2,4 m seguindo o contorno, sem emenda; alguns faltando, outros desmoronados */
-      const fence = pal || st.name === 'Karmika' ? -1 : cult === 2 ? 0 : nHouse <= 4 || cult === 4 || cult === 6 ? 1 : 0; /* 08/11 (Erling: "anão é pedra, ferro e forja — murinho de madeira tosco não"): vila anã sempre com muro baixo de pedra, inteiro */ // paliçada já existe · cerca de madeira · muro de pedra · Karmika tem a muralha (02/11: os muros de pedrão saem)
+      const fence = pal || st.name === 'Karmika' ? -1 : cult === 2 || st.name === 'Lithendel' ? 0 : nHouse <= 4 || cult === 4 || cult === 6 ? 1 : 0; /* 08/11 (Erling: "anão é pedra, ferro e forja — murinho de madeira tosco não"): vila anã sempre com muro baixo de pedra, inteiro */ // paliçada já existe · cerca de madeira · muro de pedra · Karmika tem a muralha (02/11: os muros de pedrão saem)
       if (fence >= 0) { const STEPS = 5; for (let i = 0; i + STEPS <= samp.length; i += STEPS) { let blocked = false; for (let q = i; q <= i + STEPS && !blocked; q++) if (gateAt[q % samp.length] || samp[q % samp.length].road) blocked = true; if (blocked) continue;
           const A = samp[i], B = samp[(i + STEPS) % samp.length], mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2, L = Math.hypot(B.x - A.x, B.y - A.y), hv = hs(i * 3.7 + 1);
-          if (L < 0.2) continue; if (cult !== 2 && hv < (fence ? 0.08 : 0.13)) continue; // trecho que caiu de vez
+          if (L < 0.2) continue; const whole = cult === 2 || st.name === 'Lithendel'; /* 09/11 (Erling: "não vejo muros pequenos em volta da propriedade élfica para proteção"): Lithendel ganha o muro baixo inteiro, sem trecho caído */ if (!whole && hv < (fence ? 0.08 : 0.13)) continue; // trecho que caiu de vez
           const gx = Math.floor(mx), gy = Math.floor(my); if (!inb(gx, gy) || map[gy][gx] === 'water' || map[gy][gx] === 'wall') continue;
           for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx + 0.5 - mx, q.gy + 0.5 - my) < 1.3) props.splice(k, 1); }
-          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: cult !== 2 && hv < 0.32 ? 0.35 + hv : 0 });
+          props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: fence ? 13 : 20 + cult, ry: Math.atan2(-(B.y - A.y), B.x - A.x), ox: (mx - gx) * T, oz: (my - gy) * T, len: L * T + 0.12, broken: !whole && hv < 0.32 ? 0.35 + hv : 0 });
           /* o muro baixo não trava mais tiles inteiros: o main.ts colide com o segmento de verdade (regra: nunca travar onde se vê espaço) */ } }
       /* 08/11 (Erling: "colocar luminosidade nas estradas próximas às vilas, todas elas"): postes de lampião ao longo das estradas que saem
          da vila, do muro até ~28 m fora, um a cada ~8 m, alternando o lado */
@@ -2721,6 +2728,14 @@ export function buildCity(): World {
     if (best > 1e8) return; const ux = (cx - sx) / best, uy = (cy - sy) / best; let lx = sx, ly = sy; for (let k = 0; k < best; k++) { const x = Math.round(sx + ux * k), y = Math.round(sy + uy * k); if (landAt(x, y)) { lx = x; ly = y; break; } }
     const shipX = sx - ux * 8, shipY = sy - uy * 8; /* ancorado de lado, longe da praia (o casco tem 34 m) */ docks.push({ id, name, x: lx, y: ly, sx: Math.round(shipX), sy: Math.round(shipY), ang: Math.atan2(-ux, -uy), isle }); };
   for (const [nm, r0] of [['Porto Caldeira', 70], ['Skjoldvik', 70], ['Corvoscuro', 70], ['Gorvath', 70], ['Ferrugem', 70], ['Lithendel', 60]] as const) { const st = w.settlements.find((q) => q.name === nm); if (st) dockFrom('c:' + nm, nm, st.x + D, st.y + D, r0); }
+  /* 09/11 (Erling: "faltou o belo deque de encostar os navios e poder embarcar neles, como na cidade tecnocrata, mas com aparência élfica"):
+     em Lithendel um píer élfico sai da margem até junto do costado do navio; o embarque (E) passa a ser na ponta do píer */
+  const extraBridges: Bridge[] = [];
+  { const d = docks.find((q) => q.id === 'c:Lithendel'); if (d) { const dx = d.sx - d.x, dy = d.sy - d.y, L = Math.hypot(dx, dy), ux = dx / (L || 1), uy = dy / (L || 1), len = Math.max(4, L - 5);
+      let x0 = d.x, y0 = d.y; for (let k = 0; k < 6 && map[Math.round(y0 + uy)]?.[Math.round(x0 + ux)] !== 'water'; k++) { x0 += ux; y0 += uy; }
+      const ex = x0 + ux * len, ey = y0 + uy * len, hA = Math.max(heightAt((x0 + 0.5) * T, (y0 + 0.5) * T), WL + 0.7);
+      extraBridges.push({ ax: x0 + 0.5, ay: y0 + 0.5, bx: ex + 0.5, by: ey + 0.5, hA, hB: WL + 0.75, half: 1.6, hump: 0, elf: true });
+      d.x = Math.round(ex - ux); d.y = Math.round(ey - uy); } }
   /* 09/11 (Erling: "cada embarcação com seu horário, pagando passagem e falando com o NPC das docas"): um Mestre do Cais em cada porto do continente */
   for (const d of docks) { if (d.isle) continue; const st = settlements.find((q) => q.name === d.name); if (!st) continue;
     st.npcs.push({ name: `Mestre do Cais ${['Brann', 'Tova', 'Ezequiel', 'Hilde', 'Orvar', 'Sael'][d.name.length % 6]}`, role: `Mestre do Cais · ${d.name}`, kind: 'technocrat', x: d.x + 1.5, y: d.y + 1.5, radius: 0.6, tint: 0x8a6a30, scale: 1, lines: ['Cada navio tem a sua hora. O mar não espera, e eu também não.', 'A bilheteria é aqui no cais: ida e volta, dez mil de ouro. O horário está na tabuleta.', 'Barco de pesca sai de madrugada; navio da Companhia, a cada três horas.'] }); }
@@ -2733,16 +2748,23 @@ export function buildCity(): World {
   /* 07/11 (Erling: "todos os lugares que têm porto ganham um farol diferente, com Fonte da Visão contando a viagem; faróis lindos na beirada
      iluminando o horizonte"): o farol fica na ponta de terra mais exposta ao mar perto do cais */
   const lights: NonNullable<World['lights']> = [{ name: 'Farol Tecnocrático', port: 'Porto Caldeira', x: PORTO.farol.x, y: PORTO.farol.y, style: 'vapor', old: true }];
-  const STY: Record<string, 'nordico' | 'gotico' | 'pacto' | 'vapor'> = { Skjoldvik: 'nordico', Corvoscuro: 'gotico', Gorvath: 'pacto', Ferrugem: 'vapor' };
+  const STY: Record<string, 'nordico' | 'gotico' | 'pacto' | 'vapor' | 'elfico'> = { Skjoldvik: 'nordico', Corvoscuro: 'gotico', Gorvath: 'pacto', Ferrugem: 'vapor', Lithendel: 'elfico' };
   for (const d of docks) { if (d.isle || d.name === 'Porto Caldeira') continue; let best = -1e9, bx = d.x, by = d.y;
     for (let y = d.y - 26; y <= d.y + 26; y++) for (let x = d.x - 26; x <= d.x + 26; x++) { if (!landAt(x, y) || map[y][x] === 'road' || heightAt((x + 0.5) * T, (y + 0.5) * T) < WL + 0.9) continue; let wn = 0, n = 0; for (let yy = -4; yy <= 4; yy += 2) for (let xx = -4; xx <= 4; xx += 2) { n++; if (map[y + yy]?.[x + xx] === 'water') wn++; }
       let nearProp = false; for (let yy = -2; yy <= 2 && !nearProp; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { nearProp = true; break; }
       const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004 - (nearProp ? 1 : 0) - (wn / n > 0.62 ? 1 : 0); if (sc > best) { best = sc; bx = x; by = y; } }
-    const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico' }); }
+    /* 09/11 (Erling: "o farol pode ficar bem mais longe da costa, numa ilha para ele"): em Lithendel o farol sai da beira e vai para uma
+       ilhota de pedra no meio do lago, longe da costa, para onde há mais água em volta */
+    let islet = false; if (d.name === 'Lithendel') { let sx = 0, sy = 0; for (let yy = -30; yy <= 30; yy += 2) for (let xx = -30; xx <= 30; xx += 2) if (map[by + yy]?.[bx + xx] === 'water') { sx += xx; sy += yy; }
+      const L = Math.hypot(sx, sy) || 1, ux = sx / L, uy = sy / L; for (let k = 26; k >= 12; k--) { const x = Math.round(bx + ux * k), y = Math.round(by + uy * k);
+        let all = true; for (let yy = -4; yy <= 4 && all; yy++) for (let xx = -4; xx <= 4; xx++) if (map[y + yy]?.[x + xx] !== 'water') { all = false; break; }
+        if (all) { bx = x; by = y; islet = true; break; } } }
+    const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico', ...(islet ? { islet } : {}) }); }
+  const outBridges = [...w.bridges.map((b) => shBridge(b, D)), ...extraBridges]; w.bridges.push(...extraBridges.map((b) => shBridge(b, -D))); bridgeIdxN = -1; /* o píer élfico também é chão para andar (a colisão lê as pontes locais) */
   const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
-    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: w.bridges.map((b) => shBridge(b, D)), signs: w.signs.map(sxy),
+    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: w.signs.map(sxy),
     settlements, ramparts: w.ramparts.map(shRampart),
     bandits: w.bandits.map((b) => ({ ...sxy(b), tower: b.tower ? sxy(b.tower) : null })), roadPaths: w.roadPaths.map((r) => r.map(sxy)),
     starts: { human: sxy(w.starts.human), dwarf: sxy(w.starts.dwarf), elf: sxy(w.starts.elf) } };

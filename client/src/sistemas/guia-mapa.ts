@@ -89,6 +89,7 @@ for (const [gi, gg] of [guide3d, guide3dB].entries()) { const r0 = GR[gi]; const
     const sh2 = new THREE.Shape(); sh2.moveTo(-0.14, -0.09); sh2.lineTo(0, 0.075); sh2.lineTo(0.14, -0.09); sh2.lineTo(0, -0.04); sh2.closePath();
     const ch = new THREE.Mesh(new THREE.ShapeGeometry(sh).rotateX(Math.PI / 2), gMat(1)); ch.name = 'chev' + i; ch.renderOrder = 9; const chi = new THREE.Mesh(new THREE.ShapeGeometry(sh2).rotateX(Math.PI / 2), gInk(0.5)); chi.renderOrder = 8; chi.userData.ink = true; chi.position.y = -0.002; ch.add(chi); gg.add(ch); } }
 let guideT: { x: number; y: number; label: string } | null = null, guideTick = 0;
+const guideZoomK = () => Math.min(2.6, Math.max(1, K.camera.position.distanceTo(K.heroPos) / 30));
 /** cor da guia = cor da missão escolhida (história amarela, secundária azul, quadro verde, evento laranja, alfinete do mapa prata-azulado):
  *  o arco, as setas no chão, a etiqueta e o anel no mapa falam a mesma cor do cartão da missão (Erling, 25/10) */
 const GUIDE_COL = { story: '#ffc21a', side: '#3a9cff', rep: '#2ee05a', ev: '#ff7a14', pin: '#c8d2e8' } as const;
@@ -104,7 +105,10 @@ function updateGuide(dt: number) {
   const ang = Math.atan2(tx - hx, tz - hz), t = performance.now() / 1000;
   if (heroBehind()) { guide3d.visible = false; guideEl.style.display = 'none'; return; }
   guide3d.visible = true; guide3d.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3d.rotation.y = ang;
-  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + k * 0.42); ch.scale.setScalar(0.9 + k * 0.25); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.5 * op; }
+  /* 09/11 (Erling: "a marcação no chão de onde eu tenho que ir tem que ser mais visível; jogando de longe não se vê"): as setas ficaram maiores,
+     mais fortes, correm mais longe e crescem junto com a distância da câmera */
+  const zs = guideZoomK();
+  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + (0.1 + k * 1.3) * zs); ch.scale.setScalar((1.9 + k * 0.6) * zs); const op = Math.min(1, (1 - k) * (0.6 + 0.8 * Math.min(1, k * 4))); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.5 * op; }
   { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.95; ga.scale.setScalar(1); } /* 28/10 (Erling): o arco da bússola fica parado, sem pulsar */
   // etiqueta acima da ponta do arco: destino e distância
   const r = K.canvas.getBoundingClientRect();
@@ -120,7 +124,8 @@ function updateGuideB(t: number) {
   const tx = guideTB.x * T, tz = guideTB.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz); if (dist < 5) { guide3dB.visible = false; return; }
   if (heroBehind()) { guide3dB.visible = false; return; }
   guide3dB.visible = true; guide3dB.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3dB.rotation.y = Math.atan2(tx - hx, tz - hz); /* 07/11: a 2ª bússola tem o anel próprio (raio 1,32), sem encolher o grupo */
-  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + k * 0.42); ch.scale.setScalar(0.9 + k * 0.25); const op = (1 - k) * (0.4 + 0.6 * Math.min(1, k * 4)); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = op * 0.5; }
+  const zs = guideZoomK();
+  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + (0.1 + k * 1.3) * zs); ch.scale.setScalar((1.9 + k * 0.6) * zs); const op = Math.min(1, (1 - k) * (0.6 + 0.8 * Math.min(1, k * 4))); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = op * 0.5; }
   { const ga = guide3dB.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.75 + 0.15 * Math.sin(t * 4 + 1); }
 }
 function hereT() { return K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; }

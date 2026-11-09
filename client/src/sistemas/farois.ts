@@ -7,17 +7,25 @@
    - O Farol Tecnocrático de Porto Caldeira já existe: ganha só o facho. */
 import * as THREE from 'three';
 import { TILE_M as T } from '@karmika/shared';
-import { heightAt, type World } from '../world';
+import { heightAt, WL, type World } from '../world';
 
-type Sty = 'nordico' | 'gotico' | 'pacto' | 'vapor';
+type Sty = 'nordico' | 'gotico' | 'pacto' | 'vapor' | 'elfico';
 const M = (c: number, r = 0.85, m = 0.05, e = 0) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m, emissive: e ? new THREE.Color(e) : undefined, emissiveIntensity: e ? 1.4 : 0 });
-const LIGHT: Record<Sty, number> = { nordico: 0xffa040, gotico: 0xff3a3a, pacto: 0x8aff9a, vapor: 0xeaf6ff };
+const LIGHT: Record<Sty, number> = { elfico: 0xfff0b8, nordico: 0xffa040, gotico: 0xff3a3a, pacto: 0x8aff9a, vapor: 0xeaf6ff };
 
-function tower(sty: Sty): { g: THREE.Group; top: number } {
+function tower(sty: Sty, islet = false): { g: THREE.Group; top: number } {
   const g = new THREE.Group(); const add = (geo: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; o.receiveShadow = true; g.add(o); return o; };
   const rock = M(0x5a5650, 0.95); /* o rochedo da base: o farol fica em cima de pedra (regra 19) */
   for (let i = 0; i < 7; i++) { const a = i * 0.9, r = 2.6 + (i % 3) * 0.7; const b = add(new THREE.DodecahedronGeometry(1.4 + (i % 2) * 0.6, 0), rock, Math.cos(a) * r, 0.2, Math.sin(a) * r); b.rotation.set(i, i * 2, 0); }
   add(new THREE.CylinderGeometry(3.6, 4.4, 1.6, 9), rock, 0, 0.6);
+  /* 09/11: a ilhota do farol de Lithendel — um rochedo irregular saindo da água, com musgo e uns arbustos (regra 19: nada redondo de compasso) */
+  if (islet) { const moss = M(0x4a6a32, 0.95); for (let i = 0; i < 16; i++) { const a = i * 2.4 + (i % 3) * 0.3, r = 3.5 + (i * 37 % 11) * 0.5, s2 = 1.4 + (i * 13 % 7) * 0.35;
+      const b = add(new THREE.DodecahedronGeometry(s2, 0), i % 4 === 0 ? moss : rock, Math.cos(a) * r, -0.6 + (i % 3) * 0.25, Math.sin(a) * r * 0.85); b.rotation.set(i * 0.7, i * 1.9, i * 0.3); b.scale.y = 0.55 + (i % 4) * 0.12; }
+    for (let i = 0; i < 5; i++) { const a = i * 1.3 + 0.5; add(new THREE.IcosahedronGeometry(0.7 + (i % 2) * 0.3, 0), moss, Math.cos(a) * 3.2, 1.4, Math.sin(a) * 2.8); } }
+  if (sty === 'elfico') { const st = M(0xe8e2d0, 0.8), gd = M(0xd8b860, 0.35, 0.6), vine = M(0x4a7a3a, 0.9), lamp = M(0xfff4c8, 0.2, 0, 0xffe090);
+    add(new THREE.CylinderGeometry(1.4, 2.4, 17, 14), st, 0, 9.4); for (let i = 0; i < 40; i++) { const a = i * 0.5, y = 1.5 + i * 0.38, r = 2.3 - y * 0.055; add(new THREE.IcosahedronGeometry(0.32, 0), vine, Math.cos(a) * r, y, Math.sin(a) * r); }
+    add(new THREE.CylinderGeometry(2.4, 1.6, 0.5, 14), gd, 0, 18.1); for (let i = 0; i < 6; i++) { const a = (i / 6) * 6.283; add(new THREE.CylinderGeometry(0.1, 0.12, 2.6, 5), gd, Math.cos(a) * 1.3, 19.5, Math.sin(a) * 1.3); }
+    add(new THREE.SphereGeometry(0.9, 14, 10), lamp, 0, 19.5); const leaf = new THREE.ConeGeometry(2.2, 3.6, 7); add(leaf, M(0x5a8a3a, 0.8), 0, 22.6); add(new THREE.ConeGeometry(0.15, 2, 5), gd, 0, 25.2); return { g, top: 19.5 }; }
   if (sty === 'nordico') { const st = M(0x8a8478, 0.9), wd = M(0x5a3a22), rune = M(0x6ac0ff, 0.5, 0, 0x2a80ff);
     add(new THREE.CylinderGeometry(2.0, 2.9, 15, 12), st, 0, 9); for (const y of [5, 10, 14]) add(new THREE.CylinderGeometry(2.25 - y * 0.03, 2.3 - y * 0.03, 0.5, 12), rune, 0, y);
     add(new THREE.CylinderGeometry(3.0, 2.2, 0.7, 12), wd, 0, 16.8); for (let i = 0; i < 12; i++) { const a = (i / 12) * 6.283; add(new THREE.BoxGeometry(0.2, 1.2, 0.2), wd, Math.cos(a) * 2.8, 17.7, Math.sin(a) * 2.8); }
@@ -37,22 +45,35 @@ function tower(sty: Sty): { g: THREE.Group; top: number } {
   add(new THREE.CylinderGeometry(2.4, 1.9, 0.5, 14), br, 0, 18.3); add(new THREE.CylinderGeometry(1.3, 1.3, 2.3, 12, 1, true), gl, 0, 19.7); add(new THREE.SphereGeometry(1.5, 14, 8, 0, 6.283, 0, Math.PI / 2), br, 0, 20.9);
   add(new THREE.CylinderGeometry(0.08, 0.08, 3, 5), br, 0, 23); return { g, top: 19.7 };
 }
-/** o facho: dois cones longos e transparentes, girando em sentidos opostos (como lente de farol), somados à luz da noite */
-function beam(col: number): THREE.Group { const g = new THREE.Group(); const mat = new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
-  for (const s of [1, -1]) { const c = new THREE.Mesh(new THREE.ConeGeometry(7, 90, 18, 1, true).translate(0, -45, 0).rotateZ(Math.PI / 2 * s), mat); g.add(c); }
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(1.8, 12, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false })); g.add(glow); return g; }
+/** o facho (09/11, Erling: "a luz não devia ser uma linha laranja e sim um efeito luminoso que passa e brilha e some em degradê"): dois
+    feixes de shader que nascem fortes na lente e se apagam ao longe, com as bordas macias (mais claros no meio), um brilho que corre pelo
+    feixe e desenho por cima da água (renderOrder acima dela). */
+const BEAM_VS = `varying vec2 vUv; varying vec3 vN; varying vec3 vV; void main(){ vUv = uv; vec4 wp = modelMatrix * vec4(position,1.); vN = normalize(mat3(modelMatrix) * normal); vV = normalize(cameraPosition - wp.xyz); gl_Position = projectionMatrix * viewMatrix * wp; }`;
+const BEAM_FS = `uniform vec3 uC; uniform float uK; uniform float uT; uniform float uM; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+  void main(){ float along = 1. - vUv.y; float fade = pow(1. - along, 2.2) * smoothstep(0., .06, along); float edge = pow(abs(dot(normalize(vN), vV)), 1.6);
+    float run = .75 + .25 * sin(along * 18. - uT * 3.); gl_FragColor = vec4(uC * fade * edge * run * uK * uM, 1.); }`;
+function beam(col: number): THREE.Group { const g = new THREE.Group();
+  /* cada lado do facho tem o seu material (cada um apaga sozinho quando aponta para terra) e duas camadas: o miolo estreito e forte, e o véu largo */
+  for (const s of [1, -1]) { const mk = (k: number) => new THREE.ShaderMaterial({ vertexShader: BEAM_VS, fragmentShader: BEAM_FS, uniforms: { uC: { value: new THREE.Color(col) }, uK: { value: 0.5 }, uT: { value: 0 }, uM: { value: k } }, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const veil = new THREE.Mesh(new THREE.ConeGeometry(7, 72, 28, 1, true).translate(0, -36, 0).rotateZ(Math.PI / 2 * s), mk(0.55)); veil.renderOrder = 4; veil.userData.side = s; g.add(veil);
+    const core = new THREE.Mesh(new THREE.ConeGeometry(2.2, 60, 20, 1, true).translate(0, -30, 0).rotateZ(Math.PI / 2 * s), mk(1.3)); core.renderOrder = 4; core.userData.side = s; g.add(core); }
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 8), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false })); glow.renderOrder = 4; g.add(glow); return g; }
 
 export function createFarois(scene: THREE.Scene, city: World) {
-  const L: { g: THREE.Group; b: THREE.Group; x: number; z: number; pl: THREE.PointLight; sp: number }[] = [];
+  const L: { g: THREE.Group; b: THREE.Group; x: number; z: number; pl: THREE.PointLight; sp: number; sea: Float32Array }[] = [];
   for (const [i, l] of (city.lights ?? []).entries()) { const x = (l.x + 0.5) * T, z = (l.y + 0.5) * T, y = heightAt(x, z);
-    const tw = l.old ? { g: new THREE.Group(), top: 21 } : tower(l.style); tw.g.position.set(x, y, z); tw.g.rotation.y = i * 1.3; scene.add(tw.g);
-    const b = beam(LIGHT[l.style]); b.position.set(x, y + tw.top, z); scene.add(b);
-    const pl = new THREE.PointLight(LIGHT[l.style], 0, 60, 1.6); pl.position.set(x, y + tw.top, z); scene.add(pl);
-    L.push({ g: tw.g, b, x, z, pl, sp: 0.55 + (i % 3) * 0.12 }); }
+    const tw = l.old ? { g: new THREE.Group(), top: 21 } : tower(l.style, l.islet); const yb = l.islet ? WL - 0.3 : y; tw.g.position.set(x, yb, z); tw.g.rotation.y = i * 1.3; scene.add(tw.g);
+    const b = beam(LIGHT[l.style]); b.position.set(x, yb + tw.top, z); scene.add(b);
+    const pl = new THREE.PointLight(LIGHT[l.style], 0, 60, 1.6); pl.position.set(x, yb + tw.top, z); scene.add(pl);
+    /* 09/11 (Erling: "a luz passando por cima da cidade fica horrível"): o facho só brilha virado para a água; apontando para terra ele some em degradê */
+    const sea = new Float32Array(72); for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2, dx = Math.cos(a), dz = Math.sin(a); let w = 0, n = 0; for (let d = 6; d <= 64; d += 3) { n++; const tx = Math.floor((x + dx * d) / T), ty = Math.floor((z + dz * d) / T); if (city.map[ty]?.[tx] === 'water') w++; } sea[k] = w / n; }
+    L.push({ g: tw.g, b, x, z, pl, sp: 0.55 + (i % 3) * 0.12, sea }); }
   let t = 0;
   function update(dt: number, camX: number, camZ: number, night: number) { t += dt;
     for (const f of L) { const near = Math.abs(f.x - camX) < 320 && Math.abs(f.z - camZ) < 320; f.g.visible = f.b.visible = near; f.pl.visible = near && night > 0.1; if (!near) continue;
-      f.b.rotation.y = t * f.sp; const k = 0.25 + night * 0.75; (f.b.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material.opacity = 0.05 + 0.2 * k; f.pl.intensity = night * 45;
+      f.b.rotation.y = t * f.sp; const k = 0.25 + night * 0.75; for (const ch of f.b.children) { const sd = ch.userData.side as number | undefined; if (!sd) continue; const th = f.b.rotation.y, ang = Math.atan2(-Math.sin(th) * sd, Math.cos(th) * sd);
+        const fi = ((ang / (Math.PI * 2)) * 72 + 72) % 72, i0 = Math.floor(fi), w0 = f.sea[i0], w1 = f.sea[(i0 + 1) % 72], sw = w0 + (w1 - w0) * (fi - i0), m = THREE.MathUtils.smoothstep(sw, 0.55, 0.92);
+        const u = ((ch as THREE.Mesh).material as THREE.ShaderMaterial).uniforms; u.uK.value = (0.12 + 0.5 * k) * m; u.uT.value = t; ch.visible = m > 0.01; } f.pl.intensity = night * 45;
       f.g.traverse((o) => { if (o.name === 'gear') o.rotation.x += dt * 0.6; }); f.g.updateMatrixWorld(true); f.b.updateMatrixWorld(true); } }
   return { update };
 }

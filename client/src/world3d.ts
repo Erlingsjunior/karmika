@@ -165,8 +165,8 @@ export function buildWorld(world: World): WorldObjs {
          até abaixo do chão para cobrir o declive), friso claro em cima, um degrau de pedra na frente da porta; a casa inteira sobe para cima dela. */
       const PH = 0.42, bw = Wm - 0.5, bd = Dm - 0.5;
       { const pm = plinthMat(), cap = plinthCap(), dr = houseDoor(p.variant ?? 0, Wm, Dm);
-        const base = new THREE.Mesh(texBox(bw + 0.6, PH + 0.9, bd + 0.6, 2), pm); base.position.set(Wm / 2, (PH - 0.9) / 2, Dm / 2); base.castShadow = base.receiveShadow = true; g.add(base);
-        const top = new THREE.Mesh(texBox(bw + 0.68, 0.09, bd + 0.68, 2), cap); top.position.set(Wm / 2, PH - 0.045, Dm / 2); top.receiveShadow = true; g.add(top);
+        /* 09/11 (Erling: "textura de chão de casa tremendo"): base, tampa e piso da casa não dividem mais o mesmo plano — a base para 9 cm abaixo, a tampa 1 cm abaixo do piso */ const base = new THREE.Mesh(texBox(bw + 0.6, PH + 0.81, bd + 0.6, 2), pm); base.position.set(Wm / 2, (PH - 0.09 - 0.9) / 2, Dm / 2); base.castShadow = base.receiveShadow = true; g.add(base);
+        const top = new THREE.Mesh(texBox(bw + 0.68, 0.09, bd + 0.68, 2), cap); top.position.set(Wm / 2, PH - 0.055, Dm / 2); top.receiveShadow = true; g.add(top);
         if (dr.y < 0.2) { const st = new THREE.Mesh(texBox(dr.w + 0.7, PH / 2 + 0.5, 0.42, 2), pm); st.position.set(dr.x, (PH / 2 - 0.5) / 2, Dm / 2 + bd / 2 + 0.3 + 0.21); st.castShadow = st.receiveShadow = true; g.add(st); } }
       hs.group.position.y += PH; g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + PH + ch.y, p.gy * T + ch.z));
@@ -784,6 +784,16 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
       const ox = b.ax * T, oz = b.ay * T, oy = b.hA; const pts: { x: number; z: number }[] = []; for (let i = 0; i < b.poly.length; i += 2) pts.push({ x: b.poly[i] * T - ox, z: b.poly[i + 1] * T - oz });
       const fb = buildBridgeFork(pts, new Set([1, 4, pts.length - 1]), (x, z) => forkH(b, (x + ox) / T, (z + oz) / T) - oy, 3);
       const br = new THREE.Group(); br.position.set(ox, oy, oz); br.add(fb.group); br.userData.kind = 'prop:bridge'; mergeStatic(br); bridgeMeshes.add(br); continue; }
+    if (b.root) { /* a Ponte da Raiz de Lithendel: casca viva em arco, achatada em cima, com duas raízes finas torcidas de corrimão */
+      const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T, len = Math.hypot(bx - ax, bz - az), hump = b.hump ?? 0.6, bark = std(0x5a4030, { map: tex }), barkD = std(0x3e2c20);
+      const br = new THREE.Group(); br.position.set((ax + bx) / 2, (b.hA + b.hB) / 2, (az + bz) / 2); br.rotation.y = Math.atan2(bx - ax, bz - az);
+      const P = (k: number, lat = 0, up = 0) => new THREE.Vector3(lat + Math.sin(k * 9) * 0.12, Math.sin(Math.PI * Math.min(1, Math.max(0, k))) * hump + up, (k - 0.5) * len);
+      const main = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([P(-0.08, 0, -1.2), P(0, 0, -0.6), P(0.25, 0, -0.62), P(0.5, 0, -0.6), P(0.75, 0, -0.62), P(1, 0, -0.6), P(1.08, 0, -1.3)]), 40, 0.75, 9, false), bark); main.scale.set(1.6, 1, 1); main.castShadow = main.receiveShadow = true; br.add(main);
+      for (const sd of [-1, 1]) { const pts: THREE.Vector3[] = []; for (let i = 0; i <= 10; i++) { const k = i / 10; pts.push(P(k, sd * (1.15 + Math.sin(k * 7 + sd) * 0.12), (k < 0.08 || k > 0.92 ? 0.1 : 0.85) - 0.1 + Math.sin(k * 11) * 0.08)); }
+        pts.unshift(P(-0.04, sd * 1.0, -0.9)); pts.push(P(1.04, sd * 1.0, -0.9)); const rl = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, 0.09, 5, false), barkD); rl.castShadow = true; br.add(rl);
+        for (let i = 1; i < 6; i++) { const k = i / 6, a = P(k, sd * 1.1, -0.1), c = P(k, sd * 1.15, 0.8 + Math.sin(k * 11) * 0.08); br.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([a, a.clone().lerp(c, 0.5).add(new THREE.Vector3(sd * 0.1, 0, 0.1)), c]), 6, 0.05, 4, false), barkD)); } }
+      for (let i = 0; i < 7; i++) { const k = 0.1 + i * 0.13, m = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22 + (i % 3) * 0.08, 0), std(0x4e7a3a)); m.position.copy(P(k, (i % 2 ? 1 : -1) * 0.9, 0.12)); br.add(m); } /* musgo */
+      br.userData.kind = 'prop:bridge'; mergeStatic(br); bridgeMeshes.add(br); continue; }
     if (b.stone) { const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T, len = Math.hypot(bx - ax, bz - az); const sb = buildStoneBridge(len, b.half ?? 3, b.hump ?? 1);
       const br = new THREE.Group(); br.position.set((ax + bx) / 2, (b.hA + b.hB) / 2 + 0.12, (az + bz) / 2); br.rotation.y = Math.atan2(bx - ax, bz - az); br.add(sb.group); br.userData.kind = 'prop:bridge'; mergeStatic(br); bridgeMeshes.add(br); continue; }
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T, len = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);
@@ -791,9 +801,16 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
     const pitch = Math.atan2(b.hB - b.hA, len);
     const deck = new THREE.Group(); deck.rotation.x = -pitch; br.add(deck);
     const wood = std(0x4a3220), woodL = std(0x6a4a2c);
-    const planks = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.18, len), std(0x7a5a38, { map: tex })); ink(planks, 0.04); planks.castShadow = planks.receiveShadow = true; deck.add(planks);
+    const planks = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.18, len), std(b.elf ? 0xd8c49a : 0x7a5a38, { map: tex })); ink(planks, 0.04); planks.castShadow = planks.receiveShadow = true; deck.add(planks);
     for (let z = -len / 2 + 0.4; z < len / 2; z += 0.6) { const pl = new THREE.Mesh(new THREE.BoxGeometry(3.62, 0.04, 0.08), std(0x3a2616)); pl.position.set(0, 0.1, z); deck.add(pl); } // juntas das tábuas
-    const covered = len > 11 && bi % 2 === 0;
+    const covered = len > 11 && bi % 2 === 0 && !b.elf;
+    if (b.elf) { /* 09/11: o píer élfico — madeira clara, postes curvos com lanterna azul a cada 4 m e um arco de galhos e folhas na entrada */
+      const pale = std(0xb8a070), leaf = std(0x5a8a3a), lampM = new THREE.MeshBasicMaterial({ color: 0xbfe8ff, toneMapped: false });
+      for (let z = -len / 2 + 1; z < len / 2; z += 4) for (const sx of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.1, 2.2, 6), pale); post.position.set(sx * 1.75, 1.1, z); post.rotation.z = -sx * 0.12; deck.add(post);
+        const hook = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.04, 5, 10, Math.PI), pale); hook.position.set(sx * 1.55, 2.2, z); hook.rotation.y = Math.PI / 2; deck.add(hook);
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.13, 8, 6), lampM); lamp.position.set(sx * 1.38, 1.95, z); deck.add(lamp); }
+      const arch = new THREE.Mesh(new THREE.TorusGeometry(1.9, 0.12, 6, 18, Math.PI), pale); arch.position.set(0, 0.1, -len / 2 + 0.3); deck.add(arch);
+      for (let i = 0; i < 14; i++) { const a = i / 13 * Math.PI, lf = new THREE.Mesh(new THREE.IcosahedronGeometry(0.22, 0), leaf); lf.position.set(Math.cos(a) * 1.9, 0.1 + Math.sin(a) * 1.9, -len / 2 + 0.3 + (i % 2 ? 0.15 : -0.15)); deck.add(lf); } }
     for (const sx of [-1, 1]) {
       const rail = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, len), wood); rail.position.set(sx * 1.7, 0.98, 0); deck.add(rail);
       const rail2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, len), wood); rail2.position.set(sx * 1.7, 0.55, 0); deck.add(rail2);
