@@ -2,7 +2,7 @@
    - Roda o jogo numa janela própria, forçando a placa de vídeo de alto desempenho (a RTX do notebook, não a integrada).
    - "Abrir servidor": liga a sala de jogo nesta máquina, tenta abrir a porta no roteador (UPnP), descobre o IP público
      e avisa se a operadora usa CGNAT (aí ninguém de fora alcança; o plano B é o Tailscale). */
-import { app, BrowserWindow, ipcMain, protocol, net, shell, clipboard } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, net, shell, clipboard, powerSaveBlocker } from 'electron';
 import path from 'node:path';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
@@ -29,6 +29,17 @@ app.commandLine.appendSwitch('enable-gpu-rasterization');
 app.commandLine.appendSwitch('enable-zero-copy');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
+/* 09/11 (Erling: "fazer ele ser mais jogo e menos navegador, reservar mais recursos do computador"): o Windows não "congela" a janela
+   coberta, o motor de animação do Chromium não economiza quadro, e o processo do jogo, o da placa de vídeo e o de desenho sobem de prioridade */
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,IntensiveWakeUpThrottling');
+app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
+app.commandLine.appendSwitch('max-active-webgl-contexts', '32');
+function gamePriority() {
+  const P = os.constants.priority, set = (pid, pr) => { try { os.setPriority(pid, pr); } catch { /* sem permissão: segue normal */ } };
+  set(process.pid, P.PRIORITY_ABOVE_NORMAL);
+  try { for (const m of app.getAppMetrics()) if (m.type === 'GPU' || m.type === 'Tab' || m.type === 'Renderer') set(m.pid, P.PRIORITY_HIGH); } catch { /* */ }
+}
 
 const DEV = !!process.env.KARMIKA_DEV;
 /** pasta do jogo compilado: dentro do instalador fica em resources/game; rodando do código, em client/dist */
@@ -174,5 +185,9 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(file).toString());
   });
   createWindow();
+  /* jogo aberto = o computador não dorme nem suspende o app; prioridade alta assim que os processos de desenho existirem (e de novo depois) */
+  try { powerSaveBlocker.start('prevent-display-sleep'); } catch { /* */ }
+  for (const ms of [1500, 6000, 20000]) setTimeout(gamePriority, ms);
+  app.on('child-process-gone', () => setTimeout(gamePriority, 1500));
 });
 app.on('window-all-closed', async () => { if (room) { try { await room.stop(); } catch { /* */ } } if (gateway) { try { await gateway.stop(); } catch { /* */ } } app.quit(); });
