@@ -1,6 +1,7 @@
 import type { QuestDef } from './quests';
 import { INDICE_NPCS } from './indice';
 import { HUNTER_I_NPCS } from './cacador';
+import { MAGE_I_NPCS } from './mago';
 
 /* =====================================================================================================
    O CAMINHO DO NORTE (humanos, níveis 1–25) — refeito em 25/10/2026
@@ -53,6 +54,7 @@ export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: numb
   { vila: 'Askavik', name: 'Lady Mirela', role: 'Herdeira da Casa Noctavar', dx: -24, dy: 5, tint: 0x6a1424, onlyQ: 'b02', lines: ['Não, eu não mordo. Não antes de ser apresentada.', 'A Casa está de pé há mil anos. Mil anos não erram.'] },
   ...INDICE_NPCS,
   ...HUNTER_I_NPCS,
+  ...MAGE_I_NPCS,
   { vila: 'Askavik', name: 'Cronista Ormund Salveth', role: 'Cronista da Grande Biblioteca', dx: -22, dy: 28, tint: 0x4a3a2a, lines: ['Tudo o que acontece no mundo cabe num livro. Quase tudo.', 'Anotarei a data. Anoto todas.', 'Achou alguma folha minha pelo mundo? Traga. Eu as deixei onde falam do que falam, e depois esqueci metade.', 'Uma porta sem maçaneta, uma vela que não acende, uma runa sem nome, um nicho sem poeira. Não sei o que têm em comum. Ainda não perguntei direito.'] },
 ];
 
