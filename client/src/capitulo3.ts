@@ -655,13 +655,16 @@ export const ELF_III = [
     { title: 'Embaixador da Copa', meet: { [OR]: [m(OR, 'Embaixador. Diga o que a Aelith cantou. Não, cante. Eu não sei anotar música. Vou aprender.')] } }),
 ];
 
-/* ======================= VELMORA — o reconhecimento (Capítulo III, abre todas as estradas) =======================
+/* ======================= VELMORA — o reconhecimento e A PONTE DE VELMORA (fecham o Capítulo II de todas as estradas, 43–44) =======================
+   09/11 (Erling: "os 11 caminhos, Capítulo II, a Ponte de Velmora: onde adicionamos o restante das missões e a história de Velmora"): o
+   reconhecimento passou do III para o fim do II, e logo depois vem a missão em espelho do plano antigo. A pista do II é a PORTA: debaixo do
+   pilar do meio há uma porta de pedra preta, mais velha que a ponte. A capa cinza fica para o III.
    Erling (09/11): "um lugar totalmente novo, que não foi visitado ainda, onde as histórias vão convergir; num primeiro momento uma missão de
    observação e reconhecimento: outras classes passaram por lá. Por quê? O que tem lá?". Cada classe chega por um motivo da sua tradição, e o
    Barqueiro conta que antes passou gente de todas as cores. No Capítulo IV, a ponte entra para a história de Karmika. */
-const BQ = 'Táraka, o Barqueiro';
+const BQ = 'Táraka, o Barqueiro', ED = 'Guardiã da Ponte Edla';
 const BQ_MEET = (who: string) => [m(BQ, 'Mais um que veio olhar. Ultimamente vocês todos vêm olhar. De todas as cores.'), m(BQ, who),
-  m(BQ, 'E um homem de capa cinza quis comprar um barco meu. Eu disse que não vendo. Ele disse que espera. Ninguém espera um barco que não está à venda.')];
+  m(BQ, 'Debaixo do pilar do meio tem uma porta. Pedra preta. Estava aí antes da ponte. Eu passo de barco do lado dela todo dia e nunca bati.')];
 const V_ = (id: string, giver: string, text: string, what: Parameters<typeof sense>[0], label: string, dx: number, dy: number, talkL: Parameters<typeof Q>[6], doneL: Parameters<typeof Q>[7], seen: string, spirit?: { name: string; lines: string[] }) =>
   Q(id, 'Velmora, a Vila Que os Mapas Pulam', giver, giver, text, [visit('Velmora'), sense(what, label, 'Velmora', dx, dy, spirit), talk(BQ)], talkL, doneL, undefined, { meet: { [BQ]: BQ_MEET(seen) } });
 export const VELMORA_RECON = [
@@ -676,7 +679,7 @@ export const VELMORA_RECON = [
     ['Uma vila sem vigia, a uma noite do Conde, e as crianças dormem. Ou é milagre, ou é armadilha. Eu não acredito em milagre.', 'Siga o rastro das crias até a vila. Veja onde ele termina.', r(['E se for armadilha?', 'Então você volta e a gente arma outra maior. É o que o Clã faz.'])],
     ['O rastro para na margem? Elas não atravessam a água escura. Ninguém convida, e cria não entra sem convite.', 'A vila mais segura do mundo fica bem no meio dos dois lados. Anote. Um dia alguém vai querer essa ponte.'],
     'Antes de você passou um paladino. Perguntou da capela. Não tem. Ele ficou triste do jeito que vocês ficam.'),
-  V_('vel_ma', AV, 'No Livro XVI, o Cronista Ormund anotou: "na ponte de Velmora, um homem de capa cinza oferecendo um barco". A Torre não tem Velmora em mapa nenhum. O Arquimago Vesk quer saber se o Ormund inventou, ou se os mapas mentem.',
+  V_('vel_ma', AV, 'Numa nota de rodapé do Livro XVI, o Cronista Ormund anotou o nome de uma ponte: "a ponte de Velmora". A Torre não tem Velmora em mapa nenhum. O Arquimago Vesk quer saber se o Ormund inventou, ou se os mapas mentem.',
     'dispositivo', 'A inscrição gasta na pedra da ponte', 13, -3,
     ['Ou o Ormund inventou, o que seria a primeira vez em quarenta anos, ou todos os mapas da Torre esqueceram uma vila. Prefiro que ele tenha inventado.', 'Vá. Leia a ponte. Pontes velhas sempre têm alguma coisa escrita, e nunca é o que o construtor quis.', r(['E se a vila existir?', 'Então alguém apagou uma vila de todos os mapas. Isso é correção. E correção é coisa da Torre.'])],
     ['Existe. E a pedra diz “aqui se passa”, com a última palavra raspada. Raspada com cuidado. Por alguém que sabia qual raspar.', 'A Ísold vai querer ir lá. Não deixe. Ela ri na hora errada perto de água.'],
@@ -684,7 +687,7 @@ export const VELMORA_RECON = [
   V_('vel_va', MI, 'Existe uma vila a uma noite de Corvoscuro que a Corte nunca visitou: Velmora, no Canal Escuro. Ninguém lá fecha as janelas, e o Lanterneiro acende luzes vermelhas que o Conde vê do castelo. Lady Mirela quer saber por quê.',
     'sangue', 'O sangue de quem mora na Margem da Noite', 18, -8,
     ['Uma vila que deixa as janelas abertas para nós. Que deselegância. Ou que convite. Preciso saber qual.', 'Vá à noite, como convém. Não beba de ninguém. É uma visita de cortesia, e a cortesia ainda nem foi oferecida.', r(['O Conde sabe dessa vila?', 'O Conde gosta das luzes vermelhas dela há cem anos. Nunca perguntou de onde vinham. Ele é romântico e preguiçoso.'])],
-    ['Sangue de sal e de rio. Gente que nunca teve medo de nós. Isso não existe, querida. E existe ali.', 'Um lugar que não existe que não fomos nós que fizemos. Não gosto. Vou gostar, talvez. Ainda não.'],
+    ['Sangue de sal e de rio. Gente que nunca teve medo de nós. Isso não existe, {nome}. E existe ali.', 'Um lugar que não existe que não fomos nós que fizemos. Não gosto. Vou gostar, talvez. Ainda não.'],
     'Antes de você passou uma caçadora com dois sinos no pulso. Seguiu um rastro até a minha margem e parou. Vocês dois param no mesmo lugar.'),
   V_('vel_lo', UL, 'O Varg desceu até o rio da Montanha Negra atrás de um cervo e voltou assustado: numa vila chamada Velmora, a água do canal não tem cheiro. Nenhum. A Mãe-Alfa manda o faro mais fino.',
     'cheiro', 'A água do Canal Escuro, que não cheira a nada', 11, 4,
@@ -723,6 +726,78 @@ export const VELMORA_RECON = [
     ['Você ouviu? Choro de muitos, de longe, como se viesse de outro ano. A Copa vai lembrar desta ponte.', 'Não conte à Aelith o que ouviu. Ela vai querer terminar a canção, e essa canção não pode terminar ainda.'],
     'Antes de você passou um vampiro. Não, uma vampira. Bem-educada. Olhou as minhas luzes vermelhas e sorriu como quem reconhece.',
     { name: 'O Choro Que Ainda Não Veio', lines: ['(Muitas vozes, de muito longe, chorando baixo.)', '(Um sino toca uma vez. Não há sino nenhum na ponte.)'] }),
+];
+
+/* A PONTE DE VELMORA (44): a podridão de Grenivik desceu o rio e as vilas da margem fogem para o leste; a ponte de Velmora é a única passagem
+   seca. Numa noite, alguém estendeu uma corrente de ferro de uma cabeceira à outra e pôs gente armada cobrando pedágio: "a ponte é de quem a
+   segura". O Fio acha que são servos da Corte; os Desfiados acham que são capitães do Bastião. São só salteadores, pagos por ninguém sabe quem.
+   O mesmo dia, visto por onze estradas: o Fio escolta, os Desfiados derrubam a corrente, o Corvo segura o meio, os puros consertam e abrigam,
+   a Academia mede. E o pilar do meio racha: debaixo dele aparece a porta. */
+const PONTE_SPIRIT = { name: 'A Porta do Pilar', lines: ['(Pedra preta, lisa, na altura da água. Sem maçaneta.)', '(Do outro lado, uma batida. Depois nada.)'] };
+const P_ = (id: string, giver: string, text: string, objs: Parameters<typeof Q>[5], talkL: Parameters<typeof Q>[6], doneL: Parameters<typeof Q>[7], choice?: Parameters<typeof Q>[8], extra: Parameters<typeof Q>[9] = {}) =>
+  Q(id, 'A Ponte de Velmora', giver, giver, text, [visit('Ponte de Velmora'), ...objs, sense('espirito', 'A porta debaixo do pilar do meio', 'Ponte de Velmora', 0, 2, PONTE_SPIRIT)], talkL, doneL, choice,
+    { meet: { [ED]: [m(ED, 'Uma corrente de uma cabeceira à outra, numa noite só. Eu dormi. Trinta anos guardando a ponte e eu dormi justo naquela noite.'), m(ED, 'O pilar do meio rachou com o peso da gente esperando. Debaixo dele tem uma coisa que não estava no desenho de ninguém.')] }, ...extra });
+export const PONTE_VELMORA = [
+  P_('pon_pa', CS, 'A podridão de Grenivik desceu o rio, e as vilas da margem fogem para Velmora. Alguém fechou a ponte com uma corrente e cobra pedágio de quem foge. O Grão-Mestre manda escoltar os refugiados até a Margem da Aurora.',
+    [kill('ghoul', 8), talk(ED)],
+    ['Gente fugindo da podridão, e alguém cobrando pela ponte. Dizem que são servos da Corte. Pode ser. Hoje não importa: importa quem está do lado de lá.', 'Escolte. Os carniçais seguem o cheiro de quem foge. Não deixe nenhum chegar na fila.', r(['E a corrente?', 'Se for preciso, quebre. Mas os Desfiados também vão aparecer. Hoje, eles também vão querer a ponte aberta. Não estranhe.'])],
+    ['A fila atravessou. Os Desfiados quebraram a corrente do outro lado, no mesmo dia. Ninguém combinou. Isso me assusta mais do que a corrente.', 'E o pilar? Uma porta? Debaixo da ponte? Não conte aos irmãos ainda. Eu preciso rezar antes de pensar nisso.'],
+    ['Na fila, uma mulher mordida esconde a marca no pescoço. Se a Ordem souber, ela fica do lado de lá. Você…',
+      ['Atravessa com ela e vigia ela até a Margem da Aurora.', 3, 'Ela atravessou. Na primeira noite, não virou. Na segunda, foi embora sozinha, sem fazer mal a ninguém.', 'Você deu a ela a mesma ponte que deu a todos.'],
+      ['Conta à Guardiã e deixa ela do lado de lá.', -1, 'Ela ficou na margem com a podridão chegando. Ninguém soube o que aconteceu depois.', 'A regra protegeu a fila e abandonou uma pessoa.'],
+      ['Pergunta a ela o que quer, e faz o que ela pedir.', 2, 'Ela pediu para atravessar por último, sozinha, de barco. O Táraka levou sem cobrar.', 'Você deixou a escolha com quem carrega a marca.']]),
+  P_('pon_ca', IL, 'As vilas da margem fogem da podridão para Velmora, e os carniçais vêm atrás, farejando a fila. A Mestra Ilsa quer o Clã na ponte: nenhuma criança cruza com um carniçal atrás.',
+    [kill('ghoul', 10), talk(ED)],
+    ['Fila de gente com medo é banquete de carniçal. Eu já vi uma fila dessas acabar. Eu tinha nove anos. Não, quem tinha nove anos era a Vesna. Eu tinha vinte e estava atrasada.', 'Fique no fim da fila. É lá que eles mordem.', r(['E a corrente do pedágio?', 'Não é assunto do Clã. As crianças são.'])],
+    ['Nenhuma criança mordida. Contei duas vezes. A Vesna contou três.', 'Uma porta debaixo do pilar? O osso dos carniçais de Grenivik tinha o desenho de uma porta. Eu não gosto de coincidência. Coincidência é o rastro de quem não quer ser seguido.']),
+  P_('pon_ma', AV, 'Velmora fechou: uma corrente na ponte e gente fugindo da podridão. O Vesk quer que um mago leia a pedra da ponte enquanto a multidão atravessa: a inscrição raspada mudou desde ontem.',
+    [kill('spirit', 6), talk(ED)],
+    ['Ontem a pedra dizia “aqui se passa”, com uma palavra raspada. Hoje a palavra raspada voltou, e é outra. Pedra não se corrige sozinha.', 'Leia. Copie. Não corrija. E derrube os espíritos que a multidão acordou: gente com medo faz barulho até do outro lado.', r(['E a corrente?', 'Os Desfiados vão quebrá-la. Eles adoram quebrar corrente. Deixe com eles e leia.'])],
+    ['“Aqui se passa… e aqui se fica.” Essa é a palavra. Alguém quer que a gente leia isso, e eu não sei se é ameaça ou aviso.', 'E uma porta debaixo do pilar. Porta, não parede. Pela primeira vez, a palavra certa está no lugar certo. Isso também me assusta.']),
+  P_('pon_va', MI, 'Alguém estendeu uma corrente na ponte de Velmora e cobra pedágio de quem foge da podridão. Dizem que são capitães do Bastião. A Casa não amarra ninguém e não deixa ninguém ser amarrado na frente das luzes que o Conde gosta.',
+    [kill('bandit', 8), talk(ED)],
+    ['Uma corrente. Na ponte das nossas luzes. Os Desfiados não amarram ninguém, {nome}. É a nossa única regra que nunca foi quebrada.', 'Quebre a corrente. Os cobradores vão resistir: não precisa de delicadeza com eles. Com os que fogem, sim.', r(['E se forem mesmo do Bastião?', 'Então o Bastião cobra pedágio de quem foge. E a Corte vai contar isso em todos os jantares por cem anos.'])],
+    ['Não eram do Bastião. Eram salteadores, pagos por alguém que ninguém viu. Que decepção. Eu já tinha escolhido o vestido para o escândalo.', 'Os paladinos escoltaram do outro lado, no mesmo dia. Nós quebramos, eles conduziram. Ninguém agradeceu ninguém. Perfeito.'],
+    ['O chefe dos cobradores, ferido, pede para ser levado pela Casa: “eu trabalho para quem pagar”. Você…',
+      ['Deixa ele na margem para a Guardiã julgar.', 2, 'A Edla prendeu ele no próprio cadeado da corrente. A vila riu por uma semana.', 'A justiça da vila, não da Casa.'],
+      ['Leva ele à Corte como servo.', -3, 'A Casa ganhou um servo que trabalha para quem pagar. A Mirela não gostou do tipo.', 'Você comprou quem vende qualquer coisa.'],
+      ['Pergunta quem pagou o pedágio, e deixa ele ir.', 0, '“Moeda velha. Rosto, ninguém lembra.” Ele sumiu na estrada antes do anoitecer.', 'Uma resposta que não responde nada.']]),
+  P_('pon_lo', UL, 'A podridão de Grenivik desceu o rio, e as vilas da margem fogem para Velmora a pé, com velhos e crianças. A matilha segura o caminho do Desfiladeiro para ninguém ficar para trás.',
+    [kill('bandit', 6), kill('ghoul', 6), talk(ED)],
+    ['Gente lenta numa estrada cheia de dente. Os cobradores da ponte caçam os que tentam passar pelo rio. Os carniçais caçam o resto.', 'A matilha espera o mais lento. Hoje, o mais lento é humano. Espere igual.', r(['Humano? A matilha protege humano?', 'A matilha protege quem está na fila. Ninguém fica para trás. A lei não pergunta a espécie.'])],
+    ['Ninguém ficou para trás. Um velho de Grenivik passou a mão na cabeça do Varg. O Varg deixou. Não conte a ele que eu vi.', 'Debaixo do pilar tem uma porta, dizem. O Varg cheirou e voltou com o pelo em pé. A porta não tem cheiro. Igual à água.']),
+  P_('pon_bx', RV, 'Os cobradores da ponte de Velmora dizem que têm direito ao pedágio: mostram um contrato. A Ravena quer ler esse contrato antes que alguém o rasgue sem ler.',
+    [kill('bandit', 6), talk(ED)],
+    ['Um contrato de pedágio. Na ponte que tem um contrato pregado embaixo que ninguém assinou. Duas folhas na mesma ponte. Leia as duas.', 'Derrube quem guarda o papel. Não rasgue o papel. Nunca rasgue o papel.', r(['E se o contrato for válido?', 'Então a gente cobra deles a cláusula que eles esqueceram. Sempre tem uma.'])],
+    ['O contrato do pedágio cita como dono da ponte “aquele que a fez”. Ninguém sabe quem fez. Contrato com dono sem nome não vale. Anulei em voz alta, na frente da fila.', 'A porta do pilar não tem fechadura, nem contrato, nem cláusula. Primeira coisa que eu vejo na vida que não tem cláusula. Não gostei.'],
+    ['Os cobradores oferecem ao Vale metade do pedágio em troca do contrato. Você…',
+      ['Anula o contrato em voz alta, diante da fila.', 3, 'A fila atravessou sem pagar. Um velho pediu para ler o papel anulado. Ninguém nunca tinha lido nada para ele.', 'O bruxo lê até o fim, e em voz alta.'],
+      ['Aceita a metade: negócio é negócio.', -5, 'O Vale ficou mais rico. A fila pagou duas vezes: na ponte e no medo.', 'Você cobrou de quem fugia.'],
+      ['Guarda o contrato e manda os cobradores embora.', 0, 'A ponte abriu. O papel está na torre de Gorvath. A Ravena ainda não leu inteiro.', 'Prudência de bruxo.']]),
+  P_('pon_gu', BY, 'Em Velmora, o Fio escolta refugiados de um lado e os Desfiados quebram a corrente do outro, no mesmo dia. Os dois vão se encontrar no meio da ponte. A Brynhild quer um corvo de pé no meio, antes que alguém confunda pressa com ataque.',
+    [kill('bandit', 6), talk(ED)],
+    ['Duas bandeiras chegando à mesma ponte pelo mesmo motivo. Elas vão se olhar no meio e vão achar que o outro veio brigar. Fique no meio.', 'Hugin e Munin estavam em cima dessa ponte. Agora eu sei por quê.', r(['E se os dois avançarem?', 'Então você segura os dois. É para isso que serve um corvo no meio.'])],
+    ['Ninguém sacou nada. Um paladino e uma cria passaram um do lado do outro, sem olhar. É o mais perto de paz que Karmika já teve.', 'O pilar rachou bem debaixo dos seus pés. Uma porta. Os corvos foram embora quando ela apareceu. Eles nunca vão embora.'],
+    ['No meio da ponte, a escolta do Fio e o grupo dos Desfiados param de frente, desconfiados. Você…',
+      ['Manda passar primeiro os refugiados, e depois cada lado volta para a sua margem.', 3, 'A fila passou entre as duas bandeiras como água entre pedras. Ninguém lembrou de brigar.', 'O meio, segurado com a fila.'],
+      ['Deixa o Fio passar primeiro.', 0, 'A Corte anotou. O Fio agradeceu com a cabeça.', 'O Corvo pendeu.'],
+      ['Deixa os Desfiados passarem primeiro.', 0, 'O Fio anotou. A Corte sorriu.', 'O Corvo pendeu.']]),
+  P_('pon_te', AN, 'O pilar do meio da ponte de Velmora rachou com o peso da multidão que foge da podridão. A Academia manda medir a ponte antes que ela caia com todo mundo em cima.',
+    [kill('automaton', 4), collect('ore_i', 6), talk(ED)],
+    ['Uma ponte velha, uma multidão, um pilar rachado. A conta é simples. A conta simples é a que mais mata.', 'Seis pedras de ferro para escorar o pilar. Os autômatos da Companhia que mandaram para lá endoidaram com a multidão: desligue-os.', r(['E o índice?', 'Leve. Quero saber se ele cai no meio da ponte com gente em cima, ou só quando ela está vazia.'])],
+    ['Caiu. Com gente em cima, caiu mais. E no pilar, onde a rachadura abriu, caiu a zero. Eu nunca vi o ponteiro encostar no zero.', 'Uma porta. Eu medi uma porta igual no fim da escada da Grande Biblioteca. Sem maçaneta. Ou é a mesma porta, ou são duas portas iguais. Não sei qual das duas é pior.']),
+  P_('pon_hu', AS, 'A podridão expulsou as vilas da margem, e Velmora está cheia de gente sem teto. A ponte foi fechada por cobradores. O Velho Ansgar quer que o humano faça o que o humano faz: abrigo, pão e ordem na fila.',
+    [kill('bandit', 6), collect('wood', 10), talk(ED)],
+    ['Gente sem casa numa vila sem senhor. Ninguém vai mandar nessa fila. Então alguém precisa organizar. Não mandar: organizar.', 'Dez madeiras para os abrigos da Margem da Aurora. E tire os cobradores da ponte: gente com fome não paga pedágio, paga com o corpo.', r(['Por que o humano?', 'Porque você já ergueu uma rua para quem fugiu. Agora é uma vila inteira. Você treinou.'])],
+    ['Abrigos de pé. Fila andando. Os pescadores dividiram o peixe sem ninguém pedir. Velmora é o Comum mais velho que existe, e hoje ele acordou.', 'E a porta debaixo do pilar? Igual à de debaixo do cemitério de Karmika. Igualzinha. Tape com terra e não conte ao Prefeito.']),
+  P_('pon_an', DG, 'O pilar do meio da ponte de Velmora rachou. A ponte tem grampos anões sem nome, e a Dagny não vai deixar ferro de anão cair, com ou sem nome. Leve pedra e ferro, e escore.',
+    [collect('stone', 10), collect('ore_i', 6), talk(ED)],
+    ['Grampo anão sem nome segurando uma ponte há trezentos anos. Quem fez sabia o que fazia e não quis que ninguém soubesse. Isso é ofensa e é elogio.', 'Dez pedras e seis ferros. Escore o pilar do meio. Os dois lados vão passar por cima: não deixe ninguém cair, de lado nenhum.', r(['E se o pilar não aguentar?', 'Então você fica embaixo segurando até alguém trazer mais pedra. É o que a Dagny faria. Eu sou a Dagny.'])],
+    ['Escorado. Aguenta mais cem anos, se ninguém pular em cima. Vão pular.', 'Uma porta debaixo do pilar. O pilar foi construído EM VOLTA dela. Alguém fez uma ponte para esconder uma porta. Isso é engenharia anã. Que vergonha. Que bonito.']),
+  P_('pon_el', RA, 'Em Velmora, as duas bandeiras chegaram à ponte no mesmo dia, cada uma achando que a corrente era do outro. A Copa media: a Rainha manda a sua voz dizer a verdade aos dois lados antes que a desconfiança vire espada.',
+    [kill('bandit', 6), talk(ED)],
+    ['O Fio acha que a corrente é da Corte. A Corte acha que é do Bastião. A Copa acha que é de alguém que queria os dois na mesma ponte, desconfiados. Diga isso aos dois.', 'Tire os cobradores da ponte, para que ninguém possa culpar ninguém. Depois fale.', r(['E se não acreditarem?', 'Não vão acreditar. Mas vão lembrar que a Copa disse. Isso basta por agora.'])],
+    ['Os dois ouviram. Os dois não acreditaram. Os dois atravessaram sem brigar. A Copa ganhou um dia.', 'A Aelith ouviu de longe e cantou a linha do choro que ainda não veio. Parou no meio. Disse que ainda não é hoje. Ainda.']),
 ];
 
 /** quem passa a morar no mundo com o Capítulo III: o filho do desertor e o skald de Jarlsheim */
