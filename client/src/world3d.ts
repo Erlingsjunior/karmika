@@ -367,8 +367,9 @@ export function buildWorld(world: World): WorldObjs {
         if (i === 2) { const face = new THREE.Mesh(new THREE.PlaneGeometry(w2 * 0.5, h2 * 0.32), std(0x5a4632)); face.position.set(0, h2 * 0.1, 0.003); pm.add(face); }
         const pin = new THREE.Mesh(new THREE.SphereGeometry(0.028, 6, 4), i % 3 === 0 ? std(0x8a1a14) : iron); pin.position.set(0, h2 / 2 - 0.05, 0.02); pm.add(pin);
       });
-      const fp = (typeof fountainRef !== 'undefined' && fountainRef) ? fountainRef : null;
-      bg.rotation.y = fp ? Math.atan2(fp.x - wx, fp.z - wz) : 0;
+      /* 09/11 REGRA IMUTÁVEL (Erling: "a placa da cidade tem que ficar de frente para a nossa visão"): o quadro olha SEMPRE para a câmera (sudeste).
+         Antes ele virava para a fonte e, do lado nordeste da praça, ficava de costas/de perfil e parecia ter sumido. */
+      bg.rotation.y = Math.PI / 4;
     } else if (p.kind === 'stall') {
       const cm = std(p.wall, { map: plankTex(p.wall) });
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const po = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 2.3, 6), std(0x4a3220)); po.position.set(Wm / 2 + sx * 1.3, 1.15, Dm / 2 + sz * 0.8); po.castShadow = true; g.add(po); }

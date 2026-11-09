@@ -50,6 +50,8 @@ export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: numb
   { vila: 'Skjoldvik', name: 'Vigia Eyvind', role: 'Vigia de Skjoldvik', dx: 3, dy: 2.5, tint: 0x4a5a6a, lines: ['Da torre eu vejo o mar, a neve e quem não devia estar em nenhum dos dois.', 'O vento de Skjoldvik corta até pensamento.'] },
   /* 09/11: o Prólogo das Bandeiras — Lady Mirela desce de Corvoscuro para receber quem chega (só enquanto b02 está no diário) */
   { vila: 'Askavik', name: 'Lady Mirela', role: 'Herdeira da Casa Noctavar', dx: -24, dy: 5, tint: 0x6a1424, onlyQ: 'b02', lines: ['Não, eu não mordo. Não antes de ser apresentada.', 'A Casa está de pé há mil anos. Mil anos não erram.'] },
+  /* 09/11: a moça da ponte de Karmika (quests.ts SIDE 'ines1'). Mais tarde a ponte vira a Ponte do Namoro (pedido entre jogadores). */
+  { vila: 'Karmika', name: 'Inês da Ponte', role: 'Espera alguém', dx: -18, dy: 1, tint: 0x8a6a8a, lines: ['Ele disse que vinha ao pôr do sol. Não disse qual.', 'A ponte é bonita a essa hora. O rio fica cor de cobre.', 'Não, você não é ele. Tudo bem. Ninguém é.'] },
   ...INDICE_NPCS,
   { vila: 'Askavik', name: 'Cronista Ormund Salveth', role: 'Cronista da Grande Biblioteca', dx: -22, dy: 28, tint: 0x4a3a2a, lines: ['Tudo o que acontece no mundo cabe num livro. Quase tudo.', 'Anotarei a data. Anoto todas.', 'Achou alguma folha minha pelo mundo? Traga. Eu as deixei onde falam do que falam, e depois esqueci metade.', 'Uma porta sem maçaneta, uma vela que não acende, uma runa sem nome, um nicho sem poeira. Não sei o que têm em comum. Ainda não perguntei direito.'] },
 ];

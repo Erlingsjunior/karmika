@@ -103,7 +103,7 @@ export function renderTalents(el: HTMLElement, T: Talents, kit: string, lvl: num
     const zoomAt = (f: number, cx?: number, cy?: number) => { const nz = Math.max(0.7, Math.min(3.5, VZ.z * f)); if (cx !== undefined && cy !== undefined) { const [px, py] = toSvg(cx, cy); VZ.cx = px + (VZ.cx - px) * (VZ.z / nz); VZ.cy = py + (VZ.cy - py) * (VZ.z / nz); } VZ.z = nz; apply(); tip.hidden = true; };
     svg.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(e.deltaY < 0 ? 1.18 : 1 / 1.18, e.clientX, e.clientY); }, { passive: false });
     let drag: { x: number; y: number } | null = null;
-    svg.addEventListener('pointerdown', (e) => { if ((e.target as Element).closest('[data-t]')) return; drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
+    svg.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; if ((e.target as Element).closest('[data-t]')) return; drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); svg.style.cursor = 'grabbing'; });
     svg.addEventListener('pointermove', (e) => { if (!drag) return; const r = svg.getBoundingClientRect(), k = W / VZ.z / r.width; VZ.cx -= (e.clientX - drag.x) * k; VZ.cy -= (e.clientY - drag.y) * k; drag = { x: e.clientX, y: e.clientY }; apply(); });
     svg.addEventListener('pointerup', () => { drag = null; svg.style.cursor = ''; });
     svg.style.cursor = 'grab';

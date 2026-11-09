@@ -156,6 +156,27 @@ export const WARRIOR: QuestDef[] = [
       { label: 'Aceita o duelo final e dá a ele a morte honrosa.', karma: 6, say: '(Um golpe limpo. Thorgrim abaixa a cabeça antes de cair.) “Bom golpe.”', why: 'Foi o mais difícil, e você não fugiu. A morte pedida e dada com respeito não pesa contra quem a dá.' } ] } },
 ];
 export const SIDE: QuestDef[] = [
+  /* 09/11 (Erling): a moça que espera na ponte de Karmika um encontro que nunca chega. Uma flor comprada do Thorin apazigua; ela retribui com um cartão que se guarda e karma. */
+  { id: 'ines1', chain: 'A Ponte de Karmika', name: 'A Que Espera na Ponte', lvl: 3, giver: 'Inês da Ponte', turnin: 'Inês da Ponte', xp: 60, gold: 0, items: [['cartao_ines', 1]],
+    text: 'Inês espera na ponte dos fundos de Karmika alguém que prometeu vir ao pôr do sol e não veio. Nem ontem, nem anteontem. O Thorin vende uma Flor com Laço na praça. Compre uma e leve a ela.',
+    objs: [{ kind: 'collect', item: 'flor_laco', n: 1 }],
+    talk: [
+      'Ah. Desculpe, achei que fosse… não. Não era.',
+      'Ele disse que vinha ao pôr do sol. Não disse qual. Então eu venho em todos. A ponte é bonita a essa hora, pelo menos; o rio fica cor de cobre.',
+      { r: [
+        { t: 'Há quanto tempo você espera?', a: 'Desde que a ponte era nova. Ela já tem musgo. Eu não tenho, ainda.' },
+        { t: 'Ele não vem, Inês.', a: 'Eu sei. Saber não é a parte difícil. A difícil é parar de vir.' },
+        { t: 'Posso fazer alguma coisa?', a: 'O Thorin vende umas flores com laço, na praça. Ninguém nunca me deu uma. Eu só fico pensando como seria.' } ] },
+    ],
+    done: [
+      'Uma flor. Com laço. Para mim.',
+      'Eu… obrigada. Não sei o que se diz. Ninguém me ensinou essa parte.',
+      'Espere. Eu escrevo cartões, sabe? Para quem casa, para quem nasce, para quem morre. Nunca escrevi um para mim. Tome este. É para você.',
+    ],
+    choice: { q: 'Inês segura a flor com as duas mãos e olha para o rio. Você…', opts: [
+      { label: 'Senta ao lado dela e espera o pôr do sol junto, sem dizer nada.', karma: 6, flag: 'ines_pordosol', say: 'O sol desceu, o rio ficou cor de cobre, e pela primeira vez eu não fiquei contando quem passava. Volte quando quiser. A ponte é sua também.', why: 'Você não consertou a dor dela. Ficou ao lado. O Olho pesa isso mais do que muita espada.' },
+      { label: 'Diz que ela merece alguém que venha, e vai embora.', karma: 3, flag: 'ines_merece', say: 'Merecer… é uma palavra que eu guardo para os outros. Mas obrigada por gastá-la comigo.', why: 'Uma palavra boa e uma flor. Pouco, e verdadeiro.' },
+      { label: 'Pergunta se ela não quer vir tomar uma cerveja na Tessa em vez de ficar aí.', karma: 1, flag: 'ines_cerveja', say: 'Hoje não. Hoje eu ainda estou esperando. Amanhã, talvez. Não prometa que vem; eu já tenho uma dessas.', why: 'Convite é gentileza. Mas você tentou tirá-la da ponte antes de ela querer sair.' } ] } },
   /* ---------- O Gênio do Lago (02/11, Erling): Sheitã, o Gênio da Ilusão, escondido no lago do Oásis da Miragem (sistemas/oasis.ts) ---------- */
   { id: 'dj1', chain: 'O Gênio do Lago', name: 'A Água que Não Mata a Sede', lvl: 16, giver: 'Yusuf, o Cameleiro', next: 'dj2', xp: 900, gold: 90,
     text: 'Três caravanas pararam no Oásis da Miragem, a sudoeste de Vindholt, no meio da areia. Os que voltaram tinham a boca cheia de areia e não falaram nunca mais. Vá até o oásis e veja com os seus olhos. E escute bem: não beba nada que lhe oferecerem.',

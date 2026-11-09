@@ -49,7 +49,7 @@ const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getCo
   const set = (d: number, save = false) => { D = Math.round(Math.max(120, Math.min(Math.min(560, innerHeight * 0.75), d))); mmEl.width = mmEl.height = D; mmEl.style.width = mmEl.style.height = D + 'px'; mini.style.width = D + 8 + 'px'; { const C = D / 2 + 4; grip.style.left = C - D * 0.354 - 9 + 'px'; grip.style.top = C + D * 0.354 - 11 + 'px'; } /* na borda do círculo, a 45° em baixo à esquerda */ if (save) try { localStorage.setItem('karmika.minisize', String(D)); } catch { /* */ } };
   set(D);
   let rs: { x: number; y: number; d: number } | null = null;
-  grip.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); rs = { x: e.clientX, y: e.clientY, d: D }; grip.setPointerCapture(e.pointerId); });
+  grip.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); rs = { x: e.clientX, y: e.clientY, d: D }; grip.setPointerCapture(e.pointerId); });
   grip.addEventListener('pointermove', (e) => { if (rs) set(rs.d + Math.max(rs.x - e.clientX, e.clientY - rs.y)); }); // preso no canto de cima à direita: cresce para baixo e para a esquerda
   const end = () => { if (rs) { rs = null; set(D, true); } }; grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   grip.addEventListener('dblclick', (e) => { e.stopPropagation(); set(210, true); });
@@ -118,7 +118,7 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
   const ro = new ResizeObserver(() => { const w = Math.max(1, Math.round(bmEl.clientWidth || mv.clientWidth)), h = Math.max(1, Math.round(mv.clientHeight)); if (bmEl.width !== w || bmEl.height !== h) { bmEl.width = w; bmEl.height = h; mapV.z = Math.max(mapV.z, mapZMin()); if (bigOpen) K.drawBig(); } }); ro.observe(mv); ro.observe(bmEl);
   apply();
   let rs: { x: number; y: number; w: number; h: number } | null = null;
-  grip.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); maxed = null; rs = { x: e.clientX, y: e.clientY, w: size.w, h: size.h }; grip.setPointerCapture(e.pointerId); });
+  grip.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); maxed = null; rs = { x: e.clientX, y: e.clientY, w: size.w, h: size.h }; grip.setPointerCapture(e.pointerId); });
   grip.addEventListener('pointermove', (e) => { if (!rs) return; const r = bigEl.getBoundingClientRect(); size.w = Math.min(rs.w + e.clientX - rs.x, innerWidth - r.left - 4); size.h = Math.min(rs.h + e.clientY - rs.y, innerHeight - r.top - chrome() - 4); apply(); });
   const end = () => { if (rs) { rs = null; save(); } }; grip.addEventListener('pointerup', end); grip.addEventListener('pointercancel', end);
   grip.addEventListener('dblclick', (e) => { e.stopPropagation(); size = defSize(); apply(); save(); });

@@ -28,14 +28,14 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
   const grip = document.createElement('div'); grip.className = 'rz'; grip.title = 'Arraste para mudar o tamanho da janela (duplo clique: tamanho padrão)'; el.appendChild(grip);
   new MutationObserver(() => { if (grip.parentElement !== el || el.lastElementChild !== grip) el.appendChild(grip); }).observe(el, { childList: true });
   let rz: { x: number; y: number; w: number; h: number; z: number } | null = null;
-  grip.addEventListener('pointerdown', (e) => { const pn = pnOf(); if (!pn) return; const z = parseFloat(getComputedStyle(pn).zoom || '1') || 1, r = pn.getBoundingClientRect(); rz = { x: e.clientX, y: e.clientY, w: r.width / z, h: r.height / z, z }; grip.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); bringFront(el); });
+  grip.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; const pn = pnOf(); if (!pn) return; const z = parseFloat(getComputedStyle(pn).zoom || '1') || 1, r = pn.getBoundingClientRect(); rz = { x: e.clientX, y: e.clientY, w: r.width / z, h: r.height / z, z }; grip.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); bringFront(el); });
   grip.addEventListener('pointermove', (e) => { if (!rz) return; const r = el.getBoundingClientRect(); const w = Math.max(260, Math.min((innerWidth - r.left - 4) / rz.z, rz.w + (e.clientX - rz.x) / rz.z)), h = Math.max(180, Math.min((innerHeight - r.top - 6) / rz.z, rz.h + (e.clientY - rz.y) / rz.z));
     pos[id] = { ...(pos[id] ?? { x: r.left, y: r.top }), w: Math.round(w), h: Math.round(h) }; applySize(); });
   const rzEnd = () => { if (!rz) return; rz = null; try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } fit(); };
   grip.addEventListener('pointerup', rzEnd); grip.addEventListener('pointercancel', rzEnd);
   grip.addEventListener('dblclick', (e) => { e.stopPropagation(); const p = pos[id]; if (p) { delete p.w; delete p.h; } el.classList.remove('sized'); el.style.removeProperty('--fw-w'); el.style.removeProperty('--fw-h'); try { localStorage.setItem(KEY, JSON.stringify(pos)); } catch { /* */ } fit(); });
   let drag: { dx: number; dy: number } | null = null;
-  el.addEventListener('pointerdown', (e) => {
+  el.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; /* 09/11: só o botão esquerdo move */
     bringFront(el);
     const t = e.target as HTMLElement; if (t.closest('.rz')) return; const h = t.closest('h2'); if (!h || t.closest('button,input,select')) return;
     const r = el.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; h.setPointerCapture(e.pointerId); e.preventDefault();
@@ -146,7 +146,7 @@ export function movable(el: HTMLElement, key: string) {
   const clamp = () => { const r = el.getBoundingClientRect(); if (!r.width) return; let dx = 0, dy = 0; if (r.left < 0) dx = -r.left; else if (r.right > innerWidth) dx = innerWidth - r.right; if (r.top < 0) dy = -r.top; else if (r.bottom > innerHeight) dy = innerHeight - r.bottom; if (dx || dy) { o.x += dx; o.y += dy; apply(); } };
   const save = () => { try { localStorage.setItem(SK, JSON.stringify(o)); } catch { /* */ } };
   apply(); requestAnimationFrame(clamp);
-  el.addEventListener('pointerdown', (e) => { if (!(e.target as HTMLElement).closest('.mvgrip')) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = o.x, oy = o.y;
+  el.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !(e.target as HTMLElement).closest('.mvgrip')) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = o.x, oy = o.y;
     const mv = (ev: PointerEvent) => { o = { x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }; apply(); clamp(); };
     const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); save(); };
     addEventListener('pointermove', mv); addEventListener('pointerup', up); });

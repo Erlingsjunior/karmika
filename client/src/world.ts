@@ -709,6 +709,11 @@ function buildCity_L(): World {
     for (const [x, y] of [[11, 11], [24, 11], [11, 23], [24, 23], [6, 17], [30, 17], [17, 5], [17, 28]]) vpK(4, x + OX, y + OY);
     for (const st of props.filter((q) => q.kind === 'stall' && Math.abs(q.gx - 18 - OX) < 22 && Math.abs(q.gy - 18 - OY) < 22)) { vpK([0, 1, 6, 7][(st.gx + st.gy) % 4], st.gx + st.w, st.gy + st.h - 1, ((st.gx * 7) % 10) * 0.6); vpK([1, 0][(st.gx) % 2], st.gx - 1, st.gy, ((st.gy * 3) % 10) * 0.6); }
     for (const [x, y, v] of [[13, 17, 1], [22, 17, 1], [18, 13, 0], [18, 22, 0]] as [number, number, number][]) if (okD(x + OX, y + OY)) decor('bench', x + OX, y + OY, 1, 1, v); }
+  /* 09/11 (Erling, foto do rio): a PONTE DE KARMIKA, em arco de pedra, nos fundos da vila (oeste da casa da Rosália), sobre o rio; dá para pescar
+     de cima. Embaixo do arco, no barranco, um baú escondido para os mais espertos. E a Inês espera na cabeceira norte. (coordenadas: dump do mapa de 09/11) */
+  { const bxL = CITY_L.x - 19 + 0.5, y0 = CITY_L.y + 3 + 1.5, y1 = CITY_L.y + 3 + 6.5;
+    bridges.push({ ax: bxL, ay: y0, bx: bxL, by: y1, hA: 0, hB: 0, stone: true, half: 1.7, hump: 1.15 });
+    const chx = CITY_L.x - 20, chy = CITY_L.y + 3 + 2; if (inb(chx, chy) && map[chy][chx] !== 'water') props.push({ kind: 'chest', gx: chx, gy: chy, w: 1, h: 1, height: 0.6, wall: 0x5a3a1c, roof: 0x3a2a14, variant: 7 }); }
   /* ---- o Quartel de Karmika (Erling, 01/11: "uma zona de treinamento um pouco depois da igreja, um quartel com um quintal com pelo menos 4 bonecos"):
      prédio de pedra logo a oeste da igreja, pátio calçado e murado com portão para o sul, quatro bonecos de palha em fila,
      estantes de armas encostadas no prédio, baú, bancos e tochas no portão. O boneco que ficava escondido atrás da casa veio para cá. ---- */
@@ -2302,6 +2307,20 @@ function buildCity_L(): World {
     for (const t of props) { if (t.kind !== 'torch') continue; for (const q of props) { if (q.kind !== 'bench' || Math.max(Math.abs(q.gx - t.gx), Math.abs(q.gy - t.gy)) > 1) continue;
       const sx = Math.sign(q.gx - t.gx), sy = Math.sign(q.gy - t.gy); mark(q, false); for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]] as [number, number][]) { if (!ax && !ay) continue; if (okAt(q.gx + ax, q.gy + ay, 1, 1) || ['grass', 'plaza', 'road'].includes(String(map[q.gy + ay]?.[q.gx + ax])) && !occ.has((q.gy + ay) * 4096 + q.gx + ax)) { q.gx += ax; q.gy += ay; break; } } mark(q, true); } }
   }
+  /* 09/11 REGRA DE OURO (Erling: "evite elementos — poços, luzes, caixas, cadeiras, decoração — escondidos atrás de casas; gasta recurso visual à toa"):
+     a câmera olha do sul; o que fica ao norte de uma casa, até 4 casas atrás dela e dentro da largura do telhado, some atrás do telhado.
+     Decoração ali sai do mundo; baú e caixa de correio (que têm uso) vão para a frente da casa, se couber. */
+  const HOUSES_B = props.filter((q) => q.kind === 'house' || q.kind === 'temple' || q.kind === 'church' || q.kind === 'shopfront' || q.kind === 'library');
+  /* a câmera fica a sudeste (diagonal): o que está atrás de uma casa é o que, andando 1–4 casas na diagonal para sudeste, cai dentro do telhado */
+  const behindHouse = (x: number, y: number) => HOUSES_B.some((h) => { if (x >= h.gx && x < h.gx + h.w && y >= h.gy && y < h.gy + h.h) return false; for (let d = 1; d <= 4; d++) { const xx = x + d, yy = y + d; if (xx >= h.gx - 1 && xx <= h.gx + h.w && yy >= h.gy - 1 && yy <= h.gy + h.h) return true; } return false; });
+  { const DROP = new Set<PropKind>(['torch', 'vprop', 'bench', 'herb', 'plant', 'campfire']), MOVE = new Set<PropKind>(['chest', 'mailbox']);
+    const occ0 = new Set<number>(); for (const q of props) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ0.add(y * 4096 + x);
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.w !== 1 || q.h !== 1 || !(DROP.has(q.kind) || MOVE.has(q.kind)) || !behindHouse(q.gx, q.gy)) continue;
+      if (q.kind === 'herb' && !settlements.some((st) => Math.hypot(q.gx - st.x, q.gy - st.y) < st.radius + 2)) continue; /* ervas do mato longe das vilas ficam */
+      if (MOVE.has(q.kind)) { const h = HOUSES_B.slice().sort((a, b) => Math.hypot(a.gx - q.gx, a.gy - q.gy) - Math.hypot(b.gx - q.gx, b.gy - q.gy))[0]; let moved = false;
+        for (const dx of [0, 1, -1, 2, -2, 3]) { const nx = h.gx + Math.floor(h.w / 2) + dx, ny = h.gy + h.h; if (inb(nx, ny) && (map[ny][nx] === 'grass' || map[ny][nx] === 'plaza') && !occ0.has(ny * 4096 + nx) && !behindHouse(nx, ny)) { occ0.delete(q.gy * 4096 + q.gx); q.gx = nx; q.gy = ny; occ0.add(ny * 4096 + nx); moved = true; break; } }
+        if (moved) continue; }
+      props.splice(i, 1); } }
   /* QUADRO DE AVISOS EM TODA CIDADE E VILA (04/11, Erling: "a placa mural de missões da cidade, e de todas as cidades, pode ficar no
      centro, num lugar que não atrapalhe as carroças — elas não deveriam atravessar a placa"): o quadro vai para a grama, na beira da praça
      ou da rua, o mais perto do centro que der, com folga de uma casa de tudo o que já está construído e virado para a rua. */
@@ -2309,14 +2328,14 @@ function buildCity_L(): World {
     for (const q of props) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ.add(key(x, y));
     const street = (x: number, y: number) => inb(x, y) && (map[y][x] === 'road' || map[y][x] === 'plaza');
     /* 09/11 (Erling: "a placa da cidade tem que ficar de frente para a nossa visão", regra imutável): em Karmika o quadro tem lugar FIXO,
-       na beira nordeste da praça, de frente para a fonte e para a câmera; o que estiver ali (canteiro, barril, banco) sai */
-    { const bx = 52 + OFX_L + 21, by = 54 + OFY_L + 14; for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (['herb', 'vprop', 'bench', 'plant'].includes(q.kind) && Math.abs(q.gx - bx) <= 1 && Math.abs(q.gy - by) <= 1) props.splice(i, 1); }
+       ao norte da fonte, na beira da rua, de frente para a câmera; o que estiver ali (canteiro, barril, banco) sai */
+    { const bx = 52 + OFX_L + 19, by = 54 + OFY_L + 13; /* ao norte da fonte, na beira da rua (a seta do Erling, 09/11) */ for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (['herb', 'vprop', 'bench', 'plant'].includes(q.kind) && Math.abs(q.gx - bx) <= 1 && Math.abs(q.gy - by) <= 1) props.splice(i, 1); }
       if (inb(bx, by) && map[by][bx] !== 'water') { if (map[by][bx] === 'road') map[by][bx] = 'grass'; props.push({ kind: 'noticeboard', gx: bx, gy: by, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: 0 }); occ.add(key(bx, by)); } }
     const centers: { x: number; y: number; r: number }[] = [];
     for (const st of settlements) { const nh = props.filter((q) => q.kind === 'house' && Math.hypot(q.gx - st.x, q.gy - st.y) < st.radius + 4).length; if (nh < 3) continue; if (Math.hypot(st.x - CITY_L.x, st.y - CITY_L.y) < 20) continue; centers.push({ x: st.x, y: st.y, r: st.radius + 4 }); }
     for (const c of centers) { let best: { x: number; y: number; d: number; dir: number } | null = null;
       for (let y = Math.round(c.y - c.r); y <= c.y + c.r; y++) for (let x = Math.round(c.x - c.r); x <= c.x + c.r; x++) {
-        if (!inb(x, y) || map[y][x] !== 'grass') continue; const d = Math.hypot(x - c.x, y - c.y); if (d > c.r || (best && d >= best.d)) continue;
+        if (!inb(x, y) || map[y][x] !== 'grass' || behindHouse(x, y)) continue; const d = Math.hypot(x - c.x, y - c.y); if (d > c.r || (best && d >= best.d)) continue;
         let free = true; for (let yy = y - 1; yy <= y + 1 && free; yy++) for (let xx = x - 1; xx <= x + 1; xx++) if (occ.has(key(xx, yy)) || (inb(xx, yy) && (map[yy][xx] === 'water' || map[yy][xx] === 'wall'))) { free = false; break; }
         if (!free) continue;
         /* de frente para a rua (um vizinho é rua ou praça), mas sem rua dos dois lados (seria um canteiro no meio do caminho) */
