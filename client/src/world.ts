@@ -102,14 +102,16 @@ const REGIONS_L: Region[] = [
   { id: 11, name: 'Costa do Vapor e da Graxa', x: 432, y: 760, lo: 13, hi: 20, col: '#e0b878' },
   { id: 22, name: 'Recifes da Graxa', x: 590, y: 770, lo: 20, hi: 31, col: '#d0a060' },
   { id: 12, name: 'Floresta Encantada', x: 152, y: 575, lo: 31, hi: 42, col: '#b89aff' },
-  { id: 14, name: 'Colina Vampírica', x: 760, y: 280, lo: 42, hi: 53, col: '#e05a6a' },
-  { id: 15, name: 'Vale da Desgraça', x: 752, y: 450, lo: 42, hi: 53, col: '#b07ad0' },
-  { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 42, hi: 53, col: '#5ab05a' },
+  /* 09/11 (Erling: "a região do Conde não pode ser difícil: lá tem que ter monstros de nível 20–25 para as missões de classe; as regiões perto vão subindo"):
+     as três casas dos Desfiados (Conde, Vale, Selva) ficam na faixa do Capítulo I; o Desfiladeiro ao lado passa a ser o degrau seguinte (42–53) */
+  { id: 14, name: 'Colina Vampírica', x: 760, y: 280, lo: 20, hi: 25, col: '#e05a6a' },
+  { id: 15, name: 'Vale da Desgraça', x: 752, y: 450, lo: 25, hi: 31, col: '#b07ad0' },
+  { id: 16, name: 'Selva Licantropa', x: 716, y: 682, lo: 25, hi: 31, col: '#5ab05a' },
   /* 07/11 (Erling: "faltam monstros de nível 120 a 150 para quem está no topo"): AS BORDAS DO MUNDO. Longe dos três berços, nas pontas do
      mapa, a faixa sobe do 60 ao 150. O nível base para no 120: do 120 ao 150 é para grupo e para quem tem a Classe II */
   { id: 23, name: 'Picos de Jotunheim', x: 346, y: 52, lo: 53, hi: 76, col: '#c8e0ff' }, /* 07/11: saiu do vulcão; agora é a serra de gelo nórdica ao norte, entre Hrimgard e Midvangr */
   { id: 24, name: 'Pântano do Fim', x: 35, y: 690, lo: 53, hi: 76, col: '#6a8a5a' },
-  { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 76, hi: 98, col: '#9a8ab8' },
+  { id: 25, name: 'Desfiladeiro dos Lamentos', x: 828, y: 330, lo: 42, hi: 53, col: '#9a8ab8' },
   { id: 26, name: 'Costa dos Naufrágios', x: 210, y: 822, lo: 76, hi: 98, col: '#7aa8b8' },
   { id: 27, name: 'Ermos de Sheitã', x: 828, y: 560, lo: 98, hi: 125, col: '#c05a3a' },
 ];

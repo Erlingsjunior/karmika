@@ -55,6 +55,20 @@ const ROUTE: [vila: string, n: number, done: string, q: string, opts: Opt[]][] =
     { label: 'Fica três noites tocando o sino com ele.', karma: 3, flag: 'and_lund_sino', say: 'Na terceira noite, você e o Anselmo tocaram tão fora do tom que a vila inteira veio rir. Ninguém mais teve medo do sino.', why: 'Às vezes livrar do mal é só não deixar ninguém sozinho.' } ]],
 ];
 const cleric = (v: string) => CHAPELS.find((c) => c[0] === v)!;
+/* 09/11 (Erling: "ler as falas de ponta a ponta"): cada capela tem a sua conversa de partida — antes todas diziam "leve um pão" e perguntavam da
+   mesma nota do sino. [o que quem manda diz, pergunta 1, resposta 1, pergunta 2, resposta 2] */
+const ASK: Record<string, [string, string, string, string, string]> = {
+  Grenivik: ['', '', '', '', ''],
+  Vestheim: ['Vestheim fica entre o pântano e o rio. A Irmã Brígida reza com as botas na lama, literalmente.', 'O que os javalis querem nas covas?', 'Comida. Javali não tem teologia. Quem deixou a cerca aberta, sim.', 'A vila é perigosa?', 'A vila não. O pântano em volta, à noite, sim.'],
+  Vatnaholt: ['Em Vatnaholt cobram “dízimo” na porta da capela. O Irmão Matias nunca viu a cor desse dinheiro.', 'Salteadores numa capela?', 'Salteador vai aonde tem gente com medo. Capela é onde o medo se ajoelha.', 'Posso ficar com o que eles tomaram?', 'Pode perguntar isso ao Matias. Ele vai responder com uma cara que você não vai esquecer.'],
+  Skógar: ['Skógar é vila de lenhador e de caçador. Quando um deles volta da mata com a mão podre, a vila inteira para de dormir.', 'Mortos na mata de Skógar?', 'Mortos onde antes não tinha. A podridão sobe do sul, dizem os velhos. Zerath.', 'O caçador ainda tem cura?', 'A Clemência acha que sim. Ela acha que sim sobre quase tudo. Às vezes acerta.'],
+  Myrbakki: ['Myrbakki vive de turfa, e a turfa agora queima de dentro. O Irmão Cosme acende vela e os diabretes levam.', 'Diabretes roubando velas?', 'Diabrete gosta de fogo que não é dele. Vela de capela é o fogo mais fácil de roubar.', 'O Cosme é de confiança?', 'Ele estuda demais o que devia queimar. Mas é bom homem. Os dois às vezes andam juntos.'],
+  Brekkuvik: ['Em Brekkuvik as aranhas teceram a porta da capela numa noite só. A Irmã Teresa reza do lado de fora há três dias.', 'Tem gente presa lá dentro?', 'Dois fiéis. Vivos, até onde se sabe. Ande rápido.', 'Fogo resolve teia?', 'Resolve. E resolve a capela junto, se você for descuidado. Corte primeiro.'],
+  Vindholt: ['Vindholt é vila de vento e de mar. Os afogados batem na porta da capela pedindo para entrar, e a Irmã Rosana quer abrir.', 'Afogados que pedem licença?', 'Batem três vezes. Ninguém sabe se é educação ou costume de quando eram vivos.', 'E se ela abrir?', 'Então você estará lá com a espada na mão. É para isso que se manda um paladino.'],
+  Dalborg: ['Dalborg é a última vila antes da selva. Os jovens licantropos testam a cerca toda lua cheia, e o Irmão Inácio não dorme.', 'A Mãe-Alfa mandou?', 'Ela diz que não. Lobo jovem às vezes não espera mãe mandar.', 'Mato os lobos?', 'Só os que precisam morrer. Lembre que a matilha tem lei, e às vezes a vila esquece a dela.'],
+  Steinfoss: ['Steinfoss fica na beira da Garganta. O eco responde à noite, e ontem respondeu com ossos.', 'O que tem na Garganta?', 'Tudo o que caiu nela em trezentos anos. Inclusive gente nossa, dizem. Ninguém conta quem.', 'Por que o Irmão Teodoro fica lá?', 'Porque alguém tem que tocar o sino quando um cai. Ele acha que é ele.'],
+  Lundr: ['Em Lundr os lobos aprenderam a hora da última reza e vêm quando o sino toca. O Irmão Anselmo toca assim mesmo.', 'Lobos que contam sinos?', 'Lobo é bicho esperto. Mais esperto que muita gente que reza.', 'Por que ele não muda a hora?', 'Pergunte a ele. Eu acho que é teimosia. Ele acha que é fé. Às vezes é a mesma coisa.'],
+};
 
 export const WANDERER: QuestDef[] = ROUTE.map(([vila, n, doneLine, q, opts], i) => {
   const [, cl, woe, foe] = cleric(vila), prev = i === 0 ? null : cleric(ROUTE[i - 1][0]), lvl = 21 + i;
@@ -71,11 +85,9 @@ export const WANDERER: QuestDef[] = ROUTE.map(([vila, n, doneLine, q, opts], i) 
         { t: 'Quanto tempo?', a: 'Até você parar de perguntar quanto tempo. Aí você terá entendido o que é um paladino.' } ] },
       'Ande, ajude, não pregue mais do que o necessário. E volte. Os andarilhos sempre voltam, nem que seja para sair de novo.',
     ] : [
-      `Vai para ${vila}? Leve um pão. ${cl} come pouco e reza muito.`,
-      `${woe}`,
-      { r: [
-        { t: 'Alguma recomendação?', a: 'Chegue de dia. Fale baixo. Mate só o que precisa morrer.', luz: 1 },
-        { t: 'Você ouviu o sino tocar uma nota a mais?', a: 'Ouvi. Todo clérigo ouve. Ninguém afinou aquela nota. Não pergunte a mim: pergunte a quem fez o primeiro sino. Ninguém sabe quem foi.' } ] },
+      ASK[vila][0],
+      `${cl} escreveu: “${woe}”`,
+      { r: [{ t: ASK[vila][1], a: ASK[vila][2] }, { t: ASK[vila][3], a: ASK[vila][4], luz: 1 }] },
     ],
     choice: { q, opts },
     done: [doneLine, i < ROUTE.length - 1 ? `A próxima capela é a de ${ROUTE[i + 1][0]}. ${cleric(ROUTE[i + 1][0])[1]} espera há tempo demais.` : 'Você já andou por todas as capelas daqui. Volte à Abadia. O Grão-Mestre quer ouvir da sua boca.'] } satisfies QuestDef;
