@@ -39,7 +39,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     /* 09/11 (Erling: "o sábio do templo é um mago, coloque a skin de um mago; já temos todas as skins"): quem tem ofício de classe veste o modelo dela */
     if (d.kind !== 'dwarf' && d.civil !== 'elf') { const who = d.name + ' ' + d.role;
       const cls = /Bruxa|Bruxo|Pactos|Cláusulas|Sangria/.test(who) ? 'bruxo' : /Conde|Mirela|Sommelier|Noctavar|Senhora do Sangue|Adega/.test(who) ? 'vampiro' : /Mãe-Alfa|Alfa da|Varg|Matilha|Ulfrik/.test(who) ? 'lobisomem'
-        : /Paladin|Grão-Mestre|Bispa|Bispo|Abadia|Comendador|Honra Kármica|Templári|Aurora/.test(who) ? 'paladino' : /Sábio|Mago|Maga|Arquimag|Copista|Alquimist|Pináculo|Incensos|Cronista|Vidente|Orvalho/.test(who) ? 'mago'
+        : /Paladin|Grão-Mestre|Bispa|Bispo|Abadia|Comendador|Honra Kármica|Templári|Aurora|Capela de Auréon/.test(who) ? 'paladino' : /Sábio|Mago|Maga|Arquimag|Copista|Alquimist|Pináculo|Incensos|Cronista|Vidente|Orvalho/.test(who) ? 'mago'
         : d.kind === 'technocrat' ? 'technocrata' : '';
       if (cls) return { fbx: `/models/personagens/${cls}_${fem ? 'm' : 'h'}.glb`, tex: '', hscale: ART_HUMAN * (d.kind === 'technocrat' ? 0.91 / 0.81 : 1) /* o boneco do tecnocrata é encolhido para 0,81; o modelo volta à altura de gente */, npc: true }; }
     if (d.kind === 'dwarf') { const elite = /^(Rei|Mestre|Guarda Real|Thane|Conselheira)/.test(d.name); return { fbx: `/models/personagens/anao_${fem ? 'm' : 'h'}_lvl0${elite ? 3 : 2}.glb`, tex: '', hscale: ART_DWARF, npc: true }; } /* lvl02 = vestido de couro; lvl03 = com armadura */

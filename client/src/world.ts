@@ -1,3 +1,4 @@
+import { CHAPELS } from './capelas';
 import { pickSpecies, type Species } from './flora3d';
 import { pickPlant, WATER_PLANTS, type Plant } from './plantas3d';
 import { CAMPAIGN_NPCS } from './campanha';
@@ -2456,6 +2457,20 @@ function buildCity_L(): World {
   { const KX = CITY_L.x, KY = CITY_L.y + 3;
     const mv = (kind: PropKind, fx: number, fy: number, tx: number, ty: number) => { const q = props.find((p) => p.kind === kind && Math.abs(p.gx - (KX + fx)) <= 1 && Math.abs(p.gy - (KY + fy)) <= 1); if (q && inb(KX + tx, KY + ty) && map[KY + ty][KX + tx] !== 'water') { q.gx = KX + tx; q.gy = KY + ty; } };
     mv('mailbox', 1, 6, -3, 5); mv('vprop', -1, 6, 3, 7); }
+  /* AS CAPELAS DE AURÉON (09/11, Erling: "todas as vilas têm igrejas e pessoas que precisam de ajuda; o paladino é antes de tudo um andarilho
+     do bem"): cada vila humana de CHAPELS ganha uma capela inteira (não a ruína) num canto livre, com folga de uma casa de tudo, a porta para a
+     vila, um trilho até a praça e o clérigo na porta. O ângulo muda por vila (regra 19: nada repetido). */
+  for (const [vn, cleric, woe] of CHAPELS) { const st = settlements.find((q) => q.name === vn); if (!st) continue;
+    const SOFT = new Set(['herb', 'plant', 'vprop', 'rock', 'bench', 'torch', 'deadcrop', 'bones', 'grave']); const occC = new Set<number>(); for (const q of props) if (!SOFT.has(q.kind)) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occC.add(y * 4096 + x);
+    const W = 5, H = 4, a0 = (vn.length * 1.7 + vn.charCodeAt(0)) % 6.283; let spot: { gx: number; gy: number } | null = null;
+    for (let r = 5; r <= st.radius + 18 && !spot; r++) for (let k = 0; k < 32 && !spot; k++) { const a = a0 + k / 32 * 6.283, gx = Math.round(st.x + Math.cos(a) * r) - 2, gy = Math.round(st.y + Math.sin(a) * r) - 2;
+      let ok = true; for (let y = gy - 1; y <= gy + H + 1 && ok; y++) for (let x = gx - 1; x <= gx + W; x++) { if (!inb(x, y) || occC.has(y * 4096 + x) || (map[y][x] !== 'grass' && !(y === gy + H + 1 && map[y][x] === 'road'))) { ok = false; break; } }
+      if (ok) spot = { gx, gy }; }
+    if (!spot) continue; const { gx, gy } = spot; for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (SOFT.has(q.kind) && q.gx >= gx - 1 && q.gx <= gx + W && q.gy >= gy - 1 && q.gy <= gy + H + 1) props.splice(i, 1); }
+    block({ kind: 'temple', gx, gy, w: W, h: H, height: 7, wall: [0xd8ccb0, 0xc8bca0, 0xe0d4bc][vn.length % 3], roof: [0x5a4a7a, 0x6a3a3a, 0x3a4a6a][vn.charCodeAt(1) % 3] });
+    const dx = gx + 2, dy = gy + H; for (let y = dy, x = dx, n = 0; n < 40 && Math.hypot(x - st.x, y - st.y) > 2.5; n++) { if (map[y]?.[x] === 'grass') map[y][x] = 'road'; if (Math.abs(st.y - y) >= Math.abs(st.x - x)) y += Math.sign(st.y - y); else x += Math.sign(st.x - x); }
+    props.push({ kind: 'torch', gx: gx - 1, gy: gy + H, w: 1, h: 1, height: 1.9, wall: 0x3a3a3a, roof: 0xffd890 });
+    st.npcs.push({ name: cleric, role: `Capela de Auréon de ${vn}`, kind: 'nordic', x: gx + 3.4, y: gy + H + 1.1, radius: 1.2, tint: 0xe8e0c8, scale: 1.0, lines: [woe, 'Auréon não pede muito: uma vela acesa e alguém que não feche a porta.', 'A Abadia manda um paladino quando pode. Quase nunca pode. Eles andam o mundo inteiro.'] }); }
   /* QUADRO DE AVISOS EM TODA CIDADE E VILA (04/11, Erling: "a placa mural de missões da cidade, e de todas as cidades, pode ficar no
      centro, num lugar que não atrapalhe as carroças — elas não deveriam atravessar a placa"): o quadro vai para a grama, na beira da praça
      ou da rua, o mais perto do centro que der, com folga de uma casa de tudo o que já está construído e virado para a rua. */
