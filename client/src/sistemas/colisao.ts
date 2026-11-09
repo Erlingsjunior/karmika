@@ -1,4 +1,5 @@
 import { WAGON_BLOCK } from '../caravanas';
+import { greatTreeRootAngles } from '../trees3d';
 /* COLISÃO DO HERÓI (regra de ouro: mobilidade acima da física): cantos do corpo, muralhas e caminho de ronda, degraus, muros baixos e cercas, guarda-peito das pontes, sólidos do cenário, pontos de trabalho, troncos e bichos. Saiu do main.ts (02/11). */
 import { rampartAt, stairTopAt, stairDeck, heightAt, bridgeDeck, waterSD, groundH, WL } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
@@ -49,6 +50,8 @@ const SOLID_R: Record<string, number> = { rock: 0.32, chimney: 0.5, crane: 0.7, 
 const solids = new Map<number, { x: number; y: number; r: number }[]>();
 const solidAdd = (c: { x: number; y: number; r: number }) => { for (let ty = Math.floor(c.y - c.r - 0.3); ty <= Math.floor(c.y + c.r + 0.3); ty++) for (let tx = Math.floor(c.x - c.r - 0.3); tx <= Math.floor(c.x + c.r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } };
 /* a Árvore-Mãe caída (27/10): só o tronco barra, em círculos ao longo dele; o terreno em volta é chão */
+/* 09/11 a Árvore-Mãe viva: as raízes têm corpo (os mesmos ângulos do desenho, trees3d), onde saem da terra */
+for (const p of K.city.props) if (p.kind === 'monument' && p.variant === 11) { const cx = p.gx + p.w / 2, cy = p.gy + p.h / 2, r0 = Math.min(p.w, p.h) * T * 0.25 / T; for (const a of greatTreeRootAngles()) for (const k of [1.05, 1.22]) solidAdd({ x: cx + Math.sin(a) * r0 * k, y: cy + Math.cos(a) * r0 * k, r: 0.55 }); }
 for (const p of K.city.props) if (p.kind === 'monument' && p.variant === 7) for (let k = 0; k < 6; k++) solidAdd({ x: p.gx + 1.5 + k * 3.1, y: p.gy + p.h / 2 - 1, r: 2.8 });
 for (const p of K.city.props) { const r0 = p.kind === 'vprop' && (p.variant === 2 || p.variant === 6) ? 0.7 : SOLID_R[p.kind]; if (r0 === undefined) continue; /* poço e feno: sólidos inteiros */ const r = r0 < 0 ? Math.min(p.w, p.h) * 0.47 : r0, c = { x: p.gx + p.w / 2, y: p.gy + p.h / 2, r };
   for (let ty = Math.floor(c.y - r - 0.3); ty <= Math.floor(c.y + r + 0.3); ty++) for (let tx = Math.floor(c.x - r - 0.3); tx <= Math.floor(c.x + r + 0.3); tx++) { const k = ty * 4096 + tx; const l = solids.get(k); if (l) l.push(c); else solids.set(k, [c]); } }

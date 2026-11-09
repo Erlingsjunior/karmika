@@ -163,14 +163,25 @@ export function buildTree(height: number, h: number): { obj: THREE.Group; kind: 
 /* 08/11 A ÁRVORE-MÃE DE LITHENDEL: a árvore viva, imensa, no meio da vila dos elfos. Tronco retorcido (o mesmo gerador, 5× maior),
    copa de cartões de folha em dois tons (verde-prata e verde-dourado), plataformas de madeira em volta do tronco com guarda-corpo de
    galho, escada em espiral de degraus de madeira, lanternas penduradas. Devolve o grupo e os pontos das lanternas (para o fogo e a luz). */
+/** os ângulos das raízes da Árvore-Mãe (0 = sul, para a câmera/porta); a colisão usa os mesmos */
+export function greatTreeRootAngles(): number[] { const out: number[] = []; for (let k = 0; k < 11; k++) { const a = k / 11 * Math.PI * 2 + 0.2; const d = Math.atan2(Math.sin(a), Math.cos(a)); if (Math.abs(d) < 0.75) continue; out.push(a); } return out; }
 const elfLeafMat = windify(new THREE.MeshToonMaterial({ map: leafTexture(['#6fa66a', '#a8c870', '#4f8a5c', '#d6c46a']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp }), 0.05, 1.0);
 export function buildGreatTree(scale = 6): { obj: THREE.Group; lanterns: THREE.Vector3[]; platforms: { y: number; r: number }[] } {
   const g = new THREE.Group(), rnd = mulberry(4242); const lanterns: THREE.Vector3[] = [];
   const out: THREE.BufferGeometry[] = []; const tips: { p: THREE.Vector3; d: THREE.Vector3 }[] = [];
   grow(rnd, out, tips, new THREE.Vector3(0, -0.3, 0), new THREE.Vector3(0.05, 1, 0.02), 3.6, 0.5, 3, 0.4);
   const bark = new THREE.Mesh(mergeGeometries(out, false)!, barkMat); bark.castShadow = bark.receiveShadow = true; bark.scale.setScalar(scale); g.add(bark);
-  /* raízes largas na base */
-  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + rnd() * 0.3, L = (2.2 + rnd() * 1.6) * scale * 0.5; const root = new THREE.Mesh(new THREE.ConeGeometry(0.45 * scale * 0.5, L, 6), barkMat); root.position.set(Math.cos(a) * L * 0.45, 0.25, Math.sin(a) * L * 0.45); root.rotation.z = Math.PI / 2 + 0.25; root.rotation.y = -a; root.castShadow = true; g.add(root); }
+  /* 09/11 (Erling: "as raízes da grande árvore passam sem física, atravessam pontes e NPCs; menores, com física, nunca na porta nem na ponte nem onde
+     tem NPC; mais orgânicas, que se afundam no chão e seguem entrando no seio da terra sustentando a árvore"): cada raiz sai do tronco a ~2 m de altura,
+     faz um arco curto e mergulha na terra a no máximo ~1,5 m do tronco — tudo dentro do anel que já bloqueia o passo. Nenhuma na face sul (a Passagem). */
+  { const r0 = 0.5 * scale, parts: THREE.BufferGeometry[] = [];
+    for (const a of greatTreeRootAngles()) { const dx = Math.sin(a), dz = Math.cos(a), sx = Math.cos(a), sz = -Math.sin(a), w = (rnd() - 0.5) * 0.9;
+      const P = [[0.8, 2.4, 0], [1.0, 1.5, w * 0.5], [1.18, 0.6, w], [1.28, -0.2, w * 1.2], [1.32, -1.4, w * 1.1]].map(([k, y, l]) => new THREE.Vector3(dx * r0 * k + sx * l, y, dz * r0 * k + sz * l));
+      const R = [1.25, 0.95, 0.7, 0.5, 0.32].map((q) => q * scale / 9);
+      for (let i = 0; i < P.length - 1; i++) { const A = P[i], B = P[i + 1], L = A.distanceTo(B), c = new THREE.CylinderGeometry(R[i + 1], R[i], L + R[i] * 0.6, 7, 1);
+        const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), B.clone().sub(A).normalize()); c.applyQuaternion(q); c.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2); parts.push(c);
+        const j = new THREE.SphereGeometry(R[i] * 1.02, 7, 5); j.translate(A.x, A.y, A.z); parts.push(j); } }
+    const roots = new THREE.Mesh(mergeGeometries(parts.map((q) => q.index ? q.toNonIndexed() : q), false)!, barkMat); roots.castShadow = roots.receiveShadow = true; g.add(roots); }
   /* copa: cartões maiores nos galhos, em dois tons */
   const cards: THREE.BufferGeometry[] = [];
   for (const t of tips) { if (t.p.y < 2.6) continue; for (let k = 0; k < 4; k++) { const q = new THREE.PlaneGeometry(2.0 + rnd() * 1.2, 1.5 + rnd() * 0.9); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.2); q.rotateZ((rnd() - 0.5) * 0.9); q.translate(t.p.x + (rnd() - 0.5) * 0.9, t.p.y + (rnd() - 0.2) * 0.8, t.p.z + (rnd() - 0.5) * 0.9); cards.push(q); } }
@@ -191,5 +202,19 @@ export function buildGreatTree(scale = 6): { obj: THREE.Group; lanterns: THREE.V
     const lum = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.5), new THREE.MeshBasicMaterial({ color: 0x3a90b0, transparent: true, opacity: 0.55 })); lum.position.set(0, 0.95, r0 + 0.04); g.add(lum);
     for (const s of [-1, 1]) { const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.14, 2.1, 6), rail); post.position.set(s * 1.0, 1.05, r0 + 0.1); g.add(post); lanterns.push(new THREE.Vector3(s * 1.25, 2.3, r0 + 0.4)); }
     for (let k = 0; k < 5; k++) { const st = new THREE.Mesh(new THREE.BoxGeometry(2.4 - k * 0.2, 0.14, 0.5), wood); st.position.set(0, 0.07 + k * 0.14, r0 + 1.6 - k * 0.42); g.add(st); } }
+  /* 09/11 (Erling: "a entrada precisa ser mais bonita: uma escada espiral que nos traz até aqui, ou um elevador de cipó, algo mais chamativo"):
+     a ESCADA DA COPA — degraus de tábua presos ao tronco por mãos-francesas, subindo em espiral da Passagem da Raiz (sul) até a primeira plataforma,
+     com corrimão de cipó e lanternas azuis a cada quarto de volta. É o caminho que se vê; a Passagem (E) é que leva de fato à Copa. */
+  { const r0 = 0.5 * scale, top = platforms[0].y, N = 54, turn = Math.PI * 2 * 1.05, rIn = r0 + 0.35, rOut = r0 + 1.75, stepG: THREE.BufferGeometry[] = [], railG: THREE.BufferGeometry[] = [], vine: THREE.Vector3[] = [];
+    for (let i = 0; i < N; i++) { const t = (i + 1) / N, a = Math.PI / 2 + 0.55 + t * turn, y = 2.3 + t * (top - 2.3), mx = Math.cos(a) * (rIn + rOut) / 2, mz = Math.sin(a) * (rIn + rOut) / 2;
+      const st = new THREE.BoxGeometry(rOut - rIn, 0.12, 0.62); st.rotateY(-a); st.translate(mx, y, mz); stepG.push(st);
+      if (i % 3 === 0) { const br = new THREE.CylinderGeometry(0.06, 0.09, 1.3, 5); br.rotateZ(0.75); br.rotateY(-a); br.translate(Math.cos(a) * (rIn + 0.35), y - 0.55, Math.sin(a) * (rIn + 0.35)); railG.push(br); }
+      if (i % 2 === 0) { const po = new THREE.CylinderGeometry(0.04, 0.05, 1.0, 5); po.translate(Math.cos(a) * (rOut - 0.08), y + 0.5, Math.sin(a) * (rOut - 0.08)); railG.push(po); }
+      vine.push(new THREE.Vector3(Math.cos(a) * (rOut - 0.08), y + 1.0, Math.sin(a) * (rOut - 0.08)));
+      if (i % 13 === 6) lanterns.push(new THREE.Vector3(Math.cos(a) * (rOut + 0.15), y + 1.35, Math.sin(a) * (rOut + 0.15))); }
+    railG.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(vine), 120, 0.05, 5, false));
+    const stM = new THREE.MeshToonMaterial({ color: 0xb8a070, gradientMap: ramp }), rlM = new THREE.MeshToonMaterial({ color: 0x5a7a3a, gradientMap: ramp });
+    const steps = new THREE.Mesh(mergeGeometries(stepG.map((q) => q.index ? q.toNonIndexed() : q), false)!, stM); steps.castShadow = steps.receiveShadow = true; g.add(steps);
+    const rails = new THREE.Mesh(mergeGeometries(railG.map((q) => q.index ? q.toNonIndexed() : q), false)!, rlM); rails.castShadow = true; g.add(rails); }
   return { obj: g, lanterns, platforms };
 }

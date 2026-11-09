@@ -2095,7 +2095,7 @@ function buildCity_L(): World {
        na vila é coisa simples (barracão de corte, forja ao ar livre, mesa do curtidor, apotecário pequeno, a cozinha dos fundos da taverna).
        As vilas de vapor (Porto Caldeira, Ferrugem, Vaporeira) têm também a Oficina de Latão. Árvore e pedra solta cedem o lugar. */
     const SOFTK = new Set<string>(SOFT_KINDS);
-    const hard = new Set<number>(); for (const p of props) { if (SOFTK.has(p.kind as string)) continue; for (let y = p.gy - 1; y <= p.gy + p.h; y++) for (let x = p.gx - 1; x <= p.gx + p.w; x++) hard.add(y * 100000 + x); }
+    const hard = new Set<number>(); for (const p of props) { if (SOFTK.has(p.kind as string)) continue; const lith = settlements.find((q) => q.name === 'Lithendel'), mg = p.kind === 'house' && lith && Math.hypot(p.gx - lith.x, p.gy - lith.y) < lith.radius + 8 ? 2 : 1; /* 09/11 (Erling: "construção de trabalho ao lado da casa, quase não dá para passar"): as casas élficas pedem duas casas de folga (o beiral redondo sai muito) */ for (let y = p.gy - mg; y < p.gy + p.h + mg; y++) for (let x = p.gx - mg; x < p.gx + p.w + mg; x++) hard.add(y * 100000 + x); }
     for (const p of props) if (p.kind === 'vgate' || p.kind === 'gatehouse') { const R = Math.ceil(((p.len ?? 6) / T) / 2) + 2; for (let y = p.gy - R; y <= p.gy + R; y++) for (let x = p.gx - R; x <= p.gx + R; x++) hard.add(y * 100000 + x); } /* pórtico da vila: nada encosta nele */
     const TECH = new Set(['Porto Caldeira', 'Ferrugem', 'Vaporeira']);
     for (const t of settlements) { if (t.radius < 10) continue; /* cripta e clareira não são povoado */

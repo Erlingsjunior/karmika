@@ -100,7 +100,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
          quando o modelo já está encaixado — o boneco procedural fica escondido como esqueleto e nunca é visto. Sem modelo (guardas, patrulhas), aparece direto. */
       skinNear(n, dH);
       if (n.skin === 1 && !n.skinTick) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
-      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z) + (d.yOff ?? 0); n.hero.root.position.copy(n.pos); }
+      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = (d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z)) + (d.yOff ?? 0); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);
@@ -121,7 +121,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       /* 09/11 (Erling: "a carroça atravessando ela"): carroça é corpo. Se uma passa por cima do NPC, ele dá um passo para o lado (para fora da caixa) */
       if (!d.inside && WAGON_BLOCK.length) for (const b of WAGON_BLOCK) { const dx = n.pos.x - b.x, dz = n.pos.z - b.z; if (dx * dx + dz * dz > 64) continue; const sn = Math.sin(b.yaw), cs = Math.cos(b.yaw), lx = dx * cs - dz * sn, lz = dx * sn + dz * cs - b.zc;
         if (Math.abs(lx) < b.hw + 0.5 && Math.abs(lz) < b.hl + 0.3) { const side = lx >= 0 ? 1 : -1, want = side * (b.hw + 0.6), step = Math.min(Math.abs(want - lx), dt * 2.2) * side; const nx = n.pos.x + step * cs, nz = n.pos.z - step * sn; if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; mps = Math.max(mps, 0.8); } break; } }
-      n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z) + (d.yOff ?? 0);
+      n.pos.y = (d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z)) + (d.yOff ?? 0);
       n.hero.root.position.copy(n.pos);
       n.hero.setNight(night); n.hero.setWind(gust);
       if (dH < 30 || mps > 0 || (n.lodT = (n.lodT ?? 0) + dt) > 0.25) { n.lodT = 0; n.hero.update(dH < 30 ? dt : 0.25, t, mps, head); n.skinTick?.(); } /* FPS (27/10): quem está parado e longe anima a 4 quadros por segundo */
