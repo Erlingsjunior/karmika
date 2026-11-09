@@ -207,17 +207,18 @@ function crossQuad(w: number, h: number) {
 export interface ChunkTerrain { group: THREE.Group; dispose(): void }
 
 /** terreno de um chunk: malha com relevo, água, vegetação rasteira, juncos e pedras da margem */
-export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrain {
+/** 09/11 (revisão de FPS): o relevo do chunk é montado aos pedaços — `over()` diz quando o quadro estourou o tempo e o gerador pausa */
+export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () => boolean): Generator<void, ChunkTerrain, void> {
   const grp = new THREE.Group();
   const own: THREE.BufferGeometry[] = [];
   const ox = cx * CSM, oz = cy * CSM, d = CSM / SEG, N = SEG + 1;
   const R = rng((cx * 73856093) ^ (cy * 19349663) ^ 0x9e37);
   /* alturas com margem de 1 vértice (normais por diferença central) */
   const W2 = SEG + 3, hs = new Float32Array(W2 * W2);
-  for (let j = 0; j < W2; j++) for (let i = 0; i < W2; i++) hs[j * W2 + i] = groundH(ox + (i - 1) * d, oz + (j - 1) * d);
+  for (let j = 0; j < W2; j++) { if (over()) yield; for (let i = 0; i < W2; i++) hs[j * W2 + i] = groundH(ox + (i - 1) * d, oz + (j - 1) * d); }
   const cuA = new Float32Array(N * N * 4), pos = new Float32Array(N * N * 3), nor = new Float32Array(N * N * 3), col = new Float32Array(N * N * 3), pl = new Float32Array(N * N), cs = new Float32Array(N * N), dep = new Float32Array(N * N), sds = new Float32Array(N * N), sp1 = new Float32Array(N * N * 4), sp2 = new Float32Array(N * N * 4);
   let anyWater = false;
-  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+  for (let j = 0; j < N; j++) { if (over()) yield; for (let i = 0; i < N; i++) {
     const k = j * N + i, xm = ox + i * d, zm = oz + j * d, h = hs[(j + 1) * W2 + (i + 1)];
     const hx = hs[(j + 1) * W2 + (i + 2)] - hs[(j + 1) * W2 + i], hz = hs[(j + 2) * W2 + (i + 1)] - hs[j * W2 + (i + 1)];
     const nx = -hx / (2 * d), nz = -hz / (2 * d), nl = Math.hypot(nx, 1, nz);
@@ -261,7 +262,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
       sp1[k * 4] = roadW; sp1[k * 4 + 1] = pw; sp1[k * 4 + 2] = wMud * (1 - rw); sp1[k * 4 + 3] = forestW * (1 - wMud);
       sp2[k * 4] = wPeb * (1 - rw); sp2[k * 4 + 1] = sk; sp2[k * 4 + 2] = Math.min(1, (zw.coast ?? 0) * 1.2) * (1 - rw); sp2[k * 4 + 3] = wild; }
     col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
-  }
+  } }
   const idx: number[] = [];
   for (let j = 0; j < SEG; j++) for (let i = 0; i < SEG; i++) { const a = j * N + i, b = a + 1, c = a + N, e = c + 1; idx.push(a, c, b, b, c, e); }
   const gg = new THREE.BufferGeometry();
@@ -289,7 +290,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   const grassSpots: { x: number; z: number; b: Biome }[] = [];
   // grama pela metade e só em manchas (ruído): campos e pântano têm; neve e rocha quase nada
   const DENS: Record<Biome, number> = { meadow: 5.5, forest: 3.2, swamp: 5, snow: 0.3, ruins: 1.2, rock: 0.3, volcanic: 0.1, enchanted: 3, blight: 1.2, jungle: 4.5, coast: 0.8 };
-  for (let ty = cy * CS; ty < (cy + 1) * CS; ty++) for (let tx = cx * CS; tx < (cx + 1) * CS; tx++) {
+  for (let ty = cy * CS; ty < (cy + 1) * CS; ty++) { if (over()) yield; for (let tx = cx * CS; tx < (cx + 1) * CS; tx++) {
     if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H || w.map[ty][tx] !== 'grass') continue;
     if (fbm(tx * 0.13, ty * 0.13, 61) < 0.42) continue; // manchas de grama, não tapete
     const bm = w.biome[ty][tx], n = DENS[bm] + (R() < (DENS[bm] % 1) ? 1 : 0);
@@ -299,7 +300,7 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
       if (tileW(w, x / T, z / T, (t) => t === 'road' || t === 'plaza') > 0.25) continue;
       grassSpots.push({ x, z, b: bm });
     }
-  }
+  } }
   if (grassSpots.length) {
     /* 26/10 (Erling: "a grama está quebrando o cenário: menos quadrada, mais suave e macia, tons de verde bonitos, balança e se abre
        quando passamos"): touceira de lâminas de verdade (malha, sem textura serrilhada), cor por vértice do pé escuro à ponta clara,
@@ -355,3 +356,4 @@ export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrai
   }
   return { group: grp, dispose() { for (const g of own) g.dispose(); grp.traverse((m) => { if ((m as THREE.InstancedMesh).isInstancedMesh) (m as THREE.InstancedMesh).dispose(); }); } };
 }
+export function buildChunkTerrain(cx: number, cy: number, w: World): ChunkTerrain { const it = buildChunkTerrainG(cx, cy, w, () => false); for (;;) { const r = it.next(); if (r.done) return r.value; } }

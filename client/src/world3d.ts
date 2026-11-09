@@ -30,7 +30,7 @@ import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
 import { windU } from './terrain3d';
 import { ArtBatch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
-import { buildChunkTerrain, CS, CSM, type ChunkTerrain } from './chunks3d';
+import { buildChunkTerrainG, CS, CSM, type ChunkTerrain } from './chunks3d';
 
 export interface Torch { pos: THREE.Vector3; light: THREE.PointLight; base: number; seed: number; flame: THREE.Mesh; dist: number }
 export interface WorldObjs {
@@ -697,8 +697,15 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
     relicsA.length = 0; spinA.length = 0;
     for (const L of [...loaded.values(), dynL]) { torchesA.push(...L.torches); glowA.push(...L.glows); treesA.push(...L.trees); smokersA.push(...L.smokers); if (L.relics) relicsA.push(...L.relics); if (L.spin) spinA.push(...L.spin); }
   }
-  function loadChunk(cx: number, cy: number, k: number) {
-    const L: Loaded = { terrain: buildChunkTerrain(cx, cy, world), group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] };
+  /* 09/11 (Erling: "o FPS está alterando muito"): montar um chunk inteiro de uma vez custava 30–100 ms num quadro só — o tranco ao andar.
+     Agora a montagem é um gerador: o relevo, depois os objetos em lotes, depois as fusões; cada quadro gasta no máximo ~5 ms nela e
+     continua no seguinte. O chunk só entra na cena quando está pronto (nada aparece pela metade). */
+  let jobDeadline = Infinity; const overBudget = () => performance.now() > jobDeadline;
+  function loadChunk(cx: number, cy: number, k: number) { const it = loadChunkG(cx, cy, k); jobDeadline = Infinity; while (!it.next().done) { /* tudo de uma vez */ } }
+  function* loadChunkG(cx: number, cy: number, k: number): Generator<void, void, void> {
+    const terrain = yield* buildChunkTerrainG(cx, cy, world, overBudget);
+    const L: Loaded = { terrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] };
+    if (overBudget()) yield;
     L.group.add(L.terrain.group);
     L.treeG = []; L.treeMerged = [];
     L.staticG = []; L.staticMerged = [];
@@ -713,11 +720,14 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
         else if (ek.west > 0.5 && R() < 0.25) extra.push({ kind: 'tree', gx, gy, w: 1, h: 1, height: 4 + R() * 2, wall: 0x3a2a1c, roof: 0x2a3a22, variant: 1 });
       }
     }
-    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; if (NOCUT_KINDS.has(p.kind)) noCut(pg, NOCUT_MERGE.has(p.kind)); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
+    for (const p of [...(byChunk.get(k) ?? []), ...extra]) { if (overBudget()) yield; if ((p as Prop & { gone?: boolean }).gone) continue; try { const pg = buildProp(p, L); pg.userData.kind = p.kind; if (NOCUT_KINDS.has(p.kind)) noCut(pg, NOCUT_MERGE.has(p.kind)); try { registerSteps(pg, p); } catch { /* */ } if (p.kind === 'tree') L.treeG.push(pg); else if (STATIC_KINDS.has(p.kind)) L.staticG.push(pg); else L.group.add(pg); propG.set(p, { g: pg, L }); } catch (e) { console.error('prop', p.kind, e); } }
     /* 03/11: modelos do Herik marcados pelos props (árvores, plantas, pedras, vila) viram UM InstancedMesh por modelo no chunk */
     L.artPG = []; for (const [pp, e] of propG) if (e.L === L) { let has = false; e.g.traverse((o) => { if (o.userData.art) has = true; }); if (has) L.artPG.push([pp, e.g]); }
+    if (overBudget()) yield;
     rebuildArt(L);
-    L.trees.length = 0; mergeTrees(L); mergeChunkProps(L);
+    if (overBudget()) yield;
+    L.trees.length = 0; mergeTrees(L); if (overBudget()) yield; yield* mergeChunkPropsG(L, overBudget);
+    if (overBudget()) yield;
     /* congela as matrizes do que não se mexe: com ~30 mil objetos no mundo, recalcular todas a cada quadro custava ~20 ms */
     L.group.updateMatrixWorld(true);
     L.group.traverse((o) => { if (o.userData.dyn || o.userData.sway) return; o.matrixAutoUpdate = false; });
@@ -743,7 +753,7 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
     L.group.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.geometry && !m.userData.shared) m.geometry.dispose(); if ((m as unknown as THREE.InstancedMesh).isInstancedMesh) (m as unknown as THREE.InstancedMesh).dispose(); });
     L.treeG = []; L.staticG = []; L.trees = []; L.torches = []; L.glows = []; L.smokers = []; L.relics = []; L.spin = []; rebuildLists();
   }
-  let lastCx = -99, lastCy = -99, queue: [number, number, number][] = [];
+  let lastCx = -99, lastCy = -99, queue: [number, number, number][] = [], job: { k: number; it: Generator<void, void, void> } | null = null;
   let RAD = 2;
   function update(hx: number, hz: number, sync = false) {
     const cx = Math.floor(hx / CSM), cy = Math.floor(hz / CSM);
@@ -756,8 +766,11 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
       queue.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
       for (const k of [...loaded.keys()]) { const x = k % KX - MARGIN, y = Math.floor(k / KX) - MARGIN; if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) > RAD + 1) unloadChunk(k); }
     }
-    let n = sync ? 999 : 1;
-    while (queue.length && n-- > 0) { const [x, y, k] = queue.shift()!; if (!loaded.has(k)) loadChunk(x, y, k); }
+    if (sync) { if (job) { jobDeadline = Infinity; while (!job.it.next().done) { /* termina */ } job = null; } while (queue.length) { const [x, y, k] = queue.shift()!; if (!loaded.has(k)) loadChunk(x, y, k); } }
+    else { jobDeadline = performance.now() + 5; let started = 0;
+      while (true) { if (!job) { if (!queue.length || started >= 1) break; const [x, y, k] = queue.shift()!; if (loaded.has(k)) continue; job = { k, it: loadChunkG(x, y, k) }; started++; }
+        if (job.it.next().done) job = null; else break; if (overBudget()) break; }
+      jobDeadline = Infinity; }
     /* distribui as luzes reais às fontes mais próximas — com histerese, para a luz não "pular" de uma fonte para outra */
     const hp = tmpV.set(hx, 0, hz);
     assign(torchesA as unknown as LS[], tPool, tSlot, hp, (tc, l) => { l.position.set(tc.pos.x, tc.pos.y + 0.3, tc.pos.z); });
@@ -859,13 +872,15 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
     for (const buckets of cells.values()) for (const [mat, geos] of buckets) { const merged = mergeGeometries(geos, false); for (const gg of geos) gg.dispose(); if (!merged) continue; merged.computeBoundingSphere(); const mesh = new THREE.Mesh(merged, mat); mesh.castShadow = true; mesh.receiveShadow = false; L.group.add(mesh); L.treeMerged!.push(mesh); }
   }
   /** props imóveis do chunk (casas, templos, rochas, bancos…) viram UMA malha por textura, em células de 20 m: um bairro inteiro em ~20 draw calls */
-  function mergeChunkProps(L: Loaded) {
+  function mergeChunkProps(L: Loaded) { const it = mergeChunkPropsG(L, () => false); while (!it.next().done) { /* */ } }
+  function* mergeChunkPropsG(L: Loaded, over: () => boolean): Generator<void, void, void> {
     for (const m of L.staticMerged ?? []) { L.group.remove(m); m.geometry.dispose(); } L.staticMerged = [];
     type B = { mat: THREE.Material; geos: THREE.BufferGeometry[]; shadow: boolean; vc: boolean };
     const cells = new Map<string, Map<string, B>>();
     const inv = new THREE.Matrix4(); L.group.updateMatrixWorld(true); inv.copy(L.group.matrixWorld).invert();
     const col = new THREE.Color(), tmpM = new THREE.Matrix4();
     for (const pg of L.staticG ?? []) {
+      if (over()) yield;
       if (pg.parent !== L.group) L.group.add(pg); // garante matrixWorld coerente
       pg.updateMatrixWorld(true); const ck = `${Math.floor(pg.position.x / 20)}:${Math.floor(pg.position.z / 20)}`;
       let buckets = cells.get(ck); if (!buckets) { buckets = new Map(); cells.set(ck, buckets); }
@@ -893,6 +908,7 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
       let left = false; pg.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible && !skip.has(o)) left = true; if ((o as THREE.Mesh).isMesh && skip.has(o)) left = true; }); if (!left) L.group.remove(pg);
     }
     for (const buckets of cells.values()) for (const b of buckets.values()) {
+      if (over()) yield;
       const merged = mergeGeometries(b.geos, false); for (const gg of b.geos) gg.dispose(); if (!merged) continue;
       merged.computeBoundingSphere(); const mesh = new THREE.Mesh(merged, b.mat); mesh.castShadow = b.shadow; mesh.receiveShadow = true; L.group.add(mesh); L.staticMerged!.push(mesh);
     }
