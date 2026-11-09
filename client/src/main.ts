@@ -2367,7 +2367,7 @@ function openRelics(...a: Parameters<ReturnType<typeof createReliquias>['openRel
 
 /* 07/11: os navios da Companhia de Latão (cais no continente e nas ilhas) — criado na primeira vez que o quadro pede */
 let naviosSys: ReturnType<typeof createNavios> | null = null, faroisSys: ReturnType<typeof createFarois> | null = null;
-const navios = () => (naviosSys ??= createNavios({ scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
+const navios = () => (naviosSys ??= createNavios({ hour: () => gameHour(), scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
 function findInter(): Inter | null {
   const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null;
   const add = (d: number, max: number, label: string, act: () => void) => { if (d < max && (!best || d < best.d)) best = { d, label, act }; };

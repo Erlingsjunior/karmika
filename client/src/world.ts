@@ -818,7 +818,8 @@ function buildCity_L(): World {
      com plataformas e lanternas; clareira de pedra musgosa em volta; casas redondas de madeira clara com telhado de folhas em anéis ao redor;
      a Fonte da Visão, canteiros de flores por toda parte, lanternas, bancos; elfos morando e trabalhando. Sem muro: a floresta é o muro. */
   const lithendel = (st: Settlement, rr: () => number, lore: string) => {
-    const cx = st.x, cy = st.y, R0 = 16; st.radius = R0; clearWater(cx, cy, R0 + 3); flatten(cx, cy, R0 + 4);
+    /* 09/11 (Erling: "aumento da cidade e dos muros, a entrada mais longe"): raio 16 → 22; o pórtico e o muro baixo vão junto */
+    const cx = st.x, cy = st.y, R0 = 22; st.radius = R0; clearWater(cx, cy, R0 + 3); flatten(cx, cy, R0 + 4);
     for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.hypot(q.gx - cx, q.gy - cy) < R0 + 4 && q.kind !== 'fountain') props.splice(i, 1); }
     /* a clareira: laje musgosa no centro e caminhos em estrela até as casas; o resto fica capim (a cultura élfica pinta o chão) */
     const inClear = (x: number, y: number) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < 7.5 + 1.2 * Math.sin(a * 5 + 1); };
@@ -848,6 +849,23 @@ function buildCity_L(): World {
     for (const [x, y, v] of [[cx + 3, cy + 2, 0], [cx - 4, cy - 2, 1], [cx - 2, cy + 4, 0], [cx + 2, cy - 4, 1]] as [number, number, number][]) decorAt('bench', x, y, 1, 1, v, 0x9a7a52, 0x8a9a80);
     vpAt(0, cx - 7, cy + 3); vpAt(1, cx + 7, cy - 2); vpAt(6, cx - 8, cy - 4); vpAt(7, cx + 6, cy + 9);
     vpAt(5, cx + 1, cy + R0 - 1); vpAt(5, cx + R0 - 2, cy + 1); vpAt(5, cx - R0 + 1, cy - 1);
+    /* 09/11 (Erling: "preencher melhor a cidade: mais itens de trabalho, decoração, postes de luz"): um segundo anel de casas no campo novo,
+       lanternas pelas quatro estradas, e cestos, barris, caixotes e lenha nos quintais */
+    for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2 + 0.22, r = 18.5 + (k % 2) * 1.5; house(Math.round(cx + Math.cos(a) * r) - 2, Math.round(cy + Math.sin(a) * r) - 2, 4, 4, k % 2, [0, 1, 2][k % 3]); }
+    for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) for (let d = 10; d <= R0 + 6; d += 4) { const sd = (d / 4) % 2 ? 2 : -2, x = cx + ux * d - uy * sd, y = cy + uy * d + ux * sd; if (inb(x, y) && map[y][x] !== 'water' && map[y][x] !== 'wall' && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 2.0, wall: 0x9a7a52, roof: 0x9ad8ff }); }
+    for (let k = 0; k < 18; k++) { const a = rr() * 6.283, r = 11 + rr() * 9; vpAt([0, 1, 6, 7, 2, 4][k % 6], Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r)); }
+    /* 09/11 (Erling: "deque de pesca que se estende para o lindo lago"): o píer de tábuas sai da margem do lago mais perto e entra 8 casas na água */
+    { let best: { x: number; y: number; ux: number; uy: number; d: number } | null = null;
+      for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, ux = Math.cos(a), uy = Math.sin(a);
+        for (let d = 8; d <= R0 + 26; d++) { const x = Math.round(cx + ux * d), y = Math.round(cy + uy * d); if (!inb(x, y)) break; if (map[y][x] !== 'water') continue;
+          let run = 0; for (let e = 0; e < 10; e++) { const xx = Math.round(cx + ux * (d + e)), yy = Math.round(cy + uy * (d + e)); if (inb(xx, yy) && map[yy][xx] === 'water') run++; else break; }
+          if (run >= 9 && (!best || d < best.d)) best = { x: cx + ux * (d - 2), y: cy + uy * (d - 2), ux, uy, d }; break; } }
+      if (best) { const b = { ax: best.x + 0.5, ay: best.y + 0.5, bx: best.x + best.ux * 10 + 0.5, by: best.y + best.uy * 10 + 0.5, hA: 0, hB: 0, half: 1.3, hump: 0 }; b.hA = groundH_L(b.ax * T, b.ay * T); b.hB = b.hA; bridges.push(b);
+        /* barcos de pesca dos elfos amarrados dos dois lados do píer */
+        const px = -best.uy, py = best.ux, wide = Math.abs(best.ux) > Math.abs(best.uy);
+        for (let k = 0; k < 3; k++) { const sd = k % 2 ? 1 : -1, bx2 = Math.round(best.x + best.ux * (4 + k * 2.6) + px * 2.6 * sd), by2 = Math.round(best.y + best.uy * (4 + k * 2.6) + py * 2.6 * sd), bw = wide ? 4 : 2, bh = wide ? 2 : 4;
+          let wet = true; for (let y = by2; y < by2 + bh; y++) for (let x = bx2; x < bx2 + bw; x++) if (!inb(x, y) || map[y][x] !== 'water') wet = false; if (wet) props.push({ kind: 'boat', gx: bx2, gy: by2, w: bw, h: bh, height: 1, wall: 0x6a4a2c, roof: 0xd8c8a0, variant: k % 3 }); }
+        pois.push({ name: 'Píer do Lago de Lithendel', x: Math.round(best.x + best.ux * 6), y: Math.round(best.y + best.uy * 6), biome: 'meadow' }); } }
     pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
     const E = (name: string, role: string, x: number, y: number, radius: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind: 'nordic', x, y, radius, tint, scale: 1.02, lines, ...(shop ? { shop } : {}) });
     E('Arqueira Lindoriel', 'Arcos de Lithendel · élfica', cx - 11.5, cy - 6.2, 1.2, 0x5a8a5a, ['Um arco de teixo dura mais que quem o puxa.', 'Flecha que erra ensina. A segunda não erra.'], 'armeiro');
@@ -1992,7 +2010,7 @@ function buildCity_L(): World {
       /* relax = 1 (03/11): a Toca do Covil dos Lobos não achava lugar e sumia do mapa ("calabouço sem lugar"). Na segunda busca o miolo
          aceita qualquer chão firme (mata, terra, pedra), a distância de outra entrada cai para 28 casas e a busca vai a 120 casas */
       const okSpot = (x: number, y: number, relax = 0) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = map[y + dy]?.[x + dx]; if (!t || t === 'water' || t === 'wall') return false; const core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core && ((relax ? false : t !== 'grass') || occ.has((y + dy) * 100000 + x + dx))) return false; }
-        if (settlements.some((t) => Math.hypot(t.x - x, t.y - y) < t.radius + (t.name === 'Karmika' ? 36 : 30))) return false; if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < (relax ? 28 : 40))) return false; return true; };
+        if (settlements.some((t) => Math.hypot(t.x - x, t.y - y) < t.radius + (t.name === 'Karmika' ? 36 : t.name === 'Lithendel' ? 44 : 30) /* 09/11 (Erling): a masmorra estava perto demais de Lithendel */)) return false; if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < (relax ? 28 : 40))) return false; return true; };
       for (const d of DUNGEONS) { if (d.fixed) continue; const t = pois.find((v) => v.name === d.near) ?? settlements.find((v) => v.name === d.near); if (!t) continue; const bx = Math.round(t.x + (d.dx ?? 0)), by = Math.round(t.y + (d.dy ?? 6));
         let at: { x: number; y: number } | null = d.spot ? { x: bx, y: by } : null;
         for (let relax = 0; relax <= 1 && !at; relax++) for (let rr = 0; rr <= (relax ? 120 : 60) && !at; rr++) for (let k = 0; k < Math.max(1, rr * 8) && !at; k++) { const a = (k / Math.max(1, rr * 8)) * 6.283, x = Math.round(bx + Math.cos(a) * rr), y = Math.round(by + Math.sin(a) * rr); if (inb(x, y) && okSpot(x, y, relax)) at = { x, y }; }
@@ -2591,7 +2609,10 @@ export function buildCity(): World {
     for (let y = cy - R0; y <= cy + R0; y += 2) for (let x = cx - R0; x <= cx + R0; x += 2) if (deep(x, y)) { let ok = true; for (const [ax, ay] of [[6, 0], [-6, 0], [0, 6], [0, -6]]) if (!deep(x + ax, y + ay)) { ok = false; break; } if (!ok) continue; const d = Math.hypot(x - cx, y - cy); if (d < best) { best = d; sx = x; sy = y; } }
     if (best > 1e8) return; const ux = (cx - sx) / best, uy = (cy - sy) / best; let lx = sx, ly = sy; for (let k = 0; k < best; k++) { const x = Math.round(sx + ux * k), y = Math.round(sy + uy * k); if (landAt(x, y)) { lx = x; ly = y; break; } }
     const shipX = sx - ux * 8, shipY = sy - uy * 8; /* ancorado de lado, longe da praia (o casco tem 34 m) */ docks.push({ id, name, x: lx, y: ly, sx: Math.round(shipX), sy: Math.round(shipY), ang: Math.atan2(-ux, -uy), isle }); };
-  for (const [nm, r0] of [['Porto Caldeira', 70], ['Skjoldvik', 70], ['Corvoscuro', 70], ['Gorvath', 70], ['Ferrugem', 70]] as const) { const st = w.settlements.find((q) => q.name === nm); if (st) dockFrom('c:' + nm, nm, st.x + D, st.y + D, r0); }
+  for (const [nm, r0] of [['Porto Caldeira', 70], ['Skjoldvik', 70], ['Corvoscuro', 70], ['Gorvath', 70], ['Ferrugem', 70], ['Lithendel', 60]] as const) { const st = w.settlements.find((q) => q.name === nm); if (st) dockFrom('c:' + nm, nm, st.x + D, st.y + D, r0); }
+  /* 09/11 (Erling: "cada embarcação com seu horário, pagando passagem e falando com o NPC das docas"): um Mestre do Cais em cada porto do continente */
+  for (const d of docks) { if (d.isle) continue; const st = settlements.find((q) => q.name === d.name); if (!st) continue;
+    st.npcs.push({ name: `Mestre do Cais ${['Brann', 'Tova', 'Ezequiel', 'Hilde', 'Orvar', 'Sael'][d.name.length % 6]}`, role: `Mestre do Cais · ${d.name}`, kind: 'technocrat', x: d.x + 1.5, y: d.y + 1.5, radius: 0.6, tint: 0x8a6a30, scale: 1, lines: ['Cada navio tem a sua hora. O mar não espera, e eu também não.', 'A bilheteria é aqui no cais: ida e volta, dez mil de ouro. O horário está na tabuleta.', 'Barco de pesca sai de madrugada; navio da Companhia, a cada três horas.'] }); }
   /* nas ilhas: o desembarque na costa virada para o continente */
   for (const I of ISLES) { if (I.pen) continue; const b = I.blobs.reduce((a, q) => (q.r > a.r ? q : a)); const cx = DXW + MAP_W_L / 2, cy = DXW + MAP_H_L / 2, dd = Math.hypot(cx - b.x, cy - b.y), ux = (cx - b.x) / dd, uy = (cy - b.y) / dd;
     let lx = b.x, ly = b.y; for (let k = 0; k < 220; k++) { const x = Math.round(b.x + ux * k), y = Math.round(b.y + uy * k); if (map[y]?.[x] === 'water') break; lx = x; ly = y; }

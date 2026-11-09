@@ -12,7 +12,7 @@ export interface NaviosCtx {
   readonly scene: THREE.Scene; readonly city: World; readonly game: { st: { gold: number; lvl: number; dead?: boolean }; logMsg(t: string, c?: string): void };
   readonly state: { fx: number; fy: number; path: unknown[] }; readonly withFade: (fn: () => void, label?: string) => void;
   readonly objs: { update(x: number, z: number, force?: boolean): void }; heroY: number; camX: number; camZ: number; camY: number;
-  readonly inside: unknown; readonly combatMode: boolean; readonly audio?: { coin?(): void };
+  readonly inside: unknown; readonly combatMode: boolean; readonly audio?: { coin?(): void }; /** 09/11: a hora do jogo (0–24) para os horários dos navios */ readonly hour?: () => number;
 }
 export const PRICE = 10000;
 const KEY_FROM = 'karmika.navio.de';
@@ -51,11 +51,15 @@ export function createNavios(K: NaviosCtx) {
   /* a bilheteria */
   const el = document.createElement('div'); el.id = 'navios'; el.className = 'pn'; document.body.appendChild(el); let openAt: Dock | null = null;
   const fmt = (n: number) => n.toLocaleString('pt-BR');
+  /* 09/11 (Erling: "cada embarcação com seu horário"): o navio de cada ilha sai a cada 3 horas do jogo, cada um na sua hora; o embarque abre
+     40 minutos antes. Fora disso a passagem não é vendida — a tabuleta mostra a próxima saída. */
+  const depOf = (id: number) => (id * 1.3) % 3; const hh = (h: number) => `${String(Math.floor(h) % 24).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
+  const sched = (id: number) => { const h = K.hour?.() ?? 12, b = depOf(id); let next = b; while (next < h - 0.001) next += 3; const wait = next - h; return { open: wait <= 0.66, at: hh(next), wait }; };
   function open(d: Dock) { openAt = d; const g = K.game.st.gold;
     if (d.isle) { el.innerHTML = `<h2>⚓ Navio da Companhia de Latão<button data-x>✕</button></h2><p class="nvtxt">O contramestre confere a sua passagem: <i>"A volta já está paga, Caminhante. Para onde?"</i></p><div class="nvlist"><button data-back class="gold">⛴ Voltar para ${backName()}</button></div>${routes(d)}<small class="nvft">${ISLES.find((q) => q.id === d.isle)?.name ?? ''} · sem relíquia: daqui só se sai de navio.</small>`; }
     else el.innerHTML = `<h2>⚓ Bilheteria da Companhia de Latão — ${d.name}<button data-x>✕</button></h2>${routes(d)}
       <p class="nvtxt">As embarcações a vapor da Academia levam Caminhantes às ilhas inóspitas do Mar de Karmika. Cada ilha tem uma cidade, vilas e pedras rúnicas próprias (que só ligam a mesma ilha); para voltar ao continente, só de navio. <b>Ida e volta: ${fmt(PRICE)} de ouro.</b></p>
-      <div class="nvlist">${ISLES.filter((I) => !I.pen).map((I) => `<div class="nvrow"><div><b>${I.name}</b><small>Nível ${I.lo}–${I.hi} · ${I.biome === 'snow' ? 'gelo eterno' : I.biome === 'volcanic' ? 'vulcão' : I.biome === 'blight' ? 'noite eterna' : 'rocha e latão'}</small></div><button data-go="${I.id}" class="gold" ${g < PRICE ? `disabled title="Você tem ${fmt(g)} de ouro"` : ''}>🎟 ${fmt(PRICE)}</button></div>`).join('')}</div>
+      <div class="nvlist">${ISLES.filter((I) => !I.pen).map((I) => `<div class="nvrow"><div><b>${I.name}</b><small>Nível ${I.lo}–${I.hi} · ${I.biome === 'snow' ? 'gelo eterno' : I.biome === 'volcanic' ? 'vulcão' : I.biome === 'blight' ? 'noite eterna' : 'rocha e latão'}</small></div>${(() => { const sc = sched(I.id); return sc.open ? `<button data-go="${I.id}" class="gold" ${g < PRICE ? `disabled title="Você tem ${fmt(g)} de ouro"` : ''}>🎟 ${fmt(PRICE)} · sai às ${sc.at}</button>` : `<button disabled title="O embarque abre 40 minutos antes da saída">⏳ próximo às ${sc.at}</button>`; })()}</div>`).join('')}</div>
       <small class="nvft">Você tem ${fmt(g)} de ouro.${g < PRICE ? ' Junte mais e volte.' : ''}</small>`;
     el.style.display = 'block'; }
   /* 07/11 (Erling: "temos a rota comercial dos anões e dos tecnocratas de barco, que só abre para jogadores de nível alto, feita por NPC também"):
@@ -73,7 +77,7 @@ export function createNavios(K: NaviosCtx) {
     if (t.closest('[data-back]') && openAt) { const to = docks.find((q) => q.id === localStorage.getItem(KEY_FROM)) ?? docks.find((q) => q.id === 'c:Porto Caldeira'); close(); if (to) sail(to, `⛴ O navio a vapor atraca em ${to.name}. Bem-vindo de volta ao continente.`); return; }
     const rt = (t.closest('[data-rt]') as HTMLElement | null)?.dataset.rt; if (rt && openAt) { if (K.game.st.lvl < ROUTE_LV) return; if (K.game.st.gold < ROUTE_PRICE) { K.game.logMsg(`🎟 O comboio cobra ${fmt(ROUTE_PRICE)} de ouro.`, '#ff9a8a'); return; } const to = docks.find((q) => q.isle === +rt); if (!to) return;
       K.game.st.gold -= ROUTE_PRICE; K.audio?.coin?.(); if (!openAt.isle) try { localStorage.setItem(KEY_FROM, openAt.id); } catch { /* */ } close(); sail(to, `⚓ O comboio mercante ancora diante de ${to.name}, descarrega a carga e segue viagem.`); return; }
-    const go = (t.closest('[data-go]') as HTMLElement | null)?.dataset.go; if (go && openAt) { if (K.game.st.gold < PRICE) { K.game.logMsg(`🎟 A passagem custa ${fmt(PRICE)} de ouro.`, '#ff9a8a'); return; } const to = docks.find((q) => q.isle === +go); if (!to) return;
+    const go = (t.closest('[data-go]') as HTMLElement | null)?.dataset.go; if (go && openAt) { if (!sched(+go).open) { K.game.logMsg(`⏳ O navio para lá só sai às ${sched(+go).at}.`, '#ff9a8a'); return; } if (K.game.st.gold < PRICE) { K.game.logMsg(`🎟 A passagem custa ${fmt(PRICE)} de ouro.`, '#ff9a8a'); return; } const to = docks.find((q) => q.isle === +go); if (!to) return;
       K.game.st.gold -= PRICE; K.audio?.coin?.(); try { localStorage.setItem(KEY_FROM, openAt.id); } catch { /* */ } close(); sail(to, `⛴ Depois de dias de mar, o navio lança âncora diante de ${to.name}. Cuidado: aqui tudo é nível ${ISLES.find((q) => q.id === to.isle)?.lo}+.`); } });
   addEventListener('keydown', (e) => { if (e.key === 'Escape' && openAt) close(); });
   /** o que o herói pode fazer perto de um cais */
