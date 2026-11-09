@@ -125,8 +125,7 @@ import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { honorLog } from './sistemas/honra';
 import { vfxAttach, vfxTick, vfxProjTick } from './sistemas/vfx';
-import { skyAt, lightDirAt, createWorldMist } from './sistemas/ceu';
-import { radialTexture } from './fx3d';
+import { skyAt, lightDirAt } from './sistemas/ceu';
 import { createGameplay } from './gameplay';
 import { createNpcs, type NpcDef } from './npcs';
 import { Mist, Particles } from './fx3d';
@@ -338,7 +337,7 @@ objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(gpuImpl ? 12000 : 7000); /* WebGPU aguenta mais: fogo e magia sem apagar as partículas mais velhas no meio da luta */
 const atmos = createAtmos(scene, particles, fine);
-const worldMist = createWorldMist(scene, radialTexture(256, [[0, 'rgba(255,255,255,.6)'], [0.55, 'rgba(255,255,255,.2)'], [1, 'rgba(255,255,255,0)']]), (x, z) => biomeAt(Math.floor(x / T), Math.floor(z / T)), (x, z) => heightAt(x, z)); /* 08/11 a névoa rasteira do mundo (ceu.ts) */
+/* 09/11 Erling: a névoa rasteira em camadas saiu (feia e pesada) — o jogo fica limpo */
 
 scene.add(fine(particles.points));
 void Mist;
@@ -2925,7 +2924,6 @@ function frameBody() {
   updateInstFx(rawDt);
   pm('instfx');
   atmos.update(rawDt, t, heroPos, aurFx, luaV, gust, (x, z) => heightAt(x, z), !!inside);
-  worldMist.update(t, rawDt, heroPos, gameHour(), !!inside, (scene.fog as THREE.FogExp2).color, gust); /* 08/11 névoa rasteira por bioma e hora (ceu.ts) */
   if (!inside) craftHall?.update(dt, heroPos);
   particles.update(dt); vfxTick(dt); vfxProjTick(dt); /* 08/11 efeitos (sistemas/vfx.ts) */
 

@@ -209,7 +209,7 @@ function chain(parent: THREE.Object3D, at: [number, number, number], n: number, 
         gg.applyMatrix4(tm.multiplyMatrices(inv, m.matrixWorld)); geos.push(gg); });
       parent.remove(segs[0]);
       const merged = mergeGeometries(geos, false); for (const gg of geos) gg.dispose(); if (!merged) return;
-      const mesh = new THREE.Mesh(merged, new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp })); mesh.castShadow = true; mesh.userData.keep = true; parent.add(mesh);
+      const mesh = new THREE.Mesh(merged, new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, gradientMap: ramp })); mesh.castShadow = true; mesh.userData.keep = true; mesh.userData.hair = true; parent.add(mesh);
     },
     update(t: number, dt: number, _back: number, wind: number, seed: number) {
       if (baked || dt <= 1e-5) return;

@@ -109,8 +109,8 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const keep = new Set(rig.keepRoots());
   const kept = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (keep.has(p)) return true; if (p === root) return false; } return false; };
   const modelIds = new Set<number>(); model.traverse((o) => modelIds.add(o.id));
-  const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible) m.visible = false; /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
-  hideProc();
+  const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
+  hideProc(); root.userData.hideProc = hideProc; /* 09/11: o retrato do NPC chama isto antes de fotografar (a Juíza Hulda saía com a trança assada por cima do rosto) */
   fine(model);
   // dedos fechados: punho na mão da arma e pegada na alça do escudo (curvatura constante sobre o repouso)
   /* dedos fechados PARA DENTRO da palma: a normal da palma é medida na própria malha (perpendicular ao plano

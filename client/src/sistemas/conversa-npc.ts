@@ -20,7 +20,7 @@ function portraitOf(name: string, root: THREE.Object3D, full = false): string {
   const ps = new THREE.Scene(); ps.background = new THREE.Color(0x14101a);
   ps.add(new THREE.HemisphereLight(0xfff4e0, 0x3a2a30, full ? 2.3 : 1.3)); const dl = new THREE.DirectionalLight(0xffffff, full ? 2.6 : 1.7); dl.position.set(1.2, 2.2, 2.4); ps.add(dl);
   const parent = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible;
-  ps.add(root); root.position.set(0, 0, 0); root.rotation.set(0, portraitYaw, 0); root.visible = true; root.updateMatrixWorld(true);
+  ps.add(root); root.position.set(0, 0, 0); root.rotation.set(0, portraitYaw, 0); root.visible = true; (root.userData.hideProc as (() => void) | undefined)?.(); root.updateMatrixWorld(true);
   const xr: THREE.Object3D[] = []; root.traverse((o) => { const mt = (o as THREE.Mesh).material as THREE.Material | undefined; if (o.visible && (o.userData.xray || (mt && !Array.isArray(mt) && mt.depthTest === false))) { xr.push(o); o.visible = false; } }); // a silhueta azul (atrás das casas) não entra no retrato
   if (full && K.peleSys.creating && K.peleSys.skinModel && root === K.hero.root) { /* 02/11: na criação só o modelo do artista aparece (o martelo do anão tapava o corpo) */ const inSkin = new Set<THREE.Object3D>(); K.peleSys.skinModel.traverse((o) => inSkin.add(o)); root.traverse((o) => { if ((o as THREE.Mesh).isMesh && o.visible && !inSkin.has(o)) { xr.push(o); o.visible = false; } }); }
   /* 07/11 (Erling: "troquei de item e ele ficou mais baixo"): o enquadramento usava a caixa do modelo inteiro, e a arma/escudo/elmo mudavam a caixa.
@@ -36,7 +36,7 @@ function portraitOf(name: string, root: THREE.Object3D, full = false): string {
   ps.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d')!, im = g.createImageData(w, h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const si = ((h - 1 - y) * w + x) * 4, di = (y * w + x) * 4; im.data[di] = px[si]; im.data[di + 1] = px[si + 1]; im.data[di + 2] = px[si + 2]; im.data[di + 3] = 255; }
-  g.putImageData(im, 0, 0); const url = cv.toDataURL(); portraits.set(name, url); return url;
+  g.putImageData(im, 0, 0); const url = cv.toDataURL(); if (root.userData.hideProc || full) portraits.set(name, url); /* 09/11: sem o modelo de arte encaixado ainda, não guarda — na próxima conversa fotografa de novo, já com ele */ return url;
 }
 /* conversa com um NPC: missões para entregar, missões novas, comércio, quadro, conversa */
 function talkTo(n: (typeof K.npcSys.npcs)[number]) {

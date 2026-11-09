@@ -711,9 +711,13 @@ function buildCity_L(): World {
     for (const [x, y, v] of [[13, 17, 1], [22, 17, 1], [18, 13, 0], [18, 22, 0]] as [number, number, number][]) if (okD(x + OX, y + OY)) decor('bench', x + OX, y + OY, 1, 1, v); }
   /* 09/11 (Erling, foto do rio): a PONTE DE KARMIKA, em arco de pedra, nos fundos da vila (oeste da casa da Rosália), sobre o rio; dá para pescar
      de cima. Embaixo do arco, no barranco, um baú escondido para os mais espertos. E a Inês espera na cabeceira norte. (coordenadas: dump do mapa de 09/11) */
-  { const bxL = CITY_L.x - 19 + 0.5, y0 = CITY_L.y + 3 + 1.5, y1 = CITY_L.y + 3 + 6.5;
+  { const bxL = CITY_L.x - 19 + 0.5, y0 = CITY_L.y + 3 + 0.5, y1 = CITY_L.y + 3 + 7.5; /* 09/11: cabeceiras uma casa mais para dentro da terra (a do norte prendia quem saía na diagonal) */
     bridges.push({ ax: bxL, ay: y0, bx: bxL, by: y1, hA: 0, hB: 0, stone: true, half: 1.7, hump: 1.15 });
     const chx = CITY_L.x - 20, chy = CITY_L.y + 3 + 2; if (inb(chx, chy) && map[chy][chx] !== 'water') props.push({ kind: 'chest', gx: chx, gy: chy, w: 1, h: 1, height: 0.6, wall: 0x5a3a1c, roof: 0x3a2a14, variant: 7 }); }
+  /* 09/11 (Erling, foto: "mais uma ponte ali igual o arco da outra… lugar bom para pescaria"): a SEGUNDA ponte, no fim da rua de terra que desce
+     da praça para o sul e morria no rio (x = CITY_L.x−1..0). Mesmo arco de pedra da Ponte do Namoro; cabeceiras uma casa dentro da terra. */
+  { const bx2 = CITY_L.x + 0.0, y0 = CITY_L.y + 3 + 6.5, y1 = CITY_L.y + 3 + 14.5;
+    bridges.push({ ax: bx2, ay: y0, bx: bx2, by: y1, hA: 0, hB: 0, stone: true, half: 1.7, hump: 1.15 }); }
   /* ---- o Quartel de Karmika (Erling, 01/11: "uma zona de treinamento um pouco depois da igreja, um quartel com um quintal com pelo menos 4 bonecos"):
      prédio de pedra logo a oeste da igreja, pátio calçado e murado com portão para o sul, quatro bonecos de palha em fila,
      estantes de armas encostadas no prédio, baú, bancos e tochas no portão. O boneco que ficava escondido atrás da casa veio para cá. ---- */
@@ -732,6 +736,8 @@ function buildCity_L(): World {
 
   /* ---------- assentamentos: Karmika (centro), vilas de madeira e Askavik (cidade média de madeira e pedra) ---------- */
   const settlements: Settlement[] = [{ name: 'Karmika', kind: 'village', x: CITY_L.x, y: CITY_L.y + 3, radius: 22, npcs: [] }];
+  { const bxL = CITY_L.x - 19 + 0.5, y0 = CITY_L.y + 3 + 0.5, y1 = CITY_L.y + 3 + 7.5; /* Inês fica EM CIMA da ponte, no meio do arco, olhando o rio (Erling: "fica mais bucólico") */
+    settlements[0].npcs.push({ name: 'Inês da Ponte', role: 'Espera alguém', kind: 'nordic', x: bxL + 0.9, y: (y0 + y1) / 2, radius: 0.15, tint: 0x8a6a8a, scale: 1.0, lines: ['Ele disse que vinha ao pôr do sol. Não disse qual.', 'A ponte é bonita a essa hora. O rio fica cor de cobre.', 'Não, você não é ele. Tudo bem. Ninguém é.'] }); }
   const nearSettle = (x: number, y: number, margin: number) => settlements.some((st) => Math.hypot(x - st.x, y - st.y) < st.radius + margin);
   const FIRST = ['Astrid', 'Bjarni', 'Dagny', 'Einar', 'Freya', 'Gudrun', 'Halvar', 'Ingvar', 'Jorunn', 'Kjell', 'Liv', 'Magnus', 'Nanna', 'Orvar', 'Ragna', 'Sten', 'Tove', 'Ulrik', 'Vigdis', 'Yngve', 'Brokk', 'Dvalin', 'Eitri', 'Nori', 'Thrain'];
   // nomes por região: nórdicos só na neve; nas terras comuns, nomes de gente comum (humanos); nas florestas, élficos
