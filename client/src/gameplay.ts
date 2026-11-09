@@ -123,6 +123,9 @@ export function createGameplay(d: GameplayDeps) {
   const rings: { m: THREE.Mesh; t: number }[] = [];
   const flashTex = radialTexture(64, [[0, 'rgba(255,248,220,1)'], [0.25, 'rgba(255,200,120,.7)'], [1, 'rgba(255,140,40,0)']]);
   const impactLight = new THREE.PointLight(0xffb060, 0, 10, 2); fxAdd(impactLight);
+  /* 09/11 (Erling: "o jogo trava de novo quando passa de nível"): a luz da subida de nível era criada na hora — luz nova muda a contagem de luzes
+     e o renderizador recompila TODOS os materiais da cena. Agora ela existe desde o começo, apagada, e só acende. */
+  const lvLight = new THREE.PointLight(0xffd890, 0, 46, 1.3); fxAdd(lvLight);
   let impactK = 0;
   const ringGeo = new THREE.RingGeometry(0.82, 1, 24); ringGeo.rotateX(-Math.PI / 2);
   function impactFx(p: THREE.Vector3, dir: THREE.Vector3, power = 1, stop = false) {
@@ -261,8 +264,8 @@ export function createGameplay(d: GameplayDeps) {
     const pil2 = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.55, 32, 12, 1, true), mat(0xffffff)); pil2.position.set(hp.x, hp.y + 16, hp.z);
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.4, 48).rotateX(-Math.PI / 2), mat(0xffd070)); ring.position.set(hp.x, hp.y + 0.14, hp.z);
     const ring2 = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.2, 48).rotateX(-Math.PI / 2), mat(0xffffff)); ring2.position.set(hp.x, hp.y + 0.16, hp.z);
-    const lt = new THREE.PointLight(0xffd890, 0, 46, 1.3); lt.position.set(hp.x, hp.y + 3.5, hp.z);
-    const objs = [pil, pil2, ring, ring2, lt]; for (const o of objs) fxAdd(o);
+    const lt = lvLight; lt.position.set(hp.x, hp.y + 3.5, hp.z);
+    const objs = [pil, pil2, ring, ring2]; for (const o of objs) fxAdd(o);
     lvFx.push({ t: 0, dur: 3.2, f: (k) => {
       const a = k < 0.08 ? k / 0.08 : Math.max(0, 1 - (k - 0.08) / 0.92), rk = Math.min(1, k * 2.6);
       (pil.material as THREE.MeshBasicMaterial).opacity = 0.55 * a; pil.scale.set(1 + k * 0.7, 1, 1 + k * 0.7);
@@ -270,7 +273,7 @@ export function createGameplay(d: GameplayDeps) {
       ring.scale.setScalar(1 + rk * 11); (ring.material as THREE.MeshBasicMaterial).opacity = 0.95 * (1 - rk);
       ring2.scale.setScalar(1 + rk * 19); (ring2.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - rk);
       lt.intensity = 160 * a;
-    }, end: () => { for (const o of objs) { d.scene.remove(o); if ((o as THREE.Mesh).geometry) { (o as THREE.Mesh).geometry.dispose(); ((o as THREE.Mesh).material as THREE.Material).dispose(); } } } });
+    }, end: () => { lt.intensity = 0; for (const o of objs) { d.scene.remove(o); if ((o as THREE.Mesh).geometry) { (o as THREE.Mesh).geometry.dispose(); ((o as THREE.Mesh).material as THREE.Material).dispose(); } } } });
     st.shake = Math.max(st.shake, 0.55); d.audio.chime(); setTimeout(() => d.audio.chime(), 260); setTimeout(() => d.audio.heal(), 520);
     // onda de partículas no chão + chuva de brilho dourado
     for (let i = 0; i < 90; i++) { const a = (i / 90) * 6.283; d.particles.spawn(hp.x, hp.y + 0.2, hp.z, { vx: Math.cos(a) * 11, vy: 0.6, vz: Math.sin(a) * 11, life: 0.9, s0: 1.3, s1: 0.1, c0: 0xffffff, c1: 0xffb040, a: 1, drag: 3 }); }

@@ -1566,6 +1566,16 @@ function nearProps(...a: Parameters<ReturnType<typeof createPescaKit>['nearProps
 function idx(...a: Parameters<ReturnType<typeof createPescaKit>['idx']>): ReturnType<ReturnType<typeof createPescaKit>['idx']> { return (pescaSys ??= mk_pescaSys()).idx(...a); }
 function giveStartKit(...a: Parameters<ReturnType<typeof createPescaKit>['giveStartKit']>): ReturnType<ReturnType<typeof createPescaKit>['giveStartKit']> { return (pescaSys ??= mk_pescaSys()).giveStartKit(...a); }
 function welcomeKit(...a: Parameters<ReturnType<typeof createPescaKit>['welcomeKit']>): ReturnType<ReturnType<typeof createPescaKit>['welcomeKit']> { return (pescaSys ??= mk_pescaSys()).welcomeKit(...a); }
+/* 09/11 (Erling: "o arremesso tem que ser mais longe; se o rio for pequeno, no meio, mas nunca tão perto da borda; sempre de frente para o rio ou lago"):
+   procura em 24 direções a de água mais aberta (a corrida de água mais longa a partir da margem) e lança até o meio dela, no máximo 7 m água adentro.
+   O herói já vira para onde a boia cai. */
+function fishTarget(hx: number, hz: number): { x: number; z: number } | null {
+  let best: { x: number; z: number } | null = null, bestRun = 0;
+  for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2, ux = Math.sin(a), uz = Math.cos(a); let d0 = -1, run = 0;
+    for (let d = 0.8; d <= 18; d += 0.4) { const w = waterSD(hx + ux * d, hz + uz * d) < -0.25; if (d0 < 0) { if (w) d0 = d; else if (d > 7) break; } else if (w) run = d - d0; else break; }
+    if (d0 < 0 || run < 0.8) continue; const score = Math.min(run, 14) - d0 * 0.6; if (score > bestRun) { bestRun = score; const dd = d0 + Math.min(run * 0.5, 7); best = { x: hx + ux * dd, z: hz + uz * dd }; } }
+  return best;
+}
 function startFishing(...a: Parameters<ReturnType<typeof createPescaKit>['startFishing']>): ReturnType<ReturnType<typeof createPescaKit>['startFishing']> { return (pescaSys ??= mk_pescaSys()).startFishing(...a); }
 function updateFishing(...a: Parameters<ReturnType<typeof createPescaKit>['updateFishing']>): ReturnType<ReturnType<typeof createPescaKit>['updateFishing']> { return (pescaSys ??= mk_pescaSys()).updateFishing(...a); }
 
@@ -2390,7 +2400,7 @@ function findInter(): Inter | null {
     }
     for (const e of game.enemies.list) { const ec = e as typeof e & { corpse?: number; skinned?: boolean }; if (e.state !== 'dead' || !e.active || !ec.corpse || ec.skinned || !SKIN[e.type]) continue; const dC = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (dC > 3.2) continue;
       const S = SKIN[e.type]!, kn = inv.tool('knife'); add(dC - 0.3, 3.0, !kn ? `${e.def.name} — precisa de uma faca de caça` : kn.tier < (S.tier ?? 1) ? `🔒 ${e.def.name} — só uma faca de prata (★★★★) atravessa esse couro` : `E — Esfolar ${e.def.name} · ${kn.name}`, () => { if (kn && kn.tier >= (S.tier ?? 1)) startWork('skin', e, e.pos.x, e.pos.z); else game.logMsg(!kn ? '🔪 Sem uma faca, a carcaça fica para os corvos.' : '🔪 A lâmina escorrega no couro do lobisomem como em pedra. Só a prata.', '#ff9a8a'); }); }
-    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(wt!); }); }
+    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(fishTarget(hx, hz) ?? wt!); }); }
   } else if (inside.prop.variant === 5 || inside.prop.variant === 4) add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
   if (dgSys.spirit) add(Math.hypot(hx - dgSys.spirit.x, hz - dgSys.spirit.z) - 0.6, 3.2, 'E — Falar com Irmã Ysolde', talkSpirit);
   if (!inside) for (const p of otherDecor.keys()) { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T), dx = p.gx * T + hd.x, dz = p.gy * T + hd.z + 0.9; add(Math.hypot(hx - dx, hz - dz), 2.2, `E — Visitar a ${p.label ?? 'casa'}`, () => enterHouse(p)); }
@@ -2757,7 +2767,7 @@ function frameBody() {
   /* AURA QUE CRESCE COM O NÍVEL (Erling 26/10: "o alcance aumenta, não o brilho"). O círculo visível depende da queda da luz, não do corte:
      esticar o desenho inteiro por s = subir a luz s vezes, cortar s vezes mais longe e multiplicar a força por s^1.6 (a mesma queda) —
      o chão sob o herói fica igual e a borda vai mais longe. +1% por nível (nível 16 ≈ +15%, nível 60 ≈ +59%). */
-  { const s = 1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01; lantern.position.set(heroPos.x, 3.2 * s, heroPos.z); lantern.distance = 36 * s; lantern.intensity = mix(5, 55, night) * Math.pow(s, 1.6); }
+  { const s = 1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01; lantern.position.set(heroPos.x, heroY + 3.2 * s, heroPos.z); /* 09/11 (Erling: "uma luz no terreno que some quando eu subo"): era a lanterna do herói presa na altura 3,2 do mapa — na subida o chão passava por cima dela. Agora acompanha o chão. */ lantern.distance = 36 * s; lantern.intensity = mix(5, 55, night) * Math.pow(s, 1.6); }
 
   /* câmera com zoom suave e lento */
   zoom += (zoomTarget - zoom) * Math.min(1, dt * 2.2);

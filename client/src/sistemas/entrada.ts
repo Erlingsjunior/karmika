@@ -143,7 +143,8 @@ addEventListener('keydown', (e) => {
   if (K.cinemaSys.cine) { if (e.key === 'Escape' && (K.cinemaSys.cine.sc.skippable || K.cinemaSys.cine.skipOk)) K.endScene(); e.preventDefault(); return; }
   if (K.chat.isOpen || K.inicio.isOpen || K.peleSys.creating) return;
   { const tg = e.target as HTMLElement | null; if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return; } /* digitando num campo: nada vaza para o personagem */
-  if (e.key === 'F4') { e.preventDefault(); keys.clear(); K.coop.toggle(); return; }
+  /* 09/11 (Erling: "F4 é atalho de poção mas chama a tela de party também"): o grupo agora abre com Shift+F4; F4 sozinho é só a barra de poções */
+  if (e.key === 'F4' && e.shiftKey) { e.preventDefault(); keys.clear(); K.coop.toggle(); return; }
   if (e.key === 'Enter' && !K.inv.isOpen && !K.dlg.isOpen && !K.quests.isOpen) { e.preventDefault(); keys.clear(); K.chat.open(); return; }
   if (e.key === 'Tab') e.preventDefault();
   if (e.key === 'Escape') { if (aimSlot) { cancelAim(); return; } if (K.stable.isOpen) { K.stable.toggle(false); return; } if (K.align.isOpen) { K.align.toggle(false); return; } if (K.dockSys.skillsOpen || K.dockSys.featsOpen) { K.toggleSkills(false); K.toggleFeats(false); return; } if (K.build.on) { K.build.toggle(false); return; } if (K.reliquiasSys.relicOpen) { K.closeRelics(); return; } if (K.olhoSys.olhoOpen) { K.toggleOlho(false); return; } if (K.dlg.isOpen) { K.dlg.close(); return; } if (K.quests.isOpen) { K.quests.closeAll(); return; } if (K.vid.isOpen) { K.vid.close(); return; } if (K.mail.isOpen) { K.mail.close(); return; } if (K.profs.isOpen) { K.profs.close(); return; } if (K.loja.isOpen) { K.loja.close(); return; } if (K.minimapaSys.bigOpen) { K.toggleBigMap(); return; } if (K.inv.isOpen) { K.inv.closeAll(); return; } K.game.toggleMenu(); return; }

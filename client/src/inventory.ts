@@ -646,10 +646,11 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     if (charOpen) {
       const t = total(), [lo, hi] = hitRange(), TLr = (hooks.talents?.() ?? {}) as Partial<Record<string, number>>;
       /* boneco com espaços pequenos em volta; uma linha leve, quase etérea, liga cada espaço ao lugar do corpo onde a peça vai */
-      const W = 620, H = 380, DX = 215, DY = 10, DW = 190, DH = 290;
+      /* 09/11 (Erling: "os espaços entre os itens e os títulos estão se atropelando"): 66 px entre um espaço e o próximo (o nome cabe embaixo) */
+      const W = 620, H = 440, DX = 215, DY = 24, DW = 190, DH = 300;
       const POS: Record<Slot, [number, number, number, number]> = { // [x, y do espaço, alvo x, alvo y no boneco (0–1)]
-        helm: [60, 34, 0.5, 0.11], earring: [60, 92, 0.42, 0.16], amulet: [60, 150, 0.5, 0.24], shoulders: [60, 208, 0.31, 0.29], armor: [60, 266, 0.5, 0.38], weapon: [60, 324, 0.22, 0.56],
-        cape: [560, 34, 0.68, 0.3], earring2: [560, 92, 0.58, 0.16], shield: [560, 150, 0.78, 0.52], ring: [560, 208, 0.75, 0.6], ring2: [560, 266, 0.25, 0.61], boots: [560, 324, 0.56, 0.95], relic: [310, 346, 0.5, 0.45] };
+        helm: [60, 34, 0.5, 0.11], earring: [60, 100, 0.42, 0.16], amulet: [60, 166, 0.5, 0.24], shoulders: [60, 232, 0.31, 0.29], armor: [60, 298, 0.5, 0.38], weapon: [60, 364, 0.22, 0.56],
+        cape: [560, 34, 0.68, 0.3], earring2: [560, 100, 0.58, 0.16], shield: [560, 166, 0.78, 0.52], ring: [560, 232, 0.75, 0.6], ring2: [560, 298, 0.25, 0.61], boots: [560, 364, 0.56, 0.95], relic: [310, 384, 0.5, 0.45] };
       const eqV = (sl: Slot) => sl === 'weapon' || sl === 'shield' ? setHand(sl) : eqG[sl], viewOther = wView !== wsets.act;
       const lines = SLOTS.map((s) => { const [x, y, fx, fy] = POS[s], g = eqV(s), tx = DX + fx * DW, ty = DY + fy * DH, sx = s === 'relic' ? x : x < W / 2 ? x + 25 : x - 25, sy = s === 'relic' ? y - 25 : y, col = g ? RARITY[g.rarity].col : '#e8d6a0';
         const mx = s === 'relic' ? sx : (sx + tx) / 2; return `<path d="M${sx} ${sy} C${mx} ${s === 'relic' ? (sy + ty) / 2 : sy} ${mx} ${s === 'relic' ? (sy + ty) / 2 : ty} ${tx} ${ty}" stroke="${col}" stroke-opacity="${g ? 0.42 : 0.14}" stroke-width="${g ? 1.2 : 0.8}" fill="none" ${g ? '' : 'stroke-dasharray="2 4"'}/><circle cx="${tx}" cy="${ty}" r="${g ? 2.6 : 1.8}" fill="${col}" fill-opacity="${g ? 0.75 : 0.25}" filter="url(#eqglow)"/>`; }).join('');
