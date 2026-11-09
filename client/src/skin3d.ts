@@ -13,7 +13,7 @@ import { fine } from './dual3d';
 type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip?: THREE.Object3D; knee?: THREE.Object3D; ankle?: THREE.Object3D };
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
 
-export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number; /** escala extra depois do encaixe pelo quadril (elfo 2,10 m sobre o rig de 1,80: 1,167) */ hscale?: number }
+export interface SkinDef { /** .fbx (textura em `tex`) ou .glb (textura embutida; `tex` ignorado) */ fbx: string; tex: string; /** cor multiplicada no toon (ajuste fino de tom) */ tint?: number; /** escala extra depois do encaixe pelo quadril (elfo 2,10 m sobre o rig de 1,80: 1,167) */ hscale?: number; /** 09/11: é NPC (só o modelo de arte aparece; nada da roupa procedural) */ npc?: boolean }
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 /** tangente do ângulo do cabo na palma (35°): 0 = cabo atravessado reto */
 const GRIP_DIAG = 0.7;
@@ -106,7 +106,9 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   });
   pairs.forEach(([, j], i) => j.quaternion.copy(saved[i])); rig.hips.parent!.quaternion.copy(bodySaved);
   // esconde a malha procedural, menos o que continua dela (arma, escudo, elmo, sombra, drone)
-  const keep = new Set(rig.keepRoots());
+  /* 09/11 (Erling: "tire qualquer roupa ou armadura dos esqueletos"): no NPC, a capa, o elmo e a armadura procedurais (backAnchor, helmHolder, bodyHolder) somem
+     de vez — o modelo de arte já vem vestido. Fica só arma/escudo/sombra/drone (e o que for arte, userData.keep). */
+  const keep = new Set(rig.keepRoots().filter((_o: THREE.Object3D, i: number) => !(def.npc && (i === 4 || i === 7 || i === 8))));
   const kept = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (keep.has(p)) return true; if (p === root) return false; } return false; };
   const modelIds = new Set<number>(); model.traverse((o) => modelIds.add(o.id));
   const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
@@ -569,7 +571,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   /* 09/11 (Erling: "um humano homem com uma cabeça de mulher em cima da cabeça"): a cabeça/cabelo procedural pode ser REFEITA depois do encaixe
      (troca de visual do NPC, barba, trança) e voltava a aparecer sobre o modelo. Repete o esconder de tempos em tempos. */
   let hideT = 0;
-  function tick() { if (++hideT % 45 === 0) hideProc();
+  function tick() { hideT++; hideProc(); /* 09/11 (Erling: "os bonecos ainda aparecem e somem"): a roupa/armadura/arma procedural que nasce depois (troca de gear, pose, trança) era escondida só a cada 45 quadros e piscava por cima do modelo. Agora some no mesmo quadro em que nasce. */
     root.updateMatrixWorld(true);
     const inv = root.getWorldQuaternion(tq).invert().clone();
     for (const r of rest) {

@@ -11,6 +11,9 @@ interface Npc { built: boolean; lodT?: number; /** 08/11: o modelo de arte vesti
    nórdico ~1,87 m, tecnocrata ~2,10 m e anão ~1,63 m. Aqui eles voltam para a média do mundo: gente 1,70 m, anão 1,40 m.
    O "scale" de cada NPC continua valendo por cima (a moça 0,92, o grandalhão 1,1). */
 const KIND_NORM: Record<string, number> = { technocrat: 0.81, dwarf: 0.86 };
+/* 09/11 (Erling: "os NPCs no geral estão pequenos demais; o anão ficou deveras pequeno"): o modelo de arte é encaixado pelo quadril do boneco,
+   e saía menor que o próprio boneco (gente com a cabeça a 1,35 m, anão a 0,88 m, o herói a 1,62 m). Medido no jogo: gente +12%, anão +35%. */
+const ART_HUMAN = 1.12, ART_DWARF = 1.35;
 export const npcScale = (def: { kind: string; civil?: string; scale: number }) => def.scale * (def.civil ? 0.91 : KIND_NORM[def.kind] ?? 0.91);
 export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** 08/11: qual interior o herói está (null = mundo) e se um ponto dele é livre */ insideId?: () => string | null; insideFree?: (x: number, z: number) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   /* 02/11 (Erling, item 8): o NPC só é montado quando o jogador chega na região dele (a 60 m), aos poucos (2 por quadro), o mais perto primeiro.
@@ -33,9 +36,9 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   const FEM = /a$|ís$|ún$|úd$|^Eir$|^Hildr$|^Brynja$|^Ásta$|^Yrsa$|^Teresa$|^Luísa$|^Lúcia$|^Maren$|^Tessa$|^Rosália$|^Kaela$|^Morwen$|^Inês$/;
   const npcSkin = (d: NpcDef): SkinDef | null => { const first = d.name.replace(/^(Mestre-Forjador|Mestre-Mineiro|Mestre-Fundidor|Mestra|Mestre|Guarda Real|Guarda|Sangradora|Domadora|Armeiro|Armadureira|Mercadora|Mercador|Taverneiro|Alquimista|Mineira|Mineiro|Aprendiz|Cervejeira|Anciã|Pequeno|Carregador|Conselheira|Fundidora|Ferreiro|Ferreira|Vendedora|Vendedor|Escriba|Comendador|Rei|Thane|Velha|Capataz|Barqueira|Guarda-Passo|Caçador|Curandeira|Vigia|Pastora|Cronista|Juíza|Patrulheira|Soldado|Soldada|Capitã|Capitão)\s+/, '').split(' ')[0];
     const fem = d.sex ? d.sex === 'f' : FEM.test(first) || FEM.test(d.name.split(' ')[0]);
-    if (d.kind === 'dwarf') { const elite = /^(Rei|Mestre|Guarda Real|Thane|Conselheira)/.test(d.name); return { fbx: `/models/personagens/anao_${fem ? 'm' : 'h'}_lvl0${elite ? 3 : 2}.glb`, tex: '' }; } /* lvl02 = vestido de couro; lvl03 = com armadura */
-    if (d.civil === 'elf') return { fbx: `/models/personagens/elfo_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
-    if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
+    if (d.kind === 'dwarf') { const elite = /^(Rei|Mestre|Guarda Real|Thane|Conselheira)/.test(d.name); return { fbx: `/models/personagens/anao_${fem ? 'm' : 'h'}_lvl0${elite ? 3 : 2}.glb`, tex: '', hscale: ART_DWARF, npc: true }; } /* lvl02 = vestido de couro; lvl03 = com armadura */
+    if (d.civil === 'elf') return { fbx: `/models/personagens/elfo_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '', hscale: ART_HUMAN, npc: true };
+    if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '', hscale: ART_HUMAN, npc: true };
     return null; };
   const SKIN_R = 48; /* 09/11: o mesmo alcance em que o NPC aparece (antes 30: entre 30 e 48 m ele aparecia blocado) */
   function skinNear(n: Npc, dH: number) { if (n.skin || dH > SKIN_R || n.def.route) return; const def = npcSkin(n.def); if (!def) { n.skin = 2; return; } n.skin = 1; const h = n.hero;
