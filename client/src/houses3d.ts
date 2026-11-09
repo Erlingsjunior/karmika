@@ -283,18 +283,33 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
         glowW(0.22, 0.3, dr.x - 1.1, pl + 2.3, front + 0.15, 0xffc070); glowW(0.22, 0.3, dr.x + 1.1, pl + 2.3, front + 0.15, 0xffc070); } }
     lantern = new THREE.Vector3(dr.x + 1.0, pl + 1.9, front + 0.5);
   } else if (style === 3) { // ÉLFICO
-    const iv = M(0xe8e0cc, 'plaster'), lf = std(0x3a7a5a), wd = M(0x8a6a4a, 'wood'), r0 = Math.min(bw, bd) / 2;
-    mesh(new THREE.CylinderGeometry(r0 + 0.3, r0 + 0.4, 0.4, 16), M(0xb8b0a0, 'stone'), cx, 0.2, cz);
-    mesh(new THREE.CylinderGeometry(r0, r0 * 1.04, 3.0, 16), iv, cx, 1.9, cz);
-    for (let k = 0; k < 3; k++) { const rr = r0 * (1.35 - k * 0.32), y = 3.4 + k * 1.15; const t = mesh(new THREE.ConeGeometry(rr, 1.5, 16, 1, true), lf, cx, y + 0.75, cz); (t.material as THREE.Material).side = THREE.DoubleSide;
-      const rim = mesh(new THREE.TorusGeometry(rr * 0.98, 0.07, 4, 20), std(0xd8c070), cx, y + 0.02, cz); rim.rotation.x = Math.PI / 2; }
-    mesh(new THREE.ConeGeometry(0.12, 2.0, 6), std(0xd8c070), cx, 7.9, cz);
-    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 6), new THREE.MeshBasicMaterial({ color: 0x9ae0ff, toneMapped: false })); orb.position.set(cx, 8.95, cz); g.add(orb);
-    door(g, dr.x, 0.4, cz + r0 + 0.02, 'z', c, 1.2, 2.2);
-    const ar = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.09, 4, 14, Math.PI), std(0xd8c070)); ar.position.set(dr.x, 2.6, cz + r0 + 0.08); g.add(ar);
-    for (const a of [0.9, 2.2, -0.6]) glowW(0.5, 1.0, cx + Math.cos(a) * (r0 + 0.02), 2.2, cz + Math.sin(a) * (r0 + 0.02), 0x9ad8ff, Math.PI / 2 - a);
-    for (let k = 0; k < 7; k++) { const a = k * 0.9, v = mesh(new THREE.SphereGeometry(0.22, 6, 5), std(0x4a8a4a), cx + Math.cos(a) * (r0 + 0.05), 0.6 + (k % 3) * 0.8, cz + Math.sin(a) * (r0 + 0.05)); v.scale.set(1, 1.6, 0.5); }
-    void wd; lantern = new THREE.Vector3(dr.x + 0.9, 2.0, cz + r0 + 0.6);
+    /* 08/11 (Lithendel refeita): casa redonda de madeira clara com nervuras de galho, soleira de pedra musgosa, telhado em CAMADAS DE FOLHAS
+       (cartões de folha em 3 andares, verde-prata e dourado, como a copa da Árvore-Mãe), coruchéu de galho com lanterna azul-clara, janelas em arco
+       acesas, trepadeiras com flores, canteiro na frente, porta em arco com arabescos de ouro */
+    const iv = M(0xd8cfb0, 'plaster'), wd = M(0x9a7a52, 'wood'), gold = std(0xd8c070), r0 = Math.min(bw, bd) / 2, stoneM = M(0x8a9a80, 'stone');
+    mesh(new THREE.CylinderGeometry(r0 + 0.35, r0 + 0.5, 0.35, 18), stoneM, cx, 0.17, cz); /* soleira de pedra */
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; mesh(new THREE.SphereGeometry(0.22, 6, 5), std(0x5a8a4a), cx + Math.cos(a) * (r0 + 0.45), 0.3, cz + Math.sin(a) * (r0 + 0.45)).scale.set(1.3, 0.5, 1); } /* musgo */
+    mesh(new THREE.CylinderGeometry(r0, r0 * 1.06, 3.0, 18), iv, cx, 1.85, cz); /* a parede */
+    for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; const rib = mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.2, 5), wd, cx + Math.cos(a) * (r0 + 0.03), 1.9, cz + Math.sin(a) * (r0 + 0.03)); rib.rotation.z = Math.cos(a) * 0.06; rib.rotation.x = -Math.sin(a) * 0.06; } /* nervuras de galho */
+    mesh(new THREE.TorusGeometry(r0 + 0.04, 0.07, 5, 24), wd, cx, 1.0, cz).rotation.x = Math.PI / 2; mesh(new THREE.TorusGeometry(r0 + 0.04, 0.07, 5, 24), wd, cx, 3.3, cz).rotation.x = Math.PI / 2;
+    /* telhado em camadas de folhas */
+    const leafM = std(0xffffff, { map: shingleTex0(0x6fa66a), side: THREE.DoubleSide }), leafM2 = std(0xffffff, { map: shingleTex0(0xa8c060), side: THREE.DoubleSide });
+    for (let k = 0; k < 3; k++) { const rr = r0 * (1.45 - k * 0.36), y = 3.3 + k * 1.05; const t = mesh(new THREE.ConeGeometry(rr, 1.35, 18, 1, true), k % 2 ? leafM2 : leafM, cx, y + 0.67, cz);
+      void t; for (let q = 0; q < 12; q++) { const a = q / 12 * 6.283 + k * 0.26; const lf = mesh(new THREE.SphereGeometry(0.32, 5, 4), k % 2 ? std(0x9ab860) : std(0x6fa66a), cx + Math.cos(a) * rr * 0.98, y + 0.08, cz + Math.sin(a) * rr * 0.98); lf.scale.set(1.2, 0.35, 0.7); lf.rotation.y = -a; } /* pontas de folha na beira */
+      mesh(new THREE.TorusGeometry(rr * 0.97, 0.05, 4, 24), gold, cx, y + 0.02, cz).rotation.x = Math.PI / 2; }
+    const fin = mesh(new THREE.CylinderGeometry(0.05, 0.1, 1.8, 5), wd, cx, 7.2, cz); fin.rotation.z = 0.12; /* coruchéu de galho */
+    const orb = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshBasicMaterial({ color: 0x9ae0ff, toneMapped: false })); orb.position.set(cx + 0.2, 8.0, cz); g.add(orb);
+    mesh(new THREE.TorusGeometry(0.26, 0.03, 4, 12), gold, cx + 0.2, 8.0, cz).rotation.x = Math.PI / 2;
+    /* porta em arco com arabescos */
+    door(g, dr.x, 0.35, cz + r0 + 0.02, 'z', c, 1.2, 2.2);
+    const ar = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.09, 4, 14, Math.PI), gold); ar.position.set(dr.x, 2.55, cz + r0 + 0.08); g.add(ar);
+    for (const s2 of [-1, 1]) { const vine = mesh(new THREE.TorusGeometry(0.3, 0.03, 4, 10, Math.PI), gold, dr.x + s2 * 1.0, 2.2, cz + r0 + 0.09); vine.rotation.z = s2 * 0.5; }
+    /* janelas em arco acesas */
+    for (const a of [0.9, 2.2, -0.6]) { const x = cx + Math.cos(a) * (r0 + 0.02), z = cz + Math.sin(a) * (r0 + 0.02), ry = Math.PI / 2 - a; glowW(0.5, 0.9, x, 2.0, z, 0xffd090, ry); const fr = mesh(new THREE.TorusGeometry(0.28, 0.04, 4, 10, Math.PI), wd, x, 2.45, z); fr.rotation.y = ry; }
+    /* trepadeiras com flores e canteiro na frente */
+    for (let k = 0; k < 9; k++) { const a = k * 0.75 + 0.4, v = mesh(new THREE.SphereGeometry(0.2, 6, 5), std(0x4a8a4a), cx + Math.cos(a) * (r0 + 0.06), 0.6 + (k % 3) * 0.8, cz + Math.sin(a) * (r0 + 0.06)); v.scale.set(1, 1.6, 0.5); if (k % 2) mesh(new THREE.SphereGeometry(0.07, 5, 4), std([0xff9ab8, 0xfff0a0, 0xc0a0ff][k % 3]), cx + Math.cos(a) * (r0 + 0.14), 0.7 + (k % 3) * 0.8, cz + Math.sin(a) * (r0 + 0.14)); }
+    for (const s2 of [-1, 1]) { const bx = dr.x + s2 * 1.5, bz = cz + r0 + 0.6; mesh(new THREE.CylinderGeometry(0.45, 0.4, 0.3, 10), stoneM, bx, 0.15, bz); mesh(new THREE.SphereGeometry(0.4, 7, 5), std(0x4a8a4a), bx, 0.45, bz).scale.set(1, 0.6, 1); for (let q = 0; q < 4; q++) mesh(new THREE.SphereGeometry(0.07, 5, 4), std([0xff9ab8, 0xfff0a0, 0xc0a0ff, 0xffffff][q]), bx + Math.cos(q * 1.6) * 0.25, 0.68, bz + Math.sin(q * 1.6) * 0.25); }
+    lantern = new THREE.Vector3(dr.x + 0.9, 2.0, cz + r0 + 0.6);
   } else if (style === 4) { // SOMBRIO
     const wallH = 4.4, st = M(0x3e3a40, 'stone'), rf = M(0x2a2228, 'shingle');
     mesh(texBox(bw, wallH, bd, 1.6), st, cx, wallH / 2, cz);

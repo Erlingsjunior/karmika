@@ -848,7 +848,7 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
         const toon = (mat as THREE.Material & { isMeshToonMaterial?: boolean }).isMeshToonMaterial === true;
         const nc = m.userData.nocut ? 1 : 0, key = toon ? `t|${mat.map ? mat.map.uuid : ''}|${mat.side}|${mat.emissive ? mat.emissive.getHex() : 0}|${m.castShadow ? 1 : 0}|${nc}` : `i|${mat.uuid}|${m.castShadow ? 1 : 0}`;
         let b = buckets!.get(key);
-        if (!b) { const tm = toon ? new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined }) : null; if (tm && nc) tm.userData.noCut = true; b = { mat: toon ? (nc ? tm! : cutoutify(tm!)) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
+        if (!b) { const tm = toon ? new THREE.MeshToonMaterial({ color: 0xffffff, vertexColors: true, map: mat.map ?? null, gradientMap: ramp, side: mat.side, emissive: mat.emissive ? mat.emissive.clone() : undefined, alphaTest: mat.alphaTest || 0 }) : null; if (tm && nc) tm.userData.noCut = true; b = { mat: toon ? (nc ? tm! : cutoutify(tm!)) : mat, geos: [], shadow: m.castShadow, vc: toon }; buckets!.set(key, b); }
         const gg = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
         for (const n of Object.keys(gg.attributes)) if (n !== 'position' && n !== 'normal' && n !== 'uv' && n !== 'color') gg.deleteAttribute(n);
         if (!gg.attributes.normal) gg.computeVertexNormals();

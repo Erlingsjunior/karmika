@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { makeFire } from './sistemas/fogo';
 import { std, texBox, stoneTex, shingleTex } from './toon3d';
+import { buildGreatTree } from './trees3d';
 import type { Built } from './city3d';
 
 const MC = new Map<string, THREE.Material>();
@@ -273,6 +274,14 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     // portal de entrada
     { const a = K.arch(5, 7, 1.2, 2.6, 3.6, iv, true); a.position.set(cx, 2, cz + 4.2); K.plane(2.6, 5, cx, 2 + 2.5, cz + 3.6, glow(0x7ab8e8)); for (const s of [-1, 1]) K.torch(cx + s * 3.2, 2, cz + 5.4, 0x9ad8ff); }
     K.out.glows.push({ pos: new THREE.Vector3(cx, 4, cz + 6), color: 0x9ad8ff, base: 40 });
+  }
+  else if (id === 11) { // 08/11 A ÁRVORE-MÃE DE LITHENDEL: a árvore viva gigante no meio da vila dos elfos, com plataformas, escada em espiral e lanternas
+    const T = buildGreatTree(Math.min(Wm, Dm) * 0.42); T.obj.position.set(cx, -0.1, cz); K.g.add(T.obj);
+    const st = stone(0x9a9a8a), mossy = flat(0x5a8a4a);
+    K.cyl(Math.min(Wm, Dm) * 0.26, Math.min(Wm, Dm) * 0.28, 0.35, cx, 0, cz, st, 18); /* o pedestal de pedra musgosa em volta das raízes */
+    for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2, r = Math.min(Wm, Dm) * 0.27; K.add(new THREE.SphereGeometry(0.5 + (k % 3) * 0.2, 6, 5), mossy, cx + Math.cos(a) * r, 0.3, cz + Math.sin(a) * r).scale.set(1.4, 0.5, 1); }
+    T.lanterns.forEach((l, li) => { const p = l.clone().add(new THREE.Vector3(cx, -0.1, cz)); K.add(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), flat(0x3a3a30), p.x, p.y + 0.25, p.z, 0, false); const lamp = K.add(new THREE.SphereGeometry(0.18, 8, 6), glowA(0xbfe8ff, 0.8), p.x, p.y - 0.1, p.z, 0, false); void lamp; if (li % 4 === 0) K.out.glows.push({ pos: new THREE.Vector3(p.x, p.y - 0.1, p.z), color: 0x9ad8ff, base: 12 }); });
+    K.out.glows.push({ pos: new THREE.Vector3(cx, T.platforms[1].y + 3, cz), color: 0xc0ffd0, base: 26 });
   }
   else if (id === 10) { // O FAROL TECNOCRÁTICO (27/10, regra 19): numa ilha de pedras diante de Porto Caldeira; torre cônica de ferro rebitado sobre base de tijolo,
     // escada em caracol por fora, cinta de engrenagens, lanterna de latão com o feixe girando, tubo de vapor e sirene, casa do faroleiro ao pé

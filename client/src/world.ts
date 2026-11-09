@@ -792,11 +792,54 @@ function buildCity_L(): World {
     D('Carregador Nori Costas-Largas', 'Carregador', cx - 2, cy - 4, 3, 0x6a5a4a, ['Caixa vai, caixa vem. A carroça dos anões não espera ninguém.', 'Esse barril pesa como um anão bêbado. Ou seja, muito.']);
     D('Guarda Hreidmar Olho-de-Ferro', 'Guarda da Praça', cx + 3, cy - 1.5, 2, 0x5a6a8a, ['Na praça, arma guardada. Isso vale para você também.', 'Brasaforja não cai. Nunca caiu. Não vai ser hoje.']);
   };
+  /* 08/11 LITHENDEL, a vila dos elfos (Erling: "ver cada vila de começo de perto e corrigir o que estiver feio"). A Árvore-Mãe viva no meio,
+     com plataformas e lanternas; clareira de pedra musgosa em volta; casas redondas de madeira clara com telhado de folhas em anéis ao redor;
+     a Fonte da Visão, canteiros de flores por toda parte, lanternas, bancos; elfos morando e trabalhando. Sem muro: a floresta é o muro. */
+  const lithendel = (st: Settlement, rr: () => number, lore: string) => {
+    const cx = st.x, cy = st.y, R0 = 16; st.radius = R0; clearWater(cx, cy, R0 + 3); flatten(cx, cy, R0 + 4);
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.hypot(q.gx - cx, q.gy - cy) < R0 + 4 && q.kind !== 'fountain') props.splice(i, 1); }
+    /* a clareira: laje musgosa no centro e caminhos em estrela até as casas; o resto fica capim (a cultura élfica pinta o chão) */
+    const inClear = (x: number, y: number) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot(x - cx, y - cy) < 7.5 + 1.2 * Math.sin(a * 5 + 1); };
+    for (let y = cy - 9; y <= cy + 9; y++) for (let x = cx - 9; x <= cx + 9; x++) if (inb(x, y) && inClear(x, y) && map[y][x] !== 'water') map[y][x] = 'plaza';
+    for (let y = cy - R0 - 2; y <= cy + R0 + 2; y++) for (let x = cx - R0 - 2; x <= cx + R0 + 2; x++) if (inb(x, y) && map[y][x] === 'tree' && Math.hypot(x - cx, y - cy) < R0) map[y][x] = 'grass';
+    for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as [number, number][]) for (let d = 1; d <= R0 + 8; d++) for (const o of [0]) { const x = cx + ux * d + uy * o, y = cy + uy * d + ux * o; if (!inb(x, y) || map[y][x] === 'water' || map[y][x] === 'wall') continue; if (map[y][x] !== 'plaza') map[y][x] = 'road'; }
+    /* a Árvore-Mãe */
+    block({ kind: 'monument', gx: cx - 3, gy: cy - 3, w: 7, h: 7, height: 30, wall: 0, roof: 0, variant: 11 });
+    for (let y = cy - 3; y <= cy + 3; y++) for (let x = cx - 3; x <= cx + 3; x++) if (inb(x, y) && Math.hypot(x - cx, y - cy) > 2.2) map[y][x] = 'plaza'; /* só o tronco bloqueia */
+    props.push({ kind: 'fountain', gx: cx + 5, gy: cy + 4, w: 2, h: 2, height: 0.7, wall: 0x8a9a80, roof: 0x9ad8ff, variant: 1 });
+    const free = (gx: number, gy: number, w: number, h: number) => { if ((gx - 1 <= cx && gx + w >= cx) || (gy - 1 <= cy && gy + h >= cy)) return false; for (let y = gy - 1; y <= gy + h; y++) for (let x = gx - 1; x <= gx + w; x++) { if (!inb(x, y)) return false; const t = map[y][x]; if (t === 'wall' || t === 'water') return false; } return !props.some((q) => q.kind !== 'herb' && q.gx < gx + w + 1 && q.gx + q.w > gx - 1 && q.gy < gy + h + 1 && q.gy + q.h > gy - 1); };
+    let nh = 0; const house = (gx: number, gy: number, w: number, h: number, rot: number, variant: number, shop?: string) => { if (!free(gx, gy, w, h)) return false; block({ kind: 'house', gx, gy, w, h, height: 3.2, wall: 0xd8cfb0, roof: [0x6fa66a, 0xa8c060, 0x5a9a6a][nh % 3], variant, rot, style: 3, ...(shop ? { shop } : {}) }); nh++; return true; };
+    /* as casas em anel (redondas: w = h); as lojas viradas para a clareira */
+    const H: [number, number, number, number, number, string?][] = [[cx - 12, cy - 10, 4, 4, 0, 'armeiro'], [cx - 6, cy - 11, 4, 4, 0, 'mercador'], [cx + 3, cy - 11, 4, 4, 0, 'pocoes'], [cx + 9, cy - 10, 5, 5, 0, 'taverna'], [cx - 13, cy - 3, 4, 4, 1], [cx - 13, cy + 3, 4, 4, 1], [cx + 11, cy - 3, 4, 4, 1], [cx + 11, cy + 3, 4, 4, 1], [cx - 9, cy + 9, 4, 4, 0], [cx - 3, cy + 11, 4, 4, 0], [cx + 3, cy + 11, 4, 4, 0], [cx + 9, cy + 9, 4, 4, 0], [cx - 16, cy - 9, 4, 4, 1], [cx + 15, cy - 9, 4, 4, 1], [cx - 15, cy + 9, 4, 4, 1], [cx + 15, cy + 8, 4, 4, 1]];
+    H.forEach(([gx, gy, w, h, rot, shop], k) => house(gx, gy, w, h, rot, shop === 'taverna' ? 4 : [0, 1, 2][k % 3], shop));
+    /* canteiros de flores, lanternas e bancos */
+    const flowerAt = (x: number, y: number) => { if (inb(x, y) && (map[y][x] === 'grass' || map[y][x] === 'plaza') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'herb', gx: x, gy: y, w: 1, h: 1, height: 0.5, wall: 0, roof: 0, variant: 4 }); };
+    for (let k = 0; k < 28; k++) { const a = k / 28 * 6.283, r = 8.5 + (k % 3) * 0.8; flowerAt(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r)); }
+    for (let k = 0; k < 20; k++) { const a = rr() * 6.283, r = 10 + rr() * 6; flowerAt(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r)); }
+    for (const [x, y] of [[cx - 5, cy - 5], [cx + 5, cy - 5], [cx - 5, cy + 5], [cx + 7, cy + 7], [cx - 10, cy - 7], [cx + 8, cy - 7], [cx - 10, cy + 6], [cx + 1, cy - 8], [cx - 8, cy + 1], [cx + 8, cy + 1], [cx + 1, cy + 8]]) if (inb(x, y) && map[y][x] !== 'wall' && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'torch', gx: x, gy: y, w: 1, h: 1, height: 2.0, wall: 0x9a7a52, roof: 0x9ad8ff });
+    for (const [x, y, v] of [[cx + 3, cy + 2, 0], [cx - 4, cy - 2, 1], [cx - 2, cy + 4, 0], [cx + 2, cy - 4, 1]] as [number, number, number][]) decorAt('bench', x, y, 1, 1, v, 0x9a7a52, 0x8a9a80);
+    vpAt(0, cx - 7, cy + 3); vpAt(1, cx + 7, cy - 2); vpAt(6, cx - 8, cy - 4); vpAt(7, cx + 6, cy + 9);
+    vpAt(5, cx + 1, cy + R0 - 1); vpAt(5, cx + R0 - 2, cy + 1); vpAt(5, cx - R0 + 1, cy - 1);
+    pois.push({ name: st.name, x: cx, y: cy, biome: biomeAt_L(cx, cy) });
+    const E = (name: string, role: string, x: number, y: number, radius: number, tint: number, lines: string[], shop?: string) => st.npcs.push({ name, role, kind: 'nordic', x, y, radius, tint, scale: 1.02, lines, ...(shop ? { shop } : {}) });
+    E('Arqueira Lindoriel', 'Arcos de Lithendel · élfica', cx - 9.5, cy - 5.2, 1.2, 0x5a8a5a, ['Um arco de teixo dura mais que quem o puxa.', 'Flecha que erra ensina. A segunda não erra.'], 'armeiro');
+    E('Mercador Thalion', 'Mercador de Lithendel · élfico', cx - 3.5, cy - 6.2, 1.2, 0x8a9a60, ['Pão de bolota, corda de vime, lamparinas de seiva. O que a floresta dá.', 'Ouro é frio. Mas aceito.'], 'mercador');
+    E('Herborista Nimloth', 'Ervas de Lithendel · élfica', cx + 5.5, cy - 6.2, 1.2, 0x4a7a6a, ['Orvalho da manhã, casca de bétula, flor da lua. Nada que a terra não devolva.', 'Poção verde para o fôlego. Poção azul para a mente.'], 'pocoes');
+    E('Taverneira Elenwë', 'A Folha Dourada · élfica', cx + 11.5, cy - 4.2, 1.4, 0xa0a050, ['Hidromel de flor de tília e pão quente. Sente-se sob as folhas.', 'Aqui ninguém levanta a voz. As árvores escutam.'], 'cervejaria');
+    E('Guardiã Sílwen', 'Guardiã da Árvore-Mãe · élfica', cx + 2.5, cy - 3.5, 1.5, 0x3a6a4a, ['A Árvore-Mãe tem mil anos. As plataformas, trezentos. Pise devagar.', 'À noite as lanternas acendem sozinhas. Ninguém sabe quem as acende.']);
+    E('Jardineiro Caranthir', 'Jardineiro de Lithendel · élfico', cx - 6, cy + 3, 2.5, 0x6a9a5a, ['Cada flor daqui foi plantada por alguém que já não está. Eu só rego.', 'Não pise nos canteiros. Eles lembram.']);
+    E('Aprendiz Míriel', 'Aprendiz de Arqueira · élfica', cx + 6, cy + 1, 2.5, 0x7a9a7a, ['Acertei a maçã hoje. Da terceira vez, mas acertei.', 'A Lindoriel diz que o segredo é respirar. Eu esqueço de respirar.']);
+    E('Cantor Eärendil', 'Cantor de Lithendel · élfico', cx - 2, cy + 6, 2, 0x9ab0c0, [lore, 'As canções mais antigas não têm palavras. Só o vento sabe cantá-las.']);
+    E('Pequena Lúthien', 'Criança élfica', cx + 3, cy + 6, 3, 0xd0c0a0, ['Você viu o cervo branco? Ele passou aqui ontem!', 'Quando eu crescer vou subir até o topo da Árvore-Mãe.']);
+    E('Vigia Galdor', 'Vigia de Lithendel · élfico', cx - 1, cy - 9, 2.5, 0x4a6a5a, ['Os esqueletos do Campo Santo não sobem até aqui. Mas tentam.', 'Floresta quieta demais é floresta com alguma coisa dentro.']);
+  };
+  const vpAt = (variant: number, x: number, y: number, ry = 0) => { if (inb(x, y) && (map[y][x] === 'plaza' || map[y][x] === 'grass') && !props.some((q) => q.gx <= x && q.gx + q.w > x && q.gy <= y && q.gy + q.h > y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant, ry }); };
   const village = (name: string, cx: number, cy: number, seed: number, lore: string) => {
     const cult = CULT[name] ?? 0;
     const rr = rng(seed); const R0 = 13; clearWater(cx, cy, R0 + 2); flatten(cx, cy, R0 + 4);
     const st: Settlement = { name, kind: 'village', x: cx, y: cy, radius: R0, npcs: [], cult }; settlements.push(st);
     if (name === 'Brasaforja') { brasaforja(st, rr, lore); return st; } /* 08/11: a cidade dos anões tem planta própria (abaixo) */
+    if (name === 'Lithendel') { lithendel(st, rr, lore); return st; } /* 08/11: a vila dos elfos também */
     for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) if (inb(x, y)) map[y][x] = 'plaza';
     for (let y = cy - R0; y <= cy + R0; y++) for (let x = cx - R0; x <= cx + R0; x++) if (inb(x, y) && map[y][x] === 'grass' && (Math.abs(x - cx) <= 1 || Math.abs(y - cy) <= 1)) map[y][x] = 'road';
     /* 25/10: toda vila tem a sua fonte no centro da praça — o marco da vila e a sua Fonte da Visão; os povos do fogo mantêm a fogueira ao lado */

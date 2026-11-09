@@ -158,3 +158,32 @@ export function buildTree(height: number, h: number): { obj: THREE.Group; kind: 
   g.scale.setScalar(height / 7);
   return { obj: g, kind };
 }
+
+
+/* 08/11 A ÁRVORE-MÃE DE LITHENDEL: a árvore viva, imensa, no meio da vila dos elfos. Tronco retorcido (o mesmo gerador, 5× maior),
+   copa de cartões de folha em dois tons (verde-prata e verde-dourado), plataformas de madeira em volta do tronco com guarda-corpo de
+   galho, escada em espiral de degraus de madeira, lanternas penduradas. Devolve o grupo e os pontos das lanternas (para o fogo e a luz). */
+const elfLeafMat = windify(new THREE.MeshToonMaterial({ map: leafTexture(['#6fa66a', '#a8c870', '#4f8a5c', '#d6c46a']), alphaTest: 0.5, side: THREE.DoubleSide, gradientMap: ramp }), 0.05, 1.0);
+export function buildGreatTree(scale = 4.6): { obj: THREE.Group; lanterns: THREE.Vector3[]; platforms: { y: number; r: number }[] } {
+  const g = new THREE.Group(), rnd = mulberry(4242); const lanterns: THREE.Vector3[] = [];
+  const out: THREE.BufferGeometry[] = []; const tips: { p: THREE.Vector3; d: THREE.Vector3 }[] = [];
+  grow(rnd, out, tips, new THREE.Vector3(0, -0.3, 0), new THREE.Vector3(0.05, 1, 0.02), 3.6, 0.5, 3, 0.4);
+  const bark = new THREE.Mesh(mergeGeometries(out, false)!, barkMat); bark.castShadow = bark.receiveShadow = true; bark.scale.setScalar(scale); g.add(bark);
+  /* raízes largas na base */
+  for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2 + rnd() * 0.3, L = (2.2 + rnd() * 1.6) * scale * 0.5; const root = new THREE.Mesh(new THREE.ConeGeometry(0.45 * scale * 0.5, L, 6), barkMat); root.position.set(Math.cos(a) * L * 0.45, 0.25, Math.sin(a) * L * 0.45); root.rotation.z = Math.PI / 2 + 0.25; root.rotation.y = -a; root.castShadow = true; g.add(root); }
+  /* copa: cartões maiores nos galhos, em dois tons */
+  const cards: THREE.BufferGeometry[] = [];
+  for (const t of tips) { if (t.p.y < 2.6) continue; for (let k = 0; k < 3; k++) { const q = new THREE.PlaneGeometry(2.0 + rnd() * 1.2, 1.5 + rnd() * 0.9); q.rotateY(rnd() * 3.14); q.rotateX((rnd() - 0.5) * 1.2); q.rotateZ((rnd() - 0.5) * 0.9); q.translate(t.p.x + (rnd() - 0.5) * 0.9, t.p.y + (rnd() - 0.2) * 0.8, t.p.z + (rnd() - 0.5) * 0.9); cards.push(q); } }
+  const leaves = new THREE.Mesh(mergeGeometries(cards, false)!, elfLeafMat); leaves.scale.setScalar(scale); leaves.castShadow = true; g.add(leaves);
+  /* plataformas e escada em espiral */
+  const wood = new THREE.MeshToonMaterial({ color: 0xb8a070, gradientMap: ramp }), rail = new THREE.MeshToonMaterial({ color: 0x7a6a48, gradientMap: ramp });
+  const platforms = [{ y: 2.1 * scale * 0.5, r: 0.5 * scale + 2.2 }, { y: 3.4 * scale * 0.5, r: 0.42 * scale + 1.8 }];
+  for (const pf of platforms) { const ring = new THREE.Mesh(new THREE.RingGeometry(pf.r - 2.0, pf.r, 18, 1).rotateX(-Math.PI / 2), wood); ring.position.y = pf.y; ring.receiveShadow = true; g.add(ring);
+    const under = new THREE.Mesh(new THREE.RingGeometry(pf.r - 2.0, pf.r, 18, 1).rotateX(Math.PI / 2), rail); under.position.y = pf.y - 0.12; g.add(under);
+    for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 1.0, 5), rail); post.position.set(Math.cos(a) * (pf.r - 0.15), pf.y + 0.5, Math.sin(a) * (pf.r - 0.15)); g.add(post);
+      if (k % 3 === 0) lanterns.push(new THREE.Vector3(Math.cos(a) * (pf.r + 0.3), pf.y + 1.15, Math.sin(a) * (pf.r + 0.3))); }
+    const hand = new THREE.Mesh(new THREE.TorusGeometry(pf.r - 0.15, 0.05, 5, 36), rail); hand.rotation.x = Math.PI / 2; hand.position.y = pf.y + 1.0; g.add(hand);
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + 0.3; const brace = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, pf.y * 0.55, 5), rail); brace.position.set(Math.cos(a) * (pf.r - 1.0), pf.y - pf.y * 0.27, Math.sin(a) * (pf.r - 1.0)); brace.rotation.z = Math.cos(a) * 0.5; brace.rotation.x = -Math.sin(a) * 0.5; g.add(brace); } }
+  { const steps = 34, r = 0.5 * scale + 0.9, y1 = platforms[0].y; for (let k = 0; k < steps; k++) { const a = -0.4 + k / steps * Math.PI * 1.6, y = 0.3 + (y1 - 0.3) * k / steps; const st = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.12, 0.42), wood); st.position.set(Math.cos(a) * r, y, Math.sin(a) * r); st.rotation.y = -a; st.castShadow = true; g.add(st); } }
+  return { obj: g, lanterns, platforms };
+}
