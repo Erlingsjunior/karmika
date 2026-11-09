@@ -55,7 +55,8 @@ export const ROADS_OF_PEOPLES: QuestDef[] = ROUTES.flatMap((R) => {
     const lvl = Math.round(R.lvl0 + (R.lvl1 - R.lvl0) * i / n), giver = i === 0 ? R.boss : R.stops[i - 1][1];
     out.push({ id: `${R.id}${i + 1}`, chain: R.chain, name: `${vila}`, lvl, giver, turnin: lead, next: `${R.id}${i + 2}`, xp: 0, gold: 60 + lvl * 6,
       text: `${i === 0 ? R.open + ' ' : ''}Vá até ${vila} e fale com ${lead}.`, objs: [{ kind: 'visit', poi: vila }, { kind: 'talk', npc: lead }],
-      ...(i === 0 ? { talk: [R.open, 'Comece por ' + vila + '. Depois cada líder lhe diz para onde ir.'] } : {}),
+      /* 09/11 (regra 0: toda missão tem diálogo ao pegar e ao entregar): quem manda adiante fala também */
+      talk: i === 0 ? [R.open, 'Comece por ' + vila + '. Depois cada líder lhe diz para onde ir.'] : [`Vai para ${vila}? Leve isto também: diga a ${lead.split(' ').slice(-1)[0] === lead ? lead : lead} que ${R.stops[i - 1][0]} está de pé e lembra de quem manda.`, `A estrada até lá é ${['curta', 'longa', 'traiçoeira', 'bonita', 'fria', 'quieta', 'barulhenta'][(i + R.id.length) % 7]}. Não pare no escuro.`],
       done: [line, i < n - 1 ? `A próxima é ${R.stops[i + 1][0]}. Fale com ${R.stops[i + 1][1]}.` : `Volte a ${R.boss}. Você andou o caminho inteiro.`] });
   });
   out.push({ id: `${R.id}${n + 1}`, chain: R.chain, name: `De volta a ${R.boss.split(',')[0]}`, lvl: R.lvl1, giver: R.stops[n - 1][1], turnin: R.boss, xp: 0, gold: 120 + R.lvl1 * 10, gear: 1, title: R.title,
