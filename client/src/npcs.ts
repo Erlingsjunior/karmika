@@ -4,7 +4,7 @@ import { BARKS, roleTag } from './barks';
 import { attachSkin, type SkinDef } from './skin3d';
 import { WAGON_BLOCK } from './caravanas';
 
-export interface NpcDef { /** 08/11: sexo (escolhe o modelo de arte); sem ele, pelo nome */ sex?: 'm' | 'f'; /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
+export interface NpcDef { /** 09/11: fica onde foi posto (ex.: a Inês em cima da ponte; o chão do tabuleiro não conta como andável para o NPC) */ fixed?: boolean; /** 08/11: sexo (escolhe o modelo de arte); sem ele, pelo nome */ sex?: 'm' | 'f'; /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
 interface Npc { built: boolean; lodT?: number; /** 08/11: o modelo de arte vestido (skin3d) e o seu tique */ skin?: 0 | 1 | 2; skinTick?: (() => void) | null; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
 
 /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói tem que ser maior, mais heroico"): os modelos crus medem humano/elfo civil e
@@ -37,7 +37,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
     if (d.civil === 'elf') return { fbx: `/models/personagens/elfo_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
     if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '' };
     return null; };
-  const SKIN_R = 30;
+  const SKIN_R = 48; /* 09/11: o mesmo alcance em que o NPC aparece (antes 30: entre 30 e 48 m ele aparecia blocado) */
   function skinNear(n: Npc, dH: number) { if (n.skin || dH > SKIN_R || n.def.route) return; const def = npcSkin(n.def); if (!def) { n.skin = 2; return; } n.skin = 1; const h = n.hero;
     attachSkin(h, def).then((r) => { if (!r) { n.skin = 2; return; } if (n.hero !== h) { h.root.remove(r.model); n.skin = 0; return; } r.model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) { m.castShadow = false; m.receiveShadow = true; } }); n.skinTick = r.tick; }).catch(() => { n.skin = 2; }); }
   function build(n: Npc) { if (n.built) return; n.built = true; n.skin = 0; n.skinTick = null; const was = n.hero.root; const h = makeHero(n.def); h.root.visible = was.visible; h.root.position.copy(n.pos); h.root.rotation.y = n.yaw; scene.remove(was); scene.add(h.root); n.hero = h; }
@@ -63,7 +63,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
     const r = ctx.canvas.getBoundingClientRect(); buildNear(heroPos);
     if (!placed) { placed = true; /* regra 19 (27/10): NPC nunca fica dentro de parede nem em cima de mobília — se o lugar marcado está ocupado, vai para o chão livre mais perto */
-      for (const n of npcs) { const d = n.def; if (d.route || d.inside || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
+      for (const n of npcs) { const d = n.def; if (d.route || d.inside || d.fixed || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
     barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
       if (cand.length) { const n = cand[Math.floor(Math.random() * cand.length)], l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.8; } } }
     /* 26/10 noite (Erling: "dois NPCs grudados um dentro do outro"): ninguém ocupa o mesmo lugar. Quem está perto demais
@@ -85,8 +85,11 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if ((d as NpcDef & { onlyQ?: string }).onlyQ && !ctx.questOn?.((d as NpcDef & { onlyQ?: string }).onlyQ!)) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (d.night && night < 0.45) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // a Corte só recebe à noite
       if (dH > 48 || !n.built) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } // longe: nem anima nem desenha
-      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
+      /* 09/11 (Erling: "os NPCs blocados aparecem e depois viram os bonitos, às vezes os dois juntos"): quem tem modelo de arte só aparece
+         quando o modelo já está encaixado — o boneco procedural fica escondido como esqueleto e nunca é visto. Sem modelo (guardas, patrulhas), aparece direto. */
       skinNear(n, dH);
+      if (n.skin === 1 && !n.skinTick) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
+      if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
       if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);

@@ -151,7 +151,7 @@ const MAP_H_L = 840;
 const OFX_L = 140 + SH, OFY_L = 140 + SH;
 const CITY_L = { x: 70 + OFX_L, y: 72 + OFY_L };
 export type SettleKind = 'village' | 'city';
-export interface NpcSpec { name: string; role: string; kind: 'nordic' | 'dwarf' | 'technocrat'; x: number; y: number; radius: number; tint: number; scale: number; lines: string[]; shop?: string; /** só aparece à noite (a Corte de Vladislav) */ night?: boolean; /** só aparece com esta missão no diário */ onlyQ?: string }
+export interface NpcSpec { name: string; role: string; kind: 'nordic' | 'dwarf' | 'technocrat'; x: number; y: number; radius: number; tint: number; scale: number; lines: string[]; shop?: string; /** só aparece à noite (a Corte de Vladislav) */ night?: boolean; /** só aparece com esta missão no diário */ onlyQ?: string; /** 09/11: não é empurrado para o chão andável (em cima de ponte) */ fixed?: boolean }
 export interface Settlement { name: string; kind: SettleKind; x: number; y: number; radius: number; npcs: NpcSpec[]; /** 07/11: povo da vila (estilo das casas e do chão): 1 nórdico · 2 anão · 3 élfico · 4 sombrio · 5 tribal · 6 pacto · 7 vapor */ cult?: number }
 
 /* ---------- ruído determinístico ---------- */
@@ -737,7 +737,7 @@ function buildCity_L(): World {
   /* ---------- assentamentos: Karmika (centro), vilas de madeira e Askavik (cidade média de madeira e pedra) ---------- */
   const settlements: Settlement[] = [{ name: 'Karmika', kind: 'village', x: CITY_L.x, y: CITY_L.y + 3, radius: 22, npcs: [] }];
   { const bxL = CITY_L.x - 19 + 0.5, y0 = CITY_L.y + 3 + 0.5, y1 = CITY_L.y + 3 + 7.5; /* Inês fica EM CIMA da ponte, no meio do arco, olhando o rio (Erling: "fica mais bucólico") */
-    settlements[0].npcs.push({ name: 'Inês da Ponte', role: 'Espera alguém', kind: 'nordic', x: bxL + 0.9, y: (y0 + y1) / 2, radius: 0.15, tint: 0x8a6a8a, scale: 1.0, lines: ['Ele disse que vinha ao pôr do sol. Não disse qual.', 'A ponte é bonita a essa hora. O rio fica cor de cobre.', 'Não, você não é ele. Tudo bem. Ninguém é.'] }); }
+    settlements[0].npcs.push({ name: 'Inês da Ponte', role: 'Espera alguém', kind: 'nordic', x: bxL + 0.4, y: (y0 + y1) / 2, radius: 0, fixed: true, tint: 0x8a6a8a, scale: 1.0, lines: ['Ele disse que vinha ao pôr do sol. Não disse qual.', 'A ponte é bonita a essa hora. O rio fica cor de cobre.', 'Não, você não é ele. Tudo bem. Ninguém é.'] }); }
   const nearSettle = (x: number, y: number, margin: number) => settlements.some((st) => Math.hypot(x - st.x, y - st.y) < st.radius + margin);
   const FIRST = ['Astrid', 'Bjarni', 'Dagny', 'Einar', 'Freya', 'Gudrun', 'Halvar', 'Ingvar', 'Jorunn', 'Kjell', 'Liv', 'Magnus', 'Nanna', 'Orvar', 'Ragna', 'Sten', 'Tove', 'Ulrik', 'Vigdis', 'Yngve', 'Brokk', 'Dvalin', 'Eitri', 'Nori', 'Thrain'];
   // nomes por região: nórdicos só na neve; nas terras comuns, nomes de gente comum (humanos); nas florestas, élficos
@@ -2327,6 +2327,11 @@ function buildCity_L(): World {
         for (const dx of [0, 1, -1, 2, -2, 3]) { const nx = h.gx + Math.floor(h.w / 2) + dx, ny = h.gy + h.h; if (inb(nx, ny) && (map[ny][nx] === 'grass' || map[ny][nx] === 'plaza') && !occ0.has(ny * 4096 + nx) && !behindHouse(nx, ny)) { occ0.delete(q.gy * 4096 + q.gx); q.gx = nx; q.gy = ny; occ0.add(ny * 4096 + nx); moved = true; break; } }
         if (moved) continue; }
       props.splice(i, 1); } }
+  /* 09/11 (Erling, foto da ponte nova de Karmika): a caixa do correio e a placa de orientação ficavam na cabeceira norte, encostadas
+     no arco. A caixa vai para perto dos baús, na frente da casa da Rosália; a placa sai da ponte e vai para a grama a leste. */
+  { const KX = CITY_L.x, KY = CITY_L.y + 3;
+    const mv = (kind: PropKind, fx: number, fy: number, tx: number, ty: number) => { const q = props.find((p) => p.kind === kind && Math.abs(p.gx - (KX + fx)) <= 1 && Math.abs(p.gy - (KY + fy)) <= 1); if (q && inb(KX + tx, KY + ty) && map[KY + ty][KX + tx] !== 'water') { q.gx = KX + tx; q.gy = KY + ty; } };
+    mv('mailbox', 1, 6, -3, 5); mv('vprop', -1, 6, 3, 7); }
   /* QUADRO DE AVISOS EM TODA CIDADE E VILA (04/11, Erling: "a placa mural de missões da cidade, e de todas as cidades, pode ficar no
      centro, num lugar que não atrapalhe as carroças — elas não deveriam atravessar a placa"): o quadro vai para a grama, na beira da praça
      ou da rua, o mais perto do centro que der, com folga de uma casa de tudo o que já está construído e virado para a rua. */

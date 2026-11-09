@@ -382,7 +382,9 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
       if (i % 2 === 0) K.add(new THREE.CylinderGeometry(0.09, 0.12, 0.8, 6), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.45, (z0 + z1) / 2); } // balaústres
   }
   // o arco por baixo (aparece sobre a água) e a testa de pedra dos dois lados
-  for (const s of [-1, 1]) { const sh = new THREE.Shape(); sh.moveTo(-len / 2, -0.35); sh.lineTo(len / 2, -0.35); sh.lineTo(len / 2, -2.6); sh.lineTo(-len / 2, -2.6); sh.lineTo(-len / 2, -0.35);
+  /* 09/11 (Erling: "essa sobra de tijolos embaixo não existe, tire das pontes"): a testa reta por baixo só nas pontes longas de vários arcos;
+     nas curtas de um arco o tabuleiro em curva fica sozinho sobre a água */
+  if (len >= 22) for (const s of [-1, 1]) { const sh = new THREE.Shape(); sh.moveTo(-len / 2, -0.35); sh.lineTo(len / 2, -0.35); sh.lineTo(len / 2, -2.6); sh.lineTo(-len / 2, -2.6); sh.lineTo(-len / 2, -0.35);
     const nA = Math.max(1, Math.round(len / 11)), span = len / nA; // pontes longas: vários arcos em fila
     for (let k = 0; k < nA; k++) { const mx = -len / 2 + span * (k + 0.5), r = span * 0.42; const hole = new THREE.Path(); hole.moveTo(mx - r, -2.6); hole.absarc(mx, -2.6, r, Math.PI, 0, true); hole.lineTo(mx - r, -2.6); sh.holes.push(hole); }
     const geo = new THREE.ShapeGeometry(sh, 12); const m = new THREE.Mesh(geo, dk); m.rotation.y = Math.PI / 2; m.position.x = s * half; m.castShadow = true; K.g.add(m); }
