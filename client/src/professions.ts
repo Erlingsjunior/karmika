@@ -187,7 +187,8 @@ export function createProfessions(ctx: Ctx) {
   /** fazer N peças: com a bancada, vira um trabalho com tempo, som e animação (ctx.craftJob); sem ela, sai na hora */
   function craft(r: Recipe, times = 1) {
     const nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
-    if (ctx.craftJob && !r.inv) {
+    /* 09/11 (Erling: "quando clico em fazer machado, faca ou qualquer item tem que aparecer o contador redondo igual às tábuas, na sobrevivência também"): só a fogueira (que é posta no chão) continua na hora */
+    if (ctx.craftJob && r.inv !== 'fire') {
       /* confere antes de começar (sem gastar nada): classe, nível, bancada e materiais */
       { const why = clsBlock(r); if (why) { ctx.log(why, '#ff9a8a'); return; } }
       if (effL(r.prof) < r.lvl) { ctx.log(`Precisa de ${PROFS.find((p) => p.id === r.prof)!.name} nível ${r.lvl}.`, '#ff9a8a'); return; }

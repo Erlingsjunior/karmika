@@ -44,7 +44,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (cls) return { fbx: `/models/personagens/${cls}_${fem ? 'm' : 'h'}.glb`, tex: '', hscale: ART_HUMAN * (d.kind === 'technocrat' ? 0.91 / 0.81 : 1) /* o boneco do tecnocrata é encolhido para 0,81; o modelo volta à altura de gente */, npc: true }; }
     if (d.kind === 'dwarf') { const elite = /^(Rei|Mestre|Guarda Real|Thane|Conselheira)/.test(d.name); return { fbx: `/models/personagens/anao_${fem ? 'm' : 'h'}_lvl0${elite ? 3 : 2}.glb`, tex: '', hscale: ART_DWARF, npc: true }; } /* lvl02 = vestido de couro; lvl03 = com armadura */
     if (d.civil === 'elf') return { fbx: `/models/personagens/elfo_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '', hscale: ART_HUMAN, npc: true };
-    if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm' : 'h'}_lvl02.glb`, tex: '', hscale: ART_HUMAN, npc: true };
+    if (d.civil === 'human' || (d.kind === 'nordic' && !/Guarda|Soldad|Capit|Patrulh|Vigia|Sentinela/.test(d.role))) return { fbx: `/models/personagens/humano_${fem ? 'm_lvl01' : 'h_lvl02'}.glb`, tex: '', hscale: ART_HUMAN, npc: true };
     /* 09/11: guardas e sentinelas (os do portão, os da plataforma) vestem o guerreiro de armadura; só as patrulhas de rota seguem no boneco */
     if (d.kind === 'nordic' && /Guarda|Sentinela|Soldad|Vigia|Porteiro/.test(d.role)) return { fbx: `/models/personagens/guerreiro_${fem ? 'm' : 'h'}_lvl03.glb`, tex: '', hscale: ART_HUMAN, npc: true };
     return null; };
