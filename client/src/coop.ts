@@ -106,10 +106,11 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
   /* ---------- convite de grupo recebido ---------- */
   const invBox = document.createElement('div'); invBox.id = 'pinvite'; document.body.appendChild(invBox);
   let invTimer = 0;
-  function partyInvite(from: number, name: string, lvl: number) {
+  function partyInvite(from: number, name: string, lvl: number, call?: { fac: string; group: number }) {
     if (noParty()) { net.answerParty(from, false, true); return; }
     clearTimeout(invTimer);
-    invBox.innerHTML = `<div class="pi-t">⚑ Convite de grupo</div><p><b>${esc(name)}</b> (Nv ${lvl}) chama você para o grupo.</p><p class="cp-mut">No grupo, cada companheiro perto dá +15% de XP, ouro e achados (e raridade melhor), mas os bichos ficam +50% mais duros e batem +12% mais forte. O saque de cada um é só seu. As missões de um aparecem para os outros.</p><div class="pi-b"><button class="cp-btn gold" data-p="1">Aceitar</button><button class="cp-btn" data-p="0">Recusar</button></div><i class="pi-bar"></i>`;
+    const FN: Record<string, string> = { fio: 'Ordem do Fio', desf: 'Desfiados' };
+    invBox.innerHTML = call ? `<div class="pi-t">⚑ Chamado da Bandeira</div><p><b>${esc(name)}</b> (Nv ${lvl}) ergue o brasão: <b>${FN[call.fac] ?? call.fac}</b> chama quem está perto.${call.group ? ` O seu grupo inteiro (${call.group}) pode atender junto.` : ''}</p>` : `<div class="pi-t">⚑ Convite de grupo</div><p><b>${esc(name)}</b> (Nv ${lvl}) chama você para o grupo.</p><p class="cp-mut">No grupo, cada companheiro perto dá +15% de XP, ouro e achados (e raridade melhor), mas os bichos ficam +50% mais duros e batem +12% mais forte. O saque de cada um é só seu. As missões de um aparecem para os outros.</p><div class="pi-b"><button class="cp-btn gold" data-p="1">Aceitar</button><button class="cp-btn" data-p="0">Recusar</button></div><i class="pi-bar"></i>`;
     invBox.style.display = 'block'; invBox.dataset.from = String(from);
     invTimer = window.setTimeout(() => { if (invBox.style.display === 'block') { invBox.style.display = 'none'; net.answerParty(from, false); } }, 60000);
   }

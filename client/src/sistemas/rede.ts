@@ -1,7 +1,8 @@
 /* JOGAR JUNTO: os outros Caminhantes da sala no mundo (net.ts) e os monstros compartilhados (coop.ts). Saiu do main.ts (02/11). */
 import { createNet } from '../net';
 import { RACES } from '@karmika/shared';
-import { myFac, FAC } from '../faccoes';
+import { myFac, FAC, crestURL, type Fac } from '../faccoes';
+import * as THREE from 'three';
 import { isPremium } from '../premium';
 import { badge } from '../celebrate';
 import { bandOf } from '../karma';
@@ -29,7 +30,8 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
   restart: (sec, why) => K.srvWait.countdown(sec, why === 'fechar' ? 'A sala vai fechar' : 'A sala vai reiniciar'),
   update: (sec, version) => K.srvWait.update(sec, version),
   waiting: (on) => { if (on) K.srvWait.wait('Esperando a sala voltar…'); else K.srvWait.done(); },
-  partyInvite: (from, name, lvl) => coop.partyInvite(from, name, lvl),
+  partyInvite: (from, name, lvl, call) => coop.partyInvite(from, name, lvl, call),
+  onCall: (id, name, fac, same, mine, n) => chamado(id, name, fac as Fac, same, mine, n),
   showProfile: (id, p) => coop.showProfile(id, p),
   profile: () => { // o que os outros veem ao abrir o meu perfil
     const k = Math.round(K.state.karma), align = bandOf(k).name;
@@ -42,6 +44,29 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
   },
 });
 K.netRef = net;
+/* ---------- 09/11 O CHAMADO DA BANDEIRA (Erling): botão do meio do mouse = cumprimento da facção. O brasão sobe sobre a cabeça de quem chamou
+   e todos por perto veem; os da mesma bandeira (e os neutros) ouvem a trompa e recebem convite de grupo (o servidor manda, inclusive a grupos
+   inteiros). Recarga de 10 minutos, conferida no servidor e mostrada aqui. ---------- */
+const CALL_CD = 10 * 60 * 1000; let lastCall = 0; const crestTex = new Map<string, THREE.Texture>();
+function crest(f: Fac) { let t = crestTex.get(f); if (!t) { const im = new Image(); im.src = crestURL(f); t = new THREE.Texture(im); t.colorSpace = THREE.SRGBColorSpace; im.onload = () => { t!.needsUpdate = true; }; crestTex.set(f, t); } return t; }
+function crestOver(root: THREE.Object3D, f: Fac) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: crest(f), transparent: true, depthWrite: false, opacity: 0 })); sp.position.set(0, 3.1, 0); sp.scale.setScalar(0.01); sp.renderOrder = 20; root.add(sp);
+  const t0 = performance.now(); const tick = () => { const t = (performance.now() - t0) / 1000; if (t > 6) { root.remove(sp); sp.material.dispose(); return; }
+    const k = Math.min(1, t * 3), fade = t > 5 ? 6 - t : 1; sp.scale.setScalar(0.9 * k + 0.08 * Math.sin(t * 5)); sp.position.y = 3.0 + 0.18 * k + 0.05 * Math.sin(t * 2.2); (sp.material as THREE.SpriteMaterial).opacity = 0.95 * k * fade; requestAnimationFrame(tick); };
+  tick();
+}
+function chamado(id: number, name: string, fac: Fac, same: boolean, mine: boolean, n: number) {
+  const root = mine ? K.hero.root : net.remotes().find((r) => r.id === id)?.root; if (root) crestOver(root, fac);
+  if (same || mine) K.audio.horn(fac);
+  if (mine) { lastCall = performance.now(); K.game.logMsg(n ? `⚑ ${FAC[fac].name}: “${FAC[fac].motto}.” ${n} ${n === 1 ? 'caminhante atendeu ao seu chamado' : 'caminhantes receberam o seu chamado'}.` : `⚑ ${FAC[fac].name}: “${FAC[fac].motto}.” Ninguém da bandeira por perto.`, fac === 'fio' ? '#d9b45a' : '#e0303a'); }
+  else if (same) K.game.logMsg(`⚑ ${name} ergueu o brasão de ${FAC[fac].name} aqui perto.`, fac === 'fio' ? '#d9b45a' : '#e0303a');
+}
+K.canvas.addEventListener('pointerdown', (e) => { if (e.button !== 1) return; e.preventDefault();
+  const f = myFac(); if (!f) { K.game.logMsg('⚑ O Chamado da Bandeira é só de quem jurou uma bandeira (nível 30, com a classe).', '#c8d8f0'); return; }
+  if (net.state !== 'on') { K.game.logMsg('⚑ O Chamado só ecoa numa sala com outros caminhantes.', '#c8d8f0'); crestOver(K.hero.root, f); K.audio.horn(f); return; }
+  const left = CALL_CD - (performance.now() - lastCall); if (lastCall && left > 0) { K.game.logMsg(`⚑ O Chamado descansa por mais ${Math.ceil(left / 60000)} min.`, '#c8d8f0'); return; }
+  net.call(); });
+K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
 /* jogar junto, etapa 2: os monstros do mundo são os mesmos para todos da sala (quem luta com o bicho conduz; golpes e mortes vão para todos) */
 { const inParty = (id: number) => !!net.party && net.party.members.includes(id) && id !== net.myId;
   const partyNear = () => { if (!net.party || K.inside) return 1; const p = K.hero.root.position; let n = 1; for (const r of net.remotes()) if (inParty(r.id) && r.zn === 'world' && r.pos.distanceTo(p) < 45) n++; return n; };

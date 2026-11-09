@@ -37,7 +37,9 @@ export interface NetCtx {
   /** monta o meu perfil quando alguém pede para ver */
   profile(): NetProfile;
   /** alguém me chamou para o grupo: a interface pergunta (ou recusa sozinha se estiver bloqueado) */
-  partyInvite(from: number, name: string, lvl: number): void;
+  partyInvite(from: number, name: string, lvl: number, call?: { fac: string; group: number }): void;
+  /** 09/11: alguém fez o Chamado da Bandeira perto (same = da minha bandeira ou eu sou neutro) */
+  onCall?(id: number, name: string, fac: string, same: boolean, mine: boolean, n: number): void;
   showProfile(id: number, p: NetProfile): void;
   /** carta de outro jogador chegou pela sala */
   mail?(letter: unknown): void;
@@ -142,7 +144,8 @@ export function createNet(ctx: NetCtx) {
       case 'sys': ctx.sys(m.text as string, '#c8d8f0'); break;
       case 'party': { party = (m.party as NetParty | null) ?? null; for (const r of remotes.values()) r.el.classList.toggle('party', !!party && party.members.includes(r.id)); changed(); break; }
       case 'partyOf': for (const id of m.ids as number[]) { if (m.party) partyOf.set(id, m.party as number); else partyOf.delete(id); } changed(); break;
-      case 'party:invite': ctx.partyInvite(m.from as number, m.name as string, m.lvl as number); break;
+      case 'party:invite': ctx.partyInvite(m.from as number, m.name as string, m.lvl as number, m.call ? { fac: m.call as string, group: (m.group as number) || 0 } : undefined); break;
+      case 'call': ctx.onCall?.(m.id as number, m.name as string, m.fac as string, !!m.same, !!m.mine, (m.n as number) || 0); break;
       case 'prof:req': { let data: NetProfile | null = null; try { data = ctx.profile(); } catch (err) { console.warn('[net] perfil', err); } if (data) send({ t: 'prof:res', to: m.from, data }); break; }
       case 'prof:res': ctx.showProfile(m.id as number, m.data as NetProfile); break;
       case 'chat': {
@@ -234,6 +237,8 @@ export function createNet(ctx: NetCtx) {
     whisper(to: string, text: string) { if (state !== 'on') { ctx.sys('Você não está em nenhuma sala.'); return; } const nrm = (x: string) => x.replace(/[\s_]+/g, '_').toLowerCase(); const r = [...remotes.values()].find((q) => nrm(q.name) === nrm(to)); send({ t: 'w', to: r ? r.id : to, text }); },
     /** 08/11: fala só para o grupo */ partyChat(text: string) { send({ t: 'pchat', text }); },
     inviteParty(id: number) { send({ t: 'party:invite', to: id }); },
+    /** 09/11 o Chamado da Bandeira (botão do meio) */
+    call() { send({ t: 'call' }); },
     answerParty(from: number, ok: boolean, auto = false) { send({ t: 'party:answer', from, ok, auto }); },
     leaveParty() { send({ t: 'party:leave' }); },
     kick(id: number) { send({ t: 'party:kick', id }); },

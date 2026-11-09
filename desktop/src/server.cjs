@@ -29,6 +29,7 @@ const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
 const PROTO = 1;
 const MAX = 200;      // gente na sala (05/11, Erling: "a sala oficial pode caber umas 200 pessoas, não só 12")
 const PARTY_MAX = 8; // gente num grupo (08/11, Erling: grupos até 8)
+const CALL_CD = 10 * 60 * 1000; // 09/11: recarga do Chamado da Bandeira
 const PARTY_GAP = 10; // diferença máxima de nível dentro do grupo (ninguém puxa ninguém)
 const ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O/0 e I/1 para não confundir ao ditar
 
@@ -368,10 +369,31 @@ function startServer(opts = {}) {
             if (Math.max(...lv, tl) - Math.min(...lv, tl) > PARTY_GAP) { send(ws, { t: 'sys', text: `Diferença de nível grande demais (máximo ${PARTY_GAP}). Em Karmika ninguém é puxado: cada um sobe com as próprias mãos.` }); break; }
             invites.set(`${me.id}>${to.id}`, Date.now()); send(to.ws, { t: 'party:invite', from: me.id, name: me.name, lvl: lvlOf(me) }); send(ws, { t: 'sys', text: `Convite de grupo enviado para ${to.name}.` }); break;
           }
+          /* 09/11 o CHAMADO DA BANDEIRA (Erling): botão do meio → cumprimento da facção. Quem está perto (mesma zona, 90 m) vê o brasão sobre a cabeça;
+             os da mesma bandeira (e os neutros: guerreiro e tecnocrata, que escolhem) recebem convite de grupo, inclusive quem já está em grupo
+             (o convite vai ao líder, e o grupo inteiro adere se couber). Recarga de 10 minutos, conferida aqui. */
+          case 'call': {
+            const fac = me.look && me.look.fac; if (!fac) { send(ws, { t: 'sys', text: 'O Chamado da Bandeira é só de quem jurou uma bandeira.' }); break; }
+            const now = Date.now(); if (me.lastCall && now - me.lastCall < CALL_CD) { send(ws, { t: 'sys', text: `O Chamado descansa por mais ${Math.ceil((CALL_CD - (now - me.lastCall)) / 60000)} min.` }); break; }
+            me.lastCall = now; const st = me.st || {}; let n = 0;
+            for (const p of players.values()) { if (p === me || p.ws.readyState !== 1) continue; const o = p.st; if (!o || o.zn !== st.zn || Math.hypot((o.x || 0) - (st.x || 0), (o.z || 0) - (st.z || 0)) > 90) continue;
+              const pf = p.look && p.look.fac; const same = pf === fac, neutral = !pf; send(p.ws, { t: 'call', id: me.id, name: me.name, fac, same: same || neutral });
+              if (!(same || neutral)) continue; if (p.party && p.party === me.party) continue;
+              const target = p.party ? players.get(p.party.leader) : p; if (!target || target === me || invites.has(`${me.id}>${target.id}`)) continue;
+              const room = PARTY_MAX - (me.party ? me.party.members.size : 1); if (room <= 0) continue; if (p.party && p.party.members.size > room) { send(target.ws, { t: 'sys', text: `${me.name} fez o Chamado da Bandeira, mas o grupo de vocês não cabe no dele.` }); continue; }
+              invites.set(`${me.id}>${target.id}`, now); send(target.ws, { t: 'party:invite', from: me.id, name: me.name, lvl: lvlOf(me), call: fac, group: p.party ? p.party.members.size : 0 }); n++; }
+            send(ws, { t: 'call', id: me.id, name: me.name, fac, same: true, mine: true, n }); break;
+          }
           case 'party:answer': {
             const from = players.get(m.from); const k = `${m.from}>${me.id}`; const at = invites.get(k); invites.delete(k);
             if (!from || !at || Date.now() - at > 120000) { send(ws, { t: 'sys', text: 'Esse convite expirou.' }); break; }
             if (!m.ok) { send(from.ws, { t: 'sys', text: m.auto ? `${me.name} não está aceitando convites de grupo.` : `${me.name} recusou o convite de grupo.` }); break; }
+            if (me.party && me.party.leader === me.id && me.party !== from.party) { /* o grupo inteiro adere ao Chamado */
+              let party = from.party; if (!party) { party = { id: pid++, leader: from.id, members: new Set([from.id]) }; from.party = party; }
+              const mine = [...me.party.members].map((id) => players.get(id)).filter(Boolean); if (party.members.size + mine.length > PARTY_MAX) { send(ws, { t: 'sys', text: 'O grupo encheu antes de vocês entrarem.' }); break; }
+              const old = me.party; for (const q of mine) { old.members.delete(q.id); party.members.add(q.id); q.party = party; }
+              sendParty(party); for (const id of party.members) { const q = players.get(id); if (q) send(q.ws, { t: 'sys', text: mine.includes(q) ? `O seu grupo atendeu ao Chamado de ${from.name}.` : `O grupo de ${me.name} (${mine.length}) atendeu ao Chamado.` }); }
+              break; }
             if (me.party) break;
             let party = from.party; if (!party) { party = { id: pid++, leader: from.id, members: new Set([from.id]) }; from.party = party; }
             if (party.members.size >= PARTY_MAX) { send(ws, { t: 'sys', text: 'O grupo encheu antes de você entrar.' }); break; }

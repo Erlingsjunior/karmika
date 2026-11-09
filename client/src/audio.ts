@@ -229,6 +229,9 @@ export class AudioEngine {
     } else if (!on && this.limiarPad) { const lp = this.limiarPad; this.limiarPad = null; lp.g.gain.setTargetAtTime(0, now, 0.9); setTimeout(() => { for (const o of lp.os) o.stop(); lp.lfo.stop(); }, 4000); }
   }
   /** sino fundo do Limiar (fala de um Essencial, a escolha) */
+  /** 09/11 a trompa do Chamado da Bandeira: a do Fio é clara (duas notas subindo); a dos Desfiados é grave e rachada */
+  horn(fac: string) { if (!this.ctx) return; if (fac === 'fio') { this.tone(392, 392, 0.55, 0.09, 'sawtooth'); this.tone(523, 523, 0.9, 0.09, 'sawtooth', 0.5); this.tone(784, 784, 0.9, 0.03, 'triangle', 0.5); }
+    else { this.tone(110, 104, 1.3, 0.11, 'sawtooth'); this.tone(165, 160, 1.1, 0.07, 'square', 0.25); this.burst('lowpass', 300, 0.8, 0.5, 0.08, 0.7); } }
   bell(f = 196, vol = 0.07) { if (!this.ctx) return; this.tone(f, f * 0.995, 4.5, vol, 'sine', 0, this.sfx, 0, 0.005); this.tone(f * 2.76, f * 2.75, 2.2, vol * 0.35, 'sine', 0, this.sfx, 0, 0.004); this.tone(f * 5.4, f * 5.38, 1.1, vol * 0.12, 'sine', 0, this.sfx, 0, 0.003); }
   /** a faísca da alma subindo: um zumbido que vibra e dispara para o agudo */
   soulRise(delay = 0, hum = 2.4) { if (!this.ctx) return; if (hum > 0) { this.tone(196, 247, hum + 0.1, 0.035, 'sine', delay, this.sfx, 0, 0.8); this.tone(392, 494, hum, 0.012, 'triangle', delay + hum * 0.5, this.sfx, 0, 0.4); } this.tone(330, 2600, 0.9, 0.05, 'sine', delay + hum, this.sfx, 0, 0.02); this.tone(660, 5200, 0.8, 0.02, 'triangle', delay + hum + 0.02, this.sfx, 0, 0.02); }
