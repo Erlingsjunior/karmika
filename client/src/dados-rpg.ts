@@ -45,14 +45,17 @@ let box: HTMLElement | null = null; let on = (() => { try { return localStorage.
 /* 09/11 (Erling: "achei o lugar ideal para os dados"): o botão 🎲 fica ao lado do 📜 do registro do sistema, no alto à esquerda.
    Cada um liga e desliga sozinho; com os dois ligados, as duas listas correm lado a lado (o sistema à esquerda, os dados logo depois). */
 let tog: HTMLButtonElement | null = null;
-function layout() { if (!box) return; const lg = document.getElementById('log'), lt = document.getElementById('logtog'); const logOn = !!lg && !lt?.classList.contains('off');
-  let left = 14, top = 84; if (lg) { const r = lg.getBoundingClientRect(); top = Math.max(56, r.top); if (logOn) left = Math.round(r.right + 8); else left = Math.round(r.left + 54); }
-  box.style.left = left + 'px'; box.style.top = top + 'px'; box.style.right = 'auto'; }
+/* 09/11 (Erling: "as mensagens vindo ABAIXO dos ícones e não do lado; a de sistema pequena como a dos dados, mais discreta; e os dados vêm primeiro
+   para não ficar a tela vazia"): os dois ícones ficam no alto; embaixo deles a lista dos dados; e logo abaixo dela, o registro do sistema, do mesmo
+   tamanho e na mesma letra. Se os dados estão desligados (ou vazios), o registro sobe e encosta nos ícones. */
+function layout() { if (!box) return; const lg = document.getElementById('log'); const TOP = 84, LEFT = 14;
+  box.style.left = LEFT + 'px'; box.style.top = TOP + 'px'; box.style.right = 'auto';
+  if (lg) { const has = on && !!box.querySelector('.rl p'); const y = has ? Math.round(box.getBoundingClientRect().bottom + 6) : TOP; lg.style.setProperty('top', y + 'px', 'important'); lg.style.setProperty('left', LEFT + 'px', 'important'); } }
 function ensure() { if (box) return box; box = document.createElement('div'); box.id = 'rolls'; box.innerHTML = '<div class="rl"></div>'; document.body.appendChild(box);
   tog = document.createElement('button'); tog.id = 'rolltog'; tog.textContent = '🎲'; document.body.appendChild(tog);
   const apply = () => { box!.classList.toggle('off', !on); tog!.classList.toggle('off', !on); tog!.title = on ? 'Esconder o Registro de Rolagens (cada golpe é um d20 contra a Defesa e os dados de dano)' : 'Mostrar o Registro de Rolagens: cada golpe é um d20 contra a Defesa e os dados de dano'; layout(); };
   tog.addEventListener('click', () => { on = !on; try { localStorage.setItem('karmika.rolls', on ? '1' : '0'); } catch { /* */ } apply(); });
-  document.getElementById('logtog')?.addEventListener('click', () => setTimeout(layout, 0)); addEventListener('resize', layout); apply(); return box; }
+  document.getElementById('logtog')?.addEventListener('click', () => setTimeout(layout, 0)); addEventListener('resize', layout); setInterval(layout, 400); apply(); return box; }
 if (typeof document !== 'undefined') { const boot = () => { if (document.body.classList.contains('ready')) ensure(); else setTimeout(boot, 1000); }; setTimeout(boot, 1000); }
 /** 07/11 (Erling: "nome do monstro e algumas coisas na linha de cima, outras na de baixo; acerto crítico em verde, erro crítico em vermelho; mais curto"):
     linha 1 = quem (⚔ você bate / 🛡 você apanha) e o veredito; linha 2 = os dados, curtos */

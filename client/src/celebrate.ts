@@ -62,3 +62,22 @@ export function premiumWelcome(days: number, total: number) {
   const close = () => { w.style.transition = 'opacity .4s'; w.style.opacity = '0'; setTimeout(() => { w.remove(); st.remove(); }, 420); };
   w.querySelector('button')!.addEventListener('click', close); w.addEventListener('click', (e) => { if (e.target === w) close(); });
 }
+
+/* 09/11 (Erling: "quando clico para colocar pontos tem que fazer um brilho na magia, ela cresce e diminui um pouco, o botão que cliquei brilha;
+   os sistemas precisam dizer mais explicitamente que estão sendo clicados e transformados"): todo clique que investe ponto (habilidade, talento,
+   passiva) faz o nó pulsar com brilho dourado, o botão brilhar e soltar faíscas. Um ouvinte só, no documento, para as três árvores. */
+const JOLT: [string, (t: HTMLElement) => string[]][] = [
+  ['[data-inv]', (t) => [`[data-n="${t.dataset.inv}"]`, '[data-inv]']],
+  ['[data-up]', (t) => [`[data-pv="${t.dataset.up}"]`, `[data-up="${t.dataset.up}"]`]],
+  ['[data-take]', () => ['[data-take]', '[data-t].sel', '[data-t].selected']],
+  ['[data-t]', (t) => [`[data-t="${t.dataset.t}"]`]],
+];
+function sparks(el: Element) { const r = el.getBoundingClientRect(); if (!r.width) return; const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+  for (let i = 0; i < 12; i++) { const s = document.createElement('i'); s.className = 'jspark'; const a = i / 12 * Math.PI * 2, d = Math.max(r.width, r.height) * 0.55 + 14;
+    s.style.left = cx + 'px'; s.style.top = cy + 'px'; s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', Math.sin(a) * d + 'px'); document.body.appendChild(s); setTimeout(() => s.remove(), 650); } }
+function jolt(sel: string) { document.querySelectorAll(sel).forEach((el) => { if ((el as HTMLButtonElement).disabled) return; el.classList.remove('jolt'); void (el as HTMLElement).offsetWidth; el.classList.add('jolt'); setTimeout(() => el.classList.remove('jolt'), 700); }); }
+if (typeof document !== 'undefined') document.addEventListener('click', (e) => {
+  const t0 = e.target as HTMLElement | null; if (!t0?.closest) return;
+  for (const [q, f] of JOLT) { const t = t0.closest(q) as HTMLElement | null; if (!t || (t as HTMLButtonElement).disabled || t.classList.contains('off')) continue; const sels = f(t);
+    requestAnimationFrame(() => requestAnimationFrame(() => { for (const s of sels) jolt(s); const first = document.querySelector(sels[0]); if (first) sparks(first); })); break; }
+}, true);

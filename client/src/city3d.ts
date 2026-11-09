@@ -134,6 +134,7 @@ export function buildGatehouse(side: number, n: number, H: number, roofC: number
   const Lm = n * T, along = oz ? 'x' : 'z', ry = oz ? 0 : Math.PI / 2;
   const cx = oz ? Lm / 2 : T / 2, cz = oz ? T / 2 : Lm / 2; // centro do terreno
   const W = Lm + 0.6, w = Lm - 0.5, spring = H - 1.3 - w / 2;
+  if (side === 0) { squarePortal(K, Lm, H, T + 0.3, { st: sm, dk: dk, lt: lt, wd: wood(0x5a3e24), pl: planks(0x7a5a38) }); void W; void spring; void along; } else {
   const wall = K.archWall(W, H, T + 0.3, w, Math.max(1.6, spring), sm); wall.position.set(cx, 0, cz); wall.rotation.y = ry; K.g.add(wall);
   const ring = K.archRing(w, Math.max(1.6, spring), T + 0.36, lt); ring.position.x = cx; ring.position.z = cz; ring.rotation.y = ry; K.g.add(ring);
   K.box(oz ? W : T + 0.3, 0.1, oz ? T + 0.3 : W, cx, H, cz, stone(0x5a5650));
@@ -145,6 +146,7 @@ export function buildGatehouse(side: number, n: number, H: number, roofC: number
   const top = Math.max(1.6, spring) + w / 2, gy = top - 1.5;
   for (let k = -3; k <= 3; k++) { const bar = K.add(new THREE.BoxGeometry(0.07, 1.6, 0.07), ironM(), cx + (oz ? k * w / 8 : 0), gy, cz + (ox ? k * w / 8 : 0), 0, false); void bar; K.add(new THREE.ConeGeometry(0.06, 0.22, 4), ironM(), cx + (oz ? k * w / 8 : 0), gy - 0.9, cz + (ox ? k * w / 8 : 0), 0, false).rotation.x = Math.PI; }
   for (let k = 0; k < 3; k++) K.add(new THREE.BoxGeometry(oz ? w * 0.9 : 0.07, 0.07, oz ? 0.07 : w * 0.9), ironM(), cx, gy - 0.5 + k * 0.5, cz, 0, false);
+  }
   // torres de flanco: salientes para fora, mirante aberto na altura do caminho, andar fechado em cima, telhado alto
   const S = 3.8, TH = H + 6.5;
   for (const s of [-1, 1]) {
@@ -501,16 +503,46 @@ export function buildKitTower(H: number, seed: number): Built {
   return K.out;
 }
 /** portão da vila: dois pilares de pedra, viga e ponte de tábuas com guarda-corpo em cima (o caminho de ronda passa), porta dupla em arco entreaberta. Estrada ao longo de z local; n casas de largura */
+/** 09/11 (Erling: "portas de cidades são espessas e quadradas, não têm essa curva, e os batentes estão saindo da porta; deixe a porta mais forte,
+ *  com dois soldados em cima na plataforma, um sistema de gradil que sobe e desce por roldanas, com NPC embaixo e em cima para abrir e fechar"):
+ *  o vão é QUADRADO entre dois pilares maciços (tudo na mesma espessura: nada sobra para fora), verga de pedra, plataforma com ameias por fora,
+ *  a grade levadiça erguida correndo entre duas guias de madeira até a trave das roldanas, correntes até o sarilho (com manivela) em cima.
+ *  As folhas de madeira, quadradas, ficam abertas e deitadas rente à face de dentro do muro. Local: vão ao longo de x, −z = fora.
+ *  Devolve a altura da plataforma (os soldados de cima ficam ali). */
+function squarePortal(K: ReturnType<typeof kit>, Lm: number, Hp: number, D: number, mats: { st: THREE.Material; dk: THREE.Material; lt: THREE.Material; wd: THREE.Material; pl: THREE.Material }): number {
+  const cx = Lm / 2, cz = T / 2, P = 1.6, w = Lm - 2 * P, Lh = 1.1, clear = Hp - Lh;
+  for (const s of [-1, 1]) { const px = cx + s * (w / 2 + P / 2);
+    K.box(P + 0.3, 0.9, D + 0.3, px, 0, cz, mats.dk); K.box(P, Hp, D, px, 0, cz, mats.st); /* pilar maciço, da largura toda do muro */
+    for (const y of [1.6, 3.0]) K.box(0.08, 0.5, 0.05, px + s * 0.1, y, cz - D / 2 - 0.02, mats.dk); }
+  K.box(w + 0.02, Lh, D, cx, clear, cz, mats.st); K.box(w + 2 * P + 0.2, 0.22, D + 0.2, cx, clear - 0.11, cz, mats.lt); /* verga e cinta de pedra */
+  K.box(w + 2 * P + 0.4, 0.3, D + 0.9, cx, Hp, cz, mats.lt); /* a plataforma */
+  K.merlons(cx - Lm / 2 - 0.1, cz - D / 2 - 0.3, cx + Lm / 2 + 0.1, cz - D / 2 - 0.3, Hp + 0.3, mats.st, 0.9, 0.95, 0.4);
+  K.box(Lm + 0.2, 0.55, 0.25, cx, Hp + 0.3, cz + D / 2 + 0.3, mats.dk); /* mureta de dentro */
+  /* a grade levadiça erguida: só os dentes ficam abaixo da verga */
+  const gh = clear + 0.2, gy = clear - 0.7, iron = ironM();
+  for (let x = -w / 2 + 0.25; x <= w / 2 - 0.2; x += 0.45) { K.add(new THREE.BoxGeometry(0.09, gh, 0.09), iron, cx + x, gy + gh / 2, cz, 0, false); K.add(new THREE.ConeGeometry(0.07, 0.28, 4), iron, cx + x, gy - 0.12, cz, 0, false).rotation.x = Math.PI; }
+  for (let y = gy + 0.35; y < gy + gh; y += 0.6) K.add(new THREE.BoxGeometry(w - 0.3, 0.08, 0.1), iron, cx, y, cz, 0, false);
+  /* guias de madeira, trave com duas roldanas e as correntes até o sarilho */
+  const top = gy + gh + 0.5;
+  for (const s of [-1, 1]) { K.box(0.32, top - Hp + 0.3, 0.32, cx + s * (w / 2 - 0.05), Hp + 0.3, cz, mats.wd); }
+  K.box(w + 0.4, 0.34, 0.4, cx, top, cz, mats.wd);
+  for (const s of [-0.28, 0.28]) { const px = cx + s * w; K.add(new THREE.CylinderGeometry(0.32, 0.32, 0.14, 14).rotateX(Math.PI / 2), mats.wd, px, top - 0.25, cz - 0.28, 0, false); K.add(new THREE.CylinderGeometry(0.07, 0.07, 0.3, 6).rotateX(Math.PI / 2), iron, px, top - 0.25, cz - 0.28, 0, false);
+    K.add(new THREE.BoxGeometry(0.05, top - 0.25 - (gy + gh), 0.05), iron, px, (top - 0.25 + gy + gh) / 2, cz - 0.05, 0, false); /* corrente até a grade */
+    const L2 = Math.hypot(0.5, top - 0.25 - (Hp + 1.0)); const ch = K.add(new THREE.BoxGeometry(0.05, L2, 0.05), iron, px, (top - 0.25 + Hp + 1.0) / 2, cz + 0.45, 0, false); ch.rotation.x = -Math.atan2(0.5, top - 0.25 - (Hp + 1.0)); }
+  /* o sarilho: tambor deitado em dois cavaletes, com manivela */
+  const wz = cz + 0.75, wy = Hp + 1.0;
+  for (const s of [-1, 1]) K.box(0.18, 0.75, 0.5, cx + s * (w * 0.32), Hp + 0.3, wz, mats.wd);
+  K.add(new THREE.CylinderGeometry(0.26, 0.26, w * 0.62, 12).rotateZ(Math.PI / 2), mats.wd, cx, wy, wz, 0, false);
+  K.add(new THREE.CylinderGeometry(0.05, 0.05, 0.5, 6).rotateZ(Math.PI / 2), iron, cx + w * 0.34, wy, wz, 0, false); K.box(0.06, 0.5, 0.06, cx + w * 0.34 + 0.25, wy - 0.05, wz, iron);
+  /* as folhas: quadradas e grossas, abertas e deitadas rente à face de dentro do muro */
+  for (const s of [-1, 1]) { const lw = w / 2 - 0.1, hx = cx + s * (w / 2 + P), z0 = cz + D / 2 + 0.12;
+    K.box(lw, clear - 0.1, 0.18, hx + s * lw / 2, 0, z0, mats.pl); for (const y of [0.5, clear * 0.5, clear - 0.7]) K.box(lw - 0.2, 0.12, 0.04, hx + s * lw / 2, y, z0 + 0.11, iron); }
+  for (const s of [-1, 1]) K.torch(cx + s * (w / 2 + P / 2), 1.9, cz - D / 2 - 0.35);
+  return Hp + 0.3;
+}
+
 export function buildKitGate(n: number, H: number): Built {
-  const K = kit(), Lm = n * T, cx = Lm / 2, cz = T / 2, w = Lm - 2.6, P = 1.3, tm = kitWood();
-  for (const s of [-1, 1]) { const px = cx + s * (w / 2 + P / 2); K.box(P + 0.5, 1.0, P + 0.7, px, 0, cz, kitMoss()); K.box(P, H + 0.2, P, px, 0, cz, kitStone()); K.box(P + 0.3, 0.25, P + 0.3, px, H - 0.3, cz, stone(0x7a766e)); K.box(0.2, H - 0.4, 0.2, px - s * (P / 2 + 0.1), 0, cz, tm); }
-  K.box(Lm + 0.4, 0.3, 0.4, cx, H + 0.2, cz - 0.6, tm); K.box(Lm + 0.4, 0.3, 0.4, cx, H + 0.2, cz + 0.6, tm); K.box(Lm + 0.4, 0.12, 2.0, cx, H + 0.5, cz, kitPlank()); // vigas e ponte
-  for (const z of [-0.95, 0.95]) { for (const y of [0.5, 1.0]) K.box(Lm + 0.4, 0.07, 0.07, cx, H + 0.62 + y, cz + z, tm); for (let k = 0; k <= 4; k++) K.box(0.1, 1.05, 0.1, cx - Lm / 2 + k * (Lm / 4), H + 0.62, cz + z, tm); }
-  // porta dupla em arco, entreaberta (cada folha gira em torno do seu pilar)
-  const dh = H - 0.5, dw = w / 2; for (const s of [-1, 1]) { const piv = new THREE.Group(); piv.position.set(cx + s * (w / 2 - 0.05), 0, cz - 0.5); piv.rotation.y = s * 1.05; K.g.add(piv);
-    const sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(s * -dw, 0); sh.lineTo(s * -dw, dh - dw * 0.9); sh.absarc(0, dh - dw * 0.9, dw, s > 0 ? Math.PI : 0, Math.PI / 2, s > 0); sh.lineTo(0, 0);
-    const geo = new THREE.ExtrudeGeometry(sh, { depth: 0.12, bevelEnabled: false, curveSegments: 8 }); const uv = geo.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) / 2, uv.getY(i) / 2); const door = new THREE.Mesh(geo, kitPlank()); door.castShadow = true; piv.add(door);
-    for (const y of [0.6, dh * 0.5, dh - 1.2]) { const band = new THREE.Mesh(new THREE.BoxGeometry(dw * 0.9, 0.1, 0.03), ironM()); band.position.set(s * -dw / 2, y, 0.14); piv.add(band); } }
-  for (const s of [-1, 1]) K.torch(cx + s * (w / 2 + P + 0.1), 1.8, cz - 1.0);
+  const K = kit(), Lm = n * T;
+  squarePortal(K, Lm, Math.max(H + 1.6, 5.0), 2.4, { st: kitStone(), dk: kitMoss(), lt: stone(0x7a766e), wd: kitWood(), pl: kitPlank() });
   return K.out;
 }
