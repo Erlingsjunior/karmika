@@ -7,6 +7,7 @@ import { HUMAN_I_NPCS } from './humano';
 import { DWARF_I_NPCS } from './anao';
 import { ELF_I_NPCS } from './elfo';
 import { ROADS_NPCS } from './exploracao';
+import { COSTURA_I_NPCS } from './costura1';
 
 /* =====================================================================================================
    O CAMINHO DO NORTE (humanos, níveis 1–25) — refeito em 25/10/2026
@@ -65,6 +66,7 @@ export const CAMPAIGN_NPCS: { vila: string; name: string; role: string; dx: numb
   ...DWARF_I_NPCS,
   ...ELF_I_NPCS,
   ...ROADS_NPCS,
+  ...COSTURA_I_NPCS,
   { vila: 'Askavik', name: 'Cronista Ormund Salveth', role: 'Cronista da Grande Biblioteca', dx: -22, dy: 28, tint: 0x4a3a2a, lines: ['Tudo o que acontece no mundo cabe num livro. Quase tudo.', 'Anotarei a data. Anoto todas.', 'Achou alguma folha minha pelo mundo? Traga. Eu as deixei onde falam do que falam, e depois esqueci metade.', 'Uma porta sem maçaneta, uma vela que não acende, uma runa sem nome, um nicho sem poeira. Não sei o que têm em comum. Ainda não perguntei direito.'] },
 ];
 

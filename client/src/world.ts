@@ -70,7 +70,7 @@ export function rotLocal(p: { gx: number; gy: number; w: number; h: number; rot?
 }
 /** tamanho do modelo no próprio eixo (m) */
 export const localDims = (p: { w: number; h: number; rot?: number }) => ((p.rot ?? 0) & 1 ? { W: p.h * T, D: p.w * T } : { W: p.w * T, D: p.h * T });
-export interface Poi { name: string; x: number; y: number; biome: Biome }
+export interface Poi { name: string; x: number; y: number; biome: Biome; /** 09/11: lugar secreto — só aparece no mapa de quem já foi levado até ele (ex.: 'vam' = esconderijos dos vampiros) */ secret?: string }
 export interface SpawnDef { type: EnemyType; x: number; y: number; r: number; n: number; /** só existe à noite */ night?: boolean; /** nível dos bichos deste ponto (pela região) */ lvl?: number; /** nível fixo (ignora a região) */ fixLvl?: number; /** dono de lugar marcado: não é retirado por estar perto de vila */ keep?: boolean }
 /* REGIÕES: cada uma tem a sua faixa de 10 níveis. Dentro dela convivem bichos fracos e fortes (do começo ao fim da faixa);
    as missões levam o jogador de uma faixa para a próxima. As fronteiras são um diagrama de Voronoi torto (ruído), nunca um círculo. */
@@ -2478,6 +2478,22 @@ function buildCity_L(): World {
     const dx = gx + 2, dy = gy + H; for (let y = dy, x = dx, n = 0; n < 40 && Math.hypot(x - st.x, y - st.y) > 2.5; n++) { if (map[y]?.[x] === 'grass') map[y][x] = 'road'; if (Math.abs(st.y - y) >= Math.abs(st.x - x)) y += Math.sign(st.y - y); else x += Math.sign(st.x - x); }
     props.push({ kind: 'torch', gx: gx - 1, gy: gy + H, w: 1, h: 1, height: 1.9, wall: 0x3a3a3a, roof: 0xffd890 });
     st.npcs.push({ name: cleric, role: `Capela de Auréon de ${vn}`, kind: 'nordic', x: gx + 3.4, y: gy + H + 1.1, radius: 1.2, tint: 0xe8e0c8, scale: 1.0, lines: [woe, 'Auréon não pede muito: uma vela acesa e alguém que não feche a porta.', 'A Abadia manda um paladino quando pode. Quase nunca pode. Eles andam o mundo inteiro.'] }); }
+  /* OS LUGARES QUE NÃO EXISTEM (09/11, Erling: "os vampiros não têm vilas, eles atacam vilas; têm uns lugares escondidos de reunião que só os
+     jogadores vampiros sabem onde ficam — contar seria traição; quase tudo acontece na casa do Conde"). Três esconderijos fora das estradas,
+     longe de tudo, que não aparecem no mapa de ninguém até a Corte levar o vampiro lá (Poi.secret = 'vam'). */
+  { const SECRETS: [string, string, number, (x: number, y: number) => void][] = [
+      ['A Adega Sem Porta', 'Corvoscuro', 0.6, (x, y) => { props.push({ kind: 'ruin', gx: x - 1, gy: y - 1, w: 3, h: 3, height: 2.2, wall: 0x4a4048, roof: 0x2a2028 }); for (const [dx, dy] of [[2, 1], [-2, 2]]) props.push({ kind: 'coffin', gx: x + dx, gy: y + dy, w: 1, h: 1, height: 0.6, wall: 0x3a1a1a, roof: 0x6a1424 }); props.push({ kind: 'torch', gx: x + 2, gy: y - 2, w: 1, h: 1, height: 1.6, wall: 0x2a2a2a, roof: 0xff3040 }); }],
+      ['O Mausoléu dos Que Dormem de Dia', 'Vestheim', 2.4, (x, y) => { props.push({ kind: 'mausoleum', gx: x - 1, gy: y - 1, w: 3, h: 3, height: 3.2, wall: 0x5a5458, roof: 0x3a3438 }); for (const [dx, dy] of [[-3, 1], [3, 0], [2, 3]]) props.push({ kind: 'grave', gx: x + dx, gy: y + dy, w: 1, h: 1, height: 0.8, wall: 0x6a6a6a, roof: 0 }); }],
+      ['A Capela Virada', 'Grenivik', 4.1, (x, y) => { props.push({ kind: 'church', gx: x - 2, gy: y - 2, w: 4, h: 4, height: 4, wall: 0x6a6070, roof: 0x3a3048 }); props.push({ kind: 'torch', gx: x + 3, gy: y + 2, w: 1, h: 1, height: 1.6, wall: 0x2a2a2a, roof: 0xff3040 }); }]];
+    const occS = new Set<number>(); for (const q of props) for (let y = q.gy - 1; y <= q.gy + q.h; y++) for (let x = q.gx - 1; x <= q.gx + q.w; x++) occS.add(y * 4096 + x);
+    for (const [nm, near, a0, build] of SECRETS) { const st = settlements.find((q) => q.name === near); if (!st) continue; let spot: { x: number; y: number } | null = null;
+      for (const [rr0, gap, poiGap] of [[22, 4, 18], [14, 3, 12], [10, 3, 8], [10, 2, 6]] as const) for (let r = st.radius + rr0; r <= st.radius + 90 && !spot; r += 2) for (let k = 0; k < 32 && !spot; k++) { const a = a0 + k / 32 * 6.283, x = Math.round(st.x + Math.cos(a) * r), y = Math.round(st.y + Math.sin(a) * r);
+        let ok = true; for (let yy = -gap; yy <= gap && ok; yy++) for (let xx = -gap; xx <= gap; xx++) { const t = inb(x + xx, y + yy) ? map[y + yy][x + xx] : null; if (!t || t === 'water' || t === 'road' || t === 'wall' || occS.has((y + yy) * 4096 + x + xx)) { ok = false; break; } }
+        if (ok && !pois.some((q) => Math.hypot(q.x - x, q.y - y) < poiGap) && !settlements.some((q) => Math.hypot(q.x - x, q.y - y) < q.radius + 10)) spot = { x, y }; }
+      if (!spot) continue; for (let yy = -4; yy <= 4; yy++) for (let xx = -4; xx <= 4; xx++) if (map[spot.y + yy][spot.x + xx] === 'tree' && Math.hypot(xx, yy) < 3.2) map[spot.y + yy][spot.x + xx] = 'grass';
+      const n0 = props.length; build(spot.x, spot.y); for (const q of props.slice(n0)) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (q.kind !== 'torch' && q.kind !== 'grave' && q.kind !== 'coffin') map[y][x] = 'wall';
+      pois.push({ name: nm, x: spot.x, y: spot.y + 3, biome: 'ruins', secret: 'vam' });
+      if (nm === 'A Adega Sem Porta') st.npcs.push({ name: 'Ilse Noctavar', role: 'Uma mulher que espera', kind: 'nordic', x: spot.x + 0.5, y: spot.y + 2.6, radius: 0.6, tint: 0x4a1020, scale: 1.0, night: true, lines: ['Você está perdido. Volte pela estrada. Aqui não tem nada.', 'Não tem porta. Nunca teve.'] }); } }
   /* QUADRO DE AVISOS EM TODA CIDADE E VILA (04/11, Erling: "a placa mural de missões da cidade, e de todas as cidades, pode ficar no
      centro, num lugar que não atrapalhe as carroças — elas não deveriam atravessar a placa"): o quadro vai para a grama, na beira da praça
      ou da rua, o mais perto do centro que der, com folga de uma casa de tudo o que já está construído e virado para a rua. */

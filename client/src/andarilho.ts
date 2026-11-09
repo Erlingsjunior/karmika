@@ -88,7 +88,7 @@ WANDERER.push({ id: `aw${ROUTE.length + 1}`, chain: CH, name: 'O Andarilho Volta
     'Sente-se, {nome}. Não, no chão não: na cadeira. Andarilho que volta merece cadeira.',
     'Dez vilas. Dez clérigos que já não esperam sozinhos. Isso vale mais do que dez demônios no altar da Catedral.',
     { r: [
-      { t: 'O sino toca uma nota a mais em todas as capelas.', a: 'Eu sei. Toca aqui também. Toca desde antes de mim, e antes do meu mestre. Um dia alguém vai descobrir quem afinou. Não serei eu.' },
+      { t: 'O sino toca uma nota a mais em todas as capelas.', a: 'Eu sei. Toca aqui também. Por dentro do bronze de cada sino tem uma runa riscada, onde o badalo bate. Ninguém da Ordem lembra de ter mandado riscar. Um dia alguém vai descobrir. Não serei eu.' },
       { t: 'Encontrei o medalhão de um irmão que caiu em Steinfoss.', a: '(Cassius fica muito tempo calado.) Chamava-se Bertrand. Não era santo. Era nosso. Obrigado.' },
       { t: 'Posso sair de novo?', a: 'Você já saiu. Agora só está de passagem por casa. É isso um paladino.', luz: 1 } ] },
     'Leve isto. E quando ouvir falar de uma vila sem ninguém, não espere carta minha.',
