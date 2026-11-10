@@ -49,3 +49,37 @@ export function roleTag(role: string) { const r = role.toLowerCase();
   if (/guarda|sargento|patrulha|sentinela/.test(r)) return 'r_guarda'; if (/ferreir|armeir|forja/.test(r)) return 'r_ferreiro';
   if (/cozinh|taverna|estalaj|cervej|churrasq/.test(r)) return 'r_taverna'; if (/mercad|comerci|vended|loj|domador|joalh/.test(r)) return 'r_mercador';
   if (/sacerd|templo|frei|irmã|abad|monge|vidente/.test(r)) return 'r_fe'; return ''; }
+
+/* 10/11 (Erling: "os NPCs precisam conversar e falar bem ou mal da gente"): fofoca. De vez em quando dois moradores parados perto um do outro
+   conversam sobre o herói enquanto ele passa (a 4–20 m): um puxa o assunto, o outro responde. O tom segue o karma (luz, neutro, sombra)
+   e, quando há, o último feito que correu a vila (FAMA): matou um chefe, defendeu a vila, matou um inocente. */
+export const FAMA: { deeds: { txt: string; good: boolean; at: number }[]; push(txt: string, good: boolean): void } = {
+  deeds: [], push(txt, good) { this.deeds.push({ txt, good, at: performance.now() }); if (this.deeds.length > 8) this.deeds.shift(); },
+};
+export const GOSSIP: Record<'luz' | 'neutro' | 'sombra', [string, string][]> = {
+  luz: [
+    ['Viu quem passou? É o {nome}.', 'Gente boa. Ajudou a viúva do moinho sem pedir nada.'],
+    ['Dizem que o {nome} nunca deixa ninguém para trás.', 'O Olho deve gostar dele. A sorte anda junto.'],
+    ['Ontem o {nome} pagou a cerveja da mesa inteira.', 'E nem contou vantagem. Isso é raro.'],
+    ['Se todo mundo fosse como o {nome}…', '…a guarda ia ter que procurar outro emprego.'],
+    ['Minha filha quer ser igual ao {nome}.', 'Pior exemplo ela podia ter.'],
+  ],
+  neutro: [
+    ['Quem é aquele ali?', 'O {nome}. Ninguém sabe direito de onde veio.'],
+    ['O {nome} anda armado até para comprar pão.', 'Nesses tempos, eu também andaria.'],
+    ['Acha que o {nome} fica muito tempo por aqui?', 'Gente assim nunca fica. A estrada chama.'],
+    ['Dizem que o {nome} já morreu uma vez.', 'Todo mundo já morreu uma vez. O Olho que diga.'],
+  ],
+  sombra: [
+    ['Não olha agora… é o {nome}.', 'Esconde a bolsa. E as galinhas.'],
+    ['Ouvi coisa feia sobre o {nome}.', 'Eu também. E acredito em metade, o que já é muito.'],
+    ['Por que a guarda não prende o {nome}?', 'Porque ninguém quer ser o primeiro a tentar.'],
+    ['O {nome} cumprimentou meu marido hoje.', 'Reza por ele, então.'],
+    ['Viu a sombra do {nome}? Anda atrasada.', 'Shh. Ele pode ouvir.'],
+  ],
+};
+export const GOSSIP_DEED: { good: [string, string][]; bad: [string, string][] } = {
+  good: [['Sabia? O {nome} {feito}.', 'Ouvi na taverna. Paguei uma rodada em homenagem.'], ['Falam que o {nome} {feito}.', 'Já não era sem tempo alguém fazer isso.'], ['O {nome} {feito}, acredita?', 'Acredito. Vi com estes olhos.']],
+  bad: [['Ficou sabendo? O {nome} {feito}.', 'Que o Olho tenha piedade dele. Eu não tenho.'], ['Dizem que o {nome} {feito}.', 'Fecha a porta hoje à noite, viu?']],
+};
+export const GUARD_CRY = ['Pela vila!', 'Guardas, comigo!', 'Ninguém passa!', 'Fecha a fila, fecha a fila!', 'Volta pra mata, bicho!', 'Protejam as casas!'];

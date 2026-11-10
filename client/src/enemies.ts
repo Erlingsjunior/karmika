@@ -601,10 +601,17 @@ export function createEnemies(ctx: EnemyCtx) {
   const tmp = new THREE.Vector3();
 
   function step(e: Enemy, dx: number, dz: number) {
-    const nx = e.pos.x + dx, nz = e.pos.z + dz;
     const wild = !(e as Enemy & { tag?: string }).tag; // bicho do mundo (sem missão/evento): não pisa em vila nem cidade
-    if (ctx.walkable(nx, e.pos.z) && !(wild && ctx.townAt?.(nx, e.pos.z) && !ctx.townAt?.(e.pos.x, e.pos.z))) e.pos.x = nx;
-    if (ctx.walkable(e.pos.x, nz) && !(wild && ctx.townAt?.(e.pos.x, nz) && !ctx.townAt?.(e.pos.x, e.pos.z))) e.pos.z = nz;
+    const ok = (x: number, z: number) => ctx.walkable(x, z) && !(wild && ctx.townAt?.(x, z) && !ctx.townAt?.(e.pos.x, e.pos.z));
+    const x0 = e.pos.x, z0 = e.pos.z, nx = x0 + dx, nz = z0 + dz;
+    if (ok(nx, z0)) e.pos.x = nx;
+    if (ok(e.pos.x, nz)) e.pos.z = nz;
+    /* 10/11: travou numa quina (muro, cerca, casa)? contorna: tenta de lado, para um lado e depois para o outro, lembrando para onde virou */
+    if (e.pos.x === x0 && e.pos.z === z0 && (dx || dz)) { const g = e as Enemy & { slide?: number; slideT?: number }; const L = Math.hypot(dx, dz);
+      const order = g.slide && (g.slideT ?? 0) > performance.now() ? [g.slide, -g.slide] : [1, -1];
+      for (const sg of order) for (const ang of [0.9, 1.6, 2.2, 2.8]) { const c = Math.cos(ang * sg), sn = Math.sin(ang * sg), rx = (dx * c - dz * sn), rz = (dx * sn + dz * c);
+        if (ok(x0 + rx, z0 + rz)) { e.pos.x = x0 + rx; e.pos.z = z0 + rz; g.slide = sg; g.slideT = performance.now() + 1500; return; } }
+      void L; }
   }
   function face(e: Enemy, tx: number, tz: number, dt: number, rate = 10) {
     const want = Math.atan2(tx - e.pos.x, tz - e.pos.z); let d = want - e.yaw; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283;
@@ -695,8 +702,30 @@ export function createEnemies(ctx: EnemyCtx) {
     else for (const m of e.mats) if (m.emissive && m.emissiveMap === null) m.emissive.setRGB(0, 0, 0);
   }
 
+  /* 10/11 (Erling: "os monstros precisam fugir ou nos emboscar; muita coisa o jogo precisa fazer sozinho, pensando"):
+     · bicho de matilha que te vê avisa os parentes por perto (lobos chamam lobos, salteadores chamam salteadores);
+     · os caçadores de bando (lobo, coiote, salteador, goblin, cão infernal, batedor) não correm logo: rodeiam na borda e atacam juntos — a emboscada;
+     · em grupo, cada um vem por um lado (cerco), em vez de todos em fila;
+     · os medrosos (bichos, salteadores, goblins) fogem quando a vida cai abaixo de ~22%, lambem as feridas e voltam se você for atrás.
+     Mortos-vivos, demônios, elites e chefes nunca fogem. */
+  const FAM: Record<string, string> = { wolf: 'lobo', frostwolf: 'lobo', alpha: 'lobo', coyote: 'lobo', bandit: 'salteador', bandit_arch: 'salteador', bandit_chief: 'salteador', goblin: 'goblin', goblin_shaman: 'goblin', goblin_chief: 'goblin',
+    zombie: 'morto', ghoul: 'morto', skeleton: 'morto', skel_arch: 'morto', necro: 'morto', headless: 'morto', mudzombie: 'morto', spider: 'aranha', spiderling: 'aranha', broodmother: 'aranha', imp: 'demonio', imp_bomb: 'demonio', hellhound: 'demonio', draugr_arch: 'draugr', draugr_bers: 'draugr', hunter: 'cacador', slaver: 'salteador' };
+  const famOf = (t: string) => FAM[t] ?? t;
+  const COWARD = new Set(['wolf', 'frostwolf', 'boar', 'coyote', 'rat', 'bear', 'bandit', 'bandit_arch', 'goblin', 'goblin_shaman', 'spider', 'spiderling', 'harpy', 'fairy', 'puglin', 'imp', 'scorpion', 'hunter', 'slaver', 'elfscout', 'swampsnake']);
+  const STALK = new Set(['wolf', 'frostwolf', 'coyote', 'bandit', 'bandit_arch', 'goblin', 'hellhound', 'elfscout']);
+  const FLEE_SAY: Record<string, string[]> = { lobo: ['ganindo, ele recua', 'ele foge mancando'], salteador: ['Chega! Chega!', 'Não vale a pena morrer por isso!', 'Corre, corre!'], goblin: ['Aiii! Nhec nhec!', 'Goblin corre!'] };
+  type AI = Enemy & { fled?: boolean; fleeT?: number; licking?: boolean; stalkT?: number; alertT?: number; side?: number; tag?: string };
+  let cryT = 0;
+  /** avisa os parentes por perto (parados) que há presa; devolve quantos ouviram */
+  function alertPack(src: Enemy, stalk: number) { const f = famOf(src.type); let n = 0;
+    for (const o of list) { if (o === src || !o.alive || !o.active || o.def.passive || o.state !== 'idle' || famOf(o.type) !== f) continue; if (Math.hypot(o.pos.x - src.pos.x, o.pos.z - src.pos.z) > 14) continue;
+      const a = o as AI; a.alertT = 0.15 + Math.random() * 0.6; if (stalk > 0) a.stalkT = stalk + Math.random() * 0.4; n++; }
+    return n; }
+  /** o bicho viu a presa: chama o bando e, se for caçador de bando com companhia, rodeia antes de atacar */
+  function engage(e: Enemy, foeOn: boolean) { const a = e as AI; e.state = 'chase'; e.t = 0; if (foeOn || a.tag) return;
+    const stalk = STALK.has(e.type) ? 2.2 + Math.random() * 1.2 : 0, n = alertPack(e, stalk); if (stalk > 0 && n >= 1) a.stalkT = stalk; }
   function update(dt: number, t: number) {
-    updateCasts(dt);
+    updateCasts(dt); cryT -= dt;
     const hero = ctx.heroPos(), alive = ctx.heroAlive();
     void t;
     for (const e of list) {
@@ -709,6 +738,10 @@ export function createEnemies(ctx: EnemyCtx) {
       if ((e as Enemy & { kneel?: boolean }).kneel && e.alive) { e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0); } /* rendido, esperando a sentença: não ataca, não anda, não levanta */
       e.t += dt;
       const D = e.def; let mv = 0;
+      { const a = e as AI; if (e.alive && !puppet && !a.fled && !a.tag && COWARD.has(e.type) && !ELITE.has(e.type) && e.hp < e.hpMax * 0.22 && (e.state === 'chase' || e.state === 'recover' || e.state === 'hurt')) {
+          a.fled = true; a.fleeT = 3.5 + Math.random() * 2.5; a.stalkT = 0; e.state = 'flee'; e.t = 0; if (e.tele) e.tele.visible = false;
+          const L = FLEE_SAY[famOf(e.type)]; if (L && cryT <= 0 && Math.random() < 0.7) { cryT = 4; ctx.onSpell?.(e, L[Math.floor(Math.random() * L.length)]); } }
+        if (a.fled && e.state === 'idle' && e.hp >= e.hpMax * 0.95) { a.fled = false; a.licking = false; } }
       if (puppet && ne.np) { // outro jogador está lutando com ele: só segue o que chega pela rede (sem IA aqui)
         const p = ne.np, ox = e.pos.x, oz = e.pos.z, far = Math.hypot(p.x - ox, p.z - oz) > 8, kk = far ? 1 : Math.min(1, dt * 10);
         e.pos.x += (p.x - ox) * kk; e.pos.z += (p.z - oz) * kk; let dy = p.f - e.yaw; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283; e.yaw += dy * Math.min(1, dt * 12);
@@ -723,7 +756,8 @@ export function createEnemies(ctx: EnemyCtx) {
         case 'idle': {
           if (D.ambush && !foeOn) { const hid = !(aliveT && dT < D.aggro * 0.75) && !(e as Enemy & { woke?: boolean }).woke; /* woke: chamado para fora (o Gênio do oásis, sistemas/oasis.ts) */ if (hid !== !!(e as Enemy & { hid?: boolean }).hid) { (e as Enemy & { hid?: boolean }).hid = hid; if (!hid) { ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); ctx.onSpell?.(e, D.ambush === 'water' ? 'Sai da água!' : 'Sai da areia!'); e.state = 'chase'; e.t = 0; } } if (hid) break; }
           if (D.lawful && (enemyHooks.karma?.() ?? 0) > -150) { /* o Inquisidor só caça quem deve: com você em paz, ele só vigia */ e.wanderT -= dt; if (e.wanderT <= 0) { e.wanderT = 2 + Math.random() * 3; face(e, hero.x, hero.z, 1, 1); } break; }
-          if (!D.passive && aliveT && dT < (foeOn ? 40 : D.aggro)) { e.state = 'chase'; e.t = 0; break; }
+          { const a = e as AI; if (a.alertT !== undefined && !D.passive) { a.alertT -= dt; if (a.alertT <= 0) { a.alertT = undefined; e.state = 'chase'; e.t = 0; break; } } }
+          if (!D.passive && aliveT && dT < (foeOn ? 40 : D.aggro)) { engage(e, foeOn); break; }
           if (D.passive && dHero < D.aggro) { e.state = 'flee'; e.t = 0; break; }
           e.wanderT -= dt;
           if (e.wanderT <= 0) { e.wanderT = 1.2 + Math.random() * 3; if (Math.random() < 0.8) { const a = Math.random() * 6.283, r = 2 + Math.random() * 8; e.sprint = Math.random() < 0.3 ? 1 : 0; e.wanderTo = new THREE.Vector2(e.home.x + Math.cos(a) * r, e.home.y + Math.sin(a) * r); } else e.wanderTo = null; }
@@ -731,7 +765,14 @@ export function createEnemies(ctx: EnemyCtx) {
           break;
         }
         case 'chase': {
-          if (!(e as Enemy & { tag?: string }).tag && ctx.guardNear?.(e.pos.x, e.pos.z)) { e.state = 'return'; (e as Enemy & { guardT?: number }).guardT = 6; break; } /* a guarda da cidade enxota: o bicho desiste e volta para casa */
+          /* 10/11: a guarda não enxota mais por mágica: os guardas saem do posto e lutam (npcs.ts), e o bicho briga com eles */
+          { const a = e as AI; if (a.stalkT && a.stalkT > 0 && !foeOn) { a.stalkT -= dt; if (e.flash > 0 || dT < D.range * 1.8) a.stalkT = 0;
+              if (a.stalkT > 0) { /* emboscada: rodeia devagar na borda, esperando o bando fechar */
+                face(e, tx, tz, dt, 6); const dx = tx - e.pos.x, dz = tz - e.pos.z, l = Math.hypot(dx, dz) || 1, side = a.side ?? (a.side = e.id % 2 ? 1 : -1), want = Math.max(D.aggro * 0.55, 6), k = Math.max(-1, Math.min(1, (l - want) / 2)), sp = D.speed * 0.42;
+                step(e, (dx / l * k - dz / l * side * 0.85) * sp * dt, (dz / l * k + dx / l * side * 0.85) * sp * dt); mv = sp; break; }
+              /* acabou a espera (ou foi visto): todo o bando ataca de uma vez */
+              const f = famOf(e.type); for (const o of list) { const oa = o as AI; if (o !== e && oa.stalkT && famOf(o.type) === f && Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) < 18) oa.stalkT = 0; }
+              if (cryT <= 0) { cryT = 6; ctx.onSpell?.(e, famOf(e.type) === 'salteador' ? 'Agora! Pega!' : 'Emboscada!'); } } }
           if (!aliveT || dT > (foeOn ? 60 : D.aggro * 1.7) || (!foeOn && Math.hypot(e.pos.x - e.home.x, e.pos.z - e.home.y) > ((e as Enemy & { leash?: number }).leash ?? 34))) { e.state = 'return'; break; }
           face(e, tx, tz, dt, 12);
           if (dT < D.range) { e.state = 'windup'; e.t = 0; break; }
@@ -742,7 +783,10 @@ export function createEnemies(ctx: EnemyCtx) {
             if (dT < want * 1.15) { const side = Math.sin(e.t * 0.7 + e.id) > 0 ? 1 : -1; step(e, -ddz / ll * side * D.speed * 0.35 * dt, ddx / ll * side * D.speed * 0.35 * dt); mv = D.speed * 0.35; break; } }
           const dx = tx - e.pos.x, dz = tz - e.pos.z, l = Math.hypot(dx, dz) || 1;
           const wob = l > D.range * 1.8 ? Math.sin(e.t * 4 + e.id * 2) * 0.6 : 0, burst = 1 + 0.35 * Math.max(0, Math.sin(e.t * 2.2 + e.id));
-          const ux = dx / l, uz = dz / l, vx = ux - uz * wob, vz = uz + ux * wob, vl = Math.hypot(vx, vz) || 1;
+          /* cerco: com outro do bando por perto, cada um abre para o seu lado e chega pelo flanco */
+          let fk = 0; if (!foeOn && l > D.range * 1.3 && l < 10) { for (const o of list) if (o !== e && o.alive && o.active && o.state === 'chase' && Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) < 5) { fk = Math.min(1, (l - D.range) / 4) * 0.9; break; } }
+          const sd = (e as AI).side ?? ((e as AI).side = e.id % 2 ? 1 : -1);
+          const ux = dx / l, uz = dz / l, vx = ux - uz * (wob + sd * fk), vz = uz + ux * (wob + sd * fk), vl = Math.hypot(vx, vz) || 1;
           const slowK = (e.slow ?? 0) > 0 ? 0.5 : 1; if (e.slow) e.slow -= dt; if (e.root2) { e.root2 -= dt; mv = 0; break; }
           step(e, vx / vl * D.speed * burst * dt * slowK, vz / vl * D.speed * burst * dt * slowK); mv = D.speed * burst * slowK; break;
         }
@@ -767,12 +811,13 @@ export function createEnemies(ctx: EnemyCtx) {
         case 'recover': if (e.t > D.cd * 0.55) { e.state = 'chase'; e.t = 0; } break;
         case 'hurt': if (e.tele) e.tele.visible = false; if (e.t > 0.35) { e.state = alive ? 'chase' : 'return'; e.t = 0; } break;
         case 'flee': {
-          if (dHero > D.aggro * 1.8) { e.state = 'idle'; break; }
-          const dx = e.pos.x - hero.x, dz = e.pos.z - hero.z, l = Math.hypot(dx, dz) || 1;
-          face(e, e.pos.x + dx, e.pos.z + dz, dt, 12); step(e, dx / l * D.speed * dt, dz / l * D.speed * dt); mv = D.speed; break;
+          const a = e as AI; if (a.fleeT !== undefined) { a.fleeT -= dt; if (a.fleeT <= 0 || dHero > D.aggro * 2.4) { a.fleeT = undefined; a.licking = true; e.state = 'return'; e.t = 0; break; } }
+          else if (dHero > D.aggro * 1.8) { e.state = 'idle'; break; }
+          const dx = e.pos.x - hero.x, dz = e.pos.z - hero.z, l = Math.hypot(dx, dz) || 1, fs = D.speed * (a.fleeT !== undefined ? 1.12 : 1);
+          face(e, e.pos.x + dx, e.pos.z + dz, dt, 12); step(e, dx / l * fs * dt, dz / l * fs * dt); mv = fs; break;
         }
         case 'return': {
-          e.hp = Math.min(e.hpMax, e.hp + e.hpMax * 0.2 * dt);
+          e.hp = Math.min(e.hpMax, e.hp + e.hpMax * ((e as AI).licking ? 0.03 : 0.2) * dt); /* quem fugiu ferido lambe as feridas devagar */
           const dx = e.home.x - e.pos.x, dz = e.home.y - e.pos.z, l = Math.hypot(dx, dz);
           if (l < 1.2) { e.state = 'idle'; break; }
           { const g = (e as Enemy & { guardT?: number }); if (g.guardT && g.guardT > 0) { g.guardT -= dt; if (ctx.guardNear?.(e.pos.x, e.pos.z)) e.hp -= e.hpMax * 0.25 * dt; if (e.hp <= 0) { e.hp = 1; } } else if (alive && dHero < D.aggro * 0.6 && !D.passive) { e.state = 'chase'; break; } } /* enxotado pela guarda: apanha enquanto estiver perto dela e não volta a atacar por 6 s */

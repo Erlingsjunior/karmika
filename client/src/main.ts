@@ -4,6 +4,7 @@ import { buildSpecies } from './flora3d';
 import { installBvh } from './libs/bvh';
 import { kkSetWeapon } from './libs/anim-kk';
 import { setModern } from './sistemas/moderno';
+import { createAtaques } from './sistemas/ataques';
 import { createHalloween } from './sistemas/halloween';
 import { quarksInit, quarksUpdate } from './libs/quarks';
 import { mirrorUpdate } from './espelho';
@@ -400,6 +401,11 @@ void LightShafts;
 void makeHalo;
 
 let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou sem facção), com custo de karma; nome fica vermelho
+/* 10/11: ataques de bando à vila (sistemas/ataques.ts) — a guarda defende, o herói pode ajudar */
+const ataqueSys = createAtaques({ T, settlements: () => city.settlements as never, heroTile: () => ({ x: state.fx, y: state.fy }), night: () => state.night, inside: () => !!inside, level: () => game.st.lvl,
+  walkable: (x, z) => { const tt = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!tt || !isWalkable(tt)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T) && !rampartAt(Math.floor(x / T), Math.floor(z / T)); } catch { return true; } }, spawn: (ty, x, z, o) => game.enemies.spawn(ty, x, z, o) as never, clearTag: (tg) => game.enemies.clearTag(tg),
+  log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; } });
+(window as unknown as { __raid?: () => string | undefined }).__raid = () => ataqueSys.force(); /* teste */
 let lvlUpKey = ''; let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
 function hookHero() {
   { // a rede vê o que o herói veste e faz: roupa nova e cada golpe/magia vão para os outros jogadores
@@ -543,6 +549,8 @@ const npcSys = createNpcs(scene, [
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
 ], { heightAt, insideId: () => (inside?.canopy ? 'copa' : inside?.hall ? 'hall' : inside?.prop?.shop === 'cervejaria' ? 'tavb' : null), insideFree: (x, z) => !!inside && inside.int.free(x - 4000, z - 4000), walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
   questOn: (id) => { try { return !!quests.q.active[id]; } catch { return false; } },
+  /* 10/11: a guarda luta com os bichos (npcs.ts) e a fofoca segue o karma */
+  threats: () => (inside ? [] : game.enemies.list.filter((e) => e.active && e.alive && !(e as unknown as { ally?: boolean }).ally)) as never, hitThreat: (e, n, from) => { try { game.enemies.hurtBy(e as never, n, from); } catch { /* */ } }, karma: () => state.karma,
   situ: () => { const tags: string[] = []; try { const hr = gameHour(), g = globalNow()?.id, k = state.karma, pth = myPath(), tp = temperature();
     tags.push(hr >= 5 && hr < 9 ? 'manha' : state.night > 0.5 ? 'noite' : 'dia'); if (tp < 3) tags.push('frio'); if (tp > 24) tags.push('calor');
     if (g === 'lua') tags.push('lua', 'lua'); if (g === 'aurora') tags.push('aurora', 'aurora');
@@ -2963,6 +2971,7 @@ function frameBody() {
   { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
     const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
     const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); halloween?.setNight(night); }
+  try { ataqueSys.tick(dt); } catch (e) { console.warn('ataques', e); } /* 10/11: ataques de bando à vila, de noite */
   if (!inside || inside.hall) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none'; /* 08/11: dentro do Grande Salão os NPCs de interior vivem (npcs.ts inside) */
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);

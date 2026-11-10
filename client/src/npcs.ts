@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createCharacter, type Hero3D, type Kind } from './characters';
-import { BARKS, roleTag } from './barks';
+import { BARKS, roleTag, FAMA, GOSSIP, GOSSIP_DEED, GUARD_CRY } from './barks';
 import { attachSkin, type SkinDef } from './skin3d';
 import { WAGON_BLOCK } from './caravanas';
 
@@ -15,7 +15,10 @@ const KIND_NORM: Record<string, number> = { technocrat: 0.81, dwarf: 0.86 };
    e saía menor que o próprio boneco (gente com a cabeça a 1,35 m, anão a 0,88 m, o herói a 1,62 m). Medido no jogo: gente +12%, anão +35%. */
 const ART_HUMAN = 1.12, ART_DWARF = 1.35;
 export const npcScale = (def: { kind: string; civil?: string; scale: number }) => def.scale * (def.civil ? 0.91 : KIND_NORM[def.kind] ?? 0.91);
-export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** 08/11: qual interior o herói está (null = mundo) e se um ponto dele é livre */ insideId?: () => string | null; insideFree?: (x: number, z: number) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
+/** 10/11: o que a guarda precisa saber de um bicho (enemies.ts) */
+export interface GThreat { pos: THREE.Vector3; alive: boolean; active: boolean; hpMax: number; def: { passive?: boolean; radius?: number; name: string }; foe?: { pos: THREE.Vector3; alive(): boolean; hit(n: number): void } }
+const GUARD_RX = /^(Guarda|Capit[ãa]o|Vigia|Sentinela|Soldad|Patrulh|Sargento)/;
+export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11: os bichos ativos perto (a guarda luta com eles) e o golpe do guarda */ threats?(): GThreat[]; hitThreat?(e: GThreat, n: number, from: THREE.Vector3): void; /** 10/11: karma do herói (a fofoca) */ karma?(): number; heightAt(x: number, z: number): number; walkable(x: number, z: number): boolean; camera: THREE.Camera; canvas: HTMLCanvasElement; /** missão no diário (NPC que só aparece com ela) */ questOn?: (id: string) => boolean; /** 08/11: qual interior o herói está (null = mundo) e se um ponto dele é livre */ insideId?: () => string | null; insideFree?: (x: number, z: number) => boolean; /** o que está acontecendo (para as falas soltas) */ situ?: () => { tags: string[]; nome: string; pet: string } }) {
   /* 02/11 (Erling, item 8): o NPC só é montado quando o jogador chega na região dele (a 60 m), aos poucos (2 por quadro), o mais perto primeiro.
      Antes os ~380 bonecos eram montados todos na abertura do jogo. Até montar, ele é um marcador vazio (posição, nome, falas e rota funcionam igual). */
   const BUILD_R = 60, PER_FRAME = 2;
@@ -77,11 +80,28 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
   let barkT = 5; const recent: string[] = [];
   function pickBark(n: Npc) { const S = ctx.situ?.(); if (!S) return null; const rt = roleTag(n.def.role); const tags = [...S.tags, ...(rt ? [rt, rt] : [])].filter((k) => BARKS[k]);
     if (!tags.length) return null; for (let tries = 0; tries < 6; tries++) { const tg = tags[Math.floor(Math.random() * tags.length)], L = BARKS[tg], l = L[Math.floor(Math.random() * L.length)]; if (recent.includes(l)) continue; recent.push(l); if (recent.length > 14) recent.shift(); return l.replace(/\{nome\}/g, S.nome).replace(/\{pet\}/g, S.pet || 'bichinho'); } return null; }
+  let gossipT = 12, gossipQ: { n: Npc; line: string; t: number } | null = null;
+  function gossip(heroPos: THREE.Vector3) { const S = ctx.situ?.(); if (!S) return;
+    const free = (n: Npc) => n.hero.root.visible && !n.def.route && !n.def.inside && !(n.barkT && n.barkT > 0) && !GUARD_RX.test(n.def.role);
+    const pairs: [Npc, Npc][] = []; const vis = npcs.filter((n) => free(n) && (() => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 4 && dd < 20; })());
+    for (let i = 0; i < vis.length; i++) for (let j = i + 1; j < vis.length; j++) if (Math.hypot(vis[i].pos.x - vis[j].pos.x, vis[i].pos.z - vis[j].pos.z) < 5.5) pairs.push([vis[i], vis[j]]);
+    if (!pairs.length) return; const [a, b] = pairs[Math.floor(Math.random() * pairs.length)];
+    const k = ctx.karma?.() ?? 0, recent = FAMA.deeds.filter((x) => performance.now() - x.at < 15 * 60e3);
+    let pick: [string, string]; const dd = recent.length && Math.random() < 0.6 ? recent[recent.length - 1] : null;
+    if (dd) { const L = dd.good ? GOSSIP_DEED.good : GOSSIP_DEED.bad; pick = L[Math.floor(Math.random() * L.length)]; pick = [pick[0].replace('{feito}', dd.txt), pick[1]]; }
+    else { const L = GOSSIP[k >= 120 ? 'luz' : k <= -120 ? 'sombra' : 'neutro']; pick = L[Math.floor(Math.random() * L.length)]; }
+    const fill = (s: string) => s.replace(/\{nome\}/g, S.nome);
+    /* os dois se viram um para o outro */
+    a.yaw = Math.atan2(b.pos.x - a.pos.x, b.pos.z - a.pos.z); b.yaw = Math.atan2(a.pos.x - b.pos.x, a.pos.z - b.pos.z); a.target = null; b.target = null; a.wait = Math.max(a.wait, 8); b.wait = Math.max(b.wait, 8);
+    a.bark = fill(pick[0]); a.barkT = 4.2; gossipQ = { n: b, line: fill(pick[1]), t: 2.6 }; }
   let placed = false;
   function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
     const r = ctx.canvas.getBoundingClientRect(); buildNear(heroPos);
     if (!placed) { placed = true; /* regra 19 (27/10): NPC nunca fica dentro de parede nem em cima de mobília — se o lugar marcado está ocupado, vai para o chão livre mais perto */
       for (const n of npcs) { const d = n.def; if (d.route || d.inside || d.fixed || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
+    /* fofoca: a resposta do segundo morador sai 2,6 s depois da pergunta do primeiro */
+    if (gossipQ && (gossipQ.t -= dt) <= 0) { const q = gossipQ; gossipQ = null; if (q.n.hero.root.visible) { q.n.bark = q.line; q.n.barkT = 4.6; } }
+    gossipT -= dt; if (gossipT <= 0 && !gossipQ) { gossipT = 22 + Math.random() * 20; gossip(heroPos); }
     barkT -= dt; if (barkT <= 0) { barkT = 8 + Math.random() * 8; const cand = npcs.filter((n) => n.hero.root.visible && !n.def.route && !(n.barkT && n.barkT > 0)).filter((n) => { const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); return dd > 3 && dd < 18; });
       if (cand.length) { const n = cand[Math.floor(Math.random() * cand.length)], l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.8; } } }
     /* 26/10 noite (Erling: "dois NPCs grudados um dentro do outro"): ninguém ocupa o mesmo lugar. Quem está perto demais
@@ -109,7 +129,26 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { heightAt(x
       if (n.skin === 1 && !n.skinTick) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; }
       if (!n.hero.root.visible) { n.hero.root.visible = true; n.pos.y = (d.inside ? 0 : ctx.heightAt(n.pos.x, n.pos.z)) + (d.yOff ?? 0); n.hero.root.position.copy(n.pos); }
       let mps = 0, head: number | null = null;
-      if (d.seat) { /* 10/11 (Erling: "cheio de anões bebendo"): sentado no banco, de frente para a mesa; vira só a cabeça para o herói e de vez em quando bebe */
+      /* 10/11 (Erling: "os NPCs precisam defender a cidade de monstros"): guarda, sentinela, vigia e soldado saem do posto quando um bicho chega
+         perto (16 m dele, até 22 m do posto), correm até ele e lutam: o bicho passa a brigar com o guarda. Guarda não morre: se apanhar demais,
+         cai de joelho por 6 s e levanta. Sem bicho, volta para o posto. */
+      let fought = false;
+      if (ctx.threats && !d.inside && !d.seat && !d.route && (GUARD_RX.test(d.role) || GUARD_RX.test(d.name))) {
+        const g = n as Npc & { foeE?: GThreat | null; atkT?: number; ghp?: number; down?: number; gfoe?: GThreat['foe']; away?: boolean };
+        if (!g.gfoe) g.gfoe = { pos: n.pos, alive: () => !(g.down && g.down > 0), hit: (dmg: number) => { g.ghp = (g.ghp ?? 140) - dmg; if (!n.hero.acting) n.hero.act('hit', true); if (g.ghp <= 0) { g.down = 6; g.ghp = 140; n.bark = 'Ugh… segurem a linha!'; n.barkT = 3; } } };
+        if (g.down && g.down > 0) { g.down -= dt; fought = true; }
+        else {
+          let tgt = g.foeE && g.foeE.alive && g.foeE.active && Math.hypot(g.foeE.pos.x - d.x, g.foeE.pos.z - d.z) < 26 ? g.foeE : null;
+          if (!tgt) { g.foeE = null; let bd = 16; for (const e of ctx.threats()) { if (!e.alive || !e.active || e.def.passive) continue; const dd = Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z); if (dd < bd && Math.hypot(e.pos.x - d.x, e.pos.z - d.z) < 22) { bd = dd; tgt = e; } }
+            if (tgt) { g.foeE = tgt; if (!tgt.foe || !tgt.foe.alive()) tgt.foe = g.gfoe; if (!(n.barkT && n.barkT > 0) && Math.random() < 0.6) { n.bark = GUARD_CRY[Math.floor(Math.random() * GUARD_CRY.length)]; n.barkT = 2.4; } } }
+          if (tgt) { fought = true; g.away = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
+            if (l > 1.5 + (tgt.def.radius ?? 0.5)) { const sp = 3.4 * dt; let moved = false; for (const turn of [0, 0.7, -0.7, 1.4, -1.4]) { const c = Math.cos(turn), sn = Math.sin(turn), ux = (dx * c - dz * sn) / l, uz = (dx * sn + dz * c) / l, nx = n.pos.x + ux * sp, nz = n.pos.z + uz * sp; if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; moved = true; break; } } if (moved) mps = 3.4; }
+            else { g.atkT = (g.atkT ?? 0.3) - dt; if (g.atkT <= 0) { g.atkT = 1.0 + Math.random() * 0.5; n.hero.act('attack', true); ctx.hitThreat?.(tgt, Math.max(4, Math.round(tgt.hpMax * 0.07)), n.pos); } } }
+          else { g.ghp = Math.min(140, (g.ghp ?? 140) + 6 * dt); if (g.away) { if (Math.hypot(n.pos.x - d.x, n.pos.z - d.z) > 1.5) n.target = new THREE.Vector2(d.x, d.z); else g.away = false; } }
+        }
+      }
+      if (fought) { /* lutando (ou de joelho) */ }
+      else if (d.seat) { /* 10/11 (Erling: "cheio de anões bebendo"): sentado no banco, de frente para a mesa; vira só a cabeça para o herói e de vez em quando bebe */
         n.yaw = d.seat.yaw; (n.hero as unknown as { sit?: number }).sit = d.seat.h; if (dH < 4.5) head = Math.atan2(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
         n.wait -= dt; if (n.wait <= 0) { n.wait = 7 + Math.random() * 12; if (dH < 30 && !n.hero.acting) n.hero.act('drink', true); } }
       else if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
