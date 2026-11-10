@@ -513,16 +513,31 @@ const npcSys = createNpcs(scene, [
     ['Guarda da Copa Lúthien', 'Guarda da Copa · élfica', 14.8, 7.2, 0.4, 0x5a7a6a, 1.02, ['…', 'A Rainha não precisa de guarda. Mas nós precisamos de guardá-la.'], 'f'],
     ['Guarda da Copa Amras', 'Guarda da Copa · élfico', 29.2, 7.2, 0.4, 0x5a7a6a, 1.02, ['…', 'Arco pronto, flecha no bolso. É assim que se dorme aqui.']],
   ] as [string, string, number, number, number, number, number, string[], ('m' | 'f')?, string?][]).map(([name, role, x, z, radius, tint, scale, lines, sex, shop]) => ({ name, role, kind: 'nordic' as const, civil: 'elf' as const, inside: 'copa', x: 4000 + x, z: 4000 + z, radius, tint, scale, lines, ...(name.startsWith('Rainha') ? { yOff: 0.75, fixed: true } : {}) /* 09/11: a Rainha de pé no alto do estrado */, ...(sex ? { sex } : {}), ...(shop ? { shop } : {}) })),
-  /* 08/11 A BIGORNA MOLHADA por dentro (Erling: "uma taverna para entrar, beber e comer carne, típico de anões"): fregueses nas mesas compridas,
-     o assador na cova de fogo e a Gudrún atrás do balcão. A casa tem 8×5 tiles (16 × 10 m); coordenadas dentro do salão + (4000, 4000). */
-  ...([
-    ['Assador Fróði Gordura-Quente', 'Assador da Bigorna Molhada', 8, 3.6, 0.5, 0x8a4a2a, 1.0, ['Javali da encosta, doze horas no espeto. Prova e me diz se não é a melhor carne de Karmika.', 'Quem pede bem passado paga o dobro. É a lei da casa.']],
-    ['Bebedor Thorgrim Caneca-Funda', 'Freguês', 5.5, 2.0, 0.3, 0x6a4a3a, 1.0, ['Mais uma! E uma para o meu amigo aqui que ainda não chegou.', 'Já bebi com o Rei. Ele perdeu. No dia seguinte ele negou.']],
-    ['Bebedora Ragna Riso-Alto', 'Freguesa', 10.5, 2.0, 0.3, 0x7a4a4a, 0.96, ['Senta, forasteiro! Primeira caneca é por minha conta, a segunda você canta.', 'Gudrún faz a cerveja. Orik vende. Eu bebo. Cada um com o seu ofício.']],
-    ['Velho Gísli Barba-de-Espuma', 'Freguês', 2.4, 5.0, 0.3, 0x8a8a9a, 0.95, ['Eu me lembro de quando isso aqui era só um barril e uma tábua. Estava melhor.', 'A cerveja preta tira a dor das costas. A segunda tira o resto.']],
-    ['Mineiro Hálfdan Sede-de-Pedra', 'Freguês', 5.5, 8.0, 0.3, 0x5a4a3a, 1.0, ['Doze horas na galeria. Doze canecas aqui. Equilíbrio.', 'Hoje a veia deu prata. Hoje eu pago.']],
-    ['Bardo Lóðurr Corda-de-Cobre', 'Bardo', 10.5, 8.0, 0.3, 0xa06a3a, 0.96, ['♪ Sob a montanha arde a forja, sob a forja arde a sede ♪', 'Uma moeda, uma canção. Duas moedas, uma canção que presta.']],
-  ] as [string, string, number, number, number, number, number, string[]][]).map(([name, role, x, z, radius, tint, scale, lines]) => ({ name, role, kind: 'dwarf' as const, inside: 'tavb', x: 4000 + x, z: 4000 + z, radius, tint, scale, lines })),
+  /* 08/11 A BIGORNA MOLHADA por dentro — 10/11 refeita (interiors3d.ts variante 15: salão de 30 × 20 m, balcão ao fundo, cozinha à direita,
+     despensa à esquerda, cova de fogo no meio, mesas compridas com bancos, palco do bardo perto da porta). Erling: "cheio de anões bebendo".
+     Quem tem `seat` fica sentado no banco de frente para a mesa e bebe de vez em quando; coordenadas do salão + (4000, 4000).
+     Bancos: mesa em (tx, tz) → assentos em tx ± 1,15 e tz −0,95 / 0 / +0,95 (lado esquerdo olha para +x, o direito para −x). */
+  ...((): NpcDef[] => { const L = Math.PI / 2, R = -Math.PI / 2;
+    const P = (name: string, role: string, x: number, z: number, tint: number, lines: string[], o: Partial<NpcDef> = {}): NpcDef => ({ name, role, kind: 'dwarf', inside: 'tavb', x: 4000 + x, z: 4000 + z, radius: 0.4, tint, scale: 1.0, lines, ...o });
+    const S = (yaw: number) => ({ seat: { yaw, h: 0.48 }, radius: 0 });
+    return [
+      P('Taverneira Hildigunn Mão-de-Barril', 'Dona do balcão · bebidas', 15, 3.3, 0xa06a3a, ['Chope claro, chope preto, hidromel. Fala o que quer e põe a moeda no cobre.', 'Mesa para os amigos? A redonda perto da porta. Paga a reserva e ninguém senta nela.', 'Quem quebra caneca paga duas. Quem quebra o banco dorme lá fora.'], { radius: 1.6, sex: 'f' }),
+      P('Assador Fróði Gordura-Quente', 'Assador da Bigorna Molhada', 16.9, 11.2, 0x8a4a2a, ['Javali da encosta, doze horas no espeto. Prova e me diz se não é a melhor carne de Karmika.', 'Quem pede bem passado paga o dobro. É a lei da casa.'], { radius: 0.5 }),
+      P('Cozinheira Sif Colher-Grande', 'Cozinha da Bigorna', 25.6, 3.0, 0x9a5a3a, ['Sai da minha cozinha! … Tá, pode olhar. Não mexe no caldeirão.', 'Ensopado de cogumelo de caverna. A receita é da minha avó. A avó é segredo também.'], { radius: 1.4, sex: 'f' }),
+      P('Bardo Lóðurr Corda-de-Cobre', 'Bardo', 3.2, 17.4, 0xa06a3a, ['♪ Sob a montanha arde a forja, sob a forja arde a sede ♪', 'Uma moeda, uma canção. Duas moedas, uma canção que presta.'], { radius: 0.6, yOff: 0.42, fixed: true }),
+      P('Bebedor Thorgrim Caneca-Funda', 'Freguês', 2.45, 10.05, 0x6a4a3a, ['Mais uma! E uma para o meu amigo aqui que ainda não chegou.', 'Já bebi com o Rei. Ele perdeu. No dia seguinte ele negou.'], S(L)),
+      P('Bebedora Ragna Riso-Alto', 'Freguesa', 4.75, 11.0, 0x7a4a4a, ['Senta, forasteiro! Primeira caneca é por minha conta, a segunda você canta.', 'Hildigunn serve. Fróði assa. Eu bebo. Cada um com o seu ofício.'], { ...S(R), sex: 'f' }),
+      P('Velho Gísli Barba-de-Espuma', 'Freguês', 2.45, 11.95, 0x8a8a9a, ['Eu me lembro de quando isso aqui era só um barril e uma tábua. Estava melhor.', 'A cerveja preta tira a dor das costas. A segunda tira o resto.'], S(L)),
+      P('Mineiro Hálfdan Sede-de-Pedra', 'Freguês', 2.45, 15.2, 0x5a4a3a, ['Doze horas na galeria. Doze canecas aqui. Equilíbrio.', 'Hoje a veia deu prata. Hoje eu pago.'], S(L)),
+      P('Mineira Dagny Pó-de-Carvão', 'Freguesa', 4.75, 16.15, 0x4a4a4a, ['Lavei a cara para vir. Não reparou? É que o carvão não sai.', 'Se ouvir um estrondo lá do fundo, é a mina. Se ouvir dois, é o Hálfdan.'], { ...S(R), sex: 'f' }),
+      P('Ferreiro Úlfr Braço-Torto', 'Freguês', 25.25, 10.05, 0x6a3a2a, ['Martelei o dia inteiro. Agora quero uma coisa que não precisa martelar: chope.', 'Esse braço? Bigorna caiu. A bigorna ficou pior.'], S(L)),
+      P('Bebedora Hrefna Canta-Alto', 'Freguesa', 27.55, 11.0, 0x8a4a6a, ['Quando o bardo cansa, eu canto. Quando eu canto, o bardo volta correndo.', 'Brinde! A quê? Tanto faz. Brinde!'], { ...S(R), sex: 'f' }),
+      P('Caçador Eyvind Rastro-Frio', 'Freguês', 25.25, 15.2, 0x4a5a3a, ['Javali grande na encosta essa semana. O Fróði agradece, eu cobro.', 'Vi pegada de lobo do tamanho de um prato perto da Estrada do Carvão. Um lobo, não um prato.'], S(L)),
+      P('Velho Ketill Sem-Dente', 'Freguês', 27.55, 14.25, 0x8a8a8a, ['Carne? Eu tomo a carne em forma de cerveja. Mais fácil de mastigar.', 'No meu tempo a caneca era de pedra. E a gente era mais forte. E mais burro.'], S(R)),
+      P('Guarda Ásgeir de Folga', 'Freguês · guarda de folga', 8.45, 11.6, 0x5a5a6a, ['Hoje não estou de guarda. Hoje estou de caneca.', 'Se houver briga, eu não vi. Estou de folga.'], S(L)),
+      P('Bebedor Bragi Copo-Cheio', 'Freguês', 21.55, 12.55, 0x7a5a3a, ['O segredo é nunca deixar a caneca vazia. Nem um minuto. Nunca.', 'Fala com a Hildigunn: ela reserva a mesa redonda para o seu grupo. Já reservei para mim e para mim mesmo.'], S(R)),
+      P('Bebedora Sigrid Dente-de-Ouro', 'Freguesa', 10.75, 10.65, 0xc9a24a, ['Esse dente? Ganhei numa queda de braço. O outro dente perdeu.', 'Se você ganhar de mim na queda de braço, pago a próxima. Ninguém ganhou ainda.'], { ...S(R), sex: 'f' }),
+    ]; })(),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
 ], { heightAt, insideId: () => (inside?.canopy ? 'copa' : inside?.hall ? 'hall' : inside?.prop?.shop === 'cervejaria' ? 'tavb' : null), insideFree: (x, z) => !!inside && inside.int.free(x - 4000, z - 4000), walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
@@ -702,6 +717,8 @@ function useQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['useQuic
  *  da frente. O quadril vai para a beira de quem olha para a fonte (22 cm à frente do centro), e os joelhos ficam para fora do assento */
 /* 06/11 (Erling: "ainda está entrando no banco"): o banco do artista (vila_balanco, 0,95×) tem o assento mais alto que o banco desenhado:
    a altura do assento vem da própria malha (o topo do tronco de cima), não de um número fixo */
+/** 10/11: a reserva da mesa redonda da Bigorna Molhada (vale uma hora) */
+function tavReserve(): { by: string; until: number } | null { try { const r = JSON.parse(localStorage.getItem('karmika.tav.mesa') || 'null') as { by: string; until: number } | null; return r && r.until > Date.now() ? r : null; } catch { return null; } }
 function benchSeat(bx: number, bz: number, fp: { gx: number; gy: number }) { const yaw = Math.atan2((fp.gx + 1) * T - bx, (fp.gy + 1) * T - bz), d = 0.22;
   const bg = artGeo('vila_balanco'); if (bg && !bg.boundingBox) bg.computeBoundingBox(); const h = bg?.boundingBox ? bg.boundingBox.max.y * 0.95 + 0.02 : 0.55;
   return { x: (bx + Math.sin(yaw) * d) / T, y: (bz + Math.cos(yaw) * d) / T, yaw, h }; }
@@ -2478,6 +2495,15 @@ function findInter(): Inter | null {
     if (ci.well) add(Math.hypot(lx - ci.well.x, lz - ci.well.z) - 1.2, 2.6, 'E — Olhar o Poço da Visão da Corte', () => { chat.sys('O sangue no poço mostra a colina inteira: cada morcego, cada caçador, cada convidado que sobe o caracol.'); });
     if (ci.throne) add(Math.hypot(lx - ci.throne.x, lz - ci.throne.z), 3.2, 'E — Ajoelhar diante do Conde Vladislav', () => { const vam = profile?.path === 'vam'; chat.sys(vam ? 'Vladislav: "Levante-se. A Corte não ajoelha; a Corte espera. Quando a sua sede for educada, a piscina será sua."' : 'Vladislav: "Um vivo, no meu salão. Ou você tem muita coragem, ou alguém lá embaixo dormiu no posto. Fale com Lady Mirela, em Corvoscuro, se quer pertencer à noite."'); });
   }
+  { /* 10/11 A BIGORNA MOLHADA (Erling: "comprar bebidas e beber, reservar uma mesa para amigos"): sentar em qualquer banco ou cadeira livre e
+       reservar a mesa redonda para o grupo (a placa mostra o seu nome; vale uma hora) */
+    const IN = ins.int; if (IN.seats?.length && !casteloSys.sitting) { let bs: (typeof IN.seats)[number] | null = null, bd = 9; for (const s0 of IN.seats) { const d0 = Math.hypot(lx - s0.x, lz - s0.z); if (d0 < bd && !npcSys.npcs.some((n) => n.def.seat && Math.hypot(n.pos.x - IX - s0.x, n.pos.z - IZ - s0.z) < 0.4)) { bd = d0; bs = s0; } }
+      if (bs) { const s0 = bs; add(bd + 0.3, 1.3, 'E — Sentar', () => { casteloSys.sitting = { x: (IX + s0.x) / T, y: (IZ + s0.z) / T, yaw: s0.yaw, h: s0.h }; game.logMsg('🍺 Você puxa o banco e senta. A Hildigunn, no balcão, vende chope e hidromel: compre e beba aqui mesmo.', '#ffe08a'); }); } }
+    if (IN.reserveAt) { const rv = tavReserve(), me = profile?.name || 'Caminhante', mine = !!rv && rv.by === me, key = rv ? rv.by : '';
+      if (IN.reserveSign && IN.reserveSign.userData.k !== key) { IN.reserveSign.userData.k = key; IN.reserveLabel?.(rv ? 'Reservada' : 'Mesa livre', rv ? `${rv.by} e amigos` : 'E para reservar'); }
+      const dR = Math.hypot(lx - IN.reserveAt.x, lz - IN.reserveAt.z) - 1.2; if (dR < 2.5) add(dR, 1.8, mine ? `🍺 Mesa reservada para você e seus amigos (mais ${Math.max(1, Math.ceil((rv!.until - Date.now()) / 60000))} min)` : rv ? `🍺 Mesa reservada por ${rv.by}` : 'E — Reservar a mesa redonda para o seu grupo (20 moedas, uma hora)', () => {
+        if (rv) return; if (game.st.gold < 20) { game.logMsg('A Hildigunn olha a sua bolsa: "Vinte moedas. Sem vinte, a mesa é de quem chegar."', '#ff9a8a'); return; }
+        game.st.gold -= 20; try { localStorage.setItem('karmika.tav.mesa', JSON.stringify({ by: me, until: Date.now() + 3600e3 })); } catch { /* */ } audio.coins?.(1); game.logMsg('🍺 Mesa redonda reservada por uma hora. A placa tem o seu nome: chame os amigos.', '#ffe08a'); }); } }
   if (ins.dg) dgs.interactions(hx, hz, add);
   if (ins.crypt && catedralSys.cryptInt) {
     const open = bloodFull(ins.crypt) || localStorage.getItem('karmika.crypt.done') === '1', f = ins.crypt;

@@ -64,6 +64,8 @@ function source() { return (SRC ??= Promise.all(FILES.map((f) => new GLTFLoader(
   for (const { f, g } of all) { const rig = /large/.test(f) ? 'L' : 'M'; scenes[rig] ??= g.scene; for (const a of g.animations) clips.set(`${rig}:${a.name}`, { clip: a, rig }); }
   return { scenes, clips }; }).catch((e) => { console.warn('animações KayKit não carregaram', e); return null; })); }
 
+/** só o tronco para cima (beber sentado sem levantar as pernas) */
+const UPPER = /Spine|Neck|Head|Shoulder|Arm|Hand/;
 interface Pose { tracks: { bone: THREE.Bone | THREE.Object3D; quat: boolean; it: THREE.Interpolant }[]; dur: number }
 
 /** liga o animador num modelo do Herik já vestido no herói. `rest` = o modelo em pose de repouso (da carga). */
@@ -78,8 +80,8 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
     const p = { tracks, dur: rc.duration }; poses.set(name, p); return p; }
   const q = new THREE.Quaternion(), v = new THREE.Vector3(); const handL = bones.get('mixamorigLeftHand') ?? null, flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   /** `bob=false`: sem o sobe-desce do quadril (Erling: "tira o pulinho do andar, tá andar de jogo de criança") — andar e correr ficam na altura do nosso movimento */
-  function put(p: Pose, t: number, w: number, bob = true, hipK = bob ? 1 : 0.4) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
-    for (const tr of p.tracks) { if (!tr.quat && !bob) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, /Hips/.test(tr.bone.name) ? w * hipK : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
+  function put(p: Pose, t: number, w: number, bob = true, hipK = bob ? 1 : 0.4, upper = false) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
+    for (const tr of p.tracks) { if (!tr.quat && !bob) continue; if (upper && !UPPER.test(tr.bone.name)) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, /Hips/.test(tr.bone.name) ? w * hipK : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
   /* estado que muda devagar: peso de cada camada, relógio da caminhada, velocidade medida */
   let last = performance.now(), loopT = 0, wAct = 0, lastAct: string | null = null, sp = 0; const prev = new THREE.Vector3(); let has = false;
   return {
@@ -91,7 +93,9 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       /* sentado (fogueira, banco, taverna) e ajoelhado (colhendo, rezando): poses da KayKit */
       /* 10/11 (Erling: "anão errado no banco, totalmente errado"): banco e cadeira (assento alto) = Sit_Chair, coxas na horizontal; chão = Sit_Floor.
          Peso inteiro (antes o peso era a altura do assento, 0,55: meio sentado, meio em pé) e o quadril fica na altura que o jogo dá (o assento) */
-      if ((h.sit ?? 0) > 0.05 || h.kneel) { const chair = (h.sit ?? 0) > 0.25; const sp2 = pose(h.kneel ? 'M:PickUp' : chair ? 'M:Sit_Chair_Idle' : 'M:Sit_Floor_Idle'); if (sp2) { loopT += dt; if (h.kneel) put(sp2, sp2.dur * 0.45, 1); else put(sp2, loopT % sp2.dur, 1, !chair, 1); model.updateMatrixWorld(true); } return; }
+      if ((h.sit ?? 0) > 0.05 || h.kneel) { const chair = (h.sit ?? 0) > 0.25; const sp2 = pose(h.kneel ? 'M:PickUp' : chair ? 'M:Sit_Chair_Idle' : 'M:Sit_Floor_Idle'); if (sp2) { loopT += dt; if (h.kneel) put(sp2, sp2.dur * 0.45, 1); else put(sp2, loopT % sp2.dur, 1, !chair, 1);
+        /* sentado e bebendo (os fregueses da taverna): o gesto só do tronco para cima */ const an2 = hero.acting && hero.actName ? actOf(hero.actName) : undefined; const ap2 = an2 ? pose(an2) : null; if (ap2) put(ap2, hero.actP * ap2.dur, Math.min(1, (1 - hero.actP) * 6), false, 0, true);
+        model.updateMatrixWorld(true); } return; }
       const p0 = hero.root.position; if (has && dt > 0) { const d = Math.hypot(p0.x - prev.x, p0.z - prev.z) / dt; sp += (Math.min(12, d) - sp) * Math.min(1, dt * 10); } prev.copy(p0); has = true;
       /* camada de movimento: parado / guarda / andando / correndo */
       const LOOP = loops(); const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
