@@ -12,7 +12,7 @@
     for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const r = RUNAS[(x * 7 + y * 3 + ((x * y) % 5)) % 6]; h += `<svg viewBox="0 0 28 28" style="left:${x * cell + (y % 2 ? cell / 2 : 0) - cell / 2}px;top:${y * cell - cell / 2}px;width:${cell * 0.34}px"><path d="${r}"/></svg>`; }
     rl.innerHTML = h; };
   buildRunes(); let rt = 0; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(buildRunes, 250); });
-  if (!reduce) setInterval(() => { if (document.hidden) return; const all = rl.children; if (!all.length) return; const el = all[Math.floor(Math.random() * all.length)]; const c = Math.random() < 0.6 ? 'g' : 'b'; el.classList.add(c); setTimeout(() => el.classList.remove(c), 2600); }, 700);
+  if (!reduce) setInterval(() => { if (document.hidden) return; const all = rl.children; if (!all.length) return; let el = null; for (let k = 0; k < 12 && !el; k++) { const c = all[Math.floor(Math.random() * all.length)]; const x = parseFloat(c.style.left) / innerWidth; if (x < 0.13 || x > 0.85) el = c; } if (!el) return; const c = Math.random() < 0.6 ? 'g' : 'b'; el.classList.add(c); setTimeout(() => el.classList.remove(c), 2600); }, 700);
 
   /* ---- menu do celular ---- */
   const burger = $('.nav__burger'), links = $('#navLinks');

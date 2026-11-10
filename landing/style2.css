@@ -485,3 +485,29 @@ main { overflow-x: clip; }
 .kit__price { display: grid; gap: 4px; text-align: center; } .kit__price small { font: 600 11px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold); } .kit__price b { font: 900 clamp(34px, 4vw, 52px) var(--serif); color: var(--gold2); } .kit__price span { font-size: 13px; color: var(--mut); }
 .kit ul { margin: 0; padding: 0 0 0 4px; list-style: none; display: grid; gap: 6px; } .kit li { color: var(--mut); font-size: 15px; } .kit li::before { content: "✦"; color: var(--ember); margin-right: 10px; } .kit li b { color: var(--ink); }
 @media (max-width: 700px) { .kit { grid-template-columns: 1fr; } }
+/* a Bíblia com espessura: páginas e contracapa empilhadas por baixo da capa */
+.tome__pages { display: none; }
+.tome__cover { box-shadow: inset 14px 0 0 rgba(0, 0, 0, .35), inset 16px 0 0 rgba(217, 165, 74, .3),
+  2px 2px 0 #efe3c6, 3px 4px 0 #d8c8a4, 4px 6px 0 #efe3c6, 5px 8px 0 #cfbd96, 6px 10px 0 #ece0c2, 7px 12px 0 #d2c09a, 8px 14px 0 #e9dcbd, 9px 16px 0 #c9b68e,
+  10px 18px 0 #e6d8b8, 11px 20px 0 #c4b088, 12px 22px 0 #3a2414, 13px 24px 0 #2a180c, 14px 26px 0 #1c0f06, 14px 27px 0 #d9a54a !important; }
+/* o grid dos caminhos centraliza a última linha */
+.paths:not(.is-open) .paths__grid { display: flex !important; flex-wrap: wrap; justify-content: center; }
+.paths:not(.is-open) .path { flex: 0 1 clamp(160px, calc((100% - 9 * 18px) / 10), 260px); }
+@media (max-width: 1500px) { .paths:not(.is-open) .path { flex-basis: clamp(160px, calc((100% - 6 * 18px) / 7), 260px); } }
+@media (max-width: 1100px) { .paths:not(.is-open) .path { flex-basis: calc((100% - 3 * 18px) / 4); } }
+@media (max-width: 760px) { .paths:not(.is-open) .path { flex-basis: calc((100% - 12px) / 2); } }
+/* painel dos caminhos: sem esticar o último cartão */
+.sh__pairs > * { grid-column: auto !important; }
+@media (max-width: 760px) { .sh__pairs > :last-child:nth-child(odd) { grid-column: auto !important; } }
+/* kit da facção */
+.fac__kt { font-size: 20px; margin: 26px 0 12px; color: var(--gold2); }
+.fac__kit { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.kitem { all: unset; cursor: zoom-in; display: grid; gap: 4px; padding: 0 0 12px; border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: #15111a; text-align: center; }
+.kitem img { width: 100%; aspect-ratio: 16 / 10; object-fit: contain; background: radial-gradient(ellipse, #2a2030, #120e14); margin-bottom: 6px; }
+.kitem b { font: 700 15px var(--serif); padding: 0 8px; } .kitem small { font-size: 12px; color: var(--mut); padding: 0 10px; }
+.kitem:hover { border-color: var(--ember); }
+@media (max-width: 760px) { .fac__kit { grid-template-columns: 1fr 1fr; } }
+/* as runas não disputam com o texto: no meio da tela quase somem, e só acendem nas margens */
+.runes { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 12%, rgba(0, 0, 0, .25) 26%, rgba(0, 0, 0, .25) 74%, #000 88%, #000 100%); mask-image: linear-gradient(90deg, #000 0, #000 12%, rgba(0, 0, 0, .25) 26%, rgba(0, 0, 0, .25) 74%, #000 88%, #000 100%); }
+.fitem--ost span { width: 70px !important; height: 70px !important; border-radius: 50% !important; background: radial-gradient(circle, rgba(255, 122, 42, .22), rgba(20, 16, 22, .9) 70%) !important; border: 1px solid rgba(217, 165, 74, .5) !important; box-shadow: 0 0 30px rgba(255, 122, 42, .25), 0 18px 30px -10px #000 !important; display: grid !important; place-items: center; color: var(--gold2); }
+.fitem--ost svg { width: 56%; height: 56%; filter: drop-shadow(0 0 6px rgba(255, 180, 80, .6)); }
