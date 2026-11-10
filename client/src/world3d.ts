@@ -29,7 +29,7 @@ import { buildLibrary } from './library3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
 import { windU } from './terrain3d';
-import { ArtBatch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
+import { ArtBatch, lodEpoch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
 import { buildChunkTerrainG, CS, CSM, type ChunkTerrain } from './chunks3d';
 
 export interface Torch { pos: THREE.Vector3; light: THREE.PointLight; base: number; seed: number; flame: THREE.Mesh; dist: number }
@@ -110,6 +110,10 @@ function registerSteps(g: THREE.Object3D, p: Prop) {
         const y = l1 * a.y + l2 * b.y + l3 * c.y, gr = gAt(ix, iz); if (y - gr < 0.06 || y - gr > 2.2) continue;
         const k = sKey(ix, iz), old = stepMap.get(k); if (old === undefined || y > old) stepMap.set(k, y); } } });
 }
+
+/** modo leve do mundo (placa integrada / qualidade automática): todos os blocos com modelos simplificados, grama só perto */
+let worldLite = false;
+export function setWorldLite(on: boolean) { worldLite = on; }
 
 export function buildWorld(world: World): WorldObjs {
   artWorld = world; palSet = null;
@@ -753,6 +757,19 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
     L.group.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && m.geometry && !m.userData.shared) m.geometry.dispose(); if ((m as unknown as THREE.InstancedMesh).isInstancedMesh) (m as unknown as THREE.InstancedMesh).dispose(); });
     L.treeG = []; L.staticG = []; L.trees = []; L.torches = []; L.glows = []; L.smokers = []; L.relics = []; L.spin = []; rebuildLists();
   }
+  /* 09/11 BLOCOS INTELIGENTES (Erling: "o jogo tem que ser inteligente; com um mapa 100× maior não pode explodir o PC"):
+     só os blocos em volta do herói existem (5×5); dentro deles o detalhe cai com a distância —
+       anel 0–1 (onde você está e os vizinhos): modelos cheios, com sombra, com grama;
+       anel 2 (a borda): modelos simplificados (~35% dos triângulos), sem sombra, sem grama nem flores.
+     No modo leve (placa integrada / qualidade automática ≥ 2) todos os blocos usam os modelos simplificados e a grama fica só em 3×3. */
+  let lodSig = '';
+  function applyLod(cx: number, cy: number) {
+    const sig = `${cx},${cy},${worldLite ? 1 : 0},${loaded.size},${lodEpoch}`; if (sig === lodSig) return; lodSig = sig;
+    for (const [k, L] of loaded) { const x = k % KX - MARGIN, y = Math.floor(k / KX) - MARGIN, ring = Math.max(Math.abs(x - cx), Math.abs(y - cy));
+      const lite = worldLite || ring >= 2, shadow = ring <= 1; L.artB?.setLod(lite, shadow);
+      const deco = ring <= 1; L.terrain.group.traverse((o) => { if (!o.userData.deco) return; o.visible = deco; const n0 = o.userData.n0 as number | undefined; if (n0) (o as THREE.InstancedMesh).count = Math.max(1, Math.round(n0 * (worldLite ? 0.25 : 0.4)) /* 09/11 (Erling: "a grama alta tem muito no jogo, diminuir 60%"): 40% dos tufos; no modo leve, 25% */); });
+      for (const m of L.treeMerged ?? []) { if (m.userData.sh0 === undefined) m.userData.sh0 = m.castShadow; m.castShadow = shadow && m.userData.sh0; } }
+  }
   let lastCx = -99, lastCy = -99, queue: [number, number, number][] = [], job: { k: number; it: Generator<void, void, void> } | null = null;
   let RAD = 2;
   function update(hx: number, hz: number, sync = false) {
@@ -771,6 +788,7 @@ function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m =
       while (true) { if (!job) { if (!queue.length || started >= 1) break; const [x, y, k] = queue.shift()!; if (loaded.has(k)) continue; job = { k, it: loadChunkG(x, y, k) }; started++; }
         if (job.it.next().done) job = null; else break; if (overBudget()) break; }
       jobDeadline = Infinity; }
+    applyLod(cx, cy);
     /* distribui as luzes reais às fontes mais próximas — com histerese, para a luz não "pular" de uma fonte para outra */
     const hp = tmpV.set(hx, 0, hz);
     assign(torchesA as unknown as LS[], tPool, tSlot, hp, (tc, l) => { l.position.set(tc.pos.x, tc.pos.y + 0.3, tc.pos.z); });

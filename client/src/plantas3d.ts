@@ -8,8 +8,8 @@ export type Plant = 'raspberry' | 'blueBush' | 'fern' | 'tallGrass' | 'wildflowe
 
 /** plantas por bioma, com peso */
 export const PLANTS: Record<string, [Plant, number][]> = {
-  meadow: [['wildflowers', 4], ['raspberry', 2], ['tallGrass', 3], ['lavender', 2], ['rose', 1]],
-  forest: [['fern', 4], ['mushroomsRed', 2], ['blueberry', 2], ['foxglove', 2], ['tallGrass', 1]],
+  meadow: [['wildflowers', 4], ['raspberry', 2], ['tallGrass', 1.2], ['lavender', 2], ['rose', 1]],
+  forest: [['fern', 4], ['mushroomsRed', 2], ['blueberry', 2], ['foxglove', 2], ['tallGrass', 0.4]],
   enchanted: [['fern', 3], ['mossRock', 2], ['mushroomsBrown', 2], ['foxglove', 3], ['wildflowers', 1]],
   snow: [['thistle', 3], ['dryShrub', 3], ['blueBush', 1]],
   swamp: [['cattail', 4], ['fern', 2], ['pitcher', 2], ['mushroomsBrown', 1]],
@@ -18,7 +18,7 @@ export const PLANTS: Record<string, [Plant, number][]> = {
   volcanic: [['dryShrub', 4], ['thistle', 1]],
   blight: [['dryShrub', 4], ['pitcher', 2], ['mushroomsBrown', 2]],
   jungle: [['fern', 3], ['bamboo', 3], ['rhubarb', 2], ['pitcher', 1]],
-  coast: [['agave', 3], ['cactus', 3], ['tallGrass', 1], ['wildflowers', 1]],
+  coast: [['agave', 3], ['cactus', 3], ['tallGrass', 0.4], ['wildflowers', 1]],
 };
 /** plantas que só ficam na água rasa (beira) */
 export const WATER_PLANTS: Partial<Record<string, Plant>> = { swamp: 'lilypad', meadow: 'lilypad', forest: 'lilypad', enchanted: 'lilypad' };

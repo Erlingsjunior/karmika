@@ -132,7 +132,7 @@ import { bindScrolls } from './esquecimento';
 import { biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 
-import { buildWorld, FOUNTAIN, stepAt, chestLids } from './world3d';
+import { buildWorld, FOUNTAIN, stepAt, chestLids, setWorldLite } from './world3d';
 import { createCharacter, type Hero3D, type Kind } from './characters';
 import { honorLog } from './sistemas/honra';
 import { vfxAttach, vfxTick, vfxProjTick } from './sistemas/vfx';
@@ -1793,6 +1793,7 @@ const DYN_MAX = igpu ? 2.0 : 1.6;
 let autoQ = (() => { try { const v = localStorage.getItem('karmika.autoq'); if (v === 'off') return -1; const n = Number(v); return Number.isFinite(n) && v !== null ? Math.max(0, Math.min(3, n)) : igpu ? 1 : 0; } catch { return 0; } })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
 if (igpu && dynK === 1) dynK = 1.3;
 function applyAutoQ() { const q = Math.max(0, autoQ), was = autoQApplied; autoQApplied = q;
+  setWorldLite(igpu || q >= 2); /* 09/11: blocos inteligentes — modelos simplificados em todo bloco */
   renderer.shadowMap.autoUpdate = q < 1; if (q >= 1) renderer.shadowMap.needsUpdate = true;
   const sr = q >= 2 ? Math.min(512, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuState.on) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } }
   bloom.enabled = q < 2 && opts.bloom > 0; particles.density = q >= 2 ? Math.min(opts.particles, 0.6) : opts.particles;

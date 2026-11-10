@@ -312,14 +312,14 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
     const mat = windify(new THREE.MeshLambertMaterial({ vertexColors: true }), 0.16, 1.7, { hero: true });
     const groups: { x: number; z: number; b: Biome }[][] = [[], [], [], []];
     for (const sp of grassSpots) { const u = R(); groups[u < 0.3 ? 0 : u < 0.6 ? 1 : u < 0.88 ? 2 : 3].push(sp); }
-    groups.forEach((list, gi) => { if (!list.length) return; const im = new THREE.InstancedMesh(tufts![gi], mat, list.length);
+    groups.forEach((list, gi) => { if (!list.length) return; for (let i = list.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); const t0 = list[i]; list[i] = list[j]; list[j] = t0; } /* embaralhada: cortar a contagem (modo leve) tira tufos espalhados, não um pedaço */ const im = new THREE.InstancedMesh(tufts![gi], mat, list.length);
       list.forEach((s, i) => {
         o.position.set(s.x, groundH(s.x, s.z) - 0.02, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.8 + R() * 0.9; o.scale.set(sc, sc * (0.7 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix);
         const v = fbm(s.x * 0.05, s.z * 0.05, 7); /* manchas largas de tom: um campo não é um verde só */
         if (s.b === 'snow') cc.setHSL(0.11, 0.18, 0.55 + R() * 0.12); else if (s.b === 'swamp') cc.setHSL(0.19 + v * 0.05, 0.38, 0.26 + R() * 0.1); else if (s.b === 'ruins' || s.b === 'rock') cc.setHSL(0.15 + v * 0.04, 0.3, 0.3 + R() * 0.1); else if (s.b === 'enchanted') cc.setHSL(0.3 + v * 0.1, 0.5, 0.38 + R() * 0.12); else if (s.b === 'blight') cc.setHSL(0.17 + v * 0.03, 0.25, 0.24 + R() * 0.08); else { const dry = fbm(s.x * 0.03 + 50, s.z * 0.03, 9); /* multiplicador: nunca clareia além do tom do chão; nos trechos secos vira cáqui/areia escura, com vários tons (Erling: "areia, vários tons de areia; verde, vários tons de verde") */ if (dry > 0.6) cc.setHSL(0.1 + R() * 0.04, 0.3 + R() * 0.15, 0.38 + (dry - 0.6) * 0.5 + R() * 0.08); else cc.setHSL(0.3 + (v - 0.5) * 0.06, 0.08 + R() * 0.1, 0.42 + v * 0.16 + R() * 0.07); } /* multiplicador: manchas mais claras/escuras e trechos de capim seco */
         im.setColorAt(i, cc);
       });
-      im.instanceMatrix.needsUpdate = true; grp.add(im); });
+      im.instanceMatrix.needsUpdate = true; im.userData.deco = true; im.userData.n0 = list.length; grp.add(im); });
     // flores nas campinas
     const fl = grassSpots.filter((s) => s.b === 'meadow' && R() < 0.035);
     if (fl.length) {
@@ -330,7 +330,7 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
       const ft = new THREE.CanvasTexture(fc); ft.colorSpace = THREE.SRGBColorSpace;
       const fm = new THREE.InstancedMesh(fq, windify(new THREE.MeshBasicMaterial({ map: ft, alphaTest: 0.5, side: THREE.DoubleSide }), 0.18, 2.1), fl.length);
       fl.forEach((s, i) => { o.position.set(s.x, groundH(s.x, s.z), s.z); o.rotation.set(0, R() * 3, 0); o.scale.setScalar(0.7 + R() * 0.5); o.updateMatrix(); fm.setMatrixAt(i, o.matrix); fm.setColorAt(i, cc.setHSL(R(), 0.7, 0.7)); });
-      grp.add(fm);
+      fm.userData.deco = true; grp.add(fm);
     }
   }
   if (anyWater) {
@@ -344,7 +344,7 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
     if (reeds.length) {
       reedG ??= crossQuad(0.75, 1.7);
       const im = new THREE.InstancedMesh(reedG, windify(new THREE.MeshLambertMaterial({ map: getReedTex(), alphaTest: 0.4, side: THREE.DoubleSide }), 0.16, 1.5), reeds.length);
-      reeds.forEach((s, i) => { o.position.set(s.x, groundH(s.x, s.z) - 0.05, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.7 + R() * 0.8; o.scale.set(sc, sc * (0.8 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, cc.setHSL(0.17 + R() * 0.08, 0.35, 0.55 + R() * 0.2)); });
+      im.userData.deco = true; reeds.forEach((s, i) => { o.position.set(s.x, groundH(s.x, s.z) - 0.05, s.z); o.rotation.set(0, R() * 3, 0); const sc = 0.7 + R() * 0.8; o.scale.set(sc, sc * (0.8 + R() * 0.6), sc); o.updateMatrix(); im.setMatrixAt(i, o.matrix); im.setColorAt(i, cc.setHSL(0.17 + R() * 0.08, 0.35, 0.55 + R() * 0.2)); });
       grp.add(im);
     }
     if (stones.length) {

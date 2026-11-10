@@ -71,11 +71,13 @@ export class ArtBatch {
     const k = `${id}|${o.wind ?? 0}|${o.tint ?? 0xffffff}`; let it = this.items.get(k); if (!it) { it = { m: [], o }; this.items.set(k, it); } it.m.push(m.clone());
   }
   get size() { let n = 0; for (const it of this.items.values()) n += it.m.length; return n; }
+  /** 09/11 BLOCOS INTELIGENTES: o detalhe do bloco — lite = modelos simplificados (~35% dos triângulos); shadow = se ainda projeta sombra */
+  setLod(lite: boolean, shadow: boolean) { for (const im of this.meshes) { const id = im.userData.art as string, g = (lite && liteGeos.get(id)) || geos.get(id); if (g && im.geometry !== g) im.geometry = g; im.castShadow = shadow && im.userData.sh0 !== false; } }
   build(parent: THREE.Object3D) {
     this.dispose(parent);
     for (const [k, it] of this.items) { const id = k.split('|')[0], g = geos.get(id); if (!g || !it.m.length) continue;
       const im = new THREE.InstancedMesh(g, artMat(id, it.o), it.m.length); it.m.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true;
-      im.computeBoundingSphere(); im.castShadow = it.o.shadow ?? true; im.receiveShadow = true; im.userData.shared = true; im.userData.art = id; im.matrixAutoUpdate = false; im.updateMatrix(); parent.add(im); this.meshes.push(im); }
+      im.computeBoundingSphere(); im.castShadow = it.o.shadow ?? true; im.userData.sh0 = im.castShadow; im.receiveShadow = true; im.userData.shared = true; im.userData.art = id; im.matrixAutoUpdate = false; im.updateMatrix(); parent.add(im); this.meshes.push(im); }
   }
   clear() { this.items.clear(); }
   dispose(parent: THREE.Object3D) { for (const m of this.meshes) { parent.remove(m); m.dispose(); } this.meshes.length = 0; }
@@ -108,8 +110,27 @@ export const ROCK_ART: Record<string, string> = { mossy: 'rocha_01', slab: 'roch
 export const VPROP_ART: Record<number, string> = { 0: 'vila_barril', 1: 'vila_caixas', 2: 'vila_poco', 4: 'porto_poste_lampiao', 5: 'vila_placa', 6: 'vila_feno', 7: 'vila_carrinho', 8: 'vila_tronco', 9: 'vila_bigorna' };
 /** carrega o que o mapa usa antes do primeiro chunk (vegetação, pedras, vila, forja, porto, biblioteca, fonte, carroças, armas) */
 export function artPreload(): Promise<void> {
-  return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/(casas|muralha|casa_modular)/.test(e.pasta)).map((e) => e.id))).catch(() => undefined);
+  return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/(casas|muralha|casa_modular)/.test(e.pasta)).map((e) => e.id))).then(() => { void artBuildLods(); }).catch(() => undefined);
 }
+/* 09/11 (Erling: "crie blocos para não fazer tantos zilhões de triângulos; com um mapa 100× maior não pode explodir o PC"):
+   cada modelo pesado (árvore, planta, pedra) ganha uma versão simplificada (meshoptimizer, ~35% dos triângulos), feita uma vez
+   ao abrir o jogo. Os blocos longe do herói — e todos, no modo leve das placas integradas — usam a simplificada. */
+const liteGeos = new Map<string, THREE.BufferGeometry>();
+let lodsP: Promise<void> | null = null;
+export function artBuildLods(): Promise<void> {
+  return (lodsP ??= (async () => {
+    const { SimplifyModifier } = await import('three/examples/jsm/modifiers/SimplifyModifier.js'); const sm = new SimplifyModifier();
+    for (const [id, g] of geos) { if (liteGeos.has(id) || !/^(arvore|planta|rocha)_/.test(id)) continue; const tri = (g.index ? g.index.count : g.getAttribute('position').count) / 3; if (tri < 600) continue;
+      try { const src = g.clone(); for (const k of Object.keys(src.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) src.deleteAttribute(k);
+        const v = src.getAttribute('position').count; const lite = await sm.modify(src, Math.floor(v * 0.65)); const lt = (lite.index ? lite.index.count : lite.getAttribute('position').count) / 3;
+        if (lt > 0 && lt < tri * 0.8) { lite.computeBoundingSphere(); liteGeos.set(id, lite); } src.dispose(); } catch { /* fica o modelo cheio */ }
+      await new Promise((r) => setTimeout(r, 0)); }
+    lodEpoch++;
+  })());
+}
+/** muda quando as versões simplificadas ficam prontas (os blocos reaplicam o detalhe) */
+export let lodEpoch = 0;
+(window as unknown as { __lods?: () => string }).__lods = () => `${liteGeos.size} modelos simplificados · ` + [...liteGeos].slice(0, 4).map(([id, g]) => `${id} ${(geos.get(id)!.index?.count ?? 0) / 3 | 0}→${(g.index?.count ?? 0) / 3 | 0}`).join(', ');
 
 /* ---------- armas (prancha 48/49/50 e escudos 51/52): nome da base → modelo ---------- */
 export const SWORD_ART: Record<string, string> = { 'Espada Longa': 'espada_longa_01', 'Espada Nórdica': 'espada_longa_02', 'Espadão Anão': 'espada_longa_03', 'Lâmina Élfica': 'espada_longa_04', 'Cimitarra': 'espada_longa_05',

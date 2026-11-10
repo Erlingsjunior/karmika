@@ -2848,6 +2848,11 @@ export function buildCity(): World {
     const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico', ...(islet ? { islet } : {}) }); }
   const outBridges = [...w.bridges.map((b) => shBridge(b, D)), ...extraBridges]; w.bridges.push(...extraBridges.map((b) => shBridge(b, -D))); bridgeIdxN = -1; /* o píer élfico também é chão para andar (a colisão lê as pontes locais) */
   const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
+  /* 09/11 (Erling: "diminuir as árvores pelo menos 30%, são muitas mesmo"): no ermo, 3 de cada 10 árvores saem (sorteio fixo pela casa,
+     igual em toda máquina); dentro e em volta das vilas, cidades e lugares marcados nada muda. A casa da árvore que saiu vira grama. */
+  { const keep = (x: number, y: number) => { for (let i = 0; i < protPts.length; i += 3) if (Math.hypot(x - protPts[i], y - protPts[i + 1]) < protPts[i + 2] + 6) return true; return false; };
+    const h = (x: number, y: number) => { let v = Math.imul(x * 374761393 + y * 668265263, 1274126177) >>> 0; v ^= v >>> 13; v = Math.imul(v, 1103515245) >>> 0; return (v >>> 8) / 16777216; };
+    let n = 0; for (let i = 0; i < props.length; i++) { const p = props[i]; if (p.kind === 'tree' && h(p.gx, p.gy) < 0.3 && !keep(p.gx, p.gy)) { if (map[p.gy]?.[p.gx] === 'tree') map[p.gy][p.gx] = 'grass'; continue; } props[n++] = p; } props.length = n; }
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
     pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: w.signs.map(sxy),
