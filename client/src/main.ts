@@ -1,6 +1,7 @@
 import { buildSpecies } from './flora3d';
 
 
+import { installBvh } from './libs/bvh';
 import { mirrorUpdate } from './espelho';
 import { updateCharLod } from './sistemas/lod-personagens';
 import { type Guild } from './social';
@@ -206,6 +207,7 @@ import { createBuffsSigilos } from './sistemas/buffs-sigilos';
 import { createBancada } from './sistemas/bancada';
 import { createEntrada } from './sistemas/entrada';
 import { createArvoreClasse } from './sistemas/arvore-classe';
+installBvh(); /* 10/11: raios (cliques, visão, recorte do herói) pela árvore de caixas — three-mesh-bvh */
 /** tipo declarado de um let (sem o estreitamento do fluxo: false → boolean, 30 → number) — usado nos contextos dos sistemas */
 type Widen<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : T;
 

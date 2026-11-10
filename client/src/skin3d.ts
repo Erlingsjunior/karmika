@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Hero3D } from './characters';
 import { fine } from './dual3d';
+import { kkAnimator } from './libs/anim-kk';
 
 type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip?: THREE.Object3D; knee?: THREE.Object3D; ankle?: THREE.Object3D };
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
@@ -64,6 +65,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const rig = (hero as unknown as { rig?: Rig }).rig; if (!rig) return null;
   let src: THREE.Group; try { src = await load(def); } catch (e) { console.warn('modelo não carregou', e); return null; }
   const model = cloneSkinned(src) as THREE.Group;
+  const kk = kkAnimator(model, src); /* 10/11 (teste_libs): animações KayKit por cima da pose procedural */
   const root = hero.root;
   root.updateMatrixWorld(true);
   const invRootQ = root.getWorldQuaternion(new THREE.Quaternion()).invert();
@@ -585,6 +587,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     }
     // giro do antebraço (pronação/supinação): o procedural não tem esse grau; sem ele as palmas ficam viradas para cima/fora
     for (const [b, q] of roll) { b.quaternion.multiply(q); b.updateMatrixWorld(true); }
+    kk?.apply(hero);
     /* 02/11 (Erling, referências do anão): arma de duas mãos — as duas mãos do modelo vão para onde estão as mãos do esqueleto procedural
        (que já segura o cabo por IK, com as poses: parado, combate, golpes). IK de dois ossos em cada braço do modelo, cotovelo pelo lado do
        cotovelo do procedural; sem isto os braços copiavam só as rotações e, com outras proporções, cruzavam o corpo longe do martelo. */
