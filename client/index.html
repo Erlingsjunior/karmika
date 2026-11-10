@@ -579,7 +579,12 @@
   @keyframes evtk { 50% { transform: translate(-50%, calc(-100% - 5px)); } }
   .npc p.bark { font-style: italic; border-color: #8a6a32 !important; }
   .it.qitem { border-color: #e6c46a !important; box-shadow: inset 0 0 10px rgba(230,196,106,.35); position: relative; } .it.qitem::after { content: '◆'; position: absolute; left: 3px; top: 1px; font-size: 10px; color: #ffe08a; text-shadow: 0 0 4px #000; }
-  .npc[data-qm^="meet"] .qm { display: block; color: #c8a0ff; text-shadow: 0 0 8px #8a5aff, 0 1px 2px #000; }
+  .npc[data-qm^="meet"] .qm { display: block; color: #e8d0ff; text-shadow: 0 0 8px #8a5aff, 0 1px 2px #000; }
+  /* 10/11 (Erling: "o boneco em cima do NPC com quem preciso falar tem que brilhar mais, destacar do fundo"): maior, claro, com halo
+     branco-lilás que pulsa e um disco de luz atrás — aparece em qualquer chão, de dia ou de noite */
+  .npc[data-qm="meet"] .qm { font-size: 32px; position: relative; filter: brightness(1.9) saturate(1.6) drop-shadow(0 0 3px #fff) drop-shadow(0 0 9px #d8b0ff) drop-shadow(0 0 16px #8a5aff); animation: qmbob 1.6s ease-in-out infinite, meetpulse 1.2s ease-in-out infinite; }
+  .npc[data-qm="meet"] .qm::before { content: ''; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; border-radius: 50%; background: radial-gradient(circle, rgba(255,240,255,.55) 0%, rgba(200,150,255,.35) 40%, rgba(138,90,255,0) 70%); z-index: -1; }
+  @keyframes meetpulse { 0%, 100% { filter: brightness(1.7) saturate(1.5) drop-shadow(0 0 3px #fff) drop-shadow(0 0 8px #d8b0ff) drop-shadow(0 0 14px #8a5aff); } 50% { filter: brightness(2.3) saturate(1.7) drop-shadow(0 0 4px #fff) drop-shadow(0 0 14px #e8c8ff) drop-shadow(0 0 24px #a070ff); } }
   #stban { position: fixed; left: 50%; top: 21%; transform: translate(-50%, -10px) scale(var(--ui, 1)); display: flex; gap: 12px; align-items: center; padding: 10px 20px 10px 14px; background: linear-gradient(#1a120cf0, #0c0806f0); border: 1px solid #8a6a32; border-radius: 10px; font-family: Georgia, serif; z-index: 22; pointer-events: none; opacity: 0; transition: opacity .35s, transform .35s; max-width: 560px; }
   #stban.on { opacity: 1; transform: translate(-50%, 0) scale(var(--ui, 1)); } #stban i { font-style: normal; font-size: 34px; filter: drop-shadow(0 0 8px currentColor); } #stban b { display: block; font: 700 20px Cinzel, serif; } #stban small { display: block; color: #e8dcc0; font-size: 12.5px; margin-top: 2px; } #stban em { display: block; color: #a8987a; font-size: 12px; margin-top: 3px; }
   .alpn { width: min(560px, calc(92vw / var(--ui))); height: min(640px, calc(84vh / var(--ui))); display: flex; flex-direction: column; overflow: hidden; padding: 14px 18px; font-family: Georgia, serif; color: #e8dcc0; }
