@@ -792,7 +792,8 @@ function buildCity_L(): World {
   const FIRST = ['Astrid', 'Bjarni', 'Dagny', 'Einar', 'Freya', 'Gudrun', 'Halvar', 'Ingvar', 'Jorunn', 'Kjell', 'Liv', 'Magnus', 'Nanna', 'Orvar', 'Ragna', 'Sten', 'Tove', 'Ulrik', 'Vigdis', 'Yngve', 'Brokk', 'Dvalin', 'Eitri', 'Nori', 'Thrain'];
   // nomes por região: nórdicos só na neve; nas terras comuns, nomes de gente comum (humanos); nas florestas, élficos
   const HUMAN = ['Aldo', 'Beatriz', 'Tomé', 'Inês', 'Duarte', 'Leonor', 'Brás', 'Catarina', 'Gaspar', 'Joana', 'Matias', 'Cecília', 'Rui', 'Helena', 'Vasco', 'Marta', 'Simão', 'Clara', 'Bento', 'Luísa', 'Estêvão', 'Teresa', 'Afonso', 'Mafalda', 'Dinis', 'Violante', 'Nuno', 'Branca', 'Lopo', 'Guiomar'];
-  const ELF = ['Elyndra', 'Faelar', 'Sylwen', 'Thalion', 'Aerin', 'Caelum', 'Nimue', 'Lorien', 'Vaelis', 'Ithil', 'Serethiel', 'Aradan', 'Lúmina', 'Fenwë', 'Oriel'];
+  /* 09/11: 'Aerin' e 'Sylwen' saíram — são personagens da história do Elfo, e um morador aleatório com o mesmo nome roubava a bússola da missão (Erling: "Aerin na minha frente e a bússola diz 1000 m") */
+  const ELF = ['Elyndra', 'Faelar', 'Thalion', 'Caelum', 'Nimue', 'Lorien', 'Vaelis', 'Ithil', 'Serethiel', 'Aradan', 'Lúmina', 'Fenwë', 'Oriel'];
   const nameOf = (rr: () => number, cx = CITY_L.x, cy = CITY_L.y) => { const z = zoneW_L(cx, cy); if (z.snow > 0.5) return FIRST[Math.floor(rr() * FIRST.length)]; if (z.forest > 0.45 && rr() < 0.5) return ELF[Math.floor(rr() * ELF.length)]; return HUMAN[Math.floor(rr() * HUMAN.length)]; };
   const decorAt = (kind: PropKind, gx: number, gy: number, w: number, h: number, variant: number, wall: number, roof: number) => { if (inb(gx, gy) && inb(gx + w - 1, gy + h - 1) && map[gy][gx] !== 'water') props.push({ kind, gx, gy, w, h, height: 1, wall, roof, variant }); };
   const flatten = (cx: number, cy: number, radTiles: number) => { const h = groundH_L(cx * T, cy * T); pads.push({ x: cx * T, z: cy * T, r: radTiles * T, h }); };

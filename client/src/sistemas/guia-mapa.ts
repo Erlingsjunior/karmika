@@ -25,7 +25,10 @@ function questTarget(dq?: ReturnType<typeof K.quests.def> | null, primary = true
       if (!tk.joined && dd > 5) return { x: tk.x, y: tk.y, label: `Evento: ${tk.name} · fale com ${tk.herald}` };
       if (tk.joined && dd > 24) return { x: tk.x, y: tk.y, label: `Evento: ${tk.name}` }; } }
   const d = dq === undefined ? K.quests.tracked : dq; if (!d) return null; const h0 = hereT();
-  const npcAt = (name: string) => { const n = K.npcSys.npcs.find((q) => q.def.name === name); return n ? { x: n.pos.x / T, y: n.pos.z / T } : null; };
+  /* 09/11: dois com o mesmo nome (um da história, outro morador): a seta vai para o mais perto — quem está na sua frente */
+  const npcAt = (name: string) => { const h = K.hero.root.position; let n: (typeof K.npcSys.npcs)[number] | null = null, bd = Infinity;
+    for (const q of K.npcSys.npcs) { if (q.def.name !== name) continue; const dd = Math.hypot(q.pos.x - h.x, q.pos.z - h.z); if (dd < bd) { bd = dd; n = q; } }
+    return n ? { x: n.pos.x / T, y: n.pos.z / T } : null; };
   const i = K.quests.firstOpen(d);
   if (i < 0) { const who = d.turnin ?? d.giver, p = npcAt(who); return p ? { ...p, label: `Entregar a ${who}` } : null; }
   const o = d.objs[i];

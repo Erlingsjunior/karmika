@@ -9,6 +9,7 @@ import { bandOf } from '../karma';
 import { RARITY } from '../loot';
 import { FEATS, CATS } from '../feats';
 import { createCoop } from '../coop';
+import { initMirror } from '../espelho';
 import type { RedeCtx } from '../main';
 
 export function createRede(K: RedeCtx) {
@@ -43,6 +44,8 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
       gear, feats: top.map((f) => ({ name: f.name, desc: f.desc, icon: CATS[f.cat].icon })), featCount: done.length, featTotal: FEATS.length, kills: K.game.st.kills ?? 0, quests: K.quests.q.done.length, lives: K.soul.s.lives.map((l) => ({ name: l.name, race: K.originName(l.origin), cls: l.cls, lvl: l.lvl })) };
   },
 });
+/* 09/11: o espelho — drones, robôs, bichos, flechas e magias do herói aparecem para o grupo (meio transparentes); os bichos, para todos */
+initMirror(K.scene, K.particles, net, () => K.inside ? (K.inside.crypt ? `crypt:${K.inside.crypt}` : `in:${K.inside.prop.gx},${K.inside.prop.gy}`) : 'world');
 K.netRef = net;
 /* ---------- 09/11 O CHAMADO DA BANDEIRA (Erling): botão do meio do mouse = cumprimento da facção. O brasão sobe sobre a cabeça de quem chamou
    e todos por perto veem; os da mesma bandeira (e os neutros) ouvem a trompa e recebem convite de grupo (o servidor manda, inclusive a grupos

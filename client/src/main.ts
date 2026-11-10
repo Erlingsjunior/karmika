@@ -1,6 +1,7 @@
 import { buildSpecies } from './flora3d';
 
 
+import { mirrorUpdate } from './espelho';
 import { updateCharLod } from './sistemas/lod-personagens';
 import { type Guild } from './social';
 
@@ -992,6 +993,7 @@ const bugsDono = createBugsDono({ net: () => netRef,
 /* JOGAR JUNTO: os outros Caminhantes da sala no mundo (net.ts) e os monstros compartilhados (coop.ts). Saiu do main.ts (02/11). → sistemas/rede.ts */
 export interface RedeCtx {
   readonly scene: Widen<typeof scene>;
+  readonly particles: Widen<typeof particles>;
   readonly camera: Widen<typeof camera>;
   readonly canvas: Widen<typeof canvas>;
   readonly kindOf: Widen<typeof kindOf>;
@@ -1030,7 +1032,7 @@ export interface RedeCtx {
 const oasisSys = createOasis({ game, heroPos: () => heroPosNow(), openDlg: (o) => openDlg(o), busy: () => !!inside || !!cinemaSys?.cine || dlg.isOpen, shake: (k) => { game.st.shake = Math.max(game.st.shake ?? 0, k); } });
 setInterval(() => oasisSys.tick(), 400);
 var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_redeSys() { return createRede({ get scene() { return scene; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
+function mk_redeSys() { return createRede({ get scene() { return scene; }, get particles() { return particles; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();
 const { coop, net } = redeSys;
 
@@ -2796,7 +2798,7 @@ function frameBody() {
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }
   { const cs = instintoSys.stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t); emoteTick(); decoTick();
   game.setWarrior(isWarrior()); needGauge();
-  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t);
+  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t); mirrorUpdate(dt);
   updateFacSigil(t); updateOutSigil(t);
   pm('herói.update');
   updateXray(dt); updateEnvelopes(t);

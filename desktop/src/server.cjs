@@ -133,11 +133,35 @@ function startServer(opts = {}) {
     let pid = 1; const invites = new Map(); // `${de}>${para}` → hora do convite
     const lvlOf = (p) => Number(p.look && p.look.lvl) || 1;
     function partyMsg(party) { return { t: 'party', party: party ? { id: party.id, leader: party.leader, members: [...party.members] } : null }; }
-    function sendParty(party) { const m = partyMsg(party); for (const id of party.members) { const p = players.get(id); if (p) send(p.ws, m); } const all = { t: 'partyOf', ids: [...party.members], party: party.members.size ? party.id : 0 }; for (const p of players.values()) send(p.ws, all); }
+    /* 09/11 (Erling: "quando tem update não podemos desfazer os grupos"): o grupo é lembrado pelo NOME de cada um, no arquivo da sala.
+       Cair, fechar o jogo, a sala reiniciar ou atualizar não desfaz: quem volta entra de novo no grupo sozinho. Só "Sair", ser
+       removido pelo líder ou entrar noutro grupo tira o nome. Grupo sem ninguém por 12 h é esquecido. */
+    const GROUP_TTL = 12 * 3600e3;
+    if (!Array.isArray(store.groups)) store.groups = [];
+    store.groups = store.groups.filter((g) => g && Array.isArray(g.n) && g.n.length > 1 && Date.now() - (g.at || 0) < GROUP_TTL);
+    const saveGroups = () => { store.groups = store.groups.filter((g) => g.n.length > 1); saveStore(); };
+    function memoParty(party) {
+      const names = [...party.members].map((id) => players.get(id)).filter(Boolean).map((p) => p.name);
+      for (const g of store.groups) if (g !== party.g) g.n = g.n.filter((n) => !names.includes(n)); // entrou neste: sai dos outros
+      if (!party.g || !store.groups.includes(party.g)) { party.g = { n: [], l: '', at: 0 }; store.groups.push(party.g); }
+      for (const n of names) if (!party.g.n.includes(n)) party.g.n.push(n);
+      party.g.l = players.get(party.leader)?.name || party.g.l; party.g.at = Date.now(); saveGroups();
+    }
+    function rejoinParty(me) {
+      const g = store.groups.find((x) => x.n.includes(me.name)); if (!g || me.party) return;
+      const mates = [...players.values()].filter((p) => p !== me && g.n.includes(p.name)); if (!mates.length) return;
+      let party = mates.map((p) => p.party).find((pt) => pt && pt.g === g) || null;
+      if (party) { if (party.members.size >= PARTY_MAX) return; party.members.add(me.id); me.party = party; }
+      else { const free = mates.filter((p) => !p.party); if (!free.length) return; const lead = free.find((p) => p.name === g.l) || (me.name === g.l ? me : free[0]);
+        party = { id: pid++, leader: lead.id, members: new Set([me.id, ...free.slice(0, PARTY_MAX - 1).map((p) => p.id)]), g }; for (const id of party.members) players.get(id).party = party; }
+      sendParty(party); for (const id of party.members) { const q = players.get(id); if (q) send(q.ws, { t: 'sys', text: id === me.id ? 'Você voltou para o seu grupo.' : `${me.name} voltou para o grupo.` }); }
+    }
+    function sendParty(party) { memoParty(party); const m = partyMsg(party); for (const id of party.members) { const p = players.get(id); if (p) send(p.ws, m); } const all = { t: 'partyOf', ids: [...party.members], party: party.members.size ? party.id : 0 }; for (const p of players.values()) send(p.ws, all); }
     function leaveParty(p, why) {
       const party = p.party; if (!party) return; party.members.delete(p.id); p.party = null; send(p.ws, partyMsg(null));
+      const keep = why === 'deixou o mundo'; if (!keep && party.g) { party.g.n = party.g.n.filter((n) => n !== p.name); saveGroups(); }
       for (const p2 of players.values()) send(p2.ws, { t: 'partyOf', ids: [p.id], party: 0 });
-      if (party.members.size <= 1) { for (const id of party.members) { const q = players.get(id); if (q) { q.party = null; send(q.ws, partyMsg(null)); send(q.ws, { t: 'sys', text: 'O grupo se desfez.' }); for (const p2 of players.values()) send(p2.ws, { t: 'partyOf', ids: [id], party: 0 }); } } return; }
+      if (party.members.size <= 1) { for (const id of party.members) { const q = players.get(id); if (q) { q.party = null; send(q.ws, partyMsg(null)); send(q.ws, { t: 'sys', text: keep && party.g && party.g.n.includes(p.name) ? `${p.name} deixou o mundo — o grupo espera a volta.` : 'O grupo se desfez.' }); for (const p2 of players.values()) send(p2.ws, { t: 'partyOf', ids: [id], party: 0 }); } } return; }
       if (party.leader === p.id) party.leader = party.members.values().next().value;
       sendParty(party); for (const id of party.members) { const q = players.get(id); if (q) send(q.ws, { t: 'sys', text: `${p.name} ${why || 'saiu do grupo'}.` }); }
     }
@@ -340,6 +364,7 @@ function startServer(opts = {}) {
           players.set(me.id, me);
           send(ws, { t: 'welcome', id: me.id, host: me.host, code, players: [...players.values()].filter((p) => p !== me).map(info) });
           others(me.id, { t: 'join', ...info(me) });
+          setTimeout(() => { if (players.get(me.id) === me) rejoinParty(me); }, 1500); // o grupo de antes do update
           { const q = store.mail[lc(me.name)]; if (q && q.length) { for (const letter of q) send(ws, { t: 'mail', letter }); delete store.mail[lc(me.name)]; saveStore(); } } // cartas que chegaram enquanto estava fora
           send(ws, postsMsg());
           log(`${me.name} entrou (${ip}) · ${players.size} na sala`);
@@ -440,6 +465,9 @@ function startServer(opts = {}) {
             const rep = byName(b.by.name); if (rep) send(rep.ws, { t: 'bug:upd', id: b.id, title: b.title, status: st, note: b.note }); break; }
           case 'adm:say': { if (!me.owner) break; const text = clip(m.text, 500).trim(); if (!text) break; const msg = { t: 'say', text, from: 'Criador de Karmika' };
             if (!m.to) { for (const p of players.values()) send(p.ws, msg); log(`aviso do dono para todos: ${text}`); } else { const to = players.get(m.to); if (to) { send(to.ws, msg); send(ws, { t: 'sys', text: `Mensagem entregue para ${to.name}.` }); } else send(ws, { t: 'sys', text: 'Esse jogador já saiu.' }); } break; }
+          case 'x:fxp': { /* 09/11: o espelho do herói (drones, flechas, magias, faíscas) vai só para o grupo, na mesma zona */
+            const pt = me.party; if (!pt) break; const js = JSON.stringify({ ...m, id: me.id });
+            for (const id of pt.members) { if (id === me.id) continue; const q = players.get(id); if (q && q.ws.readyState === 1 && (!q.st || !me.st || q.st.zn === me.st.zn)) q.ws.send(js); } break; }
           default: if (typeof m.t === 'string' && m.t.startsWith('x:')) others(me.id, { ...m, id: me.id }); // eventos novos (etapa 2) passam direto
         }
       });

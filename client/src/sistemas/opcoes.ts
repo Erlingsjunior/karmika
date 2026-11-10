@@ -62,7 +62,7 @@ function renderOptions() {
     <div class="stat"><span>Contador de FPS <small>mostra também onde o tempo do quadro vai: CPU (lógica e desenho) e GPU</small></span>${seg('fps', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
     <div class="stat"><span>Limite de FPS <small>no app do Karmika o jogo passa da taxa do monitor; no navegador o limite é sempre o monitor</small></span>${seg('cap', [[60, '60'], [144, '144'], [240, '240'], [0, 'Sem limite']])}</div>
     <h3>Som</h3>
-    <div class="stat"><span>Volume geral <small>O: mudo</small></span>${rng('master', 0, 1, 0.05, pct)}</div>
+    <div class="stat"><span>Volume geral <small>O: mudo</small></span>${rng('master', 0, 1.5, 0.05, pct)}</div>
     <div class="stat"><span>Música <small>P: liga/desliga</small></span>${rng('music', 0, 1, 0.05, pct)}</div>
     <div class="stat"><span>Efeitos (golpes, magias, passos)</span>${rng('sfx', 0, 1, 0.05, pct)}</div>
     <div class="stat"><span>Ambiente (vento, fauna, água, fogo)</span>${rng('amb', 0, 1, 0.05, pct)}</div>
