@@ -73,7 +73,11 @@
   if (ab && AB.length) {
     const book = $('.abook__book', ab), n = $('.abook__n', ab);
     const page = (p) => p ? `<button type="button" class="abp" data-lb="/img/${p[0]}.webp" data-cap="${esc(p[1])}"><img src="/img/${p[0]}.webp" alt="${esc(p[1])}" loading="lazy"><span>${esc(p[1])}</span></button>` : '<div class="abp abp--end"><img src="/img/logo-bronze.webp" alt=""><span>continua no artbook impresso</span></div>';
-    const cover = '<div class="abp abp--cover"><img src="/img/logo-brasa.webp" alt=""><b>KARMIKA</b><i>Artbook · Volume I</i><small>D2 Studio</small></div>';
+    /* 10/11 (Erling): capa dura de couro, com moldura em relevo, cantoneiras de metal e as runas de Karmika em volta */
+    const rr = (k, x, y, sz) => `<svg class="cv__r" viewBox="0 0 28 28" style="left:${x}%;top:${y}%;width:${sz}%"><path d="${RUNAS[k % 6]}"/></svg>`;
+    let runes = ''; for (let i = 0; i < 7; i++) { const t = 10 + i * 13.3; runes += rr(i, t, 3.2, 5.2) + rr(i + 3, t, 91.8, 5.2); } for (let i = 0; i < 9; i++) { const t = 11 + i * 9.6; runes += rr(i + 1, 3.6, t, 5.2) + rr(i + 4, 91.2, t, 5.2); }
+    const corner = (c) => `<i class="cv__c cv__c--${c}"><svg viewBox="0 0 40 40"><path d="M2 2 H30 Q22 8 20 20 Q8 22 2 30 Z"/><circle cx="9" cy="9" r="3"/></svg></i>`;
+    const cover = `<div class="abp abp--cover"><span class="cv__f"></span><span class="cv__f2"></span>${runes}${['tl', 'tr', 'bl', 'br'].map(corner).join('')}<img src="/img/logo-brasa.webp" alt=""><b>KARMIKA</b><i>Artbook · Volume I</i><span class="cv__line"></span><small>D2 Studio</small></div>`;
     const pages = [cover, ...AB.map(page)]; if (pages.length % 2) pages.push(page(null));
     /* folhas: cada folha tem frente (página da direita) e verso (a da esquerda da próxima abertura) */
     const leaves = []; for (let i = 0; i < pages.length; i += 2) leaves.push([pages[i], pages[i + 1]]);
@@ -84,7 +88,8 @@
       book.classList.toggle('is-open', at > 0); book.classList.toggle('is-end', at === L.length);
       n.textContent = at === 0 ? 'capa' : at === L.length ? 'fim' : `${at * 2 - 1}–${at * 2} de ${pages.length - 1}`;
       ab.querySelector('[data-ab="-1"]').disabled = at === 0; ab.querySelector('[data-ab="1"]').disabled = at === L.length; };
-    const flip = (dir) => { at = Math.max(0, Math.min(L.length, at + dir)); render(); };
+    /* a folha que está virando fica por cima de todas até terminar (na volta ela sumia atrás das outras) */
+    const flip = (dir) => { const nx = Math.max(0, Math.min(L.length, at + dir)); if (nx === at) return; const lf = L[dir > 0 ? at : nx]; at = nx; render(); lf.style.zIndex = 900; clearTimeout(lf._t); lf._t = setTimeout(() => render(), 1050); };
     ab.addEventListener('click', (e) => { const b = e.target.closest('[data-ab]'); if (b) { flip(+b.dataset.ab); return; }
       const lf = e.target.closest('.leaf'); if (lf && !e.target.closest('[data-lb]')) { const i = L.indexOf(lf); flip(i < at ? -1 : 1); } });
     /* clicar na capa abre o livro (sem abrir o lightbox) */
@@ -113,3 +118,10 @@
       .to(up, { y: 0, duration: 0.5, ease: 'power2.in' }, '>-0.05').to(dn, { y: 0, duration: 0.5, ease: 'power2.in' }, '<').to('.brasil__eye .eye__line', { opacity: 1, duration: 0.1 }, '>-0.05');
   }
 })();
+/* as faixas de imagens do mundo também abrem no carrossel */
+document.querySelectorAll('.world__row img').forEach((im) => { im.dataset.lb = im.getAttribute('src'); im.dataset.cap = im.alt; im.style.cursor = 'zoom-in'; });
+document.querySelector('.world')?.setAttribute('data-gal', '');
+/* bandeiras: Enter/Espaço abre a facção */
+document.querySelectorAll('.flag[data-more]').forEach((f) => f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.click(); } }));
+/* mundo vivo: as imagens do dia, da noite e dos eventos abrem no carrossel junto com as do mundo */
+document.querySelectorAll('.live .dn img, .live .ev img, .pillar img').forEach((im) => { im.dataset.lb = im.getAttribute('src'); im.dataset.cap = im.alt; im.style.cursor = 'zoom-in'; });

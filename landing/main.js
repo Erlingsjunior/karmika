@@ -10,6 +10,9 @@
     walk(el);
   });
 
+  /* esmaece a tela, faz a troca e reaparece (para pular de lugar sem rolar aos trancos) */
+  const fader = document.createElement('div'); fader.className = 'fader'; document.body.append(fader);
+  window.__fadeJump = (fn) => { if (!window.gsap || reduce) { fn(); return; } gsap.to(fader, { opacity: 1, duration: 0.32, ease: 'power1.in', onStart: () => { fader.style.pointerEvents = 'auto'; }, onComplete: () => { fn(); requestAnimationFrame(() => gsap.to(fader, { opacity: 0, duration: 0.45, delay: 0.08, ease: 'power1.out', onComplete: () => { fader.style.pointerEvents = 'none'; } })); } }); };
   formInit(); pathsInit(); lightboxInit();
   if (reduce || !window.gsap || !window.ScrollTrigger) return;
   gsap.registerPlugin(ScrollTrigger);
@@ -17,33 +20,34 @@
   if (window.Lenis) { const lenis = new Lenis({ lerp: 0.09 }); window.__lenis = lenis; lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);
     document.querySelectorAll('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => { const id = a.getAttribute('href'); if (id.length < 2) return; const t = document.querySelector(id); if (t) { e.preventDefault(); lenis.scrollTo(t, { offset: id === '#beta' ? -40 : 0 }); } })); }
 
-  /* 1. abertura (Erling, 10/11): o nome desenha e some → o emblema surge apagado → o olho ACENDE → o emblema some por inteiro →
-     a vila de Karmika aparece atrás → a frase e o botão. Só então a página rola (a rolagem fica presa durante a abertura; clique acelera). */
+  /* 1. abertura (Erling, 10/11 tarde: "não é animação presa no tempo, é animação no scroll — e precisa girar mais vezes no começo, para não dar
+     para acelerar"): a abertura fica presa na tela e anda com a rolagem, devagar. O nome desenha e some → o emblema surge apagado → o olho
+     ACENDE → o emblema some → a vila de Karmika aparece → a frase e o botão. Depois disso a página volta a rolar normal, e o subtítulo e o
+     botão esmaecem devagar conforme se desce. */
   const word = document.querySelector('.hero__word text');
   const len = 9000; word.style.strokeDasharray = len; word.style.strokeDashoffset = len;
   gsap.set('.hero__emblem', { xPercent: -50, yPercent: -58 });
-  const lock = (on) => { document.documentElement.style.overflow = on ? 'hidden' : ''; if (window.__lenis) on ? window.__lenis.stop() : window.__lenis.start(); };
-  lock(true);
-  const intro = gsap.timeline({ onComplete: () => lock(false) });
-  intro.fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.6, ease: 'power2.out' }, 0)
-    .to(word, { strokeDashoffset: 0, duration: 3.6, ease: 'power2.inOut' }, 0)
-    .to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.4, ease: 'power2.in' }, 4.0)
-    .fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.4, ease: 'power2.out' }, 5.5)
-    .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9, ease: 'power2.in' }, 7.1)
-    .to('.em-on', { opacity: 1, duration: 0.35, ease: 'power1.in' }, 7.85)
-    .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25, ease: 'power2.out' }, 7.85)
-    .to('.em-flare', { opacity: 0.4, scale: 1.1, duration: 1.0, ease: 'power2.out' }, 8.1)
-    .to('.hero__emblem', { opacity: 0, scale: 1.06, filter: 'blur(8px)', duration: 1.3, ease: 'power2.in' }, 9.4)
-    .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2, ease: 'power2.out' }, 10.5)
+  const intro = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.hero', start: 'top top', end: () => '+=' + Math.round(innerHeight * 5.2), pin: true, scrub: 1.4, anticipatePin: 1 } });
+  intro.to('.hero__start', { opacity: 0, duration: 0.6 }, 0)
+    .fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.6 }, 0)
+    .to(word, { strokeDashoffset: 0, duration: 3.6 }, 0)
+    .to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.4 }, 4.0)
+    .fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.4 }, 5.5)
+    .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9 }, 7.1)
+    .to('.em-on', { opacity: 1, duration: 0.35 }, 7.85)
+    .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25 }, 7.85)
+    .to('.em-flare', { opacity: 0.4, scale: 1.1, duration: 1.0 }, 8.1)
+    .to('.hero__emblem', { opacity: 0, scale: 1.06, filter: 'blur(8px)', duration: 1.3 }, 9.4)
+    .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2 }, 10.5)
     .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.3, duration: 0.8 }, 11.2)
     .to('.hero__sub', { opacity: 1, duration: 0.6 }, 12.2)
     .to('.hero__cta', { opacity: 1, duration: 0.5, onStart: () => document.querySelector('.hero__cta').classList.add('on') }, 12.4)
-    .fromTo('.hero__scroll', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 12.6);
-  const skip = () => { if (intro.isActive()) intro.timeScale(2.5); }; /* 10/11: só clique ou tecla aceleram (a roda do mouse acelerava sem querer) */
-  addEventListener('click', skip, { once: true }); addEventListener('keydown', skip, { once: true });
-  /* depois da abertura, rolar leva o cenário para trás com calma */
-  gsap.to('.hero__stage > *:not(.hero__bg)', { opacity: 0, y: -40, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
-  gsap.to('.hero__bg', { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+    .fromTo('.hero__scroll', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 12.6)
+    .to({}, { duration: 1.2 });
+  /* depois da abertura: o subtítulo, o botão e o resto esmaecem devagar com a rolagem, e a praça desce com calma */
+  const out = { trigger: '.manifesto', start: 'top bottom', end: 'top 25%', scrub: 1 };
+  gsap.to('.hero__sub, .hero__cta, .hero__scroll', { opacity: 0, y: -30, scrollTrigger: out });
+  gsap.to('.hero__tag', { opacity: 0, y: -50, scrollTrigger: { ...out, start: 'top 85%' } });
 
   /* 2. manifesto: as palavras acendem em sequência */
   gsap.to('.manifesto__text .w', { opacity: 1, stagger: 0.05, ease: 'none', scrollTrigger: { trigger: '.manifesto', start: 'top 70%', end: 'bottom 60%', scrub: true } });
@@ -53,12 +57,13 @@
   const dist = () => track.scrollWidth - innerWidth + 40;
   gsap.to(track, { x: () => -dist(), ease: 'none', scrollTrigger: { trigger: '.pillars', pin: '.pillars__pin', start: 'top top', end: () => '+=' + dist(), scrub: 0.6, invalidateOnRefresh: true } });
 
-  /* 4. reencarnação: linha por linha */
-  gsap.utils.toArray('.rebirth__lines p').forEach((p, i) => gsap.to(p, { opacity: 1, filter: 'blur(0px)', y: 0, duration: 1.1, ease: 'power3.out', scrollTrigger: { trigger: p, start: 'top 82%' }, delay: i * 0.05 }));
-  /* o vampiro surge do escuro e cresce no fundo enquanto as frases aparecem; na última ("E ainda sinto sede") está inteiro */
-  const rv = gsap.timeline({ scrollTrigger: { trigger: '.rebirth', start: 'top 85%', end: 'bottom 60%', scrub: 0.8 } });
-  rv.fromTo('.rebirth__art .rv1', { opacity: 0, scale: 0.55, y: 60, filter: 'blur(8px) brightness(.4) drop-shadow(0 0 0 rgba(163,36,44,0))' }, { opacity: 0.95, scale: 1.08, y: 0, filter: 'blur(0px) brightness(.95) drop-shadow(0 0 70px rgba(163,36,44,.55))', ease: 'power1.out', duration: 1 }, 0)
-    .fromTo('.rebirth__art .rv2', { opacity: 0, scale: 0.5, x: 40 }, { opacity: 0.45, scale: 0.95, x: 0, ease: 'power1.out', duration: 1 }, 0.15);
+  /* 4. vidas passadas (Erling, 10/11): várias histórias, uma depois da outra; em cada uma as frases aparecem e o herói cresce no fundo */
+  gsap.utils.toArray('.story').forEach((st) => {
+    st.querySelectorAll('.rebirth__lines p').forEach((p, i) => gsap.to(p, { opacity: 1, filter: 'blur(0px)', y: 0, duration: 1.1, ease: 'power3.out', delay: i * 0.08, scrollTrigger: { trigger: p, start: 'top 85%' } }));
+    gsap.timeline({ scrollTrigger: { trigger: st, start: 'top 85%', end: 'bottom 55%', scrub: 0.8 } })
+      .fromTo(st.querySelector('.rv1'), { opacity: 0, scale: 0.6, y: 60, filter: 'blur(8px) brightness(.4)' }, { opacity: 0.95, scale: 1.06, y: 0, filter: 'blur(0px) brightness(.95)', ease: 'power1.out', duration: 1 }, 0)
+      .fromTo(st.querySelector('.rv2'), { opacity: 0, scale: 0.55, x: 40 }, { opacity: 0.4, scale: 0.95, x: 0, ease: 'power1.out', duration: 1 }, 0.15);
+  });
 
   /* 5. caminhos: entram em cascata */
   /* (os cartões entram por IntersectionObserver: pathsInit) */
@@ -96,7 +101,7 @@
     grid.innerHTML = C.map((c, i) => `<figure class="path${c.soon ? ' path--soon' : ''}" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(c.nome)}: abrir detalhes">${c.retratos.length ? `<img src="/img/${c.retratos[0]}.webp" alt="${esc(c.nome)}" loading="lazy">` : '<div class="path__ph"><img src="/img/logo-bronze.webp" alt=""><em>em breve</em></div>'}<figcaption><b>${esc(c.nome)}</b><span>${esc(c.tipo)} · ${esc(c.casa.split(' · ')[0])}</span><i>${esc(c.lema)}</i></figcaption></figure>`).join('');
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { const el = e.target; setTimeout(() => el.classList.add('in'), (+el.dataset.i % 6) * 70); io.unobserve(el); } }), { rootMargin: '0px 0px -10% 0px' }); grid.querySelectorAll('.path').forEach((el) => io.observe(el));
     let cur = -1;
-    const open = (i) => { const c = C[i]; if (!c) return; cur = i; sec.classList.add('is-open'); grid.querySelectorAll('.path').forEach((el) => el.classList.toggle('is-sel', +el.dataset.i === i));
+    const open = (i, quiet) => { const c = C[i]; if (!c) return; cur = i; if (!quiet) window.__pathBack = null; sec.classList.add('is-open'); grid.querySelectorAll('.path').forEach((el) => el.classList.toggle('is-sel', +el.dataset.i === i));
       /* 10/11 (Erling): macho e fêmea lado a lado à direita; ao fundo, apagada, a pose de cada um (sem repetir a mesma figura) */
       const FEM = /(-f$|a$|lobisoma$)/, ret = c.retratos || [], nm = (r) => r.replace('c-', '').replace(/-ab$/, ''), male = ret.find((r) => !FEM.test(nm(r))), fem = ret.find((r) => FEM.test(nm(r)));
       const poses = c.poses || [], pm = poses.find((p) => /_h$/.test(p)), pf = poses.find((p) => /_m$/.test(p));
@@ -110,16 +115,29 @@
       det.querySelector('.pdet__skT').hidden = !c.magias.length;
       det.querySelector('.pdet__skills').innerHTML = c.magias.map((m) => `<div class="skill"><div class="skill__ic">${m.svg || ''}</div><div><b>${esc(m.name)}</b><small>nível ${m.lvl}</small><p>${esc(m.tip)}</p></div></div>`).join('');
       const tl = c.talentos || []; det.querySelector('.pdet__tlT').hidden = det.querySelector('.pdet__tlp').hidden = !tl.length;
+      const T = window.KARMIKA_TREE; let svg = '';
+      if (T && tl.length) { const col = (b) => (b >= 0 && b < 3 ? tl[b].col : '#d9a54a'); let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9; T.n.forEach(([x, y]) => { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); });
+        const pad = 1.2, R = { s: 0.2, n: 0.36, k: 0.55, o: 0.7 }; let e = ''; for (let i = 0; i < T.e.length; i += 2) { const a = T.n[T.e[i]], b = T.n[T.e[i + 1]]; e += `<line x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}" stroke="${col(a[3] >= 0 && a[3] < 3 ? a[3] : b[3])}"/>`; }
+        const nodes = T.n.map(([x, y, k, b], i) => `<circle cx="${x}" cy="${y}" r="${R[k] || 0.2}" fill="${k === 'o' ? '#ffd27a' : col(b)}" class="tn tn--${k}" style="animation-delay:${(i % 23) * 0.13}s"/>`).join('');
+        svg = `<svg class="cst" viewBox="${x0 - pad} ${y0 - pad} ${x1 - x0 + pad * 2} ${y1 - y0 + pad * 2}" role="img" aria-label="A constelação de talentos de ${esc(c.nome)}"><g class="cst__e">${e}</g>${nodes}${tl.map((b, i) => { const ks = T.n.filter((q) => q[2] === 'k' && q[3] === i)[0]; return ks ? `<text x="${ks[0]}" y="${ks[1] + 1.4}" fill="${b.col}">${esc(b.key.n)}</text>` : ''; }).join('')}</svg>`; }
+      det.querySelector('.pdet__cst').innerHTML = svg;
       det.querySelector('.pdet__tree').innerHTML = tl.map((b) => `<div class="tbr" style="--c:${b.col}"><b>${esc(b.name)}</b><ul>${b.notables.map((n) => `<li><span>${esc(n.n)}</span><small>${esc(n.t)}</small></li>`).join('')}</ul><div class="tbr__key"><span>◆ ${esc(b.key.n)}</span><small>${esc(b.key.t)}</small></div></div>`).join('');
+      const pc = c.passClasse || [], pmg = c.passMagia || []; det.querySelector('.pdet__psT').hidden = !pc.length;
+      det.querySelector('.pdet__pass').innerHTML = pc.length ? `<div class="psb"><b>Passivas de classe <small>${pc.length}</small></b><div class="psl">${pc.map((p) => `<span class="ps" tabindex="0"><i>${esc(p.n)}</i><small>${p.l} níveis</small><em>${esc(p.t)}</em></span>`).join('')}</div></div><div class="psb"><b>Passivas de magia <small>${pmg.length}</small></b><div class="psl">${pmg.map((p) => `<span class="ps ps--m" tabindex="0"><i>${esc(p.n)}</i><small>${esc(p.a)}</small><em>${esc(p.t)}</em></span>`).join('')}</div></div>` : '';
       det.querySelector('.pdet__artT').hidden = !c.artes.length;
       det.querySelector('.pdet__art').innerHTML = c.artes.map((a) => `<button type="button" data-lb="/img/${a}.webp" data-cap="${esc(c.nome)} — artbook"><img src="/img/${a}.webp" alt="${esc(c.nome)}: arte" loading="lazy"></button>`).join(''); 
       window.__fillGrid?.(det.querySelector('.pdet__art'), 3);
       det.hidden = false;
       if (window.gsap) { gsap.fromTo(det, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.pdet__m:not([hidden]), .pdet__f:not([hidden])'), { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.9, stagger: 0.12, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.pdet__pm:not([hidden]), .pdet__pf:not([hidden])'), { opacity: 0, scale: 1.1 }, { opacity: 0.22, scale: 1, duration: 1.4, ease: 'power2.out' }); gsap.fromTo(det.querySelectorAll('.skill, .tbr, .pdet__art button'), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.025, ease: 'power2.out', delay: 0.2 }); }
-      const top = sec.getBoundingClientRect().top + scrollY - 70; if (Math.abs(scrollY - top) > 200) scrollTo({ top, behavior: 'smooth' });
+      /* 10/11 (Erling): nada de rolar a página aos trancos — a tela esmaece, pula e reaparece no painel aberto */
+      const jump = () => { const top = sec.querySelector('.paths__grid').getBoundingClientRect().top + scrollY - 70; window.__lenis ? window.__lenis.scrollTo(top, { immediate: true, force: true }) : scrollTo(0, top); };
+      if (quiet) jump(); else { const r = det.getBoundingClientRect(); if (r.top < 60 || r.top > innerHeight * 0.5) jump(); }
       if (window.ScrollTrigger) setTimeout(() => ScrollTrigger.refresh(), 700); };
-    const close = () => { cur = -1; sec.classList.remove('is-open'); det.hidden = true; grid.querySelectorAll('.path').forEach((el) => el.classList.remove('is-sel')); if (window.ScrollTrigger) setTimeout(() => ScrollTrigger.refresh(), 300); };
-    grid.addEventListener('click', (e) => { const el = e.target.closest('.path'); if (!el) return; const i = +el.dataset.i; if (i === cur) close(); else open(i); });
+    window.__openPath = (i, quiet) => open(i, quiet);
+    const close = () => { const back = window.__pathBack; window.__pathBack = null;
+      if (back) { window.__fadeJump(() => { cur = -1; sec.classList.remove('is-open'); det.hidden = true; grid.querySelectorAll('.path').forEach((el) => el.classList.remove('is-sel')); window.__lenis ? window.__lenis.scrollTo(back.y, { immediate: true, force: true }) : scrollTo(0, back.y); if (back.id) window.__openMore?.(back.id, back.top); }); return; }
+      cur = -1; sec.classList.remove('is-open'); det.hidden = true; grid.querySelectorAll('.path').forEach((el) => el.classList.remove('is-sel')); if (window.ScrollTrigger) setTimeout(() => ScrollTrigger.refresh(), 300); };
+    grid.addEventListener('click', (e) => { const el = e.target.closest('.path'); if (!el) return; const i = +el.dataset.i; if (i === cur) close(); else if (cur < 0) window.__fadeJump(() => open(i, true)); else open(i); });
     grid.addEventListener('keydown', (e) => { if (e.key !== 'Enter' && e.key !== ' ') return; const el = e.target.closest('.path'); if (!el) return; e.preventDefault(); const i = +el.dataset.i; if (i === cur) close(); else open(i); });
     det.querySelector('.pdet__close').addEventListener('click', close);
     /* parallax leve das figuras com o mouse */
@@ -129,12 +147,20 @@
 
   /* ===== lightbox: qualquer [data-lb] abre a imagem grande; clique fora, ✕ ou Esc fecha ===== */
   function lightboxInit() {
-    const lb = document.getElementById('lightbox'); if (!lb) return; const img = lb.querySelector('img'), cap = lb.querySelector('.lb__cap');
-    const shut = () => { if (window.gsap) gsap.to(lb, { opacity: 0, duration: 0.25, onComplete: () => { lb.hidden = true; } }); else lb.hidden = true; document.documentElement.style.overflow = ''; };
-    document.addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b) { img.src = b.dataset.lb; img.alt = b.dataset.cap || ''; cap.textContent = b.dataset.cap || ''; lb.hidden = false; document.documentElement.style.overflow = 'hidden';
+    /* 10/11 (Erling: "ao clicar numa imagem, um carrossel de imagens"): as imagens do mesmo grupo (painel, seção ou galeria) passam com setas, teclado e dedo */
+    const lb = document.getElementById('lightbox'); if (!lb) return; const img = lb.querySelector('img'), cap = lb.querySelector('.lb__cap'), n = lb.querySelector('.lb__n');
+    let list = [], at = 0;
+    const show = (k, dir) => { at = (k + list.length) % list.length; const b = list[at]; img.src = b.dataset.lb; img.alt = b.dataset.cap || ''; cap.textContent = b.dataset.cap || ''; n.textContent = list.length > 1 ? `${at + 1} / ${list.length}` : '';
+      lb.classList.toggle('lb--one', list.length < 2); if (window.gsap && dir) gsap.fromTo(img, { opacity: 0, x: 40 * dir }, { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out' }); };
+    const shut = () => { if (window.gsap) gsap.to(lb, { opacity: 0, duration: 0.25, onComplete: () => { lb.hidden = true; } }); else lb.hidden = true; if (document.getElementById('sheet')?.hidden !== false && document.getElementById('reader')?.hidden !== false) { document.documentElement.style.overflow = ''; window.__lenis?.start(); } };
+    document.addEventListener('click', (e) => { const b = e.target.closest('[data-lb]'); if (b && !lb.contains(b)) { e.preventDefault();
+        const scope = b.closest('[data-gal], .sheet__body, section, .pdet') || document.body; list = [...scope.querySelectorAll('[data-lb]')].filter((x) => !x.closest('.lb')); at = list.indexOf(b); if (at < 0) { list = [b]; at = 0; }
+        show(at); lb.hidden = false; document.documentElement.style.overflow = 'hidden'; window.__lenis?.stop();
         if (window.gsap) { gsap.fromTo(lb, { opacity: 0 }, { opacity: 1, duration: 0.3 }); gsap.fromTo(img, { scale: 0.9, y: 20 }, { scale: 1, y: 0, duration: 0.5, ease: 'power3.out' }); } return; }
-      if (!lb.hidden && (e.target === lb || e.target.closest('.lb__x'))) shut(); });
-    addEventListener('keydown', (e) => { if (e.key === 'Escape' && !lb.hidden) shut(); });
+      if (lb.hidden) return; const ar = e.target.closest('[data-lbm]'); if (ar) { show(at + +ar.dataset.lbm, +ar.dataset.lbm); return; }
+      if (e.target === lb || e.target.closest('.lb__x')) shut(); });
+    addEventListener('keydown', (e) => { if (lb.hidden) return; if (e.key === 'Escape') shut(); if (e.key === 'ArrowRight') show(at + 1, 1); if (e.key === 'ArrowLeft') show(at - 1, -1); }, true);
+    let sx = 0; lb.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true }); lb.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40 && list.length > 1) show(at + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1); });
   }
 
   /* parallax por dentro das peças do artbook */
