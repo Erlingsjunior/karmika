@@ -965,6 +965,8 @@ export function createGameplay(d: GameplayDeps) {
   const dummyDmg = (mul: number, crit: boolean) => { const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + Math.max(-0.3, Math.min(0.3, stance.dmg + cmod.dmg + (st.outMul - 1))); return Math.max(1, Math.round((rnd(9, 15) * (1 + lp) + st.dmgFlat * (1 + 0.5 * lp)) * mul * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1))); };
   function hitDummy(dummy: Dummy, dmg: number, crit: boolean, from: THREE.Vector3, col = 0xffd27a, stop = false) {
     st.hits++; dummy.wob = 1; dummy.dir.copy(dummy.position).sub(from).setY(0).normalize();
+    /* 10/11 (Erling: "lutar com bonecos precisa encher o recurso principal de todas as raças e classes, para podermos treinar"): o boneco enche o recurso de luta como um inimigo */
+    gainRes(skill === 'combo' || skill === null ? 7 : 3);
     const p = tmp2.copy(dummy.position).setY(dummy.position.y + 1.4);
     dmgText(p.clone().setY(p.y + 0.7), dmg, crit);
     for (let i = 0; i < 10; i++) pfx(p.x + rnd(-0.2, 0.2), p.y + rnd(-0.3, 0.3), p.z + rnd(-0.2, 0.2), { vx: rnd(-2.5, 2.5), vy: rnd(0.5, 3), vz: rnd(-2.5, 2.5), life: 0.5 + Math.random() * 0.3, s0: 0.22, s1: 0.04, c0: col, c1: 0xff5a10, a: 1, drag: 1.4 });

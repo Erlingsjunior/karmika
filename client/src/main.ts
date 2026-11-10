@@ -14,7 +14,7 @@ import { type Guild } from './social';
 
 
 
-import { dragAll, confirmBox } from './windows';
+import { dragAll, confirmBox, movable, MV_GRIP } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
 import { eyeSees } from './surrender';
 
@@ -2738,11 +2738,11 @@ function frameBody() {
   /* 10/11 (Erling: "não tem nada que me diz que eu passei de nível ou de classe; um ícone discreto do lado direito para eu não esquecer de dar os pontos"):
      dois selos pequenos no lado direito: ▲ pontos de atributo (abre C) e ✦ pontos de classe, para magias, passivas e talentos (abre K). Somem quando não há ponto. */
   { const ap = game.st.points ?? 0, tp = tree.available(), key = ap + ':' + tp; if (key !== lvlUpKey) { lvlUpKey = key; let el = document.getElementById('lvlup');
-      if (!el) { el = document.createElement('div'); el.id = 'lvlup'; document.body.appendChild(el);
-        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:300px;align-items:flex-end;z-index:40;display:flex;flex-direction:column;gap:8px;pointer-events:none}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
+      if (!el) { el = document.createElement('div'); el.id = 'lvlup'; el.innerHTML = MV_GRIP('l') + '<div class="lvb"></div>'; document.body.appendChild(el); movable(el, 'lvlup'); /* 10/11 (Erling: "precisa ser movido como tudo na tela") */
+        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:356px;align-items:center;z-index:40;display:flex;flex-direction:row;gap:4px;pointer-events:none}#lvlup .lvb{display:flex;flex-direction:column;gap:8px;align-items:flex-end}#lvlup .mvgrip{pointer-events:auto;position:static;cursor:grab;color:#ffe08a;opacity:.55;font-style:normal;padding:4px 2px}#lvlup .mvgrip:hover{opacity:1}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
         document.head.appendChild(st);
         el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (!b) return; const k = b.dataset.key!; window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), bubbles: true })); }); }
-      el.innerHTML = (ap > 0 ? `<button type="button" data-key="c" title="${tr('lvlup.atributos.dica', { n: ap })}"><i>▲</i>${tr('lvlup.atributos', { n: ap })}</button>` : '') + (tp > 0 ? `<button type="button" class="k" data-key="k" title="${tr('lvlup.classe.dica', { n: tp })}"><i>✦</i>${tr('lvlup.classe', { n: tp })}</button>` : ''); } }
+      el.style.display = ap > 0 || tp > 0 ? 'flex' : 'none'; (el.querySelector('.lvb') as HTMLElement).innerHTML = (ap > 0 ? `<button type="button" data-key="c" title="${tr('lvlup.atributos.dica', { n: ap })}"><i>▲</i>${tr('lvlup.atributos', { n: ap })}</button>` : '') + (tp > 0 ? `<button type="button" class="k" data-key="k" title="${tr('lvlup.classe.dica', { n: tp })}"><i>✦</i>${tr('lvlup.classe', { n: tp })}</button>` : ''); } }
   if (game.hurtNow()) setCombat(true);
   if (((t * 2) | 0) !== poiTick) { poiTick = (t * 2) | 0; for (const p of city.pois) if (Math.hypot(p.x - state.fx, p.y - state.fy) < 4) quests.onVisit(p.name); }
   let ix = 0, iy = 0;
