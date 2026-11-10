@@ -25,6 +25,16 @@ export default async function handler(req, res) {
       if (!sent) console.error('beta: formsubmit', r.status, j);
     } catch (e) { console.error('beta: formsubmit', e); }
   }
+  /* 10/11: segunda via de e-mail, a Web3Forms (a chave vem por e-mail na hora, sem link de ativação): variável WEB3FORMS_KEY na Vercel */
+  const w3 = process.env.WEB3FORMS_KEY;
+  if (!sent && w3) {
+    try {
+      const r = await fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ access_key: w3, subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, from_name: 'KARMIKA beta', replyto: email,
+          Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
+      const j = await r.json().catch(() => ({})); sent = r.ok && j.success !== false; if (!sent) console.error('beta: web3forms', r.status, j);
+    } catch (e) { console.error('beta: web3forms', e); }
+  }
   /* a inscrição também fica guardada na loja Vercel Blob (privada), sem pacote: a mesma chamada que o @vercel/blob faz */
   const tok = process.env.BLOB_READ_WRITE_TOKEN;
   if (tok) {
