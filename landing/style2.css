@@ -481,3 +481,7 @@ main { overflow-x: clip; }
 .abp--cover .cv__c { position: absolute !important; }
 .abook__book { transition: transform .8s cubic-bezier(.2, .8, .2, 1); }
 @media (min-width: 761px) { .abook__book:not(.is-open) { transform: translateX(-24.3%); } }
+.kit { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.4fr); gap: 20px; align-items: center; margin: 18px 0; padding: 20px; border: 1px solid rgba(217, 165, 74, .5); border-radius: 16px; background: radial-gradient(ellipse at 20% 30%, rgba(255, 122, 42, .12), transparent 60%), #120f15; }
+.kit__price { display: grid; gap: 4px; text-align: center; } .kit__price small { font: 600 11px var(--sans); letter-spacing: .3em; text-transform: uppercase; color: var(--gold); } .kit__price b { font: 900 clamp(34px, 4vw, 52px) var(--serif); color: var(--gold2); } .kit__price span { font-size: 13px; color: var(--mut); }
+.kit ul { margin: 0; padding: 0 0 0 4px; list-style: none; display: grid; gap: 6px; } .kit li { color: var(--mut); font-size: 15px; } .kit li::before { content: "✦"; color: var(--ember); margin-right: 10px; } .kit li b { color: var(--ink); }
+@media (max-width: 700px) { .kit { grid-template-columns: 1fr; } }
