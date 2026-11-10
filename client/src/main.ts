@@ -723,7 +723,7 @@ function tavReserve(): { by: string; until: number } | null { try { const r = JS
 function benchSeat(bx: number, bz: number, fp: { gx: number; gy: number }) { const yaw = Math.atan2((fp.gx + 1) * T - bx, (fp.gy + 1) * T - bz), d = 0.22;
   const bg = artGeo('vila_balanco'); if (bg && !bg.boundingBox) bg.computeBoundingBox(); const h = bg?.boundingBox ? bg.boundingBox.max.y * 0.95 + 0.02 : 0.55;
   return { x: (bx + Math.sin(yaw) * d) / T, y: (bz + Math.cos(yaw) * d) / T, yaw, h }; }
-function syncGear() { try { const eq = inv.eq; kkSetWeapon(eq.weapon?.base ?? ''); /* 10/11 (teste_libs): a arma escolhe o jeito do golpe */ const wt = oficiosSys.work ? inv.tool(WORK[oficiosSys.work.kind].slot) : pescaSys.fishing ? inv.tool('rod') : null; /* trabalhando: a ferramenta continua na mão */ hero.setGear({ weapon: wt ? { base: wt.base, rarity: 'normal', tint: wt.tint, glow: wt.glow } : eq.weapon ? { base: eq.weapon.base, rarity: eq.weapon.rarity } : null, shield: eq.shield ? { base: eq.shield.base, rarity: eq.shield.rarity, seed: eq.shield.uid } : null, helm: eq.helm && localStorage.getItem('karmika.showHelm') !== '0' ? { base: eq.helm.base, rarity: eq.helm.rarity } : null, cape: eq.cape ? { base: eq.cape.base, rarity: eq.cape.rarity } : null, shoulders: eq.shoulders ? { base: eq.shoulders.base, rarity: eq.shoulders.rarity } : null }); checkSkinLevel(); game.setWeapon(wt ? null : eq.weapon?.base ?? null); } catch { /* inventário ainda não criado */ } }
+function syncGear() { try { const eq = inv.eq; kkSetWeapon(eq.weapon?.base ?? '', !!eq.shield); /* 10/11 (teste_libs): a arma escolhe o jeito do golpe */ const wt = oficiosSys.work ? inv.tool(WORK[oficiosSys.work.kind].slot) : pescaSys.fishing ? inv.tool('rod') : null; /* trabalhando: a ferramenta continua na mão */ hero.setGear({ weapon: wt ? { base: wt.base, rarity: 'normal', tint: wt.tint, glow: wt.glow } : eq.weapon ? { base: eq.weapon.base, rarity: eq.weapon.rarity } : null, shield: eq.shield ? { base: eq.shield.base, rarity: eq.shield.rarity, seed: eq.shield.uid } : null, helm: eq.helm && localStorage.getItem('karmika.showHelm') !== '0' ? { base: eq.helm.base, rarity: eq.helm.rarity } : null, cape: eq.cape ? { base: eq.cape.base, rarity: eq.cape.rarity } : null, shoulders: eq.shoulders ? { base: eq.shoulders.base, rarity: eq.shoulders.rarity } : null }); checkSkinLevel(); game.setWeapon(wt ? null : eq.weapon?.base ?? null); } catch { /* inventário ainda não criado */ } }
 /* COMPANHEIROS: o pet coletor, a montaria (montar e desmontar), as mulas das caravanas e as habilidades do pet. Saiu do main.ts (02/11). → sistemas/companheiros.ts */
 export interface CompanheirosCtx {
   readonly game: Widen<typeof game>;
@@ -2921,14 +2921,16 @@ function frameBody() {
   letreiroSys.curseNow += ((inside ? 0 : curseK()) - letreiroSys.curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
   hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(SKY.hemi, hourK * 0.8).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
   hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(SKY.ground, hourK * 0.6).lerp(LUA_C.ground, luaV * 0.6);
-  hemi.intensity = mix(0.9, 1.12, day) + (cinemaSys.cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
+  hemi.intensity = mix(1.05, 1.0, day) + (cinemaSys.cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
   sun.color.copy(sunNight).lerp(sunDay, day).lerp(SKY.sun, hourK).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
   sun.intensity = mix(mix(0.8, 2.4, day), SKY.sunI, hourK) + (cinemaSys.cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
-  renderer.toneMappingExposure = mix(0.9, 0.96, day); finish.uniforms.uVig.value = mix(0.48, 0.38, day * (inside?.dg ? 0 : 1));
+  /* 10/11 (Erling: "o jogo precisa ser mais escuro, uma atmosfera mais dark que valoriza as cores, mas de noite precisamos enxergar tudo"):
+     o dia ficou mais baixo de exposição e mais saturado (cor cheia em vez de lavada); a noite quase não muda de exposição e ganha luz do céu, então escurece no tom, não na visão */
+  renderer.toneMappingExposure = mix(0.88, 0.84, day) * (opts.gfx === 1 ? 0.92 : 1); finish.uniforms.uVig.value = mix(0.46, 0.44, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
     (u.uMul.value as THREE.Vector3).set(mix(0.92, 1.07, dayW), mix(0.98, 1.0, dayW), mix(1.12, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
-    (u.uLift.value as THREE.Vector3).set(mix(0.012, 0.012, dayW), mix(0.018, 0.006, dayW), mix(0.045, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
-    u.uSat.value = mix(0.86, 1.04, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
+    (u.uLift.value as THREE.Vector3).set(mix(0.016, 0.006, dayW), mix(0.024, 0.004, dayW), mix(0.055, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
+    u.uSat.value = mix(0.95, 1.2, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
   /* 09/11 (Erling: "o canto de anjos fica muito alto e atrapalha; tem que ser bem sutil, vir de vez em quando, a cada 5 minutos, 20 segundos no máximo"):
      o coral só soa numa janela de 20 s a cada 5 min do Dia da Aurora (a primeira na abertura), sobe e desce devagar e nunca passa de um terço do volume antigo. */
   choirClock = aurK > 0.01 ? choirClock + rawDt : 0; { const ph = choirClock % 300, env = ph < 20 ? Math.sin(Math.PI * ph / 20) : 0;

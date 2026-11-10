@@ -13,18 +13,20 @@ const TEXF = new WeakMap<THREE.Texture, [THREE.MagnificationTextureFilter, THREE
 let on = false, envTex: THREE.Texture | null = null, timer = 0;
 
 function smoothTex(t: THREE.Texture | null | undefined, aniso: number) {
-  if (!t || TEXF.has(t)) return; TEXF.set(t, [t.magFilter, t.minFilter, t.anisotropy, t.generateMipmaps]);
+  /* 10/11: no WebGPU, mexer numa textura sem imagem (ainda carregando) ou numa textura de render target derrubava o renderer
+     ("Cannot read properties of null (reading 'complete')" e "writable usage and another usage"); essas ficam como estão */
+  if (!t || TEXF.has(t) || !t.image || (t as THREE.Texture & { isRenderTargetTexture?: boolean }).isRenderTargetTexture || (t as THREE.DepthTexture).isDepthTexture || (t as THREE.FramebufferTexture).isFramebufferTexture || (t.image as HTMLImageElement).complete === false) return; TEXF.set(t, [t.magFilter, t.minFilter, t.anisotropy, t.generateMipmaps]);
   if (t.magFilter === THREE.NearestFilter || t.minFilter === THREE.NearestFilter || t.anisotropy < aniso) {
     t.magFilter = THREE.LinearFilter; t.minFilter = (t as THREE.DataTexture).isDataTexture ? THREE.LinearFilter : THREE.LinearMipmapLinearFilter; t.generateMipmaps = !(t as THREE.DataTexture).isDataTexture; t.anisotropy = aniso; t.needsUpdate = true; }
 }
-function restoreTex(t: THREE.Texture | null | undefined) { const o = t ? TEXF.get(t) : undefined; if (!t || !o) return; [t.magFilter, t.minFilter, t.anisotropy, t.generateMipmaps] = o; t.needsUpdate = true; TEXF.delete(t); }
+function restoreTex(t: THREE.Texture | null | undefined) { const o = t ? TEXF.get(t) : undefined; if (!t || !o || !t.image) return; [t.magFilter, t.minFilter, t.anisotropy, t.generateMipmaps] = o; t.needsUpdate = true; TEXF.delete(t); }
 
 function toPhys(m: THREE.Material, aniso: number): THREE.Material {
   const tm = m as THREE.MeshToonMaterial; if (!tm.isMeshToonMaterial || m.userData.keepToon) return m;
   let p = CONV.get(m); if (p) return p;
   const s = new THREE.MeshStandardMaterial({ color: tm.color, map: tm.map, emissive: tm.emissive, emissiveIntensity: tm.emissiveIntensity, emissiveMap: tm.emissiveMap,
     alphaMap: tm.alphaMap, normalMap: tm.normalMap, transparent: tm.transparent, opacity: tm.opacity, side: tm.side, alphaTest: tm.alphaTest, depthWrite: tm.depthWrite, vertexColors: tm.vertexColors,
-    roughness: 0.78, metalness: 0.0, envMapIntensity: 0.55, fog: tm.fog });
+    roughness: 0.78, metalness: 0.0, envMapIntensity: 0.3, fog: tm.fog });
   /* metal brilhante (armas, armaduras com emissivo de raridade) reflete um pouco mais */
   if (tm.emissive && tm.emissive.getHex() !== 0 && !tm.map) { s.roughness = 0.45; s.metalness = 0.35; }
   s.userData = { ...m.userData, phys: true }; smoothTex(s.map, aniso); smoothTex(s.emissiveMap, aniso);
@@ -42,14 +44,14 @@ function walk(root: THREE.Object3D, aniso: number, toModern: boolean) {
 
 /** liga/desliga o Moderno. `renderer` é o WebGL do mundo (no WebGPU fica só a parte das texturas e da luz). */
 export function setModern(scene: THREE.Scene, renderer: THREE.WebGLRenderer, enable: boolean, webgl = true) {
-  const aniso = Math.min(8, renderer.capabilities?.getMaxAnisotropy?.() ?? 4);
+  const aniso = Math.min(4, renderer.capabilities?.getMaxAnisotropy?.() ?? 4);
   if (enable === on) { if (on) walk(scene, aniso, true); return; }
   on = enable; clearInterval(timer);
   if (enable) {
     if (webgl && !envTex) { try { const pm = new THREE.PMREMGenerator(renderer); envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); } catch { envTex = null; } }
-    if (envTex) { scene.environment = envTex; (scene as THREE.Scene & { environmentIntensity?: number }).environmentIntensity = 0.45; }
+    if (envTex) { scene.environment = envTex; (scene as THREE.Scene & { environmentIntensity?: number }).environmentIntensity = 0.2; }
     walk(scene, aniso, true);
-    timer = window.setInterval(() => walk(scene, aniso, true), 2000);
+    timer = window.setInterval(() => walk(scene, aniso, true), 4000);
   } else {
     if (scene.environment === envTex) scene.environment = null;
     walk(scene, aniso, false);

@@ -17,11 +17,13 @@ export const KK_ON = (() => { try { return !/[?&]anim=proc/.test(location.search
    tecnocrata, de corpo mais forte; magos, bruxos e caçadores são mais fit"). O que o rig grande não tem (arco, ferramentas, sentar…)
    o personagem grande pega do médio. */
 const LARGE_KITS = new Set(['nordic', 'lob', 'tecno']);
-let kit = '', weapon = '', forced: { clip: string; until: number; t: number } | null = null;
+let kit = '', weapon = '', shieldOn = false, forced: { clip: string; until: number; t: number } | null = null;
 /** habilidade que pede uma animação própria por um tempo (o Redemoinho gira de verdade, em laço) */
 export function kkForce(clip: string, secs: number) { forced = { clip, until: performance.now() + secs * 1000, t: 0 }; } export function kkSetKit(k: string) { kit = k; }
 /** 10/11: a arma na mão escolhe o jeito do golpe (arco, besta/fogo, duas mãos, adagas, porrete) */
-export function kkSetWeapon(base: string) { weapon = base || ''; }
+/* 10/11 (Erling: "minha espada continua não aparecendo"): a guarda de combate era a de duas mãos (Melee_2H_Idle), com as duas mãos juntas
+   na frente do peito; com escudo, a espada ficava escondida atrás dele. Arma de uma mão + escudo = Melee_Blocking: escudo na frente, espada ao lado */
+export function kkSetWeapon(base: string, shield = false) { weapon = base || ''; shieldOn = shield; }
 const W2H = /Martelo|Marreta|Machado Grande|Machado de Guerra|Alabarda|Montante|Espad[ãa]o|Clava|Malho|Lança|Grande/i, WBOW = /Arco/i, WGUN = /Besta|Pistola|Rev[óo]lver|Escopeta|Rifle|Gatling|Bacamarte|Mosquete|Lança-?chamas|Pulverizador/i, WDAG = /Adaga|Kunai|Punhal|Garras/i, WCLUB = /Porrete|Maça|Mangual/i;
 const large = () => LARGE_KITS.has(kit);
 type AM = Partial<Record<Action, string>>;
@@ -55,7 +57,7 @@ const actOf = (a: Action) => byWeapon(a) ?? (large() ? ACT_L[a] : undefined) ?? 
 const SPEED: Record<string, number> = { 'M:Melee_2H_Attack_Spin': 1.4, 'L:Melee_2H_Attack': 1.15, 'M:Melee_2H_Attack_Spinning': 1.4 };
 const loops = () => large()
   ? { idle: 'L:Idle_A', combat: kit === 'lob' || !weapon ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
-  : { idle: 'M:Idle_A', combat: WBOW.test(weapon) ? 'M:Ranged_Bow_Idle' : WGUN.test(weapon) ? 'M:Ranged_2H_Aiming' : kit === 'mag' || kit === 'bru' || !weapon ? 'M:Melee_Unarmed_Idle' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: WBOW.test(weapon) ? 'M:Running_HoldingBow' : WGUN.test(weapon) ? 'M:Running_HoldingRifle' : 'M:Running_A' };
+  : { idle: 'M:Idle_A', combat: WBOW.test(weapon) ? 'M:Ranged_Bow_Idle' : WGUN.test(weapon) ? 'M:Ranged_2H_Aiming' : kit === 'mag' || kit === 'bru' || !weapon ? 'M:Melee_Unarmed_Idle' : shieldOn ? 'M:Melee_Blocking' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: WBOW.test(weapon) ? 'M:Running_HoldingBow' : WGUN.test(weapon) ? 'M:Running_HoldingRifle' : 'M:Running_A' };
 const FILES = ['rig_large_combatmelee', 'rig_large_general', 'rig_large_movementadvanced', 'rig_large_movementbasic', 'rig_large_simulation', 'rig_medium_combatmelee', 'rig_medium_combatranged', 'rig_medium_general', 'rig_medium_movementadvanced', 'rig_medium_movementbasic', 'rig_medium_simulation', 'rig_medium_tools'];
 
 let SRC: Promise<{ scenes: Record<'M' | 'L', THREE.Object3D>; clips: Map<string, { clip: THREE.AnimationClip; rig: 'M' | 'L' }> } | null> | null = null;
