@@ -618,3 +618,5 @@ main > section { position: relative; isolation: isolate; }
 .tome { transform: perspective(1200px) rotateX(14deg) !important; margin-bottom: 56px; }
 .tome:hover, .tome:focus-visible, .tome.is-open { transform: perspective(1200px) rotateX(6deg) translateY(-8px) !important; }
 .tome__hint { transform: translateX(-50%) !important; bottom: -44px !important; white-space: nowrap; opacity: .9; }
+/* 10/11 (Erling: "as imagens podem esmaecer nas pontas, como se estivessem desenhadas no livro"): a arte se funde ao papel, sem moldura nem sombra */
+button.abp img { filter: sepia(.12) contrast(1.02) !important; box-shadow: none !important; -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, rgba(0, 0, 0, .55) 80%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 62%, rgba(0, 0, 0, .55) 80%, transparent 100%); }
