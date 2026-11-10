@@ -2,6 +2,7 @@ import { buildSpecies } from './flora3d';
 
 
 import { installBvh } from './libs/bvh';
+import { createHalloween } from './sistemas/halloween';
 import { quarksInit, quarksUpdate } from './libs/quarks';
 import { mirrorUpdate } from './espelho';
 import { updateCharLod } from './sistemas/lod-personagens';
@@ -348,6 +349,8 @@ const ZOOM_MIN = 5; let ZOOM_MAX = 22; // padrão 17 m (definido pelo Erling em 
 
 /* ---------- mundo ---------- */
 const objs = buildWorld(city);
+/* 10/11 (teste_libs): abóboras de Halloween nas vilas e nos cemitérios (só na temporada) */
+let halloween: Awaited<ReturnType<typeof createHalloween>> = null; void createHalloween(scene, city, (x, z) => heightAt(x, z)).then((h) => { halloween = h; });
 objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(gpuImpl ? 12000 : 7000); /* WebGPU aguenta mais: fogo e magia sem apagar as partículas mais velhas no meio da luta */
@@ -2921,7 +2924,7 @@ function frameBody() {
   hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt || (inside.castle !== undefined && inside.castle < 2)) ? 1 : 0));
   { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
     const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
-    const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); }
+    const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); halloween?.setNight(night); }
   if (!inside || inside.hall) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none'; /* 08/11: dentro do Grande Salão os NPCs de interior vivem (npcs.ts inside) */
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);

@@ -8,6 +8,7 @@ import { gpuTag } from './gpu/tags';
 import { createShots, type ShotTarget } from './projeteis';
 import { mirrorTrack, mirrorPart } from './espelho';
 import { quarksFx, type QKind } from './libs/quarks';
+import { kkSetKit } from './libs/anim-kk';
 import { buildHealDrone, buildShieldBot, buildDome, type HealDrone, type ShieldBot, type Dome } from './drones3d';
 import { fine } from './dual3d';
 import type { Hero3D } from './characters';
@@ -2320,7 +2321,7 @@ export function createGameplay(d: GameplayDeps) {
     get buffMove() { return buff.move * (1 + stance.move) * cmod.move; },
     /** postura de batalha: troca as somas fixas (posturas.ts) */
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
-    setKit(k: string) { kitKey = k; }, setDbgCast(on: boolean) { dbgCast = on; }, dbgStrike(k: string, kind: string | null = null, n = 0) { const h = d.getHero(), p = h.root.position, y = h.root.rotation.y; const k0 = kitKey; kitKey = k; hitKind = kind; strikeN = n; try { strikeMark({ pos: new THREE.Vector3(p.x + Math.sin(y) * 2.5, p.y, p.z + Math.cos(y) * 2.5), def: { radius: 0.6 } } as unknown as Enemy, new THREE.Vector3(Math.sin(y), 0, Math.cos(y)), false); } finally { kitKey = k0; hitKind = null; } }, setRaceScale(k: number) { raceScale = k; },
+    setKit(k: string) { kitKey = k; kkSetKit(k); }, setDbgCast(on: boolean) { dbgCast = on; }, dbgStrike(k: string, kind: string | null = null, n = 0) { const h = d.getHero(), p = h.root.position, y = h.root.rotation.y; const k0 = kitKey; kitKey = k; hitKind = kind; strikeN = n; try { strikeMark({ pos: new THREE.Vector3(p.x + Math.sin(y) * 2.5, p.y, p.z + Math.cos(y) * 2.5), def: { radius: 0.6 } } as unknown as Enemy, new THREE.Vector3(Math.sin(y), 0, Math.cos(y)), false); } finally { kitKey = k0; hitKind = null; } }, setRaceScale(k: number) { raceScale = k; },
     kit() { return kitKey; },
     /** chegada do Piscar: o clarão no ponto novo */
     blinkArrive() { const hh = d.getHero().root.position; for (let k = 0; k < 34; k++) pfx(hh.x + rnd(-0.4, 0.4), hh.y + rnd(0.1, 1.9), hh.z + rnd(-0.4, 0.4), { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.35, s1: 0.04, c0: 0xffffff, c1: blinkCol, a: 1, drag: 3 }); },
