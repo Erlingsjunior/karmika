@@ -24,6 +24,18 @@ let aimSlot: string | null = null, lockYaw: number | null = null, guardCone = fa
 let leap: { x0: number; z0: number; x1: number; z1: number } | null = null;
 /* ---- modo de combate (Tab): fora dele corre-se mais rápido, o escudo vai às costas e as mãos ficam livres para o ofício ---- */
 let combatMode = false;
+/* 04/11 Salto de Recuo (elfo) — 10/11 (Erling: "quando uso a magia 3 ele tem que pular para trás e ir DE VERDADE para trás, pousar umas 6
+   células ou mais longe do inimigo"): 12 m para trás, sem virar as costas, subindo ~1,8 m no meio; a flecha sai no ar. Vale tanto mirado
+   quanto lançado direto pelo atalho (antes, pelo atalho, só tocava a animação e ficava no lugar). */
+function backleap(yaw: number, cost: number): boolean {
+  const hp = K.hero.root.position, hx = hp.x, hz = hp.z, bx = -Math.sin(yaw), bz = -Math.cos(yaw); let tx = hx + bx * 12, tz = hz + bz * 12;
+  for (let k = 0; k < 16 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.88; tz = hz + (tz - hz) * 0.88; }
+  const ok = K.game.useExtra('backleap', yaw, cost, { x: tx, z: tz }); if (!ok) return false;
+  K.state.path = []; const x0 = hx, z0 = hz, t0 = performance.now(), D = 650;
+  const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - (1 - k) * (1 - k); const x = x0 + (tx - x0) * e, z = z0 + (tz - z0) * e; K.hero.root.position.x = x; K.hero.root.position.z = z; K.state.fx = x / T; K.state.fy = z / T; K.hero.lift = Math.sin(Math.PI * k) * 1.8; if (k < 1) requestAnimationFrame(step); else K.hero.lift = 0; };
+  requestAnimationFrame(step); return true;
+}
+
 function setCombat(on: boolean, quiet = false) {
   if (combatMode === on) return; combatMode = on; K.hero.combat = on;
   document.body.classList.toggle('combat', on);
@@ -59,9 +71,7 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
   } else if (sk.id === 'pounce') { // Salto da Fera: o mesmo arco do salto marcado
     let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = K.game.useExtra('pounce', yaw, sk.cost, { x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
-  } else if (sk.id === 'backleap') { // 04/11 Salto de Recuo (elfo): 7 m para trás, sem virar as costas; a flecha sai no ar
-    const bx = -Math.sin(yaw), bz = -Math.cos(yaw); let tx = hx + bx * 8, tz = hz + bz * 8; /* 09/11 (Erling): 8 m, e é um SALTO — o corpo sobe ~1,6 m no meio */ for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
-    ok = K.game.useExtra('backleap', yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.path = []; const x0 = hx, z0 = hz, t0 = performance.now(), D = 560; const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - (1 - k) * (1 - k); const x = x0 + (tx - x0) * e, z = z0 + (tz - z0) * e; K.hero.root.position.x = x; K.hero.root.position.z = z; K.state.fx = x / T; K.state.fy = z / T; K.hero.lift = Math.sin(Math.PI * k) * 1.6; if (k < 1) requestAnimationFrame(step); else K.hero.lift = 0; }; requestAnimationFrame(step); }
+  } else if (sk.id === 'backleap') { ok = backleap(yaw, sk.cost); // Salto de Recuo: ver backleap()
   } else if (sk.id === 'blink' || sk.id === 'leafstep') { // Piscar / Passo Sombrio / Folha ao Vento: some e reaparece à frente, em chão livre
     const dl = Math.min((sk.id === 'leafstep' ? 10 : 8) * 1, Math.hypot(a.x - hx, a.z - hz) || 8), dx = Math.sin(yaw), dz = Math.cos(yaw); let tx = hx + dx * dl, tz = hz + dz * dl; for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = K.game.useExtra(sk.id, yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); }
@@ -92,6 +102,7 @@ function useSlot(k: string, fromKey = false) {
   else if (sk.id === 'slam') K.game.cast(aimYaw());
   else if (sk.id === 'bash') K.game.bash();
   else if (sk.id === 'heal') K.game.heal(heroPosNow());
+  else if (sk.id === 'backleap') backleap(aimYaw(), sk.cost);
   else K.game.useExtra(sk.id, aimYaw(), sk.cost);
 }
 /* o ataque vai para onde o mouse aponta; se houver inimigo nesse cone, encaixa no mais próximo (empate → mais forte) */

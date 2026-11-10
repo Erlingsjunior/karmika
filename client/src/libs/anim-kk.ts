@@ -95,7 +95,7 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       /* camada da ação (golpe, magia, esquiva…): no MESMO progresso da ação do jogo; entra e sai suave */
       if (forced && performance.now() < forced.until) { const fp = pose(forced.clip); if (fp) { forced.t += dt * (SPEED[forced.clip] ?? 1); put(fp, forced.t % fp.dur, 1); model.updateMatrixWorld(true); return; } } else forced = null;
       const an = hero.acting && hero.actName ? actOf(hero.actName) : undefined;
-      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); put(ap, ((k * spd) % 1) * ap.dur, wAct * fade); } }
+      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); put(ap, ((k * spd) % 1) * ap.dur, wAct * fade, ((hero as Hero3D & { lift?: number }).lift ?? 0) < 0.05); /* no ar (salto de recuo), o quadril é do salto */ } }
       else { lastAct = null; wAct = 0; }
       /* 10/11 (Erling: "o arco está invertido: madeira para frente, linha para trás"): com o antebraço da animação nova, a mão do arco
          chega virada; meia-volta no próprio eixo do osso (Y no esqueleto Mixamo) */
