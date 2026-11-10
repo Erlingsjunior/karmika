@@ -600,7 +600,8 @@ main > section { position: relative; isolation: isolate; }
 .sh__nav { background: #0f0d12 !important; z-index: 3; border-radius: 0 0 22px 22px; }
 .sh__nav::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 56px; background: linear-gradient(180deg, rgba(15, 13, 18, 0), #0f0d12); pointer-events: none; }
 /* 10/11 (Erling: "o fundo precisa ser menor, não aparece a cabeça dos heróis"): os renascidos cabem inteiros na tela */
-.story .rv1 { height: min(84vh, 92%); } .story .rv2 { height: min(70vh, 78%); }
+.story .rebirth__art .rv1 { height: min(80vh, 88%) !important; bottom: 5vh !important; } .story .rebirth__art .rv2 { height: min(66vh, 74%) !important; bottom: 5vh !important; }
+@media (max-width: 760px) { .story .rebirth__art .rv1 { height: 70vh !important; } }
 /* 10/11 (Erling: "o background pode descer um pouco, preencher mais a tela"): o Limiar com Marghar desce e cresce, e só se apaga bem embaixo */
 .lore::before { top: 12vh !important; width: 84%; -webkit-mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; }
 @media (max-width: 900px) { .lore::before { width: 100%; top: 6vh !important; } }
