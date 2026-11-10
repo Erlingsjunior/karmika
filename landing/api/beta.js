@@ -6,12 +6,16 @@
 
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 
+/* 10/11: o mesmo e-mail não dispara outro aviso em 10 min (memória da instância; a trava principal está no botão do site) */
+const recent = new Map();
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'método' });
   const b = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {};
   if (b.site) return res.status(200).json({ ok: true }); /* robô preencheu o campo escondido */
   const email = clean(b.email, 120).toLowerCase(), nome = clean(b.nome, 60);
   if (!nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !b.ok) return res.status(400).json({ error: 'dados' });
+  const now = Date.now(); for (const [k, t] of recent) if (now - t > 600000) recent.delete(k);
+  if (recent.has(email)) return res.status(200).json({ ok: true, dup: true });
   const row = { nome, email, discord: clean(b.discord, 60), caminho: clean(b.caminho, 40), pc: clean(b.pc, 120), embaixador: !!b.embaixador, quando: new Date().toISOString(), pais: req.headers['x-vercel-ip-country'] || '' };
   let sent = false, saved = false;
   const to = process.env.KARMIKA_FORM_EMAIL;
@@ -45,7 +49,7 @@ export default async function handler(req, res) {
       saved = r.ok; if (!saved) console.error('beta: blob', r.status, await r.text().catch(() => ''));
     } catch (e) { console.error('beta: blob', e); }
   }
-  if (sent || saved) return res.status(200).json({ ok: true });
+  if (sent || saved) { recent.set(email, now); return res.status(200).json({ ok: true }); }
   console.error('beta: nada gravou (falta KARMIKA_FORM_EMAIL ou a loja Blob)');
   return res.status(503).json({ error: 'envio' });
 }

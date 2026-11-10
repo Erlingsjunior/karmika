@@ -79,14 +79,20 @@
   /* formulário do beta */
   function formInit() {
     const f = document.getElementById('betaForm'); if (!f) return; const msg = f.querySelector('.beta__msg'), btn = f.querySelector('button');
-    f.addEventListener('submit', async (e) => { e.preventDefault(); msg.className = 'beta__msg'; msg.textContent = '';
+    /* 10/11 (Erling: "validação no botão para não receber mais de um clique e não enviar mais de um form"): uma inscrição por vez,
+       a mesma pessoa não reenvia (o e-mail inscrito fica lembrado neste navegador) e há uma pausa de 60 s entre envios */
+    let sending = false; const K = 'karmika.beta.sent', mem = () => { try { return JSON.parse(localStorage.getItem(K) || '{}'); } catch { return {}; } };
+    f.addEventListener('submit', async (e) => { e.preventDefault(); if (sending) return; msg.className = 'beta__msg'; msg.textContent = '';
       const d = Object.fromEntries(new FormData(f).entries()); d.embaixador = !!d.embaixador;
       if (!d.nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { msg.classList.add('err'); msg.textContent = 'Preencha nome e um e-mail válido.'; return; }
       if (!d.ok) { msg.classList.add('err'); msg.textContent = 'Marque a caixa de aceite para receber o convite.'; return; }
-      btn.disabled = true; btn.textContent = 'Enviando…';
+      const em = String(d.email).trim().toLowerCase(), m = mem();
+      if (m[em]) { msg.classList.add('ok'); msg.textContent = '✦ Este e-mail já está inscrito. O convite chega por ele.'; return; }
+      if (m._last && Date.now() - m._last < 60000) { msg.classList.add('err'); msg.textContent = 'Aguarde um minuto antes de enviar outra inscrição.'; return; }
+      sending = true; btn.disabled = true; btn.textContent = 'Enviando…';
       try { const r = await fetch('/api/beta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }); const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'erro'); f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. Fique de olho no seu e-mail: o convite chega antes da próxima rodada.'; btn.textContent = 'Inscrito ✦'; }
-      catch (err) { msg.classList.add('err'); msg.textContent = 'Não deu certo agora. Tente de novo em instantes.'; btn.disabled = false; btn.textContent = 'Quero ser beta tester'; } });
+        if (!r.ok) throw new Error(j.error || 'erro'); try { const m2 = mem(); m2[em] = Date.now(); m2._last = Date.now(); localStorage.setItem(K, JSON.stringify(m2)); } catch { /* */ } f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. Fique de olho no seu e-mail: o convite chega antes da próxima rodada.'; btn.textContent = 'Inscrito ✦'; }
+      catch (err) { msg.classList.add('err'); msg.textContent = 'Não deu certo agora. Tente de novo em instantes.'; btn.disabled = false; btn.textContent = 'Quero ser beta tester'; } finally { sending = false; } });
   }
 
   /* ===== raças e caminhos: clicar abre o painel (os outros viram miniaturas), com história, magias, poses e artbook ===== */
