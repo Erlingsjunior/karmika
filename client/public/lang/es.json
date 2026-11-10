@@ -1,0 +1,331 @@
+{
+ "_LEIA": "Textos del juego en español. Clave = lo que usa el código; valor = la frase. El juego reemplaza {nome} y ${nome}. Una clave que termina en #1 es el singular. Cambia solo los valores.",
+ "ataque.inicio": "⚔ ¡{lider} sale del bosque y ataca {vila}! La guardia corre a la plaza.",
+ "ataque.inicio.bando": "⚔ ¡{lider} y compañía salen del bosque y atacan {vila}! La guardia corre a la plaza.",
+ "ataque.vitoria": "✦ {vila} respira. Los vecinos salen de sus casas y te dan las gracias.",
+ "ataque.dispersa": "La manada se dispersa por el bosque alrededor de {vila}.",
+ "fama.defendeu": "ayudó a defender {vila}",
+ "fama.venceu": "venció a {inimigo}",
+ "mira.sem_alvo": "{magia}: ningún enemigo al alcance.",
+ "lvlup.atributos": "{n} atributos",
+ "lvlup.atributos#1": "{n} atributo",
+ "lvlup.atributos.dica": "Tienes {n} puntos de atributo para repartir (C)",
+ "lvlup.atributos.dica#1": "Tienes {n} punto de atributo para repartir (C)",
+ "lvlup.classe": "{n} de clase",
+ "lvlup.classe.dica": "Tienes {n} puntos de clase para hechizos, pasivas y talentos (K)",
+ "lvlup.classe.dica#1": "Tienes {n} punto de clase para hechizos, pasivas y talentos (K)",
+ "monstro.cura.goblin_shaman": "Cura de Barro",
+ "monstro.cura.cultist": "Pacto de Sangre",
+ "monstro.cura.pilgrim": "Bendición de la Hoja",
+ "monstro.cura.fairyqueen": "Polvo de Hada",
+ "monstro.cura.necro": "Remiendo de Huesos",
+ "monstro.invoca.necro": "¡Levantaos!",
+ "monstro.invoca.lich": "Llamas de la Tumba",
+ "monstro.invoca.broodmother": "La nidada despierta",
+ "monstro.invoca.goblin_chief": "¡Goblins, aquí!",
+ "monstro.invoca.spirit_lord": "Lamento de las Almas",
+ "monstro.grito.alpha": "Aullido de la Manada",
+ "monstro.grito.werewolf": "Aullido de la Luna",
+ "monstro.grito.bandit_chief": "¡A por ellos!",
+ "monstro.grito.goblin_chief": "Grito de Guerra",
+ "monstro.grito.draugr_bers": "Furia del Norte",
+ "monstro.foge.lobo": [
+  "gimiendo, retrocede",
+  "huye cojeando"
+ ],
+ "monstro.foge.salteador": [
+  "¡Basta! ¡Basta!",
+  "¡No vale la pena morir por esto!",
+  "¡Corre, corre!"
+ ],
+ "monstro.foge.goblin": [
+  "¡Aiii! ¡Ñec ñec!",
+  "¡Goblin corre!"
+ ],
+ "guarda.grito": [
+  "¡Por la aldea!",
+  "¡Guardias, conmigo!",
+  "¡Nadie pasa!",
+  "¡Cerrad la fila, cerrad la fila!",
+  "¡Vuelve al bosque, bestia!",
+  "¡Proteged las casas!"
+ ],
+ "bark.manha": [
+  "El gallo cantó dos veces. O llueve o hay muerte.",
+  "Pan caliente en la plaza, para el primero que llegue.",
+  "¿Dormiste bien, {nome}? Yo no. Los perros aullaron toda la noche.",
+  "Una mañana así de fría solo se arregla con caldo.",
+  "¿Ya abrieron el portón? Los leñadores quieren salir temprano."
+ ],
+ "bark.dia": [
+  "Sol alto. Bueno para secar cuero y malo para el que trabaja en la forja.",
+  "Si vas al bosque, vuelve antes de que anochezca.",
+  "El mercado está lleno hoy. ¿Alguien vio a Thorin?",
+  "Dicen que en Askavik hasta los callejones son de piedra.",
+  "¿Quién perdió un cubo en el pozo? ¿Otra vez?"
+ ],
+ "bark.noite": [
+  "Cierra la ventana, ya es de noche.",
+  "De noche ni el perro sale solo.",
+  "¿Oíste eso? No… habrá sido el viento.",
+  "Enciende el candil, que la oscuridad aquí tiene dueño.",
+  "Vuelve temprano mañana, {nome}. La noche le cobra a quien anda en ella.",
+  "Los búhos están callados. Eso nunca es bueno."
+ ],
+ "bark.frio": [
+  "Este frío se mete en los huesos y se queda a vivir.",
+  "¿Tienes leña en casa? Yo no.",
+  "Nevará antes de que acabe la semana, me apuesto el gorro.",
+  "Frótate las manos, {nome}, o se te cae la espada."
+ ],
+ "bark.calor": [
+  "Qué calor. La cerveza se calienta antes de llegar a la boca.",
+  "Hasta las moscas están cansadas hoy.",
+  "A la sombra del templo se puede respirar."
+ ],
+ "bark.lua": [
+  "La luna está sangrando… Cierra todo, por el amor del Ojo.",
+  "Noche de Luna de Sangre: las crías del Conde salen a cazar.",
+  "Mi abuelo decía: cuando la luna se pone roja, el lobo recuerda que fue hombre.",
+  "No la mires tanto, {nome}. Dicen que ella te mira de vuelta.",
+  "Hoy hasta los muertos del cementerio están inquietos."
+ ],
+ "bark.aurora": [
+  "¡Día de la Aurora! ¿Lo hueles? Es Auréon que pasa.",
+  "Los paladines cantan desde temprano. Dan ganas de creer.",
+  "Hoy cualquier bondad vale el doble. Aprovecha, {nome}.",
+  "¿Viste los destellos que caen? Mi hija quiere guardar uno en un frasco."
+ ],
+ "bark.combate": [
+  "¡Cuidado! ¡Detrás de ti!",
+  "¡Dale, {nome}! ¡Dale!",
+  "¡Que alguien llame a la guardia!",
+  "¡Por el Ojo, que no llegue a las casas!",
+  "¡Eso! Uno más así y la aldea duerme en paz."
+ ],
+ "bark.ferido": [
+  "Estás sangrando, {nome}. Siéntate un poco.",
+  "La curandera tiene ungüento. Ve antes de caerte.",
+  "Con esa cara hasta yo te ganaba. ¡Come algo!",
+  "No te mueras en mi puerta, por favor."
+ ],
+ "bark.montado": [
+  "Bonito caballo. Cuídalo, que caballo bueno no crece en los árboles.",
+  "¡Despacio con ese bicho en la plaza, que hay niños!",
+  "¿Cuánto costó esa montura? No, no me lo digas. Voy a llorar."
+ ],
+ "bark.pet": [
+  "¡Qué {pet} tan bonito! ¿Puedo acariciarlo?",
+  "Ese {pet} ya me robó un pan de la mesa.",
+  "Cuida bien a {pet}, un animal fiel vale más que el oro.",
+  "¡Eh, {pet}! ¡Ven aquí, ven!"
+ ],
+ "bark.novato": [
+  "¿Tú eres el nuevo? Tienes cara de haber despertado ayer.",
+  "¿Primera vez en Karmika? No comas setas azules.",
+  "Con calma, {nome}. Las ratas también muerden."
+ ],
+ "bark.veterano": [
+  "Dicen que ya derribaste algo grande, {nome}.",
+  "Mira quién volvió. La aldea está más segura contigo aquí.",
+  "Mi hijo quiere ser como tú. Le dije que primero tiene que comer verdura."
+ ],
+ "bark.luz": [
+  "La aldea habla bien de ti, {nome}.",
+  "Todavía existe gente buena. Que el Ojo te guarde, {nome}.",
+  "Los niños dicen que eres un héroe. Que no se te suba a la cabeza."
+ ],
+ "bark.sombra": [
+  "…no me hables. Oí lo que hiciste.",
+  "Esconde la bolsa, Marta, mira quién viene.",
+  "Tu mirada cambió, {nome}. Los perros lo notan.",
+  "En tu sombra hay más cosas que en ti."
+ ],
+ "bark.vam": [
+  "Qué piel tan pálida… ¿estás enfermo?",
+  "No comió nada en la taberna. Otra vez.",
+  "Ajo en la puerta, Marta. Ya."
+ ],
+ "bark.lob": [
+  "Huele a perro mojado… ¿eres tú?",
+  "¿Te brillaron los ojos? No, habrá sido el farol.",
+  "Los perros de la aldea se callan cuando pasas. Qué raro."
+ ],
+ "bark.mag": [
+  "¡Un mago en la aldea! ¿Arreglará el pozo con magia?",
+  "No toques mis gallinas con ese bastón."
+ ],
+ "bark.bru": [
+  "Santíguate, niña. Es el brujo.",
+  "Dicen que el brujo paga el precio con su propia sombra.",
+  "No acepto tu moneda. A ver si está maldita."
+ ],
+ "bark.pal": [
+  "¡Un paladín de Auréon! ¿Bendices a mi hijo?",
+  "Contigo aquí duermo con la ventana abierta.",
+  "La armadura brilla incluso de noche, mira."
+ ],
+ "bark.cac": [
+  "Un cazador del Bastión… ¿quién murió?",
+  "Si estás aquí, hay un demonio cerca.",
+  "Plata en el cinturón. Entonces es verdad lo que dicen."
+ ],
+ "bark.tecno": [
+  "¿Qué es ese ruido en tu pecho? ¿Un corazón de lata?",
+  "La Academia mandó a otro. Cuidado con el reactor cerca del heno.",
+  "Mi abuelo decía que las máquinas no tienen alma. ¿Tú sí?"
+ ],
+ "bark.gue": [
+  "¡Un guerrero del Norte! Odín todavía envía a los suyos.",
+  "Cuidado con el hacha, la aldea es pequeña.",
+  "Bonitas cicatrices. ¿Cuántos enemigos fueron?"
+ ],
+ "bark.rep_alta": [
+  "¡Mira quién está aquí! Siéntate, {nome}, estás en tu casa.",
+  "Mi madre reza por ti cada noche. En serio.",
+  "Si necesitas cualquier cosa, solo pídela. Cualquier cosa.",
+  "Los niños juegan a ser tú, ¿sabías?",
+  "Te guardé el mejor trozo de pan."
+ ],
+ "bark.rep_baixa": [
+  "No queremos líos aquí.",
+  "Los guardias te tienen vigilado.",
+  "Lárgate antes de que llame a alguien.",
+  "Ningún tendero te hará buen precio aquí."
+ ],
+ "bark.despedida": [
+  "¿Entonces es verdad? ¿Te vas de Karmika?",
+  "La aldea estará más callada sin ti, {nome}.",
+  "Llévate un trozo de queso para el camino. ¡Llévatelo!",
+  "Te voy a echar de menos. No le digas a nadie que lo dije.",
+  "Vuelve de vez en cuando, ¿oíste? Promételo.",
+  "Garrick finge que no, pero está orgulloso."
+ ],
+ "bark.festa": [
+  "¡A la salud de {nome}!",
+  "¡Más cerveza aquí! ¡El enano trajo un barril para toda la aldea!",
+  "¡Mira los fuegos! ¡Mira los fuegos!",
+  "Esta carne está divina, ¿quién la asó?",
+  "¡Que tu camino sea leve, {nome}!",
+  "Que alguien sujete a Bento antes de que vuelva a cantar.",
+  "¡Baila, {nome}! ¡Hoy la fiesta es tuya!"
+ ],
+ "bark.volta": [
+  "¡Volviste! La fiesta todavía es tema en la taberna.",
+  "¡Mira nada más, el héroe de Karmika en casa otra vez!",
+  "Cuenta, cuenta: ¿cómo es el mundo allá afuera?",
+  "Tu sitio en la mesa sigue guardado.",
+  "Lúcia se alegrará de verte. Bento también."
+ ],
+ "bark.r_guarda": [
+  "Quédate dentro de los muros después del atardecer, {nome}.",
+  "¿Viste a alguien raro en el camino? Avísame.",
+  "Guardo este portón desde antes de que supieras andar."
+ ],
+ "bark.r_ferreiro": [
+  "La forja no espera. El hierro frío no perdona.",
+  "Trae mineral y hago milagros.",
+  "A esa hoja tuya le falta filo, ¿eh?"
+ ],
+ "bark.r_taverna": [
+  "Guiso del día: lo que había ayer.",
+  "Cerveza de Karmika, la mejor del valle. La única, pero la mejor.",
+  "Siéntate, {nome}, la mesa del rincón está libre."
+ ],
+ "bark.r_mercador": [
+  "Buen precio, solo hoy. Mañana también.",
+  "Compro todo lo que brilla y la mitad de lo que no.",
+  "Oro en una mano, mercancía en la otra. Simple."
+ ],
+ "bark.r_fe": [
+  "El Ojo de Marghar ve lo que haces, {nome}. Todo.",
+  "Reza antes de dormir. Quien no reza, sueña.",
+  "Toda alma vuelve. Cuida lo que vas a llevar."
+ ],
+ "fofoca.luz": [
+  [
+   "¿Viste quién pasó? Es {nome}.",
+   "Buena gente. Ayudó a la viuda del molino sin pedir nada."
+  ],
+  [
+   "Dicen que {nome} nunca deja a nadie atrás.",
+   "Al Ojo le debe de caer bien. La suerte le acompaña."
+  ],
+  [
+   "Ayer {nome} pagó la cerveza de toda la mesa.",
+   "Y ni presumió. Eso es raro."
+  ],
+  [
+   "Si todos fueran como {nome}…",
+   "…la guardia tendría que buscar otro trabajo."
+  ],
+  [
+   "Mi hija quiere ser como {nome}.",
+   "Peor ejemplo podría tener."
+  ]
+ ],
+ "fofoca.neutro": [
+  [
+   "¿Quién es ese de ahí?",
+   "{nome}. Nadie sabe bien de dónde vino."
+  ],
+  [
+   "{nome} va armado hasta para comprar pan.",
+   "En estos tiempos, yo también."
+  ],
+  [
+   "¿Crees que {nome} se quede mucho por aquí?",
+   "La gente así nunca se queda. El camino llama."
+  ],
+  [
+   "Dicen que {nome} ya murió una vez.",
+   "Todos ya murieron una vez. Que lo diga el Ojo."
+  ]
+ ],
+ "fofoca.sombra": [
+  [
+   "No mires ahora… es {nome}.",
+   "Esconde la bolsa. Y las gallinas."
+  ],
+  [
+   "Oí cosas feas de {nome}.",
+   "Yo también. Y me creo la mitad, que ya es mucho."
+  ],
+  [
+   "¿Por qué la guardia no detiene a {nome}?",
+   "Porque nadie quiere ser el primero en intentarlo."
+  ],
+  [
+   "{nome} saludó a mi marido hoy.",
+   "Pues reza por él."
+  ],
+  [
+   "¿Viste la sombra de {nome}? Va atrasada.",
+   "Shh. Puede oírte."
+  ]
+ ],
+ "fofoca.feito.bom": [
+  [
+   "¿Sabías? {nome} {feito}.",
+   "Lo oí en la taberna. Pagué una ronda en su honor."
+  ],
+  [
+   "Dicen que {nome} {feito}.",
+   "Ya era hora de que alguien lo hiciera."
+  ],
+  [
+   "{nome} {feito}, ¿te lo crees?",
+   "Me lo creo. Lo vi con estos ojos."
+  ]
+ ],
+ "fofoca.feito.mau": [
+  [
+   "¿Te enteraste? {nome} {feito}.",
+   "Que el Ojo tenga piedad. Yo no la tengo."
+  ],
+  [
+   "Dicen que {nome} {feito}.",
+   "Cierra la puerta esta noche, ¿eh?"
+  ]
+ ]
+}

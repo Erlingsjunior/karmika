@@ -1,0 +1,331 @@
+{
+ "_LEIA": "Spēles teksti latviešu valodā. Atslēga = tas, ko izmanto kods; vērtība = teikums. {nome} un ${nome} aizpilda spēle. Atslēga, kas beidzas ar #1, ir vienskaitlis. Maini tikai vērtības.",
+ "ataque.inicio": "⚔ {lider} iznāk no meža un uzbrūk: {vila}! Sardze skrien uz laukumu.",
+ "ataque.inicio.bando": "⚔ {lider} un biedri iznāk no meža un uzbrūk: {vila}! Sardze skrien uz laukumu.",
+ "ataque.vitoria": "✦ {vila} atkal elpo. Iedzīvotāji iznāk no mājām un pateicas.",
+ "ataque.dispersa": "Bars izklīst mežā ap {vila}.",
+ "fama.defendeu": "palīdzēja aizstāvēt {vila}",
+ "fama.venceu": "uzvarēja: {inimigo}",
+ "mira.sem_alvo": "{magia}: neviena ienaidnieka sasniedzamībā.",
+ "lvlup.atributos": "{n} atribūti",
+ "lvlup.atributos#1": "{n} atribūts",
+ "lvlup.atributos.dica": "Tev ir {n} atribūtu punkti, ko sadalīt (C)",
+ "lvlup.atributos.dica#1": "Tev ir {n} atribūta punkts, ko sadalīt (C)",
+ "lvlup.classe": "{n} klases",
+ "lvlup.classe.dica": "Tev ir {n} klases punkti burvestībām, pasīvajām prasmēm un talantiem (K)",
+ "lvlup.classe.dica#1": "Tev ir {n} klases punkts burvestībām, pasīvajām prasmēm un talantiem (K)",
+ "monstro.cura.goblin_shaman": "Dubļu dziedināšana",
+ "monstro.cura.cultist": "Asins pakts",
+ "monstro.cura.pilgrim": "Lapas svētība",
+ "monstro.cura.fairyqueen": "Feju putekļi",
+ "monstro.cura.necro": "Kaulu lāpīšana",
+ "monstro.invoca.necro": "Celieties!",
+ "monstro.invoca.lich": "Kapa liesmas",
+ "monstro.invoca.broodmother": "Perējums mostas",
+ "monstro.invoca.goblin_chief": "Goblini, šurp!",
+ "monstro.invoca.spirit_lord": "Dvēseļu vaimanas",
+ "monstro.grito.alpha": "Bara gaudas",
+ "monstro.grito.werewolf": "Mēness gaudas",
+ "monstro.grito.bandit_chief": "Virsū viņiem!",
+ "monstro.grito.goblin_chief": "Kaujas sauciens",
+ "monstro.grito.draugr_bers": "Ziemeļu niknums",
+ "monstro.foge.lobo": [
+  "smilkstot tas atkāpjas",
+  "tas klibodams bēg"
+ ],
+ "monstro.foge.salteador": [
+  "Pietiek! Pietiek!",
+  "Nav vērts par to mirt!",
+  "Bēdz, bēdz!"
+ ],
+ "monstro.foge.goblin": [
+  "Aiii! Ņek ņek!",
+  "Goblins bēg!"
+ ],
+ "guarda.grito": [
+  "Par ciemu!",
+  "Sargi, pie manis!",
+  "Neviens netiks cauri!",
+  "Aizveriet rindu, aizveriet rindu!",
+  "Atpakaļ uz mežu, zvēr!",
+  "Sargājiet mājas!"
+ ],
+ "bark.manha": [
+  "Gailis nodziedāja divreiz. Vai nu lietus, vai nāve.",
+  "Silta maize laukumā, kas pirmais, tas maļ.",
+  "Labi gulēji, {nome}? Es ne. Suņi gaudoja visu nakti.",
+  "Tik aukstā rītā der tikai buljons.",
+  "Vārti jau vaļā? Malkas cirtēji grib iziet agri."
+ ],
+ "bark.dia": [
+  "Saule augstu. Labi ādas žāvēšanai, slikti tiem, kas strādā kalvē.",
+  "Ja ej uz mežu, atgriezies pirms tumsas.",
+  "Tirgus šodien pilns. Kāds redzēja Torinu?",
+  "Saka, ka Askavikā pat šķērsieliņas ir bruģētas.",
+  "Kurš iemeta spaini akā? Atkal?"
+ ],
+ "bark.noite": [
+  "Aizver logu, jau ir nakts.",
+  "Naktī pat suns neiziet viens.",
+  "Dzirdēji? Nē… droši vien vējš.",
+  "Iededz lukturi, tumsai te ir saimnieks.",
+  "Rīt nāc agri mājās, {nome}. Nakts prasa nodevu no tiem, kas tajā staigā.",
+  "Pūces klusē. Tas nekad nav labi."
+ ],
+ "bark.frio": [
+  "Šis aukstums ielien kaulos un tur paliek dzīvot.",
+  "Tev mājās ir malka? Man nav.",
+  "Līdz nedēļas beigām snigs, saderu uz savu cepuri.",
+  "Paberzē rokas, {nome}, citādi zobens izkritīs."
+ ],
+ "bark.calor": [
+  "Kāds karstums. Alus sasilst, pirms nonāk mutē.",
+  "Pat mušas šodien ir nogurušas.",
+  "Tempļa ēnā var paelpot."
+ ],
+ "bark.lua": [
+  "Mēness asiņo… Aizver visu, Acs dēļ.",
+  "Asins Mēness nakts: Grāfa pēcnācēji iziet medībās.",
+  "Vectēvs teica: kad mēness kļūst sarkans, vilks atceras, ka reiz bija cilvēks.",
+  "Neskaties uz to pārāk ilgi, {nome}. Saka, ka tas skatās pretī.",
+  "Šonakt pat kapsētas mirušie ir nemierīgi."
+ ],
+ "bark.aurora": [
+  "Ausmas diena! Jūti smaržu? Tas garām iet Aureons.",
+  "Paladīni dzied kopš paša rīta. Gribas ticēt.",
+  "Šodien katrs labs darbs skaitās divreiz. Izmanto to, {nome}.",
+  "Redzi, kā krīt mirdzumi? Meita grib vienu ielikt burciņā."
+ ],
+ "bark.combate": [
+  "Uzmanies! Aiz tevis!",
+  "Sit viņu, {nome}! Sit!",
+  "Kāds, sauciet sardzi!",
+  "Acs dēļ, nelaid viņu līdz mājām!",
+  "Tā! Vēl viens tāds, un ciems gulēs mierā."
+ ],
+ "bark.ferido": [
+  "Tu asiņo, {nome}. Apsēdies uz brīdi.",
+  "Dziedniecei ir ziede. Ej, pirms nokrīti.",
+  "Ar tādu seju pat es tevi uzvarētu. Paēd kaut ko!",
+  "Lūdzu, nemirsti pie manām durvīm."
+ ],
+ "bark.montado": [
+  "Skaists zirgs. Rūpējies par to, labi zirgi kokos neaug.",
+  "Lēnāk ar to zvēru laukumā, te ir bērni!",
+  "Cik maksāja tas jājamais? Nē, nesaki. Es raudāšu."
+ ],
+ "bark.pet": [
+  "Cik skaists {pet}! Vai drīkstu paglaudīt?",
+  "Šis {pet} jau nozaga maizi no mana galda.",
+  "Rūpējies par {pet}, uzticams dzīvnieks ir vērtīgāks par zeltu.",
+  "Ei, {pet}! Nāc šurp, nāc!"
+ ],
+ "bark.novato": [
+  "Tu esi jaunais? Izskaties, it kā būtu pamodies vakar.",
+  "Pirmo reizi Karmikā? Neēd zilās sēnes.",
+  "Lēnām, {nome}. Arī žurkas kož."
+ ],
+ "bark.veterano": [
+  "Saka, ka tu jau esi nogāzis kaut ko lielu, {nome}.",
+  "Paskat, kas atgriezies. Ar tevi ciems ir drošāks.",
+  "Mans dēls grib būt tāds kā tu. Teicu, ka vispirms jāēd dārzeņi."
+ ],
+ "bark.luz": [
+  "Ciems par tevi runā labu, {nome}.",
+  "Labi cilvēki vēl ir. Lai Acs tevi sargā, {nome}.",
+  "Bērni saka, ka tu esi varonis. Neļauj tam sakāpt galvā."
+ ],
+ "bark.sombra": [
+  "…nerunā ar mani. Dzirdēju, ko tu izdarīji.",
+  "Paslēp maku, Marta, paskaties, kas nāk.",
+  "Tavs skatiens ir mainījies, {nome}. Suņi to jūt.",
+  "Tavā ēnā ir vairāk nekā tevī pašā."
+ ],
+ "bark.vam": [
+  "Cik bāla āda… vai tu esi slims?",
+  "Krogā viņš neko neēda. Atkal.",
+  "Ķiplokus pie durvīm, Marta. Tūlīt."
+ ],
+ "bark.lob": [
+  "Ož pēc slapja suņa… tas esi tu?",
+  "Tev acis iemirdzējās? Nē, droši vien laterna.",
+  "Ciema suņi apklust, kad tu ej garām. Dīvaini."
+ ],
+ "bark.mag": [
+  "Burvis ciemā! Varbūt viņš ar maģiju salabos aku?",
+  "Neaiztiec manas vistas ar to zizli."
+ ],
+ "bark.bru": [
+  "Pārmet krustu, meitiņ. Tas ir raganis.",
+  "Saka, ka raganis maksā cenu ar paša ēnu.",
+  "Tavu monētu es neņemšu. Kas zina, varbūt nolādēta."
+ ],
+ "bark.pal": [
+  "Aureona paladīns! Vai svētīsi manu dēlu?",
+  "Kad tu esi te, es guļu ar vaļā logu.",
+  "Bruņas mirdz pat naktī, paskaties."
+ ],
+ "bark.cac": [
+  "Bastiona mednieks… kurš nomira?",
+  "Ja tu esi te, tuvumā ir dēmons.",
+  "Sudrabs pie jostas. Tātad runātais ir patiesība."
+ ],
+ "bark.tecno": [
+  "Kas tev tur krūtīs tā troksnī? Skārda sirds?",
+  "Akadēmija atsūtīja vēl vienu. Uzmanīgi ar reaktoru pie siena.",
+  "Vectēvs teica, ka mašīnām nav dvēseles. Tev ir?"
+ ],
+ "bark.gue": [
+  "Ziemeļu karotājs! Odins joprojām sūta savējos.",
+  "Mierīgāk ar cirvi, ciems ir mazs.",
+  "Skaistas rētas. Cik tur bija ienaidnieku?"
+ ],
+ "bark.rep_alta": [
+  "Paskat, kas te! Apsēdies, {nome}, jūties kā mājās.",
+  "Mana māte katru nakti par tevi lūdzas. Nopietni.",
+  "Ja kaut ko vajag, tikai prasi. Jebko.",
+  "Bērni spēlējas, ka ir tu, zināji?",
+  "Labāko maizes gabalu nolikšu tev."
+ ],
+ "bark.rep_baixa": [
+  "Mums te nevajag nepatikšanas.",
+  "Sargi tevi novēro.",
+  "Pazūdi, pirms es kādu saucu.",
+  "Neviens tirgotājs te tev labu cenu nedos."
+ ],
+ "bark.despedida": [
+  "Tātad tā ir taisnība? Tu pamet Karmiku?",
+  "Bez tevis ciemā būs klusāk, {nome}.",
+  "Paņem siera gabalu ceļam. Ņem!",
+  "Man tevis pietrūks. Nesaki nevienam, ka to teicu.",
+  "Atgriezies kādreiz, dzirdi? Apsoli.",
+  "Gariks izliekas, ka nē, bet viņš ir lepns."
+ ],
+ "bark.festa": [
+  "Uz {nome} veselību!",
+  "Vēl alu! Rūķis atveda mucu visam ciemam!",
+  "Skaties, uguņošana! Skaties!",
+  "Gaļa ir dievīga, kurš to cepa?",
+  "Lai ceļš viegls, {nome}!",
+  "Kāds, apturiet Bento, pirms viņš atkal dzied.",
+  "Dejo, {nome}! Šodien svētki ir tavi!"
+ ],
+ "bark.volta": [
+  "Tu atgriezies! Par svētkiem krogā vēl runā.",
+  "Paskat, Karmikas varonis atkal mājās!",
+  "Stāsti, stāsti: kāda ir pasaule tur ārā?",
+  "Tava vieta pie galda joprojām ir rezervēta.",
+  "Lūcija priecāsies tevi redzēt. Bento arī."
+ ],
+ "bark.r_guarda": [
+  "Pēc saulrieta paliec aiz mūriem, {nome}.",
+  "Redzēji uz ceļa kādu dīvainu? Pasaki man.",
+  "Es sargāju šos vārtus, kopš tu vēl nemācēji staigāt."
+ ],
+ "bark.r_ferreiro": [
+  "Kalve negaida. Auksta dzelzs nepiedod.",
+  "Atnes rūdu, un es darīšu brīnumus.",
+  "Tavam asmenim vajag uzasināt, zini?"
+ ],
+ "bark.r_taverna": [
+  "Dienas sautējums: tas, kas bija vakar.",
+  "Karmikas alus, labākais ielejā. Vienīgais, bet labākais.",
+  "Apsēdies, {nome}, stūra galds ir brīvs."
+ ],
+ "bark.r_mercador": [
+  "Laba cena, tikai šodien. Rīt arī.",
+  "Pērku visu, kas mirdz, un pusi no tā, kas nemirdz.",
+  "Zelts vienā rokā, prece otrā. Vienkārši."
+ ],
+ "bark.r_fe": [
+  "Margara Acs redz, ko tu dari, {nome}. Visu.",
+  "Lūdzies pirms miega. Kas nelūdzas, tas sapņo.",
+  "Katra dvēsele atgriežas. Domā, ko nesīsi līdzi."
+ ],
+ "fofoca.luz": [
+  [
+   "Redzēji, kurš pagāja garām? Tas ir {nome}.",
+   "Labs cilvēks. Palīdzēja dzirnavnieka atraitnei, neko neprasot."
+  ],
+  [
+   "Saka, ka {nome} nekad nevienu neatstāj.",
+   "Acij droši vien patīk. Veiksme iet līdzi."
+  ],
+  [
+   "Vakar {nome} samaksāja par visa galda alu.",
+   "Un pat nelielījās. Tas ir reti."
+  ],
+  [
+   "Ja visi būtu kā {nome}…",
+   "…sardzei būtu jāmeklē cits darbs."
+  ],
+  [
+   "Mana meita grib būt kā {nome}.",
+   "Varētu būt arī sliktāks paraugs."
+  ]
+ ],
+ "fofoca.neutro": [
+  [
+   "Kas tas tur ir?",
+   "{nome}. Neviens īsti nezina, no kurienes."
+  ],
+  [
+   "{nome} pat maizi pirkt iet ar ieroci.",
+   "Šādos laikos es arī tā darītu."
+  ],
+  [
+   "Domā, ka {nome} te paliks ilgi?",
+   "Tādi nekad nepaliek. Ceļš sauc."
+  ],
+  [
+   "Saka, ka {nome} jau reiz ir miris.",
+   "Visi jau reiz ir miruši. Lai Acs saka."
+  ]
+ ],
+ "fofoca.sombra": [
+  [
+   "Neskaties tagad… tas ir {nome}.",
+   "Paslēp maku. Un vistas."
+  ],
+  [
+   "Dzirdēju neglītas lietas par {nome}.",
+   "Es arī. Un ticu pusei, kas jau ir daudz."
+  ],
+  [
+   "Kāpēc sardze neapcietina {nome}?",
+   "Jo neviens negrib būt pirmais, kas mēģina."
+  ],
+  [
+   "{nome} šodien sveicināja manu vīru.",
+   "Tad lūdzies par viņu."
+  ],
+  [
+   "Redzēji, kā {nome} ēna kavējas?",
+   "Šš. Var dzirdēt."
+  ]
+ ],
+ "fofoca.feito.bom": [
+  [
+   "Zināji? {nome} {feito}.",
+   "Dzirdēju krogā. Uzsaucu kārtu par godu."
+  ],
+  [
+   "Runā, ka {nome} {feito}.",
+   "Bija laiks, ka kāds to izdara."
+  ],
+  [
+   "{nome} {feito}, vari iedomāties?",
+   "Varu. Redzēju savām acīm."
+  ]
+ ],
+ "fofoca.feito.mau": [
+  [
+   "Dzirdēji? {nome} {feito}.",
+   "Lai Acs par viņu apžēlojas. Es neapžēlošos."
+  ],
+  [
+   "Saka, ka {nome} {feito}.",
+   "Šonakt aizslēdz durvis, labi?"
+  ]
+ ]
+}

@@ -1,4 +1,5 @@
 import { RUNAS } from './runas';
+import { t as tr, tl } from './i18n';
 import { monRoll } from './dados-rpg';
 import * as THREE from 'three';
 import { vfxProjectile, vfxProjectileFree, vfxTrail, elementOf } from './sistemas/vfx';
@@ -713,7 +714,7 @@ export function createEnemies(ctx: EnemyCtx) {
   const famOf = (t: string) => FAM[t] ?? t;
   const COWARD = new Set(['wolf', 'frostwolf', 'boar', 'coyote', 'rat', 'bear', 'bandit', 'bandit_arch', 'goblin', 'goblin_shaman', 'spider', 'spiderling', 'harpy', 'fairy', 'puglin', 'imp', 'scorpion', 'hunter', 'slaver', 'elfscout', 'swampsnake']);
   const STALK = new Set(['wolf', 'frostwolf', 'coyote', 'bandit', 'bandit_arch', 'goblin', 'hellhound', 'elfscout']);
-  const FLEE_SAY: Record<string, string[]> = { lobo: ['ganindo, ele recua', 'ele foge mancando'], salteador: ['Chega! Chega!', 'Não vale a pena morrer por isso!', 'Corre, corre!'], goblin: ['Aiii! Nhec nhec!', 'Goblin corre!'] };
+  const FLEE_FAM = new Set(['lobo', 'salteador', 'goblin']), FLEE_SAY = (fam: string) => (FLEE_FAM.has(fam) ? tl('monstro.foge.' + fam) : []);
   type AI = Enemy & { fled?: boolean; fleeT?: number; licking?: boolean; stalkT?: number; alertT?: number; side?: number; tag?: string };
   let cryT = 0;
   /** avisa os parentes por perto (parados) que há presa; devolve quantos ouviram */
@@ -731,14 +732,14 @@ export function createEnemies(ctx: EnemyCtx) {
      · líder (lobo-rei, lobisomem, chefe dos salteadores, chefe goblin, draugr berserker): ao entrar na briga solta o grito e o bando ao redor
        fica 20% mais rápido e mais forte por 8 s. Matar o líder primeiro é a jogada. */
   const HEAL: Partial<Record<EnemyType, { cd: number; k: number; name: string; col: number }>> = {
-    goblin_shaman: { cd: 8, k: 0.2, name: 'Cura de Lama', col: 0x8adf5a }, cultist: { cd: 9, k: 0.18, name: 'Pacto de Sangue', col: 0xc04a6a },
-    pilgrim: { cd: 9, k: 0.2, name: 'Bênção da Folha', col: 0x9aff9a }, fairyqueen: { cd: 7, k: 0.18, name: 'Pó de Fada', col: 0xffb0f0 },
-    necro: { cd: 10, k: 0.16, name: 'Remendo de Ossos', col: 0x9a6aff } };
+    goblin_shaman: { cd: 8, k: 0.2, name: 'monstro.cura.goblin_shaman', col: 0x8adf5a }, cultist: { cd: 9, k: 0.18, name: 'monstro.cura.cultist', col: 0xc04a6a },
+    pilgrim: { cd: 9, k: 0.2, name: 'monstro.cura.pilgrim', col: 0x9aff9a }, fairyqueen: { cd: 7, k: 0.18, name: 'monstro.cura.fairyqueen', col: 0xffb0f0 },
+    necro: { cd: 10, k: 0.16, name: 'monstro.cura.necro', col: 0x9a6aff } };
   const SUMMON: Partial<Record<EnemyType, { cd: number; type: EnemyType; n: number; max: number; name: string; col: number; below?: number }>> = {
-    necro: { cd: 15, type: 'skeleton', n: 2, max: 3, name: 'Levantai-vos!', col: 0x9a6aff }, lich: { cd: 16, type: 'skull_fire', n: 2, max: 4, name: 'Chamas da Cova', col: 0xff7a20 },
-    broodmother: { cd: 12, type: 'spiderling', n: 3, max: 6, name: 'A ninhada desperta', col: 0x9ad04a }, goblin_chief: { cd: 20, type: 'goblin', n: 2, max: 3, name: 'Goblins, aqui!', col: 0xd0a040, below: 0.6 },
-    spirit_lord: { cd: 16, type: 'spirit', n: 1, max: 2, name: 'Lamento das Almas', col: 0x9ad0ff } };
-  const LEAD: Partial<Record<EnemyType, string>> = { alpha: 'Uivo da Matilha', werewolf: 'Uivo da Lua', bandit_chief: 'Pra cima deles!', goblin_chief: 'Grito de Guerra', draugr_bers: 'Fúria do Norte' };
+    necro: { cd: 15, type: 'skeleton', n: 2, max: 3, name: 'monstro.invoca.necro', col: 0x9a6aff }, lich: { cd: 16, type: 'skull_fire', n: 2, max: 4, name: 'monstro.invoca.lich', col: 0xff7a20 },
+    broodmother: { cd: 12, type: 'spiderling', n: 3, max: 6, name: 'monstro.invoca.broodmother', col: 0x9ad04a }, goblin_chief: { cd: 20, type: 'goblin', n: 2, max: 3, name: 'monstro.invoca.goblin_chief', col: 0xd0a040, below: 0.6 },
+    spirit_lord: { cd: 16, type: 'spirit', n: 1, max: 2, name: 'monstro.invoca.spirit_lord', col: 0x9ad0ff } };
+  const LEAD: Partial<Record<EnemyType, string>> = { alpha: 'monstro.grito.alpha', werewolf: 'monstro.grito.werewolf', bandit_chief: 'monstro.grito.bandit_chief', goblin_chief: 'monstro.grito.goblin_chief', draugr_bers: 'monstro.grito.draugr_bers' };
   type Role = AI & { roleT?: number; sumT?: number; sumN?: number; howled?: boolean; rageT?: number; ttl?: number; master?: Enemy; minion?: boolean };
   const pend: (() => void)[] = [];
   const rageK = (e: Enemy) => ((e as Role).rageT ?? 0) > 0 ? 1.2 : 1;
@@ -748,15 +749,15 @@ export function createEnemies(ctx: EnemyCtx) {
     const f = famOf(e.type);
     const L = LEAD[e.type]; if (L && !r.howled) { r.howled = true; let n = 0;
       for (const o of list) { if (!o.alive || !o.active || (o as Enemy & { ally?: boolean }).ally || famOf(o.type) !== f || Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) > 15) continue; (o as Role).rageT = 8; n++; }
-      if (n) { ctx.onSpell?.(e, L); ctx.spellFx?.(e.pos.x, e.pos.z, 0xff5a3a, 3.5); } }
+      if (n) { ctx.onSpell?.(e, tr(L)); ctx.spellFx?.(e.pos.x, e.pos.z, 0xff5a3a, 3.5); } }
     const H = HEAL[e.type]; if (H) { r.roleT = (r.roleT ?? H.cd * (0.4 + Math.random() * 0.4)) - dt;
       if (r.roleT <= 0) { let best: Enemy | null = null, bk = 0.65;
         for (const o of list) { if (!o.alive || !o.active || (o as Enemy & { ally?: boolean }).ally || (o !== e && famOf(o.type) !== f && !(o as Role).minion) || Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) > 11) continue; const k = o.hp / o.hpMax; if (k < bk) { bk = k; best = o; } }
-        if (best) { r.roleT = H.cd * (0.85 + Math.random() * 0.3); best.hp = Math.min(best.hpMax, best.hp + best.hpMax * H.k); ctx.onSpell?.(e, H.name); ctx.spellFx?.(best.pos.x, best.pos.z, H.col, 1.3); }
+        if (best) { r.roleT = H.cd * (0.85 + Math.random() * 0.3); best.hp = Math.min(best.hpMax, best.hp + best.hpMax * H.k); ctx.onSpell?.(e, tr(H.name)); ctx.spellFx?.(best.pos.x, best.pos.z, H.col, 1.3); }
         else r.roleT = 1.5; } }
     const S = SUMMON[e.type]; if (S && (r.sumN ?? 0) < 6 && (!S.below || e.hp < e.hpMax * S.below)) { r.sumT = (r.sumT ?? 2 + Math.random() * 2) - dt;
       if (r.sumT <= 0) { r.sumT = S.cd * (0.85 + Math.random() * 0.3); const mine = list.filter((o) => o.alive && (o as Role).master === e).length, n = Math.min(S.n, S.max - mine);
-        if (n > 0) { r.sumN = (r.sumN ?? 0) + n; ctx.onSpell?.(e, S.name); ctx.spellFx?.(e.pos.x, e.pos.z, S.col, 2.6);
+        if (n > 0) { r.sumN = (r.sumN ?? 0) + n; ctx.onSpell?.(e, tr(S.name)); ctx.spellFx?.(e.pos.x, e.pos.z, S.col, 2.6);
           const tg = r.tag === 'dg' ? 'dg-add' : r.tag === 'crypt' ? 'crypt-add' : 'sum', lv = e.def.lvl ?? DEFS[S.type].lvl ?? 1;
           for (let i = 0; i < n; i++) { const a = e.yaw + Math.PI + (i - (n - 1) / 2) * 0.9, x = e.pos.x + Math.sin(a) * 2.2, z = e.pos.z + Math.cos(a) * 2.2;
             pend.push(() => { const k = lvlScale(S.type, lv), m = spawn(S.type, x, z, { tag: tg, lvl: lv, hpMul: k.hp * 0.45, dmgMul: k.dmg * 0.7, aggro: 30, leash: 60 }) as Role;
@@ -778,7 +779,7 @@ export function createEnemies(ctx: EnemyCtx) {
       const D = e.def; let mv = 0;
       { const a = e as AI; if (e.alive && !puppet && !a.fled && !a.tag && COWARD.has(e.type) && !ELITE.has(e.type) && e.hp < e.hpMax * 0.22 && (e.state === 'chase' || e.state === 'recover' || e.state === 'hurt')) {
           a.fled = true; a.fleeT = 3.5 + Math.random() * 2.5; a.stalkT = 0; e.state = 'flee'; e.t = 0; if (e.tele) e.tele.visible = false;
-          const L = FLEE_SAY[famOf(e.type)]; if (L && cryT <= 0 && Math.random() < 0.7) { cryT = 4; ctx.onSpell?.(e, L[Math.floor(Math.random() * L.length)]); } }
+          const L = FLEE_SAY(famOf(e.type)); if (L.length && cryT <= 0 && Math.random() < 0.7) { cryT = 4; ctx.onSpell?.(e, L[Math.floor(Math.random() * L.length)]); } }
         if (a.fled && e.state === 'idle' && e.hp >= e.hpMax * 0.95) { a.fled = false; a.licking = false; } }
       if (!puppet && e.alive) { roles(e, dt, e.state === 'chase' || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt'); const r = e as Role;
         if (r.minion && (r.ttl = (r.ttl ?? 45) - dt) <= 0 || (r.minion && r.master && !r.master.alive)) { const m = e; pend.push(() => { const i = list.indexOf(m); if (i >= 0) { if (m.active) unbuild(m); list.splice(i, 1); } }); ctx.spellFx?.(e.pos.x, e.pos.z, 0x6a6a7a, 1); e.alive = false; continue; } }

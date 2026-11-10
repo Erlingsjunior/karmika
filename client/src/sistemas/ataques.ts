@@ -3,6 +3,7 @@
    Os bichos escolhidos combinam com o nível do herói e com a hora (mortos-vivos e cães do inferno só de noite fechada). A guarda sai do posto
    e luta (npcs.ts); o herói pode ajudar. Se o bando cai: a vila agradece (karma bom, um pouco de ouro e a fama corre — barks.ts, fofoca).
    Se o herói vai embora, o bando se dispersa sozinho depois de 3 min. */
+import { t as tr } from '../i18n';
 import type { EnemyType } from '../world';
 import { DEFS } from '../enemies';
 import { FAMA } from '../barks';
@@ -51,13 +52,13 @@ export function createAtaques(K: AtkCtx) {
       e.home.x = cx + (Math.random() - 0.5) * 5; e.home.y = cz + (Math.random() - 0.5) * 5; e.state = 'return'; e.t = 0; mobs.push(e);
     }
     cur = { st, mobs, t: 0, tag };
-    K.log(`⚔ ${DEFS[lead].name}${n > 1 ? ' e companhia' : ''} saem da mata e atacam ${st.name}! A guarda corre para a praça.`, '#ff9a6a'); void scx;
+    K.log(tr(n > 1 ? 'ataque.inicio.bando' : 'ataque.inicio', { lider: DEFS[lead].name, vila: st.name }), '#ff9a6a'); void scx;
   }
   function tick(dt: number) {
     if (cur) { cur.t += dt;
       const left = cur.mobs.filter((m) => m.alive).length;
-      if (!left) { const st = cur.st; cur = null; K.karma(6); K.gold(8 + Math.floor(K.level() * 1.5)); FAMA.push(`ajudou a defender ${st.name}`, true); K.log(`✦ ${st.name} respira. Os moradores saem das casas e agradecem.`, '#ffe08a'); }
-      else if (cur.t > 180) { K.clearTag(cur.tag); K.log(`O bando se dispersa na mata ao redor de ${cur.st.name}.`, '#c8c0a8'); cur = null; }
+      if (!left) { const st = cur.st; cur = null; K.karma(6); K.gold(8 + Math.floor(K.level() * 1.5)); FAMA.push(tr('fama.defendeu', { vila: st.name }), true); K.log(tr('ataque.vitoria', { vila: st.name }), '#ffe08a'); }
+      else if (cur.t > 180) { K.clearTag(cur.tag); K.log(tr('ataque.dispersa', { vila: cur.st.name }), '#c8c0a8'); cur = null; }
       return; }
     if (K.inside() || K.night() < 0.55) return;
     wait -= dt; if (wait > 0) return;

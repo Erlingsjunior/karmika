@@ -1,4 +1,5 @@
 /* PÁGINA DE OPÇÕES (gráficos, som e jogo, ao vivo) e ACESSIBILIDADE (escala do texto). Saiu do main.ts (02/11). */
+import { LANG, LANGS, setLang, type Lang } from '../i18n';
 import { uiFitMax, uiBase } from '../main';
 import * as THREE from 'three';
 import { charShadow } from '../characters';
@@ -42,6 +43,8 @@ function renderOptions() {
   const rng = (k: keyof Opts, min: number, max: number, step: number, fmt: (v: number) => string) => `<div class="rng"><input type="range" data-or="${k}" min="${min}" max="${max}" step="${step}" value="${K.opts[k]}"><b>${fmt(K.opts[k] as number)}</b></div>`;
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   el.innerHTML = `<h2>Opções</h2>
+    <h3>Idioma</h3>
+    <div class="stat"><span>Idioma do jogo <small>Language · Idioma · Valoda. Os textos novos já saem traduzidos; o resto do jogo vai sendo traduzido aos poucos. O jogo recarrega ao trocar</small></span><div class="seg">${LANGS.map((l) => `<button data-lang="${l.id}" class="${LANG === l.id ? 'on' : ''}">${l.name}</button>`).join('')}</div></div>
     <h3>Acessibilidade</h3>
     <div class="stat"><span>Tamanho do texto <small>Todos os textos do jogo: mochila, dicas dos itens, missões, diálogos, menus</small></span>${seg('txt', [1, 1.15, 1.3, 1.5, 1.75, 2].map((v) => [v, pct(v)] as [number, string]))}</div>
     <div class="stat"><span>Texto do chat <small>Por cima do tamanho do texto: só a caixa de conversa</small></span>${seg('chat', [1, 1.25, 1.5, 1.75, 2, 2.5].map((v) => [v, pct(v)] as [number, string]))}</div>
@@ -72,7 +75,7 @@ function renderOptions() {
     <div class="stat"><span>Janelas (chat, missões, grupo)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
     <div class="stat"><span>Restaurar</span><div class="seg"><button data-act="reset">Opções padrão</button></div></div>`;
 }
-document.getElementById('p-opt')?.addEventListener('click', (e) => {
+document.getElementById('p-opt')?.addEventListener('click', (e) => { const lb = (e.target as HTMLElement).closest('button[data-lang]') as HTMLElement | null; if (lb) { const l = lb.dataset.lang as Lang; if (l !== LANG) setLang(l); return; }
   const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
   if (b.dataset.ok) { const k = b.dataset.ok as keyof Opts, raw = b.dataset.ov!; (K.opts as unknown as Record<string, unknown>)[k] = raw === 'true' ? true : raw === 'false' ? false : Number(raw); applyOpts(k); renderOptions(); K.audio.click(); return; }
   const a = b.dataset.act;

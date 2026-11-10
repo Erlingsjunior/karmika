@@ -1,4 +1,5 @@
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). */
+import { t as tr } from '../i18n';
 import * as THREE from 'three';
 import { TILE_M as T, type Race } from '@karmika/shared';
 import { createAim, type AimSpec } from '../aim';
@@ -47,7 +48,7 @@ function startAim(slot: string) {
   const sk = skillAt(K.kitRace(), slot); if (!sk?.aim) return false;
   /* 10/11 (Erling: "magia de mira, se eu clicar duas vezes ela vai sozinha num bicho, nunca erra no vazio"): apertar de novo com a mira
      aberta lança no inimigo mais perto dentro do alcance (empate: o mais perto do mouse). Sem inimigo no alcance, só fecha a mira. */
-  if (aimSlot === slot) { if (!autoFire(slot, sk)) { cancelAim(); K.game.logMsg(`${sk.name}: nenhum inimigo ao alcance.`, '#c8c0a8'); } return true; }
+  if (aimSlot === slot) { if (!autoFire(slot, sk)) { cancelAim(); K.game.logMsg(tr('mira.sem_alvo', { magia: sk.name }), '#c8c0a8'); } return true; }
   if (locked(sk)) return true;
   const sc = K.tree.scale(sk.id); setCombat(true); aimSlot = slot; guardCone = false; aim.show({ ...sk.aim, radius: sk.aim.radius * sc.area, range: sk.aim.range * sc.range, label: sk.name }); document.querySelector(`.slot[data-k="${slot}"]`)?.classList.add('aim');
   return true;

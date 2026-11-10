@@ -1,0 +1,332 @@
+{
+ "_LEIA": "Game text in English. Key = what the code uses; value = the sentence. {nome} and ${nome} are filled in by the game. A key ending in #1 is the singular form. Only change the values.",
+ "ataque.inicio": "⚔ {lider} comes out of the woods and attacks {vila}! The guard runs to the square.",
+ "ataque.inicio.bando": "⚔ {lider} and company come out of the woods and attack {vila}! The guard runs to the square.",
+ "ataque.vitoria": "✦ {vila} breathes again. The townsfolk step out of their houses to thank you.",
+ "ataque.dispersa": "The pack scatters into the woods around {vila}.",
+ "fama.defendeu": "helped defend {vila}",
+ "fama.venceu": "defeated {inimigo}",
+ "mira.sem_alvo": "{magia}: no enemy in range.",
+ "lvlup.atributos": "{n} attributes",
+ "lvlup.atributos#1": "{n} attribute",
+ "lvlup.atributos.dica": "You have {n} attribute points to spend (C)",
+ "lvlup.atributos.dica#1": "You have {n} attribute point to spend (C)",
+ "lvlup.classe": "{n} class points",
+ "lvlup.classe#1": "{n} class point",
+ "lvlup.classe.dica": "You have {n} class points for spells, passives and talents (K)",
+ "lvlup.classe.dica#1": "You have {n} class point for spells, passives and talents (K)",
+ "monstro.cura.goblin_shaman": "Mud Mending",
+ "monstro.cura.cultist": "Blood Pact",
+ "monstro.cura.pilgrim": "Leaf Blessing",
+ "monstro.cura.fairyqueen": "Fairy Dust",
+ "monstro.cura.necro": "Bone Mending",
+ "monstro.invoca.necro": "Rise!",
+ "monstro.invoca.lich": "Grave Flames",
+ "monstro.invoca.broodmother": "The brood awakens",
+ "monstro.invoca.goblin_chief": "Goblins, here!",
+ "monstro.invoca.spirit_lord": "Lament of Souls",
+ "monstro.grito.alpha": "Pack Howl",
+ "monstro.grito.werewolf": "Moon Howl",
+ "monstro.grito.bandit_chief": "Get them!",
+ "monstro.grito.goblin_chief": "War Cry",
+ "monstro.grito.draugr_bers": "Fury of the North",
+ "monstro.foge.lobo": [
+  "whimpering, it backs away",
+  "it limps away"
+ ],
+ "monstro.foge.salteador": [
+  "Enough! Enough!",
+  "Not worth dying for!",
+  "Run, run!"
+ ],
+ "monstro.foge.goblin": [
+  "Aiii! Nyek nyek!",
+  "Goblin runs!"
+ ],
+ "guarda.grito": [
+  "For the village!",
+  "Guards, with me!",
+  "No one gets through!",
+  "Close the line, close the line!",
+  "Back to the woods, beast!",
+  "Protect the houses!"
+ ],
+ "bark.manha": [
+  "The rooster crowed twice. Either rain or death.",
+  "Hot bread in the square, first come first served.",
+  "Sleep well, {nome}? I didn't. The dogs howled all night.",
+  "A morning this cold calls for broth.",
+  "Is the gate open yet? The woodcutters want to leave early."
+ ],
+ "bark.dia": [
+  "Sun's high. Good for drying leather, bad for whoever works the forge.",
+  "If you go into the woods, be back before dark.",
+  "The market is packed today. Anyone seen Thorin?",
+  "They say in Askavik even the alleys are paved with stone.",
+  "Who dropped a bucket in the well? Again?"
+ ],
+ "bark.noite": [
+  "Close the window, it's night already.",
+  "At night not even the dog goes out alone.",
+  "Did you hear that? No… must have been the wind.",
+  "Light the lamp, the dark here has an owner.",
+  "Come back early tomorrow, {nome}. The night charges whoever walks in it.",
+  "The owls are quiet. That's never good."
+ ],
+ "bark.frio": [
+  "This cold gets into your bones and moves in.",
+  "Got firewood at home? I don't.",
+  "Snow before the week is out, I'd bet my cap.",
+  "Rub your hands, {nome}, or the sword will slip."
+ ],
+ "bark.calor": [
+  "What heat. The beer gets warm before it reaches your mouth.",
+  "Even the flies are tired today.",
+  "In the shade of the temple you can breathe."
+ ],
+ "bark.lua": [
+  "The moon is bleeding… Shut everything, for the Eye's sake.",
+  "Blood Moon night: the Count's spawn come out to hunt.",
+  "My grandfather used to say: when the moon turns red, the wolf remembers it was once a man.",
+  "Don't stare at it, {nome}. They say it stares back.",
+  "Tonight even the dead in the graveyard are restless."
+ ],
+ "bark.aurora": [
+  "Dawn Day! Smell that? It's Auréon passing by.",
+  "The paladins have been singing since early. Makes you want to believe.",
+  "Today any kindness counts double. Make the most of it, {nome}.",
+  "See the sparkles falling? My daughter wants to keep one in a jar."
+ ],
+ "bark.combate": [
+  "Look out! Behind you!",
+  "Hit it, {nome}! Hit it!",
+  "Somebody call the guard!",
+  "By the Eye, don't let it reach the houses!",
+  "Yes! One more like that and the village sleeps in peace."
+ ],
+ "bark.ferido": [
+  "You're bleeding, {nome}. Sit down a moment.",
+  "The healer has ointment. Go before you drop.",
+  "With that face even I could beat you. Eat something!",
+  "Don't die on my doorstep, please."
+ ],
+ "bark.montado": [
+  "Fine horse. Take care of it, good horses don't grow on trees.",
+  "Easy with that beast in the square, there are children!",
+  "How much did that mount cost? No, don't tell me. I'll cry."
+ ],
+ "bark.pet": [
+  "What a lovely {pet}! Can I pet it?",
+  "That {pet} already stole bread off my table.",
+  "Take good care of {pet}, a loyal animal is worth more than gold.",
+  "Hey {pet}! Come here, come!"
+ ],
+ "bark.novato": [
+  "You the new one? You look like you woke up yesterday.",
+  "First time in Karmika? Don't eat the blue mushrooms.",
+  "Take it easy, {nome}. Rats bite too."
+ ],
+ "bark.veterano": [
+  "They say you've brought down something big, {nome}.",
+  "Look who's back. The village is safer with you here.",
+  "My son wants to be like you. I told him he has to eat his greens first."
+ ],
+ "bark.luz": [
+  "The village speaks well of you, {nome}.",
+  "Good people still exist. May the Eye keep you, {nome}.",
+  "The children say you're a hero. Don't let it go to your head."
+ ],
+ "bark.sombra": [
+  "…don't talk to me. I heard what you did.",
+  "Hide the purse, Marta, look who's coming.",
+  "Your eyes have changed, {nome}. The dogs can tell.",
+  "There's more in your shadow than there is in you."
+ ],
+ "bark.vam": [
+  "So pale… are you sick?",
+  "He didn't eat a thing at the tavern. Again.",
+  "Garlic on the door, Marta. Now."
+ ],
+ "bark.lob": [
+  "Smells like wet dog… is that you?",
+  "Did your eyes just glow? No, must have been the lantern.",
+  "The village dogs go quiet when you pass. Strange."
+ ],
+ "bark.mag": [
+  "A mage in the village! Think he'll fix the well with magic?",
+  "Keep that staff away from my chickens."
+ ],
+ "bark.bru": [
+  "Cross yourself, girl. It's the warlock.",
+  "They say a warlock pays the price with his own shadow.",
+  "I won't take your coin. What if it's cursed."
+ ],
+ "bark.pal": [
+  "A paladin of Auréon! Will you bless my son?",
+  "With you here I sleep with the window open.",
+  "The armor shines even at night, look at that."
+ ],
+ "bark.cac": [
+  "A hunter from the Bastion… who died?",
+  "If you're here, there's a demon nearby.",
+  "Silver on the belt. So what they say is true."
+ ],
+ "bark.tecno": [
+  "What's that noise in your chest? A tin heart?",
+  "The Academy sent another one. Careful with that reactor near the hay.",
+  "My grandfather said machines have no soul. Do you?"
+ ],
+ "bark.gue": [
+  "A warrior of the North! Odin still sends his own.",
+  "Easy with that axe, the village is small.",
+  "Nice scars. How many enemies was that?"
+ ],
+ "bark.rep_alta": [
+  "Look who's here! Sit down, {nome}, make yourself at home.",
+  "My mother prays for you every night. Really.",
+  "If you need anything, just ask. Anything.",
+  "The children play at being you, did you know?",
+  "I saved the best piece of bread for you."
+ ],
+ "bark.rep_baixa": [
+  "We don't want trouble here.",
+  "The guards have their eye on you.",
+  "Get out of here before I call someone.",
+  "No shopkeeper here will give you a fair price."
+ ],
+ "bark.despedida": [
+  "So it's true? You're leaving Karmika?",
+  "The village will be quieter without you, {nome}.",
+  "Take a piece of cheese for the road. Take it!",
+  "I'll miss you. Don't tell anyone I said that.",
+  "Come back now and then, you hear? Promise.",
+  "Garrick pretends otherwise, but he's proud."
+ ],
+ "bark.festa": [
+  "To {nome}'s health!",
+  "More beer here! The dwarf brought a barrel for the whole village!",
+  "Look at the fireworks! Look!",
+  "This meat is divine, who roasted it?",
+  "May your road be light, {nome}!",
+  "Somebody stop Bento before he sings again.",
+  "Dance, {nome}! Tonight the party is yours!"
+ ],
+ "bark.volta": [
+  "You're back! The party is still the talk of the tavern.",
+  "Well look at that, the hero of Karmika home again!",
+  "Tell us, tell us: what's the world like out there?",
+  "Your seat at the table is still saved.",
+  "Lúcia will be happy to see you. Bento too."
+ ],
+ "bark.r_guarda": [
+  "Stay inside the walls after sundown, {nome}.",
+  "Seen anyone strange on the road? Let me know.",
+  "I've guarded this gate since before you could walk."
+ ],
+ "bark.r_ferreiro": [
+  "The forge doesn't wait. Cold iron doesn't forgive.",
+  "Bring ore and I'll work miracles.",
+  "That blade of yours needs an edge, you know?"
+ ],
+ "bark.r_taverna": [
+  "Stew of the day: whatever was there yesterday.",
+  "Karmika beer, best in the valley. The only one, but the best.",
+  "Sit down, {nome}, the corner table is free."
+ ],
+ "bark.r_mercador": [
+  "Good price, today only. Tomorrow too.",
+  "I buy everything that shines and half of what doesn't.",
+  "Gold in one hand, goods in the other. Simple."
+ ],
+ "bark.r_fe": [
+  "The Eye of Marghar sees what you do, {nome}. Everything.",
+  "Pray before you sleep. Those who don't pray, dream.",
+  "Every soul comes back. Mind what you carry."
+ ],
+ "fofoca.luz": [
+  [
+   "See who just passed? That's {nome}.",
+   "Good people. Helped the miller's widow without asking for a thing."
+  ],
+  [
+   "They say {nome} never leaves anyone behind.",
+   "The Eye must like them. Luck walks alongside."
+  ],
+  [
+   "Yesterday {nome} paid for the whole table's beer.",
+   "And didn't even brag about it. That's rare."
+  ],
+  [
+   "If everyone were like {nome}…",
+   "…the guard would have to find other work."
+  ],
+  [
+   "My daughter wants to be like {nome}.",
+   "She could have a worse example."
+  ]
+ ],
+ "fofoca.neutro": [
+  [
+   "Who's that over there?",
+   "{nome}. Nobody really knows where they came from."
+  ],
+  [
+   "{nome} goes armed even to buy bread.",
+   "In times like these, so would I."
+  ],
+  [
+   "Think {nome} will stay around long?",
+   "People like that never stay. The road calls."
+  ],
+  [
+   "They say {nome} has died once already.",
+   "Everyone has died once. Ask the Eye."
+  ]
+ ],
+ "fofoca.sombra": [
+  [
+   "Don't look now… it's {nome}.",
+   "Hide the purse. And the chickens."
+  ],
+  [
+   "I heard ugly things about {nome}.",
+   "Me too. And I believe half, which is plenty."
+  ],
+  [
+   "Why doesn't the guard arrest {nome}?",
+   "Because nobody wants to be the first to try."
+  ],
+  [
+   "{nome} greeted my husband today.",
+   "Pray for him, then."
+  ],
+  [
+   "Seen {nome}'s shadow? It lags behind.",
+   "Shh. They might hear."
+  ]
+ ],
+ "fofoca.feito.bom": [
+  [
+   "Did you know? {nome} {feito}.",
+   "Heard it at the tavern. I bought a round in their honor."
+  ],
+  [
+   "They say {nome} {feito}.",
+   "About time someone did."
+  ],
+  [
+   "{nome} {feito}, can you believe it?",
+   "I can. Saw it with my own eyes."
+  ]
+ ],
+ "fofoca.feito.mau": [
+  [
+   "Did you hear? {nome} {feito}.",
+   "May the Eye have mercy on them. I won't."
+  ],
+  [
+   "They say {nome} {feito}.",
+   "Lock your door tonight, all right?"
+  ]
+ ]
+}
