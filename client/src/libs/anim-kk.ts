@@ -20,7 +20,7 @@ const ACT: Partial<Record<Action, string>> = {
   thrust1: '1H_Melee_Attack_Stab', thrust2: 'Dualwield_Melee_Attack_Stab', stab: 'Dualwield_Melee_Attack_Stab', lowcut: '1H_Melee_Attack_Slice_Horizontal', claw1: 'Dualwield_Melee_Attack_Slice', claw2: 'Dualwield_Melee_Attack_Chop',
   kick: 'Unarmed_Melee_Attack_Kick', bash: 'Block_Attack', parry: 'Block_Attack', block: 'Blocking', hit: 'Hit_A',
   cast: 'Spellcast_Shoot', skyraise: 'Spellcast_Raise', breath: 'Spellcast_Long', dodge: 'Dodge_Backward', dash: 'Dodge_Forward', rush: 'Dodge_Forward', charge: 'Dodge_Forward',
-  throw: 'Throw', kthrow: 'Throw', drink: 'Use_Item', herb: 'PickUp', plant: 'PickUp', skin: 'Interact', dance: 'Cheer',
+  chop: '1H_Melee_Attack_Chop', mine: '2H_Melee_Attack_Chop', throw: 'Throw', kthrow: 'Throw', drink: 'Use_Item', herb: 'PickUp', plant: 'PickUp', skin: 'Interact', dance: 'Cheer',
   shoot: '1H_Ranged_Shoot', aim1: '1H_Ranged_Aiming', draw: '2H_Ranged_Aiming',
 };
 const LOOP = { idle: 'Idle', combat: '2H_Melee_Idle', walk: 'Walking_A', run: 'Running_A', back: 'Walking_Backwards' };
@@ -50,7 +50,9 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
     apply(hero: Hero3D) {
       const now = performance.now(), dt = Math.min(0.1, (now - last) / 1000); last = now; if (!ready) return;
       const h = hero as Hero3D & { riding?: boolean; sit?: number; swim?: boolean; kneel?: boolean; dead?: boolean };
-      if (h.riding || (h.sit ?? 0) > 0.05 || h.swim || h.kneel) { has = false; return; } // montado, sentado, nadando, ajoelhado: fica o procedural
+      if (h.riding || h.swim) { has = false; return; } // montado e nadando: fica o procedural
+      /* sentado (fogueira, banco, taverna) e ajoelhado (colhendo, rezando): poses da KayKit */
+      if ((h.sit ?? 0) > 0.05 || h.kneel) { const sp2 = pose(h.kneel ? 'PickUp' : 'Sit_Floor_Idle'); if (sp2) { loopT += dt; put(sp2, h.kneel ? sp2.dur * 0.45 : loopT % sp2.dur, h.kneel ? 1 : Math.min(1, h.sit ?? 1)); model.updateMatrixWorld(true); } return; }
       const p0 = hero.root.position; if (has && dt > 0) { const d = Math.hypot(p0.x - prev.x, p0.z - prev.z) / dt; sp += (Math.min(12, d) - sp) * Math.min(1, dt * 10); } prev.copy(p0); has = true;
       /* camada de movimento: parado / guarda / andando / correndo */
       const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
