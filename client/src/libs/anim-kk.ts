@@ -17,7 +17,10 @@ export const KK_ON = (() => { try { return !/[?&]anim=proc/.test(location.search
    tecnocrata, de corpo mais forte; magos, bruxos e caçadores são mais fit"). O que o rig grande não tem (arco, ferramentas, sentar…)
    o personagem grande pega do médio. */
 const LARGE_KITS = new Set(['nordic', 'lob', 'tecno']);
-let kit = ''; export function kkSetKit(k: string) { kit = k; }
+let kit = '', weapon = ''; export function kkSetKit(k: string) { kit = k; }
+/** 10/11: a arma na mão escolhe o jeito do golpe (arco, besta/fogo, duas mãos, adagas, porrete) */
+export function kkSetWeapon(base: string) { weapon = base || ''; }
+const W2H = /Martelo|Marreta|Machado Grande|Machado de Guerra|Alabarda|Montante|Espad[ãa]o|Clava|Malho|Lança|Grande/i, WBOW = /Arco/i, WGUN = /Besta|Pistola|Rev[óo]lver|Escopeta|Rifle|Gatling|Bacamarte|Mosquete|Lança-?chamas|Pulverizador/i, WDAG = /Adaga|Kunai|Punhal|Garras/i, WCLUB = /Porrete|Maça|Mangual/i;
 const large = () => LARGE_KITS.has(kit);
 type AM = Partial<Record<Action, string>>;
 /** ação do jogo → animação (M = rig médio, L = rig grande). Duas mãos, duas armas e desarmado têm as próprias. */
@@ -32,13 +35,23 @@ const ACT_M: AM = {
   shoot: 'M:Ranged_1H_Shoot', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', chop: 'M:Chop', mine: 'M:Pickaxe', fishcast: 'M:Fishing_Cast',
 };
 const ACT_L: AM = { combo1: 'L:Melee_1H_Slash', combo2: 'L:Melee_1H_Slash', combo3: 'L:Melee_2H_Attack', combo4: 'L:Melee_1H_Stab', attack: 'L:Melee_1H_Slash',
-  cleave1: 'L:Melee_2H_Attack', cleave2: 'L:Melee_2H_Slam', cleave3: 'L:Melee_2H_Attack', cleave4: 'L:Melee_2H_Slam', slam: 'L:Melee_2H_Slam', quake: 'L:Melee_2H_Slam',
+  cleave1: 'L:Melee_2H_Attack', cleave3: 'L:Melee_2H_Attack', /* o Melee_2H_Slam do rig grande deita o corpo de bruços: fica a pancada do médio */
   claw1: 'L:Melee_Dualwield_Slash', claw2: 'L:Melee_Dualwield_SlashCombo', bite: 'L:Melee_Unarmed_Smash', kick: 'L:Melee_Unarmed_Kick', clubsm: 'L:Melee_Unarmed_Smash',
   bash: 'L:Melee_Block_Attack', parry: 'L:Melee_Block_Attack', block: 'L:Melee_Blocking', hit: 'L:Hit_A', dodge: 'L:Dodge_Backwards', dash: 'L:Dodge_Forward', rush: 'L:Dodge_Forward', charge: 'L:Dodge_Forward', dance: 'L:Flexing' };
-const actOf = (a: Action) => (large() ? ACT_L[a] : undefined) ?? (kit === 'tecno' && a === 'shoot' ? 'M:Ranged_2H_Shoot' : undefined) ?? ACT_M[a];
+/** pela arma: o que muda em cima da classe */
+const byWeapon = (a: Action): string | undefined => {
+  if (WBOW.test(weapon)) return ({ shoot: 'M:Ranged_Bow_Release', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', attack: 'M:Ranged_Bow_Release', combo1: 'M:Ranged_Bow_Release', combo2: 'M:Ranged_Bow_Release', combo3: 'M:Ranged_Bow_Release_Up', combo4: 'M:Ranged_Bow_Release' } as AM)[a];
+  if (WGUN.test(weapon)) { const two = /Besta de Repeti|Escopeta|Rifle|Gatling|Mosquete|Bacamarte|Lança-?chamas|Pulverizador/i.test(weapon); return ({ shoot: two ? 'M:Ranged_2H_Shoot' : 'M:Ranged_1H_Shoot', aim1: two ? 'M:Ranged_2H_Aiming' : 'M:Ranged_1H_Aiming', draw: two ? 'M:Ranged_2H_Reload' : 'M:Ranged_1H_Reload' } as AM)[a]; }
+  if (W2H.test(weapon)) return ({ combo1: 'M:Melee_2H_Attack_Slice', combo2: 'M:Melee_2H_Attack_Chop', combo3: 'M:Melee_2H_Attack_Spin', combo4: 'M:Melee_2H_Attack_Stab', attack: 'M:Melee_2H_Attack_Slice' } as AM)[a];
+  if (WDAG.test(weapon)) return ({ combo1: 'M:Melee_Dualwield_Attack_Slice', combo2: 'M:Melee_Dualwield_Attack_Stab', combo3: 'M:Melee_Dualwield_Attack_Chop', combo4: 'M:Melee_1H_Attack_Stab', attack: 'M:Melee_Dualwield_Attack_Stab' } as AM)[a];
+  if (WCLUB.test(weapon)) return ({ combo1: 'M:Melee_1H_Attack_Chop', combo2: 'M:Melee_1H_Attack_Slice_Horizontal', combo3: 'M:Melee_1H_Attack_Jump_Chop', combo4: 'M:Melee_1H_Attack_Chop' } as AM)[a];
+  return undefined; };
+const actOf = (a: Action) => byWeapon(a) ?? (large() ? ACT_L[a] : undefined) ?? (kit === 'tecno' && a === 'shoot' ? 'M:Ranged_2H_Shoot' : undefined) ?? ACT_M[a];
+/** 10/11 (Erling: "a girada com espada pode ser 40% mais rápida, tem que ser mais mortal"): giros tocam mais depressa (e emendam) */
+const SPEED: Record<string, number> = { 'M:Melee_2H_Attack_Spin': 1.4, 'L:Melee_2H_Attack': 1.15, 'M:Melee_2H_Attack_Spinning': 1.4 };
 const loops = () => large()
   ? { idle: 'L:Idle_A', combat: kit === 'lob' ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
-  : { idle: 'M:Idle_A', combat: kit === 'mag' || kit === 'bru' ? 'M:Melee_Unarmed_Idle' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: kit === 'elf' || kit === 'cac' ? 'M:Running_HoldingBow' : 'M:Running_A' };
+  : { idle: 'M:Idle_A', combat: WBOW.test(weapon) ? 'M:Ranged_Bow_Idle' : WGUN.test(weapon) ? 'M:Ranged_2H_Aiming' : kit === 'mag' || kit === 'bru' ? 'M:Melee_Unarmed_Idle' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: WBOW.test(weapon) ? 'M:Running_HoldingBow' : WGUN.test(weapon) ? 'M:Running_HoldingRifle' : 'M:Running_A' };
 const FILES = ['rig_large_combatmelee', 'rig_large_general', 'rig_large_movementadvanced', 'rig_large_movementbasic', 'rig_large_simulation', 'rig_medium_combatmelee', 'rig_medium_combatranged', 'rig_medium_general', 'rig_medium_movementadvanced', 'rig_medium_movementbasic', 'rig_medium_simulation', 'rig_medium_tools'];
 
 let SRC: Promise<{ scenes: Record<'M' | 'L', THREE.Object3D>; clips: Map<string, { clip: THREE.AnimationClip; rig: 'M' | 'L' }> } | null> | null = null;
@@ -76,10 +89,10 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       const p0 = hero.root.position; if (has && dt > 0) { const d = Math.hypot(p0.x - prev.x, p0.z - prev.z) / dt; sp += (Math.min(12, d) - sp) * Math.min(1, dt * 10); } prev.copy(p0); has = true;
       /* camada de movimento: parado / guarda / andando / correndo */
       const LOOP = loops(); const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
-      if (lp) { loopT += dt * (loopName === LOOP.run ? Math.max(0.8, sp / 6.5) : loopName === LOOP.walk ? Math.max(0.7, sp / 2.2) : 1); put(lp, loopT % lp.dur, loopName === LOOP.walk || loopName === LOOP.run ? 0.7 : 1, false); } /* andar/correr: 70% KayKit + 30% o nosso (menos desenho animado) */
+      if (lp) { loopT += dt * (loopName === LOOP.run ? Math.max(0.8, sp / 6.5) : loopName === LOOP.walk ? Math.max(0.7, sp / 2.2) : 1); put(lp, loopT % lp.dur, loopName === LOOP.walk || loopName === LOOP.run ? 0.7 : 1, kit === 'dwarf' && loopName === LOOP.walk); } /* o anão anda com um pulinho de anão (Erling) */ /* andar/correr: 70% KayKit + 30% o nosso (menos desenho animado) */
       /* camada da ação (golpe, magia, esquiva…): no MESMO progresso da ação do jogo; entra e sai suave */
       const an = hero.acting && hero.actName ? actOf(hero.actName) : undefined;
-      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP; const fade = Math.min(1, (1 - k) * 6); put(ap, k * ap.dur, wAct * fade); } }
+      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); put(ap, ((k * spd) % 1) * ap.dur, wAct * fade); } }
       else { lastAct = null; wAct = 0; }
       model.updateMatrixWorld(true);
     },
