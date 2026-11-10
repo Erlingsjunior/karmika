@@ -35,7 +35,15 @@ app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,IntensiveWakeUpThrottling');
 app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
 app.commandLine.appendSwitch('max-active-webgl-contexts', '32');
+/* 10/11 (Erling: "uma dist que priorize o game e reserve a RAM possível para o fps"): o JavaScript do jogo pode usar até 1/4 da RAM
+   (16 GB → 4 GB; mín. 2 GB, máx. 8 GB) — menos paradas de coleta de lixo no meio da luta; a placa de vídeo (integrada usa a RAM) ganha mais
+   memória de trabalho; e o Windows não põe o jogo para dormir enquanto ele está aberto */
+{ const gb = os.totalmem() / 2 ** 30, heap = Math.max(2048, Math.min(8192, Math.round(gb / 4) * 1024));
+  app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${heap} --max-semi-space-size=64`);
+  app.commandLine.appendSwitch('force-gpu-mem-available-mb', String(gb >= 15 ? 4096 : gb >= 7 ? 2048 : 1024));
+  console.log(`[karmika] RAM ${gb.toFixed(1)} GB → memória do jogo ${heap} MB`); }
 function gamePriority() {
+  try { if (!globalThis.__kmkPsb) globalThis.__kmkPsb = powerSaveBlocker.start('prevent-app-suspension'); } catch { /* */ }
   const P = os.constants.priority, set = (pid, pr) => { try { os.setPriority(pid, pr); } catch { /* sem permissão: segue normal */ } };
   set(process.pid, P.PRIORITY_ABOVE_NORMAL);
   try { for (const m of app.getAppMetrics()) if (m.type === 'GPU' || m.type === 'Tab' || m.type === 'Renderer') set(m.pid, P.PRIORITY_HIGH); } catch { /* */ }
