@@ -2,6 +2,7 @@ import { buildSpecies } from './flora3d';
 
 
 import { installBvh } from './libs/bvh';
+import { quarksInit, quarksUpdate } from './libs/quarks';
 import { mirrorUpdate } from './espelho';
 import { updateCharLod } from './sistemas/lod-personagens';
 import { type Guild } from './social';
@@ -417,6 +418,7 @@ function hookHero() {
 hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; /** 08/11: o Grande Salão de Brasaforja (NPCs de dentro: npcs.ts inside) */ hall?: boolean; canopy?: boolean } | null = null;
+if (!gpuR) quarksInit(scene); /* 10/11 (teste_libs): partículas three.quarks — só no WebGL */
 const game = createGameplay({ takenK: () => (instintoSys.instinctOn && !inside ? 1.1 : 1), scene, particles, camera, audio, canvas, getHero: () => hero, weaponBase: () => inv.eq.weapon?.base ?? '', getRaceColor: () => RACE_COL[kindOf(state.race)], dummies: city.quartel.dummies.map((q) => new THREE.Vector3(q.x * T, 0, q.y * T)), world: { spawns: city.spawns, isWall: (x, z) => !inside && city.map[Math.floor(z / T)]?.[Math.floor(x / T)] === 'wall', townAt: (x, z) => { if (inside) return false; const tx = x / T, ty = z / T; for (const st of city.settlements) if (Math.hypot(st.x - tx, st.y - ty) < st.radius + (st.kind === 'city' ? 4 : 1.5)) return true; return Math.hypot(CITY.x - tx, CITY.y - ty) < 24; }, guardNear: (x, z) => { if (inside) return false; for (const n of npcSys.npcs) { if (!n.hero.root.visible || !/^(Guarda|Capit[ãa]o|Vigia|Sentinela)/.test(n.def.role) && !/^(Guarda|Capit[ãa]o|Vigia)/.test(n.def.name)) continue; const dx = n.pos.x - x, dz = n.pos.z - z; if (dx * dx + dz * dz < 49) return true; } return false; }, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; if (!t || !isWalkable(t)) return false; /* 09/11 (Erling: "animais não atravessam muros"): bicho respeita muralha, muro baixo e sólidos como o herói */ if (rampartAt(tx, ty)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } } } });
 honorLog((t, c) => game.logMsg(t, c)); /* 08/11 Honra Kármica no registro */
 /** retrato isolado (bestiário e compêndio): renderiza um objeto sozinho, fundo transparente, luz de estúdio, e devolve um PNG */
@@ -2806,7 +2808,7 @@ function frameBody() {
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }
   { const cs = instintoSys.stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t); emoteTick(); decoTick();
   game.setWarrior(isWarrior()); needGauge();
-  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t); mirrorUpdate(dt);
+  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t); mirrorUpdate(dt); quarksUpdate(dt);
   updateFacSigil(t); updateOutSigil(t);
   pm('herói.update');
   updateXray(dt); updateEnvelopes(t);
