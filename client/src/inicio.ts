@@ -14,7 +14,7 @@ interface Slots { active: number; meta: (SlotMeta | null)[]; servers: string[] }
 /** chaves que são da máquina (opções, janelas, premium, rede), não do personagem */
 const GLOBAL = ['karmika.slots', 'karmika.slot.', 'karmika.opts', 'karmika.pix', 'karmika.music', 'karmika.shadows', 'karmika.mapsize', 'karmika.minisize', 'karmika.minizoom', 'karmika.minipos', 'karmika.artskin', 'karmika.rows', 'karmika.ui.', 'karmika.win.', 'karmika.coop.', 'karmika.run', 'karmika.showHelm', 'karmika.acc', 'karmika.premium', 'karmika.barlock'];
 const isChar = (k: string) => k.startsWith('karmika.') && !GLOBAL.some((g) => k === g || k.startsWith(g));
-const NSLOT_FREE = 3, NSLOT_PREMIUM = 5; /* 09/11 (Erling: "usuário premium tem 5 espaços de personagem") */
+const NSLOT_FREE = 3, NSLOT_PREMIUM = 6; /* 09/11 (Erling: "usuário premium tem 5 espaços" → "faz 6 slots para premium": duas fileiras de 3, sem buraco) */
 const nslot = () => (isPremium() ? NSLOT_PREMIUM : NSLOT_FREE);
 const BOOT = 'karmika.boot';
 
@@ -115,7 +115,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <div class="in-bar"><i style="width:${(k * 100).toFixed(1)}%"></i><span>${upd.total ? `${(upd.got / 1048576).toFixed(1)} / ${(upd.total / 1048576).toFixed(1)} MB` : 'conferindo versões…'}</span></div><p class="in-mut">${esc(upd.file)}</p></div>`; }
     if (step === 'chars') refreshActive();
     if (step === 'chars' && server) o.onServer?.(server);
-    if (step === 'chars') body = `<div class="in-chars"><h2>Seus personagens</h2><p class="in-mut">Escolha o seu Caminhante (até ${nslot()} por máquina${isPremium() ? ' · ✦ Premium: 5 espaços' : ' · Premium: 5 espaços'}). Cada um tem o seu próprio save; depois você volta e escolhe onde jogar.</p><div class="in-slots">${s.meta.slice(0, nslot()).map((m, i) => m ? `
+    if (step === 'chars') body = `<div class="in-chars"><h2>Seus personagens</h2><p class="in-mut">Escolha o seu Caminhante (até ${nslot()} por máquina${isPremium() ? ' · ✦ Premium: 6 espaços' : ' · Premium: 6 espaços'}). Cada um tem o seu próprio save; depois você volta e escolhe onde jogar.</p><div class="in-slots">${s.meta.slice(0, nslot()).map((m, i) => m ? `
         <div class="in-slot ${i === s.active ? 'act' : ''}" data-s="${i}"><div class="in-pic">${(m.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${m.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : m.pic ? `<img src="${m.pic}" alt="">` : `<span>${m.origin === 'dwarf' ? '⚒' : m.origin === 'elf' ? '❦' : '⚔'}</span>`}</div>
           <b>${esc(m.name)}</b><small>Nível ${m.lvl}${m.cls ? ' · ' + esc(m.cls) : ''}</small><em>${m.origin === 'dwarf' ? 'Anão' : m.origin === 'elf' ? 'Elfo' : 'Humano'} · ${m.sex === 'm' ? 'Homem' : 'Mulher'}</em>
           <button data-play="${i}" class="gold">${i === s.active ? '✔ Escolhido' : 'Escolher'}</button><button data-del="${i}" class="in-del" title="Apagar este personagem">🗑 Apagar</button></div>`
