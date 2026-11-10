@@ -87,13 +87,19 @@
     /* 10/11: a página de título de cada parte abre sempre à esquerda, com a primeira imagem à direita; se cair à direita, entra uma página em branco antes */
     const pages = [cover]; for (const p of AB) { if (p[0] === '#' && pages.length % 2 === 0) pages.push('<div class="abp abp--blank"></div>'); pages.push(page(p)); } if (pages.length % 2) pages.push(page(null));
     /* folhas: cada folha tem frente (página da direita) e verso (a da esquerda da próxima abertura) */
-    const leaves = []; for (let i = 0; i < pages.length; i += 2) leaves.push([pages[i], pages[i + 1]]);
-    book.innerHTML = '<div class="abook__base"></div>' + leaves.map((l, i) => `<div class="leaf" style="--z:${leaves.length - i}"><div class="leaf__f">${l[0]}</div><div class="leaf__b">${l[1]}</div></div>`).join('');
-    const L = [...book.querySelectorAll('.leaf')]; let at = 0;
-    const narrow = () => matchMedia('(max-width: 760px)').matches;
+    /* 10/11 (Erling: "no celular o artbook fica bugado"): no celular é uma página por vez, então cada página vira uma folha só de frente
+       (antes o verso ficava escondido e metade do livro sumia: títulos e metade das imagens) */
+    const mq = matchMedia('(max-width: 760px)'), narrow = () => mq.matches;
+    let leaves = [], L = [], at = 0, total = 0;
+    const build = () => {
+      if (narrow()) { const one = pages.filter((p) => !p.includes('abp--blank')); leaves = one.map((p) => [p, '']); total = one.length - 1; }
+      else { leaves = []; for (let i = 0; i < pages.length; i += 2) leaves.push([pages[i], pages[i + 1]]); total = pages.length - 1; }
+      book.innerHTML = '<div class="abook__base"></div>' + leaves.map((l, i) => `<div class="leaf" style="--z:${leaves.length - i}"><div class="leaf__f">${l[0]}</div><div class="leaf__b">${l[1]}</div></div>`).join('');
+      L = [...book.querySelectorAll('.leaf')]; at = 0; };
+    build();
     const render = () => { L.forEach((lf, i) => { const turned = i < at; lf.classList.toggle('turned', turned); lf.style.zIndex = turned ? 100 + i : leaves.length - i; });
       book.classList.toggle('is-open', at > 0); book.classList.toggle('is-end', at === L.length);
-      n.textContent = at === 0 ? 'capa' : at === L.length ? 'fim' : `${at * 2 - 1}–${at * 2} de ${pages.length - 1}`;
+      n.textContent = at === 0 ? 'capa' : at === L.length ? 'fim' : narrow() ? `${at} de ${total}` : `${at * 2 - 1}–${at * 2} de ${total}`;
       ab.querySelector('[data-ab="-1"]').disabled = at === 0; const nx = ab.querySelector('[data-ab="1"]'); nx.disabled = false; nx.classList.toggle('is-restart', at === L.length); nx.textContent = at === L.length ? '↺' : '›'; nx.setAttribute('aria-label', at === L.length ? 'Voltar ao começo' : 'Próxima página'); nx.title = at === L.length ? 'Voltar ao começo' : ''; };
     /* a folha que está virando fica por cima de todas até terminar (na volta ela sumia atrás das outras) */
     const flip = (dir) => { const nx = Math.max(0, Math.min(L.length, at + dir)); if (nx === at) return; const lf = L[dir > 0 ? at : nx]; at = nx; render(); lf.style.zIndex = 900; clearTimeout(lf._t); lf._t = setTimeout(() => render(), 1050); };
@@ -106,7 +112,7 @@
     let sx = 0; book.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
     book.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) flip(dx < 0 ? 1 : -1); });
     addEventListener('keydown', (e) => { const r = ab.getBoundingClientRect(); if (r.top > innerHeight || r.bottom < 0 || document.querySelector('.sheet:not([hidden]), .reader:not([hidden]), .lb:not([hidden])')) return; if (e.key === 'ArrowRight') flip(1); if (e.key === 'ArrowLeft') flip(-1); });
-    void narrow; render();
+    mq.addEventListener('change', () => { build(); render(); }); render();
   }
 
   /* ---- a Bíblia deitada na mesa: clique abre, ler online ou baixar ---- */
