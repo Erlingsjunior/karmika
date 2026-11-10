@@ -85,10 +85,7 @@
       if (!d.ok) { msg.classList.add('err'); msg.textContent = 'Marque a caixa de aceite para receber o convite.'; return; }
       btn.disabled = true; btn.textContent = 'Enviando…';
       try { const r = await fetch('/api/beta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }); const j = await r.json().catch(() => ({}));
-        if (!r.ok && j.relay) { /* o servidor não conseguiu: o navegador envia direto ao FormSubmit */
-          const r2 = await fetch(j.relay, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(j.fields) }); const j2 = await r2.json().catch(() => ({}));
-          if (!r2.ok || String(j2.success) === 'false') { console.warn('beta relay', r2.status, j2); throw new Error('relay'); } }
-        else if (!r.ok) throw new Error(j.error || 'erro'); f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. Fique de olho no seu e-mail: o convite chega antes da próxima rodada.'; btn.textContent = 'Inscrito ✦'; }
+        if (!r.ok) throw new Error(j.error || 'erro'); f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. Fique de olho no seu e-mail: o convite chega antes da próxima rodada.'; btn.textContent = 'Inscrito ✦'; }
       catch (err) { msg.classList.add('err'); msg.textContent = 'Não deu certo agora. Tente de novo em instantes.'; btn.disabled = false; btn.textContent = 'Quero ser beta tester'; } });
   }
 

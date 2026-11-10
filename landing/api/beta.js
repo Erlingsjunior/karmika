@@ -47,6 +47,5 @@ export default async function handler(req, res) {
   }
   if (sent || saved) return res.status(200).json({ ok: true });
   console.error('beta: nada gravou (falta KARMIKA_FORM_EMAIL ou a loja Blob)');
-  /* 10/11: o FormSubmit recusa (403) pedidos vindos de servidor. Então o próprio navegador de quem se inscreve envia direto (relay). */
-  return res.status(503).json({ error: 'envio', relay: to ? `https://formsubmit.co/ajax/${encodeURIComponent(to)}` : '', fields: { _subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, _template: 'table', _captcha: 'false', _replyto: email, Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando } });
+  return res.status(503).json({ error: 'envio' });
 }
