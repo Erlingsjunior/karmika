@@ -591,3 +591,7 @@ main > section { position: relative; isolation: isolate; }
 .dz10 { --s: clamp(60px, 5.8vw, 86px); left: 6%; top: 8%; clip-path: polygon(50% 0, 100% 42%, 50% 100%, 0 42%); background: linear-gradient(160deg, #9aff9a, #1f8a3a); animation-delay: -.6s; }
 .dz10::before { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 41%, rgba(0, 0, 0, .25) 42%, transparent 43%), linear-gradient(115deg, transparent 49%, rgba(255, 255, 255, .25) 50%, transparent 51%), linear-gradient(65deg, transparent 49%, rgba(0, 0, 0, .2) 50%, transparent 51%); }
 .dz10 span { padding-top: 8%; }
+
+/* 10/11: página em branco antes de um título; seta de voltar ao começo no fim do artbook */
+.abp--blank { cursor: default; }
+.abook__nav button.is-restart { font-size: 22px; color: var(--sky2); border-color: rgba(111, 168, 255, .8); box-shadow: 0 0 18px rgba(111, 168, 255, .35); }

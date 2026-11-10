@@ -78,7 +78,8 @@
     let runes = ''; for (let i = 0; i < 7; i++) { const t = 10 + i * 13.3; runes += rr(i, t, 3.2, 5.2) + rr(i + 3, t, 91.8, 5.2); } for (let i = 0; i < 9; i++) { const t = 11 + i * 9.6; runes += rr(i + 1, 3.6, t, 5.2) + rr(i + 4, 91.2, t, 5.2); }
     const corner = (c) => `<i class="cv__c cv__c--${c}"><svg viewBox="0 0 40 40"><path d="M2 2 H30 Q22 8 20 20 Q8 22 2 30 Z"/><circle cx="9" cy="9" r="3"/></svg></i>`;
     const cover = `<div class="abp abp--cover"><span class="cv__f"></span><span class="cv__f2"></span>${runes}${['tl', 'tr', 'bl', 'br'].map(corner).join('')}<img src="/img/logo-brasa.webp" alt=""><b>KARMIKA</b><i>Artbook · Volume I</i><span class="cv__line"></span><small>D2 Studio</small></div>`;
-    const pages = [cover, ...AB.map(page)]; if (pages.length % 2) pages.push(page(null));
+    /* 10/11: a página de título de cada parte abre sempre à esquerda, com a primeira imagem à direita; se cair à direita, entra uma página em branco antes */
+    const pages = [cover]; for (const p of AB) { if (p[0] === '#' && pages.length % 2 === 0) pages.push('<div class="abp abp--blank"></div>'); pages.push(page(p)); } if (pages.length % 2) pages.push(page(null));
     /* folhas: cada folha tem frente (página da direita) e verso (a da esquerda da próxima abertura) */
     const leaves = []; for (let i = 0; i < pages.length; i += 2) leaves.push([pages[i], pages[i + 1]]);
     book.innerHTML = '<div class="abook__base"></div>' + leaves.map((l, i) => `<div class="leaf" style="--z:${leaves.length - i}"><div class="leaf__f">${l[0]}</div><div class="leaf__b">${l[1]}</div></div>`).join('');
@@ -87,10 +88,12 @@
     const render = () => { L.forEach((lf, i) => { const turned = i < at; lf.classList.toggle('turned', turned); lf.style.zIndex = turned ? 100 + i : leaves.length - i; });
       book.classList.toggle('is-open', at > 0); book.classList.toggle('is-end', at === L.length);
       n.textContent = at === 0 ? 'capa' : at === L.length ? 'fim' : `${at * 2 - 1}–${at * 2} de ${pages.length - 1}`;
-      ab.querySelector('[data-ab="-1"]').disabled = at === 0; ab.querySelector('[data-ab="1"]').disabled = at === L.length; };
+      ab.querySelector('[data-ab="-1"]').disabled = at === 0; const nx = ab.querySelector('[data-ab="1"]'); nx.disabled = false; nx.classList.toggle('is-restart', at === L.length); nx.textContent = at === L.length ? '↺' : '›'; nx.setAttribute('aria-label', at === L.length ? 'Voltar ao começo' : 'Próxima página'); nx.title = at === L.length ? 'Voltar ao começo' : ''; };
     /* a folha que está virando fica por cima de todas até terminar (na volta ela sumia atrás das outras) */
     const flip = (dir) => { const nx = Math.max(0, Math.min(L.length, at + dir)); if (nx === at) return; const lf = L[dir > 0 ? at : nx]; at = nx; render(); lf.style.zIndex = 900; clearTimeout(lf._t); lf._t = setTimeout(() => render(), 1050); };
-    ab.addEventListener('click', (e) => { const b = e.target.closest('[data-ab]'); if (b) { flip(+b.dataset.ab); return; }
+    /* 10/11 (Erling): no fim, a seta da direita vira "voltar ao começo" e o livro fecha folha por folha, rápido */
+    const restart = () => { const step = () => { if (at <= 0) return; at--; render(); setTimeout(step, 90); }; step(); };
+    ab.addEventListener('click', (e) => { const b = e.target.closest('[data-ab]'); if (b) { if (b.dataset.ab === '1' && at === L.length) restart(); else flip(+b.dataset.ab); return; }
       const lf = e.target.closest('.leaf'); if (lf && !e.target.closest('[data-lb]')) { const i = L.indexOf(lf); flip(i < at ? -1 : 1); } });
     /* clicar na capa abre o livro (sem abrir o lightbox) */
     book.addEventListener('click', (e) => { if (e.target.closest('.abp--cover')) flip(1); });
