@@ -112,13 +112,20 @@
   /* ---- embaixador: o botão marca a caixa no formulário ---- */
   document.addEventListener('click', (e) => { if (e.target.closest('[data-amb]')) { const c = document.querySelector('#betaForm [name=embaixador]'); if (c) c.checked = true; } });
 
-  /* ---- Brasil: o olho do pergaminho, verde e amarelo, olha e se fecha conforme se desce ---- */
-  if (window.gsap && window.ScrollTrigger && !reduce) {
-    const up = '.brasil__eye .eye__up', dn = '.brasil__eye .eye__dn';
+  /* ---- Brasil: o olho do pergaminho, verde e amarelo (10/11, Erling: "o olho kármico pisca e segue o mouse") ---- */
+  if (window.gsap && document.querySelector('.brasil__eye')) {
+    const svg = document.querySelector('.brasil__eye'), iris = '.brasil__eye .eye__iris', up = '.brasil__eye .eye__up', dn = '.brasil__eye .eye__dn';
     gsap.set(up, { y: -110 }); gsap.set(dn, { y: 110 });
-    gsap.timeline({ scrollTrigger: { trigger: '.brasil', start: 'top 60%', end: 'bottom 40%', scrub: 0.8 } })
-      .to('.brasil__eye .eye__iris', { x: -14, duration: 0.25 }).to('.brasil__eye .eye__iris', { x: 14, duration: 0.3 }).to('.brasil__eye .eye__iris', { x: 0, duration: 0.2 })
-      .to(up, { y: 0, duration: 0.5, ease: 'power2.in' }, '>-0.05').to(dn, { y: 0, duration: 0.5, ease: 'power2.in' }, '<').to('.brasil__eye .eye__line', { opacity: 1, duration: 0.1 }, '>-0.05');
+    const qx = gsap.quickTo(iris, 'x', { duration: 0.35, ease: 'power3.out' }), qy = gsap.quickTo(iris, 'y', { duration: 0.35, ease: 'power3.out' });
+    /* a íris vai na direção do mouse, presa dentro da amêndoa do olho */
+    addEventListener('pointermove', (e) => { const r = svg.getBoundingClientRect(); if (r.bottom < -200 || r.top > innerHeight + 200) return;
+      const cx = r.left + r.width * (608 / 1200), cy = r.top + r.height * (440 / 896), dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 420);
+      qx((dx / d) * 34 * k); qy((dy / d) * 16 * k); }, { passive: true });
+    /* pisca de tempos em tempos (às vezes duas vezes seguidas) */
+    const blink = () => { if (!reduce) { const t = gsap.timeline(); t.to(up, { y: 0, duration: 0.09, ease: 'power2.in' }).to(dn, { y: 0, duration: 0.09, ease: 'power2.in' }, '<').to(up, { y: -110, duration: 0.16, ease: 'power2.out' }).to(dn, { y: 110, duration: 0.16, ease: 'power2.out' }, '<');
+      if (Math.random() < 0.25) t.to(up, { y: 0, duration: 0.08 }).to(dn, { y: 0, duration: 0.08 }, '<').to(up, { y: -110, duration: 0.15 }).to(dn, { y: 110, duration: 0.15 }, '<'); }
+      setTimeout(blink, 2500 + Math.random() * 3500); };
+    setTimeout(blink, 2000);
   }
 })();
 /* as faixas de imagens do mundo também abrem no carrossel */

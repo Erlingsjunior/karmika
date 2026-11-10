@@ -604,3 +604,6 @@ main > section { position: relative; isolation: isolate; }
 /* 10/11 (Erling: "o background pode descer um pouco, preencher mais a tela"): o Limiar com Marghar desce e cresce, e só se apaga bem embaixo */
 .lore::before { top: 12vh !important; width: 84%; -webkit-mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; }
 @media (max-width: 900px) { .lore::before { width: 100%; top: 6vh !important; } }
+/* 10/11 (Erling: "esmaece em um círculo"): o Limiar com Marghar se apaga em volta, sem nenhuma borda reta à vista */
+.lore::before { top: 6vh !important; width: 88%; -webkit-mask-image: radial-gradient(ellipse 52% 50% at 60% 50%, #000 40%, rgba(0, 0, 0, .55) 70%, transparent 100%) !important; mask-image: radial-gradient(ellipse 52% 50% at 60% 50%, #000 40%, rgba(0, 0, 0, .55) 70%, transparent 100%) !important; }
+@media (max-width: 900px) { .lore::before { width: 100%; top: 4vh !important; } }
