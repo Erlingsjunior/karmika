@@ -280,12 +280,15 @@ setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
-export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; /** 03/11: renderizador — 0 Automático, 1 WebGPU, 2 WebGL (vale ao reabrir) */ rend: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
+export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; /** 03/11: renderizador — 0 Automático, 1 WebGPU, 2 WebGL (vale ao reabrir) */ rend: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 10/11: ajuste automático de qualidade (resolução dinâmica + degraus de sombra) */ auto: boolean; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
 let dynK = 1, dynLow = 0, dynHigh = 0; /* resolução dinâmica (ver dynResTick) */
-const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, rend: 0, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0 };
+const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, rend: 0, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0, auto: true };
 const opts: Opts = (() => { try { return { ...OPT_DEF, ...(JSON.parse(localStorage.getItem('karmika.opts.v1') || 'null') ?? { pix: Number(localStorage.getItem('karmika.pix') || 0) || 2, shadows: localStorage.getItem('karmika.shadows') !== '0', music: localStorage.getItem('karmika.music') === '0' ? 0 : 1 }) }; } catch { return { ...OPT_DEF }; } })();
 const saveOpts = () => localStorage.setItem('karmika.opts.v1', JSON.stringify(opts));
-let PIX = Number(new URLSearchParams(location.search).get('pix')) || opts.pix;
+/* 10/11 (Erling: "em tela Full HD o 1 e o 2 ficam com pixel muito grande; 1 e 2 mais detalhados, 3 médio, 4 desempenho"):
+   a opção 1-4 vira o tamanho real do pixel: 1 · 1,5 · 2 · 3 (antes era 1 · 2 · 3 · 4, e o padrão 2 já cortava a tela pela metade). */
+const pixOf = (o: number) => ({ 1: 1, 2: 1.5, 3: 2, 4: 3 } as Record<number, number>)[o] ?? 1.5;
+let PIX = Number(new URLSearchParams(location.search).get('pix')) || pixOf(opts.pix);
 let WORLD_RATIO = opts.wratio; // cenário em 1/WORLD_RATIO da resolução dos personagens // cada pixel do jogo vira PIXxPIX pixels da tela (visual pixel art); ?pix=1 só para inspeção
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -1762,7 +1765,7 @@ const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(
 /* WebGPU: o mesmo quadro (brilho, cor do dia e da noite, vinheta, 16 bits) montado em nós — gpu/impl.ts */
 if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => { try { gp.render(); } catch (e) { gpuErr(e); } }; composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { sc: () => dual.cur(), R: renderer, shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState, limOpen: (i: Parameters<typeof limiar.open>[0]) => limiar.open(i, () => { /* teste */ }), limShot: () => { limiarGL(true); return limGL!.domElement.toDataURL('image/png'); } }; }
 let gfxBloom = 1;
-function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
+function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : pixOf(opts.pix); WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
   const st = m ? THREE.PCFShadowMap /* three 0.18x: o PCFSoft saiu; o PCF com radius faz a borda macia */ : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
   { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuImpl) { /* WebGPU: o ShadowNode acompanha o mapSize sozinho; soltar o alvo deixava a sombra apontando para textura destruída */ sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
@@ -1824,37 +1827,50 @@ export function uiBase() { return Math.max(0.85, Math.min(2, Math.min(innerHeigh
    Desliga com localStorage karmika.autoq = off. */
 const igpu = (() => { try { const c = document.createElement('canvas'), g = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null; if (!g) return false; const e = g.getExtension('WEBGL_debug_renderer_info'); const n = String(e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER)); (g.getExtension('WEBGL_lose_context') as { loseContext(): void } | null)?.loseContext();
   return /Radeon\(TM\) Graphics|Radeon Graphics|Vega|Intel|UHD|Iris|Mali|Adreno|PowerVR|llvmpipe|SwiftShader/i.test(n) && !/RX |Arc /i.test(n); } catch { return false; } })();
-const DYN_MAX = igpu ? 2.0 : 1.6;
-let autoQ = (() => { try { const v = localStorage.getItem('karmika.autoq'); if (v === 'off') return -1; const n = Number(v); return Number.isFinite(n) && v !== null ? Math.max(0, Math.min(3, n)) : igpu ? 1 : 0; } catch { return 0; } })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
-if (igpu && dynK === 1) dynK = 1.3;
+/* 10/11 (Erling: "as opções precisam fazer diferença"; "no Moderno volta a ficar quadriculado e fica travado nessa configuração"):
+   - o ajuste automático mexe POUCO (até 1,35×; 1,5× em vídeo integrado): quem manda no tamanho do pixel é a opção;
+   - ele não se guarda entre sessões (cada abertura começa na qualidade cheia) e pode ser desligado em Opções;
+   - quadros lentos de quem saiu do PC, trocou de janela ou acabou de voltar não contam;
+   - se ele baixar e subir em seguida (gangorra = tranco a cada troca), fica parado 4 min. */
+const DYN_MAX = igpu ? 1.5 : 1.35;
+let autoQ = (() => { try { if (localStorage.getItem('karmika.autoq') === 'off') return -1; } catch { /* */ } return igpu ? 1 : 0; })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
+let dynSkip = 4, dynHold = 0, dynLastUp = -1e9, dynGap = false, lastInputMs = performance.now();
+for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) addEventListener(ev, () => { if (performance.now() - lastInputMs > 45000) dynSkip = Math.max(dynSkip, 3); lastInputMs = performance.now(); }, { passive: true, capture: true });
+document.addEventListener('visibilitychange', () => { dynSkip = Math.max(dynSkip, 4); }); addEventListener('focus', () => { dynSkip = Math.max(dynSkip, 3); }); addEventListener('blur', () => { dynSkip = Math.max(dynSkip, 3); });
 function applyAutoQ() { const q = Math.max(0, autoQ), was = autoQApplied; autoQApplied = q;
   setWorldLite(igpu || q >= 2); /* 09/11: blocos inteligentes — modelos simplificados em todo bloco */
   renderer.shadowMap.autoUpdate = q < 1; if (q >= 1) renderer.shadowMap.needsUpdate = true;
   const sr = q >= 2 ? Math.min(512, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuState.on) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } }
   bloom.enabled = q < 2 && opts.bloom > 0; particles.density = q >= 2 ? Math.min(opts.particles, 0.6) : opts.particles;
   const sh = opts.shadows && q < 3; if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
-  try { localStorage.setItem('karmika.autoq', String(q)); } catch { /* */ }
   if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombras desligadas']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
 /** a cada quadro: no degrau 1+, a sombra só é refeita em quadros alternados */
 function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & 1) === 0; } }
-function autoQTick(fps: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
-  const atMax = dynK >= DYN_MAX - 0.01;
-  if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > 58 && dynK <= 1.31) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
-  if (autoQLow >= 3 && autoQ < 3) { autoQ++; autoQLow = 0; autoQCool = 6; applyAutoQ(); }
-  else if (autoQHigh >= 20 && autoQ > (igpu ? 1 : 0)) { autoQ--; autoQHigh = 0; autoQCool = 10; applyAutoQ(); } }
+function autoQTick(fps: number, hi: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
+  const atMax = dynK >= DYN_MAX - 0.01, nowS = performance.now();
+  if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > hi && dynK <= 1.01) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
+  if (autoQLow >= 4 && autoQ < 3) { if (nowS - dynLastUp < 30000) dynHold = nowS + 240000; autoQ++; autoQLow = 0; autoQCool = 8; applyAutoQ(); }
+  else if (autoQHigh >= 12 && autoQ > (igpu ? 1 : 0) && nowS > dynHold) { autoQ--; autoQHigh = 0; autoQCool = 10; dynLastUp = nowS; applyAutoQ(); } }
 setTimeout(() => { if (autoQ >= 0) applyAutoQ(); }, 0);
-function dynResTick(fps: number) { let on = true; try { on = localStorage.getItem('karmika.dynres') !== '0'; } catch { /* */ } if (!on || document.hidden) { if (dynK !== 1 && !on) { dynK = 1; resize(); } return; }
-  const tgt = Math.min(45, (opts.cap > 0 ? opts.cap : 240) - 8); if (fps < tgt) { dynLow++; dynHigh = 0; } else if (fps > tgt + 13) { dynHigh++; dynLow = 0; } else { dynLow = 0; dynHigh = 0; }
-  if (dynLow >= 2 && dynK < DYN_MAX) { dynK = Math.min(DYN_MAX, dynK + 0.15); dynLow = 0; resize(); } else if (dynHigh >= 5 && dynK > 1) { dynK = Math.max(1, dynK - 0.1); dynHigh = 0; resize(); }
-  autoQTick(fps); }
+function dynResTick(fps: number) { let on = opts.auto !== false; try { if (localStorage.getItem('karmika.dynres') === '0') on = false; } catch { /* */ }
+  if (!on) { if (dynK !== 1) { dynK = 1; resize(); } if (autoQ > (igpu ? 1 : 0)) { autoQ = igpu ? 1 : 0; applyAutoQ(); } return; }
+  const nowS = performance.now(), idle = nowS - lastInputMs > 45000;
+  if (document.hidden || dynGap || idle) { dynGap = false; dynSkip = Math.max(dynSkip, 2); }
+  if (dynSkip > 0) { dynSkip--; dynLow = dynHigh = 0; autoQLow = autoQHigh = 0; return; }
+  const capV = opts.cap > 0 ? opts.cap : 240, tgt = Math.min(45, capV - 8), hi = Math.min(tgt + 8, capV - 6);
+  if (fps < tgt) { dynLow++; dynHigh = 0; } else if (fps > hi) { dynHigh++; dynLow = 0; } else { dynLow = 0; dynHigh = 0; }
+  if (dynLow >= 3 && dynK < DYN_MAX) { if (nowS - dynLastUp < 30000) dynHold = nowS + 240000; /* gangorra: fica parado 4 min */ dynK = Math.min(DYN_MAX, dynK + 0.175); dynLow = 0; resize(); }
+  else if (dynHigh >= 6 && dynK > 1 && nowS > dynHold) { dynK = Math.max(1, dynK - 0.175); dynHigh = 0; dynLastUp = nowS; resize(); }
+  autoQTick(fps, hi); }
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
   const rr = opts.gfx === 1 ? 0 : opts.res; /* Moderno: sempre na resolução nativa do monitor (Quad HD e 4K ficam nítidos de verdade) */
-  const refH = rr > 0 ? Math.min(innerHeight, rr) : innerHeight, k = innerHeight / refH * dynK; // k > 1: desenha menos pixels e estica (dynK: a resolução dinâmica)
+  const modern = opts.gfx === 1, dpr = modern ? Math.min(2, Math.max(1, devicePixelRatio || 1)) : 1; /* Moderno: os pixels de verdade do monitor (telas 4K com escala do Windows ficavam esticadas) */
+  const refH = rr > 0 ? Math.min(innerHeight, rr) : innerHeight, k = innerHeight / refH * dynK / dpr; // k > 1: desenha menos pixels e estica (dynK: a resolução dinâmica)
   const step = Number.isInteger(WORLD_RATIO) ? WORLD_RATIO : WORLD_RATIO * 2; /* 2/3: múltiplo de 3 para o cenário cair em pixel inteiro */
   const w = Math.max(160, Math.floor(innerWidth / k / PIX / step) * step), h = Math.max(120, Math.floor(innerHeight / k / PIX / step) * step);
   renderer.setSize(w, h, false); dual.setSize(w, h);
-  canvas.style.width = '100%'; canvas.style.height = '100%';
+  canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.imageRendering = modern ? 'auto' : ''; /* Moderno nunca fica quadriculado: se a resolução baixar, estica liso */
   composer.setSize(w, h); fxaa.material.uniforms.resolution.value.set(1 / w, 1 / h);
   applyZoom(w, h);
 }
@@ -2692,7 +2708,7 @@ function frame() {
 }
 declare const __BUILD_ID__: string;
 const __BUILD__ = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
-let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0;
+let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0, gapPrev = 0;
 /* medidor por seção do quadro (/perf no chat): quanto da CPU vai para cada parte */
 let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
 /* 09/11 (revisão de FPS): além da média, guarda as seções do PIOR quadro de cada janela — é o tranco que o jogador sente */
@@ -2711,7 +2727,7 @@ function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[
   return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · '); }
 function frameBody() {
   pmFrameEnd(); pmLast = performance.now(); pmFrames++;
-  { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
+  { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
     lastFps = fpsN; dynResTick(fpsN); perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }

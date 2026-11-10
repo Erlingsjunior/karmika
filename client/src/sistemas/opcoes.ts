@@ -6,6 +6,8 @@ import { charShadow } from '../characters';
 import { installTitleTips } from '../dicas';
 import type { OpcoesCtx, Opts } from '../main';
 import { gpuState } from '../gpu/tags';
+import { ACOES, teclaDe, nomeTecla, ouvirTecla, trocarTecla, teclasPadrao, teclasMudadas } from './teclas';
+import { CONTROLE_AJUDA, controleNome } from './controle';
 
 export function createOpcoes(K: OpcoesCtx) {
 /* ---------- página de opções: gráficos, som e jogo, tudo ao vivo ---------- */
@@ -54,8 +56,8 @@ function renderOptions() {
     <h3>Gráficos</h3>
     <div class="stat"><span>Estilo do gráfico <small>Pixel: o visual de pixel art do Karmika · Moderno: resolução nativa do monitor (ignora 'Resolução do mundo' e 'Tamanho do pixel'), cor sem degrau de 16 bits, luz em degradê nos modelos, sombra com o dobro de detalhe e borda macia, brilho largo e borda alisada (mais pesado). Dá para trocar quando quiser.</small></span>${seg('gfx', [[0, 'Pixel'], [1, 'Moderno']])}</div>
     <div class="stat"><span>Renderizador <small>WebGPU: o motor gráfico novo dos navegadores (mais rápido nas placas de vídeo de hoje) · WebGL: o de sempre, roda em qualquer PC · Automático: o WebGL enquanto o WebGPU do Karmika está em teste (no WebGPU o jogo ainda engasga ao andar pelo mundo, quando um bloco novo entra na tela). Se o WebGPU não abrir, o jogo volta sozinho para o WebGL. Agora: <b>${gpuState.on ? 'WebGPU' : 'WebGL'}</b>${gpuState.why ? ` (${gpuState.why})` : ''}${(K.opts.rend === 1) !== gpuState.on && !(K.opts.rend === 1 && gpuState.why) ? ' · <b style="color:#ffd27a">vale ao reabrir o jogo</b> <button data-act="reopen" style="margin-left:4px">Reabrir agora</button>' : ''}</small></span>${seg('rend', [[0, 'Automático'], [1, 'WebGPU (teste)'], [2, 'WebGL']])}</div>
-    <div class="stat"><span>Tamanho do pixel <small>1 = nítido (pesado) · 4 = pixel grosso (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
-    <div class="stat"><span>Detalhe do cenário <small>cenário em 1/N da resolução dos personagens</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
+    <div class="stat"><span>Tamanho do pixel <small>1 = o mais fino (cada pixel do jogo é um pixel da tela, pesado) · 2 = fino · 3 = médio · 4 = pixel grosso, para PC fraco (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
+    <div class="stat"><span>Detalhe do cenário <small>O chão, as casas e as árvores podem ter o pixel maior que o dos personagens. Igual: mesmo pixel (mais pesado) · Um terço: cenário bem grosso (mais leve)</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Sombras dos personagens <small>caras: dobram o custo de cada personagem; a mancha no pé fica</small></span>${seg('charShadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Qualidade das sombras</span>${seg('shadowRes', [[512, 'Baixa'], [1024, 'Média'], [2048, 'Alta']])}</div>
@@ -64,6 +66,12 @@ function renderOptions() {
     <div class="stat"><span>Números de dano</span>${seg('dmgText', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
     <div class="stat"><span>Contador de FPS <small>mostra também onde o tempo do quadro vai: CPU (lógica e desenho) e GPU</small></span>${seg('fps', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
     <div class="stat"><span>Limite de FPS <small>no app do Karmika o jogo passa da taxa do monitor; no navegador o limite é sempre o monitor</small></span>${seg('cap', [[60, '60'], [144, '144'], [240, '240'], [0, 'Sem limite']])}</div>
+    <div class="stat"><span>Ajuste automático <small>Ligado: se o FPS cair abaixo de 45, o jogo baixa um pouco a resolução e as sombras sozinho, e volta quando folgar. Desligado: fica exatamente como você escolheu acima</small></span>${seg('auto', [[true, 'Ligado'], [false, 'Desligado']])}</div>
+    <h3>Teclas</h3>
+    <div class="stat"><span>Clique numa tecla e aperte a nova <small>Esc cancela. Se a tecla já for de outra ação, as duas trocam de lugar. Os números da barra de magias continuam mostrando a tecla padrão</small></span><div class="seg"><button data-act="keysdef">Teclas padrão${teclasMudadas() ? ` (${teclasMudadas()} trocada${teclasMudadas() > 1 ? 's' : ''})` : ''}</button></div></div>
+    ${[...new Set(ACOES.map((a) => a.grupo))].map((g) => `<div class="stat" style="align-items:flex-start"><span>${g}</span><div class="keys" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px;flex:1;max-width:520px">${ACOES.filter((a) => a.grupo === g).map((a) => `<label style="display:flex;justify-content:space-between;align-items:center;gap:8px"><small>${a.nome}</small><button data-key="${a.id}" style="min-width:64px${teclaDe(a.id) !== a.def ? ';color:#ffd24a' : ''}">${nomeTecla(teclaDe(a.id))}</button></label>`).join('')}</div></div>`).join('')}
+    <h3>Controle</h3>
+    <div class="stat" style="align-items:flex-start"><span>Controle no PC <small>${controleNome() ? 'Ligado: ' + controleNome() : 'Ligue um controle (Xbox, PlayStation ou parecido) e aperte um botão: ele entra sozinho'}. As janelas e os menus ainda pedem o mouse</small></span><div style="flex:1;max-width:520px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px">${CONTROLE_AJUDA.map(([a, b]) => `<small style="color:#f0e2c0">${a}</small><small>${b}</small>`).join('')}</div></div>
     <h3>Som</h3>
     <div class="stat"><span>Volume geral <small>O: mudo</small></span>${rng('master', 0, 1.5, 0.05, pct)}</div>
     <div class="stat"><span>Música <small>P: liga/desliga</small></span>${rng('music', 0, 1, 0.05, pct)}</div>
@@ -78,7 +86,9 @@ function renderOptions() {
 document.getElementById('p-opt')?.addEventListener('click', (e) => { const lb = (e.target as HTMLElement).closest('button[data-lang]') as HTMLElement | null; if (lb) { const l = lb.dataset.lang as Lang; if (l !== LANG) setLang(l); return; }
   const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
   if (b.dataset.ok) { const k = b.dataset.ok as keyof Opts, raw = b.dataset.ov!; (K.opts as unknown as Record<string, unknown>)[k] = raw === 'true' ? true : raw === 'false' ? false : Number(raw); applyOpts(k); renderOptions(); K.audio.click(); return; }
+  if (b.dataset.key) { const id = b.dataset.key; b.textContent = 'aperte…'; b.classList.add('on'); ouvirTecla((k) => { if (k) { trocarTecla(id, k); K.audio.click(); } renderOptions(); }); return; }
   const a = b.dataset.act;
+  if (a === 'keysdef') { teclasPadrao(); renderOptions(); K.audio.click(); return; }
   if (a === 'reopen') { location.reload(); return; }
   if (a === 'night') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
   if (a === 'zoom') { K.zoomTarget = 17; }
@@ -86,6 +96,7 @@ document.getElementById('p-opt')?.addEventListener('click', (e) => { const lb = 
   if (a === 'reset') { Object.assign(K.opts, K.OPT_DEF); applyOpts(); renderOptions(); }
 });
 document.getElementById('p-opt')?.addEventListener('input', (e) => { const i = e.target as HTMLInputElement; if (!i.dataset.or) return; const k = i.dataset.or as keyof Opts; (K.opts as unknown as Record<string, unknown>)[k] = Number(i.value); applyOpts(k); const b = i.nextElementSibling as HTMLElement | null; if (b) b.textContent = `${Math.round(Number(i.value) * 100)}%`; });
+addEventListener('karmika:controle', () => renderOptions());
 setTimeout(() => { renderOptions(); applyOpts(); K.applyArtSkin(); }, 0);
   return {  };
 }

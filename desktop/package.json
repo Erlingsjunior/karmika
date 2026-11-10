@@ -9,9 +9,9 @@
     "bundle": "node scripts/bundle.mjs",
     "dev": "node scripts/bundle.mjs && cross-env KARMIKA_DEV=1 electron .",
     "start": "node scripts/bundle.mjs && electron .",
-    "dist": "node scripts/bundle.mjs && electron-builder --win nsis",
+    "dist": "node scripts/bundle.mjs && node scripts/dist.mjs",
     "server": "node src/server.cjs",
-    "dist:mac": "node scripts/bundle.mjs && electron-builder --mac dmg zip"
+    "dist:mac": "node scripts/bundle.mjs && node scripts/dist.mjs mac"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
