@@ -12,18 +12,20 @@
 <meta name="theme-color" content="#0b0a0d">
 <link rel="icon" href="/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Manrope:wght@300;400;600;800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/style2.css">
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="nav">
   <a class="nav__brand" href="#topo"><img src="/img/logo-brasa.webp" alt="" width="40" height="30"><span>KARMIKA</span></a>
-  <nav class="nav__links">
-    <a href="#jogo">O jogo</a><a href="#lore">História</a><a href="#caminhos">Caminhos</a><a href="#construir">Construir</a><a href="#livro">O livro</a>
+  <nav class="nav__links" id="navLinks">
+    <a href="#jogo">O jogo</a><a href="#lore">História</a><a href="#maravilhas">Maravilhas</a><a href="#caminhos">Caminhos</a><a href="#guildas">Guildas</a><a href="#livro">O livro</a><a class="nav__beta" href="#beta">Seja beta tester</a>
   </nav>
   <a class="btn btn--small" href="#beta">Seja beta tester</a>
+  <button class="nav__burger" type="button" aria-label="Abrir o menu" aria-expanded="false" aria-controls="navLinks"><i></i><i></i><i></i></button>
 </header>
 
 <main>
@@ -44,7 +46,9 @@
 
 <!-- 2. MANIFESTO -->
 <section id="jogo" class="manifesto">
-  <p class="manifesto__text" data-words>Aqui ninguém escolhe uma classe numa tela de menu. Você vira o que escolhe ser — mordido por um vampiro numa noite errada, aceito por uma matilha, consagrado por uma igreja, formado por uma academia. E tudo o que você faz <em>volta</em>.</p>
+  <p class="manifesto__kick">Você não vai escolher uma classe.</p>
+  <p class="manifesto__text" data-words>Você vai <em>virar</em> alguém. Numa noite errada, uma mordida. Diante de Odin, um juramento. Anos debruçado sobre um grimório, até a magia responder. Cada ato fica gravado na sua alma — e quando você morrer, ela volta. Com sede, com cicatrizes, com inimigos que ainda lembram o seu nome.</p>
+  <p class="manifesto__end">Em KARMIKA, tudo o que você faz <em>volta</em>.</p>
 </section>
 
 <!-- 3. O QUE MUDA (horizontal) -->
@@ -80,7 +84,6 @@
   </div>
 </section>
 
-
 <!-- DIFERENTE: os outros MMOs × KARMIKA -->
 <section id="diferente" class="cmp">
   <div class="cmp__head"><span class="eyebrow">Por que KARMIKA</span><h2>Você já jogou os outros.<br>Sabe do que sentimos falta.</h2></div>
@@ -103,21 +106,22 @@
   <div class="rebirth__art" aria-hidden="true"><img class="rv1" src="/img/c-vampiro.webp" alt=""><img class="rv2" src="/img/c-vampira.webp" alt=""></div>
 </section>
 
-
 <!-- LORE: Marghar, a Fome e o Labirinto -->
 <section id="lore" class="lore">
   <div class="lore__grid">
     <div class="lore__txt">
-      <span class="eyebrow">A história que move tudo</span>
+      <span class="eyebrow">A história que move tudo · Season I</span>
       <h2>Marghar, a Fome<br>e o Labirinto.</h2>
       <p class="lore__v">Antes de haver estradas, havia o Antes. Não era escuro nem claro, porque não havia ninguém para ver a diferença.</p>
       <p>Foi dentro do Antes que <b>Marghar, o Senhor dos Caminhos</b>, pensou em caminhar — e bastou. Mas havia algo preso no Antes que nunca tinha sido nada além de vontade. Quando Marghar pensou em caminhar, ela também se soltou: <b>Ahzur, o Sem-Passo</b>, a <b>Fome</b>. Ganhou uma estrada reta, rápida — e no fim dela estavam os que ainda não sabiam andar.</p>
       <p>Marghar não julgou, não lutou, não prendeu. Criou os caminhos, no plural. Onde havia uma reta, fez bifurcações; onde havia uma porta, fez mil portas. Karmika inteira é esse <b>Labirinto</b>, e cada escolha é uma parede a mais entre a Fome e as almas.</p>
       <p class="lore__verse">O que foi plantado será devolvido.</p>
       <p>Do desejo de esconder as almas, e do desejo oposto de se oferecer à Fome, nasceu o <b>karma</b>. Enquanto você vive, ele é líquido e ainda muda. Quando o Fio da Vida se rompe, a alma sobe ao <b>Limiar</b> — e escolhe como voltar.</p>
-      <div class="lore__btns"><button class="btn" type="button" data-book="cap1">Ler o Capítulo I</button><button class="btn btn--ghost" type="button" data-more="reencarnar">Como funciona a reencarnação</button></div>
+      <div class="lore__btns"><button class="btn" type="button" data-book="cap1">Ler a Season I</button><button class="btn btn--ghost" type="button" data-more="reencarnar">Como funciona a reencarnação</button></div>
     </div>
-    <figure class="lore__fig"><button type="button" data-lb="/img/k-limiar.webp" data-cap="O Limiar: a alma entre Orvalen e Sael, com o Olho Kármico e Marghar ao fundo"><img src="/img/k-limiar.webp" alt="O Limiar" loading="lazy"></button><figcaption>O Limiar: para onde a alma sobe quando o Fio da Vida se rompe.</figcaption></figure>
+    <figure class="lore__fig"><button type="button" data-lb="/img/k-limiar.webp" data-cap="O Limiar: a alma entre Orvalen e Sael, com o Olho Kármico e Marghar ao fundo"><img src="/img/k-limiar.webp" alt="O Limiar" loading="lazy"></button><figcaption>O Limiar: para onde a alma sobe quando o Fio da Vida se rompe.</figcaption>
+      <div class="lore__fig2"><button type="button" data-lb="/img/k-labirinto.webp" data-cap="O Labirinto de Marghar"><img src="/img/k-labirinto.webp" alt="O Labirinto" loading="lazy"></button><button type="button" data-lb="/img/k-renascer.webp" data-cap="Renascer em Karmika"><img src="/img/k-renascer.webp" alt="Renascer" loading="lazy"></button></div>
+    </figure>
   </div>
 </section>
 
@@ -129,7 +133,7 @@
     <div class="flags__eye"><img src="/img/logo-brasa.webp" alt=""><span>karma</span></div>
     <article class="flag flag--desf"><img src="/img/k-crest_desf.webp" alt="Brasão dos Desfiados" loading="lazy"><h3>Os Desfiados</h3><p class="flag__m">“Todo muro é uma mentira”</p><dl><dt>O que querem</dt><dd>Cortar o fio e derrubar o Labirinto: uma gaiola que devolve a alma à roda, vida após vida. A Fome é a única porta para fora.</dd><dt>A sua honra</dt><dd>Nunca mentir para si mesmo. Quem anda até a boca, anda de olhos abertos.</dd><dt>Onde podem errar</dt><dd>Derrubar o muro também expõe quem não escolheu sair. A Fome não pergunta quem queria ir.</dd></dl><p class="flag__who">Vampiros da Corte · Lobisomens do Uivo Antigo · Bruxos do Pacto</p></article>
   </div>
-  <div class="flags__cta"><button class="btn btn--ghost" type="button" data-book="bandeiras">Ler “As duas bandeiras” no livro</button></div>
+  <div class="flags__cta"><button class="btn btn--ghost" type="button" data-book="bandeiras">Ler “As duas bandeiras” na Season I</button></div>
 </section>
 
 <!-- UM RPG PARA QUEM AMA RPG -->
@@ -144,18 +148,115 @@
       <button class="more" type="button" data-more="dados">Ver a ficha e as regras <span>→</span></button>
     </div>
   </div>
+  <!-- a luta com o registro de dados na lateral -->
+  <div class="fight" id="fight">
+    <div class="fight__scene">
+      <img class="fight__img on" src="/img/k-toca_chefe.webp" alt="Luta contra o chefe da Toca dos Batedores Rubros" loading="lazy">
+      <img class="fight__img" src="/img/k-v2_tec_thunder.webp" alt="Tecnocrata descarregando a Manopla de Tesla" loading="lazy">
+      <img class="fight__img" src="/img/k-v2_vam_batswarm.webp" alt="Vampiro soltando a revoada de morcegos" loading="lazy">
+      <img class="fight__img" src="/img/k-v2_pal_conversion.webp" alt="Paladino convertendo um inimigo" loading="lazy">
+      <span class="fight__hit" aria-hidden="true"></span>
+      <p class="fight__cap">Ao vivo: o que o jogo rola a cada golpe aparece na lateral.</p>
+    </div>
+    <aside class="fight__log" aria-label="Registro de dados da luta">
+      <header><b>Dados da luta</b><span>Ficha de Mesa</span></header>
+      <ol class="fight__rolls" aria-live="off"></ol>
+    </aside>
+  </div>
 </section>
 
-<!-- AS ESCOLHAS MUDAM O MUNDO -->
-<section id="escolhas" class="choices">
-  <div class="choices__head"><span class="eyebrow">Jogar muda o mundo</span><h2>O mundo não espera você.<br>E não esquece o que você fez.</h2></div>
-  <div class="choices__grid">
-    <figure><button type="button" data-lb="/img/k-sitio.webp" data-cap="Uma vila sitiada à beira do rio"><img src="/img/k-sitio.webp" alt="Vila sitiada" loading="lazy"></button><figcaption><b>Enquanto você caça</b>, uma vila é sitiada no vale ao lado. Chegue a tempo, chegue tarde ou nem fique sabendo: o mundo segue do jeito que ficou.</figcaption></figure>
-    <figure><button type="button" data-lb="/img/k-ritual.webp" data-cap="Um ritual noturno em volta de uma árvore"><img src="/img/k-ritual.webp" alt="Ritual noturno" loading="lazy"></button><figcaption><b>À noite, gente some.</b> Um aldeão é mordido, uma patrulha é caçada sob a lua cheia. E se o mordido for você, a sua história acabou de mudar de rumo.</figcaption></figure>
-    <figure><button type="button" data-lb="/img/k-lua.webp" data-cap="O mundo tingido de vermelho na Lua de Sangue"><img src="/img/k-lua.webp" alt="Lua de Sangue" loading="lazy"></button><figcaption><b>Lua de Sangue, Dia da Aurora.</b> Eventos que mudam a força de cada lado — e o Olho anota de que lado você ficou.</figcaption></figure>
-    <figure><button type="button" data-lb="/img/k-saga.webp" data-cap="Diálogo da saga do paladino com o Grão-Mestre"><img src="/img/k-saga.webp" alt="Diálogo de saga" loading="lazy"></button><figcaption><b>Toda missão pede uma decisão</b>, e quase nenhuma é óbvia. Os NPCs lembram, comentam e cobram o que você fez.</figcaption></figure>
+<!-- A TELA: barra superior e bússola dupla -->
+<section id="tela" class="hud">
+  <div class="hud__head"><span class="eyebrow">Tudo na tela, nada no caminho</span><h2>Você sempre sabe onde está.<br>E para onde ir.</h2><p>Uma faixa no alto da tela diz tudo o que importa sobre o lugar onde você pisa. E no pé do herói, duas bússolas apontam ao mesmo tempo para duas missões diferentes. Sem abrir mapa, sem parar a jogada.</p></div>
+  <div class="hud__bar" role="img" aria-label="A barra superior do jogo: lugar, clima, dia e hora, humor da cidade, evento mundial, região e tipo de lugar">
+    <span class="hb hb--place" data-tip="O lugar onde você está">Fortaleza de Odin</span><i>◆</i>
+    <span class="hb" data-tip="Temperatura: o frio e o calor pesam">❄ −6 °C</span><i>◆</i>
+    <span class="hb" data-tip="Dia do mundo, turno e hora">Dia 216 · Manhã · 08:20</span><i>◆</i>
+    <span class="hb hb--mood" data-tip="O humor da cidade muda com o que os jogadores fazem">◈ Inquieta</span><i>◆</i>
+    <span class="hb hb--ev" data-tip="Evento mundial ativo e quanto falta">✳ Dia da Aurora · 1h06</span><i>◆</i>
+    <span class="hb hb--risk" data-tip="Região, faixa de nível e perigo">⚔ Montanha Viking · Nv 20–31 · perigo</span><i>◆</i>
+    <span class="hb" data-tip="Tipo de lugar e alinhamento">⌂ Vila · Neutro</span>
+  </div>
+  <div class="hud__grid">
+    <ul class="hud__list">
+      <li><b>Onde</b> o nome do lugar, cidade, vila ou masmorra, assim que você cruza o portão.</li>
+      <li><b>Clima e hora</b> temperatura, dia do mundo, turno e relógio — a noite muda quem você é.</li>
+      <li><b>Humor</b> a cidade fica em festa, inquieta ou de luto conforme o que os jogadores fazem nela.</li>
+      <li><b>Evento mundial</b> Lua de Sangue, Dia da Aurora, eclipse: o que está valendo e quanto falta.</li>
+      <li><b>Perigo</b> a região, a faixa de nível e o risco. Você decide se entra.</li>
+      <li><b>Alinhamento</b> se o lugar é da Ordem do Fio, dos Desfiados ou neutro — e se você é bem-vindo.</li>
+    </ul>
+    <div class="compass" aria-hidden="true">
+      <svg viewBox="0 0 400 300" class="compass__svg">
+        <defs><radialGradient id="cg" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffd27a" stop-opacity=".35"/><stop offset="1" stop-color="#ffd27a" stop-opacity="0"/></radialGradient></defs>
+        <ellipse cx="200" cy="200" rx="150" ry="62" fill="url(#cg)"/>
+        <ellipse cx="200" cy="200" rx="118" ry="48" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2"/>
+        <g class="cp1"><path d="M 108 172 A 118 48 0 0 1 200 152" fill="none" stroke="#f3c55a" stroke-width="7" stroke-linecap="round"/><g fill="#ffe08a"><path class="chev" d="M 120 150 l 14 -6 l -4 14 z"/><path class="chev" d="M 100 140 l 14 -6 l -4 14 z"/><path class="chev" d="M 80 130 l 14 -6 l -4 14 z"/></g></g>
+        <g class="cp2"><path d="M 250 156 A 118 48 0 0 1 312 186" fill="none" stroke="#6fd0ff" stroke-width="7" stroke-linecap="round"/><g fill="#a8e4ff"><path class="chev" d="M 300 150 l 15 2 l -9 11 z"/><path class="chev" d="M 320 138 l 15 2 l -9 11 z"/><path class="chev" d="M 340 126 l 15 2 l -9 11 z"/></g></g>
+        <g class="compass__hero"><ellipse cx="200" cy="203" rx="22" ry="8" fill="rgba(0,0,0,.45)"/><path d="M188 200 L192 130 Q200 112 208 130 L212 200 Z" fill="#3a2a22"/><circle cx="200" cy="118" r="13" fill="#d8b090"/></g>
+        <text x="60" y="110" class="ct ct1">Saga · 340 m</text><text x="292" y="104" class="ct ct2">Caçada · 1,2 km</text>
+      </svg>
+      <p><b class="c1">Dourada</b> para a missão da sua história, <b class="c2">azul</b> para a caçada ou o evento do mundo. Lado a lado, no pé do herói, com a distância.</p>
+    </div>
+  </div>
+</section>
+
+<!-- MUNDO VIVO: eventos mundiais, dia e noite -->
+<section id="vivo" class="live">
+  <div class="live__head"><span class="eyebrow">Um mundo que não para</span><h2>O sol nasce, a lua sobe.<br>E você muda com eles.</h2><p>Em KARMIKA o dia e a noite não são cenário: mudam quem você é. E de tempos em tempos o mundo inteiro vira — um evento mundial que vale para todos os jogadores ao mesmo tempo.</p></div>
+  <div class="live__dn">
+    <figure class="dn dn--day"><img src="/img/k-dia.webp" alt="Dia na vila" loading="lazy"><figcaption><b>☀ De dia</b><ul><li><b>Vampiro</b> queima ao sol fora da sombra: perde vida, dano e velocidade, e solta fumaça. Mata fechada, casas, masmorras e Corvoscuro protegem.</li><li><b>Paladino</b> e a luz ficam mais fortes no Dia da Aurora.</li><li><b>Lobisomem</b> é o licantropo: um homem maior e mais forte, de garras e uivos.</li></ul></figcaption></figure>
+    <figure class="dn dn--night"><img src="/img/k-noite.webp" alt="Noite na vila" loading="lazy"><figcaption><b>☾ De noite</b><ul><li><b>Vampiro</b> ganha +25% de dano e +20% de velocidade, com os olhos em brasa e névoa rubra nos pés.</li><li><b>Lobisomem</b>: a Forma da Besta só desperta à noite. Se o dia nasce, o lobo recua.</li><li>A noite é escura, mas nunca negra: tochas, lampiões e luzes mágicas acendem o mundo. E gente some nas estradas.</li></ul></figcaption></figure>
+  </div>
+  <div class="live__ev">
+    <article class="ev"><img src="/img/k-lua.webp" alt="Lua de Sangue" loading="lazy"><div><span>Evento mundial</span><h3>Lua de Sangue</h3><p>O mundo tinge de vermelho. Vampiros e lobisomens ficam no auge, as feras saem da mata e os Desfiados ganham força. Aguente até o amanhecer.</p></div></article>
+    <article class="ev"><img src="/img/k-aurora.webp" alt="Dia da Aurora" loading="lazy"><div><span>Evento mundial</span><h3>Dia da Aurora</h3><p>A Abadia abre os portões e a luz pesa a favor da Ordem do Fio. Paladinos curam mais, os mortos-vivos recuam — e o Olho anota de que lado você ficou.</p></div></article>
+    <article class="ev"><img src="/img/k-sitio.webp" alt="Vila sitiada" loading="lazy"><div><span>Evento de mapa</span><h3>Vila sitiada</h3><p>Enquanto você caça, uma vila é cercada no vale ao lado. Chegue a tempo, chegue tarde, ou nem fique sabendo: o mundo segue do jeito que ficou.</p></div></article>
+    <article class="ev"><img src="/img/k-ritual.webp" alt="Ritual" loading="lazy"><div><span>Evento de mapa</span><h3>Rituais, romarias e festas</h3><p>Rituais na mata à meia-noite, romarias nas estradas, casamentos, festas na praça com fogos e pétalas, patrulhas caçadas sob a lua cheia. Cada um vira missão com escolha.</p></div></article>
   </div>
   <button class="more more--c" type="button" data-more="escolhas">Mais sobre escolhas e consequências <span>→</span></button>
+</section>
+
+<!-- MARAVILHAS -->
+<section id="maravilhas" class="wonders">
+  <div class="wonders__head"><span class="eyebrow">As maravilhas de Karmika</span><h2>Lugares que você vai<br>parar para olhar.</h2><p>Cada caminho tem a sua cidade, e cada cidade tem a sua maravilha. Dentro de todas há uma <b>Fonte da Visão</b>: jogue uma moeda, a câmera sobe e o cronista conta a história do lugar enquanto você vê a obra inteira.</p></div>
+  <div class="wonders__view" id="wondersView">
+    <div class="wonders__stage"></div>
+    <div class="wonders__txt"><span class="wonders__k"></span><h3 class="wonders__n"></h3><p class="wonders__d"></p></div>
+    <button class="wonders__arw wonders__arw--p" type="button" aria-label="Maravilha anterior">‹</button><button class="wonders__arw wonders__arw--n" type="button" aria-label="Próxima maravilha">›</button>
+  </div>
+  <div class="wonders__thumbs" id="wondersThumbs" role="tablist" aria-label="Escolher a maravilha"></div>
+</section>
+
+<!-- CARROÇAS, COMÉRCIO E PROFISSÕES -->
+<section id="comercio" class="trade">
+  <div class="trade__grid">
+    <div class="trade__txt">
+      <span class="eyebrow">Estradas, carroças e ofícios</span>
+      <h2>Quem faz a economia<br>são os jogadores.</h2>
+      <p>As estradas de Karmika são cheias de rodas. A <b>carroça dos anões</b> leva cerveja e churrasco e vira festa onde para: o grupo paga, come, bebe e dança até cair — e acorda de manhã com uma carta do anão no chão. A <b>Caravana de Latão</b> dos tecnocratas vende melhorias de armas, armas de fogo, torretas e robôs que ajudam a erguer casas.</p>
+      <p>Toda carroça paga a <b>Companhia das Caravanas</b> por proteção. Quando uma é assaltada, sai um <b>alerta mundial</b>: quem estiver perto escolhe se defende — e quem defende ganha a recompensa paga pelos próprios mercadores.</p>
+      <div class="profs">
+        <h3>Doze ofícios, do mato à forja</h3>
+        <ul>
+          <li><b>Lenhador</b> → <b>Marceneiro</b><small>tábuas, cabos e escudos</small></li>
+          <li><b>Minerador</b> → <b>Ferreiro</b><small>armas, armaduras e pregos</small></li>
+          <li><b>Esfolador</b> → <b>Costureiro</b><small>couro, capas e bolsas</small></li>
+          <li><b>Herbalista</b> → <b>Alquimista</b><small>poções, tônicos e antídotos</small></li>
+          <li><b>Pescador</b> → <b>Cozinheiro</b><small>comida que cura na estrada</small></li>
+          <li><b>Engenheiro do Mundo</b><small>só tecnocratas: drones, torres e robôs</small></li>
+        </ul>
+        <p>Cada ofício sobe do 1 ao 100 com o uso. Ofício alto abre receitas melhores, peças mágicas e raras — e as <b>receitas de especialização</b>, que só uma classe faz e que curam a fraqueza de outro caminho. Quem precisa compra de quem sabe fazer.</p>
+      </div>
+    </div>
+    <div class="trade__pics">
+      <button type="button" class="t1" data-lb="/img/k-v3_carroca_anoes.webp" data-cap="A carroça dos anões chegando à vila"><img src="/img/k-v3_carroca_anoes.webp" alt="A carroça dos anões" loading="lazy"></button>
+      <button type="button" class="t2" data-lb="/img/ab-carroca-latao.webp" data-cap="Carroça da Companhia de Latão"><img src="/img/ab-carroca-latao.webp" alt="Carroça de Latão" loading="lazy"></button>
+      <button type="button" class="t3" data-lb="/img/k-caravana.webp" data-cap="A Caravana de Latão na estrada"><img src="/img/k-caravana.webp" alt="A Caravana" loading="lazy"></button>
+      <button type="button" class="t4" data-lb="/img/k-oficios_hall.webp" data-cap="A Casa dos Ofícios"><img src="/img/k-oficios_hall.webp" alt="A Casa dos Ofícios" loading="lazy"></button>
+      <button type="button" class="t5" data-lb="/img/ab-forja.webp" data-cap="A forja: bigornas, foles e ferramentas"><img src="/img/ab-forja.webp" alt="A forja" loading="lazy"></button>
+    </div>
+  </div>
 </section>
 
 <!-- CONSTRUIR: housing e vilas de guilda -->
@@ -163,41 +264,77 @@
   <div class="build__grid">
     <div class="build__txt">
       <span class="eyebrow">Um chão que é seu</span>
-      <h2>Construa a casa.<br>Com a guilda, a vila inteira.</h2>
-      <p>A terra de Karmika é limitada e real. A sua casa não fica num mundo à parte: é erguida no mesmo mapa em que todos andam, tábua por tábua, em obras que levam dias — e cada pedaço de chão bom vai ser disputado.</p>
-      <p>O Cartório entrega a <b>escritura</b>, que pode ser vendida no leilão. E a guilda vai além: com gente, ofício e mutirão, dá para erguer <b>vilas inteiras</b> — casas, lojas, moinho, torre de vigia e muro — e hastear a sua bandeira na praça.</p>
+      <h2>Você não visita o mundo.<br>Você constrói nele.</h2>
+      <p>A terra de Karmika é limitada e real. A sua casa não fica numa instância à parte: é erguida no <b>mesmo mapa em que todos andam</b>, tábua por tábua, em obras que levam dias. Quem passa pela estrada vê a sua obra subir, lê o seu nome na placa — e cada pedaço de chão bom vai ser disputado.</p>
+      <p>Construir muda o mundo de verdade: uma casa vira vizinhança, a vizinhança vira vila, a vila ganha moinho, torre de vigia, lojas e muro. Comerciantes passam a parar ali, a estrada ganha movimento, e o mapa de todos os jogadores fica diferente do que era.</p>
+      <p>O Cartório entrega a <b>escritura</b>, que pode ser vendida no leilão. Com o contrato da Companhia de Latão, <b>Ajudantes de Obra</b> trabalham por você mesmo com o jogo fechado, guardados por uma Sentinela.</p>
       <button class="more" type="button" data-more="construir">Como se constrói <span>→</span></button>
     </div>
     <div class="build__pics">
       <button type="button" class="b1" data-lb="/img/k-v3_obra.webp" data-cap="Uma obra com os Ajudantes de Obra e uma Sentinela"><img src="/img/k-v3_obra.webp" alt="Obra em andamento" loading="lazy"></button>
       <button type="button" class="b2" data-lb="/img/k-v3_casa.webp" data-cap="A casa pronta, com a placa do dono"><img src="/img/k-v3_casa.webp" alt="Casa pronta" loading="lazy"></button>
       <button type="button" class="b3" data-lb="/img/k-v3_escritura.webp" data-cap="A Escritura da Casa, com o selo do Cartório"><img src="/img/k-v3_escritura.webp" alt="Escritura" loading="lazy"></button>
+      <button type="button" class="b4" data-lb="/img/k-v3_menu_obras.webp" data-cap="O modo de obra: escolha o projeto"><img src="/img/k-v3_menu_obras.webp" alt="Modo de obra" loading="lazy"></button>
+      <button type="button" class="b5" data-lb="/img/ab-construcoes.webp" data-cap="Peças de construção do artbook"><img src="/img/ab-construcoes.webp" alt="Peças de construção" loading="lazy"></button>
     </div>
+  </div>
+</section>
+
+<!-- GUILDAS -->
+<section id="guildas" class="guild">
+  <div class="guild__head"><span class="eyebrow">Guildas com poder de verdade</span><h2>Uma guilda aqui<br>não é um chat com tag.</h2><p>É uma instituição do mundo, registrada no Livro de Guildas do Prefeito de Lumenhal. Ela cresce, paga imposto, faz dívida, ergue casa, castelo e vila — e o que ela faz muda o mapa e o conselho das bandeiras.</p></div>
+  <div class="guild__steps">
+    <article><b>I</b><h3>Fundar</h3><p>Nível 45, uma Lágrima de Marghar e três fundadores assinando o documento diante do Prefeito. O nome nunca muda; a bandeira e o ícone, sim.</p></article>
+    <article><b>II</b><h3>Glória</h3><p>4% de todo o XP de cada membro vira glória da guilda, mais missões do dia, o Grande Feito da semana e doações ao cofre. Cinco níveis, cada um muito mais difícil.</p></article>
+    <article><b>III</b><h3>Poder</h3><p>O líder distribui pontos em habilidades que valem para todos: vida, dano, armadura, crítico, recarga, roubo de vida, imposto menor e mais vagas.</p></article>
+    <article><b>IV</b><h3>Cofre e imposto</h3><p>Imposto diário por membro. O que faltar vira dívida — e com dívida a guilda não sobe. Guilda grande é guilda organizada.</p></article>
+    <article><b>V</b><h3>Território</h3><p>Baú e quadro da guilda, depois a Casa da Guilda, o Castelo com muralhas e, no topo, a Vila da Guilda, com moradores que pagam imposto a vocês.</p></article>
+  </div>
+  <div class="guild__power">
+    <div class="guild__tbl" role="table" aria-label="Níveis da guilda">
+      <div role="row" class="gt gt--h"><span>Nível</span><span>Vagas</span><span>Missões/dia</span><span>Constrói</span></div>
+      <div role="row" class="gt"><span>I</span><span>20</span><span>3</span><span>Quadro da Guilda</span></div>
+      <div role="row" class="gt"><span>II</span><span>35</span><span>4</span><span>Baú da Guilda</span></div>
+      <div role="row" class="gt"><span>III</span><span>50</span><span>5</span><span>Casa da Guilda</span></div>
+      <div role="row" class="gt"><span>IV</span><span>50</span><span>5</span><span>Castelo e Muralhas</span></div>
+      <div role="row" class="gt"><span>V</span><span>50 + Lenda Viva</span><span>6</span><span>Vila da Guilda</span></div>
+    </div>
+    <p class="guild__note">E na <b>Mesa Partida</b>, em Askavik, as bandeiras disputam o conselho: o lado que vence hasteia a bandeira na praça por uma semana de servidor. Guilda forte decide para onde o mundo pende.</p>
   </div>
 </section>
 
 <!-- O JOGO QUE SAI DE UM LIVRO -->
 <section id="livro" class="book">
   <div class="book__grid">
-    <div class="book__cover" aria-hidden="true"><div class="bk"><img src="/img/logo-pergaminho.webp" alt=""><b>Bíblia Karmika</b><i>O Compêndio do Historiador</i><small>por Ormund Salveth, Cronista da Grande Biblioteca</small></div></div>
+    <div class="book__desk">
+      <button class="tome" type="button" data-tome aria-label="Abrir a Bíblia Karmika: ler online ou baixar">
+        <span class="tome__cover"><img src="/img/logo-pergaminho.webp" alt=""><b>Bíblia Karmika</b><i>Season I</i></span>
+        <span class="tome__pages"></span>
+        <span class="tome__hint">clique para abrir</span>
+      </button>
+      <div class="tome__menu" id="tomeMenu" hidden>
+        <b>Bíblia Karmika · Season I</b>
+        <button class="btn" type="button" data-book="cap1">Ler online</button>
+        <a class="btn btn--ghost" href="/karmika-season-1.pdf" download>Baixar o PDF</a>
+      </div>
+    </div>
     <div class="book__txt">
       <span class="eyebrow">Um jogo que sai de um livro</span>
       <h2>O livro conta o jogo.<br>O jogo acontece no livro.</h2>
       <p>Como os RPGs clássicos que a gente ama — só que numa história totalmente nova. KARMIKA foi escrito antes de ser programado: deuses, povos, oito caminhos, duas bandeiras e um mistério que ainda ninguém resolveu. O cronista Ormund Salveth anota o mundo, e as páginas dele estão espalhadas dentro do jogo.</p>
-      <p>Cada Fonte da Visão é uma página que você vive por dentro. Cada missão de saga é um capítulo. E o que os jogadores fizerem vai parar nos próximos volumes.</p>
-      <div class="book__btns"><button class="btn" type="button" data-book="cap1">Ler o Capítulo I</button><button class="btn btn--ghost" type="button" data-book="fio">O Fio da Vida</button></div>
+      <p>Cada Fonte da Visão é uma página que você vive por dentro. Cada missão de saga é um capítulo. E o que os jogadores fizerem vai parar na próxima temporada.</p>
+      <div class="book__btns"><button class="btn" type="button" data-book="cap1">Ler a Season I</button><a class="btn btn--ghost" href="/karmika-season-1.pdf" download>Baixar a Bíblia (PDF)</a></div>
     </div>
   </div>
 </section>
 
 <!-- 5. CAMINHOS / CLASSES -->
 <section id="caminhos" class="paths">
-  <div class="paths__head"><span class="eyebrow">Raças e caminhos</span><h2>Comece como gente.<br>Termine como lenda.</h2><p>Três raças para nascer. Caminhos para se tornar. Nenhum é escolhido num menu: todos são conquistados no mundo. <b>Clique em um para conhecer a história, as magias e a arte.</b></p></div>
+  <div class="paths__head"><span class="eyebrow">Raças e caminhos</span><h2>Comece como gente.<br>Termine como lenda.</h2><p>Três raças para nascer. Caminhos para se tornar. Nenhum é escolhido num menu: todos são conquistados no mundo. <b>Clique em um para ver a história, as magias, a árvore de talentos e a arte.</b></p></div>
   <div class="paths__grid" id="pathsGrid" role="list"></div>
   <div class="pdet" id="pathDetail" hidden>
     <button class="pdet__close" type="button" aria-label="Fechar e ver todos">✕ <span>ver todos</span></button>
     <div class="pdet__stage">
-      <div class="pdet__figs"><div class="pdet__glow"></div><img class="pdet__f1" alt=""><img class="pdet__f2" alt=""><img class="pdet__f3" alt=""></div>
       <div class="pdet__txt">
         <span class="pdet__kind"></span>
         <h3 class="pdet__name"></h3>
@@ -205,11 +342,20 @@
         <dl class="pdet__meta"></dl>
         <div class="pdet__hist"></div>
       </div>
+      <div class="pdet__figs"><div class="pdet__glow"></div><img class="pdet__pm" alt=""><img class="pdet__pf" alt=""><img class="pdet__m" alt=""><img class="pdet__f" alt=""></div>
     </div>
-    <h4 class="pdet__sub">Magias e golpes</h4>
+    <h4 class="pdet__sub pdet__skT">Magias e golpes</h4>
     <div class="pdet__skills"></div>
+    <h4 class="pdet__sub pdet__tlT">Árvore de talentos</h4>
+    <p class="pdet__tlp">Uma constelação por classe, com três braços — um para cada jeito de jogar. Pontos pequenos dão atributos, pontos notáveis têm nome e efeito forte, e na ponta de cada braço há uma <b>pedra-chave</b>: ganha muito, perde alguma coisa. Ninguém fecha as três de uma vez.</p>
+    <div class="pdet__tree"></div>
     <h4 class="pdet__sub pdet__artT">Do artbook</h4>
     <div class="pdet__art"></div>
+  </div>
+  <div class="skillsys">
+    <article><b>Habilidades</b><p>Cada caminho tem a sua barra de golpes e magias, que abrem com o nível: dez por classe, de 1 a 50, com recurso próprio — Fúria, Fé, Mana, Sangue, Vapor, Ódio.</p></article>
+    <article><b>Passivas</b><p>Selos que se acumulam por baixo dos golpes: cada passiva sobe de grau e muda como a habilidade age — mais alcance, um sangramento, uma cura extra, um segundo alvo.</p></article>
+    <article><b>Árvore de talentos</b><p>1 ponto a cada 2 níveis e +1 a cada 10. Anéis que abrem com o nível, portões que pedem pontos no braço, e runas que mudam a conta. Dois guerreiros nunca saem iguais.</p></article>
   </div>
 </section>
 
@@ -224,29 +370,51 @@
   </div>
 </section>
 
-<!-- 7. ARTE -->
+<!-- 7. ARTBOOK: o livro que se folheia + a Edição do Fundador -->
 <section id="arte" class="art">
-  <div class="art__head"><span class="eyebrow">Do caderno ao jogo</span><h2>Feito à mão,<br>peça por peça.</h2><p>Personagens, montarias, carroças, armas e cidades desenhados e modelados para KARMIKA.</p></div>
-  <div class="art__grid">
-    <button class="a1" type="button" data-lb="/img/mont-lobo.webp" data-cap="Lobo branco de montaria"><img src="/img/mont-lobo.webp" alt="Lobo branco de montaria" loading="lazy"></button>
-    <button class="a2" type="button" data-lb="/img/arte-carroca-latao.webp" data-cap="Carroça da Companhia de Latão"><img src="/img/arte-carroca-latao.webp" alt="Carroça da Companhia de Latão" loading="lazy"></button>
-    <button class="a3" type="button" data-lb="/img/mont-cavalo-negro.webp" data-cap="Cavalo negro dos vampiros"><img src="/img/mont-cavalo-negro.webp" alt="Cavalo negro dos vampiros" loading="lazy"></button>
-    <button class="a4" type="button" data-lb="/img/arte-licantropo.webp" data-cap="Folha de modelo do licantropo"><img src="/img/arte-licantropo.webp" alt="Folha de modelo do licantropo" loading="lazy"></button>
-    <button class="a5" type="button" data-lb="/img/mont-cervo.webp" data-cap="Cervo élfico"><img src="/img/mont-cervo.webp" alt="Cervo élfico" loading="lazy"></button>
-    <button class="a6" type="button" data-lb="/img/arte-espadas2.webp" data-cap="Espadas especiais"><img src="/img/arte-espadas2.webp" alt="Espadas especiais" loading="lazy"></button>
-    <button class="a7" type="button" data-lb="/img/mont-carneiro.webp" data-cap="Carneiro dos anões"><img src="/img/mont-carneiro.webp" alt="Carneiro dos anões" loading="lazy"></button>
-    <button class="a8" type="button" data-lb="/img/arte-fonte.webp" data-cap="Fonte da praça"><img src="/img/arte-fonte.webp" alt="Fonte da praça" loading="lazy"></button>
-    <button class="a9" type="button" data-lb="/img/mont-tigre.webp" data-cap="Tigre-dentes-de-sabre"><img src="/img/mont-tigre.webp" alt="Tigre-dentes-de-sabre" loading="lazy"></button>
-    <button class="a10" type="button" data-lb="/img/arte-escudos.webp" data-cap="Escudos"><img src="/img/arte-escudos.webp" alt="Escudos" loading="lazy"></button>
+  <div class="art__head"><span class="eyebrow">O artbook de KARMIKA</span><h2>Feito à mão,<br>página por página.</h2><p>Personagens, montarias, carroças, armas, runas e cidades desenhados e modelados para KARMIKA. Folheie.</p></div>
+  <div class="abook" id="abook">
+    <div class="abook__book" aria-live="polite"></div>
+    <div class="abook__nav"><button type="button" data-ab="-1" aria-label="Página anterior">‹</button><span class="abook__n"></span><button type="button" data-ab="1" aria-label="Próxima página">›</button></div>
+  </div>
+  <div class="founder">
+    <div class="founder__box" aria-hidden="true">
+      <div class="fbox"><div class="fbox__lid"><img src="/img/logo-bronze.webp" alt=""><b>KARMIKA</b><i>Edição do Fundador</i></div><div class="fbox__side"></div></div>
+      <div class="fitem fitem--usb"><span></span><i>pendrive</i></div>
+      <div class="fitem fitem--map"><span></span><i>mapa</i></div>
+      <div class="fitem fitem--art"><span></span><i>artbook</i></div>
+      <div class="fitem fitem--ost"><span></span><i>trilha</i></div>
+    </div>
+    <div class="founder__txt">
+      <span class="eyebrow">Para quem levar KARMIKA adiante</span>
+      <h3>A Edição do Fundador, numa caixa.</h3>
+      <p>Quem participar promovendo o jogo — chamando amigos, levando para a guilda, para o canal, para a mesa de RPG — recebe em casa a caixa de colecionador:</p>
+      <ul><li><b>O jogo num pendrive</b> gravado com o selo do Olho</li><li><b>O artbook impresso</b>, com estas páginas e muitas outras</li><li><b>A trilha sonora</b> de KARMIKA</li><li><b>O mapa completo de Karmika</b>, impresso para pendurar na parede</li><li>tudo numa <b>caixa belíssima</b>, numerada</li></ul>
+      <a class="btn" href="#beta" data-amb>Quero ser embaixador</a>
+    </div>
   </div>
 </section>
 
 <!-- 8. BRASIL -->
 <section class="brasil">
-  <img class="brasil__seal" src="/img/logo-pergaminho.webp" alt="Emblema KK em pergaminho" loading="lazy">
+  <div class="brasil__seal"><img src="/img/logo-pergaminho.webp" alt="Emblema KK em pergaminho" loading="lazy">
+    <svg class="brasil__eye" viewBox="0 0 1200 896" aria-hidden="true">
+      <defs>
+        <clipPath id="almond"><path d="M492 440 Q608 352 724 440 Q608 528 492 440 Z"/></clipPath>
+        <radialGradient id="iris" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#0b2a12"/><stop offset=".38" stop-color="#0f7a36"/><stop offset=".72" stop-color="#1fae4a"/><stop offset=".86" stop-color="#ffd83a"/><stop offset="1" stop-color="#c79a10"/></radialGradient>
+        <linearGradient id="lid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9c79f"/><stop offset="1" stop-color="#bfa878"/></linearGradient>
+      </defs>
+      <g clip-path="url(#almond)">
+        <g class="eye__iris"><circle cx="608" cy="440" r="50" fill="url(#iris)" opacity=".92" style="mix-blend-mode:multiply"/><circle cx="608" cy="440" r="19" fill="#0a1208"/><circle cx="622" cy="425" r="8" fill="#fffbe0" opacity=".9"/></g>
+        <rect class="eye__up" x="480" y="330" width="260" height="110" fill="url(#lid)"/>
+        <rect class="eye__dn" x="480" y="440" width="260" height="110" fill="url(#lid)"/>
+        <path class="eye__line" d="M492 440 Q608 452 724 440" fill="none" stroke="#3a2a16" stroke-width="3" opacity="0"/>
+      </g>
+    </svg>
+  </div>
   <p class="brasil__kicker">Feito no Brasil. Para o mundo.</p>
-  <h2 class="brasil__big">Uma empresa brazuca<br>fazendo o melhor<br>MMORPG do mundo.</h2>
-  <p class="brasil__by">KARMIKA é desenvolvido inteiramente no Brasil pela <b>D2 Studio</b>.</p>
+  <h2 class="brasil__big">Um jogo brasileiro<br>com alma de lenda.</h2>
+  <p class="brasil__by">KARMIKA é feito inteiramente no Brasil pela <b>D2 Studio</b> — uma empresa brazuca fazendo o MMORPG que a gente sempre quis jogar, para o mundo inteiro jogar junto.</p>
 </section>
 
 <!-- 9. BETA -->
@@ -255,16 +423,17 @@
     <span class="eyebrow">Beta fechado</span>
     <h2>Entre antes de todo mundo.</h2>
     <p>Os primeiros testadores jogam antes do lançamento, falam direto com quem faz o jogo e deixam a marca deles no mundo de KARMIKA. Vagas limitadas por rodada.</p>
-    <ul><li>Acesso às rodadas do beta fechado</li><li>Canal direto com a D2 Studio</li><li>Título exclusivo de Fundador no lançamento</li></ul>
+    <ul><li>Acesso às rodadas do beta fechado</li><li>Canal direto com a D2 Studio</li><li>Título exclusivo de Fundador no lançamento</li><li>Embaixadores concorrem à caixa da Edição do Fundador</li></ul>
   </div>
   <form class="beta__form" id="betaForm" novalidate>
     <label>Nome ou apelido<input name="nome" required maxlength="60" autocomplete="nickname"></label>
     <label>E-mail<input name="email" type="email" required maxlength="120" autocomplete="email"></label>
     <label>Discord <small>(opcional)</small><input name="discord" maxlength="60"></label>
     <label>Qual caminho te chama?
-      <select name="caminho"><option>Ainda não sei</option><option>Guerreiro do Norte</option><option>Paladino de Auréon</option><option>Mago</option><option>Bruxo</option><option>Vampiro</option><option>Lobisomem</option><option>Tecnocrata</option><option>Caçador de Demônios</option></select></label>
+      <select name="caminho"><option>Ainda não sei</option><option>Guerreiro do Norte</option><option>Paladino de Auréon</option><option>Mago</option><option>Bruxo</option><option>Vampiro</option><option>Lobisomem</option><option>Tecnocrata</option><option>Caçador de Demônios</option><option>Druida</option><option>Assassino</option><option>Necromante</option></select></label>
     <label>Seu PC <small>(processador / placa de vídeo — opcional)</small><input name="pc" maxlength="120" placeholder="ex.: Ryzen 5 5600, GTX 1660"></label>
     <input name="site" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <label class="check"><input type="checkbox" name="embaixador"> Quero ser embaixador e ajudar a divulgar KARMIKA.</label>
     <label class="check"><input type="checkbox" name="ok" required> Aceito receber e-mails da D2 Studio sobre o beta de KARMIKA.</label>
     <button class="btn btn--wide" type="submit">Quero ser beta tester</button>
     <p class="beta__msg" role="status" aria-live="polite"></p>
@@ -277,7 +446,7 @@
   <p>KARMIKA © 2026 D2 Studio · Feito no Brasil</p>
 </footer>
 <div class="sheet" id="sheet" hidden><div class="sheet__in"><button class="sheet__x" type="button" aria-label="Fechar">✕</button><div class="sheet__body"></div></div></div>
-<div class="reader" id="reader" hidden><div class="reader__in"><button class="sheet__x" type="button" aria-label="Fechar">✕</button><nav class="reader__tabs"></nav><article class="reader__page"></article><div class="reader__nav"><button type="button" data-rd="-1">‹ Anterior</button><span class="reader__n"></span><button type="button" data-rd="1">Próxima ›</button></div></div></div>
+<div class="reader" id="reader" hidden><div class="reader__in"><button class="sheet__x" type="button" aria-label="Fechar">✕</button><p class="reader__season">Bíblia Karmika · Season I</p><nav class="reader__tabs"></nav><article class="reader__page"></article><div class="reader__nav"><button type="button" data-rd="-1">‹ Anterior</button><span class="reader__n"></span><button type="button" data-rd="1">Próxima ›</button></div><p class="reader__dl"><a href="/karmika-season-1.pdf" download>Baixar a Season I em PDF</a></p></div></div>
 <div class="lb" id="lightbox" hidden><button class="lb__x" type="button" aria-label="Fechar">✕</button><img alt=""><p class="lb__cap"></p></div>
 
 <script src="/vendor/gsap.min.js"></script>
@@ -285,7 +454,9 @@
 <script src="/vendor/lenis.min.js"></script>
 <script src="/classes.js"></script>
 <script src="/book.js"></script>
+<script src="/data.js"></script>
 <script src="/more.js"></script>
 <script src="/main.js"></script>
+<script src="/extra.js"></script>
 </body>
 </html>

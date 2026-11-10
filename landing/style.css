@@ -363,3 +363,19 @@ section h2 + p, .cmp__head h2 { margin-top: 0; }
 .rebirth__lines { z-index: 3; }
 @media (max-width: 760px) { .rebirth__art { width: 100vw; right: -20vw; } .rebirth__art img { height: 70vh; } }
 @media (prefers-reduced-motion: reduce) { .rebirth__art img { opacity: .5; } }
+
+/* painel "Você vira o que escolhe": casais de cada caminho */
+.sh__pairs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 12px; margin: 26px 0 10px; }
+.pair { all: unset; cursor: pointer; display: grid; gap: 2px; padding: 12px 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: radial-gradient(ellipse at 50% 35%, #2a2028, #141117 70%); text-align: center; transition: border-color .3s, transform .3s; }
+.pair:hover, .pair:focus-visible { border-color: var(--ember); transform: translateY(-3px); }
+.pair__figs { display: flex; justify-content: center; align-items: flex-end; height: 230px; margin-bottom: 8px; }
+.pair__figs img { height: 100%; width: auto; max-width: 50%; object-fit: contain; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, .6)); }
+.pair__figs img + img { height: 92%; margin-left: -8%; }
+.pair__figs .pair__ph { height: 50%; max-width: 70%; mix-blend-mode: screen; opacity: .35; filter: grayscale(1); align-self: center; }
+.pair b { font: 700 17px var(--serif); } .pair small { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); }
+
+/* galerias sem buracos: colunas fixas (a primeira imagem completa a linha) */
+.sh__gal, .pdet__art { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.sh__gal .sh__img, .pdet__art button { aspect-ratio: auto; height: clamp(160px, 18vw, 240px); }
+.sh__pairs { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+@media (max-width: 760px) { .sh__gal, .pdet__art { grid-template-columns: 1fr 1fr !important; } .sh__gal > *, .pdet__art > * { grid-column: auto !important; } .sh__gal > :first-child:nth-last-child(odd), .pdet__art > :first-child:nth-last-child(odd) { grid-column: 1 / -1 !important; } .sh__pairs { grid-template-columns: 1fr 1fr !important; } .sh__pairs > * { grid-column: auto !important; } .sh__pairs > :last-child:nth-child(odd) { grid-column: 1 / -1 !important; } }

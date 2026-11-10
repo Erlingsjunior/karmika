@@ -71,7 +71,8 @@
 
   /* 8. brasil */
   gsap.from('.brasil__big', { opacity: 0, y: 50, filter: 'blur(12px)', duration: 1.4, ease: 'power3.out', scrollTrigger: { trigger: '.brasil__big', start: 'top 80%' } });
-  gsap.fromTo('.brasil__seal', { rotate: -4, scale: 0.9, opacity: 0 }, { rotate: 0, scale: 1, opacity: 0.9, duration: 1.4, ease: 'power3.out', scrollTrigger: { trigger: '.brasil', start: 'top 75%' } });
+  gsap.fromTo('.brasil__seal', { rotate: -4, scale: 0.9, opacity: 0 }, { rotate: 0, scale: 1, opacity: 1, duration: 1.4, ease: 'power3.out', scrollTrigger: { trigger: '.brasil', start: 'top 75%' } });
+  gsap.fromTo('.manifesto__kick, .manifesto__end', { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1, stagger: 0.2, ease: 'power3.out', scrollTrigger: { trigger: '.manifesto', start: 'top 70%' } });
 
   addEventListener('load', () => ScrollTrigger.refresh());
 
@@ -79,7 +80,7 @@
   function formInit() {
     const f = document.getElementById('betaForm'); if (!f) return; const msg = f.querySelector('.beta__msg'), btn = f.querySelector('button');
     f.addEventListener('submit', async (e) => { e.preventDefault(); msg.className = 'beta__msg'; msg.textContent = '';
-      const d = Object.fromEntries(new FormData(f).entries());
+      const d = Object.fromEntries(new FormData(f).entries()); d.embaixador = !!d.embaixador;
       if (!d.nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { msg.classList.add('err'); msg.textContent = 'Preencha nome e um e-mail válido.'; return; }
       if (!d.ok) { msg.classList.add('err'); msg.textContent = 'Marque a caixa de aceite para receber o convite.'; return; }
       btn.disabled = true; btn.textContent = 'Enviando…';
@@ -92,21 +93,29 @@
   function pathsInit() {
     const grid = document.getElementById('pathsGrid'), det = document.getElementById('pathDetail'), sec = document.getElementById('caminhos'); const C = window.KARMIKA_CLASSES || []; if (!grid) return;
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-    grid.innerHTML = C.map((c, i) => `<figure class="path${c.retratos.length ? '' : ' path--soon'}" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(c.nome)}: abrir detalhes">${c.retratos.length ? `<img src="/img/${c.retratos[0]}.webp" alt="${esc(c.nome)}" loading="lazy">` : '<div class="path__ph"><img src="/img/logo-bronze.webp" alt=""></div>'}<figcaption><b>${esc(c.nome)}</b><span>${esc(c.tipo)} · ${esc(c.casa.split(' · ')[0])}</span><i>${esc(c.lema)}</i></figcaption></figure>`).join('');
+    grid.innerHTML = C.map((c, i) => `<figure class="path${c.soon ? ' path--soon' : ''}" role="listitem" tabindex="0" data-i="${i}" aria-label="${esc(c.nome)}: abrir detalhes">${c.retratos.length ? `<img src="/img/${c.retratos[0]}.webp" alt="${esc(c.nome)}" loading="lazy">` : '<div class="path__ph"><img src="/img/logo-bronze.webp" alt=""><em>em breve</em></div>'}<figcaption><b>${esc(c.nome)}</b><span>${esc(c.tipo)} · ${esc(c.casa.split(' · ')[0])}</span><i>${esc(c.lema)}</i></figcaption></figure>`).join('');
     const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { const el = e.target; setTimeout(() => el.classList.add('in'), (+el.dataset.i % 6) * 70); io.unobserve(el); } }), { rootMargin: '0px 0px -10% 0px' }); grid.querySelectorAll('.path').forEach((el) => io.observe(el));
     let cur = -1;
     const open = (i) => { const c = C[i]; if (!c) return; cur = i; sec.classList.add('is-open'); grid.querySelectorAll('.path').forEach((el) => el.classList.toggle('is-sel', +el.dataset.i === i));
-      const figs = [...c.retratos, ...(c.poses || [])]; const im = (sel, n) => { const e = det.querySelector(sel); if (n) { e.src = `/img/${n}.webp`; e.hidden = false; } else e.hidden = true; };
-      im('.pdet__f1', figs[0]); im('.pdet__f2', figs[1]); im('.pdet__f3', c.poses && c.poses[0] && figs[0] !== c.poses[0] ? c.poses[0] : null);
+      /* 10/11 (Erling): macho e fêmea lado a lado à direita; ao fundo, apagada, a pose de cada um (sem repetir a mesma figura) */
+      const FEM = /(-f$|a$|lobisoma$)/, ret = c.retratos || [], nm = (r) => r.replace('c-', '').replace(/-ab$/, ''), male = ret.find((r) => !FEM.test(nm(r))), fem = ret.find((r) => FEM.test(nm(r)));
+      const poses = c.poses || [], pm = poses.find((p) => /_h$/.test(p)), pf = poses.find((p) => /_m$/.test(p));
+      const im = (sel, n) => { const e = det.querySelector(sel); if (n) { e.src = `/img/${n}.webp`; e.alt = c.nome; e.hidden = false; } else { e.hidden = true; e.removeAttribute('src'); } };
+      im('.pdet__m', male); im('.pdet__f', fem); im('.pdet__pm', pm); im('.pdet__pf', pf);
+      det.querySelector('.pdet__figs').classList.toggle('is-soon', !ret.length);
       det.querySelector('.pdet__kind').textContent = c.tipo === 'Raça' ? 'Raça de nascimento' : 'Caminho';
       det.querySelector('.pdet__name').textContent = c.nome; det.querySelector('.pdet__lema').textContent = c.lema;
       det.querySelector('.pdet__meta').innerHTML = `<dt>Lar</dt><dd>${esc(c.casa)}</dd>${c.mestre ? `<dt>Mestre</dt><dd>${esc(c.mestre)}</dd>` : ''}<dt>Recurso</dt><dd>${esc(c.recurso)}</dd>`;
       det.querySelector('.pdet__hist').innerHTML = c.hist.map((p) => `<p>${esc(p)}</p>`).join('');
+      det.querySelector('.pdet__skT').hidden = !c.magias.length;
       det.querySelector('.pdet__skills').innerHTML = c.magias.map((m) => `<div class="skill"><div class="skill__ic">${m.svg || ''}</div><div><b>${esc(m.name)}</b><small>nível ${m.lvl}</small><p>${esc(m.tip)}</p></div></div>`).join('');
-      const art = [...(c.poses || []).slice(1), ...c.artes]; det.querySelector('.pdet__artT').hidden = !c.artes.length;
-      det.querySelector('.pdet__art').innerHTML = c.artes.map((a) => `<button type="button" data-lb="/img/${a}.webp" data-cap="${esc(c.nome)} — artbook"><img src="/img/${a}.webp" alt="${esc(c.nome)}: arte" loading="lazy"></button>`).join(''); void art;
+      const tl = c.talentos || []; det.querySelector('.pdet__tlT').hidden = det.querySelector('.pdet__tlp').hidden = !tl.length;
+      det.querySelector('.pdet__tree').innerHTML = tl.map((b) => `<div class="tbr" style="--c:${b.col}"><b>${esc(b.name)}</b><ul>${b.notables.map((n) => `<li><span>${esc(n.n)}</span><small>${esc(n.t)}</small></li>`).join('')}</ul><div class="tbr__key"><span>◆ ${esc(b.key.n)}</span><small>${esc(b.key.t)}</small></div></div>`).join('');
+      det.querySelector('.pdet__artT').hidden = !c.artes.length;
+      det.querySelector('.pdet__art').innerHTML = c.artes.map((a) => `<button type="button" data-lb="/img/${a}.webp" data-cap="${esc(c.nome)} — artbook"><img src="/img/${a}.webp" alt="${esc(c.nome)}: arte" loading="lazy"></button>`).join(''); 
+      window.__fillGrid?.(det.querySelector('.pdet__art'), 3);
       det.hidden = false;
-      if (window.gsap) { gsap.fromTo(det, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.pdet__figs img:not([hidden])'), { opacity: 0, y: 40, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, stagger: 0.12, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.skill, .pdet__art button'), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.025, ease: 'power2.out', delay: 0.2 }); }
+      if (window.gsap) { gsap.fromTo(det, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.pdet__m:not([hidden]), .pdet__f:not([hidden])'), { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.9, stagger: 0.12, ease: 'power3.out' }); gsap.fromTo(det.querySelectorAll('.pdet__pm:not([hidden]), .pdet__pf:not([hidden])'), { opacity: 0, scale: 1.1 }, { opacity: 0.22, scale: 1, duration: 1.4, ease: 'power2.out' }); gsap.fromTo(det.querySelectorAll('.skill, .tbr, .pdet__art button'), { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, stagger: 0.025, ease: 'power2.out', delay: 0.2 }); }
       const top = sec.getBoundingClientRect().top + scrollY - 70; if (Math.abs(scrollY - top) > 200) scrollTo({ top, behavior: 'smooth' });
       if (window.ScrollTrigger) setTimeout(() => ScrollTrigger.refresh(), 700); };
     const close = () => { cur = -1; sec.classList.remove('is-open'); det.hidden = true; grid.querySelectorAll('.path').forEach((el) => el.classList.remove('is-sel')); if (window.ScrollTrigger) setTimeout(() => ScrollTrigger.refresh(), 300); };
@@ -115,7 +124,7 @@
     det.querySelector('.pdet__close').addEventListener('click', close);
     /* parallax leve das figuras com o mouse */
     det.querySelector('.pdet__figs').addEventListener('pointermove', (e) => { if (!window.gsap) return; const r = e.currentTarget.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
-      gsap.to('.pdet__f1', { x: x * 18, y: y * 8, duration: 0.6 }); gsap.to('.pdet__f2', { x: x * 34, y: y * 12, duration: 0.6 }); gsap.to('.pdet__f3', { x: x * 50, y: y * 16, duration: 0.6 }); });
+      gsap.to('.pdet__m, .pdet__f', { x: x * 16, y: y * 6, duration: 0.6 }); gsap.to('.pdet__pm, .pdet__pf', { x: -x * 30, y: -y * 10, duration: 0.8 }); });
   }
 
   /* ===== lightbox: qualquer [data-lb] abre a imagem grande; clique fora, ✕ ou Esc fecha ===== */
