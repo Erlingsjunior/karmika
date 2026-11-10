@@ -72,7 +72,7 @@
   const ab = $('#abook');
   if (ab && AB.length) {
     const book = $('.abook__book', ab), n = $('.abook__n', ab);
-    const page = (p) => p ? `<button type="button" class="abp" data-lb="/img/${p[0]}.webp" data-cap="${esc(p[1])}"><img src="/img/${p[0]}.webp" alt="${esc(p[1])}" loading="lazy"><span>${esc(p[1])}</span></button>` : '<div class="abp abp--end"><img src="/img/logo-bronze.webp" alt=""><span>continua no artbook impresso</span></div>';
+    const page = (p) => p && p[0] === '#' ? `<div class="abp abp--title"><img src="/img/logo-bronze.webp" alt=""><b>${esc(p[1])}</b><span class="cv__line"></span></div>` : p ? `<button type="button" class="abp" data-lb="/img/${p[0]}.webp" data-cap="${esc(p[1])}"><img src="/img/${p[0]}.webp" alt="${esc(p[1])}" loading="lazy"><span>${esc(p[1])}</span></button>` : '<div class="abp abp--end"><img src="/img/logo-bronze.webp" alt=""><span>continua no artbook impresso</span></div>';
     /* 10/11 (Erling): capa dura de couro, com moldura em relevo, cantoneiras de metal e as runas de Karmika em volta */
     const rr = (k, x, y, sz) => `<svg class="cv__r" viewBox="0 0 28 28" style="left:${x}%;top:${y}%;width:${sz}%"><path d="${RUNAS[k % 6]}"/></svg>`;
     let runes = ''; for (let i = 0; i < 7; i++) { const t = 10 + i * 13.3; runes += rr(i, t, 3.2, 5.2) + rr(i + 3, t, 91.8, 5.2); } for (let i = 0; i < 9; i++) { const t = 11 + i * 9.6; runes += rr(i + 1, 3.6, t, 5.2) + rr(i + 4, 91.2, t, 5.2); }

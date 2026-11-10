@@ -511,3 +511,7 @@ main { overflow-x: clip; }
 .runes { -webkit-mask-image: linear-gradient(90deg, #000 0, #000 12%, rgba(0, 0, 0, .25) 26%, rgba(0, 0, 0, .25) 74%, #000 88%, #000 100%); mask-image: linear-gradient(90deg, #000 0, #000 12%, rgba(0, 0, 0, .25) 26%, rgba(0, 0, 0, .25) 74%, #000 88%, #000 100%); }
 .fitem--ost span { width: 70px !important; height: 70px !important; border-radius: 50% !important; background: radial-gradient(circle, rgba(255, 122, 42, .22), rgba(20, 16, 22, .9) 70%) !important; border: 1px solid rgba(217, 165, 74, .5) !important; box-shadow: 0 0 30px rgba(255, 122, 42, .25), 0 18px 30px -10px #000 !important; display: grid !important; place-items: center; color: var(--gold2); }
 .fitem--ost svg { width: 56%; height: 56%; filter: drop-shadow(0 0 6px rgba(255, 180, 80, .6)); }
+.abp--title { cursor: default; display: flex !important; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.abp--title img { width: 34% !important; height: auto !important; opacity: .55; filter: sepia(.6) !important; }
+.abp--title b { font: italic 600 clamp(26px, 3.4vw, 50px) 'Cormorant Garamond', Georgia, serif; color: #4a3018; text-align: center; letter-spacing: .02em; }
+.abp--title .cv__line { background: linear-gradient(90deg, transparent, #8a6430, transparent); }
