@@ -110,10 +110,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   // esconde a malha procedural, menos o que continua dela (arma, escudo, elmo, sombra, drone)
   /* 09/11 (Erling: "tire qualquer roupa ou armadura dos esqueletos"): no NPC, a capa, o elmo e a armadura procedurais (backAnchor, helmHolder, bodyHolder) somem
      de vez — o modelo de arte já vem vestido. Fica só arma/escudo/sombra/drone (e o que for arte, userData.keep). */
-  const keep = new Set(rig.keepRoots().filter((_o: THREE.Object3D, i: number) => !(def.npc && (i === 4 || i === 7 || i === 8))));
+  /* 10/11: a lista do que fica é lida de novo a cada vez — trocar de arma cria suportes novos (e o machado em combate muda para o weaponRig) */
+  let keep = new Set<THREE.Object3D>(); const keepNow = () => { keep = new Set(rig.keepRoots().filter((_o: THREE.Object3D, i: number) => !(def.npc && (i === 4 || i === 7 || i === 8)))); };
+  keepNow();
   const kept = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (keep.has(p)) return true; if (p === root) return false; } return false; };
   const modelIds = new Set<number>(); model.traverse((o) => modelIds.add(o.id));
-  const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
+  const hideProc = () => { keepNow(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
   hideProc(); root.userData.hideProc = hideProc; /* 09/11: o retrato do NPC chama isto antes de fotografar (a Juíza Hulda saía com a trança assada por cima do rosto) */
   fine(model);
   // dedos fechados: punho na mão da arma e pegada na alça do escudo (curvatura constante sobre o repouso)
