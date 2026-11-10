@@ -676,6 +676,8 @@ export function createGameplay(d: GameplayDeps) {
   let stance = { dmg: 0, def: 0, heal: 0, regen: 0, move: 0, crit: 0, leech: 0 };
   /** efeitos que duram (solo consagrado, enxame, dreno, asas): roda fn a cada quadro até t acabar */
   let kitKey = '';
+  /** teste: lança qualquer magia sem esperar a animação nem a recarga (só pelo console de teste) */
+  let dbgCast = false;
   /* guarda dos conjuradores (mago/bruxo/paladino sem escudo): o rig não tem escudo pra erguer, então a guarda ganha um
      escudo arcano — esfera translúcida com anel no chão que acompanha o herói enquanto a tecla está presa */
   let ward: THREE.Group | null = null;
@@ -710,6 +712,53 @@ export function createGameplay(d: GameplayDeps) {
         const x = p.x + (wR.x * Math.cos(a) + wU.x * Math.sin(a)) * r - wF.x * back, y = p.y + (wR.y * Math.cos(a) + wU.y * Math.sin(a)) * r - wF.y * back, z = p.z + (wR.z * Math.cos(a) + wU.z * Math.sin(a)) * r - wF.z * back;
         pfx(x, y, z, { vx: -wF.x * 2 - Math.sin(a) * wR.x, vy: -wF.y * 2 + 0.2, vz: -wF.z * 2 - Math.sin(a) * wR.z, life: 0.5, s0: 0.26, s1: 0.04, c0: 0xffffff, c1: 0xa8dcff, a: 0.75, drag: 2.5 }); }
       if (Math.random() < 0.5) { const a = Math.random() * 6.283, r = 0.7 + Math.random() * 0.4; pfx(p.x + (wR.x * Math.cos(a) + wU.x * Math.sin(a)) * r, p.y + (wU.y * Math.sin(a)) * r, p.z + (wR.z * Math.cos(a) + wU.z * Math.sin(a)) * r, { vx: -wF.x * 6, vy: 0.1, vz: -wF.z * 6, life: 0.6, s0: 0.5, s1: 0.1, c0: 0xe8f6ff, c1: 0x6ab0e8, a: 0.35, drag: 3 }); } } }); }
+  /* ============ 09/11 KIT DE EFEITOS (Erling: "todas as habilidades de todas as classes precisam de capricho") ============
+     Peças pequenas que qualquer magia combina: onda no chão, pilar de luz, círculo de runas, explosão de faíscas, aura em espiral,
+     rastro em projétil, clarão e brasas que orbitam. Tudo aditivo, barato (geometria e textura compartilhadas) e some sozinho. */
+  const FXG = { ring: new THREE.RingGeometry(0.86, 1, 48).rotateX(-Math.PI / 2), disc: new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), col: new THREE.CylinderGeometry(1, 1, 1, 18, 1, true).translate(0, 0.5, 0) };
+  const FXT = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d')!; g.translate(128, 128); g.strokeStyle = '#fff'; g.lineWidth = 5;
+    g.beginPath(); g.arc(0, 0, 118, 0, 7); g.stroke(); g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 96, 0, 7); g.stroke();
+    for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, b = a + Math.PI * 2 / 3 * 2; g.beginPath(); g.moveTo(Math.cos(a) * 96, Math.sin(a) * 96); g.lineTo(Math.cos(b) * 96, Math.sin(b) * 96); g.stroke(); }
+    g.font = 'bold 18px serif'; g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle'; const R = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃ'; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; g.save(); g.rotate(a); g.fillText(R[k], 0, -107); g.restore(); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const FXF = radialTexture(64, [[0, 'rgba(255,255,255,1)'], [0.35, 'rgba(255,255,255,.55)'], [1, 'rgba(255,255,255,0)']]);
+  const addM = (col: number, op = 0.85, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide, map });
+  const gy0 = (x: number, z: number) => d.world.heightAt(x, z);
+  /** onda que se abre no chão (impacto, grito, pisão) */
+  function fxRing(x: number, z: number, col: number, r1 = 4, dur = 0.5, r0 = 0.3, y?: number) { const m = new THREE.Mesh(FXG.ring, addM(col, 0.9)); m.position.set(x, (y ?? gy0(x, z)) + 0.06, z); m.scale.setScalar(r0); fxAdd(m); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur), e = 1 - (1 - k) * (1 - k); m.scale.setScalar(r0 + (r1 - r0) * e); (m.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k); }, end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); } }); }
+  /** pilar de luz que desce/sobe (bênção, raio, chegada de invocação) */
+  function fxPillar(x: number, z: number, col: number, h = 6, dur = 0.7, w = 0.6, y?: number) { const m = new THREE.Mesh(FXG.col, addM(col, 0.45)); const y0 = y ?? gy0(x, z); m.position.set(x, y0, z); m.scale.set(w, h, w); fxAdd(m);
+    const c = new THREE.Mesh(FXG.col, addM(0xffffff, 0.5)); c.scale.set(0.3, 1, 0.3); m.add(c); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur); m.scale.x = m.scale.z = w * (1 - k * 0.7); (m.material as THREE.MeshBasicMaterial).opacity = 0.45 * (1 - k); (c.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k); m.rotation.y += dt2 * 3; },
+      end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); (c.material as THREE.Material).dispose(); } }); }
+  /** círculo de runas girando no chão (conjuração, área sagrada, maldição) */
+  function fxGlyph(x: number, z: number, col: number, r = 2, dur = 1.2, spin = 1.5, y?: number) { const m = new THREE.Mesh(FXG.disc, addM(col, 0, FXT)); m.position.set(x, (y ?? gy0(x, z)) + 0.07, z); m.scale.setScalar(r); fxAdd(m); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = t / dur, a = Math.min(1, t * 6, (1 - k) * 4); (m.material as THREE.MeshBasicMaterial).opacity = 0.95 * a; m.rotation.y += dt2 * spin; m.scale.setScalar(r * (0.85 + 0.15 * Math.min(1, t * 5))); },
+      end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); } }); return m; }
+  /** clarão: uma bola de luz que incha e apaga */
+  function fxFlash(p: THREE.Vector3, col: number, size = 2, dur = 0.25) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: FXF, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.position.copy(p); sp.scale.setScalar(size * 0.3); fxAdd(sp); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur); sp.scale.setScalar(Math.min(size, 3.2) * (0.3 + 0.7 * Math.sqrt(k))); sp.material.opacity = 0.6 * (1 - k); /* contido: clarão grande demais apagava a tela */ }, end: () => { sp.parent?.remove(sp); sp.material.dispose(); } }); }
+  /** explosão de faíscas em esfera */
+  function fxBurst(x: number, y: number, z: number, c0: number, c1: number, n = 24, sp = 5, life = 0.6, s0 = 0.35, k?: 0 | 1 | 2) { for (let i = 0; i < n; i++) { const a = rnd(0, 6.283), b = rnd(-1, 1), q = Math.sqrt(1 - b * b), v = rnd(0.4, 1) * sp;
+    pfx(x, y, z, { vx: Math.cos(a) * q * v, vy: b * v * 0.8 + sp * 0.15, vz: Math.sin(a) * q * v, life: life * rnd(0.7, 1.2), s0, s1: 0.04, c0, c1, a: 1, drag: 2.2, k }); } }
+  /** aura que sobe em espiral em volta de um ponto (ou de quem segue `at`) */
+  function fxSwirl(at: () => THREE.Vector3, col: number, col2: number, dur = 1, r = 0.8, h = 2.2, rate = 40) { let t = 0, acc = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; acc += dt2 * rate; const p = at(); while (acc >= 1) { acc--; const a = t * 7 + rnd(0, 6.283), yy = rnd(0, h);
+      pfx(p.x + Math.cos(a) * r, p.y + yy, p.z + Math.sin(a) * r, { vx: -Math.sin(a) * 1.4, vy: rnd(0.8, 1.8), vz: Math.cos(a) * 1.4, life: 0.6, s0: 0.28, s1: 0.04, c0: col, c1: col2, a: 0.85, drag: 1.5 }); } } }); }
+  /** rastro num objeto que voa (bola de fogo, martelo, lança, machadinha…) — estilo pelo elemento */
+  function fxTrail(m: THREE.Object3D, style: 'fire' | 'frost' | 'holy' | 'shadow' | 'blood' | 'arcane' | 'spark' | 'poison' | 'earth' | 'wind', dur = 3) {
+    const C: Record<string, [number, number, 0 | 1 | 2]> = { fire: [0xffe08a, 0xff4a10, 2], frost: [0xffffff, 0x6ad0ff, 0], holy: [0xfff6c0, 0xffc84a, 0], shadow: [0x8a5ad8, 0x10041c, 0], blood: [0xff6a6a, 0x5a0408, 0], arcane: [0xd8b0ff, 0x6a3ad8, 0], spark: [0xffffff, 0x6ae0ff, 1], poison: [0xc8ff8a, 0x2a6a10, 0], earth: [0xd8c8a0, 0x5a4a30, 0], wind: [0xffffff, 0xa8dcff, 0] };
+    const [c0, c1, k] = C[style]; ticks.push({ t: dur, fn: () => { if (!(m.parent as THREE.Scene | null)?.isScene && !m.parent?.parent) return; const p = m.getWorldPosition(wTmp); for (let i = 0; i < 3; i++) pfx(p.x + rnd(-0.12, 0.12), p.y + rnd(-0.12, 0.12), p.z + rnd(-0.12, 0.12), { vx: rnd(-0.4, 0.4), vy: rnd(-0.1, 0.6), vz: rnd(-0.4, 0.4), life: 0.45, s0: 0.38, s1: 0.04, c0, c1, a: 0.9, drag: 2, k }); } }); }
+  const wTmp = new THREE.Vector3();
+  /** brasas que orbitam alguém por um tempo (buffs: escudo, fúria, bênção) */
+  function fxOrbit(at: () => THREE.Vector3, col: number, col2: number, dur = 2, n = 6, r = 0.9, y = 1.1) { let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const p = at(); for (let i = 0; i < n; i++) { const a = t * 4 + i / n * 6.283; pfx(p.x + Math.cos(a) * r, p.y + y + Math.sin(t * 3 + i) * 0.25, p.z + Math.sin(a) * r, { life: 0.25, s0: 0.22, s1: 0.05, c0: col, c1: col2, a: 0.9 }); } } }); }
+  /** linha de energia do herói até um ponto, com faíscas (dreno, cura à distância, corrente) */
+  function fxTether(a: () => THREE.Vector3, b: () => THREE.Vector3, col: number, col2: number, dur = 0.6) { ticks.push({ t: dur, fn: () => { const A = a(), B = b(); for (let i = 0; i < 6; i++) { const u = Math.random(); pfx(A.x + (B.x - A.x) * u + rnd(-0.1, 0.1), A.y + (B.y - A.y) * u + rnd(-0.1, 0.1), A.z + (B.z - A.z) * u + rnd(-0.1, 0.1), { vx: (A.x - B.x) * 0.6, vy: (A.y - B.y) * 0.6, vz: (A.z - B.z) * 0.6, life: 0.35, s0: 0.24, s1: 0.04, c0: col, c1: col2, a: 0.9 }); } } }); }
+  const heroAt = () => d.getHero().root.position;
+  const heroMid = () => wTmp2.copy(d.getHero().root.position).setY(d.getHero().root.position.y + 1.1);
+  const wTmp2 = new THREE.Vector3();
   const shots = createShots({ scene: { add: (o: THREE.Object3D) => { lastShot = o; netAdd(o); }, remove: (o: THREE.Object3D) => d.scene.remove(o) } as unknown as THREE.Scene, heightAt: (x, z) => d.world.heightAt(x, z), isWall: (x, z) => d.world.isWall?.(x, z) ?? false, targets: () => enemies.list as unknown as ShotTarget[],
     hit: (e0, h0) => { const e = e0 as unknown as Enemy; skill = (h0.data as { sk?: SkillId } | undefined)?.sk ?? 'combo'; hitEnemy(e, h0.mul, h0.kind !== 'bullet', h0.from); skill = null; if ((h0.data as ElfData | undefined)?.fx) elfHit(e, h0.point, h0.from, h0.mul, h0.data as ElfData); if (e.alive && h0.kind === 'kunai' && st.sp.has('burn')) { e.burn = 3; e.burnTick = 0; } },
     dummyAt: (x, z, r) => { const dm = dummyNear(x, z, r); return dm ? { hit: (pt, mul) => { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, pt.clone().setY(pt.y - 0.2)); } } : null; },
@@ -1706,14 +1755,134 @@ export function createGameplay(d: GameplayDeps) {
       const h = d.getHero(), hp = h.root.position; if (st.menuOpen || st.dead) return false;
       if (n3Key() === 'mag' && need3.mag > 0.8 && Math.random() < 0.08) { st.hp = Math.max(1, st.hp - st.hpMax * 0.04); logMsg('🔮 A magia rachou na sua mão (−4% de vida).', '#ff9a8a'); }
       if (kitKey === 'tecno' && reactor.charge <= 0 && id !== 'kick') { logMsg('⚛ O reator está vazio: as magias da Academia não saem. Troque o Núcleo de Reator.', '#ffb060'); return false; }
-      if ((cdX[id] ?? 0) > 0) return false; const fiado = st.res.style === 'mananegra' && st.mp < cost && !st.god; if (st.mp < cost && !fiado && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
+      if ((cdX[id] ?? 0) > 0 && !dbgCast) return false; const fiado = st.res.style === 'mananegra' && st.mp < cost && !st.god; if (st.mp < cost && !fiado && !(st.sp.has('u_draupnir') && now >= draupT)) { $('mp').animate([{ filter: 'brightness(2)' }, { filter: 'none' }], 250); return false; }
       const dir = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const tx = target ? target.x : hp.x + dir.x * 6, tz = target ? target.z : hp.z + dir.z * 6;
       const sc = skillScale(id); cost = Math.round(cost * sc.cost * (st.sp.has('m_staff') ? 0.8 : 1));
       const SND: Record<string, 'fire' | 'ice' | 'arcane' | 'shock' | 'earth' | 'holy'> = { smite: 'holy', consecrate: 'holy', avenging: 'holy', drain: 'arcane', batswarm: 'arcane', bloodnova: 'fire', nightform: 'arcane', howl: 'earth', rend: 'earth', kick: 'earth', hamstring: 'arcane', hatchet: 'arcane', shieldwall: 'holy', winter: 'ice', thunder: 'shock', valkyrie: 'holy', flame: 'fire', forge: 'fire', poison: 'earth', warcry: 'holy', spear: 'arcane', whirl: 'arcane', mark: 'holy', fenrir: 'earth', hammerthrow: 'earth', stonerune: 'earth', mountain: 'earth', avatar: 'earth', overcharge: 'shock', shocktrap: 'shock', medic: 'holy', railgun: 'shock', mech: 'shock', fireball: 'fire', meteor: 'fire', chainlight: 'shock', blizzard: 'ice', frostnova: 'ice', archon: 'arcane', blink: 'arcane', curse: 'arcane', hellhound: 'fire', demonform: 'fire', holyflask: 'holy', volley: 'arcane', huntform: 'holy' };
-      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim)) return false; cdX[id] = (CDX[id] ?? 10) * cdm * (1 - (sc.cdr ?? 0)); const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } if (fiado && !free) { /* 05/11 (Erling): NO FIADO — Malgrath empresta a magia e cobra 34% da vida na hora; a Dívida do Pacto sobe em dobro; três seguidas e ele leva tudo */
+      /* 09/11 ASSINATURA VISUAL DE CADA HABILIDADE (Erling: "passe por todas de todas as classes, todas precisam de capricho"):
+         na hora em que a magia sai, um conjunto de efeitos no tema da classe — círculo de runas sob quem conjura, aviso no chão onde vai cair,
+         onda e faíscas no impacto, aura nos buffs, coluna de luz nas transformações e invocações. Somam-se aos efeitos que cada uma já tinha. */
+      const sigFx = () => {
+        const KC: Record<string, [number, number]> = { pal: [0xffd27a, 0xfff6d0], vam: [0xd81a2a, 0x2a0408], lob: [0xcfe0ff, 0xffb040], mag: [0x6ab0ff, 0xe8f4ff], bru: [0x9a4ae8, 0x1a0428], cac: [0xe8ecf4, 0xfff0b0], tecno: [0x6ae0ff, 0xd8a040], nordic: [0xbfe8ff, 0xffe08a], dwarf: [0xff8a30, 0xc8a050], elf: [0x9ad870, 0xe8ffd0], human: [0xffc87a, 0xfff0d0] };
+        const [A, B] = KC[kitKey] ?? KC.human; const tg = () => new THREE.Vector3(tx, gy0(tx, tz) + 0.2, tz); const later = (sec: number, fn: () => void) => pending.push({ at: now + TEMPO * sec, fn });
+        const front = (m: number) => new THREE.Vector3(hp.x + dir.x * m, hp.y, hp.z + dir.z * m);
+        const near = (r: number) => enemies.nearest(hp, r);
+        const castGlyph = (c = A, r = 1.3, dur = 0.9) => fxGlyph(hp.x, hp.z, c, r, dur, 2.2, hp.y);
+        const aoe = (c0: number, c1: number, r: number, at: number, big = false) => { fxGlyph(tx, tz, c0, r, TEMPO * at + 0.3, -1.6); later(at, () => { const p = tg(); fxRing(tx, tz, c0, r * 1.25, 0.5); fxFlash(p.setY(p.y + 0.6), c1, Math.min(r * 1.1, 3), 0.25); fxBurst(tx, p.y, tz, c1, c0, big ? 40 : 24, big ? 8 : 5, 0.7); if (big) { fxRing(tx, tz, c1, r * 2, 0.8); st.shake = Math.max(st.shake, 0.3); } }); };
+        const buff = (c0: number, c1: number, dur = 3) => { castGlyph(c0, 1.4, 1.1); fxSwirl(heroAt, c0, c1, 1.0, 0.75, 2.3, 50); fxOrbit(heroAt, c0, c1, dur, 5, 0.85, 1.2); fxRing(hp.x, hp.z, c0, 3, 0.55, 0.4, hp.y); };
+        const form = (c0: number, c1: number) => { fxPillar(hp.x, hp.z, c0, 9, 0.9, 1.2, hp.y); fxRing(hp.x, hp.z, c0, 6, 0.7, 0.5, hp.y); fxRing(hp.x, hp.z, c1, 4, 0.5, 0.3, hp.y); fxFlash(heroMid().clone(), c1, 4, 0.4); fxBurst(hp.x, hp.y + 1, hp.z, c1, c0, 50, 7, 0.8); fxSwirl(heroAt, c0, c1, 1.6, 0.9, 2.6, 70); st.shake = Math.max(st.shake, 0.35); };
+        const summon = (x: number, z: number, c0: number, c1: number) => { fxGlyph(x, z, c0, 1.6, 1.4, 2.5); fxPillar(x, z, c0, 5, 0.7, 0.7); later(0.15, () => fxBurst(x, gy0(x, z) + 0.3, z, c1, c0, 30, 4, 0.8)); };
+        const tagOn = (c0: number, c1: number) => { const e = near(10); if (!e) return; const p = e.pos; fxGlyph(p.x, p.z, c0, 1.2, 1.4, 3, p.y); fxPillar(p.x, p.z, c0, 3.5, 0.6, 0.45, p.y); fxFlash(new THREE.Vector3(p.x, p.y + 2.4, p.z), c1, 1.4, 0.35); fxTether(heroMid, () => new THREE.Vector3(e.pos.x, e.pos.y + 1.1, e.pos.z), c0, c1, 0.35); };
+        const tether = (c0: number, c1: number, dur = 2) => { const e = near(8 * sc.area); if (!e) return; fxTether(() => new THREE.Vector3(e.pos.x, e.pos.y + 1.1, e.pos.z), heroMid, c0, c1, dur); fxSwirl(heroAt, c0, c1, dur, 0.6, 1.8, 18); };
+        const shout = (c0: number, c1: number, n = 3) => { for (let k = 0; k < n; k++) later(0.08 + k * 0.12, () => fxRing(hp.x, hp.z, k % 2 ? c1 : c0, 9, 0.6, 0.6, hp.y + 0.05)); fxFlash(heroMid().clone().setY(hp.y + 1.7), c1, 2.4, 0.3); };
+        const strikeFront = (c0: number, c1: number, at = 0.3, m = 1.6, r = 2.2) => later(at, () => { const p = front(m); fxRing(p.x, p.z, c0, r, 0.35, 0.3, hp.y); fxBurst(p.x, hp.y + 0.9, p.z, c1, c0, 20, 5, 0.45, 0.3, 1); fxFlash(new THREE.Vector3(p.x, hp.y + 1, p.z), c1, 1.6, 0.18); });
+        const low = (c0: number, c1: number) => later(0.3, () => { for (let k = -3; k <= 3; k++) { const a = yaw + k * 0.3, p = new THREE.Vector3(hp.x + Math.sin(a) * 1.7, hp.y + 0.15, hp.z + Math.cos(a) * 1.7); pfx(p.x, p.y, p.z, { vx: Math.sin(a) * 3, vy: 0.4, vz: Math.cos(a) * 3, life: 0.4, s0: 0.35, s1: 0.04, c0: c1, c1: c0, a: 1, drag: 2, k: 1 }); } fxRing(hp.x, hp.z, c0, 2.4, 0.3, 1.2, hp.y); });
+        const throwFx = (c0: number, c1: number) => { fxFlash(heroMid().clone().addScaledVector(dir, 0.6), c1, 1.4, 0.18); for (let k = 0; k < 14; k++) pfx(hp.x + dir.x * 0.6, hp.y + 1.3, hp.z + dir.z * 0.6, { vx: dir.x * rnd(3, 8) + rnd(-1, 1), vy: rnd(-0.3, 1), vz: dir.z * rnd(3, 8) + rnd(-1, 1), life: 0.35, s0: 0.3, s1: 0.04, c0: c1, c1: c0, a: 0.9, drag: 3 }); };
+        const blinkFx = (c0: number, c1: number) => { fxFlash(heroMid().clone(), c1, 3, 0.3); fxRing(hp.x, hp.z, c0, 2.5, 0.4, 0.3, hp.y); fxBurst(hp.x, hp.y + 1, hp.z, c1, c0, 26, 4, 0.6); later(0.05, () => { const q = heroAt(); fxFlash(new THREE.Vector3(q.x, q.y + 1, q.z), c1, 3, 0.3); fxRing(q.x, q.z, c0, 2.5, 0.4, 0.3, q.y); fxBurst(q.x, q.y + 1, q.z, c1, c0, 26, 4, 0.6); }); };
+        const k2 = `${kitKey}:${id}`;
+        switch (k2) {
+          case 'vam:drain': return tether(0xff2a3a, 0x5a0408, 2);
+          case 'bru:drain': return tether(0xb06aff, 0x2a0a40, 2);
+          case 'mag:shocktrap': case 'tecno:shocktrap': return fxGlyph(tx, tz, 0x8ae0ff, 1.2, 1.2, 3);
+          case 'cac:shocktrap': return fxGlyph(tx, tz, 0xe8ecf4, 1.1, 1.0, 2);
+          case 'bru:poison': return aoe(0x7ad83a, 0xc8ff8a, 3, 0.5);
+          case 'tecno:poison': return aoe(0x9aff4a, 0xe8ffb0, 2.6, 0.5);
+          case 'tecno:thunder': return buff(0x6ae0ff, 0xffffff, 4);
+          case 'nordic:thunder': fxPillar(hp.x, hp.z, 0x9ad0ff, 10, 0.4, 0.5, hp.y); return buff(0x9ad0ff, 0xffffff, 3);
+          case 'bru:howl': return shout(0x9a4ae8, 0xff5a1a, 4);
+          case 'lob:howl': return shout(0xcfe0ff, 0xffffff, 4);
+          case 'vam:valkyrie': return buff(0x6a0a1a, 0xd81a2a, 1.5);
+          case 'pal:valkyrie': case 'nordic:valkyrie': return buff(0xffe08a, 0xffffff, 1.5);
+          case 'vam:whirl': fxSwirl(heroAt, 0xd81a2a, 0x2a0408, 2, 1.6, 1.4, 60); return;
+          case 'lob:whirl': fxSwirl(heroAt, 0xcfe0ff, 0x6a5a40, 2, 1.6, 1.4, 50); return;
+          case 'nordic:whirl': fxSwirl(heroAt, 0xe8f4ff, 0x9ad0ff, 2, 1.7, 1.3, 50); return;
+          case 'mag:blink': return blinkFx(0x6ab0ff, 0xe8f4ff);
+          case 'bru:blink': return blinkFx(0x6a2ab0, 0x1a0428);
+          case 'mag:heal': case 'bru:heal': case 'pal:heal': case 'lob:heal': case 'cac:heal': case 'nordic:heal': case 'dwarf:heal': case 'human:heal': case 'elf:heal':
+            castGlyph(kitKey === 'bru' ? 0xd81a2a : 0x7aff9a, 1.4, 1.2); fxPillar(hp.x, hp.z, kitKey === 'bru' ? 0x9a1a2a : 0x9affb0, 4, 0.8, 0.8, hp.y); fxSwirl(heroAt, 0x9affb0, 0xffffff, 1.2, 0.7, 2.2, 45); return;
+        }
+        switch (id) {
+          /* ---- marcas: um selo no chão do alvo, uma coluna curta e um fio até você ---- */
+          case 'mark': return tagOn(A, B);
+          case 'curse': return tagOn(0x7ad83a, 0x9a4ae8);
+          case 'clot': return tagOn(0x8a0a14, 0xff4a4a);
+          case 'hawkfeather': return;
+          /* ---- golpes de contato ---- */
+          case 'kick': return strikeFront(A, B, 0.28, 1.4, 2);
+          case 'bite': return strikeFront(0xd81a2a, 0xffffff, 0.3, 1.5, 1.8);
+          case 'rend': for (const t of [0.2, 0.42, 0.66]) strikeFront(0xcfe0ff, 0xd81a2a, t, 1.5, 1.6); return;
+          case 'venomclaw': for (const t of [0.15, 0.3, 0.45, 0.6]) strikeFront(0x7ad83a, 0x2a0a10, t, 1.5, 1.4); return;
+          case 'hamstring': return low(A, B);
+          case 'whirl': fxSwirl(heroAt, A, B, 2, 1.6, 1.4, 50); return;
+          case 'pounce': fxGlyph(tx, tz, 0xcfe0ff, 1.6, 0.9, -2); later(0.5, () => { fxRing(tx, tz, 0xcfe0ff, 4, 0.5); fxBurst(tx, gy0(tx, tz) + 0.3, tz, 0xd8c8a0, 0x5a4a30, 30, 6, 0.7); st.shake = Math.max(st.shake, 0.3); }); return;
+          /* ---- gritos e auras ---- */
+          case 'warcry': shout(A, 0xff6a3a, 3); fxOrbit(heroAt, 0xff8a3a, 0xffe08a, 4, 6, 0.9, 1.3); return;
+          case 'howl': return shout(A, B, 4);
+          case 'packhowl': shout(0xcfe0ff, 0xffffff, 3); for (const s2 of [-1, 1]) { const a = yaw + s2 * 2.2; summon(hp.x + Math.sin(a) * 2.2, hp.z + Math.cos(a) * 2.2, 0xcfe0ff, 0x6a8ad8); } return;
+          case 'lithsong': buff(0x9ad870, 0xfff0a0, 10); fxRing(hp.x, hp.z, 0x9ad870, 12, 1.0, 1, hp.y); return;
+          case 'ancestorbark': return buff(0xe8d8b0, 0x9ad870, 8);
+          case 'forge': return buff(0xff8a30, 0xffe08a, 8);
+          case 'overcharge': return buff(0x6ae0ff, 0xffffff, 6);
+          case 'aegis': return buff(0xffd27a, 0xfff6d0, 8);
+          case 'bubble': return buff(0x8ae0ff, 0xd8a040, 6);
+          case 'consecrate': fxGlyph(hp.x, hp.z, 0xffd27a, 4 * sc.area, 6, 0.6, hp.y); fxPillar(hp.x, hp.z, 0xfff0b0, 7, 0.8, 1.6, hp.y); return;
+          case 'bonfire': fxGlyph(hp.x, hp.z, 0xffa040, 3, 1.4, 1.2, hp.y); fxBurst(hp.x, hp.y + 0.4, hp.z, 0xffe08a, 0xff4a10, 30, 3, 0.9, 0.4, 2); return;
+          case 'valkyrie': return buff(0xffe08a, 0xffffff, 1.5);
+          case 'shieldwall': strikeFront(0x9ad7ff, 0xffffff, 0.25, 1.4, 3); fxPillar(front(1.4).x, front(1.4).z, 0x9ad7ff, 3, 0.5, 1.4, hp.y); return;
+          case 'stonerune': return aoe(0xc8a050, 0xffe08a, 3 * sc.area, 0.45, true);
+          case 'mountain': fxGlyph(hp.x, hp.z, 0xa8a090, 1.6, 0.8, 2, hp.y); later(0.4, () => { for (let k = 1; k <= 6; k++) later(k * 0.06, () => { const p = front(k * 1.6); fxRing(p.x, p.z, 0xc8a050, 2.2, 0.4, 0.3, gy0(p.x, p.z)); fxBurst(p.x, gy0(p.x, p.z) + 0.2, p.z, 0xd8c8a0, 0x5a4a30, 10, 4, 0.6); }); st.shake = Math.max(st.shake, 0.4); }); return;
+          /* ---- transformações ---- */
+          case 'avenging': return form(0xffd27a, 0xffffff);
+          case 'nightform': return form(0xd81a2a, 0x2a0408);
+          case 'fenrir': return form(0xcfe0ff, 0xffb040);
+          case 'archon': return form(0x6ab0ff, 0xffffff);
+          case 'demonform': return form(0xff5a1a, 0x5a0aa0);
+          case 'huntform': return form(0xe8ecf4, 0xfff0b0);
+          case 'mech': return form(0x6ae0ff, 0xd8a040);
+          case 'avatar': return form(0xc8a050, 0xff8a30);
+          /* ---- invocações ---- */
+          case 'imps': return summon(hp.x + dir.x * 2, hp.z + dir.z * 2, 0xff5a1a, 0xffe08a);
+          case 'hellhound': for (const s2 of [-1, 1]) { const a = yaw + s2 * 1.2; summon(hp.x + Math.sin(a) * 2, hp.z + Math.cos(a) * 2, 0xff5a1a, 0x5a0aa0); } return;
+          case 'wildhunt': for (let k = 0; k < 3; k++) { const a = yaw + 2.1 + k * 1.05; summon(hp.x + Math.sin(a) * 2.2, hp.z + Math.cos(a) * 2.2, 0x9ad870, 0xe8ffd0); } return;
+          case 'companion': case 'farmdog': return summon(hp.x - dir.x * 1.5, hp.z - dir.z * 1.5, A, B);
+          case 'milvidas': for (let k = 0; k < 3; k++) { const a = yaw + (k - 1) * 0.9; summon(hp.x + Math.sin(a) * 2, hp.z + Math.cos(a) * 2, 0xbfc8ff, 0x3a3a6a); } return;
+          case 'wisp': return summon(tx, tz, 0x9aff6a, 0xe8ffd0);
+          case 'medic': fxPillar(hp.x, hp.z, 0x9affd0, 3, 0.5, 0.5, hp.y); fxOrbit(heroAt, 0x9affd0, 0xffffff, 10, 3, 1.1, 1.6); return;
+          case 'gunturret': case 'teslatower': case 'mortar': return summon(tx, tz, 0x6ae0ff, 0xd8a040);
+          case 'locusts': return aoe(0x9a8a3a, 0x3a3a10, 3, 0.4);
+          /* ---- área no alvo: aviso no chão, depois o impacto ---- */
+          case 'smite': fxPillar(tx, tz, 0xfff0b0, 10, 0.5, 0.8); return aoe(0xffd27a, 0xffffff, 2.6 * sc.area, 0.35, true);
+          case 'conversion': return aoe(0xffd27a, 0xffffff, 3.5 * sc.area, 0.6, true);
+          case 'meteor': return aoe(0xff5a1a, 0xffe08a, 3.5 * sc.area, 1.0, true);
+          case 'fireball': fxGlyph(hp.x, hp.z, 0xff7a30, 1.2, 0.6, 3, hp.y); return aoe(0xff5a1a, 0xffe08a, 2.6 * sc.area, 0.55, true);
+          case 'blizzard': fxGlyph(tx, tz, 0x9ad0ff, 4 * sc.area, 6, -0.4); return castGlyph(0x9ad0ff);
+          case 'frostnova': fxRing(hp.x, hp.z, 0xbfe8ff, 6 * sc.area, 0.5, 0.5, hp.y); fxRing(hp.x, hp.z, 0xffffff, 5 * sc.area, 0.4, 0.3, hp.y); fxFlash(heroMid().clone(), 0xe8f4ff, 4, 0.3); return;
+          case 'batswarm': return aoe(0x8a0a14, 0x2a0408, 3 * sc.area, 0.4);
+          case 'bloodnova': fxRing(hp.x, hp.z, 0xd81a2a, 5.5 * sc.area, 0.5, 0.4, hp.y); fxRing(hp.x, hp.z, 0x5a0408, 4.5 * sc.area, 0.6, 0.3, hp.y); fxFlash(heroMid().clone(), 0xff3a4a, 4, 0.3); fxBurst(hp.x, hp.y + 1, hp.z, 0xff4a5a, 0x5a0408, 50, 8, 0.7); return;
+          case 'volley': return aoe(A, B, 5 * sc.area * 0.6, 0.8);
+          case 'holyflask': return aoe(0xfff0b0, 0x9ad0ff, 2.8 * sc.area, 0.5, true);
+          case 'oilfire': return aoe(0xff7a30, 0xffe08a, 3, 0.5, true);
+          case 'seedpod': return aoe(0xc8d870, 0x6a8a3a, 4 * sc.area * 0.7, 0.5, true);
+          case 'cyclone': fxGlyph(tx, tz, 0xd8f0ff, 4 * sc.area, 4 * sc.dur, 5); return;
+          case 'thorntrap': return fxGlyph(tx, tz, 0x9ac870, 1, 1.2, 2);
+          case 'alarmbell': summon(tx, tz, 0xffd27a, 0xffffff); for (let k = 0; k < 8; k++) later(0.6 + k, () => fxRing(tx, tz, 0xffe08a, 8, 0.6, 0.6)); return;
+          case 'lasso': return throwFx(0xd8b878, 0xffffff);
+          case 'poison': return aoe(0x7ad83a, 0xc8ff8a, 3, 0.5);
+          case 'winter': for (let k = 1; k <= 5; k++) later(0.1 + k * 0.05, () => { const p = front(k * 1.6); fxRing(p.x, p.z, 0xbfe8ff, 1 + k * 0.5, 0.4, 0.3, hp.y); }); return;
+          case 'flame': return fxGlyph(hp.x, hp.z, 0xff7a30, 1.1, 0.8, 3, hp.y);
+          case 'railgun': fxGlyph(hp.x, hp.z, 0x6ae0ff, 1.4, 1.2, 6, hp.y); fxOrbit(heroAt, 0x6ae0ff, 0xffffff, 1, 6, 0.6, 1.3); return;
+          case 'chainlight': case 'thunder': return castGlyph(0x9ad0ff);
+          /* ---- arremessos e deslocamentos ---- */
+          case 'spear': case 'hatchet': case 'hammerthrow': case 'shieldthrow': return throwFx(A, B);
+          case 'blink': return blinkFx(A, B);
+          case 'leafstep': return blinkFx(0x9ad870, 0xe8ffd0);
+          case 'sapheal': castGlyph(0x9ad870, 1.4, 3); fxSwirl(heroAt, 0x9affb0, 0xe8ffd0, 3, 0.7, 2, 30); return;
+        }
+      };
+      const ok = (anim: Parameters<Hero3D['act']>[0] | null, cdm = 1) => { if (anim && !h.act(anim) && !dbgCast) return false; cdX[id] = (CDX[id] ?? 10) * cdm * (1 - (sc.cdr ?? 0)); const free = st.sp.has('u_draupnir') && now >= draupT; if (free) { draupT = now + 9; logMsg('💍 Draupnir: magia de graça', '#ffe08a'); } if (fiado && !free) { /* 05/11 (Erling): NO FIADO — Malgrath empresta a magia e cobra 34% da vida na hora; a Dívida do Pacto sobe em dobro; três seguidas e ele leva tudo */
             st.hp = Math.max(0, st.hp - st.hpMax * 0.34); need3.bru = Math.min(1, (need3.bru ?? 0) + 0.06); st.shake = Math.max(st.shake, 0.25); logMsg(st.hp <= 0 ? '🜏 Malgrath cobrou tudo. A terceira magia no fiado levou a sua vida.' : `🜏 No fiado: Malgrath cobrou 34% da sua vida (Dívida do Pacto ${Math.round(need3.bru * 100)}%).`, '#c8a0ff');
             for (let k = 0; k < 18; k++) pfx(hp.x + rnd(-0.4, 0.4), hp.y + rnd(0.3, 1.8), hp.z + rnd(-0.4, 0.4), { vy: rnd(0.5, 1.6), life: 0.9, s0: 0.35, s1: 0.06, c0: 0x8a3ad8, c1: 0x1a0428, a: 0.9 }); if (st.hp <= 0) setTimeout(() => heroDie(), 0); }
-          else st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); return true; };
+          else st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); try { sigFx(); } catch { /* efeito nunca derruba a magia */ } return true; };
       const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(new THREE.RingGeometry(0.8 * r, 1.0 * r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0 }); };
       switch (id) {
         /* ---- Elfo (04/11): arcos, adagas, a mata e o vento ---- */
@@ -1726,7 +1895,7 @@ export function createGameplay(d: GameplayDeps) {
             ticks.push({ t: 0.56, fn: () => { const q = h.root.position, ly = q.y + 0.6 + h.lift; for (let k = 0; k < 3; k++) pfx(q.x + rnd(-0.3, 0.3), ly + rnd(-0.3, 0.6), q.z + rnd(-0.3, 0.3), { vy: rnd(-0.2, 0.4), life: 0.55, s0: 0.3, s1: 0.04, c0: k ? 0xffffff : 0xbfe8a0, c1: k ? 0xa8dcff : 0x5a9a3a, a: 0.7, drag: 2 }); },
               end: () => { const q = h.root.position; ringFx(q.x, q.z, 0xc8b890, 0.9); for (let k = 0; k < 16; k++) { const a2 = k / 16 * 6.283; pfx(q.x + Math.cos(a2) * 0.3, q.y + 0.08, q.z + Math.sin(a2) * 0.3, { vx: Math.cos(a2) * 3, vy: rnd(0.2, 0.6), vz: Math.sin(a2) * 3, life: 0.5, s0: 0.4, s1: 0.08, c0: 0xd8c8a0, c1: 0x6a5a40, a: 0.6, drag: 4 }); } } }); }
           if (id === 'oakarrow') { ticks.push({ t: 2, fn: () => { const q = h.root.position; if (Math.random() < 0.6) { const a2 = rnd(0, 6.283); pfx(q.x + Math.cos(a2) * 0.7, q.y + 0.1, q.z + Math.sin(a2) * 0.7, { vy: rnd(1.5, 3), life: 0.7, s0: 0.3, s1: 0.05, c0: 0xd8ffd0, c1: 0x5ac85a, a: 1 }); } } }); }
-          pending.push({ at: now + TEMPO * at, fn: () => { const f = src(); d.audio.parry();
+          pending.push({ at: now + TEMPO * at, fn: () => { const f = src(); d.audio.parry(); lastShot = null;
             switch (id) {
               case 'backleap': elfShoot(f, yw, 1.5 * sc.dmg); break;
               case 'tripleshot': for (const o of [-0.16, 0, 0.16]) elfShoot(f.clone(), yw + o, 1.05 * sc.dmg); break;
@@ -1740,7 +1909,10 @@ export function createGameplay(d: GameplayDeps) {
               case 'tensebow': elfShoot(f, yw, 4.5 * sc.dmg, undefined, 'longarrow'); st.shake = Math.max(st.shake, 0.15); break;
               case 'oakarrow': elfShoot(f, yw, 12 * sc.dmg, { sk: id, fx: 'oak', n: 12 }, 'longarrow'); st.shake = Math.max(st.shake, 0.5); d.audio.boom();
                 for (let k = 0; k < 50; k++) { const u = k * 1.2; pfx(f.x + Math.sin(yw) * u, d.world.heightAt(f.x + Math.sin(yw) * u, f.z + Math.cos(yw) * u) + 0.2, f.z + Math.cos(yw) * u, { vy: rnd(0.3, 1.2), life: 1.6, s0: 0.4, s1: 0.06, c0: 0xffffff, c1: 0x7ad860, a: 0.9 }); } break;
-            } } });
+            }
+            /* 09/11: cada flecha especial deixa o rastro do seu elemento */
+            { const TS: Partial<Record<string, Parameters<typeof fxTrail>[1]>> = { firearrow: 'fire', explarrow: 'spark', vinesnare: 'poison', hawkfeather: 'wind', ricochet: 'spark', oakarrow: 'earth', tensebow: 'wind', backleap: 'wind' }; const ts = TS[id]; if (ts && lastShot) fxTrail(lastShot, ts, 2.5); fxFlash(f.clone(), 0xe8ffd0, 1.2, 0.15); }
+          } });
           return true; }
         case 'thorntrap': { if (!ok('plant')) return false; const x = tx, z = tz, y0 = d.world.heightAt(x, z); ringFx(x, z, 0x9ac870, 0.7); d.audio.swing();
           const seed = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.4, 6), glowM(0x9ac870, 0.5)); seed.position.set(x, y0 + 0.2, z); fxAdd(seed); let gone = false;
@@ -2078,7 +2250,7 @@ export function createGameplay(d: GameplayDeps) {
     get buffMove() { return buff.move * (1 + stance.move) * cmod.move; },
     /** postura de batalha: troca as somas fixas (posturas.ts) */
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
-    setKit(k: string) { kitKey = k; }, setRaceScale(k: number) { raceScale = k; },
+    setKit(k: string) { kitKey = k; }, setDbgCast(on: boolean) { dbgCast = on; }, setRaceScale(k: number) { raceScale = k; },
     kit() { return kitKey; },
     /** chegada do Piscar: o clarão no ponto novo */
     blinkArrive() { const hh = d.getHero().root.position; for (let k = 0; k < 34; k++) pfx(hh.x + rnd(-0.4, 0.4), hh.y + rnd(0.1, 1.9), hh.z + rnd(-0.4, 0.4), { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.35, s1: 0.04, c0: 0xffffff, c1: blinkCol, a: 1, drag: 3 }); },
@@ -2357,6 +2529,7 @@ export function createGameplay(d: GameplayDeps) {
       // projéteis
       const col = d.getRaceColor();
       let first = true;
+      for (const b of bolts) if (b.big) { const a = now * 24, vl = b.v.length() || 1, rx = b.v.z / vl, rz = -b.v.x / vl; for (const s2 of [0, Math.PI]) pfx(b.p.x + rx * Math.cos(a + s2) * 0.35, b.p.y + Math.sin(a + s2) * 0.35, b.p.z + rz * Math.cos(a + s2) * 0.35, { life: 0.4, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: b.col ?? col, a: 0.9, drag: 1 }); } /* 09/11: espiral nos projéteis grandes */
       for (const b of bolts) if (b.big && Math.random() < 0.9) pfx(b.p.x + rnd(-0.3, 0.3), b.p.y + rnd(-0.3, 0.3), b.p.z + rnd(-0.3, 0.3), { life: 0.35, s0: 1.2, s1: 0.2, c0: 0xffffff, c1: b.col ?? col, a: 1 });
       for (let i = bolts.length - 1; i >= 0; i--) {
         const b = bolts[i]; b.life -= dt; b.p.addScaledVector(b.v, dt);
