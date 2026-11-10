@@ -45,9 +45,22 @@ function setCombat(on: boolean, quiet = false) {
 const locked = (sk: SkillDef) => { if (!K.tree.has(sk.id)) { K.game.logMsg(`${sk.name}: aprenda na Árvore Kármica (K).`, '#ff9a8a'); if (K.tree.available() > 0) K.dockEl.querySelector('[data-d="skills"]')?.classList.add('pulse'); return true; } return false; };
 function startAim(slot: string) {
   const sk = skillAt(K.kitRace(), slot); if (!sk?.aim) return false;
-  if (aimSlot === slot) { cancelAim(); return true; }
+  /* 10/11 (Erling: "magia de mira, se eu clicar duas vezes ela vai sozinha num bicho, nunca erra no vazio"): apertar de novo com a mira
+     aberta lança no inimigo mais perto dentro do alcance (empate: o mais perto do mouse). Sem inimigo no alcance, só fecha a mira. */
+  if (aimSlot === slot) { if (!autoFire(slot, sk)) { cancelAim(); K.game.logMsg(`${sk.name}: nenhum inimigo ao alcance.`, '#c8c0a8'); } return true; }
   if (locked(sk)) return true;
   const sc = K.tree.scale(sk.id); setCombat(true); aimSlot = slot; guardCone = false; aim.show({ ...sk.aim, radius: sk.aim.radius * sc.area, range: sk.aim.range * sc.range, label: sk.name }); document.querySelector(`.slot[data-k="${slot}"]`)?.classList.add('aim');
+  return true;
+}
+function autoFire(slot: string, sk: SkillDef): boolean {
+  const hx = K.state.fx * T, hz = K.state.fy * T, range = sk.aim!.range * K.tree.scale(sk.id).range;
+  let best: { x: number; z: number } | null = null, bs = Infinity;
+  for (const e of K.game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d > range + 0.5) continue;
+    const s = d + Math.hypot(e.pos.x - K.mouse.x, e.pos.z - K.mouse.z) * 0.15; if (s < bs) { bs = s; best = e.pos; } }
+  if (!best) return false;
+  const at = { x: best.x, z: best.z, yaw: Math.atan2(best.x - hx, best.z - hz) };
+  cancelAim();
+  if (!castAt(slot, at)) { if (K.game.ready(sk.id, sk.cost) === null) castQ = { slot, at, until: performance.now() + 650 }; }
   return true;
 }
 function cancelAim() { if (aimSlot) document.querySelector(`.slot[data-k="${aimSlot}"]`)?.classList.remove('aim'); aimSlot = null; if (!guardCone) aim.hide(); }
