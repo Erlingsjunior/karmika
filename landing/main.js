@@ -25,22 +25,22 @@
   const lock = (on) => { document.documentElement.style.overflow = on ? 'hidden' : ''; if (window.__lenis) on ? window.__lenis.stop() : window.__lenis.start(); };
   lock(true);
   const intro = gsap.timeline({ onComplete: () => lock(false) });
-  intro.fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 1.8, ease: 'power2.out' }, 0)
-    .to(word, { strokeDashoffset: 0, duration: 2.4, ease: 'power2.inOut' }, 0)
-    .to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.0, ease: 'power2.in' }, 2.6)
-    .fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.4, ease: 'power2.out' }, 3.5)
-    .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9, ease: 'power2.in' }, 5.1)
-    .to('.em-on', { opacity: 1, duration: 0.35, ease: 'power1.in' }, 5.85)
-    .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25, ease: 'power2.out' }, 5.85)
-    .to('.em-flare', { opacity: 0.4, scale: 1.1, duration: 1.0, ease: 'power2.out' }, 6.1)
-    .to('.hero__emblem', { opacity: 0, scale: 1.06, filter: 'blur(8px)', duration: 1.3, ease: 'power2.in' }, 7.4)
-    .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2, ease: 'power2.out' }, 8.5)
-    .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.3, duration: 0.8 }, 9.2)
-    .to('.hero__sub', { opacity: 1, duration: 0.6 }, 10.2)
-    .to('.hero__cta', { opacity: 1, duration: 0.5, onStart: () => document.querySelector('.hero__cta').classList.add('on') }, 10.4)
-    .fromTo('.hero__scroll', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 10.6);
-  const skip = () => { if (intro.isActive()) intro.timeScale(5); };
-  addEventListener('click', skip, { once: true }); addEventListener('keydown', skip, { once: true }); addEventListener('wheel', skip, { once: true, passive: true }); addEventListener('touchstart', skip, { once: true, passive: true });
+  intro.fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.6, ease: 'power2.out' }, 0)
+    .to(word, { strokeDashoffset: 0, duration: 3.6, ease: 'power2.inOut' }, 0)
+    .to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.4, ease: 'power2.in' }, 4.0)
+    .fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.4, ease: 'power2.out' }, 5.5)
+    .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9, ease: 'power2.in' }, 7.1)
+    .to('.em-on', { opacity: 1, duration: 0.35, ease: 'power1.in' }, 7.85)
+    .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25, ease: 'power2.out' }, 7.85)
+    .to('.em-flare', { opacity: 0.4, scale: 1.1, duration: 1.0, ease: 'power2.out' }, 8.1)
+    .to('.hero__emblem', { opacity: 0, scale: 1.06, filter: 'blur(8px)', duration: 1.3, ease: 'power2.in' }, 9.4)
+    .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2, ease: 'power2.out' }, 10.5)
+    .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.3, duration: 0.8 }, 11.2)
+    .to('.hero__sub', { opacity: 1, duration: 0.6 }, 12.2)
+    .to('.hero__cta', { opacity: 1, duration: 0.5, onStart: () => document.querySelector('.hero__cta').classList.add('on') }, 12.4)
+    .fromTo('.hero__scroll', { opacity: 0 }, { opacity: 1, duration: 0.5 }, 12.6);
+  const skip = () => { if (intro.isActive()) intro.timeScale(2.5); }; /* 10/11: só clique ou tecla aceleram (a roda do mouse acelerava sem querer) */
+  addEventListener('click', skip, { once: true }); addEventListener('keydown', skip, { once: true });
   /* depois da abertura, rolar leva o cenário para trás com calma */
   gsap.to('.hero__stage > *:not(.hero__bg)', { opacity: 0, y: -40, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
   gsap.to('.hero__bg', { yPercent: 12, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
