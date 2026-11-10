@@ -595,3 +595,12 @@ main > section { position: relative; isolation: isolate; }
 /* 10/11: página em branco antes de um título; seta de voltar ao começo no fim do artbook */
 .abp--blank { cursor: default; }
 .abook__nav button.is-restart { font-size: 22px; color: var(--sky2); border-color: rgba(111, 168, 255, .8); box-shadow: 0 0 18px rgba(111, 168, 255, .35); }
+/* 10/11 (Erling: "a rolagem tem que sumir e se esconder atrás do menu inferior, não atravessar"): a barra de baixo é opaca e, logo acima dela,
+   uma faixa escurece o texto que chega, então o conteúdo some por trás em vez de aparecer através */
+.sh__nav { background: #0f0d12 !important; z-index: 3; border-radius: 0 0 22px 22px; }
+.sh__nav::before { content: ""; position: absolute; left: 0; right: 0; bottom: 100%; height: 56px; background: linear-gradient(180deg, rgba(15, 13, 18, 0), #0f0d12); pointer-events: none; }
+/* 10/11 (Erling: "o fundo precisa ser menor, não aparece a cabeça dos heróis"): os renascidos cabem inteiros na tela */
+.story .rv1 { height: min(84vh, 92%); } .story .rv2 { height: min(70vh, 78%); }
+/* 10/11 (Erling: "o background pode descer um pouco, preencher mais a tela"): o Limiar com Marghar desce e cresce, e só se apaga bem embaixo */
+.lore::before { top: 12vh !important; width: 84%; -webkit-mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; mask-image: radial-gradient(ellipse 66% 62% at 52% 48%, #000 62%, transparent 100%) !important; }
+@media (max-width: 900px) { .lore::before { width: 100%; top: 6vh !important; } }
