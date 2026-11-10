@@ -125,3 +125,25 @@ document.querySelector('.world')?.setAttribute('data-gal', '');
 document.querySelectorAll('.flag[data-more]').forEach((f) => f.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f.click(); } }));
 /* mundo vivo: as imagens do dia, da noite e dos eventos abrem no carrossel junto com as do mundo */
 document.querySelectorAll('.live .dn img, .live .ev img, .pillar img').forEach((im) => { im.dataset.lb = im.getAttribute('src'); im.dataset.cap = im.alt; im.style.cursor = 'zoom-in'; });
+/* 10/11 (Erling): as vidas passadas viram um carrossel — uma de cada vez, puxada para a tela como num elástico */
+(() => {
+  const car = document.querySelector('.rb-car'); if (!car) return; const S = [...car.querySelectorAll('.story')]; if (!S.length) return;
+  const dots = car.querySelector('.rb__dots'); dots.innerHTML = S.map((_, i) => `<button type="button" data-rbi="${i}" aria-label="Vida ${i + 1}"></button>`).join('');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; let cur = 0, busy = false, auto = 0;
+  const enter = (st) => { const ls = st.querySelectorAll('.rebirth__lines p'), r1 = st.querySelector('.rv1'), r2 = st.querySelector('.rv2');
+    if (!window.gsap || reduce) { ls.forEach((p) => { p.style.opacity = 1; p.style.filter = 'none'; p.style.transform = 'none'; }); if (r1) r1.style.opacity = .95; if (r2) r2.style.opacity = .4; return; }
+    gsap.fromTo(ls, { opacity: 0, x: 60, filter: 'blur(8px)' }, { opacity: 1, x: 0, filter: 'blur(0px)', duration: 0.9, stagger: 0.18, ease: 'power3.out', delay: 0.25 });
+    gsap.fromTo(r1, { opacity: 0, scale: 0.8, x: 140 }, { opacity: 0.95, scale: 1, x: 0, duration: 1.4, ease: 'elastic.out(1, 0.55)' });
+    gsap.fromTo(r2, { opacity: 0, scale: 0.7, x: 200 }, { opacity: 0.4, scale: 0.95, x: 0, duration: 1.6, ease: 'elastic.out(1, 0.6)', delay: 0.1 }); };
+  const set = () => { S.forEach((st, i) => st.classList.toggle('on', i === cur)); dots.querySelectorAll('button').forEach((d, i) => d.classList.toggle('on', i === cur)); };
+  const go = (i, dir) => { if (busy) return; const nx = (i + S.length) % S.length; if (nx === cur) return; const from = S[cur], to = S[nx]; dir = dir || (nx > cur ? 1 : -1);
+    if (!window.gsap || reduce) { cur = nx; set(); enter(to); return; } busy = true;
+    gsap.to(from, { xPercent: -45 * dir, opacity: 0, duration: 0.45, ease: 'back.in(1.6)', onComplete: () => { gsap.set(from, { xPercent: 0, opacity: 1 }); cur = nx; set();
+      gsap.fromTo(to, { xPercent: 60 * dir, opacity: 0 }, { xPercent: 0, opacity: 1, duration: 1.1, ease: 'elastic.out(1, 0.6)', onComplete: () => { busy = false; } }); enter(to); } }); };
+  car.addEventListener('click', (e) => { const b = e.target.closest('[data-rb]'); if (b) { go(cur + +b.dataset.rb, +b.dataset.rb); restart(); return; } const d = e.target.closest('[data-rbi]'); if (d) { go(+d.dataset.rbi); restart(); } });
+  let sx = 0; car.addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  car.addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) { go(cur + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1); restart(); } });
+  const restart = () => { clearInterval(auto); if (!reduce) auto = setInterval(() => go(cur + 1, 1), 9000); };
+  let seen = false; new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { if (!seen) { seen = true; enter(S[cur]); } restart(); } else clearInterval(auto); }), { threshold: 0.35 }).observe(car);
+  set();
+})();

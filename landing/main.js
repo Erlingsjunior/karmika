@@ -58,12 +58,7 @@
   gsap.to(track, { x: () => -dist(), ease: 'none', scrollTrigger: { trigger: '.pillars', pin: '.pillars__pin', start: 'top top', end: () => '+=' + dist(), scrub: 0.6, invalidateOnRefresh: true } });
 
   /* 4. vidas passadas (Erling, 10/11): várias histórias, uma depois da outra; em cada uma as frases aparecem e o herói cresce no fundo */
-  gsap.utils.toArray('.story').forEach((st) => {
-    st.querySelectorAll('.rebirth__lines p').forEach((p, i) => gsap.to(p, { opacity: 1, filter: 'blur(0px)', y: 0, duration: 1.1, ease: 'power3.out', delay: i * 0.08, scrollTrigger: { trigger: p, start: 'top 85%' } }));
-    gsap.timeline({ scrollTrigger: { trigger: st, start: 'top 85%', end: 'bottom 55%', scrub: 0.8 } })
-      .fromTo(st.querySelector('.rv1'), { opacity: 0, scale: 0.6, y: 60, filter: 'blur(8px) brightness(.4)' }, { opacity: 0.95, scale: 1.06, y: 0, filter: 'blur(0px) brightness(.95)', ease: 'power1.out', duration: 1 }, 0)
-      .fromTo(st.querySelector('.rv2'), { opacity: 0, scale: 0.55, x: 40 }, { opacity: 0.4, scale: 0.95, x: 0, ease: 'power1.out', duration: 1 }, 0.15);
-  });
+  /* (as vidas passadas agora são um carrossel elástico: extra.js) */
 
   /* 5. caminhos: entram em cascata */
   /* (os cartões entram por IntersectionObserver: pathsInit) */

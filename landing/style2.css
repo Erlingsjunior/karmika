@@ -515,3 +515,31 @@ main { overflow-x: clip; }
 .abp--title img { width: 34% !important; height: auto !important; opacity: .55; filter: sepia(.6) !important; }
 .abp--title b { font: italic 600 clamp(26px, 3.4vw, 50px) 'Cormorant Garamond', Georgia, serif; color: #4a3018; text-align: center; letter-spacing: .02em; }
 .abp--title .cv__line { background: linear-gradient(90deg, transparent, #8a6430, transparent); }
+/* vidas passadas em carrossel elástico */
+.rb-car { position: relative; height: 100vh; height: 100svh; min-height: 620px; overflow: hidden !important; }
+.rb-car .story { position: absolute; inset: 0; min-height: 0; margin: 0 !important; visibility: hidden; }
+.rb-car .story.on { visibility: visible; z-index: 2; }
+.rb-car .story .rebirth__lines p { opacity: 0; }
+.rb__nav { position: absolute; z-index: 5; left: 50%; bottom: max(26px, 4vh); transform: translateX(-50%); display: flex; align-items: center; gap: 16px; }
+.rb__arw { width: 50px; height: 50px; border-radius: 50%; border: 1px solid rgba(217, 165, 74, .5); background: rgba(0, 0, 0, .5); color: var(--gold2); font-size: 26px; cursor: pointer; backdrop-filter: blur(6px); transition: transform .3s, border-color .3s; }
+.rb__arw:hover { transform: scale(1.1); border-color: var(--ember); }
+.rb__dots { display: flex; gap: 8px; }
+.rb__dots button { width: 10px; height: 10px; padding: 0; border-radius: 50%; border: 1px solid var(--gold); background: transparent; cursor: pointer; transition: width .4s, background .4s; }
+.rb__dots button.on { width: 30px; border-radius: 6px; background: var(--ember); border-color: var(--ember); }
+@media (prefers-reduced-motion: reduce) { .rb-car .story .rebirth__lines p { opacity: 1; } }
+/* a história: Marghar e o Limiar no fundo da seção inteira */
+.lore { position: relative; overflow: hidden; isolation: isolate; }
+.lore::before { content: ""; position: absolute; inset: 0; z-index: -2; background: url(/img/k-limiar.webp) 70% 30% / cover no-repeat; opacity: .55; transform: scale(1.04); }
+.lore::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, var(--bg) 0%, rgba(11, 10, 13, .92) 30%, rgba(11, 10, 13, .55) 55%, rgba(11, 10, 13, .3) 100%), linear-gradient(0deg, var(--bg), transparent 25%), linear-gradient(180deg, var(--bg), transparent 20%); }
+.lore__fig > button:first-child { display: none; } .lore__fig figcaption { display: none; }
+.lore__grid { align-items: end; }
+@media (max-width: 900px) { .lore::after { background: linear-gradient(0deg, var(--bg) 20%, rgba(11, 10, 13, .85) 60%, rgba(11, 10, 13, .55)); } }
+.lore::before { left: 30%; background-position: 50% 0 !important; background-size: cover !important; opacity: .8 !important; -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 95%); mask-image: linear-gradient(180deg, #000 55%, transparent 95%); }
+.lore::after { background: linear-gradient(90deg, var(--bg) 0%, rgba(11, 10, 13, .9) 30%, rgba(11, 10, 13, .35) 50%, rgba(11, 10, 13, .1) 100%), linear-gradient(180deg, var(--bg), transparent 12%) !important; }
+@media (max-width: 900px) { .lore::before { left: 0; opacity: .45 !important; } }
+.lore::before { left: 34%; background-size: 100% auto !important; background-position: 50% 4vh !important; transform: none; -webkit-mask-image: radial-gradient(ellipse 75% 70% at 55% 35%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 75% 70% at 55% 35%, #000 55%, transparent 100%); }
+@media (max-width: 900px) { .lore::before { left: 0; background-position: 50% 0 !important; } }
+.lore::before { inset: 0 0 auto auto !important; left: auto !important; width: 70%; aspect-ratio: 1280 / 572; height: auto; background-position: 50% 0 !important; background-size: cover !important; opacity: .85 !important;
+  -webkit-mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 50%, transparent 100%); mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 50%, transparent 100%); }
+@media (max-width: 900px) { .lore::before { width: 100%; opacity: .5 !important; } }
+.lore::before { top: 4vh !important; -webkit-mask-image: radial-gradient(ellipse 58% 52% at 55% 46%, #000 55%, transparent 100%) !important; mask-image: radial-gradient(ellipse 58% 52% at 55% 46%, #000 55%, transparent 100%) !important; }
