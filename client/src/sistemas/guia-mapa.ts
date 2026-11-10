@@ -1,5 +1,5 @@
 /* GUIA DE MISSÃO E MAPA GRANDE: onde fica o objetivo rastreado, a seta, o alfinete, os marcadores e o mapa do mundo. Saiu do main.ts (02/11). */
-import { type EnemyType, MAP_W, regionAt, REGIONS, CITY } from '../world';
+import { type EnemyType, MAP_W, regionAt, REGIONS, CITY, heightAt } from '../world';
 import { oceanPattern, drawSeaArt, drawMapFrame } from './mapa-arte';
 import { TILE_M as T } from '@karmika/shared';
 import { DEFS } from '../enemies';
@@ -78,10 +78,10 @@ const guide3d = new THREE.Group(); guide3d.visible = false; K.scene.add(fine(gui
 /* 27/10 (Erling): segunda bússola — outra missão guiada, de outra cor (história + extra/mundo), lado a lado no pé do herói */
 const guide3dB = new THREE.Group(); guide3dB.visible = false; K.scene.add(fine(guide3dB));
 /* mistura normal (não aditiva): no chão claro, verde-claro e laranja somados à luz viravam quase branco — a cor da missão tem que aparecer como é */
-const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, blending: THREE.NormalBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
+const gMat = (op: number) => new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: op, depthWrite: false, depthTest: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, blending: THREE.NormalBlending, fog: false, toneMapped: false, side: THREE.DoubleSide });
 /* 26/10 (Erling: "a bússola some no chão da floresta, precisa ficar mais viva"): desenhada por cima do chão e da grama (sem teste de profundidade),
    com uma sombra escura por baixo do arco e das setas — a cor da missão lê em qualquer fundo — e pulsando */
-const gInk = (op: number) => new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: op, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide, userData: { ink: true } } as THREE.MeshBasicMaterialParameters);
+const gInk = (op: number) => new THREE.MeshBasicMaterial({ color: 0x050403, transparent: true, opacity: op, depthWrite: false, depthTest: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide, userData: { ink: true } } as THREE.MeshBasicMaterialParameters);
 /* 07/11 (Erling: "as bússolas estão grandes demais; têm que ter a espessura da barra de vida e do fôlego, mais elegantes e no lugar certo"):
    cada bússola é um anel fino (0,10 m, como as barras) em volta das barras — a 1ª logo por fora (raio 1,19), a 2ª por fora dela (1,32) —,
    e as setinhas pequenas correm por fora de tudo, a partir de 1,48 m */
@@ -105,6 +105,10 @@ const GUIDE_COL = { story: '#ffdc3a', side: '#5cc0ff', rep: '#2ee05a', ev: '#ff7
 let guideCol: string = GUIDE_COL.story;
 function guideColor(): string { if (pinT) return GUIDE_COL.pin; if (guideT && /^Evento: /.test(guideT.label)) return GUIDE_COL.ev; const d = K.quests.tracked; return d ? GUIDE_COL[questCat(d)] : GUIDE_COL.story; }
 const gv = new THREE.Vector3();
+/* 09/11 (Erling: "a bússola some dependendo do terreno da floresta — a seta tem que acompanhar o solo e nunca sumir"): cada seta
+   pousa na altura do chão onde ela está (subida, descida, raiz), e não some mais quando o herói passa sob as copas */
+function groundY(g: THREE.Object3D, lz: number) { const s = Math.sin(g.rotation.y), c = Math.cos(g.rotation.y), x = g.position.x + s * lz, z = g.position.z + c * lz;
+  const d = heightAt(x, z) - heightAt(g.position.x, g.position.z); return Math.max(-1.5, Math.min(1.5, d)); }
 function updateGuide(dt: number) {
   guideTick -= dt; if (guideTick <= 0) { guideTick = 0.5; guideT = questTarget(); { const c = guideColor(); if (c !== guideCol) { guideCol = c; guide3d.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color && !o.userData.ink) m.color.set(c); }); guideEl.style.setProperty('--gc', c); } } const dir = document.querySelector('#quests .q.track .dir') as HTMLElement | null; if (dir) { if (guideT) { const dx = guideT.x - K.state.fx, dy = guideT.y - K.state.fy, m = Math.round(Math.hypot(dx, dy) * T); const comp = ['N', 'NE', 'L', 'SE', 'S', 'SO', 'O', 'NO'][((Math.round(Math.atan2(dx, -dy) / (Math.PI / 4)) % 8) + 8) % 8]; dir.textContent = `◆ ${guideT.label} · ${K.fmtDist(m)} ${comp}`; } else dir.textContent = ''; } }
   updateGuideB(performance.now() / 1000);
@@ -112,12 +116,11 @@ function updateGuide(dt: number) {
   const tx = guideT.x * T, tz = guideT.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz);
   if (dist < 5) { guideEl.style.display = 'none'; guide3d.visible = false; return; }
   const ang = Math.atan2(tx - hx, tz - hz), t = performance.now() / 1000;
-  if (heroBehind()) { guide3d.visible = false; guideEl.style.display = 'none'; return; }
-  guide3d.visible = true; guide3d.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3d.rotation.y = ang;
+  guide3d.visible = true; guide3d.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3d.rotation.y = ang; const GG = guide3d; { const ga = guide3d.getObjectByName('garc')!; ga.position.y = groundY(GG, GR[0]); guide3d.children.forEach((c) => { if (c.userData.ink && !c.parent?.name.startsWith('chev')) c.position.y = ga.position.y; }); }
   /* 09/11 (Erling: "a marcação no chão de onde eu tenho que ir tem que ser mais visível; jogando de longe não se vê"): as setas ficaram maiores,
      mais fortes, correm mais longe e crescem junto com a distância da câmera */
   const zs = guideZoomK();
-  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + (0.1 + k * 1.3) * zs); ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
+  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(0, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
   { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.95; ga.scale.setScalar(1); } /* 28/10 (Erling): o arco da bússola fica parado, sem pulsar */
   // etiqueta acima da ponta do arco: destino e distância
   const r = K.canvas.getBoundingClientRect();
@@ -131,10 +134,9 @@ function updateGuideB(t: number) {
   guideTickB -= 1 / 60; if (guideTickB <= 0) { guideTickB = 0.5; const d2 = K.quests.tracked2; guideTB = d2 ? questTarget(d2, false) : null; const c = d2 ? GUIDE_COL[questCat(d2)] : ''; if (c && c !== guideColB) { guideColB = c; guide3dB.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color && !o.userData.ink) m.color.set(c); }); } }
   if (!guideTB || K.inside || K.dlg.isOpen) { guide3dB.visible = false; return; }
   const tx = guideTB.x * T, tz = guideTB.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz); if (dist < 5) { guide3dB.visible = false; return; }
-  if (heroBehind()) { guide3dB.visible = false; return; }
-  guide3dB.visible = true; guide3dB.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3dB.rotation.y = Math.atan2(tx - hx, tz - hz); /* 07/11: a 2ª bússola tem o anel próprio (raio 1,32), sem encolher o grupo */
+  guide3dB.visible = true; guide3dB.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3dB.rotation.y = Math.atan2(tx - hx, tz - hz); const GG = guide3dB; { const ga = guide3dB.getObjectByName('garc')!; ga.position.y = groundY(GG, GR[1]); guide3dB.children.forEach((c) => { if (c.userData.ink) c.position.y = ga.position.y; }); } /* 07/11: a 2ª bússola tem o anel próprio (raio 1,32), sem encolher o grupo */
   const zs = guideZoomK();
-  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); ch.position.set(0, 0.01 + i * 0.002, CHEV0 + (0.1 + k * 1.3) * zs); ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
+  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(0, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
   { const ga = guide3dB.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.75 + 0.15 * Math.sin(t * 4 + 1); }
 }
 function hereT() { return K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; }
