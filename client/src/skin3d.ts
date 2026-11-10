@@ -65,7 +65,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const rig = (hero as unknown as { rig?: Rig }).rig; if (!rig) return null;
   let src: THREE.Group; try { src = await load(def); } catch (e) { console.warn('modelo não carregou', e); return null; }
   const model = cloneSkinned(src) as THREE.Group;
-  const kk = kkAnimator(model, src); /* 10/11 (teste_libs): animações KayKit por cima da pose procedural */
+  const kk = kkAnimator(model, src); const kkOn = !!kk; /* 10/11 (teste_libs): animações KayKit por cima da pose procedural */
   const root = hero.root;
   root.updateMatrixWorld(true);
   const invRootQ = root.getWorldQuaternion(new THREE.Quaternion()).invert();
@@ -312,7 +312,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         /* 08/11 (Erling, desenho e referências do anão do WoW): em guarda o martelo atravessa a frente do corpo na diagonal, a cabeça alta do lado
            ESQUERDO. A mão direita pega embaixo, perto do fim do cabo, por cima, com o cotovelo aberto para fora; a esquerda pega mais em cima,
            perto da cabeça, por fora, com o cotovelo para baixo e o antebraço subindo */
-        const guardOn = hero.combat && !hero.acting && !hero.guard; gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
+        const guardOn = !kkOn && hero.combat && !hero.acting && !hero.guard; /* 10/11 (teste_libs): com as animações KayKit, a guarda é a do Melee_2H_Idle (as mãos do modelo mandam) */ gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
         const rq0 = root.getWorldQuaternion(new THREE.Quaternion()), fw0 = new THREE.Vector3(0, 0, 1).applyQuaternion(rq0), rt0 = new THREE.Vector3(1, 0, 0).applyQuaternion(rq0), up0 = new THREE.Vector3(0, 1, 0);
         const sc0 = root.getWorldScale(new THREE.Vector3()).x, base0 = root.getWorldPosition(new THREE.Vector3());
         const GD = (window as unknown as { __gd?: number[] }).__gd ?? [0.85, 0.5, 0.22]; const gDir = rt0.clone().multiplyScalar(GD[0]).addScaledVector(up0, GD[1]).addScaledVector(fw0, GD[2]).normalize();
@@ -338,7 +338,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const restDir = new THREE.Vector3(0, -cosT, 0).addScaledVector(right, sinT * 0.8).addScaledVector(fwd, sinT * 0.6).normalize();
         /* em combate (sem golpe): diagonal pelo corpo, cabeça para cima e para fora (referências do Erling) */
         const cmbDir = gDir.clone();
-        const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
+        const cK = hero.acting || kkOn ? 0 : Math.max(0, 1 - restK); /* KayKit: o cabo atravessa o punho, como no golpe */ cmbK += (cK - cmbK) * 0.15;
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
         if (gK2 > 0.5) handle.copy(gL).sub(grip).normalize(); /* 08/11: na guarda o cabo é a reta da mão direita à esquerda */
         if (gK2 <= 0.5) { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
@@ -593,7 +593,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
        cotovelo do procedural; sem isto os braços copiavam só as rotações e, com outras proporções, cruzavam o corpo longe do martelo. */
     /* 02/11 (Erling: "anões com essa posição ridícula de braços… braços esticados normal"): só segura o cabo quando a arma está à mostra e
        na mão (combate, golpe, guarda); arma escondida (tela de criação), desarmado ou guardada nas costas = braços soltos como o humano */
-    { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
+    { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (!kkOn && th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { /* 10/11: com KayKit os braços são da animação (antes o IK puxava de volta para a pose antiga) */ armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
     holdGear(); deClipAll(); placeCups(); placeFitted();
   }
   return { tick, model };

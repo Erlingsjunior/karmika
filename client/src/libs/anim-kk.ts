@@ -47,13 +47,15 @@ const byWeapon = (a: Action): string | undefined => {
   if (W2H.test(weapon)) return ({ combo1: 'M:Melee_2H_Attack_Slice', combo2: 'M:Melee_2H_Attack_Chop', combo3: 'M:Melee_2H_Attack_Chop', combo4: 'M:Melee_2H_Attack_Stab', attack: 'M:Melee_2H_Attack_Slice' } as AM)[a];
   if (WDAG.test(weapon)) return ({ combo1: 'M:Melee_Dualwield_Attack_Slice', combo2: 'M:Melee_Dualwield_Attack_Stab', combo3: 'M:Melee_Dualwield_Attack_Chop', combo4: 'M:Melee_1H_Attack_Stab', attack: 'M:Melee_Dualwield_Attack_Stab' } as AM)[a];
   if (WCLUB.test(weapon)) return ({ combo1: 'M:Melee_1H_Attack_Chop', combo2: 'M:Melee_1H_Attack_Slice_Horizontal', combo3: 'M:Melee_1H_Attack_Chop', combo4: 'M:Melee_1H_Attack_Slice_Diagonal' } as AM)[a];
+  /* 10/11 (Erling: "lutando não aparece a arma na mão"): de mãos vazias o golpe era o de espada (cortando o ar sem nada). Sem arma: socos e chute */
+  if (!weapon && kit !== 'lob') return ({ combo1: 'M:Melee_Unarmed_Attack_Punch_A', combo2: 'M:Melee_Unarmed_Attack_Punch_A', combo3: 'M:Melee_Unarmed_Attack_Kick', combo4: 'M:Melee_Unarmed_Attack_Punch_A', attack: 'M:Melee_Unarmed_Attack_Punch_A', cleave1: 'M:Melee_Unarmed_Attack_Punch_A', cleave2: 'M:Melee_Unarmed_Attack_Kick', cleave3: 'M:Melee_Unarmed_Attack_Punch_A', cleave4: 'M:Melee_Unarmed_Attack_Kick', thrust1: 'M:Melee_Unarmed_Attack_Punch_A', lowcut: 'M:Melee_Unarmed_Attack_Kick' } as AM)[a];
   return undefined; };
 const actOf = (a: Action) => byWeapon(a) ?? (large() ? ACT_L[a] : undefined) ?? (kit === 'tecno' && a === 'shoot' ? 'M:Ranged_2H_Shoot' : undefined) ?? ACT_M[a];
 /** 10/11 (Erling: "a girada com espada pode ser 40% mais rápida, tem que ser mais mortal"): giros tocam mais depressa (e emendam) */
 const SPEED: Record<string, number> = { 'M:Melee_2H_Attack_Spin': 1.4, 'L:Melee_2H_Attack': 1.15, 'M:Melee_2H_Attack_Spinning': 1.4 };
 const loops = () => large()
-  ? { idle: 'L:Idle_A', combat: kit === 'lob' ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
-  : { idle: 'M:Idle_A', combat: WBOW.test(weapon) ? 'M:Ranged_Bow_Idle' : WGUN.test(weapon) ? 'M:Ranged_2H_Aiming' : kit === 'mag' || kit === 'bru' ? 'M:Melee_Unarmed_Idle' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: WBOW.test(weapon) ? 'M:Running_HoldingBow' : WGUN.test(weapon) ? 'M:Running_HoldingRifle' : 'M:Running_A' };
+  ? { idle: 'L:Idle_A', combat: kit === 'lob' || !weapon ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
+  : { idle: 'M:Idle_A', combat: WBOW.test(weapon) ? 'M:Ranged_Bow_Idle' : WGUN.test(weapon) ? 'M:Ranged_2H_Aiming' : kit === 'mag' || kit === 'bru' || !weapon ? 'M:Melee_Unarmed_Idle' : 'M:Melee_2H_Idle', walk: 'M:Walking_A', run: WBOW.test(weapon) ? 'M:Running_HoldingBow' : WGUN.test(weapon) ? 'M:Running_HoldingRifle' : 'M:Running_A' };
 const FILES = ['rig_large_combatmelee', 'rig_large_general', 'rig_large_movementadvanced', 'rig_large_movementbasic', 'rig_large_simulation', 'rig_medium_combatmelee', 'rig_medium_combatranged', 'rig_medium_general', 'rig_medium_movementadvanced', 'rig_medium_movementbasic', 'rig_medium_simulation', 'rig_medium_tools'];
 
 let SRC: Promise<{ scenes: Record<'M' | 'L', THREE.Object3D>; clips: Map<string, { clip: THREE.AnimationClip; rig: 'M' | 'L' }> } | null> | null = null;
@@ -76,8 +78,8 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
     const p = { tracks, dur: rc.duration }; poses.set(name, p); return p; }
   const q = new THREE.Quaternion(), v = new THREE.Vector3(); const handL = bones.get('mixamorigLeftHand') ?? null, flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   /** `bob=false`: sem o sobe-desce do quadril (Erling: "tira o pulinho do andar, tá andar de jogo de criança") — andar e correr ficam na altura do nosso movimento */
-  function put(p: Pose, t: number, w: number, bob = true) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
-    for (const tr of p.tracks) { if (!tr.quat && !bob) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, !bob && /Hips/.test(tr.bone.name) ? w * 0.4 : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
+  function put(p: Pose, t: number, w: number, bob = true, hipK = bob ? 1 : 0.4) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
+    for (const tr of p.tracks) { if (!tr.quat && !bob) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, /Hips/.test(tr.bone.name) ? w * hipK : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
   /* estado que muda devagar: peso de cada camada, relógio da caminhada, velocidade medida */
   let last = performance.now(), loopT = 0, wAct = 0, lastAct: string | null = null, sp = 0; const prev = new THREE.Vector3(); let has = false;
   return {
@@ -87,7 +89,9 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       const h = hero as Hero3D & { riding?: boolean; sit?: number; swim?: boolean; kneel?: boolean; dead?: boolean };
       if (h.riding || h.swim) { has = false; return; } // montado e nadando: fica o procedural
       /* sentado (fogueira, banco, taverna) e ajoelhado (colhendo, rezando): poses da KayKit */
-      if ((h.sit ?? 0) > 0.05 || h.kneel) { const sp2 = pose(h.kneel ? 'M:PickUp' : 'M:Sit_Floor_Idle'); if (sp2) { loopT += dt; put(sp2, h.kneel ? sp2.dur * 0.45 : loopT % sp2.dur, h.kneel ? 1 : Math.min(1, h.sit ?? 1)); model.updateMatrixWorld(true); } return; }
+      /* 10/11 (Erling: "anão errado no banco, totalmente errado"): banco e cadeira (assento alto) = Sit_Chair, coxas na horizontal; chão = Sit_Floor.
+         Peso inteiro (antes o peso era a altura do assento, 0,55: meio sentado, meio em pé) e o quadril fica na altura que o jogo dá (o assento) */
+      if ((h.sit ?? 0) > 0.05 || h.kneel) { const chair = (h.sit ?? 0) > 0.25; const sp2 = pose(h.kneel ? 'M:PickUp' : chair ? 'M:Sit_Chair_Idle' : 'M:Sit_Floor_Idle'); if (sp2) { loopT += dt; if (h.kneel) put(sp2, sp2.dur * 0.45, 1); else put(sp2, loopT % sp2.dur, 1, !chair, 1); model.updateMatrixWorld(true); } return; }
       const p0 = hero.root.position; if (has && dt > 0) { const d = Math.hypot(p0.x - prev.x, p0.z - prev.z) / dt; sp += (Math.min(12, d) - sp) * Math.min(1, dt * 10); } prev.copy(p0); has = true;
       /* camada de movimento: parado / guarda / andando / correndo */
       const LOOP = loops(); const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
