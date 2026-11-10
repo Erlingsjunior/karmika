@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   const to = process.env.KARMIKA_FORM_EMAIL;
   if (to) {
     try {
-      const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', referer: 'https://karmikaonline.com/', origin: 'https://karmikaonline.com' },
+      const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', referer: 'https://karmikaonline.com/', origin: 'https://karmikaonline.com', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' },
         body: JSON.stringify({ _subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, _template: 'table', _captcha: 'false', _replyto: email,
           Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
       const j = await r.json().catch(() => ({}));
@@ -31,5 +31,6 @@ export default async function handler(req, res) {
   }
   if (sent || saved) return res.status(200).json({ ok: true });
   console.error('beta: nada gravou (falta KARMIKA_FORM_EMAIL ou a loja Blob)');
-  return res.status(503).json({ error: 'envio' });
+  /* 10/11: o FormSubmit recusa (403) pedidos vindos de servidor. Então o próprio navegador de quem se inscreve envia direto (relay). */
+  return res.status(503).json({ error: 'envio', relay: to ? `https://formsubmit.co/ajax/${encodeURIComponent(to)}` : '', fields: { _subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, _template: 'table', _captcha: 'false', _replyto: email, Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando } });
 }
