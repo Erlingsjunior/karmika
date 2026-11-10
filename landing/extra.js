@@ -1,4 +1,4 @@
-/* KARMIKA — landing, rodada de 10/11: menu do celular, luta com os dados na lateral, maravilhas, artbook que se folheia,
+/* KARMIKA, landing, rodada de 10/11: menu do celular, luta com os dados na lateral, maravilhas, artbook que se folheia,
    a Bíblia deitada na mesa (ler ou baixar), o olho verde-amarelo que se fecha e o botão de embaixador. */
 (() => {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -34,7 +34,7 @@
       if (step % 5 === 0) { foe = foes[Math.floor(Math.random() * foes.length)]; img = (img + 1) % imgs.length; imgs.forEach((im, i) => im.classList.toggle('on', i === img)); push(`<em>⚔ contra ${foe[0]}</em> <small>CD ${foe[1]}</small>`, 'head'); }
       step++;
       const r = d(20), acc = 9, tot = r + acc;
-      if (r === 1) { push(`<b>d20</b> <span class="dv">1</span> <i>erro crítico</i> — você fica aberto`, 'miss'); return; }
+      if (r === 1) { push(`<b>d20</b> <span class="dv">1</span> <i>erro crítico</i>, você fica aberto`, 'miss'); return; }
       if (tot < foe[1]) { push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>errou</i>`, 'miss'); return; }
       const crit = r >= 19, a = d(4), b = d(4), c = d(8), arma = 7, dmg = Math.round((a + b + c + arma) * (crit ? 1.7 : 1));
       push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>${crit ? 'CRÍTICO!' : 'acertou'}</i>`, crit ? 'crit' : 'ok');
@@ -50,7 +50,7 @@
   const view = $('#wondersView'), thumbs = $('#wondersThumbs');
   if (view && thumbs && W.length) {
     const stage = $('.wonders__stage', view);
-    stage.innerHTML = W.map((w, i) => `<button type="button" class="wn${i ? '' : ' on'}" data-lb="/img/${w.img}.webp" data-cap="${esc(w.nome)} — ${esc(w.lugar)}"><img src="/img/${w.img}.webp" alt="${esc(w.nome)}" loading="${i < 2 ? 'eager' : 'lazy'}"></button>`).join('');
+    stage.innerHTML = W.map((w, i) => `<button type="button" class="wn${i ? '' : ' on'}" data-lb="/img/${w.img}.webp" data-cap="${esc(w.nome)}, ${esc(w.lugar)}"><img src="/img/${w.img}.webp" alt="${esc(w.nome)}" loading="${i < 2 ? 'eager' : 'lazy'}"></button>`).join('');
     thumbs.innerHTML = W.map((w, i) => `<button type="button" role="tab" aria-selected="${i ? 'false' : 'true'}" data-w="${i}"><img src="/img/${w.img}.webp" alt="" loading="lazy"><span>${esc(w.nome)}</span></button>`).join('');
     let cur = 0, auto = 0;
     const go = (i, user) => { cur = (i + W.length) % W.length; const w = W[cur];
@@ -100,7 +100,7 @@
     void narrow; render();
   }
 
-  /* ---- a Bíblia deitada na mesa: clique abre — ler online ou baixar ---- */
+  /* ---- a Bíblia deitada na mesa: clique abre, ler online ou baixar ---- */
   const tome = $('[data-tome]'), menu = $('#tomeMenu');
   if (tome && menu) {
     tome.addEventListener('click', () => { const on = menu.hidden; menu.hidden = !on; tome.classList.toggle('is-open', on); if (on && window.gsap) gsap.fromTo(menu, { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4 }); });
