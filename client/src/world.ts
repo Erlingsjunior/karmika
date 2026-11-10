@@ -932,7 +932,9 @@ function buildCity_L(): World {
     E('Cantor Eärendil', 'Cantor de Lithendel · élfico', cx - 2, cy + 6, 2, 0x9ab0c0, [lore, 'As canções mais antigas não têm palavras. Só o vento sabe cantá-las.']);
     E('Pequena Lúthien', 'Criança élfica', cx + 3, cy + 6, 3, 0xd0c0a0, ['Você viu o cervo branco? Ele passou aqui ontem!', 'Quando eu crescer vou subir até o topo da Árvore-Mãe.']);
     E('Aerin', 'Jovem Caçadora de Lithendel · élfica', cx - 3, cy + 4.5, 1.5, 0x6a8a5a, ['Pés leves, flecha certa. É assim que se começa.', 'Os javalis andam perto demais da clareira. Alguém precisa lembrá-los do medo.']); /* 09/11: a primeira missão do Caminho da Mata (e01) é dela */
-    E('Vigia Galdor', 'Vigia de Lithendel · élfico', cx - 1, cy - 9, 2.5, 0x4a6a5a, ['Os esqueletos do Campo Santo não sobem até aqui. Mas tentam.', 'Floresta quieta demais é floresta com alguma coisa dentro.']);
+    /* 09/11 (Erling: "Galdor e Sylwen escondidos atrás da ponte e debaixo das folhas"): os dois saíram do lado norte da Árvore-Mãe
+       (atrás do tronco, da ponte de raiz e da copa) para o lado da câmera, na entrada sul, onde se vê de longe */
+    E('Vigia Galdor', 'Vigia de Lithendel · élfico', cx + 4.5, cy + 8.5, 1, 0x4a6a5a, ['Os esqueletos do Campo Santo não sobem até aqui. Mas tentam.', 'Floresta quieta demais é floresta com alguma coisa dentro.']);
   };
   /* 09/11 VELMORA — a vila de pescadores do Canal Escuro (Erling: "um lugar totalmente novo, que não foi visitado ainda, onde as histórias vão
      convergir"). Duas margens: a da Aurora (oeste, casas claras, a praça e o cais do Barqueiro) e a da Noite (leste, telhados negros, lanternas

@@ -88,6 +88,8 @@ export interface Hero3D {
   holdTool: boolean;
   /** ajoelhado (esfolar, colher ervas): uma perna à frente, o joelho de trás no chão */
   kneel: boolean;
+  /** 09/11: o corpo sobe acima do chão (saltos de habilidade), em metros */
+  lift: number;
   /** nadando: corpo deitado na água, braçadas de crawl (parado: boiando, só a cabeça e os ombros de fora) */
   swim: boolean;
   scrub(a: Action, p: number): void;
@@ -1170,7 +1172,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     moveYaw: null,
     gait: null,
     combat: false, stance: 'bal',
-    riding: false, sit: 0,
+    riding: false, sit: 0, lift: 0,
     droneTo: null, droneFlash: 0, actSpeed: 1,
     muzzle() { muzzleK = 1; },
     offTip(out) { if (!offSw || !offSrc || !offSw.visible) return null; return offTipO.getWorldPosition(out); },
@@ -1668,7 +1670,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       /* 06/11 (Erling: "de pé ele fica com as pernas dobradas, ninguém fica de pé assim"): parado (guarda, postura de instinto, escudo,
          descanso) as pernas ficam ESTICADAS — só um leve destravar do joelho. O corpo baixo fica para o andar das classes e para os golpes */
       if (!act && !dashing && kneelE < 0.01) aCrouch = Math.min(aCrouch, 0.008 + 0.2 * walkK);
-      body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE;
+      body.position.y = bobY + idleY - aCrouch + aJump - S.thigh * 0.93 * kneelE + hero.lift; /* 09/11: lift = salto de verdade (Salto de Recuo) */
       hips.position.x = Math.cos(phase) * S.sway * (hero.gait?.sway ?? 1) * walkK * (1 - runK * 0.5) + Math.sin(t * 0.6) * 0.006 * (1 - walkK) + smooth1('side', aSide, dt, 18);
       /* 04/11 CADEIA CINÉTICA: antes o quadril girava ao CONTRÁRIO do peito (−0,4 do giro) — a torção ficava toda na cintura, um corpo de
          boneco. No golpe de verdade o quadril vai para o MESMO lado e na frente (puxa), o peito vem atrás e gira mais. O peito continua com o
