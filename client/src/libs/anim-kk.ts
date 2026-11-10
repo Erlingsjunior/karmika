@@ -74,7 +74,7 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
     const rc = retargetKayKit(sc, restClone, c.clip); const tracks: Pose['tracks'] = [];
     for (const t of rc.tracks) { const [bn, prop] = t.name.split('.'); const b = bones.get(bn); if (b) tracks.push({ bone: b, quat: prop === 'quaternion', it: (t as THREE.KeyframeTrack & { createInterpolant(): THREE.Interpolant }).createInterpolant() }); }
     const p = { tracks, dur: rc.duration }; poses.set(name, p); return p; }
-  const q = new THREE.Quaternion(), v = new THREE.Vector3();
+  const q = new THREE.Quaternion(), v = new THREE.Vector3(); const handL = bones.get('mixamorigLeftHand') ?? null, flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   /** `bob=false`: sem o sobe-desce do quadril (Erling: "tira o pulinho do andar, tá andar de jogo de criança") — andar e correr ficam na altura do nosso movimento */
   function put(p: Pose, t: number, w: number, bob = true) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
     for (const tr of p.tracks) { if (!tr.quat && !bob) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, !bob && /Hips/.test(tr.bone.name) ? w * 0.4 : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
@@ -97,6 +97,9 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       const an = hero.acting && hero.actName ? actOf(hero.actName) : undefined;
       if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); put(ap, ((k * spd) % 1) * ap.dur, wAct * fade); } }
       else { lastAct = null; wAct = 0; }
+      /* 10/11 (Erling: "o arco está invertido: madeira para frente, linha para trás"): com o antebraço da animação nova, a mão do arco
+         chega virada; meia-volta no próprio eixo do osso (Y no esqueleto Mixamo) */
+      if (WBOW.test(weapon) && handL) handL.quaternion.multiply(flipY);
       model.updateMatrixWorld(true);
     },
   };
