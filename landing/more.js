@@ -47,7 +47,10 @@
     if (window.gsap) gsap.fromTo(el, { opacity: 0, x: 18 }, { opacity: 1, x: 0, duration: 0.35 }); };
   /* 10/11 (Erling): a leitura online é o próprio livro da Bíblia (cadeado, páginas que viram, sumário) */
   const bview = document.getElementById('bview');
-  const openBible = () => { if (!bview) return false; const f = bview.querySelector('iframe'); if (!f.src) f.src = '/biblia-karmika-season-1.html'; if (sheet && !sheet.hidden) show(sheet, false); show(bview, true); return true; };
+  /* 10/11 (Erling: "o livro na leitura online e no download precisa seguir a língua escolhida no site"): uma Bíblia por língua */
+  const BL = window.KARMIKA_LANG && window.KARMIKA_LANG !== 'pt' ? window.KARMIKA_LANG : '', BIBLE = BL ? `/biblia-karmika-season-1-${BL}.html` : '/biblia-karmika-season-1.html';
+  if (BL) document.querySelectorAll('a[href="/biblia-karmika-season-1.html"]').forEach((a) => { a.href = BIBLE; a.setAttribute('download', ({ en: 'karmika-bible-season-1', es: 'biblia-karmika-season-1', lv: 'karmikas-bibele-season-1' })[BL] + '.html'); });
+  const openBible = () => { if (!bview) return false; const f = bview.querySelector('iframe'); if (!f.src) f.src = BIBLE; if (sheet && !sheet.hidden) show(sheet, false); show(bview, true); return true; };
   bview?.querySelector('.lb__x').addEventListener('click', () => show(bview, false));
   const openBook = (id) => { if (openBible()) return; const i = Math.max(0, B.findIndex((b) => b.id === id)); if (!reader || !B.length) return; reader.querySelector('.reader__tabs').innerHTML = B.map((b) => `<button type="button" data-bk="${b.id}">${b.nome}</button>`).join(''); build(i); renderPage(); if (sheet && !sheet.hidden) show(sheet, false); show(reader, true); };
   document.addEventListener('click', (e) => { const t = e.target;
