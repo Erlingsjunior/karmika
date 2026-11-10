@@ -3,6 +3,7 @@ import { buildSpecies } from './flora3d';
 
 import { installBvh } from './libs/bvh';
 import { kkSetWeapon } from './libs/anim-kk';
+import { setModern } from './sistemas/moderno';
 import { createHalloween } from './sistemas/halloween';
 import { quarksInit, quarksUpdate } from './libs/quarks';
 import { mirrorUpdate } from './espelho';
@@ -1756,7 +1757,7 @@ function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RA
   const st = m ? THREE.PCFShadowMap /* three 0.18x: o PCFSoft saiu; o PCF com radius faz a borda macia */ : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
   { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuImpl) { /* WebGPU: o ShadowNode acompanha o mapSize sozinho; soltar o alvo deixava a sombra apontando para textura destruída */ sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
-  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.8 : 0.93; gfxBloom = m ? 2.6 : 1; /* 04/11: brilho menos estourado no modo moderno (lampião, papel, drone) */ document.body.classList.toggle('gfx-moderno', m); resize(); }
+  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.8 : 0.93; gfxBloom = m ? 2.6 : 1; /* 04/11: brilho menos estourado no modo moderno (lampião, papel, drone) */ document.body.classList.toggle('gfx-moderno', m); try { setModern(scene, renderer, m, !gpuImpl); } catch (e) { console.warn('moderno', e); } resize(); }
 /* WebGPU: o LIMIAR (a cena da alma, limiar.ts) tem 19 efeitos próprios em GLSL. Enquanto ele não é traduzido, a cena é desenhada por um
    WebGL à parte num canvas por cima (o mesmo caminho de antes: pixel em duas resoluções, brilho, acabamento) — o mundo espera lá embaixo,
    então só um dos dois desenha de cada vez. Quando a alma volta, o canvas some e o WebGPU segue. */

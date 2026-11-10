@@ -66,7 +66,7 @@ function source() { return (SRC ??= Promise.all(FILES.map((f) => new GLTFLoader(
 
 /** só o tronco para cima (beber sentado sem levantar as pernas) */
 const UPPER = /Spine|Neck|Head|Shoulder|Arm|Hand/;
-interface Pose { tracks: { bone: THREE.Bone | THREE.Object3D; quat: boolean; it: THREE.Interpolant }[]; dur: number }
+interface Pose { tracks: { bone: THREE.Bone | THREE.Object3D; quat: boolean; it: THREE.Interpolant }[]; dur: number; /** 10/11: o giro da KayKit mora no osso 'root', que o nosso esqueleto não tem — aplicado no quadril */ root?: THREE.Interpolant }
 
 /** liga o animador num modelo do Herik já vestido no herói. `rest` = o modelo em pose de repouso (da carga). */
 export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
@@ -77,9 +77,14 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
   function pose(name: string): Pose | null { const got = poses.get(name); if (got) return got; if (!ready || !data || !restClone) return null; const c = data.clips.get(name); const sc = c ? srcClone[c.rig] : undefined; if (!c || !sc) return null;
     const rc = retargetKayKit(sc, restClone, c.clip); const tracks: Pose['tracks'] = [];
     for (const t of rc.tracks) { const [bn, prop] = t.name.split('.'); const b = bones.get(bn); if (b) tracks.push({ bone: b, quat: prop === 'quaternion', it: (t as THREE.KeyframeTrack & { createInterpolant(): THREE.Interpolant }).createInterpolant() }); }
-    const p = { tracks, dur: rc.duration }; poses.set(name, p); return p; }
+    const rt = c.clip.tracks.find((t) => /(^|\/|\.)root\.quaternion$/i.test(t.name) || t.name === 'root.quaternion') as (THREE.KeyframeTrack & { createInterpolant(): THREE.Interpolant }) | undefined;
+    let root: THREE.Interpolant | undefined; if (rt) { const qq = new THREE.Quaternion(), e = new THREE.Euler(); let big = false; for (let i = 0; i < rt.times.length; i++) { qq.fromArray(rt.values as unknown as number[], i * 4); e.setFromQuaternion(qq, 'YXZ'); if (Math.abs(e.y) > 0.6) { big = true; break; } } if (big) root = rt.createInterpolant(); }
+    const p: Pose = { tracks, dur: rc.duration, root }; poses.set(name, p); return p; }
   const q = new THREE.Quaternion(), v = new THREE.Vector3(); const handL = bones.get('mixamorigLeftHand') ?? null, flipY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
   /** `bob=false`: sem o sobe-desce do quadril (Erling: "tira o pulinho do andar, tá andar de jogo de criança") — andar e correr ficam na altura do nosso movimento */
+  const hipsB = bones.get('mixamorigHips') ?? null, upY = new THREE.Vector3(0, 1, 0), eR = new THREE.Euler(), qR = new THREE.Quaternion(), qY = new THREE.Quaternion();
+  /** o giro do corpo inteiro (Erling, 10/11: "não dá o giro completo, vai até 270 graus e volta para a frente") */
+  function spinRoot(p: Pose, tt: number, w: number) { if (!p.root || !hipsB) return; const r = p.root.evaluate(tt) as Float32Array; qR.set(r[0], r[1], r[2], r[3]); eR.setFromQuaternion(qR, 'YXZ'); qY.setFromAxisAngle(upY, eR.y * w); hipsB.quaternion.premultiply(qY); }
   function put(p: Pose, t: number, w: number, bob = true, hipK = bob ? 1 : 0.4, upper = false) { if (w <= 0.001) return; const tt = Math.max(0, Math.min(p.dur, t));
     for (const tr of p.tracks) { if (!tr.quat && !bob) continue; if (upper && !UPPER.test(tr.bone.name)) continue; const r = tr.it.evaluate(tt) as Float32Array; if (tr.quat) { q.set(r[0], r[1], r[2], r[3]); tr.bone.quaternion.slerp(q, /Hips/.test(tr.bone.name) ? w * hipK : w); } else { v.set(r[0], r[1], r[2]); tr.bone.position.lerp(v, w); } } }
   /* estado que muda devagar: peso de cada camada, relógio da caminhada, velocidade medida */
@@ -101,9 +106,11 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       const LOOP = loops(); const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
       if (lp) { loopT += dt * (loopName === LOOP.run ? Math.max(0.8, sp / 6.5) : loopName === LOOP.walk ? Math.max(0.7, sp / 2.2) : 1); put(lp, loopT % lp.dur, loopName === LOOP.walk || loopName === LOOP.run ? 0.7 : 1, kit === 'dwarf' && loopName === LOOP.walk); } /* o anão anda com um pulinho de anão (Erling) */ /* andar/correr: 70% KayKit + 30% o nosso (menos desenho animado) */
       /* camada da ação (golpe, magia, esquiva…): no MESMO progresso da ação do jogo; entra e sai suave */
-      if (forced && performance.now() < forced.until) { const fp = pose(forced.clip); if (fp) { forced.t += dt * (SPEED[forced.clip] ?? 1); put(fp, forced.t % fp.dur, 1); model.updateMatrixWorld(true); return; } } else forced = null;
+      /* 10/11: o giro forçado só termina numa volta completa (antes cortava no meio da volta e o corpo voltava de supetão para a frente) */
+      if (forced) { const fp = pose(forced.clip); if (fp) { const t0 = forced.t; forced.t += dt * (SPEED[forced.clip] ?? 1); const wrapped = Math.floor(forced.t / fp.dur) > Math.floor(t0 / fp.dur);
+          if (performance.now() >= forced.until && (wrapped || !fp.root)) forced = null; else { const ph = forced.t % fp.dur; put(fp, ph, 1); spinRoot(fp, ph, 1); model.updateMatrixWorld(true); return; } } else if (performance.now() >= forced.until) forced = null; }
       const an = hero.acting && hero.actName ? actOf(hero.actName) : undefined;
-      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); put(ap, ((k * spd) % 1) * ap.dur, wAct * fade, ((hero as Hero3D & { lift?: number }).lift ?? 0) < 0.05); /* no ar (salto de recuo), o quadril é do salto */ } }
+      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); const tp = Math.min(1, k * spd) * ap.dur; put(ap, tp, wAct * fade, ((hero as Hero3D & { lift?: number }).lift ?? 0) < 0.05); spinRoot(ap, tp, wAct * fade); /* no ar (salto de recuo), o quadril é do salto */ } }
       else { lastAct = null; wAct = 0; }
       /* 10/11 (Erling: "o arco está invertido: madeira para frente, linha para trás"): com o antebraço da animação nova, a mão do arco
          chega virada; meia-volta no próprio eixo do osso (Y no esqueleto Mixamo) */
