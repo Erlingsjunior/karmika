@@ -138,11 +138,21 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
   function drawParty() {
     const P = net.state === 'on' ? net.party : null; if (!P) { pf.style.display = 'none'; return; }
     pf.style.display = 'block';
-    pf.innerHTML = `<div class="pf-h">Grupo · ${P.members.length}/6</div>` + P.members.map((id) => { const me = id === net.myId, inf = me ? null : net.infoOf(id); const hp = me ? hooks.myHp() : inf?.hp ?? 100;
+    pf.innerHTML = `<div class="pf-h" title="Arraste para mover · duplo clique volta ao lugar">⠿ Grupo · ${P.members.length}/6</div>` + P.members.map((id) => { const me = id === net.myId, inf = me ? null : net.infoOf(id); const hp = me ? hooks.myHp() : inf?.hp ?? 100;
       return `<div class="pf-m ${me ? 'me' : ''}" data-pid="${id}"><b>${P.leader === id ? '👑 ' : ''}${esc(net.nameOf(id))}</b><small>${me ? 'você' : `Nv ${inf?.lvl ?? '?'}`}</small><i><u style="width:${Math.max(0, Math.min(100, hp))}%"></u></i></div>`; }).join('') + `<button class="pf-x" data-a="pleave">Sair do grupo</button>`;
   }
   pf.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-a="pleave"]')) { net.leaveParty(); return; } const m = t.closest('[data-pid]') as HTMLElement | null; if (m && +m.dataset.pid! !== net.myId) { const r = m.getBoundingClientRect(); playerMenu(+m.dataset.pid!, r.right, r.top); } });
   setInterval(() => { if (net.party) drawParty(); }, 1000);
+  /* 09/11 (Erling: "preciso poder mover o quadro do grupo de lugar"): arrasta pelo título "Grupo" (botão esquerdo), o lugar fica guardado;
+     duplo clique no título volta ao canto de sempre */
+  { const KEY = 'karmika.ui.party'; let drag: { dx: number; dy: number } | null = null;
+    const put = (x: number, y: number) => { const w = pf.offsetWidth || 190, h = pf.offsetHeight || 80; x = Math.max(0, Math.min(innerWidth - w, x)); y = Math.max(0, Math.min(innerHeight - Math.min(h, 40), y)); pf.style.left = x + 'px'; pf.style.top = y + 'px'; return { x, y }; };
+    try { const p = JSON.parse(localStorage.getItem(KEY) || 'null'); if (p) requestAnimationFrame(() => put(p.x, p.y)); } catch { /* */ }
+    pf.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !(e.target as HTMLElement).closest('.pf-h')) return; drag = { dx: e.clientX - pf.offsetLeft, dy: e.clientY - pf.offsetTop }; /* pelo left/top do estilo (a escala da interface deixa o retângulo visual diferente) */ pf.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); });
+    pf.addEventListener('pointermove', (e) => { if (drag) put(e.clientX - drag.dx, e.clientY - drag.dy); });
+    pf.addEventListener('pointerup', () => { if (!drag) return; drag = null; try { localStorage.setItem(KEY, JSON.stringify({ x: parseFloat(pf.style.left), y: parseFloat(pf.style.top) })); } catch { /* */ } });
+    pf.addEventListener('dblclick', (e) => { if (!(e.target as HTMLElement).closest('.pf-h')) return; pf.style.left = ''; pf.style.top = ''; try { localStorage.removeItem(KEY); } catch { /* */ } });
+    addEventListener('resize', () => { if (pf.style.left) put(parseFloat(pf.style.left), parseFloat(pf.style.top)); }); }
 
   /* ---------- perfil de outro jogador ---------- */
   const pw = document.createElement('div'); pw.id = 'profw'; pw.className = 'modalw'; document.body.appendChild(pw);

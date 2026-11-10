@@ -69,7 +69,7 @@ function renderOptions() {
     <h3>Jogo</h3>
     <div class="stat"><span>Dia / noite</span><div class="seg"><button data-act="night">Alternar (N)</button></div></div>
     <div class="stat"><span>Zoom</span><div class="seg"><button data-act="zoom">Padrão</button><span class="hint3">roda do mouse: 5 m a 22 m</span></div></div>
-    <div class="stat"><span>Janelas (chat, missões)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
+    <div class="stat"><span>Janelas (chat, missões, grupo)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
     <div class="stat"><span>Restaurar</span><div class="seg"><button data-act="reset">Opções padrão</button></div></div>`;
 }
 document.getElementById('p-opt')?.addEventListener('click', (e) => {
@@ -79,7 +79,7 @@ document.getElementById('p-opt')?.addEventListener('click', (e) => {
   if (a === 'reopen') { location.reload(); return; }
   if (a === 'night') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
   if (a === 'zoom') { K.zoomTarget = 17; }
-  if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }
+  if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); localStorage.removeItem('karmika.ui.party'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }
   if (a === 'reset') { Object.assign(K.opts, K.OPT_DEF); applyOpts(); renderOptions(); }
 });
 document.getElementById('p-opt')?.addEventListener('input', (e) => { const i = e.target as HTMLInputElement; if (!i.dataset.or) return; const k = i.dataset.or as keyof Opts; (K.opts as unknown as Record<string, unknown>)[k] = Number(i.value); applyOpts(k); const b = i.nextElementSibling as HTMLElement | null; if (b) b.textContent = `${Math.round(Number(i.value) * 100)}%`; });

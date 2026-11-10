@@ -1777,9 +1777,38 @@ export function uiBase() { return Math.max(0.85, Math.min(2, Math.min(innerHeigh
 /* 09/11 (Erling: "o FPS está alterando muito, precisa de uma revisão profunda"): RESOLUÇÃO DINÂMICA, como nos jogos de console — quando o
    quadro não aguenta (abaixo de ~45 fps por 2 s seguidos), o jogo desenha um pouco menos pixels (até 60% a menos) e estica; quando sobra
    folga (acima de ~58 por 5 s), devolve a nitidez aos poucos. A interface não muda. Desliga com localStorage karmika.dynres = 0. */
+/* 09/11 (Erling: "notebook sem placa de vídeo, Ryzen 7 5000, roda até Fortnite, e o jogo pega 25 fps em Full HD; precisa ser no mínimo 45"):
+   QUALIDADE AUTOMÁTICA. Quando a resolução dinâmica já desceu tudo o que podia e o quadro continua abaixo de 45, o jogo desliga as coisas caras,
+   uma de cada vez, e devolve quando sobra folga. Nada disso mexe nas opções salvas do jogador; o degrau fica guardado para a próxima abertura.
+     1 · o mapa de sombras é refeito a cada dois quadros (metade dos desenhos de sombra)
+     2 · sombras em resolução baixa, sem brilho (bloom) e menos partículas
+     3 · sombras desligadas
+   Placa integrada (Radeon/Vega dos Ryzen, Intel UHD/Iris): começa no degrau 1 e com a resolução dinâmica um passo abaixo, e pode descer mais.
+   Desliga com localStorage karmika.autoq = off. */
+const igpu = (() => { try { const c = document.createElement('canvas'), g = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null; if (!g) return false; const e = g.getExtension('WEBGL_debug_renderer_info'); const n = String(e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER)); (g.getExtension('WEBGL_lose_context') as { loseContext(): void } | null)?.loseContext();
+  return /Radeon\(TM\) Graphics|Radeon Graphics|Vega|Intel|UHD|Iris|Mali|Adreno|PowerVR|llvmpipe|SwiftShader/i.test(n) && !/RX |Arc /i.test(n); } catch { return false; } })();
+const DYN_MAX = igpu ? 2.0 : 1.6;
+let autoQ = (() => { try { const v = localStorage.getItem('karmika.autoq'); if (v === 'off') return -1; const n = Number(v); return Number.isFinite(n) && v !== null ? Math.max(0, Math.min(3, n)) : igpu ? 1 : 0; } catch { return 0; } })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
+if (igpu && dynK === 1) dynK = 1.3;
+function applyAutoQ() { const q = Math.max(0, autoQ), was = autoQApplied; autoQApplied = q;
+  renderer.shadowMap.autoUpdate = q < 1; if (q >= 1) renderer.shadowMap.needsUpdate = true;
+  const sr = q >= 2 ? Math.min(512, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuState.on) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } }
+  bloom.enabled = q < 2 && opts.bloom > 0; particles.density = q >= 2 ? Math.min(opts.particles, 0.6) : opts.particles;
+  const sh = opts.shadows && q < 3; if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
+  try { localStorage.setItem('karmika.autoq', String(q)); } catch { /* */ }
+  if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombras desligadas']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
+/** a cada quadro: no degrau 1+, a sombra só é refeita em quadros alternados */
+function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & 1) === 0; } }
+function autoQTick(fps: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
+  const atMax = dynK >= DYN_MAX - 0.01;
+  if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > 58 && dynK <= 1.31) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
+  if (autoQLow >= 3 && autoQ < 3) { autoQ++; autoQLow = 0; autoQCool = 6; applyAutoQ(); }
+  else if (autoQHigh >= 20 && autoQ > (igpu ? 1 : 0)) { autoQ--; autoQHigh = 0; autoQCool = 10; applyAutoQ(); } }
+setTimeout(() => { if (autoQ >= 0) applyAutoQ(); }, 0);
 function dynResTick(fps: number) { let on = true; try { on = localStorage.getItem('karmika.dynres') !== '0'; } catch { /* */ } if (!on || document.hidden) { if (dynK !== 1 && !on) { dynK = 1; resize(); } return; }
   const tgt = Math.min(45, (opts.cap > 0 ? opts.cap : 240) - 8); if (fps < tgt) { dynLow++; dynHigh = 0; } else if (fps > tgt + 13) { dynHigh++; dynLow = 0; } else { dynLow = 0; dynHigh = 0; }
-  if (dynLow >= 2 && dynK < 1.6) { dynK = Math.min(1.6, dynK + 0.15); dynLow = 0; resize(); } else if (dynHigh >= 5 && dynK > 1) { dynK = Math.max(1, dynK - 0.1); dynHigh = 0; resize(); } }
+  if (dynLow >= 2 && dynK < DYN_MAX) { dynK = Math.min(DYN_MAX, dynK + 0.15); dynLow = 0; resize(); } else if (dynHigh >= 5 && dynK > 1) { dynK = Math.max(1, dynK - 0.1); dynHigh = 0; resize(); }
+  autoQTick(fps); }
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
   const rr = opts.gfx === 1 ? 0 : opts.res; /* Moderno: sempre na resolução nativa do monitor (Quad HD e 4K ficam nítidos de verdade) */
@@ -2981,7 +3010,7 @@ function frameBody() {
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
-  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } gpuBegin(); composer.render(); gpuEnd(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
+  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } autoQFrame(); gpuBegin(); composer.render(); gpuEnd(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
   pm('desenho');
   dollTick(rawDt);
   pm('boneco');

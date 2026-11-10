@@ -354,8 +354,9 @@
   #pinvite .pi-t { color: #ffd88a; letter-spacing: .08em; font-size: 14px; margin-bottom: 4px; } #pinvite p { margin: 4px 0; font-size: 13px; } #pinvite b { color: #9ad0ff; font-weight: normal; }
   #pinvite .pi-b { display: flex; gap: 8px; margin-top: 8px; } #pinvite .pi-bar { position: absolute; left: 0; bottom: 0; height: 3px; background: #e6c46a; animation: pibar 60s linear forwards; }
   @keyframes pibar { from { width: 100%; } to { width: 0; } }
+  .npc.pl .php { display: none; } .npc.pl.party .php { display: block; width: 64px; height: 6px; margin: 2px auto 0; background: #1a0a08d8; border: 1px solid #000; box-shadow: 0 0 0 1px #6a5a32; } .npc.pl.party .php u { display: block; height: 100%; width: 100%; background: #d83a3a; transition: width .25s; }
   #partyf { display: none; position: fixed; left: 12px; top: 120px; width: 190px; z-index: 22; font-family: Georgia, serif; }
-  #partyf .pf-h { color: #c8a868; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 1px 2px #000; }
+  #partyf .pf-h { cursor: move; user-select: none; color: #c8a868; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 4px; text-shadow: 0 1px 2px #000; }
   #partyf .pf-m { display: grid; grid-template-columns: 1fr auto; gap: 0 6px; background: #120d08d8; border: 1px solid #4a3a22; padding: 4px 7px 5px; margin-bottom: 3px; cursor: pointer; }
   #partyf .pf-m.me { border-color: #6a5a32; cursor: default; } #partyf .pf-m b { color: #8aff9a; font-weight: normal; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #partyf .pf-m.me b { color: #f0e2c0; }
   #partyf .pf-m small { color: #a89870; font-size: 10.5px; } #partyf .pf-m i { grid-column: 1 / -1; height: 5px; background: #2a0a0a; margin-top: 3px; } #partyf .pf-m u { display: block; height: 100%; background: linear-gradient(#d0303a, #7a1018); }

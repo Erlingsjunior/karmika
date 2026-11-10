@@ -52,6 +52,8 @@ export interface NetCtx {
 export interface NetPost { id: number; by: string; item: string; name: string; icon: string; n: number; gold: number; note: string; t: number }
 
 /** "karmika://203.0.113.5:7777/AB12CD", "203.0.113.5:7777 AB12CD", "100.80.1.2 AB12CD" … */
+/** os companheiros de grupo visíveis (posição em metros, vida em %), para o minimapa — refeito a cada quadro */
+export const partyMarks: { x: number; z: number; name: string; hp: number }[] = [];
 export function parseInvite(s: string): { host: string; port: number; code: string } | null {
   const t = s.trim().replace(/^karmika:\/\//i, '').replace(/^wss?:\/\//i, '');
   const m = t.match(/^\[?([a-z0-9.\-:]+?)\]?(?::(\d{2,5}))?\s*[/\s#]\s*([A-Za-z0-9]{6})\s*$/i);
@@ -111,7 +113,7 @@ export function createNet(ctx: NetCtx) {
     r.name = look.name || r.name;
   }
   function addRemote(p: { id: number; name: string; host: boolean; look: NetLook | null; st: NetSt | null }) {
-    const el = document.createElement('div'); el.className = 'npc pl'; el.innerHTML = '<b></b><small></small><p></p>'; document.body.appendChild(el);
+    const el = document.createElement('div'); el.className = 'npc pl'; el.innerHTML = '<b></b><small></small><i class="php"><u></u></i><p></p>'; document.body.appendChild(el);
     const r: Remote = { id: p.id, name: p.name, host: p.host, look: null, hero: null, skinTick: null, skinTok: 0, snaps: [], el, bubbleT: 0, lookKey: '', zn: p.st?.zn ?? '' };
     labelOf(r);
     remotes.set(p.id, r);
@@ -201,6 +203,7 @@ export function createNet(ctx: NetCtx) {
       if (lookT <= 0) { lookT = 1; const L = ctx.look(), k = JSON.stringify(L); if (k !== lastLook) { lastLook = k; send({ t: 'look', look: L }); } }
       if (pingT <= 0) { pingT = 3; send({ t: 'ping', at: performance.now() }); }
     }
+    partyMarks.length = 0;
     const myZone = ctx.st().zn, now = performance.now(), rt = now - 140; // desenha 140 ms no passado: dá tempo de ter dois pontos para interpolar
     for (const r of remotes.values()) {
       const h = r.hero; if (!h) { r.el.style.display = 'none'; if (r.rune) r.rune.visible = false; continue; }
@@ -217,6 +220,9 @@ export function createNet(ctx: NetCtx) {
       if (r.rune) { const hp = h.root.position, a = t * 0.9 + r.id; r.rune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2 + r.id) * 0.04, hp.z + Math.sin(a) * 0.62); }
       { const hp = h.root.position; tmpB.set(hp.x, hp.y + 2.15, hp.z).project(ctx.camera); const on = tmpB.z < 1 && Math.abs(tmpB.x) < 1.1 && Math.abs(tmpB.y) < 1.1; r.el.style.display = on ? 'block' : 'none';
         if (on) { const rc = ctx.canvas.getBoundingClientRect(); r.el.style.left = rc.left + (tmpB.x * 0.5 + 0.5) * rc.width + 'px'; r.el.style.top = rc.top + (-tmpB.y * 0.5 + 0.5) * rc.height + 'px'; } }
+      /* 09/11 (Erling: "em grupo, ver a vida do companheiro em cima dele e ver ele no minimapa") */
+      if (party && party.members.includes(r.id)) { const hpv = Math.max(0, Math.min(100, b.s.hp ?? 100)); const u = r.el.querySelector('.php u') as HTMLElement | null; if (u) { u.style.width = hpv + '%'; u.style.background = hpv < 30 ? '#ff5a3a' : '#d83a3a'; }
+        partyMarks.push({ x: h.root.position.x, z: h.root.position.z, name: r.name, hp: hpv }); }
       if (r.bubbleT > 0) { r.bubbleT -= dt; if (r.bubbleT <= 0) (r.el.querySelector('p') as HTMLElement).style.display = 'none'; }
     }
   }

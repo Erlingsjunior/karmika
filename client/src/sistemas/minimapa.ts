@@ -1,4 +1,5 @@
 import { INSTINCT_MARKS } from '../segredos';
+import { partyMarks } from '../net';
 /* MINIMAPA: a imagem base do mundo, o zoom, os ícones e marcadores, o mapa grande (janela) e seus cliques. Saiu do main.ts (02/11). */
 import { MAP_W, groundH, WL, heightAt, fbm, ISLES } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
@@ -200,6 +201,9 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
   /* 04/11 (Erling: "liguei o olho do instinto mas nada aparece no mapa"): o que o Instinto revelou pisca no minimapa — esconderijos (✦) e o fim dos rastros das missões */
   for (const m of INSTINCT_MARKS) { const x = X(m.x), y = Y(m.y), pr = 0.5 + 0.5 * Math.sin(performance.now() / 220); ctx.save(); ctx.globalAlpha = 0.55 + 0.45 * pr; ctx.fillStyle = m.col; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = 1.2; ctx.font = `bold ${Math.round(11 * sc)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText('✦', x, y); ctx.fillText('✦', x, y); ctx.globalAlpha = 0.35 * pr; ctx.beginPath(); ctx.arc(x, y, (5 + 4 * pr) * sc, 0, 6.283); ctx.strokeStyle = m.col; ctx.stroke(); ctx.restore(); }
   for (const n of K.npcSys.npcs) { ctx.fillStyle = '#7ad0ff'; ctx.beginPath(); ctx.arc(X(n.pos.x / T), Y(n.pos.z / T), 2 * sc, 0, 6.283); ctx.fill(); }
+  /* 09/11: os companheiros de grupo — bolinha verde com borda branca e o nome, por cima dos NPCs */
+  for (const pm of partyMarks) { const x = X(pm.x / T), y = Y(pm.z / T); ctx.fillStyle = pm.hp < 30 ? '#ff7a5a' : '#5aff8a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * sc; ctx.beginPath(); ctx.arc(x, y, 3.6 * sc, 0, 6.283); ctx.fill(); ctx.stroke();
+    ctx.font = `bold ${Math.max(9, 9 * sc)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText(pm.name, x, y - 5 * sc); ctx.fillStyle = '#c8ffd8'; ctx.fillText(pm.name, x, y - 5 * sc); }
   for (const v of K.CINE.vistas) { const seen = K.vistaSeen.has(v.id); ctx.fillStyle = seen ? '#ffe08a' : '#a08a50'; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(X(v.at.x), Y(v.at.y), 3.6 * sc, 2.2 * sc, 0, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1a1208'; ctx.beginPath(); ctx.arc(X(v.at.x), Y(v.at.y), 1.1 * sc, 0, 6.283); ctx.fill(); }
   for (const rl of K.city.relics) if (K.knowsRelic(rl.name)) { ctx.fillStyle = '#8ad0ff'; ctx.beginPath(); ctx.moveTo(X(rl.x), Y(rl.y) - 4 * sc); ctx.lineTo(X(rl.x) + 3 * sc, Y(rl.y)); ctx.lineTo(X(rl.x), Y(rl.y) + 4 * sc); ctx.lineTo(X(rl.x) - 3 * sc, Y(rl.y)); ctx.closePath(); ctx.fill(); }
   if (K.guiaSys.guideT) { const x = X(K.guiaSys.guideT.x), y = Y(K.guiaSys.guideT.y), pr = 4 * sc + 2 * sc * Math.abs(Math.sin(performance.now() / 300)); ctx.strokeStyle = K.guiaSys.guideCol; ctx.lineWidth = 1.6 * sc; ctx.beginPath(); ctx.arc(x, y, pr, 0, 6.283); ctx.stroke(); ctx.fillStyle = K.guiaSys.guideCol; ctx.beginPath(); ctx.arc(x, y, 1.6 * sc, 0, 6.283); ctx.fill(); if (lab) { ctx.font = '600 11px Cinzel, serif'; ctx.fillStyle = K.guiaSys.guideCol; ctx.fillText(K.guiaSys.guideT.label, x + 8, y - 8); } }
