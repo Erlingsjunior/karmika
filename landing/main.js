@@ -103,7 +103,8 @@
       const im = (sel, n) => { const e = det.querySelector(sel); if (n) { e.src = `/img/${n}.webp`; e.alt = c.nome; e.hidden = false; } else { e.hidden = true; e.removeAttribute('src'); } };
       im('.pdet__m', male); im('.pdet__f', fem); im('.pdet__pm', pm); im('.pdet__pf', pf);
       det.querySelector('.pdet__figs').classList.toggle('is-soon', !ret.length);
-      det.querySelector('.pdet__kind').textContent = c.tipo === 'Raça' ? 'Raça de nascimento' : 'Caminho';
+      det.dataset.fac = c.fac || ''; sec.dataset.fac = c.fac || '';
+      det.querySelector('.pdet__kind').textContent = c.tipo === 'Raça' ? 'Raça de nascimento' : c.fac === 'fio' ? 'Caminho · A Ordem do Fio' : c.fac === 'desf' ? 'Caminho · Os Desfiados' : 'Caminho · sem bandeira';
       det.querySelector('.pdet__name').textContent = c.nome; det.querySelector('.pdet__lema').textContent = c.lema;
       det.querySelector('.pdet__meta').innerHTML = `<dt>Lar</dt><dd>${esc(c.casa)}</dd>${c.mestre ? `<dt>Mestre</dt><dd>${esc(c.mestre)}</dd>` : ''}<dt>Recurso</dt><dd>${esc(c.recurso)}</dd>`;
       det.querySelector('.pdet__hist').innerHTML = c.hist.map((p) => `<p>${esc(p)}</p>`).join('');

@@ -543,3 +543,51 @@ main { overflow-x: clip; }
   -webkit-mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 50%, transparent 100%); mask-image: radial-gradient(ellipse 62% 70% at 55% 42%, #000 50%, transparent 100%); }
 @media (max-width: 900px) { .lore::before { width: 100%; opacity: .5 !important; } }
 .lore::before { top: 4vh !important; -webkit-mask-image: radial-gradient(ellipse 58% 52% at 55% 46%, #000 55%, transparent 100%) !important; mask-image: radial-gradient(ellipse 58% 52% at 55% 46%, #000 55%, transparent 100%) !important; }
+/* cor da bandeira em cada classe: azul para o Fio, laranja para os Desfiados, ouro para quem não jura */
+.pdet { --fc: #d9a54a; --fg: rgba(217, 165, 74, .4); }
+.pdet[data-fac="fio"] { --fc: #6fa8ff; --fg: rgba(80, 140, 255, .45); background: radial-gradient(ellipse at 75% 40%, rgba(60, 110, 230, .16), transparent 55%), linear-gradient(180deg, #121624, #0d0f16) !important; border-color: rgba(111, 168, 255, .35); }
+.pdet[data-fac="desf"] { --fc: #ff7a2a; --fg: rgba(255, 110, 30, .45); background: radial-gradient(ellipse at 75% 40%, rgba(255, 110, 30, .14), transparent 55%), linear-gradient(180deg, #1c1310, #120d0c) !important; border-color: rgba(255, 122, 42, .35); }
+.pdet .pdet__lema { color: var(--fc); } .pdet .pdet__kind, .pdet .pdet__sub, .pdet .pdet__meta dt, .pdet .skill small { color: var(--fc); }
+.pdet .pdet__glow { background: radial-gradient(ellipse, var(--fg), transparent 70%); }
+.pdet .pdet__m, .pdet .pdet__f { filter: drop-shadow(0 24px 30px rgba(0, 0, 0, .7)) drop-shadow(0 0 28px var(--fg)); }
+.pdet .skill { border-color: color-mix(in srgb, var(--fc) 22%, transparent); }
+.paths[data-fac="fio"].is-open .path.is-sel { border-color: #6fa8ff; box-shadow: 0 0 0 1px #6fa8ff, 0 10px 30px -10px rgba(80, 140, 255, .7); }
+.paths[data-fac="desf"].is-open .path.is-sel { border-color: #ff7a2a; }
+.paths[data-fac=""].is-open .path.is-sel { border-color: #d9a54a; box-shadow: 0 0 0 1px #d9a54a, 0 10px 30px -10px rgba(217, 165, 74, .6); }
+/* bandeiras: Fio azul, Desfiados laranja */
+.flag--desf h3, .flag--desf dt { color: #ff7a2a !important; } .flag--desf .flag__m { color: #ffb07a !important; }
+.flag--fio h3 { color: #8fbcff !important; } .flag--fio dt { color: #6fa8ff !important; }
+.flags { background: linear-gradient(90deg, rgba(40, 80, 170, .16), transparent 40%, transparent 60%, rgba(255, 110, 30, .12)) !important; }
+.fac__flag[style*="a3242c"] { --fc: #c4501a !important; }
+/* KARMIKA é azul e laranja: o azul do Fio e da pedra do teleporte equilibra o laranja da brasa */
+:root { --sky: #6fa8ff; --sky2: #a8ccff; --skyg: rgba(80, 140, 255, .14); }
+main > section:nth-of-type(even) .eyebrow { color: var(--sky); }
+main > section:nth-of-type(even)::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: -1; background: radial-gradient(ellipse at 15% 20%, var(--skyg), transparent 55%); }
+main > section { position: relative; isolation: isolate; }
+.more { color: var(--sky2) !important; border-bottom-color: rgba(168, 204, 255, .45) !important; } .more:hover { color: var(--sky) !important; }
+.btn--ghost { color: var(--sky2) !important; border-color: rgba(111, 168, 255, .55) !important; } .btn--ghost:hover { box-shadow: 0 0 0 4px rgba(111, 168, 255, .15) !important; }
+.nav__links a:hover { color: var(--sky2); }
+.nav.is-solid { border-bottom-color: rgba(111, 168, 255, .22); }
+.manifesto__end em, .hero__tag span:nth-child(2) { color: var(--ember); }
+.manifesto__text em { color: var(--sky); }
+.cmp__c--k { border-color: rgba(111, 168, 255, .5) !important; background: radial-gradient(ellipse at 50% 0%, rgba(80, 140, 255, .16), var(--bg2) 70%) !important; box-shadow: 0 30px 80px -40px rgba(80, 140, 255, .6) !important; }
+.cmp__c--k .cmp__k, .cmp__c--k li::before { color: var(--sky) !important; }
+.hud__bar { border-color: rgba(111, 168, 255, .4); } .hud__list li { border-left-color: rgba(111, 168, 255, .45); }
+.guild__steps article > b { border-color: var(--sky); color: var(--sky2); }
+.ev span { color: var(--sky); } .ev:nth-child(odd) span { color: var(--ember); }
+.wonders__k { color: var(--sky2); }
+.wonders__thumbs button[aria-selected="true"] img { border-color: var(--sky); }
+.tbr__key { box-shadow: 0 0 18px -8px var(--c); }
+.rb__dots button.on { background: var(--sky); border-color: var(--sky); } .rb__arw { border-color: rgba(111, 168, 255, .5); color: var(--sky2); }
+.abook__nav button, .lb__arw, .wonders__arw { border-color: rgba(111, 168, 255, .5); }
+.fight__log header b { color: var(--sky2); }
+.beta__form { border-color: rgba(111, 168, 255, .3); background: linear-gradient(180deg, rgba(80, 140, 255, .08), rgba(255, 122, 42, .05) 60%, rgba(18, 16, 22, .9)); box-shadow: 0 40px 120px -40px rgba(80, 140, 255, .35), 0 40px 120px -60px rgba(255, 110, 30, .35); }
+.beta__copy li::before { color: var(--sky); }
+.sh__nav span { color: var(--sky2); }
+.pillar__n { color: var(--sky); } .pillar:nth-child(even) .pillar__n { color: var(--ember); }
+.bview { position: fixed; inset: 0; z-index: 85; background: #08060d; }
+.bview iframe { width: 100%; height: 100%; border: 0; display: block; }
+.bview .lb__x { z-index: 2; }
+.dz10 { --s: clamp(60px, 5.8vw, 86px); left: 6%; top: 8%; clip-path: polygon(50% 0, 100% 42%, 50% 100%, 0 42%); background: linear-gradient(160deg, #9aff9a, #1f8a3a); animation-delay: -.6s; }
+.dz10::before { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 41%, rgba(0, 0, 0, .25) 42%, transparent 43%), linear-gradient(115deg, transparent 49%, rgba(255, 255, 255, .25) 50%, transparent 51%), linear-gradient(65deg, transparent 49%, rgba(0, 0, 0, .2) 50%, transparent 51%); }
+.dz10 span { padding-top: 8%; }

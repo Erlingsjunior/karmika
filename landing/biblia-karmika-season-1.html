@@ -1,0 +1,1437 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Bíblia Karmika · Season I</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: um livro de uma página por vez, com moldura gravada, virada de página e sumário clicável */
+:root {
+  --bg: #08060d;
+  --bg-2: #120c1c;
+  --page: #15101e;
+  --page-2: #1b1427;
+  --ink: #eadfca;
+  --muted: #a89a84;
+  --gold: #d9a24f;
+  --gold-lo: #7d5a2c;
+  --violet: #8f7bff;
+  --blood: #b3202f;
+  --font-display: "Cinzel Decorative", "Cinzel", Georgia, serif;
+  --font-label: "Cinzel", Georgia, serif;
+  --font-body: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 50% 40%, rgba(8,6,13,0) 30%, rgba(8,6,13,0.85) 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='80' viewBox='0 0 120 80' fill='none' stroke='%23d9a24f' stroke-width='1.3' stroke-linejoin='bevel' opacity='0.16'><g id='e'><path d='M24 10 L14 20 L24 30 M14 10 V30 M36 10 L46 20 L36 30 M46 10 V30'/><path d='M30 16 L34 20 L30 24 L26 20Z' fill='%23d9a24f'/></g><use href='%23e' x='60' y='40'/></svg>");
+  background-size: cover, 120px 80px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  padding-block: 12px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  overflow-x: hidden;
+}
+.app { height: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+:root { --bw: min(100%, calc((100vh - 92px) * .8)); }
+@supports (height: 100dvh) { :root { --bw: min(100%, calc((100dvh - 92px) * .8)); } }
+.book { position: relative; flex: 1 1 auto; min-height: 0; width: var(--bw); container-type: inline-size; }
+.stage { position: absolute; inset: 0; perspective: 2200px; }
+.leaf {
+  position: absolute; inset: 0;
+  background: linear-gradient(160deg, var(--page-2), var(--page) 55%);
+  border: 1px solid var(--gold-lo);
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.65), inset 0 0 60px rgba(0,0,0,.45), -6px 0 0 -2px #0d0915, -10px 0 0 -4px #0a0710;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  overflow: hidden;
+}
+.leaf::before { /* moldura interna dupla */
+  content: ""; position: absolute; inset: 8px; border: 1px solid var(--gold); opacity: .55; border-radius: 2px; pointer-events: none;
+}
+.leaf::after {
+  content: ""; position: absolute; inset: 13px; border: 1px dotted var(--gold-lo); pointer-events: none;
+}
+.side {
+  position: absolute; top: 34px; bottom: 46px; width: 28px; z-index: 1;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='28' height='96' viewBox='0 0 28 96' fill='none' stroke='%23d9a24f' stroke-width='1.4' stroke-linejoin='round'><path d='M4 14 L14 7 L24 14 L14 21 Z'/><path d='M14 11 L17 14 L14 17 L11 14Z' fill='%23d9a24f'/><path d='M8 36 H20 L14 48 L20 60 H8 L14 48 Z'/><path d='M14 72 C18 78 19 83 14 86 C9 83 10 78 14 72Z'/></svg>") center top / 28px 96px repeat-y;
+  opacity: .7; pointer-events: none;
+}
+.side.l { left: 16px; } .side.r { right: 16px; }
+.base {
+  position: absolute; left: 50px; right: 50px; bottom: 16px; height: 28px; z-index: 1;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='96' height='28' viewBox='0 0 96 28' fill='none' stroke='%23d9a24f' stroke-width='1.4' stroke-linejoin='round'><path d='M4 14 L14 7 L24 14 L14 21 Z'/><path d='M14 11 L17 14 L14 17 L11 14Z' fill='%23d9a24f'/><path d='M42 6 H54 L48 14 L54 22 H42 L48 14Z'/><path d='M82 6 C86 11 87 16 82 20 C77 16 78 11 82 6Z'/></svg>") left center / 96px 28px repeat-x;
+  opacity: .55; pointer-events: none;
+}
+.corner { position: absolute; width: 38px; height: 38px; z-index: 2; pointer-events: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='38' height='38' viewBox='0 0 38 38' fill='none' stroke='%23d9a24f' stroke-width='1.6'><path d='M3 36 V12 Q3 3 12 3 H36'/><path d='M9 9 L14 14 L9 19 L4 14Z' fill='%23d9a24f' stroke='none'/></svg>") no-repeat; }
+.corner.tl { top: 5px; left: 5px; }
+.corner.tr { top: 5px; right: 5px; transform: scaleX(-1); }
+.corner.bl { bottom: 5px; left: 5px; transform: scaleY(-1); }
+.corner.br { bottom: 5px; right: 5px; transform: scale(-1,-1); }
+.inner {
+  position: absolute; inset: 78px 52px 56px 52px; overflow-y: auto; z-index: 3; display: flex; flex-direction: column;
+  font-size: clamp(1.05rem, 2.9cqi, 1.5rem); line-height: 1.46; padding: 4px 6px 4px 2px;
+  scrollbar-width: thin; scrollbar-color: var(--gold-lo) transparent;
+}
+.inner > :first-child, .inner > div > :first-child { margin-top: 0; }
+.inner p { margin: 0 0 .8em; text-wrap: pretty; hyphens: auto; }
+.inner b, .inner strong { color: #f3e2bd; font-weight: 600; }
+.inner em { color: #d8c8a6; }
+.eyebrow { text-indent: .32em; font-family: var(--font-label); font-size: .63em; letter-spacing: .32em; text-transform: uppercase; color: var(--gold); margin: 0 0 .4em; text-align: center; }
+h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.45em; line-height: 1.15; text-align: center; margin: 0 0 .2em; color: #f6e4bb; text-wrap: balance; text-shadow: 0 0 18px rgba(217,162,79,.25); }
+h3 { clear: both; text-indent: .16em; font-family: var(--font-label); font-weight: 600; font-size: .84em; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); margin: 1.2em 0 .6em; text-align: center; text-wrap: balance; }
+h3.subtitle { clear: none; margin: .2em 0 0; font-size: .87em; text-shadow: 0 0 14px rgba(217,162,79,.35); }
+h3.subtitle + .rule { margin-bottom: 1.6em; }
+.rule { display: block; margin: .5em auto 1.1em; width: 70%; height: 14px; }
+.initial {
+  float: left; width: 1.55em; height: 1.55em; margin: .1em .45em .04em 0; font-size: 2.9em; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; text-indent: 0; hyphens: none;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23f6dc8e'/><stop offset='.5' stop-color='%23d9a24f'/><stop offset='1' stop-color='%238a5a1f'/></linearGradient><g id='c' fill='none' stroke='url(%23g)' stroke-width='1.6' stroke-linecap='round'><path d='M13 36 C11 21 19 13 31 13 C38 13 39 20 34 22 C30 23 28 19 31 17'/><path d='M13 26 C17 26 20 29 20 33'/><path d='M22 13 C26 17 26 21 23 24'/><circle cx='31' cy='17' r='1.8' fill='%23c4342f' stroke='none'/></g></defs><rect width='100' height='100' fill='%23290c2c'/><path d='M0 0 L100 100 M100 0 L0 100 M50 0 L100 50 L50 100 L0 50Z' stroke='%23d9a24f' stroke-opacity='.16' fill='none'/><rect x='4' y='4' width='92' height='92' fill='none' stroke='url(%23g)' stroke-width='3'/><rect x='9' y='9' width='82' height='82' fill='none' stroke='url(%23g)' stroke-width='1'/><use href='%23c'/><use href='%23c' transform='translate(100 0) scale(-1 1)'/><use href='%23c' transform='translate(0 100) scale(1 -1)'/><use href='%23c' transform='translate(100 100) scale(-1 -1)'/><path d='M50 5 L55 10 L50 15 L45 10Z M50 85 L55 90 L50 95 L45 90Z M5 50 L10 45 L15 50 L10 55Z M85 50 L90 45 L95 50 L90 55Z' fill='url(%23g)'/></svg>") center / 100% 100% no-repeat;
+  box-shadow: 0 0 18px rgba(217,162,79,.28), 0 2px 8px rgba(0,0,0,.6); border-radius: 2px;
+  background-color: #290c2c;
+  color: transparent;
+  position: relative;
+}
+.initial::before {
+  content: attr(data-l); position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 1.12em; transform: translate(calc(var(--dx, 0) * 1em), calc(var(--dy, 0) * 1em)); background: linear-gradient(180deg, #fff3c6 0%, #e6b459 45%, #9a6422 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.75)) drop-shadow(0 0 4px rgba(217,162,79,.45));
+}
+.folio { position: absolute; left: 0; right: 0; bottom: 18px; text-align: center; z-index: 4; pointer-events: none; }
+.folio span { display: inline-block; background: var(--page); padding: 1px 22px; font-family: var(--font-label); font-size: .78rem; letter-spacing: .24em; color: var(--gold); }
+.ribbon {
+  position: absolute; top: -2px; right: 52px; z-index: 5; width: clamp(34px, 5.2cqi, 48px); height: clamp(70px, 10.5cqi, 100px); border: 0; padding: 0; cursor: pointer;
+  background: linear-gradient(#a3202f, #6e1420); clip-path: polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);
+  transition: height .2s;
+}
+.ribbon:hover, .ribbon:focus-visible { height: clamp(82px, 12.5cqi, 116px); outline: none; }
+.ribbon:focus-visible { filter: drop-shadow(0 0 4px var(--gold)); }
+
+/* capa */
+.cover .inner { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: .4rem; overflow-y: auto; }
+.cover .title { font-family: var(--font-display); font-weight: 700; font-size: clamp(2rem, 7vw, 3.1rem); line-height: 1.05; color: #f6e4bb; text-shadow: 0 0 26px rgba(217,162,79,.4); margin: .1em 0 0; }
+.cover .sub { font-family: var(--font-label); letter-spacing: .3em; font-size: .78rem; text-transform: uppercase; color: var(--gold); margin: 0; }
+.cover .ep { margin: .35em 0 .25em; display: flex; flex-direction: column; align-items: center; gap: .2em; font-family: var(--font-display); font-weight: 400; font-size: clamp(1.05rem, 3.6vw, 1.55rem); letter-spacing: .08em; color: #f3dfae; text-shadow: 0 0 18px rgba(217,162,79,.45); }
+.cover .ep span { font-family: var(--font-label); font-size: .5em; letter-spacing: .42em; text-transform: uppercase; color: var(--gold); padding: 0 .2em .1em; border-bottom: 1px solid var(--gold-lo); }
+.cover .by { font-style: italic; color: var(--muted); margin: .6em 0 0; font-size: 1.15rem; }
+.cover svg.sigil { width: min(78%, 330px); height: auto; filter: drop-shadow(0 0 16px rgba(217,162,79,.35)); }
+.open-btn, .nav button, .nav .toc-btn {
+  font-family: var(--font-label); letter-spacing: .2em; text-transform: uppercase; font-size: .78rem; cursor: pointer;
+  color: var(--ink); background: transparent; border: 1px solid var(--gold-lo); padding: 10px 18px; border-radius: 2px;
+}
+.open-btn { margin-top: 1rem; border-color: var(--gold); color: #f6e4bb; }
+.open-btn:hover, .nav button:hover:not(:disabled) { background: rgba(217,162,79,.14); }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* sumário */
+.toc { list-style: none; margin: 0; padding: 0; }
+.toc li { margin: 0; }
+.toc a { display: flex; align-items: baseline; gap: .5rem; padding: .32em 0; color: var(--ink); text-decoration: none; font-size: 1.15rem; cursor: pointer; }
+.toc a .dots { flex: 1; border-bottom: 1px dotted var(--gold-lo); transform: translateY(-4px); min-width: 12px; }
+.toc a .n { font-family: var(--font-label); font-size: .85rem; color: var(--gold); letter-spacing: .1em; }
+.toc a:hover { color: #fff1cf; }
+.toc a:hover .dots { border-color: var(--gold); }
+.toc .lv { font-family: var(--font-label); font-size: .68rem; letter-spacing: .26em; color: var(--gold); text-transform: uppercase; margin-right: .2rem; }
+
+/* detalhes de conteúdo */
+.colors { list-style: none; padding: 0; margin: .6em 0 1em; display: grid; gap: .5em; }
+.colors li { display: flex; align-items: center; gap: .8em; }
+.sw { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); }
+.fig { display: block; margin: .6em auto 1em; width: min(60%, 210px); height: auto; }
+blockquote { margin: .8em 0; padding: .2em 0 .2em 1em; border-left: 2px solid var(--gold-lo); font-style: italic; color: #d8c8a6; }
+ul.plain { margin: .3em 0 1em; padding-left: 1.15em; }
+ul.plain li { margin: 0 0 .45em; }
+.seal { text-align: center; font-style: italic; color: var(--muted); margin-top: 1em; }
+
+
+.inner > div { flex: none; }
+.endorn { margin-top: auto; padding-top: 18px; flex: none; text-align: center; }
+.endorn svg { width: min(78%, 300px); height: 38px; display: block; margin: 0 auto; }
+
+.toc-row { display: flex; align-items: baseline; gap: .5rem; padding: .3em 0; color: var(--ink); text-decoration: none; font-size: 1.12rem; cursor: pointer; }
+.toc-row .lv { font-family: var(--font-label); font-size: .68rem; letter-spacing: .26em; color: var(--gold); text-transform: uppercase; min-width: 2.2em; }
+.toc-row .dots { flex: 1; border-bottom: 1px dotted var(--gold-lo); transform: translateY(-4px); min-width: 12px; }
+.toc-row .n { font-family: var(--font-label); font-size: .85rem; color: var(--gold); letter-spacing: .1em; }
+.toc-row:hover { color: #fff1cf; }
+.toc-row:hover .dots { border-color: var(--gold); }
+.figwrap { text-align: center; margin: .5em 0 .8em; }
+.secmark { margin: 1.6em 0 .2em; }
+.secmark .rule { margin: 0 auto; }
+.inner > div > .secmark:first-child { display: none; }
+.figwrap { --u: min(.95px, .13cqi); margin: .9em 0 1em; }
+.figwrap svg { width: auto; max-width: 100%; }
+.figwrap svg.hour { height: calc(var(--u) * 410); display: block; margin: 0 auto; }
+.figwrap svg.eye { display: block; margin: 0 auto; }
+.figwrap svg.eye { height: calc(var(--u) * 160); }
+.figwrap svg.eye.tear { height: calc(var(--u) * 255); }
+/* manual: etiquetas e tabelas */
+.tag { display: inline-block; font-family: var(--font-label); font-size: .58rem; letter-spacing: .14em; text-transform: uppercase; padding: 1px 6px; border: 1px solid; border-radius: 2px; vertical-align: .12em; white-space: nowrap; font-style: normal; }
+.tag.d { color: var(--gold); border-color: var(--gold-lo); }
+.tag.p { color: #b9acff; border-color: #6a5db5; }
+.tag.o { color: #f08a9a; border-color: #8c3a4a; }
+.tw { overflow-x: auto; margin: .4em 0 1em; }
+table { border-collapse: collapse; width: 100%; font-size: .98rem; line-height: 1.3; }
+th { font-family: var(--font-label); font-size: .66rem; letter-spacing: .16em; text-transform: uppercase; color: var(--gold); text-align: left; font-weight: 400; padding: 4px 8px 6px 0; border-bottom: 1px solid var(--gold-lo); }
+td { padding: 6px 8px 6px 0; border-bottom: 1px dotted rgba(125,90,44,.6); vertical-align: top; }
+.part-note { text-align: center; font-style: italic; color: var(--muted); }
+.legend { display: grid; gap: .5em; margin: 1em 0; }
+.legend div { display: flex; gap: .7em; align-items: baseline; }
+.toc-part { font-family: var(--font-label); font-size: .74rem; letter-spacing: .24em; text-transform: uppercase; color: var(--gold); margin: 1em 0 .2em; text-align: center; }
+.toc-link { display: block; text-align: center; margin-top: 1.2em; color: var(--gold); font-family: var(--font-label); font-size: .78rem; letter-spacing: .2em; text-transform: uppercase; cursor: pointer; text-decoration: none; }
+
+/* barra de navegação */
+.nav { flex: none; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; width: var(--bw); }
+.nav .count { font-family: var(--font-label); letter-spacing: .2em; font-size: .8rem; color: var(--muted); min-width: 92px; text-align: center; }
+.nav button:disabled { opacity: .35; cursor: default; }
+
+@media (max-width: 520px) {
+  .initial { font-size: 2.6em; }
+  .inner { inset: 62px 40px 52px 40px; font-size: 1.04rem; line-height: 1.4; }
+  .side { width: 22px; } .side.l { left: 14px; } .side.r { right: 14px; }
+  .side { background-size: 22px 76px; }
+  .base { left: 40px; right: 40px; }
+  h2 { font-size: 1.35em; }
+  .ribbon { right: 40px; }
+  .nav { flex-wrap: nowrap; gap: 6px; }
+  .nav button, .open-btn { padding: 9px 9px; letter-spacing: .06em; font-size: .72rem; white-space: nowrap; }
+  .nav .count { min-width: 58px; letter-spacing: .08em; font-size: .72rem; }
+}
+
+
+.strap { position: absolute; left: -4px; right: -4px; bottom: 7%; height: 84px; z-index: 8; padding: 0; border: 0; background: none; cursor: pointer; display: block; }
+.strap .band { position: absolute; top: 12px; bottom: 12px; width: 50.2%; transition: transform .9s cubic-bezier(.5,0,.3,1);
+  background: linear-gradient(180deg, #6a4023 0%, #4a2a17 40%, #34200f 100%);
+  box-shadow: inset 0 2px 0 rgba(255,214,150,.18), inset 0 -3px 0 rgba(0,0,0,.45), 0 4px 10px rgba(0,0,0,.6); }
+.strap .band::before, .strap .band::after { content: ""; position: absolute; left: 6px; right: 6px; height: 0; border-top: 2px dashed rgba(236,196,130,.55); }
+.strap .band::before { top: 8px; } .strap .band::after { bottom: 8px; }
+.strap .band.l { left: 0; border-radius: 0 3px 3px 0; } .strap .band.r { right: 0; border-radius: 3px 0 0 3px; }
+.strap .lock { position: absolute; left: 50%; top: 50%; width: 88px; height: 117px; margin: -64px 0 0 -44px; overflow: visible; z-index: 2;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); transition: transform .25s, filter .25s; animation: lockGlow 4.5s ease-in-out infinite; }
+.strap:hover .lock, .strap:focus-visible .lock { transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(255,207,122,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.7)); }
+.strap .shackle { transform-origin: 62px 56px; transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+@keyframes lockGlow { 0%, 70%, 100% { filter: drop-shadow(0 4px 6px rgba(0,0,0,.7)); } 85% { filter: drop-shadow(0 0 12px rgba(255,207,122,.95)) drop-shadow(0 4px 6px rgba(0,0,0,.7)); } }
+.strap.unlock .lock { animation: none; }
+.strap.unlock .shackle { transform: translateY(-14px) rotate(-26deg); }
+.strap .runes { animation: lockRune 3.2s ease-in-out infinite; filter: drop-shadow(0 0 3px #8f7bff); }
+@keyframes lockRune { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.strap.unlock .runes { animation: none; opacity: 1; stroke: #fff1bd; filter: drop-shadow(0 0 5px #ffcf7a); }
+.strap.unlock .keyhole { fill: #fff1bd; }
+.strap.open .lock { transition: transform .9s cubic-bezier(.5,0,1,.6), opacity .9s; transform: translateY(160px) rotate(35deg); opacity: 0; }
+.strap.open .band.l { transform: translateX(-102%); } .strap.open .band.r { transform: translateX(102%); }
+.strap:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.strap.unlock .hint { opacity: 0; transition: opacity .3s; }
+.strap .hint { position: absolute; left: 0; right: 0; top: -44px; text-align: center; font-family: var(--font-label); font-size: .64rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); opacity: .8; }
+@media (max-width: 520px) { .strap { height: 62px; } .strap .lock { width: 66px; height: 88px; margin: -50px 0 0 -33px; } }
+@media (prefers-reduced-motion: reduce) { .strap .lock, .strap .band, .strap .shackle { transition: none; animation: none; } }
+@keyframes runeGlow { 0%, 60%, 100% { opacity: .62; filter: none; } 72% { opacity: 1; filter: drop-shadow(0 0 4px #ffcf7a) drop-shadow(0 0 12px rgba(217,162,79,.85)); } 86% { opacity: .8; filter: drop-shadow(0 0 3px rgba(217,162,79,.5)); } }
+@keyframes runeGlowB { 0%, 55%, 100% { opacity: .5; filter: none; } 68% { opacity: .95; filter: drop-shadow(0 0 4px #ffcf7a) drop-shadow(0 0 12px rgba(217,162,79,.85)); } 82% { opacity: .7; filter: drop-shadow(0 0 3px rgba(217,162,79,.5)); } }
+@keyframes runeDrift { 0%, 100% { background-position: 0 0; } 50% { background-position: 0 7px; } }
+@keyframes runeDriftB { 0%, 100% { background-position: 0 0; } 50% { background-position: 8px 0; } }
+@keyframes leafGlow { 0%, 62%, 100% { border-color: var(--gold-lo); } 74% { border-color: var(--gold); } }
+.side { animation: runeGlow 11s ease-in-out infinite, runeDrift 7s ease-in-out infinite; }
+.side.r { animation-delay: 3.6s, -2.5s; }
+.base { animation: runeGlowB 13s ease-in-out infinite 1.8s, runeDriftB 9s ease-in-out infinite; }
+.leaf { animation: leafGlow 11s ease-in-out infinite; }
+.leaf.cover { animation: none; }
+.opening { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; cursor: pointer;
+  background: radial-gradient(ellipse at 50% 45%, #2a1840 0%, #130d1c 55%, #0a0710 100%); border: 1px solid var(--gold-lo); border-radius: 4px 10px 10px 4px; opacity: 1; transition: opacity .8s ease; overflow: hidden; }
+.opening.out { opacity: 0; }
+.opening svg { width: min(78%, 520px); height: auto; filter: drop-shadow(0 0 22px rgba(217,162,79,.35)); }
+.opening .cap { font-family: var(--font-label); letter-spacing: .3em; text-transform: uppercase; font-size: .8rem; color: var(--gold); opacity: 0; animation: capIn 1.6s ease forwards 0.6s; text-align: center; padding: 0 20px; text-indent: .3em; }
+.opening .skip { position: absolute; bottom: 14px; font-family: var(--font-label); font-size: .66rem; letter-spacing: .24em; color: var(--muted); text-transform: uppercase; }
+@keyframes capIn { to { opacity: .9; } }
+.figwrap svg.pour { height: calc(var(--u) * 700); display: block; margin: 0 auto; }
+@media (prefers-reduced-motion: reduce) { .ribbon { transition: none; } .side, .base, .leaf { animation: none !important; } }
+sup.fn { font-family: var(--font-label); font-size: .62em; line-height: 0; vertical-align: super; margin-left: .08em; }
+.inner p.fnote { font-size: .86em; line-height: 1.38; color: #d2c4a8; margin: 0 0 .6em; padding-left: 1.1em; border-left: 1px dotted var(--gold-lo); }
+.fnote .nb { font-family: var(--font-label); color: var(--gold); margin-right: .35em; }
+.figwrap svg.runes6 { height: calc(var(--u) * 96); display: block; margin: 0 auto; }
+.runecap { text-align: center; font-family: var(--font-label); font-size: .6em; letter-spacing: .2em; text-transform: uppercase; color: var(--gold); margin: -.5em 0 1em; }
+</style>
+
+<div class="app">
+  <div class="book" id="book" aria-live="polite"></div>
+  <nav class="nav" aria-label="Navegação do livro">
+    <button id="prev" aria-label="Página anterior">&#8249; Anterior</button>
+    <button id="toc" class="toc-btn" aria-label="Ir ao sumário">Sumário</button>
+    <span class="count" id="count"></span>
+    <button id="next" aria-label="Próxima página">Próxima &#8250;</button>
+  </nav>
+</div>
+
+<script>
+(function () {
+  /* cópia limpa da própria página (antes de o livro ser montado), para o download com animações */
+  var SNAP = (function () {
+    try {
+      var c = document.documentElement.cloneNode(true);
+      Array.prototype.forEach.call(c.querySelectorAll('script'), function (s) { if (!s.textContent || s.textContent.indexOf('var SNAP') < 0) s.parentNode.removeChild(s); });
+      var h = c.outerHTML;
+      if (!/<meta[^>]+charset/i.test(h.slice(0, h.indexOf('</head>')))) h = h.replace(/<head>/i, '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">');
+      return '<!doctype html>\n' + h;
+    } catch (e) { return ''; }
+  })();
+  var RULE = '<svg class="rule" viewBox="0 0 200 14" fill="none" stroke="#d9a24f" stroke-width="1.2"><path d="M0 7 H84"/><path d="M116 7 H200"/><path d="M92 7 L100 1 L108 7 L100 13Z" fill="#d9a24f" stroke="none"/><circle cx="88" cy="7" r="1.6" fill="#d9a24f" stroke="none"/><circle cx="112" cy="7" r="1.6" fill="#d9a24f" stroke="none"/></svg>';
+
+  var EYE = '<svg class="sigil" viewBox="20 28 260 170" role="img" aria-label="O Olho Karmico: dois K voltados um para o outro">' +
+    '<defs><linearGradient id="lq" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0bd"/><stop offset="1" stop-color="#f2b04a"/></linearGradient></defs>' +
+    '<polygon points="60,110 143,54 157,54 240,110 157,166 143,166" fill="url(#lq)" opacity="0.2"/>' +
+    '<g fill="none" stroke="#d9a24f" stroke-width="14" stroke-linecap="butt" stroke-linejoin="bevel">' +
+    '<path d="M144 40 L40 110 L144 180"/><path d="M40 40 L40 180"/><path d="M156 40 L260 110 L156 180"/><path d="M260 40 L260 180"/></g>' +
+    '<polygon points="150,94 166,110 150,126 134,110" fill="#0b0810" stroke="#f2b04a" stroke-width="3"><animate attributeName="stroke-width" values="3;3;7;3;3" keyTimes="0;0.6;0.7;0.8;1" dur="7s" repeatCount="indefinite"/></polygon>' +
+    '<g opacity="0"><animateTransform attributeName="transform" type="translate" values="150 128;150 128;150 196;150 196" keyTimes="0;0.55;0.9;1" dur="7s" repeatCount="indefinite"/>' +
+    '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.55;0.6;0.88;0.92;1" dur="7s" repeatCount="indefinite"/>' +
+    '<path d="M0 -10 C6 -2 7 5 0 7 C-7 5 -6 -2 0 -10 Z" fill="url(#lq)"/></g></svg>';
+
+  var HOUR = '<svg class="fig" viewBox="410 30 180 310" role="img" aria-label="O K de pé, a Ampulheta: a areia cai pelo bico de baixo">' +
+    '<defs><clipPath id="hv"><polygon points="500,60 556,143 556,157 501,242 501,252 499,252 499,242 444,157 444,143"/></clipPath></defs>' +
+    '<g clip-path="url(#hv)"><g transform="translate(0,120)"><animateTransform attributeName="transform" type="translate" values="0 0;0 215" dur="14s" repeatCount="indefinite"/>' +
+    '<path fill="#cfa766" d="M340 40 L478 40 L500 54 L522 40 L660 40 L660 700 L340 700 Z"/></g></g>' +
+    '<g fill="none" stroke="#8f7bff" stroke-width="14" stroke-linecap="butt" stroke-linejoin="bevel">' +
+    '<path d="M570 144 L500 40 L430 144"/><path d="M430 40 L570 40"/><path d="M570 156 L512.1 242"/><path d="M430 156 L487.9 242"/><path d="M430 260 L493 260"/><path d="M507 260 L570 260"/></g>' +
+    '<line x1="500" y1="246" x2="500" y2="318" stroke="#cfa766" stroke-width="3" stroke-dasharray="2 5"><animate attributeName="stroke-dashoffset" from="0" to="-7" dur="0.35s" repeatCount="indefinite"/></line>' +
+    '<polygon points="478,320 522,320 500,304" fill="#cfa766"><animate attributeName="points" values="492,320 508,320 500,316;466,320 534,320 500,294" dur="14s" repeatCount="indefinite"/></polygon>' +
+    '<line x1="440" y1="322" x2="560" y2="322" stroke="#8f7bff" stroke-width="2" opacity="0.5"/></svg>';
+
+  EYE = EYE.replace(/<g opacity="0">[\s\S]*<\/g><\/svg>$/, '</svg>');
+  HOUR = '<div class="figwrap">' + HOUR.replace('class="fig"', 'class="hour"') + '</div>';
+  function eyeSvg(mode, id) {
+    var v = 'ev' + id, g = 'lq' + id;
+    var wv = 'M-40 0 q10 -6 20 0' + new Array(19).join(' t20 0') + ' L340 300 L-40 300 Z';
+    var fill = mode === 'fill';
+    var base = fill ? 'translate(0,172)' : 'translate(0,62)';
+    var level = fill ? '<animateTransform attributeName="transform" type="translate" values="0 172;0 128;0 92;0 64;0 64;0 172" keyTimes="0;0.28;0.5;0.72;0.86;1" dur="16s" repeatCount="indefinite"/>' : '';
+    var pulse = fill
+      ? '<animate attributeName="stroke-width" values="3;3;7;3;3" keyTimes="0;0.6;0.72;0.82;1" dur="16s" repeatCount="indefinite"/>'
+      : '<animate attributeName="stroke-width" values="3;3;7;3;3" keyTimes="0;0.36;0.44;0.6;1" dur="7s" repeatCount="indefinite"/>';
+    var D = 9, FY = 306;
+    function kt(a) { return a.map(function (x) { return Math.min(x, 1).toFixed(3); }).join(';'); }
+    var tear = '';
+    if (!fill) {
+      tear = '<g opacity="0"><animateTransform attributeName="transform" type="translate" values="150 172;150 172;150 ' + FY + ';150 ' + FY + '" keyTimes="0;0.4;0.7;1" calcMode="spline" keySplines="0 0 1 1;0.6 0 1 0.5;0 0 1 1" dur="' + D + 's" repeatCount="indefinite"/>' +
+        '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;0.39;0.43;0.695;0.7;1" dur="' + D + 's" repeatCount="indefinite"/>' +
+        '<g><animateTransform attributeName="transform" type="scale" values="0;0;1;1" keyTimes="0;0.39;0.5;1" dur="' + D + 's" repeatCount="indefinite"/>' +
+        '<circle r="13" fill="#ffe9ad" opacity="0.22"/><path d="M0 -10 C6 -2 7 5 0 7 C-7 5 -6 -2 0 -10 Z" fill="url(#' + g + ')"/></g></g>';
+      var T0 = 0.7;
+      /* poça */
+      tear += '<ellipse cx="150" cy="' + (FY + 8) + '" rx="0" ry="4" fill="#f2b04a" opacity="0"><animate attributeName="rx" values="0;0;40;40;40" keyTimes="' + kt([0, T0, T0 + 0.1, 0.93, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;0.6;0.6;0;0" keyTimes="' + kt([0, T0, T0 + 0.03, 0.9, 0.98, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/></ellipse>';
+      /* ondas */
+      for (var i = 0; i < 3; i++) {
+        var s0 = T0 + i * 0.045, e0 = Math.min(s0 + 0.2, 0.995);
+        tear += '<ellipse cx="150" cy="' + (FY + 8) + '" rx="0" ry="0" fill="none" stroke="#ffe9ad" stroke-width="1.6" opacity="0">' +
+          '<animate attributeName="rx" values="0;0;70;70" keyTimes="' + kt([0, s0, e0, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/>' +
+          '<animate attributeName="ry" values="0;0;14;14" keyTimes="' + kt([0, s0, e0, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/>' +
+          '<animate attributeName="opacity" values="0;0;0.95;0;0" keyTimes="' + kt([0, s0, s0 + 0.02, e0, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/></ellipse>';
+      }
+      /* gotículas que saltam */
+      var dxs = [-56, -38, -22, -8, 8, 22, 38, 56], hs = [30, 46, 62, 74, 70, 58, 44, 28];
+      for (var j = 0; j < 8; j++) {
+        var sj = T0 + 0.003 * j, mj = sj + 0.055, ej = sj + 0.13, x1 = 150 + dxs[j] * 0.55, x2 = 150 + dxs[j];
+        tear += '<circle r="' + (2 + (j % 3) * 0.6).toFixed(1) + '" fill="#ffe9ad" cx="150" cy="' + (FY + 6) + '" opacity="0">' +
+          '<animate attributeName="cx" values="150;150;' + x1 + ';' + x2 + ';' + x2 + '" keyTimes="' + kt([0, sj, mj, ej, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/>' +
+          '<animate attributeName="cy" values="' + (FY + 6) + ';' + (FY + 6) + ';' + (FY + 6 - hs[j]) + ';' + (FY + 8) + ';' + (FY + 8) + '" keyTimes="' + kt([0, sj, mj, ej, 1]) + '" calcMode="spline" keySplines="0 0 1 1;0.2 0.7 0.4 1;0.6 0 0.9 0.4;0 0 1 1" dur="' + D + 's" repeatCount="indefinite"/>' +
+          '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="' + kt([0, sj, sj + 0.005, ej - 0.01, ej, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/></circle>';
+      }
+      /* gota central que sobe */
+      tear += '<path d="M0 -12 C5 -4 6 2 0 4 C-6 2 -5 -4 0 -12 Z" fill="#ffe9ad" opacity="0" transform="translate(150 ' + (FY + 4) + ')"><animateTransform attributeName="transform" type="translate" values="150 ' + (FY + 4) + ';150 ' + (FY + 4) + ';150 ' + (FY - 44) + ';150 ' + (FY + 4) + ';150 ' + (FY + 4) + '" keyTimes="' + kt([0, T0, T0 + 0.05, T0 + 0.115, 1]) + '" calcMode="spline" keySplines="0 0 1 1;0.2 0.7 0.4 1;0.6 0 0.9 0.4;0 0 1 1" dur="' + D + 's" repeatCount="indefinite"/>' +
+        '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="' + kt([0, T0, T0 + 0.005, T0 + 0.11, T0 + 0.12, 1]) + '" dur="' + D + 's" repeatCount="indefinite"/></path>';
+    }
+    return '<div class="figwrap"><svg class="' + (fill ? 'eye' : 'eye tear') + '" viewBox="20 30 260 ' + (fill ? 160 : 290) + '" role="img" aria-label="' + (fill ? 'O Olho Karmico se enchendo de karma líquido' : 'O Olho Karmico transbordando e chorando uma Lágrima Karmica') + '">' +
+      '<defs><linearGradient id="' + g + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0bd"/><stop offset="1" stop-color="#f2b04a"/></linearGradient>' +
+      '<clipPath id="' + v + '"><polygon points="60,110 143,54 157,54 240,110 157,166 143,166"/></clipPath></defs>' +
+      '<g clip-path="url(#' + v + ')"><g transform="' + base + '">' + level + '<g><animateTransform attributeName="transform" type="translate" values="-40 0;0 0" dur="2.4s" repeatCount="indefinite"/><path fill="url(#' + g + ')" d="' + wv + '"/></g></g></g>' +
+      '<g fill="none" stroke="#d9a24f" stroke-width="14" stroke-linecap="butt" stroke-linejoin="bevel"><path d="M144 40 L40 110 L144 180"/><path d="M40 40 L40 180"/><path d="M156 40 L260 110 L156 180"/><path d="M260 40 L260 180"/></g>' +
+      '<polygon points="150,94 166,110 150,126 134,110" fill="#0b0810" stroke="#f2b04a" stroke-width="3">' + pulse + '</polygon>' + (fill ? '' : '<line x1="70" y1="' + (FY + 14) + '" x2="230" y2="' + (FY + 14) + '" stroke="#8f7bff" stroke-width="2" opacity="0.5"/>') + tear + '</svg></div>';
+  }
+  var EYE_FILL = eyeSvg('fill', 'a'), EYE_TEAR = eyeSvg('tear', 'b');
+  var POUR = (function () {
+    var inner = HOUR.replace(/^<div class="figwrap"><svg[^>]*>/, '').replace(/<\/svg><\/div>$/, '')
+      .replace(/<line x1="500" y1="246"[\s\S]*?<\/line>/, '')
+      .replace(/<polygon points="478,320[\s\S]*?<\/polygon>/, '')
+      .replace(/<line x1="440" y1="322"[^>]*\/>/, '');
+    var cards = '', CY = 20, FL = 598;
+    for (var g = 0; g < 30; g++) {
+      var dx = ((g * 37) % 11) - 5, bg = (g * 0.11).toFixed(2), r = (1.5 + (g % 3) * 0.5).toFixed(1);
+      cards += '<circle r="' + r + '" fill="#d6ab62" opacity="0"><animateTransform attributeName="transform" type="translate" values="' + (500 + dx * 0.3) + ' 322;' + (500 + dx * 1.2) + ' ' + FL + '" calcMode="spline" keySplines="0.5 0 1 0.6" begin="' + bg + 's" dur="2.1s" repeatCount="indefinite"/>' +
+        '<animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.06;0.93;1" begin="' + bg + 's" dur="2.1s" repeatCount="indefinite"/></circle>';
+    }
+    var slots = [[437, 585], [479, 585], [521, 585], [563, 585], [458, 557], [500, 557], [542, 557], [479, 529], [521, 529], [500, 501]];
+    slots.forEach(function (p, k) {
+      var T0 = 1.6 + k * 1.55, a = (T0 + 1.3) / CY, f0 = T0 / CY;
+      var b = Math.min(a + 0.015, 0.99), c = Math.min(a + 0.04, 0.995), d = (T0 + 1.3 + 0.0) / CY;
+      /* grão grande que cai do bico até o lugar do bloco */
+      cards += '<circle r="3.4" fill="#ffe9ad" opacity="0"><animateTransform attributeName="transform" type="translate" values="500 322;500 322;' + p[0] + ' ' + p[1] + ';' + p[0] + ' ' + p[1] + '" keyTimes="0;' + f0.toFixed(3) + ';' + a.toFixed(3) + ';1" calcMode="spline" keySplines="0 0 1 1;0.5 0 1 0.6;0 0 1 1" dur="' + CY + 's" repeatCount="indefinite"/>' +
+        '<animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;' + f0.toFixed(3) + ';' + (f0 + 0.005).toFixed(3) + ';' + (a - 0.002).toFixed(3) + ';' + a.toFixed(3) + ';1" dur="' + CY + 's" repeatCount="indefinite"/></circle>';
+      cards += '<g transform="translate(' + p[0] + ' ' + p[1] + ')">' +
+        '<circle r="0" fill="none" stroke="#ffe9ad" stroke-width="1.6" opacity="0"><animate attributeName="r" values="0;0;30;30" keyTimes="0;' + a.toFixed(3) + ';' + (a + 0.05).toFixed(3) + ';1" dur="' + CY + 's" repeatCount="indefinite"/><animate attributeName="opacity" values="0;0;0.95;0;0" keyTimes="0;' + a.toFixed(3) + ';' + b.toFixed(3) + ';' + (a + 0.05).toFixed(3) + ';1" dur="' + CY + 's" repeatCount="indefinite"/></circle>' +
+        '<g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0;0" keyTimes="0;' + a.toFixed(3) + ';' + b.toFixed(3) + ';0.93;0.985;1" dur="' + CY + 's" repeatCount="indefinite"/>' +
+        '<g><animateTransform attributeName="transform" type="scale" values="0;0;1.25;1;1" keyTimes="0;' + a.toFixed(3) + ';' + b.toFixed(3) + ';' + c.toFixed(3) + ';1" dur="' + CY + 's" repeatCount="indefinite"/>' +
+        '<rect x="-19" y="-13" width="38" height="26" rx="3" fill="#1c1426" stroke="#d9a24f" stroke-width="1.5"/>' +
+        '<path d="M-12 -6 H12 M-12 0 H6 M-12 6 H10" stroke="#f2cf8a" stroke-width="1.8" stroke-linecap="round"/></g></g></g>';
+    });
+    return '<div class="figwrap"><svg class="pour" viewBox="400 30 200 590" role="img" aria-label="A Ampulheta Karmica derramando areia que se torna regras no chão">' +
+      '<defs><radialGradient id="landg"><stop offset="0" stop-color="#ffe9ad" stop-opacity=".85"/><stop offset="1" stop-color="#ffe9ad" stop-opacity="0"/></radialGradient></defs>' +
+      inner + '<ellipse cx="500" cy="604" rx="96" ry="9" fill="url(#landg)"><animate attributeName="opacity" values="0.35;0.9;0.35" dur="2.4s" repeatCount="indefinite"/></ellipse>' + cards +
+      '<line x1="410" y1="610" x2="590" y2="610" stroke="#8f7bff" stroke-width="2" opacity="0.5"/></svg></div>';
+  })();
+
+  function T(k) { return ' <span class="tag ' + k + '">' + { d: 'Definido', p: 'Proposta', o: 'Em aberto' }[k] + '</span>'; }
+  function tbl(head, rows) {
+    var h = '<div class="tw"><table><thead><tr>';
+    head.forEach(function (c) { h += '<th>' + c + '</th>'; });
+    h += '</tr></thead><tbody>';
+    rows.forEach(function (r) { h += '<tr>'; r.forEach(function (c) { h += '<td>' + c + '</td>'; }); h += '</tr>'; });
+    return h + '</tbody></table></div>';
+  }
+  function sw(color, glow, rim) {
+    return '<span class="sw" style="background:' + color + ';box-shadow:0 0 12px ' + glow + (rim ? ';border-color:' + rim : '') + '"></span>';
+  }
+
+  var P = [];
+  function add(o) { P.push(o); }
+
+  add({ kind: 'cover' });
+  add({ kind: 'toc', which: 1 });
+  add({ kind: 'toc', which: 2 });
+
+var __src = "";
+  add = function (o) { o.__src = __src; P.push(o); };
+  __src = "A1";
+  add({ toc: 'Prólogo', partStart: 1, lv: '', eyebrow: 'Prólogo', title: 'Do que o historiador viu e do que lhe contaram', start: true, body:
+    '<p>Chamo-me <b>Ormund Salveth</b>, e sou aquele que anota. Não empunho espada nem conjuro chamas. Guardo os registros da Grande Biblioteca, na cidade central de Karmika, e ando pelas estradas com tinta, pergaminho e muita paciência, escutando. Escuto o ferreiro de uma cidade de engrenagens, a sacerdotisa do campo sagrado, o caçador que volta da floresta com os olhos mais velhos do que o rosto, e até o vampiro que aceita falar comigo, desde que eu não pergunte o nome da sua primeira vida.</p>' +
+    '<p>Depois de muitos anos, aprendi que todas as histórias deste mundo contam a mesma história, vestida de roupas diferentes: <b>tudo o que se planta, volta</b>.</p>' +
+    '<p>Este compêndio não é um manual. Aqui está o que se conta à beira do fogo: como o mundo foi posto em movimento, quem são os deuses que o caminham, que povos nasceram nele, que estradas se abrem diante de cada alma e o que acontece quando a estrada termina. Onde eu souber, falarei como quem viu. Onde só me contaram, direi que me contaram.</p>' +
+    '<p>Leia como se lê uma crônica. E lembre-se, ao virar cada página, de que você também está plantando alguma coisa.</p>' });
+
+  add({ toc: 'Livro I — Antes dos Caminhos', lv: 'I', eyebrow: 'Livro I', title: 'Antes dos Caminhos', start: true, body:
+    '<h3>Do Senhor que olha</h3>' +
+    '<p>Dizem os mais velhos que, antes de haver estradas, havia apenas o terreno, e que alguém precisava olhar para ele para que fosse algo. Esse alguém é <b>Marghar, o Senhor dos Caminhos</b>.</p>' +
+    '<p>Não o encontrará em nenhum templo que peça ou prometa. Marghar não atrapalha, não ajuda e não julga. Ele vê. Às vezes, raramente, se emociona com o que vê, e quem o presenciou jura que o mundo inteiro pareceu respirar. Mas ele rege, e ele cobra. É maior do que todos os deuses de Karmika e não venceu nenhum deles; a sua grandeza não está em vitórias, e sim em ser o chamado que não se recusa. Dá ao tempo o tempo que o tempo pede e devolve ao valor o valor de que ele precisa.</p>' });
+  add({ lv: 'I', body:
+    '<h3>Do Antes</h3>' +
+    '<p>Os mais velhos de todos contam que houve um tempo anterior a todos os tempos, e que ele não era escuro nem claro, porque não havia ninguém que enxergasse a diferença.</p>' +
+    '<p>Não existia caminho, porque não existia passo. Não existia passo, porque ninguém havia caminhado. E não existia o parar, porque ninguém havia se movido para deixar de se mover. Havia apenas o <b>Antes</b>: um mistério inteiro, sem direção, sem pressa e sem destino.</p>' +
+    '<p>Foi dentro do Antes que Marghar pensou. Ele ainda não fez nada. Apenas pensou em caminhar. E bastou: o pensamento abriu o espaço para que alguém, ou alguma coisa, pudesse andar.</p>' });
+  add({ lv: 'I', body:
+    '<h3>Da Fome que também quis andar</h3>' +
+    '<p>Mas o pensamento de Marghar não foi ouvido só por quem merecia. Havia no Antes algo que nunca fora nada além de vontade. Estava preso, como um cão raivoso diante da caça do outro lado da cerca; como o lobisomem que sente o cheiro e não tem trilha; como o vampiro que fareja o sangue e não encontra a porta. Querer, sem caminho para o querer. Os que o odeiam, os que o veneram e os que o temem o chamam <b>Ahzur, o Sem-Passo</b>. O seu nome verdadeiro, ninguém conhece.</p>' +
+    '<p>Quando Marghar pensou em caminhar, a vontade de Ahzur também se soltou. O bem ficou livre para traçar o seu rumo. Mas o mal ganhou, no mesmo instante, um caminho para alcançar a sua maldade: uma estrada reta, rápida e aberta a todos. E no fim dessa reta estavam os que ainda não sabiam andar.</p>' });
+  add({ lv: 'I', body:
+    '<h3>Do labirinto</h3>' +
+    '<p>Marghar viu. Não julgou, não venceu, não prendeu, porque não faz nada disso. Mas viu, e criou os <b>caminhos</b>, no plural. Onde havia uma reta, fez bifurcações; onde havia pressa, fez voltas; onde havia uma porta, fez mil portas. Cada caminho é uma escolha, e cada escolha é uma parede entre Ahzur e nós, os caminhantes, que ainda não estamos preparados para encontrá-lo. É por isso que o mal demora a nos achar.</p>' +
+    '<p>Os caminhos, portanto, não são só liberdade. São o labirinto em que nós fomos escondidos. Todo aquele que anda por Karmika é um caminhante, e todo caminhante, saiba ou não, está sendo guardado da Fome por um muro que Marghar ergueu.</p>' +
+    '<h3>Do karma</h3>' +
+    '<p>Mas há os que não querem se esconder. Alguns desejam que o seu caminho cruze o de Ahzur, e o buscam abertamente. Outros passam a vida ajudando Marghar a confundir a essência do mal, desviando-o das almas despreparadas. Desse desejo, dos dois lados, nasceu o <b>karma</b>: o peso de quem ajuda a confundir a Fome, e o peso de quem se serve como banquete, no deleite de ser devorado por ela.</p>' +
+    '<p>É por isso que o karma não é castigo. É o preço de se pôr diante do que ficou preso no Antes, seja para escondê-lo, seja para alimentá-lo.</p>' });
+  add({ lv: 'I', body:
+    '<h3>Dos filhos da Fome</h3>' +
+    '<p>Dizem os mais cautelosos dos sacerdotes que Ahzur nunca foi encontrado por inteiro, e que talvez nunca seja. O que as almas encontram são os jeitos que ele aprendeu de andar: o pacto, a loucura, a cinza, o engano, o banquete, o esquecimento, a podridão, a corrente e a traição. São os que a tradição chama de príncipes infernais, e deles falarei adiante.</p>' +
+    '<h3>Dos dois tipos de almas</h3>' +
+    '<p>Os que se aproximam da Fome se dividem em dois povos que quase nunca se falam. Há os <b>Desviadores</b>, que vivem para desviar: tecem caminhos falsos, protegem os despreparados, mantêm o labirinto de pé. E há os <b>Convivas</b>, que se oferecem ao banquete: abrem as portas, deixam o rastro e encontram deleite em ser devorados. Os dois pagam em karma, e Marghar vê os dois do mesmo modo.</p>' +
+    '<p>Ele não diz qual dos dois está certo. Dizem que, quando um deles faz algo que o labirinto não previa, o Olho chora.</p>' });
+  add({ lv: 'I', body:
+    '<h3>Do caminho e do caminhar</h3>' +
+    '<p>Há uma coisa que as crônicas antigas repetem, e que a nossa cultura inteira aprendeu a repetir junto: <b>o caminho e o caminhar foram criados juntos</b>, sob os olhos de Marghar. O caminho não existia antes de quem andasse, e quem andasse não existia antes do caminho. É por isso que o bem e o mal, como os conhecemos, nasceram no mesmo instante e do mesmo gesto.</p>' +
+    '<p>Daí a conclusão a que chegaram os sacerdotes, os escribas e até os ladrões: a vida é aprender. Aprender a evitar, e ajudar a evitar; ou aprender a encontrar, e ajudar a encontrar.</p>' +
+    '<h3>Da ironia</h3>' +
+    '<p>E aqui mora a ironia que os mestres de templo preferem não explicar. Encontrar não é o bom, e evitar não é o ruim. É o karma que o próprio karma carrega: perseguimos o bem evitando o mal, e fazemos o mal apenas encontrando o mal.</p>' +
+    '<p>Parece injusto, e talvez seja. Mas os caminhos são feitos por quem caminha, e ninguém caminha sem deixar chão atrás de si.</p>' });
+  add({ lv: 'I', body:
+    '<p>Se lhe pedirem uma lei em uma frase, é a mais antiga que conheço: <b>o que foi plantado será devolvido</b>. Os camponeses chamam de semeadura; os sacerdotes, de karma; os technocratas, de probabilidade; os fiéis, de providência; e os ladrões, de sorte, até o dia em que deixam de sorrir.</p>' +
+    '<h3>Do Olho</h3>' +
+    '<p>Marghar não tem rosto que alguém possa descrever, mas tem um símbolo, e o símbolo é um olho. Imagine dois K voltados um para o outro, formando entre si um losango. É o <b>Olho Karmico</b>, e não o confunda com um objeto: é a própria lei natural do karma, regida por Marghar.</p>' +
+    '<p>Enquanto uma alma vive, o Olho a acompanha, e cada escolha, cada juízo, cada pacto, cada gesto de misericórdia ou crueldade cai dentro dele. O que cai no Olho é <b>líquido</b>, porque ainda está sendo acrescentado. O karma de quem vive ainda pode crescer, ser desviado, ser trocado por outro. Nada está selado enquanto a pessoa respira.</p>' +
+    '<p>O karma semeado é líquido porque, como a água, ele muda. E assim como o líquido se molda ao seu recipiente, o karma se molda e se transforma conforme o caminhante que o carrega: o mesmo ato pesa de um jeito numa alma e de outro jeito noutra.</p>' +
+    '<p>Haverá quem pergunte se o Olho julga. Não julga, vê. E o que ele vê, guarda.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Os anciãos dizem “um tempo anterior a todos os tempos”. Orvalen, nos fragmentos que temos dele, escreve de outro modo: “o Antes também teve um antes, e foi de lá que ele veio olhar”. Não encontrei mais nenhuma linha sobre isso, nem sei de quem é o “ele”.</p><p class="fnote"><span class="nb">✎</span>Em todo o mundo, o Olho é desenhado aberto. Conheço um único lugar onde ele aparece fechado: uma porta de pedra preta, sem maçaneta, com o olho esculpido de pálpebras baixas. Falarei dela mais de uma vez neste volume, porque mais de uma vez me falaram dela.</p>'  });
+
+  add({ toc: 'Livro II — Os deuses que trilham o caminho', lv: 'II', eyebrow: 'Livro II', title: 'Os deuses que trilham o caminho', start: true, body:
+    '<p>Marghar rege, mas não caminha. Quem caminha são os outros, e cada um escolheu uma estrada e a trilha desde antes de haver quem a seguisse. Foram essas estradas que, mais tarde, os mortais passaram a chamar de <b>caminhos</b>.</p>' +
+    '<h3>Os Altos Deuses</h3>' +
+    '<p><b>Auréon, o Majestoso</b>, senhor da luz celeste, é o deus dos paladinos. Dizem que sua igreja nasceu de um juramento: o de que haveria sempre alguém entre o mal e o indefeso. Seus sacerdotes ensinam que a luz não é pureza, é responsabilidade.</p>' +
+    '<p><b>Odin, o Pai de Todos</b>, é o deus dos guerreiros nórdicos. Vive onde faz frio, e quem o procura precisa subir até às regiões gélidas. Não promete conforto, promete uma vida inteira dedicada à força e à honra.</p>' +
+    '<p><b>Hemara, a Mãe Rubra</b>, é a senhora do sangue e do vampirismo. Quem ouve seu nome por muito tempo passa a sentir sede. A tradição diz que ela nunca obrigou ninguém, que apenas esperou.</p>' });
+  add({ lv: 'II', body:
+    '<p><b>Selvar, o Pai da Matilha</b>, é o deus dos lobisomens. Sua lei é a da alcateia: quem está dentro é protegido até a morte, quem está fora é presa ou é aliado.</p>' +
+    '<p><b>Arquelon, o Escriba Arcano</b>, é o deus dos magos. Dizem que escreveu a primeira palavra de poder e que passa a eternidade corrigindo-a. Seus estudiosos acreditam que o conhecimento é a única caridade que não se esgota.</p>' +
+    '<p><b>Mekhanos, o Grande Engenho</b>, é o deus dos technocratas. Não gosta de ser chamado de deus: prefere “o projeto”. Seus fiéis acreditam que o mundo é uma máquina em constante refinamento, e que melhorá-la é rezar.</p>' +
+    '<p><b>Aravel, a Vigília Verde</b>, é o deus dos caçadores de demônios. Seu olho nunca fecha, e quem o serve vive em alerta, perseguindo o que se esconde nas sombras do mundo.</p>' });
+  add({ lv: 'II', body:
+    '<h3>Os Príncipes Infernais</h3>' +
+    '<p>Na outra margem da estrada estão os que a tradição chama de príncipes, não de deuses, porque dependem de quem se curve a eles. Cada um é uma <b>faceta de Ahzur</b>, um jeito que a Fome do Antes aprendeu de andar. São nove, e há quem diga que ainda faltam.</p>' +
+    '<p><b>Malgrath, o Senhor dos Pactos</b>, é o patrono dos bruxos. Nunca mente em um contrato, e é justamente por isso que quem o assina se arrepende.</p>' +
+    '<p><b>Vhaelor, o Demônio da Loucura</b>, não tem seguidores, tem vítimas. É um dos grandes inimigos dos mundos de Karmika, e matar um de seus avatares é feito digno de canção até para um vampiro.</p>' +
+    '<p><b>Orrukh, o Devorador de Cinzas</b>, aparece quando muitas almas pesam juntas. Dizem que se alimenta do karma coletivo das cidades que se perderam.</p>' });
+  add({ lv: 'II', body:
+    '<p><b>Sythra, a Voz do Sussurro</b>, anda pela palavra. Não mente: escolhe o que dizer, e promete a cada um aquilo que ele já queria ouvir.</p>' +
+    '<p><b>Gorvak, o Banquete Sem Fim</b>, é a faceta mais próxima da Fome pura. Não pede nada; apenas põe a mesa. É o patrono dos Convivas, os que se oferecem ao deleite de ser devorados.</p>' +
+    '<p><b>Nyxael, a Noite Sem Ecos</b>, anda pelo esquecimento. Apaga nomes, rostos e dívidas da memória de quem sofre, mas nada se apaga do Olho.</p>' });
+  add({ lv: 'II', body:
+    '<p><b>Zerath, o Rei da Podridão</b>, anda pelo que apodrece devagar: a doença, a ruína, as cidades que se corrompem por dentro antes de caírem.</p>' +
+    '<p><b>Ishkara, a Dama das Correntes</b>, anda pelo domínio. É a patrona dos subjugadores, dos que fazem de outros o seu chão.</p>' +
+    '<p><b>Morvek, o Quebra-Juramentos</b>, anda pela traição. Dizem que espera ao lado de todo juramento, e que paladinos caídos o conhecem pelo nome.</p>' });
+  add({ lv: 'II', body:
+    '<h3>As Essências do Caminho</h3>' +
+    '<p>Se os príncipes são as facetas da Fome, o lado oposto não tem príncipes. Tem as <b>Essências</b>: seres que, em vez de reinar, ajudaram. Não pedem joelho dobrado nem juramento. A tradição as reparte em três ofícios.</p>' +
+    '<p><b>As que desvendaram o labirinto.</b> <b>Ilmara, a Cartógrafa dos Passos</b>, foi a primeira a mapear o caminho passo a passo. <b>Orvalen, o Leitor de Rastros</b>, aprendeu a ler no chão onde Ahzur já havia passado. <b>Sael, a Que Voltou</b>, é a única alma que, dizem, chegou ao centro do labirinto e retornou para contar.</p>' });
+  add({ lv: 'II', body:
+    '<p><b>Os Arquitetos.</b> Constroem e reparam os caminhos karmicos. <b>Brannor, o Pedreiro de Estradas</b>, assenta as pedras onde a estrada se abre. <b>Lythaen, a Tecelã de Pontes</b>, costura os caminhos que se rasgam. <b>Dhurgan, o Reparador de Veios</b>, é o ferreiro que conserta o que o tempo e a Fome corroem.</p>' +
+    '<p><b>Os Fechadores.</b> Fecham os caminhos quando um príncipe, uma faceta de Ahzur, está quase chegando. <b>Caldris, o Selador de Portas</b>. <b>Merith, a Última Porta</b>. <b>Aldun, o Guardião do Limiar</b>.</p>' +
+    '<p>Nenhuma Essência vence Ahzur. Fechar é adiar, e consertar é dar tempo. Mas dizem que, por causa delas, o labirinto ainda está de pé.</p>' +
+    '<p>Por isso mesmo as Essências são caçadas. Assim como caminhantes cumprem tarefas prodigiosas banindo do mundo, nem que seja por pouco tempo, um príncipe maligno, os caminhantes do lado karmico de Ahzur desejam matar uma Essência para realizar a sua. Quem mata um Arquiteto abre um buraco no labirinto, e quem mata um Fechador deixa uma porta aberta para um príncipe passar.</p>' });
+  add({ lv: 'II', body:
+    '<h3>Como os deuses tratam os mortais</h3>' +
+    '<p>Nenhum deus invade a alma de ninguém. O que existe é o <b>juramento</b>: o mortal se aproxima, promete, e o deus responde com <b>dádivas</b>. Em troca, ele aceita <b>votos</b> e <b>interdições</b>: o que fazer e o que jamais fazer.</p>' +
+    '<p>Os deuses também têm suas inimizades, e os fiéis as herdam. Quem serve a um precisa saber quem o outro não perdoa.</p>' +
+    '<p>Os sacerdotes sussurram uma pergunta: os deuses também colhem o que plantam? Marghar nunca disse, mas a resposta é sim. Quando um príncipe das trevas, uma Essência ou um deus cai, notícias correm o mundo todo, falando do feito grandioso de quem o derrubou, e dizem que ele encontrou o seu karma. Eles somem por cem turnos, mas a influência deles permanece. Esses seres juntaram, em infinitas caminhadas e vidas, tanto karma que a morte deles explode em energia karmica sem ter para onde ir. Essa energia lê o karma de quem está presente e se transforma em itens feitos para cada um, para atender ao karma de cada um.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Na sala dos príncipes, no terceiro subsolo da Biblioteca, há dez nichos escavados na parede. Nove têm nome gravado na pedra. O décimo não tem nome nenhum, e é o único em que não se acumula poeira.</p><p class="fnote"><span class="nb">✎</span>Contei nove Essências, como contam todos. Mas os hinos mais velhos de Ilmara, cantados nas vilas élficas, têm uma estrofe com um nome que ninguém consegue pronunciar até o fim: a cantora sempre perde o fôlego na mesma sílaba, e a estrofe recomeça.</p>'  });
+
+  add({ toc: 'Livro III — Plantar e colher', lv: 'III', eyebrow: 'Livro III', title: 'Plantar e colher', start: true, body:
+    '<p>O mundo de Karmika se divide, antes de qualquer fronteira, em duas estações da alma: a que planta e a que colhe.</p>' +
+    '<h3>O tempo de plantar</h3>' +
+    '<p>Quando uma alma vive, ela planta. Cada passo é uma semente: a guilda em que entrou, a escola em que estudou, o inimigo que poupou, o inocente que não poupou. Matar também é plantar, e até as escolhas pequenas, se feitas de propósito, contam.</p>' +
+    '<p>Nesse tempo o Olho está aberto na horizontal, e o karma é líquido, ainda sobe, ainda se mistura. Quem vive muito vê o Olho encher.</p>' + EYE_FILL });
+  add({ lv: 'III', body:
+    '<h3>A Ampulheta</h3>' +
+    '<p>Quando a alma morre, o símbolo gira. Os dois K se erguem de pé, e o Olho torna-se <b>Ampulheta</b>. O K de pé não carrega uma ampulheta dentro; ele é a ampulheta.</p>' + HOUR +
+    '<p>E então acontece a coisa mais importante que sei sobre o karma: <b>o líquido seca</b>. O que era líquido vira areia, e a areia começa a cair pelo bico de baixo do K. O líquido, enquanto era líquido, ainda podia mudar. A areia não muda. Está feito, e não há para onde fugir.</p>' });
+  add({ lv: 'III', body:
+    '<p>A alma recebe então o que plantou, grão por grão. Um dos sacerdotes de Auréon me disse uma vez: “A recompensa é seca porque já não é negociável”. A Ampulheta precisa esvaziar completamente antes de o símbolo voltar a girar, e só então a alma pode criar karma de novo.</p>' +
+    '<p>Ela esvazia de dois jeitos, e vale o que vier primeiro: pelas consequências, quando o que se plantou finalmente acontece, ou pelo tempo, quando a areia simplesmente acaba. Quem carrega muito karma pode ter, digamos, cinquenta turnos pela frente. Nesse tempo, coisas acontecem com ele, pessoas deixam de gostar dele e efeitos nocivos o visitam. Um símbolo o persegue por toda parte, o símbolo do caminhante karmico. Ele pode virar alvo de contratos de perseguição, ou receber descontos e benefícios por vinganças que o mundo achou necessárias.</p>' +
+    '<h3>O retorno</h3>' +
+    '<p>A alma volta à sua caminhada, e o caminhante escolhe de novo a sua raça e traça o seu caminho. Mas não volta vazia. Traz consigo o que foi: o vampiro morto por um caçador pode renascer com sede inexplicável ou com aversão a alho; o lobisomem pode acordar ouvindo uivos que ninguém mais escuta. E há os que sabem. Profetas e místicos de guildas antigas reconhecem certas almas, e algumas dessas almas são caçadas por causa do que foram.</p>' +
+    '<p>Quem joga durante anos vive muitas vidas, e a história de cada uma será contada de novo, cobrada de novo, nas vidas seguintes.</p>' +
+    '<p>Não imagine que a Ampulheta separa santos de pecadores. Ela não conhece bem nem mal, só ação e reação. O caminhante que fez o que chamamos de mau, e que apenas abriu caminhos que arruinaram outros, terá o seu karma a pagar. Mas quem fez tudo bonito e ajudou muita gente também volta com karma a pagar. Muitos do karma oposto vão pôr um prêmio na sua cabeça, e outros lhe darão descontos em itens poderosos. O Olho vê, e nada além disso.</p>' });
+  add({ lv: 'III', body:
+    '<h3>A Lágrima Karmica</h3>' + EYE_TEAR +
+    '<p>Há uma exceção ao curso da Ampulheta, e é a mais cobiçada de Karmika.</p>' +
+    '<p>Quando alguém comete um feito digno de canção, bom ou mau, o Olho chora. Ela cai do vértice de baixo, e é chamada <b>Lágrima Karmica</b>. Não se ganha pela quantidade de feitos, e sim por feitos históricos: um vampiro bondoso, um lobisomem gentil, um bruxo que usa demônios contra o mal, um paladino que se entrega ao satânico, um caçador que persegue paladinos heróicos, quem derrota uma lenda, quem se sacrifica perfeitamente. Cada um desses andou por onde o labirinto não previa.</p>' +
+    '<p>Aqui cabe falar de Marghar. Por incontáveis eras ele permaneceu criando caminhos para todas as possibilidades karmicas, e nada do que um caminhante fizesse parecia escapar do que ele havia previsto. Mas, muito raramente, alguém de nós, dos que andam em Karmika, faz o que não estava previsto. Esse caminho novo é criado literalmente por um caminhante: em seu feito memorável, ele toma para si a energia de Marghar, porque sem ela nenhum caminho se cria, e traça por si mesmo um caminho impossível, que nem o antigo antes do antigo havia previsto.</p>' +
+    '<p>Não é roubo de ladrão. É o roubo de uma árvore que puxa da terra o nutriente para existir, e talvez seja o mesmo karma de quem pensou primeiro. Essa energia invocada causa dor em Marghar, mas não o fere, porque ele é anterior à ferida que surgiu no caminho e anterior ao prazer que surgiu no caminho. Ele se emociona, e chora a lágrima do próprio Olho que vê. Vista por ele e vinda dele, ela é poderosa.</p>' +
+    '<p><b>Em quem a recebeu</b>, ela dá a chance de reviver ao morrer, sem passar tão cedo pela culpa karmica. Só a alma que a conquistou pode usá-la assim. <b>No mundo</b>, ela pode ser vendida, e então torna-se item: evolui uma guilda, forja peças únicas, compõe poções poderosas, serve de matéria-prima e de moeda de especulação, e dela podem sair um Martelo da Justiça ou uma espada como as das lendas.</p>' +
+    '<p>Os anciãos resumem assim: a Lágrima é a emoção de Marghar. Ele raramente se emociona, e quando o faz, o mundo vale mais do que ouro.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Perguntei, nas galerias, quem foi o primeiro a fazer o Olho chorar. O registro mais antigo da Biblioteca tem a data e o nome raspados com faca. Do feito sobrou uma única palavra, a última da linha: voltou.</p>'  });
+
+  add({ toc: 'Livro IV — Os povos', lv: 'IV', eyebrow: 'Livro IV', title: 'Os povos', start: true, body:
+    '<p>Todo mundo começa em algum lugar, e em Karmika toda alma começa em um de três povos. Ninguém nasce vampiro, mago ou paladino. Nasce humano, anão ou elfo, num vilarejo pequeno, e tudo o mais é consequência.</p>' +
+    '<h3>Os humanos</h3>' +
+    '<p>Somos os mais numerosos e os menos especiais, e talvez por isso os mais livres. Nenhum caminho nos é estranho, nenhuma estrada nos cobra a pele. Os humanos constroem: casas, pontes, muralhas e cidades inteiras são obra de mãos humanas. E muitos, quando a alma volta depois da morte, escolhem voltar humanos, de modo que quase todos carregamos, no fundo, o começo de todos.</p>' +
+    '<h3>Os anões</h3>' +
+    '<p>Gente de montanha, de forja e de teimosia. Os anões que conheci acreditam que o que se faz com as mãos não precisa de justificativa. Um anão caçador de demônios ou bruxo não é proibido, apenas raro, e ouvi dizer que seu povo o olha como quem vê um irmão saindo da toca.</p>' });
+  add({ lv: 'IV', body:
+    '<h3>Os elfos</h3>' +
+    '<p>Os elfos pertencem às florestas bonitas, onde as árvores têm memória e os ofícios têm ritmo. Um elfo que se faz vampiro ou lobisomem trai mais do que a si mesmo, trai a sua gente. Ele pode fazê-lo, e muitos já o fizeram, mas o preço se cobra em karma, e não em lei.</p>' +
+    '<h3>O que é impedimento, e o que é culpa</h3>' +
+    '<p>Perguntei a muitos sacerdotes se a lei veda a alguém um caminho por sua raça. A resposta era sempre a mesma: nenhuma lei veda, tudo cobra. A natureza não fecha a porta, apenas deixa o preço escrito nela.</p>' });
+
+  add({ toc: 'Livro V — Os oito caminhos', lv: 'V', eyebrow: 'Livro V', title: 'Os oito caminhos', start: true, body:
+    '<p>As almas de Karmika não escolhem uma profissão, tornam-se algo. Ninguém acorda paladino numa manhã: precisa entrar na igreja, estudar, servir, provar. Cada caminho exige uma filiação, uma jornada e, quase sempre, uma viagem a regiões distantes. E, até os primeiros vinte níveis, todos sobrevivem como podem, sem caminho nenhum.</p>' +
+    '<h3>O Paladino</h3>' +
+    '<p>Para ser paladino, é preciso entrar na igreja de Auréon, tornar-se sacerdote e, só então, libertador do mal. Veste a luz celeste e odeia os monstros.</p>' +
+    '<h3>O Guerreiro Nórdico</h3>' +
+    '<p>Aprende na academia nórdica de combate, nas montanhas gélidas, e dedica a vida a Odin. É firme, orgulhoso e, segundo os lobisomens, intolerável.</p>' });
+  add({ lv: 'V', body:
+    '<h3>O Vampiro</h3>' +
+    '<p>Ninguém o escolhe de uma vez. É mordido, ou aceita a mordida, e passa a viver da sede de Hemara. O vampiro odeia lobisomens, paladinos e os magos do bem.</p>' +
+    '<h3>O Lobisomem</h3>' +
+    '<p>Entra numa guilda licantropa e se transforma. A matilha é sua lei. Odeia vampiros, ladrões e guerreiros nórdicos.</p>' +
+    '<h3>O Caçador de Demônios</h3>' +
+    '<p>Formado nas escolas de caçadores, persegue o que é demoníaco: vampiros, lobisomens, magos e bruxos satânicos. Pode também ser caçador de recompensas.</p>' +
+    '<h3>O Bruxo</h3>' +
+    '<p>Faz pactos com os príncipes infernais. Sua rivalidade não está fora do mal, está dentro dele, entre os próprios que o servem. Pode vender rituais de vampirismo e preparar poções de poder.</p>' });
+  add({ lv: 'V', body:
+    '<h3>O Mago</h3>' +
+    '<p>Estuda por muito tempo e se torna alguém que dobra a realidade. Sua rivalidade está no seio do bem, entre os que seguem a luz de maneiras distintas. Realiza rituais de cura em regiões de índice karmico ruim.</p>' +
+    '<h3>O Technocrata</h3>' +
+    '<p>Entra na academia tecnológica de Karmika e sai com máquinas dentro do próprio corpo. É o mais neutro de todos, porque é o mercador do mundo: vende, conserta, melhora cidades, traz automação e, se quiser, caça recompensas.</p>' +
+    '<h3>As rivalidades</h3>' +
+    '<p>O ódio entre caminhos é a lápide de muitas histórias. Vampiros e lobisomens se enfrentam desde a primeira lua. Paladinos não perdoam monstros, e os caçadores não perdoam ninguém que tenha cheiro de inferno. Mas o ódio de um caminho é tendência, não destino. Existem vampiros que protegem aldeias e paladinos que se corrompem, e quem faz o inesperado às vezes faz o Olho chorar.</p>' });
+
+  add({ toc: 'Livro VI — As cores do karma', lv: 'VI', eyebrow: 'Livro VI', title: 'As cores do karma', start: true, body:
+    '<p>O líquido que enche o Olho não tem uma cor só. Cada escolha tinge o que cai nele, e o Olho de um veterano é como um vitral: dá para ler uma vida inteira só pelas cores.</p>' +
+    '<ul class="colors">' +
+    '<li>' + sw('#b3202f', '#b3202f') + '<span><b>Sangue</b>, o vampirismo</span></li>' +
+    '<li>' + sw('#2b1a3d', '#7b5fa8', '#8d6fc0') + '<span><b>Energia negra</b>, a bruxaria</span></li>' +
+    '<li>' + sw('#fff0c2', '#ffd36a') + '<span><b>Luz celeste</b>, o paladino</span></li>' +
+    '<li>' + sw('#3dff8a', '#3dff8a') + '<span><b>Verde brilhante</b>, o caçador de demônios</span></li>' +
+    '<li>' + sw('#2a4bff', '#2a4bff') + '<span><b>Azul escuro brilhante</b>, o technocrata</span></li>' +
+    '<li>' + sw('#46bcff', '#46bcff') + '<span><b>Azul claro brilhante</b>, o mago</span></li>' +
+    '<li>' + sw('#8b5a2b', '#8b5a2b') + '<span><b>Marrom</b>, o lobisomem</span></li>' +
+    '<li>' + sw('#ffb000', '#ffb000') + '<span><b>Amarelo âmbar</b>, o guerreiro nórdico</span></li>' +
+    '</ul>' +
+    '<p>O lobisomem tem a cor da terra e da pelagem, e o guerreiro nórdico a do âmbar antigo, o das fogueiras e do ouro de Odin. Já não preciso vê-las em sonho.</p>' +
+    '<p>Só não confunda duas luzes que parecem irmãs. A do paladino é branca com dourado, e tem um aspecto místico, celestial. A do mago é branco-gelo, e tem aspecto elemental. Uma vem do alto, a outra vem da natureza das coisas.</p>' });
+  add({ lv: 'VI', body:
+    '<h3>Quando as cores se somam</h3>' +
+    '<p>As cores não se cancelam. Ninguém apaga o sangue de um vampiro com luz celeste; o que acontece é que as duas convivem, e delas nasce uma terceira. As combinações são as que mais fascinam os escribas, porque cada soma conta uma história: o caçador que bebeu sangue, o mago que fez um pacto, o technocrata que se arrependeu.</p>' +
+    '<p>Mais cores, mais peso. A culpa karmica de quem somou muito é pesada, porque há mais a colher.</p>' +
+    '<h3>Quando se trai um caminho</h3>' +
+    '<p>O caminho trai-se e a cor muda. Quando um paladino cai, a luz celeste esmaece e o que vem depois não é inocente. Quem trai a raça, a guilda ou o juramento paga duas vezes: com a cor nova e com o peso da cor antiga.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Os escribas registram oito cores, e eu também. Mas na margem de um livro de cores muito velho alguém acrescentou, em tinta mais clara, uma nona: cinza, que não é a mistura de nenhuma. Não há caminho que dê essa cor. Já vi capas dessa cor, porém.</p>'  });
+
+  add({ toc: 'Livro VII — A terra de Karmika', lv: 'VII', eyebrow: 'Livro VII', title: 'A terra de Karmika', start: true, body:
+    '<p>Karmika é o mundo inteiro, e não só um reino. Os mapas que já vi concordam em três coisas: há pelo menos quatro grandes cidades; cada uma delas tem seis cidades pequenas a seu redor; e, entre elas, espalham-se pequenos vilarejos.</p>' +
+    '<p>Os vilarejos são onde nascemos. Lá a vida começa quase como uma sobrevivência, e quem quer ser algo precisa partir. As cidades pequenas guardam escolas de pequeno nível, onde se aprende o primeiro de cada ofício. As grandes cidades abrigam as escolas de alto nível, e quem chega a elas já é alguém.</p>' +
+    '<h3>O mundo que assusta</h3>' +
+    '<p>Entre as cidades, a estrada é perigosa. Há florestas tão densas que o dia vira crepúsculo; cavernas escuras onde algo respira; igrejas e mausoléus abandonados por padres que se tornaram maus; criptas, cemitérios, e cidades devastadas, de onde ninguém volta sem uma história que não quer contar.</p>' });
+  add({ lv: 'VII', body:
+    '<h3>O mundo que acolhe</h3>' +
+    '<p>Mas Karmika não é só sombra. Há campos belos onde a luz demora no horizonte, e há montanhas gélidas, lar dos guerreiros do norte, onde a neve brilha como prata. Há uma cidade tecnológica de estilo steampunk, onde o vapor sobe em colunas e as engrenagens giram até a madrugada, que é a casa dos technocratas. Há florestas bonitas dos elfos, regiões de ilhas à espera de navegantes, e campos sagrados onde a igreja de Auréon cuida de quem chega ferido.</p>' +
+    '<p>Os que escrevem sobre Karmika têm o hábito de só contar o escuro. Eu peço que não se esqueçam: o escuro pesa mais porque existe o belo, e o belo vale mais porque, ali perto, há escuro. Mesmo nos campos sagrados, o mal pode chegar, e uma terra curada por rituais pode florescer de novo.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>O grande mapa foi copiado três vezes. Nas três cópias, sem combinarem, os copistas desenharam o mesmo pequeno círculo no centro das Terras dos Homens, onde não há nada. Perguntados, nenhum lembrava de tê-lo feito.</p>'  });
+
+  add({ toc: 'Livro VIII — Ofícios e mercadores', lv: 'VIII', eyebrow: 'Livro VIII', title: 'Ofícios, mercadores e o Pacto da Honestidade', start: true, body:
+    '<p>Um mundo que dura anos não vive só de espadas. Alguém precisa plantar o trigo, levantar a casa, forjar a lâmina e levar o pão até a cidade. Em Karmika, cada alma tem um ofício que combina com o que sabe fazer, e até o trabalho deixa marca no Olho.</p>' +
+    '<h3>Quem faz o quê</h3>' +
+    '<p>Os <b>elfos</b> trabalham com o que a floresta dá. Os <b>humanos</b> constroem. Os <b>anões</b> caçam veios e forjam, conforme dizem. Os <b>guerreiros</b> e os <b>caçadores de demônios</b> podem seguir como caçadores de recompensas, ou escolher trabalhos de força e de plantio. Os <b>bruxos</b> cobram por rituais de vampirismo e preparam poções poderosas. Os <b>magos</b> curam regiões de índice karmico ruim com seus rituais. E o <b>technocrata</b> faz de tudo: mercador, ferreiro, engenheiro, aquele que traz automação às cidades.</p>' });
+  add({ lv: 'VIII', body:
+    '<h3>O mercador do mundo</h3>' +
+    '<p>O technocrata é o mais neutro de todos, e a razão é simples: não se pode vender para todos sendo inimigo de alguém. Por isso os mercadores e ferreiros de Karmika obedecem a regras severas de honestidade, que chamo de Pacto.</p>' +
+    '<p>O mercador não pode comerciar ao mesmo tempo com a guilda dos vampiros e com a dos lobisomens. Não pode vender informações. Não pode superfaturar preços. Não pode trair os grupos de dungeon que o acompanharam.</p>' +
+    '<h3>O peso da avareza</h3>' +
+    '<p>Há mercadores que acumulam fortuna à custa de vidas, há traidores e há subjugadores. O Olho os vê a todos, e o peso que carregam não é pequeno. Mas existe o outro lado: o technocrata que usa a inteligência para melhorar a cidade, trazer luz, traçar uma ponte, construir uma máquina que alimenta mil bocas, planta uma semente que um dia lhe volta.</p>' +
+    '<p>Há ainda o ladrão. É ofício de humanos e de elfos. Os anões, tão pesados e firmes, tomam o roubo como coisa que vai contra a natureza deles. Mas já ouvi falar da Pequena Peste, um anão habilidoso que circulava pelas tavernas roubando tudo o que se escondia abaixo da linha da cintura, o que não era pouco.</p>' +
+    '<p>Os ofícios dos caminhos têm os seus preços. O <b>paladino</b>, antes de espada, é um curandeiro de fé: reza, quebra maldições e, como o mago, liberta cidades inteiras do karma que as sufoca. Pode ser dano ou ser muralha. O <b>vampiro</b> é um tecelão exímio de roupas finas, e magos e bruxos só compram as suas. Faz também vinho e as comidas que pedem paciência, queijos raros e carne defumada. O <b>lobisomem</b> constrói muito bem, e tece roupas grossas, as de guerreiros e de paladinos, que compram muito dele. Doma feras melhor do que o humano, porque fala uma língua mais próxima da dos bichos.</p>' });
+
+  add({ toc: 'Livro IX — Guildas, escolas e guerras', lv: 'IX', eyebrow: 'Livro IX', title: 'Guildas, escolas, igrejas e guerras', start: true, body:
+    '<p>O karma não é só de um. Uma guilda inteira carrega o peso das suas escolhas, e o que um membro planta, todos colhem, um pouco. Por isso os líderes sensatos escolhem bem quem recebem.</p>' +
+    '<p>As maiores e mais antigas das guildas podem, por mérito, receber uma concessão: tornar-se <b>escola</b>. Assim, há escolas de vampiros, de lobisomens, de caçadores de demônios, e igrejas grandes de pleno direito. As escolas básicas pertencem ao mundo. As concedidas, às memórias de quem as conquistou.</p>' +
+    '<p>Havia quem temesse que isso fechasse as portas aos novos. Mas os veteranos que conheci repetem uma frase: quem chega agora não pode ser trancado do lado de fora. As guildas poderosas têm o dever de ensinar, e não só o direito de reinar.</p>' });
+  add({ lv: 'IX', body:
+    '<h3>Quando as bandeiras se erguem</h3>' +
+    '<p>E há as guerras. A escola de caçadores de demônios, atacada por lobisomens, chama todos os caçadores ao combate. Um chamado às armas faz soar os sinos dos paladinos de todas as cidades. As instituições entram em guerra umas contra as outras, e quem escolhe um lado planta karma coletivo.</p>' +
+    '<p>Muitos desses acontecimentos também surgem como eventos de PvE, nascidos da história de cada jogador, nos quais vários entram numa mesma instância para viver, juntos, aquela memória.</p>' });
+
+  add({ toc: 'Livro X — A longa jornada', lv: 'X', eyebrow: 'Livro X', title: 'A longa jornada', start: true, body:
+    '<p>Para chegar ao topo de um caminho é preciso tempo, e Karmika não dá pressa a ninguém. Os primeiros vinte níveis são de sobrevivência: sem caminho, sem título, apenas a pessoa e o mundo. Passado esse limiar, a alma se prepara; aos trinta, diante da Vidente, ela escolhe, e a estrada se abre. No vigésimo nível, uma luz cobre tudo diante de quem caminha e o Olho karmico se abre. E quando essa alma morre, o Olho e o seu líquido secam, ele se vira e se torna Ampulheta.</p>' +
+    '<p>Depois disso, subir leva anos. Os escribas falam de um nível duzentos para a alma e de um nível trezentos e cinquenta para o caminho, e não há atalhos que eu conheça. Muitas vidas são gastas na subida, e muitas mortes também. O nível da alma e o do caminho pedem a mesma soma de esforço: chegar ao duzentos custa tanto quanto chegar ao trezentos e cinquenta do ofício, de modo que o ofício sobe mais fácil que a vida. Mesmo assim, um jogador que não descansa leva uns dois anos. E quanto mais alto, mais a subida paga: um paladino que passa do nível trezentos ao trezentos e um ganha muito mais força, espírito e poder em suas magias do que quando passou do trinta ao trinta e um.</p>' +
+    '<p>Entre tantas vidas, nasce a pergunta que mais me interessa e que nenhum número responde: <b>será que a alma aprende?</b> O Olho vai ver, e o historiador também.</p>' +
+    '<p>E há uma lei da subida que poucos aprendem cedo. Quem quer chegar ao topo de um caminho não o faz numa vida só: precisa viver muitas vidas naquele mesmo caminho. Um paladino precisa renascer paladino por dezenas, talvez centenas de vidas, até se tornar um paladino da ordem. Cada vez que o caminhante escolhe o mesmo caminho de novo, a sua pontuação ganha um multiplicador, de um e um décimo, de um e três décimos, de um e meio, até o limite de três vezes. E quem muda de caminho não volta do zero: leva pontuação semelhante ao seu nível pessoal, porque aprendeu em muitas experiências diferentes. O mesmo vale para os ofícios: quem já foi ferreiro ou tecelão numa vida passada aprende de novo mais depressa, como quem tem uma aptidão natural.</p>' });
+
+  add({ toc: 'Livro XI — A Grande Biblioteca', lv: 'XI', eyebrow: 'Livro XI', title: 'A Grande Biblioteca e a Crônica Viva', start: true, body:
+    '<p>No coração de Karmika, na cidade central, ergue-se a Grande Biblioteca, tão imensa que ninguém jamais percorreu todas as suas galerias. Há corredores de pergaminhos, salões de mapas, e uma sala onde as páginas se escrevem sozinhas. É aqui que trabalho.</p>' +
+    '<p>Meu ofício é simples de dizer e pesado de cumprir: quando o Olho chora, alguém precisa anotar. Cada <b>Lágrima Karmica</b> derramada por Marghar é registrada por mim, com o nome de quem a conquistou, o feito que a causou e o dia em que caiu. Marghar não escreve; escrevo eu.</p>' +
+    '<p>Quem quiser conferir a sua lágrima, ou saber da de outro, que me procure nas galerias.</p>' });
+  add({ lv: 'XI', body:
+    '<h3>A crônica que não termina</h3>' +
+    '<p>Este livro nunca estará terminado. Cada guerra que se trava, cada escola que muda de mãos, cada exército de paladinos que responde a um chamado, cada guerreiro único que o mundo passa a conhecer, cada lágrima histórica, eu anoto, e uma página nova passa a existir.</p>' +
+    '<p>Os nomes que aqui entrarem serão os nomes de quem viveu aquilo: guildas que se tornaram famosas, heróis que mudaram o rumo de uma guerra, almas cujo feito fez o próprio Olho chorar. Algumas das páginas que você lê foram escritas por jogadores, sem que eles soubessem.</p>' +
+    '<blockquote>Quem planta algo grande será lido por quem vier depois.</blockquote>' +
+    '<p>Seja você mesmo um capítulo.</p>' });
+
+  add({ lv: 'XI', body:
+    '<h3>Das seis runas</h3>' +
+    '<p>Os copistas da Biblioteca escrevem com seis runas, e eu as desenho aqui porque o leitor as encontrará na moldura de todo livro sagrado de Karmika, na base das pedras de teleporte e no círculo que o mago traça antes do feitiço.</p>' +
+    '<div class="figwrap"><svg class="runes6" viewBox="0 0 296 56" role="img" aria-label="As seis runas de Karmika: a Lágrima, o Olho Kármico, a Ampulheta, o Labirinto, a Fome e a Fresta, que brilha"><defs><radialGradient id="frg"><stop offset="0" stop-color="#ffe9ad" stop-opacity=".55"/><stop offset="1" stop-color="#ffe9ad" stop-opacity="0"/></radialGradient></defs><ellipse cx="270" cy="28" rx="26" ry="26" fill="url(#frg)"><animate attributeName="opacity" values=".25;.8;.25" dur="5s" repeatCount="indefinite"/></ellipse><g transform="translate(6 8) scale(1.45)"><path d="M14 3 C17 9 21 13.5 21 18 A7 7 0 0 1 7 18 C7 13.5 11 9 14 3Z" fill="none" stroke="#d9a24f" stroke-width="2.7"/><path d="M14 3 C17 9 21 13.5 21 18 A7 7 0 0 1 7 18 C7 13.5 11 9 14 3Z" fill="none" stroke="#15101e" stroke-width="1"/></g><g transform="translate(54 8) scale(1.45)"><path d="M4 4 V24 M24 4 V24 M12 4 L6.5 14 L12 24 M16 4 L21.5 14 L16 24 M8.5 14 Q14 9 19.5 14 Q14 19 8.5 14Z" fill="none" stroke="#d9a24f" stroke-width="2.7"/><path d="M4 4 V24 M24 4 V24 M12 4 L6.5 14 L12 24 M16 4 L21.5 14 L16 24 M8.5 14 Q14 9 19.5 14 Q14 19 8.5 14Z" fill="none" stroke="#15101e" stroke-width="1"/><path d="M14 12 a2 2 0 1 0 0.01 0Z" fill="#d9a24f"/></g><g transform="translate(102 8) scale(1.45)"><path d="M7 4 H21 L14 14 L21 24 H7 L14 14 Z" fill="none" stroke="#d9a24f" stroke-width="2.7"/><path d="M7 4 H21 L14 14 L21 24 H7 L14 14 Z" fill="none" stroke="#15101e" stroke-width="1"/></g><g transform="translate(150 8) scale(1.45)"><path d="M5 24 V4 H23 V23.5 H8.5 V7.5 H19.5 V20 H12 V11 H16 V16.5" fill="none" stroke="#d9a24f" stroke-width="2.7"/><path d="M5 24 V4 H23 V23.5 H8.5 V7.5 H19.5 V20 H12 V11 H16 V16.5" fill="none" stroke="#15101e" stroke-width="1"/></g><g transform="translate(198 8) scale(1.45)"><path d="M11.5 7.2 A8.3 8.3 0 1 0 16.5 7.2 M11.5 7.2 C11 5.4 9.8 4.2 8.2 3.6 M16.5 7.2 C17 5.4 18.2 4.2 19.8 3.6" fill="none" stroke="#d9a24f" stroke-width="2.7"/><path d="M11.5 7.2 A8.3 8.3 0 1 0 16.5 7.2 M11.5 7.2 C11 5.4 9.8 4.2 8.2 3.6 M16.5 7.2 C17 5.4 18.2 4.2 19.8 3.6" fill="none" stroke="#15101e" stroke-width="1"/></g><g transform="translate(246 8) scale(1.45)" class="hot"><path d="M11.4 2.6 V18.8 M16.6 9.2 V25.4 M6.6 10.4 C9.2 10.4 11.4 11.8 12.8 14 C14.2 16.2 16.4 17.6 21.4 17.6" fill="none" stroke="#f6dc8e" stroke-width="2.7"/><path d="M11.4 2.6 V18.8 M16.6 9.2 V25.4 M6.6 10.4 C9.2 10.4 11.4 11.8 12.8 14 C14.2 16.2 16.4 17.6 21.4 17.6" fill="none" stroke="#15101e" stroke-width="1"/></g></svg></div><p class="runecap">Lágrima · Olho · Ampulheta · Labirinto · Fome · <b>(sem nome)</b></p>' +
+    '<p>A <b>Lágrima</b>, o <b>Olho Kármico</b>, a <b>Ampulheta</b>, o <b>Labirinto</b> e a <b>Fome</b> têm nome e história, e falei de cada uma. A sexta não tem nome. Parece duas lâminas desencontradas, uma mais alta que a outra, com um fio que escorre por entre elas, e os aprendizes a chamam de a Fresta, porque é o que ela parece. Os sacerdotes a traçam no batismo e na ordenação do templário; os magos, no círculo; os mestres-pedreiros, na base de toda pedra de teleporte. Um ritual sem ela, dizem todos, não pega. Nenhum deles sabe dizer por quê. Eu também não sei.</p>' +
+    '<p>Perguntei a cinco mestres de cinco casas. O Grão-Mestre Cassius disse que é da liturgia, e que liturgia não se discute. O Arquimago Vesk disse que é um fecho, e que todo círculo precisa de fecho. O Conde disse que a Casa a usa há mil anos e que mil anos não erram. Ulfrun rosnou. A Arquiteta Ylva disse que, se funciona, ela não vai parar para perguntar. Anotei as cinco respostas e reparei que nenhuma era uma resposta.</p>' +
+    '<p>Os copistas a desenham por último, de olhos fechados. Perguntei de onde vem o costume. Ninguém soube me dizer.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Dei nome a cinco runas. A sexta, que os copistas desenham por último e de olhos fechados, não tem nome, e um ritual sem ela não pega. Nas pedras de teleporte mais antigas ela está gasta do jeito errado: não por fora, pelas mãos de quem toca, mas como se tivesse sido empurrada de dentro. Atribuo isso aos viajantes. Não sei por quê.</p>' });
+  add({ toc: 'Livro XII — As Areias e o trabalho do mundo', lv: 'XII', eyebrow: 'Livro XII', title: 'As Areias e o trabalho do mundo', start: true, body:
+    '<h3>Do tempo que se conta em grãos</h3>' +
+    '<p>Os mortais não medem o tempo em dias, mas em areias, porque foi a Ampulheta que lhes ensinou a contar. Cada areia dura quatro horas, e o dia tem seis. Não se perde nenhuma: o que não foi usado, o Olho também anota.</p>' +
+    '<p>Há dois tipos de areia. As <b>areias de quem caminha</b> são suas: o treino na escola, a primeira missão, a longa subida de um nível ao outro. Uma tarefa pode custar uma areia e ser terminada antes dela, por quem a faz bem, porque a areia é o limite e nunca a pena. As <b>areias do mundo</b> pertencem a todos e correm mesmo quando ninguém olha: as pontes que se erguem, as casas que se somam à cidade, as lojas que o technocrata monta, as purificações que os magos mantêm.</p>' +
+    '<h3>A cidade que adoeceu</h3>' +
+    '<p>Contam de uma cidade sobre a qual caiu um karma pesado. A água escureceu, a névoa não saía das ruas e as plantações apodreciam antes da colheita. Quem tinha casa ali, ou estudava ali, precisou procurar magos de verdade, e os magos disseram o preço: trinta e cinco areias de purificação, sem interrupção. Cento e quarenta horas, quase seis dias, em que alguém precisa manter as mãos no ritual enquanto a cidade espera.</p>' +
+    '<p>Ninguém comprou aqueles dias. O que se comprou foram mãos, e quem tem pressa descobre que é a mesma coisa. Mais magos ao redor do ritual encurtam o prazo, mas não a ponto de zerá-lo, pois a água negra tem a sua própria vontade. Se os magos se cansam e param, a água volta a escurecer.</p>' +
+    '<h3>O Quadro e o Pacto</h3>' +
+    '<p>No centro de cada cidade há um Quadro de Pedidos. Quem precisa de peles, de ervas, de um monstro morto, de uma pessoa trazida de volta ou de trabalhadores para uma obra escreve o pedido ali, deixa o pagamento sob a guarda do Pacto da Honestidade e espera. Quem aceita vai, cumpre e recebe. Se ninguém cumpre, o pagamento volta ao dono.</p>' +
+    '<p>Mas o Quadro também é espelho. Um pedido de purificação pesa pouco na balança do Olho. Um pedido de morte pesa em quem pagou, em quem matou e na cidade que deixou o papel pregado. Aprendi com um velho contratador que o Quadro é a conversa mais honesta que uma cidade tem consigo mesma.</p>' +
+    '<p>Nenhum caminho levanta uma cidade sozinho. O mago purifica, o humano constrói, o lobisomem carrega, o vampiro corre à noite, o technocrata projeta e vende. É assim que o mundo fica de pé: pela necessidade que um tem do outro.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>A moeda que se joga nas Fontes nunca chega ao fundo. Um technocrata de Porto Caldeira desceu uma corda com um sino na ponta, até onde a corda deu. O sino não tocou. Quando ele recolheu a corda, estava molhada só até a metade.</p>'  });
+
+  add({ toc: 'Livro XIII — Os que apenas caminham', lv: 'XIII', eyebrow: 'Livro XIII', title: 'Os que apenas caminham', start: true, body:
+    '<h3>Do caminhante que não se torna nada</h3>' +
+    '<p>Há uma verdade que os escribas esqueceram de pôr nas primeiras páginas: em Karmika ninguém é obrigado a nada. O caminhante faz o que quer, e andar é a única regra. Muitos nunca serão vampiros, nem magos, nem paladinos. Serão humanos, elfos ou anões até o último dia, e isso não é pouca coisa.</p>' +
+    '<p>Há quem viva pela aventura. Há os <b>tear hunters</b>, que passam a vida atrás do feito que o labirinto não previu, esperando ver o Olho chorar. Há os que colecionam vidas, uma depois da outra, como quem junta livros. E há os que vivem pela estabilidade, pela jogada longa, e deixam a sua marca em pedra, em madeira e em gado.</p>' +
+    '<h3>O que cada povo constrói</h3>' +
+    '<p>O humano é o grande construtor. Pode começar com uma caça, e depois fazer um celeiro, um açougue, uma escola. Outros humanos chegam e erguem casas, e onde não havia nada surgem uma aldeia, uma cidade e, com o tempo, uma grande cidade. Cria gado, ovelhas e cães. Contrata guerreiros, magos e technocratas, e estes trazem máquinas de colheita e ajuda para as obras.</p>' +
+    '<p>O elfo amplia a floresta. Faz cidades sobre as árvores e, passo a passo, purifica grandes espaços de Karmika. O anão desce às montanhas e cava fundo, ou vai a outras cidades. Faz cervejas e carnes assadas que valem muito, tem fábricas de cerveja que viajam até as festas de aldeias e de guildas, e é ferreiro e comerciante hábil.</p>' +
+    '<h3>O perigo de não escolher</h3>' +
+    '<p>Mas quem não escolhe nada também não escolhe o que lhe acontece. Um vampiro pode atacá-lo e fazê-lo vampiro sem querer, um lobisomem pode mordê-lo. Um bruxo pode sequestrá-lo para um ritual satânico, ou um vampiro para uma transformação. Ele morre, e a morte dolorosa volta com a alma. Na vida seguinte o caminhante lembra, sem saber por quê, de quem o levou, e pode buscar vingança.</p>' +
+    '<p>É por isso que as cidades de quem apenas vive precisam de muralhas, e as muralhas, de quem as defenda.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Há na Biblioteca um caminhante que assina apenas Lume. O registro dele cobre os três povos e os oito caminhos, um depois do outro, e nunca jurou a mesma bandeira duas vezes seguidas. A última linha da sua lista tem o povo e o caminho em branco, e uma data que ainda não chegou.</p>'  });
+
+  add({ toc: 'Livro XIV — As marcas da alma', lv: 'XIV', eyebrow: 'Livro XIV', title: 'As marcas da alma', start: true, body:
+    '<h3>O que a pele lembra</h3>' +
+    '<p>A alma volta depois de morrer, e o caminhante escolhe de novo o que quer ser: humano, elfo ou anão, e depois, se quiser, outra estrada. Mas as vidas anteriores não somem. Quem pedir para ver o perfil de alguém encontra ali as suas vidas passadas, uma por uma, com as façanhas de cada uma.</p>' +
+    '<p>E há coisas que a morte não leva. Uma façanha nobre acompanha o caminhante e se torna parte do corpo. Uma traição, uma Lágrima, um feito heroico viram <b>cicatrizes</b> ou <b>tatuagens</b>, e as mais altas viram <b>brilhos</b> e <b>auras</b>. Permanecem, não importa quantas vezes ele morra.</p>' +
+    '<p>Costumo dizer aos aprendizes da Biblioteca que um caminhante pode trocar de nome, de povo e de bandeira, mas que não engana quem sabe ler a pele. Eu leio.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Uma tatuadora de Corvoscuro me jurou que algumas marcas aparecem antes do feito, e não depois. Mostrou-me o pulso de um rapaz com uma lágrima desenhada sob a pele, fina como um fio de cabelo. Ele nunca tinha feito o Olho chorar. Não sei o que foi feito dele.</p>'  });
+
+  add({ toc: 'Livro XV — As duas bandeiras', lv: 'XV', eyebrow: 'Livro XV', title: 'As duas bandeiras: o Fio e os Desfiados', start: true, body:
+    '<p>Contei, no primeiro livro, que os antigos dividiam as almas entre Desviadores e Convivas. Era uma conversa de sacerdotes. Mas as conversas de sacerdotes, cedo ou tarde, ganham bandeira, e hoje quem anda pelas estradas de Karmika vê duas flâmulas tremulando no alto das cidades. Dizem os mais velhos que <b>do choque entre elas nasceu o próprio karma</b>, e eu, que só anoto, não encontrei razão para duvidar.</p>' +
+    '<h3>A Ordem do Fio</h3>' +
+    '<p>“<b>Ninguém atravessa só.</b>” É o que dizem os da Ordem do Fio, e é o que bordam no escudo azul-noite de borda dourada: um labirinto circular e um fio de ouro que corre pelos corredores, da base até o Olho no centro. Eles guardam o Labirinto de Marghar. Para eles, cada corredor que fica de pé é uma alma que o Sem-Passo não encontra antes da hora.</p>' +
+    '<p>A sua justiça é simples: ninguém é jogado à Fome sem estar pronto. A sua honra é mais simples ainda: o fio nunca se corta, e quem entra no Labirinto com um deles não sai sozinho, nem morto. Paladinos, caçadores de demônios e magos carregam o fio dourado.</p>' });
+  add({ lv: 'XV', body:
+    '<h3>Os Desfiados</h3>' +
+    '<p>“<b>Todo muro é uma mentira.</b>” O escudo dos Desfiados é negro e rachado, com borda carmim: o labirinto partido em pedaços, uma boca dentada no centro, o fio cortado com as pontas desfiadas e duas lâminas cruzadas atrás. Eles querem cortar o fio e derrubar os muros. Para eles, o Labirinto é uma gaiola que devolve a alma à roda, vida após vida, e a Fome é a única porta para fora: a liberdade de verdade, até a de morrer de vez.</p>' +
+    '<p>A sua justiça: ninguém deve ser guardado contra a própria vontade. A sua honra: nunca mentir para si mesmo, e quem anda até a boca anda de olhos abertos, sem empurrar quem não quer ir. Vampiros, bruxos e lobisomens vestem o fio cortado. Não confunda: nem todo Desfiado é Conviva. Muitos não querem ser devorados; querem apenas sair.</p>' });
+  add({ lv: 'XV', body:
+    '<h3>Onde cada um erra</h3>' +
+    '<p>Perguntei aos dois lados quem estava certo, e os dois me responderam com a mesma convicção. Desconfio, por isso, das duas respostas. A Ordem do Fio erra quando a proteção vira prisão e decide pelos outros o que é “estar pronto”. Os Desfiados erram quando derrubam o muro sem lembrar que a Fome não pergunta quem queria sair.</p>' +
+    '<blockquote>Quem defende o Labirinto diz: a Fome vai devorar tudo até não sobrar ninguém. Quem quer derrubá-lo pergunta: que liberdade é essa, em que vivo num ciclo sem fim, dentro de um labirinto? Isso é justiça? Isso é bondade?</blockquote>' +
+    '<p>Não há lado bom nem lado mau nesta crônica, e não haverá. Há figuras admiráveis e figuras falhas nas duas bandeiras, e o caminhante precisa poder entender as duas, e duvidar das duas.</p>' +
+    '<h3>Os que não juram bandeira</h3>' +
+    '<p>A primeira classe é também o primeiro juramento: quem se faz paladino, caçador ou mago entra no Fio; quem se faz vampiro, lobisomem ou bruxo entra nos Desfiados. Dois caminhos ficam de fora. O <b>guerreiro do norte</b> é caótico e neutro: tem sede de sangue e não teme a morte, e nenhum labirinto lhe parece digno de guarda ou de ruína. O <b>technocrata</b> é neutro de verdade: crê na ciência e acha que pode trilhar o próprio caminho longe das crendices, mesmo vivendo no meio delas. Depois de alcançar a classe, cada um faz uma missão do seu mestre que valida o seu alinhamento.</p>' +
+    '<h3>Dos povos e do juramento</h3>' +
+    '<p>Cada povo leva para as bandeiras o seu jeito de prometer. O humano é neutro, e por isso a palavra dada é tudo o que lhe sobra: “se não tivermos a firmeza da palavra dita, o que sobrará no mundo?”. O anão é caótico, mas caos não é bagunça: promessa de anão é como fio de bigode, não se mexe. E o elfo é bom por natureza; um elfo que se faz vampiro quebra, de uma vez, um ciclo inteiro de aliança.</p>' +
+    '<p>As peças com brasão só são tecidas pelas tecelagens reais de cada lado, em Askavik, e só as veste quem já jurou, depois dos trinta. Com o tempo, dizem, valem mais como beleza do que como armadura. Mas ninguém que eu conheça tirou o seu manto por isso.</p>' });
+
+  add({ toc: 'Livro XVI — O mapa dos cartógrafos', lv: 'XVI', eyebrow: 'Livro XVI', title: 'O mapa que os cartógrafos desenharam', start: true, body:
+    '<p>No sétimo livro falei de Karmika como falam os viajantes, de ouvir dizer. Desde então os cartógrafos da Biblioteca terminaram o grande mapa, e posso enfim dizer onde fica cada coisa. Eles me ensinaram a primeira regra do ofício: primeiro o relevo, depois as águas que descem das montanhas, depois os bosques que seguem a água, e só por último as estradas, que são rotas de comércio e fazem curvas como fazem os mercadores.</p>' +
+    '<h3>As Terras dos Homens</h3>' +
+    '<p>No centro estão as Terras dos Homens, com dezenas de vilas. Ali fica <b>Karmika</b>, a vila onde nascem os humanos, com a fonte na praça e o quadro de avisos ao lado do guarda. Ao norte dela ergue-se <b>Askavik</b>, a cidade das academias, onde qualquer povo vai escolher o que será. E, num vale escuro das mesmas terras, a <b>Catedral Abandonada</b>, de que falarei adiante.</p>' });
+  add({ lv: 'XVI', body:
+    '<h3>As terras em volta</h3>' +
+    '<ul class="plain">' +
+    '<li>A noroeste, a <b>Montanha Viking</b>: fiordes, Jarls, a Fortaleza de Odin e as vilas de Jarlsheim, Skjoldvik e Hrimgard, onde a neve não derrete, só muda de lugar.</li>' +
+    '<li>A nordeste, a <b>Montanha Negra</b>, um vulcão que ronca à noite, com lava e veios de diamante. No sopé fica <b>Brasaforja</b>, onde nascem os anões, e mais acima, Cinzalto.</li>' +
+    '<li>Escondida atrás da Montanha Negra, a <b>Colina Vampírica</b>, com o castelo do Conde e a vila de Corvoscuro. Lá se fecham as janelas ao anoitecer.</li>' +
+    '<li>A leste, o <b>Vale da Desgraça</b>, onde Malgrath ensina os bruxos e até o trigo nasce de cabeça baixa.</li>' +
+    '<li>A oeste, as <b>Florestas Élficas</b>, com Aelvaren nas árvores imensas e <b>Lithendel</b>, onde nascem os elfos.</li>' +
+    '<li>A sudoeste, a <b>Floresta Encantada</b> e o <b>Pináculo de Marfim</b>, uma torre de oitenta metros que acende de noite.</li>' +
+    '<li>No extremo sudeste, a <b>Selva Licantropa</b> e a tribo do Uivo Antigo.</li>' +
+    '<li>Ao sul, a <b>Costa do Vapor e da Graxa</b>, com Porto Caldeira, Ferrugem e Vaporeira, onde os barcos remam sozinhos.</li>' +
+    '</ul>' +
+    '<p>Os cartógrafos me ensinaram também a ler o perigo. Perto dos berços e das cidades a terra é mansa; quanto mais longe, mais ela morde. Até a Montanha Negra, que embala os anões no sopé, guarda no coração bichos que nenhum aprendiz deve visitar.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Ao copiar as seis histórias para este volume, reparei que em três delas aparece, de passagem, um homem de capa cinza: na ponte de Velmora, oferecendo um barco; nas galerias de Thrain, comprando o ferro que sobrou; nos portões de Ossária, na véspera, perguntando o caminho. Ninguém descreve o rosto. Todos descrevem a capa.</p>'  });
+
+  add({ toc: 'Livro XVII — O primeiro fio', lv: 'XVII', eyebrow: 'Livro XVII', title: 'A vila de Karmika e o primeiro fio', start: true, body:
+    '<p>Toda alma humana começa no mesmo lugar, e eu fui até lá para ouvir como começa. A vila de Karmika é pequena: uma fonte, uma praça de pedra, a estalagem, a forja, o templo e um guarda que não sai da porta. Não há heróis ali. Há gente que precisa de ajuda, e o primeiro fio de toda história é sempre esse: alguém precisando de você.</p>' +
+    '<h3>Os que esperam na praça</h3>' +
+    '<p><b>Garrick</b>, o guarda, é quem dá as primeiras caças, e começa pequeno, com as ratazanas rubras do cemitério. <b>Lúcia</b> procura o marido que sumiu perto da Igreja Abandonada. <b>Eldrin</b>, o sábio do templo, manda os novatos ao Cemitério Esquecido e às ruínas onde saem diabretes. <b>Doran</b>, o armeiro, ensina a fazer o primeiro machado. <b>Thorin</b>, o mercador anão, compra tudo e ri de tudo. E há a alquimista <b>Morwen</b>, a caçadora <b>Kaela</b> e o domador <b>Corwin</b>, que cuida das montarias. Os nomes de quem manda na vila soam a aventura; os nórdicos, só se ouvem entre os anões e no norte.</p>' });
+  add({ lv: 'XVII', body:
+    '<h3>O Caminho do Norte</h3>' +
+    '<p>Os da vila contam a mesma sequência, com pequenas mudanças de quem conta. Primeiro as ratazanas, os coiotes da estrada e os lobos do leste. Depois o Guardião da Mata, uma árvore antiga que enlouqueceu e passou a atacar os lenhadores. Depois as sombras nas ruínas e, por fim, o que mora na igreja: o <b>Príncipe das Cinzas</b>. Quem chega ao fim dessa estrada faz o Juramento do Norte diante de Garrick, e a vila deixa de ser o seu mundo inteiro.</p>' +
+    '<p>Notei uma coisa curiosa: ninguém em Karmika fica sem rumo. Quando uma tarefa termina, alguém já aponta a próxima: “vá falar com Fulano”, “tem gente precisando em outra cidade”, “você já fez tudo o que podia por aqui”. Os sacerdotes dizem que é o fio do Labirinto, que nunca se perde de vista.</p>' +
+    '<h3>A chamada de Askavik</h3>' +
+    '<p>Aos vinte e cinco, chega uma carta. Eldrin a entrega com a mão trêmula: Askavik chama. Lá o novato conhece o <b>Mestre Halvard</b>, da Escola de Guerra, as tecelagens das duas bandeiras, o mercado, a igreja e a loja de Elowen. E conhece a <b>Velha Gunnhild</b>, guardiã das relíquias, que o leva à Vidente.</p>' });
+  add({ lv: 'XVII', body:
+    '<h3>A Vidente dos Caminhos</h3>' +
+    '<p><b>Hrefna</b> mora num santuário de pedras de pé, atrás de um véu de luz violeta, e um fio de areia cai diante dela sem nunca acabar. Marghar não tem sacerdotes, mas tem quem o siga de boa vontade, e Hrefna é dessas. Ela segue as Essências, as que caminham ao lado de Marghar, e o povo chama de Deusa dos Caminhos aquela a quem ela mais acende velas: Ilmara, a Cartógrafa dos Passos, a primeira a mapear o labirinto. É dela o Pergaminho do Regresso, que abre uma estrada de luz até a fonte de casa.</p>' +
+    '<p>Ela faz doze perguntas. “Um lobo ferido atravessa o seu caminho à noite. Você…” “O que você mais teme perder?” “Diante de uma porta trancada, você…” Cada resposta pesa para dois ou três caminhos, e o karma que a alma juntou até ali pesa junto. No fim, ela diz o caminho mais forte e o segundo, e devolve a escolha:</p>' +
+    '<blockquote>O que eu vi é o que a sua alma inclina, não uma corrente. Em Karmika, quem escolhe é você.</blockquote>' +
+    '<p>Quem aceita parte em viagem até um mestre: <b>Thorgrim Mão-de-Ferro</b>, na Fortaleza de Odin; o <b>Grão-Mestre Cassius</b>, na Abadia da Aurora; <b>Ilsa Van Rhal</b>, no Bastião de Prata; a <b>Arquiteta Ylva</b>, na Academia de Askavik; o <b>Conde Vladislav III</b>, na Colina; <b>Ulfrun, a Mãe-Alfa</b>, no Uivo Antigo; o <b>Arquimago Aurelian Vesk</b>, no Pináculo; e <b>Malgrath</b>, no Vale. Quem prefere esperar segue humano, e há quem passe a vida inteira assim, construindo casas, muros e guildas.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>A noiva dos charcos tem o mesmo nome da Mãe Rubra. Os aldeões dizem que é coincidência, que Hemara era nome comum naquele tempo. Os vampiros da Colina, que eu saiba, nunca pronunciam o nome da sua deusa quando atravessam os charcos.</p><p class="fnote"><span class="nb">✎</span>Contei as velas de Hrefna. São dez. Perguntei de quem era a décima, que é a única que ela nunca acende. Ela respondeu que, quando lembrar, me conta.</p>'  });
+
+  add({ toc: 'Livro XVIII — A Catedral Abandonada', lv: 'XVIII', eyebrow: 'Livro XVIII', title: 'A Catedral Abandonada', start: true, body:
+    '<p>Há uma catedral não longe de Karmika que ninguém mais visita de dia. Foi da igreja, e depois foi de um bispo que deixou de rezar para Auréon e passou a pôr a mesa para outro. Na porta, presa por correntes que não são deste mundo, espera a <b>Irmã Ysolde</b>, um espírito azulado que pede a quem passa que purifique a nave.</p>' +
+    '<h3>O vasilhame do sacrifício</h3>' +
+    '<p>Os mortos lá dentro não ficam mortos. Por isso nenhuma porta se abre matando todos: em cada andar há um <b>Vasilhame do Sacrifício</b>, que enche com o sangue de quem cai ali. Zumbis dão pouco, carniçais dão mais, e os guardiões das criptas enchem a taça de uma vez. São <b>seiscentos e sessenta e seis litros</b> até a última porta, cento e onze no primeiro andar, cento e sessenta e seis no segundo, duzentos e vinte e dois no terceiro e cento e sessenta e sete no quarto.</p>' });
+  add({ lv: 'XVIII', body:
+    '<h3>O Bispo Caído</h3>' +
+    '<p>Os três guardiões das criptas carregam três selos: o Carrasco das Criptas, o Príncipe Ósseo e o Guardião do Mausoléu. Quem junta os três e enche a taça encontra, no fundo, o <b>Bispo Caído</b>. Ele ergue o báculo e diz que Gorvak tem fome e que ele é a boca. Quando sangra, chama o rebanho das criptas; quando sangra mais, chama carniçais e um príncipe.</p>' +
+    '<p>Gorvak, o Banquete Sem Fim, de quem falei no segundo livro, nunca pede nada. Só põe a mesa. A Catedral é a prova de que alguém sempre aceita o convite.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Ysolde conta as medidas em voz alta, sempre, enquanto os vasilhames enchem. Quem sai da Catedral antes do fim a ouve recomeçar do zero. As correntes dela são negras e frias, como as de Ishkara, mas têm um elo, um só, de ouro. Ishkara não usa ouro.</p>'  });
+
+  add({ toc: 'Livro XIX — O Clã do Corvo', lv: 'XIX', eyebrow: 'Livro XIX', title: 'O Clã do Corvo', start: true, body:
+    '<p>Dos oito caminhos, o primeiro que a Biblioteca pôde seguir de perto foi o do guerreiro. Subi à Fortaleza de Odin atrás de Thorgrim Mão-de-Ferro, mestre de armas do Clã do Corvo, e anotei as dez provas que ele dá aos que chegam. Em cada uma, o Olho julga não o que se fez, mas por que se fez.</p>' +
+    '<h3>O juramento</h3>' +
+    '<p>A primeira prova é jurar. Jura-se pelos que não podem lutar, ou pelo clã e por Odin, ou pela própria glória, e o Olho pesa diferente cada uma das três promessas. Depois vêm o fiorde de Skjoldvik, os mortos que andam e o ferro para a fortaleza.</p>' +
+    '<h3>O desertor</h3>' +
+    '<p>Em Fjallbrún o aprendiz encontra <b>Halfdan</b>, que fugiu do clã. Pode levá-lo a julgamento, deixá-lo ir e mentir ao mestre, ou executá-lo ali mesmo. Thorgrim nunca diz qual era a resposta certa. Diz apenas que o Olho viu.</p>' });
+  add({ lv: 'XIX', body:
+    '<h3>O emissário do Fio</h3>' +
+    '<p>Na sexta prova, o clã manda o aprendiz a Askavik falar com o Paladino Aldric, emissário da Ordem do Fio. O guerreiro decide se o Clã do Corvo se alia ao Fio, se recusa, ou se ouve primeiro os Desfiados. Os nórdicos ainda não têm bandeira; talvez a recebam das mãos de quem passar por ali.</p>' +
+    '<h3>O duelo de Hrimgard</h3>' +
+    '<p>Em Hrimgard um rival cai na neve no meio do duelo. O aprendiz pode esperar que ele se levante, aproveitar a queda ou encerrar empatado. Dos três, o Olho só sorri para dois.</p>' +
+    '<h3>Valhalla espera</h3>' +
+    '<p>Na última prova, Thorgrim é ferido de morte. O aprendiz luta ao lado dele até o fim, ou o arrasta aos curandeiros contra a vontade, ou lhe dá a morte honrosa num último duelo. Quem termina recebe o título de <b>Guerreiro do Corvo</b>. E os outros sete caminhos? Ainda estou subindo as estradas deles.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>No salão do clã há um escudo antigo pendurado acima do trono, com um nome riscado e outro gravado por cima: Ulfar. Thorgrim diz que é só um escudo. Os corvos da fortaleza não pousam nele.</p>'  });
+
+  add({ toc: 'Livro XX — O que se carrega', lv: 'XX', eyebrow: 'Livro XX', title: 'O que se carrega pela estrada', start: true, body:
+    '<p>Um caminhante é também o que leva consigo. A Biblioteca guarda listas de coisas que passaram por muitas mãos, e as mais raras têm nome. Há sete degraus de raridade, do comum cinzento ao mágico, ao raro, ao lendário, ao épico. Acima deles estão os <b>únicos</b>, peças de uma cultura com poder próprio, e as <b>relíquias</b>, que mudam o jeito de lutar e às vezes nem são armas.</p>' +
+    '<h3>Das culturas</h3>' +
+    '<p>Os nórdicos contam do Mjölnir, de Gungnir e das Botas de Sleipnir. Os anões, da Égide de Eitr e da Brasa de Surtr, que faz arder tudo o que toca. Os paladinos, de Excalibur e do Cálice de Marghar, que impede a morte uma vez a cada tanto. Os caçadores, da Besta de Prata de Van Rhal. Os vampiros falam baixo do Coração de Drácula; os lobisomens, da Presa do Primeiro Uivo; os bruxos, do Livro Sem Passos, cujas magias custam um pouco de vida. Uma relíquia quase sempre chega a quem é da sua cultura, como se soubesse para quem cair.</p>' +
+    '<p>Nada disso é rosa, aliás. Perguntei por quê, e um ferreiro anão me olhou como se eu fosse louco.</p>' });
+
+  add({ toc: 'Livro XXI — Os que caminham juntos', lv: 'XXI', eyebrow: 'Livro XXI', title: 'Os que caminham juntos', start: true, body:
+    '<p>Por muito tempo escrevi sobre almas que andavam sozinhas. Já não é assim. Hoje os caminhantes se juntam em grupos de até seis, e um grupo é uma coisa curiosa de se observar: a fera que um derruba conta para todos, e a missão que um aceita aparece, como num sussurro, para os outros. Mas ninguém é carregado: entre os do grupo, a diferença de experiência não pode passar de dez níveis.</p>' +
+    '<h3>O corvo e o quadro</h3>' +
+    '<p>Toda vila tem uma caixa de correio de ferro com um corvo no topo. Pelo corvo vão cartas, ouro, peças e cobranças, e o corvo espera quem não está para entregar quando chegar. No Quadro da Praça, além dos contratos dos moradores, os caminhantes pregam os seus próprios pedidos, deixam o ouro sob guarda e esperam quem os cumpra.</p>' });
+  add({ lv: 'XXI', body:
+    '<h3>Quando as bandeiras se cruzam</h3>' +
+    '<p>Fora das vilas, o Fio e os Desfiados se atacam quando se encontram, e ninguém paga em karma por defender a sua bandeira. Ninguém é obrigado a lutar, porém. Dentro das vilas a terra é sagrada, e nenhuma lâmina corta.</p>' +
+    '<p>Entre os da mesma bandeira é diferente. Um não fere o outro, a não ser que tome a decisão, consciente, de caçar o próprio lado. Quem faz isso tem o nome escrito em vermelho, e o Olho cobra a cada golpe. Quem revida, porém, nada deve.</p>' +
+    '<p>E há o duelo, combinado entre dois, que vale em qualquer lugar e em que ninguém morre: perde quem cai de joelhos primeiro. Os anões chamam isso de conversa.</p>' });
+
+  add({ toc: 'Livro XXII — O Fio da Vida', lv: 'XXII', eyebrow: 'Livro XXII', title: 'O Fio da Vida', start: true, body:
+    '<p>Há quem pense que a morte, em Karmika, é uma porta que só se abre uma vez. Não é bem assim. Toda alma que caminha está presa ao corpo por um fio, e o fio tem <b>três fôlegos</b>. Quem cai na estrada levanta na fonte do seu lar: é uma queda, e o fio perde um fôlego. Os fôlegos voltam devagar, um a cada dia, como a respiração de quem dorme.</p>' +
+    '<p>Antes do vigésimo nível, quando o Olho ainda dorme, ninguém gasta o fio. Marghar não cobra de quem ainda não foi visto.</p>' +
+    '<h3>Quando o fio se rompe</h3>' +
+    '<p>Quem cai sem nenhum fôlego <b>desencarna</b>. Os que viram contam sempre a mesma coisa: uma faísca sai do corpo caído, cresce um pouco, começa a vibrar e, de repente, sobe, rápida e fina como uma agulha, até sumir no céu.</p>' +
+    '<p>A alma chega então ao <b>centro do labirinto</b>, que os velhos chamam de <b>Limiar</b>. É um chão de luz suspenso sobre Karmika. Lá de cima se vê o labirinto inteiro, até onde a vista alcança: muros que se erguem e cedem, corredores que se fecham e se abrem, lugares que escurecem num caminho negro e outros que clareiam. É o mundo acontecendo, agora, lá embaixo.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>Os que esperam no centro</h3>' +
+    '<p>À esquerda de quem chega está <b>Orvalen, o Leitor de Rastros</b>, de capuz, com um cajado e uma lanterna fria. Os rastros de luz giram nos pés dele. É ele quem lê a vida que acabou, passo por passo, e quem a devolve ou a apaga.</p>' +
+    '<p>À direita está <b>Sael, a Que Voltou</b>, a única que chegou ao centro e retornou. Ela segura um fio de ouro que vai da mão dela até a alma recém-chegada, e é ela quem guia a volta.</p>' +
+    '<p>Entre os dois e o fundo flutua o <b>Olho Kármico</b>, olhando para quem chegou. E bem ao fundo, num brilho dourado, percebe-se uma silhueta imensa, calma, debruçada sobre uma piscina cósmica: <b>Marghar</b>, vendo tudo o que acontece. Ninguém o viu erguer os olhos. Ali a alma conversa com os dois Essenciais e escolhe, e só há três escolhas.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>As três voltas</h3>' +
+    '<ul class="plain">' +
+    '<li><b>Voltar ao mesmo corpo.</b> Orvalen devolve os rastros como estão. A alma entra de novo onde estava, igual, e volta devendo. Os velhos chamam isso de <b>Dívida Kármica</b>: metade de tudo o que a alma aprende depois paga o que ela deixou de andar, até a conta fechar.</li>' +
+    '<li><b>Reencarnar.</b> Orvalen apaga os rastros do corpo, e Sael leva a alma até um corpo novo. A alma escolhe outro povo e outro rosto e guarda o resto: o nome, o quanto já andou, o que carregava, o ouro, o cofre e as promessas. Só a classe fica para trás, e o caminho é lido de novo por Hrefna. As magias e a força do corpo antigo voltam como pontos soltos, para a alma arrumar o que errou.</li>' +
+    '<li><b>Pagar com uma Lágrima.</b> Quem guarda uma Lágrima do Olho a oferece ao Olho e paga a volta inteira, sem dívida nenhuma. A alma reencontra o corpo no lugar sagrado do seu caminho: o paladino na Abadia da Aurora, o technocrata na Academia, o vampiro no castelo do Conde.</li>' +
+    '</ul>' +
+    '<h3>O eco da vida passada</h3>' +
+    '<p>Quem reencarna e volta à mesma estrada encontra um eco. O corpo novo não sabe, mas a alma lembra, e aprende <b>quatro vezes mais rápido</b> até alcançar o ponto em que caiu. Ali o eco se cala, e a estrada volta a ter o passo de sempre. Os mestres das academias reconhecem esses alunos: aprendem como quem relembra.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>O Olho que vê e esconde</h3>' +
+    '<p>Quem sobe ao Limiar vê o Olho de perto e repara numa coisa que ninguém conta cá embaixo. Da parte de cima dele sai, sem parar, uma energia dourada e viva, que sobe como fumaça de incenso e encobre o rosto de Marghar. Da parte de baixo escorre uma névoa escura e densa, do mesmo azul da Ampulheta, que desce devagar até o labirinto e se perde entre os muros.</p>' +
+    '<p>Os que voltaram dizem que entenderam ali o que os sacerdotes nunca souberam explicar: o Olho que vê você é o mesmo véu que esconde quem olha. Ninguém vê Marghar, porque o próprio olhar dele está no caminho. E o karma não para dentro do Olho. Ele sai, o tempo todo, para cima e para baixo, cada metade com a sua verdade: o que clareia sobe em ouro, o que pesa desce em névoa.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>Por que ele não age</h3>' +
+    '<p>Perguntei a Sael, nas poucas linhas que dela restam nos arquivos, por que Marghar não impede o mal. A resposta que anotaram é a mais longa que se tem de uma Essência:</p>' +
+    '<blockquote>Porque ele não age. Não impede, não mata, não julga. Nunca o vi erguer a mão, nem para salvar, nem para punir. Marghar é o querer, e o desejo de querer. É o parar, e o desejo de parar. É o caminho e é o passo, e antes dos dois é a vontade de caminhar. Quem age é quem anda. Ele só vê, e guarda, e um dia devolve.</blockquote>' +
+    '<p>Os anciãos de Askavik leem nisso uma promessa; os Desfiados, uma acusação. Eu leio as duas coisas, e não sei escolher.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>A pergunta que ninguém responde</h3>' +
+    '<p>Orvalen, que lê rastros desde antes de existirem nomes, deixou registrada uma dúvida que eu hesito em copiar. Ele se pergunta se Marghar não seria também Ahzur. Se aquilo que chamamos de deus dos caminhos não seria um sistema sem fim, que se alimenta de si mesmo e de si mesmo se devora, como a serpente que morde a própria cauda e desenha, com o corpo, o sinal do infinito. O caminho e a destruição do caminho, contemplando a si mesmo o tempo todo.</p>' +
+    '<p>Sael, dizem, mandou que ele se calasse. Não por ser mentira, mas porque Marghar ouve tudo e nunca responde.</p>' +
+    '<h3>E nós</h3>' +
+    '<p>Se tudo é Marghar, nós também somos parte dele. Somos caminhantes, e somos caminho. Somos fome, e somos alimento. Talvez seja por isso que o labirinto existe: não para nos esconder para sempre, mas para nos dar tempo de escolher qual das duas coisas ser antes que a Fome chegue.</p>' +
+    '<p>Não sei responder a nada disso. Anoto, e sigo andando, que é o que todo caminhante faz.</p>' });
+  add({ lv: 'XXII', body:
+    '<h3>Sou eu</h3>' +
+    '<p>O que mais me diverte nos registros é uma cena que se repete em toda praça. Dois caminhantes se encontram, e um diz ao outro: sou eu, o Brakka. Mas você não era anão? Era. Agora sou elfo.</p>' +
+    '<p>A alma é a mesma, o nome é o mesmo, e o karma também. O karma, aliás, nunca fica no corpo que caiu: ele é da alma e atravessa todas as vidas, junto com as Lágrimas e com as dívidas.</p>' +
+    '<p>Quem pede para ver o perfil de alguém encontra ali as vidas passadas, uma por uma: o povo, o caminho e até onde cada uma chegou. Eu, que sei ler peles, prefiro ler essas listas. Elas mentem menos.</p>' +
+    '<h3>Notas do cronista</h3><p class="fnote"><span class="nb">✎</span>Todos os relatos dizem que Sael voltou do centro. Nenhum diz o que ela foi fazer lá, nem quem estava no centro antes dela. E os que subiram ao Limiar mais de uma vez juram que, numa das vezes, ela segurava dois fios. Perguntaram-lhe pelo outro. Ela sorriu e não respondeu.</p>'  });
+
+  add({ toc: 'Livro XXIII — O preço de cada caminho', lv: 'XXIII', eyebrow: 'Livro XXIII', title: 'O preço de cada caminho', start: true, body:
+    '<p>Andei muito para escrever este livro, e o que aprendi cabe numa linha: <b>nenhum caminho é de graça</b>. Cada um dá ao caminhante uma força que os outros invejam, e cobra dele uma fraqueza que só os outros sabem curar.</p>' +
+    '<p>Os mestres das academias não gostam que se diga isso em voz alta, porque parece fraqueza da escola. Eu acho o contrário. É essa conta que mantém o mundo de pé: o guerreiro precisa do mago e do bruxo, o vampiro precisa do anão e do tecnocrata, o lobo precisa até do vampiro, que é o que mais lhe dói. Ninguém em Karmika vive sozinho por muito tempo. Quem tenta, enlouquece, morre de fome ou apaga.</p>' +
+    '<p>E a conta não vence de um dia para o outro. Os mais velhos medem em <b>turnos</b>, e dizem que são <b>vinte</b> os turnos de estrada que um caminhante aguenta antes que o seu preço fique insuportável. Nos primeiros doze, quase nada se sente. Depois disso, pesa.</p>' });
+  add({ lv: 'XXIII', body:
+    '<h3>Do guerreiro que ouve os mortos</h3>' +
+    '<p>O guerreiro do Norte é o mais forte de todos nós no corpo a corpo, e é por isso que é o que mais mata. Cada morte deixa nele um resto de fúria. Primeiro vem o <b>frenesi</b>, e ele bate mais forte, mas esquece a guarda. Depois vem a <b>loucura</b>, e é aí que o preço aparece: o guerreiro louco quer fazer o bem e não consegue, porque o sangue fala mais alto, e a alma escurece devagar, como brasa coberta.</p>' +
+    '<p>Para voltar a si, ele presta condolências a Odin pelos que caíram e mortifica o corpo nos <b>rituais de calmaria</b>. Precisa dos incensos de mortificação e purificação, e esses incensos só os magos e os bruxos sabem fazer. Nenhum dos dois os faz sozinho: o mago precisa das <b>Cinzas dos Mortos</b>, que só o bruxo recolhe, e o bruxo precisa da <b>Areia da Iluminação Astral</b>, que só o mago guarda. Vi a Arquimaga Seline, no Pináculo, comprar cinzas da Bruxa Grisolda de Gorvath com a cara de quem engole vinagre. E vi a bruxa fazer a mesma cara.</p>' });
+  add({ lv: 'XXIII', body:
+    '<h3>Do paladino que duvida</h3>' +
+    '<p>A fraqueza do paladino não está na espada nem no escudo. Está na pergunta que ele faz à noite, depois de tantas batalhas contra entidades e demônios: <em>será que a minha guerra pela paz derrama mais sangue do que os próprios malditos?</em> Essa <b>Dúvida</b> cresce a cada morte, e mais ainda quando o morto era gente. Quando ela cresce, a Luz responde menos às suas mãos; quando transborda, a fé vacila, as boas escolhas não pesam e o karma escorre.</p>' +
+    '<p>O remédio é antigo: o <b>Jejum e Oração</b>. O paladino come o <b>Pão Ázimo</b>, que os cozinheiros humanos fazem com o <b>Trigo sem Fermento</b>, cuja semente os tecnocratas mexeram na estufa de latão e que só as mãos élficas fazem brotar, e bebe o <b>Vinho Santo</b> dos anões, que só fica santo com a <b>Gota de Lágrima Santa</b> que as anciãs de Lithendel recolhem antes do sol. Cinco mãos numa única refeição. Talvez seja essa a resposta para a Dúvida, e não o vinho.</p>' });
+  add({ lv: 'XXIII', body:
+    '<h3>Do vampiro e da sede</h3>' +
+    '<p>O vampiro é rei da noite: mais forte, mais rápido, golpes que o olho mal acompanha, e cada ferida que abre lhe devolve um pouco de vida. Mas o sol o enfraquece e o queima, e por isso ele procura as cidades de sombra, como Corvoscuro, ou as matas fechadas. E há a <b>sede</b>. O <b>Sangue Diluído</b> da alquimista e o sangue de bicho enganam por um tempo, cada vez menos. Cedo ou tarde o corpo pede sangue de gente: humano, anão ou elfo. Quem bebe de gente mata a sede e escurece a alma.</p>' +
+    '<p>O vampiro que quer seguir o bem tem um caminho, e ele é caro: a <b>Injeção Automática de Sangue</b> dos tecnocratas, feita com a <b>Sangria Concentrada</b> que os anões recolhem de doadores na Casa de Sangria de Brasaforja. Ninguém morre por ela. A Sangradora Hulda faz questão de dizer isso a quem entra.</p>' });
+  add({ lv: 'XXIII', body:
+    '<h3>Do lobo e da fome</h3>' +
+    '<p>O licantropo é maior e mais forte que um homem, e de dia luta como homem, com porretes, maças e alabardas toscas. A forma da besta só vem com a noite. E a fera tem <b>fome de carne de gente</b>, de qualquer povo: o humano é o que ela mais deseja, o anão é duro de mastigar e o elfo é magro, quase sem gordura. Carne de bicho engana por um tempo, até o dia em que já não enche. Com fome, o lobo fica lento e fraco. Quem come gente sacia a fome e mancha a alma.</p>' +
+    '<p>O lobo que escolhe o bem precisa engolir o orgulho. A única carne que sacia sem vítima é a <b>Charcutaria Secular</b>, carne curada há séculos nas adegas de Corvoscuro, e quem a vende são os vampiros. O Sommelier Vasko serve o lobo com um sorriso de canto e pede que ele coma lá fora. Os mais orgulhosos mandam um tecnocrata ou um anão comprar por eles.</p>' });
+  add({ lv: 'XXIII', body:
+    '<h3>Do tecnocrata e do coração de latão</h3>' +
+    '<p>O tecnocrata não empunha espada, adaga nem arco: luta com as armas da Academia, com a manopla, com as torres e com a esfera que voa ao seu lado, que ataca, cura o grupo ou o defende, conforme a postura dele. Mas tudo isso vem do <b>reator pessoal</b> nas costas, e o reator gasta. Um <b>Núcleo de Reator</b> custa caro e dura bem, oito turnos o primeiro, vinte o da segunda classe da Academia. Vazio, a energia não volta e a esfera apaga.</p>' +
+    '<p>O ferreiro faz o casco do núcleo, mas não o completa sozinho: precisa do <b>Fluido Vital</b> do alquimista e do <b>Cristal Arcano</b> que os magos carregam no Pináculo. Por isso o tecnocrata é, de todos, o que mais precisa de comércio. Quem não vende, não acende.</p>' +
+    '<h3>Dos que leem, dos que pactuam e dos que vigiam</h3>' +
+    '<p>O <b>mago</b> lança tanta magia que o eco dela fica na cabeça. Com o tempo vira <b>soberba</b>: ele olha de cima para os simples, e a magia racha na mão. Cura-se com os pés no chão, no <b>Ritual do Aterramento</b>: o Unguento da Terra das curtidoras do Uivo Antigo e a Água Benta da Abadia da Aurora. Nada humilha tanto um mago quanto pedir terra de toca a um lobo.</p>' +
+    '<p>O <b>bruxo</b> não tem magia própria: pega emprestado de Malgrath, e Malgrath cobra juros. Quando a dívida cresce, o patrono segura uma parte da vida dele, e por fim manda o <b>Cobrador do Pacto</b>. A dívida se paga com a <b>Oferenda</b>: um Coração de Demônio, que só os caçadores do Clã Helsing arrancam sem que apodreça, e um Chifre de Sangue, que só o guerreiro do Norte enche no campo de batalha.</p>' +
+    '<p>O <b>caçador de demônios</b> serve a Aravel, cujo olho nunca fecha, e por isso não dorme. A vista turva, e depois ele vê demônio em todo rosto. Só dorme com o <b>Sono Guardado</b>: o Pó do Sono Sem Sonhos, que quem faz é o bruxo, justamente quem ele caça, e o Sino de Guarda dos tecnocratas, que toca sozinho se algo se aproxima.</p>' +
+    '<h3>Do preço de uma vida</h3>' +
+    '<p>Perguntaram-me quanto vale uma vida no Olho. Respondi com a conta das próprias feras: quem come gente compra vinte turnos de paz, e o Olho cobra os vinte e mais um, pela vida. Vinte e um. E se a vítima era um caminhante, cuja alma volta e lembra, o Olho cobra o dobro, porque são duas vidas: a que acabou e a que terá de recomeçar.</p>' +
+    '<h3>Do equilíbrio</h3>' +
+    '<p>Perguntei a um mestre por que as academias aceitam tanto preço. Ele me respondeu sem levantar os olhos: <em>porque sem preço, o forte vira deus, e deus não precisa de ninguém</em>.</p>' });
+
+  add({ toc: 'Livro XXIV — Dos ofícios, dos bichos e dos céus', lv: 'XXIV', eyebrow: 'Livro XXIV', title: 'Dos ofícios, dos bichos e dos céus', start: true, body:
+    '<p>Este livro é de coisas pequenas, e por isso mesmo verdadeiras. Ninguém lembra do herói pela espada; lembram dele pela forja onde ela foi feita, pelo gato que dormia no seu colo e pela noite em que a lua ficou vermelha e ele não fugiu.</p>' +
+    '<h3>Das casas de ofício</h3>' +
+    '<p>Toda vila e toda cidade de Karmika tem os seus cinco ofícios em volta da praça. Ninguém aplaina tábua no meio do mato. Nas <b>cidades</b>, como Askavik e Karmika, cada ofício tem a sua casa:</p>' +
+    '<ul><li>a <b>Marcenaria</b>, um galpão aberto de toras, com as serras penduradas na parede, a serra de quadro sobre a tora e o torno de pedal;</li><li>a <b>Forja</b>, com a chaminé de pedra e a boca em arco sempre acesa, os foles de couro e as duas bigornas;</li><li>o <b>Curtume e Alfaiataria</b>, com as tinas de tingir e os couros no varal;</li><li>o <b>Apotecário</b>, com a sua antessala de balcão e a sala do alambique atrás;</li><li>a <b>Escola de Cozinha</b>, com o forno de tijolo e as mesas dos aprendizes;</li><li>e a <b>Casa de Tecnologia</b>, de chapas rebitadas, com a bobina de Tesla no telhado, que serve ao tecnocrata de forja e de bancada.</li></ul>' +
+    '<p>Nas <b>vilas</b> tudo é mais simples: o Barracão de Corte, a Forja ao Ar Livre, a Mesa do Curtidor, o Apotecário e a Cozinha dos Fundos, que se entra pela porta de trás da taverna. As vilas de vapor do sul guardam também a sua Oficina de Latão.</p>' });
+  add({ lv: 'XXIV', body:
+    '<h3>Do Estábulo e dos companheiros</h3>' +
+    '<p>O bicho que você compra não anda na sua mochila: ele mora no seu <b>Estábulo</b>, e de lá sai para andar com você. Cada um tem nome, que você pode trocar, fome e vínculo. Bicho com fome busca devagar e não briga; bicho que te adora volta mais rápido para te ajudar.</p>' +
+    '<ul><li><b>Gatinho Malhado</b> e <b>Raposa Ruiva</b>: no combate soltam o <b>Alarido</b>, e quem vinha para cima de você para por um instante.</li><li><b>Gata Preta</b> e <b>Ratinho de Porão</b>: o <b>Faro</b> acha o que caiu longe, e o guincho distrai.</li><li><b>Filhote de Lobo</b>: a <b>Mordida</b>, nas canelas de quem te ataca.</li><li><b>Leitão Malhado</b>: <b>Fuça</b> a terra quando você descansa e às vezes traz uma maçã, um pão ou umas moedas.</li></ul>' +
+    '<p>O pet veste <b>Coleira</b> e <b>Peitoral</b>. A coleira faz buscar mais rápido; o peitoral faz a habilidade voltar mais cedo, e o de ferro deixa a mordida mais funda. Pets, coleiras e peitorais se compram com <b>Corwin, o Domador</b>. Cavalos e feno, com <b>Orm, o Estalajadeiro</b>: o Cavalo Baio, o Cavalo Ruço e o Corcel Negro. Cavalo com fome corre menos.</p>' +
+    '<p>E o pet vai com você até o fundo das masmorras. Bicho fiel não fica na porta.</p>' });
+  add({ lv: 'XXIV', body:
+    '<h3>Dos céus que mudam</h3>' +
+    '<p>Duas vezes por dia, mais ou menos, o mundo inteiro muda de cor. Os eventos mundiais andam cerca de uma hora e meia mais cedo a cada dia, e em uma semana passam por todas as horas, para que ninguém fique sempre de fora.</p>' +
+    '<p>Na <b>Lua de Sangue</b> o céu sangra na chegada, e depois o rubro assenta, mas não vai embora. Ela causa:</p>' +
+    '<ul><li>patrulhas atacadas e mordidas de lobisomem cinco vezes mais comuns nas estradas;</li><li>um lobisomem a mais em cada onda, chegando dois níveis acima do normal;</li><li>vampiros, lobisomens, bruxos e almas de karma −20 ou menos: +10% de dano e −8% de dano recebido;</li><li>paladinos, magos e almas de karma +20 ou mais: +6% de dano recebido;</li><li>e ao lobisomem de Faro ligado, +15% de XP.</li></ul>' +
+    '<p>No <b>Dia da Aurora</b> é o contrário: procissões de Auréon seis vezes mais comuns, atos de luz valendo metade a mais de karma, a força para as almas claras e o peso para as escuras.</p>' +
+    '<p>Quem quiser lembrar do que o céu anda fazendo olha o <b>contador embaixo do mapa</b>: ele diz quanto falta para acabar ou para começar, e mostra o que já passou e o que você fez nele.</p>' });
+  add({ lv: 'XXIV', body:
+    '<h3>Da idade das feras</h3>' +
+    '<p>Os velhos caçadores dizem: <em>quem tem a caveira sobre a cabeça não é para você</em>. Uma fera cinco níveis acima bate quase duas vezes mais forte; oito acima, mais de duas vezes; nunca mais de três. E o seu golpe escorrega nela: perde força a cada nível de diferença e às vezes simplesmente erra. A fera abaixo de você, ao contrário, machuca menos. Não é sorte nem azar, e não entra na conta das bênçãos: é a idade da fera.</p>' +
+    '<h3>Das vozes da vila</h3>' +
+    '<p>O povo de Karmika fala. Não o tempo todo, mas fala: comenta o frio, a hora, a lua vermelha, a sua briga na praça, o sangue no seu rosto, o seu cavalo e o nome do seu gato. Sabe do seu karma e desconfia do seu caminho. O guarda fala de portão, o ferreiro de fio de lâmina, a taverna de ensopado. Quem presta atenção aprende mais nas ruas do que nos livros, inclusive neste.</p>' });
+  add({ toc: 'Livro XXV — Os que carregam a bandeira', lv: 'XXV', eyebrow: 'Livro XXV', title: 'Os que carregam a bandeira', start: true, body:
+    '<p>No décimo quinto livro contei das duas bandeiras como quem conta de duas ideias. Mas ideia nenhuma anda sozinha pela estrada. Anda gente. E foi para conhecer a gente que carrega cada bandeira que gastei os últimos anos de sola, de Austrvik à Colina, de Sudrholt ao Vale, e também de bota, porque um anão me fez subir a muralha de Brasaforja duas vezes para me mostrar um tijolo.</p>' +
+    '<p>Descobri que cada caminho tem a sua <b>casa</b>, um lugar onde o caminho mora e tem nome, e que cada casa tem um mestre que não sai dela, como o rei não sai do castelo. E descobri que, além dos mestres, cada caminho tem alguém que <b>anda</b>: um portador, um dos poucos que levam a bandeira para onde ela ainda não chegou. Foi com esses que andei. Nem todos andam com todos: quando a missão é de espada, mandam o de espada; quando é de palavra, mandam o de palavra; quando é de mistério, mandam a mim, o que diz muito sobre a opinião que têm do mistério.</p>' +
+    '<h3>As casas do Fio</h3>' +
+    '<p>A <b>Ordem de Auréon</b> mora na Abadia da Aurora, em Austrvik, onde os sinos acordam a cidade há trezentos anos. O seu mestre é o <b>Grão-Mestre Cassius</b>, velho, quente e grave, que recebe cada noviço com a mesma frase: joelho no chão não é humilhação, é descanso. O <b>Clã Helsing</b>, os caçadores de prata, mora no Bastião de Prata, em Sudrholt, e obedece à <b>Mestra Ilsa Van Rhal</b>, de cuja família é a Besta de Prata. O <b>Círculo do Pináculo</b>, que o povo chama de Torre de Marfim, acende todas as noites em Lumenhal, e quem o rege é o <b>Arquimago Aurelian Vesk</b>, com a <b>Arquimaga Seline</b> ao lado, a que compra cinzas de bruxa com cara de quem engole vinagre.</p>' });
+  add({ lv: 'XXV', body:
+    '<h3>As casas dos Desfiados</h3>' +
+    '<p>A <b>Casa Noctavar</b>, que os de fora chamam de Corte do Conde, está de pé há mil anos no castelo da Colina Vampírica, sobre Corvoscuro, e está de pé por três leis que nenhum dos seus quebra: não beber de quem está sob a sua proteção, não criar cria sem o consentimento da Casa, não mentir ao Ancião. O Ancião é o <b>Conde Vladislav III</b>. Quem serve a mesa é o <b>Sommelier Vasko</b>, que tem mil anos de vinho e dois minutos de paciência, e que serve o lobisomem com um sorriso de canto e um prato na porta: “lá fora, por favor, o tapete é mais velho do que você”.</p>' +
+    '<p>A <b>Matilha do Uivo Antigo</b> vive na Selva Licantropa, tem uma lei só, ninguém fica para trás, e uma mãe, <b>Ulfrun, a Mãe-Alfa</b>. Passei uma semana com a matilha e saí convencido de que lobisomens e anões são o mesmo povo com pelagens diferentes: brutos, diretos, comem fazendo barulho, xingam o que amam e cumprem o que dizem. Um filhote me perguntou se cronista tem gosto de quê. Respondi que de papel. Ele perdeu o interesse.</p>' +
+    '<p>O <b>Pacto de Gorvath</b> reúne os bruxos do Vale da Desgraça; o seu patrono é <b>Malgrath</b>, que é príncipe e não mestre, e a mais velha do Pacto é a <b>Bruxa Grisolda</b>, a que recolhe as Cinzas dos Mortos e cobra por elas o que a sua cara de vinagre permitir.</p>' +
+    '<h3>Quem anda pelas terras da sombra</h3>' +
+    '<p>Reparei em quem circula por Corvoscuro, pelo Uivo e pelo Vale sem ser tocado. Os <b>elfos</b>, porque até o vampiro mais velho respeita quem é bom por natureza e magro demais para a mesa. Os <b>tecnocratas</b>, porque não se morde quem conserta o relógio. Os <b>humanos</b>, não: humano ali é presa, e sabe disso, e anda rápido. E os <b>anões</b> não vão, porque odeiam a turma de lá; mas vendem, e a sombra sobe a Brasaforja para comprar ferro e sangue de doador na Casa de Sangria, pelo mesmo preço que paga o Fio. Perguntei a um anão como se vende a quem se odeia. “Sujeira debaixo do tapete é problema deles. O tapete eu não vendo. O ferro, sim.”</p>' });
+  add({ lv: 'XXV', body:
+    '<h3>As casas que não juram</h3>' +
+    '<p>O <b>Clã do Corvo</b> guarda a Fortaleza de Odin, em Jarlsheim, sob <b>Thorgrim Mão-de-Ferro</b>. No salão há dois corvos entalhados, um de cada lado do trono, e os guerreiros juram que são os de Odin: um pensa, o outro lembra. Diz Thorgrim que um guerreiro que escuta um só dos dois vira louco ou vira covarde, e que a façanha de uma vida inteira é ficar sentado no meio, como o Pai de Todos. A <b>Irmandade do Vapor</b> é como os tecnocratas chamam a si mesmos quando não estão vendendo nada: a Academia da Graxa, em Porto Caldeira, com a <b>Arquiteta Ylva</b>, e a Companhia das Caravanas de Latão, com a <b>Feitora Brunna</b>, que leva qualquer coisa a qualquer lugar e diz que o caminho não reza.</p>' +
+    '<p>E há Askavik, que não é casa de nenhum caminho e é casa de todos: a Tecelagem Real do Fio, da <b>Mestra Ingeborg</b>, e a Tecelagem dos Desfiados, de <b>Corvina, a Desfiadora</b>, uma de cada lado da mesma rua. Não se cumprimentam há vinte anos, mas as duas compram linha do mesmo mercador, que vende para as duas com o mesmo sorriso e cobra das duas o mesmo preço, e é, portanto, a pessoa mais honesta de Askavik.</p>' +
+    '<h3>Os que ficaram comuns</h3>' +
+    '<p>Antes dos portadores das classes, preciso falar dos que recusaram a Vidente e ficaram o que nasceram. Não são menos. Em certos dias, são mais.</p>' +
+    '<p>O <b>Velho Ansgar</b>, o Ancião de Karmika, recusou a Vidente três vidas seguidas e lembra das três. Senta na praça, perto da fonte, e corrige a história de todo mundo: “não foi assim”. Quando perguntei por que não escolheu um caminho, respondeu: “Escolhi. Escolhi ficar. É o único caminho em que ninguém manda em você, e por isso ninguém te ajuda. Dá para viver.” Diz que a palavra dada é tudo o que um humano tem, e que por isso a dele é curta.</p>' });
+  add({ lv: 'XXV', body:
+    '<p>A <b>Mestra-de-Obras Dagny Pé-de-Chumbo</b> comanda a Grande Obra de Brasaforja, a muralha nova, e mede tudo com uma fita métrica, inclusive promessas: “fio de bigode tem dois dedos; a sua promessa deu um e meio, volta amanhã”. Xinga a pedra, xinga o capataz, xinga o Rei Thrain pelas costas e já ergueu três pontes que ninguém pediu porque “ia precisar”. Odeia sujeira debaixo do tapete a ponto de não ter tapete, e mesmo assim vende ferro para o Fio e para os Desfiados pelo mesmo preço, porque fio de bigode não tem bandeira: “negócio é negócio, palavra é palavra, e o tapete é problema deles”. Quando caiu uma galeria em Cinzalto e o capataz escondeu, ela desceu sozinha, tirou os quatro soterrados e deixou o capataz lá embaixo até o fim do turno, “para aprender o que é esconder”.</p>' +
+    '<p><b>Lirien Folha-Tarde</b> é emissária da Copa de Lithendel e a única criatura que eu vi jantar com o Conde, almoçar com a matilha e tomar chá em Gorvath na mesma semana sem perder um fio de cabelo. É elfa pura, recusou a Vidente, e é bem-vinda nas três casas da sombra porque, dizem lá, “elfo não mente e não engorda”. Fala pouco, com uma ironia tão fina que o insultado agradece. Numa vida anterior, me contou de passagem, foi vampira. Voltou elfa. Diz que o ciclo de aliança se quebra uma vez para a gente saber o que ele vale. Explicou-me também o que a Copa perdoa e o que não perdoa: um elfo de karma escuro, que ergue a sua cidade entre os da sombra e a quem chamam de <b>elfo negro</b>, não ofende ninguém em Lithendel, porque o escuro também é uma ordem, e ordem a mata respeita. O que a mata não perdoa é trair a natureza: fazer-se outra coisa. “Eu traí uma vez. Paguei. Por isso me deixam andar.”</p>' +
+    '<h3>Aldric, que lê os nomes</h3>' +
+    '<p>O primeiro portador de classe que conheci foi o <b>Paladino Aldric</b>, emissário da Ordem do Fio em Askavik. Já escrevi que ele é sincero até doer, e é. O que não tinha escrito é o que ele guarda por dentro do escudo: gravados na madeira, um abaixo do outro, os nomes de cada pessoa que ele não conseguiu guardar. Ele os lê toda noite, antes de dormir, em voz baixa. “Porque a Ordem jura que ninguém atravessa só. Eles atravessaram. Alguém tem que ir junto, nem que seja depois.” É Aldric quem recebe os que chegam a Askavik e lhes mostra o Labirinto como quem mostra uma casa: cada corredor é alguém que ainda respira.</p>' });
+  add({ lv: 'XXV', body:
+    '<h3>Vesna Helsing, que não dorme</h3>' +
+    '<p>A <b>Caçadora Vesna Helsing</b> não nasceu Helsing. Nasceu numa vila que não existe mais, perto de Sudrholt, e tinha seis anos quando um ninho a levou. O Bastião a recolheu como recolhe todos os órfãos da noite, e ela tomou o nome do clã como se toma uma arma. Carrega no pulso um sininho de guarda que toca sozinho se algo se aproxima, e não dorme mais do que três horas por noite, porque Aravel não dorme nenhuma. É ácida de um jeito que só o cansaço dá: chama os paladinos de escoteiros, na cara deles, e diz que uma luz que espera o monstro pedir perdão é uma luz que chega tarde. Cada órfão que o Bastião recolhe é a vila dela de novo. É por isso que ela não para.</p>' +
+    '<h3>Ísold Pena-Clara, que copia à mão</h3>' +
+    '<p>No Pináculo há uma sala onde ficam os livros que ninguém deve ler, e há uma maga que os copia à mão, um por um, à luz fraca. É <b>Ísold Pena-Clara</b>. “Porque a cópia não mente. O original, às vezes, sim.” Foi a primeira pessoa que ouvi dizer que um grimório da Torre tinha uma sílaba errada na última linha, e a primeira a culpar a podridão de Zerath por isso. Tem uma soberba doce, de quem sabe mais e acha engraçado. Ri do caçador e do paladino quando brigam, e os dois a odeiam por isso com a mesma força, o que ela considera a sua maior obra. Quando lhe disse isso, respondeu que eu estava copiando errado.</p>' +
+    '<h3>Lady Mirela, que nunca quebrou uma lei</h3>' +
+    '<p>Do lado dos Desfiados, a voz que fala pelas estradas é a de <b>Lady Mirela</b>, herdeira da Casa Noctavar. Educada como uma lâmina. Jurou as três leis da Casa aos quinze anos e nunca quebrou nenhuma, o que, entre vampiros de mil anos, é mais raro do que parece. Acha o lobisomem um animal e diz isso com uma cortesia perfeita, que o lobisomem leva como insulto, acertadamente. Recebe os que chegam a Askavik pelo outro lado da rua, com uma pergunta só: “Você já morreu? Vai morrer. E vai voltar. E vai morrer de novo. Chame isso de proteção, se quiser.”</p>' });
+  add({ lv: 'XXV', body:
+    '<h3>Varg Dente-Partido, que não deixa ninguém</h3>' +
+    '<p><b>Varg Dente-Partido</b> é o segundo de Ulfrun e, se Ulfrun não estiver ouvindo, o anão da matilha. Perdeu um filhote da sua ninhada para a prata do Clã Helsing e quebrou o próprio dente mordendo a gaiola em que o levavam. Não a soltou. Desde então não deixa ninguém para trás, nem o inimigo caído, nem o prato. Odeia o vampiro com o ódio da primeira lua, mas senta à mesma mesa quando a Mãe-Alfa manda, come em silêncio por uns trinta segundos e depois pergunta ao Vasko se o vinho é de uva ou de gente. O Vasko nunca responde. Varg acha que isso é resposta.</p>' +
+    '<h3>Ravena Cinco-Cláusulas, que lê a letra miúda</h3>' +
+    '<p>A bruxa mais nova de Gorvath só assina pactos de cinco cláusulas. “O resto é vaidade.” <b>Ravena Cinco-Cláusulas</b> lê letra miúda melhor do que o próprio Malgrath, e ele sabe, e é por isso que a usa para escrever o que os outros assinam. Acha o vampiro e o lobo duas crianças brigando no quintal, e já disse isso aos dois, por escrito, em cinco cláusulas. Foi ela quem redigiu a trégua entre a Casa e a Matilha e foi ela quem cobrou dos dois quando a quebraram, na mesma noite, com juros que ela chama de “pedagógicos”.</p>' +
+    '<h3>Brynhild Lâmina-Quieta, que voltou da loucura</h3>' +
+    '<p>No Clã do Corvo há uma campeã que fala pouco e só do que viu. <b>Brynhild Lâmina-Quieta</b> é irmã de Halfdan, o desertor de Fjallbrún, e carrega isso sem esconder e sem explicar. Atravessou a loucura da batalha uma vez e voltou, o que quase ninguém faz, e por isso é ela quem ensina aos novos a postura que defende e a que cura: “quem não sabe parar não sabe bater”. Sobre os corvos de Odin, diz que já esteve embaixo dos dois e que embaixo de nenhum se dorme bem. Quando lhe perguntaram em Askavik de que lado o Clã deveria ficar, respondeu que o Fio e os Desfiados estavam certos e errados ao mesmo tempo, e saiu da sala antes que alguém pedisse para explicar.</p>' });
+  add({ lv: 'XXV', body:
+    '<h3>Anselm Rotha, que mede</h3>' +
+    '<p>O <b>Doutor Anselm Rotha</b>, da Irmandade do Vapor, quer medir o Labirinto. Não guardá-lo, não derrubá-lo: medir. Carrega um índice de latão que marca “quanto falta”, e nunca disse a ninguém quanto falta para o quê. Acha as duas bandeiras duas superstições caras, e a Companhia uma só verdade: quem não vende, não acende. É ele quem entrega aos aprendizes da Academia o primeiro ajudante que voa, o escudo de favos e o bracelete, e cobra de cada um um relatório que ninguém lê. Enterra uma lenda por dia e, dizem na Academia, desenterra uma por semana, sem contar a ninguém. Eu o vi uma vez parado diante de uma porta de pedra preta, anotando. Perguntei o que anotava. “Que ela não tem maçaneta.” E seguiu.</p>' +
+    '<h3>Do que eles têm em comum</h3>' +
+    '<p>Andei com os onze, nunca com dois ao mesmo tempo, e no fim notei o que nenhum deles me deixaria escrever se lesse antes: todos carregam a ferida do seu caminho no corpo, e todos acham que a bandeira do outro é o que vai acabar com Karmika. Todos querem salvá-la. É por isso que lutam. Não vi, em nenhum dos onze, um vilão. Vi onze pessoas que não dormem bem, e três delas que riem disso.</p>' +
+    '<p class="seal">Quando lhe derem uma missão, caminhante, repare quem a dá. Pode ser um deles.</p>' });
+  add({"toc": "Livro XXVI — As maravilhas e as Fontes da Visão", "lv": "XXVI", "eyebrow": "Livro XXVI", "title": "As maravilhas e as Fontes da Visão", "start": true, "body": "<h3>Da moeda na água</h3><p>Em toda praça de Karmika há uma fonte, e em toda fonte há moedas no fundo. Os viajantes acham que é superstição. Não é. Quem joga uma moeda numa <b>Fonte da Visão</b> e fica quieto vê o lugar inteiro de cima, como o veem os corvos e talvez o próprio Marghar, e ouve a história do lugar contada por quem a guardou. Muitas vezes, confesso, quem a guardou fui eu. Não sei explicar como a minha voz foi parar dentro da água. Os technocratas dizem que é eco. Os sacerdotes dizem que é graça. Eu digo que é trabalho, porque fui eu que anotei.</p><p>Cada caminho tem a sua cidade, e cada cidade tem a sua maravilha. E dentro de toda maravilha há uma Fonte da Visão, porque nenhuma delas cabe nos olhos de quem está ao pé dela. Para ver o que os construtores fizeram é preciso subir, e a moeda sobe por você.</p><h3>Das maravilhas do Fio</h3><p>A <b>Abadia da Aurora</b>, em Austrvik, ergue o sol e o Olho sobre um pátio onde cabe uma cidade ajoelhada. No Dia da Aurora a luz desce sobre ele inteiro, e os noviços juram que sentem calor nas costas mesmo de olhos fechados.</p><p>O <b>Pináculo de Marfim</b>, em Lumenhal, é uma torre branca no meio de um lago de ilhas. De longe parece um farol; de perto, uma escada que não acaba. Os magos sobem por anos. Os que chegam ao topo não contam o que viram, e os que não chegam contam demais.</p><p>O <b>Bastião de Prata</b>, em Sudrholt, não é bonito, e se orgulha disso. Fosso, muralha, torres e mil e doze pedras no muro, ou mil e onze, conforme quem conta. Fica de frente para a Terra Maldita como um homem fica de frente para um cão que ainda não latiu.</p><p>A <b>Fortaleza de Odin</b> coroa a Montanha Viking, acima de Jarlsheim. A subida é reta, a neve não perdoa e o hidromel não acaba. Thorgrim recebe ali quem quer jurar, e quem desce jurado desce diferente: anda mais devagar e olha mais longe.</p>"});
+  add({"lv": "XXVI", "body": "<h3>Das maravilhas dos Desfiados</h3><p>O <b>Castelo do Conde</b>, na Colina Vampírica, tem seis andares, e só dois deles veem o céu. Embaixo, as catacumbas da Corte e a adega das celas. No térreo, a biblioteca, o salão de baile com os lustres acesos e a sala do piano que ninguém toca de dia. Acima, a galeria dos retratos, onde os olhos dos quadros seguem quem passa, e o andar dos quartos, dezenas deles, alguns com caixões no lugar das camas. E no alto, o salão particular do Conde, com o trono dentro de uma piscina de sangue. É ali, dizem, que se deixa de ser humano.</p><p>A <b>Árvore-Mãe</b>, no Uivo Antigo, é uma árvore-toca imensa, caída no meio da selva. O tronco é a casa da Mãe-Alfa, e o oco é um salão inteiro de raízes e de vida. No meio do caminho até ela há uma estátua que todo forasteiro para para olhar: uma loba gigante dando de mamar a crianças humanas. Os lobisomens não explicam a estátua. Dizem só que é por isso que a matilha não abandona ninguém.</p><p>A <b>Torre do Bruxo</b>, no Vale da Desgraça, em Gorvath, é alta, mas o que impressiona é o que ela tem por baixo. A torre abre um poço no chão que desce até onde a vista alcança, e as pontes que ligam a estrada ao pilar deixam ver o fundo: lava, gente trabalhando e, lá embaixo, perto dos demônios, os rituais que Malgrath não deixa ninguém anotar. Eu tentei. A tinta ferveu.</p>"});
+  add({"lv": "XXVI", "body": "<h3>Das maravilhas dos que não juram</h3><p><b>Porto Caldeira</b>, a cidade da graxa, tem guindastes que trabalham sozinhos, tirando carga dos cargueiros a vapor e devolvendo ao cais. A Academia da Graxa é coroada por duas bobinas imensas que acendem a cidade inteira pelo ar, e entre os pisos da academia sobem jardins suspensos, porque os technocratas aprenderam tarde, mas aprenderam, que máquina sem planta enferruja por dentro. Na ilha ao largo, o <b>Farol Tecnocrático</b> gira um feixe vermelho sobre os vapores, e a Faroleira Dinorá conta quem chega e quem não volta.</p><p>Os <b>Portões de Brasaforja</b> são uma porta de ferro fundido escavada na Montanha Negra. Sobe-se a escadaria até encostar no ferro, e o portão entra na rocha. Lá dentro fica o Grande Salão, com o trono aos pés da Forja-Mãe, que recebe lava dos veios da montanha por dutos que nenhum anão vivo sabe quem escavou. Nas paredes, diamantes e esmeraldas. E no fundo, entre dois anões colossais esculpidos com os machados erguidos um para o outro, o <b>Coração da Montanha Negra</b>: uma pedra azul, imensa, que às vezes avermelha. Os anões dizem que avermelha quando alguém mente no salão. Fiquei quieto o tempo todo.</p><p><b>Gaia, a Árvore Santa</b>, em Lithendel, é a Mãe Terra feita árvore, e a cidade dos elfos mora nos galhos dela. Sobe-se num teleférico de cipós até um andar onde se anda literalmente na árvore e se vê Karmika lá de cima. A Árvore-Mãe dos lobisomens também foi uma árvore de pé, um dia. Os elfos não gostam que se lembre disso.</p><p class=\"seal\">Quando estiver diante de uma delas, caminhante, jogue a moeda. A maravilha não foi feita para ser vista de baixo.</p>"});
+  add({"toc": "Livro XXVII — O Andarilho de Auréon", "lv": "XXVII", "eyebrow": "Livro XXVII", "title": "O Andarilho de Auréon", "start": true, "body": "<h3>Do paladino que não fica em casa</h3><p>Quem pensa em paladino pensa na Abadia, e a Abadia é a mãe. Mas o Grão-Mestre Cassius tem uma regra que muitos noviços estranham: o paladino recém-jurado não fica em Austrvik. Ele sai. <b>O paladino é antes de tudo um andarilho do bem</b>, e a luz que não anda vira vela de altar, bonita e inútil.</p><p>Em dez vilas das Terras dos Homens há capelas de Auréon de pé, inteiras, com um clérigo na porta: Grenivik, Vestheim, Vatnaholt, Skógar, Myrbakki, Brekkuvik, Vindholt, Dalborg, Steinfoss e Lundr. Cada vila tem o seu mal, e nenhum mal é igual ao outro. O Andarilho chega, ouve o clérigo, enfrenta o que ronda a vila e decide o que fazer com o que sobrou. Cada clérigo o manda para a próxima capela, e a última o manda de volta para casa.</p><h3>Da nota a mais</h3><p>Os clérigos das dez capelas não se conhecem todos, mas contam a mesma coisa, cada um achando que é o único: o sino da capela tocou, numa noite qualquer, <b>uma nota a mais</b>, uma que ninguém afinou. Em Steinfoss me mostraram uma runa riscada no bronze, por dentro do sino, onde nenhuma mão alcança. Copiei-a. Não é nenhuma das seis.</p><p>Quando o Andarilho volta à Abadia, Cassius o recebe de pé e lhe dá o nome de <b>Andarilho de Auréon</b>. Perguntei ao Grão-Mestre sobre a nota. Ele respondeu que a luz também tem perguntas, e mudou de assunto.</p>"});
+  add({"toc": "Livro XXVIII — O Sino no Pulso", "lv": "XXVIII", "eyebrow": "Livro XXVIII", "title": "O Sino no Pulso", "start": true, "body": "<h3>Da prata, que é dívida</h3><p>No Bastião de Prata a Mestra Ilsa Van Rhal entrega a primeira lâmina de prata com uma frase que todo Helsing sabe de cor: <b>a prata não é presente, é dívida</b>. Quem a recebe passa a dever cada noite que dormir tranquilo a alguém que ficou acordado no muro.</p><p>Quem leva os novos para o muro é a <b>Caçadora Vesna Helsing</b>, ácida e engraçada daquele jeito de quem não dorme há anos. Ela ensina as três horas da noite, a hora do sino, a hora do cão e a hora em que ninguém deve estar acordado, e conta as pedras do muro em voz alta toda vigília, para não dormir. Diz que são mil e doze. A Mestra diz mil e onze. As duas contam toda noite, e nenhuma cede.</p><h3>Do órfão de Sudrholt</h3><p>Em Sudrholt há um menino chamado <b>Pip</b>, que perdeu a família para uma besta da Terra Maldita e não consegue dormir sem ouvir um sino. Os Helsing não adotam crianças; dizem que a prata não é lugar para elas. Mas todo caçador novo é mandado falar com o Pip, e o que ele diz ao menino, a verdade, a espera ou a mentira, o Olho anota antes de qualquer besta. Mais tarde, com Pó do Sono comprado de uma bruxa de Gorvath, a contragosto, e um Sino de Guarda comprado da Companhia, os caçadores inventaram para ele o <b>Sono Guardado</b>. Foi a coisa mais bonita que vi um caçador fazer.</p>"});
+  add({"lv": "XXVIII", "body": "<h3>Da runa dentro do osso</h3><p>No salão do Bastião há uma caveira de besta pendurada, a de Van Rhal, a primeira caçada da família. Quem olha com o Instinto vê o que os olhos não veem: <b>a sexta runa riscada por dentro do osso</b>. Não na superfície, por dentro, onde nenhuma faca entra. Depois disso os Helsing começaram a abrir as caveiras das bestas que matavam. Todas têm a runa. Eu já tinha estado lá, anos antes, e anotei sem entender. Pelo menos anotei.</p><h3>Da vila que não existe mais</h3><p>Há uma vila no mapa velho chamada Lysmark que não está no mapa novo. Quem vai até onde ela era e usa o Instinto encontra o espírito de uma menina com uma vela na mão. Ela diz só uma coisa a quem chega: <b>a sua vela foi a última a apagar</b>. Ninguém sabe a quem ela fala.</p><h3>Do juramento de Aravel</h3><p>O caçador termina o seu primeiro ano nas Ruínas de Aravel, onde Aravel, a Vigília Verde, tinha o seu primeiro altar. Ali ele diz, ao lado da Vesna, a frase que dá o nome ao juramento:</p><blockquote>Eu não durmo enquanto alguém pequeno estiver acordado no escuro.</blockquote><p>Depois disso o caçador passa a usar um sino pequeno no pulso. Não toca para chamar ninguém. Toca para lembrar.</p>"});
+  add({"toc": "Livro XXIX — O Juramento", "lv": "XXIX", "eyebrow": "Livro XXIX", "title": "O Juramento", "start": true, "body": "<h3>Da Tecelagem de Askavik</h3><p>Há um dia em que cada caminho jura a sua bandeira, e todos juram no mesmo lugar: a <b>Tecelagem</b> de Askavik, onde se tecem os mantos das duas facções. Cada um jura do seu jeito. O paladino ajoelha. O lobisomem uiva. O vampiro assina com sangue e reclama do papel. O bruxo lê o contrato inteiro em voz alta, duas vezes, e corrige uma vírgula. O mago pergunta se pode anotar. E o guerreiro do Norte, que pela tradição do Corvo não jura bandeira nenhuma, é quem <b>arbitra</b>: fica de pé no meio do salão e diz se o juramento valeu.</p><h3>Da Trégua da Lua</h3><p>Os Desfiados têm uma trégua mais velha que as bandeiras: a <b>Trégua da Lua</b>. Na noite sem lua, lobo e vampiro não se caçam, e o bruxo escreve o que foi dito para que ninguém diga depois que disse outra coisa. Os lobos detestam o bruxo por isso. Os vampiros detestam os lobos. E a trégua se mantém há séculos, o que diz muito sobre o ódio e pouco sobre a paz.</p><h3>Do lugar onde o meu lado erra</h3><p>Todo juramento honesto tem uma pergunta que os mestres não fazem em voz alta: onde é que o meu lado erra? O Fio encontra a resposta em <b>Grenivik</b>, onde um capitão da Ordem passou a cobrar proteção de quem ele devia proteger. Os Desfiados encontram a resposta em <b>Lundr</b>, onde a liberdade de um virou a prisão de outro. Os dois lados voltam de lá mais quietos.</p>"});
+  add({"lv": "XXIX", "body": "<h3>Da podridão de Grenivik</h3><p>Foi nesse tempo que a podridão começou a descer o rio a partir de Grenivik. Cada caminho a leu de um jeito. O paladino rezou e sentiu frio. O lobisomem farejou e não reconheceu o cheiro, o que nunca tinha acontecido. O vampiro torceu o nariz e disse que aquele sangue estava velho antes de nascer. O bruxo leu, e o que leu foi uma letra: uma letra antiga, anterior a Malgrath, escrita onde não havia papel.</p><p>Todos acharam que era Zerath, o príncipe da podridão. Fazia sentido, e o que faz sentido demais deveria nos assustar.</p><h3>Da porta</h3><p>No fim do juramento, em todos os caminhos, alguém fala de uma porta. Uma porta de pedra preta, sem maçaneta, com o Olho esculpido de pálpebras baixas. Já contei que há três delas: no Cemitério Esquecido, em Brasaforja e na Biblioteca de Askavik. Agora sei que há uma quarta. Falarei dela adiante, no livro da ponte.</p>"});
+  add({"toc": "Livro XXX — A Mesa Partida", "lv": "XXX", "eyebrow": "Livro XXX", "title": "A Mesa Partida", "start": true, "body": "<h3>Da guerra que ninguém declara</h3><p>Depois dos juramentos veio o tempo que os velhos chamam de <b>Guerra Fria</b>. Ninguém declarou nada. O paladino escoltava caravanas até o Vale e voltava contando corpos que não eram de ninguém. O vampiro aprendeu a comprar relógios, porque a Corte decidiu que quem vive à noite precisa saber a hora exata do sol. O caçador abriu gaiolas de prata e encontrou nelas coisas que ele mesmo tinha prendido. Cada lado fazia ao outro o que acusava o outro de fazer.</p><h3>Da mesa de Askavik</h3><p>Para que a guerra não virasse guerra, os mestres das duas bandeiras sentaram à mesma mesa, no salão do conselho de Askavik. É a <b>Mesa Partida</b>, e o nome é antigo: uma mesa de pedra rachada ao meio, um lado para cada bandeira. Os humanos votam, o mago escreve a ata, o elfo media, o anão traz a mesa de ferro que não racha e o Varg, numa das sessões, rachou a mesa de ferro com um tapa.</p><p>O lado que vence a Mesa hasteia a sua bandeira na praça de Askavik por uma semana inteira. Parece pouco. Não é. Uma semana de bandeira na praça muda o preço do pão, o humor dos guardas e quem consegue dormir na estalagem.</p>"});
+  add({"lv": "XXX", "body": "<h3>Da cadeira a mais</h3><p>Na primeira sessão da Mesa havia uma cadeira a mais. Ninguém a tinha posto. Sobre ela, dobrada com cuidado, uma <b>capa cinza</b>. No fim da sessão a capa não estava mais lá, e ninguém a viu sair.</p><p>Depois disso fui atrás da capa, e todo caminho a tinha visto sem saber. Era quem comprava os relógios dos vampiros. Era quem vendia velas à Abadia. Era quem pagava o skald para cantar a canção errada. Era o homem sem cheiro que os lobos não conseguiam seguir. Era quem assinava as caixas da Irmandade. Era quem escrevia com aquela letra anterior a Malgrath. Era quem levava comida ao ninho das bestas. Era quem tinha estudado a estrada do imposto, e quem encomendou aos anões um sino com o Olho esculpido de olhos fechados.</p><p>Ninguém lembra do rosto. Todos lembram da capa.</p>"});
+  add({"toc": "Livro XXXI — Velmora, a ponte dos prantos", "lv": "XXXI", "eyebrow": "Livro XXXI", "title": "Velmora, a ponte dos prantos", "start": true, "body": "<h3>Da vila que os mapas pulam</h3><p>No <b>Canal Escuro</b>, na fronteira entre Hrafnhöfn, que é do Fio, e Corvoscuro, que é dos Desfiados, há uma vila de pescadores que os cartógrafos esquecem de desenhar. Chama-se <b>Velmora</b>. Tem duas margens e um nome só. A Margem da Aurora, a oeste, de casas claras, praça e cais. A Margem da Noite, a leste, de telhados negros e lanternas vermelhas que o Conde enxerga do castelo. Não tem capela. Os moradores dizem que nunca precisaram, e baixam os olhos quando dizem.</p><p>Moram ali a Guardiã da Ponte, Edla; o pescador Tóki; a velha Rúna das Redes, que remenda o que ninguém mais remenda; a mercadora Hekla, que vende para as duas margens pelo mesmo preço; e o lanterneiro Orri, que acende as lanternas da Margem da Noite e diz que elas apagam sozinhas quando alguém mente na ponte.</p><h3>Da ponte</h3><p>A <b>Ponte de Velmora</b> é um arco largo de pedra presa com grampos anões, de antes do Rei Thrain, sem a marca de nenhum clã. Na pedra do meio há uma inscrição: <i>aqui se passa</i>. A última palavra foi raspada. Os mais velhos dizem que a frase inteira era <i>aqui se passa, e aqui se fica</i>.</p>"});
+  add({"lv": "XXXI", "body": "<h3>Do barqueiro</h3><p>Debaixo da ponte trabalha <b>Táraka, o Barqueiro</b>. O nome dele, numa língua mais velha que a nossa, quer dizer o que faz atravessar, o que livra, e também a menina do olho. A lanterna do barco dele está sempre apagada. Ele leva os mortos ao lugar de onde se volta humano, e não cobra. Perguntei quem passou antes de mim. Ele me disse, e era alguém de outro caminho. Disse a todo viajante a mesma coisa: alguém de outro caminho passou antes.</p><h3>Da quarta porta</h3><p>A ponte tem três pilares. O do meio foi construído <b>em volta</b> de alguma coisa. Quando o pilar rachou, no ano em que a podridão desceu o rio e as vilas fugiram para Velmora, apareceu por dentro uma porta de pedra preta, sem maçaneta, com o Olho de pálpebras baixas. É mais velha que a ponte. É mais velha, eu acho, que Velmora.</p><p>Alguém fechou a ponte com uma corrente, naquele ano, e passou a cobrar pedágio de quem fugia. Os cobradores foram pagos em moeda velha, por alguém sem rosto. O Fio escoltou os fugitivos. Os Desfiados quebraram a corrente. O Corvo segurou o meio da ponte. E eu fiquei olhando a porta, e a porta, juro, ficou olhando de volta.</p><p class=\"seal\">Velmora é o único lugar aonde todos os caminhos precisam ir. Vá. E não leia a inscrição em voz alta.</p>"});
+  add({"toc": "Livro XXXII — Das guildas e das províncias", "lv": "XXXII", "eyebrow": "Livro XXXII", "title": "Das guildas e das províncias", "start": true, "body": "<h3>Do Livro de Guildas</h3><p>Em Lumenhal fica a Prefeitura, um palácio de colunas com a torre do relógio e o sino que marca as horas da cidade. Lá dentro, no salão de atendimento, o <b>Prefeito Corvin Aldmar</b> guarda o <b>Livro de Guildas</b> sobre um atril, e é nele que toda guilda de Karmika existe ou deixa de existir. Uma cópia fica comigo, na Grande Biblioteca, porque o Prefeito confia mais em tinta do que em memória, e eu também.</p><p>Fundar uma guilda pede pouco e custa muito: três fundadores experientes, que já andaram o bastante para pesar alguma coisa, e uma <b>Lágrima de Marghar</b> sobre a mesa. Os três assinam. O nome nunca mais muda. A bandeira e o símbolo podem mudar; o nome, não, porque o Livro não apaga.</p><h3>Da glória</h3><p>A guilda cresce em <b>glória</b>, e a glória vem de três fontes: uma parte do que cada membro aprende pela estrada, as missões que a guilda cumpre junta, e o que os membros doam ao cofre. Uma guilda gloriosa é mais forte em tudo: os seus têm mais vida, mais dano, mais armadura, recarregam mais rápido. Os antigos chamam isso de estandarte firme. Eu chamo de gente que não anda sozinha.</p>"});
+  add({"lv": "XXXII", "body": "<h3>Da Casa da Guilda</h3><p>Quando a guilda chega ao quarto grau, ergue a sua <b>Casa</b>. Não é um quartel: é uma casa de ofício e de comércio. Tem salas para cada profissão, o salão de armas e os itens da guilda, que os próprios membros vendem, alugam e emprestam uns aos outros. Ninguém de fora administra a Casa. Ela é dos jogadores, e é governada por eles.</p><h3>Do castelo e da província</h3><p>No quinto grau, a guilda vira <b>castelo</b>, e o castelo ganha uma vila. Cada membro recebe um pedaço de terra para construir a sua casa, e a cidade é <b>defendida e mantida pela própria guilda</b>, com as próprias mãos, quando o cerco chega. A terra em volta passa a ser província da guilda.</p><p>Quem é de fora pode comprar terra na província e morar ali. Paga imposto, e o imposto não é castigo: é o preço da proteção dos muros. Quem nunca viu uma província cercada acha o imposto caro. Quem viu, paga sem reclamar.</p><p class=\"seal\">Uma guilda não é uma conversa com bandeira. É uma cidade que ainda não terminou de ser construída.</p>"});
+  add({"toc": "Livro XXXIII — Das tavernas e das carroças", "lv": "XXXIII", "eyebrow": "Livro XXXIII", "title": "Das tavernas e das carroças", "start": true, "body": "<h3>Da Bigorna Molhada</h3><p>Um cronista que não conhece as tavernas não conhece o mundo, porque é nelas que o mundo conta o que não conta aos cronistas. A melhor de todas é a <b>Bigorna Molhada</b>, dos anões. É um salão de pedra com balcão de barris de chope e uma parede inteira de garrafas, uma cova de fogo com javali no espeto, mesas compridas com bancos e um palco onde o bardo canta até alguém jogar uma caneca. Atrás do balcão, <b>Hildigunn</b> serve a cerveja preta. Na cova, <b>Fróði</b> vira o javali. Na cozinha, <b>Sif</b> faz o ensopado que cura ressaca e mágoa, nessa ordem.</p><p>Há uma mesa redonda no canto que se reserva por uma hora, a vinte moedas, para quem quer conversar sem ser ouvido. Eu reservei uma vez. Ouvi tudo da mesa ao lado.</p><h3>Da festa do anão</h3><p>As <b>carroças dos anões</b> rodam todas as estradas carregadas de cerveja e churrasco. Quem paga, ganha festa: a carroça vira tenda, o churrasco vai para o chão, os barris abrem, a música toca e os moradores dançam junto. Depois de um tempo todo mundo vai se debruçando e dorme onde caiu. De manhã o anão já partiu, e deixou uma carta no chão. Guardo a minha: <i>Que festança! Espero que tenham gostado dos meus serviços. Estou sempre por aqui agitando as coisas.</i></p>"});
+  add({"lv": "XXXIII", "body": "<h3>Da Caravana de Latão</h3><p>A <b>Companhia das Caravanas de Latão</b> é dos technocratas, e vende o que a Academia fabrica: lâminas que vibram, lâminas eletrificadas, armas de fogo, torretas que quebram depois de alguns usos e pequenos robôs que ajudam a erguer casas. Toda carroça de Karmika paga à Companhia uma taxa por proteção. Quando uma é assaltada, a Companhia manda um <b>alerta</b> a todo o mundo. Quem estiver perto escolhe se vai. Quem vai e defende recebe a recompensa paga pelos próprios mercadores. Quem não vai, ninguém cobra. O Olho cobra.</p><h3>Do mercado que é dos caminhantes</h3><p>Quase tudo o que circula em Karmika foi colhido, fabricado, transportado ou construído por alguém. Lenhador e marceneiro, minerador e ferreiro, esfolador e costureiro, herbalista e alquimista, pescador e cozinheiro. Quem não sabe fazer compra de quem sabe. Até as casas se vendem: o Cartório entrega a escritura, e a escritura vai a leilão como qualquer espada.</p>"});
+  add({"toc": "Livro XXXIV — Os caminhos que ainda dormem", "lv": "XXXIV", "eyebrow": "Livro XXXIV", "title": "Os caminhos que ainda dormem", "start": true, "body": "<p>Contei oito caminhos, e são oito os que se abrem hoje. Mas a Vidente dos Caminhos, quando bebe vinho, conta que viu mais estradas na água do vasilhame. Estradas que ainda dormem, esperando quem as acorde. Anoto o que ouvi, sem prometer que sei.</p><h3>O Círculo das Pedras</h3><p>No coração da <b>Floresta Encantada</b>, onde as copas brilham à noite, há um círculo de pedras que ninguém ergueu. Ali, contam, alguns vão escutar o que as árvores dizem devagar, e voltam sabendo mudar de forma, chamar raízes e espinhos e curar com o que nasce do chão. Os elfos chamam esses de <b>druidas</b>. Dizem que a mata não tem dono, tem guardião.</p><h3>A Guilda Sem Rosto</h3><p>Nos becos de Askavik há uma guilda que não tem sede, só contratos. Ninguém vê os seus membros; todo mundo sente. Os que a conhecem a chamam de <b>Guilda Sem Rosto</b>, e aos seus, de <b>assassinos</b>. Cada contrato pesa no karma de quem paga e de quem cumpre. Ouvi dizer que ela recusou um contrato uma única vez. O contratante usava uma capa cinza.</p><h3>Os que levantam o que caiu</h3><p>Onde todos veem o fim, há quem veja matéria-prima. Na <b>Cripta de Hemara</b>, na beira da Terra Maldita, falam de gente que levanta ossos e prende almas por um fio. São os <b>necromantes</b>, e a Ordem do Fio inteira os persegue, porque prender uma alma é o contrário de guardá-la.</p><p class=\"seal\">Quando esses caminhos acordarem, eu estarei lá para anotar. Se acordarem antes de mim, que alguém anote por mim.</p>"});
+  add({"toc": "Epílogo", "lv": "", "eyebrow": "Epílogo", "title": "O que ainda está por escrever", "start": true, "body": "<p>Aqui termina o que sei desta temporada. A estrada continua, e quem a trilhar vai escrever os capítulos que faltam. Se você chegou até aqui, leve o conselho que o historiador dá a todo viajante: olhe o que está plantando.</p><p>Esta é a <b>Season I</b> das crônicas. O que os caminhantes fizerem nela, as guerras, as lágrimas, as cidades erguidas e as que caírem, entra no próximo volume. A Bíblia Karmika é viva: o jogo acontece no livro, e o livro conta o jogo.</p><p class=\"seal\">Ormund Salveth, Cronista da Grande Biblioteca</p>"});
+  /* ===== EPISÓDIO II — A DÉCIMA VELA (selado: o caminho traçado da expansão, 26/10/2026) ===== */
+  add = function (o) { P.push(o); };
+  var ED = {"parts": [{"name": "As Crônicas", "src": ["A1"]}]}, ROM = ["", "I", "II", "III", "IV", "V", "VI", "VII"], NP = ED.parts.length;
+  (function () {
+    var map = {}; ED.parts.forEach(function (pt, i) { pt.src.forEach(function (s) { map[s] = i + 1; }); });
+    var seenSrc = {}, seenPart = {};
+    P = P.filter(function (p) { return !p.__src || map[p.__src]; });
+    P.forEach(function (p) {
+      if (!p.__src) return;
+      var dp = map[p.__src];
+      if (!seenSrc[p.__src]) { seenSrc[p.__src] = 1; if (!seenPart[dp]) { seenPart[dp] = 1; p.partStart = dp; } else delete p.partStart; }
+      else delete p.partStart;
+      if (p.toc) p.toc = p.partStart ? p.toc.replace(/^Parte [IVX]+/, "Parte " + ROM[dp]) : p.toc.replace(/^Parte [IVX]+ — /, "");
+      if (p.eyebrow) p.eyebrow = p.eyebrow.replace(/^Parte [IVX]+/, "Parte " + ROM[dp]);
+    });
+  })();
+  var part = 0;
+  P.forEach(function (p) { if (p.partStart) part = p.partStart; p.tp = part; });
+
+  /* ---------- seções em fluxo contínuo ---------- */
+  function toBlocks(html) {
+    var d = document.createElement('div'); d.innerHTML = html;
+    return Array.prototype.map.call(d.children, function (n) { return n.outerHTML; });
+  }
+  var sections = [];
+  P.forEach(function (p) {
+    if (p.kind) return;
+    if (p.toc) sections.push({ tp: p.tp, ps: p.partStart, toc: p.toc, lv: p.lv, eyebrow: p.eyebrow, title: p.title, start: !!p.start, bodies: [p.body] });
+    else sections[sections.length - 1].bodies.push(p.body);
+  });
+  sections.forEach(function (sec) {
+    var blocks = [];
+    sec.bodies.forEach(function (b) { blocks = blocks.concat(toBlocks(b)); });
+    var sub = '';
+    if (sec.eyebrow && blocks.length && /^<h3>/.test(blocks[0])) {
+      sub = '<h3 class="subtitle">' + blocks[0].replace(/^<h3>|<\/h3>$/g, '') + '</h3>';
+      blocks.shift();
+    }
+    sec.blocks = blocks;
+    sec.head = sec.eyebrow ? '<p class="eyebrow">' + sec.eyebrow + '</p><h2>' + sec.title + '</h2>' + sub + RULE : '';
+  });
+
+  var book = document.getElementById('book');
+  var prevB = document.getElementById('prev'), nextB = document.getElementById('next');
+  var tocB = document.getElementById('toc'), countEl = document.getElementById('count');
+  var stage = document.createElement('div'); stage.className = 'stage';
+  var meas = document.createElement('div'); meas.className = 'leaf';
+  meas.setAttribute('aria-hidden', 'true');
+  meas.style.cssText = 'visibility:hidden;pointer-events:none;z-index:-1';
+  meas.innerHTML = '<div class="inner"></div>';
+  book.appendChild(meas); book.appendChild(stage);
+  var minner = meas.firstChild;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  var gcache = {}, gctx = null;
+  function glyphOff(ch) {
+    if (gcache[ch]) return gcache[ch];
+    var r = [0, 0];
+    try {
+      if (!gctx) gctx = document.createElement('canvas').getContext('2d');
+      gctx.font = '700 100px "Cinzel Decorative", serif';
+      var m = gctx.measureText(ch);
+      var dx = (m.width / 2 - (m.actualBoundingBoxRight - m.actualBoundingBoxLeft) / 2 - m.actualBoundingBoxLeft * 0 ) / 100;
+      var inkL = -m.actualBoundingBoxLeft, inkR = m.actualBoundingBoxRight;
+      dx = (m.width / 2 - (inkL + inkR) / 2) / 100;
+      var fa = m.fontBoundingBoxAscent, fd = m.fontBoundingBoxDescent;
+      var dy = ((fa - fd) / 2 - (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2) / 100;
+      if (isFinite(dx) && isFinite(dy)) r = [dx, dy];
+    } catch (e) {}
+    if (document.fonts && document.fonts.check('700 100px "Cinzel Decorative"')) gcache[ch] = r;
+    return r;
+  }
+  function illuminate(host) {
+    var ps = host.querySelectorAll('p');
+    for (var k = 0; k < ps.length; k++) {
+      if (ps[k].className) continue;
+      var n = ps[k].firstChild;
+      if (n && n.nodeType === 3 && n.textContent.length > 1) {
+        var ch = n.textContent.charAt(0), sp = document.createElement('span');
+        sp.className = 'initial'; sp.setAttribute('data-l', ch); sp.textContent = ch;
+        var off = glyphOff(ch); sp.style.setProperty('--dx', off[0].toFixed(4)); sp.style.setProperty('--dy', off[1].toFixed(4));
+        n.textContent = n.textContent.slice(1);
+        ps[k].insertBefore(sp, n);
+      }
+      break;
+    }
+  }
+  function content(sec, blocks, first) {
+    var d = document.createElement('div');
+    if (first && sec.start) d.className = 'start';
+    d.innerHTML = (first ? sec.head : '') + blocks.join('');
+    if (first && sec.start) illuminate(d);
+    return d;
+  }
+  function fits(el) { minner.textContent = ''; minner.appendChild(el); return minner.scrollHeight <= minner.clientHeight + 1; }
+  function bal(str) {
+    return (str.match(/<[a-zA-Z][^>]*>/g) || []).length === (str.match(/<\/[a-zA-Z]+>/g) || []).length;
+  }
+  function isH3(b) { return /^<h3|^<div class="secmark"/.test(b); }
+
+  function units(b) {
+    var d = document.createElement('div'); d.innerHTML = b;
+    var el = d.firstElementChild;
+    if (!el) return null;
+    if (el.tagName === 'P' && !el.className) {
+      var inner = el.innerHTML;
+      var sents = inner.replace(/([.!?])\s+/g, '$1\u0001').split('\u0001');
+      var words = inner.split(/\s+/);
+      return { sets: [sents, words], wrap: function (a) { return '<p>' + a.join(' ') + '</p>'; }, join: ' ' };
+    }
+    if (el.tagName === 'UL') {
+      var lis = Array.prototype.map.call(el.children, function (x) { return x.outerHTML; });
+      var tag = '<ul' + (el.className ? ' class="' + el.className + '"' : '') + '>';
+      return { sets: [lis], wrap: function (a) { return tag + a.join('') + '</ul>'; }, join: '' };
+    }
+    if (el.classList.contains('tw') && el.querySelector('tbody')) {
+      var rows = Array.prototype.map.call(el.querySelectorAll('tbody tr'), function (x) { return x.outerHTML; });
+      var head = el.querySelector('thead').outerHTML;
+      return { sets: [rows], wrap: function (a) { return '<div class="tw"><table>' + head + '<tbody>' + a.join('') + '</tbody></table></div>'; }, join: '' };
+    }
+    return null;
+  }
+  function splitBlock(b, cur, sec, first) {
+    var u = units(b);
+    if (!u) return null;
+    for (var s = 0; s < u.sets.length; s++) {
+      var us = u.sets[s], k = 0;
+      for (var n = 1; n < us.length; n++) {
+        var h = us.slice(0, n);
+        if (!bal(h.join(u.join))) continue;
+        if (fits(content(sec, cur.concat([u.wrap(h)]), first))) k = n; else break;
+      }
+      if (k > 0 && k < us.length) return [u.wrap(us.slice(0, k)), u.wrap(us.slice(k))];
+    }
+    return null;
+  }
+  function paginate(sec, blocks) {
+    var pages = [], cur = [], queue = blocks.slice(), guard = 0;
+    while (queue.length && guard++ < 2000) {
+      var b = queue.shift();
+      if (b.indexOf('<div class="pb"') === 0) { if (cur.length) { pages.push(cur); cur = []; } continue; }
+      var trial = cur.concat([b]);
+      if (fits(content(sec, trial, pages.length === 0))) { cur = trial; continue; }
+      if (b.indexOf('figwrap') > -1) {
+        var shr = null, sc = [.85, .72, .6, .5];
+        for (var q = 0; q < sc.length && !shr; q++) {
+          var b2 = b.replace('class="figwrap"', 'class="figwrap" style="--u:min(' + (0.95 * sc[q]).toFixed(3) + 'px,' + (0.13 * sc[q]).toFixed(3) + 'cqi)"');
+          if (fits(content(sec, cur.concat([b2]), pages.length === 0))) shr = b2;
+        }
+        if (shr) { cur = cur.concat([shr]); continue; }
+      }
+      var sp = splitBlock(b, cur, sec, pages.length === 0);
+      if (sp) { pages.push(cur.concat([sp[0]])); cur = []; queue.unshift(sp[1]); continue; }
+      var held = [];
+      while (cur.length && isH3(cur[cur.length - 1])) held.unshift(cur.pop());
+      if (cur.length) { pages.push(cur); cur = []; queue.unshift.apply(queue, held.concat([b])); continue; }
+      cur = held;
+      pages.push(cur.concat([b])); cur = [];
+    }
+    if (cur.length) pages.push(cur);
+    if (!pages.length) pages.push([]);
+    return pages;
+  }
+
+  /* ---------- sumário paginado ---------- */
+  function tocHead(w) {
+    return '<p class="eyebrow">Sumário</p><h2>' + (NP > 1 ? 'Parte ' + ROM[w] + ' — ' : '') + ED.parts[w - 1].name + '</h2>' + RULE;
+  }
+  function dlLink() {
+    return DL ? (SNAP ? '<a class="toc-link" data-dl="html" href="#">Baixar o livro com animações (.html)</a>' : '') + '<a class="toc-link" data-dl="md" href="#">Baixar só o texto (.md)</a>' : '';
+  }
+  function tocBlocks(w, secStart, tocStartPg) {
+    var out = [], anti = 0;
+    sections.forEach(function (sec, si) {
+      if (sec.tp !== w || !sec.toc) return;
+      var lv = sec.lv ? '<span class="lv">' + sec.lv + '</span>' : '';
+      var name = sec.toc.replace(/^Livro [IVXL]+ — /, '');
+      var pg = secStart[si];
+      out.push('<a class="toc-row" data-go="' + pg + '" href="#p' + pg + '">' + lv + '<span class="nm">' + name + '</span><span class="dots"></span><span class="n">' + pg + '</span></a>');
+    });
+    for (var j = 1; j <= NP; j++) if (j !== w) out.push('<a class="toc-link" data-go="' + tocStartPg[j] + '" href="#p' + tocStartPg[j] + '">' + (j < w ? '&#8249; ' : '') + 'Parte ' + ROM[j] + ' — ' + ED.parts[j - 1].name + (j > w ? ' &#8250;' : '') + '</a>');
+    out.push(dlLink());
+    return out;
+  }
+
+  var pageList = [], tocStart = {}, N = 0;
+  var groups = [];
+  sections.forEach(function (sec, si) {
+    var last = groups[groups.length - 1], mk = '<div class="secmark" data-m="' + si + '">' + RULE + '</div>';
+    if (!sec.head && last && last.stream) { last.blocks.push(mk); last.blocks = last.blocks.concat(sec.blocks); last.secs.push(si); }
+    else if (!sec.head) groups.push({ stream: true, tp: sec.tp, sec: { head: '', start: false }, secs: [si], blocks: [mk].concat(sec.blocks) });
+    else groups.push({ tp: sec.tp, sec: sec, secs: [si], blocks: sec.blocks });
+  });
+  function PL() { var r = []; for (var w = 1; w <= NP; w++) r.push(w); return r; }
+  function build() {
+    var secPages = groups.map(function (g) { return paginate(g.sec, g.blocks); });
+    var c = {}, tocPg = {}; for (var w0 = 1; w0 <= NP; w0++) c[w0] = 1;
+    for (var iter = 0; iter < 4; iter++) {
+      tocStart = {}; var acc = 1; for (var w1 = 1; w1 <= NP; w1++) { tocStart[w1] = acc; acc += c[w1]; }
+      var base = acc, pg = base, secStart = [];
+      secPages.forEach(function (sp, gi) {
+        var g = groups[gi];
+        g.secs.forEach(function (si) {
+          var at = 0;
+          if (g.stream) {
+            for (var k = 0; k < sp.length; k++) {
+              var ix = -1;
+              for (var j = 0; j < sp[k].length; j++) if (sp[k][j].indexOf('data-m="' + si + '"') > -1) ix = j;
+              if (ix > -1) { at = ix === sp[k].length - 1 ? k + 1 : k; break; }
+            }
+          }
+          secStart[si] = pg + Math.min(at, sp.length - 1);
+        });
+        pg += sp.length;
+      });
+      var nc = {};
+      PL().forEach(function (w) {
+        var tsec = { head: tocHead(w), start: false };
+        tsec.blocks = tocBlocks(w, secStart, tocStart);
+        tocPg[w] = { sec: tsec, pages: paginate(tsec, tsec.blocks) };
+        nc[w] = tocPg[w].pages.length;
+      });
+      var same = PL().every(function (w) { return nc[w] === c[w]; });
+      c = nc;
+      if (same) break;
+    }
+    pageList = [{ kind: 'cover', tp: 0 }];
+    PL().forEach(function (w) {
+      tocPg[w].pages.forEach(function (blocks, k) {
+        pageList.push({ kind: 'toc', tp: w, which: w, sec: tocPg[w].sec, blocks: blocks, first: k === 0 });
+      });
+    });
+    groups.forEach(function (g, gi) {
+      secPages[gi].forEach(function (blocks, k) {
+        pageList.push({ kind: 'sec', tp: g.tp, sec: g.sec, si: gi, pi: k, blocks: blocks, first: k === 0 });
+      });
+    });
+    N = pageList.length - 1;
+    minner.textContent = '';
+  }
+
+  function leaf(i) {
+    var p = pageList[i], el = document.createElement('article');
+    el.className = 'leaf' + (p.kind === 'cover' ? ' cover' : '');
+    var folio = i > 0 ? '<div class="folio"><span>' + i + '</span></div>' : '';
+    var rib = (p.kind === 'cover' || p.kind === 'toc') ? '' :
+      '<button class="ribbon" data-go="' + tocStart[p.tp || 1] + '" aria-label="Abrir o sumário" title="Sumário"></button>';
+    el.innerHTML = '<i class="side l"></i><i class="side r"></i><i class="base"></i>' +
+      '<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>' +
+      '<div class="inner" tabindex="-1"></div>' + folio + rib;
+    var inner = el.querySelector('.inner');
+    if (p.kind === 'cover') {
+      inner.innerHTML = '<p class="sub">Crônicas de Karmika</p>' + EYE +
+        '<h1 class="title">Bíblia<br>Karmika</h1>' + RULE.replace('class="rule"', 'class="rule" style="margin:.2em auto"') +
+        '<p class="ep"><span>Season I</span>As Duas Bandeiras</p>' +
+        '<p class="sub">As Crônicas de Ormund</p>' +
+        '<p class="by">por Ormund Salveth, Cronista da Grande Biblioteca</p>';
+      el.insertAdjacentHTML('beforeend', '<button class="strap" aria-label="Abrir o livro: destrancar o cadeado"><span class="hint">Toque no cadeado</span><span class="band l"></span><span class="band r"></span>' +
+        '<svg class="lock" viewBox="0 0 84 112" aria-hidden="true"><defs>' +
+        '<linearGradient id="lkg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8b909c"/><stop offset=".35" stop-color="#4d515c"/><stop offset="1" stop-color="#1d1f26"/></linearGradient>' +
+        '<linearGradient id="lks" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2a2c34"/><stop offset=".4" stop-color="#9aa0ad"/><stop offset="1" stop-color="#2a2c34"/></linearGradient></defs>' +
+        '<path class="shackle" d="M22 56 V34 a20 20 0 0 1 40 0 V56" fill="none" stroke="#14151a" stroke-width="12" stroke-linecap="round"/>' +
+        '<path class="shackle" d="M22 56 V34 a20 20 0 0 1 40 0 V56" fill="none" stroke="url(#lks)" stroke-width="8" stroke-linecap="round"/>' +
+        '<rect x="7" y="52" width="70" height="56" rx="9" fill="url(#lkg)" stroke="#0c0d11" stroke-width="2"/>' +
+        '<rect x="12" y="57" width="60" height="46" rx="6" fill="none" stroke="rgba(190,196,210,.35)" stroke-width="1.4"/>' +
+        '<g fill="#7b808d" stroke="#0c0d11" stroke-width=".8"><circle cx="16" cy="61" r="2.6"/><circle cx="68" cy="61" r="2.6"/><circle cx="16" cy="99" r="2.6"/><circle cx="68" cy="99" r="2.6"/></g>' +
+        '<g class="runes" fill="none" stroke="#9d8bff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="42" cy="78" r="15"/><path d="M42 61 V63 M42 93 V95 M25 78 H27 M57 78 H59"/><path d="M20 66 l4 6 l-4 6 M64 66 l-4 6 l4 6 M24 98 h6 M54 98 h6"/></g>' +
+        '<circle class="keyhole" cx="42" cy="75" r="5.2" fill="#0b0810"/><path class="keyhole" d="M39.4 78 H44.6 L46.4 90 H37.6 Z" fill="#0b0810"/>' +
+        '<g fill="rgba(120,70,30,.35)"><circle cx="24" cy="92" r="3"/><circle cx="60" cy="68" r="2.2"/><circle cx="31" cy="64" r="1.6"/><circle cx="56" cy="95" r="2"/></g>' +
+        '<path d="M12 56 H72" stroke="rgba(255,255,255,.28)" stroke-width="1.4"/></svg></button>');
+    } else {
+      inner.appendChild(content(p.sec, p.blocks, p.first));
+    }
+    return el;
+  }
+
+  var END = '<svg viewBox="0 0 300 38" fill="none" stroke="#d9a24f" stroke-width="1.3" stroke-linecap="round" aria-hidden="true">' +
+    '<path d="M6 19 H96 C104 19 108 10 116 10 C122 10 124 15 120 17"/><path d="M294 19 H204 C196 19 192 10 184 10 C178 10 176 15 180 17"/>' +
+    '<path d="M30 19 H76" stroke-opacity=".5"/><path d="M270 19 H224" stroke-opacity=".5"/>' +
+    '<path d="M150 5 L168 19 L150 33 L132 19 Z"/><path d="M150 12 L160 19 L150 26 L140 19 Z" fill="#d9a24f" stroke="none"/><path d="M148 17 L152 19 L148 21 Z" fill="#15101e" stroke="none"/>' +
+    '<path d="M122 12 H130 L126 19 L130 26 H122 L126 19 Z" stroke-width="1.1"/><path d="M178 12 H170 L174 19 L170 26 H178 L174 19 Z" stroke-width="1.1"/>' +
+    '<circle cx="12" cy="19" r="2" fill="#d9a24f" stroke="none"/><circle cx="288" cy="19" r="2" fill="#d9a24f" stroke="none"/></svg>';
+  function finish(el) {
+    var inner = el.querySelector('.inner');
+    if (!inner) return;
+    var old = inner.querySelector('.endorn');
+    if (old) old.remove();
+    if (el.classList.contains('cover')) return;
+    var o = document.createElement('div');
+    o.className = 'endorn';
+    o.innerHTML = END;
+    inner.appendChild(o);
+    if (inner.scrollHeight > inner.clientHeight + 1) o.remove();
+  }
+
+  var cur = -1, busy = false;
+  function ui() {
+    countEl.textContent = cur === 0 ? 'Capa' : cur + ' / ' + N;
+    prevB.disabled = cur === 0;
+    nextB.disabled = cur === N;
+    try { history.replaceState(null, '', '#p' + cur); } catch (e) {}
+    try { localStorage.setItem('karmika-page', String(cur)); } catch (e) {}
+  }
+  function mount(i) {
+    stage.textContent = '';
+    var el = leaf(i);
+    stage.appendChild(el);
+    finish(el);
+  }
+  function show(i, instant) {
+    i = Math.max(0, Math.min(N, i));
+    if (i === cur && stage.firstChild) return;
+    var old = stage.firstChild, dir = i > cur ? 1 : -1, el = leaf(i);
+    cur = i;
+    ui();
+    if (!old || instant || reduce) { stage.textContent = ''; stage.appendChild(el); finish(el); return; }
+    busy = true;
+    var frames, target;
+    el.style.zIndex = dir > 0 ? 1 : 3;
+    old.style.zIndex = dir > 0 ? 3 : 1;
+    stage.appendChild(el);
+    finish(el);
+    if (dir > 0) {
+      target = old;
+      frames = [{ transform: 'rotateY(0deg)', opacity: 1 }, { transform: 'rotateY(-100deg)', opacity: 0.2 }];
+    } else {
+      target = el;
+      frames = [{ transform: 'rotateY(-100deg)', opacity: 0.2 }, { transform: 'rotateY(0deg)', opacity: 1 }];
+    }
+    var a = target.animate(frames, { duration: 650, easing: 'cubic-bezier(.45,.05,.25,1)', fill: 'both' });
+    a.onfinish = a.oncancel = function () {
+      if (old.parentNode) old.parentNode.removeChild(old);
+      el.style.zIndex = '';
+      try { a.cancel(); } catch (e) {}
+      busy = false;
+    };
+  }
+  function go(i) { if (!busy) show(i); }
+
+  function anchorOf(i) {
+    var p = pageList[i];
+    if (!p) return { k: 'c' };
+    if (p.kind === 'sec') return { k: 's', si: p.si, pi: p.pi };
+    if (p.kind === 'toc') return { k: 't', w: p.which };
+    return { k: 'c' };
+  }
+  function indexOfAnchor(a) {
+    var best = 0;
+    for (var i = 0; i < pageList.length; i++) {
+      var p = pageList[i];
+      if (a.k === 'c') return 0;
+      if (a.k === 't' && p.kind === 'toc' && p.which === a.w) return i;
+      if (a.k === 's' && p.kind === 'sec' && p.si === a.si && p.pi <= a.pi) best = i;
+    }
+    return best;
+  }
+  var rebuildTimer = null;
+  function rebuild() {
+    if (busy) { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, 400); return; }
+    var a = cur >= 0 ? anchorOf(cur) : null;
+    build();
+    if (a) { cur = indexOfAnchor(a); mount(cur); ui(); }
+  }
+  function rebuildSoon() { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(rebuild, 160); }
+  window.addEventListener('resize', rebuildSoon);
+
+
+
+  function openingSvg() {
+    var wv = 'M-40 0 q10 -6 20 0' + new Array(19).join(' t20 0') + ' L340 300 L-40 300 Z';
+    return '<svg viewBox="20 30 260 190" role="img" aria-label="O Olho Karmico se enche de karma e derrama uma lágrima">' +
+      '<defs><linearGradient id="lqo" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0bd"/><stop offset="1" stop-color="#f2b04a"/></linearGradient>' +
+      '<clipPath id="evo"><polygon points="60,110 143,54 157,54 240,110 157,166 143,166"/></clipPath></defs>' +
+      '<g clip-path="url(#evo)"><g transform="translate(0,172)"><animateTransform attributeName="transform" type="translate" values="0 172;0 60" dur="3s" fill="freeze" calcMode="spline" keySplines="0.35 0 0.2 1"/>' +
+      '<g><animateTransform attributeName="transform" type="translate" values="-40 0;0 0" dur="2.2s" repeatCount="indefinite"/><path fill="url(#lqo)" d="' + wv + '"/></g></g></g>' +
+      '<g fill="none" stroke="#d9a24f" stroke-width="14" stroke-linecap="butt" stroke-linejoin="bevel"><path d="M144 40 L40 110 L144 180"/><path d="M40 40 L40 180"/><path d="M156 40 L260 110 L156 180"/><path d="M260 40 L260 180"/></g>' +
+      '<polygon points="150,94 166,110 150,126 134,110" fill="#0b0810" stroke="#f2b04a" stroke-width="3"><animate attributeName="stroke-width" values="3;9;3" begin="3s" dur="0.7s"/></polygon>' +
+      '<g opacity="0"><animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.05;0.8;1" begin="3.3s" dur="2s" fill="freeze"/>' +
+      '<animateTransform attributeName="transform" type="translate" values="150 176;150 176;150 214" keyTimes="0;0.42;1" calcMode="spline" keySplines="0 0 1 1;0.55 0 1 0.45" begin="3.3s" dur="2s" fill="freeze"/>' +
+      '<g><animateTransform attributeName="transform" type="scale" values="0;1;1" keyTimes="0;0.42;1" begin="3.3s" dur="2s" fill="freeze"/>' +
+      '<circle r="13" fill="#ffe9ad" opacity="0.25"/><path d="M0 -11 C7 -2 8 6 0 8 C-8 6 -7 -2 0 -11 Z" fill="url(#lqo)"/></g></g>' +
+      '<ellipse cx="150" cy="214" rx="2" ry="1" fill="none" stroke="#ffe9ad" stroke-width="1.4" opacity="0"><animate attributeName="rx" values="2;48" begin="5.2s" dur="1.1s" fill="freeze"/><animate attributeName="ry" values="1;9" begin="5.2s" dur="1.1s" fill="freeze"/><animate attributeName="opacity" values="0.9;0" begin="5.2s" dur="1.1s" fill="freeze"/></ellipse>' +
+      '</svg>';
+  }
+  var unlocking = false;
+  function unlockStrap(st, then) {
+    if (unlocking) return;
+    unlocking = true;
+    if (reduce) { unlocking = false; then(); return; }
+    st.classList.add('unlock');
+    setTimeout(function () { st.classList.add('open'); }, 650);
+    setTimeout(function () { unlocking = false; then(); }, 1750);
+  }
+  var opening = false;
+  function playOpening(target) {
+    if (opening) return;
+    if (reduce) { go(target); return; }
+    opening = true;
+    var ov = document.createElement('div');
+    ov.className = 'opening';
+    ov.innerHTML = openingSvg() + '<p class="cap">O karma se enche. O Olho chora.</p><span class="skip">toque para pular</span>';
+    book.appendChild(ov);
+    var done = false;
+    function end() {
+      if (done) return; done = true;
+      ov.classList.add('out');
+      go(target);
+      setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); opening = false; }, 850);
+    }
+    ov.addEventListener('click', end);
+    setTimeout(end, 6600);
+  }
+
+  /* ---------- download em Markdown ---------- */
+  var DL = null;
+  function inl(n) {
+    var out = '';
+    n.childNodes.forEach(function (c) {
+      if (c.nodeType === 3) { out += c.textContent; return; }
+      if (c.nodeType !== 1) return;
+      var t = c.tagName;
+      if (c.classList && c.classList.contains('tag')) { out += ' [' + c.textContent.trim() + ']'; return; }
+      if (t === 'SVG' || t === 'svg') return;
+      var x = inl(c);
+      if (t === 'B' || t === 'STRONG') out += '**' + x + '**';
+      else if (t === 'EM' || t === 'I') out += '*' + x + '*';
+      else out += x;
+    });
+    return out.replace(/\s+\n/g, '\n').replace(/[ \t]{2,}/g, ' ');
+  }
+  function blk(el) {
+    var t = el.tagName, c = el.className || '';
+    if (/secmark/.test(c) || /figwrap/.test(c) || t === 'svg') return '';
+    if (t === 'H3') return '### ' + inl(el).trim() + '\n\n';
+    if (t === 'P') return inl(el).trim() + '\n\n';
+    if (t === 'UL') return Array.prototype.map.call(el.children, function (li) { return '- ' + inl(li).trim(); }).join('\n') + '\n\n';
+    if (/tw/.test(c) && el.querySelector('table')) {
+      var heads = Array.prototype.map.call(el.querySelectorAll('thead th'), function (h) { return inl(h).trim() || ' '; });
+      var rows = Array.prototype.map.call(el.querySelectorAll('tbody tr'), function (r) {
+        return '| ' + Array.prototype.map.call(r.children, function (d) { return inl(d).trim().replace(/\|/g, '/'); }).join(' | ') + ' |';
+      });
+      return '| ' + heads.join(' | ') + ' |\n|' + heads.map(function () { return ' --- |'; }).join('') + '\n' + rows.join('\n') + '\n\n';
+    }
+    return inl(el).trim() ? inl(el).trim() + '\n\n' : '';
+  }
+  function toMarkdown() {
+    var out = '# Bíblia Karmika · Season I\n\n*Season I · As Crônicas, por Ormund Salveth, Cronista da Grande Biblioteca.*\n\nDocumento gerado da versão online do livro.\n\n';
+    sections.forEach(function (sec) {
+      if (sec.eyebrow) {
+        var sub = /subtitle">(.*?)<\/h3>/.exec(sec.head);
+        out += '\n## ' + (sec.eyebrow === sec.title ? '' : sec.eyebrow + ' — ') + sec.title + '\n\n' + (sub ? '*' + sub[1] + '*\n\n' : '');
+      } else if (sec.toc) out += '\n## ' + sec.toc + '\n\n';
+      sec.blocks.forEach(function (b) {
+        var d = document.createElement('div'); d.innerHTML = b;
+        Array.prototype.forEach.call(d.children, function (el) { out += blk(el); });
+      });
+    });
+    return out.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+  }
+  function offerDownload(kind) {
+    if (!DL) return;
+    if (kind === 'html' && SNAP) DL.save({ filename: 'biblia-vol1-historia.html', data: SNAP }).catch(function () {});
+    else DL.save({ filename: 'biblia-vol1-historia.md', data: toMarkdown() }).catch(function () {});
+  }
+  if (window.claude && claude.use) {
+    claude.use('downloads').then(function (d) { if (d) { DL = d; rebuildSoon(); } }).catch(function () {});
+  }
+  book.addEventListener('click', function (e) {
+    var st = e.target.closest('.strap');
+    if (st) { e.preventDefault(); e.stopPropagation(); unlockStrap(st, function () { playOpening(tocStart[1]); }); return; }
+    var dl = e.target.closest('[data-dl]');
+    if (dl) { e.preventDefault(); offerDownload(dl.getAttribute('data-dl')); return; }
+    var t = e.target.closest('[data-go]');
+    if (t) { e.preventDefault(); go(parseInt(t.getAttribute('data-go'), 10)); }
+  });
+  prevB.addEventListener('click', function () { go(cur - 1); });
+  nextB.addEventListener('click', function () { go(cur + 1); });
+  tocB.addEventListener('click', function () { go(tocStart[(pageList[cur] && pageList[cur].tp) || 1]); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') go(cur + 1);
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(cur - 1);
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(N);
+  });
+  var sx = null, sy = null;
+  book.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+  book.addEventListener('touchend', function (e) {
+    if (sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+    sx = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) go(dx < 0 ? cur + 1 : cur - 1);
+  }, { passive: true });
+  window.addEventListener('hashchange', function () {
+    var m = /^#p(\d+)$/.exec(location.hash);
+    if (m) go(parseInt(m[1], 10));
+  });
+
+  build();
+  var start = 0, mm = /^#p(\d+)$/.exec(location.hash || '');
+  if (mm) start = parseInt(mm[1], 10);
+  else { try { var sv = parseInt(localStorage.getItem('karmika-page'), 10); if (sv >= 0 && sv <= N) start = sv; } catch (e) {} }
+  show(start, true);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(rebuildSoon);
+})();
+</script>
+
+
+</body></html>
