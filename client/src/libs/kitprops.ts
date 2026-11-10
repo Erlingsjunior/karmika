@@ -19,7 +19,7 @@ export function kitLoad(path: string): Promise<THREE.Object3D | null> {
       g.scene.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true;
         const src = m.material as THREE.MeshStandardMaterial; let mm = matCache.get(src);
         if (!mm) { mm = src.map ? std(0xffffff, { map: src.map }) : std(src.color?.getHex?.() ?? 0xffffff); mm.userData.shared = true; matCache.set(src, mm); }
-        m.material = mm; });
+        m.material = mm; m.geometry.userData.shared = true; });
       return g.scene; }).catch(() => null);
     cache.set(path, p);
   }

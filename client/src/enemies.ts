@@ -724,6 +724,44 @@ export function createEnemies(ctx: EnemyCtx) {
   /** o bicho viu a presa: chama o bando e, se for caçador de bando com companhia, rodeia antes de atacar */
   function engage(e: Enemy, foeOn: boolean) { const a = e as AI; e.state = 'chase'; e.t = 0; if (foeOn || a.tag) return;
     const stalk = STALK.has(e.type) ? 2.2 + Math.random() * 1.2 : 0, n = alertPack(e, stalk); if (stalk > 0 && n >= 1) a.stalkT = stalk; }
+  /* 10/11 (Erling: "inteligência, masmorras, monstros"): PAPÉIS NO BANDO — cada um faz o seu na briga.
+     · curandeiro (xamã goblin, bruxo do círculo, peregrina, fada rainha, necromante): de tempos em tempos fecha a ferida do parente mais machucado;
+     · invocador (necromante, lich, aracnídea-mãe, chefe goblin, senhor dos lamentos): chama ajuda — ossos da terra, filhotes, goblins, almas.
+       Os chamados valem pouco XP, somem sozinhos depois de ~45 s e desmancham quando quem chamou cai (não dá para "fazer fazenda" de invocados);
+     · líder (lobo-rei, lobisomem, chefe dos salteadores, chefe goblin, draugr berserker): ao entrar na briga solta o grito e o bando ao redor
+       fica 20% mais rápido e mais forte por 8 s. Matar o líder primeiro é a jogada. */
+  const HEAL: Partial<Record<EnemyType, { cd: number; k: number; name: string; col: number }>> = {
+    goblin_shaman: { cd: 8, k: 0.2, name: 'Cura de Lama', col: 0x8adf5a }, cultist: { cd: 9, k: 0.18, name: 'Pacto de Sangue', col: 0xc04a6a },
+    pilgrim: { cd: 9, k: 0.2, name: 'Bênção da Folha', col: 0x9aff9a }, fairyqueen: { cd: 7, k: 0.18, name: 'Pó de Fada', col: 0xffb0f0 },
+    necro: { cd: 10, k: 0.16, name: 'Remendo de Ossos', col: 0x9a6aff } };
+  const SUMMON: Partial<Record<EnemyType, { cd: number; type: EnemyType; n: number; max: number; name: string; col: number; below?: number }>> = {
+    necro: { cd: 15, type: 'skeleton', n: 2, max: 3, name: 'Levantai-vos!', col: 0x9a6aff }, lich: { cd: 16, type: 'skull_fire', n: 2, max: 4, name: 'Chamas da Cova', col: 0xff7a20 },
+    broodmother: { cd: 12, type: 'spiderling', n: 3, max: 6, name: 'A ninhada desperta', col: 0x9ad04a }, goblin_chief: { cd: 20, type: 'goblin', n: 2, max: 3, name: 'Goblins, aqui!', col: 0xd0a040, below: 0.6 },
+    spirit_lord: { cd: 16, type: 'spirit', n: 1, max: 2, name: 'Lamento das Almas', col: 0x9ad0ff } };
+  const LEAD: Partial<Record<EnemyType, string>> = { alpha: 'Uivo da Matilha', werewolf: 'Uivo da Lua', bandit_chief: 'Pra cima deles!', goblin_chief: 'Grito de Guerra', draugr_bers: 'Fúria do Norte' };
+  type Role = AI & { roleT?: number; sumT?: number; sumN?: number; howled?: boolean; rageT?: number; ttl?: number; master?: Enemy; minion?: boolean };
+  const pend: (() => void)[] = [];
+  const rageK = (e: Enemy) => ((e as Role).rageT ?? 0) > 0 ? 1.2 : 1;
+  function roles(e: Enemy, dt: number, fight: boolean) { const r = e as Role;
+    if (r.rageT) r.rageT = Math.max(0, r.rageT - dt);
+    if (!fight) { if (e.state === 'idle' || e.state === 'return') { r.howled = false; r.sumN = 0; } return; }
+    const f = famOf(e.type);
+    const L = LEAD[e.type]; if (L && !r.howled) { r.howled = true; let n = 0;
+      for (const o of list) { if (!o.alive || !o.active || (o as Enemy & { ally?: boolean }).ally || famOf(o.type) !== f || Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) > 15) continue; (o as Role).rageT = 8; n++; }
+      if (n) { ctx.onSpell?.(e, L); ctx.spellFx?.(e.pos.x, e.pos.z, 0xff5a3a, 3.5); } }
+    const H = HEAL[e.type]; if (H) { r.roleT = (r.roleT ?? H.cd * (0.4 + Math.random() * 0.4)) - dt;
+      if (r.roleT <= 0) { let best: Enemy | null = null, bk = 0.65;
+        for (const o of list) { if (!o.alive || !o.active || (o as Enemy & { ally?: boolean }).ally || (o !== e && famOf(o.type) !== f && !(o as Role).minion) || Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) > 11) continue; const k = o.hp / o.hpMax; if (k < bk) { bk = k; best = o; } }
+        if (best) { r.roleT = H.cd * (0.85 + Math.random() * 0.3); best.hp = Math.min(best.hpMax, best.hp + best.hpMax * H.k); ctx.onSpell?.(e, H.name); ctx.spellFx?.(best.pos.x, best.pos.z, H.col, 1.3); }
+        else r.roleT = 1.5; } }
+    const S = SUMMON[e.type]; if (S && (r.sumN ?? 0) < 6 && (!S.below || e.hp < e.hpMax * S.below)) { r.sumT = (r.sumT ?? 2 + Math.random() * 2) - dt;
+      if (r.sumT <= 0) { r.sumT = S.cd * (0.85 + Math.random() * 0.3); const mine = list.filter((o) => o.alive && (o as Role).master === e).length, n = Math.min(S.n, S.max - mine);
+        if (n > 0) { r.sumN = (r.sumN ?? 0) + n; ctx.onSpell?.(e, S.name); ctx.spellFx?.(e.pos.x, e.pos.z, S.col, 2.6);
+          const tg = r.tag === 'dg' ? 'dg-add' : r.tag === 'crypt' ? 'crypt-add' : 'sum', lv = e.def.lvl ?? DEFS[S.type].lvl ?? 1;
+          for (let i = 0; i < n; i++) { const a = e.yaw + Math.PI + (i - (n - 1) / 2) * 0.9, x = e.pos.x + Math.sin(a) * 2.2, z = e.pos.z + Math.cos(a) * 2.2;
+            pend.push(() => { const k = lvlScale(S.type, lv), m = spawn(S.type, x, z, { tag: tg, lvl: lv, hpMul: k.hp * 0.45, dmgMul: k.dmg * 0.7, aggro: 30, leash: 60 }) as Role;
+              m.minion = true; m.master = e; m.ttl = 45; m.state = 'chase'; m.t = 0; m.def.xp = Math.max(1, Math.round((m.def.xp ?? 0) * 0.2)); m.def.gold = [0, 0]; m.def.elite = undefined; }); } } } }
+  }
   function update(dt: number, t: number) {
     updateCasts(dt); cryT -= dt;
     const hero = ctx.heroPos(), alive = ctx.heroAlive();
@@ -742,6 +780,8 @@ export function createEnemies(ctx: EnemyCtx) {
           a.fled = true; a.fleeT = 3.5 + Math.random() * 2.5; a.stalkT = 0; e.state = 'flee'; e.t = 0; if (e.tele) e.tele.visible = false;
           const L = FLEE_SAY[famOf(e.type)]; if (L && cryT <= 0 && Math.random() < 0.7) { cryT = 4; ctx.onSpell?.(e, L[Math.floor(Math.random() * L.length)]); } }
         if (a.fled && e.state === 'idle' && e.hp >= e.hpMax * 0.95) { a.fled = false; a.licking = false; } }
+      if (!puppet && e.alive) { roles(e, dt, e.state === 'chase' || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt'); const r = e as Role;
+        if (r.minion && (r.ttl = (r.ttl ?? 45) - dt) <= 0 || (r.minion && r.master && !r.master.alive)) { const m = e; pend.push(() => { const i = list.indexOf(m); if (i >= 0) { if (m.active) unbuild(m); list.splice(i, 1); } }); ctx.spellFx?.(e.pos.x, e.pos.z, 0x6a6a7a, 1); e.alive = false; continue; } }
       if (puppet && ne.np) { // outro jogador está lutando com ele: só segue o que chega pela rede (sem IA aqui)
         const p = ne.np, ox = e.pos.x, oz = e.pos.z, far = Math.hypot(p.x - ox, p.z - oz) > 8, kk = far ? 1 : Math.min(1, dt * 10);
         e.pos.x += (p.x - ox) * kk; e.pos.z += (p.z - oz) * kk; let dy = p.f - e.yaw; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283; e.yaw += dy * Math.min(1, dt * 12);
@@ -788,7 +828,7 @@ export function createEnemies(ctx: EnemyCtx) {
           const sd = (e as AI).side ?? ((e as AI).side = e.id % 2 ? 1 : -1);
           const ux = dx / l, uz = dz / l, vx = ux - uz * (wob + sd * fk), vz = uz + ux * (wob + sd * fk), vl = Math.hypot(vx, vz) || 1;
           const slowK = (e.slow ?? 0) > 0 ? 0.5 : 1; if (e.slow) e.slow -= dt; if (e.root2) { e.root2 -= dt; mv = 0; break; }
-          step(e, vx / vl * D.speed * burst * dt * slowK, vz / vl * D.speed * burst * dt * slowK); mv = D.speed * burst * slowK; break;
+          const rk = rageK(e); step(e, vx / vl * D.speed * burst * dt * slowK * rk, vz / vl * D.speed * burst * dt * slowK * rk); mv = D.speed * burst * slowK * rk; break;
         }
         case 'windup': {
           const WU = D.windup * 1.15; // golpes 15% mais lentos: dá tempo de ler, desviar e bloquear
@@ -801,8 +841,8 @@ export function createEnemies(ctx: EnemyCtx) {
             (e.tele.material as THREE.MeshBasicMaterial).opacity = 0.45 + 0.55 * k; (fill.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.3 * k; }
           if (e.t >= WU) {
             if (e.tele) e.tele.visible = false;
-            if (alive && D.aggro >= 0.5 && inStrike(e, hero.x, hero.z) && !ctx.heroInvuln()) ctx.damageHero(monRoll(D.dmg, D.lvl ?? 1, D.name), e.pos); /* 07/11: os dados de ataque do bicho, com a média de sempre */
-            if (foeOn && inStrike(e, tx, tz)) fo!.hit(monRoll(D.dmg, D.lvl ?? 1, D.name));
+            if (alive && D.aggro >= 0.5 && inStrike(e, hero.x, hero.z) && !ctx.heroInvuln()) ctx.damageHero(monRoll(Math.round(D.dmg * rageK(e)), D.lvl ?? 1, D.name), e.pos); /* 07/11: os dados de ataque do bicho, com a média de sempre */
+            if (foeOn && inStrike(e, tx, tz)) fo!.hit(monRoll(Math.round(D.dmg * rageK(e)), D.lvl ?? 1, D.name));
             e.vel.set(Math.sin(e.yaw) * 9, Math.cos(e.yaw) * 9);
             e.state = 'recover'; e.t = 0;
           }
@@ -839,6 +879,7 @@ export function createEnemies(ctx: EnemyCtx) {
         if ((e as Enemy & { yielded?: boolean }).yielded && e.alive) { e.root.rotation.x = 0.4; e.root.position.y -= 0.3 * e.def.scale; } // rendido, de joelhos
       }
     }
+    if (pend.length) { for (const f of pend.splice(0)) f(); }
     separate(hero);
   }
   /* física: herói e bichos nunca ocupam o mesmo lugar, nem os bichos entre si (o herói só atravessa na investida/esquiva) */

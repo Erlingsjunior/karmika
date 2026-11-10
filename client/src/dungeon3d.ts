@@ -5,6 +5,7 @@
  *  Origem local (0,0) = canto noroeste; a saída fica em (W/2, D), como nas outras construções por dentro. */
 import * as THREE from 'three';
 import { makeFire } from './sistemas/fogo';
+import { kitPut } from './libs/kitprops';
 import { std, ramp, photoDetail } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -223,6 +224,35 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     if (o.theme === 'mina' || o.theme === 'toca' || o.theme === 'cripta' || o.theme === 'arquivo') { torch(c.x - hw * 0.7, c.z - hd); torch(c.x + hw * 0.7, c.z - hd); }
     else light(c.x, 2.4, c.z, th.light, 1.6, 16);
   }
+  /* 10/11 (Erling: "estou no Mausoléu dos Esquecidos e não vejo nenhum asset de masmorra dos novos; aqui devia estar super decorado"):
+     peças KayKit (CC0, libs/kitprops.ts) encostadas nas paredes de cada sala, conforme o tema: caixões, lápides, ossos, velas e santuários na
+     cripta; barris, caixotes e baús na mina; estantes e livros no arquivo; entulho, ossos e espadas quebradas nas tocas, no gelo e na lava.
+     Nunca na boca de um corredor (a peça só vai onde há rocha atrás dela) e nunca no meio do caminho. As de luz (vela, lanterna, santuário) acendem. */
+  { const KIT: Record<string, [string, number, number][]> = { /* [peça, escala, raio de colisão (0 = não bloqueia)] */
+      cripta: [['halloween/coffin', 0.85, 0.7], ['halloween/coffin_decorated', 0.85, 0.7], ['halloween/gravestone', 0.85, 0.45], ['halloween/grave_A', 0.85, 0.6], ['halloween/skull_candle', 0.9, 0], ['halloween/candle_triple', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['halloween/bone_A', 0.9, 0], ['halloween/bone_B', 0.9, 0], ['halloween/shrine_candles', 0.85, 0.7], ['halloween/plaque_candles', 0.85, 0.5], ['masmorra/rubble_half', 0.8, 0.5], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/banner_patternB_red', 0.85, 0.3], ['halloween/lantern_standing', 0.85, 0.3], ['masmorra/candle_melted', 0.9, 0]],
+      mina: [['masmorra/barrel_large', 0.8, 0.6], ['masmorra/barrel_small_stack', 0.8, 0.6], ['masmorra/crates_stacked', 0.8, 0.8], ['masmorra/box_stacked', 0.8, 0.7], ['masmorra/keg', 0.8, 0.5], ['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['masmorra/trunk_medium_A', 0.8, 0.6], ['masmorra/table_small', 0.8, 0.6], ['masmorra/stool', 0.8, 0], ['masmorra/coin_stack_small', 0.9, 0], ['masmorra/candle_lit', 0.9, 0]],
+      toca: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/bone_A', 0.9, 0], ['halloween/bone_C', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['halloween/skull', 0.9, 0], ['masmorra/barrel_small', 0.8, 0.45], ['masmorra/box_small', 0.8, 0.45], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/candle_melted', 0.9, 0]],
+      arquivo: [['masmorra/shelf_large', 0.8, 0.8], ['masmorra/shelves', 0.8, 0.8], ['masmorra/shelf_small_candles', 0.8, 0.5], ['mobilia/book_set', 0.9, 0], ['mobilia/cabinet_medium_decorated', 0.8, 0.6], ['masmorra/table_medium_decorated_A', 0.8, 0.8], ['masmorra/candle_triple', 0.9, 0], ['masmorra/chair', 0.8, 0], ['masmorra/trunk_small_A', 0.8, 0.45], ['masmorra/box_small_decorated', 0.8, 0.4]],
+      gelo: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/barrel_small', 0.8, 0.45], ['halloween/ribcage', 0.85, 0], ['halloween/skull', 0.9, 0], ['masmorra/banner_thin_blue', 0.85, 0.3], ['masmorra/trunk_small_B', 0.8, 0.45]],
+      magma: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/skull_candle', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/coin_stack_medium', 0.9, 0]],
+      mata: [['halloween/tree_dead_small', 0.8, 0.5], ['halloween/bone_B', 0.9, 0], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/skull', 0.9, 0], ['masmorra/barrel_small', 0.8, 0.45], ['halloween/lantern_standing', 0.85, 0.3], ['masmorra/box_small', 0.8, 0.45]] };
+    const LIT = /candle|lantern|shrine|plaque_candles|torch/;
+    const set = KIT[o.theme] ?? KIT.toca;
+    const solid = (x: number, z: number) => !isW(Math.floor(x / C), Math.floor(z / C));
+    const near = (x: number, z: number, rad: number) => cols.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr + rad + 0.25);
+    const putKit = (x: number, z: number, ry: number, pick: [string, number, number]) => { kitPut(g, pick[0], x, 0, z, ry, pick[1]); if (pick[2]) cols.push([x, z, pick[2]]); if (LIT.test(pick[0])) light(x, 1.1, z, 0xffb050, 1.3, 7); };
+    for (const rm of P.rooms) { if (rm.kind === 'start' && o.theme !== 'cripta') continue;
+      const c = loc(rm), hw = (rm.w * C) / 2 - 1.0, hd = (rm.d * C) / 2 - 1.0, n = rm.kind === 'boss' ? 10 : rm.kind === 'start' ? 3 : 6 + Math.floor(r() * 3);
+      const spots: [number, number, number][] = []; /* [x, z, giro]: fundo (norte), oeste e leste, só onde há rocha atrás */
+      for (let k = 0; k < 9; k++) { const t = -1 + (k + 0.5) * 2 / 9, x = c.x + t * hw, z = c.z - hd; if (solid(x, z - 1.6) && isW(Math.floor(x / C), Math.floor(z / C))) spots.push([x, z, 0]); }
+      for (let k = 0; k < 6; k++) { const t = -1 + (k + 0.5) * 2 / 6, z = c.z + t * hd * 0.8; for (const sd of [-1, 1]) { const x = c.x + sd * hw; if (solid(x + sd * 1.6, z) && isW(Math.floor(x / C), Math.floor(z / C))) spots.push([x, z, -sd * Math.PI / 2]); } }
+      for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+      let placed = 0; for (const [x, z, ry] of spots) { if (placed >= n) break; const pick = set[Math.floor(r() * set.length)]; if (near(x, z, pick[2] || 0.3)) continue; putKit(x + (r() - 0.5) * 0.4, z, ry + (r() - 0.5) * 0.5, pick); placed++;
+        /* pequenos de companhia (osso, vela, moeda) ao pé das peças grandes */
+        if (pick[2] > 0.5 && r() < 0.5) { const sm = set.filter((q) => !q[2]); if (sm.length) { const q = sm[Math.floor(r() * sm.length)]; kitPut(g, q[0], x + (r() - 0.5) * 1.4, 0, z + 0.7, r() * 6.28, q[1]); if (LIT.test(q[0])) light(x, 0.9, z + 0.7, 0xffb050, 1.1, 6); } } }
+      /* cripta e arquivo: um par de colunas trabalhadas marca a sala (fora da linha do meio) */
+      if ((o.theme === 'cripta' || o.theme === 'arquivo') && rm.kind !== 'start' && rm.w >= 5) for (const sd of [-1, 1]) { const x = c.x + sd * hw * 0.55, z = c.z - hd * 0.35; if (!near(x, z, 0.6) && isW(Math.floor(x / C), Math.floor(z / C))) { kitPut(g, 'masmorra/pillar_decorated', x, 0, z, 0, 0.9); cols.push([x, z, 0.55]); } }
+    } }
   if (o.theme === 'mina') for (const [a, b] of P.links) { const ax = (a.x + ox) * C, az = (a.z + oz) * C, bz = (b.z + oz) * C; for (let z = Math.min(az, bz) + 3; z < Math.max(az, bz) - 3; z += 6) beam((b.x + ox) * C, z, false); void ax; }
   /* a boca da caverna (Erling: "não tem luz de entrada nem de saída"): a luz do dia entra pela saída — um clarão lá fora, feixes de luz
      inclinados com poeira, a mancha clara no chão que vai escurecendo para dentro, e as pedras que emolduram a boca */
