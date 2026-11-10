@@ -1,8 +1,8 @@
 /* Inscrição no beta (10/11, Erling: "do mesmo jeito que fizemos na Tagged"): cada inscrição vira um e-mail pelo FormSubmit,
    enviado daqui do servidor (o endereço fica na variável KARMIKA_FORM_EMAIL da Vercel e nunca aparece na página).
    Na primeira inscrição o FormSubmit manda um e-mail pedindo para ativar o formulário: é só clicar em "Activate".
-   Se a loja Vercel Blob "karmika-beta" estiver ligada ao projeto, a inscrição também fica guardada lá. */
-import { put } from '@vercel/blob';
+   Se a loja Vercel Blob "karmika-beta" estiver ligada ao projeto, a inscrição também fica guardada lá.
+   10/11: o pacote da loja é carregado só na hora (antes, a falta dele derrubava a função inteira e nenhum e-mail saía). */
 
 const clean = (v, n) => String(v ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 
@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     } catch (e) { console.error('beta: formsubmit', e); }
   }
   if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try { await put(`beta/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`, JSON.stringify(row), { access: 'private', contentType: 'application/json', addRandomSuffix: true }); saved = true; }
+    try { const { put } = await import('@vercel/blob'); await put(`beta/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`, JSON.stringify(row), { access: 'private', contentType: 'application/json', addRandomSuffix: true }); saved = true; }
     catch (e) { console.error('beta: blob', e); }
   }
   if (sent || saved) return res.status(200).json({ ok: true });
