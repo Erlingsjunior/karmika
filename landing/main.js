@@ -55,7 +55,10 @@
 
   /* 4. reencarnação: linha por linha */
   gsap.utils.toArray('.rebirth__lines p').forEach((p, i) => gsap.to(p, { opacity: 1, filter: 'blur(0px)', y: 0, duration: 1.1, ease: 'power3.out', scrollTrigger: { trigger: p, start: 'top 82%' }, delay: i * 0.05 }));
-  gsap.fromTo('.rebirth__art', { xPercent: 10 }, { xPercent: -6, ease: 'none', scrollTrigger: { trigger: '.rebirth', start: 'top bottom', end: 'bottom top', scrub: true } });
+  /* o vampiro surge do escuro e cresce no fundo enquanto as frases aparecem; na última ("E ainda sinto sede") está inteiro */
+  const rv = gsap.timeline({ scrollTrigger: { trigger: '.rebirth', start: 'top 85%', end: 'bottom 60%', scrub: 0.8 } });
+  rv.fromTo('.rebirth__art .rv1', { opacity: 0, scale: 0.55, y: 60, filter: 'blur(8px) brightness(.4) drop-shadow(0 0 0 rgba(163,36,44,0))' }, { opacity: 0.95, scale: 1.08, y: 0, filter: 'blur(0px) brightness(.95) drop-shadow(0 0 70px rgba(163,36,44,.55))', ease: 'power1.out', duration: 1 }, 0)
+    .fromTo('.rebirth__art .rv2', { opacity: 0, scale: 0.5, x: 40 }, { opacity: 0.45, scale: 0.95, x: 0, ease: 'power1.out', duration: 1 }, 0.15);
 
   /* 5. caminhos: entram em cascata */
   /* (os cartões entram por IntersectionObserver: pathsInit) */

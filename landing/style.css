@@ -352,3 +352,14 @@ section h2 + p, .cmp__head h2 { margin-top: 0; }
 #pathsGrid .path.in { opacity: 1; transform: none; }
 .paths.is-open #pathsGrid .path:not(.is-sel) { opacity: .5; }
 @media (prefers-reduced-motion: reduce) { #pathsGrid .path { opacity: 1; transform: none; } }
+
+/* 10/11 (Erling): o vampiro surge e cresce no fundo da cena conforme se desce */
+.rebirth { min-height: 150vh; }
+.rebirth__art { position: absolute; right: 2vw; top: 0; bottom: 0; width: min(62vw, 1000px); transform: none !important; opacity: 1 !important; mask-image: none !important; -webkit-mask-image: none !important; filter: none !important; pointer-events: none; }
+.rebirth__art img { position: absolute; bottom: 8vh; height: 88vh; width: auto; max-width: none; object-fit: contain; opacity: 0; transform-origin: 50% 100%; }
+.rebirth__art .rv1 { right: 6%; filter: drop-shadow(0 0 60px rgba(163, 36, 44, .45)) brightness(.9); }
+.rebirth__art .rv2 { right: 42%; height: 72vh; filter: drop-shadow(0 0 40px rgba(163, 36, 44, .35)) brightness(.6); }
+.rebirth::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, var(--bg) 0%, rgba(11, 10, 13, .75) 38%, transparent 70%), linear-gradient(0deg, var(--bg), transparent 25%); pointer-events: none; z-index: 1; }
+.rebirth__lines { z-index: 3; }
+@media (max-width: 760px) { .rebirth__art { width: 100vw; right: -20vw; } .rebirth__art img { height: 70vh; } }
+@media (prefers-reduced-motion: reduce) { .rebirth__art img { opacity: .5; } }
