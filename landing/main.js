@@ -24,21 +24,20 @@
   gsap.fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.2, ease: 'power2.out' });
   /* o olho do KK começa apagado, surge do escuro e ACENDE: brilho cresce no centro, clarão, e a brasa fica viva (pulsando de leve) */
   gsap.set('.hero__emblem', { xPercent: -50, yPercent: -58 });
-  const eye = gsap.timeline({ delay: 1.2 });
+  /* 10/11 (Erling): o nome desenha, esmaece e SOME; só então o emblema surge e o olho acende */
+  const eye = gsap.timeline({ delay: 2.6 });
+  eye.to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.1, ease: 'power2.in' });
   eye.fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.6, ease: 'power2.out' })
-    .to('.hero__word', { opacity: 0.35, duration: 1.2 }, '<0.3')
     .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9, ease: 'power2.in' }, '+=0.3')
     .to('.em-on', { opacity: 1, duration: 0.35, ease: 'power1.in' }, '-=0.15')
     .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25, ease: 'power2.out' }, '<')
     .to('.em-flare', { opacity: 0.35, scale: 1.1, duration: 1.2, ease: 'power2.out' })
     .add(() => gsap.to('.em-flare', { opacity: 0.55, scale: 1.2, duration: 1.8, ease: 'sine.inOut', yoyo: true, repeat: -1 }));
   const tl = gsap.timeline({ scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom bottom', scrub: 0.8 } });
-  tl.to('.hero__word', { scale: 0.92, duration: 1 }, 0)
-    .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.35, duration: 0.8 }, 0.5)
+  tl.to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.35, duration: 0.8 }, 0.7)
     .to('.hero__sub', { opacity: 1, duration: 0.6 }, 1.6)
     .to('.hero__bg', { opacity: 1, scale: 1, duration: 1.6 }, 1.4)
     .to('.hero__ew', { opacity: 0.3, scale: 0.8, duration: 1 }, 1.8)
-    .to('.hero__word', { opacity: 0, duration: 0.8 }, 1.8)
     .to('.hero__cta', { opacity: 1, duration: 0.5, onStart: () => document.querySelector('.hero__cta').classList.add('on') }, 2.2)
     .to('.hero__scroll', { opacity: 0, duration: 0.3 }, 0);
 
