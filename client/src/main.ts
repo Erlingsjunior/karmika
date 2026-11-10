@@ -400,7 +400,7 @@ void LightShafts;
 void makeHalo;
 
 let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou sem facção), com custo de karma; nome fica vermelho
-let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
+let lvlUpKey = ''; let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
 function hookHero() {
   { // a rede vê o que o herói veste e faz: roupa nova e cada golpe/magia vão para os outros jogadores
     const h = hero as Hero3D & { __net?: boolean }; if (!h.__net) { h.__net = true; const sg = h.setGear.bind(h), ac = h.act.bind(h);
@@ -2726,6 +2726,14 @@ function frameBody() {
   const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.7 + 0.08 * Math.min(1, (game.st.lvl - 1) / 40)) /* 07/11: a pé 70% no nível 1, 72% no 10, 78% no 41 (62% ficou lento demais — Erling) */ /* 28/10 (Erling): a pé, 20% mais lento; 07/11: 28% ("começa bem lento e o cálculo sobre a base fica menor"); o passo cresce com itens e buffs, com teto de +40% */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
   if (game.st.lvl !== peleSys.lastLvl) { peleSys.lastLvl = game.st.lvl; refreshLocks(kitRace(), peleSys.lastLvl, (k) => tree.rank(k)); /* 05/11 (Erling: "subir de nível base dá pontos de atributo; subir de classe dá pontos de habilidade, passiva e talento"): o aviso antigo de "+1 ponto de magia" no nível base saiu — a conta já era só pelo nível de classe */ }
   dockEl.querySelector('[data-d="skills"]')?.classList.toggle('pulse', tree.available() > 0 && !dockSys.skillsOpen);
+  /* 10/11 (Erling: "não tem nada que me diz que eu passei de nível ou de classe; um ícone discreto do lado direito para eu não esquecer de dar os pontos"):
+     dois selos pequenos no lado direito: ▲ pontos de atributo (abre C) e ✦ pontos de classe, para magias, passivas e talentos (abre K). Somem quando não há ponto. */
+  { const ap = game.st.points ?? 0, tp = tree.available(), key = ap + ':' + tp; if (key !== lvlUpKey) { lvlUpKey = key; let el = document.getElementById('lvlup');
+      if (!el) { el = document.createElement('div'); el.id = 'lvlup'; document.body.appendChild(el);
+        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:300px;align-items:flex-end;z-index:40;display:flex;flex-direction:column;gap:8px;pointer-events:none}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
+        document.head.appendChild(st);
+        el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (!b) return; const k = b.dataset.key!; window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), bubbles: true })); }); }
+      el.innerHTML = (ap > 0 ? `<button type="button" data-key="c" title="Você tem ${ap} ponto${ap === 1 ? '' : 's'} de atributo para distribuir (C)"><i>▲</i>${ap} atributo${ap === 1 ? '' : 's'}</button>` : '') + (tp > 0 ? `<button type="button" class="k" data-key="k" title="Você tem ${tp} ponto${tp === 1 ? '' : 's'} de classe para magias, passivas e talentos (K)"><i>✦</i>${tp} de classe</button>` : ''); } }
   if (game.hurtNow()) setCombat(true);
   if (((t * 2) | 0) !== poiTick) { poiTick = (t * 2) | 0; for (const p of city.pois) if (Math.hypot(p.x - state.fx, p.y - state.fy) < 4) quests.onVisit(p.name); }
   let ix = 0, iy = 0;
