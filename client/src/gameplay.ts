@@ -29,6 +29,8 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 export interface GameplayDeps { /** multiplicador do dano recebido de fora (Instinto ligado: +10%) */ takenK?: () => number;
   scene: THREE.Scene; particles: Particles; camera: THREE.Camera; audio: AudioEngine;
   getHero: () => Hero3D; getRaceColor: () => number; canvas: HTMLCanvasElement;
+  /** 10/11: nome da arma na mão (martelo, maça, porrete… mudam o efeito do golpe) */
+  weaponBase?: () => string;
   /** bonecos de treino do Quartel (01/11): um grupo por posição */ dummies: THREE.Vector3[];
   world: { spawns: SpawnDef[]; heightAt(x: number, z: number): number; /** tile de muro/parede no ponto (m) — projéteis cravam */ isWall?(x: number, z: number): boolean; walkable(x: number, z: number): boolean; townAt?(x: number, z: number): boolean; guardNear?(x: number, z: number): boolean };
 }
@@ -638,6 +640,7 @@ export function createGameplay(d: GameplayDeps) {
     if (crit && st.sp.has('storm')) for (const o of enemies.list) if (o !== e && o.alive && o.active && Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) < 5) { const dm = Math.round(dmg * 0.5); for (let q = 0; q < 8; q++) pfx(o.pos.x + rnd(-0.2, 0.2), o.pos.y + 0.4 + q * 0.3, o.pos.z + rnd(-0.2, 0.2), { life: 0.25, s0: 0.8, s1: 0.2, c0: 0xffffff, c1: 0x6ab0ff, a: 1 }); if (enemies.hurt(o, dm, e.pos, 2)) killEnemy(o); dmgText(o.pos.clone().setY(o.pos.y + 2.2), dm, false, '#9ad0ff'); }
     dmgText(e.pos.clone().setY(e.pos.y + 2.0), dmg, crit);
     impactFx(new THREE.Vector3(e.pos.x, e.pos.y + 1.0, e.pos.z), dir, crit ? 1.5 : 1, stop || crit);
+    if (!runeJump && !arcBusy) try { strikeMark(e, dir, crit); } catch { /* o efeito nunca derruba o golpe */ }
     if (killed) killEnemy(e);
   }
   const ebars: HTMLElement[] = [];
@@ -759,10 +762,71 @@ export function createGameplay(d: GameplayDeps) {
   const heroAt = () => d.getHero().root.position;
   const heroMid = () => wTmp2.copy(d.getHero().root.position).setY(d.getHero().root.position.y + 1.1);
   const wTmp2 = new THREE.Vector3();
+  /* ============ 10/11 MARCAS DE GOLPE (Erling: "golpes do lobisomem fazem cortes de garra na tela; vampiro, mordida ou cortes rápidos
+     em vermelho; humano, feixes na diagonal; paladino, corte de luz branca que não ofusca; marretas fazem ondas como pedra na água, tum tum;
+     tecnocrata: espoleta estoura, cápsula voa; a flecha bate no alvo — chumk; bruxo: veneno pútrido, verde-musgo com bolhas").
+     Desenhos feitos uma vez em canvas (corte crescente, três garras, mordida, feixe); cada golpe põe um deles no ponto do impacto,
+     de frente para a câmera, girado pela sequência do combo (horizontal, vertical, diagonal), e some em ~0,3 s. ============ */
+  let hitKind: string | null = null, shotFrom: string | null = null, strikeN = 0; void shotFrom;
+  const SLT = (() => { const mk = (draw: (g: CanvasRenderingContext2D) => void) => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d')!; g.translate(64, 64); draw(g); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    const crescent = (g: CanvasRenderingContext2D, w: number, a0: number) => { g.beginPath(); g.moveTo(-58, 8); g.quadraticCurveTo(0, -46 * a0, 58, 8); g.quadraticCurveTo(0, -46 * a0 + w, -58, 8); g.fill(); };
+    const blade = mk((g) => { g.fillStyle = 'rgba(255,255,255,.55)'; crescent(g, 30, 1); g.fillStyle = '#fff'; crescent(g, 12, 1); });
+    const claw = mk((g) => { for (const o of [-22, 0, 22]) { const gr = g.createLinearGradient(-60, 0, 60, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-60, o + 4); g.quadraticCurveTo(0, o - 8, 60, o - 2); g.quadraticCurveTo(0, o + 1, -60, o + 4); g.fill(); } });
+    const bite = mk((g) => { g.fillStyle = '#fff'; for (const s2 of [-1, 1]) { g.beginPath(); g.arc(0, s2 * 6, 44, s2 < 0 ? Math.PI * 1.08 : 0.08 * Math.PI, s2 < 0 ? Math.PI * 1.92 : 0.92 * Math.PI); g.lineWidth = 7; g.strokeStyle = '#fff'; g.stroke();
+      for (let k = 0; k < 7; k++) { const a = (s2 < 0 ? Math.PI * 1.15 : 0.15 * Math.PI) + k / 6 * Math.PI * 0.7, x = Math.cos(a) * 44, y = Math.sin(a) * 44 + s2 * 6, len = (k === 1 || k === 5) ? 18 : 10; g.beginPath(); g.moveTo(x - 5, y); g.lineTo(x + 5, y); g.lineTo(x * 0.98, y - s2 * len); g.fill(); } } });
+    const beam = mk((g) => { const gr = g.createLinearGradient(-62, 0, 62, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.45, '#fff'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(-62, 0); g.lineTo(0, -6); g.lineTo(62, 0); g.lineTo(0, 6); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-50, -14, 100, 28); g.globalCompositeOperation = 'destination-in'; const m = g.createLinearGradient(0, -14, 0, 14); m.addColorStop(0, 'rgba(0,0,0,0)'); m.addColorStop(0.5, '#000'); m.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = m; g.fillRect(-64, -14, 128, 28); });
+    return { blade, claw, bite, beam }; })();
+  /** um traço na tela: textura, cor, giro (rad), tamanho e se brilha (aditivo) ou é tinta (normal) */
+  function slashAt(p: THREE.Vector3, tex: THREE.Texture, col: number, rot: number, size: number, glow = true, dur = 0.26, delay = 0) {
+    const go = () => { const mat = new THREE.SpriteMaterial({ map: tex, color: col, transparent: true, depthWrite: false, depthTest: false, blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending, rotation: rot, fog: false });
+      const sp = new THREE.Sprite(mat); sp.position.copy(p); sp.renderOrder = 20; sp.scale.set(size * 0.4, size * 0.4, 1); fxAdd(sp); let t = 0;
+      ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur), grow = Math.min(1, t / 0.06); sp.scale.set(size * (0.4 + 0.6 * grow), size * (0.4 + 0.6 * grow) * (1 - 0.25 * k), 1); mat.opacity = k < 0.35 ? 1 : 1 - (k - 0.35) / 0.65; }, end: () => { sp.parent?.remove(sp); mat.dispose(); } }); };
+    if (delay > 0) pending.push({ at: now + delay, fn: go }); else go(); }
+  const BLUNT = /Martelo|Maça|Porrete|Marreta|Clava|Malho|Mangual/;
+  /** marretas e maças: ondas como pedra caindo na água — tum, tum */
+  function ripple(e: Enemy, col: number, big: boolean) { const x = e.pos.x, z = e.pos.z, y = d.world.heightAt(x, z); for (let k = 0; k < (big ? 3 : 2); k++) pending.push({ at: now + k * 0.13, fn: () => { fxRing(x, z, k ? 0xffffff : col, (big ? 3.4 : 2.4) + k * 0.6, 0.55, 0.4, y); if (k === 0) { st.shake = Math.max(st.shake, big ? 0.32 : 0.2); for (let q = 0; q < 14; q++) { const a = rnd(0, 6.283); pfx(x + Math.cos(a) * 0.5, y + 0.1, z + Math.sin(a) * 0.5, { vx: Math.cos(a) * rnd(2, 4), vy: rnd(1, 3), vz: Math.sin(a) * rnd(2, 4), life: 0.5, s0: 0.3, s1: 0.06, c0: 0xd8c8a8, c1: 0x5a4a38, a: 0.8, drag: 2, g: 9 }); } } } }); }
+  /** veneno pútrido do bruxo: respingo verde-musgo e bolhas que sobem e estouram */
+  function putrid(p: THREE.Vector3) { for (let q = 0; q < 12; q++) pfx(p.x, p.y, p.z, { vx: rnd(-2.5, 2.5), vy: rnd(0, 2.5), vz: rnd(-2.5, 2.5), life: 0.5, s0: 0.28, s1: 0.06, c0: 0x6a8a2a, c1: 0x1a2a08, a: 0.95, drag: 2, g: 8 });
+    for (let q = 0; q < 7; q++) { const bx = p.x + rnd(-0.5, 0.5), bz = p.z + rnd(-0.5, 0.5), by = p.y + rnd(-0.6, 0.3), life = rnd(0.6, 1.1); pfx(bx, by, bz, { vy: rnd(0.4, 0.9), life, s0: rnd(0.12, 0.2), s1: rnd(0.25, 0.35), c0: 0x4a6a1a, c1: 0x8aa83a, a: 0.85 });
+      pending.push({ at: now + life * 0.95, fn: () => { for (let r2 = 0; r2 < 5; r2++) pfx(bx, by + life * 0.65, bz, { vx: rnd(-1, 1), vy: rnd(-0.2, 1), vz: rnd(-1, 1), life: 0.2, s0: 0.08, s1: 0.02, c0: 0xb8d870, c1: 0x3a5a10, a: 1 }); } }); } }
+  /** o golpe que acabou de acertar `e` deixa a marca da classe */
+  function strikeMark(e: Enemy, dir: THREE.Vector3, crit: boolean) {
+    const p = new THREE.Vector3(e.pos.x, e.pos.y + 1.1 + (e.def.radius ?? 0.5) * 0.4, e.pos.z), n = strikeN++, sz = (1.5 + (e.def.radius ?? 0.5) * 0.9) * (crit ? 1.3 : 1);
+    const ROT = [0, Math.PI / 2, Math.PI / 4, -Math.PI / 4], rot = ROT[n % 4] + rnd(-0.15, 0.15), wb = d.weaponBase?.() ?? '';
+    if (hitKind === 'arrow' || hitKind === 'longarrow' || hitKind === 'bolt' || hitKind === 'hbolt' || hitKind === 'kunai') { // chumk: a ponta crava
+      slashAt(p, SLT.beam, 0xfff0c8, Math.atan2(-dir.z, dir.x) * 0 + rnd(-0.3, 0.3), sz * 0.7, true, 0.16); fxFlash(p, 0xffe8b0, 1.1, 0.12);
+      for (let q = 0; q < 8; q++) pfx(p.x, p.y, p.z, { vx: -dir.x * rnd(1, 3) + rnd(-1.5, 1.5), vy: rnd(0.5, 2.5), vz: -dir.z * rnd(1, 3) + rnd(-1.5, 1.5), life: 0.4, s0: 0.12, s1: 0.05, c0: 0xc8a070, c1: 0x5a3a20, a: 1, drag: 1.5, g: 9 });
+      st.shake = Math.max(st.shake, crit ? 0.2 : 0.12); hitstop = Math.max(hitstop, performance.now() + (crit ? 60 : 30)); return; }
+    if (hitKind === 'bullet' || hitKind === 'pellet') { fxFlash(p, 0xffd890, 0.9, 0.1); for (let q = 0; q < 6; q++) pfx(p.x, p.y, p.z, { vx: rnd(-3, 3), vy: rnd(0, 3), vz: rnd(-3, 3), life: 0.25, s0: 0.1, s1: 0.03, c0: 0xffffff, c1: 0xffa040, a: 1, k: 1 }); return; }
+    if (skill === 'venomclaw') { slashAt(p, SLT.claw, 0x5aff4a, rot, sz); slashAt(p, SLT.claw, 0x0a3a08, rot, sz * 1.1, false, 0.32); return; }
+    if (BLUNT.test(wb)) { ripple(e, kitKey === 'pal' ? 0xffe8a0 : kitKey === 'dwarf' ? 0xffa050 : 0xd8c8a8, crit || /Marreta|Martelo/.test(wb)); slashAt(p, SLT.beam, 0xfff0d0, rnd(-0.3, 0.3), sz * 0.8, true, 0.14); return; }
+    switch (kitKey) {
+      case 'lob': if (Math.random() < 0.25) { slashAt(p, SLT.bite, 0xffffff, rnd(-0.2, 0.2), sz * 0.9); slashAt(p, SLT.bite, 0x8a0a14, rnd(-0.2, 0.2), sz, false, 0.32); }
+        else { slashAt(p, SLT.claw, 0xd81a2a, rot, sz * 1.08, false, 0.32); slashAt(p, SLT.claw, 0xffffff, rot, sz); } return;
+      case 'vam': if (Math.random() < 0.2) { slashAt(p, SLT.bite, 0xff2a3a, rnd(-0.2, 0.2), sz * 0.9); slashAt(p, SLT.bite, 0x5a0408, 0, sz, false, 0.3); }
+        else { slashAt(p, SLT.blade, 0xff2a3a, rot, sz, true, 0.18); slashAt(p, SLT.blade, 0xff6a6a, rot + Math.PI * 0.55, sz * 0.85, true, 0.16, 0.06); } return;
+      case 'pal': slashAt(p, SLT.blade, 0xffd27a, rot, sz * 1.08, true, 0.26); slashAt(p, SLT.blade, 0xffffff, rot, sz * 0.92, false, 0.24); return; /* corte de luz branca, borda dourada, sem clarão */
+      case 'bru': slashAt(p, SLT.blade, 0x3a5a10, rot, sz, false, 0.3); putrid(p); return;
+      case 'mag': slashAt(p, SLT.blade, 0x6ab0ff, rot, sz * 0.9); return;
+      case 'cac': slashAt(p, SLT.blade, 0xe8ecf4, rot, sz * 0.9, true, 0.18); slashAt(p, SLT.blade, 0xe8ecf4, -rot, sz * 0.9, true, 0.18, 0.05); return;
+      case 'nordic': slashAt(p, SLT.blade, 0x9ad7ff, rot, sz); slashAt(p, SLT.blade, 0xffffff, rot, sz * 0.7, true, 0.2); return;
+      case 'dwarf': slashAt(p, SLT.blade, 0xffa050, rot, sz); return;
+      case 'elf': slashAt(p, SLT.blade, 0x9ad870, rot, sz * 0.9); return;
+      case 'tecno': slashAt(p, SLT.beam, 0x6ae0ff, rot, sz); return;
+      default: { const dg = n % 2 ? Math.PI / 4 : -Math.PI / 4; slashAt(p, SLT.beam, 0xffc87a, dg, sz * 1.25, true, 0.22); slashAt(p, SLT.beam, 0xffffff, dg, sz * 1.05, true, 0.18); } /* humano: feixes na diagonal, um lado e o outro */
+    } }
+  /** tiro: o cano cospe fogo e a cápsula de latão pula para o lado, quica e some */
+  const casingGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.11, 6).rotateZ(Math.PI / 2), casingMat = new THREE.MeshBasicMaterial({ color: 0xd8a040 });
+  function gunFx(p: THREE.Vector3, dir: THREE.Vector3 | undefined, shotgun: boolean) {
+    const dx = dir?.x ?? 0, dz = dir?.z ?? 1; fxFlash(p.clone().addScaledVector(new THREE.Vector3(dx, 0, dz), 0.25), 0xffd070, shotgun ? 1.6 : 1.1, 0.07);
+    for (let q = 0; q < (shotgun ? 14 : 7); q++) pfx(p.x, p.y, p.z, { vx: dx * rnd(4, 10) + rnd(-1, 1), vy: rnd(-0.3, 0.8), vz: dz * rnd(4, 10) + rnd(-1, 1), life: 0.12, s0: 0.25, s1: 0.04, c0: 0xffffff, c1: 0xff9030, a: 1, k: 2 });
+    for (let q = 0; q < 3; q++) pfx(p.x, p.y, p.z, { vx: dx * 1.5, vy: rnd(0.4, 1), vz: dz * 1.5, life: 0.6, s0: 0.2, s1: 0.5, c0: 0xa8a8a8, c1: 0x505050, a: 0.4, drag: 2 });
+    const c = new THREE.Mesh(casingGeo, casingMat); c.position.copy(p); fxAdd(c); const v = new THREE.Vector3(dz * rnd(1.5, 2.5) - dx * 0.5, rnd(2, 3.2), -dx * rnd(1.5, 2.5) - dz * 0.5); let t = 0, bounced = 0;
+    ticks.push({ t: 1.1, fn: (dt2) => { t += dt2; v.y -= 14 * dt2; c.position.addScaledVector(v, dt2); c.rotation.x += dt2 * 18; c.rotation.y += dt2 * 9; const gy = d.world.heightAt(c.position.x, c.position.z) + 0.03; if (c.position.y < gy) { c.position.y = gy; if (bounced++ < 2) { v.y = -v.y * 0.4; v.x *= 0.5; v.z *= 0.5; } else v.set(0, 0, 0); } }, end: () => c.parent?.remove(c) }); }
   const shots = createShots({ scene: { add: (o: THREE.Object3D) => { lastShot = o; netAdd(o); }, remove: (o: THREE.Object3D) => d.scene.remove(o) } as unknown as THREE.Scene, heightAt: (x, z) => d.world.heightAt(x, z), isWall: (x, z) => d.world.isWall?.(x, z) ?? false, targets: () => enemies.list as unknown as ShotTarget[],
-    hit: (e0, h0) => { const e = e0 as unknown as Enemy; skill = (h0.data as { sk?: SkillId } | undefined)?.sk ?? 'combo'; hitEnemy(e, h0.mul, h0.kind !== 'bullet', h0.from); skill = null; if ((h0.data as ElfData | undefined)?.fx) elfHit(e, h0.point, h0.from, h0.mul, h0.data as ElfData); if (e.alive && h0.kind === 'kunai' && st.sp.has('burn')) { e.burn = 3; e.burnTick = 0; } },
+    hit: (e0, h0) => { const e = e0 as unknown as Enemy; skill = (h0.data as { sk?: SkillId } | undefined)?.sk ?? 'combo'; hitKind = h0.kind; try { hitEnemy(e, h0.mul, h0.kind !== 'bullet', h0.from); } finally { hitKind = null; } skill = null; if ((h0.data as ElfData | undefined)?.fx) elfHit(e, h0.point, h0.from, h0.mul, h0.data as ElfData); if (e.alive && h0.kind === 'kunai' && st.sp.has('burn')) { e.burn = 3; e.burnTick = 0; } },
     dummyAt: (x, z, r) => { const dm = dummyNear(x, z, r); return dm ? { hit: (pt, mul) => { const crit = Math.random() < st.crit; hitDummy(dm, dummyDmg(mul, crit), crit, pt.clone().setY(pt.y - 0.2)); } } : null; },
-    spark: (p, k, dir) => { if (k === 'flash') { /* 05/11: o disparo da flecha — um clarão curto na corda e faíscas para a frente */ for (let q = 0; q < 10; q++) pfx(p.x, p.y, p.z, { vx: (dir?.x ?? 0) * rnd(2, 7) + rnd(-0.6, 0.6), vy: (dir?.y ?? 0) * rnd(2, 7) + rnd(-0.3, 0.5), vz: (dir?.z ?? 0) * rnd(2, 7) + rnd(-0.6, 0.6), life: rnd(0.12, 0.3), s0: q < 2 ? 0.55 : 0.14, s1: 0.03, c0: 0xfff6d8, c1: 0xffb040, a: 1, drag: 4, k: q < 2 ? 0 : 1 }); return; } const n = k === 'blood' ? 10 : 7, c0 = k === 'blood' ? 0xc0101a : k === 'metal' ? 0xffe8a0 : k === 'wood' ? 0xd8b080 : 0xb8a888, c1 = k === 'blood' ? 0x3a0006 : k === 'metal' ? 0xff8a20 : k === 'wood' ? 0x6a4a2a : 0x6a5a48;
+    spark: (p, k, dir, sk) => { if (k === 'flash' && (sk === 'bullet' || sk === 'pellet')) { gunFx(p, dir, sk === 'pellet'); return; } if (k === 'flash') { shotFrom = sk ?? null; /* 05/11: o disparo da flecha — um clarão curto na corda e faíscas para a frente */ for (let q = 0; q < 10; q++) pfx(p.x, p.y, p.z, { vx: (dir?.x ?? 0) * rnd(2, 7) + rnd(-0.6, 0.6), vy: (dir?.y ?? 0) * rnd(2, 7) + rnd(-0.3, 0.5), vz: (dir?.z ?? 0) * rnd(2, 7) + rnd(-0.6, 0.6), life: rnd(0.12, 0.3), s0: q < 2 ? 0.55 : 0.14, s1: 0.03, c0: 0xfff6d8, c1: 0xffb040, a: 1, drag: 4, k: q < 2 ? 0 : 1 }); return; } const n = k === 'blood' ? 10 : 7, c0 = k === 'blood' ? 0xc0101a : k === 'metal' ? 0xffe8a0 : k === 'wood' ? 0xd8b080 : 0xb8a888, c1 = k === 'blood' ? 0x3a0006 : k === 'metal' ? 0xff8a20 : k === 'wood' ? 0x6a4a2a : 0x6a5a48;
       for (let q = 0; q < n; q++) pfx(p.x, p.y, p.z, { vx: -(dir?.x ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), vy: rnd(0.4, 2.6), vz: -(dir?.z ?? 0) * rnd(0.5, 2.5) + rnd(-1.5, 1.5), life: rnd(0.25, 0.5), s0: k === 'dust' ? 0.35 : 0.16, s1: k === 'dust' ? 0.7 : 0.04, c0, c1, a: 1, drag: 2.5, g: k === 'dust' ? -1 : 8 }); },
     sound: (k) => { if (k === 'ric') d.audio.ric(); else if (k === 'bhit') d.audio.bulletHit(); else d.audio.hit(); } }); /* 02/11: bala sem o ping agudo de metal */
   /* ---- 04/11: flechas do Elfo — o efeito de cada flecha especial quando ela acerta (ricochete, fogo, explosão, cipó, vento, perfurar, pena) ---- */
@@ -2250,7 +2314,7 @@ export function createGameplay(d: GameplayDeps) {
     get buffMove() { return buff.move * (1 + stance.move) * cmod.move; },
     /** postura de batalha: troca as somas fixas (posturas.ts) */
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
-    setKit(k: string) { kitKey = k; }, setDbgCast(on: boolean) { dbgCast = on; }, setRaceScale(k: number) { raceScale = k; },
+    setKit(k: string) { kitKey = k; }, setDbgCast(on: boolean) { dbgCast = on; }, dbgStrike(k: string, kind: string | null = null, n = 0) { const h = d.getHero(), p = h.root.position, y = h.root.rotation.y; const k0 = kitKey; kitKey = k; hitKind = kind; strikeN = n; try { strikeMark({ pos: new THREE.Vector3(p.x + Math.sin(y) * 2.5, p.y, p.z + Math.cos(y) * 2.5), def: { radius: 0.6 } } as unknown as Enemy, new THREE.Vector3(Math.sin(y), 0, Math.cos(y)), false); } finally { kitKey = k0; hitKind = null; } }, setRaceScale(k: number) { raceScale = k; },
     kit() { return kitKey; },
     /** chegada do Piscar: o clarão no ponto novo */
     blinkArrive() { const hh = d.getHero().root.position; for (let k = 0; k < 34; k++) pfx(hh.x + rnd(-0.4, 0.4), hh.y + rnd(0.1, 1.9), hh.z + rnd(-0.4, 0.4), { vx: rnd(-1.5, 1.5), vy: rnd(-0.5, 1.5), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.35, s1: 0.04, c0: 0xffffff, c1: blinkCol, a: 1, drag: 3 }); },

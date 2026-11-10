@@ -31,7 +31,7 @@ export interface ShotCtx {
   hit(e: ShotTarget, s: { mul: number; kind: ShotKind; point: THREE.Vector3; from: THREE.Vector3; data?: unknown }): void;
   /** bonecos de treino (posição e tocar) */
   dummyAt?(x: number, z: number, r: number): { hit(point: THREE.Vector3, mul: number): void } | null;
-  spark(p: THREE.Vector3, kind: 'blood' | 'metal' | 'dust' | 'wood' | 'flash', dir?: THREE.Vector3): void;
+  spark(p: THREE.Vector3, kind: 'blood' | 'metal' | 'dust' | 'wood' | 'flash', dir?: THREE.Vector3, shot?: ShotKind): void;
   sound?(k: 'hit' | 'thud' | 'ric' | 'bhit'): void;
 }
 interface Shot { kind: ShotKind; p: THREE.Vector3; v: THREE.Vector3; life: number; mul: number; m: THREE.Object3D; from: THREE.Vector3; data?: unknown; spinA: number; trailT: number; tracer?: THREE.Mesh }
@@ -95,7 +95,7 @@ export function createShots(ctx: ShotCtx) {
       dir = new THREE.Vector3(Math.sin(hy) * Math.cos(th), Math.sin(th), Math.cos(hy) * Math.cos(th));
     } else dir = new THREE.Vector3(Math.sin(yaw) * Math.cos(0.04), Math.sin(0.04), Math.cos(yaw) * Math.cos(0.04));
     const sp = o.spread ?? 0; if (sp > 0) { dir.x += (Math.random() - 0.5) * 2 * sp; dir.y += (Math.random() - 0.5) * sp; dir.z += (Math.random() - 0.5) * 2 * sp; dir.normalize(); }
-    const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m); if (kind === 'arrow' || kind === 'longarrow' || kind === 'bolt' || kind === 'hbolt') ctx.spark(from, 'flash', dir.clone());
+    const b = build(kind); b.m.position.copy(from); ctx.scene.add(b.m); ctx.spark(from, 'flash', dir.clone(), kind); /* 10/11: todo disparo avisa (balas e chumbo também: clarão no cano e cápsula) */
     shots.push({ kind, p: from.clone(), v: dir.multiplyScalar(v), life: kind === 'bullet' ? 0.6 : kind === 'pellet' ? 0.3 : 3.2, mul: o.mul, m: b.m, from: from.clone(), data: o.data, spinA: 0, trailT: 0, tracer: b.tracer });
     return tgt;
   }
