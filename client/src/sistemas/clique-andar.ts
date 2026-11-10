@@ -62,20 +62,20 @@ function updateXray(dt: number) {
   xray.update(dt, K.camera.position, who);
   /* o corte circular de visão: o herói projetado na tela (pixels do canvas), o raio de ~2,6 m à distância dele, e a distância da câmera até ele */
   { const v = K.cutP.copy(hp).setY(hp.y + 0.9), W = K.renderer.domElement.width, H = K.renderer.domElement.height; const dist = v.distanceTo(K.camera.position); v.project(K.camera); const sx = (v.x * 0.5 + 0.5) * W, sy = (v.y * 0.5 + 0.5) * H;
-    K.cutP.set(hp.x, hp.y + 0.9, hp.z); const right = K.cutV2.set(1, 0, 0).applyQuaternion(K.camera.quaternion); K.cutP.add(right.multiplyScalar(2.6)).project(K.camera); const rx = (K.cutP.x * 0.5 + 0.5) * W; const k = 1 / (K.dual.enabled ? K.dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) { cutOccT -= 1 / 60; if (cutOccT <= 0) { cutOccT = 0.12; cutOn = heroHidden(hp); } setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, K.cinemaSys.cine || !cutOn ? 0 : dist); const f = K.cutV2.set(0, 0, -1).applyQuaternion(K.camera.quaternion); const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl; setCutoutPlane(fx, fz, hp.x * fx + hp.z * fz - 1.4); } }
+    K.cutP.set(hp.x, hp.y + 0.9, hp.z); const right = K.cutV2.set(1, 0, 0).applyQuaternion(K.camera.quaternion); K.cutP.add(right.multiplyScalar(2.6)).project(K.camera); const rx = (K.cutP.x * 0.5 + 0.5) * W; const k = 1 / (K.dual.enabled ? K.dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) { cutOccT -= 1 / 60; if (cutOccT <= 0) { cutOccT = 0.12; { /* 10/11 (Erling: "tremor nas colunas da ponte"): com folga — liga com 9 de 10 raios escondidos, só desliga quando 6 ou menos, e a troca precisa de duas leituras seguidas iguais (antes piscava a cada 0,12 s com o herói meio atrás da coluna) */ const want = heroHidden(hp, cutOn ? 6 : 9); if (want !== cutOn) { cutFlip++; if (cutFlip >= 2) { cutOn = want; cutFlip = 0; } } else cutFlip = 0; } } setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, K.cinemaSys.cine || !cutOn ? 0 : dist); const f = K.cutV2.set(0, 0, -1).applyQuaternion(K.camera.quaternion); const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl; setCutoutPlane(fx, fz, hp.x * fx + hp.z * fz - 1.4); } }
 }
 /* REGRA DA AURA (Erling, 28/10): o corte só liga quando o herói está pelo menos 90% escondido. Dez raios da câmera até pontos do
    corpo (5 alturas × 2 lados); se 9 ou mais batem em cenário antes de chegar nele, corta. Peças que nunca somem (correio, fonte,
    baú, pedra de teletransporte…) nem contam como obstáculo nem são cortadas (world3d: NOCUT_KINDS). */
-let cutOccT = 0, cutOn = false; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3();
-function heroHidden(hp: THREE.Vector3): boolean {
+let cutOccT = 0, cutOn = false, cutFlip = 0; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3();
+function heroHidden(hp: THREE.Vector3, need = 9): boolean {
   const root = K.inside ? K.inside.int.group : K.objs.group; if (!root.visible) return false; occR.set(1, 0, 0).applyQuaternion(K.camera.quaternion);
   let hid = 0, n = 0;
   for (const hy of [0.25, 0.6, 0.95, 1.3, 1.65]) for (const sd of [-0.22, 0.22]) { n++; occP.set(hp.x + occR.x * sd, hp.y + hy, hp.z + occR.z * sd);
     occD.copy(occP).sub(K.camera.position); const L = occD.length(); occRay.set(K.camera.position, occD.normalize()); occRay.far = L - 0.35;
     const hits = occRay.intersectObject(root, true); if (hits.some((h) => { const m = h.object as THREE.Mesh, mt = m.material as THREE.Material; let o: THREE.Object3D | null = m; while (o && o !== root) { if (!o.visible) return false; o = o.parent; } return !Array.isArray(mt) && !mt.transparent && mt.side !== THREE.BackSide && !(mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial && !mt.userData.noCut; })) hid++;
-    if (n - hid > 1) return false; } // mais de um ponto à vista: não precisa cortar
-  return hid >= 9; }
+    if (n - hid > 10 - need) return false; } // pontos demais à vista: não precisa cortar
+  return hid >= need; }
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
 let stuckT = 0;
 function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {

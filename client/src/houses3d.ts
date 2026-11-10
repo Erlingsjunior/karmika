@@ -289,8 +289,17 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
     const iv = M(0xd8cfb0, 'plaster'), wd = M(0x9a7a52, 'wood'), gold = std(0xd8c070), r0 = Math.min(bw, bd) / 2, stoneM = M(0x8a9a80, 'stone');
     mesh(new THREE.CylinderGeometry(r0 + 0.35, r0 + 0.5, 0.35, 18), stoneM, cx, 0.17, cz); /* soleira de pedra */
     for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; mesh(new THREE.SphereGeometry(0.22, 6, 5), std(0x5a8a4a), cx + Math.cos(a) * (r0 + 0.45), 0.3, cz + Math.sin(a) * (r0 + 0.45)).scale.set(1.3, 0.5, 1); } /* musgo */
-    mesh(new THREE.CylinderGeometry(r0, r0 * 1.06, 3.0, 18), iv, cx, 1.85, cz); /* a parede */
-    for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; const rib = mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.2, 5), wd, cx + Math.cos(a) * (r0 + 0.03), 1.9, cz + Math.sin(a) * (r0 + 0.03)); rib.rotation.z = Math.cos(a) * 0.06; rib.rotation.x = -Math.sin(a) * 0.06; } /* nervuras de galho */
+    /* 10/11 (Erling: "a casa élfica parece um bangalô sem parede de um lado — se não tem parede, faça a parte aberta com bambus e cipós"):
+       a parede dá a volta menos no LESTE, que fica aberto (o mesmo trecho que se vê de dentro, em interiors3d): bambus com nós, corrimão e cipós */
+    const ivD = iv.clone(); ivD.side = THREE.DoubleSide; const OPEN_A = (a: number) => Math.cos(a) > 0.55 && Math.sin(a) < 0.75;
+    mesh(new THREE.CylinderGeometry(r0, r0 * 1.06, 3.0, 18, 1, true, 2.56, Math.PI * 2 - 1.84), ivD, cx, 1.85, cz); /* a parede (aberta a leste) */
+    { const floorIn = new THREE.Mesh(new THREE.CircleGeometry(r0 - 0.05, 18), std(0x8a7050)); floorIn.rotation.x = -Math.PI / 2; floorIn.position.set(cx, 0.36, cz); g.add(floorIn);
+      const bam = std(0xc8b870), node = std(0x8a7a40), vine = std(0x4a8a4a);
+      for (let a = -0.95; a <= 0.85; a += 0.2) { const x = cx + Math.cos(a) * r0, z = cz + Math.sin(a) * r0; mesh(new THREE.CylinderGeometry(0.07, 0.08, 3.0, 6), bam, x, 1.85, z); for (const y of [1.1, 1.9, 2.7]) mesh(new THREE.TorusGeometry(0.08, 0.02, 4, 8), node, x, y, z).rotation.x = Math.PI / 2;
+        const len = 0.6 + Math.abs(Math.sin(a * 7)) * 1.3; mesh(new THREE.CylinderGeometry(0.02, 0.02, len, 4), vine, x + Math.cos(a) * 0.08, 3.35 - len / 2, z + Math.sin(a) * 0.08); }
+      for (let a = -0.95; a < 0.85; a += 0.1) { const xa = cx + Math.cos(a) * r0, za = cz + Math.sin(a) * r0, xb = cx + Math.cos(a + 0.1) * r0, zb = cz + Math.sin(a + 0.1) * r0; const rl = mesh(new THREE.CylinderGeometry(0.04, 0.04, Math.hypot(xb - xa, zb - za) + 0.02, 5), bam, (xa + xb) / 2, 1.35, (za + zb) / 2); rl.rotation.z = Math.PI / 2; rl.rotation.y = -Math.atan2(zb - za, xb - xa); }
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffd890, toneMapped: false })); lamp.position.set(cx, 2.6, cz); g.add(lamp); }
+    for (let k = 0; k < 10; k++) { const a = k / 10 * 6.283; if (OPEN_A(a)) continue; const rib = mesh(new THREE.CylinderGeometry(0.06, 0.09, 3.2, 5), wd, cx + Math.cos(a) * (r0 + 0.03), 1.9, cz + Math.sin(a) * (r0 + 0.03)); rib.rotation.z = Math.cos(a) * 0.06; rib.rotation.x = -Math.sin(a) * 0.06; } /* nervuras de galho */
     mesh(new THREE.TorusGeometry(r0 + 0.04, 0.07, 5, 24), wd, cx, 1.0, cz).rotation.x = Math.PI / 2; mesh(new THREE.TorusGeometry(r0 + 0.04, 0.07, 5, 24), wd, cx, 3.3, cz).rotation.x = Math.PI / 2;
     /* telhado em camadas de folhas */
     const leafM = std(0xffffff, { map: shingleTex0(0x6fa66a), side: THREE.DoubleSide }), leafM2 = std(0xffffff, { map: shingleTex0(0xa8c060), side: THREE.DoubleSide });
@@ -305,7 +314,7 @@ export function buildStyledHouse(style: number, variant: number, Wm: number, Dm:
     const ar = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.09, 4, 14, Math.PI), gold); ar.position.set(dr.x, 2.55, cz + r0 + 0.08); g.add(ar);
     for (const s2 of [-1, 1]) { const vine = mesh(new THREE.TorusGeometry(0.3, 0.03, 4, 10, Math.PI), gold, dr.x + s2 * 1.0, 2.2, cz + r0 + 0.09); vine.rotation.z = s2 * 0.5; }
     /* janelas em arco acesas */
-    for (const a of [0.9, 2.2, -0.6]) { const x = cx + Math.cos(a) * (r0 + 0.02), z = cz + Math.sin(a) * (r0 + 0.02), ry = Math.PI / 2 - a; glowW(0.5, 0.9, x, 2.0, z, 0xffd090, ry); const fr = mesh(new THREE.TorusGeometry(0.28, 0.04, 4, 10, Math.PI), wd, x, 2.45, z); fr.rotation.y = ry; }
+    for (const a of [0.95, 2.2, -2.4]) { const x = cx + Math.cos(a) * (r0 + 0.02), z = cz + Math.sin(a) * (r0 + 0.02), ry = Math.PI / 2 - a; glowW(0.5, 0.9, x, 2.0, z, 0xffd090, ry); const fr = mesh(new THREE.TorusGeometry(0.28, 0.04, 4, 10, Math.PI), wd, x, 2.45, z); fr.rotation.y = ry; }
     /* trepadeiras com flores e canteiro na frente */
     for (let k = 0; k < 9; k++) { const a = k * 0.75 + 0.4, v = mesh(new THREE.SphereGeometry(0.2, 6, 5), std(0x4a8a4a), cx + Math.cos(a) * (r0 + 0.06), 0.6 + (k % 3) * 0.8, cz + Math.sin(a) * (r0 + 0.06)); v.scale.set(1, 1.6, 0.5); if (k % 2) mesh(new THREE.SphereGeometry(0.07, 5, 4), std([0xff9ab8, 0xfff0a0, 0xc0a0ff][k % 3]), cx + Math.cos(a) * (r0 + 0.14), 0.7 + (k % 3) * 0.8, cz + Math.sin(a) * (r0 + 0.14)); }
     for (const s2 of [-1, 1]) { const bx = dr.x + s2 * 1.5, bz = cz + r0 + 0.6; mesh(new THREE.CylinderGeometry(0.45, 0.4, 0.3, 10), stoneM, bx, 0.15, bz); mesh(new THREE.SphereGeometry(0.4, 7, 5), std(0x4a8a4a), bx, 0.45, bz).scale.set(1, 0.6, 1); for (let q = 0; q < 4; q++) mesh(new THREE.SphereGeometry(0.07, 5, 4), std([0xff9ab8, 0xfff0a0, 0xc0a0ff, 0xffffff][q]), bx + Math.cos(q * 1.6) * 0.25, 0.68, bz + Math.sin(q * 1.6) * 0.25); }
