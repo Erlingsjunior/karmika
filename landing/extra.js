@@ -27,18 +27,24 @@
   if (fight) {
     const imgs = [...fight.querySelectorAll('.fight__img')], list = $('.fight__rolls', fight), hit = $('.fight__hit', fight);
     const d = (n) => 1 + Math.floor(Math.random() * n);
-    const foes = [['Chefe Rubro', 15], ['Lobo Gélido', 13], ['Carniçal', 12], ['Elite da Cripta', 17], ['Javali Velho', 11]];
+    /* 10/11: as palavras da rolagem no idioma da página (i18n/i18n.js) */
+    const FL = { pt: ['contra', 'erro crítico', 'você fica aberto', 'errou', 'CRÍTICO!', 'acertou', 'dano', ',', ['Chefe Rubro', 'Lobo Gélido', 'Carniçal', 'Elite da Cripta', 'Javali Velho']],
+      en: ['vs', 'critical fail', 'you are left open', 'miss', 'CRITICAL!', 'hit', 'damage', '.', ['Crimson Chief', 'Frost Wolf', 'Ghoul', 'Crypt Elite', 'Old Boar']],
+      es: ['contra', 'pifia', 'quedas expuesto', 'fallo', '¡CRÍTICO!', 'acierto', 'daño', ',', ['Jefe Carmesí', 'Lobo Gélido', 'Necrófago', 'Élite de la Cripta', 'Jabalí Viejo']],
+      lv: ['pret', 'kritiska kļūda', 'tu paliec neaizsargāts', 'garām', 'KRITISKS!', 'trāpīts', 'bojājums', ',', ['Sārtais Vadonis', 'Sala Vilks', 'Līķēdājs', 'Kapenes Elite', 'Vecais Mežacūka']] }[window.KARMIKA_LANG || 'pt'] || null;
+    const W8 = FL || ['contra', 'erro crítico', 'você fica aberto', 'errou', 'CRÍTICO!', 'acertou', 'dano', ',', []];
+    const foes = [[W8[8][0] || 'Chefe Rubro', 15], [W8[8][1] || 'Lobo Gélido', 13], [W8[8][2] || 'Carniçal', 12], [W8[8][3] || 'Elite da Cripta', 17], [W8[8][4] || 'Javali Velho', 11]];
     let foe = foes[0], step = 0, img = 0, timer = 0;
     const push = (html, cls = '') => { const li = document.createElement('li'); li.className = cls; li.innerHTML = html; list.prepend(li); while (list.children.length > 7) list.lastElementChild.remove(); requestAnimationFrame(() => li.classList.add('in')); };
     const turn = () => {
-      if (step % 5 === 0) { foe = foes[Math.floor(Math.random() * foes.length)]; img = (img + 1) % imgs.length; imgs.forEach((im, i) => im.classList.toggle('on', i === img)); push(`<em>⚔ contra ${foe[0]}</em> <small>CD ${foe[1]}</small>`, 'head'); }
+      if (step % 5 === 0) { foe = foes[Math.floor(Math.random() * foes.length)]; img = (img + 1) % imgs.length; imgs.forEach((im, i) => im.classList.toggle('on', i === img)); push(`<em>⚔ ${W8[0]} ${foe[0]}</em> <small>CD ${foe[1]}</small>`, 'head'); }
       step++;
       const r = d(20), acc = 9, tot = r + acc;
-      if (r === 1) { push(`<b>d20</b> <span class="dv">1</span> <i>erro crítico</i>, você fica aberto`, 'miss'); return; }
-      if (tot < foe[1]) { push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>errou</i>`, 'miss'); return; }
+      if (r === 1) { push(`<b>d20</b> <span class="dv">1</span> <i>${W8[1]}</i>, ${W8[2]}`, 'miss'); return; }
+      if (tot < foe[1]) { push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>${W8[3]}</i>`, 'miss'); return; }
       const crit = r >= 19, a = d(4), b = d(4), c = d(8), arma = 7, dmg = Math.round((a + b + c + arma) * (crit ? 1.7 : 1));
-      push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>${crit ? 'CRÍTICO!' : 'acertou'}</i>`, crit ? 'crit' : 'ok');
-      push(`<b>dano</b> 2d4+1d8+${arma} = <span class="dv">${a}+${b}+${c}+${arma}</span>${crit ? ' ×1,7' : ''} → <strong>${dmg}</strong>`, 'dmg');
+      push(`<b>d20</b> <span class="dv">${r}</span> + ${acc} = ${tot} <i>${crit ? W8[4] : W8[5]}</i>`, crit ? 'crit' : 'ok');
+      push(`<b>${W8[6]}</b> 2d4+1d8+${arma} = <span class="dv">${a}+${b}+${c}+${arma}</span>${crit ? ` ×1${W8[7]}7` : ''} → <strong>${dmg}</strong>`, 'dmg');
       if (hit && !reduce) { hit.textContent = crit ? `${dmg}!` : dmg; hit.className = 'fight__hit' + (crit ? ' crit' : ''); hit.style.left = 35 + Math.random() * 30 + '%'; hit.style.top = 30 + Math.random() * 25 + '%'; void hit.offsetWidth; hit.classList.add('go'); }
     };
     const io = new IntersectionObserver((es) => es.forEach((e) => { clearInterval(timer); if (e.isIntersecting) { turn(); timer = setInterval(turn, reduce ? 4000 : 1700); } }), { threshold: 0.2 });

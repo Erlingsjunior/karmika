@@ -608,3 +608,13 @@ main > section { position: relative; isolation: isolate; }
 /* 10/11 (Erling: "esmaece em um círculo"): o Limiar com Marghar se apaga em volta, sem nenhuma borda reta à vista */
 .lore::before { top: 6vh !important; width: 88%; -webkit-mask-image: radial-gradient(ellipse 52% 50% at 60% 50%, #000 40%, rgba(0, 0, 0, .55) 70%, transparent 100%) !important; mask-image: radial-gradient(ellipse 52% 50% at 60% 50%, #000 40%, rgba(0, 0, 0, .55) 70%, transparent 100%) !important; }
 @media (max-width: 900px) { .lore::before { width: 100%; top: 4vh !important; } }
+/* 10/11: idiomas (PT, EN, ES, LV) na barra */
+.nav__lang { display: inline-flex; gap: 2px; margin-left: 10px; padding: 3px; border: 1px solid rgba(111, 168, 255, .35); border-radius: 999px; }
+.nav__lang a { border: 0 !important; font: 700 11px var(--sans) !important; letter-spacing: .08em; padding: 5px 8px; border-radius: 999px; color: var(--mut) !important; text-decoration: none; }
+.nav__lang a.on { background: rgba(111, 168, 255, .22); color: var(--sky2) !important; }
+.nav__lang a:hover { color: var(--ink) !important; }
+@media (max-width: 900px) { .nav__lang { margin: 10px 0 0; } }
+/* 10/11 (Erling: "o livro está torto e não dá para ver o 'clique para abrir'"): a Bíblia fica de frente, só um pouco deitada, e o aviso aparece embaixo */
+.tome { transform: perspective(1200px) rotateX(14deg) !important; margin-bottom: 56px; }
+.tome:hover, .tome:focus-visible, .tome.is-open { transform: perspective(1200px) rotateX(6deg) translateY(-8px) !important; }
+.tome__hint { transform: translateX(-50%) !important; bottom: -44px !important; white-space: nowrap; opacity: .9; }
