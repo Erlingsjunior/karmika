@@ -25,9 +25,15 @@ export default async function handler(req, res) {
       if (!sent) console.error('beta: formsubmit', r.status, j);
     } catch (e) { console.error('beta: formsubmit', e); }
   }
-  if (process.env.BLOB_READ_WRITE_TOKEN) {
-    try { const { put } = await import('@vercel/blob'); await put(`beta/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`, JSON.stringify(row), { access: 'private', contentType: 'application/json', addRandomSuffix: true }); saved = true; }
-    catch (e) { console.error('beta: blob', e); }
+  /* a inscrição também fica guardada na loja Vercel Blob (privada), sem pacote: a mesma chamada que o @vercel/blob faz */
+  const tok = process.env.BLOB_READ_WRITE_TOKEN;
+  if (tok) {
+    try {
+      const path = `beta/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`;
+      const r = await fetch(`https://vercel.com/api/blob/?pathname=${encodeURIComponent(path)}`, { method: 'PUT', body: JSON.stringify(row),
+        headers: { authorization: `Bearer ${tok}`, 'x-api-version': '13', 'x-vercel-blob-store-id': tok.split('_')[3] || '', 'x-vercel-blob-access': 'private', 'x-content-type': 'application/json', 'x-add-random-suffix': '1' } });
+      saved = r.ok; if (!saved) console.error('beta: blob', r.status, await r.text().catch(() => ''));
+    } catch (e) { console.error('beta: blob', e); }
   }
   if (sent || saved) return res.status(200).json({ ok: true });
   console.error('beta: nada gravou (falta KARMIKA_FORM_EMAIL ou a loja Blob)');
