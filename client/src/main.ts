@@ -118,6 +118,7 @@ import { createDialog } from './dialog';
 
 
 import { battleCry } from './gritos';
+import { createEspolio } from './sistemas/espolio';
 
 
 
@@ -2478,6 +2479,7 @@ function findInter(): Inter | null {
   const add = (d: number, max: number, label: string, act: () => void) => { if (d < max && (!best || d < best.d)) best = { d, label, act }; };
   { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); }
   if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); const tl = teleferico().interact(hx, hz); if (tl) add(tl.d - 1, 4.5, tl.label, tl.act); }
+  { const ci = espolio.interact(hx, hz); if (ci) add(ci.d - 0.8, 3.2, ci.label, ci.act); }
   { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); }
   { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); }
   { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); }
@@ -2732,6 +2734,12 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
   return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n🧱 Travadas (quadros acima de 70 ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+/* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
+const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
+  heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
+  log: (t, c) => game.logMsg(t, c), addGold: (n) => { game.st.gold += n; }, giveGear: (x, z, y, gs) => game.dropGearSet(x, z, y, gs) });
+game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ return espolio.eliteDied(e, ilvl, boost, shared); });
+(window as unknown as { __bau?: unknown }).__bau = espolio; /* teste */
 function frameBody() {
   pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
   { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
@@ -2890,6 +2898,7 @@ function frameBody() {
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);
   pm('jogo(inimigos)');
+  espolio.update(dt);
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   if (mouseSys.rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   pm('chefes');

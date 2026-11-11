@@ -376,6 +376,7 @@ export function createGameplay(d: GameplayDeps) {
   /* elites e chefes não morrem de imediato: caem de joelhos e o jogador decide — poupar ou matar (karma forte) */
   const YIELDERS = new Set(['prince', 'tormentor', 'treant', 'werewolf']); // o Bispo (chefe final da Catedral) não se rende
   let onYield: ((e: Enemy, decide: (kill: boolean) => void) => void) | null = null;
+  let eliteChest: ((e: Enemy, ilvl: number, boost: Partial<Record<Rarity, number>>, shared: boolean) => boolean) | null = null;
   function killEnemy(e: Enemy, shared = false) {
     const ey = e as Enemy & { yielded?: boolean };
     if (!shared && onYield && YIELDERS.has(e.type) && !ey.yielded) {
@@ -401,7 +402,9 @@ export function createGameplay(d: GameplayDeps) {
       const boost: Partial<Record<Rarity, number>> = { magic: 1 + tier * 0.06, rare: (1 + tier * 0.14) * (elite ? 3 : 1) * an, legendary: (1 + tier * 0.3) * (elite ? 5 : 1) * an, epic: (1 + tier * 0.25) * (big ? 6 : 1), unique: (1 + tier * 0.1) * (big ? 10 : 0.6), relic: (1 + tier * 0.1) * (big ? 12 : 0.2) };
       const n = elite ? 2 + (Math.random() < 0.5 ? 1 : 0) : Math.random() < Math.min(0.6, (0.13 + 0.03 * tier) * pk) ? 1 : 0; // o grind é onde caem os equipamentos
       if (pn > 1) for (const k of Object.keys(boost) as Rarity[]) boost[k] = (boost[k] ?? 1) * (1 + 0.1 * (pn - 1)); /* grupo: raridade melhor */
-      if (n) spawnGear(e.pos.x, e.pos.z, e.pos.y, ilvl, boost, n, elite ? 'rare' : undefined);
+      /* 10/11: elite deixa um baú dourado (sistemas/espolio.ts); as peças saem de lá, e em grupo vão para a disputa de dados */
+      const inChest = big && !!eliteChest && eliteChest(e, ilvl, boost, shared);
+      if (n && !inChest) spawnGear(e.pos.x, e.pos.z, e.pos.y, ilvl, boost, n, elite ? 'rare' : undefined);
       if (elite && Math.random() < 0.35) dropItem(e, 'tome', 1);
       { const rn = runeDrop(tier, big); if (rn) { dropItem(e, rn, 1); const p = parseRune(rn)!; logMsg(`ᛟ Uma runa caiu: ${RNAME[p.f]}`, '#' + RCOL[p.f].toString(16).padStart(6, '0')); } } /* 03/11: runas kármicas no loot */
     }
@@ -1510,7 +1513,7 @@ export function createGameplay(d: GameplayDeps) {
     /** jogar junto: liga os avisos da rede e o tamanho do grupo por perto */
     setNet(h: Partial<typeof netHooks>, party: () => number) { Object.assign(netHooks, h); partyN = party; },
     /** um companheiro de grupo matou um bicho perto de mim: XP, missão e o meu próprio saque */
-    sharedKill(e: Enemy) { killEnemy(e, true); },
+    sharedKill(e: Enemy) { killEnemy(e, true); }, setEliteChest(f: typeof eliteChest) { eliteChest = f; },
     /** relógio do jogo (s), para os testes medirem em tempo de jogo */ gameTime: () => now,
     setPvp(f: typeof pvpHit) { pvpHit = f; },
     /** 07/11: o grupo — para onde vai a cura que o herói faz, e a aura que os companheiros mandam */

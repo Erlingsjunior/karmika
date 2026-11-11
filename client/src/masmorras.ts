@@ -248,7 +248,7 @@ export function createMasmorras(ctx: DgCtx) {
   const HUD = document.createElement('div'); HUD.id = 'dghud'; document.body.appendChild(HUD);
   type Pool = { x: number; z: number; r: number; t: number; m: THREE.Mesh; dmg: number };
   let run: null | { tier: (typeof DG_TIERS)[number]; d: DgDef; int: DungeonFloor; O: { x: number; z: number }; pre: string; lvl: [number, number]; kills: number; need: number; total: number; boss: E | null; bossHp: number;
-    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; opened: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
+    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; opened: Set<number>; openedC: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
   const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const hashS = (s: string) => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 2147483647; return h || 1; };
   function build(d: DgDef, depth = 0) { return buildDungeon({ seed: hashS(d.id + (depth ? ':' + depth : '')), theme: d.theme, main: Math.min(12, d.main + Math.floor(depth / 2)), side: Math.min(6, d.side + Math.floor(depth / 3)), boss: d.kind === 'grupo' ? 11 : 8 }); }
@@ -272,7 +272,7 @@ export function createMasmorras(ctx: DgCtx) {
       else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); ctx.onKit?.(boss); }
     });
     const need = Math.ceil(total * (d.kind === 'grupo' ? 0.7 : 0.6));
-    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), done: false, dead: new Set(), depth, ti: tier };
+    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), openedC: new Set(), done: false, dead: new Set(), depth, ti: tier };
     ctx.game.logMsg(`⚔ ${d.name}${d.deep ? ` · Nível ${depth + 1} da descida` : ''} · ${TI.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
     if (d.deep) { const best = +(localStorage.getItem('karmika.dg.fundo.' + d.id) || 0); if (depth + 1 > best) try { localStorage.setItem('karmika.dg.fundo.' + d.id, String(depth + 1)); } catch { /* */ } }
     hud();
@@ -347,13 +347,27 @@ export function createMasmorras(ctx: DgCtx) {
       if (Math.random() < dt * 6) ctx.particles.spawn(p.x + (Math.random() - 0.5) * 3, 0.1, p.z + (Math.random() - 0.5) * 3, { vy: 0.8, life: 0.8, s0: 0.15, s1: 0.03, c0: mt.color.getHex(), c1: 0x101010, a: 0.8 });
       if (p.t > 14) { ctx.scene.remove(p.m); R.pools.splice(i, 1); } }
   }
+  /** bichos da própria masmorra que saem de um baú-isca ou de um caixão */
+  function ambush(R: NonNullable<typeof run>, x: number, z: number, n: number) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, t = R.d.mobs[Math.floor(Math.random() * R.d.mobs.length)], k = lvlScale(t, R.lvl[1]);
+      ctx.game.enemies.spawn(t, x + Math.cos(a) * 1.4, z + Math.sin(a) * 1.4, { tag: 'dg-add', lvl: R.lvl[1], hpMul: k.hp * R.tier.hp, dmgMul: k.dmg * R.tier.dmg, aggro: 30, leash: 999 }); } }
   /** o que dá para fazer perto (lá dentro): baús, o portão */
   function interactions(hx: number, hz: number, add: (d: number, r: number, label: string, act: () => void) => void) {
     if (!run) return; const R = run;
     R.int.chests.forEach((c, i) => { const x = R.O.x + c.x, z = R.O.z + c.z, dd = Math.hypot(hx - x, hz - z); if (dd > 4 || R.opened.has(i)) return;
-      add(dd, 2.8, 'E — Abrir o baú', () => { R.opened.add(i); ctx.audio.coins(2); const g = 8 + Math.floor(Math.random() * 12) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
+      add(dd, 2.8, 'E — Abrir o baú', () => { R.opened.add(i); const puff = (c0: number, c1: number) => { for (let k = 0; k < 30; k++) ctx.particles.spawn(x, 0.8, z, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.2, s1: 0.03, c0, c1, a: 1, drag: 1.5 }); };
+        /* 10/11 (Erling: "abrir baús e caixões: podem cair itens legais ou sair monstros"): 1 em 6 baús é isca */
+        if (Math.random() < 0.17) { ambush(R, x, z, 2 + (Math.random() < 0.4 ? 1 : 0)); puff(0x8a6a5a, 0x2a1a10); ctx.audio.boom(); ctx.game.logMsg('📦 O baú estava vazio. Era isca: alguma coisa se mexe atrás de você!', '#ff9a8a'); return; }
+        ctx.audio.coins(2); const g = 8 + Math.floor(Math.random() * 12) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
         if (Math.random() < 0.8) ctx.game.spawnGear(x, z, 0, R.lvl[1], { rare: 3, legendary: 1 }, 1, 'magic');
-        for (let k = 0; k < 30; k++) ctx.particles.spawn(x, 0.8, z, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.2, s1: 0.03, c0: 0xffe08a, c1: 0xb8924a, a: 1, drag: 1.5 }); }); });
+        if (Math.random() < 0.12) { ctx.game.spawnGear(x, z, 0, R.lvl[1] + 1, { legendary: 3, epic: 2 }, 1, 'rare'); ctx.game.logMsg('✦ No fundo falso do baú havia mais uma peça, das boas.', '#ffd870'); }
+        puff(0xffe08a, 0xb8924a); }); });
+    /* caixões e sarcófagos: metade só tem pó; um em quatro guarda algo de valor; um em quatro acorda quem dormia lá dentro */
+    (R.int.coffins ?? []).forEach((c, i) => { const x = R.O.x + c.x, z = R.O.z + c.z, dd = Math.hypot(hx - x, hz - z); if (dd > 3.4 || R.openedC.has(i)) return;
+      add(dd - 0.6, 2.4, 'E — Abrir o caixão', () => { R.openedC.add(i); const roll = Math.random();
+        for (let k = 0; k < 18; k++) ctx.particles.spawn(x, 0.9, z, { vx: (Math.random() - 0.5) * 2, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2, life: 1, s0: 0.3, s1: 0.06, c0: 0x9a9080, c1: 0x3a342c, a: 0.7, drag: 1.5 });
+        if (roll < 0.25) { ambush(R, x, z, 1 + (Math.random() < 0.35 ? 1 : 0)); ctx.audio.boom(); ctx.game.logMsg('⚰ A tampa cede por dentro. Quem dormia aqui acordou!', '#ff9a8a'); }
+        else if (roll < 0.5) { ctx.audio.coins(2); const g = 5 + Math.floor(Math.random() * 10) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; if (Math.random() < 0.55) ctx.game.spawnGear(x, z, 0, R.lvl[1], { rare: 2, legendary: 1 }, 1, 'magic'); ctx.game.logMsg(`⚰ Entre os ossos: ${g} de ouro. Alguém foi enterrado com o que tinha de melhor.`, '#ffe08a'); }
+        else ctx.game.logMsg('⚰ Só pó e ossos. Você fecha a tampa com cuidado.', '#b9b0a0'); }); });
     if (R.done && R.d.deep) { const bm = R.int.rooms.find((q) => q.kind === 'boss'); if (bm) { const x = R.O.x + bm.x, z = R.O.z + bm.z - 4, dd = Math.hypot(hx - x, hz - z); if (dd < 7) add(dd, 6, `⬇ E — Descer ao nível ${R.depth + 2} dos Túneis (+${R.d.deep.step} níveis)`, () => ctx.descend?.(R.depth + 1, R.ti)); } }
     const gt = R.int.gate; if (gt && !gt.opened) { const x = R.O.x + gt.x, z = R.O.z + gt.z, dd = Math.hypot(hx - x, hz - z); if (dd < 4.5) add(dd, 3, `🗝 Portão do chefe — faltam ${Math.max(0, R.need - R.kills)} criaturas`, () => hud()); }
   }

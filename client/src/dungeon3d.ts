@@ -14,7 +14,7 @@ export type DgTheme = 'toca' | 'mina' | 'gelo' | 'magma' | 'cripta' | 'mata' | '
 export type RoomKind = 'start' | 'pack' | 'side' | 'elite' | 'boss';
 export interface DgRoom { x: number; z: number; w: number; d: number; kind: RoomKind }
 export interface DungeonFloor extends Interior {
-  rooms: DgRoom[]; boss: { x: number; z: number }; chests: { x: number; z: number }[];
+  rooms: DgRoom[]; boss: { x: number; z: number }; chests: { x: number; z: number }[]; /** 10/11: caixões e sarcófagos que dá para abrir (item, nada ou monstro) */ coffins: { x: number; z: number }[];
   gate: { x: number; z: number; opened: boolean; open(): void } | null;
   entry: { x: number; z: number }; theme: DgTheme;
 }
@@ -203,7 +203,8 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
   const pool2 = (x: number, z: number, c: number, s: number, glow = false) => { const k = put(new THREE.CircleGeometry(s, 16), glow ? glowM(c) : M(c), x, 0.02, z); k.rotation.x = -Math.PI / 2; if (glow) { cols.push([x, z, s * 0.9]); light(x, 0.8, z, c, 2.6, 12); } };
   const beam = (x: number, z: number, alongX: boolean) => { const wm = M(0x5a3a22); for (const s of [-1, 1]) put(new THREE.BoxGeometry(0.25, 3, 0.25), wm, x + (alongX ? 0 : s * 2.6), 1.5, z + (alongX ? s * 2.6 : 0)); put(new THREE.BoxGeometry(alongX ? 0.3 : 5.6, 0.3, alongX ? 5.6 : 0.3), wm, x, 3, z); };
   const mush = (x: number, z: number, c: number) => { const s = 0.5 + r() * 0.9; put(new THREE.CylinderGeometry(0.08 * s, 0.12 * s, 0.9 * s, 6), M(0xd8d0c0), x, 0.45 * s, z); put(new THREE.SphereGeometry(0.4 * s, 10, 6, 0, 6.283, 0, 1.6), glowM(c), x, 0.9 * s, z); if (r() < 0.4) light(x, 1, z, c, 1.4, 8); cols.push([x, z, 0.35 * s]); };
-  const sarc = (x: number, z: number) => { put(new THREE.BoxGeometry(1, 0.7, 2.2), M(0x6a6660), x, 0.35, z); put(new THREE.BoxGeometry(1.1, 0.15, 2.3), M(0x7a7670), x, 0.75, z); cols.push([x, z, 1.1]); };
+  const coffins: { x: number; z: number }[] = [];
+  const sarc = (x: number, z: number) => { coffins.push({ x, z }); put(new THREE.BoxGeometry(1, 0.7, 2.2), M(0x6a6660), x, 0.35, z); put(new THREE.BoxGeometry(1.1, 0.15, 2.3), M(0x7a7670), x, 0.75, z); cols.push([x, z, 1.1]); };
   const candles = (x: number, z: number) => { for (let i = 0; i < 3; i++) { const cx2 = x + (r() - 0.5) * 0.6, cz2 = z + (r() - 0.5) * 0.6; put(new THREE.CylinderGeometry(0.05, 0.05, 0.3 + r() * 0.3, 6), M(0xe8e0c8), cx2, 0.2, cz2); put(new THREE.ConeGeometry(0.04, 0.1, 5), glowM(0xffc060), cx2, 0.45, cz2); } light(x, 0.8, z, 0xffb050, 1.4, 8); };
   const deco = (x: number, z: number) => { const k = r();
     if (o.theme === 'toca') { if (k < 0.35) nest(x, z, 0.7 + r() * 0.5); else if (k < 0.65) bones(x, z); else if (k < 0.8) candles(x, z); else pool2(x, z, 0x2a1810, 0.8 + r()); }
@@ -240,7 +241,7 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     const set = KIT[o.theme] ?? KIT.toca;
     const solid = (x: number, z: number) => !isW(Math.floor(x / C), Math.floor(z / C));
     const near = (x: number, z: number, rad: number) => cols.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr + rad + 0.25);
-    const putKit = (x: number, z: number, ry: number, pick: [string, number, number]) => { kitPut(g, pick[0], x, 0, z, ry, pick[1]); if (pick[2]) cols.push([x, z, pick[2]]); if (LIT.test(pick[0])) light(x, 1.1, z, 0xffb050, 1.3, 7); };
+    const putKit = (x: number, z: number, ry: number, pick: [string, number, number]) => { kitPut(g, pick[0], x, 0, z, ry, pick[1]); if (/coffin/.test(pick[0])) coffins.push({ x, z }); if (pick[2]) cols.push([x, z, pick[2]]); if (LIT.test(pick[0])) light(x, 1.1, z, 0xffb050, 1.3, 7); };
     for (const rm of P.rooms) { if (rm.kind === 'start' && o.theme !== 'cripta') continue;
       const c = loc(rm), hw = (rm.w * C) / 2 - 1.0, hd = (rm.d * C) / 2 - 1.0, n = rm.kind === 'boss' ? 10 : rm.kind === 'start' ? 3 : 6 + Math.floor(r() * 3);
       const spots: [number, number, number][] = []; /* [x, z, giro]: fundo (norte), oeste e leste, só onde há rocha atrás */
@@ -326,5 +327,5 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
   };
   mergeStatic(g, ramp);
   const rooms = P.rooms.map((rm) => { const c = loc(rm); return { ...rm, x: c.x, z: c.z, w: rm.w * C, d: rm.d * C }; });
-  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, rooms, boss: B, chests, gate, entry: { x: W / 2, z: D - 1.6 }, theme: o.theme };
+  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, rooms, boss: B, chests, coffins, gate, entry: { x: W / 2, z: D - 1.6 }, theme: o.theme };
 }
