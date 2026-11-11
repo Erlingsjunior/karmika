@@ -1,3 +1,4 @@
+import { teclaDe, nomeTecla } from './sistemas/teclas';
 import type { Race as BaseRace } from '@karmika/shared';
 import { selosHtml } from './sistemas/selos-passivas';
 /** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
@@ -387,6 +388,9 @@ export function kitOf(race: Race) { const base = KITS[race] ?? KITS.nordic!, ex 
 /* ---- ordem da barra: o jogador arrasta as magias para os espaços que preferir (30 espaços, 3 andares); a ordem fica salva ---- */
 const ROW_P = ['', '⇧', '⌃'];
 export const posKey = (p: number) => ROW_P[Math.floor(p / 10)] + KEYS[p % 10];
+/* 11/11: o número desenhado em cada casa da barra mostra a tecla que o jogador escolheu em Controles (antes ficava a padrão) */
+export const keyLabel = (k: string) => { const d = k.slice(-1), pre = k.slice(0, -1); return /^\d$/.test(d) ? pre + nomeTecla(teclaDe('m' + d)) : k; };
+export function relabelBar() { document.querySelectorAll<HTMLElement>('#skills .slot[data-k]').forEach((el) => { const kb = el.querySelector('kbd'); if (kb) kb.textContent = keyLabel(el.dataset.k ?? ''); }); }
 const LKEY = (race: Race) => `karmika.barmap.${race}`;
 const layoutCache: Partial<Record<Race, (SkillDef | null)[]>> = {};
 export function layout(race: Race): (SkillDef | null)[] {
@@ -421,11 +425,11 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
   const TI = ['', 'I', 'II', 'III', '✦'];
   if (kit.length > 10 && barRows() < 2) { try { if (!localStorage.getItem('karmika.rows2')) { localStorage.setItem('karmika.rows2', '1'); setBarRows(2); } } catch { /* */ } } // magias novas: abre o 2º andar uma vez
   const rows = barRows(); document.documentElement.style.setProperty('--rows', String(rows)); document.documentElement.dataset.rows = String(rows);
-  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${key}</kbd>${s.svg}${selosHtml(s.id)}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
+  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${keyLabel(key)}</kbd>${s.svg}${selosHtml(s.id)}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
   let html = '';
   for (let r = rows - 1; r >= 0; r--) {
     const pre = ROW_PRE[r];
-    html += `<div class="srow">${KEYS.map((k, i) => { const p = r * 10 + i, s = L[p]; return s ? slot(s, pre + k, p) : `<div class="slot empty" data-k="${pre}${k}" data-pos="${p}" title="Espaço livre — ${locked ? 'destrave a barra (🔒) e arraste uma magia para cá' : 'solte uma magia aqui'}"><kbd>${pre}${k}</kbd></div>`; }).join('')}</div>`;
+    html += `<div class="srow">${KEYS.map((k, i) => { const p = r * 10 + i, s = L[p]; return s ? slot(s, pre + k, p) : `<div class="slot empty" data-k="${pre}${k}" data-pos="${p}" title="Espaço livre — ${locked ? 'destrave a barra (🔒) e arraste uma magia para cá' : 'solte uma magia aqui'}"><kbd>${keyLabel(pre + k)}</kbd></div>`; }).join('')}</div>`;
   }
   bar.innerHTML = html + `<div class="rowbtn"><button data-rows="+" title="Mais um andar de magias">▲</button><button data-rows="-" title="Menos um andar">▼</button></div><button class="barlock ${locked ? '' : 'open'}" title="${locked ? 'Barra travada: as magias não saem do lugar. Clique para destravar e arrastar as magias para a ordem que preferir.' : 'Barra destravada: arraste as magias para trocar de lugar. Clique para travar.'}">${locked ? '🔒' : '🔓'}</button>`;
   const fury = document.getElementById('fury'); if (fury) fury.title = race === 'technocrat' ? 'Carga: sobe ao acertar Pulsos. Alimenta a Mina (3) e os Mísseis (4).' : 'Fúria: sobe ao acertar golpes. Alimenta a magia 4 e a cura 5.';
