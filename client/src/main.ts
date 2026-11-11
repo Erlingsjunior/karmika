@@ -947,7 +947,7 @@ function banditQuests() {
   return out;
 }
 let choirClock = 0; /* relógio do coral do Dia da Aurora (janela de 20 s a cada 5 min) */
-const quests = createQuests({ stance: () => instintoSys.stanceSys?.current().id ?? null, lean: () => soulLean(), outcast: () => (soul.s.outcast ?? null) as Outcast | null, madness: () => soul.s.madness ?? null, origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { addKarma(dk); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...[...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...WANDERER, ...COSTURA_I, ...WEREWOLF].filter(notOldChapterI), ...CHAPTER_I, ...HUNTER_I, ...MAGE_I, ...HUMAN_I, ...DWARF_I, ...ELF_I, ...ROADS_OF_PEOPLES, ...RACE_INSTINCT, ...STANCE_QUESTS, ...OUTCAST_QUESTS, ...MADNESS_QUESTS],
+const quests = createQuests({ stance: () => instintoSys.stanceSys?.current().id ?? null, lean: () => soulLean(), outcast: () => (soul.s.outcast ?? null) as Outcast | null, madness: () => soul.s.madness ?? null, origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { addKarma(dk); }, karmaNow: () => state.karma, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...[...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...WANDERER, ...COSTURA_I, ...WEREWOLF].filter(notOldChapterI), ...CHAPTER_I, ...HUNTER_I, ...MAGE_I, ...HUMAN_I, ...DWARF_I, ...ELF_I, ...ROADS_OF_PEOPLES, ...RACE_INSTINCT, ...STANCE_QUESTS, ...OUTCAST_QUESTS, ...MADNESS_QUESTS],
   room: { on: () => netRef?.state === 'on', posts: () => netRef?.posts ?? [], add: (item, n, gold) => netRef?.postAdd({ item, name: ITEMS_TBL[item]?.name ?? item, icon: ITEMS_TBL[item]?.icon ?? '•', n, gold, note: '' }),
     fill: (id, item, n) => netRef?.postFill(id, [{ item: { id: item, n } }]), cancel: (id) => netRef?.postCancel(id) } });
 (window as unknown as { __quests?: unknown }).__quests = quests;
@@ -1535,6 +1535,7 @@ const { compendium } = cacaSys;
 
 /* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 15, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). → sistemas/olho.ts */
 export interface OlhoCtx {
+  /** 11/11: o Juízo na abertura do Olho: a vila onde você está reage ao que ele guardou */ readonly juizo: (owed: number, n: number) => void;
   readonly profile: Profile | null;
   readonly game: Widen<typeof game>;
   readonly soul: Widen<typeof soul>;
@@ -1548,7 +1549,12 @@ export interface OlhoCtx {
   readonly audio: Widen<typeof audio>;
 }
 var olhoSys: ReturnType<typeof createOlho>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_olhoSys() { return createOlho({ get profile() { return profile; }, get game() { return game; }, get soul() { return soul; }, get compendium() { return compendium; }, get state() { return state; }, get feats() { return feats; }, get addKarma() { return addKarma; }, get quests() { return quests; }, get myPath() { return myPath; }, get inv() { return inv; }, get audio() { return audio; } }); }
+function mk_olhoSys() { return createOlho({ juizo: (owed, n) => { const st = hereSettle()?.name ?? settleAt(larSys.home.x, larSys.home.y, 8)?.name ?? 'Karmika', dv = Math.max(-600, Math.min(600, Math.round(owed * 25)));
+    if (dv) align.add('vila', st, dv, 'o Juízo do Olho');
+    const luz = owed > 0, zero = owed === 0;
+    eyeSees('O Juízo do Olho', `${n} ato${n === 1 ? '' : 's'} que você fez enquanto ele dormia.`, zero ? `Nada pesou para lado nenhum. ${st} olha para você como olhava ontem.` : luz ? `A luz chegou na frente. Em ${st} vão lembrar o seu nome com gosto: gente que cumprimenta, mercador que desconta.` : `A sombra chegou na frente. Em ${st} vão lembrar o seu nome baixo: gente que fecha a porta, mercador que cobra mais.`, owed);
+    game.logMsg(zero ? `👁 O Juízo: ${st} não mudou com você.` : `👁 O Juízo: o seu nome em ${st} ${luz ? 'subiu' : 'desceu'} (${dv > 0 ? '+' : ''}${dv} de alinhamento). Os preços e as falas acompanham.`, luz ? '#9ad7ff' : zero ? '#d9c08a' : '#ff8a7a'); },
+  get profile() { return profile; }, get game() { return game; }, get soul() { return soul; }, get compendium() { return compendium; }, get state() { return state; }, get feats() { return feats; }, get addKarma() { return addKarma; }, get quests() { return quests; }, get myPath() { return myPath; }, get inv() { return inv; }, get audio() { return audio; } }); }
 olhoSys ??= mk_olhoSys();
 const { crestEl, globes, eyeSys } = olhoSys;
 function updateWho(...a: Parameters<ReturnType<typeof createOlho>['updateWho']>): ReturnType<ReturnType<typeof createOlho>['updateWho']> { return (olhoSys ??= mk_olhoSys()).updateWho(...a); }
