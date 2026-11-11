@@ -611,7 +611,11 @@ function bridgeDeck_L(xm: number, zm: number): number | null {
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T;
     const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = ((xm - ax) * dx + (zm - az) * dz) / L2;
-    if (t < 0 || t > 1) continue;
+    /* 10/11 (Erling: "em algumas partes o jogo ainda engole o personagem", na cabeceira da ponte de pedra): o chão ao lado da soleira ficava mais
+       baixo que ela e o herói afundava na pedra. Nos 2,6 m antes de cada cabeceira o chão sobe em rampa até a altura da soleira. */
+    if (t < 0 || t > 1) { if (!b.stone) continue; const L = Math.sqrt(L2), d = (t < 0 ? -t : t - 1) * L; if (d > 2.6) continue; const tc = t < 0 ? 0 : 1;
+      if (Math.hypot(xm - (ax + dx * tc) - (t < 0 ? -1 : 1) * dx / L * d, zm - (az + dz * tc) - (t < 0 ? -1 : 1) * dz / L * d) >= (b.half ?? BRIDGE_HALF) + 0.3) continue;
+      const end = (t < 0 ? b.hA : b.hB) + 0.12, g = groundH_L(xm, zm); if (end <= g) continue; const k = 1 - d / 2.6; return g + (end - g) * k * k * (3 - 2 * k); }
     const px = ax + dx * t, pz = az + dz * t;
     if (Math.hypot(xm - px, zm - pz) < (b.half ?? BRIDGE_HALF)) return b.hA + (b.hB - b.hA) * t + (b.hump ? b.hump * Math.sin(Math.PI * t) : 0) + 0.12;
   }
@@ -2512,6 +2516,11 @@ function buildCity_L(): World {
     for (const q of props) { if (q.kind !== 'torch' || !nearStall(q.gx, q.gy)) continue; mark(q, false); let best: [number, number] | null = null, bs = 1e9;
       for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const x = q.gx + dx, y = q.gy + dy; if ((!dx && !dy) || !okAt(x, y, 1, 1) || nearStall(x, y)) continue; const sc = Math.hypot(dx, dy) - (dx - dy) * 0.35; if (sc < bs) { bs = sc; best = [x, y]; } }
       if (best) { q.gx = best[0]; q.gy = best[1]; } mark(q, true); }
+    /* 10/11 (Erling: "apareceu um poste de luz no MEIO da ponte"): poste de lampião nunca fica em cima de ponte nem na boca dela */
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind !== 'torch') continue; const x = q.gx + 0.5, y = q.gy + 0.5;
+      const on = bridges.some((b) => { if (b.poly) return inPoly(b.poly, x, y); const dx = b.bx - b.ax, dy = b.by - b.ay, L2 = dx * dx + dy * dy || 1, L = Math.sqrt(L2), t = ((x - b.ax) * dx + (y - b.ay) * dy) / L2;
+        return t > -1.5 / L && t < 1 + 1.5 / L && Math.hypot(b.ax + dx * t - x, b.ay + dy * t - y) < (b.half ?? BRIDGE_HALF) / T + 0.75; });
+      if (on) { mark(q, false); props.splice(i, 1); } }
     /* 03/11 (Erling: "arrume o banco"): o poste com lampião é largo; banco colado nele (a 1 casa) dá um passo para longe, se houver lugar */
     for (const t of props) { if (t.kind !== 'torch') continue; for (const q of props) { if (q.kind !== 'bench' || Math.max(Math.abs(q.gx - t.gx), Math.abs(q.gy - t.gy)) > 1) continue;
       const sx = Math.sign(q.gx - t.gx), sy = Math.sign(q.gy - t.gy); mark(q, false); for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]] as [number, number][]) { if (!ax && !ay) continue; if (okAt(q.gx + ax, q.gy + ay, 1, 1) || ['grass', 'plaza', 'road'].includes(String(map[q.gy + ay]?.[q.gx + ax])) && !occ.has((q.gy + ay) * 4096 + q.gx + ax)) { q.gx += ax; q.gy += ay; break; } } mark(q, true); } }

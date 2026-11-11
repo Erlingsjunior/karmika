@@ -409,7 +409,7 @@ let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou 
 const ataqueSys = createAtaques({ T, settlements: () => city.settlements as never, heroTile: () => ({ x: state.fx, y: state.fy }), night: () => state.night, inside: () => !!inside, level: () => game.st.lvl,
   walkable: (x, z) => { const tt = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!tt || !isWalkable(tt)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T) && !rampartAt(Math.floor(x / T), Math.floor(z / T)); } catch { return true; } }, spawn: (ty, x, z, o) => game.enemies.spawn(ty, x, z, o) as never, clearTag: (tg) => game.enemies.clearTag(tg),
   log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; } });
-(window as unknown as { __raid?: () => string | undefined }).__raid = () => ataqueSys.force(); /* teste */ (window as unknown as { __en?: unknown }).__en = () => ({ en: game.enemies, x: state.fx * T, z: state.fy * T }); /* teste */
+(window as unknown as { __raid?: () => string | undefined }).__raid = () => ataqueSys.force(); /* teste */ (window as unknown as { __hAt?: unknown }).__hAt = (x: number, z: number) => [groundH(x, z), heightAt(x, z)]; (window as unknown as { __world?: unknown }).__world = () => city; (window as unknown as { __en?: unknown }).__en = () => ({ en: game.enemies, x: state.fx * T, z: state.fy * T }); /* teste */
 let lvlUpKey = ''; let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
 function hookHero() {
   { // a rede vê o que o herói veste e faz: roupa nova e cada golpe/magia vão para os outros jogadores

@@ -327,5 +327,204 @@
    "Dicen que {nome} {feito}.",
    "Cierra la puerta esta noche, ¿eh?"
   ]
+ ],
+ "grito.elite.human": [
+  "¿Qué monstruosidad es esa? ¡Voy a sobrevivirte!",
+  "No nací {héroe|heroína}. Pero tampoco nací para correr.",
+  "Karmika va a saber que estuve aquí. ¡Ven!",
+  "Grande, feo y lento. Dos de tres los arreglo con la espada.",
+  "Mi madre decía: mira al miedo a los ojos. Listo. Ya lo miré.",
+  "El Ojo está mirando. Pues que valga la pena.",
+  "Si caigo, que sea de pie."
+ ],
+ "grito.elite.nordic": [
+  "¡Odin! Manda a los cuervos: ¡hoy hay carne en el suelo!",
+  "¡Por el martillo de Thor, esta cosa va a aprender a sangrar!",
+  "Valhalla espera. ¡Pero hoy todavía no, bicho!",
+  "¿Te mandó Fenrir? ¡Dile que aquí estoy!",
+  "Un nombre más para mi saga. ¡Ven, montaña de carne!",
+  "¡Mi escudo ha desayunado cosas peores!",
+  "El Norte no retrocede. ¡Adelante!"
+ ],
+ "grito.elite.dwarf": [
+  "¡Por las barbas del Gran Maestro Cascudo! ¿Qué engendro es ese? ¡Se parece a mi suegra!",
+  "¡Por la Forja! ¡A este bicho lo dejo hecho un yunque!",
+  "Más feo que un enano sin barba. Y mira que eso es feo.",
+  "Acércate, grandullón. Mi hachuela quiere charlar.",
+  "La roca no corre. ¡Y yo estoy hecho de roca!",
+  "Eso huele a mineral malo. Lo voy a refinar a golpes.",
+  "¡No cabe en mi cueva, pero sí en mi hacha!"
+ ],
+ "grito.elite.elf": [
+  "Que los Antiguos me perdonen por quitar una vida. Pero este monstruo debe partir.",
+  "El bosque llora cuando pasas. Hoy va a sonreír.",
+  "Hace mil años que los míos esperan esto. No voy a fallar.",
+  "Vuelve al silencio del que viniste.",
+  "Mi arco conoce tu corazón mejor que tú.",
+  "No toda sombra merece la noche. La tuya no.",
+  "Por las hojas de Aelvaren: hoy no."
+ ],
+ "grito.elite.tecno": [
+  "¡A ver si este reactor funciona de verdad ahora! ¡Muere, ser maldito!",
+  "Datos insuficientes. Los voy a recoger sobre el terreno.",
+  "Eso es biología primitiva. Yo soy el futuro.",
+  "Sobrecarga autorizada. Que la Academia me perdone la factura de la luz.",
+  "No entiendes lo que es un amperio. Lo vas a entender.",
+  "Calma, calma… ajustando la mira… ¡ahora!",
+  "Protocolo de exterminio: iniciado.",
+  "La ciencia no tiene miedo. Yo, un poco. Pero manda la ciencia."
+ ],
+ "grito.elite.pal": [
+  "Que Auréon me proteja en esta batalla. ¡Adelante!",
+  "La luz no negocia con la sombra. Yo tampoco.",
+  "Arrodíllate, criatura, y quizá rece por ti.",
+  "Me ordenaron para esto. ¡Ven!",
+  "Cada golpe mío es una oración. Prepárate para oír muchas.",
+  "En nombre de los que devoraste: basta.",
+  "La fe no quita el dolor. Pero sostiene el escudo."
+ ],
+ "grito.elite.cac": [
+  "Mmm… ¡esa cabeza va a quedar de lujo encima de mi chimenea!",
+  "Un nombre más en la lista. Tachado dentro de poco.",
+  "La Escuela me enseñó a cazar cosas así. Hoy es el examen final.",
+  "Corre, si quieres. Cazo mejor cuando la presa corre.",
+  "Demonio, bestia o engendro: todos mueren igual.",
+  "He visto cosas peores. Mentira. Pero te mato igual.",
+  "La ballesta está lista. ¿Y tu cabeza?"
+ ],
+ "grito.elite.vam": [
+  "Qué desperdicio de sangre. La voy a aprovechar.",
+  "Grita. A la noche le gusta la música.",
+  "Los siglos me enseñaron paciencia. Tú no me vas a enseñar nada.",
+  "A la Corte le va a gustar esta historia. Tú no sales en ella.",
+  "Yo ya morí una vez. Te toca.",
+  "Tanta carne, tan poco espíritu. Permíteme corregirlo.",
+  "Ven a la sombra. Yo vivo aquí."
+ ],
+ "grito.elite.lob": [
+  "La manada te oyó desde lejos. Ahora te va a sentir.",
+  "Huelo tu miedo. Está delicioso.",
+  "Soy la fiera que temes en la oscuridad. Mírame.",
+  "La luna aún no ha salido y ya quiero sangre.",
+  "Presa grande. Bien. Tenía hambre.",
+  "Aúlla conmigo, monstruo. Y luego calla para siempre.",
+  "Nadie caza en mi bosque. Nadie."
+ ],
+ "grito.elite.mag": [
+  "La Biblioteca tiene un capítulo sobre ti. Corto.",
+  "¿Fuego, hielo o rayo? Te dejo elegir… no, elijo yo.",
+  "Dicen que la magia es peligrosa. Para ti, sí.",
+  "Que los Antiguos guíen mi mano. Y que no tiemble.",
+  "Tú eres materia. Yo soy voluntad.",
+  "Un hechizo bien lanzado vale mil espadas. Voy a lanzar dos.",
+  "El conocimiento vence a la fuerza. Siempre. Vamos a demostrarlo."
+ ],
+ "grito.elite.bru": [
+  "El pacto quiere tu corazón. Yo se lo entrego.",
+  "Ven, bicho. El caldero necesita un ingrediente grande.",
+  "Mis marcas arden cuando algo así se acerca. Qué bien.",
+  "Yo no rezo. Yo cobro.",
+  "La sombra susurra tu nombre. Dice que es hoy.",
+  "Pacto, pacto, cúmplete: tráeme esta carne.",
+  "Tú eres feo. Yo soy peor. A ver quién sangra."
+ ],
+ "grito.chefe.human": [
+  "Así que eres tú. Pensé que serías más grande. Pensé mal. ¡Da igual!",
+  "Si el Ojo quiere una historia, yo la escribo.",
+  "No voy a suplicar. ¡Ven!"
+ ],
+ "grito.chefe.nordic": [
+  "¡ODIN! ¡Mírame ahora!",
+  "Esta es la batalla que cantarán los bardos. ¡Que la canten fuerte!",
+  "Mi sangre por el Norte. ¡La tuya por mi hoja!"
+ ],
+ "grito.chefe.dwarf": [
+  "Por la Forja, por la Piedra y por la barba de mi padre: ¡HOY!",
+  "Es grande. He visto montañas más grandes. Y las perforé.",
+  "¿Suegra? No. ¡Esto es peor!"
+ ],
+ "grito.chefe.elf": [
+  "Los Antiguos susurran tu fin. Yo soy la voz.",
+  "Mil años de paciencia. Se acabaron.",
+  "Que el bosque guarde este día."
+ ],
+ "grito.chefe.tecno": [
+  "Reactor al cien por cien. Que empiece el experimento.",
+  "Tú eres la variable. Yo soy el resultado.",
+  "Academia, que conste: hoy la ciencia mató a un dios."
+ ],
+ "grito.chefe.pal": [
+  "¡AURÉON! ¡Mira a tu {siervo|sierva} y guía mi hoja!",
+  "La luz no se apaga. La sombra, sí. Ahora.",
+  "Por los inocentes. Por los caídos. Por todos."
+ ],
+ "grito.chefe.cac": [
+  "La cacería de una vida. Por fin.",
+  "La chimenea va a necesitar una pared más grande.",
+  "Sin trucos. Sin huida. Solo nosotros dos."
+ ],
+ "grito.chefe.vam": [
+  "Qué criatura magnífica. Me la voy a beber entera.",
+  "La eternidad me trajo hasta aquí. Que sea digno.",
+  "Arrodíllate. Es lo que hacen los mortales ante mí."
+ ],
+ "grito.chefe.lob": [
+  "¡LA LUNA! ¡Sale por mí! ¡AUUUUU!",
+  "Toda la manada en mí. ¡Ven!",
+  "Vas a ser el cuento que asusta a los cachorros."
+ ],
+ "grito.chefe.mag": [
+  "Este es el hechizo que nunca me atreví a lanzar. Hoy me atrevo.",
+  "El orbe está caliente. Las palabras, listas. Empieza.",
+  "Materia, dóblate. Voluntad, vence."
+ ],
+ "grito.chefe.bru": [
+  "El pacto entero, de una vez. Cueste lo que cueste.",
+  "Las marcas queman hasta el hueso. Es la señal. Eres tú.",
+  "Sombra, cóbrame después. Ahora dame fuerza."
+ ],
+ "grito.instinto.humano": [
+  "Aquí hay algo raro… si presto atención, lo encuentro.",
+  "Este silencio no es natural. Mejor abrir los ojos de verdad."
+ ],
+ "grito.instinto.anao": [
+  "La piedra está cuchicheando. Déjame escuchar bien.",
+  "¡Por mis barbas! Hay metal bajo este suelo, lo siento en la muela."
+ ],
+ "grito.instinto.elfo": [
+  "Los árboles recuerdan a alguien que pasó por aquí. Voy a escucharlos.",
+  "El viento cambió de olor. El bosque quiere mostrarme algo."
+ ],
+ "grito.instinto.gue": [
+  "Olor a sangre vieja. Alguien huyó por aquí.",
+  "Se me calentó la sangre de la nada. Hay rastro en esta tierra."
+ ],
+ "grito.instinto.pal": [
+  "La Luz me pesa en el pecho aquí. Algún alma pide auxilio.",
+  "Auréon, muéstrame lo que los ojos no ven."
+ ],
+ "grito.instinto.cac": [
+  "Plata en los ojos. Hay algo escondido que no es de este mundo.",
+  "El aire sabe a azufre. Hora de cazar con atención."
+ ],
+ "grito.instinto.tec": [
+  "Los medidores temblaron. Hay un dispositivo perdido por aquí.",
+  "Lectura anómala. Voy a calibrar y mirar otra vez."
+ ],
+ "grito.instinto.vam": [
+  "Hay un corazón latiendo donde no debería. Escucha…",
+  "La noche me contó un secreto. Déjame oír el resto."
+ ],
+ "grito.instinto.lob": [
+  "Ese olor… la manada pasó por aquí. Olfatea.",
+  "Se me erizó el pelo. El olfato no miente."
+ ],
+ "grito.instinto.mag": [
+  "La trama del mundo está torcida aquí. Magia antigua, escondida.",
+  "Las runas de mi báculo se calentaron. Hay algo que ver."
+ ],
+ "grito.instinto.bru": [
+  "Las marcas arden. Alguien dejó un pacto enterrado aquí.",
+  "La sombra susurró un nombre. Voy a escuchar con el otro oído."
  ]
 }

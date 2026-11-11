@@ -391,7 +391,8 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
     for (let k = 0; k < nA; k++) { const mx = -len / 2 + span * (k + 0.5), r = span * 0.42; const hole = new THREE.Path(); hole.moveTo(mx - r, -2.6); hole.absarc(mx, -2.6, r, Math.PI, 0, true); hole.lineTo(mx - r, -2.6); sh.holes.push(hole); }
     const geo = new THREE.ShapeGeometry(sh, 12); const m = new THREE.Mesh(geo, dk); m.rotation.y = Math.PI / 2; m.position.x = s * half; m.castShadow = true; K.g.add(m); }
   { const nA = Math.max(1, Math.round(len / 11)), span = len / nA; for (let k = 1; k < nA; k++) { const z = -len / 2 + span * k; K.box(half * 2 + 0.4, 3.0, 1.4, 0, -3.2, z, dk); K.box(half * 2 + 0.7, 0.3, 1.7, 0, -0.4 + yAt(k / nA) - 0.2, z, lt); } } // pilares no meio da água
-  for (const e of [-1, 1]) { K.box(half * 2 + 0.6, 1.2, 0.8, 0, -0.5, e * (len / 2 - 0.2), dk); for (const s of [-1, 1]) { K.box(0.6, 1.3, 0.6, s * (half - 0.1), 0.4, e * (len / 2 - 0.3), lt); K.torch(s * (half - 0.1), 1.7, e * (len / 2 - 0.3)); } }
+  /* 10/11 (Erling: "o jogo engole o personagem" na cabeceira): a soleira ficava 20 cm acima do chão e, vista de frente, escondia as pernas de quem chegava; agora fica rente ao chão, só como fundação */
+  for (const e of [-1, 1]) { K.box(half * 2 + 0.6, 1.2, 0.8, 0, -0.66, e * (len / 2 - 0.2), dk); for (const s of [-1, 1]) { K.box(0.6, 1.3, 0.6, s * (half - 0.1), 0.4, e * (len / 2 - 0.3), lt); K.torch(s * (half - 0.1), 1.7, e * (len / 2 - 0.3)); } }
   return K.out;
 }
 

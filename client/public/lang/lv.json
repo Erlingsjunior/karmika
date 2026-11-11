@@ -327,5 +327,204 @@
    "Saka, ka {nome} {feito}.",
    "Šonakt aizslēdz durvis, labi?"
   ]
+ ],
+ "grito.elite.human": [
+  "Kas tas par briesmoni? Es tevi pārdzīvošu!",
+  "Nepiedzimu par varoni. Bet nepiedzimu arī bēgšanai.",
+  "Karmika zinās, ka es te biju. Nāc!",
+  "Liels, neglīts un lēns. Divus no trim es izlabošu ar zobenu.",
+  "Māte teica: skaties bailēm acīs. Lūdzu. Paskatījos.",
+  "Acs skatās. Tad lai ir, ko redzēt.",
+  "Ja kritīšu, tad stāvus."
+ ],
+ "grito.elite.nordic": [
+  "Odin! Sūti kraukļus: šodien uz zemes būs gaļa!",
+  "Pie Thor vesera, šis radījums iemācīsies asiņot!",
+  "Valhalla gaida. Bet šodien vēl ne, zvēr!",
+  "Tevi sūtīja Fenrir? Pasaki viņam, ka esmu tepat!",
+  "Vēl viens vārds manai sāgai. Nāc, gaļas kalns!",
+  "Mans vairogs brokastīs ir ēdis ko trakāku!",
+  "Ziemeļi neatkāpjas. Uz priekšu!"
+ ],
+ "grito.elite.dwarf": [
+  "Pie Lielmeistara Cascudo bārdas! Kas tas par izdzimteni? Izskatās pēc manas sievasmātes!",
+  "Pie Kalves! No šī zvēra es izkalšu laktu!",
+  "Neglītāks par rūķi bez bārdas. Un tas, tici man, ir neglīti.",
+  "Nāc tuvāk, lielais. Manam cirvītim ir kas sakāms.",
+  "Klints neskrien. Un es esmu no klints!",
+  "Šitas ož pēc sliktas rūdas. Pārkausēšu ar varu.",
+  "Manā alā nelien, bet uz mana cirva gan!"
+ ],
+ "grito.elite.elf": [
+  "Lai Senie man piedod, ka atņemu dzīvību. Bet šim briesmonim jāaiziet.",
+  "Mežs raud, kad tu ej garām. Šodien tas smaidīs.",
+  "Manējie to gaida tūkstoš gadu. Es netrāpīt nedrīkstu.",
+  "Atgriezies klusumā, no kura nāci.",
+  "Mans loks pazīst tavu sirdi labāk nekā tu.",
+  "Ne katra ēna ir pelnījusi nakti. Tavējā nav.",
+  "Pie Aelvaren lapām: šodien ne."
+ ],
+ "grito.elite.tecno": [
+  "Paskatīsimies, vai šis reaktors tiešām strādā! Mirsti, nolādētais radījum!",
+  "Datu nepietiek. Ievākšu praksē.",
+  "Tā ir primitīva bioloģija. Es esmu nākotne.",
+  "Pārslodze atļauta. Lai Akadēmija man piedod elektrības rēķinu.",
+  "Tu nezini, kas ir ampērs. Tūlīt uzzināsi.",
+  "Mierīgi, mierīgi… regulēju tēmēkli… tagad!",
+  "Iznīcināšanas protokols: sākts.",
+  "Zinātne nebaidās. Es mazliet baidos. Bet noteicēja ir zinātne."
+ ],
+ "grito.elite.pal": [
+  "Lai Auréon mani sargā šajā kaujā. Uz priekšu!",
+  "Gaisma nekaulējas ar ēnu. Es arī ne.",
+  "Meties ceļos, radījum, un varbūt es par tevi aizlūgšu.",
+  "Tam mani iesvētīja. Nāc!",
+  "Katrs mans cirtiens ir lūgšana. Gatavojies dzirdēt daudzas.",
+  "To vārdā, kurus tu aprīji: pietiek.",
+  "Ticība sāpes neatņem. Bet vairogu notur."
+ ],
+ "grito.elite.cac": [
+  "Hm… šī galva lieliski izskatīsies virs mana kamīna!",
+  "Vēl viens vārds sarakstā. Drīz būs nosvītrots.",
+  "Skola man mācīja medīt tādus kā tu. Šodien ir gala eksāmens.",
+  "Skrien, ja gribi. Es medīju labāk, kad medījums skrien.",
+  "Dēmons, zvērs vai izdzimtenis: visi mirst vienādi.",
+  "Esmu redzējis ko trakāku. Meloju. Bet nogalināšu tāpat.",
+  "Arbalets ir gatavs. Un tava galva?"
+ ],
+ "grito.elite.vam": [
+  "Kāda asiņu izšķērdēšana. Es tās likšu lietā.",
+  "Kliedz. Naktij patīk mūzika.",
+  "Gadsimti man iemācīja pacietību. Tu man neiemācīsi neko.",
+  "Galmam šis stāsts patiks. Tevis tajā nebūs.",
+  "Es jau reiz nomiru. Tava kārta.",
+  "Tik daudz miesas, tik maz gara. Ļauj man to labot.",
+  "Nāc ēnā. Es te dzīvoju."
+ ],
+ "grito.elite.lob": [
+  "Bars tevi dzirdēja no tālienes. Tagad sajutīs.",
+  "Es jūtu tavas bailes. Tās ir gardas.",
+  "Es esmu zvērs, no kura tu baidies tumsā. Skaties uz mani.",
+  "Mēness vēl nav uzlēcis, bet es jau gribu asinis.",
+  "Liels medījums. Labi. Man gribējās ēst.",
+  "Gaudo ar mani, briesmoni. Pēc tam apklusti uz visiem laikiem.",
+  "Manā mežā neviens nemedī. Neviens."
+ ],
+ "grito.elite.mag": [
+  "Bibliotēkā par tevi ir nodaļa. Īsa.",
+  "Uguns, ledus vai zibens? Ļaušu izvēlēties tev… nē, izvēlēšos es.",
+  "Saka, ka maģija ir bīstama. Tev tā ir.",
+  "Lai Senie vada manu roku. Un lai tā nedreb.",
+  "Tu esi matērija. Es esmu griba.",
+  "Viena labi raidīta burvestība ir tūkstoš zobenu vērta. Es raidīšu divas.",
+  "Zināšanas uzvar spēku. Vienmēr. Pierādīsim."
+ ],
+ "grito.elite.bru": [
+  "Līgums grib tavu sirdi. Es to nogādāšu.",
+  "Nāc, zvēr. Katlam vajag vienu lielu sastāvdaļu.",
+  "Manas zīmes svilst, kad kas tāds tuvojas. Cik jauki.",
+  "Es nelūdzos. Es piedzenu parādus.",
+  "Ēna čukst tavu vārdu. Saka, ka šodien.",
+  "Līgums, līgums, piepildies: atnes man šo miesu.",
+  "Tu esi neglīts. Es esmu vēl trakāk. Redzēsim, kurš asiņos."
+ ],
+ "grito.chefe.human": [
+  "Tātad tas esi tu. Domāju, ka būsi lielāks. Kļūdījos. Vienalga!",
+  "Ja Acs grib stāstu, es to uzrakstīšu.",
+  "Es nelūgšos. Nāc!"
+ ],
+ "grito.chefe.nordic": [
+  "ODIN! Skaties uz mani tagad!",
+  "Šī ir kauja, par kuru dziedās bardi. Lai dzied skaļi!",
+  "Manas asinis Ziemeļiem. Tavējās manam asmenim!"
+ ],
+ "grito.chefe.dwarf": [
+  "Pie Kalves, pie Akmens un pie mana tēva bārdas: ŠODIEN!",
+  "Liels. Esmu redzējis lielākus kalnus. Un izurbies tiem cauri.",
+  "Sievasmāte? Nē. Šitas ir trakāk!"
+ ],
+ "grito.chefe.elf": [
+  "Senie čukst tavu galu. Es esmu balss.",
+  "Tūkstoš gadu pacietības. Beigušies.",
+  "Lai mežs glabā šo dienu."
+ ],
+ "grito.chefe.tecno": [
+  "Reaktors uz simts procentiem. Lai sākas eksperiments.",
+  "Tu esi mainīgais. Es esmu rezultāts.",
+  "Akadēmija, pierakstiet: šodien zinātne nogalināja dievu."
+ ],
+ "grito.chefe.pal": [
+  "AURÉON! Uzlūko savu {kalpu|kalponi} un vadi manu asmeni!",
+  "Gaisma nedziest. Ēna gan. Tagad.",
+  "Par nevainīgajiem. Par kritušajiem. Par visiem."
+ ],
+ "grito.chefe.cac": [
+  "Mūža medības. Beidzot.",
+  "Kamīnam vajadzēs lielāku sienu.",
+  "Bez viltībām. Bez bēgšanas. Tikai mēs divi."
+ ],
+ "grito.chefe.vam": [
+  "Kāds lielisks radījums. Izdzeršu visu.",
+  "Mūžība mani atveda līdz šejienei. Esi tās cienīgs.",
+  "Meties ceļos. Tā mirstīgie dara manā priekšā."
+ ],
+ "grito.chefe.lob": [
+  "MĒNESS! Tas lec manis dēļ! AUUUUU!",
+  "Viss bars ir manī. Nāc!",
+  "Tu būsi stāsts, no kura baidās kucēni."
+ ],
+ "grito.chefe.mag": [
+  "Šī ir burvestība, kuru nekad neuzdrošinājos. Šodien uzdrošinos.",
+  "Lode ir silta. Vārdi gatavi. Sāc.",
+  "Matērija, liecies. Griba, uzvari."
+ ],
+ "grito.chefe.bru": [
+  "Viss līgums, uzreiz. Lai maksā, ko maksādams.",
+  "Zīmes deg līdz kaulam. Tā ir zīme. Tas esi tu.",
+  "Ēna, piedzen no manis vēlāk. Tagad dod man spēku."
+ ],
+ "grito.instinto.humano": [
+  "Te kaut kas nav kārtībā… ja ieskatīšos, atradīšu.",
+  "Šis klusums nav dabisks. Labāk atvērt acis pa īstam."
+ ],
+ "grito.instinto.anao": [
+  "Akmens čukst. Ļauj man kārtīgi ieklausīties.",
+  "Pie bārdas! Zem šīs zemes ir metāls, jūtu zobos."
+ ],
+ "grito.instinto.elfo": [
+  "Koki atceras kādu, kas te gāja. Es tajos ieklausīšos.",
+  "Vējš smaržo citādi. Mežs grib man ko parādīt."
+ ],
+ "grito.instinto.gue": [
+  "Vecu asiņu smaka. Kāds te ir bēdzis.",
+  "Asinis sakarsa ne no šā, ne no tā. Šajā zemē ir pēdas."
+ ],
+ "grito.instinto.pal": [
+  "Gaisma te spiež man krūtis. Kāda dvēsele sauc pēc palīdzības.",
+  "Auréon, parādi man to, ko acis neredz."
+ ],
+ "grito.instinto.cac": [
+  "Sudrabs acīs. Te slēpjas kas tāds, kas nav no šīs pasaules.",
+  "Gaisam ir sēra garša. Laiks medīt uzmanīgi."
+ ],
+ "grito.instinto.tec": [
+  "Mērītāji notrīcēja. Te kaut kur ir pazudusi ierīce.",
+  "Anomāls rādījums. Nokalibrēšu un paskatīšos vēlreiz."
+ ],
+ "grito.instinto.vam": [
+  "Kāda sirds pukst tur, kur tai nevajadzētu. Klausies…",
+  "Nakts man izstāstīja noslēpumu. Ļauj dzirdēt pārējo."
+ ],
+ "grito.instinto.lob": [
+  "Šī smaka… bars te ir gājis. Paostī.",
+  "Spalva sacēlās stāvus. Oža nemelo."
+ ],
+ "grito.instinto.mag": [
+  "Pasaules audums te ir sašķiebies. Sena, apslēpta maģija.",
+  "Rūnas uz mana zižļa ir sasilušas. Te ir, ko redzēt."
+ ],
+ "grito.instinto.bru": [
+  "Zīmes svilst. Kāds te ir apracis līgumu.",
+  "Ēna nočukstēja vārdu. Ieklausīšos ar otru ausi."
  ]
 }

@@ -328,5 +328,204 @@
    "They say {nome} {feito}.",
    "Lock your door tonight, all right?"
   ]
+ ],
+ "grito.elite.human": [
+  "What kind of monstrosity is that? I am going to outlive you!",
+  "I wasn't born a hero. But I wasn't born to run either.",
+  "Karmika will know I was here. Come on!",
+  "Big, ugly and slow. Two out of three I can fix with a sword.",
+  "My mother used to say: look fear in the eye. There. I looked.",
+  "The Eye is watching. So let's make it worth the show.",
+  "If I fall, I fall standing."
+ ],
+ "grito.elite.nordic": [
+  "Odin! Send the ravens: there will be meat on the ground today!",
+  "By Thor's hammer, this thing is going to learn how to bleed!",
+  "Valhalla is waiting. But not today, beast!",
+  "Did Fenrir send you? Tell him I am right here!",
+  "One more name for my saga. Come on, you mountain of meat!",
+  "My shield has eaten worse than you for breakfast!",
+  "The North does not step back. Forward!"
+ ],
+ "grito.elite.dwarf": [
+  "By the beard of Grand Master Cascudo! What is that abomination? It looks like my mother-in-law!",
+  "By the Forge! I am going to hammer this beast into an anvil!",
+  "Uglier than a dwarf with no beard. And that, my friend, is ugly.",
+  "Come closer, big fella. My hatchet wants a word.",
+  "Rock does not run. And I am made of rock!",
+  "That thing smells like bad ore. I will smelt it the hard way.",
+  "Too big for my cave, just right for my axe!"
+ ],
+ "grito.elite.elf": [
+  "May the Ancients forgive me for taking a life. But this monster must depart.",
+  "The forest weeps when you pass. Today it will smile.",
+  "My people have waited a thousand years for this. I will not miss.",
+  "Return to the silence you came from.",
+  "My bow knows your heart better than you do.",
+  "Not every shadow deserves the night. Yours does not.",
+  "By the leaves of Aelvaren: not today."
+ ],
+ "grito.elite.tecno": [
+  "Let's see if this reactor really works now! Die, you wretched thing!",
+  "Insufficient data. I will collect it in the field.",
+  "That is primitive biology. I am the future.",
+  "Overload authorized. May the Academy forgive my power bill.",
+  "You do not know what an ampere is. You are about to.",
+  "Easy, easy… adjusting the sights… now!",
+  "Extermination protocol: initiated.",
+  "Science is not afraid. I am, a little. But science is in charge."
+ ],
+ "grito.elite.pal": [
+  "May Auréon shield me in this battle. Forward!",
+  "The light does not bargain with the shadow. Neither do I.",
+  "Kneel, creature, and I may pray for you.",
+  "I was ordained for this. Come!",
+  "Every blow of mine is a prayer. Get ready to hear many.",
+  "In the name of those you devoured: enough.",
+  "Faith does not take the pain away. But it holds the shield."
+ ],
+ "grito.elite.cac": [
+  "Hm… that head is going to look great above my fireplace!",
+  "One more name on the list. Crossed off shortly.",
+  "The School taught me to hunt things like you. Today is the final exam.",
+  "Run, if you like. I hunt better when the prey runs.",
+  "Demon, beast or abomination: they all die the same.",
+  "I have seen worse. That's a lie. I will kill you anyway.",
+  "The crossbow is ready. Is your head?"
+ ],
+ "grito.elite.vam": [
+  "What a waste of blood. I will put it to use.",
+  "Scream. The night is fond of music.",
+  "Centuries taught me patience. You will teach me nothing.",
+  "The Court will enjoy this story. You will not be in it.",
+  "I have already died once. Your turn.",
+  "So much flesh, so little spirit. Allow me to correct that.",
+  "Come into the shadow. I live here."
+ ],
+ "grito.elite.lob": [
+  "The pack heard you from afar. Now it will feel you.",
+  "I can smell your fear. Delicious.",
+  "I am the beast you fear in the dark. Look at me.",
+  "The moon is not even up and I already want blood.",
+  "Big prey. Good. I was hungry.",
+  "Howl with me, monster. Then be silent forever.",
+  "Nobody hunts in my forest. Nobody."
+ ],
+ "grito.elite.mag": [
+  "The Library has a chapter about you. A short one.",
+  "Fire, ice or lightning? I will let you choose… no, I will choose.",
+  "They say magic is dangerous. For you, it is.",
+  "May the Ancients guide my hand. And may it not tremble.",
+  "You are matter. I am will.",
+  "One well-cast spell is worth a thousand swords. I will cast two.",
+  "Knowledge beats strength. Always. Let us prove it."
+ ],
+ "grito.elite.bru": [
+  "The pact wants your heart. I will deliver it.",
+  "Come, beast. The cauldron needs one big ingredient.",
+  "My marks burn when something like you comes near. How lovely.",
+  "I do not pray. I collect.",
+  "The shadow whispers your name. It says today is the day.",
+  "Pact, pact, be fulfilled: bring me this flesh.",
+  "You are ugly. I am worse. Let us see who bleeds."
+ ],
+ "grito.chefe.human": [
+  "So it is you. I thought you would be bigger. I thought wrong. Whatever!",
+  "If the Eye wants a story, I will write one.",
+  "I will not beg. Come!"
+ ],
+ "grito.chefe.nordic": [
+  "ODIN! Look at me now!",
+  "This is the battle the bards will sing. Let them sing it loud!",
+  "My blood for the North. Yours for my blade!"
+ ],
+ "grito.chefe.dwarf": [
+  "By the Forge, by the Stone and by my father's beard: TODAY!",
+  "It is big. I have seen bigger mountains. And tunnelled through them.",
+  "Mother-in-law? No. This one is worse!"
+ ],
+ "grito.chefe.elf": [
+  "The Ancients whisper your end. I am the voice.",
+  "A thousand years of patience. Over.",
+  "May the forest remember this day."
+ ],
+ "grito.chefe.tecno": [
+  "Reactor at one hundred percent. Let the experiment begin.",
+  "You are the variable. I am the result.",
+  "Academy, put it on record: today science killed a god."
+ ],
+ "grito.chefe.pal": [
+  "AURÉON! See your servant and guide my blade!",
+  "The light does not go out. The shadow does. Now.",
+  "For the innocent. For the fallen. For all of them."
+ ],
+ "grito.chefe.cac": [
+  "The hunt of a lifetime. At last.",
+  "The fireplace is going to need a bigger wall.",
+  "No tricks. No running. Just the two of us."
+ ],
+ "grito.chefe.vam": [
+  "What a magnificent creature. I will drink it all.",
+  "Eternity brought me here. Be worthy of it.",
+  "Kneel. It is what mortals do before me."
+ ],
+ "grito.chefe.lob": [
+  "THE MOON! It rises for me! AWOOOOO!",
+  "The whole pack is in me. Come!",
+  "You will be the story the pups are afraid of."
+ ],
+ "grito.chefe.mag": [
+  "This is the spell I never dared to cast. Today I dare.",
+  "The orb is warm. The words are ready. Begin.",
+  "Matter, bend. Will, prevail."
+ ],
+ "grito.chefe.bru": [
+  "The whole pact, all at once. Whatever it costs.",
+  "The marks burn down to the bone. That is the sign. It is you.",
+  "Shadow, bill me later. Give me strength now."
+ ],
+ "grito.instinto.humano": [
+  "Something is off here… if I pay attention, I will find it.",
+  "This silence is not natural. Better open my eyes for real."
+ ],
+ "grito.instinto.anao": [
+  "The stone is whispering. Let me listen properly.",
+  "By my beard! There is metal under this ground, I can feel it in my teeth."
+ ],
+ "grito.instinto.elfo": [
+  "The trees remember someone who passed this way. I will listen to them.",
+  "The wind smells different. The forest wants to show me something."
+ ],
+ "grito.instinto.gue": [
+  "The smell of old blood. Someone fled this way.",
+  "My blood ran hot out of nowhere. There is a trail in this ground."
+ ],
+ "grito.instinto.pal": [
+  "The Light weighs on my chest here. Some soul is calling for help.",
+  "Auréon, show me what the eyes cannot see."
+ ],
+ "grito.instinto.cac": [
+  "Silver in the eyes. Something hidden here is not of this world.",
+  "The air tastes of sulphur. Time to hunt carefully."
+ ],
+ "grito.instinto.tec": [
+  "The gauges twitched. There is a lost device around here.",
+  "Anomalous reading. I will calibrate and look again."
+ ],
+ "grito.instinto.vam": [
+  "There is a heart beating where it should not. Listen…",
+  "The night told me a secret. Let me hear the rest."
+ ],
+ "grito.instinto.lob": [
+  "That smell… the pack came through here. Sniff.",
+  "My fur is standing on end. The nose never lies."
+ ],
+ "grito.instinto.mag": [
+  "The weave of the world is crooked here. Old magic, hidden.",
+  "The runes on my staff have grown warm. There is something to see."
+ ],
+ "grito.instinto.bru": [
+  "The marks burn. Someone left a pact buried here.",
+  "The shadow whispered a name. I will listen with the other ear."
  ]
 }
