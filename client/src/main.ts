@@ -1289,6 +1289,8 @@ export interface FestaCtx {
   readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean; /** 09/11: a Copa da Árvore-Mãe (Lithendel) */ canopy?: boolean } | null;
   readonly dwarfEl: Widen<typeof dwarfEl>;
 }
+/** 11/11 (Erling: "a fonte de Karmika não funciona na festa, porque senão atrapalha a festa"): com a festa armada na praça, a Fonte da Visão fica quieta */
+function festaAqui() { const F = festaSys?.festa as { x: number; z: number; done?: boolean } | null | undefined; if (!F || F.done) return false; const p = hero.root.position; return Math.hypot(p.x - F.x, p.z - F.z) < 60; }
 var festaSys: ReturnType<typeof createFesta>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
 function mk_festaSys() { return createFesta({ get npcSys() { return npcSys; }, get quests() { return quests; }, get npcHome() { return npcHome; }, get city() { return city; }, get hereSettle() { return hereSettle; }, get align() { return align; }, get profile() { return profile; }, get game() { return game; }, get state() { return state; }, get scene() { return scene; }, get settleAt() { return settleAt; }, get nightOverride() { return nightOverride; }, set nightOverride(v) { nightOverride = v; }, get nightTarget() { return entradaSys.nightTarget; }, set nightTarget(v) { entradaSys.nightTarget = v; }, get audio() { return audio; }, get inv() { return inv; }, get addKarma() { return addKarma; }, get heroPos() { return heroPos; }, get evFx() { return evFx; }, get portraitOf() { return portraitOf; }, get openDlg() { return openDlg; }, get hero() { return hero; }, get particles() { return particles; }, get netRef() { return netRef; }, get net() { return net; }, get inside() { return inside; }, get dwarfEl() { return dwarfEl; } }); }
 festaSys ??= mk_festaSys();
@@ -2516,7 +2518,7 @@ function findInter(): Inter | null {
   } fi('npcs');
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
-    for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
+    if (!festaAqui()) for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
     for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz), ds = en.sign ? Math.hypot(en.sign.x - hx, en.sign.z - hz) : 99, dd = Math.min(d - 1.5, ds - 1.2); if (d < 5.5 || ds < 4) add(dd, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
     /* placas de estrada (Erling, 26/10: "ao apertar deveríamos ver o que elas estão dizendo, os lugares que elas apontam") */
     for (const sg of city.signs) { const sx = (sg.x + 0.5) * T, sz = (sg.y + 0.5) * T, d = Math.hypot(sx - hx, sz - hz); if (d < 3.2) add(d - 0.6, 2.8, 'E — Ler a placa da estrada', () => readSign(sg)); }
@@ -2578,7 +2580,7 @@ function findInter(): Inter | null {
   if (!casteloSys.sitting) for (const p of NI) if (p.kind === 'fountain') { const fx = (p.gx + p.w / 2) * T, fz = (p.gy + p.h / 2) * T, isHome = Math.abs(larSys.home.x - (p.gx + p.h / 2)) < 0.6 && Math.abs(larSys.home.y - (p.gy + p.h + 1)) < 0.6;
     /* a fonte que também é Fonte da Visão: E joga a moeda (a animação e a história voltam); Shift+E torna a fonte o seu lar */
     const vo = vistaObjs.find((q) => Math.hypot(q.x - fx, q.z - fz) < 4); const df = Math.hypot(fx - hx, fz - hz) - p.w;
-    if (vo) { add(df - 0.2, 2.8, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}${isHome ? ' · ⛲ sua fonte-lar' : ' · Shift+E: tornar meu lar'}`, () => { if (cinemaSys.shiftHeld && !isHome) setHome(p); else useVista(vo.v); }); continue; }
+    if (vo && !festaAqui()) { add(df - 0.2, 2.8, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}${isHome ? ' · ⛲ sua fonte-lar' : ' · Shift+E: tornar meu lar'}`, () => { if (cinemaSys.shiftHeld && !isHome) setHome(p); else useVista(vo.v); }); continue; }
     add(df, 2.6, isHome ? '⛲ Esta é sua fonte-lar' : 'E — Tornar esta fonte meu lar', () => { if (!isHome) setHome(p); }); }
   for (const p of NI) if (p.kind === 'vault') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; add(Math.hypot(bx - hx, bz - hz), 2.2, 'E — Baú do Caminhante', () => inv.openVault()); }
   for (const p of NI) if (p.kind === 'mailbox') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; const u = mail.unread; add(Math.hypot(bx - hx, bz - hz), 2.2, `E — Caixa de Correio${u ? ` (${u} nova${u > 1 ? 's' : ''})` : ''}`, () => mail.open()); }

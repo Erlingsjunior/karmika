@@ -323,7 +323,9 @@ export class AudioEngine {
   whatPlays(): string { const g = (x: GainNode) => x.gain.value.toFixed(3); const parts = [`clima: ${this.mood}`, `música ${this.music ? 'ligada' : 'desligada'} (ganho ${g(this.mus)})`, `ambiente ${g(this.amb)}`, `pads ${this.pads.map((p) => `${p.o.frequency.value.toFixed(0)}Hz@${g(p.g)}`).join(' ')}`,
       `vento ${g(this.windLo)}/${g(this.windHi)}`, `fogo ${g(this.fireG)}`, `água ${g(this.waterG)} rio ${g(this.riverG)}/${g(this.riverLo)} queda ${g(this.fallLo)}`, `Lua de Sangue (bordão) ${this.bloodV ? 'TOCANDO ' + g(this.bloodV.g) : 'parado'}`, `coral ${this.choirV ? 'tocando ' + g(this.choirV.root) : 'parado'}`, `Limiar ${this.limiarPad ? 'tocando' : 'parado'}`];
     return parts.join(' · '); }
-  setMood(m: Mood) { if (m === this.mood) return; this.mood = m; this.nextNote = 0.3; this.beat = 0; }
+  setMood(m: Mood) { if (m === this.mood) return; this.mood = m; this.nextNote = 0.3; this.beat = 0;
+    /* 11/11 (Erling: "a música que a banda toca tem que ser mais audível, não se ouve nada"): na festa a banda toca 2,6× mais alto que a trilha de fundo */
+    if (this.ctx && this.music) this.mus.gain.setTargetAtTime(0.09 * this.vol.music * (m === 'festa' ? 2.6 : 1), this.ctx.currentTime, 0.6); }
   private drum(f: number, vol: number, dly = 0, noise = 0.6) { this.tone(f, f * 0.45, 0.28, vol, 'sine', dly, this.mus, 0, 0.003); const nb = () => this.burst('lowpass', 900, 0.8, 0.09, vol * noise, 1, this.mus, 0, 0.002); if (dly > 0.01) setTimeout(nb, dly * 1000); else nb(); }
   /* ---------- A FESTA (25/10): a giga do bardo, original, em ré dórico, 6/8 — alaúde, flauta, bodhrán, pandeiro e o bordão —
      e o coro do povo: "Ele é um bom companheiro" (a melodia tradicional, domínio público). Uma volta: giga A·B (alaúde), coro, giga A·B (flauta). ---------- */
