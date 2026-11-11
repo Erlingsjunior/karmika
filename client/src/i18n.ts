@@ -18,8 +18,10 @@ type Dict = Record<string, Val>;
 
 function pick(): Lang {
   const ok = (v: string | null | undefined): Lang | null => { const s = (v || '').slice(0, 2).toLowerCase(); return LANGS.some((l) => l.id === s) ? (s as Lang) : null; };
-  try { const q = ok(new URLSearchParams(location.search).get('lang')); if (q) { try { localStorage.setItem('karmika.lang', q); } catch { /* */ } return q; } } catch { /* */ }
-  try { const s = ok(localStorage.getItem('karmika.lang')); if (s) return s; } catch { /* */ }
+  try { const q = ok(new URLSearchParams(location.search).get('lang')); if (q) { try { localStorage.setItem('karmika.lang', q); localStorage.setItem('karmika.lang.escolhida', '1'); } catch { /* */ } return q; } } catch { /* */ }
+  /* 11/11 (Erling: "jogo em português, pessoas falando em inglês: bug sistêmico"): uma língua guardada só vale se a pessoa a ESCOLHEU nas Opções (ou pelo endereço).
+     Quem ficou com 'en' guardado por versões antigas, sem ter escolhido, volta para o português: metade em cada língua nunca mais. */
+  try { const s = ok(localStorage.getItem('karmika.lang')); if (s && (s === 'pt' || localStorage.getItem('karmika.lang.escolhida') === '1')) return s; } catch { /* */ }
   /* 11/11: enquanto só parte do jogo está traduzida, quem não escolheu língua joga em português (o navegador em inglês deixava a tela metade em cada língua) */ return 'pt';
 }
 export const LANG: Lang = pick();
@@ -53,6 +55,6 @@ export function tl(key: string): string[] { const v = raw(key); return Array.isA
 /** a lista de pares da chave (conversas: um fala, o outro responde) */
 export function tp(key: string): [string, string][] { const v = raw(key); return Array.isArray(v) ? (v as [string, string][]) : []; }
 /** troca a língua e recarrega o jogo */
-export function setLang(l: Lang) { try { localStorage.setItem('karmika.lang', l); } catch { /* */ } const u = new URL(location.href); u.searchParams.delete('lang'); location.replace(u.toString()); }
+export function setLang(l: Lang) { try { localStorage.setItem('karmika.lang', l); localStorage.setItem('karmika.lang.escolhida', '1'); } catch { /* */ } const u = new URL(location.href); u.searchParams.delete('lang'); location.replace(u.toString()); }
 /** (teste) chaves pedidas que não existem em nenhum arquivo */
 (globalThis as unknown as { __i18nMissing?: () => string[] }).__i18nMissing = () => [...missing];
