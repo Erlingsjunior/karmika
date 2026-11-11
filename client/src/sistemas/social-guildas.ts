@@ -8,7 +8,6 @@ import { badge } from '../celebrate';
 import { wholeOf } from '../build';
 import { type Guild, createSocial } from '../social';
 import * as THREE from 'three';
-import { gpuState } from '../gpu/tags';
 import { TILE_M as T } from '@karmika/shared';
 import { heightAt } from '../world';
 import { buyFxLast } from '../windows';
@@ -248,18 +247,21 @@ function cardFinish(px: Uint8Array, rw: number, rh: number, W: number, H: number
   return cv.toDataURL('image/jpeg', 0.86);
 }
 /* o retrato do cartão lê pixels da placa (trava o quadro): só tira de novo quando muda nível, classe ou a cada 5 min, não a cada 20 s */
-let picKey = '', picAt = 0, celebAt = 0;
+let picKey = '', celebAt = 0;
 addEventListener('karmika:celebrate', () => { celebAt = performance.now(); });
+let picWanted = false;
 function saveSlotMeta() { if (!K.profile || inicio.isOpen || K.peleSys.creating) return;
-  const pk = `${K.game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`;
-  /* WebGPU: a foto sai por um WebGL à parte, que monta o herói do zero (meio segundo parado). Então só tira quando muda nível ou classe —
-     não na primeira gravação (fica a foto que já estava no cartão) nem a cada 5 min */
-  if (gpuState.on && !picKey) picKey = pk;
-  /* a foto espera a festa acabar: nada de tirar retrato no meio do pilar de luz da subida de nível ou de uma luta */
-  const busy = performance.now() - celebAt < 12000 || !!K.hero.combat;
-  const needPic = !busy && (pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000)); if (needPic) { picKey = pk; picAt = performance.now(); }
+  /* 11/11 (Erling: "travou muito, uns 3 segundos parado"; o /travadas acusou: salvar ficha, pior 1105 ms). A chave da foto era o texto do cabeçalho, que
+     inclui "em combate": a cada luta a chave mudava e o retrato era tirado de novo, e tirar o retrato monta o herói noutra cena, com outras luzes (a placa
+     recompila tudo: até 1 s parado). Agora a chave é só nível e classe, e a foto NUNCA é tirada com você jogando: fica pedida e sai quando o menu (Esc)
+     está aberto ou quando você troca de janela. Sem foto nova, o cartão guarda a anterior. */
+  const pk = `${K.game.st.lvl}|${K.profile.origin}|${(K.profile as { path?: string }).path ?? ''}`;
+  if (!picKey) picKey = pk; /* primeira gravação: fica a foto que já estava no cartão */
+  if (pk !== picKey) picWanted = true;
+  const calm = (document.hidden || !!K.game.st.menuOpen) && performance.now() - celebAt > 12000 && !K.hero.combat;
+  const needPic = picWanted && calm; if (needPic) { picWanted = false; picKey = pk; }
   (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (K.profile) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic, server: K.net.state === 'on' ? `karmika://${K.net.address}/${K.net.code}` : null }); }); }
-setInterval(tarefa('salvar ficha', saveSlotMeta), 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
+setInterval(tarefa('salvar ficha', saveSlotMeta), 20000); document.addEventListener('visibilitychange', () => { if (document.hidden && picWanted) saveSlotMeta(); }); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
 const bubbleEl = document.createElement('div'); bubbleEl.className = 'bubble'; document.body.appendChild(bubbleEl); let bubbleT = 0;
 function bubble(text: string) { bubbleEl.textContent = text; bubbleT = 4.5; bubbleEl.style.display = 'block'; }
