@@ -2745,6 +2745,9 @@ const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => au
 game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ return espolio.eliteDied(e, ilvl, boost, shared); });
 (window as unknown as { __bau?: unknown }).__bau = espolio; /* teste */
 /* 10/11: ícones pequenos de buff e debuff no pé do herói, e a entrada de cada efeito com aro e espiral (sistemas/buffs-pe.ts) */
+/* teste: câmera lenta e soltar qualquer magia pelo id, para a revisão visual de todas as magias (11/11) */
+let testSlow = 1;
+(window as unknown as { __t?: unknown }).__t = { slow: (k: number) => { testSlow = k; }, cast: (id: string, dx = 0, dz = 3) => { game.st.mp = game.st.mpMax; game.st.stam = game.st.stamMax; const p = heroPosNow(); try { return game.useExtra(id as never, Math.atan2(dx, dz), 0, { x: p.x + dx, z: p.z + dz }); } catch (e) { return 'ERRO ' + String(e).slice(0, 200); } } };
 (window as unknown as { __buff?: unknown }).__buff = () => { game.st.serene = 3; game.st.ambushT = 8; (game.st as unknown as { slowUntil?: number }).slowUntil = performance.now() + 60000; }; /* teste */
 const buffsPe = createBuffsPe({ scene, fine, camera, canvas, heroPos: () => hero.root.position, hidden: () => !document.body.classList.contains('ready') || game.st.dead || limiar.active || !!cinemaSys.cine || game.menuOpen, buffs: () => game.buffs(), particles });
 function frameBody() {
@@ -2754,7 +2757,7 @@ function frameBody() {
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }
   if (limGL) limiarGL(false); // o mundo espera lá embaixo
-  const dt = rawDt * game.timeScale() * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
+  const dt = rawDt * game.timeScale() * testSlow * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
   geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
   t += dt;
   entradaSys.nightTarget = nightOverride ?? nightAt(gameHour());
