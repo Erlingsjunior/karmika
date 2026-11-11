@@ -25,6 +25,7 @@ const dgs = createMasmorras({ scene: K.scene, T, city: K.city as never, heightAt
 enemyHooks.spark = (x, y, z, col) => { if (Math.random() > K.opts.particles) return; K.particles.spawn(x + (Math.random() - 0.5) * 0.2, y, z + (Math.random() - 0.5) * 0.2, { vx: (Math.random() - 0.5) * 0.3, vy: -0.2 - Math.random() * 0.3, vz: (Math.random() - 0.5) * 0.3, life: 0.6 + Math.random() * 0.4, s0: 0.07, s1: 0.01, c0: 0xffffff, c1: col, a: 0.9 }); };
 enemyHooks.dress = (e, g) => dressEnemy(e as never, g); enemyHooks.body = (e) => bossBody(e as never) as never;
 /* 26/10: os bichos do mundo com kit (a safra nova, os elites) também conjuram — o cérebro cuida deles quando o corpo aparece */
+(window as unknown as { __fx?: unknown }).__fx = () => { const h = K.heroPosNow(); brain.demo(h.x + 2, groundH(K.state.fx * T, K.state.fy * T) + 0.07, h.z + 1); }; /* teste */
 enemyHooks.track = (e) => { const k = kitOf(e.def.name); if (k) brain.track(e as never); /* 10/11: chefe sem magia também reage quando é encurralado */ }; enemyHooks.karma = () => K.state.karma;
 let heroSlowK = 1, heroSlowUntil = 0, heroCharmUntil = 0;
 const brain = createBossBrain({ scene: K.scene, fine: (o) => o, particles: K.particles, heroPos: () => K.heroPosNow().setY(groundH(K.state.fx * T, K.state.fy * T)), heroDead: () => K.game.st.dead,

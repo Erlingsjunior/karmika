@@ -12,6 +12,7 @@
      com distância) e chamado de crias.
    As mecânicas antigas da masmorra (círculo, golpe pesado, poças, crias por vida, fúria) continuam: o kit soma em cima. */
 import * as THREE from 'three';
+import { wallOf, erupt } from './luta3d';
 import type { EnemyType } from './world';
 
 type Gait = 'stomp' | 'hover' | 'skitter' | 'prowl' | 'lurch';
@@ -403,11 +404,18 @@ export function createBossBrain(ctx: BrainCtx) {
   function shapeMesh(geo: THREE.BufferGeometry, col: number) { const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); return edge; }
   function telegraph(geo: THREE.BufferGeometry, col: number, x: number, y: number, z: number, rotY: number, dur: number, then: () => void, grow: 'scale' | 'fade' = 'fade') {
     dur *= 1.1; /* 28/10: as marcas dos chefes 10% mais longas */
+    /* 10/11: a mancha no chão fica só como sombra do aviso; quem avisa de verdade é a parede de energia que sobe na borda, e no fim a área erupciona (fx3d.ts) */
     const m = shapeMesh(geo, col); m.position.set(x, y, z); m.rotation.y = rotY; ctx.scene.add(ctx.fine(m));
-    const fill = shapeMesh(geo, col); fill.position.copy(m.position); fill.position.y += 0.01; fill.rotation.y = rotY; ctx.scene.add(ctx.fine(fill)); let t = 0;
-    fxs.push((dt) => { t += dt; const k = Math.min(1, t / dur); (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.35 * Math.abs(Math.sin(t * 9)) * (k > 0.7 ? 1 : 0.4);
-      if (grow === 'scale') fill.scale.setScalar(Math.max(0.03, k)); else (fill.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.4 * k;
-      if (k >= 1) { ctx.scene.remove(m); ctx.scene.remove(fill); m.geometry.dispose(); (m.material as THREE.Material).dispose(); (fill.material as THREE.Material).dispose(); then(); return true; } return false; });
+    const fill = shapeMesh(geo, col); fill.position.copy(m.position); fill.position.y += 0.01; fill.rotation.y = rotY; ctx.scene.add(ctx.fine(fill));
+    const wall = wallOf(geo, col); wall.position.set(x, y, z); wall.rotation.y = rotY; wall.scale.y = 0.1; ctx.scene.add(ctx.fine(wall)); let t = 0, pT = 0;
+    geo.computeBoundingSphere(); const bs = geo.boundingSphere!, cr = Math.cos(rotY), sr = Math.sin(rotY);
+    fxs.push((dt) => { t += dt; const k = Math.min(1, t / dur); (m.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.1 * Math.abs(Math.sin(t * 9)) * (k > 0.7 ? 1 : 0.4);
+      if (grow === 'scale') { fill.scale.setScalar(Math.max(0.03, k)); (fill.material as THREE.MeshBasicMaterial).opacity = 0.14; } else (fill.material as THREE.MeshBasicMaterial).opacity = 0.02 + 0.16 * k;
+      wall.scale.y = 0.15 + 1.5 * k * k + (k > 0.7 ? Math.abs(Math.sin(t * 22)) * 0.25 : 0); (wall.material as THREE.MeshBasicMaterial).opacity = 0.55 + 0.4 * k;
+      pT += dt * (6 + 26 * k); while (pT > 1) { pT -= 1; const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * bs.radius, lx = bs.center.x + Math.cos(a) * rr, lz = bs.center.z + Math.sin(a) * rr; /* brasas subindo de dentro da área */
+        ctx.particles.spawn(x + lx * cr + lz * sr, y + 0.1, z - lx * sr + lz * cr, { vy: 1.2 + Math.random() * 2.2, life: 0.7, s0: 0.12, s1: 0.02, c0: 0xffffff, c1: col, a: 0.9 }); }
+      if (k >= 1) { ctx.scene.remove(m); ctx.scene.remove(fill); ctx.scene.remove(wall); wall.geometry.dispose(); (wall.material as THREE.Material).dispose(); (m.material as THREE.Material).dispose(); (fill.material as THREE.Material).dispose();
+        fxs.push(erupt(ctx.scene, ctx.fine, geo, col, x, y, z, rotY)); const g0 = geo; setTimeout(() => g0.dispose(), 3000); then(); return true; } return false; });
   }
   const sector = (r: number, deg: number) => new THREE.CircleGeometry(r, 28, -deg * Math.PI / 360, deg * Math.PI / 180).rotateX(-Math.PI / 2);
   const rect = (len: number, w: number) => new THREE.PlaneGeometry(len, w).rotateX(-Math.PI / 2).translate(len / 2, 0, 0);
@@ -525,5 +533,7 @@ export function createBossBrain(ctx: BrainCtx) {
       const F = U.kit.fx; if (F) { U.fxT += dt * F.rate; while (U.fxT > 1) { U.fxT -= 1; const a = Math.random() * 6.283, r = Math.random() * e.def.radius * 1.2; ctx.particles.spawn(g.position.x + Math.cos(a) * r, g.position.y + Math.random() * U.H * e.def.scale * 0.9, g.position.z + Math.sin(a) * r, { vx: (Math.random() - 0.5) * 0.4, vy: F.up, vz: (Math.random() - 0.5) * 0.4, life: 1.1, s0: F.size ?? 0.28, s1: 0.04, c0: F.col, c1: F.col2, a: 0.85 }); } }
     }
   }
-  return { track, untrackAll, tick, get casting() { return cast.size; } };
+  /** teste: um aviso em cone e um em círculo num ponto */
+  function demo(x: number, y: number, z: number) { telegraph(sector(6, 90), 0xff4030, x, y, z, 0, 1.3, () => { /* */ }); telegraph(new THREE.CircleGeometry(3, 36).rotateX(-Math.PI / 2), 0x8a6aff, x - 5, y, z + 3, 0, 1.3, () => { /* */ }, 'scale'); }
+  return { track, untrackAll, tick, demo, get casting() { return cast.size; } };
 }

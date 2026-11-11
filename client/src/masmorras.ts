@@ -4,6 +4,7 @@
  *    e o salão do chefe, com mecânicas que pedem tanque, cura e dano.
  *  - Em grupo: quem é do mesmo grupo cai na MESMA cópia (os monstros têm as mesmas chaves de rede); cada um rola o seu saque. */
 import * as THREE from 'three';
+import { wallOf, erupt } from './luta3d';
 import { buildEntrance, flickerEntrance, type EntranceFx } from './entradas';
 import { buildDungeon, type DungeonFloor, type DgTheme } from './dungeon3d';
 import { lvlScale } from './enemies';
@@ -311,15 +312,21 @@ export function createMasmorras(ctx: DgCtx) {
   }
   /* ---------- chefe: telegrafa, chama ajuda, joga poças, enfurece ---------- */
   const v3 = new THREE.Vector3();
+  /* 10/11: o círculo de aviso do chefe em 3D (fx3d.ts): parede de energia que sobe na borda e estacas que saem do chão quando bate */
+  const ringFx: ((dt: number) => boolean)[] = [];
   function ring(x: number, z: number, R0: number, col: number, dur: number, then: () => void) {
-    const m = new THREE.Mesh(new THREE.RingGeometry(R0 - 0.25, R0, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
-    const f = new THREE.Mesh(new THREE.CircleGeometry(R0, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }));
-    m.position.set(x, 0.07, z); f.position.set(x, 0.06, z); ctx.scene.add(ctx.fine(m)); ctx.scene.add(ctx.fine(f)); let t = 0; const t0 = performance.now();
-    const tick = () => { t = (performance.now() - t0) / 1000; const k = Math.min(1, t / dur); f.scale.setScalar(Math.max(0.05, k)); (f.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.3 * k;
-      if (k < 1) requestAnimationFrame(tick); else { ctx.scene.remove(m); ctx.scene.remove(f); then(); } }; tick();
+    const geo = new THREE.CircleGeometry(R0, 48).rotateX(-Math.PI / 2);
+    const f = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.06, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const w = wallOf(geo, col); w.position.set(x, 0.06, z); w.scale.y = 0.1; f.position.set(x, 0.06, z); ctx.scene.add(ctx.fine(w)); ctx.scene.add(ctx.fine(f)); let t = 0, pT = 0;
+    ringFx.push((dt) => { t += dt; const k = Math.min(1, t / dur); f.scale.setScalar(Math.max(0.05, k)); (f.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.12 * k;
+      w.scale.y = 0.15 + 1.6 * k * k + (k > 0.7 ? Math.abs(Math.sin(t * 22)) * 0.25 : 0);
+      pT += dt * (6 + 26 * k); while (pT > 1) { pT -= 1; const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * R0; ctx.particles.spawn(x + Math.cos(a) * rr, 0.15, z + Math.sin(a) * rr, { vy: 1.2 + Math.random() * 2.2, life: 0.7, s0: 0.12, s1: 0.02, c0: 0xffffff, c1: col, a: 0.9 }); }
+      if (k < 1) return false; ctx.scene.remove(w); ctx.scene.remove(f); w.geometry.dispose(); (w.material as THREE.Material).dispose(); (f.material as THREE.Material).dispose();
+      ringFx.push(erupt(ctx.scene, ctx.fine, geo, col, x, 0.06, z, 0)); setTimeout(() => geo.dispose(), 3000); then(); return true; });
   }
   let flickT = 0;
   function update(dt: number) {
+    for (let i = ringFx.length - 1; i >= 0; i--) if (ringFx[i](dt)) ringFx.splice(i, 1);
     flickT += dt; { const hp = ctx.heroPos(); for (const e of efx) { const near = Math.abs(e.x - hp.x) < 45 && Math.abs(e.z - hp.z) < 45; if (near) flickerEntrance(e.fx, flickT);
       /* o nome em letra nítida sobre a entrada, quando você chega perto (some dentro da masmorra) */
       const dd = Math.hypot(e.x - hp.x, e.z - hp.z), sp = !run && dd < 22 && ctx.project ? ctx.project(new THREE.Vector3(e.x, e.y + 4.6, e.z)) : null;
