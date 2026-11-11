@@ -156,9 +156,9 @@ function treeGeral(kit = 'geral'): TNode[] {
   const rings: TNode[][][] = [];
   D.branches.forEach((B, bi) => { const role: Role = kit === 'geral' ? (['atk', 'def', 'sup'] as Role[])[bi] : roleOf(B), P = POOL[role], R: TNode[][] = []; let si = 0, ni = 0, mi = 0;
     const own = B.notables.map((q) => q) as [string, Eff][]; const nots = [...own, ...P.notables];
-    for (let k = 1; k <= NR; k++) { const r = 0.6 + RING * k, HALF = SH.half ? SH.half(bi, k) : TREE_HALF, tw = SH.twist ? SH.twist(bi, k) : 0, m = k === NR ? 3 : Math.max(0, Math.floor((HALF * r) / GAP)), cols: number[] = [];
+    for (let k = 1; k <= NR; k++) { const r = 0.6 + RING * k, HALF = Math.min(SH.half ? SH.half(bi, k) : TREE_HALF, k <= 3 ? 0.9 : 1.03) /* perto do centro os braços vizinhos quase se tocam: ali ninguém passa da largura normal */, tw = SH.twist ? SH.twist(bi, k) : 0, m = k === NR ? 3 : Math.max(0, Math.floor((TREE_HALF * r) / GAP)) /* a conta de pontos do anel é a mesma em toda árvore */, cols: number[] = [];
       if (k === NR) cols.push(-3, 0, 3); else for (let c = -m; c <= m; c++) cols.push(c);
-      const step = GAP / r, row: TNode[] = [];
+      const step = k === NR || !m ? GAP / r : HALF / m /* a forma só abre ou junta os pontos do anel */, row: TNode[] = [];
       for (const c of cols) { const a = ANG[bi] + tw + c * step, x = Math.cos(a) * r, y = Math.sin(a) * r, id = `b${bi}g${k}_${c + 9}`;
         const req = k === NR ? (c === 0 ? KEY_REQ : RING_REQ[k]) : RING_REQ[k], lvl = k === NR && c === 0 ? KEY_LVL : RING_LVL[k];
         let n: TNode;
@@ -198,19 +198,24 @@ export const ANGS = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6];
    cada árvore tem a sua SILHUETA. Os anéis (e os arcos de nível) são os mesmos; o que muda é para onde cada braço aponta (ang, em graus,
    -90 = para cima), a largura dele em cada anel (half, em radianos) e o quanto ele torce de anel em anel (twist). */
 interface Shape { nome: string; ang: [number, number, number]; half?: (bi: number, k: number) => number; twist?: (bi: number, k: number) => number }
+/* 11/11, mais tarde (Erling: "todas as árvores têm que ter pontuações semelhantes; o caçador é o que tem menos, isso não mexe no poder?"): mexia.
+   Na primeira versão a largura do braço decidia QUANTOS pontos cabiam nele, então árvore de braço fino tinha menos pontos (237 contra 397) e
+   havia pedra-chave que pedia mais pontos do que o braço tinha. Agora a conta é fixa: todo braço de toda árvore tem os mesmos pontos em cada
+   anel (130 por braço, 397 por árvore). A forma só muda a DIREÇÃO do braço, a torção e o quanto os pontos de cada anel se abrem ou se juntam
+   (half entre 0,72 e 0,97: de 80% a 108% do vão normal, para nunca ficarem colados). */
 const SHAPES: Record<string, Shape> = {
   geral: { nome: 'a Roda', ang: [-90, 30, 150] },
   human: { nome: 'a Roda: três caminhos do mesmo tamanho, nenhum maior que o outro', ang: [-90, 30, 150] },
-  elf: { nome: 'a Folha: cada braço nasce fino, abre e volta a afinar, ondulando como ramo ao vento', ang: [-90, 30, 150], half: (_b, k) => 0.36 + 0.6 * Math.sin(Math.PI * k / NR), twist: (_b, k) => 0.2 * Math.sin(k * 0.55) },
-  dwarf: { nome: 'a Montanha: base larga, pico estreito, tudo em linha reta', ang: [-90, 30, 150], half: (_b, k) => Math.max(0.46, 0.98 - 0.042 * k) },
-  nordic: { nome: 'o Machado: o cabo desce reto e as duas lâminas abrem para cima', ang: [90, -150, -30], half: (b, k) => b === 0 ? 0.5 : Math.min(0.95, 0.4 + 0.058 * k) },
-  pal: { nome: 'a Cruz de Auréon: três hastes retas, para cima e para os lados', ang: [-90, 0, 180], half: () => 0.62 },
-  vam: { nome: 'as Asas: duas asas que sobem e se curvam, e a presa apontando para baixo', ang: [90, -155, -25], half: (b, k) => b === 0 ? 0.5 : Math.min(0.74, 0.36 + 0.05 * k), twist: (b, k) => b === 1 ? 0.03 * k : b === 2 ? -0.03 * k : 0 },
-  lob: { nome: 'as Garras: três rasgos curvos, todos para o mesmo lado', ang: [-90, -15, -165], half: () => 0.6, twist: (_b, k) => 0.034 * k },
-  mag: { nome: 'a Espiral: os três braços giram em volta do centro como uma galáxia', ang: [-90, 30, 150], half: () => 0.78, twist: (_b, k) => 0.075 * k },
-  bru: { nome: 'o Espinheiro: braços serrilhados que giram ao contrário', ang: [90, -30, -150], half: (_b, k) => k % 2 ? 0.9 : 0.5, twist: (_b, k) => -0.05 * k },
-  tecno: { nome: 'a Engrenagem: dentes largos e vãos estreitos, anel sim, anel não', ang: [-90, 30, 150], half: (_b, k) => (k % 3 === 0 ? 0.55 : 0.95) },
-  cac: { nome: 'a Besta: a haste aponta para a frente e os dois braços do arco abrem para trás', ang: [-90, 128, 52], half: (b, k) => b === 0 ? 0.62 : Math.min(0.62, 0.36 + 0.045 * k), twist: (b, k) => b === 1 ? 0.022 * k : b === 2 ? -0.022 * k : 0 },
+  elf: { nome: 'a Folha: cada braço nasce fino, abre e volta a afinar, ondulando como ramo ao vento', ang: [-90, 30, 150], half: (_b, k) => 0.72 + 0.3 * Math.sin(Math.PI * k / NR), twist: (_b, k) => 0.12 * Math.sin(k * 0.55) },
+  dwarf: { nome: 'a Montanha: base larga, pico estreito, tudo em linha reta', ang: [-90, 30, 150], half: (_b, k) => Math.max(0.72, 0.97 - 0.024 * k) },
+  nordic: { nome: 'o Machado: o cabo desce reto e as duas lâminas abrem para cima', ang: [90, -150, -30], half: (b, k) => b === 0 ? 0.72 : Math.min(1.0, 0.72 + 0.028 * k) },
+  pal: { nome: 'a Cruz de Auréon: três hastes retas, para cima e para os lados', ang: [-90, 15, 165], half: () => 0.74 },
+  vam: { nome: 'as Asas: duas asas que sobem e se curvam, e a presa apontando para baixo', ang: [90, -155, -25], half: (b, k) => b === 0 ? 0.72 : Math.min(0.95, 0.72 + 0.022 * k), twist: (b, k) => b === 1 ? 0.012 * k : b === 2 ? -0.012 * k : 0 },
+  lob: { nome: 'as Garras: três rasgos finos e curvos, todos para o mesmo lado', ang: [-90, 30, 150], half: () => 0.72, twist: (_b, k) => 0.034 * k },
+  mag: { nome: 'a Espiral: os três braços giram em volta do centro como uma galáxia', ang: [-90, 30, 150], half: () => 0.9, twist: (_b, k) => 0.075 * k },
+  bru: { nome: 'o Espinheiro: braços serrilhados que giram ao contrário', ang: [90, -30, -150], half: (_b, k) => k % 2 ? 0.95 : 0.72, twist: (_b, k) => -0.05 * k },
+  tecno: { nome: 'a Engrenagem: dentes largos e vãos estreitos, de três em três anéis', ang: [-90, 30, 150], half: (_b, k) => (k % 3 === 0 ? 0.72 : 0.97) },
+  cac: { nome: 'a Besta: a haste aponta para a frente e os dois braços do arco abrem para trás', ang: [-90, 140, 40], half: () => 0.74, twist: (b, k) => b === 1 ? 0.02 * k : b === 2 ? -0.02 * k : 0 },
 };
 SHAPES.technocrat = SHAPES.tecno;
 const shapeOf = (kit: string): Shape => SHAPES[kit] ?? SHAPES.human;
