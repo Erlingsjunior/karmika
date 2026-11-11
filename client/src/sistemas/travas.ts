@@ -31,7 +31,11 @@ const GRUPO: Record<string, Tipo> = {
 const CURA_DE_GRUPO = new Set(['pal', 'mag', 'bru']);
 /** tipo da habilidade de grupo (chave "classe:id"), ou null se ela é só do próprio jogador */
 /** as 66 habilidades de grupo (sistemas/grupo-magias.ts) entram aqui: o quadro delas, as aprendidas e o clique */
-let extra: { panel(): string; skills(): { k: string; name: string; svg: string; c: string }[]; click(t: HTMLElement, again: () => void): boolean } | null = null;
+let extra: { papel(): string; skills(): { k: string; name: string; svg: string; c: string }[]; click(t: HTMLElement, again: () => void): boolean; nodes(rows: number, W: number, H: number, NS: number): { html: string; lines: string; rows: number }; detail(): string | null; clearSel(): void } | null = null;
+/** os quadrados das magias de grupo dentro da árvore de habilidades, a ficha da que está selecionada, e a limpeza da seleção */
+export const travasNodes = (rows: number, W: number, H: number, NS: number) => extra?.nodes(rows, W, H, NS) ?? { html: '', lines: '', rows: 0 };
+export const travasDetail = () => extra?.detail() ?? null;
+export const travasClearSel = () => extra?.clearSel();
 export function setTravasExtra(e: typeof extra) { extra = e; }
 export function tipoGrupo(k: string): Tipo | null { const [kit, id] = k.split(':'); if (kit === 'g') return (GRUPO_SKILLS.find((q) => q.id === id)?.tipo as Tipo | undefined) ?? null; if (id === 'heal') return CURA_DE_GRUPO.has(kit) ? 'cura' : null; return GRUPO[id] ?? null; }
 const KEY = 'karmika.travas.v1';
@@ -53,7 +57,7 @@ export function runasDoNo(k: string): string {
 /** o painel das três travas; cada trava cresce conforme recebe runas */
 export function travasHtml(all: { k: string; name: string; svg: string; c: string }[], selK: string | null): string {
   const skills = [...all, ...(extra?.skills() ?? [])].filter((q) => tipoGrupo(q.k)), by = new Map(skills.map((s) => [s.k, s]));
-  return `${extra?.panel() ?? ''}<div class="locks"><div class="lkh"><b>Travas de grupo</b><small>Só as <b>habilidades de grupo</b> (cura, proteção, bênção, torres e invocações) têm runas de pedra; golpes e movimentos são seus e não entram aqui. Arraste a runa para um arquétipo: em grupo, a habilidade vai para quem tem esse papel. Duas runas por habilidade. <kbd>Ctrl</kbd> ao lançar escolhe o alvo à mão.${skills.length ? '' : ' <i>Você ainda não aprendeu nenhuma habilidade de grupo.</i>'}</small></div>
+  return `<div class="locks"><div class="lkh"><b>Travas de grupo</b><small>Só as <b>habilidades de grupo</b> (cura, proteção, bênção, torres e invocações) têm runas de pedra; golpes e movimentos são seus e não entram aqui. Arraste a runa para um arquétipo: em grupo, a habilidade vai para quem tem esse papel. Duas runas por habilidade. <kbd>Ctrl</kbd> ao lançar escolhe o alvo à mão.${skills.length ? '' : ' <i>Você ainda não aprendeu nenhuma habilidade de grupo: a primeira abre no nível 25, na fileira de baixo da árvore.</i>'}</small>${extra?.papel() ?? ''}</div>
     <div class="lkrow">${ARQS.map((a) => { const inside = Object.keys(data).filter((k) => data[k].includes(a.id) && by.has(k));
       return `<div class="arqlock" data-arq="${a.id}"><div class="lkt"><span class="lki">${a.svg}</span><b>${a.name}</b><small>${a.hint}</small><em>${inside.length}</em></div>
         <div class="lkr">${inside.map((k) => { const s = by.get(k)!, tp = tipoGrupo(k)!; return `<button class="lrune" data-unrune="${k}|${a.id}" style="--c:${s.c}" title="${s.name} (${TIPOS[tp].name}). Clique para tirar da trava."><span class="lic">${s.svg}</span><i class="rn">${stone(tp)}</i><em>${s.name}</em></button>`; }).join('')}${selK && by.has(selK) && !travasOf(selK).includes(a.id) && travasOf(selK).length < 2 ? `<button class="ladd" data-addrune="${selK}|${a.id}" title="Encaixar aqui a habilidade selecionada">+ ${by.get(selK)!.name}</button>` : inside.length ? '' : '<span class="lempty">solte uma runa aqui</span>'}</div></div>`; }).join('')}</div></div>`;
