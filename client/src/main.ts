@@ -1768,7 +1768,7 @@ function updateGuide(...a: Parameters<ReturnType<typeof createGuiaMapa>['updateG
 const composer = new EffectComposer(renderer);
 const dual = new DualRenderPass(scene, camera, 2, 2, WORLD_RATIO);
 /* 11/11: no WebGL, material novo compila em paralelo e aparece quando fica pronto, em vez de parar o quadro (sistemas/compila-sem-travar.ts) */
-const shaderGate = gpuImpl ? null : createShaderGate(renderer, scene, camera, () => dual.rt); (window as unknown as { __gate?: unknown }).__gate = shaderGate; /* teste */
+const shaderGate = gpuImpl ? null : createShaderGate(renderer, scene, camera, () => dual.rt); (window as unknown as { __gate?: unknown }).__gate = shaderGate; /* teste */ (window as unknown as { __corte?: unknown }).__corte = () => DualRenderPass.culledLast; /* teste */
 composer.addPass(dual);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93);
 composer.addPass(bloom);
@@ -2784,7 +2784,7 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 /* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,

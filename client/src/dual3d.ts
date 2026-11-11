@@ -19,6 +19,22 @@ export class DualRenderPass extends Pass {
   mat: THREE.ShaderMaterial;
   /** medidor (main /perf): tempo de cada etapa */ static timer: ((k: string, ms: number) => void) | null = null;
   private tick = 0; private onlyW = new Set<THREE.Object3D>(); private onlyF = new Set<THREE.Object3D>();
+  /* 11/11 (desempenho, Erling: "PCs fracos têm que poder jogar com muita qualidade"): o three.js visitava, nas duas passadas e na da sombra, os mais de
+     10 mil objetos carregados em volta, mesmo os que estão fora da tela. Agora cada peça parada do cenário (casa, poste, banca, árvore: o que é só
+     malha comum) tem a sua esfera guardada; antes de desenhar, a peça inteira que está fora da vista (com 35 m de folga, por causa da sombra) é
+     escondida, e volta logo depois do quadro. Quem se mexe (personagens, bichos, efeitos, instâncias) nunca entra nisso. */
+  private cullC = new WeakMap<THREE.Object3D, { s: THREE.Sphere | null; next: number; x: number; y: number; z: number; dyn: number }>(); private culled: THREE.Object3D[] = [];
+  private frustum = new THREE.Frustum(); private pm = new THREE.Matrix4(); private box = new THREE.Box3(); private sph = new THREE.Sphere(); private cullBudget = 0;
+  /** quantas peças ficaram de fora no último quadro (para o /travadas) */ static culledLast = 0; static cullOn = !/[?&]corte=0/.test(typeof location !== 'undefined' ? location.search : '');
+  private cullUnit(r: THREE.Object3D) { if (!r.visible || (r as THREE.Light).isLight || (r as THREE.Camera).isCamera) return;
+    const f = this.tick; let c = this.cullC.get(r);
+    if (!c || f >= c.next) { if (this.cullBudget <= 0) { if (!c) return; } else { this.cullBudget--;
+        let ok = true, n = 0; r.traverse((o) => { n++; const m = o as THREE.Mesh & { isSkinnedMesh?: boolean; isInstancedMesh?: boolean; isBatchedMesh?: boolean }; if (m.isSkinnedMesh || m.isInstancedMesh || m.isBatchedMesh || (o as THREE.Points).isPoints || (o as THREE.Sprite).isSprite || (o as THREE.Line).isLine || o.userData.noCull) ok = false; });
+        let s: THREE.Sphere | null = null; if (ok && n > 0) { this.box.setFromObject(r); if (!this.box.isEmpty()) s = this.box.getBoundingSphere(new THREE.Sphere()); }
+        const moved = !!c && (c.x !== r.position.x || c.y !== r.position.y || c.z !== r.position.z);
+        c = { s, next: f + 200 + (r.id % 97), x: r.position.x, y: r.position.y, z: r.position.z, dyn: moved ? f + 600 : (c?.dyn ?? 0) }; this.cullC.set(r, c); } }
+    if (!c.s) return; if (c.x !== r.position.x || c.y !== r.position.y || c.z !== r.position.z) { c.dyn = f + 600; c.next = Math.min(c.next, f + 30); return; } if (c.dyn > f) return;
+    this.sph.copy(c.s); this.sph.radius += 35; if (!this.frustum.intersectsSphere(this.sph)) { r.visible = false; this.culled.push(r); } }
   /** planos de corte da camada fina (a água corta herói, NPCs e bichos na linha d'água) — só valem na cena clipFor */
   fineClip: THREE.Plane[] = []; clipFor: THREE.Scene | null = null;
   constructor(private scene: THREE.Scene, private camera: THREE.Camera, w: number, h: number, public ratio = 2) {
@@ -52,6 +68,12 @@ export class DualRenderPass extends Pass {
       for (const r of this.scene.children) { let m = 0, cs = false; r.traverse((o) => { if (!(o as THREE.Light).isLight) { m |= o.layers.mask; if (o.castShadow && (o as THREE.Mesh).isMesh) cs = true; } }); if ((m & F) && !(m & W) && !cs) this.onlyF.add(r); /* quem projeta sombra fica: o mapa de sombra é desenhado na passada do cenário */ else if ((m & W) && !(m & F)) this.onlyW.add(r); } }
     if ((this.tick++ % 30) === 0) this.scene.traverse((o) => { if ((o as THREE.Light).isLight) { if (!realPoint(o)) o.layers.enableAll(); const l = o as THREE.DirectionalLight; if (l.shadow && l.shadow.camera) l.shadow.camera.layers.enableAll(); } });
     const autoSM = sm.autoUpdate; sm.autoUpdate = false; sm.needsUpdate = true; // sombras: 1× por quadro
+    /* 11/11 (desempenho): a cena é desenhada duas vezes por quadro, e cada desenho refazia a matriz de TODOS os objetos (mais de 20 mil). Nada se mexe
+       entre uma passada e a outra: as matrizes são atualizadas uma vez só, aqui, e as duas passadas reaproveitam. */
+    const mwa = this.scene.matrixWorldAutoUpdate; if (mwa) { this.scene.updateMatrixWorld(); this.scene.matrixWorldAutoUpdate = false; }
+    if (DualRenderPass.cullOn) { cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert(); this.pm.multiplyMatrices((cam as THREE.PerspectiveCamera).projectionMatrix, cam.matrixWorldInverse); this.frustum.setFromProjectionMatrix(this.pm); this.cullBudget = 24; this.culled.length = 0;
+      for (const r of this.scene.children) { if (r.children.length >= 12 && !r.name.startsWith('char')) { let big = (r.userData.cullKids as boolean | undefined); if (big === undefined) { let n = 0; r.traverse(() => n++); big = r.userData.cullKids = n > 1200; } if (big) { for (const k of r.children) this.cullUnit(k); continue; } } this.cullUnit(r); }
+      DualRenderPass.culledLast = this.culled.length; }
     const oldAC = renderer.autoClear; renderer.autoClear = true;
     // 1) cenário em meia resolução
     cam.layers.set(LAYER_WORLD);
@@ -67,7 +89,7 @@ export class DualRenderPass extends Pass {
     for (const r of this.onlyW) if (r.visible) { r.visible = false; hid.push(r); }
     cam.layers.set(LAYER_FINE); renderer.autoClear = false; const clip0 = renderer.clippingPlanes; if (this.scene === this.clipFor) renderer.clippingPlanes = this.fineClip; renderer.render(this.scene, cam); renderer.clippingPlanes = clip0;
     for (const r of hid) r.visible = true; DualRenderPass.timer?.('desenho:personagens', performance.now() - t1);
-    this.scene.background = bg; cam.layers.enableAll(); renderer.autoClear = oldAC; sm.autoUpdate = autoSM;
+    this.scene.background = bg; cam.layers.enableAll(); renderer.autoClear = oldAC; sm.autoUpdate = autoSM; this.scene.matrixWorldAutoUpdate = mwa; for (const r of this.culled) r.visible = true; this.culled.length = 0;
   }
   dispose() { this.rt.dispose(); this.mat.dispose(); this.quad.dispose(); }
 }
