@@ -619,7 +619,7 @@ export function createGameplay(d: GameplayDeps) {
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
       const arm = Math.max(0, Math.min(0.6, 0.06 + cp.arm + 0.025 * dlv)), absb = cp.abs * (1 + 0.12 * el), ty = dmgTypeOf(skill), rs = cp.res?.[ty] ?? 1;
       dmg = dmg * rs * (1 - arm) - absb;
-      if (poiseUp(e)) dmg *= 0.5; // guarda do elite em pé: metade
+      if (poiseUp(e)) dmg *= 0.35; // guarda do elite em pé: bloqueia 65% (Erling, 11/11; antes era metade)
       poiseHit(e, dmg * (mul > 1.5 || skill === 'slam' || skill === 'bash' ? 2.2 : 1) * (crit ? 1.5 : 1));
       if (rs >= 1.25 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'FRAQUEZA', false, '#ffb060'); else if (rs <= 0.6 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'RESISTE', false, '#a8b0c0');
     }
