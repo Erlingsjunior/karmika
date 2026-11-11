@@ -13,14 +13,15 @@ const FACE: Record<string, Tk[]> = {
   LR: [{ k: '9' }, { k: '0' }, { k: '1', shift: true }, { k: '2', shift: true }],
 };
 /* botões fora A B X Y (índices do padrão dos navegadores): 4 LB · 5 RB · 8 voltar · 9 start · 10 L3 · 11 R3 · 12-15 setas */
-const OUTROS: Record<number, Tk> = { 4: { k: 'F1' }, 5: { k: 'F2' }, 8: { k: 'k' }, 9: { k: 'Escape' }, 10: { k: 'r' }, 11: { k: 'f' }, 12: { k: 'm' }, 13: { k: 'c' }, 14: { k: 'i' }, 15: { k: 'j' } };
+const OUTROS: Record<number, Tk> = { 4: { k: 'F1' }, 5: { k: 'F2' }, 9: { k: 'Escape' }, 10: { k: 'r' }, 11: { k: 'f' }, 12: { k: 'm' }, 13: { k: 'c' }, 14: { k: 'i' }, 15: { k: 'j' } };
 export const CONTROLE_AJUDA: [string, string][] = [
   ['Alavanca esquerda', 'andar'], ['Alavanca direita', 'mirar'],
   ['A · B · X · Y', 'usar/falar · dash · golpe · montaria'],
   ['LT segurado + A B X Y', 'magias 1 · 2 · 3 · 4'], ['RT segurado + A B X Y', 'magias 5 · 6 · 7 · 8'], ['LT + RT + A B X Y', 'magias 9 · 0 · ⇧1 · ⇧2'],
   ['Toque rápido no LT', 'modo de combate'], ['Toque rápido no RT', 'golpe (magia 1)'],
   ['LB · RB', 'poções 1 e 2'], ['Setas ↑ ↓ ← →', 'mapa · personagem · mochila · missões'],
-  ['Start · Voltar', 'menu · magias'], ['Apertar as alavancas', 'correr/andar · instinto'],
+  ['Start', 'menu'], ['Voltar (Select)', 'liga e desliga o ponteiro, para usar janelas e menus'],
+  ['No ponteiro', 'alavanca esquerda move · A clica · X botão direito · B fecha · alavanca direita rola a lista · setas dão passos curtos'], ['Apertar as alavancas', 'correr/andar · instinto'],
 ];
 let nome = '';
 export const controleNome = () => nome;
@@ -30,6 +31,33 @@ const solta = (i: number) => { const h = held.get(i); if (h) { mandaTecla('keyup
 const aperta = (i: number, t: Tk) => { solta(i); held.set(i, t); mandaTecla('keydown', t.k, { shiftKey: t.shift }); };
 function dir(k: 'w' | 'a' | 's' | 'd', on: boolean) { if (dirs[k] === on) return; dirs[k] = on; mandaTecla(on ? 'keydown' : 'keyup', k); }
 function soltaTudo() { for (const i of [...held.keys()]) solta(i); dir('w', false); dir('a', false); dir('s', false); dir('d', false); prev.length = 0; ltWas = rtWas = false; }
+/* 11/11 (Erling: "controle nos menus"): O PONTEIRO. Com janela, menu ou tela de início abertos (ou apertando Voltar/Select), a alavanca esquerda
+   move um ponteiro na tela; A clica onde ele está, X dá o botão direito, B fecha (Esc), a alavanca direita rola a lista debaixo dele.
+   Enquanto o ponteiro está ligado o herói não anda e as magias não saem. */
+let ptr: HTMLElement | null = null, ptrOn = false, ptrManual = false, px = 0, py = 0, ptrHover = 0, ptrDown: Element | null = null;
+const uiAberta = () => { const m = document.getElementById('menu'), i = document.getElementById('inicio'); return !!(m && m.classList.contains('open')) || !!(i && i.style.display !== 'none' && getComputedStyle(i).display !== 'none') || !!document.querySelector('.kconf') || !!document.getElementById('create') && document.getElementById('create')!.style.display === 'grid'; };
+let prime = false; /* ao trocar de modo, os botões que já estavam apertados não contam como aperto novo (o Start que abriu o menu não pode fechá-lo no quadro seguinte) */
+function ptrShow(on: boolean) { if (on === ptrOn) return; ptrOn = on; prime = true;
+  if (!ptr) { ptr = document.createElement('div'); ptr.id = 'padptr'; ptr.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;width:26px;height:26px;margin:-3px 0 0 -3px;will-change:transform';
+    ptr.innerHTML = '<svg viewBox="0 0 26 26" width="26" height="26"><path d="M3 2l17 8-7 2.6L10.4 20z" fill="#ffe08a" stroke="#1a1208" stroke-width="1.6" stroke-linejoin="round"/></svg>'; document.body.appendChild(ptr); px = innerWidth / 2; py = innerHeight / 2; }
+  ptr.hidden = !on; if (on) { soltaTudo(); mostra(''); px = Math.max(8, Math.min(innerWidth - 8, px)); py = Math.max(8, Math.min(innerHeight - 8, py)); } }
+const alvo = () => document.elementFromPoint(px, py);
+function mouse(type: string, el: Element | null, button = 0) { if (!el) return; const init = { clientX: px, clientY: py, bubbles: true, cancelable: true, button, buttons: type.endsWith('down') ? 1 : 0, view: window };
+  el.dispatchEvent(type.startsWith('pointer') ? new PointerEvent(type, { ...init, pointerId: 1, pointerType: 'mouse', isPrimary: true }) : new MouseEvent(type, init)); }
+function ptrTick(gp: Gamepad, dt: number, b: (i: number) => boolean) {
+  if (prime) { prime = false; for (let i = 0; i < 16; i++) prev[i] = b(i); }
+  const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0, lm = Math.hypot(lx, ly); if (lm > 0.18) { const sp = 1250 * lm * lm * dt; px = Math.max(2, Math.min(innerWidth - 2, px + lx / lm * sp)); py = Math.max(2, Math.min(innerHeight - 2, py + ly / lm * sp)); }
+  for (const [i, dx, dy] of [[12, 0, -1], [13, 0, 1], [14, -1, 0], [15, 1, 0]] as [number, number, number][]) { const p = b(i); if (p && !prev[i]) { px = Math.max(2, Math.min(innerWidth - 2, px + dx * 36)); py = Math.max(2, Math.min(innerHeight - 2, py + dy * 36)); } prev[i] = p; }
+  ptr!.style.transform = `translate(${px.toFixed(0)}px, ${py.toFixed(0)}px)`;
+  const now = performance.now(); if (now - ptrHover > 40) { ptrHover = now; const el = alvo(); mouse('pointermove', el); mouse('mousemove', el); if (el !== ptrDown && !b(0)) { mouse('mouseover', el); } }
+  const ry = gp.axes[3] ?? 0; if (Math.abs(ry) > 0.25) { let el = alvo() as HTMLElement | null; while (el && !(el.scrollHeight > el.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement; if (el) el.scrollTop += ry * 900 * dt; else alvo()?.dispatchEvent(new WheelEvent('wheel', { deltaY: ry * 60, clientX: px, clientY: py, bubbles: true, cancelable: true })); }
+  const a = b(0); if (a && !prev[0]) { ptrDown = alvo(); mouse('pointerdown', ptrDown); mouse('mousedown', ptrDown); (ptrDown as HTMLElement | null)?.focus?.(); }
+  else if (!a && prev[0]) { const up = alvo(); mouse('pointerup', up); mouse('mouseup', up); if (up && up === ptrDown) (up as HTMLElement).click ? (up as HTMLElement).click() : mouse('click', up); ptrDown = null; } prev[0] = a;
+  const x = b(2); if (x && !prev[2]) { const el = alvo(); mouse('pointerdown', el, 2); mouse('mousedown', el, 2); mouse('pointerup', el, 2); mouse('mouseup', el, 2); mouse('contextmenu', el, 2); } prev[2] = x;
+  const bb = b(1); if (bb && !prev[1]) { mandaTecla('keydown', 'Escape'); mandaTecla('keyup', 'Escape'); if (ptrManual && !uiAberta()) { ptrManual = false; } } prev[1] = bb;
+  const stt = b(9); if (stt && !prev[9]) { mandaTecla('keydown', 'Escape'); mandaTecla('keyup', 'Escape'); } prev[9] = stt;
+}
+let ptrLast = 0;
 let hint: HTMLElement | null = null;
 function mostra(mod: string) {
   if (!hint) { hint = document.createElement('div'); hint.id = 'padhint'; hint.style.cssText = 'position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:30;pointer-events:none;background:rgba(18,14,10,.82);border:1px solid #6b5a3a;border-radius:6px;padding:4px 10px;color:#f0e2c0;font:12px/1.4 monospace;white-space:nowrap'; document.body.appendChild(hint); }
@@ -39,11 +67,15 @@ function mostra(mod: string) {
 function tick() {
   requestAnimationFrame(tick);
   let gp: Gamepad | null = null; try { for (const g of navigator.getGamepads?.() ?? []) if (g && g.connected && g.mapping === 'standard') { gp = g; break; } } catch { /* */ }
-  if (!gp) { if (nome) { nome = ''; soltaTudo(); mostra(''); } return; }
+  if (!gp) { if (nome) { nome = ''; soltaTudo(); mostra(''); ptrManual = false; ptrShow(false); } return; }
   if (!nome) { nome = gp.id.replace(/\s*\(.*\)\s*$/, '').slice(0, 40) || 'Controle'; dispatchEvent(new CustomEvent('karmika:controle', { detail: nome })); }
   if (!document.hasFocus()) { soltaTudo(); return; }
   const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { soltaTudo(); return; }
   const now = performance.now(), b = (i: number) => !!gp!.buttons[i] && (gp!.buttons[i].pressed || gp!.buttons[i].value > 0.35);
+  /* ponteiro: Voltar/Select liga e desliga; janela aberta liga sozinho */
+  { const sel = b(8); if (sel && !prev[8]) ptrManual = !ptrManual; prev[8] = sel; const want = ptrManual || uiAberta(); if (want !== ptrOn) ptrShow(want);
+    const dtp = Math.min(0.05, (now - ptrLast) / 1000); ptrLast = now; if (ptrOn) { ptrTick(gp, dtp, b); return; }
+    if (prime) { prime = false; for (let i = 0; i < 16; i++) prev[i] = b(i); ltWas = b(6); rtWas = b(7); ltUsed = rtUsed = true; return; } }
   /* andar */
   const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0, lm = Math.hypot(lx, ly);
   { const on = lm > 0.35, ux = on ? lx / lm : 0, uy = on ? ly / lm : 0; dir('a', ux < -0.38); dir('d', ux > 0.38); dir('w', uy < -0.38); dir('s', uy > 0.38); }
