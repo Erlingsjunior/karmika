@@ -23,6 +23,11 @@ interface Chest { k: string; x: number; y: number; z: number; zn: string; items:
 const ORDER: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique', 'relic'];
 const d20 = () => 1 + Math.floor(Math.random() * 20);
 
+let beamTex: THREE.CanvasTexture | null = null;
+/** degradê do facho: cheio no pé, some para cima (o topo do cilindro fica transparente) */
+function beamFade(): THREE.CanvasTexture { if (beamTex) return beamTex; const c = document.createElement('canvas'); c.width = 4; c.height = 256; const g = c.getContext('2d')!, gr = g.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.35, 'rgba(255,255,255,.10)'); gr.addColorStop(0.7, 'rgba(255,255,255,.42)'); gr.addColorStop(0.93, 'rgba(255,255,255,.95)'); gr.addColorStop(1, 'rgba(255,255,255,1)'); g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+  beamTex = new THREE.CanvasTexture(c); beamTex.colorSpace = THREE.SRGBColorSpace; return beamTex; }
 export function createEspolio(ctx: EspolioCtx) {
   const chests = new Map<string, Chest>();
   let bound = false;
@@ -39,7 +44,12 @@ export function createEspolio(ctx: EspolioCtx) {
     const top = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1.1, 14, 1, false, 0, Math.PI), dark); top.rotation.z = Math.PI / 2; top.position.set(0, 0, 0.35); top.castShadow = true; lid.add(top);
     for (const sx of [-0.42, 0, 0.42]) { const band = new THREE.Mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.1, 14, 1, false, 0, Math.PI), gold); band.rotation.z = Math.PI / 2; band.position.set(sx, 0, 0.35); lid.add(band); }
     box(0.16, 0.2, 0.06, gold, 0, 0.42, 0.37);
-    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.75, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd870, transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); beam.position.y = 3.6; g.add(beam); g.userData.beam = beam;
+    /* 11/11 (Erling: "luzes dos baús dourados pintadas? faz um facho de luz que sobe para o infinito, não vemos o fim dele, igual ao de item lendário"):
+       saiu o cone curto de cor chapada. O facho agora são três colunas uma dentro da outra (miolo fino e forte, corpo, véu largo e fraco), com 60 m de
+       altura, que vão sumindo em degradê para cima: o topo se perde no céu. Sem shader próprio, para valer igual no WebGL e no WebGPU. */
+    const beam = new THREE.Group(); beam.position.y = 0.5;
+    for (const [r0, r1, op] of [[0.07, 0.11, 0.95], [0.2, 0.3, 0.4], [0.5, 0.72, 0.13]] as const) { const col = new THREE.Mesh(new THREE.CylinderGeometry(r0, r1, 60, 18, 1, true).translate(0, 30, 0), new THREE.MeshBasicMaterial({ color: 0xffdc7a, map: beamFade(), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false })); col.userData.op = op; col.frustumCulled = false; col.raycast = () => {}; beam.add(col); }
+    g.add(beam); g.userData.beam = beam;
     const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd060, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); ring.position.y = 0.04; g.add(ring); g.userData.ring = ring;
     g.traverse((o) => { o.userData.dyn = true; });
     return g;
@@ -172,12 +182,12 @@ export function createEspolio(ctx: EspolioCtx) {
     if (!bound) bind();
     const now = performance.now();
     for (const c of chests.values()) { c.t += dt; if (!kept.has(c.k)) kept.set(c.k, c);
-      const g = c.g, lid = g.userData.lid as THREE.Group, beam = g.userData.beam as THREE.Mesh, ring = g.userData.ring as THREE.Mesh;
+      const g = c.g, lid = g.userData.lid as THREE.Group, beam = g.userData.beam as THREE.Group, ring = g.userData.ring as THREE.Mesh;
       if (!c.open) { const k = Math.min(1, c.t / 0.45), s = k < 1 ? 1.25 * k * (2 - k) * 0.82 : 1; g.scale.setScalar(Math.max(0.01, s)); g.position.y = c.y + (k < 1 ? Math.sin(k * Math.PI) * 0.6 : 0);
-        (beam.material as THREE.MeshBasicMaterial).opacity = 0.13 + Math.sin(now * 0.004) * 0.05; ring.rotation.y += dt * 0.8; ring.scale.setScalar(1 + Math.sin(now * 0.005) * 0.08);
+        { const pu = 0.85 + Math.sin(now * 0.004) * 0.15; for (const q of beam.children) ((q as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = (q.userData.op as number) * pu; beam.scale.y = 1 / Math.max(0.01, g.scale.y); /* o facho não encolhe com o baú nascendo */ } ring.rotation.y += dt * 0.8; ring.scale.setScalar(1 + Math.sin(now * 0.005) * 0.08);
         if (Math.random() < dt * 9) { const a = Math.random() * 6.283, r = 0.3 + Math.random() * 0.7; ctx.particles.spawn(c.x + Math.cos(a) * r, c.y + 0.2, c.z + Math.sin(a) * r, { vy: 1 + Math.random() * 1.5, life: 1.1, s0: 0.1, s1: 0.02, c0: 0xfff0a0, c1: 0xffb030, a: 0.9 }); }
         if (now - c.born > 600000) drop(c.k); /* 10 min sem ninguém abrir: some */ }
-      else { lid.rotation.x = -Math.min(1.9, c.t * 6); const f = Math.max(0, 1 - c.t / 2.4); (beam.material as THREE.MeshBasicMaterial).opacity = 0.4 * f; beam.scale.x = beam.scale.z = 1 + c.t; (ring.material as THREE.MeshBasicMaterial).opacity = 0.55 * f; if (c.t > 1.6) g.scale.setScalar(Math.max(0.01, 1 - (c.t - 1.6) / 0.9)); } }
+      else { lid.rotation.x = -Math.min(1.9, c.t * 6); const f = Math.max(0, 1 - c.t / 2.4); for (const q of beam.children) ((q as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = (q.userData.op as number) * 1.6 * f; beam.scale.x = beam.scale.z = 1 + c.t * 1.5; (ring.material as THREE.MeshBasicMaterial).opacity = 0.55 * f; if (c.t > 1.6) g.scale.setScalar(Math.max(0.01, 1 - (c.t - 1.6) / 0.9)); } }
     if (ui && !ui.hidden && uiBar) { const k = Math.max(0, 1 - (now - uiT) / uiBar), b = ui.querySelector('.bar i') as HTMLElement | null; if (b) b.style.width = (k * 100).toFixed(1) + '%'; }
     if (ui && !ui.hidden && now - uiT > 60000 && uiBar) { ui.hidden = true; uiK = ''; } /* quem apurava caiu: a tela não fica presa */
   }

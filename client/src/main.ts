@@ -2765,7 +2765,10 @@ function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
   log: (t, c) => game.logMsg(t, c), addGold: (n) => { game.st.gold += n; }, giveGear: (x, z, y, gs) => game.dropGearSet(x, z, y, gs) });
-game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ return espolio.eliteDied(e, ilvl, boost, shared); });
+game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ /* 11/11 (Erling: "eu queria que só caíssem de elites poderosos e de masmorras e raids; não de bichos no mapa, somente bichos muito fortes no mapa"):
+     dentro de masmorra ou raid, todo elite deixa baú. No mapa aberto, só o elite de verdade (força 3 ou mais na ficha dele: alfa, ent, lich, jötun, rainha…
+     ou o Príncipe) E que esteja à sua altura: até 3 níveis abaixo de você. Elite fraco ou de região que você já passou solta o espólio no chão, como bicho comum. */
+  { const E = e as unknown as { type: string; def: { lvl?: number; elite?: number } }; if (!dgs.run && !inside?.dg) { const power = E.type === 'prince' ? 9 : (E.def.elite ?? 0); if (power < 3 || (E.def.lvl ?? 1) < game.st.lvl - 3) return false; } } return espolio.eliteDied(e, ilvl, boost, shared); });
 (window as unknown as { __bau?: unknown }).__bau = espolio; /* teste */
 /* 10/11: ícones pequenos de buff e debuff no pé do herói, e a entrada de cada efeito com aro e espiral (sistemas/buffs-pe.ts) */
 /* teste: câmera lenta e soltar qualquer magia pelo id, para a revisão visual de todas as magias (11/11) */
