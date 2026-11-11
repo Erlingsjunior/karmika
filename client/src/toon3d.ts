@@ -59,7 +59,10 @@ const sh = (c: number, k: number) => `rgb(${Math.min(255, ((c >> 16) & 255) * k)
    das desenhadas — o desenho (tábuas, fiadas de pedra, cor) fica, e a foto em "overlay" põe veio de madeira, poro de pedra e sujeira.
    Tábua → assoalho de madeira; pedra aparelhada → laje de pedra; chão de masmorra → laje / rocha com musgo. Duas versões, pela cor. */
 const imgCache = new Map<string, Promise<HTMLImageElement | null>>();
-const loadImg = (n: string) => { let p = imgCache.get(n); if (!p) { p = new Promise((res) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => res(null); im.src = `/models/cenario/chao/${n}.jpg`; }); imgCache.set(n, p); } return p; };
+let photoPend = 0;
+/** as fotos de textura pedidas até agora já chegaram todas? (a abertura do jogo espera por isto) */
+export const photosReady = () => photoPend === 0;
+const loadImg = (n: string) => { let p = imgCache.get(n); if (!p) { photoPend++; p = new Promise((res) => { const im = new Image(); im.onload = () => { res(im); setTimeout(() => { photoPend--; }, 60); /* um instante para a textura ser trocada */ }; im.onerror = () => { photoPend--; res(null); }; im.src = `/models/cenario/chao/${n}.jpg`; }); imgCache.set(n, p); } return p; };
 export function photoDetail(t: THREE.Texture, imgs: string[], k: number, alpha = 0.62, rep = 1) {
   if ((t.userData as { photo?: boolean }).photo) return t; (t.userData as { photo?: boolean }).photo = true;
   const src = t.image as HTMLCanvasElement; if (typeof document === 'undefined' || !src) return t; const pick = imgs[Math.abs(k) % imgs.length];

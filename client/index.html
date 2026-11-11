@@ -1633,7 +1633,7 @@
 <style>
   #boot .bt-bar { display: block; width: 35%; height: 100%; background: linear-gradient(90deg, transparent, #e6c46a, transparent); animation: btbar 1.6s ease-in-out infinite; }
   @keyframes btbar { from { transform: translateX(-110%); } to { transform: translateX(300%); } }
-  #boot.off { opacity: 0; pointer-events: none; }
+  #boot { transition: opacity 1.5s ease, transform 1.5s ease, filter 1.5s ease !important; } #boot.off { opacity: 0; pointer-events: none; transform: scale(1.08); filter: blur(10px) brightness(1.6); } /* 11/11: a abertura se abre como uma cortina de luz, em vez de sumir de uma vez */
   /* 04/11 (Erling: "tira de TODO o jogo a possibilidade de selecionar texto arrastando… só deixa no chat"): nada se seleciona, só o chat e os campos de digitar */
   html, body, body *, svg text { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none; }
   input, textarea, [contenteditable="true"], #chat, #chat *, .chatlog, .chatlog * { -webkit-user-select: text !important; user-select: text !important; }

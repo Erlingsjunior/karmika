@@ -108,7 +108,7 @@ import { buildInterior, type Interior } from './interiors3d';
 
 
 import { CASTLE_FLOORS } from './castelo3d';
-import { CUT, ramp as toonRamp } from './toon3d';
+import { CUT, ramp as toonRamp, photosReady } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
 import { gpuState } from './gpu/tags';
@@ -2146,7 +2146,7 @@ fadeEl.innerHTML = '<div class="ldr"><div class="ldr-eye"><i></i></div><b>Atrave
 /** troca de lugar (fonte, relíquia, casa, cripta): tela de carregamento com o olho girando (animação de CSS: continua mesmo com o jogo ocupado);
     só some quando o mundo novo já foi montado, os shaders compilados e os quadros voltaram a ficar leves */
 let fading = false;
-function withFade(fn: () => void, label?: string, after?: () => void) {
+function withFade(fn: () => void, label?: string, after?: () => void, ready?: () => boolean) {
   if (fading) return; fading = true; const lb = fadeEl.querySelector('b'); if (lb) lb.textContent = label ?? 'Atravessando o caminho…';
   fadeEl.classList.add('on'); fadeEl.style.pointerEvents = 'auto'; fadeEl.style.opacity = '1';
   setTimeout(() => { requestAnimationFrame(() => {
@@ -2154,7 +2154,7 @@ function withFade(fn: () => void, label?: string, after?: () => void) {
     if (!gpuImpl) try { renderer.compile(scene, camera); } catch { /* */ }
     let last = performance.now(), calm = 0; const t0 = last;
     const check = () => { const now = performance.now(), dtm = now - last; last = now; calm = dtm < 45 ? calm + 1 : 0;
-      if (calm >= 6 || now - t0 > 8000) { fadeEl.style.opacity = '0'; fadeEl.style.pointerEvents = 'none'; setTimeout(() => { fadeEl.classList.remove('on'); fading = false; after?.(); }, 260); } else requestAnimationFrame(check); };
+      if ((calm >= 6 && (!ready || ready())) || now - t0 > (ready ? 15000 : 8000)) { fadeEl.style.opacity = '0'; fadeEl.style.pointerEvents = 'none'; setTimeout(() => { fadeEl.classList.remove('on'); fading = false; after?.(); }, 260); } else requestAnimationFrame(check); };
     requestAnimationFrame(check); }); }, 260);
 }
 function enterHouse(p: (typeof city.props)[number]) {
@@ -2707,6 +2707,7 @@ function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 
    e quem está longe nem se nota, porque a luz dela já não chegava na tela. A luz do herói e as de magia ficam sempre. */
 const LUZES_ATIVAS = 14;
 let poolT = 0, poolList: THREE.PointLight[] = [], poolScanT = 0;
+const bootGate = { done: false, t0: 0, nT: -1, nG: -1, still: 0 };
 function lightPool(dt: number) {
   poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean; gpuPool?: boolean }).keep && !(l.userData as { gpuPool?: boolean }).gpuPool && !(l.userData as { fixedLight?: boolean }).fixedLight) poolList.push(l); /* 03/11: as 24 luzes fixas do WebGPU ficam fora deste rodízio — apagar uma delas mudava o conjunto de luzes e remontava TODOS os materiais (tela preta de 1 s) */
       /* sombra só para o que tem tamanho de fazer sombra: capim, flor, pedrinha e vela não entram no mapa de sombras (eram milhares) */
@@ -2728,7 +2729,13 @@ function gpuPoll() { if (!tq || !tqPend) return; if (!glT.getQueryParameter(tqPe
 function frame() {
   requestAnimationFrame(frame);
   const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF;
-  if (socialSys.bootFrames < 12 && ++socialSys.bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
+  /* 11/11 (Erling: "o jogo entra antes de carregar todas as texturas; tenha certeza de que tudo foi carregado antes de entrar"): a abertura só sai quando
+     o mundo já desenhou 12 quadros, as fotos de textura do Herik chegaram E a placa parou de receber coisa nova (nenhuma textura nem malha nova por
+     1,2 s). Teto de 20 s, para ninguém ficar preso na abertura se alguma coisa nunca chegar. */
+  if (socialSys.bootFrames < 12) socialSys.bootFrames++;
+  else if (!bootGate.done) { const nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, now = performance.now(); if (!bootGate.t0) bootGate.t0 = now;
+    if (nT !== bootGate.nT || nG !== bootGate.nG) { bootGate.nT = nT; bootGate.nG = nG; bootGate.still = now; }
+    if ((photosReady() && now - bootGate.still > 1200) || now - bootGate.t0 > 20000) { bootGate.done = true; hideBoot(); } }
   gpuPoll(); const c0 = performance.now();
   try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (gpuImpl) gpuFail(m); else if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   perf.cpuS += performance.now() - c0; perf.n++;

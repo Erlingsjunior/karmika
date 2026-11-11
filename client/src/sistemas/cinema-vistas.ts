@@ -16,18 +16,23 @@ if (localStorage.getItem('karmika.crypt.done') !== '1') waterU.uFoul.value.set((
 const vistaSeen = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.vistas') || '[]') as string[]; } catch { return []; } })());
 const cineSeen = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.cine') || '[]') as string[]; } catch { return []; } })());
 let cineTick = 0;
-let cine: { sc: Scene; t: number; ov: { close(): void; allowSkip(): void }; skipOk?: boolean; z0: number; az0: number; x0: number; z0w: number; done?: () => void } | null = null;
-function playScene(sc: Scene, done?: () => void) {
+let cine: { sc: Scene; t: number; ov: { close(): void; allowSkip(): void }; skipOk?: boolean; z0: number; az0: number; x0: number; z0w: number; done?: () => void; hold?: boolean; warm?: number; direct?: boolean } | null = null;
+function playScene(sc: Scene, done?: () => void, hold = false) {
   if (cine) return; K.keys.clear(); K.state.path = []; if (K.combatMode) K.setCombat(false);
   for (const id of ['inv', 'char', 'shop', 'qlog', 'skillsw', 'featsw']) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
   document.body.classList.add('cinema'); K.objs.setRad(5); K.objs.update(K.camX, K.camZ, true);
-  cine = { sc, t: 0, ov: playOverlay(sc, () => endScene()), z0: K.zoomTarget, az0: K.az, x0: K.camX, z0w: K.camZ, done };
-  K.audio.hymn(sc.sec, sc.mood);
+  cine = { sc, t: 0, ov: hold ? { close() { /* ainda sem letreiro */ }, allowSkip() { /* idem */ } } : playOverlay(sc, () => endScene()), z0: K.zoomTarget, az0: K.az, x0: K.camX, z0w: K.camZ, done, hold, direct: hold };
+  if (!hold) K.audio.hymn(sc.sec, sc.mood);
 }
 /** toda cena passa por uma tela de carregamento: o cenário de todos os planos é montado com a tela preta, e só então o filme começa (nada de travar no meio do jogo) */
 function startScene(sc: Scene, done?: () => void) {
   if (cine || K.fading) return; K.keys.clear(); K.state.path = [];
-  K.withFade(() => { K.objs.setRad(5); for (const sh of sc.shots) K.objs.update(sh.x, sh.z, true); K.objs.update(K.camX, K.camZ, true); }, `Preparando a cena — ${sc.title}`, () => playScene(sc, done));
+  /* 11/11 (Erling: "ele volta para o jogo antes do panorama começar e fica parado; o loading só termina para dar lugar ao panorama já começando de verdade"):
+     a cena começa AINDA com a tela preta, em espera: a câmera passa por todos os planos (a placa compila e carrega tudo o que o filme vai mostrar) e para
+     no primeiro. Só então a tela abre, já em cima da paisagem, e o letreiro e a música começam nesse instante. */
+  K.withFade(() => { K.objs.setRad(5); for (const sh of sc.shots) K.objs.update(sh.x, sh.z, true); playScene(sc, done, true); }, `Preparando a cena: ${sc.title}`,
+    () => { if (!cine || cine.sc !== sc) return; cine.hold = false; cine.t = 0; cine.ov = playOverlay(sc, () => endScene()); K.audio.hymn(sc.sec, sc.mood); },
+    () => !cine || (cine.warm ?? 0) >= sc.shots.length * 3 + 4);
 }
 function endScene() { if (!cine) return; const c = cine; cine = null; c.ov.close(); document.body.classList.remove('cinema'); K.objs.setRad(2); K.zoomTarget = c.z0; K.azT = c.az0; c.done?.(); }
 /* 26/10 (Erling: "na tela de fundo coloque cada vez um lugar diferente dos lindos que já foram criados — paisagens de Karmika, e não
@@ -48,10 +53,14 @@ function menuView(rdt: number) {
   return true;
 }
 function updateCine(rdt: number) {
-  if (!cine) return false; cine.t += rdt; const sc = cine.sc, sh = sc.shots, u = Math.min(1, cine.t / sc.sec);
+  if (!cine) return false;
+  if (cine.hold) { /* em espera atrás da tela preta: visita cada plano por 3 quadros e termina parado no primeiro */
+    const n = cine.sc.shots.length, w = cine.warm = (cine.warm ?? 0) + 1, s0 = cine.sc.shots[w < n * 3 ? Math.floor(w / 3) : 0];
+    K.camX = s0.x; K.camZ = s0.z; K.zoom = K.zoomTarget = s0.zoom; K.az = K.azT = s0.az; K.camY = heightAt(K.camX, K.camZ) + s0.zoom * 0.16; K.objs.update(K.camX, K.camZ); return true; }
+  cine.t += rdt; const sc = cine.sc, sh = sc.shots, u = Math.min(1, cine.t / sc.sec);
   const f = u * (sh.length - 1), i = Math.min(sh.length - 2, Math.floor(f)), k = f - i, e = k * k * (3 - 2 * k), a = sh[i], b = sh[i + 1];
   // entra e sai suavemente da posição do jogador
-  const inK = Math.min(1, cine.t / 2.2), outK = Math.min(1, (sc.sec - cine.t) / 2.2), w = Math.min(inK, outK), ww = w * w * (3 - 2 * w);
+  const inK = cine.direct ? 1 : Math.min(1, cine.t / 2.2), outK = Math.min(1, (sc.sec - cine.t) / 2.2), w = Math.min(inK, outK), ww = w * w * (3 - 2 * w);
   const tx = THREE.MathUtils.lerp(a.x, b.x, e), tz = THREE.MathUtils.lerp(a.z, b.z, e), tzm = THREE.MathUtils.lerp(a.zoom, b.zoom, e), taz = THREE.MathUtils.lerp(a.az, b.az, e);
   const hx = K.state.fx * T, hz = K.state.fy * T;
   K.camX = THREE.MathUtils.lerp(hx, tx, ww); K.camZ = THREE.MathUtils.lerp(hz, tz, ww); K.zoom = K.zoomTarget = THREE.MathUtils.lerp(cine.z0, tzm, ww); K.az = K.azT = THREE.MathUtils.lerp(cine.az0, taz, ww);
