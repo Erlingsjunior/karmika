@@ -90,6 +90,9 @@ function spinB(b: Built, ry: number, cxL: number, czL: number): Built {
 const STEP_KINDS = new Set(['temple', 'church', 'castle', 'academy', 'monument', 'gothic', 'gatehouse', 'landmark', 'house', 'shopfront', 'mausoleum', 'tower', 'altar', 'station']);
 const sKey = (ix: number, iz: number) => (iz + 32768) * 65536 + (ix + 32768);
 /** altura do degrau/plataforma de prédio neste ponto (m), ou null */
+export interface HouseWall { x0: number; x1: number; z0: number; z1: number }
+/** o corpo sólido de cada casa já montada (metros, mundo): paredes, porta, pilares. Casa ainda não montada não está aqui (e barra inteira) */
+export const houseWalls = new Map<Prop, HouseWall[]>();
 export function stepAt(xm: number, zm: number): number | null { const v = stepMap.get(sKey(Math.floor(xm / STEP_RES), Math.floor(zm / STEP_RES))); return v === undefined ? null : v; }
 function registerSteps(g: THREE.Object3D, p: Prop) {
   if (stepDone.has(p) || !STEP_KINDS.has(p.kind)) return; stepDone.add(p);
@@ -172,7 +175,14 @@ export function buildWorld(world: World): WorldObjs {
         /* 09/11 (Erling: "textura de chão de casa tremendo"): base, tampa e piso da casa não dividem mais o mesmo plano — a base para 9 cm abaixo, a tampa 1 cm abaixo do piso */ const base = new THREE.Mesh(texBox(bw + 0.6, PH + 0.81, bd + 0.6, 2), pm); base.position.set(Wm / 2, (PH - 0.09 - 0.9) / 2, Dm / 2); base.castShadow = base.receiveShadow = true; g.add(base);
         const top = new THREE.Mesh(texBox(bw + 0.68, 0.09, bd + 0.68, 2), cap); top.position.set(Wm / 2, PH - 0.055, Dm / 2); top.receiveShadow = true; g.add(top);
         if (dr.y < 0.2) { const st = new THREE.Mesh(texBox(dr.w + 0.7, PH / 2 + 0.5, 0.42, 2), pm); st.position.set(dr.x, (PH / 2 - 0.5) / 2, Dm / 2 + bd / 2 + 0.3 + 0.21); st.castShadow = st.receiveShadow = true; g.add(st); } }
-      hs.group.position.y += PH; g.add(hs.group);
+      hs.group.position.y += PH;
+      /* 11/11 (Erling: "o personagem ainda não consegue passar um obstáculo e subir na casa"): a casa barrava pelo QUADRADO inteiro da pegada, até o
+         terraço sem parede. Aqui guardamos o que na casa é corpo de verdade (parede, porta, pilar, barril: toda peça com mais de 55 cm de altura que
+         nasce perto do piso); a colisão (sistemas/colisao.ts) passa a barrar só nisso, e o resto do piso de pedra vira chão de andar. */
+      { hs.group.updateMatrixWorld(true); const bx = new THREE.Box3(), W: HouseWall[] = [];
+        hs.group.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry) return; bx.setFromObject(m); if (bx.isEmpty()) return; if (bx.max.y - bx.min.y < 0.55 || bx.min.y > PH + 0.9) return; W.push({ x0: p.gx * T + bx.min.x, x1: p.gx * T + bx.max.x, z0: p.gy * T + bx.min.z, z1: p.gy * T + bx.max.z }); });
+        houseWalls.set(p, W); }
+      g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + PH + ch.y, p.gy * T + ch.z));
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + PH + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {

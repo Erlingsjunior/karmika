@@ -38,14 +38,16 @@ function toPhys(m: THREE.Material, aniso: number): THREE.Material {
 function walk(root: THREE.Object3D, aniso: number, toModern: boolean) {
   root.traverse((o) => { const mesh = o as THREE.Mesh; if (!mesh.isMesh && !(o as THREE.InstancedMesh).isInstancedMesh && !(o as THREE.SkinnedMesh).isSkinnedMesh) return;
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]; let changed = false;
-    const out = mats.map((m) => { if (!m) return m; if (toModern) { const n = toPhys(m, aniso); if (n !== m) changed = true; const tm = n as THREE.MeshStandardMaterial; smoothTex(tm.map, aniso); return n; }
+    const out = mats.map((m) => { if (!m) return m; if (toModern) { const n = toPhys(m, aniso); if (n !== m) changed = true; const tm = n as THREE.MeshStandardMaterial; /* 11/11 (Erling: "o escudo virou um azul blocado" no WebGPU Moderno): no WebGPU só se mexe na textura do material que foi convertido; a pintura do escudo (material próprio, que não é convertido) perdia o desenho quando ganhava mipmaps depois de pronta */ if (glMode || n !== m || m.userData.phys) smoothTex(tm.map, aniso); return n; }
       const b = BACK.get(m); if (b) { changed = true; return b; } restoreTex((m as THREE.MeshStandardMaterial).map); return m; });
     if (changed) mesh.material = Array.isArray(mesh.material) ? out : out[0]; });
 }
 
 /** liga/desliga o Moderno. `renderer` é o WebGL do mundo (no WebGPU fica só a parte das texturas e da luz). */
+let glMode = true;
 export function setModern(scene: THREE.Scene, renderer: THREE.WebGLRenderer, enable: boolean, webgl = true) {
   const aniso = Math.min(4, renderer.capabilities?.getMaxAnisotropy?.() ?? 4);
+  glMode = webgl;
   if (enable === on) { if (on) walk(scene, aniso, true); return; }
   on = enable; clearInterval(timer);
   if (enable) {

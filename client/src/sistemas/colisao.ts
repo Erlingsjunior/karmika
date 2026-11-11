@@ -3,7 +3,7 @@ import { greatTreeRootAngles } from '../trees3d';
 /* COLISÃO DO HERÓI (regra de ouro: mobilidade acima da física): cantos do corpo, muralhas e caminho de ronda, degraus, muros baixos e cercas, guarda-peito das pontes, sólidos do cenário, pontos de trabalho, troncos e bichos. Saiu do main.ts (02/11). */
 import { rampartAt, stairTopAt, stairDeck, heightAt, bridgeDeck, waterSD, groundH, WL } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
-import { stepAt } from '../world3d';
+import { stepAt, houseWalls } from '../world3d';
 import { STATION_INFO, HALL_WALLS } from '../stations3d';
 import * as THREE from 'three';
 import { LIB_WALLS } from '../library3d';
@@ -34,10 +34,16 @@ for (const p of K.city.props) if (p.kind === 'lowwall') { const cx = p.gx + (p.o
 function lowWallHit(x: number, y: number) { const l = LOWW.get(Math.floor(y) * 4096 + Math.floor(x)); if (!l) return false; for (const s of l) { const dx = s.bx - s.ax, dy = s.by - s.ay, L2 = dx * dx + dy * dy || 1, t = Math.max(0, Math.min(1, ((x - s.ax) * dx + (y - s.ay) * dy) / L2)); if (Math.hypot(x - (s.ax + dx * t), y - (s.ay + dy * t)) < 0.17 + R * 0.8) return true; } return false; }
 /* REGRA (Erling, 27/10): ninguém cai de ponte — o guarda-peito tem física. Em cima do tabuleiro, só se sai por onde o chão continua na mesma altura */
 const bridgeEdge = (x: number, y: number) => { const d0 = bridgeDeck(K.state.fx * T, K.state.fy * T); if (d0 === null) return false; const d1 = bridgeDeck(x * T, y * T); if (d1 !== null) return Math.abs(d1 - d0) > 0.6; /* de uma ponte para outra só no mesmo nível */ if (waterSD(x * T, y * T) < 0.4) return true; /* nunca para a água */ return Math.abs(d0 - groundH(x * T, y * T)) > 0.6; };
+/* 11/11: o piso de pedra das casas é chão. Dentro do quadrado de uma casa só barra o que é corpo dela (world3d.houseWalls); o resto do
+   piso (terraço, beirada, degrau) se anda, e o herói sobe os 42 cm sozinho, como sobe qualquer degrau. */
+const HOUSE_AT = new Map<number, (typeof K.city.props)[number]>();
+for (const p of K.city.props) if (p.kind === 'house') for (let ty = p.gy; ty < p.gy + p.h; ty++) for (let tx = p.gx; tx < p.gx + p.w; tx++) HOUSE_AT.set(ty * 4096 + tx, p);
+function houseFloor(tx: number, ty: number, x: number, y: number): boolean { const hp = HOUSE_AT.get(ty * 4096 + tx); if (!hp) return false; const W = houseWalls.get(hp); if (!W) return false;
+  const xm = x * T, zm = y * T; if (stepAt(xm, zm) === null) return false; const pad = 0.24; for (const b of W) if (xm > b.x0 - pad && xm < b.x1 + pad && zm > b.z0 - pad && zm < b.z1 + pad) return false; return true; }
 const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) && !bridgeEdge(x, y) && !(lowWallHit(x, y) && !lowWallHit(K.state.fx, K.state.fy)) &&
   [[-R, -R], [R, -R], [R, R], [-R, R]].every(([dx, dy]) => {
     const tx = Math.floor(x + dx), ty = Math.floor(y + dy);
-    return ty >= 0 && tx >= 0 && ty < K.city.map.length && tx < K.city.map[0].length && (isWalkable(K.city.map[ty][tx]) || K.city.map[ty][tx] === 'water' || K.city.map[ty][tx] === 'tree');
+    return ty >= 0 && tx >= 0 && ty < K.city.map.length && tx < K.city.map[0].length && (isWalkable(K.city.map[ty][tx]) || K.city.map[ty][tx] === 'water' || K.city.map[ty][tx] === 'tree' || houseFloor(tx, ty, x, y));
   }) && (squeeze ? !(solidHit(x, y, true) && !solidHit(K.state.fx, K.state.fy, true)) : (!trunkHit(x, y) && !(solidHit(x, y) && !solidHit(K.state.fx, K.state.fy)))) && !enemyBlock(x, y) && (() => { /* 27/10 (Erling: "nada pode me travar"): morro não barra; só o penhasco a pique (mais de 1,5 m por metro), o mar aberto e a lama funda. Estrada e praça passam sempre */ if (bridgeDeck(x * T, y * T) !== null) return true; /* 09/11 (Erling: "travado no meio da ponte"): em cima do tabuleiro o leito do rio lá embaixo não conta; o guarda-peito é o bridgeEdge */ const g = groundH(x * T, y * T), tl = K.city.map[Math.floor(y)]?.[Math.floor(x)]; if (g <= WL - 2.6 || g >= 80) return false; if (tl === 'road' || tl === 'plaza') return true; const d = Math.hypot(x - K.state.fx, y - K.state.fy) * T; return d < 1e-4 || Math.abs(g - groundH(K.state.fx * T, K.state.fy * T)) / d <= 2.4; })(); /* 09/11 (Erling: "da porta até a subida trava o personagem"): o barranco dos lugarejos de fora passava de 1,5 m por metro; agora só o penhasco a pique (mais de 2,4) barra */ /* estrada de montanha (o caracol do Conde) sobe até onde for */ // mar aberto, lama funda e alta montanha não se atravessam
 /* objetos sólidos do cenário (fonte, bancos, barracas, tendas, baús, tochas, lápides, estátuas, relíquias…): não se atravessa mais.
    O que continua passável de propósito: grama, ervas, ossos e o meio das árvores da floresta (só o tronco bloqueia) */

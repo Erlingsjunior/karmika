@@ -38,7 +38,7 @@ function windowAt(parent: THREE.Object3D, x: number, y: number, z: number, face:
 }
 
 function door(parent: THREE.Object3D, x: number, y0: number, z: number, face: 'z' | 'x', c: Ctx, w = 1.25, h = 2.2) {
-  const g = new THREE.Group(); g.position.set(x, y0, z); if (face === 'x') g.rotation.y = Math.PI / 2;
+  const g = new THREE.Group(); g.userData.keepH = true; /* raiseWalls não estica nem sobe a porta */ g.position.set(x, y0, z); if (face === 'x') g.rotation.y = Math.PI / 2;
   const fm = timberM();
   for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.16, h + 0.1, 0.2), fm); p.position.set(s * (w / 2 + 0.08), h / 2, 0.04); g.add(p); }
   const lin = new THREE.Mesh(new THREE.BoxGeometry(w + 0.4, 0.16, 0.2), fm); lin.position.set(0, h + 0.08, 0.04); g.add(lin);
@@ -88,11 +88,11 @@ function barrels(parent: THREE.Object3D, x: number, z: number, c: Ctx, n = 2) {
   const cr = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.7), std(0xffffff, { map: plankTex(0x7a5a38) })); ink(cr, 0.03); cr.position.set(x + n * 0.7 + 0.2, 0.3, z + 0.1); cr.rotation.y = 0.4; cr.castShadow = true; parent.add(cr);
 }
 
-/** estica a faixa de cima das paredes (2,38 m → 2,5 m) em `dy` e sobe tudo o que está acima; porta, janelas e base não mudam */
+/** estica a faixa de cima das paredes (2,3 m → 2,4 m) em `dy` e sobe tudo o que está acima; porta, janelas e base não mudam */
 function raiseWalls(g: THREE.Group, chim: THREE.Vector3[], lantern: THREE.Vector3, dy: number) {
-  const A = 2.38, B = 2.5, v = new THREE.Vector3(), inv = new THREE.Matrix4(), M = new THREE.Matrix4(); g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const A = 2.3, B = 2.4 /* a parede mais baixa das casas tem 2,4 m (a casa em L): com 2,5 aqui ela quase não subia */, v = new THREE.Vector3(), inv = new THREE.Matrix4(), M = new THREE.Matrix4(); g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert();
   const up = (y: number) => y <= A ? y : y >= B ? y + dy : A + (y - A) * ((B - A + dy) / (B - A));
-  g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry?.getAttribute('position')) return; M.multiplyMatrices(gi, m.matrixWorld); inv.copy(M).invert();
+  g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry?.getAttribute('position')) return; for (let q: THREE.Object3D | null = m; q && q !== g; q = q.parent) if (q.userData.keepH) return; M.multiplyMatrices(gi, m.matrixWorld); inv.copy(M).invert();
     const pos0 = m.geometry.getAttribute('position') as THREE.BufferAttribute; let touch = false; for (let i = 0; i < pos0.count && !touch; i++) if (v.fromBufferAttribute(pos0, i).applyMatrix4(M).y > A) touch = true; if (!touch) return;
     m.geometry = m.geometry.clone(); const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute;
     for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(M); v.y = up(v.y); v.applyMatrix4(inv); pos.setXYZ(i, v.x, v.y, v.z); }
@@ -217,7 +217,8 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
   lantern.y *= 1.0;
   /* 11/11 (Erling: "batente da porta passando do telhado, precisa aumentar a parede da casa para caber a porta"; "a escala construção x humano parece pequena"):
      a casa térrea tinha 2,5 m de parede com porta de 2,2 m: o beiral descia em cima do batente. A parede ganhou 45 cm (2,95 m) e tudo o que fica acima dela subiu junto. O sobrado (escada de fora) fica como é. */
-  if (variant !== 1) raiseWalls(g, chim, lantern, 0.45);
+  /* a casa em L tem a porta 35 cm acima do piso (varanda com degraus): o batente chega a 2,71 m e a parede tinha 2,4 m. Ela sobe mais (75 cm) */
+  if (variant !== 1 && variant !== 3) raiseWalls(g, chim, lantern, variant === 2 ? 0.75 : 0.45);
   return { group: g, chimneys: chim, lantern };
 }
 
