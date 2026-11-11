@@ -624,3 +624,8 @@ button.abp img { width: auto !important; height: auto !important; max-width: 100
 /* 10/11 (Erling: "o botão de fechar some quando rola a modal"): o ✕ acompanha a rolagem e fica sempre à mão */
 .sheet__x { position: sticky; top: 0; float: right; margin: -6px -6px 0 12px; z-index: 5; background: rgba(12, 10, 14, .92); }
 .pdet__close { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); float: right; margin: 0 0 8px 12px; background: rgba(12, 10, 14, .92); }
+
+/* 10/11 (Erling: "não deixe selecionar o site"): nada de texto ou imagem selecionada por arrasto ou clique duplo; só os campos do formulário e o leitor do livro continuam selecionáveis para digitar */
+html { -webkit-user-select: none; user-select: none; }
+input, textarea, select, [contenteditable] { -webkit-user-select: text; user-select: text; }
+img, svg { -webkit-user-drag: none; user-drag: none; }
