@@ -43,7 +43,8 @@ const kitSkills = () => (KITS[kitRace()] ?? []).map((d) => ({ id: d.id as string
 const passKit = (): string => { const o = K.profile?.origin; return o === 'elf' || o === 'dwarf' ? o : 'human'; };
 /* O MONTE ÚNICO (04/11): 3 pontos por nível de classe (somando as classes da vida) + 3 do começo (as três básicas); gastos em habilidades,
    passivas ou talentos — o que sobra aparece nas três abas */
-tree.setTotal(() => 3 + 3 * clsLvl());
+/* 11/11 (Erling: "vamos dar menos pontos"): 2 por nível de classe (eram 3). Com as árvores 45% maiores, dá para fechar um braço e boa parte de outro; os três, nunca */
+tree.setTotal(() => 3 + 2 * clsLvl());
 tree.setExtraSpent(() => passSpent([passKit()]) + talents.spent());
 loadComp(compKit()); loadComp(passKit()); onCompLoad(() => { K.game.st.recalc?.(); try { applyKitAll(); } catch { /* ainda montando */ } }); /* 05/11: com o compêndio carregado, a barra ganha os selos das passivas */
 /* os selos das passivas nas magias (árvore e barra): o desenho de cada passiva acesa e a soma do que elas dão */
@@ -54,7 +55,10 @@ K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(passKit(),
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 /* 04/11 (Erling: "a árvore de talentos dá velocidade, defesa, vitalidade, força, destreza… pode ser a mesma em todas as classes e níveis
    de classe, ela vai subindo e auxiliando o personagem"): UMA árvore para todos (raça e classe não mudam a árvore) */
-const talentKit = (): string => 'geral';
+/* 11/11 (Erling: "cada raça e cada classe tem a sua própria árvore, com um nome para cada ramificação; faça talentos que condizam com esses
+   caminhos e mude a forma da árvore conforme a classe e a raça"): a árvore é a da CLASSE; quem ainda não tem caminho usa a da RAÇA
+   (humano, anão, elfo). Os pontos acesos são guardados por árvore: quem estava na árvore de todos recebe os pontos de volta. */
+const talentKit = (): string => compKit();
 const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); }, () => tree.available());
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);

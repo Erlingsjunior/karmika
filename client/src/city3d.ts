@@ -379,8 +379,10 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
   const K = kit(), sm = stone(0x9a948a), dk = stone(0x6a645c), lt = stone(0xb0a898), N = Math.max(8, Math.round(len / 0.6));
   const yAt = (t: number) => hump * Math.sin(Math.PI * t);
   for (let i = 0; i < N; i++) { const t0 = i / N, t1 = (i + 1) / N, z0 = -len / 2 + t0 * len, z1 = -len / 2 + t1 * len, y0 = yAt(t0), y1 = yAt(t1), L = Math.hypot(z1 - z0, y1 - y0), a = Math.atan2(y1 - y0, z1 - z0);
-    const seg = K.add(new THREE.BoxGeometry(half * 2, 0.45, L + 0.04), sm, 0, (y0 + y1) / 2 - 0.12, (z0 + z1) / 2); seg.rotation.x = -a;
-    for (const s of [-1, 1]) { const p = K.add(new THREE.BoxGeometry(0.32, 0.22, L + 0.04), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.9, (z0 + z1) / 2); p.rotation.x = -a; // corrimão
+    /* 11/11 (Erling: "na ponte a textura está esticada"): cada trecho do tabuleiro repetia a textura inteira em 60 cm de comprimento e a esticava nos 4 m de largura. Agora a textura anda em metros (2 m por repetição) e continua de um trecho para o outro */
+    const sg = texBox(half * 2, 0.45, L + 0.04, 2), suv = sg.attributes.uv; for (let q = 8; q < 16; q++) suv.setY(q, suv.getY(q) + z0 / 2);
+    const seg = K.add(sg, sm, 0, (y0 + y1) / 2 - 0.12, (z0 + z1) / 2); seg.rotation.x = -a;
+    for (const s of [-1, 1]) { const p = K.add(texBox(0.32, 0.22, L + 0.04, 2), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.9, (z0 + z1) / 2); p.rotation.x = -a; // corrimão
       if (i % 2 === 0) K.add(new THREE.CylinderGeometry(0.09, 0.12, 0.8, 6), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.45, (z0 + z1) / 2); } // balaústres
   }
   // o arco por baixo (aparece sobre a água) e a testa de pedra dos dois lados

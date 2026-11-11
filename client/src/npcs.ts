@@ -97,7 +97,13 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
     a.yaw = Math.atan2(b.pos.x - a.pos.x, b.pos.z - a.pos.z); b.yaw = Math.atan2(a.pos.x - b.pos.x, a.pos.z - b.pos.z); a.target = null; b.target = null; a.wait = Math.max(a.wait, 8); b.wait = Math.max(b.wait, 8);
     a.bark = fill(pick[0]); a.barkT = 4.2; gossipQ = { n: b, line: fill(pick[1]), t: 2.6 }; }
   let placed = false;
-  function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) {
+  /* flechas das sentinelas: uma haste fina que voa em arco do arqueiro até o bicho; o dano cai quando ela chega */
+  const arrows: { m: THREE.Mesh; a: THREE.Vector3; e: GThreat; t: number; dur: number; dmg: number; from: THREE.Vector3 }[] = [];
+  const arrowGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.8, 5).rotateX(Math.PI / 2), arrowMat = new THREE.MeshBasicMaterial({ color: 0xd8c8a0 }), aTmp = new THREE.Vector3(), aPrev = new THREE.Vector3();
+  function shootArrow(from: THREE.Vector3, e: GThreat, dmg: number) { const m = new THREE.Mesh(arrowGeo, arrowMat); m.raycast = () => {}; const a = from.clone(); a.y += 1.5; m.position.copy(a); scene.add(m); arrows.push({ m, a, e, t: 0, dur: Math.max(0.25, a.distanceTo(e.pos) / 34), dmg, from: from.clone() }); }
+  function tickArrows(dt: number) { for (let i = arrows.length - 1; i >= 0; i--) { const A = arrows[i]; A.t += dt; const k = Math.min(1, A.t / A.dur); aPrev.copy(A.m.position); aTmp.copy(A.e.pos); aTmp.y += 0.7; A.m.position.lerpVectors(A.a, aTmp, k); A.m.position.y += Math.sin(k * Math.PI) * 0.6; aTmp.copy(A.m.position).multiplyScalar(2).sub(aPrev); A.m.lookAt(aTmp);
+      if (k >= 1) { scene.remove(A.m); arrows.splice(i, 1); if (A.e.alive) ctx.hitThreat?.(A.e, A.dmg, A.from); } } }
+  function update(dt: number, t: number, heroPos: THREE.Vector3, night: number, gust: number) { tickArrows(dt);
     const r = ctx.canvas.getBoundingClientRect(); buildNear(heroPos);
     if (!placed) { placed = true; /* regra 19 (27/10): NPC nunca fica dentro de parede nem em cima de mobília — se o lugar marcado está ocupado, vai para o chão livre mais perto */
       for (const n of npcs) { const d = n.def; if (d.route || d.inside || d.fixed || ctx.walkable(n.pos.x, n.pos.z)) continue; let ok = false; for (let rr = 0.6; rr <= 6 && !ok; rr += 0.6) for (let k = 0; k < 12 && !ok; k++) { const a = k / 12 * 6.283 + rr, x = d.x + Math.cos(a) * rr, z = d.z + Math.sin(a) * rr; if (ctx.walkable(x, z)) { n.pos.set(x, 0, z); d.x = x; d.z = z; ok = true; } } } }
@@ -143,7 +149,11 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
           let tgt = g.foeE && g.foeE.alive && g.foeE.active && Math.hypot(g.foeE.pos.x - d.x, g.foeE.pos.z - d.z) < 26 ? g.foeE : null;
           if (!tgt) { g.foeE = null; let bd = 16; for (const e of ctx.threats()) { if (!e.alive || !e.active || e.def.passive) continue; const dd = Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z); if (dd < bd && Math.hypot(e.pos.x - d.x, e.pos.z - d.z) < 22) { bd = dd; tgt = e; } }
             if (tgt) { g.foeE = tgt; if (!tgt.foe || !tgt.foe.alive()) tgt.foe = g.gfoe; if (!(n.barkT && n.barkT > 0) && Math.random() < 0.6) { n.bark = GUARD_CRY[Math.floor(Math.random() * GUARD_CRY.length)]; n.barkT = 2.4; } } }
-          if (tgt) { fought = true; g.away = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
+          /* 11/11 (Erling: "se o NPC está em cima do muro precisa usar flechas, e não flutuar nem ficar correndo feito bobo"): a sentinela da muralha
+             NÃO sai do posto. Vira para o bicho e atira de arco (uma flecha a cada ~1,6 s, até 26 m). Antes ela corria atrás dele pelo ar, por dentro da paliçada */
+          if (tgt && (d.yOff ?? 0) > 1) { fought = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
+            if (l < 26) { g.atkT = (g.atkT ?? 0.6) - dt; if (g.atkT <= 0) { g.atkT = 1.4 + Math.random() * 0.5; n.hero.act('attack', true); shootArrow(n.pos, tgt, Math.max(3, Math.round(tgt.hpMax * 0.05))); } } }
+          else if (tgt) { fought = true; g.away = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
             if (l > 1.5 + (tgt.def.radius ?? 0.5)) { const sp = 3.4 * dt; let moved = false; for (const turn of [0, 0.7, -0.7, 1.4, -1.4]) { const c = Math.cos(turn), sn = Math.sin(turn), ux = (dx * c - dz * sn) / l, uz = (dx * sn + dz * c) / l, nx = n.pos.x + ux * sp, nz = n.pos.z + uz * sp; if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; moved = true; break; } } if (moved) mps = 3.4; }
             else { g.atkT = (g.atkT ?? 0.3) - dt; if (g.atkT <= 0) { g.atkT = 1.0 + Math.random() * 0.5; n.hero.act('attack', true); ctx.hitThreat?.(tgt, Math.max(4, Math.round(tgt.hpMax * 0.07)), n.pos); } } }
           else { g.ghp = Math.min(140, (g.ghp ?? 140) + 6 * dt); if (g.away) { if (Math.hypot(n.pos.x - d.x, n.pos.z - d.z) > 1.5) n.target = new THREE.Vector2(d.x, d.z); else g.away = false; } }
