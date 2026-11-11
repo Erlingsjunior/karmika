@@ -34,3 +34,11 @@ export function erupt(scene: THREE.Scene, fine: (o: THREE.Object3D) => THREE.Obj
   return (dt) => { t += dt; for (const s of sp) { const u = t - s.d, k = u < 0 ? 0 : u < 0.09 ? (u / 0.09) * 1.15 : u < 0.2 ? 1.15 - (u - 0.09) * 1.36 : u < 0.55 ? 1 : Math.max(0, 1 - (u - 0.55) / 0.35); s.m.scale.set(s.r, Math.max(0.01, s.h * k), s.r); }
     if (t > 1.05) { scene.remove(grp); mat.dispose(); return true; } return false; };
 }
+
+/* 11/11 (Erling: "continue no 2", os efeitos das magias do herói em 3D): a onda de impacto deixa de ser um anel chapado pintado no chão.
+   SHOCK é um aro com volume (toro); WAVE é a crista que sobe junto com ele, mais forte embaixo e sumindo para cima. */
+export const SHOCK = new THREE.TorusGeometry(0.93, 0.055, 8, 44).rotateX(Math.PI / 2); SHOCK.userData.shared = true;
+export const WAVE = (() => { const g = new THREE.CylinderGeometry(0.93, 0.93, 0.42, 44, 1, true).translate(0, 0.21, 0), p = g.getAttribute('position'), c = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) { const k = p.getY(i) < 0.1 ? 1 : 0; c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = k; } g.setAttribute('color', new THREE.BufferAttribute(c, 3)); g.userData.shared = true; return g; })();
+/** a crista da onda, para pendurar no aro (herda a escala dele) */
+export function waveMesh(col: number, op = 0.7): THREE.Mesh { const m = new THREE.Mesh(WAVE, new THREE.MeshBasicMaterial({ color: col, vertexColors: true, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); m.userData.dyn = true; m.userData.shared = true; return m; }

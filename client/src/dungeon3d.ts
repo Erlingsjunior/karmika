@@ -265,7 +265,7 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     const sun = new THREE.SpotLight(DAY, 60, 26, 0.75, 0.6, 1.3); sun.position.set(ex, 6, ez + 6); sun.target.position.set(ex, 0, ez - 9); g.add(sun, sun.target);
     const pool0 = new THREE.Mesh(new THREE.PlaneGeometry(2 * C + 1.5, 9), glowMat(0.28)); pool0.rotation.x = -Math.PI / 2; pool0.position.set(ex, 0.04, ez - 4.4); pool0.rotation.z = Math.PI; pool0.userData.keep = true; g.add(pool0); // a mancha de luz no chão
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(2 * C + 1, 3.2), glowMat(0.3)); outside.rotation.x = -Math.PI / 2; outside.position.set(ex, 0.03, ez + 1.4); outside.userData.keep = true; g.add(outside); // lá fora: claro
-    for (let k = 0; k < 4; k++) { const ray = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + k * 0.2, 6), glowMat(0.1 - k * 0.015)); ray.position.set(ex - C * 0.5 + k * C * 0.33, 2.4, ez - 1.6); ray.rotation.set(-0.95, (k - 1.5) * 0.12, 0); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); } // feixes inclinados
+    for (let k = 0; k < 4; k++) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.16 + k * 0.05, 0.34 + k * 0.12, 6, 14, 1, true), glowMat(0.08 - k * 0.012)); /* 11/11: feixe com volume, não um plano */ ray.position.set(ex - C * 0.5 + k * C * 0.33, 2.4, ez - 1.6); ray.rotation.set(-0.95, (k - 1.5) * 0.12, 0); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); } // feixes inclinados
     for (const sx of [-1, 1]) { boulder(ex + sx * (C + 0.6), ez - 0.6, 1.1, rm2); boulder(ex + sx * (C + 1.4), ez - 1.8, 0.8, rmA); } // as pedras da boca
     dust.push({ x: ex, z: ez - 3.5 });
     light(ex, 1.6, ez - 2.2, DAY, 3.2, 16); }
@@ -277,10 +277,9 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     for (let k = 0; k < n; k++) {
       const x = rm.kind === 'boss' ? c.x : c.x + (hsh(k + rm.x, rm.z) - 0.5) * rm.w * C * 0.5, z = rm.kind === 'boss' ? c.z : c.z + (hsh(rm.z, k + rm.x) - 0.5) * rm.d * C * 0.5;
       const tilt = 0.18 + hsh(x, z) * 0.12, Hh = 10, wTop = rm.kind === 'boss' ? 2.4 : 1.3, wBot = wTop * 1.7;
-      for (let q = 0; q < 3; q++) { const geo = new THREE.PlaneGeometry(1, Hh, 1, 1), pa = geo.getAttribute('position');
-        for (let i2 = 0; i2 < pa.count; i2++) { const yy = pa.getY(i2); pa.setX(i2, pa.getX(i2) * (yy > 0 ? wTop : wBot)); }
-        const ray = new THREE.Mesh(geo, glowMat(rm.kind === 'boss' ? 0.16 : 0.12));
-        ray.position.set(x + Math.sin(tilt) * Hh * 0.5, Hh / 2, z - Math.sin(tilt) * Hh * 0.25); ray.rotation.set(-tilt * 0.5, q * Math.PI / 3, tilt); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); }
+      /* 11/11 (Erling: os fachos eram retângulos transparentes cruzados, "cores pintadas"): agora é um VOLUME — um cone de luz oco, com um miolo mais fino e mais claro por dentro */
+      for (const [kr, a0] of [[1, rm.kind === 'boss' ? 0.13 : 0.1], [0.45, rm.kind === 'boss' ? 0.16 : 0.12]] as [number, number][]) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(wTop * 0.5 * kr, wBot * 0.5 * kr, Hh, 22, 1, true), glowMat(a0));
+        ray.position.set(x + Math.sin(tilt) * Hh * 0.5, Hh / 2, z - Math.sin(tilt) * Hh * 0.25); ray.rotation.set(-tilt * 0.5, 0, tilt); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); }
       const spot = new THREE.Mesh(new THREE.PlaneGeometry(wBot * 2.6, wBot * 2.6), new THREE.MeshBasicMaterial({ map: radial, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: DAY, fog: false }));
       spot.rotation.x = -Math.PI / 2; spot.position.set(x, 0.05, z); spot.userData.keep = true; g.add(spot);
       dust.push({ x, z }); light(x, 2.6, z, DAY, rm.kind === 'boss' ? 3.4 : 2.4, 12);

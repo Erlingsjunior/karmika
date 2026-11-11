@@ -4,6 +4,7 @@ import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
+import { SHOCK, waveMesh } from './luta3d';
 import { gpuTag } from './gpu/tags';
 import { createShots, type ShotTarget } from './projeteis';
 import { mirrorTrack, mirrorPart } from './espelho';
@@ -129,7 +130,7 @@ export function createGameplay(d: GameplayDeps) {
   const lastTip = new THREE.Vector3(), tipNow = new THREE.Vector3(), baseNow = new THREE.Vector3();
   let hitstop = 0;
   const flashes: { s: THREE.Sprite; t: number; dur: number; sc: number }[] = [];
-  const rings: { m: THREE.Mesh; t: number }[] = [];
+  const rings: { m: THREE.Mesh; t: number; r?: number }[] = [];
   const flashTex = radialTexture(64, [[0, 'rgba(255,248,220,1)'], [0.25, 'rgba(255,200,120,.7)'], [1, 'rgba(255,140,40,0)']]);
   const impactLight = new THREE.PointLight(0xffb060, 0, 10, 2); fxAdd(impactLight);
   /* 09/11 (Erling: "o jogo trava de novo quando passa de nível"): a luz da subida de nível era criada na hora — luz nova muda a contagem de luzes
@@ -723,7 +724,7 @@ export function createGameplay(d: GameplayDeps) {
   /* ============ 09/11 KIT DE EFEITOS (Erling: "todas as habilidades de todas as classes precisam de capricho") ============
      Peças pequenas que qualquer magia combina: onda no chão, pilar de luz, círculo de runas, explosão de faíscas, aura em espiral,
      rastro em projétil, clarão e brasas que orbitam. Tudo aditivo, barato (geometria e textura compartilhadas) e some sozinho. */
-  const FXG = { ring: new THREE.RingGeometry(0.86, 1, 48).rotateX(-Math.PI / 2), disc: new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), col: new THREE.CylinderGeometry(1, 1, 1, 18, 1, true).translate(0, 0.5, 0) };
+  const FXG = { ring: SHOCK /* 11/11: aro com volume (luta3d.ts), não mais um anel chapado */, disc: new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2), col: new THREE.CylinderGeometry(1, 1, 1, 18, 1, true).translate(0, 0.5, 0) };
   const FXT = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d')!; g.translate(128, 128); g.strokeStyle = '#fff'; g.lineWidth = 5;
     g.beginPath(); g.arc(0, 0, 118, 0, 7); g.stroke(); g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 96, 0, 7); g.stroke();
     for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2, b = a + Math.PI * 2 / 3 * 2; g.beginPath(); g.moveTo(Math.cos(a) * 96, Math.sin(a) * 96); g.lineTo(Math.cos(b) * 96, Math.sin(b) * 96); g.stroke(); }
@@ -733,17 +734,17 @@ export function createGameplay(d: GameplayDeps) {
   const addM = (col: number, op = 0.85, map?: THREE.Texture) => new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide, map });
   const gy0 = (x: number, z: number) => d.world.heightAt(x, z);
   /** onda que se abre no chão (impacto, grito, pisão) */
-  function fxRing(x: number, z: number, col: number, r1 = 4, dur = 0.5, r0 = 0.3, y?: number) { const m = new THREE.Mesh(FXG.ring, addM(col, 0.9)); m.position.set(x, (y ?? gy0(x, z)) + 0.06, z); m.scale.setScalar(r0); fxAdd(m); let t = 0;
-    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur), e = 1 - (1 - k) * (1 - k); m.scale.setScalar(r0 + (r1 - r0) * e); (m.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k); }, end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); } }); }
+  function fxRing(x: number, z: number, col: number, r1 = 4, dur = 0.5, r0 = 0.3, y?: number) { const m = new THREE.Mesh(FXG.ring, addM(col, 0.9)); m.position.set(x, (y ?? gy0(x, z)) + 0.06, z); m.scale.setScalar(r0); const wv = waveMesh(col); m.add(wv); fxAdd(m); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur), e = 1 - (1 - k) * (1 - k); m.scale.setScalar(r0 + (r1 - r0) * e); (m.material as THREE.MeshBasicMaterial).opacity = 0.9 * (1 - k); (wv.material as THREE.MeshBasicMaterial).opacity = 0.7 * (1 - k * k); wv.scale.y = 0.6 + Math.sin(k * Math.PI) * 1.2; }, end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); (wv.material as THREE.Material).dispose(); } }); }
   /** pilar de luz que desce/sobe (bênção, raio, chegada de invocação) */
   function fxPillar(x: number, z: number, col: number, h = 6, dur = 0.7, w = 0.6, y?: number) { const m = new THREE.Mesh(FXG.col, addM(col, 0.45)); const y0 = y ?? gy0(x, z); m.position.set(x, y0, z); m.scale.set(w, h, w); fxAdd(m);
     const c = new THREE.Mesh(FXG.col, addM(0xffffff, 0.5)); c.scale.set(0.3, 1, 0.3); m.add(c); let t = 0;
     ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur); m.scale.x = m.scale.z = w * (1 - k * 0.7); (m.material as THREE.MeshBasicMaterial).opacity = 0.45 * (1 - k); (c.material as THREE.MeshBasicMaterial).opacity = 0.5 * (1 - k); m.rotation.y += dt2 * 3; },
       end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); (c.material as THREE.Material).dispose(); } }); }
   /** círculo de runas girando no chão (conjuração, área sagrada, maldição) */
-  function fxGlyph(x: number, z: number, col: number, r = 2, dur = 1.2, spin = 1.5, y?: number) { const m = new THREE.Mesh(FXG.disc, addM(col, 0, FXT)); m.position.set(x, (y ?? gy0(x, z)) + 0.07, z); m.scale.setScalar(r); fxAdd(m); let t = 0;
-    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = t / dur, a = Math.min(1, t * 6, (1 - k) * 4); (m.material as THREE.MeshBasicMaterial).opacity = 0.95 * a; m.rotation.y += dt2 * spin; m.scale.setScalar(r * (0.85 + 0.15 * Math.min(1, t * 5))); },
-      end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); } }); return m; }
+  function fxGlyph(x: number, z: number, col: number, r = 2, dur = 1.2, spin = 1.5, y?: number) { const m = new THREE.Mesh(FXG.disc, addM(col, 0, FXT)); m.position.set(x, (y ?? gy0(x, z)) + 0.07, z); m.scale.setScalar(r); const wv = waveMesh(col, 0); wv.scale.y = 0.8 / Math.max(0.6, r); m.add(wv); /* 11/11: a borda do círculo de runas é uma cortina de luz de verdade */ fxAdd(m); let t = 0;
+    ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = t / dur, a = Math.min(1, t * 6, (1 - k) * 4); (m.material as THREE.MeshBasicMaterial).opacity = 0.95 * a; (wv.material as THREE.MeshBasicMaterial).opacity = 0.55 * a; m.rotation.y += dt2 * spin; m.scale.setScalar(r * (0.85 + 0.15 * Math.min(1, t * 5))); },
+      end: () => { m.parent?.remove(m); (m.material as THREE.Material).dispose(); (wv.material as THREE.Material).dispose(); } }); return m; }
   /** clarão: uma bola de luz que incha e apaga */
   function fxFlash(p: THREE.Vector3, col: number, size = 2, dur = 0.25) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: FXF, color: col, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.position.copy(p); sp.scale.setScalar(size * 0.3); fxAdd(sp); let t = 0;
     ticks.push({ t: dur, fn: (dt2) => { t += dt2; const k = Math.min(1, t / dur); sp.scale.setScalar(Math.min(size, 3.2) * (0.3 + 0.7 * Math.sqrt(k))); sp.material.opacity = 0.6 * (1 - k); /* contido: clarão grande demais apagava a tela */ }, end: () => { sp.parent?.remove(sp); sp.material.dispose(); } }); }
@@ -868,7 +869,7 @@ export function createGameplay(d: GameplayDeps) {
   function explode(cx: number, cz: number, cy: number, r: number, mul: number, col: number, stun: number, from: THREE.Vector3, sk: SkillId | null = 'slam', burn = sk === 'slam' || sk === 'fireball' || sk === 'meteor' || sk === 'flame') {
     d.audio.boom(); st.shake = Math.max(st.shake, 0.45); impactK = 1; impactLight.position.set(cx, cy + 1, cz); impactLight.color.setHex(col);
     try { vfxImpact(new THREE.Vector3(cx, cy, cz), burn ? 'fire' : elementOf(col), Math.max(0.6, Math.min(2.2, r / 2.6))); } catch { /* */ } /* 08/11: clarão, onda, fumaça/lascas/raios pelo elemento */
-    const ring = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(cx, cy + 0.12, cz); fxAdd(ring); rings.push({ m: ring, t: 0 });
+    const ring = new THREE.Mesh(SHOCK, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.add(waveMesh(col)); ring.position.set(cx, cy + 0.12, cz); fxAdd(ring); rings.push({ m: ring, t: 0 });
     for (let k = 0; k < 46; k++) { const a = rnd(0, 6.283), sp = rnd(2, 7); pfx(cx, cy + 0.6, cz, { vx: Math.cos(a) * sp, vy: rnd(0.5, 5), vz: Math.sin(a) * sp, life: rnd(0.4, 0.9), s0: 0.6, s1: 0.06, c0: 0xffffff, c1: col, a: 1, drag: 2.2, g: 5 }); }
     for (let k = 0; k < 14; k++) pfx(cx + rnd(-0.3, 0.3), cy + 0.3, cz + rnd(-0.3, 0.3), { vy: rnd(3, 7), life: 0.5, s0: 1.4, s1: 0.2, c0: 0xffffff, c1: col, a: 0.9 });
     for (const e of enemies.list) if (e.alive && e.active && Math.hypot(e.pos.x - cx, e.pos.z - cz) < r + e.def.radius) { skill = sk; hitEnemy(e, mul, true, from); skill = null; if (burn && e.alive) { e.burn = 5; e.burnTick = 0; } if (stun > 0 && e.alive) { e.state = 'hurt'; e.t = -stun; } }
@@ -1961,7 +1962,7 @@ export function createGameplay(d: GameplayDeps) {
             st.hp = Math.max(0, st.hp - st.hpMax * 0.34); need3.bru = Math.min(1, (need3.bru ?? 0) + 0.06); st.shake = Math.max(st.shake, 0.25); logMsg(st.hp <= 0 ? '🜏 Malgrath cobrou tudo. A terceira magia no fiado levou a sua vida.' : `🜏 No fiado: Malgrath cobrou 34% da sua vida (Dívida do Pacto ${Math.round(need3.bru * 100)}%).`, '#c8a0ff');
             for (let k = 0; k < 18; k++) pfx(hp.x + rnd(-0.4, 0.4), hp.y + rnd(0.3, 1.8), hp.z + rnd(-0.4, 0.4), { vy: rnd(0.5, 1.6), life: 0.9, s0: 0.35, s1: 0.06, c0: 0x8a3ad8, c1: 0x1a0428, a: 0.9 }); if (st.hp <= 0) setTimeout(() => heroDie(), 0); }
           else st.mp -= free ? 0 : cost; if (st.sp.has('r_livro')) st.hp = Math.max(1, st.hp - st.hpMax * 0.02); st.lastCast = now; slotFlash(id); lastExtra = id; tierBurst(hp.x, hp.z, sc.tier); runeCast(id, hp); d.audio.spell(SND[id] ?? 'arcane'); try { sigFx(); } catch { /* efeito nunca derruba a magia */ } return true; };
-      const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(new THREE.RingGeometry(0.8 * r, 1.0 * r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0 }); };
+      const ringFx = (x: number, z: number, c: number, r = 1) => { r *= 1 + 0.25 * sc.tier; const ring = new THREE.Mesh(SHOCK, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); ring.add(waveMesh(c)); ring.position.set(x, d.world.heightAt(x, z) + 0.12, z); fxAdd(ring); rings.push({ m: ring, t: 0, r }); };
       switch (id) {
         /* ---- Elfo (04/11): arcos, adagas, a mata e o vento ---- */
         case 'backleap': case 'tripleshot': case 'ricochet': case 'firearrow': case 'explarrow': case 'vinesnare': case 'windarrow': case 'tensebow': case 'featherfan': case 'hawkfeather': case 'oakarrow': {
@@ -2804,7 +2805,7 @@ export function createGameplay(d: GameplayDeps) {
         }
         trGeo.attributes.position.needsUpdate = true; trGeo.attributes.color.needsUpdate = true;
         for (let i = flashes.length - 1; i >= 0; i--) { const f = flashes[i]; f.t += dt; const u = f.t / f.dur; f.s.scale.setScalar(f.sc * (0.3 + u * 0.9)); (f.s.material as THREE.SpriteMaterial).opacity = Math.max(0, 1 - u); if (u >= 1) { d.scene.remove(f.s); (f.s.material as THREE.Material).dispose(); flashes.splice(i, 1); } }
-        for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.t += dt; const u = r.t / 0.32; r.m.scale.setScalar(0.4 + u * 2.4); (r.m.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.max(0, 1 - u); if (u >= 1) { d.scene.remove(r.m); (r.m.material as THREE.Material).dispose(); rings.splice(i, 1); } }
+        for (let i = rings.length - 1; i >= 0; i--) { const r = rings[i]; r.t += dt; const u = r.t / 0.32; r.m.scale.setScalar((r.r ?? 1) * (0.4 + u * 2.4)); (r.m.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.max(0, 1 - u); const wv = r.m.children[0] as THREE.Mesh | undefined; if (wv) { (wv.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.max(0, 1 - u * u); wv.scale.y = 0.6 + Math.sin(Math.min(1, u) * Math.PI) * 1.2; } if (u >= 1) { r.m.parent?.remove(r.m); (r.m.material as THREE.Material).dispose(); if (wv) (wv.material as THREE.Material).dispose(); rings.splice(i, 1); } }
         impactK *= Math.exp(-dt * 18); impactLight.intensity = 70 * impactK;
         
       }
