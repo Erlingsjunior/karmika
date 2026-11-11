@@ -413,7 +413,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     const deerOnly = L.tpl.id === 'cacadores';
     for (const u of [...A, ...B]) { const pool = u.evFac === 'A' ? B : deerOnly ? L.units.filter((d) => d.alive && d.type === 'deer') : A; let best: Unit | null = null, bd = 1e9;
       for (const o of pool) { const d = o.pos.distanceTo(u.pos); if (d < bd) { bd = d; best = o; } }
-      if (best && bd < 45) { const tgt = best; u.foe = { pos: tgt.pos, alive: () => tgt.alive, hit: (n) => { if (tgt.alive) ctx.hurtBy(tgt, Math.max(1, Math.round(n * (tgt.type === 'deer' ? 3 : 0.32))), u.pos); } }; } else u.foe = undefined; }
+      if (best && bd < 45) { const tgt = best; u.foe = { pos: tgt.pos, alive: () => tgt.alive, hit: (n) => { if (tgt.alive) ctx.hurtBy(tgt, Math.max(1, Math.round(n * (tgt.type === 'deer' ? 3 : 0.32))), u.pos); } }; } else u.foe = undefined; /* 11/11: sem inimigo (entre uma leva e outra), a tropa não fica espalhada: o posto dela passa a ser o centro do evento, e ela volta para lá e ronda por perto */ if (!u.foe && L.site) { const cx = L.site.x * 2, cz = L.site.y * 2; /* o lugar do evento vem em casas do mapa (2 m) */ if (Number.isFinite(cx) && Number.isFinite(cz) && Math.hypot(u.home.x - cx, u.home.y - cz) > 0.5 && Math.hypot(u.pos.x - cx, u.pos.z - cz) < 80) { const ui = L.units.indexOf(u); u.home.set(cx + (ui % 5 - 2) * 1.6, cz + ((ui >> 1) % 5 - 2) * 1.6); } } }
   }
   const sideDef = (L: Live) => (L.side ? L.tpl.sides[L.side] : undefined);
   const killsOf = (L: Live) => L.kills;

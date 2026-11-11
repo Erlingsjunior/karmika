@@ -22,7 +22,14 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
     if (T < 2) T = 2; const maxH = innerHeight - T - 6; pn.style.maxHeight = Math.max(160, maxH) / z + 'px';
     r = el.getBoundingClientRect(); if (T + r.height > innerHeight - 4) T = Math.max(2, innerHeight - r.height - 4);
     if (Math.abs(L - r.left) > 0.5 || Math.abs(T - r.top) > 0.5) { el.style.left = L + 'px'; el.style.top = T + 'px'; el.style.right = 'auto'; } };
-  const applySize = () => { const p = pos[id]; if (p?.w && p?.h) { el.classList.add('sized'); el.style.setProperty('--fw-w', p.w + 'px'); el.style.setProperty('--fw-h', p.h + 'px'); } };
+  /* 11/11 (Erling: "se eu estico a tela a div interna tem que ir junto, em todas as modais"): janela esticada vira uma coluna; o título, as abas e o
+     rodapé ficam do tamanho deles e o CORPO (o filho mais alto) cresce e encolhe com a janela, rolando por dentro. O corpo é marcado de novo
+     a cada vez que a janela é redesenhada. */
+  const markGrow = () => { const pn = pnOf(); if (!pn || !el.classList.contains('sized')) return; let best: HTMLElement | null = null, bh = -1;
+    for (const c of Array.from(pn.children) as HTMLElement[]) { if (c.tagName === 'H2' || c.tagName === 'STYLE' || c.classList.contains('rz')) continue; const h = c.scrollHeight; if (h > bh) { bh = h; best = c; } }
+    for (const c of Array.from(pn.children) as HTMLElement[]) c.classList.toggle('fwgrow', c === best); };
+  const applySize = () => { const p = pos[id]; if (p?.w && p?.h) { el.classList.add('sized'); el.style.setProperty('--fw-w', p.w + 'px'); el.style.setProperty('--fw-h', p.h + 'px'); markGrow(); } };
+  new MutationObserver(() => { if (el.classList.contains('sized') && !pnOf()?.querySelector(':scope > .fwgrow')) markGrow(); }).observe(el, { childList: true, subtree: true });
   applySize(); addEventListener('resize', fit); { let q = 0; new ResizeObserver(() => { if (q) return; q = requestAnimationFrame(() => { q = 0; fit(); }); }).observe(el); } /* no quadro seguinte: sem o aviso "ResizeObserver loop" */
   /* alça de redimensionar no canto inferior direito */
   const grip = document.createElement('div'); grip.className = 'rz'; grip.title = 'Arraste para mudar o tamanho da janela (duplo clique: tamanho padrão)'; el.appendChild(grip);

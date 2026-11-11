@@ -9,12 +9,13 @@ import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast, CENTER } from
 let on = false;
 /** quantas árvores nasceram, quanto tempo levaram ao todo e a pior (para o /perf) */
 export const bvhStats = { n: 0, ms: 0, worst: 0, worstPts: 0 };
+const sigOf = (g: THREE.BufferGeometry, pos: THREE.BufferAttribute) => `${pos.version}|${pos.count}|${g.index ? g.index.version + ':' + g.index.count : '-'}|${g.drawRange.start}:${g.drawRange.count}|${g.groups.length}`;
 const queue: THREE.BufferGeometry[] = [];
 let pumping = false;
 /** faz a árvore da malha agora; false = não deu (a malha fica marcada e segue no caminho antigo) */
 function grow(g: THREE.BufferGeometry): boolean {
   const pos = g.getAttribute('position') as THREE.BufferAttribute | undefined; if (!pos) return false;
-  try { const t0 = performance.now(); g.computeBoundsTree({ strategy: CENTER, maxLeafTris: 16 }); const ms = performance.now() - t0; bvhStats.n++; bvhStats.ms += ms; if (ms > bvhStats.worst) { bvhStats.worst = ms; bvhStats.worstPts = pos.count; } g.userData.bvhPos = pos; g.userData.bvhVer = pos.version; return true; } catch { g.userData.noBvh = true; return false; }
+  try { const t0 = performance.now(); g.computeBoundsTree({ strategy: CENTER, maxLeafTris: 16 }); const ms = performance.now() - t0; bvhStats.n++; bvhStats.ms += ms; if (ms > bvhStats.worst) { bvhStats.worst = ms; bvhStats.worstPts = pos.count; } g.userData.bvhPos = pos; g.userData.bvhSig = sigOf(g, pos); return true; } catch { g.userData.noBvh = true; return false; }
 }
 function pump() {
   if (pumping) return; pumping = true;
@@ -36,8 +37,11 @@ export function installBvh() {
     /* 11/11 (travadas de 500 a 850 ms no /travadas do Erling): a árvore de uma malha grande levava centenas de ms para nascer, e nascia
        no meio do quadro, dentro do primeiro raio. Agora malha grande entra numa fila e a árvore nasce nas folgas (uma por vez); até lá o
        raio segue o caminho antigo. E árvore de malha que mudou de pontos (cenário refeito) é descartada: raio em árvore velha erra. */
-    const ud = g.userData as { bvhPos?: unknown; bvhVer?: number; bvhQ?: boolean };
-    if (g.boundsTree && (ud.bvhPos !== pos || ud.bvhVer !== pos.version)) { g.disposeBoundsTree(); }
+    const ud = g.userData as { bvhPos?: unknown; bvhVer?: number; bvhQ?: boolean; bvhSig?: string };
+    /* 11/11, tarde (Erling: "o círculo que não deixa o personagem sumir atrás da casa desapareceu"): a árvore só enxerga os triângulos que existiam quando ela nasceu.
+       Malha do cenário que cresce depois (mais triângulos no índice ou na faixa desenhada) ficava com a árvore velha, e o raio atravessava a casa nova sem bater.
+       A assinatura agora inclui o índice e a faixa desenhada: mudou qualquer coisa, a árvore é refeita. */
+    if (g.boundsTree && (ud.bvhPos !== pos || ud.bvhSig !== sigOf(g, pos))) { g.disposeBoundsTree(); }
     if (!g.boundsTree) {
       if (pos.count < 120) return base.call(this, rc, out);
       if (pos.count > 6000) { if (!ud.bvhQ) { ud.bvhQ = true; queue.push(g); pump(); } return base.call(this, rc, out); }

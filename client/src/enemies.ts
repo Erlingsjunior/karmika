@@ -803,7 +803,9 @@ export function createEnemies(ctx: EnemyCtx) {
           if (D.passive && dHero < D.aggro) { e.state = 'flee'; e.t = 0; break; }
           e.wanderT -= dt;
           if (e.wanderT <= 0) { e.wanderT = 1.2 + Math.random() * 3; if (Math.random() < 0.8) { const a = Math.random() * 6.283, r = 2 + Math.random() * 8; e.sprint = Math.random() < 0.3 ? 1 : 0; e.wanderTo = new THREE.Vector2(e.home.x + Math.cos(a) * r, e.home.y + Math.sin(a) * r); } else e.wanderTo = null; }
-          if (e.wanderTo) { const dx = e.wanderTo.x - e.pos.x, dz = e.wanderTo.y - e.pos.z, l = Math.hypot(dx, dz); if (l < 0.4) e.wanderTo = null; else { const sp = D.speed * (e.sprint ? 0.85 : 0.5); face(e, e.wanderTo.x, e.wanderTo.y, dt, 8); step(e, dx / l * sp * dt, dz / l * sp * dt); mv = sp; } }
+          if (e.wanderTo) { const dx = e.wanderTo.x - e.pos.x, dz = e.wanderTo.y - e.pos.z, l = Math.hypot(dx, dz); if (l < 0.4) e.wanderTo = null; else { const sp = D.speed * (e.sprint ? 0.85 : 0.5), px0 = e.pos.x, pz0 = e.pos.z; face(e, e.wanderTo.x, e.wanderTo.y, dt, 8); step(e, dx / l * sp * dt, dz / l * sp * dt); mv = sp;
+            /* 11/11 (Erling: "por que o guarda está travado aqui fazendo nada?"): quem escolhe um passeio para dentro do rio, de um muro ou de um barranco ficava empurrando parado até o tempo acabar. Não andou? Desiste desse destino e escolhe outro logo; e quem está longe de casa volta para casa em vez de sortear outro canto */
+            if (Math.hypot(e.pos.x - px0, e.pos.z - pz0) < sp * dt * 0.25) { const hd = Math.hypot(e.home.x - e.pos.x, e.home.y - e.pos.z); e.wanderTo = hd > 6 && Math.random() < 0.7 ? new THREE.Vector2(e.home.x, e.home.y) : null; e.wanderT = 0.4; mv = 0; } } }
           break;
         }
         case 'chase': {

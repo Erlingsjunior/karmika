@@ -1560,6 +1560,11 @@
   .bagpn .grid.g6 .it.empty { border-radius: 12px; background: rgba(0,0,0,.28); border: 1px dashed rgba(125,90,44,.28); } .bagpn .grid.g6 .it span { font-size: 26px; } .bagpn .grid.g6 .it.gi.gi2 > span { font-size: 25px; } .bagpn .it .gico { width: 36px; height: 36px; }
   .bagpn .it b { right: 5px; top: auto; bottom: 2px; font: 700 11px Cinzel, serif; text-shadow: 0 1px 2px #000, 0 0 4px #000; } .it.c-consumo, .it.c-material { border-radius: 12px !important; }
   .bagpn .profgo { border-radius: 10px; } .bagpn .btabs2 button { border-radius: 10px 10px 0 0; }
+  /* 11/11: janela esticada — o corpo acompanha (windows.ts marca o corpo com .fwgrow) */
+  .fw.sized > .pn { display: flex !important; flex-direction: column; overflow: hidden !important; } .fw.sized > .pn > * { flex: 0 0 auto; }
+  .fw.sized > .pn > .fwgrow { flex: 1 1 auto; min-height: 0; max-height: none !important; overflow: auto; scrollbar-width: thin; scrollbar-color: #8a6a32 transparent; }
+  .fw.sized > .pn > .tree-body.fwgrow { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-items: stretch; } .fw.sized > .pn > .tree-body.fwgrow > * { max-height: none !important; min-height: 0; overflow: auto; }
+  .fw.sized .tree-body.fwgrow .talw, .fw.sized .tree-body.fwgrow .tsvg { height: 100%; } .fw.sized > .pn > .fwgrow .pvl, .fw.sized > .pn > .fwgrow .pv2 { max-height: none !important; }
   /* 11/11: relíquia no canto do quadro do boneco, ferramentas em cinco espaços redondos sob ele, pontos de atributo pendentes */
   .eqs.relic { width: 46px; height: 46px; z-index: 4; background: radial-gradient(circle at 50% 35%, #33202c, #120a10 75%); box-shadow: 0 0 0 3px rgba(18,13,24,.9), 0 0 0 4px var(--wk-gold-lo), inset 0 0 12px #000; } .eqs.relic small { display: none; }
   .eqs { width: 60px; height: 60px; border-radius: 16px; background: radial-gradient(circle at 50% 30%, #2b2030, #0d0a10 78%); box-shadow: inset 0 0 14px #000, 0 2px 8px rgba(0,0,0,.5); } .eqs .gem { font-size: 31px; } .eqs .gem img, .eqs .gico { width: 40px; height: 40px; } .eqs .ilv { right: 5px; bottom: 3px; font-size: 10px; } .eqs small { margin-top: 4px; font-size: 8.5px; }
