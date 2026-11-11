@@ -1,4 +1,5 @@
 /* A PELE DO HERÓI: os modelos de arte (Herik) por raça, sexo, caminho e nível; vestir/despir troca o modelo; o visual do caminho (vampiro, lobisomem); trocar o corpo; o recurso da classe. Saiu do main.ts (02/11). */
+import { tarefa } from './perf-tarefas';
 import { type Kind, createCharacter } from '../characters';
 import { type SkinDef, attachSkin } from '../skin3d';
 import * as THREE from 'three';
@@ -69,7 +70,7 @@ function applyArtSkin() {
 /** ao trocar de roupa: se o nível da pele mudou (1 ↔ 2), troca o modelo */
 function checkSkinLevel() { const art = artSkinId(); if (art) { if ('glb:' + art !== skinKey) applyArtSkin(); return; } const hk = humanSkinKey(); if (hk && hk !== skinKey) applyArtSkin(); }
 /* o modelo também muda ao subir de nível e ao passar na prova do caminho: confere de tempos em tempos (barato: só compara chaves) */
-setInterval(() => { try { if (!creating && !K.game.st.dead) checkSkinLevel(); } catch { /* */ } }, 3000);
+setInterval(tarefa('conferir pele', () => { try { if (!creating && !K.game.st.dead) checkSkinLevel(); } catch { /* */ } }), 3000);
 function swapHero() {
   K.scene.remove(K.hero.root);
   K.hero = createCharacter(K.kindOf(K.state.race), K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}); (K.hero as unknown as { sitNeat?: boolean }).sitNeat = K.profile?.sex === 'f';

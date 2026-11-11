@@ -3,6 +3,7 @@
    material físico (luz contínua, rugosidade, reflexo do céu), liga a luz ambiente do céu (o mesmo jeito que os retratos dos heróis são
    feitos) e deixa as texturas lisas (filtro linear, mipmaps e anisotropia) em vez de pixel. Voltar para o Pixel devolve tudo como era.
    Objetos que nascem depois (inimigos, casas que carregam, efeitos) são convertidos a cada meio segundo enquanto o Moderno estiver ligado. */
+import { tarefa } from './perf-tarefas';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { cutoutify } from '../toon3d';
@@ -54,7 +55,7 @@ export function setModern(scene: THREE.Scene, renderer: THREE.WebGLRenderer, ena
     if (webgl && !envTex) { try { const pm = new THREE.PMREMGenerator(renderer); envTex = pm.fromScene(new RoomEnvironment(), 0.04).texture; pm.dispose(); } catch { envTex = null; } }
     if (envTex) { scene.environment = envTex; (scene as THREE.Scene & { environmentIntensity?: number }).environmentIntensity = 0.2; }
     walk(scene, aniso, true);
-    timer = window.setInterval(() => walk(scene, aniso, true), 4000);
+    timer = window.setInterval(tarefa('Moderno: varrer a cena', () => walk(scene, aniso, true)), 4000);
   } else {
     if (scene.environment === envTex) scene.environment = null;
     walk(scene, aniso, false);

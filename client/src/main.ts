@@ -175,6 +175,7 @@ import { createFesta, type FestaOpts } from './sistemas/festa';
 import { createOficios } from './sistemas/oficios';
 import { createReliquias } from './sistemas/reliquias';
 import { createCinemaVistas } from './sistemas/cinema-vistas';
+import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
 import { createPortalAlma } from './sistemas/portal-alma';
 import { createLarMorte, type Home } from './sistemas/lar-e-morte';
 import { createLetreiro } from './sistemas/letreiro-eventos';
@@ -279,7 +280,7 @@ function madBanner(t: string, sub: string, col: string) { const ov = document.cr
   ov.innerHTML = `<b style="font-size:42px;letter-spacing:.08em">${t}</b><span style="font-size:18px;max-width:700px">${sub}</span>`; document.body.appendChild(ov); requestAnimationFrame(() => { ov.style.opacity = '1'; }); setTimeout(() => { ov.style.opacity = '0'; }, 4800); setTimeout(() => ov.remove(), 6000); }
 let strainStage = -1;
 const keepKarma = () => { if (soul.s.karma !== state.karma) { soul.s.karma = state.karma; soul.save(); } };
-setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
+setInterval(tarefa('guardar karma', keepKarma), 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
@@ -1085,7 +1086,7 @@ export interface RedeCtx {
 }
 /* O OÁSIS DA MIRAGEM (02/11): a voz do Gênio oferece de beber a quem chega na beira — sistemas/oasis.ts */
 const oasisSys = createOasis({ game, heroPos: () => heroPosNow(), openDlg: (o) => openDlg(o), busy: () => !!inside || !!cinemaSys?.cine || dlg.isOpen, shake: (k) => { game.st.shake = Math.max(game.st.shake ?? 0, k); } });
-setInterval(() => oasisSys.tick(), 400);
+setInterval(tarefa('oásis', () => oasisSys.tick()), 400);
 var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
 function mk_redeSys() { return createRede({ get scene() { return scene; }, get particles() { return particles; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();
@@ -1609,7 +1610,7 @@ var opcoesSys: ReturnType<typeof createOpcoes>; /* criado aqui, na ordem de ante
 function mk_opcoesSys() { return createOpcoes({ get saveOpts() { return saveOpts; }, get applyGfx() { return applyGfx; }, get PIX() { return PIX; }, set PIX(v) { PIX = v; }, get opts() { return opts; }, get WORLD_RATIO() { return WORLD_RATIO; }, set WORLD_RATIO(v) { WORLD_RATIO = v; }, get dual() { return dual; }, get resize() { return resize; }, get renderer() { return renderer; }, get scene() { return scene; }, get hero() { return hero; }, get npcSys() { return npcSys; }, get sun() { return sun; }, get particles() { return particles; }, get audio() { return audio; }, get uiScale() { return uiScale; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get game() { return game; }, get OPT_DEF() { return OPT_DEF; }, get applyArtSkin() { return applyArtSkin; } }); }
 opcoesSys ??= mk_opcoesSys();
  // depois de o renderizador/composer existirem
-setInterval(() => inv.save(), 8000);
+setInterval(tarefa('salvar mochila', () => inv.save()), 8000);
 /* ÍNDICE DE PROPS POR TILE, BAÚS, KIT INICIAL E PESCA: a vara, a boia, a linha e a fisgada. Saiu do main.ts (02/11). → sistemas/pesca-e-kit.ts */
 export interface PescaKitCtx {
   readonly city: Widen<typeof city>;
@@ -2754,9 +2755,11 @@ const stalls: string[] = []; let stallPrev = 0, pmCpuLast = 0, pmSecLast: Record
 /* 11/11: o registro de travada diz também o que NASCEU naquele quadro (shader novo, textura nova, malha nova). Travada de "desenho" com
    shader novo é a placa compilando; com textura nova é imagem subindo para a placa; sem nada novo é outra coisa. */
 let stProg = 0, stTex = 0, stGeo = 0;
-function stallCheck(now: number) { const gap = now - stallPrev; stallPrev = now; const nP = renderer.info.programs?.length ?? 0, nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, born = [nP > stProg ? `+${nP - stProg} shader` : '', nT > stTex ? `+${nT - stTex} textura` : '', nG > stGeo ? `+${nG - stGeo} malha` : ''].filter(Boolean).join(', '); stProg = nP; stTex = nT; stGeo = nG; if (gap < 70 || gap > 4000 || document.hidden || dynSkip > 0 || !document.hasFocus()) return;
+/* 11/11: o limite era 70 ms, e com o jogo a ~40 quadros por segundo um soluço de 50 ms (dois quadros perdidos) já se sente e não aparecia no relatório */
+const STALL_MS = 45; let stHeap = 0;
+function stallCheck(now: number) { const gap = now - stallPrev; stallPrev = now; const nP = renderer.info.programs?.length ?? 0, nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, born = [nP > stProg ? `+${nP - stProg} shader` : '', nT > stTex ? `+${nT - stTex} textura` : '', nG > stGeo ? `+${nG - stGeo} malha` : ''].filter(Boolean).join(', '); stProg = nP; stTex = nT; stGeo = nG; const tq = tarefasDoQuadro(); const hp = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0, gc = stHeap - hp > 8e6 ? `limpeza de memória −${((stHeap - hp) / 1e6).toFixed(0)} MB · ` : ''; stHeap = hp; if (gap < STALL_MS || gap > 4000 || document.hidden || dynSkip > 0 || !document.hasFocus()) return;
   const top = Object.entries(pmSecLast).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
-  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · ${born ? `nasceu ${born} · ` : ''}pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
+  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · ${born ? `nasceu ${born} · ` : ''}${tq ? `tarefa: ${tq} · ` : ''}${gc}pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
 function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; pmCpuLast = t; pmSecLast = PMF; PMF = {}; }
 (window as unknown as { __worst?: () => string }).__worst = () => { const w = pmWorstShown.t > pmWorst.t ? pmWorstShown : pmWorst; return `pior quadro ${w.t.toFixed(1)} ms: ` + Object.entries(w.s).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · '); };
 function pmFlush() { pmWorstShown = pmWorst; pmWorst = { t: 0, s: {} }; const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
@@ -2767,7 +2770,7 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n🧱 Travadas (quadros acima de 70 ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 /* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,

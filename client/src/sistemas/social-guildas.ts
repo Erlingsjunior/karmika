@@ -1,4 +1,5 @@
 /* AMIGOS, CONVERSAS E GUILDAS (hub.ts e social.ts): escrituras de casa, casas dos outros, terrenos e salões de guilda, o PvP de facção, entrar no servidor, o início, o cartão do herói e o balão de fala. Saiu do main.ts (02/11). */
+import { tarefa } from './perf-tarefas';
 import { FOUND_NEAR_M } from './guilda-fundacao';
 import { createHub } from '../hub';
 import { registerDeed, deedIdOf, DEEDS, ITEMS as ITEMS_TBL } from '../inventory';
@@ -59,7 +60,7 @@ hub.on('h:sold', (m) => { if (K.obras.home && (!m.deedId || K.obras.home.deedId 
 let hSyncT: ReturnType<typeof setTimeout> | null = null, hPend: unknown = undefined, hGot = '';
 onHomeSave((h) => { hPend = h; if (hSyncT) return; hSyncT = setTimeout(() => { hSyncT = null; const v = hPend; hPend = undefined; if (v === undefined) return; hub.send(v ? { t: 'h:sync', house: v } : { t: 'h:del' }); }, 2000); });
 const askHouse = () => { const c = K.profile?.name ?? ''; if (!c || hub.state !== 'on' || hGot === c) return; hGot = c; hub.send({ t: 'h:get' }); };
-hub.on('a:me', () => { hGot = ''; setTimeout(askHouse, 600); }); setInterval(askHouse, 3000);
+hub.on('a:me', () => { hGot = ''; setTimeout(askHouse, 600); }); setInterval(tarefa('perguntar casa', askHouse), 3000);
 hub.on('h:mine', (m) => { if (m.bought) { badge('🏡', 'Casa comprada', String((m.house as { name?: string })?.name ?? '')); const hh = m.house as { deedId?: string; name: string; owner: string; gx: number; gy: number; w: number; h: number; since?: number }; if (hh?.deedId) registerDeed({ id: hh.deedId, house: hh.name, owner: hh.owner, place: placeOf(hh.gx, hh.gy), gx: hh.gx, gy: hh.gy, w: hh.w, h: hh.h, since: hh.since }); } const r = K.obras.fromServer((m.house as never) ?? null); if (r === 'up' && K.obras.home) hub.send({ t: 'h:sync', house: K.obras.home }); });
 hub.on('h:deny', (m) => K.game.logMsg(`🏡 ${String(m.why || 'O servidor recusou a casa.')}`, '#ff9a8a'));
 const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean; id?: string; decor?: { id: string; x: number; z: number; r: number; i: number }[] }[] = []; const otherDecor = new Map<(typeof K.city.props)[number], NonNullable<(typeof otherHouses)[number]['decor']>>(); const otherProps = new Map<string, (typeof K.city.props)[number]>();
@@ -258,7 +259,7 @@ function saveSlotMeta() { if (!K.profile || inicio.isOpen || K.peleSys.creating)
   const busy = performance.now() - celebAt < 12000 || !!K.hero.combat;
   const needPic = !busy && (pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000)); if (needPic) { picKey = pk; picAt = performance.now(); }
   (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (K.profile) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic, server: K.net.state === 'on' ? `karmika://${K.net.address}/${K.net.code}` : null }); }); }
-setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
+setInterval(tarefa('salvar ficha', saveSlotMeta), 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
 const bubbleEl = document.createElement('div'); bubbleEl.className = 'bubble'; document.body.appendChild(bubbleEl); let bubbleT = 0;
 function bubble(text: string) { bubbleEl.textContent = text; bubbleT = 4.5; bubbleEl.style.display = 'block'; }

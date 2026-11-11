@@ -1,4 +1,5 @@
 /* INSTINTO DE CLASSE e POSTURAS: ligar/desligar (F), duração e recarga, a aura, a lente e o anel; a barra de posturas, o círculo rúnico nos pés, o aviso grande e a névoa da treva. Saiu do main.ts (02/11). */
+import { tarefa } from './perf-tarefas';
 import { instinctOf } from '../instinto';
 import { INSTINCT_GLYPH, INST_GLYPH_BASE, ROLE_SVG, THIRD_EYE } from '../ui/icones';
 import * as THREE from 'three';
@@ -129,7 +130,7 @@ stanceSys = createStances({ path: () => K.myPath() as PathId | null, isDone: (q)
     const E = st.eff, ef = [E.dmg ? `${E.dmg > 0 ? '+' : ''}${Math.round(E.dmg * 100)}% dano` : '', E.def ? `${E.def > 0 ? '+' : ''}${Math.round(E.def * 100)}% defesa` : '', E.heal ? `+${Math.round(E.heal * 100)}% cura` : '', E.move ? `+${Math.round(E.move * 100)}% passo` : '', E.crit ? `+${Math.round(E.crit * 100)}% crítico` : '', E.leech ? `${Math.round(E.leech * 100)}% roubo de vida` : ''].filter(Boolean).join(' · ') || 'sem bônus nem penalidade';
     stanceBanner(st, ef); } });
 stanceSys.sync();
-setInterval(() => { stanceSys?.sync(); renderStances(); placeStances(); }, 500);
+setInterval(tarefa('posturas', () => { stanceSys?.sync(); renderStances(); placeStances(); }), 500);
 setTimeout(() => { updateInstBtn(); document.body.classList.toggle('inst-on', instinctOn); document.documentElement.style.setProperty('--instc', myInstinct().css); }, 0);
   return { get instinctOn() { return instinctOn; }, myInstinct, toggleInstinct, get stanceSys() { return stanceSys; }, renderStances, stanceRing, darkMist, updateInstFx };
 }
