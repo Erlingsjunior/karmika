@@ -2715,7 +2715,13 @@ let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
 /* 09/11 (revisão de FPS): além da média, guarda as seções do PIOR quadro de cada janela — é o tranco que o jogador sente */
 let PMF: Record<string, number> = {}, pmWorst: { t: number; s: Record<string, number> } = { t: 0, s: {} }, pmWorstShown: { t: number; s: Record<string, number> } = { t: 0, s: {} };
 const pm = (k: string) => { const n = performance.now(), d = n - pmLast; PM[k] = (PM[k] ?? 0) + d; PMF[k] = (PMF[k] ?? 0) + d; pmLast = n; };
-function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; PMF = {}; }
+/* 10/11 (Erling: "ainda dá umas travadas do nada, não sei por quê"): caderno das travadas. Todo quadro que demora mais de 70 ms fica anotado
+   com a hora, quanto demorou e o que a CPU fazia nele; o que sobra (quadro − CPU) é placa de vídeo, navegador ou coleta de lixo. /travadas no chat mostra. */
+const stalls: string[] = []; let stallPrev = 0, pmCpuLast = 0, pmSecLast: Record<string, number> = {};
+function stallCheck(now: number) { const gap = now - stallPrev; stallPrev = now; if (gap < 70 || gap > 4000 || document.hidden || dynSkip > 0 || !document.hasFocus()) return;
+  const top = Object.entries(pmSecLast).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
+  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
+function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; pmCpuLast = t; pmSecLast = PMF; PMF = {}; }
 (window as unknown as { __worst?: () => string }).__worst = () => { const w = pmWorstShown.t > pmWorst.t ? pmWorstShown : pmWorst; return `pior quadro ${w.t.toFixed(1)} ms: ` + Object.entries(w.s).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · '); };
 function pmFlush() { pmWorstShown = pmWorst; pmWorst = { t: 0, s: {} }; const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
 /** 07/11: quem está gastando desenhos — malhas dentro da câmera por grupo de topo da cena (nome, ou o nome do 1º filho com nome) */
@@ -2725,9 +2731,9 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · '); }
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n🧱 Travadas (quadros acima de 70 ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 function frameBody() {
-  pmFrameEnd(); pmLast = performance.now(); pmFrames++;
+  pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
   { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
     lastFps = fpsN; dynResTick(fpsN); perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
