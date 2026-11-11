@@ -70,12 +70,13 @@ const railM = new THREE.MeshStandardMaterial({ color: 0x1a140e, metalness: 0.7, 
 const lightM = (c: number) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.75, metalness: 0.15, roughness: 0.28, transparent: true, opacity: 1, fog: false, side: THREE.DoubleSide });
 /* fôlego à direita da direção da câmera (enche do meio para fora), vida à esquerda (esvazia da ponta de fora para o meio) */
 const stamArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 + ARC_GAP / 2 + ARC_SPAN, -ARC_SPAN), lightM(0xf4f0e6)); stamArc.renderOrder = 5; stamG.add(stamArc);
-const stamBg = new THREE.Mesh(arcTube(1.02, 0.054, -Math.PI / 2 + ARC_GAP / 2 - 0.012, ARC_SPAN + 0.024), railM); stamBg.renderOrder = 4; stamBg.position.y = -0.03; stamG.add(stamBg);
+const stamBg = new THREE.Mesh(arcTube(1.02, 0.038, -Math.PI / 2 + ARC_GAP / 2, ARC_SPAN), railM); stamBg.renderOrder = 4; stamBg.position.y = -0.03; stamG.add(stamBg);
 const hpArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN, ARC_SPAN), lightM(0xd83a3a)); hpArc.renderOrder = 5; stamG.add(hpArc);
-const hpBg = new THREE.Mesh(arcTube(1.02, 0.054, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN - 0.012, ARC_SPAN + 0.024), railM); hpBg.renderOrder = 4; hpBg.position.y = -0.03; stamG.add(hpBg);
+const hpBg = new THREE.Mesh(arcTube(1.02, 0.038, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN, ARC_SPAN), railM); hpBg.renderOrder = 4; hpBg.position.y = -0.03; stamG.add(hpBg);
 for (const m of [stamArc, stamBg, hpArc, hpBg]) { m.frustumCulled = false; m.raycast = () => {}; }
 /* 11/11 (Erling: "ficou uma sobra preta; diminui e ganha mais elegância"): o trilho era um tubo cheio, mais grosso e mais baixo que a luz: de lado aparecia como uma segunda barra preta. Agora é uma calha rasa (30% da altura) colada embaixo da luz, só um fio escuro de contorno */
-for (const m of [stamBg, hpBg]) { m.scale.y = 0.3; m.position.y = -0.022; }
+/* 11/11, depois (Erling: "ainda tenho uma borda preta, fininha mas tem"): a calha agora é MAIS ESTREITA que a luz e fica por dentro dela: barra cheia não mostra preto nenhum; o escuro só aparece no pedaço que esvaziou */
+for (const m of [stamBg, hpBg]) { m.scale.y = 0.3; m.position.y = -0.012; }
 const arcFill = (m: THREE.Mesh, k: number) => m.geometry.setDrawRange(0, Math.round(Math.max(0, Math.min(1, k)) * ARC_SEG) * ARC_RAD * 6);
 let stamShow = 0;
 function updateStamRing(dt: number) {
