@@ -278,17 +278,47 @@ const ROLE_Q: [RegExp, { kind: 'kill' | 'collect' | 'visit'; pool: string[]; tex
   [/aldeã|aldeão|mendig|pedinte|velh|ceg/i, { kind: 'visit', pool: ['Cemitério Esquecido', 'Igreja Abandonada', 'Catedral Abandonada', 'Clareira dos Gritos'], text: ['Ninguém mais passa por {it}. Vá ver se ainda está lá e volte para me contar.', 'Dizem coisas de {it}. Olhe com os seus olhos.'] }],
 ];
 /* 11/11 (Erling: "missões de karma dadas pelo NPC kármico; listas separadas, um não vê a lista do outro, somente vê a que se refere a ele"):
-   o Guardião da Honra Kármica dá a missão do SEU lado. Quem pende para a luz caça o que ameaça os caminhantes; quem pende para a sombra caça
-   quem guarda o muro. A entrega pesa no karma para o mesmo lado. (Sacrificar em ritual, morder alguém e assaltar carroça pedem mecânica própria: ainda não.) */
-const KARMA_Q = {
-  luz: [['vampire', 'Um ninho se formou perto da estrada. Leve o sol até {n} {it}.', 'Você tirou da noite o que caçava os despreparados.'], ['cultist', 'Há um círculo aceso onde não devia. Acabe com o sacrifício: {n} {it}.', 'O círculo apagou antes de alguém ser entregue.'], ['werewolf', 'A matilha desceu até as casas. Cace {n} {it} antes da próxima lua.', 'As casas dormem. Você pagou o preço por elas.'], ['thrall', 'Servos de sangue andam buscando gente. Liberte a estrada de {n} {it}.', 'Ninguém foi levado esta semana.']],
-  sombra: [['templar', 'Os de Auréon erguem mais um muro. Derrube {n} {it}.', 'Um muro a menos entre os caminhantes e a porta.'], ['inquisitor', 'Há fogueiras prontas para os nossos. Apague {n} {it}.', 'As fogueiras ficaram sem quem as acendesse.'], ['pilgrim', 'Peregrinos levam a palavra do muro às vilas. Cale {n} {it}.', 'A palavra não chegou.'], ['soldier', 'A patrulha fechou o caminho da noite. Abra passagem por {n} {it}.', 'O caminho da noite está aberto de novo.']],
-} as const;
+   o Guardião da Honra Kármica dá a missão do SEU lado. A entrega pesa no karma para o mesmo lado. (Morder alguém ainda pede mecânica própria.) */
+/* 11/11 (Erling: "missões de karma positivo também incluem libertar presos, salvar donzelas em perigo, salvar de sequestro e de rituais, matar membros
+   malignos, arrumar problemas em vilas que estão sendo atacadas… dá para ter muita criatividade"): cada missão é uma pequena história com lugar, luta e
+   uma escolha na entrega, que pesa mais ou menos no karma. As de sombra seguem o mesmo molde, do outro lado. */
+type KQ = { nome: string; texto: string; objs: (n: number) => Obj[]; q: string; opts: [string, number, string, string][] };
+const KARMA_Q: Record<'luz' | 'sombra', KQ[]> = {
+  luz: [
+    { nome: 'A donzela do círculo', texto: 'Levaram a filha do moleiro para a Clareira dos Gritos. O círculo já está aceso. Chegue antes do fim do canto.', objs: (n) => [{ kind: 'visit', poi: 'Clareira dos Gritos' }, { kind: 'kill', type: 'cultist', n }],
+      q: 'O Guardião pergunta: “E a moça?”', opts: [['“Levei-a até a porta de casa. Não quero paga.”', 4, 'Ele grava o seu nome na mesa do juramento, sem dizer nada.', 'Você salvou e não cobrou.'], ['“Está salva. Aceito o que a família puder dar.”', 2, 'Ele entrega uma bolsa pequena, contada moeda por moeda.', 'Você salvou. O preço foi justo.']] },
+    { nome: 'Os presos da estrada', texto: 'Os salteadores guardam gente amarrada para vender. Derrube o bando e o chefe, e corte as cordas.', objs: (n) => [{ kind: 'kill', type: 'bandit', n }, { kind: 'kill', type: 'bandit_chief', n: 1 }],
+      q: 'O Guardião pergunta: “Quantos voltaram?”', opts: [['“Todos. Dividi a comida do bando entre eles.”', 4, 'Ele acena devagar. “É assim que se lembra de um nome.”', 'Você libertou e ainda cuidou do caminho de volta.'], ['“Todos. Estão a caminho de casa.”', 3, 'Ele risca o bando da lista.', 'Ninguém foi vendido.']] },
+    { nome: 'O sequestro da igreja', texto: 'Servos de sangue levaram uma criança para a Igreja Abandonada. Ainda não anoiteceu. Vá.', objs: (n) => [{ kind: 'visit', poi: 'Igreja Abandonada' }, { kind: 'kill', type: 'thrall', n }],
+      q: 'O Guardião pergunta: “A criança?”', opts: [['“Dormindo no colo da mãe.”', 4, 'Ele fecha os olhos um instante.', 'A noite chegou e ela estava em casa.']] },
+    { nome: 'O ninho na estrada', texto: 'Um ninho se formou perto da estrada, e os viajantes somem. Leve o sol até eles.', objs: (n) => [{ kind: 'kill', type: 'vampire', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', 3, 'Ele anota o seu nome na mesa do juramento.', 'Você tirou da noite o que caçava os despreparados.']] },
+    { nome: 'A matilha nas casas', texto: 'A matilha desceu até as casas. Cace antes da próxima lua, ou alguém acorda mordido.', objs: (n) => [{ kind: 'kill', type: 'werewolf', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', 3, 'Ele anota o seu nome.', 'As casas dormem. Você pagou o preço por elas.']] },
+    { nome: 'A vila sob ataque', texto: 'Os bichos descem toda noite e os cercados não aguentam mais. A vila pede um braço.', objs: (n) => [{ kind: 'kill', type: 'wolf', n: n + 2 }, { kind: 'kill', type: 'boar', n }],
+      q: 'O Guardião pergunta: “E os cercados?”', opts: [['“Fiquei a noite ajudando a levantar.”', 3, 'Ele sorri pela primeira vez.', 'Você fez o serviço e ficou para o conserto.'], ['“Os bichos não voltam.”', 2, 'Ele anota.', 'A vila dorme inteira esta noite.']] },
+    { nome: 'O cemitério inquieto', texto: 'Os mortos do Cemitério Esquecido andam de novo, e há quem os acorde. Devolva o sono a eles.', objs: (n) => [{ kind: 'visit', poi: 'Cemitério Esquecido' }, { kind: 'kill', type: 'skeleton', n: n + 1 }],
+      q: 'O Guardião pergunta: “Dormem?”', opts: [['“Dormem. Fechei as covas com as mãos.”', 3, 'Ele inclina a cabeça.', 'Você devolveu o descanso a quem não pediu para acordar.']] },
+  ],
+  sombra: [
+    { nome: 'O escolhido do círculo', texto: 'O círculo precisa de um escolhido, e um peregrino cruza a Clareira dos Gritos sozinho. Traga-o ao canto.', objs: (n) => [{ kind: 'visit', poi: 'Clareira dos Gritos' }, { kind: 'kill', type: 'pilgrim', n: Math.max(1, n - 2) }],
+      q: 'O Guardião pergunta, sem levantar os olhos: “O círculo recebeu?”', opts: [['“Recebeu. Eu mesmo segurei.”', -5, 'Ele risca um nome. A tinta é escura demais para ser tinta.', 'Você entregou uma vida ao canto.'], ['“Trouxe só o manto. Ele correu.”', -1, 'Ele olha para você por um tempo longo.', 'Você falhou de propósito, e os dois sabem.']] },
+    { nome: 'A carroça de provisão', texto: 'A patrulha escolta os sacos de pão para as vilas do muro. Derrube a escolta e traga os sacos.', objs: (n) => [{ kind: 'kill', type: 'soldier', n }, { kind: 'collect', item: 'bread', n: n + 1 }],
+      q: 'O Guardião pergunta: “E os sacos?”', opts: [['“Aqui. As vilas que esperem.”', -4, 'Ele empilha os sacos atrás da mesa.', 'Alguém vai dormir com fome por sua causa.'], ['“Metade ficou na estrada, para quem passar.”', -2, 'Ele dá de ombros.', 'Você roubou, mas deixou cair de propósito.']] },
+    { nome: 'O muro novo', texto: 'Os de Auréon erguem mais um muro entre os caminhantes e a porta. Derrube quem o levanta.', objs: (n) => [{ kind: 'kill', type: 'templar', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', -3, 'Ele risca um nome da lista e não diz mais nada.', 'Um muro a menos.']] },
+    { nome: 'As fogueiras', texto: 'Há fogueiras prontas para os nossos. Apague quem as acende.', objs: (n) => [{ kind: 'kill', type: 'inquisitor', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', -3, 'Ele risca um nome.', 'As fogueiras ficaram sem quem as acendesse.']] },
+    { nome: 'A palavra do muro', texto: 'Peregrinos levam a palavra do muro às vilas. Que ela não chegue.', objs: (n) => [{ kind: 'kill', type: 'pilgrim', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', -3, 'Ele risca um nome.', 'A palavra não chegou.']] },
+    { nome: 'A passagem da noite', texto: 'A patrulha fechou o caminho da noite. Abra passagem.', objs: (n) => [{ kind: 'kill', type: 'soldier', n }],
+      q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', -3, 'Ele risca um nome.', 'O caminho da noite está aberto de novo.']] },
+  ],
+};
 function genKarmaQuest(npc: string, lvl: number, seed: number, times: number, side: 'luz' | 'sombra', R: () => number): QuestDef {
-  const L = KARMA_Q[side], [type, tx, why] = L[Math.floor(R() * L.length)], n0 = 3 + Math.floor(R() * 3), n = Math.round(n0 * (1 + times * 0.8)), scale = 1 + lvl * 0.1, k = side === 'luz' ? 3 : -3, nome = ENEMY_NAME(type as EnemyType);
-  return { id: `qk${seed}-${npc}-${side}`, name: `${side === 'luz' ? 'Karma de luz' : 'Karma de sombra'}: ${nome}`, lvl, giver: npc, turnin: npc, text: tx.replace('{n}', String(n)).replace('{it}', nome), objs: [{ kind: 'kill', type: type as EnemyType, n }],
-    xp: Math.round((40 + n0 * 18) * scale), gold: Math.round((12 + n0 * 5) * scale),
-    choice: { q: side === 'luz' ? 'O Guardião pergunta: “Está feito?”' : 'O Guardião pergunta, sem levantar os olhos: “Está feito?”', opts: [{ label: '“Está feito.”', karma: k, say: side === 'luz' ? 'Ele anota o seu nome na mesa do juramento.' : 'Ele risca um nome da lista e não diz mais nada.', why }] } } as QuestDef;
+  const L = KARMA_Q[side], t = L[(Math.floor(R() * L.length) + times) % L.length] /* cada pedido novo é outra história, na ordem */, n0 = 3 + Math.floor(R() * 3), n = Math.round(n0 * (1 + times * 0.25)), scale = 1 + lvl * 0.1;
+  return { id: `qk${seed}-${npc}-${side}-${times}`, name: `${side === 'luz' ? 'Karma de luz' : 'Karma de sombra'}: ${t.nome}`, lvl, giver: npc, turnin: npc, text: t.texto, objs: t.objs(n),
+    xp: Math.round((50 + n0 * 20) * scale), gold: Math.round((14 + n0 * 6) * scale), choice: { q: t.q, opts: t.opts.map(([label, karma, say, why]) => ({ label, karma, say, why })) } } as QuestDef;
 }
 export function genNpcQuest(npc: string, role: string, lvl: number, seed: number, times = 0, karmaNow = 0): QuestDef {
   let s = seed * 7919 + 104729; const R = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
