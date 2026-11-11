@@ -93,6 +93,12 @@ const sKey = (ix: number, iz: number) => (iz + 32768) * 65536 + (ix + 32768);
 export interface HouseWall { x0: number; x1: number; z0: number; z1: number }
 /** o corpo sólido de cada casa já montada (metros, mundo): paredes, porta, pilares. Casa ainda não montada não está aqui (e barra inteira) */
 export const houseWalls = new Map<Prop, HouseWall[]>();
+let houseAt: Map<number, Prop> | null = null;
+/** o ponto (x, y em casas do mapa) está no piso de pedra de uma casa já montada, fora do corpo dela? (tx, ty = a casa do mapa que se está testando) */
+export function houseFloorAt(props: Prop[], tx: number, ty: number, x: number, y: number): boolean {
+  if (!houseAt) { houseAt = new Map(); for (const p of props) if (p.kind === 'house') for (let j = p.gy; j < p.gy + p.h; j++) for (let i = p.gx; i < p.gx + p.w; i++) houseAt.set(j * 4096 + i, p); }
+  const hp = houseAt.get(ty * 4096 + tx); if (!hp) return false; const W = houseWalls.get(hp); if (!W) return false;
+  const xm = x * T, zm = y * T; if (stepAt(xm, zm) === null) return false; const pad = 0.24; for (const b of W) if (xm > b.x0 - pad && xm < b.x1 + pad && zm > b.z0 - pad && zm < b.z1 + pad) return false; return true; }
 export function stepAt(xm: number, zm: number): number | null { const v = stepMap.get(sKey(Math.floor(xm / STEP_RES), Math.floor(zm / STEP_RES))); return v === undefined ? null : v; }
 function registerSteps(g: THREE.Object3D, p: Prop) {
   if (stepDone.has(p) || !STEP_KINDS.has(p.kind)) return; stepDone.add(p);

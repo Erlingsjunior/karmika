@@ -1,7 +1,7 @@
 /* CLIQUE PARA ANDAR: o caminho até o ponto clicado (nav.ts), com a mesma sonda de corpo do movimento. Saiu do main.ts (02/11). */
 import { groundH, WL, heightAt } from '../world';
 import { TILE_M as T, isWalkable, type Vec } from '@karmika/shared';
-import { stepAt } from '../world3d';
+import { stepAt, houseFloorAt } from '../world3d';
 import { navPath, lineFree } from '../nav';
 import * as THREE from 'three';
 import { createXray } from '../xray';
@@ -15,7 +15,7 @@ function tileHeightOk(tx: number, ty: number) { const i = ty * K.city.map[0].len
   const g = groundH((tx + 0.5) * T, (ty + 0.5) * T), ok = g > WL - 2.6 && g < 80; hOk[i] = ok ? 1 : 2; return ok; }
 function groundProbe(x: number, y: number) {
   for (const [dx, dy] of K.CORN) { const tx = Math.floor(x + dx), ty = Math.floor(y + dy); if (ty < 0 || tx < 0 || ty >= K.city.map.length || tx >= K.city.map[0].length) return false; const tl = K.city.map[ty][tx];
-    if (!(isWalkable(tl) || tl === 'water' || tl === 'tree') || !tileHeightOk(tx, ty)) return false; }
+    if (!(isWalkable(tl) || tl === 'water' || tl === 'tree' || houseFloorAt(K.city.props, tx, ty, x, y)) || !tileHeightOk(tx, ty)) return false; } /* 11/11: o clique também traça caminho pelo piso de pedra das casas */
   return !K.trunkHit(x, y) && !K.solidHit(x, y) && !K.lowWallHit(x, y);
 }
 /* dev: por que o herói não passa aqui? (27/10) */

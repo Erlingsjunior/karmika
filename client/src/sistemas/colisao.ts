@@ -3,7 +3,7 @@ import { greatTreeRootAngles } from '../trees3d';
 /* COLISÃO DO HERÓI (regra de ouro: mobilidade acima da física): cantos do corpo, muralhas e caminho de ronda, degraus, muros baixos e cercas, guarda-peito das pontes, sólidos do cenário, pontos de trabalho, troncos e bichos. Saiu do main.ts (02/11). */
 import { rampartAt, stairTopAt, stairDeck, heightAt, bridgeDeck, waterSD, groundH, WL } from '../world';
 import { TILE_M as T, isWalkable } from '@karmika/shared';
-import { stepAt, houseWalls } from '../world3d';
+import { stepAt, houseFloorAt } from '../world3d';
 import { STATION_INFO, HALL_WALLS } from '../stations3d';
 import * as THREE from 'three';
 import { LIB_WALLS } from '../library3d';
@@ -36,10 +36,7 @@ function lowWallHit(x: number, y: number) { const l = LOWW.get(Math.floor(y) * 4
 const bridgeEdge = (x: number, y: number) => { const d0 = bridgeDeck(K.state.fx * T, K.state.fy * T); if (d0 === null) return false; const d1 = bridgeDeck(x * T, y * T); if (d1 !== null) return Math.abs(d1 - d0) > 0.6; /* de uma ponte para outra só no mesmo nível */ if (waterSD(x * T, y * T) < 0.4) return true; /* nunca para a água */ return Math.abs(d0 - groundH(x * T, y * T)) > 0.6; };
 /* 11/11: o piso de pedra das casas é chão. Dentro do quadrado de uma casa só barra o que é corpo dela (world3d.houseWalls); o resto do
    piso (terraço, beirada, degrau) se anda, e o herói sobe os 42 cm sozinho, como sobe qualquer degrau. */
-const HOUSE_AT = new Map<number, (typeof K.city.props)[number]>();
-for (const p of K.city.props) if (p.kind === 'house') for (let ty = p.gy; ty < p.gy + p.h; ty++) for (let tx = p.gx; tx < p.gx + p.w; tx++) HOUSE_AT.set(ty * 4096 + tx, p);
-function houseFloor(tx: number, ty: number, x: number, y: number): boolean { const hp = HOUSE_AT.get(ty * 4096 + tx); if (!hp) return false; const W = houseWalls.get(hp); if (!W) return false;
-  const xm = x * T, zm = y * T; if (stepAt(xm, zm) === null) return false; const pad = 0.24; for (const b of W) if (xm > b.x0 - pad && xm < b.x1 + pad && zm > b.z0 - pad && zm < b.z1 + pad) return false; return true; }
+const houseFloor = (tx: number, ty: number, x: number, y: number) => houseFloorAt(K.city.props, tx, ty, x, y);
 const freeGround = (x: number, y: number, squeeze = false) => !stepBlock(x, y) && !bridgeEdge(x, y) && !(lowWallHit(x, y) && !lowWallHit(K.state.fx, K.state.fy)) &&
   [[-R, -R], [R, -R], [R, R], [-R, R]].every(([dx, dy]) => {
     const tx = Math.floor(x + dx), ty = Math.floor(y + dy);
