@@ -1,3 +1,4 @@
+import { kkMonsterRig, type KkMonsterDef } from './libs/kk-monstro';
 import { RUNAS } from './runas';
 import { t as tr, tl } from './i18n';
 import { monRoll } from './dados-rpg';
@@ -44,7 +45,7 @@ export interface EnemyCtx { outMul?: () => number;
 
 interface Def {
   name: string; lvl: number; hp: number; dmg: number; speed: number; aggro: number; range: number; windup: number; cd: number; xp: number; gold: [number, number];
-  model?: string; scale: number; quad?: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote'; rig?: 'fairy' | 'treant' | 'prince' | 'zombie' | 'bishop' | 'human' | 'beast'; /** gente: o mesmo boneco dos NPCs, armado */ human?: HumanLook; fly?: number; passive?: boolean; radius: number; tint?: number;
+  model?: string; /** 11/11: modelo e animação KayKit (libs/kk-monstro.ts) */ kk?: KkMonsterDef; scale: number; quad?: 'wolf' | 'boar' | 'deer' | 'rat' | 'coyote'; rig?: 'fairy' | 'treant' | 'prince' | 'zombie' | 'bishop' | 'human' | 'beast'; /** gente: o mesmo boneco dos NPCs, armado */ human?: HumanLook; fly?: number; passive?: boolean; radius: number; tint?: number;
   /* 26/10 — a nova safra: comportamento além do corpo */
   /** corpo próprio (bestas3d) */ make?: () => Rig;
   /** elite do mundo: vida ×elite, corpo ×1.25, golpe ×1.3 */ elite?: number;
@@ -95,7 +96,7 @@ export const DEFS: Record<EnemyType, Def> = {
   bishop: { name: 'Bispo Caído', lvl: 28, hp: 2600, dmg: 44, speed: 2.4, aggro: 34, range: 3.6, windup: 1.1, cd: 2.4, xp: 4200, gold: [400, 800], rig: 'bishop', fly: 0.12, scale: 1.55, radius: 1.5 },
   tormentor: { name: 'Torturador de Bestas', lvl: 7, hp: 680, dmg: 24, speed: 3.0, aggro: 18, range: 3.2, windup: 0.95, cd: 2.0, xp: 520, gold: [80, 160], rig: 'prince', fly: 0.25, scale: 1.15, radius: 1.2, tint: 0xff3a1a },
   prince: { name: 'Príncipe das Cinzas', lvl: 8, hp: 520, dmg: 30, speed: 2.7, aggro: 20, range: 3.6, windup: 1.05, cd: 2.2, xp: 450, gold: [60, 120], rig: 'prince', fly: 0.35, scale: 1.0, radius: 1.2 },
-  skeleton: { name: 'Esqueleto do Campo Santo', lvl: 12, hp: 150, dmg: 18, speed: 2.6, aggro: 15, range: 1.9, windup: 0.7, cd: 1.6, xp: 80, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8 },
+  skeleton: { name: 'Esqueleto do Campo Santo', lvl: 12, hp: 150, dmg: 18, speed: 2.6, aggro: 15, range: 1.9, windup: 0.7, cd: 1.6, xp: 80, gold: [3, 9], kk: { model: 'Skeleton_Warrior', right: 'Skeleton_Blade', left: 'Skeleton_Shield_Small_A', height: 1.75 }, scale: 0.95, radius: 0.55 },
   bat: { name: 'Morcego da Noite', lvl: 9, hp: 45, dmg: 10, speed: 5.4, aggro: 14, range: 1.4, windup: 0.35, cd: 1.0, xp: 30, gold: [0, 3], rig: 'fairy', fly: 1.9, scale: 0.9, radius: 0.45, tint: 0x1a1418 },
   werewolf: { name: 'Lobisomem', lvl: 16, hp: 420, dmg: 30, speed: 5.0, aggro: 19, range: 2.1, windup: 0.6, cd: 1.4, xp: 180, gold: [10, 26], rig: 'beast', scale: 1.12, radius: 1.0 },
   /* gente dos eventos vivos: boneco articulado dos NPCs, com arma, escudo e cor da facção */
@@ -115,10 +116,10 @@ export const DEFS: Record<EnemyType, Def> = {
   /* mortos e ossos */
   skull_fire: { name: 'Caveira Flamejante', lvl: 14, hp: 70, dmg: 16, speed: 3.6, aggro: 16, range: 1.5, windup: 0.5, cd: 1.3, xp: 70, gold: [3, 9], make: () => buildSkull(0xff7a20, 0xfff0a0), fly: 1.3, scale: 1.25, radius: 0.5, kite: 7, boom: { r: 2.6, k: 1.3, col: 0xff6a20, name: 'Estouro de Brasas' } },
   skull_frost: { name: 'Caveira Gélida', lvl: 26, hp: 110, dmg: 20, speed: 3.4, aggro: 16, range: 1.5, windup: 0.5, cd: 1.3, xp: 120, gold: [5, 12], make: () => buildSkull(0x6ad0ff, 0xe8f8ff), fly: 1.3, scale: 1.25, radius: 0.5, kite: 7, boom: { r: 3, k: 1.2, col: 0x9ad7ff, name: 'Estilhaço de Gelo' } },
-  skel_arch: { name: 'Arqueiro Esquelético', lvl: 12, hp: 110, dmg: 14, speed: 2.6, aggro: 19, range: 1.6, windup: 0.6, cd: 1.5, xp: 75, gold: [3, 9], rig: 'zombie', scale: 0.95, radius: 0.55, tint: 0xe8e0c8, kite: 9 },
+  skel_arch: { name: 'Arqueiro Esquelético', lvl: 12, hp: 110, dmg: 14, speed: 2.6, aggro: 19, range: 1.6, windup: 0.6, cd: 1.5, xp: 75, gold: [3, 9], kk: { model: 'Skeleton_Rogue', right: 'Skeleton_Crossbow', atk: 'shoot', height: 1.7 }, scale: 0.95, radius: 0.55, kite: 9 },
   headless: { name: 'Cavaleiro Sem Cabeça', lvl: 24, hp: 420, dmg: 32, speed: 5.4, aggro: 22, range: 2.4, windup: 0.75, cd: 1.7, xp: 380, gold: [40, 90], make: () => buildHeadless(), scale: 1, radius: 1.1, elite: 3 },
   necro: { name: 'Necromante do Campo Santo', lvl: 18, hp: 240, dmg: 20, speed: 2.6, aggro: 17, range: 1.8, windup: 0.7, cd: 1.6, xp: 300, gold: [30, 70], rig: 'zombie', scale: 1.05, radius: 0.6, kite: 8, elite: 3 },
-  lich: { name: 'Lich dos Esquecidos', lvl: 30, hp: 900, dmg: 34, speed: 2.4, aggro: 18, range: 2.2, windup: 0.9, cd: 1.9, xp: 900, gold: [80, 160], rig: 'zombie', scale: 1.2, radius: 0.8, elite: 4 },
+  lich: { name: 'Lich dos Esquecidos', lvl: 30, hp: 900, dmg: 34, speed: 2.4, aggro: 18, range: 2.2, windup: 0.9, cd: 1.9, xp: 900, gold: [80, 160], kk: { model: 'Skeleton_Mage', right: 'Skeleton_Staff', atk: 'magic', height: 1.85 }, scale: 1.2, radius: 0.8, elite: 4 },
   /* demônios */
   imp_bomb: { name: 'Diabrete Bombardeiro', lvl: 16, hp: 80, dmg: 16, speed: 3.6, aggro: 17, range: 1.4, windup: 0.5, cd: 1.3, xp: 85, gold: [4, 10], model: 'Imp', fly: 3.2, scale: 0.9, radius: 0.6, kite: 6, tint: 0x3a1a10 },
   succubus: { name: 'Súcubo das Cinzas', lvl: 30, hp: 300, dmg: 26, speed: 3.4, aggro: 17, range: 1.9, windup: 0.55, cd: 1.3, xp: 220, gold: [12, 28], rig: 'zombie', scale: 1, radius: 0.55 },
@@ -568,6 +569,7 @@ export function createEnemies(ctx: EnemyCtx) {
     else if (e.def.quad === 'deer') { const dr = buildDeer({ stag: Math.random() < 0.55 }); e.rig = { root: dr.root, mats: dr.mats, update(e2, dt, _w, _s, hurtK, mv) { dr.pose({ dt, mv, idle: e2.state === 'idle', alert: e2.state === 'flee' || e2.state === 'hurt', hurt: hurtK }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
+    else if (e.def.kk) { e.rig = kkMonsterRig(e.def.kk, ramp) as unknown as typeof e.rig; g.add(e.rig!.root); e.mats = e.rig!.mats as unknown as typeof e.mats; }
     else if (e.def.make) { e.rig = e.def.make(); g.add(e.rig.root); e.mats = [...e.rig.mats]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.5); } }
     else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(['skeleton', 'skel_arch', 'draugr_arch', 'lich'].includes(e.type) ? 'skeleton' : ['ghoul', 'drowner', 'drowner_old', 'draugr_bers'].includes(e.type) ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }
@@ -874,7 +876,7 @@ export function createEnemies(ctx: EnemyCtx) {
         if (D.ambush) e.root.visible = !(e as Enemy & { hid?: boolean }).hid || e.state === 'dead';
         else if (D.stealth) e.root.visible = dHero < D.stealth + (e.root.visible ? 1.5 : 0) /* 09/11: folga para não piscar na borda do alcance */ || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt' || e.state === 'dead' || e.flash > 0;
         { const near = charShadow.on && dHero < 14; if (e.root.userData.sh !== near) { e.root.userData.sh = near; e.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite) m.castShadow = near; }); } }
-        if (e.state === 'dead') { const k = Math.min(1, e.t / 0.55); e.root.rotation.x = -k * 1.45; e.root.position.y = e.pos.y - 0.12 * k; const lim = ((e as Enemy & { corpse?: number }).corpse ?? 4) - 1; if (e.t > lim) e.root.scale.setScalar(e.def.scale * Math.max(0, 1 - (e.t - lim))); }
+        if (e.state === 'dead') { const k = Math.min(1, e.t / 0.55), own = !!(e.rig as { ownDeath?: boolean } | undefined)?.ownDeath; /* 11/11: quem tem animação de morte cai por ela */ if (!own) { e.root.rotation.x = -k * 1.45; e.root.position.y = e.pos.y - 0.12 * k; } const lim = ((e as Enemy & { corpse?: number }).corpse ?? 4) - 1; if (e.t > lim) e.root.scale.setScalar(e.def.scale * Math.max(0, 1 - (e.t - lim))); }
         else e.root.rotation.x = 0;
         animate(e, dt, mv);
         if ((e as Enemy & { yielded?: boolean }).yielded && e.alive) { e.root.rotation.x = 0.4; e.root.position.y -= 0.3 * e.def.scale; } // rendido, de joelhos

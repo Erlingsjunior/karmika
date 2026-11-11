@@ -13,5 +13,12 @@ Ficaram de fora: personagens chibi, árvores, pedras e a poltrona moderna (não 
 | `armas/aventureiros/` | espadas 1 e 2 mãos, machados, bestas, adaga, escudos, cajado, varinha, grimórios, aljava, canecas, bomba de fumaça | KayKit Adventurers 1.0 (só os acessórios) |
 | `armas/esqueletos/` | lâmina, machado, besta, cajado, escudos e flechas dos esqueletos | KayKit Skeletons 1.0 (só os acessórios) |
 
+## Monstros (11/11)
+
+Os quatro esqueletos do **KayKit Skeletons 1.1** (CC0) ficam junto dos outros monstros, em `client/public/models/bestiary/`:
+`Skeleton_Warrior.glb`, `Skeleton_Rogue.glb`, `Skeleton_Mage.glb`, `Skeleton_Minion.glb` (textura embutida em cada um).
+Usam direto as animações do rig médio de `client/public/anim/`; o código é `client/src/libs/kk-monstro.ts`.
+Do pacote só entraram esses quatro arquivos: as armas já estavam em `armas/esqueletos/` e as animações já estavam em `anim/`.
+
 As animações (rig médio e rig grande) ficam em `client/public/anim/` — ver `client/src/libs/anim-kk.ts`.
 Cada pasta tem uma única textura (atlas) compartilhada pelos modelos dela: mova os arquivos sempre juntos.
