@@ -1,3 +1,4 @@
+import { artMesh, artReady } from './arte3d';
 import * as THREE from 'three';
 import { std, ink, texBox, plankTex, stoneTex, plasterTex, woodTex, gableRoof, scaleUV, brickTex } from './toon3d';
 
@@ -223,6 +224,12 @@ function signTex(txt = 'TAVERNA', ico = '🍺') {
    6 pacto (Gorvath: casebre torto, telhado retorcido, runas violetas que brilham)
    7 vapor (Vaporeira, Porto Caldeira, Ferrugem: tijolo, telhado de chapa, canos e chaminé alta de fábrica) */
 export function buildStyledHouse(style: number, variant: number, Wm: number, Dm: number, wallC: number, roofC: number, c: Ctx): HouseOut {
+  /* 11/11 (Erling: "as casas prontas entram na lista de construção B"): estilo 90 = casa pronta do Herik (cenario/construcoes/casas), inteira num modelo só.
+     variante 0 = o sobrado com chaminé (casa_01), 1 = a casa térrea comprida (casa_02). A frente do modelo já olha para a câmera. */
+  if (style === 90) { const g0 = new THREE.Group(), id = variant === 1 ? 'casa_02' : 'casa_01', fit = () => { const m = artMesh(id); if (!m) return false; m.geometry.computeBoundingBox(); const bb = m.geometry.boundingBox!, k = Math.min((Wm - 0.6) / (bb.max.x - bb.min.x), (Dm - 0.6) / (bb.max.z - bb.min.z), 1.15);
+      m.scale.setScalar(k); m.position.set(Wm / 2 - (bb.max.x + bb.min.x) / 2 * k, -bb.min.y * k, Dm / 2 - (bb.max.z + bb.min.z) / 2 * k); g0.add(m); return true; };
+    if (!fit()) void artReady([id]).then(fit);
+    return { group: g0, chimneys: [new THREE.Vector3(variant === 1 ? Wm * 0.72 : Wm * 0.2, variant === 1 ? 4.6 : 7.4, Dm / 2)], lantern: new THREE.Vector3(Wm / 2, 2.2, Dm + 0.3) }; }
   const g = new THREE.Group(), chim: THREE.Vector3[] = [];
   const bw = Wm - 0.5, bd = Dm - 0.5, cx = Wm / 2, cz = Dm / 2, front = cz + bd / 2, R = c.rnd;
   const dr = houseDoor(variant, Wm, Dm), dz = dr.z - 0.02;

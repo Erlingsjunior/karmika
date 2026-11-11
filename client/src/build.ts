@@ -48,6 +48,11 @@ export const WHOLES: Whole[] = [
     tip: 'Couro, galhos trançados e ossos na entrada: a toca de quem uiva para a lua (36 turnos, 6 dias).' },
   { id: 'pacto', name: 'Casa do Pacto', icon: '🔮', w: 5, h: 4, variant: 0, style: 6, tag: 'Pacto', cost: { plank: 46, nail: 36, stone: 44, rope: 14, stick: 20 }, work: 48,
     tip: 'Pedra marcada com runas, chama roxa na porta e um círculo riscado no chão. Para quem estuda o que não se ensina na Academia (48 turnos, 8 dias).' },
+  /* 11/11 (Erling): as duas casas prontas do Herik (um modelo só cada uma, pintado à mão) entram no catálogo do B */
+  { id: 'herik_sobrado', name: 'Sobrado do Mestre Carpinteiro', icon: '🏚', w: 5, h: 4, variant: 0, style: 90, tag: 'Casa', cost: { plank: 80, nail: 60, stone: 50, rope: 16, stick: 24 }, work: 60,
+    tip: 'Dois andares de madeira escura sobre pedra, telhado alto de telha de madeira, alpendre com escada na frente e chaminé de pedra. A casa mais trabalhada que um carpinteiro de Karmika sabe erguer (60 turnos, 10 dias).' },
+  { id: 'herik_terrea', name: 'Casa Comprida de Madeira', icon: '🏠', w: 5, h: 4, variant: 1, style: 90, tag: 'Casa', cost: { plank: 56, nail: 40, stone: 30, rope: 12, stick: 20 }, work: 40,
+    tip: 'Casa térrea e comprida, de tábua escura, telhado baixo de quatro águas e chaminé de pedra no canto. Espaçosa por dentro, discreta por fora (40 turnos, quase 7 dias).' },
 ];
 /* cada obra tem o seu item de projeto (📜 na mochila) */
 for (const w of WHOLES) if (!ITEMS['projeto_' + w.id]) ITEMS['projeto_' + w.id] = { name: 'Projeto · ' + w.name, icon: '📜', kind: 'misc', col: 0xe8d8a8, desc: `A planta de ${w.name} (${w.w}×${w.h}) com o material já separado. Use para escolher o lugar do canteiro. Depois a obra pede ${w.work} turnos de trabalho — a sua mão ou a de um Ajudante de Obra.` } as (typeof ITEMS)[string];
@@ -61,7 +66,7 @@ export const wholeOf = (id?: string, name?: string) => WHOLES.find((w) => w.id =
 const PIECE_GOLD: Record<string, number> = { bfloor: 4, bwall: 8, bdoor: 10, broof: 8, bfence: 3, torch: 4, bench: 6, campfire: 5 };
 for (const p of PIECES) { for (const k of Object.keys(p.cost)) p.cost[k] = Math.max(p.cost[k], Math.round(p.cost[k] * 1.1)); p.gold = PIECE_GOLD[p.id] ?? 5; }
 /* 28/10 (Erling: "pode colocar 100k numa casa com loja; casas menores mais baratas, maiores mais caras"): casa é patrimônio, não item de vitrine */
-const WHOLE_GOLD: Record<string, number> = { cabana: 8000, casa_tabuas: 15000, tribal: 12000, nordica: 28000, elfica: 28000, atalaia: 35000, sobrado: 45000, ana: 50000, sombria: 50000, pacto: 50000, armeiro: 100000 };
+const WHOLE_GOLD: Record<string, number> = { cabana: 8000, casa_tabuas: 15000, tribal: 12000, nordica: 28000, elfica: 28000, atalaia: 35000, sobrado: 45000, ana: 50000, sombria: 50000, pacto: 50000, armeiro: 100000, herik_sobrado: 80000, herik_terrea: 40000 };
 for (const w of WHOLES) { for (const k of Object.keys(w.cost)) w.cost[k] = Math.ceil(w.cost[k] * 1.18); w.gold = WHOLE_GOLD[w.id] ?? 500; }
 /** a foto da obra no card: a própria casa do jogo, renderizada uma vez num canvas fora da tela */
 const THUMB = new Map<string, string>();

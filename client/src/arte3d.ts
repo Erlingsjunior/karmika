@@ -110,7 +110,7 @@ export const ROCK_ART: Record<string, string> = { mossy: 'rocha_01', slab: 'roch
 export const VPROP_ART: Record<number, string> = { 0: 'vila_barril', 1: 'vila_caixas', 2: 'vila_poco', 4: 'porto_poste_lampiao', 5: 'vila_placa', 6: 'vila_feno', 7: 'vila_carrinho', 8: 'vila_tronco', 9: 'vila_bigorna' };
 /** carrega o que o mapa usa antes do primeiro chunk (vegetação, pedras, vila, forja, porto, biblioteca, fonte, carroças, armas) */
 export function artPreload(): Promise<void> {
-  return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/(casas|muralha|casa_modular)/.test(e.pasta)).map((e) => e.id))).then(() => { void artBuildLods(); }).catch(() => undefined);
+  return artManifest().then((M) => artReady([...M.values()].filter((e) => !/^construcoes\/casa_modular/.test(e.pasta)) /* 11/11: as casas prontas e a muralha do Herik entram (modo construção e portão de Karmika) */.map((e) => e.id))).then(() => { void artBuildLods(); }).catch(() => undefined);
 }
 /* 09/11 (Erling: "crie blocos para não fazer tantos zilhões de triângulos; com um mapa 100× maior não pode explodir o PC"):
    cada modelo pesado (árvore, planta, pedra) ganha uma versão simplificada (meshoptimizer, ~35% dos triângulos), feita uma vez
