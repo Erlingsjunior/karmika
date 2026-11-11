@@ -83,59 +83,9 @@ const C: Record<string, ClassDef> = {
   ] },
 };
 C.technocrat = C.tecno;
-/* 04/11: A ÁRVORE DE TODOS — a mesma para qualquer raça, classe e grau de classe. Três braços da tríade (ataque, defesa, cura) e o anel dos
-   quatro atributos. O centro é o Olho Kármico. */
-C.geral = { name: 'Karmika', ring: [A('str', 5), A('vit', 5), A('dex', 5), A('int', 5)], branches: [
-  { name: 'Ataque', col: '#ff8a5a', small: [A('str', 5), A('dmg', 3), A('crit', 2), A('dex', 5), A('aspd', 2)], notables: [['Mão Calejada', { dmg: 8, aspd: 5 }], ['Olho no Alvo', { crit: 6, dex: 6 }]], key: ['Fúria do Caminho', { dmg: 18, aspd: 6, arm: -40 }, 'Tudo no golpe: muito mais dano e velocidade, menos armadura.'] },
-  { name: 'Defesa', col: '#8ab8e8', small: [A('vit', 5), A('arm', 12), A('hp', 3), A('str', 4)], notables: [['Couro Grosso', { arm: 40, hp: 6 }], ['De Pé até o Fim', { vit: 10, regen: 1 }]], key: ['Muralha Viva', { arm: 130, hp: 15, move: -6 }, 'Aguenta tudo: armadura e vida enormes, anda mais devagar.'] },
-  { name: 'Cura', col: '#7aff9a', small: [A('int', 5), A('hpow', 4), A('regen', 0.5), A('move', 2), A('cdr', 3)], notables: [['Remédio de Vó', { heal: 15, regen: 1 }], ['Pés de Estrada', { move: 6, dex: 5 }]], key: ['Fonte Interior', { hpow: 30, gdef: 6, cdr: 10, dmg: -8 }, 'Cura forte em você e no grupo, aura de defesa e magias que voltam rápido; menos dano.'] },
-] };
-
-const cacheT = new Map<string, TNode[]>();
-/** monta a constelação da classe (posições em uma grade de -10 a 10) */
-export function treeOf(kit: string): TNode[] {
-  /* 11/11: toda árvore (a de todos e a de cada raça e classe) é montada em anéis, com a silhueta dela; a constelação antiga abaixo ficou sem uso */
-  if (kit === 'geral' || C[kit]) return treeGeral(kit); if (kit) return treeGeral('human');
-  const k = C[kit] ? kit : 'human'; const hit = cacheT.get(k); if (hit) return hit; const D = C[k]; const N: TNode[] = [];
-  const add = (n: Omit<TNode, 'links'>) => { const q = { ...n, links: [] as string[] }; N.push(q); return q; };
-  const link = (a: TNode, b: TNode) => { a.links.push(b.id); b.links.push(a.id); };
-  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: k === 'geral' ? 'Olho Kármico' : `Coração de ${D.name}`, eff: {}, branch: -1 });
-  const ANG = [-Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6]; /* em cima, embaixo à direita, embaixo à esquerda */
-  const ringNodes: TNode[][] = [];
-  D.branches.forEach((B, bi) => { const a = ANG[bi], ux = Math.cos(a), uy = Math.sin(a), px = -uy, py = ux; let prev = start; const R: TNode[] = [];
-    const seq: ('s' | 'n' | 'k')[] = ['s', 's', 'n', 's', 's', 'n', 'k']; let si = 0, ni = 0;
-    seq.forEach((t, i) => { const r = 1.3 + i * 1.15, bend = Math.sin(i * 0.9) * 0.35; const x = ux * r + px * bend, y = uy * r + py * bend;
-      const n = t === 's' ? add({ id: `b${bi}s${i}`, x, y, kind: 'small', name: B.name, eff: B.small[si++ % B.small.length], branch: bi })
-        : t === 'n' ? add({ id: `b${bi}n${ni}`, x, y, kind: 'notable', name: B.notables[ni][0], eff: B.notables[ni++][1], branch: bi })
-        : add({ id: `b${bi}k`, x, y, kind: 'key', name: B.key[0], eff: B.key[1], tip: B.key[2], branch: bi });
-      link(prev, n); prev = n; R.push(n);
-      /* galhos laterais nos pontos 2 e 5: um ponto pequeno de cada lado */
-      if (i === 1 || i === 4) for (const sd of [-1, 1]) { const tw = add({ id: `b${bi}t${i}${sd > 0 ? 'r' : 'l'}`, x: x + px * sd * 1.05 + ux * 0.35, y: y + py * sd * 1.05 + uy * 0.35, kind: 'small', name: B.name, eff: B.small[(si++) % B.small.length], branch: bi }); link(n, tw); } });
-    ringNodes.push(R); });
-  /* o anel de atributos: entre um braço e o seguinte, dois pontos que ligam o 3º ponto de um ao 3º do outro */
-  for (let bi = 0; bi < 3; bi++) { const a = ringNodes[bi][2], b = ringNodes[(bi + 1) % 3][2]; let prev = a;
-    for (let j = 1; j <= 2; j++) { const t = j / 3, mx = a.x + (b.x - a.x) * t, my = a.y + (b.y - a.y) * t, out = 1.25; const L = Math.hypot(mx, my) || 1;
-      const n = add({ id: `r${bi}${j}`, x: mx / L * (L * out), y: my / L * (L * out), kind: 'small', name: 'Anel dos Atributos', eff: D.ring[(bi * 2 + j) % D.ring.length], branch: 3 }); link(prev, n); prev = n; }
-    link(prev, b); }
-  /* 04/11 (Erling: "coloque mais 40 em cada ponto da tríade… do mesmo jeito que está, só acrescente mais coisas legais"): cada braço ganha
-     5 CONSTELAÇÕES de 8 pontos (40) que saem dos galhos e da pedra-chave para fora. Cada constelação: entra por um ponto pequeno, tem dois
-     notáveis no caminho e termina num MESTRE (notável grande). Os bônus são do papel do braço (ataque, defesa ou o terceiro jeito da classe)
-     e só usam o que o jogo já aplica de verdade. */
-  D.branches.forEach((B, bi) => { const role = roleOf(B), P = POOL[role], R = ringNodes[bi];
-    const anchors: TNode[] = [N.find((q) => q.id === `b${bi}t1l`)!, N.find((q) => q.id === `b${bi}t1r`)!, N.find((q) => q.id === `b${bi}t4l`)!, N.find((q) => q.id === `b${bi}t4r`)!, R[R.length - 1]];
-    const a0 = ANG[bi];
-    anchors.forEach((an, ci) => { const side = ci === 4 ? 0 : ci % 2 ? 1 : -1, ang = a0 + side * (ci < 2 ? 1.15 : 0.62), dd = ci < 2 ? 3.0 : ci < 4 ? 3.6 : 3.3, cx = an.x + Math.cos(ang) * dd, cy = an.y + Math.sin(ang) * dd;
-      const seq: ('s' | 'n' | 'm')[] = ['s', 's', 'n', 's', 's', 'n', 's', 'm']; let prev = an;
-      seq.forEach((t, j) => { const th = ang + Math.PI + 0.55 + j * ((Math.PI * 2 - 1.1) / 7), rr = 1.5; const x = cx + Math.cos(th) * rr * (j === 7 ? 0 : 1), y = cy + Math.sin(th) * rr * (j === 7 ? 0 : 1);
-        const id = `b${bi}c${ci}${j}`, nm = (P.notables[(ci * 2 + (j === 5 ? 1 : 0)) % P.notables.length]);
-        const n = t === 's' ? add({ id, x, y, kind: 'small', name: B.name, eff: B.small[(ci + j) % B.small.length], branch: bi })
-          : t === 'n' ? add({ id, x, y, kind: 'notable', name: nm[0], eff: nm[1], branch: bi })
-          : add({ id, x, y, kind: 'notable', name: `${P.master[ci % P.master.length][0]} de ${B.name}`, eff: P.master[ci % P.master.length][1], tip: P.master[ci % P.master.length][2], branch: bi });
-        link(prev, n); prev = n; });
-      /* o mestre também liga de volta ao 2º ponto da constelação: dá para entrar pelos dois lados do anel */
-      link(prev, N.find((q) => q.id === `b${bi}c${ci}1`)!); }); });
-  cacheT.set(k, N); return N;
-}
+/** a árvore de talentos do kit (raça ou classe), montada em anéis com a silhueta dela; kit desconhecido usa a do Humano.
+    (11/11: a "árvore de todos" e a constelação antiga saíram do código.) */
+export function treeOf(kit: string): TNode[] { return treeRings(C[kit] ? kit : 'human'); }
 /* 04/11 A ÁRVORE GERAL, DESENHADA EM ANÉIS (Erling: "temos círculos embolados em cima de círculos; deixe o layout bem feito com caminhos,
    alguns itens só se abrem com pontos em outros, slots com espaços para runas kármicas, mais bonito e agradável").
    - O Olho Kármico no centro; cada braço da tríade ocupa a sua FATIA (120°, com folga entre elas) e os pontos ficam em 8 ANÉIS em volta.
@@ -147,14 +97,14 @@ export function treeOf(kit: string): TNode[] {
    - O anel dos atributos (entre as fatias) liga um braço ao outro. */
 
 const cacheK = new Map<string, TNode[]>(), norm = (x: number) => ((x % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-function treeGeral(kit = 'geral'): TNode[] {
-  const hitG = cacheK.get(kit); if (hitG) return hitG; const D = C[kit] ?? C.geral, SH = shapeOf(kit), N: TNode[] = [];
+function treeRings(kit: string): TNode[] {
+  const hitG = cacheK.get(kit); if (hitG) return hitG; const D = C[kit] ?? C.human, SH = shapeOf(kit), N: TNode[] = [];
   const add = (n: Omit<TNode, 'links'>) => { const q = { ...n, links: [] as string[] }; N.push(q); return q; };
   const link = (a: TNode, b: TNode) => { if (a.links.includes(b.id)) return; a.links.push(b.id); b.links.push(a.id); };
-  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: kit === 'geral' ? 'Olho Kármico' : `Coração de ${D.name}`, eff: {}, tip: kit === 'geral' ? undefined : `A forma desta árvore: ${SH.nome}.`, branch: -1, rad: 1.0 });
+  const start = add({ id: 'o', x: 0, y: 0, kind: 'start', name: `Coração de ${D.name}`, eff: {}, tip: `A forma desta árvore: ${SH.nome}.`, branch: -1, rad: 1.0 });
   const ANG = SH.ang.map((d) => d * Math.PI / 180), RING = TREE_RING, GAP = TREE_GAP;
   const rings: TNode[][][] = [];
-  D.branches.forEach((B, bi) => { const role: Role = kit === 'geral' ? (['atk', 'def', 'sup'] as Role[])[bi] : roleOf(B), P = POOL[role], R: TNode[][] = []; let si = 0, ni = 0, mi = 0;
+  D.branches.forEach((B, bi) => { const role: Role = roleOf(B), P = POOL[role], R: TNode[][] = []; let si = 0, ni = 0, mi = 0;
     const own = B.notables.map((q) => q) as [string, Eff][]; const nots = [...own, ...P.notables];
     for (let k = 1; k <= NR; k++) { const r = 0.6 + RING * k, HALF = Math.min(SH.half ? SH.half(bi, k) : TREE_HALF, k <= 3 ? 0.9 : 1.03) /* perto do centro os braços vizinhos quase se tocam: ali ninguém passa da largura normal */, tw = SH.twist ? SH.twist(bi, k) : 0, m = k === NR ? 3 : Math.max(0, Math.floor((TREE_HALF * r) / GAP)) /* a conta de pontos do anel é a mesma em toda árvore */, cols: number[] = [];
       if (k === NR) cols.push(-3, 0, 3); else for (let c = -m; c <= m; c++) cols.push(c);
@@ -204,7 +154,6 @@ interface Shape { nome: string; ang: [number, number, number]; half?: (bi: numbe
    anel (130 por braço, 397 por árvore). A forma só muda a DIREÇÃO do braço, a torção e o quanto os pontos de cada anel se abrem ou se juntam
    (half entre 0,72 e 0,97: de 80% a 108% do vão normal, para nunca ficarem colados). */
 const SHAPES: Record<string, Shape> = {
-  geral: { nome: 'a Roda', ang: [-90, 30, 150] },
   human: { nome: 'a Roda: três caminhos do mesmo tamanho, nenhum maior que o outro', ang: [-90, 30, 150] },
   elf: { nome: 'a Folha: cada braço nasce fino, abre e volta a afinar, ondulando como ramo ao vento', ang: [-90, 30, 150], half: (_b, k) => 0.72 + 0.3 * Math.sin(Math.PI * k / NR), twist: (_b, k) => 0.12 * Math.sin(k * 0.55) },
   dwarf: { nome: 'a Montanha: base larga, pico estreito, tudo em linha reta', ang: [-90, 30, 150], half: (_b, k) => Math.max(0.72, 0.97 - 0.024 * k) },

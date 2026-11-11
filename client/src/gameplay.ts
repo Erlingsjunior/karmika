@@ -378,6 +378,12 @@ export function createGameplay(d: GameplayDeps) {
   const YIELDERS = new Set(['prince', 'tormentor', 'treant', 'werewolf']); // o Bispo (chefe final da Catedral) não se rende
   let onYield: ((e: Enemy, decide: (kill: boolean) => void) => void) | null = null;
   let eliteChest: ((e: Enemy, ilvl: number, boost: Partial<Record<Rarity, number>>, shared: boolean) => boolean) | null = null;
+  const FARM_K = 'karmika.elitefarm.v1', FARM_WIN = 2 * 3600 * 1000;
+  /** conta esta morte e diz se o elite já passou do limite (2 mortes pagas na janela de 2 horas, por tipo e por lugar de 120 m) */
+  function eliteFarmed(e: Enemy): boolean { let M: Record<string, number[]> = {}; try { M = JSON.parse(localStorage.getItem(FARM_K) || '{}'); } catch { M = {}; }
+    const now = Date.now(), h = (e as Enemy & { home?: THREE.Vector3 }).home ?? e.pos, k = `${e.type}:${Math.round(h.x / 120)}:${Math.round(h.z / 120)}`;
+    for (const q of Object.keys(M)) { M[q] = M[q].filter((t) => now - t < FARM_WIN); if (!M[q].length) delete M[q]; }
+    const L = M[k] ?? []; const over = L.length >= 2; L.push(now); M[k] = L.slice(-6); try { localStorage.setItem(FARM_K, JSON.stringify(M)); } catch { /* */ } return over; }
   function killEnemy(e: Enemy, shared = false) {
     const ey = e as Enemy & { yielded?: boolean };
     if (!shared && onYield && YIELDERS.has(e.type) && !ey.yielded) {
@@ -391,9 +397,15 @@ export function createGameplay(d: GameplayDeps) {
     if ((e.burn ?? 0) > 0 && st.sp.has('r_surtr')) explode(e.pos.x, e.pos.z, e.pos.y, 2.6, 1.2, 0xff6a1a, 0, e.pos.clone()); // Brasa de Surtr
     if ((e.burn ?? 0) > 0) { st.mp = Math.min(st.mpMax, st.mp + 10); logMsg(`🔥 Brasas: +10 de ${st.res.name}`, '#ffb060'); }
     logMsg(`☠ ${e.def.name} derrotado`, '#ff9a8a'); }
+    /* 11/11 (Erling: "não devemos poder ficar numa área com elites dropando sem parar: matou o mesmo elite 2 vezes, na terceira ele já não dropa
+       itens nem dá tanto XP, apenas uma fração"): cada elite (o tipo dele, naquele lugar) paga cheio 2 vezes a cada 2 horas. Da terceira em diante,
+       nessa janela, dá 15% do XP e não solta nada. Dentro de masmorra e raid a regra não vale (lá a entrada já é o limite). */
+    const farmed = !shared && isElite(e) && !(e as Enemy & { tag?: string }).tag?.startsWith('dg') && eliteFarmed(e);
+    if (farmed) logMsg(`⚖ ${e.def.name} já caiu duas vezes pela sua mão há pouco: desta vez não deixa espólio e ensina pouco. Procure outra caça.`, '#b9c6e0');
     st.kills++; if (st.res.style === 'mananegra') { st.mp = Math.min(st.mpMax, st.mp + 12); } /* a morte alimenta o pacto */ { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
       const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 5) : Math.max(0, 1 + dl * 0.2);
-      const kx = Math.round(e.def.xp * 0.3 * f * pk); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
+      const kx = Math.round(e.def.xp * 0.3 * f * pk * (farmed ? 0.15 : 1)); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
+    if (farmed) { if (!shared) { hitstop = Math.max(hitstop, performance.now() + 90); } return; } /* elite repetido: nada de ouro, poção, material, peça, runa ou baú */
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45 * pk); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
     if (Math.random() < 0.12) dropAt(e.pos.x, e.pos.z, e.pos.y, 'potion', 30);
     for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));

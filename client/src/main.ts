@@ -1516,7 +1516,7 @@ function mk_cacaSys() { return createCacaElite({ get zoneName() { return zoneNam
 cacaSys ??= mk_cacaSys();
 const { compendium } = cacaSys;
 
-/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 20, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). → sistemas/olho.ts */
+/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 15, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). → sistemas/olho.ts */
 export interface OlhoCtx {
   readonly profile: Profile | null;
   readonly game: Widen<typeof game>;

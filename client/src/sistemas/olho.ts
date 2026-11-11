@@ -30,7 +30,7 @@ function renderOlho() {
 let olhoOpen = false;
 function toggleOlho(on?: boolean) { olhoOpen = on ?? !olhoOpen; if (olhoOpen) renderOlho(); else olhoEl.style.display = 'none'; }
 olhoEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === olhoEl) toggleOlho(false); });
-document.getElementById('sigil')?.addEventListener('click', () => { if (K.profile?.eye) toggleOlho(); else K.game.logMsg(`O Olho ainda dorme. Ele desperta no nível 20 (você está no ${K.game.st.lvl}).`, '#b9c6e0'); });
+document.getElementById('sigil')?.addEventListener('click', () => { if (K.profile?.eye) toggleOlho(); else K.game.logMsg(`O Olho ainda dorme. Ele desperta no nível 15 (você está no ${K.game.st.lvl}).`, '#b9c6e0'); });
 function heroicAct(why: string, tear = true) { K.feats.bump('heroic'); eyeSys.heroic(); K.addKarma(25); K.game.logMsg(`👁 ${why} — o Olho Kármico transborda.`, '#ffe08a');
   /* o Olho dormindo (antes do nível 15) não chora: o ato fica guardado no Compêndio, mas não vira Lágrima */
   if (!tear) return;
