@@ -1842,10 +1842,11 @@ function applyAutoQ() { const q = Math.max(0, autoQ), was = autoQApplied; autoQA
   renderer.shadowMap.autoUpdate = q < 1; if (q >= 1) renderer.shadowMap.needsUpdate = true;
   const sr = q >= 2 ? Math.min(512, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuState.on) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } }
   bloom.enabled = q < 2 && opts.bloom > 0; particles.density = q >= 2 ? Math.min(opts.particles, 0.6) : opts.particles;
-  const sh = opts.shadows && q < 3; if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
-  if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombras desligadas']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
+  /* 10/11 (Erling: "o jogo inteiro sumiu" e voltou sozinho): o degrau 3 desligava a sombra, e desligar a sombra refaz o shader de TODO o cenário;
+     enquanto refazia, casas, árvores e chão sumiam da tela. O ajuste automático nunca mais liga ou desliga a sombra: no degrau 3 ela só é refeita 1 vez a cada 4 quadros. */
+  if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombra refeita a cada quatro quadros']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
 /** a cada quadro: no degrau 1+, a sombra só é refeita em quadros alternados */
-function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & 1) === 0; } }
+function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & (autoQApplied >= 3 ? 3 : 1)) === 0; } }
 function autoQTick(fps: number, hi: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
   const atMax = dynK >= DYN_MAX - 0.01, nowS = performance.now();
   if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > hi && dynK <= 1.01) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
