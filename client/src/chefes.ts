@@ -397,7 +397,7 @@ type Fx = (dt: number) => boolean; /* true = acabou */
 const HOT = new Set(['chase', 'windup', 'recover', 'hurt']);
 export function createBossBrain(ctx: BrainCtx) {
   const fxs: Fx[] = [];
-  const cast = new Map<EnemyLike, { cds: number[]; busy: number; mine: boolean }>();
+  const cast = new Map<EnemyLike, { cds: number[]; busy: number; mine: boolean; /** há quantos segundos o herói está colado (reflexo de quem foi encurralado) */ close: number; flip: number }>();
   const floorY = (e: EnemyLike) => e.pos.y + 0.07;
   /* --- formas no chão (o aviso enche até bater) --- */
   function shapeMesh(geo: THREE.BufferGeometry, col: number) { const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); return edge; }
@@ -476,14 +476,31 @@ export function createBossBrain(ctx: BrainCtx) {
       done() { ctx.scene.remove(ln); geo.dispose(); } }; }
 
   /** a masmorra registra quem luta com o kit (o chefe e o elite); `mine` = o meu cliente manda na posição dele */
-  function track(e: EnemyLike) { const kit = kitOf(e.def.name); if (!kit || cast.has(e)) return; cast.set(e, { cds: kit.spells.map((s, i) => 3 + i * 2.2 + Math.random() * 1.5 + s.every * 0.15), busy: 0, mine: true }); }
+  function track(e: EnemyLike) { const kit = kitOf(e.def.name); if (!kit || cast.has(e)) return; cast.set(e, { cds: kit.spells.map((s, i) => 3 + i * 2.2 + Math.random() * 1.5 + s.every * 0.15), busy: 0, mine: true, close: 0, flip: 0 }); }
+  /* 10/11 (Erling: "prendi o Sacristão muito facilmente; por que não teleportou, por que não me empurrou com alguma magia?"):
+     REFLEXO DE ENCURRALADO, para todo chefe. Herói colado nele por 5 s seguidos (3,5 s com o chefe abaixo de 30% de vida) → ele reage:
+     quem flutua some e reaparece longe, nas costas do herói; quem é de carne dá um urro que arremessa o herói para trás. Na vez seguinte, troca. */
+  function blinkSpot(e: EnemyLike, hp: THREE.Vector3): [number, number] | null { const a0 = Math.atan2(hp.z - e.pos.z, hp.x - e.pos.x); /* de preferência para o lado oposto ao do chefe: atrás do herói */
+    for (const R of [9, 7, 11, 5.5]) for (let i = 0; i < 12; i++) { const a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.5, x = hp.x + Math.cos(a) * R, z = hp.z + Math.sin(a) * R; let ok = ctx.walkable(x, z);
+      for (let k = 1; ok && k <= 6; k++) ok = ctx.walkable(hp.x + (x - hp.x) * k / 6, hp.z + (z - hp.z) * k / 6); /* caminho livre entre os dois: nada de reaparecer atrás de uma parede */ if (ok) return [x, z]; }
+    return null; }
+  function cornered(e: EnemyLike, kit: Kit, st: { flip: number }): number { const hp = ctx.heroPos(), y = floorY(e), col = kit.fx?.col ?? 0xc8b8ff;
+    const wantBlink = (kit.gait === 'hover') !== (st.flip++ % 2 === 1), spot = wantBlink ? blinkSpot(e, hp) : null;
+    if (spot) { burst(e.pos.x, y + 1, e.pos.z, col, 26, 3, 4, 0.7); ctx.sound('arcane'); e.pos.x = spot[0]; e.pos.z = spot[1]; if (e.root) e.root.position.set(spot[0], e.root.position.y, spot[1]);
+      burst(spot[0], y + 1, spot[1], col, 26, 3, 4, 0.7); ctx.say(`${e.def.name} some diante de você e reaparece às suas costas!`); return 0.9; }
+    const r = e.def.radius + 4.2; ctx.say(`${e.def.name} enche o peito: afaste-se ou vai voar!`);
+    telegraph(new THREE.CircleGeometry(r, 36).rotateX(-Math.PI / 2), 0xff5a2a, e.pos.x, y, e.pos.z, 0, 0.75, () => { if (!e.alive) return; const h = ctx.heroPos(), dx = h.x - e.pos.x, dz = h.z - e.pos.z, d = Math.hypot(dx, dz) || 1; ctx.sound('boom'); ctx.shake(0.5);
+      for (let i = 0; i < 36; i++) { const a = i / 36 * 6.283; ctx.particles.spawn(e.pos.x + Math.cos(a) * 1.2, y + 0.3, e.pos.z + Math.sin(a) * 1.2, { vx: Math.cos(a) * 9, vy: 0.6, vz: Math.sin(a) * 9, life: 0.5, s0: 0.4, s1: 0.06, c0: 0xffffff, c1: col, a: 0.9, drag: 1.5 }); }
+      if (d > r) return; hurt(e, 0.5); let t = 0; const ux = dx / d, uz = dz / d; fxs.push((dt) => { const k = Math.min(dt, 0.22 - t); t += dt; ctx.pushHero(ux * 7 * k / 0.22, uz * 7 * k / 0.22); return t >= 0.22; }); }, 'scale');
+    return 1.1; }
   function untrackAll() { cast.clear(); for (const p of pools) ctx.scene.remove(p.m); pools.length = 0; }
   let tt = 0;
   function tick(dt: number, mineOf?: (e: EnemyLike) => boolean) {
     tt += dt; const hp = ctx.heroPos();
     /* magias de quem está lutando */
     for (const [e, st] of cast) { if (!e.alive) { cast.delete(e); continue; } const kit = kitOf(e.def.name)!; const d = Math.hypot(hp.x - e.pos.x, hp.z - e.pos.z);
-      if (!HOT.has(e.state) || d > 26 || ctx.heroDead()) continue; st.busy -= dt; for (let i = 0; i < st.cds.length; i++) st.cds[i] -= dt; if (st.busy > 0 || e.state === 'windup') continue;
+      if (!HOT.has(e.state) || d > 26 || ctx.heroDead()) { st.close = 0; continue; } st.busy -= dt;
+      st.close = d < e.def.radius + 2.8 ? st.close + dt : Math.max(0, st.close - dt * 2); if (st.close > (e.hp / e.hpMax < 0.3 ? 3.5 : 5) && st.busy <= 0 && (mineOf ? mineOf(e) : true)) { st.close = 0; if (e.state === 'windup') e.state = 'chase'; /* larga o golpe que estava armando: quem bate sem parar nunca reagiria */ st.busy = cornered(e, kit, st); continue; } for (let i = 0; i < st.cds.length; i++) st.cds[i] -= dt; if (st.busy > 0 || e.state === 'windup') continue;
       const enr = e.hp / e.hpMax < 0.3 ? 0.7 : 1; for (let i = 0; i < kit.spells.length; i++) { if (st.cds[i] > 0) continue; const sp = kit.spells[i]; st.cds[i] = sp.every * enr * (0.9 + Math.random() * 0.2); st.busy = doSpell(e, sp, mineOf ? mineOf(e) : true); break; } }
     for (let i = fxs.length - 1; i >= 0; i--) if (fxs[i](dt)) fxs.splice(i, 1);
     for (let i = pools.length - 1; i >= 0; i--) { const p = pools[i]; p.t += dt; p.tick -= dt; (p.m.material as THREE.MeshBasicMaterial).opacity = 0.4 * Math.min(1, (p.life - p.t) / 1.5); if (p.tick <= 0 && Math.hypot(hp.x - p.x, hp.z - p.z) < p.r) { p.tick = 1; hurt(p.e, p.k); } if (p.t > p.life) { ctx.scene.remove(p.m); p.m.geometry.dispose(); pools.splice(i, 1); } }
