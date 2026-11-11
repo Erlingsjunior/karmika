@@ -4,6 +4,7 @@
    - `artGeo(id)`: a geometria já carregada (ou null), com a altura real em `userData.h`.
    - `artMat(id, o)`: material toon do jogo com a textura compartilhada (corte de visão; vento opcional para a vegetação).
    - `ArtBatch`: junta todas as cópias de um modelo num InstancedMesh por chunk — mil árvores iguais = 1 desenho. */
+import { gpuState, gpuCloneMat } from './gpu/tags';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { ramp, cutoutify } from './toon3d';
@@ -76,7 +77,8 @@ export class ArtBatch {
   build(parent: THREE.Object3D) {
     this.dispose(parent);
     for (const [k, it] of this.items) { const id = k.split('|')[0], g = geos.get(id); if (!g || !it.m.length) continue;
-      const im = new THREE.InstancedMesh(g, artMat(id, it.o), it.m.length); it.m.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true;
+      /* 11/11 (Erling: "gpu travou"; erro: "Instance range (count 10) requires a larger buffer (640) than the bound buffer size (512)"): no WebGPU, duas malhas de instâncias com a MESMA geometria e o MESMO material (o mesmo modelo de arte em dois blocos do mapa, um com 8 cópias e outro com 10) dividiam o mesmo programa montado, e o segundo era desenhado com o buffer de instâncias do primeiro. Cada malha de instâncias ganha a sua cópia do material no WebGPU (as texturas continuam as mesmas). */
+      const im = new THREE.InstancedMesh(g, gpuState.on ? gpuCloneMat(artMat(id, it.o)) : artMat(id, it.o), it.m.length); it.m.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true;
       im.computeBoundingSphere(); im.castShadow = it.o.shadow ?? true; im.userData.sh0 = im.castShadow; im.receiveShadow = true; im.userData.shared = true; im.userData.art = id; im.matrixAutoUpdate = false; im.updateMatrix(); parent.add(im); this.meshes.push(im); }
   }
   clear() { this.items.clear(); }

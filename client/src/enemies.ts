@@ -1,3 +1,4 @@
+import { attachSkin } from './skin3d';
 import { yukaSurround } from './libs/yuka';
 import { RUNAS } from './runas';
 import { t as tr, tl } from './i18n';
@@ -58,9 +59,22 @@ interface Def {
 }
 /** o adversário de um bicho num evento (outro bicho, ou gente do evento) */
 export interface Foe { pos: THREE.Vector3; alive(): boolean; hit(n: number): void }
-export interface HumanLook { kind: 'nordic' | 'technocrat' | 'dwarf'; civil?: 'human' | 'elf'; tint: number; weapon?: string; shield?: string; helm?: string }
+export interface HumanLook { kind: 'nordic' | 'technocrat' | 'dwarf'; civil?: 'human' | 'elf'; tint: number; weapon?: string; shield?: string; helm?: string; /** 11/11: modelo de arte do Herik (models/personagens, sem a extensão) */ art?: string }
 /** gente que luta: o boneco dos NPCs (characters.ts) com arma e escudo; anima o golpe quando o inimigo dá o bote */
-function buildHuman(h: HumanLook): Rig {
+/* 11/11 (Erling: "elites e chefes humanoides com os modelos do Herik: funciona, mude roupas e auras 3D do monstro para diferenciar ele"):
+   todo inimigo humano veste um modelo de arte (o boneco antigo fica só até o modelo chegar). A roupa leva a cor da ficha dele, mais forte nos elites,
+   e o elite ganha uma aura 3D própria: dois aros de luz girando em volta do corpo e brasas subindo, na cor dele. */
+const ART_BY: Record<string, string> = { soldier: 'guerreiro_h_lvl02', cultist: 'bruxo_h', darkpal: 'paladino_h', templar: 'paladino_h', bandit: 'humano_h_lvl02', bandit_arch: 'humano_m_lvl02', bandit_chief: 'guerreiro_h_lvl03', hunter: 'humano_h_lvl03',
+  vampire: 'vampiro_h', pilgrim: 'elfo_h_lvl02', tinker: 'technocrata_h', elfscout: 'elfo_m_lvl02', inquisitor: 'paladino_m', slaver: 'guerreiro_h_lvl02', thrall: 'vampiro_m' };
+function eliteAura(col: number, power: number): { g: THREE.Group; tick(t: number): void } {
+  const g = new THREE.Group(), c = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.25), mk = (r: number, tube: number, op: number) => new THREE.Mesh(new THREE.TorusGeometry(r, tube, 6, 40), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+  const a = mk(0.78, 0.03, 0.85), b = mk(0.62, 0.022, 0.6), base = mk(0.95, 0.05, 0.5); base.rotation.x = Math.PI / 2; base.position.y = 0.06; a.position.y = 1.0; b.position.y = 1.25; g.add(a, b, base);
+  const N = power >= 3 ? 10 : 6, em: THREE.Mesh[] = []; for (let i = 0; i < N; i++) { const m = new THREE.Mesh(new THREE.OctahedronGeometry(0.045), new THREE.MeshBasicMaterial({ color: c, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); m.userData.o = i / N; em.push(m); g.add(m); }
+  g.traverse((o) => { o.userData.noCull = true; (o as THREE.Mesh).castShadow = false; });
+  return { g, tick(t) { a.rotation.set(Math.PI / 2 + Math.sin(t * 0.9) * 0.5, t * 1.3, 0); b.rotation.set(Math.PI / 2 + Math.cos(t * 1.1) * 0.6, -t * 1.7, 0); (base.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.2 * Math.sin(t * 2.2);
+      for (const m of em) { const k = (t * 0.35 + m.userData.o) % 1, an = m.userData.o * 6.283 + t * 0.8; m.position.set(Math.cos(an) * (0.7 - k * 0.25), 0.1 + k * 2.3, Math.sin(an) * (0.7 - k * 0.25)); (m.material as THREE.MeshBasicMaterial).opacity = Math.sin(k * Math.PI) * 0.9; m.rotation.y = t * 3; } } };
+}
+function buildHuman(h: HumanLook, type = '', elite = 0): Rig {
   /* 26/10: cada salteador, soldado ou capanga com a sua cara — cabelo, penteado e barba sorteados (antes eram todos a mesma ruiva) */
   const HAIR = [0x2a1a10, 0x4a2e1a, 0x1a1412, 0x6a4a2a, 0x8a6a40, 0x3a3a3a, 0x9a3a1a, 0xc8b890], rr = Math.random;
   const hero: Hero3D = createCharacter(h.kind, { static: true, civil: h.civil, cloth: h.civil ? h.tint : undefined, hair: HAIR[Math.floor(rr() * HAIR.length)], hairStyle: h.civil === 'elf' ? 'long' : (['short', 'bald', 'short', 'braid'] as const)[Math.floor(rr() * 4)], beard: h.civil === 'elf' ? 0 : Math.floor(rr() * 3) });
@@ -69,12 +83,16 @@ function buildHuman(h: HumanLook): Rig {
     const out = mats.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color || t.side === THREE.BackSide || (t as unknown as THREE.MeshBasicMaterial).isMeshBasicMaterial) return mt; const c = t.clone(); c.color.lerp(tint, 0.42); return c; });
     m.material = out.length === 1 ? out[0] : out; });
   try { hero.setGear({ weapon: h.weapon ? { base: h.weapon, rarity: 'common' } : null, shield: h.shield ? { base: h.shield, rarity: 'common', seed: 7 } : null, helm: h.helm ? { base: h.helm, rarity: 'common' } : null }); } catch { /* */ }
-  let swung = false, t0 = 0;
+  let swung = false, t0 = 0, skinTick: (() => void) | null = null;
+  const art = h.art ?? ART_BY[type], aura = elite > 0 ? eliteAura(h.tint, elite) : null; if (aura) hero.root.add(aura.g);
+  if (art) attachSkin(hero, { fbx: `/models/personagens/${art}.glb`, tex: '', npc: true, hscale: h.civil === 'elf' ? 1.12 : 1 }).then((r) => { if (!r) return; skinTick = r.tick;
+    r.model.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.castShadow = false; m.receiveShadow = true; const L = Array.isArray(m.material) ? m.material : [m.material];
+      const out = L.map((mt) => { const t = mt as THREE.MeshToonMaterial; if (!t.color) return mt; const c = t.clone(); c.color.lerp(tint, elite > 0 ? 0.5 : 0.28); if (elite > 0 && c.emissive) { c.emissive.copy(tint).multiplyScalar(0.16); } return c; }); m.material = out.length === 1 ? out[0] : out; }); }).catch(() => { /* fica o boneco antigo */ });
   return { root: hero.root, mats: [], update(e, dt, windK, strikeK, hurtK, mv) {
     t0 += dt; hero.combat = e.state === 'chase' || e.state === 'windup' || e.state === 'recover';
     if (windK > 0.35 && !swung) { swung = true; hero.act(Math.random() < 0.5 ? 'combo1' : 'combo2', true); }
     if (windK === 0 && strikeK === 0) swung = false;
-    void hurtK; hero.update(dt, t0, mv, null); hero.root.rotation.set(0, 0, 0); } };
+    void hurtK; hero.update(dt, t0, mv, null); skinTick?.(); aura?.tick(t0); hero.root.rotation.set(0, 0, 0); } };
 }
 /** chefes e elites ganham a roupa da história deles (chefes.ts) quando o corpo é montado */
 export const enemyHooks: { /** o herói (ou golpe dele) feriu este bicho: o alvo invisível trava nele (alvo-preso.ts) */ struck?: (e: Enemy) => void; dress?: (e: Enemy, g: THREE.Group) => void; /** corpo próprio de chefe (chefes.ts) */ body?: (e: Enemy) => Rig | null; /** rastro de faíscas (fadas) */ spark?: (x: number, y: number, z: number, col: number) => void; /** o cérebro dos kits passa a cuidar deste bicho (magias) */ track?: (e: Enemy) => void; /** karma do herói (o Inquisidor só caça quem deve) */ karma?: () => number } = {};
@@ -570,7 +588,7 @@ export function createEnemies(ctx: EnemyCtx) {
     else if (e.def.quad === 'boar') { const bw = buildBoar(); e.rig = { root: bw.root, mats: bw.mats, update(e2, dt, windK, strikeK, hurtK, mv) { bw.pose({ dt, mv, wind: windK, strike: strikeK, hurt: hurtK, idle: e2.state === 'idle', alert: e2.state === 'chase' }); } }; g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; }
     else if (e.def.quad === 'wolf' || e.def.quad === 'coyote') { e.rig = wolfRig(); g.add(e.rig.root); e.mats = [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } } // 25/10: o lobo esguio (werewolf3d) no lugar do tonel
     else if (e.def.make) { e.rig = e.def.make(); g.add(e.rig.root); e.mats = [...e.rig.mats]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.5); } }
-    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(['skeleton', 'skel_arch', 'draugr_arch', 'lich'].includes(e.type) ? 'skeleton' : ['ghoul', 'drowner', 'drowner_old', 'draugr_bers'].includes(e.type) ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
+    else if (e.def.rig) { e.rig = e.def.rig === 'fairy' ? buildFairy() : e.def.rig === 'prince' ? buildPrince() : e.def.rig === 'zombie' ? undeadRig(['skeleton', 'skel_arch', 'draugr_arch', 'lich'].includes(e.type) ? 'skeleton' : ['ghoul', 'drowner', 'drowner_old', 'draugr_bers'].includes(e.type) ? 'ghoul' : 'zombie') : e.def.rig === 'bishop' ? buildBishop() : e.def.rig === 'human' ? buildHuman(e.def.human!, e.type, e.def.elite ?? 0) : e.def.rig === 'beast' ? beastRig() : buildTreant(); g.add(e.rig.root); e.mats = e.def.rig === 'human' ? [] : [...e.rig.mats, ...mergeStatic(e.rig.root, ramp)]; if (e.def.tint) { const tc = new THREE.Color(e.def.tint); for (const m of e.mats) m.color.lerp(tc, 0.55); } }
     else if (e.def.quad) { e.quad = buildQuad(e.def.quad, e.def.tint); g.add(e.quad.root); e.mats = [...e.quad.mats, ...mergeStatic(e.quad.root, ramp)]; }
     else if (e.def.model) {
       loadModel(`/models/bestiary/${e.def.model}.glb`).then((m) => {

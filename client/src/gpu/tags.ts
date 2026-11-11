@@ -7,6 +7,8 @@ const TAGS = new WeakMap<object, Record<string, unknown>>();
 export const gpuState = { on: false, backend: 'webgl' as 'webgl' | 'webgpu', why: '', errs: 0, lost: false, log: [] as string[], pipes: 0, pipeLog: [] as string[], snaps: 0, snapLog: [] as string[], frame: 0, dc: [] as number[], stale: 0, staleLog: [] as string[] };
 export function gpuTag<T extends object>(m: T, key: string, data: unknown = true): T { let r = TAGS.get(m); if (!r) TAGS.set(m, (r = {})); r[key] = data; return m; }
 export const gpuTagsOf = (m: object) => TAGS.get(m);
+/** cópia do material que leva junto as marcas do WebGPU (vento, recorte…): as marcas ficam fora do material, e o clone() sozinho as perdia */
+export function gpuCloneMat<T extends { clone(): T }>(m: T): T { const c = m.clone(), r = TAGS.get(m as unknown as object); if (r) TAGS.set(c as unknown as object, { ...r }); return c; }
 export function gpuUntag(m: object, key: string) { const r = TAGS.get(m); if (r) delete r[key]; }
 /** o que o WebGPU troca inteiro (objetos que o WebGPU desenha de outro jeito, como as partículas: no WebGPU o ponto tem 1 pixel) */
 export const gpuHooks: { particles?: (geo: import('three').BufferGeometry, u: Record<string, { value: unknown }>, n: number) => import('three').Object3D } = {};

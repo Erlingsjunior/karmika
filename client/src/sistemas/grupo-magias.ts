@@ -13,7 +13,7 @@ export interface GrupoCtx {
   kit(): string; inBranch(bi: number): number; branchName(bi: number): string;
   st(): { hp: number; hpMax: number; dead?: boolean };
   set(v: { dmg: number; def: number; crit: number; haste: number; move: number; leech: number; guard: number; acc: number; dodge: number }): void; shield(v: number): void;
-  log(t: string, c?: string): void; float(t: string, c: string): void; sound(): void;
+  log(t: string, c?: string): void; float(t: string, c: string): void; sound(): void; /** aro de luz no chão, na cor da runa */ ring(c: string): void;
   net(): { state: string; myId: number; party: { members: number[] } | null; x(t: string, m: Record<string, unknown>): void; onX(t: string, f: (from: number, m: Record<string, unknown>) => void): void; nameOf(id: number): string; remotes(): { id: number; pos: { distanceTo(v: unknown): number } }[] } | null;
   heroPos(): unknown;
 }
@@ -61,14 +61,14 @@ export function createGrupoMagias(K: GrupoCtx) {
     if (s.eff.heal || s.eff.revive) { const g = Math.round(st.hpMax * (s.eff.heal ?? s.eff.revive ?? 0)); st.hp = Math.min(st.hpMax, st.hp + g); K.float(`+${g}`, '#8ae08a'); }
     if (s.eff.shield) K.shield(Math.round(st.hpMax * s.eff.shield));
     if (s.dur > 1) active.push({ s, until: now() + s.dur, from });
-    K.float(`${s.name}`, COL[s.tipo]); if (!self) K.log(`✦ ${from} lançou ${s.name} em você: ${effTxt(s.eff)}.`, COL[s.tipo]); push(); renderBar(); }
+    K.float(`${s.name}`, COL[s.tipo]); if (!self) K.ring(COL[s.tipo]); if (!self) K.log(`✦ ${from} lançou ${s.name} em você: ${effTxt(s.eff)}.`, COL[s.tipo]); push(); renderBar(); }
   function push() { const t = total(); K.set(t); }
   setInterval(() => { const t = total(); K.set(t); const st = K.st(); if (t.regen > 0 && !st.dead && st.hp < st.hpMax) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * t.regen * 0.5); renderBar(); }, 500);
   /** lança; devolve o motivo se não der */
   function cast(id: string, ctrl = false): string | null { const s = mine().find((q) => q.id === id); if (!s) return 'habilidade de outra classe'; if (!learned(s)) return `abre com ${need(s)} pontos em ${K.branchName(s.branch)}`;
     const left = (cds.get(id) ?? 0) - now(); if (left > 0) return `recarga: ${Math.ceil(left)} s`; const st = K.st(); if (st.dead) return 'você está caído';
     if (s.eff.cost) { const c = Math.round(st.hpMax * s.eff.cost); if (st.hp <= c + 1) return 'vida insuficiente para pagar'; st.hp -= c; K.float(`−${c}`, '#ff8a7a'); }
-    cds.set(id, now() + s.cd); K.sound();
+    cds.set(id, now() + s.cd); K.sound(); K.ring(COL[s.tipo]);
     const n = K.net(), inParty = !!n?.party && n.state === 'on' && n.party.members.length > 1;
     let to = 0; /* 0 = todos por perto; senão o id de um companheiro; -1 = só em mim */
     if (s.alvo === 'aliado' || (s.alvo === 'torre' && !s.eff.regen)) { to = -1;

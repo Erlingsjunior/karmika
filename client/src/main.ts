@@ -613,7 +613,11 @@ const { tree, talents, talentKit, profs, mail, kitRace, SHOP_BY_NAME, SHADE_TOWN
 /* 11/11: as habilidades de grupo em jogo (sistemas/grupo-magias.ts): aprender pelo caminho de talento, lançar pela barra de grupo, somar no grupo */
 const grupoSys = createGrupoMagias({ kit: () => talentKit(), inBranch: (bi) => talents.inBranch(bi), branchName: (bi) => branchesOf(talentKit())[bi]?.name ?? '', st: () => game.st,
   set: (v) => game.grupoSet(v), shield: (v) => game.grupoShield(v), log: (t, c) => game.logMsg(t, c), float: (t, c) => game.dmgText(hero.root.position.clone().setY(hero.root.position.y + 2.8), t, false, c),
-  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position });
+  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position,
+  /* o aro de luz que abre no chão quando a runa é lançada (ou quando a de um companheiro chega em você) */
+  ring: (c) => { for (let i = 0; i < 2; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.64, 44), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+      m.rotation.x = -Math.PI / 2; m.position.copy(hero.root.position); m.position.y += 0.14 + i * 0.9; m.userData.noCull = true; fine(m); scene.add(m); const t0 = performance.now() + i * 140, mat = m.material as THREE.MeshBasicMaterial;
+      const step = () => { const k = (performance.now() - t0) / 800; if (k >= 1) { scene.remove(m); m.geometry.dispose(); mat.dispose(); return; } if (k > 0) { m.scale.setScalar(1 + k * (i ? 2.2 : 5)); mat.opacity = 0.9 * (1 - k); } requestAnimationFrame(step); }; step(); } } });
 setTravasExtra({ panel: () => grupoSys.panelHtml(), skills: () => grupoSys.forLocks(), click: (t, again) => grupoSys.panelClick(t, again) });
 (window as unknown as { __grupo?: unknown }).__grupo = grupoSys; /* teste */
 function applyKitAll(...a: Parameters<ReturnType<typeof createArvoreClasse>['applyKitAll']>): ReturnType<ReturnType<typeof createArvoreClasse>['applyKitAll']> { return (arvoreSys ??= mk_arvoreSys()).applyKitAll(...a); }

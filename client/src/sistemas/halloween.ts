@@ -2,6 +2,7 @@
    Na temporada (1º de outubro a 15 de novembro, ou ?halloween), abóboras KayKit (CC0) em volta das praças de toda vila e cidade, e
    abóboras, velas e caveiras com vela nos cemitérios, igrejas, capelas e mausoléus. As lanternas de abóbora brilham sozinhas à noite.
    Tudo em lote (uma InstancedMesh por modelo): centenas de abóboras custam poucas chamadas de desenho. Só enfeite: não bloqueia ninguém. */
+import { gpuState, gpuCloneMat } from '../gpu/tags';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
@@ -41,7 +42,7 @@ export async function createHalloween(scene: THREE.Scene, world: World, heightAt
     put(i % 3 === 0 ? 'skull_candle' : i % 3 === 1 ? 'candle_triple' : BIG[2 + (i & 1)], x, y, sd); } }
   const group = new THREE.Group(); group.name = 'halloween';
   const glowMats: THREE.MeshLambertMaterial[] = [];
-  for (const [n, list] of place) { const mdl = models.get(n)!; const im = new THREE.InstancedMesh(mdl.geo, mdl.mat, list.length); list.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = false; im.receiveShadow = true; group.add(im); if (KINDS[n].glow) glowMats.push(mdl.mat as THREE.MeshLambertMaterial); }
+  for (const [n, list] of place) { const mdl = models.get(n)!; const im = new THREE.InstancedMesh(mdl.geo, gpuState.on ? gpuCloneMat(mdl.mat) : mdl.mat /* 11/11: mesma correção do arte3d (WebGPU e instâncias que dividem material) */, list.length); list.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = false; im.receiveShadow = true; group.add(im); if (KINDS[n].glow) glowMats.push(mdl.mat as THREE.MeshLambertMaterial); }
   scene.add(group); group.updateMatrixWorld(true);
   console.log(`[halloween] ${[...place.values()].reduce((a, l) => a + l.length, 0)} enfeites em ${place.size} modelos`);
   return { group, /** escuridão 0..1: as lanternas de abóbora e as velas acendem à noite */ setNight(n: number) { for (const m of glowMats) m.emissiveIntensity = 0.15 + n * 1.6; } };

@@ -32,7 +32,8 @@ export const GRUPO_SKILLS: GSkill[] = [
   G('dwarf', 0, 'martelo', 'Martelo Emprestado', 'forca', 'aliado', 8, 20, { dmg: 0.25 }, 'Empresta o peso do martelo: os golpes do companheiro saem 25% mais fortes.'),
   G('dwarf', 0, 'bradomina', 'Brado da Mina', 'forca', 'grupo', 8, 30, { guard: 0.3 }, 'O grito de quem racha pedra: o grupo quebra a guarda 30% mais rápido.'),
   G('dwarf', 1, 'muralhaviva', 'Muralha Viva', 'defesa', 'aliado', 8, 25, { def: 0.3 }, 'Planta os pés na frente de um companheiro: ele recebe 30% menos dano, e os inimigos perto vêm atrás de você.'),
-  G('dwarf', 1, 'portao', 'Portão do Salão', 'defesa', 'grupo', 8, 35, { def: 0.15 }, 'Fecha o portão do clã: o grupo recebe 15% menos dano.'),
+  /* 11/11: era "Portão do Salão" (defesa); a trava de equilíbrio acusou que o anão só tinha força e defesa */
+  G('dwarf', 1, 'caneca', 'Caneca do Clã', 'cura', 'grupo', 6, 30, { regen: 0.03 }, 'Passa a caneca de hidromel do salão de mão em mão: o grupo cura 3% da vida por segundo.'),
   G('dwarf', 2, 'runaafiar', 'Runa de Afiar', 'forca', 'grupo', 20, 40, { dmg: 0.08 }, 'Grava a runa do fio nas armas do grupo: +8% de dano por bastante tempo.'),
   G('dwarf', 2, 'runatempera', 'Runa de Têmpera', 'defesa', 'grupo', 20, 40, { def: 0.1 }, 'Grava a runa da têmpera nas armaduras do grupo: 10% menos dano por bastante tempo.'),
   /* ELFO: Olho de Falcão · Dança do Vento · Espírito da Mata */
