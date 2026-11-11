@@ -1518,6 +1518,9 @@
   .tl:not(.empty):hover { border-color: var(--wk-gold); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.5); } .tl .ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 19px; background: radial-gradient(circle at 50% 35%, rgba(217,162,79,.16), rgba(0,0,0,.35)); border: 1px solid rgba(125,90,44,.55); } .tl small { font-size: 10.5px; } .tl b { font-size: 8px; letter-spacing: 2px; }
   .charpn .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; } .charpn .cols > .col { min-width: 0; max-width: none; padding: 12px 14px 10px; border: 1px solid rgba(125,90,44,.45); border-radius: 10px; background: rgba(10,7,14,.35); } .charpn .cols h3 { margin-top: 0; } .charpn .cols h3 .pts { margin-left: auto; }
   .charpn .ft { display: block; margin-top: 12px; }
+  /* 11/11 (Erling: "layout errado, divs quebrando" na Ficha de mesa): as abas de lado ganharam largura (o respiro novo da moldura as espremeu) e o dado de cada linha desce para baixo do texto quando não cabe ao lado */
+  .dside { width: 430px; box-sizing: border-box; } .alside { width: 420px; box-sizing: border-box; }
+  .dcard { grid-template-columns: 22px minmax(0, 1fr); row-gap: 5px; padding: 9px 10px; border-radius: 8px; } .dcard > b { grid-column: 2; justify-self: start; white-space: normal; } .dside .dhead { gap: 6px; } .dside .dhead div { border-radius: 8px; }
 </style>
 <script>
   // diagnóstico: mostra qualquer erro na tela em vez de ficar preto
