@@ -19,6 +19,7 @@ function applyOpts(k?: keyof Opts) {
   if (!k || k === 'shadowRes') { K.sun.shadow.mapSize.set(K.opts.shadowRes, K.opts.shadowRes); if (K.sun.shadow.map && !gpuState.on) { K.sun.shadow.map.dispose(); (K.sun.shadow as unknown as { map: null }).map = null; } }
   if (!k || k === 'particles') K.particles.density = K.opts.particles;
   if (!k || k === 'master' || k === 'music' || k === 'sfx' || k === 'amb') K.audio.setVolumes(K.opts.master, K.opts.music, K.opts.sfx, K.opts.amb);
+  if (!k || k === 'sndq' || k === 'mono' || k === 'night' || k === 'bgmute') K.audio.setSound({ q: K.opts.sndq, mono: K.opts.mono, night: K.opts.night, bgMute: K.opts.bgmute });
   if (!k || k === 'dmgText') document.body.classList.toggle('nodmg', !K.opts.dmgText);
   if (!k || k === 'txt' || k === 'chat' || k === 'uis' || k === 'ui') applyTextScale();
   if (!k || k === 'fps') { const v = document.getElementById('ver'); if (v) v.style.display = K.opts.fps ? '' : 'none'; }
@@ -41,7 +42,8 @@ function applyTextScale() {
 setTimeout(applyTextScale, 0); setTimeout(applyTextScale, 2500); // depois dos estilos que os módulos criam
 function renderOptions() {
   const el = document.getElementById('p-opt'); if (!el) return;
-  const seg = (k: keyof Opts, vals: [string | number | boolean, string][]) => `<div class="seg">${vals.map(([v, n]) => `<button data-ok="${k}" data-ov="${v}" class="${K.opts[k] === v ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  const seg = (k: keyof Opts, vals: [string | number | boolean, string][], off = false) => `<div class="seg"${off ? ' style="opacity:.35;pointer-events:none" title="O Moderno já usa o máximo"' : ''}>${vals.map(([v, n]) => `<button data-ok="${k}" data-ov="${v}"${off ? ' disabled' : ''} class="${K.opts[k] === v && !off ? 'on' : ''}">${n}</button>`).join('')}</div>`;
+  const mod = K.opts.gfx === 1, offTxt = mod ? ' <b style="color:#d9a24f">Desligado no Moderno: ele já usa o máximo.</b>' : '';
   const rng = (k: keyof Opts, min: number, max: number, step: number, fmt: (v: number) => string) => `<div class="rng"><input type="range" data-or="${k}" min="${min}" max="${max}" step="${step}" value="${K.opts[k]}"><b>${fmt(K.opts[k] as number)}</b></div>`;
   const pct = (v: number) => `${Math.round(v * 100)}%`;
   el.innerHTML = `<h2>Opções</h2>
@@ -52,12 +54,12 @@ function renderOptions() {
     <div class="stat"><span>Texto do chat <small>Por cima do tamanho do texto: só a caixa de conversa</small></span>${seg('chat', [1, 1.25, 1.5, 1.75, 2, 2.5].map((v) => [v, pct(v)] as [number, string]))}</div>
     <h3>Tela</h3>
     <div class="stat"><span>Tamanho da interface <small>Janelas, ícones e texto juntos. Acompanha o seu monitor sozinho (Full HD, Quad HD, 4K). 1,00 é o padrão; só aparecem os tamanhos que cabem nesta tela</small></span>${seg('uis', [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5, 2].filter((v, i) => i === 0 || uiBase() * v <= uiFitMax() + 0.001 || K.opts.uis === v).map((v) => [v, v.toFixed(2).replace('.', ',')] as [number, string]))}</div>
-    <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']])}</div>
+    <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)${offTxt}</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']], mod)}</div>
     <h3>Gráficos</h3>
     <div class="stat"><span>Estilo do gráfico <small>Pixel: o visual de pixel art do Karmika · Moderno: resolução nativa do monitor (ignora 'Resolução do mundo' e 'Tamanho do pixel'), cor sem degrau de 16 bits, luz em degradê nos modelos, sombra com o dobro de detalhe e borda macia, brilho largo e borda alisada (mais pesado). Dá para trocar quando quiser.</small></span>${seg('gfx', [[0, 'Pixel'], [1, 'Moderno']])}</div>
     <div class="stat"><span>Renderizador <small>WebGPU: o motor gráfico novo dos navegadores (mais rápido nas placas de vídeo de hoje) · WebGL: o de sempre, roda em qualquer PC · Automático: o WebGL enquanto o WebGPU do Karmika está em teste (no WebGPU o jogo ainda engasga ao andar pelo mundo, quando um bloco novo entra na tela). Se o WebGPU não abrir, o jogo volta sozinho para o WebGL. Agora: <b>${gpuState.on ? 'WebGPU' : 'WebGL'}</b>${gpuState.why ? ` (${gpuState.why})` : ''}${(K.opts.rend === 1) !== gpuState.on && !(K.opts.rend === 1 && gpuState.why) ? ' · <b style="color:#ffd27a">vale ao reabrir o jogo</b> <button data-act="reopen" style="margin-left:4px">Reabrir agora</button>' : ''}</small></span>${seg('rend', [[0, 'Automático'], [1, 'WebGPU (teste)'], [2, 'WebGL']])}</div>
-    <div class="stat"><span>Tamanho do pixel <small>1 = o mais fino (cada pixel do jogo é um pixel da tela, pesado) · 2 = fino · 3 = médio · 4 = pixel grosso, para PC fraco (leve)</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']])}</div>
-    <div class="stat"><span>Detalhe do cenário <small>O chão, as casas e as árvores podem ter o pixel maior que o dos personagens. Igual: mesmo pixel (mais pesado) · Um terço: cenário bem grosso (mais leve)</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']])}</div>
+    <div class="stat"><span>Tamanho do pixel <small>1 = o mais fino (cada pixel do jogo é um pixel da tela, pesado) · 2 = fino · 3 = médio · 4 = pixel grosso, para PC fraco (leve)${offTxt}</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], mod)}</div>
+    <div class="stat"><span>Detalhe do cenário <small>O chão, as casas e as árvores podem ter o pixel maior que o dos personagens. Igual: mesmo pixel (mais pesado) · Um terço: cenário bem grosso (mais leve)${offTxt}</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']], mod)}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Sombras dos personagens <small>caras: dobram o custo de cada personagem; a mancha no pé fica</small></span>${seg('charShadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Qualidade das sombras</span>${seg('shadowRes', [[512, 'Baixa'], [1024, 'Média'], [2048, 'Alta']])}</div>
@@ -67,23 +69,33 @@ function renderOptions() {
     <div class="stat"><span>Contador de FPS <small>mostra também onde o tempo do quadro vai: CPU (lógica e desenho) e GPU</small></span>${seg('fps', [[true, 'Mostrar'], [false, 'Esconder']])}</div>
     <div class="stat"><span>Limite de FPS <small>no app do Karmika o jogo passa da taxa do monitor; no navegador o limite é sempre o monitor</small></span>${seg('cap', [[60, '60'], [144, '144'], [240, '240'], [0, 'Sem limite']])}</div>
     <div class="stat"><span>Ajuste automático <small>Ligado: se o FPS cair abaixo de 45, o jogo baixa um pouco a resolução e as sombras sozinho, e volta quando folgar. Desligado: fica exatamente como você escolheu acima</small></span>${seg('auto', [[true, 'Ligado'], [false, 'Desligado']])}</div>
-    <h3>Teclas</h3>
-    <div class="stat"><span>Clique numa tecla e aperte a nova <small>Esc cancela. Se a tecla já for de outra ação, as duas trocam de lugar. Os números da barra de magias continuam mostrando a tecla padrão</small></span><div class="seg"><button data-act="keysdef">Teclas padrão${teclasMudadas() ? ` (${teclasMudadas()} trocada${teclasMudadas() > 1 ? 's' : ''})` : ''}</button></div></div>
-    ${[...new Set(ACOES.map((a) => a.grupo))].map((g) => `<div class="stat" style="align-items:flex-start"><span>${g}</span><div class="keys" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 14px;flex:1;max-width:520px">${ACOES.filter((a) => a.grupo === g).map((a) => `<label style="display:flex;justify-content:space-between;align-items:center;gap:8px"><small>${a.nome}</small><button data-key="${a.id}" style="min-width:64px${teclaDe(a.id) !== a.def ? ';color:#ffd24a' : ''}">${nomeTecla(teclaDe(a.id))}</button></label>`).join('')}</div></div>`).join('')}
-    <h3>Controle</h3>
-    <div class="stat" style="align-items:flex-start"><span>Controle no PC <small>${controleNome() ? 'Ligado: ' + controleNome() : 'Ligue um controle (Xbox, PlayStation ou parecido) e aperte um botão: ele entra sozinho'}. As janelas e os menus ainda pedem o mouse</small></span><div style="flex:1;max-width:520px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px">${CONTROLE_AJUDA.map(([a, b]) => `<small style="color:#f0e2c0">${a}</small><small>${b}</small>`).join('')}</div></div>
-    <h3>Som</h3>
-    <div class="stat"><span>Volume geral <small>O: mudo</small></span>${rng('master', 0, 1.5, 0.05, pct)}</div>
-    <div class="stat"><span>Música <small>P: liga/desliga</small></span>${rng('music', 0, 1, 0.05, pct)}</div>
-    <div class="stat"><span>Efeitos (golpes, magias, passos)</span>${rng('sfx', 0, 1, 0.05, pct)}</div>
-    <div class="stat"><span>Ambiente (vento, fauna, água, fogo)</span>${rng('amb', 0, 1, 0.05, pct)}</div>
     <h3>Jogo</h3>
     <div class="stat"><span>Dia / noite</span><div class="seg"><button data-act="night">Alternar (N)</button></div></div>
     <div class="stat"><span>Zoom</span><div class="seg"><button data-act="zoom">Padrão</button><span class="hint3">roda do mouse: 5 m a 22 m</span></div></div>
     <div class="stat"><span>Janelas (chat, missões, grupo)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
     <div class="stat"><span>Restaurar</span><div class="seg"><button data-act="reset">Opções padrão</button></div></div>`;
+  const som = document.getElementById('p-som');
+  if (som) som.innerHTML = `<h2>Som</h2>
+    <h3>Volume</h3>
+    <div class="stat"><span>Volume geral <small>Acima de 100% o jogo reforça o som (bom para notebook). O: mudo</small></span>${rng('master', 0, 1.5, 0.05, pct)}</div>
+    <div class="stat"><span>Música <small>P: liga/desliga</small></span>${rng('music', 0, 1, 0.05, pct)}</div>
+    <div class="stat"><span>Efeitos <small>golpes, magias, passos</small></span>${rng('sfx', 0, 1, 0.05, pct)}</div>
+    <div class="stat"><span>Ambiente <small>vento, fauna, água, fogo</small></span>${rng('amb', 0, 1, 0.05, pct)}</div>
+    <h3>Qualidade</h3>
+    <div class="stat"><span>Qualidade do som <small>Leve: som mais simples, gasta menos do PC (vale ao reabrir o jogo) · Padrão · Alta: com ambiência, um eco curto de vale e de salão nos golpes, nas magias e na música</small></span>${seg('sndq', [[0, 'Leve'], [1, 'Padrão'], [2, 'Alta']])}</div>
+    <div class="stat"><span>Saída <small>Estéreo: o som vem do lado em que a coisa acontece · Mono: tudo igual nos dois lados (um fone só, ou caixa única)</small></span>${seg('mono', [[false, 'Estéreo'], [true, 'Mono']])}</div>
+    <div class="stat"><span>Modo noite <small>Deixa os sons altos mais baixos e os baixos mais audíveis, para jogar sem acordar ninguém</small></span>${seg('night', [[false, 'Desligado'], [true, 'Ligado']])}</div>
+    <div class="stat"><span>Com o jogo em segundo plano <small>Quando você troca de janela</small></span>${seg('bgmute', [[false, 'Continua tocando'], [true, 'Fica mudo']])}</div>`;
+  const ctl = document.getElementById('p-ctl');
+  if (ctl) ctl.innerHTML = `<h2>Controles</h2>
+    <div class="seg" style="justify-content:flex-start;max-width:none;margin:4px 0 8px"><button data-ctab="0" class="${ctab === 0 ? 'on' : ''}">⌨ Teclado</button><button data-ctab="1" class="${ctab === 1 ? 'on' : ''}">🎮 Joystick</button></div>
+    ${ctab === 0 ? `<div class="stat"><span>Clique numa tecla e aperte a nova <small>Esc cancela. Se a tecla já for de outra ação, as duas trocam de lugar. Os números da barra de magias continuam mostrando a tecla padrão</small></span><div class="seg"><button data-act="keysdef">Teclas padrão${teclasMudadas() ? ` (${teclasMudadas()} trocada${teclasMudadas() > 1 ? 's' : ''})` : ''}</button></div></div>
+    ${[...new Set(ACOES.map((a) => a.grupo))].map((g) => `<h3>${g}</h3><div class="keys" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 28px;margin-top:8px">${ACOES.filter((a) => a.grupo === g).map((a) => `<label style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>${a.nome}</span><span class="seg"><button data-key="${a.id}" style="min-width:72px;text-align:center${teclaDe(a.id) !== a.def ? ';color:#ffd24a' : ''}">${nomeTecla(teclaDe(a.id))}</button></span></label>`).join('')}</div>`).join('')}`
+    : `<div class="stat"><span>${controleNome() ? 'Ligado: ' + controleNome() : 'Nenhum controle ligado'} <small>Ligue um controle (Xbox, PlayStation ou parecido) e aperte um botão: ele entra sozinho. As janelas e os menus ainda pedem o mouse</small></span></div>
+    <h3>Botões</h3><div style="display:grid;grid-template-columns:auto 1fr;gap:8px 24px;margin-top:10px">${CONTROLE_AJUDA.map(([a, b]) => `<b style="color:#f0e2c0;font-weight:600">${a}</b><span>${b}</span>`).join('')}</div>`}`;
 }
-document.getElementById('p-opt')?.addEventListener('click', (e) => { const lb = (e.target as HTMLElement).closest('button[data-lang]') as HTMLElement | null; if (lb) { const l = lb.dataset.lang as Lang; if (l !== LANG) setLang(l); return; }
+let ctab = 0;
+const onClick = (e: Event) => { { const tb = (e.target as HTMLElement).closest('button[data-ctab]') as HTMLElement | null; if (tb) { ctab = Number(tb.dataset.ctab); renderOptions(); K.audio.click(); return; } } const lb = (e.target as HTMLElement).closest('button[data-lang]') as HTMLElement | null; if (lb) { const l = lb.dataset.lang as Lang; if (l !== LANG) setLang(l); return; }
   const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return;
   if (b.dataset.ok) { const k = b.dataset.ok as keyof Opts, raw = b.dataset.ov!; (K.opts as unknown as Record<string, unknown>)[k] = raw === 'true' ? true : raw === 'false' ? false : Number(raw); applyOpts(k); renderOptions(); K.audio.click(); return; }
   if (b.dataset.key) { const id = b.dataset.key; b.textContent = 'aperte…'; b.classList.add('on'); ouvirTecla((k) => { if (k) { trocarTecla(id, k); K.audio.click(); } renderOptions(); }); return; }
@@ -94,8 +106,9 @@ document.getElementById('p-opt')?.addEventListener('click', (e) => { const lb = 
   if (a === 'zoom') { K.zoomTarget = 17; }
   if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); localStorage.removeItem('karmika.ui.party'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }
   if (a === 'reset') { Object.assign(K.opts, K.OPT_DEF); applyOpts(); renderOptions(); }
-});
-document.getElementById('p-opt')?.addEventListener('input', (e) => { const i = e.target as HTMLInputElement; if (!i.dataset.or) return; const k = i.dataset.or as keyof Opts; (K.opts as unknown as Record<string, unknown>)[k] = Number(i.value); applyOpts(k); const b = i.nextElementSibling as HTMLElement | null; if (b) b.textContent = `${Math.round(Number(i.value) * 100)}%`; });
+};
+const onInput = (e: Event) => { const i = e.target as HTMLInputElement; if (!i.dataset.or) return; const k = i.dataset.or as keyof Opts; (K.opts as unknown as Record<string, unknown>)[k] = Number(i.value); applyOpts(k); const b = i.nextElementSibling as HTMLElement | null; if (b) b.textContent = `${Math.round(Number(i.value) * 100)}%`; };
+for (const id of ['p-opt', 'p-som', 'p-ctl']) { document.getElementById(id)?.addEventListener('click', onClick); document.getElementById(id)?.addEventListener('input', onInput); }
 addEventListener('karmika:controle', () => renderOptions());
 setTimeout(() => { renderOptions(); applyOpts(); K.applyArtSkin(); }, 0);
   return {  };

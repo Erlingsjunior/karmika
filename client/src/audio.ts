@@ -21,15 +21,19 @@ export class AudioEngine {
     if (this.ctx) { void this.ctx.resume(); return; }
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) return;
-    const ctx = (this.ctx = new AC());
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.2; /* 09/11: acima de 100% o volume geral vira ganho DEPOIS do compressor (até ~2x em 150%) e um limitador no fim segura o pico — som alto em notebook sem estourar */
+    let ctx: AudioContext; try { ctx = this.snd.q === 0 ? new AC({ sampleRate: 24000 }) : new AC(); } catch { ctx = new AC(); } this.ctx = ctx;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = 0.01; comp.release.value = 0.2; this.comp = comp; /* 09/11: acima de 100% o volume geral vira ganho DEPOIS do compressor (até ~2x em 150%) e um limitador no fim segura o pico — som alto em notebook sem estourar */
     this.boost = ctx.createGain(); this.boost.gain.value = boostOf(this.vol.master); comp.connect(this.boost);
     const lim = ctx.createDynamicsCompressor(); lim.threshold.value = -1.5; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.002; lim.release.value = 0.1; this.boost.connect(lim); lim.connect(ctx.destination);
     this.master = ctx.createGain(); this.master.gain.value = 0.5; this.master.connect(comp);
     this.amb = ctx.createGain(); this.amb.gain.value = 1; this.amb.connect(this.master);
     this.sfx = ctx.createGain(); this.sfx.gain.value = 1; this.sfx.connect(this.master);
     this.mus = ctx.createGain(); this.mus.gain.value = this.music ? 0.09 * this.vol.music : 0; this.mus.connect(this.master);
-    this.master.gain.value = 0.5 * Math.min(1, this.vol.master); this.sfx.gain.value = this.vol.sfx; this.amb.gain.value = this.vol.amb;
+    /* 10/11 (Erling: "opção de qualidade de som"): ambiência — um eco curto de sala/vale nos golpes, magias e música (só na qualidade Alta) */
+    { const rv = ctx.createConvolver(), n = Math.floor(ctx.sampleRate * 1.7), ir = ctx.createBuffer(2, n, ctx.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2) * (i < 400 ? i / 400 : 1); } rv.buffer = ir;
+      this.revSend = ctx.createGain(); this.revSend.gain.value = 0; this.sfx.connect(this.revSend); this.mus.connect(this.revSend); this.revSend.connect(rv); rv.connect(this.master); }
+    this.setSound(this.snd); addEventListener('blur', () => this.applyMaster()); addEventListener('focus', () => this.applyMaster());
+    this.master.gain.value = this.masterGain(); this.sfx.gain.value = this.vol.sfx; this.amb.gain.value = this.vol.amb;
     const len = ctx.sampleRate * 2;
     this.noise = ctx.createBuffer(1, len, ctx.sampleRate);
     const d = this.noise.getChannelData(0);
@@ -55,10 +59,18 @@ export class AudioEngine {
   }
 
   /** volumes das opções (0..1): geral, música, efeitos, ambiente */
-  private boost!: GainNode;
+  private boost!: GainNode; private comp!: DynamicsCompressorNode; private revSend!: GainNode;
+  /** 10/11: qualidade do som — q: 0 leve (24 kHz, vale ao reabrir) · 1 padrão · 2 alta (com ambiência); mono; noite (sons altos mais baixos); calar com a janela em segundo plano */
+  private snd = { q: 1, mono: false, night: false, bgMute: false };
+  private masterGain() { return this.muted || (this.snd.bgMute && !document.hasFocus()) ? 0 : 0.5 * Math.min(1, this.vol.master); }
+  private applyMaster() { if (this.ctx) this.master.gain.setTargetAtTime(this.masterGain(), this.ctx.currentTime, 0.05); }
+  setSound(o: { q: number; mono: boolean; night: boolean; bgMute: boolean }) { this.snd = { ...o }; if (!this.ctx) return; const now = this.ctx.currentTime;
+    this.revSend.gain.setTargetAtTime(o.q >= 2 ? 0.2 : 0, now, 0.1);
+    this.master.channelCount = o.mono ? 1 : 2; this.master.channelCountMode = o.mono ? 'explicit' : 'max';
+    this.comp.threshold.setTargetAtTime(o.night ? -34 : -18, now, 0.1); this.comp.ratio.setTargetAtTime(o.night ? 8 : 3, now, 0.1); this.applyMaster(); }
   private vol = { master: 1, music: 1, sfx: 1, amb: 1 };
-  setVolumes(master: number, music: number, sfx: number, amb: number) { this.vol = { master, music, sfx, amb }; if (!this.ctx) return; const now = this.ctx.currentTime; this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5 * Math.min(1, master), now, 0.05); this.boost.gain.setTargetAtTime(boostOf(master), now, 0.05); this.sfx.gain.setTargetAtTime(sfx, now, 0.05); this.amb.gain.setTargetAtTime(amb, now, 0.05); this.mus.gain.setTargetAtTime(this.music ? 0.09 * music : 0, now, 0.3); }
-  toggleMute() { this.muted = !this.muted; if (this.ctx) this.master.gain.setTargetAtTime(this.muted ? 0 : 0.5 * Math.min(1, this.vol.master), this.ctx.currentTime, 0.05); return this.muted; }
+  setVolumes(master: number, music: number, sfx: number, amb: number) { this.vol = { master, music, sfx, amb }; if (!this.ctx) return; const now = this.ctx.currentTime; this.master.gain.setTargetAtTime(this.masterGain(), now, 0.05); this.boost.gain.setTargetAtTime(boostOf(master), now, 0.05); this.sfx.gain.setTargetAtTime(sfx, now, 0.05); this.amb.gain.setTargetAtTime(amb, now, 0.05); this.mus.gain.setTargetAtTime(this.music ? 0.09 * music : 0, now, 0.3); }
+  toggleMute() { this.muted = !this.muted; this.applyMaster(); return this.muted; }
   toggleMusic() { this.music = !this.music; localStorage.setItem('karmika.music', this.music ? '1' : '0'); if (this.ctx) this.mus.gain.setTargetAtTime(this.music ? 0.09 * this.vol.music : 0, this.ctx.currentTime, 0.5); return this.music; }
 
   /* ---------- blocos básicos ---------- */
