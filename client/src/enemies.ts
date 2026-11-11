@@ -1,3 +1,4 @@
+import { yukaSurround } from './libs/yuka';
 import { RUNAS } from './runas';
 import { t as tr, tl } from './i18n';
 import { monRoll } from './dados-rpg';
@@ -881,6 +882,7 @@ export function createEnemies(ctx: EnemyCtx) {
       }
     }
     if (pend.length) { for (const f of pend.splice(0)) f(); }
+    yukaSurround(list as never, hero, dt, step as never); /* 11/11: o cerco (libs/yuka.ts) */
     separate(hero);
   }
   /* física: herói e bichos nunca ocupam o mesmo lugar, nem os bichos entre si (o herói só atravessa na investida/esquiva) */
