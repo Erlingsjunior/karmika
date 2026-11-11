@@ -53,25 +53,38 @@ const guideEl = document.createElement('div'); guideEl.id = 'guide'; guideEl.inn
 const guideLbl = guideEl.querySelector('.lbl span') as HTMLElement, guideDist = guideEl.querySelector('.lbl small') as HTMLElement;
 /* fôlego: arco amarelo no pé do herói (voltado para a câmera), esvazia ao correr e ao dar dash */
 const stamG = new THREE.Group(); K.scene.add(fine(stamG));
-const stamArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf4f0e6, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, toneMapped: false, side: THREE.DoubleSide })); stamArc.renderOrder = 5; stamG.add(stamArc);
-const stamBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide })); stamBg.renderOrder = 4; stamG.add(stamBg);
-/* 27/10 (Erling): fôlego BRANCO (o amarelo confundia com a missão de história) e, ao lado dele, a barra curva de VIDA (vermelha) */
-const hpArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd83a3a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, toneMapped: false, side: THREE.DoubleSide })); hpArc.renderOrder = 5; stamG.add(hpArc);
-const hpBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide })); hpBg.renderOrder = 4; stamG.add(hpBg);
+/* 11/11 (Erling: "as barras do player são desenhadas, não são efeitos 3D bonitos"): as duas barras viraram TUBOS — um trilho escuro de metal
+   deitado no chão e, dentro dele, um tubo de luz (vida rubra, fôlego marfim) que pega brilho da luz do mundo. O tubo cheio é feito uma vez só;
+   o quanto aparece é só o intervalo desenhado (antes a malha era destruída e refeita a cada quadro). */
+const ARC_SEG = 56, ARC_RAD = 7;
+/** tubo em arco deitado no chão: começa no ângulo a0 e anda `span` (negativo = sentido contrário); os triângulos vão em ordem ao longo do arco */
+function arcTube(r: number, tube: number, a0: number, span: number): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], idx: number[] = [];
+  for (let i = 0; i <= ARC_SEG; i++) { const a = a0 + span * i / ARC_SEG, cx = Math.cos(a), cz = -Math.sin(a);
+    for (let j = 0; j < ARC_RAD; j++) { const b = j / ARC_RAD * 6.2832, nr = Math.cos(b), ny = Math.sin(b); pos.push((r + tube * nr) * cx, tube * ny * 0.8, (r + tube * nr) * cz); nor.push(nr * cx, ny, nr * cz); } }
+  for (let i = 0; i < ARC_SEG; i++) for (let j = 0; j < ARC_RAD; j++) { const a = i * ARC_RAD + j, b = i * ARC_RAD + (j + 1) % ARC_RAD, c = a + ARC_RAD, d = b + ARC_RAD; if (span > 0) idx.push(a, b, c, b, d, c); else idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx); return g;
+}
+const ARC_SPAN = 1.05, ARC_GAP = 0.12;
+const railM = new THREE.MeshStandardMaterial({ color: 0x1a140e, metalness: 0.7, roughness: 0.45, transparent: true, opacity: 0.9, fog: false, side: THREE.DoubleSide });
+const lightM = (c: number) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.75, metalness: 0.15, roughness: 0.28, transparent: true, opacity: 1, fog: false, side: THREE.DoubleSide });
+/* fôlego à direita da direção da câmera (enche do meio para fora), vida à esquerda (esvazia da ponta de fora para o meio) */
+const stamArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 + ARC_GAP / 2 + ARC_SPAN, -ARC_SPAN), lightM(0xf4f0e6)); stamArc.renderOrder = 5; stamG.add(stamArc);
+const stamBg = new THREE.Mesh(arcTube(1.02, 0.062, -Math.PI / 2 + ARC_GAP / 2 - 0.02, ARC_SPAN + 0.04), railM); stamBg.renderOrder = 4; stamBg.position.y = -0.03; stamG.add(stamBg);
+const hpArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN, ARC_SPAN), lightM(0xd83a3a)); hpArc.renderOrder = 5; stamG.add(hpArc);
+const hpBg = new THREE.Mesh(arcTube(1.02, 0.062, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN - 0.02, ARC_SPAN + 0.04), railM); hpBg.renderOrder = 4; hpBg.position.y = -0.03; stamG.add(hpBg);
+for (const m of [stamArc, stamBg, hpArc, hpBg]) { m.frustumCulled = false; m.raycast = () => {}; }
+const arcFill = (m: THREE.Mesh, k: number) => m.geometry.setDrawRange(0, Math.round(Math.max(0, Math.min(1, k)) * ARC_SEG) * ARC_RAD * 6);
 let stamShow = 0;
 function updateStamRing(dt: number) {
   const k = K.game.st.stam / Math.max(1, K.game.st.stamMax), want = 1; /* 26/10 (Erling): o fôlego não some — fica sempre no pé, cheio ou não */
   stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !K.inside && !K.game.st.dead && !heroBehind();
   if (!stamG.visible) return;
   stamG.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); stamG.rotation.y = K.az; /* 03/11 (Erling: "a aura do personagem não se esconde atrás dos itens"): as barras e a bússola agora respeitam a profundidade — somem atrás da fonte, de casas e de pedras; um palmo acima do chão e um empurrão de profundidade mínimo (04/11: o empurrão grande punha o anel por cima de bichos, baús e pedras) */ // arco virado para a câmera, à frente dos pés
-  const SPAN = 1.05, GAP = 0.12, start = -Math.PI / 2 + GAP / 2; // fôlego à direita da direção da câmera, vida à esquerda, com um vão entre os dois
-  stamArc.geometry.dispose(); stamArc.geometry = new THREE.RingGeometry(0.97, 1.07, 48, 1, start + SPAN * (1 - k), Math.max(0.001, SPAN * k)).rotateX(-Math.PI / 2);
-  stamBg.geometry.dispose(); stamBg.geometry = new THREE.RingGeometry(0.95, 1.09, 48, 1, start - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
-  (stamArc.material as THREE.MeshBasicMaterial).color.setHex(k < 0.25 ? 0xffb0a0 : 0xf4f0e6); (stamArc.material as THREE.MeshBasicMaterial).opacity = 0.95 * stamShow; (stamBg.material as THREE.MeshBasicMaterial).opacity = 0.6 * stamShow;
-  const kh = K.game.st.hp / Math.max(1, K.game.st.hpMax), hs = -Math.PI / 2 - GAP / 2 - SPAN; // a vida esvazia da ponta de fora para o meio
-  hpArc.geometry.dispose(); hpArc.geometry = new THREE.RingGeometry(0.97, 1.07, 48, 1, hs, Math.max(0.001, SPAN * kh)).rotateX(-Math.PI / 2);
-  hpBg.geometry.dispose(); hpBg.geometry = new THREE.RingGeometry(0.95, 1.09, 48, 1, hs - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
-  (hpArc.material as THREE.MeshBasicMaterial).color.setHex(kh < 0.3 ? 0xff5a3a : 0xd83a3a); (hpArc.material as THREE.MeshBasicMaterial).opacity = 0.95 * stamShow; (hpBg.material as THREE.MeshBasicMaterial).opacity = 0.6 * stamShow;
+  arcFill(stamArc, k); { const m = stamArc.material as THREE.MeshStandardMaterial; m.color.setHex(k < 0.25 ? 0xffb0a0 : 0xf4f0e6); m.emissive.copy(m.color); m.opacity = stamShow; }
+  const kh = K.game.st.hp / Math.max(1, K.game.st.hpMax);
+  arcFill(hpArc, kh); { const m = hpArc.material as THREE.MeshStandardMaterial; m.color.setHex(kh < 0.3 ? 0xff5a3a : 0xd83a3a); m.emissive.copy(m.color); m.emissiveIntensity = kh < 0.3 ? 0.75 + 0.35 * Math.sin(performance.now() / 160) : 0.75; m.opacity = stamShow; }
+  railM.opacity = 0.9 * stamShow;
 }
 /* bússola no pé do herói: arco dourado que aponta o destino, com três chevrons correndo na direção */
 const guide3d = new THREE.Group(); guide3d.visible = false; K.scene.add(fine(guide3d));

@@ -88,6 +88,18 @@ function barrels(parent: THREE.Object3D, x: number, z: number, c: Ctx, n = 2) {
   const cr = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.7), std(0xffffff, { map: plankTex(0x7a5a38) })); ink(cr, 0.03); cr.position.set(x + n * 0.7 + 0.2, 0.3, z + 0.1); cr.rotation.y = 0.4; cr.castShadow = true; parent.add(cr);
 }
 
+/** estica a faixa de cima das paredes (2,38 m → 2,5 m) em `dy` e sobe tudo o que está acima; porta, janelas e base não mudam */
+function raiseWalls(g: THREE.Group, chim: THREE.Vector3[], lantern: THREE.Vector3, dy: number) {
+  const A = 2.38, B = 2.5, v = new THREE.Vector3(), inv = new THREE.Matrix4(), M = new THREE.Matrix4(); g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert();
+  const up = (y: number) => y <= A ? y : y >= B ? y + dy : A + (y - A) * ((B - A + dy) / (B - A));
+  g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry?.getAttribute('position')) return; M.multiplyMatrices(gi, m.matrixWorld); inv.copy(M).invert();
+    const pos0 = m.geometry.getAttribute('position') as THREE.BufferAttribute; let touch = false; for (let i = 0; i < pos0.count && !touch; i++) if (v.fromBufferAttribute(pos0, i).applyMatrix4(M).y > A) touch = true; if (!touch) return;
+    m.geometry = m.geometry.clone(); const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(M); v.y = up(v.y); v.applyMatrix4(inv); pos.setXYZ(i, v.x, v.y, v.z); }
+    pos.needsUpdate = true; m.geometry.computeBoundingBox(); m.geometry.computeBoundingSphere(); });
+  for (const c of chim) c.y = up(c.y); lantern.y = up(lantern.y);
+}
+
 /** um volume: base de pedra + parede + telhado de duas águas */
 function volume(parent: THREE.Object3D, cx: number, cz: number, w: number, d: number, y0: number, wallH: number, roofH: number, wallC: number, roofC: number, kind: 'plank' | 'plaster' | 'stone', alongX: boolean, over = 0.5) {
   const g = new THREE.Group(); g.position.set(cx, y0, cz);
@@ -126,8 +138,11 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
     door(g, cx - bw * 0.25, 0, front + 0.04, 'z', c);
     windowAt(g, cx + bw * 0.22, 1.5, front + 0.04, 'z', R() < 0.5, c, c.windows);
     windowAt(g, cx - bw * 0.2, 3.9, front + 0.34, 'z', false, c, c.windows); windowAt(g, cx + bw * 0.22, 3.9, front + 0.34, 'z', R() < 0.5, c, c.windows);
-    stairs(g, cx + bw / 2 + 0.5, cz + bd / 2 - 0.4, 2.5, false, 1.0);
-    door(g, cx + bw / 2 + 0.75, 2.5, cz - 0.8, 'x', c, 1.0, 1.9);
+    /* 11/11 (Erling: "a escada não casa com a porta, a pessoa abre a porta e cai"): a porta de cima fica na parede, bem no patamar
+       da escada. Antes a porta tinha lugar fixo (e solta, a meio metro da parede) e o patamar outro; só coincidiam numa casa de 5,9 m de fundo. */
+    { const n = Math.max(3, Math.round(2.5 / 0.28)), len = n * 0.32, dz = Math.max(cz - bd / 2 + 0.85, Math.min(cz - 0.8, cz + bd / 2 - 0.4 - len - 0.45));
+      stairs(g, cx + bw / 2 + 0.75, dz + 0.45 + len, 2.5, false, 1.0); /* o patamar da escada fica em dz; a escada encosta na parede de cima */
+      door(g, cx + bw / 2 + 0.24, 2.5, dz, 'x', c, 1.0, 1.9); }
     // balcão sobre a escada
     chimney(g, cx - bw / 2 + 0.7, cz - 0.3, 4.8, 2.0, chim);
     lantern = new THREE.Vector3(cx - bw * 0.25 + 0.9, 2.0, front + 0.6);
@@ -200,6 +215,9 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
   g.scale.y = 1.15;
   for (const ch of chim) ch.y *= 1.15;
   lantern.y *= 1.0;
+  /* 11/11 (Erling: "batente da porta passando do telhado, precisa aumentar a parede da casa para caber a porta"; "a escala construção x humano parece pequena"):
+     a casa térrea tinha 2,5 m de parede com porta de 2,2 m: o beiral descia em cima do batente. A parede ganhou 45 cm (2,95 m) e tudo o que fica acima dela subiu junto. O sobrado (escada de fora) fica como é. */
+  if (variant !== 1) raiseWalls(g, chim, lantern, 0.45);
   return { group: g, chimneys: chim, lantern };
 }
 

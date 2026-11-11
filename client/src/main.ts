@@ -358,6 +358,9 @@ let zoomTarget = 17, zoom = 17; // metros visíveis na altura da tela
 const ZOOM_MIN = 5; let ZOOM_MAX = 22; // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
 
 /* ---------- mundo ---------- */
+/* 11/11 (Erling: "poste de lâmpada na frente da porta da casa? tira isso"): nenhum poste ou tocha fica no caminho de uma porta (1,6 m para cada lado, até 3,4 m à frente dela) */
+{ const doors = city.props.filter((p) => p.kind === 'house').map((p) => { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T); return { x: p.gx * T + hd.x, z: p.gy * T + hd.z }; });
+  for (let i = city.props.length - 1; i >= 0; i--) { const q = city.props[i]; if (q.kind !== 'torch') continue; const x = (q.gx + 0.5) * T, z = (q.gy + 0.5) * T; if (doors.some((d) => Math.abs(x - d.x) < 1.6 && z > d.z - 0.6 && z < d.z + 3.4)) city.props.splice(i, 1); } }
 const objs = buildWorld(city);
 /* 10/11 (teste_libs): abóboras de Halloween nas vilas e nos cemitérios (só na temporada) */
 let halloween: Awaited<ReturnType<typeof createHalloween>> = null; void createHalloween(scene, city, (x, z) => heightAt(x, z)).then((h) => { halloween = h; });
@@ -1156,6 +1159,8 @@ var caravanasSys: ReturnType<typeof createCaravanasUi>; /* criado aqui, na ordem
 function mk_caravanasSys() { return createCaravanasUi({ get canvas() { return canvas; }, get camera() { return camera; }, get inside() { return inside; }, get city() { return city; }, get inv() { return inv; }, get openDwarfCart() { return openDwarfCart; }, get prepLatao() { return prepLatao; }, get scene() { return scene; }, get heroPos() { return heroPos; }, get state() { return state; }, get game() { return game; }, get particles() { return particles; }, get soulLean() { return soulLean; }, get quests() { return quests; }, get addKarma() { return addKarma; }, get applyReply() { return applyReply; }, get audio() { return audio; }, get t() { return t; } }); }
 caravanasSys ??= mk_caravanasSys();
 const { caravans, LATAO_BASE, LATAO_PORTO, craftHall } = caravanasSys;
+/* (teste) auditoria das rotas das caravanas: por que um ponto (metros) não serve para uma carroça */
+(window as unknown as { __audit: unknown }).__audit = { routes: caravans.routes, cam: () => camera, hero: () => [state.fx, state.fy], cut: () => CUT.uCut.value.w, why: (x: number, z: number): string | null => { const tx = Math.floor(x / T), ty = Math.floor(z / T), tt = city.map[ty]?.[tx]; if (!tt) return 'fora do mapa'; if (!isWalkable(tt)) return 'piso:' + tt; if (rampartAt(tx, ty)) return 'muralha'; if (solidHit(x / T, z / T, false)) { let best = '', bd = 9; for (const q of city.props) { if (Math.abs(q.gx - tx) > 4 || Math.abs(q.gy - ty) > 4 || q.kind === 'tree') continue; const d = Math.hypot(q.gx + q.w / 2 - x / T, q.gy + q.h / 2 - z / T); if (d < bd) { bd = d; best = q.kind + (q.label ? ' ' + q.label : ''); } } return 'objeto:' + best; } if (lowWallHit(x / T, z / T)) return 'mureta'; return null; } };
 function carBubble(...a: Parameters<ReturnType<typeof createCaravanasUi>['carBubble']>): ReturnType<ReturnType<typeof createCaravanasUi>['carBubble']> { return (caravanasSys ??= mk_caravanasSys()).carBubble(...a); }
 function updateCaravans(...a: Parameters<ReturnType<typeof createCaravanasUi>['updateCaravans']>): ReturnType<ReturnType<typeof createCaravanasUi>['updateCaravans']> { return (caravanasSys ??= mk_caravanasSys()).updateCaravans(...a); }
 
@@ -3129,6 +3134,7 @@ function frameBody() {
 /* boneco vivo na ficha do personagem (C): o próprio herói, animado e com o equipamento que está vestindo, desenhado num
    quadro pequeno ao lado do mundo. Trocou a peça, o boneco troca na hora e brilha; arrastar com o mouse gira (Erling, 25/10) */
 var dollR: THREE.WebGLRenderer | null = null, dollScene: THREE.Scene | null = null, dollCam: THREE.PerspectiveCamera | null = null, dollYaw = 0.42, dollPulse = -9, dollBoxT = 0, dollDrag: number | null = null, dollFail = false;
+let dollZoom = 1, dollZoomV = 1; const dollBase = { cy: 1, top: 1.9, dist: 3.2 };
 const DOLL_W = 340, DOLL_H = 524; /* 11/11 (Erling: "o boneco tem que ser mais bonito"): o retrato da ficha é desenhado no dobro do tamanho da moldura, com serrilhado alisado (antes 96×146 esticado) */
 function dollTick(dt: number) {
   if (dollFail) return; const chEl = document.getElementById('char'), host = chEl && chEl.style.display !== 'none' ? chEl.querySelector('.doll') as HTMLElement | null : null; if (!host) return;
@@ -3142,12 +3148,14 @@ function dollTick(dt: number) {
       const cv = dollR.domElement; cv.addEventListener('pointerdown', (e) => { dollDrag = e.clientX; cv.setPointerCapture(e.pointerId); e.stopPropagation(); });
       cv.addEventListener('pointermove', (e) => { if (dollDrag === null) return; dollYaw += (e.clientX - dollDrag) * 0.02; dollDrag = e.clientX; });
       cv.addEventListener('pointerup', () => { dollDrag = null; });
+      cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); dollZoom = Math.max(1, Math.min(3.2, dollZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); }, { passive: false }); cv.addEventListener('dblclick', () => { dollZoom = 1; dollYaw = 0; }); cv.title = 'Arraste para girar · roda do mouse para aproximar · dois cliques para voltar';
     }
     const cv = dollR.domElement; if (cv.parentElement !== host) { host.querySelector('img')?.remove(); host.prepend(cv); }
     const root = hero.root, parent = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible;
     dollScene!.add(root); root.position.set(0, 0, 0); root.rotation.set(0, dollYaw, 0); root.visible = true; root.updateMatrixWorld(true);
     const xr: THREE.Object3D[] = []; root.traverse((o) => { const mt = (o as THREE.Mesh).material as THREE.Material | undefined; if (o.visible && (o.userData.xray || (mt && !Array.isArray(mt) && mt.depthTest === false))) { xr.push(o); o.visible = false; } });
-    if ((dollBoxT -= dt) <= 0) { dollBoxT = 0.6; const box = new THREE.Box3().setFromObject(root), top = Math.min(box.max.y, 1.97 * (root.scale.y || 1)), cy = top * 0.52, dist = top * 1.45 + 0.45; dollCam!.position.set(0.3, cy + 0.15, dist); dollCam!.lookAt(0, cy - 0.02, 0); }
+    if ((dollBoxT -= dt) <= 0) { dollBoxT = 0.6; const box = new THREE.Box3().setFromObject(root), top = Math.min(box.max.y, 1.97 * (root.scale.y || 1)), cy = top * 0.52, dist = top * 1.45 + 0.45; dollBase.cy = cy; dollBase.top = top; dollBase.dist = dist; }
+    { /* 11/11 (Erling: "nessa janela pode dar zoom e também girar o personagem"): a roda do mouse aproxima (até o rosto); arrastar gira */ const z = dollZoomV += (dollZoom - dollZoomV) * Math.min(1, dt * 10), u = (z - 1) / 2.2, ly = dollBase.cy - 0.02 + (dollBase.top * 0.84 - dollBase.cy) * u; dollCam!.position.set(0.3 / z, ly + 0.17 / z, dollBase.dist / z); dollCam!.lookAt(0, ly, 0); }
     dollCam!.layers.enableAll(); dollR.render(dollScene!, dollCam!);
     for (const o of xr) o.visible = true;
     dollScene!.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; root.updateMatrixWorld(true);

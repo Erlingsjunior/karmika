@@ -719,7 +719,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       drone.rotation.z = THREE.MathUtils.clamp(-dVel.x * 6, -0.6, 0.6); drone.rotation.x = THREE.MathUtils.clamp(dVel.z * 6, -0.6, 0.6) + 0.1;
       shell.rotation.y = t * 1.2; dring.rotation.z = t * 2; dring2.rotation.z = -t * 1.3; ringBack.rotation.z = t * 1.4;
       hero.droneFlash = Math.max(0, hero.droneFlash - dt * 6);
-      dGlow.material.opacity = 0.35 + night * 0.35 + hero.droneFlash * 0.8; dGlow.scale.setScalar(1.3 + hero.droneFlash * 1.2); eye.scale.setScalar(1 + hero.droneFlash * 0.8);
+      /* 11/11 (Erling: "o drone tem um sombreado e um brilho estranho"): de dia o halo pintado quase some (era um borrão claro de 1,3 m em volta de uma esfera de 26 cm); à noite ele acende, menor */ dGlow.material.opacity = 0.06 + night * 0.34 + hero.droneFlash * 0.8; dGlow.scale.setScalar(0.62 + night * 0.25 + hero.droneFlash * 1.2); eye.scale.setScalar(1 + hero.droneFlash * 0.8);
       void speed;
     };
     restL = { x: -0.2, z: 0.12, e: 0.5 }; restR = { x: -0.35, z: -0.1, e: 0.6 };

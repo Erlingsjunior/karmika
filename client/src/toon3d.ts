@@ -16,7 +16,7 @@ export function setCutout(px: number, py: number, radiusPx: number, heroDist: nu
 export function setCutoutPlane(fwdX: number, fwdZ: number, heroDepth: number) { CUT.uCutF.value.set(fwdX, fwdZ, heroDepth); }
 export function cutoutify<M extends THREE.Material>(m: M): M {
   if ((m as THREE.Material & { userData: { noCut?: boolean } }).userData.noCut) return m;
-  const prev = m.onBeforeCompile; gpuTag(m, 'cut', CUT); /* WebGPU: gpu/impl.ts */
+  const prev = m.onBeforeCompile; gpuTag(m, 'cut', CUT); /* WebGPU: gpu/impl.ts */ m.userData.cutOn = true; /* o Moderno pergunta por esta marca para manter o recorte */
   m.onBeforeCompile = (sh, r) => { prev?.call(m, sh, r); sh.uniforms.uCut = CUT.uCut; sh.uniforms.uCutF = CUT.uCutF;
     sh.vertexShader = sh.vertexShader.replace('#include <clipping_planes_pars_vertex>', '#include <clipping_planes_pars_vertex>\nvarying vec2 vCutW;')
       .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\n{ vec4 cp = vec4( transformed, 1.0 );\n#ifdef USE_INSTANCING\ncp = instanceMatrix * cp;\n#endif\nvec4 cw = modelMatrix * cp; vCutW = cw.xz; }' /* 03/11: com instancing, a posição de cada cópia entra no corte */);
@@ -68,15 +68,52 @@ export function photoDetail(t: THREE.Texture, imgs: string[], k: number, alpha =
     g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1; t.image = c; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.needsUpdate = true; });
   return t;
 }
-export const plankTex = (c: number) => photoDetail(texRaw('pl' + c, 64, (g, s) => { for (let i = 0; i < 8; i++) { g.fillStyle = sh(c, rr(0.75, 1.1)); g.fillRect(i * s / 8, 0, s / 8, s); g.fillStyle = 'rgba(10,6,4,.55)'; g.fillRect(i * s / 8, 0, 1.5, s); } for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(20,12,6,.25)'; g.fillRect(rr(0, s), rr(0, s), 1, rr(3, 9)); } }), ['assoalho_madeira_01', 'assoalho_madeira_02'], c, 0.6);
+/* 11/11 (Erling: "veja as pedras de piso, o piso da casa, o piso da ponte, a textura do telhado: nos assets do Herik não tem nada para
+   deixar mais real, mais com a cara da arte do nosso jogo?"): tinha, e estava só a 55% por cima de um desenho de 64 px. Agora a foto do
+   Herik É a textura (256 px, filtrada), e a cor pedida só a tinge: cada ponto da foto é multiplicado por (cor ÷ média da foto), então a
+   pedra continua pedra e a tábua continua tábua, no tom de cada parede. O desenho de 64 px fica só no instante em que a foto carrega. */
+const avgCache = new Map<HTMLImageElement, [number, number, number]>();
+function tintTo(g: CanvasRenderingContext2D, S: number, c: number, keep = 0.12, ref?: HTMLImageElement) {
+  const id = g.getImageData(0, 0, S, S), d = id.data; let av = ref ? avgCache.get(ref) : undefined;
+  if (!av) { let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 16) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; } const n = d.length / 16; av = [r / n || 1, gg / n || 1, b / n || 1]; if (ref) avgCache.set(ref, av); }
+  const k = [((c >> 16) & 255) / av[0], ((c >> 8) & 255) / av[1], (c & 255) / av[2]];
+  for (let i = 0; i < d.length; i += 4) for (let q = 0; q < 3; q++) { const v = d[i + q]; d[i + q] = Math.min(255, v * keep + v * k[q] * (1 - keep)); }
+  g.putImageData(id, 0, 0);
+}
+function swapIn(t: THREE.Texture, c: HTMLCanvasElement) { t.image = c; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true; }
+/** a foto do Herik como base da textura, tingida para a cor `c`. turn = deitar a foto (tábua de pé) */
+export function photoBase(t: THREE.Texture, imgs: string[], k: number, c: number, turn = false) {
+  if ((t.userData as { photo?: boolean }).photo) return t; (t.userData as { photo?: boolean }).photo = true;
+  if (typeof document === 'undefined' || !t.image) return t; const pick = imgs[Math.abs(k) % imgs.length];
+  loadImg(pick).then((im) => { if (!im) return; const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d', { willReadFrequently: true })!;
+    if (turn) { g.translate(S / 2, S / 2); g.rotate(Math.PI / 2); g.drawImage(im, -S / 2, -S / 2, S, S); g.setTransform(1, 0, 0, 1, 0, 0); } else g.drawImage(im, 0, 0, S, S);
+    tintTo(g, S, c, 0.12, turn ? undefined : im); swapIn(t, cv); });
+  return t;
+}
+/** telhado de tabuinhas: fiadas desencontradas cortadas da madeira do Herik, cada tabuinha com o seu veio e o seu tom, sombra na beira de baixo */
+function photoShingle(t: THREE.Texture, c: number) {
+  if ((t.userData as { photo?: boolean }).photo) return t; (t.userData as { photo?: boolean }).photo = true; if (typeof document === 'undefined' || !t.image) return t;
+  loadImg(Math.abs(c) % 2 ? 'assoalho_madeira_01' : 'assoalho_madeira_02').then((im) => { if (!im) return; const S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S; const g = cv.getContext('2d', { willReadFrequently: true })!;
+    const ROWS = 8, COLS = 5, rh = S / ROWS, cw = S / COLS; let seed = (c % 9973) + 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    for (let y = 0; y < ROWS; y++) for (let x = -1; x <= COLS; x++) { const x0 = x * cw + (y % 2) * cw / 2, y0 = y * rh, sx = rnd() * (im.width - 70), sy = rnd() * (im.height - 110), lift = rnd() * 4;
+      for (const wrap of [0, S, -S]) { const X = x0 + wrap; if (X > S || X + cw < 0) continue;
+        g.save(); g.beginPath(); g.rect(X + 1, y0, cw - 2, rh); g.clip();
+        /* o veio corre de cima para baixo: pedaço da foto deitado */ g.translate(X + cw / 2, y0 + rh / 2); g.rotate(Math.PI / 2); g.drawImage(im, sx, sy, 110, 70, -rh / 2 - 4, -cw / 2 - 2, rh + 8, cw + 4); g.setTransform(1, 0, 0, 1, 0, 0);
+        g.fillStyle = `rgba(${rnd() < 0.5 ? '255,240,215' : '0,0,0'},${(0.04 + rnd() * 0.14).toFixed(3)})`; g.fillRect(X, y0, cw, rh);
+        const sg = g.createLinearGradient(0, y0, 0, y0 + rh); sg.addColorStop(0, 'rgba(0,0,0,.42)'); sg.addColorStop(0.16, 'rgba(0,0,0,.10)'); sg.addColorStop(0.8, 'rgba(0,0,0,0)'); sg.addColorStop(0.93 - lift * 0.01, 'rgba(255,240,210,.10)'); sg.addColorStop(1, 'rgba(0,0,0,.30)'); g.fillStyle = sg; g.fillRect(X, y0, cw, rh);
+        g.restore(); g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(X, y0, 1, rh); } }
+    tintTo(g, S, c, 0.08); swapIn(t, cv); });
+  return t;
+}
+export const plankTex = (c: number) => photoBase(texRaw('pl' + c, 64, (g, s) => { for (let i = 0; i < 8; i++) { g.fillStyle = sh(c, rr(0.75, 1.1)); g.fillRect(i * s / 8, 0, s / 8, s); g.fillStyle = 'rgba(10,6,4,.55)'; g.fillRect(i * s / 8, 0, 1.5, s); } }), ['assoalho_madeira_01', 'assoalho_madeira_02'], c, c, true);
 /** pedra aparelhada */
-export const stoneTex = (c: number) => photoDetail(texRaw('st' + c, 64, (g, s) => { g.fillStyle = sh(c, 0.7); g.fillRect(0, 0, s, s); for (let y = 0; y < 4; y++) { let x = -rr(0, 10); while (x < s) { const w = rr(12, 22); g.fillStyle = sh(c, rr(0.8, 1.2)); g.fillRect(x + 1, y * 16 + 1, w - 2, 14); x += w; } } }), ['laje_pedra_01', 'laje_pedra_02'], c, 0.55);
+export const stoneTex = (c: number) => photoBase(texRaw('st' + c, 64, (g, s) => { g.fillStyle = sh(c, 0.7); g.fillRect(0, 0, s, s); for (let y = 0; y < 4; y++) { let x = -rr(0, 10); while (x < s) { const w = rr(12, 22); g.fillStyle = sh(c, rr(0.8, 1.2)); g.fillRect(x + 1, y * 16 + 1, w - 2, 14); x += w; } } }), ['laje_pedra_01', 'laje_pedra_02'], c, c);
 /** 08/11 tijolo assentado (casas dos anões, Erling: "temos assets de tijolo e madeira para as casas do povo anão"): fiadas desencontradas, junta clara, tijolo com variação de cor; o detalhe de foto da laje por cima */
 export const brickTex = (c: number) => photoDetail(texRaw('bk' + c, 64, (g, s) => { g.fillStyle = sh(c, 0.55); g.fillRect(0, 0, s, s); const bh = 8, bw = 16; for (let y = 0; y < s / bh; y++) { const off = (y % 2) * (bw / 2); for (let x = -1; x < s / bw + 1; x++) { g.fillStyle = sh(c, rr(0.82, 1.18)); g.fillRect(x * bw + off + 1, y * bh + 1, bw - 2, bh - 2); if (Math.random() < 0.2) { g.fillStyle = 'rgba(30,14,8,.35)'; g.fillRect(x * bw + off + rr(2, 10), y * bh + rr(1, 5), rr(2, 5), 1.5); } } } }), ['laje_pedra_02', 'laje_pedra_01'], c, 0.4, 2);
 /** reboco com enxaimel */
 export const plasterTex = (c: number) => tex('pa' + c, 64, (g, s) => { g.fillStyle = sh(c, 1); g.fillRect(0, 0, s, s); for (let i = 0; i < 60; i++) { g.fillStyle = sh(c, rr(0.85, 1.05)); g.fillRect(rr(0, s), rr(0, s), rr(2, 6), rr(2, 5)); } g.fillStyle = '#3a2a1c'; g.fillRect(0, 0, s, 5); g.fillRect(0, s - 5, s, 5); g.fillRect(0, 0, 5, s); g.fillRect(s - 5, 0, 5, s); g.fillRect(s / 2 - 2, 0, 4, s); });
 /** telhas / sapê */
-export const shingleTex = (c: number) => tex('sh' + c, 64, (g, s) => { for (let y = 0; y < 8; y++) for (let x = -1; x < 6; x++) { g.fillStyle = sh(c, rr(0.75, 1.15)); g.fillRect(x * s / 5 + (y % 2) * s / 10, y * s / 8, s / 5 - 1, s / 8 - 1); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x * s / 5 + (y % 2) * s / 10, y * s / 8 + s / 8 - 2, s / 5, 2); } });
+export const shingleTex = (c: number) => photoShingle(texRaw('sh' + c, 64, (g, s) => { for (let y = 0; y < 8; y++) for (let x = -1; x < 6; x++) { g.fillStyle = sh(c, rr(0.75, 1.15)); g.fillRect(x * s / 5 + (y % 2) * s / 10, y * s / 8, s / 5 - 1, s / 8 - 1); g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(x * s / 5 + (y % 2) * s / 10, y * s / 8 + s / 8 - 2, s / 5, 2); } }), c);
 export const woodTex = (c: number) => tex('wd' + c, 32, (g, s) => { g.fillStyle = sh(c, 1); g.fillRect(0, 0, s, s); for (let i = 0; i < 14; i++) { g.fillStyle = sh(c, rr(0.7, 1.2)); g.fillRect(0, rr(0, s), s, 1); } });
 
 export function scaleUV(geo: THREE.BufferGeometry, su: number, sv: number) {

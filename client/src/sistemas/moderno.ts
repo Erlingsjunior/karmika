@@ -30,7 +30,8 @@ function toPhys(m: THREE.Material, aniso: number): THREE.Material {
   /* metal brilhante (armas, armaduras com emissivo de raridade) reflete um pouco mais */
   if (tm.emissive && tm.emissive.getHex() !== 0 && !tm.map) { s.roughness = 0.45; s.metalness = 0.35; }
   s.userData = { ...m.userData, phys: true }; smoothTex(s.map, aniso); smoothTex(s.emissiveMap, aniso);
-  if (m.onBeforeCompile && m.onBeforeCompile.toString().includes('uCut')) cutoutify(s);
+  /* 11/11 (Erling: "se escondeu atrás da casa e não vejo"): o recorte da aura era reconhecido lendo o texto da função, e só achava quando o recorte era a ÚLTIMA camada do material; telhado e parede com outra camada por cima perdiam o recorte no Moderno. Agora vale a marca */
+  if (m.userData.cutOn || (m.onBeforeCompile && m.onBeforeCompile.toString().includes('uCut'))) cutoutify(s);
   p = s; CONV.set(m, p); BACK.set(p, m); return p;
 }
 

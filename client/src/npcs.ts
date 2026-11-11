@@ -3,6 +3,8 @@ import { createCharacter, type Hero3D, type Kind } from './characters';
 import { BARKS, roleTag, FAMA, GOSSIP, GOSSIP_DEED, GUARD_CRY } from './barks';
 import { attachSkin, type SkinDef } from './skin3d';
 import { WAGON_BLOCK } from './caravanas';
+/** o ponto (metros) cai dentro da caixa de alguma carroça, com folga? */
+function inWag(x: number, z: number, pad: number): boolean { for (const b of WAGON_BLOCK) { const dx = x - b.x, dz = z - b.z; if (dx * dx + dz * dz > 64) continue; const sn = Math.sin(b.yaw), cs = Math.cos(b.yaw), lx = dx * cs - dz * sn, lz = dx * sn + dz * cs - b.zc; if (Math.abs(lx) < b.hw + pad && Math.abs(lz) < b.hl + pad) return true; } return false; }
 
 export interface NpcDef { /** 10/11: sentado (banco/cadeira) olhando para `yaw`; bebe de vez em quando. Não sai do lugar */ seat?: { yaw: number; h: number }; /** 09/11: altura acima do chão (os soldados em cima da plataforma do portão) */ yOff?: number; /** 09/11: fica onde foi posto (ex.: a Inês em cima da ponte; o chão do tabuleiro não conta como andável para o NPC) */ fixed?: boolean; /** 08/11: sexo (escolhe o modelo de arte); sem ele, pelo nome */ sex?: 'm' | 'f'; /** 08/11: NPC que vive dentro de um interior (ex.: 'hall' = o Grande Salão); x/z já no espaço do interior montado (IX+…) */ inside?: string; name: string; role: string; kind: Kind; /** aldeão comum ou elfo (modelo sem armadura) */ civil?: 'human' | 'elf'; x: number; z: number; radius: number; tint: number; scale: number; lines: string[]; /** rota (metros): o NPC anda de um extremo ao outro e volta */ route?: { x: number; z: number }[]; /** onde começa na rota (índice) e passo (m/s): a patrulha anda em coluna e mais rápido que o mercador */ ri0?: number; pace?: number; /** só à noite (some de dia) */ night?: boolean }
 interface Npc { built: boolean; lodT?: number; /** 08/11: o modelo de arte vestido (skin3d) e o seu tique */ skin?: 0 | 1 | 2; skinTick?: (() => void) | null; def: NpcDef; hero: Hero3D; pos: THREE.Vector3; yaw: number; target: THREE.Vector2 | null; wait: number; el: HTMLElement; line: number; lineT: number; spd: number; ri: number; rdir: number; bark?: string; barkT?: number }
@@ -154,18 +156,20 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
       else if (d.route && dH >= 4.5) { // caravana: segue a estrada de um extremo ao outro
         const r0 = d.route; const tg = r0[n.ri]; const dx = tg.x - n.pos.x, dz = tg.z - n.pos.z, l = Math.hypot(dx, dz);
         if (l < 0.6) { n.ri += n.rdir; if (n.ri >= r0.length || n.ri < 0) { n.rdir *= -1; n.ri += n.rdir * 2; n.wait = 6; } }
-        else if (n.wait > 0) n.wait -= dt; else { const pace = d.pace ?? 1.5, sp = pace * dt; n.pos.x += dx / l * sp; n.pos.z += dz / l * sp; mps = pace; n.yaw = Math.atan2(dx, dz); head = n.yaw; }
+        else if (n.wait > 0) n.wait -= dt; else if (inWag(n.pos.x + dx / l * 0.9, n.pos.z + dz / l * 0.9, 0.6) && !inWag(n.pos.x, n.pos.z, 0.6)) n.wait = 1.2; /* patrulha: carroça à frente, espera ela passar */ else { const pace = d.pace ?? 1.5, sp = pace * dt; n.pos.x += dx / l * sp; n.pos.z += dz / l * sp; mps = pace; n.yaw = Math.atan2(dx, dz); head = n.yaw; }
       } else if (dH < 4.5) { // olha para o herói
         n.target = null; const w = Math.atan2(heroPos.x - n.pos.x, heroPos.z - n.pos.z); let df = w - n.yaw; while (df > Math.PI) df -= 6.283; while (df < -Math.PI) df += 6.283; n.yaw += df * Math.min(1, dt * 5); head = n.yaw;
       } else if (n.target) {
         const dx = n.target.x - n.pos.x, dz = n.target.y - n.pos.z, l = Math.hypot(dx, dz);
         if (l < 0.3) { n.target = null; n.wait = 2 + Math.random() * 5; } else {
           const sp = 1.2 * dt, nx = n.pos.x + dx / l * sp, nz = n.pos.z + dz / l * sp;
-          if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; mps = 1.2; n.yaw = Math.atan2(dx, dz); head = n.yaw; } else n.target = null;
+          /* 11/11 (Erling: "Garrick fica bugado tentando atravessar a carroça e nunca para"): carroça no caminho = espera ao lado dela, parado, em vez de empurrar */
+          if (inWag(nx, nz, 0.75) && !inWag(n.pos.x, n.pos.z, 0.75)) { n.target = null; n.wait = 2 + Math.random() * 3; }
+          else if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; mps = 1.2; n.yaw = Math.atan2(dx, dz); head = n.yaw; } else n.target = null;
         }
       } else {
         n.wait -= dt;
-        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (walk(n, tx, tz) && !npcs.some((o) => o !== n && o.hero.root.visible && Math.hypot(o.pos.x - tx, o.pos.z - tz) < 1.2)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
+        if (n.wait <= 0) { const a = Math.random() * 6.283, rr = Math.random() * d.radius; const tx = d.x + Math.cos(a) * rr, tz = d.z + Math.sin(a) * rr; if (walk(n, tx, tz) && !inWag(tx, tz, 1.2) && !inWag((tx + n.pos.x) / 2, (tz + n.pos.z) / 2, 0.9) && !npcs.some((o) => o !== n && o.hero.root.visible && Math.hypot(o.pos.x - tx, o.pos.z - tz) < 1.2)) n.target = new THREE.Vector2(tx, tz); else n.wait = 1; }
       }
       /* 09/11 (Erling: "a carroça atravessando ela"): carroça é corpo. Se uma passa por cima do NPC, ele dá um passo para o lado (para fora da caixa) */
       if (!d.inside && WAGON_BLOCK.length) for (const b of WAGON_BLOCK) { const dx = n.pos.x - b.x, dz = n.pos.z - b.z; if (dx * dx + dz * dz > 64) continue; const sn = Math.sin(b.yaw), cs = Math.cos(b.yaw), lx = dx * cs - dz * sn, lz = dx * sn + dz * cs - b.zc;

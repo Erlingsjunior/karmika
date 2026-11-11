@@ -39,7 +39,9 @@ const mmBase = document.createElement('canvas'); mmBase.width = mmBase.height = 
     else { c = t === 'road' ? [160, 134, 94] : t === 'plaza' ? [184, 166, 128] : BCR[K.city.biome[y]?.[x] ?? 'meadow'] ?? BCR.meadow; if (t === 'tree') c = c.map((v) => v * 0.72); sh = Math.max(0.6, Math.min(1.45, 1 + (hAt(x - 2, y - 2) - hAt(x + 2, y + 2)) * 0.32)); }
     const o = (y * MMS + x) * 4; D[o] = Math.min(255, c[0] * sh); D[o + 1] = Math.min(255, c[1] * sh); D[o + 2] = Math.min(255, c[2] * sh); D[o + 3] = 255; }
   g.putImageData(id, 0, 0);
-  for (const p of K.city.props) { if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church' || p.kind === 'stall' || p.kind === 'tent') { g.fillStyle = p.kind === 'temple' || p.kind === 'church' ? '#a898c8' : '#7a4a32'; g.fillRect(p.gx, p.gy, p.w, p.h); } }
+  for (const p of K.city.props) { if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church' || p.kind === 'stall' || p.kind === 'tent') { g.fillStyle = p.kind === 'temple' || p.kind === 'church' ? '#a898c8' : '#7a4a32'; g.fillRect(p.gx, p.gy, p.w, p.h); }
+    /* 11/11 (Erling: "os muros das cidades não aparecem no mapa nem no minimapa"): paliçada (madeira escura), muralha de pedra (cinza) e portão (ouro); muretas de roça ficam de fora (poluem) */
+    else if (p.kind === 'palisade' || p.kind === 'rwall' || p.kind === 'gatehouse') { g.fillStyle = p.kind === 'palisade' ? '#3a2616' : p.kind === 'rwall' ? '#5e5e66' : '#d9a24f'; g.fillRect(p.gx, p.gy, p.w, p.h); } }
 }
 const BNAME: Record<string, string> = { meadow: 'Campos', forest: 'Floresta', swamp: 'Pântano', snow: 'Terras Geladas', ruins: 'Terras Antigas', rock: 'Garganta de Pedra', volcanic: 'Montanha Negra', enchanted: 'Floresta Encantada', blight: 'Terras Malditas', jungle: 'Selva Licantropa', coast: 'Costa do Vapor' };
 const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getContext('2d')!;
