@@ -436,7 +436,7 @@ main { overflow-x: clip; }
 .pdet__tl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 18px; align-items: center; }
 .pdet__tree { grid-template-columns: 1fr !important; }
 .cst { width: 100%; max-height: 520px; display: block; }
-.cst__e line { stroke-width: .07; opacity: .45; }
+.cst__e line { stroke-width: .035; opacity: .5; }
 .tn { opacity: .85; } .tn--n { filter: drop-shadow(0 0 .25px #fff); } .tn--k, .tn--o { animation: tw 2.6s ease-in-out infinite; }
 @keyframes tw { 50% { opacity: .45; } }
 .cst text { font: 700 .75px var(--serif); text-anchor: middle; paint-order: stroke; stroke: #0b0a0d; stroke-width: .18px; }
