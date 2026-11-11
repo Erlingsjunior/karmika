@@ -1,5 +1,5 @@
 import { runeFxOf, type ROp } from './runas-classes';
-import { KIT_BAL, d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
+import { monMult, grupoPremio, KIT_BAL, d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
@@ -392,7 +392,7 @@ export function createGameplay(d: GameplayDeps) {
       onYield(e, (kill) => { (e as Enemy & { kneel?: boolean }).kneel = false; if (!e.alive) return; if (kill) { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 0; killEnemy(e); } else { e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 2.5; e.respawn = 1800; /* poupado: vai embora de verdade (não volta em 4 min como se nada tivesse acontecido) */ for (let i = 0; i < 30; i++) pfx(e.pos.x + rnd(-0.6, 0.6), e.pos.y + rnd(0.2, 2), e.pos.z + rnd(-0.6, 0.6), { vx: rnd(-1, 1), vy: rnd(1, 3), vz: rnd(-1, 1), life: 1.2, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0xffe08a, a: 0.9, drag: 1 }); } });
       return;
     }
-    const pn = Math.max(1, Math.min(6, partyN())), pk = 1 + 0.15 * (pn - 1); // grupo perto: +15% de XP, de ouro e de chance de equipamento por companheiro (o saque de cada um é só dele: cai na máquina de quem o ganhou, e ninguém mais o vê)
+    const pn = Math.max(1, Math.min(8, partyN())), pk = grupoPremio(pn).xp; // grupo perto: +15% de XP, de ouro e de chance de equipamento por companheiro (o saque de cada um é só dele: cai na máquina de quem o ganhou, e ninguém mais o vê)
     if (shared) { logMsg(`☠ ${e.def.name} derrotado pelo grupo`, '#ff9a8a'); } else {
     if ((e.burn ?? 0) > 0 && st.sp.has('r_surtr')) explode(e.pos.x, e.pos.z, e.pos.y, 2.6, 1.2, 0xff6a1a, 0, e.pos.clone()); // Brasa de Surtr
     if ((e.burn ?? 0) > 0) { st.mp = Math.min(st.mpMax, st.mp + 10); logMsg(`🔥 Brasas: +10 de ${st.res.name}`, '#ffb060'); }
@@ -403,7 +403,7 @@ export function createGameplay(d: GameplayDeps) {
     const farmed = !shared && isElite(e) && !(e as Enemy & { tag?: string }).tag?.startsWith('dg') && eliteFarmed(e);
     if (farmed) logMsg(`⚖ ${e.def.name} já caiu duas vezes pela sua mão há pouco: desta vez não deixa espólio e ensina pouco. Procure outra caça.`, '#b9c6e0');
     st.kills++; if (st.res.style === 'mananegra') { st.mp = Math.min(st.mpMax, st.mp + 12); } /* a morte alimenta o pacto */ { // caça dá pouco XP (o que ela dá é equipamento); bicho 5+ níveis abaixo não ensina nada (cinza)
-      const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 5) : Math.max(0, 1 + dl * 0.2);
+      const dl = (e.def.lvl ?? 1) - st.lvl, f = dl >= 0 ? 1 + 0.12 * Math.min(dl, 8) : Math.max(0, 1 + dl * 0.2);
       const kx = Math.round(e.def.xp * 0.3 * f * pk * (farmed ? 0.15 : 1)); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
     if (farmed) { if (!shared) { hitstop = Math.max(hitstop, performance.now() + 90); } return; } /* elite repetido: nada de ouro, poção, material, peça, runa ou baú */
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45 * pk); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
@@ -625,9 +625,9 @@ export function createGameplay(d: GameplayDeps) {
       poiseHit(e, dmg * (mul > 1.5 || skill === 'slam' || skill === 'bash' ? 2.2 : 1) * (crit ? 1.5 : 1) * (1 + gb.guard));
       if (rs >= 1.25 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'FRAQUEZA', false, '#ffb060'); else if (rs <= 0.6 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'RESISTE', false, '#a8b0c0');
     }
-    { const dl = (e.def.lvl ?? 1) - st.lvl; if (dl > 2) { /* acima de você: golpes escorregam e erram */ dmg *= Math.max(0.65, 1 - 0.035 * dl);
-        /* 07/11: o "ERROU" de bicho bem acima do seu nível agora está na CD do d20 */ } }
-    { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1 && !e.def.passive) dmg /= 1 + 0.5 * (pn - 1); } /* GRUPO (26/10): bicho que enfrenta um grupo aguenta mais — cada companheiro perto vale +50% de vida (o golpe de cada um entra dividido, e assim fica igual nas duas máquinas) */
+    /* 11/11: a vida a mais do bicho (diferença de nível × grupo) entra dividindo o golpe de cada um: assim fica igual nas máquinas de todos */
+    { const dl = (e.def.lvl ?? 1) - st.lvl, pn = e.def.passive ? 1 : partyN(); dmg /= monMult(dl, pn).hp; }
+    /* (a regra antiga do grupo, +50% de vida por companheiro até 6, virou a tabela de cima) */ /* GRUPO (26/10): bicho que enfrenta um grupo aguenta mais — cada companheiro perto vale +50% de vida (o golpe de cada um entra dividido, e assim fica igual nas duas máquinas) */
     dmg = dmg <= 0 ? 0 : Math.max(1, Math.round(dmg));
     if (marked) st.hp = Math.min(st.hpMax, st.hp + dmg * 0.25);
     if (dmg > 0 && e.alive) runeHit(e, dmg, RF, crit);
@@ -1780,13 +1780,13 @@ export function createGameplay(d: GameplayDeps) {
            +5 níveis (caveira) ≈ ×1,7; +8 ≈ ×2,4; teto ×3. Monstro abaixo de você machuca menos (até −40%). Não é bônus de situação: fica fora do balde da Regra 01. */
         let eL = 0; if (from) { let bd = 2.6; for (const o of enemies.list) { if (!o.alive || !o.active) continue; const dd = Math.hypot(o.pos.x - from.x, o.pos.z - from.z); if (dd < bd) { bd = dd; eL = o.def.lvl ?? 0; } } }
         if (eL) { const dl = eL - st.lvl; n *= dl > 0 ? Math.min(3, 1 + 0.09 * dl + 0.01 * dl * dl) : Math.max(0.6, 1 + 0.04 * dl); } }
-      { const pn = Math.max(1, Math.min(6, partyN())); if (pn > 1) n *= 1 + 0.12 * (pn - 1); } /* GRUPO: e bate mais forte (+12% por companheiro perto) */
       n = Math.max(1, Math.round(n * st.takenMul * (d.takenK?.() ?? 1))); /* Instinto ligado: a defesa cai (a atenção está em outro lugar) */ /* Lua de Sangue / Aurora: o karma pesa no quanto o golpe dói */
       if (gad.shield > Date.now() && gad.shieldReady) { gad.shieldReady = false; gad.shieldT = gad.shieldCd; if (gv.dome) gv.dome.flash = 0.9; logMsg('🛡 Clanc! O Escudo Automatizado segurou o golpe inteiro.', '#9ad7ff'); for (let q = 0; q < 14; q++) { const hp2 = d.getHero().root.position; pfx(hp2.x + rnd(-0.6, 0.6), hp2.y + rnd(0.4, 1.8), hp2.z + rnd(-0.6, 0.6), { vy: rnd(0.2, 1), life: 0.5, s0: 0.4, s1: 0.05, c0: 0xffffff, c1: 0x9ad7ff, a: 0.9 }); } return; }
       if (valkT > 0) { valkT = 0; valkyrieCounter(n, from); return; }
       /* 06/11: runas — intocável, imune a projéteis, inimigo que erra (tossindo, cego) */
       if (now < rs.phaseUntil) { dmgText(heroPos.clone().setY(2.5), 'INTOCÁVEL', false, '#c8a0ff'); return; }
       const atk = from ? enemies.nearest(from, 1.6) : null;
+      { const dlA = atk ? (atk.def.lvl ?? st.lvl) - st.lvl : 0; n = Math.max(1, Math.round(n * monMult(dlA, partyN()).dmg)); } /* 11/11: tabelas de nível e de grupo (antes: só +12% por companheiro) */
       if (from && now < rs.projUntil && Math.hypot(from.x - heroPos.x, from.z - heroPos.z) > 4) { dmgText(heroPos.clone().setY(2.5), 'IMUNE', false, '#c8a0ff'); return; }
       if (atk && (missUntil.get(atk) ?? 0) > now && Math.random() < 0.25) { dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), 'ERROU', false, '#c8d8a0'); return; }
       if (aegis && aegis.hp > 0) { const ab = Math.min(n, aegis.hp); aegis.hp -= ab; n -= ab; aegis.u.hit.value = 1; d.audio.block(); dmgText(heroPos.clone().setY(heroPos.y + 2.6), `✦ ${ab}`, false, '#ffe08a');

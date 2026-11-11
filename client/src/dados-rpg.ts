@@ -34,7 +34,17 @@ export function monRoll(avg: number, lvl: number, name: string) { const dice = m
 /* ---------- acerto contra defesa ---------- */
 export const heroAcc = (L: number, dex: number) => 8 + L / 2.5 + dex / 12;
 /** a Defesa (CD) do monstro contra o herói; bicho bem acima do seu nível escorrega mais (o "ERROU" antigo) */
-export const monCD = (mL: number, agile: boolean, dl: number) => 10 + mL / 2.5 + (agile ? 2 : 0) + Math.max(0, dl - 2) * 0.6;
+/* 11/11 — O EQUILÍBRIO DE PODER (claude/equilibrio-e-grupo-11-11.md, tabelas do Erling):
+   DIFERENÇA DE NÍVEL: até +3 o multiplicador é baixo; de +4 a +8 sobe muito; para baixo trava em ×1.
+   GRUPO (1 a 8): a vida do bicho sobe 0,7 por companheiro, o golpe sobe pouco. O produto dos dois tem teto: ×12 na vida, ×3,5 no golpe. */
+const LVL_HP = [1.35, 1.65, 2.0, 2.5, 3.2], LVL_DMG = [1.30, 1.55, 1.85, 2.2, 2.6], GRP_DMG = [1, 1.10, 1.18, 1.26, 1.33, 1.40, 1.46, 1.52];
+/** quanto o bicho fica mais forte contra ESTE herói: dl = nível dele menos o seu; n = jogadores do grupo por perto */
+export function monMult(dl: number, n: number) { const d = Math.floor(dl), g = Math.max(1, Math.min(8, Math.floor(n)));
+  const hpL = d <= 0 ? 1 : d <= 3 ? 1 + 0.04 * d : LVL_HP[Math.min(8, d) - 4], dmL = d <= 0 ? 1 : d <= 3 ? 1 + 0.033 * d : LVL_DMG[Math.min(8, d) - 4];
+  return { hp: Math.min(12, hpL * (1 + 0.7 * (g - 1))), dmg: Math.min(3.5, dmL * GRP_DMG[g - 1]) }; }
+/** prêmio do grupo, para cada um: XP e ouro +15% por companheiro, chance de item +10% (até 8) */
+export const grupoPremio = (n: number) => { const g = Math.max(1, Math.min(8, Math.floor(n))); return { xp: 1 + 0.15 * (g - 1), item: 1 + 0.1 * (g - 1) }; };
+export const monCD = (mL: number, agile: boolean, dl: number) => 10 + mL / 2.5 + (agile ? 2 : 0) + (dl >= 4 ? Math.min(5, dl - 3) : 0);
 export const monAcc = (mL: number) => 8 + mL / 2.5;
 export const heroCD = (L: number, dex: number, cloak: boolean) => 10 + L / 2.5 + dex / 4 + (cloak ? 2 : 0);
 /** o número mínimo no d20 para acertar (o 1 sempre erra, o 20 sempre acerta) */

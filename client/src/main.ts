@@ -176,6 +176,10 @@ import { createOficios } from './sistemas/oficios';
 import { createReliquias } from './sistemas/reliquias';
 import { createCinemaVistas } from './sistemas/cinema-vistas';
 import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
+import { createGrupoMagias } from './sistemas/grupo-magias';
+import { createShaderGate } from './sistemas/compila-sem-travar';
+import { setTravasExtra } from './sistemas/travas';
+import { branchesOf } from './talentos';
 import { createPortalAlma } from './sistemas/portal-alma';
 import { createLarMorte, type Home } from './sistemas/lar-e-morte';
 import { createLetreiro } from './sistemas/letreiro-eventos';
@@ -606,6 +610,12 @@ var arvoreSys: ReturnType<typeof createArvoreClasse>; /* criado aqui, na ordem d
 function mk_arvoreSys() { return createArvoreClasse({ get game() { return game; }, get profile() { return profile; }, get quests() { return quests; }, get state() { return state; }, get kindOf() { return kindOf; }, get myPath() { return myPath; }, get addKarma() { return addKarma; }, get city() { return city; }, get npcSys() { return npcSys; }, get inv() { return inv; }, get netRef() { return netRef; }, get stationNear() { return stationNear; }, get hero() { return hero; }, get particles() { return particles; }, get audio() { return audio; }, get craftJob() { return craftJob; } }); }
 arvoreSys ??= mk_arvoreSys();
 const { tree, talents, talentKit, profs, mail, kitRace, SHOP_BY_NAME, SHADE_TOWNS } = arvoreSys;
+/* 11/11: as habilidades de grupo em jogo (sistemas/grupo-magias.ts): aprender pelo caminho de talento, lançar pela barra de grupo, somar no grupo */
+const grupoSys = createGrupoMagias({ kit: () => talentKit(), inBranch: (bi) => talents.inBranch(bi), branchName: (bi) => branchesOf(talentKit())[bi]?.name ?? '', st: () => game.st,
+  set: (v) => game.grupoSet(v), shield: (v) => game.grupoShield(v), log: (t, c) => game.logMsg(t, c), float: (t, c) => game.dmgText(hero.root.position.clone().setY(hero.root.position.y + 2.8), t, false, c),
+  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position });
+setTravasExtra({ panel: () => grupoSys.panelHtml(), skills: () => grupoSys.forLocks(), click: (t, again) => grupoSys.panelClick(t, again) });
+(window as unknown as { __grupo?: unknown }).__grupo = grupoSys; /* teste */
 function applyKitAll(...a: Parameters<ReturnType<typeof createArvoreClasse>['applyKitAll']>): ReturnType<ReturnType<typeof createArvoreClasse>['applyKitAll']> { return (arvoreSys ??= mk_arvoreSys()).applyKitAll(...a); }
 function isWarrior(...a: Parameters<ReturnType<typeof createArvoreClasse>['isWarrior']>): ReturnType<ReturnType<typeof createArvoreClasse>['isWarrior']> { return (arvoreSys ??= mk_arvoreSys()).isWarrior(...a); }
 function walksPath(...a: Parameters<ReturnType<typeof createArvoreClasse>['walksPath']>): ReturnType<ReturnType<typeof createArvoreClasse>['walksPath']> { return (arvoreSys ??= mk_arvoreSys()).walksPath(...a); }
@@ -1757,6 +1767,8 @@ function updateGuide(...a: Parameters<ReturnType<typeof createGuiaMapa>['updateG
 /* ---------- pós-processamento ---------- */
 const composer = new EffectComposer(renderer);
 const dual = new DualRenderPass(scene, camera, 2, 2, WORLD_RATIO);
+/* 11/11: no WebGL, material novo compila em paralelo e aparece quando fica pronto, em vez de parar o quadro (sistemas/compila-sem-travar.ts) */
+const shaderGate = gpuImpl ? null : createShaderGate(renderer, scene, camera, () => dual.rt); (window as unknown as { __gate?: unknown }).__gate = shaderGate; /* teste */
 composer.addPass(dual);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93);
 composer.addPass(bloom);
@@ -2738,7 +2750,7 @@ function frame() {
   if (socialSys.bootFrames < 12) socialSys.bootFrames++;
   else if (!bootGate.done) { const nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, now = performance.now(); if (!bootGate.t0) bootGate.t0 = now;
     if (nT !== bootGate.nT || nG !== bootGate.nG) { bootGate.nT = nT; bootGate.nG = nG; bootGate.still = now; }
-    if ((photosReady() && now - bootGate.still > 1200) || now - bootGate.t0 > 20000) { bootGate.done = true; hideBoot(); } }
+    if ((photosReady() && now - bootGate.still > 1200) || now - bootGate.t0 > 20000) { bootGate.done = true; hideBoot(); shaderGate?.enable(); } }
   gpuPoll(); const c0 = performance.now();
   try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (gpuImpl) gpuFail(m); else if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   perf.cpuS += performance.now() - c0; perf.n++;
@@ -2772,7 +2784,7 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 /* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
@@ -3155,7 +3167,7 @@ function frameBody() {
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
-  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } autoQFrame(); gpuBegin(); composer.render(); gpuEnd(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
+  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } autoQFrame(); gpuBegin(); composer.render(); gpuEnd(); shaderGate?.flush(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
   pm('desenho');
   dollTick(rawDt);
   pm('boneco');
