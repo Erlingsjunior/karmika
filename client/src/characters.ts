@@ -365,6 +365,10 @@ function armIK(sh: THREE.Group, el: THREE.Group, target: THREE.Vector3, a: numbe
 
 /** sombras projetadas pelos personagens (caro: dobra os draw calls de cada um); desligado por padrão, a sombra-mancha no pé fica */
 export const charShadow = { on: false };
+const footShadow = { geo: new THREE.PlaneGeometry(0.9, 0.9), m: null as THREE.MeshBasicMaterial | null,
+  mat(): THREE.MeshBasicMaterial { if (this.m) return this.m; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!, gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(0,0,0,.42)'); gr.addColorStop(0.45, 'rgba(0,0,0,.24)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return (this.m = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, fog: false })); } };
 export interface CharOpts { hair?: number; skin?: number; /** NPC: cabelo/barba sem física, fundidos no osso (menos draw calls) */ static?: boolean; /** aldeão comum (sem armas/armadura) ou elfo (orelhas pontudas, túnica verde) */ civil?: 'human' | 'elf'; /** cor da túnica/capa do civil */ cloth?: number; /** penteado (nórdica/humano/elfo) */ hairStyle?: 'braid' | 'long' | 'short' | 'bald'; /** barba: 0 nenhuma, 1 curta, 2 longa */ beard?: number; /** orelhas pontudas (elfo jogável) */ ears?: boolean }
 export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   const S = { ...SPECS[kind], skin: opts.skin ?? SPECS[kind].skin };
@@ -809,8 +813,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   if (!charShadow.on) root.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = false; });
 
   /* sombra e silhueta atrás de obstáculos */
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 14), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.4, depthWrite: false }));
-  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03; root.add(shadow);
+  /* 11/11 (Erling: "o que são essas névoas nos jogadores e NPCs? fica feio na tela"): era um disco preto de 1 m, borda dura, 40% — parecia uma poça.
+     Agora é uma sombra de pé: menor, esfumada até sumir na borda, uma só malha e um só material para todos; some quando a sombra de verdade do personagem está ligada. */
+  const shadow = new THREE.Mesh(footShadow.geo, footShadow.mat()); shadow.userData.blob = true; shadow.visible = !charShadow.on;
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03; shadow.renderOrder = 1; root.add(shadow);
   /* luz de aura só no herói: cada PointLight a mais entra no shader de TODO o mundo (NPCs não ganham luz própria) */
   const aura = opts.static ? null : new THREE.PointLight(0xffe9ad, 0, 9, 2); if (aura) { aura.position.set(0, 1.2, 0); root.add(aura); }
   const sil = new THREE.MeshBasicMaterial({ color: 0xb7a6ff, transparent: true, opacity: 0.28, depthFunc: THREE.GreaterDepth, depthWrite: false });

@@ -20,7 +20,7 @@ function pick(): Lang {
   const ok = (v: string | null | undefined): Lang | null => { const s = (v || '').slice(0, 2).toLowerCase(); return LANGS.some((l) => l.id === s) ? (s as Lang) : null; };
   try { const q = ok(new URLSearchParams(location.search).get('lang')); if (q) { try { localStorage.setItem('karmika.lang', q); } catch { /* */ } return q; } } catch { /* */ }
   try { const s = ok(localStorage.getItem('karmika.lang')); if (s) return s; } catch { /* */ }
-  try { return ok(navigator.language) ?? 'pt'; } catch { return 'pt'; }
+  /* 11/11: enquanto só parte do jogo está traduzida, quem não escolheu língua joga em português (o navegador em inglês deixava a tela metade em cada língua) */ return 'pt';
 }
 export const LANG: Lang = pick();
 declare const __BUILD_ID__: string;

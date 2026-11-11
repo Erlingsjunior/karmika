@@ -299,7 +299,7 @@ const BLURB: Record<string, string> = {
 
 /* ================= a lógica ================= */
 const WIN = 35 * 60, LIVE = 15 * 60; // a cada 35 min uma janela; o evento vive 15 e o mundo respira 20 (não fica acontecendo o tempo todo)
-const nightAt = (ms: number) => { const h = (((ms % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h < 19 ? (h - 17) / 2 : 1 - (h - 5) / 2; };
+const nightAt = (ms: number) => { const h = (((ms % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h >= 17 ? (h - 17) / 2 : 1 - (h - 5) / 2; };
 const hash = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 /** os acontecimentos que mudam o mundo inteiro por um tempo.
     Erling, 24/10: "horários marcados fazem jogadores ocupados perderem eventos" — então eles ANDAM: um marco a cada 11h17min

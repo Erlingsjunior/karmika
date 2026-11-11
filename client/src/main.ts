@@ -120,6 +120,7 @@ import { createDialog } from './dialog';
 import { battleCry } from './gritos';
 import { createEspolio } from './sistemas/espolio';
 import { createBuffsPe } from './sistemas/buffs-pe';
+import { startRunasMoldura } from './sistemas/runas-moldura';
 
 
 
@@ -344,7 +345,7 @@ let geoSweepT = 30;
 const fixedL = gpuImpl ? null : createFixedLights(15); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
-scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene);
+scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene); (window as unknown as { __scene: unknown }).__scene = scene;
 
 /* ---------- câmera isométrica (ortográfica) ---------- */
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -80, 160); // isométrica fixa (o Erling preferiu assim)
@@ -1971,7 +1972,7 @@ function castAt(...a: Parameters<ReturnType<typeof createEntrada>['castAt']>): R
 
 /* ---------- ciclo de dia e noite por turnos: 6 turnos de 4 h do jogo (30 min reais cada) → dia de 24 h = 3 h reais; relógio do mundo (igual para todos) ---------- */
 const DAY_REAL_MS = 3 * 3600 * 1000;
-let nightOverride: number | null = null; state.night = (() => { const h = (((Date.now() % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h < 19 ? (h - 17) / 2 : 1 - (h - 5) / 2; })(); // N alterna: natural → noite forçada → dia forçado → natural (teste)
+let nightOverride: number | null = null; state.night = (() => { const h = (((Date.now() % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return nightAt(h); /* 11/11: a conta que ficava aqui errava entre 5h e 7h (dava −5 em vez de 0…1): quem entrava no jogo de madrugada via o mundo estourado de amarelo por um bom tempo */ })(); // N alterna: natural → noite forçada → dia forçado → natural (teste)
 const gameHour = () => (((Date.now() % DAY_REAL_MS) / DAY_REAL_MS) * 24 + 8) % 24;
 const TURNS: [number, string][] = [[6, 'Manhã'], [10, 'Meio-dia'], [14, 'Tarde'], [18, 'Anoitecer'], [22, 'Madrugada'], [2, 'Alvorada']];
 function turnName(h = gameHour()) { for (const [h0, nm] of TURNS) if (h >= h0 && h < h0 + 4) return nm; return 'Alvorada'; }
@@ -2479,20 +2480,20 @@ let interIdx: Map<number, (typeof city.props)[number][]> | null = null, interN =
 function interNear(hx: number, hz: number) { if (!interIdx || interN !== city.props.length) { interIdx = new Map(); interN = city.props.length; for (const p of city.props) { if (!INTER_KINDS.has(p.kind)) continue; const k = ((p.gy + p.h / 2) >> 3) * 4096 + ((p.gx + p.w / 2) >> 3); (interIdx.get(k) ?? interIdx.set(k, []).get(k)!).push(p); } }
   const cx = Math.floor(hx / T) >> 3, cy = Math.floor(hz / T) >> 3, out: (typeof city.props)[number][] = []; for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) { const l = interIdx.get(y * 4096 + x); if (l) for (const p of l) out.push(p); } return out; }
 function findInter(): Inter | null {
-  const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null; const NI = interNear(hx, hz);
+  const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null; const NI = interNear(hx, hz); /* 11/11 (travada de 778 ms aqui, vista no /travadas do Erling): cada trecho que passar de 8 ms ganha nome próprio no registro */ const fi = (k: string) => { if (performance.now() - pmLast > 8) pm('dica E · ' + k); }; fi('índice');
   const add = (d: number, max: number, label: string, act: () => void) => { if (d < max && (!best || d < best.d)) best = { d, label, act }; };
-  { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); }
-  if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); const tl = teleferico().interact(hx, hz); if (tl) add(tl.d - 1, 4.5, tl.label, tl.act); }
-  { const ci = espolio.interact(hx, hz); if (ci) add(ci.d - 0.8, 3.2, ci.label, ci.act); }
-  { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); }
-  { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); }
-  { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); }
+  { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); } fi('caravanas');
+  if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); const tl = teleferico().interact(hx, hz); if (tl) add(tl.d - 1, 4.5, tl.label, tl.act); } fi('navios/teleférico');
+  { const ci = espolio.interact(hx, hz); if (ci) add(ci.d - 0.8, 3.2, ci.label, ci.act); } fi('espólio');
+  { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); } fi('eventos');
+  { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); } fi('segredos');
+  { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); } fi('ormund');
   for (const n of npcSys.npcs) {
     const nm = n.def.name, dN = Math.hypot(n.pos.x - hx, n.pos.z - hz); if (dN > 4) continue; /* 09/11 (revisão de FPS): só os NPCs perto passam pela consulta de missões — antes eram todos do mundo, 10× por segundo (um tranco a cada 0,12 s) */
     if (n.def.night && !n.hero.root.visible) { add(dN + 1, 4, `🌙 ${nm} só recebe à noite. Volte quando escurecer.`, () => game.logMsg(`🌙 Um criado de libré escura: “A senhora ${nm.split(' ').slice(-1)[0]} recebe depois do pôr do sol.”`, '#c98a9a')); continue; }
     const ti = quests.turnins(nm), of = quests.offers(nm);
     add(dN, 3.4, ti.length ? `E — Entregar: ${ti[0].name}` : of.length ? `E — Missão: ${of[0].name}` : `E — Falar com ${nm}`, () => talkTo(n));
-  }
+  } fi('npcs');
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
     for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
@@ -2513,7 +2514,7 @@ function findInter(): Inter | null {
     }
     for (const e of game.enemies.list) { const ec = e as typeof e & { corpse?: number; skinned?: boolean }; if (e.state !== 'dead' || !e.active || !ec.corpse || ec.skinned || !SKIN[e.type]) continue; const dC = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (dC > 3.2) continue;
       const S = SKIN[e.type]!, kn = inv.tool('knife'); add(dC - 0.3, 3.0, !kn ? `${e.def.name} — precisa de uma faca de caça` : kn.tier < (S.tier ?? 1) ? `🔒 ${e.def.name} — só uma faca de prata (★★★★) atravessa esse couro` : `E — Esfolar ${e.def.name} · ${kn.name}`, () => { if (kn && kn.tier >= (S.tier ?? 1)) startWork('skin', e, e.pos.x, e.pos.z); else game.logMsg(!kn ? '🔪 Sem uma faca, a carcaça fica para os corvos.' : '🔪 A lâmina escorrega no couro do lobisomem como em pedra. Só a prata.', '#ff9a8a'); }); }
-    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(fishTarget(hx, hz) ?? wt!); }); }
+    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(fishTarget(hx, hz) ?? wt!); }); } fi('mundo aberto');
   } else if (inside.prop.variant === 5 || inside.prop.variant === 4) add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
   if (dgSys.spirit) add(Math.hypot(hx - dgSys.spirit.x, hz - dgSys.spirit.z) - 0.6, 3.2, 'E — Falar com Irmã Ysolde', talkSpirit);
   if (!inside) for (const p of otherDecor.keys()) { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T), dx = p.gx * T + hd.x, dz = p.gy * T + hd.z + 0.9; add(Math.hypot(hx - dx, hz - dz), 2.2, `E — Visitar a ${p.label ?? 'casa'}`, () => enterHouse(p)); }
@@ -2724,9 +2725,12 @@ const pm = (k: string) => { const n = performance.now(), d = n - pmLast; PM[k] =
 /* 10/11 (Erling: "ainda dá umas travadas do nada, não sei por quê"): caderno das travadas. Todo quadro que demora mais de 70 ms fica anotado
    com a hora, quanto demorou e o que a CPU fazia nele; o que sobra (quadro − CPU) é placa de vídeo, navegador ou coleta de lixo. /travadas no chat mostra. */
 const stalls: string[] = []; let stallPrev = 0, pmCpuLast = 0, pmSecLast: Record<string, number> = {};
-function stallCheck(now: number) { const gap = now - stallPrev; stallPrev = now; if (gap < 70 || gap > 4000 || document.hidden || dynSkip > 0 || !document.hasFocus()) return;
+/* 11/11: o registro de travada diz também o que NASCEU naquele quadro (shader novo, textura nova, malha nova). Travada de "desenho" com
+   shader novo é a placa compilando; com textura nova é imagem subindo para a placa; sem nada novo é outra coisa. */
+let stProg = 0, stTex = 0, stGeo = 0;
+function stallCheck(now: number) { const gap = now - stallPrev; stallPrev = now; const nP = renderer.info.programs?.length ?? 0, nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, born = [nP > stProg ? `+${nP - stProg} shader` : '', nT > stTex ? `+${nT - stTex} textura` : '', nG > stGeo ? `+${nG - stGeo} malha` : ''].filter(Boolean).join(', '); stProg = nP; stTex = nT; stGeo = nG; if (gap < 70 || gap > 4000 || document.hidden || dynSkip > 0 || !document.hasFocus()) return;
   const top = Object.entries(pmSecLast).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
-  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
+  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · ${born ? `nasceu ${born} · ` : ''}pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
 function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; pmCpuLast = t; pmSecLast = PMF; PMF = {}; }
 (window as unknown as { __worst?: () => string }).__worst = () => { const w = pmWorstShown.t > pmWorst.t ? pmWorstShown : pmWorst; return `pior quadro ${w.t.toFixed(1)} ms: ` + Object.entries(w.s).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · '); };
 function pmFlush() { pmWorstShown = pmWorst; pmWorst = { t: 0, s: {} }; const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
@@ -2749,6 +2753,7 @@ game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unk
 let testSlow = 1;
 (window as unknown as { __t?: unknown }).__t = { slow: (k: number) => { testSlow = k; }, cast: (id: string, dx = 0, dz = 3) => { game.st.mp = game.st.mpMax; game.st.stam = game.st.stamMax; const p = heroPosNow(); try { return game.useExtra(id as never, Math.atan2(dx, dz), 0, { x: p.x + dx, z: p.z + dz }); } catch (e) { return 'ERRO ' + String(e).slice(0, 200); } } };
 (window as unknown as { __buff?: unknown }).__buff = () => { game.st.serene = 3; game.st.ambushT = 8; (game.st as unknown as { slowUntil?: number }).slowUntil = performance.now() + 60000; }; /* teste */
+startRunasMoldura();
 const buffsPe = createBuffsPe({ scene, fine, camera, canvas, heroPos: () => hero.root.position, hidden: () => !document.body.classList.contains('ready') || game.st.dead || limiar.active || !!cinemaSys.cine || game.menuOpen, buffs: () => game.buffs(), particles });
 function frameBody() {
   pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
@@ -2780,7 +2785,7 @@ function frameBody() {
      dois selos pequenos no lado direito: ▲ pontos de atributo (abre C) e ✦ pontos de classe, para magias, passivas e talentos (abre K). Somem quando não há ponto. */
   { const ap = game.st.points ?? 0, tp = tree.available(), key = ap + ':' + tp; if (key !== lvlUpKey) { lvlUpKey = key; let el = document.getElementById('lvlup');
       if (!el) { el = document.createElement('div'); el.id = 'lvlup'; el.innerHTML = MV_GRIP('l') + '<div class="lvb"></div>'; document.body.appendChild(el); movable(el, 'lvlup'); /* 10/11 (Erling: "precisa ser movido como tudo na tela") */
-        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:356px;align-items:center;z-index:40;display:flex;flex-direction:row;gap:4px;pointer-events:none}#lvlup .lvb{display:flex;flex-direction:column;gap:8px;align-items:flex-end}#lvlup .mvgrip{pointer-events:auto;position:static;cursor:grab;color:#ffe08a;opacity:.55;font-style:normal;padding:4px 2px}#lvlup .mvgrip:hover{opacity:1}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
+        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:356px;align-items:center;z-index:40;display:flex;flex-direction:row;gap:4px;pointer-events:none}#lvlup .lvb{display:flex;flex-direction:column;gap:8px;align-items:stretch}#lvlup .lvb>*{box-sizing:border-box;width:100%;justify-content:flex-start;text-align:left}#lvlup .mvgrip{pointer-events:auto;position:static;cursor:grab;color:#ffe08a;opacity:.55;font-style:normal;padding:4px 2px}#lvlup .mvgrip:hover{opacity:1}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
         document.head.appendChild(st);
         el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (!b) return; const k = b.dataset.key!; window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), bubbles: true })); }); }
       el.style.display = ap > 0 || tp > 0 ? 'flex' : 'none'; (el.querySelector('.lvb') as HTMLElement).innerHTML = (ap > 0 ? `<button type="button" data-key="c" title="${tr('lvlup.atributos.dica', { n: ap })}"><i>▲</i>${tr('lvlup.atributos', { n: ap })}</button>` : '') + (tp > 0 ? `<button type="button" class="k" data-key="k" title="${tr('lvlup.classe.dica', { n: tp })}"><i>✦</i>${tr('lvlup.classe', { n: tp })}</button>` : ''); } }
@@ -3124,12 +3129,12 @@ function frameBody() {
 /* boneco vivo na ficha do personagem (C): o próprio herói, animado e com o equipamento que está vestindo, desenhado num
    quadro pequeno ao lado do mundo. Trocou a peça, o boneco troca na hora e brilha; arrastar com o mouse gira (Erling, 25/10) */
 var dollR: THREE.WebGLRenderer | null = null, dollScene: THREE.Scene | null = null, dollCam: THREE.PerspectiveCamera | null = null, dollYaw = 0.42, dollPulse = -9, dollBoxT = 0, dollDrag: number | null = null, dollFail = false;
-const DOLL_W = 96, DOLL_H = 146;
+const DOLL_W = 340, DOLL_H = 524; /* 11/11 (Erling: "o boneco tem que ser mais bonito"): o retrato da ficha é desenhado no dobro do tamanho da moldura, com serrilhado alisado (antes 96×146 esticado) */
 function dollTick(dt: number) {
   if (dollFail) return; const chEl = document.getElementById('char'), host = chEl && chEl.style.display !== 'none' ? chEl.querySelector('.doll') as HTMLElement | null : null; if (!host) return;
   try {
     if (!dollR) {
-      dollR = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' }); dollR.setPixelRatio(1); dollR.setSize(DOLL_W, DOLL_H, false); dollR.outputColorSpace = renderer.outputColorSpace; dollR.toneMapping = renderer.toneMapping; dollR.toneMappingExposure = renderer.toneMappingExposure;
+      dollR = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }); dollR.setPixelRatio(1); dollR.setSize(DOLL_W, DOLL_H, false); dollR.outputColorSpace = renderer.outputColorSpace; dollR.toneMapping = renderer.toneMapping; dollR.toneMappingExposure = renderer.toneMappingExposure;
       dollR.domElement.className = 'dollcv'; dollScene = new THREE.Scene(); dollScene.background = new THREE.Color(0x14101a);
       dollScene.add(new THREE.HemisphereLight(0xfff4e0, 0x3a2a30, 2.3)); const dl = new THREE.DirectionalLight(0xffffff, 2.6); dl.position.set(1.2, 2.2, 2.4); dollScene.add(dl);
       const rim = new THREE.DirectionalLight(0xffd8a0, 1.2); rim.position.set(-2, 1.5, -2); dollScene.add(rim);
