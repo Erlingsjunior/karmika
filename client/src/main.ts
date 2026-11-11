@@ -346,7 +346,7 @@ let geoSweepT = 30;
 const fixedL = gpuImpl ? null : createFixedLights(15); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
-scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene); (window as unknown as { __scene: unknown }).__scene = scene;
+scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene); (window as unknown as { __scene: unknown }).__scene = scene; (window as unknown as { __r: unknown }).__r = renderer; /* teste */
 
 /* ---------- câmera isométrica (ortográfica) ---------- */
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -80, 160); // isométrica fixa (o Erling preferiu assim)
@@ -3036,7 +3036,7 @@ function frameBody() {
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42 * Math.pow(1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01, 1.6); } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
     /* 11/11 (Erling: "as sombras ficam se mexendo, com um serrilhado na ponta"): duas causas. 1) o sol andava um fio a cada quadro, e com ele a borda de toda sombra rastejava: agora a direção da luz anda em degraus (a cada 0,04 h do jogo, uns 18 s), parada entre um e outro. 2) o passo de encaixe era calculado para um mapa de 2048 mesmo quando a opção de sombra é 1024 ou 4096: agora usa o tamanho de verdade */
-    const dir = (hourK > 0.5 ? lightDirAt(Math.round(gameHour() / 0.04) * 0.04).clone() : new THREE.Vector3(-18, 28, 10)).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / Math.max(256, sun.shadow.mapSize.x); /* 08/11: o sol anda com a hora (ceu.ts) */
+    const dir = (hourK > 0.5 ? lightDirAt(Math.round(gameHour() / 0.04) * 0.04).clone() : new THREE.Vector3(-14, 22, -9) /* 11/11: a luz da noite também vem do norte (era do sul: a sombra caía escondida atrás das coisas) */).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / Math.max(256, sun.shadow.mapSize.x); /* 08/11: o sol anda com a hora (ceu.ts) */
     const a = Math.round(heroPos.dot(lr) / tex) * tex, b = Math.round(heroPos.dot(lu) / tex) * tex, c = heroPos.dot(dir);
     sun.target.position.set(0, 0, 0).addScaledVector(lr, a).addScaledVector(lu, b).addScaledVector(dir, c);
     sun.position.copy(sun.target.position).addScaledVector(dir, 40);

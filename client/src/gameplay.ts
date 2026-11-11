@@ -71,7 +71,7 @@ export function createGameplay(d: GameplayDeps) {
      07/11 (Erling: "a batalha tem que ser mais lenta, mais encadeada no começo; com mais destreza e nível vai acelerando"): o andamento (cadência)
      começa em 80% no nível 1 e chega a 100% no 40; a Destreza da base soma até +15% e os talentos de velocidade de golpe até +35%.
      Golpe e animação andam juntos: o TEMPO (quando o golpe acerta) e a velocidade da animação usam a mesma cadência */
-  const cadence = () => 1.07 /* 07/11: +7% (Erling: "lenta demais agora") */ * (0.8 + 0.2 * Math.min(1, (st.lvl - 1) / 39)) * (1 + 0.15 * (st.attrs?.dex ?? 0) / ((st.attrs?.dex ?? 0) + 60)) * (1 + ((st as { aspd?: number }).aspd ?? 0)); // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
+  const cadence = () => (1 + gb.haste) * 1.07 /* 07/11: +7% (Erling: "lenta demais agora") */ * (0.8 + 0.2 * Math.min(1, (st.lvl - 1) / 39)) * (1 + 0.15 * (st.attrs?.dex ?? 0) / ((st.attrs?.dex ?? 0) + 60)) * (1 + ((st as { aspd?: number }).aspd ?? 0)); // mesmo andamento das animações (characters.ts): golpes e magias 40% mais lentos e pesados
   let now = 0;
   const cd = { attack: 0, cast: 0, heal: 0, bash: 0, slam: 0 };
   const CD = { attack: 0.3, cast: 0.75, heal: 1.6, bash: 2.4, slam: 3.2 };
@@ -500,6 +500,8 @@ export function createGameplay(d: GameplayDeps) {
   /* 07/11 (Erling: "o healer joga pelo time"): a cura sai para o grupo. groupHealHook manda a cura para os companheiros (o rede.ts sabe quem
      está perto); groupAura é a aura que os companheiros mandam para cá (defesa e dano do grupo) */
   let groupHealHook: ((v: number, r: number, chain: boolean) => number) | null = null; const groupAura = { def: 0, dmg: 0, until: 0 };
+  /* 11/11: bônus das habilidades de grupo (sistemas/grupo-magias.ts soma, com rendimento decrescente, e manda o total para cá) */
+  const gb = { dmg: 0, def: 0, crit: 0, haste: 0, move: 0, leech: 0, guard: 0, acc: 0, dodge: 0, shield: 0 };
   const myHpow = () => (st as { hpow?: number }).hpow ?? 0, healIn = () => 1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0);
   /** a cura que o herói FAZ: cura ele (com a cura recebida) e, com o grupo perto, os companheiros (em massa; com a runa do Labirinto, pulando de um para o outro) */
   function healOut(base: number, id = 'heal', r = 14): number { const v = base * (1 + myHpow()); st.hp = Math.min(st.hpMax, st.hp + v * healIn());
@@ -588,8 +590,8 @@ export function createGameplay(d: GameplayDeps) {
     const spell = !!skill && skill !== 'combo', DARK = DARK_T.has(e.type);
     const RF = fams(kitKey, skill); /* 03/11: as runas encaixadas nesta magia */
     /* 07/11 DADOS: d20 + Acerto contra a Defesa (CD) do bicho. 1 natural = erro crítico; 20 natural = acerto crítico; a faixa de crítico cresce com a chance */
-    const AGILE = AGILE_T.has(e.type), dlv0 = (e.def.lvl ?? 1) - st.lvl, dex0 = st.attrs?.dex ?? 0, nat = d20(), acc = heroAcc(st.lvl, dex0), cdv = monCD(e.def.lvl ?? 1, AGILE, dlv0), need = needOf(cdv, acc, 2, 12);
-    const pCrit = st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0), cF = critFaces(pCrit);
+    const AGILE = AGILE_T.has(e.type), dlv0 = (e.def.lvl ?? 1) - st.lvl, dex0 = st.attrs?.dex ?? 0, nat = d20(), acc = heroAcc(st.lvl, dex0) + gb.acc, cdv = monCD(e.def.lvl ?? 1, AGILE, dlv0), need = needOf(cdv, acc, 2, 12);
+    const pCrit = gb.crit + st.crit - (n3Key() === 'cac' && need3.cac > 0.5 ? 0.05 : 0) + stance.crit + (spell && st.sp.has('r_lantern') ? 0.15 : 0) + 0.08 * (RF.olho ?? 0) + (ssOf(skill).crit ?? 0), cF = critFaces(pCrit);
     const rollTxt = `${nat}+${Math.round(acc)} vs ${Math.round(cdv)}`;
     if (nat === 1 || (nat < 20 && e.state !== 'hurt' && nat < need)) { const ep0 = e.pos.clone().setY(e.pos.y + 2.4);
       if (nat === 1) { dmgText(ep0, 'ERRO CRÍTICO', false, '#ff8a6a'); openUntil = now + 0.4; rollLog(e.def.name, 'ERRO CRÍTICO', 'fail', `${rollTxt} · você fica aberto`); }
@@ -614,13 +616,13 @@ export function createGameplay(d: GameplayDeps) {
     const lp = 0.05 * (st.lvl - 1), pct = (st.atk - 1) + (buff.dmg - 1) + sit + (marked ? 0.5 : 0) + (bonus - 1) + silver + 0.3 * (RF.fresta ?? 0);
     const H = heroHand(st.lvl), hr = rollDice(H.dice), rk = spell ? rankDice(ssOf(skill).rank ?? 0) : [], rr = rollDice(rk), rkAvg = diceAvg(rk); /* o grau da magia soma dados, com a média de sempre */
     const handV = (hr.sum + H.bonus + rr.sum) * H.avg / (H.avg + rkAvg);
-    let dmg = (handV + st.dmgFlat * (1 + 0.5 * lp)) * mul * (KIT_BAL[kitKey] ?? 1) * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; /* 07/11: aura de dano de um companheiro */
+    let dmg = (handV + st.dmgFlat * (1 + 0.5 * lp)) * mul * (KIT_BAL[kitKey] ?? 1) * (1 + pct) * ssOf(skill).dmg * (crit ? (st.sp.has('r_mimir') ? 2.3 : 1.7) : 1) * (st.god ? 9 : 1); if (groupAura.until > now) dmg *= 1 + groupAura.dmg; dmg *= 1 + gb.dmg; /* 07/11: aura de dano de um companheiro */
     { // casca dura: armadura cresce com a diferença de nível; absorção tira pontos de cada golpe; tipo de dano pesa
       const cp = CARAPACE[e.type] ?? { arm: 0.06, abs: 1 }, dlv = (e.def.lvl ?? 1) - st.lvl, el = e.def.lvl ?? 1;
       const arm = Math.max(0, Math.min(0.6, 0.06 + cp.arm + 0.025 * dlv)), absb = cp.abs * (1 + 0.12 * el), ty = dmgTypeOf(skill), rs = cp.res?.[ty] ?? 1;
       dmg = dmg * rs * (1 - arm) - absb;
       if (poiseUp(e)) dmg *= 0.35; // guarda do elite em pé: bloqueia 65% (Erling, 11/11; antes era metade)
-      poiseHit(e, dmg * (mul > 1.5 || skill === 'slam' || skill === 'bash' ? 2.2 : 1) * (crit ? 1.5 : 1));
+      poiseHit(e, dmg * (mul > 1.5 || skill === 'slam' || skill === 'bash' ? 2.2 : 1) * (crit ? 1.5 : 1) * (1 + gb.guard));
       if (rs >= 1.25 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'FRAQUEZA', false, '#ffb060'); else if (rs <= 0.6 && Math.random() < 0.3) dmgText(e.pos.clone().setY(e.pos.y + 2.9), 'RESISTE', false, '#a8b0c0');
     }
     { const dl = (e.def.lvl ?? 1) - st.lvl; if (dl > 2) { /* acima de você: golpes escorregam e erram */ dmg *= Math.max(0.65, 1 - 0.035 * dl);
@@ -652,7 +654,7 @@ export function createGameplay(d: GameplayDeps) {
     rollLog(e.def.name, `${crit ? 'CRÍTICO ' : ''}−${dmg}`, crit ? 'crit' : 'hit', `${rollTxt} · ${fmtDice(H.dice)}${rk.length ? '+' + fmtDice(rk) : ''} (${[...hr.faces, ...rr.faces].join(',')})`);
     const killed = enemies.hurt(e, dmg, from, (crit ? 7 : 4) * (mul > 1.5 ? 1.5 : 1), false); gainRes(skill === 'combo' || skill === null ? 7 : 3); namedOnHit(e, dmg, crit, killed);
     st.hits++; d.audio.slash(crit); onoma(e.pos.clone().setY(e.pos.y + 1.6), crit ? 'crit' : 'hit');
-    { const lch = st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0))); }
+    { const lch = gb.leech + st.leech + buff.leech + stance.leech + (kitKey === 'vam' ? 0.05 : 0); if (lch > 0) st.hp = Math.min(st.hpMax, st.hp + dmg * lch * (1 + stance.heal + ((st as { tHeal?: number }).tHeal ?? 0))); }
     if (st.sp.has('burn') && Math.random() < 0.2 && !killed) { e.burn = 4; e.burnTick = 0; }
     if (st.sp.has('echo') && !echoing && !killed && Math.random() < 0.15) { echoing = true; setTimeout(() => { if (e.alive) { const k2 = enemies.hurt(e, Math.round(dmg * 0.7), from, 2); dmgText(e.pos.clone().setY(e.pos.y + 2.4), Math.round(dmg * 0.7), false, '#c9a0ff'); if (k2) killEnemy(e); } echoing = false; }, 140); }
     if (crit && st.sp.has('storm')) for (const o of enemies.list) if (o !== e && o.alive && o.active && Math.hypot(o.pos.x - e.pos.x, o.pos.z - e.pos.z) < 5) { const dm = Math.round(dmg * 0.5); for (let q = 0; q < 8; q++) pfx(o.pos.x + rnd(-0.2, 0.2), o.pos.y + 0.4 + q * 0.3, o.pos.z + rnd(-0.2, 0.2), { life: 0.25, s0: 0.8, s1: 0.2, c0: 0xffffff, c1: 0x6ab0ff, a: 1 }); if (enemies.hurt(o, dm, e.pos, 2)) killEnemy(o); dmgText(o.pos.clone().setY(o.pos.y + 2.2), dm, false, '#9ad0ff'); }
@@ -1534,6 +1536,7 @@ export function createGameplay(d: GameplayDeps) {
     /** relógio do jogo (s), para os testes medirem em tempo de jogo */ gameTime: () => now,
     setPvp(f: typeof pvpHit) { pvpHit = f; },
     /** 07/11: o grupo — para onde vai a cura que o herói faz, e a aura que os companheiros mandam */
+    /** 11/11: o total dos bônus de grupo ativos (frações); o escudo é em pontos de vida e só sobe */ grupoSet(v: { dmg: number; def: number; crit: number; haste: number; move: number; leech: number; guard: number; acc: number; dodge: number }) { Object.assign(gb, v); }, grupoShield(v: number) { gb.shield = Math.max(gb.shield, v); }, grupoShieldOff() { gb.shield = 0; },
     setGroupHeal(f: (v: number, r: number, chain: boolean) => number) { groupHealHook = f; }, groupAuraIn(def: number, dmg: number) { groupAura.def = Math.min(0.25, def); groupAura.dmg = Math.min(0.25, dmg); groupAura.until = now + 5; },
     groupAuraOut: () => ({ def: (st as { gdef?: number }).gdef ?? 0, dmg: (st as { gdmg?: number }).gdmg ?? 0 }),
     /** cura que chegou de um companheiro (valor absoluto; a cura recebida do herói vale aqui) */ healAbs(v: number, who: string) { const g = Math.round(Math.min(v, st.hpMax * 0.6) * healIn()); if (g <= 0 || st.dead) return; st.hp = Math.min(st.hpMax, st.hp + g); dmgText(d.getHero().root.position.clone().setY(2.6), `+${g}`, false, '#8ae08a'); logMsg(`✚ ${who} te curou (+${g})`, '#8ae08a'); for (let i = 0; i < 14; i++) { const p = d.getHero().root.position; pfx(p.x + rnd(-0.4, 0.4), rnd(0.2, 1.8), p.z + rnd(-0.4, 0.4), { vy: rnd(0.8, 1.6), life: 0.8, s0: 0.25, s1: 0.04, c0: 0xeaffd0, c1: 0x7aff9a, a: 0.9 }); } },
@@ -1797,11 +1800,11 @@ export function createGameplay(d: GameplayDeps) {
       lastHurt = now; gainRes(5); n = Math.max(1, Math.round(n * (1 - Math.max(-0.3, Math.min(0.75, st.def + Math.min(0.3, buff.def + stance.def)))))); /* regra 01: defesa de buff/postura com teto de 30%, total com teto de 75% */
       // esquiva pela destreza (até 35%) e bloqueio pela defesa/escudo (até 30%, metade do dano) — a dança da luta
       if (st.sp.has('t_exo')) n = Math.max(1, Math.round(n * 0.8));
-      if (groupAura.until > now && groupAura.def > 0) n = Math.max(1, Math.round(n * (1 - groupAura.def))); /* 07/11: aura de defesa de um companheiro */
+      if (groupAura.until > now && groupAura.def > 0) n = Math.max(1, Math.round(n * (1 - groupAura.def))); if (gb.def > 0) n = Math.max(1, Math.round(n * (1 - gb.def))); if (gb.shield > 0) { const ab = Math.min(gb.shield, n - 1); gb.shield -= ab; n -= ab; if (ab > 0) dmgText(heroPos.clone().setY(2.9), `🛡 ${Math.round(ab)}`, false, '#9ad7ff'); } /* 07/11: aura de defesa de um companheiro */
       if (atk && atk.alive && gad.bracelet > Date.now() && Math.hypot(atk.pos.x - heroPos.x, atk.pos.z - heroPos.z) < 3.5) { const rf = Math.max(1, Math.round(n * 0.2)); zap(heroPos.x, heroPos.y + 1.1, heroPos.z, atk.pos.x, atk.pos.y + 1.1, atk.pos.z, 0x6ad0ff); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `⚡ ${rf}`, false, '#6ad0ff'); if (enemies.hurt(atk, rf, heroPos, 0)) killEnemy(atk); else { atk.state = 'hurt'; atk.t = -0.5; } } /* 06/11: Pulseira de Choque */
       if (atk && now < rs.thornsUntil && atk.alive) { const rf = Math.max(1, Math.round(n * rs.thornsPct)); if (enemies.hurt(atk, rf, heroPos, 2)) killEnemy(atk); dmgText(atk.pos.clone().setY(atk.pos.y + 2.4), `↩ ${rf}`, false, '#e8b0ff'); } /* 06/11: runa que devolve o golpe */
       /* 07/11 DADOS: o bicho rola d20 + Acerto contra a sua Defesa (CD). 1 natural dele = erra; 20 = acerta. Depois do seu erro crítico você fica aberto */
-      const mL = atk?.def.lvl ?? st.lvl, mNat = d20(), hcd = heroCD(st.lvl, st.attrs?.dex ?? 0, st.sp.has('dh_cloak')), mac = monAcc(mL), mNeed = needOf(hcd, mac, 2, 8);
+      const mL = atk?.def.lvl ?? st.lvl, mNat = d20(), hcd = heroCD(st.lvl, st.attrs?.dex ?? 0, st.sp.has('dh_cloak')) + Math.round(gb.dodge * 20), mac = monAcc(mL), mNeed = needOf(hcd, mac, 2, 8);
       const fresh = performance.now() - lastMon.at < 50 ? ` · ${lastMon.txt}` : '';
       if (!h.guarding && now >= openUntil && (mNat === 1 || (mNat < 20 && mNat < mNeed))) { rollLog(atk?.def.name ?? 'Golpe', 'você esquivou', 'miss', `${mNat}+${Math.round(mac)} vs sua ${Math.round(hcd)}`, false); dmgText(heroPos.clone().setY(2.5), 'ESQUIVA!', true, '#9ad7ff'); d.audio.dash(); if (!h.actName) h.act('dodge'); return; }
       // aparo: só quem luta com lâmina, de frente; desvia o golpe, faísca e deixa o inimigo vulnerável (contra-ataque)
@@ -2340,7 +2343,7 @@ export function createGameplay(d: GameplayDeps) {
         default: return false;
       }
     },
-    get buffMove() { return buff.move * (1 + stance.move) * cmod.move; },
+    get buffMove() { return (1 + gb.move) * buff.move * (1 + stance.move) * cmod.move; },
     /** postura de batalha: troca as somas fixas (posturas.ts) */
     /** kit em uso (pal, vam, lob, tecno…): muda o tipo de dano do golpe e passivas do caminho */
     setKit(k: string) { kitKey = k; kkSetKit(k); }, setDbgCast(on: boolean) { dbgCast = on; }, dbgStrike(k: string, kind: string | null = null, n = 0) { const h = d.getHero(), p = h.root.position, y = h.root.rotation.y; const k0 = kitKey; kitKey = k; hitKind = kind; strikeN = n; try { strikeMark({ pos: new THREE.Vector3(p.x + Math.sin(y) * 2.5, p.y, p.z + Math.cos(y) * 2.5), def: { radius: 0.6 } } as unknown as Enemy, new THREE.Vector3(Math.sin(y), 0, Math.cos(y)), false); } finally { kitKey = k0; hitKind = null; } }, setRaceScale(k: number) { raceScale = k; },
