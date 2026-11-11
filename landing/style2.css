@@ -624,15 +624,3 @@ button.abp img { width: auto !important; height: auto !important; max-width: 100
 /* 10/11 (Erling: "o botão de fechar some quando rola a modal"): o ✕ acompanha a rolagem e fica sempre à mão */
 .sheet__x { position: sticky; top: 0; float: right; margin: -6px -6px 0 12px; z-index: 5; background: rgba(12, 10, 14, .92); }
 .pdet__close { position: sticky; top: calc(12px + env(safe-area-inset-top, 0px)); float: right; margin: 0 0 8px 12px; background: rgba(12, 10, 14, .92); }
-
-/* 10/11 (Erling: "em 4K, TV e monitor com o texto do Windows em 150% a fonte ficou muito grande" e os títulos colados na borda esquerda):
-   títulos um degrau menores e, em tela larga, o conteúdo anda para o meio (a margem lateral cresce depois de 1600 px). */
-:root { --gut: max(20px, env(safe-area-inset-left, 0px), calc((100vw - 1600px) / 2)); }
-h2 { font-size: clamp(30px, 3.8vw, 58px); }
-.manifesto__end { font-size: clamp(28px, 3.6vw, 56px); }
-.manifesto__text { font-size: clamp(21px, 2.2vw, 32px); }
-.rebirth__hit { font-size: clamp(34px, 4.6vw, 68px); } .story .rebirth__hit { font-size: clamp(28px, 3.6vw, 54px); }
-.rebirth__lines p { font-size: clamp(22px, 2.8vw, 40px); }
-.brasil__big { font-size: clamp(34px, 5vw, 76px); }
-.pdet__name { font-size: clamp(28px, 3vw, 44px); }
-@media (max-width: 760px) { h2 { font-size: clamp(30px, 8.6vw, 44px); } }
