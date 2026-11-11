@@ -218,7 +218,7 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
   /* 11/11 (Erling: "batente da porta passando do telhado, precisa aumentar a parede da casa para caber a porta"; "a escala construção x humano parece pequena"):
      a casa térrea tinha 2,5 m de parede com porta de 2,2 m: o beiral descia em cima do batente. A parede ganhou 45 cm (2,95 m) e tudo o que fica acima dela subiu junto. O sobrado (escada de fora) fica como é. */
   /* a casa em L tem a porta 35 cm acima do piso (varanda com degraus): o batente chega a 2,71 m e a parede tinha 2,4 m. Ela sobe mais (75 cm) */
-  if (variant !== 1 && variant !== 3) raiseWalls(g, chim, lantern, variant === 2 ? 0.75 : 0.45);
+  if (variant !== 1 && variant !== 3) raiseWalls(g, chim, lantern, variant === 2 ? 1.25 : 0.8); /* 11/11, 15h30: 45 e 75 cm não bastaram — o beiral desce meio metro abaixo do topo da parede. Agora sobra folga entre a verga da porta e o beiral */
   return { group: g, chimneys: chim, lantern };
 }
 
