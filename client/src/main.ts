@@ -119,6 +119,7 @@ import { createDialog } from './dialog';
 
 import { battleCry } from './gritos';
 import { createEspolio } from './sistemas/espolio';
+import { createBuffsPe } from './sistemas/buffs-pe';
 
 
 
@@ -2740,6 +2741,9 @@ const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => au
   log: (t, c) => game.logMsg(t, c), addGold: (n) => { game.st.gold += n; }, giveGear: (x, z, y, gs) => game.dropGearSet(x, z, y, gs) });
 game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ return espolio.eliteDied(e, ilvl, boost, shared); });
 (window as unknown as { __bau?: unknown }).__bau = espolio; /* teste */
+/* 10/11: ícones pequenos de buff e debuff no pé do herói, e a entrada de cada efeito com aro e espiral (sistemas/buffs-pe.ts) */
+(window as unknown as { __buff?: unknown }).__buff = () => { game.st.serene = 3; game.st.ambushT = 8; (game.st as unknown as { slowUntil?: number }).slowUntil = performance.now() + 60000; }; /* teste */
+const buffsPe = createBuffsPe({ scene, fine, camera, canvas, heroPos: () => hero.root.position, hidden: () => !document.body.classList.contains('ready') || game.st.dead || limiar.active || !!cinemaSys.cine || game.menuOpen, buffs: () => game.buffs(), particles });
 function frameBody() {
   pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
   { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
@@ -2898,7 +2902,7 @@ function frameBody() {
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);
   pm('jogo(inimigos)');
-  espolio.update(dt);
+  espolio.update(dt); buffsPe.update(dt);
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   if (mouseSys.rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
   pm('chefes');

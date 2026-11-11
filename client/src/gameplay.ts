@@ -1495,6 +1495,8 @@ export function createGameplay(d: GameplayDeps) {
       if (hot.t > 0) L.push({ id: 'hot', name: 'Cura contínua', ic: '✚', t: hot.t, good: true, tip: `+${Math.round(hot.per)} de vida por segundo` });
       if (form) L.push({ id: 'form', name: 'Transformação', ic: '✷', t: form.t, good: true, tip: 'forma de batalha ativa' });
       if (st.ambushT > 0) L.push({ id: 'amb', name: 'Emboscada', ic: '◆', t: st.ambushT, good: true, tip: 'próximo golpe +50%' });
+      if ((st.serene ?? 0) > 0) L.push({ id: 'serene', name: 'Golpe certeiro', ic: '✦', good: true, tip: `os próximos ${st.serene} golpes são críticos` }); /* 10/11: o que o Pão e Atadura (e o Hidromel) deixam */
+      { const sx = st as typeof st & { slowUntil?: number; charmUntil?: number }, nw = performance.now(); if ((sx.slowUntil ?? 0) > nw) L.push({ id: 'slow', name: 'Lento', ic: '🐌', t: (sx.slowUntil! - nw) / 1000, good: false, tip: 'o rugido do chefe pesa nas pernas' }); if ((sx.charmUntil ?? 0) > nw) L.push({ id: 'charm', name: 'Encantado', ic: '♥', t: (sx.charmUntil! - nw) / 1000, good: false, tip: 'os passos saem trocados' }); }
       if (st.counterT > 0) L.push({ id: 'ctr', name: 'Contra-golpe pronto', ic: '↺', t: st.counterT, good: true, tip: 'a investida sai de graça e dobrada' });
       return L; },
     resetClass(n: string) { cls = { name: n, lvl: 1, xp: 0, past: [] }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } },

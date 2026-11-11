@@ -30,7 +30,7 @@ enemyHooks.track = (e) => { const k = kitOf(e.def.name); if (k) brain.track(e as
 let heroSlowK = 1, heroSlowUntil = 0, heroCharmUntil = 0;
 const brain = createBossBrain({ scene: K.scene, fine: (o) => o, particles: K.particles, heroPos: () => K.heroPosNow().setY(groundH(K.state.fx * T, K.state.fy * T)), heroDead: () => K.game.st.dead,
   damage: (n, from) => K.game.damage(n, K.heroPosNow(), from), say: (t) => K.game.logMsg(t, '#ffb08a'), log: (t, c) => K.game.logMsg(t, c), shake: (k) => { K.game.st.shake = Math.max(K.game.st.shake, k); },
-  slowHero: (k, secs) => { heroSlowK = k; heroSlowUntil = performance.now() + secs * 1000; }, pushHero: (dx, dz) => K.moveSlide(dx / T, dz / T, 0, false), charm: (sec) => { heroCharmUntil = performance.now() + sec * 1000; },
+  slowHero: (k, secs) => { heroSlowK = k; heroSlowUntil = performance.now() + secs * 1000; (K.game.st as unknown as { slowUntil?: number }).slowUntil = heroSlowUntil; /* aparece nos debuffs */ }, pushHero: (dx, dz) => K.moveSlide(dx / T, dz / T, 0, false), charm: (sec) => { heroCharmUntil = performance.now() + sec * 1000; (K.game.st as unknown as { charmUntil?: number }).charmUntil = heroCharmUntil; },
   walkable: (x, z) => K.free(x / T, z / T), spawnAdd: (type, x, z) => { if (K.game.enemies.list.filter((q) => (q as { tag?: string }).tag === 'dg-add' && q.alive).length >= 45) return; /* a ninhada é sem fim, mas a tela não: no máximo 45 crias vivas */ K.game.enemies.spawn(type, x, z, { tag: 'dg-add', lvl: Math.max(1, (type === 'spiderling' ? K.game.st.lvl - 4 : K.game.st.lvl + 1)), aggro: 30, leash: 999 }); },
   sound: (k) => { if (k === 'boom') K.audio.boom(); else K.audio.spell(k); } });
 if (IS_DEV) (window as unknown as { __brain: unknown }).__brain = brain;
