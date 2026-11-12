@@ -4,7 +4,7 @@ import { badge } from '../celebrate';
 import * as THREE from 'three';
 import { fine } from '../dual3d';
 import { WL } from '../world';
-import { plainGear } from '../loot';
+import { plainGear, genGear } from '../loot';
 import type { PescaKitCtx } from '../main';
 
 export function createPescaKit(K: PescaKitCtx) {
@@ -44,6 +44,18 @@ function giveStartGear() {
   K.game.logMsg(`⚔ Você começa com ${got.join(' e ')} — fracos, mas seus. Estão em Arma${got.length > 1 ? ' e Escudo' : ''} (C).`, '#ffe08a');
 }
 setTimeout(giveStartKit, 1500); setTimeout(giveStartGear, 1700);
+/* 12/11 (Erling: "os primeiros e-mails dizem que caminhantes deixaram coisas no baú para os novos; eu vou no baú e não tem NADA. Deixa um kit completo de
+   batalha para começar o jogo, para todos os novos players"): a carta do Garrick promete o Baú do Caminhante cheio, e ele estava vazio (o kit de viagem
+   vai para a mochila). Agora o baú nasce com o kit de batalha: uma peça mágica de nível 3 para cada parte do corpo, arma e escudo de reserva,
+   poções e comida. Uma vez por personagem; quem já tinha personagem também recebe. */
+function giveChestKit() {
+  try { if (localStorage.getItem('karmika.baukit.v1')) return; localStorage.setItem('karmika.baukit.v1', '1'); } catch { return; }
+  const gear = (['weapon', 'shield', 'helm', 'armor', 'shoulders', 'boots', 'cape', 'ring', 'amulet'] as const).map((sl) => { const g = genGear(3, 'magic', sl); (g as typeof g & { lore?: string }).lore = 'Deixado no Baú do Caminhante por quem chegou antes de você.'; return g; });
+  K.inv.vaultPut([['potion', 6], ['mana', 4], ['antidote', 2], ['bread', 6], ['cooked', 4], ['scroll_return', 1]], gear);
+  K.game.logMsg('📦 Os que chegaram antes deixaram um kit de batalha no seu Baú do Caminhante (perto do centro da vila): arma, escudo, uma peça para cada parte do corpo, poções e comida.', '#ffe08a');
+}
+setTimeout(giveChestKit, 2200);
+
 
 function nearProps(gx: number, gy: number, kinds: string[], rad = 2) { const out: (typeof K.city.props)[number][] = []; for (let y = gy - rad; y <= gy + rad; y++) for (let x = gx - rad; x <= gx + rad; x++) for (const p of tileIdx.get(y * 1000 + x) ?? []) if (kinds.includes(p.kind) && !(p as { gone?: boolean }).gone) out.push(p); return out; }
 const chop = new Map<object, number>(), twigs = new Map<object, number>();
