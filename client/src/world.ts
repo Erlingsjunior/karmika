@@ -134,6 +134,7 @@ export interface World {
   /** o Quartel de Karmika (01/11): pátio de treino murado depois da igreja, com os bonecos de palha (posições em tiles, centro do boneco) */ quartel: { x: number; y: number; dummies: { x: number; y: number }[] };
   /** 02/11: o lugar de cada entrada de calabouço (id → casa), decidido aqui para a pedra rúnica nascer ao lado e para as regras de distância valerem no mundo todo */ dgSpots: Record<string, { x: number; y: number }>;
   /** a Casa dos Ofícios de Askavik (25/10): o salão de todas as profissões (oficios.ts monta o prédio e os ajudantes) */ craftHall?: { x: number; y: number; w: number; h: number; ry: number };
+  /** 12/11: os terrenos de guilda reservados */ guildLots: GuildLot[];
   pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; /** acampamentos de salteadores e as torres de vigia (26/10) */ bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
@@ -143,6 +144,8 @@ export interface World {
   lights?: { name: string; port: string; x: number; y: number; style: 'nordico' | 'gotico' | 'pacto' | 'vapor' | 'elfico'; old?: boolean; /** de pé numa ilhota de pedra no meio da água */ islet?: boolean }[];
 }
 export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
+/** 12/11: terreno de guilda, fixo e reservado pelo mundo: x0,y0 = canto do miolo de 10×10 onde a sede é erguida */
+export interface GuildLot { id: number; name: string; region: string; x0: number; y0: number; lo: number; hi: number }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
 
 /** MUNDO GRANDE (21/10/2026): 840×840 tiles. As Terras dos Homens (o mapa antigo de 420) ficam no centro, deslocadas de SH;
@@ -2680,7 +2683,7 @@ function buildCity_L(): World {
   { let fora = 0; for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if (q.kind !== 'lowwall' || q.len === undefined) continue; const cx0 = q.gx + (q.ox ?? 0) / T, cy0 = q.gy + (q.oz ?? 0) / T, hl = q.len / T / 2, dx = Math.cos(q.ry ?? 0), dy = -Math.sin(q.ry ?? 0); let cruza = false;
       for (let t = -1; t <= 1 && !cruza; t += 0.25) { const x = Math.floor(cx0 + dx * hl * t), y = Math.floor(cy0 + dy * hl * t), m = map[y]?.[x] as string | undefined; if (m === 'road' || m === 'plaza') cruza = true; }
       if (cruza) { props.splice(k, 1); fora++; } } if (fora) console.info(`cercas abertas sobre ruas: ${fora}`); }
-  return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
+  return { map, biome, props, craftHall, quartel, dgSpots, guildLots: [] /* nascem no mundo grande, depois do litoral (ver abaixo) */, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
 function veinOf_L(p: { gx: number; gy: number; w: number }) { const h = Math.abs(Math.sin(p.gx * 127.1 + p.gy * 311.7) * 43758.5453) % 1; return h < (p.w > 1 ? 0.07 : 0.035) ? 2 : h < (p.w > 1 ? 0.3 : 0.16) ? 1 : 0; }
@@ -2941,14 +2944,40 @@ export function buildCity(): World {
     const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico', ...(islet ? { islet } : {}) }); }
   const outBridges = [...w.bridges.map((b) => shBridge(b, D)), ...extraBridges]; w.bridges.push(...extraBridges.map((b) => shBridge(b, -D))); bridgeIdxN = -1; /* o píer élfico também é chão para andar (a colisão lê as pontes locais) */
   const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
+  /* 12/11 TERRENOS DE GUILDA (Erling: "terrenos de guilda são alguns poucos no mundo e ficam em lugares legais e bonitos que precisam ser comprados";
+     "colocar os terrenos de guilda pré-reservados desde sempre"). São no máximo 12, fixos, iguais em todo reino: um por região do continente, perto da
+     água quando dá, longe uns dos outros (200 casas), com folga de vilas, cidades, lugares marcados, pedras e masmorras. Nascem AQUI, com o mundo
+     pronto (litoral, ilhas, faróis): assim a conta enxerga tudo e nenhum cai no mar. Cada um reserva 14×14 casas de capim limpo (o miolo de 10×10
+     é onde a sede é erguida), com tochas nos cantos e uma placa virada para o jogador. Árvores, pedras e bichos soltos que estavam ali saem. */
+  const guildLots: GuildLot[] = [], lotSigns: Sign[] = [];
+  { const GL = 10, M = 2, MAXL = 12, HH = map.length, WW = map[0].length, dentro = (x: number, y: number) => x >= 0 && y >= 0 && x < WW && y < HH;
+    const lugares = [...pois, ...ISLES.map((I) => ({ x: I.blobs[0].x, y: I.blobs[0].y })), ...lightPois], bocas = Object.values(w.dgSpots).map(sxy);
+    const limpo = (x0: number, y0: number) => { for (let y = y0 - M - 1; y <= y0 + GL + M; y++) for (let x = x0 - M - 1; x <= x0 + GL + M; x++) { if (!dentro(x, y)) return false; const t = map[y][x]; if (t !== 'grass' && t !== 'tree') return false; } return true; };
+    for (const r0 of REGIONS_L) { if (guildLots.length >= MAXL) break; const rg = { ...r0, x: r0.x + D, y: r0.y + D }; let best: { x: number; y: number } | null = null, bs = -1e9;
+      for (let y0 = rg.y - 120; y0 <= rg.y + 120; y0 += 3) for (let x0 = rg.x - 120; x0 <= rg.x + 120; x0 += 3) { const cx = x0 + GL / 2, cy = y0 + GL / 2;
+        if (!dentro(x0 - 20, y0 - 20) || !dentro(x0 + GL + 20, y0 + GL + 20) || !limpo(x0, y0) || regionAt(cx, cy).name !== rg.name) continue;
+        let d = 1e9, ns = 1e9; for (const t of settlements) { const dd = Math.hypot(t.x - cx, t.y - cy) - t.radius; ns = Math.min(ns, dd); d = Math.min(d, dd - (t.kind === 'city' ? 40 : 26)); }
+        for (const q of lugares) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 26); for (const q of relics) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 14); for (const q of bocas) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 36);
+        for (const q of spawns) if (q.keep) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - q.r - 14);
+        for (const q of guildLots) d = Math.min(d, Math.hypot(q.x0 + GL / 2 - cx, q.y0 + GL / 2 - cy) - 200); if (d < 0) continue;
+        const agua = waterSD(cx * T, cy * T) / T; if (agua < GL) continue; /* casas até a água mais próxima: perto para ter vista, nunca na beira */
+        const sc = -Math.abs(agua - 14) * 1.5 + Math.min(d, 30) * 0.3 - Math.max(0, ns - 120) * 0.25 - 0.02 * Math.hypot(cx - rg.x, cy - rg.y); if (sc > bs) { bs = sc; best = { x: x0, y: y0 }; } }
+      if (!best) continue; const { x: x0, y: y0 } = best;
+      for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 - M && q.gx < x0 + GL + M && q.gy + q.h > y0 - M && q.gy < y0 + GL + M) props.splice(i, 1); }
+      for (let y = y0 - M; y < y0 + GL + M; y++) for (let x = x0 - M; x < x0 + GL + M; x++) map[y][x] = 'grass';
+      for (let i = spawns.length - 1; i >= 0; i--) { const q = spawns[i]; if (!q.keep && Math.hypot(q.x - (x0 + GL / 2), q.y - (y0 + GL / 2)) < q.r + 12) spawns.splice(i, 1); }
+      for (const [tx, ty] of [[x0 - M, y0 - M], [x0 + GL + M - 1, y0 - M], [x0 - M, y0 + GL + M - 1]]) props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xffc04a });
+      const sx = x0 + GL + M - 1, sy = y0 + GL + M - 1; lotSigns.push({ x: sx, y: sy, yaw: Math.PI / 4, lines: [{ text: 'Terreno de guilda', dir: Math.atan2(-1, -1) }, { text: rg.name, dir: Math.atan2(-1, -1) }] }); map[sy][sx] = 'wall';
+      guildLots.push({ id: guildLots.length + 1, name: `Terreno de guilda de ${rg.name}`, region: rg.name, x0, y0, lo: rg.lo, hi: rg.hi }); }
+    if (guildLots.length < 6) console.warn('poucos terrenos de guilda:', guildLots.length); }
   /* 09/11 (Erling: "diminuir as árvores pelo menos 30%, são muitas mesmo"): no ermo, 3 de cada 10 árvores saem (sorteio fixo pela casa,
      igual em toda máquina); dentro e em volta das vilas, cidades e lugares marcados nada muda. A casa da árvore que saiu vira grama. */
   { const keep = (x: number, y: number) => { for (let i = 0; i < protPts.length; i += 3) if (Math.hypot(x - protPts[i], y - protPts[i + 1]) < protPts[i + 2] + 6) return true; return false; };
     const h = (x: number, y: number) => { let v = Math.imul(x * 374761393 + y * 668265263, 1274126177) >>> 0; v ^= v >>> 13; v = Math.imul(v, 1103515245) >>> 0; return (v >>> 8) / 16777216; };
     let n = 0; for (let i = 0; i < props.length; i++) { const p = props[i]; if (p.kind === 'tree' && h(p.gx, p.gy) < 0.3 && !keep(p.gx, p.gy)) { if (map[p.gy]?.[p.gx] === 'tree') map[p.gy][p.gx] = 'grass'; continue; } props[n++] = p; } props.length = n; }
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
-    dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
-    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: w.signs.map(sxy),
+    dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), guildLots, craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
+    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: [...w.signs.map(sxy), ...lotSigns],
     settlements, ramparts: w.ramparts.map(shRampart),
     bandits: w.bandits.map((b) => ({ ...sxy(b), tower: b.tower ? sxy(b.tower) : null })), roadPaths: w.roadPaths.map((r) => r.map(sxy)),
     starts: { human: sxy(w.starts.human), dwarf: sxy(w.starts.dwarf), elf: sxy(w.starts.elf) } };

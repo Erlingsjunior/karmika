@@ -216,5 +216,7 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
 }
 /** distâncias em metros do jogo (1 quadrado = 2 m; heroína 1,7 m) */
 const fmtDist = (m: number) => `${Math.round(m)} m`;
+  /* 12/11: o mapa-base do mundo como imagem, para o centro de comando (desktop/src/tear-mundo.webp é tirado daqui) */
+  (window as unknown as { __mapaBase?: () => string }).__mapaBase = () => mmBase.toDataURL('image/webp', 0.86);
   return { mmBase, toggleBigMap, mapV, get bigOpen() { return bigOpen; }, fmtDist, mmEl, mg, MMS, markers, miniIcons, bmEl, bg, mapZMin, pxPerTile, bigEl, BNAME, get mapHits() { return mapHits; }, set mapHits(v: typeof mapHits) { mapHits = v; } };
 }

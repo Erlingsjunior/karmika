@@ -93,6 +93,9 @@ function startTear(opts = {}) {
     /* só páginas abertas neste próprio painel podem mandar ordens (um site qualquer aberto no mesmo navegador não pode) */
     if (req.method === 'POST') { const o = String(req.headers.origin || ''); if (o && !/^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(o)) return json(403, { erro: 'origem' }); }
     if (u.pathname === '/' && req.method === 'GET') { res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(painelHtml()); return; }
+    /* 12/11: o mapa do jogo e os terrenos de guilda reservados (tirados do próprio jogo; ver nucleo-e-servidores-parceiros no projeto) */
+    if (u.pathname === '/mundo.webp') { try { const img = fs.readFileSync(path.join(__dirname, 'tear-mundo.webp')); res.writeHead(200, { 'Content-Type': 'image/webp', 'Cache-Control': 'max-age=3600' }); res.end(img); } catch { res.writeHead(404); res.end(); } return; }
+    if (u.pathname === '/terrenos.json') { try { const t = fs.readFileSync(path.join(__dirname, 'tear-terrenos.json'), 'utf8'); res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=3600' }); res.end(t); } catch { res.writeHead(404); res.end('{}'); } return; }
     if (u.pathname === '/mapa.json') { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'max-age=86400' }); res.end(mapa); return; }
     if (u.pathname === '/api/entrar' && req.method === 'POST') { if (++tentativas > 8) return json(429, { erro: 'muitas tentativas; espere um minuto' }); const b = await corpo(req);
       if (!igual(sha('karmika:' + String(b.senha || '')), ADMH)) return json(401, { erro: 'senha' });

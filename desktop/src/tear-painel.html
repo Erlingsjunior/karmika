@@ -48,16 +48,18 @@ main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr
 @keyframes pulsa { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(3.4); } }
 .pino .halo, .pino .nuc { transform-box: fill-box; transform-origin: center; }
 .sede { fill: var(--brass2); stroke: #0a0f14; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.lote { cursor: pointer; } .lote .mastro { fill: #3a2a1c; stroke: #000; } .lote .pano { fill: var(--brass2); stroke: #000; } .lote.sel .pano { fill: #fff; } .lote path, .lote rect { vector-effect: non-scaling-stroke; stroke-width: 1.5; }
+.cid { fill: #fff; stroke: #000; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .rot { font: 600 2.2px system-ui, sans-serif; fill: var(--ink); paint-order: stroke; stroke: #0a0f14; stroke-width: .5; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .fio.on, .pino.on .halo { animation: none; } .pino.on .halo { opacity: .5; } }
-.vistas { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; } .vistas button { padding: 5px 10px; font-size: 12px; background: rgba(12, 10, 9, .8); }
+.vistas { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; } .vistas button { padding: 5px 10px; font-size: 12px; background: rgba(12, 10, 9, .8); } .vistas button.go { background: linear-gradient(180deg, #e9a04a, #b85a1c); }
 .legenda { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 14px; font-size: 12px; color: var(--mut); background: rgba(12, 10, 9, .8); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); }
 .legenda i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
 #dica { position: absolute; right: 12px; top: 12px; max-width: 260px; padding: 8px 12px; border-radius: 8px; background: rgba(196, 106, 46, .92); color: #1a0d05; font-weight: 700; font-size: 13px; }
 
 aside { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: var(--bg2); }
 .abas { display: flex; border-bottom: 1px solid var(--line); }
-.abas button { flex: 1; border: 0; border-radius: 0; background: none; padding: 12px 6px; color: var(--mut); font-weight: 700; font-size: 13px; border-bottom: 2px solid transparent; }
+.abas { overflow-x: auto; } .abas button { flex: 1; border: 0; border-radius: 0; background: none; padding: 12px 8px; white-space: nowrap; color: var(--mut); font-weight: 700; font-size: 13px; border-bottom: 2px solid transparent; }
 .abas button[aria-selected="true"] { color: var(--brass2); border-bottom-color: var(--brass); }
 .abas i { font-style: normal; display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--cop); color: #1a0d05; font-size: 11px; }
 .pain { overflow: auto; padding: 14px; display: grid; gap: 12px; align-content: start; }
@@ -98,8 +100,8 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
   </header>
   <main>
     <section id="mapaBox" aria-label="Mapa dos reinos">
-      <svg id="mapa" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet"><path id="terra"></path><g id="gFios"></g><g id="gPinos"></g></svg>
-      <div class="vistas"><button type="button" data-v="0 0 360 180">Mundo</button><button type="button" data-v="92 78 60 52">América do Sul</button><button type="button" data-v="104 82 44 44">Brasil</button><button type="button" data-v="122 104 16 14">Sudeste</button></div>
+      <svg id="mapa" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet"><g id="camReal"><path id="terra"></path><g id="gFios"></g><g id="gPinos"></g></g><g id="camJogo" hidden><image href="/mundo.webp" x="0" y="0" width="1600" height="1600" style="image-rendering:pixelated"></image><g id="gCid"></g><g id="gLotes"></g></g></svg>
+      <div class="vistas"><button type="button" id="bModo" class="go">Ver o mapa do jogo</button><span id="vReal" style="display:contents"><button type="button" data-v="0 0 360 180">Mundo</button><button type="button" data-v="92 78 60 52">América do Sul</button><button type="button" data-v="104 82 44 44">Brasil</button><button type="button" data-v="122 104 16 14">Sudeste</button></span></div>
       <div class="legenda"><span><i style="background:var(--ok)"></i>Ligado</span><span><i style="background:var(--off)"></i>Desligado</span><span><i style="background:var(--bad)"></i>Revogado</span><span><i style="background:var(--brass2)"></i>Sede</span></div>
       <div id="dica" hidden>Clique no mapa para marcar onde fica a casa.</div>
     </section>
@@ -108,6 +110,8 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
         <button type="button" role="tab" data-aba="reinos" aria-selected="true">Reinos</button>
         <button type="button" role="tab" data-aba="central" aria-selected="false">Central</button>
         <button type="button" role="tab" data-aba="cartas" aria-selected="false">Cartas<i id="nCartas" hidden>0</i></button>
+        <button type="button" role="tab" data-aba="terrenos" aria-selected="false">Terrenos</button>
+        <button type="button" role="tab" data-aba="tabela" aria-selected="false">Tabela</button>
         <button type="button" role="tab" data-aba="nova" aria-selected="false">Nova casa</button>
       </div>
       <div class="pain" id="pReinos"></div>
@@ -127,6 +131,8 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
         <div id="lEnviados" style="display:grid;gap:8px"></div>
       </div>
       <div class="pain" id="pCartas" hidden></div>
+      <div class="pain" id="pTerrenos" hidden></div>
+      <div class="pain" id="pTabela" hidden></div>
       <div class="pain" id="pNova" hidden>
         <form class="cart" id="fCasa">
           <h3>Registrar casa parceira</h3>
@@ -166,15 +172,38 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
     fetch('/api/entrar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ senha: f.senha.value }) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.erro === 'senha' ? 'Senha errada.' : j.erro || 'Não entrou.'); f.reset(); mostra(true); puxa(); }); }).catch(function (x) { m.textContent = x.message; }); });
 
   /* ---------- mapa: arrastar, roda para aproximar, vistas prontas ---------- */
-  var mapa = $('#mapa'), vb = [0, 0, 360, 180];
-  function poeVb() { mapa.setAttribute('viewBox', vb.join(' ')); var k = vb[2] / 360; document.querySelectorAll('.pino circle, .sede').forEach(function (c) { c.setAttribute('r', (+c.dataset.r) * k); }); document.querySelectorAll('.rot').forEach(function (t) { t.style.fontSize = (2.6 * k) + 'px'; t.setAttribute('dy', -2.4 * k); t.style.strokeWidth = (0.6 * k) + 'px'; }); }
+  var mapa = $('#mapa'), vb = [0, 0, 360, 180], modo = 'real', T = null, selLote = 0;
+  function poeVb() { mapa.setAttribute('viewBox', vb.join(' ')); var k = vb[2] / 360; document.querySelectorAll('.lote .esc').forEach(function (g) { g.setAttribute('transform', 'scale(' + (k * 0.42) + ')'); }); document.querySelectorAll('.pino circle, .sede, .cid').forEach(function (c) { c.setAttribute('r', (+c.dataset.r) * k); }); document.querySelectorAll('.rot').forEach(function (t) { t.style.fontSize = (2.6 * k) + 'px'; t.setAttribute('dy', -2.4 * k); t.style.strokeWidth = (0.6 * k) + 'px'; }); }
   function ponto(ev) { var r = mapa.getBoundingClientRect(), esc = Math.max(vb[2] / r.width, vb[3] / r.height), ox = (r.width * esc - vb[2]) / 2, oy = (r.height * esc - vb[3]) / 2; return [vb[0] + (ev.clientX - r.left) * esc - ox, vb[1] + (ev.clientY - r.top) * esc - oy, esc]; }
-  mapa.addEventListener('wheel', function (ev) { ev.preventDefault(); var p = ponto(ev), f = ev.deltaY > 0 ? 1.2 : 1 / 1.2, w = Math.max(4, Math.min(360, vb[2] * f)), k = w / vb[2]; vb = [p[0] - (p[0] - vb[0]) * k, p[1] - (p[1] - vb[1]) * k, w, vb[3] * k]; poeVb(); }, { passive: false });
+  mapa.addEventListener('wheel', function (ev) { ev.preventDefault(); var p = ponto(ev), f = ev.deltaY > 0 ? 1.2 : 1 / 1.2, w = Math.max(modo === 'jogo' ? 60 : 4, Math.min(modo === 'jogo' ? 1600 : 360, vb[2] * f)), k = w / vb[2]; vb = [p[0] - (p[0] - vb[0]) * k, p[1] - (p[1] - vb[1]) * k, w, vb[3] * k]; poeVb(); }, { passive: false });
   var arr = null;
   mapa.addEventListener('pointerdown', function (ev) { if (marcando) { var p = ponto(ev), f = $('#fCasa'); f.lon.value = (p[0] - 180).toFixed(2); f.lat.value = (90 - p[1]).toFixed(2); marcar(false); return; } arr = { x: ev.clientX, y: ev.clientY, v: vb.slice(), mexeu: false }; mapa.setPointerCapture(ev.pointerId); mapa.classList.add('pega'); });
   mapa.addEventListener('pointermove', function (ev) { if (!arr) return; var e2 = ponto(ev)[2], dx = ev.clientX - arr.x, dy = ev.clientY - arr.y; if (Math.abs(dx) + Math.abs(dy) > 3) arr.mexeu = true; vb[0] = arr.v[0] - dx * e2; vb[1] = arr.v[1] - dy * e2; poeVb(); });
   mapa.addEventListener('pointerup', function () { arr = null; mapa.classList.remove('pega'); });
   document.querySelectorAll('.vistas button').forEach(function (b) { b.addEventListener('click', function () { vb = b.dataset.v.split(' ').map(Number); poeVb(); }); });
+  /* dois mapas no mesmo quadro: o mundo de verdade (os reinos) e o mundo do jogo (os terrenos de guilda) */
+  function poeModo(m) { modo = m; $('#camReal').toggleAttribute('hidden', m !== 'real'); $('#camJogo').toggleAttribute('hidden', m !== 'jogo'); $('#vReal').style.display = m === 'real' ? 'contents' : 'none'; document.querySelector('.legenda').hidden = m !== 'real'; $('#bModo').textContent = m === 'real' ? 'Ver o mapa do jogo' : 'Ver o mundo de verdade'; vb = m === 'real' ? [0, 0, 360, 180] : [250, 250, 1100, 1100]; poeVb(); }
+  $('#bModo').addEventListener('click', function () { poeModo(modo === 'real' ? 'jogo' : 'real'); if (modo === 'jogo') aba('terrenos'); else aba('reinos'); });
+  function desenhaJogo() { if (!T) return; var gL = $('#gLotes'), gC = $('#gCid'); gL.textContent = ''; gC.textContent = '';
+    T.cidades.forEach(function (c) { var d = sv('circle', { 'class': 'cid', cx: c.x, cy: c.y }); d.dataset.r = 0.7; gC.appendChild(d); var t = sv('text', { 'class': 'rot', x: c.x, y: c.y, 'text-anchor': 'middle' }); t.textContent = c.nome; gC.appendChild(t); });
+    T.terrenos.forEach(function (l) { var g = sv('g', { 'class': 'lote' + (l.id === selLote ? ' sel' : ''), transform: 'translate(' + l.x + ' ' + l.y + ')', tabindex: 0, role: 'button', 'aria-label': l.nome });
+      var e = sv('g', { 'class': 'esc' }); e.appendChild(sv('rect', { 'class': 'mastro', x: -5, y: -9, width: 2, height: 18 })); e.appendChild(sv('path', { 'class': 'pano', d: 'M-3 -8.5H8V2.5L2.5 0L-3 2.5Z' })); g.appendChild(e);
+      var abre = function () { selLote = l.id; pintaTerrenos(); desenhaJogo(); }; g.addEventListener('click', abre); g.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') abre(); }); gL.appendChild(g); });
+    poeVb(); }
+  function pintaTerrenos() { var p = $('#pTerrenos'); p.textContent = ''; if (!T) { p.appendChild(el('p', 'mut', 'A lista de terrenos não foi encontrada.')); return; }
+    var c0 = el('div', 'cart'); c0.appendChild(el('h3', '', 'Terrenos de guilda')); c0.appendChild(el('small', '', 'São ' + T.terrenos.length + ' no mundo, os mesmos em todo reino, reservados desde sempre nos lugares mais bonitos. É neles que as guildas erguem a sede. Lista tirada do jogo em ' + T.gerado + '.')); p.appendChild(c0);
+    var reinos = E ? E.casas.filter(function (c) { return !c.revogada; }).length : 0;
+    T.terrenos.forEach(function (l) { var d = el('div', 'cart clic' + (l.id === selLote ? ' sel' : '')); var h = el('h3'); h.appendChild(el('span', '', l.id + '. ' + l.regiao)); h.appendChild(el('span', 'selo', 'Nível ' + l.lo + ' a ' + l.hi)); d.appendChild(h);
+      d.appendChild(el('small', '', 'Posição no mapa do jogo: ' + l.x + ', ' + l.y + ' · reservado, à venda em ' + reinos + (reinos === 1 ? ' reino' : ' reinos')));
+      d.addEventListener('click', function () { selLote = l.id; vb = [l.x - 150, l.y - 150, 300, 300]; pintaTerrenos(); desenhaJogo(); }); p.appendChild(d); });
+    p.appendChild(el('small', 'mut', 'A venda dos terrenos ainda não existe no jogo: por enquanto todos aparecem como reservados.')); }
+  var PAC = [['Jogo Base', 49.9], ['Pacote I', 69.9], ['Pacote II', 94.9], ['Pacote III', 139.9], ['Pacote Fundador', 429.9]];
+  function reais(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+  function pintaTabela() { var p = $('#pTabela'); if (p.dataset.ok) return; p.dataset.ok = '1'; var c = el('div', 'cart'); c.appendChild(el('h3', '', 'Comissão por nível de parceria')); c.appendChild(el('small', '', 'Uma comissão só, para tudo o que a casa vende: pacotes, cartões, loja do jogo e terrenos de guilda.'));
+    var t = el('table'), hr = el('tr'); ['Pacote', 'Preço', 'Estalagem 20%', 'Salão 25%', 'Cidadela 30%'].forEach(function (x) { hr.appendChild(el('th', '', x)); }); t.appendChild(hr);
+    PAC.forEach(function (q) { var r = el('tr'); r.appendChild(el('td', '', q[0])); r.appendChild(el('td', '', reais(q[1]))); [0.2, 0.25, 0.3].forEach(function (k) { r.appendChild(el('td', '', reais(Math.round(q[1] * k * 100 + 1e-6) / 100))); }); t.appendChild(r); }); c.appendChild(t); p.appendChild(c);
+    var c2 = el('div', 'cart'); c2.appendChild(el('h3', '', 'O resto do acordo')); ['Primeiro material de propaganda gratuito; depois, Shop do Parceiro.', 'Produtos KARMIKA com 30% de desconto para revender.', 'Cartão usado: a parte da KARMIKA sai do que a casa tem a receber; sem saldo, cobrança por e-mail.', 'Eventos da casa: 100% dela; assinados com a KARMIKA: 70%.', 'Acerto todo mês até o dia 10, por Pix. Contrato de 12 meses.', 'Transferência de reino: serviço pago pelo jogador.', 'Classificatórias: só guildas de nível 3 ou mais.'].forEach(function (x) { c2.appendChild(el('small', '', '· ' + x)); }); p.appendChild(c2); }
+  fetch('/terrenos.json').then(function (r) { return r.json(); }).then(function (j) { if (j && j.terrenos) { T = j; desenhaJogo(); pintaTerrenos(); } }).catch(function () { /* sem a lista */ });
   function marcar(on) { marcando = on; mapa.classList.toggle('marca', on); $('#dica').hidden = !on; }
   $('#bMarcar').addEventListener('click', function () { marcar(!marcando); });
   fetch('/mapa.json').then(function (r) { return r.json(); }).then(function (m) { $('#terra').setAttribute('d', m.d); });
@@ -190,8 +219,8 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
     var s = sv('circle', { 'class': 'sede', cx: sx, cy: sy }); s.dataset.r = 1.3; gP.appendChild(s); var ts = sv('text', { 'class': 'rot', x: sx, y: sy, 'text-anchor': 'middle' }); ts.textContent = 'O Tear'; gP.appendChild(ts); poeVb(); }
 
   /* ---------- abas ---------- */
-  var ABAS = { reinos: '#pReinos', central: '#pCentral', cartas: '#pCartas', nova: '#pNova' };
-  function aba(n) { document.querySelectorAll('.abas button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.aba === n)); }); for (var k in ABAS) $(ABAS[k]).hidden = k !== n; if (n !== 'nova') marcar(false); }
+  var ABAS = { reinos: '#pReinos', central: '#pCentral', cartas: '#pCartas', terrenos: '#pTerrenos', tabela: '#pTabela', nova: '#pNova' };
+  function aba(n) { document.querySelectorAll('.abas button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.aba === n)); }); for (var k in ABAS) $(ABAS[k]).hidden = k !== n; if (n !== 'nova') marcar(false); if (n === 'terrenos' && modo !== 'jogo') poeModo('jogo'); if ((n === 'reinos' || n === 'nova') && modo !== 'real') poeModo('real'); }
   document.querySelectorAll('.abas button').forEach(function (b) { b.addEventListener('click', function () { aba(b.dataset.aba); }); });
 
   /* ---------- reinos ---------- */
@@ -220,6 +249,7 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
     var sp = $('#selPara'), antes = sp.value; sp.textContent = ''; var o = el('option', '', 'Todas as casas'); o.value = 'todas'; sp.appendChild(o); vivas.forEach(function (c) { var q = el('option', '', c.nome + (c.online ? '' : ' (desligada)')); q.value = String(c.id); sp.appendChild(q); }); if (antes && sp.querySelector('option[value="' + antes + '"]')) sp.value = antes;
     var le = $('#lEnviados'); le.textContent = ''; if (!E.avisos.length) le.appendChild(el('p', 'mut', 'Nada enviado ainda.'));
     E.avisos.forEach(function (a) { var d = el('div', 'cart env'); d.appendChild(el('small', '', (a.tipo === 'evento' ? 'Evento' : 'Mensagem') + ' · ' + dia(a.quando) + ' · para ' + nomeCasa(a.para))); if (a.titulo) d.appendChild(el('b', '', a.titulo)); d.appendChild(el('p', '', a.texto)); le.appendChild(d); });
+    pintaTerrenos(); pintaTabela();
     var pc = $('#pCartas'); pc.textContent = ''; if (!E.cartas.length) pc.appendChild(el('p', 'mut', 'Nenhuma carta dos parceiros ainda.'));
     E.cartas.forEach(function (k) { var d = el('div', 'cart carta' + (k.lida ? '' : ' nova')); d.appendChild(el('small', '', nomeCasa(k.casa) + ' · ' + k.de + ' · ' + dia(k.quando))); d.appendChild(el('p', '', k.texto));
       var b = el('div', 'bot'); var r = el('button', '', 'Responder'); r.type = 'button'; r.addEventListener('click', function () { aba('central'); $('#selPara').value = String(k.casa); $('#fAviso').texto.focus(); }); b.appendChild(r);
