@@ -41,6 +41,22 @@ function applyTextScale() {
   for (const id of ['tip', 'tip2', 'tt']) { const t = document.getElementById(id); if (t) t.style.maxWidth = `${Math.round(270 * K.opts.txt * K.uiScale())}px`; }
 }
 setTimeout(applyTextScale, 0); setTimeout(applyTextScale, 2500); // depois dos estilos que os módulos criam
+/* 12/11 (Erling: "faça o item um e turbine o game"): TRADUTOR DE VÍDEO, só no aplicativo. O Chromium traduz o desenho do jogo para o DirectX 11 no Windows;
+   aqui dá para trocar por OpenGL, Vulkan ou DirectX 12 e comparar as travadas. Vale ao reabrir o aplicativo; se a escolha não abrir, ele volta sozinho. */
+type DeskVideo = { video?(): Promise<{ angle: string; voltou: string }>; setVideo?(v: string): Promise<boolean>; videoOk?(): Promise<boolean>; relaunch?(): Promise<boolean> };
+const deskV = (window as unknown as { karmikaDesktop?: DeskVideo }).karmikaDesktop ?? null;
+let video: { angle: string; voltou: string } | null = null, videoNovo: string | null = null;
+if (deskV?.video) { void deskV.video().then((v) => { video = v; }).catch(() => { /* aplicativo antigo */ });
+  const t = setInterval(() => { if (document.body.classList.contains('ready')) { clearInterval(t); setTimeout(() => void deskV.videoOk?.(), 4000); } }, 1000); /* o jogo abriu e desenhou: a escolha deixa de estar "em teste" */ }
+/** o nome que a placa de vídeo dá a si mesma (mostra qual tradutor está valendo de verdade) */
+const placaNome = () => { try { const g = (K.renderer as unknown as { getContext?(): WebGLRenderingContext }).getContext?.(); const e = g?.getExtension('WEBGL_debug_renderer_info'); return g && e ? String(g.getParameter(e.UNMASKED_RENDERER_WEBGL)) : ''; } catch { return ''; } };
+/* 12/11 (Erling: "combinações que possam melhorar o desempenho"): perfis prontos de resolução + pixel + cenário, com a conta de pixels à mostra */
+const PERFIS: Record<string, { n: string; res: number; pix: number; wratio: number; d: string }> = {
+  leve: { n: 'Leve', res: 900, pix: 2, wratio: 2, d: 'notebook sem placa de vídeo' },
+  padrao: { n: 'Padrão', res: 1080, pix: 2, wratio: 2, d: 'o visual de sempre' },
+  nitido: { n: 'Nítido', res: 900, pix: 1, wratio: 2, d: 'personagens em 1600×900, cenário na metade' },
+  maximo: { n: 'Máximo', res: 1080, pix: 1, wratio: 1, d: 'tudo no pixel mais fino (pesado)' } };
+const tamAgora = () => { try { const c = K.renderer.domElement, r = K.dual.ratio || 1; return `personagens ${c.width}×${c.height} · cenário ${Math.floor(c.width / r)}×${Math.floor(c.height / r)}`; } catch { return ''; } };
 function renderOptions() {
   const el = document.getElementById('p-opt'); if (!el) return;
   const seg = (k: keyof Opts, vals: [string | number | boolean, string][], off = false) => `<div class="seg"${off ? ' style="opacity:.35;pointer-events:none" title="O Moderno já usa o máximo"' : ''}>${vals.map(([v, n]) => `<button data-ok="${k}" data-ov="${v}"${off ? ' disabled' : ''} class="${K.opts[k] === v && !off ? 'on' : ''}">${n}</button>`).join('')}</div>`;
@@ -55,11 +71,12 @@ function renderOptions() {
     <div class="stat"><span>Texto do chat <small>Por cima do tamanho do texto: só a caixa de conversa</small></span>${seg('chat', [1, 1.25, 1.5, 1.75, 2, 2.5].map((v) => [v, pct(v)] as [number, string]))}</div>
     <h3>Tela</h3>
     <div class="stat"><span>Tamanho da interface <small>Janelas, ícones e texto juntos. Acompanha o seu monitor sozinho (Full HD, Quad HD, 4K). 1,00 é o padrão; só aparecem os tamanhos que cabem nesta tela</small></span>${seg('uis', [0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.5, 2].filter((v, i) => i === 0 || uiBase() * v <= uiFitMax() + 0.001 || K.opts.uis === v).map((v) => [v, v.toFixed(2).replace('.', ',')] as [number, string]))}</div>
-    <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)${offTxt}</small></span>${seg('res', [[720, '720p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']], mod)}</div>
+    <div class="stat"><span>Resolução do mundo <small>Full HD: mesmo visual e o mesmo FPS em qualquer monitor · Quad HD: mais nítido · Nativa: todos os pixels (mais pesado)${offTxt}</small></span>${seg('res', [[720, '720p'], [900, '900p'], [1080, 'Full HD'], [1440, 'Quad HD'], [0, 'Nativa']], mod)}</div>
+    <div class="stat"><span>Perfis prontos <small>Um clique ajusta 'Resolução do mundo', 'Tamanho do pixel' e 'Detalhe do cenário' de uma vez; depois dá para mexer em cada um. ${Object.values(PERFIS).map((q) => `${q.n}: ${q.d}`).join(' · ')}. Agora: <b>${tamAgora()}</b>${offTxt}</small></span><div class="seg"${mod ? ' style="opacity:.35;pointer-events:none"' : ''}>${Object.entries(PERFIS).map(([id, q]) => `<button data-act="perfil" data-p="${id}" class="${!mod && K.opts.res === q.res && K.opts.pix === q.pix && K.opts.wratio === q.wratio ? 'on' : ''}">${q.n}</button>`).join('')}</div></div>
     <h3>Gráficos</h3>
     <div class="stat"><span>Estilo do gráfico <small>Pixel: o visual de pixel art do Karmika · Moderno: resolução nativa do monitor (ignora 'Resolução do mundo' e 'Tamanho do pixel'), cor sem degrau de 16 bits, luz em degradê nos modelos, sombra com o dobro de detalhe e borda macia, brilho largo e borda alisada (mais pesado). Dá para trocar quando quiser.</small></span>${seg('gfx', [[0, 'Pixel'], [1, 'Moderno']])}</div>
     <div class="stat"><span>Renderizador <small>WebGPU: o motor gráfico novo dos navegadores (mais rápido nas placas de vídeo de hoje) · WebGL: o de sempre, roda em qualquer PC · Automático: o WebGL enquanto o WebGPU do Karmika está em teste (no WebGPU o jogo ainda engasga ao andar pelo mundo, quando um bloco novo entra na tela). Se o WebGPU não abrir, o jogo volta sozinho para o WebGL. Agora: <b>${gpuState.on ? 'WebGPU' : 'WebGL'}</b>${gpuState.why ? ` (${gpuState.why})` : ''}${(K.opts.rend === 1) !== gpuState.on && !(K.opts.rend === 1 && gpuState.why) ? ' · <b style="color:#ffd27a">vale ao reabrir o jogo</b> <button data-act="reopen" style="margin-left:4px">Reabrir agora</button>' : ''}</small></span>${seg('rend', [[0, 'Automático'], [1, 'WebGPU (teste)'], [2, 'WebGL']])}</div>
-    <div class="stat"><span>Tamanho do pixel <small>1 = o mais fino (cada pixel do jogo é um pixel da tela, pesado) · 2 = fino · 3 = médio · 4 = pixel grosso, para PC fraco (leve)${offTxt}</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], mod)}</div>
+${deskV?.setVideo && video ? `    <div class="stat"><span>Tradutor de vídeo <small>Só no aplicativo. O jogo desenha através de um tradutor entre ele e a placa de vídeo. O Automático usa o DirectX 11, que monta cada efeito na primeira vez que ele aparece (suspeita das travadas). Troque, reabra e compare. Se a escolha não abrir, o aplicativo volta sozinho para o Automático. Placa agora: <b>${placaNome() || 'não informada'}</b>${video.voltou ? ` · <b style="color:#ff9a6a">${video.voltou} não abriu neste PC e foi desfeito</b>` : ''}${videoNovo !== null && videoNovo !== video.angle ? ' · <b style="color:#ffd27a">vale ao reabrir o aplicativo</b> <button data-act="relaunch" style="margin-left:4px">Reabrir agora</button>' : ''}</small></span><div class="seg">${([['', 'Automático'], ['gl', 'OpenGL'], ['vulkan', 'Vulkan'], ['d3d12', 'DirectX 12']] as [string, string][]).map(([v, n]) => `<button data-act="video" data-p="${v}" class="${(videoNovo ?? video!.angle) === v ? 'on' : ''}">${n}</button>`).join('')}</div></div>\n` : ''}    <div class="stat"><span>Tamanho do pixel <small>1 = o mais fino (cada pixel do jogo é um pixel da tela, pesado) · 2 = fino · 3 = médio · 4 = pixel grosso, para PC fraco (leve)${offTxt}</small></span>${seg('pix', [[1, '1'], [2, '2'], [3, '3'], [4, '4']], mod)}</div>
     <div class="stat"><span>Detalhe do cenário <small>O chão, as casas e as árvores podem ter o pixel maior que o dos personagens. Igual: mesmo pixel (mais pesado) · Um terço: cenário bem grosso (mais leve)${offTxt}${!mod && gpuState.on ? ' <b style="color:#d9a24f">Desligado no WebGPU: lá o cenário usa sempre o mesmo pixel dos personagens. Funciona no WebGL (Renderizador: Automático).</b>' : ''}</small></span>${seg('wratio', [[1, 'Igual'], [1.5, 'Dois terços'], [2, 'Metade'], [3, 'Um terço']], mod || gpuState.on)}</div>
     <div class="stat"><span>Sombras</span>${seg('shadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
     <div class="stat"><span>Sombras dos personagens <small>caras: dobram o custo de cada personagem; desligadas, fica só uma sombra leve no pé</small></span>${seg('charShadows', [[true, 'Ligadas'], [false, 'Desligadas']])}</div>
@@ -103,6 +120,9 @@ const onClick = (e: Event) => { { const tb = (e.target as HTMLElement).closest('
   const a = b.dataset.act;
   if (a === 'keysdef') { teclasPadrao(); relabelBar(); renderOptions(); K.audio.click(); return; }
   if (a === 'reopen') { location.reload(); return; }
+  if (a === 'perfil') { const q = PERFIS[b.dataset.p ?? '']; if (q) { K.opts.res = q.res; K.opts.pix = q.pix; K.opts.wratio = q.wratio; applyOpts(); renderOptions(); K.audio.click(); } return; }
+  if (a === 'video') { videoNovo = b.dataset.p ?? ''; void deskV?.setVideo?.(videoNovo); renderOptions(); K.audio.click(); return; }
+  if (a === 'relaunch') { void deskV?.relaunch?.(); return; }
 
   if (a === 'zoom') { K.zoomTarget = 17; }
   if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); localStorage.removeItem('karmika.ui.party'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }

@@ -263,8 +263,19 @@ function drawBig() {
     for (const n of K.npcSys.npcs) { const key = K.SHOP_BY_NAME.get(n.def.name); if (!key) continue; const sd = SHOPDEF[key]; put(SICON[key] ?? '🪙', n.pos.x / T, n.pos.z / T, sd?.title ?? n.def.name, `Comércio${sd?.note ? ' · ' + sd.note : ''}`, '#d8b45a'); }
   }
   if (L.vista && !far) for (const v of K.CINE.vistas) { const seen = K.vistaSeen.has(v.id), x = X(v.at.x), y = Y(v.at.y); icon('👁', x, y, s0 * 0.85, seen ? '#ffd24a' : '#6a6a72'); K.mapHits.push({ x, y, r: s0, name: v.title.split(' — ')[1] ?? v.title, sub: seen ? 'Fonte da Visão (vista)' : 'Fonte da Visão — ainda não vista' }); }
-  if (L.relic) for (const r of K.city.relics) { const known = K.knowsRelic(r.name), x = X(r.x), y = Y(r.y); K.bg.save(); K.bg.translate(x, y); K.bg.rotate(Math.PI / 4); K.bg.fillStyle = known ? '#8ad0ff' : '#c9a24a'; K.bg.strokeStyle = '#000'; K.bg.lineWidth = 2; const q = s0 * 0.7; K.bg.fillRect(-q, -q, q * 2, q * 2); K.bg.strokeRect(-q, -q, q * 2, q * 2); K.bg.restore(); if (known) { K.bg.beginPath(); K.bg.arc(x, y, s0 + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); K.bg.strokeStyle = 'rgba(138,208,255,.6)'; K.bg.lineWidth = 1.5; K.bg.stroke(); }
-    K.mapHits.push({ x, y, r: s0 + 2, name: r.name, sub: known ? 'Relíquia conhecida — clique para viajar' : 'Relíquia desconhecida — toque nela para lembrar', go: known ? r.name : undefined }); }
+  /* 12/11 (Erling: "losangos para pedras de teleporte em todo lugar, mas para cidades um símbolo diferente, para achar mais rápido; e a dica dizer de onde é o ponto"):
+     pedra no ermo = losango; pedra de vila = portal em arco; pedra de cidade = portal maior, com estrela. Azul = conhecida, dourado = ainda não tocada. */
+  if (L.relic) for (const r of K.city.relics) { const known = K.knowsRelic(r.name), x = X(r.x), y = Y(r.y), g = K.bg;
+    const st = K.city.settlements.find((q) => Math.hypot(q.x - r.x, q.y - r.y) < q.radius + 12), cid = !!st && (st.kind === 'city' || st.name === 'Karmika');
+    const fill = known ? '#8ad0ff' : '#c9a24a'; g.save(); g.translate(x, y); g.fillStyle = fill; g.strokeStyle = '#000'; g.lineWidth = 2;
+    if (!st) { g.rotate(Math.PI / 4); const q = s0 * 0.7; g.fillRect(-q, -q, q * 2, q * 2); g.strokeRect(-q, -q, q * 2, q * 2); }
+    else { const q = s0 * (cid ? 1.25 : 0.95); g.beginPath(); g.moveTo(-q * 0.8, q); g.lineTo(-q * 0.8, -q * 0.15); g.arc(0, -q * 0.15, q * 0.8, Math.PI, 0); g.lineTo(q * 0.8, q); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#10141c'; if (cid) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = q * (i % 2 ? 0.24 : 0.56); g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + q * 0.1); } g.closePath(); g.fill(); }
+      else { g.beginPath(); g.moveTo(-q * 0.32, q); g.lineTo(-q * 0.32, q * 0.1); g.arc(0, q * 0.1, q * 0.32, Math.PI, 0); g.lineTo(q * 0.32, q); g.closePath(); g.fill(); } }
+    g.restore(); if (known) { g.beginPath(); g.arc(x, y, s0 * (cid ? 1.25 : 1) + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); g.strokeStyle = 'rgba(138,208,255,.6)'; g.lineWidth = 1.5; g.stroke(); }
+    let reg = ''; try { reg = regionAt(r.x, r.y).name; } catch { /* */ }
+    const onde = st ? `${cid ? 'Cidade' : 'Vila'} de ${st.name}` : 'Fora de vilas e cidades';
+    K.mapHits.push({ x, y, r: s0 * (cid ? 1.25 : 1) + 2, name: r.name.replace(/^Relíquia: /, 'Pedra de teleporte: '), sub: `${onde}${reg ? ' · ' + reg : ''} · ${known ? 'conhecida: clique para viajar' : 'ainda não tocada: vá até ela para poder viajar'}`, go: known ? r.name : undefined }); }
   if (L.npc) for (const n of K.npcSys.npcs) { K.bg.fillStyle = '#7ad0ff'; K.bg.beginPath(); K.bg.arc(X(n.pos.x / T), Y(n.pos.z / T), 2.4, 0, 6.283); K.bg.fill(); }
   if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); K.bg.strokeStyle = guideCol; K.bg.lineWidth = 2.5; K.bg.beginPath(); K.bg.arc(x, y, pr, 0, 6.283); K.bg.stroke(); }
   const h0 = hereT(); heroArrow(K.bg, X(h0.x), Y(h0.y), 2.2);

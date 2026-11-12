@@ -33,7 +33,7 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding');
    coberta, o motor de animação do Chromium não economiza quadro, e o processo do jogo, o da placa de vídeo e o de desenho sobem de prioridade */
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,IntensiveWakeUpThrottling');
-app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
+if (!app.commandLine.hasSwitch('enable-features')) app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization');
 app.commandLine.appendSwitch('max-active-webgl-contexts', '32');
 /* 10/11 (Erling: "uma dist que priorize o game e reserve a RAM possível para o fps"): o JavaScript do jogo pode usar até 1/4 da RAM
    (16 GB → 4 GB; mín. 2 GB, máx. 8 GB) — menos paradas de coleta de lixo no meio da luta; a placa de vídeo (integrada usa a RAM) ganha mais
@@ -42,6 +42,20 @@ app.commandLine.appendSwitch('max-active-webgl-contexts', '32');
   app.commandLine.appendSwitch('js-flags', `--max-old-space-size=${heap} --max-semi-space-size=64`);
   app.commandLine.appendSwitch('force-gpu-mem-available-mb', String(gb >= 15 ? 4096 : gb >= 7 ? 2048 : 1024));
   console.log(`[karmika] RAM ${gb.toFixed(1)} GB → memória do jogo ${heap} MB`); }
+/* 12/11 (Erling: "faça o item um e turbine o game"): TRADUTOR DE VÍDEO. O Chromium, no Windows, traduz o desenho do jogo para o DirectX 11 e monta cada
+   efeito visual na primeira vez que ele aparece na tela: é a nossa suspeita para as travadas. Aqui o dono escolhe outro tradutor (OpenGL, Vulkan,
+   DirectX 12) em Opções; vale ao reabrir. Segurança: a escolha nova fica "em teste" até o jogo avisar que abriu; se o aplicativo cair antes disso,
+   a próxima abertura volta sozinha para o Automático. */
+const VIDEO_FILE = () => path.join(app.getPath('userData'), 'karmika-video.json');
+const ANGLES = { gl: 'gl', vulkan: 'vulkan', d3d12: 'd3d11on12', d3d11: 'd3d11' };
+let videoCfg = { angle: '', teste: false, voltou: '' };
+try { videoCfg = { ...videoCfg, ...JSON.parse(fs.readFileSync(VIDEO_FILE(), 'utf8')) }; } catch { /* primeira vez */ }
+const saveVideo = () => { try { fs.mkdirSync(path.dirname(VIDEO_FILE()), { recursive: true }); fs.writeFileSync(VIDEO_FILE(), JSON.stringify(videoCfg)); } catch (e) { console.log('[karmika] não gravou o tradutor de vídeo:', e.message); } };
+if (videoCfg.angle && videoCfg.teste) { console.log('[karmika] o tradutor de vídeo', videoCfg.angle, 'não abriu da última vez: volta para o Automático'); videoCfg = { angle: '', teste: false, voltou: videoCfg.angle }; saveVideo(); }
+else if (ANGLES[videoCfg.angle]) { app.commandLine.appendSwitch('use-angle', ANGLES[videoCfg.angle]); if (videoCfg.angle === 'vulkan') app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,Vulkan'); videoCfg.teste = true; saveVideo(); console.log('[karmika] tradutor de vídeo:', videoCfg.angle); }
+/* os efeitos já montados ficam guardados em disco entre uma abertura e outra: o padrão do Chromium (6 MB) é pouco para as centenas de efeitos do jogo */
+app.commandLine.appendSwitch('gpu-program-cache-size-kb', String(256 * 1024));
+app.commandLine.appendSwitch('gpu-disk-cache-size-kb', String(512 * 1024));
 function gamePriority() {
   try { if (!globalThis.__kmkPsb) globalThis.__kmkPsb = powerSaveBlocker.start('prevent-app-suspension'); } catch { /* */ }
   const P = os.constants.priority, set = (pid, pr) => { try { os.setPriority(pid, pr); } catch { /* sem permissão: segue normal */ } };
@@ -150,6 +164,10 @@ ipcMain.handle('host:stop', async () => {
 ipcMain.handle('app:gpu', async () => {
   try { const g = await app.getGPUInfo('complete'); const d = g?.gpuDevice?.find((x) => x.active) ?? g?.gpuDevice?.[0]; return { renderer: g?.auxAttributes?.glRenderer || null, vendor: d?.vendorString || null, device: d?.deviceString || null }; } catch { return null; }
 });
+ipcMain.handle('video:get', () => ({ angle: videoCfg.angle, voltou: videoCfg.voltou }));
+ipcMain.handle('video:ok', () => { if (videoCfg.teste || videoCfg.voltou) { videoCfg.teste = false; saveVideo(); } return true; }); /* o jogo abriu com o tradutor escolhido: deixa de estar em teste */
+ipcMain.handle('video:set', (_e, v) => { videoCfg = { angle: ANGLES[v] ? String(v) : '', teste: false, voltou: '' }; saveVideo(); return true; });
+ipcMain.handle('app:relaunch', () => { setTimeout(() => { app.relaunch(); app.exit(0); }, 150); return true; });
 ipcMain.handle('app:copy', (_e, text) => { clipboard.writeText(String(text)); return true; });
 /* ---- atualização pelo servidor: compara as versões e baixa só os arquivos que mudaram ---- */
 let localMan = null; // { dir, man } em memória (calcular o hash de tudo leva um instante)

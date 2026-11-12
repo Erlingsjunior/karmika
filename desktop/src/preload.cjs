@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld('karmikaDesktop', {
   /** confere a versão do jogo com o servidor e baixa o que mudou */
   update: (invite) => ipcRenderer.invoke('game:update', invite),
   onUpdate: (cb) => { const f = (_e, p) => cb(p); ipcRenderer.on('game:progress', f); return () => ipcRenderer.off('game:progress', f); },
+  /** 12/11: tradutor de vídeo (DirectX, OpenGL, Vulkan): lê, troca (vale ao reabrir), confirma que abriu, reabre o aplicativo */
+  video: () => ipcRenderer.invoke('video:get'), setVideo: (v) => ipcRenderer.invoke('video:set', v), videoOk: () => ipcRenderer.invoke('video:ok'), relaunch: () => ipcRenderer.invoke('app:relaunch'),
   copy: (text) => ipcRenderer.invoke('app:copy', text),
   open: (url) => ipcRenderer.invoke('app:open', url),
   /** 09/11: fecha o jogo (botão Sair da tela inicial) */
