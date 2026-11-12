@@ -34,7 +34,7 @@ export const ENG_PRODS: Prod[] = [
 /* 12/11 (Erling: "não esqueça da aba Utilidades no Shop, para as ajudas de jogo que não são pay-to-win"): só o que poupa tempo e viagem, nunca força.
    Tudo aqui também se compra com ouro dentro do jogo; os preços seguem a mesma régua do Premium (30 dias = R$ 19,90). */
 export const UTIL_PRODS: (Prod & { qtd?: Record<string, number> })[] = [
-  { id: 'u_regresso', kind: 'eng', icon: '📜', qtd: { scroll_return: 10 }, name: '10 Pergaminhos do Regresso', brl: 4.9, desc: 'Lido, abre um caminho de volta à sua fonte-lar. Dez viagens poupadas.' },
+  { id: 'u_regresso', kind: 'eng', icon: '📜', qtd: { scroll_return: 20 }, name: '20 Pergaminhos do Regresso', brl: 4.9, desc: 'Lido, abre um caminho de volta à sua fonte-lar. Vinte viagens poupadas (no jogo, cada um custa 250 de ouro).' },
   { id: 'u_alforje', kind: 'eng', icon: '🎒', qtd: { bag_l: 1 }, name: 'Alforje de Viajante', brl: 6.9, desc: 'Uma bolsa de 24 espaços, a mesma das cidades maiores.' },
   { id: 'u_obra', kind: 'eng', icon: '🦾', qtd: { obra_auto: 1, ajudante_obra_3: 2 }, name: 'Canteiro Automatizado', brl: 12.9, was: 16.8, tag: 'para quem constrói', desc: 'O Contrato de Obra e dois Ajudantes de Obra Mk III: a casa sobe enquanto você joga.' },
   { id: 'u_viagem', kind: 'eng', icon: '🧭', qtd: { scroll_return: 5, bag_l: 1, rope: 5, tonic: 5 }, name: 'Kit do Viajante', brl: 9.9, was: 12.3, tag: '−20%', desc: 'Cinco Pergaminhos do Regresso, um Alforje, cordas e tônicos para a estrada.' },

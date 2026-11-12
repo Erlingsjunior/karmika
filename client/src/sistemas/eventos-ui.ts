@@ -22,7 +22,7 @@ K.quests.setExtraTop(() => evCard);
 /* aviso de evento por perto: uma faixa animada que entra pela DIREITA da tela (o diário fica à esquerda).
    Clicar = pegar a missão: a bússola passa a levar até lá. Chegando, o arauto conta e você escolhe o lado (isso é aceitar). */
 const evNearEl = document.createElement('div'); evNearEl.id = 'evnear'; document.body.appendChild(evNearEl);
-movable(evNearEl, 'evnear', { whole: true }); evNearEl.title = 'Arraste para mudar de lugar (fica salvo) · clique duplo volta'; /* 12/11 (Erling: "os eventos aparecem em cima das missões; quero mover para onde não atrapalhe, e salvar") */
+movable(evNearEl, 'evnear'); /* 12/11 (Erling: "faltou o local de clique com arraste; não dá para pegar na janela inteira, nada foi feito assim"): só o puxador ⠿ arraste, no canto do aviso, como nas Missões */ /* 12/11 (Erling: "os eventos aparecem em cima das missões; quero mover para onde não atrapalhe, e salvar") */
 const evNearShown = new Set<string>(); let evNearKey: string | null = null, evNearT = 0;
 evNearEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-k]') as HTMLElement | null; if (!b) return; e.stopPropagation(); K.audio.click?.();
   if (b.dataset.x) { evNearEl.classList.remove('on'); evNearKey = null; return; }
@@ -37,7 +37,7 @@ function updateEvNear(h0: { x: number; y: number }) {
   const nx = list.find((e) => !evNearShown.has(e.key)); if (!nx) return;
   evNearShown.add(nx.key); evNearKey = nx.key; evNearT = 16;
   evNearEl.style.setProperty('--c', nx.color);
-  evNearEl.innerHTML = `<small>ACONTECENDO POR PERTO</small><b>${nx.icon} ${nx.name}</b><p>${nx.text}</p><span class="w">${nx.site} · <i class="d">${Math.round(nx.d)} m · ⌛ ${Math.max(1, Math.ceil(nx.left / 60))} min</i></span><span class="w rw">Nv ${nx.lvl} · ~${Math.round(K.game.xpNeed() * 0.3)} XP · ~${30 + K.game.st.lvl * 3} 🪙 · karma ao vencer</span><div class="r"><button data-k="${nx.key}">🧭 Pegar a missão</button><button data-k="${nx.key}" data-x="1" class="x">Agora não</button></div>`;
+  evNearEl.innerHTML = `<i class="mvgrip mvtxt" title="Arraste para mudar de lugar (fica salvo) · clique duplo: volta para o lugar de sempre">⠿ arraste</i><small>ACONTECENDO POR PERTO</small><b>${nx.icon} ${nx.name}</b><p>${nx.text}</p><span class="w">${nx.site} · <i class="d">${Math.round(nx.d)} m · ⌛ ${Math.max(1, Math.ceil(nx.left / 60))} min</i></span><span class="w rw">Nv ${nx.lvl} · ~${Math.round(K.game.xpNeed() * 0.3)} XP · ~${30 + K.game.st.lvl * 3} 🪙 · karma ao vencer</span><div class="r"><button data-k="${nx.key}">🧭 Pegar a missão</button><button data-k="${nx.key}" data-x="1" class="x">Agora não</button></div>`;
   evNearEl.classList.remove('on'); void evNearEl.offsetWidth; evNearEl.classList.add('on'); K.audio.chime?.();
 }
 setTimeout(() => { const nx = globalNext(); if (nx && !globalNow()) { const d = new Date(nx.start); K.game.logMsg(`${nx.icon} Próximo evento global: ${nx.name}, hoje/amanhã às ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')} (o horário muda a cada dia).`, nx.color); } }, 6000);
