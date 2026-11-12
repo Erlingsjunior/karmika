@@ -644,30 +644,35 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .jogar__art { position: relative; z-index: 1; display: block; aspect-ratio: 4 / 3; text-decoration: none; --k: 1; }
 .jogar__art img { position: absolute; display: block; object-fit: cover; border-radius: 12px; }
 .jogar__art .jg-main { inset: 0; width: 100%; height: 100%; border-radius: 18px; border: 1px solid rgba(201, 162, 74, .45); box-shadow: 0 30px 80px rgba(0, 0, 0, .6); transition: transform .6s cubic-bezier(.2, .8, .2, 1), opacity .6s, filter .6s; }
-.jogar__art .jg-t { left: 32%; top: 50%; width: 36%; aspect-ratio: 16 / 9; margin-top: -10.125%; border: 1px solid rgba(243, 211, 138, .55); box-shadow: 0 18px 50px rgba(0, 0, 0, .8); opacity: 0; transform: scale(.2); transition: transform .7s cubic-bezier(.2, 1.3, .3, 1) var(--d), opacity .3s var(--d); pointer-events: none; }
+.jogar__art .jg-t { left: 28%; top: 50%; width: 44%; aspect-ratio: 16 / 9; margin-top: -12.375%; border: 1px solid rgba(243, 211, 138, .55); box-shadow: 0 18px 50px rgba(0, 0, 0, .8); opacity: 0; transform: scale(.2); transition: transform .7s cubic-bezier(.2, 1.3, .3, 1) var(--d), opacity .3s var(--d); pointer-events: none; }
 .jogar__art .jg-call { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.8); padding: 14px 24px; border-radius: 999px; background: linear-gradient(180deg, #ff8a3a, #c9481a); color: #1a0d05; font: 800 14px/1 var(--sans); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; opacity: 0; transition: opacity .3s .3s, transform .4s .3s; box-shadow: 0 0 0 6px rgba(255, 122, 42, .16), 0 16px 50px -10px rgba(255, 110, 30, .9); z-index: 3; }
 .jogar.is-open .jg-main { transform: scale(.9); opacity: .38; filter: saturate(.7) blur(1px); }
 .jogar.is-open .jg-t { opacity: 1; transform: translate(calc(var(--x) * var(--k)), calc(var(--y) * var(--k))) rotate(var(--r)); }
 .jogar.is-open .jg-call { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 .jg-fx { position: absolute; z-index: 3; top: 0; bottom: 0; left: 50%; width: 100vw; transform: translateX(-50%); overflow: hidden; pointer-events: none; }
 .jg-c { position: absolute; bottom: 0; height: 82%; width: auto; max-width: none; opacity: 0; transition: transform .8s cubic-bezier(.2, .9, .2, 1), opacity .5s; filter: drop-shadow(0 20px 40px rgba(0, 0, 0, .8)); }
-.jg-c1 { right: max(8vw, calc(50vw - 900px)); height: 74%; transform: translateX(60vw); transition-delay: .25s; }
-.jg-c2 { right: max(.5vw, calc(50vw - 1040px)); transform: translateX(60vw); transition-delay: .1s; }
+.jg-c1 { left: max(.5vw, calc(50vw - 1130px)); height: 64%; transform: translateX(-60vw); transition-delay: .25s; }
+.jg-c2 { left: max(7vw, calc(50vw - 1000px)); height: 70%; transform: translateX(-60vw); transition-delay: .1s; }
+.jg-c3 { right: max(.5vw, calc(50vw - 1120px)); height: 52%; transform: translateX(60vw); transition-delay: .2s; }
 .jogar.is-open .jg-c { opacity: 1; transform: none; }
-.jg-eye { position: absolute; left: max(1.5vw, calc(50vw - 960px)); top: max(2vh, calc(26% - 9vw)); width: clamp(150px, 13vw, 270px); height: auto; overflow: visible; opacity: 0; transform: translateX(-60vw) rotate(-8deg); transition: transform .9s cubic-bezier(.2, .9, .2, 1) .15s, opacity .5s .15s; filter: drop-shadow(0 0 26px rgba(217, 165, 74, .5)) drop-shadow(0 10px 24px rgba(0, 0, 0, .7)); }
+.jg-eye { position: absolute; left: max(1.5vw, calc(50vw - 1000px)); top: max(2vh, calc(20% - 9vw)); width: clamp(150px, 13vw, 270px); height: auto; overflow: visible; opacity: 0; transform: translateX(-60vw) rotate(-40deg); transition: transform .9s cubic-bezier(.2, .9, .2, 1) .15s, opacity .5s .15s; filter: drop-shadow(0 0 26px rgba(90, 160, 255, .55)) drop-shadow(0 10px 24px rgba(0, 0, 0, .7)); }
 .jg-lids { transform-origin: 120px 75px; } .jogar.is-open .jg-lids { animation: jgblink 5.5s 1.4s infinite; }
 @keyframes jgblink { 0%, 93%, 100% { transform: scaleY(1); } 96% { transform: scaleY(.06); } }
-.jogar.is-open .jg-eye { opacity: 1; transform: none; }
+.jogar.is-open .jg-eye { opacity: 1; transform: rotate(-16deg); }
 .jg-pupil { transition: transform .12s linear; }
-@media (max-width: 1700px) { .jg-c1 { display: none; } .jg-c2 { height: 60%; right: .5vw; } .jg-eye { width: 132px; top: 3vh; } }
-@media (max-width: 860px) { .jogar__art { --k: .62; } .jg-c { display: none; } .jg-eye { width: 96px; top: 1vh; left: auto; right: 4vw; } }
+@media (max-width: 1900px) { .jg-c1 { display: none; } .jg-c2 { left: .5vw; height: 60%; } }
+@media (max-width: 1700px) { .jg-c2 { display: none; } .jogar__art { --k: .82; } .jg-c3 { height: 46%; } .jg-eye { width: 132px; top: 2vh; } }
+/* celular: mais simples (Erling): só seis cenas em volta da fonte, sem personagens e sem o Olho */
+@media (max-width: 860px) { .jogar__art { --k: .52; } .jogar__art .jg-t:nth-of-type(n+5):nth-of-type(-n+9), .jogar__art .jg-t:nth-of-type(13) { display: none; } .jg-c, .jg-eye { display: none; } }
 @media (prefers-reduced-motion: reduce) { .jogar__art img, .jogar__art .jg-call, .jg-c, .jg-eye { transition: none !important; } .jg-lids { animation: none !important; } }
 .foot a { color: var(--sky2); }
 .beta__play { display: block; text-align: center; margin-top: 14px; color: var(--sky2); font: 600 13px/1.3 var(--sans); letter-spacing: .04em; text-decoration: underline; text-underline-offset: 3px; }
-@media (max-width: 860px) { .jogar { grid-template-columns: 1fr; padding: 10vh var(--gut); } .jogar__art { margin: 16vw 13vw; } }
+@media (max-width: 860px) { .jogar { grid-template-columns: 1fr; padding: 10vh var(--gut); } .jogar__art { margin: 22vw 14vw; } }
 
 /* 12/11 (Erling: "esse retângulo de div em volta ficou feio", na ficha do beta): o azul esmaece para todos os lados, como o verde da seção "Um jogo brasileiro", em vez de acabar na borda da seção */
 main > section.beta::before, main > section.jogar::before { inset: -12vh auto -12vh 50%; width: 100vw; transform: translateX(-50%); background: radial-gradient(ellipse 46% 48% at 36% 50%, var(--skyg), transparent 100%), radial-gradient(ellipse 34% 40% at 68% 58%, rgba(255, 122, 42, .07), transparent 100%); }
 main > section.jogar::before { content: ""; position: absolute; pointer-events: none; z-index: -1; background: radial-gradient(ellipse 40% 46% at 68% 50%, rgba(217, 165, 74, .09), transparent 100%); }
 /* 12/11 (Erling: "buttons maiores e centralizados na lateral direita"): em tela larga os dois botões do cabeçalho crescem e ficam no meio do espaço à direita do menu */
 @media (min-width: 1500px) { .nav > .btn--small { padding: 15px 28px; font-size: 13.5px; } .nav .nav__playbtn + .btn--small { margin-left: 16px; margin-right: auto; } }
+/* 12/11 (Erling: "menu central 350 px mais para a direita, depois espaço igual nas duas faces que sobram, os buttons centralizados nesse espaço"): em tela bem larga o menu anda para a direita (até 350 px) e os dois botões ficam no meio do que sobra entre o menu e a borda */
+@media (min-width: 1700px) { .nav__links { padding-left: clamp(0px, calc((100vw - 1700px) * .64), 525px); } }
