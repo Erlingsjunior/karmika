@@ -145,7 +145,7 @@ export interface World {
 }
 export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
 /** 12/11: terreno de guilda, fixo e reservado pelo mundo: x0,y0 = canto do miolo de 10×10 onde a sede é erguida */
-export interface GuildLot { id: number; name: string; region: string; x0: number; y0: number; lo: number; hi: number }
+export interface GuildLot { id: number; name: string; region: string; x0: number; y0: number; lo: number; hi: number; /** 1 = só para guilda de karma positivo; -1 = só para guilda de karma negativo (são 6 de cada) */ karma: 1 | -1; /** faixa de preço: de cada lado, 3 comuns, 2 nobres e 1 lendário */ faixa: 'comum' | 'nobre' | 'lendario' }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
 
 /** MUNDO GRANDE (21/10/2026): 840×840 tiles. As Terras dos Homens (o mapa antigo de 420) ficam no centro, deslocadas de SH;
@@ -2946,30 +2946,40 @@ export function buildCity(): World {
   const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
   /* 12/11 TERRENOS DE GUILDA (Erling: "terrenos de guilda são alguns poucos no mundo e ficam em lugares legais e bonitos que precisam ser comprados";
      "colocar os terrenos de guilda pré-reservados desde sempre"). São no máximo 12, fixos, iguais em todo reino: um por região do continente, perto da
-     água quando dá, longe uns dos outros (200 casas), com folga de vilas, cidades, lugares marcados, pedras e masmorras. Nascem AQUI, com o mundo
+     água quando dá, longe uns dos outros (130 casas), com folga de vilas, cidades, lugares marcados, pedras e masmorras. Nascem AQUI, com o mundo
      pronto (litoral, ilhas, faróis): assim a conta enxerga tudo e nenhum cai no mar. Cada um reserva 14×14 casas de capim limpo (o miolo de 10×10
      é onde a sede é erguida), com tochas nos cantos e uma placa virada para o jogador. Árvores, pedras e bichos soltos que estavam ali saem. */
   const guildLots: GuildLot[] = [], lotSigns: Sign[] = [];
   { const GL = 10, M = 2, MAXL = 12, HH = map.length, WW = map[0].length, dentro = (x: number, y: number) => x >= 0 && y >= 0 && x < WW && y < HH;
     const lugares = [...pois, ...ISLES.map((I) => ({ x: I.blobs[0].x, y: I.blobs[0].y })), ...lightPois], bocas = Object.values(w.dgSpots).map(sxy);
     const limpo = (x0: number, y0: number) => { for (let y = y0 - M - 1; y <= y0 + GL + M; y++) for (let x = x0 - M - 1; x <= x0 + GL + M; x++) { if (!dentro(x, y)) return false; const t = map[y][x]; if (t !== 'grass' && t !== 'tree') return false; } return true; };
-    for (const r0 of REGIONS_L) { if (guildLots.length >= MAXL) break; const rg = { ...r0, x: r0.x + D, y: r0.y + D }; let best: { x: number; y: number } | null = null, bs = -1e9;
+    /* 12/11 (Erling: "eles têm que ser 6 para guildas positivas de karma e 6 para guildas negativas de karma"): seis regiões de luz e seis de sombra,
+       nesta ordem; se uma não tiver lugar, entra a próxima da reserva do mesmo lado. As três raças têm um terreno de luz na região onde nascem. */
+    const LADO: [1 | -1, string[], string[]][] = [
+      [1, ['Vale de Karmika', 'Sopé de Brasaforja', 'Bosque de Lithendel', 'Cordilheira do Norte', 'Montanha Viking', 'Floresta Encantada'], ['Planalto de Askavik', 'Mata do Leste', 'Passo de Midvangr', 'Minas de Cinzalto', 'Bosques de Lundr', 'Florestas Élficas']],
+      [-1, ['Terra Maldita', 'Charcos do Oeste', 'Colinas do Sul', 'Colina Vampírica', 'Vale da Desgraça', 'Selva Licantropa'], ['Costa do Vapor e da Graxa', 'Raízes Antigas', 'Recifes da Graxa', 'Desfiladeiro dos Lamentos']]];
+    /* a ordem alterna os dois lados (um de luz, um de sombra...), para nenhum lado ficar sem lugar; as reservas só entram no fim, para o lado que faltar */
+    const conta = { '1': 0, '-1': 0 } as Record<string, number>, fila: [1 | -1, string][] = [];
+    for (let i = 0; i < 6; i++) for (const [karma, certas] of LADO) fila.push([karma, certas[i]]); for (let i = 0; i < 6; i++) for (const [karma, , reserva] of LADO) if (reserva[i]) fila.push([karma, reserva[i]]);
+    { for (const [karma, nome] of fila) { if (conta[karma] >= MAXL / 2) continue; const r0 = REGIONS_L.find((q) => q.name === nome); if (!r0) continue; const rg = { ...r0, x: r0.x + D, y: r0.y + D }; let best: { x: number; y: number } | null = null, bs = -1e9;
       for (let y0 = rg.y - 120; y0 <= rg.y + 120; y0 += 3) for (let x0 = rg.x - 120; x0 <= rg.x + 120; x0 += 3) { const cx = x0 + GL / 2, cy = y0 + GL / 2;
         if (!dentro(x0 - 20, y0 - 20) || !dentro(x0 + GL + 20, y0 + GL + 20) || !limpo(x0, y0) || regionAt(cx, cy).name !== rg.name) continue;
         let d = 1e9, ns = 1e9; for (const t of settlements) { const dd = Math.hypot(t.x - cx, t.y - cy) - t.radius; ns = Math.min(ns, dd); d = Math.min(d, dd - (t.kind === 'city' ? 40 : 26)); }
         for (const q of lugares) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 26); for (const q of relics) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 14); for (const q of bocas) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 36);
         for (const q of spawns) if (q.keep) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - q.r - 14);
-        for (const q of guildLots) d = Math.min(d, Math.hypot(q.x0 + GL / 2 - cx, q.y0 + GL / 2 - cy) - 200); if (d < 0) continue;
+        for (const q of guildLots) d = Math.min(d, Math.hypot(q.x0 + GL / 2 - cx, q.y0 + GL / 2 - cy) - 130); if (d < 0) continue;
         const agua = waterSD(cx * T, cy * T) / T; if (agua < GL) continue; /* casas até a água mais próxima: perto para ter vista, nunca na beira */
         const sc = -Math.abs(agua - 14) * 1.5 + Math.min(d, 30) * 0.3 - Math.max(0, ns - 120) * 0.25 - 0.02 * Math.hypot(cx - rg.x, cy - rg.y); if (sc > bs) { bs = sc; best = { x: x0, y: y0 }; } }
       if (!best) continue; const { x: x0, y: y0 } = best;
       for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 - M && q.gx < x0 + GL + M && q.gy + q.h > y0 - M && q.gy < y0 + GL + M) props.splice(i, 1); }
       for (let y = y0 - M; y < y0 + GL + M; y++) for (let x = x0 - M; x < x0 + GL + M; x++) map[y][x] = 'grass';
       for (let i = spawns.length - 1; i >= 0; i--) { const q = spawns[i]; if (!q.keep && Math.hypot(q.x - (x0 + GL / 2), q.y - (y0 + GL / 2)) < q.r + 12) spawns.splice(i, 1); }
-      for (const [tx, ty] of [[x0 - M, y0 - M], [x0 + GL + M - 1, y0 - M], [x0 - M, y0 + GL + M - 1]]) props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xffc04a });
-      const sx = x0 + GL + M - 1, sy = y0 + GL + M - 1; lotSigns.push({ x: sx, y: sy, yaw: Math.PI / 4, lines: [{ text: 'Terreno de guilda', dir: Math.atan2(-1, -1) }, { text: rg.name, dir: Math.atan2(-1, -1) }] }); map[sy][sx] = 'wall';
-      guildLots.push({ id: guildLots.length + 1, name: `Terreno de guilda de ${rg.name}`, region: rg.name, x0, y0, lo: rg.lo, hi: rg.hi }); }
-    if (guildLots.length < 6) console.warn('poucos terrenos de guilda:', guildLots.length); }
+      for (const [tx, ty] of [[x0 - M, y0 - M], [x0 + GL + M - 1, y0 - M], [x0 - M, y0 + GL + M - 1]]) props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: karma > 0 ? 0xffc04a : 0xc04aff });
+      const sx = x0 + GL + M - 1, sy = y0 + GL + M - 1; lotSigns.push({ x: sx, y: sy, yaw: Math.PI / 4, lines: [{ text: 'Terreno de guilda', dir: Math.atan2(-1, -1) }, { text: karma > 0 ? 'Karma positivo' : 'Karma negativo', dir: Math.atan2(-1, -1) }] }); map[sy][sx] = 'wall';
+      guildLots.push({ id: guildLots.length + 1, name: `Terreno de guilda de ${rg.name}`, region: rg.name, x0, y0, lo: rg.lo, hi: rg.hi, karma, faixa: 'comum' }); conta[karma]++; }
+      for (const k of [1, -1] as const) { if (conta[k] < MAXL / 2) console.warn(`terrenos de guilda de karma ${k > 0 ? 'positivo' : 'negativo'}: só ${conta[k]} de ${MAXL / 2}`);
+        /* as faixas de preço, iguais dos dois lados: o da região de nível mais alto é o lendário, os dois seguintes são nobres, os outros comuns */
+        guildLots.filter((g) => g.karma === k).sort((a, b) => b.hi - a.hi || b.lo - a.lo || a.id - b.id).forEach((g, i) => { g.faixa = i === 0 ? 'lendario' : i <= 2 ? 'nobre' : 'comum'; }); } } }
   /* 09/11 (Erling: "diminuir as árvores pelo menos 30%, são muitas mesmo"): no ermo, 3 de cada 10 árvores saem (sorteio fixo pela casa,
      igual em toda máquina); dentro e em volta das vilas, cidades e lugares marcados nada muda. A casa da árvore que saiu vira grama. */
   { const keep = (x: number, y: number) => { for (let i = 0; i < protPts.length; i += 3) if (Math.hypot(x - protPts[i], y - protPts[i + 1]) < protPts[i + 2] + 6) return true; return false; };

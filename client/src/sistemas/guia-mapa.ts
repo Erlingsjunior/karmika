@@ -289,9 +289,9 @@ function drawBig() {
      no mapa, liso e nítido como os outros símbolos; a dica diz a região e que é reservado para sede de guilda */
   if (L.poi) for (const gl of K.city.guildLots ?? []) { const x = X(gl.x0 + 5), y = Y(gl.y0 + 5), g = K.bg, q = s0 * 1.05; if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
     g.save(); g.translate(x, y); g.lineJoin = 'round'; g.strokeStyle = '#000'; g.lineWidth = 2; g.fillStyle = '#3a2a1c'; g.fillRect(-q * 0.62, -q, q * 0.2, q * 2); g.strokeRect(-q * 0.62, -q, q * 0.2, q * 2);
-    g.beginPath(); g.moveTo(-q * 0.42, -q * 0.92); g.lineTo(q * 0.78, -q * 0.92); g.lineTo(q * 0.78, q * 0.3); g.lineTo(q * 0.18, q * 0.02); g.lineTo(-q * 0.42, q * 0.3); g.closePath(); g.fillStyle = '#f3d38a'; g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
-    g.beginPath(); g.moveTo(q * 0.18, -q * 0.7); g.lineTo(q * 0.42, -q * 0.38); g.lineTo(q * 0.18, -q * 0.06); g.lineTo(-q * 0.06, -q * 0.38); g.closePath(); g.fillStyle = '#b85a1c'; g.fill(); g.restore();
-    K.mapHits.push({ x, y, r: q + 3, name: gl.name, sub: `Reservado para sede de guilda · região de nível ${gl.lo} a ${gl.hi} · são só ${K.city.guildLots.length} no mundo` }); }
+    g.beginPath(); g.moveTo(-q * 0.42, -q * 0.92); g.lineTo(q * 0.78, -q * 0.92); g.lineTo(q * 0.78, q * 0.3); g.lineTo(q * 0.18, q * 0.02); g.lineTo(-q * 0.42, q * 0.3); g.closePath(); g.fillStyle = gl.karma > 0 ? '#f3d38a' : '#8a3ad0'; g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+    g.beginPath(); g.moveTo(q * 0.18, -q * 0.7); g.lineTo(q * 0.42, -q * 0.38); g.lineTo(q * 0.18, -q * 0.06); g.lineTo(-q * 0.06, -q * 0.38); g.closePath(); g.fillStyle = gl.karma > 0 ? '#b85a1c' : '#f0d8ff'; g.fill(); g.restore();
+    K.mapHits.push({ x, y, r: q + 3, name: gl.name, sub: `Reservado para sede de guilda de karma ${gl.karma > 0 ? 'positivo' : 'negativo'} · ${gl.faixa === 'lendario' ? 'terreno lendário' : gl.faixa === 'nobre' ? 'terreno nobre' : 'terreno comum'} · região de nível ${gl.lo} a ${gl.hi} · são só 6 de cada lado no mundo` }); }
   if (L.npc) for (const n of K.npcSys.npcs) { K.bg.fillStyle = '#7ad0ff'; K.bg.beginPath(); K.bg.arc(X(n.pos.x / T), Y(n.pos.z / T), 2.4, 0, 6.283); K.bg.fill(); }
   if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); K.bg.strokeStyle = guideCol; K.bg.lineWidth = 2.5; K.bg.beginPath(); K.bg.arc(x, y, pr, 0, 6.283); K.bg.stroke(); }
   const h0 = hereT(); heroArrow(K.bg, X(h0.x), Y(h0.y), 2.2);
