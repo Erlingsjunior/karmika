@@ -1,4 +1,5 @@
 import { alertBox } from './windows';
+import { emTeste, ehWeb, NIVEL_TESTE } from './sistemas/acesso-web';
 import { isPremium } from './premium';
 import { runaSvg } from './runas';
 /* Tela de boas-vindas e os 3 espaços de personagem.
@@ -132,7 +133,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <div class="in-row"><input data-v="delname" placeholder="${esc(m.name)}" spellcheck="false" autocomplete="off"><button data-i="delok" class="in-delok">Apagar para sempre</button></div>
         ${delErr ? `<p class="in-err">✖ ${esc(delErr)}</p>` : ''}<button data-i="delno" class="lnk">← não, voltar</button></div></div>`; }
     el.style.setProperty('--inz', Math.max(1, Math.min(1.22, innerHeight / 1150)).toFixed(3)); /* 12/11 (Erling: "menu um pouco menor, está muito grandão") */ /* em monitor grande a tela inicial cresce junto (antes ficava miúda no meio) */
-    el.innerHTML = `${runesHtml}<div class="in-wrap">${head}${body}<div class="in-ft">Karmika · versão de desenvolvimento · devs e beta testers${step === 'home' ? ' · <a data-i="quit">sair do jogo</a>' : ''}</div></div>`;
+    el.innerHTML = `${runesHtml}<div class="in-wrap">${head}${body}${emTeste() ? `<div class="in-trial">✦ Teste gratuito: jogue até o nível ${NIVEL_TESTE} sem instalar nada. Tem um convite de testador? Abra o link do convite ou digite <b>/convite CÓDIGO</b> no chat do jogo.</div>` : ehWeb ? '<div class="in-trial ok">✉ Convite de testador ativo: jogo completo, sem limite de nível.</div>' : ''}<div class="in-ft">Karmika · versão de desenvolvimento · devs e beta testers${step === 'home' ? ' · <a data-i="quit">sair do jogo</a>' : ''}</div></div>`;
   }
   let refreshing = false, refreshedPic = false;
   /** o card do personagem ativo ganha retrato, nível e classe de verdade (o modelo dele já está carregado atrás da tela) */
