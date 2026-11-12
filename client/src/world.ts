@@ -2985,6 +2985,44 @@ export function buildCity(): World {
   { const keep = (x: number, y: number) => { for (let i = 0; i < protPts.length; i += 3) if (Math.hypot(x - protPts[i], y - protPts[i + 1]) < protPts[i + 2] + 6) return true; return false; };
     const h = (x: number, y: number) => { let v = Math.imul(x * 374761393 + y * 668265263, 1274126177) >>> 0; v ^= v >>> 13; v = Math.imul(v, 1103515245) >>> 0; return (v >>> 8) / 16777216; };
     let n = 0; for (let i = 0; i < props.length; i++) { const p = props[i]; if (p.kind === 'tree' && h(p.gx, p.gy) < 0.3 && !keep(p.gx, p.gy)) { if (map[p.gy]?.[p.gx] === 'tree') map[p.gy][p.gx] = 'grass'; continue; } props[n++] = p; } props.length = n; }
+  /* ---- 12/11 (Erling: "uma taverna/estalagem dentro de Karmika com o salão interno bem bonito, dois andares, 20 quartos, cozinha, salão animado e estábulo";
+     "uma guilda dentro de Karmika com muros melhores, uma taverna dentro, salões de guilda para profissões, bar animado, estalagem, soldados"):
+     os dois prédios da casa do servidor, na parte norte da vila, dentro da muralha. São iguais em todos os reinos; no reino de um parceiro levam o nome
+     e a bandeira da casa dele. A ESTALAGEM fica a nordeste (9 × 6, dois andares, porta para o sul) com o ESTÁBULO ao lado (a oeste); o SALÃO DAS GUILDAS fica a
+     noroeste, atrás da igreja (nunca na frente), num pátio murado com portão para o leste, de frente para a estrada.
+     Nascem AQUI, no fim de tudo e sem sorteio: colocados no meio da geração, mudavam o sorteio do mundo inteiro (árvores, vilas e até os terrenos de guilda saíam do lugar). ---- */
+  { const kar = settlements.find((t) => t.name === 'Karmika');
+    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 8, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 17, GYh = KY - 27, PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
+      const livre = (t: string | undefined) => t === 'grass' || t === 'tree' || t === 'plaza';
+      const limpa = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 && q.gx <= x1 && q.gy + q.h > y0 && q.gy <= y1 && (q.kind === 'tree' || q.kind === 'herb' || q.kind === 'rock' || q.kind === 'plant' || q.kind === 'bones')) props.splice(i, 1); }
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass'; };
+      const pave = (x0: number, y0: number, x1: number, y1: number) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'grass' || map[y]?.[x] === 'tree') map[y][x] = 'plaza'; };
+      const block = (p: Prop) => { props.push(p); for (let y = p.gy; y < p.gy + p.h; y++) for (let x = p.gx; x < p.gx + p.w; x++) map[y][x] = 'wall'; };
+      const torch = (gx: number, gy: number) => { props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a }); };
+      const decor = (kind: PropKind, gx: number, gy: number, variant: number) => { props.push({ kind, gx, gy, w: 1, h: 1, height: 1, wall: 0x6a4528, roof: 0x8a3b2e, variant }); };
+      const qwall = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my);
+        props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 20, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: Math.hypot(bx - ax, by - ay) * T + 0.12, broken: 0 }); };
+      let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX - 5, EY + 2, EX - 2, EY + 4], [PX, PY, PX + PW, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
+      if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
+      else {
+        limpa(EX - 10, EY - 1, EX + 10, EY + 7); limpa(PX - 1, PY - 1, PX + PW + 7, PY + PH + 1);
+        block({ kind: 'house', gx: EX, gy: EY, w: 9, h: 6, height: 6.2, wall: 0xcdb48a, roof: 0x8a3b2e, variant: 4, shop: 'estalagem' });
+        block({ kind: 'house', gx: EX - 5, gy: EY + 2, w: 4, h: 3, height: 3.2, wall: 0x8a6a48, roof: 0x5d4a2a, variant: 0, shop: 'estabulo' });
+        pave(EX - 10, EY + 6, EX + 10, EY + 7); /* calçada da porta até a estrada do norte */
+        torch(EX + 3, EY + 6); torch(EX + 6, EY + 6); decor('bench', EX + 1, EY + 6, 0); decor('bench', EX + 8, EY + 6, 0);
+        for (const [v, x, y] of [[0, EX - 1, EY + 5], [1, EX - 1, EY + 4], [6, EX - 6, EY + 5], [6, EX - 6, EY + 4]] as [number, number, number][]) if (livre(map[y]?.[x])) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v });
+        pois.push({ name: 'Estalagem de Karmika', x: EX + 4.5, y: EY + 6.5, biome: 'meadow' });
+        kar.npcs.push({ name: 'Estalajadeira Benta', role: 'Estalagem de Karmika', kind: 'nordic', x: EX + 5.6, y: EY + 6.6, radius: 0, fixed: true, tint: 0x8a4a3a, scale: 1.0, lines: ['Vinte quartos, cozinha quente e estábulo ao lado. Em Karmika ninguém dorme na rua.', 'O salão enche quando o sol cai. Entre, tem lugar perto do fogo.', 'Cavalo cansado fica com o moço do estábulo. Dono cansado fica comigo.'] });
+        kar.npcs.push({ name: 'Moço Tibério', role: 'Estábulo da Estalagem', kind: 'nordic', x: EX - 3, y: EY + 5.7, radius: 0, fixed: true, tint: 0x6a5a3a, scale: 0.95, lines: ['Água, feno e escova. Montaria bem tratada chega mais longe.', 'Pode deixar comigo. Eu conheço cavalo pelo passo.'] });
+        /* o Salão das Guildas: prédio de pedra 9 × 5 no fundo do pátio; pátio calçado de 11 × 8, murado, portão de 2 casas no muro leste */
+        pave(PX, PY, PX + PW - 1, PY + PH - 1);
+        block({ kind: 'house', gx: GXh, gy: GYh, w: 9, h: 5, height: 5.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 3, shop: 'salao_guildas' });
+        qwall(PX, PY, PX + PW, PY); qwall(PX, PY, PX, PY + PH); qwall(PX, PY + PH, PX + PW, PY + PH); qwall(PX + PW, PY, PX + PW, PY + 5); qwall(PX + PW, PY + 7, PX + PW, PY + PH);
+        torch(PX + PW, PY + 4); torch(PX + PW, PY + 7); decor('rack', PX + 1, PY + 6, 0); decor('rack', PX + 2, PY + 6, 1); decor('bench', PX + 5, PY + 7, 0); decor('bench', PX + 7, PY + 7, 0);
+        pave(PX + PW, PY + 5, PX + PW + 6, PY + 6); /* calçada do portão até a estrada do norte */
+        pois.push({ name: 'Salão das Guildas de Karmika', x: PX + PW + 0.5, y: PY + 6, biome: 'meadow' });
+        kar.npcs.push({ name: 'Guarda Olavo', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 4.6, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.05, lines: ['Salão das Guildas de Karmika. Mestres de ofício lá dentro, e um bar que não fecha.', 'Arma na bainha dentro do pátio. É a regra da casa.'] });
+        kar.npcs.push({ name: 'Guarda Mirela', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 7.4, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.0, lines: ['Guilda nova procura os mestres aqui. Guilda velha vem beber e contar vantagem.', 'O estandarte no portão diz de quem é a casa.'] }); } } }
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), guildLots, craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
     pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: [...w.signs.map(sxy), ...lotSigns],

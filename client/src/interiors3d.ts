@@ -13,7 +13,7 @@ const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 21474
     a casa élfica é redonda e aberta de um lado — por dentro sala redonda, um lado sem parede com bambus e cipós olhando a vila, móveis
     diferentes e um fogão de pedra, não lareira; a mesma ideia para anões e humanos") */
 export function buildInterior(variant: number, W: number, D: number, seed = 7, culture = 1): Interior {
-  if (variant === 15) { W = Math.max(W, 30); D = Math.max(D, 20); } /* 10/11: a Bigorna Molhada por dentro é um salão de verdade (30 × 20 m) */
+  if (variant === 15) { W = Math.max(W, 30); D = Math.max(D, 20); } if (variant === 16) { W = Math.max(W, 26); D = Math.max(D, 16); } if (variant === 17) { W = Math.max(W, 24); D = Math.max(D, 16); } /* 12/11: a Estalagem e o Salão das Guildas de Karmika */ /* 10/11: a Bigorna Molhada por dentro é um salão de verdade (30 × 20 m) */
   const g = new THREE.Group(), cols: [number, number, number][] = [], r = rr(seed * 97 + variant * 13 + 5);
   const lights: { l: THREE.PointLight; base: number; ph: number }[] = []; const spin: THREE.Object3D[] = []; /* o que gira devagar (planetário) */
   const wood = (c = 0x6a4528) => std(0xffffff, { map: woodTex(c) }), plank = (c = 0x7a5532) => std(0xffffff, { map: plankTex(c) });
@@ -27,7 +27,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
   const ER = Math.min(W, D) / 2 - 0.1, ECX = W / 2, ECZ = D - ER;
   // chão e base escura
   const dark = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshBasicMaterial({ color: 0x07060a })); dark.rotation.x = -Math.PI / 2; dark.position.set(W / 2, -0.06, D / 2); g.add(dark);
-  if (!ELF) { const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D), std(0xffffff, { map: (() => { const t = variant === 3 || variant >= 6 || DWARF ? stoneTex(variant === 3 ? 0x6a6a72 : 0x6a6458) : plankTex(variant === 5 ? 0x5a4a3c : 0x7a5532); /* 07/11: chão de laje (foto laje_pedra) nas construções de pedra, assoalho (foto assoalho_madeira) nas casas */ const c = t.clone(); c.repeat.set(W / 2, D / 2); c.wrapS = c.wrapT = THREE.RepeatWrapping; c.needsUpdate = true; return c; })() })); fl.rotation.x = -Math.PI / 2; fl.position.set(W / 2, 0.005, D / 2); fl.receiveShadow = true; g.add(fl); }
+  if (!ELF) { const fl = new THREE.Mesh(new THREE.PlaneGeometry(W, D), std(0xffffff, { map: (() => { const t = variant === 3 || (variant >= 6 && variant !== 16) || DWARF ? stoneTex(variant === 3 ? 0x6a6a72 : 0x6a6458) : plankTex(variant === 5 ? 0x5a4a3c : 0x7a5532); /* 07/11: chão de laje (foto laje_pedra) nas construções de pedra, assoalho (foto assoalho_madeira) nas casas */ const c = t.clone(); c.repeat.set(W / 2, D / 2); c.wrapS = c.wrapT = THREE.RepeatWrapping; c.needsUpdate = true; return c; })() })); fl.rotation.x = -Math.PI / 2; fl.position.set(W / 2, 0.005, D / 2); fl.receiveShadow = true; g.add(fl); }
   // paredes
   const H = 3.4, wallC = DWARF ? 0x7a7268 : [0xcdb48a, 0xc2a57a, 0xb8aa94, 0x8a8aa0, 0xb08a60, 0x8a7a68][variant % 6];
   const wm = std(0xffffff, { map: DWARF || variant === 15 ? stoneTex(variant === 15 ? 0x7a7268 : wallC) : plasterTex(wallC) }); /* 10/11: a taverna dos anões é de pedra */
@@ -397,6 +397,70 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     /* lustres de roda com velas (as duas luzes que faltam) e presuntos sobre as mesas */
     hang(W * 0.27, 13.2, 0xffb060, 34); hang(W * 0.73, 13.2, 0xffb060, 34);
     for (const [x, z] of [[3.6, 13.1], [W - 3.6, 13.1], [9.6, 9.6], [W - 9.6, 9.6]] as [number, number][]) ham(x, z, H - 0.9);
+  } else if (variant === 16 || variant === 17) { /* 12/11 — os dois prédios da casa do servidor em Karmika.
+       16 = A ESTALAGEM (Erling: "salão interno bem bonito, dois andares, 20 quartos, cozinha, salão animado"): salão de 26 × 16 m com lareira, balcão comprido,
+       mesas compridas e redondas, palco do bardo; a cozinha é uma sala de verdade no canto nordeste; a escada sobe para a galeria do segundo andar, que
+       corre pelas paredes norte e oeste com as vinte portas dos quartos (numeradas). A galeria é cenário: o jogador fica no salão.
+       17 = O SALÃO DAS GUILDAS ("taverna dentro, salões de guilda para profissões, bar animado"): salão de pedra de 24 × 16 m com a mesa do conselho no meio,
+       os cantos dos ofícios ao longo da parede norte (forja, marcenaria, alquimia, cozinha, costura), o bar a oeste e os estandartes no alto. */
+    const INN = variant === 16, dk = wood(0x3a2616), cu = std(0xb06a3a), iron = std(0x2c2a2a);
+    const sTex = (text: string, sub = '') => { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d')!; x.fillStyle = '#4a2f1a'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#d9a54a'; x.lineWidth = 6; x.strokeRect(6, 6, 244, 116); x.fillStyle = '#f3d38a'; x.textAlign = 'center'; x.font = `bold ${text.length > 14 ? 26 : text.length > 4 ? 34 : 64}px Georgia, serif`; x.fillText(text, 128, sub ? 62 : 84); if (sub) { x.font = '20px Georgia, serif'; x.fillStyle = '#e8dcc0'; x.fillText(sub, 128, 98); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
+    const sign = (x: number, y: number, z: number, text: string, sub = '', ry = 0, w = 1.1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 2), new THREE.MeshBasicMaterial({ map: sTex(text, sub), side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
+    /* as paredes do fundo sobem mais um andar */
+    const H2 = INN ? 3.2 : 1.6; add(B(W, H2, 0.3), wm, W / 2, H + H2 / 2, -0.15, false); add(B(0.3, H2, D), wm, -0.15, H + H2 / 2, D / 2, false);
+    if (!INN) { const st = new THREE.Mesh(new THREE.PlaneGeometry(W, D), std(0xffffff, { map: (() => { const t = stoneTex(0x6a6458).clone(); t.repeat.set(W / 2, D / 2); t.needsUpdate = true; return t; })() })); st.rotation.x = -Math.PI / 2; st.position.set(W / 2, 0.012, D / 2); st.receiveShadow = true; g.add(st); }
+    const longTable = (x: number, z: number, len: number) => { table(x, z, len, 1.1); for (let k = 0; k < Math.floor(len / 1.1); k++) for (const sz of [-1, 1]) { const bx = x - len / 2 + 0.6 + k * 1.1; add(B(0.9, 0.1, 0.4), plank(0x6a4528), bx, 0.48, z + sz * 0.95); add(B(0.08, 0.46, 0.34), dk, bx - 0.35, 0.23, z + sz * 0.95, false); add(B(0.08, 0.46, 0.34), dk, bx + 0.35, 0.23, z + sz * 0.95, false); seats.push({ x: bx, z: z + sz * 0.95, yaw: sz > 0 ? Math.PI : 0, h: 0.5 }); if (k % 2 === 0) mug(bx, 0.87, z + sz * 0.25); else plate(bx, 0.87, z + sz * 0.25); } solid(x - len / 4, z, 1.3); solid(x + len / 4, z, 1.3); };
+    const round = (x: number, z: number) => { add(new THREE.CylinderGeometry(0.85, 0.85, 0.09, 14), plank(0x7a5532), x, 0.82, z); add(new THREE.CylinderGeometry(0.12, 0.2, 0.8, 8), dk, x, 0.4, z, false); solid(x, z, 0.95); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.4; chair(x + Math.cos(a) * 1.25, z + Math.sin(a) * 1.25, -a - Math.PI / 2); seats.push({ x: x + Math.cos(a) * 1.25, z: z + Math.sin(a) * 1.25, yaw: -a - Math.PI / 2, h: 0.5 }); } mug(x + 0.3, 0.87, z); mug(x - 0.25, 0.87, z + 0.2); add(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 6), std(0xe8dcc0), x, 0.98, z - 0.15, false); };
+    const bar = (x0: number, x1: number, z: number) => { const L = x1 - x0, xm = (x0 + x1) / 2; add(B(L, 1.05, 0.9), plank(0x5a3a22), xm, 0.52, z); add(B(L + 0.3, 0.1, 1.1), plank(0x7a5532), xm, 1.09, z); add(B(L + 0.3, 0.05, 0.12), cu, xm, 1.16, z + 0.5, false); for (let x = x0 + 0.6; x < x1; x += 1.4) { solid(x, z, 0.75); mug(x, 1.14, z + 0.15); add(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 10), dk, x + 0.5, 0.62, z + 1.15); add(new THREE.CylinderGeometry(0.05, 0.07, 0.6, 6), iron, x + 0.5, 0.3, z + 1.15, false); seats.push({ x: x + 0.5, z: z + 1.15, yaw: Math.PI, h: 0.62 }); }
+      for (let x = x0 + 0.5; x < x1; x += 1.05) barrel(x, z - 1.7, 1.05); shelf(xm, 0.35, 0, Math.min(5, L * 0.6), 2.6, false); };
+    if (INN) {
+      /* térreo: lareira grande, balcão, mesas, palco, cozinha */
+      const KX = W - 7.5, KZ = 6.2; /* a cozinha: canto nordeste, 7,5 × 6,2 m, porta para o salão */
+      add(B(0.25, H, KZ - 2.0), wm, KX, H / 2, (KZ - 2.0) / 2); add(B(7.5 - 2.6, H, 0.25), wm, KX + 2.6 + (7.5 - 2.6) / 2, H / 2, KZ); add(B(0.2, 2.4, 0.3), dk, KX, 1.2, KZ - 2.0, false); add(B(0.3, 2.4, 0.2), dk, KX + 2.6, 1.2, KZ, false);
+      for (let z = 0.6; z < KZ - 2.2; z += 0.9) solid(KX, z, 0.55); for (let x = KX + 3.1; x < W; x += 0.9) solid(x, KZ, 0.55);
+      sign(KX + 1.3, 2.75, KZ + 0.02, 'Cozinha', '', 0, 1.0);
+      add(B(2.6, 1.0, 1.1), std(0xffffff, { map: stoneTex(0x5a544c) }), W - 2.0, 0.5, 0.8); add(B(2.2, 0.5, 0.2), std(0x0a0605), W - 2.0, 0.55, 1.37, false); flame(W - 2.0, 0.75, 1.2, 0.9); add(new THREE.CylinderGeometry(0.34, 0.26, 0.4, 10), iron, W - 2.0, 1.25, 0.8); solid(W - 2.0, 0.8, 1.4);
+      table(KX + 3.4, 3.4, 2.4, 1.1); for (let k = 0; k < 4; k++) plate(KX + 2.6 + k * 0.5, 0.87, 3.4); add(new THREE.SphereGeometry(0.22, 8, 6), std(0xc8963a), KX + 3.9, 1.02, 3.2, false); solid(KX + 3.4, 3.4, 1.2);
+      barrel(KX + 0.8, 0.8); barrel(KX + 1.7, 0.8, 0.85); crate(KX + 0.9, 2.0); for (let k = 0; k < 4; k++) { const hx = KX + 3.0 + k * 0.75; add(new THREE.CylinderGeometry(0.01, 0.01, 0.5, 4), iron, hx, H - 0.3, 2.0, false); add(new THREE.SphereGeometry(0.17, 7, 5), std(k % 2 ? 0x9a4a2a : 0xd8b070), hx, H - 0.68, 2.0, false).scale.set(1, 1.5, 0.8); }
+      fireplace(4.2); bar(8.2, KX - 1.2, 3.6); sign((8.2 + KX - 1.2) / 2, 2.9, 0.08, 'Estalagem de Karmika', 'cama · mesa · estábulo', 0, 2.6);
+      rug(W * 0.42, D * 0.6, 9, 5, 0x6a2a2a); longTable(W * 0.3, D * 0.5, 5.5); longTable(W * 0.3, D * 0.74, 5.5); longTable(W * 0.6, D * 0.62, 5.5);
+      round(W * 0.82, D * 0.6); round(W * 0.84, D * 0.84); round(W * 0.1, D * 0.34);
+      { const sx0 = W * 0.52, sz0 = D - 2.6; add(B(4.2, 0.3, 2.2), plank(0x5a3a22), sx0 + 2.1, 0.15, sz0 + 1.1); stage = { x0: sx0, x1: sx0 + 4.2, z0: sz0, z1: sz0 + 2.2, y: 0.3 }; add(B(0.5, 0.5, 0.5), plank(0x6a4528), sx0 + 0.7, 0.55, sz0 + 0.6); add(new THREE.CylinderGeometry(0.02, 0.02, 1.3, 5), iron, sx0 + 3.4, 0.95, sz0 + 0.6, false); }
+      hang(W * 0.3, D * 0.55, 0xffb060, 44); hang(W * 0.62, D * 0.6, 0xffb060, 44); hang(W * 0.45, D * 0.22, 0xffc070, 36);
+      barrel(1.0, D - 1.0); barrel(1.0, D - 1.9, 0.8); crate(2.0, D - 0.9); plant(W - 0.9, D - 0.9); plant(W * 0.4, D - 0.7);
+      /* segundo andar: galeria de tábuas nas paredes norte e oeste, corrimão, as vinte portas e a escada */
+      const GY = H + 0.05, GD = 2.3, rail = (x0: number, z0: number, x1: number, z1: number) => { const L = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(-(z1 - z0), x1 - x0); add(B(L, 0.09, 0.09), dk, (x0 + x1) / 2, GY + 1.0, (z0 + z1) / 2, false, ry); for (let k = 0; k <= Math.floor(L / 0.9); k++) { const t = k / Math.max(1, Math.floor(L / 0.9)); add(B(0.07, 1.0, 0.07), dk, x0 + (x1 - x0) * t, GY + 0.5, z0 + (z1 - z0) * t, false); } };
+      add(B(W, 0.14, GD), plank(0x6a4a2c), W / 2, GY, GD / 2); add(B(GD, 0.14, D - GD), plank(0x6a4a2c), GD / 2, GY, GD + (D - GD) / 2);
+      add(B(W - GD, 0.3, 0.2), dk, GD + (W - GD) / 2, GY - 0.2, GD, false); add(B(0.2, 0.3, D - GD), dk, GD, GY - 0.2, GD + (D - GD) / 2, false);
+      for (let x = GD + 3; x < W - 1; x += 4.2) { add(B(0.22, GY, 0.22), dk, x, GY / 2, GD, false); if (x < KX - 0.6 || x > KX + 0.6) solid(x, GD, 0.3); } for (let z = GD + 3.4; z < D - 0.5; z += 4.2) { add(B(0.22, GY, 0.22), dk, GD, GY / 2, z, false); solid(GD, z, 0.3); }
+      rail(GD + 1.6, GD, W - 0.2, GD); rail(GD, GD + 1.6, GD, D - 0.2);
+      const door = (x: number, z: number, ry: number, n: number) => { add(B(0.95, 1.95, 0.1), plank(0x5a3a22), x, GY + 1.05, z, true, ry); add(B(1.15, 0.12, 0.14), dk, x, GY + 2.08, z, false, ry); add(new THREE.SphereGeometry(0.05, 6, 5), std(0xe2c36a), x + (ry ? 0 : 0.32), GY + 1.0, z + (ry ? 0.32 : 0) + (ry ? 0 : 0.07), false); sign(x + (ry ? 0.08 : 0), GY + 2.45, z + (ry ? 0 : 0.08), String(n), '', ry, 0.5); };
+      for (let k = 0; k < 12; k++) door(1.9 + k * ((W - 3.2) / 11), 0.07, 0, k + 1); for (let k = 0; k < 8; k++) door(0.07, 3.6 + k * ((D - 5.0) / 7), Math.PI / 2, 13 + k);
+      { const n = 11, x0 = GD + 0.25, z0 = D * 0.62, rise = GY / n; for (let k = 0; k < n; k++) add(B(1.3, 0.12, 0.42), plank(0x6a4a2c), x0 + 0.65, rise * (k + 1) - 0.06, z0 - k * 0.42); add(B(0.1, 0.2, n * 0.42 + 0.4), dk, x0 + 1.32, GY / 2 + 0.6, z0 - (n - 1) * 0.21, false).rotation.x = Math.atan2(GY, n * 0.42); for (let k = 0; k < 4; k++) solid(x0 + 0.65, z0 - k * 1.3, 0.75); }
+      flame(GD + 0.3, GY + 1.6, 0.4, 0.6); flame(W * 0.5, GY + 1.6, 0.4, 0.6); flame(W - 1.0, GY + 1.6, 0.4, 0.6); flame(0.4, GY + 1.6, D * 0.6, 0.6);
+      light(W * 0.4, 2.6, D * 0.55, 0xffb060, 70, 26); light(W - 3.5, 2.4, 3.0, 0xff9a50, 40, 12);
+    } else {
+      const sm = std(0xffffff, { map: stoneTex(0x5a544c) });
+      for (const sx of [0.3, 0.7]) for (const zf of [0.34, 0.7]) { add(new THREE.CylinderGeometry(0.34, 0.4, H + H2, 10), sm, W * sx, (H + H2) / 2, D * zf, false); solid(W * sx, D * zf, 0.5); }
+      sign(W / 2, H + 0.7, 0.08, 'Salão das Guildas', 'Karmika', 0, 3.0);
+      /* estandartes dos ofícios no alto e, embaixo de cada um, o canto do mestre */
+      const OF: [string, number][] = [['Forja', 0x8a3a2a], ['Marcenaria', 0x7a5a2a], ['Alquimia', 0x4a6a8a], ['Cozinha', 0x8a6a2a], ['Costura', 0x6a4a7a]];
+      OF.forEach(([nome, cor], k) => { const x = 3.4 + k * ((W - 11) / 4); const bn = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 2.2), new THREE.MeshToonMaterial({ color: cor, side: THREE.DoubleSide })); bn.position.set(x, H + 0.1, 0.07); g.add(bn); add(B(1.4, 0.08, 0.1), dk, x, H + 1.24, 0.08, false); sign(x, 2.05, 0.08, nome, '', 0, 1.2);
+        if (k === 0) { add(B(0.9, 0.5, 0.5), iron, x, 0.75, 1.5); add(B(0.5, 0.5, 0.4), sm, x, 0.25, 1.5); add(B(1.3, 0.9, 0.9), sm, x + 1.4, 0.45, 0.8); flame(x + 1.4, 1.1, 0.8, 0.8); solid(x, 1.5, 0.7); solid(x + 1.4, 0.8, 0.8); }
+        else if (k === 1) { table(x, 1.4, 2.2, 0.9); add(B(0.7, 0.05, 0.16), std(0xb8bec6), x - 0.4, 0.9, 1.4, false); add(B(0.5, 0.3, 0.3), plank(0x8a6a3a), x + 0.5, 1.0, 1.35); crate(x + 1.6, 1.0); solid(x, 1.4, 1.2); }
+        else if (k === 2) { shelf(x, 0.35, 0, 2.2, 2.0, false); table(x, 1.9, 1.8, 0.8); for (let j = 0; j < 4; j++) add(new THREE.CylinderGeometry(0.07, 0.1, 0.24, 7), new THREE.MeshToonMaterial({ color: [0x6ad0ff, 0xff6a8a, 0x8aff8a, 0xffd06a][j], emissive: new THREE.Color([0x6ad0ff, 0xff6a8a, 0x8aff8a, 0xffd06a][j]).multiplyScalar(0.35) }), x - 0.6 + j * 0.4, 0.99, 1.9, false); solid(x, 1.9, 1.0); }
+        else if (k === 3) { add(new THREE.CylinderGeometry(0.5, 0.36, 0.6, 12), iron, x, 0.75, 1.5); add(B(0.9, 0.4, 0.9), sm, x, 0.2, 1.5); flame(x, 0.5, 1.5, 0.6); table(x + 1.6, 1.3, 1.4, 0.8); plate(x + 1.4, 0.87, 1.3); plate(x + 1.8, 0.87, 1.3); solid(x, 1.5, 0.7); solid(x + 1.6, 1.3, 0.8); }
+        else { table(x, 1.4, 2.0, 0.9); for (let j = 0; j < 3; j++) add(new THREE.CylinderGeometry(0.13, 0.13, 0.5, 8), new THREE.MeshToonMaterial({ color: [0x8a2a2a, 0x2a4a8a, 0xd8c8a0][j] }), x - 0.6 + j * 0.6, 1.0, 1.4, false).rotation.z = Math.PI / 2; solid(x, 1.4, 1.1); } });
+      /* a mesa do conselho, no meio, sobre o tapete */
+      rug(W / 2, D * 0.56, 9, 6, 0x2a3a6a); add(new THREE.CylinderGeometry(2.1, 2.1, 0.12, 20), plank(0x5a3a22), W / 2, 0.84, D * 0.56); add(new THREE.CylinderGeometry(0.4, 0.6, 0.8, 10), sm, W / 2, 0.4, D * 0.56); solid(W / 2, D * 0.56, 2.2);
+      for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + 0.2, x = W / 2 + Math.cos(a) * 2.75, z = D * 0.56 + Math.sin(a) * 2.75; chair(x, z, -a - Math.PI / 2); seats.push({ x, z, yaw: -a - Math.PI / 2, h: 0.5 }); mug(W / 2 + Math.cos(a) * 1.5, 0.9, D * 0.56 + Math.sin(a) * 1.5); }
+      add(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 6), std(0xe8dcc0), W / 2, 1.15, D * 0.56, false); flame(W / 2, 1.6, D * 0.56, 0.55);
+      /* o bar, encostado na parede oeste; mesas redondas perto dele */
+      { const z0 = D * 0.34, z1 = D * 0.8, zm = (z0 + z1) / 2, L = z1 - z0; add(B(0.9, 1.05, L), plank(0x5a3a22), 2.4, 0.52, zm); add(B(1.1, 0.1, L + 0.3), plank(0x7a5532), 2.4, 1.09, zm); for (let z = z0 + 0.6; z < z1; z += 1.4) { solid(2.4, z, 0.75); mug(2.55, 1.14, z); add(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 10), dk, 3.55, 0.62, z + 0.5); add(new THREE.CylinderGeometry(0.05, 0.07, 0.6, 6), iron, 3.55, 0.3, z + 0.5, false); seats.push({ x: 3.55, z: z + 0.5, yaw: -Math.PI / 2, h: 0.62 }); barrel(0.8, z, 1.05); } sign(0.08, 2.5, zm, 'Bar das Guildas', 'aberto sempre', Math.PI / 2, 2.0); }
+      round(W * 0.82, D * 0.5); round(W * 0.84, D * 0.8); round(W * 0.34, D * 0.86);
+      for (const sx of [0.14, 0.9]) { add(B(0.9, 1.9, 0.5), wood(0x4a3220), W * sx, 0.95, D - 0.6); for (let j = 0; j < 3; j++) add(B(0.06, 1.3, 0.06), std(0xb8bec6), W * sx - 0.25 + j * 0.25, 1.1, D - 0.9, false).rotation.z = 0.12 * (j - 1); solid(W * sx, D - 0.6, 0.6); }
+      hang(W * 0.5, D * 0.56, 0xffc070, 50); hang(W * 0.25, D * 0.5, 0xffb060, 40); hang(W * 0.75, D * 0.5, 0xffb060, 40); light(W / 2, 3.0, D * 0.5, 0xffc080, 70, 26);
+    }
   } else if (variant === 14) { // ESTÁBULO (02/11): baias com feno e cocho, ferraduras na parede, selas, e o balcão do estalajadeiro
     window_(W * 0.5, 'n');
     const hay2 = (x: number, z: number, s = 1) => { add(new THREE.SphereGeometry(0.5 * s, 8, 6), std(0xd4b25a), x, 0.3 * s, z).scale.set(1.2, 0.6, 1); solid(x, z, 0.5 * s); };

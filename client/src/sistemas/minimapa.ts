@@ -179,7 +179,7 @@ function miniIcons(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (
   const h0 = K.hereT(), R = D / 2 / S + 2; const near = (x: number, y: number) => Math.abs(x - h0.x) < R && Math.abs(y - h0.y) < R;
   const sz = Math.max(5, Math.min(9, 3.2 * S));
   const ic = (g: string, x0: number, y0: number, ring: string, big = 1) => { if (!near(x0, y0)) return; const x = X(x0), y = Y(y0), r = sz * big; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fillStyle = 'rgba(16,12,6,.85)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = ring; ctx.stroke(); ctx.font = `${r * 1.25}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText(g, x, y + 0.5); };
-  const SICON: Record<string, string> = { armeiro: '⚔', armaduras: '🛡', mercador: '⚖', mercador_cidade: '⚖', pocoes: '⚗', cervejaria: '🍺', churrasco: '🍖', charcutaria: '🥓', cozinha: '🍲', padaria: '🍞', peixaria: '🐟', ervas: '🌿', joalheiro: '💎', alfaiate: '🧵', ferreiro: '⚒', estalagem: '🛏', estabulo: '🐴', shop: '🛍' };
+  const SICON: Record<string, string> = { armeiro: '⚔', armaduras: '🛡', mercador: '⚖', mercador_cidade: '⚖', pocoes: '⚗', cervejaria: '🍺', churrasco: '🍖', charcutaria: '🥓', cozinha: '🍲', padaria: '🍞', peixaria: '🐟', ervas: '🌿', joalheiro: '💎', alfaiate: '🧵', ferreiro: '⚒', estalagem: '🛏', salao_guildas: '⚜', estabulo: '🐴', shop: '🛍' };
   for (const p of K.city.props) {
     if (!near(p.gx, p.gy)) continue;
     if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) ic(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, '#e0c070'); }
