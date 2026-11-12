@@ -22,7 +22,8 @@ html { scroll-behavior: smooth; }
 .pc section { padding: clamp(64px, 11vh, 130px) var(--gut); }
 .pc .in { max-width: var(--w); margin: 0 auto; }
 .pc h2 { font-size: clamp(30px, 4.4vw, 58px); }
-.pc .lead { color: var(--mut); max-width: 62ch; margin: 20px 0 0; font-size: clamp(16px, 1.3vw, 19px); }
+.pc .lead--larga { max-width: none !important; }
+.lead { color: var(--mut); max-width: 62ch; margin: 20px 0 0; font-size: clamp(16px, 1.3vw, 19px); }
 .pc .quote { font: italic 400 clamp(20px, 2vw, 27px)/1.4 'Cormorant Garamond', serif; color: var(--gold2); }
 
 .pnav { position: fixed; z-index: 50; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 22px; padding: calc(12px + env(safe-area-inset-top, 0px)) var(--gut) 12px; background: rgba(11, 10, 13, .88); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
@@ -350,7 +351,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
       <div><small>O Campeão</small><b>Pacote III</b><span>R$ 139,90</span></div>
       <div class="pks--f"><small>A Lenda</small><b>Pacote Fundador</b><span>R$ 429,90</span></div>
     </div>
-    <p class="lead">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. <a href="/#pacotes">Ver o que vem em cada pacote</a>.</p>
+    <p class="lead lead--larga">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. <a href="/#pacotes" style="white-space:nowrap">Ver o que vem em cada pacote</a>.</p>
   </div>
 </section>
 
