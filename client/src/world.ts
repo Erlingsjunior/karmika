@@ -1608,8 +1608,16 @@ function buildCity_L(): World {
   // cemitério e igreja abandonada perto da cidade (leste)
   /* 12/11 (Erling: "já falei para colocar os elites grandes longe das cidades; um elite gigante e uma igreja abandonada do lado de Lundr e de uma cidade média
      pesa demais; e há vastas áreas sem nada"): a igreja e o Príncipe das Cinzas saíram do portão de Lundr (132, 55) para o descampado das Terras Antigas,
-     a sudeste, a mais de 100 m de qualquer vila. As missões seguem o lugar pelo nome. */
-  const ch0 = safe(182 + OFX_L, 118 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
+     no ponto mais ermo dos Bosques de Lundr (a conta está em `ermo`, logo abaixo). As missões seguem o lugar pelo nome. */
+  /* O LUGAR MAIS ERMO de uma região: o ponto de chão firme mais longe de povoados e de lugares marcados, dentro da região pedida (a faixa de nível certa),
+     a até `R` casas de (cx, cy). É a regra "lugares remotos para incentivar o andar pelo mapa" feita conta, e não olho. Devolve null se nada passa de `minD`. */
+  const ermo = (regName: string, cx: number, cy: number, R: number, minD: number): { x: number; y: number; d: number } | null => { let best: { x: number; y: number; d: number } | null = null;
+    for (let y = cy - R; y <= cy + R; y += 3) for (let x = cx - R; x <= cx + R; x += 3) { if (!inb(x, y) || x < 12 || y < 12 || x > MAP_W_L - 12 || y > MAP_H_L - 12) continue; if (regionAt_L(x, y).name !== regName || waterSD_L(x * T, y * T) < 14) continue;
+      let ok = true; for (let dy = -4; dy <= 14 && ok; dy += 3) for (let dx = -7; dx <= 14; dx += 3) { const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree') { ok = false; break; } } if (!ok) continue;
+      let d = 1e9; for (const t of settlements) d = Math.min(d, Math.hypot(t.x - x, t.y - y) - t.radius); for (const q of pois) d = Math.min(d, Math.hypot(q.x - x, q.y - y)); for (const q of spawns) if ((q as { keep?: boolean }).keep) d = Math.min(d, Math.hypot(q.x - x, q.y - y));
+      if (d >= minD && (!best || d > best.d)) best = { x, y, d }; } return best; };
+  const lundr0 = settlements.find((t) => t.name === 'Lundr'), chE = lundr0 ? ermo('Bosques de Lundr', lundr0.x, lundr0.y, 120, 40) : null; /* na faixa de nível 7 a 13, a mesma das missões da igreja */
+  const ch0 = chE ? { x: chE.x, y: chE.y } : safe(132 + OFX_L, 55 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
   for (let y = ch0.y - 2; y <= ch0.y + 13; y++) for (let x = ch0.x - 6; x <= ch0.x + 13; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
   if (free(ch0.x, ch0.y)) block({ kind: 'church', gx: ch0.x, gy: ch0.y, w: 5, h: 4, height: 7, wall: 0x6d6a64, roof: 0x4a3a34, variant: 1 });
   pois.push({ name: 'Igreja Abandonada', x: ch0.x + 2, y: ch0.y + 2, biome: 'ruins' });
@@ -2181,7 +2189,7 @@ function buildCity_L(): World {
       return best ?? [t.x, t.y + R + 3]; };
     const kar = settlements.find((t) => t.name === 'Karmika'); if (kar) { const [x, y] = exitOf(kar); place('Relíquia de Karmika', x, y, true, 0); }
     for (const t of settlements) if (t.name !== 'Karmika') { const [x, y] = exitOf(t); place(`Relíquia de ${t.name}`, x, y, true, 14); }
-    for (const pn of ['Acampamento Draugr', 'Covil dos Lobos', 'Atoleiro de Zerath', 'Cume Gelado', 'Garganta de Pedra', 'Cemitério Esquecido', 'Igreja Abandonada', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 40)) place(`Relíquia: ${pn}`, q.x, q.y + 5, false, 24); }
+    for (const pn of ['Acampamento Draugr', 'Covil dos Lobos', 'Atoleiro de Zerath', 'Cume Gelado', 'Garganta de Pedra', 'Cemitério Esquecido', 'Igreja Abandonada', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 40)) place(`Relíquia: ${pn}`, q.x, q.y + (pn === 'Igreja Abandonada' ? 16 : 5), false, 24) /* 12/11: a pedra da igreja fica a 32 m dela, no caminho para a masmorra, e não colada na porta */; }
     /* 02/11 (Erling: "construções importantes sem pedra de regresso próxima"): uma pedra perto de cada calabouço/lugar marcado que ainda não tem */
     /* 02/11 (Erling: "calabouços nunca próximos uns dos outros, nunca ao lado de vilas, espalhar pelo mapa"): o lugar de cada entrada é decidido AQUI.
        Regras: 5×5 livre (sem prédio, água, muro), ≥ 30 casas além do raio do povoado mais perto (Karmika: 36 — fora da muralha e do campo dela),
