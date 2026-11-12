@@ -714,3 +714,13 @@ main > section.jogar::before { content: ""; position: absolute; pointer-events: 
 @media (max-width: 1100px) { .packs__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 680px) { .packs__grid { grid-template-columns: 1fr 1fr; } .pack { padding-top: 120px; } .pack img { height: 170px; } }
 @media (max-width: 420px) { .packs__grid { grid-template-columns: 1fr; } }
+
+/* 12/11: terceiro botão do cabeçalho, verde, para a página de parceiros; o segundo fica mais perto do primeiro */
+.btn--green { background: linear-gradient(180deg, #63d68e, #1f8f52); color: #06200f; border-color: rgba(150, 245, 190, .65); box-shadow: 0 10px 40px -10px rgba(60, 200, 120, .7); }
+.btn--green:hover { box-shadow: 0 0 0 6px rgba(80, 210, 130, .16), 0 16px 50px -10px rgba(60, 200, 120, .9); }
+.nav .nav__playbtn + .btn--small { margin-left: -12px; margin-right: 0; }
+.nav__par { display: none; }
+@media (max-width: 1400px) { .nav .nav__parbtn { display: none; } }
+@media (max-width: 760px) { .nav__par { display: block; color: #7fe0a6 !important; } }
+@media (max-width: 1100px) { .nav .nav__playbtn + .btn--small { margin-left: auto; } }
+@media (min-width: 1500px) { .nav .nav__playbtn + .btn--small { margin-left: -8px; margin-right: 0; } .nav .nav__parbtn { margin-right: auto; } }

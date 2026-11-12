@@ -39,7 +39,7 @@
   mark();
   if (lang === 'pt') return;
   var D = {}, RE = [];
-  try { var x = new XMLHttpRequest(); x.open('GET', '/i18n/' + lang + '.json?v=10', false); x.send(); if (x.status === 200) { var j = JSON.parse(x.responseText); D = j.t || {}; RE = (j.re || []).map(function (r) { return [new RegExp(r[0]), r[1]]; }); } } catch (e) { /* sem dicionário: fica em português */ }
+  try { var x = new XMLHttpRequest(); x.open('GET', '/i18n/' + lang + '.json?v=11', false); x.send(); if (x.status === 200) { var j = JSON.parse(x.responseText); D = j.t || {}; RE = (j.re || []).map(function (r) { return [new RegExp(r[0]), r[1]]; }); } } catch (e) { /* sem dicionário: fica em português */ }
   var tr = function (k) { if (Object.prototype.hasOwnProperty.call(D, k)) return D[k]; for (var i = 0; i < RE.length; i++) if (RE[i][0].test(k)) return k.replace(RE[i][0], RE[i][1]); return null; };
   var done = new WeakSet();
   var apply = function (root) {

@@ -109,6 +109,77 @@ html { scroll-behavior: smooth; }
 .lad__s p { margin: 0; color: var(--mut); font-size: 15px; }
 .lad__s span { display: block; margin-top: 12px; font-size: 12px; letter-spacing: .08em; color: var(--ink); }
 @media (max-width: 900px) { .lad { grid-template-columns: 1fr 1fr; } } @media (max-width: 520px) { .lad { grid-template-columns: 1fr; } }
+/* campeonatos: cada etapa é um botão que troca a arena de baixo */
+.lad--tab .lad__s { all: unset; box-sizing: border-box; display: block; position: relative; padding: 26px clamp(14px, 1.8vw, 26px) 26px; border-top: 2px solid var(--line); counter-increment: lad; cursor: pointer; opacity: .55; transition: opacity .3s, background .3s; border-radius: 0 0 14px 14px; }
+.lad--tab .lad__s:hover, .lad--tab .lad__s:focus-visible { opacity: .9; background: rgba(255, 255, 255, .03); }
+.lad--tab .lad__s[aria-selected="true"] { opacity: 1; background: linear-gradient(180deg, rgba(217, 165, 74, .12), transparent); border-top-width: 3px; }
+.lad--tab .lad__s h3 { display: block; font-family: var(--serif); color: var(--ink); }
+.lad--tab .lad__s p, .lad--tab .lad__s span { display: block; }
+.arena { position: relative; margin-top: 26px; display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.25fr); border-radius: 20px; overflow: hidden; border: 1px solid rgba(217, 165, 74, .4); background: #0c0b10; box-shadow: 0 40px 100px -50px #000; min-height: 470px; }
+.arena__txt { position: relative; z-index: 2; padding: clamp(22px, 3vw, 40px); display: grid; align-content: center; }
+.arena__p { grid-area: 1 / 1; opacity: 0; visibility: hidden; transform: translateY(14px); transition: opacity .45s, transform .45s, visibility 0s .45s; }
+.arena[data-e="1"] .arena__p:nth-child(1), .arena[data-e="2"] .arena__p:nth-child(2), .arena[data-e="3"] .arena__p:nth-child(3) { opacity: 1; visibility: visible; transform: none; transition: opacity .45s .1s, transform .45s .1s; }
+.arena__p small { font: 700 12px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold); }
+.arena__p h3 { font-size: clamp(24px, 2.6vw, 36px); margin: 12px 0 12px; }
+.arena__p p { margin: 0 0 14px; color: var(--mut); }
+.arena__p ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.arena__p li { position: relative; padding-left: 22px; font-size: 15px; color: #d8cdbb; }
+.arena__p li::before { content: "✦"; position: absolute; left: 0; top: 0; color: var(--gold2); font-size: 12px; line-height: 1.7; }
+.arena__p li b { color: var(--gold2); }
+.arena__pal { position: relative; overflow: hidden; min-height: 340px; }
+.arena__bg { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; opacity: 0; transform: scale(1.08); transition: opacity .8s, transform 1.6s; filter: saturate(.9) brightness(.62); }
+.arena[data-e="1"] .arena__bg:nth-of-type(1), .arena[data-e="2"] .arena__bg:nth-of-type(2), .arena[data-e="3"] .arena__bg:nth-of-type(3) { opacity: 1; transform: none; }
+.arena__pal::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #0c0b10 0, rgba(12, 11, 16, .25) 26%, transparent 60%), linear-gradient(0deg, #0c0b10 0, transparent 38%); pointer-events: none; }
+.arena__h { position: absolute; bottom: -4%; height: 78%; width: auto; max-width: none; z-index: 1; opacity: 0; transform: translate(var(--dx, 0), 40px) scale(.86); transition: opacity .5s, transform .7s cubic-bezier(.2, .9, .3, 1.2), left .7s, height .7s; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, .8)); transform-origin: 50% 100%; }
+.arena[data-e="1"] .arena__h[data-de="1"], .arena[data-e="2"] .arena__h:not([data-de="3"]), .arena[data-e="3"] .arena__h { opacity: 1; transform: translate(-50%, 0) rotate(var(--r, 0deg)); transition-delay: var(--d, 0s); }
+.arena__h { left: var(--x1); } .arena[data-e="2"] .arena__h { left: var(--x2); height: 74%; } .arena[data-e="3"] .arena__h { left: var(--x3); height: 70%; }
+.arena[data-e="3"] .arena__h { filter: drop-shadow(0 0 18px rgba(243, 211, 138, .45)) drop-shadow(0 18px 24px rgba(0, 0, 0, .8)); }
+.arena__h--f { z-index: 2; } .arena[data-e] .arena__h--f { height: 88%; }
+.arena__n { position: absolute; z-index: 3; right: 18px; top: 14px; font: 700 clamp(60px, 9vw, 120px)/1 var(--serif); color: rgba(243, 211, 138, .16); pointer-events: none; }
+.arena__n::after { content: "I"; } .arena[data-e="2"] .arena__n::after { content: "II"; } .arena[data-e="3"] .arena__n::after { content: "III"; }
+@media (max-width: 900px) { .arena { grid-template-columns: 1fr; } .arena__pal { order: -1; min-height: 300px; } .arena__pal::after { background: linear-gradient(0deg, #0c0b10 0, transparent 40%); } }
+@media (max-width: 760px) { .lad--tab .lad__s p, .lad--tab .lad__s span { display: none; } .lad--tab.lad--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .lad--tab .lad__s { padding: 16px 8px; } .lad--tab .lad__s h3 { font-size: 14px; margin: 0; } .lad--tab .lad__s::before { margin-bottom: 8px; } }
+@media (prefers-reduced-motion: reduce) { .arena__h, .arena__bg, .arena__p { transition: none !important; } }
+
+/* terrenos de guilda: mapa vivo */
+.duo.duo--mapa { align-items: start; }
+.gmap-col { position: sticky; top: 84px; display: grid; gap: 14px; }
+.gmap__z { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.3, .8, .3, 1); will-change: transform; }
+.gmap__z > img { position: absolute; width: 160%; max-width: none; left: -30%; top: -30%; image-rendering: pixelated; }
+.gmap__p { transition: opacity .3s, transform .3s; transform-origin: 2px 100%; }
+.gmap__p.off { opacity: .18; pointer-events: none; }
+.gmap__p { transform: scale(var(--k, 1)); } .gmap__p.on { z-index: 5; transform: scale(calc(var(--k, 1) * 1.3)); }
+.gmap__p.on::after, .gmap__p.on i { filter: drop-shadow(0 0 6px #fff); }
+.gmap__ring { position: absolute; left: -10px; bottom: -8px; width: 26px; height: 12px; border-radius: 50%; border: 2px solid #fff; opacity: 0; }
+.gmap__p.on .gmap__ring { animation: gring 1.6s ease-out infinite; }
+@keyframes gring { 0% { opacity: .9; transform: scale(.5); } 100% { opacity: 0; transform: scale(2.6); } }
+.gmap__out { position: absolute; right: 12px; top: 12px; z-index: 6; padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(243, 211, 138, .5); background: rgba(11, 10, 13, .85); color: var(--ink); font: 600 12px/1 var(--sans); cursor: pointer; }
+.gfil { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.gfil button { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); color: var(--mut); font: 600 13px/1 var(--sans); cursor: pointer; transition: all .2s; }
+.gfil button:hover { color: var(--ink); } .gfil button[aria-pressed="true"] { background: var(--gold2); border-color: var(--gold2); color: #1a120a; }
+.glist { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.glist button { all: unset; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); cursor: pointer; transition: border-color .2s, background .2s, transform .2s; }
+.glist button:hover, .glist button:focus-visible { border-color: rgba(243, 211, 138, .6); transform: translateX(3px); }
+.glist button[aria-current="true"] { border-color: var(--gold2); background: rgba(217, 165, 74, .14); }
+.glist li.off { display: none; }
+.glist i { grid-row: 1 / 3; width: 12px; height: 15px; background: var(--gold2); clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 54%, 0 72%); }
+.glist .gl--s i { background: #a04af0; }
+.glist b { font: 700 14px/1.2 var(--sans); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glist span { grid-column: 2; font-size: 12px; color: var(--mut); }
+.glist em { grid-row: 1 / 3; grid-column: 3; font: 700 13px/1 var(--sans); font-style: normal; color: var(--gold2); white-space: nowrap; }
+.gcard { border-radius: 16px; border: 1px solid rgba(217, 165, 74, .45); background: rgba(14, 13, 18, .92); padding: 18px 20px; }
+.gcard.gcard--s { border-color: rgba(160, 74, 240, .6); }
+.gcard__t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.gcard__t h3 { font-size: clamp(19px, 1.8vw, 24px); margin: 0; }
+.gcard__t span { font: 700 11px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: var(--gold2); color: #1a120a; }
+.gcard.gcard--s .gcard__t span { background: #a04af0; color: #fff; }
+.gcard dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 18px; margin: 14px 0 0; }
+.gcard dt { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
+.gcard dd { margin: 3px 0 0; font: 700 16px/1.25 var(--sans); color: var(--ink); }
+.gcard dd small { display: block; font: 400 12px/1.3 var(--sans); color: var(--mut); }
+.gcard p { margin: 14px 0 0; font-size: 13px; color: var(--mut); }
+@media (max-width: 980px) { .gmap-col { position: static; } }
+@media (max-width: 520px) { .glist { grid-template-columns: 1fr; } .gcard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .fair { margin-top: 46px; padding: clamp(20px, 3vw, 36px); border-left: 2px solid var(--ember); background: rgba(255, 122, 42, .05); border-radius: 0 16px 16px 0; max-width: 900px; }
 .fair p { margin: 10px 0 0; color: var(--mut); } .fair--up { border-left-color: var(--gold); background: rgba(217, 165, 74, .06); margin-top: 22px; }
 
@@ -453,12 +524,16 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
       <span class="eyebrow">Chão de guilda</span>
       <h2>Doze terrenos. Seis de luz, seis de sombra.</h2>
       <p class="lead">Construir casa em KARMIKA é gratuito. Terreno de guilda, não. São só doze em cada reino, reservados desde sempre nos lugares mais bonitos do mundo, e é neles que as guildas erguem a sede.</p>
+      <div class="gfil" id="gfil" role="group" aria-label="Filtrar os terrenos"><button type="button" data-f="todos" aria-pressed="true">Todos os 12</button><button type="button" data-f="luz" aria-pressed="false">Luz</button><button type="button" data-f="sombra" aria-pressed="false">Sombra</button><button type="button" data-f="comum" aria-pressed="false">Comuns</button><button type="button" data-f="nobre" aria-pressed="false">Nobres</button><button type="button" data-f="lendario" aria-pressed="false">Lendários</button></div>
+      <ul class="glist" id="glist"></ul>
       <ul class="selos selos--col"><li><b>6 para guildas de karma positivo</b> e <b>6 para guildas de karma negativo</b></li><li>De cada lado: <b>3 comuns</b> a R$ 99,90, <b>2 nobres</b> a R$ 149,90 e <b>1 lendário</b> a R$ 249,90</li><li>A cada dois anos a guilda <b>renova com 50% de desconto</b> ou abre mão do terreno</li><li>A casa parceira ganha a <b>comissão do seu nível</b> em cada terreno vendido no seu reino</li><li>Só guildas de <b>nível 3 ou mais</b> entram nas Classificatórias</li></ul>
       <p class="lead">Com os doze vendidos, um reino movimenta R$ 1.698,80 só em terrenos. Para uma guilda de dez pessoas, o terreno comum sai a menos de R$ 10 por cabeça.</p>
     </div>
-    <div class="gmap" role="img" aria-label="O mapa de KARMIKA com os doze terrenos de guilda">
+    <div class="gmap-col"><div class="gmap" id="gmap" aria-label="O mapa de KARMIKA com os doze terrenos de guilda">
       <img src="/img/mapa-mundo.webp" alt="" loading="lazy"><span class="gmap__p" style="left:53.4%;top:45.7%" tabindex="0"><i></i><em>Vale de Karmika<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:51.2%;top:58.6%" tabindex="0"><i></i><em>Terra Maldita<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p gmap__p--r" style="left:61.7%;top:30.8%" tabindex="0"><i></i><em>Sopé de Brasaforja<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:36.6%;top:56.7%" tabindex="0"><i></i><em>Charcos do Oeste<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p gmap__p--e" style="left:13.6%;top:52.4%" tabindex="0"><i></i><em>Bosque de Lithendel<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:50.6%;top:75.7%" tabindex="0"><i></i><em>Colinas do Sul<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p" style="left:43.3%;top:36.0%" tabindex="0"><i></i><em>Cordilheira do Norte<br>Nobre · R$ 149,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--r" style="left:75.8%;top:41.9%" tabindex="0"><i></i><em>Colina Vampírica<br>Nobre · R$ 149,90 · karma negativo</em></span><span class="gmap__p" style="left:24.8%;top:27.6%" tabindex="0"><i></i><em>Montanha Viking<br>Nobre · R$ 149,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--l gmap__p--r" style="left:82.2%;top:60.4%" tabindex="0"><i></i><em>Vale da Desgraça<br>Lendário · R$ 249,90 · karma negativo</em></span><span class="gmap__p gmap__p--l" style="left:24.9%;top:66.0%" tabindex="0"><i></i><em>Floresta Encantada<br>Lendário · R$ 249,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--r" style="left:75.9%;top:77.3%" tabindex="0"><i></i><em>Selva Licantropa<br>Nobre · R$ 149,90 · karma negativo</em></span>
       <p class="gmap__leg"><span><i class="lz"></i>Karma positivo</span><span><i class="sb"></i>Karma negativo</span><span><i class="ld"></i>Lendário</span></p>
+    </div>
+      <div class="gcard" id="gcard" aria-live="polite"><p style="margin:0">Toque em um estandarte do mapa ou em um terreno da lista para ver o lugar, o preço e as condições.</p></div>
     </div>
   </div>
 </section>
@@ -469,10 +544,28 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <span class="eyebrow">Campeonatos</span>
     <h2>Três etapas, do reino da casa ao KARMIKA Championship.</h2>
     <p class="lead">Todo mês a casa faz o seu Torneio da Casa. E a cada temporada as guildas de todos os reinos entram no campeonato oficial, que corre em três etapas. Como os resultados sobem pelo Fio, a guilda que nasceu no seu salão pode chegar ao palco do mundo.</p>
-    <div class="lad lad--3">
-      <div class="lad__s"><h3>Classificatórias</h3><p>Só entram guildas de nível 3 ou mais. As guildas de cada reino se enfrentam, e as melhores recebem um selo: Diamante, Ouro ou Prata.</p><span>Em todos os reinos</span></div>
-      <div class="lad__s"><h3>Playoffs</h3><p>As guildas Diamante, Ouro e Prata de todos os reinos se enfrentam em um novo campeonato. Só 20 saem dele.</p><span>Guildas Diamante, Ouro e Prata</span></div>
-      <div class="lad__s"><h3>KARMIKA Championship</h3><p>O mundial. As 20 guildas que sobraram disputam o título do mundo, com prêmios e o nome escrito para sempre na Lenda do jogo.</p><span>20 guildas · organizado pelo Tear</span></div>
+    <div class="lad lad--3 lad--tab" role="tablist" aria-label="As etapas do campeonato" id="ladTab">
+      <button class="lad__s" type="button" role="tab" aria-selected="true" aria-controls="arena"><h3>Classificatórias</h3><p>Só entram guildas de nível 3 ou mais. As guildas de cada reino se enfrentam, e as melhores recebem um selo: Diamante, Ouro ou Prata.</p><span>Em todos os reinos</span></button>
+      <button class="lad__s" type="button" role="tab" aria-selected="false" aria-controls="arena"><h3>Playoffs</h3><p>As guildas Diamante, Ouro e Prata de todos os reinos se enfrentam em um novo campeonato. Só 20 saem dele.</p><span>Guildas Diamante, Ouro e Prata</span></button>
+      <button class="lad__s" type="button" role="tab" aria-selected="false" aria-controls="arena"><h3>KARMIKA Championship</h3><p>O mundial. As 20 guildas que sobraram disputam o título do mundo, com prêmios e o nome escrito para sempre na Lenda do jogo.</p><span>20 guildas · organizado pelo Tear</span></button>
+    </div>
+    <div class="arena" id="arena" data-e="1" role="tabpanel" aria-live="polite">
+      <div class="arena__txt">
+        <div class="arena__p"><small>Etapa I · no reino da casa</small><h3>A guilda sai do seu salão.</h3><p>É a etapa que acontece dentro da sua casa. As guildas do reino medem força entre si, com a torcida do bairro em volta.</p><ul><li>Entram guildas de <b>nível 3 ou mais</b></li><li>As melhores de cada reino recebem um selo: <b>Diamante, Ouro ou Prata</b></li><li>A <b>Estalagem</b> inscreve as guildas da casa</li><li>O <b>Salão de Guilda</b> sedia uma rodada por temporada</li></ul></div>
+        <div class="arena__p"><small>Etapa II · reino contra reino</small><h3>Os selos se encontram.</h3><p>As guildas Diamante, Ouro e Prata de todos os reinos entram em um novo campeonato. Agora é a sua casa contra as outras casas.</p><ul><li>Disputa em <b>mapa de evento montado pelo Tear</b>, igual para todos</li><li>Os resultados sobem pelo <b>Fio</b> e são conferidos pelo núcleo</li><li>A <b>Cidadela</b> sedia finais e eventos grandes</li><li>Só <b>20 guildas</b> saem daqui</li></ul></div>
+        <div class="arena__p"><small>Etapa III · o mundial</small><h3>Vinte guildas. Um nome na Lenda.</h3><p>O KARMIKA Championship. As 20 que sobraram disputam o título do mundo, e cada uma carrega o estandarte da casa onde nasceu.</p><ul><li><b>Prêmios</b> para as guildas campeãs</li><li>O nome dos campeões fica <b>escrito para sempre na Lenda do jogo</b></li><li>Organizado pelo <b>Tear</b>, em mapa de evento igual para todos</li><li>Os reinos mais cheios passam à frente para <b>sediar</b></li></ul></div>
+      </div>
+      <div class="arena__pal" aria-hidden="true">
+        <img class="arena__bg" src="/img/k-toca_chefe.webp" alt="" loading="lazy"><img class="arena__bg" src="/img/k-v2_vam_batswarm.webp" alt="" loading="lazy"><img class="arena__bg" src="/img/k-v2_tec_thunder.webp" alt="" loading="lazy">
+        <img class="arena__h" data-de="3" src="/img/c-bruxa.webp" alt="" loading="lazy" style="--x1:8%;--x2:8%;--x3:9%;--r:-4deg;--d:.30s">
+        <img class="arena__h" data-de="2" src="/img/c-lobisomem.webp" alt="" loading="lazy" style="--x1:14%;--x2:14%;--x3:22%;--r:-3deg;--d:.18s">
+        <img class="arena__h" data-de="1" src="/img/c-guerreiro.webp" alt="" loading="lazy" style="--x1:26%;--x2:31%;--x3:36%;--r:-2deg;--d:.06s">
+        <img class="arena__h arena__h--f" data-de="1" src="/img/c-paladina.webp" alt="" loading="lazy" style="--x1:50%;--x2:50%;--x3:50%;--d:0s">
+        <img class="arena__h" data-de="1" src="/img/c-maga.webp" alt="" loading="lazy" style="--x1:74%;--x2:69%;--x3:64%;--r:2deg;--d:.06s">
+        <img class="arena__h" data-de="2" src="/img/c-vampiro.webp" alt="" loading="lazy" style="--x1:86%;--x2:86%;--x3:78%;--r:3deg;--d:.18s">
+        <img class="arena__h" data-de="3" src="/img/c-tecnocrata.webp" alt="" loading="lazy" style="--x1:92%;--x2:92%;--x3:91%;--r:4deg;--d:.30s">
+        <span class="arena__n"></span>
+      </div>
     </div>
     <div class="fair">
       <p class="quote">"No mapa do evento, vale a mão. Não o tempo de jogo."</p>
@@ -640,6 +733,60 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
       .then(function (r) { if (!r.ok) throw new Error('erro'); try { localStorage.setItem(K, String(Date.now())); } catch (x) { /* */ } f.reset(); say('ok', '✦ Ficha recebida. A D2 Studio fala com você em breve.'); btn.textContent = 'Ficha enviada ✦'; })
       .catch(function () { say('err', 'Não deu certo agora. Tente de novo em instantes.'); btn.disabled = false; btn.textContent = 'Quero ser parceiro'; })
       .then(function () { sending = false; });
+  });
+})();
+</script>
+<script>
+/* campeonatos: I, II e III trocam a arena */
+(function () {
+  var tabs = [].slice.call(document.querySelectorAll('#ladTab .lad__s')), ar = document.getElementById('arena'); if (!ar) return;
+  function vai(i) { tabs.forEach(function (t, k) { t.setAttribute('aria-selected', k === i ? 'true' : 'false'); }); ar.setAttribute('data-e', String(i + 1)); }
+  tabs.forEach(function (t, i) { t.addEventListener('click', function () { vai(i); }); });
+})();
+/* terrenos de guilda: mapa vivo */
+(function () {
+  var mapa = document.getElementById('gmap'), lista = document.getElementById('glist'), card = document.getElementById('gcard'); if (!mapa || !lista) return;
+  var T = [['Vale de Karmika', 1, 7, 1, 'comum'], ['Terra Maldita', 7, 13, -1, 'comum'], ['Sopé de Brasaforja', 1, 7, 1, 'comum'], ['Charcos do Oeste', 7, 13, -1, 'comum'], ['Bosque de Lithendel', 1, 7, 1, 'comum'], ['Colinas do Sul', 13, 20, -1, 'comum'], ['Cordilheira do Norte', 13, 20, 1, 'nobre'], ['Colina Vampírica', 20, 25, -1, 'nobre'], ['Montanha Viking', 20, 31, 1, 'nobre'], ['Vale da Desgraça', 25, 31, -1, 'lendario'], ['Floresta Encantada', 31, 42, 1, 'lendario'], ['Selva Licantropa', 25, 31, -1, 'nobre']];
+  var F = { comum: ['Comum', 99.9], nobre: ['Nobre', 149.9], lendario: ['Lendário', 249.9] };
+  function rs(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  var z = el('div', 'gmap__z'), pins = [].slice.call(mapa.querySelectorAll('.gmap__p'));
+  z.appendChild(mapa.querySelector('img')); pins.forEach(function (p) { p.appendChild(el('span', 'gmap__ring')); z.appendChild(p); }); mapa.insertBefore(z, mapa.firstChild);
+  var fora = el('button', 'gmap__out', 'Ver o mapa inteiro'); fora.type = 'button'; fora.hidden = true; mapa.appendChild(fora);
+  var linhas = [], sel = -1;
+  T.forEach(function (t, i) {
+    var li = el('li'), b = el('button', t[3] < 0 ? 'gl--s' : ''); b.type = 'button';
+    b.appendChild(el('i')); b.appendChild(el('b', '', t[0])); b.appendChild(el('em', '', rs(F[t[4]][1]))); b.appendChild(el('span', '', F[t[4]][0] + ' · nível ' + t[1] + ' a ' + t[2]));
+    li.appendChild(b); lista.appendChild(li); linhas.push(li);
+    b.addEventListener('click', function () { escolhe(i, true); });
+    b.addEventListener('mouseenter', function () { pins[i].classList.add('on'); }); b.addEventListener('mouseleave', function () { if (sel !== i) pins[i].classList.remove('on'); });
+    pins[i].setAttribute('role', 'button'); pins[i].addEventListener('click', function () { escolhe(i, false); });
+    pins[i].addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolhe(i, false); } });
+  });
+  function dd(dl, a, b, c) { var d = el('div'); d.appendChild(el('dt', '', a)); var x = el('dd', '', b); if (c) x.appendChild(el('small', '', c)); d.appendChild(x); dl.appendChild(d); }
+  function escolhe(i, rola) {
+    sel = i; var t = T[i], f = F[t[4]], p = pins[i];
+    pins.forEach(function (q, k) { q.classList.toggle('on', k === i); }); linhas.forEach(function (l, k) { l.firstChild.setAttribute('aria-current', k === i ? 'true' : 'false'); });
+    var x = parseFloat(p.style.left), y = parseFloat(p.style.top), s = 1.9, tx = Math.min(0, Math.max(-(s - 1) * 100, 50 - x * s)), ty = Math.min(0, Math.max(-(s - 1) * 100, 50 - y * s));
+    z.style.transformOrigin = '0 0'; z.style.transform = 'translate(' + tx + '%,' + ty + '%) scale(' + s + ')'; z.style.setProperty('--k', String(1 / 1.45)); fora.hidden = false;
+    card.textContent = ''; card.className = 'gcard' + (t[3] < 0 ? ' gcard--s' : '');
+    var h = el('div', 'gcard__t'); h.appendChild(el('h3', '', t[0])); h.appendChild(el('span', '', t[3] > 0 ? 'Luz · karma positivo' : 'Sombra · karma negativo')); card.appendChild(h);
+    var dl = el('dl');
+    dd(dl, 'Faixa', f[0], t[4] === 'lendario' ? 'Só um de cada lado no reino' : t[4] === 'nobre' ? 'Dois de cada lado no reino' : 'Três de cada lado no reino');
+    dd(dl, 'Região', 'Nível ' + t[1] + ' a ' + t[2], 'Lugar reservado desde sempre no mapa');
+    dd(dl, 'Preço', rs(f[1]), 'Pago uma vez, pela guilda');
+    dd(dl, 'A cada dois anos', rs(f[1] / 2), 'Renova com 50% de desconto ou abre mão');
+    dd(dl, 'Comissão da casa', rs(f[1] * .2) + ' a ' + rs(f[1] * .3), 'De 20% a 30%, pelo nível da parceria');
+    dd(dl, 'Quem pode comprar', t[3] > 0 ? 'Guilda de karma positivo' : 'Guilda de karma negativo', 'Só guildas de nível 3 ou mais entram nas Classificatórias');
+    card.appendChild(dl);
+    if (rola && window.matchMedia('(max-width: 980px)').matches) mapa.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  fora.addEventListener('click', function () { z.style.transform = ''; z.style.removeProperty('--k'); fora.hidden = true; });
+  document.getElementById('gfil').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return; var f = b.getAttribute('data-f');
+    [].forEach.call(this.querySelectorAll('button'), function (q) { q.setAttribute('aria-pressed', q === b ? 'true' : 'false'); });
+    T.forEach(function (t, i) { var ok = f === 'todos' || (f === 'luz' && t[3] > 0) || (f === 'sombra' && t[3] < 0) || f === t[4]; linhas[i].classList.toggle('off', !ok); pins[i].classList.toggle('off', !ok); });
+    z.style.transform = ''; z.style.removeProperty('--k'); fora.hidden = true;
   });
 })();
 </script>
