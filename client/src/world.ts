@@ -2613,6 +2613,12 @@ function buildCity_L(): World {
         /* 08/11 (Erling: "a placa está virada para um lado que não se vê bem; vira ela para a visão do jogador"): a câmera olha de sudeste — o quadro sempre olha para o sul ou para o leste (o lado da rua, se der; senão, o lado que se vê) */
         const vis = face.find(([, , d2]) => d2 === 0 || d2 === 1); best = { x, y, d, dir: vis ? vis[2] : face[0][2] === 2 ? 0 : 1 }; }
       if (!best) continue; props.push({ kind: 'noticeboard', gx: best.x, gy: best.y, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: best.dir }); occ.add(key(best.x, best.y)); } }
+  /* 12/11 (Erling: "onde existe caminho de rua não pode ter cerca; precisa abrir a cerca aqui"): a cerca e o murinho das vilas eram postos ANTES de
+     algumas ruas e trilhas (as das casas de ofício, as dos lugares novos). Passada final, com o mapa pronto: todo pedaço de cerca ou muro baixo que
+     passa por cima de rua ou de praça sai, e a passagem fica aberta. */
+  { let fora = 0; for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if (q.kind !== 'lowwall' || q.len === undefined) continue; const cx0 = q.gx + (q.ox ?? 0) / T, cy0 = q.gy + (q.oz ?? 0) / T, hl = q.len / T / 2, dx = Math.cos(q.ry ?? 0), dy = -Math.sin(q.ry ?? 0); let cruza = false;
+      for (let t = -1; t <= 1 && !cruza; t += 0.25) { const x = Math.floor(cx0 + dx * hl * t), y = Math.floor(cy0 + dy * hl * t), m = map[y]?.[x] as string | undefined; if (m === 'road' || m === 'plaza') cruza = true; }
+      if (cruza) { props.splice(k, 1); fora++; } } if (fora) console.info(`cercas abertas sobre ruas: ${fora}`); }
   return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
