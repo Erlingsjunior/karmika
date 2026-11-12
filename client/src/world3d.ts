@@ -28,6 +28,7 @@ import { buildStation, buildWorkshop } from './stations3d';
 import { buildLibrary } from './library3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
+import { buildAranha, ARANHA_KINDS } from './aranhas3d';
 import { windU } from './terrain3d';
 import { ArtBatch, lodEpoch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
 import { buildChunkTerrainG, CS, CSM, type ChunkTerrain } from './chunks3d';
@@ -645,6 +646,8 @@ export function buildWorld(world: World): WorldObjs {
       for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), std(0x625f58)); s.position.set(r() * Wm, 0.12, Dm / 2 + (r() - 0.5) * 2); s.rotation.y = r() * 3; g.add(s); }
     } else if (CURSED_KINDS.has(p.kind)) {
       buildCursed(p, g, Wm, Dm, r);
+    } else if (ARANHA_KINDS.has(p.kind)) { /* 12/11: Floresta das Aranhas (árvores com teia, teias grandes, casulos) */
+      buildAranha(p, g, Wm, Dm, r);
     } else if (p.kind === 'tent') { // barraca de lona de verdade: duas águas sobre a cumeeira, mastros, portas de pano abertas, cordas esticadas até estacas no chão
       const t = new THREE.Group(); t.position.set(Wm / 2, 0, Dm / 2); t.rotation.y = (r() - 0.5) * 1.2 + (r() < 0.5 ? 0 : Math.PI / 2); g.add(t);
       const L2 = 2.9 + r() * 0.5, W2 = 1.3 + r() * 0.15, H2 = 1.75 + r() * 0.25, side = Math.hypot(W2, H2), ang = Math.atan2(W2, H2);
@@ -721,7 +724,7 @@ const NOCUT_KINDS = new Set(['mailbox', 'fountain', 'chest', 'vault', 'relic', '
 /* 07/11 FPS: nos postos de ofício o 'sem corte' não impede mais a fusão (eram ~100 desenhos por posto); a fusão faz um material sem corte para eles */
 const NOCUT_MERGE = new Set(['station', 'noticeboard', 'shopfront']);
 function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; if (merge) o.userData.nocut = true; else o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
-  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop']);
+  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop', 'webtree', 'webnet', 'cocoon', 'webmat']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);

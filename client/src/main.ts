@@ -136,7 +136,7 @@ import { createFalls } from './cachoeiras';
 
 import { createChat } from './chat';
 
-import { DEFS, enemyHooks } from './enemies';
+import { DEFS, enemyHooks, lvlScale } from './enemies';
 import { createLock } from './alvo-preso';
 import { bindScrolls } from './esquecimento';
 import { biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
@@ -181,6 +181,7 @@ import { createOlhoClaude } from './sistemas/olho-claude';
 import { onAdm } from './sistemas/admin';
 import { grupoPassMods } from './passivas';
 import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
+import { createPresos } from './sistemas/floresta-aranhas';
 import { createShaderGate } from './sistemas/compila-sem-travar';
 import { setTravasExtra } from './sistemas/travas';
 import { branchesOf } from './talentos';
@@ -619,6 +620,14 @@ function mk_arvoreSys() { return createArvoreClasse({ get game() { return game; 
 arvoreSys ??= mk_arvoreSys();
 const { tree, talents, talentKit, profs, mail, kitRace, SHOP_BY_NAME, SHADE_TOWNS } = arvoreSys;
 /* 11/11: as habilidades de grupo em jogo (sistemas/grupo-magias.ts): aprender pelo caminho de talento, lançar pela barra de grupo, somar no grupo */
+/* 12/11: os presos vivos da Floresta das Aranhas (sistemas/floresta-aranhas.ts): pedem socorro; E corta a teia */
+const presosSys = createPresos({ scene, fine, heightAt, heroPos: () => hero.root.position, dentro: () => !!inside, spots: city.props.filter((q) => q.kind === 'cocoon' && q.variant === 9).map((q) => ({ x: (q.gx + 0.5) * T, z: (q.gy + 0.5) * T })),
+  log: (t, c) => game.logMsg(t, c), karma: (n) => addKarma(n), xp: (f) => game.gainXp(Math.max(1, Math.round(game.xpNeed() * f))), gold: (n) => { game.st.gold += n; },
+  isca: (x, z, n) => { const L = Math.max(7, Math.min(13, game.st.lvl)), k = lvlScale('spiderling', L); for (let i = 0; i < n; i++) { const a = (i / n) * 6.283; game.enemies.spawn('spiderling', x + Math.cos(a) * 1.2, z + Math.sin(a) * 1.2, { lvl: L, hpMul: k.hp, dmgMul: k.dmg, aggro: 30 }); } },
+  puff: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 2, vy: 0.4 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2, life: 0.9, s0: 0.3, s1: 0.04, c0, c1, a: 0.9 }),
+  project: (p) => { const v = p.clone().project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
+  som: (k) => { if (k === 'corta') audio.swing(); else audio.spell('shock'); } });
+(window as unknown as { __presos?: unknown }).__presos = presosSys; /* teste */
 const torresSys = createTorres({ scene, heightAt, puff: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.8, life: 0.8, s0: 0.3, s1: 0.04, c0, c1, a: 0.9 }) });
 const grupoSys = createGrupoMagias({ kit: () => talentKit(), lvl: () => game.st.lvl, avail: () => tree.available(), branchName: (bi) => branchesOf(talentKit())[bi]?.name ?? '', st: () => game.st,
   set: (v) => game.grupoSet(v), shield: (v) => game.grupoShield(v), log: (t, c) => game.logMsg(t, c), float: (t, c) => game.dmgText(hero.root.position.clone().setY(hero.root.position.y + 2.8), t, false, c),
@@ -2566,6 +2575,7 @@ function findInter(): Inter | null {
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
     if (!festaAqui()) for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
+    for (const q of presosSys.perto(hx, hz)) add(q.d - 1.2, 3, 'E — Cortar a teia e soltar quem está preso', () => presosSys.soltar(q.p));
     for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz), ds = en.sign ? Math.hypot(en.sign.x - hx, en.sign.z - hz) : 99, dd = Math.min(d - 1.5, ds - 1.2); if (d < 5.5 || ds < 4) add(dd, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
     /* placas de estrada (Erling, 26/10: "ao apertar deveríamos ver o que elas estão dizendo, os lugares que elas apontam") */
     for (const sg of city.signs) { const sx = (sg.x + 0.5) * T, sz = (sg.y + 0.5) * T, d = Math.hypot(sx - hx, sz - hz); if (d < 3.2) add(d - 0.6, 2.8, 'E — Ler a placa da estrada', () => readSign(sg)); }

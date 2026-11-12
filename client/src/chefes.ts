@@ -31,6 +31,8 @@ export type Spell =
   | { kind: 'roar'; name: string; col: number; every: number; k: number; r: number; slow: number }
   | { kind: 'drain'; name: string; col: number; every: number; k: number; r: number }
   | { kind: 'summon'; name: string; col: number; every: number; k: number; type: EnemyType; n: number; line: string }
+  /** 12/11 a Aranha-Mãe: sobe pelo fio e some; do alto caem `n` teias (quem está no círculo fica preso `hold` s) e descem `adds` ajudantes; depois ela cai em cima de você */
+  | { kind: 'teia'; name: string; col: number; every: number; k: number; n: number; r: number; hold: number; type: EnemyType; adds: number }
   /** encanto (súcubo): dentro do círculo, os comandos se invertem por alguns segundos */
   | { kind: 'charm'; name: string; col: number; every: number; k: number; r: number; sec: number };
 export interface Kit {
@@ -83,6 +85,23 @@ const P = {
   wings(D: Dress, col: number, s = 1) { for (const sd of [-1, 1]) { const w = mesh(new THREE.ConeGeometry(0.6 * s, 1.4 * s, 3), new THREE.MeshToonMaterial({ color: col, side: THREE.DoubleSide })); w.scale.z = 0.08; w.rotation.z = sd * 1.1; D.add(w, sd * D.W * 0.55, D.H * 0.72, -D.W * 0.3); w.userData.wing = sd; } },
   /** correntes que pendem (suplício, negociante) */
   chains(D: Dress, col: number, n: number) { for (let i = 0; i < n; i++) { const g = new THREE.Group(); for (let k = 0; k < 5; k++) { const l = mesh(new THREE.TorusGeometry(0.05, 0.015, 4, 8), toon(col)); l.position.y = -k * 0.08; l.rotation.y = k % 2 ? Math.PI / 2 : 0; g.add(l); } D.add(g, (i / Math.max(1, n - 1) - 0.5) * D.W * 0.8, D.H * (0.45 + (i % 2) * 0.15), D.F * 0.25); g.userData.sway = 1; } },
+  /** 12/11 (Erling, com referências): a Aranha-Mãe é metade mulher, metade aranha. O tronco nasce da frente do corpo da aranha: cintura de carapaça,
+      busto pálido, braços finos abertos, cabelo branco comprido e uma coroa de espinhos atrás da cabeça. */
+  dama(D: Dress, skin = 0xa898c8, shell = 0x2a1438, hair = 0xe8e2f2, glow = 0xff2a4a) { const g = new THREE.Group(), s = Math.max(0.8, D.H * 0.95);
+    const w = mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.42, 8), toon(shell)); w.position.y = 0.2; g.add(w);
+    const t = mesh(new THREE.CylinderGeometry(0.21, 0.13, 0.52, 8), toon(skin)); t.position.y = 0.66; g.add(t);
+    const pl = mesh(new THREE.BoxGeometry(0.36, 0.2, 0.2), toon(shell)); pl.position.set(0, 0.76, 0.05); g.add(pl);
+    const gem = mesh(new THREE.OctahedronGeometry(0.05), glowM(glow, 1)); gem.position.set(0, 0.8, 0.17); g.add(gem);
+    const nk = mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 6), toon(skin)); nk.position.y = 0.97; g.add(nk);
+    const hd = mesh(new THREE.SphereGeometry(0.15, 10, 8), toon(skin)); hd.position.y = 1.14; g.add(hd);
+    const hr = mesh(new THREE.SphereGeometry(0.175, 10, 8), toon(hair)); hr.scale.set(1.05, 1, 1.05); hr.position.set(0, 1.18, -0.05); g.add(hr);
+    const tail = mesh(new THREE.ConeGeometry(0.17, 0.95, 8), toon(hair)); tail.rotation.x = Math.PI + 0.22; tail.position.set(0, 0.72, -0.2); g.add(tail);
+    for (const x of [-1, 1]) { const e = mesh(new THREE.SphereGeometry(0.028, 6, 5), glowM(glow, 1)); e.position.set(x * 0.055, 1.15, 0.135); g.add(e); const e2 = mesh(new THREE.SphereGeometry(0.016, 5, 4), glowM(glow, 1)); e2.position.set(x * 0.09, 1.21, 0.115); g.add(e2);
+      const up = mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 6), toon(skin)); up.geometry.translate(0, -0.21, 0); up.position.set(x * 0.23, 0.88, 0); up.rotation.z = x * 1.0; g.add(up);
+      const fo = mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.42, 6), toon(skin)); fo.geometry.translate(0, 0.21, 0); fo.position.set(x * 0.58, 0.66, 0.02); fo.rotation.z = x * -0.35; fo.rotation.x = 0.35; g.add(fo);
+      const cl = mesh(new THREE.ConeGeometry(0.035, 0.16, 5), toon(shell)); cl.position.set(x * 0.73, 1.1, 0.17); cl.rotation.z = x * -0.35; g.add(cl); }
+    for (let i = 0; i < 7; i++) { const a = -1.15 + (i / 6) * 2.3, sp = mesh(new THREE.ConeGeometry(0.022, 0.34 + (i % 2) * 0.12, 5), toon(shell)); sp.position.set(Math.sin(a) * 0.3, 1.2 + Math.cos(a) * 0.3, -0.1); sp.rotation.z = -a; g.add(sp); }
+    g.scale.setScalar(s); D.add(g, 0, D.head.y - 0.12 * s, D.head.z * 0.72); },
   ring(D: Dress, col: number, r: number) { const m = mesh(new THREE.RingGeometry(r * 0.82, r, 48), glowM(col, 0.5)); m.rotation.x = -Math.PI / 2; D.add(m, 0, 0.05, 0); m.userData.spin = 0.6; return m; },
   dots(D: Dress, col: number, n: number, ymin = 0.2, ymax = 0.9) { for (let i = 0; i < n; i++) { const d = mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 5, 4), glowM(col, 1)); const a = Math.random() * 6.283; D.add(d, Math.cos(a) * D.W * 0.34, D.H * (ymin + Math.random() * (ymax - ymin)), Math.sin(a) * D.W * 0.3 + D.F * 0.05); d.userData.flick = 1; } },
   bones(D: Dress, n: number, y: number, r: number) { for (let i = 0; i < n; i++) { const a = (i / n) * 6.283, b = mesh(new THREE.CapsuleGeometry(0.035, 0.18, 3, 5), toon(0xe8dcc0)); b.rotation.z = Math.PI / 2; b.rotation.y = a; D.add(b, Math.cos(a) * r, y, Math.sin(a) * r); } },
@@ -306,8 +325,8 @@ export const KITS: Record<string, Kit> = {
   'Aranha Tecelã': q({ gait: 'skitter', spells: [{ kind: 'roar', name: 'Teia', col: 0xe8e8f0, every: 11, k: 0.2, r: 4.5, slow: 0.15 }] }),
   'Aranha Filhote': q({ gait: 'skitter', spells: [] }),
   'Aracnídea-Mãe': q({ eye: 0xff2a1a, gait: 'stomp', speed: 0.9, fx: { col: 0x9aff6a, col2: 0x1a2a10, up: -0.5, rate: 8 },
-    look(D) { P.ring(D, 0xff2a1a, 1.4); },
-    spells: [{ kind: 'summon', name: 'A Ninhada Sem Fim', col: 0xff3a1a, every: 9, k: 0, type: 'spiderling', n: 10, line: 'A Aracnídea-Mãe treme o abdômen: cem filhotes escorrem das bolsas!' }, { kind: 'roar', name: 'Teia da Mãe', col: 0xf0f0f8, every: 14, k: 0.4, r: 11, slow: 0.12 }, { kind: 'volley', name: 'Cuspe Ácido', col: 0x9aff4a, every: 8, k: 0.8, n: 5, spread: 1.0, sp: 9 }, { kind: 'leap', name: 'O Peso da Mãe', col: 0xff3a1a, every: 15, k: 1.8, r: 5 }] }),
+    look(D) { P.ring(D, 0xff2a1a, 1.4); P.dama(D); },
+    spells: [{ kind: 'teia', name: 'A Subida da Mãe', col: 0xe8ecf4, every: 26, k: 0.7, n: 3, r: 2.6, hold: 3.5, type: 'spider', adds: 2 }, { kind: 'summon', name: 'A Ninhada Sem Fim', col: 0xff3a1a, every: 9, k: 0, type: 'spiderling', n: 10, line: 'A Aracnídea-Mãe treme o abdômen: cem filhotes escorrem das bolsas!' }, { kind: 'roar', name: 'Teia da Mãe', col: 0xf0f0f8, every: 14, k: 0.4, r: 11, slow: 0.12 }, { kind: 'volley', name: 'Cuspe Ácido', col: 0x9aff4a, every: 8, k: 0.8, n: 5, spread: 1.0, sp: 9 }, { kind: 'leap', name: 'O Peso da Mãe', col: 0xff3a1a, every: 15, k: 1.8, r: 5 }] }),
   'Urso das Cavernas': q({ eye: 0xffb040, gait: 'stomp', look(D) { P.bones(D, 5, D.H * 0.4, D.W * 0.5); }, spells: [{ kind: 'roar', name: 'Rugido da Caverna', col: 0xd8c8a0, every: 15, k: 0.4, r: 9, slow: 0.5 }, { kind: 'leap', name: 'Patada', col: 0xffb040, every: 10, k: 1.5, r: 3.5 }] }),
   'Cobra Gigante': q({ eye: 0xffd040, gait: 'prowl', spells: [{ kind: 'charge', name: 'Bote da Gigante', col: 0xffd040, every: 9, k: 1.5, len: 11, w: 1.8 }, { kind: 'cone', name: 'Peçonha', col: 0x9aff4a, every: 12, k: 1.0, r: 7, deg: 50 }] }),
   'Serpente do Brejo': q({ gait: 'prowl', spells: [{ kind: 'cone', name: 'Cuspe de Peçonha', col: 0x9aff4a, every: 11, k: 0.7, r: 5, deg: 40 }] }),
@@ -468,6 +487,23 @@ export function createBossBrain(ctx: BrainCtx) {
         fxs.push((dt) => { t += dt; tick -= dt; line.update(); const hh = ctx.heroPos(), d = Math.hypot(hh.x - e.pos.x, hh.z - e.pos.z); if (!e.alive || d > sp.r || t > 3.2) { line.done(); if (e.alive && d > sp.r) ctx.log(`✂ Você rompeu ${sp.name}.`, '#ffd27a'); return true; }
           if (tick <= 0) { tick = 0.5; const n = Math.max(1, Math.round(e.def.dmg * sp.k)); hurt(e, sp.k); e.hp = Math.min(e.hpMax, e.hp + n * 2.5); burst(hh.x, hh.y + 1, hh.z, sp.col, 8, 1, 2, 0.6); } return false; }); return 3.3; }
       case 'charm': { shout(e, sp, 'Não olhe nos olhos dela — saia do círculo!'); const cx = e.pos.x, cz = e.pos.z; telegraph(disc(sp.r), sp.col, cx, y, cz, 0, 1.2, () => { const hh = ctx.heroPos(); if (e.alive && Math.hypot(hh.x - cx, hh.z - cz) < sp.r) { hurt(e, sp.k); ctx.charm?.(sp.sec); ctx.log(`💋 ${sp.name}: seus passos estão trocados por ${sp.sec} s!`, '#ff8ad8'); } burst(cx, y + 1, cz, sp.col, 40, sp.r, 2); ctx.sound('arcane'); }, 'scale'); return 1.5; }
+      case 'teia': { /* 12/11 (Erling: "ela sobe e some, joga teia e nos prende, chama ajudantes e desce") */
+        const K2 = e as EnemyLike & { kneel?: boolean; t?: number }, bd = bodyOf(e), y0 = bd?.position.y ?? 0, UP = 22; let t = 0, stage = 0, shots = 0, shotT = 0.7, lx = e.pos.x, lz = e.pos.z, tl = 0;
+        ctx.say(`${e.def.name} sobe pelo fio e some no escuro do teto! ${sp.name}: não fique parado, as teias vêm de cima!`); ctx.sound('shock'); K2.kneel = true; /* lá em cima ninguém a alcança, e ela não ataca */
+        const thr = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, UP + 6, 4), new THREE.MeshBasicMaterial({ color: 0xe8ecf4, transparent: true, opacity: 0.85, fog: false })); thr.position.set(lx, y + (UP + 6) / 2, lz); ctx.scene.add(ctx.fine(thr));
+        const end = () => { if (bd) bd.position.y = y0; if (e.root) e.root.visible = true; K2.kneel = false; if (e.alive) { e.state = 'chase'; K2.t = 0; } ctx.scene.remove(thr); thr.geometry.dispose(); (thr.material as THREE.Material).dispose(); };
+        fxs.push((dt) => { t += dt; if (!e.alive) { end(); return true; }
+          if (stage === 0) { const k = Math.min(1, t / 1.1); if (bd) bd.position.y = y0 + k * k * UP; if (k >= 1) { stage = 1; if (e.root) e.root.visible = false;
+              if (mine) for (let i = 0; i < sp.adds; i++) { const h2 = ctx.heroPos(), a = Math.random() * 6.283, x = h2.x + Math.cos(a) * 4.5, z = h2.z + Math.sin(a) * 4.5; if (!ctx.walkable(x, z)) continue; fall(x, y, z, 0x3a2a24, 0.9); setTimeoutFx(0.9, () => { if (e.alive) { ctx.spawnAdd(sp.type, x, z); burst(x, y + 0.3, z, sp.col, 14, 2, 2); } }); }
+              if (sp.adds) ctx.log('🕷 As filhas descem pelos fios para segurar você no lugar!', '#ffb0a0'); } return false; }
+          if (stage === 1) { shotT -= dt; if (shotT <= 0 && shots < sp.n) { shots++; shotT = 1.45; const h2 = ctx.heroPos(), tx = h2.x, tz = h2.z; fall(tx, y, tz, sp.col, 1.1);
+              telegraph(disc(sp.r), sp.col, tx, y, tz, 0, 1.0, () => { const hh = ctx.heroPos(); pool(tx, y, tz, sp.r, 0xdfe4ea, e, 0, sp.hold + 1); if (e.alive && Math.hypot(hh.x - tx, hh.z - tz) < sp.r) { hurt(e, sp.k); ctx.slowHero(0.03, sp.hold); ctx.log(`🕸 Você ficou preso na teia por ${sp.hold} s! As filhas vêm.`, '#e8ecf4'); ctx.shake(0.25); } ctx.sound('ice'); }, 'scale'); }
+            else if (shotT <= 0) { stage = 2; const h2 = ctx.heroPos(); if (mine && ctx.walkable(h2.x, h2.z)) { lx = h2.x; lz = h2.z; } e.pos.x = lx; e.pos.z = lz; thr.position.set(lx, y + (UP + 6) / 2, lz); ctx.say(`${e.def.name} vai cair em cima de você: SAIA do círculo!`);
+              telegraph(disc(5), 0xff3a2a, lx, y, lz, 0, 1.5, () => { stage = 3; if (!e.alive) return; const hh = ctx.heroPos(); if (Math.hypot(hh.x - lx, hh.z - lz) < 5) { hurt(e, sp.k * 2.4); ctx.pushHero((hh.x - lx) * 0.5, (hh.z - lz) * 0.5); } ctx.shake(0.8); ctx.sound('boom'); burst(lx, y + 0.3, lz, sp.col, 70, 7, 4, 1); ring2(lx, y, lz, 5, 0xff3a2a); }, 'scale'); }
+            return false; }
+          if (stage === 2) { tl += dt; if (tl > 0.75) { if (e.root) e.root.visible = true; const k = Math.min(1, (tl - 0.75) / 0.9); if (bd) bd.position.y = y0 + (1 - k * k) * UP; } e.pos.x = lx; e.pos.z = lz; return false; }
+          end(); return true; });
+        return 1.1 + 0.7 + sp.n * 1.45 + 1.8 + 0.4; }
       case 'summon': { ctx.say(sp.line); ctx.sound('shock'); if (mine) for (let i = 0; i < sp.n; i++) { const a = (i / sp.n) * 6.283, x = e.pos.x + Math.cos(a) * 4, z = e.pos.z + Math.sin(a) * 4; if (ctx.walkable(x, z)) { ctx.spawnAdd(sp.type, x, z); burst(x, y + 0.3, z, sp.col, 16, 2, 3); } } return 1.0; }
     }
     return 1;

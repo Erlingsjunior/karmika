@@ -19,7 +19,7 @@ const PORTO_L = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x
 
 /** pedras da prancha 58 (01/11): musgosa, laje, menir, seixos, bola de musgo com samambaias, pico cinza, obsidiana azul, arenito laranja, veio de cobre, gelo, lisa escura e vulcânica rachada */
 export type RockStyle = 'mossy' | 'slab' | 'menhir' | 'pebbles' | 'mossball' | 'peak' | 'obsidian' | 'sandstone' | 'copper' | 'ice' | 'darkSmooth' | 'volcanic';
-export type PropKind = 'house' | 'gboard' | 'gchest' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant' | 'vprop';
+export type PropKind = 'webtree' | 'webnet' | 'cocoon' | 'webmat' | 'house' | 'gboard' | 'gchest' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant' | 'vprop';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -1621,6 +1621,12 @@ function buildCity_L(): World {
   for (let y = ch0.y - 2; y <= ch0.y + 13; y++) for (let x = ch0.x - 6; x <= ch0.x + 13; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
   if (free(ch0.x, ch0.y)) block({ kind: 'church', gx: ch0.x, gy: ch0.y, w: 5, h: 4, height: 7, wall: 0x6d6a64, roof: 0x4a3a34, variant: 1 });
   pois.push({ name: 'Igreja Abandonada', x: ch0.x + 2, y: ch0.y + 2, biome: 'ruins' });
+  /* ===== FLORESTA DAS ARANHAS (12/11, Erling: "em alguma parte grande dessa região [Terra Maldita]: muitas árvores com teias grandes e médias, pessoas enroladas
+     em teia, teias grandes com pessoas presas pedindo socorro; no centro, a boca da caverna da aranha-mãe") =====
+     O lugar sai da conta do ermo (o ponto de chão firme mais longe de vilas e de lugares marcados da Terra Maldita, nível 7 a 13), nunca do olho.
+     Um bosque redondo de árvores mortas com teia, cada vez mais fechado para dentro; uma trilha torta leva da borda (onde fica a pedra de teleporte)
+     até a clareira do centro, onde fica a boca da Toca. Os presos vivos (casulo variante 9) são desenhados e soltos por sistemas/floresta-aranhas.ts. */
+  let aranhaEdge: { x: number; y: number } | null = null; let aranhaC: { x: number; y: number; R: number } | null = null;
   // Primeiro lugar vampírico: a Cripta de Hemara (oeste, entre pântano e terras antigas)
   { const v = safe(112 + SH, 300 + SH, 10); const st: Settlement = { name: 'Cripta de Hemara', kind: 'village', x: v.x, y: v.y, radius: 7, npcs: [] }; settlements.push(st);
     for (let y = v.y - 8; y <= v.y + 8; y++) for (let x = v.x - 8; x <= v.x + 8; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
@@ -2195,14 +2201,57 @@ function buildCity_L(): World {
        Regras: 5×5 livre (sem prédio, água, muro), ≥ 30 casas além do raio do povoado mais perto (Karmika: 36 — fora da muralha e do campo dela),
        ≥ 40 casas (80 m) de qualquer outra entrada; a busca parte do lugar marcado (near + dx,dy) e abre em espiral até 60 casas.
        `spot` = lugar exato reservado pelo mundo (Túneis de Orrukh, dentro do cemitério). A pedra rúnica nasce a 6 casas da boca. */
+    /* (a Floresta das Aranhas nasce AQUI, depois de todos os lugares, vilas e pedras existirem: assim a conta de folga enxerga tudo) */
+  { const tm = REGIONS_L.find((q) => q.name === 'Terra Maldita');
+    /* o lugar: a floresta INTEIRA dentro da Terra Maldita (centro e borda), em chão firme, com folga de vilas (12 casas além da borda), de cidades (40) e de
+       lugares marcados (8); entre os que passam, o de maior folga, com um desconto pela distância ao miolo da região (nada de nascer na divisa) */
+    const trilha = (cx: number, cy: number, RF: number) => { let ns = settlements[0], nd = 1e9; for (const t of settlements) { const d = Math.hypot(t.x - cx, t.y - cy) - t.radius; if (d < nd) { nd = d; ns = t; } }
+      const aE = Math.atan2(ns.y - cy, ns.x - cx); return { aE, ex: Math.round(cx + Math.cos(aE) * (RF + 3)), ey: Math.round(cy + Math.sin(aE) * (RF + 3)), mx: cx + Math.cos(aE) * RF * 0.5 - Math.sin(aE) * RF * 0.3, my: cy + Math.sin(aE) * RF * 0.5 + Math.cos(aE) * RF * 0.3 }; };
+    const acha = (RF: number) => { let best: { x: number; y: number; d: number } | null = null, bs = -1e9; if (!tm) return null;
+      for (let y = tm.y - 150; y <= tm.y + 150; y += 3) for (let x = tm.x - 150; x <= tm.x + 150; x += 3) { if (!inb(x, y) || x < RF + 14 || y < RF + 14 || x > MAP_W_L - RF - 14 || y > MAP_H_L - RF - 14) continue;
+        let ok = regionAt_L(x, y).name === 'Terra Maldita' && waterSD_L(x * T, y * T) > 14; for (let k = 0; k < 8 && ok; k++) { const a = (k / 8) * 6.283, px = Math.round(x + Math.cos(a) * RF), py = Math.round(y + Math.sin(a) * RF); ok = regionAt_L(px, py).name === 'Terra Maldita' && waterSD_L(px * T, py * T) > 4; }
+        for (let dy = -3; dy <= 3 && ok; dy += 3) for (let dx = -3; dx <= 3; dx += 3) { const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree') { ok = false; break; } }
+        /* o disco inteiro em chão de mato: nenhuma grade, muro, praça ou água dentro (a floresta não pode nascer por cima do terreno de outro lugar) */
+        for (let dy = -RF; dy <= RF && ok; dy += 2) for (let dx = -RF; dx <= RF; dx += 2) { if (dx * dx + dy * dy > (RF - 7) * (RF - 7)) continue; /* a franja de fora pode encostar no terreno vizinho (lá as árvores já rareiam e nada é plantado fora do mato) */ const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree' && t !== 'road') { ok = false; break; } } if (!ok) continue;
+        { /* a trilha (da borda, do lado da vila mais próxima, até o centro) também tem de passar só por mato */ const tr = trilha(x, y, RF); for (let k = 0; k <= 40 && ok; k++) { const u = k / 40, px = Math.round(u < 0.5 ? tr.ex + (tr.mx - tr.ex) * u * 2 : tr.mx + (x - tr.mx) * (u - 0.5) * 2), py = Math.round(u < 0.5 ? tr.ey + (tr.my - tr.ey) * u * 2 : tr.my + (y - tr.my) * (u - 0.5) * 2), t = map[py]?.[px]; if (t !== 'grass' && t !== 'tree' && t !== 'road') ok = false; } if (!ok) continue; }
+        let d = 1e9; for (const t of settlements) d = Math.min(d, Math.hypot(t.x - x, t.y - y) - t.radius - Math.max(RF + (t.kind === 'city' ? 40 : 12), t.kind === 'city' ? 62 : 42) /* a boca da Toca fica no centro: vale a folga das masmorras (40 casas de vila, 60 de cidade) */); for (const q of pois) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 5); for (const q of spawns) if ((q as { keep?: boolean }).keep) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 5); for (const q of relics) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 2);
+        if (d < 0) continue; const sc = d - 0.15 * Math.hypot(x - tm.x, y - tm.y); if (sc > bs) { bs = sc; best = { x, y, d }; } } return best; };
+    let RF = 30, c0 = acha(RF); for (const R0 of [27, 24, 22, 20, 18]) if (!c0) { RF = R0; c0 = acha(RF); } /* a Terra Maldita é cheia: a floresta toma o maior tamanho que cabe sem encostar em ninguém */
+    if (!c0) console.warn('Floresta das Aranhas sem lugar na Terra Maldita');
+    else { const cx = c0.x, cy = c0.y, { aE, ex, ey, mx, my } = trilha(cx, cy, RF);
+      aranhaEdge = { x: ex, y: ey }; aranhaC = { x: cx, y: cy, R: RF };
+      const segD = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => { const ux = bx - ax, uy = by - ay, l2 = ux * ux + uy * uy || 1, t = Math.max(0, Math.min(1, ((px - ax) * ux + (py - ay) * uy) / l2)); return Math.hypot(px - ax - ux * t, py - ay - uy * t); };
+      const onPath = (x: number, y: number) => Math.min(segD(x, y, ex, ey, mx, my), segD(x, y, mx, my, cx, cy)) < 1.8, glade = (x: number, y: number) => Math.hypot(x - cx, y - cy) < 6.5;
+      /* a trilha e a clareira ficam limpas */
+      for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) > RF + 6 || Math.abs(q.gy - cy) > RF + 6) continue; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree') && (onPath(q.gx, q.gy) || glade(q.gx, q.gy))) { if (map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; props.splice(i, 1); } }
+      for (let y = cy - RF - 4; y <= cy + RF + 4; y++) for (let x = cx - RF - 4; x <= cx + RF + 4; x++) if (inb(x, y) && map[y][x] === 'tree' && (onPath(x, y) || glade(x, y))) map[y][x] = 'grass';
+      const occ = new Set<number>(); for (const q of props) if (Math.abs(q.gx - cx) <= RF + 5 && Math.abs(q.gy - cy) <= RF + 5) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ.add(y * 4096 + x);
+      const can = (x: number, y: number, w = 1, h = 1) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (!inb(xx, yy) || map[yy][xx] !== 'grass' || occ.has(yy * 4096 + xx) || onPath(xx, yy) || glade(xx, yy)) return false; for (let yy = y - 2; yy < y + h + 2; yy++) for (let xx = x - 2; xx < x + w + 2; xx++) if (map[yy]?.[xx] === 'wall') return false; /* nada colado em grade ou muro de outro lugar */ return true; };
+      const put = (kind: PropKind, x: number, y: number, w: number, h: number, variant: number, height: number) => { props.push({ kind, gx: x, gy: y, w, h, height, wall: 0, roof: 0, variant }); for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) occ.add(yy * 4096 + xx); };
+      const rnd = () => { const a = r() * 6.283, d = Math.sqrt(r()) * (RF - 2); return [Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d)] as const; };
+      /* presos vivos: perto da trilha, de um lado e do outro (é o que o jogador vê primeiro) */
+      for (let i = 0, n = 0; i < 400 && n < 12; i++) { const k = 0.12 + 0.8 * r(), a = k < 0.5 ? [ex + (mx - ex) * k * 2, ey + (my - ey) * k * 2] : [mx + (cx - mx) * (k - 0.5) * 2, my + (cy - my) * (k - 0.5) * 2], sd = r() < 0.5 ? -1 : 1, off = 3 + r() * 5, x = Math.round(a[0] - Math.sin(aE) * sd * off), y = Math.round(a[1] + Math.cos(aE) * sd * off);
+        if (can(x, y) && !props.some((q) => q.kind === 'cocoon' && q.variant === 9 && Math.hypot(q.gx - x, q.gy - y) < 7)) { put('cocoon', x, y, 1, 1, 9, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 26; i++) { const [x, y] = rnd(); if (can(x - 1, y, 3, 1)) { put('webnet', x - 1, y, 3, 1, r() < 0.35 ? 1 : 0, 3 + r()); n++; } }
+      for (let y = cy - RF; y <= cy + RF; y++) for (let x = cx - RF; x <= cx + RF; x++) { const d = Math.hypot(x - cx, y - cy); if (d > RF) continue; const dens = 0.15 * Math.min(1, (RF - d) / 6) + (d < RF * 0.5 ? 0.05 : 0);
+        if (r() < dens && can(x, y)) { const k = r(); put('webtree', x, y, 1, 1, (k < 0.45 ? 0 : k < 0.82 ? 1 : 2) + (r() < 0.3 ? 3 : 0), 4 + r()); } }
+      for (let i = 0, n = 0; i < 200 && n < 40; i++) { const [x, y] = rnd(); if (can(x, y)) { put('cocoon', x, y, 1, 1, 0, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 26; i++) { const [x, y] = rnd(); if (can(x, y)) { put('cocoon', x, y, 1, 1, r() < 0.5 ? 1 : 2, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 30; i++) { const [x, y] = rnd(); if (can(x, y, 2, 2)) { put('webmat', x, y, 2, 2, 0, 0.1); n++; } }
+      for (let i = 0; i < 30; i++) { const [x, y] = rnd(); if (can(x, y)) addBones(x, y); }
+      pois.push({ name: 'Floresta das Aranhas', x: Math.round(mx), y: Math.round(my), biome: 'forest' });
+      dgSpots.ninho = { x: cx, y: cy }; /* a boca da Toca da Aranha-Mãe: na clareira do centro */
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * 6.283 + r(), d = RF * (0.28 + 0.6 * r()); spawns.push({ type: i % 3 === 0 ? 'spider' : 'spiderling', x: Math.round(cx + Math.cos(a) * d), y: Math.round(cy + Math.sin(a) * d), r: 7, n: i % 3 === 0 ? 3 : 5 }); }
+      spawns.push({ type: 'spider', x: cx + 5, y: cy - 4, r: 4, n: 2, keep: true }); /* as guardiãs da boca */ } }
     { const occ = new Set<number>(); for (const q of props) if (q.kind !== 'tree' && q.kind !== 'herb' && q.kind !== 'plant' && q.kind !== 'rock' && q.kind !== 'bones' && q.kind !== 'grave') for (let y = q.gy - 1; y <= q.gy + q.h; y++) for (let x = q.gx - 1; x <= q.gx + q.w; x++) occ.add(y * 100000 + x);
-      const placed: { x: number; y: number }[] = [];
+      const placed: { x: number; y: number }[] = Object.values(dgSpots).map((q) => ({ x: q.x, y: q.y })); /* 12/11: lugares já reservados (a Toca) contam para a folga das outras */
       /* relax = 1 (03/11): a Toca do Covil dos Lobos não achava lugar e sumia do mapa ("calabouço sem lugar"). Na segunda busca o miolo
          aceita qualquer chão firme (mata, terra, pedra), a distância de outra entrada cai para 28 casas e a busca vai a 120 casas */
       const okSpot = (x: number, y: number, relax = 0) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = map[y + dy]?.[x + dx]; if (!t || t === 'water' || t === 'wall') return false; const core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core && ((relax ? false : t !== 'grass') || occ.has((y + dy) * 100000 + x + dx))) return false; }
         /* 12/11 (Erling: "masmorra do lado de cidade", as Catacumbas coladas na muralha de Askavik): a folga dobrou. Cidade (com muralha): 60 casas (120 m) além do raio; Karmika e Lithendel: 50; vila: 40 (80 m) */ if (settlements.some((t) => Math.hypot(t.x - x, t.y - y) < t.radius + (t.kind === 'city' ? 60 : t.name === 'Karmika' || t.name === 'Lithendel' ? 50 : 40) /* 09/11 (Erling): a masmorra estava perto demais de Lithendel */)) return false; if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < (relax ? 28 : 40))) return false; return true; };
+      if (aranhaEdge) place('Relíquia: Floresta das Aranhas', aranhaEdge.x, aranhaEdge.y, false, 24); /* 12/11: a pedra fica na BORDA da floresta, no começo da trilha, nunca na mesma tela da boca */
       for (const d of DUNGEONS) { if (d.fixed) continue; const t = pois.find((v) => v.name === d.near) ?? settlements.find((v) => v.name === d.near); if (!t) continue; const bx = Math.round(t.x + (d.dx ?? 0)), by = Math.round(t.y + (d.dy ?? 6));
-        let at: { x: number; y: number } | null = d.spot ? { x: bx, y: by } : null;
+        let at: { x: number; y: number } | null = dgSpots[d.id] /* 12/11: lugar já reservado pelo mundo (a Toca, no centro da Floresta das Aranhas) */ ?? (d.spot ? { x: bx, y: by } : null);
         for (let relax = 0; relax <= 1 && !at; relax++) for (let rr = 0; rr <= (relax ? 120 : 60) && !at; rr++) for (let k = 0; k < Math.max(1, rr * 8) && !at; k++) { const a = (k / Math.max(1, rr * 8)) * 6.283, x = Math.round(bx + Math.cos(a) * rr), y = Math.round(by + Math.sin(a) * rr); if (inb(x, y) && okSpot(x, y, relax)) at = { x, y }; }
         if (!at) { console.warn('calabouço sem lugar:', d.name); continue; } dgSpots[d.id] = at; placed.push(at); for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) occ.add(y * 100000 + x);
         /* a árvore/pedra que estava no lugar sai; a casa vira capim */ for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'plant' || q.kind === 'bones' || q.kind === 'grave') && Math.abs(q.gx - at.x) <= 2 && Math.abs(q.gy - at.y) <= 2) props.splice(i, 1); } for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass';
@@ -2446,6 +2495,8 @@ function buildCity_L(): World {
     put('colossus', 'Ferrugem', -18, -10); put('glutton', 'Castelo da Colina Vampírica', -10, 14); put('suplicio', 'Vale da Desgraça', 0, 10); put('drowner_old', 'Vatnaholt', -9, 7); put('inquisitor', 'Steinfoss', 6, -6); put('inquisitor', 'Grenivik', -5, 6); }
   { /* elites longe das vilas: nenhum elite nasce a menos de 30 blocos de um povoado (45 dos berços), a não ser os de lugar marcado (nível fixo) */
     const CRADLE = new Set(['Karmika', 'Brasaforja', 'Lithendel']), ELT = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'werewolf']);
+    /* 12/11: dentro da Floresta das Aranhas só mora aranha (lobo, esqueleto e cão infernal da região ficam do lado de fora) */
+    if (aranhaC) for (const sp of spawns) if (!sp.keep && Math.hypot(sp.x - aranhaC.x, sp.y - aranhaC.y) < aranhaC.R + 2 && sp.type !== 'spider' && sp.type !== 'spiderling') { sp.type = sp.n >= 3 ? 'spiderling' : 'spider'; delete sp.night; }
     for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!ELT.has(sp.type) || sp.fixLvl || sp.keep) continue; /* 26/10: o dono do lugar marcado (o Torturador na Clareira dos Gritos) nunca some — antes ele era apagado por estar perto de Karmika e a missão ficava impossível */
       if (settlements.some((t) => Math.hypot(t.x - sp.x, t.y - sp.y) < (CRADLE.has(t.name) ? 45 : 30))) spawns.splice(i, 1); } }
   const stOf = (nm: string) => { const st = settlements.find((q) => q.name === nm)!; return { x: st.x + 0.5, y: st.y + 3.5, name: nm }; };
@@ -2467,7 +2518,7 @@ function buildCity_L(): World {
      e a pedra em cima saem, e onde a estrada passa sobre água sem ponte, ponte. As caravanas andam exatamente sobre esse leito. */
   { const on = new Set<number>(); for (const rp of roadPaths) for (let i = 0; i < rp.length; i++) { const a = rp[i], b = rp[Math.min(rp.length - 1, i + 1)];
       for (let k = 0; k <= 4; k++) { const x = a.x + (b.x - a.x) * k / 4, y = a.y + (b.y - a.y) * k / 4; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const tx = Math.floor(x) + dx, ty = Math.floor(y) + dy; if (inb(tx, ty) && Math.hypot(tx + 0.5 - x, ty + 0.5 - y) <= 1.05) on.add(ty * 100000 + tx); } } }
-    const LOOSE = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']); /* o que a estrada atropela (sem banco/tocha: esses ficam à beira) */
+    const LOOSE = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'webtree', 'webnet', 'cocoon', 'webmat']); /* o que a estrada atropela (sem banco/tocha: esses ficam à beira) */
     for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (LOOSE.has(p.kind as string) && on.has(p.gy * 100000 + p.gx)) props.splice(i, 1); }
     for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree') map[y][x] = 'road'; }
     /* cerca/muro baixo cujo segmento cruza o leito (trilhas e estradas tardias passavam por dentro da cerca da vila sem portão) sai;
@@ -2486,7 +2537,7 @@ function buildCity_L(): World {
      (o leito das estradas, adros) abriam chão andável dentro de 18 casas. Casa nunca fica em cima de estrada: a casa que caiu
      sobre o leito anda para o terreno livre mais perto (até 6 tiles); se não houver, sai — a estrada fica aberta. O resto da
      pegada volta a ser parede. */
-  { const SOFT = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch']);
+  { const SOFT = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch', 'webtree', 'webnet', 'cocoon', 'webmat']);
     const hard = props.filter((q) => !SOFT.has(q.kind as string));
     const fp = (q: Prop, f: (x: number, y: number) => boolean) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (!f(x, y)) return false; return true; };
     const overlap = (q: Prop, gx: number, gy: number) => hard.some((o) => o !== q && o.gx < gx + q.w + 1 && o.gx + o.w + 1 > gx && o.gy < gy + q.h + 1 && o.gy + o.h + 1 > gy);

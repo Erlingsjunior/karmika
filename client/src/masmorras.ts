@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { wallOf, erupt } from './luta3d';
 import { buildEntrance, flickerEntrance, type EntranceFx } from './entradas';
 import { buildDungeon, type DungeonFloor, type DgTheme } from './dungeon3d';
+import { buildWebArena } from './aranhas3d';
 import { lvlScale } from './enemies';
 import { genGear, type Gear, type Slot } from './loot';
 import type { EnemyType } from './world';
@@ -33,6 +34,7 @@ export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) *
   boss: { type: EnemyType; name: string; scale: number; hp: number; dmg: number; mech: BossMech; hello: string; bye: string };
   uniq?: { name: string; slot: Slot; icon: string; lore: string }[];
   title?: string;
+  /** o chão do salão do chefe: 'teia' = uma teia enorme com fios para o teto e casulos pendurados (aranhas3d.buildWebArena) */ arena?: 'teia';
   /** entrada fixa dentro de um prédio (as escadas da Grande Biblioteca): sem a boca no mundo, a escada já está no modelo */ fixed?: boolean;
   /** pet que o chefe pode deixar (a versão filhote dele): id do item e a chance */ pet?: { id: string; p: number };
   /** masmorra sem fundo (Túneis de Orrukh): vencido o chefe, uma escada desce para o próximo nível, mais fundo e mais forte; os chefes se revezam */
@@ -79,7 +81,8 @@ export const DUNGEONS: DgDef[] = [
       hello: 'Ossos de lobisomens antigos forram o chão. Algo velho dorme sob a lua de pedra.', bye: 'O Lobo da Lua Velha uiva pela última vez.' },
     uniq: [{ name: 'Presa da Lua Velha', slot: 'amulet', icon: '🌕', lore: 'Brilha nas noites de lua cheia.' }], title: 'Caçador da Lua Velha' },
   /* ======== A NOVA SAFRA (26/10): masmorras feitas para os bichos novos ======== */
-  { id: 'ninho', name: 'Ninho da Aracnídea-Mãe', kind: 'grupo', lvl: [17, 22], theme: 'toca', near: 'Eikvik', dx: 14, dy: 10, main: 6, side: 3, mobs: ['spider', 'spiderling', 'spiderling', 'spider'], players: 'grupo de 3 a 5',
+  /* 12/11 (Erling): a toca saiu de perto de Eikvik e virou o coração da Floresta das Aranhas (Terra Maldita); o mundo reserva a clareira do centro (world.ts, dgSpots.ninho). A luta é em cima de uma teia enorme. */
+  { id: 'ninho', name: 'Toca da Aranha-Mãe', kind: 'grupo', lvl: [10, 14], theme: 'toca', near: 'Floresta das Aranhas', arena: 'teia', main: 6, side: 3, mobs: ['spider', 'spiderling', 'spiderling', 'spider'], players: 'grupo de 3 a 5',
     elite: { type: 'spider', name: 'Tecelã Anciã', scale: 1.4 },
     boss: { type: 'broodmother', name: 'Aracnídea-Mãe', scale: 1.25, hp: 16, dmg: 1.9, mech: { ...MECH_GROUP('Tremor do Ninho', 0xff3a1a, 'Presas da Mãe'), adds: { at: [0.85, 0.7, 0.55, 0.4, 0.25, 0.1], type: 'spiderling', n: 12, line: 'As bolsas de ovos estouram: uma enxurrada de filhotes corre pelas paredes!' }, pools: { every: 13, n: 3, k: 0.35, name: 'Ácido', col: 0x9aff4a }, enrage: 'A Mãe arrasta o abdômen enorme e ruge: ninguém sai do ninho.' },
       hello: 'Fios grossos como corda cobrem o túnel. No fundo, um abdômen do tamanho de uma carroça pulsa devagar.', bye: 'A Aracnídea-Mãe encolhe as pernas. Os filhotes que restam fogem para as frestas.' },
@@ -249,7 +252,7 @@ export function createMasmorras(ctx: DgCtx) {
   const HUD = document.createElement('div'); HUD.id = 'dghud'; document.body.appendChild(HUD);
   type Pool = { x: number; z: number; r: number; t: number; m: THREE.Mesh; dmg: number };
   let run: null | { tier: (typeof DG_TIERS)[number]; d: DgDef; int: DungeonFloor; O: { x: number; z: number }; pre: string; lvl: [number, number]; kills: number; need: number; total: number; boss: E | null; bossHp: number;
-    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; opened: Set<number>; openedC: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
+    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; /** o que o salão do chefe ganhou de cenário (a teia): sai junto com a masmorra */ deco: { g: THREE.Object3D; dispose(): void }[]; opened: Set<number>; openedC: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
   const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const hashS = (s: string) => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 2147483647; return h || 1; };
   function build(d: DgDef, depth = 0) { return buildDungeon({ seed: hashS(d.id + (depth ? ':' + depth : '')), theme: d.theme, main: Math.min(12, d.main + Math.floor(depth / 2)), side: Math.min(6, d.side + Math.floor(depth / 3)), boss: d.kind === 'grupo' ? 11 : 8 }); }
@@ -272,13 +275,15 @@ export function createMasmorras(ctx: DgCtx) {
       else if (rm.kind === 'side') { for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
       else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); ctx.onKit?.(boss); }
     });
+    const deco: { g: THREE.Object3D; dispose(): void }[] = [];
+    if (d.arena === 'teia') { const rm = int.rooms.find((q) => q.kind === 'boss'); if (rm) { const A = buildWebArena(Math.max(6, Math.min(rm.w, rm.d) / 2 - 0.6)); A.g.position.set(O.x + rm.x, 0, O.z + rm.z); ctx.scene.add(ctx.fine(A.g)); deco.push(A); } }
     const need = Math.ceil(total * (d.kind === 'grupo' ? 0.7 : 0.6));
-    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), openedC: new Set(), done: false, dead: new Set(), depth, ti: tier };
+    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], deco, opened: new Set(), openedC: new Set(), done: false, dead: new Set(), depth, ti: tier };
     ctx.game.logMsg(`⚔ ${d.name}${d.deep ? ` · Nível ${depth + 1} da descida` : ''} · ${TI.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
     if (d.deep) { const best = +(localStorage.getItem('karmika.dg.fundo.' + d.id) || 0); if (depth + 1 > best) try { localStorage.setItem('karmika.dg.fundo.' + d.id, String(depth + 1)); } catch { /* */ } }
     hud();
   }
-  function stop() { ctx.onStop?.(); if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
+  function stop() { ctx.onStop?.(); if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); for (const q of run.deco) { ctx.scene.remove(q.g); q.dispose(); } ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
   function hud() {
     if (!run) { HUD.style.display = 'none'; return; } const R = run, b = R.boss, open = !!R.int.gate?.opened;
     HUD.style.display = 'block';
