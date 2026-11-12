@@ -31,9 +31,9 @@ const GRUPO: Record<string, Tipo> = {
 const CURA_DE_GRUPO = new Set(['pal', 'mag', 'bru']);
 /** tipo da habilidade de grupo (chave "classe:id"), ou null se ela é só do próprio jogador */
 /** as 66 habilidades de grupo (sistemas/grupo-magias.ts) entram aqui: o quadro delas, as aprendidas e o clique */
-let extra: { papel(): string; skills(): { k: string; name: string; svg: string; c: string }[]; click(t: HTMLElement, again: () => void): boolean; nodes(rows: number, W: number, H: number, NS: number): { html: string; lines: string; rows: number }; detail(): string | null; clearSel(): void } | null = null;
+let extra: { papel(): string; skills(): { k: string; name: string; svg: string; c: string }[]; click(t: HTMLElement, again: () => void): boolean; nodes(rows: number, W: number, H: number, NS: number, col0?: number): { html: string; lines: string; rows: number }; detail(): string | null; clearSel(): void } | null = null;
 /** os quadrados das magias de grupo dentro da árvore de habilidades, a ficha da que está selecionada, e a limpeza da seleção */
-export const travasNodes = (rows: number, W: number, H: number, NS: number) => extra?.nodes(rows, W, H, NS) ?? { html: '', lines: '', rows: 0 };
+export const travasNodes = (rows: number, W: number, H: number, NS: number, col0 = 0) => extra?.nodes(rows, W, H, NS, col0) ?? { html: '', lines: '', rows: 0 };
 export const travasDetail = () => extra?.detail() ?? null;
 export const travasClearSel = () => extra?.clearSel();
 export function setTravasExtra(e: typeof extra) { extra = e; }

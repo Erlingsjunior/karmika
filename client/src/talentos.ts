@@ -21,13 +21,13 @@ export const TSTAT_TXT: Record<TStat, (v: number) => string> = {
 };
 export type Eff = Partial<Record<TStat, number>>;
 /* 12/11 (Erling: "as habilidades de grupo têm que aparecer também na árvore de talentos, com modificadores"): em cada caminho, seis pontos notáveis
-   pertencem às DUAS magias de grupo daquele caminho (grupo-habilidades.ts): Força (+25% no efeito), Pressa (recarga 20% mais curta) e Fôlego (+30% de
-   duração; nas que não duram, +15% no efeito). O ponto só rende com a magia aprendida na árvore de habilidades. */
+   pertencem às DUAS habilidades de grupo daquele caminho (grupo-habilidades.ts): Força (+25% no efeito), Pressa (recarga 20% mais curta) e Fôlego (+30% de
+   duração; nas que não duram, +15% no efeito). O ponto só rende com a habilidade aprendida na árvore de habilidades. */
 export type GMod = 'pot' | 'cd' | 'dur';
-export const G_MOD: Record<GMod, { v: number; nome: string; txt: string }> = { pot: { v: 0.25, nome: 'Força', txt: '+25% no efeito' }, cd: { v: 0.2, nome: 'Pressa', txt: 'recarga 20% mais curta' }, dur: { v: 0.3, nome: 'Fôlego', txt: '+30% de duração (magia que não dura: +15% no efeito)' } };
-/** os lugares fixos (anel e coluna) dos pontos de magia de grupo em cada braço: a 1ª magia do caminho perto do nível em que ela abre, a 2ª mais fora */
+export const G_MOD: Record<GMod, { v: number; nome: string; txt: string }> = { pot: { v: 0.25, nome: 'Força', txt: '+25% no efeito' }, cd: { v: 0.2, nome: 'Pressa', txt: 'recarga 20% mais curta' }, dur: { v: 0.3, nome: 'Fôlego', txt: '+30% de duração (habilidade que não dura: +15% no efeito)' } };
+/** os lugares fixos (anel e coluna) dos pontos de habilidade de grupo em cada braço: a 1ª magia do caminho perto do nível em que ela abre, a 2ª mais fora */
 const G_AT: Record<string, { ord: 0 | 1; mod: GMod }> = { '5:-1': { ord: 0, mod: 'pot' }, '5:1': { ord: 0, mod: 'cd' }, '7:-1': { ord: 1, mod: 'pot' }, '7:1': { ord: 1, mod: 'cd' }, '8:-2': { ord: 0, mod: 'dur' }, '8:2': { ord: 1, mod: 'dur' } };
-export interface TNode { id: string; x: number; y: number; kind: 'start' | 'small' | 'notable' | 'key' | 'socket'; name: string; eff: Eff; tip?: string; links: string[]; branch: number; /** ponto de magia de grupo: qual das duas do caminho (0 ou 1) e o que ele muda */ g?: { ord: 0 | 1; mod: GMod }; /** pontos já gastos NESTE braço para abrir (portão) */ req?: number; /** nível de classe que abre o anel */ lvl?: number; /** raio no desenho, em unidades da árvore */ rad?: number }
+export interface TNode { id: string; x: number; y: number; kind: 'start' | 'small' | 'notable' | 'key' | 'socket'; name: string; eff: Eff; tip?: string; links: string[]; branch: number; /** ponto de habilidade de grupo: qual das duas do caminho (0 ou 1) e o que ele muda */ g?: { ord: 0 | 1; mod: GMod }; /** pontos já gastos NESTE braço para abrir (portão) */ req?: number; /** nível de classe que abre o anel */ lvl?: number; /** raio no desenho, em unidades da árvore */ rad?: number }
 interface Branch { name: string; col: string; small: Eff[]; notables: [string, Eff][]; key: [string, Eff, string] }
 interface ClassDef { name: string; ring: Eff[]; branches: [Branch, Branch, Branch] }
 
@@ -123,7 +123,7 @@ function treeRings(kit: string): TNode[] {
         else if (k === NR) { const M = P.master[mi++ % P.master.length]; n = add({ id, x, y, kind: 'notable', name: `${M[0]} de ${B.name}`, eff: cut(M[1], 0.45), tip: M[2], branch: bi, req, lvl, rad: 0.8 }); }
         else if ((k === 4 && Math.abs(c) === 2) || (k === 6 && c === 0) || (k === 9 && Math.abs(c) === 4) || (k === 11 && c === 0)) n = add({ id, x, y, kind: 'socket', name: 'Encaixe de Runa Kármica', eff: {}, tip: 'Acenda e encaixe uma das seis runas de Karmika: ela reforça os pontos acesos ligados a este encaixe.', branch: bi, req, lvl, rad: 0.62 });
         else if ((k === 3 && c === 0) || (k === 5 && Math.abs(c) === 3) || (k === 7 && (Math.abs(c) === 2 || Math.abs(c) === 5)) || (k === 6 && Math.abs(c) === 3) || (k === 8 && (c === 0 || Math.abs(c) === 5)) || (k === 9 && (c === 0 || Math.abs(c) === 7)) || (k === 10 && (c === 0 || Math.abs(c) === 4 || Math.abs(c) === 8)) || (k === 11 && (Math.abs(c) === 3 || Math.abs(c) === 7))) { const q = nots[ni++ % nots.length]; n = add({ id, x, y, kind: 'notable', name: q[0], eff: cut(q[1], 0.45), branch: bi, req, lvl, rad: 0.7 }); }
-        else if (G_AT[`${k}:${c}`]) { const g = G_AT[`${k}:${c}`]; si++; /* (o ponto pequeno que estava aqui sai da fila sem mexer nos outros) */ n = add({ id, x, y, kind: 'notable', name: `${G_MOD[g.mod].nome} da ${g.ord ? '2ª' : '1ª'} magia de grupo`, eff: {}, tip: `Magia de grupo de ${B.name}: ${G_MOD[g.mod].txt}. Só rende com a magia aprendida.`, branch: bi, req, lvl, rad: 0.7, g }); }
+        else if (G_AT[`${k}:${c}`]) { const g = G_AT[`${k}:${c}`]; si++; /* (o ponto pequeno que estava aqui sai da fila sem mexer nos outros) */ n = add({ id, x, y, kind: 'notable', name: `${G_MOD[g.mod].nome} da ${g.ord ? '2ª' : '1ª'} habilidade de grupo`, eff: {}, tip: `Habilidade de grupo de ${B.name}: ${G_MOD[g.mod].txt}. Só rende com a habilidade aprendida.`, branch: bi, req, lvl, rad: 0.7, g }); }
         else n = add({ id, x, y, kind: 'small', name: B.name, eff: cut(B.small[si++ % B.small.length], 0.35), branch: bi, req, lvl, rad: 0.46 });
         row.push(n); }
       R.push(row); }
@@ -254,7 +254,7 @@ export function createTalents(kit: () => string, lvl: () => number, onChange: ()
       for (const l of sk.links) { const nb = byId(l); if (!nb || !L.has(l)) continue; for (const [k, v] of Object.entries(nb.eff) as [TStat, number][]) { const m = RT.mul[k]; if (m) out[k] = (out[k] ?? 0) + v * m; } }
       if (RT.add) for (const [k, v] of Object.entries(RT.add) as [TStat, number][]) out[k] = (out[k] ?? 0) + v; }
     return out; }
-  /** os pontos de magia de grupo acesos: para a magia `ord` (0 ou 1) do caminho `branch`, quanto de efeito, de recarga e de duração */
+  /** os pontos de habilidade de grupo acesos: para a magia `ord` (0 ou 1) do caminho `branch`, quanto de efeito, de recarga e de duração */
   function gmods(branch: number, ord: number) { const L = lit(), o = { pot: 0, cd: 0, dur: 0 }; for (const n of nodes()) if (n.g && n.branch === branch && n.g.ord === ord && L.has(n.id)) o[n.g.mod] += G_MOD[n.g.mod].v; return o; }
   return { nodes, lit, spent, avail, canTake, canDrop, take, drop, reset, stats, byId, gateLeft, lvlLeft, inBranch, runes, setRune, lvl, gmods };
 }

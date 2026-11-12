@@ -18,6 +18,7 @@ export interface GrupoCtx {
   heroPos(): unknown;
   /** 12/11: a engenhoca que anda (torres-andantes.ts): nasce em `from`, vai até quem `follow` aponta e fica com ele por `dur` s */ torre?(id: string, from: { x: number; z: number }, follow: () => { x: number; z: number } | null, dur: number): void;
   /** 12/11: levanta o herói caído ali mesmo (lar-e-morte.ts); false se ele já ressurgiu na fonte */ erguer?(frac: number, quem: string, nome: string): boolean;
+  /** 12/11: as passivas de habilidade de grupo acesas (passivas.ts): efeito a mais e recarga a menos */ gpass?(skillName: string): { pot: number; cd: number };
   /** 12/11: os pontos de magia de grupo acesos na árvore de talentos, para a magia `ord` (0 ou 1) do caminho `branch` */ gmods?(branch: number, ord: number): { pot: number; cd: number; dur: number };
 }
 /* 11/11 (Erling: "essas habilidades de grupo têm que estar na árvore de habilidades; não podem se concentrar em níveis altos: no 25 abre a primeira,
@@ -25,7 +26,7 @@ export interface GrupoCtx {
    cada uma é um quadrado da árvore, abre por nível (25, 30, 35, 40, 45, 50), custa ponto do mesmo monte e sobe até 10. */
 export const GRUPO_LVL = [25, 30, 35, 40, 45, 50], GRUPO_MAX = 10;
 const COL: Record<GTipo, string> = { cura: '#7af0a0', defesa: '#8ac8ff', forca: '#ff9a5a', veloc: '#7ae8e0', olho: '#c9a0ff', chama: '#ffe08a' };
-const GLYPH: Record<GTipo, string> = {
+export const GLYPH: Record<GTipo, string> = {
   cura: '<path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/>', defesa: '<path d="M12 2l8 3v6c0 5-3.4 9-8 11-4.6-2-8-6-8-11V5z"/>', forca: '<path d="M4 20v-3c0-4 2-6 5-6l1-6c.3-2 4-2 4 0l-1 5c4 0 7 2 7 6v4z"/>',
   veloc: '<path d="M3 13c4-1 6-4 7-9 2 4 2 7 1 10h6c2 0 4 2 4 5H7c-3 0-4-3-4-6z"/>', olho: '<path d="M2 12c3-5 6-7 10-7s7 2 10 7c-3 5-6 7-10 7s-7-2-10-7zm10-3a3 3 0 100 6 3 3 0 000-6z" fill-rule="evenodd"/>', chama: '<path d="M12 2c1 4 5 6 5 11a5 5 0 01-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-4-1-6 1-10z"/>',
 };
@@ -52,6 +53,8 @@ function effTxt(e: GEff): string { const L: string[] = [];
    Bruxo: o Contrato dos Mortos, do nível 30 (30% da vida para o caído; o Bruxo paga 30% da própria vida na hora). */
 export const ERGUER: Record<string, { nome: string; frac: number; cost: number; cd: number; lvl: number; via?: string }> = {
   pal: { nome: 'Luz que Levanta', frac: 0.3, cost: 0, cd: 120, lvl: 0, via: 'g_luzlevanta' }, mag: { nome: 'Fio de Volta', frac: 0.25, cost: 0, cd: 180, lvl: 30 }, bru: { nome: 'Contrato dos Mortos', frac: 0.3, cost: 0.3, cd: 180, lvl: 30 } };
+/** o sistema em uso (um só por jogo): outras telas (passivas) consultam por aqui, sem passar pelo main */
+export let grupoAtual: { rankOfId(id: string): number; idOfName(nm: string): string | null } | null = null;
 export function createGrupoMagias(K: GrupoCtx) {
   const mine = () => grupoDe(K.kit() as KitKey);
   /** ordem em que abrem: a 1ª de cada caminho (25, 30, 35), depois a 2ª de cada caminho (40, 45, 50) */
@@ -65,7 +68,7 @@ export function createGrupoMagias(K: GrupoCtx) {
   const known = () => ordered().filter(learned);
   /** cada ponto além do primeiro: +5% no efeito */
   /* 12/11: os talentos da magia (Força, Pressa, Fôlego). Magia que não dura (cura na hora, escudo) troca o Fôlego por metade em efeito */
-  const tm = (s: GSkill) => K.gmods?.(s.branch, mine().filter((q) => q.branch === s.branch).indexOf(s)) ?? { pot: 0, cd: 0, dur: 0 };
+  const tm = (s: GSkill) => { const t = K.gmods?.(s.branch, mine().filter((q) => q.branch === s.branch).indexOf(s)) ?? { pot: 0, cd: 0, dur: 0 }, pv = K.gpass?.(s.name) ?? { pot: 0, cd: 0 }; return { pot: t.pot + pv.pot, cd: Math.min(0.4, t.cd + pv.cd), dur: t.dur }; };
   const durOf = (s: GSkill) => s.dur > 1 ? Math.round(s.dur * (1 + tm(s).dur) * 10) / 10 : s.dur, cdOf = (s: GSkill) => Math.round(s.cd * (1 - tm(s).cd));
   const mult = (s: GSkill) => Math.min(1.75, (1 + 0.05 * Math.max(0, rankOf(s) - 1)) * (1 + tm(s).pot + (s.dur > 1 ? 0 : tm(s).dur * 0.5))); /* teto: grau 10 e talentos juntos não passam de +75% */
   const effOf = (s: GSkill): GEff => { const k = mult(s), o: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (o as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * k : v; return o; };
@@ -143,21 +146,22 @@ export function createGrupoMagias(K: GrupoCtx) {
   addEventListener('keydown', (e) => { if (!e.altKey || e.repeat) return; const i = '123456'.indexOf(e.key); if (i < 0) return; const t = e.target as HTMLElement | null; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return; const s = known()[i]; if (!s) return; e.preventDefault(); const why = cast(s.id, e.ctrlKey); if (why) K.log(`Não dá: ${why}.`, '#ff9a8a'); });
   /* ---- os quadrados na árvore de habilidades (uma fileira própria embaixo, ligada por um trilho) ---- */
   let gsel: string | null = null;
-  function treeNodes(rows: number, W: number, H: number, NS: number): { html: string; lines: string; rows: number } { const L = ordered(); if (!L.length) return { html: '', lines: '', rows: 0 };
-    const cx = (i: number) => i * W + 58, cy = rows * H + 46;
-    const lines = L.map((s, i) => i ? `<path d="M${cx(i - 1) + NS} ${cy} H${cx(i) - NS}" fill="none" stroke="${rankOf(L[i - 1]) && rankOf(s) ? '#ffd24a' : '#4a3a28'}" stroke-width="2" stroke-dasharray="${rankOf(L[i - 1]) && rankOf(s) ? '' : '4 5'}"/>` : '').join('') + `<text x="${cx(0) - NS}" y="${cy - NS - 12}" fill="#d9a24f" font-family="Cinzel, Georgia, serif" font-size="11" font-weight="700" letter-spacing="2">MAGIAS DE GRUPO</text>`;
+  function treeNodes(rows: number, W: number, H: number, NS: number, col0 = 0): { html: string; lines: string; rows: number } { const L = ordered(); if (!L.length) return { html: '', lines: '', rows: 0 };
+    /* 12/11 (Erling: "não estão centralizadas com as habilidades acima"): a fileira começa na coluna `col0`, embaixo das colunas das habilidades */
+    const cx = (i: number) => (i + col0) * W + 58, cy = rows * H + 46;
+    const lines = L.map((s, i) => i ? `<path d="M${cx(i - 1) + NS} ${cy} H${cx(i) - NS}" fill="none" stroke="${rankOf(L[i - 1]) && rankOf(s) ? '#ffd24a' : '#4a3a28'}" stroke-width="2" stroke-dasharray="${rankOf(L[i - 1]) && rankOf(s) ? '' : '4 5'}"/>` : '').join('') + `<text x="${cx(0) - NS}" y="${cy - NS - 12}" fill="#d9a24f" font-family="Cinzel, Georgia, serif" font-size="11" font-weight="700" letter-spacing="2">HABILIDADES DE GRUPO</text>`;
     const html = L.map((s, i) => { const rk = rankOf(s), why = blocked(s), cur = travasOf('g:' + s.id), ok = learned(s);
       return `<div class="tn gtn ${ok ? 'on' : ''} ${gsel === s.id ? 'sel' : ''} ${!rk && !why ? 'can' : ''} ${!ok && why ? 'lk' : ''}" style="left:${cx(i) - NS}px;top:${cy - NS}px;--c:${COL[s.tipo]}" data-gn="${s.id}" title="${s.name}"><div class="ic">${runaPedra(s, NS * 2 - 14)}</div>
-        ${ok ? `<span class="rn2">${[0, 1].map((q) => cur[q] ? `<i class="rn used" title="Runa na trava ${ARQS.find((a) => a.id === cur[q])!.name}"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>` : `<i class="rn" draggable="true" data-rune="g:${s.id}" title="Runa de ${TNOME[s.tipo]}: arraste para uma trava (Tanque, Dano ou Healer)"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>`).join('')}</span>` : ''}
+        ${ok ? `<span class="rn2">${[0, 1].map((q) => cur[q] ? `<i class="rn used" title="Runa na trava ${ARQS.find((a) => a.id === cur[q])!.name}"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>` : `<i class="rn" draggable="true" data-rune="g:${s.id}" title="Runa de ${TNOME[s.tipo]}: arraste para uma trava (Tanque, Dano ou Healer)"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>`).join('')}</span>` : `<span class="rn2">${[0, 1].map(() => `<i class="rn vaga" title="Espaço de runa de ${TNOME[s.tipo]}: a runa aparece quando a habilidade for aprendida, e então vai para uma trava (Tanque, Dano ou Healer)"></i>`).join('')}</span>`}
         <span class="pips">${Array.from({ length: GRUPO_MAX }, (_, k) => `<i class="${k < rk ? 'f' : ''}"></i>`).join('')}</span><b>${rk}/${GRUPO_MAX}</b><kbd>${rk ? '⎇' + (known().indexOf(s) + 1) : '🔒' + gate(s)}</kbd><em>${s.name}</em></div>`; }).join('');
     return { html, lines, rows: 1 }; }
   /** a ficha da habilidade de grupo selecionada (ocupa o lugar da ficha da magia), ou null */
   function detail(): string | null { const s = mine().find((q) => q.id === gsel); if (!s) return null; const rk = rankOf(s), why = blocked(s), e = effOf(s), nx: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (nx as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * (1 + 0.05 * rk) : v;
-    return `<div class="th"><div class="ic" style="--c:${COL[s.tipo]}">${runaPedra(s, 50)}</div><div><b>${s.name}</b><small>Magia de grupo · ${TNOME[s.tipo]} · ${rk ? `${rk}/${GRUPO_MAX}` : 'não aprendida'}</small></div></div>
+    return `<div class="th"><div class="ic" style="--c:${COL[s.tipo]}">${runaPedra(s, 50)}</div><div><b>${s.name}</b><small>Habilidade de grupo · ${TNOME[s.tipo]} · ${rk ? `${rk}/${GRUPO_MAX}` : 'não aprendida'}</small></div></div>
       <p class="tip">${s.tip}</p>
-      <div class="lines sgrid"><div class="sc"><small>✦ Efeito agora</small><b>${effTxt(rk ? e : s.eff)}</b></div><div class="sc"><small>◎ Vai para</small><b>${s.alvo === 'aliado' ? 'um aliado (o da trava)' : s.alvo === 'grupo' ? 'o grupo por perto' : s.alvo === 'area' ? 'quem está na área' : 'torre ao lado do aliado'}</b></div>${s.dur > 1 ? `<div class="sc"><small>⏳ Duração</small><b>${durOf(s)} s</b></div>` : ''}<div class="sc"><small>↻ Recarga</small><b>${cdOf(s)} s</b></div>${(() => { const t = tm(s), L2 = [t.pot ? 'Força' : '', t.cd ? 'Pressa' : '', t.dur ? 'Fôlego' : ''].filter(Boolean); return `<div class="sn">Talentos desta magia (no caminho ${K.branchName(s.branch)} da árvore de talentos): ${L2.length ? L2.join(', ') + ' acesos.' : 'nenhum aceso. Há três: Força, Pressa e Fôlego.'}</div>`; })()}
+      <div class="lines sgrid"><div class="sc"><small>✦ Efeito agora</small><b>${effTxt(rk ? e : s.eff)}</b></div><div class="sc"><small>◎ Vai para</small><b>${s.alvo === 'aliado' ? 'um aliado (o da trava)' : s.alvo === 'grupo' ? 'o grupo por perto' : s.alvo === 'area' ? 'quem está na área' : 'torre ao lado do aliado'}</b></div>${s.dur > 1 ? `<div class="sc"><small>⏳ Duração</small><b>${durOf(s)} s</b></div>` : ''}<div class="sc"><small>↻ Recarga</small><b>${cdOf(s)} s</b></div>${(() => { const t = tm(s), L2 = [t.pot ? 'Força' : '', t.cd ? 'Pressa' : '', t.dur ? 'Fôlego' : ''].filter(Boolean); return `<div class="sn">Talentos desta habilidade (no caminho ${K.branchName(s.branch)} da árvore de talentos): ${L2.length ? L2.join(', ') + ' acesos.' : 'nenhum aceso. Há três: Força, Pressa e Fôlego.'}</div>`; })()}
         <div class="sn">Abre no nível ${gate(s)}. Lance pela barra de grupo (Alt+1 a 6). Sozinho, o efeito cai em você. As duas runas ao lado do quadrado vão para as travas.</div></div>
-      <div class="gain"><small>${rk >= GRUPO_MAX ? 'Magia no máximo' : rk ? `Com mais um ponto: ${effTxt(nx)}` : 'Cada ponto depois do primeiro dá +5% no efeito'}</small></div>
+      <div class="gain"><small>${rk >= GRUPO_MAX ? 'Habilidade no máximo' : rk ? `Com mais um ponto: ${effTxt(nx)}` : 'Cada ponto depois do primeiro dá +5% no efeito'}</small></div>
       <button class="inv ${why ? 'off' : ''}" data-ginv="${s.id}" ${why ? 'disabled' : ''}>${why ? why : rk ? `+1 ponto em ${s.name}` : `Aprender ${s.name} (1 ponto)`}</button>`; }
   const papelHtml = () => `<span class="gpapel">Meu papel no grupo: ${ARQS.map((a) => `<button data-gpapel="${a.id}" class="${papel === a.id ? 'on' : ''}">${a.name}</button>`).join('')}</span>`;
   function panelClick(t: HTMLElement, again: () => void): boolean {
@@ -169,5 +173,6 @@ export function createGrupoMagias(K: GrupoCtx) {
   /** as habilidades de grupo aprendidas, no formato que as travas esperam */
   const forLocks = () => known().map((s) => ({ k: 'g:' + s.id, name: s.name, svg: runaPedra(s, 22), c: COL[s.tipo] }));
   renderBar();
-  return { erguivel, erguer, cast, known, learned, treeNodes, detail, papelHtml, clearSel() { gsel = null; }, spent, invest, panelClick, forLocks, renderBar, get papel() { return papel; }, total, testToggle() { testAll = !testAll; try { localStorage.setItem('karmika.grupoteste', testAll ? '1' : '0'); } catch { /* */ } barKey = ''; renderBar(); return testAll; } };
+  const api = { rankOfId: (id: string) => { const q = mine().find((x) => x.id === id); return q ? rankOf(q) : 0; }, idOfName: (nm: string) => mine().find((x) => x.name === nm)?.id ?? null, erguivel, erguer, cast, known, learned, treeNodes, detail, papelHtml, clearSel() { gsel = null; }, spent, invest, panelClick, forLocks, renderBar, get papel() { return papel; }, total, testToggle() { testAll = !testAll; try { localStorage.setItem('karmika.grupoteste', testAll ? '1' : '0'); } catch { /* */ } barKey = ''; renderBar(); return testAll; } };
+  grupoAtual = api; return api;
 }

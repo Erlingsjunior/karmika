@@ -177,6 +177,7 @@ import { createReliquias } from './sistemas/reliquias';
 import { createCinemaVistas } from './sistemas/cinema-vistas';
 import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
 import { createGrupoMagias } from './sistemas/grupo-magias';
+import { grupoPassMods } from './passivas';
 import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
 import { createShaderGate } from './sistemas/compila-sem-travar';
 import { setTravasExtra } from './sistemas/travas';
@@ -615,12 +616,12 @@ const { tree, talents, talentKit, profs, mail, kitRace, SHOP_BY_NAME, SHADE_TOWN
 const torresSys = createTorres({ scene, heightAt, puff: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.8, life: 0.8, s0: 0.3, s1: 0.04, c0, c1, a: 0.9 }) });
 const grupoSys = createGrupoMagias({ kit: () => talentKit(), lvl: () => game.st.lvl, avail: () => tree.available(), branchName: (bi) => branchesOf(talentKit())[bi]?.name ?? '', st: () => game.st,
   set: (v) => game.grupoSet(v), shield: (v) => game.grupoShield(v), log: (t, c) => game.logMsg(t, c), float: (t, c) => game.dmgText(hero.root.position.clone().setY(hero.root.position.y + 2.8), t, false, c),
-  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position, gmods: (b, o) => talents.gmods(b, o), erguer: (f, q, nm) => larSys.erguer(f, q, nm), torre: (id, from, follow, dur) => { const k = TORRE_DE[id]; if (k) torresSys.spawn(k, from, follow, dur); },
+  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position, gmods: (b, o) => talents.gmods(b, o), gpass: (nm) => grupoPassMods(arvoreSys.passKit(), nm), erguer: (f, q, nm) => larSys.erguer(f, q, nm), torre: (id, from, follow, dur) => { const k = TORRE_DE[id]; if (k) torresSys.spawn(k, from, follow, dur); },
   /* o aro de luz que abre no chão quando a runa é lançada (ou quando a de um companheiro chega em você) */
   ring: (c) => { for (let i = 0; i < 2; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.64, 44), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
       m.rotation.x = -Math.PI / 2; m.position.copy(hero.root.position); m.position.y += 0.14 + i * 0.9; m.userData.noCull = true; fine(m); scene.add(m); const t0 = performance.now() + i * 140, mat = m.material as THREE.MeshBasicMaterial;
       const step = () => { const k = (performance.now() - t0) / 800; if (k >= 1) { scene.remove(m); m.geometry.dispose(); mat.dispose(); return; } if (k > 0) { m.scale.setScalar(1 + k * (i ? 2.2 : 5)); mat.opacity = 0.9 * (1 - k); } requestAnimationFrame(step); }; step(); } } });
-setTravasExtra({ papel: () => grupoSys.papelHtml(), skills: () => grupoSys.forLocks(), click: (t, again) => grupoSys.panelClick(t, again), nodes: (rows, W, H, NS) => grupoSys.treeNodes(rows, W, H, NS), detail: () => grupoSys.detail(), clearSel: () => grupoSys.clearSel() });
+setTravasExtra({ papel: () => grupoSys.papelHtml(), skills: () => grupoSys.forLocks(), click: (t, again) => grupoSys.panelClick(t, again), nodes: (rows, W, H, NS, c0) => grupoSys.treeNodes(rows, W, H, NS, c0), detail: () => grupoSys.detail(), clearSel: () => grupoSys.clearSel() });
 arvoreSys.addSpent(() => grupoSys.spent()); /* os pontos das magias de grupo saem do mesmo monte das habilidades, passivas e talentos */
 (window as unknown as { __grupo?: unknown }).__grupo = grupoSys; /* teste */ (window as unknown as { __torres?: unknown }).__torres = torresSys; (window as unknown as { __erguer?: unknown }).__erguer = (f = 0.3) => larSys.erguer(f, 'Teste', 'Rito de teste');
 function applyKitAll(...a: Parameters<ReturnType<typeof createArvoreClasse>['applyKitAll']>): ReturnType<ReturnType<typeof createArvoreClasse>['applyKitAll']> { return (arvoreSys ??= mk_arvoreSys()).applyKitAll(...a); }

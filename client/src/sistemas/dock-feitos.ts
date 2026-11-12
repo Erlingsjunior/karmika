@@ -1,4 +1,5 @@
 /* DOCK DE JANELAS (canto inferior direito) e as janelas de MAGIAS e FEITOS: os botões, os ícones, o aviso de feito conquistado. Saiu do main.ts (02/11). */
+import { grupoAtual } from './grupo-magias';
 import { ownRuneText } from '../runas-elfo';
 import { DOCK_ICONS } from '../ui/icones';
 import { type Feat, CATS, createFeats, FEATS } from '../feats';
@@ -31,7 +32,7 @@ function skTabs() { const h = skillsEl.querySelector('h2'); if (!h) return; cons
   d.innerHTML = bt('mag', '🌳 Habilidades', K.tree.available()) + bt('pas', '✦ Passivas', 0) + bt('tal', '✧ Talentos', K.talents.avail()) + bt('comp', '📖 Compêndio', 0); h.after(d);
   d.querySelectorAll<HTMLButtonElement>('[data-skv]').forEach((b) => b.addEventListener('click', (e) => { e.stopPropagation(); skView = b.dataset.skv as 'mag' | 'tal' | 'pas' | 'comp'; renderSkills(); })); }
 function renderSkills() {
-  if (skView === 'pas' || skView === 'comp') { const ctx = { kit: skView === 'pas' ? K.passKit() : K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => { K.game.st.recalc?.(); K.applyKitAll(); /* 05/11: a barra redesenha com os selos das passivas */ } };
+  if (skView === 'pas' || skView === 'comp') { const ctx = { kit: skView === 'pas' ? K.passKit() : K.compKit(), skills: K.kitSkills(), rank: (id: string) => K.tree.rank(id), grupo: { idOf: (nm: string) => grupoAtual?.idOfName(nm) ?? null, rank: (id: string) => grupoAtual?.rankOfId(id) ?? 0 }, avail: () => K.tree.available(), lvl: K.game.st.lvl, title: K.compTitle(), sfx: () => K.audio.rune(0), log: (t: string, c?: string) => K.game.logMsg(t, c), rerender: renderSkills, recalc: () => { K.game.st.recalc?.(); K.applyKitAll(); /* 05/11: a barra redesenha com os selos das passivas */ } };
     if (skView === 'pas') renderPassives(skillsEl, ctx); else renderCompendium(skillsEl, ctx); skTabs(); return; }
   if (skView === 'tal') { renderTalents(skillsEl, K.talents, K.talentKit(), (() => { try { return K.game.classInfo.lvl; } catch { return 1; } })(), talSel, () => { K.audio.rune(0); renderSkills(); }); skTabs(); return; }
   K.tree.migrate();
