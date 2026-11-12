@@ -162,6 +162,7 @@ html { scroll-behavior: smooth; }
 #terrenos .in { max-width: min(1760px, 100%); }
 #terrenos .duo--mapa { grid-template-columns: minmax(0, .78fr) minmax(0, 1.22fr); gap: clamp(26px, 3vw, 54px); }
 .gmap-col { position: relative; }
+@media (min-width: 981px) { .gmap-col { align-self: center; justify-self: center; width: min(100%, max(460px, calc(100vh - 150px))); } }
 @media (min-width: 981px) { .gmap-col .gcard { position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 7; backdrop-filter: blur(6px); box-shadow: 0 20px 60px -20px #000; } .gmap-col .gmap__leg { bottom: auto; top: 12px; } }
 .gmap__z { position: absolute; inset: 0; transition: transform .8s cubic-bezier(.3, .8, .3, 1); will-change: transform; }
 .gmap__z > img { position: absolute; width: 160%; max-width: none; left: -30%; top: -30%; image-rendering: pixelated; }
@@ -198,7 +199,7 @@ html { scroll-behavior: smooth; }
 .gcard dd small { display: block; font: 400 12px/1.3 var(--sans); color: var(--mut); }
 .gcard p { margin: 14px 0 0; font-size: 13px; color: var(--mut); }
 @media (max-width: 980px) { #terrenos .duo--mapa { grid-template-columns: 1fr; } .gmap-col { display: grid; gap: 14px; } }
-@media (min-width: 981px) and (max-width: 1400px) { .glist { grid-template-columns: 1fr; } }
+@media (min-width: 981px) and (max-width: 1400px) { .glist { grid-template-columns: 1fr; } .gmap-col { align-self: start; position: sticky; top: 84px; } }
 @media (max-width: 520px) { .glist { grid-template-columns: 1fr; } .gcard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .fairs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; margin-top: 46px; align-items: stretch; } .fairs .fair, .fairs .fair--up { margin-top: 0; max-width: none; }
 @media (max-width: 980px) { .fairs { grid-template-columns: 1fr; } }
@@ -793,7 +794,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
   function escolhe(i, rola) {
     sel = i; var t = T[i], f = F[t[4]], p = pins[i];
     pins.forEach(function (q, k) { q.classList.toggle('on', k === i); }); linhas.forEach(function (l, k) { l.firstChild.setAttribute('aria-current', k === i ? 'true' : 'false'); });
-    var x = parseFloat(p.style.left), y = parseFloat(p.style.top), s = 1.9, tx = Math.min(0, Math.max(-(s - 1) * 100, 50 - x * s)), ty = Math.min(0, Math.max(-(s - 1) * 100, 50 - y * s));
+    var x = parseFloat(p.style.left), y = parseFloat(p.style.top), s = 1.9, tx = Math.min(0, Math.max(-(s - 1) * 100, 50 - x * s)), ty = Math.min(0, Math.max(-(s - 1) * 100, (window.matchMedia('(min-width: 981px)').matches ? 34 : 50) - y * s));
     z.style.transformOrigin = '0 0'; z.style.transform = 'translate(' + tx + '%,' + ty + '%) scale(' + s + ')'; z.style.setProperty('--k', String(1 / 1.45)); fora.hidden = false;
     card.textContent = ''; card.className = 'gcard' + (t[3] < 0 ? ' gcard--s' : '');
     var h = el('div', 'gcard__t'); h.appendChild(el('h3', '', t[0])); h.appendChild(el('span', '', t[3] > 0 ? 'Luz · karma positivo' : 'Sombra · karma negativo')); card.appendChild(h);
