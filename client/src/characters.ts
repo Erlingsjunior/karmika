@@ -1,3 +1,4 @@
+import { loadModel } from './models3d';
 import * as THREE from 'three';
 import { artMesh, artGeo, artGuardY, SWORD_ART, SHIELD_ART, FIRE_ART } from './arte3d';
 import { REF_SWORDS, buildRefSword, type RefSword, REF_SHIELD_STYLE, refShieldFace } from './armas3d';
@@ -17,6 +18,9 @@ import { radialTexture } from './fx3d';
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
 export type Action = 'fishcast' | 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'thrust1' | 'thrust2' | 'claw1' | 'claw2' | 'stab' | 'clubsm' | 'aim1' | 'kthrow' | 'draw' | 'skyraise' | 'stance' | 'dance';
 
+/** 12/11: armas com modelo do KayKit (public/models/kaykit/armas): [arquivo, comprimento da lâmina na mão em metros, altura do modelo acima do cabo] */
+const KK_WEAPON: Record<string, [string, number, number]> = { 'Espada de Guarda': ['fantasia/sword_B', 0.8, 1.42], 'Sabre de Cavalaria': ['fantasia/sword_C', 0.92, 1.7], 'Montante de Aço': ['fantasia/sword_E', 1.2, 2.82], 'Adaga de Viagem': ['fantasia/dagger_A', 0.42, 1.03],
+  'Cutelo de Guerra': ['fantasia/axe_C', 0.62, 0.93], 'Machado Duplo de Ferro': ['aventureiros/axe_2handed', 0.95, 1.29], 'Martelo de Guerra de Ferro': ['fantasia/hammer_A', 0.85, 0.74], 'Alabarda de Guarda': ['fantasia/halberd', 1.45, 1.81], 'Lança de Caça': ['fantasia/spear_A', 1.5, 2.11], 'Florete de Copo': ['fantasia/sword_D', 0.98, 1.72] };
 /** classe da arma (02/11, Erling): uma mão + escudo · duas mãos · florete (esgrima) · adaga · garras · porrete · besta de mão · kunai · arco */
 export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
 export function weaponClass(base: string | null | undefined): WClass {
@@ -1232,6 +1236,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           fm.userData.keep = true; fm.rotation.y = -Math.PI / 2; fm.scale.setScalar(fk); fm.position.set(0, -0.07 * fk - Math.max(0, FG.boundingBox!.max.y - 0.3) * 0.5 * fk, 0); RG.add(fm); /* tanque alto (lança-chamas, Gatling): desce para não subir no rosto */
           if (glowOf(rar)) { const gm2 = (fm.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.22); fm.material = gm2; }
           len = Math.max(0.1, FG.boundingBox!.max.x * fk - 0.14);
+        } else if (KK_WEAPON[base]) { /* 12/11: arma com o modelo do KayKit. O modelo vem com o cabo na origem e a lâmina para cima: vira de ponta para baixo (o eixo da arma) e ganha o tamanho de gente adulta */
+          sw.remove(pom); sw.remove(grip); const [file, L, top] = KK_WEAPON[base], hold = new THREE.Group(); hold.userData.keep = true; hold.rotation.x = Math.PI; hold.scale.setScalar(L / top); sw.add(hold); len = L;
+          const gl = glowOf(rar); loadModel(`/models/kaykit/armas/${file}.gltf`).then((m) => { if (hold.parent !== sw) return; /* já trocou de arma */
+            m.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; const src = me.material as THREE.MeshStandardMaterial; me.material = toon(0xffffff, { map: src.map ?? null, ...(gl ? { emissive: new THREE.Color(gl).multiplyScalar(0.22) } : {}) }); me.userData.keep = true; me.castShadow = true; });
+            hold.add(m); }).catch(() => { /* sem o arquivo, a mão fica vazia: melhor que travar */ });
         } else if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
           len = buildRefSword(sw, base as RefSword, { mk, metal, toon, glow: glowOf(rar), rar });
         } else if (base === 'Machado de Guerra') {

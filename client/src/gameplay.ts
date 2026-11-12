@@ -2449,6 +2449,18 @@ export function createGameplay(d: GameplayDeps) {
       return new THREE.Vector3(best.x, best.y, best.z);
     },
     /** pet (Estábulo, 25/10): morde quem te ataca */
+    /* 12/11 A MORDIDA DO VAMPIRO (missões de karma "morder alguém"): o alvo da missão, com 35% da vida ou menos, cambaleia e pode ser mordido.
+       Ele não morre: vira mordido e vai embora (sem espólio, sem XP de morte). O vampiro bebe: cura 25% da vida. */
+    biteNear(types: string[], r = 2.6): Enemy | null { if (st.dead || !types.length) return null; const p0 = d.getHero().root.position; let best: Enemy | null = null, bd = r;
+      for (const e of enemies.list) { if (!e.alive || !e.active || !types.includes(e.type) || e.hp > e.hpMax * 0.35) continue; const dd = Math.hypot(e.pos.x - p0.x, e.pos.z - p0.z); if (dd < bd) { bd = dd; best = e; } } return best; },
+    /** os alvos da missão por perto que ficaram fracos cambaleiam uma vez (5 s parados): é a janela para morder */
+    biteStagger(types: string[]) { if (!types.length) return; const p0 = d.getHero().root.position; for (const e of enemies.list) { const ee = e as Enemy & { cambaleou?: boolean }; if (!e.alive || !e.active || ee.cambaleou || !types.includes(e.type) || e.hp > e.hpMax * 0.35 || Math.hypot(e.pos.x - p0.x, e.pos.z - p0.z) > 14) continue;
+        ee.cambaleou = true; e.state = 'hurt'; e.t = -5; e.vel.set(0, 0); dmgText(e.pos.clone().setY(e.pos.y + 2.8), 'CAMBALEIA', false, '#ff9ab0'); logMsg(`🩸 ${e.def.name} cambaleia. Chegue perto e aperte E para morder. Se bater de novo, mata.`, '#ff9ab0'); } },
+    bite(e: Enemy): boolean { if (st.dead || !e.alive || e.hp > e.hpMax * 0.35) return false; const h = d.getHero(), p0 = h.root.position; h.root.rotation.y = Math.atan2(e.pos.x - p0.x, e.pos.z - p0.z); lastExtra = 'bite'; h.act('cast', true);
+      e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 2.5; e.respawn = 900; (e as Enemy & { cambaleou?: boolean }).cambaleou = false;
+      for (let i = 0; i < 26; i++) pfx(e.pos.x + rnd(-0.2, 0.2), e.pos.y + 1.45 + rnd(-0.15, 0.15), e.pos.z + rnd(-0.2, 0.2), { vx: rnd(-1.4, 1.4), vy: rnd(0.4, 2.4), vz: rnd(-1.4, 1.4), life: 0.7, s0: 0.2, s1: 0.03, c0: 0xff6a7a, c1: 0x8a0a1a, a: 1, drag: 1.5, g: 5 });
+      const g = Math.round(st.hpMax * 0.25); st.hp = Math.min(st.hpMax, st.hp + g); dmgText(e.pos.clone().setY(e.pos.y + 2.8), 'MORDIDO', true, '#ff6a6a'); dmgText(p0.clone().setY(p0.y + 2.6), `+${g}`, false, '#8ae08a'); d.audio.hit();
+      logMsg(`🩸 Você mordeu ${e.def.name}. A sede fecha devagar: o mordido se afasta, vivo. +${g} de vida.`, '#ff9ab0'); return true; },
     petBite(e: Enemy, dmg: number, from: THREE.Vector3) { if (!e.alive || !e.active) return; const n = Math.max(1, Math.round(dmg)); dmgText(e.pos.clone().setY(e.pos.y + 2.0), n, false, '#ffd890');
       for (let q = 0; q < 6; q++) pfx(e.pos.x + rnd(-0.3, 0.3), e.pos.y + 0.6, e.pos.z + rnd(-0.3, 0.3), { vx: rnd(-1, 1), vy: rnd(0.5, 2), vz: rnd(-1, 1), life: 0.4, s0: 0.25, s1: 0.05, c0: 0xffffff, c1: 0xb3202f, a: 1 });
       if (enemies.hurt(e, n, from, 0.6)) killEnemy(e); },

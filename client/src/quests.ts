@@ -18,6 +18,8 @@ export type Obj =
   | { kind: 'collect'; item: string; n: number }
   | { kind: 'talk'; npc: string }
   | { kind: 'visit'; poi: string }
+  /** 12/11: MORDER (só vampiro): deixar o alvo fraco (35% da vida ou menos) e apertar E ao lado dele; ele não morre, vira mordido e vai embora */
+  | { kind: 'bite'; type: EnemyType; n: number }
   | { kind: 'craft'; recipe: string; n: number }
   | { kind: 'level'; n: number }
   /** vencer uma masmorra ou caverna até o chefe (masmorras.ts: onClear) */
@@ -46,7 +48,7 @@ export interface QuestDef { id: string; name: string; lvl: number; giver: string
   /** escolha kármica na entrega: o MOTIVO pesa (regra 10) */ choice?: { q: string; opts: { label: string; karma: number; say: string; why: string; /** marca que o mundo lembra */ flag?: string }[] } }
 
 const ENEMY_NAME = (t: EnemyType) => DEFS[t]?.name ?? t;
-export const objText = (o: Obj): string => o.kind === 'dungeon' ? `Vencer: ${o.name}` : o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : o.kind === 'stance' ? `Vencer ${o.n} inimigos na postura ${o.name}` : `Alcançar o nível ${o.n}`;
+export const objText = (o: Obj): string => o.kind === 'dungeon' ? `Vencer: ${o.name}` : o.kind === 'kill' ? `Derrotar ${o.n}× ${ENEMY_NAME(o.type)}` : o.kind === 'bite' ? `Morder ${o.n}× ${ENEMY_NAME(o.type)} (deixe fraco e aperte E)` : o.kind === 'collect' ? `Juntar ${o.n}× ${ITEMS[o.item]?.name ?? o.item}` : o.kind === 'talk' ? `Falar com ${o.npc}` : o.kind === 'visit' ? `Chegar a ${o.poi}` : o.kind === 'craft' ? `Criar ${o.n}× ${o.recipe}` : o.kind === 'escort' ? `Escoltar a caravana: ${o.label}` : o.kind === 'rescue' ? `Salvar a caravana caída: ${o.label}` : o.kind === 'sense' ? `✧ ${o.label} (Instinto ligado)` : o.kind === 'stance' ? `Vencer ${o.n} inimigos na postura ${o.name}` : `Alcançar o nível ${o.n}`;
 
 /* ---------- Caminho do Norte: de aprendiz a Guerreira do Norte (níveis 1–25) ---------- */
 export const NORTH: QuestDef[] = [
@@ -282,7 +284,7 @@ const ROLE_Q: [RegExp, { kind: 'kill' | 'collect' | 'visit'; pool: string[]; tex
 /* 11/11 (Erling: "missões de karma positivo também incluem libertar presos, salvar donzelas em perigo, salvar de sequestro e de rituais, matar membros
    malignos, arrumar problemas em vilas que estão sendo atacadas… dá para ter muita criatividade"): cada missão é uma pequena história com lugar, luta e
    uma escolha na entrega, que pesa mais ou menos no karma. As de sombra seguem o mesmo molde, do outro lado. */
-type KQ = { nome: string; texto: string; objs: (n: number) => Obj[]; q: string; opts: [string, number, string, string][] };
+type KQ = { nome: string; texto: string; objs: (n: number) => Obj[]; q: string; opts: [string, number, string, string][]; /** só para esta classe (12/11: as mordidas são do vampiro) */ only?: string };
 const KARMA_Q: Record<'luz' | 'sombra', KQ[]> = {
   luz: [
     { nome: 'A donzela do círculo', texto: 'Levaram a filha do moleiro para a Clareira dos Gritos. O círculo já está aceso. Chegue antes do fim do canto.', objs: (n) => [{ kind: 'visit', poi: 'Clareira dos Gritos' }, { kind: 'kill', type: 'cultist', n }],
@@ -303,6 +305,11 @@ const KARMA_Q: Record<'luz' | 'sombra', KQ[]> = {
   sombra: [
     { nome: 'O escolhido do círculo', texto: 'O círculo precisa de um escolhido, e um peregrino cruza a Clareira dos Gritos sozinho. Traga-o ao canto.', objs: (n) => [{ kind: 'visit', poi: 'Clareira dos Gritos' }, { kind: 'kill', type: 'pilgrim', n: Math.max(1, n - 2) }],
       q: 'O Guardião pergunta, sem levantar os olhos: “O círculo recebeu?”', opts: [['“Recebeu. Eu mesmo segurei.”', -5, 'Ele risca um nome. A tinta é escura demais para ser tinta.', 'Você entregou uma vida ao canto.'], ['“Trouxe só o manto. Ele correu.”', -1, 'Ele olha para você por um tempo longo.', 'Você falhou de propósito, e os dois sabem.']] },
+    /* 12/11 (Erling: "morder alguém, importante para o vampiro"): só o vampiro recebe. Morder não é matar: o alvo tem que ficar fraco e VIVO */
+    { only: 'vam', nome: 'A sede escolhe', texto: 'A Corte quer sangue novo, e quer vivo. Peregrinas cruzam a estrada sozinhas. Deixe-as fracas, sem matar, e morda. Quem morre não serve à Corte.', objs: (n) => [{ kind: 'bite', type: 'pilgrim', n: Math.max(2, n - 2) }],
+      q: 'O Guardião pergunta, olhando o seu queixo: “E as mordidas?”', opts: [['“Fechadas. Acordam da Corte amanhã.”', -5, 'Ele risca os nomes com cuidado, um por um.', 'Você deu à Corte gente que não pediu a sede.'], ['“Mordi e deixei irem. A sede não fecha em quem foge de mim.”', -2, 'Ele ergue uma sobrancelha. “A Corte não gosta de porta aberta.”', 'Você mordeu, mas deixou a escolha com elas.']] },
+    { only: 'vam', nome: 'O sangue da patrulha', texto: 'Os soldados do muro juraram que nenhum dos nossos passa. Um soldado mordido abre o portão por dentro. Deixe-os de joelhos e morda. Vivo vale mais.', objs: (n) => [{ kind: 'bite', type: 'soldier', n: Math.max(2, n - 2) }],
+      q: 'O Guardião pergunta: “Quantos portões vão se abrir?”', opts: [['“Todos os que eu mordi.”', -4, 'Ele sorri sem mostrar os dentes.', 'O muro agora tem a sua sede do lado de dentro.'], ['“Um só. Os outros eu soltei antes da sede fechar.”', -2, 'Ele anota um nome e deixa a pena parada.', 'Você tomou menos do que podia.']] },
     { nome: 'A carroça de provisão', texto: 'A patrulha escolta os sacos de pão para as vilas do muro. Derrube a escolta e traga os sacos.', objs: (n) => [{ kind: 'kill', type: 'soldier', n }, { kind: 'collect', item: 'bread', n: n + 1 }],
       q: 'O Guardião pergunta: “E os sacos?”', opts: [['“Aqui. As vilas que esperem.”', -4, 'Ele empilha os sacos atrás da mesa.', 'Alguém vai dormir com fome por sua causa.'], ['“Metade ficou na estrada, para quem passar.”', -2, 'Ele dá de ombros.', 'Você roubou, mas deixou cair de propósito.']] },
     { nome: 'O muro novo', texto: 'Os de Auréon erguem mais um muro entre os caminhantes e a porta. Derrube quem o levanta.', objs: (n) => [{ kind: 'kill', type: 'templar', n }],
@@ -315,14 +322,14 @@ const KARMA_Q: Record<'luz' | 'sombra', KQ[]> = {
       q: 'O Guardião pergunta: “Está feito?”', opts: [['“Está feito.”', -3, 'Ele risca um nome.', 'O caminho da noite está aberto de novo.']] },
   ],
 };
-function genKarmaQuest(npc: string, lvl: number, seed: number, times: number, side: 'luz' | 'sombra', R: () => number): QuestDef {
-  const L = KARMA_Q[side], t = L[(Math.floor(R() * L.length) + times) % L.length] /* cada pedido novo é outra história, na ordem */, n0 = 3 + Math.floor(R() * 3), n = Math.round(n0 * (1 + times * 0.25)), scale = 1 + lvl * 0.1;
+function genKarmaQuest(npc: string, lvl: number, seed: number, times: number, side: 'luz' | 'sombra', R: () => number, kit = ''): QuestDef {
+  const L = KARMA_Q[side].filter((k) => !k.only || k.only === kit), t = L[(Math.floor(R() * L.length) + times) % L.length] /* cada pedido novo é outra história, na ordem */, n0 = 3 + Math.floor(R() * 3), n = Math.round(n0 * (1 + times * 0.25)), scale = 1 + lvl * 0.1;
   return { id: `qk${seed}-${npc}-${side}-${times}`, name: `${side === 'luz' ? 'Karma de luz' : 'Karma de sombra'}: ${t.nome}`, lvl, giver: npc, turnin: npc, text: t.texto, objs: t.objs(n),
     xp: Math.round((50 + n0 * 20) * scale), gold: Math.round((14 + n0 * 6) * scale), choice: { q: t.q, opts: t.opts.map(([label, karma, say, why]) => ({ label, karma, say, why })) } } as QuestDef;
 }
-export function genNpcQuest(npc: string, role: string, lvl: number, seed: number, times = 0, karmaNow = 0): QuestDef {
+export function genNpcQuest(npc: string, role: string, lvl: number, seed: number, times = 0, karmaNow = 0, kit = ''): QuestDef {
   let s = seed * 7919 + 104729; const R = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
-  if (/honra k/i.test(role)) return genKarmaQuest(npc, lvl, seed, times, karmaNow < 0 ? 'sombra' : 'luz', R);
+  if (/honra k/i.test(role)) return genKarmaQuest(npc, lvl, seed, times, karmaNow < 0 ? 'sombra' : 'luz', R, kit);
   const rq = ROLE_Q.find(([re]) => re.test(role)) ?? ROLE_Q[ROLE_Q.length - 1];
   const g = rq[1]; const id = `q${seed}-${npc}`, scale = 1 + lvl * 0.1;
   /* cada vez que o mesmo NPC pede de novo, pede MUITO mais (e paga só um pouco mais): não dá para virar fonte infinita de XP */
@@ -341,7 +348,7 @@ export const questCat = (d: { board?: boolean; chain?: string }): QuestCat => d.
 export const CAT_INFO: Record<QuestCat, { name: string; col: string }> = { story: { name: 'História', col: '#ffd24a' }, side: { name: 'Secundária', col: '#6ab4ff' }, rep: { name: 'Repetição', col: '#7aff7a' } };
 const CAT_ORDER: QuestCat[] = ['story', 'side', 'rep'];
 
-export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(): string | null; /** 11/11: o karma de agora (as missões do Guardião da Honra são do lado de quem pede) */ karmaNow?(): number; /** para onde a alma pende (missões de Luz e de Sombra) */ lean?(): 'luz' | 'sombra' | null; /** Renegado ou Desgarrado (rituais.ts) */ outcast?(): 'renegado' | 'desgarrado' | null; madness?(): string | null; origin?(): 'human' | 'elf' | 'dwarf'; roleOf?(npc: string): string | null; st: { lvl: number; xp: number; gold: number }; count(item: string): number; take(item: string, n: number): boolean; add(item: string, n: number): void; gainXp(n: number): void; xpNeedAt?(l: number): number; gear(n: number, lvl: number): void; log(t: string, c?: string): void; onTitle(t: string): void; chainQuests: QuestDef[]; karma?(dk: number): void; me?(): string; onDone?(d: QuestDef): void; auction?: { html(): string; click(t: HTMLElement): boolean; input(f: HTMLInputElement): string; tipOf(id: string): string; readonly count: number };
+export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(): string | null; /** 11/11: o karma de agora (as missões do Guardião da Honra são do lado de quem pede) */ karmaNow?(): number; /** 12/11: a classe de agora (as missões de mordida são só do vampiro) */ kit?(): string; /** para onde a alma pende (missões de Luz e de Sombra) */ lean?(): 'luz' | 'sombra' | null; /** Renegado ou Desgarrado (rituais.ts) */ outcast?(): 'renegado' | 'desgarrado' | null; madness?(): string | null; origin?(): 'human' | 'elf' | 'dwarf'; roleOf?(npc: string): string | null; st: { lvl: number; xp: number; gold: number }; count(item: string): number; take(item: string, n: number): boolean; add(item: string, n: number): void; gainXp(n: number): void; xpNeedAt?(l: number): number; gear(n: number, lvl: number): void; log(t: string, c?: string): void; onTitle(t: string): void; chainQuests: QuestDef[]; karma?(dk: number): void; me?(): string; onDone?(d: QuestDef): void; auction?: { html(): string; click(t: HTMLElement): boolean; input(f: HTMLInputElement): string; tipOf(id: string): string; readonly count: number };
   /** jogar junto: o quadro de pedidos é o da sala (dos jogadores de verdade) */
   room?: { on(): boolean; posts(): { id: number; by: string; item: string; n: number; gold: number }[]; add(item: string, n: number, gold: number): void; fill(id: number, item: string, n: number): void; cancel(id: number): void } }) {
   let onDoneCb: ((d: QuestDef) => void) | null = null; const doneHooks: ((d: QuestDef) => void)[] = [];
@@ -390,7 +397,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const prog = (id: string) => q.active[id]?.prog ?? [];
   setTimeout(() => ensureThread(), 1500); // save antigo parado no meio da história: a ponte aparece
   function objProg(d: QuestDef, i: number) { const o = d.objs[i]; if (o.kind === 'collect') return Math.min(o.n, ctx.count(o.item)); if (o.kind === 'level') return ctx.st.lvl >= o.n ? 1 : 0; return prog(d.id)[i] ?? 0; }
-  function objNeed(o: Obj) { return o.kind === 'kill' || o.kind === 'collect' || o.kind === 'craft' || o.kind === 'stance' ? o.n : 1; }
+  function objNeed(o: Obj) { return o.kind === 'kill' || o.kind === 'bite' || o.kind === 'collect' || o.kind === 'craft' || o.kind === 'stance' ? o.n : 1; }
   const complete = (d: QuestDef) => d.objs.every((o, i) => objProg(d, i) >= objNeed(o));
   /** missões que este NPC pode oferecer agora */
   /* 09/11 (revisão de FPS): índices das cadeias (quem dá e quem vem antes) — antes cada consulta varria todas as missões do jogo */
@@ -398,7 +405,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const idx = () => { if (!byGiver) { byGiver = new Map(); prevsOf = new Map(); for (const d of ctx.chainQuests) { (byGiver.get(d.giver) ?? byGiver.set(d.giver, []).get(d.giver)!).push(d); if (d.next) (prevsOf.get(d.next) ?? prevsOf.set(d.next, []).get(d.next)!).push(d); } } return byGiver; };
   function offers(npc: string): QuestDef[] {
     const out: QuestDef[] = []; const mine = idx().get(npc) ?? [];
-    if (!(mine.some((d) => !isDone(d.id))) && ctx.roleOf?.(npc) && !/Sentinela|roldana|Porteiro/i.test(ctx.roleOf(npc)!) /* 09/11: os do alto do portão e o porteiro não pedem missão */ && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const times = npcTimes[npc] ?? 0; if (times < NPC_Q_MAX) { const d = fix(genNpcQuest(npc, role, above(sd), sd, times, ctx.karmaNow?.() ?? 0)); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } } }
+    if (!(mine.some((d) => !isDone(d.id))) && ctx.roleOf?.(npc) && !/Sentinela|roldana|Porteiro/i.test(ctx.roleOf(npc)!) /* 09/11: os do alto do portão e o porteiro não pedem missão */ && !Object.values(q.active).some((a) => a.def && a.def.giver === npc && !a.def.board)) { const role = ctx.roleOf(npc)!; const sd = npcSeeds[npc] ?? (npcSeeds[npc] = [...(npc + role)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 9000, 7) + 100); const times = npcTimes[npc] ?? 0; if (times < NPC_Q_MAX) { const d = fix(genNpcQuest(npc, role, above(sd), sd, times, ctx.karmaNow?.() ?? 0, ctx.kit?.() ?? '')); if (!isDone(d.id)) { defs.set(d.id, d); out.push(d); } } }
     for (const d of mine) { if (isDone(d.id) || q.active[d.id]) continue; const prevs = (prevsOf!.get(d.id) ?? []).filter((p) => !p.origin || p.origin === ctx.origin?.()).map((p) => p.id); if (prevs.length && !prevs.some((prevId) => isDone(prevId) || (THREAD_SKIP[prevId] && isDone(THREAD_SKIP[prevId])))) continue; if (THREAD_SKIP[d.id] && isDone(THREAD_SKIP[d.id])) continue; if (d.req && !isDone(d.req)) continue; if (d.lean && ctx.lean?.() !== d.lean) continue; if (d.outcast && ctx.outcast?.() !== d.outcast) continue; if (d.madness && ctx.madness?.() !== d.madness) continue; if (d.origin && ctx.origin?.() !== d.origin) continue; if (ctx.st.lvl < Math.max(1, d.lvl - 2)) continue; out.push(d); }
     return out;
   }
@@ -432,6 +439,10 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   }
   function onKill(type: EnemyType) { let ch = false; const stc = ctx.stance?.() ?? null; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'stance' && o.id === stc && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } if (o.kind === 'kill' && o.type === type && a.prog[i] < o.n) { a.prog[i]++; ch = true; if (a.prog[i] === o.n) ctx.log(`📜 ${d.name}: ${objText(o)} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
   function onTalk(npc: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'talk' && o.npc === npc && a.prog[i] < 1) { a.prog[i] = 1; ch = true; } }); } if (ch) { save(); render(); } }
+  /** 12/11: o vampiro mordeu um alvo da missão */
+  function onBite(type: EnemyType) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'bite' && o.type === type && a.prog[i] < o.n) { a.prog[i]++; ch = true; ctx.log(a.prog[i] === o.n ? `📜 ${d.name}: ${objText(o)} ✔` : `📜 ${d.name}: ${a.prog[i]}/${o.n} mordidos`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
+  /** os tipos que alguma missão ativa ainda pede para morder */
+  const biteWant = (): EnemyType[] => { const out: EnemyType[] = []; for (const [id, a] of Object.entries(q.active)) def(id).objs.forEach((o, i) => { if (o.kind === 'bite' && a.prog[i] < o.n) out.push(o.type); }); return out; };
   function onVisit(poi: string) { let ch = false; for (const [id, a] of Object.entries(q.active)) { const d = def(id); d.objs.forEach((o, i) => { if (o.kind === 'visit' && o.poi === poi && a.prog[i] < 1) { a.prog[i] = 1; ch = true; ctx.log(`📜 ${d.name}: chegou a ${poi} ✔`, '#ffe08a'); } }); } if (ch) { save(); render(); } }
   /** achou o que o instinto mostrava (id = 'missão:objetivo') */
   function onSense(id: string) { const [qid, oi] = id.split(':'); const a = q.active[qid]; if (!a) return; const d = def(qid), i = +oi; if (d?.objs[i]?.kind === 'sense' && a.prog[i] < 1) { a.prog[i] = 1; ctx.log(`📜 ${d.name}: ${objText(d.objs[i])} ✔`, '#ffe08a'); save(); render(); } }
@@ -623,7 +634,7 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   function shareState(d: QuestDef): 'have' | 'done' | 'later' | 'ok' { if (q.active[d.id]) return 'have'; if (q.done.includes(d.id)) return 'done'; if (d.chain && !offers(d.giver).some((x) => x.id === d.id)) return 'later'; return 'ok'; }
   /** alguém matou você fora de duelo: o Olho guarda o nome (até 12, o mais recente por último) */
   function grudge(name: string) { if (!name) return; grudges = grudges.filter((g) => g.name.toLowerCase() !== name.toLowerCase()); grudges.push({ name, t: Date.now() }); grudges = grudges.slice(-12); sv('karmika.grudge.v1', grudges); }
-  return { grudge, dropQuest, addDoneHook: (f: (d: QuestDef) => void) => { doneHooks.push(f); }, shareState, setExtraTop(f: () => string) { extraTop = f; },
+  return { onBite, biteWant, grudge, dropQuest, addDoneHook: (f: (d: QuestDef) => void) => { doneHooks.push(f); }, shareState, setExtraTop(f: () => string) { extraTop = f; },
     /** só o cartão do evento mudou (relógio, distância): troca o miolo sem refazer a lista (antes piscava, abrindo e fechando no hover) */
     renderExtra() { const x = el.querySelector('.xtop') as HTMLElement | null; const html = extraTop?.() ?? ''; if (!x || !!x.innerHTML !== !!html) { render(); return; }
       const cur = x.querySelector('.evq'), tmp = document.createElement('div'); tmp.innerHTML = html; const nw = tmp.querySelector('.evq'); if (cur && nw) { if (cur.innerHTML !== nw.innerHTML) cur.innerHTML = nw.innerHTML; } else x.innerHTML = html; }, abandon, setOnDone(f: (d: QuestDef) => void) { onDoneCb = f; }, setOnAccept(f: (d: QuestDef) => void) { onAcceptCb = f; }, def, q, offers, turnins, accept, turnIn, onKill, onTalk, onVisit, onCraft, onDungeon, onCaravan, onSense, board, acceptBoard, complete, render, get isOpen() { return logOpen || boardOpen; }, toggleLog() { logOpen = !logOpen; boardOpen = false; if (!logOpen) focusId = null; render(); }, openLog(id?: string) { focusId = id ?? null; logOpen = true; boardOpen = false; render(); }, openBoard() { boardOpen = true; logOpen = false; render(); }, closeAll() { logOpen = false; boardOpen = false; render(); }, get title() { return q.title; }, get tracked() { return tracked ? def(tracked) : null; }, get tracked2() { return tracked2 ? def(tracked2) : null; }, objProg, objNeed: (d: QuestDef, i: number) => objNeed(d.objs[i]), firstOpen(d: QuestDef) { return d.objs.findIndex((o, i) => objProg(d, i) < objNeed(o)); }, refreshBoard() { if (boardOpen) render(); }, reset() { q.active = {}; q.done = []; q.boardSeed = 1; q.title = ''; save(); render(); },

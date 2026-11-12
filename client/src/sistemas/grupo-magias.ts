@@ -4,7 +4,7 @@
      de área) ou para UM companheiro: o do arquétipo da trava onde a runa está (travas.ts). Ctrl segurado: em você mesmo.
    - SOMAR: bônus iguais somam com rendimento decrescente (100%, 60%, 40%, 25%) e têm teto que cresce com o grupo (25% com 2, até 60% com 8).
    Simplificações desta primeira versão (ditas ao Erling): "tomar o golpe pelo aliado" e "inimigos batem mais fraco" valem como redução de dano em quem
-   recebe; torres e robôs ainda não andam (o efeito é aplicado direto); "levantar o caído" cura quem está de pé. */
+   recebe. 12/11: as torres e os robôs andam (torres-andantes.ts) e o caído é erguido de verdade (ERGUER, mais abaixo). */
 import { GRUPO_SKILLS, grupoDe, type GSkill, type GEff, type GTipo } from '../grupo-habilidades';
 import { travasOf, type Arq, ARQS } from './travas';
 import type { KitKey } from '../kits';
@@ -16,6 +16,9 @@ export interface GrupoCtx {
   log(t: string, c?: string): void; float(t: string, c: string): void; sound(): void; /** aro de luz no chão, na cor da runa */ ring(c: string): void;
   net(): { state: string; myId: number; party: { members: number[] } | null; x(t: string, m: Record<string, unknown>): void; onX(t: string, f: (from: number, m: Record<string, unknown>) => void): void; nameOf(id: number): string; remotes(): { id: number; pos: { distanceTo(v: unknown): number } }[] } | null;
   heroPos(): unknown;
+  /** 12/11: a engenhoca que anda (torres-andantes.ts): nasce em `from`, vai até quem `follow` aponta e fica com ele por `dur` s */ torre?(id: string, from: { x: number; z: number }, follow: () => { x: number; z: number } | null, dur: number): void;
+  /** 12/11: levanta o herói caído ali mesmo (lar-e-morte.ts); false se ele já ressurgiu na fonte */ erguer?(frac: number, quem: string, nome: string): boolean;
+  /** 12/11: os pontos de magia de grupo acesos na árvore de talentos, para a magia `ord` (0 ou 1) do caminho `branch` */ gmods?(branch: number, ord: number): { pot: number; cd: number; dur: number };
 }
 /* 11/11 (Erling: "essas habilidades de grupo têm que estar na árvore de habilidades; não podem se concentrar em níveis altos: no 25 abre a primeira,
    depois no 30, no 35, até o 40 ou 45; depois, mais pontos nelas deixam elas mais fortes, como qualquer habilidade de hoje"):
@@ -44,6 +47,11 @@ function effTxt(e: GEff): string { const L: string[] = [];
   if (e.acc) L.push(`+${e.acc} no dado`); if (e.dodge) L.push(`+${pct(e.dodge)} esquiva`); if (e.redirect) L.push(`toma ${pct(e.redirect)} dos golpes`); if (e.weaken) L.push(`inimigos −${pct(e.weaken)} dano`); if (e.cleanse) L.push('purifica'); if (e.revive) L.push('ergue o caído'); if (e.cost) L.push(`custa ${pct(e.cost)} da sua vida`);
   return L.join(' · '); }
 
+/* 12/11 ERGUER O CAÍDO (Erling): três classes levantam um companheiro caído, ali mesmo, sem ele voltar para a fonte.
+   Paladino: pela magia de grupo Luz que Levanta (30% da vida). Mago: o rito Fio de Volta, do nível 30 (25% da vida).
+   Bruxo: o Contrato dos Mortos, do nível 30 (30% da vida para o caído; o Bruxo paga 30% da própria vida na hora). */
+export const ERGUER: Record<string, { nome: string; frac: number; cost: number; cd: number; lvl: number; via?: string }> = {
+  pal: { nome: 'Luz que Levanta', frac: 0.3, cost: 0, cd: 120, lvl: 0, via: 'g_luzlevanta' }, mag: { nome: 'Fio de Volta', frac: 0.25, cost: 0, cd: 180, lvl: 30 }, bru: { nome: 'Contrato dos Mortos', frac: 0.3, cost: 0.3, cd: 180, lvl: 30 } };
 export function createGrupoMagias(K: GrupoCtx) {
   const mine = () => grupoDe(K.kit() as KitKey);
   /** ordem em que abrem: a 1ª de cada caminho (25, 30, 35), depois a 2ª de cada caminho (40, 45, 50) */
@@ -56,7 +64,10 @@ export function createGrupoMagias(K: GrupoCtx) {
   const learned = (s: GSkill) => testAll || rankOf(s) > 0;
   const known = () => ordered().filter(learned);
   /** cada ponto além do primeiro: +5% no efeito */
-  const mult = (s: GSkill) => 1 + 0.05 * Math.max(0, rankOf(s) - 1);
+  /* 12/11: os talentos da magia (Força, Pressa, Fôlego). Magia que não dura (cura na hora, escudo) troca o Fôlego por metade em efeito */
+  const tm = (s: GSkill) => K.gmods?.(s.branch, mine().filter((q) => q.branch === s.branch).indexOf(s)) ?? { pot: 0, cd: 0, dur: 0 };
+  const durOf = (s: GSkill) => s.dur > 1 ? Math.round(s.dur * (1 + tm(s).dur) * 10) / 10 : s.dur, cdOf = (s: GSkill) => Math.round(s.cd * (1 - tm(s).cd));
+  const mult = (s: GSkill) => Math.min(1.75, (1 + 0.05 * Math.max(0, rankOf(s) - 1)) * (1 + tm(s).pot + (s.dur > 1 ? 0 : tm(s).dur * 0.5))); /* teto: grau 10 e talentos juntos não passam de +75% */
   const effOf = (s: GSkill): GEff => { const k = mult(s), o: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (o as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * k : v; return o; };
   const blocked = (s: GSkill): string | null => K.lvl() < gate(s) && !rankOf(s) ? `abre no nível ${gate(s)}` : rankOf(s) >= GRUPO_MAX ? `no máximo (${GRUPO_MAX})` : K.avail() <= 0 ? 'sem pontos' : null;
   function invest(id: string): string | null { const s = mine().find((q) => q.id === id); if (!s) return 'habilidade de outra classe'; const why = blocked(s); if (why) return why; ranks[id] = rankOf(s) + 1; saveR(); barKey = ''; renderBar(); K.log(ranks[id] === 1 ? `✨ ${s.name} aprendida! Lance pela barra de grupo.` : `+1 em ${s.name} (${ranks[id]}/${GRUPO_MAX}).`, COL[s.tipo]); return null; }
@@ -71,10 +82,10 @@ export function createGrupoMagias(K: GrupoCtx) {
     const n = partySize(), cap = n <= 2 ? 0.25 : Math.min(0.6, 0.25 + (n - 2) * (0.35 / 6)), W = [1, 0.6, 0.4, 0.25];
     const sum = (f: (e: GEff) => number, c = cap) => { const v = active.map((a) => f(a.e)).filter((x) => x > 0).sort((a, b) => b - a); let r = 0; v.forEach((x, i) => { r += x * (W[i] ?? 0.25); }); return Math.min(c, r); };
     return { dmg: sum((e) => e.dmg ?? 0), def: sum((e) => (e.def ?? 0) + (e.redirect ?? 0) * 0.6 + (e.weaken ?? 0)), crit: sum((e) => e.crit ?? 0, 0.3), haste: sum((e) => e.haste ?? 0, 0.35), move: sum((e) => e.move ?? 0, 0.35), leech: sum((e) => e.leech ?? 0, 0.15), guard: sum((e) => e.guard ?? 0, 0.8), acc: Math.min(4, Math.round(sum((e) => (e.acc ?? 0) / 10, 0.4) * 10)), dodge: sum((e) => e.dodge ?? 0, 0.3), regen: sum((e) => e.regen ?? 0, 0.08) }; }
-  function apply(s: GSkill, from: string, self: boolean, k = 1) { const st = K.st(); if (st.dead) return; const e: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (e as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * k : v;
+  function apply(s: GSkill, from: string, self: boolean, k = 1, dur = s.dur) { const st = K.st(); if (st.dead) return; const e: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (e as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * k : v;
     if (e.heal || e.revive) { const g = Math.round(st.hpMax * (e.heal ?? e.revive ?? 0)); st.hp = Math.min(st.hpMax, st.hp + g); K.float(`+${g}`, '#8ae08a'); }
     if (e.shield) K.shield(Math.round(st.hpMax * e.shield));
-    if (s.dur > 1) active.push({ s, e, until: now() + s.dur, from });
+    if (s.dur > 1) active.push({ s, e, until: now() + dur, from });
     K.float(`${s.name}`, COL[s.tipo]); if (!self) K.ring(COL[s.tipo]); if (!self) K.log(`✦ ${from} lançou ${s.name} em você: ${effTxt(e)}.`, COL[s.tipo]); push(); renderBar(); }
   function push() { const t = total(); K.set(t); }
   setInterval(() => { const t = total(); K.set(t); const st = K.st(); if (t.regen > 0 && !st.dead && st.hp < st.hpMax) st.hp = Math.min(st.hpMax, st.hp + st.hpMax * t.regen * 0.5); renderBar(); }, 500);
@@ -82,20 +93,43 @@ export function createGrupoMagias(K: GrupoCtx) {
   function cast(id: string, ctrl = false): string | null { const s = mine().find((q) => q.id === id); if (!s) return 'habilidade de outra classe'; if (!learned(s)) return K.lvl() < gate(s) ? `abre no nível ${gate(s)}` : 'ainda não aprendida (ponha um ponto nela na árvore)';
     const left = (cds.get(id) ?? 0) - now(); if (left > 0) return `recarga: ${Math.ceil(left)} s`; const st = K.st(); if (st.dead) return 'você está caído';
     if (s.eff.cost) { const c = Math.round(st.hpMax * s.eff.cost); if (st.hp <= c + 1) return 'vida insuficiente para pagar'; st.hp -= c; K.float(`−${c}`, '#ff8a7a'); }
-    cds.set(id, now() + s.cd); K.sound(); K.ring(COL[s.tipo]);
+    cds.set(id, now() + cdOf(s)); K.sound(); K.ring(COL[s.tipo]);
     const n = K.net(), inParty = !!n?.party && n.state === 'on' && n.party.members.length > 1;
     let to = 0; /* 0 = todos por perto; senão o id de um companheiro; -1 = só em mim */
     if (s.alvo === 'aliado' || (s.alvo === 'torre' && !s.eff.regen)) { to = -1;
       if (inParty && !ctrl) { const want = travasOf('g:' + s.id), me = K.heroPos(); const mates = n!.remotes().filter((r) => n!.party!.members.includes(r.id) && r.id !== n!.myId && r.pos.distanceTo(me) < 22);
         const pick = (want.length ? mates.filter((r) => want.includes(papeis.get(r.id) as Arq)) : mates).sort((a, b) => a.pos.distanceTo(me) - b.pos.distanceTo(me))[0];
         if (pick) to = pick.id; else if (want.length && papel && want.includes(papel)) to = -1; } }
-    if (to <= 0) apply(s, 'Você', true, mult(s));
-    if (inParty && to !== -1) n!.x('x:gs', { id: s.id, to, k: mult(s) }); if (to > 0) K.log(`✦ ${s.name} foi para ${n!.nameOf(to)}.`, COL[s.tipo]);
+    if (s.eff.revive && inParty) { const c = caidoPerto(22); if (c) { n!.x('x:erguer', { to: c.id, frac: Math.min(0.5, s.eff.revive * mult(s)), nome: s.name }); K.log(`✚ ${s.name}: você ergue ${c.name}.`, COL[s.tipo]); renderBar(); return null; } }
+    if (s.alvo === 'torre') { const me = K.heroPos() as { x: number; z: number }, tid = to; K.torre?.(s.id, { x: me.x, z: me.z }, () => { if (tid > 0) { const r = K.net()?.remotes().find((q) => q.id === tid); if (r) return r.pos as unknown as { x: number; z: number }; } return K.heroPos() as { x: number; z: number }; }, durOf(s)); }
+    if (to <= 0) apply(s, 'Você', true, mult(s), durOf(s));
+    if (inParty && to !== -1) n!.x('x:gs', { id: s.id, to, k: mult(s), d: durOf(s) }); if (to > 0) K.log(`✦ ${s.name} foi para ${n!.nameOf(to)}.`, COL[s.tipo]);
     renderBar(); return null; }
+  /* ---- erguer o caído ---- */
+  const caidos = new Map<number, number>(); let eu = false, ritoCd = 0;
+  /** o companheiro caído mais perto (até `r` metros) */
+  function caidoPerto(r: number): { id: number; name: string; d: number } | null { const n = K.net(); if (!n?.party || n.state !== 'on') return null; const me = K.heroPos(), t0 = now(); let best: { id: number; name: string; d: number } | null = null;
+    for (const m of n.remotes()) { const at = caidos.get(m.id); if (!at || t0 - at > 12 || !n.party.members.includes(m.id) || m.id === n.myId) continue; const d = m.pos.distanceTo(me); if (d < r && (!best || d < best.d)) best = { id: m.id, name: n.nameOf(m.id), d }; } return best; }
+  /** dá para erguer alguém agora? devolve quem e com o quê (para o aviso "E — Erguer") */
+  function erguivel(): { id: number; name: string; d: number; nome: string; why: string | null } | null { const R = ERGUER[K.kit()]; if (!R || K.st().dead) return null; const c = caidoPerto(5); if (!c) return null;
+    const sk = R.via ? mine().find((q) => q.id === R.via) : null, left = sk ? (cds.get(sk.id) ?? 0) - now() : ritoCd - now();
+    const why = sk && !learned(sk) ? `aprenda ${R.nome} na árvore de habilidades` : K.lvl() < R.lvl ? `${R.nome} abre no nível ${R.lvl}` : left > 0 ? `recarga: ${Math.ceil(left)} s` : R.cost && K.st().hp <= K.st().hpMax * R.cost + 1 ? 'vida insuficiente para pagar o contrato' : null;
+    return { ...c, nome: R.nome, why }; }
+  function erguer(): string | null { const e = erguivel(); if (!e) return 'ninguém caído por perto'; if (e.why) return e.why; const R = ERGUER[K.kit()], n = K.net()!, st = K.st();
+    if (R.via) return cast(R.via);
+    if (R.cost) { const c = Math.round(st.hpMax * R.cost); st.hp -= c; K.float(`−${c}`, '#ff8a7a'); }
+    ritoCd = now() + R.cd; K.sound(); K.ring(K.kit() === 'bru' ? '#b06aff' : '#8ad0ff'); n.x('x:erguer', { to: e.id, frac: R.frac, nome: R.nome }); K.log(`✚ ${R.nome}: você ergue ${e.name}${R.cost ? ` e paga ${Math.round(R.cost * 100)}% da sua vida` : ''}.`, '#ffe08a'); return null; }
+  /* avisa o grupo quando eu caio e quando volto; repete a cada 4 s enquanto caído (quem chegou depois também fica sabendo) */
+  setInterval(() => { const n = K.net(), d = !!K.st().dead; if (!n?.party || n.state !== 'on') { eu = d; return; } if (d !== eu || d) { eu = d; n.x('x:caido', { on: d ? 1 : 0 }); } }, 1500);
   let wired: unknown = null;
   function wire() { const n = K.net(); if (!n || wired === n) return; wired = n;
     n.onX('x:gs', (from, m) => { if (!n.party?.members.includes(from)) return; const s = GRUPO_SKILLS.find((q) => q.id === m.id); if (!s) return; const to = Number(m.to) || 0; if (to > 0 && to !== n.myId) return;
-      const r = n.remotes().find((q) => q.id === from); if (!r || r.pos.distanceTo(K.heroPos()) > (to > 0 ? 30 : 16)) return; apply(s, n.nameOf(from), false, Math.max(1, Math.min(1.5, Number(m.k) || 1))); });
+      const r = n.remotes().find((q) => q.id === from); if (!r || r.pos.distanceTo(K.heroPos()) > (to > 0 ? 30 : 16)) return;
+      if (s.alvo === 'torre') { const rp = r.pos as unknown as { x: number; z: number }, fid = from, mine2 = to > 0; K.torre?.(s.id, { x: rp.x, z: rp.z }, () => mine2 ? K.heroPos() as { x: number; z: number } : (K.net()?.remotes().find((q) => q.id === fid)?.pos as unknown as { x: number; z: number }) ?? null, Math.max(s.dur, Math.min(s.dur * 1.3 + 0.1, Number(m.d) || s.dur))); }
+      apply(s, n.nameOf(from), false, Math.max(1, Math.min(1.75, Number(m.k) || 1)), Math.max(s.dur, Math.min(s.dur * 1.3 + 0.1, Number(m.d) || s.dur))); });
+    n.onX('x:caido', (from, m) => { if (!n.party?.members.includes(from)) return; if (m.on) { if (!caidos.has(from)) K.log(`☠ ${n.nameOf(from)} caiu. Um Paladino, um Mago ou um Bruxo pode erguê-lo ali mesmo (chegue perto e aperte E).`, '#ff9a8a'); caidos.set(from, now()); } else caidos.delete(from); });
+    n.onX('x:erguer', (from, m) => { if (Number(m.to) !== n.myId || !n.party?.members.includes(from)) return; const r = n.remotes().find((q) => q.id === from); if (!r || r.pos.distanceTo(K.heroPos()) > 30) return;
+      K.erguer?.(Math.max(0.05, Math.min(0.5, Number(m.frac) || 0.25)), n.nameOf(from), String(m.nome || 'um rito')); });
     n.onX('x:papel', (from, m) => { const p = m.p; if (p === 'tank' || p === 'dps' || p === 'heal') papeis.set(from, p); else papeis.delete(from); }); }
   setInterval(() => { wire(); const n = K.net(); if (n?.party && n.state === 'on') n.x('x:papel', { p: papel ?? '' }); }, 4000);
   function setPapel(p: Arq | null) { papel = p; try { if (p) localStorage.setItem('karmika.papel', p); else localStorage.removeItem('karmika.papel'); } catch { /* */ } const n = K.net(); if (n?.party && n.state === 'on') n.x('x:papel', { p: p ?? '' }); }
@@ -104,7 +138,7 @@ export function createGrupoMagias(K: GrupoCtx) {
   let barKey = '';
   function renderBar() { const L = known(), t0 = now(); const key = L.map((s) => `${s.id}:${Math.ceil(Math.max(0, (cds.get(s.id) ?? 0) - t0))}:${active.some((a) => a.s === s) ? 1 : 0}`).join('|'); if (key === barKey) return; barKey = key;
     bar.style.display = L.length ? 'flex' : 'none';
-    bar.innerHTML = L.map((s, i) => { const left = Math.ceil(Math.max(0, (cds.get(s.id) ?? 0) - t0)); return `<button class="gslot ${left ? 'cd' : ''} ${active.some((a) => a.s === s) ? 'act' : ''}" data-gcast="${s.id}" title="${s.name} (${TNOME[s.tipo]}) · Alt+${i + 1}\n${s.tip}\n${effTxt(effOf(s))} · ${s.dur > 1 ? s.dur + ' s · ' : ''}recarga ${s.cd} s">${runaPedra(s, 44)}<kbd>⎇${i + 1}</kbd>${left ? `<b>${left}</b>` : ''}</button>`; }).join(''); }
+    bar.innerHTML = L.map((s, i) => { const left = Math.ceil(Math.max(0, (cds.get(s.id) ?? 0) - t0)); return `<button class="gslot ${left ? 'cd' : ''} ${active.some((a) => a.s === s) ? 'act' : ''}" data-gcast="${s.id}" title="${s.name} (${TNOME[s.tipo]}) · Alt+${i + 1}\n${s.tip}\n${effTxt(effOf(s))} · ${s.dur > 1 ? durOf(s) + ' s · ' : ''}recarga ${cdOf(s)} s">${runaPedra(s, 44)}<kbd>⎇${i + 1}</kbd>${left ? `<b>${left}</b>` : ''}</button>`; }).join(''); }
   bar.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-gcast]') as HTMLElement | null; if (!b) return; const why = cast(b.dataset.gcast!, e.ctrlKey); if (why) K.log(`Não dá: ${why}.`, '#ff9a8a'); });
   addEventListener('keydown', (e) => { if (!e.altKey || e.repeat) return; const i = '123456'.indexOf(e.key); if (i < 0) return; const t = e.target as HTMLElement | null; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return; const s = known()[i]; if (!s) return; e.preventDefault(); const why = cast(s.id, e.ctrlKey); if (why) K.log(`Não dá: ${why}.`, '#ff9a8a'); });
   /* ---- os quadrados na árvore de habilidades (uma fileira própria embaixo, ligada por um trilho) ---- */
@@ -121,7 +155,7 @@ export function createGrupoMagias(K: GrupoCtx) {
   function detail(): string | null { const s = mine().find((q) => q.id === gsel); if (!s) return null; const rk = rankOf(s), why = blocked(s), e = effOf(s), nx: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (nx as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * (1 + 0.05 * rk) : v;
     return `<div class="th"><div class="ic" style="--c:${COL[s.tipo]}">${runaPedra(s, 50)}</div><div><b>${s.name}</b><small>Magia de grupo · ${TNOME[s.tipo]} · ${rk ? `${rk}/${GRUPO_MAX}` : 'não aprendida'}</small></div></div>
       <p class="tip">${s.tip}</p>
-      <div class="lines sgrid"><div class="sc"><small>✦ Efeito agora</small><b>${effTxt(rk ? e : s.eff)}</b></div><div class="sc"><small>◎ Vai para</small><b>${s.alvo === 'aliado' ? 'um aliado (o da trava)' : s.alvo === 'grupo' ? 'o grupo por perto' : s.alvo === 'area' ? 'quem está na área' : 'torre ao lado do aliado'}</b></div>${s.dur > 1 ? `<div class="sc"><small>⏳ Duração</small><b>${s.dur} s</b></div>` : ''}<div class="sc"><small>↻ Recarga</small><b>${s.cd} s</b></div>
+      <div class="lines sgrid"><div class="sc"><small>✦ Efeito agora</small><b>${effTxt(rk ? e : s.eff)}</b></div><div class="sc"><small>◎ Vai para</small><b>${s.alvo === 'aliado' ? 'um aliado (o da trava)' : s.alvo === 'grupo' ? 'o grupo por perto' : s.alvo === 'area' ? 'quem está na área' : 'torre ao lado do aliado'}</b></div>${s.dur > 1 ? `<div class="sc"><small>⏳ Duração</small><b>${durOf(s)} s</b></div>` : ''}<div class="sc"><small>↻ Recarga</small><b>${cdOf(s)} s</b></div>${(() => { const t = tm(s), L2 = [t.pot ? 'Força' : '', t.cd ? 'Pressa' : '', t.dur ? 'Fôlego' : ''].filter(Boolean); return `<div class="sn">Talentos desta magia (no caminho ${K.branchName(s.branch)} da árvore de talentos): ${L2.length ? L2.join(', ') + ' acesos.' : 'nenhum aceso. Há três: Força, Pressa e Fôlego.'}</div>`; })()}
         <div class="sn">Abre no nível ${gate(s)}. Lance pela barra de grupo (Alt+1 a 6). Sozinho, o efeito cai em você. As duas runas ao lado do quadrado vão para as travas.</div></div>
       <div class="gain"><small>${rk >= GRUPO_MAX ? 'Magia no máximo' : rk ? `Com mais um ponto: ${effTxt(nx)}` : 'Cada ponto depois do primeiro dá +5% no efeito'}</small></div>
       <button class="inv ${why ? 'off' : ''}" data-ginv="${s.id}" ${why ? 'disabled' : ''}>${why ? why : rk ? `+1 ponto em ${s.name}` : `Aprender ${s.name} (1 ponto)`}</button>`; }
@@ -135,5 +169,5 @@ export function createGrupoMagias(K: GrupoCtx) {
   /** as habilidades de grupo aprendidas, no formato que as travas esperam */
   const forLocks = () => known().map((s) => ({ k: 'g:' + s.id, name: s.name, svg: runaPedra(s, 22), c: COL[s.tipo] }));
   renderBar();
-  return { cast, known, learned, treeNodes, detail, papelHtml, clearSel() { gsel = null; }, spent, invest, panelClick, forLocks, renderBar, get papel() { return papel; }, total, testToggle() { testAll = !testAll; try { localStorage.setItem('karmika.grupoteste', testAll ? '1' : '0'); } catch { /* */ } barKey = ''; renderBar(); return testAll; } };
+  return { erguivel, erguer, cast, known, learned, treeNodes, detail, papelHtml, clearSel() { gsel = null; }, spent, invest, panelClick, forLocks, renderBar, get papel() { return papel; }, total, testToggle() { testAll = !testAll; try { localStorage.setItem('karmika.grupoteste', testAll ? '1' : '0'); } catch { /* */ } barKey = ''; renderBar(); return testAll; } };
 }

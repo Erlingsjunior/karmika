@@ -26,8 +26,17 @@ function leaveInteriorNow() { if (!K.inside) return; const ins = K.inside; if (i
   K.scene.remove(ins.int.group); { const old = ins.int.group; setTimeout(() => disposeTree(old), 2500); } /* 10/11 (Erling: "modo GPU deu bug ao sair da masmorra e me dropou do server"): o WebGPU ainda desenhava um quadro com a geometria que tinha acabado de ser solta; agora ela só é solta 2,5 s depois de sair da tela */ /* interiores são montados a cada entrada: sem isto a GPU acumulava geometria/texturas */ K.inside = null; K.objs.group.visible = true; K.decoOut.visible = true; K.decoOthers.visible = true; K.decoCancel(); for (const n of K.npcSys.npcs) n.hero.root.visible = true; }
 function placeAt(why: string, to: { x: number; y: number } = home) { leaveInteriorNow(); K.state.fx = to.x; K.state.fy = to.y; K.state.path = []; K.objs.update(K.state.fx * T, K.state.fy * T, true); K.heroY = heightAt(K.state.fx * T, K.state.fy * T); K.camX = K.state.fx * T; K.camZ = K.state.fy * T; K.camY = K.heroY; K.game.logMsg(why, '#8ad0ff'); for (let i = 0; i < 40; i++) K.particles.spawn(K.state.fx * T, 0.5, K.state.fy * T, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.05, c0: 0xfff0bd, c1: 0x8f7bff, a: 1 }); }
 function goHome(why: string, to: { x: number; y: number } = home) { K.withFade(() => placeAt(why, to)); }
-K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen();
-  const fall = (note?: string, left?: number) => { const after = () => { goHome(`⛲ Você renasce na fonte de ${home.name}.`); setTimeout(() => { revive(); if (note) K.game.logMsg(note, '#c9a0ff'); }, 400); };
+/* 12/11 ERGUER O CAÍDO (Erling: "o Paladino pode, o Mago também, e o Bruxo do lado do karma negativo, num contrato pesado"): enquanto o painel
+   "Você caiu" está aberto, um companheiro pode levantar o herói ali mesmo. `caido` guarda como voltar; some quando o jogador escolhe ressurgir na fonte. */
+let caido: { revive: () => void; breath: boolean } | null = null, closeDeath: (() => void) | null = null;
+function erguer(frac: number, quem: string, nome: string): boolean { if (!caido || !K.game.st.dead) return false; const c = caido; caido = null; closeDeath?.(); closeDeath = null;
+  c.revive(); const st = K.game.st; st.hp = Math.max(1, Math.round(st.hpMax * Math.max(0.05, Math.min(1, frac))));
+  if (c.breath) { K.soul.s.breaths = Math.min(MAX_BREATHS, K.soul.s.breaths + 1); K.soul.save(); } /* quem é erguido não gasta o fôlego do Fio da Vida */
+  K.game.logMsg(`✚ ${quem} ergueu você com ${nome}. Você volta com ${Math.round(frac * 100)}% da vida${c.breath ? ', e o Fio da Vida não perde o fôlego' : ''}.`, '#ffe08a'); K.audio.heal?.();
+  const p = K.hero.root.position; for (let i = 0; i < 46; i++) K.particles.spawn(p.x + (Math.random() - 0.5) * 1.2, p.y + 0.1, p.z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 0.6, vy: 1.5 + Math.random() * 3, vz: (Math.random() - 0.5) * 0.6, life: 1.1, s0: 0.3, s1: 0.04, c0: 0xfff6d0, c1: 0xffc24a, a: 1 });
+  return true; }
+K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen(); caido = null;
+  const fall = (note?: string, left?: number) => { caido = { revive, breath: left !== undefined }; const after = () => { caido = null; goHome(`⛲ Você renasce na fonte de ${home.name}.`); setTimeout(() => { revive(); if (note) K.game.logMsg(note, '#c9a0ff'); }, 400); };
     /* 26/10 (Erling): o corpo cai, o Olho vira Ampulheta, e a gente fica ali, morto, vendo a cena — até clicar e escolher ressurgir na cidade */
     const sub = left === undefined ? `O Olho guarda o que viu${K.profile ? `, <b>${K.profile.name}</b>` : ''}.` : left > 0 ? `O Fio da Vida perde um fôlego. Restam <b>${left}</b> de ${MAX_BREATHS}.` : 'Era o último fôlego. Se cair de novo, a alma desencarna.';
     deathPanel(sub, () => { if (K.profile?.eye) playDeath(K.profile.name, home.name, after, { title: 'Você ressurge', sub }); else after(); }); };
@@ -45,7 +54,8 @@ function deathPanel(sub: string, go: () => void) {
   document.getElementById('deathp')?.remove(); const d = document.createElement('div'); d.id = 'deathp';
   d.innerHTML = `<h2>Você caiu</h2><p>${sub}</p><button>⛲ Ressurgir em ${home.name}</button><small>Enter ou clique quando quiser</small>`;
   document.body.appendChild(d); requestAnimationFrame(() => setTimeout(() => d.classList.add('on'), 900));
-  let done = false; const fire = () => { if (done) return; done = true; removeEventListener('keydown', key, true); d.classList.remove('on'); setTimeout(() => d.remove(), 400); go(); };
+  let done = false; const shut = () => { done = true; removeEventListener('keydown', key, true); d.classList.remove('on'); setTimeout(() => d.remove(), 400); }; const fire = () => { if (done) return; shut(); closeDeath = null; go(); };
+  closeDeath = () => { if (!done) shut(); }; /* erguido por um companheiro: o painel fecha sem levar para a fonte */
   const key = (e: KeyboardEvent) => { if (e.key === 'Enter' && d.classList.contains('on')) { e.preventDefault(); e.stopPropagation(); fire(); } }; addEventListener('keydown', key, true);
   d.querySelector('button')!.addEventListener('click', (e) => { e.stopPropagation(); fire(); });
 }
@@ -109,5 +119,5 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-  return { leaveInteriorNow, originName, unbind, srvWait, get home() { return home; }, set home(v: typeof home) { home = v; }, placeAt, goHome, HOME_KEY, defaultHome, headShot, setHome };
+  return { erguer, get caido() { return !!caido; }, leaveInteriorNow, originName, unbind, srvWait, get home() { return home; }, set home(v: typeof home) { home = v; }, placeAt, goHome, HOME_KEY, defaultHome, headShot, setHome };
 }
