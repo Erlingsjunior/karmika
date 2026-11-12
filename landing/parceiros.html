@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>KARMIKA para lan houses: cada casa, um reino</title>
+<title>KARMIKA para parceiros: cada casa, um reino</title>
 <meta name="description" content="Parceria KARMIKA para lan houses, lan houses premium e hubs digitais: servidor próprio na sua casa, link direto com a D2 Studio, rankings, campeonatos entre reinos e parte da receita.">
 <meta property="og:title" content="KARMIKA para lan houses: cada casa, um reino">
 <meta property="og:description" content="Servidor próprio, link direto com o núcleo KARMIKA e campeonatos entre casas, cidades e países.">
@@ -166,6 +166,26 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
 .md .num { margin-top: 0; } .md .num table { min-width: 0; font-size: 14px; } .md .num th, .md .num td { padding: 10px 14px; }
 @media (max-width: 760px) { .md__in { grid-template-columns: 1fr; overflow: auto; } .md__lista { grid-template-columns: repeat(3, 1fr); border-right: 0; border-bottom: 1px solid var(--line); padding: 54px 10px 10px; } .md__lista button { padding: 10px 8px; } .md__lista button b { font-size: 14px; } .md__lista button small { display: none; } .md__det { overflow: visible; } .md__g, .md__nums { grid-template-columns: 1fr; } .md__capa { height: 150px; } }
 @media (prefers-reduced-motion: reduce) { .mod, .mod__img, .neg__c, .neg__m img { transition: none; } }
+/* 12/11 (Erling: "um index bem feito como página web explicando tudo: material de venda de parceiros karmika"): o jogo, o universo, os pacotes, os terrenos e o estado de hoje */
+.duo { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: clamp(26px, 5vw, 70px); align-items: center; }
+.duo__img { width: 100%; border-radius: 18px; border: 1px solid rgba(217, 165, 74, .45); box-shadow: 0 40px 100px -40px #000; }
+.selos { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-wrap: wrap; gap: 10px; } .selos li { padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255, 255, 255, .03); font-size: 14px; }
+.selos--col { display: grid; gap: 10px; } .selos--col li { border-radius: 12px; color: #d8cdbb; } .selos--col b { color: var(--gold2); }
+.pks { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 36px 0 26px; }
+.pks div { display: grid; gap: 6px; padding: 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg2); } .pks small { font: 600 10.5px/1 var(--sans); letter-spacing: .24em; text-transform: uppercase; color: var(--gold); } .pks b { font: 700 18px/1.15 var(--serif); } .pks span { font: 800 21px/1 var(--sans); color: var(--gold2); font-variant-numeric: tabular-nums; }
+.pks--f { border-color: rgba(217, 165, 74, .7) !important; background: linear-gradient(180deg, rgba(217, 165, 74, .14), var(--bg2)) !important; }
+.gmap { position: relative; aspect-ratio: 1; border-radius: 20px; overflow: hidden; border: 1px solid rgba(217, 165, 74, .5); box-shadow: 0 40px 100px -40px #000; background: #0b1a33; }
+.gmap > img { position: absolute; width: 160%; max-width: none; left: -30%; top: -30%; image-rendering: pixelated; }
+.gmap__p { position: absolute; width: 26px; height: 32px; margin: -30px 0 0 -3px; cursor: pointer; outline: none; }
+.gmap__p::before { content: ""; position: absolute; left: 0; top: 0; width: 3px; height: 32px; background: #1a120a; box-shadow: 0 0 0 1px rgba(255, 255, 255, .6); }
+.gmap__p i { position: absolute; left: 3px; top: 2px; width: 18px; height: 22px; background: var(--gold2); clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 54%, 0 72%); }
+.gmap__p--neg i { background: #a04af0; } .gmap__p--l i { width: 23px; height: 27px; } .gmap__p--l::after { content: "✦"; position: absolute; left: 9px; top: 4px; font-size: 12px; line-height: 1; color: #1a120a; }
+.gmap__p em { position: absolute; left: 50%; bottom: 38px; transform: translateX(-50%) scale(.9); white-space: nowrap; font: 600 12px/1.35 var(--sans); font-style: normal; text-align: center; padding: 8px 12px; border-radius: 10px; background: rgba(11, 10, 13, .94); border: 1px solid rgba(243, 211, 138, .55); color: var(--ink); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 3; }
+.gmap__p--r em { left: auto; right: -6px; transform: scale(.9); transform-origin: 100% 100%; } .gmap__p--r:hover em, .gmap__p--r:focus em { transform: none; } .gmap__p--e em { left: -6px; transform: scale(.9); transform-origin: 0 100%; } .gmap__p--e:hover em, .gmap__p--e:focus em { transform: none; }
+.gmap__p:hover, .gmap__p:focus { z-index: 4; } .gmap__p:hover em, .gmap__p:focus em { opacity: 1; transform: translateX(-50%); }
+.gmap__leg { position: absolute; left: 12px; bottom: 12px; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 8px 12px; border-radius: 10px; background: rgba(11, 10, 13, .85); font-size: 12px; color: var(--ink); }
+.gmap__leg i { display: inline-block; width: 10px; height: 12px; margin-right: 6px; vertical-align: -1px; clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 54%, 0 72%); } .gmap__leg .lz { background: var(--gold2); } .gmap__leg .sb { background: #a04af0; } .gmap__leg .ld { background: #fff; }
+@media (max-width: 900px) { .duo { grid-template-columns: 1fr; } .pks { grid-template-columns: 1fr 1fr; } } @media (max-width: 420px) { .pks { grid-template-columns: 1fr; } }
 /* números e compromissos */
 .num { margin-top: 44px; overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--bg2); }
 .num table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -197,7 +217,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
 
 <header class="pnav">
   <a class="nav__brand" href="/"><img src="/img/logo-brasa.webp" alt="" width="40" height="30"><span>KARMIKA</span></a>
-  <nav class="pnav__links"><a href="#fio">O Fio</a><a href="#modelos">Os três modelos</a><a href="#numeros">Os números</a><a href="#deveres">Compromissos</a><a href="#campeonatos">Campeonatos</a><a href="#divisao">Quem cuida do quê</a><a href="#perguntas">Perguntas</a></nav>
+  <nav class="pnav__links"><a href="#ojogo">O jogo</a><a href="#universo">O universo</a><a href="#fio">O Fio</a><a href="#modelos">Os níveis</a><a href="#numeros">Os números</a><a href="#terrenos">Terrenos</a><a href="#campeonatos">Campeonatos</a><a href="#hoje">Hoje</a><a href="#perguntas">Perguntas</a></nav>
   <a class="btn btn--small btn--ghost" href="https://jogar.karmikaonline.com" target="_blank" rel="noopener">Jogue de graça</a>
   <a class="btn btn--small" href="#entrar">Quero ser parceiro</a>
 </header>
@@ -210,8 +230,56 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <span class="eyebrow">KARMIKA Business · Parceria para lan houses</span>
     <h1>Cada casa, <em>um reino.</em> Todos no mesmo Fio.</h1>
     <p>Em KARMIKA, toda escolha volta para quem a fez. A sua casa também pode escolher: deixar de ser só o lugar onde se joga e virar um reino de verdade, com servidor próprio, estandarte, heróis da casa e um link direto com quem faz o jogo.</p>
-    <div class="ph__cta"><a class="btn" href="#entrar">Quero o reino da minha casa</a><a class="btn btn--ghost" href="#modelos">Ver os três modelos</a></div>
+    <div class="ph__cta"><a class="btn" href="#entrar">Quero o reino da minha casa</a><a class="btn btn--ghost" href="#ojogo">Conhecer o jogo</a></div>
     <p class="ph__note">Para lan houses, lan houses premium e hubs digitais · Programa em formação: as primeiras casas entram junto com o beta</p>
+  </div>
+</section>
+
+<!-- O JOGO -->
+<section id="ojogo">
+  <div class="in duo">
+    <div>
+      <span class="eyebrow">O jogo</span>
+      <h2>Um mundo onde toda escolha volta.</h2>
+      <p class="lead">KARMIKA é um MMORPG brasileiro, feito pela D2 Studio: um mundo aberto para jogar com muita gente ao mesmo tempo, por anos, no espírito dos grandes RPGs online que lotaram as lan houses.</p>
+      <p class="lead">A diferença está no nome. Aqui ninguém escolhe uma classe numa tela e pronto: o jogador vira o que escolhe ser, jogando. E quando morre, reencarna, carregando o karma da vida anterior.</p>
+      <ul class="selos"><li>Brasileiro, da D2 Studio</li><li>Roda em máquina simples</li><li>No Windows e no navegador</li><li>Português, inglês, espanhol e letão</li></ul>
+    </div>
+    <img class="duo__img" src="/img/k-dia.webp" alt="A praça de Karmika, a vila onde os humanos começam" loading="lazy">
+  </div>
+</section>
+
+<!-- O UNIVERSO -->
+<section id="universo" class="band">
+  <div class="in">
+    <span class="eyebrow">O universo</span>
+    <h2>O Fio, o Olho e as vidas que voltam.</h2>
+    <p class="lead">O mundo de KARMIKA é costurado por um Fio que liga todas as vidas. É por isso que o seu cliente não termina o jogo em um fim de semana: ele cria história, e a história dele fica no seu reino.</p>
+    <div class="neg">
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-anao.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Três povos</small><b>Todo herói começa humano, anão ou elfo</b><span>Cada povo nasce na sua terra, com a sua cidade, a sua história e o seu jeito de lutar. O resto, o jogador conquista.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-vampira.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Caminhos</small><b>Você vira o que escolhe ser</b><span>Quem é mordido vira vampiro. Quem entra para a matilha vira lobisomem. Quem estuda vira mago ou bruxo, quem se forma na Academia vira tecnocrata, quem jura à Ordem vira paladino, quem dedica a vida a Odin vira guerreiro do Norte.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-lobisomem.webp" alt="" loading="lazy"></div><div class="neg__t"><small>O Fio da Vida</small><b>A morte não é o fim</b><span>Quem morre reencarna e traz marcas da vida passada. Um vampiro morto por um caçador pode renascer humano, com sede de sangue, e ser perseguido por quem sabe o que a alma dele já foi.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-paladino.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Dois lados</small><b>A Ordem do Fio e os Desfiados</b><span>Dois lados disputam o mundo. O jogador escolhe ser bom ou mau, e o Olho de Marghar não julga: vê, guarda e um dia cobra. Tudo fica no karma.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/k-v2_askavik.webp" alt="" loading="lazy"></div><div class="neg__t"><small>O mundo</small><b>Cidades, masmorras e maravilhas</b><span>Askavik, Lithendel, Brasaforja, Corvoscuro, Porto Caldeira. Florestas, pântanos, desertos, montanhas, masmorras com chefes e maravilhas para visitar.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/k-v3_obra.webp" alt="" loading="lazy"></div><div class="neg__t"><small>A vida no mundo</small><b>Casa, ofício, guilda e montaria</b><span>O jogador constrói e decora a própria casa, aprende profissões, negocia, cria guilda, monta e enfrenta outros jogadores. Matar outro jogador também gera karma.</span></div></article>
+    </div>
+  </div>
+</section>
+
+<!-- COMO É -->
+<section id="pacotes">
+  <div class="in">
+    <span class="eyebrow">O que a casa vende</span>
+    <h2>Grátis até o nível 10. Depois, cinco pacotes.</h2>
+    <p class="lead">O teste é gratuito e roda direto no navegador, sem instalar nada. Depois do nível 10, o jogador compra o jogo uma vez, em um destes pacotes. É sobre eles, sobre os cartões e sobre a loja do jogo que a casa ganha comissão.</p>
+    <div class="pks">
+      <div><small>O Caminhante</small><b>Jogo Base</b><span>R$ 49,90</span></div>
+      <div><small>O Viajante</small><b>Pacote I</b><span>R$ 69,90</span></div>
+      <div><small>O Veterano</small><b>Pacote II</b><span>R$ 94,90</span></div>
+      <div><small>O Campeão</small><b>Pacote III</b><span>R$ 139,90</span></div>
+      <div class="pks--f"><small>A Lenda</small><b>Pacote Fundador</b><span>R$ 429,90</span></div>
+    </div>
+    <p class="lead">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. <a href="/#pacotes">Ver o que vem em cada pacote</a>.</p>
   </div>
 </section>
 
@@ -378,6 +446,23 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
   </div>
 </section>
 
+<!-- TERRENOS DE GUILDA -->
+<section id="terrenos" class="band">
+  <div class="in duo duo--mapa">
+    <div>
+      <span class="eyebrow">Chão de guilda</span>
+      <h2>Doze terrenos. Seis de luz, seis de sombra.</h2>
+      <p class="lead">Construir casa em KARMIKA é gratuito. Terreno de guilda, não. São só doze em cada reino, reservados desde sempre nos lugares mais bonitos do mundo, e é neles que as guildas erguem a sede.</p>
+      <ul class="selos selos--col"><li><b>6 para guildas de karma positivo</b> e <b>6 para guildas de karma negativo</b></li><li>De cada lado: <b>3 comuns</b> a R$ 99,90, <b>2 nobres</b> a R$ 149,90 e <b>1 lendário</b> a R$ 249,90</li><li>A cada dois anos a guilda <b>renova com 50% de desconto</b> ou abre mão do terreno</li><li>A casa parceira ganha a <b>comissão do seu nível</b> em cada terreno vendido no seu reino</li><li>Só guildas de <b>nível 3 ou mais</b> entram nas Classificatórias</li></ul>
+      <p class="lead">Com os doze vendidos, um reino movimenta R$ 1.698,80 só em terrenos. Para uma guilda de dez pessoas, o terreno comum sai a menos de R$ 10 por cabeça.</p>
+    </div>
+    <div class="gmap" role="img" aria-label="O mapa de KARMIKA com os doze terrenos de guilda">
+      <img src="/img/mapa-mundo.webp" alt="" loading="lazy"><span class="gmap__p" style="left:53.4%;top:45.7%" tabindex="0"><i></i><em>Vale de Karmika<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:51.2%;top:58.6%" tabindex="0"><i></i><em>Terra Maldita<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p gmap__p--r" style="left:61.7%;top:30.8%" tabindex="0"><i></i><em>Sopé de Brasaforja<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:36.6%;top:56.7%" tabindex="0"><i></i><em>Charcos do Oeste<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p gmap__p--e" style="left:13.6%;top:52.4%" tabindex="0"><i></i><em>Bosque de Lithendel<br>Comum · R$ 99,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg" style="left:50.6%;top:75.7%" tabindex="0"><i></i><em>Colinas do Sul<br>Comum · R$ 99,90 · karma negativo</em></span><span class="gmap__p" style="left:43.3%;top:36.0%" tabindex="0"><i></i><em>Cordilheira do Norte<br>Nobre · R$ 149,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--r" style="left:75.8%;top:41.9%" tabindex="0"><i></i><em>Colina Vampírica<br>Nobre · R$ 149,90 · karma negativo</em></span><span class="gmap__p" style="left:24.8%;top:27.6%" tabindex="0"><i></i><em>Montanha Viking<br>Nobre · R$ 149,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--l gmap__p--r" style="left:82.2%;top:60.4%" tabindex="0"><i></i><em>Vale da Desgraça<br>Lendário · R$ 249,90 · karma negativo</em></span><span class="gmap__p gmap__p--l" style="left:24.9%;top:66.0%" tabindex="0"><i></i><em>Floresta Encantada<br>Lendário · R$ 249,90 · karma positivo</em></span><span class="gmap__p gmap__p--neg gmap__p--r" style="left:75.9%;top:77.3%" tabindex="0"><i></i><em>Selva Licantropa<br>Nobre · R$ 149,90 · karma negativo</em></span>
+      <p class="gmap__leg"><span><i class="lz"></i>Karma positivo</span><span><i class="sb"></i>Karma negativo</span><span><i class="ld"></i>Lendário</span></p>
+    </div>
+  </div>
+</section>
+
 <!-- CAMPEONATOS -->
 <section id="campeonatos">
   <div class="in">
@@ -434,6 +519,20 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
       <li><b>O reino nasce</b><span>Instalamos o servidor na sua casa, ligamos o Fio e testamos juntos.</span></li>
       <li><b>Noite de abertura</b><span>O estandarte sobe, a guilda da casa é fundada e o primeiro Torneio da Casa é marcado.</span></li>
     </ol>
+  </div>
+</section>
+
+<!-- EM QUE PÉ ESTAMOS -->
+<section id="hoje">
+  <div class="in">
+    <span class="eyebrow">Palavra de mercador</span>
+    <h2>Em que pé estamos hoje.</h2>
+    <p class="lead">KARMIKA está em beta fechado, e o programa de parceria está sendo formado junto com as primeiras casas. Quem entra agora é casa fundadora.</p>
+    <div class="two">
+      <div><h3>Já funciona</h3><ul><li>O jogo, no aplicativo de Windows e no navegador</li><li>O teste gratuito até o nível 10</li><li>O servidor de sala, para um grupo jogar junto em rede</li><li>A primeira versão do Fio e do centro de comando do Tear</li><li>Os doze terrenos de guilda, reservados no mundo</li></ul></div>
+      <div><h3>Em construção</h3><ul><li>A loja com pagamento por Pix e os cartões com código de resgate</li><li>O extrato da casa e o Shop do Parceiro</li><li>A venda dos terrenos de guilda e a transferência de reino</li><li>O lugar da casa no mapa do jogo</li><li>O campeonato de guildas</li></ul></div>
+    </div>
+    <p class="lead">Os números desta página são a proposta atual da D2 Studio. O que vale entre a casa e KARMIKA é o que estiver no contrato assinado.</p>
   </div>
 </section>
 
