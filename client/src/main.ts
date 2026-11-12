@@ -668,7 +668,7 @@ const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some(
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cinemaSys.cine) cinemaSys.cine.t = t; }; }
 const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, pets: shopPets, preview: (m, price, buy) => openVitrine({ id: m.id, name: m.name, where: m.where, lvl: m.lvl, blurb: m.blurb, price, tag: m.kind === 'pet' ? ((m as { boss?: boolean }).boss ? 'Filhote de chefe' : 'Pet') : 'Montaria' }, buy), thumb: mountThumb, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
-  deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
+  deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: a.n ?? 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
     /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →
        inventário da conta, e de lá ele escolhe o personagem ou manda de presente a um amigo */
     if (inicio.isOpen) { social.toBox({ from: 'Shop de Askavik', subj, text, att: A }); return; } void to; mail.send('Shop de Askavik', subj, text, A); } });
