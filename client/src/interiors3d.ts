@@ -20,7 +20,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
   const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, inked = true, ry = 0, parent: THREE.Object3D = g) => { const b = new THREE.Mesh(geo, m); if (inked) ink(b, 0.025); b.position.set(x, y, z); b.rotation.y = ry; b.castShadow = b.receiveShadow = true; parent.add(b); return b; };
   const B = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
   const solid = (x: number, z: number, rad: number) => cols.push([x, z, rad]);
-  const seats: { x: number; z: number; yaw: number; h: number }[] = []; let reserveAt: { x: number; z: number } | null = null, reserveSign: THREE.Mesh | null = null, reserveLabel: ((a: string, b: string) => void) | null = null, stage: { x0: number; x1: number; z0: number; z1: number; y: number } | null = null;
+  const seats: { x: number; z: number; yaw: number; h: number }[] = []; let reserveAt: { x: number; z: number } | null = null, reserveSign: THREE.Mesh | null = null, reserveLabel: ((a: string, b: string) => void) | null = null, stage: { x0: number; x1: number; z0: number; z1: number; y: number } | null = null; let upper: { GY: number; GD: number; RD: number; SX0: number; SX1: number; SZB: number; SZT: number; partX: number[]; partZ: number[]; level: number; onStair?: boolean } | null = null; /* 12/11: o segundo andar da Estalagem */
   const HOME = variant <= 2; /* casas comuns (cabana, sobrado, casa em L): o resto (lojas, templos, academias) tem interior próprio */
   const ELF = culture === 3 && HOME, DWARF = culture === 2 && HOME;
   /* casa élfica: a sala é o círculo da casa, encostado na porta (sul) */
@@ -407,7 +407,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     const sTex = (text: string, sub = '') => { const c = document.createElement('canvas'); c.width = 256; c.height = 128; const x = c.getContext('2d')!; x.fillStyle = '#4a2f1a'; x.fillRect(0, 0, 256, 128); x.strokeStyle = '#d9a54a'; x.lineWidth = 6; x.strokeRect(6, 6, 244, 116); x.fillStyle = '#f3d38a'; x.textAlign = 'center'; x.font = `bold ${text.length > 14 ? 26 : text.length > 4 ? 34 : 64}px Georgia, serif`; x.fillText(text, 128, sub ? 62 : 84); if (sub) { x.font = '20px Georgia, serif'; x.fillStyle = '#e8dcc0'; x.fillText(sub, 128, 98); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; };
     const sign = (x: number, y: number, z: number, text: string, sub = '', ry = 0, w = 1.1) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 2), new THREE.MeshBasicMaterial({ map: sTex(text, sub), side: THREE.DoubleSide })); m.position.set(x, y, z); m.rotation.y = ry; g.add(m); };
     /* as paredes do fundo sobem mais um andar */
-    const H2 = INN ? 3.2 : 1.6; add(B(W, H2, 0.3), wm, W / 2, H + H2 / 2, -0.15, false); add(B(0.3, H2, D), wm, -0.15, H + H2 / 2, D / 2, false);
+    const H2 = INN ? 3.2 : 1.6, RD = 3.3; /* fundo dos quartos */ if (INN) { add(B(W + RD, H2, 0.3), wm, (W - RD) / 2, H + H2 / 2, -RD - 0.15, false); add(B(0.3, H2, D + RD), wm, -RD - 0.15, H + H2 / 2, (D - RD) / 2, false); add(B(0.3, H2, RD), wm, W + 0.15, H + H2 / 2, -RD / 2, false); } else { add(B(W, H2, 0.3), wm, W / 2, H + H2 / 2, -0.15, false); add(B(0.3, H2, D), wm, -0.15, H + H2 / 2, D / 2, false); }
     if (!INN) { const st = new THREE.Mesh(new THREE.PlaneGeometry(W, D), std(0xffffff, { map: (() => { const t = stoneTex(0x6a6458).clone(); t.repeat.set(W / 2, D / 2); t.needsUpdate = true; return t; })() })); st.rotation.x = -Math.PI / 2; st.position.set(W / 2, 0.012, D / 2); st.receiveShadow = true; g.add(st); }
     const longTable = (x: number, z: number, len: number) => { table(x, z, len, 1.1); for (let k = 0; k < Math.floor(len / 1.1); k++) for (const sz of [-1, 1]) { const bx = x - len / 2 + 0.6 + k * 1.1; add(B(0.9, 0.1, 0.4), plank(0x6a4528), bx, 0.48, z + sz * 0.95); add(B(0.08, 0.46, 0.34), dk, bx - 0.35, 0.23, z + sz * 0.95, false); add(B(0.08, 0.46, 0.34), dk, bx + 0.35, 0.23, z + sz * 0.95, false); seats.push({ x: bx, z: z + sz * 0.95, yaw: sz > 0 ? Math.PI : 0, h: 0.5 }); if (k % 2 === 0) mug(bx, 0.87, z + sz * 0.25); else plate(bx, 0.87, z + sz * 0.25); } solid(x - len / 4, z, 1.3); solid(x + len / 4, z, 1.3); };
     const round = (x: number, z: number) => { add(new THREE.CylinderGeometry(0.85, 0.85, 0.09, 14), plank(0x7a5532), x, 0.82, z); add(new THREE.CylinderGeometry(0.12, 0.2, 0.8, 8), dk, x, 0.4, z, false); solid(x, z, 0.95); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + 0.4; chair(x + Math.cos(a) * 1.25, z + Math.sin(a) * 1.25, -a - Math.PI / 2); seats.push({ x: x + Math.cos(a) * 1.25, z: z + Math.sin(a) * 1.25, yaw: -a - Math.PI / 2, h: 0.5 }); } mug(x + 0.3, 0.87, z); mug(x - 0.25, 0.87, z + 0.2); add(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 6), std(0xe8dcc0), x, 0.98, z - 0.15, false); };
@@ -417,7 +417,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
       const GDW = 0; /* a placa do Arauto fica na parede oeste, embaixo da galeria */
       /* térreo: lareira grande, balcão, mesas, palco, cozinha */
       const KX = W - 7.5, KZ = 6.2; /* a cozinha: canto nordeste, 7,5 × 6,2 m, porta para o salão */
-      add(B(0.25, H, KZ - 2.0), wm, KX, H / 2, (KZ - 2.0) / 2); add(B(7.5 - 2.6, H, 0.25), wm, KX + 2.6 + (7.5 - 2.6) / 2, H / 2, KZ); add(B(0.2, 2.4, 0.3), dk, KX, 1.2, KZ - 2.0, false); add(B(0.3, 2.4, 0.2), dk, KX + 2.6, 1.2, KZ, false);
+      add(B(0.25, 1.05, KZ - 2.0), plank(0x5a3a22), KX, 0.52, (KZ - 2.0) / 2); add(B(0.22, 0.22, KZ), dk, KX, H - 0.2, KZ / 2, false); /* 12/11 (Erling: "não consigo ver a cozinha"): a parede da frente da cozinha é meia-parede com balcão de passar prato; a de lado é só um arco de vigas */ add(B(7.5 - 2.6, 1.05, 0.3), plank(0x5a3a22), KX + 2.6 + (7.5 - 2.6) / 2, 0.52, KZ); add(B(7.5 - 2.4, 0.1, 0.6), plank(0x7a5532), KX + 2.6 + (7.5 - 2.6) / 2, 1.1, KZ); add(B(7.5, 0.22, 0.22), dk, KX + 3.75, H - 0.2, KZ, false); for (let k = 0; k < 3; k++) { plate(KX + 3.6 + k * 1.2, 1.17, KZ); add(B(0.16, H, 0.16), dk, KX + 2.6 + k * 2.4, H / 2, KZ, false); } add(B(0.2, 2.4, 0.3), dk, KX, 1.2, KZ - 2.0, false); add(B(0.3, 2.4, 0.2), dk, KX + 2.6, 1.2, KZ, false);
       for (let z = 0.6; z < KZ - 2.2; z += 0.9) solid(KX, z, 0.55); for (let x = KX + 3.1; x < W; x += 0.9) solid(x, KZ, 0.55);
       sign(KX + 1.3, 2.75, KZ + 0.02, 'Cozinha', '', 0, 1.0);
       add(B(2.6, 1.0, 1.1), std(0xffffff, { map: stoneTex(0x5a544c) }), W - 2.0, 0.5, 0.8); add(B(2.2, 0.5, 0.2), std(0x0a0605), W - 2.0, 0.55, 1.37, false); flame(W - 2.0, 0.75, 1.2, 0.9); add(new THREE.CylinderGeometry(0.34, 0.26, 0.4, 10), iron, W - 2.0, 1.25, 0.8); solid(W - 2.0, 0.8, 1.4);
@@ -431,15 +431,35 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
       barrel(1.0, D - 1.0); barrel(1.0, D - 1.9, 0.8); crate(2.0, D - 0.9);
       /* a mesa do Arauto dos Torneios: onde a diretoria inscreve a guilda no campeonato */
       table(4.2, 13.2, 2.0, 0.8); solid(4.2, 13.2, 1.1); plate(3.7, 0.87, 13.2); add(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 6), std(0xe8dcc0), 4.8, 0.98, 13.2, false); sign(GDW + 0.12, 2.35, 12.6, 'Campeonato de Guildas', 'inscrições aqui', Math.PI / 2, 2.2); plant(W - 0.9, D - 0.9); plant(W * 0.4, D - 0.7);
-      /* segundo andar: galeria de tábuas nas paredes norte e oeste, corrimão, as vinte portas e a escada */
+      /* 12/11 (Erling: "não consigo subir a escada e ver os quartos"): o segundo andar é de verdade. A escada sobe, a galeria corre pelas paredes norte e oeste,
+         e atrás dela ficam os vinte quartos, abertos para a galeria (porta aberta), cada um com cama, baú e vela. floorY/free (no fim do arquivo) cuidam da altura. */
       const GY = H + 0.05, GD = 2.3, rail = (x0: number, z0: number, x1: number, z1: number) => { const L = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(-(z1 - z0), x1 - x0); add(B(L, 0.09, 0.09), dk, (x0 + x1) / 2, GY + 1.0, (z0 + z1) / 2, false, ry); for (let k = 0; k <= Math.floor(L / 0.9); k++) { const t = k / Math.max(1, Math.floor(L / 0.9)); add(B(0.07, 1.0, 0.07), dk, x0 + (x1 - x0) * t, GY + 0.5, z0 + (z1 - z0) * t, false); } };
-      add(B(W, 0.14, GD), plank(0x6a4a2c), W / 2, GY, GD / 2); add(B(GD, 0.14, D - GD), plank(0x6a4a2c), GD / 2, GY, GD + (D - GD) / 2);
+      add(B(W + RD, 0.14, GD + RD), plank(0x6a4a2c), (W - RD) / 2, GY, (GD - RD) / 2); add(B(GD + RD, 0.14, D - GD), plank(0x6a4a2c), (GD - RD) / 2, GY, GD + (D - GD) / 2);
       add(B(W - GD, 0.3, 0.2), dk, GD + (W - GD) / 2, GY - 0.2, GD, false); add(B(0.2, 0.3, D - GD), dk, GD, GY - 0.2, GD + (D - GD) / 2, false);
       for (let x = GD + 3; x < W - 1; x += 4.2) { add(B(0.22, GY, 0.22), dk, x, GY / 2, GD, false); if (x < KX - 0.6 || x > KX + 0.6) solid(x, GD, 0.3); } for (let z = GD + 3.4; z < D - 0.5; z += 4.2) { add(B(0.22, GY, 0.22), dk, GD, GY / 2, z, false); solid(GD, z, 0.3); }
-      rail(GD + 1.6, GD, W - 0.2, GD); rail(GD, GD + 1.6, GD, D - 0.2);
-      const door = (x: number, z: number, ry: number, n: number) => { add(B(0.95, 1.95, 0.1), plank(0x5a3a22), x, GY + 1.05, z, true, ry); add(B(1.15, 0.12, 0.14), dk, x, GY + 2.08, z, false, ry); add(new THREE.SphereGeometry(0.05, 6, 5), std(0xe2c36a), x + (ry ? 0 : 0.32), GY + 1.0, z + (ry ? 0.32 : 0) + (ry ? 0 : 0.07), false); sign(x + (ry ? 0.08 : 0), GY + 2.45, z + (ry ? 0 : 0.08), String(n), '', ry, 0.5); };
-      for (let k = 0; k < 12; k++) door(1.9 + k * ((W - 3.2) / 11), 0.07, 0, k + 1); for (let k = 0; k < 8; k++) door(0.07, 3.6 + k * ((D - 5.0) / 7), Math.PI / 2, 13 + k);
-      { const n = 11, x0 = GD + 0.25, z0 = D * 0.62, rise = GY / n; for (let k = 0; k < n; k++) add(B(1.3, 0.12, 0.42), plank(0x6a4a2c), x0 + 0.65, rise * (k + 1) - 0.06, z0 - k * 0.42); add(B(0.1, 0.2, n * 0.42 + 0.4), dk, x0 + 1.32, GY / 2 + 0.6, z0 - (n - 1) * 0.21, false).rotation.x = Math.atan2(GY, n * 0.42); for (let k = 0; k < 4; k++) solid(x0 + 0.65, z0 - k * 1.3, 0.75); }
+      const SX0 = GD + 0.25, SX1 = SX0 + 1.3, SZB = D * 0.62 + 0.25, NS = 11, SZT = SZB - NS * 0.42; /* a escada: sobe para o norte e chega à galeria oeste */
+      rail(GD + 1.6, GD, W - 0.2, GD); rail(GD, GD, GD, SZT - 0.1); rail(GD, SZT + 1.5, GD, D - 0.2);
+      { const rise = GY / NS; for (let k = 0; k < NS; k++) add(B(1.3, 0.12, 0.42), plank(0x6a4a2c), SX0 + 0.65, rise * (k + 1) - 0.06, SZB - 0.21 - k * 0.42); const cr = add(B(0.1, 0.2, NS * 0.42 + 0.4), dk, SX1 + 0.02, GY / 2 + 0.6, (SZB + SZT) / 2, false); cr.rotation.x = Math.atan2(GY, NS * 0.42); add(B(1.5, 0.14, 1.4), plank(0x6a4a2c), SX0 + 0.5, GY, SZT + 0.7); }
+      /* os quartos: 12 no norte (atrás de z = 0) e 8 no oeste (atrás de x = 0) */
+      const bedM = new THREE.MeshToonMaterial({ color: 0xe8dcc8 }), blanket = [0x8a2a2a, 0x2a4a8a, 0x3a6a3a, 0x8a6a2a], partX: number[] = [], partZ: number[] = [];
+      const room = (cx0: number, cz0: number, north: boolean, w: number, n: number) => { const ry = north ? 0 : Math.PI / 2, P = (lx: number, lz: number): [number, number] => north ? [cx0 + lx, cz0 + lz] : [cx0 + lz, cz0 - lx]; /* lx ao longo da galeria, lz para o fundo (negativo) */
+        const [bx, bz] = P(-w / 2 + 0.75, -RD + 1.25); add(B(north ? 1.0 : 2.0, 0.34, north ? 2.0 : 1.0), plank(0x6a4a2c), bx, GY + 0.24, bz); add(B(north ? 0.94 : 1.9, 0.14, north ? 1.9 : 0.94), bedM, bx, GY + 0.48, bz, false); const [qx, qz] = P(-w / 2 + 0.75, -RD + 1.6); add(B(north ? 0.96 : 1.2, 0.05, north ? 1.2 : 0.96), new THREE.MeshToonMaterial({ color: blanket[n % 4] }), qx, GY + 0.57, qz, false);
+        const [hx, hz] = P(-w / 2 + 0.75, -RD + 0.22); add(B(north ? 1.0 : 0.1, 0.9, north ? 0.1 : 1.0), dk, hx, GY + 0.6, hz, false);
+        const [tx, tz] = P(w / 2 - 0.55, -RD + 0.5); add(B(0.6, 0.45, 0.45), plank(0x5a3a22), tx, GY + 0.3, tz, true, ry); add(B(0.64, 0.06, 0.49), std(0xc8963a), tx, GY + 0.55, tz, false, ry);
+        add(new THREE.CylinderGeometry(0.04, 0.05, 0.18, 6), std(0xe8dcc0), tx, GY + 0.68, tz, false); add(new THREE.SphereGeometry(0.05, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffd27a }), tx, GY + 0.82, tz, false);
+        const [wx, wz] = P(0, -RD + 0.03); const wn = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 1.0), new THREE.MeshBasicMaterial({ color: 0x9ab8e0 })); wn.position.set(wx, GY + 1.75, wz); wn.rotation.y = ry; g.add(wn); add(B(north ? 0.96 : 0.08, 0.08, north ? 0.08 : 0.96), dk, wx, GY + 1.75, wz, false); add(B(north ? 0.08 : 0.08, 1.1, 0.08), dk, wx, GY + 1.75, wz, false);
+        /* a frente: dois esteios, a verga com o número, e a porta aberta para dentro */
+        for (const s of [-1, 1]) { const [px, pz] = P(s * 0.6, 0); add(B(0.14, 2.3, 0.14), dk, px, GY + 1.15, pz, false); } const [lx2, lz2] = P(0, 0); add(B(north ? 1.34 : 0.14, 0.14, north ? 0.14 : 1.34), dk, lx2, GY + 2.3, lz2, false); sign(lx2 + (north ? 0 : 0.09), GY + 2.62, lz2 + (north ? 0.09 : 0), String(n), '', ry, 0.5);
+        const [ox, oz] = P(0.62, -0.5); add(B(north ? 0.08 : 0.95, 1.95, north ? 0.95 : 0.08), plank(0x5a3a22), ox, GY + 1.05, oz);
+        /* a parede da frente, dos dois lados da porta, só até a cintura (para ver o quarto) */
+        for (const s of [-1, 1]) { const ww = w / 2 - 0.67, [fx, fz] = P(s * (0.67 + ww / 2), 0); add(B(north ? ww : 0.12, 1.0, north ? 0.12 : ww), plank(0x7a5532), fx, GY + 0.57, fz, false); } };
+      { const n = 12, w = W / n; for (let k = 0; k < n; k++) { room((k + 0.5) * w, 0, true, w, k + 1); if (k) { partX.push(k * w); add(B(0.12, H2 - 0.2, RD), wm, k * w, GY + (H2 - 0.2) / 2, -RD / 2, false); } } }
+      { const n = 8, z0 = GD + 0.2, w = (D - z0) / n; for (let k = 0; k < n; k++) { room(0, z0 + (k + 0.5) * w, false, w, 13 + k); partZ.push(z0 + k * w); add(B(RD, H2 - 0.2, 0.12), wm, -RD / 2, GY + (H2 - 0.2) / 2, z0 + k * w, false); } }
+      upper = { GY, GD, RD, SX0, SX1, SZB, SZT, partX, partZ, level: 0 };
+      /* enfeites nas paredes do térreo e do andar de cima (Erling: "não tem enfeites nas paredes") */
+      for (const [m, x, ry2] of [['banner_patternA_red', 6.5, 0], ['sword_shield', 9.6, 0], ['banner_patternB_yellow', 12.7, 0], ['sword_shield_gold', 15.8, 0], ['banner_patternC_green', 18.0, 0]] as [string, number, number][]) kitPut(g, 'masmorra/' + m, x, 1.25, 0.2, ry2, 0.7);
+      for (const [m, z] of [['banner_shield_red', 4.6], ['sword_shield', 7.4], ['banner_shield_blue', 12.6], ['shelf_small_candles', 14.6]] as [string, number][]) kitPut(g, 'masmorra/' + m, 0.2, 1.25, z, Math.PI / 2, 0.7);
+      { const antler = (x: number, y: number, z: number, ry2: number) => { const pl = add(B(0.5, 0.6, 0.06), plank(0x4a3220), x, y, z, false, ry2); void pl; for (const s of [-1, 1]) { const a = add(new THREE.ConeGeometry(0.05, 0.6, 5), std(0xe8dcc0), x + (ry2 ? 0.08 : s * 0.22), y + 0.35, z + (ry2 ? s * 0.22 : 0.08), false); a.rotation.z = ry2 ? 0 : -s * 0.5; a.rotation.x = ry2 ? s * 0.5 : 0; } }; antler(4.2, 2.6, 0.18, 0); antler(20.5, 2.6, 0.18, 0); antler(0.18, 2.6, 10, Math.PI / 2); }
       flame(GD + 0.3, GY + 1.6, 0.4, 0.6); flame(W * 0.5, GY + 1.6, 0.4, 0.6); flame(W - 1.0, GY + 1.6, 0.4, 0.6); flame(0.4, GY + 1.6, D * 0.6, 0.6);
       light(W * 0.4, 2.6, D * 0.55, 0xffb060, 70, 26); light(W - 3.5, 2.4, 3.0, 0xff9a50, 40, 12);
     } else {
@@ -493,6 +513,15 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
   }
   /* móveis bloqueiam só o miolo (regra de ouro: mobilidade acima da física); squeeze = espremer-se entre eles quando travou */
   const free = (x: number, z: number, squeeze = false) => {
+    if (upper) { const U = upper, inStair = x > U.SX0 - 0.1 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZB + 0.3;
+      /* lá em cima: só a galeria, os quartos e a escada; as divisórias dos quartos seguram */
+      if (U.level === 1) { if (inStair) return true; if (x > U.SX0 - 0.4 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZT + 1.4) return true;
+        const north = z < U.GD - 0.25 && z > -U.RD + 0.4 && x > -U.RD + 0.4 && x < W - 0.4, west = x < U.GD - 0.25 && x > -U.RD + 0.4 && z > -U.RD + 0.4 && z < D - 0.4; if (!north && !west) return false;
+        if (z < 0.15 && x > 0) { if (z > -0.2) { const w = W / 12, lx = ((x % w) + w) % w - w / 2; if (Math.abs(lx) > 0.5) return false; } for (const px of U.partX) if (Math.abs(x - px) < 0.25) return false; }
+        if (x < 0.15 && z > U.GD) { if (x > -0.2) { const z0 = U.GD + 0.2, w = (D - z0) / 8, lz = (((z - z0) % w) + w) % w - w / 2; if (Math.abs(lz) > 0.5) return false; } for (const pz of U.partZ) if (Math.abs(z - pz) < 0.25) return false; }
+        if (x < 0.15 && z < 0.15) return false; return true; }
+      /* no térreo, a escada só se pega pelo pé dela */
+      if (inStair && z < U.SZB - 0.9 && !U.onStair) return false; }
     if (ELF) { const dx = x - ECX, dz = z - ECZ, dd = Math.hypot(dx, dz); if (dd > ER - 0.45) { /* só a porta (sul) é passagem; o lado de bambu tem corrimão */ if (!(Math.abs(Math.atan2(dz, dx) - Math.PI / 2) < 0.3 && dd < ER + 0.3)) return false; }
       if (!squeeze) for (const [cx2, cz2, rad] of cols) if (Math.hypot(x - cx2, z - cz2) < rad * 0.7) return false; return true; }
     if (x < 0.45 || x > W - 0.45 || z < 0.45) return false;
@@ -501,6 +530,9 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     return true;
   };
   const flicker = (t: number) => { for (const o of spin) o.rotation.y = t * 0.35; for (const l of lights) l.l.intensity = l.base * (0.9 + 0.1 * Math.sin(t * 9 + l.ph) + 0.05 * Math.sin(t * 23 + l.ph * 2)); };
-  const floorY = stage ? (x: number, z: number) => (x > stage!.x0 && x < stage!.x1 && z > stage!.z0 && z < stage!.z1 ? stage!.y : 0) : undefined;
+  const floorY = upper ? (x: number, z: number) => { const U = upper!; /* a escada leva ao segundo andar: a altura acompanha os degraus, e o andar em que o herói está fica guardado */
+      if (x > U.SX0 - 0.1 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZB + 0.3) { const t = Math.max(0, Math.min(1, (U.SZB - z) / (U.SZB - U.SZT))); U.onStair = true; U.level = t > 0.55 ? 1 : 0; return U.GY * t; }
+      U.onStair = false; if (U.level === 1) return U.GY + 0.07; return stage && x > stage.x0 && x < stage.x1 && z > stage.z0 && z < stage.z1 ? stage.y : 0; }
+    : stage ? (x: number, z: number) => (x > stage!.x0 && x < stage!.x1 && z > stage!.z0 && z < stage!.z1 ? stage!.y : 0) : undefined;
   return { group: g, W, D, colliders: cols, free, flicker, seats, reserveAt, reserveSign, reserveLabel, floorY, shop: variant === 5 || (variant >= 10 && variant <= 14) || variant === 31, exitZ: D + 0.9 };
 }

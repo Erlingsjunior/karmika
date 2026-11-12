@@ -10,6 +10,7 @@ export function houseDoor(variant: number, Wm: number, Dm: number): { x: number;
   if (variant === 1) return { x: cx - bw * 0.25, z: front + 0.04, y: 0, w: 1.25, h: 2.2 };
   if (variant === 2) return { x: cx + bw * 0.2, z: cz + bd * 0.18 + bd * 0.29 + 0.04, y: 0.35, w: 1.25, h: 2.2 };
   if (variant === 3) return { x: cx, z: cz + Math.min(bd, 4.2) / 2 + 0.02, y: 0, w: 1.2, h: 2.1 };
+  if (variant === 40) return { x: cx, z: front + 0.06, y: 0, w: 2.1, h: 2.7 }; if (variant === 41) return { x: cx, z: front + 0.75, y: 0, w: 2.4, h: 3.1 };
   if (variant === 5) return { x: cx - bw * 0.1, z: front + 0.04, y: 0, w: 1.7, h: 2.4 };
   return { x: cx - bw * 0.15, z: front + 0.04, y: 0, w: 1.5, h: 2.3 };
 }
@@ -157,6 +158,40 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
     chimney(g, cx + bw * 0.3, cz + bd * 0.1, 2.4 + 0.9, 1.8, chim);
     barrels(g, cx - bw * 0.1, fz + 0.9, c, 1);
     lantern = new THREE.Vector3(cx + bw * 0.2 + 0.9, 2.0, fz + 0.8);
+  } else if (variant === 40) { /* 12/11 A ESTALAGEM DE KARMIKA (Erling: "a porta não aparece direito, precisa aumentar a parede, o pé-direito, para ver mais fachada"):
+       dois andares de verdade. Térreo de pedra com 3,6 m, andar de cima em enxaimel com 3,1 m, beiral curto: a fachada inteira fica à vista, com porta larga no meio */
+    volume(g, cx, cz, bw, bd, 0, 3.6, 0.01, 0x7a766e, 0x000000, 'stone', true, 0.05).children.pop();
+    volume(g, cx, cz, bw + 0.5, bd + 0.5, 3.6, 3.1, 2.7, wallC, roofC, 'plaster', true, 0.28);
+    const jet = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.7, 0.22, bd + 0.7), timberM()); jet.position.set(cx, 3.6, cz); ink(jet, 0.03); g.add(jet);
+    const f2 = front + 0.29;
+    door(g, cx, 0, front + 0.04, 'z', c, 2.1, 2.7);
+    for (const s of [-1, 1]) { windowAt(g, cx + s * bw * 0.2, 1.75, front + 0.04, 'z', false, c, c.windows); windowAt(g, cx + s * bw * 0.38, 1.75, front + 0.04, 'z', false, c, c.windows); }
+    for (let k = 0; k < 6; k++) windowAt(g, cx - bw * 0.42 + k * bw * 0.168, 5.2, f2, 'z', false, c, c.windows);
+    for (const sz of [-0.25, 0.25]) { windowAt(g, cx + bw / 2 + 0.03, 1.75, cz + bd * sz, 'x', false, c, c.windows); windowAt(g, cx + bw / 2 + 0.28, 5.2, cz + bd * sz, 'x', false, c, c.windows); }
+    /* alpendre da porta: dois esteios e um telhadinho, sem cobrir as janelas */
+    for (const s of [-1, 1]) { const pz = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 3.1, 6), timberM()); pz.position.set(cx + s * 1.7, 1.55, front + 1.5); pz.castShadow = true; g.add(pz); }
+    const aw = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 1.9), std(0xffffff, { map: shingleTex0(roofC) })); aw.position.set(cx, 3.25, front + 0.85); aw.rotation.x = 0.2; ink(aw, 0.03); g.add(aw);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 1.5), timberM()); arm.position.set(cx + bw * 0.3, 3.3, front + 0.75); g.add(arm);
+    const sg = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.95, 0.08), std(0xffffff, { map: signTex('ESTALAGEM', '🛏') })); ink(sg, 0.02); sg.position.set(cx + bw * 0.3, 2.65, front + 1.35); g.add(sg);
+    chimney(g, cx - bw * 0.36, cz - bd * 0.15, 6.7 + 1.6, 2.2, chim); chimney(g, cx + bw * 0.36, cz - bd * 0.15, 6.7 + 1.6, 2.2, chim);
+    barrels(g, cx - bw * 0.3, front + 0.8, c, 3);
+    lantern = new THREE.Vector3(cx + 1.7, 2.6, front + 1.6);
+  } else if (variant === 41) { /* 12/11 O SALÃO DAS GUILDAS DE KARMIKA (Erling: "uma construção dessa, comum, com um salão tão grande dentro? aumenta essa construção"):
+       salão comprido de pedra com 5,4 m de parede e telhado de ardósia, torre de entrada no meio da fachada, torreões nos cantos e estandartes */
+    volume(g, cx, cz, bw, bd, 0, 5.4, 3.0, wallC, roofC, 'stone', true, 0.3);
+    volume(g, cx, front - 0.9, 5.0, 3.2, 0, 8.2, 2.6, 0x77736b, roofC, 'stone', false, 0.3);
+    door(g, cx, 0, front + 0.72, 'z', c, 2.4, 3.1);
+    windowAt(g, cx, 5.6, front + 0.72, 'z', false, c, c.windows);
+    for (const s of [-1, 1]) for (const k of [0.2, 0.34]) { windowAt(g, cx + s * bw * k, 1.9, front + 0.04, 'z', false, c, c.windows); windowAt(g, cx + s * bw * k, 3.9, front + 0.04, 'z', false, c, c.windows); }
+    for (const sz of [-0.25, 0.25]) { windowAt(g, cx + bw / 2 + 0.03, 1.9, cz + bd * sz, 'x', false, c, c.windows); windowAt(g, cx + bw / 2 + 0.03, 3.9, cz + bd * sz, 'x', false, c, c.windows); }
+    for (const s of [-1, 1]) { const tr = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.15, 7.0, 10), std(0xffffff, { map: stoneTex(0x77736b) })); tr.position.set(cx + s * (bw / 2 - 0.2), 3.5, front - 0.2); ink(tr, 0.04); tr.castShadow = true; g.add(tr);
+      const cn = new THREE.Mesh(new THREE.ConeGeometry(1.35, 2.4, 10), std(0xffffff, { map: shingleTex0(roofC) })); cn.position.set(cx + s * (bw / 2 - 0.2), 8.2, front - 0.2); ink(cn, 0.03); g.add(cn);
+      /* estandartes ao lado da porta */
+      const bn = new THREE.Mesh(new THREE.BoxGeometry(0.9, 3.2, 0.05), std(s < 0 ? 0x2a4a8a : 0x8a2a2a)); bn.position.set(cx + s * 2.0, 5.0, front + 0.76); ink(bn, 0.02); g.add(bn);
+      const bg = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.06), std(0xe2c36a)); bg.position.set(cx + s * 2.0, 5.4, front + 0.79); bg.rotation.z = Math.PI / 4; g.add(bg); }
+    const sg = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.9, 0.08), std(0xffffff, { map: signTex('GUILDAS', '⚜') })); ink(sg, 0.02); sg.position.set(cx, 3.75, front + 0.78); g.add(sg);
+    chimney(g, cx - bw * 0.3, cz - bd * 0.2, 5.4 + 1.8, 2.2, chim); chimney(g, cx + bw * 0.3, cz - bd * 0.2, 5.4 + 1.8, 2.2, chim);
+    lantern = new THREE.Vector3(cx + 1.8, 2.8, front + 1.2);
   } else if (variant === 3) { // torre / atalaia: pedra alta, sacada de madeira, telhado alto e escada lateral
     const tw = Math.min(bw, 4.2), td = Math.min(bd, 4.2);
     volume(g, cx, cz, tw, td, 0, 5.2, 3.0, 0x6a665e, 0x4a4a58, 'stone', true, 0.5);
@@ -218,7 +253,7 @@ export function buildHouse(variant: number, Wm: number, Dm: number, wallC: numbe
   /* 11/11 (Erling: "batente da porta passando do telhado, precisa aumentar a parede da casa para caber a porta"; "a escala construção x humano parece pequena"):
      a casa térrea tinha 2,5 m de parede com porta de 2,2 m: o beiral descia em cima do batente. A parede ganhou 45 cm (2,95 m) e tudo o que fica acima dela subiu junto. O sobrado (escada de fora) fica como é. */
   /* a casa em L tem a porta 35 cm acima do piso (varanda com degraus): o batente chega a 2,71 m e a parede tinha 2,4 m. Ela sobe mais (75 cm) */
-  if (variant !== 1 && variant !== 3) raiseWalls(g, chim, lantern, variant === 2 ? 1.25 : 0.8); /* 11/11, 15h30: 45 e 75 cm não bastaram — o beiral desce meio metro abaixo do topo da parede. Agora sobra folga entre a verga da porta e o beiral */
+  if (variant !== 1 && variant !== 3 && variant !== 40 && variant !== 41) raiseWalls(g, chim, lantern, variant === 2 ? 1.25 : 0.8); /* 11/11, 15h30: 45 e 75 cm não bastaram — o beiral desce meio metro abaixo do topo da parede. Agora sobra folga entre a verga da porta e o beiral */
   return { group: g, chimneys: chim, lantern };
 }
 

@@ -71,15 +71,15 @@ export function buildTemple(Wm: number, Dm: number, wallC: number, roofC: number
   let k = Math.abs(Math.round(seed)) % 4; const nextT = () => TEMAS[(k++) % 4];
   const put = (sz: Tam, x: number, y: number, z: number, ry: number, sc = 1) => { const v = vitral(nextT(), sz, stone, mode, sc); v.position.set(x, y, z); v.rotation.y = ry; g.add(v); };
   // rosácea no frontão, bem acima da porta
-  put('g', dx, wallH + 0.35 + 0.15, front + 0.03, 0, Math.min(0.85, nw / 7));
+  put('g', dx, wallH + 0.35 + 0.05, front + 0.03, 0, Math.min(1.2, nw / 5)); /* 12/11 (Erling: "janelas muito pequenas, precisa valorizar"): rosácea e vitrais maiores */
   // lado leste (+x): uma janela entre cada par de contrafortes
   const sideX = cx + 1.6 + nw / 2 + 0.01;
-  for (let i = 0; i < 2; i++) put('m', sideX, 1.5, 1.2 + (i + 0.5) * (bd - 2.4) / 2, Math.PI / 2, 0.95);
+  for (let i = 0; i < 2; i++) put('m', sideX, 1.25, 1.2 + (i + 0.5) * (bd - 2.4) / 2, Math.PI / 2, 1.55);
   // lado oeste (-x), na parte da nave que a torre não cobre
   const westX = cx + 1.6 - nw / 2 - 0.01, freeZ = tz - tw / 2 - 1.2;
-  if (freeZ > 2.4) put('m', westX, 1.5, freeZ / 2 + 0.3, -Math.PI / 2, 0.95);
+  if (freeZ > 2.4) put('m', westX, 1.25, freeZ / 2 + 0.3, -Math.PI / 2, 1.55);
   // fundos (-z): um médio no meio e dois pequenos
-  put('m', cx + 1.6, 1.6, 0.18, Math.PI, 1);
+  put('m', cx + 1.6, 1.4, 0.18, Math.PI, 1.6);
   if (nw > 5.2) for (const s2 of [-1, 1]) put('p', cx + 1.6 + s2 * nw * 0.3, 2.0, 0.18, Math.PI, 1);
   // torre: pequenos na frente e no lado
   put('p', tx, tH * 0.42, tz + tw / 2 + 0.01, 0, 0.9); put('p', tx - tw / 2 - 0.01, tH * 0.42, tz, -Math.PI / 2, 0.9);
