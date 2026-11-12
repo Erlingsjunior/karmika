@@ -50,7 +50,12 @@ export function createShaderGate(renderer: THREE.WebGLRenderer, scene: THREE.Sce
   /* ?portao=1 liga o portão mesmo sem a extensão (teste do mecanismo: adiar, compilar, mostrar); ?portao=0 desliga de vez */
   const force = /[?&]portao=1/.test(location.search), off = /[?&]portao=0/.test(location.search);
   /* 12/11: sem a extensão (ou com ?portao=0) o portão não segura nada, mas o MAPA continua anotando: dá para comparar com e sem portão na mesma placa */
-  const livre = off || (!force && !renderer.extensions.has('KHR_parallel_shader_compile'));
+  /* 12/11, 11:10 — O PORTÃO FICA DESLIGADO POR PADRÃO. As duas gravações do Olho do Claude no PC do Erling mostraram que ele atrapalhava mais do que ajudava:
+     em 5 minutos, 850 mil desenhos adiados e levas que esperavam 30 s (peças invisíveis esse tempo todo), e as paradas de 2 a 3,5 s CONTINUAVAM.
+     O cronômetro das chamadas mostrou por quê: a parada não é a compilação que o portão adianta. No Windows a placa termina de montar o programa no
+     PRIMEIRO desenho com ele, do lado dela, e o jogo fica esperando em qualquer comando seguinte (uniformMatrix4fv, drawArrays). Adiar o desenho não tira
+     essa espera; só reduzir o peso e a quantidade dos programas tira. O mapa (🧭 🐢 🔬) continua ligado. ?portao=1 religa o portão para comparar. */
+  void off; const livre = !force;
   const ready = new WeakMap<THREE.Material, Set<string>>(), pend = new Map<string, { o: THREE.Object3D; m: THREE.Material; v: string }>();
   /** o programa de um material muda com o tipo do objeto que o usa: esqueleto, instâncias, cor por vértice, sombra recebida… */
   const variant = (o: THREE.Object3D, g: THREE.BufferGeometry) => { const m = o as THREE.Mesh & { isSkinnedMesh?: boolean; isInstancedMesh?: boolean; isBatchedMesh?: boolean; instanceColor?: unknown; morphTargetInfluences?: unknown[] };
@@ -102,5 +107,5 @@ export function createShaderGate(renderer: THREE.WebGLRenderer, scene: THREE.Sce
     const fim = () => { for (const q of L) { let set = ready.get(q.m); if (!set) ready.set(q.m, set = new Set()); set.add(q.v); done++; const cp = PR.get(q.m).currentProgram; if (cp) chk.set(q.m, cp); } anota(); busy = false; };
     p.then(fim, fim); }
   let err = '', espera = 0;
-  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, mapaGl, stats: () => `${livre ? (off ? 'PORTÃO DESLIGADO (?portao=0) · ' : 'sem compilação paralela nesta placa · ') : ''}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · maior espera de uma leva ${Math.round(espera)} ms · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
+  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, mapaGl, stats: () => `${livre ? 'portão desligado (padrão desde 12/11; ?portao=1 liga) · ' : 'PORTÃO LIGADO (?portao=1) · '}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · maior espera de uma leva ${Math.round(espera)} ms · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
 }
