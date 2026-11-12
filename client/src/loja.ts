@@ -4,7 +4,7 @@
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
 
-type Prod = { id: string; kind: 'prem' | 'fac' | 'mount'; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
+type Prod = { id: string; kind: 'prem' | 'fac' | 'mount' | 'eng'; /** engenhocas: os itens que chegam no correio */ items?: string[]; icon?: string; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
 const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const brl = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
 export const PREM_PLANS: Prod[] = [
@@ -17,6 +17,19 @@ export const FAC_PRODS: Prod[] = [
   { id: 'shield', kind: 'fac', name: 'Escudo', brl: 14.9, slots: ['shield'], desc: 'O brasão pintado na frente toda.' },
   { id: 'relic', kind: 'fac', name: 'Relíquia e sigilo', brl: 24.9, slots: ['relic'], desc: 'Acende o sigilo do seu lado aos seus pés.' },
   { id: 'all', kind: 'fac', name: 'Juramento Completo', brl: 39.9, was: 54.7, slots: ['cape', 'shield', 'relic'], tag: '−27%', desc: 'Manto, escudo e relíquia, com a aura.' },
+];
+/* 12/11 (Erling: "calcule o preço das engenhocas para comprar com cash e coloque na loja; os pacotes têm de valer a pena"):
+   a régua é o Premium (30 dias = R$ 19,90). Uma engenhoca é um conforto mais estreito que o Premium, então custa a metade: 15 dias R$ 9,90;
+   30 dias R$ 14,90 (o segundo meio mês sai pela metade). O trio tem 16% de desconto. Os pacotes usam estes preços como "soma das partes". */
+export const ENG_PRODS: Prod[] = [
+  { id: 'drone_cura_d15', kind: 'eng', icon: '🛸', items: ['drone_cura_d15'], name: 'Drone de Cura · 15 dias', brl: 9.9, days: 15, desc: 'Paira no ombro e borrifa vapor medicinal: vida de volta a cada poucos segundos.' },
+  { id: 'drone_cura_d30', kind: 'eng', icon: '🛸', items: ['drone_cura_d30'], name: 'Drone de Cura · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo drone, com corda para o mês inteiro.' },
+  { id: 'escudo_auto_d15', kind: 'eng', icon: '🛡', items: ['escudo_auto_d15'], name: 'Robô de Defesa · 15 dias', brl: 9.9, days: 15, desc: 'O Escudo Automatizado: um disco de latão gira à sua volta e segura um golpe inteiro de tempos em tempos.' },
+  { id: 'escudo_auto_d30', kind: 'eng', icon: '🛡', items: ['escudo_auto_d30'], name: 'Robô de Defesa · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo escudo, com corda para o mês inteiro.' },
+  { id: 'pulseira_choque_d15', kind: 'eng', icon: '📿', items: ['pulseira_choque_d15'], name: 'Bracelete de Choque · 15 dias', brl: 9.9, days: 15, desc: 'A Pulseira de Choque: quem te acerta de perto leva a descarga de volta e trava por um instante.' },
+  { id: 'pulseira_choque_d30', kind: 'eng', icon: '📿', items: ['pulseira_choque_d30'], name: 'Bracelete de Choque · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo bracelete, com corda para o mês inteiro.' },
+  { id: 'trio_d15', kind: 'eng', icon: '🧰', items: ['drone_cura_d15', 'escudo_auto_d15', 'pulseira_choque_d15'], name: 'Trio da Companhia · 15 dias', brl: 24.9, was: 29.7, days: 15, tag: '−16%', desc: 'Drone, robô de defesa e bracelete, os três por 15 dias.' },
+  { id: 'trio_d30', kind: 'eng', icon: '🧰', items: ['drone_cura_d30', 'escudo_auto_d30', 'pulseira_choque_d30'], name: 'Trio da Companhia · 30 dias', brl: 37.9, was: 44.7, days: 30, tag: 'melhor preço', desc: 'Drone, robô de defesa e bracelete, os três por 30 dias.' },
 ];
 const PREM_PERKS: [string, string][] = [
   ['📜', '8 missões ao mesmo tempo no diário (free: 4)'],
@@ -50,7 +63,7 @@ export function createLoja(ctx: {
   owns: (uniq: string) => boolean; mounts: () => ShopMount[]; pets: () => (ShopMount & { boss?: boolean })[]; preview: (m: ShopMount, price: string, buy: () => void) => void; thumb: (id: string, cb: (url: string) => void) => void; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
-  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' | 'pets' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
+  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' | 'pets' | 'eng' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
   const until = ctx.until;
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
@@ -83,12 +96,16 @@ export function createLoja(ctx: {
         return `<div class="lj-mc" title="${esc2(m.blurb)}"><button class="lj-eyeb" data-view="${m.id}" title="Ver em 3D">👁</button><div class="lj-mart" data-view="${m.id}" style="background:radial-gradient(circle at 50% 38%, ${hx(m.col)}99, #1a120a 70%);box-shadow:0 0 14px ${hx(m.col)}44"><img data-th="${m.id}" alt="" hidden><span>${m.icon}</span></div>
           <span class="lj-rar">${m.kind === 'pet' ? (m.boss ? 'FILHOTE DE CHEFE' : 'PET') : 'MONTARIA'}${m.lvl ? ` · nv ${m.lvl}` : ''}</span><b>${m.name}</b><div class="lj-mbuy"><span>${brl(p.brl)}</span><button data-buy="${m.id}">Comprar</button></div></div>`; }).join('')}</div>`).join('')}</div>`;
   }
+  function engCard() {
+    return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">⚙</div><div><h3>Engenhocas da Companhia de Latão</h3><p>As <b>mesmas</b> engenhocas que a Caravana de Latão vende por ouro a cada turno, só que com corda para <b>15 ou 30 dias</b> (Mk II). Quem junta ouro tem igual: o Shop só poupa a ida e a volta até a caravana. Chegam no correio; o relógio só começa quando você usa. Um de cada tipo por vez.</p></div></div>
+      <div class="lj-plans lj-eng">${ENG_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<span class="lj-engi">${p.icon}</span><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
+  }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
       Quando o Pix ligar, é só trocar para false. */
   const BETA_FREE = true;
   function checkout() {
     if (!cart) return '';
-    const f = side, what = cart.kind === 'mount' ? `${cart.name} (montaria)` : cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
+    const f = side, what = cart.kind === 'eng' ? cart.name : cart.kind === 'mount' ? `${cart.name} (montaria)` : cart.kind === 'prem' ? `Selo de Marghar · ${cart.name} de Premium` : cart.id === 'all' ? `${cart.name} · ${FAC[f].short}` : NAMES[f][cart.slots![0]];
     return `<div class="lj-co"><div class="lj-copn"><h3>${paid ? '✦ Pagamento aprovado' : 'Pagar com Pix'}</h3>
       ${paid && ctx.inMenu() ? `<p>${what} já é seu. Está no <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio): escolha lá para qual personagem mandar, ou dê de presente a um amigo.</p><button data-co-ok>Fechar</button>` : paid ? `<p>${what} já é seu. Chega na caixa de correio de <b>${esc2(ctx.chars().find((c) => c.i === (recip ?? -1))?.name ?? ctx.chars().find((c) => c.active)?.name ?? 'seu personagem')}</b>: retire em qualquer povoado.${cart.kind === 'prem' ? ' Use o selo para ativar o Premium da conta, guarde, ou venda a outro jogador.' : ''}</p><button data-co-ok>Fechar</button>`
       : `<div class="lj-sum"><span>${what}</span><b>${brl(cart.brl)}</b></div>${ctx.inMenu() ? '<p class="lj-warn">Comprando pelo menu: a compra vai para o <b>inventário da conta</b> (Amigos e Guilda → 📮 Correio). De lá você manda para qualquer personagem seu, ou de presente para um amigo.</p>' : ''}<div class="lj-qr"><svg viewBox="0 0 21 21" shape-rendering="crispEdges">${qr()}</svg><small>QR Code Pix</small></div>
@@ -105,8 +122,8 @@ export function createLoja(ctx: {
     /* a rolagem fica onde estava quando a aba é a mesma (comprar, voltar, trocar de lado) */
     const sc = tab === lastTab ? (el.querySelector('.lj-body') as HTMLElement | null)?.scrollTop ?? 0 : 0; lastTab = tab;
     el.innerHTML = `<div class="pn ljpn ${tab === 'mont' || tab === 'pets' ? 'mont' : ''}"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
-      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
-      <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
+      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
+      <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'eng' ? engCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex'; { const b = el.querySelector('.lj-body') as HTMLElement | null; if (b && sc) b.scrollTop = sc; }
     if (tab === 'mont' || tab === 'pets') el.querySelectorAll<HTMLImageElement>('img[data-th]').forEach((im) => ctx.thumb(im.dataset.th!, (u) => { im.src = u; im.hidden = false; (im.nextElementSibling as HTMLElement | null)?.remove(); }));
   }
@@ -115,7 +132,8 @@ export function createLoja(ctx: {
     /* 26/10 (Erling): o Premium vem como Selo de Marghar no correio do personagem que o jogador escolher; ele usa, guarda ou vende
        (e o ouro da venda fica com esse personagem). As peças com brasão também vão para quem ele escolher */
     const to = recip ?? ctx.chars().find((c) => c.active)?.i ?? 0, toName = ctx.chars().find((c) => c.i === to)?.name ?? 'você';
-    if (cart.kind === 'mount') { const c = cart; ctx.deliver(`${c.name} · Estábulo do Domador`, `Obrigado pela compra! ${c.name} chegou${c.id.startsWith('mount_') ? ' com sela e manta' : ''}. Use o item para levar ao Estábulo (X) e monte com Z. ${c.desc}`, [{ seal: c.id }], to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
+    if (cart.kind === 'eng') { const c = cart; ctx.deliver(`${c.name} · Companhia de Latão`, `Obrigado pela compra! ${c.desc} O relógio só começa a contar quando você usar a engenhoca.`, c.items!.map((id) => ({ seal: id })), to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
+    else if (cart.kind === 'mount') { const c = cart; ctx.deliver(`${c.name} · Estábulo do Domador`, `Obrigado pela compra! ${c.name} chegou${c.id.startsWith('mount_') ? ' com sela e manta' : ''}. Use o item para levar ao Estábulo (X) e monte com Z. ${c.desc}`, [{ seal: c.id }], to); ctx.log(ctx.inMenu() ? `📮 ${c.name} no inventário da conta (Correio).` : `📮 ${c.name} a caminho da caixa de correio de ${toName}.`, '#e0b048'); }
     else if (cart.kind === 'prem') { const id = `seal_p${cart.days}`; ctx.deliver(`Selo de Marghar · ${cart.name}`, `Obrigado pela compra! Este selo guarda ${cart.name} de Premium. Use-o quando quiser (os dias somam e valem para a conta inteira, todos os seus personagens) ou venda a outro jogador no Quadro de Avisos ou pelo correio.`, [{ seal: id }], to); ctx.log(ctx.inMenu() ? `📮 Selo de Marghar (${cart.name}) no inventário da conta (Correio).` : `📮 Selo de Marghar (${cart.name}) a caminho da caixa de correio de ${toName}.`, '#c9a0ff'); }
     else { const f = side; ctx.deliver(cart.id === 'all' ? `${cart.name} · ${FAC[f].name}` : NAMES[f][cart.slots![0]], `As peças com o brasão de ${FAC[f].name}, como saíram da tecelagem. “${FAC[f].motto}.” Só veste quem jurou este lado, a partir do nível ${FAC_LVL}; qualquer um pode guardar ou vender.`, cart.slots!.map((sl) => ({ fac: f, slot: sl })), to);
       ctx.log(`📮 ${cart.slots!.length > 1 ? 'As peças' : 'A peça'} de ${FAC[f].name} a caminho da caixa de correio de ${toName}.`, f === 'fio' ? '#d9b45a' : '#e0303a'); }
@@ -123,10 +141,10 @@ export function createLoja(ctx: {
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
     if (t.closest('[data-lx]') || t === el) { api.close(); return; }
-    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont' | 'pets'; render(); return; }
+    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont' | 'pets' | 'eng'; render(); return; }
     const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
     const vw = (t.closest('[data-view]') as HTMLElement | null)?.dataset.view; if (vw) { const m = [...ctx.mounts(), ...ctx.pets()].find((q) => q.id === vw); if (m) { const p = mountProd(m); ctx.preview(m, brl(p.brl), () => { cart = p; paid = false; render(); }); } return; }
-    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ctx.mounts().map(mountProd), ...ctx.pets().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
+    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ENG_PRODS, ...ctx.mounts().map(mountProd), ...ctx.pets().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
     const tp = (t.closest('[data-to]') as HTMLElement | null)?.dataset.to; if (tp !== undefined) { recip = +tp; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
     if (t.closest('[data-co-sim]')) approve(); });

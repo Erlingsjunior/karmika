@@ -88,11 +88,18 @@ export const TIER: Record<string, { what: (t: number) => string }> = {
   escudo_auto: { what: (t) => `segura um golpe inteiro a cada ${[25, 20, 15][t]} s` },
   ajudante_obra: { what: (t) => `trabalha ${[1, 2, 4][t]} turno${t ? 's' : ''} na obra sozinho` },
 };
-export const tierOf = (id: string) => { if (/_k$/.test(id)) return 1; const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
-export const baseOf = (id: string) => id.replace(/_(2|3|k)$/, '');
+export const tierOf = (id: string) => { if (/_(k|d15|d30)$/.test(id)) return 1; const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
+export const baseOf = (id: string) => id.replace(/_(2|3|k|d15|d30)$/, '');
+/** 12/11: quantos dias dura a engenhoca do Shop (id terminado em _d15 ou _d30), ou 0 */
+export const diasDe = (id: string) => { const m = /_d(15|30)$/.exec(id); return m ? +m[1] : 0; };
 /** 03/11: as engenhocas do kit de começo (Mk II, 15 dias; não se vendem) */
 export const KIT_DAYS = 15;
 for (const b of TIMED) { const g0 = GADGETS[b]; for (let t = 0; t < 3; t++) { const id = t ? `${b}_${t + 1}` : b, turns = TURNS[t];
   GADGETS[id] = { ...g0, name: `${g0.name} Mk ${MK[t]}`, price: Math.round(g0.price * PRICE_K[t]), desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nMk ${MK[t]}: dura ${turns} turno${turns > 1 ? 's' : ''} (${turns === 1 ? '30 min' : turns / 2 + (turns === 2 ? ' hora' : ' horas')}) · ${TIER[b].what(t)}.` }; } }
 /* 03/11 (Erling: "um drone de vida e um robô de defesa nível 2 que dura 15 dias cada; pode usar um de cada vez ou os dois de uma vez"): o kit de começo */
+/* 12/11 (Erling: "calcule o preço das engenhocas para comprar com cash na loja e coloque elas na loja"): as três engenhocas de uso pessoal com corda para
+   15 ou 30 dias (Mk II, o mesmo do presente de começo). São as MESMAS que a Caravana vende por ouro a cada turno; o Shop só poupa a ida e a volta.
+   Não têm preço em ouro nem se revendem ao mercador. */
+export const ENG_SHOP = ['drone_cura', 'escudo_auto', 'pulseira_choque'] as const;
+for (const b of ENG_SHOP) for (const d of [15, 30]) { const g0 = GADGETS[b]; GADGETS[`${b}_d${d}`] = { ...g0, name: `${g0.name} Mk II · ${d} dias`, price: 0, desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nDo Shop: Mk II, dura ${d} dias a partir do uso (conta mesmo com o jogo fechado). Um de cada tipo por vez.` }; }
 for (const b of ['drone_cura', 'escudo_auto'] as const) { const g0 = GADGETS[b]; GADGETS[`${b}_k`] = { ...g0, name: `${g0.name} Mk II · Presente de Começo`, price: 0, desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nPresente de começo de jornada: Mk II, dura ${KIT_DAYS} dias (conta mesmo com o jogo fechado) · ${TIER[b].what(1)}. Dá para usar junto com o outro presente.` }; }

@@ -1,7 +1,7 @@
 import { seguraXp } from './sistemas/acesso-web';
 import { runeFxOf, type ROp } from './runas-classes';
 import { monMult, grupoPremio, KIT_BAL, d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
-import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
+import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS, diasDe } from './festim';
 import { G } from './genero';
 import { classLevelUp } from './celebrate';
 import * as THREE from 'three';
@@ -2412,7 +2412,7 @@ export function createGameplay(d: GameplayDeps) {
     packSentry(): string | null { const hp0 = d.getHero().root.position; let S = null as (typeof gad.sentries)[number] | null, bd = 3.2; for (const q of gad.sentries) { const dd = Math.hypot(q.x - hp0.x, q.z - hp0.z); if (dd < bd) { bd = dd; S = q; } } if (!S) return null; const left = Math.max(0, S.until - Date.now()); d.scene.remove(S.m); gad.sentries.splice(gad.sentries.indexOf(S), 1); saveSentries(); if (left > 5000) sentryLeftPush(S.id, left); for (let i = 0; i < 14; i++) pfx(S.x, d.world.heightAt(S.x, S.z) + 0.6, S.z, { vx: rnd(-1.5, 1.5), vy: rnd(0.5, 2), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0xffc060, a: 0.9 }); logMsg(`🤖 Bartolomeu dobra as pernas e entra na mochila. O relógio dele parou com ${fmtLeft(left)} de corda.`, '#e0b048'); return left > 5000 ? S.id : null; },
     /** usar uma engenhoca da Companhia (true = consumiu) */
     gadget(id: string): boolean { const hp = d.getHero().root.position, yaw = d.getHero().root.rotation.y, now2 = Date.now(), gy = d.world.heightAt(hp.x, hp.z);
-      const kitG = /_k$/.test(id), t = tierOf(id), b = baseOf(id), dur = kitG ? KIT_DAYS * 864e5 : TURNS[t] * TURN_S * 1000, tl = kitG ? `${KIT_DAYS} dias` : ['1 turno (30 min)', '2 turnos (1 hora)', '4 turnos (2 horas)'][t], mk = 'Mk ' + MK[t];
+      const dS = diasDe(id), kitG = /_k$/.test(id) || dS > 0, t = tierOf(id), b = baseOf(id), dur = dS ? dS * 864e5 : kitG ? KIT_DAYS * 864e5 : TURNS[t] * TURN_S * 1000, tl = dS ? `${dS} dias` : kitG ? `${KIT_DAYS} dias` : ['1 turno (30 min)', '2 turnos (1 hora)', '4 turnos (2 horas)'][t], mk = 'Mk ' + MK[t];
       /* 28/10 (Erling): um de cada por vez — um Drone de Cura, um Escudo, uma Bobina. O segundo não é gasto */
       if (b === 'drone_cura' && gad.heal > now2) { logMsg(`🛸 Você já tem um Drone de Cura voando (mais ${Math.ceil((gad.heal - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       if (b === 'escudo_auto' && gad.shield > now2) { logMsg(`🛡 Você já tem um Escudo Automatizado (mais ${Math.ceil((gad.shield - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
