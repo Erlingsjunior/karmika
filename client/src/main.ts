@@ -177,6 +177,7 @@ import { createReliquias } from './sistemas/reliquias';
 import { createCinemaVistas } from './sistemas/cinema-vistas';
 import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
 import { createGrupoMagias } from './sistemas/grupo-magias';
+import { createOlhoClaude } from './sistemas/olho-claude';
 import { grupoPassMods } from './passivas';
 import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
 import { createShaderGate } from './sistemas/compila-sem-travar';
@@ -1051,6 +1052,12 @@ setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true
 const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } if (ch === 'party') { if (!netRef?.party) { chat.sys('Você não está em um grupo. Ctrl + clique num jogador para convidar.'); return; } bubble(text); netRef.partyChat(text); return; } bubble(text); netRef?.say(text); } });
 /* 03/11: o inseto 🐞 (relatar bug) e o painel do dono (sistemas/bugs-dono.ts) */
 const shotReq: ((u: string) => void)[] = [];
+/* 12/11: o Olho do Claude (sistemas/olho-claude.ts): o botão ✳ grava a sessão num arquivo para o Claude ler */
+setTimeout(() => { try { (window as unknown as { __olho?: unknown }).__olho = createOlhoClaude({ build: __BUILD__, log: (t, c) => game.logMsg(t, c), perf: () => { try { return perfReport(); } catch { return ''; } },
+  shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
+  info: () => { let reg = '?', classe = ''; try { reg = regionAt(state.fx, state.fy).name; } catch { /* */ } try { classe = game.classInfo.name; } catch { /* */ } return { x: state.fx, y: state.fy, reg, lvl: game.st.lvl, hp: Math.round(game.st.hp), hpMax: game.st.hpMax, fps: lastFps, rend: gpuState.on ? 'WebGPU' : 'WebGL', combate: !!hero.combat, dentro: inside ? inside.prop.kind : '', classe }; },
+  bichos: () => { const hp = hero.root.position; return game.enemies.list.filter((e) => e.active && e.alive).map((e) => ({ tipo: e.type, nome: e.def.name, nivel: e.def.lvl ?? 1, estado: e.state, vida: Math.round((e.hp / e.hpMax) * 100), d: Math.round(Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z)) })).filter((q) => q.d <= 40).sort((a, b) => a.d - b.d); },
+  gente: () => { const hp = hero.root.position; return npcSys.npcs.map((n) => ({ nome: n.def.name, papel: n.def.role, d: Math.round(Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z)), lutando: !!(n as unknown as { foeE?: unknown }).foeE })).filter((q) => q.d <= 30).sort((a, b) => a.d - b.d); } }); } catch (e) { console.warn('olho do claude', e); } }, 3000);
 const bugsDono = createBugsDono({ net: () => netRef,
   shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
   info: () => { const rg = (() => { try { return regionAt(state.fx, state.fy).name; } catch { return '?'; } })(); let cls = ''; try { cls = game.classInfo.name; } catch { /* */ }

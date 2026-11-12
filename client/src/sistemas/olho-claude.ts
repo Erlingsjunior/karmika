@@ -1,0 +1,41 @@
+/* O OLHO DO CLAUDE (12/11, Erling: "não dá para criar um código onde eu posso ligar você dentro do jogo e você me ver jogando? um símbolo que eu ligo e
+   você vai avaliando o jogo em tempo real: IA, gráficos, comportamento de batalha").
+   Ver ao vivo não dá; o que dá é uma CAIXA-PRETA. O botão ✳ (canto de baixo, à direita) liga a gravação. Enquanto ligada, o jogo anota sozinho:
+   - a cada 4 s: onde o herói está, vida, nível, quadros por segundo, se está em luta, e o que cada bicho e cada soldado por perto está FAZENDO
+     (tipo, estado, vida, distância), para avaliar a IA e a batalha;
+   - a cada 20 s: uma foto pequena da tela (640 px), para avaliar os gráficos;
+   - tudo o que o jogo escreveu no registro (golpes, falas, avisos);
+   - o relatório de desempenho inteiro (/travadas) a cada minuto e no fim.
+   Desligar baixa um arquivo só (karmika-olho-AAAA-MM-DD-HHMM.json). Mandando esse arquivo na conversa, o Claude lê a sessão inteira.
+   Custo: uma amostra leve a cada 4 s e uma foto a cada 20 s; nada roda com o botão desligado. */
+export interface OlhoCtx {
+  /** foto da tela (JPEG em data URL), tirada logo depois do desenho */ shot(): Promise<string | null>; perf(): string; build: string;
+  info(): { x: number; y: number; reg: string; lvl: number; hp: number; hpMax: number; fps: number; rend: string; combate: boolean; dentro: string; classe: string };
+  /** os bichos acordados a até 40 m */ bichos(): { tipo: string; nome: string; nivel: number; estado: string; vida: number; d: number }[];
+  /** gente por perto (até 30 m): quem é e se está lutando */ gente(): { nome: string; papel: string; d: number; lutando: boolean }[];
+  log(t: string, c?: string): void;
+}
+export function createOlhoClaude(K: OlhoCtx) {
+  let on = false, t0 = 0, tA: ReturnType<typeof setInterval> | null = null, tF: ReturnType<typeof setInterval> | null = null, tP: ReturnType<typeof setInterval> | null = null, obs: MutationObserver | null = null;
+  let D: { build: string; inicio: string; tela: string; amostras: unknown[]; fotos: { t: number; jpg: string }[]; registro: { t: number; txt: string }[]; desempenho: { t: number; txt: string }[] } | null = null;
+  const sec = () => Math.round((performance.now() - t0) / 100) / 10;
+  const btn = document.createElement('button'); btn.id = 'olhoclaude'; btn.title = 'Olho do Claude: grava a sessão (IA, batalha, gráficos, desempenho) num arquivo para o Claude ler. Clique para ligar.';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20"><g stroke="currentColor" stroke-width="2.4" stroke-linecap="round">' + Array.from({ length: 6 }, (_, i) => { const a = (i * Math.PI) / 6, x = Math.cos(a) * 9, y = Math.sin(a) * 9; return `<line x1="${(12 - x).toFixed(1)}" y1="${(12 - y).toFixed(1)}" x2="${(12 + x).toFixed(1)}" y2="${(12 + y).toFixed(1)}"/>`; }).join('') + '</g></svg><i></i>';
+  const css = document.createElement('style'); css.textContent = '#olhoclaude{position:fixed;right:14px;bottom:200px;width:38px;height:38px;border-radius:50%;border:1px solid #b8924a;background:radial-gradient(circle at 40% 35%,#3a2a14,#140e08);color:#d9895a;display:grid;place-items:center;cursor:pointer;z-index:7;opacity:.55}#olhoclaude:hover{opacity:1}#olhoclaude.on{opacity:1;color:#ff9a6a;border-color:#ff9a6a;box-shadow:0 0 12px rgba(255,140,90,.7)}#olhoclaude.on svg{animation:olhogira 6s linear infinite}#olhoclaude i{position:absolute;right:-3px;top:-3px;width:10px;height:10px;border-radius:50%;background:#ff4a3a;display:none}#olhoclaude.on i{display:block;animation:olhopisca 1s ease-in-out infinite}@keyframes olhogira{to{transform:rotate(360deg)}}@keyframes olhopisca{50%{opacity:.25}}body:not(.ready) #olhoclaude{display:none}';
+  document.head.appendChild(css); document.body.appendChild(btn);
+  /** a foto encolhe para 640 px de largura: 30 fotos cabem em menos de 2 MB */
+  const small = (u: string) => new Promise<string>((res) => { const im = new Image(); im.onload = () => { const w = 640, h = Math.round((im.height / im.width) * w), c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d')!.drawImage(im, 0, 0, w, h); res(c.toDataURL('image/jpeg', 0.6)); }; im.onerror = () => res(''); im.src = u; });
+  function amostra() { if (!D) return; try { const i = K.info(); D.amostras.push({ t: sec(), ...i, x: Math.round(i.x * 10) / 10, y: Math.round(i.y * 10) / 10, bichos: K.bichos().slice(0, 14), gente: K.gente().slice(0, 12) }); } catch (e) { D.registro.push({ t: sec(), txt: 'erro na amostra: ' + String(e).slice(0, 120) }); } }
+  async function foto() { if (!D || D.fotos.length >= 60) return; const u = await K.shot(); if (!u || !D) return; const s = await small(u); if (s && D) D.fotos.push({ t: sec(), jpg: s }); }
+  function start() { on = true; t0 = performance.now(); D = { build: K.build, inicio: new Date().toISOString(), tela: `${innerWidth}x${innerHeight}`, amostras: [], fotos: [], registro: [], desempenho: [] };
+    btn.classList.add('on'); btn.title = 'Olho do Claude LIGADO: gravando. Clique para desligar e baixar o arquivo.';
+    const lg = document.getElementById('log'); if (lg) { obs = new MutationObserver((ms) => { for (const m of ms) m.addedNodes.forEach((n) => { const tx = (n as HTMLElement).textContent?.trim(); if (tx && D && D.registro.length < 4000) D.registro.push({ t: sec(), txt: tx.slice(0, 240) }); }); }); obs.observe(lg, { childList: true }); }
+    amostra(); void foto(); tA = setInterval(amostra, 4000); tF = setInterval(() => void foto(), 20000); tP = setInterval(() => { if (D) D.desempenho.push({ t: sec(), txt: K.perf() }); }, 60000);
+    K.log('✳ Olho do Claude ligado: a sessão está sendo gravada (posição, luta, o que os bichos e os soldados fazem, fotos, desempenho). Clique de novo no ✳ para parar e baixar o arquivo.', '#ff9a6a'); }
+  function stop() { on = false; btn.classList.remove('on'); btn.title = 'Olho do Claude: grava a sessão num arquivo para o Claude ler. Clique para ligar.'; for (const t of [tA, tF, tP]) if (t) clearInterval(t); tA = tF = tP = null; obs?.disconnect(); obs = null; if (!D) return;
+    D.desempenho.push({ t: sec(), txt: K.perf() }); const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0'), nome = `karmika-olho-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.json`;
+    const blob = new Blob([JSON.stringify({ ...D, duracao_s: sec() })], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    K.log(`✳ Olho do Claude desligado. Arquivo baixado: ${nome} (${D.amostras.length} amostras, ${D.fotos.length} fotos, ${D.registro.length} linhas do registro). Mande esse arquivo na conversa com o Claude.`, '#ff9a6a'); D = null; }
+  btn.addEventListener('click', (e) => { e.stopPropagation(); if (on) stop(); else start(); });
+  return { get on() { return on; }, start, stop, dados: () => D };
+}
