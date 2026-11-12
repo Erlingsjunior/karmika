@@ -25,6 +25,8 @@ const caravans = createCaravans({ onBridge: (x, z) => onBridgeM(x, z) || nearGat
   ember: (x, y, z) => K.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 1.4, vy: 0.8 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 1.4, life: 0.9, s0: 0.1, s1: 0.02, c0: 0xffe08a, c1: 0xff4a10, a: 1, drag: 0.8 }),
   bubble: carBubble, log: (t, c) => K.game.logMsg(t, c), lean: () => K.soulLean(),
   nearTown: (x, z) => { const tx = x / T, ty = z / T; return K.city.settlements.some((st) => Math.hypot(st.x - tx, st.y - ty) < st.radius + 6) || Math.hypot(CITY.x - tx, CITY.y - ty) < 30; },
+  /* 12/11: o bicho que está brigando com o herói (acordado, de pé, não manso) a até r metros do ponto: os guardas da caravana entram na luta */
+  threat: (x, z, r) => { if (K.game.st.dead) return null; const hp = { x: K.state.fx * T, z: K.state.fy * T }; let best: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number } | null = null, bd = r; for (const e of K.game.enemies.list) { if (!e.alive || !e.active || e.def.passive || e.state === 'idle' || e.state === 'return' || (e as unknown as { ally?: boolean }).ally) continue; if (Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) > 18) continue; const d = Math.hypot(e.pos.x - x, e.pos.z - z); if (d < bd) { bd = d; best = e; } } return best; },
   onEscort: (id) => K.quests.onCaravan('escort', id), onRescue: (id) => K.quests.onCaravan('rescue', id),
   onEvent: (r, how) => { const lv = Math.max(K.game.st.lvl, r.lvl - 5), xp = Math.round(K.game.xpNeedAt(lv) * 0.22);
     if (how === 'salva') { const g = 40 + lv * 4; K.game.st.gold += g; K.game.gainXp(xp); K.addKarma(2); K.applyReply({ t: '', luz: 1 });

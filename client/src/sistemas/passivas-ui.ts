@@ -112,16 +112,19 @@ export function renderPassives(root: HTMLElement, c: Ctx) {
      do outro, para caber tudo numa linha só"): cada fileira de três é um TRIÂNGULO; o primeiro aponta para cima, o seguinte para baixo, e eles se encaixam
      numa faixa só. Em cima ficam as pontas dos que apontam para cima e as bases dos invertidos; embaixo, o contrário. A ordem dentro do triângulo segue a
      dependência: 1ª à esquerda, 2ª na ponta, 3ª à direita. */
-  let right = ''; { /* o passo entre os pontos encolhe para a faixa caber na largura da janela (de 86 a 112 px) */ const S = Math.max(86, Math.min(112, Math.floor((Math.max(700, (root.clientWidth || 1300)) - 440) / 8))), YT = 62, YB = 196, N = Math.ceil(C.classPassives.length / 3); let it = 0, ib = 0, tri = '', cells = '';
+  let right = ''; { /* o passo entre os pontos encolhe para a faixa caber na largura da janela (de 86 a 112 px) */ const S = Math.max(86, Math.min(112, Math.floor((Math.max(700, (root.clientWidth || 1300)) - 440) / 8))), YT = 92, YB = 232, N = Math.ceil(C.classPassives.length / 3); let it = 0, ib = 0, tri = '', cells = '';
     for (let k = 0; k < N; k++) { const row = C.classPassives.slice(k * 3, k * 3 + 3), up = k % 2 === 0, P: [number, number][] = [];
       if (up) { P.push([(ib + 0.5) * S, YB], [(it + 1) * S, YT], [(ib + 1.5) * S, YB]); ib += 2; it += 1; } else { P.push([(it + 1) * S, YT], [(ib + 0.5) * S, YB], [(it + 2) * S, YT]); it += 2; ib += 1; }
-      const open = c.lvl >= cpLvlReq(C, row[0]), any = row.some((p) => passRank(c.kit, p.n) > 0), gx = (P[0][0] + P[2][0]) / 2, gy = up ? YB + 78 : YT - 50;
-      /* o triângulo de fundo, um pouco maior que os três pontos */ const cxm = (P[0][0] + P[1][0] + P[2][0]) / 3, cym = (P[0][1] + P[1][1] + P[2][1]) / 3, big = P.map(([x, y]) => `${(cxm + (x - cxm) * 1.62).toFixed(0)},${(cym + (y - cym) * 1.5).toFixed(0)}`).join(' ');
-      tri += `<polygon points="${big}" fill="${open ? 'rgba(154,200,122,.07)' : 'rgba(10,7,14,.35)'}" stroke="${any ? 'rgba(154,200,122,.7)' : open ? 'rgba(217,162,79,.5)' : 'rgba(125,90,44,.3)'}" stroke-width="1.2" stroke-linejoin="round"/>`;
+      const open = c.lvl >= cpLvlReq(C, row[0]), any = row.some((p) => passRank(c.kit, p.n) > 0), gx = (P[0][0] + P[2][0]) / 2, gy = up ? YB + 74 : YT - 50;
+      /* o triângulo de fundo, um pouco maior que os três pontos */ const cxm = (P[0][0] + P[1][0] + P[2][0]) / 3, cym = (P[0][1] + P[1][1] + P[2][1]) / 3, V = P.map(([x, y]) => [cxm + (x - cxm) * 1.72, cym + (y - cym) * 1.6] as [number, number]),
+        /* 12/11 (Erling: "se os retângulos de cima são arredondados nas pontas, por que os triângulos são pontudos? mantenha a simetria dos componentes"):
+           os três cantos são arredondados com o mesmo raio dos cartões (12 px), e o triângulo é grande o bastante para os três hexágonos ficarem dentro */
+        big = V.map((v, q) => { const a0 = V[(q + 2) % 3], b0 = V[(q + 1) % 3], R = 14, la = Math.hypot(a0[0] - v[0], a0[1] - v[1]), lb = Math.hypot(b0[0] - v[0], b0[1] - v[1]), p1 = [v[0] + (a0[0] - v[0]) / la * R * 1.5, v[1] + (a0[1] - v[1]) / la * R * 1.5], p2 = [v[0] + (b0[0] - v[0]) / lb * R * 1.5, v[1] + (b0[1] - v[1]) / lb * R * 1.5]; return `${q ? 'L' : 'M'}${p1[0].toFixed(1)} ${p1[1].toFixed(1)} Q${v[0].toFixed(1)} ${v[1].toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`; }).join(' ') + ' Z';
+      tri += `<path d="${big}" fill="${open ? 'rgba(40,28,14,.5)' : 'rgba(10,7,14,.4)'}" stroke="${any ? 'rgba(154,200,122,.7)' : open ? 'rgba(217,162,79,.55)' : 'rgba(125,90,44,.38)'}" stroke-width="1"/>`;
       for (let q = 1; q < row.length; q++) { const on = passRank(c.kit, row[q - 1].n) > 0; tri += `<line x1="${P[q - 1][0]}" y1="${P[q - 1][1]}" x2="${P[q][0]}" y2="${P[q][1]}" stroke="${on ? '#ffe08a' : '#4a3a22'}" stroke-width="2" ${on ? '' : 'stroke-dasharray="3 5"'}/>`; }
       tri += `<text x="${gx}" y="${gy}" text-anchor="middle" fill="${open ? '#9ac87a' : '#8a7a5a'}" font-family="Cinzel, Georgia, serif" font-size="10.5" letter-spacing="1.2">FILEIRA ${k + 1} · NÍVEIS ${row.map((p) => cpLvlReq(C, p)).join(' · ')}</text>`;
       row.forEach((p, q) => { const st = cpState(p); cells += `<div class="tcell" style="left:${P[q][0] - (S - 6) / 2}px;top:${P[q][1] - 36}px;width:${S - 6}px">${hexCell('c' + p.n, p.name, st.r, p.levels, st.why, '#9ac87a')}</div>`; }); }
-    const W = (Math.max(it + 1, ib) + 0.0) * S + 8, H = YB + 96;
+    const W = (Math.max(it + 1, ib) + 0.0) * S + 8, H = YB + 110;
     right = `<div class="ptri" style="width:${W}px;height:${H}px"><svg width="${W}" height="${H}">${tri}</svg>${cells}</div>`; }
   const sp = sel?.startsWith('p') ? C.spellPassives.find((p) => 'p' + p.n === sel) : null, cp = sel?.startsWith('c') ? C.classPassives.find((p) => 'c' + p.n === sel) : null;
   let det = `<p class="tip">Escolha uma passiva à esquerda. As de habilidade abrem com 3 pontos na habilidade; as de classe, com o nível. Umas pedem outras antes.</p>`;

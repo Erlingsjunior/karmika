@@ -141,13 +141,17 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
          perto (16 m dele, até 22 m do posto), correm até ele e lutam: o bicho passa a brigar com o guarda. Guarda não morre: se apanhar demais,
          cai de joelho por 6 s e levanta. Sem bicho, volta para o posto. */
       let fought = false;
-      if (ctx.threats && !d.inside && !d.seat && !d.route && (GUARD_RX.test(d.role) || GUARD_RX.test(d.name))) {
-        const g = n as Npc & { foeE?: GThreat | null; atkT?: number; ghp?: number; down?: number; gfoe?: GThreat['foe']; away?: boolean };
+      /* 12/11 (Erling: "eu lutando com um elite, a patrulha passa e não faz nada, não ajuda em nada? cadê a IA do jogo?"): as PATRULHAS de estrada também
+         lutam. Como não têm posto fixo, o "posto" delas é o ponto da estrada em que estavam quando viram o bicho; vencida a luta, retomam a marcha dali. */
+      const PAT = !!d.route && /Patrulha/.test(d.role);
+      if (ctx.threats && !d.inside && !d.seat && (!d.route || PAT) && (PAT || GUARD_RX.test(d.role) || GUARD_RX.test(d.name))) {
+        const g = n as Npc & { foeE?: GThreat | null; atkT?: number; ghp?: number; down?: number; gfoe?: GThreat['foe']; away?: boolean; px?: number; pz?: number };
+        if (PAT && !g.foeE) { g.px = n.pos.x; g.pz = n.pos.z; } const hx0 = PAT ? g.px ?? n.pos.x : d.x, hz0 = PAT ? g.pz ?? n.pos.z : d.z;
         if (!g.gfoe) g.gfoe = { pos: n.pos, alive: () => !(g.down && g.down > 0), hit: (dmg: number) => { g.ghp = (g.ghp ?? 140) - dmg; if (!n.hero.acting) n.hero.act('hit', true); if (g.ghp <= 0) { g.down = 6; g.ghp = 140; n.bark = 'Ugh… segurem a linha!'; n.barkT = 3; } } };
         if (g.down && g.down > 0) { g.down -= dt; fought = true; }
         else {
-          let tgt = g.foeE && g.foeE.alive && g.foeE.active && Math.hypot(g.foeE.pos.x - d.x, g.foeE.pos.z - d.z) < 26 ? g.foeE : null;
-          if (!tgt) { g.foeE = null; let bd = 16; for (const e of ctx.threats()) { if (!e.alive || !e.active || e.def.passive) continue; const dd = Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z); if (dd < bd && Math.hypot(e.pos.x - d.x, e.pos.z - d.z) < 22) { bd = dd; tgt = e; } }
+          let tgt = g.foeE && g.foeE.alive && g.foeE.active && Math.hypot(g.foeE.pos.x - hx0, g.foeE.pos.z - hz0) < 26 ? g.foeE : null;
+          if (!tgt) { g.foeE = null; let bd = 16; for (const e of ctx.threats()) { if (!e.alive || !e.active || e.def.passive) continue; const dd = Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z); if (dd < bd && Math.hypot(e.pos.x - hx0, e.pos.z - hz0) < 22) { bd = dd; tgt = e; } }
             if (tgt) { g.foeE = tgt; if (!tgt.foe || !tgt.foe.alive()) tgt.foe = g.gfoe; if (!(n.barkT && n.barkT > 0) && Math.random() < 0.6) { n.bark = GUARD_CRY[Math.floor(Math.random() * GUARD_CRY.length)]; n.barkT = 2.4; } } }
           /* 11/11 (Erling: "se o NPC está em cima do muro precisa usar flechas, e não flutuar nem ficar correndo feito bobo"): a sentinela da muralha
              NÃO sai do posto. Vira para o bicho e atira de arco (uma flecha a cada ~1,6 s, até 26 m). Antes ela corria atrás dele pelo ar, por dentro da paliçada */
@@ -156,7 +160,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
           else if (tgt) { fought = true; g.away = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
             if (l > 1.5 + (tgt.def.radius ?? 0.5)) { const sp = 3.4 * dt; let moved = false; for (const turn of [0, 0.7, -0.7, 1.4, -1.4]) { const c = Math.cos(turn), sn = Math.sin(turn), ux = (dx * c - dz * sn) / l, uz = (dx * sn + dz * c) / l, nx = n.pos.x + ux * sp, nz = n.pos.z + uz * sp; if (walk(n, nx, nz)) { n.pos.x = nx; n.pos.z = nz; moved = true; break; } } if (moved) mps = 3.4; }
             else { g.atkT = (g.atkT ?? 0.3) - dt; if (g.atkT <= 0) { g.atkT = 1.0 + Math.random() * 0.5; n.hero.act('attack', true); ctx.hitThreat?.(tgt, Math.max(4, Math.round(tgt.hpMax * 0.07)), n.pos); } } }
-          else { g.ghp = Math.min(140, (g.ghp ?? 140) + 6 * dt); if (g.away) { if (Math.hypot(n.pos.x - d.x, n.pos.z - d.z) > 1.5) n.target = new THREE.Vector2(d.x, d.z); else g.away = false; } }
+          else { g.ghp = Math.min(140, (g.ghp ?? 140) + 6 * dt); if (g.away) { if (PAT) g.away = false; else if (Math.hypot(n.pos.x - d.x, n.pos.z - d.z) > 1.5) n.target = new THREE.Vector2(d.x, d.z); else g.away = false; } }
         }
       }
       if (fought) { /* lutando (ou de joelho) */ }

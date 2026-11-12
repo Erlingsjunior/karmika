@@ -308,6 +308,7 @@ export interface CaravanCtx {
   log(t: string, c?: string): void; onEscort(id: string): void; onRescue(id: string): void;
   onEvent(r: Route, how: 'salva' | 'saque' | 'perdida'): void; lean(): 'luz' | 'sombra' | null;
   /** conversar com o cocheiro de uma caravana que passa: comerciar com a Companhia na estrada */ trade?(r: Route, carroca: 'carrocaAVapor' | 'carrocaDosAnoes'): void;
+  /** 12/11: o inimigo que está lutando com o herói perto do ponto (m), se houver: os guardas da caravana que passa entram na luta */ threat?(x: number, z: number, r: number): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number } | null;
   /** dentro ou perto de uma vila (regra 15: ninguém luta nas vilas; emboscada só na estrada aberta) */ nearTown(x: number, z: number): boolean;
 }
 /** falas do cocheiro, por momento */
@@ -345,17 +346,20 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       defasada: com o tempo as duas passam por todas as estradas, sem dobrar o número de carroças no mundo (o FPS agradece) */
   const ambCar = (r: Route, i: number): 'carrocaAVapor' | 'carrocaDosAnoes' => { const per = r.len / SPEED + PERIOD_PAD, trip = Math.floor((now() + i * 977) / (per * 2)); let hh = 0; for (const ch of r.id) hh += ch.charCodeAt(0); return (trip + i + hh) % 2 === 0 ? 'carrocaAVapor' : 'carrocaDosAnoes'; };
   const carOf = (c: Car) => c.carroca ?? c.route.carroca ?? 'carrocaAVapor';
-  function crewFor(c: Car) { if (c.crew.length) return; const kind = carOf(c) === 'carrocaAVapor' ? 'steam' : 'dwarf';
-    const drv = kind === 'steam' ? createCharacter('technocrat', { static: true }) : createCharacter('dwarf', { static: true }); /* carroças são de anões (Erling) */
-    const g1 = kind === 'steam' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true }), g2 = createCharacter('dwarf', { static: true });
-    for (const h of [drv, g1, g2]) { h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); h.root.userData.farCull = true; ctx.scene.add(h.root); }
-    try { g1.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); g2.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
-    c.crew = [drv, g1, g2];
+  /* 12/11 (/travadas do Erling: "caravanas 33 a 114 ms" de vez em quando): montar a carroça e os TRÊS bonecos da tripulação no mesmo quadro era o pico.
+     Agora cada caravana ganha a tripulação aos poucos: um boneco por quadro, e no máximo um boneco novo por quadro no jogo inteiro (`obraDoQuadro`).
+     Por um instante a carroça aparece só com o cocheiro; os guardas chegam nos dois quadros seguintes. */
+  let obraDoQuadro = false;
+  function crewFor(c: Car) { if (c.crew.length >= 3 || obraDoQuadro) return; obraDoQuadro = true; const kind = carOf(c) === 'carrocaAVapor' ? 'steam' : 'dwarf', i = c.crew.length;
+    const h = i === 0 ? (kind === 'steam' ? createCharacter('technocrat', { static: true }) : createCharacter('dwarf', { static: true })) /* carroças são de anões (Erling) */ : i === 1 ? (kind === 'steam' ? createCharacter('nordic', { static: true }) : createCharacter('dwarf', { static: true })) : createCharacter('dwarf', { static: true });
+    h.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); h.root.userData.farCull = true; ctx.scene.add(h.root);
+    try { if (i === 1) h.setGear({ weapon: { base: 'Espada Longa', rarity: 'common' }, shield: { base: 'Escudo Redondo', rarity: 'common', seed: 3 } }); if (i === 2) h.setGear({ weapon: { base: 'Machado de Guerra', rarity: 'common' } }); } catch { /* */ }
+    c.crew = [...c.crew, h];
     /* 08/11 (Erling: "os que acompanham as carroças também" com o modelo vestido): cocheiro de couro, guardas com armadura (anões); o tecnocrata e o nórdico do vapor com os seus */
     const SK: Record<string, string> = { dwarfDrv: '/models/personagens/anao_h_lvl02.glb', dwarfG: '/models/personagens/anao_h_lvl03.glb', nordic: '/models/personagens/guerreiro_h_lvl02.glb', technocrat: '/models/personagens/technocrata_h.glb' };
-    const want: [Hero3D, string][] = [[drv, kind === 'steam' ? SK.technocrat : SK.dwarfDrv], [g1, kind === 'steam' ? SK.nordic : SK.dwarfG], [g2, SK.dwarfG]];
+    const fbx = i === 0 ? (kind === 'steam' ? SK.technocrat : SK.dwarfDrv) : i === 1 ? (kind === 'steam' ? SK.nordic : SK.dwarfG) : SK.dwarfG;
     /* 11/11 (Erling: "esses anões da carroça não estão menores do que a realidade?"): estavam. Os NPCs vestidos usam uma escala de altura (anão 1,35, humano 1,12 — npcs.ts) e a tripulação das carroças não usava */
-    for (const [h, fbx] of want) attachSkin(h, { fbx, tex: '', hscale: /anao_/.test(fbx) ? 1.35 : 1.12 }).then((r) => { if (!r) return; if (!c.crew.includes(h)) { h.root.remove(r.model); return; } r.model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); (h as Hero3D & { skinTick?: () => void }).skinTick = r.tick; }).catch(() => { /* fica o procedural */ }); }
+    attachSkin(h, { fbx, tex: '', hscale: /anao_/.test(fbx) ? 1.35 : 1.12 }).then((r) => { if (!r) return; if (!c.crew.includes(h)) { h.root.remove(r.model); return; } r.model.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh) m.castShadow = false; }); (h as Hero3D & { skinTick?: () => void }).skinTick = r.tick; }).catch(() => { /* fica o procedural */ }); }
   /* 26/10 noite (desempenho): a carroça das rotas do mundo que sai de perto fica GUARDADA (fora da cena) e volta igual quando você
      chega — antes ela era montada de novo (carroça, cavalos e tripulação) toda vez que cruzava os 120 m, um soluço de vários ms. */
   const parked = new Map<string, { w: NonNullable<Car['w']>; crew: Car['crew'] }>();
@@ -386,7 +390,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     c.hp -= dt * (0.004 * n + 0.01 * close); if (c.hp < 0.3 && c.bubbleT <= 0) say(c, pick(SAY.low)); }
 
   let evShown: { slot: number; r: Route; s: number } | null = null;
-  function update(dt: number, t: number) {
+  function update(dt: number, t: number) { obraDoQuadro = false;
     const hp = ctx.hero(), night = ctx.night(), inside = ctx.inside();
     /* caravanas do mundo */
     for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const key = `amb:${id}:${i}`; let c = cars.get(key); /* 28/10 (Erling): toda estrada vê as duas — a carroça a vapor e a dos anões se revezam a cada viagem */
@@ -405,7 +409,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     for (const c of [...cars.values()]) {
       const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) + (c.w ? 20 : 0) && !inside; /* +20 m para quem já está montada: não monta e desmonta na borda */
       if (!near) { if (c.w) dropModel(c); if (c.mode === 'event' && c.spawned && !c.cleared && ev && c.slot !== ev.slot) { ctx.clearTag('car:' + c.key); cars.delete(c.key); } continue; }
-      ensureModel(c); const w = c.w!;
+      if (!c.w && obraDoQuadro) continue; /* já houve uma montagem neste quadro: esta carroça espera o próximo */ if (!c.w) obraDoQuadro = true; ensureModel(c); const w = c.w!; if (c.crew.length < 3) crewFor(c);
       // escolta: anda só com você perto; emboscadas em pontos fixos
       if (c.mode === 'escort' && !c.arrived) {
         if (c.failT !== undefined) { c.failT -= dt; if (c.failT <= 0) { c.failT = undefined; ctx.clearTag('car:' + c.key); c.foes = []; c.fight = false; c.s = START; c.hp = 1; dropModel(c); c.ambush = ambushAt(c.route.len); ctx.log(`⚙ A caravana voltou para ${c.route.from}. Fale de novo com a escolta quando quiser recomeçar: ela espera.`, '#e0b048'); } continue; }
@@ -457,12 +461,17 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       if (drv) { if (w.fallen) { drv.root.position.set(p.x - cb * 2.4, ctx.heightAt(p.x - cb * 2.4, p.z + ca * 2.4), p.z + ca * 2.4); drv.update(dt, t, 0, yaw + 2); (drv as Hero3D & { skinTick?: () => void }).skinTick?.(); }
         else { const sp = (w.seat?.clone() ?? new THREE.Vector3(0, 1.45, 0.3)).applyEuler(new THREE.Euler(w.body.rotation.x, yaw, 0)); drv.root.position.set(p.x + sp.x, w.root.position.y + sp.y, p.z + sp.z); drv.update(dt, t, 0, yaw); (drv as Hero3D & { skinTick?: () => void }).skinTick?.(); } }
       let foe: { pos: THREE.Vector3; hp: number; hpMax: number } | null = null, fd = 1e9; for (const f of c.foes) if (f.alive) { const d = f.pos.distanceTo(w.root.position); if (d < fd) { fd = d; foe = f; } }
+      /* 12/11 (Erling: "eu lutando com um elite, a carroça passa e não faz nada? cadê a IA do jogo?"): sem emboscada própria, a caravana que passa por uma luta
+         do herói PARA e os dois guardas entram nela (até 14 m da carroça). Vencida a luta, o cocheiro agradece e a caravana segue. */
+      { const cc = c as Car & { helpT?: number; helpStop?: boolean }; if (!foe && !w.fallen && c.mode === 'ambient') { const ex = ctx.threat?.(w.root.position.x, w.root.position.z, 14) ?? null;
+          if (ex && ex.alive) { foe = ex; fd = ex.pos.distanceTo(w.root.position); if (!cc.helpT) { say(c, pick(['Às armas! Tem gente nossa apanhando!', 'Parem a carroça! Ajudem o caminhante!', 'Guardas, na frente! Não se deixa ninguém sozinho na estrada.'])); if (!c.stop) { c.stop = true; cc.helpStop = true; } } cc.helpT = 2.5; }
+          else if (cc.helpT) { cc.helpT -= dt; if (cc.helpT <= 0) { cc.helpT = 0; if (cc.helpStop) { c.stop = false; cc.helpStop = false; } say(c, pick(['Estrada limpa. Segue o baile!', 'Bom de braço, caminhante. Boa viagem.', 'A Companhia não esquece quem luta junto.'])); } } } }
       [g1, g2].forEach((g, k) => { if (!g) return; const sd = (k ? -1 : 1) * Math.max(1.6, (w.box?.hw ?? 1) + 0.7), back = k ? 0.6 : -0.8; let gx = p.x + cb * sd - ca * back, gz = p.z - ca * sd - cb * back, mps = moving ? c.speed : 0, face = yaw;
-        if (foe && fd < 16) { const dx = foe.pos.x - gx, dz = foe.pos.z - gz, l = Math.hypot(dx, dz); face = Math.atan2(dx, dz); if (l > 1.6 && l < 7) { gx += dx / l * Math.min(l - 1.6, 2.5); gz += dz / l * Math.min(l - 1.6, 2.5); } g.combat = true; if (Math.random() < dt * 0.8) g.act('combo1'); } else g.combat = false;
+        if (foe && fd < 16) { const dx = foe.pos.x - gx, dz = foe.pos.z - gz, l = Math.hypot(dx, dz); face = Math.atan2(dx, dz); const ga = g as Hero3D & { adv?: number }; if (l > 1.6 && l < 15) { const reach = (c as Car & { helpT?: number }).helpT ? 12 : 2.5, want2 = Math.min(l - 1.6, reach), a0 = ga.adv ?? 0; ga.adv = a0 + Math.max(-5 * dt, Math.min(5 * dt, want2 - a0)); /* o guarda CORRE até o bicho (5 m/s), não aparece nele */ (ga as { ux?: number }).ux = dx / l; (ga as { uz?: number }).uz = dz / l; gx += dx / l * ga.adv; gz += dz / l * ga.adv; mps = Math.abs(want2 - a0) > 0.2 ? 5 : mps; } else ga.adv = 0; g.combat = true; if (Math.random() < dt * 0.8) g.act('combo1'); } else { g.combat = false; const ga = g as Hero3D & { adv?: number; ux?: number; uz?: number }; if (ga.adv) { ga.adv = Math.max(0, ga.adv - 4 * dt); gx += (ga.ux ?? 0) * ga.adv; gz += (ga.uz ?? 0) * ga.adv; mps = 4; face = Math.atan2(-(ga.ux ?? 0), -(ga.uz ?? 0)); /* volta andando para o lado da carroça */ } }
         if (w.fallen && !foe) { face = yaw + (k ? 2.4 : -2.4); }
         g.root.position.set(gx, ctx.heightAt(gx, gz), gz); g.update(dt, t, mps, face); (g as Hero3D & { skinTick?: () => void }).skinTick?.(); /* o boneco só vira pelo heading: antes olhava sempre para o norte (Erling: "os NPC de lado?") */ });
       // os guardas também batem (de leve: o golpe que mata é seu)
-      if (foe && fd < 3.2 && ctx.hurt && Math.random() < dt * 0.7) { const f = foe; if (f.hp > f.hpMax * 0.25) ctx.hurt(foe, Math.max(1, Math.round(f.hpMax * 0.06)), w.root.position); }
+      if (foe && (fd < 3.2 || ((c as Car & { helpT?: number }).helpT && fd < 14)) && ctx.hurt && Math.random() < dt * 0.7) { const f = foe; if (f.hp > f.hpMax * 0.25) ctx.hurt(foe, Math.max(1, Math.round(f.hpMax * 0.06)), w.root.position); }
       if (c.bubbleT > 0) c.bubbleT -= dt;
       if (c.mode !== 'escort') w.hpBar.visible = false;
     }
