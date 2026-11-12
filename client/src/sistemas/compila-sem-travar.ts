@@ -34,6 +34,16 @@ export function createShaderGate(renderer: THREE.WebGLRenderer, scene: THREE.Sce
     if (vistos.has(cp)) return; vistos.add(cp); naHora++;
     const why = prev?.cacheKey && cp.cacheKey ? difere(prev.cacheKey, cp.cacheKey) : 'primeiro programa deste material (passou sem esperar)';
     const m = motivos.get(why) ?? { n: 0, ex: `${material.type}${material.name ? ' "' + material.name + '"' : ''} em ${object.type}${object.name ? ' "' + object.name + '"' : ''} camada ${object.layers.mask}${onde}` }; m.n++; motivos.set(why, m); if (motivos.size > 60) motivos.delete(motivos.keys().next().value as string); }
+  /* 12/11, 10:32 (/travadas do Erling, já com a espera de todos os programas: AINDA um desenho de 3.260 ms, "nada novo", 0 compilados na hora).
+     O programa estava pronto e mesmo assim o desenho parou. Falta saber QUAL chamada à placa segura o jogo. Cada chamada que pode esperar pela placa é
+     cronometrada; a que passar de 20 ms fica anotada pelo nome. Se for "getProgramParameter" ou "getUniformLocation", a placa ainda estava montando o
+     programa (no Windows ela termina de montar no primeiro uso); se for "drawElements", a fila da placa encheu por causa de um desenho anterior. */
+  const glLento = new Map<string, { n: number; ms: number; pior: number }>();
+  { const gl = renderer.getContext() as unknown as Record<string, unknown>;
+    for (const nome of ['getProgramParameter', 'getProgramInfoLog', 'getShaderParameter', 'getUniformLocation', 'getActiveUniform', 'getActiveAttrib', 'getAttribLocation', 'getUniformBlockIndex', 'linkProgram', 'compileShader', 'useProgram', 'drawElements', 'drawArrays', 'drawElementsInstanced', 'drawArraysInstanced', 'bufferData', 'bufferSubData', 'texImage2D', 'texSubImage2D', 'texStorage2D', 'compressedTexImage2D', 'generateMipmap', 'readPixels', 'getError', 'finish', 'clientWaitSync', 'getParameter', 'checkFramebufferStatus', 'bindVertexArray', 'uniformMatrix4fv']) {
+      const f = gl[nome] as ((...a: unknown[]) => unknown) | undefined; if (typeof f !== 'function') continue;
+      gl[nome] = function (this: unknown, ...a: unknown[]) { const t = performance.now(), r = f.apply(this, a), d = performance.now() - t; if (d > 20) { const k = nome === 'getProgramParameter' ? `getProgramParameter(${a[1] === 0x8B82 ? 'LINK_STATUS' : a[1] === 0x91B1 ? 'COMPLETION_STATUS' : String(a[1])})` : nome, L = glLento.get(k) ?? { n: 0, ms: 0, pior: 0 }; L.n++; L.ms += d; L.pior = Math.max(L.pior, d); glLento.set(k, L); } return r; }; } }
+  const mapaGl = () => [...glLento.entries()].sort((a, b) => b[1].ms - a[1].ms).slice(0, 8).map(([k, v]) => `${Math.round(v.ms)} ms em ${v.n}× (pior ${Math.round(v.pior)} ms): ${k}`);
   const lentos = new Map<string, { n: number; ms: number; pior: number }>();
   const mapaLentos = () => [...lentos.entries()].sort((a, b) => b[1].ms - a[1].ms).slice(0, 10).map(([k, v]) => `${Math.round(v.ms)} ms em ${v.n}× (pior ${Math.round(v.pior)} ms): ${k}`);
   const mapa = () => [...motivos.entries()].sort((a, b) => b[1].n - a[1].n).slice(0, 6).map(([k, v]) => `${v.n}× [${k}] ex.: ${v.ex}`);
@@ -92,5 +102,5 @@ export function createShaderGate(renderer: THREE.WebGLRenderer, scene: THREE.Sce
     const fim = () => { for (const q of L) { let set = ready.get(q.m); if (!set) ready.set(q.m, set = new Set()); set.add(q.v); done++; const cp = PR.get(q.m).currentProgram; if (cp) chk.set(q.m, cp); } anota(); busy = false; };
     p.then(fim, fim); }
   let err = '', espera = 0;
-  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, stats: () => `${livre ? (off ? 'PORTÃO DESLIGADO (?portao=0) · ' : 'sem compilação paralela nesta placa · ') : ''}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · maior espera de uma leva ${Math.round(espera)} ms · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
+  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, mapaGl, stats: () => `${livre ? (off ? 'PORTÃO DESLIGADO (?portao=0) · ' : 'sem compilação paralela nesta placa · ') : ''}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · maior espera de uma leva ${Math.round(espera)} ms · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
 }
