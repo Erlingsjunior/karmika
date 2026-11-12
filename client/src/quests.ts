@@ -456,9 +456,14 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const el = document.createElement('div'); el.id = 'quests'; document.body.appendChild(el);
   // posição ajustável: arraste pelo título; fica salva
   try { const p = JSON.parse(localStorage.getItem('karmika.ui.quests') || 'null'); if (p) { el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; } } catch { /* */ }
+  /* 12/11 (Erling: "missões eu consigo arrastar para fora da tela"): o painel inteiro fica dentro da tela, ao arrastar, ao abrir o jogo com uma posição
+     salva de outra janela e ao mudar o tamanho da janela. Clique duplo no título devolve ao lugar padrão (à direita, embaixo do mapa). */
+  const dentro = () => { if (!el.style.left) return; const r = el.getBoundingClientRect(); if (!r.width) return; const x = Math.max(4, Math.min(innerWidth - r.width - 4, r.left)), y = Math.max(4, Math.min(Math.max(4, innerHeight - Math.min(r.height, innerHeight - 8) - 4), r.top)); if (Math.abs(x - r.left) > 0.5 || Math.abs(y - r.top) > 0.5) { el.style.left = x + 'px'; el.style.top = y + 'px'; } };
+  addEventListener('resize', () => requestAnimationFrame(dentro)); setInterval(dentro, 1500);
+  el.addEventListener('dblclick', (e) => { if (!(e.target as HTMLElement).closest('h4')) return; el.style.left = ''; el.style.top = ''; try { localStorage.removeItem('karmika.ui.quests'); } catch { /* */ } });
   let dragQ: { dx: number; dy: number } | null = null;
   el.addEventListener('pointerdown', (e) => { const h = (e.target as HTMLElement).closest('h4'); if (!h) return; const r = el.getBoundingClientRect(); dragQ = { dx: e.clientX - r.left, dy: e.clientY - r.top }; el.setPointerCapture(e.pointerId); e.preventDefault(); });
-  el.addEventListener('pointermove', (e) => { if (!dragQ) return; const x = Math.max(0, Math.min(innerWidth - 120, e.clientX - dragQ.dx)), y = Math.max(0, Math.min(innerHeight - 60, e.clientY - dragQ.dy)); el.style.left = x + 'px'; el.style.top = y + 'px'; });
+  el.addEventListener('pointermove', (e) => { if (!dragQ) return; const rq = el.getBoundingClientRect(), x = Math.max(4, Math.min(innerWidth - rq.width - 4, e.clientX - dragQ.dx)), y = Math.max(4, Math.min(Math.max(4, innerHeight - Math.min(rq.height, innerHeight - 8) - 4), e.clientY - dragQ.dy)); el.style.left = x + 'px'; el.style.top = y + 'px'; });
   el.addEventListener('pointerup', () => { if (!dragQ) return; dragQ = null; const r = el.getBoundingClientRect(); try { localStorage.setItem('karmika.ui.quests', JSON.stringify({ x: r.left, y: r.top })); } catch { /* */ } });
   const logEl = document.createElement('div'); logEl.id = 'qlog'; document.body.appendChild(logEl);
   let focusId: string | null = null; // missão aberta em destaque no diário (clique na seta ↗ do card)

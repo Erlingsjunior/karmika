@@ -2311,7 +2311,11 @@ function buildCity_L(): World {
       const vs = t.name === 'Askavik' ? [5] : (city || TECH.has(t.name)) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4]; /* Askavik já tem as cinco na Casa dos Ofícios */
       let S = city ? 3 : 2; const tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
       const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
-      const put = (v: number, gx: number, gy: number, ry: number) => {
+      /* 12/11 (Erling: "todas as casas de profissão ficam viradas para onde a gente não vê; o jogo é isométrico, tudo tem que ficar de frente num sentido
+         que enxergamos"): a câmera olha de sudeste. A frente aberta de toda casa de ofício aponta para o sul, para o leste ou entre os dois; se a direção
+         do centro da vila cair fora disso, a frente vira para o lado visível mais próximo (sul ou leste). */
+      const deFrente = (ry: number) => { let d = ry - Math.PI / 4; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.abs(d) <= 1.13 ? ry : d > 0 ? Math.PI / 2 : 0; };
+      const put = (v: number, gx: number, gy: number, ry0: number) => { const ry = deFrente(ry0);
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFTK.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + S + 1 && p.gy + p.h > gy - 1 && p.gy < gy + S + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass';
         props.push({ kind: 'station', gx, gy, w: S, h: S, height: S === 3 ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
@@ -2322,7 +2326,7 @@ function buildCity_L(): World {
           for (let r = city ? 8 : 5; r <= (city ? 44 : 26); r++) for (let a = 0; a < 48; a++) { const ang = a * 0.1309, gx = Math.round(hubX(t) + Math.cos(ang) * r) - (S >> 1), gy = Math.round(t.y + Math.sin(ang) * r) - (S >> 1);
             if (t.kind === 'city' && Math.hypot(gx - t.x, gy - t.y) > t.radius - 8) continue; if (!fits(gx, gy, true)) continue;
             const cx = gx + S / 2, cy = gy + S / 2; let wd = 99, wx = 0, wy = 0; for (let y = gy - 4; y <= gy + S + 3; y++) for (let x = gx - 4; x <= gx + S + 3; x++) { if (!inb(x, y) || map[y][x] !== 'water') continue; const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d < wd) { wd = d; wx = x + 0.5; wy = y + 0.5; } }
-            if (wd > S / 2 + 3.2) continue; const ry = Math.atan2(hubX(t) - cx, t.y - cy);
+            if (wd > S / 2 + 3.2) continue; const ry = deFrente(Math.atan2(hubX(t) - cx, t.y - cy));
             { let door = true; for (const k of [1, 2]) { const fx = Math.floor(cx + Math.sin(ry) * (S / 2 + k)), fy = Math.floor(cy + Math.cos(ry) * (S / 2 + k)); if (!inb(fx, fy) || !['grass', 'plaza', 'dirt', 'road'].includes(map[fy][fx] as string)) door = false; } if (!door) continue; }
             const score = wd + r * 0.08; if (!best || score < best.d) best = { gx, gy, ry, wdir: Math.atan2(wx - cx, wy - cy), d: score }; }
           if (best) { put(0, best.gx, best.gy, best.ry); props[props.length - 1].wdir = best.wdir; ok = true; } } /* o apotecário da vila também é casinha: farmácia pequena com antessala (Erling, 25/10) */
@@ -2430,7 +2434,7 @@ function buildCity_L(): World {
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza'; /* (tile 'tree' também vira piso) */
         /* as cinco bancadas de verdade (as mesmas das vilas: funcionam para craft), em fileira, de frente para o corredor */
-        for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI : 0 }); }
+        for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI / 2 : 0 /* 12/11: a fileira de trás olhava para o norte (escondida da câmera); agora olha para o leste */ }); }
         pois.push({ name: 'Casa dos Ofícios', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
   /* ELITES E CHEFES DO MUNDO: cada lugar marcado tem o seu dono, no nível do lugar */

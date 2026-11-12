@@ -82,7 +82,9 @@
   @keyframes ptp { from { text-shadow: 0 0 0 #ffb040; } to { text-shadow: 0 0 10px #ffb040; } }
   #hud .lbl::after { content: ' · Tab: combate'; opacity: .6; } body.combat #hud .lbl::after { content: ' · ⚔ EM COMBATE'; color: #ffd24a; opacity: 1; }
   /* missões */
-  #quests { position: fixed; left: 14px; top: 40vh; width: 210px; z-index: 6; pointer-events: none; font-family: Georgia, serif; }
+  /* 12/11 (Erling: "esse deve ser o layout padrão quando o jogo começa"): o painel de missões nasce à DIREITA, embaixo do mapa e do aviso de evento.
+     Quem arrastar fica com a posição dele (salva), e o clique duplo no título devolve a este lugar. */
+  #quests { position: fixed; left: auto; right: 8px; top: 40vh; width: 210px; z-index: 6; pointer-events: none; font-family: Georgia, serif; }
   #quests h4 { pointer-events: auto; cursor: grab; user-select: none; } #quests h4:active { cursor: grabbing; } #quests h4 small.mv { float: right; opacity: .5; letter-spacing: 0; font-size: 9px; }
   #quests .q { pointer-events: auto; cursor: pointer; } #quests .q.track { --tc: 255,210,74; background: linear-gradient(90deg, rgba(var(--tc),.16), rgba(14,10,6,.78) 70%); border-left-width: 4px; border-left-color: rgb(var(--tc)); padding: 6px 9px 7px 10px; font-size: 12px; box-shadow: 0 0 0 1px rgba(var(--tc),.35), 0 0 16px rgba(var(--tc),.28); animation: qtrack 2.6s ease-in-out infinite; }
   #quests .q.track b { font-size: 13.5px; text-shadow: 0 0 8px rgba(var(--tc),.55), 0 1px 2px #000; } #quests .q.track .dir { color: rgb(var(--tc)); font-size: 10.5px; }
@@ -1384,7 +1386,7 @@
   #quick .slot.q.pin { border-color: #c9a24a; } #quick .slot.q.none { opacity: .45; filter: grayscale(.7); } #quick .slot.q.dropok { border-color: #ffe08a; box-shadow: 0 0 10px #ffe08a88; }
   #quick .qtog svg { display: block; } #quick .qtog { width: 18px; height: 18px; font-size: 9px; }
   :root { --ui: 1; } #bar, #quick, #fury, #mini, #hud, #banner, #dock, #workbar, .pn, #menu .panel, #log, #partyf, #pinvite, #pquest, #bloodhud, #plmenu, #dlg .dp { zoom: var(--ui); }
-  #quests { transform: scale(var(--ui, 1)); transform-origin: 0 0; } #chat { transform: scale(var(--ui, 1)); transform-origin: 0 100%; } /* arrastáveis: escala sem mexer na posição salva */ /* tudo o que é interface segue o "Tamanho da interface" */
+  #quests { transform: scale(var(--ui, 1)); transform-origin: 0 0; } #quests:not([style*="left"]) { transform-origin: 100% 0; } #chat { transform: scale(var(--ui, 1)); transform-origin: 0 100%; } /* arrastáveis: escala sem mexer na posição salva */ /* tudo o que é interface segue o "Tamanho da interface" */
   /* dock em quadradinhos, embaixo do chat */
   #dock { left: 14px; right: auto; bottom: 12px; gap: 4px; } #chat { bottom: 52px; }
   #dock button { width: 32px; height: 32px; border-radius: 6px; border: 1px solid rgba(184,146,74,.7); background: linear-gradient(180deg, #2a1e10, #120c06); box-shadow: 0 2px 5px #000, inset 0 0 8px rgba(0,0,0,.7); padding: 0; }
@@ -1567,6 +1569,7 @@
   .eyecnt { position: absolute; left: 50%; top: -6px; transform: translateX(-50%); min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; display: grid; place-items: center; font: 700 13px Cinzel, Georgia, serif; color: #1a1006; background: radial-gradient(circle at 35% 30%, #fff3c6, #e6b459 60%, #9a6422); border: 1px solid #fff1bd; box-shadow: 0 0 10px rgba(255,210,100,.9), 0 2px 4px rgba(0,0,0,.7); pointer-events: none; z-index: 3; }
   /* 11/11: travas de arquétipo (sistemas/travas.ts). Runas de pedra ao lado de cada habilidade e três travas no espaço livre embaixo da árvore. */
   .rn { width: 18px; height: 18px; border-radius: 5px 6px 4px 7px; display: grid; place-items: center; background: linear-gradient(145deg, #8a8478, #4c473f 60%, #35312b); box-shadow: inset 0 1px 0 rgba(255,255,255,.28), inset 0 -2px 3px rgba(0,0,0,.55), 0 1px 3px rgba(0,0,0,.6); cursor: grab; } .rn svg { width: 11px; height: 11px; fill: #ffe08a; filter: drop-shadow(0 0 2px rgba(255,200,90,.7)); }
+  .tn .cad { border-radius: 16px; --cad: 26px; } .tn .cad .cadsvg { opacity: .62; }
   .rn.vaga { background: rgba(0,0,0,.35); box-shadow: inset 0 0 0 1px rgba(160,130,80,.5); border: 1px dashed rgba(160,130,80,.55); cursor: default; }
   .rn.used { opacity: .28; cursor: default; filter: grayscale(1); } .rn:not(.used):hover { transform: scale(1.18); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 0 8px rgba(255,210,100,.7); }
   .tn .rn2 { position: absolute; left: calc(100% + 4px); top: 8px; display: flex; flex-direction: column; gap: 5px; z-index: 2; }

@@ -11,6 +11,7 @@
      chuva, linhas, rajada de projéteis, puxão, sumir e aparecer atrás, rugido que deixa lento, dreno (laço de sangue que se rompe
      com distância) e chamado de crias.
    As mecânicas antigas da masmorra (círculo, golpe pesado, poças, crias por vida, fúria) continuam: o kit soma em cima. */
+import { std } from './toon3d';
 import * as THREE from 'three';
 import { wallOf, erupt } from './luta3d';
 import type { EnemyType } from './world';
@@ -52,7 +53,13 @@ const P = {
     const gm = mesh(new THREE.OctahedronGeometry(0.05 * s), glowM(gem)); gm.position.set(0, 0.03, 0.21 * s); g.add(gm); D.add(g, D.head.x, D.head.y + 0.18 * s, D.head.z); return g; },
   eyes(D: Dress, col: number, s = 1, dz = 0.12) { for (const x of [-1, 1]) { const e = mesh(new THREE.SphereGeometry(0.045 * s, 6, 5), glowM(col, 1)); D.add(e, D.head.x + x * 0.085 * s, D.head.y, D.head.z + dz * s); } },
   horns(D: Dress, col: number, len = 0.6, spread = 0.25, curl = 0.6) { for (const x of [-1, 1]) { const h = mesh(new THREE.ConeGeometry(0.07, len, 6), toon(col)); h.rotation.z = -x * curl; h.rotation.x = -0.35; D.add(h, D.head.x + x * spread, D.head.y + 0.15 + len * 0.3, D.head.z - 0.05); } },
-  cape(D: Dress, col: number, len: number, w = 0.9, y = 0) { const g = new THREE.PlaneGeometry(w, len, 1, 6); g.translate(0, -len / 2, 0); const c = mesh(g, new THREE.MeshToonMaterial({ color: col, side: THREE.DoubleSide })); c.rotation.x = 0.12; D.add(c, 0, (y || D.H * 0.78), -D.W * 0.32); c.userData.cape = 1; return c; },
+  /* 12/11 (Erling: "placa vermelha nas costas de elites humanos; ridículo"): a capa era um retângulo reto, de cor chapada, pendurado longe das costas
+     (a distância vinha da largura da caixa do modelo, que nos modelos de arte inclui os braços abertos). Agora é pano: estreita nos ombros e aberta
+     embaixo, abraça as costas em curva, tem pregas, a barra é irregular, fica colada no corpo e usa o material de toon do jogo (pega luz e sombra). */
+  cape(D: Dress, col: number, len: number, w = 0.9, y = 0) { const g = new THREE.PlaneGeometry(1, 1, 8, 8), ps = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < ps.count; i++) { const u = ps.getX(i) * 2, v = 0.5 - ps.getY(i) /* 0 no ombro, 1 na barra */, wide = w * (0.62 + 0.5 * v), fold = Math.sin(u * 9.4 + 1.3) * 0.03 * v;
+      ps.setXYZ(i, u * wide * 0.5, -v * len * (1 + 0.05 * Math.sin(u * 7 + 0.6) * (v > 0.95 ? 1 : 0)), -0.05 - (1 - u * u) * 0.07 * (1 - v * 0.5) - 0.16 * v * v + fold + u * u * 0.1 * (1 - v)); }
+    g.computeVertexNormals(); const c = mesh(g, std(col, { side: THREE.DoubleSide })); c.rotation.x = 0.06; D.add(c, 0, (y || D.H * 0.78), -Math.min(0.2, D.W * 0.14)); c.userData.cape = 1; return c; },
   lantern(parent: THREE.Object3D, col: number, lit: boolean, x = 0, y = 0, z = 0, s = 1) { const g = new THREE.Group(); const cage = mesh(new THREE.CylinderGeometry(0.11 * s, 0.13 * s, 0.26 * s, 6, 1, true), new THREE.MeshToonMaterial({ color: 0x2a2018, side: THREE.DoubleSide, wireframe: false }));
     const core = mesh(new THREE.SphereGeometry(0.08 * s, 8, 6), lit ? glowM(col, 1) : toon(0x302a22)); const top = mesh(new THREE.ConeGeometry(0.14 * s, 0.1 * s, 6), toon(0x2a2018)); top.position.y = 0.18 * s; g.add(cage, core, top); g.position.set(x, y, z); parent.add(g);
     if (lit) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.scale.setScalar(0.9 * s); g.add(sp); sp.userData.flick = 1; } return g; },

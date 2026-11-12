@@ -5,6 +5,7 @@
    - SOMAR: bônus iguais somam com rendimento decrescente (100%, 60%, 40%, 25%) e têm teto que cresce com o grupo (25% com 2, até 60% com 8).
    Simplificações desta primeira versão (ditas ao Erling): "tomar o golpe pelo aliado" e "inimigos batem mais fraco" valem como redução de dano em quem
    recebe. 12/11: as torres e os robôs andam (torres-andantes.ts) e o caído é erguido de verdade (ERGUER, mais abaixo). */
+import { cadeado, acabouDeAbrir } from '../ui/cadeado';
 import { GRUPO_SKILLS, grupoDe, type GSkill, type GEff, type GTipo } from '../grupo-habilidades';
 import { travasOf, type Arq, ARQS } from './travas';
 import type { KitKey } from '../kits';
@@ -153,7 +154,7 @@ export function createGrupoMagias(K: GrupoCtx) {
     const html = L.map((s, i) => { const rk = rankOf(s), why = blocked(s), cur = travasOf('g:' + s.id), ok = learned(s);
       return `<div class="tn gtn ${ok ? 'on' : ''} ${gsel === s.id ? 'sel' : ''} ${!rk && !why ? 'can' : ''} ${!ok && why ? 'lk' : ''}" style="left:${cx(i) - NS}px;top:${cy - NS}px;--c:${COL[s.tipo]}" data-gn="${s.id}" title="${s.name}"><div class="ic">${runaPedra(s, NS * 2 - 14)}</div>
         ${ok ? `<span class="rn2">${[0, 1].map((q) => cur[q] ? `<i class="rn used" title="Runa na trava ${ARQS.find((a) => a.id === cur[q])!.name}"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>` : `<i class="rn" draggable="true" data-rune="g:${s.id}" title="Runa de ${TNOME[s.tipo]}: arraste para uma trava (Tanque, Dano ou Healer)"><svg viewBox="0 0 24 24">${GLYPH[s.tipo]}</svg></i>`).join('')}</span>` : `<span class="rn2">${[0, 1].map(() => `<i class="rn vaga" title="Espaço de runa de ${TNOME[s.tipo]}: a runa aparece quando a habilidade for aprendida, e então vai para uma trava (Tanque, Dano ou Healer)"></i>`).join('')}</span>`}
-        <span class="pips">${Array.from({ length: GRUPO_MAX }, (_, k) => `<i class="${k < rk ? 'f' : ''}"></i>`).join('')}</span><b>${rk}/${GRUPO_MAX}</b><kbd>${rk ? '⎇' + (known().indexOf(s) + 1) : '🔒' + gate(s)}</kbd><em>${s.name}</em></div>`; }).join('');
+        <span class="pips">${Array.from({ length: GRUPO_MAX }, (_, k) => `<i class="${k < rk ? 'f' : ''}"></i>`).join('')}</span><b>${rk}/${GRUPO_MAX}</b><kbd>${rk ? '⎇' + (known().indexOf(s) + 1) : '🔒' + gate(s)}</kbd><em>${s.name}</em>${(() => { const tranc = !rk && K.lvl() < gate(s); return cadeado(tranc, acabouDeAbrir(`gs:${s.id}`, !tranc)); })()}</div>`; }).join('');
     return { html, lines, rows: 1 }; }
   /** a ficha da habilidade de grupo selecionada (ocupa o lugar da ficha da magia), ou null */
   function detail(): string | null { const s = mine().find((q) => q.id === gsel); if (!s) return null; const rk = rankOf(s), why = blocked(s), e = effOf(s), nx: GEff = {}; for (const [a, v] of Object.entries(s.eff)) (nx as Record<string, unknown>)[a] = typeof v === 'number' && a !== 'cost' && a !== 'acc' ? v * (1 + 0.05 * rk) : v;
