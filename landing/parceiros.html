@@ -140,6 +140,19 @@ html { scroll-behavior: smooth; }
 @media (max-width: 980px) { .mods.is-open { grid-template-columns: 1fr; } .modx { grid-template-columns: 1fr; } .modx__arte { min-height: 260px; } .modx__heroi { height: 100%; } .modx::before { background: linear-gradient(180deg, rgba(14, 13, 18, .3), #0e0d12 46%); } }
 @media (max-width: 560px) { .modx__g, .modx__nums { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .modx, .modx__heroi { animation: none; } }
+.pks div { cursor: pointer; transition: transform .25s, border-color .25s, box-shadow .25s; } .pks div:hover, .pks div:focus-visible { transform: translateY(-4px); border-color: rgba(243, 211, 138, .7); outline: none; }
+.pks div[aria-expanded="true"] { border-color: var(--gold2) !important; box-shadow: 0 0 30px -8px rgba(243, 211, 138, .8); }
+.pks.is-open div:not([aria-expanded="true"]) { opacity: .5; }
+.pkx { position: relative; display: grid; grid-template-columns: minmax(0, .5fr) minmax(0, 1.5fr); gap: 0; margin-top: 18px; border-radius: 20px; border: 1px solid rgba(217, 165, 74, .5); background: radial-gradient(70% 90% at 14% 60%, rgba(217, 165, 74, .22), transparent 70%), #0e0d12; overflow: hidden; animation: modxin .45s cubic-bezier(.2, .8, .2, 1); }
+.pkx__arte { position: relative; min-height: 300px; } .pkx__arte img { position: absolute; left: 50%; bottom: -6%; height: 104%; width: auto; max-width: none; transform: translateX(-50%); filter: drop-shadow(0 0 22px rgba(243, 211, 138, .4)); }
+.pkx__txt { padding: clamp(18px, 2.4vw, 32px); display: grid; gap: 12px; align-content: center; } .pkx__txt small { font: 600 11px/1 var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--gold); } .pkx__txt h3 { margin: 0; font-size: clamp(24px, 2.6vw, 36px); }
+.pkx__txt .pr { font: 800 clamp(24px, 2.4vw, 34px)/1 var(--sans); color: var(--gold2); } .pkx__txt .pr em { font: 400 14px var(--sans); font-style: normal; color: var(--mut); margin-left: 10px; }
+.pkx__txt ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; font-size: 15px; color: #d8cdbb; } .pkx__txt li { padding-left: 20px; position: relative; } .pkx__txt li::before { content: "✦"; position: absolute; left: 0; top: 2px; font-size: 12px; color: var(--gold2); }
+.pkx__txt blockquote { margin: 0; padding-left: 14px; border-left: 2px solid var(--gold); font: italic 500 18px/1.3 var(--serif); color: var(--gold2); }
+@media (max-width: 760px) { .pkx { grid-template-columns: 1fr; } .pkx__arte { min-height: 220px; } .pkx__txt ul { grid-template-columns: 1fr; } }
+/* níveis abertos: os outros dois viram abas em cima do cartão escolhido */
+.mods.is-open .mod.is-sel { cursor: pointer; }
+.modx__abas { display: flex; flex-wrap: wrap; gap: 8px; } .modx__abas button { font: 700 13px/1 var(--sans); color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 10px 14px; background: rgba(255, 255, 255, .03); cursor: pointer; } .modx__abas button:hover { color: var(--ink); border-color: rgba(243, 211, 138, .5); } .modx__abas button[aria-current="true"] { background: var(--gold2); border-color: var(--gold2); color: #1a120a; }
 /* as runas de Karmika ao fundo, como no site do jogo */
 main, .foot { position: relative; z-index: 1; }
 /* o segundo arco, por fora: o que a casa vende sobe, a comissão volta */
@@ -408,14 +421,15 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <span class="eyebrow">O que a casa vende</span>
     <h2>Grátis até o nível 10. Depois, cinco pacotes.</h2>
     <p class="lead">O teste é gratuito e roda direto no navegador, sem instalar nada. Depois do nível 10, o jogador compra o jogo uma vez, em um destes pacotes. É sobre eles, sobre os cartões e sobre a loja do jogo que a casa ganha comissão.</p>
-    <div class="pks">
+    <div class="pks" id="pks">
       <div><small>O Caminhante</small><b>Jogo Base</b><span>R$ 49,90</span></div>
       <div><small>O Viajante</small><b>Pacote I</b><span>R$ 69,90</span></div>
       <div><small>O Veterano</small><b>Pacote II</b><span>R$ 94,90</span></div>
       <div><small>O Campeão</small><b>Pacote III</b><span>R$ 139,90</span></div>
       <div class="pks--f"><small>A Lenda</small><b>Pacote Fundador</b><span>R$ 429,90</span></div>
     </div>
-    <p class="lead lead--larga">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. <a href="/#pacotes" style="white-space:nowrap">Ver o que vem em cada pacote</a>.</p>
+    <p class="lead lead--larga">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. Toque em um pacote para ver o que vem nele.</p>
+    <div class="pkx" id="pkx" hidden aria-live="polite"></div>
   </div>
 </section>
 
@@ -799,14 +813,14 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     var fu = el('img', 'modx__fundo'); fu.src = x.fundo; fu.alt = ''; modx.appendChild(fu);
     var ar = el('div', 'modx__arte'), he = el('img', 'modx__heroi'); he.src = x.heroi; he.alt = ''; ar.appendChild(he);
     var sv = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), pa = document.createElementNS('http://www.w3.org/2000/svg', 'path'); sv.setAttribute('viewBox', '0 0 28 28'); sv.setAttribute('class', 'modx__runa'); sv.setAttribute('aria-hidden', 'true'); pa.setAttribute('d', x.runa); sv.appendChild(pa); ar.appendChild(sv); modx.appendChild(ar);
-    var t = el('div', 'modx__txt'), vo = el('button', 'modx__volta', '← Os três níveis'); vo.type = 'button'; vo.addEventListener('click', function () { fecha(); cards[i].focus(); }); t.appendChild(vo);
+    var t = el('div', 'modx__txt'), ab = el('div', 'modx__abas'), vo = el('button', 'modx__volta', '← Os três níveis'); vo.type = 'button'; vo.addEventListener('click', function () { fecha(); cards[i].focus(); }); ab.appendChild(vo); N.forEach(function (o, k) { var b = el('button', '', o.nome + ' · ' + o.com + '%'); b.type = 'button'; b.setAttribute('aria-current', String(k === i)); b.addEventListener('click', function () { if (k === i) fecha(); else abreLado(k, false); }); ab.appendChild(b); }); t.appendChild(ab);
     var bq = el('blockquote', 'modx__fala'); bq.appendChild(el('p', '', '"' + x.fala + '"')); bq.appendChild(el('cite', '', x.quem)); t.appendChild(bq);
     t.appendChild(el('p', '', n.txt));
     var nums = el('div', 'modx__nums'); [[n.com + '%', 'de comissão em tudo o que a casa vende'], [n.maq, 'máquinas no salão'], [n.lugar, 'leva o nome da casa em Karmika']].forEach(function (q) { var d = el('div'); d.appendChild(el('b', '', q[0])); d.appendChild(el('span', '', q[1])); nums.appendChild(d); }); t.appendChild(nums);
     var g = el('div', 'modx__g'); [['O que a casa ganha', n.ganha], ['O que a casa precisa ter', n.tem], ['Campeonatos', n.camp]].forEach(function (q) { var d = el('div'); d.appendChild(el('h4', '', q[0])); d.appendChild(ul(q[1])); g.appendChild(d); }); t.appendChild(g);
     var ou = el('div', 'modx__outros'); N.forEach(function (o, k) { if (k === i) return; var b = el('button', '', 'Ver ' + o.nome + ' · ' + o.com + '%'); b.type = 'button'; b.addEventListener('click', function () { abreLado(k, false); }); ou.appendChild(b); }); t.appendChild(ou);
     modx.appendChild(t); if (rola) mods.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-  cards.forEach(function (m) { var i = +m.dataset.md; m.addEventListener('click', function () { if (m.classList.contains('is-sel')) return; abreLado(i, true); }); m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abreLado(i, true); } }); });
+  cards.forEach(function (m) { var i = +m.dataset.md; m.addEventListener('click', function () { if (m.classList.contains('is-sel')) { fecha(); return; } abreLado(i, true); }); m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abreLado(i, true); } }); });
   md.querySelector('.md__x').addEventListener('click', function () { md.close(); }); md.addEventListener('click', function (e) { if (e.target === md) md.close(); });
 })();
 (function () {
@@ -890,6 +904,25 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     rl.innerHTML = h; }
   monta(); var rt = 0; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(monta, 250); });
   if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) setInterval(function () { if (document.hidden) return; var all = rl.children; if (!all.length) return; var e = null; for (var k = 0; k < 12 && !e; k++) { var c = all[Math.floor(Math.random() * all.length)], x = parseFloat(c.style.left) / innerWidth; if (x < 0.13 || x > 0.85) e = c; } if (!e) return; var cl = Math.random() < 0.6 ? 'g' : 'b'; e.classList.add(cl); setTimeout(function () { e.classList.remove(cl); }, 2600); }, 583);
+})();
+</script>
+<script>
+/* os pacotes: clicar abre o que vem nele; clicar de novo fecha */
+(function () {
+  var pks = document.getElementById('pks'), box = document.getElementById('pkx'); if (!pks || !box) return; var cs = [].slice.call(pks.children), sel = -1;
+  var P = [{ img: '/img/c-humano.webp', fala: 'Todo caminho começa com um passo.', itens: ['O jogo completo, seu para sempre'] },
+    { img: '/img/c-elfa.webp', fala: 'Quem viaja leve chega mais longe.', itens: ['O jogo completo', '30 dias de Premium', 'Drone de Cura por 15 dias'] },
+    { img: '/img/c-anao.webp', fala: 'Ferro bom canta quando bate.', itens: ['O jogo completo', '60 dias de Premium', 'Drone de Cura por 15 dias', 'Robô de Defesa por 15 dias'] },
+    { img: '/img/c-guerreira.webp', fala: 'Torneio se ganha na arena.', itens: ['O jogo completo', '90 dias de Premium', 'Drone de Cura por 15 dias', 'Robô de Defesa por 15 dias', 'Bracelete de Choque por 15 dias', '1 montaria à sua escolha'] },
+    { img: '/img/c-paladino.webp', fala: 'O nome fica escrito para sempre.', itens: ['O jogo completo', '180 dias de Premium', '2 de cada engenhoca, por 30 dias', '3 montarias, uma por raça', 'Aura, roupas e título de Fundador', 'Caixa com livro impresso, artbook impresso, mapa em A2 e o jogo em pendrive'] }];
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
+  function fecha() { sel = -1; box.hidden = true; box.textContent = ''; pks.classList.remove('is-open'); cs.forEach(function (c) { c.setAttribute('aria-expanded', 'false'); }); }
+  function abre(i) { if (sel === i) { fecha(); return; } sel = i; var c = cs[i], p = P[i]; pks.classList.add('is-open'); cs.forEach(function (q, k) { q.setAttribute('aria-expanded', String(k === i)); }); box.textContent = ''; box.hidden = false;
+    var a = el('div', 'pkx__arte'), im = el('img'); im.src = p.img; im.alt = ''; a.appendChild(im); box.appendChild(a);
+    var t = el('div', 'pkx__txt'); t.appendChild(el('small', '', c.querySelector('small').textContent)); t.appendChild(el('h3', '', c.querySelector('b').textContent));
+    var pr = el('div', 'pr', c.querySelector('span').textContent), v = parseFloat(c.querySelector('span').textContent.replace(/[^0-9,]/g, '').replace(',', '.')); pr.appendChild(el('em', '', 'a casa recebe de R$ ' + (v * .2).toFixed(2).replace('.', ',') + ' a R$ ' + (v * .3).toFixed(2).replace('.', ',') + ' por venda')); t.appendChild(pr);
+    var u = el('ul'); p.itens.forEach(function (x) { u.appendChild(el('li', '', x)); }); t.appendChild(u); t.appendChild(el('blockquote', '', '"' + p.fala + '"')); box.appendChild(t); }
+  cs.forEach(function (c, i) { c.tabIndex = 0; c.setAttribute('role', 'button'); c.setAttribute('aria-expanded', 'false'); c.addEventListener('click', function () { abre(i); }); c.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abre(i); } }); });
 })();
 </script>
 </body>
