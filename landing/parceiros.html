@@ -82,13 +82,14 @@ html { scroll-behavior: smooth; }
 .lad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-top: 54px; counter-reset: lad; }
 .lad__s { position: relative; padding: 26px clamp(14px, 1.8vw, 26px) 26px; border-top: 2px solid var(--line); counter-increment: lad; }
 .lad__s::before { content: counter(lad, upper-roman); display: block; font: 700 15px/1 var(--serif); color: var(--gold); margin-bottom: 16px; }
+.lad--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } @media (max-width: 760px) { .lad--3 { grid-template-columns: 1fr; } }
 .lad__s:nth-child(1) { border-color: rgba(239, 230, 214, .35); } .lad__s:nth-child(2) { border-color: var(--sky); } .lad__s:nth-child(3) { border-color: var(--gold); } .lad__s:nth-child(4) { border-color: var(--ember); }
 .lad__s h3 { font-size: clamp(19px, 1.7vw, 24px); margin-bottom: 10px; }
 .lad__s p { margin: 0; color: var(--mut); font-size: 15px; }
 .lad__s span { display: block; margin-top: 12px; font-size: 12px; letter-spacing: .08em; color: var(--ink); }
 @media (max-width: 900px) { .lad { grid-template-columns: 1fr 1fr; } } @media (max-width: 520px) { .lad { grid-template-columns: 1fr; } }
 .fair { margin-top: 46px; padding: clamp(20px, 3vw, 36px); border-left: 2px solid var(--ember); background: rgba(255, 122, 42, .05); border-radius: 0 16px 16px 0; max-width: 900px; }
-.fair p { margin: 10px 0 0; color: var(--mut); }
+.fair p { margin: 10px 0 0; color: var(--mut); } .fair--up { border-left-color: var(--gold); background: rgba(217, 165, 74, .06); margin-top: 22px; }
 
 /* de quem é o quê */
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(16px, 2.4vw, 30px); margin-top: 50px; }
@@ -210,7 +211,7 @@ html { scroll-behavior: smooth; }
           <h4>O que a casa ganha</h4>
           <ul><li><b>20%</b> de cada pacote do jogo vendido no balcão</li><li><b>60%</b> das vendas da loja do jogo feitas pela casa</li><li>Nome e endereço no mapa de casas parceiras do site</li><li>Primeiro kit de divulgação de graça: cartões, folhetos e heróis de papelão</li><li><b>30% de desconto</b> na loja de itens KARMIKA, para revender</li></ul>
           <h4>Campeonatos</h4>
-          <ul><li>Torneio da Casa todo mês, com prêmios dentro do jogo enviados pelo Tear</li><li>Os campeões da casa ganham vaga na Liga da Cidade</li></ul>
+          <ul><li>Torneio da Casa todo mês, com prêmios dentro do jogo enviados pelo Tear</li><li>As guildas da casa disputam as Classificatórias</li></ul>
         </div>
       </article>
       <article class="mod mod--2">
@@ -224,7 +225,7 @@ html { scroll-behavior: smooth; }
           <h4>O que a casa ganha</h4>
           <ul><li><b>25%</b> de cada pacote do jogo vendido no balcão</li><li><b>60%</b> das vendas da loja do jogo feitas pela casa</li><li>Canal direto com a equipe da D2 Studio</li><li>Destaque no mapa de casas e nos rankings do site</li></ul>
           <h4>Campeonatos</h4>
-          <ul><li>Sede de etapas da Liga da Cidade</li><li>A guilda da casa disputa a Copa dos Reinos</li><li>Apoio do Tear para transmitir as partidas</li></ul>
+          <ul><li>Sede de rodadas das Classificatórias</li><li>A guilda da casa briga pelo selo Diamante, Ouro ou Prata</li><li>Apoio do Tear para transmitir as partidas</li></ul>
         </div>
       </article>
       <article class="mod mod--3">
@@ -238,7 +239,7 @@ html { scroll-behavior: smooth; }
           <h4>O que a casa ganha</h4>
           <ul><li><b>30%</b> de cada pacote do jogo vendido no balcão</li><li><b>60%</b> das vendas da loja do jogo feitas pela casa</li><li>Eventos assinados junto com KARMIKA</li><li>Prioridade para sediar finais e lançamentos</li></ul>
           <h4>Campeonatos</h4>
-          <ul><li>Sede das finais regionais da Copa dos Reinos</li><li>Palco das disputas entre cidades e entre países</li><li>Mapa criado pelo Tear só para o evento</li></ul>
+          <ul><li>Sede dos Playoffs das guildas Diamante, Ouro e Prata</li><li>Candidata a palco do KARMIKA Championship</li><li>Mapa criado pelo Tear só para o evento</li></ul>
         </div>
       </article>
     </div>
@@ -265,6 +266,7 @@ html { scroll-behavior: smooth; }
       <div><b>Primeiro material de graça</b><span>O primeiro kit de divulgação não custa nada: cartões, folhetos, heróis do jogo em papelão, cartões de crédito de jogo e cartões de dinheiro para itens.</span></div>
       <div><b>Loja de itens KARMIKA</b><span>Bonecos, camisetas, jaquetas e todo o resto da loja saem para a casa com 30% de desconto de parceiro, para revender no próprio balcão.</span></div>
       <div><b>Eventos da casa</b><span>Inscrição e bilheteria dos torneios que a casa organiza ficam 100% com a casa. Em evento assinado junto com KARMIKA, 70% da bilheteria é da casa.</span></div>
+      <div><b>Reino cheio, casa em destaque</b><span>Quanto mais jogadores no reino, mais visibilidade na parceria: destaque no site, prioridade para sediar eventos e visita da equipe da D2 Studio.</span></div>
       <div><b>Custo para entrar</b><span>Casas fundadoras não pagam taxa de adesão nem mensalidade. A casa entra com o computador do reino, as máquinas e a internet.</span></div>
       <div><b>Repasse</b><span>Todo mês, até o dia 10, por Pix, com extrato de cada venda, de cada cartão usado e de cada desconto.</span></div>
       <div><b>Preço único</b><span>Pacotes e cartões custam no balcão o mesmo que no site oficial. A margem da casa já está dentro do preço.</span></div>
@@ -288,7 +290,7 @@ html { scroll-behavior: smooth; }
           <tr><th scope="row">Computador do reino</th><td>Dedicado, 16 GB de memória, SSD</td><td>Dedicado, 32 GB de memória, SSD</td><td>Servidor, 64 GB de memória, SSD e nobreak</td></tr>
           <tr><th scope="row">Internet</th><td>Cabeada, 100 Mb</td><td>Cabeada, 300 Mb</td><td>Fibra de 500 Mb com um segundo link de reserva</td></tr>
           <tr><th scope="row">Torneio da Casa</th><td>1 por mês</td><td>2 por mês</td><td>2 por mês</td></tr>
-          <tr><th scope="row">Campeonatos entre reinos</th><td>Envia os campeões</td><td>Sedia 1 etapa da Liga por temporada</td><td>Sedia 1 final ou evento grande por trimestre</td></tr>
+          <tr><th scope="row">Campeonato de guildas</th><td>Inscreve as guildas da casa</td><td>Sedia 1 rodada das Classificatórias por temporada</td><td>Sedia 1 final ou evento grande por trimestre</td></tr>
           <tr><th scope="row">Estrutura</th><td>Balcão de vendas</td><td>Sala ou área de equipe</td><td>Palco, telão e transmissão ao vivo</td></tr>
         </tbody>
       </table>
@@ -310,17 +312,20 @@ html { scroll-behavior: smooth; }
 <section id="campeonatos">
   <div class="in">
     <span class="eyebrow">Campeonatos</span>
-    <h2>Do balcão da casa ao palco entre países.</h2>
-    <p class="lead">Como os rankings de todos os reinos chegam ao Tear, dá para fazer o que um servidor único nunca permitiu: casa contra casa, cidade contra cidade, país contra país. A escada é uma só, e começa no seu salão.</p>
-    <div class="lad">
-      <div class="lad__s"><h3>Torneio da Casa</h3><p>Todo mês, dentro do seu reino. A casa marca a data, o Tear manda os prêmios do jogo.</p><span>Estalagem · Salão · Cidadela</span></div>
-      <div class="lad__s"><h3>Liga da Cidade</h3><p>Os campeões das casas da mesma cidade ou região se enfrentam em etapas.</p><span>Sediada nos Salões de Guilda</span></div>
-      <div class="lad__s"><h3>Copa dos Reinos</h3><p>Reino contra reino. As melhores guildas de cada servidor disputam o título da temporada.</p><span>Finais nas Cidadelas</span></div>
-      <div class="lad__s"><h3>Entre países</h3><p>As melhores casas de cada país em um mapa criado só para o evento.</p><span>Organizado pelo Tear</span></div>
+    <h2>Três etapas, do reino da casa ao KARMIKA Championship.</h2>
+    <p class="lead">Todo mês a casa faz o seu Torneio da Casa. E a cada temporada as guildas de todos os reinos entram no campeonato oficial, que corre em três etapas. Como os resultados sobem pelo Fio, a guilda que nasceu no seu salão pode chegar ao palco do mundo.</p>
+    <div class="lad lad--3">
+      <div class="lad__s"><h3>Classificatórias</h3><p>As guildas de cada reino se enfrentam. As melhores se classificam e recebem um selo: Diamante, Ouro ou Prata.</p><span>Em todos os reinos</span></div>
+      <div class="lad__s"><h3>Playoffs</h3><p>As guildas Diamante, Ouro e Prata de todos os reinos se enfrentam em um novo campeonato. Só 20 saem dele.</p><span>Guildas Diamante, Ouro e Prata</span></div>
+      <div class="lad__s"><h3>KARMIKA Championship</h3><p>O mundial. As 20 guildas que sobraram disputam o título do mundo, com prêmios e o nome escrito para sempre na Lenda do jogo.</p><span>20 guildas · organizado pelo Tear</span></div>
     </div>
     <div class="fair">
       <p class="quote">"No mapa do evento, vale a mão. Não o tempo de jogo."</p>
       <p>Nas disputas entre reinos, todos entram em pé de igualdade: o campeonato acontece em um mapa montado pelo Tear, com as mesmas condições para todas as casas. Assim nenhum servidor leva vantagem, e o título é de quem jogou melhor.</p>
+    </div>
+    <div class="fair fair--up">
+      <p class="quote">"Quanto mais gente no seu reino, mais alto sobe o seu estandarte."</p>
+      <p>A visibilidade da casa na parceria cresce com o número de jogadores no reino dela. Os reinos mais cheios ganham destaque no mapa de parceiros e nos rankings, passam à frente para sediar eventos, seja qual for o modelo, e recebem a visita da equipe da D2 Studio.</p>
     </div>
   </div>
 </section>
@@ -380,7 +385,7 @@ html { scroll-behavior: smooth; }
     <span class="eyebrow">Ficha da casa</span>
     <h2>Levante o estandarte da sua casa.</h2>
     <p>Conte quem é você e como é o seu salão. A D2 Studio responde pelo e-mail ou pelo WhatsApp que você deixar.</p>
-    <ul><li>Servidor próprio, com o nome da casa</li><li>Link direto com o núcleo KARMIKA</li><li>Campeonatos da casa ao palco entre países</li><li>De 20% a 30% de cada pacote e 60% das vendas da loja do jogo</li></ul>
+    <ul><li>Servidor próprio, com o nome da casa</li><li>Link direto com o núcleo KARMIKA</li><li>Campeonato de guildas em três etapas, até o KARMIKA Championship</li><li>De 20% a 30% de cada pacote e 60% das vendas da loja do jogo</li></ul>
   </div>
   <form class="beta__form" id="parForm" novalidate>
     <label>Seu nome<input name="nome" required maxlength="60" autocomplete="name"></label>
