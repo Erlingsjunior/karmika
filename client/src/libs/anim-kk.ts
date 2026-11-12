@@ -36,7 +36,7 @@ const ACT_M: AM = {
   cast: 'M:Ranged_Magic_Shoot', skyraise: 'M:Ranged_Magic_Raise', breath: 'M:Ranged_Magic_Spellcasting_Long', stance: 'M:Ranged_Magic_Summon',
   dodge: 'M:Dodge_Backward', dash: 'M:Dodge_Forward', rush: 'M:Dodge_Forward', charge: 'M:Dodge_Forward', jet: 'M:Jump_Full_Short',
   throw: 'M:Throw', kthrow: 'M:Throw', drink: 'M:Use_Item', herb: 'M:PickUp', plant: 'M:PickUp', skin: 'M:Interact', dance: 'M:Cheering',
-  shoot: 'M:Ranged_1H_Shoot', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', chop: 'M:Chopping' /* 12/11 (Erling: "a movimentação também"): o Chop tem 4,3 s e três machadadas; espremido em 1 s virava um tremor. O Chopping é uma machadada só */, mine: 'M:Pickaxe', fishcast: 'M:Fishing_Cast',
+  shoot: 'M:Ranged_1H_Shoot', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', chop: 'M:Chopping' /* 12/11 (Erling: "a movimentação também"): o Chop tem 4,3 s e três machadadas; espremido em 1 s virava um tremor. O Chopping é uma machadada só */, mine: 'M:Pickaxing' /* 12/11: o Pickaxe tem 6 s e três golpes; espremido em 1 s tremia. Do Pickaxing toca só um golpe (ver RANGE) */, fishcast: 'M:Fishing_Cast',
 };
 const ACT_L: AM = { combo1: 'L:Melee_1H_Slash', combo2: 'L:Melee_1H_Slash', combo3: 'L:Melee_2H_Attack', combo4: 'L:Melee_1H_Stab', attack: 'L:Melee_1H_Slash',
   cleave1: 'L:Melee_2H_Attack', /* o Melee_2H_Slam do rig grande deita o corpo de bruços: fica a pancada do médio */
@@ -54,6 +54,8 @@ const byWeapon = (a: Action): string | undefined => {
   return undefined; };
 const actOf = (a: Action) => byWeapon(a) ?? (large() ? ACT_L[a] : undefined) ?? (kit === 'tecno' && a === 'shoot' ? 'M:Ranged_2H_Shoot' : undefined) ?? ACT_M[a];
 /** 10/11 (Erling: "a girada com espada pode ser 40% mais rápida, tem que ser mais mortal"): giros tocam mais depressa (e emendam) */
+/** trecho do clipe que vale um gesto (0..1 do clipe): do Pickaxing, que tem dois golpes, sai um só: a picareta sobe, bate aos 55% do gesto e fica um instante na pedra */
+const RANGE: Record<string, [number, number]> = { 'M:Pickaxing': [0.3, 0.8] };
 const SPEED: Record<string, number> = { 'M:Melee_2H_Attack_Spin': 1.4, 'L:Melee_2H_Attack': 1.15, 'M:Melee_2H_Attack_Spinning': 1.4 };
 const loops = () => large()
   ? { idle: 'L:Idle_A', combat: kit === 'lob' || !weapon ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
@@ -112,7 +114,7 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       if (forced) { const fp = pose(forced.clip); if (fp) { const t0 = forced.t; forced.t += dt * (SPEED[forced.clip] ?? 1); const wrapped = Math.floor(forced.t / fp.dur) > Math.floor(t0 / fp.dur);
           if (performance.now() >= forced.until && (wrapped || !fp.root)) forced = null; else { const ph = forced.t % fp.dur; put(fp, ph, 1); spinRoot(fp, ph, 1); model.updateMatrixWorld(true); return; } } else if (performance.now() >= forced.until) forced = null; }
       const an = hero.acting && hero.actName ? actOf(hero.actName) : undefined;
-      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); const tp = Math.min(1, k * spd) * ap.dur; put(ap, tp, wAct * fade, ((hero as Hero3D & { lift?: number }).lift ?? 0) < 0.05); spinRoot(ap, tp, wAct * fade); /* no ar (salto de recuo), o quadril é do salto */ } }
+      if (an) { const ap = pose(an); if (ap) { if (an !== lastAct) wAct = 0.35; lastAct = an; wAct = Math.min(1, wAct + dt * 9); const k = hero.actP, spd = SPEED[an] ?? 1; const fade = Math.min(1, (1 - k) * 6); const rg = RANGE[an]; const tp = rg ? (rg[0] + Math.min(1, k) * (rg[1] - rg[0])) * ap.dur : Math.min(1, k * spd) * ap.dur; put(ap, tp, wAct * fade, ((hero as Hero3D & { lift?: number }).lift ?? 0) < 0.05); spinRoot(ap, tp, wAct * fade); /* no ar (salto de recuo), o quadril é do salto */ } }
       else { lastAct = null; wAct = 0; }
       /* 10/11 (Erling: "o arco está invertido: madeira para frente, linha para trás"): com o antebraço da animação nova, a mão do arco
          chega virada; meia-volta no próprio eixo do osso (Y no esqueleto Mixamo) */
