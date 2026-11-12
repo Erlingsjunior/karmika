@@ -2537,7 +2537,10 @@ function findInter(): Inter | null {
     const nm = n.def.name, dN = Math.hypot(n.pos.x - hx, n.pos.z - hz); if (dN > 4) continue; /* 09/11 (revisão de FPS): só os NPCs perto passam pela consulta de missões — antes eram todos do mundo, 10× por segundo (um tranco a cada 0,12 s) */
     if (n.def.night && !n.hero.root.visible) { add(dN + 1, 4, `🌙 ${nm} só recebe à noite. Volte quando escurecer.`, () => game.logMsg(`🌙 Um criado de libré escura: “A senhora ${nm.split(' ').slice(-1)[0]} recebe depois do pôr do sol.”`, '#c98a9a')); continue; }
     const ti = quests.turnins(nm), of = quests.offers(nm);
-    add(dN, 3.4, ti.length ? `E — Entregar: ${ti[0].name}` : of.length ? `E — Missão: ${of[0].name}` : `E — Falar com ${nm}`, () => talkTo(n));
+    /* 11/11 (Erling: "não consigo falar com os personagens perto da fonte, a ação da fonte cobre"): gente vem antes de coisa. A pessoa ao alcance ganha da
+       fonte, do banco, do quadro e do resto; só perde quando o herói está de costas para ela (aí vale o que está na frente dele: a fonte, o banco…) */
+    const fN = dN > 0.01 ? ((n.pos.x - hx) * Math.sin(hero.facing) + (n.pos.z - hz) * Math.cos(hero.facing)) / dN : 1, frente = dN < 3.4 && (fN > -0.5 || dN < 1.2);
+    add(frente ? dN - 4 : dN, frente ? 0 : 3.4, ti.length ? `E — Entregar: ${ti[0].name}` : of.length ? `E — Missão: ${of[0].name}` : `E — Falar com ${nm}`, () => talkTo(n));
   } fi('npcs');
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
@@ -2795,7 +2798,7 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + `\n🔵 Aura de corte e silhuetas: desenho ${gpuState.on ? 'WebGPU' : 'WebGL'}${opts.gfx === 1 ? ' Moderno' : ' Clássico'} · herói escondido agora: ${cliqueSys.cutOn ? 'sim' : 'não'} · círculo ${CUT.uCut.value.w > 0 ? 'ligado' : 'desligado'} · dentro de casa: ${inside ? 'sim' : 'não'} · em cena: ${cinemaSys.cine ? 'sim' : 'não'} · cenário ${objs.group.visible ? 'visível' : 'escondido'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 /* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
