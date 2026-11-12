@@ -407,11 +407,14 @@ export function createGameplay(d: GameplayDeps) {
       const kx = Math.round(e.def.xp * 0.3 * f * pk * (farmed ? 0.15 : 1)); if (kx > 0) gainXp(kx, e.pos); } addFury(e.def.passive ? 0.0002 : 0.0006); { const k3 = n3Key(); if (k3 === 'cac') need3.cac = Math.min(1, need3.cac + (e.def.rig === 'zombie' || e.def.rig === 'prince' || e.def.rig === 'bishop' || ['imp', 'skeleton', 'ghoul', 'zombie', 'bat', 'vampire', 'werewolf', 'cultist'].includes(e.type) ? 0.0012 : 0.0003) * (n3Calm > 0 ? 0.4 : 1)); } if (kitKey === 'pal') doubt = Math.min(1, doubt + (e.def.passive ? 0.0002 : e.def.rig === 'human' ? 0.003 : 0.0006) * (graceT > 0 ? 0.4 : 1)); onKill(e.type, e);
     if (farmed) { if (!shared) { hitstop = Math.max(hitstop, performance.now() + 90); } return; } /* elite repetido: nada de ouro, poção, material, peça, runa ou baú */
     const g = Math.round(rnd(e.def.gold[0], e.def.gold[1]) * 0.45 * pk); for (let i = 0; i < Math.min(4, Math.max(0, Math.ceil(g / 3))); i++) dropAt(e.pos.x, e.pos.z, e.pos.y, 'gold', Math.ceil(g / Math.min(4, Math.ceil(g / 3))));
-    /* 12/11 (Erling: "tá caindo muito item; a quantidade de itens dropados pode cair em 30%"): poção, material e equipamento caem 30% menos vezes.
+    /* 12/11 (Erling: "tá caindo muito item; a quantidade de itens dropados pode cair em 30%"): poção, espólio de bicho (pó, garra, tomo) e equipamento caem 30% menos vezes.
        O ouro não muda, e o que o elite guarda no baú dourado também não. */
     const QUEDA = 0.7;
     if (Math.random() < 0.12 * QUEDA) dropAt(e.pos.x, e.pos.z, e.pos.y, 'potion', 30);
-    for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr * QUEDA) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));
+    /* (Erling, 10:53: "material de coleta é diferente de drop: pedra, madeira, ervas, peixes, tudo é separado") o material de ofício que um bicho
+       solta (madeira, graveto, seiva, couro, carne, pedra, erva, peixe) NÃO entra no corte; mineração, lenha, ervas e pesca nunca passaram por aqui */
+    const COLETA = /^(wood|stick|sap|hide|meat|stone|fish|herb|ore)/;
+    for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr * (COLETA.test(id) ? 1 : QUEDA)) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));
     { // equipamentos: chance cresce com o nível do inimigo; elites sempre soltam e com raridade melhor
       const tier = e.def.lvl ?? 1, elite = e.type === 'prince', ilvl = Math.max(1, Math.round(tier * 1.1 + st.lvl * 0.6));
       const big = elite || isElite(e), an = st.sp.has('u_andvari') ? 1.5 : 1; // únicos e relíquias: quase só de elites e chefes, e só em nível alto (cada um tem nível mínimo)
