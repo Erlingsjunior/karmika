@@ -36,7 +36,7 @@ const ACT_M: AM = {
   cast: 'M:Ranged_Magic_Shoot', skyraise: 'M:Ranged_Magic_Raise', breath: 'M:Ranged_Magic_Spellcasting_Long', stance: 'M:Ranged_Magic_Summon',
   dodge: 'M:Dodge_Backward', dash: 'M:Dodge_Forward', rush: 'M:Dodge_Forward', charge: 'M:Dodge_Forward', jet: 'M:Jump_Full_Short',
   throw: 'M:Throw', kthrow: 'M:Throw', drink: 'M:Use_Item', herb: 'M:PickUp', plant: 'M:PickUp', skin: 'M:Interact', dance: 'M:Cheering',
-  shoot: 'M:Ranged_1H_Shoot', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', chop: 'M:Chop', mine: 'M:Pickaxe', fishcast: 'M:Fishing_Cast',
+  shoot: 'M:Ranged_1H_Shoot', aim1: 'M:Ranged_Bow_Draw', draw: 'M:Ranged_Bow_Draw', chop: 'M:Chopping' /* 12/11 (Erling: "a movimentação também"): o Chop tem 4,3 s e três machadadas; espremido em 1 s virava um tremor. O Chopping é uma machadada só */, mine: 'M:Pickaxe', fishcast: 'M:Fishing_Cast',
 };
 const ACT_L: AM = { combo1: 'L:Melee_1H_Slash', combo2: 'L:Melee_1H_Slash', combo3: 'L:Melee_2H_Attack', combo4: 'L:Melee_1H_Stab', attack: 'L:Melee_1H_Slash',
   cleave1: 'L:Melee_2H_Attack', /* o Melee_2H_Slam do rig grande deita o corpo de bruços: fica a pancada do médio */

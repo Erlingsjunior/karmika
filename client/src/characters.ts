@@ -942,7 +942,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { fishcast: 1.0, attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { fishcast: 1.0, attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 1.15 /* 12/11: um golpe só do clipe Chopping (1,33 s), quase na velocidade natural */, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -1248,12 +1248,13 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const headA = mk(new THREE.BoxGeometry(0.3, 0.26, 0.03), 0x8a929e, 0.006, metal(rar, 0x8a929e)); headA.position.set(0.14, -0.78, 0); sw.add(headA);
           const edge = mk(new THREE.BoxGeometry(0.04, 0.32, 0.034), 0xdde3ec, 0.004, metal(rar)); edge.position.set(0.3, -0.78, 0); sw.add(edge);
           len = 0.9;
-        } else if (base === 'Machado de Lenhador') { // cabo longo e curvo, cunha grossa de um lado só
-          const haft = mk(new THREE.CylinderGeometry(0.019, 0.024, 0.95, 7), 0x6a4a2a, 0.004); haft.position.y = -0.47; sw.add(haft);
-          const wedge = new THREE.CylinderGeometry(0.11, 0.11, 0.05, 3, 1); wedge.rotateX(Math.PI / 2); wedge.scale(1.6, 1.25, 1); const headA = mk(wedge, tint ?? 0x8a929e, 0.006, tMat(0x8a929e)); headA.position.set(0.12, -0.84, 0); sw.add(headA);
-          const poll = mk(new THREE.BoxGeometry(0.07, 0.09, 0.06), tint ?? 0x8a929e, 0.004, tMat(0x8a929e)); poll.position.set(-0.03, -0.84, 0); sw.add(poll);
-          const edge = mk(new THREE.BoxGeometry(0.025, 0.2, 0.03), 0xe8edf2, 0.003, tMat(0xe8edf2)); edge.position.set(0.28, -0.84, 0); sw.add(edge);
-          len = 0.95;
+        } else if (base === 'Machado de Lenhador') { /* 12/11 (Erling: "esse machado tá horrível"): a cabeça era uma cunha de três lados na ponta de um cabo de quase 1 m. Agora é o machado de uma mão do KayKit
+             (o mesmo para o qual o gesto de cortar foi feito), com o fio para a frente; o metal continua dizendo o nível (pedra, ferro, aço, anão) */
+          sw.remove(pom); sw.remove(grip); const L = 0.72, hold = new THREE.Group(); hold.userData.keep = true; hold.rotation.z = Math.PI; hold.scale.setScalar(L / 0.97); sw.add(hold); len = L;
+          const tc = new THREE.Color(0xffffff).lerp(new THREE.Color(tint ?? 0xffffff), 0.5);
+          loadModel('/models/kaykit/armas/aventureiros/axe_1handed.gltf').then((m) => { if (hold.parent !== sw) return;
+            m.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; const src = me.material as THREE.MeshStandardMaterial; me.material = toon(tc.getHex(), { map: src.map ?? null, ...(tglow ? { emissive: new THREE.Color(tglow).multiplyScalar(0.3) } : {}) }); me.userData.keep = true; me.castShadow = true; });
+            hold.add(m); }).catch(() => { /* sem o arquivo, a mão fica vazia */ });
         } else if (base === 'Picareta') { // 11/11 noite (Erling: "horrível"): parecia uma lança (bico fino de um lado só). Agora é picareta de mineiro: cabo grosso, olho de ferro e dois bicos curvos, um para cada lado
           const haft = mk(new THREE.CylinderGeometry(0.024, 0.03, 0.92, 7), 0x5a3a20, 0.004); haft.position.y = -0.46; sw.add(haft);
           const eye = mk(new THREE.BoxGeometry(0.11, 0.12, 0.085), tint ?? 0x6a6e78, 0.004, tMat(0x6a6e78)); eye.position.y = -0.87; sw.add(eye);
