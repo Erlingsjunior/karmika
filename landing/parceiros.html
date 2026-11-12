@@ -110,6 +110,21 @@ html { scroll-behavior: smooth; }
 .lad__s p { margin: 0; color: var(--mut); font-size: 15px; }
 .lad__s span { display: block; margin-top: 12px; font-size: 12px; letter-spacing: .08em; color: var(--ink); }
 @media (max-width: 900px) { .lad { grid-template-columns: 1fr 1fr; } } @media (max-width: 520px) { .lad { grid-template-columns: 1fr; } }
+/* o segundo arco, por fora: o que a casa vende sobe, a comissão volta */
+.fio__orb { position: relative; text-align: center; padding: 0 16%; }
+.fio__orb svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.fio__orb path { fill: none; stroke: #63d68e; stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 11 9; vector-effect: non-scaling-stroke; filter: drop-shadow(0 0 6px rgba(99, 214, 142, .7)); animation: fiosec 1.6s linear infinite; }
+.fio__orb i { position: absolute; width: 0; height: 0; border: 9px solid transparent; }
+.fio__orb--out { margin-top: 44px; padding-top: 34px; padding-bottom: 26px; } .fio__orb--out + .fio { margin-top: 0; }
+.fio__orb--out i { right: 13%; bottom: -8px; margin-right: -9px; border-top: 15px solid #63d68e; border-bottom: 0; }
+.fio__orb--back { padding-top: 26px; padding-bottom: 34px; }
+.fio__orb--back i { left: 13%; top: -8px; margin-left: -9px; border-bottom: 15px solid #63d68e; border-top: 0; }
+.fio__orb b { position: relative; display: block; font: 700 11px/1 var(--sans); letter-spacing: .26em; text-transform: uppercase; color: #7fe0a6; margin-bottom: 12px; }
+.fio__orb ul { position: relative; list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.fio__orb li { padding: 7px 13px; border-radius: 999px; border: 1px solid rgba(99, 214, 142, .45); background: rgba(11, 10, 13, .78); font-size: 13px; color: var(--ink); }
+.fio__orb p { position: relative; margin: 0 auto; max-width: 46ch; font-size: 15px; color: var(--ink); } .fio__orb p strong { color: #7fe0a6; }
+@media (max-width: 980px) { .fio__orb { padding: 16px; border-radius: 14px; border: 1px solid rgba(99, 214, 142, .4); background: rgba(11, 10, 13, .72); margin: 14px 0; } .fio__orb svg, .fio__orb i { display: none; } .fio__orb--out { margin-top: 40px; } .fio__orb--out + .fio { margin-top: 0; } }
+@media (prefers-reduced-motion: reduce) { .fio__orb path { animation: none; } }
 /* campeonatos: cada etapa é um botão que troca a arena de baixo */
 .lad--tab .lad__s { all: unset; box-sizing: border-box; display: block; position: relative; padding: 26px clamp(14px, 1.8vw, 26px) 26px; border-top: 2px solid var(--line); counter-increment: lad; cursor: pointer; opacity: .55; transition: opacity .3s, background .3s; border-radius: 0 0 14px 14px; }
 .lad--tab .lad__s:hover, .lad--tab .lad__s:focus-visible { opacity: .9; background: rgba(255, 255, 255, .03); }
@@ -376,6 +391,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <span class="eyebrow">O Fio</span>
     <h2>Servidor na sua casa. Link direto conosco.</h2>
     <p class="lead">O reino roda na sua máquina. O Fio é a ligação permanente entre ele e o núcleo KARMIKA: por ele os feitos da casa sobem, e as novidades do mundo descem.</p>
+    <div class="fio__orb fio__orb--out"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="M130 100C230 -28 770 -28 870 96"/></svg><i aria-hidden="true"></i><b>Vendido na casa, sobe para o Tear</b><ul><li>Pacotes premium</li><li>Renovação de pacotes</li><li>Itens cosméticos</li><li>Terrenos de guilda</li><li>Canecas, roupas e jaquetas pelo shop local</li></ul></div>
     <div class="fio">
       <div class="fio__box">
         <small>Na sua casa</small>
@@ -394,6 +410,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
         <p>Nenhum reino fica sozinho: o que acontece no seu aparece no mapa do mundo inteiro.</p>
       </div>
     </div>
+    <div class="fio__orb fio__orb--back"><svg viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true"><path d="M870 0C770 128 230 128 130 4"/></svg><i aria-hidden="true"></i><b>Volta para a casa, o tempo todo</b><p>Cada venda retorna como <strong>comissão de 20% a 30%</strong>, conforme o nível da parceria. Enquanto o reino vende, a casa recebe.</p></div>
   </div>
 </section>
 
