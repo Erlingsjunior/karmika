@@ -2988,11 +2988,11 @@ export function buildCity(): World {
   /* ---- 12/11 (Erling: "uma taverna/estalagem dentro de Karmika com o salão interno bem bonito, dois andares, 20 quartos, cozinha, salão animado e estábulo";
      "uma guilda dentro de Karmika com muros melhores, uma taverna dentro, salões de guilda para profissões, bar animado, estalagem, soldados"):
      os dois prédios da casa do servidor, na parte norte da vila, dentro da muralha. São iguais em todos os reinos; no reino de um parceiro levam o nome
-     e a bandeira da casa dele. A ESTALAGEM fica a nordeste (9 × 6, dois andares, porta para o sul) com o ESTÁBULO ao lado (a leste); o SALÃO DAS GUILDAS fica a
-     noroeste, atrás da igreja (nunca na frente), num pátio murado com portão para o leste, de frente para a estrada.
+     e a bandeira da casa dele. A ESTALAGEM fica a nordeste (9 × 6, dois andares, porta para o sul) com o ESTÁBULO ao lado (a leste); o SALÃO DAS GUILDAS fica ao
+     sul do rio, num pátio murado com portão para o leste.
      Nascem AQUI, no fim de tudo e sem sorteio: colocados no meio da geração, mudavam o sorteio do mundo inteiro (árvores, vilas e até os terrenos de guilda saíam do lugar). ---- */
   { const kar = settlements.find((t) => t.name === 'Karmika');
-    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 6, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 17, GYh = KY - 27, PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
+    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 6, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 7, GYh = KY + 24, /* 12/11 (Erling escolheu): o Salão das Guildas fica ao sul do rio, logo abaixo da estrada das oficinas, onde não há nada alto na frente dele */ PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
       const livre = (t: string | undefined) => t === 'grass' || t === 'tree' || t === 'plaza';
       const limpa = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 && q.gx <= x1 && q.gy + q.h > y0 && q.gy <= y1 && (q.kind === 'tree' || q.kind === 'herb' || q.kind === 'rock' || q.kind === 'plant' || q.kind === 'bones')) props.splice(i, 1); }
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass'; };
@@ -3020,7 +3020,7 @@ export function buildCity(): World {
         block({ kind: 'house', gx: GXh, gy: GYh, w: 9, h: 5, height: 9.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 41, shop: 'salao_guildas' });
         qwall(PX, PY, PX + PW, PY); qwall(PX, PY, PX, PY + PH); qwall(PX, PY + PH, PX + PW, PY + PH); qwall(PX + PW, PY, PX + PW, PY + 5); qwall(PX + PW, PY + 7, PX + PW, PY + PH);
         torch(PX + PW - 1, PY + 4); torch(PX + PW - 1, PY + 7); decor('rack', PX + 1, PY + 6, 0); decor('rack', PX + 2, PY + 6, 1); decor('bench', PX + 5, PY + 7, 0); decor('bench', PX + 7, PY + 7, 0);
-        pave(PX + PW, PY + 5, PX + PW + 6, PY + 6); /* calçada do portão até a estrada do norte */
+        pave(PX + PW, PY - 3, PX + PW + 1, PY + 7); /* calçada do portão até a estrada das oficinas */
         pois.push({ name: 'Salão das Guildas de Karmika', x: PX + PW + 0.5, y: PY + 6, biome: 'meadow' });
         kar.npcs.push({ name: 'Guarda Olavo', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 4.6, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.05, lines: ['Salão das Guildas de Karmika. Mestres de ofício lá dentro, e um bar que não fecha.', 'Arma na bainha dentro do pátio. É a regra da casa.'] });
         kar.npcs.push({ name: 'Guarda Mirela', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 7.4, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.0, lines: ['Guilda nova procura os mestres aqui. Guilda velha vem beber e contar vantagem.', 'O estandarte no portão diz de quem é a casa.'] }); } } }
