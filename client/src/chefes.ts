@@ -101,6 +101,10 @@ const P = {
       const fo = mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.42, 6), toon(skin)); fo.geometry.translate(0, 0.21, 0); fo.position.set(x * 0.58, 0.66, 0.02); fo.rotation.z = x * -0.35; fo.rotation.x = 0.35; g.add(fo);
       const cl = mesh(new THREE.ConeGeometry(0.035, 0.16, 5), toon(shell)); cl.position.set(x * 0.73, 1.1, 0.17); cl.rotation.z = x * -0.35; g.add(cl); }
     for (let i = 0; i < 7; i++) { const a = -1.15 + (i / 6) * 2.3, sp = mesh(new THREE.ConeGeometry(0.022, 0.34 + (i % 2) * 0.12, 5), toon(shell)); sp.position.set(Math.sin(a) * 0.3, 1.2 + Math.cos(a) * 0.3, -0.1); sp.rotation.z = -a; g.add(sp); }
+    /* 12/11 (Erling: "a aranha não tem cabeça e o corpo da mulher sai de onde deveria ser a cabeça da aranha... elas são juntas"): o tronco é preso ao próprio
+       corpo da aranha, no lugar da cabeça (olhos e presas da aranha somem), com a cintura de carapaça enterrada no tórax. Anda, sobe e desce junto com ela. */
+    let body: THREE.Object3D | null = null; D.g.traverse((o) => { if (o.name === 'spBody') body = o; });
+    if (body) { const B = body as THREE.Object3D; B.traverse((o) => { if (o.name === 'spHead') o.visible = false; }); g.scale.setScalar(1); g.position.set(0, -0.1, 0.24); g.rotation.x = 0.1; B.add(g); return; }
     g.scale.setScalar(s); D.add(g, 0, D.head.y - 0.12 * s, D.head.z * 0.72); },
   ring(D: Dress, col: number, r: number) { const m = mesh(new THREE.RingGeometry(r * 0.82, r, 48), glowM(col, 0.5)); m.rotation.x = -Math.PI / 2; D.add(m, 0, 0.05, 0); m.userData.spin = 0.6; return m; },
   dots(D: Dress, col: number, n: number, ymin = 0.2, ymax = 0.9) { for (let i = 0; i < n; i++) { const d = mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 5, 4), glowM(col, 1)); const a = Math.random() * 6.283; D.add(d, Math.cos(a) * D.W * 0.34, D.H * (ymin + Math.random() * (ymax - ymin)), Math.sin(a) * D.W * 0.3 + D.F * 0.05); d.userData.flick = 1; } },

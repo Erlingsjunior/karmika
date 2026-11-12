@@ -26,7 +26,7 @@ export interface SpiderOpt { col: number; col2?: number; abd?: number; leg?: num
  *  Anda em dois tetrápodes alternados; no preparo ergue as patas da frente; no golpe dá o bote com as presas. */
 export function buildSpider(o: SpiderOpt): BRig {
   const { mats, M, G, mesh } = kit(); const root = new THREE.Group();
-  const A = o.abd ?? 1, L = o.leg ?? 1, body = new THREE.Group(); body.position.y = 0.42 * L; root.add(body);
+  const A = o.abd ?? 1, L = o.leg ?? 1, body = new THREE.Group(); body.name = 'spBody'; body.position.y = 0.42 * L; root.add(body);
   const c1 = M(o.col), c2 = M(o.col2 ?? new THREE.Color(o.col).multiplyScalar(0.6).getHex());
   const ceph = mesh(S(0.22), c1, 1, 0.72, 1.15); ceph.position.z = 0.16; body.add(ceph);
   const abdG = new THREE.Group(); abdG.position.set(0, 0.08 * A, -0.2 - 0.28 * A); body.add(abdG);
@@ -35,8 +35,8 @@ export function buildSpider(o: SpiderOpt): BRig {
   if (o.mark) { const hg = new THREE.Group(); hg.position.set(0, 0.26 * A, 0.02); abdG.add(hg); for (const s of [-1, 1]) { const t = mesh(new THREE.ConeGeometry(0.07 * A, 0.12 * A, 3), M(o.mark, 0.6)); t.rotation.x = s > 0 ? -Math.PI / 2 : Math.PI / 2; t.position.z = s * 0.06 * A; hg.add(t); } }
   if (o.sacs) for (let i = 0; i < o.sacs; i++) { const a = (i / o.sacs) * 6.283; const sc = mesh(S(0.07 * A, 8, 6), M(0xe8e0c8, 0.15)); sc.position.set(Math.cos(a) * 0.3 * A, -0.12 * A, Math.sin(a) * 0.32 * A); abdG.add(sc); }
   if (o.hairy) for (let i = 0; i < 26; i++) { const h = mesh(new THREE.ConeGeometry(0.012 * A, 0.09 * A, 3), c1); const u = Math.random() * 6.283, v = Math.random() * 1.2; h.position.set(Math.cos(u) * Math.sin(v) * 0.33 * A, Math.cos(v) * 0.27 * A, Math.sin(u) * Math.sin(v) * 0.37 * A); h.lookAt(h.position.clone().multiplyScalar(3)); h.rotateX(Math.PI / 2); abdG.add(h); }
-  const eyeM = G(o.eye ?? 0xff2a1a); for (let i = 0; i < 8; i++) { const r = i < 2 ? 0.035 : 0.022, x = (i < 2 ? (i - 0.5) * 0.08 : ((i - 2) % 3 - 1) * 0.07 * (i < 5 ? 1.4 : 1)), y = i < 2 ? 0.08 : i < 5 ? 0.12 : 0.05; const ey = new THREE.Mesh(S(r, 6, 5), eyeM); ey.position.set(x, y, 0.38); body.add(ey); }
-  const fangs: THREE.Group[] = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.position.set(s * 0.06, -0.02, 0.36); body.add(f); const fg = mesh(new THREE.ConeGeometry(0.03, 0.14, 5), M(0x1a1010)); fg.rotation.x = Math.PI * 0.85; fg.position.y = -0.06; f.add(fg); fangs.push(f); }
+  const eyeM = G(o.eye ?? 0xff2a1a); for (let i = 0; i < 8; i++) { const r = i < 2 ? 0.035 : 0.022, x = (i < 2 ? (i - 0.5) * 0.08 : ((i - 2) % 3 - 1) * 0.07 * (i < 5 ? 1.4 : 1)), y = i < 2 ? 0.08 : i < 5 ? 0.12 : 0.05; const ey = new THREE.Mesh(S(r, 6, 5), eyeM); ey.name = 'spHead'; ey.position.set(x, y, 0.38); body.add(ey); }
+  const fangs: THREE.Group[] = []; for (const s of [-1, 1]) { const f = new THREE.Group(); f.name = 'spHead'; f.position.set(s * 0.06, -0.02, 0.36); body.add(f); const fg = mesh(new THREE.ConeGeometry(0.03, 0.14, 5), M(0x1a1010)); fg.rotation.x = Math.PI * 0.85; fg.position.y = -0.06; f.add(fg); fangs.push(f); }
   type Lg = { hip: THREE.Group; knee: THREE.Group; ang: number; side: number; grp: number; front: boolean };
   const legs: Lg[] = [];
   for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {

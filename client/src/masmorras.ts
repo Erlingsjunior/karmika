@@ -23,8 +23,8 @@ export interface BossMech {
 export const DG_TIERS = [
   { id: 'normal', name: 'Normal', col: '#c8e8b0', lv: 0, hp: 1, dmg: 1, xp: 1, gold: 1, loot: 1, extra: 0, min: 'rare', uq: 0, note: 'Acompanha o seu nível.' },
   { id: 'dificil', name: 'Difícil', col: '#ffd070', lv: 4, hp: 1.25, dmg: 1.15, xp: 1.5, gold: 1.6, loot: 1.4, extra: 0, min: 'rare', uq: 0.05, note: '+4 níveis. Bichos mais duros.' },
-  { id: 'desafiador', name: 'Desafiador', col: '#ff9a4a', lv: 8, hp: 1.6, dmg: 1.3, xp: 2.2, gold: 2.5, loot: 2, extra: 1, min: 'rare', uq: 0.12, note: '+8 níveis. Uma peça a mais no baú.' },
-  { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. Só épicas para cima no baú.' },
+  { id: 'desafiador', name: 'Desafiador', col: '#ff9a4a', lv: 8, hp: 1.6, dmg: 1.3, xp: 2.2, gold: 2.5, loot: 2, extra: 1, min: 'rare', uq: 0.12, note: '+8 níveis. Mais chance do grande prêmio no baú do chefe.' },
+  { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. O grande prêmio sai em mais da metade das vezes.' },
   { id: 'doido', name: 'Coisa de Doido', col: '#d070ff', lv: 22, hp: 3, dmg: 1.9, xp: 5, gold: 7, loot: 5, extra: 2, min: 'epic', uq: 0.45, note: '+22 níveis. Quem sai vivo conta história.' },
 ] as const;
 export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) */ maxR?: number; /** a entrada fica exatamente em near+dx,dy (o mundo já reservou o lugar — ex.: dentro do cemitério) */ spot?: boolean;
@@ -202,12 +202,13 @@ export interface DgCtx {
   heightAt(x: number, z: number): number; regionLvl(x: number, y: number): [number, number];
   game: { st: { lvl: number; gold: number; hp: number; hpMax: number; dead: boolean }; damage(n: number, at: THREE.Vector3, from?: THREE.Vector3): void; logMsg(t: string, c?: string): void; gainXp(n: number): void;
     enemies: { list: { alive: boolean; hp: number; hpMax: number; pos: THREE.Vector3; def: { name: string; dmg: number; speed: number }; type: EnemyType; state: string }[]; spawn(type: EnemyType, x: number, z: number, o: Record<string, unknown>): unknown; clearTag(tag: string): void };
-    dropLoot(x: number, z: number, y: number, id: string, n: number): void; spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[]): void; xpNeed(): number };
+    dropLoot(x: number, z: number, y: number, id: string, n: number): void; spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[], rarityMax?: string): void; gearFits?(g: Gear): boolean; xpNeed(): number };
   particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   audio: { boom(): void; chime(): void; coins(n: number): void; spell(k: 'shock' | 'fire' | 'ice' | 'arcane' | 'earth' | 'holy'): void };
   /** posição na tela de um ponto do mundo (para o nome da entrada, em letra nítida) */ project?(p: THREE.Vector3): { x: number; y: number } | null;
   heroPos(): THREE.Vector3; partySize(): number; /** nível médio do grupo (ou o seu, sozinho) */ partyLvl?(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
   onClear?(d: DgDef, first: boolean): void;
+  /** 12/11: o baú do chefe (sistemas/espolio.ts); devolve false se não deu para criar */ bossChest?(x: number, z: number, y: number, items: Gear[], gold: number): boolean;
   /** chefe e elite com kit (chefes.ts): magias, andar e roupa da história */ onKit?(e: unknown): void; onStop?(): void;
   /** desce para o próximo nível de uma masmorra sem fundo */ descend?(depth: number, tier: number): void;
 }
@@ -273,7 +274,7 @@ export function createMasmorras(ctx: DgCtx) {
       if (rm.kind === 'pack') { const k = 3 + (r() < 0.5 ? 1 : 0) + (n >= 4 ? 1 : 0); for (let i = 0; i < k; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L, { hpX: 0.8 + 0.2 * Math.min(n, 5) }); total++; } }
       else if (rm.kind === 'elite') { ctx.onKit?.(S(d.elite.type, rm.x, rm.z, hi, { name: d.elite.name, scale: d.elite.scale, hpX: 3.2 * (0.6 + 0.2 * Math.min(n, 5)), dmgX: 1.35 })); total++; for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
       else if (rm.kind === 'side') { for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
-      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); ctx.onKit?.(boss); }
+      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); (boss as E & { noGear?: boolean }).noGear = true; ctx.onKit?.(boss); }
     });
     const deco: { g: THREE.Object3D; dispose(): void }[] = [];
     if (d.arena === 'teia') { const rm = int.rooms.find((q) => q.kind === 'boss'); if (rm) { const A = buildWebArena(Math.max(6, Math.min(rm.w, rm.d) / 2 - 0.6)); A.g.position.set(O.x + rm.x, 0, O.z + rm.z); ctx.scene.add(ctx.fine(A.g)); deco.push(A); } }
@@ -305,14 +306,24 @@ export function createMasmorras(ctx: DgCtx) {
     for (let i = 0; i < 120; i++) { const a = Math.random() * 6.283, s = 2 + Math.random() * 6; ctx.particles.spawn(b.pos.x, 1 + Math.random() * 2, b.pos.z, { vx: Math.cos(a) * s, vy: Math.random() * 6, vz: Math.sin(a) * s, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xfff0b0, c1: 0xff8a3a, a: 1, drag: 1.5 }); }
     /* o saque é de cada um: equipamentos bons e, às vezes, a peça única da masmorra */
     const ilvl = R.lvl[1] + 1, y = ctx.heightAt(b.pos.x, b.pos.z);
-    ctx.game.spawnGear(b.pos.x, b.pos.z, y, ilvl, { rare: 6 * R.tier.loot, legendary: 4 * R.tier.loot, epic: 2 * R.tier.loot }, (d.kind === 'grupo' ? 3 : 2) + R.tier.extra, R.tier.min);
-    const uq = d.uniq?.length && (first || Math.random() < (d.kind === 'grupo' ? 0.3 : 0) + R.tier.uq) ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
-    if (uq) { const g = genGear(ilvl, 'epic', uq.slot); g.name = uq.name; g.icon = uq.icon; g.rarity = 'unique'; (g as Gear & { lore?: string }).lore = uq.lore; for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.25 * 10) / 10; ctx.game.spawnGear(b.pos.x + 1, b.pos.z, y, ilvl, {}, 1, 'unique', [g]); ctx.game.logMsg(`✦ Peça única: ${uq.name}!`, '#f2cf6a'); }
+    /* 12/11 (Erling: "um item lendário forte ou um item épico a cada 3x que se fizer uma masmorra, na média... um ou 2 no máximo caindo do boss... o único que dá baú é o boss";
+       "masmorra 12-18 cai itens até o 20 só"): o baú do chefe traz UMA peça (às vezes duas, nunca mais). A cada vitória há uma chance (1 em 3 no Normal, mais nas
+       dificuldades altas e nos níveis fundos) de a peça ser o grande prêmio: a peça única da masmorra, uma épica ou uma lendária forte. Senão é uma rara.
+       Nenhuma peça passa de 2 níveis acima do teto da masmorra. */
+    const cap = R.lvl[1] + 2, gl = Math.min(ilvl, cap), pBig = Math.min(0.8, [1 / 3, 0.38, 0.45, 0.55, 0.7][R.ti] + 0.05 * R.depth), big = Math.random() < pBig, prize: Gear[] = [];
+    const serve = (r: 'epic' | 'legendary' | 'rare') => { let g = genGear(gl, r); for (let t = 0; t < 40 && ctx.game.gearFits && !ctx.game.gearFits(g); t++) g = genGear(gl, r); return g; }; /* o prêmio sempre serve para a classe de quem joga */
+    if (big) { const uq = d.uniq?.length && Math.random() < 0.4 + R.tier.uq ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
+      if (uq) { const g = genGear(gl, 'epic', uq.slot); g.name = uq.name; g.icon = uq.icon; g.rarity = 'unique'; (g as Gear & { lore?: string }).lore = uq.lore; for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.25 * 10) / 10; prize.push(g); }
+      else if (Math.random() < 0.5) prize.push(serve('epic'));
+      else { const g = serve('legendary'); for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.15 * 10) / 10; prize.push(g); } }
+    else prize.push(serve('rare'));
+    if (Math.random() < 0.2 + 0.1 * R.tier.extra + (d.kind === 'grupo' ? 0.15 : 0)) prize.push(genGear(gl, 'rare'));
+    const bgold = Math.round((d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)) * R.tier.gold);
+    if (!ctx.bossChest?.(b.pos.x, b.pos.z, y, prize, bgold)) { ctx.game.spawnGear(b.pos.x, b.pos.z, y, gl, {}, prize.length, undefined, prize); ctx.game.st.gold += bgold; ctx.audio.coins(3); }
+    if (R.tier.lv) ctx.game.logMsg(`✦ ${R.tier.name}: prêmio ×${R.tier.gold}`, R.tier.col);
     const bonus = Math.round(ctx.game.xpNeed() * (d.kind === 'grupo' ? (first ? 0.6 : 0.25) : (first ? 0.3 : 0.1)) * R.tier.xp); if (bonus > 0) ctx.game.gainXp(bonus);
-    ctx.game.st.gold += Math.round((d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)) * R.tier.gold); if (R.tier.lv) ctx.game.logMsg(`✦ ${R.tier.name}: prêmio ×${R.tier.gold}`, R.tier.col); ctx.audio.coins(3);
     if (d.pet && Math.random() < d.pet.p * (1 + 0.5 * R.ti) + (first ? 0.1 : 0)) { ctx.game.dropLoot(b.pos.x - 1, b.pos.z, y, d.pet.id, 1); ctx.game.logMsg('🐾 Algo pequeno e vivo saiu de perto do chefe e ficou olhando para você…', '#ffd27a'); }
-    if (d.deep) { const extra = Math.round(30 * (R.depth + 1) * Math.max(1, R.lvl[1] / 6)); ctx.game.st.gold += extra; ctx.game.logMsg(`🪙 Tesouro do nível ${R.depth + 1}: +${extra} de ouro. A escada para o nível ${R.depth + 2} está aberta.`, '#ffe08a');
-      if (R.depth >= 2) ctx.game.spawnGear(b.pos.x - 1.5, b.pos.z + 1, y, ilvl + R.depth, { legendary: 4 + R.depth, epic: 2 + R.depth * 0.5 }, 1 + Math.floor(R.depth / 3), 'rare'); }
+    if (d.deep) { const extra = Math.round(30 * (R.depth + 1) * Math.max(1, R.lvl[1] / 6)); ctx.game.st.gold += extra; ctx.game.logMsg(`🪙 Tesouro do nível ${R.depth + 1}: +${extra} de ouro. A escada para o nível ${R.depth + 2} está aberta.`, '#ffe08a'); }
     ctx.onClear?.(d, first); hud();
   }
   /* ---------- chefe: telegrafa, chama ajuda, joga poças, enfurece ---------- */
@@ -369,16 +380,15 @@ export function createMasmorras(ctx: DgCtx) {
       add(dd, 2.8, 'E — Abrir o baú', () => { R.opened.add(i); const puff = (c0: number, c1: number) => { for (let k = 0; k < 30; k++) ctx.particles.spawn(x, 0.8, z, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.2, s1: 0.03, c0, c1, a: 1, drag: 1.5 }); };
         /* 10/11 (Erling: "abrir baús e caixões: podem cair itens legais ou sair monstros"): 1 em 6 baús é isca */
         if (Math.random() < 0.17) { ambush(R, x, z, 2 + (Math.random() < 0.4 ? 1 : 0)); puff(0x8a6a5a, 0x2a1a10); ctx.audio.boom(); ctx.game.logMsg('📦 O baú estava vazio. Era isca: alguma coisa se mexe atrás de você!', '#ff9a8a'); return; }
-        ctx.audio.coins(2); const g = 8 + Math.floor(Math.random() * 12) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
-        if (Math.random() < 0.8) ctx.game.spawnGear(x, z, 0, R.lvl[1], { rare: 3, legendary: 1 }, 1, 'magic');
-        if (Math.random() < 0.12) { ctx.game.spawnGear(x, z, 0, R.lvl[1] + 1, { legendary: 3, epic: 2 }, 1, 'rare'); ctx.game.logMsg('✦ No fundo falso do baú havia mais uma peça, das boas.', '#ffd870'); }
+        ctx.audio.coins(2); const g = 14 + Math.floor(Math.random() * 18) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
+        /* 12/11: baú de sala lateral e caixão dão só ouro. Equipamento, só no baú do chefe. */
         puff(0xffe08a, 0xb8924a); }); });
     /* caixões e sarcófagos: metade só tem pó; um em quatro guarda algo de valor; um em quatro acorda quem dormia lá dentro */
     (R.int.coffins ?? []).forEach((c, i) => { const x = R.O.x + c.x, z = R.O.z + c.z, dd = Math.hypot(hx - x, hz - z); if (dd > 3.4 || R.openedC.has(i)) return;
       add(dd - 0.6, 2.4, 'E — Abrir o caixão', () => { R.openedC.add(i); const roll = Math.random();
         for (let k = 0; k < 18; k++) ctx.particles.spawn(x, 0.9, z, { vx: (Math.random() - 0.5) * 2, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2, life: 1, s0: 0.3, s1: 0.06, c0: 0x9a9080, c1: 0x3a342c, a: 0.7, drag: 1.5 });
         if (roll < 0.25) { ambush(R, x, z, 1 + (Math.random() < 0.35 ? 1 : 0)); ctx.audio.boom(); ctx.game.logMsg('⚰ A tampa cede por dentro. Quem dormia aqui acordou!', '#ff9a8a'); }
-        else if (roll < 0.5) { ctx.audio.coins(2); const g = 5 + Math.floor(Math.random() * 10) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; if (Math.random() < 0.55) ctx.game.spawnGear(x, z, 0, R.lvl[1], { rare: 2, legendary: 1 }, 1, 'magic'); ctx.game.logMsg(`⚰ Entre os ossos: ${g} de ouro. Alguém foi enterrado com o que tinha de melhor.`, '#ffe08a'); }
+        else if (roll < 0.5) { ctx.audio.coins(2); const g = 5 + Math.floor(Math.random() * 10) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`⚰ Entre os ossos: ${g} de ouro. Alguém foi enterrado com o que tinha de melhor.`, '#ffe08a'); }
         else ctx.game.logMsg('⚰ Só pó e ossos. Você fecha a tampa com cuidado.', '#b9b0a0'); }); });
     if (R.done && R.d.deep) { const bm = R.int.rooms.find((q) => q.kind === 'boss'); if (bm) { const x = R.O.x + bm.x, z = R.O.z + bm.z - 4, dd = Math.hypot(hx - x, hz - z); if (dd < 7) add(dd, 6, `⬇ E — Descer ao nível ${R.depth + 2} dos Túneis (+${R.d.deep.step} níveis)`, () => ctx.descend?.(R.depth + 1, R.ti)); } }
     const gt = R.int.gate; if (gt && !gt.opened) { const x = R.O.x + gt.x, z = R.O.z + gt.z, dd = Math.hypot(hx - x, hz - z); if (dd < 4.5) add(dd, 3, `🗝 Portão do chefe — faltam ${Math.max(0, R.need - R.kills)} criaturas`, () => hud()); }

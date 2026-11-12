@@ -73,6 +73,13 @@ export function createEspolio(ctx: EspolioCtx) {
     return true;
   }
 
+  /** 12/11: o baú do chefe da masmorra. As peças já vêm escolhidas (masmorras.ts); em grupo vão para a disputa de dados, como no baú do elite. */
+  function bossChest(x: number, z: number, y: number, items: Gear[], gold: number): boolean {
+    const mem = group(), c = { k: `${me()}-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4)}`, x, y, z, zn: ctx.zone(), items, gold: gold * (mem ? mem.length : 1), mem: mem ? [...mem] : [me()], auth: me() };
+    addChest(c); if (mem) ctx.net()!.x('x:bau', { k: c.k, x: c.x, y: c.y, z: c.z, zn: c.zn, items: c.items, gold: c.gold, mem: c.mem });
+    return true;
+  }
+
   /* ---------- abrir ---------- */
   function openChest(c: Chest, by: number) {
     if (c.open) return; c.open = true; c.t = 0; ctx.audio.coins(3); ctx.audio.boom();
@@ -193,5 +200,5 @@ export function createEspolio(ctx: EspolioCtx) {
   }
   /** teste: um baú dourado ao lado do herói */
   function debug(n = 3) { const h = ctx.heroPos(); const items: Gear[] = []; for (let i = 0; i < n; i++) items.push(genGear(12, i ? 'rare' : 'epic')); addChest({ k: 'dbg' + Date.now(), x: h.x + 1.2, y: h.y, z: h.z + 1.6, zn: ctx.zone(), items, gold: 120, mem: [me()], auth: me() }); }
-  return { eliteDied, interact, update, debug, _test: { nextItem, kept, showVote, result } };
+  return { eliteDied, bossChest, interact, update, debug, _test: { nextItem, kept, showVote, result } };
 }

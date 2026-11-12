@@ -352,11 +352,12 @@ export function createGameplay(d: GameplayDeps) {
   /* 02/11 (Erling: "a cada 3 peças aleatórias que caírem, pelo menos uma tem que servir para a classe que estamos jogando"): peças de outras
      classes continuam caindo (alimentam o comércio), mas depois de 2 seguidas que não servem, a 3ª é sorteada de novo até servir */
   let fitsMe: ((g: Gear) => boolean) | null = null, missStreak = 0;
-  function spawnGear(x: number, z: number, y: number, ilvl: number, boost: Partial<Record<Rarity, number>> = {}, n = 1, rarityMin?: Rarity, preset?: Gear[]) {
+  function spawnGear(x: number, z: number, y: number, ilvl: number, boost: Partial<Record<Rarity, number>> = {}, n = 1, rarityMin?: Rarity, preset?: Gear[], rarityMax?: Rarity) {
     if (preset) n = preset.length;
     for (let k = 0; k < n; k++) {
       let g = preset ? preset[k] : genGear(ilvl, rollRarity(boost)); const order: Rarity[] = ['normal', 'magic', 'rare', 'legendary', 'epic', 'unique', 'relic'];
       if (rarityMin && order.indexOf(g.rarity) < order.indexOf(rarityMin)) g = genGear(ilvl, rarityMin, g.slot);
+      if (!preset && rarityMax && order.indexOf(g.rarity) > order.indexOf(rarityMax)) g = genGear(ilvl, rarityMax, g.slot);
       if (!preset && fitsMe) { if (missStreak >= 2) for (let t = 0; t < 40 && !fitsMe(g); t++) g = genGear(ilvl, g.rarity === 'unique' || g.rarity === 'relic' ? 'epic' : g.rarity); missStreak = fitsMe(g) ? 0 : missStreak + 1; }
       const R = RARITY[g.rarity], col = parseInt(R.col.slice(1), 16), rich = g.rarity !== 'normal' && g.rarity !== 'magic';
       const grp = new THREE.Group();
@@ -418,14 +419,18 @@ export function createGameplay(d: GameplayDeps) {
     const COLETA = /^(wood|stick|sap|hide|meat|stone|fish|herb|ore)/;
     for (const [id, a, b, pr] of LOOT[e.type] ?? []) if (Math.random() < pr * (COLETA.test(id) ? 1 : QUEDA)) dropItem(e, id, a + Math.floor(Math.random() * (b - a + 1)));
     { // equipamentos: chance cresce com o nível do inimigo; elites sempre soltam e com raridade melhor
-      const tier = e.def.lvl ?? 1, elite = e.type === 'prince', ilvl = Math.max(1, Math.round(tier * 1.1 + st.lvl * 0.6));
+      /* 12/11 (Erling: "o drop dentro das masmorras tem que ser incrivelmente legal e quantidade não significa legal... o único que dá baú é o boss";
+         "masmorra de nível 12-18 cai itens até o 20 só"): dentro da masmorra os bichos e o elite soltam pouco, no máximo peça rara, e nunca acima de 2 níveis
+         do próprio bicho. O prêmio de verdade sai do baú do chefe (masmorras.ts, victory). O chefe não solta nada por aqui. */
+      const dgE = e as Enemy & { tag?: string; noGear?: boolean }, dg = !!dgE.tag?.startsWith('dg');
+      const tier = e.def.lvl ?? 1, elite = e.type === 'prince', ilvl = dg ? Math.max(1, Math.min(Math.round(tier * 1.1 + st.lvl * 0.6), tier + 2)) : Math.max(1, Math.round(tier * 1.1 + st.lvl * 0.6));
       const big = elite || isElite(e), an = st.sp.has('u_andvari') ? 1.5 : 1; // únicos e relíquias: quase só de elites e chefes, e só em nível alto (cada um tem nível mínimo)
       const boost: Partial<Record<Rarity, number>> = { magic: 1 + tier * 0.06, rare: (1 + tier * 0.14) * (elite ? 3 : 1) * an, legendary: (1 + tier * 0.3) * (elite ? 5 : 1) * an, epic: (1 + tier * 0.25) * (big ? 6 : 1), unique: (1 + tier * 0.1) * (big ? 10 : 0.6), relic: (1 + tier * 0.1) * (big ? 12 : 0.2) };
-      const n = elite ? 2 + (Math.random() < 0.5 ? 1 : 0) : Math.random() < Math.min(0.6, (0.13 + 0.03 * tier) * pk) * QUEDA ? 1 : 0; // o grind é onde caem os equipamentos
+      const n = dg ? (dgE.noGear ? 0 : big ? 1 : Math.random() < 0.08 * QUEDA ? 1 : 0) : elite ? 2 + (Math.random() < 0.5 ? 1 : 0) : Math.random() < Math.min(0.6, (0.13 + 0.03 * tier) * pk) * QUEDA ? 1 : 0; // o grind é onde caem os equipamentos
       if (pn > 1) for (const k of Object.keys(boost) as Rarity[]) boost[k] = (boost[k] ?? 1) * (1 + 0.1 * (pn - 1)); /* grupo: raridade melhor */
       /* 10/11: elite deixa um baú dourado (sistemas/espolio.ts); as peças saem de lá, e em grupo vão para a disputa de dados */
-      const inChest = big && !!eliteChest && eliteChest(e, ilvl, boost, shared);
-      if (n && !inChest) spawnGear(e.pos.x, e.pos.z, e.pos.y, ilvl, boost, n, elite ? 'rare' : undefined);
+      const inChest = !dg && big && !!eliteChest && eliteChest(e, ilvl, boost, shared);
+      if (n && !inChest) spawnGear(e.pos.x, e.pos.z, e.pos.y, ilvl, boost, n, elite && !dg ? 'rare' : undefined, undefined, dg ? 'rare' : undefined);
       if (elite && Math.random() < 0.35) dropItem(e, 'tome', 1);
       { const rn = runeDrop(tier, big); if (rn) { dropItem(e, rn, 1); const p = parseRune(rn)!; logMsg(`ᛟ Uma runa caiu: ${RNAME[p.f]}`, '#' + RCOL[p.f].toString(16).padStart(6, '0')); } } /* 03/11: runas kármicas no loot */
     }
@@ -1530,7 +1535,7 @@ export function createGameplay(d: GameplayDeps) {
     setWaterCheck(f: () => boolean) { inWater = f; },
     gadState() { return { ...gad, sentries: gad.sentries.length, zapDeath }; },
     /** 02/11: diz ao sorteio de peças o que serve para a classe atual (regra 1 em 3) */
-    setFits(f: ((g: Gear) => boolean) | null) { fitsMe = f; },
+    setFits(f: ((g: Gear) => boolean) | null) { fitsMe = f; }, /** 12/11: a peça serve para a classe de quem joga? (o grande prêmio do baú do chefe sempre serve) */ gearFits(g: Gear) { return !fitsMe || fitsMe(g); },
     /** 02/11: só para os comandos de teste — apaga o histórico de classes (a Árvore mostra só a classe atual) */
     fixBaseClass(n: string) { cls.name = n; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } },
     clearClassPast() { cls = { ...cls, past: [] }; try { localStorage.setItem('karmika.class.v1', JSON.stringify(cls)); } catch { /* */ } },
