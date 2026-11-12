@@ -22,6 +22,7 @@ function startFio(o) {
     s.on('error', () => { /* o close cuida */ }); }
   liga();
   return { /** carta do Guardião do Reino para a central */ carta(texto, de) { const m = { t: 'carta', texto: String(texto || '').slice(0, 1200), de: String(de || '').slice(0, 40) }; if (!m.texto.trim()) return false; if (!manda(m)) { if (fila.length < 50) fila.push(m); return false; } return true; },
+    /** 12/11: inscrição de uma guilda da casa no Campeonato de Guildas */ inscricao(r) { const m = { t: 'inscricao', gid: Number(r.gid) || 0, guilda: String(r.guilda || '').slice(0, 40), tag: String(r.tag || '').slice(0, 6), nivel: Number(r.nivel) || 1, membros: Number(r.membros) || 0, por: String(r.por || '').slice(0, 40), cargo: String(r.cargo || '').slice(0, 12), resp: String(r.resp || '').slice(0, 60), contato: String(r.contato || '').slice(0, 80), at: Number(r.at) || Date.now() }; if (!manda(m)) { if (fila.length < 50) fila.push(m); return false; } return true; },
     estado() { return { ligado: vivo, casa, naFila: fila.length, recusado: parado && !vivo }; }, pulso,
     stop() { parado = true; clearInterval(tPulso); clearTimeout(tVolta); try { ws && ws.close(1000); } catch { /* */ } } };
 }

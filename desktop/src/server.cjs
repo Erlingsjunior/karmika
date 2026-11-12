@@ -192,6 +192,8 @@ function startServer(opts = {}) {
     function worldGuilds() { return { t: 'g:world', list: Object.values(store.guilds).map((g) => ({ id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, build: g.build, flag: g.flag || null, icon: g.icon || null, lvl: g.lvl || 1, created: g.created, members: Object.keys(g.members).length, signed: g.signed || [] })) }; }
     function toGuild(g, m) { const ks = new Set(Object.keys(g.members)); for (const h of hubs) if (h.char && ks.has(charKey(h.char))) send(h.ws, m); }
     const pushGuild = (g) => toGuild(g, guildMsg(g));
+    /** 12/11: as guildas já inscritas no campeonato (sem os dados de contato) */
+    function inscMsg() { return { t: 'g:insc', list: ((store.torneio && store.torneio.insc) || []).map((x) => ({ gid: x.gid, guilda: x.guilda, tag: x.tag, nivel: x.nivel, por: x.por, at: x.at })) }; }
     const pushWorld = () => { const m = worldGuilds(); for (const h of hubs) send(h.ws, m); };
     /* 06/11: o nível, as missões do dia, o cofre e o imposto (guilda-nivel.cjs). Uma vez por minuto vê se o dia virou */
     function sysLines(g, lines) { if (!lines.length) return; for (const text of lines) { const L = { at: Date.now(), sys: 1, text }; g.log.push(L); toGuild(g, { t: 'g:chat', ...L }); } if (g.log.length > 200) g.log.splice(0, g.log.length - 200); }
@@ -305,6 +307,22 @@ function startServer(opts = {}) {
           for (const x of hubs) if (x.char && charKey(x.char) === tk) { send(x.ws, guildMsg(null)); send(x.ws, { t: 'a:sys', text: `Você foi removido da guilda ${g.name}.` }); } toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
         case 'g:rank': { const g = guildOf(h.char); const tk = charKey(m.char || ''); const r = String(m.rank); if (!g || !g.members[tk] || rankN(g, h.char) < 3 || !RANKS.includes(r) || tk === charKey(h.char)) break;
           if (r === 'lider') g.members[charKey(h.char)].rank = 'oficial'; g.members[tk].rank = r; const L = { at: Date.now(), sys: 1, text: `${g.members[tk].name} agora é ${r}.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        /* 12/11 (Erling: "um NPC que recebe as inscrições para as competições... somente diretoria pode fazer isso, e por esse NPC recebemos as inscrições"):
+           a inscrição da guilda no Campeonato de Guildas, feita com o Arauto dos Torneios, na Estalagem de Karmika. Só líder ou oficial inscreve, e só a própria guilda;
+           a guilda precisa ser de nível 3 (regra das Classificatórias). Fica guardada na sala e, na edição parceiro, sobe pelo Fio para a central. */
+        case 'g:insclist': { send(h.ws, inscMsg()); break; }
+        case 'g:insc': { const g = guildOf(h.char), fail = (why) => send(h.ws, { t: 'g:inscfail', why });
+          if (!g) { fail('Você não tem guilda. Só a diretoria de uma guilda faz a inscrição.'); break; }
+          if (Number(m.gid) !== g.id) { fail('Você só pode inscrever a guilda da qual é diretoria.'); break; }
+          if (rankN(g, h.char) < 2) { fail('Só a diretoria da guilda (líder ou oficial) pode fazer a inscrição.'); break; }
+          if ((g.lvl || 1) < 3) { fail(`A guilda precisa ser de nível 3 para entrar nas Classificatórias. A ${g.name} está no nível ${g.lvl || 1}.`); break; }
+          const resp = String(m.resp || '').replace(/[<>]/g, '').slice(0, 60).trim(), contato = String(m.contato || '').replace(/[<>]/g, '').slice(0, 80).trim();
+          if (resp.length < 3) { fail('Escreva o seu nome para a inscrição.'); break; }
+          const TN = (store.torneio ||= { insc: [] }); if (TN.insc.some((x) => x.gid === g.id)) { fail(`A ${g.name} já está inscrita.`); break; }
+          const reg = { gid: g.id, guilda: g.name, tag: g.tag, nivel: g.lvl || 1, membros: Object.keys(g.members).length, por: h.char, cargo: g.members[charKey(h.char)].rank, resp, contato, at: Date.now() };
+          TN.insc.push(reg); const L = { at: Date.now(), sys: 1, text: `${h.char} inscreveu a guilda no Campeonato de Guildas.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L });
+          log(`inscrição no campeonato: ${g.name} [${g.tag}], nível ${reg.nivel}, por ${h.char} (${resp}${contato ? ', ' + contato : ''})`);
+          send(h.ws, { t: 'g:inscok', guilda: g.name }); { const im = inscMsg(); for (const x of hubs) send(x.ws, im); } if (fio) fio.inscricao(reg); break; }
         case 'g:motd': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 2) break; g.motd = String(m.text || '').slice(0, 200); saveStore(); pushGuild(g); break; }
         /* 06/11: o BAÚ DA GUILDA (nível II): qualquer membro guarda; oficial e líder tiram. O item tirado vai direto para quem tirou */
         case 'g:chest:put': { const g = guildOf(h.char); const id = String(m.id || '').slice(0, 40), n = Math.max(1, Math.min(9999, Math.floor(Number(m.n) || 1))); if (!g || !id) break; if ((g.lvl || 1) < 2) { send(h.ws, { t: 'g:chest:back', id, n }); send(h.ws, { t: 'a:sys', text: 'O baú abre no nível II da guilda.' }); break; }

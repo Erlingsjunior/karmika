@@ -8,6 +8,7 @@ import type { Hub } from './hub';
 import { account, setNick } from './hub';
 import { floatWin, promptBox } from './windows';
 import { openGuildBook, refreshGuildBook, type BookGuild } from './sistemas/livro-guildas';
+import { openInsc, refreshInsc, closeInsc, type InscView } from './sistemas/inscricao-torneio';
 import { overviewHtml, welcomeHtml, chestHtml, type GLevelView } from './sistemas/guilda-pagina';
 import { skillsHtml, setGuildSkills } from './sistemas/guilda-skills';
 import { foundFormHtml, signHtml, bannerHtml, FOUND_LVL, type FoundDraft, type FoundCheck, type GFlag } from './sistemas/guilda-fundacao';
@@ -52,6 +53,11 @@ export function createSocial(ctx: {
   H.on('g:world', (m) => { world = (m.list as BookGuild[]) ?? []; refreshGuildBook(world); ctx.onWorld?.(m.list as never); });
   H.on('g:chat', (m) => { const L = m as unknown as Guild['log'][number]; if (guild) guild.log.push(L); if (L.sys) ctx.log(`⚑ ${L.text}`, guild?.col ?? '#e0c070'); else if (ctx.chatGuild) ctx.chatGuild(L.from ?? '', L.text, guild?.tag ?? 'G'); else ctx.log(`⚑ [${guild?.tag ?? 'G'}] ${L.from}: ${L.text}`, guild?.col ?? '#e0c070'); if (open && tab === 'guilda') render(); });
   H.on('g:inv', (m) => ctx.ask(`⚑ Convite de guilda`, `${m.from} convida você para a guilda ${m.name} [${m.tag}]. A guilda é deste personagem.`, 'Entrar', (ok) => H.send({ t: 'g:ans', ok })));
+  /* 12/11: a inscrição no Campeonato de Guildas (o Arauto dos Torneios, na Estalagem de Karmika) */
+  let insc: InscView[] = [];
+  H.on('g:insc', (m) => { insc = (m.list as InscView[]) ?? []; refreshInsc({ list: insc, guild, world, online: H.state === 'on' }); });
+  H.on('g:inscok', (m) => { ctx.log(`🏆 O Arauto anotou: a guilda ${m.guilda} está inscrita no Campeonato de Guildas. Boa sorte nas Classificatórias.`, '#ffe08a'); closeInsc(); });
+  H.on('g:inscfail', (m) => { ctx.log(`🏆 ${m.why}`, '#ff9a8a'); });
   H.on('g:fail', (m) => { ctx.log(`⚑ ${m.why}`, '#ff9a8a'); propSt = null; if (!signReq) founding = true; render(); });
   H.on('g:propst', (m) => { propSt = m.signers as typeof propSt; render(); });
   H.on('g:sign', (m) => { signReq = m as unknown as typeof signReq; ctx.log(`⚑ ${signReq!.leader} pede a sua assinatura no documento da guilda ${signReq!.name}.`, '#ffe08a'); toggle(true, 'guilda'); });
@@ -228,6 +234,7 @@ export function createSocial(ctx: {
     /** a guilda como o mundo a vê (com as peças do terreno) */ worldOf(id: number) { return world.find((q) => q.id === id) as (BookGuild & { build?: { kind: string; gx: number; gy: number }[] }) | undefined; },
     /** 06/11: abre a guilda numa aba (Quadro e Baú da Guilda no terreno) */ openGuildTab(t: 'visao' | 'bau') { gtab = t; toggle(true, 'guilda'); },
     /** 06/11: o terreno da minha guilda no mapa (modo de obra → Guilda) */ markMyPlot() { if (guild) ctx.markPlot(guild.plot); },
+    /** 12/11: a inscrição no Campeonato de Guildas (o Arauto dos Torneios) */ openTorneio() { if (H.state === 'on') H.send({ t: 'g:insclist' }); openInsc({ online: H.state === 'on', char: ctx.char(), guild, world, list: insc, send: (m) => H.send(m), log: ctx.log }); },
     /** 06/11: o Livro de Guildas (Biblioteca e Prefeito) */ openBook() { openGuildBook(world, H.state === 'on', guild?.id ?? null); },
     /** 06/11: o esforço do membro nas missões do dia da guilda (o servidor soma e limita) */
     prog(kind: string, n = 1) { if (guild && H.state === 'on') H.send({ t: 'g:prog', kind, n }); },

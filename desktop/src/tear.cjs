@@ -67,6 +67,8 @@ function startTear(opts = {}) {
           const guildas = Array.isArray(m.guildas) ? m.guildas.slice(0, 20).map((g) => ({ nome: limpa(g?.nome, 40), tag: limpa(g?.tag, 6), membros: num(g?.membros, 0, 9999), nivel: num(g?.nivel, 0, 999) })) : [];
           c.ultimo = { jogadores: num(m.jogadores, 0, 9999), contas: num(m.contas, 0, 999999), personagens: num(m.personagens, 0, 999999), top, guildas, versao: limpa(m.versao, 40), sala: limpa(m.sala, 60), quando: Date.now() };
           c.pico = Math.max(c.pico || 0, c.ultimo.jogadores); grava(); break; }
+        case 'inscricao': { const guilda = limpa(m.guilda, 40); if (!guilda) break; const gid = Number(m.gid) || 0; D.inscricoes = D.inscricoes || []; if (D.inscricoes.some((x) => x.casa === c.id && x.gid === gid)) break;
+          D.inscricoes.push({ id: D.kid++, casa: c.id, gid, guilda, tag: limpa(m.tag, 6), nivel: Number(m.nivel) || 1, membros: Number(m.membros) || 0, por: limpa(m.por, 40), cargo: limpa(m.cargo, 12), resp: limpa(m.resp, 60), contato: limpa(m.contato, 80), quando: Number(m.at) || Date.now() }); if (D.inscricoes.length > 5000) D.inscricoes.splice(0, D.inscricoes.length - 5000); grava(); log(`inscrição no campeonato: ${guilda}, da casa ${c.nome}`); break; }
         case 'carta': { const texto = limpa(m.texto, 1200); if (!texto) break; D.cartas.push({ id: D.kid++, casa: c.id, de: limpa(m.de, 40) || 'Guardião do Reino', texto, quando: Date.now(), lida: false }); if (D.cartas.length > 2000) D.cartas.splice(0, D.cartas.length - 2000); grava(); manda(ws, { t: 'recebida' }); log(`carta de ${c.nome}: ${texto.slice(0, 80)}`); break; }
         case 'visto': { const s = num(m.seq, 0, 1e12); if (s > (c.visto || 0)) { c.visto = s; grava(); } break; }
       }
@@ -87,7 +89,7 @@ function startTear(opts = {}) {
   const estado = () => { const now = Date.now();
     return { sede: SEDE, niveis: NIVEIS, agora: now,
       casas: D.casas.map((c) => ({ id: c.id, nome: c.nome, cidade: c.cidade, pais: c.pais, lat: c.lat, lon: c.lon, nivel: c.nivel, criada: c.criada, revogada: !!c.revogada, online: vivos.has(c.id), desde: c.desde || 0, caiu: c.caiu || 0, vistoEm: c.vistoEm || 0, pico: c.pico || 0, edicao: c.edicao || '', pendentes: D.avisos.filter((a) => a.seq > (c.visto || 0) && (a.para === 'todas' || a.para === c.id)).length, ultimo: c.ultimo || null })),
-      cartas: D.cartas.slice(-200).reverse(), avisos: D.avisos.slice(-100).reverse() }; };
+      cartas: D.cartas.slice(-200).reverse(), avisos: D.avisos.slice(-100).reverse(), inscricoes: (D.inscricoes || []).slice(-500).reverse() }; };
   const webPainel = http.createServer(async (req, res) => {
     const u = new URL(req.url || '/', 'http://x'), json = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
     /* só páginas abertas neste próprio painel podem mandar ordens (um site qualquer aberto no mesmo navegador não pode) */

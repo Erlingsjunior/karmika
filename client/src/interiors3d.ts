@@ -414,6 +414,7 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     const bar = (x0: number, x1: number, z: number) => { const L = x1 - x0, xm = (x0 + x1) / 2; add(B(L, 1.05, 0.9), plank(0x5a3a22), xm, 0.52, z); add(B(L + 0.3, 0.1, 1.1), plank(0x7a5532), xm, 1.09, z); add(B(L + 0.3, 0.05, 0.12), cu, xm, 1.16, z + 0.5, false); for (let x = x0 + 0.6; x < x1; x += 1.4) { solid(x, z, 0.75); mug(x, 1.14, z + 0.15); add(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 10), dk, x + 0.5, 0.62, z + 1.15); add(new THREE.CylinderGeometry(0.05, 0.07, 0.6, 6), iron, x + 0.5, 0.3, z + 1.15, false); seats.push({ x: x + 0.5, z: z + 1.15, yaw: Math.PI, h: 0.62 }); }
       for (let x = x0 + 0.5; x < x1; x += 1.05) barrel(x, z - 1.7, 1.05); shelf(xm, 0.35, 0, Math.min(5, L * 0.6), 2.6, false); };
     if (INN) {
+      const GDW = 0; /* a placa do Arauto fica na parede oeste, embaixo da galeria */
       /* térreo: lareira grande, balcão, mesas, palco, cozinha */
       const KX = W - 7.5, KZ = 6.2; /* a cozinha: canto nordeste, 7,5 × 6,2 m, porta para o salão */
       add(B(0.25, H, KZ - 2.0), wm, KX, H / 2, (KZ - 2.0) / 2); add(B(7.5 - 2.6, H, 0.25), wm, KX + 2.6 + (7.5 - 2.6) / 2, H / 2, KZ); add(B(0.2, 2.4, 0.3), dk, KX, 1.2, KZ - 2.0, false); add(B(0.3, 2.4, 0.2), dk, KX + 2.6, 1.2, KZ, false);
@@ -427,7 +428,9 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
       round(W * 0.82, D * 0.6); round(W * 0.84, D * 0.84); round(W * 0.1, D * 0.34);
       { const sx0 = W * 0.52, sz0 = D - 2.6; add(B(4.2, 0.3, 2.2), plank(0x5a3a22), sx0 + 2.1, 0.15, sz0 + 1.1); stage = { x0: sx0, x1: sx0 + 4.2, z0: sz0, z1: sz0 + 2.2, y: 0.3 }; add(B(0.5, 0.5, 0.5), plank(0x6a4528), sx0 + 0.7, 0.55, sz0 + 0.6); add(new THREE.CylinderGeometry(0.02, 0.02, 1.3, 5), iron, sx0 + 3.4, 0.95, sz0 + 0.6, false); }
       hang(W * 0.3, D * 0.55, 0xffb060, 44); hang(W * 0.62, D * 0.6, 0xffb060, 44); hang(W * 0.45, D * 0.22, 0xffc070, 36);
-      barrel(1.0, D - 1.0); barrel(1.0, D - 1.9, 0.8); crate(2.0, D - 0.9); plant(W - 0.9, D - 0.9); plant(W * 0.4, D - 0.7);
+      barrel(1.0, D - 1.0); barrel(1.0, D - 1.9, 0.8); crate(2.0, D - 0.9);
+      /* a mesa do Arauto dos Torneios: onde a diretoria inscreve a guilda no campeonato */
+      table(4.2, 13.2, 2.0, 0.8); solid(4.2, 13.2, 1.1); plate(3.7, 0.87, 13.2); add(new THREE.CylinderGeometry(0.05, 0.06, 0.22, 6), std(0xe8dcc0), 4.8, 0.98, 13.2, false); sign(GDW + 0.12, 2.35, 12.6, 'Campeonato de Guildas', 'inscrições aqui', Math.PI / 2, 2.2); plant(W - 0.9, D - 0.9); plant(W * 0.4, D - 0.7);
       /* segundo andar: galeria de tábuas nas paredes norte e oeste, corrimão, as vinte portas e a escada */
       const GY = H + 0.05, GD = 2.3, rail = (x0: number, z0: number, x1: number, z1: number) => { const L = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(-(z1 - z0), x1 - x0); add(B(L, 0.09, 0.09), dk, (x0 + x1) / 2, GY + 1.0, (z0 + z1) / 2, false, ry); for (let k = 0; k <= Math.floor(L / 0.9); k++) { const t = k / Math.max(1, Math.floor(L / 0.9)); add(B(0.07, 1.0, 0.07), dk, x0 + (x1 - x0) * t, GY + 0.5, z0 + (z1 - z0) * t, false); } };
       add(B(W, 0.14, GD), plank(0x6a4a2c), W / 2, GY, GD / 2); add(B(GD, 0.14, D - GD), plank(0x6a4a2c), GD / 2, GY, GD + (D - GD) / 2);

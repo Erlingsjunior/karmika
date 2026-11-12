@@ -66,6 +66,8 @@ function talkTo(n: (typeof K.npcSys.npcs)[number]) {
   if (nm === 'Prefeito Corvin Aldmar' && !K.social.guild) choices.push({ kind: 'custom', label: 'Fundar uma guilda', hint: 'Licença de Guilda: nível 45 · Lágrima de Marghar · party de 3', cb: () => { K.dlg.close(); K.social.startFounding(); } });
   /* 06/11: o Livro de Guildas fica nas bibliotecas e com o Prefeito */
   if (nm === 'Prefeito Corvin Aldmar' || /Bibliotec|Cronista/i.test(n.def.role ?? '')) choices.push({ kind: 'custom', label: '📖 Ler o Livro de Guildas', hint: 'todas as guildas de Karmika', cb: () => { K.dlg.close(); K.social.openBook(); } });
+  /* 12/11: o Arauto dos Torneios, na Estalagem de Karmika, recebe a inscrição das guildas no campeonato */
+  if (nm === 'Arauto Valério dos Torneios') choices.push({ kind: 'custom', label: '🏆 Inscrever a guilda no campeonato', hint: 'só a diretoria · guilda de nível 3', cb: () => { K.dlg.close(); K.social.openTorneio(); } });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => K.quests.openBoard() });
   if (nm === 'Hrefna') { if (K.game.st.lvl >= 20 && (!K.profile?.path || K.profile.path === 'humano')) choices.push({ kind: 'custom', label: K.profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { K.dlg.close(); K.vid.open(); } }); else if (K.game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => K.dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => K.dlg.setText(K.npcSys.talk(n)) });

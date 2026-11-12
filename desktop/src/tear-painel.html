@@ -110,11 +110,13 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
         <button type="button" role="tab" data-aba="reinos" aria-selected="true">Reinos</button>
         <button type="button" role="tab" data-aba="central" aria-selected="false">Central</button>
         <button type="button" role="tab" data-aba="cartas" aria-selected="false">Cartas<i id="nCartas" hidden>0</i></button>
+        <button type="button" role="tab" data-aba="insc" aria-selected="false">Inscrições<i id="nInsc" hidden>0</i></button>
         <button type="button" role="tab" data-aba="terrenos" aria-selected="false">Terrenos</button>
         <button type="button" role="tab" data-aba="tabela" aria-selected="false">Tabela</button>
         <button type="button" role="tab" data-aba="nova" aria-selected="false">Nova casa</button>
       </div>
       <div class="pain" id="pReinos"></div>
+      <div class="pain" id="pInsc" hidden></div>
       <div class="pain" id="pCentral" hidden>
         <form class="cart" id="fAviso">
           <h3>Mandar pela central</h3>
@@ -220,7 +222,7 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
     var s = sv('circle', { 'class': 'sede', cx: sx, cy: sy }); s.dataset.r = 1.3; gP.appendChild(s); var ts = sv('text', { 'class': 'rot', x: sx, y: sy, 'text-anchor': 'middle' }); ts.textContent = 'O Tear'; gP.appendChild(ts); poeVb(); }
 
   /* ---------- abas ---------- */
-  var ABAS = { reinos: '#pReinos', central: '#pCentral', cartas: '#pCartas', terrenos: '#pTerrenos', tabela: '#pTabela', nova: '#pNova' };
+  var ABAS = { reinos: '#pReinos', central: '#pCentral', cartas: '#pCartas', insc: '#pInsc', terrenos: '#pTerrenos', tabela: '#pTabela', nova: '#pNova' };
   function aba(n) { document.querySelectorAll('.abas button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.aba === n)); }); for (var k in ABAS) $(ABAS[k]).hidden = k !== n; if (n !== 'nova') marcar(false); if (n === 'terrenos' && modo !== 'jogo') poeModo('jogo'); if ((n === 'reinos' || n === 'nova') && modo !== 'real') poeModo('real'); }
   document.querySelectorAll('.abas button').forEach(function (b) { b.addEventListener('click', function () { aba(b.dataset.aba); }); });
 
@@ -251,6 +253,9 @@ table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text
     var le = $('#lEnviados'); le.textContent = ''; if (!E.avisos.length) le.appendChild(el('p', 'mut', 'Nada enviado ainda.'));
     E.avisos.forEach(function (a) { var d = el('div', 'cart env'); d.appendChild(el('small', '', (a.tipo === 'evento' ? 'Evento' : 'Mensagem') + ' · ' + dia(a.quando) + ' · para ' + nomeCasa(a.para))); if (a.titulo) d.appendChild(el('b', '', a.titulo)); d.appendChild(el('p', '', a.texto)); le.appendChild(d); });
     pintaTerrenos(); pintaTabela();
+    { var pi = $('#pInsc'), LI = E.inscricoes || []; pi.textContent = ''; $('#nInsc').textContent = LI.length; $('#nInsc').hidden = !LI.length; pi.appendChild(el('h3', '', 'Campeonato de Guildas: ' + LI.length + (LI.length === 1 ? ' guilda inscrita' : ' guildas inscritas')));
+      if (!LI.length) pi.appendChild(el('p', 'mut', 'Nenhuma inscrição ainda. Elas chegam quando a diretoria de uma guilda fala com o Arauto dos Torneios, na Estalagem de Karmika de um reino parceiro.'));
+      LI.forEach(function (k) { var d = el('div', 'cart carta'); d.appendChild(el('small', '', nomeCasa(k.casa) + ' · ' + dia(k.quando))); d.appendChild(el('p', '', k.guilda + ' [' + k.tag + '] · nível ' + k.nivel + ' · ' + k.membros + ' membros')); d.appendChild(el('small', '', 'Inscrita por ' + k.por + ' (' + (k.cargo === 'lider' ? 'líder' : 'oficial') + ') · responsável: ' + k.resp + (k.contato ? ' · contato: ' + k.contato : ''))); pi.appendChild(d); }); }
     var pc = $('#pCartas'); pc.textContent = ''; if (!E.cartas.length) pc.appendChild(el('p', 'mut', 'Nenhuma carta dos parceiros ainda.'));
     E.cartas.forEach(function (k) { var d = el('div', 'cart carta' + (k.lida ? '' : ' nova')); d.appendChild(el('small', '', nomeCasa(k.casa) + ' · ' + k.de + ' · ' + dia(k.quando))); d.appendChild(el('p', '', k.texto));
       var b = el('div', 'bot'); var r = el('button', '', 'Responder'); r.type = 'button'; r.addEventListener('click', function () { aba('central'); $('#selPara').value = String(k.casa); $('#fAviso').texto.focus(); }); b.appendChild(r);
