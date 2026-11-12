@@ -82,9 +82,15 @@ export function createShaderGate(renderer: THREE.WebGLRenderer, scene: THREE.Sce
     try { renderer.setRenderTarget(target()); const FB = 1 << LAYER_FINE;
       run(L.filter((q) => q.o.layers.mask & ~FB), LAYER_WORLD, cp0); run(L.filter((q) => q.o.layers.mask & FB), LAYER_FINE, fineClip() ?? cp0);
     } catch (e) { err = String(e).slice(0, 160); } finally { camera.layers.mask = lm; renderer.clippingPlanes = cp0; renderer.setRenderTarget(rt0); }
-    const p = Promise.all(ps);
+    /* 12/11 (/travadas do Erling: UM desenho de 3.621 ms, "nada novo", de um material que o portão dava como pronto). O compileAsync do three.js só espera
+       o ÚLTIMO programa de cada material. Quando o mesmo material serve a duas variações (parede e corpo, com e sem sombra, duas faces), o primeiro programa
+       podia ainda estar sendo montado pela placa quando o portão liberava o desenho, e o desenho esperava parado. Agora o portão espera TODOS os programas
+       que nasceram nesta leva ficarem prontos, um por um, antes de liberar qualquer peça dela. */
+    const novos = ((renderer.info.programs ?? []) as unknown as { isReady?(): boolean }[]).filter((q) => !vistos.has(q)), tEsp = performance.now();
+    const todos = new Promise<void>((res) => { const tick = () => { let ok = true; for (const q of novos) { try { if (q.isReady && !q.isReady()) { ok = false; break; } } catch { /* programa já solto */ } } if (ok || performance.now() - tEsp > 30000) { espera = Math.max(espera, performance.now() - tEsp); res(); } else setTimeout(tick, 15); }; tick(); });
+    const p = Promise.all([...ps, todos]);
     const fim = () => { for (const q of L) { let set = ready.get(q.m); if (!set) ready.set(q.m, set = new Set()); set.add(q.v); done++; const cp = PR.get(q.m).currentProgram; if (cp) chk.set(q.m, cp); } anota(); busy = false; };
     p.then(fim, fim); }
-  let err = '';
-  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, stats: () => `${livre ? (off ? 'PORTÃO DESLIGADO (?portao=0) · ' : 'sem compilação paralela nesta placa · ') : ''}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
+  let err = '', espera = 0;
+  return { enable() { on = true; anota(); }, flush, mapa, mapaLentos, stats: () => `${livre ? (off ? 'PORTÃO DESLIGADO (?portao=0) · ' : 'sem compilação paralela nesta placa · ') : ''}${done} programas compilados sem travar · ${held} desenhos adiados · ${miss} recompilados na hora · ${naHora} compilados NA HORA (com o jogo parado) · ${(renderer.info.programs ?? []).length} programas na placa · maior espera de uma leva ${Math.round(espera)} ms · na fila ${pend.size}${busy ? ' (compilando)' : ''}${err ? ' · erro: ' + err : ''}` };
 }
