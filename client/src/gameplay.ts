@@ -1,3 +1,4 @@
+import { seguraXp } from './sistemas/acesso-web';
 import { runeFxOf, type ROp } from './runas-classes';
 import { monMult, grupoPremio, KIT_BAL, d20, rollDice, fmtDice, heroHand, rankDice, diceAvg, critFaces, heroAcc, monCD, monAcc, heroCD, needOf, rollLog, lastMon } from './dados-rpg';
 import { FEASTS, feastEff, FEAST_MIN, tierOf, baseOf, MK, TURNS, KIT_DAYS } from './festim';
@@ -324,6 +325,7 @@ export function createGameplay(d: GameplayDeps) {
   let xpFilter: ((n: number, c: { name: string; lvl: number }) => { n: number; paid: number; cmul: number }) | null = null;
   let xpTithe: ((n: number) => number) | null = null;
   function gainXp(n0: number, p: THREE.Vector3) {
+    if (seguraXp(st.lvl, logMsg)) return; /* 12/11: teste gratuito do navegador (até o nível 10) */
     const gross = Math.round(n0 * st.xpMul), f = xpFilter ? xpFilter(gross, cls) : { n: gross, paid: 0, cmul: 1 }, n = f.n;
     const tz = xpTithe ? xpTithe(n) : 0; /* 06/11: o dízimo da guilda (4% sai de você e vai para ela) */
     st.xp += n - tz; dmgText(p.clone().setY(2.6), `+${n - tz} XP`, false, '#9ad7ff'); logMsg(`+${n - tz} XP${tz ? ` · ${tz} para a guilda` : ''}${f.paid ? ` · ${f.paid} pagam a Dívida Kármica` : ''}${f.cmul > 1 ? ` · eco da vida passada: classe ×${f.cmul}` : ''}`, '#9ad7ff');

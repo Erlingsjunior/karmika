@@ -9,7 +9,7 @@
    afeta os outros (painel do dono, bugs, avisos) continua conferido pela SALA, que recebe a senha e confere do lado dela. */
 const RESUMO = 'de51ccea6a0e2ed64af31c9531a6410a54932cb8b3dd477fd5cc24d844abecca', SAL = 'karmika:', KEY = 'karmika.adm';
 /** SHA-256 em texto (a função do navegador só existe em página segura, e a sala caseira roda em http) */
-function sha256(txt: string): string { const K = new Uint32Array(64), H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+export function sha256(txt: string): string { const K = new Uint32Array(64), H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
   { let n = 0, c = 2; const fr = (x: number) => ((x - Math.floor(x)) * 4294967296) | 0; while (n < 64) { let p = true; for (let d = 2; d * d <= c; d++) if (c % d === 0) { p = false; break; } if (p) K[n++] = fr(Math.cbrt(c)); c++; } }
   const b = new TextEncoder().encode(txt), L = b.length, tot = (((L + 9) >> 6) + 1) << 6, m = new Uint8Array(tot); m.set(b); m[L] = 0x80; const dv = new DataView(m.buffer); dv.setUint32(tot - 4, L * 8); dv.setUint32(tot - 8, Math.floor(L / 536870912));
   const w = new Uint32Array(64), rr = (x: number, n: number) => (x >>> n) | (x << (32 - n));

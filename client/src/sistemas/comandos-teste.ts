@@ -1,4 +1,5 @@
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). */
+import { conviteComando } from './acesso-web';
 import { isAdm, admComando } from './admin';
 import { addHonor, honor } from './honra';
 import { ITEMS as ITEMS_TBL } from '../inventory';
@@ -24,6 +25,7 @@ function betaCommand(cmd: string, a: string[]): string | null {
   /* 12/11 (Erling: "os beta testers não podem ter isso, somente a tela de bug"): daqui para baixo é tudo ferramenta de teste e só responde a quem entrou
      como administrador (/adm SENHA, sistemas/admin.ts). Para os outros, o jogo diz que o comando não existe. */
   if (cmd === 'adm') return admComando(a);
+  if (cmd === 'convite') return conviteComando(a); /* 12/11: versão do navegador, convite de testador */
   if (!isAdm()) return cmd === 'ajuda' || cmd === 'help' ? 'Gestos: /dance · /beber. Janelas no lugar padrão: /layout. Achou um erro? Clique no inseto 🐞 e conte o que aconteceu.' : null;
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
   if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /classe <vam|lob|mag|bru|pal|cac|tec> (vira a classe) · /pele <id|auto> (modelo do Herik) · /armas [rara|epica] (todas as armas e escudos) · /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-150 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna) · /equipar [rara|epica|lendaria] (veste um conjunto do seu nível) · /arma <nome> (uma arma só) · /aprender (abre todas as magias da classe) · /honra [n] (+Honra Kármica) · /obra [%] (adianta a obra da casa) · /travadas ou /perf (relatório de travadas e tempo por parte do quadro) · /som (o que está tocando) · /runas (abre todas as habilidades de grupo da classe, para testar). Conversa: /g global · /l local · /p ou /grupo · /w <nome> sussurro · /r responder.';
