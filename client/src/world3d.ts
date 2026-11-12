@@ -53,6 +53,19 @@ export interface WorldObjs {
   bridgeMeshes: THREE.Group;
 }
 
+/* 11/11 noite (Erling: "o que é esse quadrado… ridículo"): a lona das barracas era um plano liso de cor chapada. Agora é pano: trama, costuras entre as
+   faixas de lona, remendos, manchas de chuva e barra escura; e cada água da barraca tem barriga (o pano cede entre a cumeeira e o chão). */
+let lonaT: THREE.Texture | null = null;
+function lonaTex(): THREE.Texture {
+  if (lonaT) return lonaT; const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d')!; let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  g.fillStyle = '#d8d2c6'; g.fillRect(0, 0, S, S);
+  for (let y = 0; y < S; y += 2) for (let x = 0; x < S; x += 2) { const v = 196 + Math.floor(rnd() * 44) - ((x >> 1) + (y >> 1)) % 2 * 10; g.fillStyle = `rgb(${v},${v - 3},${v - 9})`; g.fillRect(x, y, 2, 2); }
+  for (let i = 0; i < 9; i++) { const x = rnd() * S, y = rnd() * S, r = 10 + rnd() * 22, gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, 'rgba(70,60,45,0.20)'); gr.addColorStop(1, 'rgba(70,60,45,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (let x = 0; x < S; x += 32) { g.fillStyle = 'rgba(40,30,20,0.42)'; g.fillRect(x, 0, 2, S); g.fillStyle = 'rgba(255,250,235,0.30)'; g.fillRect(x + 2, 0, 1, S); for (let y = 3; y < S; y += 7) { g.fillStyle = 'rgba(30,22,14,0.55)'; g.fillRect(x - 2, y, 6, 1); } }
+  for (let i = 0; i < 3; i++) { const x = 6 + rnd() * (S - 30), y = 8 + rnd() * (S - 30), w = 12 + rnd() * 9, h = 10 + rnd() * 8; g.fillStyle = `rgba(${150 + rnd() * 40},${140 + rnd() * 30},${118 + rnd() * 30},0.9)`; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(35,25,15,0.7)'; g.setLineDash([2, 2]); g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); g.setLineDash([]); }
+  const hm = g.createLinearGradient(0, S - 26, 0, S); hm.addColorStop(0, 'rgba(30,22,14,0)'); hm.addColorStop(1, 'rgba(30,22,14,0.55)'); g.fillStyle = hm; g.fillRect(0, S - 26, S, 26);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return (lonaT = t);
+}
 function noiseTex(): THREE.Texture {
   const c = document.createElement('canvas');
   c.width = c.height = 16;
@@ -635,9 +648,9 @@ export function buildWorld(world: World): WorldObjs {
     } else if (p.kind === 'tent') { // barraca de lona de verdade: duas águas sobre a cumeeira, mastros, portas de pano abertas, cordas esticadas até estacas no chão
       const t = new THREE.Group(); t.position.set(Wm / 2, 0, Dm / 2); t.rotation.y = (r() - 0.5) * 1.2 + (r() < 0.5 ? 0 : Math.PI / 2); g.add(t);
       const L2 = 2.9 + r() * 0.5, W2 = 1.3 + r() * 0.15, H2 = 1.75 + r() * 0.25, side = Math.hypot(W2, H2), ang = Math.atan2(W2, H2);
-      const canvas = std(p.wall, { map: tex, side: THREE.DoubleSide }), hem = std(0x3a2a1a), wood = std(0x5a3e22), rope = std(0xc8b48a), dark = std(0x120c08, { side: THREE.DoubleSide });
+      const canvas = std(p.wall, { map: lonaTex(), side: THREE.DoubleSide }), hem = std(0x3a2a1a), wood = std(0x5a3e22), rope = std(0xc8b48a), dark = std(0x120c08, { side: THREE.DoubleSide });
       for (const sx of [-1, 1]) { // as duas águas da lona
-        const pg = new THREE.PlaneGeometry(side, L2, 1, 1); L.own.push(pg); const pl = new THREE.Mesh(pg, canvas); pl.rotation.set(-Math.PI / 2, 0, 0); const hold = new THREE.Group(); hold.add(pl); pl.position.x = sx * side / 2;
+        const pg = new THREE.PlaneGeometry(side, L2, 5, 6); { const ps = pg.attributes.position; for (let i = 0; i < ps.count; i++) { const u = (ps.getX(i) / side + 0.5), v = (ps.getY(i) / L2 + 0.5); ps.setZ(i, -0.11 * Math.sin(Math.PI * u) * (0.55 + 0.45 * Math.sin(Math.PI * v))); } pg.computeVertexNormals(); } L.own.push(pg); const pl = new THREE.Mesh(pg, canvas); pl.rotation.set(-Math.PI / 2, 0, 0); const hold = new THREE.Group(); hold.add(pl); pl.position.x = sx * side / 2;
         hold.position.y = H2; hold.rotation.z = -sx * (Math.PI / 2 - ang); pl.castShadow = pl.receiveShadow = true; t.add(hold);
         const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, L2 + 0.02), hem); h.position.set(sx * W2, 0.04, 0); t.add(h); // barra da lona no chão
       }

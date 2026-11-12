@@ -2937,7 +2937,8 @@ function frameBody() {
   plane.constant = -heroY;
   if (!inside) { if (!cinemaSys.cine) objs.setRad(Math.min(5, Math.max(2, Math.ceil(Math.hypot(zoom * innerWidth / innerHeight, zoom * 2.2) / 2 / 40 + 0.7)))); /* raio de chunks segue o zoom e a tela: nada de vazio nas bordas */ objs.update(camX, camZ); } else { inside.int.flicker(t, state.fx * T - IX, state.fy * T - IZ); if (state.fy * T - IZ > inside.int.D + 0.5) exitHouse(); }
   const mps = telefSys?.carry ? (telefSys.carry.walk ? 2.4 : 0) : Math.max(sp * T * run * boost * vel * actSlow * (state.moving || vel > 0.02 ? 1 : 0), Math.abs(forced ? hero.stepVel : 0));
-  const aiming = hero.acting;
+  /* 11/11 noite (Erling: "movimento de mineração está horrível e todo errado"): todo golpe mira no ponteiro do mouse, e a picaretada, a machadada, a faca e o alicate também são golpes; então o herói minerava virado para o mouse, de costas para a pedra. No ofício e na pesca ele olha para o que está trabalhando. */
+  const aiming = hero.acting && !oficiosSys.work && !pescaSys.fishing;
   if (entradaSys.castQ) { if (performance.now() > entradaSys.castQ.until || game.st.dead) entradaSys.castQ = null; else castAt(entradaSys.castQ.slot, entradaSys.castQ.at); }
   if (entradaSys.lockYaw !== null && !hero.acting) entradaSys.lockYaw = null;
   { /* o herói encara o golpe do começo ao fim: a direção é decidida quando o gesto começa e não fica girando atrás do mouse */

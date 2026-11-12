@@ -1245,11 +1245,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const poll = mk(new THREE.BoxGeometry(0.07, 0.09, 0.06), tint ?? 0x8a929e, 0.004, tMat(0x8a929e)); poll.position.set(-0.03, -0.84, 0); sw.add(poll);
           const edge = mk(new THREE.BoxGeometry(0.025, 0.2, 0.03), 0xe8edf2, 0.003, tMat(0xe8edf2)); edge.position.set(0.28, -0.84, 0); sw.add(edge);
           len = 0.95;
-        } else if (base === 'Picareta') { // cabeça curva: bico comprido para a frente, enxó curta atrás
-          const haft = mk(new THREE.CylinderGeometry(0.02, 0.024, 0.92, 7), 0x5a3a20, 0.004); haft.position.y = -0.46; sw.add(haft);
-          const eye = mk(new THREE.BoxGeometry(0.08, 0.1, 0.07), tint ?? 0x6a6e78, 0.004, tMat(0x6a6e78)); eye.position.y = -0.88; sw.add(eye);
-          const spike = new THREE.ConeGeometry(0.035, 0.36, 5); spike.rotateZ(-Math.PI / 2 - 0.25); const sp = mk(spike, tint ?? 0x8a929e, 0.005, tMat(0x8a929e)); sp.position.set(0.2, -0.84, 0); sw.add(sp);
-          const adze = mk(new THREE.BoxGeometry(0.16, 0.035, 0.07), tint ?? 0x8a929e, 0.004, tMat(0x8a929e)); adze.position.set(-0.1, -0.86, 0); adze.rotation.z = 0.3; sw.add(adze);
+        } else if (base === 'Picareta') { // 11/11 noite (Erling: "horrível"): parecia uma lança (bico fino de um lado só). Agora é picareta de mineiro: cabo grosso, olho de ferro e dois bicos curvos, um para cada lado
+          const haft = mk(new THREE.CylinderGeometry(0.024, 0.03, 0.92, 7), 0x5a3a20, 0.004); haft.position.y = -0.46; sw.add(haft);
+          const eye = mk(new THREE.BoxGeometry(0.11, 0.12, 0.085), tint ?? 0x6a6e78, 0.004, tMat(0x6a6e78)); eye.position.y = -0.87; sw.add(eye);
+          for (const sx of [-1, 1]) { const spike = new THREE.ConeGeometry(0.05, 0.36, 6); spike.rotateZ(-sx * (Math.PI / 2 + 0.28)); const sp = mk(spike, tint ?? 0x8a929e, 0.005, tMat(0x8a929e)); sp.position.set(sx * 0.2, -0.845, 0); sp.scale.z = 0.7; sw.add(sp); }
+          const cap = mk(new THREE.BoxGeometry(0.05, 0.03, 0.05), 0x4a3018, 0.003); cap.position.y = -0.945; sw.add(cap);
           len = 0.92;
         } else if (base === 'Faca de Caça') { // lâmina curta de esfolar, ponta curva, cabo de chifre
           const hilt = mk(new THREE.CylinderGeometry(0.018, 0.02, 0.13, 6), 0xc8b89a, 0.004); hilt.position.y = -0.0; sw.add(hilt);
@@ -1822,7 +1822,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           kthrow: [{ p: 0, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }, { p: .3, g: [0.3, 0.42, -0.12], d: [0, 0.9, -0.4] }, { p: .5, g: [0.15, 0.2, 0.55], d: [0, -0.2, 1] }, { p: 1, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }],
           draw: [{ p: 0, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }, { p: .2, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: .85, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: 1, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }],
           chop: [{ p: 0, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }, { p: .38, g: [0.36, 0.2, -0.02], d: [0.7, 0.3, -0.65] }, { p: .56, g: [0.04, 0.0, 0.46], d: [-0.45, -0.08, 0.89] }, { p: .74, g: [0.02, -0.02, 0.46], d: [-0.5, -0.1, 0.86] }, { p: 1, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }], /* lenhador de verdade: duas mãos no cabo, recua sobre o ombro direito e corta na horizontal na altura da cintura */
-          mine: [{ p: 0, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }, { p: .4, g: [0.14, 0.62, -0.06], d: [0.05, 0.92, -0.38] }, { p: .58, g: [0.1, -0.12, 0.46], d: [0.02, -0.78, 0.62] }, { p: .76, g: [0.1, -0.14, 0.45], d: [0.02, -0.8, 0.6] }, { p: 1, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }],
+          mine: [{ p: 0, g: [0.2, -0.06, 0.32], d: [0.05, 0.45, 0.89] }, { p: .4, g: [0.12, 0.66, -0.04], d: [0.03, 0.78, -0.62] }, { p: .58, g: [0.08, -0.2, 0.52], d: [0, -0.3, 0.95] }, { p: .76, g: [0.08, -0.21, 0.51], d: [0, -0.32, 0.95] }, { p: 1, g: [0.2, -0.06, 0.32], d: [0.05, 0.45, 0.89] }], /* 11/11 noite: no impacto o CABO fica quase deitado para a frente e o bico é que desce na pedra (antes o cabo apontava para o chão, como lança) */
           skin: [{ p: 0, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }, { p: .3, g: [0.2, 0.22, 0.62], d: [-0.55, 0.3, 0.78] }, { p: .6, g: [-0.1, 0.18, 0.64], d: [0.1, 0.25, 0.96] }, { p: 1, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }],
           herb: [{ p: 0, g: [0.06, 0.25, 0.55], d: [0, 0.3, 0.95] }, { p: .4, g: [0.04, 0.18, 0.68], d: [0, 0.1, 1] }, { p: .55, g: [0.04, 0.17, 0.68], d: [0, 0.08, 1] }, { p: 1, g: [0.06, 0.25, 0.55], d: [0, 0.3, 0.95] }],
           rush: [{ p: 0, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }, { p: .08, g: [0.5, 0.2, 0.05], d: [1, 0, 0.25] }, { p: .62, g: [0.5, 0.2, 0.05], d: [1, 0, 0.25] }, { p: .74, g: [0.3, 0.0, -0.2], d: [0.4, 0.2, -0.9] }, { p: 1, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }],

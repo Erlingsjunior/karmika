@@ -67,13 +67,24 @@ function updateXray(dt: number) {
 /* REGRA DA AURA (Erling, 28/10): o corte só liga quando o herói está pelo menos 90% escondido. Dez raios da câmera até pontos do
    corpo (5 alturas × 2 lados); se 9 ou mais batem em cenário antes de chegar nele, corta. Peças que nunca somem (correio, fonte,
    baú, pedra de teletransporte…) nem contam como obstáculo nem são cortadas (world3d: NOCUT_KINDS). */
-let cutOccT = 0, cutOn = false, cutFlip = 0; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3();
+let cutOccT = 0, cutOn = false, cutFlip = 0; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3(), occC = new THREE.Vector3();
 function heroHidden(hp: THREE.Vector3, need = 9): boolean {
   const root = K.inside ? K.inside.int.group : K.objs.group; if (!root.visible) return false; occR.set(1, 0, 0).applyQuaternion(K.camera.quaternion);
+  /* 11/11 noite (o /travadas do Erling: "xray/env" com 17 a 29 ms em alguns quadros): cada um dos 10 raios percorria TODAS as peças do cenário carregado
+     (mais de 10 mil), 8 vezes por segundo. Agora uma passada só separa as poucas peças cuja esfera encosta no corredor entre a câmera e o herói, e os
+     10 raios testam só essas. O resultado é o mesmo; linhas, pontos e sprites (que nunca esconderam ninguém) ficam de fora. */
+  const cand: THREE.Object3D[] = []; { const A = K.camera.position, bx = hp.x - A.x, by = hp.y + 0.95 - A.y, bz = hp.z - A.z, bb = bx * bx + by * by + bz * bz || 1;
+    root.traverseVisible((o) => { const m = o as THREE.Mesh & { boundingSphere?: THREE.Sphere | null; computeBoundingSphere?: () => void }; if (!m.isMesh) return;
+      let bs = m.boundingSphere; if (bs === null && (m as unknown as THREE.InstancedMesh).isInstancedMesh) { m.computeBoundingSphere?.(); bs = m.boundingSphere; }
+      if (!bs) { const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); bs = g.boundingSphere; } if (!bs) return;
+      const e = m.matrixWorld.elements, c = occC.copy(bs.center).applyMatrix4(m.matrixWorld), sc = Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10])), r = bs.radius * sc + 0.8;
+      const t = Math.max(0, Math.min(1, ((c.x - A.x) * bx + (c.y - A.y) * by + (c.z - A.z) * bz) / bb)), dx = A.x + bx * t - c.x, dy = A.y + by * t - c.y, dz = A.z + bz * t - c.z;
+      if (dx * dx + dy * dy + dz * dz <= r * r) cand.push(m); }); }
+  if (!cand.length) return false;
   let hid = 0, n = 0;
   for (const hy of [0.25, 0.6, 0.95, 1.3, 1.65]) for (const sd of [-0.22, 0.22]) { n++; occP.set(hp.x + occR.x * sd, hp.y + hy, hp.z + occR.z * sd);
     occD.copy(occP).sub(K.camera.position); const L = occD.length(); occRay.set(K.camera.position, occD.normalize()); occRay.far = L - 0.35;
-    const hits = occRay.intersectObject(root, true); if (hits.some((h) => { const m = h.object as THREE.Mesh, mt = m.material as THREE.Material; let o: THREE.Object3D | null = m; while (o && o !== root) { if (!o.visible) return false; o = o.parent; } return !Array.isArray(mt) && !mt.transparent && mt.side !== THREE.BackSide && !(mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial && !mt.userData.noCut; })) hid++;
+    const hits = occRay.intersectObjects(cand, false); if (hits.some((h) => { const m = h.object as THREE.Mesh, mt = m.material as THREE.Material; let o: THREE.Object3D | null = m; while (o && o !== root) { if (!o.visible) return false; o = o.parent; } return !Array.isArray(mt) && !mt.transparent && mt.side !== THREE.BackSide && !(mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial && !mt.userData.noCut; })) hid++;
     if (n - hid > 10 - need) return false; } // pontos demais à vista: não precisa cortar
   return hid >= need; }
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
