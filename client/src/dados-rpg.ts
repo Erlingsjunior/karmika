@@ -58,7 +58,7 @@ let tog: HTMLButtonElement | null = null;
 /* 09/11 (Erling: "as mensagens vindo ABAIXO dos ícones e não do lado; a de sistema pequena como a dos dados, mais discreta; e os dados vêm primeiro
    para não ficar a tela vazia"): os dois ícones ficam no alto; embaixo deles a lista dos dados; e logo abaixo dela, o registro do sistema, do mesmo
    tamanho e na mesma letra. Se os dados estão desligados (ou vazios), o registro sobe e encosta nos ícones. */
-function layout() { if (!box) return; const lg = document.getElementById('log'), ic = document.getElementById('logtog'); /* 09/11: a lista única começa 10 px abaixo dos ícones */ const TOP = ic ? Math.round(ic.getBoundingClientRect().bottom + 10) : 84, LEFT = 14;
+function layout() { if (!box) return; const lg = document.getElementById('log'), ic = document.getElementById('logtog'); /* 09/11: a lista única começa 10 px abaixo dos ícones */ const TOP = ic ? Math.round(ic.getBoundingClientRect().bottom + 10) : 84, LEFT = ic ? Math.max(0, Math.round(ic.getBoundingClientRect().left)) : 14; /* 12/11: a lista acompanha os ícones quando o jogador os muda de lugar */
   box.style.display = 'none'; if (lg) { lg.style.setProperty('top', TOP + 'px', 'important'); lg.style.setProperty('left', LEFT + 'px', 'important'); } }
 function ensure() { if (box) return box; box = document.createElement('div'); box.id = 'rolls'; box.innerHTML = '<div class="rl"></div>'; document.body.appendChild(box);
   tog = document.createElement('button'); tog.id = 'rolltog'; tog.textContent = '🎲'; document.body.appendChild(tog);

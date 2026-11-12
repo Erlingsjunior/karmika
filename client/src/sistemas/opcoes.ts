@@ -46,7 +46,7 @@ setTimeout(applyTextScale, 0); setTimeout(applyTextScale, 2500); // depois dos e
 type DeskVideo = { video?(): Promise<{ angle: string; voltou: string }>; setVideo?(v: string): Promise<boolean>; videoOk?(): Promise<boolean>; relaunch?(): Promise<boolean> };
 const deskV = (window as unknown as { karmikaDesktop?: DeskVideo }).karmikaDesktop ?? null;
 let video: { angle: string; voltou: string } | null = null, videoNovo: string | null = null;
-if (deskV?.video) { void deskV.video().then((v) => { video = v; }).catch(() => { /* aplicativo antigo */ });
+if (deskV?.video) { void deskV.video().then((v) => { video = v; try { renderOptions(); } catch { /* ainda não montada */ } }).catch(() => { /* aplicativo antigo */ });
   const t = setInterval(() => { if (document.body.classList.contains('ready')) { clearInterval(t); setTimeout(() => void deskV.videoOk?.(), 4000); } }, 1000); /* o jogo abriu e desenhou: a escolha deixa de estar "em teste" */ }
 /** o nome que a placa de vídeo dá a si mesma (mostra qual tradutor está valendo de verdade) */
 const placaNome = () => { try { const g = (K.renderer as unknown as { getContext?(): WebGLRenderingContext }).getContext?.(); const e = g?.getExtension('WEBGL_debug_renderer_info'); return g && e ? String(g.getParameter(e.UNMASKED_RENDERER_WEBGL)) : ''; } catch { return ''; } };
@@ -129,6 +129,15 @@ const onClick = (e: Event) => { { const tb = (e.target as HTMLElement).closest('
   if (a === 'reset') { Object.assign(K.opts, K.OPT_DEF); applyOpts(); renderOptions(); }
 };
 const onInput = (e: Event) => { const i = e.target as HTMLInputElement; if (!i.dataset.or) return; const k = i.dataset.or as keyof Opts; (K.opts as unknown as Record<string, unknown>)[k] = Number(i.value); applyOpts(k); const b = i.nextElementSibling as HTMLElement | null; if (b) b.textContent = `${Math.round(Number(i.value) * 100)}%`; };
+/* 12/11 (Erling: "não consigo redimensionar a janela de opções"): alça no canto de baixo, à direita; o tamanho fica salvo; clique duplo volta ao padrão */
+{ const pn = document.querySelector<HTMLElement>('#menu .panel'), MK = 'karmika.ui.menu'; if (pn) { const g = document.createElement('div'); g.className = 'rz'; g.title = 'Arraste para mudar o tamanho da janela (clique duplo: tamanho padrão)'; pn.appendChild(g);
+    const put = (w: number, h: number) => { pn.style.width = w + 'px'; pn.style.height = h + 'px'; pn.style.maxWidth = 'none'; }; try { const q = JSON.parse(localStorage.getItem(MK) || 'null'); if (q?.w && q?.h) put(q.w, q.h); } catch { /* */ }
+    let rz: { x: number; y: number; cw: number; ch: number; rw: number; rh: number } | null = null;
+    g.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; const r = pn.getBoundingClientRect(), cs = getComputedStyle(pn); rz = { x: e.clientX, y: e.clientY, cw: parseFloat(cs.width) || r.width, ch: parseFloat(cs.height) || r.height, rw: r.width, rh: r.height }; g.setPointerCapture(e.pointerId); e.preventDefault(); e.stopPropagation(); });
+    g.addEventListener('pointermove', (e) => { if (!rz) return; /* a janela fica centrada: cada lado cresce metade, então o arrasto vale em dobro. A conta é por proporção (tamanho na tela → tamanho no estilo), para valer em qualquer tamanho de interface */
+      const tw = Math.max(Math.min(640, innerWidth - 16), Math.min(innerWidth - 16, rz.rw + 2 * (e.clientX - rz.x))), th = Math.max(Math.min(420, innerHeight - 16), Math.min(innerHeight - 16, rz.rh + 2 * (e.clientY - rz.y))); put(Math.round(rz.cw * tw / rz.rw), Math.round(rz.ch * th / rz.rh)); });
+    const end = () => { if (!rz) return; rz = null; try { localStorage.setItem(MK, JSON.stringify({ w: parseFloat(pn.style.width), h: parseFloat(pn.style.height) })); } catch { /* */ } }; g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+    g.addEventListener('dblclick', (e) => { e.stopPropagation(); pn.style.width = ''; pn.style.height = ''; pn.style.maxWidth = ''; try { localStorage.removeItem(MK); } catch { /* */ } }); } }
 for (const id of ['p-opt', 'p-som', 'p-ctl']) { document.getElementById(id)?.addEventListener('click', onClick); document.getElementById(id)?.addEventListener('input', onInput); }
 addEventListener('karmika:controle', () => renderOptions());
 setTimeout(() => { renderOptions(); applyOpts(); K.applyArtSkin(); }, 0);

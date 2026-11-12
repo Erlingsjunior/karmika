@@ -1101,6 +1101,8 @@
   .pn h2 button { font-family: Cinzel, serif; background: transparent; border: 1px solid var(--wk-gold-lo); color: var(--wk-ink); border-radius: 2px; padding: 3px 8px; } .pn h2 button:hover { background: rgba(217,162,79,.14); }
   .pn h3 { font: 600 12px Cinzel, serif; letter-spacing: .18em; color: var(--wk-gold); }
   .pn p { font-size: 14.5px; } .pn small { font-size: 12.5px; color: #b4a68e; } .pn small.ft { margin-top: 10px; text-align: center; font: 600 10px Cinzel, serif; letter-spacing: .24em; text-transform: uppercase; color: #8a7a5a; }
+  #menu .panel > .rz { position: absolute; right: 4px; bottom: 4px; width: 20px; height: 20px; cursor: nwse-resize; z-index: 4; background: linear-gradient(135deg, transparent 0 46%, #c9a24a 46% 54%, transparent 54% 64%, #c9a24a 64% 72%, transparent 72% 82%, #c9a24a 82% 90%, transparent 90%); opacity: .7; } #menu .panel > .rz:hover { opacity: 1; }
+  #gevt, #evnear, #logtog, #rolltog { touch-action: none; }
   #menu .panel { position: relative; } #menu .mclose { position: absolute; top: 14px; right: 18px; z-index: 3; width: 30px; height: 30px; padding: 0; border: 1px solid #8a6a38; border-radius: 4px; background: rgba(20,14,8,.9); color: #f2cf8a; font-size: 14px; cursor: pointer; } #menu .mclose:hover { border-color: #ffe08a; color: #ffe08a; }
   #menu .panel { font-size: 15px; } #menu .page { color: var(--wk-ink); font-family: Georgia, serif; font-size: 15px; } #menu .stat { font-size: 15px; }
   #dlg .dp { font-size: 15px; } #dlg .say { font-size: 16px; } #dlg .c { font-size: 15px; }
@@ -1431,7 +1433,7 @@
   body.indock #socw { z-index: 130 !important; } /* solta e arrastável, por cima do menu */
   #inicio button.lnk { display: block; }
   .lj-to { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0; } .lj-to small { width: 100%; color: #b8a888; } .lj-to button { background: #1c130b; border: 1px solid #5a4628; color: #e8dcc0; padding: 6px 12px; cursor: pointer; font: 14px Georgia, serif; } .lj-to button.on { border-color: #e6c46a; color: #ffe08a; box-shadow: 0 0 10px #e6c46a40; } .lj-to em { font-size: 11px; color: #a89870; }
-  body.indock #lojaw { z-index: 140; } /* o Shop abre por cima do menu */
+  body.indock #lojaw { z-index: 140 !important; } /* o Shop abre por cima do menu */
   /* a janela do jogo muda de tamanho: o painel encolhe; em tela estreita ele desce para baixo do menu */
  #pquest { z-index: 96 !important; }
   .sopn { width: min(640px, calc(94vw / var(--ui))); height: min(660px, calc(86vh / var(--ui))); display: flex; flex-direction: column; overflow: hidden; padding: 14px 18px; font-family: Georgia, serif; color: #e8dcc0; }
@@ -1637,6 +1639,17 @@
   .fw.sized > .pn { display: flex !important; flex-direction: column; overflow: hidden !important; } .fw.sized > .pn > * { flex: 0 0 auto; }
   .fw.sized > .pn > .fwgrow { flex: 1 1 auto; min-height: 0; max-height: none !important; overflow: auto; scrollbar-width: thin; scrollbar-color: #8a6a32 transparent; }
   .fw.sized > .pn > .tree-body.fwgrow { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-items: stretch; } .fw.sized > .pn > .tree-body.fwgrow > * { max-height: none !important; min-height: 0; overflow: auto; }
+  /* 12/11 (Erling, da loja da caravana: "layouts horríveis, melhorar drasticamente"): título numa linha limpa com o ouro em pílula; as abas numa grade
+     de botões iguais (nunca mais quadradões); a prateleira enche a largura sem barra de rolagem de lado; esticando a janela, só a prateleira cresce */
+  .shoppn { width: min(560px, calc(92vw / var(--ui))); display: flex; flex-direction: column; }
+  .shoppn > h2 { gap: 12px; align-items: flex-start; margin-bottom: 6px; } .shoppn > h2 .sht { flex: 1 1 auto; min-width: 0; font-size: 17px; line-height: 1.25; text-wrap: balance; }
+  .shoppn > h2 .gold { flex: none; white-space: nowrap; font: 600 14px Georgia, serif; letter-spacing: 0; padding: 3px 11px; border: 1px solid #6a5434; border-radius: 12px; background: rgba(0,0,0,.32); text-shadow: none; } .shoppn > h2 button { flex: none; }
+  .shoppn > .note { display: block; margin: 0 0 8px; font-size: 13px; line-height: 1.4; }
+  .shoppn .stabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 6px; margin: 4px 0 10px; } .shoppn .stabs button { padding: 8px 10px; font-size: 11.5px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shoppn .grid.g5 { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; align-content: start; max-height: calc(4 * 76px); overflow-y: auto; overflow-x: hidden; padding: 2px; scrollbar-width: thin; scrollbar-color: #8a6a32 transparent; }
+  .shoppn .grid.g5 .it { width: auto; height: auto; aspect-ratio: 1; }
+  .pn.shoppn small.ft { font: 12px/1.4 Georgia, serif; letter-spacing: 0; text-transform: none; color: #9a8a6a; }
+  .fw.sized > .pn.shoppn > .fwgrow:not(.grid) { flex: 0 0 auto; overflow: visible; } .fw.sized > .pn.shoppn > .grid { flex: 1 1 auto; min-height: 0; max-height: none !important; }
   .fw.sized .tree-body.fwgrow .talw, .fw.sized .tree-body.fwgrow .tsvg { height: 100%; } .fw.sized > .pn > .fwgrow .pvl, .fw.sized > .pn > .fwgrow .pv2 { max-height: none !important; }
   /* ===== 11/11: Profissões no desenho novo (Erling: "reformular tela de profissões") ===== */
   .profpn { width: min(1180px, calc(95vw / var(--ui))); height: min(740px, calc(88vh / var(--ui))); } .pfwrap { gap: 18px; }

@@ -156,7 +156,9 @@ function updateGuideB(t: number) {
   { const ga = guide3dB.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.75 + 0.15 * Math.sin(t * 4 + 1); }
 }
 function hereT() { return K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; }
-function heroArrow(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI - K.hero.root.rotation.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6 * s); ctx.lineTo(4.5 * s, 5 * s); ctx.lineTo(0, 2.5 * s); ctx.lineTo(-4.5 * s, 5 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+/* 12/11 (Erling: "nossa seta se perde às vezes; uma cor mais brilhante, que destaque no mapa"): halo que pulsa, contorno preto grosso e miolo amarelo-claro */
+function heroArrow(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) { ctx.save(); ctx.translate(x, y); { const pr = 0.5 + 0.5 * Math.sin(performance.now() / 320), g = ctx.createRadialGradient(0, 0, 1, 0, 0, 13 * s); g.addColorStop(0, `rgba(255,236,120,${0.5 + 0.25 * pr})`); g.addColorStop(1, 'rgba(255,236,120,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 13 * s, 0, 6.283); ctx.fill(); }
+  ctx.rotate(Math.PI - K.hero.root.rotation.y); ctx.fillStyle = '#fff36a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(0, -6 * s); ctx.lineTo(4.5 * s, 5 * s); ctx.lineTo(0, 2.5 * s); ctx.lineTo(-4.5 * s, 5 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
 /* MAPA DA MASMORRA (Erling, 26/10: "estou dentro de uma dungeon e o minimapa não muda, nem o mapa"): dentro, os dois mapas
    mostram a masmorra — salas por tipo, o portão do chefe, baús, a saída, os bichos vivos por perto — e o que você ainda não viu fica no escuro */
 let dgMap: { key: string; cv: HTMLCanvasElement; seen: Uint8Array; W: number; D: number } | null = null;

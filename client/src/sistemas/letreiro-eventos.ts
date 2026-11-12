@@ -1,3 +1,4 @@
+import { movable } from '../windows';
 /* LETREIRO RÚNICO DO ALTO e EVENTOS MUNDIAIS: lugar, clima, turno, nível da região, elite próxima; o contador e o painel dos eventos globais; as marcas de missão sobre os NPCs. Saiu do main.ts (02/11). */
 import { globalNow, globalList, G_FX, globalNext } from '../eventos';
 import { floatWin } from '../windows';
@@ -22,6 +23,7 @@ function gevNote(f: (h: GevH) => void) { let g: ReturnType<typeof globalNow> = n
   if (!h) { h = { id: g.id, start: g.end - (g.id === 'lua' ? 80 : 90) * 60000, kills: 0, evs: 0 }; L.unshift(h); } f(h); try { localStorage.setItem(GEV_HIST, JSON.stringify(L.slice(0, 12))); } catch { /* */ } }
 const gevChip = document.createElement('button'); gevChip.id = 'gevt'; gevChip.title = 'Eventos mundiais: o que está acontecendo, o que vem e o que já passou';
 setTimeout(() => document.getElementById('mini')?.appendChild(gevChip), 0);
+movable(gevChip, 'gevt', { whole: true }); gevChip.title += ' · arraste para mudar de lugar (clique duplo volta)'; /* 12/11 (Erling: "não consigo mudar separadamente o banner de eventos de lugar") */
 gevChip.addEventListener('click', () => openGev());
 const gevEl = document.createElement('div'); gevEl.id = 'gevwin'; gevEl.className = 'pn gevpn'; gevEl.style.display = 'none'; document.body.appendChild(gevEl);
 setTimeout(() => floatWin(gevEl, 'gev', { right: '210px', top: '70px' }), 0);

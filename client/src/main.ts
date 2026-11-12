@@ -182,6 +182,7 @@ import { onAdm } from './sistemas/admin';
 import { grupoPassMods } from './passivas';
 import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
 import { createPresos } from './sistemas/floresta-aranhas';
+import { pulo, PULO_DUR, PULO_ALT } from './sistemas/pulo-montaria';
 import { createShaderGate } from './sistemas/compila-sem-travar';
 import { setTravasExtra } from './sistemas/travas';
 import { branchesOf } from './talentos';
@@ -1088,7 +1089,9 @@ const bugsDono = createBugsDono({ net: () => netRef,
 (game as unknown as { setLogHook(f: (t: string) => void): void }).setLogHook((t) => chat.sysLog(t));
 { const LK = 'karmika.ui.logoff'; const lg = document.getElementById('log'); const bt = document.createElement('button'); bt.id = 'logtog'; document.body.appendChild(bt);
   const apply = (off: boolean) => { if (lg) lg.classList.toggle('sysoff', off); /* 09/11: dados e sistema dividem a mesma lista; desligar o 📜 esconde só as linhas do sistema */ bt.classList.toggle('off', off); bt.textContent = off ? '📜' : '📜'; bt.title = off ? 'Mostrar o registro de acontecimentos na tela (eles continuam na aba Sistema do chat)' : 'Recolher o registro de acontecimentos (eles continuam na aba Sistema do chat)'; try { localStorage.setItem(LK, off ? '1' : '0'); } catch { /* */ } };
-  let off = false; try { off = localStorage.getItem(LK) === '1'; } catch { /* */ } apply(off); bt.addEventListener('click', () => { off = !off; apply(off); }); }
+  let off = false; try { off = localStorage.getItem(LK) === '1'; } catch { /* */ } apply(off); bt.addEventListener('click', () => { off = !off; apply(off); });
+  /* 12/11 (Erling: "não consigo mudar de lugar os dados de sistema e os dados"): o 📜 e o 🎲 se arrastam juntos (a lista vai atrás, dados-rpg.layout); o lugar fica salvo; clique duplo volta */
+  const juntos = () => { const dado = document.getElementById('rolltog'); if (!dado) { setTimeout(juntos, 1500); return; } movable(bt, 'sysicons', { whole: true, also: [dado] }); }; setTimeout(juntos, 1500); }
 /* JOGAR JUNTO: os outros Caminhantes da sala no mundo (net.ts) e os monstros compartilhados (coop.ts). Saiu do main.ts (02/11). → sistemas/rede.ts */
 export interface RedeCtx {
   readonly scene: Widen<typeof scene>;
@@ -2864,12 +2867,12 @@ function frameBody() {
   /* movimento */
   /* água: entra andando até a cintura (lento, empurrando a água); mais fundo que isso, nada */
   const depthNow = inside ? 0 : WL - heightAt(state.fx * T, state.fy * T);
-  const swimming = !inside && depthNow > 1.25; swimmingNow = swimming; hero.swim = swimming;
+  const swimming = !inside && depthNow > 1.25 && pulo.t <= 0 /* 12/11: no ar, no salto da montaria, ninguém nada */; swimmingNow = swimming; hero.swim = swimming;
   pm('entrada');
   dual.clipFor = scene; dual.fineClip = inside ? [] : waterClip; // a linha d'água corta os corpos (a água não escreve profundidade)
   const wade = !inside && !swimming && depthNow > 0.04 ? Math.min(1, depthNow / 1.0) : 0;
   updateFishing(dt, t); updateWork(); herbSparkle(dt); updateQuestRings(dt); featsTick(dt);
-  const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.7 + 0.08 * Math.min(1, (game.st.lvl - 1) / 40)) /* 07/11: a pé 70% no nível 1, 72% no 10, 78% no 41 (62% ficou lento demais — Erling) */ /* 28/10 (Erling): a pé, 20% mais lento; 07/11: 28% ("começa bem lento e o cálculo sobre a base fica menor"); o passo cresce com itens e buffs, com teto de +40% */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
+  const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.7 + 0.08 * Math.min(1, (game.st.lvl - 1) / 40)) /* 07/11: a pé 70% no nível 1, 72% no 10, 78% no 41 (62% ficou lento demais — Erling) */ /* 28/10 (Erling): a pé, 20% mais lento; 07/11: 28% ("começa bem lento e o cálculo sobre a base fica menor"); o passo cresce com itens e buffs, com teto de +40% */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed * 0.75 /* 12/11 (Erling: "montaria está andando rápido demais, diminuir 25%") */ : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
   if (game.st.lvl !== peleSys.lastLvl) { peleSys.lastLvl = game.st.lvl; refreshLocks(kitRace(), peleSys.lastLvl, (k) => tree.rank(k)); /* 05/11 (Erling: "subir de nível base dá pontos de atributo; subir de classe dá pontos de habilidade, passiva e talento"): o aviso antigo de "+1 ponto de magia" no nível base saiu — a conta já era só pelo nível de classe */ }
   dockEl.querySelector('[data-d="skills"]')?.classList.toggle('pulse', tree.available() > 0 && !dockSys.skillsOpen);
   /* 10/11 (Erling: "não tem nada que me diz que eu passei de nível ou de classe; um ícone discreto do lado direito para eu não esquecer de dar os pontos"):
@@ -2939,7 +2942,7 @@ function frameBody() {
       /* 07/11 (Erling): indo para longe do alvo, você recua de costas por 1,5 s; se continuar, o foco descola e o herói vira e corre */
       awayT = c < -0.35 && !hero.acting ? awayT + dt : 0; if (awayT > 1.5) { lockSys.release(4); awayT = 0; lockYaw = null; bpYaw = null; hero.moveYaw = null; } } else awayT = 0; }
   let boost = 1;
-  if (dashT > 0) { dashT -= dt; boost = 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
+  if (dashT > 0) { dashT -= dt; boost = pulo.t > 0 ? 2.1 /* o salto da montaria: mais longo no tempo, menos brusco */ : 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
   vel += ((state.moving ? 1 : 0) - vel) * Math.min(1, dt * (state.moving ? 14 : 18));
   if (state.moving || vel > 0.02) {
     const stepL = sp * run * boost * vel * actSlow * dt; moveSlide(gdx * stepL, gdy * stepL, dt, state.moving);
@@ -3000,7 +3003,9 @@ function frameBody() {
   updateXray(dt); updateEnvelopes(t);
   if (isPremium()) { const hp = hero.root.position, a = t * 0.9; blessRune.visible = !inside; blessRune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2) * 0.04, hp.z + Math.sin(a) * 0.62); } else blessRune.visible = false;
   pm('xray/env');
-  updateCompanions(dt, t, hero.root.rotation.y, mps); updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
+  if (pulo.t > 0) { pulo.t -= dt; if (compSys.riding) hero.root.position.y += Math.sin(Math.min(1, 1 - Math.max(0, pulo.t) / PULO_DUR) * Math.PI) * PULO_ALT; /* a montaria copia a posição do herói: sobem juntos */ }
+  updateCompanions(dt, t, hero.root.rotation.y, mps);
+  updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
   pm('companheiros');
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);

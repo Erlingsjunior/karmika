@@ -146,18 +146,19 @@ export function buyFxLast(label = '') { buyFx(lastHit, label); }
 /* 07/11 (Erling: "o menu também pode ser movido com 3 pontinhos na direita, assim como as bolsas têm na esquerda; o menu rápido também"):
    barras presas na tela que o jogador arrasta por um puxador ⋮. O deslocamento vai na propriedade `translate` (soma com o transform da barra),
    fica salvo e nunca deixa a barra sair da tela. Clique duplo no puxador devolve ao lugar de sempre. */
-export function movable(el: HTMLElement, key: string) {
-  const SK = 'karmika.mv.' + key; let o: { x: number; y: number } = { x: 0, y: 0 };
+export function movable(el: HTMLElement, key: string, opt: { /** arrasta pelo corpo inteiro (sem o puxador ⋮): um arrasto de mais de 6 px move; um clique continua sendo clique */ whole?: boolean; /** peças que andam junto (o mesmo deslocamento) e também servem de pega */ also?: HTMLElement[] } = {}) {
+  const SK = 'karmika.mv.' + key; let o: { x: number; y: number } = { x: 0, y: 0 }; const all = [el, ...(opt.also ?? [])];
   try { o = JSON.parse(localStorage.getItem(SK) || 'null') ?? o; } catch { /* */ }
-  const apply = () => { const z = parseFloat(getComputedStyle(el).zoom || '1') || 1; el.style.translate = o.x || o.y ? `${o.x / z}px ${o.y / z}px` : ''; };
-  const clamp = () => { const r = el.getBoundingClientRect(); if (!r.width) return; let dx = 0, dy = 0; if (r.left < 0) dx = -r.left; else if (r.right > innerWidth) dx = innerWidth - r.right; if (r.top < 0) dy = -r.top; else if (r.bottom > innerHeight) dy = innerHeight - r.bottom; if (dx || dy) { o.x += dx; o.y += dy; apply(); } };
+  const apply = () => { for (const q of all) { const z = parseFloat(getComputedStyle(q).zoom || '1') || 1; q.style.translate = o.x || o.y ? `${o.x / z}px ${o.y / z}px` : ''; } };
+  const clamp = () => { let dx = 0, dy = 0; for (const q of all) { const r = q.getBoundingClientRect(); if (!r.width) continue; if (r.left + dx < 0) dx = -r.left; else if (r.right + dx > innerWidth) dx = innerWidth - r.right; if (r.top + dy < 0) dy = -r.top; else if (r.bottom + dy > innerHeight) dy = innerHeight - r.bottom; } if (dx || dy) { o.x += dx; o.y += dy; apply(); } };
   const save = () => { try { localStorage.setItem(SK, JSON.stringify(o)); } catch { /* */ } };
   apply(); requestAnimationFrame(clamp);
-  el.addEventListener('pointerdown', (e) => { if (e.button !== 0 || !(e.target as HTMLElement).closest('.mvgrip')) return; e.preventDefault(); e.stopPropagation(); const sx = e.clientX, sy = e.clientY, ox = o.x, oy = o.y;
-    const mv = (ev: PointerEvent) => { o = { x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }; apply(); clamp(); };
-    const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); save(); };
-    addEventListener('pointermove', mv); addEventListener('pointerup', up); });
-  el.addEventListener('dblclick', (e) => { if (!(e.target as HTMLElement).closest('.mvgrip')) return; o = { x: 0, y: 0 }; apply(); save(); });
+  for (const q of all) { q.addEventListener('pointerdown', (e) => { const grip = !!(e.target as HTMLElement).closest('.mvgrip'); if (e.button !== 0 || (!grip && !opt.whole)) return; if (grip) { e.preventDefault(); e.stopPropagation(); } const sx = e.clientX, sy = e.clientY, ox = o.x, oy = o.y; let moved = grip;
+      const mv = (ev: PointerEvent) => { if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return; moved = true; o = { x: ox + ev.clientX - sx, y: oy + ev.clientY - sy }; apply(); clamp(); };
+      const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); if (!moved) return; save();
+        if (!grip) { /* soltar o arrasto não conta como clique no botão */ const stop = (ev: Event) => { ev.stopPropagation(); ev.preventDefault(); }; addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => removeEventListener('click', stop, true), 80); } };
+      addEventListener('pointermove', mv); addEventListener('pointerup', up); });
+    q.addEventListener('dblclick', (e) => { if (!opt.whole && !(e.target as HTMLElement).closest('.mvgrip')) return; o = { x: 0, y: 0 }; apply(); save(); }); }
   addEventListener('resize', () => requestAnimationFrame(clamp));
 }
 export const MV_GRIP = (side: 'l' | 'r') => `<i class="mvgrip ${side}" title="Arraste para mover · clique duplo: volta para o lugar de sempre">⋮</i>`;

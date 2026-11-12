@@ -1,3 +1,4 @@
+import { movable } from '../windows';
 /* EVENTOS VIVOS NA TELA: o resultado do evento, o aviso de evento por perto (faixa que entra pela direita) e a atualização dos eventos. Saiu do main.ts (02/11). */
 import { type EvResult, globalNext, globalNow, G_FX } from '../eventos';
 import { eyeSees } from '../surrender';
@@ -21,6 +22,7 @@ K.quests.setExtraTop(() => evCard);
 /* aviso de evento por perto: uma faixa animada que entra pela DIREITA da tela (o diário fica à esquerda).
    Clicar = pegar a missão: a bússola passa a levar até lá. Chegando, o arauto conta e você escolhe o lado (isso é aceitar). */
 const evNearEl = document.createElement('div'); evNearEl.id = 'evnear'; document.body.appendChild(evNearEl);
+movable(evNearEl, 'evnear', { whole: true }); evNearEl.title = 'Arraste para mudar de lugar (fica salvo) · clique duplo volta'; /* 12/11 (Erling: "os eventos aparecem em cima das missões; quero mover para onde não atrapalhe, e salvar") */
 const evNearShown = new Set<string>(); let evNearKey: string | null = null, evNearT = 0;
 evNearEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-k]') as HTMLElement | null; if (!b) return; e.stopPropagation(); K.audio.click?.();
   if (b.dataset.x) { evNearEl.classList.remove('on'); evNearKey = null; return; }
