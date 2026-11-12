@@ -131,7 +131,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <p class="in-mut">Para confirmar, digite o nome: <b>${esc(m.name)}</b></p>
         <div class="in-row"><input data-v="delname" placeholder="${esc(m.name)}" spellcheck="false" autocomplete="off"><button data-i="delok" class="in-delok">Apagar para sempre</button></div>
         ${delErr ? `<p class="in-err">✖ ${esc(delErr)}</p>` : ''}<button data-i="delno" class="lnk">← não, voltar</button></div></div>`; }
-    el.style.setProperty('--inz', Math.max(1, Math.min(1.6, innerHeight / 900)).toFixed(3)); /* em monitor grande a tela inicial cresce junto (antes ficava miúda no meio) */
+    el.style.setProperty('--inz', Math.max(1, Math.min(1.22, innerHeight / 1150)).toFixed(3)); /* 12/11 (Erling: "menu um pouco menor, está muito grandão") */ /* em monitor grande a tela inicial cresce junto (antes ficava miúda no meio) */
     el.innerHTML = `${runesHtml}<div class="in-wrap">${head}${body}<div class="in-ft">Karmika · versão de desenvolvimento · devs e beta testers${step === 'home' ? ' · <a data-i="quit">sair do jogo</a>' : ''}</div></div>`;
   }
   let refreshing = false, refreshedPic = false;
