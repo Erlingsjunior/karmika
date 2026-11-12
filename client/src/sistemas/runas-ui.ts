@@ -7,12 +7,14 @@ import { runaSvg, runaIdx } from '../runas';
 interface Ctx { id: string; kit: string; rank: number; /** o texto próprio de cada runa nesta magia (compêndio) */ txt?: Record<string, string> | null; inv: { bag: Record<string, number>; take(id: string, n?: number): boolean; grant(id: string, n: number): void }; game: { st: { gold: number }; logMsg(t: string, c?: string): void }; sfx(): void; rerender(): void }
 const CSS = `<style id="rncss">
 .tdet .rnh{display:block;font:600 10px Cinzel,serif;letter-spacing:.12em;text-transform:uppercase;color:#a08a60;margin:12px 0 6px}.tdet .rnh small{display:block;margin-top:2px;font:11px Georgia,serif;letter-spacing:0;text-transform:none;color:#8a7a5a}
-.tdet .rns{display:flex;gap:8px;margin-bottom:6px}
-.tdet .rn{flex:1;min-width:0;display:flex;gap:8px;align-items:center;border:1px dashed #5a4a30;background:rgba(0,0,0,.25);padding:6px 8px;cursor:pointer;border-radius:2px;color:#a89878;font-size:12px;text-align:left}
-.tdet .rn:hover{border-color:#ffe08a;color:#ffe08a}.tdet .rn.lock{cursor:default;opacity:.5}.tdet .rn.lock:hover{border-color:#5a4a30;color:#a89878}
-.tdet .rn.on{border-style:solid;border-color:var(--c);color:#e8dcc0;background:radial-gradient(circle at 20% 50%,color-mix(in srgb,var(--c) 22%,transparent),rgba(0,0,0,.3) 70%);box-shadow:0 0 10px color-mix(in srgb,var(--c) 35%,transparent)}
-.tdet .rn svg{flex:0 0 auto;color:var(--c,#8a7a5a);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--c,#000) 70%,transparent))}
-.tdet .rn b{display:block;font:700 12px Cinzel,serif;color:var(--c)}.tdet .rn i{font-style:normal;font-size:10.5px;color:#a89878}
+/* 12/11 (Erling: "o encaixe das runas está pequeno e tudo amontoado com o +1 ponto"): os dois encaixes usavam a classe .rn, a mesma das runas de pedra
+   das travas (18 px), e encolhiam. Classe própria (.rnk), encaixes altos, um embaixo do outro, e folga antes do botão de ponto. */
+.tdet .rns{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:6px}.tdet .rnbox{margin:14px 0 14px;padding-top:10px;border-top:1px solid rgba(125,90,44,.35)}
+.tdet .rnk{min-width:0;min-height:46px;display:flex;gap:10px;align-items:center;border:1px dashed #6a5636;background:rgba(0,0,0,.28);padding:8px 10px;cursor:pointer;border-radius:10px;color:#a89878;font-size:12px;text-align:left}
+.tdet .rnk:hover{border-color:#ffe08a;color:#ffe08a}.tdet .rnk.lock{cursor:default;opacity:.5}.tdet .rnk.lock:hover{border-color:#5a4a30;color:#a89878}
+.tdet .rnk.on{border-style:solid;border-color:var(--c);color:#e8dcc0;background:radial-gradient(circle at 20% 50%,color-mix(in srgb,var(--c) 22%,transparent),rgba(0,0,0,.3) 70%);box-shadow:0 0 10px color-mix(in srgb,var(--c) 35%,transparent)}
+.tdet .rnk svg{flex:0 0 auto;color:var(--c,#8a7a5a);filter:drop-shadow(0 0 4px color-mix(in srgb,var(--c,#000) 70%,transparent))}
+.tdet .rnk b{display:block;font:700 12px Cinzel,serif;color:var(--c)}.tdet .rnk i{font-style:normal;font-size:10.5px;color:#a89878}
 .tdet .rnp{border:1px solid #5a4a30;background:rgba(0,0,0,.35);padding:6px;margin-bottom:6px;max-height:170px;overflow:auto}
 .tdet .rnp button{display:flex;width:100%;gap:8px;align-items:center;background:transparent;border:0;border-bottom:1px dotted rgba(125,90,44,.5);color:#d8c8a6;padding:4px;cursor:pointer;text-align:left;font-size:12px}.tdet .rnp button:hover{background:rgba(255,224,138,.08)}
 .tdet .rnp button b{color:var(--c);font:700 12px Cinzel,serif}.tdet .rnp .none{font-size:12px;color:#a89878;font-style:italic;padding:4px}
@@ -29,10 +31,10 @@ export function runeSlots(root: HTMLElement, c: Ctx) {
   const n = slotsFor(c.rank), cur = runesOf(c.kit, c.id);
   const slot = (i: number) => {
     const need = i === 0 ? 3 : 7;
-    if (i >= n) return `<button class="rn lock" disabled>${runaSvg(0, 22).replace('<svg', '<svg style="opacity:.25"')}<span><b style="color:#8a7a5a">Encaixe ${i + 1}</b><i>abre no rank ${need}</i></span></button>`;
+    if (i >= n) return `<button class="rnk lock" disabled>${runaSvg(0, 28).replace('<svg', '<svg style="opacity:.25"')}<span><b style="color:#8a7a5a">Encaixe ${i + 1}</b><i>abre no rank ${need}</i></span></button>`;
     const r = cur[i] ? parseRune(cur[i]) : null;
-    if (!r) return `<button class="rn" data-rslot="${i}">${runaSvg(0, 22).replace('<svg', '<svg style="opacity:.35"')}<span><b style="color:#d9c08a">+ Encaixar runa</b><i>${picking === i ? 'escolha abaixo' : 'clique para escolher'}</i></span></button>`;
-    return `<button class="rn on" data-rout="${i}" style="--c:${hex(RCOL[r.f])}" title="Tirar a runa (${unslotCost(r.g)} 🪙, ela volta para a mochila)">${runaSvg(runaIdx(r.f), 22)}<span><b>${RNAME[r.f]}</b><i>${GRAUS[r.g]} · ×${GMUL[r.g]} · tirar: ${unslotCost(r.g)} 🪙</i></span></button>`;
+    if (!r) return `<button class="rnk" data-rslot="${i}">${runaSvg(0, 28).replace('<svg', '<svg style="opacity:.35"')}<span><b style="color:#d9c08a">+ Encaixar runa</b><i>${picking === i ? 'escolha abaixo' : 'clique para escolher'}</i></span></button>`;
+    return `<button class="rnk on" data-rout="${i}" style="--c:${hex(RCOL[r.f])}" title="Tirar a runa (${unslotCost(r.g)} 🪙, ela volta para a mochila)">${runaSvg(runaIdx(r.f), 28)}<span><b>${RNAME[r.f]}</b><i>${GRAUS[r.g]} · ×${GMUL[r.g]} · tirar: ${unslotCost(r.g)} 🪙</i></span></button>`;
   };
   const used = new Set(cur.filter(Boolean).map((x) => parseRune(x)?.f));
   let pick = '';

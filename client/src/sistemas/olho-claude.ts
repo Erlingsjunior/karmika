@@ -6,7 +6,7 @@
    - a cada 20 s: uma foto pequena da tela (640 px), para avaliar os gráficos;
    - tudo o que o jogo escreveu no registro (golpes, falas, avisos);
    - o relatório de desempenho inteiro (/travadas) a cada minuto e no fim.
-   Desligar baixa um arquivo só (karmika-olho-AAAA-MM-DD-HHMM.json). Mandando esse arquivo na conversa, o Claude lê a sessão inteira.
+   Desligar baixa um arquivo só (karmika-olho-AAAA-MM-DD-HHMM.json). Fechar o jogo sem desligar guarda a gravação: ela é baixada no primeiro clique da próxima sessão. Mandando esse arquivo na conversa, o Claude lê a sessão inteira.
    Custo: uma amostra leve a cada 4 s e uma foto a cada 20 s; nada roda com o botão desligado. */
 export interface OlhoCtx {
   /** foto da tela (JPEG em data URL), tirada logo depois do desenho */ shot(): Promise<string | null>; perf(): string; build: string;
@@ -34,8 +34,20 @@ export function createOlhoClaude(K: OlhoCtx) {
     K.log('✳ Olho do Claude ligado: a sessão está sendo gravada (posição, luta, o que os bichos e os soldados fazem, fotos, desempenho). Clique de novo no ✳ para parar e baixar o arquivo.', '#ff9a6a'); }
   function stop() { on = false; btn.classList.remove('on'); btn.title = 'Olho do Claude: grava a sessão num arquivo para o Claude ler. Clique para ligar.'; for (const t of [tA, tF, tP]) if (t) clearInterval(t); tA = tF = tP = null; obs?.disconnect(); obs = null; if (!D) return;
     D.desempenho.push({ t: sec(), txt: K.perf() }); const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0'), nome = `karmika-olho-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.json`;
-    const blob = new Blob([JSON.stringify({ ...D, duracao_s: sec() })], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    baixa(JSON.stringify({ ...D, duracao_s: sec() }), nome); try { localStorage.removeItem(PEND); } catch { /* */ }
     K.log(`✳ Olho do Claude desligado. Arquivo baixado: ${nome} (${D.amostras.length} amostras, ${D.fotos.length} fotos, ${D.registro.length} linhas do registro). Mande esse arquivo na conversa com o Claude.`, '#ff9a6a'); D = null; }
-  btn.addEventListener('click', (e) => { e.stopPropagation(); if (on) stop(); else start(); });
+  /* 12/11 (Erling: "deixei gravando, joguei, saí do jogo e nenhum arquivo foi gerado"): quem fecha o jogo sem desligar não perde a gravação. Ela é
+     guardada no navegador a cada 15 s e na hora de sair (as fotos mais novas, até 12, para caber). Na próxima vez que o jogo abrir, o ✳ aparece aceso
+     com um ponto e o primeiro clique BAIXA a gravação guardada. */
+  const PEND = 'karmika.olho.pendente';
+  const guarda = () => { if (!on || !D) return; const c = { ...D, duracao_s: sec(), fotos: D.fotos.slice(-12), desempenho: [...D.desempenho.slice(-2), { t: sec(), txt: (() => { try { return K.perf(); } catch { return ''; } })() }], incompleta: 'o jogo foi fechado com a gravação ligada' };
+    for (const n of [12, 6, 2, 0]) { try { localStorage.setItem(PEND, JSON.stringify({ ...c, fotos: c.fotos.slice(-n || c.fotos.length).slice(0, n) })); return; } catch { /* não coube: tenta com menos fotos */ } } };
+  setInterval(guarda, 15000); addEventListener('beforeunload', guarda); addEventListener('pagehide', guarda);
+  const baixa = (txt: string, nome: string) => { const blob = new Blob([txt], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
+  let pend: string | null = null; try { pend = localStorage.getItem(PEND); } catch { /* */ }
+  if (pend) { btn.classList.add('on'); btn.title = 'Há uma gravação da sessão anterior guardada. Clique para BAIXAR o arquivo.'; setTimeout(() => K.log('✳ Olho do Claude: a gravação da sessão anterior ficou guardada. Clique no ✳ (à direita, embaixo) para baixar o arquivo.', '#ff9a6a'), 6000); }
+  btn.addEventListener('click', (e) => { e.stopPropagation();
+    if (pend) { const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0'), nome = `karmika-olho-anterior-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.json`; baixa(pend, nome); pend = null; try { localStorage.removeItem(PEND); } catch { /* */ } btn.classList.remove('on'); btn.title = 'Olho do Claude: grava a sessão num arquivo para o Claude ler. Clique para ligar.'; K.log(`✳ Gravação anterior baixada: ${nome}. Mande esse arquivo na conversa com o Claude. Clique de novo no ✳ para começar outra.`, '#ff9a6a'); return; }
+    if (on) stop(); else start(); });
   return { get on() { return on; }, start, stop, dados: () => D };
 }
