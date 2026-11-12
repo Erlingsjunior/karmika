@@ -111,7 +111,7 @@ export const HUMAN_ROAD: QuestDef[] = ([
     objs: [{ kind: 'dungeon', id: 'esquecidos', name: 'Mausoléu dos Esquecidos' }],
     talk: ['Hedda. A sineira. Eu tocava sino com ela quando era menino. Então ela ficou.', 'O Mausoléu dos Esquecidos foi lacrado antes de eu nascer. Se os ossos estão de pé lá embaixo, alguém os levantou.', 'Desça. A entrada fica no cemitério, entre os túmulos mais velhos. E volte para me contar.'] },
   { id: 'h08', chain: CN, name: 'O marido desaparecido', lvl: 6, giver: 'Lúcia', xp: 1, gold: 30, items: [['potion', 1]], next: 'h09',
-    text: '◈ O marido de Lúcia foi caçar ao norte e não voltou. Ligue o Instinto, siga as pegadas dele desde a vila até a Igreja Abandonada e afaste os puglins que rondam o lugar.',
+    text: '◈ O marido de Lúcia foi caçar para os lados de Lundr e não voltou. Ligue o Instinto, siga as pegadas dele desde a vila até a Igreja Abandonada e afaste os puglins que rondam o lugar.',
     give: [['lenco_bento', 1]],
     objs: [{ kind: 'sense', what: 'rastro', label: 'Seguir as pegadas do marido de Lúcia', at: 'Igreja Abandonada', dx: -3, dy: 4, from: 'Karmika' }, { kind: 'talk', npc: 'Bento' }, { kind: 'kill', type: 'puglin', n: 4 }],
     meet: { Bento: ['(Atrás das pedras caídas da igreja, um homem magro aperta uma faca de caça contra o peito.)', 'Quem… quem é você? Fica abaixado!', '(Você mostra o lenço bordado pela Lúcia.) …Esse é o lenço dela. Ela mandou você?', 'Os puglins me cercaram faz quatro dias. Eu corri para cá e não saí mais. Tenho vergonha, mas estou vivo.', 'Espanta esses bichos e eu volto com você. Juro pelo Olho.'] },

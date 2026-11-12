@@ -1606,7 +1606,10 @@ function buildCity_L(): World {
   for (let k = 0; k < 8; k++) addBones(gy0.x + Math.round((r() - 0.5) * 16), gy0.y + Math.round((r() - 0.5) * 12));
   for (let k = 0; k < 26; k++) addGrave(gy0.x + Math.round((r() - 0.5) * 14), gy0.y + Math.round((r() - 0.5) * 10));
   // cemitério e igreja abandonada perto da cidade (leste)
-  const ch0 = safe(132 + OFX_L, 55 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
+  /* 12/11 (Erling: "já falei para colocar os elites grandes longe das cidades; um elite gigante e uma igreja abandonada do lado de Lundr e de uma cidade média
+     pesa demais; e há vastas áreas sem nada"): a igreja e o Príncipe das Cinzas saíram do portão de Lundr (132, 55) para o descampado das Terras Antigas,
+     a sudeste, a mais de 100 m de qualquer vila. As missões seguem o lugar pelo nome. */
+  const ch0 = safe(182 + OFX_L, 118 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
   for (let y = ch0.y - 2; y <= ch0.y + 13; y++) for (let x = ch0.x - 6; x <= ch0.x + 13; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
   if (free(ch0.x, ch0.y)) block({ kind: 'church', gx: ch0.x, gy: ch0.y, w: 5, h: 4, height: 7, wall: 0x6d6a64, roof: 0x4a3a34, variant: 1 });
   pois.push({ name: 'Igreja Abandonada', x: ch0.x + 2, y: ch0.y + 2, biome: 'ruins' });
