@@ -455,7 +455,9 @@ function startServer(opts = {}) {
             const b = { id, n, at: Date.now(), by: { name: me.name, lvl: lvlOf(me), cls: (me.look && me.look.cls) || '' }, cat: clip(m.cat, 30) || 'outro', title: clip(m.title || text.split('\n')[0], 90), text, ctx, img: saveImg(id, m.img), img2: saveImg(id + '-b', m.img2), status: 'novo', note: '', hist: [{ at: Date.now(), status: 'novo' }] };
             bugs.push(b); saveBug(b); send(ws, { t: 'bug:ok', id, ref: m.ref || null }); toOwners({ t: 'adm:bugnew', bug: bugMeta(b) }); log(`bug ${id} de ${me.name}: ${b.title}`); break; }
           case 'bug:mine': send(ws, { t: 'bug:mine', list: bugs.filter((b) => lc(b.by.name) === lc(me.name)).slice(-50).map((b) => ({ id: b.id, title: b.title, status: b.status, note: b.note || '', at: b.at })) }); break;
-          case 'adm:hello': { if (!ownerKey || String(m.key || '').trim().toUpperCase() !== ownerKey.toUpperCase()) { send(ws, { t: 'adm:no' }); log(`${me.name} tentou entrar no painel do dono com uma chave errada`); break; }
+          case 'adm:hello': { /* 12/11: além da chave da sala, vale a senha de administrador do jogo (/adm SENHA). A sala guarda só o resumo dela */
+            const passOk = !!m.pass && crypto.createHash('sha256').update('karmika:' + String(m.pass)).digest('hex') === 'de51ccea6a0e2ed64af31c9531a6410a54932cb8b3dd477fd5cc24d844abecca';
+            if (!passOk && (!ownerKey || String(m.key || '').trim().toUpperCase() !== ownerKey.toUpperCase())) { send(ws, { t: 'adm:no' }); log(`${me.name} tentou entrar no painel do dono com uma chave errada`); break; }
             me.owner = true; send(ws, { t: 'adm:ok', bugs: bugs.slice(-300).map(bugMeta), players: playersAdm() }); log(`${me.name} entrou no painel do dono`); break; }
           case 'adm:players': if (me.owner) send(ws, { t: 'adm:players', list: playersAdm() }); break;
           case 'adm:bugs': if (me.owner) send(ws, { t: 'adm:bugs', list: bugs.slice(-300).map(bugMeta) }); break;

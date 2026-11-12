@@ -1,4 +1,5 @@
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). */
+import { isAdm } from './admin';
 import { t as tr } from '../i18n';
 import * as THREE from 'three';
 import { TILE_M as T, type Race } from '@karmika/shared';
@@ -199,7 +200,7 @@ addEventListener('keydown', (e) => {
   if (k === 'o') K.audio.toggleMute();
   if (k === 'x') { K.stable.toggle(); return; }
   if (k === 'p') K.game.logMsg(K.audio.toggleMusic() ? '🎵 Música ligada' : '🎵 Música desligada', '#b9c6e0');
-  if (k === 'n') { K.nightOverride = K.nightOverride === null ? 1 : K.nightOverride === 1 ? 0 : null; K.game.logMsg(K.nightOverride === null ? '🕯 Ciclo natural de dia e noite.' : K.nightOverride ? '🌙 Noite forçada (teste).' : '☀ Dia forçado (teste).', '#b9c6e0'); }
+  /* 12/11 (Erling: "o jogador não pode controlar o dia e a noite: isso mexe com o dia e a noite de todos, com o passar do tempo e com os turnos"): a tecla N saiu de vez. O relógio do mundo é um só. */
   if (/^[0-9]$/.test(k) && !e.repeat) useSlot(k, true); else if (/^[0-9]$/.test(k) && skillAt(K.kitRace(), k)?.id === 'combo') useSlot(k);
   if (k === 'j' && !e.repeat) useSlot('1', true);
   if (k === 'q' && !e.repeat) useSlot('4', true);
@@ -207,12 +208,12 @@ addEventListener('keydown', (e) => {
   if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { K.instintoSys.stanceSys?.cycle(); K.renderStances(); }
   if (k === 'e') K.interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
-  if (k === 'g') { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 22; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 22); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
+  if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 22; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 22); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
   if (k === 'r' && !e.repeat) { runOn = !runOn; try { localStorage.setItem('karmika.run', runOn ? '1' : '0'); } catch { /* */ } K.game.logMsg(runOn ? '🏃 Correr: ligado (R)' : '🚶 Andar: ligado (R)', '#ffd24a'); }
-  if (k === 'h') K.game.damage(12, heroPosNow());
-  if (e.key === 'F5' && e.shiftKey) { e.preventDefault(); swapTo('nordic'); return; }
-  if (e.key === 'F6' && e.shiftKey) { e.preventDefault(); swapTo('technocrat'); return; }
-  if (e.key === 'F7' && e.shiftKey) { e.preventDefault(); swapTo('dwarf'); return; }
+  if (k === 'h' && isAdm()) K.game.damage(12, heroPosNow()); /* 12/11: G (modo deus), H (dano em si) e Shift+F5 a F7 (troca de raça) são ferramentas de teste: só para o administrador */
+  if (e.key === 'F5' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('nordic'); return; }
+  if (e.key === 'F6' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('technocrat'); return; }
+  if (e.key === 'F7' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('dwarf'); return; }
   if (/^F[1-8]$/.test(e.key)) { e.preventDefault(); K.useQuick(+e.key.slice(1) - 1 + (e.shiftKey ? 8 : 0)); return; }
   if (e.key === 'Tab') setCombat(!combatMode);
   if (e.code === 'Backquote' && !e.repeat) dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.shiftKey ? -1 : 1 })); /* 03/11: a tecla ao lado do 1 (' no teclado ABNT) troca o jeito de segurar */

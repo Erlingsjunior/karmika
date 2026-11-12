@@ -178,6 +178,7 @@ import { createCinemaVistas } from './sistemas/cinema-vistas';
 import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
 import { createGrupoMagias } from './sistemas/grupo-magias';
 import { createOlhoClaude } from './sistemas/olho-claude';
+import { onAdm } from './sistemas/admin';
 import { grupoPassMods } from './passivas';
 import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
 import { createShaderGate } from './sistemas/compila-sem-travar';
@@ -1058,6 +1059,7 @@ const chat = createChat({ me: () => profile?.name || RACES[state.race].label, co
 const shotReq: ((u: string) => void)[] = [];
 /* 12/11: o Olho do Claude (sistemas/olho-claude.ts): o botão ✳ grava a sessão num arquivo para o Claude ler */
 let olhoRef: ReturnType<typeof createOlhoClaude> | null = null;
+onAdm((on) => { if (!on) { if (game.st.god) game.st.god = false; try { if (olhoRef?.on) olhoRef.stop(); } catch { /* */ } } }); /* saiu do modo administrador: o modo deus e a gravação desligam */
 setTimeout(() => { try { (window as unknown as { __olho?: unknown }).__olho = olhoRef = createOlhoClaude({ build: __BUILD__, log: (t, c) => game.logMsg(t, c), perf: () => { try { return perfReport(); } catch { return ''; } },
   shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
   info: () => { let reg = '?', classe = ''; try { reg = regionAt(state.fx, state.fy).name; } catch { /* */ } try { classe = game.classInfo.name; } catch { /* */ } return { x: state.fx, y: state.fy, reg, lvl: game.st.lvl, hp: Math.round(game.st.hp), hpMax: game.st.hpMax, fps: lastFps, rend: gpuState.on ? 'WebGPU' : 'WebGL', combate: !!hero.combat, dentro: inside ? inside.prop.kind : '', classe }; },

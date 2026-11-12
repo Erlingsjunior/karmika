@@ -71,7 +71,7 @@ function renderOptions() {
     <div class="stat"><span>Limite de FPS <small>no app do Karmika o jogo passa da taxa do monitor; no navegador o limite é sempre o monitor</small></span>${seg('cap', [[60, '60'], [144, '144'], [240, '240'], [0, 'Sem limite']])}</div>
     <div class="stat"><span>Ajuste automático <small>Ligado: se o FPS cair abaixo de 45, o jogo baixa um pouco a resolução e as sombras sozinho, e volta quando folgar. Desligado: fica exatamente como você escolheu acima</small></span>${seg('auto', [[true, 'Ligado'], [false, 'Desligado']])}</div>
     <h3>Jogo</h3>
-    <div class="stat"><span>Dia / noite</span><div class="seg"><button data-act="night">Alternar (N)</button></div></div>
+
     <div class="stat"><span>Zoom</span><div class="seg"><button data-act="zoom">Padrão</button><span class="hint3">roda do mouse: 5 m a 22 m</span></div></div>
     <div class="stat"><span>Janelas (chat, missões, grupo)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
     <div class="stat"><span>Restaurar</span><div class="seg"><button data-act="reset">Opções padrão</button></div></div>`;
@@ -103,7 +103,7 @@ const onClick = (e: Event) => { { const tb = (e.target as HTMLElement).closest('
   const a = b.dataset.act;
   if (a === 'keysdef') { teclasPadrao(); relabelBar(); renderOptions(); K.audio.click(); return; }
   if (a === 'reopen') { location.reload(); return; }
-  if (a === 'night') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n' }));
+
   if (a === 'zoom') { K.zoomTarget = 17; }
   if (a === 'ui') { localStorage.removeItem('karmika.ui.chat'); localStorage.removeItem('karmika.ui.quests'); localStorage.removeItem('karmika.ui.party'); K.game.logMsg('Posições das janelas restauradas (recarregue com F5).', '#b9c6e0'); }
   if (a === 'reset') { Object.assign(K.opts, K.OPT_DEF); applyOpts(); renderOptions(); }

@@ -7,6 +7,7 @@
    - O dono entra com /dono CHAVE (a chave está em dono-chave.txt, ao lado dos dados da sala, e aparece no log da sala ao abrir).
      O painel (a coroa embaixo do minimapa, ou F11): quem está online e o que está fazendo, mensagem para um ou para todos, e a caixa de
      bugs com print, contexto, estado (novo, vendo, corrigido, não é bug) e uma resposta que chega para quem relatou. */
+import { admSenha, onAdm } from './admin';
 import type { Net } from '../net';
 
 export interface BugCtx {
@@ -145,7 +146,8 @@ export function createBugsDono(K: BugCtx) {
   let isOwner = false, tab: 'jog' | 'bugs' | 'aviso' = 'bugs', bugs: BugMeta[] = [], players: Pl[] = [], sel: string | null = null, det: Det | null = null, filt = 'abertos', toId = 0;
   const own = () => isOwner;
   function setOwner(on: boolean) { isOwner = on; document.body.classList.toggle('kdono', on); }
-  function hello() { const k = load<string>(OK, ''); const n = K.net(); if (k && n?.state === 'on') n.raw({ t: 'adm:hello', key: k }); }
+  function hello() { const k = load<string>(OK, ''), ps = admSenha(); const n = K.net(); if ((k || ps) && n?.state === 'on') n.raw({ t: 'adm:hello', key: k, pass: ps }); } /* 12/11: a senha do /adm também abre o painel (a sala confere) */
+  onAdm((on) => { if (on) { wire(); hello(); } else setOwner(false); });
   function openPanel() { if (!own()) { K.log('👑 O painel é só do dono da sala. No chat: /dono CHAVE (a chave está no log da sala e em dono-chave.txt).', '#ffd88a'); return; } pan.classList.add('on'); K.net()?.raw({ t: 'adm:players' }); K.net()?.raw({ t: 'adm:bugs' }); panHtml(); }
   const closePanel = () => pan.classList.remove('on');
   const shown = () => bugs.filter((b) => filt === 'todos' || (filt === 'abertos' ? b.status === 'novo' || b.status === 'vendo' : b.status === filt)).slice().reverse();
