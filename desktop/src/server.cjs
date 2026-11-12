@@ -336,8 +336,19 @@ function startServer(opts = {}) {
           saveStore(); pushWorld(); break; }
       }
     }
+    /* 12/11: O FIO (fio.cjs). Só existe na edição parceiro (--fio endereço --chave chave). Sobe o resumo do reino; desce o que a central manda,
+       que vai para o chat de todo mundo que está dentro. O último evento (até 24 h) também é mostrado a quem entra depois. */
+    let fio = null, ultEvento = null;
+    const fioTexto = (a) => a.tipo === 'evento' ? `📯 EVENTO KARMIKA${a.titulo ? ' · ' + a.titulo : ''}: ${a.texto}` : `📯 KARMIKA${a.titulo ? ' · ' + a.titulo : ''}: ${a.texto}`;
+    if (opts.fio && opts.chave) { const { startFio } = require('./fio.cjs');
+      fio = startFio({ url: opts.fio, chave: opts.chave, log, edicao: 'parceiro',
+        resumo: () => { const on = [...players.values()]; return { jogadores: on.length, contas: Object.keys(store.accounts || {}).length, personagens: on.length,
+          top: on.map((p) => ({ nome: p.name, nivel: lvlOf(p), classe: (p.look && p.look.cls) || '' })).sort((x, y) => y.nivel - x.nivel).slice(0, 10),
+          guildas: Object.values(store.guilds || {}).map((g) => ({ nome: g.name, tag: g.tag, membros: Object.keys(g.members || {}).length, nivel: g.lvl || 1 })).sort((x, y) => y.membros - x.membros).slice(0, 20),
+          versao: manifest ? manifest.version : '', sala: infoNow().name }; },
+        aoAviso: (a) => { const text = fioTexto(a); log('da central:', text); if (a.tipo === 'evento') ultEvento = a; for (const p of players.values()) send(p.ws, { t: 'sys', text }); } }); }
     web.on('error', (e) => reject(e));
-    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, restart, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
+    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, restart, fio: () => fio, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
     wss.on('connection', (ws, req) => {
       let me = null, hubConn = null;
       const ip = req.socket.remoteAddress;
@@ -361,7 +372,7 @@ function startServer(opts = {}) {
           if (m.world && opts.world && m.world !== opts.world) { send(ws, { t: 'deny', why: 'Mundo diferente do anfitrião. Atualize o Karmika.' }); ws.close(); return; }
           clearTimeout(bye);
           me = { ws, id: nid++, name: String(m.name || 'Caminhante').slice(0, 24), look: m.look || null, st: null, host: players.size === 0, since: Date.now() };
-          players.set(me.id, me);
+          players.set(me.id, me); if (ultEvento && Date.now() - ultEvento.quando < 86400000) setTimeout(() => send(ws, { t: 'sys', text: fioTexto(ultEvento) }), 4000); /* 12/11: quem entra depois vê o evento da central */
           send(ws, { t: 'welcome', id: me.id, host: me.host, code, players: [...players.values()].filter((p) => p !== me).map(info) });
           others(me.id, { t: 'join', ...info(me) });
           setTimeout(() => { if (players.get(me.id) === me) rejoinParty(me); }, 1500); // o grupo de antes do update
@@ -499,7 +510,7 @@ function startServer(opts = {}) {
     let updateAnn = null;
     function announceUpdate(version) { if (updateAnn) return; updateAnn = { sec: 10 };
       const tick = () => { for (const p of players.values()) send(p.ws, { t: 'update', sec: updateAnn.sec, version }); if (updateAnn.sec <= 0) { updateAnn = null; return; } updateAnn.sec--; setTimeout(tick, 1000); }; tick(); }
-    function stop() { clearInterval(beat); clearInterval(announce); try { udp?.close(); } catch { /* */ } for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'O anfitrião fechou a sala.' }); p.ws.close(); } players.clear(); return new Promise((r) => wss.close(() => web.close(() => r()))); }
+    function stop() { if (fio) fio.stop(); clearInterval(beat); clearInterval(announce); try { udp?.close(); } catch { /* */ } for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'O anfitrião fechou a sala.' }); p.ws.close(); } players.clear(); return new Promise((r) => wss.close(() => web.close(() => r()))); }
   });
 }
 
@@ -514,9 +525,11 @@ if (require.main === module) {
   const password = flag('senha') || process.env.KARMIKA_SENHA || '';
   if (password) console.log('[karmika] sala com senha');
   const dataFile = flag('dados') || path.join(__dirname, '..', 'sala-dados.json'); // cartas guardadas e quadro de pedidos
-  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome') }).then((room) => {
-    /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro */
+  /* 12/11: edição parceiro. --fio ws://endereço-do-tear:7790/fio --chave CHAVE-DA-CASA (ou KARMIKA_FIO e KARMIKA_CHAVE no ambiente, para a chave não ficar no histórico do terminal) */
+  const fioUrl = flag('fio') || process.env.KARMIKA_FIO || '', fioChave = flag('chave') || process.env.KARMIKA_CHAVE || '';
+  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome'), fio: fioUrl, chave: fioChave }).then((room) => {
+    /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro; `tear` mostra o estado do Fio e `tear <texto>` manda uma carta à central */
     let pressed = 0; const bye = () => { if (pressed++) process.exit(0); room.restart(10, 'reiniciar'); }; process.on('SIGINT', bye); process.on('SIGTERM', bye);
-    if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); }); }
+    if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); else if (c === 'tear') { const f = room.fio(), txt = String(line).trim().slice(4).trim(); if (!f) console.log('[karmika] esta sala não tem o Fio (edição parceiro: --fio e --chave)'); else if (!txt) console.log('[karmika] Fio:', JSON.stringify(f.estado())); else console.log(f.carta(txt, 'Guardião do Reino') ? '[karmika] carta enviada à central' : '[karmika] o Fio está caído: a carta vai quando ele voltar'); } }); }
   }).catch((e) => { console.error('Não deu para abrir a sala:', e.message); process.exit(1); });
 }

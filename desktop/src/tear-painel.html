@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>O Tear a Vapor · Centro de Comando KARMIKA</title>
+<style>
+/* O centro de comando (12/11). Tudo o que vem das casas é tratado como texto, nunca como HTML: o painel escreve com textContent. */
+:root { --bg: #0c0a09; --bg2: #15110e; --bg3: #1d1712; --ink: #efe6d6; --mut: #a39683; --line: rgba(217, 165, 74, .22); --brass: #d9a54a; --brass2: #f3d38a; --cop: #c46a2e; --ok: #6fe39a; --off: #6b6257; --bad: #ff8a7a; --sky: #7fb4ff; color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: radial-gradient(120% 80% at 50% -10%, #241a12, var(--bg) 60%); color: var(--ink); font: 400 14px/1.45 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+h1, h2, h3 { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; margin: 0; letter-spacing: .02em; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: var(--bg3); border-radius: 8px; padding: 8px 12px; }
+button:hover { border-color: var(--brass); }
+button.go { background: linear-gradient(180deg, #e9a04a, #b85a1c); color: #1a0d05; font-weight: 800; border-color: rgba(255, 190, 110, .7); }
+button.warn { color: var(--bad); }
+input, select, textarea { width: 100%; background: rgba(0, 0, 0, .4); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--brass); outline-offset: 1px; }
+label { display: grid; gap: 4px; font-size: 12px; color: var(--mut); }
+[hidden] { display: none !important; }
+
+#porta { min-height: 100%; display: grid; place-items: center; padding: 24px; }
+#porta form { width: min(380px, 100%); display: grid; gap: 14px; padding: 28px; border: 1px solid var(--line); border-radius: 18px; background: var(--bg2); box-shadow: 0 40px 120px -40px rgba(217, 165, 74, .5); }
+#porta h1 { font-size: 26px; color: var(--brass2); } #porta p { margin: 0; color: var(--mut); }
+.erro { color: var(--bad); min-height: 1.4em; margin: 0; font-size: 13px; }
+
+#sala { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 26px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(217, 165, 74, .1), transparent); }
+header h1 { font-size: 20px; color: var(--brass2); } header h1 small { display: block; font: 600 10px/1 system-ui, sans-serif; letter-spacing: .28em; text-transform: uppercase; color: var(--mut); margin-top: 5px; }
+.relogios { display: flex; gap: 10px; margin-left: auto; flex-wrap: wrap; }
+.rel { min-width: 104px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg2); }
+.rel b { display: block; font: 700 20px/1.1 Georgia, serif; color: var(--brass2); font-variant-numeric: tabular-nums; } .rel span { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+main { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(340px, 1fr); min-height: 0; }
+@media (max-width: 1000px) { main { grid-template-columns: 1fr; grid-auto-rows: minmax(360px, auto); } #sala { height: auto; } }
+
+#mapaBox { position: relative; min-height: 0; border-right: 1px solid var(--line); background: radial-gradient(90% 90% at 50% 50%, #12202b, #0a0f14); overflow: hidden; }
+#mapa { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; } #mapa.pega { cursor: grabbing; } #mapa.marca { cursor: crosshair; }
+#terra { fill: #23303a; stroke: #3d5261; stroke-width: .12; vector-effect: non-scaling-stroke; }
+.fio { fill: none; stroke: var(--off); stroke-width: 1; vector-effect: non-scaling-stroke; opacity: .5; }
+.fio.on { stroke: var(--brass); opacity: .9; stroke-dasharray: 5 6; animation: corre 1.6s linear infinite; }
+@keyframes corre { to { stroke-dashoffset: -22; } }
+.pino { cursor: pointer; } .pino circle { vector-effect: non-scaling-stroke; }
+.pino .nuc { fill: var(--off); stroke: #0a0f14; stroke-width: 1.5; } .pino.on .nuc { fill: var(--ok); } .pino.rev .nuc { fill: var(--bad); }
+.pino .halo { fill: none; stroke: var(--ok); stroke-width: 1.5; opacity: 0; } .pino.on .halo { animation: pulsa 2.2s ease-out infinite; }
+.pino.sel .nuc { stroke: var(--brass2); stroke-width: 2.5; }
+@keyframes pulsa { from { opacity: .9; transform: scale(1); } to { opacity: 0; transform: scale(3.4); } }
+.pino .halo, .pino .nuc { transform-box: fill-box; transform-origin: center; }
+.sede { fill: var(--brass2); stroke: #0a0f14; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.rot { font: 600 2.2px system-ui, sans-serif; fill: var(--ink); paint-order: stroke; stroke: #0a0f14; stroke-width: .5; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .fio.on, .pino.on .halo { animation: none; } .pino.on .halo { opacity: .5; } }
+.vistas { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; flex-wrap: wrap; } .vistas button { padding: 5px 10px; font-size: 12px; background: rgba(12, 10, 9, .8); }
+.legenda { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 14px; font-size: 12px; color: var(--mut); background: rgba(12, 10, 9, .8); padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); }
+.legenda i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+#dica { position: absolute; right: 12px; top: 12px; max-width: 260px; padding: 8px 12px; border-radius: 8px; background: rgba(196, 106, 46, .92); color: #1a0d05; font-weight: 700; font-size: 13px; }
+
+aside { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: var(--bg2); }
+.abas { display: flex; border-bottom: 1px solid var(--line); }
+.abas button { flex: 1; border: 0; border-radius: 0; background: none; padding: 12px 6px; color: var(--mut); font-weight: 700; font-size: 13px; border-bottom: 2px solid transparent; }
+.abas button[aria-selected="true"] { color: var(--brass2); border-bottom-color: var(--brass); }
+.abas i { font-style: normal; display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--cop); color: #1a0d05; font-size: 11px; }
+.pain { overflow: auto; padding: 14px; display: grid; gap: 12px; align-content: start; }
+.cart { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg3); display: grid; gap: 6px; }
+.cart.sel { border-color: var(--brass); } .cart.clic { cursor: pointer; }
+.cart h3 { font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.luz { width: 10px; height: 10px; border-radius: 50%; background: var(--off); flex: none; } .luz.on { background: var(--ok); box-shadow: 0 0 10px var(--ok); } .luz.rev { background: var(--bad); }
+.cart small, .mut { color: var(--mut); font-size: 12px; }
+.linha { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; } .linha b { color: var(--brass2); font-variant-numeric: tabular-nums; }
+.selo { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; padding: 2px 7px; border-radius: 6px; border: 1px solid var(--line); color: var(--brass2); margin-left: auto; }
+.bot { display: flex; flex-wrap: wrap; gap: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; } td, th { text-align: left; padding: 4px 6px; border-top: 1px solid var(--line); } th { color: var(--mut); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; border-top: 0; }
+.duas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.chave { font: 600 13px ui-monospace, Consolas, monospace; word-break: break-all; padding: 10px; border-radius: 8px; background: #000; border: 1px dashed var(--brass); color: var(--brass2); user-select: all; }
+.carta.nova { border-color: var(--cop); } .carta p, .env p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div id="porta" hidden>
+  <form id="fEntrar">
+    <h1>O Tear a Vapor</h1>
+    <p>Centro de comando KARMIKA. Entre com a senha de administrador.</p>
+    <label>Senha<input type="password" name="senha" autocomplete="current-password" required autofocus></label>
+    <button class="go" type="submit">Entrar</button>
+    <p class="erro" role="status"></p>
+  </form>
+</div>
+
+<div id="sala" hidden>
+  <header>
+    <h1>O Tear a Vapor<small>Centro de comando KARMIKA</small></h1>
+    <div class="relogios">
+      <div class="rel"><b id="rCasas">0 / 0</b><span>Reinos ligados</span></div>
+      <div class="rel"><b id="rJog">0</b><span>Jogadores agora</span></div>
+      <div class="rel"><b id="rCartas">0</b><span>Cartas novas</span></div>
+      <div class="rel"><b id="rHora">--:--</b><span>Hora da sede</span></div>
+    </div>
+  </header>
+  <main>
+    <section id="mapaBox" aria-label="Mapa dos reinos">
+      <svg id="mapa" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet"><path id="terra"></path><g id="gFios"></g><g id="gPinos"></g></svg>
+      <div class="vistas"><button type="button" data-v="0 0 360 180">Mundo</button><button type="button" data-v="92 78 60 52">América do Sul</button><button type="button" data-v="104 82 44 44">Brasil</button><button type="button" data-v="122 104 16 14">Sudeste</button></div>
+      <div class="legenda"><span><i style="background:var(--ok)"></i>Ligado</span><span><i style="background:var(--off)"></i>Desligado</span><span><i style="background:var(--bad)"></i>Revogado</span><span><i style="background:var(--brass2)"></i>Sede</span></div>
+      <div id="dica" hidden>Clique no mapa para marcar onde fica a casa.</div>
+    </section>
+    <aside>
+      <div class="abas" role="tablist">
+        <button type="button" role="tab" data-aba="reinos" aria-selected="true">Reinos</button>
+        <button type="button" role="tab" data-aba="central" aria-selected="false">Central</button>
+        <button type="button" role="tab" data-aba="cartas" aria-selected="false">Cartas<i id="nCartas" hidden>0</i></button>
+        <button type="button" role="tab" data-aba="nova" aria-selected="false">Nova casa</button>
+      </div>
+      <div class="pain" id="pReinos"></div>
+      <div class="pain" id="pCentral" hidden>
+        <form class="cart" id="fAviso">
+          <h3>Mandar pela central</h3>
+          <div class="duas">
+            <label>Tipo<select name="tipo"><option value="aviso">Mensagem</option><option value="evento">Evento</option></select></label>
+            <label>Para<select name="para" id="selPara"></select></label>
+          </div>
+          <label>Título <span class="mut">(opcional; aparece nos eventos)</span><input name="titulo" maxlength="80"></label>
+          <label>Texto<textarea name="texto" rows="4" maxlength="600" required></textarea></label>
+          <div class="bot"><button class="go" type="submit">Enviar</button><span class="mut" id="avisoMsg" role="status"></span></div>
+          <small>Vai para os jogadores dos reinos ligados na hora. Reino desligado recebe quando voltar.</small>
+        </form>
+        <h3>Enviados</h3>
+        <div id="lEnviados" style="display:grid;gap:8px"></div>
+      </div>
+      <div class="pain" id="pCartas" hidden></div>
+      <div class="pain" id="pNova" hidden>
+        <form class="cart" id="fCasa">
+          <h3>Registrar casa parceira</h3>
+          <label>Nome da casa<input name="nome" maxlength="60" required></label>
+          <div class="duas"><label>Cidade<input name="cidade" maxlength="60" placeholder="Araras, SP"></label><label>País<input name="pais" maxlength="40" value="Brasil"></label></div>
+          <label>Nível da parceria<select name="nivel"><option value="estalagem">Estalagem (Lan House) · 20%</option><option value="salao">Salão de Guilda (Lan House Premium) · 25%</option><option value="cidadela">Cidadela (Hub Digital) · 30%</option></select></label>
+          <div class="duas"><label>Latitude<input name="lat" inputmode="decimal" required></label><label>Longitude<input name="lon" inputmode="decimal" required></label></div>
+          <div class="bot"><button type="button" id="bMarcar">Marcar no mapa</button><button class="go" type="submit">Registrar e gerar a chave</button></div>
+          <p class="erro" role="status"></p>
+        </form>
+        <div class="cart" id="chaveBox" hidden>
+          <h3>Chave do Fio</h3>
+          <small>Aparece uma vez só. Entregue à casa por um canal seguro. Se perder, gere outra na ficha do reino.</small>
+          <div class="chave" id="chaveTxt"></div>
+          <small>No servidor da casa:</small>
+          <div class="chave" id="chaveCmd"></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); }, E = null, sel = 0, marcando = false, SVG = 'http://www.w3.org/2000/svg';
+  /* cria um elemento; texto sempre por textContent */
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined && txt !== null) e.textContent = String(txt); return e; }
+  function sv(tag, at) { var e = document.createElementNS(SVG, tag); for (var k in at) e.setAttribute(k, at[k]); return e; }
+  function api(rota, corpo) { return fetch(rota, corpo ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(corpo) } : {}).then(function (r) { if (r.status === 401) { mostra(false); throw new Error('entrar'); } return r.json().then(function (j) { if (!r.ok) throw new Error(j.erro || 'erro'); return j; }); }); }
+  function mostra(dentro) { $('#porta').hidden = dentro; $('#sala').hidden = !dentro; }
+  function ha(ms) { if (!ms) return 'nunca'; var s = Math.max(0, Math.round((E.agora - ms) / 1000)); if (s < 60) return 'há ' + s + ' s'; if (s < 3600) return 'há ' + Math.round(s / 60) + ' min'; if (s < 86400) return 'há ' + Math.round(s / 3600) + ' h'; return 'há ' + Math.round(s / 86400) + ' d'; }
+  function dia(ms) { return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+  function nomeCasa(id) { if (id === 'todas') return 'Todas as casas'; var c = E.casas.find(function (x) { return x.id === id; }); return c ? c.nome : 'casa ' + id; }
+
+  /* ---------- entrar ---------- */
+  $('#fEntrar').addEventListener('submit', function (e) { e.preventDefault(); var f = e.target, m = f.querySelector('.erro'); m.textContent = '';
+    fetch('/api/entrar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ senha: f.senha.value }) }).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.erro === 'senha' ? 'Senha errada.' : j.erro || 'Não entrou.'); f.reset(); mostra(true); puxa(); }); }).catch(function (x) { m.textContent = x.message; }); });
+
+  /* ---------- mapa: arrastar, roda para aproximar, vistas prontas ---------- */
+  var mapa = $('#mapa'), vb = [0, 0, 360, 180];
+  function poeVb() { mapa.setAttribute('viewBox', vb.join(' ')); var k = vb[2] / 360; document.querySelectorAll('.pino circle, .sede').forEach(function (c) { c.setAttribute('r', (+c.dataset.r) * k); }); document.querySelectorAll('.rot').forEach(function (t) { t.style.fontSize = (2.6 * k) + 'px'; t.setAttribute('dy', -2.4 * k); t.style.strokeWidth = (0.6 * k) + 'px'; }); }
+  function ponto(ev) { var r = mapa.getBoundingClientRect(), esc = Math.max(vb[2] / r.width, vb[3] / r.height), ox = (r.width * esc - vb[2]) / 2, oy = (r.height * esc - vb[3]) / 2; return [vb[0] + (ev.clientX - r.left) * esc - ox, vb[1] + (ev.clientY - r.top) * esc - oy, esc]; }
+  mapa.addEventListener('wheel', function (ev) { ev.preventDefault(); var p = ponto(ev), f = ev.deltaY > 0 ? 1.2 : 1 / 1.2, w = Math.max(4, Math.min(360, vb[2] * f)), k = w / vb[2]; vb = [p[0] - (p[0] - vb[0]) * k, p[1] - (p[1] - vb[1]) * k, w, vb[3] * k]; poeVb(); }, { passive: false });
+  var arr = null;
+  mapa.addEventListener('pointerdown', function (ev) { if (marcando) { var p = ponto(ev), f = $('#fCasa'); f.lon.value = (p[0] - 180).toFixed(2); f.lat.value = (90 - p[1]).toFixed(2); marcar(false); return; } arr = { x: ev.clientX, y: ev.clientY, v: vb.slice(), mexeu: false }; mapa.setPointerCapture(ev.pointerId); mapa.classList.add('pega'); });
+  mapa.addEventListener('pointermove', function (ev) { if (!arr) return; var e2 = ponto(ev)[2], dx = ev.clientX - arr.x, dy = ev.clientY - arr.y; if (Math.abs(dx) + Math.abs(dy) > 3) arr.mexeu = true; vb[0] = arr.v[0] - dx * e2; vb[1] = arr.v[1] - dy * e2; poeVb(); });
+  mapa.addEventListener('pointerup', function () { arr = null; mapa.classList.remove('pega'); });
+  document.querySelectorAll('.vistas button').forEach(function (b) { b.addEventListener('click', function () { vb = b.dataset.v.split(' ').map(Number); poeVb(); }); });
+  function marcar(on) { marcando = on; mapa.classList.toggle('marca', on); $('#dica').hidden = !on; }
+  $('#bMarcar').addEventListener('click', function () { marcar(!marcando); });
+  fetch('/mapa.json').then(function (r) { return r.json(); }).then(function (m) { $('#terra').setAttribute('d', m.d); });
+
+  function desenhaMapa() { var gF = $('#gFios'), gP = $('#gPinos'); gF.textContent = ''; gP.textContent = '';
+    var sx = E.sede.lon + 180, sy = 90 - E.sede.lat;
+    E.casas.forEach(function (c) { var x = c.lon + 180, y = 90 - c.lat, mx = (x + sx) / 2, my = (y + sy) / 2 - Math.hypot(x - sx, y - sy) * 0.18;
+      gF.appendChild(sv('path', { 'class': 'fio' + (c.online ? ' on' : ''), d: 'M' + sx + ' ' + sy + 'Q' + mx + ' ' + my + ' ' + x + ' ' + y }));
+      var g = sv('g', { 'class': 'pino' + (c.online ? ' on' : '') + (c.revogada ? ' rev' : '') + (c.id === sel ? ' sel' : ''), tabindex: 0, role: 'button', 'aria-label': c.nome + (c.online ? ', ligado' : ', desligado') });
+      var h = sv('circle', { 'class': 'halo', cx: x, cy: y }); h.dataset.r = 1.1; var n = sv('circle', { 'class': 'nuc', cx: x, cy: y }); n.dataset.r = 1.1 + Math.min(1.4, ((c.ultimo && c.online ? c.ultimo.jogadores : 0) / 40));
+      var t = sv('text', { 'class': 'rot', x: x, y: y, 'text-anchor': 'middle' }); t.textContent = c.nome; g.appendChild(h); g.appendChild(n); g.appendChild(t);
+      var abre = function () { sel = c.id; aba('reinos'); pinta(); }; g.addEventListener('click', abre); g.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); abre(); } }); gP.appendChild(g); });
+    var s = sv('circle', { 'class': 'sede', cx: sx, cy: sy }); s.dataset.r = 1.3; gP.appendChild(s); var ts = sv('text', { 'class': 'rot', x: sx, y: sy, 'text-anchor': 'middle' }); ts.textContent = 'O Tear'; gP.appendChild(ts); poeVb(); }
+
+  /* ---------- abas ---------- */
+  var ABAS = { reinos: '#pReinos', central: '#pCentral', cartas: '#pCartas', nova: '#pNova' };
+  function aba(n) { document.querySelectorAll('.abas button').forEach(function (b) { b.setAttribute('aria-selected', String(b.dataset.aba === n)); }); for (var k in ABAS) $(ABAS[k]).hidden = k !== n; if (n !== 'nova') marcar(false); }
+  document.querySelectorAll('.abas button').forEach(function (b) { b.addEventListener('click', function () { aba(b.dataset.aba); }); });
+
+  /* ---------- reinos ---------- */
+  function fichaReino(c) { var d = el('div', 'cart clic' + (c.id === sel ? ' sel' : '')); var h = el('h3'); h.appendChild(el('span', 'luz' + (c.revogada ? ' rev' : c.online ? ' on' : ''))); h.appendChild(el('span', '', c.nome)); h.appendChild(el('span', 'selo', (E.niveis[c.nivel] || {}).nome || c.nivel)); d.appendChild(h);
+    d.appendChild(el('small', '', [c.cidade, c.pais].filter(Boolean).join(' · ') + ' · ' + (c.revogada ? 'parceria encerrada' : c.online ? 'ligado ' + ha(c.desde) : 'desligado, visto ' + ha(c.vistoEm))));
+    var u = c.ultimo, l = el('div', 'linha'); var par = function (r, v) { var s = el('span'); s.appendChild(document.createTextNode(r + ' ')); s.appendChild(el('b', '', v)); l.appendChild(s); };
+    par('Jogadores', c.online && u ? u.jogadores : 0); par('Pico', c.pico); if (u) { par('Personagens', u.personagens); par('Guildas', u.guildas.length); } if (c.pendentes) par('Avisos por entregar', c.pendentes); d.appendChild(l);
+    d.addEventListener('click', function (ev) { if (ev.target.closest('button')) return; sel = sel === c.id ? 0 : c.id; pinta(); });
+    if (c.id !== sel) return d;
+    if (u) { d.appendChild(el('small', '', 'Versão ' + (u.versao || '?') + (c.edicao ? ' · ' + c.edicao : '') + ' · último pulso ' + ha(u.quando)));
+      if (u.top.length) { var t = el('table'); var hr = el('tr'); ['Maiores níveis', 'Nível', 'Caminho'].forEach(function (x) { hr.appendChild(el('th', '', x)); }); t.appendChild(hr); u.top.forEach(function (p) { var r = el('tr'); r.appendChild(el('td', '', p.nome)); r.appendChild(el('td', '', p.nivel)); r.appendChild(el('td', '', p.classe)); t.appendChild(r); }); d.appendChild(t); }
+      if (u.guildas.length) { var g = el('table'); var gr = el('tr'); ['Guildas', 'Membros', 'Nível'].forEach(function (x) { gr.appendChild(el('th', '', x)); }); g.appendChild(gr); u.guildas.forEach(function (q) { var r = el('tr'); r.appendChild(el('td', '', q.nome + (q.tag ? ' [' + q.tag + ']' : ''))); r.appendChild(el('td', '', q.membros)); r.appendChild(el('td', '', q.nivel)); g.appendChild(r); }); d.appendChild(g); } }
+    else d.appendChild(el('small', '', 'Este reino ainda não mandou nenhum pulso.'));
+    var b = el('div', 'bot'); var b1 = el('button', '', 'Mensagem para esta casa'); b1.type = 'button'; b1.addEventListener('click', function () { aba('central'); $('#selPara').value = String(c.id); $('#fAviso').texto.focus(); }); b.appendChild(b1);
+    var b2 = el('button', '', 'Gerar nova chave'); b2.type = 'button'; b2.addEventListener('click', function () { if (b2.dataset.ok !== '1') { b2.dataset.ok = '1'; b2.textContent = 'Confirmar: a chave antiga para de valer'; return; } api('/api/casa/chave', { id: c.id }).then(function (j) { mostraChave(j.chave); aba('nova'); puxa(); }); }); b.appendChild(b2);
+    var b3 = el('button', 'warn', c.revogada ? 'Reativar parceria' : 'Encerrar parceria'); b3.type = 'button'; b3.addEventListener('click', function () { if (b3.dataset.ok !== '1') { b3.dataset.ok = '1'; b3.textContent = c.revogada ? 'Confirmar reativação' : 'Confirmar: o reino é desligado do Fio'; return; } api('/api/casa/revogar', { id: c.id, volta: c.revogada }).then(puxa); }); b.appendChild(b3);
+    d.appendChild(b); return d; }
+
+  function pinta() { if (!E) return; var on = E.casas.filter(function (c) { return c.online; }), vivas = E.casas.filter(function (c) { return !c.revogada; });
+    $('#rCasas').textContent = on.length + ' / ' + vivas.length; $('#rJog').textContent = on.reduce(function (s, c) { return s + (c.ultimo ? c.ultimo.jogadores : 0); }, 0);
+    var novas = E.cartas.filter(function (k) { return !k.lida; }).length; $('#rCartas').textContent = novas; $('#nCartas').textContent = novas; $('#nCartas').hidden = !novas;
+    $('#rHora').textContent = new Date(E.agora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    desenhaMapa();
+    var pr = $('#pReinos'); pr.textContent = ''; if (!E.casas.length) pr.appendChild(el('p', 'mut', 'Nenhuma casa registrada ainda. Use a aba Nova casa.'));
+    E.casas.slice().sort(function (a, b) { return (b.online - a.online) || (a.revogada - b.revogada) || a.nome.localeCompare(b.nome); }).forEach(function (c) { pr.appendChild(fichaReino(c)); });
+    var sp = $('#selPara'), antes = sp.value; sp.textContent = ''; var o = el('option', '', 'Todas as casas'); o.value = 'todas'; sp.appendChild(o); vivas.forEach(function (c) { var q = el('option', '', c.nome + (c.online ? '' : ' (desligada)')); q.value = String(c.id); sp.appendChild(q); }); if (antes && sp.querySelector('option[value="' + antes + '"]')) sp.value = antes;
+    var le = $('#lEnviados'); le.textContent = ''; if (!E.avisos.length) le.appendChild(el('p', 'mut', 'Nada enviado ainda.'));
+    E.avisos.forEach(function (a) { var d = el('div', 'cart env'); d.appendChild(el('small', '', (a.tipo === 'evento' ? 'Evento' : 'Mensagem') + ' · ' + dia(a.quando) + ' · para ' + nomeCasa(a.para))); if (a.titulo) d.appendChild(el('b', '', a.titulo)); d.appendChild(el('p', '', a.texto)); le.appendChild(d); });
+    var pc = $('#pCartas'); pc.textContent = ''; if (!E.cartas.length) pc.appendChild(el('p', 'mut', 'Nenhuma carta dos parceiros ainda.'));
+    E.cartas.forEach(function (k) { var d = el('div', 'cart carta' + (k.lida ? '' : ' nova')); d.appendChild(el('small', '', nomeCasa(k.casa) + ' · ' + k.de + ' · ' + dia(k.quando))); d.appendChild(el('p', '', k.texto));
+      var b = el('div', 'bot'); var r = el('button', '', 'Responder'); r.type = 'button'; r.addEventListener('click', function () { aba('central'); $('#selPara').value = String(k.casa); $('#fAviso').texto.focus(); }); b.appendChild(r);
+      var l = el('button', '', k.lida ? 'Marcar como nova' : 'Marcar como lida'); l.type = 'button'; l.addEventListener('click', function () { api('/api/carta/lida', { id: k.id, lida: !k.lida }).then(puxa); }); b.appendChild(l); d.appendChild(b); pc.appendChild(d); }); }
+
+  /* ---------- central ---------- */
+  $('#fAviso').addEventListener('submit', function (e) { e.preventDefault(); var f = e.target, m = $('#avisoMsg'); m.textContent = 'Enviando…';
+    api('/api/aviso', { tipo: f.tipo.value, para: f.para.value, titulo: f.titulo.value, texto: f.texto.value }).then(function (j) { f.texto.value = ''; f.titulo.value = ''; m.textContent = 'Enviado. Chegou agora a ' + j.agora + (j.agora === 1 ? ' reino ligado.' : ' reinos ligados.'); puxa(); }).catch(function (x) { m.textContent = 'Não enviou: ' + x.message; }); });
+
+  /* ---------- nova casa ---------- */
+  function mostraChave(ch) { $('#chaveBox').hidden = false; $('#chaveTxt').textContent = ch; $('#chaveCmd').textContent = 'pnpm sala --fio ws://ENDERECO-DO-TEAR:7790/fio --chave ' + ch; }
+  $('#fCasa').addEventListener('submit', function (e) { e.preventDefault(); var f = e.target, m = f.querySelector('.erro'); m.textContent = '';
+    api('/api/casa', { nome: f.nome.value, cidade: f.cidade.value, pais: f.pais.value, nivel: f.nivel.value, lat: f.lat.value.replace(',', '.'), lon: f.lon.value.replace(',', '.') }).then(function (j) { mostraChave(j.chave); sel = j.id; f.nome.value = ''; f.cidade.value = ''; f.lat.value = ''; f.lon.value = ''; puxa(); }).catch(function (x) { m.textContent = 'Não registrou: ' + x.message; }); });
+
+  /* ---------- pulso do painel ---------- */
+  function puxa() { return api('/api/estado').then(function (j) { E = j; mostra(true); pinta(); }).catch(function () { /* a porta cuida */ }); }
+  puxa(); setInterval(function () { if (!$('#sala').hidden && !document.hidden) puxa(); }, 4000);
+})();
+</script>
+</body>
+</html>

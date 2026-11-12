@@ -10,6 +10,7 @@
     "desktop:dev": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop start",
     "desktop:dist": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop dist",
     "sala": "node desktop/src/server.cjs",
-    "desktop:dist:mac": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop dist:mac"
+    "desktop:dist:mac": "pnpm --filter karmika-client build && pnpm --filter karmika-desktop dist:mac",
+    "tear": "node desktop/src/tear.cjs"
   }
 }
