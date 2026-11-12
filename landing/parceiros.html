@@ -89,7 +89,7 @@ html { scroll-behavior: smooth; }
 .mod { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 22px; overflow: hidden; background: var(--bg2); }
 .mod--2 { border-color: rgba(111, 168, 255, .4); } .mod--3 { border-color: rgba(217, 165, 74, .55); box-shadow: 0 40px 120px -60px rgba(217, 165, 74, .7); }
 .mod__img { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; opacity: .85; }
-.mod__body { padding: clamp(20px, 2.2vw, 30px); display: grid; gap: 14px; align-content: start; flex: 1; }
+.mod__body { padding: clamp(20px, 2.2vw, 30px); display: flex; flex-direction: column; gap: 14px; flex: 1; } .mod__body > * { margin-top: 0; margin-bottom: 0; } .mod__body > .mod__abre { margin-top: auto; } /* o botão de cada nível fica na mesma linha, no pé do cartão */
 .mod__real { font: 600 11px/1 var(--sans); letter-spacing: .28em; text-transform: uppercase; color: var(--mut); }
 .mod h3 { font-size: clamp(24px, 2.3vw, 34px); }
 .mod--1 h3 { color: var(--ink); } .mod--2 h3 { color: var(--sky2); } .mod--3 h3 { color: var(--gold2); }
@@ -110,6 +110,38 @@ html { scroll-behavior: smooth; }
 .lad__s p { margin: 0; color: var(--mut); font-size: 15px; }
 .lad__s span { display: block; margin-top: 12px; font-size: 12px; letter-spacing: .08em; color: var(--ink); }
 @media (max-width: 900px) { .lad { grid-template-columns: 1fr 1fr; } } @media (max-width: 520px) { .lad { grid-template-columns: 1fr; } }
+/* 12/11 (Erling: "cartões com menos informações que ao clicar escondem os outros e mostram bem bonito as coisas daquele cartão ao lado, com bonecos, dizeres e imagens do jogo"):
+   o cartão fechado mostra só o essencial; aberto, os outros saem e o nível se abre ao lado, com um herói, uma fala do jogo e a cena dele ao fundo */
+.mods .mod__body h4, .mods .mod__body ul { display: none; }
+.mod__com { font-size: 14px; color: var(--mut); } .mod__com b { font: 800 clamp(26px, 2.4vw, 34px)/1 var(--sans); color: var(--gold2); margin-right: 6px; }
+.mods { scroll-margin-top: 84px; }
+.mods.is-open { grid-template-columns: minmax(0, .58fr) minmax(0, 1.7fr); align-items: stretch; }
+.mods.is-open .mod:not(.is-sel) { display: none; } .mods.is-open .mod.is-sel { border-color: rgba(243, 211, 138, .7); box-shadow: 0 30px 90px -40px rgba(217, 165, 74, .8); }
+.mods.is-open .mod.is-sel .mod__abre { display: none; }
+.modx { display: none; position: relative; grid-template-columns: minmax(0, .62fr) minmax(0, 1.4fr); border-radius: 22px; border: 1px solid rgba(217, 165, 74, .5); overflow: hidden; background: #0e0d12; isolation: isolate; animation: modxin .5s cubic-bezier(.2, .8, .2, 1); }
+.mods.is-open .modx { display: grid; }
+@keyframes modxin { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+.modx__fundo { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; opacity: .2; filter: saturate(.8); z-index: -2; }
+.modx::before { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(14, 13, 18, .35), #0e0d12 62%), radial-gradient(60% 50% at 22% 78%, rgba(217, 165, 74, .28), transparent 70%); }
+.modx__arte { position: relative; min-height: 420px; }
+.modx__heroi { position: absolute; left: 50%; bottom: 0; height: 92%; width: auto; max-width: none; transform: translateX(-50%); filter: drop-shadow(0 0 26px rgba(243, 211, 138, .35)) drop-shadow(0 20px 20px rgba(0, 0, 0, .8)); animation: modxh .7s cubic-bezier(.2, .9, .3, 1.15); }
+@keyframes modxh { from { opacity: 0; transform: translate(-50%, 30px) scale(.92); } to { opacity: 1; transform: translateX(-50%); } }
+.modx__runa { position: absolute; left: 14px; top: 14px; width: 54px; height: 54px; opacity: .55; } .modx__runa path { fill: none; stroke: var(--gold2); stroke-width: 1.4; filter: drop-shadow(0 0 6px rgba(255, 190, 80, .9)); }
+.modx__txt { padding: clamp(20px, 2.4vw, 34px); display: grid; gap: 16px; align-content: start; }
+.modx__volta { justify-self: start; font: 700 12px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--gold2); border: 1px solid rgba(243, 211, 138, .5); border-radius: 999px; padding: 10px 14px; background: none; cursor: pointer; }
+.modx__volta:hover { background: rgba(243, 211, 138, .12); }
+.modx__fala { margin: 0; padding-left: 16px; border-left: 2px solid var(--gold); } .modx__fala p { margin: 0; font: italic 500 clamp(19px, 1.9vw, 26px)/1.3 var(--serif); color: var(--gold2); } .modx__fala cite { display: block; margin-top: 6px; font: 600 12px/1 var(--sans); font-style: normal; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
+.modx__txt > p { margin: 0; color: #d8cdbb; }
+.modx__nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .modx__nums div { padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .35); } .modx__nums b { display: block; font: 800 clamp(18px, 1.7vw, 24px)/1.1 var(--sans); color: var(--gold2); } .modx__nums span { font-size: 12px; color: var(--mut); }
+.modx__g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } .modx__g h4 { font: 800 11px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; }
+.modx__g ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14px; color: #d8cdbb; } .modx__g li { padding-left: 18px; position: relative; } .modx__g li::before { content: "✦"; position: absolute; left: 0; top: 2px; font-size: 11px; color: var(--ember); }
+.modx__outros { display: flex; flex-wrap: wrap; gap: 8px; } .modx__outros button { font: 600 13px/1 var(--sans); color: var(--mut); border: 1px solid var(--line); border-radius: 999px; padding: 9px 13px; background: rgba(255, 255, 255, .03); cursor: pointer; } .modx__outros button:hover { color: var(--ink); border-color: rgba(243, 211, 138, .5); }
+@media (max-width: 1200px) { .modx__g { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 980px) { .mods.is-open { grid-template-columns: 1fr; } .modx { grid-template-columns: 1fr; } .modx__arte { min-height: 260px; } .modx__heroi { height: 100%; } .modx::before { background: linear-gradient(180deg, rgba(14, 13, 18, .3), #0e0d12 46%); } }
+@media (max-width: 560px) { .modx__g, .modx__nums { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .modx, .modx__heroi { animation: none; } }
+/* as runas de Karmika ao fundo, como no site do jogo */
+main, .foot { position: relative; z-index: 1; }
 /* o segundo arco, por fora: o que a casa vende sobe, a comissão volta */
 .fio__orb { position: relative; text-align: center; padding: 0 16%; }
 .fio__orb svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -187,6 +219,16 @@ html { scroll-behavior: smooth; }
 .glist b { font: 700 14px/1.2 var(--sans); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .glist span { grid-column: 2; font-size: 12px; color: var(--mut); }
 .glist em { grid-row: 1 / 3; grid-column: 3; font: 700 13px/1 var(--sans); font-style: normal; color: var(--gold2); white-space: nowrap; }
+/* 12/11 (Erling: "passa o mouse: os de brilho amarelo pintam de dourado, os de bandeira roxa pintam de roxo, e ele aparece no mapa mais brilhante e mais fácil de ver") */
+.glist button:hover, .glist button:focus-visible, .glist button[aria-current="true"] { border-color: var(--gold2); background: linear-gradient(90deg, rgba(243, 211, 138, .3), rgba(217, 165, 74, .1)); box-shadow: 0 0 22px -6px rgba(243, 211, 138, .8); }
+.glist button.gl--s:hover, .glist button.gl--s:focus-visible, .glist button.gl--s[aria-current="true"] { border-color: #b76bff; background: linear-gradient(90deg, rgba(160, 74, 240, .38), rgba(160, 74, 240, .12)); box-shadow: 0 0 22px -6px rgba(170, 90, 255, .9); }
+.glist button.gl--s:hover em, .glist button.gl--s[aria-current="true"] em { color: #d9b3ff; }
+.gmap.hov .gmap__p:not(.hov) { opacity: .35; }
+.gmap__p.hov { z-index: 6; transform: scale(calc(var(--k, 1) * 2)); }
+.gmap__p.on i, .gmap__p.hov i { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 12px #ffd24a) drop-shadow(0 0 26px #ffb020); }
+.gmap__p--neg.on i, .gmap__p--neg.hov i { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 12px #c58bff) drop-shadow(0 0 26px #9a3cff); }
+.gmap__p.on::before, .gmap__p.hov::before { box-shadow: 0 0 0 1px #fff, 0 0 10px #fff; }
+.gmap__ring { border-color: #ffd24a; box-shadow: 0 0 12px #ffb020; } .gmap__p--neg .gmap__ring { border-color: #c58bff; box-shadow: 0 0 12px #9a3cff; }
 .gcard { border-radius: 16px; border: 1px solid rgba(217, 165, 74, .45); background: rgba(14, 13, 18, .92); padding: 18px 20px; }
 .gcard.gcard--s { border-color: rgba(160, 74, 240, .6); }
 .gcard__t { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
@@ -428,11 +470,12 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <h2>Uma parceria do tamanho da sua casa.</h2>
     <p class="lead">Existem três tipos de casa hoje, e cada um entra na parceria de um jeito. O jogo e o Fio são os mesmos; mudam a comissão, o tamanho do lugar que a casa ganha dentro do jogo e o papel dela nos campeonatos.</p>
     <div class="mods">
-      <article class="mod mod--1" data-md="0" tabindex="0" role="button" aria-haspopup="dialog">
+      <article class="mod mod--1" data-md="0" tabindex="0" role="button" aria-expanded="false" aria-controls="modx">
         <div class="mod__imgw"><img class="mod__img" src="/img/k-v3_casa.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Lan House</span>
           <h3>Estalagem</h3>
+          <p class="mod__com"><b>20%</b> de comissão em tudo o que a casa vende</p>
           <p class="mod__for"><b>A partir de 5 máquinas.</b> A lan do bairro: o lugar onde a turma se encontra depois da aula e do trabalho. É onde todo herói começa.</p>
           <h4>O reino</h4>
           <ul><li><b>Uma estalagem com o nome da sua casa</b> dentro de Karmika: dois andares, salão animado, cozinha, quartos e estábulo</li><li>Reino da Casa para as máquinas do salão</li><li>KARMIKA instalado e atualizado em todas as máquinas, com licença da casa</li><li>Painel simples: quem está jogando, ranking da casa, agenda</li></ul>
@@ -440,14 +483,15 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
           <ul><li><b>20%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Nome e endereço no mapa de casas parceiras do site</li><li>Primeiro kit de divulgação de graça; depois, o Shop do Parceiro</li><li><b>30% de desconto</b> na loja de itens KARMIKA, para revender</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Torneio da Casa todo mês, com prêmios dentro do jogo enviados pelo Tear</li><li>As guildas da casa disputam as Classificatórias</li></ul>
-          <button class="mod__abre" type="button">Ver tudo deste nível</button>
+          <button class="mod__abre" type="button">Abrir este nível</button>
         </div>
       </article>
-      <article class="mod mod--2" data-md="1" tabindex="0" role="button" aria-haspopup="dialog">
+      <article class="mod mod--2" data-md="1" tabindex="0" role="button" aria-expanded="false" aria-controls="modx">
         <div class="mod__imgw"><img class="mod__img" src="/img/k-oficios_hall.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Lan House Premium</span>
           <h3>Salão de Guilda</h3>
+          <p class="mod__com"><b>25%</b> de comissão em tudo o que a casa vende</p>
           <p class="mod__for"><b>A partir de 10 máquinas.</b> A arena gamer: máquinas fortes, periféricos de competição e times que treinam ali. É onde as guildas ganham nome.</p>
           <h4>O reino</h4>
           <ul><li><b>Um salão de guilda com o nome da sua casa</b> dentro de Karmika: muros, taverna, salões de profissão e soldados</li><li>Tudo da Estalagem</li><li>Guilda oficial da casa, com brasão próprio dentro do jogo</li><li>Atualizações antecipadas: a sua casa joga a novidade antes</li><li>Itens e promoções que só existem no seu reino</li></ul>
@@ -455,14 +499,15 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
           <ul><li><b>25%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Canal direto com a equipe da D2 Studio</li><li>Destaque no mapa de casas e nos rankings do site</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Sede de rodadas das Classificatórias</li><li>A guilda da casa briga pelo selo Diamante, Ouro ou Prata</li><li>Apoio do Tear para transmitir as partidas</li></ul>
-          <button class="mod__abre" type="button">Ver tudo deste nível</button>
+          <button class="mod__abre" type="button">Abrir este nível</button>
         </div>
       </article>
-      <article class="mod mod--3" data-md="2" tabindex="0" role="button" aria-haspopup="dialog">
+      <article class="mod mod--3" data-md="2" tabindex="0" role="button" aria-expanded="false" aria-controls="modx">
         <div class="mod__imgw"><img class="mod__img" src="/img/k-v2_jarlsheim.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Hub Digital</span>
           <h3>Cidadela</h3>
+          <p class="mod__com"><b>30%</b> de comissão em tudo o que a casa vende</p>
           <p class="mod__for"><b>A partir de 20 máquinas, com palco e transmissão.</b> O centro da cena: arena, palco, estúdio de transmissão e público. É onde os reinos se enfrentam diante de todo mundo.</p>
           <h4>O reino</h4>
           <ul><li><b>A vila inteira leva o nome e a bandeira da sua casa</b>, com a estalagem e o salão de guilda dentro</li><li>Tudo do Salão de Guilda</li><li>Reino aberto à região: recebe jogadores de outras casas em dia de evento</li><li>Voz na escolha dos mapas e das regras dos campeonatos</li></ul>
@@ -470,9 +515,10 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
           <ul><li><b>30%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Eventos assinados junto com KARMIKA</li><li>Prioridade para sediar finais e lançamentos</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Sede dos Playoffs das guildas Diamante, Ouro e Prata</li><li>Candidata a palco do KARMIKA Championship</li><li>Mapa criado pelo Tear só para o evento</li></ul>
-          <button class="mod__abre" type="button">Ver tudo deste nível</button>
+          <button class="mod__abre" type="button">Abrir este nível</button>
         </div>
       </article>
+      <div class="modx" id="modx" aria-live="polite"></div>
     </div>
   </div>
 </section>
@@ -743,7 +789,24 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     var cta = el('a', 'btn', 'Quero ser ' + n.nome); cta.href = '#entrar'; cta.style.justifySelf = 'start'; cta.addEventListener('click', function () { md.close(); var sel = document.querySelector('#parForm [name=modelo]'); if (sel) sel.selectedIndex = i + 1; }); c.appendChild(cta); det.appendChild(c); }
   N.forEach(function (n, i) { var b = el('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.appendChild(el('b', '', n.nome)); b.appendChild(el('small', '', n.real + ' · ' + n.com + '%')); b.addEventListener('click', function () { mostra(i); }); lista.appendChild(b); });
   function abre(i) { mostra(i); md.showModal(); }
-  document.querySelectorAll('.mod[data-md]').forEach(function (m) { var i = +m.dataset.md; m.addEventListener('click', function () { abre(i); }); m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abre(i); } }); });
+  /* 12/11: o nível abre ao lado do cartão, e os outros dois saem; a janela antiga fica só de reserva */
+  var mods = document.querySelector('.mods'), modx = document.getElementById('modx'), cards = [].slice.call(document.querySelectorAll('.mod[data-md]'));
+  var X = [{ heroi: '/img/c-humano.webp', fundo: '/img/k-v3_casa.webp', fala: 'Em Karmika ninguém dorme na rua.', quem: 'Estalajadeira Benta, Estalagem de Karmika', runa: 'M14 3 C17 9 21 13.5 21 18 A7 7 0 0 1 7 18 C7 13.5 11 9 14 3Z' },
+    { heroi: '/img/c-guerreira.webp', fundo: '/img/k-oficios_hall.webp', fala: 'Guilda se faz com gente, sede e palavra. Falta uma das três, não é guilda.', quem: 'Mestra Brígida, Salão das Guildas de Karmika', runa: 'M7 4 H21 L14 14 L21 24 H7 L14 14 Z' },
+    { heroi: '/img/c-paladino.webp', fundo: '/img/k-v2_jarlsheim.webp', fala: 'O estandarte no portão diz de quem é a casa.', quem: 'Guarda Mirela, portão do Salão das Guildas', runa: 'M5 24 V4 H23 V23.5 H8.5 V7.5 H19.5 V20 H12 V11 H16 V16.5' }];
+  function fecha() { mods.classList.remove('is-open'); cards.forEach(function (c) { c.classList.remove('is-sel'); c.setAttribute('aria-expanded', 'false'); }); modx.textContent = ''; }
+  function abreLado(i, rola) { var n = N[i], x = X[i]; mods.classList.add('is-open'); cards.forEach(function (c, k) { c.classList.toggle('is-sel', k === i); c.setAttribute('aria-expanded', String(k === i)); }); modx.textContent = '';
+    var fu = el('img', 'modx__fundo'); fu.src = x.fundo; fu.alt = ''; modx.appendChild(fu);
+    var ar = el('div', 'modx__arte'), he = el('img', 'modx__heroi'); he.src = x.heroi; he.alt = ''; ar.appendChild(he);
+    var sv = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), pa = document.createElementNS('http://www.w3.org/2000/svg', 'path'); sv.setAttribute('viewBox', '0 0 28 28'); sv.setAttribute('class', 'modx__runa'); sv.setAttribute('aria-hidden', 'true'); pa.setAttribute('d', x.runa); sv.appendChild(pa); ar.appendChild(sv); modx.appendChild(ar);
+    var t = el('div', 'modx__txt'), vo = el('button', 'modx__volta', '← Os três níveis'); vo.type = 'button'; vo.addEventListener('click', function () { fecha(); cards[i].focus(); }); t.appendChild(vo);
+    var bq = el('blockquote', 'modx__fala'); bq.appendChild(el('p', '', '"' + x.fala + '"')); bq.appendChild(el('cite', '', x.quem)); t.appendChild(bq);
+    t.appendChild(el('p', '', n.txt));
+    var nums = el('div', 'modx__nums'); [[n.com + '%', 'de comissão em tudo o que a casa vende'], [n.maq, 'máquinas no salão'], [n.lugar, 'leva o nome da casa em Karmika']].forEach(function (q) { var d = el('div'); d.appendChild(el('b', '', q[0])); d.appendChild(el('span', '', q[1])); nums.appendChild(d); }); t.appendChild(nums);
+    var g = el('div', 'modx__g'); [['O que a casa ganha', n.ganha], ['O que a casa precisa ter', n.tem], ['Campeonatos', n.camp]].forEach(function (q) { var d = el('div'); d.appendChild(el('h4', '', q[0])); d.appendChild(ul(q[1])); g.appendChild(d); }); t.appendChild(g);
+    var ou = el('div', 'modx__outros'); N.forEach(function (o, k) { if (k === i) return; var b = el('button', '', 'Ver ' + o.nome + ' · ' + o.com + '%'); b.type = 'button'; b.addEventListener('click', function () { abreLado(k, false); }); ou.appendChild(b); }); t.appendChild(ou);
+    modx.appendChild(t); if (rola) mods.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  cards.forEach(function (m) { var i = +m.dataset.md; m.addEventListener('click', function () { if (m.classList.contains('is-sel')) return; abreLado(i, true); }); m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abreLado(i, true); } }); });
   md.querySelector('.md__x').addEventListener('click', function () { md.close(); }); md.addEventListener('click', function (e) { if (e.target === md) md.close(); });
 })();
 (function () {
@@ -786,7 +849,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     b.appendChild(el('i')); b.appendChild(el('b', '', t[0])); b.appendChild(el('em', '', rs(F[t[4]][1]))); b.appendChild(el('span', '', F[t[4]][0] + ' · nível ' + t[1] + ' a ' + t[2]));
     li.appendChild(b); lista.appendChild(li); linhas.push(li);
     b.addEventListener('click', function () { escolhe(i, true); });
-    b.addEventListener('mouseenter', function () { pins[i].classList.add('on'); }); b.addEventListener('mouseleave', function () { if (sel !== i) pins[i].classList.remove('on'); });
+    b.addEventListener('mouseenter', function () { pins[i].classList.add('on', 'hov'); mapa.classList.add('hov'); }); b.addEventListener('mouseleave', function () { pins[i].classList.remove('hov'); mapa.classList.remove('hov'); if (sel !== i) pins[i].classList.remove('on'); });
     pins[i].setAttribute('role', 'button'); pins[i].addEventListener('click', function () { escolhe(i, false); });
     pins[i].addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); escolhe(i, false); } });
   });
@@ -815,6 +878,18 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     T.forEach(function (t, i) { var ok = f === 'todos' || (f === 'luz' && t[3] > 0) || (f === 'sombra' && t[3] < 0) || f === t[4]; linhas[i].classList.toggle('off', !ok); pins[i].classList.toggle('off', !ok); });
     z.style.transform = ''; z.style.removeProperty('--k'); fora.hidden = true;
   });
+})();
+</script>
+<script>
+/* as runas de Karmika ao fundo: a mesma malha do site do jogo; de tempos em tempos uma acende em ouro ou no azul da pedra do teleporte */
+(function () {
+  var RUNAS = ['M14 3 C17 9 21 13.5 21 18 A7 7 0 0 1 7 18 C7 13.5 11 9 14 3Z', 'M4 4 V24 M24 4 V24 M12 4 L6.5 14 L12 24 M16 4 L21.5 14 L16 24 M8.5 14 Q14 9 19.5 14 Q14 19 8.5 14Z', 'M7 4 H21 L14 14 L21 24 H7 L14 14 Z', 'M5 24 V4 H23 V23.5 H8.5 V7.5 H19.5 V20 H12 V11 H16 V16.5', 'M11.5 7.2 A8.3 8.3 0 1 0 16.5 7.2 M11.5 7.2 C11 5.4 9.8 4.2 8.2 3.6 M16.5 7.2 C17 5.4 18.2 4.2 19.8 3.6', 'M11.4 2.6 V18.8 M16.6 9.2 V25.4 M6.6 10.4 C9.2 10.4 11.4 11.8 12.8 14 C14.2 16.2 16.4 17.6 21.4 17.6'];
+  var rl = document.createElement('div'); rl.className = 'runes'; rl.setAttribute('aria-hidden', 'true'); document.body.insertBefore(rl, document.body.firstChild);
+  function monta() { var cell = innerWidth < 600 ? 64 : 92, cols = Math.ceil(innerWidth / cell) + 1, rows = Math.ceil(innerHeight / cell) + 1, h = '';
+    for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) { var r = RUNAS[(x * 7 + y * 3 + ((x * y) % 5)) % 6]; h += '<svg viewBox="0 0 28 28" style="left:' + (x * cell + (y % 2 ? cell / 2 : 0) - cell / 2) + 'px;top:' + (y * cell - cell / 2) + 'px;width:' + (cell * 0.34) + 'px"><path d="' + r + '"/></svg>'; }
+    rl.innerHTML = h; }
+  monta(); var rt = 0; addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(monta, 250); });
+  if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) setInterval(function () { if (document.hidden) return; var all = rl.children; if (!all.length) return; var e = null; for (var k = 0; k < 12 && !e; k++) { var c = all[Math.floor(Math.random() * all.length)], x = parseFloat(c.style.left) / innerWidth; if (x < 0.13 || x > 0.85) e = c; } if (!e) return; var cl = Math.random() < 0.6 ? 'g' : 'b'; e.classList.add(cl); setTimeout(function () { e.classList.remove(cl); }, 2600); }, 583);
 })();
 </script>
 </body>
