@@ -212,9 +212,10 @@ function softBase(src: HTMLCanvasElement) { if (soft) return soft; soft = docume
     if (b > r + 12 && b >= gg) { const u = e / F; d[o + 3] = Math.round(d[o + 3] * u * u * (3 - 2 * u)); } } }
   g.putImageData(im, 0, 0); return soft; }
 function drawBig() {
-  if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width, H = K.bmEl.height, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
+  const DN = +(K.bmEl.dataset.d || 1) || 1; K.bg.setTransform(DN, 0, 0, DN, 0, 0); /* 12/11: símbolos e letras na densidade do monitor */
+  if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width / DN, H = K.bmEl.height / DN, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
   K.mapV.z = Math.max(K.mapV.z, K.mapZMin());
-  const W = K.bmEl.width, H = K.bmEl.height, k = K.pxPerTile(), L = K.mapV.layers;
+  const W = K.bmEl.width / DN, H = K.bmEl.height / DN, k = K.pxPerTile(), L = K.mapV.layers;
   { /* 07/11: o centro só anda até a borda do mapa encostar na moldura; se o mapa inteiro cabe (zoom mínimo), fica no meio */ const hw = W / 2 / k, hh = H / 2 / k;
     const pad = MAP_W * 0.07; /* 07/11: dá para passar um pouco da borda, para os nomes e os bichos da beirada (Trono de Cinzas, Picos) não ficarem cortados */
     /* 07/11: dá para arrastar até a beirada do mapa chegar perto do meio da tela — as ilhas da borda ficam visíveis */
@@ -269,7 +270,7 @@ function drawBig() {
     const st = K.city.settlements.find((q) => Math.hypot(q.x - r.x, q.y - r.y) < q.radius + 12), cid = !!st && (st.kind === 'city' || st.name === 'Karmika');
     const fill = known ? '#8ad0ff' : '#c9a24a'; g.save(); g.translate(x, y); g.fillStyle = fill; g.strokeStyle = '#000'; g.lineWidth = 2;
     if (!st) { g.rotate(Math.PI / 4); const q = s0 * 0.7; g.fillRect(-q, -q, q * 2, q * 2); g.strokeRect(-q, -q, q * 2, q * 2); }
-    else { const q = s0 * (cid ? 1.25 : 0.95); g.beginPath(); g.moveTo(-q * 0.8, q); g.lineTo(-q * 0.8, -q * 0.15); g.arc(0, -q * 0.15, q * 0.8, Math.PI, 0); g.lineTo(q * 0.8, q); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+    else { const q = s0 * (cid ? 1.05 : 0.82); g.beginPath(); g.moveTo(-q * 0.8, q); g.lineTo(-q * 0.8, -q * 0.15); g.arc(0, -q * 0.15, q * 0.8, Math.PI, 0); g.lineTo(q * 0.8, q); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
       g.fillStyle = '#10141c'; if (cid) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = q * (i % 2 ? 0.24 : 0.56); g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + q * 0.1); } g.closePath(); g.fill(); }
       else { g.beginPath(); g.moveTo(-q * 0.32, q); g.lineTo(-q * 0.32, q * 0.1); g.arc(0, q * 0.1, q * 0.32, Math.PI, 0); g.lineTo(q * 0.32, q); g.closePath(); g.fill(); } }
     g.restore(); if (known) { g.beginPath(); g.arc(x, y, s0 * (cid ? 1.25 : 1) + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); g.strokeStyle = 'rgba(138,208,255,.6)'; g.lineWidth = 1.5; g.stroke(); }

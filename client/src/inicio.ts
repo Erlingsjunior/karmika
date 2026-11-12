@@ -82,6 +82,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
   let hostPass = '', draftInv = '', draftPass = '';
   let step: 'home' | 'find' | 'host' | 'chars' | 'upd' = 'home', upd = { got: 0, total: 0, file: '', n: 0 }, server: string | null = null, err = '', busy = false, hostInv = '';
   let isOpen = !boot, backHome = false;
+  let quitAsk = false; /* 12/11: a pergunta antes de fechar o jogo */
   let delAsk: number | null = null, delErr = ''; // confirmação de apagar DENTRO da tela (o app de desktop não tem prompt())
 
   function render() {
@@ -92,16 +93,20 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     /* 26/10 (Erling: "a escolha de personagens vem antes do servidor — o save é diferente: escolhe o personagem, volta para a tela
        principal e aí cria ou procura um servidor") */
     const cur = s.meta[s.active];
-    const curHtml = cur ? `<div class="in-cur"><div class="in-pic sm">${(cur.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${cur.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : cur.pic ? `<img src="${cur.pic}" alt="">` : `<span>${cur.origin === 'dwarf' ? '⚒' : '🌿'}</span>`}</div>
-        <div><small>Personagem</small><b>${esc(cur.name)}</b><em>Nível ${cur.lvl}${cur.cls ? ' · ' + esc(cur.cls) : ''}</em></div><button data-i="pick" class="gold">Trocar personagem</button></div>`
-      : `<div class="in-cur"><div class="in-pic sm"><span>+</span></div><div><small>Personagem</small><b>Nenhum ainda</b><em>Crie o seu Caminhante antes de jogar</em></div><button data-i="pick" class="gold">Escolher ou criar</button></div>`;
-    if (step === 'home') body = `${curHtml}<div class="in-menu${cur ? '' : ' in-dis'}">
+    /* 12/11 (Erling: "melhorar o layout da página inicial"): o personagem ganha um cartão grande à esquerda; à direita, as três formas de jogar;
+       embaixo, lado a lado, o que não é jogar (amigos, loja). Sair virou o ✕ do canto e um atalho discreto no rodapé, os dois com pergunta. */
+    const pic = cur ? ((cur.origin ?? 'human') === 'human' ? `<img src="/img/racas/human_${cur.sex === 'f' ? 'f' : 'm'}.jpg" alt="">` : cur.pic ? `<img src="${cur.pic}" alt="">` : `<span>${cur.origin === 'dwarf' ? '⚒' : '🌿'}</span>`) : '<span>+</span>';
+    const curHtml = `<div class="in-card"><div class="in-pic">${pic}</div><small>Seu Caminhante</small><b>${cur ? esc(cur.name) : 'Nenhum ainda'}</b><em>${cur ? `Nível ${cur.lvl}${cur.cls ? ' · ' + esc(cur.cls) : ''}` : 'Crie o seu Caminhante antes de jogar'}</em><button data-i="pick" class="gold">${cur ? 'Trocar personagem' : 'Escolher ou criar'}</button></div>`;
+    if (step === 'home') body = `<button data-i="quit" class="in-x" title="Sair de Karmika" aria-label="Sair de Karmika">✕</button><div class="in-home">${curHtml}
+        <div class="in-menu in-play${cur ? '' : ' in-dis'}">
         <button data-i="find" class="big">✧ Encontrar servidor<small>entrar no mundo de outro Caminhante com o convite</small></button>
         ${o.desk ? `<button data-i="host">⚑ Abrir meu servidor<small>esta máquina vira o mundo; mande o convite para os amigos</small></button>` : ''}
-        <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button>
-        <button data-i="social">👥 Amigos e Guilda<small>conversas e o chat da guilda, antes de entrar no mundo</small></button>
-        <button data-i="shop">🛍 Shop<small>Premium (Selo de Marghar) e as peças com brasão; comprado aqui, vai para o inventário da conta</small></button>
-        <button data-i="quit" class="in-quit">⏻ Sair do jogo<small>fecha o Karmika</small></button></div>`;
+        <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button></div>
+        <div class="in-menu in-sec">
+        <button data-i="social">👥 Amigos e Guilda<small>conversas e o chat da guilda</small></button>
+        <button data-i="shop">🛍 Shop<small>Premium e as peças com brasão</small></button></div></div>`;
+    if (step === 'home' && quitAsk) body += `<div class="in-ask"><div class="in-box in-quitbox"><h2>Sair de Karmika?</h2><p>Tem certeza de que quer sair de Karmika?</p><p class="in-mut"><i>Sua escolha será lembrada…</i></p>
+        <div class="in-row"><button data-i="quitno" class="gold">Ficar</button><button data-i="quitok" class="in-delok">Sair</button></div></div></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>
         <div class="in-row"><input data-v="inv" placeholder="karmika://IP:7777/CÓDIGO" value="${esc(draftInv || s.servers[0] || '')}" spellcheck="false"></div>
         <div class="in-row" style="margin-top:8px"><input data-v="pass" type="password" placeholder="Senha (só se a sala tiver)" value="${esc(draftPass || passFor(draftInv || s.servers[0] || ''))}"><button data-i="go" class="gold">Continuar</button></div>
@@ -126,7 +131,8 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <p class="in-mut">Para confirmar, digite o nome: <b>${esc(m.name)}</b></p>
         <div class="in-row"><input data-v="delname" placeholder="${esc(m.name)}" spellcheck="false" autocomplete="off"><button data-i="delok" class="in-delok">Apagar para sempre</button></div>
         ${delErr ? `<p class="in-err">✖ ${esc(delErr)}</p>` : ''}<button data-i="delno" class="lnk">← não, voltar</button></div></div>`; }
-    el.innerHTML = `${runesHtml}<div class="in-wrap">${head}${body}<div class="in-ft">Karmika · versão de desenvolvimento · devs e beta testers</div></div>`;
+    el.style.setProperty('--inz', Math.max(1, Math.min(1.6, innerHeight / 900)).toFixed(3)); /* em monitor grande a tela inicial cresce junto (antes ficava miúda no meio) */
+    el.innerHTML = `${runesHtml}<div class="in-wrap">${head}${body}<div class="in-ft">Karmika · versão de desenvolvimento · devs e beta testers${step === 'home' ? ' · <a data-i="quit">sair do jogo</a>' : ''}</div></div>`;
   }
   let refreshing = false, refreshedPic = false;
   /** o card do personagem ativo ganha retrato, nível e classe de verdade (o modelo dele já está carregado atrás da tela) */
@@ -172,7 +178,9 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
     if (a === 'find') { step = 'find'; render(); (el.querySelector('[data-v="inv"]') as HTMLInputElement)?.focus(); return; }
     if (a === 'social') { o.social?.(); return; }
     if (a === 'shop') { o.shop?.(); return; }
-    if (a === 'quit') { /* 09/11 (Erling: "não tem a opção de sair na tela principal") */ try { (window as unknown as { karmikaDesktop?: { quit?: () => void } }).karmikaDesktop?.quit?.(); } catch { /* */ } setTimeout(() => window.close(), 120); return; }
+    if (a === 'quit') { quitAsk = true; render(); return; } /* 12/11 (Erling): antes de fechar, a pergunta */
+    if (a === 'quitno') { quitAsk = false; render(); return; }
+    if (a === 'quitok') { /* 09/11 (Erling: "não tem a opção de sair na tela principal") */ try { (window as unknown as { karmikaDesktop?: { quit?: () => void } }).karmikaDesktop?.quit?.(); } catch { /* */ } setTimeout(() => window.close(), 120); return; }
     if (a === 'solo') { play(null); return; }
     if (a === 'go') { const v = (el.querySelector('[data-v="inv"]') as HTMLInputElement).value.trim(); const pv = parseInvite(v); if (!pv) { err = 'Convite inválido. O formato é karmika://IP:7777/CÓDIGO'; render(); return; }
       if (!/[.:]/.test(pv.host) && pv.host.toLowerCase() !== 'localhost') { err = `"${pv.host}" não é um endereço. Troque pelo número do computador da sala: no mesmo PC use 127.0.0.1 (karmika://127.0.0.1:${pv.port}/${pv.code}). Ou clique numa sala da lista acima.`; render(); return; }
