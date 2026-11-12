@@ -16,14 +16,18 @@ export default async function handler(req, res) {
   if (!nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !b.ok) return res.status(400).json({ error: 'dados' });
   const now = Date.now(); for (const [k, t] of recent) if (now - t > 600000) recent.delete(k);
   if (recent.has(email)) return res.status(200).json({ ok: true, dup: true });
+  /* 12/11: a ficha das lan houses (página /parceiros) usa a mesma porta; chega com outro assunto e fica guardada em outra pasta */
+  const par = !!b.parceiro;
   const row = { nome, email, discord: clean(b.discord, 60), caminho: clean(b.caminho, 40), pc: clean(b.pc, 120), embaixador: !!b.embaixador, quando: new Date().toISOString(), pais: req.headers['x-vercel-ip-country'] || '' };
+  if (par) { row.parceiro = true; row.caminho = clean(b.modelo, 60); row.discord = clean(b.zap, 30); row.pc = [clean(b.casa, 80), clean(b.cidade, 80), clean(b.maquinas, 6) ? clean(b.maquinas, 6) + ' máquinas' : ''].filter(Boolean).join(' · '); }
+  const assunto = par ? `KARMIKA parceiro: ${clean(b.casa, 80) || nome}` : `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`;
   let sent = false, saved = false;
   const to = process.env.KARMIKA_FORM_EMAIL;
   if (to) {
     try {
       const r = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(to)}`, { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json', referer: 'https://karmikaonline.com/', origin: 'https://karmikaonline.com', 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' },
-        body: JSON.stringify({ _subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, _template: 'table', _captcha: 'false', _replyto: email,
-          Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
+        body: JSON.stringify({ _subject: assunto, _template: 'table', _captcha: 'false', _replyto: email,
+          Nome: nome, 'E-mail': email, [par ? 'WhatsApp' : 'Discord']: row.discord || '-', [par ? 'Modelo' : 'Caminho']: row.caminho, [par ? 'Casa' : 'PC']: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
       const j = await r.json().catch(() => ({}));
       sent = r.ok && String(j.success) !== 'false';
       if (!sent) console.error('beta: formsubmit', r.status, j);
@@ -34,8 +38,8 @@ export default async function handler(req, res) {
   if (!sent && w3) {
     try {
       const r = await fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' },
-        body: JSON.stringify({ access_key: w3, subject: `KARMIKA beta: ${nome}${row.embaixador ? ' (embaixador)' : ''}`, from_name: 'KARMIKA beta', replyto: email,
-          Nome: nome, 'E-mail': email, Discord: row.discord || '-', Caminho: row.caminho, PC: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
+        body: JSON.stringify({ access_key: w3, subject: assunto, from_name: 'KARMIKA beta', replyto: email,
+          Nome: nome, 'E-mail': email, [par ? 'WhatsApp' : 'Discord']: row.discord || '-', [par ? 'Modelo' : 'Caminho']: row.caminho, [par ? 'Casa' : 'PC']: row.pc || '-', Embaixador: row.embaixador ? 'sim' : 'não', País: row.pais || '-', Quando: row.quando }) });
       const j = await r.json().catch(() => ({})); sent = r.ok && j.success !== false; if (!sent) console.error('beta: web3forms', r.status, j);
     } catch (e) { console.error('beta: web3forms', e); }
   }
@@ -43,7 +47,7 @@ export default async function handler(req, res) {
   const tok = process.env.BLOB_READ_WRITE_TOKEN;
   if (tok) {
     try {
-      const path = `beta/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`;
+      const path = `${par ? 'parceiro' : 'beta'}/${row.quando.slice(0, 10)}-${email.replace(/[^a-z0-9]/g, '_')}.json`;
       const r = await fetch(`https://vercel.com/api/blob/?pathname=${encodeURIComponent(path)}`, { method: 'PUT', body: JSON.stringify(row),
         headers: { authorization: `Bearer ${tok}`, 'x-api-version': '13', 'x-vercel-blob-store-id': tok.split('_')[3] || '', 'x-vercel-blob-access': 'private', 'x-content-type': 'application/json', 'x-add-random-suffix': '1' } });
       saved = r.ok; if (!saved) console.error('beta: blob', r.status, await r.text().catch(() => ''));

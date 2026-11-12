@@ -22,9 +22,9 @@
 <header class="nav">
   <a class="nav__brand" href="#topo"><img src="/img/logo-brasa.webp" alt="" width="40" height="30"><span>KARMIKA</span></a>
   <nav class="nav__links" id="navLinks">
-    <a href="#jogo">O jogo</a><a href="#lore">História</a><a href="#vidas">Vidas</a><a href="#maravilhas">Maravilhas</a><a href="#caminhos">Caminhos</a><a href="#guildas">Guildas</a><a href="#livro">O livro</a><a class="nav__play" href="https://jogar.karmikaonline.com">Jogue de graça</a><a class="nav__beta" href="#beta">Seja beta tester</a><span class="nav__lang" data-noi18n><a href="?lang=pt" data-lang="pt" hreflang="pt-BR">PT</a><a href="?lang=en" data-lang="en" hreflang="en">EN</a><a href="?lang=es" data-lang="es" hreflang="es">ES</a><a href="?lang=lv" data-lang="lv" hreflang="lv">LV</a></span>
+    <a href="#jogo">O jogo</a><a href="#lore">História</a><a href="#vidas">Vidas</a><a href="#maravilhas">Maravilhas</a><a href="#caminhos">Caminhos</a><a href="#guildas">Guildas</a><a href="#livro">O livro</a><a class="nav__play" href="#jogar">Jogue de graça</a><a class="nav__beta" href="#beta">Seja beta tester</a><span class="nav__lang" data-noi18n><a href="?lang=pt" data-lang="pt" hreflang="pt-BR">PT</a><a href="?lang=en" data-lang="en" hreflang="en">EN</a><a href="?lang=es" data-lang="es" hreflang="es">ES</a><a href="?lang=lv" data-lang="lv" hreflang="lv">LV</a></span>
   </nav>
-  <a class="btn btn--small btn--ghost nav__playbtn" href="https://jogar.karmikaonline.com">Jogue de graça</a>
+  <a class="btn btn--small btn--ghost nav__playbtn" href="#jogar">Jogue de graça</a>
   <a class="btn btn--small" href="#beta">Seja beta tester</a>
   <button class="nav__burger" type="button" aria-label="Abrir o menu" aria-expanded="false" aria-controls="navLinks"><i></i><i></i><i></i></button>
 </header>
@@ -40,7 +40,7 @@
     </svg>
     <p class="hero__tag"><span>Cada escolha</span> <span>volta</span> <span>para você.</span></p>
     <p class="hero__sub">MMORPG 100% brasileiro · Beta fechado em breve</p>
-    <div class="hero__cta"><a class="btn" href="#beta">Quero ser beta tester</a><span class="hero__ou">ou</span><a class="btn btn--ghost" href="https://jogar.karmikaonline.com">Jogue de graça até o nível 10</a></div>
+    <div class="hero__cta"><a class="btn" href="#beta">Quero ser beta tester</a><span class="hero__ou">ou</span><a class="btn btn--ghost" href="#jogar">Jogue de graça até o nível 10</a></div>
     <div class="hero__scroll"><span>role</span><i></i></div>
     <div class="hero__start"><span>role devagar para despertar o Olho</span><i></i></div>
   </div>
@@ -454,7 +454,16 @@
     <a class="btn" href="https://jogar.karmikaonline.com">Jogar agora</a>
     <p class="jogar__nota">Melhor em computador, no Chrome ou no Edge.</p>
   </div>
-  <a class="jogar__art" href="https://jogar.karmikaonline.com" aria-label="Jogar agora"><img src="/img/arte-fonte.webp" alt="" loading="lazy"></a>
+  <a class="jogar__art" id="jogarArt" href="https://jogar.karmikaonline.com" aria-label="Jogar agora">
+    <img class="jg-main" src="/img/k-v2_askavik.webp" alt="A fonte da praça de Askavik" loading="lazy">
+    <img class="jg-t jg-t1" src="/img/k-dia.webp" alt="" loading="lazy">
+    <img class="jg-t jg-t2" src="/img/k-v2_tec_thunder.webp" alt="" loading="lazy">
+    <img class="jg-t jg-t3" src="/img/k-v2_lithendel.webp" alt="" loading="lazy">
+    <img class="jg-t jg-t4" src="/img/k-v3_porto.webp" alt="" loading="lazy">
+    <img class="jg-t jg-t5" src="/img/k-v2_pal_conversion.webp" alt="" loading="lazy">
+    <img class="jg-t jg-t6" src="/img/k-noite.webp" alt="" loading="lazy">
+    <span class="jg-call">Entre em KARMIKA</span>
+  </a>
 </section>
 
 <!-- 9. BETA -->
@@ -476,7 +485,7 @@
     <label class="check"><input type="checkbox" name="embaixador"> Quero ser embaixador e ajudar a divulgar KARMIKA.</label>
     <label class="check"><input type="checkbox" name="ok" required> Aceito receber e-mails da D2 Studio sobre o beta de KARMIKA.</label>
     <button class="btn btn--wide" type="submit">Quero ser beta tester</button>
-    <a class="beta__play" href="https://jogar.karmikaonline.com">ou jogue de graça até o nível 10</a>
+    <a class="beta__play" href="#jogar">ou jogue de graça até o nível 10</a>
     <p class="beta__msg" role="status" aria-live="polite"></p>
   </form>
 </section>
@@ -485,6 +494,7 @@
 <footer class="foot">
   <img src="/img/logo-brasa.webp" alt="" width="64" height="48">
   <p>KARMIKA © 2026 D2 Studio · Feito no Brasil</p>
+  <p><a href="/parceiros">Tem uma lan house? Conheça a parceria KARMIKA</a></p>
 </footer>
 <div class="sheet" id="sheet" hidden data-lenis-prevent><div class="sheet__in"><button class="sheet__x" type="button" aria-label="Fechar">✕</button><div class="sheet__body"></div></div></div>
 <div class="reader" id="reader" hidden data-lenis-prevent><div class="reader__in"><button class="sheet__x" type="button" aria-label="Fechar">✕</button><p class="reader__season">Bíblia Karmika · Season I</p><nav class="reader__tabs"></nav><article class="reader__page"></article><div class="reader__nav"><button type="button" data-rd="-1">‹ Anterior</button><span class="reader__n"></span><button type="button" data-rd="1">Próxima ›</button></div><p class="reader__dl"><a href="/biblia-karmika-season-1.html" download>Baixar a Season I</a></p></div></div>

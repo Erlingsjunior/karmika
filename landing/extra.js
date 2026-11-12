@@ -169,3 +169,9 @@ document.querySelectorAll('.live .dn img, .live .ev img, .pillar img').forEach((
   let seen = false; new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { if (!seen) { seen = true; enter(S[cur]); } restart(); } else clearInterval(auto); }), { threshold: 0.35 }).observe(car);
   set();
 })();
+
+/* 12/11: a fonte da seção "Jogue de graça" se abre em cenas do jogo. Com mouse: ao passar por cima. No toque: quando a seção entra na tela. */
+(function () { var a = document.getElementById('jogarArt'); if (!a) return;
+  if (window.matchMedia && matchMedia('(hover: hover)').matches) { a.addEventListener('mouseenter', function () { a.classList.add('is-open'); }); a.addEventListener('mouseleave', function () { a.classList.remove('is-open'); }); a.addEventListener('focus', function () { a.classList.add('is-open'); }); a.addEventListener('blur', function () { a.classList.remove('is-open'); }); }
+  else if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { es.forEach(function (x) { a.classList.toggle('is-open', x.intersectionRatio >= 0.7); }); }, { threshold: [0, 0.7, 1] }).observe(a);
+  else a.classList.add('is-open'); })();
