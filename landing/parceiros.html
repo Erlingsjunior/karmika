@@ -69,7 +69,7 @@ html { scroll-behavior: smooth; }
 .fiosec__bg { position: absolute; inset: 0; z-index: 0; }
 .fiosec__bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .34; filter: saturate(.85); }
 .fiosec__vila { clip-path: polygon(0% 0%, 6% 0%, 11% 5%, 14% 14%, 20% 21%, 30% 25%, 40% 28%, 45% 34%, 47% 46%, 49% 58%, 55% 68%, 64% 77%, 76% 85%, 87% 94%, 94% 100%, 0% 100%); }
-.fiosec__tear { clip-path: polygon(6% 0%, 100% 0%, 100% 100%, 94% 100%, 87% 94%, 76% 85%, 64% 77%, 55% 68%, 49% 58%, 47% 46%, 45% 34%, 40% 28%, 30% 25%, 20% 21%, 14% 14%, 11% 5%); }
+.fiosec__tear { object-position: 78% 40%; clip-path: polygon(6% 0%, 100% 0%, 100% 100%, 94% 100%, 87% 94%, 76% 85%, 64% 77%, 55% 68%, 49% 58%, 47% 46%, 45% 34%, 40% 28%, 30% 25%, 20% 21%, 14% 14%, 11% 5%); }
 .fiosec__bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--bg), rgba(11, 10, 13, .35) 22%, rgba(11, 10, 13, .35) 78%, var(--bg)), radial-gradient(60% 55% at 50% 60%, rgba(11, 10, 13, .55), transparent); }
 .fiosec__bg svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
 .fiosec__bg svg path { fill: none; stroke: var(--gold2); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-dasharray: 10 9; opacity: .75; filter: drop-shadow(0 0 6px rgba(243, 211, 138, .8)); animation: fiosec 2.4s linear infinite; }
@@ -128,6 +128,44 @@ html { scroll-behavior: smooth; }
 .steps b { display: block; font: 700 17px/1.25 var(--serif); margin-bottom: 8px; } .steps span { color: var(--mut); font-size: 14px; }
 .steps { padding: 0; } @media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } } @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
 
+/* 12/11 (Erling: "cards melhores, imagens de personagens dos games, carroças de negociantes com dinheiro, vamos falar de negócios na linguagem de karmika") */
+.neg__h { font-size: clamp(22px, 2.4vw, 34px); margin: 56px 0 0; color: var(--gold2); }
+.neg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 26px 0 34px; }
+.neg__c { display: grid; grid-template-rows: 150px 1fr; border-radius: 18px; border: 1px solid var(--line); background: var(--bg2); overflow: hidden; transition: transform .3s, border-color .3s, box-shadow .3s; }
+.neg__c:hover { transform: translateY(-5px); border-color: rgba(243, 211, 138, .55); box-shadow: 0 26px 60px -30px rgba(217, 165, 74, .6); }
+.neg__m { position: relative; overflow: hidden; background: radial-gradient(80% 90% at 50% 40%, #3a3f46, #17191d); }
+.neg__m::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, var(--bg2)); }
+.neg__m img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
+.neg__c--h .neg__m img { object-fit: contain; object-position: 50% 0; height: 230%; }
+.neg__c:hover .neg__m img { transform: scale(1.08); }
+.neg__t { display: grid; gap: 6px; align-content: start; padding: 4px 20px 22px; }
+.neg__t small { font: 600 11px/1 var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--gold); }
+.neg__t b { font: 700 19px/1.2 var(--serif); color: var(--ink); } .neg__t span { color: var(--mut); font-size: 14.5px; }
+@media (max-width: 980px) { .neg { grid-template-columns: 1fr 1fr; } } @media (max-width: 600px) { .neg { grid-template-columns: 1fr; } }
+/* 12/11 (Erling: "passa o mouse elas crescem, a imagem cresce; ao clicar abre um master details que explica tudo direitinho") */
+.mod { cursor: pointer; transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s, border-color .35s; }
+.mod:hover, .mod:focus-visible { transform: translateY(-8px) scale(1.02); box-shadow: 0 40px 90px -40px rgba(217, 165, 74, .75); border-color: rgba(243, 211, 138, .7); outline: none; }
+.mod__imgw { overflow: hidden; } .mod__img { transition: transform .6s cubic-bezier(.2, .8, .2, 1); } .mod:hover .mod__img, .mod:focus-visible .mod__img { transform: scale(1.14); opacity: 1; }
+.mod__abre { margin-top: auto; align-self: start; font: 800 12px/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--gold2); border: 1px solid rgba(243, 211, 138, .5); border-radius: 999px; padding: 11px 16px; background: none; cursor: pointer; }
+.mod:hover .mod__abre { background: rgba(243, 211, 138, .12); }
+dialog.md { width: min(1100px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid rgba(217, 165, 74, .55); border-radius: 20px; background: var(--bg2); color: var(--ink); overflow: hidden; }
+dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px); }
+.md__in { display: grid; grid-template-columns: 250px minmax(0, 1fr); max-height: calc(100vh - 24px); }
+.md__lista { display: grid; align-content: start; gap: 8px; padding: 22px 14px; border-right: 1px solid var(--line); background: rgba(0, 0, 0, .28); }
+.md__lista button { display: grid; gap: 4px; text-align: left; padding: 14px; border-radius: 12px; border: 1px solid transparent; background: none; color: var(--mut); cursor: pointer; font: inherit; }
+.md__lista button b { font: 700 18px/1.1 var(--serif); color: var(--ink); } .md__lista button small { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; }
+.md__lista button[aria-selected="true"] { border-color: rgba(243, 211, 138, .6); background: rgba(243, 211, 138, .08); } .md__lista button[aria-selected="true"] b { color: var(--gold2); }
+.md__det { overflow: auto; padding: 0 0 26px; }
+.md__capa { position: relative; height: 210px; overflow: hidden; } .md__capa img { width: 100%; height: 100%; object-fit: cover; } .md__capa::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 30%, var(--bg2)); }
+.md__capa div { position: absolute; left: 26px; bottom: 12px; z-index: 1; } .md__capa small { font: 600 11px/1 var(--sans); letter-spacing: .28em; text-transform: uppercase; color: var(--gold); } .md__capa h3 { font-size: clamp(28px, 3.4vw, 44px); margin-top: 6px; }
+.md__corpo { padding: 6px 26px 0; display: grid; gap: 18px; } .md__corpo > p { margin: 0; color: #d8cdbb; font-size: 16px; }
+.md__nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } .md__nums div { padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(0, 0, 0, .25); } .md__nums b { display: block; font: 800 24px/1.1 var(--sans); color: var(--gold2); } .md__nums span { font-size: 12px; color: var(--mut); }
+.md__g { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; } .md__g h4 { font: 800 11px/1 var(--sans); letter-spacing: .22em; text-transform: uppercase; color: var(--gold); margin: 0 0 10px; }
+.md__g ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; font-size: 14.5px; } .md__g li { padding-left: 20px; position: relative; } .md__g li::before { content: "✦"; position: absolute; left: 0; top: 2px; font-size: 11px; color: var(--ember); }
+.md__x { position: absolute; right: 12px; top: 12px; z-index: 3; width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: rgba(11, 10, 13, .8); color: var(--ink); font-size: 18px; cursor: pointer; }
+.md .num { margin-top: 0; } .md .num table { min-width: 0; font-size: 14px; } .md .num th, .md .num td { padding: 10px 14px; }
+@media (max-width: 760px) { .md__in { grid-template-columns: 1fr; overflow: auto; } .md__lista { grid-template-columns: repeat(3, 1fr); border-right: 0; border-bottom: 1px solid var(--line); padding: 54px 10px 10px; } .md__lista button { padding: 10px 8px; } .md__lista button b { font-size: 14px; } .md__lista button small { display: none; } .md__det { overflow: visible; } .md__g, .md__nums { grid-template-columns: 1fr; } .md__capa { height: 150px; } }
+@media (prefers-reduced-motion: reduce) { .mod, .mod__img, .neg__c, .neg__m img { transition: none; } }
 /* números e compromissos */
 .num { margin-top: 44px; overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--bg2); }
 .num table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 15px; font-variant-numeric: tabular-nums; }
@@ -191,7 +229,7 @@ html { scroll-behavior: smooth; }
 <section id="fio" class="band fiosec">
   <div class="fiosec__bg" aria-hidden="true">
     <img class="fiosec__vila" src="/img/arte-vila.webp" alt="" loading="lazy">
-    <img class="fiosec__tear" src="/img/m-caldeira.webp" alt="" loading="lazy">
+    <img class="fiosec__tear" src="/img/arte-carroca-latao.webp" alt="" loading="lazy">
     <svg viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M6 0C12 4 12 12 16 18S34 25 42 29 46 42 48 54 58 72 70 81 88 94 94 100"/></svg>
   </div>
   <div class="in">
@@ -226,8 +264,8 @@ html { scroll-behavior: smooth; }
     <h2>Uma parceria do tamanho da sua casa.</h2>
     <p class="lead">Existem três tipos de casa hoje, e cada um entra na parceria de um jeito. O jogo e o Fio são os mesmos; mudam a comissão, o tamanho do lugar que a casa ganha dentro do jogo e o papel dela nos campeonatos.</p>
     <div class="mods">
-      <article class="mod mod--1">
-        <img class="mod__img" src="/img/k-v3_casa.webp" alt="" loading="lazy">
+      <article class="mod mod--1" data-md="0" tabindex="0" role="button" aria-haspopup="dialog">
+        <div class="mod__imgw"><img class="mod__img" src="/img/k-v3_casa.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Lan House</span>
           <h3>Estalagem</h3>
@@ -238,10 +276,11 @@ html { scroll-behavior: smooth; }
           <ul><li><b>20%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Nome e endereço no mapa de casas parceiras do site</li><li>Primeiro kit de divulgação de graça; depois, o Shop do Parceiro</li><li><b>30% de desconto</b> na loja de itens KARMIKA, para revender</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Torneio da Casa todo mês, com prêmios dentro do jogo enviados pelo Tear</li><li>As guildas da casa disputam as Classificatórias</li></ul>
+          <button class="mod__abre" type="button">Ver tudo deste nível</button>
         </div>
       </article>
-      <article class="mod mod--2">
-        <img class="mod__img" src="/img/k-oficios_hall.webp" alt="" loading="lazy">
+      <article class="mod mod--2" data-md="1" tabindex="0" role="button" aria-haspopup="dialog">
+        <div class="mod__imgw"><img class="mod__img" src="/img/k-oficios_hall.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Lan House Premium</span>
           <h3>Salão de Guilda</h3>
@@ -252,10 +291,11 @@ html { scroll-behavior: smooth; }
           <ul><li><b>25%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Canal direto com a equipe da D2 Studio</li><li>Destaque no mapa de casas e nos rankings do site</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Sede de rodadas das Classificatórias</li><li>A guilda da casa briga pelo selo Diamante, Ouro ou Prata</li><li>Apoio do Tear para transmitir as partidas</li></ul>
+          <button class="mod__abre" type="button">Ver tudo deste nível</button>
         </div>
       </article>
-      <article class="mod mod--3">
-        <img class="mod__img" src="/img/k-v2_jarlsheim.webp" alt="" loading="lazy">
+      <article class="mod mod--3" data-md="2" tabindex="0" role="button" aria-haspopup="dialog">
+        <div class="mod__imgw"><img class="mod__img" src="/img/k-v2_jarlsheim.webp" alt="" loading="lazy"></div>
         <div class="mod__body">
           <span class="mod__real">Hub Digital</span>
           <h3>Cidadela</h3>
@@ -266,6 +306,7 @@ html { scroll-behavior: smooth; }
           <ul><li><b>30%</b> de tudo o que a casa vende: pacotes do jogo, cartões e loja do jogo</li><li>Eventos assinados junto com KARMIKA</li><li>Prioridade para sediar finais e lançamentos</li></ul>
           <h4>Campeonatos</h4>
           <ul><li>Sede dos Playoffs das guildas Diamante, Ouro e Prata</li><li>Candidata a palco do KARMIKA Championship</li><li>Mapa criado pelo Tear só para o evento</li></ul>
+          <button class="mod__abre" type="button">Ver tudo deste nível</button>
         </div>
       </article>
     </div>
@@ -285,20 +326,20 @@ html { scroll-behavior: smooth; }
         <tbody><tr><th scope="row">Jogo Base</th><td>R$ 49,90</td><td>R$ 9,98</td><td>R$ 12,48</td><td>R$ 14,97</td></tr><tr><th scope="row">Pacote I</th><td>R$ 69,90</td><td>R$ 13,98</td><td>R$ 17,48</td><td>R$ 20,97</td></tr><tr><th scope="row">Pacote II</th><td>R$ 94,90</td><td>R$ 18,98</td><td>R$ 23,73</td><td>R$ 28,47</td></tr><tr><th scope="row">Pacote III</th><td>R$ 139,90</td><td>R$ 27,98</td><td>R$ 34,98</td><td>R$ 41,97</td></tr><tr><th scope="row">Pacote Fundador</th><td>R$ 429,90</td><td>R$ 85,98</td><td>R$ 107,48</td><td>R$ 128,97</td></tr></tbody>
       </table>
     </div>
-    <div class="terms">
-      <div><b>Quanto mais parceira, mais ganha</b><span>Uma comissão só para tudo: pacotes do jogo, cartões e loja do jogo. 20% na Estalagem, 25% no Salão de Guilda e 30% na Cidadela, que é o teto.</span></div>
-      <div><b>Terrenos de guilda</b><span>Construir casa no jogo é gratuito. Já os terrenos de guilda são poucos, ficam nos lugares mais bonitos do mundo e são comprados com dinheiro de verdade. É neles que a guilda ergue a sede, e a casa parceira ganha a comissão dela em cada um vendido no seu reino.</span></div>
-      <div><b>Transferência de reino</b><span>O jogador que mudar de casa pode levar o personagem para outro reino por um serviço pago.</span></div>
-      <div><b>Cartões KARMIKA</b><span>A casa vende no balcão o cartão de crédito de jogo e o cartão de dinheiro para comprar itens. O cliente paga à casa e resgata o código dentro do jogo.</span></div>
-      <div><b>Acerto de contas</b><span>Quando um cartão é usado, a parte de KARMIKA é descontada do que a casa tem a receber. Se não houver saldo, a casa recebe por e-mail a cobrança do valor, com o extrato das vendas.</span></div>
-      <div><b>Primeiro material de graça</b><span>O primeiro kit de divulgação não custa nada: cartões, folhetos, heróis do jogo em papelão, cartões de crédito de jogo e cartões de dinheiro para itens.</span></div>
-      <div><b>Shop do Parceiro</b><span>Depois do primeiro kit, a casa compra no Shop do Parceiro o que quiser: sacolas, mais cartões de crédito, canecas, papelão de propaganda e itens de campeonato.</span></div>
-      <div><b>Itens para revender</b><span>Bonecos, camisetas, jaquetas e todo o resto da loja KARMIKA saem para a casa com 30% de desconto de parceiro, para revender no próprio balcão.</span></div>
-      <div><b>Eventos da casa</b><span>Inscrição e bilheteria dos torneios que a casa organiza ficam 100% com a casa. Em evento assinado junto com KARMIKA, 70% da bilheteria é da casa.</span></div>
-      <div><b>Reino cheio, casa em destaque</b><span>Quanto mais jogadores no reino, mais visibilidade na parceria: destaque no site, prioridade para sediar eventos e visita da equipe da D2 Studio.</span></div>
-      <div><b>Custo para entrar</b><span>Casas fundadoras não pagam taxa de adesão nem mensalidade. A casa entra com o computador do reino, as máquinas e a internet.</span></div>
-      <div><b>Repasse</b><span>Todo mês, até o dia 10, por Pix, com extrato de cada venda, de cada cartão usado e de cada desconto.</span></div>
-      <div><b>Preço único</b><span>Pacotes e cartões custam no balcão o mesmo que no site oficial. A margem da casa já está dentro do preço.</span></div>
+    <h3 class="neg__h">Negócios, na língua de KARMIKA.</h3>
+    <div class="neg">
+      <article class="neg__c"><div class="neg__m"><img src="/img/arte-carroca-latao.webp" alt="" loading="lazy"></div><div class="neg__t"><small>A parte do mercador</small><b>Comissão em tudo</b><span>Uma comissão só, pelo nível da casa: 20% na Estalagem, 25% no Salão de Guilda e 30% na Cidadela, que é o teto. Vale para pacotes do jogo, cartões, loja do jogo e terrenos de guilda.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/ab-carroca-ana.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Moeda de balcão</small><b>Cartões KARMIKA</b><span>A casa vende no balcão o cartão de crédito de jogo e o cartão de dinheiro para itens. O cliente paga à casa e resgata o código dentro do jogo.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/k-v3_escritura.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Livro-caixa do reino</small><b>O acerto do mês</b><span>Quando um cartão é usado, a parte de KARMIKA sai do que a casa tem a receber. Sem saldo, a casa recebe a cobrança por e-mail, com o extrato. O fechamento é todo mês, até o dia 10, por Pix.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/ab-construcoes.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Chão de guilda</small><b>Terrenos de guilda</b><span>Construir casa é gratuito. Terreno de guilda, não: são só 12 por reino, 6 para guildas de karma positivo e 6 para as de karma negativo. De cada lado, 3 comuns (R$ 99,90), 2 nobres (R$ 149,90) e 1 lendário (R$ 249,90). A cada dois anos a guilda renova com 50% de desconto ou abre mão; quem para de jogar e não renova perde o terreno.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-guerreiro.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Travessia</small><b>Transferência de reino</b><span>O jogador que mudar de casa leva o personagem para outro reino por um serviço pago.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/ab-vila-props.webp" alt="" loading="lazy"></div><div class="neg__t"><small>O primeiro baú</small><b>Primeiro material de graça</b><span>O primeiro kit de divulgação é por nossa conta: cartões, folhetos, heróis do jogo em papelão, cartões de crédito de jogo e cartões de dinheiro para itens.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/ab-carrocas-folha.webp" alt="" loading="lazy"></div><div class="neg__t"><small>A caravana volta</small><b>Shop do Parceiro</b><span>Depois do primeiro kit, a casa pede o que quiser: sacolas, mais cartões, canecas, papelão de propaganda e itens de campeonato.</span></div></article>
+      <article class="neg__c"><div class="neg__m"><img src="/img/arte-escudos.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Relíquias de vitrine</small><b>Itens para revender</b><span>Bonecos, camisetas, jaquetas e o resto da loja KARMIKA saem para a casa com 30% de desconto de parceiro, para revender no próprio balcão.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-guerreira.webp" alt="" loading="lazy"></div><div class="neg__t"><small>A arena é sua</small><b>Eventos da casa</b><span>Inscrição e bilheteria dos torneios que a casa organiza ficam 100% com ela. Em evento assinado junto com KARMIKA, 70% da bilheteria é da casa.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-maga.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Estandarte alto</small><b>Reino cheio, casa em destaque</b><span>Quanto mais jogadores no reino, mais visibilidade: destaque no site, prioridade para sediar eventos e visita da equipe da D2 Studio.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-anao.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Porta aberta</small><b>Custo para entrar</b><span>Casas fundadoras não pagam taxa de adesão nem mensalidade. A casa entra com o computador do reino, as máquinas e a internet.</span></div></article>
+      <article class="neg__c neg__c--h"><div class="neg__m"><img src="/img/c-tecnocrata.webp" alt="" loading="lazy"></div><div class="neg__t"><small>Palavra de mercador</small><b>Preço único</b><span>Pacotes e cartões custam no balcão o mesmo que no site oficial. A margem da casa já está dentro do preço.</span></div></article>
     </div>
     <p class="lead">Uma conta de exemplo: uma Estalagem que vende 30 pacotes Base e 10 Pacotes II em um mês recebe R$ 489,20 só no balcão, fora a comissão da loja do jogo e a revenda dos itens.</p>
   </div>
@@ -442,12 +483,50 @@ html { scroll-behavior: smooth; }
 </section>
 </main>
 
+<dialog class="md" id="md" aria-label="Os níveis da parceria"><button class="md__x" type="button" aria-label="Fechar">✕</button><div class="md__in"><div class="md__lista" role="tablist"></div><div class="md__det" role="tabpanel"></div></div></dialog>
+
 <footer class="foot">
   <img src="/img/logo-brasa.webp" alt="" width="64" height="48">
   <p>KARMIKA © 2026 D2 Studio · Feito no Brasil · <a href="/">Voltar ao site do jogo</a></p>
 </footer>
 
 <script>
+/* os três níveis, explicados por inteiro (abre ao clicar num cartão) */
+(function () {
+  var PAC = [['Jogo Base', 49.9], ['Pacote I', 69.9], ['Pacote II', 94.9], ['Pacote III', 139.9], ['Pacote Fundador', 429.9]];
+  var N = [
+    { nome: 'Estalagem', real: 'Lan House', img: '/img/k-v3_casa.webp', com: 20, maq: '8 ou mais', lugar: 'Aldeia',
+      txt: 'A lan do bairro, a loja de informática, a loja geek com um canto de jogo. É onde todo herói começa: o cliente cria o personagem no seu balcão e volta toda semana para o reino que tem o nome da sua casa.',
+      tem: ['Computador do reino dedicado, com 16 GB de memória e SSD', 'Internet cabeada de 100 Mb', 'Balcão de vendas', 'Um Guardião do Reino: alguém da casa treinado pela D2 Studio'],
+      ganha: ['20% de tudo o que vende: pacotes, cartões, loja do jogo e terrenos de guilda', 'A sua casa vira uma aldeia no mapa do reino, com o nome dela', 'KARMIKA instalado e atualizado em todas as máquinas', 'Painel com quem está jogando, ranking da casa e agenda', 'Primeiro kit de divulgação de graça; depois, o Shop do Parceiro', '30% de desconto nos produtos KARMIKA para revender', 'Nome e endereço no mapa de casas parceiras'],
+      camp: ['Torneio da Casa: 1 por mês, com prêmios do jogo enviados pelo Tear', 'As guildas da casa disputam as Classificatórias'] },
+    { nome: 'Salão de Guilda', real: 'Lan House Premium', img: '/img/k-oficios_hall.webp', com: 25, maq: '20 ou mais', lugar: 'Vila com sede de guilda',
+      txt: 'A arena gamer: máquinas fortes, periféricos de competição e times que treinam ali. É onde as guildas ganham nome, brasão e torcida.',
+      tem: ['Computador do reino dedicado, com 32 GB de memória e SSD', 'Internet cabeada de 300 Mb', 'Sala ou área de equipe', 'Um Guardião do Reino treinado pela D2 Studio'],
+      ganha: ['25% de tudo o que vende', 'A sua casa vira uma vila com sede de guilda no mapa do reino', 'Guilda oficial da casa, com brasão próprio dentro do jogo', 'Atualizações antecipadas: a sua casa joga a novidade antes', 'Itens e promoções que só existem no seu reino', 'Canal direto com a equipe da D2 Studio', 'Tudo o que a Estalagem tem'],
+      camp: ['Torneio da Casa: 2 por mês', 'Sede de rodadas das Classificatórias', 'A guilda da casa briga pelo selo Diamante, Ouro ou Prata', 'Apoio do Tear para transmitir as partidas'] },
+    { nome: 'Cidadela', real: 'Hub Digital', img: '/img/k-v2_jarlsheim.webp', com: 30, maq: '40 ou mais', lugar: 'Cidade',
+      txt: 'O centro da cena: arena, palco, estúdio de transmissão e público. É onde os reinos se enfrentam diante de todo mundo, e onde as finais acontecem.',
+      tem: ['Servidor com 64 GB de memória, SSD e nobreak', 'Fibra de 500 Mb, com um segundo link de reserva', 'Palco, telão e transmissão ao vivo', 'Um Guardião do Reino treinado pela D2 Studio'],
+      ganha: ['30% de tudo o que vende: é o teto da parceria', 'A sua casa vira uma cidade no mapa do reino', 'Reino aberto à região: recebe jogadores de outras casas em dia de evento', 'Voz na escolha dos mapas e das regras dos campeonatos', 'Eventos assinados junto com KARMIKA, com 70% da bilheteria', 'Prioridade para sediar finais e lançamentos', 'Tudo o que o Salão de Guilda tem'],
+      camp: ['Torneio da Casa: 2 por mês', 'Sede dos Playoffs das guildas Diamante, Ouro e Prata', 'Candidata a palco do KARMIKA Championship', 'Mapa criado pelo Tear só para o evento'] }];
+  var md = document.getElementById('md'); if (!md || !md.showModal) return; var lista = md.querySelector('.md__lista'), det = md.querySelector('.md__det');
+  function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
+  function ul(arr) { var u = el('ul'); arr.forEach(function (x) { u.appendChild(el('li', '', x)); }); return u; }
+  function reais(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+  function mostra(i) { var n = N[i]; lista.querySelectorAll('button').forEach(function (b, k) { b.setAttribute('aria-selected', String(k === i)); }); det.textContent = ''; det.scrollTop = 0;
+    var capa = el('div', 'md__capa'), im = el('img'); im.src = n.img; im.alt = ''; capa.appendChild(im); var ct = el('div'); ct.appendChild(el('small', '', n.real)); ct.appendChild(el('h3', '', n.nome)); capa.appendChild(ct); det.appendChild(capa);
+    var c = el('div', 'md__corpo'); c.appendChild(el('p', '', n.txt));
+    var nums = el('div', 'md__nums'); [[n.com + '%', 'de comissão em tudo o que a casa vende'], [n.maq, 'máquinas no salão'], [n.lugar, 'é o que a casa vira no mapa do jogo']].forEach(function (q) { var d = el('div'); d.appendChild(el('b', '', q[0])); d.appendChild(el('span', '', q[1])); nums.appendChild(d); }); c.appendChild(nums);
+    var g = el('div', 'md__g'), a = el('div'), b = el('div'); a.appendChild(el('h4', '', 'O que a casa ganha')); a.appendChild(ul(n.ganha)); b.appendChild(el('h4', '', 'O que a casa precisa ter')); b.appendChild(ul(n.tem)); var h = el('h4', '', 'Campeonatos'); h.style.marginTop = '18px'; b.appendChild(h); b.appendChild(ul(n.camp)); g.appendChild(a); g.appendChild(b); c.appendChild(g);
+    var w = el('div', 'num'), t = el('table'), cap = el('caption', '', 'O que ' + (n.nome === 'Salão de Guilda' ? 'o ' : 'a ') + n.nome + ' recebe em cada pacote vendido no balcão'); t.appendChild(cap); var hr = el('tr'); ['Pacote', 'Preço', 'Fica com a casa'].forEach(function (x) { var th = el('th', '', x); th.scope = 'col'; hr.appendChild(th); }); var th0 = el('thead'); th0.appendChild(hr); t.appendChild(th0); var tb = el('tbody');
+    PAC.forEach(function (p) { var r = el('tr'), th = el('th', '', p[0]); th.scope = 'row'; r.appendChild(th); r.appendChild(el('td', '', reais(p[1]))); r.appendChild(el('td', '', reais(Math.round(p[1] * n.com + 1e-6) / 100))); tb.appendChild(r); }); t.appendChild(tb); w.appendChild(t); c.appendChild(w);
+    var cta = el('a', 'btn', 'Quero ser ' + n.nome); cta.href = '#entrar'; cta.style.justifySelf = 'start'; cta.addEventListener('click', function () { md.close(); var sel = document.querySelector('#parForm [name=modelo]'); if (sel) sel.selectedIndex = i + 1; }); c.appendChild(cta); det.appendChild(c); }
+  N.forEach(function (n, i) { var b = el('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.appendChild(el('b', '', n.nome)); b.appendChild(el('small', '', n.real + ' · ' + n.com + '%')); b.addEventListener('click', function () { mostra(i); }); lista.appendChild(b); });
+  function abre(i) { mostra(i); md.showModal(); }
+  document.querySelectorAll('.mod[data-md]').forEach(function (m) { var i = +m.dataset.md; m.addEventListener('click', function () { abre(i); }); m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abre(i); } }); });
+  md.querySelector('.md__x').addEventListener('click', function () { md.close(); }); md.addEventListener('click', function (e) { if (e.target === md) md.close(); });
+})();
 (function () {
   var f = document.getElementById('parForm'); if (!f) return; var msg = f.querySelector('.beta__msg'), btn = f.querySelector('button'), sending = false, K = 'karmika.parceiro.sent';
   var say = function (c, t) { msg.className = 'beta__msg ' + c; msg.textContent = t; };

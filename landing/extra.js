@@ -89,7 +89,8 @@
     /* folhas: cada folha tem frente (página da direita) e verso (a da esquerda da próxima abertura) */
     /* 10/11 (Erling: "no celular o artbook fica bugado"): no celular é uma página por vez, então cada página vira uma folha só de frente
        (antes o verso ficava escondido e metade do livro sumia: títulos e metade das imagens) */
-    const mq = matchMedia('(max-width: 760px)'), narrow = () => mq.matches;
+    /* 12/11 (Erling: "o livro não roda bem em celulares, pode deixar ele menor para caber aberto na tela em pé"): no celular o livro agora abre inteiro, com as duas páginas, só que menor */
+    const mq = matchMedia('(max-width: 760px)'), narrow = () => false;
     let leaves = [], L = [], at = 0, total = 0;
     const build = () => {
       if (narrow()) { const one = pages.filter((p) => !p.includes('abp--blank')); leaves = one.map((p) => [p, '']); total = one.length - 1; }

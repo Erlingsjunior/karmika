@@ -680,3 +680,37 @@ main > section.jogar::before { content: ""; position: absolute; pointer-events: 
 @media (min-width: 1500px) { .nav > .btn--small { padding: 15px 28px; font-size: 13.5px; } .nav .nav__playbtn + .btn--small { margin-left: 16px; margin-right: auto; } }
 /* 12/11 (Erling: "menu central 350 px mais para a direita, depois espaço igual nas duas faces que sobram, os buttons centralizados nesse espaço"): em tela bem larga o menu anda para a direita (até 350 px) e os dois botões ficam no meio do que sobra entre o menu e a borda */
 @media (min-width: 1700px) { .nav__links { padding-left: clamp(0px, calc((100vw - 1700px) * .64), 525px); } }
+
+/* 12/11: o artbook no celular: aberto inteiro (duas páginas), menor, e com a virada mais leve (sem sombra pesada nas imagens) */
+@media (max-width: 760px) {
+  .abook__book { aspect-ratio: 2 / 1.3 !important; width: 100% !important; perspective: 1400px !important; }
+  .abook__book:not(.is-open) { transform: translateX(-24.3%); }
+  .leaf { left: 50% !important; width: 48.6% !important; transition: transform .7s cubic-bezier(.3, .1, .2, 1) !important; will-change: transform; }
+  .leaf.turned { transform: rotateY(-180deg) !important; opacity: 1 !important; pointer-events: auto !important; }
+  .leaf__b { display: block !important; }
+  .abook__base { left: 50% !important; width: 50% !important; }
+  .abook__book.is-open .abook__base { left: 0 !important; width: 100% !important; }
+  .abp { padding: 5% 6% 4%; } .abp img { filter: none; } .abp span { font-size: 8.5px; margin-top: 2px; line-height: 1.15; }
+  .abp--cover { gap: 4px; } .abp--cover b { font-size: 15px; } .abp--cover i { font-size: 6.5px; letter-spacing: .12em; } .abp--cover small { font-size: 7px; }
+  .abp--title b { font-size: 13px; }
+  .abook__nav button { width: 46px; height: 46px; }
+}
+/* 12/11 (Erling: "mostrar todos os pacotes aqui, não somente embaixador, na linguagem karmika"): os cinco pacotes, cada um com o seu herói */
+.packs { max-width: 1240px; margin: 12vh auto 0; text-align: center; }
+.packs h3 { font-size: clamp(28px, 3.4vw, 46px); margin-bottom: 14px; } .packs > p { color: var(--mut); max-width: 62ch; margin: 0 auto; }
+.packs__grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 40px 0 26px; text-align: left; align-items: stretch; }
+.pack { position: relative; display: grid; align-content: start; gap: 6px; padding: 150px 18px 20px; border-radius: 18px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(18, 16, 22, .92) 46%); overflow: hidden; transition: transform .3s, border-color .3s, box-shadow .3s; }
+.pack:hover { transform: translateY(-6px); border-color: rgba(243, 211, 138, .6); box-shadow: 0 30px 70px -30px rgba(217, 165, 74, .6); }
+.pack img { position: absolute; top: 10px; left: 50%; height: 210px; width: auto; max-width: none; transform: translateX(-50%); -webkit-mask-image: linear-gradient(180deg, #000 52%, transparent 78%); mask-image: linear-gradient(180deg, #000 52%, transparent 78%); transition: transform .4s; }
+.pack:hover img { transform: translateX(-50%) scale(1.07); }
+.pack small { position: relative; font: 600 11px/1 var(--sans); letter-spacing: .26em; text-transform: uppercase; color: var(--gold); }
+.pack h4 { position: relative; margin: 0; font: 700 clamp(18px, 1.5vw, 23px)/1.15 var(--serif); }
+.pack__p { position: relative; font: 800 clamp(20px, 1.7vw, 26px)/1.1 var(--sans); color: var(--gold2); margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.pack ul { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; font-size: 14px; color: #d8cdbb; }
+.pack li { padding-left: 18px; position: relative; } .pack li::before { content: "✦"; position: absolute; left: 0; top: 2px; font-size: 11px; color: var(--ember); }
+.pack--f { border-color: rgba(217, 165, 74, .7); background: linear-gradient(180deg, rgba(217, 165, 74, .16), rgba(18, 16, 22, .94) 50%); box-shadow: 0 30px 80px -40px rgba(217, 165, 74, .8); }
+.packs__nota { font-size: 13px; margin-bottom: 14px !important; }
+.founder__preco { font: 800 18px var(--sans); color: var(--gold2) !important; letter-spacing: .04em; margin: 0 0 12px; }
+@media (max-width: 1100px) { .packs__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .packs__grid { grid-template-columns: 1fr 1fr; } .pack { padding-top: 120px; } .pack img { height: 170px; } }
+@media (max-width: 420px) { .packs__grid { grid-template-columns: 1fr; } }
