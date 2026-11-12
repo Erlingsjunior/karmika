@@ -16,7 +16,7 @@ export interface OlhoCtx {
   /** os bichos acordados a até 40 m */ bichos(): { tipo: string; nome: string; nivel: number; estado: string; vida: number; d: number }[];
   /** gente por perto (até 30 m): quem é e se está lutando */ gente(): { nome: string; papel: string; d: number; lutando: boolean }[];
   log(t: string, c?: string): void;
-  /** o jogador está tentando andar agora (tecla apertada ou caminho de clique em andamento) */ querendoAndar?(): boolean;
+  /** o jogador está tentando andar agora (tecla apertada ou caminho de clique em andamento) */ querendoAndar?(): boolean; /** solta teclas e botão do mouse presos */ solta?(): void;
 }
 export function createOlhoClaude(K: OlhoCtx) {
   let on = false, t0 = 0, tA: ReturnType<typeof setInterval> | null = null, tF: ReturnType<typeof setInterval> | null = null, tP: ReturnType<typeof setInterval> | null = null, obs: MutationObserver | null = null;
@@ -61,7 +61,8 @@ export function createOlhoClaude(K: OlhoCtx) {
   const baixa = (txt: string, nome: string) => { const blob = new Blob([txt], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000); };
   let pend: string | null = null; try { pend = localStorage.getItem(PEND); } catch { /* */ }
   if (pend) { btn.classList.add('on'); btn.title = 'Há uma gravação da sessão anterior guardada. Clique para BAIXAR o arquivo.'; setTimeout(() => K.log('✳ Olho do Claude: a gravação da sessão anterior ficou guardada. Clique no ✳ (à direita, embaixo) para baixar o arquivo.', '#ff9a6a'), 6000); }
-  btn.addEventListener('click', (e) => { e.stopPropagation();
+  btn.tabIndex = -1; btn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); }); /* o botão nunca fica com o foco do teclado: Espaço e Enter continuam sendo do jogo */
+  btn.addEventListener('click', (e) => { e.stopPropagation(); btn.blur(); K.solta?.();
     if (pend) { const d = new Date(), p2 = (n: number) => String(n).padStart(2, '0'), nome = `karmika-olho-anterior-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.json`; baixa(pend, nome); pend = null; try { localStorage.removeItem(PEND); } catch { /* */ } btn.classList.remove('on'); btn.title = 'Olho do Claude: grava a sessão num arquivo para o Claude ler. Clique para ligar.'; K.log(`✳ Gravação anterior baixada: ${nome}. Mande esse arquivo na conversa com o Claude. Clique de novo no ✳ para começar outra.`, '#ff9a6a'); return; }
     if (on) stop(); else start(); });
   return { get on() { return on; }, start, stop, fala, dados: () => D };

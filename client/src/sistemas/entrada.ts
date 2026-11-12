@@ -220,6 +220,10 @@ addEventListener('keydown', (e) => {
   void ORDER;
 });
 addEventListener('keyup', (e) => { const kk = e.key.toLowerCase(); if (CAM_FREE && kk === 'e' && keys.has('e') && !eRot && !K.inv.isOpen && !K.quests.isOpen && !K.dlg.isOpen) K.interact(); keys.delete(kk); });
+/* 12/11 (Erling: "clico no claude e o boneco começa a andar numa direção e não para mais"): quando a janela perde o foco (a caixa de salvar um arquivo,
+   Alt+Tab, outro programa por cima), o "soltei a tecla" e o "soltei o botão" nunca chegam e o herói seguia andando para sempre. Perdeu o foco: solta tudo. */
+const soltaAndar = () => { keys.clear(); try { K.state.path = []; } catch { /* ainda carregando */ } };
+addEventListener('blur', soltaAndar); document.addEventListener('visibilitychange', () => { if (document.hidden) soltaAndar(); });
 let eDown = 0, eRot = false;
 let drag: { x: number; y: number } | null = null;
 K.canvas.addEventListener('contextmenu', (e) => e.preventDefault());

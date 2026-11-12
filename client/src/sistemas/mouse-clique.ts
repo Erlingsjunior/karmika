@@ -17,7 +17,7 @@ addEventListener('pointermove', (e) => {
 });
 let rmb = false;
 addEventListener('pointerup', (e) => { if (e.button === 2) rmb = false; if (e.button === 0) K.cliqueSys.lmbHold = 0; });
-addEventListener('blur', () => { rmb = false; });
+addEventListener('blur', () => { rmb = false; K.cliqueSys.lmbHold = 0; /* 12/11: perdeu o foco com o botão apertado: o herói não segue mais o mouse sozinho */ });
 /* marca de clique no chão: losango kármico que abre e some */
 const clickMarks: { m: THREE.Mesh; t: number }[] = [];
 const clickGeo = (() => { const sh = new THREE.Shape(); sh.moveTo(0, 0.55); sh.lineTo(0.38, 0); sh.lineTo(0, -0.55); sh.lineTo(-0.38, 0); sh.closePath(); const hole = new THREE.Path(); hole.moveTo(0, 0.32); hole.lineTo(0.22, 0); hole.lineTo(0, -0.32); hole.lineTo(-0.22, 0); hole.closePath(); sh.holes.push(hole); return new THREE.ShapeGeometry(sh).rotateX(-Math.PI / 2); })();
