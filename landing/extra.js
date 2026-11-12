@@ -170,8 +170,12 @@ document.querySelectorAll('.live .dn img, .live .ev img, .pillar img').forEach((
   set();
 })();
 
-/* 12/11: a fonte da seção "Jogue de graça" se abre em cenas do jogo. Com mouse: ao passar por cima. No toque: quando a seção entra na tela. */
-(function () { var a = document.getElementById('jogarArt'); if (!a) return;
-  if (window.matchMedia && matchMedia('(hover: hover)').matches) { a.addEventListener('mouseenter', function () { a.classList.add('is-open'); }); a.addEventListener('mouseleave', function () { a.classList.remove('is-open'); }); a.addEventListener('focus', function () { a.classList.add('is-open'); }); a.addEventListener('blur', function () { a.classList.remove('is-open'); }); }
-  else if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { es.forEach(function (x) { a.classList.toggle('is-open', x.intersectionRatio >= 0.7); }); }, { threshold: [0, 0.7, 1] }).observe(a);
-  else a.classList.add('is-open'); })();
+/* 12/11: a seção "Jogue de graça" se abre (cenas saltam da fonte, personagens entram, o Olho vem da esquerda e segue o mouse).
+   Com mouse: enquanto ele está na seção. No toque: quando a arte entra na tela. */
+(function () { var sec = document.getElementById('jogar'), a = document.getElementById('jogarArt'), eye = document.getElementById('jogarEye'); if (!sec || !a) return;
+  var pup = eye && eye.querySelector('.jg-pupil');
+  var look = function (e) { if (!pup) return; var r = eye.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / 260); pup.setAttribute('transform', 'translate(' + (dx / d * 36 * k).toFixed(1) + ' ' + (dy / d * 14 * k).toFixed(1) + ')'); };
+  if (window.matchMedia && matchMedia('(hover: hover)').matches) { sec.addEventListener('mouseenter', function () { sec.classList.add('is-open'); }); sec.addEventListener('mouseleave', function () { sec.classList.remove('is-open'); }); sec.addEventListener('mousemove', look);
+    a.addEventListener('focus', function () { sec.classList.add('is-open'); }); a.addEventListener('blur', function () { sec.classList.remove('is-open'); }); }
+  else if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { es.forEach(function (x) { sec.classList.toggle('is-open', x.intersectionRatio >= 0.7); }); }, { threshold: [0, 0.7, 1] }).observe(a);
+  else sec.classList.add('is-open'); })();
