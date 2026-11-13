@@ -558,6 +558,11 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     if (!squeeze) for (const [cx2, cz2, rad] of cols) if (Math.hypot(x - cx2, z - cz2) < rad * 0.7) return false;
     return true;
   };
+  /* 13/11: a passagem para o Grande Salão do Tear, à direita de quem entra no Salão das Guildas: um aro de ouro no chão e um marco de latão com o Olho aceso */
+  if (variant === 17) { const px = W / 2 + 4.4, pz = D - 1.4, ouro = new THREE.MeshBasicMaterial({ color: 0xffd24a, toneMapped: false });
+    const aro = new THREE.Mesh(new THREE.RingGeometry(0.85, 1.05, 32).rotateX(-Math.PI / 2), ouro); aro.position.set(px, 0.04, pz); g.add(aro);
+    const marco = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 2.2, 8), std(0xc8963a)); marco.position.set(px + 1.15, 1.1, pz); g.add(marco);
+    const olho = new THREE.Mesh(new THREE.OctahedronGeometry(0.24), ouro); olho.scale.set(1.5, 0.8, 1.5); olho.position.set(px + 1.15, 2.5, pz); g.add(olho); spin.push(olho); }
   let bT = 0; const flicker = (t: number) => { const bdt = Math.min(0.05, Math.max(0, t - bT)); bT = t; for (const b of bichos) b.pose(bdt, t); for (const o of spin) o.rotation.y = t * 0.35; for (const l of lights) l.l.intensity = l.base * (0.9 + 0.1 * Math.sin(t * 9 + l.ph) + 0.05 * Math.sin(t * 23 + l.ph * 2)); };
   const floorY = upper ? (x: number, z: number) => { const U = upper!; /* a escada leva ao segundo andar: a altura acompanha os degraus, e o andar em que o herói está fica guardado */
       if (x > U.SX0 - 0.1 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZB + 0.3) { const t = Math.max(0, Math.min(1, (U.SZB - z) / (U.SZB - U.SZT))); U.onStair = true; U.level = t > 0.55 ? 1 : 0; return U.GY * t; }
