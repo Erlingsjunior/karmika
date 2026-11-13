@@ -8,11 +8,12 @@
 import * as THREE from 'three';
 import { std, plankTex, stoneTex, woodTex } from './toon3d';
 import { RUNAS } from './runas';
+import { kitPut, kitLoad, kitReady } from './libs/kitprops';
 
 export type DecorWhere = 'in' | 'out' | 'both';
 export type DecorPool = 'chefe' | 'elite' | 'mundo';
 export interface DecorDef { name: string; icon: string; where: DecorWhere; kind: 'mob' | 'deco'; desc: string; r: number;
-  /** mobília: preço em ouro e tábuas */ gold?: number; plank?: number; pool?: DecorPool; wall?: boolean; build(): THREE.Group }
+  /** mobília: preço em ouro e tábuas */ gold?: number; plank?: number; pool?: DecorPool; wall?: boolean; /** 13/11: peça do catálogo de mobília (modelo pronto); também vendida no Shop, aba Lar & Lareira */ kit?: string; brl?: number; build(): THREE.Group }
 
 const MC = new Map<string, THREE.Material>();
 const M = (c: number, e = 0) => { const k = c + ':' + e; let m = MC.get(k); if (!m) { m = std(c, e ? { emissive: new THREE.Color(c).multiplyScalar(e) } : {}); MC.set(k, m); } return m; };
@@ -140,6 +141,29 @@ export const DECOR: Record<string, DecorDef> = {
     build() { const g = new THREE.Group(); const m = DARKW(); for (const x of [-0.75, 0.75]) box(g, 0.1, 2.0, 0.1, m, x, 1.0, 0); const a = add(g, new THREE.TorusGeometry(0.75, 0.05, 5, 16, Math.PI), m, 0, 2.0, 0); void a; const cs = [0xff7aa8, 0xffe06a, 0xf4ecdc, 0xff9a5a]; for (let i = 0; i < 14; i++) { const t = i / 13 * Math.PI; sph(g, 0.09, M(cs[i % 4], 0.2), Math.cos(t) * 0.75, 2.0 + Math.sin(t) * 0.75, 0.04); } for (let i = 0; i < 8; i++) sph(g, 0.08, M(0x3f7a34), (i % 2 ? 0.75 : -0.75), 0.3 + i * 0.2, 0.06); return g; } },
   dec_bandeira: { name: 'Bandeira das Duas Bandeiras', icon: '🏳', where: 'out', kind: 'deco', pool: 'mundo', r: 0.3, desc: 'Metade Ordem do Fio, metade Desfiados, costurada no meio. Quem pendura não escolhe lado — escolhe a vila.',
     build() { const g = new THREE.Group(); cyl(g, 0.04, 0.05, 3.0, DARKW(), 0, 1.5, 0, 6); sph(g, 0.07, M(0xc9a24a), 0, 3.03, 0); const m = canvasMat((c, w, h) => { c.fillStyle = '#d9b45a'; c.fillRect(0, 0, w / 2, h); c.fillStyle = '#4a2a6a'; c.fillRect(w / 2, 0, w / 2, h); c.strokeStyle = '#f4ecdc'; c.setLineDash([4, 4]); c.lineWidth = 2; c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w / 2, h); c.stroke(); }, 64, 40); const f = add(g, new THREE.PlaneGeometry(1.1, 0.7), m, 0.57, 2.55, 0); (f.material as THREE.MeshBasicMaterial).side = THREE.DoubleSide; return g; } },
+
+  /* ===================== LAR & LAREIRA (13/11, Erling: "pegue vários itens de housing, coloque no shop com imagens 3D e use os mesmos itens decorando salões e tavernas") =====================
+     Peças prontas do catálogo de mobília. Compram-se com ouro e tábuas (B → Mobília) ou no Shop, aba Lar & Lareira. Só enfeitam: nenhuma dá força. */
+  lar_cama_casal: { name: 'Cama de Casal', icon: '🛏', where: 'in', kind: 'mob', gold: 1400, plank: 10, r: 1.2, kit: 'mobilia/bed_double_A', brl: 5.9, desc: 'Colchão de pena, cabeceira entalhada e lugar para dois.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/bed_double_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_cama_solteiro: { name: 'Cama de Solteiro', icon: '🛏', where: 'in', kind: 'mob', gold: 800, plank: 6, r: 0.9, kit: 'mobilia/bed_single_A', brl: 3.9, desc: 'Estreita e firme, do jeito que hóspede de estalagem conhece.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/bed_single_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_poltrona: { name: 'Poltrona com Almofadas', icon: '🛋', where: 'in', kind: 'mob', gold: 700, plank: 5, r: 0.6, kit: 'mobilia/armchair_pillows', brl: 3.9, desc: 'Para ler, cochilar ou esperar a sopa ficar pronta.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/armchair_pillows', 0, 0, 0, 0, 0.8); return g; } },
+  lar_sofa: { name: 'Sofá com Almofadas', icon: '🛋', where: 'in', kind: 'mob', gold: 1200, plank: 8, r: 1.1, kit: 'mobilia/couch_pillows', brl: 5.9, desc: 'Três lugares, quatro se forem amigos.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/couch_pillows', 0, 0, 0, 0, 0.8); return g; } },
+  lar_tapete_oval: { name: 'Tapete Oval', icon: '🧶', where: 'in', kind: 'mob', gold: 500, plank: 0, r: 1.0, kit: 'mobilia/rug_oval_A', brl: 2.9, desc: 'Trançado à mão. Aquece o pé e a sala.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/rug_oval_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_tapete_listras: { name: 'Tapete de Listras', icon: '🧶', where: 'in', kind: 'mob', gold: 500, plank: 0, r: 1.1, kit: 'mobilia/rug_rectangle_stripes_A', brl: 2.9, desc: 'Listras largas, cores que não brigam com nada.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/rug_rectangle_stripes_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_tapete_grande: { name: 'Tapete Grande', icon: '🧶', where: 'in', kind: 'mob', gold: 650, plank: 0, r: 1.2, kit: 'mobilia/rug_rectangle_A', brl: 3.9, desc: 'Do tamanho de uma sala de visitas.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/rug_rectangle_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_estante: { name: 'Estante Cheia', icon: '📚', where: 'in', kind: 'mob', gold: 1100, plank: 10, r: 0.9, kit: 'mobilia/shelf_B_large_decorated', brl: 4.9, desc: 'Livros, potes e lembranças, já arrumados.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/shelf_B_large_decorated', 0, 0, 0, 0, 0.8); return g; } },
+  lar_comoda: { name: 'Cômoda Enfeitada', icon: '🗄', where: 'in', kind: 'mob', gold: 900, plank: 8, r: 0.8, kit: 'mobilia/cabinet_medium_decorated', brl: 4.9, desc: 'Gavetas fundas e um vaso em cima.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/cabinet_medium_decorated', 0, 0, 0, 0, 0.8); return g; } },
+  lar_criado: { name: 'Criado-Mudo', icon: '🗄', where: 'in', kind: 'mob', gold: 450, plank: 4, r: 0.5, kit: 'mobilia/cabinet_small_decorated', brl: 2.9, desc: 'Fica ao lado da cama e guarda o que ninguém precisa ver.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/cabinet_small_decorated', 0, 0, 0, 0, 0.8); return g; } },
+  lar_abajur_pe: { name: 'Abajur de Pé', icon: '🛋', where: 'in', kind: 'mob', gold: 400, plank: 2, r: 0.3, kit: 'mobilia/lamp_standing', brl: 2.9, desc: 'Luz morna para o canto da poltrona.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/lamp_standing', 0, 0, 0, 0, 0.8); return g; } },
+  lar_abajur_mesa: { name: 'Abajur de Mesa', icon: '💡', where: 'in', kind: 'mob', gold: 300, plank: 1, r: 0.25, kit: 'mobilia/lamp_table', brl: 1.9, desc: 'Pequeno, para o criado-mudo.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/lamp_table', 0, 0, 0, 0, 0.8); return g; } },
+  lar_quadro_grande: { name: 'Quadro Grande', icon: '🖼', where: 'in', kind: 'mob', gold: 600, plank: 2, r: 0.5, kit: 'mobilia/pictureframe_large_A', brl: 3.9, wall: true, desc: 'Uma paisagem de Karmika em moldura dourada.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/pictureframe_large_A', 0, 1.4, 0, 0, 0.8); return g; } },
+  lar_quadro_medio: { name: 'Quadro Médio', icon: '🖼', where: 'in', kind: 'mob', gold: 400, plank: 2, r: 0.4, kit: 'mobilia/pictureframe_medium', brl: 2.9, wall: true, desc: 'Retrato de alguém que ninguém lembra quem é.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/pictureframe_medium', 0, 1.4, 0, 0, 0.8); return g; } },
+  lar_mesa_centro: { name: 'Mesa de Centro', icon: '🪑', where: 'in', kind: 'mob', gold: 450, plank: 4, r: 0.6, kit: 'mobilia/table_low', brl: 2.9, desc: 'Baixa, para a caneca e os pés.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/table_low', 0, 0, 0, 0, 0.8); return g; } },
+  lar_mesa_jantar: { name: 'Mesa de Jantar', icon: '🪑', where: 'in', kind: 'mob', gold: 950, plank: 10, r: 1.1, kit: 'mobilia/table_medium_long', brl: 4.9, desc: 'Comprida, para a guilda inteira jantar junta.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/table_medium_long', 0, 0, 0, 0, 0.8); return g; } },
+  lar_livros: { name: 'Pilha de Livros', icon: '📚', where: 'in', kind: 'mob', gold: 250, plank: 0, r: 0.25, kit: 'mobilia/book_set', brl: 1.9, desc: 'Para pôr em cima de qualquer mesa e parecer estudioso.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/book_set', 0, 0, 0, 0, 0.8); return g; } },
+  lar_cacto: { name: 'Cacto de Vaso', icon: '🌵', where: 'in', kind: 'mob', gold: 250, plank: 0, r: 0.3, kit: 'mobilia/cactus_medium_A', brl: 1.9, desc: 'Vem dos Ermos. Não pede água nem conversa.', build() { const g = new THREE.Group(); kitPut(g, 'mobilia/cactus_medium_A', 0, 0, 0, 0, 0.8); return g; } },
+  lar_estandarte: { name: 'Estandarte Triplo', icon: '🚩', where: 'in', kind: 'mob', gold: 700, plank: 2, r: 0.4, kit: 'masmorra/banner_triple_red', brl: 3.9, wall: true, desc: 'Três panos vermelhos para a parede do salão.', build() { const g = new THREE.Group(); kitPut(g, 'masmorra/banner_triple_red', 0, 1.4, 0, 0, 0.8); return g; } },
+  lar_bau_ouro: { name: 'Baú Dourado', icon: '🧰', where: 'in', kind: 'mob', gold: 1500, plank: 6, r: 0.5, kit: 'masmorra/chest_gold', brl: 5.9, desc: 'Só enfeite: não guarda nada, mas impressiona visita.', build() { const g = new THREE.Group(); kitPut(g, 'masmorra/chest_gold', 0, 0, 0, 0, 0.8); return g; } },
 };
 export const DECOR_IDS = Object.keys(DECOR);
 export const isDecor = (id: string) => !!DECOR[id];
@@ -155,8 +179,12 @@ export function rollDecor(pool: DecorPool): string | null { if (Math.random() >=
 /** a foto do item (cards da mobília): renderizada uma vez num canvas fora da tela */
 const THUMB = new Map<string, string>(); let tr: THREE.WebGLRenderer | null = null;
 export function decorThumb(id: string): string { const c0 = THUMB.get(id); if (c0) return c0; const d = DECOR[id]; if (!d) return '';
+  if (d.kit && !kitReady(d.kit)) { void kitLoad(d.kit); return ''; } /* a peça de catálogo ainda está carregando: a foto sai na próxima vez */
   try { if (!tr) { const cv = document.createElement('canvas'); cv.width = 160; cv.height = 120; tr = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: true }); tr.setSize(160, 120, false); tr.outputColorSpace = THREE.SRGBColorSpace; }
     const sc = new THREE.Scene(); sc.add(new THREE.HemisphereLight(0xfff0d8, 0x4a3a2a, 1.6)); const sun = new THREE.DirectionalLight(0xfff4e0, 2.2); sun.position.set(4, 8, 6); sc.add(sun);
     const o = d.build(); sc.add(o); const bb = new THREE.Box3().setFromObject(o), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()), R0 = Math.max(sz.x, sz.y, sz.z, 0.4) * 0.62;
     const cam = new THREE.OrthographicCamera(-R0 * 1.33, R0 * 1.33, R0, -R0, 0.1, 100); cam.position.set(ctr.x + 6, ctr.y + 4.5, ctr.z + 6); cam.lookAt(ctr); tr.setClearColor(0x000000, 0); tr.render(sc, cam);
     const url = tr.domElement.toDataURL(); THUMB.set(id, url); return url; } catch { return ''; } }
+
+/** 13/11: as peças vendidas no Shop, aba Lar & Lareira */
+export const LAR_IDS = DECOR_IDS.filter((k) => DECOR[k].brl);

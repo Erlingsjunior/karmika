@@ -3002,6 +3002,11 @@ export function buildCity(): World {
       const decor = (kind: PropKind, gx: number, gy: number, variant: number) => { props.push({ kind, gx, gy, w: 1, h: 1, height: 1, wall: 0x6a4528, roof: 0x8a3b2e, variant }); };
       const qwall = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my);
         props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 20, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: Math.hypot(bx - ax, by - ay) * T + 0.12, broken: 0 }); };
+      /* 13/11 (Erling riscou duas bancas e mandou mudar outras duas de lugar: "lojinha no meio da rua"). Feito aqui, no fim, para não mexer no sorteio do mundo:
+         saem a banca na frente da escada do sobrado e a da frente da taverna; a do Gunnar desce para o gramado; a do Corwin sai da estrada */
+      { const banca = (lx: number, ly: number) => props.findIndex((q) => q.kind === 'stall' && q.gx === lx + KX - 18 && q.gy === ly + KY - 21);
+        for (const [lx, ly] of [[9, 9], [28, 10]]) { const i = banca(lx, ly); if (i >= 0) props.splice(i, 1); }
+        for (const [lx, ly, nx, ny] of [[31, 8, 32, 12], [35, 23, 31, 24]]) { const i = banca(lx, ly); if (i >= 0) { props[i].gx = nx + KX - 18; props[i].gy = ny + KY - 21; } } }
       let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX + 10, EY + 2, EX + 14, EY + 6], [PX, PY, PX + PW - 1, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
       if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
       else {

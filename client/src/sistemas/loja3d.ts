@@ -3,6 +3,8 @@
    o bracelete, o pergaminho, o alforje, o canteiro e a bússola são montados aqui. Um só renderer desenha todos, um por vez, e copia para o quadro do cartão. */
 import * as THREE from 'three';
 import { buildHealDrone, buildShieldBot } from '../drones3d';
+import { DECOR } from '../decor';
+import { kitReady, kitLoad } from '../libs/kitprops';
 
 const W = 168, H = 120;
 const std = (c: number, o: Partial<THREE.MeshStandardMaterialParameters> = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.35, ...o });
@@ -34,6 +36,7 @@ function trio(tier: number) { const g = new THREE.Group(), a = buildHealDrone(ti
 /** o modelo de um produto do Shop (id de ENG_PRODS / UTIL_PRODS) */
 export function prodModel(id: string): THREE.Object3D | null { const t = id.endsWith('_d30') ? 1 : 0;
   if (id.startsWith('drone_cura')) return buildHealDrone(t).g; if (id.startsWith('escudo_auto')) return buildShieldBot(t).g; if (id.startsWith('pulseira_choque')) return bracelete(t); if (id.startsWith('trio')) return trio(t);
+  if (DECOR[id]) return DECOR[id].build();
   if (id === 'u_regresso') return pergaminho(); if (id === 'u_alforje') return alforje(); if (id === 'u_obra') return canteiro(); if (id === 'u_viagem') return bussola(); return null; }
 
 let R: THREE.WebGLRenderer | null = null, falhou = false; const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 30);
@@ -45,7 +48,7 @@ export function giraCards(root: HTMLElement) { alvo = root; cancelAnimationFrame
 function frame(t: number) {
   const L = alvo ? Array.from(alvo.querySelectorAll<HTMLCanvasElement>('canvas[data-g3]')) : []; if (!L.length || !alvo!.isConnected || alvo!.style.display === 'none') return; raf = requestAnimationFrame(frame);
   if (falhou) return; if (!R) { try { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(W * 2, H * 2, false); R.outputColorSpace = THREE.SRGBColorSpace; } catch { falhou = true; for (const c of L) c.hidden = true; return; } }
-  for (const cv of L) { const id = cv.dataset.g3!; /* */ let e = cache.get(id); if (!e) { const o = prodModel(id); if (!o) { cv.hidden = true; continue; } const box = new THREE.Box3().setFromObject(o), sp = box.getBoundingSphere(new THREE.Sphere()); e = { o, r: Math.max(0.2, sp.radius), cy: sp.center.y }; cache.set(id, e); }
+  for (const cv of L) { const id = cv.dataset.g3!; /* */ let e = cache.get(id); if (!e) { const kit = DECOR[id]?.kit; if (kit && !kitReady(kit)) { void kitLoad(kit); continue; } const o = prodModel(id); if (!o) { cv.hidden = true; continue; } const box = new THREE.Box3().setFromObject(o), sp = box.getBoundingSphere(new THREE.Sphere()); e = { o, r: Math.max(0.2, sp.radius), cy: sp.center.y }; cache.set(id, e); }
     e.o.rotation.y = t / 1000 * 0.9; e.o.traverse((n) => { if (n.userData.agulha) n.rotation.y = Math.sin(t / 700) * 0.5 - t / 1000 * 0.9; if (n.userData.spark !== undefined) n.visible = (Math.floor(t / 130) + n.userData.spark) % 3 !== 0; });
     sc.add(e.o); const d = e.r * (id.startsWith('drone') ? 2.1 : id.startsWith('trio') ? 2.6 : 3.3); cam.position.set(0, e.cy + d * 0.34, d); cam.lookAt(0, e.cy, 0); R.render(sc, cam); sc.remove(e.o);
     const c2 = cv.getContext('2d'); if (c2) { c2.clearRect(0, 0, cv.width, cv.height); c2.drawImage(R.domElement, 0, 0, cv.width, cv.height); } }

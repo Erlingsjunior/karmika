@@ -1741,7 +1741,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
          assento e fica um pouco para trás do meio dele; as coxas vão para a frente quase na horizontal (o ângulo sai da conta: coxa × cos(a)
          + canela + tornozelo = altura da pelve, para o pé tocar o chão), a canela desce quase reta e o pé fica plano. Tronco reto com um
          leve peso à frente; a mão da arma no joelho e a do escudo solta do lado, para o escudo não entrar na coxa. */
-      if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && !act ? 1 : 0) - sitK) * Math.min(1, dt * 5);
+      if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && (!act || act.a === 'drink') ? 1 : 0) - sitK) /* 13/11 (Erling: "os NPCs sobem e descem das cadeiras"): beber não levanta ninguém */ * Math.min(1, dt * 5);
       if (sitK > 0.01) { const k = sitK, P = seatH + 0.07, ca = clamp((P - S.shin - S.ankle) / S.thigh, 0.02, 0.45), a = Math.acos(ca);
         const L = (o: THREE.Object3D, v: number) => { o.rotation.x += (v - o.rotation.x) * k; };
         /* 05/11 (Erling: "pode sentar de pernas abertas, meio como um guerreiro; personagens femininas podem sentar toda arrumadinha"): homem com os

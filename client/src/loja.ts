@@ -4,6 +4,7 @@
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
 import { giraCards } from './sistemas/loja3d';
+import { DECOR, LAR_IDS } from './decor';
 
 type Prod = { id: string; kind: 'prem' | 'fac' | 'mount' | 'eng'; /** engenhocas: os itens que chegam no correio */ items?: string[]; icon?: string; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
 const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -40,6 +41,8 @@ export const UTIL_PRODS: (Prod & { qtd?: Record<string, number> })[] = [
   { id: 'u_obra', kind: 'eng', icon: '🦾', qtd: { obra_auto: 1, ajudante_obra_3: 2 }, name: 'Canteiro Automatizado', brl: 12.9, was: 16.8, tag: 'para quem constrói', desc: 'O Contrato de Obra e dois Ajudantes de Obra Mk III: a casa sobe enquanto você joga.' },
   { id: 'u_viagem', kind: 'eng', icon: '🧭', qtd: { scroll_return: 5, bag_l: 1, rope: 5, tonic: 5 }, name: 'Kit do Viajante', brl: 9.9, was: 12.3, tag: '−20%', desc: 'Cinco Pergaminhos do Regresso, um Alforje, cordas e tônicos para a estrada.' },
 ];
+/* 13/11: LAR & LAREIRA, "tudo que você gosta, da tábua ao tapete". Mobília e enfeite de casa; cada peça também se compra com ouro e tábuas no jogo (B → Mobília) */
+export const LAR_PRODS: (Prod & { qtd?: Record<string, number> })[] = LAR_IDS.map((k) => ({ id: k, kind: 'eng' as const, icon: DECOR[k].icon, qtd: { [k]: 1 }, name: DECOR[k].name, brl: DECOR[k].brl!, desc: DECOR[k].desc }));
 const PREM_PERKS: [string, string][] = [
   ['📜', '8 missões ao mesmo tempo no diário (free: 4)'],
   ['🎒', 'Bolsa do Caminhante de 36 espaços enquanto o plano durar'],
@@ -72,7 +75,7 @@ export function createLoja(ctx: {
   owns: (uniq: string) => boolean; mounts: () => ShopMount[]; pets: () => (ShopMount & { boss?: boolean })[]; preview: (m: ShopMount, price: string, buy: () => void) => void; thumb: (id: string, cb: (url: string) => void) => void; chars: () => { i: number; name: string; lvl: number; active: boolean }[]; inMenu: () => boolean; deliver: (subj: string, text: string, att: Deliv[], to: number) => void; log: (t: string, c?: string) => void; dev: boolean;
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
-  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' | 'pets' | 'eng' | 'util' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
+  let recip: number | null = null; let open = false, tab: 'prem' | 'fac' | 'mont' | 'pets' | 'eng' | 'util' | 'lar' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
   const until = ctx.until;
   function premCard() {
     const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
@@ -109,6 +112,10 @@ export function createLoja(ctx: {
     return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">⚙</div><div><h3>Engenhocas da Companhia de Latão</h3><p>As <b>mesmas</b> engenhocas que a Caravana de Latão vende por ouro a cada turno, só que com corda para <b>15 ou 30 dias</b> (Mk II). Quem junta ouro tem igual: o Shop só poupa a ida e a volta até a caravana. Chegam no correio; o relógio só começa quando você usa. Um de cada tipo por vez.</p></div></div>
       <div class="lj-plans lj-eng">${ENG_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<canvas class="lj-g3" data-g3="${p.id}" width="336" height="240" aria-hidden="true"></canvas><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
   }
+  function larCard() {
+    return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">🏡</div><div><h3>Lar & Lareira</h3><p>Tudo que você gosta, <b>da tábua ao tapete</b>. Mobília e enfeite para a sua casa: nada aqui dá força, e cada peça também se compra com ouro e tábuas dentro do jogo (B → Mobília). Chegam no correio; use a peça na mochila para escolher o lugar.</p></div></div>
+      <div class="lj-plans lj-eng">${LAR_PRODS.map((p) => `<button class="lj-plan" data-buy="${p.id}"><canvas class="lj-g3" data-g3="${p.id}" width="336" height="240" aria-hidden="true"></canvas><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span><small>${p.desc}</small></button>`).join('')}</div>`;
+  }
   function utilCard() {
     return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">🧭</div><div><h3>Utilidades</h3><p>Ajudas de viagem e de obra. <b>Nada aqui dá força:</b> é tudo coisa que também se compra com ouro dentro do jogo; o Shop só poupa a caminhada. Chegam no correio.</p></div></div>
       <div class="lj-plans lj-eng">${UTIL_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<canvas class="lj-g3" data-g3="${p.id}" width="336" height="240" aria-hidden="true"></canvas><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
@@ -135,8 +142,8 @@ export function createLoja(ctx: {
     /* a rolagem fica onde estava quando a aba é a mesma (comprar, voltar, trocar de lado) */
     const sc = tab === lastTab ? (el.querySelector('.lj-body') as HTMLElement | null)?.scrollTop ?? 0 : 0; lastTab = tab;
     el.innerHTML = `<div class="pn ljpn ${tab === 'mont' || tab === 'pets' ? 'mont' : ''}"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
-      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button data-tab="util" class="${tab === 'util' ? 'on' : ''}">🧭 Utilidades</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
-      <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'eng' ? engCard() : tab === 'util' ? utilCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
+      <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button data-tab="util" class="${tab === 'util' ? 'on' : ''}">🧭 Utilidades</button><button data-tab="lar" class="${tab === 'lar' ? 'on' : ''}">🏡 Lar & Lareira</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
+      <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'eng' ? engCard() : tab === 'util' ? utilCard() : tab === 'lar' ? larCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex'; { const b = el.querySelector('.lj-body') as HTMLElement | null; if (b && sc) b.scrollTop = sc; }
     giraCards(el); /* 13/11: engenhocas e utilidades giram em 3D nos cartões */
     if (tab === 'mont' || tab === 'pets') el.querySelectorAll<HTMLImageElement>('img[data-th]').forEach((im) => ctx.thumb(im.dataset.th!, (u) => { im.src = u; im.hidden = false; (im.nextElementSibling as HTMLElement | null)?.remove(); }));
@@ -155,10 +162,10 @@ export function createLoja(ctx: {
   }
   el.addEventListener('click', (e) => { const t = e.target as HTMLElement;
     if (t.closest('[data-lx]') || t === el) { api.close(); return; }
-    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont' | 'pets' | 'eng' | 'util'; render(); return; }
+    const tb = (t.closest('[data-tab]') as HTMLElement | null)?.dataset.tab; if (tb) { tab = tb as 'prem' | 'fac' | 'mont' | 'pets' | 'eng' | 'util' | 'lar'; render(); return; }
     const sd = (t.closest('[data-side]') as HTMLElement | null)?.dataset.side; if (sd) { side = sd as Fac; sideSet = true; render(); return; }
     const vw = (t.closest('[data-view]') as HTMLElement | null)?.dataset.view; if (vw) { const m = [...ctx.mounts(), ...ctx.pets()].find((q) => q.id === vw); if (m) { const p = mountProd(m); ctx.preview(m, brl(p.brl), () => { cart = p; paid = false; render(); }); } return; }
-    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ENG_PRODS, ...UTIL_PRODS, ...ctx.mounts().map(mountProd), ...ctx.pets().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
+    const b = (t.closest('[data-buy]') as HTMLElement | null)?.dataset.buy; if (b) { cart = [...PREM_PLANS, ...FAC_PRODS, ...ENG_PRODS, ...UTIL_PRODS, ...LAR_PRODS, ...ctx.mounts().map(mountProd), ...ctx.pets().map(mountProd)].find((p) => p.id === b) ?? null; paid = false; render(); return; }
     const tp = (t.closest('[data-to]') as HTMLElement | null)?.dataset.to; if (tp !== undefined) { recip = +tp; render(); return; }
     if (t.closest('[data-co-x]') || t.closest('[data-co-ok]')) { cart = null; paid = false; render(); return; }
     if (t.closest('[data-co-sim]')) approve(); });
