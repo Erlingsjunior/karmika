@@ -2992,7 +2992,7 @@ export function buildCity(): World {
      sul do rio, num pátio murado com portão para o leste.
      Nascem AQUI, no fim de tudo e sem sorteio: colocados no meio da geração, mudavam o sorteio do mundo inteiro (árvores, vilas e até os terrenos de guilda saíam do lugar). ---- */
   { const kar = settlements.find((t) => t.name === 'Karmika');
-    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 6, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 7, GYh = KY + 24, /* 12/11 (Erling escolheu): o Salão das Guildas fica ao sul do rio, logo abaixo da estrada das oficinas, onde não há nada alto na frente dele */ PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
+    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 6, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 26, GYh = KY + 12, /* 13/11 (Erling, foto numerada: "trocando guilda de lugar e casas de profissão de lugar"): o Salão das Guildas vai para o gramado grande do oeste (o número 1), entre a muralha e o rio; antes ficava em KX - 7, KY + 24 */ /* 12/11 (Erling escolheu): o Salão das Guildas fica ao sul do rio, logo abaixo da estrada das oficinas, onde não há nada alto na frente dele */ PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
       const livre = (t: string | undefined) => t === 'grass' || t === 'tree' || t === 'plaza';
       const limpa = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 && q.gx <= x1 && q.gy + q.h > y0 && q.gy <= y1 && (q.kind === 'tree' || q.kind === 'herb' || q.kind === 'rock' || q.kind === 'plant' || q.kind === 'bones')) props.splice(i, 1); }
         for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass'; };
@@ -3029,6 +3029,13 @@ export function buildCity(): World {
           for (const [x, y] of [[bx - 3, by - 3], [bx + 2, by + 2], [bx + 2, by - 3], [bx - 3, by + 2]]) if (vago(x, y)) torch(x, y);
           vp(1, bx + 3, by + 1); vp(0, bx + 3, by); vp(1, bx - 1, by - 4, 0.9); vp(3, bx - 2, by + 3);
           for (const [pl, x, y, v] of [['wildflowers', bx - 1, by - 3, 0], ['wildflowers', bx, by - 3, 1], ['rose', bx - 4, by - 1, 0], ['wildflowers', bx - 3, by + 1, 2], ['lavender', bx + 3, by - 2, 0], ['wildflowers', bx + 1, by + 3, 1], ['fern', bx - 4, by + 3, 0], ['wildflowers', bx + 3, by + 3, 2], ['lavender', bx - 4, by - 3, 1], ['wildflowers', bx + 1, by - 4, 0]] as [Plant, number, number, number][]) flor(pl, x, y, v); } }
+      /* 13/11 (a mesma foto): três casas de profissão mudam de lugar e formam uma fileira ao sul da estrada, onde ficava o Salão das Guildas:
+         o Curtume (2) na ponta oeste, o Apotecário (5) no meio (sai da frente da Estalagem), a Marcenaria (4) na ponta leste. A Forja (3) fica onde está.
+         Todas com a frente para o sul (a câmera olha de sudeste). Também no fim e sem sorteio. */
+      for (const [nome, nx, ny] of [['Curtume e Alfaiataria', KX - 12, KY + 23], ['Apotecário', KX - 2, KY + 24], ['Marcenaria', KX + 8, KY + 23]] as [string, number, number][]) {
+        const q = props.find((o) => o.kind === 'station' && o.label === nome && Math.hypot(o.gx - KX, o.gy - KY) < 50); if (!q) continue;
+        let cabe = true; for (let y = ny; y < ny + q.h; y++) for (let x = nx; x < nx + q.w; x++) if (!livre(map[y]?.[x])) cabe = false; if (!cabe) { console.warn('Karmika: ' + nome + ' não coube no lugar novo'); continue; }
+        limpa(nx - 1, ny - 1, nx + q.w, ny + q.h); q.gx = nx; q.gy = ny; q.ry = 0; delete (q as { wdir?: number }).wdir; /* longe do riacho, a marcenaria fica sem a roda d'água */ }
       let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX + 10, EY + 2, EX + 14, EY + 6], [PX, PY, PX + PW - 1, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
       if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
       else {
@@ -3047,7 +3054,7 @@ export function buildCity(): World {
         block({ kind: 'house', gx: GXh, gy: GYh, w: 9, h: 5, height: 9.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 41, shop: 'salao_guildas' });
         qwall(PX, PY, PX + PW, PY); qwall(PX, PY, PX, PY + PH); qwall(PX, PY + PH, PX + PW, PY + PH); qwall(PX + PW, PY, PX + PW, PY + 5); qwall(PX + PW, PY + 7, PX + PW, PY + PH);
         torch(PX + PW - 1, PY + 4); torch(PX + PW - 1, PY + 7); decor('rack', PX + 1, PY + 6, 0); decor('rack', PX + 2, PY + 6, 1); decor('bench', PX + 5, PY + 7, 0); decor('bench', PX + 7, PY + 7, 0);
-        pave(PX + PW, PY - 3, PX + PW + 1, PY + 7); /* calçada do portão até a estrada das oficinas */
+        pave(PX + PW, PY + 4, PX + PW + 1, PY + 10); /* calçada do portão até a estrada do sul */
         pois.push({ name: 'Salão das Guildas de Karmika', x: PX + PW + 0.5, y: PY + 6, biome: 'meadow' });
         kar.npcs.push({ name: 'Guarda Olavo', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 4.6, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.05, lines: ['Salão das Guildas de Karmika. Mestres de ofício lá dentro, e um bar que não fecha.', 'Arma na bainha dentro do pátio. É a regra da casa.'] });
         kar.npcs.push({ name: 'Guarda Mirela', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 7.4, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.0, lines: ['Guilda nova procura os mestres aqui. Guilda velha vem beber e contar vantagem.', 'O estandarte no portão diz de quem é a casa.'] }); } } }
