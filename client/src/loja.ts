@@ -3,6 +3,7 @@
    (que também vende por ouro), presas ao nível 20 e só para quem escolheu o lado.
    O Pix ainda não está ligado: nada é cobrado. No modo DEV dá para simular o pagamento aprovado. */
 import { FAC, FAC_PRICE, FAC_LVL, crestURL, type Fac } from './faccoes';
+import { giraCards } from './sistemas/loja3d';
 
 type Prod = { id: string; kind: 'prem' | 'fac' | 'mount' | 'eng'; /** engenhocas: os itens que chegam no correio */ items?: string[]; icon?: string; name: string; brl: number; was?: number; days?: number; slots?: ('cape' | 'shield' | 'relic')[]; tag?: string; desc: string };
 const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
@@ -106,11 +107,11 @@ export function createLoja(ctx: {
   }
   function engCard() {
     return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">⚙</div><div><h3>Engenhocas da Companhia de Latão</h3><p>As <b>mesmas</b> engenhocas que a Caravana de Latão vende por ouro a cada turno, só que com corda para <b>15 ou 30 dias</b> (Mk II). Quem junta ouro tem igual: o Shop só poupa a ida e a volta até a caravana. Chegam no correio; o relógio só começa quando você usa. Um de cada tipo por vez.</p></div></div>
-      <div class="lj-plans lj-eng">${ENG_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<span class="lj-engi">${p.icon}</span><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
+      <div class="lj-plans lj-eng">${ENG_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<canvas class="lj-g3" data-g3="${p.id}" width="336" height="240" aria-hidden="true"></canvas><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
   }
   function utilCard() {
     return `<div class="lj-hero mont lj-mhero"><div class="lj-eye">🧭</div><div><h3>Utilidades</h3><p>Ajudas de viagem e de obra. <b>Nada aqui dá força:</b> é tudo coisa que também se compra com ouro dentro do jogo; o Shop só poupa a caminhada. Chegam no correio.</p></div></div>
-      <div class="lj-plans lj-eng">${UTIL_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<span class="lj-engi">${p.icon}</span><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
+      <div class="lj-plans lj-eng">${UTIL_PRODS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<canvas class="lj-g3" data-g3="${p.id}" width="336" height="240" aria-hidden="true"></canvas><b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small></button>`).join('')}</div>`;
   }
   /** fase de testes (devs e beta testers): enquanto o Pix não está ligado, toda compra sai de graça para dar para testar o Premium e os brasões.
       Quando o Pix ligar, é só trocar para false. */
@@ -137,6 +138,7 @@ export function createLoja(ctx: {
       <nav class="lj-tabs"><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button data-tab="util" class="${tab === 'util' ? 'on' : ''}">🧭 Utilidades</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'prem' ? premCard() : tab === 'eng' ? engCard() : tab === 'util' ? utilCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}</div>`;
     el.style.display = 'flex'; { const b = el.querySelector('.lj-body') as HTMLElement | null; if (b && sc) b.scrollTop = sc; }
+    giraCards(el); /* 13/11: engenhocas e utilidades giram em 3D nos cartões */
     if (tab === 'mont' || tab === 'pets') el.querySelectorAll<HTMLImageElement>('img[data-th]').forEach((im) => ctx.thumb(im.dataset.th!, (u) => { im.src = u; im.hidden = false; (im.nextElementSibling as HTMLElement | null)?.remove(); }));
   }
   function approve() {

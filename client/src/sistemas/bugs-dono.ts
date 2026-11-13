@@ -89,6 +89,8 @@ export function createBugsDono(K: BugCtx) {
   const bugBtn = document.createElement('button'); bugBtn.dataset.b = 'bug'; bugBtn.title = 'Reportar um bug (F10)'; bugBtn.innerHTML = BUG_SVG;
   const donoBtn = document.createElement('button'); donoBtn.dataset.b = 'dono'; donoBtn.title = 'Painel do dono (F11)'; donoBtn.innerHTML = CROWN_SVG;
   btns?.appendChild(bugBtn); btns?.appendChild(donoBtn);
+  /* 13/11 (Erling: "diminua em 5% o tamanho dos ícones quando tivermos 5 ativos; se forem 4 pode ficar normal") */
+  if (btns) { const conta = () => { let n = 0; for (const b of Array.from(btns.children)) if ((b as HTMLElement).offsetParent !== null) n++; btns.classList.toggle('b5', n >= 5); }; conta(); setInterval(conta, 1500); }
   bugBtn.addEventListener('click', (e) => { e.stopPropagation(); openReport(); });
   donoBtn.addEventListener('click', (e) => { e.stopPropagation(); openPanel(); });
 
