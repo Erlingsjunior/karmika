@@ -94,9 +94,12 @@ function raiseWalls(g: THREE.Group, chim: THREE.Vector3[], lantern: THREE.Vector
   const A = 2.3, B = 2.4 /* a parede mais baixa das casas tem 2,4 m (a casa em L): com 2,5 aqui ela quase não subia */, v = new THREE.Vector3(), inv = new THREE.Matrix4(), M = new THREE.Matrix4(); g.updateMatrixWorld(true); const gi = new THREE.Matrix4().copy(g.matrixWorld).invert();
   const up = (y: number) => y <= A ? y : y >= B ? y + dy : A + (y - A) * ((B - A + dy) / (B - A));
   g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry?.getAttribute('position')) return; for (let q: THREE.Object3D | null = m; q && q !== g; q = q.parent) if (q.userData.keepH) return; M.multiplyMatrices(gi, m.matrixWorld); inv.copy(M).invert();
-    const pos0 = m.geometry.getAttribute('position') as THREE.BufferAttribute; let touch = false; for (let i = 0; i < pos0.count && !touch; i++) if (v.fromBufferAttribute(pos0, i).applyMatrix4(M).y > A) touch = true; if (!touch) return;
+    const pos0 = m.geometry.getAttribute('position') as THREE.BufferAttribute; let touch = false, lo = 1e9; for (let i = 0; i < pos0.count; i++) { const y = v.fromBufferAttribute(pos0, i).applyMatrix4(M).y; if (y > A) touch = true; if (y < lo) lo = y; } if (!touch) return;
+    /* 13/11 (Erling: "a caixa da casa está vazando pelo telhado"): o telhado tem o beiral ABAIXO do topo da parede. Subindo só os vértices de cima, o beiral ficava no lugar,
+       a água do telhado deitava e a parede levantada furava as telhas. Peça que não toca o chão (telhado, empena, cumeeira) agora sobe INTEIRA, sem deformar. */
+    const inteira = lo >= 1.45;
     m.geometry = m.geometry.clone(); const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute;
-    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(M); v.y = up(v.y); v.applyMatrix4(inv); pos.setXYZ(i, v.x, v.y, v.z); }
+    for (let i = 0; i < pos.count; i++) { v.fromBufferAttribute(pos, i).applyMatrix4(M); v.y = inteira ? v.y + dy : up(v.y); v.applyMatrix4(inv); pos.setXYZ(i, v.x, v.y, v.z); }
     pos.needsUpdate = true; m.geometry.computeBoundingBox(); m.geometry.computeBoundingSphere(); });
   for (const c of chim) c.y = up(c.y); lantern.y = up(lantern.y);
 }
