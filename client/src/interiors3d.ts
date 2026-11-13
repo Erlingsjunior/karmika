@@ -5,7 +5,7 @@ import { std, ink, plankTex, stoneTex, woodTex, plasterTex } from './toon3d';
 import { kitPut } from './libs/kitprops';
 import { MOUNTS, mountModel } from './companions';
 
-export interface Interior { /** 13/11: animais das baias (estábulo) */ bichos?: { x: number; z: number; nome: string; root: THREE.Object3D }[]; group: THREE.Group; W: number; D: number; colliders: [number, number, number][]; free(x: number, z: number, squeeze?: boolean): boolean; flicker(t: number, hx?: number, hz?: number): void; shop?: boolean; exitZ: number; /** 09/11: altura do piso em (x, z) locais — estrados e degraus (o herói pisa em cima, não some dentro) */ floorY?(x: number, z: number): number; /** 10/11: assentos (o herói senta com E; os fregueses usam os mesmos) */ seats?: { x: number; z: number; yaw: number; h: number }[]; /** 10/11: a mesa que se reserva para o grupo, e a placa dela */ reserveAt?: { x: number; z: number } | null; reserveSign?: THREE.Mesh | null; reserveLabel?: ((a: string, b: string) => void) | null }
+export interface Interior { /** 13/11: animais das baias (estábulo) */ bichos?: { x: number; z: number; nome: string; root: THREE.Object3D }[]; group: THREE.Group; W: number; D: number; colliders: [number, number, number][]; free(x: number, z: number, squeeze?: boolean, terreo?: boolean): boolean; flicker(t: number, hx?: number, hz?: number): void; shop?: boolean; exitZ: number; /** 09/11: altura do piso em (x, z) locais — estrados e degraus (o herói pisa em cima, não some dentro) */ floorY?(x: number, z: number): number; /** 10/11: assentos (o herói senta com E; os fregueses usam os mesmos) */ seats?: { x: number; z: number; yaw: number; h: number }[]; /** 10/11: a mesa que se reserva para o grupo, e a placa dela */ reserveAt?: { x: number; z: number } | null; reserveSign?: THREE.Mesh | null; reserveLabel?: ((a: string, b: string) => void) | null }
 
 const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
 
@@ -539,10 +539,10 @@ export function buildInterior(variant: number, W: number, D: number, seed = 7, c
     rug(cx, D * 0.78, W * 0.4, 2.0, 0x6a2a2a); barrel(W - 0.9, D - 1.0); crate(W - 1.8, D - 0.9); chestI(1.2, D - 3.2, Math.PI / 2); hang(cx, D * 0.62, 0xffc070, 42);
   }
   /* móveis bloqueiam só o miolo (regra de ouro: mobilidade acima da física); squeeze = espremer-se entre eles quando travou */
-  const free = (x: number, z: number, squeeze = false) => {
+  const free = (x: number, z: number, squeeze = false, terreo = false) => { /* 13/11: terreo = quem pergunta é um NPC do térreo; não depende do andar em que o herói está */
     if (upper) { const U = upper, inStair = x > U.SX0 - 0.1 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZB + 0.3;
       /* lá em cima: só a galeria, os quartos e a escada; as divisórias dos quartos seguram */
-      if (U.level === 1) { if (inStair) return true; if (x > U.SX0 - 0.4 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZT + 1.4) return true;
+      if (U.level === 1 && !terreo) { if (inStair) return true; if (x > U.SX0 - 0.4 && x < U.SX1 + 0.1 && z > U.SZT - 0.1 && z < U.SZT + 1.4) return true;
         const north = z < U.GD - 0.25 && z > -U.RD + 0.4 && x > -U.RD + 0.4 && x < W - 0.4, west = x < U.GD - 0.25 && x > -U.RD + 0.4 && z > -U.RD + 0.4 && z < D - 0.4; if (!north && !west) return false;
         if (z < 0.15 && x > 0) { if (z > -0.2) { const w = W / 6, lx = ((x % w) + w) % w - w / 2; if (Math.abs(lx) > 0.6) return false; } for (const px of U.partX) if (Math.abs(x - px) < 0.25) return false; }
         if (x < 0.15 && z > U.GD) { if (x > -0.2) { const z0 = U.GD + 0.2, w = (D - z0) / 4, lz = (((z - z0) % w) + w) % w - w / 2; if (Math.abs(lz) > 0.6) return false; } for (const pz of U.partZ) if (Math.abs(z - pz) < 0.25) return false; }

@@ -294,19 +294,23 @@ export function buildMerchantWagon(): Wagon {
   return artBody(W0, 'carroca_anao', keepH, 1.8, ART_FLIP.dwarf, -1);
 }
 /** a carroça caída: tomba de lado, uma roda solta, carga espalhada (resgate e emboscada perdida) */
-function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; w.body.rotation.z = 0.42; w.body.position.y = -0.25; const lost = w.wheels[1].m.parent!; w.body.remove(lost); w.root.add(lost); lost.rotation.set(Math.PI / 2 - 0.2, 0, 0); lost.position.set(1.9, 0.1, -2.6); w.lamp.visible = false;
-  const M = mats(); for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(i % 2 ? new THREE.CylinderGeometry(0.22, 0.22, 0.5, 9) : new THREE.CylinderGeometry(0.3, 0.32, 0.12, 9), i % 2 ? M.oak : M.brass); c.position.set(-1.6 - (i % 3) * 0.6, 0.2, -1.6 + i * 0.7); c.rotation.set(i % 2 ? Math.PI / 2 : 0, i, 0); c.castShadow = true; w.root.add(c); } }
+function topple(w: Wagon) { if (w.fallen) return; w.fallen = true; const U = w.root.userData; U.antes = { rz: w.body.rotation.z, by: w.body.position.y }; w.body.rotation.z = 0.42; w.body.position.y = -0.25; const lost = w.wheels[1].m.parent!; U.roda = { m: lost, p: lost.position.clone(), r: lost.rotation.clone() }; U.entulho = []; w.body.remove(lost); w.root.add(lost); lost.rotation.set(Math.PI / 2 - 0.2, 0, 0); lost.position.set(1.9, 0.1, -2.6); w.lamp.visible = false;
+  /* 13/11 (Erling: "uma carroça que foi atacada e está tombada na estrada: coloque um pouco de fogo nela"): o clarão do fogo; as chamas e a fumaça saem no update */
+  { const gl = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true })); gl.scale.set(3.6, 3.6, 1); gl.position.set(0.3, 1.2, -0.5); w.root.add(gl); U.fogo = gl; }
+  const M = mats(); for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(i % 2 ? new THREE.CylinderGeometry(0.22, 0.22, 0.5, 9) : new THREE.CylinderGeometry(0.3, 0.32, 0.12, 9), i % 2 ? M.oak : M.brass); c.position.set(-1.6 - (i % 3) * 0.6, 0.2, -1.6 + i * 0.7); c.rotation.set(i % 2 ? Math.PI / 2 : 0, i, 0); c.castShadow = true; w.root.add(c); (w.root.userData.entulho as THREE.Object3D[]).push(c); } }
+/** 13/11: a carroça consertada volta a ficar de pé: a roda no eixo, a carga recolhida, o fogo apagado */
+function raise(w: Wagon) { if (!w.fallen) return; w.fallen = false; const U = w.root.userData; w.body.rotation.z = U.antes?.rz ?? 0; w.body.position.y = U.antes?.by ?? 0; if (U.roda) { w.root.remove(U.roda.m); w.body.add(U.roda.m); U.roda.m.position.copy(U.roda.p); U.roda.m.rotation.copy(U.roda.r); } for (const o of (U.entulho ?? []) as THREE.Object3D[]) w.root.remove(o); if (U.fogo) { w.root.remove(U.fogo); U.fogo = null; } w.lamp.visible = true; }
 
 /* ================= a lógica ================= */
-type Mode = 'ambient' | 'escort' | 'rescue' | 'event';
-interface Car { /** procura de faixa em andamento: qual candidata é a próxima (fatiada em quadros) */ laneI?: number; laneT?: number; laneWant?: number; lane?: number; key: string; mode: Mode; /** QUAL carroça é esta (28/10): a bandeira é da carroça, não da rota — vapor e anões rodam todas as estradas */ carroca?: 'carrocaAVapor' | 'carrocaDosAnoes'; /** negociando com o jogador (parada) e o atraso acumulado */ trading?: boolean; lag?: number; /** afastamento lateral atual (mão da estrada; some nas pontes) */ off?: number; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string }
+type Mode = 'ambient' | 'escort' | 'rescue' | 'event' | /** 13/11: carroça tombada na estrada, missão de área: afastar, apagar o fogo, proteger, consertar */ 'wreck';
+interface Car { /** procura de faixa em andamento: qual candidata é a próxima (fatiada em quadros) */ laneI?: number; laneT?: number; laneWant?: number; lane?: number; key: string; mode: Mode; /** QUAL carroça é esta (28/10): a bandeira é da carroça, não da rota — vapor e anões rodam todas as estradas */ carroca?: 'carrocaAVapor' | 'carrocaDosAnoes'; /** negociando com o jogador (parada) e o atraso acumulado */ trading?: boolean; lag?: number; /** afastamento lateral atual (mão da estrada; some nas pontes) */ off?: number; route: Route; s: number; dir: number; w: Wagon | null; crew: Hero3D[]; hp: number; stop: boolean; speed: number; arrived?: boolean; ambush?: number[]; fight?: boolean; foes: { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number }[]; bubbleT: number; spawned?: boolean; cleared?: boolean; slot?: number; lastNear?: number; failT?: number; note?: string; /** carroça tombada (13/11): focos de fogo que faltam apagar, etapa (0 esperando · 1 luta · 2 fogo · 3 segunda leva · 4 conserto), passos do conserto, consertada */ fire?: number; stage?: number; rep?: number; fixed?: boolean; actT?: number; fxT?: number }
 export interface CaravanCtx {
   scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; night(): number; inside(): boolean; lvl(): number;
   spawn(type: EnemyType, x: number, z: number, o: { name: string; lvl: number; tag: string; aggro: number; hpMul: number }): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number; def: { name: string } };
   clearTag(tag: string): void; hurt?(e: unknown, n: number, from: THREE.Vector3): void; /** a janela da loja está aberta (a carroça espera) */ shopOpen?(): boolean; /** o ponto (m) está em cima de uma ponte ou nas cabeceiras dela */ onBridge?(x: number, z: number): boolean; /** 11/11: o ponto (m) não serve para uma carroça (casa, fonte, barraca, mureta, muralha, água sem ponte) */ blocked?(x: number, z: number): boolean;
   smoke(x: number, y: number, z: number, dark: boolean): void; /** brasa saindo da fornalha */ ember?(x: number, y: number, z: number): void; bubble(x: number, y: number, z: number, t: string): void;
   log(t: string, c?: string): void; onEscort(id: string): void; onRescue(id: string): void;
-  onEvent(r: Route, how: 'salva' | 'saque' | 'perdida'): void; lean(): 'luz' | 'sombra' | null;
+  onEvent(r: Route, how: 'salva' | 'saque' | 'perdida' | 'conserto'): void; /** 13/11: labareda da carroça tombada */ flame?(x: number, y: number, z: number): void; lean(): 'luz' | 'sombra' | null;
   /** conversar com o cocheiro de uma caravana que passa: comerciar com a Companhia na estrada */ trade?(r: Route, carroca: 'carrocaAVapor' | 'carrocaDosAnoes'): void;
   /** 12/11: o inimigo que está lutando com o herói perto do ponto (m), se houver: os guardas da caravana que passa entram na luta */ threat?(x: number, z: number, r: number): { alive: boolean; pos: THREE.Vector3; hp: number; hpMax: number } | null;
   /** dentro ou perto de uma vila (regra 15: ninguém luta nas vilas; emboscada só na estrada aberta) */ nearTown(x: number, z: number): boolean;
@@ -321,9 +325,9 @@ const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
 
 export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   const cars = new Map<string, Car>();
-  const SAVE = 'karmika.caravan.v1'; let saved: { done: number[]; looted: number; saved: number } = { done: [], looted: 0, saved: 0 };
+  const SAVE = 'karmika.caravan.v1'; let saved: { done: number[]; looted: number; saved: number; wk?: string[] } = { done: [], looted: 0, saved: 0, wk: [] };
   try { Object.assign(saved, JSON.parse(localStorage.getItem(SAVE) || '{}')); } catch { /* */ }
-  const persist = () => { try { saved.done = saved.done.slice(-30); localStorage.setItem(SAVE, JSON.stringify(saved)); } catch { /* */ } };
+  const persist = () => { try { saved.done = saved.done.slice(-30); saved.wk = (saved.wk ?? []).slice(-40); localStorage.setItem(SAVE, JSON.stringify(saved)); } catch { /* */ } };
   /** relógio do mundo (segundos): o mesmo em toda máquina */
   const now = () => Date.now() / 1000;
   /** anda pela estrada até sair de perto das vilas */
@@ -341,6 +345,12 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   function eventNow() { const slot = Math.floor(now() / EV), h = Math.abs(Math.sin(slot * 12.9898) * 43758.5453) % 1, ids = AMBIENT.filter((id) => routes.has(id)); if (!ids.length) return null;
     const r = routes.get(ids[Math.floor(h * ids.length)])!; return { slot, r, s: openRoad(r, r.len * (0.3 + ((h * 7.31) % 1) * 0.4)), left: EV - (now() % EV) }; }
 
+  /* 13/11 (Erling: "fazer o evento de mapas (em diversos lugares na rota) carroça tombada"): TRÊS carroças tombadas ao mesmo tempo, em estradas diferentes,
+     sorteadas pelo relógio do mundo (todo mundo vê as mesmas). Cada uma fica 12 minutos; as três trocam em instantes diferentes (de 4 em 4 minutos). */
+  const WK = 720, NWK = 3;
+  function wreckNow(k: number) { const ids = AMBIENT.filter((id) => routes.has(id)); if (!ids.length) return null; const slot = Math.floor((now() + k * (WK / NWK)) / WK), h = Math.abs(Math.sin((slot * 3 + k) * 78.233) * 12543.137) % 1;
+    const r = routes.get(ids[(Math.floor(h * ids.length) + k * Math.max(1, Math.ceil(ids.length / NWK))) % ids.length])!; /* longe dos portões: o ponto e 35 m para cada lado têm que estar fora das vilas */ const s0 = r.len * (0.2 + ((h * 5.17) % 1) * 0.6); let sw = openRoad(r, s0); for (let q = 0; q < 60; q++) { const sx = (s0 + q * 8) % r.len, ok = [-35, 0, 35].every((d) => { const pt = at(r, Math.max(0, Math.min(r.len, sx + d))); return !ctx.nearTown(pt.x, pt.z); }); if (ok) { sw = sx; break; } }
+    return { slot, r, s: sw }; }
   /** qual carroça faz a vez i desta estrada: 1ª vapor, 2ª anões, a 3ª (estradas longas) alterna de estrada para estrada */
   /** 28/10: qual carroça faz a viagem agora. Cada carroça troca a cada ida e volta (vapor, anões, vapor…), e a vez i começa
       defasada: com o tempo as duas passam por todas as estradas, sem dobrar o número de carroças no mundo (o FPS agradece) */
@@ -365,7 +375,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   const parked = new Map<string, { w: NonNullable<Car['w']>; crew: Car['crew'] }>();
   function ensureModel(c: Car) { if (c.w) return; const pk = c.mode === 'ambient' ? parked.get(c.key) : undefined;
     if (pk) { parked.delete(c.key); c.w = pk.w; c.crew = pk.crew; ctx.scene.add(c.w.root); for (const h of c.crew) ctx.scene.add(h.root); return; }
-    c.w = carOf(c) === 'carrocaAVapor' ? buildSteamWagon() : c.route.kind === 'human' ? buildMerchantWagon() : buildOreCart(); c.w.root.userData.farCull = true; ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0)) topple(c.w); }
+    c.w = carOf(c) === 'carrocaAVapor' ? buildSteamWagon() : c.route.kind === 'human' ? buildMerchantWagon() : buildOreCart(); c.w.root.userData.farCull = true; ctx.scene.add(fine(c.w.root)); crewFor(c); if (c.mode === 'rescue' || (c.mode === 'event' && c.hp <= 0) || (c.mode === 'wreck' && !c.fixed)) topple(c.w); }
   function dropModel(c: Car) { if (!c.w) return; ctx.scene.remove(c.w.root); for (const h of c.crew) ctx.scene.remove(h.root); if (c.mode === 'ambient' && !c.w.fallen) parked.set(c.key, { w: c.w, crew: c.crew }); c.w = null; c.crew = []; }
   function say(c: Car, t: string) { if (!c.w) return; const p = c.w.root.position; ctx.bubble(p.x, p.y + 3.2, p.z, t); c.bubbleT = 4; }
 
@@ -405,6 +415,9 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     if (ev && !saved.done.includes(ev.slot)) { const key = 'ev:' + ev.slot; if (!cars.has(key)) { for (const k of [...cars.keys()]) if (k.startsWith('ev:')) { const o = cars.get(k)!; dropModel(o); ctx.clearTag('car:' + k); cars.delete(k); }
         cars.set(key, { key, mode: 'event', route: ev.r, s: ev.s, dir: 1, w: null, crew: [], hp: 1, stop: true, speed: 0, foes: [], bubbleT: 0, slot: ev.slot }); }
       evShown = { slot: ev.slot, r: ev.r, s: ev.s }; } else evShown = null;
+    for (let k = 0; k < NWK; k++) { const wv = wreckNow(k); if (!wv) continue; const key = `wk:${k}:${wv.slot}`, old = [...cars.keys()].find((q) => q.startsWith(`wk:${k}:`));
+      if (old && old !== key) { const o = cars.get(old)!; if (o.spawned && !o.fixed && o.w) continue; /* quem está no meio da missão termina */ dropModel(o); ctx.clearTag('car:' + old); cars.delete(old); }
+      if (!cars.has(key) && !saved.wk?.includes(key)) cars.set(key, { key, mode: 'wreck', route: wv.r, s: wv.s, dir: 1, w: null, crew: [], hp: 0, stop: true, speed: 0, foes: [], bubbleT: 0, fire: 3, stage: 0, rep: 0 }); }
     const placed: { x: number; z: number }[] = []; WAGON_BLOCK.length = 0;
     for (const c of [...cars.values()]) {
       const p = at(c.route, c.s), dH = Math.hypot(p.x - hp.x, p.z - hp.z), near = dH < (c.mode === 'ambient' ? 120 : 160) + (c.w ? 20 : 0) && !inside; /* +20 m para quem já está montada: não monta e desmonta na borda */
@@ -430,6 +443,15 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       if (c.mode === 'event' && !c.cleared) { if (!c.spawned && dH < 55) { c.spawned = true; spawnAmbush(c, 4); say(c, 'Socorro! Pela Companhia, socorro!'); }
         if (c.spawned) { if (c.hp > 0) wagonDamage(c, dt * 0.6); if (c.hp <= 0 && !w.fallen) { topple(w); ctx.log('💥 A caravana atacada tombou. Ainda dá para afastar os bichos e salvar o que sobrou.', '#ff8a7a'); }
           if (!alive(c)) { c.cleared = true; c.fight = false; say(c, w.fallen ? 'A carga… o que sobrou. Obrigado por vir.' : 'Você salvou a gente. A Companhia vai saber disso.'); } } }
+      // carroça tombada (missão de área): afastar os saqueadores, apagar o fogo, segurar a segunda leva, consertar
+      if (c.mode === 'wreck' && !c.fixed) {
+        if (!c.spawned && dH < 55) { c.spawned = true; c.stage = 1; spawnAmbush(c, 4); say(c, 'Socorro! Tombaram a carroça e querem a carga!'); ctx.log('⚠ Missão de área: CARROÇA TOMBADA. Afaste os saqueadores, apague o fogo e ajude a consertar.', '#ff9a6a'); }
+        if (c.stage === 1 && !alive(c)) { c.stage = 2; c.fight = false; say(c, 'O fogo! Apague antes que pegue na carga!'); ctx.log('🔥 Área limpa. Apague o fogo da carroça: chegue perto e use E nos três focos.', '#ffb060'); }
+        if (c.stage === 3 && !alive(c)) { c.stage = 4; c.fight = false; say(c, 'Foram embora. Agora a roda: me ajude a erguer!'); ctx.log('🔧 A carroça está segura. Ajude o cocheiro a consertar (E).', '#e0b048'); } }
+      /* o fogo de toda carroça tombada: labaredas, brasas e fumaça escura (só perto, para não pesar) */
+      if (w.fallen) { const U = w.root.userData, k = c.mode === 'wreck' ? (c.fire ?? 0) / 3 : 0.7; if (U.fogo) { U.fogo.visible = k > 0; const f = (1.6 + k * 2.2) * (0.9 + Math.sin(t * 13 + c.s) * 0.08 + Math.sin(t * 7.3) * 0.06); U.fogo.scale.set(f, f, 1); }
+        if (k > 0 && dH < 70) { c.fxT = (c.fxT ?? 0) + dt; if (c.fxT > 0.07) { c.fxT = 0; const rp = w.root.position, fx = rp.x + (Math.random() - 0.5) * 1.6, fz = rp.z + (Math.random() - 0.5) * 1.6;
+            if (Math.random() < 0.35 + k * 0.5) (ctx.flame ?? ctx.ember)?.(fx, rp.y + 0.7 + Math.random() * 0.6, fz); if (Math.random() < 0.5) ctx.ember?.(fx, rp.y + 1.2, fz); if (Math.random() < 0.3) ctx.smoke(fx, rp.y + 1.8, fz, true); } } }
       // posição, inclinação no terreno e animação
       const yaw = p.yaw + (c.dir < 0 ? Math.PI : 0), ca = Math.sin(yaw), cb = Math.cos(yaw);
       /* 26/10 (Erling: "carroças não se atravessam assim"): cada uma anda pela sua mão (direita no sentido em que vai); as que
@@ -482,6 +504,14 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
       if (c.mode === 'ambient' && ctx.trade) return { d, label: carOf(c) === 'carrocaAVapor' ? 'E — Falar com o cocheiro (comerciar com a Companhia de Latão)' : 'E — Falar com o cocheiro anão (comerciar)', act: () => { say(c, pick(carOf(c) === 'carrocaAVapor' ? ['Olha a mercadoria! Rápido, que o vapor não espera.', 'Da Companhia de Latão, direto do porto. Vai levar?'] : ['Ô! Pare aí, que a parelha descansa. O que vai ser?', 'Minério, cerveja e ferramenta boa. Dos anões, direto da Forja.'])); c.trading = true; ctx.trade!(c.route, carOf(c)); } };
       if (c.mode === 'escort' && c.s <= START && !c.arrived && c.failT === undefined) return { d, label: 'E — "Vamos?" (a caravana parte com você por perto)', act: () => { say(c, pick(SAY.go)); c.stop = false; } };
       if (c.mode === 'rescue' && c.cleared && c.note !== undefined) return { d, label: 'E — Examinar os destroços', act: () => { const r = c.route; ctx.log(`🔎 ${c.note}`, '#e0b048'); c.cleared = true; c.note = undefined; setTimeout(() => stopRescue(r.id), 20000); } };
+      if (c.mode === 'wreck' && !c.fixed && (c.stage === 2 || c.stage === 4)) { const pronto = () => { const n = now(); if (n - (c.actT ?? 0) < 0.8) return false; c.actT = n; return true; };
+        if (c.stage === 2) return { d, label: `E — Apagar o fogo (${3 - (c.fire ?? 0) + 1} de 3)`, act: () => { if (!pronto()) return; c.fire = Math.max(0, (c.fire ?? 1) - 1); for (let i = 0; i < 7; i++) ctx.smoke(p.x + (Math.random() - 0.5) * 1.4, p.y + 0.8 + Math.random(), p.z + (Math.random() - 0.5) * 1.4, false);
+          if (c.fire > 0) ctx.log(`💧 Você abafa um foco com terra e lona molhada. Faltam ${c.fire}.`, '#9ad0ff');
+          else { c.stage = 3; spawnAmbush(c, 3); say(c, 'Eles voltaram! Proteja a carroça!'); ctx.log('⚠ O fogo apagou, mas os saqueadores voltaram pela carga. Proteja a carroça!', '#ff9a6a'); } } };
+        return { d, label: (c.rep ?? 0) === 0 ? 'E — Recolocar a roda no eixo' : 'E — Erguer a carroça com o cocheiro', act: () => { if (!pronto()) return; c.rep = (c.rep ?? 0) + 1;
+          if (c.rep === 1) { say(c, 'Isso, segura firme enquanto eu travo o pino.'); ctx.log('🔧 A roda volta para o eixo. Falta erguer a carroça.', '#e0b048'); return; }
+          raise(c.w!); c.fixed = true; (saved.wk ??= []).push(c.key); persist(); say(c, 'De pé! A estrada deve uma a você.'); ctx.onEvent(c.route, 'conserto');
+          setTimeout(() => { const o = cars.get(c.key); if (o) { dropModel(o); ctx.clearTag('car:' + c.key); cars.delete(c.key); } }, 25000); } }; }
       if (c.mode === 'event' && c.cleared && !saved.done.includes(c.slot!)) { const sombra = ctx.lean() === 'sombra', fallen = c.w.fallen;
         return { d, label: sombra && fallen ? 'E — A carga está sem dono…' : 'E — Ajudar os sobreviventes', act: () => {
           saved.done.push(c.slot!);
@@ -496,7 +526,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
     const out: ReturnType<typeof mapMarks> = [];
     for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: ambCar(r, i) === 'carrocaAVapor' ? 'Caravana de Latão (a vapor)' : r.kind === 'human' ? 'Caravana de mercadores anões' : 'Carroça de minério dos anões', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
     if (evShown && !saved.done.includes(evShown.slot)) { const p = at(evShown.r, evShown.s), left = Math.ceil((EV - (now() % EV)) / 60); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Caravana atacada!', sub: `${evShown.r.name} · atacada por ${evShown.r.foeName} e outros · ~${left} min` }); }
-    for (const c of cars.values()) { if (c.mode === 'escort' && !c.arrived) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'esc', name: 'Sua escolta', sub: c.route.name }); } if (c.mode === 'rescue' && !c.cleared) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'res', name: 'Caravana caída', sub: c.route.name }); } }
+    for (const c of cars.values()) { if (c.mode === 'escort' && !c.arrived) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'esc', name: 'Sua escolta', sub: c.route.name }); } if (c.mode === 'rescue' && !c.cleared) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'res', name: 'Caravana caída', sub: c.route.name }); } if (c.mode === 'wreck' && !c.fixed) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Carroça tombada', sub: `${c.route.name} · missão de área: proteger e consertar` }); } }
     return out;
   }
   /** para o guia de missão */

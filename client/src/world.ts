@@ -3007,6 +3007,28 @@ export function buildCity(): World {
       { const banca = (lx: number, ly: number) => props.findIndex((q) => q.kind === 'stall' && q.gx === lx + KX - 18 && q.gy === ly + KY - 21);
         for (const [lx, ly] of [[9, 9], [28, 10]]) { const i = banca(lx, ly); if (i >= 0) props.splice(i, 1); }
         for (const [lx, ly, nx, ny] of [[31, 8, 32, 12], [35, 23, 31, 24]]) { const i = banca(lx, ly); if (i >= 0) { props[i].gx = nx + KX - 18; props[i].gy = ny + KY - 21; } } }
+      /* 13/11 (Erling circulou dois gramados vazios: "são para colocar decoração, uma fonte, caixas... decore esses ambientes"). Também no fim e sem sorteio.
+         A: o gramado logo dentro do portão norte, a oeste da estrada, vira o CANTO DOS CARREGADORES (poço coberto, carroça de mão, caixotes, barris, feno, cocho).
+         B: o gramado do leste, abaixo da Casa de Tecnologia, vira o JARDIM DA FONTE (fonte calçada, bancos, lampiões, canteiros de flores, caixotes). */
+      { const vago = (x: number, y: number) => livre(map[y]?.[x]) && !props.some((q) => q.kind !== 'tree' && q.kind !== 'plant' && x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h);
+        const vp = (v: number, x: number, y: number, ry = 0) => { if (vago(x, y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v, ry }); };
+        const flor = (pl: Plant, x: number, y: number, v: number) => { if (vago(x, y)) props.push({ kind: 'plant', plant: pl, gx: x, gy: y, w: 1, h: 1, height: 0.6, wall: 0, roof: 0, variant: v }); };
+        const sem = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind === 'tree' && q.gx >= x0 && q.gx <= x1 && q.gy >= y0 && q.gy <= y1) { props.splice(i, 1); if (map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; } } };
+        /* A: canto dos carregadores */
+        { const ax = KX - 3, ay = KY - 24; sem(ax - 3, ay - 3, ax + 3, ay + 3);
+          vp(2, ax, ay); vp(7, ax + 2, ay - 2, 0.6); vp(1, ax - 2, ay - 1); vp(1, ax - 2, ay, 1.2); vp(0, ax - 1, ay - 2); vp(0, ax - 2, ay - 2); vp(0, ax + 1, ay - 3);
+          vp(6, ax + 2, ay + 1); vp(6, ax + 1, ay + 2, 0.8); vp(8, ax - 1, ay + 2, 1.57); vp(3, ax - 3, ay + 1, 1.57); vp(5, ax + 3, ay - 1);
+          if (vago(ax + 3, ay + 2)) torch(ax + 3, ay + 2); if (vago(ax - 3, ay - 2)) torch(ax - 3, ay - 2);
+          flor('wildflowers', ax - 3, ay + 3, 0); flor('fern', ax + 3, ay - 3, 1); flor('wildflowers', ax, ay + 3, 2); }
+        /* B: jardim da fonte */
+        { const bx = KX + 27, by = KY + 3; sem(bx - 4, by - 4, bx + 4, by + 4);
+          let cabe = true; for (let y = by - 2; y <= by + 1; y++) for (let x = bx - 2; x <= bx + 1; x++) if (!vago(x, y)) cabe = false;
+          if (cabe) { pave(bx - 2, by - 2, bx + 1, by + 1); block({ kind: 'fountain', gx: bx - 1, gy: by - 1, w: 2, h: 2, height: 0.9, wall: 0x6f7480, roof: 0x6fc7ff }); }
+          else vp(2, bx, by);
+          if (vago(bx - 3, by)) decor('bench', bx - 3, by, 0); if (vago(bx, by + 2)) decor('bench', bx, by + 2, 0); if (vago(bx + 2, by - 1)) decor('bench', bx + 2, by - 1, 0);
+          for (const [x, y] of [[bx - 3, by - 3], [bx + 2, by + 2], [bx + 2, by - 3], [bx - 3, by + 2]]) if (vago(x, y)) torch(x, y);
+          vp(1, bx + 3, by + 1); vp(0, bx + 3, by); vp(1, bx - 1, by - 4, 0.9); vp(3, bx - 2, by + 3);
+          for (const [pl, x, y, v] of [['wildflowers', bx - 1, by - 3, 0], ['wildflowers', bx, by - 3, 1], ['rose', bx - 4, by - 1, 0], ['wildflowers', bx - 3, by + 1, 2], ['lavender', bx + 3, by - 2, 0], ['wildflowers', bx + 1, by + 3, 1], ['fern', bx - 4, by + 3, 0], ['wildflowers', bx + 3, by + 3, 2], ['lavender', bx - 4, by - 3, 1], ['wildflowers', bx + 1, by - 4, 0]] as [Plant, number, number, number][]) flor(pl, x, y, v); } }
       let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX + 10, EY + 2, EX + 14, EY + 6], [PX, PY, PX + PW - 1, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
       if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
       else {
