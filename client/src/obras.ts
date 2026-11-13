@@ -35,6 +35,39 @@ export const onHomeSave = (f: (h: HomeSave | null) => void) => { onSaveFn = f; }
 export const moveHome = (h: HomeSave, gx: number, gy: number) => { h.gx = gx; h.gy = gy; saveHome(h); };
 const saveHome = (h: HomeSave | null) => { try { if (h) localStorage.setItem(KEY, JSON.stringify(h)); else localStorage.removeItem(KEY); } catch { /* */ } try { onSaveFn?.(h); } catch { /* */ } };
 
+/** o Ajudante de Obra (robô de construção). 13/11: saiu de dentro do sistema para o Shop mostrar o MESMO robô do jogo */
+export function buildWorker(g: THREE.Group, tier: number, s: number) {
+  const copper = std(tier === 2 ? 0xa0703a : tier === 1 ? 0x8a5228 : 0x7a4a24), brass = std(0x9a7430), iron = std(0x34363c), steel = std(0x9aa0a6), glowA = new THREE.MeshBasicMaterial({ color: 0xffb040, toneMapped: false });
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
+  for (const [sx, nm] of [[-1, 'legL'], [1, 'legR']] as [number, string][]) { const hip = new THREE.Group(); hip.position.set(sx * 0.17 * s, 0.5 * s, 0); hip.name = nm; g.add(hip);
+    add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.24 * s, 8), copper, 0, -0.12 * s, 0, hip); add(new THREE.CylinderGeometry(0.04 * s, 0.04 * s, 0.26 * s, 6), steel, 0, -0.32 * s, 0, hip);
+    add(new THREE.BoxGeometry(0.16 * s, 0.08 * s, 0.28 * s), iron, 0, -0.46 * s, 0.04 * s, hip); add(new THREE.SphereGeometry(0.06 * s, 8, 6), brass, 0, 0, 0, hip); }
+  const torso = new THREE.Group(); torso.name = 'torso'; g.add(torso);
+  add(new THREE.CylinderGeometry(0.26 * s, 0.28 * s, 0.46 * s, 14), copper, 0, 0.78 * s, 0, torso);
+  for (const y of [0.6, 0.78, 0.96]) add(new THREE.TorusGeometry(0.275 * s, 0.02 * s, 5, 18), brass, 0, y * s, 0, torso).rotation.x = Math.PI / 2;
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; add(new THREE.SphereGeometry(0.016 * s, 4, 3), brass, Math.cos(a) * 0.282 * s, 0.69 * s, Math.sin(a) * 0.282 * s, torso); }
+  add(new THREE.CircleGeometry(0.07 * s, 12), glowA, 0, 0.74 * s, 0.283 * s, torso); add(new THREE.TorusGeometry(0.075 * s, 0.015 * s, 5, 14), brass, 0, 0.74 * s, 0.284 * s, torso); // a fornalha acesa
+  const chim = add(new THREE.CylinderGeometry(0.045 * s, 0.04 * s, 0.32 * s, 8), iron, -0.14 * s, 1.16 * s, -0.12 * s, torso); chim.name = 'chim'; add(new THREE.CylinderGeometry(0.07 * s, 0.045 * s, 0.06 * s, 8), iron, -0.14 * s, 1.34 * s, -0.12 * s, torso);
+  const head = new THREE.Group(); head.position.set(0.04 * s, 1.14 * s, 0.03 * s); torso.add(head);
+  add(new THREE.SphereGeometry(0.14 * s, 12, 9), brass, 0, 0, 0, head); add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.05 * s, 12), iron, 0, 0, 0.12 * s, head).rotation.x = Math.PI / 2;
+  add(new THREE.CircleGeometry(0.055 * s, 12), glowA, 0, 0, 0.146 * s, head);
+  /* braço esquerdo: a serra circular */
+  const armL = new THREE.Group(); armL.name = 'armL'; armL.position.set(-0.32 * s, 0.94 * s, 0.02 * s); torso.add(armL);
+  for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armL).rotation.x = Math.PI / 2;
+  add(new THREE.BoxGeometry(0.1 * s, 0.1 * s, 0.12 * s), iron, 0, -0.24 * s, 0.04 * s, armL);
+  const saw = new THREE.Group(); saw.name = 'saw'; saw.position.set(0, -0.3 * s, 0.17 * s); armL.add(saw);
+  add(new THREE.CylinderGeometry(0.15 * s, 0.15 * s, 0.012 * s, 16), steel, 0, 0, 0, saw).rotation.z = Math.PI / 2;
+  for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; const t = add(new THREE.BoxGeometry(0.012 * s, 0.04 * s, 0.03 * s), steel, 0, Math.cos(a) * 0.16 * s, Math.sin(a) * 0.16 * s, saw); t.rotation.x = -a; }
+  add(new THREE.CylinderGeometry(0.035 * s, 0.035 * s, 0.03 * s, 8), brass, 0, 0, 0, saw).rotation.z = Math.PI / 2;
+  /* braço direito: o martelo a vapor */
+  const armR = new THREE.Group(); armR.name = 'armR'; armR.position.set(0.32 * s, 0.94 * s, 0.02 * s); torso.add(armR);
+  for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armR).rotation.x = Math.PI / 2;
+  add(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.3 * s, 6), steel, 0, -0.32 * s, 0.06 * s, armR);
+  const hh = add(new THREE.BoxGeometry(0.22 * s, 0.11 * s, 0.11 * s), iron, 0, -0.48 * s, 0.1 * s, armR); hh.name = 'hammerHead';
+  add(new THREE.BoxGeometry(0.06 * s, 0.13 * s, 0.13 * s), brass, 0.12 * s, -0.48 * s, 0.1 * s, armR);
+  /* a tábua que ele carrega no ombro (só aparece na volta das pilhas) */
+  const carry = add(new THREE.BoxGeometry(1.2 * s, 0.07 * s, 0.22 * s), std(0x9a7448), 0, 1.42 * s, 0.02 * s, torso); carry.name = 'carry'; carry.visible = false; carry.rotation.y = 0.2;
+}
 export function createObras(ctx: { /** o modelo da casa pronta (para ela subir do chão durante a obra) */ siteModel?(h: HomeSave): THREE.Group | null; /** a variante do modelo da casa pronta (para achar a porta) */ variantOf?(h: HomeSave): number;
   scene: THREE.Scene; T: number; heightAt(x: number, z: number): number; log(t: string, c?: string): void;
   /** marca/desmarca a pegada como parede (colisão) */ block(gx: number, gy: number, w: number, h: number, on: boolean): void;
@@ -115,38 +148,6 @@ export function createObras(ctx: { /** o modelo da casa pronta (para ela subir d
      o Ajudante é uma caldeira de cobre sobre pernas de pistão, com chaminé que fuma, elmo de escafandro de lente âmbar,
      o braço esquerdo é uma serra circular que gira e o direito, um martelo a vapor. Ele martela e serra no canto dele, vai até as
      pilhas de material, se abaixa, volta com uma tábua no ombro e recomeça. */
-  function buildWorker(g: THREE.Group, tier: number, s: number) {
-    const copper = std(tier === 2 ? 0xa0703a : tier === 1 ? 0x8a5228 : 0x7a4a24), brass = std(0x9a7430), iron = std(0x34363c), steel = std(0x9aa0a6), glowA = new THREE.MeshBasicMaterial({ color: 0xffb040, toneMapped: false });
-    const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number, par: THREE.Object3D = g) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.castShadow = true; par.add(o); return o; };
-    for (const [sx, nm] of [[-1, 'legL'], [1, 'legR']] as [number, string][]) { const hip = new THREE.Group(); hip.position.set(sx * 0.17 * s, 0.5 * s, 0); hip.name = nm; g.add(hip);
-      add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.24 * s, 8), copper, 0, -0.12 * s, 0, hip); add(new THREE.CylinderGeometry(0.04 * s, 0.04 * s, 0.26 * s, 6), steel, 0, -0.32 * s, 0, hip);
-      add(new THREE.BoxGeometry(0.16 * s, 0.08 * s, 0.28 * s), iron, 0, -0.46 * s, 0.04 * s, hip); add(new THREE.SphereGeometry(0.06 * s, 8, 6), brass, 0, 0, 0, hip); }
-    const torso = new THREE.Group(); torso.name = 'torso'; g.add(torso);
-    add(new THREE.CylinderGeometry(0.26 * s, 0.28 * s, 0.46 * s, 14), copper, 0, 0.78 * s, 0, torso);
-    for (const y of [0.6, 0.78, 0.96]) add(new THREE.TorusGeometry(0.275 * s, 0.02 * s, 5, 18), brass, 0, y * s, 0, torso).rotation.x = Math.PI / 2;
-    for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; add(new THREE.SphereGeometry(0.016 * s, 4, 3), brass, Math.cos(a) * 0.282 * s, 0.69 * s, Math.sin(a) * 0.282 * s, torso); }
-    add(new THREE.CircleGeometry(0.07 * s, 12), glowA, 0, 0.74 * s, 0.283 * s, torso); add(new THREE.TorusGeometry(0.075 * s, 0.015 * s, 5, 14), brass, 0, 0.74 * s, 0.284 * s, torso); // a fornalha acesa
-    const chim = add(new THREE.CylinderGeometry(0.045 * s, 0.04 * s, 0.32 * s, 8), iron, -0.14 * s, 1.16 * s, -0.12 * s, torso); chim.name = 'chim'; add(new THREE.CylinderGeometry(0.07 * s, 0.045 * s, 0.06 * s, 8), iron, -0.14 * s, 1.34 * s, -0.12 * s, torso);
-    const head = new THREE.Group(); head.position.set(0.04 * s, 1.14 * s, 0.03 * s); torso.add(head);
-    add(new THREE.SphereGeometry(0.14 * s, 12, 9), brass, 0, 0, 0, head); add(new THREE.CylinderGeometry(0.07 * s, 0.07 * s, 0.05 * s, 12), iron, 0, 0, 0.12 * s, head).rotation.x = Math.PI / 2;
-    add(new THREE.CircleGeometry(0.055 * s, 12), glowA, 0, 0, 0.146 * s, head);
-    /* braço esquerdo: a serra circular */
-    const armL = new THREE.Group(); armL.name = 'armL'; armL.position.set(-0.32 * s, 0.94 * s, 0.02 * s); torso.add(armL);
-    for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armL).rotation.x = Math.PI / 2;
-    add(new THREE.BoxGeometry(0.1 * s, 0.1 * s, 0.12 * s), iron, 0, -0.24 * s, 0.04 * s, armL);
-    const saw = new THREE.Group(); saw.name = 'saw'; saw.position.set(0, -0.3 * s, 0.17 * s); armL.add(saw);
-    add(new THREE.CylinderGeometry(0.15 * s, 0.15 * s, 0.012 * s, 16), steel, 0, 0, 0, saw).rotation.z = Math.PI / 2;
-    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; const t = add(new THREE.BoxGeometry(0.012 * s, 0.04 * s, 0.03 * s), steel, 0, Math.cos(a) * 0.16 * s, Math.sin(a) * 0.16 * s, saw); t.rotation.x = -a; }
-    add(new THREE.CylinderGeometry(0.035 * s, 0.035 * s, 0.03 * s, 8), brass, 0, 0, 0, saw).rotation.z = Math.PI / 2;
-    /* braço direito: o martelo a vapor */
-    const armR = new THREE.Group(); armR.name = 'armR'; armR.position.set(0.32 * s, 0.94 * s, 0.02 * s); torso.add(armR);
-    for (let k = 0; k < 3; k++) add(new THREE.TorusGeometry(0.04 * s, 0.016 * s, 5, 8), copper, 0, -k * 0.065 * s, 0, armR).rotation.x = Math.PI / 2;
-    add(new THREE.CylinderGeometry(0.03 * s, 0.03 * s, 0.3 * s, 6), steel, 0, -0.32 * s, 0.06 * s, armR);
-    const hh = add(new THREE.BoxGeometry(0.22 * s, 0.11 * s, 0.11 * s), iron, 0, -0.48 * s, 0.1 * s, armR); hh.name = 'hammerHead';
-    add(new THREE.BoxGeometry(0.06 * s, 0.13 * s, 0.13 * s), brass, 0.12 * s, -0.48 * s, 0.1 * s, armR);
-    /* a tábua que ele carrega no ombro (só aparece na volta das pilhas) */
-    const carry = add(new THREE.BoxGeometry(1.2 * s, 0.07 * s, 0.22 * s), std(0x9a7448), 0, 1.42 * s, 0.02 * s, torso); carry.name = 'carry'; carry.visible = false; carry.rotation.y = 0.2;
-  }
   /** o vai e vem de cada Ajudante: trabalha no canto, vai às pilhas, pega, volta carregando */
   const anim = new Map<number, { ph: 'work' | 'go' | 'pick' | 'back'; t: number; tx: number; tz: number }>();
   const sparks = (x: number, y: number, z: number, n: number, hot = true) => { for (let i = 0; i < n; i++) ctx.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 3, vy: 0.8 + Math.random() * 2.4, vz: (Math.random() - 0.5) * 3, life: 0.35 + Math.random() * 0.3, s0: 0.1, s1: 0.02, c0: hot ? 0xfff0a0 : 0xd8c8a0, c1: hot ? 0xff7a20 : 0x8a7a60, a: 1 }); };

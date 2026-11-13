@@ -3,6 +3,7 @@
    o bracelete, o pergaminho, o alforje, o canteiro e a bússola são montados aqui. Um só renderer desenha todos, um por vez, e copia para o quadro do cartão. */
 import * as THREE from 'three';
 import { buildHealDrone, buildShieldBot } from '../drones3d';
+import { buildWorker } from '../obras';
 import { DECOR } from '../decor';
 import { kitReady, kitLoad } from '../libs/kitprops';
 
@@ -23,10 +24,11 @@ function alforje() { const g = new THREE.Group(), lea = std(LEATHER, { metalness
   M(g, new THREE.BoxGeometry(0.62, 0.5, 0.34), lea).geometry.translate(0, 0, 0); M(g, new THREE.CylinderGeometry(0.17, 0.17, 0.62, 12, 1, false, 0, Math.PI), std(0x8a5630, { metalness: 0.05, roughness: 0.85 }), 0, 0.25, 0).rotation.set(Math.PI / 2, 0, Math.PI / 2);
   M(g, new THREE.BoxGeometry(0.64, 0.24, 0.03), std(0x8a5630, { metalness: 0.05 }), 0, 0.14, 0.18); M(g, new THREE.BoxGeometry(0.1, 0.1, 0.04), std(BRASS, { metalness: 0.8 }), 0, 0.04, 0.2);
   for (const s of [-1, 1]) M(g, new THREE.BoxGeometry(0.16, 0.22, 0.1), lea, s * 0.36, -0.08, 0.02); M(g, new THREE.TorusGeometry(0.2, 0.025, 6, 16, Math.PI), lea, 0, 0.36, 0); return g; }
-function canteiro() { const g = new THREE.Group(), br = std(BRASS, { metalness: 0.7, roughness: 0.35 }), ir = std(IRON);
-  for (const s of [-1, 1]) { const b = new THREE.Group(); b.position.x = s * 0.3; g.add(b); M(b, new THREE.BoxGeometry(0.26, 0.3, 0.2), br, 0, 0.3, 0); M(b, new THREE.SphereGeometry(0.11, 10, 8), br, 0, 0.56, 0); M(b, new THREE.SphereGeometry(0.035, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffd27a }), 0.04, 0.58, 0.1); M(b, new THREE.SphereGeometry(0.035, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffd27a }), -0.04, 0.58, 0.1);
-    for (const l of [-1, 1]) M(b, new THREE.CylinderGeometry(0.035, 0.035, 0.18, 6), ir, l * 0.07, 0.08, 0); const arm = M(b, new THREE.CylinderGeometry(0.03, 0.03, 0.3, 6), ir, s * 0.17, 0.36, 0.06); arm.rotation.x = -0.9; M(b, new THREE.BoxGeometry(0.1, 0.07, 0.16), ir, s * 0.17, 0.5, 0.2); }
-  M(g, new THREE.BoxGeometry(0.34, 0.2, 0.24), std(0x8a6a48, { metalness: 0 }), 0, 0.1, -0.22); M(g, new THREE.BoxGeometry(0.5, 0.05, 0.1), std(0x9a7a50, { metalness: 0 }), 0, 0.24, -0.22); g.position.y = -0.3; return g; }
+/* 13/11 (Erling: "o robô de construção não sei se condiz com o do jogo"): não condizia. Agora são os MESMOS Ajudantes de Obra Mk III do jogo (obras.ts), dois, com uma pilha de tábuas */
+function canteiro() { const g = new THREE.Group();
+  for (const s of [-1, 1]) { const b = new THREE.Group(); b.position.set(s * 0.42, 0, s * 0.06); b.rotation.y = -s * 0.35; buildWorker(b, 2, 0.62); g.add(b); }
+  for (let i = 0; i < 3; i++) M(g, new THREE.BoxGeometry(0.62, 0.05, 0.14), std(i % 2 ? 0x9a7a50 : 0x8a6a48, { metalness: 0 }), 0, 0.03 + i * 0.055, 0.42).rotation.y = 0.12 * (i - 1);
+  return g; }
 function bussola() { const g = new THREE.Group(), br = std(BRASS, { metalness: 0.85, roughness: 0.28 });
   M(g, new THREE.CylinderGeometry(0.34, 0.34, 0.09, 28), br); M(g, new THREE.CylinderGeometry(0.29, 0.29, 0.1, 28), std(0xf0e6cc, { metalness: 0, roughness: 0.8 }));
   const n = new THREE.Group(); n.position.y = 0.065; g.add(n); n.userData.agulha = true; M(n, new THREE.ConeGeometry(0.05, 0.24, 4), new THREE.MeshBasicMaterial({ color: 0xd03a2a }), 0, 0, -0.12).rotation.x = -Math.PI / 2; M(n, new THREE.ConeGeometry(0.05, 0.24, 4), std(0x3a4a6a), 0, 0, 0.12).rotation.x = Math.PI / 2;
@@ -48,8 +50,8 @@ export function giraCards(root: HTMLElement) { alvo = root; cancelAnimationFrame
 function frame(t: number) {
   const L = alvo ? Array.from(alvo.querySelectorAll<HTMLCanvasElement>('canvas[data-g3]')) : []; if (!L.length || !alvo!.isConnected || alvo!.style.display === 'none') return; raf = requestAnimationFrame(frame);
   if (falhou) return; if (!R) { try { R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }); R.setPixelRatio(1); R.setSize(W * 2, H * 2, false); R.outputColorSpace = THREE.SRGBColorSpace; } catch { falhou = true; for (const c of L) c.hidden = true; return; } }
-  for (const cv of L) { const id = cv.dataset.g3!; /* */ let e = cache.get(id); if (!e) { const kit = DECOR[id]?.kit; if (kit && !kitReady(kit)) { void kitLoad(kit); continue; } const o = prodModel(id); if (!o) { cv.hidden = true; continue; } const box = new THREE.Box3().setFromObject(o), sp = box.getBoundingSphere(new THREE.Sphere()); e = { o, r: Math.max(0.2, sp.radius), cy: sp.center.y }; cache.set(id, e); }
+  const vh = innerHeight; for (const cv of L) { const id = cv.dataset.g3!; /* 13/11: só desenha (e só carrega) o que está na tela; com 60 e tantas peças na aba, desenhar todas a cada quadro pesava */ { const rc = cv.getBoundingClientRect(); if (rc.bottom < -40 || rc.top > vh + 40 || !rc.width) continue; } let e = cache.get(id); if (!e) { const kit = DECOR[id]?.kit; if (kit && !kitReady(kit)) { void kitLoad(kit); continue; } const o = prodModel(id); if (!o) { cv.hidden = true; continue; } /* 13/11 (Erling: "tem que centralizar o drone na visão"): a caixa conta só o que se vê (malhas visíveis e opacas); o facho e o brilho invisíveis puxavam o centro para baixo e o drone subia para fora do quadro */ o.updateMatrixWorld(true); const box = new THREE.Box3(); o.traverse((q) => { const m = q as THREE.Mesh; if (!m.isMesh || !m.visible) return; const mt = m.material as THREE.Material & { opacity?: number }; if (mt && mt.transparent && (mt.opacity ?? 1) < 0.35) return; let v: THREE.Object3D | null = m; while (v && v !== o) { if (!v.visible) return; v = v.parent; } box.expandByObject(m); }); if (box.isEmpty()) box.setFromObject(o); const sp = box.getBoundingSphere(new THREE.Sphere()); e = { o, r: Math.max(0.2, sp.radius), cy: sp.center.y }; cache.set(id, e); }
     e.o.rotation.y = t / 1000 * 0.9; e.o.traverse((n) => { if (n.userData.agulha) n.rotation.y = Math.sin(t / 700) * 0.5 - t / 1000 * 0.9; if (n.userData.spark !== undefined) n.visible = (Math.floor(t / 130) + n.userData.spark) % 3 !== 0; });
-    sc.add(e.o); const d = e.r * (id.startsWith('drone') ? 2.1 : id.startsWith('trio') ? 2.6 : 3.3); cam.position.set(0, e.cy + d * 0.34, d); cam.lookAt(0, e.cy, 0); R.render(sc, cam); sc.remove(e.o);
+    sc.add(e.o); const d = e.r * (id.startsWith('drone') ? 2.1 : id.startsWith('trio') || id === 'u_obra' ? 2.6 : 3.3); cam.position.set(0, e.cy + d * 0.34, d); cam.lookAt(0, e.cy, 0); R.render(sc, cam); sc.remove(e.o);
     const c2 = cv.getContext('2d'); if (c2) { c2.clearRect(0, 0, cv.width, cv.height); c2.drawImage(R.domElement, 0, 0, cv.width, cv.height); } }
 }

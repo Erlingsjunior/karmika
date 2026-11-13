@@ -4,8 +4,8 @@ import type { Tile } from '@karmika/shared';
 import type { Prop, PropKind, World } from './world';
 import { ITEMS } from './inventory';
 import { buildHouse, buildStyledHouse } from './houses3d';
-import { buyFx, confirmBox } from './windows';
-import { DECOR, DECOR_IDS, MOB_IDS, decorThumb, whereTxt } from './decor';
+import { buyFx, confirmBox, movable, MV_GRIP } from './windows';
+import { DECOR, DECOR_IDS, MOB_IDS, decorThumb, whereTxt, shopBought } from './decor';
 import { GUILD_PIECES } from './sistemas/guilda-obras';
 
 export interface Piece { id: PropKind; name: string; icon: string; cost: Record<string, number>; /** ouro cobrado junto com o material */ gold?: number; blocks?: boolean; rot?: boolean; tip: string }
@@ -89,7 +89,7 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
   /* 28/10 (Erling: "o menu tem que ser no estilo menu abaixo, como estava antes com as peças, para a gente ir vendo e fazendo —
      estilo modo construção; coloco o mouse em cima e abre um tooltip explicando tudo"): a construção é uma barra encaixada
      embaixo da tela, com abas (Peças · Casas · Mobília · Decoração), cards pequenos e um balão com a ficha completa no hover. */
-  const el = document.createElement('div'); el.id = 'build'; el.className = 'bdock'; el.style.display = 'none'; document.body.appendChild(el);
+  const el = document.createElement('div'); el.id = 'build'; el.className = 'bdock'; el.style.display = 'none'; document.body.appendChild(el); movable(el, 'build'); /* 13/11 (Erling: "posso mover a janela de construção"): pelo puxador, na frente das abas; fica salvo */
   const tip = document.createElement('div'); tip.id = 'btip'; tip.style.display = 'none'; document.body.appendChild(tip);
   let tab: 'pecas' | 'casas' | 'mob' | 'deco' | 'guilda' = 'pecas', gsel: string | null = null; /* gsel: peça da guilda escolhida (aba Guilda) */
   const ghost = new THREE.Mesh(new THREE.BoxGeometry(2, 0.4, 2), new THREE.MeshBasicMaterial({ color: 0x7aff9a, transparent: true, opacity: 0.35, depthWrite: false })); ghost.visible = false; ctx.scene.add(ghost);
@@ -114,13 +114,13 @@ export function createBuild(ctx: { /** o id do projeto da obra em andamento */ s
     let items = '';
     if (tab === 'pecas') items = PIECES.map((p, i) => card('p:' + i, `<span class="bi">${p.icon}</span>`, p.name, `🪙 ${p.gold ?? 0}`, i === sel && whole < 0 ? 'on' : '')).join('');
     else if (tab === 'casas') items = WHOLES.map((w, i) => card('w:' + i, `<img src="${wholeThumb(w)}" alt="">`, w.name, `${owned('projeto_' + w.id) ? '📜 ' : ''}🪙 ${fmt(w.gold ?? 0)}`, (i === whole ? 'on' : '') + (ctx.siteId?.() === w.id ? ' cur' : ''))).join('');
-    else if (tab === 'mob') items = MOB_IDS.map((k) => card('d:' + k, `<img src="${decorThumb(k)}" alt="">`, DECOR[k].name, owned(k) ? `🎒 ${owned(k)}` : `🪙 ${fmt(DECOR[k].gold ?? 0)}`, owned(k) ? 'have' : '')).join('');
+    else if (tab === 'mob') items = MOB_IDS.map((k) => card('d:' + k, `<img src="${decorThumb(k)}" alt="">${DECOR[k].brl ? '<i class="bshop">SHOP</i>' : ''}`, DECOR[k].name, owned(k) ? `🎒 ${owned(k)}` : `🪙 ${fmt(DECOR[k].gold ?? 0)}`, (owned(k) ? 'have' : '') + (DECOR[k].brl && shopBought(k) ? ' shopok' : ''))).join(''); /* 13/11: carimbo SHOP nas peças que o Shop vende; borda azul nas que já vieram do Shop */
     else if (tab === 'guilda') { const gi = ctx.guildInfo?.(), L = gi?.lvl ?? 0; items = GUILD_PIECES.map((gp) => { const lock = !gi || L < gp.lvl, done = !!gi && gi.has(gp.id);
         return card('g:' + gp.id, `<span class="bi${lock ? ' q' : ''}">${lock ? '🔒' : gp.icon}</span>`, gp.name, gp.soon ? `nível ${'I II III IV V'.split(' ')[gp.lvl - 1]} · em breve` : lock ? `nível ${'I II III IV V'.split(' ')[gp.lvl - 1]}` : done ? '✔ no terreno' : `🪙 ${fmt(gp.gold ?? 0)}`, (gsel === gp.id ? 'on' : '') + (lock || gp.soon ? ' lock' : done ? ' have' : '')); }).join('')
         + (gi ? `<button class="bc" data-gplot><span class="bi">📍</span><b>Terreno da ${gi.name.length > 16 ? gi.tag : gi.name}</b><small>marcar no mapa</small></button>` : ''); }
     else { const L = DECOR_IDS.filter((k) => DECOR[k].kind === 'deco'); items = L.map((k) => owned(k) ? card('d:' + k, `<img src="${decorThumb(k)}" alt="">`, DECOR[k].name, `🎒 ${owned(k)}`, 'have') : card('d:' + k, '<span class="bi q">?</span>', '???', DECOR[k].pool === 'chefe' ? 'chefes' : DECOR[k].pool === 'elite' ? 'elites' : 'mundo', 'lock')).join(''); }
     const nDeco = DECOR_IDS.filter((k) => DECOR[k].kind === 'deco' && owned(k)).length;
-    el.innerHTML = `<div class="btabs">${([['pecas', '🧱 Peças'], ['casas', '🏡 Casas'], ['mob', '🪑 Mobília'], ['deco', `✨ Decoração ${nDeco}/${DECOR_IDS.length - MOB_IDS.length}`], ['guilda', '⚑ Guilda']] as const).map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}<span class="bh">${tab === 'guilda' ? (ctx.guildInfo?.() ? 'Peças da guilda: só no terreno dela · as Peças comuns também valem lá (todos veem)' : 'Sem guilda: funde uma com o Prefeito de Lumenhal ou entre por convite') : tab === 'pecas' ? 'Clique no chão para colocar · botão direito remove · R gira' : tab === 'casas' ? 'Passe o mouse para ver a ficha · clique para comprar o projeto ou marcar o lugar' : 'Passe o mouse para ver · clique para comprar ou colocar'}</span><button class="bx" data-x title="Fechar (B)">✕</button></div><div class="bstrip">${items}</div>`;
+    el.innerHTML = `<div class="btabs">${MV_GRIP('l')}${([['pecas', '🧱 Peças'], ['casas', '🏡 Casas'], ['mob', '🪑 Mobília'], ['deco', `✨ Decoração ${nDeco}/${DECOR_IDS.length - MOB_IDS.length}`], ['guilda', '⚑ Guilda']] as const).map(([k, l]) => `<button data-tab="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}<span class="bh">${tab === 'guilda' ? (ctx.guildInfo?.() ? 'Peças da guilda: só no terreno dela · as Peças comuns também valem lá (todos veem)' : 'Sem guilda: funde uma com o Prefeito de Lumenhal ou entre por convite') : tab === 'pecas' ? 'Clique no chão para colocar · botão direito remove · R gira' : tab === 'casas' ? 'Passe o mouse para ver a ficha · clique para comprar o projeto ou marcar o lugar' : 'Passe o mouse para ver · clique para comprar ou colocar'}</span><button class="bx" data-x title="Fechar (B)">✕</button></div><div class="bstrip">${items}</div>`;
     el.style.display = 'block'; (el.querySelector('.bstrip') as HTMLElement).scrollLeft = sc0;
   }
   el.addEventListener('wheel', (e) => { const st = el.querySelector('.bstrip') as HTMLElement | null; if (st && Math.abs(e.deltaY) > Math.abs(e.deltaX)) { st.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
