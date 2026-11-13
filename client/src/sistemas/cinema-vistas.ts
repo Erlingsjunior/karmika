@@ -112,6 +112,10 @@ const FONT_R = new Map<string, number>();
       text: ['As guildas nasceram quando os ofícios descobriram que, sozinhos, morriam com o mestre. Ferreiros, marceneiros, alfaiates, boticários e cozinheiros juraram ensinar antes de partir, e o Salão guarda cada juramento debaixo de um estandarte.',
         'Uma guilda é um karma que não cabe em uma pessoa só. O que um membro faz pesa no nome de todos: a bandeira sobe com a honra de cada um e desce com a vergonha de qualquer um.',
         'No Tear do Mundo cada reino é um fio, e cada guilda torce o seu. Nos campeonatos os fios se cruzam, e a casa que vence dá a cor daquele trecho. Ninguém enxerga o desenho inteiro enquanto tece. O Olho enxerga, e no fim todos verão o que fizeram juntos.'] } as (typeof CINE.vistas)[number]); } }
+/* 13/11 (Erling: "em todas as fontes de cena, TODAS, o texto precisa ir mais devagar; não está dando para ler direito"): a duração de cada cena era um número fixo
+   (24 a 30 s para três parágrafos: quase 20 letras por segundo). Agora TODA cena (fontes e cinemáticas) dura o que o texto pede: 11 letras por segundo mais 8 s de folga,
+   e nunca menos que uma vez e meia o tempo antigo. A câmera acompanha, mais lenta. */
+for (const sc of [...CINE.list, ...CINE.vistas]) { const ch = sc.text.join(' ').length; sc.sec = Math.max(Math.round(sc.sec * 1.5), Math.round(ch / 11) + 8); }
 /* o nome do recurso nunca sai do globo: encolhe a letra até caber (DETERMINAÇÃO, ENERGIA, FÚRIA...) */
 for (const u of Array.from(document.querySelectorAll<HTMLElement>('.orb u'))) { const fitU = () => { u.style.fontSize = ''; u.style.letterSpacing = ''; let fs = 8, ls = 0.16; for (let k = 0; k < 10 && u.scrollWidth > u.clientWidth + 1; k++) { if (ls > 0.04) ls -= 0.04; else fs -= 0.5; u.style.letterSpacing = ls + 'em'; u.style.fontSize = fs + 'px'; } }; new MutationObserver(fitU).observe(u, { childList: true, characterData: true, subtree: true }); setTimeout(fitU, 500); }
 let shiftHeld = false; addEventListener('keydown', (e) => { shiftHeld = e.shiftKey; }, true); addEventListener('keyup', (e) => { shiftHeld = e.shiftKey; }, true);

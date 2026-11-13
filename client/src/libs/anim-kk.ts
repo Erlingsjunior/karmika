@@ -56,6 +56,8 @@ const actOf = (a: Action) => byWeapon(a) ?? (large() ? ACT_L[a] : undefined) ?? 
 /** 10/11 (Erling: "a girada com espada pode ser 40% mais rápida, tem que ser mais mortal"): giros tocam mais depressa (e emendam) */
 /** trecho do clipe que vale um gesto (0..1 do clipe): do Pickaxing, que tem dois golpes, sai um só: a picareta sobe, bate aos 55% do gesto e fica um instante na pedra */
 const RANGE: Record<string, [number, number]> = { 'M:Pickaxing': [0.3, 0.8] };
+/** em que ponto do clipe de andar/correr cai a fase zero da nossa passada (medido: é o que dá a passada mais aberta) */
+const STRIDE_OFF = 0.75;
 const SPEED: Record<string, number> = { 'M:Melee_2H_Attack_Spin': 1.4, 'L:Melee_2H_Attack': 1.15, 'M:Melee_2H_Attack_Spinning': 1.4 };
 const loops = () => large()
   ? { idle: 'L:Idle_A', combat: kit === 'lob' || !weapon ? 'L:Melee_Unarmed_Idle' : 'L:Melee_2H_Idle', walk: 'L:Walking_A', run: kit === 'tecno' ? 'M:Running_HoldingRifle' : 'L:Running_A' }
@@ -108,7 +110,11 @@ export function kkAnimator(model: THREE.Object3D, rest: THREE.Object3D) {
       const p0 = hero.root.position; if (has && dt > 0) { const d = Math.hypot(p0.x - prev.x, p0.z - prev.z) / dt; sp += (Math.min(12, d) - sp) * Math.min(1, dt * 10); } prev.copy(p0); has = true;
       /* camada de movimento: parado / guarda / andando / correndo */
       const LOOP = loops(); const loopName = sp > 4.2 ? LOOP.run : sp > 0.6 ? LOOP.walk : hero.combat ? LOOP.combat : LOOP.idle; const lp = pose(loopName);
-      if (lp) { loopT += dt * (loopName === LOOP.run ? Math.max(0.8, sp / 6.5) : loopName === LOOP.walk ? Math.max(0.7, sp / 2.2) : 1); put(lp, loopT % lp.dur, loopName === LOOP.walk || loopName === LOOP.run ? 0.7 : 1, kit === 'dwarf' && loopName === LOOP.walk); } /* o anão anda com um pulinho de anão (Erling) */ /* andar/correr: 70% KayKit + 30% o nosso (menos desenho animado) */
+      if (lp) { loopT += dt * (loopName === LOOP.run ? Math.max(0.8, sp / 6.5) : loopName === LOOP.walk ? Math.max(0.7, sp / 2.2) : 1); /* 13/11 (Erling: "a cada três passos o personagem troca o passo"): andar e correr são 70% KayKit + 30% a nossa passada, e cada camada tinha o SEU relógio.
+           Como os dois ciclos não têm a mesma duração, de tempos em tempos as pernas de uma camada iam contra as da outra (o passo "trocava"). Agora o clipe anda na fase da nossa passada. */
+        const loco = loopName === LOOP.walk || loopName === LOOP.run, ph = (hero as Hero3D & { stridePh?: number }).stridePh, OFF = (window as unknown as { __kkOff?: number }).__kkOff ?? STRIDE_OFF;
+        const tl = loco && ph !== undefined ? ((((ph / (Math.PI * 2) + OFF) % 1) + 1) % 1) * lp.dur : loopT % lp.dur;
+        put(lp, tl, loco ? 0.7 : 1, kit === 'dwarf' && loopName === LOOP.walk); } /* o anão anda com um pulinho de anão (Erling) */ /* andar/correr: 70% KayKit + 30% o nosso (menos desenho animado) */
       /* camada da ação (golpe, magia, esquiva…): no MESMO progresso da ação do jogo; entra e sai suave */
       /* 10/11: o giro forçado só termina numa volta completa (antes cortava no meio da volta e o corpo voltava de supetão para a frente) */
       if (forced) { const fp = pose(forced.clip); if (fp) { const t0 = forced.t; forced.t += dt * (SPEED[forced.clip] ?? 1); const wrapped = Math.floor(forced.t / fp.dur) > Math.floor(t0 / fp.dur);

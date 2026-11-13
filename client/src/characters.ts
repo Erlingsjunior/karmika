@@ -58,6 +58,7 @@ export interface Hero3D {
   readonly stepVel: number;
   readonly actName: Action | null;
   readonly actP: number;
+  readonly stridePh?: number;
   guard: boolean;
   /** 09/11 pesca: segurando a vara (pose) e o puxão quando o peixe morde (0..1) */ fishing: boolean; fishTug: number;
   /** 03/11 (andar de costas, como no Path of Exile 2): direção em que os pés andam (yaw no mundo) quando ela é diferente de para onde o corpo olha; null = anda para onde olha */
@@ -1177,6 +1178,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     cuffPos(out: THREE.Vector3) { return (cuff && cuff.visible ? cuff : armL.wr).getWorldPosition(out); },
     get actName() { return act ? act.a : null; },
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
+    /** 13/11: a fase da passada (rad; 2π = dois passos). O animador KayKit anda no MESMO compasso, para as duas camadas não baterem uma contra a outra */ get stridePh() { return phase; },
     get stepVel() { return stepVel; },
     guard: false,
     moveYaw: null,
