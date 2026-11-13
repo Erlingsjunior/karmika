@@ -371,7 +371,7 @@ let az = 45 * D2R, azT = az, pitch = 30 * D2R, pitchT = pitch;
 const PITCH_MIN = 14 * D2R, PITCH_MAX = 62 * D2R;
 const camDir = new THREE.Vector3();
 let zoomTarget = 17, zoom = 17; // metros visíveis na altura da tela
-const ZOOM_MIN = 5; let ZOOM_MAX = 22; // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
+const ZOOM_MIN = 5; let ZOOM_MAX = 24.2; /* 13/11 (Erling: "aumenta o zoom apenas uns 10%, só para longe"; mais que isso muda o estilo do jogo): afasta até 24,2 m (era 22) */ // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
 
 /* ---------- mundo ---------- */
 /* 11/11 (Erling: "a proximidade com o telhado da casa estraga a vista da fonte; só baixe a casa um pouco mais no terreno, não mude nada de lugar,

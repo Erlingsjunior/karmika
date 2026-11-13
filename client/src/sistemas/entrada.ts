@@ -210,7 +210,7 @@ addEventListener('keydown', (e) => {
   if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { K.instintoSys.stanceSys?.cycle(); K.renderStances(); }
   if (k === 'e') K.interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
-  if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 22; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 22); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
+  if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 24.2; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 24.2); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
   if (k === 'r' && !e.repeat) { runOn = !runOn; try { localStorage.setItem('karmika.run', runOn ? '1' : '0'); } catch { /* */ } K.game.logMsg(runOn ? '🏃 Correr: ligado (R)' : '🚶 Andar: ligado (R)', '#ffd24a'); }
   if (k === 'h' && isAdm()) K.game.damage(12, heroPosNow()); /* 12/11: G (modo deus), H (dano em si) e Shift+F5 a F7 (troca de raça) são ferramentas de teste: só para o administrador */
   if (e.key === 'F5' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('nordic'); return; }

@@ -89,7 +89,7 @@ ${deskV?.setVideo && video ? `    <div class="stat"><span>Tradutor de vídeo <sm
     <div class="stat"><span>Ajuste automático <small>Ligado: se o FPS cair abaixo de 45, o jogo baixa um pouco a resolução e as sombras sozinho, e volta quando folgar. Desligado: fica exatamente como você escolheu acima</small></span>${seg('auto', [[true, 'Ligado'], [false, 'Desligado']])}</div>
     <h3>Jogo</h3>
 
-    <div class="stat"><span>Zoom</span><div class="seg"><button data-act="zoom">Padrão</button><span class="hint3">roda do mouse: 5 m a 22 m</span></div></div>
+    <div class="stat"><span>Zoom</span><div class="seg"><button data-act="zoom">Padrão</button><span class="hint3">roda do mouse: 5 m a 24 m</span></div></div>
     <div class="stat"><span>Janelas (chat, missões, grupo)</span><div class="seg"><button data-act="ui">Posições padrão</button></div></div>
     <div class="stat"><span>Restaurar</span><div class="seg"><button data-act="reset">Opções padrão</button></div></div>`;
   const som = document.getElementById('p-som');

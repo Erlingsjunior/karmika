@@ -3036,6 +3036,10 @@ export function buildCity(): World {
         const q = props.find((o) => o.kind === 'station' && o.label === nome && Math.hypot(o.gx - KX, o.gy - KY) < 50); if (!q) continue;
         let cabe = true; for (let y = ny; y < ny + q.h; y++) for (let x = nx; x < nx + q.w; x++) if (!livre(map[y]?.[x])) cabe = false; if (!cabe) { console.warn('Karmika: ' + nome + ' não coube no lugar novo'); continue; }
         limpa(nx - 1, ny - 1, nx + q.w, ny + q.h); q.gx = nx; q.gy = ny; q.ry = 0; delete (q as { wdir?: number }).wdir; /* longe do riacho, a marcenaria fica sem a roda d'água */ }
+      /* 13/11 (Erling, foto com seta): a pedra de runa do sudoeste de Karmika sai de trás da torre e do Curtume e vai para o gramado das flores, ao lado do portão oeste, à vista de quem passa */
+      { /* é a pedra que fica perto de (KX - 14, KY + 26), não a do poço da praça */ const rl = relics.find((r) => Math.hypot(r.x - (KX - 14), r.y - (KY + 26)) < 3), nx = KX - 22, ny = KY + 22;
+        if (rl && livre(map[ny]?.[nx]) && !props.some((q) => q.kind !== 'relic' && q.kind !== 'tree' && nx >= q.gx && nx < q.gx + q.w && ny >= q.gy && ny < q.gy + q.h)) {
+          const todas = props.filter((q) => q.kind === 'relic' && Math.hypot(q.gx - rl.x, q.gy - rl.y) < 2), rp = todas[0]; for (const o of todas.slice(1)) { if (map[o.gy]?.[o.gx] === 'wall') map[o.gy][o.gx] = 'grass'; props.splice(props.indexOf(o), 1); } /* havia duas pedras no mesmo lugar: fica uma */ limpa(nx, ny, nx, ny); if (rp) { if (map[rp.gy]?.[rp.gx] === 'wall') map[rp.gy][rp.gx] = 'grass'; rp.gx = nx; rp.gy = ny; map[ny][nx] = 'wall'; } rl.x = nx + (rl.x - Math.floor(rl.x)); rl.y = ny + (rl.y - Math.floor(rl.y)); } }
       let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX + 10, EY + 2, EX + 14, EY + 6], [PX, PY, PX + PW - 1, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
       if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
       else {

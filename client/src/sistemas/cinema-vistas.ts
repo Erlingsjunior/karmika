@@ -95,6 +95,23 @@ const FONT_R = new Map<string, number>();
       text: [`A fonte de ${st.name} é o coração do lugar: as estradas chegam nela, as notícias se espalham dela, e as crianças aprendem a contar com as moedas do fundo.${lore ? ' ' + lore : ''}`,
         'Como toda fonte de Karmika, esta guarda o que as almas deixam cair quando passam. Quem joga uma moeda e olha a água vê o que o lugar já viu: os que nasceram, os que partiram e os que voltaram com outro rosto.',
         'Os velhos dizem que Marghar bebe de todas as fontes ao mesmo tempo. Por isso nenhuma seca, e por isso ninguém mente com a mão na borda de pedra.'] } as (typeof CINE.vistas)[number]); } }
+/* 13/11 (Erling: "coloque a fonte de olhar na casa da guilda e na taverna, eles precisam ver essas belezinhas e a história das guildas e tavernas e estábulos no jogo
+   com o sistema de tear, onde cada reino contribui com seu fio ao tear do mundo kármiko, fazendo parte do desenho que se forma no fim"):
+   duas Fontes da Visão em Karmika, uma na calçada da Estalagem e outra na saída do portão do Salão das Guildas */
+{ const D = Math.PI / 180, shot = (x: number, y: number, zoom: number, az: number) => ({ x: x * T, z: y * T, zoom, az: az * D });
+  const inn = K.city.props.find((q) => q.kind === 'house' && q.shop === 'estalagem'), gh = K.city.props.find((q) => q.kind === 'house' && q.shop === 'salao_guildas'), stb = K.city.props.find((q) => q.kind === 'house' && q.shop === 'estabulo');
+  if (inn) { const cx = inn.gx + inn.w / 2, cy = inn.gy + inn.h / 2;
+    CINE.vistas.push({ id: 'v_estalagem', at: { x: inn.gx - 2, y: inn.gy + inn.h + 1 }, title: 'Fonte da Visão — Estalagem de Karmika', sub: 'A mesa, a cama e o estábulo', mood: 'bright', skippable: true, sec: 30,
+      shots: [shot(cx, cy + 2, 19, 45), shot(stb ? stb.gx + stb.w / 2 : cx + 8, stb ? stb.gy + stb.h / 2 + 1 : cy, 15, 45), shot(cx + 2, cy, 26, 45)],
+      text: ['Antes das muralhas havia a mesa. A primeira estalagem de Karmika foi um telheiro onde quem chegava da estrada dividia o fogo com quem ia partir. Dizem que Marghar sentou ali sem ser reconhecido e pagou a sopa com uma história.',
+        'Toda estalagem tem um estábulo porque nenhuma jornada é de um só. O animal que carrega você carrega também o que você fez no caminho. Por isso o moço do estábulo escova devagar e não pergunta de onde vem a poeira.',
+        'Cada reino tem a sua estalagem: igual por dentro, com outro nome na placa e outra bandeira na porta. No Tear do Mundo ela é o nó onde os fios se encontram. Quem senta a esta mesa hoje vira linha no desenho que só se vê inteiro no fim.'] } as (typeof CINE.vistas)[number]); }
+  if (gh) { const cx = gh.gx + gh.w / 2, cy = gh.gy + gh.h / 2;
+    CINE.vistas.push({ id: 'v_salao_guildas', at: { x: gh.gx + 12, y: gh.gy + 8 }, title: 'Fonte da Visão — Salão das Guildas', sub: 'O juramento dos ofícios e o Tear do Mundo', mood: 'bright', skippable: true, sec: 30,
+      shots: [shot(cx + 1, cy + 3, 20, 45), shot(cx + 5, cy + 4, 14, 45), shot(cx + 4, cy + 2, 26, 45)],
+      text: ['As guildas nasceram quando os ofícios descobriram que, sozinhos, morriam com o mestre. Ferreiros, marceneiros, alfaiates, boticários e cozinheiros juraram ensinar antes de partir, e o Salão guarda cada juramento debaixo de um estandarte.',
+        'Uma guilda é um karma que não cabe em uma pessoa só. O que um membro faz pesa no nome de todos: a bandeira sobe com a honra de cada um e desce com a vergonha de qualquer um.',
+        'No Tear do Mundo cada reino é um fio, e cada guilda torce o seu. Nos campeonatos os fios se cruzam, e a casa que vence dá a cor daquele trecho. Ninguém enxerga o desenho inteiro enquanto tece. O Olho enxerga, e no fim todos verão o que fizeram juntos.'] } as (typeof CINE.vistas)[number]); } }
 /* o nome do recurso nunca sai do globo: encolhe a letra até caber (DETERMINAÇÃO, ENERGIA, FÚRIA...) */
 for (const u of Array.from(document.querySelectorAll<HTMLElement>('.orb u'))) { const fitU = () => { u.style.fontSize = ''; u.style.letterSpacing = ''; let fs = 8, ls = 0.16; for (let k = 0; k < 10 && u.scrollWidth > u.clientWidth + 1; k++) { if (ls > 0.04) ls -= 0.04; else fs -= 0.5; u.style.letterSpacing = ls + 'em'; u.style.fontSize = fs + 'px'; } }; new MutationObserver(fitU).observe(u, { childList: true, characterData: true, subtree: true }); setTimeout(fitU, 500); }
 let shiftHeld = false; addEventListener('keydown', (e) => { shiftHeld = e.shiftKey; }, true); addEventListener('keyup', (e) => { shiftHeld = e.shiftKey; }, true);

@@ -1,6 +1,6 @@
 import { artMesh, artReady } from './arte3d';
 import * as THREE from 'three';
-import { std, ink, texBox, plankTex, stoneTex, plasterTex, woodTex, gableRoof, scaleUV, brickTex } from './toon3d';
+import { std, ink, texBox, plankTex, stoneTex, plasterTex, plasterTexV, woodTex, gableRoof, scaleUV, brickTex } from './toon3d';
 
 /** onde fica a porta da frente de cada modelo de casa (coordenadas locais da casa, chão): a luz da porta usa isto */
 export function houseDoor(variant: number, Wm: number, Dm: number): { x: number; z: number; y: number; w: number; h: number } {
@@ -107,7 +107,7 @@ function raiseWalls(g: THREE.Group, chim: THREE.Vector3[], lantern: THREE.Vector
 /** um volume: base de pedra + parede + telhado de duas águas */
 function volume(parent: THREE.Object3D, cx: number, cz: number, w: number, d: number, y0: number, wallH: number, roofH: number, wallC: number, roofC: number, kind: 'plank' | 'plaster' | 'stone', alongX: boolean, over = 0.5) {
   const g = new THREE.Group(); g.position.set(cx, y0, cz);
-  const wallMat = kind === 'stone' ? std(0xffffff, { map: stoneTex(wallC) }) : kind === 'plaster' ? std(0xffffff, { map: plasterTex(wallC) }) : std(0xffffff, { map: plankTex(wallC) });
+  const wallMat = kind === 'stone' ? std(0xffffff, { map: stoneTex(wallC) }) : kind === 'plaster' ? std(0xffffff, { map: plasterTexV(wallC) }) : std(0xffffff, { map: plankTex(wallC) });
   const walls = new THREE.Mesh(texBox(w, wallH, d, kind === 'plaster' ? 2.4 : 1.6), wallMat); ink(walls, 0.05); walls.position.y = wallH / 2; walls.castShadow = walls.receiveShadow = true; g.add(walls);
   if (kind !== 'stone') { const base = new THREE.Mesh(texBox(w + 0.12, 0.55, d + 0.12, 1.6), std(0xffffff, { map: stoneTex(0x6a665e) })); base.position.y = 0.27; g.add(base); }
   const roof = gableRoof(w, d, roofH, over, roofC, wallC, alongX); roof.position.y = wallH; g.add(roof);
