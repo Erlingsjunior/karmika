@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildTearHall } from './tear3d';
 import { makeFire } from './sistemas/fogo';
 import { vitral, floorGlow, TEMAS, type Tam } from './vitrais';
 import { std, ink, plankTex, stoneTex, woodTex, plasterTex } from './toon3d';
@@ -14,6 +15,7 @@ const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 21474
     a casa élfica é redonda e aberta de um lado — por dentro sala redonda, um lado sem parede com bambus e cipós olhando a vila, móveis
     diferentes e um fogão de pedra, não lareira; a mesma ideia para anões e humanos") */
 export function buildInterior(variant: number, W: number, D: number, seed = 7, culture = 1): Interior {
+  if (variant === 18) return buildTearHall(); /* 13/11: o Grande Salão do Tear */
   if (variant === 15) { W = Math.max(W, 30); D = Math.max(D, 20); } if (variant === 16) { W = Math.max(W, 26); D = Math.max(D, 16); } if (variant === 14) { W = Math.max(W, 21); D = Math.max(D, 11); } if (variant === 17) { W = Math.max(W, 24); D = Math.max(D, 16); } /* 12/11: a Estalagem e o Salão das Guildas de Karmika */ /* 10/11: a Bigorna Molhada por dentro é um salão de verdade (30 × 20 m) */
   const g = new THREE.Group(), cols: [number, number, number][] = [], r = rr(seed * 97 + variant * 13 + 5);
   const lights: { l: THREE.PointLight; base: number; ph: number }[] = []; const spin: THREE.Object3D[] = []; /* o que gira devagar (planetário) */
