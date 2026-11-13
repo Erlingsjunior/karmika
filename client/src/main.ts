@@ -1,6 +1,7 @@
 import { buildSpecies } from './flora3d';
 
 
+import { controleAlvos, type PadAlvo } from './sistemas/controle';
 import { t as tr } from './i18n';
 import { installBvh } from './libs/bvh';
 import { kkSetWeapon } from './libs/anim-kk';
@@ -441,6 +442,11 @@ let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou 
 const ataqueSys = createAtaques({ T, settlements: () => city.settlements as never, heroTile: () => ({ x: state.fx, y: state.fy }), night: () => state.night, inside: () => !!inside, level: () => game.st.lvl,
   walkable: (x, z) => { const tt = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!tt || !isWalkable(tt)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T) && !rampartAt(Math.floor(x / T), Math.floor(z / T)); } catch { return true; } }, spawn: (ty, x, z, o) => game.enemies.spawn(ty, x, z, o) as never, clearTag: (tg) => game.enemies.clearTag(tg),
   log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; } });
+/* 13/11: o alvo automático do controle. Entrega os inimigos vivos a até 13 m do herói, já em pontos da tela (o controle escolhe e aponta a mira) */
+controleAlvos(() => { if (inside) return []; const hp = hero.root.position, r = canvas.getBoundingClientRect(), out: PadAlvo[] = []; const L = game.enemies.list;
+  for (let i = 0; i < L.length; i++) { const e = L[i]; if (!e.active || !e.alive || (e as unknown as { ally?: boolean }).ally) continue; const d = Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z); if (d > 13) continue;
+    const v = new THREE.Vector3(e.pos.x, e.pos.y + 0.9, e.pos.z).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; out.push({ id: i, x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, d }); }
+  return out; });
 (window as unknown as { __raid?: () => string | undefined }).__raid = () => ataqueSys.force(); /* teste */ (window as unknown as { __hAt?: unknown }).__hAt = (x: number, z: number) => [groundH(x, z), heightAt(x, z)]; (window as unknown as { __world?: unknown }).__world = () => city; (window as unknown as { __en?: unknown }).__en = () => ({ en: game.enemies, x: state.fx * T, z: state.fy * T }); /* teste */
 let lvlUpKey = ''; let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
 function hookHero() {

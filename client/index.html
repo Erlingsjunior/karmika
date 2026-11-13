@@ -1109,9 +1109,8 @@
   #gevt .mvgrip { width: 10px; height: 20px; font-size: 13px; text-decoration: none; margin-right: -2px; }
   #sysgrip { position: fixed; left: 1px; top: 58px; z-index: 7; width: 11px; height: 22px; font-size: 13px; zoom: var(--ui); text-shadow: 0 1px 2px #000; }
   .mvgrip { touch-action: none; }
-  /* 12/11 (Erling: "precisa ficar mais pegável a área escrita arraste"): o cabeçalho das Missões vira uma barra inteira de pegar, com o puxador grande */
-  #quests h4 { display: flex; align-items: center; gap: 8px; padding: 7px 10px; margin: 0 0 6px; border-radius: 8px; border: 1px solid rgba(201,162,74,.45); background: rgba(14,10,6,.78); min-height: 30px; box-sizing: border-box; } #quests h4:hover { border-color: #f2cf8a; background: rgba(40,28,12,.9); }
-  #quests h4 small.mv { float: none; margin-left: auto; opacity: 1; font: 700 11px Cinzel, serif; letter-spacing: .14em; color: #1a120a; background: #c9a24a; border-radius: 6px; padding: 5px 9px; cursor: grab; } #quests h4:hover small.mv { background: #f2cf8a; }
+  /* 13/11 (Erling: "volte para a forma que estava antes; só pedi a área de clique um pouco maior"): o cabeçalho das Missões volta ao que era; o puxador só ganha uma margem invisível de pegar */
+  #quests h4 small.mv { position: relative; } #quests h4 small.mv::after { content: ""; position: absolute; inset: -5px -7px; }
   #menu .panel { position: relative; } #menu .mclose { position: absolute; top: 14px; right: 18px; z-index: 3; width: 30px; height: 30px; padding: 0; border: 1px solid #8a6a38; border-radius: 4px; background: rgba(20,14,8,.9); color: #f2cf8a; font-size: 14px; cursor: pointer; } #menu .mclose:hover { border-color: #ffe08a; color: #ffe08a; }
   #menu .panel { font-size: 15px; } #menu .page { color: var(--wk-ink); font-family: Georgia, serif; font-size: 15px; } #menu .stat { font-size: 15px; }
   #dlg .dp { font-size: 15px; } #dlg .say { font-size: 16px; } #dlg .c { font-size: 15px; }

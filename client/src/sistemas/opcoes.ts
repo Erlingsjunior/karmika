@@ -7,7 +7,7 @@ import { installTitleTips } from '../dicas';
 import type { OpcoesCtx, Opts } from '../main';
 import { gpuState } from '../gpu/tags';
 import { ACOES, teclaDe, nomeTecla, ouvirTecla, trocarTecla, teclasPadrao, teclasMudadas } from './teclas';
-import { CONTROLE_AJUDA, controleNome } from './controle';
+import { CONTROLE_AJUDA, controleNome, autoAlvo, setAutoAlvo } from './controle';
 import { relabelBar } from '../kits';
 
 export function createOpcoes(K: OpcoesCtx) {
@@ -109,7 +109,8 @@ ${deskV?.setVideo && video ? `    <div class="stat"><span>Tradutor de vídeo <sm
     <div class="seg" style="justify-content:flex-start;max-width:none;margin:4px 0 8px"><button data-ctab="0" class="${ctab === 0 ? 'on' : ''}">⌨ Teclado</button><button data-ctab="1" class="${ctab === 1 ? 'on' : ''}">🎮 Joystick</button></div>
     ${ctab === 0 ? `<div class="stat"><span>Clique numa tecla e aperte a nova <small>Esc cancela. Se a tecla já for de outra ação, as duas trocam de lugar. Os números da barra de magias mostram a tecla nova</small></span><div class="seg"><button data-act="keysdef">Teclas padrão${teclasMudadas() ? ` (${teclasMudadas()} trocada${teclasMudadas() > 1 ? 's' : ''})` : ''}</button></div></div>
     ${[...new Set(ACOES.map((a) => a.grupo))].map((g) => `<h3>${g}</h3><div class="keys" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 28px;margin-top:8px">${ACOES.filter((a) => a.grupo === g).map((a) => `<label style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span>${a.nome}</span><span class="seg"><button data-key="${a.id}" style="min-width:72px;text-align:center${teclaDe(a.id) !== a.def ? ';color:#ffd24a' : ''}">${nomeTecla(teclaDe(a.id))}</button></span></label>`).join('')}</div>`).join('')}`
-    : `<div class="stat"><span>${controleNome() ? 'Ligado: ' + controleNome() : 'Nenhum controle ligado'} <small>Ligue um controle (Xbox, PlayStation ou parecido) e aperte um botão: ele entra sozinho. As janelas e os menus ainda pedem o mouse</small></span></div>
+    : `<div class="stat"><span>${controleNome() ? 'Ligado: ' + controleNome() : 'Nenhum controle ligado'} <small>Ligue um controle (Xbox, PlayStation ou parecido) e aperte um botão: ele entra sozinho. Start abre a roda das janelas; Voltar (Select) liga o ponteiro para menus e listas</small></span></div>
+    <div class="stat"><span>Alvo automático <small>O herói mira sozinho no inimigo mais perto na direção em que anda; a alavanca direita troca de alvo. Desligado, a alavanca direita mira livre</small></span><div class="seg"><button data-act="padauto1" class="${autoAlvo() ? 'on' : ''}">Ligado</button><button data-act="padauto0" class="${autoAlvo() ? '' : 'on'}">Desligado</button></div></div>
     <h3>Botões</h3><div style="display:grid;grid-template-columns:auto 1fr;gap:8px 24px;margin-top:10px">${CONTROLE_AJUDA.map(([a, b]) => `<b style="color:#f0e2c0;font-weight:600">${a}</b><span>${b}</span>`).join('')}</div>`}`;
 }
 let ctab = 0;
@@ -118,6 +119,7 @@ const onClick = (e: Event) => { { const tb = (e.target as HTMLElement).closest('
   if (b.dataset.ok) { const k = b.dataset.ok as keyof Opts, raw = b.dataset.ov!; (K.opts as unknown as Record<string, unknown>)[k] = raw === 'true' ? true : raw === 'false' ? false : Number(raw); applyOpts(k); renderOptions(); K.audio.click(); return; }
   if (b.dataset.key) { const id = b.dataset.key; b.textContent = 'aperte…'; b.classList.add('on'); ouvirTecla((k) => { if (k) { trocarTecla(id, k); relabelBar(); K.audio.click(); } renderOptions(); }); return; }
   const a = b.dataset.act;
+  if (a === 'padauto1' || a === 'padauto0') { setAutoAlvo(a === 'padauto1'); renderOptions(); K.audio.click(); return; }
   if (a === 'keysdef') { teclasPadrao(); relabelBar(); renderOptions(); K.audio.click(); return; }
   if (a === 'reopen') { location.reload(); return; }
   if (a === 'perfil') { const q = PERFIS[b.dataset.p ?? '']; if (q) { K.opts.res = q.res; K.opts.pix = q.pix; K.opts.wratio = q.wratio; applyOpts(); renderOptions(); K.audio.click(); } return; }
