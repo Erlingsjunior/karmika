@@ -15,7 +15,7 @@ const { startServer, gameManifest, DISCOVERY_PORT } = serverMod;
 /* ---- salas abertas na rede local: cada servidor anuncia a cada 2 s; aqui guardamos o que ouvimos nos últimos 7 s ---- */
 const seen = new Map();
 try { const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true }); sock.on('error', (e) => console.log('[karmika] descoberta de salas desligada:', e.message));
-  sock.on('message', (buf, from) => { try { const m = JSON.parse(String(buf)); if (m.karmika !== 1 || !m.code) return; const host = from.address === '127.0.0.1' || lanAddresses().includes(from.address) ? '127.0.0.1' : from.address; seen.set(`${host}:${m.port}`, { ...m, host, at: Date.now() }); } catch { /* não é de Karmika */ } });
+  sock.on('message', (buf, from) => { try { const m = JSON.parse(String(buf)); if (m.karmika !== 1 || !m.code) return; const host = from.address === '127.0.0.1' || lanAddresses().some((a) => a.ip === from.address) ? '127.0.0.1' : from.address; seen.set(`${host}:${m.port}`, { ...m, host, at: Date.now() }); } catch { /* não é de Karmika */ } });
   sock.bind(DISCOVERY_PORT); } catch (e) { console.log('[karmika] sem descoberta de salas:', e.message); }
 console.log('[karmika] app iniciando');
 

@@ -12,6 +12,19 @@ const crypto = require('node:crypto');
 const dgram = require('node:dgram');
 const GN = require('./guilda-nivel.cjs');
 const DISCOVERY_PORT = 7778; // salas se anunciam na rede local: o jogo lista sem ninguém digitar endereço
+/* 14/11 (Erling: "o aparelho não encontrou a sala"): o Windows manda o 255.255.255.255 por UMA placa só (a de menor métrica, que pode ser
+   Tailscale, Radmin, WSL ou Hyper-V), e o anúncio nunca chegava no Wi-Fi. Agora o anúncio vai também para o endereço de difusão de CADA rede
+   desta máquina (ex.: 192.168.15.255), além do geral e do próprio PC. */
+function broadcastTargets() {
+  const out = new Set(['255.255.255.255', '127.0.0.1']);
+  try { for (const list of Object.values(require('node:os').networkInterfaces())) for (const a of list || []) {
+    if (a.family !== 'IPv4' || a.internal || !a.netmask) continue;
+    const ip = a.address.split('.').map(Number), mk = a.netmask.split('.').map(Number);
+    if (ip.length !== 4 || mk.length !== 4) continue;
+    out.add(ip.map((n, k) => (n | (~mk[k] & 255))).join('.'));
+  } } catch { /* sem lista de placas */ }
+  return [...out];
+}
 
 /* ---- o servidor também entrega o jogo: quem entra com uma versão velha baixa só o que mudou ---- */
 function walk(dir, base = dir, out = []) { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, e.name); if (e.isDirectory()) walk(f, base, out); else out.push(path.relative(base, f).split(path.sep).join('/')); } return out; }
@@ -125,7 +138,7 @@ function startServer(opts = {}) {
     function infoNow() { const host = [...players.values()].find((p) => p.host); return { karmika: 1, proto: PROTO, port, code, name: roomName || (host ? `Sala de ${host.name}` : 'Sala Karmika'), players: players.size, max: MAX, pass: !!opts.password }; }
     /* anúncio na rede local a cada 2 s (UDP broadcast) */
     let udp = null; try { udp = dgram.createSocket({ type: 'udp4', reuseAddr: true }); udp.on('error', () => { try { udp.close(); } catch { /* */ } udp = null; }); udp.bind(() => { try { udp.setBroadcast(true); } catch { /* */ } }); } catch { udp = null; }
-    const announce = setInterval(() => { if (!udp) return; const b = Buffer.from(JSON.stringify(infoNow())); try { udp.send(b, DISCOVERY_PORT, '255.255.255.255'); udp.send(b, DISCOVERY_PORT, '127.0.0.1'); } catch { /* sem rede */ } }, 2000);
+    const announce = setInterval(() => { if (!udp) return; const b = Buffer.from(JSON.stringify(infoNow())); for (const to of broadcastTargets()) { try { udp.send(b, DISCOVERY_PORT, to); } catch { /* sem rede */ } } }, 2000);
     const send = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const others = (id, m) => { const s = JSON.stringify(m); for (const p of players.values()) if (p.id !== id && p.ws.readyState === 1) p.ws.send(s); };
     const info = (p) => ({ id: p.id, name: p.name, look: p.look, st: p.st, host: p.host, party: p.party ? p.party.id : 0 });
@@ -534,6 +547,42 @@ function startServer(opts = {}) {
 
 module.exports = { startServer, PROTO, gameManifest, DISCOVERY_PORT };
 
+/** sala pelo terminal aberta para a internet: porta no roteador (UPnP), IP público e aviso de CGNAT */
+async function abrirNaInternet(port, code, redes) {
+  const priv = (ip) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|127\.)/.test(ip || '');
+  let pub = null;
+  for (const u of ['https://api.ipify.org', 'https://ipv4.icanhazip.com', 'https://checkip.amazonaws.com']) {
+    try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); const t = (await r.text()).trim(); if (/^\d+\.\d+\.\d+\.\d+$/.test(t)) { pub = t; break; } } catch { /* tenta o próximo */ }
+  }
+  const lan = redes.find((r) => priv(r.ip) && !r.ip.startsWith('100.'));
+  let ext = null, why = '';
+  if (!lan) why = 'sem rede local';
+  else try {
+    const { upnpNat } = await import('@achingbrain/nat-port-mapper');
+    const client = upnpNat({ description: 'Karmika', ttl: 7200 * 1000, keepAlive: true });
+    let achou = false;
+    for await (const gw of client.findGateways({ signal: AbortSignal.timeout(7000) })) {
+      achou = true;
+      try { await gw.map(port, lan.ip, { protocol: 'tcp', description: 'Karmika' }); ext = await gw.externalIp().catch(() => null); why = ''; } catch (e) { why = 'o roteador recusou: ' + (e?.message || e); }
+      break;
+    }
+    if (!achou) why = 'roteador sem UPnP (ou desligado)';
+  } catch (e) { why = String(e?.message || e); }
+  if (!pub) { console.log('[karmika] internet: não consegui descobrir o IP público desta conexão'); return; }
+  if (why) {
+    console.log(`[karmika] internet: a porta NÃO foi aberta sozinha (${why}).`);
+    console.log(`[karmika] internet: abra no roteador a porta ${port} (TCP) para ${lan ? lan.ip : 'esta máquina'} e use o convite: karmika://${pub}:${port}/${code}`);
+    return;
+  }
+  if (ext && (priv(ext) || ext !== pub)) {
+    console.log('[karmika] internet: a sua operadora usa CGNAT (o roteador não tem IP público de verdade). Ninguém de fora alcança esta máquina por aqui.');
+    console.log('[karmika] internet: saídas: pedir IP público à operadora, usar o Tailscale, ou hospedar a sala num servidor alugado.');
+    return;
+  }
+  console.log(`[karmika] internet: porta ${port} aberta no roteador. Convite para qualquer lugar: karmika://${pub}:${port}/${code}`);
+  console.log('[karmika] internet: o IP público pode mudar quando o roteador reinicia; aí o convite muda junto.');
+}
+
 if (require.main === module) {
   /* node server.cjs [porta] [codigo] [pasta-do-jogo]  ou com nomes:  --porta 7777 --codigo KARMA1 --senha segredo --jogo pasta */
   const args = process.argv.slice(2), flag = (n) => { const i = args.indexOf('--' + n); return i >= 0 ? args[i + 1] : undefined; }, pos = args.filter((a, i) => !a.startsWith('--') && !(i > 0 && args[i - 1].startsWith('--')));
@@ -549,5 +598,14 @@ if (require.main === module) {
     /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro; `tear` mostra o estado do Fio e `tear <texto>` manda uma carta à central */
     let pressed = 0; const bye = () => { if (pressed++) process.exit(0); room.restart(10, 'reiniciar'); }; process.on('SIGINT', bye); process.on('SIGTERM', bye);
     if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); else if (c === 'tear') { const f = room.fio(), txt = String(line).trim().slice(4).trim(); if (!f) console.log('[karmika] esta sala não tem o Fio (edição parceiro: --fio e --chave)'); else if (!txt) console.log('[karmika] Fio:', JSON.stringify(f.estado())); else console.log(f.carta(txt, 'Guardião do Reino') ? '[karmika] carta enviada à central' : '[karmika] o Fio está caído: a carta vai quando ele voltar'); } }); }
+    /* 14/11 (Erling: "na minha máquina ele acha, nas outras não" e "precisa criar uma sala na internet com IP aberto"): o terminal mostra
+       o convite certo para cada caso. Placas virtuais (WSL, Hyper-V, VirtualBox) ficam de fora: ninguém de outra máquina alcança esses endereços.
+       Com --internet a sala tenta abrir a porta no roteador (UPnP), descobre o IP público e avisa quando a operadora não deixa (CGNAT). */
+    const code = room.code, virt = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|docker|Loopback/i, redes = [];
+    for (const [nome, list] of Object.entries(require('node:os').networkInterfaces())) for (const a of list || []) { if (a.family === 'IPv4' && !a.internal && !virt.test(nome)) redes.push({ nome, ip: a.address }); }
+    for (const r of redes) { const ts = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(r.ip); console.log(`[karmika] convite ${ts ? 'pelo Tailscale' : 'para quem está na mesma rede (' + r.nome + ')'}: karmika://${r.ip}:${port}/${code}`); }
+    if (!redes.length) console.log('[karmika] esta máquina está sem rede: só dá para entrar daqui mesmo');
+    if (args.includes('--internet')) abrirNaInternet(port, code, redes).catch((e) => console.log('[karmika] internet: não deu para conferir:', e?.message || e));
+    else console.log('[karmika] para gente de fora da sua casa entrar, abra a sala com --internet');
   }).catch((e) => { console.error('Não deu para abrir a sala:', e.message); process.exit(1); });
 }
