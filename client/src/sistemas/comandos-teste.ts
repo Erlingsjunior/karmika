@@ -9,6 +9,7 @@ import { PATHS } from '../vidente';
 import { KITS, refreshLocks } from '../kits';
 import { TILE_M as T } from '@karmika/shared';
 import type { ComandosTesteCtx } from '../main';
+import { controleDiag } from './controle';
 
 export function createComandosTeste(K: ComandosTesteCtx) {
 /* comandos de teste do beta (chat): /morrer, /folegos N, /lagrimas N, /nivel N, /ajuda */
@@ -60,6 +61,8 @@ function betaCommand(cmd: string, a: string[]): string | null {
   /* 08/11: /honra N dá N pontos de Honra Kármica (teste das lojas de honra) */
   /* 13/11 (Erling: "onde está esse lugar, quero ver ele, não consigo"): /tear leva direto ao Grande Salão do Tear, de qualquer lugar */
   if (cmd === 'tear' || cmd === 'salao') { const ok = (window as unknown as { __k?: { tear?: () => boolean } }).__k?.tear?.(); return ok ? '🧵 Descendo ao Grande Salão do Tear…' : 'Não achei o Salão das Guildas de Karmika neste mundo.'; }
+  /* 14/11: /controle mostra os controles que o jogo enxerga (para descobrir por que um portátil não é reconhecido) */
+  if (cmd === 'controle') return '🎮 ' + controleDiag().join(' | ');
   if (cmd === 'honra') { const n = Math.max(1, Math.min(5000, Math.round(Number(a[0]) || 100))); addHonor(n, 'teste'); return `🏅 (teste) +${n} de Honra Kármica (${honor()} no total).`; }
   if (cmd === 'classe' || cmd === 'class') { const id = (a[0] ?? '').toLowerCase(); const p = PATHS.find((x) => x.id === id || x.cls.toLowerCase().startsWith(id)); if (!p) return `Uso: /classe ${PATHS.map((x) => x.id).join('|')}`; if (K.profile) { K.profile.path = p.id; try { localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); } catch { /* */ } } try { if (!K.quests.q.done.includes('v_' + p.id)) K.quests.q.done.push('v_' + p.id); } catch { /* */ } /* as armas do caminho (only) ficam liberadas como para quem fez a missão */ if (K.game.st.lvl < 20) { const d = 20 - K.game.st.lvl; K.game.st.lvl = 20; K.game.st.xp = 0; K.game.st.points += d * 3; K.game.st.recalc?.(); } K.takeClass(p); return `🧪 (teste) classe: ${p.cls}.` + cleanSwitch(); }
   /* /aprender: investe 1 ponto em cada magia da classe que já pode (teste, 02/11) — para ver todas as poses e magias de uma vez */

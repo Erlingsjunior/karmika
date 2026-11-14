@@ -56,13 +56,37 @@ function rodaShow(on: boolean) { if (on === rodaOn) return; rodaOn = on; prime =
   roda.hidden = !on; if (on) { soltaTudo(); mostra(''); marca(null); rodaSel = -1; rodaPinta(); } }
 function rodaPinta() { if (!roda) return; roda.querySelectorAll<HTMLElement>('[data-i]').forEach((e, i) => { const on = i === rodaSel; e.style.borderColor = on ? '#ffd24a' : 'rgba(201,162,74,.45)'; e.style.background = on ? 'rgba(90,62,18,.96)' : 'rgba(18,14,10,.9)'; e.style.boxShadow = on ? '0 0 22px rgba(255,190,80,.8)' : 'none'; e.style.scale = on ? '1.18' : '1'; });
   roda.querySelector('#padrodac')!.innerHTML = rodaSel < 0 ? 'Janelas<br><small style="font:400 12px sans-serif;color:#cdbf9c">alavanca escolhe · A abre · B fecha</small>' : RODA[rodaSel][0]; }
-function rodaTick(gp: Gamepad, b: (i: number) => boolean) {
+function rodaTick(gp: Pad, b: (i: number) => boolean) {
   if (prime) { prime = false; for (let i = 0; i < 16; i++) prev[i] = b(i); }
   const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0, lm = Math.hypot(lx, ly), rx = gp.axes[2] ?? 0, ry = gp.axes[3] ?? 0, rm = Math.hypot(rx, ry), x = lm >= rm ? lx : rx, y = lm >= rm ? ly : ry;
   if (Math.max(lm, rm) > 0.5) { const a = Math.atan2(y, x) + Math.PI / 2, n = RODA.length, i = ((Math.round(a / (Math.PI * 2) * n) % n) + n) % n; if (i !== rodaSel) { rodaSel = i; rodaPinta(); } }
   for (const [i, d] of [[14, -1], [15, 1], [12, -1], [13, 1]] as [number, number][]) { const p = b(i); if (p && !prev[i]) { rodaSel = ((Math.max(0, rodaSel) + d) % RODA.length + RODA.length) % RODA.length; rodaPinta(); } prev[i] = p; }
   const a = b(0); if (a && !prev[0] && rodaSel >= 0) { const k = RODA[rodaSel][2]; rodaShow(false); mandaTecla('keydown', k); mandaTecla('keyup', k); prev[0] = true; return; } prev[0] = a;
   for (const i of [1, 9]) { const p = b(i); if (p && !prev[i]) { rodaShow(false); prev[i] = true; return; } prev[i] = p; }
+}
+/* 14/11 (Erling: "o Legion Go tem controle embutido, o jogo deveria encontrar sozinho"): antes só valia controle que o navegador já
+   entregava no desenho padrão. No Linux o controle embutido de portáteis (Legion Go, ROG Ally, Steam Deck fora do Steam) chega "cru",
+   sem desenho padrão, e era ignorado. Agora o jogo aceita os dois: o padrão tem preferência; o cru é traduzido aqui para a mesma ordem
+   (ordem do Linux: eixos X Y LT RX RY RT seta-X seta-Y; botões A B X Y LB RB Voltar Start Guia L3 R3). */
+interface Pad { id: string; axes: readonly number[]; buttons: readonly { pressed: boolean; value: number }[] }
+const BT = (v: number) => ({ pressed: v > 0.5, value: v });
+function traduz(g: Gamepad): Pad {
+  const ax = g.axes, bt = g.buttons, v = (i: number) => (bt[i] ? Math.max(bt[i].value, bt[i].pressed ? 1 : 0) : 0);
+  if (ax.length >= 6 && bt.length <= 15) { /* cru do Linux: gatilhos são eixos (parado = -1; 0 exato = ainda não mexido) */
+    const tr = (a: number) => (a === 0 || a === undefined ? 0 : (a + 1) / 2), hx = ax[6] ?? 0, hy = ax[7] ?? 0;
+    return { id: g.id, axes: [ax[0] ?? 0, ax[1] ?? 0, ax[3] ?? 0, ax[4] ?? 0], buttons: [BT(v(0)), BT(v(1)), BT(v(2)), BT(v(3)), BT(v(4)), BT(v(5)), BT(tr(ax[2])), BT(tr(ax[5])), BT(v(6)), BT(v(7)), BT(v(9)), BT(v(10)), BT(hy < -0.5 ? 1 : 0), BT(hy > 0.5 ? 1 : 0), BT(hx < -0.5 ? 1 : 0), BT(hx > 0.5 ? 1 : 0), BT(v(8))] };
+  }
+  return { id: g.id, axes: [ax[0] ?? 0, ax[1] ?? 0, ax[2] ?? 0, ax[3] ?? 0], buttons: Array.from({ length: 17 }, (_, i) => BT(v(i))) }; /* desconhecido com cara de padrão */
+}
+const ehControle = (g: Gamepad | null): g is Gamepad => !!g && g.connected && g.buttons.length >= 10 && g.axes.length >= 2;
+function pega(): Pad | null {
+  try { const L = [...(navigator.getGamepads?.() ?? [])].filter(ehControle); const st = L.find((g) => g.mapping === 'standard'); if (st) return st; return L[0] ? traduz(L[0]) : null; } catch { return null; }
+}
+/** o que o jogo enxerga de controles agora (comando /controle no chat) */
+export function controleDiag(): string[] {
+  let L: (Gamepad | null)[] = []; try { L = [...(navigator.getGamepads?.() ?? [])]; } catch { /* */ }
+  const out = L.filter((g): g is Gamepad => !!g).map((g) => `${g.index}: ${g.id.slice(0, 60)} · ${g.mapping === 'standard' ? 'padrão' : 'cru'} · ${g.buttons.length} botões, ${g.axes.length} eixos${ehControle(g) ? '' : ' · ignorado'}`);
+  return out.length ? out : ['Nenhum controle visto. Aperte um botão do controle com o jogo em foco e tente de novo.'];
 }
 let nome = '';
 export const controleNome = () => nome;
@@ -85,7 +109,7 @@ function ptrShow(on: boolean) { if (on === ptrOn) return; ptrOn = on; prime = tr
 const alvo = () => document.elementFromPoint(px, py);
 function mouse(type: string, el: Element | null, button = 0) { if (!el) return; const init = { clientX: px, clientY: py, bubbles: true, cancelable: true, button, buttons: type.endsWith('down') ? 1 : 0, view: window };
   el.dispatchEvent(type.startsWith('pointer') ? new PointerEvent(type, { ...init, pointerId: 1, pointerType: 'mouse', isPrimary: true }) : new MouseEvent(type, init)); }
-function ptrTick(gp: Gamepad, dt: number, b: (i: number) => boolean) {
+function ptrTick(gp: Pad, dt: number, b: (i: number) => boolean) {
   if (prime) { prime = false; for (let i = 0; i < 16; i++) prev[i] = b(i); }
   const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0, lm = Math.hypot(lx, ly); if (lm > 0.18) { const sp = 1250 * lm * lm * dt; px = Math.max(2, Math.min(innerWidth - 2, px + lx / lm * sp)); py = Math.max(2, Math.min(innerHeight - 2, py + ly / lm * sp)); }
   for (const [i, dx, dy] of [[12, 0, -1], [13, 0, 1], [14, -1, 0], [15, 1, 0]] as [number, number, number][]) { const p = b(i); if (p && !prev[i]) { px = Math.max(2, Math.min(innerWidth - 2, px + dx * 36)); py = Math.max(2, Math.min(innerHeight - 2, py + dy * 36)); } prev[i] = p; }
@@ -108,12 +132,12 @@ function mostra(mod: string) {
 }
 function tick() {
   requestAnimationFrame(tick);
-  let gp: Gamepad | null = null; try { for (const g of navigator.getGamepads?.() ?? []) if (g && g.connected && g.mapping === 'standard') { gp = g; break; } } catch { /* */ }
+  const gp = pega();
   if (!gp) { if (nome) { nome = ''; soltaTudo(); mostra(''); marca(null); rodaShow(false); ptrManual = false; ptrShow(false); } return; }
   if (!nome) { nome = gp.id.replace(/\s*\(.*\)\s*$/, '').slice(0, 40) || 'Controle'; dispatchEvent(new CustomEvent('karmika:controle', { detail: nome })); }
   if (!document.hasFocus()) { soltaTudo(); return; }
-  const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) { soltaTudo(); return; }
   const now = performance.now(), b = (i: number) => !!gp!.buttons[i] && (gp!.buttons[i].pressed || gp!.buttons[i].value > 0.35);
+  { const ae = document.activeElement, campo = campoDeTexto(ae) ? ae : null; if (campo) { if (!tecOn) soltaTudo(); tecShow(campo); tecTick(gp, now, b); return; } if (tecOn) tecShow(null); }
   /* ponteiro: Voltar/Select liga e desliga; janela aberta liga sozinho */
   { const sel = b(8); if (sel && !prev[8]) ptrManual = !ptrManual; prev[8] = sel; const want = ptrManual || uiAberta(); if (want !== ptrOn) ptrShow(want);
     const dtp = Math.min(0.05, (now - ptrLast) / 1000); ptrLast = now; if (ptrOn) { if (rodaOn) rodaShow(false); marca(null); ptrTick(gp, dtp, b); return; }
@@ -150,5 +174,75 @@ function tick() {
   { const p = b(11); if (p && !prev[11]) { r3T = now; r3Long = false; } else if (p && !r3Long && now - r3T > 380) { r3Long = true; mandaTecla('keydown', 'v'); mandaTecla('keyup', 'v'); } else if (!p && prev[11] && !r3Long) { mandaTecla('keydown', 'f'); mandaTecla('keyup', 'f'); } prev[11] = p; }
 }
 let r3T = 0, r3Long = false;
+/* 14/11 (Erling: "clico nos inputs, não sobe teclado virtual para escrever, que anda pelas setas"): O TECLADO NA TELA.
+   Com controle ligado, todo campo de texto em foco abre um teclado. Setas ou alavanca escolhem a tecla; A escreve; X apaga; Y espaço;
+   LB maiúsculas; RB símbolos e acentos; Start confirma (Enter); B fecha. As teclas também aceitam toque e clique (tela do portátil).
+   Antes disso, com um campo em foco o controle simplesmente parava de responder. */
+type Tec = { l: string; v?: string; f?: 'shift' | 'sym' | 'del' | 'ok' | 'sai'; w?: number };
+const TL = (t: string): Tec[] => [...t].map((c) => ({ l: c, v: c }));
+const TEC_FIM: Tec[] = [{ l: '⇧ LB', f: 'shift', w: 2 }, { l: '?12 RB', f: 'sym', w: 2 }, { l: 'espaço · Y', v: ' ', w: 2 }, { l: '⌫ X', f: 'del', w: 1 }, { l: 'OK · Start', f: 'ok', w: 2 }, { l: '✕ B', f: 'sai', w: 1 }];
+const TEC_ABC: Tec[][] = [TL('1234567890'), TL('qwertyuiop'), TL('asdfghjklç'), TL('zxcvbnm.-_'), TEC_FIM];
+const TEC_SYM: Tec[][] = [TL('1234567890'), TL('@#$%&*()\'"'), TL(':/;?!,+=<>'), TL('áéíóúãõâêô'), TEC_FIM];
+let tec: HTMLElement | null = null, tecOn = false, tecCampo: HTMLInputElement | HTMLTextAreaElement | null = null, tecR = 1, tecC = 0, tecShift = false, tecSym = false, tecNavT = 0, tecNavK = '', tecPrime = true;
+const tprev: boolean[] = [];
+function campoDeTexto(e: Element | null): e is HTMLInputElement | HTMLTextAreaElement {
+  if (!e) return false; if (e.tagName === 'TEXTAREA') return !(e as HTMLTextAreaElement).readOnly && !(e as HTMLTextAreaElement).disabled;
+  if (e.tagName !== 'INPUT') return false; const i = e as HTMLInputElement; return !i.readOnly && !i.disabled && /^(text|password|search|email|url|tel|number|)$/.test(i.type);
+}
+const tecRows = () => (tecSym ? TEC_SYM : TEC_ABC);
+const tecMeio = (row: Tec[], c: number) => { let x = 0; for (let i = 0; i < c; i++) x += row[i].w ?? 1; return x + (row[c].w ?? 1) / 2; };
+function tecPinta() {
+  if (!tec) return; const rows = tecRows();
+  tec.innerHTML = rows.map((row, r) => `<div style="display:grid;grid-template-columns:repeat(10,1fr);gap:5px">` + row.map((k, c) => { const on = r === tecR && c === tecC, lig = (k.f === 'shift' && tecShift) || (k.f === 'sym' && tecSym), l = k.v && k.v !== ' ' && tecShift ? k.l.toUpperCase() : k.l;
+    return `<button type="button" tabindex="-1" data-r="${r}" data-c="${c}" style="grid-column:span ${k.w ?? 1};height:44px;padding:0;border-radius:6px;cursor:pointer;font:${k.f || k.v === ' ' ? '600 13px sans-serif' : '600 19px Georgia,serif'};color:${on ? '#1a1208' : '#f0e2c0'};background:${on ? '#ffd24a' : lig ? '#5a3e12' : '#241b10'};border:1px solid ${on ? '#fff0b8' : '#6b5a3a'};box-shadow:${on ? '0 0 14px rgba(255,200,80,.8)' : 'none'}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</button>`; }).join('') + '</div>').join('');
+}
+function tecShow(campo: HTMLInputElement | HTMLTextAreaElement | null) {
+  if (campo === tecCampo && tecOn === !!campo) return; tecCampo = campo; tecOn = !!campo; tecPrime = true;
+  if (!campo) { if (tec) tec.hidden = true; prime = true; return; }
+  if (!tec) { tec = document.createElement('div'); tec.id = 'padtec'; tec.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);z-index:2147483200;width:min(720px,96vw);display:grid;gap:5px;padding:10px;border-radius:10px;background:rgba(14,10,6,.96);border:1px solid #8a6f3c;box-shadow:0 8px 40px rgba(0,0,0,.7);user-select:none;touch-action:manipulation';
+    /* toque ou clique numa tecla: não rouba o foco do campo */
+    tec.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); const el = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!el) return; tecR = Number(el.dataset.r); tecC = Number(el.dataset.c); tecUsa(tecRows()[tecR][tecC]); tecPinta(); });
+    tec.addEventListener('mousedown', (e) => e.preventDefault());
+    document.body.appendChild(tec); }
+  tec.hidden = false; tecShift = false; tecSym = false; tecR = 1; tecC = 0;
+  /* campo na metade de baixo da tela: o teclado sobe para não cobrir o que se escreve */
+  const baixo = campo.getBoundingClientRect().top > innerHeight * 0.5; tec.style.top = baixo ? '10px' : ''; tec.style.bottom = baixo ? '' : '10px';
+  tecPinta();
+}
+function tecEscreve(txt: string, apaga = false) {
+  const el = tecCampo; if (!el) return; const v = el.value; let a = v.length, z = v.length; try { if (el.selectionStart !== null) { a = el.selectionStart; z = el.selectionEnd ?? a; } } catch { /* campo sem cursor (número) */ }
+  if (apaga) { if (a === z) a = Math.max(0, a - 1); txt = ''; } else if (el.maxLength > 0 && v.length - (z - a) + txt.length > el.maxLength) return;
+  const nv = v.slice(0, a) + txt + v.slice(z), set = Object.getOwnPropertyDescriptor(el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype, 'value')?.set;
+  if (set) set.call(el, nv); else el.value = nv; try { el.setSelectionRange(a + txt.length, a + txt.length); } catch { /* */ }
+  el.dispatchEvent(new InputEvent('input', { bubbles: true, data: txt || null, inputType: apaga ? 'deleteContentBackward' : 'insertText' }));
+}
+function tecUsa(k: Tec) {
+  const el = tecCampo; if (!el) return;
+  if (k.f === 'shift') tecShift = !tecShift; else if (k.f === 'sym') { tecSym = !tecSym; }
+  else if (k.f === 'del') tecEscreve('', true);
+  else if (k.f === 'sai') el.blur();
+  else if (k.f === 'ok') { el.dispatchEvent(new Event('change', { bubbles: true })); for (const t of ['keydown', 'keypress', 'keyup']) el.dispatchEvent(new KeyboardEvent(t, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true } as KeyboardEventInit)); setTimeout(() => { if (document.activeElement === el) el.blur(); }, 0); }
+  else if (k.v) tecEscreve(k.v !== ' ' && tecShift ? k.v.toUpperCase() : k.v);
+}
+function tecTick(gp: Pad, now: number, b: (i: number) => boolean) {
+  if (tecPrime) { tecPrime = false; for (let i = 0; i < 17; i++) tprev[i] = b(i); tecNavK = 'x'; tecNavT = now + 250; }
+  const hit = (i: number) => { const p = b(i), h = p && !tprev[i]; tprev[i] = p; return h; };
+  /* andar pelas teclas: setas ou alavanca esquerda; segurar repete */
+  const lx = gp.axes[0] ?? 0, ly = gp.axes[1] ?? 0, dx = b(14) || lx < -0.6 ? -1 : b(15) || lx > 0.6 ? 1 : 0, dy = b(12) || ly < -0.6 ? -1 : b(13) || ly > 0.6 ? 1 : 0, key = `${dx},${dy}`;
+  let mudou = false;
+  if (dx || dy) { if (key !== tecNavK || now >= tecNavT) { tecNavT = now + (key !== tecNavK ? 340 : 110); tecNavK = key; const rows = tecRows();
+      if (dy) { const m = tecMeio(rows[tecR], tecC); tecR = (tecR + dy + rows.length) % rows.length; let best = 0, bd = 1e9; rows[tecR].forEach((_, c) => { const d = Math.abs(tecMeio(rows[tecR], c) - m); if (d < bd) { bd = d; best = c; } }); tecC = best; }
+      if (dx) tecC = (tecC + dx + rows[tecR].length) % rows[tecR].length; mudou = true; } }
+  else tecNavK = '';
+  const rows = tecRows();
+  if (hit(0)) { tecUsa(rows[tecR][tecC]); mudou = true; }
+  if (hit(2)) { tecEscreve('', true); }
+  if (hit(3)) { tecEscreve(' '); }
+  if (hit(4)) { tecShift = !tecShift; mudou = true; }
+  if (hit(5)) { tecSym = !tecSym; mudou = true; }
+  if (hit(9)) { tecUsa({ l: '', f: 'ok' }); }
+  if (hit(1)) { tecCampo?.blur(); }
+  if (mudou) tecPinta();
+}
 requestAnimationFrame(tick);
 addEventListener('blur', soltaTudo);
