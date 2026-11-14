@@ -13,19 +13,47 @@ import { std, ink, stoneTex, woodTex } from './toon3d';
 import type { Interior } from './interiors3d';
 
 const hash = (i: number) => { let v = Math.imul(i * 374761393 + 668265263, 1274126177) >>> 0; v ^= v >>> 13; v = Math.imul(v, 1103515245) >>> 0; return (v >>> 8) / 16777216; };
-const N = 144;
+const N = 144; /* carretéis (um por reino) */
+/** 14/11 (Erling: "não precisa ser tantas cadeiras, coloque 40 cadeiras maiores e mais bonitas") */
+const NS = 40;
 
 function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d')!, w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; }
 
-/** o símbolo da mesa: o Olho no centro, o labirinto em anéis e um raio de ouro para cada cadeira */
-function mesaTex() { return canvasTex(1024, 1024, (g, s) => { const c = s / 2;
-  g.fillStyle = '#6f6a62'; g.fillRect(0, 0, s, s); for (let i = 0; i < 2600; i++) { const v = 90 + Math.floor(hash(i) * 50); g.fillStyle = `rgba(${v},${v - 4},${v - 10},.35)`; g.fillRect(hash(i + 7) * s, hash(i + 13) * s, 2 + hash(i + 3) * 5, 2 + hash(i + 5) * 4); }
-  g.strokeStyle = '#e0b048'; g.lineCap = 'round';
-  for (let i = 0; i <= N; i++) { const a = (i / (N + 1)) * Math.PI * 2; g.lineWidth = i === 0 ? 5 : 1.6; g.globalAlpha = i === 0 ? 1 : 0.75; g.beginPath(); g.moveTo(c + Math.cos(a) * s * 0.3, c + Math.sin(a) * s * 0.3); g.lineTo(c + Math.cos(a) * s * 0.492, c + Math.sin(a) * s * 0.492); g.stroke(); }
-  g.globalAlpha = 1;
-  for (let k = 0; k < 6; k++) { const r = s * (0.08 + k * 0.04), gap = hash(k + 40) * 6.283; g.lineWidth = 6; g.beginPath(); g.arc(c, c, r, gap + 0.35, gap + Math.PI * 2 - 0.1); g.stroke(); const a2 = gap + 2.2 + k; g.beginPath(); g.moveTo(c + Math.cos(a2) * r, c + Math.sin(a2) * r); g.lineTo(c + Math.cos(a2) * (r + s * 0.04), c + Math.sin(a2) * (r + s * 0.04)); g.stroke(); }
-  g.lineWidth = 8; g.beginPath(); g.arc(c, c, s * 0.3, 0, 6.283); g.stroke(); g.lineWidth = 3; g.beginPath(); g.arc(c, c, s * 0.496, 0, 6.283); g.stroke();
-  g.fillStyle = '#1a1420'; g.beginPath(); g.ellipse(c, c, s * 0.062, s * 0.036, 0, 0, 6.283); g.fill(); g.lineWidth = 5; g.stroke(); g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(c, c, s * 0.02, 0, 6.283); g.fill(); g.fillStyle = '#1a1420'; g.beginPath(); g.arc(c, c, s * 0.008, 0, 6.283); g.fill(); }); }
+/** o símbolo da mesa (14/11, Erling: "ele é metade labirinto, metade desfiado"): à esquerda os anéis inteiros do Labirinto em ouro (a Ordem do Fio);
+ *  à direita os mesmos anéis rachados, com o fio solto e desfiado em carmim (os Desfiados). O Olho no centro; um raio para cada cadeira. */
+function mesaTex() { return canvasTex(1024, 1024, (g, s) => { const c = s / 2, OURO = '#e8b84a', CARMIM = '#c0392b';
+  g.fillStyle = '#77726a'; g.fillRect(0, 0, s, s); g.fillStyle = '#5c5560'; g.fillRect(c, 0, c, s); /* a metade desfiada é pedra mais escura */
+  for (let i = 0; i < 2600; i++) { const v = 90 + Math.floor(hash(i) * 50); g.fillStyle = `rgba(${v},${v - 4},${v - 10},.3)`; g.fillRect(hash(i + 7) * s, hash(i + 13) * s, 2 + hash(i + 3) * 5, 2 + hash(i + 5) * 4); }
+  g.lineCap = 'round';
+  /* os raios: retos e de ouro do lado do Fio; tremidos, partidos e carmim do lado desfiado */
+  for (let i = 0; i <= NS; i++) { const a = -Math.PI / 2 + (i / (NS + 1)) * Math.PI * 2, fio = Math.cos(a) < 0 || i === 0; g.strokeStyle = fio ? OURO : CARMIM; g.lineWidth = i === 0 ? 9 : 4; g.beginPath();
+    for (let k = 0; k <= 12; k++) { const r = s * (0.31 + k * 0.0152), w = fio ? 0 : (hash(i * 31 + k) - 0.5) * 0.05, x = c + Math.cos(a + w) * r, y = c + Math.sin(a + w) * r; if (!fio && hash(i * 17 + k * 3) < 0.22) { g.stroke(); g.beginPath(); continue; } if (k === 0) g.moveTo(x, y); else g.lineTo(x, y); } g.stroke(); }
+  /* os anéis do labirinto: inteiros à esquerda, rachados à direita */
+  for (let k = 0; k < 6; k++) { const r = s * (0.08 + k * 0.04), gap = hash(k + 40) * 0.8; g.lineWidth = 7; g.strokeStyle = OURO; g.beginPath(); g.arc(c, c, r, Math.PI / 2 + 0.05, Math.PI * 1.5 - 0.05 - gap * 0.3); g.stroke();
+    const ar = Math.PI * (0.6 + hash(k + 3) * 0.8); g.beginPath(); g.moveTo(c + Math.cos(ar) * r, c + Math.sin(ar) * r); g.lineTo(c + Math.cos(ar) * (r + s * 0.04), c + Math.sin(ar) * (r + s * 0.04)); g.stroke();
+    g.strokeStyle = CARMIM; g.lineWidth = 5; for (let q = 0; q < 7; q++) { const a0 = -Math.PI / 2 + 0.08 + q * 0.43, a1 = a0 + 0.2 + hash(k * 9 + q) * 0.16; if (hash(k * 5 + q + 60) < 0.25) continue; g.beginPath(); g.arc(c, c, r + (hash(k + q * 7) - 0.5) * 7, a0, a1); g.stroke();
+      /* o fio solto na ponta de cada pedaço */ const ex = c + Math.cos(a1) * r, ey = c + Math.sin(a1) * r; g.lineWidth = 2; g.beginPath(); g.moveTo(ex, ey); g.bezierCurveTo(ex + 10, ey + 6, ex + 4, ey + 16, ex + 14 + hash(q + k) * 10, ey + 22); g.stroke(); g.lineWidth = 5; } }
+  /* a rachadura que parte a mesa ao meio */ g.strokeStyle = '#2a2430'; g.lineWidth = 4; g.beginPath(); g.moveTo(c, s * 0.008); for (let k = 1; k <= 30; k++) g.lineTo(c + (hash(k + 200) - 0.5) * 16, s * 0.008 + k * (s * 0.984 / 30)); g.stroke();
+  g.lineWidth = 8; g.strokeStyle = OURO; g.beginPath(); g.arc(c, c, s * 0.3, Math.PI / 2, Math.PI * 1.5); g.stroke(); g.strokeStyle = CARMIM; g.setLineDash([26, 14]); g.beginPath(); g.arc(c, c, s * 0.3, -Math.PI / 2, Math.PI / 2); g.stroke(); g.setLineDash([]);
+  g.lineWidth = 5; g.strokeStyle = OURO; g.beginPath(); g.arc(c, c, s * 0.494, Math.PI / 2, Math.PI * 1.5); g.stroke(); g.strokeStyle = CARMIM; g.beginPath(); g.arc(c, c, s * 0.494, -Math.PI / 2, Math.PI / 2); g.stroke();
+  g.fillStyle = '#1a1420'; g.beginPath(); g.ellipse(c, c, s * 0.062, s * 0.036, 0, 0, 6.283); g.fill(); g.lineWidth = 5; g.strokeStyle = OURO; g.stroke(); g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(c, c, s * 0.02, 0, 6.283); g.fill(); g.fillStyle = '#1a1420'; g.beginPath(); g.arc(c, c, s * 0.008, 0, 6.283); g.fill(); }); }
+
+/** fumaça de verdade: uma nuvem macia, sem quina (14/11, Erling: "a fumaça não são quadrados, é fumaça mesmo") */
+function fumacaTex() { return canvasTex(128, 128, (g, s) => { g.clearRect(0, 0, s, s); for (let i = 0; i < 9; i++) { const x = s / 2 + (hash(i + 300) - 0.5) * s * 0.42, y = s / 2 + (hash(i + 310) - 0.5) * s * 0.42, r = s * (0.2 + hash(i + 320) * 0.16), gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(255,255,255,.5)'); gr.addColorStop(0.6, 'rgba(240,238,246,.2)'); gr.addColorStop(1, 'rgba(240,238,246,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill(); } }); }
+
+/** A OBRA PRONTA que sai no fim da máquina: o estado do Labirinto naquele momento. Metade corredores inteiros em ouro, metade desfiando em carmim, o Olho no meio,
+ *  e nas duas barras a cor de cada reino que trouxe o seu fio. Repete na vertical, para o pano descer sem emenda. */
+function obraPrimaTex() { const t = canvasTex(2048, 512, (g, w, h) => { g.fillStyle = '#14203a'; g.fillRect(0, 0, w, h); g.fillStyle = '#2a1626'; g.fillRect(w / 2, 0, w / 2, h);
+  const gr = g.createLinearGradient(w * 0.42, 0, w * 0.58, 0); gr.addColorStop(0, '#14203a'); gr.addColorStop(1, '#2a1626'); g.fillStyle = gr; g.fillRect(w * 0.42, 0, w * 0.16, h);
+  const C = 32; g.lineCap = 'round';
+  for (let y = 0; y < h / C; y++) for (let x = 0; x < w / C; x++) { const px = x * C, py = y * C, lado = px < w / 2, hh = hash(x * 131 + y * 57), dist = Math.abs(px - w / 2) / (w / 2);
+    if (Math.hypot(px - w / 2, py - h / 2) < 150) continue;
+    if (lado) { g.strokeStyle = '#e8b84a'; g.lineWidth = 6; g.beginPath(); if (hh < 0.5) { g.moveTo(px, py); g.lineTo(px + C, py); } else { g.moveTo(px, py); g.lineTo(px, py + C); } g.stroke(); }
+    else { if (hash(x * 7 + y * 13) < 0.25 + dist * 0.45) { /* parede que já caiu: sobra o fio pendurado */ g.strokeStyle = '#ff6a5a'; g.lineWidth = 2; g.beginPath(); g.moveTo(px, py); g.bezierCurveTo(px + 8, py + 10, px - 6, py + 22, px + 6 + hh * 14, py + 30); g.stroke(); continue; }
+      g.strokeStyle = '#d0453a'; g.lineWidth = 5; const jx = (hash(x + y * 9) - 0.5) * 9, jy = (hash(x * 3 + y) - 0.5) * 9; g.beginPath(); if (hh < 0.5) { g.moveTo(px, py); g.lineTo(px + C + jx, py + jy); } else { g.moveTo(px, py); g.lineTo(px + jx, py + C + jy); } g.stroke(); } }
+  /* o Olho no centro */ g.fillStyle = '#0c0a14'; g.beginPath(); g.ellipse(w / 2, h / 2, 132, 76, 0, 0, 6.283); g.fill(); g.strokeStyle = '#ffd24a'; g.lineWidth = 8; g.stroke(); g.fillStyle = '#ffd24a'; g.beginPath(); g.arc(w / 2, h / 2, 44, 0, 6.283); g.fill(); g.fillStyle = '#0c0a14'; g.beginPath(); g.arc(w / 2, h / 2, 18, 0, 6.283); g.fill();
+  /* as barras com a cor de cada reino */ for (let i = 0; i < N; i++) { const c2 = new THREE.Color().setHSL(hash(i + 1), 0.7, 0.55); g.fillStyle = '#' + c2.getHexString(); g.fillRect(i * (w / N), 0, w / N - 2, 14); g.fillRect(i * (w / N), h - 14, w / N - 2, 14); } });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; return t; }
 
 /** o tecido que sai do tear: corredores de labirinto tecidos em fios de muitas cores (repete na direção em que rola) */
 function tecidoTex() { const t = canvasTex(512, 512, (g, s) => { g.fillStyle = '#2a2236'; g.fillRect(0, 0, s, s);
@@ -70,17 +98,21 @@ export function buildTearHall(): Interior {
 
   /* ---- a TÁVOLA KÁRMIKA ---- */
   { add(Cy(RT, RT, 0.35, 96), pedra, CX, 1.0, CZ); add(Cy(RT - 0.6, RT - 1.6, 0.85, 64), pedraE, CX, 0.42, CZ);
-    const topo = new THREE.Mesh(new THREE.CircleGeometry(RT - 0.05, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: mesaTex(), toneMapped: false })); topo.rotation.y = Math.PI / 2; /* o raio grosso aponta para o trono (norte) */ topo.position.set(CX, 1.181, CZ); g.add(topo);
+    const topo = new THREE.Mesh(new THREE.CircleGeometry(RT - 0.05, 96).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: mesaTex(), toneMapped: false })); /* na textura o raio grosso já aponta para o norte (o trono) e a rachadura corre de norte a sul: oeste = Labirinto, leste = Desfiado */ topo.position.set(CX, 1.181, CZ); g.add(topo);
     add(Cy(1.3, 1.3, 0.05, 32), brilho(0xffd24a, 0.55), CX, 1.2, CZ).castShadow = false; luz(CX, 9, CZ, 0xffe6c0, 9, 60); luz(CX - 16, 9, CZ + 14, 0xffe6c0, 6, 46); luz(CX + 16, 9, CZ + 16, 0xffe6c0, 6, 46);
-    /* 144 cadeiras, cada uma com a bandeira do seu reino no espaldar; o lugar do Mestre fica ao norte (ângulo −90°) */
-    const assento = new THREE.InstancedMesh(B(0.62, 0.5, 0.6), carv, N), espaldar = new THREE.InstancedMesh(B(0.62, 1.5, 0.12), carv, N), bandeira = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.5, 1.05), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), N), emblema = new THREE.InstancedMesh(new THREE.CircleGeometry(0.14, 10), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), N);
-    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), cor = new THREE.Color();
-    for (let i = 0; i < N; i++) { const a = -Math.PI / 2 + ((i + 1) / (N + 1)) * Math.PI * 2, cs = Math.cos(a), sn = Math.sin(a); q.setFromAxisAngle(up, Math.PI / 2 - a);
-      M.compose(p.set(CX + cs * RS, 0.25, CZ + sn * RS), q, one); assento.setMatrixAt(i, M); M.compose(p.set(CX + cs * (RS + 0.3), 1.0, CZ + sn * (RS + 0.3)), q, one); espaldar.setMatrixAt(i, M);
-      /* a bandeira fica dos DOIS lados do espaldar: quem olha de qualquer canto vê */
-      M.compose(p.set(CX + cs * (RS + 0.37), 1.2, CZ + sn * (RS + 0.37)), q, one); bandeira.setMatrixAt(i, M); bandeira.setColorAt(i, cor.setHSL(hash(i + 1), 0.6 + hash(i + 91) * 0.3, 0.36 + hash(i + 17) * 0.2));
-      M.compose(p.set(CX + cs * (RS + 0.38), 1.38, CZ + sn * (RS + 0.38)), q, one); emblema.setMatrixAt(i, M); emblema.setColorAt(i, cor.setHSL((hash(i + 1) + 0.45) % 1, 0.7, 0.75)); }
-    for (const im of [assento, espaldar, bandeira, emblema]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; g.add(im); }
+    /* 40 cadeiras altas de carvalho e latão; cada uma traz no espaldar a bandeira do seu reino, com o emblema; o lugar do Mestre fica ao norte */
+    const inst = (geo: THREE.BufferGeometry, m: THREE.Material, n = NS) => { const im = new THREE.InstancedMesh(geo, m, n); im.castShadow = true; g.add(im); return im; };
+    const basico = () => new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false });
+    const assento = inst(B(1.25, 0.22, 1.15), carv), saia = inst(B(1.1, 0.5, 1.0), pedraC), almofada = inst(B(1.0, 0.12, 0.9), basico()), espaldar = inst(B(1.25, 3.0, 0.2), carv), topo2 = inst(new THREE.ConeGeometry(0.72, 0.9, 4), latao), braco = inst(B(0.16, 0.5, 1.0), carv, NS * 2), pomo = inst(new THREE.SphereGeometry(0.13, 8, 6), latao, NS * 2), bandeira = inst(new THREE.PlaneGeometry(0.95, 2.1), basico()), barra = inst(B(1.1, 0.08, 0.08), latao), emblema = inst(new THREE.CircleGeometry(0.3, 14), basico()), miolo = inst(new THREE.CircleGeometry(0.14, 10), basico());
+    const M = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), cor = new THREE.Color(), lat = new THREE.Vector3();
+    for (let i = 0; i < NS; i++) { const a = -Math.PI / 2 + ((i + 1) / (NS + 1)) * Math.PI * 2, cs = Math.cos(a), sn = Math.sin(a); q.setFromAxisAngle(up, Math.PI / 2 - a); lat.set(-sn, 0, cs);
+      const at = (im: THREE.InstancedMesh, r: number, y: number, k = i, side = 0) => { M.compose(p.set(CX + cs * r + lat.x * side, y, CZ + sn * r + lat.z * side), q, one); im.setMatrixAt(k, M); };
+      at(saia, RS, 0.25); at(assento, RS, 0.6); at(almofada, RS - 0.05, 0.76); at(espaldar, RS + 0.62, 2.0); { M.compose(p.set(CX + cs * (RS + 0.62), 3.95, CZ + sn * (RS + 0.62)), new THREE.Quaternion().setFromAxisAngle(up, Math.PI / 2 - a + Math.PI / 4), new THREE.Vector3(1, 1, 0.3)); topo2.setMatrixAt(i, M); }
+      for (const sd of [-1, 1]) { const k = i * 2 + (sd > 0 ? 1 : 0); at(braco, RS, 0.95, k, sd * 0.6); at(pomo, RS - 0.5, 1.26, k, sd * 0.6); }
+      /* a bandeira aparece dos dois lados do espaldar */ at(bandeira, RS + 0.735, 2.05); at(barra, RS + 0.74, 3.14); at(emblema, RS + 0.745, 2.45); at(miolo, RS + 0.75, 2.45);
+      const hue = hash(i * 7 + 1), fio = cs < 0; /* as casas do lado do Labirinto puxam para azul e ouro; as do lado desfiado, para carmim e roxo */
+      bandeira.setColorAt(i, cor.setHSL(fio ? 0.56 + hue * 0.12 : (0.94 + hue * 0.12) % 1, 0.62, 0.34 + hash(i + 17) * 0.14)); almofada.setColorAt(i, cor.clone().multiplyScalar(0.8)); emblema.setColorAt(i, cor.setHSL(fio ? 0.12 : 0.02, 0.8, fio ? 0.62 : 0.55)); miolo.setColorAt(i, cor.setHSL(hue, 0.5, 0.2)); }
+    for (const im of [assento, saia, almofada, espaldar, topo2, braco, pomo, bandeira, barra, emblema, miolo]) { im.instanceMatrix.needsUpdate = true; if (im.instanceColor) im.instanceColor.needsUpdate = true; }
     /* o trono do Mestre do Tear a Vapor */
     const tz = CZ - RS - 0.9; add(B(1.7, 0.7, 1.6), pedraC, CX, 0.35, tz); add(B(2.0, 4.6, 0.45), pedraC, CX, 2.3, tz - 0.8); for (const s of [-1, 1]) add(B(0.3, 0.5, 1.3), pedraC, CX + s * 0.85, 0.95, tz);
     const roda = add(new THREE.TorusGeometry(0.8, 0.12, 8, 20), latao, CX, 4.9, tz - 0.8); roda.userData.giraZ = 0.4; for (let k = 0; k < 8; k++) { const d = add(B(0.1, 0.34, 0.2), latao, 0, 0, 0, roda); d.position.set(Math.cos(k * 0.785) * 0.95, Math.sin(k * 0.785) * 0.95, 0); d.rotation.z = k * 0.785 - Math.PI / 2; }
@@ -101,8 +133,8 @@ export function buildTearHall(): Interior {
     luz((PX0 + PX1) / 2, 8, 8, 0xffe6c0, 7, 50); }
 
   /* ---- o TEAR A VAPOR ---- */
-  const move: ((t: number) => void)[] = [], vapor: THREE.Sprite[] = [];
-  const tecido = tecidoTex(); tecido.repeat.set(9, 2.4); const tm = new THREE.MeshBasicMaterial({ map: tecido, side: THREE.DoubleSide, toneMapped: false });
+  const move: ((t: number) => void)[] = [], vapor: THREE.Sprite[] = [], fumaca = fumacaTex();
+  const tecido = tecidoTex(), obraPrima = obraPrimaTex(); tecido.repeat.set(9, 2.4); const tm = new THREE.MeshBasicMaterial({ map: tecido, side: THREE.DoubleSide, toneMapped: false });
   { const xc = (LX0 + LX1) / 2, L = LX1 - LX0;
     add(B(L + 1, 0.6, LZ1 - LZ0), ferro, xc, 0.3, (LZ0 + LZ1) / 2);
     for (const x of [LX0, LX1]) { add(B(0.7, 6.4, LZ1 - LZ0), ferro, x, 3.5, (LZ0 + LZ1) / 2); add(B(1.0, 0.5, LZ1 - LZ0 + 0.6), latao, x, 6.9, (LZ0 + LZ1) / 2); } /* as duas cabeceiras */
@@ -116,12 +148,26 @@ export function buildTearHall(): Interior {
     /* o tecido pronto desce do tear até o grande rolo */
     { const z0 = LZ0 + 6.0, z1 = LZ1 + 9, dz = z1 - z0, dy = 3.4 - 1.7, len = Math.hypot(dz, dy), piv = new THREE.Group(); piv.position.set(xc, (3.4 + 1.7) / 2, (z0 + z1) / 2); piv.rotation.x = Math.atan2(dy, dz); g.add(piv);
       const geo = new THREE.PlaneGeometry(L - 2, len).rotateX(-Math.PI / 2); { const uv = geo.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getY(k), uv.getX(k)); } piv.add(new THREE.Mesh(geo, tm));
-      const rolo = add(Cy(1.7, 1.7, L - 1.6, 22).rotateZ(Math.PI / 2), tm, xc, 1.7, z1 + 0.9); move.push((t) => { rolo.rotation.x = t * 0.25; }); for (const s2 of [-1, 1]) add(B(0.5, 2.6, 0.5), ferro, xc + s2 * (L / 2 - 0.5), 1.3, z1 + 0.9); }
+      /* 14/11 (Erling: "cadê o restante da máquina, cadê o tear saindo pronto no final?"): depois do tear o pano cru entra na CALANDRA (cilindros de latão quentes, válvulas,
+         manômetros, chaminés), sobe até a barra alta e DESCE PRONTO, de frente para o salão: a obra-prima com o estado do Labirinto, que nunca para de sair; embaixo, o rolo que a recolhe */
+      const zc0 = z1, zc1 = z1 + 4.2; add(B(L - 1, 0.8, zc1 - zc0), ferro, xc, 0.4, (zc0 + zc1) / 2); for (const s2 of [-1, 1]) { add(B(0.9, 5.2, zc1 - zc0 + 0.4), ferro, xc + s2 * (L / 2 - 0.6), 2.6, (zc0 + zc1) / 2); add(B(1.2, 0.5, zc1 - zc0 + 0.8), latao, xc + s2 * (L / 2 - 0.6), 5.4, (zc0 + zc1) / 2); }
+      for (let k = 0; k < 3; k++) { const cil = add(Cy(0.75, 0.75, L - 2.4, 20).rotateZ(Math.PI / 2), k === 1 ? cobre : latao, xc, 1.7 + (k === 1 ? 1.35 : 0), zc0 + 0.9 + k * 1.2); move.push((t) => { cil.rotation.x = t * (k === 1 ? -0.5 : 0.5); }); }
+      add(B(L - 1.6, 0.4, 1.2), cobre, xc, 4.6, (zc0 + zc1) / 2);
+      for (let k = 0; k < 7; k++) { const x = LX0 + 3 + k * ((L - 6) / 6); add(Cy(0.1, 0.1, 1.2, 8), cobre, x, 5.3, (zc0 + zc1) / 2); const vol = add(new THREE.TorusGeometry(0.34, 0.06, 6, 14).rotateX(Math.PI / 2), latao, x, 5.95, (zc0 + zc1) / 2); move.push((t) => { vol.rotation.y = Math.sin(t * 0.6 + k) * 1.2; }); add(Cy(0.32, 0.32, 0.08, 16).rotateX(Math.PI / 2), brilho(0xf2ead6), x + 1.4, 3.6, zc1 + 0.22); add(Cy(0.36, 0.36, 0.06, 16).rotateX(Math.PI / 2), latao, x + 1.4, 3.6, zc1 + 0.2);
+        const pont = add(B(0.05, 0.26, 0.03), brilho(0xc0392b), x + 1.4, 3.6, zc1 + 0.28); move.push((t) => { pont.rotation.z = Math.sin(t * 2.1 + k * 1.7) * 0.9; }); }
+      for (const s2 of [-1, 1]) { const x = xc + s2 * (L / 2 - 0.6); add(Cy(0.3, 0.36, 4.4, 10), ferro, x, 7.8, (zc0 + zc1) / 2); add(Cy(0.46, 0.3, 0.3, 10), latao, x, 10.1, (zc0 + zc1) / 2); for (let j2 = 0; j2 < 3; j2++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fumaca, color: 0xf4f0fa, transparent: true, opacity: 0.5, depthWrite: false })); sp.userData = { x, z: (zc0 + zc1) / 2, y0: 10.4, ph: s2 * 0.4 + j2 * 0.33 + 0.5 }; g.add(sp); vapor.push(sp); } }
+      /* o pano sobe da calandra até a barra alta… */
+      const zb = zc1 + 2.2, yb = 10.4; { const dz2 = zb - zc1, dy2 = yb - 2.4, len2 = Math.hypot(dz2, dy2), piv2 = new THREE.Group(); piv2.position.set(xc, (yb + 2.4) / 2, (zb + zc1) / 2); piv2.rotation.x = -Math.atan2(dy2, dz2); g.add(piv2); const geo2 = new THREE.PlaneGeometry(L - 2.4, len2).rotateX(-Math.PI / 2); { const uv = geo2.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getY(k), uv.getX(k)); } piv2.add(new THREE.Mesh(geo2, tm)); }
+      add(Cy(0.3, 0.3, L - 1.6, 14).rotateZ(Math.PI / 2), latao, xc, yb, zb); for (const s2 of [-1, 1]) { add(B(0.5, yb + 0.6, 0.5), ferro, xc + s2 * (L / 2 - 0.5), (yb + 0.6) / 2, zb); add(Cy(0.5, 0.5, 0.3, 12).rotateZ(Math.PI / 2), latao, xc + s2 * (L / 2 - 0.5), yb, zb); }
+      /* …e desce pronto: a obra-prima */
+      obraPrima.repeat.set(1, 1); const painel = new THREE.Mesh(new THREE.PlaneGeometry(L - 2.4, yb - 1.4), new THREE.MeshBasicMaterial({ map: obraPrima, toneMapped: false, side: THREE.DoubleSide })); painel.position.set(xc, (yb + 1.4) / 2, zb + 0.32); g.add(painel);
+      const rolo = add(Cy(0.9, 0.9, L - 1.6, 22).rotateZ(Math.PI / 2), new THREE.MeshBasicMaterial({ map: obraPrima, toneMapped: false }), xc, 1.0, zb + 0.9); move.push((t) => { rolo.rotation.x = t * 0.3; }); for (const s2 of [-1, 1]) add(B(0.5, 1.8, 0.5), ferro, xc + s2 * (L / 2 - 0.5), 0.9, zb + 0.9);
+      luz(xc - 12, 6, zb + 7, 0xfff4e0, 7, 40); luz(xc + 12, 6, zb + 7, 0xfff4e0, 7, 40); }
     /* caldeiras no fundo (norte), volantes e pistões na frente */
     for (let k = 0; k < 5; k++) { const x = LX0 + 4 + k * ((L - 8) / 4), z = 5.5; const cal = add(Cy(1.5, 1.5, 4.2, 16), cobre, x, 3.3, z); ink(cal, 0.03); add(new THREE.SphereGeometry(1.5, 16, 8, 0, 6.283, 0, 1.57), cobre, x, 5.4, z); for (const y of [2.0, 3.3, 4.6]) add(new THREE.TorusGeometry(1.52, 0.08, 6, 20).rotateX(Math.PI / 2), latao, x, y, z); add(B(2.6, 1.2, 2.6), ferro, x, 0.6, z);
       add(Cy(0.34, 0.4, 5.6, 10), ferro, x, 8.6, z); add(Cy(0.52, 0.34, 0.35, 10), latao, x, 11.5, z); add(Cy(0.55, 0.55, 0.08, 16).rotateX(Math.PI / 2), brilho(0xffb040), x, 2.0, z + 1.52); add(Cy(0.3, 0.3, 0.06, 14).rotateX(Math.PI / 2), brilho(0xf2ead6), x + 0.9, 4.0, z + 1.3);
       add(Cy(0.2, 0.2, LZ0 - z, 8).rotateX(Math.PI / 2), cobre, x, 4.6, (z + LZ0) / 2); /* o cano de vapor até a máquina */
-      for (let j = 0; j < 2; j++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color: 0xf0ecf6, transparent: true, opacity: 0.4, depthWrite: false })); sp.userData = { x, z, ph: k * 0.37 + j * 0.5 }; g.add(sp); vapor.push(sp); }
+      for (let j = 0; j < 4; j++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: fumaca, color: 0xf4f0fa, transparent: true, opacity: 0.5, depthWrite: false })); sp.userData = { x, z, y0: 11.8, ph: k * 0.37 + j * 0.25 }; g.add(sp); vapor.push(sp); }
       /* volante com biela, na frente (sul) do tear */
       const vg = new THREE.Group(); vg.position.set(x, 4.4, LZ1 + 0.5); g.add(vg); add(new THREE.TorusGeometry(1.8, 0.16, 8, 28), ferro, 0, 0, 0, vg); for (let r = 0; r < 6; r++) add(B(0.1, 3.5, 0.1), aco, 0, 0, 0, vg).rotation.z = r * Math.PI / 6; add(Cy(0.28, 0.28, 0.5, 10).rotateX(Math.PI / 2), latao, 0, 0, 0, vg); move.push((t) => { vg.rotation.z = t * (1.6 + k * 0.07); });
       const pist = add(Cy(0.2, 0.2, 2.4, 10), aco, x + 2.6, 7.6, LZ1 - 0.2); add(Cy(0.36, 0.36, 1.5, 12), latao, x + 2.6, 9.0, LZ1 - 0.2); move.push((t) => { pist.position.y = 7.5 + Math.sin(t * (1.6 + k * 0.07) * 2) * 0.55; }); }
@@ -129,22 +175,22 @@ export function buildTearHall(): Interior {
     luz(xc - 10, 9, LZ1 + 6, 0xfff0d8, 8, 46); luz(xc + 10, 9, LZ1 + 6, 0xfff0d8, 8, 46); luz(xc, 5, 9, 0xffa050, 6, 30);
 
     /* ---- os ROLOS empilhados e o SAGUÃO DAS OBRAS (sudeste) ---- */
-    for (let r = 0; r < 4; r++) for (let k = 0; k < 6 - r; k++) add(Cy(1.0, 1.0, 6.0, 16).rotateX(Math.PI / 2), tm, 93.5 + k * 2.05 + r * 1.02 - 2, 1.0 + r * 1.75, 41);
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 6 - r; k++) add(Cy(1.0, 1.0, 6.0, 16).rotateX(Math.PI / 2), tm, 93.5 + k * 2.05 + r * 1.02 - 2, 1.0 + r * 1.75, 46);
     let ob = 0; const obra = (x: number, y: number, z: number, ry: number, w = 3.2, h = 4.0) => { const og = new THREE.Group(); og.position.set(x, y, z); og.rotation.y = ry; g.add(og); add(B(w + 0.4, h + 0.4, 0.14), carv, 0, 0, -0.08, og); add(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: obraTex(ob++), toneMapped: false }), 0, 0, 0, og).castShadow = false; add(B(w + 0.8, 0.14, 0.2), latao, 0, h / 2 + 0.32, -0.04, og); };
     for (let k = 0; k < 4; k++) obra(0.5, 5.0, 12 + k * 13, Math.PI / 2, 4.4, 5.6); /* as maiores, na parede oeste */
-    for (let c = 0; c < 6; c++) for (let r = 0; r < 2; r++) { const x = 64 + c * 7.2 + (r ? 3.6 : 0), z = 48 + r * 9; if (x > 104) continue; add(B(0.3, 3.6, 0.3), carv, x, 1.8, z - 0.25); add(B(1.8, 0.2, 1.2), carv, x, 0.1, z - 0.2); obra(x, 2.9, z, 0.5, 2.4, 3.1); cols.push([x, z - 0.2, 1.1]); }
+    for (let c = 0; c < 6; c++) for (let r = 0; r < 2; r++) { const x = 64 + c * 7.2 + (r ? 3.6 : 0), z = 53 + r * 8; if (x > 104 || (x > 88 && z < 56)) continue; add(B(0.3, 3.6, 0.3), carv, x, 1.8, z - 0.25); add(B(1.8, 0.2, 1.2), carv, x, 0.1, z - 0.2); obra(x, 2.9, z, 0.5, 2.4, 3.1); cols.push([x, z - 0.2, 1.1]); }
     luz(84, 8, 54, 0xfff0d8, 8, 46); luz(W / 2, 7, D - 8, 0xfff0d8, 6, 40); }
 
   const dentro = (x: number, z: number) => x > 0.7 && x < W - 0.7 && z > 1.6 && z < D + 0.3 && (z < D - 0.5 || Math.abs(x - W / 2) < 3.4);
   const free = (x: number, z: number) => { if (!dentro(x, z)) return false;
     if (Math.hypot(x - CX, z - CZ) < RS + 1.0) return false; if (Math.abs(x - CX) < 1.4 && z > CZ - RS - 2.6 && z < CZ - RS) return false; /* a mesa, as cadeiras e o trono */
     if (x > PX0 - 1 && x < PX1 + 1 && z < 2.6) return false; /* os carretéis */
-    if (x > LX0 - 1.2 && x < LX1 + 1.2 && z < LZ1 + 13) return false; /* caldeiras, tear, tecido e rolo */
-    if (x > 90 && x < 104.5 && z > 37.5 && z < 44.5) return false; /* a pilha de rolos */
+    if (x > LX0 - 1.2 && x < LX1 + 1.2 && z < LZ1 + 17.6) return false; /* caldeiras, tear, tecido, calandra e a obra pronta */
+    if (x > 90 && x < 104.5 && z > 42.5 && z < 49.5) return false; /* a pilha de rolos */
     for (const [qx, qz, rad] of cols) if (Math.hypot(x - qx, z - qz) < rad) return false; return true; };
   const rodas: THREE.Object3D[] = []; g.traverse((o) => { if (o.userData.giraZ) rodas.push(o); });
-  const flicker = (t: number) => { for (const f of move) f(t); for (const r of rodas) r.rotation.z = t * r.userData.giraZ; tecido.offset.x = -t * 0.04;
-    for (const sp of vapor) { const k = (t * 0.22 + sp.userData.ph) % 1; sp.position.set(sp.userData.x + Math.sin(k * 5 + sp.userData.ph * 9) * 0.5, 11.8 + k * 4.2, sp.userData.z); const sc = 1.2 + k * 3.6; sp.scale.set(sc, sc, 1); (sp.material as THREE.SpriteMaterial).opacity = 0.42 * (1 - k); }
+  const flicker = (t: number) => { for (const f of move) f(t); for (const r of rodas) r.rotation.z = t * r.userData.giraZ; tecido.offset.x = -t * 0.04; obraPrima.offset.y = t * 0.012;
+    for (const sp of vapor) { const k = (t * 0.22 + sp.userData.ph) % 1; sp.position.set(sp.userData.x + Math.sin(k * 5 + sp.userData.ph * 9) * 0.7, sp.userData.y0 + k * 5.2, sp.userData.z); const sc = 1.6 + k * 4.6; sp.scale.set(sc, sc, 1); (sp.material as THREE.SpriteMaterial).opacity = 0.6 * Math.sin(Math.min(1, k * 4) * 1.57) * (1 - k); (sp.material as THREE.SpriteMaterial).rotation = sp.userData.ph * 7 + k * 0.8; }
     for (const l of luzes) l.l.intensity = l.base * (0.95 + 0.05 * Math.sin(t * 7 + l.ph)); };
   flicker(0);
   return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9 };

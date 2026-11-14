@@ -52,6 +52,7 @@ let videoCfg = { angle: '', teste: false, voltou: '' };
 try { videoCfg = { ...videoCfg, ...JSON.parse(fs.readFileSync(VIDEO_FILE(), 'utf8')) }; } catch { /* primeira vez */ }
 const saveVideo = () => { try { fs.mkdirSync(path.dirname(VIDEO_FILE()), { recursive: true }); fs.writeFileSync(VIDEO_FILE(), JSON.stringify(videoCfg)); } catch (e) { console.log('[karmika] não gravou o tradutor de vídeo:', e.message); } };
 if (videoCfg.angle && videoCfg.teste) { console.log('[karmika] o tradutor de vídeo', videoCfg.angle, 'não abriu da última vez: volta para o Automático'); videoCfg = { angle: '', teste: false, voltou: videoCfg.angle }; saveVideo(); }
+else if (process.platform !== 'win32' && /^d3d/.test(videoCfg.angle)) { /* 14/11: DirectX só existe no Windows; no Linux e no Mac fica o Automático */ }
 else if (ANGLES[videoCfg.angle]) { app.commandLine.appendSwitch('use-angle', ANGLES[videoCfg.angle]); if (videoCfg.angle === 'vulkan') app.commandLine.appendSwitch('enable-features', 'CanvasOopRasterization,Vulkan'); videoCfg.teste = true; saveVideo(); console.log('[karmika] tradutor de vídeo:', videoCfg.angle); }
 /* os efeitos já montados ficam guardados em disco entre uma abertura e outra: o padrão do Chromium (6 MB) é pouco para as centenas de efeitos do jogo */
 app.commandLine.appendSwitch('gpu-program-cache-size-kb', String(256 * 1024));

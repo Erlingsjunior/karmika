@@ -11,7 +11,8 @@
     "start": "node scripts/bundle.mjs && electron .",
     "dist": "node scripts/bundle.mjs && node scripts/dist.mjs",
     "server": "node src/server.cjs",
-    "dist:mac": "node scripts/bundle.mjs && node scripts/dist.mjs mac"
+    "dist:mac": "node scripts/bundle.mjs && node scripts/dist.mjs mac",
+    "dist:linux": "node scripts/bundle.mjs && node scripts/dist.mjs linux"
   },
   "devDependencies": {
     "cross-env": "^10.1.0",
@@ -91,6 +92,27 @@
     "dmg": {
       "title": "Karmika",
       "artifactName": "Karmika-${version}-mac.${ext}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "executableName": "karmika",
+      "artifactName": "Karmika-${version}-linux.${ext}",
+      "synopsis": "Karmika, MMORPG de karma e reencarnação"
     }
   }
 }
