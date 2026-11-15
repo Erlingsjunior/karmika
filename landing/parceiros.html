@@ -422,11 +422,11 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
     <h2>Grátis até o nível 10. Depois, cinco pacotes.</h2>
     <p class="lead">O teste é gratuito e roda direto no navegador, sem instalar nada. Depois do nível 10, o jogador compra o jogo uma vez, em um destes pacotes. É sobre eles, sobre os cartões e sobre a loja do jogo que a casa ganha comissão.</p>
     <div class="pks" id="pks">
-      <div><small>O Caminhante</small><b>Jogo Base</b><span>R$ 49,90</span></div>
-      <div><small>O Viajante</small><b>Pacote I</b><span>R$ 69,90</span></div>
-      <div><small>O Veterano</small><b>Pacote II</b><span>R$ 94,90</span></div>
-      <div><small>O Campeão</small><b>Pacote III</b><span>R$ 139,90</span></div>
-      <div class="pks--f"><small>A Lenda</small><b>Pacote Fundador</b><span>R$ 429,90</span></div>
+      <div><small>O Caminhante</small><b>Jogo Base</b><span>R$ 19,90</span></div>
+      <div><small>O Viajante</small><b>Pacote I</b><span>R$ 29,90</span></div>
+      <div><small>O Veterano</small><b>Pacote II</b><span>R$ 47,90</span></div>
+      <div><small>O Campeão</small><b>Pacote III</b><span>R$ 75,90</span></div>
+      <div class="pks--f"><small>A Lenda</small><b>Pacote Fundador</b><span>R$ 239,90</span></div>
     </div>
     <p class="lead lead--larga">O Pacote Fundador é a edição de colecionador: caixa, livro impresso, artbook impresso, mapa do jogo em A2 e o jogo em pendrive. Toque em um pacote para ver o que vem nele.</p>
     <div class="pkx" id="pkx" hidden aria-live="polite"></div>
@@ -547,7 +547,7 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
       <table>
         <caption>Exemplo: o que a casa recebe em cada pacote vendido no balcão. A mesma porcentagem vale para os cartões e para a loja do jogo.</caption>
         <thead><tr><th scope="col">Pacote</th><th scope="col">Preço</th><th scope="col">Estalagem <small>20%</small></th><th scope="col">Salão de Guilda <small>25%</small></th><th scope="col">Cidadela <small>30%</small></th></tr></thead>
-        <tbody><tr><th scope="row">Jogo Base</th><td>R$ 49,90</td><td>R$ 9,98</td><td>R$ 12,48</td><td>R$ 14,97</td></tr><tr><th scope="row">Pacote I</th><td>R$ 69,90</td><td>R$ 13,98</td><td>R$ 17,48</td><td>R$ 20,97</td></tr><tr><th scope="row">Pacote II</th><td>R$ 94,90</td><td>R$ 18,98</td><td>R$ 23,73</td><td>R$ 28,47</td></tr><tr><th scope="row">Pacote III</th><td>R$ 139,90</td><td>R$ 27,98</td><td>R$ 34,98</td><td>R$ 41,97</td></tr><tr><th scope="row">Pacote Fundador</th><td>R$ 429,90</td><td>R$ 85,98</td><td>R$ 107,48</td><td>R$ 128,97</td></tr></tbody>
+        <tbody><tr><th scope="row">Jogo Base</th><td>R$ 19,90</td><td>R$ 3,98</td><td>R$ 4,98</td><td>R$ 5,97</td></tr><tr><th scope="row">Pacote I</th><td>R$ 29,90</td><td>R$ 5,98</td><td>R$ 7,48</td><td>R$ 8,97</td></tr><tr><th scope="row">Pacote II</th><td>R$ 47,90</td><td>R$ 9,58</td><td>R$ 11,98</td><td>R$ 14,37</td></tr><tr><th scope="row">Pacote III</th><td>R$ 75,90</td><td>R$ 15,18</td><td>R$ 18,98</td><td>R$ 22,77</td></tr><tr><th scope="row">Pacote Fundador</th><td>R$ 239,90</td><td>R$ 47,98</td><td>R$ 59,98</td><td>R$ 71,97</td></tr></tbody>
       </table>
     </div>
     <h3 class="neg__h">Negócios, na língua de KARMIKA.</h3>
@@ -912,8 +912,8 @@ dialog.md::backdrop { background: rgba(5, 4, 6, .78); backdrop-filter: blur(4px)
   var pks = document.getElementById('pks'), box = document.getElementById('pkx'); if (!pks || !box) return; var cs = [].slice.call(pks.children), sel = -1;
   var P = [{ img: '/img/c-humano.webp', fala: 'Todo caminho começa com um passo.', itens: ['O jogo completo, seu para sempre'] },
     { img: '/img/c-elfa.webp', fala: 'Quem viaja leve chega mais longe.', itens: ['O jogo completo', '30 dias de Premium', 'Drone de Cura por 15 dias'] },
-    { img: '/img/c-anao.webp', fala: 'Ferro bom canta quando bate.', itens: ['O jogo completo', '60 dias de Premium', 'Drone de Cura por 15 dias', 'Robô de Defesa por 15 dias'] },
-    { img: '/img/c-guerreira.webp', fala: 'Torneio se ganha na arena.', itens: ['O jogo completo', '90 dias de Premium', 'Drone de Cura por 15 dias', 'Robô de Defesa por 15 dias', 'Bracelete de Choque por 15 dias', '1 montaria à sua escolha'] },
+    { img: '/img/c-anao.webp', fala: 'Ferro bom canta quando bate.', itens: ['O jogo completo', '60 dias de Premium', 'Drone de Cura por 15 dias', 'Robô de Defesa por 15 dias', 'Bracelete de Choque por 15 dias'] },
+    { img: '/img/c-guerreira.webp', fala: 'Torneio se ganha na arena.', itens: ['O jogo completo', '90 dias de Premium', 'Drone de Cura por 30 dias', 'Robô de Defesa por 30 dias', 'Bracelete de Choque por 30 dias', '1 montaria à sua escolha'] },
     { img: '/img/c-paladino.webp', fala: 'O nome fica escrito para sempre.', itens: ['O jogo completo', '180 dias de Premium', '2 de cada engenhoca, por 30 dias', '3 montarias, uma por raça', 'Aura, roupas e título de Fundador', 'Caixa com livro impresso, artbook impresso, mapa em A2 e o jogo em pendrive'] }];
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x != null) e.textContent = x; return e; }
   function fecha() { sel = -1; box.hidden = true; box.textContent = ''; pks.classList.remove('is-open'); cs.forEach(function (c) { c.setAttribute('aria-expanded', 'false'); }); }
