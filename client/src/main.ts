@@ -441,7 +441,8 @@ let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou 
 /* 10/11: ataques de bando à vila (sistemas/ataques.ts) — a guarda defende, o herói pode ajudar */
 const ataqueSys = createAtaques({ T, settlements: () => city.settlements as never, heroTile: () => ({ x: state.fx, y: state.fy }), night: () => state.night, inside: () => !!inside, level: () => game.st.lvl,
   walkable: (x, z) => { const tt = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!tt || !isWalkable(tt)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T) && !rampartAt(Math.floor(x / T), Math.floor(z / T)); } catch { return true; } }, spawn: (ty, x, z, o) => game.enemies.spawn(ty, x, z, o) as never, clearTag: (tg) => game.enemies.clearTag(tg),
-  log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; } });
+  log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; },
+  net: { on: () => net.state === 'on', myId: () => net.myId, send: (t, m) => net.x(t, m) } });
 /* 13/11: o alvo automático do controle. Entrega os inimigos vivos a até 13 m do herói, já em pontos da tela (o controle escolhe e aponta a mira) */
 controleAlvos(() => { if (inside) return []; const hp = hero.root.position, r = canvas.getBoundingClientRect(), out: PadAlvo[] = []; const L = game.enemies.list;
   for (let i = 0; i < L.length; i++) { const e = L[i]; if (!e.active || !e.alive || (e as unknown as { ally?: boolean }).ally) continue; const d = Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z); if (d > 13) continue;
@@ -1184,6 +1185,7 @@ var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; s
 function mk_redeSys() { return createRede({ get scene() { return scene; }, get particles() { return particles; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();
 const { coop, net } = redeSys;
+net.onX('x:raid', (_from, m) => { try { ataqueSys.join(m); } catch (e) { console.warn('ataque em grupo', e); } }); /* 14/11: o ataque à vila é o mesmo para todos por perto */
 
 /* AMIGOS, CONVERSAS E GUILDAS (hub.ts e social.ts): escrituras de casa, casas dos outros, terrenos e salões de guilda, o PvP de facção, entrar no servidor, o início, o cartão do herói e o balão de fala. Saiu do main.ts (02/11). → sistemas/social-guildas.ts */
 export interface SocialGuildasCtx {
