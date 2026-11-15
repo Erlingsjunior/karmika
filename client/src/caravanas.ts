@@ -333,7 +333,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** anda pela estrada até sair de perto das vilas */
   const openRoad = (r: Route, s0: number) => { for (let k = 0; k < 60; k++) { const s = (s0 + k * 8) % r.len, p = at(r, s); if (!ctx.nearTown(p.x, p.z)) return s; } return s0; };
   const SPEED = 3.1, PERIOD_PAD = 40, /** a escolta espera um pouco fora do portão, não dentro dele */ START = 9;
-  function ambientS(r: Route, i: number, lag = 0) { const per = r.len / SPEED + PERIOD_PAD, cyc = per * 2, t = (now() - lag + i * 977) % cyc; // vai, para, volta
+  function ambientS(r: Route, i: number, lag = 0) { const per = r.len / SPEED + PERIOD_PAD, cyc = per * 2, t = (now() - lag + i * cyc * 0.5) % cyc; // vai, para, volta (15/11: a segunda caravana anda meia volta atrás da primeira; as duas se cruzam no meio da rota)
     const go = Math.max(0, Math.min(1, t / (per - PERIOD_PAD))), back = Math.max(0, Math.min(1, (t - per) / (per - PERIOD_PAD)));
     /* 26/10 (Erling: "uma carroça não atravessa a outra"): cada rota estaciona na sua vaga, alguns metros antes do centro da vila — duas rotas que
        terminam na mesma praça nunca param uma em cima da outra */
@@ -354,7 +354,12 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** qual carroça faz a vez i desta estrada: 1ª vapor, 2ª anões, a 3ª (estradas longas) alterna de estrada para estrada */
   /** 28/10: qual carroça faz a viagem agora. Cada carroça troca a cada ida e volta (vapor, anões, vapor…), e a vez i começa
       defasada: com o tempo as duas passam por todas as estradas, sem dobrar o número de carroças no mundo (o FPS agradece) */
-  const ambCar = (r: Route, i: number): 'carrocaAVapor' | 'carrocaDosAnoes' => { const per = r.len / SPEED + PERIOD_PAD, trip = Math.floor((now() + i * 977) / (per * 2)); let hh = 0; for (const ch of r.id) hh += ch.charCodeAt(0); return (trip + i + hh) % 2 === 0 ? 'carrocaAVapor' : 'carrocaDosAnoes'; };
+  /* 15/11 (Erling: "não estou vendo mais as carroças dos anões; tem que ter as caravanas dos tecnocratas E as dos anões, e elas não podem ficar
+     sumindo e aparecendo, têm que estar andando nas rotas mercantes"): antes cada rota tinha UMA caravana que trocava de tipo a cada viagem
+     (a carroça sumia e nascia outra no lugar) e, perto de Karmika, quase sempre calhava a de vapor. Agora TODA rota mercante tem as duas ao
+     mesmo tempo, sempre: a de vapor da Companhia de Latão e a dos anões, cada uma com o seu tipo fixo, andando sem parar pelo relógio do mundo. */
+  const N_AMB = 2;
+  const ambCar = (_r: Route, i: number): 'carrocaAVapor' | 'carrocaDosAnoes' => (i % 2 === 0 ? 'carrocaAVapor' : 'carrocaDosAnoes');
   const carOf = (c: Car) => c.carroca ?? c.route.carroca ?? 'carrocaAVapor';
   /* 12/11 (/travadas do Erling: "caravanas 33 a 114 ms" de vez em quando): montar a carroça e os TRÊS bonecos da tripulação no mesmo quadro era o pico.
      Agora cada caravana ganha a tripulação aos poucos: um boneco por quadro, e no máximo um boneco novo por quadro no jogo inteiro (`obraDoQuadro`).
@@ -403,7 +408,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   function update(dt: number, t: number) { obraDoQuadro = false;
     const hp = ctx.hero(), night = ctx.night(), inside = ctx.inside();
     /* caravanas do mundo */
-    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const key = `amb:${id}:${i}`; let c = cars.get(key); /* 28/10 (Erling): toda estrada vê as duas — a carroça a vapor e a dos anões se revezam a cada viagem */
+    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < N_AMB; i++) { const key = `amb:${id}:${i}`; let c = cars.get(key); /* 28/10 (Erling): toda estrada vê as duas — a carroça a vapor e a dos anões se revezam a cada viagem */
       if (c && c.carroca !== ambCar(r, i) && !c.trading) { dropModel(c); parked.delete(key); c.carroca = ambCar(r, i); }
       if (!c) { c = { key, mode: 'ambient', carroca: ambCar(r, i), route: r, s: 0, dir: 1, w: null, crew: [], hp: 1, stop: false, speed: SPEED, foes: [], bubbleT: 0 }; cars.set(key, c); }
       /* 26/10 (Erling: "clico na carroça, abro a janela deles e eles vão embora andando?"): enquanto você negocia, ela espera; o atraso
@@ -524,7 +529,7 @@ export function createCaravans(ctx: CaravanCtx, routes: Map<string, Route>) {
   /** para o mapa: caravanas andando, e a atacada piscando */
   function mapMarks(): { x: number; y: number; kind: 'move' | 'ev' | 'esc' | 'res'; name: string; sub: string }[] {
     const out: ReturnType<typeof mapMarks> = [];
-    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < (r.len > 300 ? 2 : 1); i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: ambCar(r, i) === 'carrocaAVapor' ? 'Caravana de Latão (a vapor)' : r.kind === 'human' ? 'Caravana de mercadores anões' : 'Carroça de minério dos anões', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
+    for (const id of AMBIENT) { const r = routes.get(id); if (!r) continue; for (let i = 0; i < N_AMB; i++) { const a = ambientS(r, i), p = at(r, a.s); out.push({ x: p.x / T, y: p.z / T, kind: 'move', name: ambCar(r, i) === 'carrocaAVapor' ? 'Caravana de Latão (a vapor)' : r.kind === 'human' ? 'Caravana de mercadores anões' : 'Carroça de minério dos anões', sub: `${r.name}${a.park ? ' · parada' : ''}` }); } }
     if (evShown && !saved.done.includes(evShown.slot)) { const p = at(evShown.r, evShown.s), left = Math.ceil((EV - (now() % EV)) / 60); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Caravana atacada!', sub: `${evShown.r.name} · atacada por ${evShown.r.foeName} e outros · ~${left} min` }); }
     for (const c of cars.values()) { if (c.mode === 'escort' && !c.arrived) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'esc', name: 'Sua escolta', sub: c.route.name }); } if (c.mode === 'rescue' && !c.cleared) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'res', name: 'Caravana caída', sub: c.route.name }); } if (c.mode === 'wreck' && !c.fixed) { const p = at(c.route, c.s); out.push({ x: p.x / T, y: p.z / T, kind: 'ev', name: 'Carroça tombada', sub: `${c.route.name} · missão de área: proteger e consertar` }); } }
     return out;
