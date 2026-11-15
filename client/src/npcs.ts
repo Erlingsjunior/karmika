@@ -125,6 +125,10 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
         if (!a.def.route && !a.target) a.wait = Math.min(a.wait, 0.5); if (!b.def.route && !b.target) b.wait = Math.min(b.wait, 0.5); } }
     const here = ctx.insideId?.() ?? null;
     const walk = (n: Npc, x: number, z: number) => n.def.inside ? (ctx.insideFree?.(x, z) ?? true) : ctx.walkable(x, z);
+    /* 14/11 (Erling: "o excesso de texto falado pelos NPCs dentro das tavernas dificulta a visão… não tenho superpoderes, só ouço quem está perto"):
+       só o NPC mais perto do herói (até 4,5 m) mostra a frase inteira; dos outros chega só a primeira palavra. Quem grita (guarda, recepção) se ouve de longe. */
+    let perto: Npc | null = null; { let pd = 4.5; for (const n of npcs) { if ((n.def.inside ?? null) !== here || !n.built) continue; const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); if (dd < pd) { pd = dd; perto = n; } } }
+    const curto = (tx: string) => { const w = tx.trim().split(/\s+/); return w.length > 1 ? w[0].replace(/[,.;:!?]+$/, '') + '…' : tx; };
     for (const n of npcs) {
       const d = n.def, dH = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z);
       if ((d.inside ?? null) !== here) { n.hero.root.visible = false; if (n.el.style.display !== 'none') n.el.style.display = 'none'; continue; } /* NPC de interior só aparece dentro dele; os de fora somem lá dentro */
@@ -152,7 +156,7 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
         else {
           let tgt = g.foeE && g.foeE.alive && g.foeE.active && Math.hypot(g.foeE.pos.x - hx0, g.foeE.pos.z - hz0) < 26 ? g.foeE : null;
           if (!tgt) { g.foeE = null; let bd = 16; for (const e of ctx.threats()) { if (!e.alive || !e.active || e.def.passive) continue; const dd = Math.hypot(e.pos.x - n.pos.x, e.pos.z - n.pos.z); if (dd < bd && Math.hypot(e.pos.x - hx0, e.pos.z - hz0) < 22) { bd = dd; tgt = e; } }
-            if (tgt) { g.foeE = tgt; if (!tgt.foe || !tgt.foe.alive()) tgt.foe = g.gfoe; if (!(n.barkT && n.barkT > 0) && Math.random() < 0.6) { n.bark = GUARD_CRY[Math.floor(Math.random() * GUARD_CRY.length)]; n.barkT = 2.4; } } }
+            if (tgt) { g.foeE = tgt; if (!tgt.foe || !tgt.foe.alive()) tgt.foe = g.gfoe; if (!(n.barkT && n.barkT > 0) && Math.random() < 0.6) { n.bark = GUARD_CRY[Math.floor(Math.random() * GUARD_CRY.length)]; n.barkT = 2.4; (n as Npc & { alto?: boolean }).alto = true; } } }
           /* 11/11 (Erling: "se o NPC está em cima do muro precisa usar flechas, e não flutuar nem ficar correndo feito bobo"): a sentinela da muralha
              NÃO sai do posto. Vira para o bicho e atira de arco (uma flecha a cada ~1,6 s, até 26 m). Antes ela corria atrás dele pelo ar, por dentro da paliçada */
           if (tgt && (d.yOff ?? 0) > 1) { fought = true; n.target = null; const dx = tgt.pos.x - n.pos.x, dz = tgt.pos.z - n.pos.z, l = Math.hypot(dx, dz) || 1; n.yaw = Math.atan2(dx, dz); head = n.yaw;
@@ -200,14 +204,14 @@ export function createNpcs(scene: THREE.Scene, defs: NpcDef[], ctx: { /** 10/11:
       if (show) {
         n.el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; n.el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
         const p = n.el.querySelector('p') as HTMLElement;
-        if (n.barkT && n.barkT > 0) { n.barkT -= dt; { const tx = n.bark ?? ''; if (p.textContent !== tx) p.textContent = tx; } if (p.style.display !== 'block') p.style.display = 'block'; p.classList.add('bark'); }
-        else if (dH < 6) { p.classList.remove('bark'); n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; if (Math.random() < 0.3) { const l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.5; } } } { const tx = d.lines[n.line]; if (p.textContent !== tx) p.textContent = tx; } p.style.display = 'block'; } else { p.classList.remove('bark'); p.style.display = 'none'; n.lineT = 4; }
+        if (n.barkT && n.barkT > 0) { n.barkT -= dt; if (n.barkT <= 0) (n as Npc & { alto?: boolean }).alto = false; { const tx = n === perto || (n as Npc & { alto?: boolean }).alto ? n.bark ?? '' : curto(n.bark ?? ''); if (p.textContent !== tx) p.textContent = tx; } if (p.style.display !== 'block') p.style.display = 'block'; p.classList.add('bark'); }
+        else if (dH < 6) { p.classList.remove('bark'); n.lineT += dt; if (n.lineT > 4.5) { n.lineT = 0; n.line = (n.line + 1) % d.lines.length; if (Math.random() < 0.3) { const l = pickBark(n); if (l) { n.bark = l; n.barkT = 4.5; } } } { const tx = n === perto ? d.lines[n.line] : curto(d.lines[n.line]); if (p.textContent !== tx) p.textContent = tx; } p.style.display = 'block'; } else { p.classList.remove('bark'); p.style.display = 'none'; n.lineT = 4; }
       }
     }
   }
   const talk = (n: Npc) => { n.line = (n.line + 1) % n.def.lines.length; n.lineT = 0; return n.def.lines[n.line]; };
   /** fala forçada (recepção, festa): o NPC visível mais perto do herói, entre 2 e 14 m, diz a linha */
-  function say(line: string, heroPos: THREE.Vector3) { let best: Npc | null = null, bd = 14; for (const n of npcs) { if (!n.hero.root.visible || n.def.route) continue; const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); if (dd > 2 && dd < bd) { bd = dd; best = n; } } if (best) { best.bark = line; best.barkT = 5; } return !!best; }
+  function say(line: string, heroPos: THREE.Vector3) { let best: Npc | null = null, bd = 14; for (const n of npcs) { if (!n.hero.root.visible || n.def.route) continue; const dd = Math.hypot(heroPos.x - n.pos.x, heroPos.z - n.pos.z); if (dd > 2 && dd < bd) { bd = dd; best = n; } } if (best) { best.bark = line; best.barkT = 5; (best as Npc & { alto?: boolean }).alto = true; } return !!best; }
   /** monta já (quem precisa do boneco de verdade longe do jogador: retrato, festa) */
   const ensure = (n: Npc) => build(n);
   return { npcs, update, talk, say, ensure, builtCount: () => npcs.filter((n) => n.built).length };
