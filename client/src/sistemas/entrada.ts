@@ -1,4 +1,5 @@
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). */
+import { controleJanelas } from './controle';
 import { isAdm } from './admin';
 import { pulo, PULO_DUR } from './pulo-montaria';
 import { t as tr } from '../i18n';
@@ -166,6 +167,7 @@ addEventListener('keyup', (e) => {
   const hit = k === 'shift' || k === 'control' || (dig !== undefined && gk.endsWith(dig)) || (k === 'q' && gk === '4');
   if (hit) { K.game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); }
 });
+controleJanelas(() => !!(K.stable.isOpen || K.align.isOpen || K.dockSys.skillsOpen || K.dockSys.featsOpen || K.reliquiasSys.relicOpen || K.olhoSys.olhoOpen || K.quests.isOpen || K.vid.isOpen || K.mail.isOpen || K.profs.isOpen || K.loja.isOpen || K.minimapaSys.bigOpen || K.inv.isOpen));
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (K.cinemaSys.cine) { if (e.key === 'Escape' && (K.cinemaSys.cine.sc.skippable || K.cinemaSys.cine.skipOk)) K.endScene(); e.preventDefault(); return; }

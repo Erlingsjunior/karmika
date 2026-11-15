@@ -100,7 +100,11 @@ function soltaTudo() { for (const i of [...held.keys()]) solta(i); dir('w', fals
    move um ponteiro na tela; A clica onde ele está, X dá o botão direito, B fecha (Esc), a alavanca direita rola a lista debaixo dele.
    Enquanto o ponteiro está ligado o herói não anda e as magias não saem. */
 let ptr: HTMLElement | null = null, ptrOn = false, ptrManual = false, px = 0, py = 0, ptrHover = 0, ptrDown: Element | null = null;
-const uiAberta = () => { const m = document.getElementById('menu'), i = document.getElementById('inicio'); return !!(m && m.classList.contains('open')) || !!(i && i.style.display !== 'none' && getComputedStyle(i).display !== 'none') || !!document.querySelector('.kconf') || !!document.getElementById('create') && document.getElementById('create')!.style.display === 'grid'; };
+/* 14/11 (Erling: "modais do game não estão fechando"): com mochila, mapa, loja ou outra janela aberta o controle seguia no modo de jogo,
+   então o B dava dash em vez de fechar. Agora toda janela aberta liga o ponteiro sozinha: B fecha, A clica, a alavanca move. */
+let janelas: (() => boolean) | null = null;
+export function controleJanelas(f: () => boolean) { janelas = f; }
+const uiAberta = () => { if (janelas) { try { if (janelas()) return true; } catch { /* */ } } const m = document.getElementById('menu'), i = document.getElementById('inicio'); return !!(m && m.classList.contains('open')) || !!(i && i.style.display !== 'none' && getComputedStyle(i).display !== 'none') || !!document.querySelector('.kconf') || !!document.getElementById('create') && document.getElementById('create')!.style.display === 'grid'; };
 let prime = false; /* ao trocar de modo, os botões que já estavam apertados não contam como aperto novo (o Start que abriu o menu não pode fechá-lo no quadro seguinte) */
 function ptrShow(on: boolean) { if (on === ptrOn) return; ptrOn = on; prime = true;
   if (!ptr) { ptr = document.createElement('div'); ptr.id = 'padptr'; ptr.style.cssText = 'position:fixed;left:0;top:0;z-index:2147483000;pointer-events:none;width:26px;height:26px;margin:-3px 0 0 -3px;will-change:transform';
@@ -117,7 +121,7 @@ function ptrTick(gp: Pad, dt: number, b: (i: number) => boolean) {
   const now = performance.now(); if (now - ptrHover > 40) { ptrHover = now; const el = alvo(); mouse('pointermove', el); mouse('mousemove', el); if (el !== ptrDown && !b(0)) { mouse('mouseover', el); } }
   const ry = gp.axes[3] ?? 0; if (Math.abs(ry) > 0.25) { let el = alvo() as HTMLElement | null; while (el && !(el.scrollHeight > el.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(el).overflowY))) el = el.parentElement; if (el) el.scrollTop += ry * 900 * dt; else alvo()?.dispatchEvent(new WheelEvent('wheel', { deltaY: ry * 60, clientX: px, clientY: py, bubbles: true, cancelable: true })); }
   const a = b(0); if (a && !prev[0]) { ptrDown = alvo(); mouse('pointerdown', ptrDown); mouse('mousedown', ptrDown); (ptrDown as HTMLElement | null)?.focus?.(); }
-  else if (!a && prev[0]) { const up = alvo(); mouse('pointerup', up); mouse('mouseup', up); if (up && up === ptrDown) (up as HTMLElement).click ? (up as HTMLElement).click() : mouse('click', up); ptrDown = null; } prev[0] = a;
+  else if (!a && prev[0]) { const up = alvo(); mouse('pointerup', up); mouse('mouseup', up); if (up && up === ptrDown) { (up as HTMLElement).click ? (up as HTMLElement).click() : mouse('click', up); if (campoDeTexto(up)) { tecPara = up; up.focus(); } } ptrDown = null; } prev[0] = a;
   const x = b(2); if (x && !prev[2]) { const el = alvo(); mouse('pointerdown', el, 2); mouse('mousedown', el, 2); mouse('pointerup', el, 2); mouse('mouseup', el, 2); mouse('contextmenu', el, 2); } prev[2] = x;
   const bb = b(1); if (bb && !prev[1]) { mandaTecla('keydown', 'Escape'); mandaTecla('keyup', 'Escape'); if (ptrManual && !uiAberta()) { ptrManual = false; } } prev[1] = bb;
   const stt = b(9); if (stt && !prev[9]) { mandaTecla('keydown', 'Escape'); mandaTecla('keyup', 'Escape'); } prev[9] = stt;
@@ -137,7 +141,12 @@ function tick() {
   if (!nome) { nome = gp.id.replace(/\s*\(.*\)\s*$/, '').slice(0, 40) || 'Controle'; dispatchEvent(new CustomEvent('karmika:controle', { detail: nome })); }
   if (!document.hasFocus()) { soltaTudo(); return; }
   const now = performance.now(), b = (i: number) => !!gp!.buttons[i] && (gp!.buttons[i].pressed || gp!.buttons[i].value > 0.35);
-  { const ae = document.activeElement, campo = campoDeTexto(ae) ? ae : null; if (campo) { if (!tecOn) soltaTudo(); tecShow(campo); tecTick(gp, now, b); return; } if (tecOn) tecShow(null); }
+  /* o teclado só fica na tela enquanto o jogador escreve num campo que ELE abriu pelo controle ou pelo toque; fechou, some */
+  { const ae = document.activeElement, emCampo = campoDeTexto(ae), campo = emCampo && ae === tecPara ? ae : null;
+    if (campo) { if (!tecOn) soltaTudo(); tecShow(campo); tecTick(gp, now, b); return; }
+    if (tecOn) tecShow(null); if (!emCampo) tecPara = null;
+    /* campo em foco sem teclado (foco automático da tela, ou quem escreve no teclado de verdade): nos menus o ponteiro segue valendo; no jogo, B sai do campo */
+    if (emCampo && !(ptrManual || uiAberta())) { const p = b(1); if (p && !prev[1]) (ae as HTMLElement).blur(); prev[1] = p; soltaTudo(); prev[1] = p; return; } }
   /* ponteiro: Voltar/Select liga e desliga; janela aberta liga sozinho */
   { const sel = b(8); if (sel && !prev[8]) ptrManual = !ptrManual; prev[8] = sel; const want = ptrManual || uiAberta(); if (want !== ptrOn) ptrShow(want);
     const dtp = Math.min(0.05, (now - ptrLast) / 1000); ptrLast = now; if (ptrOn) { if (rodaOn) rodaShow(false); marca(null); ptrTick(gp, dtp, b); return; }
@@ -185,6 +194,12 @@ const TEC_ABC: Tec[][] = [TL('1234567890'), TL('qwertyuiop'), TL('asdfghjklç'),
 const TEC_SYM: Tec[][] = [TL('1234567890'), TL('@#$%&*()\'"'), TL(':/;?!,+=<>'), TL('áéíóúãõâêô'), TEC_FIM];
 let tec: HTMLElement | null = null, tecOn = false, tecCampo: HTMLInputElement | HTMLTextAreaElement | null = null, tecR = 1, tecC = 0, tecShift = false, tecSym = false, tecNavT = 0, tecNavK = '', tecPrime = true;
 const tprev: boolean[] = [];
+/** o campo para o qual o jogador pediu o teclado (clicou com o controle ou tocou na tela); qualquer outro foco não abre teclado */
+let tecPara: Element | null = null;
+addEventListener('pointerdown', (e) => { if (e.isTrusted && e.pointerType === 'touch' && nome && campoDeTexto(e.target as Element)) tecPara = e.target as Element; }, true);
+/* escreveu no teclado de verdade ou clicou com o mouse fora do teclado da tela: o teclado da tela some */
+addEventListener('keydown', (e) => { if (e.isTrusted && tecOn) tecPara = null; }, true);
+addEventListener('mousedown', (e) => { if (e.isTrusted && tecOn && tec && !tec.contains(e.target as Node)) tecPara = null; }, true);
 function campoDeTexto(e: Element | null): e is HTMLInputElement | HTMLTextAreaElement {
   if (!e) return false; if (e.tagName === 'TEXTAREA') return !(e as HTMLTextAreaElement).readOnly && !(e as HTMLTextAreaElement).disabled;
   if (e.tagName !== 'INPUT') return false; const i = e as HTMLInputElement; return !i.readOnly && !i.disabled && /^(text|password|search|email|url|tel|number|)$/.test(i.type);
@@ -220,8 +235,8 @@ function tecUsa(k: Tec) {
   const el = tecCampo; if (!el) return;
   if (k.f === 'shift') tecShift = !tecShift; else if (k.f === 'sym') { tecSym = !tecSym; }
   else if (k.f === 'del') tecEscreve('', true);
-  else if (k.f === 'sai') el.blur();
-  else if (k.f === 'ok') { el.dispatchEvent(new Event('change', { bubbles: true })); for (const t of ['keydown', 'keypress', 'keyup']) el.dispatchEvent(new KeyboardEvent(t, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true } as KeyboardEventInit)); setTimeout(() => { if (document.activeElement === el) el.blur(); }, 0); }
+  else if (k.f === 'sai') { tecPara = null; el.blur(); }
+  else if (k.f === 'ok') { el.dispatchEvent(new Event('change', { bubbles: true })); for (const t of ['keydown', 'keypress', 'keyup']) el.dispatchEvent(new KeyboardEvent(t, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true } as KeyboardEventInit)); tecPara = null; setTimeout(() => { if (document.activeElement === el) el.blur(); }, 0); }
   else if (k.v) tecEscreve(k.v !== ' ' && tecShift ? k.v.toUpperCase() : k.v);
 }
 function tecTick(gp: Pad, now: number, b: (i: number) => boolean) {
@@ -241,7 +256,7 @@ function tecTick(gp: Pad, now: number, b: (i: number) => boolean) {
   if (hit(4)) { tecShift = !tecShift; mudou = true; }
   if (hit(5)) { tecSym = !tecSym; mudou = true; }
   if (hit(9)) { tecUsa({ l: '', f: 'ok' }); }
-  if (hit(1)) { tecCampo?.blur(); }
+  if (hit(1)) { tecPara = null; tecCampo?.blur(); }
   if (mudou) tecPinta();
 }
 requestAnimationFrame(tick);
