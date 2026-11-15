@@ -10,44 +10,46 @@ type Prod = { id: string; kind: 'prem' | 'fac' | 'mount' | 'eng'; /** engenhocas
 const esc2 = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const brl = (v: number) => 'R$ ' + v.toFixed(2).replace('.', ',');
 export const PREM_PLANS: Prod[] = [
-  { id: 'p30', kind: 'prem', name: '30 dias', brl: 19.9, days: 30, desc: 'Um mês de Bênção de Marghar.' },
-  { id: 'p90', kind: 'prem', name: '90 dias', brl: 49.9, was: 59.7, days: 90, tag: 'mais escolhido', desc: 'Uma estação inteira. Economize 16%.' },
-  { id: 'p365', kind: 'prem', name: '1 ano', brl: 169.9, was: 238.8, days: 365, tag: 'melhor preço', desc: 'Doze meses. Economize 29%.' },
+  /* 15/11 (Erling: "os itens mais caros do Shop serão 19,90", "Premium 30 dias 9,90"; "um item único é que não pode ser maior": os planos de
+     90 dias e de 1 ano são a soma dos meses com desconto, por isso passam do teto; "desconto está muito alto, diminui": 16% e 29%). */
+  { id: 'p30', kind: 'prem', name: '30 dias', brl: 9.9, days: 30, desc: 'Um mês de Bênção de Marghar.' },
+  { id: 'p90', kind: 'prem', name: '90 dias', brl: 24.9, was: 29.7, days: 90, tag: 'mais escolhido', desc: 'Uma estação inteira. Economize 16%.' },
+  { id: 'p365', kind: 'prem', name: '1 ano', brl: 84.9, was: 118.8, days: 365, tag: 'melhor preço', desc: 'Doze meses. Economize 29%.' },
 ];
 export const FAC_PRODS: Prod[] = [
-  { id: 'cape', kind: 'fac', name: 'Manto', brl: 14.9, slots: ['cape'], desc: 'O brasão bordado nas costas.' },
-  { id: 'shield', kind: 'fac', name: 'Escudo', brl: 14.9, slots: ['shield'], desc: 'O brasão pintado na frente toda.' },
-  { id: 'relic', kind: 'fac', name: 'Relíquia e sigilo', brl: 24.9, slots: ['relic'], desc: 'Acende o sigilo do seu lado aos seus pés.' },
-  { id: 'all', kind: 'fac', name: 'Juramento Completo', brl: 39.9, was: 54.7, slots: ['cape', 'shield', 'relic'], tag: '−27%', desc: 'Manto, escudo e relíquia, com a aura.' },
+  { id: 'cape', kind: 'fac', name: 'Manto', brl: 5.9, slots: ['cape'], desc: 'O brasão bordado nas costas.' },
+  { id: 'shield', kind: 'fac', name: 'Escudo', brl: 5.9, slots: ['shield'], desc: 'O brasão pintado na frente toda.' },
+  { id: 'relic', kind: 'fac', name: 'Relíquia e sigilo', brl: 9.9, slots: ['relic'], desc: 'Acende o sigilo do seu lado aos seus pés.' },
+  { id: 'all', kind: 'fac', name: 'Juramento Completo', brl: 15.9, was: 21.7, slots: ['cape', 'shield', 'relic'], tag: '−27%', desc: 'Manto, escudo e relíquia, com a aura.' },
 ];
 /* 12/11 (Erling: "calcule o preço das engenhocas para comprar com cash e coloque na loja; os pacotes têm de valer a pena"):
-   a régua é o Premium (30 dias = R$ 19,90). Uma engenhoca é um conforto mais estreito que o Premium, então custa a metade: 15 dias R$ 9,90;
-   30 dias R$ 14,90 (o segundo meio mês sai pela metade). O trio tem 16% de desconto. Os pacotes usam estes preços como "soma das partes". */
+   a régua é o Premium (15/11: 30 dias = R$ 9,90). Uma engenhoca é um conforto mais estreito que o Premium, então custa a metade: 15 dias R$ 4,90;
+   30 dias R$ 6,90. O trio tem desconto sobre a soma. Os pacotes usam estes preços como "soma das partes". */
 export const ENG_PRODS: Prod[] = [
-  { id: 'drone_cura_d15', kind: 'eng', icon: '🛸', items: ['drone_cura_d15'], name: 'Drone de Cura · 15 dias', brl: 9.9, days: 15, desc: 'Paira no ombro e borrifa vapor medicinal: vida de volta a cada poucos segundos.' },
-  { id: 'drone_cura_d30', kind: 'eng', icon: '🛸', items: ['drone_cura_d30'], name: 'Drone de Cura · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo drone, com corda para o mês inteiro.' },
-  { id: 'escudo_auto_d15', kind: 'eng', icon: '🛡', items: ['escudo_auto_d15'], name: 'Robô de Defesa · 15 dias', brl: 9.9, days: 15, desc: 'O Escudo Automatizado: um disco de latão gira à sua volta e segura um golpe inteiro de tempos em tempos.' },
-  { id: 'escudo_auto_d30', kind: 'eng', icon: '🛡', items: ['escudo_auto_d30'], name: 'Robô de Defesa · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo escudo, com corda para o mês inteiro.' },
-  { id: 'pulseira_choque_d15', kind: 'eng', icon: '📿', items: ['pulseira_choque_d15'], name: 'Bracelete de Choque · 15 dias', brl: 9.9, days: 15, desc: 'A Pulseira de Choque: quem te acerta de perto leva a descarga de volta e trava por um instante.' },
-  { id: 'pulseira_choque_d30', kind: 'eng', icon: '📿', items: ['pulseira_choque_d30'], name: 'Bracelete de Choque · 30 dias', brl: 14.9, was: 19.8, days: 30, desc: 'O mesmo bracelete, com corda para o mês inteiro.' },
-  { id: 'trio_d15', kind: 'eng', icon: '🧰', items: ['drone_cura_d15', 'escudo_auto_d15', 'pulseira_choque_d15'], name: 'Trio da Companhia · 15 dias', brl: 24.9, was: 29.7, days: 15, tag: '−16%', desc: 'Drone, robô de defesa e bracelete, os três por 15 dias.' },
-  { id: 'trio_d30', kind: 'eng', icon: '🧰', items: ['drone_cura_d30', 'escudo_auto_d30', 'pulseira_choque_d30'], name: 'Trio da Companhia · 30 dias', brl: 37.9, was: 44.7, days: 30, tag: 'melhor preço', desc: 'Drone, robô de defesa e bracelete, os três por 30 dias.' },
+  { id: 'drone_cura_d15', kind: 'eng', icon: '🛸', items: ['drone_cura_d15'], name: 'Drone de Cura · 15 dias', brl: 4.9, days: 15, desc: 'Paira no ombro e borrifa vapor medicinal: vida de volta a cada poucos segundos.' },
+  { id: 'drone_cura_d30', kind: 'eng', icon: '🛸', items: ['drone_cura_d30'], name: 'Drone de Cura · 30 dias', brl: 6.9, was: 9.8, days: 30, desc: 'O mesmo drone, com corda para o mês inteiro.' },
+  { id: 'escudo_auto_d15', kind: 'eng', icon: '🛡', items: ['escudo_auto_d15'], name: 'Robô de Defesa · 15 dias', brl: 4.9, days: 15, desc: 'O Escudo Automatizado: um disco de latão gira à sua volta e segura um golpe inteiro de tempos em tempos.' },
+  { id: 'escudo_auto_d30', kind: 'eng', icon: '🛡', items: ['escudo_auto_d30'], name: 'Robô de Defesa · 30 dias', brl: 6.9, was: 9.8, days: 30, desc: 'O mesmo escudo, com corda para o mês inteiro.' },
+  { id: 'pulseira_choque_d15', kind: 'eng', icon: '📿', items: ['pulseira_choque_d15'], name: 'Bracelete de Choque · 15 dias', brl: 4.9, days: 15, desc: 'A Pulseira de Choque: quem te acerta de perto leva a descarga de volta e trava por um instante.' },
+  { id: 'pulseira_choque_d30', kind: 'eng', icon: '📿', items: ['pulseira_choque_d30'], name: 'Bracelete de Choque · 30 dias', brl: 6.9, was: 9.8, days: 30, desc: 'O mesmo bracelete, com corda para o mês inteiro.' },
+  { id: 'trio_d15', kind: 'eng', icon: '🧰', items: ['drone_cura_d15', 'escudo_auto_d15', 'pulseira_choque_d15'], name: 'Trio da Companhia · 15 dias', brl: 11.9, was: 14.7, days: 15, tag: '−19%', desc: 'Drone, robô de defesa e bracelete, os três por 15 dias.' },
+  { id: 'trio_d30', kind: 'eng', icon: '🧰', items: ['drone_cura_d30', 'escudo_auto_d30', 'pulseira_choque_d30'], name: 'Trio da Companhia · 30 dias', brl: 16.9, was: 20.7, days: 30, tag: 'melhor preço', desc: 'Drone, robô de defesa e bracelete, os três por 30 dias.' },
 ];
 /* 12/11 (Erling: "não esqueça da aba Utilidades no Shop, para as ajudas de jogo que não são pay-to-win"): só o que poupa tempo e viagem, nunca força.
-   Tudo aqui também se compra com ouro dentro do jogo; os preços seguem a mesma régua do Premium (30 dias = R$ 19,90). */
+   Tudo aqui também se compra com ouro dentro do jogo; os preços seguem a mesma régua do Premium (30 dias = R$ 9,90). */
 export const UTIL_PRODS: (Prod & { qtd?: Record<string, number> })[] = [
-  { id: 'u_regresso', kind: 'eng', icon: '📜', qtd: { scroll_return: 20 }, name: '20 Pergaminhos do Regresso', brl: 4.9, desc: 'Lido, abre um caminho de volta à sua fonte-lar. Vinte viagens poupadas (no jogo, cada um custa 250 de ouro).' },
-  { id: 'u_alforje', kind: 'eng', icon: '🎒', qtd: { bag_l: 1 }, name: 'Alforje de Viajante', brl: 6.9, desc: 'Uma bolsa de 24 espaços, a mesma das cidades maiores.' },
-  { id: 'u_obra', kind: 'eng', icon: '🦾', qtd: { obra_auto: 1, ajudante_obra_3: 2 }, name: 'Canteiro Automatizado', brl: 12.9, was: 16.8, tag: 'para quem constrói', desc: 'O Contrato de Obra e dois Ajudantes de Obra Mk III: a casa sobe enquanto você joga.' },
-  { id: 'u_viagem', kind: 'eng', icon: '🧭', qtd: { scroll_return: 5, bag_l: 1, rope: 5, tonic: 5 }, name: 'Kit do Viajante', brl: 9.9, was: 12.3, tag: '−20%', desc: 'Cinco Pergaminhos do Regresso, um Alforje, cordas e tônicos para a estrada.' },
+  { id: 'u_regresso', kind: 'eng', icon: '📜', qtd: { scroll_return: 20 }, name: '20 Pergaminhos do Regresso', brl: 1.9, desc: 'Lido, abre um caminho de volta à sua fonte-lar. Vinte viagens poupadas (no jogo, cada um custa 250 de ouro).' },
+  { id: 'u_alforje', kind: 'eng', icon: '🎒', qtd: { bag_l: 1 }, name: 'Alforje de Viajante', brl: 2.9, desc: 'Uma bolsa de 24 espaços, a mesma das cidades maiores.' },
+  { id: 'u_obra', kind: 'eng', icon: '🦾', qtd: { obra_auto: 1, ajudante_obra_3: 2 }, name: 'Canteiro Automatizado', brl: 4.9, was: 6.7, tag: 'para quem constrói', desc: 'O Contrato de Obra e dois Ajudantes de Obra Mk III: a casa sobe enquanto você joga.' },
+  { id: 'u_viagem', kind: 'eng', icon: '🧭', qtd: { scroll_return: 5, bag_l: 1, rope: 5, tonic: 5 }, name: 'Kit do Viajante', brl: 3.9, was: 4.9, tag: '−20%', desc: 'Cinco Pergaminhos do Regresso, um Alforje, cordas e tônicos para a estrada.' },
 ];
 /* 13/11: LAR & LAREIRA, "tudo que você gosta, da tábua ao tapete". Mobília e enfeite de casa; cada peça também se compra com ouro e tábuas no jogo (B → Mobília) */
 export const LAR_PRODS: (Prod & { qtd?: Record<string, number> })[] = LAR_IDS.map((k) => ({ id: k, kind: 'eng' as const, icon: DECOR[k].icon, qtd: { [k]: 1 }, name: DECOR[k].name, brl: DECOR[k].brl!, desc: DECOR[k].desc }));
 const PREM_PERKS: [string, string][] = [
   ['📜', '8 missões ao mesmo tempo no diário (free: 4)'],
   ['🎒', 'Bolsa do Caminhante de 36 espaços enquanto o plano durar'],
-  ['✨', 'Bolsa Mágica: gemas, ervas raras, pó, seiva, tomos e pergaminhos'],
-  ['🪵', 'Bolsa de Ofício: madeira, pedra, couro e materiais de profissão'],
+  ['✨', 'Bolsa Mágica de 60 espaços: gemas, ervas raras, pó, seiva, tomos e pergaminhos'],
+  ['🪵', 'Bolsa de Ofício de 60 espaços: madeira, pedra, couro e materiais de profissão'],
   ['👜', 'Alforje de Marghar (68 espaços) liberado para compra'],
   ['🎁', 'Baú de Boas-Vindas melhorado'],
 ];
@@ -68,7 +70,8 @@ const EYE = `<svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 
 
 export type ShopMount = { id: string; name: string; icon: string; where: string; lvl: number; blurb: string; col: number; kind?: 'mount' | 'pet' };
 /** 03/11: preço das montarias do Shop pelo nível que o bicho pede (são aparências: todas correm igual ao Corcel Negro do Orm) */
-export const mountBRL = (lvl: number) => (lvl >= 45 ? 49.9 : lvl >= 30 ? 39.9 : lvl >= 15 ? 29.9 : 19.9);
+/* 15/11 (Erling: "montaria paga até 19,90"): o teto do Shop é R$ 19,90 */
+export const mountBRL = (lvl: number) => (lvl >= 45 ? 19.9 : lvl >= 30 ? 15.9 : lvl >= 15 ? 11.9 : 7.9);
 export type Deliv = { seal?: string; /** quantos (padrão 1) */ n?: number; fac?: Fac; slot?: 'cape' | 'shield' | 'relic' };
 export function createLoja(ctx: {
   isPremium: () => boolean; fac: () => Fac | null; lvl: () => number; until: () => number;
@@ -99,7 +102,7 @@ export function createLoja(ctx: {
           <small class="lj-gold">ou 🪙 ${gold.toLocaleString('pt-BR')} na tecelagem</small></div>`; }).join('')}</div>`;
   }
   /* 03/11 (Erling): "o nome: Estábulo do Domador" — as montarias raras das terras de Karmika, por Pix. Só aparência: correm igual ao melhor cavalo de ouro */
-  const mountProd = (m: ShopMount & { boss?: boolean }): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: m.kind === 'pet' ? (m.boss ? 14.9 : 9.9) : mountBRL(m.lvl), desc: m.blurb });
+  const mountProd = (m: ShopMount & { boss?: boolean }): Prod => ({ id: m.id, kind: 'mount', name: m.name, brl: m.kind === 'pet' ? (m.boss ? 5.9 : 3.9) : mountBRL(m.lvl), desc: m.blurb });
   /* 03/11 (Erling): "a janela não precisa aumentar, a modal fica igual: diminuir os cards e colocar um olho no card que abre a montaria em 3D" */
   function mountCard(pets = false) {
     const L: (ShopMount & { boss?: boolean })[] = pets ? ctx.pets() : ctx.mounts(), lands = [...new Set(L.map((m) => m.where))], hx = (n: number) => '#' + n.toString(16).padStart(6, '0');

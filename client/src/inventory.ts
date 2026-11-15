@@ -266,7 +266,7 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
   let open = false, charOpen = false, shop: string | null = null, shopTitle: string | null = null, shopTab = 0, bagTab: 'bag' | 'reator' = 'bag', fusing = false;
   const bags: string[] = []; // bolsas extras equipadas (ids de BAGS), até 4
   /* Bolsa de Ofício (60 espaços) e Bolsa Mágica (30): grandes, mas com fim. O que passar do limite ocupa a mochila comum */
-  const CRAFT_CAP = 60, MAGIC_CAP = 30;
+  const CRAFT_CAP = 60, MAGIC_CAP = 60; /* 15/11 (Erling: "Bolsa Mágica e Bolsa de Ofício, ambas com 60 espaços para Premium") */
   const slotsOf = (id: string) => freeBag(id) ? 0 : Math.ceil((bag[id] ?? 0) / stackOf(id));
     const stacksIn = (set: Set<string>) => [...set].reduce((a, k) => a + Math.ceil((bag[k] ?? 0) / stackOf(k)), 0);
   const overflow = () => isPremium() ? Math.max(0, stacksIn(CRAFT_BAG) - CRAFT_CAP) + Math.max(0, stacksIn(MAGIC_BAG) - MAGIC_CAP) : 0;
