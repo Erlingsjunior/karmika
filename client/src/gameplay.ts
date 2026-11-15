@@ -945,7 +945,11 @@ export function createGameplay(d: GameplayDeps) {
   function plusFx(p: THREE.Vector3, n: number) { for (let i = 0; i < n; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: PLUS_TEX, transparent: true, depthWrite: false, color: i % 3 ? 0x7affd0 : 0x6ad0ff, blending: THREE.AdditiveBlending })); s.scale.setScalar(rnd(0.18, 0.3)); netAdd(s); pluses.push({ s, t: 0, life: rnd(1.0, 1.6), a: i / n * 6.283, r: rnd(0.45, 0.7), y: rnd(0.2, 1.4) }); } }
   /* 03/11: o drone e o escudo de longa duração (kit de começo, 15 dias) sobrevivem a fechar o jogo */
   const GAD_KEY = 'karmika.gad.v1'; let gadTier = { heal: 0, shield: 0 }, gadRestored = false;
-  const gadSave = (ht: number | null, st2: number | null) => { if (ht !== null) gadTier.heal = ht; if (st2 !== null) gadTier.shield = st2; try { localStorage.setItem(GAD_KEY, JSON.stringify({ heal: gad.heal, healK: gad.healK, shield: gad.shield, shieldCd: gad.shieldCd, bracelet: gad.bracelet, arc: gad.arc, tier: gadTier })); } catch { /* */ } };
+  /* 15/11 (Erling: "onde estão os itens pulseira, drone e escudo no meu char? preciso poder equipar e desequipar"): a engenhoca guardada.
+     Desequipar tira o drone, o robô ou a pulseira de cena e desliga o efeito; o PRAZO continua contando (é aluguel por dias de calendário).
+     Aqui fica até quando vale cada uma que está guardada; equipar de novo devolve o que restar. */
+  const gadOff = { heal: 0, shield: 0, bracelet: 0 };
+  const gadSave = (ht: number | null, st2: number | null) => { if (ht !== null) gadTier.heal = ht; if (st2 !== null) gadTier.shield = st2; try { localStorage.setItem(GAD_KEY, JSON.stringify({ heal: gad.heal, healK: gad.healK, shield: gad.shield, shieldCd: gad.shieldCd, bracelet: gad.bracelet, arc: gad.arc, tier: gadTier, off: gadOff })); } catch { /* */ } };
   const gad = { heal: 0, healT: 6, healK: 0.05, shock: 0, shockT: 4, shockI: 4, shockR: 7, shockK: 0.35, shield: 0, shieldReady: true, shieldT: 0, shieldCd: 25, /** 06/11 Engenheiro do Mundo: pulseira de choque e arma eletrificada (fim, em ms) */ bracelet: 0, arc: 0, sentries: [] as { id: string; m: THREE.Group; head: THREE.Object3D; x: number; z: number; until: number; shotT: number; iv: number; r: number; k: number }[] };
   setTimeout(loadSentries, 0);
   function zap(ax: number, ay: number, az: number, bx: number, by: number, bz: number, col: number) { const n = 9; for (let k = 0; k <= n; k++) { const t = k / n; pfx(ax + (bx - ax) * t + rnd(-0.18, 0.18), ay + (by - ay) * t + rnd(-0.18, 0.18), az + (bz - az) * t + rnd(-0.18, 0.18), { life: 0.22, s0: 0.35, s1: 0.05, c0: 0xffffff, c1: col, a: 1 }); } }
@@ -2415,10 +2419,22 @@ export function createGameplay(d: GameplayDeps) {
     sentries() { return gad.sentries.map((q) => ({ x: q.x, z: q.z, r: q.r, until: q.until })); },
     /** desmonta a Sentinela: some do chão, o tempo para e o id volta (o main.ts devolve o item à mochila) */
     packSentry(): string | null { const hp0 = d.getHero().root.position; let S = null as (typeof gad.sentries)[number] | null, bd = 3.2; for (const q of gad.sentries) { const dd = Math.hypot(q.x - hp0.x, q.z - hp0.z); if (dd < bd) { bd = dd; S = q; } } if (!S) return null; const left = Math.max(0, S.until - Date.now()); d.scene.remove(S.m); gad.sentries.splice(gad.sentries.indexOf(S), 1); saveSentries(); if (left > 5000) sentryLeftPush(S.id, left); for (let i = 0; i < 14; i++) pfx(S.x, d.world.heightAt(S.x, S.z) + 0.6, S.z, { vx: rnd(-1.5, 1.5), vy: rnd(0.5, 2), vz: rnd(-1.5, 1.5), life: 0.5, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0xffc060, a: 0.9 }); logMsg(`🤖 Bartolomeu dobra as pernas e entra na mochila. O relógio dele parou com ${fmtLeft(left)} de corda.`, '#e0b048'); return left > 5000 ? S.id : null; },
+    /** 15/11: as três engenhocas de companhia para a ficha do personagem: quanto falta e se está equipada */
+    engenhocas() { const nw = Date.now(), L = (k: 'heal' | 'shield' | 'bracelet', nome: string, ic: string, tip: string) => ({ k, nome, ic, tip, on: gad[k] > nw, left: Math.max(0, Math.max(gad[k], gadOff[k]) - nw) });
+      return [L('heal', 'Drone de Cura', '🛸', `+${Math.round(gad.healK * 100)}% de vida a cada 6 s`), L('shield', 'Robô de Defesa', '🛡', `segura um golpe inteiro a cada ${gad.shieldCd} s`), L('bracelet', 'Bracelete de Choque', '📿', 'quem te acerta de perto leva a descarga')]; },
+    /** equipa ou guarda uma engenhoca (o prazo segue contando); devolve false se não há nenhuma */
+    engenhocaToggle(k: 'heal' | 'shield' | 'bracelet'): boolean { const nw = Date.now(), hp = d.getHero().root.position, nomes = { heal: '🛸 Drone de Cura', shield: '🛡 Robô de Defesa', bracelet: '📿 Bracelete de Choque' } as const;
+      if (gad[k] > nw) { gadOff[k] = gad[k]; gad[k] = 0; if (k === 'heal') gvDrop('heal'); if (k === 'shield') { gvDrop('bot'); gvDrop('dome'); } gadSave(null, null); logMsg(`${nomes[k]} guardado. O prazo continua contando.`, '#c8b890'); return true; }
+      if (gadOff[k] > nw) { gad[k] = gadOff[k]; gadOff[k] = 0;
+        if (k === 'heal' && !gv.heal) { gv.heal = buildHealDrone(gadTier.heal); gv.heal.g.position.set(hp.x, hp.y + 2.6, hp.z); netAdd(gv.heal.g); }
+        if (k === 'shield' && !gv.bot) { gad.shieldReady = true; gv.bot = buildShieldBot(gadTier.shield); gv.bot.g.position.set(hp.x + 1.3, hp.y, hp.z); netAdd(gv.bot.g); gv.dome = buildDome(gadTier.shield); gv.dome.g.position.set(hp.x, hp.y, hp.z); netAdd(gv.dome.g); }
+        gadSave(null, null); logMsg(`${nomes[k]} equipado.`, '#7affd0'); d.audio.spell('shock'); return true; }
+      return false; },
     /** usar uma engenhoca da Companhia (true = consumiu) */
     gadget(id: string): boolean { const hp = d.getHero().root.position, yaw = d.getHero().root.rotation.y, now2 = Date.now(), gy = d.world.heightAt(hp.x, hp.z);
       const dS = diasDe(id), kitG = /_k$/.test(id) || dS > 0, t = tierOf(id), b = baseOf(id), dur = dS ? dS * 864e5 : kitG ? KIT_DAYS * 864e5 : TURNS[t] * TURN_S * 1000, tl = dS ? `${dS} dias` : kitG ? `${KIT_DAYS} dias` : ['1 turno (30 min)', '2 turnos (1 hora)', '4 turnos (2 horas)'][t], mk = 'Mk ' + MK[t];
       /* 28/10 (Erling): um de cada por vez — um Drone de Cura, um Escudo, uma Bobina. O segundo não é gasto */
+      if ((b === 'drone_cura' && gadOff.heal > now2) || (b === 'escudo_auto' && gadOff.shield > now2) || (b === 'pulseira_choque' && gadOff.bracelet > now2)) { logMsg('🧰 Você já tem uma dessas guardada. Equipe-a na ficha do personagem (C); só uma por vez.', '#ff9a8a'); return false; }
       if (b === 'drone_cura' && gad.heal > now2) { logMsg(`🛸 Você já tem um Drone de Cura voando (mais ${Math.ceil((gad.heal - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       if (b === 'escudo_auto' && gad.shield > now2) { logMsg(`🛡 Você já tem um Escudo Automatizado (mais ${Math.ceil((gad.shield - now2) / 60000)} min). Só um por vez.`, '#ff9a8a'); return false; }
       /* 06/11 Engenheiro do Mundo */
@@ -2706,6 +2722,7 @@ export function createGameplay(d: GameplayDeps) {
           for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283; pfx(e.pos.x + Math.cos(a) * 0.3, e.pos.y + 0.15, e.pos.z + Math.sin(a) * 0.3, { vx: Math.cos(a) * 3, vy: 0.6, vz: Math.sin(a) * 3, life: 0.35, s0: 0.2, s1: 0.03, c0: 0xffffff, c1: 0x6ad0ff, a: 1, g: 0 }); }
           skill = 'combo'; hitEnemy(e, gad.shockK, false, hpp); skill = null; } } }
         if (!gadRestored) { gadRestored = true; try { const S = JSON.parse(localStorage.getItem(GAD_KEY) || 'null'); if (S) { gadTier = S.tier ?? gadTier; const hh = d.getHero().root.position;
+          if (S.off) { gadOff.heal = +S.off.heal || 0; gadOff.shield = +S.off.shield || 0; gadOff.bracelet = +S.off.bracelet || 0; }
           if (S.bracelet > nw) gad.bracelet = S.bracelet; if (S.arc > nw) gad.arc = S.arc;
           if (S.heal > nw && !gv.heal) { gad.heal = S.heal; gad.healK = S.healK; gv.heal = buildHealDrone(gadTier.heal); gv.heal.g.position.set(hh.x, hh.y + 2.6, hh.z); netAdd(gv.heal.g); }
           if (S.shield > nw && !gv.bot) { gad.shield = S.shield; gad.shieldCd = S.shieldCd; gad.shieldReady = true; gv.bot = buildShieldBot(gadTier.shield); gv.bot.g.position.set(hh.x + 1.3, hh.y, hh.z); netAdd(gv.bot.g); gv.dome = buildDome(gadTier.shield); gv.dome.g.position.set(hh.x, hh.y, hh.z); netAdd(gv.dome.g); } } } catch { /* */ } }

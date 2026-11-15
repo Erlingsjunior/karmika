@@ -132,7 +132,7 @@ for (const v of CINE.vistas) {
   const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.4, 0.35, 12), st); bowl.position.y = 1.4; g.add(bowl);
   const water = new THREE.Mesh(new THREE.CircleGeometry(0.66, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.85 })); water.position.y = 1.58; g.add(water);
   const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3; g.add(eye);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; g.add(ring);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; ring.visible = false; /* 15/11 (Erling: "tem círculo de seleção em volta da fonte"): o anel amarelo saiu também das fontes soltas, como já tinha saído das fontes de praça em 03/11 */ g.add(ring);
   g.position.set(x, y, z); K.scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y, r: 3.6 });
 }
 /* luz na porta: todo lugar onde dá para entrar tem um brilho quente no batente e no chão, chamando para dentro (pool perto do herói) */
