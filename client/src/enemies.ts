@@ -967,7 +967,10 @@ export function createEnemies(ctx: EnemyCtx) {
     for (const r0 of rows) { const e = byId.get(String(r0[0])); const r = r0 as number[]; if (!e || (r[7] !== undefined && TYPES[r[7]] !== e.type)) continue; // chave igual mas bicho diferente (renascimento sorteado): ignora
       const mine = !(e.own && now - (e.ownT ?? 0) < 1500) && e.active && e.alive && DRIVE.has(e.state);
       if (mine && me && me < from) continue; // os dois brigam com o mesmo bicho: fica com quem tem o número menor (o outro cede)
-      if (!e.alive) { if (e.state === 'dead' && e.t < 6) continue; e.alive = true; e.state = 'idle'; } // renasceu lá antes de renascer aqui
+      /* 15/11 (Erling: "o coiote morreu mas continua me atacando"): se o aviso da morte se perdia no caminho, o outro jogador seguia conduzindo
+         o bicho vivo e, 6 s depois, ele "renascia" aqui em cima do próprio corpo. Agora quem sabe que o bicho morreu NÃO o levanta: repete o
+         aviso da morte para quem ainda o vê vivo. Só vale como renascimento de verdade quando o tempo de renascer aqui já está no fim. */
+      if (!e.alive) { if (e.state === 'dead' && e.t < Math.max(6, (e.respawn ?? 90) - 15)) { const q = e as Enemy & { dieEcho?: number }; if (ctx.sync && now - (q.dieEcho ?? 0) > 2000) { q.dieEcho = now; ctx.sync.die(String(r0[0])); } continue; } e.alive = true; e.state = 'idle'; } // renasceu lá antes de renascer aqui
       e.own = from; e.ownT = now; e.np = { x: r[1], z: r[2], f: r[3], s: NET_ST[r[4]] ?? 'chase', t: r[6] }; e.hp = Math.min(e.hpMax, r[5]);
       if (!e.active) e.pos.set(r[1], e.pos.y, r[2]);
     }
