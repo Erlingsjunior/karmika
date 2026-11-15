@@ -10,7 +10,7 @@ export const NET_PROTO = 1;
 export const NET_PORT = 7777;
 
 type GearArg = Parameters<Hero3D['setGear']>[0];
-export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null; /** Premium ativo: os outros veem o olho de Marghar girando em volta do herói (25/10) */ prem?: boolean }
+export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null; /** Premium ativo: os outros veem o olho de Marghar girando em volta do herói (25/10) */ prem?: boolean; /** 15/11: Bracelete de Choque no pulso */ cuff?: boolean }
 export interface NetSt { x: number; y: number; z: number; f: number; m: number; zn: string; cb?: 1; gd?: 1; rd?: 1; kn?: 1; hp?: number; ag?: 1 }
 export interface NetParty { id: number; leader: number; members: number[] }
 /** perfil público: o que outro jogador vê ao abrir o seu perfil */
@@ -109,6 +109,7 @@ export function createNet(ctx: NetCtx) {
     else if (r.hero && look.gear) { try { r.hero.setGear(look.gear); } catch { /* */ } }
     // a plaquinha com o nome mostra nível e caminho (como os NPCs, em HTML: nítida em qualquer resolução)
     r.name = look.name || r.name; labelOf(r);
+    if (r.hero) (r.hero as { cuffOn?: boolean }).cuffOn = !!look.cuff; /* 15/11: a pulseira de choque dos outros */
     if (look.prem && !r.rune && ctx.premRune) { r.rune = ctx.premRune(); ctx.scene.add(r.rune); } else if (!look.prem && r.rune) { ctx.scene.remove(r.rune); r.rune = null; }
     r.name = look.name || r.name;
   }
