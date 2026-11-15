@@ -2954,6 +2954,10 @@ function frameBody() {
   if (keys.has('s') || keys.has('arrowdown')) iy += 1;
   if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
   if (keys.has('d') || keys.has('arrowright')) ix += 1;
+  /* 15/11 (Erling: "quando morre, meu amigo fica andando morto no Linux; morreu, não se mexe mais"): com a alavanca do controle segurada na hora
+     da morte a direção continuava valendo e o corpo saía andando. Morto não anda: nem por tecla, nem por alavanca, nem por caminho de clique.
+     (No Limiar quem anda é a alma, e lá continua podendo.) */
+  if (game.st.dead && !limiar.active) { ix = 0; iy = 0; if (state.path.length) state.path = []; }
   // fôlego: base por origem/caminho (guerreiros, lobisomens e vampiros muito; elfos mais; humanos/anões menos; tecnocratas e bruxos menos) + 4 por ponto de vitalidade
   const STAM_BASE: Record<string, number> = { human: 100, dwarf: 85, elf: 125 };
   game.st.stamMax = Math.round(((profile ? STAM_BASE[profile.origin] ?? 100 : 100) * (state.race === 'technocrat' ? 0.7 : state.race === 'nordic' ? 1.3 : 1) + (game.st.attrs?.vit ?? 0) * 4) * (1 + ((game.st as { feastStam?: number }).feastStam ?? 0))); /* + a mesa dos anões */
