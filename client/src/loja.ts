@@ -47,12 +47,13 @@ export const UTIL_PRODS: (Prod & { qtd?: Record<string, number> })[] = [
 /* 13/11: LAR & LAREIRA, "tudo que você gosta, da tábua ao tapete". Mobília e enfeite de casa; cada peça também se compra com ouro e tábuas no jogo (B → Mobília) */
 export const LAR_PRODS: (Prod & { qtd?: Record<string, number> })[] = LAR_IDS.map((k) => ({ id: k, kind: 'eng' as const, icon: DECOR[k].icon, qtd: { [k]: 1 }, name: DECOR[k].name, brl: DECOR[k].brl!, desc: DECOR[k].desc }));
 const PREM_PERKS: [string, string][] = [
-  ['📜', '8 missões ao mesmo tempo no diário (free: 4)'],
-  ['🎒', 'Bolsa do Caminhante de 36 espaços enquanto o plano durar'],
+  ['📜', '8 missões ao mesmo tempo no diário'],
+  ['🎒', 'Bolsa do Caminhante de 36 espaços'],
   ['✨', 'Bolsa Mágica de 60 espaços: gemas, ervas raras, pó, seiva, tomos e pergaminhos'],
   ['🪵', 'Bolsa de Ofício de 60 espaços: madeira, pedra, couro e materiais de profissão'],
   ['👜', 'Alforje de Marghar (68 espaços) liberado para compra'],
-  ['🎁', 'Baú de Boas-Vindas melhorado'],
+  ['🏦', 'Baú das cidades com 120 espaços'],
+  ['👁', 'A runa do Olho girando ao seu lado'],
 ];
 const NAMES: Record<Fac, Record<'cape' | 'shield' | 'relic', string>> = {
   fio: { cape: 'Manto da Ordem do Fio', shield: 'Escudo da Ordem do Fio', relic: 'Carretel do Primeiro Fio' },
@@ -80,14 +81,14 @@ export function createLoja(ctx: {
 }) {
   const el = document.createElement('div'); el.id = 'lojaw'; document.body.appendChild(el);
   let recip: number | null = null; let open = false, tab: 'pac' | 'prem' | 'fac' | 'mont' | 'pets' | 'eng' | 'util' | 'lar' = 'prem', cart: Prod | null = null, paid = false, side: Fac = 'fio', sideSet = false;
-  const until = ctx.until;
+  /* 15/11 (Erling: "vamos tirar o sistema de Premium; todos os benefícios são livres para todos"): a aba não vende mais nada. Ela conta o que
+     a Bênção dá e como recebê-la (o Presente de Marghar chega no correio de todo personagem). */
   function premCard() {
-    const left = Math.ceil((until() - Date.now()) / 864e5), on = ctx.isPremium();
-    return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>O Premium deixa o dia a dia mais leve. <b>Nunca dá força:</b> nada de dano, vida, XP ou drop a mais. Um jogador free com o mesmo tempo de jogo luta de igual para igual.</p>
-      <p class="lj-on">${on ? `✦ Ativa${left > 0 ? ` · ${left} dia${left > 1 ? 's' : ''} restantes` : ''}. ` : ''}A compra chega como um <b>Selo de Marghar</b> no correio do personagem que você escolher: ao usar, o Premium vale para a <b>conta</b> (todos os seus personagens, os dias somam). Ou guarde, ou venda a outro jogador. Dá para comprar pelo menu, sem entrar num servidor.</p></div></div>
+    const on = ctx.isPremium();
+    return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>A Bênção é <b>de todos os Caminhantes, de graça e para sempre</b>. Não existe mais plano pago: o conforto do dia a dia é igual para todo mundo.</p>
+      <p class="lj-on">${on ? '✦ A Bênção está ativa na sua conta.' : 'Todo personagem recebe o <b>Presente de Marghar</b> no correio. Retire em qualquer povoado e use o item: a Bênção vale para a conta inteira e não acaba.'}</p></div></div>
       <ul class="lj-perks">${PREM_PERKS.map(([i, t]) => `<li><span>${i}</span>${t}</li>`).join('')}</ul>
-      <div class="lj-plans">${PREM_PLANS.map((p) => `<button class="lj-plan ${p.tag ? 'hot' : ''}" data-buy="${p.id}">${p.tag ? `<em>${p.tag}</em>` : ''}<b>${p.name}</b><span class="lj-price">${brl(p.brl)}</span>${p.was ? `<s>${brl(p.was)}</s>` : '<span class="lj-ph">&nbsp;</span>'}<small>${p.desc}</small><small class="lj-pm">${brl(p.brl / (p.days! / 30))} por mês</small></button>`).join('')}</div>
-      <small class="lj-note">Ao acabar, nada se perde: as bolsas Premium ficam lacradas com tudo dentro. Também dá para ativar com o Selo de Marghar comprado por ouro no balcão.</small>`;
+      <small class="lj-note">Nada aqui dá força: dano, vida, XP e drop são iguais para todos.</small>`;
   }
   function facCard() {
     const mine = ctx.fac(), lv = ctx.lvl(); if (!sideSet) side = mine ?? 'fio';
@@ -169,7 +170,7 @@ export function createLoja(ctx: {
     /* a rolagem fica onde estava quando a aba é a mesma (comprar, voltar, trocar de lado) */
     const sc = tab === lastTab ? (el.querySelector('.lj-body') as HTMLElement | null)?.scrollTop ?? 0 : 0, sc2 = tab === lastTab ? (el.querySelector('.lj-mscroll') as HTMLElement | null)?.scrollTop ?? 0 : 0; lastTab = tab;
     el.innerHTML = `<div class="pn ljpn ${tab === 'mont' || tab === 'pets' ? 'mont' : ''}"><h2><span class="lj-t">${EYE}Shop</span><small>conforto e beleza, nunca força · pagamento por Pix</small><button data-lx>✕</button></h2>
-      <nav class="lj-tabs"><button data-tab="pac" class="${tab === 'pac' ? 'on' : ''}">🎁 Pacotes</button><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Plano Premium</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button data-tab="util" class="${tab === 'util' ? 'on' : ''}">🧭 Utilidades</button><button data-tab="lar" class="${tab === 'lar' ? 'on' : ''}">🏡 Lar & Lareira</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
+      <nav class="lj-tabs"><button data-tab="pac" class="${tab === 'pac' ? 'on' : ''}">🎁 Pacotes</button><button data-tab="prem" class="${tab === 'prem' ? 'on' : ''}">✦ Bênção de Marghar</button><button data-tab="fac" class="${tab === 'fac' ? 'on' : ''}">⚑ Brasões das Facções</button><button data-tab="mont" class="${tab === 'mont' ? 'on' : ''}">🐎 Estábulo do Domador</button><button data-tab="pets" class="${tab === 'pets' ? 'on' : ''}">🐾 Pets</button><button data-tab="eng" class="${tab === 'eng' ? 'on' : ''}">⚙ Engenhocas</button><button data-tab="util" class="${tab === 'util' ? 'on' : ''}">🧭 Utilidades</button><button data-tab="lar" class="${tab === 'lar' ? 'on' : ''}">🏡 Lar & Lareira</button><button disabled title="Em breve: aparências por cultura e mascotes cosméticos">Aparências <small>em breve</small></button></nav>
       <div class="lj-body">${tab === 'pac' ? pacCard() : tab === 'prem' ? premCard() : tab === 'eng' ? engCard() : tab === 'util' ? utilCard() : tab === 'lar' ? larCard() : tab === 'mont' ? mountCard() : tab === 'pets' ? mountCard(true) : facCard()}</div>${checkout()}${verModal()}</div>`;
     el.style.display = 'flex'; { const b = el.querySelector('.lj-body') as HTMLElement | null; if (b && sc) b.scrollTop = sc; const m = el.querySelector('.lj-mscroll') as HTMLElement | null; if (m && sc2) m.scrollTop = sc2; }
     giraCards(el); /* 13/11: engenhocas e utilidades giram em 3D nos cartões */

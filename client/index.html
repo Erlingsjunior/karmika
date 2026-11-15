@@ -1661,6 +1661,7 @@
   .bagpn .profgo { border-radius: 10px; } .bagpn .btabs2 button { border-radius: 10px 10px 0 0; }
   /* 11/11: janela esticada — o corpo acompanha (windows.ts marca o corpo com .fwgrow) */
   .fw.sized > .pn { display: flex !important; flex-direction: column; overflow: hidden !important; } .fw.sized > .pn > * { flex: 0 0 auto; }
+  .fw.sized > .pn.fwflat { overflow-y: auto !important; scrollbar-width: thin; scrollbar-color: #8a6a32 transparent; } /* 15/11: janela de lista solta rola inteira, ninguém estica */
   .fw.sized > .pn > .fwgrow { flex: 1 1 auto; min-height: 0; max-height: none !important; overflow: auto; scrollbar-width: thin; scrollbar-color: #8a6a32 transparent; }
   .fw.sized > .pn > .tree-body.fwgrow { overflow: hidden; grid-template-rows: minmax(0, 1fr); align-items: stretch; } .fw.sized > .pn > .tree-body.fwgrow > * { max-height: none !important; min-height: 0; overflow: auto; }
   /* 12/11 (Erling, da loja da caravana: "layouts horríveis, melhorar drasticamente"): título numa linha limpa com o ouro em pílula; as abas numa grade

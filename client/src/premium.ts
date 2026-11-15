@@ -14,5 +14,11 @@ export const IS_DEV = !!(import.meta as unknown as { env?: { DEV?: boolean } }).
 const UNTIL = 'karmika.premium.until';
 export const premiumUntil = () => { try { return +(localStorage.getItem(UNTIL) || 0); } catch { return 0; } };
 export function addPremiumDays(days: number) { const base = Math.max(Date.now(), premiumUntil()); try { localStorage.setItem(UNTIL, String(base + days * 864e5)); } catch { /* */ } setPremium(true); }
+/* 15/11 (Erling: "vamos tirar o sistema de Premium. Todos os benefícios são livres para todos os jogadores: quando começamos um novo char
+   ganhamos no correio um item, um presente de Marghar, que libera o Premium para sempre"): a Bênção eterna. Depois de usar o Presente de
+   Marghar a conta nunca mais perde a Bênção; não há mais plano à venda. */
+const ETERNO = 'karmika.premium.eterno';
+export const premiumEterno = () => { try { return localStorage.getItem(ETERNO) === '1'; } catch { return false; } };
+export function setPremiumEterno() { try { localStorage.setItem(ETERNO, '1'); } catch { /* */ } setPremium(true); }
 /** confere se o Premium comprado acabou */
-export function checkPremiumExpiry() { const u = premiumUntil(); if (u && Date.now() > u && on) { try { localStorage.removeItem(UNTIL); } catch { /* */ } setPremium(false); } }
+export function checkPremiumExpiry() { if (premiumEterno()) { if (!on) setPremium(true); return; } const u = premiumUntil(); if (u && Date.now() > u && on) { try { localStorage.removeItem(UNTIL); } catch { /* */ } setPremium(false); } }

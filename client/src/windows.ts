@@ -25,11 +25,16 @@ export function floatWin(el: HTMLElement, id: string, def: { left?: string; righ
   /* 11/11 (Erling: "se eu estico a tela a div interna tem que ir junto, em todas as modais"): janela esticada vira uma coluna; o título, as abas e o
      rodapé ficam do tamanho deles e o CORPO (o filho mais alto) cresce e encolhe com a janela, rolando por dentro. O corpo é marcado de novo
      a cada vez que a janela é redesenhada. */
-  const markGrow = () => { const pn = pnOf(); if (!pn || !el.classList.contains('sized')) return; let best: HTMLElement | null = null, bh = -1;
-    for (const c of Array.from(pn.children) as HTMLElement[]) { if (c.tagName === 'H2' || c.tagName === 'STYLE' || c.classList.contains('rz')) continue; const h = c.scrollHeight; if (h > bh) { bh = h; best = c; } }
-    for (const c of Array.from(pn.children) as HTMLElement[]) c.classList.toggle('fwgrow', c === best); };
+  /* 15/11 (Erling: "por que essa div está gigante? quebrou todo o layout, não consigo voltar"): no Quadro da Praça o corpo é uma LISTA solta de
+     cartões, sem uma caixa em volta; "o filho mais alto" era um cartão qualquer (ou a fileira de abas) e ele esticava até encher a janela.
+     Agora só cresce quem é de fato o corpo (mais da metade do conteúdo). Janela de lista solta não estica ninguém: ela inteira rola. */
+  const markGrow = () => { const pn = pnOf(); if (!pn || !el.classList.contains('sized')) return; let best: HTMLElement | null = null, bh = -1, total = 0, n = 0;
+    const kids = Array.from(pn.children) as HTMLElement[]; for (const c of kids) c.classList.remove('fwgrow');
+    for (const c of kids) { if (c.tagName === 'H2' || c.tagName === 'STYLE' || c.classList.contains('rz')) continue; const h = c.scrollHeight; total += h; n++; if (h > bh) { bh = h; best = c; } }
+    const solta = n > 2 && bh < total * 0.5; pn.classList.toggle('fwflat', solta);
+    for (const c of kids) c.classList.toggle('fwgrow', !solta && c === best); };
   const applySize = () => { const p = pos[id]; if (p?.w && p?.h) { el.classList.add('sized'); el.style.setProperty('--fw-w', p.w + 'px'); el.style.setProperty('--fw-h', p.h + 'px'); markGrow(); } };
-  new MutationObserver(() => { if (el.classList.contains('sized') && !pnOf()?.querySelector(':scope > .fwgrow')) markGrow(); }).observe(el, { childList: true, subtree: true });
+  let marcando = false; new MutationObserver(() => { if (marcando || !el.classList.contains('sized')) return; const pn = pnOf(); if (pn && (!pn.querySelector(':scope > .fwgrow') || pn.classList.contains('fwflat'))) { marcando = true; markGrow(); queueMicrotask(() => { marcando = false; }); } }).observe(el, { childList: true, subtree: true });
   applySize(); addEventListener('resize', fit); { let q = 0; new ResizeObserver(() => { if (q) return; q = requestAnimationFrame(() => { q = 0; fit(); }); }).observe(el); } /* no quadro seguinte: sem o aviso "ResizeObserver loop" */
   /* alça de redimensionar no canto inferior direito */
   const grip = document.createElement('div'); grip.className = 'rz'; grip.title = 'Arraste para mudar o tamanho da janela (duplo clique: tamanho padrão)'; el.appendChild(grip);
