@@ -1586,6 +1586,8 @@ export function createGameplay(d: GameplayDeps) {
         if (!best || dd < bd - 1.5 || (Math.abs(dd - bd) <= 1.5 && e.hpMax > best.hpMax)) { best = e; bd = Math.min(bd, dd); } }
       if (best) return best.pos; return dummyNear(p.x, p.z, 11)?.position ?? null;
     },
+    /** 16/11: o golpe básico desta classe voa (mago, bruxo, arco, besta, arma de fogo, tecnocrata)? O foco e o clique tratam quem bate de longe de outro jeito */
+    longe(): boolean { return kitKey === 'mag' || kitKey === 'bru' || !!wmode || d.getHero().kind === 'technocrat'; },
     attack(yaw: number, heroPos: THREE.Vector3) {
       if (st.menuOpen) return false;
       const h = d.getHero();

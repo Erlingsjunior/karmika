@@ -6,7 +6,8 @@ import { t as tr } from '../i18n';
 import * as THREE from 'three';
 import { TILE_M as T, type Race } from '@karmika/shared';
 import { createAim, type AimSpec } from '../aim';
-import { type SkillDef, skillAt, setBarRows, barRows, layout, posKey } from '../kits';
+import { type SkillDef, skillAt, setBarRows, barRows, layout, posKey, keyOf, kitOf } from '../kits';
+import { cliques, TECLA_DE_BATALHA } from '../combate';
 import { heightAt } from '../world';
 import type { EntradaCtx } from '../main';
 
@@ -113,6 +114,7 @@ function denySkill(sk: SkillDef, why: 'cd' | 'res') {
 function useSlot(k: string, fromKey = false) {
   const sk = skillAt(K.kitRace(), k); if (!sk) return;
   if (locked(sk)) return;
+  { const b = K.bichoNoMouse(); if (b) K.foca(b); } /* 16/11: a magia vai no bicho que está debaixo do mouse, e o foco muda para ele */
   if (sk.id === 'guard') { setCombat(true); K.game.guard(true); if (K.hero.guard && !aimSlot) { guardCone = true; aim.show(GUARD_AIM); } return; }
   { const why = K.game.ready(sk.id, sk.cost); if (why && aimSlot !== k) { denySkill(sk, why); return; } }
   if (sk.aim) { startAim(k); if (fromKey && aimSlot === k) aimKey = k; return; }
@@ -127,7 +129,12 @@ function useSlot(k: string, fromKey = false) {
 /* o ataque vai para onde o mouse aponta; se houver inimigo nesse cone, encaixa no mais próximo (empate → mais forte) */
 /** em combate, parado: o herói encara o inimigo mais próximo (até 7 m) */
 const nearYaw = (): number | null => { const hx = K.state.fx * T, hz = K.state.fy * T; let b: { x: number; z: number } | null = null, bd = 7; for (const e of K.game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d < bd) { bd = d; b = e.pos; } } return b ? Math.atan2(b.x - hx, b.z - hz) : null; };
+/** 16/11: qual magia está em cada botão do mouse, e usar essa magia (ela é disparada pela casa dela na barra) */
+const cliqueId = (n: 1 | 2) => cliques(K.kitRace(), kitOf(K.kitRace()))[n - 1];
+function usaClique(n: 1 | 2) { const id = cliqueId(n), k = id ? keyOf(K.kitRace(), id) : '—'; if (k !== '—') useSlot(k); }
+function soltaGuarda() { if (K.hero.guard) { K.game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); } }
 const aimYaw = () => {
+  { const b = K.bichoNoMouse(); if (b) { const hx0 = K.state.fx * T, hz0 = K.state.fy * T; return Math.atan2(b.pos.x - hx0, b.pos.z - hz0); } } /* 16/11: mouse em cima de um bicho: mira nele */
   const hx = K.state.fx * T, hz = K.state.fy * T, my = Math.atan2(K.mouse.x - hx, K.mouse.z - hz), tg = K.game.target(new THREE.Vector3(hx, 0, hz), my);
   return tg ? Math.atan2(tg.x - hx, tg.z - hz) : my;
 };
@@ -160,14 +167,14 @@ const ORDER: Race[] = ['nordic', 'technocrat', 'dwarf'];
 function swapTo(r: Race) { if (r !== K.state.race) { K.state.race = r; K.swapHero(); K.game.setClassName(K.classOfRace(r)); } }
 addEventListener('keyup', (e) => {
   /* magia de mira: segurar a tecla mostra o desenho no chão; soltar lança (toque rápido = lança na hora, onde o mouse está) */
-  if (aimKey) { const k = e.key.toLowerCase(), slot = e.shiftKey && /^Digit[0-9]$/.test(e.code) ? '⇧' + e.code.slice(5) : k === 'j' ? '1' : k === 'q' ? '4' : /^[0-9]$/.test(k) ? k : null;
+  if (aimKey) { const k = e.key.toLowerCase(), slot = e.shiftKey && /^Digit[0-9]$/.test(e.code) ? '⇧' + e.code.slice(5) : k === 'j' ? '1' : TECLA_DE_BATALHA[k] ? TECLA_DE_BATALHA[k] : /^[0-9]$/.test(k) ? k : null;
     if (slot && (slot === aimKey || slot === aimKey.replace('⇧', ''))) { const was = aimKey; aimKey = null; if (aimSlot === was) fireAim(); } }
 });
 /** solta a guarda: pela tecla do espaço dela em qualquer andar (⇧/⌃ também soltam) — antes só funcionava no 1º andar e o herói ficava travado em guarda */
 addEventListener('keyup', (e) => {
   if (!K.hero.guard) return; const L = layout(K.kitRace()); const p = L.findIndex((d) => d?.id === 'guard'); const gk = p >= 0 ? posKey(p) : '';
   const dig = /^Digit([0-9])$/.exec(e.code)?.[1], k = e.key.toLowerCase();
-  const hit = k === 'shift' || k === 'control' || (dig !== undefined && gk.endsWith(dig)) || (k === 'q' && gk === '4');
+  const hit = k === 'shift' || k === 'control' || (dig !== undefined && gk.endsWith(dig)) || (!!TECLA_DE_BATALHA[k] && gk === TECLA_DE_BATALHA[k]);
   if (hit) { K.game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); }
 });
 controleJanelas(() => !!(K.stable.isOpen || K.align.isOpen || K.dockSys.skillsOpen || K.dockSys.featsOpen || K.reliquiasSys.relicOpen || K.olhoSys.olhoOpen || K.quests.isOpen || K.vid.isOpen || K.mail.isOpen || K.profs.isOpen || K.loja.isOpen || K.minimapaSys.bigOpen || K.inv.isOpen));
@@ -213,6 +220,9 @@ addEventListener('keydown', (e) => {
   if (k === 'q' && !e.repeat) useSlot('4', true);
   if (k === 'f' && !e.repeat && !e.ctrlKey && !e.metaKey) K.toggleInstinct();
   if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { K.instintoSys.stanceSys?.cycle(); K.renderStances(); }
+  /* 16/11 (Erling: "o E é para interagir, mas se eu estiver em batalha ele usa magia; o R é para correr, mas em batalha com um monstro em foco ele é atalho de magia"):
+     com um bicho em foco, E vale pela casa 5 e R pela casa 6 (a esquiva); sem foco, tudo como sempre */
+  if ((k === 'e' || k === 'r') && K.foco() && !K.build.on) { if (!e.repeat) { if (k === 'r') { const f = K.hero.facing; startDash(K.state.moving ? K.dx0 || Math.sin(f) : Math.sin(f), K.state.moving ? K.dy0 || Math.cos(f) : Math.cos(f)); } useSlot(TECLA_DE_BATALHA[k], true); } return; }
   if (k === 'e') K.interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
   if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 24.2; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 24.2); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
@@ -254,5 +264,5 @@ addEventListener('wheel', (e) => {
   K.zoomTarget = THREE.MathUtils.clamp(K.zoomTarget * Math.exp(e.deltaY * 0.0009), K.ZOOM_MIN, K.ZOOM_MAX);
 }, { passive: false });
 let nightTarget = 1;
-  return { heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
+  return { usaClique, cliqueId, soltaGuarda, heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
 }
