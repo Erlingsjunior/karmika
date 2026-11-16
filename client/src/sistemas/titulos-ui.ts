@@ -1,5 +1,8 @@
 /* PÁGINA DE TÍTULOS E MOLDURAS (dentro da janela das Inscrições de Marghar). Só desenha e repassa o clique; a regra mora em ../titulos. */
-import { TITULOS, GRUPOS, MOLDURAS, DIAS_DE_MARCA, classeMoldura, tituloAtivo, travado, travaResta, temTitulo, meusTitulos, escolheTitulo, temMoldura, molduraAtiva, escolheMoldura, type Titulo } from '../titulos';
+import { TITULOS, GRUPOS, MOLDURAS, DIAS_DE_MARCA, classeMoldura, cssMolduras, tituloAtivo, travado, travaResta, temTitulo, meusTitulos, escolheTitulo, temMoldura, molduraAtiva, escolheMoldura, type Titulo } from '../titulos';
+
+/* a arte das molduras é montada em código (titulos/arte-molduras.ts) e entra na página uma vez */
+{ const st = document.createElement('style'); st.id = 'molduras-css'; st.textContent = cssMolduras(); document.head.appendChild(st); }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 /** "4 dias e 3 horas", "5 horas", "12 minutos" */

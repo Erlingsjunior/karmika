@@ -9,8 +9,8 @@ try { mem = { ...mem, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catc
 const salva = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* */ } };
 
 /** o que vem de fora: Inscrições, lado jurado, pacote e o relógio (o teste adianta o relógio) */
-export interface Fontes { feito(id: string): boolean; lado(): 'fio' | 'desf' | null; pacote(): number; agora?(): number }
-let F: Fontes = { feito: () => false, lado: () => null, pacote: () => -1 };
+export interface Fontes { feito(id: string): boolean; /** quanto marca um contador das Inscrições */ conta(chave: string): number; lado(): 'fio' | 'desf' | null; pacote(): number; agora?(): number }
+let F: Fontes = { feito: () => false, conta: () => 0, lado: () => null, pacote: () => -1 };
 const agora = () => F.agora?.() ?? Date.now();
 type Aviso = (ev: { tipo: 'ganhou' | 'marca' | 'trocou' | 'moldura'; nome: string }) => void;
 const ouvintes: Aviso[] = [];
@@ -22,7 +22,7 @@ const tenho = (id: string) => id.startsWith('q:') ? !!mem.livres[id.slice(2)] : 
 
 /** liga as fontes e põe em dia o que já foi feito antes de o sistema existir (sem impor nada: o ato é antigo) */
 export function ligaTitulos(f: Fontes) { F = f; let mudou = false;
-  for (const t of TITULOS) if (!mem.got[t.id] && ((t.feito && f.feito(t.feito)) || (t.id === 'fundador' && f.pacote() >= 4))) { mem.got[t.id] = agora(); mudou = true; }
+  for (const t of TITULOS) if (!mem.got[t.id] && ((t.feito && f.feito(t.feito)) || (t.cont && f.conta(t.cont[0]) >= t.cont[1]) || (t.id === 'fundador' && f.pacote() >= 4))) { mem.got[t.id] = agora(); mudou = true; }
   if (mudou) salva(); }
 /** ganhou um título do catálogo. A MARCA vira o título em uso e prende por 5 dias; o LIVRE só entra em uso se não havia nenhum. */
 export function ganhaTitulo(id: string): boolean { const t = tituloDe(id); if (!t || (mem.got[id] && !t.marca)) return false; /* a marca repetida (trair de novo) prende de novo */ mem.got[id] = agora();
@@ -30,6 +30,8 @@ export function ganhaTitulo(id: string): boolean { const t = tituloDe(id); if (!
   if (!mem.ativo && !travado()) mem.ativo = id; salva(); avisa('ganhou', t.nome); return true; }
 /** a Inscrição foi gravada: entrega o título ligado a ela, se houver */
 export function tituloDoFeito(feito: string) { for (const t of TITULOS) if (t.feito === feito) ganhaTitulo(t.id); }
+/** olha os contadores das Inscrições e entrega os títulos que já foram alcançados (chamado de tempos em tempos) */
+export function confereContadores() { for (const t of TITULOS) if (t.cont && !mem.got[t.id] && F.conta(t.cont[0]) >= t.cont[1]) ganhaTitulo(t.id); }
 /** título dado por missão ou por voto (o nome é o da missão). Entra em uso na hora, a não ser que uma marca esteja prendendo. */
 export function ganhaLivre(nome: string): boolean { if (!nome) return false; const novo = !mem.livres[nome]; if (novo) mem.livres[nome] = agora();
   if (!travado()) mem.ativo = 'q:' + nome; salva(); if (novo) avisa('ganhou', nome); return novo; }

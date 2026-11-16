@@ -221,7 +221,7 @@ import { createRede } from './sistemas/rede';
 import { createComandosTeste } from './sistemas/comandos-teste';
 import { createVotosAlma } from './sistemas/votos-alma';
 import { createDockFeitos } from './sistemas/dock-feitos';
-import { ligaTitulos, onTitulos, ganhaTitulo, ganhaLivre, tituloAtivo, travado, escolheTitulo, molduraAtiva, DIAS_DE_MARCA } from './titulos';
+import { ligaTitulos, confereContadores, onTitulos, ganhaTitulo, ganhaLivre, tituloAtivo, travado, escolheTitulo, molduraAtiva, DIAS_DE_MARCA } from './titulos';
 import { meuPacote } from './pacotes';
 import { createConstrucao } from './sistemas/construcao';
 import { createCompanheiros } from './sistemas/companheiros';
@@ -998,7 +998,7 @@ const { feats, dockEl } = dockSys;
 let retratoCache: { src: string | null; t: number } = { src: null, t: -1e9 };
 function meuRetrato(): string | null { const n = performance.now(); if (n - retratoCache.t < 60000 && retratoCache.src) return retratoCache.src; try { portraits.delete('hero'); retratoCache = { src: portraitOf('hero', hero.root, true), t: n }; } catch { retratoCache = { src: null, t: n }; } return retratoCache.src; }
 let tituloRelogio = 0; /* só o teste mexe: adianta o relógio dos títulos */
-ligaTitulos({ feito: (id) => feats.isDone(id), lado: () => myFac(), pacote: () => meuPacote(), agora: () => Date.now() + tituloRelogio });
+ligaTitulos({ feito: (id) => feats.isDone(id), conta: (k) => feats.count(k), lado: () => myFac(), pacote: () => meuPacote(), agora: () => Date.now() + tituloRelogio });
 function aplicaTitulo() { const nm = tituloAtivo()?.nome ?? ''; try { quests.q.title = nm; if (profile) { profile.title = nm; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); netRef?.lookNow(); } catch { /* ainda carregando */ } }
 onTitulos((ev) => { if (ev.tipo !== 'moldura') aplicaTitulo(); else { try { netRef?.lookNow(); } catch { /* */ } }
   if (ev.tipo === 'marca') { game.logMsg(`👁 O Olho gravou em você: ${ev.nome}. Por ${DIAS_DE_MARCA} dias este título não pode ser trocado.`, '#ffb04a');
@@ -1006,7 +1006,7 @@ onTitulos((ev) => { if (ev.tipo !== 'moldura') aplicaTitulo(); else { try { netR
   else if (ev.tipo === 'ganhou') game.logMsg(`👑 Título novo: ${ev.nome}. Veja em Inscrições (L), aba Títulos.`, '#ffe08a');
   dockSys.redesenha(); try { inv.refresh(); } catch { /* */ } });
 /* títulos dados por missão ou voto escrevem direto em quests.q.title: aqui eles entram no catálogo do jogador; se uma marca prende, o título imposto volta */
-setInterval(() => { try { const qt = quests.q.title || '', at = tituloAtivo()?.nome ?? ''; if (qt === at) return; if (qt) ganhaLivre(qt); if ((tituloAtivo()?.nome ?? '') !== qt) aplicaTitulo(); else { updateWho(); } } catch { /* */ } }, 3000);
+setInterval(() => { try { confereContadores(); const qt = quests.q.title || '', at = tituloAtivo()?.nome ?? ''; if (qt === at) return; if (qt) ganhaLivre(qt); if ((tituloAtivo()?.nome ?? '') !== qt) aplicaTitulo(); else { updateWho(); } } catch { /* */ } }, 3000);
 function toggleSkills(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleSkills']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleSkills']> { return (dockSys ??= mk_dockSys()).toggleSkills(...a); }
 function toggleFeats(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleFeats']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleFeats']> { return (dockSys ??= mk_dockSys()).toggleFeats(...a); }
 
