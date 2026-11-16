@@ -82,7 +82,14 @@ function miniZoomBy(f: number) { K.guiaSys.mmZoom = Math.max(0.5, Math.min(4, K.
 const bmEl = document.getElementById('bm') as HTMLCanvasElement, bg = bmEl.getContext('2d')!, bigEl = document.getElementById('bigmap') as HTMLElement;
 let bigOpen = false;
 /** viajar pelo mapa até uma relíquia conhecida (as regras do véu: não de dentro de um prédio, não com inimigos na cola) */
-function mapTravel(go: string) { if (K.inside) { K.game.logMsg('Saia para o céu aberto para atravessar o véu.', '#ff9a8a'); return; } if (K.combatMode) { const hp = K.heroPosNow(), hunted = K.game.enemies.list.some((en) => en.alive && en.active && (en.state === 'chase' || en.state === 'windup') && Math.hypot(en.pos.x - hp.x, en.pos.z - hp.z) < 16); if (hunted) { K.game.logMsg('Há inimigos atrás de você: o véu não se abre no meio da luta.', '#ff9a8a'); return; } K.setCombat(false); } if (bigOpen) toggleBigMap(); K.travelRelic(go); }
+function mapTravel(go: string) { if (K.inside) { K.game.logMsg('Saia para o céu aberto para atravessar o véu.', '#ff9a8a'); return; } if (K.combatMode) { const hp = K.heroPosNow(), hunted = K.game.enemies.list.some((en) => en.alive && en.active && (en.state === 'chase' || en.state === 'windup') && Math.hypot(en.pos.x - hp.x, en.pos.z - hp.z) < 16); if (hunted) { K.game.logMsg('Há inimigos atrás de você: o véu não se abre no meio da luta.', '#ff9a8a'); return; } K.setCombat(false); } if (bigOpen) toggleBigMap();
+  /* 16/11: 'lugar:Nome' e 'ponto:x,y,Nome' são lugares já encontrados (maravilha, lugar, masmorra, Fonte da Visão): o herói aparece no chão firme mais perto */
+  if (go.startsWith('lugar:') || go.startsWith('ponto:')) { let x = 0, y = 0, nome = ''; if (go.startsWith('lugar:')) { nome = go.slice(6); const p = K.city.pois.find((q) => q.name === nome); if (!p) return; x = p.x; y = p.y; } else { const m = go.slice(6).split(','); x = +m[0]; y = +m[1]; nome = m.slice(2).join(','); }
+    const chao = chaoPerto(x, y + 2) ?? chaoPerto(x, y); if (!chao) { K.game.logMsg(`Não há chão firme perto de ${nome}.`, '#ff9a8a'); return; } const [tx, ty] = chao;
+    K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(`✦ Você atravessa o véu até ${nome}.`, '#ffe08a'); }); return; }
+  K.travelRelic(go); }
+/** o chão firme mais perto de um ponto do mapa (nunca água, nunca parede), até 40 casas */
+function chaoPerto(tx: number, ty: number): [number, number] | null { for (let r = 0; r < 40; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.floor(tx + Math.cos(a / Math.max(1, r * 8) * 6.283) * r), y = Math.floor(ty + Math.sin(a / Math.max(1, r * 8) * 6.283) * r), t2 = K.city.map[y]?.[x]; if (t2 && isWalkable(t2) && groundH((x + 0.5) * T, (y + 0.5) * T) > WL) return [x + 0.5, y + 0.5]; } return null; }
 /* 27/10 (Erling: "colocar no mapa todos os pontos mais lindos do jogo… maravilhas, lugares, cidades, vilas, para abrir o mapa e ir rapidamente"):
    a lateral do mapa lista as maravilhas, cidades, vilas, masmorras, lugares e relíquias; clique centra o mapa e marca a guia; ✦ viaja pela relíquia conhecida mais perto do lugar */
 const WONDERS = new Set(['Fortaleza de Odin', 'Abadia da Aurora', 'Bastião de Prata', 'Vale da Desgraça', 'Árvore-Mãe do Uivo', 'Castelo da Colina Vampírica', 'Pináculo de Marfim', 'A Grande Caldeira', 'Academia da Graxa', 'Portões de Brasaforja', 'Catedral de Askavik', 'Castelo de Askavik', 'Ruínas de Aravel', 'Grande Biblioteca']);
@@ -218,5 +225,5 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
 const fmtDist = (m: number) => `${Math.round(m)} m`;
   /* 12/11: o mapa-base do mundo como imagem, para o centro de comando (desktop/src/tear-mundo.webp é tirado daqui) */
   (window as unknown as { __mapaBase?: () => string }).__mapaBase = () => mmBase.toDataURL('image/webp', 0.86);
-  return { mmBase, toggleBigMap, mapV, get bigOpen() { return bigOpen; }, fmtDist, mmEl, mg, MMS, markers, miniIcons, bmEl, bg, mapZMin, pxPerTile, bigEl, BNAME, get mapHits() { return mapHits; }, set mapHits(v: typeof mapHits) { mapHits = v; } };
+  return { mapTravel, mmBase, toggleBigMap, mapV, get bigOpen() { return bigOpen; }, fmtDist, mmEl, mg, MMS, markers, miniIcons, bmEl, bg, mapZMin, pxPerTile, bigEl, BNAME, get mapHits() { return mapHits; }, set mapHits(v: typeof mapHits) { mapHits = v; } };
 }
