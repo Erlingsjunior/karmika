@@ -42,9 +42,10 @@
     .to('.em-flare', { opacity: 1, scale: 4.6, duration: 0.3 }, 7.9)
     .fromTo('.hero__flash', { opacity: 0 }, { opacity: 0.92, duration: 0.16 }, 7.98)
     .to('.hero__flash', { opacity: 0, duration: 0.6 }, 8.14)
-    .to('.em-flare', { opacity: 0.8, scale: 1.7, duration: 0.9 }, 8.25)
-    .to('.hero__emblem', { y: () => Math.round(innerHeight * 0.3), scale: 0.84, duration: 1.7 }, 9.2)
-    .to('.hero__emblem', { opacity: 0, filter: 'blur(6px)', duration: 0.9 }, 10.2)
+    /* 16/11 (Erling: "ele não desce, ele some como sumia antes; o brilho sai, o olho fica laranja forte, aceso, e vai esmaecendo"): depois do
+       clarão a brasa em volta se apaga, o emblema fica parado no lugar com o olho aceso e some devagar. */
+    .to('.em-flare', { opacity: 0, scale: 1.3, duration: 0.9 }, 8.25)
+    .to('.hero__emblem', { opacity: 0, filter: 'blur(6px)', duration: 1.5 }, 9.6)
     .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2 }, 10.5)
     .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.3, duration: 0.8 }, 11.2)
     .to('.hero__sub', { opacity: 1, duration: 0.6 }, 12.2)
