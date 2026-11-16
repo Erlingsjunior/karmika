@@ -14,7 +14,8 @@
   const fader = document.createElement('div'); fader.className = 'fader'; document.body.append(fader);
   window.__fadeJump = (fn) => { if (!window.gsap || reduce) { fn(); return; } gsap.to(fader, { opacity: 1, duration: 0.32, ease: 'power1.in', onStart: () => { fader.style.pointerEvents = 'auto'; }, onComplete: () => { fn(); requestAnimationFrame(() => gsap.to(fader, { opacity: 0, duration: 0.45, delay: 0.08, ease: 'power1.out', onComplete: () => { fader.style.pointerEvents = 'none'; } })); } }); };
   formInit(); pathsInit(); lightboxInit();
-  if (reduce || !window.gsap || !window.ScrollTrigger) return;
+  /* 16/11: sem animação (Windows com "efeitos de animação" desligados, ou biblioteca que não carregou) as promessas rolam de lado com o dedo ou a barra, em vez de ficarem cortadas */
+  if (reduce || !window.gsap || !window.ScrollTrigger) { document.documentElement.classList.add('semanim'); return; }
   gsap.registerPlugin(ScrollTrigger);
 
   if (window.Lenis) { const lenis = new Lenis({ lerp: 0.09 }); window.__lenis = lenis; lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add((t) => lenis.raf(t * 1000)); gsap.ticker.lagSmoothing(0);

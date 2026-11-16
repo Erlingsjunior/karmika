@@ -751,3 +751,33 @@ main > section.jogar::before { content: ""; position: absolute; pointer-events: 
 @media (max-width: 680px) { .packs__grid { grid-template-columns: 1fr 1fr; } .pack--f { grid-column: span 2; padding-top: 170px; } .pack--f img { height: 230px; } }
 @media (max-width: 420px) { .packs__grid { grid-template-columns: 1fr; } .pack--f { grid-column: auto; } }
 .guild__note--terra { margin-bottom: 14px; }
+
+/* 16/11 (Erling: "os botões têm que ter o mesmo tamanho; o 'role' precisa das três setinhas; o subtítulo precisa mudar") */
+.hero__cta .btn { width: min(350px, 86vw); justify-content: center; text-align: center; }
+.hero__scroll i { width: auto; height: auto; background: none; animation: none; }
+.hero__setas--p i { width: 14px; height: 14px; border-right-width: 2px; border-bottom-width: 2px; animation: seta 1.8s ease-in-out infinite; }
+.hero__scroll { color: var(--gold2); gap: 4px; bottom: 20px; }
+.hero__sub { letter-spacing: .22em; line-height: 1.7; max-width: 1100px; margin: 0 auto; text-wrap: balance; text-shadow: 0 2px 14px rgba(0, 0, 0, .8); }
+@media (prefers-reduced-motion: reduce) { .hero__setas--p i { animation: none; opacity: .8; } }
+
+/* 16/11 (Erling: "essa tela não está funcionando em navegadores de amigos meus"): em tela baixa (notebook de 768 de altura, ou Windows com
+   escala de 125% e 150%) o título mais os cartões passavam da altura da tela e a parte de baixo dos cartões ficava cortada. Agora o bloco
+   inteiro se mede pela ALTURA da tela e sempre cabe. */
+.pillars__pin { padding-top: 64px; box-sizing: border-box; gap: clamp(14px, 3.2vh, 46px); }
+.pillars__head h2 { font-size: clamp(26px, min(5.4vw, 6.4vh), 76px); line-height: 1.08; margin: 8px 0 0; }
+.pillar { width: min(78vw, 560px, 54vh); }
+.pillar > div { padding: clamp(12px, 2.4vh, 24px) clamp(16px, 2.6vh, 26px) clamp(14px, 2.8vh, 30px); }
+.pillar h3 { font-size: clamp(18px, min(2.4vw, 3.4vh), 34px); margin: clamp(4px, 1vh, 10px) 0; }
+.pillar p { font-size: clamp(13px, 1.9vh, 16px); line-height: 1.5; }
+@media (max-height: 700px) { .pillar img { aspect-ratio: 16 / 8; } .pillar p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } }
+.semanim .pillars__pin { height: auto; overflow-x: auto; overflow-y: hidden; padding-bottom: 40px; scroll-snap-type: x proximity; }
+.semanim .pillar { scroll-snap-align: center; }
+
+/* 16/11 (Erling: "o último card maior, com mais destaque"): o cartão de KARMIKA ocupa mais largura, tem letra maior, borda acesa e brilho */
+@media (min-width: 901px) { .cmp__cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.55fr); align-items: stretch; } .cmp__c:not(.cmp__c--k) { transform: scale(.96); transform-origin: center; opacity: .82; } }
+.cmp__c--k { border: 1.5px solid rgba(120, 170, 255, .85); background: linear-gradient(160deg, rgba(40, 62, 120, .5), rgba(20, 22, 40, .92) 62%); box-shadow: 0 0 0 1px rgba(120, 170, 255, .18), 0 22px 70px rgba(60, 110, 255, .32), inset 0 0 60px rgba(90, 140, 255, .1); }
+.cmp__c--k h3 { font-size: clamp(26px, 2.7vw, 40px); line-height: 1.1; }
+.cmp__c--k p { font-size: clamp(16px, 1.25vw, 19px); }
+.cmp__c--k li { font-size: clamp(14px, 1.05vw, 16px); }
+.cmp__c--k .cmp__k { font-size: 13px; letter-spacing: .34em; }
+.cmp__head { max-width: none; } .cmp__head h2 { max-width: 1180px; font-size: clamp(30px, 4.4vw, 66px); text-wrap: balance; }
