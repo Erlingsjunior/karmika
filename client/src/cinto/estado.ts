@@ -1,16 +1,20 @@
 /* o que está no cinto: qual cinto, o que há em cada espaço e a regra de cada um. Sem tela aqui. */
-import { cintoDe, cabe, ENDERECOS, POR_ESPACO, type Cinto, type Regra } from './dados';
+import { cintoDe, cabe, ENDERECOS, POR_ESPACO, SEM_CINTO, type Cinto, type Regra } from './dados';
 
 const KEY = 'karmika.cinto.v1';
 export interface Espaco { id: string; n: number; regra?: Regra }
-interface Mem { cinto: string; esp: (Espaco | null)[] }
-let mem: Mem = { cinto: '', esp: Array(ENDERECOS).fill(null) };
+interface Mem { /** o tamanho que o cinto vestido dá */ cols: number; andares: number; nome: string; esp: (Espaco | null)[]; /** cinto guardado no formato antigo (id do item), esperando virar peça de equipamento */ legado?: string }
+let mem: Mem = { cols: SEM_CINTO.cols, andares: SEM_CINTO.andares, nome: SEM_CINTO.nome, esp: Array(ENDERECOS).fill(null) };
 /** já existia um cinto guardado? (não: quem chama migra o acesso rápido antigo) */
 export let cintoNovo = true;
-try { const r = localStorage.getItem(KEY); if (r) { const m = JSON.parse(r) as Mem; mem = { cinto: m.cinto || '', esp: Array.from({ length: ENDERECOS }, (_, i) => m.esp?.[i] ?? null) }; cintoNovo = false; } } catch { /* */ }
+try { const r = localStorage.getItem(KEY); if (r) { const m = JSON.parse(r) as Partial<Mem> & { cinto?: string }; const velho = m.cols === undefined ? cintoDe(m.cinto) : null;
+  mem = { cols: velho?.cols ?? m.cols ?? 4, andares: velho?.andares ?? m.andares ?? 1, nome: velho?.nome ?? m.nome ?? SEM_CINTO.nome, esp: Array.from({ length: ENDERECOS }, (_, i) => m.esp?.[i] ?? null), legado: velho?.id || m.legado }; cintoNovo = false; } } catch { /* */ }
 const salva = () => { try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch { /* */ } };
 export const salvaCinto = salva;
-export const cintoAtual = (): Cinto => cintoDe(mem.cinto);
+export const cintoAtual = (): Cinto => ({ id: '', nome: mem.nome, cols: mem.cols, andares: mem.andares });
+/** o cinto antigo (item) que ainda precisa virar peça; quem chama cria a peça e avisa com legadoFeito() */
+export const legado = () => mem.legado ?? '';
+export function legadoFeito() { delete mem.legado; salva(); }
 export const espaco = (i: number) => mem.esp[i] ?? null;
 export const ondeEsta = (id: string) => mem.esp.findIndex((e) => e?.id === id);
 /** o primeiro espaço vazio que existe neste cinto, ou -1 */
@@ -22,5 +26,5 @@ export function tira(i: number, n = 1): number { const e = mem.esp[i]; if (!e) r
 /** esvazia o espaço e devolve o que havia */
 export function solta(i: number): Espaco | null { const e = mem.esp[i]; mem.esp[i] = null; salva(); return e; }
 export function poeRegra(i: number, r: Regra | null) { const e = mem.esp[i]; if (!e) return; if (r) e.regra = r; else { delete e.regra; if (e.n <= 0) mem.esp[i] = null; } salva(); }
-/** veste um cinto (ou '' para tirar); devolve o cinto que estava e o que não coube mais */
-export function veste(id: string): { antes: string; sobrou: Espaco[] } { const antes = mem.cinto; mem.cinto = id; const c = cintoAtual(), sobrou: Espaco[] = []; for (let i = 0; i < ENDERECOS; i++) if (mem.esp[i] && !cabe(c, i)) { sobrou.push(mem.esp[i]!); mem.esp[i] = null; } salva(); return { antes, sobrou }; }
+/** o cinto mudou de tamanho (vestiu, tirou ou trocou a peça): guarda o tamanho novo e devolve o que não cabe mais */
+export function ajusta(cols: number, andares: number, nome: string): Espaco[] { if (cols === mem.cols && andares === mem.andares && nome === mem.nome) return []; mem.cols = cols; mem.andares = andares; mem.nome = nome; const c = cintoAtual(), sobrou: Espaco[] = []; for (let i = 0; i < ENDERECOS; i++) if (mem.esp[i] && !cabe(c, i)) { sobrou.push(mem.esp[i]!); mem.esp[i] = null; } salva(); return sobrou; }

@@ -119,6 +119,7 @@ export const RECIPES2: Recipe[] = [
   { id: 'cinto_viajante', prof: 'costureiro', lvl: 15, need: [['hide', 4], ['hide_f', 2], ['nail', 2]], out: ['cinto_viajante', 1] },
   { id: 'cinto_duplo', prof: 'costureiro', lvl: 25, need: [['hide_f', 5], ['hide', 4], ['nail', 4]], out: ['cinto_duplo', 1] },
   { id: 'cinto_mestre', prof: 'costureiro', lvl: 35, need: [['hide_f', 8], ['ore_ag', 2], ['nail', 6]], out: ['cinto_mestre', 1] },
+  { id: 'belt', prof: 'costureiro', lvl: 12, need: [['hide', 4], ['hide_f', 1], ['rope', 2]], gear: 'belt', label: 'Costurar cinto (peça com atributos)' },
   { id: 'bag_m', prof: 'costureiro', lvl: 15, need: [['hide_f', 4], ['rope', 3]], out: ['bag_m', 1] },
   { id: 'boots', prof: 'costureiro', lvl: 18, need: [['hide_f', 3], ['hide', 2]], gear: 'boots', label: 'Botas de couro' },
   { id: 'bag_l', prof: 'costureiro', lvl: 30, need: [['hide_f', 8], ['hide', 6], ['rope', 4]], out: ['bag_l', 1] },

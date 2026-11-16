@@ -1,7 +1,8 @@
 /* ANDAR DE CONSUMÍVEIS (F1–F8): a ordem, os fixados, desenhar e usar. Saiu do main.ts (02/11). */
 import type { ConsumiveisCtx } from '../main';
 import { movable, MV_GRIP } from '../windows';
-import { cintoAtual, cintoNovo, espaco, poe, tira, solta, veste, poeRegra, ondeEsta, primeiroVazio, salvaCinto, cabe, ehCinto, POR_ESPACO, LARGURA, ENDERECOS, NOME_REGRA, PAUSA_MACRO, type TipoRegra } from '../cinto';
+import { genGear, beltSize, type Gear } from '../loot';
+import { cintoAtual, cintoNovo, espaco, poe, tira, solta, ajusta, legado, legadoFeito, cintoDe, poeRegra, ondeEsta, primeiroVazio, salvaCinto, cabe, ehCinto, POR_ESPACO, LARGURA, ENDERECOS, NOME_REGRA, PAUSA_MACRO, type TipoRegra } from '../cinto';
 
 export function createConsumiveis(K: ConsumiveisCtx) {
 /* ---------- o cinto: acesso rápido (F1–F8) ----------
@@ -16,7 +17,7 @@ const emBatalha = () => { try { const h = K.heroPosNow(); return (K.game.enemies
 /* quem já jogava: o que estava no acesso rápido vai para o cinto (até 20 de cada), e ele ganha um cinto do tamanho da barra que tinha */
 function migra() { try {
   const linhas = Math.max(1, Math.min(3, +(localStorage.getItem('karmika.quickrows') || '1') || 1)), pinsRaw = localStorage.getItem('karmika.quickpins'), veterano = pinsRaw !== null || localStorage.getItem('karmika.quickrows') !== null;
-  if (veterano) veste(linhas >= 3 ? 'cinto_mestre' : linhas === 2 ? 'cinto_duplo' : 'cinto_viajante');
+  if (veterano) { poeCintoPeca(linhas >= 3 ? 'cinto_mestre' : linhas === 2 ? 'cinto_duplo' : 'cinto_viajante'); sincroniza(); }
   const pins: (string | null)[] = (() => { try { const a = JSON.parse(pinsRaw || 'null'); return Array.isArray(a) ? a : []; } catch { return []; } })();
   const c = cintoAtual(), postos = new Set<string>();
   const bota = (id: string, at: number) => { if (postos.has(id) || !K.ITEMS_Q(id)) return; const n = Math.min(POR_ESPACO, K.inv.count(id)); if (n <= 0 || at < 0) return; if (K.inv.take(id, n)) { poe(at, id, n); postos.add(id); } };
@@ -25,8 +26,20 @@ function migra() { try {
   salvaCinto(); if (veterano) setTimeout(() => K.game.logMsg(`🎒 O acesso rápido agora é o seu cinto: você recebeu um ${c.nome}. Cada espaço guarda até ${POR_ESPACO} unidades; a engrenagem abre as macros.`, '#ffe08a'), 6000);
 } catch { /* */ } }
 let migrou = !cintoNovo;
+/** cria a peça de equipamento de um cinto de mochila (cinto_couro…) e veste */
+let vestindo = false; /* enquanto a peça entra na mochila e é vestida, a mochila redesenha a barra: nesse meio-tempo ninguém mexe no tamanho do cinto */
+function poeCintoPeca(itemId: string): boolean { const c = cintoDe(itemId); if (!c.id) return true; const g = genGear(1, 'normal', 'belt', c.nome); vestindo = true; try { K.inv.addGear(g); K.inv.equipGear(g.uid); } finally { vestindo = false; } return (K.inv.eq as Record<string, Gear | null>).belt?.uid === g.uid; }
+/** a mochila já existe e já carregou? (a barra nasce antes dela) */
+const mochilaPronta = () => { try { return typeof K.inv.count('potion') === 'number' && !!K.game.st; } catch { return false; } };
+/** o cinto vestido manda no tamanho do acesso rápido: se a peça mudou, ajusta e devolve à mochila o que não cabe mais */
+let cintoVisto = -2;
+function sincroniza() { if (vestindo || !mochilaPronta()) return; let g: Gear | null = null; try { g = (K.inv.eq as Record<string, Gear | null>).belt ?? null; } catch { return; } const uid = g?.uid ?? -1; if (uid === cintoVisto) return; cintoVisto = uid;
+  const z = beltSize(g) ?? [4, 1], sobrou = ajusta(z[0], z[1], g?.name ?? 'Sem cinto'); for (const v of sobrou) if (v.n > 0) K.inv.grant(v.id, v.n);
+  if (sobrou.length) K.game.logMsg('🎒 O cinto ficou menor: o que não coube voltou para a mochila.', '#ffe08a'); }
 function renderQuick() {
-  if (!migrou) { try { if (K.inv && K.game) { migrou = true; migra(); } } catch { return; } }
+  if (!migrou) { if (!mochilaPronta()) return; migrou = true; migra(); }
+  if (legado() && mochilaPronta()) { const id = legado(); legadoFeito(); try { poeCintoPeca(id); } catch { /* a peça fica na mochila */ } }
+  sincroniza();
   const c = cintoAtual();
   const cell = (i: number) => { const e = espaco(i); if (!e) return `<div class="slot q empty" data-qs="${i}"><kbd>${qKey(i)}</kbd></div>`; const it = K.ITEMS_Q(e.id), r = e.regra;
     return `<div class="slot q pin ${e.n ? '' : 'none'} ${r ? 'macro' : ''}" data-q="${i}" data-qs="${i}" title="${it.name}: ${it.desc} · ${e.n} de ${POR_ESPACO} no cinto${r ? ` · macro: ${NOME_REGRA[r.tipo]}${r.tipo === 'efeito' ? '' : ` ${r.abaixo}%`}` : ''} (botão direito devolve à mochila)"><kbd>${qKey(i)}</kbd><span class="ic">${it.icon}</span><b class="n">${e.n}</b>${r ? '<i class="qm">⚙</i>' : ''}</div>`; };
@@ -41,7 +54,7 @@ quickEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if
 setInterval(() => { if (K.game.hasOrb()) renderQuick(); }, 2000); /* a carga do reator no botão */
 /* arrastar da mochila para o cinto: até 20 unidades saem da mochila e ficam presas no espaço; o mesmo item nunca ocupa dois espaços */
 addEventListener('karmika:quickpin', (e) => { const { id, slot } = (e as CustomEvent<{ id: string; slot: number }>).detail; const c = cintoAtual(), ja = ondeEsta(id);
-  let at = ja >= 0 ? ja : slot >= 0 && cabe(c, slot) ? slot : primeiroVazio(); if (at < 0) { K.game.logMsg(`O ${c.id ? c.nome : 'corpo sem cinto'} só tem ${c.cols * c.andares} espaços. Um cinto maior carrega mais.`, '#ff9a8a'); return; }
+  let at = ja >= 0 ? ja : slot >= 0 && cabe(c, slot) ? slot : primeiroVazio(); if (at < 0) { K.game.logMsg(`${c.nome}: só ${c.cols * c.andares} espaços. Um cinto maior carrega mais.`, '#ff9a8a'); return; }
   const ocupante = espaco(at); if (ocupante && ocupante.id !== id) { const v = solta(at); if (v && v.n > 0) K.inv.grant(v.id, v.n); }
   const quer = Math.min(POR_ESPACO - (espaco(at)?.n ?? 0), K.inv.count(id)); if (quer <= 0) { K.game.logMsg(espaco(at) ? `Este espaço já está cheio (${POR_ESPACO}).` : `Sem ${K.ITEMS_Q(id).name} na mochila.`, '#b9c6e0'); renderQuick(); return; }
   if (K.inv.take(id, quer)) { poe(at, id, quer); K.game.logMsg(`⚡ ${quer} × ${K.ITEMS_Q(id).name} no cinto (${qKey(at)})`, '#ffe08a'); } renderQuick(); });
@@ -57,9 +70,10 @@ quickEl.addEventListener('contextmenu', (e) => { const q = (e.target as HTMLElem
 quickEl.addEventListener('dragover', (e) => { e.preventDefault(); });
 
 /* ---------- vestir o cinto ---------- */
-function vesteCinto(id: string): boolean { if (!ehCinto(id) || !K.inv.take(id, 1)) return false; const { antes, sobrou } = veste(id); if (antes) K.inv.grant(antes, 1); for (const v of sobrou) if (v.n > 0) K.inv.grant(v.id, v.n);
-  const c = cintoAtual(); K.game.logMsg(`🎒 ${c.nome} vestido: ${c.cols * c.andares} espaços${c.andares > 1 ? ` em ${c.andares} andares` : ''}.${sobrou.length ? ' O que não coube voltou para a mochila.' : ''}`, '#ffe08a'); renderQuick(); return true; }
-function tiraCinto() { const { antes, sobrou } = veste(''); if (antes) K.inv.grant(antes, 1); for (const v of sobrou) if (v.n > 0) K.inv.grant(v.id, v.n); renderQuick(); }
+/** usar um cinto da mochila: ele vira a peça de equipamento de mesmo nome e é vestido (o cinto que estava vai para a mochila, como qualquer peça) */
+function vesteCinto(id: string): boolean { if (!ehCinto(id) || !K.inv.take(id, 1)) return false; poeCintoPeca(id); sincroniza(); const c = cintoAtual(); K.game.logMsg(`🎒 ${c.nome} vestido: ${c.cols * c.andares} espaços${c.andares > 1 ? ` em ${c.andares} andares` : ''}.`, '#ffe08a'); renderQuick(); return true; }
+/* trocar de cinto pela ficha ou pela mochila não passa por aqui: de tempos em tempos a barra confere a peça vestida */
+setInterval(() => { try { const u = ((K.inv.eq as Record<string, Gear | null>).belt?.uid) ?? -1; if (u !== cintoVisto) renderQuick(); } catch { /* */ } }, 700);
 
 /* ---------- macros ---------- */
 const macroEl = document.createElement('div'); macroEl.id = 'qmacro'; macroEl.style.display = 'none'; document.body.appendChild(macroEl);
@@ -85,5 +99,5 @@ function tickMacros(dt: number) { pausa -= dt; if (pausa > 0) return; const st =
   for (let i = 0; i < ENDERECOS; i++) { const e = espaco(i), r = e?.regra; if (!e || !r || e.n <= 0 || !cabe(c, i)) continue;
     const pede = r.tipo === 'vida' ? st.hp / st.hpMax * 100 < r.abaixo : r.tipo === 'folego' ? st.stam / st.stamMax * 100 < r.abaixo : r.tipo === 'magia' ? st.mp / Math.max(1, st.mpMax) * 100 < r.abaixo : (efeitoAte.get(e.id) ?? 0) <= agora && (luta ??= emBatalha());
     if (!pede) continue; if (usaDoCinto(i, true)) { pausa = PAUSA_MACRO; if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + duraEfeito(e.id)); const el = quickEl.querySelector(`[data-q="${i}"]`); el?.classList.add('on'); setTimeout(() => { renderQuick(); }, 200); if (e.n <= 0) K.game.logMsg(`⚙ Acabou ${K.ITEMS_Q(e.id).name} no cinto.`, '#ff9a8a'); return; } else if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + 5); /* recusou (vida cheia, por exemplo): a regra seguinte tem a vez */ } }
-  return { renderQuick, useQuick, vesteCinto, tiraCinto, tickMacros, cinto: cintoAtual };
+  return { renderQuick, useQuick, vesteCinto, tickMacros, cinto: cintoAtual };
 }

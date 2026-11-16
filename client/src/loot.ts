@@ -2,7 +2,7 @@
 export const TWO_HANDED = /Montante|Flamberge|Espadão|Alabarda|Machado Duplo|Martelo de Guerra|Katana|Arco|Gatling|Lança-Chamas|Lança-Veneno|Metralhadora|Rifle|Canhão|Cajado|Bastão|Lança\b|Picareta|Machado de Lenhador/;
 /** Equipamentos gerados: raridades, afixos e efeitos especiais. */
 export type Rarity = 'normal' | 'magic' | 'rare' | 'legendary' | 'epic' | 'unique' | 'relic';
-export type Slot = 'weapon' | 'armor' | 'shield' | 'helm' | 'boots' | 'ring' | 'amulet' | 'relic' | 'earring' | 'shoulders' | 'cape' | 'ring2' | 'earring2';
+export type Slot = 'weapon' | 'armor' | 'shield' | 'helm' | 'boots' | 'ring' | 'amulet' | 'relic' | 'earring' | 'shoulders' | 'cape' | 'ring2' | 'earring2' | /** 16/11: o cinto, que define o acesso rápido (ver cinto/) */ 'belt';
 export type StatKey = 'dmg' | 'def' | 'hp' | 'mp' | 'crit' | 'move' | 'regen' | 'leech' | 'xp' | 'gold' | 'str' | 'dex' | 'vit' | 'int' | 'gen';
 export interface Gear { /** arma de caminho (ver Only) */ only?: Only; uid: number; slot: Slot; icon: string; rarity: Rarity; name: string; base: string; ilvl: number; stats: Partial<Record<StatKey, number>>; special?: string; value: number; lore?: string; aura?: number; uniq?: string; fac?: 'fio' | 'desf'; req?: number; /** do Shop: pode ser vendido/trocado até ser vestido; ao vestir, vincula ao personagem */ shop?: boolean; bound?: boolean }
 
@@ -121,6 +121,7 @@ const AFF: Record<StatKey, [number, number]> = { dmg: [3, 8], def: [2, 5], hp: [
 const PCT = new Set<StatKey>(['crit', 'move', 'leech', 'xp', 'gold', 'gen']);
 const SLOT_AFF: Record<Slot, StatKey[]> = {
   relic: [], ring2: [], earring2: [],
+  belt: ['hp', 'def', 'vit', 'regen', 'move', 'gold', 'str', 'dex'],
   earring: ['crit', 'mp', 'int', 'dex', 'gen', 'xp', 'leech'],
   shoulders: ['def', 'hp', 'str', 'vit', 'regen'],
   cape: ['def', 'hp', 'move', 'dex', 'regen', 'gold'],
@@ -135,9 +136,16 @@ const SLOT_AFF: Record<Slot, StatKey[]> = {
 /** armas de caminho: só quem trilha aquele caminho empunha (Caçador de Demônios, Tecnocrata) ou só a raça (anões) */
 export type Only = 'cac' | 'tec' | 'dwarf' | 'vam' | 'lob' | 'pal';
 export const ONLY_NAME: Record<Only, string> = { cac: 'Caçadores de Demônios', tec: 'Tecnocratas', dwarf: 'Anões', vam: 'Vampiros', lob: 'Licantropos', pal: 'Paladinos' };
-interface Base { n: string; g: 'm' | 'f'; icon: string; s?: Partial<Record<StatKey, number>>; only?: Only }
+interface Base { n: string; g: 'm' | 'f'; icon: string; s?: Partial<Record<StatKey, number>>; only?: Only; /** só aparece em peças deste nível de item para cima */ minL?: number; /** cinto: espaços por andar e andares do acesso rápido */ belt?: [number, number] }
 export const BASES: Record<Slot, Base[]> = {
   relic: [{ n: 'Relíquia', g: 'f', icon: '🏺' }], ring2: [], earring2: [],
+  /* 16/11 (Erling: "cinto é equipamento; teremos vários tipos de cintos que dropam de inimigos como qualquer equipamento"): o tamanho do
+     cinto vem da base: 6 espaços, 8, 12 (dois andares de 6) ou 18 (três andares). Os maiores só caem de inimigos mais fortes. */
+  belt: [
+    { n: 'Cinto de Couro', g: 'm', icon: '➰', s: { hp: 4 }, belt: [6, 1] }, { n: 'Cinto de Corda Trançada', g: 'm', icon: '➰', s: { def: 1 }, belt: [6, 1] }, { n: 'Faixa do Andarilho', g: 'f', icon: '➰', s: { hp: 3, def: 1 }, belt: [6, 1] },
+    { n: 'Cinto do Viajante', g: 'm', icon: '➰', s: { hp: 6 }, minL: 8, belt: [8, 1] }, { n: 'Cinturão de Fivela', g: 'm', icon: '➰', s: { def: 3 }, minL: 8, belt: [8, 1] }, { n: 'Cinto do Caçador', g: 'm', icon: '➰', s: { hp: 4, dex: 1 }, minL: 10, belt: [8, 1] },
+    { n: 'Cinto Duplo', g: 'm', icon: '➰', s: { hp: 8 }, minL: 20, belt: [6, 2] }, { n: 'Cinturão de Guerra', g: 'm', icon: '➰', s: { def: 4, str: 1 }, minL: 20, belt: [6, 2] }, { n: 'Bandoleira do Batedor', g: 'f', icon: '➰', s: { hp: 6, dex: 1 }, minL: 22, belt: [6, 2] },
+    { n: 'Cinto de Mestre', g: 'm', icon: '➰', s: { hp: 12 }, minL: 32, belt: [6, 3] }, { n: 'Cinturão do Campeão', g: 'm', icon: '➰', s: { def: 6, vit: 1 }, minL: 32, belt: [6, 3] }, { n: 'Bandoleira Rúnica', g: 'f', icon: '➰', s: { hp: 8, def: 3 }, minL: 35, belt: [6, 3] }],
   earring: [{ n: 'Brinco de Osso', g: 'm', icon: '✦' }, { n: 'Brinco de Prata', g: 'm', icon: '✦' }, { n: 'Argola Rúnica', g: 'f', icon: '✦', s: { crit: 1 } }],
   shoulders: [{ n: 'Ombreiras de Couro', g: 'f', icon: '✦', s: { def: 3 } }, { n: 'Ombreiras de Pele de Lobo', g: 'f', icon: '✦', s: { def: 4, hp: 6 } }, { n: 'Ombreiras de Ferro', g: 'f', icon: '✦', s: { def: 6 } }, { n: 'Ombreiras Escamadas', g: 'f', icon: '✦', s: { def: 6, hp: 4 } }, { n: 'Ombreiras de Crânio', g: 'f', icon: '✦', s: { def: 7 } }, { n: 'Ombreiras Cravejadas', g: 'f', icon: '✦', s: { def: 8 } }, { n: 'Ombreiras de Chifres', g: 'f', icon: '✦', s: { def: 8 } }, { n: 'Ombreiras de Placas', g: 'f', icon: '✦', s: { def: 9 } }, { n: 'Ombreiras do Guardião', g: 'f', icon: '✦', s: { def: 10 } }],
   cape: [{ n: 'Capa de Lã', g: 'f', icon: '✦', s: { def: 2, regen: 0.2 } }, { n: 'Capa Curta de Viagem', g: 'f', icon: '✦', s: { def: 1, move: 3 } }, { n: 'Manto de Peles', g: 'm', icon: '✦', s: { def: 4, hp: 10 } }, { n: 'Manto de Pele de Lobo', g: 'm', icon: '✦', s: { def: 4, dex: 1 } }, { n: 'Manto de Pele de Urso', g: 'm', icon: '✦', s: { def: 6, hp: 14 } }, { n: 'Manto do Lobisomem', g: 'm', icon: '✦', s: { def: 5, str: 1 } }, { n: 'Manto das Correntes', g: 'm', icon: '✦', s: { def: 6, hp: 8 } }, { n: 'Capa Ornamentada', g: 'f', icon: '✦', s: { def: 3, regen: 0.4 } }, { n: 'Capa do Corvo', g: 'f', icon: '✦', s: { def: 3, move: 2 } }],
@@ -184,8 +192,8 @@ export function rollRarity(boost: Partial<Record<Rarity, number>> = {}): Rarity 
 export function genGear(ilvl: number, rarity: Rarity = rollRarity(), slot?: Slot, baseName?: string): Gear {
   if (rarity === 'unique' || rarity === 'relic') { const g = named(rarity === 'relic' ? RELICS : UNIQUES, ilvl, rarity, slot); if (g) return g; rarity = 'epic'; } // acabaram (ou nível baixo demais): vira épico
   if (slot === 'relic') slot = undefined;
-  const sl = slot ?? pick(['weapon', 'weapon', 'armor', 'armor', 'shield', 'helm', 'boots', 'ring', 'amulet', 'earring', 'shoulders', 'cape'] as Slot[]);
-  const b = (baseName && BASES[sl].find((q) => q.n === baseName)) || pick(BASES[sl]), R = RARITY[rarity], lv = 1 + ilvl * 0.09, stats: Partial<Record<StatKey, number>> = {};
+  const sl = slot ?? pick(['weapon', 'weapon', 'armor', 'armor', 'shield', 'helm', 'boots', 'ring', 'amulet', 'earring', 'shoulders', 'cape', 'belt'] as Slot[]);
+  const cabeL = BASES[sl].filter((q) => !q.minL || ilvl >= q.minL), b = (baseName && BASES[sl].find((q) => q.n === baseName)) || pick(cabeL.length ? cabeL : BASES[sl]), R = RARITY[rarity], lv = 1 + ilvl * 0.09, stats: Partial<Record<StatKey, number>> = {};
   /* porcentagens (crítico, roubo de vida, velocidade, XP, ouro) dependem só da raridade, nunca do nível do item: senão viram 30% aos 45;
      regeneração e atributos crescem devagar; dano, defesa, vida e magia crescem com o nível */
   const LV = (k: StatKey) => PCT.has(k) ? 1 : k === 'regen' || ['str', 'dex', 'vit', 'int'].includes(k) ? 1 + ilvl * 0.03 : lv;
@@ -208,8 +216,8 @@ export const reqLvl = (g: Gear) => g.req ?? Math.max(1, g.ilvl - 3);
 /** quem está olhando a dica (nível e lado do herói) — o inventário mantém atualizado */
 export const tipCtx: { lvl: number; fac: string | null; can?: (o: Only) => boolean; why?: (g: Gear) => string | null | undefined | void } = { lvl: 1, fac: null };
 const FAC_TIP: Record<string, string> = { fio: 'A Ordem do Fio', desf: 'Os Desfiados' };
-export const gearTip = (g: Gear) => `${g.bound ? '<div class="rbind">🔒 Vinculado a este personagem</div>' : g.shop ? '<div class="rbind free">🛍 Do Shop · pode ir ao Leilão enquanto não for vestido</div>' : ''}<div class="rtag" style="color:${RARITY[g.rarity].col};border-color:${RARITY[g.rarity].col}66">${RARITY[g.rarity].name.toUpperCase()}</div><b style="color:${RARITY[g.rarity].col}">${g.name}</b><br><small>${g.base} · ${RSLOT[g.slot]}${g.slot === 'weapon' ? (TWO_HANDED.test(g.base) ? ' · <b class="hand2">Duas mãos</b>' : ' · <b class="hand1">Uma mão</b>') : ''} · item nível ${g.ilvl}</small><br><small class="${tipCtx.lvl < reqLvl(g) ? 'reqbad' : 'reqok'}">Nível de uso: ${reqLvl(g)}${tipCtx.lvl < reqLvl(g) ? ' — você ainda não pode usar' : ''}</small>${g.only ? `<br><small class="${tipCtx.can && !tipCtx.can(g.only) ? 'reqbad' : 'reqok'}">Só para ${ONLY_NAME[g.only]}${tipCtx.can && !tipCtx.can(g.only) ? ' — não é o seu caminho' : ''}</small>` : ''}${(() => { const w = tipCtx.why?.(g); return w ? `<br><small class="reqbad">⛔ ${w}</small>` : ''; })() /* 02/11 (Erling: "não avisa o porquê na peça"): o motivo de não poder vestir aparece no próprio item */}${g.fac ? `<br><small class="${tipCtx.fac !== g.fac ? 'reqbad' : 'reqok'}">Brasão: ${FAC_TIP[g.fac]}${tipCtx.fac !== g.fac ? ' — só veste quem jurou este lado' : ''}</small>` : ''}<br>${Object.entries(g.stats).map(([k, v]) => `<span class="${['str', 'dex', 'vit', 'int'].includes(k) ? 'at' : ''}">${STAT_FMT(k as StatKey, v as number)}</span>`).join('<br>')}${g.special ? `<br><i style="color:${RARITY[g.rarity].col}">✦ ${SPECIAL[g.special]}</i>` : ''}${g.lore ? `<br><small style="color:#b8a888;font-style:italic">“${g.lore}”</small>` : ''}<br><small>Vale 🪙 ${g.value}</small>`;
-export const RSLOT: Record<Slot, string> = { weapon: 'Arma', armor: 'Peitoral', shield: 'Escudo', helm: 'Elmo', boots: 'Botas', ring: 'Anel I', ring2: 'Anel II', amulet: 'Colar', relic: 'Relíquia', earring: 'Brinco I', earring2: 'Brinco II', shoulders: 'Ombreiras', cape: 'Capa' };
+export const gearTip = (g: Gear) => `${g.slot === 'belt' ? (() => { const z = BASES.belt.find((b) => b.n === g.base)?.belt ?? [6, 1]; return `<div class="rbind free">➰ ${z[0] * z[1]} espaços no acesso rápido${z[1] > 1 ? ` (${z[1]} andares de ${z[0]})` : ''} · até 20 unidades em cada</div>`; })() : ''}${g.bound ? '<div class="rbind">🔒 Vinculado a este personagem</div>' : g.shop ? '<div class="rbind free">🛍 Do Shop · pode ir ao Leilão enquanto não for vestido</div>' : ''}<div class="rtag" style="color:${RARITY[g.rarity].col};border-color:${RARITY[g.rarity].col}66">${RARITY[g.rarity].name.toUpperCase()}</div><b style="color:${RARITY[g.rarity].col}">${g.name}</b><br><small>${g.base} · ${RSLOT[g.slot]}${g.slot === 'weapon' ? (TWO_HANDED.test(g.base) ? ' · <b class="hand2">Duas mãos</b>' : ' · <b class="hand1">Uma mão</b>') : ''} · item nível ${g.ilvl}</small><br><small class="${tipCtx.lvl < reqLvl(g) ? 'reqbad' : 'reqok'}">Nível de uso: ${reqLvl(g)}${tipCtx.lvl < reqLvl(g) ? ' — você ainda não pode usar' : ''}</small>${g.only ? `<br><small class="${tipCtx.can && !tipCtx.can(g.only) ? 'reqbad' : 'reqok'}">Só para ${ONLY_NAME[g.only]}${tipCtx.can && !tipCtx.can(g.only) ? ' — não é o seu caminho' : ''}</small>` : ''}${(() => { const w = tipCtx.why?.(g); return w ? `<br><small class="reqbad">⛔ ${w}</small>` : ''; })() /* 02/11 (Erling: "não avisa o porquê na peça"): o motivo de não poder vestir aparece no próprio item */}${g.fac ? `<br><small class="${tipCtx.fac !== g.fac ? 'reqbad' : 'reqok'}">Brasão: ${FAC_TIP[g.fac]}${tipCtx.fac !== g.fac ? ' — só veste quem jurou este lado' : ''}</small>` : ''}<br>${Object.entries(g.stats).map(([k, v]) => `<span class="${['str', 'dex', 'vit', 'int'].includes(k) ? 'at' : ''}">${STAT_FMT(k as StatKey, v as number)}</span>`).join('<br>')}${g.special ? `<br><i style="color:${RARITY[g.rarity].col}">✦ ${SPECIAL[g.special]}</i>` : ''}${g.lore ? `<br><small style="color:#b8a888;font-style:italic">“${g.lore}”</small>` : ''}<br><small>Vale 🪙 ${g.value}</small>`;
+export const RSLOT: Record<Slot, string> = { belt: 'Cinto', weapon: 'Arma', armor: 'Peitoral', shield: 'Escudo', helm: 'Elmo', boots: 'Botas', ring: 'Anel I', ring2: 'Anel II', amulet: 'Colar', relic: 'Relíquia', earring: 'Brinco I', earring2: 'Brinco II', shoulders: 'Ombreiras', cape: 'Capa' };
 
 /* ---- ícones desenhados (em vez de emoji): traço na cor da raridade, um desenho por tipo de peça ---- */
 const P: Record<string, string> = {
@@ -241,6 +249,7 @@ const P: Record<string, string> = {
   earring: '<path d="M14 3c3 0 4 2 4 4s-2 3-2 5"/><path d="M16 12l5 8-5 9-5-9z" fill="currentColor" fill-opacity=".35"/><path d="M16 12l5 8-5 9-5-9z"/>',
   amulet: '<path d="M6 4c0 8 4 12 10 13 6-1 10-5 10-13" fill="none"/><path d="M16 17l5 5-5 7-5-7z" fill="currentColor" fill-opacity=".35"/><path d="M16 17l5 5-5 7-5-7z"/>',
   shoulders: '<path d="M3 16c0-6 4-9 9-9v8c-4 0-7 2-9 5z M29 16c0-6-4-9-9-9v8c4 0 7 2 9 5z" fill="currentColor" fill-opacity=".25"/><path d="M3 16c0-6 4-9 9-9v8c-4 0-7 2-9 5z M29 16c0-6-4-9-9-9v8c4 0 7 2 9 5z M12 11h8"/>',
+  belt: '<path d="M3 12h26v8H3z" fill="currentColor" fill-opacity=".22"/><path d="M3 12h26v8H3zM12 10h8v12h-8zM16 14v4M6 16h3M23 16h3"/>',
   cape: '<path d="M11 4h10l3 4 3 20-6-3-5 3-5-3-6 3 3-20z" fill="currentColor" fill-opacity=".22"/><path d="M11 4h10l3 4 3 20-6-3-5 3-5-3-6 3 3-20z"/><circle cx="16" cy="7" r="2" fill="currentColor"/>',
   chalice: '<path d="M8 4h16c0 8-3 12-8 12S8 12 8 4z" fill="currentColor" fill-opacity=".3"/><path d="M8 4h16c0 8-3 12-8 12S8 12 8 4z M16 16v8 M10 28h12 M12 24h8"/>',
   book: '<path d="M6 5h14l6 3v20H12l-6-3z" fill="currentColor" fill-opacity=".25"/><path d="M6 5h14l6 3v20H12l-6-3z M12 8v20 M16 14l4 4-4 4-4-4z"/>',
@@ -256,14 +265,14 @@ const P: Record<string, string> = {
 };
 const KEY_BY_BASE: [RegExp, string][] = [[/Lança-Chamas|Lança-Veneno/, 'flamer'], [/Espada de Duelo/, 'rapier'], [/Porrete|Maça de Osso/, 'hammer'], [/Alabarda/, 'axe'], [/Adaga|Faca/, 'dagger'], [/Montante|Espadão|Flamberge/, 'greatsword'], [/Espada|Lâmina|Cimitarra|Sabre|Katana|Facão/, 'sword'], [/Machado/, 'axe'], [/Martelo|Maça/, 'hammer'], [/Lança/, 'spear'], [/Rifle|Canhão|Pistola|Escopeta/, 'rifle'], [/Cajado|Bastão/, 'staff'], [/Besta/, 'crossbow'], [/Arco/, 'bow'], [/Metralhadora/, 'gun'], [/Garra/, 'claw'],
   [/Torre|Pavês/, 'tower'], [/Ogival|Pipa/, 'heater'], [/Capuz/, 'hood'], [/Alado/, 'winghelm'], [/Cota/, 'mail'], [/Placas|Exoesqueleto/, 'plate'], [/Túnica|Manto Sacro|Batina/, 'tunic'], [/Cálice/, 'chalice'], [/Grimório|Livro/, 'book'], [/Olho/, 'eye'], [/Coração/, 'heart'], [/Pena/, 'feather'], [/Brasa/, 'ember'], [/Engrenagem/, 'gear'], [/Crânio|Caveira/, 'skull'], [/Cruz|Relicário|Sudário/, 'cross'], [/Presa|Dente/, 'fang']];
-const KEY_BY_SLOT: Record<Slot, string> = { weapon: 'sword', armor: 'chest', shield: 'shield', helm: 'helm', boots: 'boots', ring: 'ring', ring2: 'ring', amulet: 'amulet', relic: 'chalice', earring: 'earring', earring2: 'earring', shoulders: 'shoulders', cape: 'cape' };
+const KEY_BY_SLOT: Record<Slot, string> = { weapon: 'sword', armor: 'chest', shield: 'shield', helm: 'helm', boots: 'boots', ring: 'ring', ring2: 'ring', amulet: 'amulet', relic: 'chalice', earring: 'earring', earring2: 'earring', belt: 'belt', shoulders: 'shoulders', cape: 'cape' };
 const svgOf = (k: string, col = 'currentColor') => `<svg class="gico" viewBox="0 0 32 32" fill="none" stroke="${col}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:${col}">${P[k] ?? P.sword}</svg>`;
 /** ícone desenhado de uma peça (ou de um espaço vazio) */
 /** brasões das facções (preenchido por faccoes.ts): peças com brasão mostram o brasão como ícone */
 export const FAC_ICON: Record<string, string> = {};
 /* 07/11 (Erling: "os equipamentos precisam ser representados como os itens — menores dentro do quadrado, bonitos e elegantes"):
    na mochila e nas bolsas a peça usa um desenho colorido do mesmo estilo dos itens; a raridade fica na moldura fina e numa pedrinha */
-const EMO: Record<string, string> = { flamer: '🔥', rapier: '🤺', hammer: '🔨', axe: '🪓', dagger: '🔪', greatsword: '⚔️', sword: '🗡️', spear: '🔱', rifle: '🔫', staff: '🪄', crossbow: '🏹', bow: '🏹', gun: '🔫', claw: '🐾',
+const EMO: Record<string, string> = { belt: '➰', flamer: '🔥', rapier: '🤺', hammer: '🔨', axe: '🪓', dagger: '🔪', greatsword: '⚔️', sword: '🗡️', spear: '🔱', rifle: '🔫', staff: '🪄', crossbow: '🏹', bow: '🏹', gun: '🔫', claw: '🐾',
   tower: '🛡️', heater: '🛡️', shield: '🛡️', hood: '🧕', winghelm: '⛑️', helm: '⛑️', mail: '🥋', plate: '🦺', tunic: '👘', chest: '🦺', chalice: '🏆', book: '📕', eye: '🧿', heart: '❤️‍🔥', feather: '🪶', ember: '☄️', gear: '⚙️', skull: '💀', cross: '✝️', fang: '🦷',
   boots: '🥾', ring: '💍', amulet: '📿', earring: '💎', shoulders: '🪖', cape: '🧣' };
 export function gearEmoji(g: Gear): string { if (g.fac && FAC_ICON[g.fac]) return `<img class="gico fac" src="${FAC_ICON[g.fac]}" alt="" draggable="false">`;
@@ -277,3 +286,6 @@ export function gearIcon(g: Gear | null, slot?: Slot): string {
   const k = g.slot === 'relic' || g.slot === 'weapon' || g.slot === 'helm' || g.slot === 'armor' || g.slot === 'shield' ? byBase ?? KEY_BY_SLOT[g.slot] : KEY_BY_SLOT[g.slot];
   return svgOf(k, RARITY[g.rarity].col);
 }
+
+/** 16/11: o tamanho do acesso rápido que um cinto dá: [espaços por andar, andares]; null se a peça não é cinto */
+export const beltSize = (g: Gear | null | undefined): [number, number] | null => g?.slot === 'belt' ? BASES.belt.find((b) => b.n === g.base)?.belt ?? [6, 1] : null;
