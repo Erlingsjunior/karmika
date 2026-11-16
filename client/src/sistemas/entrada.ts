@@ -10,6 +10,8 @@ import { type SkillDef, skillAt, setBarRows, barRows, layout, posKey } from '../
 import { heightAt } from '../world';
 import type { EntradaCtx } from '../main';
 
+/** quanto fôlego custa um dash (era 15 até 16/11) */
+const DASH_STAM = 15 / 1.4;
 export function createEntrada(K: EntradaCtx) {
 /* 06/11: runas que fazem sumir e reaparecer atrás do alvo — só em chão livre; se o lugar estiver ocupado, aproxima até achar */
 K.game.setTeleport((x, z) => { const hx = K.hero.root.position.x, hz = K.hero.root.position.z; let tx = x, tz = z, k = 0; for (; k < 10 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; } if (!K.free(tx / T, tz / T)) return false;
@@ -134,8 +136,9 @@ const DIRK: Record<string, [number, number]> = { w: [0, -1], arrowup: [0, -1], s
 const worldDir = (ix: number, iy: number): [number, number] => { const x = ix * Math.cos(K.az) - iy * -Math.sin(K.az), y = -ix * Math.sin(K.az) - iy * -Math.cos(K.az); const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
 function startDash(gx: number, gy: number) {
   if (K.game.menuOpen || K.dlg.isOpen || K.dashCd > 0 || K.game.st.dead) return;
-  if (K.game.st.stam < 15 && !K.game.st.god) { K.game.logMsg('Sem fôlego para o dash.', '#ffd24a'); return; }
-  if (!K.game.st.god && !K.game.st.sp.has('u_sleipnir')) K.game.st.stam -= 15;
+  /* 16/11 (Erling: "usamos dash bastante para desviar ou sair de foco, então a stamina precisa durar uns 40% a mais"): o dash custava 15 e a corrida 9 por segundo; agora 10,7 e 6,4 */
+  if (K.game.st.stam < DASH_STAM && !K.game.st.god) { K.game.logMsg('Sem fôlego para o dash.', '#ffd24a'); return; }
+  if (!K.game.st.god && !K.game.st.sp.has('u_sleipnir')) K.game.st.stam -= DASH_STAM;
   if (K.game.st.sp.has('u_sleipnir') || K.game.st.sp.has('r_pena')) { const hp0 = K.hero.root.position, wing = K.game.st.sp.has('r_pena'); for (let i = 0; i < 30; i++) { const s2 = i % 2 ? 1 : -1, k = (i >> 1) / 15; K.particles.spawn(hp0.x - gx * k * 1.5 + gy * s2 * (wing ? 0.4 + k * 1.2 : 0.2), 1.2 + (wing ? Math.sin(k * Math.PI) * 0.8 : -0.9), hp0.z - gy * k * 1.5 - gx * s2 * (wing ? 0.4 + k * 1.2 : 0.2), { vy: 0.3, life: 0.6, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: wing ? 0xfff0d0 : 0xcfe0ff, a: 0.9 }); } }
   if (K.compSys.riding && K.compSys.mount) { /* montado: salto, não esquiva */ pulo.t = PULO_DUR; K.dashT = PULO_DUR; K.dashCd = 1.1; K.audio.dash(); K.dx0 = gx; K.dy0 = gy; return; }
   K.dashT = 0.2; K.dashCd = 0.7; K.audio.dash(); K.hero.act('dash'); K.game.ambush(); K.dx0 = gx; K.dy0 = gy;

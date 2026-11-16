@@ -2986,7 +2986,7 @@ function frameBody() {
   game.st.stamMax = Math.round(((profile ? STAM_BASE[profile.origin] ?? 100 : 100) * (state.race === 'technocrat' ? 0.7 : state.race === 'nordic' ? 1.3 : 1) + (game.st.attrs?.vit ?? 0) * 4) * (1 + ((game.st as { feastStam?: number }).feastStam ?? 0))); /* + a mesa dos anões */
   if (entradaSys.outOfBreath && game.st.stam >= game.st.stamMax * 0.25) entradaSys.outOfBreath = false;
   const wantRun = runningNow() && (ix || iy || state.path.length > 0);
-  if (wantRun && game.st.stam > 0 && !game.st.god) game.st.stam = Math.max(0, game.st.stam - dt * 9);
+  if (wantRun && game.st.stam > 0 && !game.st.god) game.st.stam = Math.max(0, game.st.stam - dt * 9 / 1.4); /* 16/11: o fôlego dura 40% a mais */
   if (game.st.stam <= 0.5 && wantRun && !game.st.god) { entradaSys.outOfBreath = true; if (!stamWarnT) { stamWarnT = 2; game.logMsg('😮‍💨 Sem fôlego — andando até recuperar.', '#ffd24a'); } }
   if (stamWarnT > 0) stamWarnT -= dt;
   const run = runningNow() && (game.st.stam > 0.5 || game.st.god) ? 1.5 : 1;

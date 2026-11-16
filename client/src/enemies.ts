@@ -892,7 +892,10 @@ export function createEnemies(ctx: EnemyCtx) {
       e.pos.y = ctx.heightAt(e.pos.x, e.pos.z);
       if (e.root) {
         e.root.position.copy(e.pos); if (D.fly) e.root.position.y += D.fly; e.root.rotation.y = e.yaw;
-        if (D.ambush) e.root.visible = !(e as Enemy & { hid?: boolean }).hid || e.state === 'dead';
+        /* 16/11 (Erling: "estou sendo atacado por um bicho que não consigo ver"): o bicho de emboscada (Afogador, Serpente do Brejo, Escorpião, Sereia)
+           só saía do esconderijo pelo estado 'parado'. Se ele começava a brigar por outro caminho (outro jogador o acordou e passou a conduzi-lo,
+           ou levou um golpe ainda escondido), continuava invisível enquanto batia. Agora só fica escondido quem está parado; brigando, aparece. */
+        if (D.ambush) { const q = e as Enemy & { hid?: boolean }; if (q.hid && e.state !== 'idle') { q.hid = false; if (e.state !== 'dead') ctx.spellFx?.(e.pos.x, e.pos.z, D.ambush === 'water' ? 0x6ab8d0 : 0xd8b070, 2.2); } e.root.visible = !q.hid || e.state === 'dead'; }
         else if (D.stealth) e.root.visible = dHero < D.stealth + (e.root.visible ? 1.5 : 0) /* 09/11: folga para não piscar na borda do alcance */ || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt' || e.state === 'dead' || e.flash > 0;
         { const near = charShadow.on && dHero < 14; if (e.root.userData.sh !== near) { e.root.userData.sh = near; e.root.traverse((o) => { const m = o as THREE.Mesh; if (m.isMesh && !(m as unknown as { isSprite?: boolean }).isSprite) m.castShadow = near; }); } }
         if (e.state === 'dead') { const k = Math.min(1, e.t / 0.55); e.root.rotation.x = -k * 1.45; e.root.position.y = e.pos.y - 0.12 * k; const lim = ((e as Enemy & { corpse?: number }).corpse ?? 4) - 1; if (e.t > lim) e.root.scale.setScalar(e.def.scale * Math.max(0, 1 - (e.t - lim))); }
