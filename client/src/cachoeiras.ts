@@ -9,8 +9,11 @@ export function createFalls(o: { scene: THREE.Scene; map: string[][]; T: number;
   const cands: { s: number; bx: number; by: number; tx: number; ty: number; h: number }[] = [];
   for (let y = 10; y < H - 10; y += 2) for (let x = 10; x < W - 10; x += 2) { if (map[y][x] !== 'water' || o.height((x + 0.5) * T, (y + 0.5) * T) > WL - 0.4) continue; /* só água que se vê (lago e rio de verdade, longe da borda do mapa) */
     for (let a = 0; a < 8; a++) { const dx = Math.round(Math.cos(a / 8 * 6.283)), dy = Math.round(Math.sin(a / 8 * 6.283));
+      /* 16/11 (Erling: "cachoeira que cai para o lado de trás da montanha"): a câmera olha de sudeste. A queda só vale se o paredão fica para o norte ou
+         para o oeste da água (a cortina cai virada para a câmera); paredão ao sul ou ao leste esconderia a água atrás do morro */
+      if (dx + dy > 0 || (dx > 0 || dy > 0)) continue;
       for (let d = 2; d <= 3; d++) { const lx = x + dx * d, ly = y + dy * d, t = map[ly]?.[lx]; if (!t || t === 'water' || t === 'wall') continue; const h = o.height((lx + 0.5) * T, (ly + 0.5) * T) - WL;
-        if (h > 4 && h < 20 && o.height((x + dx * (d - 1) + 0.5) * T, (y + dy * (d - 1) + 0.5) * T) < WL + 1.5) cands.push({ s: h - d * 0.8, bx: x + dx * (d - 1.5), by: y + dy * (d - 1.5), tx: lx, ty: ly, h }); break; } } }
+        if (h > 4 && h < 20 && o.height((x + dx * (d - 1) + 0.5) * T, (y + dy * (d - 1) + 0.5) * T) < WL + 1.5) cands.push({ s: h - d * 0.8 + (dx < 0 && dy < 0 ? 2 : 0) /* de frente para a câmera vale mais */, bx: x + dx * (d - 1.5), by: y + dy * (d - 1.5), tx: lx, ty: ly, h }); break; } } }
   cands.sort((a, b) => b.s - a.s);
   const picked: typeof cands = []; for (const c of cands) { if (picked.length >= 12) break; if (picked.some((p) => Math.hypot(p.bx - c.bx, p.by - c.by) < 70)) continue; picked.push(c); }
   /* a textura do véu: listras verticais que correm para baixo (o offset anda a cada quadro) */

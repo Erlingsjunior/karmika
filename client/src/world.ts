@@ -3062,6 +3062,26 @@ export function buildCity(): World {
         pois.push({ name: 'Salão das Guildas de Karmika', x: PX + PW + 0.5, y: PY + 6, biome: 'meadow' });
         kar.npcs.push({ name: 'Guarda Olavo', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 4.6, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.05, lines: ['Salão das Guildas de Karmika. Mestres de ofício lá dentro, e um bar que não fecha.', 'Arma na bainha dentro do pátio. É a regra da casa.'] });
         kar.npcs.push({ name: 'Guarda Mirela', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 7.4, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.0, lines: ['Guilda nova procura os mestres aqui. Guilda velha vem beber e contar vantagem.', 'O estandarte no portão diz de quem é a casa.'] }); } } }
+  /* 16/11 NADA ESCONDIDO (regra principal do Erling: "nada pode ficar escondido onde não dá para ver"; casos apontados: "o farol de Corvoscuro
+     está escondido atrás da Casa do Conde: levar para a ponta da costa"). A câmera olha de sudeste, 30° acima do chão: uma coisa some quando há
+     algo alto entre ela e a câmera, na diagonal sudeste. Aqui, com o mundo pronto e sem sortear nada, cada farol e cada pedra de runa é conferido:
+     se uma construção alta (9 m ou mais) ou um morro tapa mais da metade dele, ele muda para o lugar bom mais perto que se vê inteiro.
+     Só mexe em quem estava tapado; os terrenos de guilda e todo o resto ficam onde estavam. */
+  { const TAN = Math.tan(30 * Math.PI / 180), hT = (x: number, y: number) => heightAt((x + 0.5) * T, (y + 0.5) * T), CH = (x: number, y: number) => y * 8192 + x;
+    const topo = new Map<number, number>(); for (const q of props) { const h = q.height ?? 0; if (h < 9 || q.kind === 'tree' || q.kind === 'relic') continue; for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) { const t = hT(x, y) + h; if (t > (topo.get(CH(x, y)) ?? -1e9)) topo.set(CH(x, y), t); } }
+    const tapado = (x: number, y: number, alt: number) => { const olho = hT(x, y) + alt * 0.6; for (let k = 1; k <= 70; k++) { const xx = x + k, yy = y + k, lim = olho + k * Math.SQRT2 * T * TAN; const o = topo.get(CH(xx, yy)); if (o !== undefined && o > lim + 1) return true; if (hT(xx, yy) > lim + 2) return true; } return false; };
+    const noLote = (x: number, y: number) => guildLots.some((g) => x >= g.x0 - 3 && x <= g.x0 + 13 && y >= g.y0 - 3 && y <= g.y0 + 13);
+    /* faróis: a mesma conta de antes (a ponta de terra com mais mar em volta, perto do cais), agora só entre os lugares que se veem */
+    for (const l of lights) { if (l.old || l.islet || !tapado(l.x, l.y, 22)) continue; const d = docks.find((q) => q.name === l.port); if (!d) continue; let best = -1e9, bx = -1, by = -1;
+      for (let y = d.y - 34; y <= d.y + 34; y++) for (let x = d.x - 34; x <= d.x + 34; x++) { if (!landAt(x, y) || map[y][x] === 'road' || hT(x, y) < WL + 0.9 || noLote(x, y)) continue; let wn = 0, n = 0; for (let yy = -4; yy <= 4; yy += 2) for (let xx = -4; xx <= 4; xx += 2) { n++; if (map[y + yy]?.[x + xx] === 'water') wn++; }
+        if (wn / n > 0.62 || wn === 0) continue; let perto = false; for (let yy = -2; yy <= 2 && !perto; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { perto = true; break; } if (perto) continue;
+        const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004; if (sc <= best || tapado(x, y, 22)) continue; best = sc; bx = x; by = y; }
+      if (bx >= 0) { const lp = lightPois.find((q) => q.name === l.name); l.x = bx; l.y = by; if (lp) { lp.x = bx; lp.y = by; } } }
+    /* pedras de runa: vão para o capim livre mais perto de onde estavam, à vista */
+    for (const r of relics) { if (!tapado(r.x, r.y, 2.6)) continue; const pr = props.find((q) => q.kind === 'relic' && q.gx === r.x && q.gy === r.y); if (!pr) continue; let achou = false;
+      for (let R = 2; R <= 16 && !achou; R++) for (let dy = -R; dy <= R && !achou; dy++) for (let dx = -R; dx <= R && !achou; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== R) continue; const x = r.x + dx, y = r.y + dy; if (map[y]?.[x] !== 'grass' || noLote(x, y) || hT(x, y) < WL + 0.6) continue;
+        let livre = true; for (let yy = -1; yy <= 1 && livre; yy++) for (let xx = -1; xx <= 1; xx++) { const t = map[y + yy]?.[x + xx]; if (t !== 'grass' && t !== 'road' && t !== 'plaza') { livre = false; break; } } if (!livre || tapado(x, y, 2.6)) continue;
+        map[r.y][r.x] = 'grass'; map[y][x] = 'wall'; pr.gx = x; pr.gy = y; r.x = x; r.y = y; achou = true; } } }
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
     dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), guildLots, craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
     pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: [...w.signs.map(sxy), ...lotSigns],
