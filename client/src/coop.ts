@@ -1,4 +1,6 @@
 /* Painel "Jogar junto": abrir a sala nesta máquina (só no app instalado) ou entrar com um convite. */
+import { classeMoldura } from './titulos';
+import { retratoHtml } from './sistemas/titulos-ui';
 import { inviteOf, NET_PORT, passFor, savePass, type Net, type NetProfile } from './net';
 
 interface HostInfo { port: number; code: string; publicIp: string | null; upnp: { ok: boolean; external?: string | null; why?: string }; cgnat: boolean | null; lan: { ip: string; name: string; kind: 'lan' | 'tailscale' | 'radmin' }[]; players: unknown[] }
@@ -7,9 +9,10 @@ const desk = (window as unknown as { karmikaDesktop?: Desktop }).karmikaDesktop 
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
-export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myHp(): number; friend?(name: string): void; guildInvite?(name: string): void; inGuild?(): boolean; mailTo?(name: string): void; duel?(id: number): void; toMenu?(): void; pvpToggle?(): void; pvpOn?(): boolean }) {
+export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myHp(): number; friend?(name: string): void; guildInvite?(name: string): void; inGuild?(): boolean; mailTo?(name: string): void; duel?(id: number): void; toMenu?(): void; pvpToggle?(): void; pvpOn?(): boolean; /** 16/11: o meu rosto, a minha moldura e o meu título, para o quadro do grupo */ eu?(): { retrato: string | null; mold: string; titulo: string } }) {
   const el = document.createElement('div'); el.id = 'coop'; el.className = 'modalw'; document.body.appendChild(el);
   let open = false, hosting: HostInfo | null = null, busy = false, gpu = '', hostErr = '';
+  const faces = new Map<number, string>(), pedidos = new Set<number>();
   const LS = 'karmika.coop.last';
   let lastInv = ''; try { lastInv = localStorage.getItem(LS) || ''; } catch { /* */ }
   if (desk) desk.gpu().then((g) => { if (g) { gpu = g.renderer || [g.vendor, g.device].filter(Boolean).join(' '); if (open) render(); } }).catch(() => { /* */ });
@@ -139,7 +142,11 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
     const P = net.state === 'on' ? net.party : null; if (!P) { pf.style.display = 'none'; return; }
     pf.style.display = 'block';
     pf.innerHTML = `<div class="pf-h" title="Arraste para mover · duplo clique volta ao lugar">⠿ Grupo · ${P.members.length}/6</div>` + P.members.map((id) => { const me = id === net.myId, inf = me ? null : net.infoOf(id); const hp = me ? hooks.myHp() : inf?.hp ?? 100;
-      return `<div class="pf-m ${me ? 'me' : ''}" data-pid="${id}"><b>${P.leader === id ? '👑 ' : ''}${esc(net.nameOf(id))}</b><small>${me ? 'você' : `Nv ${inf?.lvl ?? '?'}`}</small><i><u style="width:${Math.max(0, Math.min(100, hp))}%"></u></i></div>`; }).join('') + `<button class="pf-x" data-a="pleave">Sair do grupo</button>`;
+      /* 16/11 (Erling: "moldura no rosto do jogador, para ver quando está em grupo"): rosto com a moldura e o título de cada um. O rosto dos outros
+         vem do perfil deles, pedido uma vez por pessoa. */
+      const eu = me ? hooks.eu?.() : null, face = me ? eu?.retrato ?? null : faces.get(id) ?? null, mold = me ? eu?.mold : inf?.mold, tit = me ? eu?.titulo : inf?.title;
+      if (!me && !faces.has(id) && !pedidos.has(id)) { pedidos.add(id); net.askProfile(id); }
+      return `<div class="pf-m ${me ? 'me' : ''}" data-pid="${id}">${retratoHtml(face, mold, 'pf-face')}<b>${P.leader === id ? '👑 ' : ''}${esc(net.nameOf(id))}</b><small>${me ? 'você' : `Nv ${inf?.lvl ?? '?'}`}</small>${tit ? `<em>${esc(tit)}</em>` : ''}<i><u style="width:${Math.max(0, Math.min(100, hp))}%"></u></i></div>`; }).join('') + `<button class="pf-x" data-a="pleave">Sair do grupo</button>`;
   }
   pf.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-a="pleave"]')) { net.leaveParty(); return; } const m = t.closest('[data-pid]') as HTMLElement | null; if (m && +m.dataset.pid! !== net.myId) { const r = m.getBoundingClientRect(); playerMenu(+m.dataset.pid!, r.right, r.top); } });
   setInterval(() => { if (net.party) drawParty(); }, 1000);
@@ -158,12 +165,13 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
   const pw = document.createElement('div'); pw.id = 'profw'; pw.className = 'modalw'; document.body.appendChild(pw);
   let profFor = 0;
   function showProfile(id: number, p: NetProfile | null) {
+    if (p?.portrait) faces.set(id, p.portrait); /* 16/11: o quadro do grupo guarda o rosto */
     if (p && id !== profFor) return; profFor = id; pw.style.display = 'flex';
     if (!p) { pw.innerHTML = `<div class="pn prof"><h2>Perfil <button data-x>✕</button></h2><p class="cp-mut">Pedindo o perfil de ${esc(net.nameOf(id))}…</p></div>`; return; }
     const SL: Record<string, string> = { weapon: 'Arma', shield: 'Escudo', helm: 'Elmo', armor: 'Armadura', cape: 'Capa', shoulders: 'Ombreiras', gloves: 'Luvas', boots: 'Botas', belt: 'Cinto', ring: 'Anel', ring2: 'Anel', amulet: 'Amuleto', legs: 'Calças' };
     const k = Math.max(-100, Math.min(100, p.karma));
     pw.innerHTML = `<div class="pn prof" style="width:640px"><h2>${esc(p.name)} <button data-x>✕</button></h2>
-      <div class="pr-top"><div class="pr-pic">${p.portrait ? `<img src="${p.portrait}" alt="">` : '<span>sem retrato</span>'}</div>
+      <div class="pr-top"><div class="pr-pic ${classeMoldura(p.mold)}">${p.portrait ? `<img src="${p.portrait}" alt="">` : '<span>sem retrato</span>'}</div>
         <div class="pr-info"><div class="pr-lv">Nível ${p.lvl} · ${esc(p.cls)}</div>${p.title ? `<div class="pr-ti">${esc(p.title)}</div>` : ''}
           <div class="pr-al"><small>Alinhamento</small><b>${esc(p.align)}</b><div class="pr-kb"><i style="left:${Math.max(0, Math.min(100, (k + 1000) / 20))}%"></i></div><span>Karma ${k > 0 ? '+' : ''}${k}</span></div>
           ${p.fac ? `<div class="pr-fac">Jurado: <b>${esc(p.fac)}</b></div>` : '<div class="pr-fac cp-mut">Ainda não jurou nenhum lado</div>'}

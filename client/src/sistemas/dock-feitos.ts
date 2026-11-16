@@ -7,6 +7,8 @@ import { floatWin, movable, MV_GRIP } from '../windows';
 import { renderTalents } from './talentos-ui';
 import { runeSlots } from './runas-ui';
 import { renderPassives, renderCompendium, runeTextFor } from './passivas-ui';
+import { tituloDoFeito } from '../titulos';
+import { htmlTitulos, cliqueTitulos } from './titulos-ui';
 import type { DockFeitosCtx } from '../main';
 
 export function createDockFeitos(K: DockFeitosCtx) {
@@ -20,7 +22,7 @@ const skillsEl = document.createElement('div'); skillsEl.id = 'skillsw'; skillsE
 const featsEl = document.createElement('div'); featsEl.id = 'featsw'; featsEl.className = 'modalw'; document.body.appendChild(featsEl);
 /* Inscrições de Marghar (conquistas): aviso dourado no alto da tela quando uma se grava */
 const featToast = (f: Feat) => { const d = document.createElement('div'); d.className = 'feattoast'; d.innerHTML = `<i>${CATS[f.cat].icon}</i><div><small>Inscrição de Marghar</small><b>${f.name}</b><span>${f.desc}</span></div>`; document.body.appendChild(d); requestAnimationFrame(() => d.classList.add('on')); setTimeout(() => d.classList.remove('on'), 5200); setTimeout(() => d.remove(), 6200); try { K.audio.chime(); } catch { /* */ } };
-const feats = createFeats({ xp: (f) => K.game.gainXp(Math.max(5, Math.round(K.game.xpNeed() * f))), gold: (n) => { K.game.st.gold += n; }, toast: (f) => { featToast(f); K.game.logMsg(`🏅 Inscrição de Marghar: ${f.name}`, '#ffe08a'); } });
+const feats = createFeats({ xp: (f) => K.game.gainXp(Math.max(5, Math.round(K.game.xpNeed() * f))), gold: (n) => { K.game.st.gold += n; }, toast: (f) => { featToast(f); K.game.logMsg(`🏅 Inscrição de Marghar: ${f.name}`, '#ffe08a'); /* 16/11: a Inscrição pode trazer um título */ setTimeout(() => tituloDoFeito(f.id), 0); } });
 (window as unknown as { __feats: unknown }).__feats = feats;
 floatWin(skillsEl, 'skills', { left: '22vw', top: '5vh' }); floatWin(featsEl, 'feats', { left: '30vw', top: '8vh' });
 setTimeout(() => { const ql = document.getElementById('qlog'); if (ql) floatWin(ql, 'qlog', { left: '34vw', top: '9vh' }); }, 0);
@@ -45,14 +47,18 @@ function renderSkills() {
   skillsEl.style.display = 'flex';
 }
 let featTab: keyof typeof CATS | null = null;
+/* 16/11: a janela tem duas páginas, Inscrições e Títulos (com as molduras do retrato) */
+let featPag: 'ins' | 'tit' = 'ins';
+const pagTabs = () => `<div class="ktabs ftpag"><button data-fpag="ins" class="${featPag === 'ins' ? 'on' : ''}">🏅 Inscrições</button><button data-fpag="tit" class="${featPag === 'tit' ? 'on' : ''}">👑 Títulos e molduras</button></div>`;
 function renderFeats() {
+  if (featPag === 'tit') { const rol = featsEl.querySelector('.tt-rol')?.scrollTop ?? 0; featsEl.innerHTML = `<div class="pn ftpn2"><h2>👑 Títulos e molduras <button data-x>✕</button></h2>${pagTabs()}${htmlTitulos(K.profile?.name || 'Caminhante', K.retrato())}<small class="ft">Esc fecha</small></div>`; featsEl.style.display = 'flex'; const r2 = featsEl.querySelector('.tt-rol'); if (r2) r2.scrollTop = rol; return; }
   const done = K.quests.q.done.length, titles = K.quests.title ? [K.quests.title] : [];
   const cats = Object.keys(CATS) as (keyof typeof CATS)[]; if (!featTab) featTab = cats[0];
   const tot = feats.doneCount(), all = FEATS.length, pct = Math.round(tot / all * 100);
   const stat = (v: string | number, l: string) => `<div class="fs"><b>${v}</b><small>${l}</small></div>`;
   const cnt = (c: keyof typeof CATS) => [FEATS.filter((f) => f.cat === c && feats.isDone(f.id)).length, FEATS.filter((f) => f.cat === c).length];
   const list = FEATS.filter((f) => f.cat === featTab).map((f) => ({ f, ok: feats.isDone(f.id), v: Math.min(f.goal, feats.count(f.key)) })).sort((x, y) => Number(y.ok) - Number(x.ok) || y.v / y.f.goal - x.v / x.f.goal);
-  featsEl.innerHTML = `<div class="pn ftpn2"><h2>🏅 Inscrições de Marghar <button data-x>✕</button></h2>
+  featsEl.innerHTML = `<div class="pn ftpn2"><h2>🏅 Inscrições de Marghar <button data-x>✕</button></h2>${pagTabs()}
     <div class="ft-top"><div class="ft-ring" style="--p:${pct}"><div><b>${tot}</b><small>de ${all}</small></div></div>
       <div class="ft-side"><p class="ftlore">Em cada relíquia há linhas de runas que mudam sozinhas: os feitos de quem passou por ali. Não pesam na balança — são memória. E atravessam a Ampulheta: quem desencarna perde o nome e o ouro, mas não as Inscrições.</p>
         <div class="ft-stats">${stat(K.game.st.lvl, 'nível')}${stat(K.game.st.kills, 'abates')}${stat(done, 'missões')}${stat(`${K.relicsKnown.size}/${K.city.relics.length}`, 'relíquias')}${stat(K.build.built.length, 'construções')}${stat(Math.round(K.state.karma), 'karma')}${stat(titles.length ? titles.join(', ') : '—', 'título')}${stat(K.profile?.eye ? 'aberto' : 'dormindo', 'Olho')}</div></div></div>
@@ -63,10 +69,11 @@ function renderFeats() {
     <small class="ft">Esc fecha</small></div>`;
   featsEl.style.display = 'flex';
 }
-featsEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('[data-ft]') as HTMLElement | null; if (b) { featTab = b.dataset.ft as keyof typeof CATS; renderFeats(); } });
+featsEl.addEventListener('click', (e) => { const pg = (e.target as HTMLElement).closest('[data-fpag]') as HTMLElement | null; if (pg) { featPag = pg.dataset.fpag as 'ins' | 'tit'; renderFeats(); return; } if (featPag === 'tit') { if (cliqueTitulos(e.target as HTMLElement)) renderFeats(); return; }
+  const b = (e.target as HTMLElement).closest('[data-ft]') as HTMLElement | null; if (b) { featTab = b.dataset.ft as keyof typeof CATS; renderFeats(); } });
 function toggleSkills(on?: boolean) { skillsOpen = on ?? !skillsOpen; if (skillsOpen) renderSkills(); else skillsEl.style.display = 'none'; }
 function toggleFeats(on?: boolean) { featsOpen = on ?? !featsOpen; if (featsOpen) renderFeats(); else featsEl.style.display = 'none'; }
 for (const [el, fn] of [[skillsEl, toggleSkills], [featsEl, toggleFeats]] as [HTMLElement, (on?: boolean) => void][]) el.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]') || t === el) fn(false); });
 dockEl.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button') as HTMLElement | null; if (!b) return; K.keys.clear(); const d = b.dataset.d; if (d === 'inv') K.inv.toggle(); else if (d === 'char') K.inv.toggleChar(); else if (d === 'skills') toggleSkills(); else if (d === 'quests') K.quests.toggleLog(); else if (d === 'feats') toggleFeats(); else if (d === 'map') K.toggleBigMap(); else if (d === 'prof') K.profs.toggle(); else if (d === 'loja') K.loja.toggle(); else if (d === 'karma') K.compendium.toggle(); else if (d === 'coop') K.coop.toggle(); else if (d === 'stable') K.stable.toggle(); else if (d === 'social') K.social.toggle(); else if (d === 'opts') { K.game.toggleMenu(true); (document.querySelector('#menu [data-p="p-opt"]') as HTMLElement | null)?.click(); } });
-  return { feats, dockEl, get skillsOpen() { return skillsOpen; }, get featsOpen() { return featsOpen; }, toggleSkills, toggleFeats };
+  return { feats, dockEl, get skillsOpen() { return skillsOpen; }, get featsOpen() { return featsOpen; }, toggleSkills, toggleFeats, /** abre a janela direto na página de títulos */ abreTitulos() { featPag = 'tit'; toggleFeats(true); }, redesenha() { if (featsOpen) renderFeats(); } };
 }

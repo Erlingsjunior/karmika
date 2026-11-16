@@ -1,4 +1,5 @@
 /* JURAMENTOS DE ROLEPLAY e a ALMA PELAS PALAVRAS: oferecer e quebrar o voto, a vigília da Morte que Anda, o título do voto mantido, as marcas e as respostas que pesam. Saiu do main.ts (02/11). */
+import { ganhaTitulo } from '../titulos';
 import { VOWS, VOW_FOR } from '../dados/votos';
 import { eyeSees } from '../surrender';
 import { type Reply } from '../dialog';
@@ -9,7 +10,7 @@ export function createVotosAlma(K: VotosAlmaCtx) {
    Manter: Bênção do Voto (+5% de XP) e, depois de 3 horas de jogo fiel, o título. Quebrar: perde a bênção, −6 de karma,
    o nome fica manchado e os NPCs comentam. Não é obrigatório: é roleplay com peso. ---------- */
 function vowKept() { return !!K.vow && !K.vow.broken; }
-function breakVow(id: string) { if (!K.vow || K.vow.broken || K.vow.id !== id) return; K.vow.broken = true; K.saveVow(); K.addKarma(-(6)); (K.soul.s.marks ??= []).push('voto_quebrado'); K.soul.s.sombra = (K.soul.s.sombra ?? 0) + 3; K.soul.save(); K.game.st.xpMul = Math.max(1, K.game.st.xpMul - 0.05);
+function breakVow(id: string) { if (!K.vow || K.vow.broken || K.vow.id !== id) return; K.vow.broken = true; /* 16/11: quebrar o juramento é marca do Olho */ ganhaTitulo('perjuro'); K.saveVow(); K.addKarma(-(6)); (K.soul.s.marks ??= []).push('voto_quebrado'); K.soul.s.sombra = (K.soul.s.sombra ?? 0) + 3; K.soul.save(); K.game.st.xpMul = Math.max(1, K.game.st.xpMul - 0.05);
   K.game.logMsg(`⛓ Você quebrou o ${VOWS[id].name}. ${VOWS[id].why} A bênção se apaga, e o seu nome fica manchado.`, '#ff8a7a'); setTimeout(() => eyeSees('O Olho guardou.', `Quebrou o voto: “${VOWS[id].text}”`, `${VOWS[id].why} Ninguém obrigou você a jurar. Por isso pesa.`, -6), 500); }
 function offerVow(path: string) {
   const ids = VOW_FOR[path] ?? Object.keys(VOWS);

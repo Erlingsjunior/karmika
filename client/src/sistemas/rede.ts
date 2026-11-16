@@ -9,13 +9,14 @@ import { bandOf } from '../karma';
 import { RARITY } from '../loot';
 import { FEATS, CATS } from '../feats';
 import { createCoop } from '../coop';
+import { molduraAtiva, tituloAtivo } from '../titulos';
 import { initMirror } from '../espelho';
 import type { RedeCtx } from '../main';
 
 export function createRede(K: RedeCtx) {
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
 const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
-  look: () => ({ kind: K.kindOf(K.state.race), opts: K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}, gear: K.lastGear, skin: K.peleSys.netSkin, name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(K.state.karma), fac: myFac(), path: K.myPath(), lean: K.soulLean(), prem: isPremium(), /* 15/11: o Bracelete de Choque no pulso aparece também para os outros jogadores */ cuff: !!(K.hero as { cuffOn?: boolean }).cuffOn }),
+  look: () => ({ kind: K.kindOf(K.state.race), opts: K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}, gear: K.lastGear, skin: K.peleSys.netSkin, name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(K.state.karma), fac: myFac(), path: K.myPath(), lean: K.soulLean(), prem: isPremium(), /* 15/11: o Bracelete de Choque no pulso aparece também para os outros jogadores */ cuff: !!(K.hero as { cuffOn?: boolean }).cuffOn, /* 16/11: a moldura e o título em uso (o quadro do grupo mostra) */ mold: molduraAtiva(), title: tituloAtivo()?.nome ?? '' }),
   premRune: () => { const sp = K.makeBlessRune(); sp.visible = true; return sp; },
   st: () => { const p = K.hero.root.position; const zn = K.inside ? (K.inside.crypt ? `crypt:${K.inside.crypt}` : `in:${K.inside.prop.gx},${K.inside.prop.gy}`) : 'world';
     return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), f: +K.hero.root.rotation.y.toFixed(3), m: +K.netMps.toFixed(2), zn, hp: Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), ...(K.hero.combat ? { cb: 1 as const } : {}), ...(K.hero.guard ? { gd: 1 as const } : {}), ...(K.hero.riding ? { rd: 1 as const } : {}), ...(K.hero.kneel ? { kn: 1 as const } : {}), ...(K.pvpOn ? { ag: 1 as const } : {}) }; },
@@ -40,7 +41,7 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
     const gear = Object.entries(K.inv.eq).filter(([, g]) => !!g).map(([slot, g]) => ({ slot, name: g!.name, rarity: RARITY[g!.rarity].name, icon: g!.icon, col: RARITY[g!.rarity].col }));
     const done = FEATS.filter((f) => K.feats.isDone(f.id)); const top = [...done].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0) || b.goal - a.goal).slice(0, 6);
     const fac = myFac();
-    return { name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', title: K.quests?.title ?? '', karma: k, align, fac: fac ? FAC[fac].name : null, portrait,
+    return { name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', title: K.quests?.title ?? '', karma: k, align, fac: fac ? FAC[fac].name : null, portrait, mold: molduraAtiva(),
       gear, feats: top.map((f) => ({ name: f.name, desc: f.desc, icon: CATS[f.cat].icon })), featCount: done.length, featTotal: FEATS.length, kills: K.game.st.kills ?? 0, quests: K.quests.q.done.length, lives: K.soul.s.lives.map((l) => ({ name: l.name, race: K.originName(l.origin), cls: l.cls, lvl: l.lvl })) };
   },
 });
@@ -104,6 +105,6 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   net.onX('x:pq', (from, m) => { if (!inParty(from)) return; const d = m.d as Parameters<typeof K.quests.accept>[0], nm = net.nameOf(from); coop.questShare(nm, d, K.quests.shareState(d), () => K.quests.accept(d, nm)); });
   setInterval(() => { K.pvp.tick(); }, 500);
   setInterval(() => { if (net.state !== 'on' || (K.inside && !K.inside.crypt && !K.inside.dg)) return; const l = K.game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }, 100); }
-const coop = createCoop(net, { friend: (n) => K.social.friendChar(n), guildInvite: (n) => K.social.inviteGuild(n), inGuild: () => !!K.social.guild, pvpToggle: () => K.pvp.toggle(), pvpOn: () => K.pvpOn, toMenu: () => K.inicio.open(), mailTo: (n) => K.mail.compose(n), duel: (id) => K.pvp.challenge(id), whisperTo: (n) => K.chat.whisperTo(n), myHp: () => Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)) });
+const coop = createCoop(net, { friend: (n) => K.social.friendChar(n), guildInvite: (n) => K.social.inviteGuild(n), inGuild: () => !!K.social.guild, pvpToggle: () => K.pvp.toggle(), pvpOn: () => K.pvpOn, toMenu: () => K.inicio.open(), mailTo: (n) => K.mail.compose(n), duel: (id) => K.pvp.challenge(id), whisperTo: (n) => K.chat.whisperTo(n), myHp: () => Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), eu: () => ({ retrato: K.retrato(), mold: molduraAtiva(), titulo: tituloAtivo()?.nome ?? '' }) });
   return { coop, net };
 }

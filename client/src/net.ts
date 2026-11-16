@@ -10,11 +10,11 @@ export const NET_PROTO = 1;
 export const NET_PORT = 7777;
 
 type GearArg = Parameters<Hero3D['setGear']>[0];
-export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null; /** Premium ativo: os outros veem o olho de Marghar girando em volta do herói (25/10) */ prem?: boolean; /** 15/11: Bracelete de Choque no pulso */ cuff?: boolean }
+export interface NetLook { kind: Kind; opts: CharOpts; gear: GearArg | null; skin: SkinDef | null; name: string; lvl: number; cls: string; karma: number; fac?: string | null; /** caminho (classe) e inclinação da alma: o Instinto dos outros lê isto (24/10) */ path?: string | null; lean?: 'luz' | 'sombra' | null; /** Premium ativo: os outros veem o olho de Marghar girando em volta do herói (25/10) */ prem?: boolean; /** 15/11: Bracelete de Choque no pulso */ cuff?: boolean; /** 16/11: moldura do retrato e título em uso */ mold?: string; title?: string }
 export interface NetSt { x: number; y: number; z: number; f: number; m: number; zn: string; cb?: 1; gd?: 1; rd?: 1; kn?: 1; hp?: number; ag?: 1 }
 export interface NetParty { id: number; leader: number; members: number[] }
 /** perfil público: o que outro jogador vê ao abrir o seu perfil */
-export interface NetProfile { name: string; lvl: number; cls: string; title: string; karma: number; align: string; fac: string | null; portrait: string | null; gear: { slot: string; name: string; rarity: string; icon: string; col: string }[]; feats: { name: string; desc: string; icon: string }[]; featCount: number; featTotal: number; kills: number; quests: number; lives?: { name: string; race: string; cls: string; lvl: number }[] }
+export interface NetProfile { name: string; lvl: number; cls: string; title: string; karma: number; align: string; fac: string | null; portrait: string | null; mold?: string; gear: { slot: string; name: string; rarity: string; icon: string; col: string }[]; feats: { name: string; desc: string; icon: string }[]; featCount: number; featTotal: number; kills: number; quests: number; lives?: { name: string; race: string; cls: string; lvl: number }[] }
 interface Snap { at: number; s: NetSt }
 interface Remote {
   id: number; name: string; host: boolean; look: NetLook | null; hero: Hero3D | null; skinTick: (() => void) | null; skinTok: number;
@@ -253,7 +253,7 @@ export function createNet(ctx: NetCtx) {
     askProfile(id: number) { send({ t: 'prof:req', to: id }); },
     get party() { return party; }, get myId() { return myId; },
     nameOf(id: number) { return id === myId ? ctx.look().name : remotes.get(id)?.name ?? '?'; },
-    infoOf(id: number) { const r = remotes.get(id); if (!r) return null; return { id, name: r.name, lvl: r.look?.lvl ?? 1, cls: r.look?.cls ?? '', hp: r.snaps[r.snaps.length - 1]?.s.hp ?? 100, zn: r.zn, inParty: partyOf.get(id) ?? 0 }; },
+    infoOf(id: number) { const r = remotes.get(id); if (!r) return null; return { id, name: r.name, lvl: r.look?.lvl ?? 1, cls: r.look?.cls ?? '', hp: r.snaps[r.snaps.length - 1]?.s.hp ?? 100, zn: r.zn, inParty: partyOf.get(id) ?? 0, mold: r.look?.mold ?? 'madeira', title: r.look?.title ?? '' }; },
     /** Ctrl + clique: qual jogador está sob o mouse (pela silhueta projetada na tela) */
     pickAt(cx: number, cy: number) {
       const rc = ctx.canvas.getBoundingClientRect(); let best = 0, bd = 1e9;
