@@ -375,6 +375,7 @@ const D2R = Math.PI / 180;
 let az = 45 * D2R, azT = az, pitch = 30 * D2R, pitchT = pitch;
 const PITCH_MIN = 14 * D2R, PITCH_MAX = 62 * D2R;
 const camDir = new THREE.Vector3();
+let zoomAuto = 0, zoomAutoAlvo = 0, zoomAutoT = 0; /* 16/11: o afastamento automático em cidades e maravilhas (0 a 1) */
 let zoomTarget = 17, zoom = 17; // metros visíveis na altura da tela
 const ZOOM_MIN = 5; let ZOOM_MAX = 24.2; /* 13/11 (Erling: "aumenta o zoom apenas uns 10%, só para longe"; mais que isso muda o estilo do jogo): afasta até 24,2 m (era 22) */ // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
 
@@ -1943,7 +1944,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { foco: () => lockSys.target, tela: (x: number, y: number, z: number) => { const v = new THREE.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; }, gen: (ilvl: number, slot?: Slot, base?: string, rar?: Rarity) => genGear(ilvl, rar, slot, base), titulos: { ganha: ganhaTitulo, livre: ganhaLivre, ativo: tituloAtivo, travado, escolhe: escolheTitulo, adianta: (ms: number) => { tituloRelogio += ms; }, abre: () => dockSys.abreTitulos(), cruza: (p: string, back: boolean) => crossOver(p, back) }, game, inv, renderer, npcs: () => npcSys.npcs, car: () => caravans, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
+(window as unknown as { __kt: unknown }).__kt = { zoom: () => ({ zoom, alvo: zoomTarget, auto: zoomAuto, onde: city.settlements.filter((st) => Math.hypot(st.x - state.fx, st.y - state.fy) < st.radius + 6).map((st) => `${st.name} (${st.kind})`) }), foco: () => lockSys.target, tela: (x: number, y: number, z: number) => { const v = new THREE.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; }, gen: (ilvl: number, slot?: Slot, base?: string, rar?: Rarity) => genGear(ilvl, rar, slot, base), titulos: { ganha: ganhaTitulo, livre: ganhaLivre, ativo: tituloAtivo, travado, escolhe: escolheTitulo, adianta: (ms: number) => { tituloRelogio += ms; }, abre: () => dockSys.abreTitulos(), cruza: (p: string, back: boolean) => crossOver(p, back) }, game, inv, renderer, npcs: () => npcSys.npcs, car: () => caravans, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); localStorage.setItem('karmika.gpuFallbackLast', JSON.stringify({ at: new Date().toISOString(), m: m.slice(0, 500), log: [...gpuState.log.filter((x) => !x.startsWith('buffer velho')), ...gpuState.log.filter((x) => x.startsWith('buffer velho'))].slice(0, 12) /* 10/11: os erros de verdade na frente; o aviso de 'buffer velho' escondia a causa */, ua: navigator.userAgent })); } catch { /* */ } /* 04/11: guarda o motivo para o 🐞 levar junto */ opts.rend = 0; saveOpts(); gpuImpl = null;
     /* 11/11 (Erling: "modo GPU deu bug e me dropou do server"): antes de recarregar, guarda a sala; ao voltar, o jogo entra direto nela (ou direto no jogo solo), sem passar pela tela de início */
@@ -3147,7 +3148,14 @@ function frameBody() {
   { const s = 1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01; lantern.position.set(heroPos.x, heroY + 3.2 * s, heroPos.z); /* 09/11 (Erling: "uma luz no terreno que some quando eu subo"): era a lanterna do herói presa na altura 3,2 do mapa — na subida o chão passava por cima dela. Agora acompanha o chão. */ lantern.distance = 36 * s; lantern.intensity = mix(5, 55, night) * Math.pow(s, 1.6); }
 
   /* câmera com zoom suave e lento */
-  zoom += (zoomTarget - zoom) * Math.min(1, dt * 2.2);
+  /* 16/11 (fila de 13/11, Erling: "é uma boa ideia"): dentro de uma cidade ou perto de uma maravilha a câmera afasta sozinha até 32% a mais
+     (24,2 m viram 32 m), para a cidade caber na tela; ao sair, volta devagar. A roda do mouse continua mandando dentro disso. */
+  { zoomAutoT -= dt; if (zoomAutoT <= 0) { zoomAutoT = 0.5; let k = 0; if (!inside && !game.st.god) { const hx = state.fx, hy = state.fy;
+        for (const st of city.settlements) if ((st.kind === 'city' || st.name === 'Karmika') && Math.hypot(st.x - hx, st.y - hy) < st.radius + 6) { k = 1; break; } /* Karmika é a capital, mesmo sendo vila no mapa */
+        if (!k) for (const v of CINE.vistas) { if (Math.hypot(v.at.x - hx, v.at.y - hy) * T > 26) continue; if (city.settlements.some((st) => st.kind === 'village' && Math.hypot(st.x - v.at.x, st.y - v.at.y) < st.radius + 2)) continue; k = 1; break; } }
+      zoomAutoAlvo = k; }
+    zoomAuto += (zoomAutoAlvo - zoomAuto) * Math.min(1, dt * 0.9); }
+  zoom += (zoomTarget * (1 + 0.32 * zoomAuto) - zoom) * Math.min(1, dt * 2.2);
   applyZoom();
   if (CAM_FREE && keys.has('q')) azT += dt * 1.6;
   if (CAM_FREE && keys.has('e') && performance.now() - entradaSys.eDown > 230) { azT -= dt * 1.6; entradaSys.eRot = true; }
