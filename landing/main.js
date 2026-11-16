@@ -24,20 +24,26 @@
      para acelerar"): a abertura fica presa na tela e anda com a rolagem, devagar. O nome desenha e some → o emblema surge apagado → o olho
      ACENDE → o emblema some → a vila de Karmika aparece → a frase e o botão. Depois disso a página volta a rolar normal, e o subtítulo e o
      botão esmaecem devagar conforme se desce. */
-  const word = document.querySelector('.hero__word text');
+  const word = document.querySelector('.hero__word text.draw');
   const len = 9000; word.style.strokeDasharray = len; word.style.strokeDashoffset = len;
   gsap.set('.hero__emblem', { xPercent: -50, yPercent: -58 });
   const intro = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '.hero', start: 'top top', end: () => '+=' + Math.round(innerHeight * 5.2), pin: true, scrub: 1.4, anticipatePin: 1 } });
   intro.to('.hero__start', { opacity: 0, duration: 0.6 }, 0)
-    .fromTo('.hero__word', { opacity: 0, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.6 }, 0)
+    .fromTo('.hero__word', { opacity: 0.62, scale: 1.08 }, { opacity: 1, scale: 1, duration: 2.6 }, 0)
     .to(word, { strokeDashoffset: 0, duration: 3.6 }, 0)
     .to('.hero__word', { opacity: 0, scale: 0.96, filter: 'blur(6px)', duration: 1.4 }, 4.0)
     .fromTo('.hero__emblem', { opacity: 0, scale: 0.94, filter: 'blur(10px)' }, { opacity: 1, scale: 1, filter: 'blur(0px)', duration: 1.4 }, 5.5)
-    .fromTo('.em-flare', { opacity: 0, scale: 0.15 }, { opacity: 0.9, scale: 0.7, duration: 0.9 }, 7.1)
-    .to('.em-on', { opacity: 1, duration: 0.35 }, 7.85)
-    .to('.em-flare', { opacity: 1, scale: 1.7, duration: 0.25 }, 7.85)
-    .to('.em-flare', { opacity: 0.4, scale: 1.1, duration: 1.0 }, 8.1)
-    .to('.hero__emblem', { opacity: 0, scale: 1.06, filter: 'blur(8px)', duration: 1.3 }, 9.4)
+    /* 16/11 (Erling: "o brilho do Olho devia crescer bastante com o scroll, acender o olho no meio, crescer e dar um flash na tela, rápido, como
+       se estivesse acendendo em poder; depois ficar brilhante e ir descendo"): a brasa cresce devagar com a rolagem, o olho acende, o clarão
+       toma a tela por um instante, o emblema fica aceso e desce enquanto a vila aparece. */
+    .fromTo('.em-flare', { opacity: 0, scale: 0.12 }, { opacity: 0.95, scale: 1.15, duration: 1.3, ease: 'power1.in' }, 6.6)
+    .to('.em-on', { opacity: 1, duration: 0.3 }, 7.9)
+    .to('.em-flare', { opacity: 1, scale: 4.6, duration: 0.3 }, 7.9)
+    .fromTo('.hero__flash', { opacity: 0 }, { opacity: 0.92, duration: 0.16 }, 7.98)
+    .to('.hero__flash', { opacity: 0, duration: 0.6 }, 8.14)
+    .to('.em-flare', { opacity: 0.8, scale: 1.7, duration: 0.9 }, 8.25)
+    .to('.hero__emblem', { y: () => Math.round(innerHeight * 0.3), scale: 0.84, duration: 1.7 }, 9.2)
+    .to('.hero__emblem', { opacity: 0, filter: 'blur(6px)', duration: 0.9 }, 10.2)
     .fromTo('.hero__bg', { opacity: 0, scale: 1.18 }, { opacity: 1, scale: 1, duration: 2.2 }, 10.5)
     .to('.hero__tag span', { opacity: 1, filter: 'blur(0px)', stagger: 0.3, duration: 0.8 }, 11.2)
     .to('.hero__sub', { opacity: 1, duration: 0.6 }, 12.2)

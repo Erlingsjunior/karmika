@@ -342,8 +342,16 @@ main { overflow-x: clip; }
 
 /* ===== 10/11 noite ===== */
 /* abertura no scroll */
-.hero__start { position: absolute; z-index: 4; bottom: 34px; left: 50%; transform: translateX(-50%); display: grid; justify-items: center; gap: 10px; font: 600 11px var(--sans); letter-spacing: .36em; text-transform: uppercase; color: var(--gold2); text-align: center; padding: 0 16px; }
-.hero__start i { width: 1px; height: 48px; background: linear-gradient(var(--gold2), transparent); animation: drip 1.8s ease-in-out infinite; transform-origin: top; }
+/* 16/11 (Erling: "o 'role devagar para despertar o Olho' devia ser maior, embaixo do KARMIKA; setas brilhando para baixo como um aviso de scroll") */
+.hero__start { position: absolute; z-index: 4; top: calc(50% + min(11vw, 170px)); left: 50%; transform: translateX(-50%); width: min(92vw, 760px); display: grid; justify-items: center; gap: 18px; font: 600 clamp(13px, 1.55vw, 19px) var(--sans); letter-spacing: .34em; text-transform: uppercase; color: var(--gold2); text-align: center; padding: 0 16px; text-shadow: 0 0 22px rgba(255, 190, 90, .35); }
+.hero__setas { display: grid; justify-items: center; gap: 2px; }
+.hero__setas i { display: block; width: 26px; height: 26px; border-right: 3px solid var(--gold2); border-bottom: 3px solid var(--gold2); transform: rotate(45deg); opacity: .12; animation: seta 1.8s ease-in-out infinite; filter: drop-shadow(0 0 8px rgba(255, 196, 96, .9)); }
+.hero__setas i:nth-child(2) { animation-delay: .22s; } .hero__setas i:nth-child(3) { animation-delay: .44s; }
+@keyframes seta { 0%, 100% { opacity: .1; } 35% { opacity: 1; } 70% { opacity: .1; } }
+.hero__flash { position: absolute; inset: 0; z-index: 5; opacity: 0; pointer-events: none; background: radial-gradient(circle at 50% 46%, rgba(255, 246, 220, .98) 0%, rgba(255, 180, 80, .8) 30%, rgba(255, 120, 30, .3) 58%, rgba(255, 110, 20, 0) 82%); mix-blend-mode: screen; }
+.hero__word text.ghost { stroke: rgba(239, 230, 214, .45); stroke-width: 1.2; }
+@media (prefers-reduced-motion: reduce) { .hero__setas i { animation: none; opacity: .8; } .hero__flash { display: none; } }
+
 .hero__cta { bottom: 12%; }
 /* manifesto em versos */
 .manifesto { padding-block: 16vh; }
