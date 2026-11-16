@@ -1,7 +1,7 @@
 /* CINEMÁTICAS DE PAISAGEM, Fontes da Visão, portas das casas e marcas de cena: tocar a cena, a câmera do menu, os olhos das vistas e os gatilhos. Saiu do main.ts (02/11). */
 import { scenes, type Scene, playOverlay } from '../cinema';
-import { TILE_M as T } from '@karmika/shared';
-import { CATHEDRAL, ASKAVIK, CITY, heightAt, localDims, rotLocal } from '../world';
+import { TILE_M as T, isWalkable } from '@karmika/shared';
+import { CATHEDRAL, ASKAVIK, CITY, heightAt, localDims, rotLocal, groundH, WL } from '../world';
 import { waterU } from '../chunks3d';
 import * as THREE from 'three';
 import { gpuTag } from '../gpu/tags';
@@ -115,6 +115,17 @@ const FONT_R = new Map<string, number>();
 /* 13/11 (Erling: "em todas as fontes de cena, TODAS, o texto precisa ir mais devagar; não está dando para ler direito"): a duração de cada cena era um número fixo
    (24 a 30 s para três parágrafos: quase 20 letras por segundo). Agora TODA cena (fontes e cinemáticas) dura o que o texto pede: 11 letras por segundo mais 8 s de folga,
    e nunca menos que uma vez e meia o tempo antigo. A câmera acompanha, mais lenta. */
+/* 16/11 (regra de ouro: nada escondido nem fora de alcance): a Fonte da Visão que caiu dentro d'água ou de uma parede (Pináculo de Marfim,
+   Vale da Desgraça, os faróis de Porto Caldeira e de Ferrugem, o Mausoléu do Bispo) vai para o chão firme mais perto, com chão firme em toda a volta.
+   As fontes de praça não entram: elas são a própria fonte da vila. */
+{ const firme = (x: number, y: number, rua: boolean) => { const t = K.city.map[y]?.[x]; return !!t && isWalkable(t) && (rua || t !== 'road') && groundH((x + 0.5) * T, (y + 0.5) * T) > WL + 0.15; };
+  /* primeiro procura um canto fora da estrada; num vale estreito onde só há estrada, aceita a beira dela */
+  const folga = (x: number, y: number, rua: boolean) => { if (!firme(x, y, false) && !rua) return false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!firme(x + dx, y + dy, rua)) return false; return true; };
+  for (const v of CINE.vistas) { if (FONT_R.has(v.id)) continue; const ox = Math.floor(v.at.x), oy = Math.floor(v.at.y), t0 = K.city.map[oy]?.[ox]; if (t0 && isWalkable(t0) && groundH((ox + 0.5) * T, (oy + 0.5) * T) > WL) continue; /* já está em chão firme: não mexe */
+    /* a câmera olha do sudeste: parede (prédio, farol, torre) logo a sudeste do ponto tapa a fonte */
+    const tapada = (x: number, y: number) => { for (let k = 1; k <= 9; k++) for (let j = -2; j <= 2; j++) if (K.city.map[y + k + Math.max(0, j)]?.[x + k + Math.max(0, -j)] === 'wall') return true; return false; };
+    let bx = -1, by = -1, bd = 1e9; for (const [rua, vista] of [[false, true], [false, false], [true, false]]) { if (bx >= 0) break; for (let dy = -24; dy <= 24; dy++) for (let dx = -24; dx <= 24; dx++) { const d = Math.hypot(dx, dy); if (d >= bd || !folga(ox + dx, oy + dy, rua) || (vista && tapada(ox + dx, oy + dy))) continue; bd = d; bx = ox + dx; by = oy + dy; } }
+    if (bx < 0) continue; const s0 = v.shots[0]; if (s0 && Math.abs(s0.x - v.at.x * T) < 0.01 && Math.abs(s0.z - v.at.y * T) < 0.01) { s0.x = bx * T; s0.z = by * T; } v.at = { x: bx, y: by }; } }
 for (const sc of [...CINE.list, ...CINE.vistas]) { const ch = sc.text.join(' ').length; sc.sec = Math.max(Math.round(sc.sec * 1.5), Math.round(ch / 11) + 8); }
 /* o nome do recurso nunca sai do globo: encolhe a letra até caber (DETERMINAÇÃO, ENERGIA, FÚRIA...) */
 for (const u of Array.from(document.querySelectorAll<HTMLElement>('.orb u'))) { const fitU = () => { u.style.fontSize = ''; u.style.letterSpacing = ''; let fs = 8, ls = 0.16; for (let k = 0; k < 10 && u.scrollWidth > u.clientWidth + 1; k++) { if (ls > 0.04) ls -= 0.04; else fs -= 0.5; u.style.letterSpacing = ls + 'em'; u.style.fontSize = fs + 'px'; } }; new MutationObserver(fitU).observe(u, { childList: true, characterData: true, subtree: true }); setTimeout(fitU, 500); }
