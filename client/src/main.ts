@@ -223,6 +223,7 @@ import { createVotosAlma } from './sistemas/votos-alma';
 import { createDockFeitos } from './sistemas/dock-feitos';
 import { ligaTitulos, confereContadores, onTitulos, ganhaTitulo, ganhaLivre, tituloAtivo, travado, escolheTitulo, molduraAtiva, DIAS_DE_MARCA } from './titulos';
 import { meuPacote } from './pacotes';
+import { ehCinto } from './cinto';
 import { createConstrucao } from './sistemas/construcao';
 import { createCompanheiros } from './sistemas/companheiros';
 import { createConsumiveis } from './sistemas/consumiveis';
@@ -825,9 +826,10 @@ export interface ConsumiveisCtx {
   readonly game: Widen<typeof game>;
   readonly kitRace: Widen<typeof kitRace>;
   readonly audio: Widen<typeof audio>;
+  readonly heroPosNow: () => { x: number; z: number };
 }
 var quickSys: ReturnType<typeof createConsumiveis>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_quickSys() { return createConsumiveis({ get inv() { return inv; }, get ITEMS_Q() { return ITEMS_Q; }, get game() { return game; }, get kitRace() { return kitRace; }, get audio() { return audio; } }); }
+function mk_quickSys() { return createConsumiveis({ get inv() { return inv; }, get ITEMS_Q() { return ITEMS_Q; }, get game() { return game; }, get kitRace() { return kitRace; }, get audio() { return audio; }, heroPosNow: () => heroPosNow() }); }
 quickSys ??= mk_quickSys();
 function renderQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['renderQuick']>): ReturnType<ReturnType<typeof createConsumiveis>['renderQuick']> { return (quickSys ??= mk_quickSys()).renderQuick(...a); }
 function useQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['useQuick']>): ReturnType<ReturnType<typeof createConsumiveis>['useQuick']> { return (quickSys ??= mk_quickSys()).useQuick(...a); }
@@ -896,6 +898,7 @@ const inv = createInventory(game, { gadgets: () => game.engenhocas(), gadgetTogg
     const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
     if ((id === 'lagrima' || SEAL[id]) && premiumEterno()) { game.logMsg(id === 'lagrima' ? '💧 A Bênção de Marghar já é sua para sempre. Guarde a Lágrima: ela paga uma volta da alma no Limiar.' : '✦ A Bênção de Marghar já é sua para sempre; este selo antigo não tem mais o que dar.', '#c9a0ff'); return true; }
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>60 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(60); game.logMsg('💧 A Lágrima se desfaz em luz: +60 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
+    if (ehCinto(id)) { quickSys.vesteCinto(id); try { inv.refresh(); } catch { /* */ } return true; } /* 16/11: usar um cinto veste o cinto */
     const presente = id === 'presente_marghar';
     if (presente && premiumEterno()) { inv.take(id, 1); game.logMsg('✦ O Presente se desfaz em luz: a Bênção de Marghar já era sua, para sempre.', '#c9a0ff'); return true; }
     if (SEAL[id] || presente) { if (!inv.take(id, 1)) return true; let d = 0; if (presente) { setPremiumEterno(); game.logMsg('✦ Presente de Marghar aberto: a Bênção é sua para sempre, em todos os seus personagens.', '#c9a0ff'); } else { addPremiumDays(SEAL[id]); d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff'); }
@@ -911,6 +914,7 @@ const inv = createInventory(game, { gadgets: () => game.engenhocas(), gadgetTogg
     if (entradaSys.combatMode) setCombat(false);
     inv.take('scroll_return', 1); openPortal(); game.logMsg('📜 O pergaminho se desfaz em luz violeta.', '#b8a8ff'); return true; } if (id === 'tome') { inv.take('tome', 1); tree.addBonus(5); return true; } if (DECOR[id]) { placeDecor(id); return true; } if (/^projeto_/.test(id)) { if (obras.busy()) { game.logMsg('🏗 Você já tem uma obra ou casa. Termine (ou desista dela no B) antes de começar outra.', '#ff9a8a'); return false; } if (inv.isOpen) inv.toggle(); return build.placeProject(id); } if (/^ajudante_obra(_2|_3)?$/.test(id)) { /* 28/10 (Erling): clicou, o robô vai sozinho até a obra (até 4 ao mesmo tempo) */ const left = robotLeftPop(id); if (obras.deployRobot(id.endsWith('_3') ? 2 : id.endsWith('_2') ? 1 : 0, left ?? undefined)) { inv.take(id, 1); return true; } if (left) robotLeftPush(id, left); return false; } if (id === 'obra_auto') return obras.bindContract(); if (id === 'escritura_casa' || deedIdOf(id)) { useDeed(id); return false; }  if (GADGETS[id] && GADGETS[id].kind === 'misc' && (game as unknown as { gadget(i: string): boolean }).gadget(id)) { inv.take(id, 1); return true; } if (/^(coleira|peitoral)_/.test(id)) return stable.wear(id); if (MOUNTS[id] || PETS[id]) { if (stable.adopt(id)) stable.toggle(true, { tab: PETS[id] ? 'pets' : 'mounts', id }); return true; } return false; },
   moldura: () => molduraAtiva(),
+  cinto: () => { const c = quickSys.cinto(); return { id: c.id, nome: c.nome, espacos: c.cols * c.andares }; }, cintoTira: () => quickSys.tiraCinto(),
   portrait: () => { if (dollR && !dollFail) return null; /* o boneco vivo já está desenhando */ portraits.delete('hero'); try { return portraitOf('hero', hero.root, true); } catch { return null; } }, title: () => `${(profile?.name ?? '')}${quests?.title ? ' · ' + quests.title : ''}`.trim() || RACES[state.race].label,
   raceLabel: () => RACES[state.race].label, karma: () => state.karma, spendKarma: (n) => { if (Math.abs(state.karma) < n) return false; addKarma(state.karma > 0 ? -n : n); return true; }, xpNeed: game.xpNeed,
   soul: () => { soul.regen(); const r: [string, string][] = [['Fio da Vida', `${game.st.lvl < FRAY_LVL || !profile?.eye ? `intacto até o Olho abrir (nível ${FRAY_LVL})` : `${'●'.repeat(soul.s.breaths)}${'○'.repeat(MAX_BREATHS - soul.s.breaths)}${soul.s.breaths < MAX_BREATHS ? ` · +1 em ${soul.nextBreathH()}h` : ''}`} · 💧 ${inv.count('lagrima')}`]];
@@ -2986,6 +2990,7 @@ function frameBody() {
   game.st.stamMax = Math.round(((profile ? STAM_BASE[profile.origin] ?? 100 : 100) * (state.race === 'technocrat' ? 0.7 : state.race === 'nordic' ? 1.3 : 1) + (game.st.attrs?.vit ?? 0) * 4) * (1 + ((game.st as { feastStam?: number }).feastStam ?? 0))); /* + a mesa dos anões */
   if (entradaSys.outOfBreath && game.st.stam >= game.st.stamMax * 0.25) entradaSys.outOfBreath = false;
   const wantRun = runningNow() && (ix || iy || state.path.length > 0);
+  try { quickSys.tickMacros(dt); } catch { /* */ } /* 16/11: as macros do cinto */
   if (wantRun && game.st.stam > 0 && !game.st.god) game.st.stam = Math.max(0, game.st.stam - dt * 9 / 1.4); /* 16/11: o fôlego dura 40% a mais */
   if (game.st.stam <= 0.5 && wantRun && !game.st.god) { entradaSys.outOfBreath = true; if (!stamWarnT) { stamWarnT = 2; game.logMsg('😮‍💨 Sem fôlego — andando até recuperar.', '#ffd24a'); } }
   if (stamWarnT > 0) stamWarnT -= dt;
