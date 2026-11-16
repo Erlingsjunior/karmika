@@ -1259,7 +1259,7 @@ function buildCity_L(): World {
     // as duas tecelagens reais, frente a frente no lado oeste da praça: a cidade é neutra, as lojas não
     P('Mestra Ingeborg', 'Tecelagem Real do Fio', 'nordic', SN('tec_fio', cx - 26, cy - 2).x, SN('tec_fio', cx - 26, cy - 2).y, 0x2a4a8a, ['Cada fio daqui foi puxado por uma mão que já levou alguém de volta para casa.', 'Ninguém atravessa só. Nem você, nem quem você protege.'], 'tec_fio');
     P('Corvina, a Desfiadora', 'Tecelagem dos Desfiados', 'nordic', SN('tec_desf', cx - 26, cy + 2).x, SN('tec_desf', cx - 26, cy + 2).y, 0x6a0e14, ['Rasgo a barra de cada manto com as minhas mãos. Um fio solto é uma escolha.', 'Não vendo a quem ainda tem medo da porta.'], 'tec_desf');
-    st.npcs.push({ name: 'Elowen', role: 'Shop', kind: 'nordic', x: cx - 37, y: cy + 1.9, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo deixa alguém mais forte do que o outro: só mais bonito.'] });
+    st.npcs.push({ name: 'Elowen', role: 'Shop', kind: 'nordic', x: cx - 37, y: cy + 1.9, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Pacotes, engenhocas e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo deixa alguém mais forte do que o outro: só mais bonito.'] });
     P('Jarl Haakon', 'Jarl de Askavik', 'nordic', cx - 2.5, cy - 35, 0x2a3a7a, ['Askavik tem quatro portões e nenhum foi tomado. Ainda.', 'Do alto do castelo eu vejo o canal inteiro. E quem passa nele.']);
     /* Luz e Sombra (24/10): quem só procura você conforme a alma pende */
     P('Margit Corvo-Negro', 'Agiota de Askavik', 'nordic', cx - 33.5, cy + 4.5, 0x2a1a2a, ['Tudo em Askavik tem preço, querido. Até a lealdade. Principalmente a lealdade.', 'Não empresto a quem tem cara de santo. Santo não paga juros.', 'Volte quando estiver com fome de verdade.']);
@@ -1384,7 +1384,7 @@ function buildCity_L(): World {
     N('Estalajadeira Rosa', 'Estalagem do Porto', 'dwarf', shopNpc('estabulo', -14, -25).x, shopNpc('estabulo', -14, -25).y, 0x6a4a2e, ['Cavalos aqui comem sal com o capim. Ficam teimosos.'], 'estabulo');
     N('Guarda Vitorino', 'Guarda do Porto', 'nordic', cx + 2.5, cy - 30, 0x6a7a9a, [`Aqui a lei é a Companhia, e a Companhia sou eu das oito às seis.`, 'Ladrão de carvão vai para a caldeira. Brincadeira. Vai para a masmorra.']);
     N('Faroleira Dinorá', 'Guardiã do Farol Tecnocrático', 'technocrat', cx - 1.5, cy + 23.5, 0x4a7a9a, ['O Farol é da Academia, mas a luz é de quem está no mar.', 'Três voltas por minuto. Quando falha uma, eu já estou no bote.']);
-    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 14.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo muda a sua força. Muda a sua cara.'] });
+    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 14.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Pacotes, engenhocas e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo muda a sua força. Muda a sua cara.'] });
     return st;
   };
   // vilas de madeira espalhadas pelo mundo exterior e a cidade média a nordeste

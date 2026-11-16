@@ -105,7 +105,7 @@ export function createInicio(o: { hasChar(): boolean; desk: Desk | null; onPlay(
         <button data-i="solo">☾ Jogar sozinho<small>sem servidor, só você e o Olho</small></button></div>
         <div class="in-menu in-sec">
         <button data-i="social">👥 Amigos e Guilda<small>conversas e o chat da guilda</small></button>
-        <button data-i="shop">🛍 Shop<small>Premium e as peças com brasão</small></button></div></div>`;
+        <button data-i="shop">🛍 Shop<small>Pacotes, engenhocas e as peças com brasão</small></button></div></div>`;
     if (step === 'home' && quitAsk) body += `<div class="in-ask"><div class="in-box in-quitbox"><h2>Sair de Karmika?</h2><p>Tem certeza de que quer sair de Karmika?</p><p class="in-mut"><i>Sua escolha será lembrada…</i></p>
         <div class="in-row"><button data-i="quitno" class="gold">Ficar</button><button data-i="quitok" class="in-delok">Sair</button></div></div></div>`;
     if (step === 'find') body = `<div class="in-box"><h2>Encontrar servidor</h2><p>Cole o convite que o anfitrião mandou:</p>

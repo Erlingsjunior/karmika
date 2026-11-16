@@ -63,7 +63,7 @@ function heroicAct(why: string, tear = true) { K.feats.bump('heroic'); eyeSys.he
   /* o Olho dormindo (antes do nível 15) não chora: o ato fica guardado no Compêndio, mas não vira Lágrima */
   if (!tear) return;
   if (!K.profile?.eye) { K.game.logMsg('👁 O Olho ainda dorme: este ato fica guardado, mas só o Olho aberto chora Lágrimas (nível 15).', '#b9c6e0'); return; }
-  giveTear('💧 Uma Lágrima do Olho cai na sua mão. Guardada, ela paga uma volta da alma sem penalidade; também vale ouro e Premium.'); }
+  giveTear('💧 Uma Lágrima do Olho cai na sua mão. Guardada, ela paga uma volta da alma sem penalidade; também vale ouro.'); }
 function giveTear(msg: string) { K.inv.add('lagrima', 1, true); K.game.logMsg(msg, '#9ad7ff'); K.audio.chime(); }
 function updateWho() {
   const who = document.getElementById('who'), lbl = document.getElementById('lbl'); if (!who || !lbl) return;
