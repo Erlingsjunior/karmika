@@ -139,6 +139,7 @@ import { createChat } from './chat';
 
 import { DEFS, enemyHooks, lvlScale } from './enemies';
 import { createLock } from './alvo-preso';
+import { createTerrenosGuilda } from './sistemas/terrenos-guilda';
 import { bindScrolls } from './esquecimento';
 import { biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
@@ -2642,6 +2643,7 @@ function openRelics(...a: Parameters<ReturnType<typeof createReliquias>['openRel
 
 /* 07/11: os navios da Companhia de Latão (cais no continente e nas ilhas) — criado na primeira vez que o quadro pede */
 let naviosSys: ReturnType<typeof createNavios> | null = null, faroisSys: ReturnType<typeof createFarois> | null = null;
+let terrenosSys: ReturnType<typeof createTerrenosGuilda> | undefined; /* 16/11: o marco de cada terreno de guilda */
 let telefSys: ReturnType<typeof createTeleferico> | null = null;
 const teleferico = () => (telefSys ??= createTeleferico({ scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; } }));
 const navios = () => (naviosSys ??= createNavios({ hour: () => gameHour(), scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
@@ -3106,7 +3108,7 @@ function frameBody() {
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
-  if (!inside) { teleferico().update(dt); navios().update(dt); (faroisSys ??= createFarois(scene, city)).update(dt, camX, camZ, state.night); }
+  if (!inside) { teleferico().update(dt); navios().update(dt); (faroisSys ??= createFarois(scene, city)).update(dt, camX, camZ, state.night); (terrenosSys ??= createTerrenosGuilda(scene, city, (m, c) => game.logMsg(m, c))).update(dt, state.fx * T, state.fy * T); }
   peleSys.skinTick?.(); // copia a pose procedural para o modelo do artista
   peleSys.look?.tick(dt, state.night);
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }

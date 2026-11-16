@@ -3077,6 +3077,8 @@ export function buildCity(): World {
         if (wn / n > 0.62 || wn === 0) continue; let perto = false; for (let yy = -2; yy <= 2 && !perto; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { perto = true; break; } if (perto) continue;
         const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004; if (sc <= best || tapado(x, y, 22)) continue; best = sc; bx = x; by = y; }
       if (bx >= 0) { const lp = lightPois.find((q) => q.name === l.name); l.x = bx; l.y = by; if (lp) { lp.x = bx; lp.y = by; } } }
+    /* 16/11: o marco de pedra no centro de cada terreno de guilda (sistemas/terrenos-guilda.ts) ocupa a casa do meio */
+    for (const g of guildLots) if (map[g.y0 + 5]?.[g.x0 + 5] === 'grass') map[g.y0 + 5][g.x0 + 5] = 'wall';
     /* pedras de runa: vão para o capim livre mais perto de onde estavam, à vista */
     for (const r of relics) { if (!tapado(r.x, r.y, 2.6)) continue; const pr = props.find((q) => q.kind === 'relic' && q.gx === r.x && q.gy === r.y); if (!pr) continue; let achou = false;
       for (let R = 2; R <= 16 && !achou; R++) for (let dy = -R; dy <= R && !achou; dy++) for (let dx = -R; dx <= R && !achou; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== R) continue; const x = r.x + dx, y = r.y + dy; if (map[y]?.[x] !== 'grass' || noLote(x, y) || hT(x, y) < WL + 0.6) continue;
