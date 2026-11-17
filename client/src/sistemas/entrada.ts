@@ -225,7 +225,10 @@ addEventListener('keydown', (e) => {
   if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { K.instintoSys.stanceSys?.cycle(); K.renderStances(); }
   /* 16/11 (Erling: "o E é para interagir, mas se eu estiver em batalha ele usa magia; o R é para correr, mas em batalha com um monstro em foco ele é atalho de magia"):
      com um bicho em foco, E vale pela casa 5 e R pela casa 6 (a esquiva); sem foco, tudo como sempre */
-  if ((k === 'e' || k === 'r') && K.foco() && !K.build.on) { if (!e.repeat) { if (k === 'r') { const f = K.hero.facing; startDash(K.state.moving ? K.dx0 || Math.sin(f) : Math.sin(f), K.state.moving ? K.dy0 || Math.cos(f) : Math.cos(f)); } useSlot(TECLA_DE_BATALHA[k], true); } return; }
+  /* 17/11 (Erling: "estou tentando ligar a pedra mas ele está dando magia"): com um aviso "E — …" na tela, o E faz o que o aviso diz, mesmo
+     em batalha (tocar a relíquia, falar, abrir a porta). Só colher, pescar, cortar e minerar perdem a vez para a magia no meio da luta. */
+  const avisoE = () => { const a = document.getElementById('act'); return !!a && a.style.display !== 'none' && /^E — /.test(a.textContent ?? '') && !/^E — (Pescar|Colher|Cortar|Minerar|Catar|Tosquiar)/.test(a.textContent ?? ''); };
+  if ((k === 'e' || k === 'r') && K.foco() && !K.build.on && !(k === 'e' && avisoE())) { if (!e.repeat) { if (k === 'r') { const f = K.hero.facing; startDash(K.state.moving ? K.dx0 || Math.sin(f) : Math.sin(f), K.state.moving ? K.dy0 || Math.cos(f) : Math.cos(f)); } useSlot(TECLA_DE_BATALHA[k], true); } return; }
   if (k === 'e') K.interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
   if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 24.2; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 24.2); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
