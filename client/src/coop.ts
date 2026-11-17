@@ -46,11 +46,11 @@ export function createCoop(net: Net, hooks: { whisperTo(name: string): void; myH
       ${hostBlock()}
       <div class="cp-box"><h3>${st === 'on' ? `Na sala ${esc(net.code)} · ${peers.length} Caminhante${peers.length > 1 ? 's' : ''}` : st === 'connecting' ? 'Entrando…' : 'Entrar numa sala'}</h3>
         ${st === 'on' ? `<ul class="cp-peers">${peers.map((p) => `<li class="${p.me ? 'me' : ''}"><b>${p.host ? '👑 ' : ''}${esc(p.name)}</b><span>Nv ${p.lvl} · ${esc(p.cls)}</span><i>${p.me ? `você · ${net.ping} ms` : zoneTxt(p.zn)}</i></li>`).join('')}</ul>
-          <p class="cp-mut">Converse pelo chat (Enter). Ctrl + clique num jogador: grupo, carta, perfil, duelo.</p><div class="cp-pvp"><button class="cp-btn ${hooks.pvpOn?.() ? 'red' : ''}" data-a="pvp">${hooks.pvpOn?.() ? '⚔ PvP da facção: LIGADO' : '🕊 PvP da facção: desligado'}</button><p class="cp-mut">Facções diferentes podem se atacar fora das vilas. Ligado, você também fere quem é do seu lado (ou não jurou lado): nome vermelho e perda de karma.</p></div><button class="cp-btn red" data-a="leave">Sair da sala</button>`
+          <p class="cp-mut">Converse pelo chat (Enter). Alt + clique num jogador: grupo, carta, perfil, duelo.</p><div class="cp-pvp"><button class="cp-btn ${hooks.pvpOn?.() ? 'red' : ''}" data-a="pvp">${hooks.pvpOn?.() ? '⚔ PvP da facção: LIGADO' : '🕊 PvP da facção: desligado'}</button><p class="cp-mut">Facções diferentes podem se atacar fora das vilas. Ligado, você também fere quem é do seu lado (ou não jurou lado): nome vermelho e perda de karma.</p></div><button class="cp-btn red" data-a="leave">Sair da sala</button>`
         : `<p class="cp-mut">Cole o convite que o anfitrião mandou:</p><div class="cp-join"><input data-i="inv" placeholder="karmika://IP:${NET_PORT}/CÓDIGO" value="${esc(lastInv)}" spellcheck="false"><input data-i="jpass" type="password" placeholder="senha" style="flex:0 0 110px" value="${esc(passFor(lastInv))}"><button class="cp-btn gold" data-a="join" ${st === 'connecting' ? 'disabled' : ''}>Entrar</button></div>`}
       </div>
       <label class="cp-opt"><input type="checkbox" data-o="noParty" ${noParty() ? 'checked' : ''}> Recusar convites de grupo automaticamente</label>
-      <p class="cp-mut">Dica: <b>Ctrl + clique</b> em outro jogador abre o menu dele (mensagem privada, convite de grupo, perfil).</p></div>`;
+      <p class="cp-mut">Dica: <b>Alt + clique</b> em outro jogador abre o menu dele (mensagem privada, convite de grupo, perfil).</p></div>`;
   }
   function toggle(on = !open) { open = on; el.style.display = open ? 'flex' : 'none'; if (open) { if (desk) desk.hostInfo().then((h) => { hosting = h; render(); }).catch(() => { /* */ }); render(); } }
   el.addEventListener('click', async (e) => {

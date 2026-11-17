@@ -66,7 +66,7 @@ K.canvas.addEventListener('pointerdown', (e) => {
   /* 16/11: o botão direito usa a magia do Clique 2 (a guarda fica de pé enquanto o botão estiver apertado) */
   if (e.button === 2 && !K.game.menuOpen) { if (K.aimSlot) { K.fireAim(); return; } cx = e.clientX; cy = e.clientY; sobreTela = true; refazRaio(); sob = achaBicho(); const b2 = bichoNoMouse(); if (b2) K.foca(b2); K.setCombat(true); rmb = true; busca = null; K.usaClique(2); return; }
   if (e.button === 0 && K.aimSlot) { K.cancelAim(); return; }
-  if (e.button !== 0 || K.game.menuOpen) return;
+  if (e.button !== 0 || K.game.menuOpen || e.altKey || e.ctrlKey) return; /* Alt + clique é o menu do jogador ou do pet: não anda nem ataca */
   /* 16/11: botão esquerdo em cima de um inimigo bate (Clique 1); no chão, anda */
   cx = e.clientX; cy = e.clientY; sobreTela = true; refazRaio(); sob = achaBicho(); lmb = true;
   /* Shift + botão esquerdo (Diablo): ataca parado, na direção do mouse, sem andar. Segurando, repete. */

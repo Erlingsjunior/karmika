@@ -135,7 +135,7 @@ export function createSocial(ctx: {
     if (gtab === 'membros') body = [...guild.members].sort((a, b) => ['lider', 'oficial', 'membro', 'recruta'].indexOf(a.rank) - ['lider', 'oficial', 'membro', 'recruta'].indexOf(b.rank) || a.name.localeCompare(b.name)).map((m) => {
       const mine = m.name.toLowerCase() === ctx.char().toLowerCase(), r = ['recruta', 'membro', 'oficial', 'lider'].indexOf(m.rank);
       return `<div class="sofr ${m.on ? 'on' : ''}"><i></i><div><b>${esc(m.name)}</b><small>${RANK_NAME[m.rank]} · ${m.on ? (m.where === 'mundo' ? 'no mundo' : 'no menu') : `fora · ${ago(m.seen)}`}</small></div>${!mine && rk === 3 ? `<select data-rank="${esc(m.name)}">${['recruta', 'membro', 'oficial', 'lider'].map((x) => `<option value="${x}" ${x === m.rank ? 'selected' : ''}>${RANK_NAME[x]}</option>`).join('')}</select>` : ''}${!mine && rk >= 2 && r < rk ? `<button data-kick="${esc(m.name)}" class="ghost">Remover</button>` : ''}</div>`; }).join('')
-      + `<p class="somut">Para convidar: segure Ctrl e clique num jogador no mundo → <b>Convidar para a guilda</b>. Recrutas viram membros quando um oficial decide.</p><button class="ghost" data-a="gleave">Sair da guilda</button>`;
+      + `<p class="somut">Para convidar: segure Alt e clique num jogador no mundo → <b>Convidar para a guilda</b>. Recrutas viram membros quando um oficial decide.</p><button class="ghost" data-a="gleave">Sair da guilda</button>`;
     if (gtab === 'mercado') {
       const its = ctx.items(), gs = ctx.gear();
       body = `<p class="somut">Só os membros veem e compram. Sem taxa: o ouro vai inteiro para quem vendeu, pelo correio; o item chega para quem comprou, pelo correio.</p>

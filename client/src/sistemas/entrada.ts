@@ -247,9 +247,10 @@ addEventListener('blur', soltaAndar); document.addEventListener('visibilitychang
 let eDown = 0, eRot = false;
 let drag: { x: number; y: number } | null = null;
 K.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-/* Ctrl + clique num jogador: menu dele (mensagem privada, grupo, perfil) — antes de qualquer outro clique no mundo */
-K.canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && e.button === 0 && K.net.state === 'on' && !K.festaSys.festa && K.festasNet.size) { const id = K.net.pickAt(e.clientX, e.clientY); if (id && K.festaAskJoin(id)) { e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); return; } } /* 28/10: clicar em quem está numa festa pede para entrar */
-  if (!e.ctrlKey || e.button !== 0 || K.net.state !== 'on') return; const id = K.net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); K.coop.playerMenu(id, e.clientX, e.clientY); }, true);
+/* Alt + clique num jogador: menu dele (mensagem privada, grupo, perfil) — antes de qualquer outro clique no mundo */
+K.canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && !e.altKey && e.button === 0 && K.net.state === 'on' && !K.festaSys.festa && K.festasNet.size) { const id = K.net.pickAt(e.clientX, e.clientY); if (id && K.festaAskJoin(id)) { e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); return; } } /* 28/10: clicar em quem está numa festa pede para entrar */
+  /* 17/11 (Erling: "as funções do Ctrl passam para o Alt; os jogadores estão mais habituados ao Alt por causa de jogos como LoL"): Alt + clique (o Ctrl continua valendo) */
+  if (!(e.altKey || e.ctrlKey) || e.button !== 0 || K.net.state !== 'on') return; const id = K.net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); K.coop.playerMenu(id, e.clientX, e.clientY); }, true);
 const CAM_FREE = false; // câmera fixa (Hades-like); true liga giro Q/E e arrasto com o botão do meio
 K.canvas.addEventListener('pointerdown', (e) => { if (CAM_FREE && e.button === 1) { e.preventDefault(); drag = { x: e.clientX, y: e.clientY }; K.canvas.setPointerCapture(e.pointerId); } });
 addEventListener('pointermove', (e) => {
@@ -261,11 +262,15 @@ addEventListener('pointermove', (e) => {
 addEventListener('pointerup', () => { drag = null; });
 let wswapT = 0;
 addEventListener('wheel', (e) => {
-  /* 03/11 (Erling): Ctrl + roda = troca rápida do jeito de segurar (duas armas · arma e escudo · duas mãos); o Ctrl+roda do navegador (zoom da página) fica bloqueado no jogo */
-  if (e.ctrlKey) { e.preventDefault(); const now = performance.now(); if (now - wswapT > 280) { wswapT = now; dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.deltaY > 0 ? 1 : -1 })); } return; }
+  /* 03/11 (Erling): Alt + roda (ou Ctrl + roda) = troca rápida do jeito de segurar (duas armas · arma e escudo · duas mãos); o Ctrl+roda do navegador (zoom da página) fica bloqueado no jogo */
+  if (e.altKey || e.ctrlKey) { e.preventDefault(); const now = performance.now(); if (now - wswapT > 280) { wswapT = now; dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.deltaY > 0 ? 1 : -1 })); } return; }
   if ((e.target as HTMLElement | null)?.tagName !== 'CANVAS') return; // roda em cima de janela/painel: rola a janela, nunca dá zoom no jogo de trás
   K.zoomTarget = THREE.MathUtils.clamp(K.zoomTarget * Math.exp(e.deltaY * 0.0009), K.ZOOM_MIN, K.ZOOM_MAX);
 }, { passive: false });
 let nightTarget = 1;
   return { usaClique, cliqueId, cliquePronto, soltaGuarda, heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
 }
+
+/* 17/11: o Alt sozinho não pode levar o foco para o menu do navegador (o jogo usa Alt + clique e Alt + roda) */
+addEventListener('keydown', (e) => { if (e.key === 'Alt') e.preventDefault(); });
+addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(); });

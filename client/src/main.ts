@@ -1023,7 +1023,7 @@ const stable = createStable({ has: (id) => inv.has(id), count: (id) => inv.count
   onChange: () => { compSys.pet?.dispose(); compSys.pet = null; }, sfx: (k) => { if (k === 'eat') audio.work('cook'); else if (k === 'swap') audio.click(); else audio.chime(); } });
 setTimeout(() => stable.migrate(), 1500);
 /* Ctrl + clique no pet (ou na montaria): abre o Estábulo nele */
-canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey) return; const r = canvas.getBoundingClientRect();
+canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && !e.altKey) return; /* 17/11: Alt + clique (o Ctrl continua valendo) */ const r = canvas.getBoundingClientRect();
   const hitAt = (p: THREE.Vector3, h: number) => { const v = p.clone().setY(p.y + h).project(camera); return Math.hypot(r.left + (v.x * 0.5 + 0.5) * r.width - e.clientX, r.top + (-v.y * 0.5 + 0.5) * r.height - e.clientY) < 46; };
   if (compSys.pet && compSys.pet.root.visible && hitAt(compSys.pet.pos, 0.4)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'pets', id: compSys.pet.kind.id }); stable.hearts(3); }
   else if (compSys.mount && compSys.riding && hitAt(heroPos, 1.0)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'mounts', id: compSys.mount.kind.id }); } }, true);
