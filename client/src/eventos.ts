@@ -42,7 +42,8 @@ export interface EvResult { name: string; icon: string; side: string; lean: 'luz
 export interface EvCtx {
   scene: THREE.Scene; heightAt(x: number, z: number): number; hero(): THREE.Vector3; inside(): boolean; lvl(): number; night(): number;
   path(): string | null; elf(): boolean; /** o Instinto de classe está ligado */ instinct(): boolean; lean(): 'luz' | 'sombra' | null; xpNeedAt(l: number): number;
-  spawn(type: EnemyType, x: number, z: number, o: { name?: string; lvl: number; tag: string; aggro: number; hpMul: number }): Unit;
+  spawn(type: EnemyType, x: number, z: number, o: { name?: string; lvl: number; tag: string; aggro: number; hpMul: number; /** 17/11: chave de rede (o mesmo bicho em todas as máquinas da sala) */ net?: string }): Unit;
+  /** 17/11: avisa a sala que uma tarefa do evento andou (quem está perto vê o mesmo progresso) */ share?(key: string, task: string, n: number): void;
   clearTag(tag: string): void; hurtBy(e: Unit, n: number, from: THREE.Vector3): void;
   region(tx: number, ty: number): { id: number; name: string; lo: number; hi: number };
   fx(kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke' | 'incense' | 'candle', x: number, y: number, z: number): void;
@@ -399,7 +400,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     const ang = hash(idx * 11 + L.start) * 6.283; let k = 0;
     const luaN = globalNow()?.id === 'lua'; for (const [type, n0, nm] of wv.units) for (let i = 0, n = n0 + (luaN && type === 'werewolf' ? 1 : 0); i < n; i++, k++) { // na Lua de Sangue vem um lobisomem a mais em cada onda
       const r = wv.from ?? 3 + (k % 3), a = wv.from ? ang + (k - 2) * 0.35 : k * 1.9, x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
-      const lua = globalNow()?.id === 'lua' && type === 'werewolf'; const e = ctx.spawn(type, x, z, { name: nm, lvl: lv + (type === 'werewolf' || type === 'darkpal' ? 1 : 0) + (lua ? 2 : 0), tag: 'ev:' + L.key, aggro: 0, hpMul: type === 'deer' ? 1 : lua ? 1.45 : 1.1 }); e.evFac = wv.fac; if (type === 'deer') e.def.passive = true;
+      const lua = globalNow()?.id === 'lua' && type === 'werewolf'; const e = ctx.spawn(type, x, z, { name: nm, lvl: lv + (type === 'werewolf' || type === 'darkpal' ? 1 : 0) + (lua ? 2 : 0), tag: 'ev:' + L.key, aggro: 0, hpMul: type === 'deer' ? 1 : lua ? 1.45 : 1.1, /* 17/11 (evento compartilhado): o evento nasce na mesma hora e no mesmo lugar para todos (relógio do mundo); com a chave, os bichos dele são os mesmos para toda a sala */ net: `ev:${L.key}:${idx}` }); e.evFac = wv.fac; if (type === 'deer') e.def.passive = true;
       if (wv.from) e.home.set(p.x + Math.cos(a) * 3, p.z + Math.sin(a) * 3); // vêm de fora para o meio
       L.units.push(e); }
     hostility(L);
@@ -449,7 +450,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       { const el = (Date.now() - L.start) / 1000, nx = (L.tpl.waves ?? []).find((w, i) => !L.waveDone.has(i) && w.fac !== L.side); if (nx) ctx.log(`⚠ ${L.tpl.facs?.[nx.fac as "A"] ?? "Os inimigos"} chegam em ~${Math.max(5, Math.round(nx.at - el))} s. ${L.tpl.id === 'mordida' && L.side === 'A' ? `${L.tpl.herald.name} vai acender as velas: proteja-a (ou acenda junto, E perto de uma vela).` : 'Prepare-se.'}`, '#ffb060'); } } });
   }
   /** entregar o que a festa pede (madeira, pedra) */
-  function deliver(L: Live) { const sd = sideDef(L); if (!sd) return; for (const tk of sd.tasks ?? []) if (tk.kind === 'deliver') { const have = ctx.count(tk.item!), left = tk.n - (L.tasks[tk.id] ?? 0), give = Math.min(have, left); if (give > 0 && ctx.take(tk.item!, give)) { L.tasks[tk.id] = (L.tasks[tk.id] ?? 0) + give; ctx.log(`📦 Você entrega ${give}× ${tk.item === 'wood' ? 'madeira' : tk.item === 'stone' ? 'pedra' : tk.item}. (${L.tasks[tk.id]}/${tk.n})`, '#ffd24a'); } } }
+  function deliver(L: Live) { const sd = sideDef(L); if (!sd) return; for (const tk of sd.tasks ?? []) if (tk.kind === 'deliver') { const have = ctx.count(tk.item!), left = tk.n - (L.tasks[tk.id] ?? 0), give = Math.min(have, left); if (give > 0 && ctx.take(tk.item!, give)) { L.tasks[tk.id] = (L.tasks[tk.id] ?? 0) + give; ctx.log(`📦 Você entrega ${give}× ${tk.item === 'wood' ? 'madeira' : tk.item === 'stone' ? 'pedra' : tk.item}. (${L.tasks[tk.id]}/${tk.n})`, '#ffd24a'); ctx.share?.(L.key, tk.id, L.tasks[tk.id]); } } }
 
   let acc = 0, chk = 0;
   function update(dt: number, t: number) {
@@ -503,7 +504,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
       if (L.tpl.id === 'ritual' && Math.random() < dt * (1 + L.meter * 4)) ctx.fx('dark', p.x + (Math.random() - 0.5) * 8, ctx.heightAt(p.x, p.z) + 0.3, p.z + (Math.random() - 0.5) * 8);
       // canalizar uma tarefa (E)
       if (channel && channel.live === L) { channel.t += dt; if (hp.distanceTo(channel.start) > 1.3) { ctx.log('Você se mexeu e perdeu o que estava fazendo.', '#ff9a8a'); channel = null; }
-        else if (channel.t >= (channel.task.channel ?? 3)) { const { prop, task } = channel; channel = null; prop.done = true; L.tasks[task.id] = (L.tasks[task.id] ?? 0) + 1; if (task.done) ctx.bubble(prop.x, ctx.heightAt(prop.x, prop.z) + 2.4, prop.z, task.done);
+        else if (channel.t >= (channel.task.channel ?? 3)) { const { prop, task } = channel; channel = null; prop.done = true; L.tasks[task.id] = (L.tasks[task.id] ?? 0) + 1; ctx.share?.(L.key, task.id, L.tasks[task.id]); if (task.done) ctx.bubble(prop.x, ctx.heightAt(prop.x, prop.z) + 2.4, prop.z, task.done);
           if (task.after) { ctx.scene.remove(prop.g); const b = buildProp(task.after); b.g.position.copy(prop.g.position); ctx.scene.add(b.g); prop.g = b.g; prop.glow = b.glow; prop.kind = task.after; }
           if (prop.kind === 'pillar') { prop.g.rotation.z = 1.35; prop.g.position.y -= 0.2; ctx.fx('holy', prop.x, ctx.heightAt(prop.x, prop.z) + 1, prop.z); }
           if (task.id === 'altar') { L.celebrate = true; L.finT = 0; for (let i = 0; i < 30; i++) ctx.fx('petal', prop.x + (Math.random() - 0.5) * 4, ctx.heightAt(prop.x, prop.z) + 3 + Math.random() * 2, prop.z + (Math.random() - 0.5) * 4); }
@@ -602,5 +603,8 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   const tracking = () => { const L = trackKey ? lives.get(trackKey) : null; if (!L || L.over || Date.now() > L.end) { trackKey = null; return null; } return { key: L.key, x: L.site.x + 1, y: L.site.y + 1.25, joined: L.joined, name: L.tpl.name, herald: L.tpl.herald.name }; };
   /** o herói está DENTRO de um evento que aceitou (perto do lugar, lutando): aí o clima do evento global pode pesar de novo */
   function engaged() { const hp = ctx.hero(); for (const L of lives.values()) { if (!L.joined || L.over) continue; const p = sitePos(L.site); if (Math.hypot(p.x - hp.x, p.z - hp.z) < 70) return true; } return false; }
-  return { update, interact, onKill, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking, engaged };
+  /** 17/11: chegou da sala o progresso de uma tarefa feita por outro jogador: o meu evento anda junto (nunca volta para trás) */
+  function netTask(key: string, task: string, n: number) { const L = lives.get(key); if (!L || L.over || !(n > (L.tasks[task] ?? 0))) return; L.tasks[task] = n; let feitos = 0; for (const pr of L.props as { task?: string; done?: boolean }[]) if (pr.task === task) { if (pr.done) feitos++; else if (feitos < n) { pr.done = true; feitos++; } }
+    if (L.joined) ctx.log(`🤝 Outro Caminhante avançou no evento ${L.tpl.name}.`, L.tpl.color); }
+  return { update, interact, onKill, netTask, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking, engaged };
 }

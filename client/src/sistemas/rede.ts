@@ -94,7 +94,11 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   net.onX('x:hit', (_f, m) => K.game.enemies.netHit(String(m.e), m.n as number));
   net.onX('x:cast', (_f, m) => { if (!K.inside || K.inside.crypt || K.inside.dg) K.game.enemies.netCast(String(m.e), m.x as number, m.z as number, m.i as number); });
   net.onX('x:die', (from, m) => { const e = K.game.enemies.netDie(String(m.e)); // companheiro de grupo perto: a morte conta para mim também (XP, missão, meu saque)
-    if (e && inParty(from) && !K.inside && !K.game.st.dead && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 45) K.game.sharedKill(e); });
+    if (e && inParty(from) && !K.inside && !K.game.st.dead && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 45) K.game.sharedKill(e); /* (a morte do grupo já conta para o evento por este caminho) */
+    else if (e && (e as { tag?: string }).tag?.startsWith('ev:') && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 70) dispatchEvent(new CustomEvent('karmika:evkill', { detail: e })); });
+  /* 17/11 (eventos compartilhados): bicho de evento vivo morto por QUALQUER jogador perto conta para o meu evento (acima, no x:die); a tarefa feita por outro anda no meu */
+  addEventListener('karmika:evtask', (ev) => { if (net.state === 'on') net.x('x:evt', (ev as CustomEvent).detail); });
+  net.onX('x:evt', (_from, m) => dispatchEvent(new CustomEvent('karmika:evtask-in', { detail: { key: String(m.key), task: String(m.task), n: +(m.n as number) || 0 } })));
   /* missões do grupo: o que eu pego aparece para os companheiros (com "Pegar também") */
   K.quests.setOnAccept((d) => { if (net.state === 'on' && net.party && d.giver !== 'O Olho') net.x('x:pq', { d }); });
   /* masmorra em grupo: quem chega pede o estado; quem já está dentro conta o que caiu e se o portão abriu */

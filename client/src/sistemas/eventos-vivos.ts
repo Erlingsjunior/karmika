@@ -28,9 +28,14 @@ const evBanEl = document.createElement('div'); evBanEl.id = 'evglobal'; document
 const eventos = createEvents({ scene: K.scene, heightAt, hero: () => K.heroPos, inside: () => !!K.inside, lvl: () => K.game.st.lvl, night: () => K.state.night,
   path: () => K.myPath(), elf: () => K.profile?.origin === 'elf', instinct: () => K.instintoSys.instinctOn, lean: () => K.soulLean(), xpNeedAt: (l) => K.game.xpNeedAt(l),
   spawn: (type, x, z, o) => K.game.enemies.spawn(type, x, z, o) as never, clearTag: (tag) => K.game.enemies.clearTag(tag), hurtBy: (e, n, from) => { if (K.game.enemies.hurtBy(e as never, n, from)) { /* morto por outro do evento: sem crédito */ } },
+  share: (key, task, n) => dispatchEvent(new CustomEvent('karmika:evtask', { detail: { key, task, n } })),
   region: (x, y) => regionAt(x, y), fx: evFx, bubble: K.carBubble, log: (t, c) => K.game.logMsg(t, c),
   project: (p) => { const v = p.clone().project(K.camera); if (v.z > 1) return null; const r = K.canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
   converse: (o) => { let picked: Reply | null = null; K.openDlg({ name: o.name, role: o.role, portrait: null, text: '', choices: [], onAccept: () => {}, onTurnIn: () => {}, onReply: (r) => { if (r.flag?.startsWith('ev:')) picked = r; else K.applyReply(r); }, meet: { quest: { id: 'ev', name: o.title, lvl: 1, giver: o.name, text: '', objs: [], xp: 0, gold: 0 }, steps: o.steps, onEnd: () => o.onPick(picked) } }); },
   count: (it) => K.inv.count(it), take: (it, n) => K.inv.take(it, n), act: (a) => { K.hero.act(a as never, true); }, result: (r) => { if (r.won) addHonor(HONOR_FOR.event, `evento: ${r.name}`); K.showEvResult(r); } }, evSites);
+  /* 17/11 (eventos compartilhados): a rede entrega aqui o que os outros fizeram: bicho do evento morto por outro jogador conta para o meu
+     evento (se eu estou nele e por perto), e a tarefa que outro fez anda no meu também. Quem fala com a rede é sistemas/rede.ts. */
+  addEventListener('karmika:evkill', (ev) => { try { eventos.onKill((ev as CustomEvent).detail); } catch { /* */ } });
+  addEventListener('karmika:evtask-in', (ev) => { const d = (ev as CustomEvent).detail as { key: string; task: string; n: number }; try { eventos.netTask(d.key, d.task, d.n); } catch { /* */ } });
   return { evFx, evResEl, eventos, evTrkEl, evBanEl, evSites };
 }
