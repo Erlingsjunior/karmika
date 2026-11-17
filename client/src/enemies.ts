@@ -212,7 +212,7 @@ export interface Enemy {
 }
 
 /** bicho do mundo compartilhado em rede: `own` = quem está lutando com ele (o cliente dele manda a posição), `np` = último estado recebido */
-type NetE = Enemy & { net?: string; own?: number; ownT?: number; np?: { x: number; z: number; f: number; s: EState; t: number } };
+type NetE = Enemy & { /** 17/11: bicho pessoal (caçada, isca, emboscada de masmorra) que a rede anuncia para todos verem */ anun?: boolean; net?: string; own?: number; ownT?: number; np?: { x: number; z: number; f: number; s: EState; t: number } };
 const NET_ST: EState[] = ['idle', 'chase', 'windup', 'recover', 'hurt', 'flee', 'return', 'dead'];
 const ramp = new THREE.DataTexture(new Uint8Array([70, 70, 70, 255, 140, 140, 140, 255, 210, 210, 210, 255, 255, 255, 255, 255]), 4, 1, THREE.RGBAFormat);
 ramp.minFilter = ramp.magFilter = THREE.NearestFilter; ramp.needsUpdate = true;
@@ -934,11 +934,12 @@ export function createEnemies(ctx: EnemyCtx) {
   void tmp;
   /** (dev) cria um inimigo parado em (x,z) metros, sem agressividade, para inspeção */
   /** inimigo de masmorra: nasce já ativo, com nome/vida próprios, não renasce; `tag` permite limpar ao sair */
-  function spawn(type: EnemyType, x: number, z: number, o: { name?: string; hpMul?: number; dmgMul?: number; scale?: number; tag?: string; lvl?: number; aggro?: number; leash?: number; net?: string } = {}) {
+  function spawn(type: EnemyType, x: number, z: number, o: { name?: string; hpMul?: number; dmgMul?: number; scale?: number; tag?: string; lvl?: number; aggro?: number; leash?: number; net?: string; /** 17/11: chave de rede exata (sem contador) */ netId?: string; /** 17/11: anunciar para a sala (sistemas/rede.ts) */ anun?: boolean } = {}) {
     const base = DEFS[type]; const def = { ...base, name: o.name ?? base.name, dmg: Math.round(base.dmg * (o.dmgMul ?? 1)), scale: base.scale * (o.scale ?? 1), lvl: o.lvl ?? base.lvl, aggro: o.aggro ?? base.aggro } as Def;
     const hp = Math.round(base.hp * HPK * (o.hpMul ?? 1));
     const e: Enemy = { id: nid++, type, def, home: new THREE.Vector2(x, z), pos: new THREE.Vector3(x, 0, z), yaw: R() * 6.28, hp, hpMax: hp, state: 'idle', t: 0, alive: true, active: false, vel: new THREE.Vector2(), root: null, pup: null, quad: null, rig: null, wanderTo: null, wanderT: 999, phase: 0, respawn: 1e9, hurtT: 0, tele: null, flash: 0, mats: [] };
     (e as Enemy & { tag?: string; leash?: number }).tag = o.tag; (e as Enemy & { leash?: number }).leash = o.leash; list.push(e);
+    if (o.netId) { (e as NetE).net = o.netId; byId.set(o.netId, e as NetE); } if (o.anun) (e as NetE).anun = true;
     if (o.net) { const k = `${o.net}#${seq.get(o.net) ?? 0}`; seq.set(o.net, (seq.get(o.net) ?? 0) + 1); (e as NetE).net = k; byId.set(k, e as NetE); } // masmorra: mesma ordem de criação → mesma chave nas duas máquinas
     return e;
   }
@@ -988,7 +989,9 @@ export function createEnemies(ctx: EnemyCtx) {
   function netDie(id: string): Enemy | null { const e = byId.get(id); if (!e || !e.alive) return null; e.alive = false; e.hp = 0; e.state = 'dead'; e.t = 0; e.own = undefined; e.respawn = (e as Enemy & { tag?: string }).tag ? 1e9 : ELITE.has(e.type) ? 240 : 90; if (e.tele) e.tele.visible = false; return e; }
   /** o bicho que outro conduz soltou uma magia: o círculo aparece aqui também e machuca quem estiver dentro */
   function netCast(id: string, x: number, z: number, i: number) { const e = byId.get(id); const s = e && SPELLS[e.type]; if (!e || !s) return; addCast(e, s, x, z, i); if (i === 0) ctx.onSpell?.(e, s.name); }
-  return { list, update, hurt, hurtBy, nearest, debugSpawn, spawn, clearTag, interrupt, netOut, netIn, netHit, netDie, netCast };
+  /** 17/11: os meus bichos pessoais vivos, para a rede anunciar; e se uma chave de rede já existe aqui */
+  const netAnun = () => (list as NetE[]).filter((q) => q.anun && q.alive && q.net), netHas = (id: string) => byId.has(id);
+  return { list, update, hurt, hurtBy, nearest, debugSpawn, spawn, clearTag, interrupt, netOut, netIn, netHit, netDie, netCast, netAnun, netHas };
 }
 /** animação de trote/galope de um quadrúpede (usada por pets e montarias) */
 export function animQuadWalk(q: Quad, ph: number, moveSp: number, t: number, seed = 0) {

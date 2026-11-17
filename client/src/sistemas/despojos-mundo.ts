@@ -17,7 +17,12 @@ export function createDespojosMundo(K: DespojosCtx) {
     const facho = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.22, 6, 8, 1, true), ouro.clone()); (facho.material as THREE.MeshBasicMaterial).opacity = 0.28; facho.position.y = 3.2; G.add(facho);
     K.scene.add(fine(G)); M.set(q, G); }
   for (const q of L) monta(q);
-  let t = 0, aviso = 0;
+  let t = 0, aviso = 0, anuncio = 0;
+  /* 17/11: os montes dos outros jogadores aparecem para todos (mais apagados, sem o facho); só o dono recolhe. Somem 30 s depois do último aviso. */
+  const alheios = new Map<string, { g: THREE.Group; t: number }>();
+  addEventListener('karmika:despojos-in', (ev) => { const d = (ev as CustomEvent).detail as { de: number; l: [number, number][] }; if (!Array.isArray(d.l)) return; const h = K.heroi();
+    for (const [x, y] of d.l.slice(0, 6)) { const k = `${d.de}:${Math.round(x)}:${Math.round(y)}`, a = alheios.get(k); if (a) { a.t = Date.now(); continue; } if (Math.hypot(x * T - h.x, y * T - h.z) > 160 || alheios.size > 40) continue;
+      const G = new THREE.Group(), px = x * T, pz = y * T; G.position.set(px, heightAt(px, pz), pz); const saco = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 8), pano); saco.scale.set(1, 0.8, 1); saco.position.y = 0.3; G.add(saco); const boca = new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.05, 5, 10), corda); boca.rotation.x = Math.PI / 2; boca.position.y = 0.62; G.add(boca); K.scene.add(fine(G)); alheios.set(k, { g: G, t: Date.now() }); } });
   return {
     /** a alma se soltou: o que cai fica num monte em (x, y), em casas do mapa. Devolve quantos itens caíram e o que os dados disseram. */
     deixa(x: number, y: number, pvp: boolean) { const j = juiz(pvp), pacote = K.despoja(j.cai); if (vazio(pacote)) return { n: 0, rolagens: j.rolagens };
@@ -29,7 +34,8 @@ export function createDespojosMundo(K: DespojosCtx) {
     /** a Lágrima paga a volta: o último monte volta inteiro para o personagem */
     lagrima() { const q = L.pop(); if (!q) return 0; K.devolve(q.pacote); const G = M.get(q); if (G) { K.scene.remove(G); M.delete(q); } guarda(L); return quantos(q.pacote); },
     /** todo quadro: os montes giram e brilham; chegar perto recolhe */
-    tick(dt: number) { if (!L.length) return; t += dt; const h = K.heroi();
+    tick(dt: number) { t += dt; if (t > anuncio) { anuncio = t + 8; if (L.length) dispatchEvent(new CustomEvent('karmika:despojos', { detail: L.slice(-6).map((q) => [q.x, q.y]) })); const agora = Date.now(); for (const [k, a] of alheios) if (agora - a.t > 30000) { K.scene.remove(a.g); alheios.delete(k); } }
+      if (!L.length) return; const h = K.heroi();
       for (let i = L.length - 1; i >= 0; i--) { const q = L[i], G = M.get(q); if (!G) continue; const loz = G.getObjectByName('loz'); if (loz) { loz.rotation.y = t * 1.6; loz.position.y = 1.5 + Math.sin(t * 2) * 0.12; }
         if (K.morto() || K.dentro()) continue; const dd = Math.hypot(G.position.x - h.x, G.position.z - h.z);
         if (dd < 1.8) { K.devolve(q.pacote); const n = quantos(q.pacote); K.scene.remove(G); M.delete(q); L.splice(i, 1); guarda(L); K.log(`✦ Você recolhe os seus despojos: ${n} ${n === 1 ? 'item volta' : 'itens voltam'} para você.`, '#ffe08a'); }

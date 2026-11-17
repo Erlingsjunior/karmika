@@ -17,7 +17,7 @@ export type Hunt = { qid: string; type: EnemyType; name: string; x: number; z: n
 export function createCacaElite(K: CacaEliteCtx) {
 const compendium = createCompendium({ where: () => K.zoneName(), day: () => K.dayIndex(), lvl: () => K.game.st.lvl });
 let hunt: Hunt | null = (() => { try { return JSON.parse(localStorage.getItem('karmika.hunt') || 'null'); } catch { return null; } })();
-function spawnHunt(h: Hunt) { const e = K.game.enemies.spawn(h.type, h.x, h.z, { name: h.name, tag: 'hunt', hpMul: 3.5, dmgMul: 1.3, scale: 1.25, lvl: h.lvl }); (e as typeof e & { yielded?: boolean }).yielded = true; }
+function spawnHunt(h: Hunt) { const e = K.game.enemies.spawn(h.type, h.x, h.z, { name: h.name, tag: 'hunt', hpMul: 3.5, dmgMul: 1.3, scale: 1.25, lvl: h.lvl, /* 17/11 (Erling: "a sala cabe 200 e tudo tem que ser visto por todos"): a caça continua sendo o contrato de um jogador, mas todos veem o bicho e podem ajudar */ anun: true, netId: `hunt:${Date.now().toString(36)}${Math.floor(Math.random() * 1e6)}` }); (e as typeof e & { yielded?: boolean }).yielded = true; }
 function startHunt(type: EnemyType, name: string, lvl: number) {
   const h0 = K.heroPosNow(); let x = h0.x, z = h0.z;
   for (let k = 0; k < 40; k++) { const a = Math.random() * 6.283, d = 70 + Math.random() * 50; const tx = h0.x + Math.cos(a) * d, tz = h0.z + Math.sin(a) * d; const gx = Math.floor(tx / T), gy = Math.floor(tz / T); if (K.city.map[gy]?.[gx] === 'grass' || K.city.map[gy]?.[gx] === 'road') { x = tx; z = tz; break; } }

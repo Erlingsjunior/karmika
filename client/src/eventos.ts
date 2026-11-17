@@ -44,6 +44,7 @@ export interface EvCtx {
   path(): string | null; elf(): boolean; /** o Instinto de classe está ligado */ instinct(): boolean; lean(): 'luz' | 'sombra' | null; xpNeedAt(l: number): number;
   spawn(type: EnemyType, x: number, z: number, o: { name?: string; lvl: number; tag: string; aggro: number; hpMul: number; /** 17/11: chave de rede (o mesmo bicho em todas as máquinas da sala) */ net?: string }): Unit;
   /** 17/11: avisa a sala que uma tarefa do evento andou (quem está perto vê o mesmo progresso) */ share?(key: string, task: string, n: number): void;
+  /** 17/11: entrei num evento: chama quem está por perto */ call?(key: string): void;
   clearTag(tag: string): void; hurtBy(e: Unit, n: number, from: THREE.Vector3): void;
   region(tx: number, ty: number): { id: number; name: string; lo: number; hi: number };
   fx(kind: 'firework' | 'petal' | 'holy' | 'dark' | 'smoke' | 'incense' | 'candle', x: number, y: number, z: number): void;
@@ -445,7 +446,7 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
     if (L.joined) { const sd = sideDef(L)!; ctx.log(`${L.tpl.herald.name}: “${L.side === 'A' ? 'Rápido, ainda dá tempo!' : 'Você de novo…'}” (${sd.label})`, L.tpl.color); deliver(L); return; }
     ctx.converse({ name: L.tpl.herald.name, role: L.tpl.herald.role, title: `${L.tpl.icon} ${L.tpl.name}`, steps, onPick: (r) => {
       const f = r?.flag ?? 'ev:none'; if (f === 'ev:none') { ctx.log(`Você deixa ${L.tpl.name.toLowerCase()} para quem quiser. O evento segue sem você.`, '#b9c6e0'); L.asked = true; return; }
-      L.side = f.startsWith('ev:A') ? 'A' : 'B'; L.joined = true; trackKey = L.key; if (f === 'ev:A:celebrar') L.tasks['altar_perm'] = 1; hostility(L);
+      L.side = f.startsWith('ev:A') ? 'A' : 'B'; L.joined = true; ctx.call?.(L.key); trackKey = L.key; if (f === 'ev:A:celebrar') L.tasks['altar_perm'] = 1; hostility(L);
       const sd = sideDef(L)!; ctx.log(`${L.tpl.icon} Evento: ${L.tpl.name} — você escolheu: ${sd.label}.`, L.tpl.color);
       { const el = (Date.now() - L.start) / 1000, nx = (L.tpl.waves ?? []).find((w, i) => !L.waveDone.has(i) && w.fac !== L.side); if (nx) ctx.log(`⚠ ${L.tpl.facs?.[nx.fac as "A"] ?? "Os inimigos"} chegam em ~${Math.max(5, Math.round(nx.at - el))} s. ${L.tpl.id === 'mordida' && L.side === 'A' ? `${L.tpl.herald.name} vai acender as velas: proteja-a (ou acenda junto, E perto de uma vela).` : 'Prepare-se.'}`, '#ffb060'); } } });
   }
@@ -606,5 +607,10 @@ export function createEvents(ctx: EvCtx, world: { sitesVillage: Site[]; sitesRoa
   /** 17/11: chegou da sala o progresso de uma tarefa feita por outro jogador: o meu evento anda junto (nunca volta para trás) */
   function netTask(key: string, task: string, n: number) { const L = lives.get(key); if (!L || L.over || !(n > (L.tasks[task] ?? 0))) return; L.tasks[task] = n; let feitos = 0; for (const pr of L.props as { task?: string; done?: boolean }[]) if (pr.task === task) { if (pr.done) feitos++; else if (feitos < n) { pr.done = true; feitos++; } }
     if (L.joined) ctx.log(`🤝 Outro Caminhante avançou no evento ${L.tpl.name}.`, L.tpl.color); }
-  return { update, interact, onKill, netTask, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking, engaged };
+  /** 17/11 (Erling: "eventos próximos têm que chamar quem estiver próximo"): outro jogador entrou neste evento. Se eu estou a até 260 m e ainda
+      não entrei, o evento me chama: aviso no chat, a bússola aponta para lá e o convite volta a aparecer quando eu chegar. Um chamado por evento. */
+  const chamados = new Set<string>();
+  function netCall(key: string, quem: string) { const L = lives.get(key); if (!L || L.over || L.joined || chamados.has(key) || Date.now() > L.end) return; const p = sitePos(L.site), hp = ctx.hero(), d = Math.hypot(p.x - hp.x, p.z - hp.z); if (d > 260) return; chamados.add(key);
+    ctx.log(`📯 ${quem} entrou no evento ${L.tpl.name}, em ${L.site.name}, a ${Math.round(d)} m. O evento chama você: siga a bússola.`, L.tpl.color); L.asked = false; if (!trackKey) trackKey = key; }
+  return { update, interact, onKill, netTask, netCall, mapMarks, tracker, schedule, devForce, lives, TPL, nearby, track, leave, story, tracking, engaged };
 }

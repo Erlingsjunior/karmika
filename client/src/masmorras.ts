@@ -383,7 +383,7 @@ export function createMasmorras(ctx: DgCtx) {
   }
   /** bichos da própria masmorra que saem de um baú-isca ou de um caixão */
   function ambush(R: NonNullable<typeof run>, x: number, z: number, n: number) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, t = R.d.mobs[Math.floor(Math.random() * R.d.mobs.length)], k = lvlScale(t, R.lvl[1]);
-      ctx.game.enemies.spawn(t, x + Math.cos(a) * 1.4, z + Math.sin(a) * 1.4, { tag: 'dg-add', lvl: R.lvl[1], hpMul: k.hp * R.tier.hp, dmgMul: k.dmg * R.tier.dmg, aggro: 30, leash: 999 }); } }
+      ctx.game.enemies.spawn(t, x + Math.cos(a) * 1.4, z + Math.sin(a) * 1.4, { tag: 'dg-add', lvl: R.lvl[1], hpMul: k.hp * R.tier.hp, dmgMul: k.dmg * R.tier.dmg, aggro: 30, leash: 999, anun: true, netId: `dga:${Date.now().toString(36)}${i}${Math.floor(Math.random() * 1e4)}` } as never); } }
   /** o que dá para fazer perto (lá dentro): baús, o portão */
   function interactions(hx: number, hz: number, add: (d: number, r: number, label: string, act: () => void) => void) {
     if (!run) return; const R = run;

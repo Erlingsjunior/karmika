@@ -95,8 +95,27 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   net.onX('x:cast', (_f, m) => { if (!K.inside || K.inside.crypt || K.inside.dg) K.game.enemies.netCast(String(m.e), m.x as number, m.z as number, m.i as number); });
   net.onX('x:die', (from, m) => { const e = K.game.enemies.netDie(String(m.e)); // companheiro de grupo perto: a morte conta para mim também (XP, missão, meu saque)
     if (e && inParty(from) && !K.inside && !K.game.st.dead && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 45) K.game.sharedKill(e); /* (a morte do grupo já conta para o evento por este caminho) */
+    else if (e && (e as { tag?: string }).tag === 'hunt' && !K.game.st.dead) K.game.sharedKill(e); /* 17/11: a minha caça de elite, morta com a ajuda de outro jogador, conta para o meu contrato */
     else if (e && (e as { tag?: string }).tag?.startsWith('ev:') && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 70) dispatchEvent(new CustomEvent('karmika:evkill', { detail: e })); });
   /* 17/11 (eventos compartilhados): bicho de evento vivo morto por QUALQUER jogador perto conta para o meu evento (acima, no x:die); a tarefa feita por outro anda no meu */
+  /* 17/11 (Erling: "a sala cabe 200 jogadores e tudo tem que ser visto por todos"). BICHOS PESSOAIS À VISTA DE TODOS: a caçada de elite, a isca
+     de aranhas e a emboscada do baú nascem só na máquina de quem os chamou. De 3 em 3 s o dono anuncia os seus; quem está a até 150 m e ainda
+     não tem aquele bicho cria um igual com a mesma chave, e daí em diante ele anda, apanha e morre igual para todos (x:mob, x:hit, x:die).
+     O bicho de fora que fica 12 s sem anúncio (o dono saiu, a caçada acabou) some. */
+  const nomeDe = (id: number) => (net.peers() as { id?: number; name: string }[]).find((q) => q.id === id)?.name ?? 'Um Caminhante';
+  const deFora = new Map<string, number>();
+  type Anun = { net?: string; type: string; pos: { x: number; z: number }; def: { name: string; lvl: number; scale: number }; hp: number; hpMax: number; tag?: string };
+  setInterval(() => { if (net.state !== 'on') return; const L = (K.game.enemies as unknown as { netAnun(): Anun[] }).netAnun().filter((e) => !deFora.has(e.net!)).slice(0, 14); if (L.length) net.x('x:spw', { l: L.map((e) => [e.net, e.type, Math.round(e.pos.x * 10) / 10, Math.round(e.pos.z * 10) / 10, e.def.name, e.def.lvl, e.hpMax, e.tag ?? '']) });
+    const agora = Date.now(); for (const [id, t] of deFora) if (agora - t > 12000) { deFora.delete(id); K.game.enemies.netDie(id); } }, 3000);
+  net.onX('x:spw', (_from, m) => { const E = K.game.enemies as unknown as { netHas(id: string): boolean; spawn(t: string, x: number, z: number, o: Record<string, unknown>): { hp: number; hpMax: number } }, hp = K.hero.root.position;
+    for (const r of (m.l as [string, string, number, number, string, number, number, string][]) ?? []) { const [id, type, x, z, name, lvl, hpMax, tag] = r; if (typeof id !== 'string' || deFora.size > 60) continue; if (E.netHas(id)) { if (deFora.has(id)) deFora.set(id, Date.now()); continue; } if (Math.hypot(x - hp.x, z - hp.z) > 150) continue;
+      try { const e = E.spawn(type, x, z, { name, lvl, tag: 'fora:' + (tag || 'x'), netId: id, aggro: 0 }); e.hpMax = e.hp = hpMax; deFora.set(id, Date.now()); } catch { /* tipo de bicho que esta versão não conhece */ } } });
+  /* OS MONTES DE DESPOJOS dos outros aparecem para todos (só o dono recolhe) */
+  addEventListener('karmika:despojos', (ev) => { if (net.state === 'on') net.x('x:desp', { l: (ev as CustomEvent).detail }); });
+  net.onX('x:desp', (from, m) => dispatchEvent(new CustomEvent('karmika:despojos-in', { detail: { de: from, l: m.l } })));
+  /* O CHAMADO DO EVENTO (Erling: "eventos próximos têm que chamar quem estiver próximo"): quem entra num evento chama a sala; quem está perto ouve */
+  addEventListener('karmika:evcall', (ev) => { if (net.state === 'on') net.x('x:evc', (ev as CustomEvent).detail); });
+  net.onX('x:evc', (from, m) => dispatchEvent(new CustomEvent('karmika:evcall-in', { detail: { key: String(m.key), quem: nomeDe(from) } })));
   addEventListener('karmika:evtask', (ev) => { if (net.state === 'on') net.x('x:evt', (ev as CustomEvent).detail); });
   net.onX('x:evt', (_from, m) => dispatchEvent(new CustomEvent('karmika:evtask-in', { detail: { key: String(m.key), task: String(m.task), n: +(m.n as number) || 0 } })));
   /* missões do grupo: o que eu pego aparece para os companheiros (com "Pegar também") */
