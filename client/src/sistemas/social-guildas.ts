@@ -1,4 +1,5 @@
 /* AMIGOS, CONVERSAS E GUILDAS (hub.ts e social.ts): escrituras de casa, casas dos outros, terrenos e salões de guilda, o PvP de facção, entrar no servidor, o início, o cartão do herói e o balão de fala. Saiu do main.ts (02/11). */
+import { marcaGolpePvp } from '../morte';
 import { tarefa } from './perf-tarefas';
 import { FOUND_NEAR_M } from './guilda-fundacao';
 import { createHub } from '../hub';
@@ -168,6 +169,7 @@ const pvp = (() => {
       K.game.damage(n, K.hero.root.position, fromPos); return; }
     if (K.inside || safeAt(K.hero.root.position.x, K.hero.root.position.z)) return;
     hostile.set(from, Date.now() + 120000); // agora eu posso revidar sem culpa
+    marcaGolpePvp(); /* 17/11: se este golpe matar, é morte por jogador (os dados decidem o que cai) */
     K.game.damage(n, K.hero.root.position, fromPos);
     if (K.game.st.dead) { K.net.x('x:pvpdie', { by: from }); K.quests.grudge(K.net.nameOf(from)); K.game.logMsg(`👁 ${K.net.nameOf(from)} matou você. O Olho viu: um Contrato de Vingança contra essa pessoa não pesa no seu karma.`, '#d9a0d0'); }
   });

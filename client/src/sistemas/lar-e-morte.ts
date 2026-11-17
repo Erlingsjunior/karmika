@@ -6,6 +6,7 @@ import { MAX_BREATHS, FRAY_LVL, type Life } from '../soul';
 import { playDeath } from '../hud';
 import { soulSpark, type LimiarInfo } from '../limiar';
 import { PATHS } from '../vidente';
+import { foiPvp } from '../morte';
 import type { LarMorteCtx } from '../main';
 
 /* ---------- fonte-lar, morte e renascimento; Deusa dos Caminhos: Pergaminho do Regresso ---------- */
@@ -44,6 +45,9 @@ K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen(); caido = 
   if (!K.profile || K.game.st.lvl < FRAY_LVL || !K.profile.eye) { fall(); return; } /* o Fio só se gasta depois que o Olho abre (nível 15) */
   if (K.soul.s.breaths > 0) { K.soul.s.breaths--; K.soul.save(); const b = K.soul.s.breaths;
     fall(b > 0 ? `🕯 Fio da Vida: restam ${b} de ${MAX_BREATHS} fôlegos. Um volta a cada dia.` : '🕯 Fio da Vida: este era o último fôlego. Se cair de novo antes de um voltar, a alma desencarna.', b); return; }
+  /* 17/11: a morte de verdade. Tudo o que o personagem carrega fica num monte onde o corpo caiu (dentro de um prédio ou masmorra: na porta,
+     do lado de fora). Morte por outro jogador: os dados decidem item por item. O baú não é tocado. A Lágrima, no Limiar, devolve tudo. */
+  { const onde = K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; try { K.despojos.deixa(onde.x, onde.y, foiPvp()); } catch (e) { console.warn('despojos', e); } }
   K.soul.s.pending = 'choose'; K.soul.save(); K.limiar.prepare(); K.audio.soulRise(0.3);
   /* a faísca sai do corpo, cresce, vibra e sobe como uma agulha até o céu; a tela esmaece e a alma chega ao centro do labirinto */
   setTimeout(() => soulSpark(K.scene, K.hero.root.position.clone(), { burst: (x, y, z, c0, c1) => K.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: Math.random() * 0.6, vz: (Math.random() - 0.5) * 0.8, life: 0.7, s0: 0.35, s1: 0.04, c0, c1, a: 1 }),
@@ -101,7 +105,7 @@ function unbind(revive: () => void = () => { /* já de pé */ }, resume?: 'rebor
   K.limiar.open(info, (k) => {
     K.soul.s.breaths = MAX_BREATHS; K.soul.s.regenAt = Date.now(); K.soul.s.pending = null;
     if (k === 'corpo') { K.soul.s.debt += info.debt; K.soul.save(); revive(); placeAt(`⛲ A alma volta ao mesmo corpo, em ${home.name}. Dívida Kármica: ${K.soul.s.debt.toLocaleString('pt-BR')} XP.`); return; }
-    if (k === 'lagrima') { K.inv.take('lagrima', 1); revive(); placeAt(`💧 A Lágrima paga a volta. A alma de ${K.profile!.name} reencontra o corpo ${place.name}.`, place); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 80 } })); return; }
+    if (k === 'lagrima') { K.inv.take('lagrima', 1); { const n = K.despojos.lagrima(); if (n) K.game.logMsg(`💧 A Lágrima devolve tudo o que você carregava (${n} ${n === 1 ? 'item' : 'itens'}).`, '#9ad7ff'); } revive(); placeAt(`💧 A Lágrima paga a volta. A alma de ${K.profile!.name} reencontra o corpo ${place.name}.`, place); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 80 } })); return; }
     if (resume !== 'reborn') { const life: Life = { name: K.profile!.name, origin: K.profile!.origin, cls: c.name, clsLvl: c.lvl, lvl: K.game.st.lvl, karma: Math.round(K.state.karma), luz: Math.round(K.soul.s.luzT ?? 0), sombra: Math.round(K.soul.s.sombraT ?? 0), end: 'reencarne', at: Date.now() };
       K.soul.s.lives.push(life); K.soul.s.luzT = 0; K.soul.s.sombraT = 0; K.soul.s.outcast = null; K.soul.s.madness = null; /* o acumulado é desta vida: sobe sem teto até desencarnar, e fica escrito na vida passada */ K.soul.s.catchup = { cls: c.name, until: Math.max(c.lvl, K.soul.s.catchup?.cls === c.name ? K.soul.s.catchup.until : 0) }; }
     K.soul.s.pending = 'reborn'; K.soul.save(); revive(); K.showCreate(true);

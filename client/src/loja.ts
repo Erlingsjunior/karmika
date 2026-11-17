@@ -85,8 +85,8 @@ export function createLoja(ctx: {
      a Bênção dá e como recebê-la (o Presente de Marghar chega no correio de todo personagem). */
   function premCard() {
     const on = ctx.isPremium();
-    return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>A Bênção é <b>de todos os Caminhantes, de graça e para sempre</b>. Não existe mais plano pago: o conforto do dia a dia é igual para todo mundo.</p>
-      <p class="lj-on">${on ? '✦ A Bênção está ativa na sua conta.' : 'Todo personagem recebe o <b>Presente de Marghar</b> no correio. Retire em qualquer povoado e use o item: a Bênção vale para a conta inteira e não acaba.'}</p></div></div>
+    return `<div class="lj-hero prem"><div class="lj-eye">${EYE}</div><div><h3>Bênção de Marghar</h3><p>A Bênção de Marghar é <b>gratuita a todos enquanto o jogo está em fase beta</b>. O conforto do dia a dia é igual para todo mundo durante o teste.</p>
+      <p class="lj-on">${on ? '✦ A Bênção está ativa na sua conta.' : 'Todo personagem recebe o <b>Presente de Marghar</b> no correio. Retire em qualquer povoado e use o item: a Bênção vale para a conta inteira durante todo o beta.'}</p></div></div>
       <ul class="lj-perks">${PREM_PERKS.map(([i, t]) => `<li><span>${i}</span>${t}</li>`).join('')}</ul>
       <small class="lj-note">Nada aqui dá força: dano, vida, XP e drop são iguais para todos.</small>`;
   }

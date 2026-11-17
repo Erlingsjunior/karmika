@@ -1,4 +1,5 @@
 import { INSTINCT_MARKS } from '../segredos';
+import { isPremium } from '../premium';
 import { partyMarks } from '../net';
 /* MINIMAPA: a imagem base do mundo, o zoom, os ícones e marcadores, o mapa grande (janela) e seus cliques. Saiu do main.ts (02/11). */
 import { MAP_W, groundH, WL, heightAt, fbm, ISLES } from '../world';
@@ -86,7 +87,12 @@ function mapTravel(go: string) { if (K.inside) { K.game.logMsg('Saia para o céu
   /* 16/11: 'lugar:Nome' e 'ponto:x,y,Nome' são lugares já encontrados (maravilha, lugar, masmorra, Fonte da Visão): o herói aparece no chão firme mais perto */
   if (go.startsWith('lugar:') || go.startsWith('ponto:')) { let x = 0, y = 0, nome = ''; if (go.startsWith('lugar:')) { nome = go.slice(6); const p = K.city.pois.find((q) => q.name === nome); if (!p) return; x = p.x; y = p.y; } else { const m = go.slice(6).split(','); x = +m[0]; y = +m[1]; nome = m.slice(2).join(','); }
     const chao = chaoPerto(x, y + 2) ?? chaoPerto(x, y); if (!chao) { K.game.logMsg(`Não há chão firme perto de ${nome}.`, '#ff9a8a'); return; } const [tx, ty] = chao;
-    K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(`✦ Você atravessa o véu até ${nome}.`, '#ffe08a'); }); return; }
+    /* 17/11 (Erling: "viagem com custo de moedas, não muito alto; gratuita para Premium"): 1 moeda a cada 15 casas de distância, de 5 a 80.
+       Com a Bênção de Marghar (gratuita a todos durante o beta) a viagem não custa nada. */
+    const custo = isPremium() || K.game.st.god ? 0 : Math.max(5, Math.min(80, Math.round(Math.hypot(tx - K.state.fx, ty - K.state.fy) / 15)));
+    if (custo > K.game.st.gold) { K.game.logMsg(`A travessia até ${nome} custa 🪙 ${custo}. Você tem ${K.game.st.gold}.`, '#ff9a8a'); return; }
+    if (custo) K.game.st.gold -= custo;
+    K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(custo ? `✦ Você atravessa o véu até ${nome} (🪙 −${custo}).` : `✦ Você atravessa o véu até ${nome}. A Bênção de Marghar paga a travessia.`, '#ffe08a'); }); return; }
   K.travelRelic(go); }
 /** o chão firme mais perto de um ponto do mapa (nunca água, nunca parede), até 40 casas */
 function chaoPerto(tx: number, ty: number): [number, number] | null { for (let r = 0; r < 40; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.floor(tx + Math.cos(a / Math.max(1, r * 8) * 6.283) * r), y = Math.floor(ty + Math.sin(a / Math.max(1, r * 8) * 6.283) * r), t2 = K.city.map[y]?.[x]; if (t2 && isWalkable(t2) && groundH((x + 0.5) * T, (y + 0.5) * T) > WL) return [x + 0.5, y + 0.5]; } return null; }

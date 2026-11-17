@@ -1,4 +1,5 @@
 import { honor, honorPrice, spendHonor, honorRank } from './sistemas/honra';
+import { NUNCA_CAI, type Pacote } from './morte';
 import { runeItems } from './runas-magia';
 import { heroHand, heroAcc, monCD, monAcc, heroCD, needOf, critFaces, fmtDice } from './dados-rpg';
 import { REACTOR_PARTS, type ReactorPart, loadParts, saveParts, partsFull, reactorSvg } from './reator';
@@ -24,7 +25,7 @@ const ITEMS0: Record<string, Item> = {
   fishc: { name: 'Peixe assado', icon: '🍣', kind: 'food', col: 0xd09a5a, desc: 'Cura bastante.', heal: 38, sell: 5 },
   bread: { name: 'Pão', icon: '🍞', kind: 'food', col: 0xd0a060, desc: 'Cura um pouco.', heal: 20, sell: 2 },
   lagrima: { name: 'Lágrima do Olho', icon: '💧', kind: 'misc', col: 0x9ad7ff, tier: 5, sell: 6000, desc: 'Marghar se emocionou. Guarde para a morte: no Limiar ela paga a volta da alma sem penalidade nenhuma. Ou use para trocar por 60 dias de Premium, venda ao mercador (6.000 ouro) ou a outro jogador pelo correio e pelo Quadro.' },
-  presente_marghar: { name: 'Presente de Marghar', icon: '✦', kind: 'misc', col: 0xc9a0ff, tier: 5, desc: 'O Olho dá a todo Caminhante a sua Bênção, para sempre. Use para receber: 8 missões ao mesmo tempo, Bolsa do Caminhante, Bolsa Mágica e Bolsa de Ofício, Alforje de Marghar, baú maior e a runa do Olho. Vale para a conta inteira. O mercador não compra.' },
+  presente_marghar: { name: 'Presente de Marghar', icon: '✦', kind: 'misc', col: 0xc9a0ff, tier: 5, desc: 'A Bênção de Marghar é gratuita a todos enquanto o jogo está em fase beta. Use para receber: 8 missões ao mesmo tempo, Bolsa do Caminhante, Bolsa Mágica e Bolsa de Ofício, Alforje de Marghar, baú maior e a runa do Olho. Vale para a conta inteira. O mercador não compra.' },
   seal_p30: { name: 'Selo de Marghar · 30 dias', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 30 dias de Premium (Bênção de Marghar), ou venda a outro jogador no Quadro de Avisos ou pelo correio. O mercador não compra.' },
   seal_p90: { name: 'Selo de Marghar · 90 dias', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 90 dias de Premium, ou venda a outro jogador. O mercador não compra.' },
   seal_p365: { name: 'Selo de Marghar · 1 ano', icon: '✦', kind: 'misc', col: 0xc9a0ff, desc: 'Comprado no Shop. Use para ativar 1 ano de Premium, ou venda a outro jogador. O mercador não compra.' },
@@ -852,6 +853,17 @@ export function createInventory(game: GameLike, hooks: { /** 29/10: a aba ⚛ Re
     /** comando de teste (/tabuas, /prego…): põe direto na mochila, sem olhar espaço */
     grant(id: string, n: number) { bag[id] = (bag[id] ?? 0) + n; recalc(); render(); save(); },
     bag, eq: eqG, gearBag, tools, equipTool, unequip, cycleWeapons, setMode,
+    /** 17/11: a morte que leva ao Limiar. Tira do personagem tudo o que o juiz mandar cair (mochila, peças guardadas e peças vestidas) e
+        devolve o pacote. Não cai: item de missão, a Lágrima, o que é da conta, as bolsas e as ferramentas presas ao cinto de ofício. */
+    despoja(cai: (nome: string) => boolean): Pacote { const P: Pacote = { bag: {}, gear: [], eq: {} };
+      for (const id of Object.keys(bag)) { const it = ITEMS[id], n = bag[id] ?? 0; if (!it || n <= 0 || it.quest || NUNCA_CAI.has(id)) continue; if (!cai(n > 1 ? `${it.name} ×${n}` : it.name)) continue; P.bag[id] = n; delete bag[id]; }
+      for (let i = gearBag.length - 1; i >= 0; i--) if (cai(gearBag[i].name)) P.gear.push(gearBag.splice(i, 1)[0]);
+      for (const sl of SLOTS) { const g = eqG[sl]; if (g && cai(g.name)) { P.eq[sl] = g; eqG[sl] = null; } }
+      recalc(); render(); save(); return P; },
+    /** devolve um pacote de despojos: o que estava vestido volta ao lugar se o lugar estiver vazio; o resto vai para a mochila */
+    devolve(P: Pacote) { for (const [id, n] of Object.entries(P.bag)) bag[id] = (bag[id] ?? 0) + n; for (const g of P.gear) gearBag.push(g);
+      for (const [sl, g] of Object.entries(P.eq) as [Slot, Gear][]) { if (!eqG[sl]) eqG[sl] = g; else gearBag.push(g); }
+      recalc(); render(); save(); },
     /** a ferramenta no espaço (ou null): id e números */
     tool(sl: ToolSlot) { const id = tools[sl]; return id ? { id, ...TOOLS[id], name: ITEMS[id].name } : null; },
     /** 02/11: motivo de a classe atual não vestir a peça (null = serve) */
