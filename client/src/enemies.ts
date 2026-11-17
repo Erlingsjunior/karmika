@@ -1,4 +1,5 @@
 import { attachSkin } from './skin3d';
+import { createDescarte, marcaAgora, type Marca } from './desempenho/descarte-corpos';
 import { yukaSurround } from './libs/yuka';
 import { RUNAS } from './runas';
 import { t as tr, tl } from './i18n';
@@ -585,6 +586,7 @@ export function createEnemies(ctx: EnemyCtx) {
   function build(e: Enemy) { build0(e); try { enemyHooks.track?.(e); } catch { /* */ } }
   function build0(e: Enemy) {
     { const b = (e as Enemy & { body?: Body }).body; if (b) { (e as Enemy & { body?: Body }).body = undefined; e.root = b.root; e.pup = b.pup; e.quad = b.quad; e.rig = b.rig; e.tele = b.tele; e.mats = b.mats; (e as Enemy & { qring?: THREE.Mesh }).qring = b.qring; /* o cadáver encolheu até sumir: o corpo volta inteiro, de pé e visível (Erling: "coiote invisível") */ e.root.scale.setScalar(e.def.scale); e.root.rotation.set(0, 0, 0); e.root.visible = true; for (const m of e.mats) if (m.emissive) m.emissive.setRGB(0, 0, 0); if (e.tele) ctx.scene.add(e.tele); ctx.scene.add(e.root); return; } }
+    (e as Enemy & { nasc?: Marca }).nasc = marcaAgora(); /* 17/11: o que nascer daqui em diante é deste corpo (desempenho/descarte-corpos.ts) */
     const g = new THREE.Group(); g.scale.setScalar(e.def.scale); e.root = g; g.userData.kind = 'enemy';
     const custom = enemyHooks.body?.(e) ?? null;
     if (custom) { e.rig = custom; g.add(custom.root); e.mats = [...custom.mats]; }
@@ -617,6 +619,12 @@ export function createEnemies(ctx: EnemyCtx) {
   /* 26/10 (desempenho, perfil do Erling: 14% da CPU era o three.js fundindo geometria — toNonIndexed — porque cada bicho que entrava
      no raio ganhava um corpo NOVO, e perdia ao sair). Agora o corpo é guardado e só sai de cena; voltar é só recolocar. */
   type Body = { root: THREE.Group; pup: Enemy['pup']; quad: Enemy['quad']; rig: Enemy['rig']; tele: Enemy['tele']; mats: Enemy['mats']; qring?: THREE.Mesh };
+  /* 17/11 (regra 15 do estudo de desempenho): o corpo guardado de quem não volta mais é devolvido à placa de vídeo. Vale para o inimigo tirado da
+     lista (masmorra, evento, caravana, ataque a vila), para o inimigo com marca que morreu (não renasce) e para o bicho do mundo que ficou a mais
+     de 120 m: perto, o corpo continua guardado para voltar sem custo (26/10); longe, não faz sentido segurar a memória. */
+  const LONGE = 120;
+  const descarte = createDescarte((f) => { for (const e of list) { const b = (e as Enemy & { body?: Body }).body; if (e.root) f(e.root); if (e.tele) f(e.tele); if (b) { f(b.root); if (b.tele) f(b.tele); } } });
+  function solta(e: Enemy) { const x = e as Enemy & { body?: Body; nasc?: Marca }, b = x.body; if (!b) return; x.body = undefined; descarte.solta([b.root, b.tele], x.nasc); }
   function unbuild(e: Enemy) {
     if (e.root) ctx.scene.remove(e.root); if (e.tele) ctx.scene.remove(e.tele);
     if (e.root) (e as Enemy & { body?: Body }).body = { root: e.root, pup: e.pup, quad: e.quad, rig: e.rig, tele: e.tele, mats: e.mats, qring: (e as Enemy & { qring?: THREE.Mesh }).qring };
@@ -787,14 +795,14 @@ export function createEnemies(ctx: EnemyCtx) {
               m.minion = true; m.master = e; m.ttl = 45; m.state = 'chase'; m.t = 0; m.def.xp = Math.max(1, Math.round((m.def.xp ?? 0) * 0.2)); m.def.gold = [0, 0]; m.def.elite = undefined; }); } } } }
   }
   function update(dt: number, t: number) {
-    updateCasts(dt); cryT -= dt;
+    updateCasts(dt); cryT -= dt; descarte.tick(dt);
     const hero = ctx.heroPos(), alive = ctx.heroAlive();
     void t;
     for (const e of list) {
       const dHero = Math.hypot(hero.x - e.pos.x, hero.z - e.pos.z);
       const ne = e as NetE, puppet = !!ne.own && performance.now() - (ne.ownT ?? 0) < 1500 && e.alive;
       if (!puppet && ne.own) { ne.own = undefined; if (e.state !== 'dead') { e.state = 'return'; e.t = 0; } } // o dono parou de mandar: o bicho volta a ser simulado aqui
-      if (!e.active) { if (dormant(e) && !puppet) continue; if (dHero < ACT && (e.alive || (e.state === 'dead' && e.t <= ((e as Enemy & { corpse?: number }).corpse ?? 4)))) { e.active = true; build(e); } else { if (!e.alive) { /* o corpo já sumiu: o tempo de renascer corre mesmo com o herói por perto (26/10: o Torturador nunca voltava à Clareira enquanto o jogador esperava lá) */ e.respawn -= dt; if (e.respawn <= 0) { e.alive = true; e.hp = e.hpMax; e.state = 'idle'; e.pos.set(e.home.x, 0, e.home.y); } } continue; } }
+      if (!e.active) { if (dHero > LONGE && (e as Enemy & { body?: Body }).body) solta(e); if (dormant(e) && !puppet) continue; if (dHero < ACT && (e.alive || (e.state === 'dead' && e.t <= ((e as Enemy & { corpse?: number }).corpse ?? 4)))) { e.active = true; build(e); } else { if (!e.alive) { /* o corpo já sumiu: o tempo de renascer corre mesmo com o herói por perto (26/10: o Torturador nunca voltava à Clareira enquanto o jogador esperava lá) */ e.respawn -= dt; if (e.respawn <= 0) { e.alive = true; e.hp = e.hpMax; e.state = 'idle'; e.pos.set(e.home.x, 0, e.home.y); } } continue; } }
       else if ((e as Enemy & { night?: boolean }).night && (ctx.night?.() ?? 0) < 0.4 && e.state !== 'chase' && e.state !== 'windup') { unbuild(e); e.active = false; continue; }
       else if (dHero > DEACT) { unbuild(e); e.active = false; if (e.state === 'dead') { e.respawn = Math.max(e.respawn, 1); } continue; }
       if ((e as Enemy & { kneel?: boolean }).kneel && e.alive) { e.state = 'hurt'; e.t = -9999; e.vel.set(0, 0); } /* rendido, esperando a sentença: não ataca, não anda, não levanta */
@@ -805,7 +813,7 @@ export function createEnemies(ctx: EnemyCtx) {
           const L = FLEE_SAY(famOf(e.type)); if (L.length && cryT <= 0 && Math.random() < 0.7) { cryT = 4; ctx.onSpell?.(e, L[Math.floor(Math.random() * L.length)]); } }
         if (a.fled && e.state === 'idle' && e.hp >= e.hpMax * 0.95) { a.fled = false; a.licking = false; } }
       if (!puppet && e.alive) { roles(e, dt, e.state === 'chase' || e.state === 'windup' || e.state === 'recover' || e.state === 'hurt'); const r = e as Role;
-        if (r.minion && (r.ttl = (r.ttl ?? 45) - dt) <= 0 || (r.minion && r.master && !r.master.alive)) { const m = e; pend.push(() => { const i = list.indexOf(m); if (i >= 0) { if (m.active) unbuild(m); list.splice(i, 1); } }); ctx.spellFx?.(e.pos.x, e.pos.z, 0x6a6a7a, 1); e.alive = false; continue; } }
+        if (r.minion && (r.ttl = (r.ttl ?? 45) - dt) <= 0 || (r.minion && r.master && !r.master.alive)) { const m = e; pend.push(() => { const i = list.indexOf(m); if (i >= 0) { if (m.active) unbuild(m); solta(m); list.splice(i, 1); } }); ctx.spellFx?.(e.pos.x, e.pos.z, 0x6a6a7a, 1); e.alive = false; continue; } }
       if (puppet && ne.np) { // outro jogador está lutando com ele: só segue o que chega pela rede (sem IA aqui)
         const p = ne.np, ox = e.pos.x, oz = e.pos.z, far = Math.hypot(p.x - ox, p.z - oz) > 8, kk = far ? 1 : Math.min(1, dt * 10);
         e.pos.x += (p.x - ox) * kk; e.pos.z += (p.z - oz) * kk; let dy = p.f - e.yaw; while (dy > Math.PI) dy -= 6.283; while (dy < -Math.PI) dy += 6.283; e.yaw += dy * Math.min(1, dt * 12);
@@ -889,7 +897,7 @@ export function createEnemies(ctx: EnemyCtx) {
           { const g = (e as Enemy & { guardT?: number }); if (g.guardT && g.guardT > 0) { g.guardT -= dt; if (ctx.guardNear?.(e.pos.x, e.pos.z)) e.hp -= e.hpMax * 0.25 * dt; if (e.hp <= 0) { e.hp = 1; } } else if (alive && dHero < D.aggro * 0.6 && !D.passive) { e.state = 'chase'; break; } } /* enxotado pela guarda: apanha enquanto estiver perto dela e não volta a atacar por 6 s */
           face(e, e.home.x, e.home.y, dt); step(e, dx / l * D.speed * dt, dz / l * D.speed * dt); mv = D.speed; break;
         }
-        case 'dead': if (e.tele) e.tele.visible = false; if (e.t > ((e as Enemy & { corpse?: number }).corpse ?? 4)) { unbuild(e); e.active = false; (e as Enemy & { corpse?: number }).corpse = undefined; } break;
+        case 'dead': if (e.tele) e.tele.visible = false; if (e.t > ((e as Enemy & { corpse?: number }).corpse ?? 4)) { unbuild(e); e.active = false; (e as Enemy & { corpse?: number }).corpse = undefined; if (e.respawn > 1e8) solta(e); /* com marca (evento, caçada, invocado) não renasce: o corpo não volta */ } break;
       }
       }
       if (D.regen && e.alive && e.hp < e.hpMax && !((e.burn ?? 0) > 0)) e.hp = Math.min(e.hpMax, e.hp + e.hpMax * D.regen * dt); /* o troll fecha as feridas — o fogo impede */
@@ -944,7 +952,7 @@ export function createEnemies(ctx: EnemyCtx) {
     return e;
   }
   /** remove todos os inimigos com a etiqueta (ao sair da masmorra) */
-  function clearTag(tag: string) { for (let i = list.length - 1; i >= 0; i--) { const e = list[i] as Enemy & { tag?: string }; if (e.tag === tag) { if (e.active) unbuild(e); list.splice(i, 1); const nk = (e as NetE).net; if (nk && !/^\d+$/.test(nk)) byId.delete(nk); } } seq.clear(); }
+  function clearTag(tag: string) { for (let i = list.length - 1; i >= 0; i--) { const e = list[i] as Enemy & { tag?: string }; if (e.tag === tag) { if (e.active) unbuild(e); solta(e); list.splice(i, 1); const nk = (e as NetE).net; if (nk && !/^\d+$/.test(nk)) byId.delete(nk); } } seq.clear(); }
   function debugSpawn(type: EnemyType, x: number, z: number, yaw = 0, state: EState = 'idle') {
     const def = { ...DEFS[type], aggro: 0, passive: false, speed: 0 } as Def;
     const e: Enemy = { id: nid++, type, def, home: new THREE.Vector2(x, z), pos: new THREE.Vector3(x, 0, z), yaw, hp: 10, hpMax: 10, state, t: 0, alive: true, active: false, vel: new THREE.Vector2(), root: null, pup: null, quad: null, rig: null, wanderTo: null, wanderT: 999, phase: 0, respawn: 0, hurtT: 0, tele: null, flash: 0, mats: [] };
@@ -991,7 +999,7 @@ export function createEnemies(ctx: EnemyCtx) {
   function netCast(id: string, x: number, z: number, i: number) { const e = byId.get(id); const s = e && SPELLS[e.type]; if (!e || !s) return; addCast(e, s, x, z, i); if (i === 0) ctx.onSpell?.(e, s.name); }
   /** 17/11: os meus bichos pessoais vivos, para a rede anunciar; e se uma chave de rede já existe aqui */
   const netAnun = () => (list as NetE[]).filter((q) => q.anun && q.alive && q.net), netHas = (id: string) => byId.has(id);
-  return { list, update, hurt, hurtBy, nearest, debugSpawn, spawn, clearTag, interrupt, netOut, netIn, netHit, netDie, netCast, netAnun, netHas };
+  return { list, update, hurt, hurtBy, nearest, debugSpawn, spawn, clearTag, /** 17/11: quantos corpos já foram devolvidos à placa e quantos esperam na fila */ descarte: () => ({ ...descarte.total, pendentes: descarte.pendentes }), interrupt, netOut, netIn, netHit, netDie, netCast, netAnun, netHas };
 }
 /** animação de trote/galope de um quadrúpede (usada por pets e montarias) */
 export function animQuadWalk(q: Quad, ph: number, moveSp: number, t: number, seed = 0) {
