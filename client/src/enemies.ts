@@ -719,7 +719,7 @@ export function createEnemies(ctx: EnemyCtx) {
     }
     if (e.rig) e.rig.update(e, dt, windK, strike, hurtK, moveSp);
     if (e.flash > 0) { e.flash = Math.max(0, e.flash - dt * 7); for (const m of e.mats) { if (m.emissive) m.emissive.setRGB(e.flash * 0.9, e.flash * 0.7, e.flash * 0.5); } }
-    else for (const m of e.mats) if (m.emissive && m.emissiveMap === null) m.emissive.setRGB(0, 0, 0);
+    else { const sb = (e as Enemy & { sob?: boolean }).sob ? 1 : 0; /* 17/11: o bicho debaixo do mouse acende em vermelho (Diablo) */ for (const m of e.mats) if (m.emissive && m.emissiveMap === null) m.emissive.setRGB(0.42 * sb, 0.07 * sb, 0.04 * sb); }
   }
 
   /* 10/11 (Erling: "os monstros precisam fugir ou nos emboscar; muita coisa o jogo precisa fazer sozinho, pensando"):

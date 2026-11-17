@@ -28,15 +28,22 @@ function portraitOf(name: string, root: THREE.Object3D, full = false): string {
   let headY = -1; root.traverse((o) => { if (headY < 0 && (o as THREE.Bone).isBone && /head/i.test(o.name) && !/end|top/i.test(o.name)) headY = o.getWorldPosition(new THREE.Vector3()).y; });
   const box = new THREE.Box3().setFromObject(root), top = headY > 0.5 ? headY + 0.2 : Math.min(box.max.y, 1.97 * (root.scale.y || 1)) /* a antena do reator do tecnocrata passava da cabeça e o retrato mirava nela */, cy = full ? top * 0.52 : top - 0.26, dist = full ? top * 1.45 + 0.45 : 1.15;
   const cam = new THREE.PerspectiveCamera(full ? 34 : 30, w / h, 0.05, 30); cam.position.set(full ? 0.3 : 0.12, cy + (full ? 0.15 : 0.08), dist); cam.lookAt(0, cy - 0.02, 0); cam.layers.enableAll();
+  /* 17/11 (Erling: "retrato de personagem sempre com o personagem dentro"): na hora da foto nada do modelo pode ser cortado por estar "fora da
+     tela" (o corpo com esqueleto guardava a esfera de corte de outro lugar e sumia, ficando só a espada e o escudo), nem sair meio apagado. */
+  const semCorte: THREE.Object3D[] = [], apagados: [THREE.Material, number][] = [];
+  root.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; if (me.frustumCulled) { me.frustumCulled = false; semCorte.push(me); } for (const mt of Array.isArray(me.material) ? me.material : [me.material]) if (mt && mt.transparent && mt.opacity < 1 && mt.opacity > 0 && mt.depthTest !== false && !o.userData.xray) { apagados.push([mt, mt.opacity]); mt.opacity = 1; } });
   const bgc = new THREE.Color(); K.renderer.getClearColor(bgc); const alpha = K.renderer.getClearAlpha(), sm = K.renderer.shadowMap.autoUpdate;
   K.renderer.shadowMap.autoUpdate = false; K.renderer.setRenderTarget(rt); K.renderer.setClearColor(0x14101a, 1); K.renderer.clear(); K.renderer.render(ps, cam);
   const px = new Uint8Array(w * h * 4); K.renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
   K.renderer.setRenderTarget(null); K.renderer.setClearColor(bgc, alpha); K.renderer.shadowMap.autoUpdate = sm; rt.dispose();
-  for (const o of xr) o.visible = true;
+  for (const o of xr) o.visible = true; for (const o of semCorte) (o as THREE.Mesh).frustumCulled = true; for (const [mt, op] of apagados) mt.opacity = op;
   ps.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d')!, im = g.createImageData(w, h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const si = ((h - 1 - y) * w + x) * 4, di = (y * w + x) * 4; im.data[di] = px[si]; im.data[di + 1] = px[si + 1]; im.data[di + 2] = px[si + 2]; im.data[di + 3] = 255; }
-  g.putImageData(im, 0, 0); const url = cv.toDataURL(); if (root.userData.hideProc || full) portraits.set(name, url); /* 09/11: sem o modelo de arte encaixado ainda, não guarda — na próxima conversa fotografa de novo, já com ele */ return url;
+  /* quanto do retrato tem gente: conta os pontos que não são o fundo, na faixa do meio. Retrato quase vazio não é guardado (tira outro depois). */
+  let cheio = 0, tot = 0; for (let y = Math.floor(h * 0.25); y < Math.floor(h * 0.9); y += 2) for (let x = Math.floor(w * 0.3); x < Math.floor(w * 0.7); x += 2) { const si = (y * w + x) * 4; tot++; if (Math.abs(px[si] - px[0]) + Math.abs(px[si + 1] - px[1]) + Math.abs(px[si + 2] - px[2]) > 24) cheio++; } /* a cor do fundo é lida do canto da própria foto */
+  const cobertura = cheio / Math.max(1, tot); root.userData.retratoCheio = cobertura;
+  g.putImageData(im, 0, 0); const url = cv.toDataURL(); if ((root.userData.hideProc || full) && cobertura > 0.2) portraits.set(name, url); /* 09/11: sem o modelo de arte encaixado ainda, não guarda — na próxima conversa fotografa de novo, já com ele */ return url;
 }
 /* conversa com um NPC: missões para entregar, missões novas, comércio, quadro, conversa */
 function talkTo(n: (typeof K.npcSys.npcs)[number]) {

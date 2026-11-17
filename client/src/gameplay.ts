@@ -20,7 +20,7 @@ import { genGear, rollRarity, RARITY, type Gear, type Rarity } from './loot';
 import type { SpawnDef } from './world';
 import { ITEMS } from './inventory';
 import { fams, runeDrop, frestaMark, RCOL, RNAME, parseRune, type RFam } from './runas-magia';
-import { kitOf, type SkillId } from './kits';
+import { kitOf, espelhaCliques, type SkillId } from './kits';
 import { vfxCast, vfxImpact, elementOf, vfxProjectile, vfxProjectileFree, vfxTrail } from './sistemas/vfx';
 import type { Element } from './sistemas/vfx';
 import { makeFire } from './sistemas/fogo';
@@ -685,16 +685,16 @@ export function createGameplay(d: GameplayDeps) {
     let n = 0; const r = d.canvas.getBoundingClientRect(); const now = performance.now(), bdt = Math.min(0.2, (now - barT) / 1000); barT = now;
     const wantE = new Set<Enemy>(), shownE = new Set<Enemy>();
     for (const e of enemies.list) { const danger0 = (e.def.lvl ?? 1) >= st.lvl + 5, qst0 = !!(e as Enemy & { quest?: boolean }).quest;
-      if (e.alive && e.active && !(e.root && !e.root.visible) && !(e.hp >= e.hpMax && e.state === 'idle' && !((danger0 || qst0) && e.pos.distanceTo(d.getHero().root.position) < 28))) { wantE.add(e); barSeen.set(e, (barSeen.get(e) ?? 0) + bdt); } }
+      if (e.alive && e.active && !(e.root && !e.root.visible) && !(e.hp >= e.hpMax && e.state === 'idle' && !(e as Enemy & { sob?: boolean }).sob && !((danger0 || qst0) && e.pos.distanceTo(d.getHero().root.position) < 28))) { wantE.add(e); barSeen.set(e, (barSeen.get(e) ?? 0) + bdt); } }
     for (const e of [...barSeen.keys()]) if (!wantE.has(e)) barSeen.delete(e);
-    for (const e of enemies.list) { if (!wantE.has(e) || (barSeen.get(e) ?? 0) < 0.3) continue;
+    for (const e of enemies.list) { const sobM = !!(e as Enemy & { sob?: boolean }).sob; /* 17/11: mouse em cima: nome e vida aparecem na hora */ if (!wantE.has(e) || (!sobM && (barSeen.get(e) ?? 0) < 0.3)) continue;
       const danger = (e.def.lvl ?? 1) >= st.lvl + 5; // forte demais: caveira sobre a cabeça, mesmo parado — melhor correr
       const qst = !!(e as Enemy & { quest?: boolean }).quest; /* 05/11 (Erling): o bicho da missão mostra o nome sempre (perto), com o selo e o brilho — sem anel no chão */
-      if (!e.alive || !e.active || (e.root && !e.root.visible) || (e.hp >= e.hpMax && e.state === 'idle' && !((danger || qst) && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
+      if (!e.alive || !e.active || (e.root && !e.root.visible) || (e.hp >= e.hpMax && e.state === 'idle' && !sobM && !((danger || qst) && e.pos.distanceTo(d.getHero().root.position) < 28))) continue;
       const v = tmp.set(e.pos.x, e.pos.y + 2.1 * e.def.scale, e.pos.z).project(d.camera as THREE.Camera);
       if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) continue;
       let el = barEl.get(e); if (!el) { el = ebars.pop() ?? (() => { const x = document.createElement('div'); x.className = 'ebar'; x.innerHTML = '<span></span><i></i><u></u>'; document.body.appendChild(x); return x; })(); barEl.set(e, el); } shownE.add(e); /* 09/11: a barra é DO bicho; não passa de um para outro */
-      el.style.display = 'block'; el.classList.toggle('quest', qst); el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
+      el.style.display = 'block'; el.classList.toggle('quest', qst); el.classList.toggle('sob', sobM); el.style.left = r.left + (v.x * 0.5 + 0.5) * r.width + 'px'; el.style.top = r.top + (-v.y * 0.5 + 0.5) * r.height + 'px';
       (el.children[1] as HTMLElement).style.width = Math.max(0, e.hp / e.hpMax) * 100 + '%'; { const ep = e as Enemy & { poise?: number; poiseMax?: number; poiseT?: number }, u = el.children[2] as HTMLElement; if (isElite(e)) { const broken = (ep.poiseT ?? 0) > now, k = broken ? 0 : ep.poiseMax ? (ep.poise ?? 0) / ep.poiseMax : 1; u.style.display = 'block'; u.style.width = Math.max(0, k) * 100 + '%'; u.classList.toggle('broken', broken); } else u.style.display = 'none'; } { const dl2 = (e.def.lvl ?? 1) - st.lvl, lc = dl2 >= 5 ? 'r' : dl2 >= 2 ? 'o' : dl2 >= -2 ? 'y' : dl2 >= -5 ? 'g' : 'z'; const key = `${e.def.name}|${e.def.lvl}|${lc}`; if (el.dataset.k !== key) { el.dataset.k = key; (el.children[0] as HTMLElement).innerHTML = `<b class="lv ${lc}">${danger ? '💀 ' : ''}${e.def.lvl}</b> ${e.def.name}`; } } el.classList.toggle('danger', danger);
       n++;
     }
@@ -2931,6 +2931,7 @@ export function createGameplay(d: GameplayDeps) {
       const setT = (k: string, v: number) => { const t = slot(k)?.querySelector('.cdt') as HTMLElement | null; if (t) t.textContent = v > 0.05 ? (v >= 10 ? String(Math.ceil(v)) : v.toFixed(1)) : ''; };
       setT('slam', Math.max(cd.cast, cd.slam)); setT('bash', st.counterT > 0 ? 0 : cd.bash); setT('heal', cd.heal); for (const id of Object.keys(cdX)) setT(id, cdX[id]);
       { const rd = (k: string, on: boolean) => { const el = slot(k); el?.classList.toggle('ready', on && !el.classList.contains('locked')); }; rd('slam', st.fury >= 3); rd('bash', st.counterT > 0); rd('heal', st.fury > 0 && cd.heal <= 0); rd('combo', st.ambushT > 0); }
+      espelhaCliques();
       const fp = document.querySelectorAll('#fury i'); fp.forEach((p, i) => p.classList.toggle('on', i < st.fury));
       const ct = document.getElementById('ctr'); if (ct) { ct.style.opacity = st.counterT > 0 ? '1' : '0'; ct.style.width = (st.counterT / 3.5) * 100 + '%'; }
       void raceLabel; void karma; /* a página Conta do menu é preenchida pelo main */ { const ms = document.getElementById('m-snd'); if (ms) ms.textContent = muted ? 'mudo' : 'ligado'; }

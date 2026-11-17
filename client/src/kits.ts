@@ -435,7 +435,7 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
   /* 16/11: Q, E e R valem pelas casas 4, 5 e 6 quando há um bicho em foco: a letra aparece no canto da casa */
   const QER = Object.fromEntries(Object.entries(TECLA_DE_BATALHA).map(([l, c]) => [c, l.toUpperCase()])), k2 = (key: string) => QER[key] ? `<kbd class="k2">${QER[key]}</kbd>` : '';
   /* os dois espaços de clique ficam nas pontas do primeiro andar: o botão esquerdo à esquerda, o direito à direita */
-  const cq = cliques(race, kit), cliq = (n: 1 | 2) => { const s = kit.find((x) => x.id === cq[n - 1]); return `<div class="slot cliq" data-cliq="${n}" data-cid="${s?.id ?? ''}" style="--c:${s?.c ?? '#c9a24a'}" title="${n === 1 ? 'Clique 1 (botão esquerdo)' : 'Clique 2 (botão direito)'}: ${s?.name ?? 'vazio'}\n${n === 1 ? 'Em cima de um inimigo, o botão esquerdo usa esta magia; no chão, o herói anda.' : 'O botão direito usa esta magia.'}\nPara trocar: clique aqui com o botão direito, ou destrave a barra (🔒) e arraste uma magia para cá."><kbd>${n === 1 ? '🖱E' : '🖱D'}</kbd>${s?.svg ?? ''}</div>`; };
+  const cq = cliques(race, kit), cliq = (n: 1 | 2) => { const s = kit.find((x) => x.id === cq[n - 1]); return `<div class="slot cliq" data-cliq="${n}" data-cid="${s?.id ?? ''}" style="--c:${s?.c ?? '#c9a24a'}" title="${n === 1 ? 'Clique 1 (botão esquerdo)' : 'Clique 2 (botão direito)'}: ${s?.name ?? 'vazio'}\n${n === 1 ? 'Em cima de um inimigo, o botão esquerdo usa esta magia; no chão, o herói anda.' : 'O botão direito usa esta magia.'}\nPara trocar: clique aqui com o botão direito, ou destrave a barra (🔒) e arraste uma magia para cá."><kbd>${n === 1 ? '🖱E' : '🖱D'}</kbd>${s?.svg ?? ''}<div class="cd"></div><span class="cdt"></span></div>`; };
   const oco = '<div class="slot cliq oco"></div>';
   let html = '';
   for (let r = rows - 1; r >= 0; r--) {
@@ -449,3 +449,7 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
 export function refreshLocks(race: Race, lvl: number, rk?: (id: string) => number) {
   for (const s of kitOf(race)) { const el = document.querySelector<HTMLElement>(`.slot[data-id="${s.id}"]`); if (!el) continue; const was = el.classList.contains('locked'); el.classList.toggle('locked', rk ? rk(s.id) === 0 : lvl < s.lvl); if (was && lvl >= s.lvl) { el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 900); } }
 }
+
+/** 17/11: os espaços Clique 1 e Clique 2 mostram a mesma recarga (o leque e o número) da casa da magia na barra */
+export function espelhaCliques() { for (const c of Array.from(document.querySelectorAll('#skills .slot.cliq[data-cid]')) as HTMLElement[]) { const id = c.dataset.cid; if (!id) continue; const o = document.querySelector(`#skills .slot[data-id="${id}"]`) as HTMLElement | null, cd = c.querySelector('.cd') as HTMLElement | null, t = c.querySelector('.cdt') as HTMLElement | null; if (!o || !cd || !t) continue;
+  const v = (o.querySelector('.cd') as HTMLElement | null)?.style.getPropertyValue('--cd') || '0', tx = o.querySelector('.cdt')?.textContent ?? ''; if (cd.style.getPropertyValue('--cd') !== v) cd.style.setProperty('--cd', v); if (t.textContent !== tx) t.textContent = tx; } }
