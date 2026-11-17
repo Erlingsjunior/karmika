@@ -230,6 +230,8 @@ addEventListener('keydown', (e) => {
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
   if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 24.2; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 24.2); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
   if (k === 'r' && !e.repeat) { runOn = !runOn; try { localStorage.setItem('karmika.run', runOn ? '1' : '0'); } catch { /* */ } K.game.logMsg(runOn ? '🏃 Correr: ligado (R)' : '🚶 Andar: ligado (R)', '#ffd24a'); }
+  /* 17/11 (Erling: "eu, como admin em modo deus, posso escolher dia ou noite; quem não pode é o beta tester"): N alterna dia, noite e o relógio do mundo; só para o administrador */
+  if (k === 'n' && !e.repeat && isAdm()) { K.nightOverride = K.nightOverride === null ? 0 : K.nightOverride === 0 ? 1 : null; K.game.logMsg(K.nightOverride === null ? '🕰 O céu volta ao relógio do mundo.' : K.nightOverride === 0 ? '☀ Dia (só para você, administrador). N de novo: noite.' : '🌙 Noite (só para você, administrador). N de novo: relógio do mundo.', '#ffe08a'); }
   if (k === 'h' && isAdm()) K.game.damage(12, heroPosNow()); /* 12/11: G (modo deus), H (dano em si) e Shift+F5 a F7 (troca de raça) são ferramentas de teste: só para o administrador */
   if (e.key === 'F5' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('nordic'); return; }
   if (e.key === 'F6' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('technocrat'); return; }
