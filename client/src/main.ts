@@ -164,7 +164,6 @@ import { AudioEngine, type Surface } from './audio';
 import { createDespojosMundo } from './sistemas/despojos-mundo';
 import { createFlora } from './flora';
 import { createFauna } from './fauna';
-import { ligaHudFundo } from './sistemas/hud-fundo';
 import { createLimiar } from './limiar';
 
 import { createSoul, FRAY_LVL, MAX_BREATHS, CATCHUP_MUL } from './soul';
@@ -2498,7 +2497,6 @@ function updateQuestMarks(...a: Parameters<ReturnType<typeof createLetreiro>['up
 function curseK(...a: Parameters<ReturnType<typeof createLetreiro>['curseK']>): ReturnType<ReturnType<typeof createLetreiro>['curseK']> { return (letreiroSys ??= mk_letreiroSys()).curseK(...a); }
 
 /* FONTE-LAR, MORTE E RENASCIMENTO: a fonte de casa, voltar ao lar, o painel da morte, a espera do servidor, o lugar sagrado, o limiar e o retrato da cabeça. Saiu do main.ts (02/11). → sistemas/lar-e-morte.ts */
-ligaHudFundo();
 /* 17/11: a fauna de cenário (fauna/): aves, coelhos, peixes, corujas e cachorros em volta de quem joga */
 const arvGrade = new Map<number, { x: number; y: number; alt: number }[]>(); for (const p of city.props) if (p.kind === 'tree') { const k = (p.gy >> 4) * 4096 + (p.gx >> 4); let l = arvGrade.get(k); if (!l) arvGrade.set(k, l = []); l.push({ x: p.gx, y: p.gy, alt: p.height ?? 6 }); }
 const faunaSys = createFauna({ scene, heroi: () => ({ x: state.fx * T, z: state.fy * T }), noite: () => state.night, chao: (x, z) => heightAt(x, z), agua: () => WL, piso: (tx, ty) => city.map[ty]?.[tx], bioma: (tx, ty) => biomeAt(tx, ty),

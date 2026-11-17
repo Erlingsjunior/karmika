@@ -1061,8 +1061,6 @@
   #quick .qgear { font-size: 11px !important; line-height: 1; } #quick .qgear.on { color: #ffe08a; border-color: #e6c46a; box-shadow: 0 0 8px #e6c46a66; }
   #quick .qfill { width: 22px; height: 22px; padding: 0; align-self: flex-end; margin: 0 0 9px 2px; background: rgba(14,10,6,.85); border: 1px solid #7a5a30; color: #c9a24a; cursor: pointer; font: 700 13px Georgia, serif; line-height: 1; border-radius: 4px; } #quick .qfill:hover { color: #ffe08a; border-color: #e6c46a; }
   #quick .slot.q.macro { border-color: #6ad0a0; } #quick .slot.q .qm { position: absolute; left: 2px; bottom: 1px; font: 9px Georgia, serif; font-style: normal; color: #8affc0; text-shadow: 0 1px 2px #000; }
-  /* 17/11: o fundo escuro do HUD vai até as pontas da tela (sistemas/hud-fundo.ts): duas asas que sobem em curva até os orbes */
-  #hudfundo { position: fixed; left: 0; bottom: 0; z-index: 5; pointer-events: none; overflow: visible; }
   #qmacro { position: fixed; z-index: 34; /* 17/11: acima dos nomes e balões do mundo (que tapavam o título e não deixavam arrastar), abaixo dos menus */ width: min(430px, calc(100vw - 16px)); max-height: 60vh; overflow: auto; padding: 12px 14px; background: linear-gradient(#1c150d, #0e0a06); border: 1px solid #8a6a36; border-radius: 6px; box-shadow: 0 10px 40px #000c; color: #e8dcc0; font: 13px Georgia, serif; }
   #qmacro h4 { margin: 0 0 6px; font: 600 14px Cinzel, serif; color: #ffe08a; display: flex; justify-content: space-between; align-items: center; } #qmacro h4 button { background: none; border: 1px solid #5a4630; color: #c8b890; width: 22px; height: 22px; cursor: pointer; }
   #qmacro h4.qmh { cursor: grab; user-select: none; touch-action: none; gap: 10px; margin: -6px -8px 8px; padding: 6px 8px; border-radius: 4px; background: rgba(60,44,20,.5); } #qmacro h4.qmh:active { cursor: grabbing; } #qmacro h4.qmh span { flex: 1; } #qmacro h4.qmh small { font: 10px Georgia, serif; color: #c8b890; } #qmacro .qrg { color: #c8b890; font-size: 12px; } /* 17/11: a janela das macros se arrasta pelo título */
@@ -1860,7 +1858,7 @@
     </div>
   </div>
 </div>
-<div id="ver" style="position:fixed;left:10px;bottom:6px;z-index:8;font:10px monospace;color:#fff;opacity:.92;text-shadow:0 1px 2px #000">build 20261019-1720 · mundo140+relevo+rios</div><div id="hint">WASD andar · R corre ou anda · botão esquerdo ataca ou anda · Shift + botão esquerdo ataca parado · Espaço dash · E interagir · Q magia · G modo deus · 1 combo (clique repetido) · 2 salto de fogo · 3 segurar = defesa · 4 investida · 5 cura · Esc menu · N dia/noite</div>
+<div id="ver" style="position:fixed;left:10px;bottom:6px;z-index:8;font:10px monospace;color:#8a7a5a;opacity:.7">build 20261019-1720 · mundo140+relevo+rios</div><div id="hint">WASD andar · R corre ou anda · botão esquerdo ataca ou anda · Shift + botão esquerdo ataca parado · Espaço dash · E interagir · Q magia · G modo deus · 1 combo (clique repetido) · 2 salto de fogo · 3 segurar = defesa · 4 investida · 5 cura · Esc menu · N dia/noite</div>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
