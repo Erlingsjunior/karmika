@@ -1,0 +1,13 @@
+{
+  "regra 4 · objetos criados dentro do laço do combate (gameplay.ts, update)": 39,
+  "regra 4 · .clone() dentro do laço do combate (gameplay.ts, update)": 39,
+  "regra 7 · geometrias criadas nos arquivos de combate": 308,
+  "regra 7 · materiais criados nos arquivos de combate": 152,
+  "regra 8 · material clonado nos arquivos de combate": 6,
+  "regra 9 · luzes pontuais criadas no jogo inteiro": 37,
+  "regra 3 · tarefas por relógio fora do medidor (setInterval sem tarefa)": 48,
+  "regra 12 · malhas soltas na fauna de cenário": 4,
+  "regra 16 · desfoques de fundo na interface (index.html)": 6,
+  "regra 18 · opções do Chromium ligadas no aplicativo": 18,
+  "regra 19 · bibliotecas de que o jogo depende": 4
+}

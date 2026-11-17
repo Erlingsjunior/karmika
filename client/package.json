@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/equilibrio.mjs && tsc --noEmit && vite build && node scripts/manifest.mjs",
+    "build": "node scripts/equilibrio.mjs && node scripts/desempenho.mjs && tsc --noEmit && vite build && node scripts/manifest.mjs",
     "equilibrio": "node scripts/equilibrio.mjs",
+    "desempenho": "node scripts/desempenho.mjs",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

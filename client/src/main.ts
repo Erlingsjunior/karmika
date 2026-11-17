@@ -79,7 +79,7 @@ const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '�
 import { ONLY_NAME, genGear, type Slot, type Rarity } from './loot';
 
 import { STANCE_QUESTS } from './posturas';
-import { refreshLocks, KITS } from './kits';
+import { refreshLocks, KITS, skillAt } from './kits';
 import { createNavios } from './sistemas/navios';
 import { createFarois } from './sistemas/farois';
 
@@ -165,6 +165,7 @@ import { createDespojosMundo } from './sistemas/despojos-mundo';
 import { createFlora } from './flora';
 import { createNaufragios } from './naufragios';
 import { createFauna } from './fauna';
+import { marcaQuadro, textoPercentis, createBench } from './desempenho';
 import { createLimiar } from './limiar';
 
 import { createSoul, FRAY_LVL, MAX_BREATHS, CATCHUP_MUL } from './soul';
@@ -1112,6 +1113,7 @@ function breakVow(...a: Parameters<ReturnType<typeof createVotosAlma>['breakVow'
 const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.name || 'Caminhante', lean: soulLean, onReply: (r) => applyReply(r), ...o });
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). → sistemas/comandos-teste.ts */
 export interface ComandosTesteCtx {
+  readonly benchSys: { comando(a: string[]): string };
   readonly obras: Widen<typeof obras>;
   readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean; /** 09/11: a Copa da Árvore-Mãe (Lithendel) */ canopy?: boolean } | null;
   readonly emote: Widen<typeof emote>;
@@ -1144,7 +1146,7 @@ export interface ComandosTesteCtx {
   readonly unbind: typeof unbind;
 }
 var comandosSys: ReturnType<typeof createComandosTeste>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_comandosSys() { return createComandosTeste({ get obras() { return obras; }, get inside() { return inside; }, get emote() { return emote; }, get state() { return state; }, get hero() { return hero; }, get netRef() { return netRef; }, get audio() { return audio; }, get inv() { return inv; }, get game() { return game; }, get walksPath() { return walksPath; }, get profile() { return profile; }, get kitRace() { return kitRace; }, get luaK() { return luaK; }, get aurK() { return aurK; }, get gCur() { return gCur; }, get perfReport() { return perfReport; }, get soul() { return soul; }, get peleSys() { return peleSys; }, get applyArtSkin() { return applyArtSkin; }, get ART_SET() { return ART_SET; }, get quests() { return quests; }, get takeClass() { return takeClass; }, get tree() { return tree; }, get applyKitAll() { return applyKitAll; }, get crestEl() { return crestEl; }, get dgs() { return dgs; }, get npcSys() { return npcSys; }, get city() { return city; }, get limiar() { return limiar; }, get unbind() { return unbind; } }); }
+function mk_comandosSys() { return createComandosTeste({ get obras() { return obras; }, get inside() { return inside; }, get emote() { return emote; }, get state() { return state; }, get hero() { return hero; }, get netRef() { return netRef; }, get audio() { return audio; }, get inv() { return inv; }, get game() { return game; }, get walksPath() { return walksPath; }, get profile() { return profile; }, get kitRace() { return kitRace; }, get luaK() { return luaK; }, get aurK() { return aurK; }, get gCur() { return gCur; }, get perfReport() { return perfReport; }, get soul() { return soul; }, get peleSys() { return peleSys; }, get applyArtSkin() { return applyArtSkin; }, get ART_SET() { return ART_SET; }, get quests() { return quests; }, get takeClass() { return takeClass; }, get tree() { return tree; }, get applyKitAll() { return applyKitAll; }, get crestEl() { return crestEl; }, get dgs() { return dgs; }, get npcSys() { return npcSys; }, get city() { return city; }, get limiar() { return limiar; }, get unbind() { return unbind; }, get benchSys() { return benchSys; } }); }
 comandosSys ??= mk_comandosSys();
 function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['betaCommand']>): ReturnType<ReturnType<typeof createComandosTeste>['betaCommand']> { return (comandosSys ??= mk_comandosSys()).betaCommand(...a); }
 
@@ -1951,7 +1953,7 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { camera: () => camera, eventos: () => eventos, naufragios: () => naufragiosSys, praia: praiaK, fauna: () => faunaSys, flora: () => floraSys, despojos: () => despojosSys, viaja: (go: string) => minimapaSys.mapTravel(go), mapa: () => minimapaSys.mapHits, zoom: () => ({ zoom, alvo: zoomTarget, auto: zoomAuto, onde: city.settlements.filter((st) => Math.hypot(st.x - state.fx, st.y - state.fy) < st.radius + 6).map((st) => `${st.name} (${st.kind})`) }), foco: () => lockSys.target, tela: (x: number, y: number, z: number) => { const v = new THREE.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; }, gen: (ilvl: number, slot?: Slot, base?: string, rar?: Rarity) => genGear(ilvl, rar, slot, base), titulos: { ganha: ganhaTitulo, livre: ganhaLivre, ativo: tituloAtivo, travado, escolhe: escolheTitulo, adianta: (ms: number) => { tituloRelogio += ms; }, abre: () => dockSys.abreTitulos(), cruza: (p: string, back: boolean) => crossOver(p, back) }, game, inv, renderer, npcs: () => npcSys.npcs, car: () => caravans, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
+(window as unknown as { __kt: unknown }).__kt = { bench: () => benchSys, magia: (c: string, x: number, z: number) => entradaSys.castAt(c, { x, z, yaw: Math.atan2(x - state.fx * T, z - state.fy * T) }), relatorio: () => perfReport(), camera: () => camera, eventos: () => eventos, naufragios: () => naufragiosSys, praia: praiaK, fauna: () => faunaSys, flora: () => floraSys, despojos: () => despojosSys, viaja: (go: string) => minimapaSys.mapTravel(go), mapa: () => minimapaSys.mapHits, zoom: () => ({ zoom, alvo: zoomTarget, auto: zoomAuto, onde: city.settlements.filter((st) => Math.hypot(st.x - state.fx, st.y - state.fy) < st.radius + 6).map((st) => `${st.name} (${st.kind})`) }), foco: () => lockSys.target, tela: (x: number, y: number, z: number) => { const v = new THREE.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; }, gen: (ilvl: number, slot?: Slot, base?: string, rar?: Rarity) => genGear(ilvl, rar, slot, base), titulos: { ganha: ganhaTitulo, livre: ganhaLivre, ativo: tituloAtivo, travado, escolhe: escolheTitulo, adianta: (ms: number) => { tituloRelogio += ms; }, abre: () => dockSys.abreTitulos(), cruza: (p: string, back: boolean) => crossOver(p, back) }, game, inv, renderer, npcs: () => npcSys.npcs, car: () => caravans, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
   if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); localStorage.setItem('karmika.gpuFallbackLast', JSON.stringify({ at: new Date().toISOString(), m: m.slice(0, 500), log: [...gpuState.log.filter((x) => !x.startsWith('buffer velho')), ...gpuState.log.filter((x) => x.startsWith('buffer velho'))].slice(0, 12) /* 10/11: os erros de verdade na frente; o aviso de 'buffer velho' escondia a causa */, ua: navigator.userAgent })); } catch { /* */ } /* 04/11: guarda o motivo para o 🐞 levar junto */ opts.rend = 0; saveOpts(); gpuImpl = null;
     /* 11/11 (Erling: "modo GPU deu bug e me dropou do server"): antes de recarregar, guarda a sala; ao voltar, o jogo entra direto nela (ou direto no jogo solo), sem passar pela tela de início */
@@ -2907,6 +2909,7 @@ function lightPool(dt: number) {
 let lastFrameErr = '';
 /* 26/10 (Erling: "não tem por que o jogo não rodar a mais de 200 fps numa 3080 Ti"): limite de FPS escolhido nas opções (o app
    desliga o vsync do Chromium) e um medidor que separa o tempo do quadro em CPU (lógica, desenho) e GPU — para saber onde apertar */
+/** 17/11: a média de placa do último segundo, guardada antes de zerar (o /bench lê daqui) */ const perfUlt = { gpu: -1 };
 let capLast = 0; const perf = { cpu: 0, draw: 0, gpu: -1, n: 0, cpuS: 0, drawS: 0, gpuS: 0, gpuN: 0 };
 const glT = renderer.getContext() as WebGL2RenderingContext, tq = (() => { try { return glT.getExtension('EXT_disjoint_timer_query_webgl2') as { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null; } catch { return null; } })();
 let tqPend: WebGLQuery | null = null, tqOpen: WebGLQuery | null = null;
@@ -2915,7 +2918,7 @@ function gpuEnd() { if (!tq || !tqOpen) return; glT.endQuery(tq.TIME_ELAPSED_EXT
 function gpuPoll() { if (!tq || !tqPend) return; if (!glT.getQueryParameter(tqPend, glT.QUERY_RESULT_AVAILABLE)) return; const dis = glT.getParameter(tq.GPU_DISJOINT_EXT); if (!dis) { perf.gpuS += glT.getQueryParameter(tqPend, glT.QUERY_RESULT) / 1e6; perf.gpuN++; } glT.deleteQuery(tqPend); tqPend = null; }
 function frame() {
   requestAnimationFrame(frame);
-  const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF;
+  const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF; marcaQuadro(nowF); /* 17/11: percentis do tempo de quadro (desempenho/quadros.ts) */
   /* 11/11 (Erling: "o jogo entra antes de carregar todas as texturas; tenha certeza de que tudo foi carregado antes de entrar"): a abertura só sai quando
      o mundo já desenhou 12 quadros, as fotos de textura do Herik chegaram E a placa parou de receber coisa nova (nenhuma textura nem malha nova por
      1,2 s). Teto de 20 s, para ninguém ficar preso na abertura se alguma coisa nunca chegar. */
@@ -2963,7 +2966,7 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + (() => { const M = shaderGate?.mapa() ?? []; return M.length ? '\n🧭 Por que compilou na hora (o que mudou no programa):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaLentos() ?? []; return M.length ? '\n🐢 Desenhos que seguraram o quadro (mais de 25 ms cada), do pior para o melhor:\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaGl() ?? []; return M.length ? '\n🔬 Chamadas à placa que esperaram mais de 20 ms (qual comando segurou o jogo):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (gpuState.log.some((l) => l.startsWith('cópias a mais')) ? `\n🟣 WebGPU, guarda das cópias: ${gpuState.log.filter((l) => l.startsWith('cópias a mais')).join(' ‖ ')}` : '') + `\n🔵 Aura de corte e silhuetas: desenho ${gpuState.on ? 'WebGPU' : 'WebGL'}${opts.gfx === 1 ? ' Moderno' : ' Clássico'} · herói escondido agora: ${cliqueSys.cutOn ? 'sim' : 'não'} · círculo ${CUT.uCut.value.w > 0 ? 'ligado' : 'desligado'} · dentro de casa: ${inside ? 'sim' : 'não'} · em cena: ${cinemaSys.cine ? 'sim' : 'não'} · cenário ${objs.group.visible ? 'visível' : 'escondido'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+  return textoPercentis() + `\n⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + (() => { const M = shaderGate?.mapa() ?? []; return M.length ? '\n🧭 Por que compilou na hora (o que mudou no programa):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaLentos() ?? []; return M.length ? '\n🐢 Desenhos que seguraram o quadro (mais de 25 ms cada), do pior para o melhor:\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaGl() ?? []; return M.length ? '\n🔬 Chamadas à placa que esperaram mais de 20 ms (qual comando segurou o jogo):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (gpuState.log.some((l) => l.startsWith('cópias a mais')) ? `\n🟣 WebGPU, guarda das cópias: ${gpuState.log.filter((l) => l.startsWith('cópias a mais')).join(' ‖ ')}` : '') + `\n🔵 Aura de corte e silhuetas: desenho ${gpuState.on ? 'WebGPU' : 'WebGL'}${opts.gfx === 1 ? ' Moderno' : ' Clássico'} · herói escondido agora: ${cliqueSys.cutOn ? 'sim' : 'não'} · círculo ${CUT.uCut.value.w > 0 ? 'ligado' : 'desligado'} · dentro de casa: ${inside ? 'sim' : 'não'} · em cena: ${cinemaSys.cine ? 'sim' : 'não'} · cenário ${objs.group.visible ? 'visível' : 'escondido'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
 /* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
 const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
   heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
@@ -2980,10 +2983,19 @@ let testSlow = 1;
 (window as unknown as { __buff?: unknown }).__buff = () => { game.st.serene = 3; game.st.ambushT = 8; (game.st as unknown as { slowUntil?: number }).slowUntil = performance.now() + 60000; }; /* teste */
 startRunasMoldura();
 const buffsPe = createBuffsPe({ scene, fine, camera, canvas, heroPos: () => hero.root.position, hidden: () => !document.body.classList.contains('ready') || game.st.dead || limiar.active || !!cinemaSys.cine || game.menuOpen, buffs: () => game.buffs(), particles });
+/* 17/11: /bench, as três cenas fixas de medição (desempenho/bench.ts) */
+const benchSys = createBench({ renderer, scene, estado: state, casaM: T, build: __BUILD__, desenho: gpuImpl ? 'WebGPU' : 'WebGL',
+  lugar: (n) => { const q = n.toLowerCase(), p = city.settlements.find((v) => v.name.toLowerCase() === q) ?? city.settlements.find((v) => v.name.toLowerCase().includes(q)); return p ? { x: p.x, y: p.y } : null; },
+  livre: (fx, fy) => free(fx, fy), dentro: () => !!inside,
+  bicho: (tipo, x, z, marca) => { game.enemies.spawn(tipo as never, x, z, { tag: marca, lvl: game.st.lvl }); }, tiraBichos: (marca) => game.enemies.clearTag(marca),
+  /* a casa da barra, do jeito que a tecla faria: o combo é o golpe básico, a guarda fica de fora (é segurar), o resto vai pelo castAt */
+  magia: (casa, alvo) => { try { const sk = skillAt(kitRace(), casa); if (!sk || sk.id === 'guard') return false; if (sk.id === 'combo') { game.attack(alvo.yaw, heroPosNow()); return true; } return !!entradaSys.castAt(casa, alvo); } catch { return false; } },
+  deus: (on) => { const era = !!game.st.god; game.st.god = on; return era; },
+  partes: () => PMavg, placa: () => perfUlt.gpu, log: (t, c) => game.logMsg(t, c) });
 function frameBody() {
   pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
   { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
-    lastFps = fpsN; dynResTick(fpsN); perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
+    lastFps = fpsN; dynResTick(fpsN); perfUlt.gpu = perf.gpuN ? perf.gpuS / perf.gpuN : -1; perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }
   if (limGL) limiarGL(false); // o mundo espera lá embaixo
@@ -3153,10 +3165,12 @@ function frameBody() {
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
   /* 16/11: lugar encontrado fica lembrado para a viagem pelo mapa (conferido uma vez por segundo) */
   { lugarT -= dt; if (lugarT <= 0 && !inside) { lugarT = 1; lugarN++; /* os lugares em volta de onde o herói nasce entram calados */ const hx = state.fx, hy = state.fy; for (const p of city.pois) if (Math.abs(p.x - hx) < RAIO_ENCONTRO && Math.abs(p.y - hy) < RAIO_ENCONTRO && Math.hypot(p.x - hx, p.y - hy) < RAIO_ENCONTRO && encontrou(p.name) && lugarN > 8 && !city.settlements.some((st) => st.name === p.name)) game.logMsg(`🧭 Lugar encontrado: ${p.name}. Agora dá para viajar até ele pelo mapa (M).`, '#9affc0'); } }
-  despojosSys.tick(dt);
-  faunaSys.tick(dt);
-  naufragiosSys.tick(dt);
-  floraSys.liga(!inside); if (!inside) floraSys.tick();
+  pm('espólio/buffs/lugares'); /* 17/11 (estudo de desempenho, regra 3): cada sistema por quadro tem nome no medidor */
+  despojosSys.tick(dt); pm('despojos');
+  faunaSys.tick(dt); pm('fauna');
+  naufragiosSys.tick(dt); pm('naufrágios');
+  floraSys.liga(!inside); if (!inside) floraSys.tick(); pm('flora');
+  benchSys.tick(rawDt); pm('bench');
   if (!dlg.isOpen) mouseSys.tickClique(dt); /* 16/11: Clique 1 e Clique 2 (antes: o botão direito segurado repetia o golpe básico) */
   pm('chefes');
   if (!Number.isFinite(state.fx) || !Number.isFinite(state.fy)) { state.fx = larSys.home.x; state.fy = larSys.home.y; state.path = []; game.logMsg('⚠ A posição do herói se perdeu; você volta para a fonte-lar.', '#ff9a8a'); } /* trava de segurança: nunca andar em NaN */

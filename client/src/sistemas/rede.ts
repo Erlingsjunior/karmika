@@ -12,6 +12,7 @@ import { createCoop } from '../coop';
 import { molduraAtiva, tituloAtivo } from '../titulos';
 import { initMirror } from '../espelho';
 import type { RedeCtx } from '../main';
+import { tarefa } from './perf-tarefas'; /* 17/11 (estudo de desempenho, regra 3): o que roda por relógio na rede aparece no /travadas */
 
 export function createRede(K: RedeCtx) {
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
@@ -87,7 +88,7 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
       net.x('x:gh', { to: q.id, v: Math.round(v * k) }); K.game.beam(from.clone().setY(from.y + 1.3), q.pos.clone().setY(q.pos.y + 1.3), 0xb0ffc0); from = q.pos.clone(); k -= 0.15; n++; }
     return n; });
   net.onX('x:gh', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.game.healAbs(Math.max(0, Number(m.v) || 0), net.nameOf(from)); });
-  setInterval(() => { if (!net.party || net.state !== 'on') return; const a = K.game.groupAuraOut(); if (a.def <= 0 && a.dmg <= 0) return; net.x('x:aura', { d: a.def, a: a.dmg }); }, 2500);
+  setInterval(tarefa('rede: aura do grupo', () => { if (!net.party || net.state !== 'on') return; const a = K.game.groupAuraOut(); if (a.def <= 0 && a.dmg <= 0) return; net.x('x:aura', { d: a.def, a: a.dmg }); }), 2500);
   net.onX('x:aura', (from, m) => { if (!inParty(from)) return; const q = net.remotes().find((r) => r.id === from); if (!q || q.pos.distanceTo(K.hero.root.position) > 14) return; K.game.groupAuraIn(Math.max(0, Number(m.d) || 0), Math.max(0, Number(m.a) || 0)); });
   net.onX('x:rh', (from, m) => { if (m.to !== net.myId || !inParty(from) || K.game.st.dead) return; K.game.healFrom(Number(m.pct) || 0, net.nameOf(from)); });
   net.onX('x:mob', (from, m) => K.game.enemies.netIn(from, m.l as (number | string)[][]));
@@ -105,8 +106,8 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   const nomeDe = (id: number) => (net.peers() as { id?: number; name: string }[]).find((q) => q.id === id)?.name ?? 'Um Caminhante';
   const deFora = new Map<string, number>();
   type Anun = { net?: string; type: string; pos: { x: number; z: number }; def: { name: string; lvl: number; scale: number }; hp: number; hpMax: number; tag?: string };
-  setInterval(() => { if (net.state !== 'on') return; const L = (K.game.enemies as unknown as { netAnun(): Anun[] }).netAnun().filter((e) => !deFora.has(e.net!)).slice(0, 14); if (L.length) net.x('x:spw', { l: L.map((e) => [e.net, e.type, Math.round(e.pos.x * 10) / 10, Math.round(e.pos.z * 10) / 10, e.def.name, e.def.lvl, e.hpMax, e.tag ?? '']) });
-    const agora = Date.now(); for (const [id, t] of deFora) if (agora - t > 12000) { deFora.delete(id); K.game.enemies.netDie(id); } }, 3000);
+  setInterval(tarefa('rede: anúncio de bichos', () => { if (net.state !== 'on') return; const L = (K.game.enemies as unknown as { netAnun(): Anun[] }).netAnun().filter((e) => !deFora.has(e.net!)).slice(0, 14); if (L.length) net.x('x:spw', { l: L.map((e) => [e.net, e.type, Math.round(e.pos.x * 10) / 10, Math.round(e.pos.z * 10) / 10, e.def.name, e.def.lvl, e.hpMax, e.tag ?? '']) });
+    const agora = Date.now(); for (const [id, t] of deFora) if (agora - t > 12000) { deFora.delete(id); K.game.enemies.netDie(id); } }), 3000);
   net.onX('x:spw', (_from, m) => { const E = K.game.enemies as unknown as { netHas(id: string): boolean; spawn(t: string, x: number, z: number, o: Record<string, unknown>): { hp: number; hpMax: number } }, hp = K.hero.root.position;
     for (const r of (m.l as [string, string, number, number, string, number, number, string][]) ?? []) { const [id, type, x, z, name, lvl, hpMax, tag] = r; if (typeof id !== 'string' || deFora.size > 60) continue; if (E.netHas(id)) { if (deFora.has(id)) deFora.set(id, Date.now()); continue; } if (Math.hypot(x - hp.x, z - hp.z) > 150) continue;
       try { const e = E.spawn(type, x, z, { name, lvl, tag: 'fora:' + (tag || 'x'), netId: id, aggro: 0 }); e.hpMax = e.hp = hpMax; deFora.set(id, Date.now()); } catch { /* tipo de bicho que esta versão não conhece */ } } });
@@ -126,8 +127,8 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   net.onX('x:dgsnap', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.dgs.applySnapshot(m as never); });
   net.onX('x:dgwin', (from, m) => { if (inParty(from)) K.game.logMsg(`🏆 ${net.nameOf(from)} e o grupo venceram ${K.dgs.entrances.find((e) => e.d.id === m.id)?.d.name ?? 'a masmorra'}!`, '#ffd24a'); });
   net.onX('x:pq', (from, m) => { if (!inParty(from)) return; const d = m.d as Parameters<typeof K.quests.accept>[0], nm = net.nameOf(from); coop.questShare(nm, d, K.quests.shareState(d), () => K.quests.accept(d, nm)); });
-  setInterval(() => { K.pvp.tick(); }, 500);
-  setInterval(() => { if (net.state !== 'on' || (K.inside && !K.inside.crypt && !K.inside.dg)) return; const l = K.game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }, 100); }
+  setInterval(tarefa('rede: pvp', () => { K.pvp.tick(); }), 500);
+  setInterval(tarefa('rede: bichos', () => { if (net.state !== 'on' || (K.inside && !K.inside.crypt && !K.inside.dg)) return; const l = K.game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }), 100); }
 const coop = createCoop(net, { friend: (n) => K.social.friendChar(n), guildInvite: (n) => K.social.inviteGuild(n), inGuild: () => !!K.social.guild, pvpToggle: () => K.pvp.toggle(), pvpOn: () => K.pvpOn, toMenu: () => K.inicio.open(), mailTo: (n) => K.mail.compose(n), duel: (id) => K.pvp.challenge(id), whisperTo: (n) => K.chat.whisperTo(n), myHp: () => Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), eu: () => ({ retrato: K.retrato(), mold: molduraAtiva(), titulo: tituloAtivo()?.nome ?? '' }) });
   return { coop, net };
 }

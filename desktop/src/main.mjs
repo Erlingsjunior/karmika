@@ -162,8 +162,14 @@ ipcMain.handle('host:stop', async () => {
   if (gateway) { try { await gateway.unmap(7777); await gateway.stop(); } catch { /* */ } gateway = null; }
   return true;
 });
+/* 17/11 (estudo de desempenho): além do nome da placa, o que o Chromium diz de cada recurso gráfico (acelerado, por software, desligado), se a
+   aceleração está ligada, todas as placas que o sistema tem e quantas vezes o processo da placa caiu nesta sessão. O /bench grava isto no arquivo. */
+let gpuQuedas = 0, gpuUltimaQueda = '';
 ipcMain.handle('app:gpu', async () => {
-  try { const g = await app.getGPUInfo('complete'); const d = g?.gpuDevice?.find((x) => x.active) ?? g?.gpuDevice?.[0]; return { renderer: g?.auxAttributes?.glRenderer || null, vendor: d?.vendorString || null, device: d?.deviceString || null }; } catch { return null; }
+  try { const g = await app.getGPUInfo('complete'); const d = g?.gpuDevice?.find((x) => x.active) ?? g?.gpuDevice?.[0];
+    return { renderer: g?.auxAttributes?.glRenderer || null, vendor: d?.vendorString || null, device: d?.deviceString || null,
+      aceleracao: app.isHardwareAccelerationEnabled(), recursos: app.getGPUFeatureStatus(), placas: (g?.gpuDevice ?? []).map((x) => ({ nome: x.deviceString || null, fabricante: x.vendorString || null, ativa: !!x.active })),
+      quedas: gpuQuedas, ultimaQueda: gpuUltimaQueda, electron: process.versions.electron, chrome: process.versions.chrome }; } catch { return null; }
 });
 ipcMain.handle('video:get', () => ({ angle: videoCfg.angle, voltou: videoCfg.voltou }));
 ipcMain.handle('video:ok', () => { if (videoCfg.teste || videoCfg.voltou) { videoCfg.teste = false; saveVideo(); } return true; }); /* o jogo abriu com o tradutor escolhido: deixa de estar em teste */
@@ -215,6 +221,6 @@ app.whenReady().then(() => {
   /* jogo aberto = o computador não dorme nem suspende o app; prioridade alta assim que os processos de desenho existirem (e de novo depois) */
   try { powerSaveBlocker.start('prevent-display-sleep'); } catch { /* */ }
   for (const ms of [1500, 6000, 20000]) setTimeout(gamePriority, ms);
-  app.on('child-process-gone', () => setTimeout(gamePriority, 1500));
+  app.on('child-process-gone', (_e, d) => { if (d?.type === 'GPU') { gpuQuedas++; gpuUltimaQueda = `${new Date().toISOString()} ${d.reason} (código ${d.exitCode})`; console.error('[karmika] o processo da placa de vídeo caiu:', gpuUltimaQueda); } setTimeout(gamePriority, 1500); });
 });
 app.on('window-all-closed', async () => { if (room) { try { await room.stop(); } catch { /* */ } } if (gateway) { try { await gateway.stop(); } catch { /* */ } } app.quit(); });
