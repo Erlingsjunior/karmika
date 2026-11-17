@@ -3077,6 +3077,11 @@ export function buildCity(): World {
         if (wn / n > 0.62 || wn === 0) continue; let perto = false; for (let yy = -2; yy <= 2 && !perto; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { perto = true; break; } if (perto) continue;
         const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004; if (sc <= best || tapado(x, y, 22)) continue; best = sc; bx = x; by = y; }
       if (bx >= 0) { const lp = lightPois.find((q) => q.name === l.name); l.x = bx; l.y = by; if (lp) { lp.x = bx; lp.y = by; } } }
+    /* 17/11 (Erling: "ajustar lojas ainda tapadas, claro, muda de lugar"): a loja que ficou atrás de um monumento ou prédio alto troca de casa
+       com a casa comum mais perto, do mesmo tamanho e da mesma vila, que se vê da câmera. Nenhuma parede muda: só a loja muda de endereço. */
+    for (const q of props) { if (q.kind !== 'house' || !q.shop || !tapado(q.gx + (q.w >> 1), q.gy + q.h, 3)) continue; let melhor: typeof q | null = null, bd = 44;
+      for (const c of props) { if (c.kind !== 'house' || c.shop || c.w !== q.w || c.h !== q.h || (c.style ?? 0) !== (q.style ?? 0) || (c.variant ?? 0) >= 4) continue; const dd = Math.hypot(c.gx - q.gx, c.gy - q.gy); if (dd >= bd || tapado(c.gx + (c.w >> 1), c.gy + c.h, 3)) continue; bd = dd; melhor = c; }
+      if (melhor) { melhor.shop = q.shop; delete q.shop; } }
     /* 16/11: o marco de pedra no centro de cada terreno de guilda (sistemas/terrenos-guilda.ts) ocupa a casa do meio */
     for (const g of guildLots) if (map[g.y0 + 5]?.[g.x0 + 5] === 'grass') map[g.y0 + 5][g.x0 + 5] = 'wall';
     /* pedras de runa: vão para o capim livre mais perto de onde estavam, à vista */

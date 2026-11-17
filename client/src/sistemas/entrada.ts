@@ -19,10 +19,11 @@ K.game.setTeleport((x, z) => { const hx = K.hero.root.position.x, hz = K.hero.ro
   K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); return true; });
 /* ---------- entrada ---------- */
 const keys = new Set<string>();
-/* R alterna correr/andar (padrão: correr, gasta fôlego); Shift segurado faz o contrário enquanto estiver pressionado.
+/* R alterna correr/andar (padrão: correr, gasta fôlego).
    Sem fôlego, anda sozinho até recuperar 25% */
 let runOn = (() => { try { return localStorage.getItem('karmika.run') !== '0'; } catch { return true; } })(), outOfBreath = false;
-const runningNow = () => (runOn !== keys.has('shift')) && !outOfBreath;
+/* 17/11 (Erling: "é o R que cuida de correr e não correr, e não o Shift"): correr é só o R. O Shift ficou livre: segurado, o botão esquerdo ataca parado (mouse-clique.ts) */
+const runningNow = () => runOn && !outOfBreath;
 const heroPosNow = () => new THREE.Vector3(K.state.fx * T, 0, K.state.fy * T);
 /* ---- marcação de chão: a magia marca, o botão direito lança no local marcado ---- */
 const aim = createAim(K.scene);

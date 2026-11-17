@@ -32,7 +32,7 @@ const ALCANCE_CORPO = 2.6;
 /** bicho grande é alcançado de mais longe (o golpe pega no corpo dele, não no centro) */
 const alcance = (e: Bicho) => ALCANCE_CORPO + Math.max(0, (e.def.scale ?? 1) - 1) * 0.7;
 /** o esquerdo está apertado (em cima de bicho ou no chão) */
-let lmb = false, ultimo: Bicho | null = null;
+let lmb = false, ultimo: Bicho | null = null, /** Shift segurado no clique: ataca sem sair do lugar */ parado = false;
 /** o Clique 1 em cima de um bicho: quem bate de longe ataca dali; o corpo a corpo vai até ele e bate quando chega */
 function cliqueNoBicho(e: Bicho) { ultimo = e; K.cliqueSys.lmbHold = 0; K.foca(e); K.setCombat(true); if (K.game.longe() || dHeroi(e) <= alcance(e)) { busca = null; K.paraCaminho(); K.usaClique(1); } else { busca = e; buscaT = 0; K.planTo(e.pos.x / T, e.pos.z / T); } }
 /** todo quadro: segue o bicho buscado, e repete o golpe básico enquanto o botão estiver apertado */
@@ -42,14 +42,15 @@ function tickClique(dt: number) {
   if (K.game.menuOpen) return;
   /* botão esquerdo SEGURADO (Diablo): em cima de um bicho, bate nele sem parar; passou o mouse para outro bicho, troca; o bicho morreu ou o
      mouse saiu para o chão, o herói anda atrás do mouse; chegou em outro bicho, bate de novo. Tudo sem soltar o botão. */
-  if (lmb && !K.aimSlot) { const b = bichoNoMouse();
+  if (lmb && parado && !K.aimSlot) { if (K.cliqueId(1) === 'combo' || K.cliquePronto(1)) { const b = bichoNoMouse(); if (b) K.foca(b); K.usaClique(1); } }
+  else if (lmb && !K.aimSlot) { const b = bichoNoMouse();
     if (b) { if (b !== ultimo || (!busca && !K.game.longe() && dHeroi(b) > alcance(b))) cliqueNoBicho(b); else if (!busca && (K.cliqueId(1) === 'combo' || K.cliquePronto(1))) { K.foca(b); K.usaClique(1); } }
     else if (lmbBate && !K.cliqueSys.lmbHold) { busca = null; ultimo = null; K.cliqueSys.lmbHold = performance.now() - 300; } }
   /* botão direito segurado repete a magia do Clique 2 assim que ela fica pronta de novo */
   if (rmb && (K.cliqueId(2) === 'combo' || (K.cliqueId(2) !== 'guard' && K.cliquePronto(2)))) { const b = bichoNoMouse(); if (b) K.foca(b); K.usaClique(2); }
 }
-addEventListener('pointerup', (e) => { if (e.button === 2) { rmb = false; K.soltaGuarda(); } if (e.button === 0) { K.cliqueSys.lmbHold = 0; lmbBate = false; lmb = false; ultimo = null; } });
-addEventListener('blur', () => { rmb = false; lmbBate = false; lmb = false; ultimo = null; busca = null; K.cliqueSys.lmbHold = 0; /* 12/11: perdeu o foco com o botão apertado: o herói não segue mais o mouse sozinho */ });
+addEventListener('pointerup', (e) => { if (e.button === 2) { rmb = false; K.soltaGuarda(); } if (e.button === 0) { K.cliqueSys.lmbHold = 0; lmbBate = false; lmb = false; parado = false; ultimo = null; } });
+addEventListener('blur', () => { rmb = false; lmbBate = false; lmb = false; parado = false; ultimo = null; busca = null; K.cliqueSys.lmbHold = 0; /* 12/11: perdeu o foco com o botão apertado: o herói não segue mais o mouse sozinho */ });
 /* marca de clique no chão: losango kármico que abre e some */
 const clickMarks: { m: THREE.Mesh; t: number }[] = [];
 const clickGeo = (() => { const sh = new THREE.Shape(); sh.moveTo(0, 0.55); sh.lineTo(0.38, 0); sh.lineTo(0, -0.55); sh.lineTo(-0.38, 0); sh.closePath(); const hole = new THREE.Path(); hole.moveTo(0, 0.32); hole.lineTo(0.22, 0); hole.lineTo(0, -0.32); hole.lineTo(-0.22, 0); hole.closePath(); sh.holes.push(hole); return new THREE.ShapeGeometry(sh).rotateX(-Math.PI / 2); })();
@@ -68,6 +69,8 @@ K.canvas.addEventListener('pointerdown', (e) => {
   if (e.button !== 0 || K.game.menuOpen) return;
   /* 16/11: botão esquerdo em cima de um inimigo bate (Clique 1); no chão, anda */
   cx = e.clientX; cy = e.clientY; sobreTela = true; refazRaio(); sob = achaBicho(); lmb = true;
+  /* Shift + botão esquerdo (Diablo): ataca parado, na direção do mouse, sem andar. Segurando, repete. */
+  if (e.shiftKey) { parado = true; busca = null; K.paraCaminho(); K.setCombat(true); { const b0 = bichoNoMouse(); if (b0) K.foca(b0); } K.usaClique(1); return; }
   { const b1 = bichoNoMouse(); if (b1) { lmbBate = true; cliqueNoBicho(b1); return; } busca = null; ultimo = null; lmbBate = true; }
   const r = K.canvas.getBoundingClientRect();
   ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), K.camera);
