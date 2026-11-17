@@ -2793,6 +2793,18 @@ function coastK(tx: number, ty: number): number {
   for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]) + (fbm(tx * 0.06, ty * 0.06, 973) - 0.5) * 30, r = protPts[i + 2]; if (d < r + 40) k *= smoothstep(r + 4, r + 40, d); } /* o chão protegido também tem borda torta (nada de círculo) */
   return k;
 }
+/* 17/11 (Erling: "criar praias de areia em algumas costas; hoje não há praia em lugar nenhum"): quanto de AREIA há neste ponto (0 a 1).
+   Uma faixa de 5 a 14 casas para dentro da linha da água, só em alguns trechos da costa (um ruído largo escolhe quais) e em toda a
+   Costa dos Naufrágios. As falésias do norte e a península vulcânica não têm praia. É só a pintura do chão: a altura e os bichos não mudam. */
+export function praiaK(tx: number, ty: number): number { if (!inCont(tx, ty)) return 0;
+  const lx = tx - DXW, ly = ty - DXW, W1 = MAP_W_L - 1, H1 = MAP_H_L - 1, RC = 150; if (ly < 190) return 0;
+  const qx = Math.max(RC - lx, lx - (W1 - RC), 0), qy = Math.max(RC - ly, ly - (H1 - RC), 0); const e = qx > 0 && qy > 0 ? RC - Math.hypot(qx, qy) : Math.min(lx, ly, W1 - lx, H1 - ly);
+  if (e > 150 || Math.hypot(lx - PORTO_L.x, ly - PORTO_L.y) < 95) return 0;
+  const t = 6 + Math.max(0, fbm(tx * 0.0045, ty * 0.0045, 970) - 0.28) * 190 + (fbm(tx * 0.025, ty * 0.025, 972) - 0.5) * 38 + (fbm(tx * 0.08, ty * 0.08, 971) - 0.5) * 9;
+  const larg = 5 + fbm(tx * 0.02, ty * 0.02, 981) * 9; let k = smoothstep(t + larg + (fbm(tx * 0.11, ty * 0.11, 983) - 0.5) * 3, t + 1, e); if (k <= 0) return 0;
+  const trecho = Math.max(smoothstep(0.5, 0.58, fbm(tx * 0.006, ty * 0.006, 982)), regionAt_L(lx, ly).id === 26 ? 1 : 0); k *= trecho; if (k <= 0) return 0;
+  for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]), r = protPts[i + 2]; if (d < r + 30) k *= smoothstep(r + 4, r + 30, d); }
+  return k; }
 const SEABED = WL - 4.5;
 export function heightAt(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = heightAt_L(xm - DM, zm - DM); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
 export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = groundH_L(xm - DM, zm - DM, zPre, sdPre); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }

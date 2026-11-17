@@ -21,6 +21,9 @@ let rmb = false;
    O raio do mouse passa pelo corpo do bicho, não só pelo chão: com a câmera de cima, quem mira no peito do bicho toca o chão atrás dele. */
 type Bicho = { alive: boolean; active: boolean; pos: { x: number; z: number }; def: { passive?: boolean; size?: number; scale?: number }; root: THREE.Object3D; ally?: boolean; /** o mouse está em cima: o bicho acende e mostra nome e vida */ sob?: boolean };
 const pt = new THREE.Vector3();
+/* 17/11 (Erling: "a seta está virando um + em cima do monstro, e não é isso: continua sendo a seta do mouse, só que brilha um pouco mais"):
+   a mesma seta, com um halo dourado em volta. */
+const SETA_ACESA = `url("data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="-6 -6 40 40"><defs><filter id="g" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="2.6" result="b"/><feFlood flood-color="#ffb030"/><feComposite in2="b" operator="in" result="c"/><feMerge><feMergeNode in="c"/><feMergeNode in="c"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g filter="url(#g)"><path d="M3 2 L25 12 L15 15 L12 25 Z" fill="#fff0b8" stroke="#2a1a08" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 11 l3 3 l-3 3 l-3 -3 z" fill="#2a1a08"/></g></svg>')}") 9 8, auto`; /* a seta do jogo (index.html), mais clara e com halo */
 /** o bicho debaixo do mouse neste quadro (achado uma vez por quadro em `tickClique`; todo o resto do jogo lê daqui) */
 let sob: Bicho | null = null;
 const bichoNoMouse = (): Bicho | null => (sob && sob.alive && sob.active ? sob : null);
@@ -37,7 +40,7 @@ let lmb = false, ultimo: Bicho | null = null, /** Shift segurado no clique: atac
 function cliqueNoBicho(e: Bicho) { ultimo = e; K.cliqueSys.lmbHold = 0; K.foca(e); K.setCombat(true); if (K.game.longe() || dHeroi(e) <= alcance(e)) { busca = null; K.paraCaminho(); K.usaClique(1); } else { busca = e; buscaT = 0; K.planTo(e.pos.x / T, e.pos.z / T); } }
 /** todo quadro: segue o bicho buscado, e repete o golpe básico enquanto o botão estiver apertado */
 function tickClique(dt: number) {
-  refazRaio(); { const b = K.game.menuOpen || K.build.on || K.cinemaSys.cine ? null : achaBicho(); if (b !== sob) { if (sob) sob.sob = false; sob = b; if (b) b.sob = true; K.canvas.style.cursor = b ? 'crosshair' : ''; } }
+  refazRaio(); { const b = K.game.menuOpen || K.build.on || K.cinemaSys.cine ? null : achaBicho(); if (b !== sob) { if (sob) sob.sob = false; sob = b; if (b) b.sob = true; K.canvas.style.cursor = b ? SETA_ACESA : ''; } }
   if (busca) { if (!busca.alive || !busca.active) busca = null; else if (dHeroi(busca) <= alcance(busca)) { const e = busca; busca = null; K.paraCaminho(); K.foca(e); K.usaClique(1); } else { buscaT -= dt; if (buscaT <= 0) { buscaT = 0.35; K.planTo(busca.pos.x / T, busca.pos.z / T); } } }
   if (K.game.menuOpen) return;
   /* botão esquerdo SEGURADO (Diablo): em cima de um bicho, bate nele sem parar; passou o mouse para outro bicho, troca; o bicho morreu ou o

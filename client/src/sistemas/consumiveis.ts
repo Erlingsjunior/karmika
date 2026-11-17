@@ -2,7 +2,8 @@
 import type { ConsumiveisCtx } from '../main';
 import { movable, MV_GRIP } from '../windows';
 import { genGear, beltSize, type Gear } from '../loot';
-import { cintoAtual, cintoNovo, espaco, poe, tira, solta, ajusta, legado, legadoFeito, cintoDe, poeRegra, ondeEsta, primeiroVazio, salvaCinto, cabe, ehCinto, POR_ESPACO, LARGURA, ENDERECOS, NOME_REGRA, PAUSA_MACRO, type TipoRegra } from '../cinto';
+import { cintoAtual, cintoNovo, espaco, poe, tira, solta, ajusta, legado, legadoFeito, cintoDe, ondeEsta, primeiroVazio, salvaCinto, cabe, ehCinto, POR_ESPACO, LARGURA, ENDERECOS, NOME_REGRA, PAUSA_MACRO, VAGAS, macro, poeMacro, vagaDe, regrasAntigas, type TipoRegra, type TipoVaga, type Vaga } from '../cinto';
+import { GADGETS } from '../festim';
 
 export function createConsumiveis(K: ConsumiveisCtx) {
 /* ---------- o cinto: acesso rápido (F1–F8) ----------
@@ -41,7 +42,7 @@ function renderQuick() {
   if (legado() && mochilaPronta()) { const id = legado(); legadoFeito(); try { poeCintoPeca(id); } catch { /* a peça fica na mochila */ } }
   sincroniza();
   const c = cintoAtual();
-  const cell = (i: number) => { const e = espaco(i); if (!e) return `<div class="slot q empty" data-qs="${i}"><kbd>${qKey(i)}</kbd></div>`; const it = K.ITEMS_Q(e.id), r = e.regra;
+  const cell = (i: number) => { const e = espaco(i); if (!e) return `<div class="slot q empty" data-qs="${i}"><kbd>${qKey(i)}</kbd></div>`; const it = K.ITEMS_Q(e.id), vg = vagaDe(e.id), r = vg ? macro(vg)!.regra : null;
     return `<div class="slot q pin ${e.n ? '' : 'none'} ${r ? 'macro' : ''}" data-q="${i}" data-qs="${i}" title="${it.name}: ${it.desc} · ${e.n} de ${POR_ESPACO} no cinto${r ? ` · macro: ${NOME_REGRA[r.tipo]}${r.tipo === 'efeito' ? '' : ` ${r.abaixo}%`}` : ''} (botão direito devolve à mochila)"><kbd>${qKey(i)}</kbd><span class="ic">${it.icon}</span><b class="n">${e.n}</b>${r ? '<i class="qm">⚙</i>' : ''}</div>`; };
   quickEl.innerHTML = `<div class="qside">${MV_GRIP('l')}<div class="qbtns"><button class="qtog" title="Mostrar/esconder o cinto (F1–F8). Arraste itens da mochila para cá."><svg viewBox="0 0 10 10" width="9" height="9" aria-hidden="true"><path d="${quickOpen ? 'M1 2.5h8L5 7.5z' : 'M1 7.5h8L5 2.5z'}" fill="currentColor"/></svg></button>` + (quickOpen ? `<button class="qrows qgear ${macroOpen ? 'on' : ''}" title="Macros do cinto: beber sozinho quando a vida, o fôlego ou a magia baixarem">⚙</button></div></div><div class="qstack">${Array.from({ length: c.andares }, (_, r) => `<div class="qrow">${Array.from({ length: c.cols }, (_, j) => cell(r * LARGURA + j)).join('')}</div>`).join('')}</div><button class="qfill" title="Reabastecer o cinto com o que há na mochila (até ${POR_ESPACO} por espaço). Não dá para fazer no meio da batalha.">⟳</button>` : '</div></div>');
   if (K.game.hasOrb()) { const r = K.game.reactor(), p = Math.round(r.charge * 100), on = K.game.lamp();
@@ -77,27 +78,44 @@ setInterval(() => { try { const u = ((K.inv.eq as Record<string, Gear | null>).b
 
 /* ---------- macros ---------- */
 const macroEl = document.createElement('div'); macroEl.id = 'qmacro'; macroEl.style.display = 'none'; document.body.appendChild(macroEl);
+/** de que tipo de vaga é o item: poção de vida, alimento (toda outra comida ou bebida) ou engenhoca; null = não entra em macro */
+const tipoDe = (id: string): TipoVaga | null => { if (GADGETS[id]) return 'engenhoca'; const it = K.ITEMS_Q(id) as { heal?: number; buff?: string; kind?: string; name: string }; if (it.kind !== 'food') return null; return it.heal && !it.buff && /po[çc][ãa]o/i.test(it.name) ? 'pocao' : 'alimento'; };
 /** as regras que o item aceita: só cuida da vida o que cura, do fôlego o que dá fôlego, da magia o que dá magia; só mantém efeito o que tem efeito */
-const regrasDe = (id: string): TipoRegra[] => { const it = K.ITEMS_Q(id) as { stam?: number; mp?: number; heal?: number; buff?: string; stamT?: number; kind?: string }; const L: TipoRegra[] = []; if (it.stam) L.push('folego'); else if (it.mp) L.push('magia'); else if (it.kind === 'food') L.push('vida'); if (it.buff || it.stamT) L.push('efeito'); return L; };
-function renderMacros() { const c = cintoAtual(), L: string[] = [];
-  for (let i = 0; i < ENDERECOS; i++) { const e = espaco(i); if (!e || !cabe(c, i)) continue; const it = K.ITEMS_Q(e.id), r = e.regra;
-    L.push(`<div class="qmr"><span class="ic">${it.icon}</span><b>${it.name}<small>${qKey(i)} · ${e.n} de ${POR_ESPACO}</small></b><select data-mt="${i}"><option value="">Sem macro</option>${regrasDe(e.id).map((t) => `<option value="${t}" ${r?.tipo === t ? 'selected' : ''}>${NOME_REGRA[t]}</option>`).join('')}</select>${r && r.tipo !== 'efeito' ? `<label><input type="number" data-mp="${i}" min="5" max="95" step="5" value="${r.abaixo}"> %</label>` : '<label></label>'}</div>`); }
+const regrasDe = (id: string): TipoRegra[] => { if (GADGETS[id]) return ['efeito']; const it = K.ITEMS_Q(id) as { stam?: number; mp?: number; heal?: number; buff?: string; stamT?: number; kind?: string }; const L: TipoRegra[] = []; if (it.stam) L.push('folego'); else if (it.mp) L.push('magia'); else if (it.kind === 'food') L.push('vida'); if (it.buff || it.stamT) L.push('efeito'); return L; };
+const padrao = (t: TipoRegra) => (t === 'folego' ? 30 : 40);
+/* as regras do formato antigo (uma por espaço) viram vagas: a primeira de cada tipo fica, o resto se apaga */
+for (const a of regrasAntigas()) { const t = tipoDe(a.id); if (!t) continue; const v = VAGAS.find((q) => q.tipo === t && !macro(q.id)); if (v) poeMacro(v.id, { item: a.id, regra: a.regra }); }
+/** os itens do cinto que servem numa vaga daquele tipo */
+const servem = (t: TipoVaga) => { const c = cintoAtual(), L: { id: string; i: number; n: number }[] = []; for (let i = 0; i < ENDERECOS; i++) { const e = espaco(i); if (e && cabe(c, i) && tipoDe(e.id) === t) L.push({ id: e.id, i, n: e.n }); } return L; };
+let macroPos: { x: number; y: number } | null = (() => { try { return JSON.parse(localStorage.getItem('karmika.ui.qmacro') || 'null'); } catch { return null; } })();
+function renderMacros() { const L: string[] = [];
+  for (const v of VAGAS) { const m = macro(v.id), ops = servem(v.tipo), it = m ? K.ITEMS_Q(m.item) : null, noCinto = m ? ops.find((o) => o.id === m.item) : null, regras = m ? regrasDe(m.item) : [];
+    L.push(`<div class="qmr" title="${v.dica}"><span class="ic">${it?.icon ?? '·'}</span><b>${v.nome}<small>${m ? (noCinto ? `${qKey(noCinto.i)} · ${noCinto.n} de ${POR_ESPACO}` : 'acabou no cinto: reabasteça') : ops.length ? 'vaga livre' : 'nada no cinto serve aqui'}</small></b>`
+      + `<select data-mv="${v.id}"><option value="">Nenhum</option>${ops.map((o) => `<option value="${o.id}" ${m?.item === o.id ? 'selected' : ''}>${K.ITEMS_Q(o.id).name}</option>`).join('')}${m && !noCinto ? `<option value="${m.item}" selected>${it!.name}</option>` : ''}</select>`
+      + (m ? (regras.length > 1 ? `<select data-mt="${v.id}">${regras.map((t) => `<option value="${t}" ${m.regra.tipo === t ? 'selected' : ''}>${NOME_REGRA[t]}</option>`).join('')}</select>` : `<span class="qrg">${v.tipo === 'engenhoca' ? 'Ligar em batalha' : NOME_REGRA[m.regra.tipo]}</span>`) + (m.regra.tipo !== 'efeito' ? `<label><input type="number" data-mp="${v.id}" min="5" max="95" step="5" value="${m.regra.abaixo}"> %</label>` : '<label></label>') : '<span></span><label></label>') + '</div>'); }
   const r0 = quickEl.getBoundingClientRect();
-  macroEl.innerHTML = `<h4>⚙ Macros do cinto <button data-mx>✕</button></h4><p>O cinto bebe e come por você. Cada item do cinto pode ter uma regra; o mesmo item não entra em dois espaços. Entre dois usos automáticos passam ${String(PAUSA_MACRO).replace('.', ',')} s.</p>${L.length ? L.join('') : '<p class="vz">O cinto está vazio. Arraste poções e comidas da mochila para ele.</p>'}`;
-  macroEl.style.display = 'block'; const h = macroEl.offsetHeight, w = macroEl.offsetWidth; macroEl.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r0.left))}px`; macroEl.style.top = `${Math.max(8, r0.top - h - 8)}px`; }
+  macroEl.innerHTML = `<h4 class="qmh" title="Arraste para mover"><span>⚙ Macros do cinto</span><small>✥ arraste</small><button data-mx>✕</button></h4><p>O cinto bebe, come e liga as engenhocas por você. São quatro vagas: escolha em cada uma um item que já está no cinto. Entre dois usos automáticos passam ${String(PAUSA_MACRO).replace('.', ',')} s.</p>${L.join('')}`;
+  macroEl.style.display = 'block'; const h = macroEl.offsetHeight, w = macroEl.offsetWidth; const x = macroPos ? macroPos.x : r0.left, y = macroPos ? macroPos.y : r0.top - h - 8; macroEl.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, x))}px`; macroEl.style.top = `${Math.max(8, Math.min(innerHeight - h - 8, y))}px`; }
+/* 17/11 (Erling: "não consigo mover essa janela"): arrasta pelo título; a posição fica guardada */
+{ let pega: { dx: number; dy: number } | null = null;
+  macroEl.addEventListener('pointerdown', (e) => { const t = e.target as HTMLElement; if (!t.closest('.qmh') || t.closest('button')) return; const r = macroEl.getBoundingClientRect(); pega = { dx: e.clientX - r.left, dy: e.clientY - r.top }; macroEl.setPointerCapture(e.pointerId); e.preventDefault(); });
+  macroEl.addEventListener('pointermove', (e) => { if (!pega) return; const r = macroEl.getBoundingClientRect(), x = Math.max(8, Math.min(innerWidth - r.width - 8, e.clientX - pega.dx)), y = Math.max(8, Math.min(innerHeight - r.height - 8, e.clientY - pega.dy)); macroEl.style.left = x + 'px'; macroEl.style.top = y + 'px'; macroPos = { x, y }; });
+  macroEl.addEventListener('pointerup', () => { if (!pega) return; pega = null; try { localStorage.setItem('karmika.ui.qmacro', JSON.stringify(macroPos)); } catch { /* */ } }); }
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && macroOpen) { macroOpen = false; macroEl.style.display = 'none'; renderQuick(); e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 macroEl.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('[data-mx]')) { macroOpen = false; macroEl.style.display = 'none'; renderQuick(); } });
 macroEl.addEventListener('change', (e) => { const t = e.target as HTMLInputElement | HTMLSelectElement;
-  if (t.dataset.mt !== undefined) { const i = +t.dataset.mt, tipo = t.value as TipoRegra | ''; poeRegra(i, tipo ? { tipo, abaixo: espaco(i)?.regra?.abaixo ?? (tipo === 'folego' ? 30 : 40) } : null); renderQuick(); }
-  else if (t.dataset.mp !== undefined) { const i = +t.dataset.mp, e2 = espaco(i); if (e2?.regra) { poeRegra(i, { ...e2.regra, abaixo: Math.max(5, Math.min(95, Math.round(+t.value || 40))) }); renderQuick(); } } });
+  if (t.dataset.mv !== undefined) { const v = t.dataset.mv as Vaga, id = t.value; if (!id) poeMacro(v, null); else { const tp = regrasDe(id)[0] ?? 'vida'; poeMacro(v, { item: id, regra: macro(v)?.item === id ? macro(v)!.regra : { tipo: tp, abaixo: padrao(tp) } }); } renderQuick(); }
+  else if (t.dataset.mt !== undefined) { const v = t.dataset.mt as Vaga, m = macro(v); if (m) { const tp = t.value as TipoRegra; poeMacro(v, { item: m.item, regra: { tipo: tp, abaixo: m.regra.abaixo || padrao(tp) } }); renderQuick(); } }
+  else if (t.dataset.mp !== undefined) { const v = t.dataset.mp as Vaga, m = macro(v); if (m) { poeMacro(v, { item: m.item, regra: { ...m.regra, abaixo: Math.max(5, Math.min(95, Math.round(+t.value || 40))) } }); renderQuick(); } } });
 /** quanto dura o efeito de um item, lido da descrição ("por 30 s", "por 5 min"); 60 s se não disser */
-const duraEfeito = (id: string) => { const m = /por (\d+) ?(s|min)\b/.exec(K.ITEMS_Q(id).desc); return m ? +m[1] * (m[2] === 'min' ? 60 : 1) : 60; };
+const duraEfeito = (id: string) => { const d = K.ITEMS_Q(id).desc, t = /dura (\d+) turno|por (\d+) turno/.exec(d); if (t) return +(t[1] ?? t[2]) * 1800; if (GADGETS[id]) return 1800; const m = /por (\d+) ?(s|min)\b/.exec(d); return m ? +m[1] * (m[2] === 'min' ? 60 : 1) : 60; };
 let pausa = 0; const efeitoAte = new Map<string, number>();
 /** roda a cada quadro: aplica a primeira regra que pedir uso */
 function tickMacros(dt: number) { pausa -= dt; if (pausa > 0) return; const st = K.game.st as { hp: number; hpMax: number; mp: number; mpMax: number; stam: number; stamMax: number; dead?: boolean }; if (st.dead || st.hp <= 0) return;
-  const c = cintoAtual(), agora = performance.now() / 1000; let luta: boolean | null = null;
-  for (let i = 0; i < ENDERECOS; i++) { const e = espaco(i), r = e?.regra; if (!e || !r || e.n <= 0 || !cabe(c, i)) continue;
+  const agora = performance.now() / 1000; let luta: boolean | null = null;
+  /* 17/11: as quatro vagas, na ordem: poção, alimento, engenhoca 1, engenhoca 2 */
+  for (const v of VAGAS) { const m = macro(v.id); if (!m) continue; const i = ondeEsta(m.item), e = i >= 0 ? espaco(i) : null, r = m.regra; if (!e || e.n <= 0) continue;
     const pede = r.tipo === 'vida' ? st.hp / st.hpMax * 100 < r.abaixo : r.tipo === 'folego' ? st.stam / st.stamMax * 100 < r.abaixo : r.tipo === 'magia' ? st.mp / Math.max(1, st.mpMax) * 100 < r.abaixo : (efeitoAte.get(e.id) ?? 0) <= agora && (luta ??= emBatalha());
-    if (!pede) continue; if (usaDoCinto(i, true)) { pausa = PAUSA_MACRO; if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + duraEfeito(e.id)); const el = quickEl.querySelector(`[data-q="${i}"]`); el?.classList.add('on'); setTimeout(() => { renderQuick(); }, 200); if (e.n <= 0) K.game.logMsg(`⚙ Acabou ${K.ITEMS_Q(e.id).name} no cinto.`, '#ff9a8a'); return; } else if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + 5); /* recusou (vida cheia, por exemplo): a regra seguinte tem a vez */ } }
+    if (!pede) continue; if (usaDoCinto(i, true)) { pausa = PAUSA_MACRO; if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + duraEfeito(e.id)); const el = quickEl.querySelector(`[data-q="${i}"]`); el?.classList.add('on'); setTimeout(() => { renderQuick(); }, 200); if (e.n <= 0) K.game.logMsg(`⚙ Acabou ${K.ITEMS_Q(e.id).name} no cinto.`, '#ff9a8a'); return; } else if (r.tipo === 'efeito') efeitoAte.set(e.id, agora + (v.tipo === 'engenhoca' ? 120 : 5)); /* recusou (vida cheia; engenhoca já ligada): a vaga seguinte tem a vez */ } }
   return { renderQuick, useQuick, vesteCinto, tickMacros, cinto: cintoAtual };
 }

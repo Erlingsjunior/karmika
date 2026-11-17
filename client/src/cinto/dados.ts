@@ -30,3 +30,16 @@ export interface Regra { tipo: TipoRegra; /** vida, fôlego ou magia abaixo dest
 export const NOME_REGRA: Record<TipoRegra, string> = { vida: 'Vida abaixo de', folego: 'Fôlego abaixo de', magia: 'Magia abaixo de', efeito: 'Manter o efeito em batalha' };
 /** tempo mínimo entre dois usos automáticos (s): o cinto não se esvazia num susto */
 export const PAUSA_MACRO = 1.5;
+
+/* 17/11 (Erling: "os espaços não seguem os itens que temos; vamos criar os espaços calculados e limitados e colocar dentro deles os itens
+   que temos: 1 para poção de vida, um para alimentos, 2 para engenhocas"): as VAGAS de macro. São quatro, fixas. Em cada uma o jogador
+   escolhe um item do cinto daquele tipo e a regra dele. */
+export type Vaga = 'pocao' | 'alimento' | 'eng1' | 'eng2';
+export type TipoVaga = 'pocao' | 'alimento' | 'engenhoca';
+export const VAGAS: { id: Vaga; nome: string; tipo: TipoVaga; dica: string }[] = [
+  { id: 'pocao', nome: 'Poção de vida', tipo: 'pocao', dica: 'Bebe sozinho quando a vida baixa.' },
+  { id: 'alimento', nome: 'Alimento', tipo: 'alimento', dica: 'Come sozinho quando a vida baixa, ou mantém o efeito da comida em batalha.' },
+  { id: 'eng1', nome: 'Engenhoca 1', tipo: 'engenhoca', dica: 'Liga sozinha quando a luta começa.' },
+  { id: 'eng2', nome: 'Engenhoca 2', tipo: 'engenhoca', dica: 'Liga sozinha quando a luta começa.' },
+];
+export interface Macro { /** o item do cinto que ocupa a vaga */ item: string; regra: Regra }

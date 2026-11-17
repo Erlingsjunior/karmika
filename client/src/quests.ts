@@ -454,6 +454,11 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
   const boardActive = () => Object.entries(q.active).filter(([id, a]) => a.def?.board || id.startsWith('b')).map(([id]) => def(id));
   function acceptBoard(d: QuestDef) { if (Object.keys(q.active).length >= questLimit()) { ctx.log(`Diário cheio: até ${questLimit()} missões ao mesmo tempo${isPremium() ? '' : ' (Premium: 8)'}.`, '#ff9a8a'); return; } q.boardSeed += 1; accept(d); }
   const el = document.createElement('div'); el.id = 'quests'; document.body.appendChild(el);
+  /* 17/11 (Erling: "a mãozinha não está aparecendo para eu arrastar; está bem difícil achar uma posição em que ela apareça"): o título era
+     refeito junto com a lista (várias vezes por segundo, por causa da distância da missão), e a cada vez o cursor voltava a ser a seta.
+     Agora a alça é uma peça fixa, mais alta, que nunca é refeita: a mão aparece em toda a faixa do título. */
+  const alca = document.createElement('h4'); alca.className = 'qalca'; alca.innerHTML = '<span>Missões <small class="qn"></small></span><small class="mv">✥ arraste</small>'; alca.title = 'Arraste para mover a lista de missões · clique duplo: volta para o lugar de sempre'; alca.hidden = true;
+  const lista = document.createElement('div'); el.append(alca, lista); const qn = alca.querySelector('.qn') as HTMLElement;
   // posição ajustável: arraste pelo título; fica salva
   try { const p = JSON.parse(localStorage.getItem('karmika.ui.quests') || 'null'); if (p) { el.style.left = p.x + 'px'; el.style.top = p.y + 'px'; } } catch { /* */ }
   /* 12/11 (Erling: "missões eu consigo arrastar para fora da tela"): o painel inteiro fica dentro da tela, ao arrastar, ao abrir o jogo com uma posição
@@ -549,7 +554,8 @@ export function createQuests(ctx: { /** postura em uso (posturas.ts) */ stance?(
       const sorted = [...ids].sort((a, b) => CAT_ORDER.indexOf(questCat(def(a))) - CAT_ORDER.indexOf(questCat(def(b))));
       let prev: QuestCat | null = null;
       const xt = extraTop?.() ?? '';
-      el.innerHTML = ids.length || xt ? `<h4>Missões <small>${ids.length}/${questLimit()} · J</small><small class="mv">⠿ arraste</small></h4>` + `<div class="xtop">${xt}</div>` + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
+      alca.hidden = !(ids.length || xt); { const tx = `${ids.length}/${questLimit()} · J`; if (qn.textContent !== tx) qn.textContent = tx; }
+      lista.innerHTML = ids.length || xt ? `<div class="xtop">${xt}</div>` + sorted.map((id) => { const d = def(id), ok = complete(d), c = questCat(d), gap = prev !== null && prev !== c; prev = c;
         return `<div class="q c-${c} ${gap ? 'gap' : ''} ${ok ? 'ok' : ''} ${id === tracked ? 'track' : id === tracked2 ? 'track track2' : ''}" data-id="${id}"><a class="qopen" data-open="${id}" title="Abrir no diário (J)">↗</a><a class="qab" data-ab="${id}" title="Abandonar esta missão">✕</a><b>${d.name}</b><span class="qx">${q.active[id].from ? `<u class="qfrom">missão de ${q.active[id].from}</u> · ` : ''}${d.giver}${d.chain ? ' · ' + d.chain : ''} · Nv ${d.lvl}</span>${d.objs.map((o, i) => `<i>${objText(o)} <em>${objProg(d, i)}/${objNeed(o)}</em></i>`).join('')}${ok ? `<i class="go">→ Entregar a ${d.turnin ?? d.giver}</i>` : ''}${id === tracked ? '<i class="dir"></i>' : ''}</div>`; }).join('') : '';
     }
     if (boardOpen) {
