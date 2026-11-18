@@ -804,3 +804,17 @@ main > section.jogar::before { content: ""; position: absolute; pointer-events: 
 .real__acoes { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 24px auto 22px; }
 .real__inv { font-size: 15px !important; }
 .real__inv a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+/* 18/11: "um pouco de cada" (Erling): o que já existe, quem faz, para onde vai cada venda e o que vem a seguir */
+.real__sub { display: block; margin-top: 34px; }
+.real__nums { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; max-width: 1100px; margin: 16px auto 0; }
+.real__nums div { padding: 18px 8px 16px; border: 1px solid rgba(243, 211, 138, .16); border-radius: 16px; background: rgba(255, 255, 255, .02); }
+.real__nums b { display: block; font-family: Cinzel, serif; font-size: clamp(24px, 2.6vw, 36px); color: #f3d38a; line-height: 1.1; }
+.real__nums span { display: block; margin-top: 8px; font-size: 13px; line-height: 1.4; color: var(--mut); }
+.real__cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; max-width: 1100px; margin: 14px auto 34px; text-align: left; }
+.real__cols article { padding: 22px 22px 18px; border: 1px solid rgba(150, 190, 255, .16); border-radius: 18px; background: rgba(255, 255, 255, .02); }
+.real__cols h3 { font-size: 19px; margin: 0 0 12px; }
+.real__cols ul { list-style: none; margin: 0; padding: 0; }
+.real__cols li { position: relative; padding-left: 18px; margin-bottom: 8px; font-size: 15px; line-height: 1.5; color: var(--mut); }
+.real__cols li::before { content: "✦"; position: absolute; left: 0; top: 1px; font-size: 11px; color: #f3d38a; }
+@media (max-width: 900px) { .real__nums { grid-template-columns: repeat(3, minmax(0, 1fr)); } .real__cols { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .real__nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
