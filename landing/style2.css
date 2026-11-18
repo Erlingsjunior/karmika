@@ -797,9 +797,10 @@ main > section.jogar::before { content: ""; position: absolute; pointer-events: 
 #sheet .sheet__x { position: sticky; top: 0; float: none; align-self: flex-end; flex: 0 0 42px; margin: -6px -6px -42px 0; }
 
 /* 18/11 (Erling: "vamos falar a real para todos: somos um estúdio pequeno, sem investidores, cada jogo vendido ajuda a gente a continuar") */
-.real { max-width: 780px; margin: 0 auto; padding: 14vh 6vw 2vh; text-align: center; position: relative; z-index: 2; }
-.real h2 { font-size: clamp(30px, 3.8vw, 52px); margin: 12px 0 20px; }
-.real p { color: var(--mut); max-width: 60ch; margin: 0 auto 14px; font-size: 17px; line-height: 1.7; }
-.real__acoes { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 24px 0 22px; }
+.real { padding: 14vh var(--gut) 2vh; text-align: center; }
+.real h2, .real p, .real__acoes { max-width: 780px; margin-left: auto; margin-right: auto; }
+.real h2 { font-size: clamp(30px, 3.8vw, 52px); margin: 12px auto 20px; }
+.real p { color: var(--mut); max-width: 60ch; margin-bottom: 14px; font-size: 17px; line-height: 1.7; }
+.real__acoes { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 24px auto 22px; }
 .real__inv { font-size: 15px !important; }
 .real__inv a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
