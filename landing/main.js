@@ -93,13 +93,13 @@
     f.addEventListener('submit', async (e) => { e.preventDefault(); if (sending) return; msg.className = 'beta__msg'; msg.textContent = '';
       const d = Object.fromEntries(new FormData(f).entries()); d.embaixador = !!d.embaixador;
       if (!d.nome || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { msg.classList.add('err'); msg.textContent = 'Preencha nome e um e-mail válido.'; return; }
-      if (!d.ok) { msg.classList.add('err'); msg.textContent = 'Marque a caixa de aceite para receber o convite.'; return; }
+      if (!d.ok) { msg.classList.add('err'); msg.textContent = 'Marque a caixa de aceite para receber o aviso.'; return; }
       const em = String(d.email).trim().toLowerCase(), m = mem();
-      if (m[em]) { msg.classList.add('ok'); msg.textContent = '✦ Este e-mail já está inscrito. O convite chega por ele.'; return; }
+      if (m[em]) { msg.classList.add('ok'); msg.textContent = '✦ Este e-mail já está inscrito. O aviso chega por ele.'; return; }
       if (m._last && Date.now() - m._last < 60000) { msg.classList.add('err'); msg.textContent = 'Aguarde um minuto antes de enviar outra inscrição.'; return; }
       sending = true; btn.disabled = true; btn.textContent = 'Enviando…';
       try { const r = await fetch('/api/beta', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(d) }); const j = await r.json().catch(() => ({}));
-        if (!r.ok) throw new Error(j.error || 'erro'); try { const m2 = mem(); m2[em] = Date.now(); m2._last = Date.now(); localStorage.setItem(K, JSON.stringify(m2)); } catch { /* */ } f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. Fique de olho no seu e-mail: o convite chega antes da próxima rodada.'; btn.textContent = 'Inscrito ✦'; }
+        if (!r.ok) throw new Error(j.error || 'erro'); try { const m2 = mem(); m2[em] = Date.now(); m2._last = Date.now(); localStorage.setItem(K, JSON.stringify(m2)); } catch { /* */ } f.reset(); msg.classList.add('ok'); msg.textContent = '✦ Inscrição recebida. A gente avisa por e-mail no dia em que as vendas abrirem.'; btn.textContent = 'Inscrito ✦'; }
       catch (err) { msg.classList.add('err'); msg.textContent = 'Não deu certo agora. Tente de novo em instantes.'; btn.disabled = false; btn.textContent = 'Quero ser beta tester'; } finally { sending = false; } });
   }
 
