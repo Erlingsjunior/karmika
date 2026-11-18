@@ -84,6 +84,8 @@
 
   addEventListener('load', () => ScrollTrigger.refresh());
 
+  /* 18/11: botão de copiar o link do site (bloco "Falando a real") */
+  (function () { const b = document.getElementById('copiaLink'); if (!b) return; b.addEventListener('click', async () => { try { await navigator.clipboard.writeText('https://karmikaonline.com'); b.textContent = 'Link copiado ✦'; } catch { b.textContent = 'karmikaonline.com'; } }); })();
   /* formulário do beta */
   function formInit() {
     const f = document.getElementById('betaForm'); if (!f) return; const msg = f.querySelector('.beta__msg'), btn = f.querySelector('button');
