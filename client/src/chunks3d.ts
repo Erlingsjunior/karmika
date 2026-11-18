@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { gpuTag } from './gpu/tags';
 import { TILE_M as T } from '@karmika/shared';
-import { type World, type Biome, MAP_W, MAP_H, groundH, waterSD, zoneW, WL, fbm, vnoise, smoothstep, rng } from './world';
+import { type World, type Biome, MAP_W, MAP_H, groundH, waterSD, zoneW, WL, fbm, vnoise, smoothstep, rng, praiaK } from './world';
 import { windU, windify } from './terrain3d';
 /* fator de calçamento num ponto (em casas): 1 perto das cidades, cai até 0 no ermo; perto das vilas, meio a meio (25/10) */
 /** tamanho da pedra do calçamento: 1 no coração da cidade ou da vila (laje grande), 0 longe (pedra miúda) */
@@ -25,6 +25,7 @@ const PAL: Record<Biome, [THREE.Color, THREE.Color]> = {
   snow: [C(0xc9d6e4), C(0xf0f6fb)], ruins: [C(0x4e4c3a), C(0x6c6a4c)], rock: [C(0x5a544c), C(0x7a7268)],
   volcanic: [C(0x1e1a1c), C(0x3a3032)], enchanted: [C(0x3a3a6a), C(0x5a4a8a)], blight: [C(0x2e2630), C(0x4a3c44)], jungle: [C(0x163a1c), C(0x2a5426)], coast: [C(0xb8a478), C(0xd6c49a)],
 };
+const AREIA = C(0xd8c490), AREIA2 = C(0xc8b07a), AREIA_M = C(0x8a7a58); /* 17/11: a areia seca (dois tons) e a areia molhada da beira */
 const MOSS = C(0x4c6c2a), DIRT = C(0x6e5438), MUD = C(0x3a3226), BED = C(0x2a3a3a), PEBBLE = C(0x817e76), ROAD = C(0x8a6d49), ROAD2 = C(0x6f5638), PLAZA = C(0x8d8f9c), CLIFF = C(0x5d5a56), CLIFF2 = C(0x7b7468);
 const tmpC = new THREE.Color(), tmpD = new THREE.Color();
 
@@ -246,6 +247,8 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
       if (sd < 0) tmpC.lerp(BED, smoothstep(0, 1.0, -sd) * 0.7);
       tmpC.multiplyScalar(1 - 0.22 * smoothstep(2.0, 0, sd));
     }
+    /* 17/11: praia de areia (world.praiaK): areia clara que escurece e molha perto da água; some a lama e o musgo da margem */
+    const pk = praiaK(tx, ty); if (pk > 0) { tmpD.copy(AREIA).lerp(AREIA2, vnoise(xm * 0.7, zm * 0.7, 41)); if (sd < 1.6) tmpD.lerp(AREIA_M, smoothstep(1.6, -0.4, sd) * 0.75); tmpC.lerp(tmpD, Math.min(1, pk * 1.25) * (1 - sk * 0.8)); wMud *= 1 - pk; wPeb *= 1 - pk * 0.6; }
     // estradas e praça (peso vem do mapa de tiles, borda irregular)
     const edgeN = (vnoise(xm * 1.7, zm * 1.7, 21) - 0.5) * 0.34;
     const rw = smoothstep(0.42 + edgeN, 0.72 + edgeN, tileW(w, tx, ty, (t) => t === 'road' || t === 'plaza'));
@@ -260,7 +263,7 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
        estrada de terra, calçamento, lama da margem, chão de floresta | seixos, rocha, areia, e quanto o chão natural usa a textura */
     { const roadW = Math.max(0, rw * 0.95 - pw), forestW = Math.min(1, (zw.forest ?? 0) + (zw.jungle ?? 0) * 0.7 + (zw.swamp ?? 0) * 0.4) * (1 - rw), wild = 1 - Math.min(1, (zw.snow ?? 0) + (zw.volcanic ?? 0) * 0.7 + (zw.blight ?? 0) * 0.5 + (zw.enchanted ?? 0) * 0.5);
       sp1[k * 4] = roadW; sp1[k * 4 + 1] = pw; sp1[k * 4 + 2] = wMud * (1 - rw); sp1[k * 4 + 3] = forestW * (1 - wMud);
-      sp2[k * 4] = wPeb * (1 - rw); sp2[k * 4 + 1] = sk; sp2[k * 4 + 2] = Math.min(1, (zw.coast ?? 0) * 1.2) * (1 - rw); sp2[k * 4 + 3] = wild; }
+      sp2[k * 4] = wPeb * (1 - rw); sp2[k * 4 + 1] = sk; sp2[k * 4 + 2] = Math.min(1, Math.max((zw.coast ?? 0) * 1.2, pk * 1.3)) * (1 - rw); sp2[k * 4 + 3] = wild; }
     col[k * 3] = tmpC.r; col[k * 3 + 1] = tmpC.g; col[k * 3 + 2] = tmpC.b;
   } }
   const idx: number[] = [];
@@ -298,6 +301,7 @@ export function* buildChunkTerrainG(cx: number, cy: number, w: World, over: () =
       const x = (tx + R()) * T, z = (ty + R()) * T;
       const sd = waterSD(x, z); if (sd < 0.5) continue;
       if (tileW(w, x / T, z / T, (t) => t === 'road' || t === 'plaza') > 0.25) continue;
+      if (praiaK(x / T, z / T) > 0.35) continue; /* 17/11: na areia da praia não nasce capim */
       grassSpots.push({ x, z, b: bm });
     }
   } }

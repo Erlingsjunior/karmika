@@ -65,7 +65,11 @@ export const GADGETS: Record<string, Gadget> = {
   mola_aco: { name: 'Mola de Aço', icon: '➰', price: 14, kind: 'res', col: 0x9aa0a8, desc: 'Enrolada a quente na bancada do engenheiro. Toda engenhoca tem pelo menos uma; os robôs, dezenas.' },
   bobina_cobre: { name: 'Bobina de Cobre', icon: '🧲', price: 16, kind: 'res', col: 0xd08040, desc: 'Fio enrolado em volta de um núcleo de ferro. É onde mora o choque das pulseiras, das torres e das armas eletrificadas.' },
   valvula_vapor: { name: 'Válvula de Vapor', icon: '🔘', price: 22, kind: 'res', col: 0xb08a40, desc: 'Segura a pressão até a hora certa. Sem ela, o lança-chamas lança é o engenheiro.' },
-  pulseira_choque: { name: 'Pulseira de Choque', icon: '📿', price: 160, kind: 'misc', col: 0x6ad0ff, desc: 'Presa no pulso por 1 turno: quem te acerta de perto leva uma descarga (20% do golpe de volta) e trava por um instante. Uma por vez.' },
+  pulseira_choque: { name: 'Pulseira de Choque', icon: '📿', price: 160, kind: 'misc', col: 0x6ad0ff, desc: 'Presa no pulso por 1 turno: um raio cai do céu no inimigo mais perto e quem te acerta de perto leva uma descarga (20% do golpe de volta). AVISO: não entre na água nem pise em poça com ela no pulso. Uma por vez.' },
+  /* 17/11 (Erling: "família de pulseiras aprovada, pode aplicar"): as três irmãs da Pulseira de Choque. Só uma pulseira no pulso por vez. */
+  pulseira_voltaica: { name: 'Pulseira Voltaica', icon: '📿', price: 240, kind: 'misc', col: 0xb07aff, desc: 'Presa no pulso por 1 turno: a cada 5 s um arco salta do pulso para o inimigo mais perto e dele para até mais 3 que estejam juntos (cada salto com 70% do anterior). AVISO: não entre na água com ela no pulso. Uma pulseira por vez.' },
+  pulseira_impacto: { name: 'Pulseira de Impacto', icon: '📿', price: 280, kind: 'misc', col: 0xffb04a, desc: 'Presa no pulso por 1 turno: a cada 7 s, se houver inimigo a 4 m, um pistão dispara uma onda que empurra todos para longe e os deixa tontos por um instante. AVISO: não entre na água com ela no pulso. Uma pulseira por vez.' },
+  pulseira_magnetica: { name: 'Pulseira Magnética', icon: '📿', price: 320, kind: 'misc', col: 0xff6a8a, desc: 'Presa no pulso por 1 turno: o ímã pesa nas armas e armaduras de quem chega perto (inimigos a 5 m ficam lentos) e, a cada 9 s, puxa para junto de você os que estão entre 5 m e 10 m. AVISO: não entre na água com ela no pulso. Uma pulseira por vez.' },
   eletrificador: { name: 'Eletrificador de Arma', icon: '🏹', price: 240, kind: 'misc', col: 0x9ad0ff, desc: 'Bobinas presas à arma por 1 turno — arco, besta, espada ou cajado. Cada golpe solta +15% de dano em choque e, às vezes, um raio pula para outro inimigo perto.' },
   lanca_chamas: { name: 'Lança-Chamas de Bolso', icon: '🔥', price: 70, kind: 'misc', col: 0xff7a2a, desc: 'Um jato de fogo em leque à sua frente (7 m): queima quem estiver no caminho e deixa o chão em brasa. Uma carga por uso.' },
   lanca_veneno: { name: 'Lança-Veneno', icon: '🧪', price: 70, kind: 'misc', col: 0x7ad04a, desc: 'Borrifa uma névoa verde em leque à sua frente (7 m): o veneno corrói por 6 s e deixa todos lentos. Uma carga por uso.' },
@@ -88,11 +92,21 @@ export const TIER: Record<string, { what: (t: number) => string }> = {
   escudo_auto: { what: (t) => `segura um golpe inteiro a cada ${[25, 20, 15][t]} s` },
   ajudante_obra: { what: (t) => `trabalha ${[1, 2, 4][t]} turno${t ? 's' : ''} na obra sozinho` },
 };
-export const tierOf = (id: string) => { if (/_k$/.test(id)) return 1; const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
-export const baseOf = (id: string) => id.replace(/_(2|3|k)$/, '');
+export const tierOf = (id: string) => { if (/_(k|d15|d30)$/.test(id)) return 1; const m = /_(2|3)$/.exec(id); return m ? +m[1] - 1 : 0; };
+export const baseOf = (id: string) => id.replace(/_(2|3|k|d15|d30)$/, '');
+/** 12/11: quantos dias dura a engenhoca do Shop (id terminado em _d15 ou _d30), ou 0 */
+export const diasDe = (id: string) => { const m = /_d(15|30)$/.exec(id); return m ? +m[1] : 0; };
 /** 03/11: as engenhocas do kit de começo (Mk II, 15 dias; não se vendem) */
 export const KIT_DAYS = 15;
 for (const b of TIMED) { const g0 = GADGETS[b]; for (let t = 0; t < 3; t++) { const id = t ? `${b}_${t + 1}` : b, turns = TURNS[t];
   GADGETS[id] = { ...g0, name: `${g0.name} Mk ${MK[t]}`, price: Math.round(g0.price * PRICE_K[t]), desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nMk ${MK[t]}: dura ${turns} turno${turns > 1 ? 's' : ''} (${turns === 1 ? '30 min' : turns / 2 + (turns === 2 ? ' hora' : ' horas')}) · ${TIER[b].what(t)}.` }; } }
 /* 03/11 (Erling: "um drone de vida e um robô de defesa nível 2 que dura 15 dias cada; pode usar um de cada vez ou os dois de uma vez"): o kit de começo */
+/* 12/11 (Erling: "calcule o preço das engenhocas para comprar com cash na loja e coloque elas na loja"): as três engenhocas de uso pessoal com corda para
+   15 ou 30 dias (Mk II, o mesmo do presente de começo). São as MESMAS que a Caravana vende por ouro a cada turno; o Shop só poupa a ida e a volta.
+   Não têm preço em ouro nem se revendem ao mercador. */
+export const ENG_SHOP = ['drone_cura', 'escudo_auto', 'pulseira_choque'] as const;
+for (const b of ENG_SHOP) for (const d of [15, 30]) { const g0 = GADGETS[b]; GADGETS[`${b}_d${d}`] = { ...g0, name: `${g0.name} Mk II · ${d} dias`, price: 0, desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nDo Shop: Mk II, dura ${d} dias a partir do uso (conta mesmo com o jogo fechado). Um de cada tipo por vez.` }; }
 for (const b of ['drone_cura', 'escudo_auto'] as const) { const g0 = GADGETS[b]; GADGETS[`${b}_k`] = { ...g0, name: `${g0.name} Mk II · Presente de Começo`, price: 0, desc: `${g0.desc.replace(/ por 1 turno| \(1 turno\)|, por 1 turno|por 1 turno/g, '')}\nPresente de começo de jornada: Mk II, dura ${KIT_DAYS} dias (conta mesmo com o jogo fechado) · ${TIER[b].what(1)}. Dá para usar junto com o outro presente.` }; }
+
+/** 17/11: a família de pulseiras do tecnocrata (uma no pulso por vez) */
+export const PULSEIRAS = ['pulseira_choque', 'pulseira_voltaica', 'pulseira_impacto', 'pulseira_magnetica'] as const;

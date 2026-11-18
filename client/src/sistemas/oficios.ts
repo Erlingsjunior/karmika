@@ -12,7 +12,7 @@ import type { OficiosCtx } from '../main';
 export type WorkKind = 'chop' | 'mine' | 'skin' | 'herb';
 export function createOficios(K: OficiosCtx) {
 const WORK: Record<WorkKind, { slot: ToolSlot; anim: 'chop' | 'mine' | 'skin' | 'herb'; hit: number; verb: string; icon: string; kneel?: boolean }> = {
-  chop: { slot: 'axe', anim: 'chop', hit: 0.55, verb: 'Cortando árvore', icon: '🪓' },
+  chop: { slot: 'axe', anim: 'chop', hit: 0.32, verb: 'Cortando árvore', icon: '🪓' },
   mine: { slot: 'pick', anim: 'mine', hit: 0.58, verb: 'Minerando', icon: '⛏' },
   skin: { slot: 'knife', anim: 'skin', hit: 0.6, verb: 'Esfolando', icon: '🔪', kneel: true },
   herb: { slot: 'shears', anim: 'herb', hit: 0.5, verb: 'Colhendo', icon: '✂', kneel: true },

@@ -1,13 +1,21 @@
 import { buildSpecies } from './flora3d';
 
 
+import { controleAlvos, type PadAlvo } from './sistemas/controle';
+import { t as tr } from './i18n';
+import { installBvh } from './libs/bvh';
+import { kkSetWeapon } from './libs/anim-kk';
+import { setModern } from './sistemas/moderno';
+import { createAtaques } from './sistemas/ataques';
+import { createHalloween } from './sistemas/halloween';
+import { quarksInit, quarksUpdate } from './libs/quarks';
 import { mirrorUpdate } from './espelho';
 import { updateCharLod } from './sistemas/lod-personagens';
 import { type Guild } from './social';
 
 
 
-import { dragAll, confirmBox } from './windows';
+import { dragAll, confirmBox, movable, MV_GRIP } from './windows';
 dragAll(); // todas as janelas se arrastam pelo título
 import { eyeSees } from './surrender';
 
@@ -53,7 +61,7 @@ import { GADGETS } from './festim';
 import { KMAX, NATURE, PATH_NAME, strainOf, strainMod, homeSide, CHAOS, CHAOS_MAX, CHAOS_IN, CHAOS_WARN, MADNESS, type Madness } from './karma';
 import { ritualFor, ritualIsFall, OUTCAST_QUESTS, type Outcast, realignFor, MADNESS_QUESTS } from './rituais';
 import { FAC, facSet, facGear, myFac, setMyFac, onFac, FAC_ILVL, type Fac } from './faccoes';
-import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil, checkPremiumExpiry } from './premium';
+import { isPremium, setPremium, onPremium, IS_DEV, addPremiumDays, premiumUntil, checkPremiumExpiry, premiumEterno, setPremiumEterno } from './premium';
 
 /* PETS E MONTARIAS DE CADA LUGAR (26/10): o item de cada um nasce da ficha (companions.ts), e os estábulos e domadores de cada cidade vendem os seus */
 { const ICON: Record<string, string> = { dog: '🐶', cat: '🐱', wolf: '🐺', fox: '🦊', boar: '🐗', rat: '🐀', spider: '🕷', scorpion: '🦂', snake: '🐍', skull: '💀', automaton: '⚙', fairy: '🧚' };
@@ -68,10 +76,10 @@ const ITEMS_Q = (id: string) => ITEMS_TBL[id] ?? { name: id, desc: '', icon: '�
 
 
 
-import { ONLY_NAME, type Slot } from './loot';
+import { ONLY_NAME, genGear, type Slot, type Rarity } from './loot';
 
 import { STANCE_QUESTS } from './posturas';
-import { refreshLocks, KITS } from './kits';
+import { refreshLocks, KITS, skillAt } from './kits';
 import { createNavios } from './sistemas/navios';
 import { createFarois } from './sistemas/farois';
 
@@ -101,7 +109,7 @@ import { buildInterior, type Interior } from './interiors3d';
 
 
 import { CASTLE_FLOORS } from './castelo3d';
-import { CUT, ramp as toonRamp } from './toon3d';
+import { CUT, ramp as toonRamp, photosReady } from './toon3d';
 const cutP = new THREE.Vector3(), cutV2 = new THREE.Vector3();
 import { DualRenderPass, fine } from './dual3d';
 import { gpuState } from './gpu/tags';
@@ -111,6 +119,9 @@ import { createDialog } from './dialog';
 
 
 import { battleCry } from './gritos';
+import { createEspolio } from './sistemas/espolio';
+import { createBuffsPe } from './sistemas/buffs-pe';
+import { startRunasMoldura } from './sistemas/runas-moldura';
 
 
 
@@ -126,10 +137,12 @@ import { createFalls } from './cachoeiras';
 
 import { createChat } from './chat';
 
-import { DEFS, enemyHooks } from './enemies';
+import { DEFS, enemyHooks, lvlScale } from './enemies';
 import { createLock } from './alvo-preso';
+import { encontrou, RAIO_ENCONTRO } from './viagem';
+import { createTerrenosGuilda } from './sistemas/terrenos-guilda';
 import { bindScrolls } from './esquecimento';
-import { biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
+import { praiaK, biomeAt, heightAt, groundH, rampartAt, rampartTop, bridgeDeck, setRamparts, waterSD, WL, CITY, MAP_W, OFX, OFY, zoneW, veinOf, regionAt, type EnemyType } from './world';
 import { loadWorld, cachedArray } from './worldcache';
 
 import { buildWorld, FOUNTAIN, stepAt, chestLids, setWorldLite } from './world3d';
@@ -148,6 +161,11 @@ import { stockAllMounts, shopMounts, shopPets } from './sistemas/montarias-loja'
 import { openVitrine, mountThumb } from './sistemas/vitrine3d';
 stockAllMounts(); /* 03/11: todas as montarias e pets nas lojas */
 import { AudioEngine, type Surface } from './audio';
+import { createDespojosMundo } from './sistemas/despojos-mundo';
+import { createFlora } from './flora';
+import { createNaufragios } from './naufragios';
+import { createFauna } from './fauna';
+import { marcaQuadro, textoPercentis, createBench } from './desempenho';
 import { createLimiar } from './limiar';
 
 import { createSoul, FRAY_LVL, MAX_BREATHS, CATCHUP_MUL } from './soul';
@@ -165,6 +183,17 @@ import { createFesta, type FestaOpts } from './sistemas/festa';
 import { createOficios } from './sistemas/oficios';
 import { createReliquias } from './sistemas/reliquias';
 import { createCinemaVistas } from './sistemas/cinema-vistas';
+import { tarefa, tarefasDoQuadro, tarefasReport } from './sistemas/perf-tarefas';
+import { createGrupoMagias } from './sistemas/grupo-magias';
+import { createOlhoClaude } from './sistemas/olho-claude';
+import { onAdm } from './sistemas/admin';
+import { grupoPassMods } from './passivas';
+import { createTorres, TORRE_DE } from './sistemas/torres-andantes';
+import { createPresos } from './sistemas/floresta-aranhas';
+import { pulo, PULO_DUR, PULO_ALT } from './sistemas/pulo-montaria';
+import { createShaderGate } from './sistemas/compila-sem-travar';
+import { setTravasExtra } from './sistemas/travas';
+import { branchesOf } from './talentos';
 import { createPortalAlma } from './sistemas/portal-alma';
 import { createLarMorte, type Home } from './sistemas/lar-e-morte';
 import { createLetreiro } from './sistemas/letreiro-eventos';
@@ -199,6 +228,9 @@ import { createRede } from './sistemas/rede';
 import { createComandosTeste } from './sistemas/comandos-teste';
 import { createVotosAlma } from './sistemas/votos-alma';
 import { createDockFeitos } from './sistemas/dock-feitos';
+import { ligaTitulos, confereContadores, onTitulos, ganhaTitulo, ganhaLivre, tituloAtivo, travado, escolheTitulo, molduraAtiva, DIAS_DE_MARCA } from './titulos';
+import { meuPacote } from './pacotes';
+import { ehCinto } from './cinto';
 import { createConstrucao } from './sistemas/construcao';
 import { createCompanheiros } from './sistemas/companheiros';
 import { createConsumiveis } from './sistemas/consumiveis';
@@ -206,6 +238,7 @@ import { createBuffsSigilos } from './sistemas/buffs-sigilos';
 import { createBancada } from './sistemas/bancada';
 import { createEntrada } from './sistemas/entrada';
 import { createArvoreClasse } from './sistemas/arvore-classe';
+installBvh(); /* 10/11: raios (cliques, visão, recorte do herói) pela árvore de caixas — three-mesh-bvh */
 /** tipo declarado de um let (sem o estreitamento do fluxo: false → boolean, 30 → number) — usado nos contextos dos sistemas */
 type Widen<T> = T extends boolean ? boolean : T extends number ? number : T extends string ? string : T;
 
@@ -246,6 +279,8 @@ function checkRitual() { const p = myPath(); if (!p || !NATURE[p] || soul.s.natS
 function crossOver(p: string, back: boolean) { const fall = ritualIsFall(p, back), nat = NATURE[p], hp = heroPosNow();
   const to = back ? Math.sign(nat) * 50 : -Math.sign(nat) * 50; state.karma = to; if (to > 0) soul.s.luzT = (soul.s.luzT ?? 0) + 50; else soul.s.sombraT = (soul.s.sombraT ?? 0) + 50;
   soul.s.outcast = back ? null : (nat < 0 ? 'renegado' : 'desgarrado'); soul.save(); keepKarma();
+  /* 16/11: atravessar o zero é marca do Olho. Quem era jurado e mudou de lado leva o nome de traidor; senão, o da travessia. */
+  { const lado = myFac(); const tid = back ? 'voltou' : fall && lado === 'fio' ? 'traidor_fio' : !fall && lado === 'desf' ? 'traidor_desf' : fall ? 'caido' : 'renascido'; setTimeout(() => ganhaTitulo(tid), 4000); }
   for (let i = 0; i < 3; i++) setTimeout(() => dispatchEvent(new CustomEvent('karmika:burst', { detail: fall ? { c0: 0x6a0a3a, c1: 0x1a0420, n: 160 } : { c0: 0xffffff, c1: 0xffe08a, n: 200 } })), i * 260);
   game.st.shake = Math.max(game.st.shake, 1.2); game.dmgText(hp.clone().setY(hp.y + 3), fall ? 'QUEDA' : 'RENASCIMENTO', true, fall ? '#b04aff' : '#ffe08a');
   const ov = document.createElement('div'); ov.style.cssText = `position:fixed;inset:0;z-index:60;pointer-events:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:${fall ? 'radial-gradient(circle,rgba(20,0,20,.2),rgba(0,0,0,.92))' : 'radial-gradient(circle,rgba(255,250,220,.95),rgba(255,220,140,.25))'};opacity:0;transition:opacity 1.2s;font-family:Cinzel,serif;text-align:center;color:${fall ? '#d9a0ff' : '#5a3a08'}`;
@@ -268,16 +303,19 @@ function madBanner(t: string, sub: string, col: string) { const ov = document.cr
   ov.innerHTML = `<b style="font-size:42px;letter-spacing:.08em">${t}</b><span style="font-size:18px;max-width:700px">${sub}</span>`; document.body.appendChild(ov); requestAnimationFrame(() => { ov.style.opacity = '1'; }); setTimeout(() => { ov.style.opacity = '0'; }, 4800); setTimeout(() => ov.remove(), 6000); }
 let strainStage = -1;
 const keepKarma = () => { if (soul.s.karma !== state.karma) { soul.s.karma = state.karma; soul.save(); } };
-setInterval(keepKarma, 3000); addEventListener('beforeunload', keepKarma);
+setInterval(tarefa('guardar karma', keepKarma), 3000); addEventListener('beforeunload', keepKarma);
 (window as unknown as { __k: unknown }).__k = state;
 
 /* ---------- opções (salvas) ---------- */
-export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; /** 03/11: renderizador — 0 Automático, 1 WebGPU, 2 WebGL (vale ao reabrir) */ rend: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; cap: number; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
+export interface Opts { /** acessibilidade: tamanho do texto (todo o jogo) e do chat */ txt: number; chat: number; ui: number; uis: number; res: number; pix: number; wratio: number; shadows: boolean; charShadows: boolean; shadowRes: number; /** 03/11: renderizador — 0 Automático, 1 WebGPU, 2 WebGL (vale ao reabrir) */ rend: number; bloom: number; particles: number; master: number; music: number; sfx: number; amb: number; fps: boolean; dmgText: boolean; sndq: number; mono: boolean; night: boolean; bgmute: boolean; cap: number; /** 10/11: ajuste automático de qualidade (resolução dinâmica + degraus de sombra) */ auto: boolean; /** 03/11: estilo do gráfico — 0 Pixel (o de sempre), 1 Moderno (resolução cheia, cor sem degrau, brilho e sombra suaves) */ gfx: number }
 let dynK = 1, dynLow = 0, dynHigh = 0; /* resolução dinâmica (ver dynResTick) */
-const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, rend: 0, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0 };
+const OPT_DEF: Opts = { txt: 1, chat: 1, ui: 0, uis: 1, res: 1080, pix: 2, wratio: 2, shadows: true, charShadows: false, shadowRes: 1024, rend: 0, bloom: 1, particles: 1, master: 1, music: 1, sfx: 1, amb: 1, fps: true, dmgText: true, cap: 240, gfx: 0, auto: true, sndq: 1, mono: false, night: false, bgmute: false };
 const opts: Opts = (() => { try { return { ...OPT_DEF, ...(JSON.parse(localStorage.getItem('karmika.opts.v1') || 'null') ?? { pix: Number(localStorage.getItem('karmika.pix') || 0) || 2, shadows: localStorage.getItem('karmika.shadows') !== '0', music: localStorage.getItem('karmika.music') === '0' ? 0 : 1 }) }; } catch { return { ...OPT_DEF }; } })();
 const saveOpts = () => localStorage.setItem('karmika.opts.v1', JSON.stringify(opts));
-let PIX = Number(new URLSearchParams(location.search).get('pix')) || opts.pix;
+/* 10/11 (Erling: "em tela Full HD o 1 e o 2 ficam com pixel muito grande; 1 e 2 mais detalhados, 3 médio, 4 desempenho"):
+   a opção 1-4 vira o tamanho real do pixel: 1 · 1,5 · 2 · 3 (antes era 1 · 2 · 3 · 4, e o padrão 2 já cortava a tela pela metade). */
+const pixOf = (o: number) => ({ 1: 1, 2: 1.5, 3: 2, 4: 3 } as Record<number, number>)[o] ?? 1.5;
+let PIX = Number(new URLSearchParams(location.search).get('pix')) || pixOf(opts.pix);
 let WORLD_RATIO = opts.wratio; // cenário em 1/WORLD_RATIO da resolução dos personagens // cada pixel do jogo vira PIXxPIX pixels da tela (visual pixel art); ?pix=1 só para inspeção
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -328,10 +366,14 @@ function geoSweep(roots: THREE.Object3D[]): { geo: number; tex: number } {
   return { geo, tex };
 }
 let geoSweepT = 30;
-const fixedL = gpuImpl ? null : createFixedLights(15); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
+/* 12/11 (gravações do Olho do Claude: cada programa novo segura a placa de 0,5 a 3,5 s): o tempo que a placa leva para montar um programa cresce com
+   o número de luzes dentro dele. De 15 para 8 luzes pontuais no desenho: programas bem menores. Na tela, valem as 8 luzes mais perto do centro (antes 15).
+   ?luzes=15 volta ao número antigo, para comparar. */
+const N_LUZES = (() => { const m = /[?&]luzes=(\d+)/.exec(location.search); return m ? Math.max(2, Math.min(15, +m[1])) : 8; })();
+const fixedL = gpuImpl ? null : createFixedLights(N_LUZES); /* WebGL: sempre as mesmas 15 luzes pontuais no desenho (luzes-fixas.ts) — luz que nasce ou some não recompila nada */
 const scene = new THREE.Scene(); scene.matrixWorldAutoUpdate = false; /* o quadro chama scene.updateMatrixWorld() uma vez (duas passadas de desenho) */
 scene.background = new THREE.Color(0x050814);
-scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene);
+scene.fog = new THREE.FogExp2(0x050814, 0.02); vfxAttach(scene); (window as unknown as { __scene: unknown }).__scene = scene; (window as unknown as { __r: unknown }).__r = renderer; /* teste */
 
 /* ---------- câmera isométrica (ortográfica) ---------- */
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -80, 160); // isométrica fixa (o Erling preferiu assim)
@@ -340,11 +382,29 @@ const D2R = Math.PI / 180;
 let az = 45 * D2R, azT = az, pitch = 30 * D2R, pitchT = pitch;
 const PITCH_MIN = 14 * D2R, PITCH_MAX = 62 * D2R;
 const camDir = new THREE.Vector3();
+let lugarT = 0, lugarN = 0; /* 16/11: relógio da conferência de lugares encontrados */
+let zoomAuto = 0, zoomAutoAlvo = 0, zoomAutoT = 0; /* 16/11: o afastamento automático em cidades e maravilhas (0 a 1) */
 let zoomTarget = 17, zoom = 17; // metros visíveis na altura da tela
-const ZOOM_MIN = 5; let ZOOM_MAX = 22; // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
+const ZOOM_MIN = 5; let ZOOM_MAX = 24.2; /* 13/11 (Erling: "aumenta o zoom apenas uns 10%, só para longe"; mais que isso muda o estilo do jogo): afasta até 24,2 m (era 22) */ // padrão 17 m (definido pelo Erling em 20/10); aproxima até 5 m e afasta só até ~22 m
 
 /* ---------- mundo ---------- */
+/* 11/11 (Erling: "a proximidade com o telhado da casa estraga a vista da fonte; só baixe a casa um pouco mais no terreno, não mude nada de lugar,
+   apenas a casa e os itens perto dela"): a cabana ao sul da fonte de Karmika desce 2 casas na tela (2 para leste e 2 para sul no mapa), e com ela
+   o que é dela: os dois baús, a fogueira do Sven e o enfeite ao lado. O resto da praça fica onde está. */
+{ const KX = 52 + OFX, KY = 54 + OFY, hx = Math.round(21 + KX), hy = Math.round(20.5 + KY), h = city.props.find((p) => p.kind === 'house' && Math.abs(p.gx - hx) <= 1 && Math.abs(p.gy - hy) <= 1 && p.w === 6 && p.h === 4);
+  if (h && city.settlements.some((st) => st.name === 'Karmika' && Math.hypot(st.x - h.gx, st.y - h.gy) < 30)) { const D = 2, x0 = h.gx, y0 = h.gy;
+    const yard = city.props.filter((q) => q !== h && ['chest', 'campfire', 'vprop', 'bench', 'rack'].includes(q.kind) && q.gx >= x0 && q.gx <= x0 + h.w + 1 && q.gy >= y0 && q.gy <= y0 + h.h + 1);
+    for (let y = y0; y < y0 + h.h; y++) for (let x = x0; x < x0 + h.w; x++) if (city.map[y]?.[x] === 'wall') city.map[y][x] = 'grass';
+    for (const q of yard) { if (city.map[q.gy]?.[q.gx] === 'wall') city.map[q.gy][q.gx] = 'grass'; q.gx += D; q.gy += D; }
+    h.gx += D; h.gy += D;
+    for (let i = city.props.length - 1; i >= 0; i--) { const q = city.props[i]; if (q !== h && !yard.includes(q) && q.gx >= h.gx - 0 && q.gx < h.gx + h.w && q.gy >= h.gy && q.gy < h.gy + h.h) city.props.splice(i, 1); } /* mato e pedra que ficariam debaixo da casa */
+    for (let y = h.gy; y < h.gy + h.h; y++) for (let x = h.gx; x < h.gx + h.w; x++) if (city.map[y]?.[x] !== undefined) city.map[y][x] = 'wall' as never; } }
+/* 11/11 (Erling: "poste de lâmpada na frente da porta da casa? tira isso"): nenhum poste ou tocha fica no caminho de uma porta (1,6 m para cada lado, até 3,4 m à frente dela) */
+{ const doors = city.props.filter((p) => p.kind === 'house').map((p) => { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T); return { x: p.gx * T + hd.x, z: p.gy * T + hd.z }; });
+  for (let i = city.props.length - 1; i >= 0; i--) { const q = city.props[i]; if (q.kind !== 'torch') continue; const x = (q.gx + 0.5) * T, z = (q.gy + 0.5) * T; if (doors.some((d) => Math.abs(x - d.x) < 1.6 && z > d.z - 0.6 && z < d.z + 3.4)) city.props.splice(i, 1); } }
 const objs = buildWorld(city);
+/* 10/11 (teste_libs): abóboras de Halloween nas vilas e nos cemitérios (só na temporada) */
+let halloween: Awaited<ReturnType<typeof createHalloween>> = null; void createHalloween(scene, city, (x, z) => heightAt(x, z)).then((h) => { halloween = h; });
 objs.update(city.spawn.x * T, city.spawn.y * T, true);
 scene.add(objs.group);
 const particles = new Particles(gpuImpl ? 12000 : 7000); /* WebGPU aguenta mais: fogo e magia sem apagar as partículas mais velhas no meio da luta */
@@ -392,7 +452,18 @@ void LightShafts;
 void makeHalo;
 
 let pvpOn = false; // PvP da facção ligado: posso ferir gente do meu lado (ou sem facção), com custo de karma; nome fica vermelho
-let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
+/* 10/11: ataques de bando à vila (sistemas/ataques.ts) — a guarda defende, o herói pode ajudar */
+const ataqueSys = createAtaques({ T, settlements: () => city.settlements as never, heroTile: () => ({ x: state.fx, y: state.fy }), night: () => state.night, inside: () => !!inside, level: () => game.st.lvl,
+  walkable: (x, z) => { const tt = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!tt || !isWalkable(tt)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T) && !rampartAt(Math.floor(x / T), Math.floor(z / T)); } catch { return true; } }, spawn: (ty, x, z, o) => game.enemies.spawn(ty, x, z, o) as never, clearTag: (tg) => game.enemies.clearTag(tg),
+  log: (m, c) => game.logMsg(m, c), karma: (n) => addKarma(n), gold: (n) => { game.st.gold += n; },
+  net: { on: () => net.state === 'on', myId: () => net.myId, send: (t, m) => net.x(t, m) } });
+/* 13/11: o alvo automático do controle. Entrega os inimigos vivos a até 13 m do herói, já em pontos da tela (o controle escolhe e aponta a mira) */
+controleAlvos(() => { if (inside) return []; const hp = hero.root.position, r = canvas.getBoundingClientRect(), out: PadAlvo[] = []; const L = game.enemies.list;
+  for (let i = 0; i < L.length; i++) { const e = L[i]; if (!e.active || !e.alive || (e as unknown as { ally?: boolean }).ally) continue; const d = Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z); if (d > 13) continue;
+    const v = new THREE.Vector3(e.pos.x, e.pos.y + 0.9, e.pos.z).project(camera); if (v.z > 1 || Math.abs(v.x) > 1.05 || Math.abs(v.y) > 1.05) continue; out.push({ id: i, x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height, d }); }
+  return out; });
+(window as unknown as { __raid?: () => string | undefined }).__raid = () => ataqueSys.force(); /* teste */ (window as unknown as { __hAt?: unknown }).__hAt = (x: number, z: number) => [groundH(x, z), heightAt(x, z)]; (window as unknown as { __world?: unknown }).__world = () => city; (window as unknown as { __en?: unknown }).__en = () => ({ en: game.enemies, x: state.fx * T, z: state.fy * T }); /* teste */
+let lvlUpKey = ''; let netRef: Net | null = null, lastGear: Parameters<Hero3D['setGear']>[0] | null = null, netMps = 0;
 function hookHero() {
   { // a rede vê o que o herói veste e faz: roupa nova e cada golpe/magia vão para os outros jogadores
     const h = hero as Hero3D & { __net?: boolean }; if (!h.__net) { h.__net = true; const sg = h.setGear.bind(h), ac = h.act.bind(h);
@@ -415,6 +486,7 @@ function hookHero() {
 hookHero();
 const RACE_COL: Record<Kind, number> = { nordic: 0xff8a4a, technocrat: 0x4de3ff, dwarf: 0xffcf5a };
 let inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; /** 08/11: o Grande Salão de Brasaforja (NPCs de dentro: npcs.ts inside) */ hall?: boolean; canopy?: boolean } | null = null;
+if (!gpuR) quarksInit(scene); /* 10/11 (teste_libs): partículas three.quarks — só no WebGL */
 const game = createGameplay({ takenK: () => (instintoSys.instinctOn && !inside ? 1.1 : 1), scene, particles, camera, audio, canvas, getHero: () => hero, weaponBase: () => inv.eq.weapon?.base ?? '', getRaceColor: () => RACE_COL[kindOf(state.race)], dummies: city.quartel.dummies.map((q) => new THREE.Vector3(q.x * T, 0, q.y * T)), world: { spawns: city.spawns, isWall: (x, z) => !inside && city.map[Math.floor(z / T)]?.[Math.floor(x / T)] === 'wall', townAt: (x, z) => { if (inside) return false; const tx = x / T, ty = z / T; for (const st of city.settlements) if (Math.hypot(st.x - tx, st.y - ty) < st.radius + (st.kind === 'city' ? 4 : 1.5)) return true; return Math.hypot(CITY.x - tx, CITY.y - ty) < 24; }, guardNear: (x, z) => { if (inside) return false; for (const n of npcSys.npcs) { if (!n.hero.root.visible || !/^(Guarda|Capit[ãa]o|Vigia|Sentinela)/.test(n.def.role) && !/^(Guarda|Capit[ãa]o|Vigia)/.test(n.def.name)) continue; const dx = n.pos.x - x, dz = n.pos.z - z; if (dx * dx + dz * dz < 49) return true; } return false; }, heightAt: (x, z) => (inside ? 0 : heightAt(x, z)), walkable: (x, z) => { if (inside) return inside.int.free(x - IX, z - IZ); const tx = Math.floor(x / T), ty = Math.floor(z / T); const t = city.map[ty]?.[tx]; if (!t || !isWalkable(t)) return false; /* 09/11 (Erling: "animais não atravessam muros"): bicho respeita muralha, muro baixo e sólidos como o herói */ if (rampartAt(tx, ty)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } } } });
 honorLog((t, c) => game.logMsg(t, c)); /* 08/11 Honra Kármica no registro */
 /** retrato isolado (bestiário e compêndio): renderiza um objeto sozinho, fundo transparente, luz de estúdio, e devolve um PNG */
@@ -429,7 +501,7 @@ function portrait(root: THREE.Object3D, size = 512, yaw = 0.7, pitch = 0.32): st
   const cv = document.createElement('canvas'); cv.width = cv.height = size; const g = cv.getContext('2d')!, im = g.createImageData(size, size); for (let y = 0; y < size; y++) im.data.set(px.subarray((size - 1 - y) * size * 4, (size - y) * size * 4), y * size * 4); g.putImageData(im, 0, 0);
   for (const q of hid) q.visible = true; sc.remove(root); if (par) par.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; return cv.toDataURL('image/png');
 }
-(window as unknown as { __k: unknown }).__k = { telef: () => teleferico(), tpSoft: (x: number, y: number) => { state.fx = x; state.fy = y; }, npcPortrait: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (!n) return null; portraits.delete(nm); return portraitOf(nm, n.hero.root); }, cityW: () => city, kits: () => KITS, particles: () => particles, closeDlg: () => dlg.close(), showCreate: () => showCreate(false), tree: () => tree, cmd: (line: string) => { const [c, ...rest] = line.replace(/^\//, '').split(/\s+/); return betaCommand(c, rest); }, carav: () => caravans, obras: () => obras, kbuild: () => build, cutOn: () => cliqueSys.cutOn, kgame: () => game, perf: () => perfReport(), objStats: () => { const by = new Map<string, number>(); let n = 0; const kindOf2 = (o: THREE.Object3D) => { let q: THREE.Object3D | null = o; while (q) { if (q.userData.kind) return q.userData.kind as string; q = q.parent; } let top: THREE.Object3D = o; while (top.parent && top.parent !== scene) top = top.parent; return '?' + (top.name || top.type) + (top === objs.group ? ':objs' : '') + ':' + (o.name || ''); }; scene.traverseVisible((o) => { n++; if (!(o as THREE.Mesh).isMesh && o.type !== 'Group') return; const k = kindOf2(o) + ':' + o.type; by.set(k, (by.get(k) ?? 0) + 1); }); return { n, by: Object.fromEntries([...by.entries()].sort((a, b) => b[1] - a[1])), calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; }, mmBase: () => mmBase, castleF: () => inside?.castle ?? null, castleInt: () => casteloSys.castleInt, cut: () => CUT.uCut.value.toArray(), cutSet: (x: number, y: number, r: number, d: number) => CUT.uCut.value.set(x, y, r, d), sweep: () => geoSweep([scene]), objs: () => objs, dwarf: (r: string) => openDwarfCart(r), festaNow: (st: string, o: FestaOpts) => startFesta(st, o), karmaSet: (v: number) => { state.karma = v; }, karmaAdd: (v: number) => addKarma(v), ritual: () => checkRitual(), cross: (back: boolean) => { const p = myPath(); if (p) crossOver(p, back); }, soulS: () => soul.s, portrait, THREE, stable: () => stable, night: (v: number | null) => { nightOverride = v; if (v !== null) entradaSys.nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKitAll(); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; entradaSys.nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enterHome: () => { if (construcaoSys.homeProp) enterHouse(construcaoSys.homeProp); }, place: (id: string) => placeDecor(id), enterProp: (p: (typeof city.props)[number]) => enterHouse(p), props: () => city.props, sets: () => city.settlements, vfx: () => import('./sistemas/vfx'), enter: (v: number | string) => { const p = city.props.find((q) => q.kind === 'house' && (typeof v === 'string' ? q.shop === v : q.variant === v)); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, exit: () => exitHouse(), hall: () => { if (HALL_GATE) enterHall(HALL_GATE); return !!HALL_GATE; }, heroY: () => heroY, sitBench: (i: number) => { const bs = city.props.filter((q) => q.kind === 'bench'); const p = bs[i]; if (!p) return null; const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T, fp = city.props.find((q) => q.kind === 'fountain')!; casteloSys.sitting = benchSeat(bx, bz, fp); state.fx = casteloSys.sitting.x; state.fy = casteloSys.sitting.y; return p; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
+(window as unknown as { __k: unknown }).__k = { enterStyle: (st: number) => { const p = city.props.find((q) => q.kind === 'house' && (q.style ?? 1) === st && (q.variant ?? 0) <= 2 && !q.shop); if (p) enterHouse(p); return !!p; }, tear: () => entrarTear(), enterShop: (shop: string) => { const p = city.props.find((q) => q.kind === 'house' && q.shop === shop); if (p) enterHouse(p); return !!p; }, torneio: () => social.openTorneio(), telef: () => teleferico(), tpSoft: (x: number, y: number) => { state.fx = x; state.fy = y; }, npcPortrait: (nm: string) => { const n = npcSys.npcs.find((q) => q.def.name === nm); if (!n) return null; portraits.delete(nm); return portraitOf(nm, n.hero.root); }, cityW: () => city, kits: () => KITS, particles: () => particles, closeDlg: () => dlg.close(), showCreate: () => showCreate(false), tree: () => tree, cmd: (line: string) => { const [c, ...rest] = line.replace(/^\//, '').split(/\s+/); return betaCommand(c, rest); }, carav: () => caravans, obras: () => obras, kbuild: () => build, cutOn: () => cliqueSys.cutOn, kgame: () => game, perf: () => perfReport(), objStats: () => { const by = new Map<string, number>(); let n = 0; const kindOf2 = (o: THREE.Object3D) => { let q: THREE.Object3D | null = o; while (q) { if (q.userData.kind) return q.userData.kind as string; q = q.parent; } let top: THREE.Object3D = o; while (top.parent && top.parent !== scene) top = top.parent; return '?' + (top.name || top.type) + (top === objs.group ? ':objs' : '') + ':' + (o.name || ''); }; scene.traverseVisible((o) => { n++; if (!(o as THREE.Mesh).isMesh && o.type !== 'Group') return; const k = kindOf2(o) + ':' + o.type; by.set(k, (by.get(k) ?? 0) + 1); }); return { n, by: Object.fromEntries([...by.entries()].sort((a, b) => b[1] - a[1])), calls: renderer.info.render.calls, tris: renderer.info.render.triangles }; }, mmBase: () => mmBase, castleF: () => inside?.castle ?? null, castleInt: () => casteloSys.castleInt, cut: () => CUT.uCut.value.toArray(), cutSet: (x: number, y: number, r: number, d: number) => CUT.uCut.value.set(x, y, r, d), sweep: () => geoSweep([scene]), objs: () => objs, dwarf: (r: string) => openDwarfCart(r), festaNow: (st: string, o: FestaOpts) => startFesta(st, o), karmaSet: (v: number) => { state.karma = v; }, karmaAdd: (v: number) => addKarma(v), ritual: () => checkRitual(), cross: (back: boolean) => { const p = myPath(); if (p) crossOver(p, back); }, soulS: () => soul.s, portrait, THREE, stable: () => stable, night: (v: number | null) => { nightOverride = v; if (v !== null) entradaSys.nightTarget = v; }, pic: () => slotPic(), cls: (n: string) => { if (game.changeClass(n)) { tree.migrate(); applyKitAll(); applyRes(); } return game.classInfo?.name; }, gh: (x: number, y: number) => groundH(x * T, y * T), info: () => ({ ...renderer.info.render, geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures }), hero: () => hero, game, quests: () => quests, npcs: () => npcSys, scene: () => scene, cam: () => camera, renderer, composer: () => composer, dual: () => dual, inv: () => inv, ride: (on: boolean) => setRiding(on), city, touch: touchRelic, build: () => build, tp: (x: number, y: number, n?: number) => { state.fx = x; state.fy = y; objs.update(x * T, y * T, true); if (n !== undefined) { nightOverride = n; entradaSys.nightTarget = n; state.night = n; } }, zoom: (z: number) => { zoomTarget = z; zoom = z; }, enterHome: () => { if (construcaoSys.homeProp) enterHouse(construcaoSys.homeProp); }, place: (id: string) => placeDecor(id), enterProp: (p: (typeof city.props)[number]) => enterHouse(p), props: () => city.props, sets: () => city.settlements, vfx: () => import('./sistemas/vfx'), enter: (v: number | string) => { const p = city.props.find((q) => q.kind === 'house' && (typeof v === 'string' ? q.shop === v : q.variant === v)); if (p) enterHouse(p); }, mouse: (x: number, z: number) => { mouse.x = x; mouse.z = z; }, global: (id: string | null | undefined) => { gForce = id; gChkT = 0; luaK = id === 'lua' ? 1 : 0; aurK = id === 'aurora' ? 1 : 0; }, exit: () => exitHouse(), hall: () => { if (HALL_GATE) enterHall(HALL_GATE); return !!HALL_GATE; }, heroY: () => heroY, sitBench: (i: number) => { const bs = city.props.filter((q) => q.kind === 'bench'); const p = bs[i]; if (!p) return null; const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T, fp = city.props.find((q) => q.kind === 'fountain')!; casteloSys.sitting = benchSeat(bx, bz, fp); state.fx = casteloSys.sitting.x; state.fy = casteloSys.sitting.y; return p; }, crypt: (f: number) => { const p = city.props.find((q) => q.kind === 'church' && q.variant === 2); if (p) enterCrypt(f, p); } };
 const OXY = (gx: number, gy: number) => ({ x: (gx + 52 + OFX) * T, z: (gy + 54 + OFY) * T });
 /* quem mora onde: nórdicos só no norte gelado; nas vilas comuns, humanos (e elfos nas florestas); ofícios de forja/cerveja/arma podem ser nórdicos ou anões */
 const CRAFT_ROLES = /ferreir|armeir|armadur|cervej|churras|construtor|forja|minerad/i;
@@ -457,13 +529,13 @@ const npcSys = createNpcs(scene, [
   { name: 'Maren', role: 'Armadureira', kind: 'nordic', ...OXY(28, 11.5), radius: 1.5, tint: 0x9a8a7a, scale: 1.0, lines: ['Couro bem curtido vale mais que ferro mal batido.', 'Traga couro de lobo e eu pago o dobro do mercador.', 'Quer armadura de verdade? Os melhores armadureiros são os anões de Askavik, a cidade grande ao sul. Mas cobram caro.'] },
   { name: 'Morwen', role: 'Alquimista', kind: 'technocrat', ...OXY(23.5, 19.5), radius: 1.5, tint: 0x7a5aa0, scale: 0.95, lines: ['Pó de fada, seiva viva... tudo vira poção nas minhas mãos.', 'A Academia de Askavik ensina alquimia de verdade. Eu só aprendi o que a floresta me contou.', 'Um tônico antes da caçada salva mais vidas que um escudo.'] },
   { name: 'Tessa', role: 'Cervejeira', kind: 'nordic', ...OXY(21, 11.5), radius: 2, tint: 0xc08a50, scale: 1.0, lines: ['Cerveja de Karmika: lúpulo do norte e água da fonte.', 'O hidromel dos anões de Askavik faz um guerreiro cantar e lutar ao mesmo tempo. O meu só faz cantar.', 'Olaf já bebeu o estoque de uma semana. Não vendo mais fiado.'] },
-  { name: 'Sven', role: 'Churrasqueiro', kind: 'dwarf', ...OXY(27, 25.5), radius: 1.2, tint: 0xa0603a, scale: 1.0, lines: ['Javali no espeto, três horas na brasa. Sente o cheiro?', 'Compro carne crua. Quanto mais gorda, melhor.', 'Os mestres do churrasco ficam em Hallenheim, na praça do mercado. Um dia chego lá.'] },
+  { name: 'Sven', role: 'Churrasqueiro', kind: 'dwarf', ...OXY(29, 27.5), /* 11/11: desceu com a cabana e a fogueira dele */ radius: 1.2, tint: 0xa0603a, scale: 1.0, lines: ['Javali no espeto, três horas na brasa. Sente o cheiro?', 'Compro carne crua. Quanto mais gorda, melhor.', 'Os mestres do churrasco ficam em Hallenheim, na praça do mercado. Um dia chego lá.'] },
   { name: 'Bruno', role: 'Charcuteiro', kind: 'nordic', civil: 'human', ...OXY(9.5, 25.5), radius: 1.5, tint: 0x8a5a4a, scale: 1.05, lines: ['Linguiça defumada dura o inverno inteiro na mochila.', 'Pago o dobro por carne crua — a defumação é segredo de família.', 'A charcutaria mais famosa é a dos irmãos Varg, em Askavik. Aprendi com o pai deles.'] },
   { name: 'Rosália', role: 'Cozinheira', kind: 'nordic', civil: 'human', ...OXY(16.5, 26), radius: 2, tint: 0xd0a080, scale: 0.92, lines: ['Ensopado de caça da casa: carne, raízes e um segredo.', 'Carne crua cura pouco. Assada cura mais. A minha cura de verdade.', 'Quer aprender a cozinhar? Comece na fogueira. Os grandes chefs estão nas cozinhas reais de Hallenheim.'] },
   { name: 'Tomás', role: 'Lenhador', kind: 'nordic', civil: 'human', ...OXY(9.5, 11.5), radius: 2, tint: 0x6a7a4a, scale: 1.1, lines: ['Machado afiado, tronco certo. Floresta não acaba se você respeitar.', 'Compro toras e galhos. Madeira de lei vale mais.', 'Os lenhadores da Floresta Negra, ao norte de Askavik, derrubam carvalhos de cem anos. Isso é profissão.'] },
   { name: 'Kaela', role: 'Caçadora', kind: 'nordic', civil: 'elf', ...OXY(3, 25.5), radius: 2, tint: 0x5a7a5a, scale: 0.98, lines: ['Cervo dá couro e carne. Lobo dá couro e cicatrizes.', 'Compro couro e garras. Carne também, se estiver fresca.', 'A Irmandade dos Caçadores em Askavik ensina a rastrear. Lá você vira caçador de verdade — eu só sobrevivo.'] },
-  { name: 'Gunnar', role: 'Construtor', kind: 'dwarf', ...OXY(31, 10.5), radius: 1.5, tint: 0x8a7a6a, scale: 1.0, lines: ['Tábua, prego e bloco. Com isso se levanta uma casa.', 'Compro madeira e pedra. Vendo material para quem quer construir.', 'Em breve você poderá erguer sua própria casa em Karmika. Os mestres construtores de Hallenheim fazem castelos — comece pelo galpão.'] },
-  { name: 'Corwin', role: 'Domador', kind: 'technocrat', ...OXY(34.5, 24.5), radius: 1.5, tint: 0xd0702a, scale: 0.95, lines: ['Uma raposa adestrada busca o que cai no chão. Você só caça.', 'Os domadores de Askavik treinam ursos e falcões. Aqui, raposas e filhotes.', 'Trate bem seu companheiro. Ele lembra.'] },
+  { name: 'Gunnar', role: 'Construtor', kind: 'dwarf', ...OXY(34.4, 13.4), radius: 1.5, tint: 0x8a7a6a, scale: 1.0, lines: ['Tábua, prego e bloco. Com isso se levanta uma casa.', 'Compro madeira e pedra. Vendo material para quem quer construir.', 'Em breve você poderá erguer sua própria casa em Karmika. Os mestres construtores de Hallenheim fazem castelos — comece pelo galpão.'] },
+  { name: 'Corwin', role: 'Domador', kind: 'technocrat', ...OXY(33.6, 25.4), radius: 1.5, tint: 0xd0702a, scale: 0.95, lines: ['Uma raposa adestrada busca o que cai no chão. Você só caça.', 'Os domadores de Askavik treinam ursos e falcões. Aqui, raposas e filhotes.', 'Trate bem seu companheiro. Ele lembra.'] },
   { name: 'Orm', role: 'Estalajadeiro', kind: 'dwarf', ...OXY(2.5, 18.5), radius: 1.5, tint: 0x6a4a2e, scale: 1.0, lines: ['Cavalo bom encurta a estrada. Z para montar, Z para descer.', 'Em combate o cavalo empina e você desce. Não adianta brigar montado — ainda.', 'Os haras de Hallenheim criam corcéis de guerra. O meu baio é honesto, só isso.'] },
   ...city.settlements.flatMap((st) => st.npcs.map((n, i) => ({ name: n.name, role: n.role, kind: n.kind, civil: civilFor(n.role, n.kind, n.x, n.y, st.x + i), x: n.x * T, z: n.y * T, radius: n.radius, tint: n.tint, scale: n.scale, lines: n.lines, night: n.night, onlyQ: n.onlyQ, fixed: n.fixed, yOff: n.yOff }))),
   /* 26/10 (Erling: "formações de soldados da cidade média andando em grupos pela estrada fazendo patrulhamento"): de Lumenhal, Askavik e
@@ -505,20 +577,78 @@ const npcSys = createNpcs(scene, [
     ['Guarda da Copa Lúthien', 'Guarda da Copa · élfica', 14.8, 7.2, 0.4, 0x5a7a6a, 1.02, ['…', 'A Rainha não precisa de guarda. Mas nós precisamos de guardá-la.'], 'f'],
     ['Guarda da Copa Amras', 'Guarda da Copa · élfico', 29.2, 7.2, 0.4, 0x5a7a6a, 1.02, ['…', 'Arco pronto, flecha no bolso. É assim que se dorme aqui.']],
   ] as [string, string, number, number, number, number, number, string[], ('m' | 'f')?, string?][]).map(([name, role, x, z, radius, tint, scale, lines, sex, shop]) => ({ name, role, kind: 'nordic' as const, civil: 'elf' as const, inside: 'copa', x: 4000 + x, z: 4000 + z, radius, tint, scale, lines, ...(name.startsWith('Rainha') ? { yOff: 0.75, fixed: true } : {}) /* 09/11: a Rainha de pé no alto do estrado */, ...(sex ? { sex } : {}), ...(shop ? { shop } : {}) })),
-  /* 08/11 A BIGORNA MOLHADA por dentro (Erling: "uma taverna para entrar, beber e comer carne, típico de anões"): fregueses nas mesas compridas,
-     o assador na cova de fogo e a Gudrún atrás do balcão. A casa tem 8×5 tiles (16 × 10 m); coordenadas dentro do salão + (4000, 4000). */
-  ...([
-    ['Assador Fróði Gordura-Quente', 'Assador da Bigorna Molhada', 8, 3.6, 0.5, 0x8a4a2a, 1.0, ['Javali da encosta, doze horas no espeto. Prova e me diz se não é a melhor carne de Karmika.', 'Quem pede bem passado paga o dobro. É a lei da casa.']],
-    ['Bebedor Thorgrim Caneca-Funda', 'Freguês', 5.5, 2.0, 0.3, 0x6a4a3a, 1.0, ['Mais uma! E uma para o meu amigo aqui que ainda não chegou.', 'Já bebi com o Rei. Ele perdeu. No dia seguinte ele negou.']],
-    ['Bebedora Ragna Riso-Alto', 'Freguesa', 10.5, 2.0, 0.3, 0x7a4a4a, 0.96, ['Senta, forasteiro! Primeira caneca é por minha conta, a segunda você canta.', 'Gudrún faz a cerveja. Orik vende. Eu bebo. Cada um com o seu ofício.']],
-    ['Velho Gísli Barba-de-Espuma', 'Freguês', 2.4, 5.0, 0.3, 0x8a8a9a, 0.95, ['Eu me lembro de quando isso aqui era só um barril e uma tábua. Estava melhor.', 'A cerveja preta tira a dor das costas. A segunda tira o resto.']],
-    ['Mineiro Hálfdan Sede-de-Pedra', 'Freguês', 5.5, 8.0, 0.3, 0x5a4a3a, 1.0, ['Doze horas na galeria. Doze canecas aqui. Equilíbrio.', 'Hoje a veia deu prata. Hoje eu pago.']],
-    ['Bardo Lóðurr Corda-de-Cobre', 'Bardo', 10.5, 8.0, 0.3, 0xa06a3a, 0.96, ['♪ Sob a montanha arde a forja, sob a forja arde a sede ♪', 'Uma moeda, uma canção. Duas moedas, uma canção que presta.']],
-  ] as [string, string, number, number, number, number, number, string[]][]).map(([name, role, x, z, radius, tint, scale, lines]) => ({ name, role, kind: 'dwarf' as const, inside: 'tavb', x: 4000 + x, z: 4000 + z, radius, tint, scale, lines })),
+  /* 08/11 A BIGORNA MOLHADA por dentro — 10/11 refeita (interiors3d.ts variante 15: salão de 30 × 20 m, balcão ao fundo, cozinha à direita,
+     despensa à esquerda, cova de fogo no meio, mesas compridas com bancos, palco do bardo perto da porta). Erling: "cheio de anões bebendo".
+     Quem tem `seat` fica sentado no banco de frente para a mesa e bebe de vez em quando; coordenadas do salão + (4000, 4000).
+     Bancos: mesa em (tx, tz) → assentos em tx ± 1,15 e tz −0,95 / 0 / +0,95 (lado esquerdo olha para +x, o direito para −x). */
+  ...((): NpcDef[] => { const L = Math.PI / 2, R = -Math.PI / 2;
+    const P = (name: string, role: string, x: number, z: number, tint: number, lines: string[], o: Partial<NpcDef> = {}): NpcDef => ({ name, role, kind: 'dwarf', inside: 'tavb', x: 4000 + x, z: 4000 + z, radius: 0.4, tint, scale: 1.0, lines, ...o });
+    const S = (yaw: number) => ({ seat: { yaw, h: 0.48 }, radius: 0 });
+    return [
+      P('Taverneira Hildigunn Mão-de-Barril', 'Dona do balcão · bebidas', 15, 3.3, 0xa06a3a, ['Chope claro, chope preto, hidromel. Fala o que quer e põe a moeda no cobre.', 'Mesa para os amigos? A redonda perto da porta. Paga a reserva e ninguém senta nela.', 'Quem quebra caneca paga duas. Quem quebra o banco dorme lá fora.'], { radius: 1.6, sex: 'f' }),
+      P('Assador Fróði Gordura-Quente', 'Assador da Bigorna Molhada', 16.9, 11.2, 0x8a4a2a, ['Javali da encosta, doze horas no espeto. Prova e me diz se não é a melhor carne de Karmika.', 'Quem pede bem passado paga o dobro. É a lei da casa.'], { radius: 0.5 }),
+      P('Cozinheira Sif Colher-Grande', 'Cozinha da Bigorna', 25.6, 3.0, 0x9a5a3a, ['Sai da minha cozinha! … Tá, pode olhar. Não mexe no caldeirão.', 'Ensopado de cogumelo de caverna. A receita é da minha avó. A avó é segredo também.'], { radius: 1.4, sex: 'f' }),
+      P('Bardo Lóðurr Corda-de-Cobre', 'Bardo', 3.2, 17.4, 0xa06a3a, ['♪ Sob a montanha arde a forja, sob a forja arde a sede ♪', 'Uma moeda, uma canção. Duas moedas, uma canção que presta.'], { radius: 0.6, yOff: 0.42, fixed: true }),
+      P('Bebedor Thorgrim Caneca-Funda', 'Freguês', 2.45, 10.05, 0x6a4a3a, ['Mais uma! E uma para o meu amigo aqui que ainda não chegou.', 'Já bebi com o Rei. Ele perdeu. No dia seguinte ele negou.'], S(L)),
+      P('Bebedora Ragna Riso-Alto', 'Freguesa', 4.75, 11.0, 0x7a4a4a, ['Senta, forasteiro! Primeira caneca é por minha conta, a segunda você canta.', 'Hildigunn serve. Fróði assa. Eu bebo. Cada um com o seu ofício.'], { ...S(R), sex: 'f' }),
+      P('Velho Gísli Barba-de-Espuma', 'Freguês', 2.45, 11.95, 0x8a8a9a, ['Eu me lembro de quando isso aqui era só um barril e uma tábua. Estava melhor.', 'A cerveja preta tira a dor das costas. A segunda tira o resto.'], S(L)),
+      P('Mineiro Hálfdan Sede-de-Pedra', 'Freguês', 2.45, 15.2, 0x5a4a3a, ['Doze horas na galeria. Doze canecas aqui. Equilíbrio.', 'Hoje a veia deu prata. Hoje eu pago.'], S(L)),
+      P('Mineira Dagny Pó-de-Carvão', 'Freguesa', 4.75, 16.15, 0x4a4a4a, ['Lavei a cara para vir. Não reparou? É que o carvão não sai.', 'Se ouvir um estrondo lá do fundo, é a mina. Se ouvir dois, é o Hálfdan.'], { ...S(R), sex: 'f' }),
+      P('Ferreiro Úlfr Braço-Torto', 'Freguês', 25.25, 10.05, 0x6a3a2a, ['Martelei o dia inteiro. Agora quero uma coisa que não precisa martelar: chope.', 'Esse braço? Bigorna caiu. A bigorna ficou pior.'], S(L)),
+      P('Bebedora Hrefna Canta-Alto', 'Freguesa', 27.55, 11.0, 0x8a4a6a, ['Quando o bardo cansa, eu canto. Quando eu canto, o bardo volta correndo.', 'Brinde! A quê? Tanto faz. Brinde!'], { ...S(R), sex: 'f' }),
+      P('Caçador Eyvind Rastro-Frio', 'Freguês', 25.25, 15.2, 0x4a5a3a, ['Javali grande na encosta essa semana. O Fróði agradece, eu cobro.', 'Vi pegada de lobo do tamanho de um prato perto da Estrada do Carvão. Um lobo, não um prato.'], S(L)),
+      P('Velho Ketill Sem-Dente', 'Freguês', 27.55, 14.25, 0x8a8a8a, ['Carne? Eu tomo a carne em forma de cerveja. Mais fácil de mastigar.', 'No meu tempo a caneca era de pedra. E a gente era mais forte. E mais burro.'], S(R)),
+      P('Guarda Ásgeir de Folga', 'Freguês · guarda de folga', 8.45, 11.6, 0x5a5a6a, ['Hoje não estou de guarda. Hoje estou de caneca.', 'Se houver briga, eu não vi. Estou de folga.'], S(L)),
+      P('Bebedor Bragi Copo-Cheio', 'Freguês', 21.55, 12.55, 0x7a5a3a, ['O segredo é nunca deixar a caneca vazia. Nem um minuto. Nunca.', 'Fala com a Hildigunn: ela reserva a mesa redonda para o seu grupo. Já reservei para mim e para mim mesmo.'], S(R)),
+      P('Bebedora Sigrid Dente-de-Ouro', 'Freguesa', 10.75, 10.65, 0xc9a24a, ['Esse dente? Ganhei numa queda de braço. O outro dente perdeu.', 'Se você ganhar de mim na queda de braço, pago a próxima. Ninguém ganhou ainda.'], { ...S(R), sex: 'f' }),
+    ]; })(),
+  /* 12/11 A ESTALAGEM e O SALÃO DAS GUILDAS de Karmika por dentro (interiors3d.ts variantes 16 e 17; Erling: "salão animado", "bar animado", "soldados").
+     Gente sentada nos bancos das mesas compridas, nos banquinhos do balcão e na mesa do conselho; coordenadas do salão + (4000, 4000). */
+  ...((): NpcDef[] => { const N = 0, Sx = Math.PI, Wst = -Math.PI / 2;
+    const P = (inside: string, name: string, role: string, x: number, z: number, tint: number, lines: string[], o: Partial<NpcDef> = {}): NpcDef => ({ name, role, kind: 'nordic', civil: 'human', inside, x: 4000 + x, z: 4000 + z, radius: 0.4, tint, scale: 1.0, lines, ...o });
+    const S = (yaw: number, h = 0.5) => ({ seat: { yaw, h }, radius: 0 });
+    const cs = (k: number): [number, number, number] => { const a = k * Math.PI / 4 + 0.2; return [12 + Math.cos(a) * 2.75, 8.96 + Math.sin(a) * 2.75, -a - Math.PI / 2]; };
+    return [
+      P('inn', 'Taverneiro Baldo Mão-Cheia', 'Dono do balcão da Estalagem', 12.7, 2.7, 0x8a5a3a, ['Cerveja, sopa e cama. Nessa ordem ou na que você aguentar.', 'Os quartos ficam lá em cima, vinte portas. O seu é o que estiver aberto.', 'Quem chega de longe bebe a primeira de pé. É o costume da casa.'], { radius: 1.2 }),
+      P('inn', 'Cozinheira Zulmira', 'Cozinha da Estalagem', 21.6, 2.4, 0xb08a6a, ['Caldo de osso, pão do dia e o assado de ontem, que é melhor que o de hoje.', 'Saia da frente do fogão que eu tenho vinte quartos para alimentar.'], { radius: 0.8, sex: 'f' }),
+      P('inn', 'Bardo Tomás Corda-Solta', 'Bardo da Estalagem', 15.6, 14.4, 0x6a4a8a, ['Essa é sobre um caminhante que morreu três vezes e voltou devendo a conta. Conhece?', 'Peça uma canção e pague uma caneca. A canção é de graça.'], { radius: 0, fixed: true, yOff: 0.3 }),
+      P('inn', 'Moça Clarinha das Canecas', 'Serve as mesas', 11.5, 6.3, 0xc09a7a, ['Já levo, já levo! Mesa do fundo primeiro, que eles gritam mais.', 'Se derramar, não fui eu.'], { radius: 2.2, sex: 'f' }),
+      P('inn', 'Arauto Valério dos Torneios', 'Inscrições do Campeonato de Guildas', 4.2, 12.0, 0xc9a24a, ['Guilda que quer glória assina aqui. Guilda que quer sossego senta ali e bebe.', 'Só inscrevo pela mão da diretoria: líder ou oficial. E guilda de nível 3 para cima.', 'Classificatórias, Playoffs e o KARMIKA Championship. Comece pelo começo.'], { radius: 0, fixed: true, scale: 1.04 }),
+      P('inn', 'Lavrador Germano', 'Freguês', 5.65, 7.05, 0x7a6a4a, ['Plantei o dia todo. Agora planto o cotovelo nessa mesa.', 'A colheita vai ser boa. Ou não. Mais uma, de qualquer jeito.'], S(N)),
+      P('inn', 'Tecelã Florinda', 'Freguesa', 6.75, 8.95, 0x8a5a7a, ['Sentei para uma caneca e já ouvi três segredos. Estalagem é isso.', 'O viajante da mesa do canto não tirou o capuz a noite inteira.'], { ...S(Sx), sex: 'f' }),
+      P('inn', 'Caçador Bento Passo-Leve', 'Freguês', 8.95, 7.05, 0x4a5a3a, ['Lobo anda em bando perto do rio. Sozinho você não vai.', 'Troquei três peles por um quarto e um jantar. Negócio bom.'], S(N)),
+      P('inn', 'Viajante Encapuzado', 'Hóspede', 10.05, 8.95, 0x3a3a4a, ['…', 'Vim de longe. Não pergunte de onde.'], S(Sx)),
+      P('inn', 'Carroceiro Januário', 'Hóspede', 5.65, 10.89, 0x8a6a3a, ['Minha mula está no estábulo comendo melhor do que eu.', 'Estrada do norte está ruim. A do sul, pior.'], S(N)),
+      P('inn', 'Lenhador Hilário', 'Freguês', 7.85, 12.79, 0x6a4a2a, ['Machado novo, braço velho. Um dos dois vai ceder.', 'Madeira boa se paga. Caneca boa também.'], S(Sx)),
+      P('inn', 'Mercadora Leonor', 'Hóspede', 13.45, 8.97, 0xb08a40, ['Fico dois dias, vendo o que trouxe e sigo. Karmika paga em dia.', 'Quarto doze. Se alguém bater, não estou.'], { ...S(N), sex: 'f' }),
+      P('inn', 'Peregrino Anselmo', 'Hóspede', 15.65, 10.87, 0xa8a090, ['Vim ver a Fonte da Visão. Joguei a moeda. Ainda estou esperando a visão.', 'A alma volta, dizem. A minha, se voltar, que volte aqui.'], S(Sx)),
+      P('inn', 'Soldado Ivo de Folga', 'Freguês · guarda de folga', 16.75, 8.97, 0x5a5a6a, ['Hoje a muralha é de outro. Hoje eu sou da caneca.', 'Se houver briga, me chame depois.'], S(N)),
+      P('inn', 'Bebedor Quirino', 'Freguês', 9.3, 4.75, 0x7a5a3a, ['Baldo, mais uma. E põe na conta do peregrino.', 'Eu ia embora. Aí começou a música.'], S(Sx, 0.62)),
+      P('inn', 'Bebedora Doroteia', 'Freguesa', 12.1, 4.75, 0x8a4a4a, ['Balcão é o melhor lugar: perto do barril e longe da conversa fiada.', 'Um brinde a quem chega. E outro a quem não vai embora.'], { ...S(Sx, 0.62), sex: 'f' }),
+      P('inn', 'Ferrador Estêvão', 'Freguês', 14.9, 4.75, 0x5a4a3a, ['Ferrei seis cavalos hoje no estábulo aqui do lado. O sétimo me ferrou.', 'Boa ferradura dura uma estação. Boa caneca, uns minutos.'], S(Sx, 0.62)),
+      /* o Salão das Guildas */
+      P('ghall', 'Mestra Brígida do Conselho', 'Preside a mesa do conselho', cs(6)[0], cs(6)[1], 0x4a5a8a, ['Guilda se faz com gente, sede e palavra. Falta uma das três, não é guilda.', 'A mesa é redonda para ninguém sentar na cabeceira.', 'Quando a sua guilda tiver nome e estandarte, volte e assine o livro.'], { ...S(cs(6)[2]), sex: 'f' }),
+      P('ghall', 'Conselheiro Raimundo', 'Mesa do conselho', cs(0)[0], cs(0)[1], 0x6a5a4a, ['Discutimos imposto, muro e torneio. Nessa ordem de tédio.', 'Voto com a Brígida. Sempre voto com a Brígida.'], S(cs(0)[2])),
+      P('ghall', 'Conselheira Úrsula', 'Mesa do conselho', cs(3)[0], cs(3)[1], 0x7a4a6a, ['As guildas brigam lá fora e bebem juntas aqui dentro. É assim que a vila funciona.', 'Torneio se ganha na arena. Respeito, nesta mesa.'], { ...S(cs(3)[2]), sex: 'f' }),
+      P('ghall', 'Escrivão Honório', 'Livro das Guildas', cs(4)[0], cs(4)[1], 0x8a8a7a, ['Nome da guilda, nome do líder, cor do estandarte. Escrevo tudo, não esqueço nada.', 'O livro tem lugar para muitas. Poucas duram uma página.'], S(cs(4)[2])),
+      P('ghall', 'Mestre Ferreiro Olegário', 'Canto da Forja', 3.4, 2.9, 0x8a3a2a, ['Ferro bom canta quando bate. Ferro ruim reclama.', 'Aprendiz meu varre a forja um ano antes de pegar no martelo.'], { radius: 0.5 }),
+      P('ghall', 'Mestra Marceneira Joana', 'Canto da Marcenaria', 6.65, 2.9, 0x7a5a2a, ['Mede duas vezes, corta uma. Quem inverte, compra madeira em dobro.', 'Uma sede de guilda começa por uma boa viga.'], { radius: 0.5, sex: 'f' }),
+      P('ghall', 'Mestre Alquimista Severo', 'Canto da Alquimia', 9.9, 3.2, 0x4a6a8a, ['Azul cura, vermelho esquenta, verde eu ainda não sei. Não beba o verde.', 'Erva colhida com alicate vale o dobro. Arrancada, vale a metade.'], { radius: 0.5 }),
+      P('ghall', 'Mestra Cozinheira Benedita', 'Canto da Cozinha', 13.15, 2.9, 0x8a6a2a, ['Guilda bem alimentada briga melhor. Está escrito em algum lugar.', 'Sal no fim, fogo baixo e paciência.'], { radius: 0.5, sex: 'f' }),
+      P('ghall', 'Mestre Alfaiate Crispim', 'Canto da Costura', 16.4, 2.9, 0x6a4a7a, ['Estandarte torto dá azar. Eu costuro reto.', 'Diga as cores da sua guilda e eu digo se combinam.'], { radius: 0.5 }),
+      P('ghall', 'Taverneira Filó', 'Bar das Guildas', 1.5, 9.0, 0xa06a3a, ['O bar das guildas não fecha. Quem fecha é o freguês, o olho.', 'Bebida de guilda vencedora é por conta da perdedora. Regra antiga.'], { radius: 0.9, sex: 'f' }),
+      P('ghall', 'Capitão de Guilda Leandro', 'Freguês do bar', 3.55, 6.54, 0x8a2a2a, ['Perdemos o último torneio por um golpe. Um golpe!', 'Estou recrutando. Sabe lutar? Sabe perder? As duas coisas importam.'], S(Wst, 0.62)),
+      P('ghall', 'Batedora Mariana', 'Freguesa do bar', 3.55, 9.34, 0x2a6a4a, ['Minha guilda quer o terreno do vale. A outra também. Vai dar conversa.', 'Bebo devagar. Quem bebe depressa conta segredo.'], { ...S(Wst, 0.62), sex: 'f' }),
+      P('ghall', 'Veterano Policarpo', 'Freguês do bar', 3.55, 12.14, 0x7a7a7a, ['No meu tempo guilda era dez homens e um juramento. Hoje tem livro, selo e estandarte.', 'Diamante, Ouro, Prata. Eu só queria uma medalha de lata.'], S(Wst, 0.62)),
+      P('ghall', 'Soldado Tarcísio', 'Guarda do Salão das Guildas', 10.2, 14.4, 0x5a6a8a, ['Dentro do salão ninguém saca arma. Nem para mostrar.', '…'], { radius: 0, fixed: true, scale: 1.05 }),
+      P('ghall', 'Soldada Quitéria', 'Guarda do Salão das Guildas', 13.8, 14.4, 0x5a6a8a, ['Entre. O conselho está reunido, mas o bar está aberto.', '…'], { radius: 0, fixed: true, sex: 'f' }),
+    ]; })(),
   // caravanas: mercadores viajantes que percorrem as estradas mais longas, com uma mula de carga
   ...[...city.roadPaths].map((p, i) => ({ p, i })).filter(({ p }) => p.length > 40).sort((a, b) => b.p.length - a.p.length).slice(0, 7).map(({ p, i }, k) => ({ name: ['Caravana de Gaspar', 'Caravana de Dagny', 'Caravana de Tomé', 'Caravana de Leonor', 'Caravana de Nori', 'Caravana de Inês', 'Caravana de Duarte'][k], role: 'Mercador viajante', kind: (i % 2 ? 'dwarf' : 'nordic') as 'dwarf' | 'nordic', civil: (i % 2 ? undefined : 'human') as 'human' | undefined, x: (p[0].x + 0.5) * T, z: (p[0].y + 0.5) * T, radius: 0, tint: 0xb08a40, scale: 1.0, lines: ['Estrada longa, bolso curto. O que procura?', 'Entre uma vila e outra tem lobo, tem chuva e tem lucro.', 'Compro o que você caçou. Vendo o que você esqueceu.'], route: p.map((q) => ({ x: (q.x + 0.5) * T, z: (q.y + 0.5) * T })) })),
-], { heightAt, insideId: () => (inside?.canopy ? 'copa' : inside?.hall ? 'hall' : inside?.prop?.shop === 'cervejaria' ? 'tavb' : null), insideFree: (x, z) => !!inside && inside.int.free(x - 4000, z - 4000), walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
+], { heightAt, insideId: () => npcInsideId(), insideFree: (x, z) => !!inside && inside.int.free(x - 4000, z - 4000, false, true), walkable: (x, z) => { const t = city.map[Math.floor(z / T)]?.[Math.floor(x / T)]; if (!t || !isWalkable(t)) return false; try { return !solidHit(x / T, z / T, false) && !lowWallHit(x / T, z / T); } catch { return true; } /* NPC respeita fonte, poço, bancada (25/10) e, desde 27/10 (regra 19), também correio, banco, barraca, quadro e muro baixo */ }, camera, canvas,
   questOn: (id) => { try { return !!quests.q.active[id]; } catch { return false; } },
+  /* 10/11: a guarda luta com os bichos (npcs.ts) e a fofoca segue o karma */
+  threats: () => (inside ? [] : game.enemies.list.filter((e) => e.active && e.alive && !(e as unknown as { ally?: boolean }).ally)) as never, hitThreat: (e, n, from) => { try { game.enemies.hurtBy(e as never, n, from); } catch { /* */ } }, karma: () => state.karma,
   situ: () => { const tags: string[] = []; try { const hr = gameHour(), g = globalNow()?.id, k = state.karma, pth = myPath(), tp = temperature();
     tags.push(hr >= 5 && hr < 9 ? 'manha' : state.night > 0.5 ? 'noite' : 'dia'); if (tp < 3) tags.push('frio'); if (tp > 24) tags.push('calor');
     if (g === 'lua') tags.push('lua', 'lua'); if (g === 'aurora') tags.push('aurora', 'aurora');
@@ -552,6 +682,26 @@ var arvoreSys: ReturnType<typeof createArvoreClasse>; /* criado aqui, na ordem d
 function mk_arvoreSys() { return createArvoreClasse({ get game() { return game; }, get profile() { return profile; }, get quests() { return quests; }, get state() { return state; }, get kindOf() { return kindOf; }, get myPath() { return myPath; }, get addKarma() { return addKarma; }, get city() { return city; }, get npcSys() { return npcSys; }, get inv() { return inv; }, get netRef() { return netRef; }, get stationNear() { return stationNear; }, get hero() { return hero; }, get particles() { return particles; }, get audio() { return audio; }, get craftJob() { return craftJob; } }); }
 arvoreSys ??= mk_arvoreSys();
 const { tree, talents, talentKit, profs, mail, kitRace, SHOP_BY_NAME, SHADE_TOWNS } = arvoreSys;
+/* 11/11: as habilidades de grupo em jogo (sistemas/grupo-magias.ts): aprender pelo caminho de talento, lançar pela barra de grupo, somar no grupo */
+/* 12/11: os presos vivos da Floresta das Aranhas (sistemas/floresta-aranhas.ts): pedem socorro; E corta a teia */
+const presosSys = createPresos({ scene, fine, heightAt, heroPos: () => hero.root.position, dentro: () => !!inside, spots: city.props.filter((q) => q.kind === 'cocoon' && q.variant === 9).map((q) => ({ x: (q.gx + 0.5) * T, z: (q.gy + 0.5) * T })),
+  log: (t, c) => game.logMsg(t, c), karma: (n) => addKarma(n), xp: (f) => game.gainXp(Math.max(1, Math.round(game.xpNeed() * f))), gold: (n) => { game.st.gold += n; },
+  isca: (x, z, n) => { const L = Math.max(7, Math.min(13, game.st.lvl)), k = lvlScale('spiderling', L); for (let i = 0; i < n; i++) { const a = (i / n) * 6.283; game.enemies.spawn('spiderling', x + Math.cos(a) * 1.2, z + Math.sin(a) * 1.2, { lvl: L, hpMul: k.hp, dmgMul: k.dmg, aggro: 30, anun: true, netId: `isca:${Date.now().toString(36)}${i}${Math.floor(Math.random() * 1e4)}` }); } },
+  puff: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 2, vy: 0.4 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2, life: 0.9, s0: 0.3, s1: 0.04, c0, c1, a: 0.9 }),
+  project: (p) => { const v = p.clone().project(camera); if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) return null; const r = canvas.getBoundingClientRect(); return { x: r.left + (v.x * 0.5 + 0.5) * r.width, y: r.top + (-v.y * 0.5 + 0.5) * r.height }; },
+  som: (k) => { if (k === 'corta') audio.swing(); else audio.spell('shock'); } });
+(window as unknown as { __presos?: unknown }).__presos = presosSys; /* teste */
+const torresSys = createTorres({ scene, heightAt, puff: (x, y, z, c0, c1) => particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 0.8, life: 0.8, s0: 0.3, s1: 0.04, c0, c1, a: 0.9 }) });
+const grupoSys = createGrupoMagias({ kit: () => talentKit(), lvl: () => game.st.lvl, avail: () => tree.available(), branchName: (bi) => branchesOf(talentKit())[bi]?.name ?? '', st: () => game.st,
+  set: (v) => game.grupoSet(v), shield: (v) => game.grupoShield(v), log: (t, c) => game.logMsg(t, c), float: (t, c) => game.dmgText(hero.root.position.clone().setY(hero.root.position.y + 2.8), t, false, c),
+  sound: () => audio.heal(), net: () => netRef as never, heroPos: () => hero.root.position, gmods: (b, o) => talents.gmods(b, o), gpass: (nm) => grupoPassMods(arvoreSys.passKit(), nm), erguer: (f, q, nm) => larSys.erguer(f, q, nm), torre: (id, from, follow, dur) => { const k = TORRE_DE[id]; if (k) torresSys.spawn(k, from, follow, dur); },
+  /* o aro de luz que abre no chão quando a runa é lançada (ou quando a de um companheiro chega em você) */
+  ring: (c) => { for (let i = 0; i < 2; i++) { const m = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.64, 44), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+      m.rotation.x = -Math.PI / 2; m.position.copy(hero.root.position); m.position.y += 0.14 + i * 0.9; m.userData.noCull = true; fine(m); scene.add(m); const t0 = performance.now() + i * 140, mat = m.material as THREE.MeshBasicMaterial;
+      const step = () => { const k = (performance.now() - t0) / 800; if (k >= 1) { scene.remove(m); m.geometry.dispose(); mat.dispose(); return; } if (k > 0) { m.scale.setScalar(1 + k * (i ? 2.2 : 5)); mat.opacity = 0.9 * (1 - k); } requestAnimationFrame(step); }; step(); } } });
+setTravasExtra({ papel: () => grupoSys.papelHtml(), skills: () => grupoSys.forLocks(), click: (t, again) => grupoSys.panelClick(t, again), nodes: (rows, W, H, NS, c0) => grupoSys.treeNodes(rows, W, H, NS, c0), detail: () => grupoSys.detail(), clearSel: () => grupoSys.clearSel() });
+arvoreSys.addSpent(() => grupoSys.spent()); /* os pontos das magias de grupo saem do mesmo monte das habilidades, passivas e talentos */
+(window as unknown as { __grupo?: unknown }).__grupo = grupoSys; /* teste */ (window as unknown as { __torres?: unknown }).__torres = torresSys; (window as unknown as { __erguer?: unknown }).__erguer = (f = 0.3) => larSys.erguer(f, 'Teste', 'Rito de teste');
 function applyKitAll(...a: Parameters<ReturnType<typeof createArvoreClasse>['applyKitAll']>): ReturnType<ReturnType<typeof createArvoreClasse>['applyKitAll']> { return (arvoreSys ??= mk_arvoreSys()).applyKitAll(...a); }
 function isWarrior(...a: Parameters<ReturnType<typeof createArvoreClasse>['isWarrior']>): ReturnType<ReturnType<typeof createArvoreClasse>['isWarrior']> { return (arvoreSys ??= mk_arvoreSys()).isWarrior(...a); }
 function walksPath(...a: Parameters<ReturnType<typeof createArvoreClasse>['walksPath']>): ReturnType<ReturnType<typeof createArvoreClasse>['walksPath']> { return (arvoreSys ??= mk_arvoreSys()).walksPath(...a); }
@@ -580,13 +730,16 @@ const ownsUniq = (u: string) => [...inv.gearBag, ...Object.values(inv.eq)].some(
 if (IS_DEV) { (window as unknown as { __mail: unknown }).__mail = mail; (window as unknown as { __cineJump: (t: number) => void }).__cineJump = (t: number) => { if (cinemaSys.cine) cinemaSys.cine.t = t; }; }
 const loja = createLoja({ isPremium, fac: myFac, mounts: shopMounts, pets: shopPets, preview: (m, price, buy) => openVitrine({ id: m.id, name: m.name, where: m.where, lvl: m.lvl, blurb: m.blurb, price, tag: m.kind === 'pet' ? ((m as { boss?: boolean }).boss ? 'Filhote de chefe' : 'Pet') : 'Montaria' }, buy), thumb: mountThumb, lvl: () => game.st.lvl, owns: ownsUniq, chars: () => inicio.chars(), inMenu: () => inicio.isOpen, dev: IS_DEV, log: (t, c) => game.logMsg(t, c), until: premiumUntil,
   /* toda compra do Shop chega pelo correio: o Premium vem como Selo (use ou venda), as peças vêm como anexo */
-  deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
+  deliver: (subj, text, att, to) => { const A = att.map((a) => a.seal ? { item: { id: a.seal, n: a.n ?? 1 } } : { gear: { ...facGear(a.fac!, a.slot!, FAC_ILVL), shop: true } });
     /* 26/10 (Erling): comprou DENTRO do jogo → caixa de correio do personagem que está jogando (como sempre foi). Comprou pelo MENU →
        inventário da conta, e de lá ele escolhe o personagem ou manda de presente a um amigo */
     if (inicio.isOpen) { social.toBox({ from: 'Shop de Askavik', subj, text, att: A }); return; } void to; mail.send('Shop de Askavik', subj, text, A); } });
 onFac(() => loja.refresh());
 /* o Premium comprado tem data para acabar (o interruptor do dev não tem) */
 checkPremiumExpiry(); setInterval(checkPremiumExpiry, 30000);
+/* 15/11: o Presente de Marghar chega pelo correio para todo personagem (novo ou antigo), uma vez; quem já tem a Bênção eterna não precisa */
+setTimeout(() => { try { if (premiumEterno() || localStorage.getItem('karmika.presente.marghar')) return; localStorage.setItem('karmika.presente.marghar', '1'); } catch { return; }
+  mail.send('Marghar, o Olho', 'Um presente para todo Caminhante', 'Todo Caminhante que pisa em KARMIKA carrega a minha Bênção. Abra o presente (use o item) e ela será sua para sempre, em todos os seus personagens: mais missões no diário, as bolsas do Caminhante, de Ofício e Mágica, o Alforje, um baú maior e a minha runa girando ao seu lado. Não custa nada e não acaba.', [{ item: { id: 'presente_marghar', n: 1 } }]); }, 6000);
 /* interruptor de Premium só para o dev (debaixo do minimapa) */
 if (IS_DEV) { const sw = document.createElement('div'); sw.id = 'devsw'; const draw = () => { const f = myFac(); sw.innerHTML = `<button data-prem class="dprem ${isPremium() ? 'on' : ''}" title="DEV · Premium ${isPremium() ? 'ligado' : 'desligado'} (clique para trocar)"><svg viewBox="0 0 32 32"><path d="M3 16c4-6 8.5-9 13-9s9 3 13 9c-4 6-8.5 9-13 9S7 22 3 16z" fill="#2a1a3a" stroke="#e6c46a" stroke-width="1.8"/><circle cx="16" cy="16" r="4.8" fill="#c9a0ff"/><circle cx="16" cy="16" r="1.9" fill="#140a1e"/></svg></button><span class="facsw" title="Lado do personagem (teste): Ordem do Fio · nenhum · Desfiados"><button data-fs="fio" class="${f === 'fio' ? 'on fio' : ''}">Fio</button><button data-fs="" class="${!f ? 'on' : ''}">—</button><button data-fs="desf" class="${f === 'desf' ? 'on desf' : ''}">Desf</button></span><small>DEV</small>`; }; draw();
   sw.addEventListener('click', (e) => { const el = e.target as HTMLElement, fb = el.closest('[data-fs]') as HTMLElement | null;
@@ -682,9 +835,10 @@ export interface ConsumiveisCtx {
   readonly game: Widen<typeof game>;
   readonly kitRace: Widen<typeof kitRace>;
   readonly audio: Widen<typeof audio>;
+  readonly heroPosNow: () => { x: number; z: number };
 }
 var quickSys: ReturnType<typeof createConsumiveis>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_quickSys() { return createConsumiveis({ get inv() { return inv; }, get ITEMS_Q() { return ITEMS_Q; }, get game() { return game; }, get kitRace() { return kitRace; }, get audio() { return audio; } }); }
+function mk_quickSys() { return createConsumiveis({ get inv() { return inv; }, get ITEMS_Q() { return ITEMS_Q; }, get game() { return game; }, get kitRace() { return kitRace; }, get audio() { return audio; }, heroPosNow: () => heroPosNow() }); }
 quickSys ??= mk_quickSys();
 function renderQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['renderQuick']>): ReturnType<ReturnType<typeof createConsumiveis>['renderQuick']> { return (quickSys ??= mk_quickSys()).renderQuick(...a); }
 function useQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['useQuick']>): ReturnType<ReturnType<typeof createConsumiveis>['useQuick']> { return (quickSys ??= mk_quickSys()).useQuick(...a); }
@@ -694,10 +848,12 @@ function useQuick(...a: Parameters<ReturnType<typeof createConsumiveis>['useQuic
  *  da frente. O quadril vai para a beira de quem olha para a fonte (22 cm à frente do centro), e os joelhos ficam para fora do assento */
 /* 06/11 (Erling: "ainda está entrando no banco"): o banco do artista (vila_balanco, 0,95×) tem o assento mais alto que o banco desenhado:
    a altura do assento vem da própria malha (o topo do tronco de cima), não de um número fixo */
+/** 10/11: a reserva da mesa redonda da Bigorna Molhada (vale uma hora) */
+function tavReserve(): { by: string; until: number } | null { try { const r = JSON.parse(localStorage.getItem('karmika.tav.mesa') || 'null') as { by: string; until: number } | null; return r && r.until > Date.now() ? r : null; } catch { return null; } }
 function benchSeat(bx: number, bz: number, fp: { gx: number; gy: number }) { const yaw = Math.atan2((fp.gx + 1) * T - bx, (fp.gy + 1) * T - bz), d = 0.22;
   const bg = artGeo('vila_balanco'); if (bg && !bg.boundingBox) bg.computeBoundingBox(); const h = bg?.boundingBox ? bg.boundingBox.max.y * 0.95 + 0.02 : 0.55;
   return { x: (bx + Math.sin(yaw) * d) / T, y: (bz + Math.cos(yaw) * d) / T, yaw, h }; }
-function syncGear() { try { const eq = inv.eq; const wt = oficiosSys.work ? inv.tool(WORK[oficiosSys.work.kind].slot) : pescaSys.fishing ? inv.tool('rod') : null; /* trabalhando: a ferramenta continua na mão */ hero.setGear({ weapon: wt ? { base: wt.base, rarity: 'normal', tint: wt.tint, glow: wt.glow } : eq.weapon ? { base: eq.weapon.base, rarity: eq.weapon.rarity } : null, shield: eq.shield ? { base: eq.shield.base, rarity: eq.shield.rarity, seed: eq.shield.uid } : null, helm: eq.helm && localStorage.getItem('karmika.showHelm') !== '0' ? { base: eq.helm.base, rarity: eq.helm.rarity } : null, cape: eq.cape ? { base: eq.cape.base, rarity: eq.cape.rarity } : null, shoulders: eq.shoulders ? { base: eq.shoulders.base, rarity: eq.shoulders.rarity } : null }); checkSkinLevel(); game.setWeapon(wt ? null : eq.weapon?.base ?? null); } catch { /* inventário ainda não criado */ } }
+function syncGear() { try { const eq = inv.eq; kkSetWeapon(eq.weapon?.base ?? '', !!eq.shield); /* 10/11 (teste_libs): a arma escolhe o jeito do golpe */ const wt = oficiosSys.work ? inv.tool(WORK[oficiosSys.work.kind].slot) : pescaSys.fishing ? inv.tool('rod') : null; /* trabalhando: a ferramenta continua na mão */ hero.setGear({ weapon: wt ? { base: wt.base, rarity: 'normal', tint: wt.tint, glow: wt.glow } : eq.weapon ? { base: eq.weapon.base, rarity: eq.weapon.rarity } : null, shield: eq.shield ? { base: eq.shield.base, rarity: eq.shield.rarity, seed: eq.shield.uid } : null, helm: eq.helm && localStorage.getItem('karmika.showHelm') !== '0' ? { base: eq.helm.base, rarity: eq.helm.rarity } : null, cape: eq.cape ? { base: eq.cape.base, rarity: eq.cape.rarity } : null, shoulders: eq.shoulders ? { base: eq.shoulders.base, rarity: eq.shoulders.rarity } : null }); checkSkinLevel(); game.setWeapon(wt ? null : eq.weapon?.base ?? null); } catch { /* inventário ainda não criado */ } }
 /* COMPANHEIROS: o pet coletor, a montaria (montar e desmontar), as mulas das caravanas e as habilidades do pet. Saiu do main.ts (02/11). → sistemas/companheiros.ts */
 export interface CompanheirosCtx {
   readonly game: Widen<typeof game>;
@@ -728,7 +884,7 @@ function updateCompanions(...a: Parameters<ReturnType<typeof createCompanheiros>
 
 /* 02/11 (Erling): cada classe com as suas armas — vampiro: florete e adagas · lobisomem: porretes e garras · caçador: bestas (de duas e de uma mão), kunais e adagas.
    O que já estava vestido continua; a regra vale ao vestir. Escudo: essas três classes lutam sem escudo. */
-const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno', charge: game.reactor().charge, cap: game.reactorCap() }), fuse: () => { game.fuseReactor(); for (let i = 0; i < 40; i++) particles.spawn(heroPosNow().x, heroPosNow().y + 1.2, heroPosNow().z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x5ae0ff, a: 1, g: 2 }); },
+const inv = createInventory(game, { gadgets: () => game.engenhocas(), gadgetToggle: (k) => { const r = game.engenhocaToggle(k as 'heal' | 'shield' | 'bracelet'); if (typeof r === 'string') inv.add(r, 1, true); }, reactor: () => ({ on: kitRace() === 'tecno', charge: game.reactor().charge, cap: game.reactorCap() }), fuse: () => { game.fuseReactor(); for (let i = 0; i < 40; i++) particles.spawn(heroPosNow().x, heroPosNow().y + 1.2, heroPosNow().z, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: 0x5ae0ff, a: 1, g: 2 }); },
   priceK: (shop) => shopLeanK(shop), /* 06/11: Engenheiro do Mundo — a Academia faz do tecnocrata um comerciante da Caravana de Latão */ sellK: (shop, id) => (shop === 'latao' && game.classInfo?.name === 'Tecnocrata' && GADGETS[id] ? 2 : 1), xpBonus: () => (vowKept() ? 0.05 : 0) + luaBonus() /* Lua de Sangue: o Faro da Lua ligado rende mais */,
   talents: () => { const a = talents.stats() as Record<string, number>, b = arvoreSys.classPassStats(); const o: Record<string, number> = { ...a }; for (const [k, v] of Object.entries(b)) o[k] = (o[k] ?? 0) + v; for (const [k, v] of Object.entries(guildStats())) o[k] = (o[k] ?? 0) + v; /* 06/11: as habilidades da guilda */ return o as Partial<Record<string, number>>; }, /* 03/11: talentos + passivas de classe do compêndio */
   canWear: (g) => { const W = CLASS_WEAPONS[kitRace()]; if (W && g.slot === 'weapon' && !W.re.test(g.base)) return W.msg; if (W && g.slot === 'shield' && W.noShield && !(kitRace() === 'cac' && /Besta de Mão/.test(inv.eq.weapon?.base ?? ''))) return W.noShield; /* 02/11: besta de mão aceita escudo */
@@ -749,19 +905,25 @@ const inv = createInventory(game, { reactor: () => ({ on: kitRace() === 'tecno',
     if (id === 'pao_azimo' || id === 'vinho_santo') { if (kitRace() !== 'pal') { game.logMsg(id === 'pao_azimo' ? '🫓 Pão sem fermento, seco e sem graça. Isso é para o jejum dos paladinos.' : '🍷 Forte demais para beber à toa: é vinho de jejum dos paladinos.', '#c8a890'); return true; } if (!inv.has('pao_azimo') || !inv.has('vinho_santo')) { game.logMsg('✝ O Jejum e Oração pede os dois: o Pão Ázimo e o Vinho Santo dos Anões.', '#ffd88a'); return true; } inv.take('pao_azimo'); inv.take('vinho_santo'); game.fastPrayer(); return true; }
     if (id === 'reator_1' || id === 'reator_2') { if (kitRace() !== 'tecno' && state.race !== 'technocrat') { game.logMsg('Só tecnocratas carregam um reator pessoal.', '#ff9a8a'); return true; } if (game.installReactor(id === 'reator_2' ? 2 : 1, game.classInfo?.name === 'Engenheiro-Chefe' ? 2 : 1)) inv.take?.(id); return true; }
     const SEAL: Record<string, number> = { seal_p30: 30, seal_p90: 90, seal_p365: 365 };
+    if ((id === 'lagrima' || SEAL[id]) && premiumEterno()) { game.logMsg(id === 'lagrima' ? '💧 A Bênção de Marghar já é sua durante o beta. Guarde a Lágrima: ela paga uma volta da alma no Limiar.' : '✦ A Bênção de Marghar já é sua durante o beta; guarde este selo para depois.', '#c9a0ff'); return true; }
     if (id === 'lagrima') { confirmBox('Trocar uma <b>Lágrima do Olho</b> por <b>60 dias de Premium</b>?<br><small>Ela não volta. Guardada, ela paga uma volta da alma no Limiar.</small>', 'Trocar', () => { if (!inv.take('lagrima', 1)) return; addPremiumDays(60); game.logMsg('💧 A Lágrima se desfaz em luz: +60 dias de Bênção de Marghar (Premium).', '#c9a0ff'); }); return true; }
-    if (SEAL[id]) { if (!inv.take(id, 1)) return true; addPremiumDays(SEAL[id]); const d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff');
+    if (ehCinto(id)) { quickSys.vesteCinto(id); try { inv.refresh(); } catch { /* */ } return true; } /* 16/11: usar um cinto da mochila vira a peça de equipamento e veste */
+    const presente = id === 'presente_marghar';
+    if (presente && premiumEterno()) { inv.take(id, 1); game.logMsg('✦ O Presente se desfaz em luz: a Bênção de Marghar já era sua.', '#c9a0ff'); return true; }
+    if (SEAL[id] || presente) { if (!inv.take(id, 1)) return true; let d = 0; if (presente) { setPremiumEterno(); game.logMsg('✦ Presente de Marghar aberto: a Bênção de Marghar é gratuita a todos enquanto o jogo está em fase beta. Ela vale em todos os seus personagens.', '#c9a0ff'); } else { addPremiumDays(SEAL[id]); d = Math.ceil((premiumUntil() - Date.now()) / 864e5); game.logMsg(`✦ Selo de Marghar rompido: +${SEAL[id]} dias de Premium (${d} dias no total).`, '#c9a0ff'); }
       /* 03/11: a comemoração — o herói dança, o brilho violeta e dourado sobe em volta dele e chega a mensagem de boas-vindas */
       dispatchEvent(new CustomEvent('karmika:celebrate')); hero.act('dance', true); audio.chime(); const hp = hero.root.position;
       for (let w = 0; w < 4; w++) setTimeout(() => { for (let i = 0; i < 40; i++) { const a = i / 40 * 6.283; particles.spawn(hp.x + Math.cos(a) * 0.8, hp.y + 0.2, hp.z + Math.sin(a) * 0.8, { vx: Math.cos(a) * 1.6, vy: 1.5 + Math.random() * 2.5, vz: Math.sin(a) * 1.6, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: w % 2 ? 0xffd24a : 0xc9a0ff, a: 1, drag: 1.2, g: -0.3 }); } }, w * 500);
       dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0xc9a0ff, n: 180 } }));
-      setTimeout(() => premiumWelcome(SEAL[id], d), 900); return true; }
+      if (!presente) setTimeout(() => premiumWelcome(SEAL[id], d), 900); return true; }
     if (id === 'scroll_return') {
     if (inside) { game.logMsg('📜 O caminho não se abre entre paredes. Saia para o céu aberto.', '#ff9a8a'); return true; }
     const hp = heroPosNow(), hunted = game.enemies.list.some((e) => e.alive && e.active && (e.state === 'chase' || e.state === 'windup') && Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z) < 16);
     if (hunted) { game.logMsg('📜 Há inimigos atrás de você — a Deusa não abre caminho no meio da luta.', '#ff9a8a'); return true; }
     if (entradaSys.combatMode) setCombat(false);
     inv.take('scroll_return', 1); openPortal(); game.logMsg('📜 O pergaminho se desfaz em luz violeta.', '#b8a8ff'); return true; } if (id === 'tome') { inv.take('tome', 1); tree.addBonus(5); return true; } if (DECOR[id]) { placeDecor(id); return true; } if (/^projeto_/.test(id)) { if (obras.busy()) { game.logMsg('🏗 Você já tem uma obra ou casa. Termine (ou desista dela no B) antes de começar outra.', '#ff9a8a'); return false; } if (inv.isOpen) inv.toggle(); return build.placeProject(id); } if (/^ajudante_obra(_2|_3)?$/.test(id)) { /* 28/10 (Erling): clicou, o robô vai sozinho até a obra (até 4 ao mesmo tempo) */ const left = robotLeftPop(id); if (obras.deployRobot(id.endsWith('_3') ? 2 : id.endsWith('_2') ? 1 : 0, left ?? undefined)) { inv.take(id, 1); return true; } if (left) robotLeftPush(id, left); return false; } if (id === 'obra_auto') return obras.bindContract(); if (id === 'escritura_casa' || deedIdOf(id)) { useDeed(id); return false; }  if (GADGETS[id] && GADGETS[id].kind === 'misc' && (game as unknown as { gadget(i: string): boolean }).gadget(id)) { inv.take(id, 1); return true; } if (/^(coleira|peitoral)_/.test(id)) return stable.wear(id); if (MOUNTS[id] || PETS[id]) { if (stable.adopt(id)) stable.toggle(true, { tab: PETS[id] ? 'pets' : 'mounts', id }); return true; } return false; },
+  moldura: () => molduraAtiva(),
+
   portrait: () => { if (dollR && !dollFail) return null; /* o boneco vivo já está desenhando */ portraits.delete('hero'); try { return portraitOf('hero', hero.root, true); } catch { return null; } }, title: () => `${(profile?.name ?? '')}${quests?.title ? ' · ' + quests.title : ''}`.trim() || RACES[state.race].label,
   raceLabel: () => RACES[state.race].label, karma: () => state.karma, spendKarma: (n) => { if (Math.abs(state.karma) < n) return false; addKarma(state.karma > 0 ? -n : n); return true; }, xpNeed: game.xpNeed,
   soul: () => { soul.regen(); const r: [string, string][] = [['Fio da Vida', `${game.st.lvl < FRAY_LVL || !profile?.eye ? `intacto até o Olho abrir (nível ${FRAY_LVL})` : `${'●'.repeat(soul.s.breaths)}${'○'.repeat(MAX_BREATHS - soul.s.breaths)}${soul.s.breaths < MAX_BREATHS ? ` · +1 em ${soul.nextBreathH()}h` : ''}`} · 💧 ${inv.count('lagrima')}`]];
@@ -836,11 +998,28 @@ export interface DockFeitosCtx {
   readonly coop: Widen<typeof coop>;
   readonly stable: Widen<typeof stable>;
   readonly social: Widen<typeof social>;
+  readonly retrato: () => string | null;
 }
 var dockSys: ReturnType<typeof createDockFeitos>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get kitRace() { return kitRace; }, get compKit() { return arvoreSys.compKit; }, get passKit() { return arvoreSys.passKit; }, get kitSkills() { return arvoreSys.kitSkills; }, get compTitle() { return () => { try { return game.classInfo.name || 'Humano'; } catch { return 'Humano'; } }; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; } }); }
+function mk_dockSys() { return createDockFeitos({ get audio() { return audio; }, get game() { return game; }, get tree() { return tree; }, get talents() { return talents; }, get talentKit() { return talentKit; }, get kitRace() { return kitRace; }, get compKit() { return arvoreSys.compKit; }, get passKit() { return arvoreSys.passKit; }, get kitSkills() { return arvoreSys.kitSkills; }, get compTitle() { return () => { try { return game.classInfo.name || 'Humano'; } catch { return 'Humano'; } }; }, get treeSel() { return arvoreSys.treeSel; }, set treeSel(v) { arvoreSys.treeSel = v; }, get applyKitAll() { return applyKitAll; }, get myInstinct() { return myInstinct; }, get instintoSys() { return instintoSys; }, get toggleInstinct() { return toggleInstinct; }, get quests() { return quests; }, get relicsKnown() { return relicsKnown; }, get city() { return city; }, get build() { return build; }, get state() { return state; }, get profile() { return profile; }, get keys() { return keys; }, get inv() { return inv; }, get toggleBigMap() { return toggleBigMap; }, get profs() { return profs; }, get loja() { return loja; }, get compendium() { return compendium; }, get coop() { return coop; }, get stable() { return stable; }, get social() { return social; }, get retrato() { return meuRetrato; } }); }
 dockSys ??= mk_dockSys();
 const { feats, dockEl } = dockSys;
+/* ---------- TÍTULOS E MOLDURAS (16/11) ----------
+   O título em uso é escrito em quests.q.title e no perfil: tudo o que já mostrava o título (ficha, Olho, perfil, rede) continua lendo de lá.
+   A regra (catálogo, marcas do Olho, trava de 5 dias) mora em ./titulos. */
+/** o meu retrato, tirado no máximo uma vez por minuto (tirar o retrato monta o herói noutra cena e trava um quadro) */
+let retratoCache: { src: string | null; t: number } = { src: null, t: -1e9 };
+function meuRetrato(): string | null { const n = performance.now(); if (n - retratoCache.t < 60000 && retratoCache.src) return retratoCache.src; try { portraits.delete('hero'); const src = portraitOf('hero', hero.root, true), cheio = (hero.root.userData.retratoCheio as number | undefined) ?? 1; /* 17/11: foto sem o personagem (corpo ainda carregando, invisível): fica a última boa e tenta de novo em 2 s */ retratoCache = cheio > 0.2 ? { src, t: n } : { src: retratoCache.src ?? src, t: n - 58000 }; } catch { retratoCache = { src: retratoCache.src, t: n - 58000 }; } return retratoCache.src; }
+let tituloRelogio = 0; /* só o teste mexe: adianta o relógio dos títulos */
+ligaTitulos({ feito: (id) => feats.isDone(id), conta: (k) => feats.count(k), lado: () => myFac(), pacote: () => meuPacote(), agora: () => Date.now() + tituloRelogio });
+function aplicaTitulo() { const nm = tituloAtivo()?.nome ?? ''; try { quests.q.title = nm; if (profile) { profile.title = nm; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); netRef?.lookNow(); } catch { /* ainda carregando */ } }
+onTitulos((ev) => { if (ev.tipo !== 'moldura') aplicaTitulo(); else { try { netRef?.lookNow(); } catch { /* */ } }
+  if (ev.tipo === 'marca') { game.logMsg(`👁 O Olho gravou em você: ${ev.nome}. Por ${DIAS_DE_MARCA} dias este título não pode ser trocado.`, '#ffb04a');
+    const d = document.createElement('div'); d.className = 'feattoast marca'; d.innerHTML = `<i>👁</i><div><small>Marca do Olho · título imposto por ${DIAS_DE_MARCA} dias</small><b>${ev.nome}</b><span>O que você fez fica escrito junto do seu nome.</span></div>`; document.body.appendChild(d); requestAnimationFrame(() => d.classList.add('on')); setTimeout(() => d.classList.remove('on'), 7200); setTimeout(() => d.remove(), 8200); try { audio.chime(); } catch { /* */ } }
+  else if (ev.tipo === 'ganhou') game.logMsg(`👑 Título novo: ${ev.nome}. Veja em Inscrições (L), aba Títulos.`, '#ffe08a');
+  dockSys.redesenha(); try { inv.refresh(); } catch { /* */ } });
+/* títulos dados por missão ou voto escrevem direto em quests.q.title: aqui eles entram no catálogo do jogador; se uma marca prende, o título imposto volta */
+setInterval(() => { try { confereContadores(); const qt = quests.q.title || '', at = tituloAtivo()?.nome ?? ''; if (qt === at) return; if (qt) ganhaLivre(qt); if ((tituloAtivo()?.nome ?? '') !== qt) aplicaTitulo(); else { updateWho(); } } catch { /* */ } }, 3000);
 function toggleSkills(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleSkills']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleSkills']> { return (dockSys ??= mk_dockSys()).toggleSkills(...a); }
 function toggleFeats(...a: Parameters<ReturnType<typeof createDockFeitos>['toggleFeats']>): ReturnType<ReturnType<typeof createDockFeitos>['toggleFeats']> { return (dockSys ??= mk_dockSys()).toggleFeats(...a); }
 
@@ -848,7 +1027,7 @@ const stable = createStable({ has: (id) => inv.has(id), count: (id) => inv.count
   onChange: () => { compSys.pet?.dispose(); compSys.pet = null; }, sfx: (k) => { if (k === 'eat') audio.work('cook'); else if (k === 'swap') audio.click(); else audio.chime(); } });
 setTimeout(() => stable.migrate(), 1500);
 /* Ctrl + clique no pet (ou na montaria): abre o Estábulo nele */
-canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey) return; const r = canvas.getBoundingClientRect();
+canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && !e.altKey) return; /* 17/11: Alt + clique (o Ctrl continua valendo) */ const r = canvas.getBoundingClientRect();
   const hitAt = (p: THREE.Vector3, h: number) => { const v = p.clone().setY(p.y + h).project(camera); return Math.hypot(r.left + (v.x * 0.5 + 0.5) * r.width - e.clientX, r.top + (-v.y * 0.5 + 0.5) * r.height - e.clientY) < 46; };
   if (compSys.pet && compSys.pet.root.visible && hitAt(compSys.pet.pos, 0.4)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'pets', id: compSys.pet.kind.id }); stable.hearts(3); }
   else if (compSys.mount && compSys.riding && hitAt(heroPos, 1.0)) { e.preventDefault(); e.stopImmediatePropagation(); stable.toggle(true, { tab: 'mounts', id: compSys.mount.kind.id }); } }, true);
@@ -877,7 +1056,7 @@ function banditQuests() {
   return out;
 }
 let choirClock = 0; /* relógio do coral do Dia da Aurora (janela de 20 s a cada 5 min) */
-const quests = createQuests({ stance: () => instintoSys.stanceSys?.current().id ?? null, lean: () => soulLean(), outcast: () => (soul.s.outcast ?? null) as Outcast | null, madness: () => soul.s.madness ?? null, origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { addKarma(dk); }, me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...[...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...WANDERER, ...COSTURA_I, ...WEREWOLF].filter(notOldChapterI), ...CHAPTER_I, ...HUNTER_I, ...MAGE_I, ...HUMAN_I, ...DWARF_I, ...ELF_I, ...ROADS_OF_PEOPLES, ...RACE_INSTINCT, ...STANCE_QUESTS, ...OUTCAST_QUESTS, ...MADNESS_QUESTS],
+const quests = createQuests({ stance: () => instintoSys.stanceSys?.current().id ?? null, lean: () => soulLean(), outcast: () => (soul.s.outcast ?? null) as Outcast | null, madness: () => soul.s.madness ?? null, origin: () => profile?.origin ?? 'human', auction, karma: (dk) => { addKarma(dk); }, karmaNow: () => state.karma, kit: () => kitRace(), me: () => profile?.name || RACES[state.race].label, roleOf: (nm) => { const n = npcSys.npcs.find((q) => q.def.name === nm); return n && !/mercador viajante|^shop$|tecelagem/i.test(n.def.role) ? n.def.role : null; }, st: game.st, count: inv.count, take: inv.take, add: (id, n) => inv.add(id, n), gainXp: (n) => game.gainXp(n), xpNeedAt: game.xpNeedAt, gear: (n, lvl) => game.spawnGear(state.fx * T, state.fy * T, heightAt(state.fx * T, state.fy * T), Math.max(2, lvl), { rare: 4, legendary: 3, relic: 2 }, n, 'rare'), log: (t, c) => game.logMsg(t, c), onTitle: (t) => { if (profile) { profile.title = t; localStorage.setItem('karmika.char.v1', JSON.stringify(profile)); } updateWho(); heroicAct(`Título conquistado: ${t}`); }, chainQuests: [...HUMAN_ROAD, ...RACE_ROADS, ...SIDE, ...banditQuests(), ...[...WARRIOR, ...PALADIN, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...WANDERER, ...COSTURA_I, ...WEREWOLF].filter(notOldChapterI), ...CHAPTER_I, ...HUNTER_I, ...MAGE_I, ...HUMAN_I, ...DWARF_I, ...ELF_I, ...ROADS_OF_PEOPLES, ...RACE_INSTINCT, ...STANCE_QUESTS, ...OUTCAST_QUESTS, ...MADNESS_QUESTS],
   room: { on: () => netRef?.state === 'on', posts: () => netRef?.posts ?? [], add: (item, n, gold) => netRef?.postAdd({ item, name: ITEMS_TBL[item]?.name ?? item, icon: ITEMS_TBL[item]?.icon ?? '•', n, gold, note: '' }),
     fill: (id, item, n) => netRef?.postFill(id, [{ item: { id: item, n } }]), cancel: (id) => netRef?.postCancel(id) } });
 (window as unknown as { __quests?: unknown }).__quests = quests;
@@ -934,6 +1113,7 @@ function breakVow(...a: Parameters<ReturnType<typeof createVotosAlma>['breakVow'
 const openDlg = (o: Parameters<typeof dlg.open>[0]) => dlg.open({ me: profile?.name || 'Caminhante', lean: soulLean, onReply: (r) => applyReply(r), ...o });
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). → sistemas/comandos-teste.ts */
 export interface ComandosTesteCtx {
+  readonly benchSys: { comando(a: string[]): string };
   readonly obras: Widen<typeof obras>;
   readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean; /** 09/11: a Copa da Árvore-Mãe (Lithendel) */ canopy?: boolean } | null;
   readonly emote: Widen<typeof emote>;
@@ -966,7 +1146,7 @@ export interface ComandosTesteCtx {
   readonly unbind: typeof unbind;
 }
 var comandosSys: ReturnType<typeof createComandosTeste>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_comandosSys() { return createComandosTeste({ get obras() { return obras; }, get inside() { return inside; }, get emote() { return emote; }, get state() { return state; }, get hero() { return hero; }, get netRef() { return netRef; }, get audio() { return audio; }, get inv() { return inv; }, get game() { return game; }, get walksPath() { return walksPath; }, get profile() { return profile; }, get kitRace() { return kitRace; }, get luaK() { return luaK; }, get aurK() { return aurK; }, get gCur() { return gCur; }, get perfReport() { return perfReport; }, get soul() { return soul; }, get peleSys() { return peleSys; }, get applyArtSkin() { return applyArtSkin; }, get ART_SET() { return ART_SET; }, get quests() { return quests; }, get takeClass() { return takeClass; }, get tree() { return tree; }, get applyKitAll() { return applyKitAll; }, get crestEl() { return crestEl; }, get dgs() { return dgs; }, get npcSys() { return npcSys; }, get city() { return city; }, get limiar() { return limiar; }, get unbind() { return unbind; } }); }
+function mk_comandosSys() { return createComandosTeste({ get obras() { return obras; }, get inside() { return inside; }, get emote() { return emote; }, get state() { return state; }, get hero() { return hero; }, get netRef() { return netRef; }, get audio() { return audio; }, get inv() { return inv; }, get game() { return game; }, get walksPath() { return walksPath; }, get profile() { return profile; }, get kitRace() { return kitRace; }, get luaK() { return luaK; }, get aurK() { return aurK; }, get gCur() { return gCur; }, get perfReport() { return perfReport; }, get soul() { return soul; }, get peleSys() { return peleSys; }, get applyArtSkin() { return applyArtSkin; }, get ART_SET() { return ART_SET; }, get quests() { return quests; }, get takeClass() { return takeClass; }, get tree() { return tree; }, get applyKitAll() { return applyKitAll; }, get crestEl() { return crestEl; }, get dgs() { return dgs; }, get npcSys() { return npcSys; }, get city() { return city; }, get limiar() { return limiar; }, get unbind() { return unbind; }, get benchSys() { return benchSys; } }); }
 comandosSys ??= mk_comandosSys();
 function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['betaCommand']>): ReturnType<ReturnType<typeof createComandosTeste>['betaCommand']> { return (comandosSys ??= mk_comandosSys()).betaCommand(...a); }
 
@@ -974,9 +1154,19 @@ function betaCommand(...a: Parameters<ReturnType<typeof createComandosTeste>['be
    quem já tinha o Olho aberto recebe a Lágrima do nascimento que não ganhou */
 setTimeout(() => { if (soul.s.tears > 0) { inv.add('lagrima', soul.s.tears, true); soul.s.tears = 0; soul.save(); }
   if (profile?.eye && !soul.s.born) { soul.s.born = true; soul.save(); inv.add('lagrima', 1, true); game.logMsg('💧 Marghar se emocionou quando o seu Olho abriu: a Lágrima do nascimento está na sua mochila.', '#9ad7ff'); } }, 2500);
-const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } if (ch === 'party') { if (!netRef?.party) { chat.sys('Você não está em um grupo. Ctrl + clique num jogador para convidar.'); return; } bubble(text); netRef.partyChat(text); return; } bubble(text); netRef?.say(text); } });
+const chat = createChat({ me: () => profile?.name || RACES[state.race].label, command: (cmd, a) => { if (cmd === 'gu' || cmd === 'guilda' || cmd === 'guild') { const tx = a.join(' ').trim(); if (tx) { social.guildChat(tx); return ''; } social.toggle(true, 'guilda'); return '⚑ Use /guilda texto para falar com a guilda.'; } return bugsDono.command(cmd, a) ?? betaCommand(cmd, a); }, onSay: (text, ch, to) => { try { olhoRef?.fala(text, ch); } catch { /* */ } if (ch === 'whisper' && to) { netRef?.whisper(to, text); return; } if (ch === 'party') { if (!netRef?.party) { chat.sys('Você não está em um grupo. Ctrl + clique num jogador para convidar.'); return; } bubble(text); netRef.partyChat(text); return; } bubble(text); netRef?.say(text); } });
 /* 03/11: o inseto 🐞 (relatar bug) e o painel do dono (sistemas/bugs-dono.ts) */
 const shotReq: ((u: string) => void)[] = [];
+/* 12/11: o Olho do Claude (sistemas/olho-claude.ts): o botão ✳ grava a sessão num arquivo para o Claude ler */
+let olhoRef: ReturnType<typeof createOlhoClaude> | null = null;
+onAdm((on) => { if (!on) { if (game.st.god) game.st.god = false; try { if (olhoRef?.on) olhoRef.stop(); } catch { /* */ } } }); /* saiu do modo administrador: o modo deus e a gravação desligam */
+setTimeout(() => { try { (window as unknown as { __olho?: unknown }).__olho = olhoRef = createOlhoClaude({ build: __BUILD__, log: (t, c) => game.logMsg(t, c), perf: () => { try { return perfReport(); } catch { return ''; } },
+  shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
+  info: () => { let reg = '?', classe = ''; try { reg = regionAt(state.fx, state.fy).name; } catch { /* */ } try { classe = game.classInfo.name; } catch { /* */ } return { x: state.fx, y: state.fy, reg, lvl: game.st.lvl, hp: Math.round(game.st.hp), hpMax: game.st.hpMax, fps: lastFps, rend: gpuState.on ? 'WebGPU' : 'WebGL', combate: !!hero.combat, dentro: inside ? inside.prop.kind : '', classe }; },
+  bichos: () => { const hp = hero.root.position; return game.enemies.list.filter((e) => e.active && e.alive).map((e) => ({ tipo: e.type, nome: e.def.name, nivel: e.def.lvl ?? 1, estado: e.state, vida: Math.round((e.hp / e.hpMax) * 100), d: Math.round(Math.hypot(e.pos.x - hp.x, e.pos.z - hp.z)) })).filter((q) => q.d <= 40).sort((a, b) => a.d - b.d); },
+  solta: () => { keys.clear(); try { cliqueSys.lmbHold = 0; } catch { /* */ } },
+  querendoAndar: () => state.path.length > 0 || ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].some((k) => keys.has(k)),
+  gente: () => { const hp = hero.root.position; return npcSys.npcs.map((n) => ({ nome: n.def.name, papel: n.def.role, d: Math.round(Math.hypot(n.pos.x - hp.x, n.pos.z - hp.z)), lutando: !!(n as unknown as { foeE?: unknown }).foeE })).filter((q) => q.d <= 30).sort((a, b) => a.d - b.d); } }); } catch (e) { console.warn('olho do claude', e); } }, 3000);
 const bugsDono = createBugsDono({ net: () => netRef,
   shot: () => new Promise<string | null>((res) => { shotReq.push((u) => res(u || null)); setTimeout(() => res(null), 3000); }),
   info: () => { const rg = (() => { try { return regionAt(state.fx, state.fy).name; } catch { return '?'; } })(); let cls = ''; try { cls = game.classInfo.name; } catch { /* */ }
@@ -989,9 +1179,12 @@ const bugsDono = createBugsDono({ net: () => netRef,
 (game as unknown as { setLogHook(f: (t: string) => void): void }).setLogHook((t) => chat.sysLog(t));
 { const LK = 'karmika.ui.logoff'; const lg = document.getElementById('log'); const bt = document.createElement('button'); bt.id = 'logtog'; document.body.appendChild(bt);
   const apply = (off: boolean) => { if (lg) lg.classList.toggle('sysoff', off); /* 09/11: dados e sistema dividem a mesma lista; desligar o 📜 esconde só as linhas do sistema */ bt.classList.toggle('off', off); bt.textContent = off ? '📜' : '📜'; bt.title = off ? 'Mostrar o registro de acontecimentos na tela (eles continuam na aba Sistema do chat)' : 'Recolher o registro de acontecimentos (eles continuam na aba Sistema do chat)'; try { localStorage.setItem(LK, off ? '1' : '0'); } catch { /* */ } };
-  let off = false; try { off = localStorage.getItem(LK) === '1'; } catch { /* */ } apply(off); bt.addEventListener('click', () => { off = !off; apply(off); }); }
+  let off = false; try { off = localStorage.getItem(LK) === '1'; } catch { /* */ } apply(off); bt.addEventListener('click', () => { off = !off; apply(off); });
+  /* 12/11 (Erling: "não consigo mudar de lugar os dados de sistema e os dados"): o 📜 e o 🎲 se arrastam juntos (a lista vai atrás, dados-rpg.layout); o lugar fica salvo; clique duplo volta */
+  const juntos = () => { const dado = document.getElementById('rolltog'); if (!dado) { setTimeout(juntos, 1500); return; } const pux = document.createElement('i'); pux.id = 'sysgrip'; pux.className = 'mvgrip'; pux.textContent = '⠿'; pux.title = 'Arraste para mudar de lugar (fica salvo) · clique duplo: volta'; document.body.appendChild(pux); movable(pux, 'sysicons', { also: [bt, dado] }); /* só pelo puxador ⠿, ao lado dos dois ícones */ }; setTimeout(juntos, 1500); }
 /* JOGAR JUNTO: os outros Caminhantes da sala no mundo (net.ts) e os monstros compartilhados (coop.ts). Saiu do main.ts (02/11). → sistemas/rede.ts */
 export interface RedeCtx {
+  readonly retrato: () => string | null;
   readonly scene: Widen<typeof scene>;
   readonly particles: Widen<typeof particles>;
   readonly camera: Widen<typeof camera>;
@@ -1030,11 +1223,12 @@ export interface RedeCtx {
 }
 /* O OÁSIS DA MIRAGEM (02/11): a voz do Gênio oferece de beber a quem chega na beira — sistemas/oasis.ts */
 const oasisSys = createOasis({ game, heroPos: () => heroPosNow(), openDlg: (o) => openDlg(o), busy: () => !!inside || !!cinemaSys?.cine || dlg.isOpen, shake: (k) => { game.st.shake = Math.max(game.st.shake ?? 0, k); } });
-setInterval(() => oasisSys.tick(), 400);
+setInterval(tarefa('oásis', () => oasisSys.tick()), 400);
 var redeSys: ReturnType<typeof createRede>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_redeSys() { return createRede({ get scene() { return scene; }, get particles() { return particles; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
+function mk_redeSys() { return createRede({ get scene() { return scene; }, get retrato() { return meuRetrato; }, get particles() { return particles; }, get camera() { return camera; }, get canvas() { return canvas; }, get kindOf() { return kindOf; }, get state() { return state; }, get profile() { return profile; }, get lastGear() { return lastGear; }, get peleSys() { return peleSys; }, get game() { return game; }, get myPath() { return myPath; }, get soulLean() { return soulLean; }, get makeBlessRune() { return makeBlessRune; }, get hero() { return hero; }, get inside() { return inside; }, get netMps() { return netMps; }, get pvpOn() { return pvpOn; }, get chat() { return chat; }, get audio() { return audio; }, get mail() { return mail; }, get quests() { return quests; }, get srvWait() { return srvWait; }, get portraits() { return portraits; }, get portraitOf() { return portraitOf; }, get inv() { return inv; }, get feats() { return feats; }, get soul() { return soul; }, get originName() { return originName; }, get netRef() { return netRef; }, set netRef(v) { netRef = v; }, get dgInst() { return dgInst; }, get enterDungeon() { return enterDungeon; }, get dgs() { return dgs; }, get pvp() { return pvp; }, get social() { return social; }, get inicio() { return inicio; } }); }
 redeSys ??= mk_redeSys();
 const { coop, net } = redeSys;
+net.onX('x:raid', (_from, m) => { try { ataqueSys.join(m); } catch (e) { console.warn('ataque em grupo', e); } }); /* 14/11: o ataque à vila é o mesmo para todos por perto */
 
 /* AMIGOS, CONVERSAS E GUILDAS (hub.ts e social.ts): escrituras de casa, casas dos outros, terrenos e salões de guilda, o PvP de facção, entrar no servidor, o início, o cartão do herói e o balão de fala. Saiu do main.ts (02/11). → sistemas/social-guildas.ts */
 export interface SocialGuildasCtx {
@@ -1092,6 +1286,8 @@ function hideBoot(...a: Parameters<ReturnType<typeof createSocialGuildas>['hideB
 
 /* A COMPANHIA DAS CARAVANAS DE LATÃO: os balões de fala das carroças, a ponte, as missões das caravanas e o salão de ofícios. Saiu do main.ts (02/11). → sistemas/caravanas-ui.ts */
 export interface CaravanasUiCtx {
+  /** 11/11: o ponto (metros) não serve para uma carroça (casa, objeto sólido, mureta, muralha, água sem ponte, árvore) */
+  readonly wagonBlocked: (x: number, z: number) => boolean;
   readonly canvas: Widen<typeof canvas>;
   readonly camera: Widen<typeof camera>;
   readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean; /** 09/11: a Copa da Árvore-Mãe (Lithendel) */ canopy?: boolean } | null;
@@ -1112,9 +1308,12 @@ export interface CaravanasUiCtx {
   readonly t: Widen<typeof t>;
 }
 var caravanasSys: ReturnType<typeof createCaravanasUi>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_caravanasSys() { return createCaravanasUi({ get canvas() { return canvas; }, get camera() { return camera; }, get inside() { return inside; }, get city() { return city; }, get inv() { return inv; }, get openDwarfCart() { return openDwarfCart; }, get prepLatao() { return prepLatao; }, get scene() { return scene; }, get heroPos() { return heroPos; }, get state() { return state; }, get game() { return game; }, get particles() { return particles; }, get soulLean() { return soulLean; }, get quests() { return quests; }, get addKarma() { return addKarma; }, get applyReply() { return applyReply; }, get audio() { return audio; }, get t() { return t; } }); }
+function mk_caravanasSys() { return createCaravanasUi({ get canvas() { return canvas; }, wagonBlocked, get camera() { return camera; }, get inside() { return inside; }, get city() { return city; }, get inv() { return inv; }, get openDwarfCart() { return openDwarfCart; }, get prepLatao() { return prepLatao; }, get scene() { return scene; }, get heroPos() { return heroPos; }, get state() { return state; }, get game() { return game; }, get particles() { return particles; }, get soulLean() { return soulLean; }, get quests() { return quests; }, get addKarma() { return addKarma; }, get applyReply() { return applyReply; }, get audio() { return audio; }, get t() { return t; } }); }
 caravanasSys ??= mk_caravanasSys();
 const { caravans, LATAO_BASE, LATAO_PORTO, craftHall } = caravanasSys;
+function wagonBlocked(x: number, z: number): boolean { const tx = Math.floor(x / T), ty = Math.floor(z / T), tt = city.map[ty]?.[tx]; if (!tt) return true; if (tt === 'water') return bridgeDeck(x, z) === null; if (!isWalkable(tt)) return true; return !!rampartAt(tx, ty) || solidHit(x / T, z / T, false) || lowWallHit(x / T, z / T); }
+/* (teste) auditoria das rotas das caravanas: por que um ponto (metros) não serve para uma carroça */
+(window as unknown as { __audit: unknown }).__audit = { routes: caravans.routes, pos: () => hero.root.position, objs: () => objs.group, free: (x: number, y: number) => free(x, y), cam: () => camera, hero: () => [state.fx, state.fy], cut: () => CUT.uCut.value.w, why: (x: number, z: number): string | null => { const tx = Math.floor(x / T), ty = Math.floor(z / T), tt = city.map[ty]?.[tx]; if (!tt) return 'fora do mapa'; if (tt === 'water' && bridgeDeck(x, z) !== null) return null; if (!isWalkable(tt)) return 'piso:' + tt; if (rampartAt(tx, ty)) return 'muralha'; if (solidHit(x / T, z / T, false)) { let best = '', bd = 9; for (const q of city.props) { if (Math.abs(q.gx - tx) > 4 || Math.abs(q.gy - ty) > 4 || q.kind === 'tree') continue; const d = Math.hypot(q.gx + q.w / 2 - x / T, q.gy + q.h / 2 - z / T); if (d < bd) { bd = d; best = q.kind + (q.label ? ' ' + q.label : ''); } } return 'objeto:' + best; } if (lowWallHit(x / T, z / T)) return 'mureta'; return null; } };
 function carBubble(...a: Parameters<ReturnType<typeof createCaravanasUi>['carBubble']>): ReturnType<ReturnType<typeof createCaravanasUi>['carBubble']> { return (caravanasSys ??= mk_caravanasSys()).carBubble(...a); }
 function updateCaravans(...a: Parameters<ReturnType<typeof createCaravanasUi>['updateCaravans']>): ReturnType<ReturnType<typeof createCaravanasUi>['updateCaravans']> { return (caravanasSys ??= mk_caravanasSys()).updateCaravans(...a); }
 
@@ -1228,6 +1427,8 @@ export interface FestaCtx {
   readonly inside: { int: Interior; ret: { x: number; y: number }; prop: (typeof city.props)[number]; crypt?: number; dg?: string; /** andar do Castelo do Conde (0 = catacumbas … 5 = salão do Conde) */ castle?: number; hall?: boolean; /** 09/11: a Copa da Árvore-Mãe (Lithendel) */ canopy?: boolean } | null;
   readonly dwarfEl: Widen<typeof dwarfEl>;
 }
+/** 11/11 (Erling: "a fonte de Karmika não funciona na festa, porque senão atrapalha a festa"): com a festa armada na praça, a Fonte da Visão fica quieta */
+function festaAqui() { const F = festaSys?.festa as { x: number; z: number; done?: boolean } | null | undefined; if (!F || F.done) return false; const p = hero.root.position; return Math.hypot(p.x - F.x, p.z - F.z) < 60; }
 var festaSys: ReturnType<typeof createFesta>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
 function mk_festaSys() { return createFesta({ get npcSys() { return npcSys; }, get quests() { return quests; }, get npcHome() { return npcHome; }, get city() { return city; }, get hereSettle() { return hereSettle; }, get align() { return align; }, get profile() { return profile; }, get game() { return game; }, get state() { return state; }, get scene() { return scene; }, get settleAt() { return settleAt; }, get nightOverride() { return nightOverride; }, set nightOverride(v) { nightOverride = v; }, get nightTarget() { return entradaSys.nightTarget; }, set nightTarget(v) { entradaSys.nightTarget = v; }, get audio() { return audio; }, get inv() { return inv; }, get addKarma() { return addKarma; }, get heroPos() { return heroPos; }, get evFx() { return evFx; }, get portraitOf() { return portraitOf; }, get openDlg() { return openDlg; }, get hero() { return hero; }, get particles() { return particles; }, get netRef() { return netRef; }, get net() { return net; }, get inside() { return inside; }, get dwarfEl() { return dwarfEl; } }); }
 festaSys ??= mk_festaSys();
@@ -1456,8 +1657,9 @@ function mk_cacaSys() { return createCacaElite({ get zoneName() { return zoneNam
 cacaSys ??= mk_cacaSys();
 const { compendium } = cacaSys;
 
-/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 20, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). → sistemas/olho.ts */
+/* O OLHO DE MARGHAR: o globo de vida/recurso, o despertar no nível 15, o menu do Olho no centro da barra, atos heroicos e lágrimas; quem está online. Saiu do main.ts (02/11). → sistemas/olho.ts */
 export interface OlhoCtx {
+  /** 11/11: o Juízo na abertura do Olho: a vila onde você está reage ao que ele guardou */ readonly juizo: (owed: number, n: number) => void;
   readonly profile: Profile | null;
   readonly game: Widen<typeof game>;
   readonly soul: Widen<typeof soul>;
@@ -1471,7 +1673,12 @@ export interface OlhoCtx {
   readonly audio: Widen<typeof audio>;
 }
 var olhoSys: ReturnType<typeof createOlho>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_olhoSys() { return createOlho({ get profile() { return profile; }, get game() { return game; }, get soul() { return soul; }, get compendium() { return compendium; }, get state() { return state; }, get feats() { return feats; }, get addKarma() { return addKarma; }, get quests() { return quests; }, get myPath() { return myPath; }, get inv() { return inv; }, get audio() { return audio; } }); }
+function mk_olhoSys() { return createOlho({ juizo: (owed, n) => { const st = hereSettle()?.name ?? settleAt(larSys.home.x, larSys.home.y, 8)?.name ?? 'Karmika', dv = Math.max(-600, Math.min(600, Math.round(owed * 25)));
+    if (dv) align.add('vila', st, dv, 'o Juízo do Olho');
+    const luz = owed > 0, zero = owed === 0;
+    eyeSees('O Juízo do Olho', `${n} ato${n === 1 ? '' : 's'} que você fez enquanto ele dormia.`, zero ? `Nada pesou para lado nenhum. ${st} olha para você como olhava ontem.` : luz ? `A luz chegou na frente. Em ${st} vão lembrar o seu nome com gosto: gente que cumprimenta, mercador que desconta.` : `A sombra chegou na frente. Em ${st} vão lembrar o seu nome baixo: gente que fecha a porta, mercador que cobra mais.`, owed);
+    game.logMsg(zero ? `👁 O Juízo: ${st} não mudou com você.` : `👁 O Juízo: o seu nome em ${st} ${luz ? 'subiu' : 'desceu'} (${dv > 0 ? '+' : ''}${dv} de alinhamento). Os preços e as falas acompanham.`, luz ? '#9ad7ff' : zero ? '#d9c08a' : '#ff8a7a'); },
+  get profile() { return profile; }, get game() { return game; }, get soul() { return soul; }, get compendium() { return compendium; }, get state() { return state; }, get feats() { return feats; }, get addKarma() { return addKarma; }, get quests() { return quests; }, get myPath() { return myPath; }, get inv() { return inv; }, get audio() { return audio; } }); }
 olhoSys ??= mk_olhoSys();
 const { crestEl, globes, eyeSys } = olhoSys;
 function updateWho(...a: Parameters<ReturnType<typeof createOlho>['updateWho']>): ReturnType<ReturnType<typeof createOlho>['updateWho']> { return (olhoSys ??= mk_olhoSys()).updateWho(...a); }
@@ -1549,7 +1756,7 @@ var opcoesSys: ReturnType<typeof createOpcoes>; /* criado aqui, na ordem de ante
 function mk_opcoesSys() { return createOpcoes({ get saveOpts() { return saveOpts; }, get applyGfx() { return applyGfx; }, get PIX() { return PIX; }, set PIX(v) { PIX = v; }, get opts() { return opts; }, get WORLD_RATIO() { return WORLD_RATIO; }, set WORLD_RATIO(v) { WORLD_RATIO = v; }, get dual() { return dual; }, get resize() { return resize; }, get renderer() { return renderer; }, get scene() { return scene; }, get hero() { return hero; }, get npcSys() { return npcSys; }, get sun() { return sun; }, get particles() { return particles; }, get audio() { return audio; }, get uiScale() { return uiScale; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get game() { return game; }, get OPT_DEF() { return OPT_DEF; }, get applyArtSkin() { return applyArtSkin; } }); }
 opcoesSys ??= mk_opcoesSys();
  // depois de o renderizador/composer existirem
-setInterval(() => inv.save(), 8000);
+setInterval(tarefa('salvar mochila', () => inv.save()), 8000);
 /* ÍNDICE DE PROPS POR TILE, BAÚS, KIT INICIAL E PESCA: a vara, a boia, a linha e a fisgada. Saiu do main.ts (02/11). → sistemas/pesca-e-kit.ts */
 export interface PescaKitCtx {
   readonly city: Widen<typeof city>;
@@ -1694,6 +1901,8 @@ function updateGuide(...a: Parameters<ReturnType<typeof createGuiaMapa>['updateG
 /* ---------- pós-processamento ---------- */
 const composer = new EffectComposer(renderer);
 const dual = new DualRenderPass(scene, camera, 2, 2, WORLD_RATIO);
+/* 11/11: no WebGL, material novo compila em paralelo e aparece quando fica pronto, em vez de parar o quadro (sistemas/compila-sem-travar.ts) */
+const shaderGate = gpuImpl ? null : createShaderGate(renderer, scene, camera, () => dual.rt, () => (dual.clipFor === scene ? dual.fineClip : null)); (window as unknown as { __gate?: unknown }).__gate = shaderGate; /* teste */ (window as unknown as { __corte?: unknown }).__corte = () => DualRenderPass.culledLast; /* teste */
 composer.addPass(dual);
 const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.14, 0.35, 0.93);
 composer.addPass(bloom);
@@ -1727,11 +1936,11 @@ const fxaa = new ShaderPass(FXAAShader); fxaa.enabled = false; composer.addPass(
 /* WebGPU: o mesmo quadro (brilho, cor do dia e da noite, vinheta, 16 bits) montado em nós — gpu/impl.ts */
 if (gpuImpl) { const gp = gpuImpl.createGPUPost(renderer, () => dual.cur(), bloom, finish.uniforms); composer.render = () => { try { gp.render(); } catch (e) { gpuErr(e); } }; composer.setSize = () => { /* */ }; (window as unknown as { __gpu: unknown }).__gpu = { sc: () => dual.cur(), R: renderer, shot: (w?: number) => gp.shot(w), pending: gpuImpl.gpuPending, state: gpuState, limOpen: (i: Parameters<typeof limiar.open>[0]) => limiar.open(i, () => { /* teste */ }), limShot: () => { limiarGL(true); return limGL!.domElement.toDataURL('image/png'); } }; }
 let gfxBloom = 1;
-function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : opts.pix; WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
+function applyGfx() { const m = opts.gfx === 1; PIX = m ? 1 : pixOf(opts.pix); WORLD_RATIO = m ? 1 : opts.wratio; dual.ratio = WORLD_RATIO; finish.uniforms.uQuant.value = m ? 0 : 1;
   const st = m ? THREE.PCFShadowMap /* three 0.18x: o PCFSoft saiu; o PCF com radius faz a borda macia */ : THREE.BasicShadowMap; if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; scene.traverse((o) => { const mm = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (mm) for (const x of Array.isArray(mm) ? mm : [mm]) x.needsUpdate = true; }); }
   { const f = m ? THREE.LinearFilter : THREE.NearestFilter; if (toonRamp.magFilter !== f) { toonRamp.magFilter = toonRamp.minFilter = f; toonRamp.needsUpdate = true; } } /* Moderno: a luz corre em degradê, não em 8 faixas */
   { const sr = m ? Math.max(2048, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuImpl) { /* WebGPU: o ShadowNode acompanha o mapSize sozinho; soltar o alvo deixava a sombra apontando para textura destruída */ sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } } sun.shadow.radius = m ? 3 : 1; } /* Moderno: sombra com o dobro de detalhe e borda macia */
-  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.8 : 0.93; gfxBloom = m ? 2.6 : 1; /* 04/11: brilho menos estourado no modo moderno (lampião, papel, drone) */ document.body.classList.toggle('gfx-moderno', m); resize(); }
+  fxaa.enabled = m; bloom.radius = m ? 0.6 : 0.35; bloom.threshold = m ? 0.8 : 0.93; gfxBloom = m ? 2.6 : 1; /* 04/11: brilho menos estourado no modo moderno (lampião, papel, drone) */ document.body.classList.toggle('gfx-moderno', m); try { setModern(scene, renderer, m, !gpuImpl); } catch (e) { console.warn('moderno', e); } resize(); }
 /* WebGPU: o LIMIAR (a cena da alma, limiar.ts) tem 19 efeitos próprios em GLSL. Enquanto ele não é traduzido, a cena é desenhada por um
    WebGL à parte num canvas por cima (o mesmo caminho de antes: pixel em duas resoluções, brilho, acabamento) — o mundo espera lá embaixo,
    então só um dos dois desenha de cada vez. Quando a alma volta, o canvas some e o WebGPU segue. */
@@ -1744,9 +1953,12 @@ let gpuFails = 0, gpuFailT = 0;
 { let warmed = 0; const warm = () => { if (gpuImpl) return; try { const g = game.prewarmGroup(), prev = renderer.getRenderTarget(); renderer.setRenderTarget(composer.renderTarget1); /* o mundo é desenhado num alvo linear (o composer): o programa é o desse alvo */ void renderer.compileAsync(g, camera, scene).catch(() => { /* */ }); renderer.setRenderTarget(prev); } catch { /* */ } };
   setTimeout(warm, 20000); setInterval(() => { const k = game.st.xp / Math.max(1, game.xpNeed()); if (k > 0.85 && warmed !== game.st.lvl) { warmed = game.st.lvl; warm(); } }, 5000); }
 /* teste (Playwright): subir de nível e usar item sem jogar até lá */
-(window as unknown as { __kt: unknown }).__kt = { game, inv, renderer, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
+(window as unknown as { __kt: unknown }).__kt = { bench: () => benchSys, magia: (c: string, x: number, z: number) => entradaSys.castAt(c, { x, z, yaw: Math.atan2(x - state.fx * T, z - state.fy * T) }), relatorio: () => perfReport(), camera: () => camera, eventos: () => eventos, naufragios: () => naufragiosSys, praia: praiaK, fauna: () => faunaSys, flora: () => floraSys, despojos: () => despojosSys, viaja: (go: string) => minimapaSys.mapTravel(go), mapa: () => minimapaSys.mapHits, zoom: () => ({ zoom, alvo: zoomTarget, auto: zoomAuto, onde: city.settlements.filter((st) => Math.hypot(st.x - state.fx, st.y - state.fy) < st.radius + 6).map((st) => `${st.name} (${st.kind})`) }), foco: () => lockSys.target, tela: (x: number, y: number, z: number) => { const v = new THREE.Vector3(x, y, z).project(camera), r = canvas.getBoundingClientRect(); return [r.left + (v.x + 1) / 2 * r.width, r.top + (1 - v.y) / 2 * r.height]; }, gen: (ilvl: number, slot?: Slot, base?: string, rar?: Rarity) => genGear(ilvl, rar, slot, base), titulos: { ganha: ganhaTitulo, livre: ganhaLivre, ativo: tituloAtivo, travado, escolhe: escolheTitulo, adianta: (ms: number) => { tituloRelogio += ms; }, abre: () => dockSys.abreTitulos(), cruza: (p: string, back: boolean) => crossOver(p, back) }, game, inv, renderer, npcs: () => npcSys.npcs, car: () => caravans, hero: () => hero, net: () => netRef, bugs: () => bugsDono, quests: () => quests, cmd: (l: string) => { const [c, ...r] = l.replace(/^\//, "").split(/\s+/); return betaCommand(c, r); }, inst: () => instintoSys.instinctOn, particles, castelo: () => casteloSys, state, lock: () => lockSys, mkChar: createCharacter, three: THREE, scene };
 function gpuFail(m: string) { if (/[?&]gpunofb=1/.test(location.search)) { gpuErr(m); return; } const now = performance.now(); if (now - gpuFailT > 10000) gpuFails = 0; gpuFailT = now; gpuFails++; console.error('[WebGPU] erro no quadro:', m);
-  if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); localStorage.setItem('karmika.gpuFallbackLast', JSON.stringify({ at: new Date().toISOString(), m: m.slice(0, 500), log: gpuState.log.slice(0, 12), ua: navigator.userAgent })); } catch { /* */ } /* 04/11: guarda o motivo para o 🐞 levar junto */ opts.rend = 0; saveOpts(); gpuImpl = null; location.reload(); } }
+  if (gpuFails >= 20 || gpuState.errs > 60) { try { sessionStorage.setItem('karmika.gpuFallback', m.slice(0, 300)); localStorage.setItem('karmika.gpuFallbackLast', JSON.stringify({ at: new Date().toISOString(), m: m.slice(0, 500), log: [...gpuState.log.filter((x) => !x.startsWith('buffer velho')), ...gpuState.log.filter((x) => x.startsWith('buffer velho'))].slice(0, 12) /* 10/11: os erros de verdade na frente; o aviso de 'buffer velho' escondia a causa */, ua: navigator.userAgent })); } catch { /* */ } /* 04/11: guarda o motivo para o 🐞 levar junto */ opts.rend = 0; saveOpts(); gpuImpl = null;
+    /* 11/11 (Erling: "modo GPU deu bug e me dropou do server"): antes de recarregar, guarda a sala; ao voltar, o jogo entra direto nela (ou direto no jogo solo), sem passar pela tela de início */
+    try { saveAllNow(); const n = netRef; sessionStorage.setItem('karmika.boot', JSON.stringify({ server: n && n.state !== 'off' ? `karmika://${n.address}/${n.code}` : (hub?.invite ?? null) })); } catch { /* */ }
+    location.reload(); } }
 setInterval(() => { if (gpuImpl && (gpuState.errs > 60 || gpuState.lost)) { gpuFails = 99; gpuFail(gpuState.lost ? 'a placa de vídeo se desligou do WebGPU' : 'erros seguidos do WebGPU'); } }, 1000);
 setTimeout(() => { try { const f = sessionStorage.getItem('karmika.gpuFallback'); if (f) { sessionStorage.removeItem('karmika.gpuFallback'); game.logMsg('⚙ O WebGPU deu erro neste PC e o jogo voltou para o WebGL (Opções → Renderizador). Detalhe: ' + f.split('\n')[0], '#ffb27a');  let L = ''; try { const j = JSON.parse(localStorage.getItem('karmika.gpuFallbackLast') || '{}'); L = (j.log || []).slice(0, 3).map((x: unknown) => String(typeof x === 'string' ? x : JSON.stringify(x)).slice(0, 140)).join(' | '); } catch { /* */ } kshow('O WebGPU caiu e o jogo voltou para o WebGL. Motivo: ' + f.split('\n')[0].slice(0, 160) + (L ? ' · ' + L : '') + ' — aperte F10 (🐞) para me mandar o relatório.'); } } catch { /* */ } }, 4000);
 let limGL: THREE.WebGLRenderer | null = null, limComp: EffectComposer | null = null;
@@ -1789,37 +2001,51 @@ export function uiBase() { return Math.max(0.85, Math.min(2, Math.min(innerHeigh
    Desliga com localStorage karmika.autoq = off. */
 const igpu = (() => { try { const c = document.createElement('canvas'), g = (c.getContext('webgl2') || c.getContext('webgl')) as WebGLRenderingContext | null; if (!g) return false; const e = g.getExtension('WEBGL_debug_renderer_info'); const n = String(e ? g.getParameter(e.UNMASKED_RENDERER_WEBGL) : g.getParameter(g.RENDERER)); (g.getExtension('WEBGL_lose_context') as { loseContext(): void } | null)?.loseContext();
   return /Radeon\(TM\) Graphics|Radeon Graphics|Vega|Intel|UHD|Iris|Mali|Adreno|PowerVR|llvmpipe|SwiftShader/i.test(n) && !/RX |Arc /i.test(n); } catch { return false; } })();
-const DYN_MAX = igpu ? 2.0 : 1.6;
-let autoQ = (() => { try { const v = localStorage.getItem('karmika.autoq'); if (v === 'off') return -1; const n = Number(v); return Number.isFinite(n) && v !== null ? Math.max(0, Math.min(3, n)) : igpu ? 1 : 0; } catch { return 0; } })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
-if (igpu && dynK === 1) dynK = 1.3;
+/* 10/11 (Erling: "as opções precisam fazer diferença"; "no Moderno volta a ficar quadriculado e fica travado nessa configuração"):
+   - o ajuste automático mexe POUCO (até 1,35×; 1,5× em vídeo integrado): quem manda no tamanho do pixel é a opção;
+   - ele não se guarda entre sessões (cada abertura começa na qualidade cheia) e pode ser desligado em Opções;
+   - quadros lentos de quem saiu do PC, trocou de janela ou acabou de voltar não contam;
+   - se ele baixar e subir em seguida (gangorra = tranco a cada troca), fica parado 4 min. */
+const DYN_MAX = igpu ? 1.5 : 1.35;
+let autoQ = (() => { try { if (localStorage.getItem('karmika.autoq') === 'off') return -1; } catch { /* */ } return igpu ? 1 : 0; })(), autoQApplied = 0, autoQLow = 0, autoQHigh = 0, autoQCool = 0, shadowFrame = 0;
+let dynSkip = 4, dynHold = 0, dynLastUp = -1e9, dynGap = false, lastInputMs = performance.now();
+for (const ev of ['pointermove', 'pointerdown', 'keydown', 'wheel']) addEventListener(ev, () => { if (performance.now() - lastInputMs > 45000) dynSkip = Math.max(dynSkip, 3); lastInputMs = performance.now(); }, { passive: true, capture: true });
+document.addEventListener('visibilitychange', () => { dynSkip = Math.max(dynSkip, 4); }); addEventListener('focus', () => { dynSkip = Math.max(dynSkip, 3); }); addEventListener('blur', () => { dynSkip = Math.max(dynSkip, 3); });
 function applyAutoQ() { const q = Math.max(0, autoQ), was = autoQApplied; autoQApplied = q;
   setWorldLite(igpu || q >= 2); /* 09/11: blocos inteligentes — modelos simplificados em todo bloco */
   renderer.shadowMap.autoUpdate = q < 1; if (q >= 1) renderer.shadowMap.needsUpdate = true;
   const sr = q >= 2 ? Math.min(512, opts.shadowRes) : opts.shadowRes; if (sun.shadow.mapSize.x !== sr) { sun.shadow.mapSize.set(sr, sr); if (sun.shadow.map && !gpuState.on) { sun.shadow.map.dispose(); (sun.shadow as unknown as { map: null }).map = null; } }
   bloom.enabled = q < 2 && opts.bloom > 0; particles.density = q >= 2 ? Math.min(opts.particles, 0.6) : opts.particles;
-  const sh = opts.shadows && q < 3; if (renderer.shadowMap.enabled !== sh) { renderer.shadowMap.enabled = sh; scene.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined; if (!m) return; for (const mm of Array.isArray(m) ? m : [m]) mm.needsUpdate = true; }); }
-  try { localStorage.setItem('karmika.autoq', String(q)); } catch { /* */ }
-  if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombras desligadas']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
+  /* 10/11 (Erling: "o jogo inteiro sumiu" e voltou sozinho): o degrau 3 desligava a sombra, e desligar a sombra refaz o shader de TODO o cenário;
+     enquanto refazia, casas, árvores e chão sumiam da tela. O ajuste automático nunca mais liga ou desliga a sombra: no degrau 3 ela só é refeita 1 vez a cada 4 quadros. */
+  if (q !== was) { const T2 = ['qualidade cheia de volta', 'sombra refeita a cada dois quadros', 'sombra simples, sem brilho', 'sombra refeita a cada quatro quadros']; game.logMsg(`⚙ Qualidade automática: ${T2[q]} (para segurar 45 FPS).`); } }
 /** a cada quadro: no degrau 1+, a sombra só é refeita em quadros alternados */
-function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & 1) === 0; } }
-function autoQTick(fps: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
-  const atMax = dynK >= DYN_MAX - 0.01;
-  if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > 58 && dynK <= 1.31) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
-  if (autoQLow >= 3 && autoQ < 3) { autoQ++; autoQLow = 0; autoQCool = 6; applyAutoQ(); }
-  else if (autoQHigh >= 20 && autoQ > (igpu ? 1 : 0)) { autoQ--; autoQHigh = 0; autoQCool = 10; applyAutoQ(); } }
+function autoQFrame() { if (autoQApplied >= 1 && renderer.shadowMap.enabled) { shadowFrame++; renderer.shadowMap.needsUpdate = (shadowFrame & (autoQApplied >= 3 ? 3 : 1)) === 0; } }
+function autoQTick(fps: number, hi: number) { if (autoQ < 0 || document.hidden) return; if (autoQCool > 0) { autoQCool--; return; }
+  const atMax = dynK >= DYN_MAX - 0.01, nowS = performance.now();
+  if (fps < 45 && atMax) { autoQLow++; autoQHigh = 0; } else if (fps > hi && dynK <= 1.01) { autoQHigh++; autoQLow = 0; } else { autoQLow = 0; autoQHigh = 0; }
+  if (autoQLow >= 4 && autoQ < 3) { if (nowS - dynLastUp < 30000) dynHold = nowS + 240000; autoQ++; autoQLow = 0; autoQCool = 8; applyAutoQ(); }
+  else if (autoQHigh >= 12 && autoQ > (igpu ? 1 : 0) && nowS > dynHold) { autoQ--; autoQHigh = 0; autoQCool = 10; dynLastUp = nowS; applyAutoQ(); } }
 setTimeout(() => { if (autoQ >= 0) applyAutoQ(); }, 0);
-function dynResTick(fps: number) { let on = true; try { on = localStorage.getItem('karmika.dynres') !== '0'; } catch { /* */ } if (!on || document.hidden) { if (dynK !== 1 && !on) { dynK = 1; resize(); } return; }
-  const tgt = Math.min(45, (opts.cap > 0 ? opts.cap : 240) - 8); if (fps < tgt) { dynLow++; dynHigh = 0; } else if (fps > tgt + 13) { dynHigh++; dynLow = 0; } else { dynLow = 0; dynHigh = 0; }
-  if (dynLow >= 2 && dynK < DYN_MAX) { dynK = Math.min(DYN_MAX, dynK + 0.15); dynLow = 0; resize(); } else if (dynHigh >= 5 && dynK > 1) { dynK = Math.max(1, dynK - 0.1); dynHigh = 0; resize(); }
-  autoQTick(fps); }
+function dynResTick(fps: number) { let on = opts.auto !== false; try { if (localStorage.getItem('karmika.dynres') === '0') on = false; } catch { /* */ }
+  if (!on) { if (dynK !== 1) { dynK = 1; resize(); } if (autoQ > (igpu ? 1 : 0)) { autoQ = igpu ? 1 : 0; applyAutoQ(); } return; }
+  const nowS = performance.now(), idle = nowS - lastInputMs > 45000;
+  if (document.hidden || dynGap || idle) { dynGap = false; dynSkip = Math.max(dynSkip, 2); }
+  if (dynSkip > 0) { dynSkip--; dynLow = dynHigh = 0; autoQLow = autoQHigh = 0; return; }
+  const capV = opts.cap > 0 ? opts.cap : 240, tgt = Math.min(45, capV - 8), hi = Math.min(tgt + 8, capV - 6);
+  if (fps < tgt) { dynLow++; dynHigh = 0; } else if (fps > hi) { dynHigh++; dynLow = 0; } else { dynLow = 0; dynHigh = 0; }
+  if (dynLow >= 3 && dynK < DYN_MAX) { if (nowS - dynLastUp < 30000) dynHold = nowS + 240000; /* gangorra: fica parado 4 min */ dynK = Math.min(DYN_MAX, dynK + 0.175); dynLow = 0; resize(); }
+  else if (dynHigh >= 6 && dynK > 1 && nowS > dynHold) { dynK = Math.max(1, dynK - 0.175); dynHigh = 0; dynLastUp = nowS; resize(); }
+  autoQTick(fps, hi); }
 function resize() {
   document.documentElement.style.setProperty('--ui', uiScale().toFixed(3));
   const rr = opts.gfx === 1 ? 0 : opts.res; /* Moderno: sempre na resolução nativa do monitor (Quad HD e 4K ficam nítidos de verdade) */
-  const refH = rr > 0 ? Math.min(innerHeight, rr) : innerHeight, k = innerHeight / refH * dynK; // k > 1: desenha menos pixels e estica (dynK: a resolução dinâmica)
+  const modern = opts.gfx === 1, dpr = modern ? Math.min(2, Math.max(1, devicePixelRatio || 1)) : 1; /* Moderno: os pixels de verdade do monitor (telas 4K com escala do Windows ficavam esticadas) */
+  const refH = rr > 0 ? Math.min(innerHeight, rr) : innerHeight, k = innerHeight / refH * dynK / dpr; // k > 1: desenha menos pixels e estica (dynK: a resolução dinâmica)
   const step = Number.isInteger(WORLD_RATIO) ? WORLD_RATIO : WORLD_RATIO * 2; /* 2/3: múltiplo de 3 para o cenário cair em pixel inteiro */
   const w = Math.max(160, Math.floor(innerWidth / k / PIX / step) * step), h = Math.max(120, Math.floor(innerHeight / k / PIX / step) * step);
   renderer.setSize(w, h, false); dual.setSize(w, h);
-  canvas.style.width = '100%'; canvas.style.height = '100%';
+  canvas.style.width = '100%'; canvas.style.height = '100%'; canvas.style.imageRendering = modern ? 'auto' : ''; /* Moderno nunca fica quadriculado: se a resolução baixar, estica liso */
   composer.setSize(w, h); fxaa.material.uniforms.resolution.value.set(1 / w, 1 / h);
   applyZoom(w, h);
 }
@@ -1834,6 +2060,9 @@ addEventListener('resize', resize);
 resize(); if (opts.gfx === 1) applyGfx(); /* 03/11: começa no estilo escolhido */
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). → sistemas/entrada.ts */
 export interface EntradaCtx {
+  /** 16/11: há um bicho em foco (é o que o jogo chama de batalha para as teclas E e R) */ readonly foco: () => boolean;
+  readonly bichoNoMouse: () => { pos: { x: number; z: number } } | null;
+  readonly foca: (e: unknown) => void;
   readonly state: Widen<typeof state>;
   readonly scene: Widen<typeof scene>;
   readonly hero: Hero3D;
@@ -1903,7 +2132,7 @@ export interface EntradaCtx {
   readonly ZOOM_MIN: Widen<typeof ZOOM_MIN>;
 }
 var entradaSys: ReturnType<typeof createEntrada>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_entradaSys() { return createEntrada({ get state() { return state; }, get scene() { return scene; }, get hero() { return hero; }, get game() { return game; }, get tree() { return tree; }, get dockEl() { return dockEl; }, get kitRace() { return kitRace; }, get mouse() { return mouse; }, get inside() { return inside; }, get free() { return free; }, get audio() { return audio; }, get az() { return az; }, get dlg() { return dlg; }, get dashCd() { return dashCd; }, set dashCd(v) { dashCd = v; }, get particles() { return particles; }, get dashT() { return dashT; }, set dashT(v) { dashT = v; }, get dx0() { return dx0; }, set dx0(v) { dx0 = v; }, get dy0() { return dy0; }, set dy0(v) { dy0 = v; }, get applyKitAll() { return applyKitAll; }, get swapHero() { return swapHero; }, get classOfRace() { return classOfRace; }, get cinemaSys() { return cinemaSys; }, get endScene() { return endScene; }, get chat() { return chat; }, get inicio() { return inicio; }, get peleSys() { return peleSys; }, get coop() { return coop; }, get inv() { return inv; }, get quests() { return quests; }, get stable() { return stable; }, get align() { return align; }, get dockSys() { return dockSys; }, get toggleSkills() { return toggleSkills; }, get toggleFeats() { return toggleFeats; }, get build() { return build; }, get reliquiasSys() { return reliquiasSys; }, get closeRelics() { return closeRelics; }, get olhoSys() { return olhoSys; }, get toggleOlho() { return toggleOlho; }, get vid() { return vid; }, get mail() { return mail; }, get profs() { return profs; }, get loja() { return loja; }, get minimapaSys() { return minimapaSys; }, get toggleBigMap() { return toggleBigMap; }, get compendium() { return compendium; }, get compSys() { return compSys; }, get swimmingNow() { return swimmingNow; }, get setRiding() { return setRiding; }, get nightOverride() { return nightOverride; }, set nightOverride(v) { nightOverride = v; }, get toggleInstinct() { return toggleInstinct; }, get instintoSys() { return instintoSys; }, get renderStances() { return renderStances; }, get interact() { return interact; }, get ZOOM_MAX() { return ZOOM_MAX; }, set ZOOM_MAX(v) { ZOOM_MAX = v; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get useQuick() { return useQuick; }, get canvas() { return canvas; }, get net() { return net; }, get festaSys() { return festaSys; }, get festasNet() { return festasNet; }, get festaAskJoin() { return festaAskJoin; }, get azT() { return azT; }, set azT(v) { azT = v; }, get pitchT() { return pitchT; }, set pitchT(v) { pitchT = v; }, get PITCH_MIN() { return PITCH_MIN; }, get PITCH_MAX() { return PITCH_MAX; }, get ZOOM_MIN() { return ZOOM_MIN; } }); }
+function mk_entradaSys() { return createEntrada({ foco: () => !!lockSys.target, bichoNoMouse: () => mouseSys?.bichoNoMouse() ?? null, foca: (e) => lockSys.retarget(e as Parameters<typeof lockSys.retarget>[0]), get state() { return state; }, get scene() { return scene; }, get hero() { return hero; }, get game() { return game; }, get tree() { return tree; }, get dockEl() { return dockEl; }, get kitRace() { return kitRace; }, get mouse() { return mouse; }, get inside() { return inside; }, get free() { return free; }, get audio() { return audio; }, get az() { return az; }, get dlg() { return dlg; }, get dashCd() { return dashCd; }, set dashCd(v) { dashCd = v; }, get particles() { return particles; }, get dashT() { return dashT; }, set dashT(v) { dashT = v; }, get dx0() { return dx0; }, set dx0(v) { dx0 = v; }, get dy0() { return dy0; }, set dy0(v) { dy0 = v; }, get applyKitAll() { return applyKitAll; }, get swapHero() { return swapHero; }, get classOfRace() { return classOfRace; }, get cinemaSys() { return cinemaSys; }, get endScene() { return endScene; }, get chat() { return chat; }, get inicio() { return inicio; }, get peleSys() { return peleSys; }, get coop() { return coop; }, get inv() { return inv; }, get quests() { return quests; }, get stable() { return stable; }, get align() { return align; }, get dockSys() { return dockSys; }, get toggleSkills() { return toggleSkills; }, get toggleFeats() { return toggleFeats; }, get build() { return build; }, get reliquiasSys() { return reliquiasSys; }, get closeRelics() { return closeRelics; }, get olhoSys() { return olhoSys; }, get toggleOlho() { return toggleOlho; }, get vid() { return vid; }, get mail() { return mail; }, get profs() { return profs; }, get loja() { return loja; }, get minimapaSys() { return minimapaSys; }, get toggleBigMap() { return toggleBigMap; }, get compendium() { return compendium; }, get compSys() { return compSys; }, get swimmingNow() { return swimmingNow; }, get setRiding() { return setRiding; }, get nightOverride() { return nightOverride; }, set nightOverride(v) { nightOverride = v; }, get toggleInstinct() { return toggleInstinct; }, get instintoSys() { return instintoSys; }, get renderStances() { return renderStances; }, get interact() { return interact; }, get ZOOM_MAX() { return ZOOM_MAX; }, set ZOOM_MAX(v) { ZOOM_MAX = v; }, get zoomTarget() { return zoomTarget; }, set zoomTarget(v) { zoomTarget = v; }, get useQuick() { return useQuick; }, get canvas() { return canvas; }, get net() { return net; }, get festaSys() { return festaSys; }, get festasNet() { return festasNet; }, get festaAskJoin() { return festaAskJoin; }, get azT() { return azT; }, set azT(v) { azT = v; }, get pitchT() { return pitchT; }, set pitchT(v) { pitchT = v; }, get PITCH_MIN() { return PITCH_MIN; }, get PITCH_MAX() { return PITCH_MAX; }, get ZOOM_MIN() { return ZOOM_MIN; } }); }
 entradaSys ??= mk_entradaSys();
 const { heroPosNow, runningNow, keys, aimYaw, aim, nearYaw, CAM_FREE } = entradaSys;
 function setCombat(...a: Parameters<ReturnType<typeof createEntrada>['setCombat']>): ReturnType<ReturnType<typeof createEntrada>['setCombat']> { return (entradaSys ??= mk_entradaSys()).setCombat(...a); }
@@ -1914,7 +2143,7 @@ function castAt(...a: Parameters<ReturnType<typeof createEntrada>['castAt']>): R
 
 /* ---------- ciclo de dia e noite por turnos: 6 turnos de 4 h do jogo (30 min reais cada) → dia de 24 h = 3 h reais; relógio do mundo (igual para todos) ---------- */
 const DAY_REAL_MS = 3 * 3600 * 1000;
-let nightOverride: number | null = null; state.night = (() => { const h = (((Date.now() % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return h >= 7 && h < 17 ? 0 : h >= 19 || h < 5 ? 1 : h < 19 ? (h - 17) / 2 : 1 - (h - 5) / 2; })(); // N alterna: natural → noite forçada → dia forçado → natural (teste)
+let nightOverride: number | null = null; state.night = (() => { const h = (((Date.now() % (3 * 3600 * 1000)) / (3 * 3600 * 1000)) * 24 + 8) % 24; return nightAt(h); /* 11/11: a conta que ficava aqui errava entre 5h e 7h (dava −5 em vez de 0…1): quem entrava no jogo de madrugada via o mundo estourado de amarelo por um bom tempo */ })(); // N alterna: natural → noite forçada → dia forçado → natural (teste)
 const gameHour = () => (((Date.now() % DAY_REAL_MS) / DAY_REAL_MS) * 24 + 8) % 24;
 const TURNS: [number, string][] = [[6, 'Manhã'], [10, 'Meio-dia'], [14, 'Tarde'], [18, 'Anoitecer'], [22, 'Madrugada'], [2, 'Alvorada']];
 function turnName(h = gameHour()) { for (const [h0, nm] of TURNS) if (h >= h0 && h < h0 + 4) return nm; return 'Alvorada'; }
@@ -1970,9 +2199,15 @@ export interface MouseCliqueCtx {
   readonly heroPosNow: Widen<typeof heroPosNow>;
   readonly cancelAim: typeof cancelAim;
   readonly planTo: typeof planTo;
+  readonly usaClique: (n: 1 | 2) => void;
+  readonly cliqueId: (n: 1 | 2) => string;
+  readonly cliquePronto: (n: 1 | 2) => boolean;
+  readonly soltaGuarda: () => void;
+  readonly foca: (e: unknown) => void;
+  readonly paraCaminho: () => void;
 }
 var mouseSys: ReturnType<typeof createMouseClique>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_mouseSys() { return createMouseClique({ get scene() { return scene; }, get canvas() { return canvas; }, get camera() { return camera; }, get mouse() { return mouse; }, get mouseMovedT() { return mouseMovedT; }, set mouseMovedT(v) { mouseMovedT = v; }, get cliqueSys() { return cliqueSys; }, get inside() { return inside; }, get cinemaSys() { return cinemaSys; }, get game() { return game; }, get build() { return build; }, get aimSlot() { return entradaSys.aimSlot; }, get fireAim() { return fireAim; }, get setCombat() { return setCombat; }, get aimYaw() { return aimYaw; }, get heroPosNow() { return heroPosNow; }, get cancelAim() { return cancelAim; }, get planTo() { return planTo; } }); }
+function mk_mouseSys() { return createMouseClique({ get scene() { return scene; }, get canvas() { return canvas; }, get camera() { return camera; }, get mouse() { return mouse; }, get mouseMovedT() { return mouseMovedT; }, set mouseMovedT(v) { mouseMovedT = v; }, get cliqueSys() { return cliqueSys; }, get inside() { return inside; }, get cinemaSys() { return cinemaSys; }, get game() { return game; }, get build() { return build; }, get aimSlot() { return entradaSys.aimSlot; }, get fireAim() { return fireAim; }, get setCombat() { return setCombat; }, get aimYaw() { return aimYaw; }, get heroPosNow() { return heroPosNow; }, get cancelAim() { return cancelAim; }, get planTo() { return planTo; }, usaClique: (n) => entradaSys.usaClique(n), cliqueId: (n) => entradaSys.cliqueId(n), cliquePronto: (n) => entradaSys.cliquePronto(n), soltaGuarda: () => entradaSys.soltaGuarda(), foca: (e) => lockSys.retarget(e as Parameters<typeof lockSys.retarget>[0]), paraCaminho: () => { if (state.path.length) state.path = []; } }); }
 mouseSys ??= mk_mouseSys();
 const { marker, plane } = mouseSys;
 function updateClickMarks(...a: Parameters<ReturnType<typeof createMouseClique>['updateClickMarks']>): ReturnType<ReturnType<typeof createMouseClique>['updateClickMarks']> { return (mouseSys ??= mk_mouseSys()).updateClickMarks(...a); }
@@ -2063,13 +2298,15 @@ let leadX = 0, leadZ = 0, dashT = 0, dashCd = 0, dx0 = 0, dy0 = 0, vel = 0; let 
 let t = 0, wasFull = false, spawnAcc = 0, camX = hero.root.position.x, camZ = hero.root.position.z;
 const heroPos = new THREE.Vector3();
 let shown = false, swimAcc = 0;
-const IX = 4000, IZ = 4000;
+const IX = 4000, IZ = 4000; const INT_NPC = new Set(['cervejaria', 'estalagem', 'salao_guildas']);
+/** em que interior com gente o herói está (os NPCs de cada interior dividem as mesmas coordenadas: só vale quem é do interior de agora) */
+function npcInsideId(): string | null { return inside?.canopy ? 'copa' : inside?.hall ? 'hall' : inside?.prop?.shop === 'cervejaria' ? 'tavb' : inside?.prop?.shop === 'estalagem' ? 'inn' : inside?.prop?.shop === 'salao_guildas' ? 'ghall' : null; }
 const fadeEl = document.createElement('div'); fadeEl.id = 'fade'; fadeEl.style.cssText = 'position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:200;transition:opacity .25s';
 fadeEl.innerHTML = '<div class="ldr"><div class="ldr-eye"><i></i></div><b>Atravessando o caminho…</b><small>o mundo se ergue à sua volta</small></div>'; document.body.appendChild(fadeEl);
 /** troca de lugar (fonte, relíquia, casa, cripta): tela de carregamento com o olho girando (animação de CSS: continua mesmo com o jogo ocupado);
     só some quando o mundo novo já foi montado, os shaders compilados e os quadros voltaram a ficar leves */
 let fading = false;
-function withFade(fn: () => void, label?: string, after?: () => void) {
+function withFade(fn: () => void, label?: string, after?: () => void, ready?: () => boolean) {
   if (fading) return; fading = true; const lb = fadeEl.querySelector('b'); if (lb) lb.textContent = label ?? 'Atravessando o caminho…';
   fadeEl.classList.add('on'); fadeEl.style.pointerEvents = 'auto'; fadeEl.style.opacity = '1';
   setTimeout(() => { requestAnimationFrame(() => {
@@ -2077,17 +2314,19 @@ function withFade(fn: () => void, label?: string, after?: () => void) {
     if (!gpuImpl) try { renderer.compile(scene, camera); } catch { /* */ }
     let last = performance.now(), calm = 0; const t0 = last;
     const check = () => { const now = performance.now(), dtm = now - last; last = now; calm = dtm < 45 ? calm + 1 : 0;
-      if (calm >= 6 || now - t0 > 8000) { fadeEl.style.opacity = '0'; fadeEl.style.pointerEvents = 'none'; setTimeout(() => { fadeEl.classList.remove('on'); fading = false; after?.(); }, 260); } else requestAnimationFrame(check); };
+      if ((calm >= 6 && (!ready || ready())) || now - t0 > (ready ? 15000 : 8000)) { fadeEl.style.opacity = '0'; fadeEl.style.pointerEvents = 'none'; setTimeout(() => { fadeEl.classList.remove('on'); fading = false; after?.(); }, 260); } else requestAnimationFrame(check); };
     requestAnimationFrame(check); }); }, 260);
 }
+/** 13/11: o Grande Salão do Tear ainda não tem prédio próprio: entra-se pelo Salão das Guildas de Karmika (ao sair, sai-se na porta do Salão) */
+function entrarTear() { const p = city.props.find((q) => q.kind === 'house' && q.shop === 'salao_guildas'); if (!p) return false; if (inside) scene.remove(inside.int.group); enterHouse({ ...p, shop: 'salao_tear' }); return true; }
 function enterHouse(p: (typeof city.props)[number]) {
   withFade(() => {
     const holy = p.kind === 'temple' || p.kind === 'church';
     /* 02/11: cada loja tem o interior do seu ofício (antes alquimista/mercador/domador/oficina/estábulo abriam numa sala de casa comum) */
-    const SHOP_INT: Record<string, number> = { pocoes: 10, mercador_cidade: 11, domador: 12, tec_fio: 13, tec_desf: 13, estabulo: 14, taverna: 4, armeiro: 5, armaduras: 5, cervejaria: 15 }; /* 08/11: a cervejaria é o salão de cerveja dos anões */
+    const SHOP_INT: Record<string, number> = { pocoes: 10, mercador_cidade: 11, domador: 12, tec_fio: 13, tec_desf: 13, estabulo: 14, taverna: 4, armeiro: 5, armaduras: 5, cervejaria: 15, estalagem: 16, salao_guildas: 17, salao_tear: 18 }; /* 08/11: a cervejaria é o salão de cerveja dos anões */
     /* academias de Askavik (e a do Porto) por dentro: Escola de Guerra 10→30, Forja 11→31, Universidade 12→32; Igreja Kármica e templos: nave 6 */
     const ACAD_INT: Record<number, number> = { 10: 30, 11: 31, 12: 32 };
-    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : p.kind === 'temple' && p.variant !== undefined && ACAD_INT[p.variant] !== undefined ? ACAD_INT[p.variant] : 6) : p === construcaoSys.homeProp || otherDecor.has(p) ? 20 : p.shop && SHOP_INT[p.shop] !== undefined ? SHOP_INT[p.shop] : p.variant === 9 ? 0 : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy); /* 28/10: a casa do jogador começa vazia (só cama e correio): o resto é a mobília dele */
+    const int = buildInterior(holy ? (p.kind === 'church' ? 7 : p.kind === 'temple' && p.variant !== undefined && ACAD_INT[p.variant] !== undefined ? ACAD_INT[p.variant] : 6) : p === construcaoSys.homeProp || otherDecor.has(p) ? 20 : p.shop && SHOP_INT[p.shop] !== undefined ? SHOP_INT[p.shop] : p.variant === 9 ? 0 : (p.variant ?? 0), p.w * T, p.h * T, p.gx * 31 + p.gy, p.style ?? 1); /* 10/11: o povo da casa (élfica redonda, anã de pedra) */ /* 28/10: a casa do jogador começa vazia (só cama e correio): o resto é a mobília dele */
     if (p === construcaoSys.homeProp) { /* a casa do jogador: cama (descansa e cura) e a caixa de correio que guarda itens (o cofre), encostadas na parede do fundo */
       const bx = 1.6, bz = 1.5, mk = (g: THREE.BufferGeometry, c: number, x: number, y: number, z: number) => { const m = new THREE.Mesh(g, new THREE.MeshToonMaterial({ color: c })); m.position.set(x, y, z); int.group.add(m); return m; };
       mk(new THREE.BoxGeometry(1.5, 0.4, 2.3), 0x6a4a2c, bx, 0.2, bz); mk(new THREE.BoxGeometry(1.4, 0.18, 2.1), 0xe8dcc8, bx, 0.49, bz); mk(new THREE.BoxGeometry(1.4, 0.06, 1.3), 0x8a2a2a, bx, 0.6, bz + 0.35); mk(new THREE.BoxGeometry(1.0, 0.16, 0.45), 0xf4ecdc, bx, 0.63, bz - 0.75); mk(new THREE.BoxGeometry(1.5, 1.0, 0.1), 0x5a3a20, bx, 0.5, bz - 1.15);
@@ -2098,7 +2337,7 @@ function enterHouse(p: (typeof city.props)[number]) {
     objs.group.visible = false; decoOut.visible = false; decoOthers.visible = false; casteloSys.sitting = null; for (const n of npcSys.npcs) n.hero.root.visible = false; if (p === construcaoSys.homeProp) decoInterior(); else if (otherDecor.has(p)) decoInterior(otherDecor.get(p));
     state.fx = (IX + int.W / 2) / T; state.fy = (IZ + int.D - 0.6) / T; state.path = [];
     heroY = 0; camX = IX + int.W / 2; camZ = IZ + int.D / 2; camY = 0;
-    game.logMsg(p.kind === 'temple' ? 'Templo Kármico' : p.kind === 'church' ? 'Igreja Abandonada — o ar é frio aqui' : p.variant === 4 ? 'Taverna Karmika' : p.variant === 5 ? 'Loja do Armeiro' : 'Você entra na casa', '#f4e6b8');
+    game.logMsg(p.kind === 'temple' ? 'Templo Kármico' : p.kind === 'church' ? 'Igreja Abandonada — o ar é frio aqui' : p.shop === 'estalagem' ? 'Estalagem de Karmika' : p.shop === 'salao_guildas' ? 'Salão das Guildas de Karmika' : p.shop === 'salao_tear' ? 'O Grande Salão do Tear: a Távola Kármika e o Tear a Vapor' : p.variant === 4 ? 'Taverna Karmika' : p.variant === 5 ? 'Loja do Armeiro' : 'Você entra na casa', '#f4e6b8');
   });
 }
 /* CATEDRAL ABANDONADA: a nave, as 3 criptas, a Porta do Bispo (3 selos) e o salão do Bispo; entrar e descer nas criptas, o sermão e o espírito. Saiu do main.ts (02/11). → sistemas/catedral.ts */
@@ -2135,6 +2374,7 @@ function updateBlood(...a: Parameters<ReturnType<typeof createCatedral>['updateB
 
 /* MASMORRAS, CAVERNAS E SUBSOLOS: entrar e sair, os andares, os chefes e o mapa de cada uma (masmorras.ts monta, dungeon3d.ts desenha). Saiu do main.ts (02/11). → sistemas/masmorras-entrar.ts */
 export interface MasmorrasEntrarCtx {
+  bossChest(x: number, z: number, y: number, items: import('./loot').Gear[], gold: number): boolean;
   readonly scene: Widen<typeof scene>;
   readonly city: Widen<typeof city>;
   readonly game: Widen<typeof game>;
@@ -2178,7 +2418,7 @@ export interface MasmorrasEntrarCtx {
   readonly hero: Hero3D;
 }
 var dgSys: ReturnType<typeof createMasmorrasEntrar>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_dgSys() { return createMasmorrasEntrar({ get scene() { return scene; }, get city() { return city; }, get game() { return game; }, get particles() { return particles; }, get audio() { return audio; }, get heroPosNow() { return heroPosNow; }, get camera() { return camera; }, get canvas() { return canvas; }, get netRef() { return netRef; }, get chat() { return chat; }, get quests() { return quests; }, get feats() { return feats; }, get heroicAct() { return heroicAct; }, get profile() { return profile; }, get updateWho() { return updateWho; }, get opts() { return opts; }, get state() { return state; }, get moveSlide() { return moveSlide; }, get free() { return free; }, get dlg() { return dlg; }, get openDlg() { return openDlg; }, get solids() { return solids; }, get withFade() { return withFade; }, get inside() { return inside; }, set inside(v) { inside = v; }, get IX() { return IX; }, get IZ() { return IZ; }, get objs() { return objs; }, get casteloSys() { return casteloSys; }, get npcSys() { return npcSys; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get cryptInt() { return catedralSys.cryptInt; }, get CINE_MARKS() { return CINE_MARKS; }, get enterCrypt() { return enterCrypt; }, get portraitOf() { return portraitOf; }, get bishop() { return catedralSys.bishop; }, get bishopPhase() { return catedralSys.bishopPhase; }, set bishopPhase(v) { catedralSys.bishopPhase = v; }, get sermonT() { return catedralSys.sermonT; }, set sermonT(v) { catedralSys.sermonT = v; }, get hero() { return hero; } }); }
+function mk_dgSys() { return createMasmorrasEntrar({ get scene() { return scene; }, /* 12/11: o baú do chefe da masmorra */ bossChest: (x: number, z: number, y: number, items: import('./loot').Gear[], gold: number) => espolio.bossChest(x, z, y, items, gold), get city() { return city; }, get game() { return game; }, get particles() { return particles; }, get audio() { return audio; }, get heroPosNow() { return heroPosNow; }, get camera() { return camera; }, get canvas() { return canvas; }, get netRef() { return netRef; }, get chat() { return chat; }, get quests() { return quests; }, get feats() { return feats; }, get heroicAct() { return heroicAct; }, get profile() { return profile; }, get updateWho() { return updateWho; }, get opts() { return opts; }, get state() { return state; }, get moveSlide() { return moveSlide; }, get free() { return free; }, get dlg() { return dlg; }, get openDlg() { return openDlg; }, get solids() { return solids; }, get withFade() { return withFade; }, get inside() { return inside; }, set inside(v) { inside = v; }, get IX() { return IX; }, get IZ() { return IZ; }, get objs() { return objs; }, get casteloSys() { return casteloSys; }, get npcSys() { return npcSys; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get cryptInt() { return catedralSys.cryptInt; }, get CINE_MARKS() { return CINE_MARKS; }, get enterCrypt() { return enterCrypt; }, get portraitOf() { return portraitOf; }, get bishop() { return catedralSys.bishop; }, get bishopPhase() { return catedralSys.bishopPhase; }, set bishopPhase(v) { catedralSys.bishopPhase = v; }, get sermonT() { return catedralSys.sermonT; }, set sermonT(v) { catedralSys.sermonT = v; }, get hero() { return hero; } }); }
 dgSys ??= mk_dgSys();
 const { dgs, SEALS, HALL_GATE, TREE_GATE, brain } = dgSys;
 function dgInst(...a: Parameters<ReturnType<typeof createMasmorrasEntrar>['dgInst']>): ReturnType<ReturnType<typeof createMasmorrasEntrar>['dgInst']> { return (dgSys ??= mk_dgSys()).dgInst(...a); }
@@ -2260,7 +2500,22 @@ function updateQuestMarks(...a: Parameters<ReturnType<typeof createLetreiro>['up
 function curseK(...a: Parameters<ReturnType<typeof createLetreiro>['curseK']>): ReturnType<ReturnType<typeof createLetreiro>['curseK']> { return (letreiroSys ??= mk_letreiroSys()).curseK(...a); }
 
 /* FONTE-LAR, MORTE E RENASCIMENTO: a fonte de casa, voltar ao lar, o painel da morte, a espera do servidor, o lugar sagrado, o limiar e o retrato da cabeça. Saiu do main.ts (02/11). → sistemas/lar-e-morte.ts */
+/* 17/11: a Costa dos Naufrágios (naufragios/): cascos encalhados na areia e na água rasa, sempre nos mesmos lugares */
+const naufragiosSys = createNaufragios({ scene, largura: MAP_W, altura: city.map.length, piso: (x, y) => city.map[y]?.[x], regiao: (x, y) => regionAt(x, y).name, praia: (x, y) => praiaK(x, y), chao: (x, z) => heightAt(x, z), agua: WL, T,
+  ninhos: city.spawns.map((q) => ({ x: (q as { x: number }).x, y: (q as { y: number }).y })), fecha: (x, y) => { if (city.map[y]?.[x] === 'grass') (city.map as string[][])[y][x] = 'wall'; }, heroi: () => ({ x: state.fx * T, z: state.fy * T }) });
+/* 17/11: a fauna de cenário (fauna/): aves, coelhos, peixes, corujas e cachorros em volta de quem joga */
+const arvGrade = new Map<number, { x: number; y: number; alt: number }[]>(); for (const p of city.props) if (p.kind === 'tree') { const k = (p.gy >> 4) * 4096 + (p.gx >> 4); let l = arvGrade.get(k); if (!l) arvGrade.set(k, l = []); l.push({ x: p.gx, y: p.gy, alt: p.height ?? 6 }); }
+const faunaSys = createFauna({ scene, heroi: () => ({ x: state.fx * T, z: state.fy * T }), noite: () => state.night, chao: (x, z) => heightAt(x, z), agua: () => WL, piso: (tx, ty) => city.map[ty]?.[tx], bioma: (tx, ty) => biomeAt(tx, ty),
+  vila: (tx, ty) => city.settlements.find((q) => Math.hypot(q.x - tx, q.y - ty) < q.radius) ?? null,
+  arvores: (tx, ty, r) => { const o: { x: number; y: number; alt: number }[] = []; for (let cy = (ty - r) >> 4; cy <= (ty + r) >> 4; cy++) for (let cx = (tx - r) >> 4; cx <= (tx + r) >> 4; cx++) for (const q of arvGrade.get(cy * 4096 + cx) ?? []) if (Math.hypot(q.x - tx, q.y - ty) <= r) o.push(q); return o; },
+  respingo: (x, y, z) => { for (let i = 0; i < 8; i++) particles.spawn(x, y + 0.05, z, { vx: (Math.random() - 0.5) * 1.6, vy: 1.2 + Math.random() * 1.4, vz: (Math.random() - 0.5) * 1.6, life: 0.55, s0: 0.12, s1: 0.03, c0: 0xffffff, c1: 0x9ad0ff, a: 0.9, g: 6 } as never); },
+  parado: () => !!inside || !!cinemaSys?.cine });
+/* 17/11: a flora miúda por paisagem (flora/): samambaia, cogumelo, nenúfar, arbusto de gelo, galho seco, folha larga, flor que brilha, concha */
+const floraSys = createFlora({ scene, heroi: () => ({ x: state.fx * T, z: state.fy * T }), chao: (x, z) => heightAt(x, z), agua: () => WL, piso: (tx, ty) => city.map[ty]?.[tx], bioma: (tx, ty) => biomeAt(tx, ty), noite: () => state.night });
+/* 17/11: os despojos da morte do Limiar (morte/despojos.ts e sistemas/despojos-mundo.ts) */
+const despojosSys = createDespojosMundo({ get scene() { return scene; }, despoja: (cai) => inv.despoja(cai), devolve: (p) => inv.devolve(p), log: (t, c) => game.logMsg(t, c), heroi: () => ({ x: state.fx * T, z: state.fy * T }), morto: () => !!game.st.dead, dentro: () => !!inside, nome: () => profile?.name ?? '' });
 export interface LarMorteCtx {
+  readonly despojos: ReturnType<typeof createDespojosMundo>;
   readonly profile: Profile | null;
   readonly city: Widen<typeof city>;
   readonly state: Widen<typeof state>;
@@ -2296,7 +2551,7 @@ export interface LarMorteCtx {
   readonly renderer: Widen<typeof renderer>;
 }
 var larSys: ReturnType<typeof createLarMorte>; /* criado aqui, na ordem de antes; se alguém chamar uma função dele antes, nasce na hora */
-function mk_larSys() { return createLarMorte({ get profile() { return profile; }, get city() { return city; }, get state() { return state; }, get objs() { return objs; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get feats() { return feats; }, get game() { return game; }, get inside() { return inside; }, set inside(v) { inside = v; }, get dgs() { return dgs; }, get cryptInt() { return catedralSys.cryptInt; }, set cryptInt(v) { catedralSys.cryptInt = v; }, get bishop() { return catedralSys.bishop; }, set bishop(v) { catedralSys.bishop = v; }, get spirit() { return dgSys.spirit; }, set spirit(v) { dgSys.spirit = v; }, get scene() { return scene; }, get decoOut() { return decoOut; }, get decoOthers() { return decoOthers; }, get decoCancel() { return decoCancel; }, get npcSys() { return npcSys; }, get particles() { return particles; }, get withFade() { return withFade; }, get soul() { return soul; }, get limiar() { return limiar; }, get audio() { return audio; }, get hero() { return hero; }, get net() { return net; }, get hub() { return hub; }, get quests() { return quests; }, get inv() { return inv; }, get showCreate() { return showCreate; }, get skinModel() { return peleSys.skinModel; }, get renderer() { return snapR(); } }); }
+function mk_larSys() { return createLarMorte({ get despojos() { return despojosSys; }, get profile() { return profile; }, get city() { return city; }, get state() { return state; }, get objs() { return objs; }, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get feats() { return feats; }, get game() { return game; }, get inside() { return inside; }, set inside(v) { inside = v; }, get dgs() { return dgs; }, get cryptInt() { return catedralSys.cryptInt; }, set cryptInt(v) { catedralSys.cryptInt = v; }, get bishop() { return catedralSys.bishop; }, set bishop(v) { catedralSys.bishop = v; }, get spirit() { return dgSys.spirit; }, set spirit(v) { dgSys.spirit = v; }, get scene() { return scene; }, get decoOut() { return decoOut; }, get decoOthers() { return decoOthers; }, get decoCancel() { return decoCancel; }, get npcSys() { return npcSys; }, get particles() { return particles; }, get withFade() { return withFade; }, get soul() { return soul; }, get limiar() { return limiar; }, get audio() { return audio; }, get hero() { return hero; }, get net() { return net; }, get hub() { return hub; }, get quests() { return quests; }, get inv() { return inv; }, get showCreate() { return showCreate; }, get skinModel() { return peleSys.skinModel; }, get renderer() { return snapR(); } }); }
 larSys ??= mk_larSys();
 const { originName, srvWait, HOME_KEY, defaultHome } = larSys;
 function leaveInteriorNow(...a: Parameters<ReturnType<typeof createLarMorte>['leaveInteriorNow']>): ReturnType<ReturnType<typeof createLarMorte>['leaveInteriorNow']> { return (larSys ??= mk_larSys()).leaveInteriorNow(...a); }
@@ -2412,6 +2667,7 @@ function openRelics(...a: Parameters<ReturnType<typeof createReliquias>['openRel
 
 /* 07/11: os navios da Companhia de Latão (cais no continente e nas ilhas) — criado na primeira vez que o quadro pede */
 let naviosSys: ReturnType<typeof createNavios> | null = null, faroisSys: ReturnType<typeof createFarois> | null = null;
+let terrenosSys: ReturnType<typeof createTerrenosGuilda> | undefined; /* 16/11: o marco de cada terreno de guilda */
 let telefSys: ReturnType<typeof createTeleferico> | null = null;
 const teleferico = () => (telefSys ??= createTeleferico({ scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; } }));
 const navios = () => (naviosSys ??= createNavios({ hour: () => gameHour(), scene, city, game, state, withFade, objs, get heroY() { return heroY; }, set heroY(v) { heroY = v; }, get camX() { return camX; }, set camX(v) { camX = v; }, get camZ() { return camZ; }, set camZ(v) { camZ = v; }, get camY() { return camY; }, set camY(v) { camY = v; }, get inside() { return inside; }, get combatMode() { return entradaSys.combatMode; } }));
@@ -2422,22 +2678,29 @@ let interIdx: Map<number, (typeof city.props)[number][]> | null = null, interN =
 function interNear(hx: number, hz: number) { if (!interIdx || interN !== city.props.length) { interIdx = new Map(); interN = city.props.length; for (const p of city.props) { if (!INTER_KINDS.has(p.kind)) continue; const k = ((p.gy + p.h / 2) >> 3) * 4096 + ((p.gx + p.w / 2) >> 3); (interIdx.get(k) ?? interIdx.set(k, []).get(k)!).push(p); } }
   const cx = Math.floor(hx / T) >> 3, cy = Math.floor(hz / T) >> 3, out: (typeof city.props)[number][] = []; for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) { const l = interIdx.get(y * 4096 + x); if (l) for (const p of l) out.push(p); } return out; }
 function findInter(): Inter | null {
-  const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null; const NI = interNear(hx, hz);
+  const hx = state.fx * T, hz = state.fy * T; let best: Inter | null = null; const NI = interNear(hx, hz); /* 11/11 (travada de 778 ms aqui, vista no /travadas do Erling): cada trecho que passar de 8 ms ganha nome próprio no registro */ const fi = (k: string) => { if (performance.now() - pmLast > 8) pm('dica E · ' + k); }; fi('índice');
   const add = (d: number, max: number, label: string, act: () => void) => { if (d < max && (!best || d < best.d)) best = { d, label, act }; };
-  { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); }
-  if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); const tl = teleferico().interact(hx, hz); if (tl) add(tl.d - 1, 4.5, tl.label, tl.act); }
-  { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); }
-  { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); }
-  { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); }
+  { const bw = quests.biteWant(); if (bw.length && kitRace() === 'vam') { const be = game.biteNear(bw); if (be) add(Math.hypot(be.pos.x - hx, be.pos.z - hz) - 8, 3, `E — Morder ${be.def.name}`, () => { const ty = be.type; if (game.bite(be)) quests.onBite(ty); }); } } /* 12/11: a mordida do vampiro (missões de karma) */
+  { const cg = grupoSys.erguivel(); if (cg) add(cg.d - 9, 5, cg.why ? `Erguer ${cg.name}: ${cg.why}` : `E — Erguer ${cg.name} (${cg.nome})`, () => { const why = grupoSys.erguer(); if (why) game.logMsg(`Não dá: ${why}.`, '#ff9a8a'); }); } /* 12/11: o companheiro caído vem antes de tudo */
+  { const ci = caravans.interact(hx, hz); if (ci) add(ci.d - 0.5, 4.5, ci.label, ci.act); } fi('caravanas');
+  if (!inside) { const ni = navios().interact(hx, hz); if (ni) add(ni.d - 1, 7, ni.label, ni.act); const tl = teleferico().interact(hx, hz); if (tl) add(tl.d - 1, 4.5, tl.label, tl.act); } fi('navios/teleférico');
+  { const ci = espolio.interact(hx, hz); if (ci) add(ci.d - 0.8, 3.2, ci.label, ci.act); } fi('espólio');
+  { const ei = eventos.interact(hx, hz); if (ei) add(ei.d - 0.6, 4.5, ei.label, ei.act); } fi('eventos');
+  { const si = secrets.interact(hx, hz, instintoSys.instinctOn, digCache); if (si) add(si.d - 0.4, 3, si.label, si.act); } fi('segredos');
+  { const oi = ormund.interact(hx, hz); if (oi) add(oi.d, 2.2, `📜 ${oi.label}`, oi.act); } fi('ormund');
   for (const n of npcSys.npcs) {
-    const nm = n.def.name, dN = Math.hypot(n.pos.x - hx, n.pos.z - hz); if (dN > 4) continue; /* 09/11 (revisão de FPS): só os NPCs perto passam pela consulta de missões — antes eram todos do mundo, 10× por segundo (um tranco a cada 0,12 s) */
+    const nm = n.def.name, dN = Math.hypot(n.pos.x - hx, n.pos.z - hz); if (dN > 2.8) continue; /* 15/11 (Erling: "dá para falar com eles de muito longe"): o alcance da conversa caiu de 3,4 m para 2,3 m */ if ((n.def.inside ?? null) !== npcInsideId()) continue; /* 12/11: quem é de outro interior (ou de fora) não conversa através da parede */ /* 09/11 (revisão de FPS): só os NPCs perto passam pela consulta de missões — antes eram todos do mundo, 10× por segundo (um tranco a cada 0,12 s) */
     if (n.def.night && !n.hero.root.visible) { add(dN + 1, 4, `🌙 ${nm} só recebe à noite. Volte quando escurecer.`, () => game.logMsg(`🌙 Um criado de libré escura: “A senhora ${nm.split(' ').slice(-1)[0]} recebe depois do pôr do sol.”`, '#c98a9a')); continue; }
     const ti = quests.turnins(nm), of = quests.offers(nm);
-    add(dN, 3.4, ti.length ? `E — Entregar: ${ti[0].name}` : of.length ? `E — Missão: ${of[0].name}` : `E — Falar com ${nm}`, () => talkTo(n));
-  }
+    /* 11/11 (Erling: "não consigo falar com os personagens perto da fonte, a ação da fonte cobre"): gente vem antes de coisa. A pessoa ao alcance ganha da
+       fonte, do banco, do quadro e do resto; só perde quando o herói está de costas para ela (aí vale o que está na frente dele: a fonte, o banco…) */
+    const fN = dN > 0.01 ? ((n.pos.x - hx) * Math.sin(hero.facing) + (n.pos.z - hz) * Math.cos(hero.facing)) / dN : 1, frente = dN < 2.3 && (fN > -0.5 || dN < 1.2);
+    add(frente ? dN - 4 : dN, frente ? 0 : 2.3, ti.length ? `E — Entregar: ${ti[0].name}` : of.length ? `E — Missão: ${of[0].name}` : `E — Falar com ${nm}`, () => talkTo(n));
+  } fi('npcs');
   if (!inside) {
     const gx = Math.floor(hx / T), gy = Math.floor(hz / T);
-    for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
+    if (!festaAqui()) for (const vo of vistaObjs) { const d = Math.hypot(vo.x - hx, vo.z - hz); if (d < vo.r) add(d - 1, 3.2, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}`, () => useVista(vo.v)); }
+    for (const q of presosSys.perto(hx, hz)) add(q.d - 1.2, 3, 'E — Cortar a teia e soltar quem está preso', () => presosSys.soltar(q.p));
     for (const en of dgs.entrances) { const d = Math.hypot((en.x + 0.5) * T - hx, (en.y + 0.5) * T - hz), ds = en.sign ? Math.hypot(en.sign.x - hx, en.sign.z - hz) : 99, dd = Math.min(d - 1.5, ds - 1.2); if (d < 5.5 || ds < 4) add(dd, 4.2, `E — ${en.d.name}: ler a placa e escolher a dificuldade (${en.d.players})`, () => dungeonBoard(en)); }
     /* placas de estrada (Erling, 26/10: "ao apertar deveríamos ver o que elas estão dizendo, os lugares que elas apontam") */
     for (const sg of city.signs) { const sx = (sg.x + 0.5) * T, sz = (sg.y + 0.5) * T, d = Math.hypot(sx - hx, sz - hz); if (d < 3.2) add(d - 0.6, 2.8, 'E — Ler a placa da estrada', () => readSign(sg)); }
@@ -2455,9 +2718,13 @@ function findInter(): Inter | null {
     }
     for (const e of game.enemies.list) { const ec = e as typeof e & { corpse?: number; skinned?: boolean }; if (e.state !== 'dead' || !e.active || !ec.corpse || ec.skinned || !SKIN[e.type]) continue; const dC = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (dC > 3.2) continue;
       const S = SKIN[e.type]!, kn = inv.tool('knife'); add(dC - 0.3, 3.0, !kn ? `${e.def.name} — precisa de uma faca de caça` : kn.tier < (S.tier ?? 1) ? `🔒 ${e.def.name} — só uma faca de prata (★★★★) atravessa esse couro` : `E — Esfolar ${e.def.name} · ${kn.name}`, () => { if (kn && kn.tier >= (S.tier ?? 1)) startWork('skin', e, e.pos.x, e.pos.z); else game.logMsg(!kn ? '🔪 Sem uma faca, a carcaça fica para os corvos.' : '🔪 A lâmina escorrega no couro do lobisomem como em pedra. Só a prata.', '#ff9a8a'); }); }
-    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(fishTarget(hx, hz) ?? wt!); }); }
-  } else if (inside.prop.variant === 5 || inside.prop.variant === 4) add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
+    if (inv.tool('rod') && !pescaSys.fishing) { let wt: { x: number; z: number } | null = null, wd = 99; for (let y = gy - 3; y <= gy + 3; y++) for (let x = gx - 3; x <= gx + 3; x++) if (city.map[y]?.[x] === 'water') { const d = Math.hypot((x + 0.5) * T - hx, (y + 0.5) * T - hz); if (d < wd) { wd = d; wt = { x: (x + 0.5) * T, z: (y + 0.5) * T }; } } if (wt && !swimmingNow) add(wd + 1, 9, 'E — Pescar', () => { startFishing(fishTarget(hx, hz) ?? wt!); }); } fi('mundo aberto');
+  } else if (inside.prop.variant === 5 || inside.prop.variant === 4 || inside.prop.shop === 'estalagem') add(Math.hypot(hx - IX - inside.int.W / 2, hz - IZ - inside.int.D * (inside.prop.variant === 5 ? 0.5 : 0.3)), 3.4, inside.prop.variant === 5 ? 'E — Comprar equipamentos' : 'E — Balcão da taverna', () => inv.openShop(inside!.prop.variant === 5 ? 'armeiro' : 'mercador'));
   if (dgSys.spirit) add(Math.hypot(hx - dgSys.spirit.x, hz - dgSys.spirit.z) - 0.6, 3.2, 'E — Falar com Irmã Ysolde', talkSpirit);
+  /* 13/11: do Salão das Guildas desce-se ao Grande Salão do Tear (a passagem fica à direita de quem entra) */
+  if (inside && inside.prop.shop === 'salao_guildas') { const ins = inside; add(Math.hypot(hx - IX - (ins.int.W / 2 + 4.4), hz - IZ - (ins.int.D - 1.4)) - 2.6, 0.9, 'E — Descer ao Grande Salão do Tear', () => entrarTear()); /* a soldada da porta fica ao lado: a passagem ganha dela quando o herói está em cima do aro */ }
+  /* 13/11: no estábulo, o jogador escova e brinca com os animais das baias */
+  if (inside?.int.bichos) for (const b of inside.int.bichos) add(Math.hypot(hx - (IX + b.x), hz - (IZ + b.z)), 1.7, `E — Escovar e brincar: ${b.nome}`, () => { const F = ['relincha baixinho e encosta o focinho em você.', 'fecha os olhos enquanto a escova passa.', 'bate o casco no chão, pedindo mais.', 'cheira a sua mão procurando uma maçã.', 'sacode a crina, satisfeito.']; hero.act('herb', true); game.logMsg(`🪮 ${b.nome} ${F[Math.floor(Math.random() * F.length)]}`, '#f2d9a0'); const r0 = b.root.rotation.z; let k = 0; const id = setInterval(() => { k++; b.root.rotation.z = r0 + Math.sin(k * 0.9) * 0.05; b.root.position.y = Math.abs(Math.sin(k * 0.45)) * 0.08; if (k > 22) { clearInterval(id); b.root.rotation.z = r0; b.root.position.y = 0; } }, 50); });
   if (!inside) for (const p of otherDecor.keys()) { const hd = houseDoor(p.variant ?? 0, p.w * T, p.h * T), dx = p.gx * T + hd.x, dz = p.gy * T + hd.z + 0.9; add(Math.hypot(hx - dx, hz - dz), 2.2, `E — Visitar a ${p.label ?? 'casa'}`, () => enterHouse(p)); }
   { const dn = decoNear(hx, hz); if (dn) { const it = obras.decor[dn.k]; add(dn.d, 1.5, `E — Guardar ${DECOR[it.id]?.icon ?? ''} ${DECOR[it.id]?.name ?? ''} na mochila`, () => decoPickup(dn.k)); } }
   if (inside && inside.prop === construcaoSys.homeProp) { const hm = (inside.int as typeof inside.int & { home?: { bed: { x: number; z: number }; box: { x: number; z: number } } }).home; if (hm) { const lx0 = hx - IX, lz0 = hz - IZ;
@@ -2470,6 +2737,15 @@ function findInter(): Inter | null {
     if (ci.well) add(Math.hypot(lx - ci.well.x, lz - ci.well.z) - 1.2, 2.6, 'E — Olhar o Poço da Visão da Corte', () => { chat.sys('O sangue no poço mostra a colina inteira: cada morcego, cada caçador, cada convidado que sobe o caracol.'); });
     if (ci.throne) add(Math.hypot(lx - ci.throne.x, lz - ci.throne.z), 3.2, 'E — Ajoelhar diante do Conde Vladislav', () => { const vam = profile?.path === 'vam'; chat.sys(vam ? 'Vladislav: "Levante-se. A Corte não ajoelha; a Corte espera. Quando a sua sede for educada, a piscina será sua."' : 'Vladislav: "Um vivo, no meu salão. Ou você tem muita coragem, ou alguém lá embaixo dormiu no posto. Fale com Lady Mirela, em Corvoscuro, se quer pertencer à noite."'); });
   }
+  { /* 10/11 A BIGORNA MOLHADA (Erling: "comprar bebidas e beber, reservar uma mesa para amigos"): sentar em qualquer banco ou cadeira livre e
+       reservar a mesa redonda para o grupo (a placa mostra o seu nome; vale uma hora) */
+    const IN = ins.int; if (IN.seats?.length && !casteloSys.sitting) { let bs: (typeof IN.seats)[number] | null = null, bd = 9; for (const s0 of IN.seats) { const d0 = Math.hypot(lx - s0.x, lz - s0.z); if (d0 < bd && !npcSys.npcs.some((n) => n.def.seat && Math.hypot(n.pos.x - IX - s0.x, n.pos.z - IZ - s0.z) < 0.4)) { bd = d0; bs = s0; } }
+      if (bs) { const s0 = bs; add(bd + 0.3, 1.3, 'E — Sentar', () => { casteloSys.sitting = { x: (IX + s0.x) / T, y: (IZ + s0.z) / T, yaw: s0.yaw, h: s0.h }; game.logMsg('🍺 Você puxa o banco e senta. A Hildigunn, no balcão, vende chope e hidromel: compre e beba aqui mesmo.', '#ffe08a'); }); } }
+    if (IN.reserveAt) { const rv = tavReserve(), me = profile?.name || 'Caminhante', mine = !!rv && rv.by === me, key = rv ? rv.by : '';
+      if (IN.reserveSign && IN.reserveSign.userData.k !== key) { IN.reserveSign.userData.k = key; IN.reserveLabel?.(rv ? 'Reservada' : 'Mesa livre', rv ? `${rv.by} e amigos` : 'E para reservar'); }
+      const dR = Math.hypot(lx - IN.reserveAt.x, lz - IN.reserveAt.z) - 1.2; if (dR < 2.5) add(dR, 1.8, mine ? `🍺 Mesa reservada para você e seus amigos (mais ${Math.max(1, Math.ceil((rv!.until - Date.now()) / 60000))} min)` : rv ? `🍺 Mesa reservada por ${rv.by}` : 'E — Reservar a mesa redonda para o seu grupo (20 moedas, uma hora)', () => {
+        if (rv) return; if (game.st.gold < 20) { game.logMsg('A Hildigunn olha a sua bolsa: "Vinte moedas. Sem vinte, a mesa é de quem chegar."', '#ff9a8a'); return; }
+        game.st.gold -= 20; try { localStorage.setItem('karmika.tav.mesa', JSON.stringify({ by: me, until: Date.now() + 3600e3 })); } catch { /* */ } audio.coins?.(1); game.logMsg('🍺 Mesa redonda reservada por uma hora. A placa tem o seu nome: chame os amigos.', '#ffe08a'); }); } }
   if (ins.dg) dgs.interactions(hx, hz, add);
   if (ins.crypt && catedralSys.cryptInt) {
     const open = bloodFull(ins.crypt) || localStorage.getItem('karmika.crypt.done') === '1', f = ins.crypt;
@@ -2490,7 +2766,7 @@ function findInter(): Inter | null {
   if (!casteloSys.sitting) for (const p of NI) if (p.kind === 'fountain') { const fx = (p.gx + p.w / 2) * T, fz = (p.gy + p.h / 2) * T, isHome = Math.abs(larSys.home.x - (p.gx + p.h / 2)) < 0.6 && Math.abs(larSys.home.y - (p.gy + p.h + 1)) < 0.6;
     /* a fonte que também é Fonte da Visão: E joga a moeda (a animação e a história voltam); Shift+E torna a fonte o seu lar */
     const vo = vistaObjs.find((q) => Math.hypot(q.x - fx, q.z - fz) < 4); const df = Math.hypot(fx - hx, fz - hz) - p.w;
-    if (vo) { add(df - 0.2, 2.8, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}${isHome ? ' · ⛲ sua fonte-lar' : ' · Shift+E: tornar meu lar'}`, () => { if (cinemaSys.shiftHeld && !isHome) setHome(p); else useVista(vo.v); }); continue; }
+    if (vo && !festaAqui()) { add(df - 0.2, 2.8, `E — Jogar uma moeda na Fonte da Visão${vistaSeen.has(vo.v.id) ? '' : ' ✦'}${isHome ? ' · ⛲ sua fonte-lar' : ' · Shift+E: tornar meu lar'}`, () => { if (cinemaSys.shiftHeld && !isHome) setHome(p); else useVista(vo.v); }); continue; }
     add(df, 2.6, isHome ? '⛲ Esta é sua fonte-lar' : 'E — Tornar esta fonte meu lar', () => { if (!isHome) setHome(p); }); }
   for (const p of NI) if (p.kind === 'vault') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; add(Math.hypot(bx - hx, bz - hz), 2.2, 'E — Baú do Caminhante', () => inv.openVault()); }
   for (const p of NI) if (p.kind === 'mailbox') { const bx = (p.gx + 0.5) * T, bz = (p.gy + 0.5) * T; const u = mail.unread; add(Math.hypot(bx - hx, bz - hz), 2.2, `E — Caixa de Correio${u ? ` (${u} nova${u > 1 ? 's' : ''})` : ''}`, () => mail.open()); }
@@ -2596,7 +2872,7 @@ function featsTick(dt: number) { featT -= dt; if (featT > 0) return; featT = 1; 
   feats.max('eqslots', Object.values(inv.eq).filter(Boolean).length); feats.max('bags', (inv as unknown as { bagCount?: () => number }).bagCount?.() ?? 0); feats.max('pets', inv.has('pet_fox') || inv.has('pet_pup') ? 1 : 0);
   feats.tick(); }
 /** anel dourado sob os bichos que alguma missão ativa pede (matar ou caçar para juntar couro, carne, garra…) */
-function updateQuestRings(dt: number) { qmarkT -= dt; if (qmarkT > 0) return; qmarkT = 0.5; const want = new Set<string>();
+function updateQuestRings(dt: number) { qmarkT -= dt; if (qmarkT > 0) return; qmarkT = 0.5; const want = new Set<string>(); { const bw = quests.biteWant(); if (bw.length) { for (const t of bw) want.add(t); if (kitRace() === 'vam') game.biteStagger(bw); } }
   for (const a of Object.values(quests.q.active) as { prog: number[]; def?: { objs: { kind: string; type?: string; item?: string; n: number }[] } }[]) { const objs = a.def?.objs ?? []; objs.forEach((o, i) => { if ((a.prog[i] ?? 0) >= o.n) return; if (o.kind === 'kill' && o.type) want.add(o.type); if (o.kind === 'collect' && o.item) { const src = DROP_SRC[o.item]; if (Array.isArray(src)) for (const t of src) want.add(t); } }); }
   for (const e of game.enemies.list) { const ee = e as typeof e & { quest?: boolean; qring?: THREE.Mesh }; ee.quest = want.has(e.type) && e.alive; if (ee.qring) ee.qring.visible = false; /* 05/11 (Erling: "não precisa do círculo amarelo; um detalhe em cima do nome, o nome brilhando"): o anel saiu — o aviso agora é o selo dourado sobre o nome (.ebar.quest) */ } }
 const fireflyK = () => 0.05 + 0.12 * forestK + 0.7 * elfK;
@@ -2620,6 +2896,7 @@ function eyeGaze(): { x: number; y: number; kind: 'threat' | 'mouse' | 'move' | 
    e quem está longe nem se nota, porque a luz dela já não chegava na tela. A luz do herói e as de magia ficam sempre. */
 const LUZES_ATIVAS = 14;
 let poolT = 0, poolList: THREE.PointLight[] = [], poolScanT = 0;
+const bootGate = { done: false, t0: 0, nT: -1, nG: -1, still: 0 };
 function lightPool(dt: number) {
   poolScanT -= dt; if (poolScanT <= 0) { poolScanT = 1.5; poolList = []; scene.traverse((o) => { const l = o as THREE.PointLight; if (l.isPointLight && l !== lantern && !(l.userData as { keep?: boolean; gpuPool?: boolean }).keep && !(l.userData as { gpuPool?: boolean }).gpuPool && !(l.userData as { fixedLight?: boolean }).fixedLight) poolList.push(l); /* 03/11: as 24 luzes fixas do WebGPU ficam fora deste rodízio — apagar uma delas mudava o conjunto de luzes e remontava TODOS os materiais (tela preta de 1 s) */
       /* sombra só para o que tem tamanho de fazer sombra: capim, flor, pedrinha e vela não entram no mapa de sombras (eram milhares) */
@@ -2632,6 +2909,7 @@ function lightPool(dt: number) {
 let lastFrameErr = '';
 /* 26/10 (Erling: "não tem por que o jogo não rodar a mais de 200 fps numa 3080 Ti"): limite de FPS escolhido nas opções (o app
    desliga o vsync do Chromium) e um medidor que separa o tempo do quadro em CPU (lógica, desenho) e GPU — para saber onde apertar */
+/** 17/11: a média de placa do último segundo, guardada antes de zerar (o /bench lê daqui) */ const perfUlt = { gpu: -1 };
 let capLast = 0; const perf = { cpu: 0, draw: 0, gpu: -1, n: 0, cpuS: 0, drawS: 0, gpuS: 0, gpuN: 0 };
 const glT = renderer.getContext() as WebGL2RenderingContext, tq = (() => { try { return glT.getExtension('EXT_disjoint_timer_query_webgl2') as { TIME_ELAPSED_EXT: number; GPU_DISJOINT_EXT: number } | null; } catch { return null; } })();
 let tqPend: WebGLQuery | null = null, tqOpen: WebGLQuery | null = null;
@@ -2640,21 +2918,45 @@ function gpuEnd() { if (!tq || !tqOpen) return; glT.endQuery(tq.TIME_ELAPSED_EXT
 function gpuPoll() { if (!tq || !tqPend) return; if (!glT.getQueryParameter(tqPend, glT.QUERY_RESULT_AVAILABLE)) return; const dis = glT.getParameter(tq.GPU_DISJOINT_EXT); if (!dis) { perf.gpuS += glT.getQueryParameter(tqPend, glT.QUERY_RESULT) / 1e6; perf.gpuN++; } glT.deleteQuery(tqPend); tqPend = null; }
 function frame() {
   requestAnimationFrame(frame);
-  const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF;
-  if (socialSys.bootFrames < 12 && ++socialSys.bootFrames === 12) hideBoot(); // o mundo já desenhou alguns quadros de verdade: pode tirar a abertura
+  const nowF = performance.now(); if (opts.cap > 0 && nowF - capLast < 1000 / opts.cap - 0.4) return; capLast = nowF; marcaQuadro(nowF); /* 17/11: percentis do tempo de quadro (desempenho/quadros.ts) */
+  /* 11/11 (Erling: "o jogo entra antes de carregar todas as texturas; tenha certeza de que tudo foi carregado antes de entrar"): a abertura só sai quando
+     o mundo já desenhou 12 quadros, as fotos de textura do Herik chegaram E a placa parou de receber coisa nova (nenhuma textura nem malha nova por
+     1,2 s). Teto de 20 s, para ninguém ficar preso na abertura se alguma coisa nunca chegar. */
+  if (socialSys.bootFrames < 12) socialSys.bootFrames++;
+  else if (!bootGate.done) { const nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, now = performance.now(); if (!bootGate.t0) bootGate.t0 = now;
+    if (nT !== bootGate.nT || nG !== bootGate.nG) { bootGate.nT = nT; bootGate.nG = nG; bootGate.still = now; }
+    if ((photosReady() && now - bootGate.still > 1200) || now - bootGate.t0 > 20000) { bootGate.done = true; hideBoot(); shaderGate?.enable(); } }
   gpuPoll(); const c0 = performance.now();
   try { frameBody(); } catch (e) { const m = String((e as Error).stack || e); if (gpuImpl) gpuFail(m); else if (m !== lastFrameErr) { lastFrameErr = m; kshow('ERRO no frame: ' + m); console.error(e); } } /* nunca travar: um erro num quadro não para o mundo */
   perf.cpuS += performance.now() - c0; perf.n++;
 }
 declare const __BUILD_ID__: string;
 const __BUILD__ = typeof __BUILD_ID__ !== 'undefined' ? __BUILD_ID__ : 'dev';
-let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0;
+let fpsN = 0, fpsT = 0, poiTick = -1, lastFps = 0, gapPrev = 0;
 /* medidor por seção do quadro (/perf no chat): quanto da CPU vai para cada parte */
 let PMavg: Record<string, number> = {}, pmLast = 0, pmFrames = 0;
 /* 09/11 (revisão de FPS): além da média, guarda as seções do PIOR quadro de cada janela — é o tranco que o jogador sente */
 let PMF: Record<string, number> = {}, pmWorst: { t: number; s: Record<string, number> } = { t: 0, s: {} }, pmWorstShown: { t: number; s: Record<string, number> } = { t: 0, s: {} };
 const pm = (k: string) => { const n = performance.now(), d = n - pmLast; PM[k] = (PM[k] ?? 0) + d; PMF[k] = (PMF[k] ?? 0) + d; pmLast = n; };
-function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; PMF = {}; }
+/* 10/11 (Erling: "ainda dá umas travadas do nada, não sei por quê"): caderno das travadas. Todo quadro que demora mais de 70 ms fica anotado
+   com a hora, quanto demorou e o que a CPU fazia nele; o que sobra (quadro − CPU) é placa de vídeo, navegador ou coleta de lixo. /travadas no chat mostra. */
+const stalls: string[] = []; let stallPrev = 0, pmCpuLast = 0, pmSecLast: Record<string, number> = {};
+/* 11/11: o registro de travada diz também o que NASCEU naquele quadro (shader novo, textura nova, malha nova). Travada de "desenho" com
+   shader novo é a placa compilando; com textura nova é imagem subindo para a placa; sem nada novo é outra coisa. */
+let stProg = 0, stTex = 0, stGeo = 0;
+/* 11/11: o limite era 70 ms, e com o jogo a ~40 quadros por segundo um soluço de 50 ms (dois quadros perdidos) já se sente e não aparecia no relatório */
+const STALL_MS = 45; let stHeap = 0;
+/* 16/11 (Erling: "o jogo ainda tem muito lag e travamentos"; gravação de 16/11 15:35, RTX 3080 Ti): a placa esperou 1,2 s em 30 travadas de até
+   100 ms, todas em programas de desenho "novos" de materiais simples. O número de programas na placa ficava parado em 162 enquanto os
+   compilados na hora subiam de 63 para 111: cada efeito passageiro (golpe, marcador no chão, faísca) criava o seu material, e quando o efeito
+   acabava a biblioteca apagava o programa; o efeito seguinte, igual, compilava tudo de novo no meio da luta.
+   Agora todo programa que a placa já montou fica guardado até o fim da sessão: o segundo uso de qualquer efeito não compila mais nada. */
+let progFixos = 0;
+function fixaProgramas() { const L = renderer.info.programs as unknown as { usedTimes: number; _fixo?: boolean }[] | null; if (!L || L.length === progFixos) return; for (const p of L) if (!p._fixo) { p._fixo = true; p.usedTimes++; } progFixos = L.length; }
+function stallCheck(now: number) { fixaProgramas(); const gap = now - stallPrev; stallPrev = now; const nP = renderer.info.programs?.length ?? 0, nT = renderer.info.memory.textures, nG = renderer.info.memory.geometries, born = [nP > stProg ? `+${nP - stProg} shader` : '', nT > stTex ? `+${nT - stTex} textura` : '', nG > stGeo ? `+${nG - stGeo} malha` : ''].filter(Boolean).join(', '); stProg = nP; stTex = nT; stGeo = nG; const tq = tarefasDoQuadro(); const hp = (performance as unknown as { memory?: { usedJSHeapSize: number } }).memory?.usedJSHeapSize ?? 0, gc = stHeap - hp > 8e6 ? `limpeza de memória −${((stHeap - hp) / 1e6).toFixed(0)} MB · ` : ''; stHeap = hp; if (gap < STALL_MS || gap > 4000 || document.hidden) return; /* 11/11: saiu o "dynSkip > 0": com a resolução automática desligada ele nunca zerava, e NENHUMA travada era anotada */
+  const top = Object.entries(pmSecLast).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `${k} ${v.toFixed(0)}`).join(', ');
+  stalls.push(`${new Date().toLocaleTimeString().slice(0, 8)} · ${gap.toFixed(0)} ms (CPU ${pmCpuLast.toFixed(0)}: ${top || '—'} · fora da CPU ${Math.max(0, gap - pmCpuLast).toFixed(0)}) · ${born ? `nasceu ${born} · ` : ''}${tq ? `tarefa: ${tq} · ` : ''}${gc}pixel ${dynK.toFixed(2)}× · degrau ${autoQ}`); if (stalls.length > 14) stalls.shift(); }
+function pmFrameEnd() { let t = 0; for (const k in PMF) t += PMF[k]; if (t > pmWorst.t) pmWorst = { t, s: PMF }; pmCpuLast = t; pmSecLast = PMF; PMF = {}; }
 (window as unknown as { __worst?: () => string }).__worst = () => { const w = pmWorstShown.t > pmWorst.t ? pmWorstShown : pmWorst; return `pior quadro ${w.t.toFixed(1)} ms: ` + Object.entries(w.s).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([k, v]) => `${k} ${v.toFixed(1)}`).join(' · '); };
 function pmFlush() { pmWorstShown = pmWorst; pmWorst = { t: 0, s: {} }; const N = Math.max(1, pmFrames); PMavg = Object.fromEntries(Object.entries(PM).map(([k, v]) => [k, v / N])); for (const k of Object.keys(PM)) PM[k] = 0; pmFrames = 0; }
 /** 07/11: quem está gastando desenhos — malhas dentro da câmera por grupo de topo da cena (nome, ou o nome do 1º filho com nome) */
@@ -2664,15 +2966,40 @@ function drawBreakdown() { const fr = new THREE.Frustum().setFromProjectionMatri
   const agg = new Map<string, number>(); for (const [k, v] of out) agg.set(k, (agg.get(k) ?? 0) + v); return [...agg.entries()].sort((a, b) => b[1] - a[1]).slice(0, 14).map(([k, v]) => `${k} ${v}`).join(' · '); }
 (window as unknown as { __draws?: () => string }).__draws = drawBreakdown;
 function perfReport() { const e = Object.entries(PMavg).sort((a, b) => b[1] - a[1]); const tot = e.reduce((a, [, v]) => a + v, 0); let vis = 0; scene.traverseVisible(() => vis++); let all = 0; scene.traverse(() => all++);
-  return `⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · '); }
+  return textoPercentis() + `\n⏱ CPU por quadro ${tot.toFixed(1)} ms · ${vis} objetos visíveis de ${all} · ${renderer.info.render.calls} desenhos\n` + e.filter(([, v]) => v >= 0.05).map(([k, v]) => `${k}: ${v.toFixed(2)} ms`).join(' · ') + `\n✂ Fora da vista: ${DualRenderPass.cullOn ? DualRenderPass.culledLast + ' peças paradas não desenhadas neste quadro' : 'corte desligado'}` + `\n🧩 Sombreadores: ${shaderGate ? shaderGate.stats() : 'WebGPU'}` + (() => { const M = shaderGate?.mapa() ?? []; return M.length ? '\n🧭 Por que compilou na hora (o que mudou no programa):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaLentos() ?? []; return M.length ? '\n🐢 Desenhos que seguraram o quadro (mais de 25 ms cada), do pior para o melhor:\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (() => { const M = shaderGate?.mapaGl() ?? []; return M.length ? '\n🔬 Chamadas à placa que esperaram mais de 20 ms (qual comando segurou o jogo):\n' + M.map((x) => '   ' + x).join('\n') : ''; })() + (gpuState.log.some((l) => l.startsWith('cópias a mais')) ? `\n🟣 WebGPU, guarda das cópias: ${gpuState.log.filter((l) => l.startsWith('cópias a mais')).join(' ‖ ')}` : '') + `\n🔵 Aura de corte e silhuetas: desenho ${gpuState.on ? 'WebGPU' : 'WebGL'}${opts.gfx === 1 ? ' Moderno' : ' Clássico'} · herói escondido agora: ${cliqueSys.cutOn ? 'sim' : 'não'} · círculo ${CUT.uCut.value.w > 0 ? 'ligado' : 'desligado'} · dentro de casa: ${inside ? 'sim' : 'não'} · em cena: ${cinemaSys.cine ? 'sim' : 'não'} · cenário ${objs.group.visible ? 'visível' : 'escondido'}` + `\n⏲ Tarefas por relógio: ${tarefasReport()}\n🧱 Travadas (quadros acima de ${STALL_MS} ms): ${stalls.length ? '\n' + stalls.join('\n') : 'nenhuma até agora'}`; }
+/* 10/11: o baú dourado do elite e a disputa de dados do grupo (sistemas/espolio.ts) */
+const espolio = createEspolio({ scene, fine, particles, audio: { chime: () => audio.chime(), coins: (n) => audio.coins?.(n), boom: () => audio.boom(), click: () => audio.click() },
+  heroPos: () => heroPosNow(), zone: () => (inside ? 'in:' + (inside.dg ?? (inside.crypt ? 'cripta' + inside.crypt : 'casa')) : 'w'), myName: () => profile?.name || 'Você', net: () => netRef as never,
+  log: (t, c) => game.logMsg(t, c), addGold: (n) => { game.st.gold += n; }, giveGear: (x, z, y, gs) => game.dropGearSet(x, z, y, gs) });
+game.setEliteChest((e, ilvl, boost, shared) => { if (dgs.run?.boss === (e as unknown)) return false; /* o chefe da masmorra: espólio de cada um, como sempre */ /* 11/11 (Erling: "eu queria que só caíssem de elites poderosos e de masmorras e raids; não de bichos no mapa, somente bichos muito fortes no mapa"):
+     dentro de masmorra ou raid, todo elite deixa baú. No mapa aberto, só o elite de verdade (força 3 ou mais na ficha dele: alfa, ent, lich, jötun, rainha…
+     ou o Príncipe) E que esteja à sua altura: até 3 níveis abaixo de você. Elite fraco ou de região que você já passou solta o espólio no chão, como bicho comum. */
+  { const E = e as unknown as { type: string; def: { lvl?: number; elite?: number } }; if (!dgs.run && !inside?.dg) { const power = E.type === 'prince' ? 9 : (E.def.elite ?? 0); if (power < 3 || (E.def.lvl ?? 1) < game.st.lvl - 3) return false; } } return espolio.eliteDied(e, ilvl, boost, shared); });
+(window as unknown as { __bau?: unknown }).__bau = espolio; /* teste */
+/* 10/11: ícones pequenos de buff e debuff no pé do herói, e a entrada de cada efeito com aro e espiral (sistemas/buffs-pe.ts) */
+/* teste: câmera lenta e soltar qualquer magia pelo id, para a revisão visual de todas as magias (11/11) */
+let testSlow = 1;
+(window as unknown as { __t?: unknown }).__t = { slow: (k: number) => { testSlow = k; }, cast: (id: string, dx = 0, dz = 3) => { game.st.mp = game.st.mpMax; game.st.stam = game.st.stamMax; const p = heroPosNow(); try { return game.useExtra(id as never, Math.atan2(dx, dz), 0, { x: p.x + dx, z: p.z + dz }); } catch (e) { return 'ERRO ' + String(e).slice(0, 200); } } };
+(window as unknown as { __buff?: unknown }).__buff = () => { game.st.serene = 3; game.st.ambushT = 8; (game.st as unknown as { slowUntil?: number }).slowUntil = performance.now() + 60000; }; /* teste */
+startRunasMoldura();
+const buffsPe = createBuffsPe({ scene, fine, camera, canvas, heroPos: () => hero.root.position, hidden: () => !document.body.classList.contains('ready') || game.st.dead || limiar.active || !!cinemaSys.cine || game.menuOpen, buffs: () => game.buffs(), particles });
+/* 17/11: /bench, as três cenas fixas de medição (desempenho/bench.ts) */
+const benchSys = createBench({ renderer, scene, estado: state, casaM: T, build: __BUILD__, desenho: gpuImpl ? 'WebGPU' : 'WebGL',
+  lugar: (n) => { const q = n.toLowerCase(), p = city.settlements.find((v) => v.name.toLowerCase() === q) ?? city.settlements.find((v) => v.name.toLowerCase().includes(q)); return p ? { x: p.x, y: p.y } : null; },
+  livre: (fx, fy) => free(fx, fy), dentro: () => !!inside,
+  bicho: (tipo, x, z, marca) => { game.enemies.spawn(tipo as never, x, z, { tag: marca, lvl: game.st.lvl }); }, tiraBichos: (marca) => game.enemies.clearTag(marca),
+  /* a casa da barra, do jeito que a tecla faria: o combo é o golpe básico, a guarda fica de fora (é segurar), o resto vai pelo castAt */
+  magia: (casa, alvo) => { try { const sk = skillAt(kitRace(), casa); if (!sk || sk.id === 'guard') return false; if (sk.id === 'combo') { game.attack(alvo.yaw, heroPosNow()); return true; } return !!entradaSys.castAt(casa, alvo); } catch { return false; } },
+  deus: (on) => { const era = !!game.st.god; game.st.god = on; return era; },
+  partes: () => PMavg, placa: () => perfUlt.gpu, log: (t, c) => game.logMsg(t, c) });
 function frameBody() {
-  pmFrameEnd(); pmLast = performance.now(); pmFrames++;
-  { fpsN++; const nowMs = performance.now(); if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
-    lastFps = fpsN; dynResTick(fpsN); perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
+  pmFrameEnd(); pmLast = performance.now(); pmFrames++; stallCheck(pmLast);
+  { fpsN++; const nowMs = performance.now(); if (nowMs - gapPrev > 300) dynGap = true; gapPrev = nowMs; if (nowMs - fpsT > 1000) { const v = document.getElementById('ver'); if (v) { const N = Math.max(1, perf.n), ri = renderer.info.render; v.textContent = `${fpsN} fps · CPU ${(perf.cpuS / N).toFixed(1)} ms (desenho ${(perf.drawS / N).toFixed(1)}) · GPU ${perf.gpuN ? (perf.gpuS / perf.gpuN).toFixed(1) + ' ms' : '—'} · ${ri.calls} desenhos · ${(ri.triangles / 1000).toFixed(0)}k tri · ${game.dbg().en.length} inimigos · build ${__BUILD__}`; }
+    lastFps = fpsN; dynResTick(fpsN); perfUlt.gpu = perf.gpuN ? perf.gpuS / perf.gpuN : -1; perf.cpuS = perf.drawS = perf.gpuS = 0; perf.n = perf.gpuN = 0; fpsN = 0; fpsT = nowMs; pmFlush(); } }
   const rawDt = Math.min(0.05, clock.getDelta());
   if (limiar.active) { limiar.frame(rawDt, renderer.domElement.width, renderer.domElement.height); bloom.strength = 0.22 * opts.bloom * gfxBloom; renderer.info.reset(); if (gpuImpl) limiarGL(true); else { if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } composer.render(); } return; }
   if (limGL) limiarGL(false); // o mundo espera lá embaixo
-  const dt = rawDt * game.timeScale() * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
+  const dt = rawDt * game.timeScale() * testSlow * (cinemaSys.cine ? 0 : 1) * (dlg.isOpen || document.getElementById('create')!.style.display === 'grid' ? 0 : 1) /* mundo vivo: janelas não pausam */;
   geoSweepT -= rawDt; if (geoSweepT <= 0) { geoSweepT = 30; const t0 = performance.now(), r = geoSweep([scene]); if (r.geo + r.tex > 0 && location.search.includes("perf")) console.log(`[varredura] ${r.geo} geometrias, ${r.tex} texturas soltas em ${(performance.now() - t0).toFixed(1)} ms`); }
   t += dt;
   entradaSys.nightTarget = nightOverride ?? nightAt(gameHour());
@@ -2683,14 +3010,22 @@ function frameBody() {
   /* movimento */
   /* água: entra andando até a cintura (lento, empurrando a água); mais fundo que isso, nada */
   const depthNow = inside ? 0 : WL - heightAt(state.fx * T, state.fy * T);
-  const swimming = !inside && depthNow > 1.25; swimmingNow = swimming; hero.swim = swimming;
+  const swimming = !inside && depthNow > 1.25 && pulo.t <= 0 /* 12/11: no ar, no salto da montaria, ninguém nada */; swimmingNow = swimming; hero.swim = swimming;
   pm('entrada');
   dual.clipFor = scene; dual.fineClip = inside ? [] : waterClip; // a linha d'água corta os corpos (a água não escreve profundidade)
   const wade = !inside && !swimming && depthNow > 0.04 ? Math.min(1, depthNow / 1.0) : 0;
   updateFishing(dt, t); updateWork(); herbSparkle(dt); updateQuestRings(dt); featsTick(dt);
-  const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.7 + 0.08 * Math.min(1, (game.st.lvl - 1) / 40)) /* 07/11: a pé 70% no nível 1, 72% no 10, 78% no 41 (62% ficou lento demais — Erling) */ /* 28/10 (Erling): a pé, 20% mais lento; 07/11: 28% ("começa bem lento e o cálculo sobre a base fica menor"); o passo cresce com itens e buffs, com teto de +40% */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
+  const sp = RACES[state.race].speed * (compSys.riding && compSys.mount ? 1 : 0.7 + 0.08 * Math.min(1, (game.st.lvl - 1) / 40)) /* 07/11: a pé 70% no nível 1, 72% no 10, 78% no 41 (62% ficou lento demais — Erling) */ /* 28/10 (Erling): a pé, 20% mais lento; 07/11: 28% ("começa bem lento e o cálculo sobre a base fica menor"); o passo cresce com itens e buffs, com teto de +40% */ * game.st.move * game.buffMove * (instintoSys.instinctOn && !inside ? 0.85 : 1) /* Instinto: atenção custa passo (Erling 26/10) */ * (entradaSys.combatMode ? 1 : 1.2) * (compSys.riding && compSys.mount ? compSys.mount.kind.speed * 0.75 /* 12/11 (Erling: "montaria está andando rápido demais, diminuir 25%") */ : 1) * (game.st.god ? 4.2 : 1) * (swimming ? 0.5 : 1) * (1 - 0.45 * wade);
   if (game.st.lvl !== peleSys.lastLvl) { peleSys.lastLvl = game.st.lvl; refreshLocks(kitRace(), peleSys.lastLvl, (k) => tree.rank(k)); /* 05/11 (Erling: "subir de nível base dá pontos de atributo; subir de classe dá pontos de habilidade, passiva e talento"): o aviso antigo de "+1 ponto de magia" no nível base saiu — a conta já era só pelo nível de classe */ }
   dockEl.querySelector('[data-d="skills"]')?.classList.toggle('pulse', tree.available() > 0 && !dockSys.skillsOpen);
+  /* 10/11 (Erling: "não tem nada que me diz que eu passei de nível ou de classe; um ícone discreto do lado direito para eu não esquecer de dar os pontos"):
+     dois selos pequenos no lado direito: ▲ pontos de atributo (abre C) e ✦ pontos de classe, para magias, passivas e talentos (abre K). Somem quando não há ponto. */
+  { const ap = game.st.points ?? 0, tp = tree.available(), key = ap + ':' + tp; if (key !== lvlUpKey) { lvlUpKey = key; let el = document.getElementById('lvlup');
+      if (!el) { el = document.createElement('div'); el.id = 'lvlup'; el.innerHTML = MV_GRIP('l') + '<div class="lvb"></div>'; document.body.appendChild(el); movable(el, 'lvlup'); /* 10/11 (Erling: "precisa ser movido como tudo na tela") */
+        const st = document.createElement('style'); st.textContent = '#lvlup{position:fixed;right:14px;top:356px;align-items:center;z-index:40;display:flex;flex-direction:row;gap:4px;pointer-events:none}#lvlup .lvb{display:flex;flex-direction:column;gap:8px;align-items:stretch}#lvlup .lvb>*{box-sizing:border-box;width:100%;justify-content:flex-start;text-align:left}#lvlup .mvgrip{pointer-events:auto;position:static;cursor:grab;color:#ffe08a;opacity:.55;font-style:normal;padding:4px 2px}#lvlup .mvgrip:hover{opacity:1}#lvlup button{pointer-events:auto;display:flex;align-items:center;gap:6px;padding:6px 10px 6px 8px;border-radius:999px;border:1px solid rgba(255,214,120,.55);background:rgba(18,12,6,.82);color:#ffe08a;font:600 12px Cinzel,Georgia,serif;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 0 rgba(255,200,90,.0);animation:lvlupGlow 2.4s ease-in-out infinite}#lvlup button i{font-style:normal;font-size:14px}#lvlup button.k{border-color:rgba(170,150,255,.6);color:#d6c8ff;animation-delay:1.2s}#lvlup button:hover{background:rgba(40,28,12,.95)}@keyframes lvlupGlow{0%,100%{box-shadow:0 0 0 rgba(255,200,90,0)}50%{box-shadow:0 0 14px rgba(255,200,90,.45)}}';
+        document.head.appendChild(st);
+        el.addEventListener('click', (e) => { const b = (e.target as HTMLElement).closest('button'); if (!b) return; const k = b.dataset.key!; window.dispatchEvent(new KeyboardEvent('keydown', { key: k, code: 'Key' + k.toUpperCase(), bubbles: true })); }); }
+      el.style.display = ap > 0 || tp > 0 ? 'flex' : 'none'; (el.querySelector('.lvb') as HTMLElement).innerHTML = (ap > 0 ? `<button type="button" data-key="c" title="${tr('lvlup.atributos.dica', { n: ap })}"><i>▲</i>${tr('lvlup.atributos', { n: ap })}</button>` : '') + (tp > 0 ? `<button type="button" class="k" data-key="k" title="${tr('lvlup.classe.dica', { n: tp })}"><i>✦</i>${tr('lvlup.classe', { n: tp })}</button>` : ''); } }
   if (game.hurtNow()) setCombat(true);
   if (((t * 2) | 0) !== poiTick) { poiTick = (t * 2) | 0; for (const p of city.pois) if (Math.hypot(p.x - state.fx, p.y - state.fy) < 4) quests.onVisit(p.name); }
   let ix = 0, iy = 0;
@@ -2698,12 +3033,17 @@ function frameBody() {
   if (keys.has('s') || keys.has('arrowdown')) iy += 1;
   if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
   if (keys.has('d') || keys.has('arrowright')) ix += 1;
+  /* 15/11 (Erling: "quando morre, meu amigo fica andando morto no Linux; morreu, não se mexe mais"): com a alavanca do controle segurada na hora
+     da morte a direção continuava valendo e o corpo saía andando. Morto não anda: nem por tecla, nem por alavanca, nem por caminho de clique.
+     (No Limiar quem anda é a alma, e lá continua podendo.) */
+  if (game.st.dead && !limiar.active) { ix = 0; iy = 0; if (state.path.length) state.path = []; }
   // fôlego: base por origem/caminho (guerreiros, lobisomens e vampiros muito; elfos mais; humanos/anões menos; tecnocratas e bruxos menos) + 4 por ponto de vitalidade
   const STAM_BASE: Record<string, number> = { human: 100, dwarf: 85, elf: 125 };
   game.st.stamMax = Math.round(((profile ? STAM_BASE[profile.origin] ?? 100 : 100) * (state.race === 'technocrat' ? 0.7 : state.race === 'nordic' ? 1.3 : 1) + (game.st.attrs?.vit ?? 0) * 4) * (1 + ((game.st as { feastStam?: number }).feastStam ?? 0))); /* + a mesa dos anões */
   if (entradaSys.outOfBreath && game.st.stam >= game.st.stamMax * 0.25) entradaSys.outOfBreath = false;
   const wantRun = runningNow() && (ix || iy || state.path.length > 0);
-  if (wantRun && game.st.stam > 0 && !game.st.god) game.st.stam = Math.max(0, game.st.stam - dt * 9);
+  try { quickSys.tickMacros(dt); } catch { /* */ } /* 16/11: as macros do cinto */
+  if (wantRun && game.st.stam > 0 && !game.st.god) game.st.stam = Math.max(0, game.st.stam - dt * 9 / 1.4); /* 16/11: o fôlego dura 40% a mais */
   if (game.st.stam <= 0.5 && wantRun && !game.st.god) { entradaSys.outOfBreath = true; if (!stamWarnT) { stamWarnT = 2; game.logMsg('😮‍💨 Sem fôlego — andando até recuperar.', '#ffd24a'); } }
   if (stamWarnT > 0) stamWarnT -= dt;
   const run = runningNow() && (game.st.stam > 0.5 || game.st.god) ? 1.5 : 1;
@@ -2736,7 +3076,10 @@ function frameBody() {
   /* 04/11: ALVO PRESO INVISÍVEL (alvo-preso.ts) no lugar da janela curta de recuo. Preso a um bicho, o corpo fica de frente para ele e os pés
      vão para o clique: de costas (mais devagar, pela classe), de lado e na diagonal (meio caminho). Indo para cima dele, anda normal. */
   updateCharLod(scene, hero.root, dt);
-  { const hx = state.fx * T, hz = state.fy * T; const lk = (dashT > 0 || inside || compSys.riding || swimming) ? null : lockSys.update(dt, hx, hz, game.enemies.list, 10 + gaitNow.bp[0] * 2);
+  { const hx = state.fx * T, hz = state.fy * T; const lk = (dashT > 0 || inside || compSys.riding || swimming) ? null : lockSys.update(dt, hx, hz, game.enemies.list, 10 + gaitNow.bp[0] * 2, { longe: game.longe(), mx: mouse.x, mz: mouse.z, mouseVivo: performance.now() - mouseMovedT < 4000 });
+    /* 16/11: o foco segue o mouse: parado em cima de um bicho, o foco passa para ele */
+    if (lk !== null || !(dashT > 0 || inside || compSys.riding || swimming)) lockSys.hover(performance.now() - mouseMovedT < 4000 ? mouseSys.bichoNoMouse() as Parameters<typeof lockSys.hover>[0] : null, dt, game.longe());
+    { const f = lockSys.target ? '1' : '0'; if (document.documentElement.dataset.foco !== f) document.documentElement.dataset.foco = f; }
     /* a intenção manda: golpe começando virado para outro bicho troca o alvo (o rosto do golpe já foi para onde o jogador mirou) */
     if (lk && hero.acting && !lockActWas) lockSys.retarget(lockSys.inCone(hx, hz, entradaSys.aimYaw(), game.enemies.list, 0.77, 9)); /* a mira do golpe (mouse, encaixada no bicho do cone) */
     lockActWas = hero.acting;
@@ -2750,7 +3093,7 @@ function frameBody() {
       /* 07/11 (Erling): indo para longe do alvo, você recua de costas por 1,5 s; se continuar, o foco descola e o herói vira e corre */
       awayT = c < -0.35 && !hero.acting ? awayT + dt : 0; if (awayT > 1.5) { lockSys.release(4); awayT = 0; lockYaw = null; bpYaw = null; hero.moveYaw = null; } } else awayT = 0; }
   let boost = 1;
-  if (dashT > 0) { dashT -= dt; boost = 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
+  if (dashT > 0) { dashT -= dt; boost = pulo.t > 0 ? 2.1 /* o salto da montaria: mais longo no tempo, menos brusco */ : 3.2; gdx = dx0; gdy = dy0; state.moving = true; }
   vel += ((state.moving ? 1 : 0) - vel) * Math.min(1, dt * (state.moving ? 14 : 18));
   if (state.moving || vel > 0.02) {
     const stepL = sp * run * boost * vel * actSlow * dt; moveSlide(gdx * stepL, gdy * stepL, dt, state.moving);
@@ -2779,7 +3122,8 @@ function frameBody() {
   plane.constant = -heroY;
   if (!inside) { if (!cinemaSys.cine) objs.setRad(Math.min(5, Math.max(2, Math.ceil(Math.hypot(zoom * innerWidth / innerHeight, zoom * 2.2) / 2 / 40 + 0.7)))); /* raio de chunks segue o zoom e a tela: nada de vazio nas bordas */ objs.update(camX, camZ); } else { inside.int.flicker(t, state.fx * T - IX, state.fy * T - IZ); if (state.fy * T - IZ > inside.int.D + 0.5) exitHouse(); }
   const mps = telefSys?.carry ? (telefSys.carry.walk ? 2.4 : 0) : Math.max(sp * T * run * boost * vel * actSlow * (state.moving || vel > 0.02 ? 1 : 0), Math.abs(forced ? hero.stepVel : 0));
-  const aiming = hero.acting;
+  /* 11/11 noite (Erling: "movimento de mineração está horrível e todo errado"): todo golpe mira no ponteiro do mouse, e a picaretada, a machadada, a faca e o alicate também são golpes; então o herói minerava virado para o mouse, de costas para a pedra. No ofício e na pesca ele olha para o que está trabalhando. */
+  const aiming = hero.acting && !oficiosSys.work && !pescaSys.fishing;
   if (entradaSys.castQ) { if (performance.now() > entradaSys.castQ.until || game.st.dead) entradaSys.castQ = null; else castAt(entradaSys.castQ.slot, entradaSys.castQ.at); }
   if (entradaSys.lockYaw !== null && !hero.acting) entradaSys.lockYaw = null;
   { /* o herói encara o golpe do começo ao fim: a direção é decidida quando o gesto começa e não fica girando atrás do mouse */
@@ -2798,25 +3142,36 @@ function frameBody() {
     peleSys.deadK += ((game.st.dead ? 1 : 0) - peleSys.deadK) * Math.min(1, rawDt * (game.st.dead ? 5 : 8)); if (game.st.dead && peleSys.deadK < 0.995) peleSys.deadK = Math.min(1, peleSys.deadK + rawDt * 0.6);
     if (peleSys.deadK > 0.002) { const e = peleSys.deadK < 1 ? 1 - Math.pow(1 - peleSys.deadK, 3) : 1; hero.root.rotation.x = -1.48 * e; hero.root.position.y += 0.07 * e; } else if (hero.root.rotation.x !== 0) hero.root.rotation.x = 0; }
   if (!inside) ormund.update(dt, state.fx * T, state.fy * T);
-  if (!inside) { teleferico().update(dt); navios().update(dt); (faroisSys ??= createFarois(scene, city)).update(dt, camX, camZ, state.night); }
+  if (!inside) { teleferico().update(dt); navios().update(dt); (faroisSys ??= createFarois(scene, city)).update(dt, camX, camZ, state.night); (terrenosSys ??= createTerrenosGuilda(scene, city, (m, c) => game.logMsg(m, c))).update(dt, state.fx * T, state.fy * T); }
   peleSys.skinTick?.(); // copia a pose procedural para o modelo do artista
   peleSys.look?.tick(dt, state.night);
   try { game.setDroneMode(instintoSys.stanceSys?.current().id); } catch { /* */ }
   { const cs = instintoSys.stanceSys?.current(); hero.stance = cs?.role ?? 'bal'; stanceRing(cs ?? null, rawDt); } festaAnim(rawDt, t); joyAnim(t); emoteTick(); decoTick();
   game.setWarrior(isWarrior()); needGauge();
-  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t); mirrorUpdate(dt);
+  netMps = swimming ? Math.min(mps, 2.2) : mps; net.update(dt, t); mirrorUpdate(dt); quarksUpdate(dt);
   updateFacSigil(t); updateOutSigil(t);
   pm('herói.update');
   updateXray(dt); updateEnvelopes(t);
   if (isPremium()) { const hp = hero.root.position, a = t * 0.9; blessRune.visible = !inside; blessRune.position.set(hp.x + Math.cos(a) * 0.62, hp.y + 0.28 + Math.sin(t * 2) * 0.04, hp.z + Math.sin(a) * 0.62); } else blessRune.visible = false;
   pm('xray/env');
-  updateCompanions(dt, t, hero.root.rotation.y, mps); updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
+  if (pulo.t > 0) { pulo.t -= dt; if (compSys.riding) hero.root.position.y += Math.sin(Math.min(1, 1 - Math.max(0, pulo.t) / PULO_DUR) * Math.PI) * PULO_ALT; /* a montaria copia a posição do herói: sobem juntos */ }
+  updateCompanions(dt, t, hero.root.rotation.y, mps);
+  updatePortal(dt, t); updateStamRing(dt); updateBishop(dt); dgs.update(dt); updateClickMarks(dt); updateSpirit(dt, t); updateBlood(dt, t); updateMarks(dt, t);
   pm('companheiros');
   regrowT -= dt; if (regrowT <= 0) { regrowT = 10; updateRegrow(); updatePicked(); }
   game.update(dt, heroPos, state.karma, RACES[state.race].label, audio.muted);
   pm('jogo(inimigos)');
+  espolio.update(dt); buffsPe.update(dt);
   brain.tick(dt, (e) => { const o = e as unknown as { own?: number; ownT?: number }; return !(o.own && performance.now() - (o.ownT ?? 0) < 1500); });
-  if (mouseSys.rmb && !game.menuOpen && !dlg.isOpen) game.attack(aimYaw(), heroPosNow());
+  /* 16/11: lugar encontrado fica lembrado para a viagem pelo mapa (conferido uma vez por segundo) */
+  { lugarT -= dt; if (lugarT <= 0 && !inside) { lugarT = 1; lugarN++; /* os lugares em volta de onde o herói nasce entram calados */ const hx = state.fx, hy = state.fy; for (const p of city.pois) if (Math.abs(p.x - hx) < RAIO_ENCONTRO && Math.abs(p.y - hy) < RAIO_ENCONTRO && Math.hypot(p.x - hx, p.y - hy) < RAIO_ENCONTRO && encontrou(p.name) && lugarN > 8 && !city.settlements.some((st) => st.name === p.name)) game.logMsg(`🧭 Lugar encontrado: ${p.name}. Agora dá para viajar até ele pelo mapa (M).`, '#9affc0'); } }
+  pm('espólio/buffs/lugares'); /* 17/11 (estudo de desempenho, regra 3): cada sistema por quadro tem nome no medidor */
+  despojosSys.tick(dt); pm('despojos');
+  faunaSys.tick(dt); pm('fauna');
+  naufragiosSys.tick(dt); pm('naufrágios');
+  floraSys.liga(!inside); if (!inside) floraSys.tick(); pm('flora');
+  benchSys.tick(rawDt); pm('bench');
+  if (!dlg.isOpen) mouseSys.tickClique(dt); /* 16/11: Clique 1 e Clique 2 (antes: o botão direito segurado repetia o golpe básico) */
   pm('chefes');
   if (!Number.isFinite(state.fx) || !Number.isFinite(state.fy)) { state.fx = larSys.home.x; state.fy = larSys.home.y; state.path = []; game.logMsg('⚠ A posição do herói se perdeu; você volta para a fonte-lar.', '#ff9a8a'); } /* trava de segurança: nunca andar em NaN */
   obras.update(dt, state.fx * T, state.fy * T, state.path.length > 0 || state.moving, () => { hero.act('cast'); audio.swing(); }); updateGuide(dt); pm('guia'); updateInstinct(dt); pm('instinto'); updateCaravans(dt); pm('caravanas'); updateEventos(dt); pm('eventos'); updateSecrets(dt); pm('segredos'); build.update(mouse.x, mouse.z);
@@ -2837,7 +3192,14 @@ function frameBody() {
   { const s = 1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01; lantern.position.set(heroPos.x, heroY + 3.2 * s, heroPos.z); /* 09/11 (Erling: "uma luz no terreno que some quando eu subo"): era a lanterna do herói presa na altura 3,2 do mapa — na subida o chão passava por cima dela. Agora acompanha o chão. */ lantern.distance = 36 * s; lantern.intensity = mix(5, 55, night) * Math.pow(s, 1.6); }
 
   /* câmera com zoom suave e lento */
-  zoom += (zoomTarget - zoom) * Math.min(1, dt * 2.2);
+  /* 16/11 (fila de 13/11, Erling: "é uma boa ideia"): dentro de uma cidade ou perto de uma maravilha a câmera afasta sozinha até 32% a mais
+     (24,2 m viram 32 m), para a cidade caber na tela; ao sair, volta devagar. A roda do mouse continua mandando dentro disso. */
+  { zoomAutoT -= dt; if (zoomAutoT <= 0) { zoomAutoT = 0.5; let k = 0; if (!inside && !game.st.god) { const hx = state.fx, hy = state.fy;
+        for (const st of city.settlements) if ((st.kind === 'city' || st.name === 'Karmika') && Math.hypot(st.x - hx, st.y - hy) < st.radius + 6) { k = 1; break; } /* Karmika é a capital, mesmo sendo vila no mapa */
+        if (!k) for (const v of CINE.vistas) { if (Math.hypot(v.at.x - hx, v.at.y - hy) * T > 26) continue; if (city.settlements.some((st) => st.kind === 'village' && Math.hypot(st.x - v.at.x, st.y - v.at.y) < st.radius + 2)) continue; k = 1; break; } }
+      zoomAutoAlvo = k; }
+    zoomAuto += (zoomAutoAlvo - zoomAuto) * Math.min(1, dt * 0.9); }
+  zoom += (zoomTarget * (1 + 0.32 * zoomAuto) - zoom) * Math.min(1, dt * 2.2);
   applyZoom();
   if (CAM_FREE && keys.has('q')) azT += dt * 1.6;
   if (CAM_FREE && keys.has('e') && performance.now() - entradaSys.eDown > 230) { azT -= dt * 1.6; entradaSys.eRot = true; }
@@ -2886,21 +3248,24 @@ function frameBody() {
   letreiroSys.curseNow += ((inside ? 0 : curseK()) - letreiroSys.curseNow) * Math.min(1, dt * 1.5); // (sem névoa extra: a região tem a mesma claridade do resto do mundo)
   hemi.color.copy(hemiNightSky).lerp(hemiDaySky, day).lerp(SKY.hemi, hourK * 0.8).lerp(LUA_C.hemi, luaV * 0.75).lerp(AUR_C.hemi, aurV * 0.4);
   hemi.groundColor.copy(hemiNightGround).lerp(hemiDayGround, day).lerp(SKY.ground, hourK * 0.6).lerp(LUA_C.ground, luaV * 0.6);
-  hemi.intensity = mix(0.9, 1.12, day) + (cinemaSys.cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
+  hemi.intensity = mix(1.05, 1.0, day) + (cinemaSys.cine ? 0.6 * (1 - day) : 0) + luaV * 0.35 + aurGlow * 0.12;
   sun.color.copy(sunNight).lerp(sunDay, day).lerp(SKY.sun, hourK).lerp(LUA_C.sun, luaV * 0.85).lerp(AUR_C.sun, aurV * 0.5);
   sun.intensity = mix(mix(0.8, 2.4, day), SKY.sunI, hourK) + (cinemaSys.cine ? 0.9 * (1 - day) : 0) + luaV * 0.6 + aurGlow * 0.15; // nas cinemáticas a paisagem se acende
-  renderer.toneMappingExposure = mix(0.9, 0.96, day); finish.uniforms.uVig.value = mix(0.48, 0.38, day * (inside?.dg ? 0 : 1));
+  /* 10/11 (Erling: "o jogo precisa ser mais escuro, uma atmosfera mais dark que valoriza as cores, mas de noite precisamos enxergar tudo"):
+     o dia ficou mais baixo de exposição e mais saturado (cor cheia em vez de lavada); a noite quase não muda de exposição e ganha luz do céu, então escurece no tom, não na visão */
+  renderer.toneMappingExposure = mix(0.88, 0.84, day) * (opts.gfx === 1 ? 0.92 : 1); finish.uniforms.uVig.value = mix(0.46, 0.44, day * (inside?.dg ? 0 : 1));
   { const u = finish.uniforms, inD = inside?.dg ? 1 : 0, dayW = day * (1 - inD);
     (u.uMul.value as THREE.Vector3).set(mix(0.92, 1.07, dayW), mix(0.98, 1.0, dayW), mix(1.12, 0.88, dayW)).lerp(LUA_MUL, luaV).lerp(AUR_MUL, aurV * 0.8);
-    (u.uLift.value as THREE.Vector3).set(mix(0.012, 0.012, dayW), mix(0.018, 0.006, dayW), mix(0.045, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
-    u.uSat.value = mix(0.86, 1.04, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
+    (u.uLift.value as THREE.Vector3).set(mix(0.016, 0.006, dayW), mix(0.024, 0.004, dayW), mix(0.055, 0, dayW)).lerp(LUA_LIFT, luaV).lerp(AUR_LIFT, aurGlow);
+    u.uSat.value = mix(0.95, 1.2, dayW) + luaV * 0.12 + aurK * 0.1 + instK * 0.07; /* Instinto ligado: o mundo fica um pouco mais nítido de cor */ /* depois da abertura a Aurora deixa o dia mais colorido */ }
   /* 09/11 (Erling: "o canto de anjos fica muito alto e atrapalha; tem que ser bem sutil, vir de vez em quando, a cada 5 minutos, 20 segundos no máximo"):
      o coral só soa numa janela de 20 s a cada 5 min do Dia da Aurora (a primeira na abertura), sobe e desce devagar e nunca passa de um terço do volume antigo. */
   choirClock = aurK > 0.01 ? choirClock + rawDt : 0; { const ph = choirClock % 300, env = ph < 20 ? Math.sin(Math.PI * ph / 20) : 0;
     audio.choir(aurK * env * 0.32 * (inside ? 0.35 : 1), rawDt); } audio.blood(luaK * (0.12 + 0.88 * Math.max(op, engK)) * (inside ? 0.4 : 1), rawDt);
   if (inside?.dg) { sun.intensity = 0.5; hemi.intensity = 0.78; (scene.fog as THREE.FogExp2).density = 0.0035; lantern.intensity = 42 * Math.pow(1 + Math.min(59, Math.max(0, game.st.lvl - 1)) * 0.01, 1.6); } // debaixo da terra: só as tochas, os cristais e a lava iluminam
   { // sombra estável: o alvo do sol anda em passos de 1 texel do mapa de sombras (acaba com o "formigamento" das sombras)
-    const dir = (hourK > 0.5 ? lightDirAt(gameHour()).clone() : new THREE.Vector3(-18, 28, 10)).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / 2048 * 2; /* 08/11: o sol anda com a hora (ceu.ts) */
+    /* 11/11 (Erling: "as sombras ficam se mexendo, com um serrilhado na ponta"): duas causas. 1) o sol andava um fio a cada quadro, e com ele a borda de toda sombra rastejava: agora a direção da luz anda em degraus (a cada 0,04 h do jogo, uns 18 s), parada entre um e outro. 2) o passo de encaixe era calculado para um mapa de 2048 mesmo quando a opção de sombra é 1024 ou 4096: agora usa o tamanho de verdade */
+    const dir = (hourK > 0.5 ? lightDirAt(Math.round(gameHour() / 0.04) * 0.04).clone() : new THREE.Vector3(-14, 22, -9) /* 11/11: a luz da noite também vem do norte (era do sul: a sombra caía escondida atrás das coisas) */).normalize(), lr = new THREE.Vector3(0, 1, 0).cross(dir).normalize(), lu = dir.clone().cross(lr), tex = 44 / Math.max(256, sun.shadow.mapSize.x); /* 08/11: o sol anda com a hora (ceu.ts) */
     const a = Math.round(heroPos.dot(lr) / tex) * tex, b = Math.round(heroPos.dot(lu) / tex) * tex, c = heroPos.dot(dir);
     sun.target.position.set(0, 0, 0).addScaledVector(lr, a).addScaledVector(lu, b).addScaledVector(dir, c);
     sun.position.copy(sun.target.position).addScaledVector(dir, 40);
@@ -2917,8 +3282,9 @@ function frameBody() {
   hero.setNight(night); hero.setWind(gust); game.setDark(Math.max(night, inside && (inside.dg || inside.crypt || (inside.castle !== undefined && inside.castle < 2)) ? 1 : 0));
   { // sombra para o vampiro: dentro de casa ou masmorra, mata fechada (3+ árvores em volta), ou uma cidade de sombra (Corvoscuro: a fumaça do vulcão tapa o sol)
     const gx = Math.floor(state.fx), gy = Math.floor(state.fy); let tr = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (city.map[gy + dy]?.[gx + dx] === 'tree') tr++;
-    const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); }
-  if (!inside || inside.hall) npcSys.update(dt, t, heroPos, night, gust); else for (const n of npcSys.npcs) n.el.style.display = 'none'; /* 08/11: dentro do Grande Salão os NPCs de interior vivem (npcs.ts inside) */
+    const sv = city.settlements.some((v) => SHADE_TOWNS.has(v.name) && Math.hypot(v.x - state.fx, v.y - state.fy) < v.radius + 10); game.setSky(night, !!inside || tr >= 3 || sv); halloween?.setNight(night); }
+  try { ataqueSys.tick(dt); } catch (e) { console.warn('ataques', e); } /* 10/11: ataques de bando à vila, de noite */
+  if (!inside || inside.hall || INT_NPC.has(inside.prop?.shop ?? '')) npcSys.update(dt, t, heroPos, night, gust); /* 12/11: a estalagem, o Salão das Guildas e a cervejaria também têm gente dentro (antes só o Grande Salão atualizava os NPCs de interior, e esses salões ficavam vazios) */ else for (const n of npcSys.npcs) n.el.style.display = 'none'; /* 08/11: dentro do Grande Salão os NPCs de interior vivem (npcs.ts inside) */
   // raios de luz (lua à noite, sol dourado de dia)
   const shaftCol = new THREE.Color(0x7f98ff).lerp(new THREE.Color(0xffd9a0), day);
   void shaftCol;
@@ -3018,21 +3384,22 @@ function frameBody() {
   pm('bloom-cfg');
   scene.updateMatrixWorld(); /* uma vez por quadro, para as duas passadas do desenho (o three.js fazia em cada render) */
   renderer.info.reset();
-  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } autoQFrame(); gpuBegin(); composer.render(); gpuEnd(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
+  { const d0 = performance.now(); if (fixedL) { const [fs, fc] = dual.cur(); fixedL.frame(fs, fc); } autoQFrame(); gpuBegin(); composer.render(); gpuEnd(); shaderGate?.flush(); if (shotReq.length) { let u = ''; try { u = renderer.domElement.toDataURL('image/jpeg', 0.85); } catch { /* */ } for (const f of shotReq.splice(0)) f(u); } perf.drawS += performance.now() - d0; }
   pm('desenho');
   dollTick(rawDt);
   pm('boneco');
-  if (!shown) { shown = true; document.body.classList.add('ready'); }
+  if (!shown) { shown = true; /* 17/11: o primeiro retrato do herói é tirado ainda atrás da tela de carregamento: os programas de desenho dele nascem aqui, e não na primeira vez que o jogador abre a ficha ou entra num grupo (era uma travada) */ try { meuRetrato(); } catch { /* */ } document.body.classList.add('ready'); }
 }
 /* boneco vivo na ficha do personagem (C): o próprio herói, animado e com o equipamento que está vestindo, desenhado num
    quadro pequeno ao lado do mundo. Trocou a peça, o boneco troca na hora e brilha; arrastar com o mouse gira (Erling, 25/10) */
 var dollR: THREE.WebGLRenderer | null = null, dollScene: THREE.Scene | null = null, dollCam: THREE.PerspectiveCamera | null = null, dollYaw = 0.42, dollPulse = -9, dollBoxT = 0, dollDrag: number | null = null, dollFail = false;
-const DOLL_W = 96, DOLL_H = 146;
+let dollZoom = 1, dollZoomV = 1; const dollBase = { cy: 1, top: 1.9, dist: 3.2 };
+const DOLL_W = 340, DOLL_H = 524; /* 11/11 (Erling: "o boneco tem que ser mais bonito"): o retrato da ficha é desenhado no dobro do tamanho da moldura, com serrilhado alisado (antes 96×146 esticado) */
 function dollTick(dt: number) {
   if (dollFail) return; const chEl = document.getElementById('char'), host = chEl && chEl.style.display !== 'none' ? chEl.querySelector('.doll') as HTMLElement | null : null; if (!host) return;
   try {
     if (!dollR) {
-      dollR = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'low-power' }); dollR.setPixelRatio(1); dollR.setSize(DOLL_W, DOLL_H, false); dollR.outputColorSpace = renderer.outputColorSpace; dollR.toneMapping = renderer.toneMapping; dollR.toneMappingExposure = renderer.toneMappingExposure;
+      dollR = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'low-power' }); dollR.setPixelRatio(1); dollR.setSize(DOLL_W, DOLL_H, false); dollR.outputColorSpace = renderer.outputColorSpace; dollR.toneMapping = renderer.toneMapping; dollR.toneMappingExposure = renderer.toneMappingExposure;
       dollR.domElement.className = 'dollcv'; dollScene = new THREE.Scene(); dollScene.background = new THREE.Color(0x14101a);
       dollScene.add(new THREE.HemisphereLight(0xfff4e0, 0x3a2a30, 2.3)); const dl = new THREE.DirectionalLight(0xffffff, 2.6); dl.position.set(1.2, 2.2, 2.4); dollScene.add(dl);
       const rim = new THREE.DirectionalLight(0xffd8a0, 1.2); rim.position.set(-2, 1.5, -2); dollScene.add(rim);
@@ -3040,12 +3407,14 @@ function dollTick(dt: number) {
       const cv = dollR.domElement; cv.addEventListener('pointerdown', (e) => { dollDrag = e.clientX; cv.setPointerCapture(e.pointerId); e.stopPropagation(); });
       cv.addEventListener('pointermove', (e) => { if (dollDrag === null) return; dollYaw += (e.clientX - dollDrag) * 0.02; dollDrag = e.clientX; });
       cv.addEventListener('pointerup', () => { dollDrag = null; });
+      cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); dollZoom = Math.max(1, Math.min(3.2, dollZoom * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); }, { passive: false }); cv.addEventListener('dblclick', () => { dollZoom = 1; dollYaw = 0; }); cv.title = 'Arraste para girar · roda do mouse para aproximar · dois cliques para voltar';
     }
     const cv = dollR.domElement; if (cv.parentElement !== host) { host.querySelector('img')?.remove(); host.prepend(cv); }
     const root = hero.root, parent = root.parent, pos = root.position.clone(), rot = root.rotation.clone(), vis = root.visible;
     dollScene!.add(root); root.position.set(0, 0, 0); root.rotation.set(0, dollYaw, 0); root.visible = true; root.updateMatrixWorld(true);
     const xr: THREE.Object3D[] = []; root.traverse((o) => { const mt = (o as THREE.Mesh).material as THREE.Material | undefined; if (o.visible && (o.userData.xray || (mt && !Array.isArray(mt) && mt.depthTest === false))) { xr.push(o); o.visible = false; } });
-    if ((dollBoxT -= dt) <= 0) { dollBoxT = 0.6; const box = new THREE.Box3().setFromObject(root), top = Math.min(box.max.y, 1.97 * (root.scale.y || 1)), cy = top * 0.52, dist = top * 1.45 + 0.45; dollCam!.position.set(0.3, cy + 0.15, dist); dollCam!.lookAt(0, cy - 0.02, 0); }
+    if ((dollBoxT -= dt) <= 0) { dollBoxT = 0.6; const box = new THREE.Box3().setFromObject(root), top = Math.min(box.max.y, 1.97 * (root.scale.y || 1)), cy = top * 0.52, dist = top * 1.45 + 0.45; dollBase.cy = cy; dollBase.top = top; dollBase.dist = dist; }
+    { /* 11/11 (Erling: "nessa janela pode dar zoom e também girar o personagem"): a roda do mouse aproxima (até o rosto); arrastar gira */ const z = dollZoomV += (dollZoom - dollZoomV) * Math.min(1, dt * 10), u = (z - 1) / 2.2, ly = dollBase.cy - 0.02 + (dollBase.top * 0.84 - dollBase.cy) * u; dollCam!.position.set(0.3 / z, ly + 0.17 / z, dollBase.dist / z); dollCam!.lookAt(0, ly, 0); }
     dollCam!.layers.enableAll(); dollR.render(dollScene!, dollCam!);
     for (const o of xr) o.visible = true;
     dollScene!.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis; root.updateMatrixWorld(true);

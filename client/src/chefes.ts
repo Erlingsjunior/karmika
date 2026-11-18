@@ -11,7 +11,9 @@
      chuva, linhas, rajada de projéteis, puxão, sumir e aparecer atrás, rugido que deixa lento, dreno (laço de sangue que se rompe
      com distância) e chamado de crias.
    As mecânicas antigas da masmorra (círculo, golpe pesado, poças, crias por vida, fúria) continuam: o kit soma em cima. */
+import { std } from './toon3d';
 import * as THREE from 'three';
+import { wallOf, erupt } from './luta3d';
 import type { EnemyType } from './world';
 
 type Gait = 'stomp' | 'hover' | 'skitter' | 'prowl' | 'lurch';
@@ -29,6 +31,8 @@ export type Spell =
   | { kind: 'roar'; name: string; col: number; every: number; k: number; r: number; slow: number }
   | { kind: 'drain'; name: string; col: number; every: number; k: number; r: number }
   | { kind: 'summon'; name: string; col: number; every: number; k: number; type: EnemyType; n: number; line: string }
+  /** 12/11 a Aranha-Mãe: sobe pelo fio e some; do alto caem `n` teias (quem está no círculo fica preso `hold` s) e descem `adds` ajudantes; depois ela cai em cima de você */
+  | { kind: 'teia'; name: string; col: number; every: number; k: number; n: number; r: number; hold: number; type: EnemyType; adds: number }
   /** encanto (súcubo): dentro do círculo, os comandos se invertem por alguns segundos */
   | { kind: 'charm'; name: string; col: number; every: number; k: number; r: number; sec: number };
 export interface Kit {
@@ -51,7 +55,13 @@ const P = {
     const gm = mesh(new THREE.OctahedronGeometry(0.05 * s), glowM(gem)); gm.position.set(0, 0.03, 0.21 * s); g.add(gm); D.add(g, D.head.x, D.head.y + 0.18 * s, D.head.z); return g; },
   eyes(D: Dress, col: number, s = 1, dz = 0.12) { for (const x of [-1, 1]) { const e = mesh(new THREE.SphereGeometry(0.045 * s, 6, 5), glowM(col, 1)); D.add(e, D.head.x + x * 0.085 * s, D.head.y, D.head.z + dz * s); } },
   horns(D: Dress, col: number, len = 0.6, spread = 0.25, curl = 0.6) { for (const x of [-1, 1]) { const h = mesh(new THREE.ConeGeometry(0.07, len, 6), toon(col)); h.rotation.z = -x * curl; h.rotation.x = -0.35; D.add(h, D.head.x + x * spread, D.head.y + 0.15 + len * 0.3, D.head.z - 0.05); } },
-  cape(D: Dress, col: number, len: number, w = 0.9, y = 0) { const g = new THREE.PlaneGeometry(w, len, 1, 6); g.translate(0, -len / 2, 0); const c = mesh(g, new THREE.MeshToonMaterial({ color: col, side: THREE.DoubleSide })); c.rotation.x = 0.12; D.add(c, 0, (y || D.H * 0.78), -D.W * 0.32); c.userData.cape = 1; return c; },
+  /* 12/11 (Erling: "placa vermelha nas costas de elites humanos; ridículo"): a capa era um retângulo reto, de cor chapada, pendurado longe das costas
+     (a distância vinha da largura da caixa do modelo, que nos modelos de arte inclui os braços abertos). Agora é pano: estreita nos ombros e aberta
+     embaixo, abraça as costas em curva, tem pregas, a barra é irregular, fica colada no corpo e usa o material de toon do jogo (pega luz e sombra). */
+  cape(D: Dress, col: number, len: number, w = 0.9, y = 0) { const g = new THREE.PlaneGeometry(1, 1, 8, 8), ps = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < ps.count; i++) { const u = ps.getX(i) * 2, v = 0.5 - ps.getY(i) /* 0 no ombro, 1 na barra */, wide = w * (0.62 + 0.5 * v), fold = Math.sin(u * 9.4 + 1.3) * 0.03 * v;
+      ps.setXYZ(i, u * wide * 0.5, -v * len * (1 + 0.05 * Math.sin(u * 7 + 0.6) * (v > 0.95 ? 1 : 0)), -0.05 - (1 - u * u) * 0.07 * (1 - v * 0.5) - 0.16 * v * v + fold + u * u * 0.1 * (1 - v)); }
+    g.computeVertexNormals(); const c = mesh(g, std(col, { side: THREE.DoubleSide })); c.rotation.x = 0.06; D.add(c, 0, (y || D.H * 0.78), -Math.min(0.2, D.W * 0.14)); c.userData.cape = 1; return c; },
   lantern(parent: THREE.Object3D, col: number, lit: boolean, x = 0, y = 0, z = 0, s = 1) { const g = new THREE.Group(); const cage = mesh(new THREE.CylinderGeometry(0.11 * s, 0.13 * s, 0.26 * s, 6, 1, true), new THREE.MeshToonMaterial({ color: 0x2a2018, side: THREE.DoubleSide, wireframe: false }));
     const core = mesh(new THREE.SphereGeometry(0.08 * s, 8, 6), lit ? glowM(col, 1) : toon(0x302a22)); const top = mesh(new THREE.ConeGeometry(0.14 * s, 0.1 * s, 6), toon(0x2a2018)); top.position.y = 0.18 * s; g.add(cage, core, top); g.position.set(x, y, z); parent.add(g);
     if (lit) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ color: col, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })); sp.scale.setScalar(0.9 * s); g.add(sp); sp.userData.flick = 1; } return g; },
@@ -75,6 +85,27 @@ const P = {
   wings(D: Dress, col: number, s = 1) { for (const sd of [-1, 1]) { const w = mesh(new THREE.ConeGeometry(0.6 * s, 1.4 * s, 3), new THREE.MeshToonMaterial({ color: col, side: THREE.DoubleSide })); w.scale.z = 0.08; w.rotation.z = sd * 1.1; D.add(w, sd * D.W * 0.55, D.H * 0.72, -D.W * 0.3); w.userData.wing = sd; } },
   /** correntes que pendem (suplício, negociante) */
   chains(D: Dress, col: number, n: number) { for (let i = 0; i < n; i++) { const g = new THREE.Group(); for (let k = 0; k < 5; k++) { const l = mesh(new THREE.TorusGeometry(0.05, 0.015, 4, 8), toon(col)); l.position.y = -k * 0.08; l.rotation.y = k % 2 ? Math.PI / 2 : 0; g.add(l); } D.add(g, (i / Math.max(1, n - 1) - 0.5) * D.W * 0.8, D.H * (0.45 + (i % 2) * 0.15), D.F * 0.25); g.userData.sway = 1; } },
+  /** 12/11 (Erling, com referências): a Aranha-Mãe é metade mulher, metade aranha. O tronco nasce da frente do corpo da aranha: cintura de carapaça,
+      busto pálido, braços finos abertos, cabelo branco comprido e uma coroa de espinhos atrás da cabeça. */
+  dama(D: Dress, skin = 0xa898c8, shell = 0x2a1438, hair = 0xe8e2f2, glow = 0xff2a4a) { const g = new THREE.Group(), s = Math.max(0.8, D.H * 0.95);
+    const w = mesh(new THREE.CylinderGeometry(0.2, 0.3, 0.42, 8), toon(shell)); w.position.y = 0.2; g.add(w);
+    const t = mesh(new THREE.CylinderGeometry(0.21, 0.13, 0.52, 8), toon(skin)); t.position.y = 0.66; g.add(t);
+    const pl = mesh(new THREE.BoxGeometry(0.36, 0.2, 0.2), toon(shell)); pl.position.set(0, 0.76, 0.05); g.add(pl);
+    const gem = mesh(new THREE.OctahedronGeometry(0.05), glowM(glow, 1)); gem.position.set(0, 0.8, 0.17); g.add(gem);
+    const nk = mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.12, 6), toon(skin)); nk.position.y = 0.97; g.add(nk);
+    const hd = mesh(new THREE.SphereGeometry(0.15, 10, 8), toon(skin)); hd.position.y = 1.14; g.add(hd);
+    const hr = mesh(new THREE.SphereGeometry(0.175, 10, 8), toon(hair)); hr.scale.set(1.05, 1, 1.05); hr.position.set(0, 1.18, -0.05); g.add(hr);
+    const tail = mesh(new THREE.ConeGeometry(0.17, 0.95, 8), toon(hair)); tail.rotation.x = Math.PI + 0.22; tail.position.set(0, 0.72, -0.2); g.add(tail);
+    for (const x of [-1, 1]) { const e = mesh(new THREE.SphereGeometry(0.028, 6, 5), glowM(glow, 1)); e.position.set(x * 0.055, 1.15, 0.135); g.add(e); const e2 = mesh(new THREE.SphereGeometry(0.016, 5, 4), glowM(glow, 1)); e2.position.set(x * 0.09, 1.21, 0.115); g.add(e2);
+      const up = mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.42, 6), toon(skin)); up.geometry.translate(0, -0.21, 0); up.position.set(x * 0.23, 0.88, 0); up.rotation.z = x * 1.0; g.add(up);
+      const fo = mesh(new THREE.CylinderGeometry(0.028, 0.035, 0.42, 6), toon(skin)); fo.geometry.translate(0, 0.21, 0); fo.position.set(x * 0.58, 0.66, 0.02); fo.rotation.z = x * -0.35; fo.rotation.x = 0.35; g.add(fo);
+      const cl = mesh(new THREE.ConeGeometry(0.035, 0.16, 5), toon(shell)); cl.position.set(x * 0.73, 1.1, 0.17); cl.rotation.z = x * -0.35; g.add(cl); }
+    for (let i = 0; i < 7; i++) { const a = -1.15 + (i / 6) * 2.3, sp = mesh(new THREE.ConeGeometry(0.022, 0.34 + (i % 2) * 0.12, 5), toon(shell)); sp.position.set(Math.sin(a) * 0.3, 1.2 + Math.cos(a) * 0.3, -0.1); sp.rotation.z = -a; g.add(sp); }
+    /* 12/11 (Erling: "a aranha não tem cabeça e o corpo da mulher sai de onde deveria ser a cabeça da aranha... elas são juntas"): o tronco é preso ao próprio
+       corpo da aranha, no lugar da cabeça (olhos e presas da aranha somem), com a cintura de carapaça enterrada no tórax. Anda, sobe e desce junto com ela. */
+    let body: THREE.Object3D | null = null; D.g.traverse((o) => { if (o.name === 'spBody') body = o; });
+    if (body) { const B = body as THREE.Object3D; B.traverse((o) => { if (o.name === 'spHead') o.visible = false; }); g.scale.setScalar(1); g.position.set(0, -0.1, 0.24); g.rotation.x = 0.1; B.add(g); return; }
+    g.scale.setScalar(s); D.add(g, 0, D.head.y - 0.12 * s, D.head.z * 0.72); },
   ring(D: Dress, col: number, r: number) { const m = mesh(new THREE.RingGeometry(r * 0.82, r, 48), glowM(col, 0.5)); m.rotation.x = -Math.PI / 2; D.add(m, 0, 0.05, 0); m.userData.spin = 0.6; return m; },
   dots(D: Dress, col: number, n: number, ymin = 0.2, ymax = 0.9) { for (let i = 0; i < n; i++) { const d = mesh(new THREE.SphereGeometry(0.05 + Math.random() * 0.04, 5, 4), glowM(col, 1)); const a = Math.random() * 6.283; D.add(d, Math.cos(a) * D.W * 0.34, D.H * (ymin + Math.random() * (ymax - ymin)), Math.sin(a) * D.W * 0.3 + D.F * 0.05); d.userData.flick = 1; } },
   bones(D: Dress, n: number, y: number, r: number) { for (let i = 0; i < n; i++) { const a = (i / n) * 6.283, b = mesh(new THREE.CapsuleGeometry(0.035, 0.18, 3, 5), toon(0xe8dcc0)); b.rotation.z = Math.PI / 2; b.rotation.y = a; D.add(b, Math.cos(a) * r, y, Math.sin(a) * r); } },
@@ -298,8 +329,8 @@ export const KITS: Record<string, Kit> = {
   'Aranha Tecelã': q({ gait: 'skitter', spells: [{ kind: 'roar', name: 'Teia', col: 0xe8e8f0, every: 11, k: 0.2, r: 4.5, slow: 0.15 }] }),
   'Aranha Filhote': q({ gait: 'skitter', spells: [] }),
   'Aracnídea-Mãe': q({ eye: 0xff2a1a, gait: 'stomp', speed: 0.9, fx: { col: 0x9aff6a, col2: 0x1a2a10, up: -0.5, rate: 8 },
-    look(D) { P.ring(D, 0xff2a1a, 1.4); },
-    spells: [{ kind: 'summon', name: 'A Ninhada Sem Fim', col: 0xff3a1a, every: 9, k: 0, type: 'spiderling', n: 10, line: 'A Aracnídea-Mãe treme o abdômen: cem filhotes escorrem das bolsas!' }, { kind: 'roar', name: 'Teia da Mãe', col: 0xf0f0f8, every: 14, k: 0.4, r: 11, slow: 0.12 }, { kind: 'volley', name: 'Cuspe Ácido', col: 0x9aff4a, every: 8, k: 0.8, n: 5, spread: 1.0, sp: 9 }, { kind: 'leap', name: 'O Peso da Mãe', col: 0xff3a1a, every: 15, k: 1.8, r: 5 }] }),
+    look(D) { P.ring(D, 0xff2a1a, 1.4); P.dama(D); },
+    spells: [{ kind: 'teia', name: 'A Subida da Mãe', col: 0xe8ecf4, every: 26, k: 0.7, n: 3, r: 2.6, hold: 3.5, type: 'spider', adds: 2 }, { kind: 'summon', name: 'A Ninhada Sem Fim', col: 0xff3a1a, every: 9, k: 0, type: 'spiderling', n: 10, line: 'A Aracnídea-Mãe treme o abdômen: cem filhotes escorrem das bolsas!' }, { kind: 'roar', name: 'Teia da Mãe', col: 0xf0f0f8, every: 14, k: 0.4, r: 11, slow: 0.12 }, { kind: 'volley', name: 'Cuspe Ácido', col: 0x9aff4a, every: 8, k: 0.8, n: 5, spread: 1.0, sp: 9 }, { kind: 'leap', name: 'O Peso da Mãe', col: 0xff3a1a, every: 15, k: 1.8, r: 5 }] }),
   'Urso das Cavernas': q({ eye: 0xffb040, gait: 'stomp', look(D) { P.bones(D, 5, D.H * 0.4, D.W * 0.5); }, spells: [{ kind: 'roar', name: 'Rugido da Caverna', col: 0xd8c8a0, every: 15, k: 0.4, r: 9, slow: 0.5 }, { kind: 'leap', name: 'Patada', col: 0xffb040, every: 10, k: 1.5, r: 3.5 }] }),
   'Cobra Gigante': q({ eye: 0xffd040, gait: 'prowl', spells: [{ kind: 'charge', name: 'Bote da Gigante', col: 0xffd040, every: 9, k: 1.5, len: 11, w: 1.8 }, { kind: 'cone', name: 'Peçonha', col: 0x9aff4a, every: 12, k: 1.0, r: 7, deg: 50 }] }),
   'Serpente do Brejo': q({ gait: 'prowl', spells: [{ kind: 'cone', name: 'Cuspe de Peçonha', col: 0x9aff4a, every: 11, k: 0.7, r: 5, deg: 40 }] }),
@@ -397,17 +428,24 @@ type Fx = (dt: number) => boolean; /* true = acabou */
 const HOT = new Set(['chase', 'windup', 'recover', 'hurt']);
 export function createBossBrain(ctx: BrainCtx) {
   const fxs: Fx[] = [];
-  const cast = new Map<EnemyLike, { cds: number[]; busy: number; mine: boolean }>();
+  const cast = new Map<EnemyLike, { cds: number[]; busy: number; mine: boolean; /** há quantos segundos o herói está colado (reflexo de quem foi encurralado) */ close: number; flip: number }>();
   const floorY = (e: EnemyLike) => e.pos.y + 0.07;
   /* --- formas no chão (o aviso enche até bater) --- */
   function shapeMesh(geo: THREE.BufferGeometry, col: number) { const edge = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.22, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false })); return edge; }
   function telegraph(geo: THREE.BufferGeometry, col: number, x: number, y: number, z: number, rotY: number, dur: number, then: () => void, grow: 'scale' | 'fade' = 'fade') {
     dur *= 1.1; /* 28/10: as marcas dos chefes 10% mais longas */
+    /* 10/11: a mancha no chão fica só como sombra do aviso; quem avisa de verdade é a parede de energia que sobe na borda, e no fim a área erupciona (fx3d.ts) */
     const m = shapeMesh(geo, col); m.position.set(x, y, z); m.rotation.y = rotY; ctx.scene.add(ctx.fine(m));
-    const fill = shapeMesh(geo, col); fill.position.copy(m.position); fill.position.y += 0.01; fill.rotation.y = rotY; ctx.scene.add(ctx.fine(fill)); let t = 0;
-    fxs.push((dt) => { t += dt; const k = Math.min(1, t / dur); (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.35 * Math.abs(Math.sin(t * 9)) * (k > 0.7 ? 1 : 0.4);
-      if (grow === 'scale') fill.scale.setScalar(Math.max(0.03, k)); else (fill.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.4 * k;
-      if (k >= 1) { ctx.scene.remove(m); ctx.scene.remove(fill); m.geometry.dispose(); (m.material as THREE.Material).dispose(); (fill.material as THREE.Material).dispose(); then(); return true; } return false; });
+    const fill = shapeMesh(geo, col); fill.position.copy(m.position); fill.position.y += 0.01; fill.rotation.y = rotY; ctx.scene.add(ctx.fine(fill));
+    const wall = wallOf(geo, col); wall.position.set(x, y, z); wall.rotation.y = rotY; wall.scale.y = 0.1; ctx.scene.add(ctx.fine(wall)); let t = 0, pT = 0;
+    geo.computeBoundingSphere(); const bs = geo.boundingSphere!, cr = Math.cos(rotY), sr = Math.sin(rotY);
+    fxs.push((dt) => { t += dt; const k = Math.min(1, t / dur); (m.material as THREE.MeshBasicMaterial).opacity = 0.08 + 0.1 * Math.abs(Math.sin(t * 9)) * (k > 0.7 ? 1 : 0.4);
+      if (grow === 'scale') { fill.scale.setScalar(Math.max(0.03, k)); (fill.material as THREE.MeshBasicMaterial).opacity = 0.14; } else (fill.material as THREE.MeshBasicMaterial).opacity = 0.02 + 0.16 * k;
+      wall.scale.y = 0.15 + 1.5 * k * k + (k > 0.7 ? Math.abs(Math.sin(t * 22)) * 0.25 : 0); (wall.material as THREE.MeshBasicMaterial).opacity = 0.55 + 0.4 * k;
+      pT += dt * (6 + 26 * k); while (pT > 1) { pT -= 1; const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * bs.radius, lx = bs.center.x + Math.cos(a) * rr, lz = bs.center.z + Math.sin(a) * rr; /* brasas subindo de dentro da área */
+        ctx.particles.spawn(x + lx * cr + lz * sr, y + 0.1, z - lx * sr + lz * cr, { vy: 1.2 + Math.random() * 2.2, life: 0.7, s0: 0.12, s1: 0.02, c0: 0xffffff, c1: col, a: 0.9 }); }
+      if (k >= 1) { ctx.scene.remove(m); ctx.scene.remove(fill); ctx.scene.remove(wall); wall.geometry.dispose(); (wall.material as THREE.Material).dispose(); (m.material as THREE.Material).dispose(); (fill.material as THREE.Material).dispose();
+        fxs.push(erupt(ctx.scene, ctx.fine, geo, col, x, y, z, rotY)); const g0 = geo; setTimeout(() => g0.dispose(), 3000); then(); return true; } return false; });
   }
   const sector = (r: number, deg: number) => new THREE.CircleGeometry(r, 28, -deg * Math.PI / 360, deg * Math.PI / 180).rotateX(-Math.PI / 2);
   const rect = (len: number, w: number) => new THREE.PlaneGeometry(len, w).rotateX(-Math.PI / 2).translate(len / 2, 0, 0);
@@ -453,6 +491,23 @@ export function createBossBrain(ctx: BrainCtx) {
         fxs.push((dt) => { t += dt; tick -= dt; line.update(); const hh = ctx.heroPos(), d = Math.hypot(hh.x - e.pos.x, hh.z - e.pos.z); if (!e.alive || d > sp.r || t > 3.2) { line.done(); if (e.alive && d > sp.r) ctx.log(`✂ Você rompeu ${sp.name}.`, '#ffd27a'); return true; }
           if (tick <= 0) { tick = 0.5; const n = Math.max(1, Math.round(e.def.dmg * sp.k)); hurt(e, sp.k); e.hp = Math.min(e.hpMax, e.hp + n * 2.5); burst(hh.x, hh.y + 1, hh.z, sp.col, 8, 1, 2, 0.6); } return false; }); return 3.3; }
       case 'charm': { shout(e, sp, 'Não olhe nos olhos dela — saia do círculo!'); const cx = e.pos.x, cz = e.pos.z; telegraph(disc(sp.r), sp.col, cx, y, cz, 0, 1.2, () => { const hh = ctx.heroPos(); if (e.alive && Math.hypot(hh.x - cx, hh.z - cz) < sp.r) { hurt(e, sp.k); ctx.charm?.(sp.sec); ctx.log(`💋 ${sp.name}: seus passos estão trocados por ${sp.sec} s!`, '#ff8ad8'); } burst(cx, y + 1, cz, sp.col, 40, sp.r, 2); ctx.sound('arcane'); }, 'scale'); return 1.5; }
+      case 'teia': { /* 12/11 (Erling: "ela sobe e some, joga teia e nos prende, chama ajudantes e desce") */
+        const K2 = e as EnemyLike & { kneel?: boolean; t?: number }, bd = bodyOf(e), y0 = bd?.position.y ?? 0, UP = 22; let t = 0, stage = 0, shots = 0, shotT = 0.7, lx = e.pos.x, lz = e.pos.z, tl = 0;
+        ctx.say(`${e.def.name} sobe pelo fio e some no escuro do teto! ${sp.name}: não fique parado, as teias vêm de cima!`); ctx.sound('shock'); K2.kneel = true; /* lá em cima ninguém a alcança, e ela não ataca */
+        const thr = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, UP + 6, 4), new THREE.MeshBasicMaterial({ color: 0xe8ecf4, transparent: true, opacity: 0.85, fog: false })); thr.position.set(lx, y + (UP + 6) / 2, lz); ctx.scene.add(ctx.fine(thr));
+        const end = () => { if (bd) bd.position.y = y0; if (e.root) e.root.visible = true; K2.kneel = false; if (e.alive) { e.state = 'chase'; K2.t = 0; } ctx.scene.remove(thr); thr.geometry.dispose(); (thr.material as THREE.Material).dispose(); };
+        fxs.push((dt) => { t += dt; if (!e.alive) { end(); return true; }
+          if (stage === 0) { const k = Math.min(1, t / 1.1); if (bd) bd.position.y = y0 + k * k * UP; if (k >= 1) { stage = 1; if (e.root) e.root.visible = false;
+              if (mine) for (let i = 0; i < sp.adds; i++) { const h2 = ctx.heroPos(), a = Math.random() * 6.283, x = h2.x + Math.cos(a) * 4.5, z = h2.z + Math.sin(a) * 4.5; if (!ctx.walkable(x, z)) continue; fall(x, y, z, 0x3a2a24, 0.9); setTimeoutFx(0.9, () => { if (e.alive) { ctx.spawnAdd(sp.type, x, z); burst(x, y + 0.3, z, sp.col, 14, 2, 2); } }); }
+              if (sp.adds) ctx.log('🕷 As filhas descem pelos fios para segurar você no lugar!', '#ffb0a0'); } return false; }
+          if (stage === 1) { shotT -= dt; if (shotT <= 0 && shots < sp.n) { shots++; shotT = 1.45; const h2 = ctx.heroPos(), tx = h2.x, tz = h2.z; fall(tx, y, tz, sp.col, 1.1);
+              telegraph(disc(sp.r), sp.col, tx, y, tz, 0, 1.0, () => { const hh = ctx.heroPos(); pool(tx, y, tz, sp.r, 0xdfe4ea, e, 0, sp.hold + 1); if (e.alive && Math.hypot(hh.x - tx, hh.z - tz) < sp.r) { hurt(e, sp.k); ctx.slowHero(0.03, sp.hold); ctx.log(`🕸 Você ficou preso na teia por ${sp.hold} s! As filhas vêm.`, '#e8ecf4'); ctx.shake(0.25); } ctx.sound('ice'); }, 'scale'); }
+            else if (shotT <= 0) { stage = 2; const h2 = ctx.heroPos(); if (mine && ctx.walkable(h2.x, h2.z)) { lx = h2.x; lz = h2.z; } e.pos.x = lx; e.pos.z = lz; thr.position.set(lx, y + (UP + 6) / 2, lz); ctx.say(`${e.def.name} vai cair em cima de você: SAIA do círculo!`);
+              telegraph(disc(5), 0xff3a2a, lx, y, lz, 0, 1.5, () => { stage = 3; if (!e.alive) return; const hh = ctx.heroPos(); if (Math.hypot(hh.x - lx, hh.z - lz) < 5) { hurt(e, sp.k * 2.4); ctx.pushHero((hh.x - lx) * 0.5, (hh.z - lz) * 0.5); } ctx.shake(0.8); ctx.sound('boom'); burst(lx, y + 0.3, lz, sp.col, 70, 7, 4, 1); ring2(lx, y, lz, 5, 0xff3a2a); }, 'scale'); }
+            return false; }
+          if (stage === 2) { tl += dt; if (tl > 0.75) { if (e.root) e.root.visible = true; const k = Math.min(1, (tl - 0.75) / 0.9); if (bd) bd.position.y = y0 + (1 - k * k) * UP; } e.pos.x = lx; e.pos.z = lz; return false; }
+          end(); return true; });
+        return 1.1 + 0.7 + sp.n * 1.45 + 1.8 + 0.4; }
       case 'summon': { ctx.say(sp.line); ctx.sound('shock'); if (mine) for (let i = 0; i < sp.n; i++) { const a = (i / sp.n) * 6.283, x = e.pos.x + Math.cos(a) * 4, z = e.pos.z + Math.sin(a) * 4; if (ctx.walkable(x, z)) { ctx.spawnAdd(sp.type, x, z); burst(x, y + 0.3, z, sp.col, 16, 2, 3); } } return 1.0; }
     }
     return 1;
@@ -476,14 +531,31 @@ export function createBossBrain(ctx: BrainCtx) {
       done() { ctx.scene.remove(ln); geo.dispose(); } }; }
 
   /** a masmorra registra quem luta com o kit (o chefe e o elite); `mine` = o meu cliente manda na posição dele */
-  function track(e: EnemyLike) { const kit = kitOf(e.def.name); if (!kit || cast.has(e)) return; cast.set(e, { cds: kit.spells.map((s, i) => 3 + i * 2.2 + Math.random() * 1.5 + s.every * 0.15), busy: 0, mine: true }); }
+  function track(e: EnemyLike) { const kit = kitOf(e.def.name); if (!kit || cast.has(e)) return; cast.set(e, { cds: kit.spells.map((s, i) => 3 + i * 2.2 + Math.random() * 1.5 + s.every * 0.15), busy: 0, mine: true, close: 0, flip: 0 }); }
+  /* 10/11 (Erling: "prendi o Sacristão muito facilmente; por que não teleportou, por que não me empurrou com alguma magia?"):
+     REFLEXO DE ENCURRALADO, para todo chefe. Herói colado nele por 5 s seguidos (3,5 s com o chefe abaixo de 30% de vida) → ele reage:
+     quem flutua some e reaparece longe, nas costas do herói; quem é de carne dá um urro que arremessa o herói para trás. Na vez seguinte, troca. */
+  function blinkSpot(e: EnemyLike, hp: THREE.Vector3): [number, number] | null { const a0 = Math.atan2(hp.z - e.pos.z, hp.x - e.pos.x); /* de preferência para o lado oposto ao do chefe: atrás do herói */
+    for (const R of [9, 7, 11, 5.5]) for (let i = 0; i < 12; i++) { const a = a0 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 0.5, x = hp.x + Math.cos(a) * R, z = hp.z + Math.sin(a) * R; let ok = ctx.walkable(x, z);
+      for (let k = 1; ok && k <= 6; k++) ok = ctx.walkable(hp.x + (x - hp.x) * k / 6, hp.z + (z - hp.z) * k / 6); /* caminho livre entre os dois: nada de reaparecer atrás de uma parede */ if (ok) return [x, z]; }
+    return null; }
+  function cornered(e: EnemyLike, kit: Kit, st: { flip: number }): number { const hp = ctx.heroPos(), y = floorY(e), col = kit.fx?.col ?? 0xc8b8ff;
+    const wantBlink = (kit.gait === 'hover') !== (st.flip++ % 2 === 1), spot = wantBlink ? blinkSpot(e, hp) : null;
+    if (spot) { burst(e.pos.x, y + 1, e.pos.z, col, 26, 3, 4, 0.7); ctx.sound('arcane'); e.pos.x = spot[0]; e.pos.z = spot[1]; if (e.root) e.root.position.set(spot[0], e.root.position.y, spot[1]);
+      burst(spot[0], y + 1, spot[1], col, 26, 3, 4, 0.7); ctx.say(`${e.def.name} some diante de você e reaparece às suas costas!`); return 0.9; }
+    const r = e.def.radius + 4.2; ctx.say(`${e.def.name} enche o peito: afaste-se ou vai voar!`);
+    telegraph(new THREE.CircleGeometry(r, 36).rotateX(-Math.PI / 2), 0xff5a2a, e.pos.x, y, e.pos.z, 0, 0.75, () => { if (!e.alive) return; const h = ctx.heroPos(), dx = h.x - e.pos.x, dz = h.z - e.pos.z, d = Math.hypot(dx, dz) || 1; ctx.sound('boom'); ctx.shake(0.5);
+      for (let i = 0; i < 36; i++) { const a = i / 36 * 6.283; ctx.particles.spawn(e.pos.x + Math.cos(a) * 1.2, y + 0.3, e.pos.z + Math.sin(a) * 1.2, { vx: Math.cos(a) * 9, vy: 0.6, vz: Math.sin(a) * 9, life: 0.5, s0: 0.4, s1: 0.06, c0: 0xffffff, c1: col, a: 0.9, drag: 1.5 }); }
+      if (d > r) return; hurt(e, 0.5); let t = 0; const ux = dx / d, uz = dz / d; fxs.push((dt) => { const k = Math.min(dt, 0.22 - t); t += dt; ctx.pushHero(ux * 7 * k / 0.22, uz * 7 * k / 0.22); return t >= 0.22; }); }, 'scale');
+    return 1.1; }
   function untrackAll() { cast.clear(); for (const p of pools) ctx.scene.remove(p.m); pools.length = 0; }
   let tt = 0;
   function tick(dt: number, mineOf?: (e: EnemyLike) => boolean) {
     tt += dt; const hp = ctx.heroPos();
     /* magias de quem está lutando */
     for (const [e, st] of cast) { if (!e.alive) { cast.delete(e); continue; } const kit = kitOf(e.def.name)!; const d = Math.hypot(hp.x - e.pos.x, hp.z - e.pos.z);
-      if (!HOT.has(e.state) || d > 26 || ctx.heroDead()) continue; st.busy -= dt; for (let i = 0; i < st.cds.length; i++) st.cds[i] -= dt; if (st.busy > 0 || e.state === 'windup') continue;
+      if (!HOT.has(e.state) || d > 26 || ctx.heroDead()) { st.close = 0; continue; } st.busy -= dt;
+      st.close = d < e.def.radius + 2.8 ? st.close + dt : Math.max(0, st.close - dt * 2); if (st.close > (e.hp / e.hpMax < 0.3 ? 3.5 : 5) && st.busy <= 0 && (mineOf ? mineOf(e) : true)) { st.close = 0; if (e.state === 'windup') e.state = 'chase'; /* larga o golpe que estava armando: quem bate sem parar nunca reagiria */ st.busy = cornered(e, kit, st); continue; } for (let i = 0; i < st.cds.length; i++) st.cds[i] -= dt; if (st.busy > 0 || e.state === 'windup') continue;
       const enr = e.hp / e.hpMax < 0.3 ? 0.7 : 1; for (let i = 0; i < kit.spells.length; i++) { if (st.cds[i] > 0) continue; const sp = kit.spells[i]; st.cds[i] = sp.every * enr * (0.9 + Math.random() * 0.2); st.busy = doSpell(e, sp, mineOf ? mineOf(e) : true); break; } }
     for (let i = fxs.length - 1; i >= 0; i--) if (fxs[i](dt)) fxs.splice(i, 1);
     for (let i = pools.length - 1; i >= 0; i--) { const p = pools[i]; p.t += dt; p.tick -= dt; (p.m.material as THREE.MeshBasicMaterial).opacity = 0.4 * Math.min(1, (p.life - p.t) / 1.5); if (p.tick <= 0 && Math.hypot(hp.x - p.x, hp.z - p.z) < p.r) { p.tick = 1; hurt(p.e, p.k); } if (p.t > p.life) { ctx.scene.remove(p.m); p.m.geometry.dispose(); pools.splice(i, 1); } }
@@ -508,5 +580,7 @@ export function createBossBrain(ctx: BrainCtx) {
       const F = U.kit.fx; if (F) { U.fxT += dt * F.rate; while (U.fxT > 1) { U.fxT -= 1; const a = Math.random() * 6.283, r = Math.random() * e.def.radius * 1.2; ctx.particles.spawn(g.position.x + Math.cos(a) * r, g.position.y + Math.random() * U.H * e.def.scale * 0.9, g.position.z + Math.sin(a) * r, { vx: (Math.random() - 0.5) * 0.4, vy: F.up, vz: (Math.random() - 0.5) * 0.4, life: 1.1, s0: F.size ?? 0.28, s1: 0.04, c0: F.col, c1: F.col2, a: 0.85 }); } }
     }
   }
-  return { track, untrackAll, tick, get casting() { return cast.size; } };
+  /** teste: um aviso em cone e um em círculo num ponto */
+  function demo(x: number, y: number, z: number) { telegraph(sector(6, 90), 0xff4030, x, y, z, 0, 1.3, () => { /* */ }); telegraph(new THREE.CircleGeometry(3, 36).rotateX(-Math.PI / 2), 0x8a6aff, x - 5, y, z + 3, 0, 1.3, () => { /* */ }, 'scale'); }
+  return { track, untrackAll, tick, demo, get casting() { return cast.size; } };
 }

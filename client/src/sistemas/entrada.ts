@@ -1,21 +1,29 @@
 /* ENTRADA: teclado (atalhos, movimento, combate, janelas), mira e o estado das teclas. Saiu do main.ts (02/11). */
+import { controleJanelas } from './controle';
+import { isAdm } from './admin';
+import { pulo, PULO_DUR } from './pulo-montaria';
+import { t as tr } from '../i18n';
 import * as THREE from 'three';
 import { TILE_M as T, type Race } from '@karmika/shared';
 import { createAim, type AimSpec } from '../aim';
-import { type SkillDef, skillAt, setBarRows, barRows, layout, posKey } from '../kits';
+import { type SkillDef, skillAt, setBarRows, barRows, layout, posKey, keyOf, kitOf } from '../kits';
+import { cliques, TECLA_DE_BATALHA } from '../combate';
 import { heightAt } from '../world';
 import type { EntradaCtx } from '../main';
 
+/** quanto fôlego custa um dash (era 15 até 16/11) */
+const DASH_STAM = 15 / 1.4;
 export function createEntrada(K: EntradaCtx) {
 /* 06/11: runas que fazem sumir e reaparecer atrás do alvo — só em chão livre; se o lugar estiver ocupado, aproxima até achar */
 K.game.setTeleport((x, z) => { const hx = K.hero.root.position.x, hz = K.hero.root.position.z; let tx = x, tz = z, k = 0; for (; k < 10 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; } if (!K.free(tx / T, tz / T)) return false;
   K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); return true; });
 /* ---------- entrada ---------- */
 const keys = new Set<string>();
-/* R alterna correr/andar (padrão: correr, gasta fôlego); Shift segurado faz o contrário enquanto estiver pressionado.
+/* R alterna correr/andar (padrão: correr, gasta fôlego).
    Sem fôlego, anda sozinho até recuperar 25% */
 let runOn = (() => { try { return localStorage.getItem('karmika.run') !== '0'; } catch { return true; } })(), outOfBreath = false;
-const runningNow = () => (runOn !== keys.has('shift')) && !outOfBreath;
+/* 17/11 (Erling: "é o R que cuida de correr e não correr, e não o Shift"): correr é só o R. O Shift ficou livre: segurado, o botão esquerdo ataca parado (mouse-clique.ts) */
+const runningNow = () => runOn && !outOfBreath;
 const heroPosNow = () => new THREE.Vector3(K.state.fx * T, 0, K.state.fy * T);
 /* ---- marcação de chão: a magia marca, o botão direito lança no local marcado ---- */
 const aim = createAim(K.scene);
@@ -24,6 +32,18 @@ let aimSlot: string | null = null, lockYaw: number | null = null, guardCone = fa
 let leap: { x0: number; z0: number; x1: number; z1: number } | null = null;
 /* ---- modo de combate (Tab): fora dele corre-se mais rápido, o escudo vai às costas e as mãos ficam livres para o ofício ---- */
 let combatMode = false;
+/* 04/11 Salto de Recuo (elfo) — 10/11 (Erling: "quando uso a magia 3 ele tem que pular para trás e ir DE VERDADE para trás, pousar umas 6
+   células ou mais longe do inimigo"): 12 m para trás, sem virar as costas, subindo ~1,8 m no meio; a flecha sai no ar. Vale tanto mirado
+   quanto lançado direto pelo atalho (antes, pelo atalho, só tocava a animação e ficava no lugar). */
+function backleap(yaw: number, cost: number): boolean {
+  const hp = K.hero.root.position, hx = hp.x, hz = hp.z, bx = -Math.sin(yaw), bz = -Math.cos(yaw); let tx = hx + bx * 12, tz = hz + bz * 12;
+  for (let k = 0; k < 16 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.88; tz = hz + (tz - hz) * 0.88; }
+  const ok = K.game.useExtra('backleap', yaw, cost, { x: tx, z: tz }); if (!ok) return false;
+  K.state.path = []; const x0 = hx, z0 = hz, t0 = performance.now(), D = 650;
+  const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - (1 - k) * (1 - k); const x = x0 + (tx - x0) * e, z = z0 + (tz - z0) * e; K.hero.root.position.x = x; K.hero.root.position.z = z; K.state.fx = x / T; K.state.fy = z / T; K.hero.lift = Math.sin(Math.PI * k) * 1.8; if (k < 1) requestAnimationFrame(step); else K.hero.lift = 0; };
+  requestAnimationFrame(step); return true;
+}
+
 function setCombat(on: boolean, quiet = false) {
   if (combatMode === on) return; combatMode = on; K.hero.combat = on;
   document.body.classList.toggle('combat', on);
@@ -33,9 +53,22 @@ function setCombat(on: boolean, quiet = false) {
 const locked = (sk: SkillDef) => { if (!K.tree.has(sk.id)) { K.game.logMsg(`${sk.name}: aprenda na Árvore Kármica (K).`, '#ff9a8a'); if (K.tree.available() > 0) K.dockEl.querySelector('[data-d="skills"]')?.classList.add('pulse'); return true; } return false; };
 function startAim(slot: string) {
   const sk = skillAt(K.kitRace(), slot); if (!sk?.aim) return false;
-  if (aimSlot === slot) { cancelAim(); return true; }
+  /* 10/11 (Erling: "magia de mira, se eu clicar duas vezes ela vai sozinha num bicho, nunca erra no vazio"): apertar de novo com a mira
+     aberta lança no inimigo mais perto dentro do alcance (empate: o mais perto do mouse). Sem inimigo no alcance, só fecha a mira. */
+  if (aimSlot === slot) { if (!autoFire(slot, sk)) { cancelAim(); K.game.logMsg(tr('mira.sem_alvo', { magia: sk.name }), '#c8c0a8'); } return true; }
   if (locked(sk)) return true;
   const sc = K.tree.scale(sk.id); setCombat(true); aimSlot = slot; guardCone = false; aim.show({ ...sk.aim, radius: sk.aim.radius * sc.area, range: sk.aim.range * sc.range, label: sk.name }); document.querySelector(`.slot[data-k="${slot}"]`)?.classList.add('aim');
+  return true;
+}
+function autoFire(slot: string, sk: SkillDef): boolean {
+  const hx = K.state.fx * T, hz = K.state.fy * T, range = sk.aim!.range * K.tree.scale(sk.id).range;
+  let best: { x: number; z: number } | null = null, bs = Infinity;
+  for (const e of K.game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d > range + 0.5) continue;
+    const s = d + Math.hypot(e.pos.x - K.mouse.x, e.pos.z - K.mouse.z) * 0.15; if (s < bs) { bs = s; best = e.pos; } }
+  if (!best) return false;
+  const at = { x: best.x, z: best.z, yaw: Math.atan2(best.x - hx, best.z - hz) };
+  cancelAim();
+  if (!castAt(slot, at)) { if (K.game.ready(sk.id, sk.cost) === null) castQ = { slot, at, until: performance.now() + 650 }; }
   return true;
 }
 function cancelAim() { if (aimSlot) document.querySelector(`.slot[data-k="${aimSlot}"]`)?.classList.remove('aim'); aimSlot = null; if (!guardCone) aim.hide(); }
@@ -59,9 +92,7 @@ function castAt(slot: string, a: { x: number; z: number; yaw: number }) {
   } else if (sk.id === 'pounce') { // Salto da Fera: o mesmo arco do salto marcado
     let tx = a.x, tz = a.z; for (let k = 0; k < 12 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = K.game.useExtra('pounce', yaw, sk.cost, { x: tx, z: tz }); if (ok) leap = { x0: hx, z0: hz, x1: tx, z1: tz };
-  } else if (sk.id === 'backleap') { // 04/11 Salto de Recuo (elfo): 7 m para trás, sem virar as costas; a flecha sai no ar
-    const bx = -Math.sin(yaw), bz = -Math.cos(yaw); let tx = hx + bx * 8, tz = hz + bz * 8; /* 09/11 (Erling): 8 m, e é um SALTO — o corpo sobe ~1,6 m no meio */ for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
-    ok = K.game.useExtra('backleap', yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.path = []; const x0 = hx, z0 = hz, t0 = performance.now(), D = 560; const step = () => { const k = Math.min(1, (performance.now() - t0) / D), e = 1 - (1 - k) * (1 - k); const x = x0 + (tx - x0) * e, z = z0 + (tz - z0) * e; K.hero.root.position.x = x; K.hero.root.position.z = z; K.state.fx = x / T; K.state.fy = z / T; K.hero.lift = Math.sin(Math.PI * k) * 1.6; if (k < 1) requestAnimationFrame(step); else K.hero.lift = 0; }; requestAnimationFrame(step); }
+  } else if (sk.id === 'backleap') { ok = backleap(yaw, sk.cost); // Salto de Recuo: ver backleap()
   } else if (sk.id === 'blink' || sk.id === 'leafstep') { // Piscar / Passo Sombrio / Folha ao Vento: some e reaparece à frente, em chão livre
     const dl = Math.min((sk.id === 'leafstep' ? 10 : 8) * 1, Math.hypot(a.x - hx, a.z - hz) || 8), dx = Math.sin(yaw), dz = Math.cos(yaw); let tx = hx + dx * dl, tz = hz + dz * dl; for (let k = 0; k < 14 && !K.free(tx / T, tz / T); k++) { tx = hx + (tx - hx) * 0.85; tz = hz + (tz - hz) * 0.85; }
     ok = K.game.useExtra(sk.id, yaw, sk.cost, { x: tx, z: tz }); if (ok) { K.state.fx = tx / T; K.state.fy = tz / T; K.state.path = []; K.hero.root.position.x = tx; K.hero.root.position.z = tz; K.game.blinkArrive?.(); }
@@ -84,6 +115,7 @@ function denySkill(sk: SkillDef, why: 'cd' | 'res') {
 function useSlot(k: string, fromKey = false) {
   const sk = skillAt(K.kitRace(), k); if (!sk) return;
   if (locked(sk)) return;
+  { const b = K.bichoNoMouse(); if (b) K.foca(b); } /* 16/11: a magia vai no bicho que está debaixo do mouse, e o foco muda para ele */
   if (sk.id === 'guard') { setCombat(true); K.game.guard(true); if (K.hero.guard && !aimSlot) { guardCone = true; aim.show(GUARD_AIM); } return; }
   { const why = K.game.ready(sk.id, sk.cost); if (why && aimSlot !== k) { denySkill(sk, why); return; } }
   if (sk.aim) { startAim(k); if (fromKey && aimSlot === k) aimKey = k; return; }
@@ -92,12 +124,20 @@ function useSlot(k: string, fromKey = false) {
   else if (sk.id === 'slam') K.game.cast(aimYaw());
   else if (sk.id === 'bash') K.game.bash();
   else if (sk.id === 'heal') K.game.heal(heroPosNow());
+  else if (sk.id === 'backleap') backleap(aimYaw(), sk.cost);
   else K.game.useExtra(sk.id, aimYaw(), sk.cost);
 }
 /* o ataque vai para onde o mouse aponta; se houver inimigo nesse cone, encaixa no mais próximo (empate → mais forte) */
 /** em combate, parado: o herói encara o inimigo mais próximo (até 7 m) */
 const nearYaw = (): number | null => { const hx = K.state.fx * T, hz = K.state.fy * T; let b: { x: number; z: number } | null = null, bd = 7; for (const e of K.game.enemies.list) { if (!e.active || !e.alive || e.def.passive) continue; const d = Math.hypot(e.pos.x - hx, e.pos.z - hz); if (d < bd) { bd = d; b = e.pos; } } return b ? Math.atan2(b.x - hx, b.z - hz) : null; };
+/** 16/11: qual magia está em cada botão do mouse, e usar essa magia (ela é disparada pela casa dela na barra) */
+const cliqueId = (n: 1 | 2) => cliques(K.kitRace(), kitOf(K.kitRace()))[n - 1];
+function usaClique(n: 1 | 2) { const id = cliqueId(n), k = id ? keyOf(K.kitRace(), id) : '—'; if (k !== '—') useSlot(k); }
+/** 17/11: a magia do botão está pronta agora (sem recarga e com recurso)? Serve para repetir enquanto o botão fica apertado, sem o aviso de erro */
+const cliquePronto = (n: 1 | 2) => { const id = cliqueId(n), k = id ? keyOf(K.kitRace(), id) : '—', sk = k !== '—' ? skillAt(K.kitRace(), k) : null; return !!sk && !locked(sk) && !sk.aim && !K.game.ready(sk.id, sk.cost); };
+function soltaGuarda() { if (K.hero.guard) { K.game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); } }
 const aimYaw = () => {
+  { const b = K.bichoNoMouse(); if (b) { const hx0 = K.state.fx * T, hz0 = K.state.fy * T; return Math.atan2(b.pos.x - hx0, b.pos.z - hz0); } } /* 16/11: mouse em cima de um bicho: mira nele */
   const hx = K.state.fx * T, hz = K.state.fy * T, my = Math.atan2(K.mouse.x - hx, K.mouse.z - hz), tg = K.game.target(new THREE.Vector3(hx, 0, hz), my);
   return tg ? Math.atan2(tg.x - hx, tg.z - hz) : my;
 };
@@ -106,9 +146,11 @@ const DIRK: Record<string, [number, number]> = { w: [0, -1], arrowup: [0, -1], s
 const worldDir = (ix: number, iy: number): [number, number] => { const x = ix * Math.cos(K.az) - iy * -Math.sin(K.az), y = -ix * Math.sin(K.az) - iy * -Math.cos(K.az); const l = Math.hypot(x, y) || 1; return [x / l, y / l]; };
 function startDash(gx: number, gy: number) {
   if (K.game.menuOpen || K.dlg.isOpen || K.dashCd > 0 || K.game.st.dead) return;
-  if (K.game.st.stam < 15 && !K.game.st.god) { K.game.logMsg('Sem fôlego para o dash.', '#ffd24a'); return; }
-  if (!K.game.st.god && !K.game.st.sp.has('u_sleipnir')) K.game.st.stam -= 15;
+  /* 16/11 (Erling: "usamos dash bastante para desviar ou sair de foco, então a stamina precisa durar uns 40% a mais"): o dash custava 15 e a corrida 9 por segundo; agora 10,7 e 6,4 */
+  if (K.game.st.stam < DASH_STAM && !K.game.st.god) { K.game.logMsg('Sem fôlego para o dash.', '#ffd24a'); return; }
+  if (!K.game.st.god && !K.game.st.sp.has('u_sleipnir')) K.game.st.stam -= DASH_STAM;
   if (K.game.st.sp.has('u_sleipnir') || K.game.st.sp.has('r_pena')) { const hp0 = K.hero.root.position, wing = K.game.st.sp.has('r_pena'); for (let i = 0; i < 30; i++) { const s2 = i % 2 ? 1 : -1, k = (i >> 1) / 15; K.particles.spawn(hp0.x - gx * k * 1.5 + gy * s2 * (wing ? 0.4 + k * 1.2 : 0.2), 1.2 + (wing ? Math.sin(k * Math.PI) * 0.8 : -0.9), hp0.z - gy * k * 1.5 - gx * s2 * (wing ? 0.4 + k * 1.2 : 0.2), { vy: 0.3, life: 0.6, s0: 0.3, s1: 0.04, c0: 0xffffff, c1: wing ? 0xfff0d0 : 0xcfe0ff, a: 0.9 }); } }
+  if (K.compSys.riding && K.compSys.mount) { /* montado: salto, não esquiva */ pulo.t = PULO_DUR; K.dashT = PULO_DUR; K.dashCd = 1.1; K.audio.dash(); K.dx0 = gx; K.dy0 = gy; return; }
   K.dashT = 0.2; K.dashCd = 0.7; K.audio.dash(); K.hero.act('dash'); K.game.ambush(); K.dx0 = gx; K.dy0 = gy;
 }
 // slots da barra: clicáveis; a guarda segura enquanto o botão estiver pressionado
@@ -128,16 +170,17 @@ const ORDER: Race[] = ['nordic', 'technocrat', 'dwarf'];
 function swapTo(r: Race) { if (r !== K.state.race) { K.state.race = r; K.swapHero(); K.game.setClassName(K.classOfRace(r)); } }
 addEventListener('keyup', (e) => {
   /* magia de mira: segurar a tecla mostra o desenho no chão; soltar lança (toque rápido = lança na hora, onde o mouse está) */
-  if (aimKey) { const k = e.key.toLowerCase(), slot = e.shiftKey && /^Digit[0-9]$/.test(e.code) ? '⇧' + e.code.slice(5) : k === 'j' ? '1' : k === 'q' ? '4' : /^[0-9]$/.test(k) ? k : null;
+  if (aimKey) { const k = e.key.toLowerCase(), slot = e.shiftKey && /^Digit[0-9]$/.test(e.code) ? '⇧' + e.code.slice(5) : k === 'j' ? '1' : TECLA_DE_BATALHA[k] ? TECLA_DE_BATALHA[k] : /^[0-9]$/.test(k) ? k : null;
     if (slot && (slot === aimKey || slot === aimKey.replace('⇧', ''))) { const was = aimKey; aimKey = null; if (aimSlot === was) fireAim(); } }
 });
 /** solta a guarda: pela tecla do espaço dela em qualquer andar (⇧/⌃ também soltam) — antes só funcionava no 1º andar e o herói ficava travado em guarda */
 addEventListener('keyup', (e) => {
   if (!K.hero.guard) return; const L = layout(K.kitRace()); const p = L.findIndex((d) => d?.id === 'guard'); const gk = p >= 0 ? posKey(p) : '';
   const dig = /^Digit([0-9])$/.exec(e.code)?.[1], k = e.key.toLowerCase();
-  const hit = k === 'shift' || k === 'control' || (dig !== undefined && gk.endsWith(dig)) || (k === 'q' && gk === '4');
+  const hit = k === 'shift' || k === 'control' || (dig !== undefined && gk.endsWith(dig)) || (!!TECLA_DE_BATALHA[k] && gk === TECLA_DE_BATALHA[k]);
   if (hit) { K.game.guard(false); guardCone = false; if (!aimSlot) aim.hide(); }
 });
+controleJanelas(() => !!(K.stable.isOpen || K.align.isOpen || K.dockSys.skillsOpen || K.dockSys.featsOpen || K.reliquiasSys.relicOpen || K.olhoSys.olhoOpen || K.quests.isOpen || K.vid.isOpen || K.mail.isOpen || K.profs.isOpen || K.loja.isOpen || K.minimapaSys.bigOpen || K.inv.isOpen));
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (K.cinemaSys.cine) { if (e.key === 'Escape' && (K.cinemaSys.cine.sc.skippable || K.cinemaSys.cine.skipOk)) K.endScene(); e.preventDefault(); return; }
@@ -174,32 +217,45 @@ addEventListener('keydown', (e) => {
   if (k === 'o') K.audio.toggleMute();
   if (k === 'x') { K.stable.toggle(); return; }
   if (k === 'p') K.game.logMsg(K.audio.toggleMusic() ? '🎵 Música ligada' : '🎵 Música desligada', '#b9c6e0');
-  if (k === 'n') { K.nightOverride = K.nightOverride === null ? 1 : K.nightOverride === 1 ? 0 : null; K.game.logMsg(K.nightOverride === null ? '🕯 Ciclo natural de dia e noite.' : K.nightOverride ? '🌙 Noite forçada (teste).' : '☀ Dia forçado (teste).', '#b9c6e0'); }
+  /* 12/11 (Erling: "o jogador não pode controlar o dia e a noite: isso mexe com o dia e a noite de todos, com o passar do tempo e com os turnos"): a tecla N saiu de vez. O relógio do mundo é um só. */
   if (/^[0-9]$/.test(k) && !e.repeat) useSlot(k, true); else if (/^[0-9]$/.test(k) && skillAt(K.kitRace(), k)?.id === 'combo') useSlot(k);
   if (k === 'j' && !e.repeat) useSlot('1', true);
   if (k === 'q' && !e.repeat) useSlot('4', true);
   if (k === 'f' && !e.repeat && !e.ctrlKey && !e.metaKey) K.toggleInstinct();
   if (k === 'v' && !e.repeat && !e.ctrlKey && !e.metaKey) { K.instintoSys.stanceSys?.cycle(); K.renderStances(); }
+  /* 16/11 (Erling: "o E é para interagir, mas se eu estiver em batalha ele usa magia; o R é para correr, mas em batalha com um monstro em foco ele é atalho de magia"):
+     com um bicho em foco, E vale pela casa 5 e R pela casa 6 (a esquiva); sem foco, tudo como sempre */
+  /* 17/11 (Erling: "estou tentando ligar a pedra mas ele está dando magia"): com um aviso "E — …" na tela, o E faz o que o aviso diz, mesmo
+     em batalha (tocar a relíquia, falar, abrir a porta). Só colher, pescar, cortar e minerar perdem a vez para a magia no meio da luta. */
+  const avisoE = () => { const a = document.getElementById('act'); return !!a && a.style.display !== 'none' && /^E — /.test(a.textContent ?? '') && !/^E — (Pescar|Colher|Cortar|Minerar|Catar|Tosquiar)/.test(a.textContent ?? ''); };
+  if ((k === 'e' || k === 'r') && K.foco() && !K.build.on && !(k === 'e' && avisoE())) { if (!e.repeat) { if (k === 'r') { const f = K.hero.facing; startDash(K.state.moving ? K.dx0 || Math.sin(f) : Math.sin(f), K.state.moving ? K.dy0 || Math.cos(f) : Math.cos(f)); } useSlot(TECLA_DE_BATALHA[k], true); } return; }
   if (k === 'e') K.interact();
   if (k === 'e' && !e.repeat) { eDown = performance.now(); eRot = false; }
-  if (k === 'g') { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 22; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 22); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
+  if (k === 'g' && isAdm()) { K.game.st.god = !K.game.st.god; K.ZOOM_MAX = K.game.st.god ? 95 : 24.2; if (!K.game.st.god) K.zoomTarget = Math.min(K.zoomTarget, 24.2); else K.zoomTarget = Math.max(K.zoomTarget, 40); K.game.logMsg(K.game.st.god ? '⚡ MODO DEUS: velocidade, força e invulnerabilidade' : 'Modo deus desligado', '#ffd24a'); }
   if (k === 'r' && !e.repeat) { runOn = !runOn; try { localStorage.setItem('karmika.run', runOn ? '1' : '0'); } catch { /* */ } K.game.logMsg(runOn ? '🏃 Correr: ligado (R)' : '🚶 Andar: ligado (R)', '#ffd24a'); }
-  if (k === 'h') K.game.damage(12, heroPosNow());
-  if (e.key === 'F5' && e.shiftKey) { e.preventDefault(); swapTo('nordic'); return; }
-  if (e.key === 'F6' && e.shiftKey) { e.preventDefault(); swapTo('technocrat'); return; }
-  if (e.key === 'F7' && e.shiftKey) { e.preventDefault(); swapTo('dwarf'); return; }
+  /* 17/11 (Erling: "eu, como admin em modo deus, posso escolher dia ou noite; quem não pode é o beta tester"): N alterna dia, noite e o relógio do mundo; só para o administrador */
+  if (k === 'n' && !e.repeat && isAdm()) { K.nightOverride = K.nightOverride === null ? 0 : K.nightOverride === 0 ? 1 : null; K.game.logMsg(K.nightOverride === null ? '🕰 O céu volta ao relógio do mundo.' : K.nightOverride === 0 ? '☀ Dia (só para você, administrador). N de novo: noite.' : '🌙 Noite (só para você, administrador). N de novo: relógio do mundo.', '#ffe08a'); }
+  if (k === 'h' && isAdm()) K.game.damage(12, heroPosNow()); /* 12/11: G (modo deus), H (dano em si) e Shift+F5 a F7 (troca de raça) são ferramentas de teste: só para o administrador */
+  if (e.key === 'F5' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('nordic'); return; }
+  if (e.key === 'F6' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('technocrat'); return; }
+  if (e.key === 'F7' && e.shiftKey && isAdm()) { e.preventDefault(); swapTo('dwarf'); return; }
   if (/^F[1-8]$/.test(e.key)) { e.preventDefault(); K.useQuick(+e.key.slice(1) - 1 + (e.shiftKey ? 8 : 0)); return; }
   if (e.key === 'Tab') setCombat(!combatMode);
   if (e.code === 'Backquote' && !e.repeat) dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.shiftKey ? -1 : 1 })); /* 03/11: a tecla ao lado do 1 (' no teclado ABNT) troca o jeito de segurar */
   void ORDER;
 });
 addEventListener('keyup', (e) => { const kk = e.key.toLowerCase(); if (CAM_FREE && kk === 'e' && keys.has('e') && !eRot && !K.inv.isOpen && !K.quests.isOpen && !K.dlg.isOpen) K.interact(); keys.delete(kk); });
+/* 12/11 (Erling: "clico no claude e o boneco começa a andar numa direção e não para mais"): quando a janela perde o foco (a caixa de salvar um arquivo,
+   Alt+Tab, outro programa por cima), o "soltei a tecla" e o "soltei o botão" nunca chegam e o herói seguia andando para sempre. Perdeu o foco: solta tudo. */
+const soltaAndar = () => { keys.clear(); try { K.state.path = []; } catch { /* ainda carregando */ } };
+addEventListener('blur', soltaAndar); document.addEventListener('visibilitychange', () => { if (document.hidden) soltaAndar(); });
 let eDown = 0, eRot = false;
 let drag: { x: number; y: number } | null = null;
 K.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-/* Ctrl + clique num jogador: menu dele (mensagem privada, grupo, perfil) — antes de qualquer outro clique no mundo */
-K.canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && e.button === 0 && K.net.state === 'on' && !K.festaSys.festa && K.festasNet.size) { const id = K.net.pickAt(e.clientX, e.clientY); if (id && K.festaAskJoin(id)) { e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); return; } } /* 28/10: clicar em quem está numa festa pede para entrar */
-  if (!e.ctrlKey || e.button !== 0 || K.net.state !== 'on') return; const id = K.net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); K.coop.playerMenu(id, e.clientX, e.clientY); }, true);
+/* Alt + clique num jogador: menu dele (mensagem privada, grupo, perfil) — antes de qualquer outro clique no mundo */
+K.canvas.addEventListener('pointerdown', (e) => { if (!e.ctrlKey && !e.altKey && e.button === 0 && K.net.state === 'on' && !K.festaSys.festa && K.festasNet.size) { const id = K.net.pickAt(e.clientX, e.clientY); if (id && K.festaAskJoin(id)) { e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); return; } } /* 28/10: clicar em quem está numa festa pede para entrar */
+  /* 17/11 (Erling: "as funções do Ctrl passam para o Alt; os jogadores estão mais habituados ao Alt por causa de jogos como LoL"): Alt + clique (o Ctrl continua valendo) */
+  if (!(e.altKey || e.ctrlKey) || e.button !== 0 || K.net.state !== 'on') return; const id = K.net.pickAt(e.clientX, e.clientY); if (!id) return; e.preventDefault(); e.stopImmediatePropagation(); keys.clear(); K.coop.playerMenu(id, e.clientX, e.clientY); }, true);
 const CAM_FREE = false; // câmera fixa (Hades-like); true liga giro Q/E e arrasto com o botão do meio
 K.canvas.addEventListener('pointerdown', (e) => { if (CAM_FREE && e.button === 1) { e.preventDefault(); drag = { x: e.clientX, y: e.clientY }; K.canvas.setPointerCapture(e.pointerId); } });
 addEventListener('pointermove', (e) => {
@@ -211,11 +267,15 @@ addEventListener('pointermove', (e) => {
 addEventListener('pointerup', () => { drag = null; });
 let wswapT = 0;
 addEventListener('wheel', (e) => {
-  /* 03/11 (Erling): Ctrl + roda = troca rápida do jeito de segurar (duas armas · arma e escudo · duas mãos); o Ctrl+roda do navegador (zoom da página) fica bloqueado no jogo */
-  if (e.ctrlKey) { e.preventDefault(); const now = performance.now(); if (now - wswapT > 280) { wswapT = now; dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.deltaY > 0 ? 1 : -1 })); } return; }
+  /* 03/11 (Erling): Alt + roda (ou Ctrl + roda) = troca rápida do jeito de segurar (duas armas · arma e escudo · duas mãos); o Ctrl+roda do navegador (zoom da página) fica bloqueado no jogo */
+  if (e.altKey || e.ctrlKey) { e.preventDefault(); const now = performance.now(); if (now - wswapT > 280) { wswapT = now; dispatchEvent(new CustomEvent('karmika:wswap', { detail: e.deltaY > 0 ? 1 : -1 })); } return; }
   if ((e.target as HTMLElement | null)?.tagName !== 'CANVAS') return; // roda em cima de janela/painel: rola a janela, nunca dá zoom no jogo de trás
   K.zoomTarget = THREE.MathUtils.clamp(K.zoomTarget * Math.exp(e.deltaY * 0.0009), K.ZOOM_MIN, K.ZOOM_MAX);
 }, { passive: false });
 let nightTarget = 1;
-  return { heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
+  return { usaClique, cliqueId, cliquePronto, soltaGuarda, heroPosNow, runningNow, get nightTarget() { return nightTarget; }, set nightTarget(v: typeof nightTarget) { nightTarget = v; }, get combatMode() { return combatMode; }, keys, setCombat, cancelAim, fireAim, aimYaw, get aimSlot() { return aimSlot; }, get outOfBreath() { return outOfBreath; }, set outOfBreath(v: typeof outOfBreath) { outOfBreath = v; }, startDash, get leap() { return leap; }, set leap(v: typeof leap) { leap = v; }, get castQ() { return castQ; }, set castQ(v: typeof castQ) { castQ = v; }, castAt, get lockYaw() { return lockYaw; }, set lockYaw(v: typeof lockYaw) { lockYaw = v; }, get lastActN() { return lastActN; }, set lastActN(v: typeof lastActN) { lastActN = v; }, get lastActP() { return lastActP; }, set lastActP(v: typeof lastActP) { lastActP = v; }, get lockFresh() { return lockFresh; }, set lockFresh(v: typeof lockFresh) { lockFresh = v; }, get guardCone() { return guardCone; }, set guardCone(v: typeof guardCone) { guardCone = v; }, aim, nearYaw, CAM_FREE, get eDown() { return eDown; }, get eRot() { return eRot; }, set eRot(v: typeof eRot) { eRot = v; } };
 }
+
+/* 17/11: o Alt sozinho não pode levar o foco para o menu do navegador (o jogo usa Alt + clique e Alt + roda) */
+addEventListener('keydown', (e) => { if (e.key === 'Alt') e.preventDefault(); });
+addEventListener('keyup', (e) => { if (e.key === 'Alt') e.preventDefault(); });

@@ -1,3 +1,4 @@
+import { teclaDe, nomeTecla } from './sistemas/teclas';
 import type { Race as BaseRace } from '@karmika/shared';
 import { selosHtml } from './sistemas/selos-passivas';
 /** chave do kit: a raça, ou 'tecno' = quem nasceu humano, elfo ou anão e se formou Tecnocrata na Academia (luta com a arma que tem, mas as magias são da Academia) */
@@ -378,6 +379,7 @@ const HSVG: Record<string, string> = {
     NW('⇧6', 'steamwall', 26, 35, 'Muralha de Latão', 'Marca uma linha: placas de latão rebitadas saltam da esfera e travam num muro de 7 m por 8 s. Ninguém atravessa; as válvulas soltam vapor que queima quem encosta e empurra para trás.', '#e0b45a', I('<rect x="4" y="9" width="24" height="17" rx="1.5" fill="C"/><path d="M12 9v17M20 9v17" stroke="#7a5a2a" stroke-width="1.4"/><circle cx="8" cy="12" r="1" fill="#fff4c8"/><circle cx="24" cy="12" r="1" fill="#fff4c8"/><path d="M14 7c-2-2 1-3 0-5M18 7c-2-2 1-3 0-5" stroke="#e8f0ff" stroke-width="1.4" fill="none"/>', '#e0b45a'), WL(0xe0b45a, 7)));
   void Nn; }
 
+import { cliques, setClique, TECLA_DE_BATALHA } from './combate';
 export const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 /* 29/10: as magias aprendidas nas abas anteriores da Árvore (Humano antes do Guerreiro, a 1ª classe antes da Classe II)
    entram na barra da classe atual, nos espaços livres */
@@ -387,6 +389,9 @@ export function kitOf(race: Race) { const base = KITS[race] ?? KITS.nordic!, ex 
 /* ---- ordem da barra: o jogador arrasta as magias para os espaços que preferir (30 espaços, 3 andares); a ordem fica salva ---- */
 const ROW_P = ['', '⇧', '⌃'];
 export const posKey = (p: number) => ROW_P[Math.floor(p / 10)] + KEYS[p % 10];
+/* 11/11: o número desenhado em cada casa da barra mostra a tecla que o jogador escolheu em Controles (antes ficava a padrão) */
+export const keyLabel = (k: string) => { const d = k.slice(-1), pre = k.slice(0, -1); return /^\d$/.test(d) ? pre + nomeTecla(teclaDe('m' + d)) : k; };
+export function relabelBar() { document.querySelectorAll<HTMLElement>('#skills .slot[data-k]').forEach((el) => { const kb = el.querySelector('kbd'); if (kb) kb.textContent = keyLabel(el.dataset.k ?? ''); }); }
 const LKEY = (race: Race) => `karmika.barmap.${race}`;
 const layoutCache: Partial<Record<Race, (SkillDef | null)[]>> = {};
 export function layout(race: Race): (SkillDef | null)[] {
@@ -407,6 +412,11 @@ function wireBar(bar: HTMLElement) {
   bar.addEventListener('pointerdown', (e) => { const b = (e.target as HTMLElement).closest('.barlock'); if (!b) return; e.preventDefault(); e.stopPropagation(); try { localStorage.setItem('karmika.barlock', barLocked() ? '0' : '1'); } catch { /* */ } if (lastKit) applyKit(...lastKit); });
   bar.addEventListener('dragstart', (e) => { const el = (e.target as HTMLElement).closest('.slot[data-pos]') as HTMLElement | null; if (!el || barLocked()) { e.preventDefault(); return; } dragFrom = +el.dataset.pos!; e.dataTransfer?.setData('text/plain', 'slot'); el.classList.add('dragging'); });
   bar.addEventListener('dragover', (e) => { if (dragFrom < 0) return; const el = (e.target as HTMLElement).closest('.slot[data-pos]'); if (el) { e.preventDefault(); bar.querySelectorAll('.slot.dropon').forEach((x) => x.classList.remove('dropon')); el.classList.add('dropon'); } });
+  /* 16/11: soltar uma magia num dos espaços de clique escolhe a magia daquele botão do mouse (a magia continua no lugar dela na barra) */
+  bar.addEventListener('dragover', (e) => { if (dragFrom < 0) return; const c = (e.target as HTMLElement).closest('.slot[data-cliq]'); if (c) { e.preventDefault(); bar.querySelectorAll('.slot.dropon').forEach((x) => x.classList.remove('dropon')); c.classList.add('dropon'); } });
+  bar.addEventListener('drop', (e) => { const c = (e.target as HTMLElement).closest('.slot[data-cliq]') as HTMLElement | null; if (!c || dragFrom < 0 || !lastKit) return; e.preventDefault(); e.stopPropagation(); const s = layout(lastKit[0])[dragFrom]; dragFrom = -1; if (s) { setClique(lastKit[0], kitOf(lastKit[0]), +c.dataset.cliq! as 1 | 2, s.id); applyKit(...lastKit); } }, true);
+  /* botão direito num espaço de clique: passa para a próxima magia aprendida (para escolher sem destravar a barra) */
+  bar.addEventListener('contextmenu', (e) => { const c = (e.target as HTMLElement).closest('.slot[data-cliq]') as HTMLElement | null; if (!c || !lastKit) return; e.preventDefault(); const [race, lvl, rk] = lastKit, kit = kitOf(race).filter((s) => rk ? rk(s.id) > 0 : lvl >= s.lvl), n = +c.dataset.cliq! as 1 | 2, cur = cliques(race, kitOf(race))[n - 1], i = kit.findIndex((s) => s.id === cur); if (kit.length) { setClique(race, kitOf(race), n, kit[(i + 1) % kit.length].id); applyKit(...lastKit); } });
   bar.addEventListener('drop', (e) => { const el = (e.target as HTMLElement).closest('.slot[data-pos]') as HTMLElement | null; if (!el || dragFrom < 0 || !lastKit) return; e.preventDefault(); swapSlots(lastKit[0], dragFrom, +el.dataset.pos!); dragFrom = -1; applyKit(...lastKit); });
   bar.addEventListener('dragend', () => { dragFrom = -1; bar.querySelectorAll('.dragging,.dropon').forEach((x) => x.classList.remove('dragging', 'dropon')); });
 }
@@ -421,11 +431,17 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
   const TI = ['', 'I', 'II', 'III', '✦'];
   if (kit.length > 10 && barRows() < 2) { try { if (!localStorage.getItem('karmika.rows2')) { localStorage.setItem('karmika.rows2', '1'); setBarRows(2); } } catch { /* */ } } // magias novas: abre o 2º andar uma vez
   const rows = barRows(); document.documentElement.style.setProperty('--rows', String(rows)); document.documentElement.dataset.rows = String(rows);
-  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${key}</kbd>${s.svg}${selosHtml(s.id)}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
+  const slot = (s: typeof kit[number], key: string, pos: number) => { const r = rk ? rk(s.id) : (lvl < s.lvl ? 0 : 1), tier = Math.floor(r / 5), lock = r === 0; return `<div class="slot ${lock ? 'locked' : ''}" data-k="${key}" data-pos="${pos}" draggable="${!locked}" data-id="${s.id}" data-tier="${tier}" data-lvl="${rk ? '✦ K' : `Nv ${s.lvl}`}" style="--c:${s.c}" title="${s.name}${s.cost ? ` · ${s.cost} de ${resOf(race).name}` : ''}${lock ? (rk ? ' · aprenda na Árvore Kármica (K)' : ` · abre no nível ${s.lvl}`) : rk ? ` · ${r}/20` : ''}\n${s.tip}"><kbd>${keyLabel(key)}</kbd>${k2(key)}${s.svg}${selosHtml(s.id)}${tier ? `<i class="tier">${TI[tier]}</i>` : ''}${s.cost ? `<span class="cost">${s.cost}</span>` : ''}<div class="cd"></div><span class="cdt"></span></div>`; };
+  /* 16/11: Q, E e R valem pelas casas 4, 5 e 6 quando há um bicho em foco: a letra aparece no canto da casa */
+  const QER = Object.fromEntries(Object.entries(TECLA_DE_BATALHA).map(([l, c]) => [c, l.toUpperCase()])), k2 = (key: string) => QER[key] ? `<kbd class="k2">${QER[key]}</kbd>` : '';
+  /* os dois espaços de clique ficam nas pontas do primeiro andar: o botão esquerdo à esquerda, o direito à direita */
+  const cq = cliques(race, kit), cliq = (n: 1 | 2) => { const s = kit.find((x) => x.id === cq[n - 1]); return `<div class="slot cliq" data-cliq="${n}" data-cid="${s?.id ?? ''}" style="--c:${s?.c ?? '#c9a24a'}" title="${n === 1 ? 'Clique 1 (botão esquerdo)' : 'Clique 2 (botão direito)'}: ${s?.name ?? 'vazio'}\n${n === 1 ? 'Em cima de um inimigo, o botão esquerdo usa esta magia; no chão, o herói anda.' : 'O botão direito usa esta magia.'}\nPara trocar: clique aqui com o botão direito, ou destrave a barra (🔒) e arraste uma magia para cá."><kbd>${n === 1 ? '🖱E' : '🖱D'}</kbd>${s?.svg ?? ''}<div class="cd"></div><span class="cdt"></span></div>`; };
+  const oco = '<div class="slot cliq oco"></div>';
   let html = '';
   for (let r = rows - 1; r >= 0; r--) {
     const pre = ROW_PRE[r];
-    html += `<div class="srow">${KEYS.map((k, i) => { const p = r * 10 + i, s = L[p]; return s ? slot(s, pre + k, p) : `<div class="slot empty" data-k="${pre}${k}" data-pos="${p}" title="Espaço livre — ${locked ? 'destrave a barra (🔒) e arraste uma magia para cá' : 'solte uma magia aqui'}"><kbd>${pre}${k}</kbd></div>`; }).join('')}</div>`;
+    /* 17/11 (Erling: "não gostei do clique direito num canto e do esquerdo no outro; os cliques do mouse vão para o centro e as habilidades para o outro lado"): os dois espaços de clique ficam colados no brasão, um de cada lado */
+    html += `<div class="srow">${((S: string[]) => S.slice(0, 5).join('') + (r === 0 ? cliq(1) : oco) + (r === 0 ? cliq(2) : oco) + S.slice(5).join(''))(KEYS.map((k, i) => { const p = r * 10 + i, s = L[p]; return s ? slot(s, pre + k, p) : `<div class="slot empty" data-k="${pre}${k}" data-pos="${p}" title="Espaço livre — ${locked ? 'destrave a barra (🔒) e arraste uma magia para cá' : 'solte uma magia aqui'}"><kbd>${keyLabel(pre + k)}</kbd>${k2(pre + k)}</div>`; }))}</div>`;
   }
   bar.innerHTML = html + `<div class="rowbtn"><button data-rows="+" title="Mais um andar de magias">▲</button><button data-rows="-" title="Menos um andar">▼</button></div><button class="barlock ${locked ? '' : 'open'}" title="${locked ? 'Barra travada: as magias não saem do lugar. Clique para destravar e arrastar as magias para a ordem que preferir.' : 'Barra destravada: arraste as magias para trocar de lugar. Clique para travar.'}">${locked ? '🔒' : '🔓'}</button>`;
   const fury = document.getElementById('fury'); if (fury) fury.title = race === 'technocrat' ? 'Carga: sobe ao acertar Pulsos. Alimenta a Mina (3) e os Mísseis (4).' : 'Fúria: sobe ao acertar golpes. Alimenta a magia 4 e a cura 5.';
@@ -434,3 +450,7 @@ export function applyKit(race: Race, lvl: number, rk?: (id: string) => number) {
 export function refreshLocks(race: Race, lvl: number, rk?: (id: string) => number) {
   for (const s of kitOf(race)) { const el = document.querySelector<HTMLElement>(`.slot[data-id="${s.id}"]`); if (!el) continue; const was = el.classList.contains('locked'); el.classList.toggle('locked', rk ? rk(s.id) === 0 : lvl < s.lvl); if (was && lvl >= s.lvl) { el.classList.add('on'); setTimeout(() => el.classList.remove('on'), 900); } }
 }
+
+/** 17/11: os espaços Clique 1 e Clique 2 mostram a mesma recarga (o leque e o número) da casa da magia na barra */
+export function espelhaCliques() { for (const c of Array.from(document.querySelectorAll('#skills .slot.cliq[data-cid]')) as HTMLElement[]) { const id = c.dataset.cid; if (!id) continue; const o = document.querySelector(`#skills .slot[data-id="${id}"]`) as HTMLElement | null, cd = c.querySelector('.cd') as HTMLElement | null, t = c.querySelector('.cdt') as HTMLElement | null; if (!o || !cd || !t) continue;
+  const v = (o.querySelector('.cd') as HTMLElement | null)?.style.getPropertyValue('--cd') || '0', tx = o.querySelector('.cdt')?.textContent ?? ''; if (cd.style.getPropertyValue('--cd') !== v) cd.style.setProperty('--cd', v); if (t.textContent !== tx) t.textContent = tx; } }

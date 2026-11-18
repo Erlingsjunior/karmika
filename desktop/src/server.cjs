@@ -12,6 +12,19 @@ const crypto = require('node:crypto');
 const dgram = require('node:dgram');
 const GN = require('./guilda-nivel.cjs');
 const DISCOVERY_PORT = 7778; // salas se anunciam na rede local: o jogo lista sem ninguém digitar endereço
+/* 14/11 (Erling: "o aparelho não encontrou a sala"): o Windows manda o 255.255.255.255 por UMA placa só (a de menor métrica, que pode ser
+   Tailscale, Radmin, WSL ou Hyper-V), e o anúncio nunca chegava no Wi-Fi. Agora o anúncio vai também para o endereço de difusão de CADA rede
+   desta máquina (ex.: 192.168.15.255), além do geral e do próprio PC. */
+function broadcastTargets() {
+  const out = new Set(['255.255.255.255', '127.0.0.1']);
+  try { for (const list of Object.values(require('node:os').networkInterfaces())) for (const a of list || []) {
+    if (a.family !== 'IPv4' || a.internal || !a.netmask) continue;
+    const ip = a.address.split('.').map(Number), mk = a.netmask.split('.').map(Number);
+    if (ip.length !== 4 || mk.length !== 4) continue;
+    out.add(ip.map((n, k) => (n | (~mk[k] & 255))).join('.'));
+  } } catch { /* sem lista de placas */ }
+  return [...out];
+}
 
 /* ---- o servidor também entrega o jogo: quem entra com uma versão velha baixa só o que mudou ---- */
 function walk(dir, base = dir, out = []) { for (const e of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, e.name); if (e.isDirectory()) walk(f, base, out); else out.push(path.relative(base, f).split(path.sep).join('/')); } return out; }
@@ -125,7 +138,7 @@ function startServer(opts = {}) {
     function infoNow() { const host = [...players.values()].find((p) => p.host); return { karmika: 1, proto: PROTO, port, code, name: roomName || (host ? `Sala de ${host.name}` : 'Sala Karmika'), players: players.size, max: MAX, pass: !!opts.password }; }
     /* anúncio na rede local a cada 2 s (UDP broadcast) */
     let udp = null; try { udp = dgram.createSocket({ type: 'udp4', reuseAddr: true }); udp.on('error', () => { try { udp.close(); } catch { /* */ } udp = null; }); udp.bind(() => { try { udp.setBroadcast(true); } catch { /* */ } }); } catch { udp = null; }
-    const announce = setInterval(() => { if (!udp) return; const b = Buffer.from(JSON.stringify(infoNow())); try { udp.send(b, DISCOVERY_PORT, '255.255.255.255'); udp.send(b, DISCOVERY_PORT, '127.0.0.1'); } catch { /* sem rede */ } }, 2000);
+    const announce = setInterval(() => { if (!udp) return; const b = Buffer.from(JSON.stringify(infoNow())); for (const to of broadcastTargets()) { try { udp.send(b, DISCOVERY_PORT, to); } catch { /* sem rede */ } } }, 2000);
     const send = (ws, m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
     const others = (id, m) => { const s = JSON.stringify(m); for (const p of players.values()) if (p.id !== id && p.ws.readyState === 1) p.ws.send(s); };
     const info = (p) => ({ id: p.id, name: p.name, look: p.look, st: p.st, host: p.host, party: p.party ? p.party.id : 0 });
@@ -192,6 +205,8 @@ function startServer(opts = {}) {
     function worldGuilds() { return { t: 'g:world', list: Object.values(store.guilds).map((g) => ({ id: g.id, name: g.name, tag: g.tag, col: g.col, plot: g.plot, build: g.build, flag: g.flag || null, icon: g.icon || null, lvl: g.lvl || 1, created: g.created, members: Object.keys(g.members).length, signed: g.signed || [] })) }; }
     function toGuild(g, m) { const ks = new Set(Object.keys(g.members)); for (const h of hubs) if (h.char && ks.has(charKey(h.char))) send(h.ws, m); }
     const pushGuild = (g) => toGuild(g, guildMsg(g));
+    /** 12/11: as guildas já inscritas no campeonato (sem os dados de contato) */
+    function inscMsg() { return { t: 'g:insc', list: ((store.torneio && store.torneio.insc) || []).map((x) => ({ gid: x.gid, guilda: x.guilda, tag: x.tag, nivel: x.nivel, por: x.por, at: x.at })) }; }
     const pushWorld = () => { const m = worldGuilds(); for (const h of hubs) send(h.ws, m); };
     /* 06/11: o nível, as missões do dia, o cofre e o imposto (guilda-nivel.cjs). Uma vez por minuto vê se o dia virou */
     function sysLines(g, lines) { if (!lines.length) return; for (const text of lines) { const L = { at: Date.now(), sys: 1, text }; g.log.push(L); toGuild(g, { t: 'g:chat', ...L }); } if (g.log.length > 200) g.log.splice(0, g.log.length - 200); }
@@ -305,6 +320,22 @@ function startServer(opts = {}) {
           for (const x of hubs) if (x.char && charKey(x.char) === tk) { send(x.ws, guildMsg(null)); send(x.ws, { t: 'a:sys', text: `Você foi removido da guilda ${g.name}.` }); } toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
         case 'g:rank': { const g = guildOf(h.char); const tk = charKey(m.char || ''); const r = String(m.rank); if (!g || !g.members[tk] || rankN(g, h.char) < 3 || !RANKS.includes(r) || tk === charKey(h.char)) break;
           if (r === 'lider') g.members[charKey(h.char)].rank = 'oficial'; g.members[tk].rank = r; const L = { at: Date.now(), sys: 1, text: `${g.members[tk].name} agora é ${r}.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L }); pushGuild(g); break; }
+        /* 12/11 (Erling: "um NPC que recebe as inscrições para as competições... somente diretoria pode fazer isso, e por esse NPC recebemos as inscrições"):
+           a inscrição da guilda no Campeonato de Guildas, feita com o Arauto dos Torneios, na Estalagem de Karmika. Só líder ou oficial inscreve, e só a própria guilda;
+           a guilda precisa ser de nível 3 (regra das Classificatórias). Fica guardada na sala e, na edição parceiro, sobe pelo Fio para a central. */
+        case 'g:insclist': { send(h.ws, inscMsg()); break; }
+        case 'g:insc': { const g = guildOf(h.char), fail = (why) => send(h.ws, { t: 'g:inscfail', why });
+          if (!g) { fail('Você não tem guilda. Só a diretoria de uma guilda faz a inscrição.'); break; }
+          if (Number(m.gid) !== g.id) { fail('Você só pode inscrever a guilda da qual é diretoria.'); break; }
+          if (rankN(g, h.char) < 2) { fail('Só a diretoria da guilda (líder ou oficial) pode fazer a inscrição.'); break; }
+          if ((g.lvl || 1) < 3) { fail(`A guilda precisa ser de nível 3 para entrar nas Classificatórias. A ${g.name} está no nível ${g.lvl || 1}.`); break; }
+          const resp = String(m.resp || '').replace(/[<>]/g, '').slice(0, 60).trim(), contato = String(m.contato || '').replace(/[<>]/g, '').slice(0, 80).trim();
+          if (resp.length < 3) { fail('Escreva o seu nome para a inscrição.'); break; }
+          const TN = (store.torneio ||= { insc: [] }); if (TN.insc.some((x) => x.gid === g.id)) { fail(`A ${g.name} já está inscrita.`); break; }
+          const reg = { gid: g.id, guilda: g.name, tag: g.tag, nivel: g.lvl || 1, membros: Object.keys(g.members).length, por: h.char, cargo: g.members[charKey(h.char)].rank, resp, contato, at: Date.now() };
+          TN.insc.push(reg); const L = { at: Date.now(), sys: 1, text: `${h.char} inscreveu a guilda no Campeonato de Guildas.` }; g.log.push(L); saveStore(); toGuild(g, { t: 'g:chat', ...L });
+          log(`inscrição no campeonato: ${g.name} [${g.tag}], nível ${reg.nivel}, por ${h.char} (${resp}${contato ? ', ' + contato : ''})`);
+          send(h.ws, { t: 'g:inscok', guilda: g.name }); { const im = inscMsg(); for (const x of hubs) send(x.ws, im); } if (fio) fio.inscricao(reg); break; }
         case 'g:motd': { const g = guildOf(h.char); if (!g || rankN(g, h.char) < 2) break; g.motd = String(m.text || '').slice(0, 200); saveStore(); pushGuild(g); break; }
         /* 06/11: o BAÚ DA GUILDA (nível II): qualquer membro guarda; oficial e líder tiram. O item tirado vai direto para quem tirou */
         case 'g:chest:put': { const g = guildOf(h.char); const id = String(m.id || '').slice(0, 40), n = Math.max(1, Math.min(9999, Math.floor(Number(m.n) || 1))); if (!g || !id) break; if ((g.lvl || 1) < 2) { send(h.ws, { t: 'g:chest:back', id, n }); send(h.ws, { t: 'a:sys', text: 'O baú abre no nível II da guilda.' }); break; }
@@ -336,8 +367,19 @@ function startServer(opts = {}) {
           saveStore(); pushWorld(); break; }
       }
     }
+    /* 12/11: O FIO (fio.cjs). Só existe na edição parceiro (--fio endereço --chave chave). Sobe o resumo do reino; desce o que a central manda,
+       que vai para o chat de todo mundo que está dentro. O último evento (até 24 h) também é mostrado a quem entra depois. */
+    let fio = null, ultEvento = null;
+    const fioTexto = (a) => a.tipo === 'evento' ? `📯 EVENTO KARMIKA${a.titulo ? ' · ' + a.titulo : ''}: ${a.texto}` : `📯 KARMIKA${a.titulo ? ' · ' + a.titulo : ''}: ${a.texto}`;
+    if (opts.fio && opts.chave) { const { startFio } = require('./fio.cjs');
+      fio = startFio({ url: opts.fio, chave: opts.chave, log, edicao: 'parceiro',
+        resumo: () => { const on = [...players.values()]; return { jogadores: on.length, contas: Object.keys(store.accounts || {}).length, personagens: on.length,
+          top: on.map((p) => ({ nome: p.name, nivel: lvlOf(p), classe: (p.look && p.look.cls) || '' })).sort((x, y) => y.nivel - x.nivel).slice(0, 10),
+          guildas: Object.values(store.guilds || {}).map((g) => ({ nome: g.name, tag: g.tag, membros: Object.keys(g.members || {}).length, nivel: g.lvl || 1 })).sort((x, y) => y.membros - x.membros).slice(0, 20),
+          versao: manifest ? manifest.version : '', sala: infoNow().name }; },
+        aoAviso: (a) => { const text = fioTexto(a); log('da central:', text); if (a.tipo === 'evento') ultEvento = a; for (const p of players.values()) send(p.ws, { t: 'sys', text }); } }); }
     web.on('error', (e) => reject(e));
-    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, restart, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
+    web.listen(port, '0.0.0.0', () => { log(`sala aberta na porta ${port} · convite ${code}`); resolve({ port, code, stop, restart, fio: () => fio, players: () => [...players.values()].map(info), version: manifest ? manifest.version : null }); });
     wss.on('connection', (ws, req) => {
       let me = null, hubConn = null;
       const ip = req.socket.remoteAddress;
@@ -361,7 +403,7 @@ function startServer(opts = {}) {
           if (m.world && opts.world && m.world !== opts.world) { send(ws, { t: 'deny', why: 'Mundo diferente do anfitrião. Atualize o Karmika.' }); ws.close(); return; }
           clearTimeout(bye);
           me = { ws, id: nid++, name: String(m.name || 'Caminhante').slice(0, 24), look: m.look || null, st: null, host: players.size === 0, since: Date.now() };
-          players.set(me.id, me);
+          players.set(me.id, me); if (ultEvento && Date.now() - ultEvento.quando < 86400000) setTimeout(() => send(ws, { t: 'sys', text: fioTexto(ultEvento) }), 4000); /* 12/11: quem entra depois vê o evento da central */
           send(ws, { t: 'welcome', id: me.id, host: me.host, code, players: [...players.values()].filter((p) => p !== me).map(info) });
           others(me.id, { t: 'join', ...info(me) });
           setTimeout(() => { if (players.get(me.id) === me) rejoinParty(me); }, 1500); // o grupo de antes do update
@@ -455,7 +497,9 @@ function startServer(opts = {}) {
             const b = { id, n, at: Date.now(), by: { name: me.name, lvl: lvlOf(me), cls: (me.look && me.look.cls) || '' }, cat: clip(m.cat, 30) || 'outro', title: clip(m.title || text.split('\n')[0], 90), text, ctx, img: saveImg(id, m.img), img2: saveImg(id + '-b', m.img2), status: 'novo', note: '', hist: [{ at: Date.now(), status: 'novo' }] };
             bugs.push(b); saveBug(b); send(ws, { t: 'bug:ok', id, ref: m.ref || null }); toOwners({ t: 'adm:bugnew', bug: bugMeta(b) }); log(`bug ${id} de ${me.name}: ${b.title}`); break; }
           case 'bug:mine': send(ws, { t: 'bug:mine', list: bugs.filter((b) => lc(b.by.name) === lc(me.name)).slice(-50).map((b) => ({ id: b.id, title: b.title, status: b.status, note: b.note || '', at: b.at })) }); break;
-          case 'adm:hello': { if (!ownerKey || String(m.key || '').trim().toUpperCase() !== ownerKey.toUpperCase()) { send(ws, { t: 'adm:no' }); log(`${me.name} tentou entrar no painel do dono com uma chave errada`); break; }
+          case 'adm:hello': { /* 12/11: além da chave da sala, vale a senha de administrador do jogo (/adm SENHA). A sala guarda só o resumo dela */
+            const passOk = !!m.pass && crypto.createHash('sha256').update('karmika:' + String(m.pass)).digest('hex') === 'de51ccea6a0e2ed64af31c9531a6410a54932cb8b3dd477fd5cc24d844abecca';
+            if (!passOk && (!ownerKey || String(m.key || '').trim().toUpperCase() !== ownerKey.toUpperCase())) { send(ws, { t: 'adm:no' }); log(`${me.name} tentou entrar no painel do dono com uma chave errada`); break; }
             me.owner = true; send(ws, { t: 'adm:ok', bugs: bugs.slice(-300).map(bugMeta), players: playersAdm() }); log(`${me.name} entrou no painel do dono`); break; }
           case 'adm:players': if (me.owner) send(ws, { t: 'adm:players', list: playersAdm() }); break;
           case 'adm:bugs': if (me.owner) send(ws, { t: 'adm:bugs', list: bugs.slice(-300).map(bugMeta) }); break;
@@ -497,11 +541,47 @@ function startServer(opts = {}) {
     let updateAnn = null;
     function announceUpdate(version) { if (updateAnn) return; updateAnn = { sec: 10 };
       const tick = () => { for (const p of players.values()) send(p.ws, { t: 'update', sec: updateAnn.sec, version }); if (updateAnn.sec <= 0) { updateAnn = null; return; } updateAnn.sec--; setTimeout(tick, 1000); }; tick(); }
-    function stop() { clearInterval(beat); clearInterval(announce); try { udp?.close(); } catch { /* */ } for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'O anfitrião fechou a sala.' }); p.ws.close(); } players.clear(); return new Promise((r) => wss.close(() => web.close(() => r()))); }
+    function stop() { if (fio) fio.stop(); clearInterval(beat); clearInterval(announce); try { udp?.close(); } catch { /* */ } for (const p of players.values()) { send(p.ws, { t: 'closed', why: 'O anfitrião fechou a sala.' }); p.ws.close(); } players.clear(); return new Promise((r) => wss.close(() => web.close(() => r()))); }
   });
 }
 
 module.exports = { startServer, PROTO, gameManifest, DISCOVERY_PORT };
+
+/** sala pelo terminal aberta para a internet: porta no roteador (UPnP), IP público e aviso de CGNAT */
+async function abrirNaInternet(port, code, redes) {
+  const priv = (ip) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.|127\.)/.test(ip || '');
+  let pub = null;
+  for (const u of ['https://api.ipify.org', 'https://ipv4.icanhazip.com', 'https://checkip.amazonaws.com']) {
+    try { const r = await fetch(u, { signal: AbortSignal.timeout(5000) }); const t = (await r.text()).trim(); if (/^\d+\.\d+\.\d+\.\d+$/.test(t)) { pub = t; break; } } catch { /* tenta o próximo */ }
+  }
+  const lan = redes.find((r) => priv(r.ip) && !r.ip.startsWith('100.'));
+  let ext = null, why = '';
+  if (!lan) why = 'sem rede local';
+  else try {
+    const { upnpNat } = await import('@achingbrain/nat-port-mapper');
+    const client = upnpNat({ description: 'Karmika', ttl: 7200 * 1000, keepAlive: true });
+    let achou = false;
+    for await (const gw of client.findGateways({ signal: AbortSignal.timeout(7000) })) {
+      achou = true;
+      try { await gw.map(port, lan.ip, { protocol: 'tcp', description: 'Karmika' }); ext = await gw.externalIp().catch(() => null); why = ''; } catch (e) { why = 'o roteador recusou: ' + (e?.message || e); }
+      break;
+    }
+    if (!achou) why = 'roteador sem UPnP (ou desligado)';
+  } catch (e) { why = String(e?.message || e); }
+  if (!pub) { console.log('[karmika] internet: não consegui descobrir o IP público desta conexão'); return; }
+  if (why) {
+    console.log(`[karmika] internet: a porta NÃO foi aberta sozinha (${why}).`);
+    console.log(`[karmika] internet: abra no roteador a porta ${port} (TCP) para ${lan ? lan.ip : 'esta máquina'} e use o convite: karmika://${pub}:${port}/${code}`);
+    return;
+  }
+  if (ext && (priv(ext) || ext !== pub)) {
+    console.log('[karmika] internet: a sua operadora usa CGNAT (o roteador não tem IP público de verdade). Ninguém de fora alcança esta máquina por aqui.');
+    console.log('[karmika] internet: saídas: pedir IP público à operadora, usar o Tailscale, ou hospedar a sala num servidor alugado.');
+    return;
+  }
+  console.log(`[karmika] internet: porta ${port} aberta no roteador. Convite para qualquer lugar: karmika://${pub}:${port}/${code}`);
+  console.log('[karmika] internet: o IP público pode mudar quando o roteador reinicia; aí o convite muda junto.');
+}
 
 if (require.main === module) {
   /* node server.cjs [porta] [codigo] [pasta-do-jogo]  ou com nomes:  --porta 7777 --codigo KARMA1 --senha segredo --jogo pasta */
@@ -512,9 +592,20 @@ if (require.main === module) {
   const password = flag('senha') || process.env.KARMIKA_SENHA || '';
   if (password) console.log('[karmika] sala com senha');
   const dataFile = flag('dados') || path.join(__dirname, '..', 'sala-dados.json'); // cartas guardadas e quadro de pedidos
-  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome') }).then((room) => {
-    /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro */
+  /* 12/11: edição parceiro. --fio ws://endereço-do-tear:7790/fio --chave CHAVE-DA-CASA (ou KARMIKA_FIO e KARMIKA_CHAVE no ambiente, para a chave não ficar no histórico do terminal) */
+  const fioUrl = flag('fio') || process.env.KARMIKA_FIO || '', fioChave = flag('chave') || process.env.KARMIKA_CHAVE || '';
+  startServer({ port, code: flag('codigo') || pos[1], gameDir, password, dataFile, name: flag('nome'), fio: fioUrl, chave: fioChave }).then((room) => {
+    /* Ctrl+C: avisa os jogadores e só então cai (um segundo Ctrl+C fecha na hora). No terminal: `reiniciar [segundos]` faz o mesmo; `quem` lista quem está dentro; `tear` mostra o estado do Fio e `tear <texto>` manda uma carta à central */
     let pressed = 0; const bye = () => { if (pressed++) process.exit(0); room.restart(10, 'reiniciar'); }; process.on('SIGINT', bye); process.on('SIGTERM', bye);
-    if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); }); }
+    if (process.stdin.isTTY) { process.stdin.setEncoding('utf8'); process.stdin.on('data', (line) => { const [c, a] = String(line).trim().split(/\s+/); if (c === 'reiniciar') room.restart(Math.max(0, Number(a) || 10), 'reiniciar'); else if (c === 'quem') console.log('[karmika] dentro:', room.players().map((p) => p.name).join(', ') || 'ninguém'); else if (c === 'sair') room.restart(Math.max(0, Number(a) || 10), 'fechar'); else if (c === 'tear') { const f = room.fio(), txt = String(line).trim().slice(4).trim(); if (!f) console.log('[karmika] esta sala não tem o Fio (edição parceiro: --fio e --chave)'); else if (!txt) console.log('[karmika] Fio:', JSON.stringify(f.estado())); else console.log(f.carta(txt, 'Guardião do Reino') ? '[karmika] carta enviada à central' : '[karmika] o Fio está caído: a carta vai quando ele voltar'); } }); }
+    /* 14/11 (Erling: "na minha máquina ele acha, nas outras não" e "precisa criar uma sala na internet com IP aberto"): o terminal mostra
+       o convite certo para cada caso. Placas virtuais (WSL, Hyper-V, VirtualBox) ficam de fora: ninguém de outra máquina alcança esses endereços.
+       Com --internet a sala tenta abrir a porta no roteador (UPnP), descobre o IP público e avisa quando a operadora não deixa (CGNAT). */
+    const code = room.code, virt = /vEthernet|WSL|Hyper-V|VirtualBox|VMware|docker|Loopback/i, redes = [];
+    for (const [nome, list] of Object.entries(require('node:os').networkInterfaces())) for (const a of list || []) { if (a.family === 'IPv4' && !a.internal && !virt.test(nome)) redes.push({ nome, ip: a.address }); }
+    for (const r of redes) { const ts = /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(r.ip); console.log(`[karmika] convite ${ts ? 'pelo Tailscale' : 'para quem está na mesma rede (' + r.nome + ')'}: karmika://${r.ip}:${port}/${code}`); }
+    if (!redes.length) console.log('[karmika] esta máquina está sem rede: só dá para entrar daqui mesmo');
+    if (args.includes('--internet')) abrirNaInternet(port, code, redes).catch((e) => console.log('[karmika] internet: não deu para conferir:', e?.message || e));
+    else console.log('[karmika] para gente de fora da sua casa entrar, abra a sala com --internet');
   }).catch((e) => { console.error('Não deu para abrir a sala:', e.message); process.exit(1); });
 }

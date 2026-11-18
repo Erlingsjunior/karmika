@@ -379,8 +379,10 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
   const K = kit(), sm = stone(0x9a948a), dk = stone(0x6a645c), lt = stone(0xb0a898), N = Math.max(8, Math.round(len / 0.6));
   const yAt = (t: number) => hump * Math.sin(Math.PI * t);
   for (let i = 0; i < N; i++) { const t0 = i / N, t1 = (i + 1) / N, z0 = -len / 2 + t0 * len, z1 = -len / 2 + t1 * len, y0 = yAt(t0), y1 = yAt(t1), L = Math.hypot(z1 - z0, y1 - y0), a = Math.atan2(y1 - y0, z1 - z0);
-    const seg = K.add(new THREE.BoxGeometry(half * 2, 0.45, L + 0.04), sm, 0, (y0 + y1) / 2 - 0.12, (z0 + z1) / 2); seg.rotation.x = -a;
-    for (const s of [-1, 1]) { const p = K.add(new THREE.BoxGeometry(0.32, 0.22, L + 0.04), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.9, (z0 + z1) / 2); p.rotation.x = -a; // corrimão
+    /* 11/11 (Erling: "na ponte a textura está esticada"): cada trecho do tabuleiro repetia a textura inteira em 60 cm de comprimento e a esticava nos 4 m de largura. Agora a textura anda em metros (2 m por repetição) e continua de um trecho para o outro */
+    const sg = texBox(half * 2, 0.45, L + 0.04, 2), suv = sg.attributes.uv; for (let q = 8; q < 16; q++) suv.setY(q, suv.getY(q) + z0 / 2);
+    const seg = K.add(sg, sm, 0, (y0 + y1) / 2 - 0.12, (z0 + z1) / 2); seg.rotation.x = -a;
+    for (const s of [-1, 1]) { const p = K.add(texBox(0.32, 0.22, L + 0.04, 2), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.9, (z0 + z1) / 2); p.rotation.x = -a; // corrimão
       if (i % 2 === 0) K.add(new THREE.CylinderGeometry(0.09, 0.12, 0.8, 6), lt, s * (half - 0.16), (y0 + y1) / 2 + 0.45, (z0 + z1) / 2); } // balaústres
   }
   // o arco por baixo (aparece sobre a água) e a testa de pedra dos dois lados
@@ -391,7 +393,8 @@ export function buildStoneBridge(len: number, half: number, hump: number): Built
     for (let k = 0; k < nA; k++) { const mx = -len / 2 + span * (k + 0.5), r = span * 0.42; const hole = new THREE.Path(); hole.moveTo(mx - r, -2.6); hole.absarc(mx, -2.6, r, Math.PI, 0, true); hole.lineTo(mx - r, -2.6); sh.holes.push(hole); }
     const geo = new THREE.ShapeGeometry(sh, 12); const m = new THREE.Mesh(geo, dk); m.rotation.y = Math.PI / 2; m.position.x = s * half; m.castShadow = true; K.g.add(m); }
   { const nA = Math.max(1, Math.round(len / 11)), span = len / nA; for (let k = 1; k < nA; k++) { const z = -len / 2 + span * k; K.box(half * 2 + 0.4, 3.0, 1.4, 0, -3.2, z, dk); K.box(half * 2 + 0.7, 0.3, 1.7, 0, -0.4 + yAt(k / nA) - 0.2, z, lt); } } // pilares no meio da água
-  for (const e of [-1, 1]) { K.box(half * 2 + 0.6, 1.2, 0.8, 0, -0.5, e * (len / 2 - 0.2), dk); for (const s of [-1, 1]) { K.box(0.6, 1.3, 0.6, s * (half - 0.1), 0.4, e * (len / 2 - 0.3), lt); K.torch(s * (half - 0.1), 1.7, e * (len / 2 - 0.3)); } }
+  /* 10/11 (Erling: "o jogo engole o personagem" na cabeceira): a soleira ficava 20 cm acima do chão e, vista de frente, escondia as pernas de quem chegava; agora fica rente ao chão, só como fundação */
+  for (const e of [-1, 1]) { K.box(half * 2 + 0.6, 1.2, 0.8, 0, -0.66, e * (len / 2 - 0.2), dk); for (const s of [-1, 1]) { K.box(0.6, 1.3, 0.6, s * (half - 0.1), 0.4, e * (len / 2 - 0.3), lt); K.torch(s * (half - 0.1), 1.7, e * (len / 2 - 0.3)); } }
   return K.out;
 }
 

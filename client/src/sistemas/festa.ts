@@ -99,7 +99,8 @@ var FESTA_LEN = 240000; /* 4 minutos (despedida) */
 const say2 = (n: (typeof K.npcSys.npcs)[number], line: string, secs = 4.5) => { const q = n as unknown as { bark?: string; barkT?: number }; q.bark = line; q.barkT = secs; };
 function festaTick() { if (!festa || festa.done) return; const F = festa, el = performance.now() - F.t0, nm = K.profile?.name || 'caminhante';
   if (Math.hypot(K.heroPos.x - F.x, K.heroPos.z - F.z) < 80) {
-    if (Math.random() < 0.55) K.evFx('firework', F.x + (Math.random() - 0.5) * 34, heightAt(F.x, F.z) + 14 + Math.random() * 12, F.z + (Math.random() - 0.5) * 34); if (Math.random() < 0.25) K.audio.boom();
+    /* 11/11 (Erling: "os fogos diminuíram muito"): de 1 a 3 fogos por batida (era meio, em média), espalhados pela praça e em alturas diferentes */
+    { const nF = 1 + Math.floor(Math.random() * 3); for (let i = 0; i < nF; i++) setTimeout(() => { if (festa === F && !F.done) K.evFx('firework', F.x + (Math.random() - 0.5) * 40, heightAt(F.x, F.z) + 13 + Math.random() * 15, F.z + (Math.random() - 0.5) * 40); }, i * 260); } if (Math.random() < 0.45) K.audio.boom();
     /* o coro: quando a música vira coro, a roda inteira canta o seu nome */
     const coro = K.audio.festaPart === 'coro'; if (coro && !F.coroOn) { F.coroOn = true; const L = [`${nm} é um bom companheirooo!`, `${nm} é um bom companheirooo!`, `${nm} é um bom companheirooo!`, 'Ninguém pode negaaar!'];
       F.crowd.forEach((c, i) => { setTimeout(() => say2(c.n, L[Math.min(3, Math.floor(i / Math.max(1, F.crowd.length / 4)))] + ' 🍺', 3.6), i * 220); });
@@ -111,7 +112,8 @@ function festaTick() { if (!festa || festa.done) return; const F = festa, el = p
     F.talk -= 1; if (F.talk <= 0) { F.talk = 4; const bard = F.bards[0]; if (!coro && bard) { const line = sgL ? (K.audio.festaPart === 'verso' ? '🎤 ' + sgL.verso[F.bl++ % sgL.verso.length] : '') : F.ballad[F.bl++ % F.ballad.length]; if (line) K.game.dmgText(new THREE.Vector3().setFromMatrixPosition(bard.h.root.matrixWorld).setY(heightAt(F.x, F.z) + 3.4), line, false, '#ffe08a'); }
       const c = F.crowd[Math.floor(Math.random() * F.crowd.length)]; if (c && !coro && K.audio.festaPart !== 'refrao') say2(c.n, Math.random() < 0.6 ? F.deeds[Math.floor(Math.random() * F.deeds.length)] : ['À saúde de ' + nm + '!', 'Mais cerveja aqui! O anão trouxe barril para a vila inteira!', F.paid?.meats.length ? `Essa ${FEASTS[F.paid.meats[Math.floor(Math.random() * F.paid.meats.length)]]?.name ?? 'carne'} está divina!` : 'Essa carne está divina!', F.paid?.brews.length ? `Mais uma ${FEASTS[F.paid.brews[Math.floor(Math.random() * F.paid.brews.length)]]?.name ?? 'cerveja'}, anão!` : 'Saúde!', 'Que o caminho seja leve, ' + nm + '!', 'Dança, ' + nm + '! Hoje a festa é sua!'][Math.floor(Math.random() * 5)]); }
     /* o povo bebe e dança: de vez em quando cada um ergue a caneca */
-    for (const c of F.crowd) if (Math.random() < 0.08 && !c.n.hero.acting) c.n.hero.act('drink');
+    /* 11/11 (Erling: "não estou vendo gente bebendo ou comendo carne"): cada um ergue a caneca ou leva o espeto à boca bem mais vezes (era 8% por batida) */
+    for (const c of F.crowd) if (Math.random() < 0.3 && !c.n.hero.acting) { const come = Math.random() < 0.4; (c.n.hero as { drinkProp?: string }).drinkProp = come ? 'none' : 'mug'; c.n.hero.act('drink'); if (come && Math.random() < 0.5) K.game.dmgText(new THREE.Vector3().setFromMatrixPosition(c.n.hero.root.matrixWorld).setY(heightAt(F.x, F.z) + 2.6), '🍖', false, '#ffd890'); }
   }
   if (el > (F.len ?? FESTA_LEN)) { F.done = true; festaFade(['A música foi morrendo devagar, uma lanterna de cada vez.', 'A noite passou, o dia passou, e mais uma noite.', 'No alvorecer, com a cabeça ainda girando e o coração cheio, você está pronto para seguir caminhando.'], () => festaEnd()); } }
 /* bardos tocando: o corpo balança no ritmo (no quadro) */

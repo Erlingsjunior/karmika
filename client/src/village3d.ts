@@ -1,5 +1,6 @@
 /* Os marcos dos caminhos (cada vila de mestre tem o seu lugar de verdade) e as peças de cultura das vilas:
    paliçada nórdica/tribal, totem do Uivo, pedra-runa. Origem no canto do terreno; a frente olha para +z. */
+import { artMesh } from './arte3d';
 import * as THREE from 'three';
 import { makeFire } from './sistemas/fogo';
 import { std, texBox, stoneTex, shingleTex, woodTex, plankTex } from './toon3d';
@@ -218,6 +219,15 @@ function nameBoard(name: string, cult: number) {
 }
 /** pórtico da vila: dois troncos, a viga, um telhadinho, a tábua com o nome pendurada em correntes, tochas e escoras. span = vão (m) */
 export function buildVillageGate(name: string, cult: number, ry: number, span = 6, ox = 1, oz = 1): Built {
+  /* 11/11 (Erling: "somente o portão de Karmika, para testar"): em Karmika o pórtico de troncos dá lugar ao portão do Herik (cenario/construcoes/muralha_portao):
+     a moldura de pedra e madeira com o passadiço em cima (muralha_06), um lance de muralha de cada lado (muralha_01) fechado por um pilar (muralha_04)
+     e os postes de tocha (muralha_08). As folhas do portão (muralha_07) ficam de fora: a vila é aberta. */
+  if (name === 'Karmika' && artMesh('muralha_06')) { const K = kit(), s = Math.max(1, span / 3.7), dk = wood(0x3a2a1c);
+    const put = (id: string, x: number, z: number, ryy = 0) => { const m = artMesh(id); if (!m) return; m.position.set(x, 0, z); m.rotation.y = ryy; m.scale.setScalar(s); K.g.add(m); };
+    put('muralha_06', 0, 0); for (const sx of [-1, 1]) { put('muralha_01', sx * (2.7 + 2.5) * s, 0); put('muralha_04', sx * (2.7 + 5 + 0.7) * s, 0); put('muralha_08', sx * 2.2 * s, 2.3 * s, sx > 0 ? 0 : Math.PI); K.torch(sx * 2.2 * s, 3.3 * s, 2.3 * s); }
+    const bw = Math.min(3.4 * s, 4.2), bh = bw * 0.25, by = 3.05 * s, sign = std(0xffffff, { map: nameBoard(name, cult) }); K.box(bw + 0.12, bh + 0.12, 0.12, 0, by - bh / 2 - 0.06, 0, dk);
+    for (const [zz, ra] of [[0.07, 0], [-0.07, Math.PI]] as [number, number][]) { const sm = K.add(new THREE.PlaneGeometry(bw, bh), sign, 0, by, zz, ra, false); sm.userData.dyn = true; fine(sm); }
+    return spin(K, ry, ox, oz); }
   const K = kit(), lw = cult === 3 ? 0xd8ccb0 : cult === 4 ? 0x3a3036 : 0x5a4030, logM = wood(lw), dk = wood(cult === 4 ? 0x2a2228 : 0x3a2a1c), stM = stone(cult === 2 ? 0x6a5e52 : 0x7a746a);
   const half = span / 2, H = 4.2;
   for (const sx of [-1, 1]) { const x = sx * half;

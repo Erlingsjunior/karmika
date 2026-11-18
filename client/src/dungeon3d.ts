@@ -5,6 +5,7 @@
  *  Origem local (0,0) = canto noroeste; a saída fica em (W/2, D), como nas outras construções por dentro. */
 import * as THREE from 'three';
 import { makeFire } from './sistemas/fogo';
+import { kitPut } from './libs/kitprops';
 import { std, ramp, photoDetail } from './toon3d';
 import { mergeStatic } from './merge3d';
 import type { Interior } from './interiors3d';
@@ -13,7 +14,7 @@ export type DgTheme = 'toca' | 'mina' | 'gelo' | 'magma' | 'cripta' | 'mata' | '
 export type RoomKind = 'start' | 'pack' | 'side' | 'elite' | 'boss';
 export interface DgRoom { x: number; z: number; w: number; d: number; kind: RoomKind }
 export interface DungeonFloor extends Interior {
-  rooms: DgRoom[]; boss: { x: number; z: number }; chests: { x: number; z: number }[];
+  rooms: DgRoom[]; boss: { x: number; z: number }; chests: { x: number; z: number }[]; /** 10/11: caixões e sarcófagos que dá para abrir (item, nada ou monstro) */ coffins: { x: number; z: number }[];
   gate: { x: number; z: number; opened: boolean; open(): void } | null;
   entry: { x: number; z: number }; theme: DgTheme;
 }
@@ -202,7 +203,8 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
   const pool2 = (x: number, z: number, c: number, s: number, glow = false) => { const k = put(new THREE.CircleGeometry(s, 16), glow ? glowM(c) : M(c), x, 0.02, z); k.rotation.x = -Math.PI / 2; if (glow) { cols.push([x, z, s * 0.9]); light(x, 0.8, z, c, 2.6, 12); } };
   const beam = (x: number, z: number, alongX: boolean) => { const wm = M(0x5a3a22); for (const s of [-1, 1]) put(new THREE.BoxGeometry(0.25, 3, 0.25), wm, x + (alongX ? 0 : s * 2.6), 1.5, z + (alongX ? s * 2.6 : 0)); put(new THREE.BoxGeometry(alongX ? 0.3 : 5.6, 0.3, alongX ? 5.6 : 0.3), wm, x, 3, z); };
   const mush = (x: number, z: number, c: number) => { const s = 0.5 + r() * 0.9; put(new THREE.CylinderGeometry(0.08 * s, 0.12 * s, 0.9 * s, 6), M(0xd8d0c0), x, 0.45 * s, z); put(new THREE.SphereGeometry(0.4 * s, 10, 6, 0, 6.283, 0, 1.6), glowM(c), x, 0.9 * s, z); if (r() < 0.4) light(x, 1, z, c, 1.4, 8); cols.push([x, z, 0.35 * s]); };
-  const sarc = (x: number, z: number) => { put(new THREE.BoxGeometry(1, 0.7, 2.2), M(0x6a6660), x, 0.35, z); put(new THREE.BoxGeometry(1.1, 0.15, 2.3), M(0x7a7670), x, 0.75, z); cols.push([x, z, 1.1]); };
+  const coffins: { x: number; z: number }[] = [];
+  const sarc = (x: number, z: number) => { coffins.push({ x, z }); put(new THREE.BoxGeometry(1, 0.7, 2.2), M(0x6a6660), x, 0.35, z); put(new THREE.BoxGeometry(1.1, 0.15, 2.3), M(0x7a7670), x, 0.75, z); cols.push([x, z, 1.1]); };
   const candles = (x: number, z: number) => { for (let i = 0; i < 3; i++) { const cx2 = x + (r() - 0.5) * 0.6, cz2 = z + (r() - 0.5) * 0.6; put(new THREE.CylinderGeometry(0.05, 0.05, 0.3 + r() * 0.3, 6), M(0xe8e0c8), cx2, 0.2, cz2); put(new THREE.ConeGeometry(0.04, 0.1, 5), glowM(0xffc060), cx2, 0.45, cz2); } light(x, 0.8, z, 0xffb050, 1.4, 8); };
   const deco = (x: number, z: number) => { const k = r();
     if (o.theme === 'toca') { if (k < 0.35) nest(x, z, 0.7 + r() * 0.5); else if (k < 0.65) bones(x, z); else if (k < 0.8) candles(x, z); else pool2(x, z, 0x2a1810, 0.8 + r()); }
@@ -223,6 +225,35 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     if (o.theme === 'mina' || o.theme === 'toca' || o.theme === 'cripta' || o.theme === 'arquivo') { torch(c.x - hw * 0.7, c.z - hd); torch(c.x + hw * 0.7, c.z - hd); }
     else light(c.x, 2.4, c.z, th.light, 1.6, 16);
   }
+  /* 10/11 (Erling: "estou no Mausoléu dos Esquecidos e não vejo nenhum asset de masmorra dos novos; aqui devia estar super decorado"):
+     peças KayKit (CC0, libs/kitprops.ts) encostadas nas paredes de cada sala, conforme o tema: caixões, lápides, ossos, velas e santuários na
+     cripta; barris, caixotes e baús na mina; estantes e livros no arquivo; entulho, ossos e espadas quebradas nas tocas, no gelo e na lava.
+     Nunca na boca de um corredor (a peça só vai onde há rocha atrás dela) e nunca no meio do caminho. As de luz (vela, lanterna, santuário) acendem. */
+  { const KIT: Record<string, [string, number, number][]> = { /* [peça, escala, raio de colisão (0 = não bloqueia)] */
+      cripta: [['halloween/coffin', 0.85, 0.7], ['halloween/coffin_decorated', 0.85, 0.7], ['halloween/gravestone', 0.85, 0.45], ['halloween/grave_A', 0.85, 0.6], ['halloween/skull_candle', 0.9, 0], ['halloween/candle_triple', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['halloween/bone_A', 0.9, 0], ['halloween/bone_B', 0.9, 0], ['halloween/shrine_candles', 0.85, 0.7], ['halloween/plaque_candles', 0.85, 0.5], ['masmorra/rubble_half', 0.8, 0.5], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/banner_patternB_red', 0.85, 0.3], ['halloween/lantern_standing', 0.85, 0.3], ['masmorra/candle_melted', 0.9, 0]],
+      mina: [['masmorra/barrel_large', 0.8, 0.6], ['masmorra/barrel_small_stack', 0.8, 0.6], ['masmorra/crates_stacked', 0.8, 0.8], ['masmorra/box_stacked', 0.8, 0.7], ['masmorra/keg', 0.8, 0.5], ['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['masmorra/trunk_medium_A', 0.8, 0.6], ['masmorra/table_small', 0.8, 0.6], ['masmorra/stool', 0.8, 0], ['masmorra/coin_stack_small', 0.9, 0], ['masmorra/candle_lit', 0.9, 0]],
+      toca: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/bone_A', 0.9, 0], ['halloween/bone_C', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['halloween/skull', 0.9, 0], ['masmorra/barrel_small', 0.8, 0.45], ['masmorra/box_small', 0.8, 0.45], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/candle_melted', 0.9, 0]],
+      arquivo: [['masmorra/shelf_large', 0.8, 0.8], ['masmorra/shelves', 0.8, 0.8], ['masmorra/shelf_small_candles', 0.8, 0.5], ['mobilia/book_set', 0.9, 0], ['mobilia/cabinet_medium_decorated', 0.8, 0.6], ['masmorra/table_medium_decorated_A', 0.8, 0.8], ['masmorra/candle_triple', 0.9, 0], ['masmorra/chair', 0.8, 0], ['masmorra/trunk_small_A', 0.8, 0.45], ['masmorra/box_small_decorated', 0.8, 0.4]],
+      gelo: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/barrel_small', 0.8, 0.45], ['halloween/ribcage', 0.85, 0], ['halloween/skull', 0.9, 0], ['masmorra/banner_thin_blue', 0.85, 0.3], ['masmorra/trunk_small_B', 0.8, 0.45]],
+      magma: [['masmorra/rubble_large', 0.8, 0.8], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/skull_candle', 0.9, 0], ['halloween/ribcage', 0.85, 0], ['masmorra/sword_shield_broken', 0.8, 0], ['masmorra/coin_stack_medium', 0.9, 0]],
+      mata: [['halloween/tree_dead_small', 0.8, 0.5], ['halloween/bone_B', 0.9, 0], ['masmorra/rubble_half', 0.8, 0.5], ['halloween/skull', 0.9, 0], ['masmorra/barrel_small', 0.8, 0.45], ['halloween/lantern_standing', 0.85, 0.3], ['masmorra/box_small', 0.8, 0.45]] };
+    const LIT = /candle|lantern|shrine|plaque_candles|torch/;
+    const set = KIT[o.theme] ?? KIT.toca;
+    const solid = (x: number, z: number) => !isW(Math.floor(x / C), Math.floor(z / C));
+    const near = (x: number, z: number, rad: number) => cols.some(([cx, cz, cr]) => Math.hypot(x - cx, z - cz) < cr + rad + 0.25);
+    const putKit = (x: number, z: number, ry: number, pick: [string, number, number]) => { kitPut(g, pick[0], x, 0, z, ry, pick[1]); if (/coffin/.test(pick[0])) coffins.push({ x, z }); if (pick[2]) cols.push([x, z, pick[2]]); if (LIT.test(pick[0])) light(x, 1.1, z, 0xffb050, 1.3, 7); };
+    for (const rm of P.rooms) { if (rm.kind === 'start' && o.theme !== 'cripta') continue;
+      const c = loc(rm), hw = (rm.w * C) / 2 - 1.0, hd = (rm.d * C) / 2 - 1.0, n = rm.kind === 'boss' ? 10 : rm.kind === 'start' ? 3 : 6 + Math.floor(r() * 3);
+      const spots: [number, number, number][] = []; /* [x, z, giro]: fundo (norte), oeste e leste, só onde há rocha atrás */
+      for (let k = 0; k < 9; k++) { const t = -1 + (k + 0.5) * 2 / 9, x = c.x + t * hw, z = c.z - hd; if (solid(x, z - 1.6) && isW(Math.floor(x / C), Math.floor(z / C))) spots.push([x, z, 0]); }
+      for (let k = 0; k < 6; k++) { const t = -1 + (k + 0.5) * 2 / 6, z = c.z + t * hd * 0.8; for (const sd of [-1, 1]) { const x = c.x + sd * hw; if (solid(x + sd * 1.6, z) && isW(Math.floor(x / C), Math.floor(z / C))) spots.push([x, z, -sd * Math.PI / 2]); } }
+      for (let i = spots.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [spots[i], spots[j]] = [spots[j], spots[i]]; }
+      let placed = 0; for (const [x, z, ry] of spots) { if (placed >= n) break; const pick = set[Math.floor(r() * set.length)]; if (near(x, z, pick[2] || 0.3)) continue; putKit(x + (r() - 0.5) * 0.4, z, ry + (r() - 0.5) * 0.5, pick); placed++;
+        /* pequenos de companhia (osso, vela, moeda) ao pé das peças grandes */
+        if (pick[2] > 0.5 && r() < 0.5) { const sm = set.filter((q) => !q[2]); if (sm.length) { const q = sm[Math.floor(r() * sm.length)]; kitPut(g, q[0], x + (r() - 0.5) * 1.4, 0, z + 0.7, r() * 6.28, q[1]); if (LIT.test(q[0])) light(x, 0.9, z + 0.7, 0xffb050, 1.1, 6); } } }
+      /* cripta e arquivo: um par de colunas trabalhadas marca a sala (fora da linha do meio) */
+      if ((o.theme === 'cripta' || o.theme === 'arquivo') && rm.kind !== 'start' && rm.w >= 5) for (const sd of [-1, 1]) { const x = c.x + sd * hw * 0.55, z = c.z - hd * 0.35; if (!near(x, z, 0.6) && isW(Math.floor(x / C), Math.floor(z / C))) { kitPut(g, 'masmorra/pillar_decorated', x, 0, z, 0, 0.9); cols.push([x, z, 0.55]); } }
+    } }
   if (o.theme === 'mina') for (const [a, b] of P.links) { const ax = (a.x + ox) * C, az = (a.z + oz) * C, bz = (b.z + oz) * C; for (let z = Math.min(az, bz) + 3; z < Math.max(az, bz) - 3; z += 6) beam((b.x + ox) * C, z, false); void ax; }
   /* a boca da caverna (Erling: "não tem luz de entrada nem de saída"): a luz do dia entra pela saída — um clarão lá fora, feixes de luz
      inclinados com poeira, a mancha clara no chão que vai escurecendo para dentro, e as pedras que emolduram a boca */
@@ -234,7 +265,7 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     const sun = new THREE.SpotLight(DAY, 60, 26, 0.75, 0.6, 1.3); sun.position.set(ex, 6, ez + 6); sun.target.position.set(ex, 0, ez - 9); g.add(sun, sun.target);
     const pool0 = new THREE.Mesh(new THREE.PlaneGeometry(2 * C + 1.5, 9), glowMat(0.28)); pool0.rotation.x = -Math.PI / 2; pool0.position.set(ex, 0.04, ez - 4.4); pool0.rotation.z = Math.PI; pool0.userData.keep = true; g.add(pool0); // a mancha de luz no chão
     const outside = new THREE.Mesh(new THREE.PlaneGeometry(2 * C + 1, 3.2), glowMat(0.3)); outside.rotation.x = -Math.PI / 2; outside.position.set(ex, 0.03, ez + 1.4); outside.userData.keep = true; g.add(outside); // lá fora: claro
-    for (let k = 0; k < 4; k++) { const ray = new THREE.Mesh(new THREE.PlaneGeometry(0.5 + k * 0.2, 6), glowMat(0.1 - k * 0.015)); ray.position.set(ex - C * 0.5 + k * C * 0.33, 2.4, ez - 1.6); ray.rotation.set(-0.95, (k - 1.5) * 0.12, 0); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); } // feixes inclinados
+    for (let k = 0; k < 4; k++) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(0.16 + k * 0.05, 0.34 + k * 0.12, 6, 14, 1, true), glowMat(0.08 - k * 0.012)); /* 11/11: feixe com volume, não um plano */ ray.position.set(ex - C * 0.5 + k * C * 0.33, 2.4, ez - 1.6); ray.rotation.set(-0.95, (k - 1.5) * 0.12, 0); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); } // feixes inclinados
     for (const sx of [-1, 1]) { boulder(ex + sx * (C + 0.6), ez - 0.6, 1.1, rm2); boulder(ex + sx * (C + 1.4), ez - 1.8, 0.8, rmA); } // as pedras da boca
     dust.push({ x: ex, z: ez - 3.5 });
     light(ex, 1.6, ez - 2.2, DAY, 3.2, 16); }
@@ -246,10 +277,9 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
     for (let k = 0; k < n; k++) {
       const x = rm.kind === 'boss' ? c.x : c.x + (hsh(k + rm.x, rm.z) - 0.5) * rm.w * C * 0.5, z = rm.kind === 'boss' ? c.z : c.z + (hsh(rm.z, k + rm.x) - 0.5) * rm.d * C * 0.5;
       const tilt = 0.18 + hsh(x, z) * 0.12, Hh = 10, wTop = rm.kind === 'boss' ? 2.4 : 1.3, wBot = wTop * 1.7;
-      for (let q = 0; q < 3; q++) { const geo = new THREE.PlaneGeometry(1, Hh, 1, 1), pa = geo.getAttribute('position');
-        for (let i2 = 0; i2 < pa.count; i2++) { const yy = pa.getY(i2); pa.setX(i2, pa.getX(i2) * (yy > 0 ? wTop : wBot)); }
-        const ray = new THREE.Mesh(geo, glowMat(rm.kind === 'boss' ? 0.16 : 0.12));
-        ray.position.set(x + Math.sin(tilt) * Hh * 0.5, Hh / 2, z - Math.sin(tilt) * Hh * 0.25); ray.rotation.set(-tilt * 0.5, q * Math.PI / 3, tilt); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); }
+      /* 11/11 (Erling: os fachos eram retângulos transparentes cruzados, "cores pintadas"): agora é um VOLUME — um cone de luz oco, com um miolo mais fino e mais claro por dentro */
+      for (const [kr, a0] of [[1, rm.kind === 'boss' ? 0.13 : 0.1], [0.45, rm.kind === 'boss' ? 0.16 : 0.12]] as [number, number][]) { const ray = new THREE.Mesh(new THREE.CylinderGeometry(wTop * 0.5 * kr, wBot * 0.5 * kr, Hh, 22, 1, true), glowMat(a0));
+        ray.position.set(x + Math.sin(tilt) * Hh * 0.5, Hh / 2, z - Math.sin(tilt) * Hh * 0.25); ray.rotation.set(-tilt * 0.5, 0, tilt); ray.userData.keep = true; ray.renderOrder = 2; g.add(ray); }
       const spot = new THREE.Mesh(new THREE.PlaneGeometry(wBot * 2.6, wBot * 2.6), new THREE.MeshBasicMaterial({ map: radial, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, color: DAY, fog: false }));
       spot.rotation.x = -Math.PI / 2; spot.position.set(x, 0.05, z); spot.userData.keep = true; g.add(spot);
       dust.push({ x, z }); light(x, 2.6, z, DAY, rm.kind === 'boss' ? 3.4 : 2.4, 12);
@@ -296,5 +326,5 @@ export function buildDungeon(o: { seed: number; theme: DgTheme; main: number; si
   };
   mergeStatic(g, ramp);
   const rooms = P.rooms.map((rm) => { const c = loc(rm); return { ...rm, x: c.x, z: c.z, w: rm.w * C, d: rm.d * C }; });
-  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, rooms, boss: B, chests, gate, entry: { x: W / 2, z: D - 1.6 }, theme: o.theme };
+  return { group: g, W, D, colliders: cols, free, flicker, exitZ: D + 0.9, rooms, boss: B, chests, coffins, gate, entry: { x: W / 2, z: D - 1.6 }, theme: o.theme };
 }

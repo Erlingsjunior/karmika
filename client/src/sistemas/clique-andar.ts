@@ -1,7 +1,7 @@
 /* CLIQUE PARA ANDAR: o caminho até o ponto clicado (nav.ts), com a mesma sonda de corpo do movimento. Saiu do main.ts (02/11). */
 import { groundH, WL, heightAt } from '../world';
 import { TILE_M as T, isWalkable, type Vec } from '@karmika/shared';
-import { stepAt } from '../world3d';
+import { stepAt, houseFloorAt } from '../world3d';
 import { navPath, lineFree } from '../nav';
 import * as THREE from 'three';
 import { createXray } from '../xray';
@@ -15,7 +15,7 @@ function tileHeightOk(tx: number, ty: number) { const i = ty * K.city.map[0].len
   const g = groundH((tx + 0.5) * T, (ty + 0.5) * T), ok = g > WL - 2.6 && g < 80; hOk[i] = ok ? 1 : 2; return ok; }
 function groundProbe(x: number, y: number) {
   for (const [dx, dy] of K.CORN) { const tx = Math.floor(x + dx), ty = Math.floor(y + dy); if (ty < 0 || tx < 0 || ty >= K.city.map.length || tx >= K.city.map[0].length) return false; const tl = K.city.map[ty][tx];
-    if (!(isWalkable(tl) || tl === 'water' || tl === 'tree') || !tileHeightOk(tx, ty)) return false; }
+    if (!(isWalkable(tl) || tl === 'water' || tl === 'tree' || houseFloorAt(K.city.props, tx, ty, x, y)) || !tileHeightOk(tx, ty)) return false; } /* 11/11: o clique também traça caminho pelo piso de pedra das casas */
   return !K.trunkHit(x, y) && !K.solidHit(x, y) && !K.lowWallHit(x, y);
 }
 /* dev: por que o herói não passa aqui? (27/10) */
@@ -62,20 +62,31 @@ function updateXray(dt: number) {
   xray.update(dt, K.camera.position, who);
   /* o corte circular de visão: o herói projetado na tela (pixels do canvas), o raio de ~2,6 m à distância dele, e a distância da câmera até ele */
   { const v = K.cutP.copy(hp).setY(hp.y + 0.9), W = K.renderer.domElement.width, H = K.renderer.domElement.height; const dist = v.distanceTo(K.camera.position); v.project(K.camera); const sx = (v.x * 0.5 + 0.5) * W, sy = (v.y * 0.5 + 0.5) * H;
-    K.cutP.set(hp.x, hp.y + 0.9, hp.z); const right = K.cutV2.set(1, 0, 0).applyQuaternion(K.camera.quaternion); K.cutP.add(right.multiplyScalar(2.6)).project(K.camera); const rx = (K.cutP.x * 0.5 + 0.5) * W; const k = 1 / (K.dual.enabled ? K.dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) { cutOccT -= 1 / 60; if (cutOccT <= 0) { cutOccT = 0.12; cutOn = heroHidden(hp); } setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, K.cinemaSys.cine || !cutOn ? 0 : dist); const f = K.cutV2.set(0, 0, -1).applyQuaternion(K.camera.quaternion); const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl; setCutoutPlane(fx, fz, hp.x * fx + hp.z * fz - 1.4); } }
+    K.cutP.set(hp.x, hp.y + 0.9, hp.z); const right = K.cutV2.set(1, 0, 0).applyQuaternion(K.camera.quaternion); K.cutP.add(right.multiplyScalar(2.6)).project(K.camera); const rx = (K.cutP.x * 0.5 + 0.5) * W; const k = 1 / (K.dual.enabled ? K.dual.ratio : 1); /* o cenário é desenhado em meia resolução (dual3d): o círculo vai nos pixels desse alvo */ if (!(window as unknown as { __cutHold?: boolean }).__cutHold) { /* 11/11: pelo relógio, não por quadros — a 20 quadros por segundo a leitura levava o triplo do tempo e o herói ficava sumido atrás da casa */ if (performance.now() >= cutOccT) { cutOccT = performance.now() + 120; { /* 10/11 (Erling: "tremor nas colunas da ponte"): com folga — liga com 9 de 10 raios escondidos, só desliga quando 6 ou menos, e a troca precisa de duas leituras seguidas iguais (antes piscava a cada 0,12 s com o herói meio atrás da coluna) */ const want = heroHidden(hp, cutOn ? 6 : 9); if (want !== cutOn) { cutFlip++; if (cutFlip >= 2) { cutOn = want; cutFlip = 0; } } else cutFlip = 0; } } setCutout(sx * k, sy * k, Math.abs(rx - sx) * k, K.cinemaSys.cine || !cutOn ? 0 : dist); const f = K.cutV2.set(0, 0, -1).applyQuaternion(K.camera.quaternion); const fl = Math.hypot(f.x, f.z) || 1; const fx = f.x / fl, fz = f.z / fl; setCutoutPlane(fx, fz, hp.x * fx + hp.z * fz - 1.4); } }
 }
 /* REGRA DA AURA (Erling, 28/10): o corte só liga quando o herói está pelo menos 90% escondido. Dez raios da câmera até pontos do
    corpo (5 alturas × 2 lados); se 9 ou mais batem em cenário antes de chegar nele, corta. Peças que nunca somem (correio, fonte,
    baú, pedra de teletransporte…) nem contam como obstáculo nem são cortadas (world3d: NOCUT_KINDS). */
-let cutOccT = 0, cutOn = false; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3();
-function heroHidden(hp: THREE.Vector3): boolean {
+let cutOccT = 0, cutOn = false, cutFlip = 0; const occRay = new THREE.Raycaster(), occP = new THREE.Vector3(), occR = new THREE.Vector3(), occD = new THREE.Vector3(), occC = new THREE.Vector3();
+function heroHidden(hp: THREE.Vector3, need = 9): boolean {
   const root = K.inside ? K.inside.int.group : K.objs.group; if (!root.visible) return false; occR.set(1, 0, 0).applyQuaternion(K.camera.quaternion);
+  /* 11/11 noite (o /travadas do Erling: "xray/env" com 17 a 29 ms em alguns quadros): cada um dos 10 raios percorria TODAS as peças do cenário carregado
+     (mais de 10 mil), 8 vezes por segundo. Agora uma passada só separa as poucas peças cuja esfera encosta no corredor entre a câmera e o herói, e os
+     10 raios testam só essas. O resultado é o mesmo; linhas, pontos e sprites (que nunca esconderam ninguém) ficam de fora. */
+  const cand: THREE.Object3D[] = []; { const A = K.camera.position, bx = hp.x - A.x, by = hp.y + 0.95 - A.y, bz = hp.z - A.z, bb = bx * bx + by * by + bz * bz || 1;
+    root.traverseVisible((o) => { const m = o as THREE.Mesh & { boundingSphere?: THREE.Sphere | null; computeBoundingSphere?: () => void }; if (!m.isMesh) return;
+      let bs = m.boundingSphere; if (bs === null && (m as unknown as THREE.InstancedMesh).isInstancedMesh) { m.computeBoundingSphere?.(); bs = m.boundingSphere; }
+      if (!bs) { const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere(); bs = g.boundingSphere; } if (!bs) return;
+      const e = m.matrixWorld.elements, c = occC.copy(bs.center).applyMatrix4(m.matrixWorld), sc = Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10])), r = bs.radius * sc + 0.8;
+      const t = Math.max(0, Math.min(1, ((c.x - A.x) * bx + (c.y - A.y) * by + (c.z - A.z) * bz) / bb)), dx = A.x + bx * t - c.x, dy = A.y + by * t - c.y, dz = A.z + bz * t - c.z;
+      if (dx * dx + dy * dy + dz * dz <= r * r) cand.push(m); }); }
+  if (!cand.length) return false;
   let hid = 0, n = 0;
   for (const hy of [0.25, 0.6, 0.95, 1.3, 1.65]) for (const sd of [-0.22, 0.22]) { n++; occP.set(hp.x + occR.x * sd, hp.y + hy, hp.z + occR.z * sd);
     occD.copy(occP).sub(K.camera.position); const L = occD.length(); occRay.set(K.camera.position, occD.normalize()); occRay.far = L - 0.35;
-    const hits = occRay.intersectObject(root, true); if (hits.some((h) => { const m = h.object as THREE.Mesh, mt = m.material as THREE.Material; let o: THREE.Object3D | null = m; while (o && o !== root) { if (!o.visible) return false; o = o.parent; } return !Array.isArray(mt) && !mt.transparent && mt.side !== THREE.BackSide && !(mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial && !mt.userData.noCut; })) hid++;
-    if (n - hid > 1) return false; } // mais de um ponto à vista: não precisa cortar
-  return hid >= 9; }
+    const hits = occRay.intersectObjects(cand, false); if (hits.some((h) => { const m = h.object as THREE.Mesh, mt = m.material as THREE.Material; let o: THREE.Object3D | null = m; while (o && o !== root) { if (!o.visible) return false; o = o.parent; } return !Array.isArray(mt) && !mt.transparent && mt.side !== THREE.BackSide && !(mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial && !mt.userData.noCut; })) hid++;
+    if (n - hid > 10 - need) return false; } // pontos demais à vista: não precisa cortar
+  return hid >= need; }
 /** anda deslizando: direto; senão por um eixo; senão contornando o canto (±35°, ±70°); se ficar preso, espreme-se entre os objetos */
 let stuckT = 0;
 function moveSlide(dx: number, dy: number, dt: number, trying: boolean) {

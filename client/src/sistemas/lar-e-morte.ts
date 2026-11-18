@@ -6,6 +6,7 @@ import { MAX_BREATHS, FRAY_LVL, type Life } from '../soul';
 import { playDeath } from '../hud';
 import { soulSpark, type LimiarInfo } from '../limiar';
 import { PATHS } from '../vidente';
+import { foiPvp } from '../morte';
 import type { LarMorteCtx } from '../main';
 
 /* ---------- fonte-lar, morte e renascimento; Deusa dos Caminhos: Pergaminho do Regresso ---------- */
@@ -21,13 +22,22 @@ function setHome(p: { gx: number; gy: number; h: number }) { K.feats.bump('homes
 /** põe o herói num lugar sem tela de carregamento (a luz branca do Limiar cobre a troca) */
 /** morreu ou foi levado lá dentro (masmorra, cripta, casa): sai do interior sem tela de carregamento */
 /** solta da GPU tudo que uma subárvore descartada tinha (geometria, materiais e as texturas próprias deles) */
-function disposeTree(root: THREE.Object3D) { const seen = new Set<THREE.Material>(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; m.geometry?.dispose(); for (const mt of Array.isArray(m.material) ? m.material : [m.material]) { if (!mt || seen.has(mt)) continue; seen.add(mt); if (!(mt as THREE.Material & { userData: { shared?: boolean } }).userData?.shared) { const tm = mt as THREE.MeshToonMaterial; if (tm.map && tm.map.userData?.own) tm.map.dispose(); mt.dispose(); } } }); }
+function disposeTree(root: THREE.Object3D) { const seen = new Set<THREE.Material>(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; if (!m.geometry?.userData?.shared && !m.userData.shared) m.geometry?.dispose(); for (const mt of Array.isArray(m.material) ? m.material : [m.material]) { if (!mt || seen.has(mt)) continue; seen.add(mt); if (!(mt as THREE.Material & { userData: { shared?: boolean } }).userData?.shared) { const tm = mt as THREE.MeshToonMaterial; if (tm.map && tm.map.userData?.own) tm.map.dispose(); mt.dispose(); } } }); }
 function leaveInteriorNow() { if (!K.inside) return; const ins = K.inside; if (ins.dg) K.dgs.stop(); if (ins.crypt) { K.game.enemies.clearTag('crypt'); K.cryptInt = null; K.bishop = null; if (K.spirit) { K.scene.remove(K.spirit.root); K.spirit = null; } }
-  K.scene.remove(ins.int.group); disposeTree(ins.int.group); /* interiores são montados a cada entrada: sem isto a GPU acumulava geometria/texturas */ K.inside = null; K.objs.group.visible = true; K.decoOut.visible = true; K.decoOthers.visible = true; K.decoCancel(); for (const n of K.npcSys.npcs) n.hero.root.visible = true; }
+  K.scene.remove(ins.int.group); { const old = ins.int.group; setTimeout(() => disposeTree(old), 2500); } /* 10/11 (Erling: "modo GPU deu bug ao sair da masmorra e me dropou do server"): o WebGPU ainda desenhava um quadro com a geometria que tinha acabado de ser solta; agora ela só é solta 2,5 s depois de sair da tela */ /* interiores são montados a cada entrada: sem isto a GPU acumulava geometria/texturas */ K.inside = null; K.objs.group.visible = true; K.decoOut.visible = true; K.decoOthers.visible = true; K.decoCancel(); for (const n of K.npcSys.npcs) n.hero.root.visible = true; }
 function placeAt(why: string, to: { x: number; y: number } = home) { leaveInteriorNow(); K.state.fx = to.x; K.state.fy = to.y; K.state.path = []; K.objs.update(K.state.fx * T, K.state.fy * T, true); K.heroY = heightAt(K.state.fx * T, K.state.fy * T); K.camX = K.state.fx * T; K.camZ = K.state.fy * T; K.camY = K.heroY; K.game.logMsg(why, '#8ad0ff'); for (let i = 0; i < 40; i++) K.particles.spawn(K.state.fx * T, 0.5, K.state.fy * T, { vx: (Math.random() - 0.5) * 3, vy: Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 1, s0: 0.3, s1: 0.05, c0: 0xfff0bd, c1: 0x8f7bff, a: 1 }); }
 function goHome(why: string, to: { x: number; y: number } = home) { K.withFade(() => placeAt(why, to)); }
-K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen();
-  const fall = (note?: string, left?: number) => { const after = () => { goHome(`⛲ Você renasce na fonte de ${home.name}.`); setTimeout(() => { revive(); if (note) K.game.logMsg(note, '#c9a0ff'); }, 400); };
+/* 12/11 ERGUER O CAÍDO (Erling: "o Paladino pode, o Mago também, e o Bruxo do lado do karma negativo, num contrato pesado"): enquanto o painel
+   "Você caiu" está aberto, um companheiro pode levantar o herói ali mesmo. `caido` guarda como voltar; some quando o jogador escolhe ressurgir na fonte. */
+let caido: { revive: () => void; breath: boolean } | null = null, closeDeath: (() => void) | null = null;
+function erguer(frac: number, quem: string, nome: string): boolean { if (!caido || !K.game.st.dead) return false; const c = caido; caido = null; closeDeath?.(); closeDeath = null;
+  c.revive(); const st = K.game.st; st.hp = Math.max(1, Math.round(st.hpMax * Math.max(0.05, Math.min(1, frac))));
+  if (c.breath) { K.soul.s.breaths = Math.min(MAX_BREATHS, K.soul.s.breaths + 1); K.soul.save(); } /* quem é erguido não gasta o fôlego do Fio da Vida */
+  K.game.logMsg(`✚ ${quem} ergueu você com ${nome}. Você volta com ${Math.round(frac * 100)}% da vida${c.breath ? ', e o Fio da Vida não perde o fôlego' : ''}.`, '#ffe08a'); K.audio.heal?.();
+  const p = K.hero.root.position; for (let i = 0; i < 46; i++) K.particles.spawn(p.x + (Math.random() - 0.5) * 1.2, p.y + 0.1, p.z + (Math.random() - 0.5) * 1.2, { vx: (Math.random() - 0.5) * 0.6, vy: 1.5 + Math.random() * 3, vz: (Math.random() - 0.5) * 0.6, life: 1.1, s0: 0.3, s1: 0.04, c0: 0xfff6d0, c1: 0xffc24a, a: 1 });
+  return true; }
+K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen(); caido = null;
+  const fall = (note?: string, left?: number) => { caido = { revive, breath: left !== undefined }; const after = () => { caido = null; goHome(`⛲ Você renasce na fonte de ${home.name}.`); setTimeout(() => { revive(); if (note) K.game.logMsg(note, '#c9a0ff'); }, 400); };
     /* 26/10 (Erling): o corpo cai, o Olho vira Ampulheta, e a gente fica ali, morto, vendo a cena — até clicar e escolher ressurgir na cidade */
     const sub = left === undefined ? `O Olho guarda o que viu${K.profile ? `, <b>${K.profile.name}</b>` : ''}.` : left > 0 ? `O Fio da Vida perde um fôlego. Restam <b>${left}</b> de ${MAX_BREATHS}.` : 'Era o último fôlego. Se cair de novo, a alma desencarna.';
     deathPanel(sub, () => { if (K.profile?.eye) playDeath(K.profile.name, home.name, after, { title: 'Você ressurge', sub }); else after(); }); };
@@ -35,6 +45,9 @@ K.game.setOnDeath((revive) => { K.feats.bump('deaths'); K.soul.regen();
   if (!K.profile || K.game.st.lvl < FRAY_LVL || !K.profile.eye) { fall(); return; } /* o Fio só se gasta depois que o Olho abre (nível 15) */
   if (K.soul.s.breaths > 0) { K.soul.s.breaths--; K.soul.save(); const b = K.soul.s.breaths;
     fall(b > 0 ? `🕯 Fio da Vida: restam ${b} de ${MAX_BREATHS} fôlegos. Um volta a cada dia.` : '🕯 Fio da Vida: este era o último fôlego. Se cair de novo antes de um voltar, a alma desencarna.', b); return; }
+  /* 17/11: a morte de verdade. Tudo o que o personagem carrega fica num monte onde o corpo caiu (dentro de um prédio ou masmorra: na porta,
+     do lado de fora). Morte por outro jogador: os dados decidem item por item. O baú não é tocado. A Lágrima, no Limiar, devolve tudo. */
+  { const onde = K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; try { K.despojos.deixa(onde.x, onde.y, foiPvp()); } catch (e) { console.warn('despojos', e); } }
   K.soul.s.pending = 'choose'; K.soul.save(); K.limiar.prepare(); K.audio.soulRise(0.3);
   /* a faísca sai do corpo, cresce, vibra e sobe como uma agulha até o céu; a tela esmaece e a alma chega ao centro do labirinto */
   setTimeout(() => soulSpark(K.scene, K.hero.root.position.clone(), { burst: (x, y, z, c0, c1) => K.particles.spawn(x, y, z, { vx: (Math.random() - 0.5) * 0.8, vy: Math.random() * 0.6, vz: (Math.random() - 0.5) * 0.8, life: 0.7, s0: 0.35, s1: 0.04, c0, c1, a: 1 }),
@@ -45,7 +58,8 @@ function deathPanel(sub: string, go: () => void) {
   document.getElementById('deathp')?.remove(); const d = document.createElement('div'); d.id = 'deathp';
   d.innerHTML = `<h2>Você caiu</h2><p>${sub}</p><button>⛲ Ressurgir em ${home.name}</button><small>Enter ou clique quando quiser</small>`;
   document.body.appendChild(d); requestAnimationFrame(() => setTimeout(() => d.classList.add('on'), 900));
-  let done = false; const fire = () => { if (done) return; done = true; removeEventListener('keydown', key, true); d.classList.remove('on'); setTimeout(() => d.remove(), 400); go(); };
+  let done = false; const shut = () => { done = true; removeEventListener('keydown', key, true); d.classList.remove('on'); setTimeout(() => d.remove(), 400); }; const fire = () => { if (done) return; shut(); closeDeath = null; go(); };
+  closeDeath = () => { if (!done) shut(); }; /* erguido por um companheiro: o painel fecha sem levar para a fonte */
   const key = (e: KeyboardEvent) => { if (e.key === 'Enter' && d.classList.contains('on')) { e.preventDefault(); e.stopPropagation(); fire(); } }; addEventListener('keydown', key, true);
   d.querySelector('button')!.addEventListener('click', (e) => { e.stopPropagation(); fire(); });
 }
@@ -91,7 +105,7 @@ function unbind(revive: () => void = () => { /* já de pé */ }, resume?: 'rebor
   K.limiar.open(info, (k) => {
     K.soul.s.breaths = MAX_BREATHS; K.soul.s.regenAt = Date.now(); K.soul.s.pending = null;
     if (k === 'corpo') { K.soul.s.debt += info.debt; K.soul.save(); revive(); placeAt(`⛲ A alma volta ao mesmo corpo, em ${home.name}. Dívida Kármica: ${K.soul.s.debt.toLocaleString('pt-BR')} XP.`); return; }
-    if (k === 'lagrima') { K.inv.take('lagrima', 1); revive(); placeAt(`💧 A Lágrima paga a volta. A alma de ${K.profile!.name} reencontra o corpo ${place.name}.`, place); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 80 } })); return; }
+    if (k === 'lagrima') { K.inv.take('lagrima', 1); { const n = K.despojos.lagrima(); if (n) K.game.logMsg(`💧 A Lágrima devolve tudo o que você carregava (${n} ${n === 1 ? 'item' : 'itens'}).`, '#9ad7ff'); } revive(); placeAt(`💧 A Lágrima paga a volta. A alma de ${K.profile!.name} reencontra o corpo ${place.name}.`, place); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xffffff, c1: 0x9ad7ff, n: 80 } })); return; }
     if (resume !== 'reborn') { const life: Life = { name: K.profile!.name, origin: K.profile!.origin, cls: c.name, clsLvl: c.lvl, lvl: K.game.st.lvl, karma: Math.round(K.state.karma), luz: Math.round(K.soul.s.luzT ?? 0), sombra: Math.round(K.soul.s.sombraT ?? 0), end: 'reencarne', at: Date.now() };
       K.soul.s.lives.push(life); K.soul.s.luzT = 0; K.soul.s.sombraT = 0; K.soul.s.outcast = null; K.soul.s.madness = null; /* o acumulado é desta vida: sobe sem teto até desencarnar, e fica escrito na vida passada */ K.soul.s.catchup = { cls: c.name, until: Math.max(c.lvl, K.soul.s.catchup?.cls === c.name ? K.soul.s.catchup.until : 0) }; }
     K.soul.s.pending = 'reborn'; K.soul.save(); revive(); K.showCreate(true);
@@ -109,5 +123,5 @@ function headShot(yaw: number, sz = 256, dy = 0, dist = 1.6): string {
   for (let y = 0; y < sz; y++) for (let x = 0; x < sz; x++) { const si = ((sz - 1 - y) * sz + x) * 4, di = (y * sz + x) * 4; for (let k = 0; k < 3; k++) im.data[di + k] = Math.min(255, Math.pow(px[si + k] / 255, 1 / 2.2) * 255 * 1.1); im.data[di + 3] = 255; }
   g.putImageData(im, 0, 0); return cv.toDataURL();
 }
-  return { leaveInteriorNow, originName, unbind, srvWait, get home() { return home; }, set home(v: typeof home) { home = v; }, placeAt, goHome, HOME_KEY, defaultHome, headShot, setHome };
+  return { erguer, get caido() { return !!caido; }, leaveInteriorNow, originName, unbind, srvWait, get home() { return home; }, set home(v: typeof home) { home = v; }, placeAt, goHome, HOME_KEY, defaultHome, headShot, setHome };
 }

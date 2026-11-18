@@ -1,4 +1,5 @@
 /* GUIA DE MISSÃO E MAPA GRANDE: onde fica o objetivo rastreado, a seta, o alfinete, os marcadores e o mapa do mundo. Saiu do main.ts (02/11). */
+import { jaEncontrou, COR_VIAGEM, NOME_TIPO, type TipoLugar } from '../viagem';
 import { type EnemyType, MAP_W, regionAt, REGIONS, CITY, heightAt } from '../world';
 import { oceanPattern, drawSeaArt, drawMapFrame } from './mapa-arte';
 import { TILE_M as T } from '@karmika/shared';
@@ -14,6 +15,8 @@ import { STATION_INFO } from '../stations3d';
 import { SHOPDEF } from '../inventory';
 import type { GuiaMapaCtx } from '../main';
 
+/** as maravilhas do mundo (o anel de viagem delas é dourado) */
+const MARAVILHAS = new Set(['Fortaleza de Odin', 'Abadia da Aurora', 'Bastião de Prata', 'Vale da Desgraça', 'Árvore-Mãe do Uivo', 'Castelo da Colina Vampírica', 'Pináculo de Marfim', 'A Grande Caldeira', 'Academia da Graxa', 'Portões de Brasaforja', 'Catedral de Askavik', 'Castelo de Askavik', 'Ruínas de Aravel', 'Grande Biblioteca']);
 export function createGuiaMapa(K: GuiaMapaCtx) {
 /* ---------- guia de missão: onde fica o objetivo rastreado ---------- */
 const DROP_SRC: Record<string, EnemyType[] | 'tree' | 'rock' | 'water'> = { hide: ['deer', 'boar', 'wolf', 'coyote'], meat: ['deer', 'boar', 'wolf', 'coyote', 'frostwolf'], claw: ['rat'], dust: ['fairy'], sap: ['treant'], wood: 'tree', stick: 'tree', apple: 'tree', stone: 'rock', fish: 'water' };
@@ -53,25 +56,41 @@ const guideEl = document.createElement('div'); guideEl.id = 'guide'; guideEl.inn
 const guideLbl = guideEl.querySelector('.lbl span') as HTMLElement, guideDist = guideEl.querySelector('.lbl small') as HTMLElement;
 /* fôlego: arco amarelo no pé do herói (voltado para a câmera), esvazia ao correr e ao dar dash */
 const stamG = new THREE.Group(); K.scene.add(fine(stamG));
-const stamArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xf4f0e6, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, toneMapped: false, side: THREE.DoubleSide })); stamArc.renderOrder = 5; stamG.add(stamArc);
-const stamBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide })); stamBg.renderOrder = 4; stamG.add(stamBg);
-/* 27/10 (Erling): fôlego BRANCO (o amarelo confundia com a missão de história) e, ao lado dele, a barra curva de VIDA (vermelha) */
-const hpArc = new THREE.Mesh(new THREE.RingGeometry(0.97, 1.07, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xd83a3a, transparent: true, opacity: 0.95, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, toneMapped: false, side: THREE.DoubleSide })); hpArc.renderOrder = 5; stamG.add(hpArc);
-const hpBg = new THREE.Mesh(new THREE.RingGeometry(0.95, 1.09, 48, 1, 0, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x120c04, transparent: true, opacity: 0.6, depthWrite: false, depthTest: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2, fog: false, side: THREE.DoubleSide })); hpBg.renderOrder = 4; stamG.add(hpBg);
+/* 11/11 (Erling: "as barras do player são desenhadas, não são efeitos 3D bonitos"): as duas barras viraram TUBOS — um trilho escuro de metal
+   deitado no chão e, dentro dele, um tubo de luz (vida rubra, fôlego marfim) que pega brilho da luz do mundo. O tubo cheio é feito uma vez só;
+   o quanto aparece é só o intervalo desenhado (antes a malha era destruída e refeita a cada quadro). */
+const ARC_SEG = 56, ARC_RAD = 7;
+/** tubo em arco deitado no chão: começa no ângulo a0 e anda `span` (negativo = sentido contrário); os triângulos vão em ordem ao longo do arco */
+function arcTube(r: number, tube: number, a0: number, span: number): THREE.BufferGeometry {
+  const pos: number[] = [], nor: number[] = [], idx: number[] = [];
+  for (let i = 0; i <= ARC_SEG; i++) { const a = a0 + span * i / ARC_SEG, cx = Math.cos(a), cz = -Math.sin(a);
+    for (let j = 0; j < ARC_RAD; j++) { const b = j / ARC_RAD * 6.2832, nr = Math.cos(b), ny = Math.sin(b); pos.push((r + tube * nr) * cx, tube * ny * 0.8, (r + tube * nr) * cz); nor.push(nr * cx, ny, nr * cz); } }
+  for (let i = 0; i < ARC_SEG; i++) for (let j = 0; j < ARC_RAD; j++) { const a = i * ARC_RAD + j, b = i * ARC_RAD + (j + 1) % ARC_RAD, c = a + ARC_RAD, d = b + ARC_RAD; if (span > 0) idx.push(a, b, c, b, d, c); else idx.push(a, c, b, b, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setIndex(idx); return g;
+}
+const ARC_SPAN = 1.05, ARC_GAP = 0.12;
+const railM = new THREE.MeshStandardMaterial({ color: 0x1a140e, metalness: 0.7, roughness: 0.45, transparent: true, opacity: 0.9, fog: false, side: THREE.DoubleSide });
+const lightM = (c: number) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 0.75, metalness: 0.15, roughness: 0.28, transparent: true, opacity: 1, fog: false, side: THREE.DoubleSide });
+/* fôlego à direita da direção da câmera (enche do meio para fora), vida à esquerda (esvazia da ponta de fora para o meio) */
+const stamArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 + ARC_GAP / 2 + ARC_SPAN, -ARC_SPAN), lightM(0xf4f0e6)); stamArc.renderOrder = 5; stamG.add(stamArc);
+const stamBg = new THREE.Mesh(arcTube(1.02, 0.038, -Math.PI / 2 + ARC_GAP / 2, ARC_SPAN), railM); stamBg.renderOrder = 4; stamBg.position.y = -0.03; stamG.add(stamBg);
+const hpArc = new THREE.Mesh(arcTube(1.02, 0.042, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN, ARC_SPAN), lightM(0xd83a3a)); hpArc.renderOrder = 5; stamG.add(hpArc);
+const hpBg = new THREE.Mesh(arcTube(1.02, 0.038, -Math.PI / 2 - ARC_GAP / 2 - ARC_SPAN, ARC_SPAN), railM); hpBg.renderOrder = 4; hpBg.position.y = -0.03; stamG.add(hpBg);
+for (const m of [stamArc, stamBg, hpArc, hpBg]) { m.frustumCulled = false; m.raycast = () => {}; }
+/* 11/11 (Erling: "ficou uma sobra preta; diminui e ganha mais elegância"): o trilho era um tubo cheio, mais grosso e mais baixo que a luz: de lado aparecia como uma segunda barra preta. Agora é uma calha rasa (30% da altura) colada embaixo da luz, só um fio escuro de contorno */
+/* 11/11, depois (Erling: "ainda tenho uma borda preta, fininha mas tem"): a calha agora é MAIS ESTREITA que a luz e fica por dentro dela: barra cheia não mostra preto nenhum; o escuro só aparece no pedaço que esvaziou */
+for (const m of [stamBg, hpBg]) { m.scale.y = 0.3; m.position.y = -0.012; }
+const arcFill = (m: THREE.Mesh, k: number) => m.geometry.setDrawRange(0, Math.round(Math.max(0, Math.min(1, k)) * ARC_SEG) * ARC_RAD * 6);
 let stamShow = 0;
 function updateStamRing(dt: number) {
   const k = K.game.st.stam / Math.max(1, K.game.st.stamMax), want = 1; /* 26/10 (Erling): o fôlego não some — fica sempre no pé, cheio ou não */
   stamShow += (want - stamShow) * Math.min(1, dt * 4); stamG.visible = stamShow > 0.02 && !K.inside && !K.game.st.dead && !heroBehind();
   if (!stamG.visible) return;
   stamG.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); stamG.rotation.y = K.az; /* 03/11 (Erling: "a aura do personagem não se esconde atrás dos itens"): as barras e a bússola agora respeitam a profundidade — somem atrás da fonte, de casas e de pedras; um palmo acima do chão e um empurrão de profundidade mínimo (04/11: o empurrão grande punha o anel por cima de bichos, baús e pedras) */ // arco virado para a câmera, à frente dos pés
-  const SPAN = 1.05, GAP = 0.12, start = -Math.PI / 2 + GAP / 2; // fôlego à direita da direção da câmera, vida à esquerda, com um vão entre os dois
-  stamArc.geometry.dispose(); stamArc.geometry = new THREE.RingGeometry(0.97, 1.07, 48, 1, start + SPAN * (1 - k), Math.max(0.001, SPAN * k)).rotateX(-Math.PI / 2);
-  stamBg.geometry.dispose(); stamBg.geometry = new THREE.RingGeometry(0.95, 1.09, 48, 1, start - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
-  (stamArc.material as THREE.MeshBasicMaterial).color.setHex(k < 0.25 ? 0xffb0a0 : 0xf4f0e6); (stamArc.material as THREE.MeshBasicMaterial).opacity = 0.95 * stamShow; (stamBg.material as THREE.MeshBasicMaterial).opacity = 0.6 * stamShow;
-  const kh = K.game.st.hp / Math.max(1, K.game.st.hpMax), hs = -Math.PI / 2 - GAP / 2 - SPAN; // a vida esvazia da ponta de fora para o meio
-  hpArc.geometry.dispose(); hpArc.geometry = new THREE.RingGeometry(0.97, 1.07, 48, 1, hs, Math.max(0.001, SPAN * kh)).rotateX(-Math.PI / 2);
-  hpBg.geometry.dispose(); hpBg.geometry = new THREE.RingGeometry(0.95, 1.09, 48, 1, hs - 0.02, SPAN + 0.04).rotateX(-Math.PI / 2);
-  (hpArc.material as THREE.MeshBasicMaterial).color.setHex(kh < 0.3 ? 0xff5a3a : 0xd83a3a); (hpArc.material as THREE.MeshBasicMaterial).opacity = 0.95 * stamShow; (hpBg.material as THREE.MeshBasicMaterial).opacity = 0.6 * stamShow;
+  arcFill(stamArc, k); { const m = stamArc.material as THREE.MeshStandardMaterial; m.color.setHex(k < 0.25 ? 0xffb0a0 : 0xf4f0e6); m.emissive.copy(m.color); m.opacity = stamShow; }
+  const kh = K.game.st.hp / Math.max(1, K.game.st.hpMax);
+  arcFill(hpArc, kh); { const m = hpArc.material as THREE.MeshStandardMaterial; m.color.setHex(kh < 0.3 ? 0xff5a3a : 0xd83a3a); m.emissive.copy(m.color); m.emissiveIntensity = kh < 0.3 ? 0.75 + 0.35 * Math.sin(performance.now() / 160) : 0.75; m.opacity = stamShow; }
+  railM.opacity = 0.9 * stamShow;
 }
 /* bússola no pé do herói: arco dourado que aponta o destino, com três chevrons correndo na direção */
 const guide3d = new THREE.Group(); guide3d.visible = false; K.scene.add(fine(guide3d));
@@ -120,7 +139,10 @@ function updateGuide(dt: number) {
   /* 09/11 (Erling: "a marcação no chão de onde eu tenho que ir tem que ser mais visível; jogando de longe não se vê"): as setas ficaram maiores,
      mais fortes, correm mais longe e crescem junto com a distância da câmera */
   const zs = guideZoomK();
-  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(0, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
+  /* 12/11 (Erling: "não aparece a missão amarela; uma está sobrepondo a outra; as duas precisam aparecer mesmo na MESMA posição"): quando as duas
+     bússolas apontam para o mesmo lado, as setas correm lado a lado (a da história à esquerda, a outra à direita) em vez de uma em cima da outra */
+  const lado = juntas() ? -0.5 * zs : 0;
+  for (let i = 0; i < 3; i++) { const ch = guide3d.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(lado, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
   { const ga = guide3d.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.95; ga.scale.setScalar(1); } /* 28/10 (Erling): o arco da bússola fica parado, sem pulsar */
   // etiqueta acima da ponta do arco: destino e distância
   const r = K.canvas.getBoundingClientRect();
@@ -130,17 +152,22 @@ function updateGuide(dt: number) {
   guideLbl.textContent = guideT.label.replace(/^Entregar a /, '').replace(/^Falar com /, ''); guideDist.textContent = K.fmtDist(dist);
 }
 let guideTB: { x: number; y: number; label: string } | null = null, guideColB = '', guideTickB = 0;
+/** as duas bússolas estão acesas e apontam (quase) para o mesmo lado */
+function juntas() { if (!guide3d.visible || !guide3dB.visible) return false; let d = guide3d.rotation.y - guide3dB.rotation.y; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283; return Math.abs(d) < 0.35; }
 function updateGuideB(t: number) {
   guideTickB -= 1 / 60; if (guideTickB <= 0) { guideTickB = 0.5; const d2 = K.quests.tracked2; guideTB = d2 ? questTarget(d2, false) : null; const c = d2 ? GUIDE_COL[questCat(d2)] : ''; if (c && c !== guideColB) { guideColB = c; guide3dB.traverse((o) => { const m = (o as THREE.Mesh).material as THREE.MeshBasicMaterial | undefined; if (m?.color && !o.userData.ink) m.color.set(c); }); } }
   if (!guideTB || K.inside || K.dlg.isOpen) { guide3dB.visible = false; return; }
   const tx = guideTB.x * T, tz = guideTB.y * T, hx = K.state.fx * T, hz = K.state.fy * T, dist = Math.hypot(tx - hx, tz - hz); if (dist < 5) { guide3dB.visible = false; return; }
   guide3dB.visible = true; guide3dB.position.set(K.heroPos.x, K.heroPos.y + 0.12, K.heroPos.z); guide3dB.rotation.y = Math.atan2(tx - hx, tz - hz); const GG = guide3dB; { const ga = guide3dB.getObjectByName('garc')!; ga.position.y = groundY(GG, GR[1]); guide3dB.children.forEach((c) => { if (c.userData.ink) c.position.y = ga.position.y; }); } /* 07/11: a 2ª bússola tem o anel próprio (raio 1,32), sem encolher o grupo */
   const zs = guideZoomK();
-  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(0, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
+  const ladoB = juntas() ? 0.5 * zs : 0;
+  for (let i = 0; i < 3; i++) { const ch = guide3dB.getObjectByName('chev' + i) as THREE.Mesh; const k = ((t * 0.9 + i / 3) % 1); { const lz = CHEV0 + (0.1 + k * 1.3) * zs; ch.position.set(ladoB, groundY(GG, lz) + 0.01 + i * 0.002, lz); } ch.scale.setScalar(chevK(k) * zs); const op = chevOp(k); (ch.material as THREE.MeshBasicMaterial).opacity = op; ((ch.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial).opacity = 0.35 * op; }
   { const ga = guide3dB.getObjectByName('garc') as THREE.Mesh; (ga.material as THREE.MeshBasicMaterial).opacity = 0.75 + 0.15 * Math.sin(t * 4 + 1); }
 }
 function hereT() { return K.inside ? K.inside.ret : { x: K.state.fx, y: K.state.fy }; }
-function heroArrow(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI - K.hero.root.rotation.y); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, -6 * s); ctx.lineTo(4.5 * s, 5 * s); ctx.lineTo(0, 2.5 * s); ctx.lineTo(-4.5 * s, 5 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+/* 12/11 (Erling: "nossa seta se perde às vezes; uma cor mais brilhante, que destaque no mapa"): halo que pulsa, contorno preto grosso e miolo amarelo-claro */
+function heroArrow(ctx: CanvasRenderingContext2D, x: number, y: number, s: number) { ctx.save(); ctx.translate(x, y); { const pr = 0.5 + 0.5 * Math.sin(performance.now() / 320), g = ctx.createRadialGradient(0, 0, 1, 0, 0, 13 * s); g.addColorStop(0, `rgba(255,236,120,${0.5 + 0.25 * pr})`); g.addColorStop(1, 'rgba(255,236,120,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, 13 * s, 0, 6.283); ctx.fill(); }
+  ctx.rotate(Math.PI - K.hero.root.rotation.y); ctx.fillStyle = '#fff36a'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(0, -6 * s); ctx.lineTo(4.5 * s, 5 * s); ctx.lineTo(0, 2.5 * s); ctx.lineTo(-4.5 * s, 5 * s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
 /* MAPA DA MASMORRA (Erling, 26/10: "estou dentro de uma dungeon e o minimapa não muda, nem o mapa"): dentro, os dois mapas
    mostram a masmorra — salas por tipo, o portão do chefe, baús, a saída, os bichos vivos por perto — e o que você ainda não viu fica no escuro */
 let dgMap: { key: string; cv: HTMLCanvasElement; seen: Uint8Array; W: number; D: number } | null = null;
@@ -196,9 +223,10 @@ function softBase(src: HTMLCanvasElement) { if (soft) return soft; soft = docume
     if (b > r + 12 && b >= gg) { const u = e / F; d[o + 3] = Math.round(d[o + 3] * u * u * (3 - 2 * u)); } } }
   g.putImageData(im, 0, 0); return soft; }
 function drawBig() {
-  if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width, H = K.bmEl.height, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
+  const DN = +(K.bmEl.dataset.d || 1) || 1; K.bg.setTransform(DN, 0, 0, DN, 0, 0); /* 12/11: símbolos e letras na densidade do monitor */
+  if (K.inside?.dg) { const int = K.inside.int as DungeonFloor, W = K.bmEl.width / DN, H = K.bmEl.height / DN, k = Math.min(W / (int.W + 8), H / (int.D + 8)); dgDraw(K.bg, int, int.W / 2, int.D / 2, k, W, H); K.bg.font = '600 18px Cinzel, Georgia, serif'; K.bg.textAlign = 'center'; K.bg.fillStyle = '#ffe08a'; K.bg.fillText(K.dgs.run?.d.name ?? 'Masmorra', W / 2, 28); K.bg.font = '12px Georgia, serif'; K.bg.fillStyle = '#c8b898'; K.bg.fillText('🚪 saída · 🔒 portão do chefe · 💀 chefe · 📦 baú · ● bichos vistos — o escuro é o que você ainda não andou', W / 2, H - 14); K.mapHits = []; return; }
   K.mapV.z = Math.max(K.mapV.z, K.mapZMin());
-  const W = K.bmEl.width, H = K.bmEl.height, k = K.pxPerTile(), L = K.mapV.layers;
+  const W = K.bmEl.width / DN, H = K.bmEl.height / DN, k = K.pxPerTile(), L = K.mapV.layers;
   { /* 07/11: o centro só anda até a borda do mapa encostar na moldura; se o mapa inteiro cabe (zoom mínimo), fica no meio */ const hw = W / 2 / k, hh = H / 2 / k;
     const pad = MAP_W * 0.07; /* 07/11: dá para passar um pouco da borda, para os nomes e os bichos da beirada (Trono de Cinzas, Picos) não ficarem cortados */
     /* 07/11: dá para arrastar até a beirada do mapa chegar perto do meio da tela — as ilhas da borda ficam visíveis */
@@ -213,6 +241,10 @@ function drawBig() {
   const label = (txt: string, x: number, y: number, size: number, col: string, force = false) => { K.bg.font = `600 ${size}px Cinzel, Georgia, serif`; const w = K.bg.measureText(txt).width, bx: [number, number, number, number] = [x - w / 2 - 2, y - size, w + 4, size + 4];
     if (!force && placed.some((p) => bx[0] < p[0] + p[2] && bx[0] + bx[2] > p[0] && bx[1] < p[1] + p[3] && bx[1] + bx[3] > p[1])) return; placed.push(bx);
     K.bg.textAlign = 'center'; K.bg.lineWidth = 3.5; K.bg.strokeStyle = 'rgba(0,0,0,.85)'; K.bg.strokeText(txt, x, y); K.bg.fillStyle = col; K.bg.fillText(txt, x, y); };
+  /* 16/11: lugar já encontrado (ou qualquer um, no modo Deus) ganha um segundo anel na cor do seu tipo e vira clicável: clique para viajar */
+  const deus = !!K.game.st.god, podeIr = (nome: string) => deus || jaEncontrou(nome);
+  const anelViagem = (x: number, y: number, s: number, tipo: TipoLugar) => { K.bg.beginPath(); K.bg.arc(x, y, s + 3.5, 0, 6.283); K.bg.lineWidth = 2; K.bg.strokeStyle = COR_VIAGEM[tipo]; K.bg.setLineDash([4, 3]); K.bg.stroke(); K.bg.setLineDash([]); };
+  const subIr = (tipo: TipoLugar, extra: string, pode: boolean) => `${NOME_TIPO[tipo]}${extra ? ' · ' + extra : ''} · ${pode ? 'já encontrado: clique para viajar' : 'ainda não encontrado: vá até lá uma vez para poder viajar'}`;
   const icon = (glyph: string, x: number, y: number, s: number, ring: string) => { K.bg.beginPath(); K.bg.arc(x, y, s, 0, 6.283); K.bg.fillStyle = 'rgba(16,12,6,.9)'; K.bg.fill(); K.bg.lineWidth = 2; K.bg.strokeStyle = ring; K.bg.stroke(); K.bg.font = `${s * 1.15}px serif`; K.bg.textAlign = 'center'; K.bg.textBaseline = 'middle'; K.bg.fillStyle = '#fff'; K.bg.fillText(glyph, x, y + 1); K.bg.textBaseline = 'alphabetic'; };
   const s0 = 7 + K.mapV.z * 1.3;
   /* 07/11 (Erling: "um zoom da região e um mapa global vendo tudo"): de longe (mapa do mundo) só as regiões com o nível, as cidades e as relíquias; o resto aparece ao aproximar */
@@ -231,7 +263,7 @@ function drawBig() {
   for (const em of K.eventos.mapMarks(hereT())) { const x = X(em.x), y = Y(em.y), pr = 0.5 + 0.5 * Math.sin(performance.now() / 260); K.bg.beginPath(); K.bg.arc(x, y, Math.max(s0 + 6, em.r * k), 0, 6.283); K.bg.strokeStyle = em.color; K.bg.globalAlpha = 0.35 + pr * 0.4; K.bg.lineWidth = 2.5; K.bg.stroke(); K.bg.globalAlpha = 1; icon(em.icon, x, y, s0 * 1.1, em.color); label(em.name, x, y - s0 - 5, 12, em.color, true); K.mapHits.push({ x, y, r: s0 + 4, name: em.name, sub: em.sub }); }
   const dgList = (() => { try { return K.dgs.entrances; } catch { return []; } })(); // (as masmorras nascem depois do mapa)
   if (L.poi && !far) { const PICON = (n: string) => /Catedral|Igreja|Templo/.test(n) ? '⛪' : /Cemit|Cripta|Mausol/.test(n) ? '✝' : /Covil|Clareira|Garganta|Toca/.test(n) ? '🐺' : /Ruína/.test(n) ? '🏛' : /Mercado/.test(n) ? '⚖' : /Escola|Forja|Academia/.test(n) ? '📜' : '◆';
-    for (const p of K.city.pois) { if (K.city.settlements.some((st) => st.name === p.name)) continue; if (p.secret && !secretKnown(p.name)) continue; if (K.mapV.z < 2.2 && /Mercado|Escola|Forja|Academia|Parque|Igreja Kármica|Cemitério de Askavik|Catedral de Askavik/.test(p.name)) continue; const x = X(p.x), y = Y(p.y), dg = dgList.find((e) => e.d.name === p.name); if (dg) { const grp = dg.d.kind === 'grupo'; icon(dg.d.theme === 'cripta' ? '⚰' : grp ? '💀' : '🕳', x, y, s0 * (grp ? 1 : 0.85), grp ? '#ff6a5a' : '#c9a24a'); label(p.name, x, y + s0 + 12, 11, grp ? '#ffb0a0' : '#e8dcc0'); K.mapHits.push({ x, y, r: s0, name: p.name, sub: `${grp ? 'Masmorra' : dg.d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · Nv ${dg.lvl[0]}–${dg.lvl[1]} · ${dg.d.players}` }); continue; } icon(PICON(p.name), x, y, s0 * 0.85, '#8a7a5a'); label(p.name, x, y + s0 + 12, 11, '#e8dcc0'); K.mapHits.push({ x, y, r: s0, name: p.name, sub: 'Lugar' }); } }
+    for (const p of K.city.pois) { if (K.city.settlements.some((st) => st.name === p.name)) continue; if (p.secret && !secretKnown(p.name)) continue; if (K.mapV.z < 2.2 && /Mercado|Escola|Forja|Academia|Parque|Igreja Kármica|Cemitério de Askavik|Catedral de Askavik/.test(p.name)) continue; const x = X(p.x), y = Y(p.y), dg = dgList.find((e) => e.d.name === p.name); if (dg) { const grp = dg.d.kind === 'grupo'; icon(dg.d.theme === 'cripta' ? '⚰' : grp ? '💀' : '🕳', x, y, s0 * (grp ? 1 : 0.85), grp ? '#ff6a5a' : '#c9a24a'); label(p.name, x, y + s0 + 12, 11, grp ? '#ffb0a0' : '#e8dcc0'); { const ok = podeIr(p.name); if (ok) anelViagem(x, y, s0 * (grp ? 1 : 0.85), 'masmorra'); K.mapHits.push({ x, y, r: s0 + 3, name: p.name, sub: subIr('masmorra', `${grp ? 'Masmorra' : dg.d.kind === 'subsolo' ? 'Subsolo' : 'Caverna'} · Nv ${dg.lvl[0]}–${dg.lvl[1]} · ${dg.d.players}`, ok), go: ok ? 'lugar:' + p.name : undefined }); } continue; } icon(PICON(p.name), x, y, s0 * 0.85, '#8a7a5a'); label(p.name, x, y + s0 + 12, 11, '#e8dcc0'); { const tipo: TipoLugar = MARAVILHAS.has(p.name) ? 'maravilha' : 'lugar', ok = podeIr(p.name); if (ok) anelViagem(x, y, s0 * 0.85, tipo); K.mapHits.push({ x, y, r: s0 + 3, name: p.name, sub: subIr(tipo, '', ok), go: ok ? 'lugar:' + p.name : undefined }); } } }
   if (L.serv && K.mapV.z >= 2.6) { /* ofícios e comércio dentro das vilas e cidades (23/10): bancadas de trabalho, lojas, correio, cofre, quadro */
     const sz = s0 * 0.6, withLabel = K.mapV.z >= 5.5;
     const put = (glyph: string, x0: number, y0: number, name: string, sub: string, ring: string) => { const x = X(x0), y = Y(y0); if (x < -20 || y < -20 || x > W + 20 || y > H + 20) return; icon(glyph, x, y, sz, ring); if (withLabel) label(name, x, y + sz + 10, 10, '#e8dcc0'); K.mapHits.push({ x, y, r: sz + 2, name, sub }); };
@@ -246,9 +278,27 @@ function drawBig() {
     const SICON: Record<string, string> = { armeiro: '⚔', armaduras: '🛡', mercador: '⚖', mercador_cidade: '⚖', pocoes: '⚗', cervejaria: '🍺', churrasco: '🍖', charcutaria: '🥓', cozinha: '🍲', lenhador: '🪓', cacador: '🏹', construtor: '🔨', domador: '🐾', tec_fio: '🧶', tec_desf: '🧶', estabulo: '🐎', latao: '⚙' };
     for (const n of K.npcSys.npcs) { const key = K.SHOP_BY_NAME.get(n.def.name); if (!key) continue; const sd = SHOPDEF[key]; put(SICON[key] ?? '🪙', n.pos.x / T, n.pos.z / T, sd?.title ?? n.def.name, `Comércio${sd?.note ? ' · ' + sd.note : ''}`, '#d8b45a'); }
   }
-  if (L.vista && !far) for (const v of K.CINE.vistas) { const seen = K.vistaSeen.has(v.id), x = X(v.at.x), y = Y(v.at.y); icon('👁', x, y, s0 * 0.85, seen ? '#ffd24a' : '#6a6a72'); K.mapHits.push({ x, y, r: s0, name: v.title.split(' — ')[1] ?? v.title, sub: seen ? 'Fonte da Visão (vista)' : 'Fonte da Visão — ainda não vista' }); }
-  if (L.relic) for (const r of K.city.relics) { const known = K.knowsRelic(r.name), x = X(r.x), y = Y(r.y); K.bg.save(); K.bg.translate(x, y); K.bg.rotate(Math.PI / 4); K.bg.fillStyle = known ? '#8ad0ff' : '#c9a24a'; K.bg.strokeStyle = '#000'; K.bg.lineWidth = 2; const q = s0 * 0.7; K.bg.fillRect(-q, -q, q * 2, q * 2); K.bg.strokeRect(-q, -q, q * 2, q * 2); K.bg.restore(); if (known) { K.bg.beginPath(); K.bg.arc(x, y, s0 + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); K.bg.strokeStyle = 'rgba(138,208,255,.6)'; K.bg.lineWidth = 1.5; K.bg.stroke(); }
-    K.mapHits.push({ x, y, r: s0 + 2, name: r.name, sub: known ? 'Relíquia conhecida — clique para viajar' : 'Relíquia desconhecida — toque nela para lembrar', go: known ? r.name : undefined }); }
+  if (L.vista && !far) for (const v of K.CINE.vistas) { const seen = K.vistaSeen.has(v.id), x = X(v.at.x), y = Y(v.at.y); icon('👁', x, y, s0 * 0.85, seen ? '#ffd24a' : '#6a6a72'); const ok = seen || deus; if (ok) anelViagem(x, y, s0 * 0.85, 'fonte'); K.mapHits.push({ x, y, r: s0 + 3, name: v.title.split(' — ')[1] ?? v.title, sub: subIr('fonte', '', ok), go: ok ? `ponto:${v.at.x},${v.at.y},${v.title.split(' — ')[1] ?? v.title}` : undefined }); }
+  /* 12/11 (Erling: "losangos para pedras de teleporte em todo lugar, mas para cidades um símbolo diferente, para achar mais rápido; e a dica dizer de onde é o ponto"):
+     pedra no ermo = losango; pedra de vila = portal em arco; pedra de cidade = portal maior, com estrela. Azul = conhecida, dourado = ainda não tocada. */
+  if (L.relic) for (const r of K.city.relics) { const known = K.knowsRelic(r.name), x = X(r.x), y = Y(r.y), g = K.bg;
+    const st = K.city.settlements.find((q) => Math.hypot(q.x - r.x, q.y - r.y) < q.radius + 12), cid = !!st && (st.kind === 'city' || st.name === 'Karmika');
+    const fill = known ? '#8ad0ff' : '#c9a24a'; g.save(); g.translate(x, y); g.fillStyle = fill; g.strokeStyle = '#000'; g.lineWidth = 2;
+    if (!st) { g.rotate(Math.PI / 4); const q = s0 * 0.7; g.fillRect(-q, -q, q * 2, q * 2); g.strokeRect(-q, -q, q * 2, q * 2); }
+    else { const q = s0 * (cid ? 1.05 : 0.82); g.beginPath(); g.moveTo(-q * 0.8, q); g.lineTo(-q * 0.8, -q * 0.15); g.arc(0, -q * 0.15, q * 0.8, Math.PI, 0); g.lineTo(q * 0.8, q); g.closePath(); g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+      g.fillStyle = '#10141c'; if (cid) { g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = q * (i % 2 ? 0.24 : 0.56); g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr + q * 0.1); } g.closePath(); g.fill(); }
+      else { g.beginPath(); g.moveTo(-q * 0.32, q); g.lineTo(-q * 0.32, q * 0.1); g.arc(0, q * 0.1, q * 0.32, Math.PI, 0); g.lineTo(q * 0.32, q); g.closePath(); g.fill(); } }
+    g.restore(); if (known) { g.beginPath(); g.arc(x, y, s0 * (cid ? 1.25 : 1) + 3 + Math.sin(performance.now() / 300) * 1.5, 0, 6.283); g.strokeStyle = 'rgba(138,208,255,.6)'; g.lineWidth = 1.5; g.stroke(); }
+    let reg = ''; try { reg = regionAt(r.x, r.y).name; } catch { /* */ }
+    const onde = st ? `${cid ? 'Cidade' : 'Vila'} de ${st.name}` : 'Fora de vilas e cidades';
+    K.mapHits.push({ x, y, r: s0 * (cid ? 1.25 : 1) + 2, name: r.name.replace(/^Relíquia: /, 'Pedra de teleporte: '), sub: `${onde}${reg ? ' · ' + reg : ''} · ${known ? 'conhecida: clique para viajar' : 'ainda não tocada: vá até ela para poder viajar'}`, go: known ? r.name : undefined }); }
+  /* 12/11 (Erling: "um mapa usando o mapa do jogo, com os terrenos de guilda pré-reservados desde sempre"): cada terreno de guilda é um estandarte dourado
+     no mapa, liso e nítido como os outros símbolos; a dica diz a região e que é reservado para sede de guilda */
+  if (L.poi) for (const gl of K.city.guildLots ?? []) { const x = X(gl.x0 + 5), y = Y(gl.y0 + 5), g = K.bg, q = s0 * 1.05; if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+    g.save(); g.translate(x, y); g.lineJoin = 'round'; g.strokeStyle = '#000'; g.lineWidth = 2; g.fillStyle = '#3a2a1c'; g.fillRect(-q * 0.62, -q, q * 0.2, q * 2); g.strokeRect(-q * 0.62, -q, q * 0.2, q * 2);
+    g.beginPath(); g.moveTo(-q * 0.42, -q * 0.92); g.lineTo(q * 0.78, -q * 0.92); g.lineTo(q * 0.78, q * 0.3); g.lineTo(q * 0.18, q * 0.02); g.lineTo(-q * 0.42, q * 0.3); g.closePath(); g.fillStyle = gl.karma > 0 ? '#f3d38a' : '#8a3ad0'; g.fill(); g.stroke(); g.strokeStyle = '#fff'; g.lineWidth = 1; g.stroke();
+    g.beginPath(); g.moveTo(q * 0.18, -q * 0.7); g.lineTo(q * 0.42, -q * 0.38); g.lineTo(q * 0.18, -q * 0.06); g.lineTo(-q * 0.06, -q * 0.38); g.closePath(); g.fillStyle = gl.karma > 0 ? '#b85a1c' : '#f0d8ff'; g.fill(); g.restore();
+    K.mapHits.push({ x, y, r: q + 3, name: gl.name, sub: `Reservado para sede de guilda de karma ${gl.karma > 0 ? 'positivo' : 'negativo'} · ${gl.faixa === 'lendario' ? 'terreno lendário' : gl.faixa === 'nobre' ? 'terreno nobre' : 'terreno comum'} · região de nível ${gl.lo} a ${gl.hi} · são só 6 de cada lado no mundo` }); }
   if (L.npc) for (const n of K.npcSys.npcs) { K.bg.fillStyle = '#7ad0ff'; K.bg.beginPath(); K.bg.arc(X(n.pos.x / T), Y(n.pos.z / T), 2.4, 0, 6.283); K.bg.fill(); }
   if (guideT) { const x = X(guideT.x), y = Y(guideT.y), pr = 7 + 3 * Math.abs(Math.sin(performance.now() / 300)); K.bg.strokeStyle = guideCol; K.bg.lineWidth = 2.5; K.bg.beginPath(); K.bg.arc(x, y, pr, 0, 6.283); K.bg.stroke(); }
   const h0 = hereT(); heroArrow(K.bg, X(h0.x), Y(h0.y), 2.2);

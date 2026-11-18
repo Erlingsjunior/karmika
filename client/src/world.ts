@@ -19,7 +19,7 @@ const PORTO_L = { x: 432, y: 800, r: 30, basins: [{ x0: 8, x1: 22, y0: 12 }, { x
 
 /** pedras da prancha 58 (01/11): musgosa, laje, menir, seixos, bola de musgo com samambaias, pico cinza, obsidiana azul, arenito laranja, veio de cobre, gelo, lisa escura e vulcânica rachada */
 export type RockStyle = 'mossy' | 'slab' | 'menhir' | 'pebbles' | 'mossball' | 'peak' | 'obsidian' | 'sandstone' | 'copper' | 'ice' | 'darkSmooth' | 'volcanic';
-export type PropKind = 'house' | 'gboard' | 'gchest' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant' | 'vprop';
+export type PropKind = 'webtree' | 'webnet' | 'cocoon' | 'webmat' | 'house' | 'gboard' | 'gchest' | 'temple' | 'fountain' | 'tree' | 'torch' | 'rock' | 'grave' | 'ruin' | 'tent' | 'campfire' | 'bridge' | 'chest' | 'bones' | 'bench' | 'stall' | 'church' | 'relic' | 'bfloor' | 'bwall' | 'bfence' | 'broof' | 'bdoor' | 'cwall' | 'tower' | 'ifence' | 'coffin' | 'angel' | 'obelisk' | 'saint' | 'mausoleum' | 'gfence' | 'gpillar' | 'ggate' | 'deadtree' | 'corpse' | 'deadcrop' | 'deadwell' | 'altar' | 'fogpatch' | 'tar' | 'herb' | 'noticeboard' | 'mailbox' | 'vault' | 'shopfront' | 'station' | 'castle' | 'rwall' | 'rtower' | 'gatehouse' | 'wstair' | 'landmark' | 'palisade' | 'totem' | 'quay' | 'monument' | 'vgate' | 'lowwall' | 'library' | 'dock' | 'boat' | 'chimney' | 'crane' | 'portico' | 'rack' | 'plant' | 'vprop';
 export interface Relic { name: string; x: number; y: number }
 export type Biome = 'meadow' | 'forest' | 'swamp' | 'snow' | 'ruins' | 'rock' | 'volcanic' | 'enchanted' | 'blight' | 'jungle' | 'coast';
 export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer' | 'coyote' | 'rat' | 'fairy' | 'treant' | 'prince' | 'tormentor' | 'zombie' | 'ghoul' | 'bishop' | 'skeleton' | 'bat' | 'werewolf'
@@ -36,7 +36,9 @@ export type EnemyType = 'puglin' | 'imp' | 'wolf' | 'frostwolf' | 'boar' | 'deer
   | 'elfscout' | 'inquisitor' | 'slaver' | 'thrall'
   | 'drowner' | 'drowner_old' | 'scorpion' | 'scorpion_king'
   /* 02/11 (Erling): os lugares novos do mapa vazio — sereias canibais nos lagos, goblins nas matas, espíritos nas grutas e o Gênio do oásis */
-  | 'siren' | 'siren_queen' | 'goblin' | 'goblin_shaman' | 'goblin_chief' | 'spirit' | 'spirit_lord' | 'djinn';
+  | 'siren' | 'siren_queen' | 'goblin' | 'goblin_shaman' | 'goblin_chief' | 'spirit' | 'spirit_lord' | 'djinn'
+  /* 17/11 (Erling): os Ermos dos Beduínos Malignos, na Costa do Vapor e da Graxa: ladrões do deserto e o Xeique, chefe de masmorra */
+  | 'beduino' | 'beduino_arq' | 'xeique';
 const T = 2; // metros por tile (igual a TILE_M)
 
 export interface Prop {
@@ -126,7 +128,7 @@ const RANK: Partial<Record<EnemyType, number>> = { deer: 0, rat: 0.05, coyote: 0
   /* a safra nova: dentro da faixa da região, do mais fraco ao mais forte; elites sempre no topo */
   spiderling: 0.05, drowner: 0.35, swampsnake: 0.4, mudzombie: 0.45, spider: 0.5, skel_arch: 0.55, bear: 0.6, scorpion: 0.55, harpy: 0.6, fungus: 0.6, skull_fire: 0.6, skull_frost: 0.65, automaton: 0.6, turret: 0.55, tinker: 0.7,
   hellhound: 0.65, imp_bomb: 0.6, draugr_arch: 0.6, draugr_bers: 0.75, elfscout: 0.7, slaver: 0.5, thrall: 0.6, inquisitor: 0.8, troll: 0.85, succubus: 0.8, pactbroken: 0.85,
-  siren: 0.6, goblin: 0.25, goblin_shaman: 0.45, spirit: 0.55, siren_queen: 1, goblin_chief: 1, spirit_lord: 1, djinn: 1,
+  siren: 0.6, goblin: 0.25, goblin_shaman: 0.45, spirit: 0.55, siren_queen: 1, goblin_chief: 1, spirit_lord: 1, djinn: 1, beduino: 0.5, beduino_arq: 0.5, xeique: 1,
   alpha: 1, necro: 1, headless: 1, cavebear: 1, giantsnake: 1, drowner_old: 1, scorpion_king: 1, glutton: 1, suplicio: 1, jotun: 1, colossus: 1, ent: 1, fairyqueen: 1, broodmother: 1, lich: 1 };
 export interface Bridge { ax: number; ay: number; bx: number; by: number; hA: number; hB: number; /** ponte de pedra em arco (Askavik) */ stone?: boolean; /** meia largura (m) */ half?: number; /** corcova do arco (m) */ hump?: number; /** 09/11: ponte de raiz da Árvore-Mãe (uma raiz viva atravessa o riacho) */ root?: boolean; /** 09/11: o píer élfico de Lithendel (madeira clara, lanternas azuis, arco de folhas) */ elf?: boolean; /** 03/11: encaixe de pedra (bifurcação) — a borda em casas [x,y,...], as bocas e a altura de cada boca; (ax,ay) = junção, hA = altura nela */ poly?: number[]; ends?: number[] } // tiles
 export interface World {
@@ -134,6 +136,7 @@ export interface World {
   /** o Quartel de Karmika (01/11): pátio de treino murado depois da igreja, com os bonecos de palha (posições em tiles, centro do boneco) */ quartel: { x: number; y: number; dummies: { x: number; y: number }[] };
   /** 02/11: o lugar de cada entrada de calabouço (id → casa), decidido aqui para a pedra rúnica nascer ao lado e para as regras de distância valerem no mundo todo */ dgSpots: Record<string, { x: number; y: number }>;
   /** a Casa dos Ofícios de Askavik (25/10): o salão de todas as profissões (oficios.ts monta o prédio e os ajudantes) */ craftHall?: { x: number; y: number; w: number; h: number; ry: number };
+  /** 12/11: os terrenos de guilda reservados */ guildLots: GuildLot[];
   pois: Poi[]; spawns: SpawnDef[]; bridges: Bridge[]; signs: Sign[]; settlements: Settlement[]; relics: Relic[]; ramparts: Rampart[]; /** acampamentos de salteadores e as torres de vigia (26/10) */ bandits: { name: string; x: number; y: number; road: [string, string]; tower: { x: number; y: number; sgt: string } | null }[]; roadPaths: { x: number; y: number }[][]; roadLinks: { a: string; b: string; i: number }[];
   /** onde cada raça nasce: humanos em Karmika, anões em Brasaforja (sopé da Montanha Negra), elfos em Lithendel (Florestas Élficas) */
   starts: Record<'human' | 'dwarf' | 'elf', { x: number; y: number; name: string }>;
@@ -143,6 +146,8 @@ export interface World {
   lights?: { name: string; port: string; x: number; y: number; style: 'nordico' | 'gotico' | 'pacto' | 'vapor' | 'elfico'; old?: boolean; /** de pé numa ilhota de pedra no meio da água */ islet?: boolean }[];
 }
 export interface Dock { id: string; name: string; x: number; y: number; sx: number; sy: number; ang: number; isle?: number }
+/** 12/11: terreno de guilda, fixo e reservado pelo mundo: x0,y0 = canto do miolo de 10×10 onde a sede é erguida */
+export interface GuildLot { id: number; name: string; region: string; x0: number; y0: number; lo: number; hi: number; /** 1 = só para guilda de karma positivo; -1 = só para guilda de karma negativo (são 6 de cada) */ karma: 1 | -1; /** faixa de preço: de cada lado, 3 comuns, 2 nobres e 1 lendário */ faixa: 'comum' | 'nobre' | 'lendario' }
 export interface Sign { x: number; y: number; yaw: number; lines: { text: string; dir: number }[] }
 
 /** MUNDO GRANDE (21/10/2026): 840×840 tiles. As Terras dos Homens (o mapa antigo de 420) ficam no centro, deslocadas de SH;
@@ -611,7 +616,11 @@ function bridgeDeck_L(xm: number, zm: number): number | null {
     const ax = b.ax * T, az = b.ay * T, bx = b.bx * T, bz = b.by * T;
     const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz;
     const t = ((xm - ax) * dx + (zm - az) * dz) / L2;
-    if (t < 0 || t > 1) continue;
+    /* 10/11 (Erling: "em algumas partes o jogo ainda engole o personagem", na cabeceira da ponte de pedra): o chão ao lado da soleira ficava mais
+       baixo que ela e o herói afundava na pedra. Nos 2,6 m antes de cada cabeceira o chão sobe em rampa até a altura da soleira. */
+    if (t < 0 || t > 1) { if (!b.stone) continue; const L = Math.sqrt(L2), d = (t < 0 ? -t : t - 1) * L; if (d > 2.6) continue; const tc = t < 0 ? 0 : 1;
+      if (Math.hypot(xm - (ax + dx * tc) - (t < 0 ? -1 : 1) * dx / L * d, zm - (az + dz * tc) - (t < 0 ? -1 : 1) * dz / L * d) >= (b.half ?? BRIDGE_HALF) + 0.3) continue;
+      const end = (t < 0 ? b.hA : b.hB) + 0.12, g = groundH_L(xm, zm); if (end <= g) continue; const k = 1 - d / 2.6; return g + (end - g) * k * k * (3 - 2 * k); }
     const px = ax + dx * t, pz = az + dz * t;
     if (Math.hypot(xm - px, zm - pz) < (b.half ?? BRIDGE_HALF)) return b.hA + (b.hB - b.hA) * t + (b.hump ? b.hump * Math.sin(Math.PI * t) : 0) + 0.12;
   }
@@ -1252,7 +1261,7 @@ function buildCity_L(): World {
     // as duas tecelagens reais, frente a frente no lado oeste da praça: a cidade é neutra, as lojas não
     P('Mestra Ingeborg', 'Tecelagem Real do Fio', 'nordic', SN('tec_fio', cx - 26, cy - 2).x, SN('tec_fio', cx - 26, cy - 2).y, 0x2a4a8a, ['Cada fio daqui foi puxado por uma mão que já levou alguém de volta para casa.', 'Ninguém atravessa só. Nem você, nem quem você protege.'], 'tec_fio');
     P('Corvina, a Desfiadora', 'Tecelagem dos Desfiados', 'nordic', SN('tec_desf', cx - 26, cy + 2).x, SN('tec_desf', cx - 26, cy + 2).y, 0x6a0e14, ['Rasgo a barra de cada manto com as minhas mãos. Um fio solto é uma escolha.', 'Não vendo a quem ainda tem medo da porta.'], 'tec_desf');
-    st.npcs.push({ name: 'Elowen', role: 'Shop', kind: 'nordic', x: cx - 37, y: cy + 1.9, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo deixa alguém mais forte do que o outro: só mais bonito.'] });
+    st.npcs.push({ name: 'Elowen', role: 'Shop', kind: 'nordic', x: cx - 37, y: cy + 1.9, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Pacotes, engenhocas e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo deixa alguém mais forte do que o outro: só mais bonito.'] });
     P('Jarl Haakon', 'Jarl de Askavik', 'nordic', cx - 2.5, cy - 35, 0x2a3a7a, ['Askavik tem quatro portões e nenhum foi tomado. Ainda.', 'Do alto do castelo eu vejo o canal inteiro. E quem passa nele.']);
     /* Luz e Sombra (24/10): quem só procura você conforme a alma pende */
     P('Margit Corvo-Negro', 'Agiota de Askavik', 'nordic', cx - 33.5, cy + 4.5, 0x2a1a2a, ['Tudo em Askavik tem preço, querido. Até a lealdade. Principalmente a lealdade.', 'Não empresto a quem tem cara de santo. Santo não paga juros.', 'Volte quando estiver com fome de verdade.']);
@@ -1377,7 +1386,7 @@ function buildCity_L(): World {
     N('Estalajadeira Rosa', 'Estalagem do Porto', 'dwarf', shopNpc('estabulo', -14, -25).x, shopNpc('estabulo', -14, -25).y, 0x6a4a2e, ['Cavalos aqui comem sal com o capim. Ficam teimosos.'], 'estabulo');
     N('Guarda Vitorino', 'Guarda do Porto', 'nordic', cx + 2.5, cy - 30, 0x6a7a9a, [`Aqui a lei é a Companhia, e a Companhia sou eu das oito às seis.`, 'Ladrão de carvão vai para a caldeira. Brincadeira. Vai para a masmorra.']);
     N('Faroleira Dinorá', 'Guardiã do Farol Tecnocrático', 'technocrat', cx - 1.5, cy + 23.5, 0x4a7a9a, ['O Farol é da Academia, mas a luz é de quem está no mar.', 'Três voltas por minuto. Quando falha uma, eu já estou no bote.']);
-    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 14.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Premium e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo muda a sua força. Muda a sua cara.'] });
+    st.npcs.push({ name: 'Elowen do Porto', role: 'Shop', kind: 'nordic', x: cx - 7, y: cy - 14.5, radius: 2, tint: 0x5a3a7a, scale: 0.98, lines: ['Bem-vindo ao Shop! Pacotes, engenhocas e os brasões dos dois lados, tudo aqui.', 'Nada do que eu vendo muda a sua força. Muda a sua cara.'] });
     return st;
   };
   // vilas de madeira espalhadas pelo mundo exterior e a cidade média a nordeste
@@ -1602,10 +1611,27 @@ function buildCity_L(): World {
   for (let k = 0; k < 8; k++) addBones(gy0.x + Math.round((r() - 0.5) * 16), gy0.y + Math.round((r() - 0.5) * 12));
   for (let k = 0; k < 26; k++) addGrave(gy0.x + Math.round((r() - 0.5) * 14), gy0.y + Math.round((r() - 0.5) * 10));
   // cemitério e igreja abandonada perto da cidade (leste)
-  const ch0 = safe(132 + OFX_L, 55 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
+  /* 12/11 (Erling: "já falei para colocar os elites grandes longe das cidades; um elite gigante e uma igreja abandonada do lado de Lundr e de uma cidade média
+     pesa demais; e há vastas áreas sem nada"): a igreja e o Príncipe das Cinzas saíram do portão de Lundr (132, 55) para o descampado das Terras Antigas,
+     no ponto mais ermo dos Bosques de Lundr (a conta está em `ermo`, logo abaixo). As missões seguem o lugar pelo nome. */
+  /* O LUGAR MAIS ERMO de uma região: o ponto de chão firme mais longe de povoados e de lugares marcados, dentro da região pedida (a faixa de nível certa),
+     a até `R` casas de (cx, cy). É a regra "lugares remotos para incentivar o andar pelo mapa" feita conta, e não olho. Devolve null se nada passa de `minD`. */
+  const ermo = (regName: string, cx: number, cy: number, R: number, minD: number): { x: number; y: number; d: number } | null => { let best: { x: number; y: number; d: number } | null = null;
+    for (let y = cy - R; y <= cy + R; y += 3) for (let x = cx - R; x <= cx + R; x += 3) { if (!inb(x, y) || x < 12 || y < 12 || x > MAP_W_L - 12 || y > MAP_H_L - 12) continue; if (regionAt_L(x, y).name !== regName || waterSD_L(x * T, y * T) < 14) continue;
+      let ok = true; for (let dy = -4; dy <= 14 && ok; dy += 3) for (let dx = -7; dx <= 14; dx += 3) { const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree') { ok = false; break; } } if (!ok) continue;
+      let d = 1e9; for (const t of settlements) d = Math.min(d, Math.hypot(t.x - x, t.y - y) - t.radius); for (const q of pois) d = Math.min(d, Math.hypot(q.x - x, q.y - y)); for (const q of spawns) if ((q as { keep?: boolean }).keep) d = Math.min(d, Math.hypot(q.x - x, q.y - y));
+      if (d >= minD && (!best || d > best.d)) best = { x, y, d }; } return best; };
+  const lundr0 = settlements.find((t) => t.name === 'Lundr'), chE = lundr0 ? ermo('Bosques de Lundr', lundr0.x, lundr0.y, 120, 40) : null; /* na faixa de nível 7 a 13, a mesma das missões da igreja */
+  const ch0 = chE ? { x: chE.x, y: chE.y } : safe(132 + OFX_L, 55 + OFY_L, 12); // 02/11 (Erling): a igreja ficava colada na muralha de Karmika; agora a sudeste, depois do lago, com o cemitério ao sul da nave
   for (let y = ch0.y - 2; y <= ch0.y + 13; y++) for (let x = ch0.x - 6; x <= ch0.x + 13; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
   if (free(ch0.x, ch0.y)) block({ kind: 'church', gx: ch0.x, gy: ch0.y, w: 5, h: 4, height: 7, wall: 0x6d6a64, roof: 0x4a3a34, variant: 1 });
   pois.push({ name: 'Igreja Abandonada', x: ch0.x + 2, y: ch0.y + 2, biome: 'ruins' });
+  /* ===== FLORESTA DAS ARANHAS (12/11, Erling: "em alguma parte grande dessa região [Terra Maldita]: muitas árvores com teias grandes e médias, pessoas enroladas
+     em teia, teias grandes com pessoas presas pedindo socorro; no centro, a boca da caverna da aranha-mãe") =====
+     O lugar sai da conta do ermo (o ponto de chão firme mais longe de vilas e de lugares marcados da Terra Maldita, nível 7 a 13), nunca do olho.
+     Um bosque redondo de árvores mortas com teia, cada vez mais fechado para dentro; uma trilha torta leva da borda (onde fica a pedra de teleporte)
+     até a clareira do centro, onde fica a boca da Toca. Os presos vivos (casulo variante 9) são desenhados e soltos por sistemas/floresta-aranhas.ts. */
+  let aranhaEdge: { x: number; y: number } | null = null; let aranhaC: { x: number; y: number; R: number } | null = null;
   // Primeiro lugar vampírico: a Cripta de Hemara (oeste, entre pântano e terras antigas)
   { const v = safe(112 + SH, 300 + SH, 10); const st: Settlement = { name: 'Cripta de Hemara', kind: 'village', x: v.x, y: v.y, radius: 7, npcs: [] }; settlements.push(st);
     for (let y = v.y - 8; y <= v.y + 8; y++) for (let x = v.x - 8; x <= v.x + 8; x++) if (inb(x, y) && map[y][x] === 'tree') { map[y][x] = 'grass'; const i = props.findIndex((p) => p.kind === 'tree' && p.gx === x && p.gy === y); if (i >= 0) props.splice(i, 1); }
@@ -2116,6 +2142,14 @@ function buildCity_L(): World {
     { const o = MONU.aurora, s0 = site('Austrvik', o.x, o.y - 1, 20, 18, 4, 'Abadia da Aurora', 'meadow', o.R + 2); const pts = spiral(o.x, o.y, o.R, o.top, Math.PI * 0.5, 0.6); toPlaza(pts, s0, 20, 18, o.x); plateau(o, s0, 18); if (s0.vv) road([[s0.vv.x, s0.vv.y - 3], pts[0]], 1.1, 0.3);
       scatter(o.x, o.y, o.top + 1, o.R + 4, 46, (x, y, k) => { if (k % 4 === 0) props.push({ kind: 'angel', gx: x, gy: y, w: 1, h: 1, height: 2.6, wall: 0xe8e0cc, roof: 0xd8b860, variant: 0 }); else { props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 5 + rnd() * 2, wall: 0x6a4a2a, roof: 0xf8e8a0, variant: 0, style: 2 }); map[y][x] = 'tree'; } }); }
     { const o = MONU.prata, s0 = site('Sudrholt', o.x, o.y, 20, 20, 5, 'Bastião de Prata', 'ruins', o.moat + 4);
+      /* 12/11 (Erling: "eu queria entrar somente para olhar a beleza interna e não consegui"): o forte era um bloco maciço. Agora só a muralha em estrela,
+         as torres do portão e a torre central barram; o pátio e o corredor do portão (sul) são chão de andar. As contas repetem as do desenho (monuments3d, id 5). */
+      { const R = (Math.min(20, 20) * T / 2 - 0.5) / T, V: [number, number][] = []; for (let k = 0; k < 12; k++) { const a0 = k / 12 * Math.PI * 2, r0 = k % 2 ? R * 0.62 : R; V.push([o.x + Math.cos(a0) * r0, o.y + Math.sin(a0) * r0]); }
+        const segD = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => { const ux = bx - ax, uy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * ux + (py - ay) * uy) / (ux * ux + uy * uy || 1))); return Math.hypot(px - ax - ux * t, py - ay - uy * t); };
+        const dentro = (px: number, py: number) => { let c = false; for (let i = 0, j = 11; i < 12; j = i++) { const [xi, yi] = V[i], [xj, yj] = V[j]; if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) c = !c; } return c; };
+        for (let yy = o.y - 10; yy < o.y + 10; yy++) for (let xx = o.x - 10; xx < o.x + 10; xx++) { if (!inb(xx, yy)) continue; const px = xx + 0.5, py = yy + 0.5, corredor = Math.abs(px - o.x) < 1.05 && py > o.y + 3 && py < o.y + 10.5;
+          if (corredor) { map[yy][xx] = 'plaza'; continue; } if (py > o.y + R * 0.86 - 1.6) continue; /* a linha do portão e as torres dele */ if (Math.hypot(px - o.x, py - o.y) < 2.4 || !dentro(px, py)) continue;
+          let d = 1e9; for (let k = 0; k < 12; k++) { if (k === 2 || k === 3) continue; const [ax, ay] = V[k], [bx, by] = V[(k + 1) % 12]; d = Math.min(d, segD(px, py, ax, ay, bx, by)); } if (d > 1.15) map[yy][xx] = 'plaza'; } }
       for (let yy = o.y - 20; yy <= o.y + 20; yy++) for (let xx = o.x - 20; xx <= o.x + 20; xx++) if (inb(xx, yy) && map[yy][xx] !== 'wall' && moatSD(xx + 0.5, yy + 0.5) < 0) map[yy][xx] = 'water';
       { const b = { ax: o.x + 0.5, ay: o.y + o.moat - o.moatW - 1.2, bx: o.x + 0.5, by: o.y + o.moat + o.moatW + 1.6, hA: 0, hB: 0, stone: true, half: 2.0, hump: 0.6 }; b.hA = groundH_L(b.ax * T, b.ay * T); b.hB = groundH_L(b.bx * T, b.by * T); bridges.push(b); }
       for (let yy = o.y + 10; yy <= o.y + o.moat + 5; yy++) for (const ox of [-1, 0, 1]) if (inb(o.x + ox, yy) && map[yy][o.x + ox] === 'grass') map[yy][o.x + ox] = 'road';
@@ -2174,20 +2208,63 @@ function buildCity_L(): World {
       return best ?? [t.x, t.y + R + 3]; };
     const kar = settlements.find((t) => t.name === 'Karmika'); if (kar) { const [x, y] = exitOf(kar); place('Relíquia de Karmika', x, y, true, 0); }
     for (const t of settlements) if (t.name !== 'Karmika') { const [x, y] = exitOf(t); place(`Relíquia de ${t.name}`, x, y, true, 14); }
-    for (const pn of ['Acampamento Draugr', 'Covil dos Lobos', 'Atoleiro de Zerath', 'Cume Gelado', 'Garganta de Pedra', 'Cemitério Esquecido', 'Igreja Abandonada', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 40)) place(`Relíquia: ${pn}`, q.x, q.y + 5, false, 24); }
+    for (const pn of ['Acampamento Draugr', 'Covil dos Lobos', 'Atoleiro de Zerath', 'Cume Gelado', 'Garganta de Pedra', 'Cemitério Esquecido', 'Igreja Abandonada', 'Clareira dos Gritos']) { const q = pois.find((v) => v.name === pn); if (q && !relics.some((r) => Math.hypot(r.x - q.x, r.y - q.y) < 40)) place(`Relíquia: ${pn}`, q.x, q.y + (pn === 'Igreja Abandonada' ? 16 : 5), false, 24) /* 12/11: a pedra da igreja fica a 32 m dela, no caminho para a masmorra, e não colada na porta */; }
     /* 02/11 (Erling: "construções importantes sem pedra de regresso próxima"): uma pedra perto de cada calabouço/lugar marcado que ainda não tem */
     /* 02/11 (Erling: "calabouços nunca próximos uns dos outros, nunca ao lado de vilas, espalhar pelo mapa"): o lugar de cada entrada é decidido AQUI.
        Regras: 5×5 livre (sem prédio, água, muro), ≥ 30 casas além do raio do povoado mais perto (Karmika: 36 — fora da muralha e do campo dela),
        ≥ 40 casas (80 m) de qualquer outra entrada; a busca parte do lugar marcado (near + dx,dy) e abre em espiral até 60 casas.
        `spot` = lugar exato reservado pelo mundo (Túneis de Orrukh, dentro do cemitério). A pedra rúnica nasce a 6 casas da boca. */
+    /* (a Floresta das Aranhas nasce AQUI, depois de todos os lugares, vilas e pedras existirem: assim a conta de folga enxerga tudo) */
+  { const tm = REGIONS_L.find((q) => q.name === 'Terra Maldita');
+    /* o lugar: a floresta INTEIRA dentro da Terra Maldita (centro e borda), em chão firme, com folga de vilas (12 casas além da borda), de cidades (40) e de
+       lugares marcados (8); entre os que passam, o de maior folga, com um desconto pela distância ao miolo da região (nada de nascer na divisa) */
+    const trilha = (cx: number, cy: number, RF: number) => { let ns = settlements[0], nd = 1e9; for (const t of settlements) { const d = Math.hypot(t.x - cx, t.y - cy) - t.radius; if (d < nd) { nd = d; ns = t; } }
+      const aE = Math.atan2(ns.y - cy, ns.x - cx); return { aE, ex: Math.round(cx + Math.cos(aE) * (RF + 3)), ey: Math.round(cy + Math.sin(aE) * (RF + 3)), mx: cx + Math.cos(aE) * RF * 0.5 - Math.sin(aE) * RF * 0.3, my: cy + Math.sin(aE) * RF * 0.5 + Math.cos(aE) * RF * 0.3 }; };
+    const acha = (RF: number) => { let best: { x: number; y: number; d: number } | null = null, bs = -1e9; if (!tm) return null;
+      for (let y = tm.y - 150; y <= tm.y + 150; y += 3) for (let x = tm.x - 150; x <= tm.x + 150; x += 3) { if (!inb(x, y) || x < RF + 14 || y < RF + 14 || x > MAP_W_L - RF - 14 || y > MAP_H_L - RF - 14) continue;
+        let ok = regionAt_L(x, y).name === 'Terra Maldita' && waterSD_L(x * T, y * T) > 14; for (let k = 0; k < 8 && ok; k++) { const a = (k / 8) * 6.283, px = Math.round(x + Math.cos(a) * RF), py = Math.round(y + Math.sin(a) * RF); ok = regionAt_L(px, py).name === 'Terra Maldita' && waterSD_L(px * T, py * T) > 4; }
+        for (let dy = -3; dy <= 3 && ok; dy += 3) for (let dx = -3; dx <= 3; dx += 3) { const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree') { ok = false; break; } }
+        /* o disco inteiro em chão de mato: nenhuma grade, muro, praça ou água dentro (a floresta não pode nascer por cima do terreno de outro lugar) */
+        for (let dy = -RF; dy <= RF && ok; dy += 2) for (let dx = -RF; dx <= RF; dx += 2) { if (dx * dx + dy * dy > (RF - 7) * (RF - 7)) continue; /* a franja de fora pode encostar no terreno vizinho (lá as árvores já rareiam e nada é plantado fora do mato) */ const t = map[y + dy]?.[x + dx]; if (t !== 'grass' && t !== 'tree' && t !== 'road') { ok = false; break; } } if (!ok) continue;
+        { /* a trilha (da borda, do lado da vila mais próxima, até o centro) também tem de passar só por mato */ const tr = trilha(x, y, RF); for (let k = 0; k <= 40 && ok; k++) { const u = k / 40, px = Math.round(u < 0.5 ? tr.ex + (tr.mx - tr.ex) * u * 2 : tr.mx + (x - tr.mx) * (u - 0.5) * 2), py = Math.round(u < 0.5 ? tr.ey + (tr.my - tr.ey) * u * 2 : tr.my + (y - tr.my) * (u - 0.5) * 2), t = map[py]?.[px]; if (t !== 'grass' && t !== 'tree' && t !== 'road') ok = false; } if (!ok) continue; }
+        let d = 1e9; for (const t of settlements) d = Math.min(d, Math.hypot(t.x - x, t.y - y) - t.radius - Math.max(RF + (t.kind === 'city' ? 40 : 12), t.kind === 'city' ? 62 : 42) /* a boca da Toca fica no centro: vale a folga das masmorras (40 casas de vila, 60 de cidade) */); for (const q of pois) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 5); for (const q of spawns) if ((q as { keep?: boolean }).keep) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 5); for (const q of relics) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - RF - 2);
+        if (d < 0) continue; const sc = d - 0.15 * Math.hypot(x - tm.x, y - tm.y); if (sc > bs) { bs = sc; best = { x, y, d }; } } return best; };
+    let RF = 30, c0 = acha(RF); for (const R0 of [27, 24, 22, 20, 18]) if (!c0) { RF = R0; c0 = acha(RF); } /* a Terra Maldita é cheia: a floresta toma o maior tamanho que cabe sem encostar em ninguém */
+    if (!c0) console.warn('Floresta das Aranhas sem lugar na Terra Maldita');
+    else { const cx = c0.x, cy = c0.y, { aE, ex, ey, mx, my } = trilha(cx, cy, RF);
+      aranhaEdge = { x: ex, y: ey }; aranhaC = { x: cx, y: cy, R: RF };
+      const segD = (px: number, py: number, ax: number, ay: number, bx: number, by: number) => { const ux = bx - ax, uy = by - ay, l2 = ux * ux + uy * uy || 1, t = Math.max(0, Math.min(1, ((px - ax) * ux + (py - ay) * uy) / l2)); return Math.hypot(px - ax - ux * t, py - ay - uy * t); };
+      const onPath = (x: number, y: number) => Math.min(segD(x, y, ex, ey, mx, my), segD(x, y, mx, my, cx, cy)) < 1.8, glade = (x: number, y: number) => Math.hypot(x - cx, y - cy) < 6.5;
+      /* a trilha e a clareira ficam limpas */
+      for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (Math.abs(q.gx - cx) > RF + 6 || Math.abs(q.gy - cy) > RF + 6) continue; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones' || q.kind === 'deadtree') && (onPath(q.gx, q.gy) || glade(q.gx, q.gy))) { if (map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; props.splice(i, 1); } }
+      for (let y = cy - RF - 4; y <= cy + RF + 4; y++) for (let x = cx - RF - 4; x <= cx + RF + 4; x++) if (inb(x, y) && map[y][x] === 'tree' && (onPath(x, y) || glade(x, y))) map[y][x] = 'grass';
+      const occ = new Set<number>(); for (const q of props) if (Math.abs(q.gx - cx) <= RF + 5 && Math.abs(q.gy - cy) <= RF + 5) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) occ.add(y * 4096 + x);
+      const can = (x: number, y: number, w = 1, h = 1) => { for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) if (!inb(xx, yy) || map[yy][xx] !== 'grass' || occ.has(yy * 4096 + xx) || onPath(xx, yy) || glade(xx, yy)) return false; for (let yy = y - 2; yy < y + h + 2; yy++) for (let xx = x - 2; xx < x + w + 2; xx++) if (map[yy]?.[xx] === 'wall') return false; /* nada colado em grade ou muro de outro lugar */ return true; };
+      const put = (kind: PropKind, x: number, y: number, w: number, h: number, variant: number, height: number) => { props.push({ kind, gx: x, gy: y, w, h, height, wall: 0, roof: 0, variant }); for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) occ.add(yy * 4096 + xx); };
+      const rnd = () => { const a = r() * 6.283, d = Math.sqrt(r()) * (RF - 2); return [Math.round(cx + Math.cos(a) * d), Math.round(cy + Math.sin(a) * d)] as const; };
+      /* presos vivos: perto da trilha, de um lado e do outro (é o que o jogador vê primeiro) */
+      for (let i = 0, n = 0; i < 400 && n < 12; i++) { const k = 0.12 + 0.8 * r(), a = k < 0.5 ? [ex + (mx - ex) * k * 2, ey + (my - ey) * k * 2] : [mx + (cx - mx) * (k - 0.5) * 2, my + (cy - my) * (k - 0.5) * 2], sd = r() < 0.5 ? -1 : 1, off = 3 + r() * 5, x = Math.round(a[0] - Math.sin(aE) * sd * off), y = Math.round(a[1] + Math.cos(aE) * sd * off);
+        if (can(x, y) && !props.some((q) => q.kind === 'cocoon' && q.variant === 9 && Math.hypot(q.gx - x, q.gy - y) < 7)) { put('cocoon', x, y, 1, 1, 9, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 26; i++) { const [x, y] = rnd(); if (can(x - 1, y, 3, 1)) { put('webnet', x - 1, y, 3, 1, r() < 0.35 ? 1 : 0, 3 + r()); n++; } }
+      for (let y = cy - RF; y <= cy + RF; y++) for (let x = cx - RF; x <= cx + RF; x++) { const d = Math.hypot(x - cx, y - cy); if (d > RF) continue; const dens = 0.15 * Math.min(1, (RF - d) / 6) + (d < RF * 0.5 ? 0.05 : 0);
+        if (r() < dens && can(x, y)) { const k = r(); put('webtree', x, y, 1, 1, (k < 0.45 ? 0 : k < 0.82 ? 1 : 2) + (r() < 0.3 ? 3 : 0), 4 + r()); } }
+      for (let i = 0, n = 0; i < 200 && n < 40; i++) { const [x, y] = rnd(); if (can(x, y)) { put('cocoon', x, y, 1, 1, 0, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 26; i++) { const [x, y] = rnd(); if (can(x, y)) { put('cocoon', x, y, 1, 1, r() < 0.5 ? 1 : 2, 1); n++; } }
+      for (let i = 0, n = 0; i < 200 && n < 30; i++) { const [x, y] = rnd(); if (can(x, y, 2, 2)) { put('webmat', x, y, 2, 2, 0, 0.1); n++; } }
+      for (let i = 0; i < 30; i++) { const [x, y] = rnd(); if (can(x, y)) addBones(x, y); }
+      pois.push({ name: 'Floresta das Aranhas', x: Math.round(mx), y: Math.round(my), biome: 'forest' });
+      dgSpots.ninho = { x: cx, y: cy }; /* a boca da Toca da Aranha-Mãe: na clareira do centro */
+      for (let i = 0; i < 10; i++) { const a = (i / 10) * 6.283 + r(), d = RF * (0.28 + 0.6 * r()); spawns.push({ type: i % 3 === 0 ? 'spider' : 'spiderling', x: Math.round(cx + Math.cos(a) * d), y: Math.round(cy + Math.sin(a) * d), r: 7, n: i % 3 === 0 ? 3 : 5 }); }
+      spawns.push({ type: 'spider', x: cx + 5, y: cy - 4, r: 4, n: 2, keep: true }); /* as guardiãs da boca */ } }
     { const occ = new Set<number>(); for (const q of props) if (q.kind !== 'tree' && q.kind !== 'herb' && q.kind !== 'plant' && q.kind !== 'rock' && q.kind !== 'bones' && q.kind !== 'grave') for (let y = q.gy - 1; y <= q.gy + q.h; y++) for (let x = q.gx - 1; x <= q.gx + q.w; x++) occ.add(y * 100000 + x);
-      const placed: { x: number; y: number }[] = [];
+      const placed: { x: number; y: number }[] = Object.values(dgSpots).map((q) => ({ x: q.x, y: q.y })); /* 12/11: lugares já reservados (a Toca) contam para a folga das outras */
       /* relax = 1 (03/11): a Toca do Covil dos Lobos não achava lugar e sumia do mapa ("calabouço sem lugar"). Na segunda busca o miolo
          aceita qualquer chão firme (mata, terra, pedra), a distância de outra entrada cai para 28 casas e a busca vai a 120 casas */
       const okSpot = (x: number, y: number, relax = 0) => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const t = map[y + dy]?.[x + dx]; if (!t || t === 'water' || t === 'wall') return false; const core = Math.abs(dx) <= 1 && Math.abs(dy) <= 1; if (core && ((relax ? false : t !== 'grass') || occ.has((y + dy) * 100000 + x + dx))) return false; }
-        if (settlements.some((t) => Math.hypot(t.x - x, t.y - y) < t.radius + (t.name === 'Karmika' ? 36 : t.name === 'Lithendel' ? 44 : 30) /* 09/11 (Erling): a masmorra estava perto demais de Lithendel */)) return false; if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < (relax ? 28 : 40))) return false; return true; };
+        /* 12/11 (Erling: "masmorra do lado de cidade", as Catacumbas coladas na muralha de Askavik): a folga dobrou. Cidade (com muralha): 60 casas (120 m) além do raio; Karmika e Lithendel: 50; vila: 40 (80 m) */ if (settlements.some((t) => Math.hypot(t.x - x, t.y - y) < t.radius + (t.kind === 'city' ? 60 : t.name === 'Karmika' || t.name === 'Lithendel' ? 50 : 40) /* 09/11 (Erling): a masmorra estava perto demais de Lithendel */)) return false; if (placed.some((q) => Math.hypot(q.x - x, q.y - y) < (relax ? 28 : 40))) return false; return true; };
+      if (aranhaEdge) place('Relíquia: Floresta das Aranhas', aranhaEdge.x, aranhaEdge.y, false, 24); /* 12/11: a pedra fica na BORDA da floresta, no começo da trilha, nunca na mesma tela da boca */
       for (const d of DUNGEONS) { if (d.fixed) continue; const t = pois.find((v) => v.name === d.near) ?? settlements.find((v) => v.name === d.near); if (!t) continue; const bx = Math.round(t.x + (d.dx ?? 0)), by = Math.round(t.y + (d.dy ?? 6));
-        let at: { x: number; y: number } | null = d.spot ? { x: bx, y: by } : null;
+        let at: { x: number; y: number } | null = dgSpots[d.id] /* 12/11: lugar já reservado pelo mundo (a Toca, no centro da Floresta das Aranhas) */ ?? (d.spot ? { x: bx, y: by } : null);
         for (let relax = 0; relax <= 1 && !at; relax++) for (let rr = 0; rr <= (relax ? 120 : 60) && !at; rr++) for (let k = 0; k < Math.max(1, rr * 8) && !at; k++) { const a = (k / Math.max(1, rr * 8)) * 6.283, x = Math.round(bx + Math.cos(a) * rr), y = Math.round(by + Math.sin(a) * rr); if (inb(x, y) && okSpot(x, y, relax)) at = { x, y }; }
         if (!at) { console.warn('calabouço sem lugar:', d.name); continue; } dgSpots[d.id] = at; placed.push(at); for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) occ.add(y * 100000 + x);
         /* a árvore/pedra que estava no lugar sai; a casa vira capim */ for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'plant' || q.kind === 'bones' || q.kind === 'grave') && Math.abs(q.gx - at.x) <= 2 && Math.abs(q.gy - at.y) <= 2) props.splice(i, 1); } for (let y = at.y - 2; y <= at.y + 2; y++) for (let x = at.x - 2; x <= at.x + 2; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass';
@@ -2296,7 +2373,11 @@ function buildCity_L(): World {
       const vs = t.name === 'Askavik' ? [5] : (city || TECH.has(t.name)) ? [0, 1, 2, 3, 4, 5] : [0, 1, 2, 3, 4]; /* Askavik já tem as cinco na Casa dos Ofícios */
       let S = city ? 3 : 2; const tav = !city ? props.find((p) => p.kind === 'house' && p.variant === 4 && Math.hypot(p.gx - t.x, p.gy - t.y) < t.radius + 4) : undefined;
       const fits = (gx: number, gy: number, soft: boolean) => { for (let y = gy - 1; y <= gy + S; y++) for (let x = gx - 1; x <= gx + S; x++) { if (!inb(x, y) || hard.has(y * 100000 + x)) return false; const m = map[y][x] as string; if (!['grass', 'plaza', 'dirt'].includes(m) && !(soft && m === 'tree')) return false; } return true; };
-      const put = (v: number, gx: number, gy: number, ry: number) => {
+      /* 12/11 (Erling: "todas as casas de profissão ficam viradas para onde a gente não vê; o jogo é isométrico, tudo tem que ficar de frente num sentido
+         que enxergamos"): a câmera olha de sudeste. A frente aberta de toda casa de ofício aponta para o sul, para o leste ou entre os dois; se a direção
+         do centro da vila cair fora disso, a frente vira para o lado visível mais próximo (sul ou leste). */
+      const deFrente = (ry: number) => { let d = ry - Math.PI / 4; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return Math.abs(d) <= 1.13 ? ry : d > 0 ? Math.PI / 2 : 0; };
+      const put = (v: number, gx: number, gy: number, ry0: number) => { const ry = deFrente(ry0);
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFTK.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + S + 1 && p.gy + p.h > gy - 1 && p.gy < gy + S + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + S; y++) for (let x = gx; x < gx + S; x++) if (map[y][x] === 'tree') map[y][x] = 'grass';
         props.push({ kind: 'station', gx, gy, w: S, h: S, height: S === 3 ? 4.4 : 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry, label: names[v] });
@@ -2307,7 +2388,7 @@ function buildCity_L(): World {
           for (let r = city ? 8 : 5; r <= (city ? 44 : 26); r++) for (let a = 0; a < 48; a++) { const ang = a * 0.1309, gx = Math.round(hubX(t) + Math.cos(ang) * r) - (S >> 1), gy = Math.round(t.y + Math.sin(ang) * r) - (S >> 1);
             if (t.kind === 'city' && Math.hypot(gx - t.x, gy - t.y) > t.radius - 8) continue; if (!fits(gx, gy, true)) continue;
             const cx = gx + S / 2, cy = gy + S / 2; let wd = 99, wx = 0, wy = 0; for (let y = gy - 4; y <= gy + S + 3; y++) for (let x = gx - 4; x <= gx + S + 3; x++) { if (!inb(x, y) || map[y][x] !== 'water') continue; const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d < wd) { wd = d; wx = x + 0.5; wy = y + 0.5; } }
-            if (wd > S / 2 + 3.2) continue; const ry = Math.atan2(hubX(t) - cx, t.y - cy);
+            if (wd > S / 2 + 3.2) continue; const ry = deFrente(Math.atan2(hubX(t) - cx, t.y - cy));
             { let door = true; for (const k of [1, 2]) { const fx = Math.floor(cx + Math.sin(ry) * (S / 2 + k)), fy = Math.floor(cy + Math.cos(ry) * (S / 2 + k)); if (!inb(fx, fy) || !['grass', 'plaza', 'dirt', 'road'].includes(map[fy][fx] as string)) door = false; } if (!door) continue; }
             const score = wd + r * 0.08; if (!best || score < best.d) best = { gx, gy, ry, wdir: Math.atan2(wx - cx, wy - cy), d: score }; }
           if (best) { put(0, best.gx, best.gy, best.ry); props[props.length - 1].wdir = best.wdir; ok = true; } } /* o apotecário da vila também é casinha: farmácia pequena com antessala (Erling, 25/10) */
@@ -2415,7 +2496,7 @@ function buildCity_L(): World {
         for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (SOFT.has(p.kind as string) && p.gx + p.w > gx - 1 && p.gx < gx + W + 1 && p.gy + p.h > gy - 1 && p.gy < gy + H + 1) props.splice(i, 1); }
         for (let y = gy; y < gy + H; y++) for (let x = gx; x < gx + W; x++) map[y][x] = 'plaza'; /* (tile 'tree' também vira piso) */
         /* as cinco bancadas de verdade (as mesmas das vilas: funcionam para craft), em fileira, de frente para o corredor */
-        for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI : 0 }); }
+        for (let v = 0; v < 5; v++) { const sx = gx + 0.5 + v * 2.3, sy = v % 2 ? gy + 5 : gy + 1; props.push({ kind: 'station', gx: Math.round(sx), gy: sy, w: 2, h: 2, height: 2.6, wall: 0x6a4a2a, roof: 0x6a4a2a, variant: v, ry: v % 2 ? Math.PI / 2 : 0 /* 12/11: a fileira de trás olhava para o norte (escondida da câmera); agora olha para o leste */ }); }
         pois.push({ name: 'Casa dos Ofícios', x: gx + W / 2, y: gy + H + 1, biome: 'meadow' });
         break search; } } }
   /* ELITES E CHEFES DO MUNDO: cada lugar marcado tem o seu dono, no nível do lugar */
@@ -2427,6 +2508,10 @@ function buildCity_L(): World {
     put('colossus', 'Ferrugem', -18, -10); put('glutton', 'Castelo da Colina Vampírica', -10, 14); put('suplicio', 'Vale da Desgraça', 0, 10); put('drowner_old', 'Vatnaholt', -9, 7); put('inquisitor', 'Steinfoss', 6, -6); put('inquisitor', 'Grenivik', -5, 6); }
   { /* elites longe das vilas: nenhum elite nasce a menos de 30 blocos de um povoado (45 dos berços), a não ser os de lugar marcado (nível fixo) */
     const CRADLE = new Set(['Karmika', 'Brasaforja', 'Lithendel']), ELT = new Set<EnemyType>(['prince', 'tormentor', 'treant', 'werewolf']);
+    /* 12/11: dentro da muralha e do fosso do Bastião de Prata não nasce monstro (é a casa dos caçadores; quem quiser entrar que atravesse a ponte) */
+    for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!sp.keep && Math.hypot(sp.x - MONU.prata.x, sp.y - MONU.prata.y) < MONU.prata.moat + MONU.prata.moatW + 6) spawns.splice(i, 1); }
+    /* 12/11: dentro da Floresta das Aranhas só mora aranha (lobo, esqueleto e cão infernal da região ficam do lado de fora) */
+    if (aranhaC) for (const sp of spawns) if (!sp.keep && Math.hypot(sp.x - aranhaC.x, sp.y - aranhaC.y) < aranhaC.R + 2 && sp.type !== 'spider' && sp.type !== 'spiderling') { sp.type = sp.n >= 3 ? 'spiderling' : 'spider'; delete sp.night; }
     for (let i = spawns.length - 1; i >= 0; i--) { const sp = spawns[i]; if (!ELT.has(sp.type) || sp.fixLvl || sp.keep) continue; /* 26/10: o dono do lugar marcado (o Torturador na Clareira dos Gritos) nunca some — antes ele era apagado por estar perto de Karmika e a missão ficava impossível */
       if (settlements.some((t) => Math.hypot(t.x - sp.x, t.y - sp.y) < (CRADLE.has(t.name) ? 45 : 30))) spawns.splice(i, 1); } }
   const stOf = (nm: string) => { const st = settlements.find((q) => q.name === nm)!; return { x: st.x + 0.5, y: st.y + 3.5, name: nm }; };
@@ -2448,7 +2533,7 @@ function buildCity_L(): World {
      e a pedra em cima saem, e onde a estrada passa sobre água sem ponte, ponte. As caravanas andam exatamente sobre esse leito. */
   { const on = new Set<number>(); for (const rp of roadPaths) for (let i = 0; i < rp.length; i++) { const a = rp[i], b = rp[Math.min(rp.length - 1, i + 1)];
       for (let k = 0; k <= 4; k++) { const x = a.x + (b.x - a.x) * k / 4, y = a.y + (b.y - a.y) * k / 4; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const tx = Math.floor(x) + dx, ty = Math.floor(y) + dy; if (inb(tx, ty) && Math.hypot(tx + 0.5 - x, ty + 0.5 - y) <= 1.05) on.add(ty * 100000 + tx); } } }
-    const LOOSE = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass']); /* o que a estrada atropela (sem banco/tocha: esses ficam à beira) */
+    const LOOSE = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'webtree', 'webnet', 'cocoon', 'webmat']); /* o que a estrada atropela (sem banco/tocha: esses ficam à beira) */
     for (let i = props.length - 1; i >= 0; i--) { const p = props[i]; if (LOOSE.has(p.kind as string) && on.has(p.gy * 100000 + p.gx)) props.splice(i, 1); }
     for (const k of on) { const x = k % 100000, y = Math.floor(k / 100000), t = map[y][x] as string; if (t === 'grass' || t === 'tree') map[y][x] = 'road'; }
     /* cerca/muro baixo cujo segmento cruza o leito (trilhas e estradas tardias passavam por dentro da cerca da vila sem portão) sai;
@@ -2467,7 +2552,7 @@ function buildCity_L(): World {
      (o leito das estradas, adros) abriam chão andável dentro de 18 casas. Casa nunca fica em cima de estrada: a casa que caiu
      sobre o leito anda para o terreno livre mais perto (até 6 tiles); se não houver, sai — a estrada fica aberta. O resto da
      pegada volta a ser parede. */
-  { const SOFT = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch']);
+  { const SOFT = new Set<string>(['tree', 'rock', 'herb', 'bush', 'flower', 'stump', 'bones', 'deadtree', 'fogpatch', 'grass', 'torch', 'webtree', 'webnet', 'cocoon', 'webmat']);
     const hard = props.filter((q) => !SOFT.has(q.kind as string));
     const fp = (q: Prop, f: (x: number, y: number) => boolean) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) if (!f(x, y)) return false; return true; };
     const overlap = (q: Prop, gx: number, gy: number) => hard.some((o) => o !== q && o.gx < gx + q.w + 1 && o.gx + o.w + 1 > gx && o.gy < gy + q.h + 1 && o.gy + o.h + 1 > gy);
@@ -2512,6 +2597,11 @@ function buildCity_L(): World {
     for (const q of props) { if (q.kind !== 'torch' || !nearStall(q.gx, q.gy)) continue; mark(q, false); let best: [number, number] | null = null, bs = 1e9;
       for (let dy = -6; dy <= 6; dy++) for (let dx = -6; dx <= 6; dx++) { const x = q.gx + dx, y = q.gy + dy; if ((!dx && !dy) || !okAt(x, y, 1, 1) || nearStall(x, y)) continue; const sc = Math.hypot(dx, dy) - (dx - dy) * 0.35; if (sc < bs) { bs = sc; best = [x, y]; } }
       if (best) { q.gx = best[0]; q.gy = best[1]; } mark(q, true); }
+    /* 10/11 (Erling: "apareceu um poste de luz no MEIO da ponte"): poste de lampião nunca fica em cima de ponte nem na boca dela */
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind !== 'torch') continue; const x = q.gx + 0.5, y = q.gy + 0.5;
+      const on = bridges.some((b) => { if (b.poly) return inPoly(b.poly, x, y); const dx = b.bx - b.ax, dy = b.by - b.ay, L2 = dx * dx + dy * dy || 1, L = Math.sqrt(L2), t = ((x - b.ax) * dx + (y - b.ay) * dy) / L2;
+        return t > -1.5 / L && t < 1 + 1.5 / L && Math.hypot(b.ax + dx * t - x, b.ay + dy * t - y) < (b.half ?? BRIDGE_HALF) / T + 0.75; });
+      if (on) { mark(q, false); props.splice(i, 1); } }
     /* 03/11 (Erling: "arrume o banco"): o poste com lampião é largo; banco colado nele (a 1 casa) dá um passo para longe, se houver lugar */
     for (const t of props) { if (t.kind !== 'torch') continue; for (const q of props) { if (q.kind !== 'bench' || Math.max(Math.abs(q.gx - t.gx), Math.abs(q.gy - t.gy)) > 1) continue;
       const sx = Math.sign(q.gx - t.gx), sy = Math.sign(q.gy - t.gy); mark(q, false); for (const [ax, ay] of [[sx, sy], [sx, 0], [0, sy]] as [number, number][]) { if (!ax && !ay) continue; if (okAt(q.gx + ax, q.gy + ay, 1, 1) || ['grass', 'plaza', 'road'].includes(String(map[q.gy + ay]?.[q.gx + ax])) && !occ.has((q.gy + ay) * 4096 + q.gx + ax)) { q.gx += ax; q.gy += ay; break; } } mark(q, true); } }
@@ -2589,7 +2679,13 @@ function buildCity_L(): World {
         /* 08/11 (Erling: "a placa está virada para um lado que não se vê bem; vira ela para a visão do jogador"): a câmera olha de sudeste — o quadro sempre olha para o sul ou para o leste (o lado da rua, se der; senão, o lado que se vê) */
         const vis = face.find(([, , d2]) => d2 === 0 || d2 === 1); best = { x, y, d, dir: vis ? vis[2] : face[0][2] === 2 ? 0 : 1 }; }
       if (!best) continue; props.push({ kind: 'noticeboard', gx: best.x, gy: best.y, w: 1, h: 1, height: 1, wall: 0x5a3a20, roof: 0x4a3020, variant: best.dir }); occ.add(key(best.x, best.y)); } }
-  return { map, biome, props, craftHall, quartel, dgSpots, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
+  /* 12/11 (Erling: "onde existe caminho de rua não pode ter cerca; precisa abrir a cerca aqui"): a cerca e o murinho das vilas eram postos ANTES de
+     algumas ruas e trilhas (as das casas de ofício, as dos lugares novos). Passada final, com o mapa pronto: todo pedaço de cerca ou muro baixo que
+     passa por cima de rua ou de praça sai, e a passagem fica aberta. */
+  { let fora = 0; for (let k = props.length - 1; k >= 0; k--) { const q = props[k]; if (q.kind !== 'lowwall' || q.len === undefined) continue; const cx0 = q.gx + (q.ox ?? 0) / T, cy0 = q.gy + (q.oz ?? 0) / T, hl = q.len / T / 2, dx = Math.cos(q.ry ?? 0), dy = -Math.sin(q.ry ?? 0); let cruza = false;
+      for (let t = -1; t <= 1 && !cruza; t += 0.25) { const x = Math.floor(cx0 + dx * hl * t), y = Math.floor(cy0 + dy * hl * t), m = map[y]?.[x] as string | undefined; if (m === 'road' || m === 'plaza') cruza = true; }
+      if (cruza) { props.splice(k, 1); fora++; } } if (fora) console.info(`cercas abertas sobre ruas: ${fora}`); }
+  return { map, biome, props, craftHall, quartel, dgSpots, guildLots: [] /* nascem no mundo grande, depois do litoral (ver abaixo) */, spawn: { x: 69.5 + OFX_L, y: 75.5 + OFY_L }, pois, spawns, bridges, signs, settlements, relics, ramparts, roadPaths, roadLinks, bandits, starts: { human: { x: 69.5 + OFX_L, y: 75.5 + OFY_L, name: 'Karmika' }, dwarf: stOf('Brasaforja'), elf: stOf('Lithendel') } };
 }
 /** veio de minério de uma rocha (fixo pela posição): 0 nenhum, 1 ferro, 2 prata */
 function veinOf_L(p: { gx: number; gy: number; w: number }) { const h = Math.abs(Math.sin(p.gx * 127.1 + p.gy * 311.7) * 43758.5453) % 1; return h < (p.w > 1 ? 0.07 : 0.035) ? 2 : h < (p.w > 1 ? 0.3 : 0.16) ? 1 : 0; }
@@ -2699,6 +2795,23 @@ function coastK(tx: number, ty: number): number {
   for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]) + (fbm(tx * 0.06, ty * 0.06, 973) - 0.5) * 30, r = protPts[i + 2]; if (d < r + 40) k *= smoothstep(r + 4, r + 40, d); } /* o chão protegido também tem borda torta (nada de círculo) */
   return k;
 }
+/* 17/11 (Erling: "criar praias de areia em algumas costas; hoje não há praia em lugar nenhum"): quanto de AREIA há neste ponto (0 a 1).
+   Uma faixa de 5 a 14 casas para dentro da linha da água, só em alguns trechos da costa (um ruído largo escolhe quais) e em toda a
+   Costa dos Naufrágios. As falésias do norte e a península vulcânica não têm praia. É só a pintura do chão: a altura e os bichos não mudam. */
+/** 17/11: o centro dos Ermos dos Beduínos (em casas do mundo), decidido no fim da criação do mundo; em volta dele o chão é areia */
+let ermosC: { x: number; y: number } | null = null;
+export function praiaK(tx: number, ty: number): number { if (!inCont(tx, ty)) return 0;
+  if (ermosC) { const d = Math.hypot(tx - ermosC.x, ty - ermosC.y); if (d < 60) { const k = smoothstep(44 + (fbm(tx * 0.07, ty * 0.07, 985) - 0.5) * 16, 24, d); if (k > 0) return Math.max(k, praiaCosta(tx, ty)); } }
+  return praiaCosta(tx, ty); }
+function praiaCosta(tx: number, ty: number): number {
+  const lx = tx - DXW, ly = ty - DXW, W1 = MAP_W_L - 1, H1 = MAP_H_L - 1, RC = 150; if (ly < 190) return 0;
+  const qx = Math.max(RC - lx, lx - (W1 - RC), 0), qy = Math.max(RC - ly, ly - (H1 - RC), 0); const e = qx > 0 && qy > 0 ? RC - Math.hypot(qx, qy) : Math.min(lx, ly, W1 - lx, H1 - ly);
+  if (e > 150 || Math.hypot(lx - PORTO_L.x, ly - PORTO_L.y) < 95) return 0;
+  const t = 6 + Math.max(0, fbm(tx * 0.0045, ty * 0.0045, 970) - 0.28) * 190 + (fbm(tx * 0.025, ty * 0.025, 972) - 0.5) * 38 + (fbm(tx * 0.08, ty * 0.08, 971) - 0.5) * 9;
+  const larg = 5 + fbm(tx * 0.02, ty * 0.02, 981) * 9; let k = smoothstep(t + larg + (fbm(tx * 0.11, ty * 0.11, 983) - 0.5) * 3, t + 1, e); if (k <= 0) return 0;
+  const trecho = Math.max(smoothstep(0.5, 0.58, fbm(tx * 0.006, ty * 0.006, 982)), regionAt_L(lx, ly).id === 26 ? 1 : 0); k *= trecho; if (k <= 0) return 0;
+  for (let i = 0; i < protPts.length; i += 3) { const d = Math.hypot(tx - protPts[i], ty - protPts[i + 1]), r = protPts[i + 2]; if (d < r + 30) k *= smoothstep(r + 4, r + 30, d); }
+  return k; }
 const SEABED = WL - 4.5;
 export function heightAt(xm: number, zm: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = heightAt_L(xm - DM, zm - DM); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
 export function groundH(xm: number, zm: number, zPre?: ZoneW, sdPre?: number): number { const tx = xm / T, ty = zm / T; if (!inCont(tx, ty)) return outerGround(tx, ty); const k = coastK(tx, ty), h = groundH_L(xm - DM, zm - DM, zPre, sdPre); return k > 0 ? h * (1 - k) + Math.min(h, SEABED) * k : h; }
@@ -2850,14 +2963,194 @@ export function buildCity(): World {
     const nm = `Farol de ${d.name}`; lights.push({ name: nm, port: d.name, x: bx, y: by, style: STY[d.name] ?? 'nordico', ...(islet ? { islet } : {}) }); }
   const outBridges = [...w.bridges.map((b) => shBridge(b, D)), ...extraBridges]; w.bridges.push(...extraBridges.map((b) => shBridge(b, -D))); bridgeIdxN = -1; /* o píer élfico também é chão para andar (a colisão lê as pontes locais) */
   const lightPois: Poi[] = lights.filter((l) => !l.old).map((l) => ({ name: l.name, x: l.x, y: l.y, biome: 'coast' as Biome }));
+  /* 12/11 TERRENOS DE GUILDA (Erling: "terrenos de guilda são alguns poucos no mundo e ficam em lugares legais e bonitos que precisam ser comprados";
+     "colocar os terrenos de guilda pré-reservados desde sempre"). São no máximo 12, fixos, iguais em todo reino: um por região do continente, perto da
+     água quando dá, longe uns dos outros (130 casas), com folga de vilas, cidades, lugares marcados, pedras e masmorras. Nascem AQUI, com o mundo
+     pronto (litoral, ilhas, faróis): assim a conta enxerga tudo e nenhum cai no mar. Cada um reserva 14×14 casas de capim limpo (o miolo de 10×10
+     é onde a sede é erguida), com tochas nos cantos e uma placa virada para o jogador. Árvores, pedras e bichos soltos que estavam ali saem. */
+  const guildLots: GuildLot[] = [], lotSigns: Sign[] = [];
+  { const GL = 10, M = 2, MAXL = 12, HH = map.length, WW = map[0].length, dentro = (x: number, y: number) => x >= 0 && y >= 0 && x < WW && y < HH;
+    const lugares = [...pois, ...ISLES.map((I) => ({ x: I.blobs[0].x, y: I.blobs[0].y })), ...lightPois], bocas = Object.values(w.dgSpots).map(sxy);
+    const limpo = (x0: number, y0: number) => { for (let y = y0 - M - 1; y <= y0 + GL + M; y++) for (let x = x0 - M - 1; x <= x0 + GL + M; x++) { if (!dentro(x, y)) return false; const t = map[y][x]; if (t !== 'grass' && t !== 'tree') return false; } return true; };
+    /* 12/11 (Erling: "eles têm que ser 6 para guildas positivas de karma e 6 para guildas negativas de karma"): seis regiões de luz e seis de sombra,
+       nesta ordem; se uma não tiver lugar, entra a próxima da reserva do mesmo lado. As três raças têm um terreno de luz na região onde nascem. */
+    const LADO: [1 | -1, string[], string[]][] = [
+      [1, ['Vale de Karmika', 'Sopé de Brasaforja', 'Bosque de Lithendel', 'Cordilheira do Norte', 'Montanha Viking', 'Floresta Encantada'], ['Planalto de Askavik', 'Mata do Leste', 'Passo de Midvangr', 'Minas de Cinzalto', 'Bosques de Lundr', 'Florestas Élficas']],
+      [-1, ['Terra Maldita', 'Charcos do Oeste', 'Colinas do Sul', 'Colina Vampírica', 'Vale da Desgraça', 'Selva Licantropa'], ['Costa do Vapor e da Graxa', 'Raízes Antigas', 'Recifes da Graxa', 'Desfiladeiro dos Lamentos']]];
+    /* a ordem alterna os dois lados (um de luz, um de sombra...), para nenhum lado ficar sem lugar; as reservas só entram no fim, para o lado que faltar */
+    const conta = { '1': 0, '-1': 0 } as Record<string, number>, fila: [1 | -1, string][] = [];
+    for (let i = 0; i < 6; i++) for (const [karma, certas] of LADO) fila.push([karma, certas[i]]); for (let i = 0; i < 6; i++) for (const [karma, , reserva] of LADO) if (reserva[i]) fila.push([karma, reserva[i]]);
+    { for (const [karma, nome] of fila) { if (conta[karma] >= MAXL / 2) continue; const r0 = REGIONS_L.find((q) => q.name === nome); if (!r0) continue; const rg = { ...r0, x: r0.x + D, y: r0.y + D }; let best: { x: number; y: number } | null = null, bs = -1e9;
+      for (let y0 = rg.y - 120; y0 <= rg.y + 120; y0 += 3) for (let x0 = rg.x - 120; x0 <= rg.x + 120; x0 += 3) { const cx = x0 + GL / 2, cy = y0 + GL / 2;
+        if (!dentro(x0 - 20, y0 - 20) || !dentro(x0 + GL + 20, y0 + GL + 20) || !limpo(x0, y0) || regionAt(cx, cy).name !== rg.name) continue;
+        let d = 1e9, ns = 1e9; for (const t of settlements) { const dd = Math.hypot(t.x - cx, t.y - cy) - t.radius; ns = Math.min(ns, dd); d = Math.min(d, dd - (t.kind === 'city' ? 40 : 26)); }
+        for (const q of lugares) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 26); for (const q of relics) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 14); for (const q of bocas) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - 36);
+        for (const q of spawns) if (q.keep) d = Math.min(d, Math.hypot(q.x - cx, q.y - cy) - q.r - 14);
+        for (const q of guildLots) d = Math.min(d, Math.hypot(q.x0 + GL / 2 - cx, q.y0 + GL / 2 - cy) - 130); if (d < 0) continue;
+        const agua = waterSD(cx * T, cy * T) / T; if (agua < GL) continue; /* casas até a água mais próxima: perto para ter vista, nunca na beira */
+        const sc = -Math.abs(agua - 14) * 1.5 + Math.min(d, 30) * 0.3 - Math.max(0, ns - 120) * 0.25 - 0.02 * Math.hypot(cx - rg.x, cy - rg.y); if (sc > bs) { bs = sc; best = { x: x0, y: y0 }; } }
+      if (!best) continue; const { x: x0, y: y0 } = best;
+      for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 - M && q.gx < x0 + GL + M && q.gy + q.h > y0 - M && q.gy < y0 + GL + M) props.splice(i, 1); }
+      for (let y = y0 - M; y < y0 + GL + M; y++) for (let x = x0 - M; x < x0 + GL + M; x++) map[y][x] = 'grass';
+      for (let i = spawns.length - 1; i >= 0; i--) { const q = spawns[i]; if (!q.keep && Math.hypot(q.x - (x0 + GL / 2), q.y - (y0 + GL / 2)) < q.r + 12) spawns.splice(i, 1); }
+      for (const [tx, ty] of [[x0 - M, y0 - M], [x0 + GL + M - 1, y0 - M], [x0 - M, y0 + GL + M - 1]]) props.push({ kind: 'torch', gx: tx, gy: ty, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: karma > 0 ? 0xffc04a : 0xc04aff });
+      const sx = x0 + GL + M - 1, sy = y0 + GL + M - 1; lotSigns.push({ x: sx, y: sy, yaw: Math.PI / 4, lines: [{ text: 'Terreno de guilda', dir: Math.atan2(-1, -1) }, { text: karma > 0 ? 'Karma positivo' : 'Karma negativo', dir: Math.atan2(-1, -1) }] }); map[sy][sx] = 'wall';
+      guildLots.push({ id: guildLots.length + 1, name: `Terreno de guilda de ${rg.name}`, region: rg.name, x0, y0, lo: rg.lo, hi: rg.hi, karma, faixa: 'comum' }); conta[karma]++; }
+      for (const k of [1, -1] as const) { if (conta[k] < MAXL / 2) console.warn(`terrenos de guilda de karma ${k > 0 ? 'positivo' : 'negativo'}: só ${conta[k]} de ${MAXL / 2}`);
+        /* as faixas de preço, iguais dos dois lados: o da região de nível mais alto é o lendário, os dois seguintes são nobres, os outros comuns */
+        guildLots.filter((g) => g.karma === k).sort((a, b) => b.hi - a.hi || b.lo - a.lo || a.id - b.id).forEach((g, i) => { g.faixa = i === 0 ? 'lendario' : i <= 2 ? 'nobre' : 'comum'; }); } } }
   /* 09/11 (Erling: "diminuir as árvores pelo menos 30%, são muitas mesmo"): no ermo, 3 de cada 10 árvores saem (sorteio fixo pela casa,
      igual em toda máquina); dentro e em volta das vilas, cidades e lugares marcados nada muda. A casa da árvore que saiu vira grama. */
   { const keep = (x: number, y: number) => { for (let i = 0; i < protPts.length; i += 3) if (Math.hypot(x - protPts[i], y - protPts[i + 1]) < protPts[i + 2] + 6) return true; return false; };
     const h = (x: number, y: number) => { let v = Math.imul(x * 374761393 + y * 668265263, 1274126177) >>> 0; v ^= v >>> 13; v = Math.imul(v, 1103515245) >>> 0; return (v >>> 8) / 16777216; };
     let n = 0; for (let i = 0; i < props.length; i++) { const p = props[i]; if (p.kind === 'tree' && h(p.gx, p.gy) < 0.3 && !keep(p.gx, p.gy)) { if (map[p.gy]?.[p.gx] === 'tree') map[p.gy][p.gx] = 'grass'; continue; } props[n++] = p; } props.length = n; }
+  /* ---- 12/11 (Erling: "uma taverna/estalagem dentro de Karmika com o salão interno bem bonito, dois andares, 20 quartos, cozinha, salão animado e estábulo";
+     "uma guilda dentro de Karmika com muros melhores, uma taverna dentro, salões de guilda para profissões, bar animado, estalagem, soldados"):
+     os dois prédios da casa do servidor, na parte norte da vila, dentro da muralha. São iguais em todos os reinos; no reino de um parceiro levam o nome
+     e a bandeira da casa dele. A ESTALAGEM fica a nordeste (9 × 6, dois andares, porta para o sul) com o ESTÁBULO ao lado (a leste); o SALÃO DAS GUILDAS fica ao
+     sul do rio, num pátio murado com portão para o leste.
+     Nascem AQUI, no fim de tudo e sem sorteio: colocados no meio da geração, mudavam o sorteio do mundo inteiro (árvores, vilas e até os terrenos de guilda saíam do lugar). ---- */
+  { const kar = settlements.find((t) => t.name === 'Karmika');
+    if (kar) { const KX = Math.round(kar.x), KY = Math.round(kar.y), EX = KX + 6, EY = KY - 27, /* a porta da estalagem não fica de frente para o Apotecário */ GXh = KX - 26, GYh = KY + 12, /* 13/11 (Erling, foto numerada: "trocando guilda de lugar e casas de profissão de lugar"): o Salão das Guildas vai para o gramado grande do oeste (o número 1), entre a muralha e o rio; antes ficava em KX - 7, KY + 24 */ /* 12/11 (Erling escolheu): o Salão das Guildas fica ao sul do rio, logo abaixo da estrada das oficinas, onde não há nada alto na frente dele */ PX = GXh - 1, PY = GYh - 1, PW = 11, PH = 8;
+      const livre = (t: string | undefined) => t === 'grass' || t === 'tree' || t === 'plaza';
+      const limpa = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.gx + q.w > x0 && q.gx <= x1 && q.gy + q.h > y0 && q.gy <= y1 && (q.kind === 'tree' || q.kind === 'herb' || q.kind === 'rock' || q.kind === 'plant' || q.kind === 'bones')) props.splice(i, 1); }
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'tree') map[y][x] = 'grass'; };
+      const pave = (x0: number, y0: number, x1: number, y1: number) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (map[y]?.[x] === 'grass' || map[y]?.[x] === 'tree') map[y][x] = 'plaza'; };
+      const block = (p: Prop) => { props.push(p); for (let y = p.gy; y < p.gy + p.h; y++) for (let x = p.gx; x < p.gx + p.w; x++) map[y][x] = 'wall'; };
+      const torch = (gx: number, gy: number) => { props.push({ kind: 'torch', gx, gy, w: 1, h: 1, height: 1.9, wall: 0x3a2a1c, roof: 0xff8a2a }); };
+      const decor = (kind: PropKind, gx: number, gy: number, variant: number) => { props.push({ kind, gx, gy, w: 1, h: 1, height: 1, wall: 0x6a4528, roof: 0x8a3b2e, variant }); };
+      const qwall = (ax: number, ay: number, bx: number, by: number) => { const mx = (ax + bx) / 2, my = (ay + by) / 2, gx = Math.floor(mx), gy = Math.floor(my);
+        props.push({ kind: 'lowwall', gx, gy, w: 1, h: 1, height: 0.9, wall: 0, roof: 0, variant: 20, ry: Math.atan2(-(by - ay), bx - ax), ox: (mx - gx) * T, oz: (my - gy) * T, len: Math.hypot(bx - ax, by - ay) * T + 0.12, broken: 0 }); };
+      /* 13/11 (Erling riscou duas bancas e mandou mudar outras duas de lugar: "lojinha no meio da rua"). Feito aqui, no fim, para não mexer no sorteio do mundo:
+         saem a banca na frente da escada do sobrado e a da frente da taverna; a do Gunnar desce para o gramado; a do Corwin sai da estrada */
+      { const banca = (lx: number, ly: number) => props.findIndex((q) => q.kind === 'stall' && q.gx === lx + KX - 18 && q.gy === ly + KY - 21);
+        for (const [lx, ly] of [[9, 9], [28, 10]]) { const i = banca(lx, ly); if (i >= 0) props.splice(i, 1); }
+        for (const [lx, ly, nx, ny] of [[31, 8, 32, 12], [35, 23, 31, 24]]) { const i = banca(lx, ly); if (i >= 0) { props[i].gx = nx + KX - 18; props[i].gy = ny + KY - 21; } } }
+      /* 13/11 (Erling circulou dois gramados vazios: "são para colocar decoração, uma fonte, caixas... decore esses ambientes"). Também no fim e sem sorteio.
+         A: o gramado logo dentro do portão norte, a oeste da estrada, vira o CANTO DOS CARREGADORES (poço coberto, carroça de mão, caixotes, barris, feno, cocho).
+         B: o gramado do leste, abaixo da Casa de Tecnologia, vira o JARDIM DA FONTE (fonte calçada, bancos, lampiões, canteiros de flores, caixotes). */
+      { const vago = (x: number, y: number) => livre(map[y]?.[x]) && !props.some((q) => q.kind !== 'tree' && q.kind !== 'plant' && x >= q.gx && x < q.gx + q.w && y >= q.gy && y < q.gy + q.h);
+        const vp = (v: number, x: number, y: number, ry = 0) => { if (vago(x, y)) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v, ry }); };
+        const flor = (pl: Plant, x: number, y: number, v: number) => { if (vago(x, y)) props.push({ kind: 'plant', plant: pl, gx: x, gy: y, w: 1, h: 1, height: 0.6, wall: 0, roof: 0, variant: v }); };
+        const sem = (x0: number, y0: number, x1: number, y1: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.kind === 'tree' && q.gx >= x0 && q.gx <= x1 && q.gy >= y0 && q.gy <= y1) { props.splice(i, 1); if (map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; } } };
+        /* A: canto dos carregadores */
+        { const ax = KX - 3, ay = KY - 24; sem(ax - 3, ay - 3, ax + 3, ay + 3);
+          vp(2, ax, ay); vp(7, ax + 2, ay - 2, 0.6); vp(1, ax - 2, ay - 1); vp(1, ax - 2, ay, 1.2); vp(0, ax - 1, ay - 2); vp(0, ax - 2, ay - 2); vp(0, ax + 1, ay - 3);
+          vp(6, ax + 2, ay + 1); vp(6, ax + 1, ay + 2, 0.8); vp(8, ax - 1, ay + 2, 1.57); vp(3, ax - 3, ay + 1, 1.57); vp(5, ax + 3, ay - 1);
+          if (vago(ax + 3, ay + 2)) torch(ax + 3, ay + 2); if (vago(ax - 3, ay - 2)) torch(ax - 3, ay - 2);
+          flor('wildflowers', ax - 3, ay + 3, 0); flor('fern', ax + 3, ay - 3, 1); flor('wildflowers', ax, ay + 3, 2); }
+        /* B: jardim da fonte */
+        { const bx = KX + 27, by = KY + 3; sem(bx - 4, by - 4, bx + 4, by + 4);
+          let cabe = true; for (let y = by - 2; y <= by + 1; y++) for (let x = bx - 2; x <= bx + 1; x++) if (!vago(x, y)) cabe = false;
+          if (cabe) { pave(bx - 2, by - 2, bx + 1, by + 1); block({ kind: 'fountain', gx: bx - 1, gy: by - 1, w: 2, h: 2, height: 0.9, wall: 0x6f7480, roof: 0x6fc7ff }); }
+          else vp(2, bx, by);
+          if (vago(bx - 3, by)) decor('bench', bx - 3, by, 0); if (vago(bx, by + 2)) decor('bench', bx, by + 2, 0); if (vago(bx + 2, by - 1)) decor('bench', bx + 2, by - 1, 0);
+          for (const [x, y] of [[bx - 3, by - 3], [bx + 2, by + 2], [bx + 2, by - 3], [bx - 3, by + 2]]) if (vago(x, y)) torch(x, y);
+          vp(1, bx + 3, by + 1); vp(0, bx + 3, by); vp(1, bx - 1, by - 4, 0.9); vp(3, bx - 2, by + 3);
+          for (const [pl, x, y, v] of [['wildflowers', bx - 1, by - 3, 0], ['wildflowers', bx, by - 3, 1], ['rose', bx - 4, by - 1, 0], ['wildflowers', bx - 3, by + 1, 2], ['lavender', bx + 3, by - 2, 0], ['wildflowers', bx + 1, by + 3, 1], ['fern', bx - 4, by + 3, 0], ['wildflowers', bx + 3, by + 3, 2], ['lavender', bx - 4, by - 3, 1], ['wildflowers', bx + 1, by - 4, 0]] as [Plant, number, number, number][]) flor(pl, x, y, v); } }
+      /* 13/11 (a mesma foto): três casas de profissão mudam de lugar e formam uma fileira ao sul da estrada, onde ficava o Salão das Guildas:
+         o Curtume (2) na ponta oeste, o Apotecário (5) no meio (sai da frente da Estalagem), a Marcenaria (4) na ponta leste. A Forja (3) fica onde está.
+         Todas com a frente para o sul (a câmera olha de sudeste). Também no fim e sem sorteio. */
+      for (const [nome, nx, ny] of [['Curtume e Alfaiataria', KX - 12, KY + 23], ['Apotecário', KX - 2, KY + 24], ['Marcenaria', KX + 8, KY + 23]] as [string, number, number][]) {
+        const q = props.find((o) => o.kind === 'station' && o.label === nome && Math.hypot(o.gx - KX, o.gy - KY) < 50); if (!q) continue;
+        let cabe = true; for (let y = ny; y < ny + q.h; y++) for (let x = nx; x < nx + q.w; x++) if (!livre(map[y]?.[x])) cabe = false; if (!cabe) { console.warn('Karmika: ' + nome + ' não coube no lugar novo'); continue; }
+        limpa(nx - 1, ny - 1, nx + q.w, ny + q.h); q.gx = nx; q.gy = ny; q.ry = 0; delete (q as { wdir?: number }).wdir; /* longe do riacho, a marcenaria fica sem a roda d'água */ }
+      /* 13/11 (Erling, foto com seta): a pedra de runa do sudoeste de Karmika sai de trás da torre e do Curtume e vai para o gramado das flores, ao lado do portão oeste, à vista de quem passa */
+      { /* é a pedra que fica perto de (KX - 14, KY + 26), não a do poço da praça */ const rl = relics.find((r) => Math.hypot(r.x - (KX - 14), r.y - (KY + 26)) < 3), nx = KX - 22, ny = KY + 22;
+        if (rl && livre(map[ny]?.[nx]) && !props.some((q) => q.kind !== 'relic' && q.kind !== 'tree' && nx >= q.gx && nx < q.gx + q.w && ny >= q.gy && ny < q.gy + q.h)) {
+          const todas = props.filter((q) => q.kind === 'relic' && Math.hypot(q.gx - rl.x, q.gy - rl.y) < 2), rp = todas[0]; for (const o of todas.slice(1)) { if (map[o.gy]?.[o.gx] === 'wall') map[o.gy][o.gx] = 'grass'; props.splice(props.indexOf(o), 1); } /* havia duas pedras no mesmo lugar: fica uma */ limpa(nx, ny, nx, ny); if (rp) { if (map[rp.gy]?.[rp.gx] === 'wall') map[rp.gy][rp.gx] = 'grass'; rp.gx = nx; rp.gy = ny; map[ny][nx] = 'wall'; } rl.x = nx + (rl.x - Math.floor(rl.x)); rl.y = ny + (rl.y - Math.floor(rl.y)); } }
+      let ok = true; for (const [x0, y0, x1, y1] of [[EX, EY, EX + 8, EY + 5], [EX + 10, EY + 2, EX + 14, EY + 6], [PX, PY, PX + PW - 1, PY + PH]]) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!livre(map[y]?.[x])) ok = false;
+      if (!ok) console.warn('Karmika: a estalagem ou o Salão das Guildas não coube no lugar previsto');
+      else {
+        limpa(EX - 8, EY - 1, EX + 14, EY + 7); limpa(PX - 1, PY - 1, PX + PW + 7, PY + PH + 1);
+        block({ kind: 'house', gx: EX, gy: EY, w: 9, h: 6, height: 8.6, wall: 0xcdb48a, roof: 0x8a3b2e, variant: 40, shop: 'estalagem' });
+        /* 12/11 (Erling: "regra de não ficar nada na frente de edifícios importantes"): o estábulo estava a oeste, espremido atrás do Apotecário; passa para o leste da estalagem, com a frente livre */
+        block({ kind: 'house', gx: EX + 10, gy: EY + 3, w: 4, h: 3, height: 3.2, wall: 0x8a6a48, roof: 0x5d4a2a, variant: 0, shop: 'estabulo' });
+        pave(EX - 8, EY + 6, EX + 14, EY + 7); /* calçada da porta até a estrada do norte */
+        torch(EX + 3, EY + 6); torch(EX + 6, EY + 6); decor('bench', EX + 1, EY + 6, 0); decor('bench', EX + 8, EY + 6, 0);
+        for (const [v, x, y] of [[0, EX + 9, EY + 5], [1, EX + 9, EY + 4], [6, EX + 14, EY + 5], [6, EX + 14, EY + 4]] as [number, number, number][]) if (livre(map[y]?.[x])) props.push({ kind: 'vprop', gx: x, gy: y, w: 1, h: 1, height: 1, wall: 0, roof: 0, variant: v });
+        pois.push({ name: 'Estalagem de Karmika', x: EX + 4.5, y: EY + 6.5, biome: 'meadow' });
+        kar.npcs.push({ name: 'Estalajadeira Benta', role: 'Estalagem de Karmika', kind: 'nordic', x: EX + 7.3, y: EY + 6.8, radius: 0, fixed: true, tint: 0x8a4a3a, scale: 1.0, lines: ['Vinte quartos, cozinha quente e estábulo ao lado. Em Karmika ninguém dorme na rua.', 'O salão enche quando o sol cai. Entre, tem lugar perto do fogo.', 'Cavalo cansado fica com o moço do estábulo. Dono cansado fica comigo.'] });
+        kar.npcs.push({ name: 'Moço Tibério', role: 'Estábulo da Estalagem', kind: 'nordic', x: EX + 12, y: EY + 6.6, radius: 0, fixed: true, tint: 0x6a5a3a, scale: 0.95, lines: ['Água, feno e escova. Montaria bem tratada chega mais longe.', 'Pode deixar comigo. Eu conheço cavalo pelo passo.'] });
+        /* o Salão das Guildas: prédio de pedra 9 × 5 no fundo do pátio; pátio calçado de 11 × 8, murado, portão de 2 casas no muro leste */
+        pave(PX, PY, PX + PW - 1, PY + PH - 1);
+        block({ kind: 'house', gx: GXh, gy: GYh, w: 9, h: 5, height: 9.4, wall: 0x8a8276, roof: 0x4e5f7a, variant: 41, shop: 'salao_guildas' });
+        qwall(PX, PY, PX + PW, PY); qwall(PX, PY, PX, PY + PH); qwall(PX, PY + PH, PX + PW, PY + PH); qwall(PX + PW, PY, PX + PW, PY + 5); qwall(PX + PW, PY + 7, PX + PW, PY + PH);
+        torch(PX + PW - 1, PY + 4); torch(PX + PW - 1, PY + 7); decor('rack', PX + 1, PY + 6, 0); decor('rack', PX + 2, PY + 6, 1); decor('bench', PX + 5, PY + 7, 0); decor('bench', PX + 7, PY + 7, 0);
+        pave(PX + PW, PY + 4, PX + PW + 1, PY + 10); /* calçada do portão até a estrada do sul */
+        pois.push({ name: 'Salão das Guildas de Karmika', x: PX + PW + 0.5, y: PY + 6, biome: 'meadow' });
+        kar.npcs.push({ name: 'Guarda Olavo', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 4.6, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.05, lines: ['Salão das Guildas de Karmika. Mestres de ofício lá dentro, e um bar que não fecha.', 'Arma na bainha dentro do pátio. É a regra da casa.'] });
+        kar.npcs.push({ name: 'Guarda Mirela', role: 'Guarda do Salão das Guildas', kind: 'nordic', x: PX + PW + 0.6, y: PY + 7.4, radius: 0, fixed: true, tint: 0x5a6a8a, scale: 1.0, lines: ['Guilda nova procura os mestres aqui. Guilda velha vem beber e contar vantagem.', 'O estandarte no portão diz de quem é a casa.'] }); } } }
+  /* 16/11 NADA ESCONDIDO (regra principal do Erling: "nada pode ficar escondido onde não dá para ver"; casos apontados: "o farol de Corvoscuro
+     está escondido atrás da Casa do Conde: levar para a ponta da costa"). A câmera olha de sudeste, 30° acima do chão: uma coisa some quando há
+     algo alto entre ela e a câmera, na diagonal sudeste. Aqui, com o mundo pronto e sem sortear nada, cada farol e cada pedra de runa é conferido:
+     se uma construção alta (9 m ou mais) ou um morro tapa mais da metade dele, ele muda para o lugar bom mais perto que se vê inteiro.
+     Só mexe em quem estava tapado; os terrenos de guilda e todo o resto ficam onde estavam. */
+  { const TAN = Math.tan(30 * Math.PI / 180), hT = (x: number, y: number) => heightAt((x + 0.5) * T, (y + 0.5) * T), CH = (x: number, y: number) => y * 8192 + x;
+    const topo = new Map<number, number>(); for (const q of props) { const h = q.height ?? 0; if (h < 9 || q.kind === 'tree' || q.kind === 'relic') continue; for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) { const t = hT(x, y) + h; if (t > (topo.get(CH(x, y)) ?? -1e9)) topo.set(CH(x, y), t); } }
+    const tapado = (x: number, y: number, alt: number) => { const olho = hT(x, y) + alt * 0.6; for (let k = 1; k <= 70; k++) { const xx = x + k, yy = y + k, lim = olho + k * Math.SQRT2 * T * TAN; const o = topo.get(CH(xx, yy)); if (o !== undefined && o > lim + 1) return true; if (hT(xx, yy) > lim + 2) return true; } return false; };
+    const noLote = (x: number, y: number) => guildLots.some((g) => x >= g.x0 - 3 && x <= g.x0 + 13 && y >= g.y0 - 3 && y <= g.y0 + 13);
+    /* faróis: a mesma conta de antes (a ponta de terra com mais mar em volta, perto do cais), agora só entre os lugares que se veem */
+    for (const l of lights) { if (l.old || l.islet || !tapado(l.x, l.y, 22)) continue; const d = docks.find((q) => q.name === l.port); if (!d) continue; let best = -1e9, bx = -1, by = -1;
+      for (let y = d.y - 34; y <= d.y + 34; y++) for (let x = d.x - 34; x <= d.x + 34; x++) { if (!landAt(x, y) || map[y][x] === 'road' || hT(x, y) < WL + 0.9 || noLote(x, y)) continue; let wn = 0, n = 0; for (let yy = -4; yy <= 4; yy += 2) for (let xx = -4; xx <= 4; xx += 2) { n++; if (map[y + yy]?.[x + xx] === 'water') wn++; }
+        if (wn / n > 0.62 || wn === 0) continue; let perto = false; for (let yy = -2; yy <= 2 && !perto; yy++) for (let xx = -2; xx <= 2; xx++) if (map[y + yy]?.[x + xx] === 'wall' || map[y + yy]?.[x + xx] === 'tree') { perto = true; break; } if (perto) continue;
+        const sc = wn / n - Math.hypot(x - d.x, y - d.y) * 0.004; if (sc <= best || tapado(x, y, 22)) continue; best = sc; bx = x; by = y; }
+      if (bx >= 0) { const lp = lightPois.find((q) => q.name === l.name); l.x = bx; l.y = by; if (lp) { lp.x = bx; lp.y = by; } } }
+    /* 17/11 (Erling: "Floresta dos Goblins e Ermos dos Beduínos tem que fazer"). Dois lugares novos, postos aqui no fim, sem sortear nada (a conta
+       sai da casa do mapa), para o resto do mundo ficar exatamente como era:
+       - FLORESTA DOS GOBLINS, no vazio dos Charcos do Oeste (entre Mýrarvik, Vatnaholt e Skógar): mata fechada, cinco acampamentos em roda,
+         o chefe no meio e a boca da masmorra (Toca do Grão-Goblin, em masmorras.ts);
+       - ERMOS DOS BEDUÍNOS, na Costa do Vapor e da Graxa: areia, quatro acampamentos de tendas, escorpiões e a boca dos Salões do Xeique. */
+    { const hs = (x: number, y: number, sal: number) => { let h = (x * 374761393 + y * 668265263 + sal * 2147483647) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+      const cheio = new Set<number>(); for (const q of props) for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) cheio.add(CH(x, y));
+      const livre = (x: number, y: number) => map[y]?.[x] === 'grass' && !cheio.has(CH(x, y)) && !noLote(x, y) && hT(x, y) > WL + 0.5;
+      const poe = (q: Prop, parede = true) => { for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) { if (!livre(x, y)) return false; } props.push(q); for (let y = q.gy; y < q.gy + q.h; y++) for (let x = q.gx; x < q.gx + q.w; x++) { cheio.add(CH(x, y)); if (parede) map[y][x] = 'wall'; } return true; };
+      /** o melhor vazio de uma região: capim em volta, o mais longe possível de vila, lugar marcado, pedra de runa e terreno de guilda */
+      const vazio = (regiao: string, perto: string[]) => { const V = perto.map((n) => settlements.find((q) => q.name === n)).filter((q): q is Settlement => !!q); if (!V.length) return null;
+        const x0 = Math.min(...V.map((q) => q.x)) - 30, x1 = Math.max(...V.map((q) => q.x)) + 30, y0 = Math.min(...V.map((q) => q.y)) - 30, y1 = Math.max(...V.map((q) => q.y)) + 30; let best = -1, bx = -1, by = -1;
+        for (let y = Math.round(y0); y <= y1; y += 4) for (let x = Math.round(x0); x <= x1; x += 4) { if (map[y]?.[x] !== 'grass' || regionAt(x, y).name !== regiao) continue; let g = 0, n = 0; for (let dy = -16; dy <= 16; dy += 4) for (let dx = -16; dx <= 16; dx += 4) { n++; const t = map[y + dy]?.[x + dx]; if (t === 'grass' || t === 'tree') g++; } if (g / n < 0.82) continue;
+          let d = 1e9; for (const q of settlements) d = Math.min(d, Math.hypot(q.x - x, q.y - y) - q.radius); for (const q of pois) d = Math.min(d, Math.hypot(q.x - x, q.y - y)); for (const q of relics) d = Math.min(d, Math.hypot(q.x - x, q.y - y) + 10); for (const g2 of guildLots) d = Math.min(d, Math.hypot(g2.x0 + 5 - x, g2.y0 + 5 - y) - 10); for (const q of spawns) if (q.keep) d = Math.min(d, Math.hypot(q.x - x, q.y - y));
+          if (d > best) { best = d; bx = x; by = y; } }
+        return best >= 30 ? { x: bx, y: by } : null; };
+      const limpa = (cx: number, cy: number, r: number) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if ((q.kind === 'tree' || q.kind === 'rock' || q.kind === 'herb' || q.kind === 'bones') && Math.hypot(q.gx - cx, q.gy - cy) <= r) { if (map[q.gy]?.[q.gx] === 'tree') map[q.gy][q.gx] = 'grass'; cheio.delete(CH(q.gx, q.gy)); props.splice(i, 1); } } };
+      const acampa = (cx: number, cy: number, pano: number, tocha: number, sal: number) => { limpa(cx, cy, 7); poe({ kind: 'campfire', gx: cx, gy: cy, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a });
+        for (const [ox, oy] of [[-5, -3], [3, -5], [4, 3]]) poe({ kind: 'tent', gx: cx + ox, gy: cy + oy, w: 2, h: 2, height: 2.4, wall: pano, roof: 0x2a1c12 });
+        for (const [ox, oy] of [[-3, 4], [6, -1]]) poe({ kind: 'torch', gx: cx + ox, gy: cy + oy, w: 1, h: 1, height: 1.8, wall: 0x3a2a1c, roof: tocha });
+        for (let k = 0; k < 5; k++) { const a = hs(cx + k, cy, sal) * 6.283, d = 2 + hs(cx, cy + k, sal + 1) * 5; poe({ kind: 'bones', gx: Math.round(cx + Math.cos(a) * d), gy: Math.round(cy + Math.sin(a) * d), w: 1, h: 1, height: 0.4, wall: 0xd8d0b8, roof: 0, variant: k % 3 }, false); } };
+      /* ---- Floresta dos Goblins ---- */
+      { const c = vazio('Charcos do Oeste', ['Mýrarvik', 'Vatnaholt', 'Skógar']);
+        if (c) { pois.push({ name: 'Floresta dos Goblins', x: c.x, y: c.y, biome: biome[c.y]?.[c.x] ?? 'swamp' }); limpa(c.x, c.y - 8, 4); /* a boca da Toca do Grão-Goblin */
+          const centros: [number, number][] = [[c.x, c.y], [c.x, c.y - 8]];
+          for (let k = 0; k < 5; k++) { const a = k / 5 * 6.283 + 0.6, d = 17 + hs(c.x, c.y, k + 30) * 6, x = Math.round(c.x + Math.cos(a) * d), y = Math.round(c.y + Math.sin(a) * d); if (map[y]?.[x] !== 'grass' && map[y]?.[x] !== 'tree') continue; acampa(x, y, 0x5a6a2a, 0x9aff5a, 40 + k); centros.push([x, y]);
+            spawns.push({ type: 'goblin', x, y, r: 6, n: 5, keep: true, fixLvl: 11 }, { type: 'goblin_shaman', x, y, r: 5, n: 2, keep: true, fixLvl: 12 }); }
+          limpa(c.x, c.y, 5); poe({ kind: 'campfire', gx: c.x, gy: c.y, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0x9aff5a }); for (const [ox, oy] of [[-3, -2], [3, -2], [-3, 3], [3, 3]]) poe({ kind: 'torch', gx: c.x + ox, gy: c.y + oy, w: 1, h: 1, height: 1.8, wall: 0x3a2a1c, roof: 0x9aff5a });
+          spawns.push({ type: 'goblin_chief', x: c.x, y: c.y + 1, r: 1, n: 1, keep: true, fixLvl: 14 }, { type: 'goblin', x: c.x, y: c.y, r: 5, n: 4, keep: true, fixLvl: 12 });
+          /* a mata fechada: uma árvore a cada seis casas livres, menos nas clareiras dos acampamentos */
+          for (let y = c.y - 34; y <= c.y + 34; y++) for (let x = c.x - 34; x <= c.x + 34; x++) { const d = Math.hypot(x - c.x, y - c.y); if (d > 34 || hs(x, y, 51) > 0.17 * smoothstep(34, 22, d) || !livre(x, y)) continue; if (centros.some(([ax, ay]) => Math.hypot(ax - x, ay - y) < 8)) continue; let rua = false; for (let dy = -1; dy <= 1 && !rua; dy++) for (let dx = -1; dx <= 1; dx++) if (map[y + dy]?.[x + dx] === 'road') { rua = true; break; } if (rua) continue;
+            props.push({ kind: 'tree', gx: x, gy: y, w: 1, h: 1, height: 5 + hs(x, y, 52) * 4, wall: 0x2a1a10, roof: 0x2f4a26, variant: hs(x, y, 53) < 0.3 ? 1 : 0 }); map[y][x] = 'tree'; cheio.add(CH(x, y)); } } }
+      /* ---- Ermos dos Beduínos ---- */
+      { const c = vazio('Costa do Vapor e da Graxa', ['Vaporeira', 'Ferrugem', 'Porto Caldeira']);
+        if (c) { ermosC = { x: c.x, y: c.y }; pois.push({ name: 'Ermos dos Beduínos', x: c.x, y: c.y, biome: 'coast' }); limpa(c.x, c.y, 30); /* deserto: sem mata */
+          for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283 + 0.4, d = 15 + hs(c.x, c.y, k + 60) * 5, x = Math.round(c.x + Math.cos(a) * d), y = Math.round(c.y + Math.sin(a) * d); if (map[y]?.[x] !== 'grass') continue; acampa(x, y, k % 2 ? 0x8a2a2a : 0xb08a50, 0xffb04a, 70 + k);
+            spawns.push({ type: 'beduino', x, y, r: 6, n: 4, keep: true, fixLvl: 16 }, { type: 'beduino_arq', x, y, r: 6, n: 2, keep: true, fixLvl: 16 }); }
+          poe({ kind: 'campfire', gx: c.x, gy: c.y + 3, w: 1, h: 1, height: 0.6, wall: 0x4a4a4a, roof: 0xff8a2a }); spawns.push({ type: 'beduino', x: c.x, y: c.y + 3, r: 5, n: 4, keep: true, fixLvl: 18 });
+          for (let k = 0; k < 4; k++) { const a = k / 4 * 6.283 + 1.2, x = Math.round(c.x + Math.cos(a) * 27), y = Math.round(c.y + Math.sin(a) * 27); spawns.push({ type: 'scorpion', x, y, r: 8, n: 4, keep: true, fixLvl: 15 }); } } }
+      /* os pontos novos nasceram depois da conta de nível por região: o nível fixo vale como nível do ponto */ for (const sp of spawns) if (sp.lvl === undefined && sp.fixLvl) sp.lvl = sp.fixLvl; }
+    /* 17/11 (Erling: "ajustar lojas ainda tapadas, claro, muda de lugar"): a loja que ficou atrás de um monumento ou prédio alto troca de casa
+       com a casa comum mais perto, do mesmo tamanho e da mesma vila, que se vê da câmera. Nenhuma parede muda: só a loja muda de endereço. */
+    for (const q of props) { if (q.kind !== 'house' || !q.shop || !tapado(q.gx + (q.w >> 1), q.gy + q.h, 3)) continue; let melhor: typeof q | null = null, bd = 44;
+      for (const c of props) { if (c.kind !== 'house' || c.shop || c.w !== q.w || c.h !== q.h || (c.style ?? 0) !== (q.style ?? 0) || (c.variant ?? 0) >= 4) continue; const dd = Math.hypot(c.gx - q.gx, c.gy - q.gy); if (dd >= bd || tapado(c.gx + (c.w >> 1), c.gy + c.h, 3)) continue; bd = dd; melhor = c; }
+      if (melhor) { melhor.shop = q.shop; delete q.shop; } }
+    /* 16/11: o marco de pedra no centro de cada terreno de guilda (sistemas/terrenos-guilda.ts) ocupa a casa do meio */
+    for (const g of guildLots) if (map[g.y0 + 5]?.[g.x0 + 5] === 'grass') map[g.y0 + 5][g.x0 + 5] = 'wall';
+    /* pedras de runa: vão para o capim livre mais perto de onde estavam, à vista */
+    for (const r of relics) { if (!tapado(r.x, r.y, 2.6)) continue; const pr = props.find((q) => q.kind === 'relic' && q.gx === r.x && q.gy === r.y); if (!pr) continue; let achou = false;
+      for (let R = 2; R <= 16 && !achou; R++) for (let dy = -R; dy <= R && !achou; dy++) for (let dx = -R; dx <= R && !achou; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== R) continue; const x = r.x + dx, y = r.y + dy; if (map[y]?.[x] !== 'grass' || noLote(x, y) || hT(x, y) < WL + 0.6) continue;
+        let livre = true; for (let yy = -1; yy <= 1 && livre; yy++) for (let xx = -1; xx <= 1; xx++) { const t = map[y + yy]?.[x + xx]; if (t !== 'grass' && t !== 'road' && t !== 'plaza') { livre = false; break; } } if (!livre || tapado(x, y, 2.6)) continue;
+        map[r.y][r.x] = 'grass'; map[y][x] = 'wall'; pr.gx = x; pr.gy = y; r.x = x; r.y = y; achou = true; } } }
   return { ...w, docks, lights, map, biome, props, spawns, relics, spawn: sxy(w.spawn), quartel: { ...sxy(w.quartel), dummies: w.quartel.dummies.map(sxy) },
-    dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
-    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: w.signs.map(sxy),
+    dgSpots: Object.fromEntries(Object.entries(w.dgSpots).map(([k, v]) => [k, sxy(v)])), guildLots, craftHall: w.craftHall ? sxy(w.craftHall) : undefined,
+    pois: [...pois, ...ISLES.map((I) => ({ name: I.name, x: I.blobs[0].x, y: I.blobs[0].y, biome: I.biome })), ...lightPois], bridges: outBridges, signs: [...w.signs.map(sxy), ...lotSigns],
     settlements, ramparts: w.ramparts.map(shRampart),
     bandits: w.bandits.map((b) => ({ ...sxy(b), tower: b.tower ? sxy(b.tower) : null })), roadPaths: w.roadPaths.map((r) => r.map(sxy)),
     starts: { human: sxy(w.starts.human), dwarf: sxy(w.starts.dwarf), elf: sxy(w.starts.elf) } };

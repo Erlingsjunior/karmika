@@ -9,6 +9,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { Hero3D } from './characters';
 import { fine } from './dual3d';
+import { kkAnimator } from './libs/anim-kk';
 
 type Limb = { sh?: THREE.Object3D; el?: THREE.Object3D; wr?: THREE.Object3D; hip?: THREE.Object3D; knee?: THREE.Object3D; ankle?: THREE.Object3D };
 interface Rig { gun?(): THREE.Object3D | null; helmHolder?(): THREE.Object3D; bodyHolder?(): THREE.Object3D; procHeadR?: number; procShoulderW?: number; swordHolder(): THREE.Object3D | null; sword(): THREE.Object3D | null; shield(): THREE.Object3D | null; hips: THREE.Object3D; spine: THREE.Object3D; chest: THREE.Object3D; neck: THREE.Object3D; head: THREE.Object3D; armL: Limb; armR: Limb; legL: Limb; legR: Limb; keepRoots(): THREE.Object3D[] }
@@ -64,6 +65,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   const rig = (hero as unknown as { rig?: Rig }).rig; if (!rig) return null;
   let src: THREE.Group; try { src = await load(def); } catch (e) { console.warn('modelo não carregou', e); return null; }
   const model = cloneSkinned(src) as THREE.Group;
+  const kk = kkAnimator(model, src); const kkOn = !!kk; /* 10/11 (teste_libs): animações KayKit por cima da pose procedural */
   const root = hero.root;
   root.updateMatrixWorld(true);
   const invRootQ = root.getWorldQuaternion(new THREE.Quaternion()).invert();
@@ -108,10 +110,12 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
   // esconde a malha procedural, menos o que continua dela (arma, escudo, elmo, sombra, drone)
   /* 09/11 (Erling: "tire qualquer roupa ou armadura dos esqueletos"): no NPC, a capa, o elmo e a armadura procedurais (backAnchor, helmHolder, bodyHolder) somem
      de vez — o modelo de arte já vem vestido. Fica só arma/escudo/sombra/drone (e o que for arte, userData.keep). */
-  const keep = new Set(rig.keepRoots().filter((_o: THREE.Object3D, i: number) => !(def.npc && (i === 4 || i === 7 || i === 8))));
+  /* 10/11: a lista do que fica é lida de novo a cada vez — trocar de arma cria suportes novos (e o machado em combate muda para o weaponRig) */
+  let keep = new Set<THREE.Object3D>(); const keepNow = () => { keep = new Set(rig.keepRoots().filter((_o: THREE.Object3D, i: number) => !(def.npc && (i === 4 || i === 7 || i === 8)))); };
+  keepNow();
   const kept = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p; p = p.parent) { if (keep.has(p)) return true; if (p === root) return false; } return false; };
   const modelIds = new Set<number>(); model.traverse((o) => modelIds.add(o.id));
-  const hideProc = () => { root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
+  const hideProc = () => { keepNow(); root.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || modelIds.has(o.id)) return; if (!kept(m) && m.visible && (!m.userData.keep || m.userData.hair)) m.visible = false; /* armas de arte (userData.keep) ficam; só a trança assada some */ /* 09/11: inclui a trança 'assada' do NPC (userData.keep), que nascia depois e ficava por cima do modelo (as manchas vermelhas) */ }); };
   hideProc(); root.userData.hideProc = hideProc; /* 09/11: o retrato do NPC chama isto antes de fotografar (a Juíza Hulda saía com a trança assada por cima do rosto) */
   fine(model);
   // dedos fechados: punho na mão da arma e pegada na alça do escudo (curvatura constante sobre o repouso)
@@ -310,7 +314,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         /* 08/11 (Erling, desenho e referências do anão do WoW): em guarda o martelo atravessa a frente do corpo na diagonal, a cabeça alta do lado
            ESQUERDO. A mão direita pega embaixo, perto do fim do cabo, por cima, com o cotovelo aberto para fora; a esquerda pega mais em cima,
            perto da cabeça, por fora, com o cotovelo para baixo e o antebraço subindo */
-        const guardOn = hero.combat && !hero.acting && !hero.guard; gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
+        const guardOn = !kkOn && hero.combat && !hero.acting && !hero.guard; /* 10/11 (teste_libs): com as animações KayKit, a guarda é a do Melee_2H_Idle (as mãos do modelo mandam) */ gK2 += ((guardOn ? 1 : 0) - gK2) * 0.15;
         const rq0 = root.getWorldQuaternion(new THREE.Quaternion()), fw0 = new THREE.Vector3(0, 0, 1).applyQuaternion(rq0), rt0 = new THREE.Vector3(1, 0, 0).applyQuaternion(rq0), up0 = new THREE.Vector3(0, 1, 0);
         const sc0 = root.getWorldScale(new THREE.Vector3()).x, base0 = root.getWorldPosition(new THREE.Vector3());
         const GD = (window as unknown as { __gd?: number[] }).__gd ?? [0.85, 0.5, 0.22]; const gDir = rt0.clone().multiplyScalar(GD[0]).addScaledVector(up0, GD[1]).addScaledVector(fw0, GD[2]).normalize();
@@ -336,7 +340,7 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
         const restDir = new THREE.Vector3(0, -cosT, 0).addScaledVector(right, sinT * 0.8).addScaledVector(fwd, sinT * 0.6).normalize();
         /* em combate (sem golpe): diagonal pelo corpo, cabeça para cima e para fora (referências do Erling) */
         const cmbDir = gDir.clone();
-        const cK = hero.acting ? 0 : Math.max(0, 1 - restK); cmbK += (cK - cmbK) * 0.15;
+        const cK = hero.acting || kkOn ? 0 : Math.max(0, 1 - restK); /* KayKit: o cabo atravessa o punho, como no golpe */ cmbK += (cK - cmbK) * 0.15;
         const handle = a.clone().negate().lerp(cmbDir, cmbK).lerp(restDir, restK).normalize(); /* +Y local = cabeça do martelo */
         if (gK2 > 0.5) handle.copy(gL).sub(grip).normalize(); /* 08/11: na guarda o cabo é a reta da mão direita à esquerda */
         if (gK2 <= 0.5) { /* 02/11 (Erling: "marreta não atravessa o corpo"): o cabo e a cabeça nunca entram no corpo — o tronco é um cilindro vertical no eixo
@@ -585,12 +589,13 @@ export async function attachSkin(hero: Hero3D, def: SkinDef): Promise<{ tick(): 
     }
     // giro do antebraço (pronação/supinação): o procedural não tem esse grau; sem ele as palmas ficam viradas para cima/fora
     for (const [b, q] of roll) { b.quaternion.multiply(q); b.updateMatrixWorld(true); }
+    kk?.apply(hero);
     /* 02/11 (Erling, referências do anão): arma de duas mãos — as duas mãos do modelo vão para onde estão as mãos do esqueleto procedural
        (que já segura o cabo por IK, com as poses: parado, combate, golpes). IK de dois ossos em cada braço do modelo, cotovelo pelo lado do
        cotovelo do procedural; sem isto os braços copiavam só as rotações e, com outras proporções, cruzavam o corpo longe do martelo. */
     /* 02/11 (Erling: "anões com essa posição ridícula de braços… braços esticados normal"): só segura o cabo quando a arma está à mostra e
        na mão (combate, golpe, guarda); arma escondida (tela de criação), desarmado ou guardada nas costas = braços soltos como o humano */
-    { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
+    { const th2 = (R as unknown as { twoHand?: () => THREE.Object3D | null }).twoHand?.(); if (!kkOn && th2 && th2.visible && th2.parent && (hero.combat || hero.acting || hero.guard)) { /* 10/11: com KayKit os braços são da animação (antes o IK puxava de volta para a pose antiga) */ armIK('Right', R.armR); armIK('Left', R.armL); gripK.Left = gripK.Right = 1; } }
     holdGear(); deClipAll(); placeCups(); placeFitted();
   }
   return { tick, model };

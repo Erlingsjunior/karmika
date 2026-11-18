@@ -28,6 +28,7 @@ import { buildStation, buildWorkshop } from './stations3d';
 import { buildLibrary } from './library3d';
 import { buildGothic } from './gothic3d';
 import { buildCursed, CURSED_KINDS } from './cursed3d';
+import { buildAranha, ARANHA_KINDS } from './aranhas3d';
 import { windU } from './terrain3d';
 import { ArtBatch, lodEpoch, artGeo, artMesh, artMarker, collectMarkers, realizeMarkers, TREE_ART, PLANT_ART, ROCK_ART, VPROP_ART } from './arte3d';
 import { buildChunkTerrainG, CS, CSM, type ChunkTerrain } from './chunks3d';
@@ -53,6 +54,19 @@ export interface WorldObjs {
   bridgeMeshes: THREE.Group;
 }
 
+/* 11/11 noite (Erling: "o que é esse quadrado… ridículo"): a lona das barracas era um plano liso de cor chapada. Agora é pano: trama, costuras entre as
+   faixas de lona, remendos, manchas de chuva e barra escura; e cada água da barraca tem barriga (o pano cede entre a cumeeira e o chão). */
+let lonaT: THREE.Texture | null = null;
+function lonaTex(): THREE.Texture {
+  if (lonaT) return lonaT; const S = 128, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d')!; let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  g.fillStyle = '#d8d2c6'; g.fillRect(0, 0, S, S);
+  for (let y = 0; y < S; y += 2) for (let x = 0; x < S; x += 2) { const v = 196 + Math.floor(rnd() * 44) - ((x >> 1) + (y >> 1)) % 2 * 10; g.fillStyle = `rgb(${v},${v - 3},${v - 9})`; g.fillRect(x, y, 2, 2); }
+  for (let i = 0; i < 9; i++) { const x = rnd() * S, y = rnd() * S, r = 10 + rnd() * 22, gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, 'rgba(70,60,45,0.20)'); gr.addColorStop(1, 'rgba(70,60,45,0)'); g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2); }
+  for (let x = 0; x < S; x += 32) { g.fillStyle = 'rgba(40,30,20,0.42)'; g.fillRect(x, 0, 2, S); g.fillStyle = 'rgba(255,250,235,0.30)'; g.fillRect(x + 2, 0, 1, S); for (let y = 3; y < S; y += 7) { g.fillStyle = 'rgba(30,22,14,0.55)'; g.fillRect(x - 2, y, 6, 1); } }
+  for (let i = 0; i < 3; i++) { const x = 6 + rnd() * (S - 30), y = 8 + rnd() * (S - 30), w = 12 + rnd() * 9, h = 10 + rnd() * 8; g.fillStyle = `rgba(${150 + rnd() * 40},${140 + rnd() * 30},${118 + rnd() * 30},0.9)`; g.fillRect(x, y, w, h); g.strokeStyle = 'rgba(35,25,15,0.7)'; g.setLineDash([2, 2]); g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1); g.setLineDash([]); }
+  const hm = g.createLinearGradient(0, S - 26, 0, S); hm.addColorStop(0, 'rgba(30,22,14,0)'); hm.addColorStop(1, 'rgba(30,22,14,0.55)'); g.fillStyle = hm; g.fillRect(0, S - 26, S, 26);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; return (lonaT = t);
+}
 function noiseTex(): THREE.Texture {
   const c = document.createElement('canvas');
   c.width = c.height = 16;
@@ -90,6 +104,15 @@ function spinB(b: Built, ry: number, cxL: number, czL: number): Built {
 const STEP_KINDS = new Set(['temple', 'church', 'castle', 'academy', 'monument', 'gothic', 'gatehouse', 'landmark', 'house', 'shopfront', 'mausoleum', 'tower', 'altar', 'station']);
 const sKey = (ix: number, iz: number) => (iz + 32768) * 65536 + (ix + 32768);
 /** altura do degrau/plataforma de prédio neste ponto (m), ou null */
+export interface HouseWall { x0: number; x1: number; z0: number; z1: number }
+/** o corpo sólido de cada casa já montada (metros, mundo): paredes, porta, pilares. Casa ainda não montada não está aqui (e barra inteira) */
+export const houseWalls = new Map<Prop, HouseWall[]>();
+let houseAt: Map<number, Prop> | null = null;
+/** o ponto (x, y em casas do mapa) está no piso de pedra de uma casa já montada, fora do corpo dela? (tx, ty = a casa do mapa que se está testando) */
+export function houseFloorAt(props: Prop[], tx: number, ty: number, x: number, y: number): boolean {
+  if (!houseAt) { houseAt = new Map(); for (const p of props) if (p.kind === 'house') for (let j = p.gy; j < p.gy + p.h; j++) for (let i = p.gx; i < p.gx + p.w; i++) houseAt.set(j * 4096 + i, p); }
+  const hp = houseAt.get(ty * 4096 + tx); if (!hp) return false; const W = houseWalls.get(hp); if (!W) return false;
+  const xm = x * T, zm = y * T; if (stepAt(xm, zm) === null) return false; const pad = 0.24; for (const b of W) if (xm > b.x0 - pad && xm < b.x1 + pad && zm > b.z0 - pad && zm < b.z1 + pad) return false; return true; }
 export function stepAt(xm: number, zm: number): number | null { const v = stepMap.get(sKey(Math.floor(xm / STEP_RES), Math.floor(zm / STEP_RES))); return v === undefined ? null : v; }
 function registerSteps(g: THREE.Object3D, p: Prop) {
   if (stepDone.has(p) || !STEP_KINDS.has(p.kind)) return; stepDone.add(p);
@@ -172,7 +195,14 @@ export function buildWorld(world: World): WorldObjs {
         /* 09/11 (Erling: "textura de chão de casa tremendo"): base, tampa e piso da casa não dividem mais o mesmo plano — a base para 9 cm abaixo, a tampa 1 cm abaixo do piso */ const base = new THREE.Mesh(texBox(bw + 0.6, PH + 0.81, bd + 0.6, 2), pm); base.position.set(Wm / 2, (PH - 0.09 - 0.9) / 2, Dm / 2); base.castShadow = base.receiveShadow = true; g.add(base);
         const top = new THREE.Mesh(texBox(bw + 0.68, 0.09, bd + 0.68, 2), cap); top.position.set(Wm / 2, PH - 0.055, Dm / 2); top.receiveShadow = true; g.add(top);
         if (dr.y < 0.2) { const st = new THREE.Mesh(texBox(dr.w + 0.7, PH / 2 + 0.5, 0.42, 2), pm); st.position.set(dr.x, (PH / 2 - 0.5) / 2, Dm / 2 + bd / 2 + 0.3 + 0.21); st.castShadow = st.receiveShadow = true; g.add(st); } }
-      hs.group.position.y += PH; g.add(hs.group);
+      hs.group.position.y += PH;
+      /* 11/11 (Erling: "o personagem ainda não consegue passar um obstáculo e subir na casa"): a casa barrava pelo QUADRADO inteiro da pegada, até o
+         terraço sem parede. Aqui guardamos o que na casa é corpo de verdade (parede, porta, pilar, barril: toda peça com mais de 55 cm de altura que
+         nasce perto do piso); a colisão (sistemas/colisao.ts) passa a barrar só nisso, e o resto do piso de pedra vira chão de andar. */
+      { hs.group.updateMatrixWorld(true); const bx = new THREE.Box3(), W: HouseWall[] = [];
+        hs.group.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh || !m.geometry) return; bx.setFromObject(m); if (bx.isEmpty()) return; if (bx.max.y - bx.min.y < 0.55 || bx.min.y > PH + 0.9) return; W.push({ x0: p.gx * T + bx.min.x, x1: p.gx * T + bx.max.x, z0: p.gy * T + bx.min.z, z1: p.gy * T + bx.max.z }); });
+        houseWalls.set(p, W); }
+      g.add(hs.group);
       for (const ch of hs.chimneys) L.smokers.push(new THREE.Vector3(p.gx * T + ch.x, wy + PH + ch.y, p.gy * T + ch.z));
       L.glows.push({ light: nullLight, base: 14, seed: r() * 50, warm: true, pos: new THREE.Vector3(p.gx * T + hs.lantern.x, wy + PH + hs.lantern.y, p.gy * T + hs.lantern.z), color: 0xffbb66 } as WorldObjs['glowLights'][number]);
     } else if (p.kind === 'monument' || p.kind === 'quay' || p.kind === 'landmark' || p.kind === 'palisade' || p.kind === 'totem' || p.kind === 'rwall' || p.kind === 'rtower' || p.kind === 'gatehouse' || p.kind === 'wstair' || p.kind === 'castle' || p.kind === 'vgate' || p.kind === 'lowwall' || p.kind === 'dock' || p.kind === 'boat' || p.kind === 'chimney' || p.kind === 'crane' || p.kind === 'portico' || (p.kind === 'temple' && (p.variant ?? 0) >= 10)) {
@@ -616,12 +646,14 @@ export function buildWorld(world: World): WorldObjs {
       for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.25, 0.35), std(0x625f58)); s.position.set(r() * Wm, 0.12, Dm / 2 + (r() - 0.5) * 2); s.rotation.y = r() * 3; g.add(s); }
     } else if (CURSED_KINDS.has(p.kind)) {
       buildCursed(p, g, Wm, Dm, r);
+    } else if (ARANHA_KINDS.has(p.kind)) { /* 12/11: Floresta das Aranhas (árvores com teia, teias grandes, casulos) */
+      buildAranha(p, g, Wm, Dm, r);
     } else if (p.kind === 'tent') { // barraca de lona de verdade: duas águas sobre a cumeeira, mastros, portas de pano abertas, cordas esticadas até estacas no chão
       const t = new THREE.Group(); t.position.set(Wm / 2, 0, Dm / 2); t.rotation.y = (r() - 0.5) * 1.2 + (r() < 0.5 ? 0 : Math.PI / 2); g.add(t);
       const L2 = 2.9 + r() * 0.5, W2 = 1.3 + r() * 0.15, H2 = 1.75 + r() * 0.25, side = Math.hypot(W2, H2), ang = Math.atan2(W2, H2);
-      const canvas = std(p.wall, { map: tex, side: THREE.DoubleSide }), hem = std(0x3a2a1a), wood = std(0x5a3e22), rope = std(0xc8b48a), dark = std(0x120c08, { side: THREE.DoubleSide });
+      const canvas = std(p.wall, { map: lonaTex(), side: THREE.DoubleSide }), hem = std(0x3a2a1a), wood = std(0x5a3e22), rope = std(0xc8b48a), dark = std(0x120c08, { side: THREE.DoubleSide });
       for (const sx of [-1, 1]) { // as duas águas da lona
-        const pg = new THREE.PlaneGeometry(side, L2, 1, 1); L.own.push(pg); const pl = new THREE.Mesh(pg, canvas); pl.rotation.set(-Math.PI / 2, 0, 0); const hold = new THREE.Group(); hold.add(pl); pl.position.x = sx * side / 2;
+        const pg = new THREE.PlaneGeometry(side, L2, 5, 6); { const ps = pg.attributes.position; for (let i = 0; i < ps.count; i++) { const u = (ps.getX(i) / side + 0.5), v = (ps.getY(i) / L2 + 0.5); ps.setZ(i, -0.11 * Math.sin(Math.PI * u) * (0.55 + 0.45 * Math.sin(Math.PI * v))); } pg.computeVertexNormals(); } L.own.push(pg); const pl = new THREE.Mesh(pg, canvas); pl.rotation.set(-Math.PI / 2, 0, 0); const hold = new THREE.Group(); hold.add(pl); pl.position.x = sx * side / 2;
         hold.position.y = H2; hold.rotation.z = -sx * (Math.PI / 2 - ang); pl.castShadow = pl.receiveShadow = true; t.add(hold);
         const h = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.08, L2 + 0.02), hem); h.position.set(sx * W2, 0.04, 0); t.add(h); // barra da lona no chão
       }
@@ -692,7 +724,7 @@ const NOCUT_KINDS = new Set(['mailbox', 'fountain', 'chest', 'vault', 'relic', '
 /* 07/11 FPS: nos postos de ofício o 'sem corte' não impede mais a fusão (eram ~100 desenhos por posto); a fusão faz um material sem corte para eles */
 const NOCUT_MERGE = new Set(['station', 'noticeboard', 'shopfront']);
 function noCut(g: THREE.Object3D, merge = false) { g.traverse((o) => { const m = o as THREE.Mesh; if (!m.isMesh) return; if (merge) o.userData.nocut = true; else o.userData.keep = true; const fix = (mt: THREE.Material) => { if (!mt.onBeforeCompile || (mt as THREE.Material & { isMeshBasicMaterial?: boolean }).isMeshBasicMaterial) return mt; const c = mt.clone(); c.userData.noCut = true; return c; }; m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material); }); }
-  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop']);
+  const STATIC_KINDS = new Set(['library', 'lowwall', 'dock', 'chimney', 'crane', 'portico', 'monument', 'quay', 'landmark', 'palisade', 'totem', 'rwall', 'rtower', 'gatehouse', 'wstair', 'castle', 'station', 'vault', 'shopfront', 'herb', 'angel', 'obelisk', 'saint', 'mausoleum', 'gfence', 'gpillar', 'ggate', 'deadtree', 'corpse', 'deadcrop', 'deadwell', 'altar', 'tar', 'cwall', 'tower', 'ifence', 'coffin', 'house', 'temple', 'church', 'ruin', 'rock', 'grave', 'bones', 'bench', 'noticeboard', 'mailbox', 'tent', 'stall', 'torch', 'campfire', 'relic', 'bfloor', 'bwall', 'bfence', 'broof', 'bdoor', 'rack', 'plant', 'vprop', 'webtree', 'webnet', 'cocoon', 'webmat']);
   const loaded = new Map<number, Loaded>();
   const propG = new Map<Prop, { g: THREE.Group; L: Loaded }>();
   const dynL: Loaded = { terrain: null as unknown as ChunkTerrain, group: new THREE.Group(), torches: [], glows: [], trees: [], smokers: [], own: [] }; group.add(dynL.group);

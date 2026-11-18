@@ -43,8 +43,11 @@ const kitSkills = () => (KITS[kitRace()] ?? []).map((d) => ({ id: d.id as string
 const passKit = (): string => { const o = K.profile?.origin; return o === 'elf' || o === 'dwarf' ? o : 'human'; };
 /* O MONTE ÚNICO (04/11): 3 pontos por nível de classe (somando as classes da vida) + 3 do começo (as três básicas); gastos em habilidades,
    passivas ou talentos — o que sobra aparece nas três abas */
-tree.setTotal(() => 3 + 3 * clsLvl());
-tree.setExtraSpent(() => passSpent([passKit()]) + talents.spent());
+/* 11/11 (Erling: "vamos dar menos pontos"): 2 por nível de classe (eram 3). Com as árvores 45% maiores, dá para fechar um braço e boa parte de outro; os três, nunca */
+tree.setTotal(() => 3 + 2 * clsLvl());
+/* 11/11: outras contas que gastam do mesmo monte (as magias de grupo) entram aqui */
+const moreSpent: (() => number)[] = [];
+tree.setExtraSpent(() => passSpent([passKit()]) + talents.spent() + moreSpent.reduce((a, f) => a + f(), 0));
 loadComp(compKit()); loadComp(passKit()); onCompLoad(() => { K.game.st.recalc?.(); try { applyKitAll(); } catch { /* ainda montando */ } }); /* 05/11: com o compêndio carregado, a barra ganha os selos das passivas */
 /* os selos das passivas nas magias (árvore e barra): o desenho de cada passiva acesa e a soma do que elas dão */
 setSeloProvider((id) => { const C = compOf(passKit()); if (!C) return { selos: [], soma: '' }; const sk = kitSkills(); const selos = C.spellPassives.filter((p) => passRank(passKit(), p.n) > 0 && activeIdOf(C, sk, p.target) === id).map((p) => ({ ico: icoOf(p.name)[0], name: p.name, rank: passRank(passKit(), p.n), max: p.lv.length || 3 }));
@@ -54,7 +57,10 @@ K.game.setSkillScale((id) => { const b = tree.scale(id), m = passMods(passKit(),
 /* árvore de talentos (03/11): a constelação da classe; anão e elfa sem caminho usam a do próprio povo */
 /* 04/11 (Erling: "a árvore de talentos dá velocidade, defesa, vitalidade, força, destreza… pode ser a mesma em todas as classes e níveis
    de classe, ela vai subindo e auxiliando o personagem"): UMA árvore para todos (raça e classe não mudam a árvore) */
-const talentKit = (): string => 'geral';
+/* 11/11 (Erling: "cada raça e cada classe tem a sua própria árvore, com um nome para cada ramificação; faça talentos que condizam com esses
+   caminhos e mude a forma da árvore conforme a classe e a raça"): a árvore é a da CLASSE; quem ainda não tem caminho usa a da RAÇA
+   (humano, anão, elfo). Os pontos acesos são guardados por árvore: quem estava na árvore de todos recebe os pontos de volta. */
+const talentKit = (): string => compKit();
 const talents = createTalents(talentKit, clsLvl, () => { K.game.st.recalc?.(); }, () => tree.available());
 let treeSel: string | null = null;
 const SHADE_TOWNS = new Set(['Corvoscuro']);
@@ -101,5 +107,5 @@ const profs = createProfessions({ cls: () => { try { return K.game.classInfo.nam
     if (prof === 'ferreiro') K.audio.hit(); else if (prof === 'alquimista') K.audio.cast(); else K.audio.thud(); }, onLevel: (_id, name, icon, l) => { profLevelUp(icon, name, l); K.audio.chime(); dispatchEvent(new CustomEvent('karmika:burst', { detail: { c0: 0xfff0b0, c1: 0x7ac85a, n: 26, small: true } })); }, has: (id, n) => K.inv.has(id, n), count: (id) => K.inv.count(id), take: (id, n) => K.inv.take(id, n), add: (id, n) => K.inv.add(id, n, true), addGear: (g) => K.inv.addGear(g),
   craftJob: (j) => K.craftJob(j), invCraft: (id) => K.inv.craft(id), itemName: (id) => ITEMS_TBL[id]?.name ?? id, itemIcon: (id) => ITEMS_TBL[id]?.icon ?? '•', heroLvl: () => K.game.st.lvl, log: (t, c) => K.game.logMsg(t, c), onCraft: (n) => K.quests.onCraft(n) });
   const classPassStats = () => classStats(passKit());
-  return { tree, talents, talentKit, compKit, passKit, kitSkills, classPassStats, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
+  return { addSpent(f: () => number) { moreSpent.push(f); }, tree, talents, talentKit, compKit, passKit, kitSkills, classPassStats, applyKitAll, isWarrior, profs, mail, kitRace, walksPath, get treeSel() { return treeSel; }, set treeSel(v: typeof treeSel) { treeSel = v; }, SHOP_BY_NAME, feastOnKill, needGauge, SHADE_TOWNS };
 }

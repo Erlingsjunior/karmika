@@ -4,8 +4,10 @@
  *    e o salão do chefe, com mecânicas que pedem tanque, cura e dano.
  *  - Em grupo: quem é do mesmo grupo cai na MESMA cópia (os monstros têm as mesmas chaves de rede); cada um rola o seu saque. */
 import * as THREE from 'three';
+import { wallOf, erupt } from './luta3d';
 import { buildEntrance, flickerEntrance, type EntranceFx } from './entradas';
 import { buildDungeon, type DungeonFloor, type DgTheme } from './dungeon3d';
+import { buildWebArena } from './aranhas3d';
 import { lvlScale } from './enemies';
 import { genGear, type Gear, type Slot } from './loot';
 import type { EnemyType } from './world';
@@ -21,8 +23,8 @@ export interface BossMech {
 export const DG_TIERS = [
   { id: 'normal', name: 'Normal', col: '#c8e8b0', lv: 0, hp: 1, dmg: 1, xp: 1, gold: 1, loot: 1, extra: 0, min: 'rare', uq: 0, note: 'Acompanha o seu nível.' },
   { id: 'dificil', name: 'Difícil', col: '#ffd070', lv: 4, hp: 1.25, dmg: 1.15, xp: 1.5, gold: 1.6, loot: 1.4, extra: 0, min: 'rare', uq: 0.05, note: '+4 níveis. Bichos mais duros.' },
-  { id: 'desafiador', name: 'Desafiador', col: '#ff9a4a', lv: 8, hp: 1.6, dmg: 1.3, xp: 2.2, gold: 2.5, loot: 2, extra: 1, min: 'rare', uq: 0.12, note: '+8 níveis. Uma peça a mais no baú.' },
-  { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. Só épicas para cima no baú.' },
+  { id: 'desafiador', name: 'Desafiador', col: '#ff9a4a', lv: 8, hp: 1.6, dmg: 1.3, xp: 2.2, gold: 2.5, loot: 2, extra: 1, min: 'rare', uq: 0.12, note: '+8 níveis. Mais chance do grande prêmio no baú do chefe.' },
+  { id: 'impossivel', name: 'Impossível', col: '#ff5a4a', lv: 14, hp: 2.2, dmg: 1.55, xp: 3.2, gold: 4, loot: 3, extra: 1, min: 'epic', uq: 0.25, note: '+14 níveis. O grande prêmio sai em mais da metade das vezes.' },
   { id: 'doido', name: 'Coisa de Doido', col: '#d070ff', lv: 22, hp: 3, dmg: 1.9, xp: 5, gold: 7, loot: 5, extra: 2, min: 'epic', uq: 0.45, note: '+22 níveis. Quem sai vivo conta história.' },
 ] as const;
 export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) */ maxR?: number; /** a entrada fica exatamente em near+dx,dy (o mundo já reservou o lugar — ex.: dentro do cemitério) */ spot?: boolean;
@@ -32,6 +34,7 @@ export interface DgDef { /** raio máximo de busca do lugar da entrada (casas) *
   boss: { type: EnemyType; name: string; scale: number; hp: number; dmg: number; mech: BossMech; hello: string; bye: string };
   uniq?: { name: string; slot: Slot; icon: string; lore: string }[];
   title?: string;
+  /** o chão do salão do chefe: 'teia' = uma teia enorme com fios para o teto e casulos pendurados (aranhas3d.buildWebArena) */ arena?: 'teia';
   /** entrada fixa dentro de um prédio (as escadas da Grande Biblioteca): sem a boca no mundo, a escada já está no modelo */ fixed?: boolean;
   /** pet que o chefe pode deixar (a versão filhote dele): id do item e a chance */ pet?: { id: string; p: number };
   /** masmorra sem fundo (Túneis de Orrukh): vencido o chefe, uma escada desce para o próximo nível, mais fundo e mais forte; os chefes se revezam */
@@ -78,12 +81,24 @@ export const DUNGEONS: DgDef[] = [
       hello: 'Ossos de lobisomens antigos forram o chão. Algo velho dorme sob a lua de pedra.', bye: 'O Lobo da Lua Velha uiva pela última vez.' },
     uniq: [{ name: 'Presa da Lua Velha', slot: 'amulet', icon: '🌕', lore: 'Brilha nas noites de lua cheia.' }], title: 'Caçador da Lua Velha' },
   /* ======== A NOVA SAFRA (26/10): masmorras feitas para os bichos novos ======== */
-  { id: 'ninho', name: 'Ninho da Aracnídea-Mãe', kind: 'grupo', lvl: [17, 22], theme: 'toca', near: 'Eikvik', dx: 14, dy: 10, main: 6, side: 3, mobs: ['spider', 'spiderling', 'spiderling', 'spider'], players: 'grupo de 3 a 5',
+  /* 12/11 (Erling): a toca saiu de perto de Eikvik e virou o coração da Floresta das Aranhas (Terra Maldita); o mundo reserva a clareira do centro (world.ts, dgSpots.ninho). A luta é em cima de uma teia enorme. */
+  { id: 'ninho', name: 'Toca da Aranha-Mãe', kind: 'grupo', lvl: [10, 14], theme: 'toca', near: 'Floresta das Aranhas', arena: 'teia', main: 6, side: 3, mobs: ['spider', 'spiderling', 'spiderling', 'spider'], players: 'grupo de 3 a 5',
     elite: { type: 'spider', name: 'Tecelã Anciã', scale: 1.4 },
     boss: { type: 'broodmother', name: 'Aracnídea-Mãe', scale: 1.25, hp: 16, dmg: 1.9, mech: { ...MECH_GROUP('Tremor do Ninho', 0xff3a1a, 'Presas da Mãe'), adds: { at: [0.85, 0.7, 0.55, 0.4, 0.25, 0.1], type: 'spiderling', n: 12, line: 'As bolsas de ovos estouram: uma enxurrada de filhotes corre pelas paredes!' }, pools: { every: 13, n: 3, k: 0.35, name: 'Ácido', col: 0x9aff4a }, enrage: 'A Mãe arrasta o abdômen enorme e ruge: ninguém sai do ninho.' },
       hello: 'Fios grossos como corda cobrem o túnel. No fundo, um abdômen do tamanho de uma carroça pulsa devagar.', bye: 'A Aracnídea-Mãe encolhe as pernas. Os filhotes que restam fogem para as frestas.' },
     uniq: [{ name: 'Fiandeira da Mãe', slot: 'cape', icon: '🕸', lore: 'Tecida com o fio do ninho: nada que se prende nela escapa.' }, { name: 'Presa da Aracnídea', slot: 'weapon', icon: '🗡', lore: 'Ainda pinga veneno uma vez por dia.' }],
     title: 'Quebra-Ninhos', pet: { id: 'pet_aranha_mae', p: 0.18 } },
+  /* 17/11 (Erling): as duas masmorras dos lugares novos. A boca fica no lugar que o mundo reservou (world.ts, no fim da criação): near + dx, dy */
+  { id: 'goblins', name: 'Toca do Grão-Goblin', kind: 'grupo', lvl: [10, 14], theme: 'toca', near: 'Floresta dos Goblins', dx: 0, dy: -8, spot: true, main: 5, side: 2, mobs: ['goblin', 'goblin', 'goblin_shaman'], players: 'grupo de 3',
+    elite: { type: 'goblin_shaman', name: 'Xamã das Caveiras', scale: 1.3 },
+    boss: { type: 'goblin_chief', name: 'Grão-Goblin Morg', scale: 1.5, hp: 12, dmg: 1.7, mech: { ...MECH_GROUP('Chuva de Tralha', 0x9aff5a, 'Machado do Grão-Goblin'), adds: { at: [0.7, 0.4], type: 'goblin', n: 4, line: 'O Grão-Goblin bate o machado no tambor: a toca inteira acorda!' } },
+      hello: 'A toca cheira a fumaça e a coisa roubada. No fundo, num trono feito de baús, alguém conta moedas que não são dele.', bye: 'O Grão-Goblin cai em cima do próprio tesouro. As moedas rolam para todo lado.' },
+    uniq: [{ name: 'Coroa de Tampas do Grão-Goblin', slot: 'helm', icon: '👑', lore: 'Feita de tampa de panela, prego e teimosia. Ninguém ri de quem a usa duas vezes.' }], title: 'Terror da Toca' },
+  { id: 'xeique', name: 'Salões do Xeique Maligno', kind: 'grupo', lvl: [16, 21], theme: 'cripta', near: 'Ermos dos Beduínos', dx: 0, dy: -8, spot: true, main: 5, side: 2, mobs: ['beduino', 'beduino_arq', 'scorpion'], players: 'grupo de 3',
+    elite: { type: 'beduino', name: 'Guarda da Cimitarra', scale: 1.25 },
+    boss: { type: 'xeique', name: 'Xeique Zahir, o Maligno', scale: 1.15, hp: 14, dmg: 1.8, mech: { ...MECH_GROUP('Vendaval de Areia', 0xe0b060, 'Cimitarra do Xeique'), adds: { at: [0.65, 0.35], type: 'beduino', n: 3, line: 'O Xeique estala os dedos: os ladrões saem de trás das tapeçarias!' } },
+      hello: 'Tapetes roubados cobrem a pedra fria. Sentado sobre almofadas, um homem de turbante vermelho sorri como quem já vendeu a sua alma.', bye: 'O Xeique Zahir cai sobre os tapetes. A areia que ele mandava assenta no chão, quieta.' },
+    uniq: [{ name: 'Cimitarra de Zahir', slot: 'weapon', icon: '🗡', lore: 'A lâmina curva canta baixo quando há ouro por perto.' }], title: 'Flagelo dos Ermos' },
   { id: 'dunas', name: 'Covil do Escorpião-Rei', kind: 'grupo', lvl: [16, 20], theme: 'toca', near: 'Brekkuvik', dx: -12, dy: 10, main: 5, side: 2, mobs: ['scorpion', 'scorpion', 'coyote'], players: 'grupo de 3',
     elite: { type: 'scorpion', name: 'Ferrão Velho', scale: 1.3 },
     boss: { type: 'scorpion_king', name: 'Escorpião-Rei', scale: 1.0, hp: 14, dmg: 1.8, mech: { ...MECH_GROUP('Tempestade de Areia', 0xd8b070, 'Pinça do Rei'), adds: { at: [0.6, 0.3], type: 'scorpion', n: 3, line: 'A areia ferve: a prole do Rei brota do chão!' } },
@@ -124,7 +139,7 @@ export const DUNGEONS: DgDef[] = [
         { type: 'suplicio', name: 'Senhor do Suplício', scale: 1.3, hp: 14, dmg: 2.0, mech: { ...MECH_GROUP('Ganchos', 0xff3a1a, 'O Peso da Culpa'), enrage: 'As correntes se soltam todas de uma vez.' }, hello: 'Correntes pendem do teto. Algumas ainda balançam.', bye: 'O Senhor do Suplício cai sob as próprias correntes. Uma escada desce mais fundo.' },
         { type: 'jotun', name: 'Jotun Menor', scale: 1.2, hp: 15, dmg: 2.1, mech: { ...MECH_GROUP('Inverno', 0x9ad7ff, 'Clava de Gelo') }, hello: 'Tão fundo que a terra congela. Um gigante dorme encostado na parede.', bye: 'O gigante cai e a parede racha. Uma escada desce mais fundo.' }] } },
   /* criptas e mausoléus malditos (23/10): a entrada é um mausoléu de pedra com grade de ferro; dentro, a cripta */
-  { id: 'esquecidos', name: 'Mausoléu dos Esquecidos', kind: 'subsolo', lvl: [4, 7], theme: 'cripta', near: 'Igreja Abandonada', dx: 1, dy: 9, main: 2, side: 1, mobs: ['skeleton', 'rat'], /* 02/11: mudou para o cemitério da Igreja Abandonada (o Cemitério Esquecido já tem a Toca — dois calabouços colados) */ players: 'sozinho ou em dupla',
+  { id: 'esquecidos', name: 'Mausoléu dos Esquecidos', kind: 'subsolo', lvl: [4, 7], theme: 'cripta', near: 'Igreja Abandonada', dx: 4, dy: 30 /* 12/11 (Erling: "masmorra do lado de igreja do lado de pedra de teleporte, tudo amontoado"): a boca fica a 60 m da igreja, depois da pedra */, main: 2, side: 1, mobs: ['skeleton', 'rat'], /* 02/11: mudou para o cemitério da Igreja Abandonada (o Cemitério Esquecido já tem a Toca — dois calabouços colados) */ players: 'sozinho ou em dupla',
     elite: { type: 'skeleton', name: 'Guardião do Ossuário', scale: 1.4 }, boss: { type: 'tormentor', name: 'Sacristão Sem Rosto', scale: 1.3, hp: 5, dmg: 1.1, mech: { adds: { at: [0.5], type: 'skeleton', n: 3, line: 'O Sacristão toca o sino de ossos: os esquecidos se levantam!' } }, hello: 'Nomes raspados das lápides. Alguém não quer que eles sejam lembrados.', bye: 'O Sacristão cai. Os nomes voltam às pedras.' } },
   { id: 'hemara', name: 'Cripta de Hemara', kind: 'grupo', lvl: [9, 12], theme: 'cripta', near: 'Cripta de Hemara', dx: 4, dy: 4, main: 4, side: 2, mobs: ['skeleton', 'zombie', 'bat'], players: 'grupo de 3',
     elite: { type: 'zombie', name: 'Noivo de Hemara', scale: 1.6 },
@@ -198,12 +213,13 @@ export interface DgCtx {
   heightAt(x: number, z: number): number; regionLvl(x: number, y: number): [number, number];
   game: { st: { lvl: number; gold: number; hp: number; hpMax: number; dead: boolean }; damage(n: number, at: THREE.Vector3, from?: THREE.Vector3): void; logMsg(t: string, c?: string): void; gainXp(n: number): void;
     enemies: { list: { alive: boolean; hp: number; hpMax: number; pos: THREE.Vector3; def: { name: string; dmg: number; speed: number }; type: EnemyType; state: string }[]; spawn(type: EnemyType, x: number, z: number, o: Record<string, unknown>): unknown; clearTag(tag: string): void };
-    dropLoot(x: number, z: number, y: number, id: string, n: number): void; spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[]): void; xpNeed(): number };
+    dropLoot(x: number, z: number, y: number, id: string, n: number): void; spawnGear(x: number, z: number, y: number, ilvl: number, boost?: Record<string, number>, n?: number, rarityMin?: string, preset?: Gear[], rarityMax?: string): void; gearFits?(g: Gear): boolean; xpNeed(): number };
   particles: { spawn(x: number, y: number, z: number, o: Record<string, number>): void };
   audio: { boom(): void; chime(): void; coins(n: number): void; spell(k: 'shock' | 'fire' | 'ice' | 'arcane' | 'earth' | 'holy'): void };
   /** posição na tela de um ponto do mundo (para o nome da entrada, em letra nítida) */ project?(p: THREE.Vector3): { x: number; y: number } | null;
   heroPos(): THREE.Vector3; partySize(): number; /** nível médio do grupo (ou o seu, sozinho) */ partyLvl?(): number; say(t: string): void; fine(o: THREE.Object3D): THREE.Object3D;
   onClear?(d: DgDef, first: boolean): void;
+  /** 12/11: o baú do chefe (sistemas/espolio.ts); devolve false se não deu para criar */ bossChest?(x: number, z: number, y: number, items: Gear[], gold: number): boolean;
   /** chefe e elite com kit (chefes.ts): magias, andar e roupa da história */ onKit?(e: unknown): void; onStop?(): void;
   /** desce para o próximo nível de uma masmorra sem fundo */ descend?(depth: number, tier: number): void;
 }
@@ -248,7 +264,7 @@ export function createMasmorras(ctx: DgCtx) {
   const HUD = document.createElement('div'); HUD.id = 'dghud'; document.body.appendChild(HUD);
   type Pool = { x: number; z: number; r: number; t: number; m: THREE.Mesh; dmg: number };
   let run: null | { tier: (typeof DG_TIERS)[number]; d: DgDef; int: DungeonFloor; O: { x: number; z: number }; pre: string; lvl: [number, number]; kills: number; need: number; total: number; boss: E | null; bossHp: number;
-    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; opened: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
+    phase: number; aoeT: number; heavyT: number; poolT: number; enraged: boolean; pools: Pool[]; /** o que o salão do chefe ganhou de cenário (a teia): sai junto com a masmorra */ deco: { g: THREE.Object3D; dispose(): void }[]; opened: Set<number>; openedC: Set<number>; done: boolean; dead: Set<string>; depth: number; ti: number } = null;
   const rr = (s: number) => () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
   const hashS = (s: string) => { let h = 7; for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) % 2147483647; return h || 1; };
   function build(d: DgDef, depth = 0) { return buildDungeon({ seed: hashS(d.id + (depth ? ':' + depth : '')), theme: d.theme, main: Math.min(12, d.main + Math.floor(depth / 2)), side: Math.min(6, d.side + Math.floor(depth / 3)), boss: d.kind === 'grupo' ? 11 : 8 }); }
@@ -269,15 +285,17 @@ export function createMasmorras(ctx: DgCtx) {
       if (rm.kind === 'pack') { const k = 3 + (r() < 0.5 ? 1 : 0) + (n >= 4 ? 1 : 0); for (let i = 0; i < k; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L, { hpX: 0.8 + 0.2 * Math.min(n, 5) }); total++; } }
       else if (rm.kind === 'elite') { ctx.onKit?.(S(d.elite.type, rm.x, rm.z, hi, { name: d.elite.name, scale: d.elite.scale, hpX: 3.2 * (0.6 + 0.2 * Math.min(n, 5)), dmgX: 1.35 })); total++; for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
       else if (rm.kind === 'side') { for (let i = 0; i < 2; i++) { const p = at(); S(d.mobs[Math.floor(r() * d.mobs.length)], p.x, p.z, L); total++; } }
-      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); ctx.onKit?.(boss); }
+      else if (rm.kind === 'boss') { const b = d.boss, sizeK = d.kind === 'grupo' ? 0.45 + 0.3 * (Math.min(n, 5) - 1) : 0.7 + 0.3 * (Math.min(n, 3) - 1); boss = S(b.type, rm.x, rm.z - 2, hi + 1, { name: b.name, scale: b.scale, hpX: b.hp * sizeK, dmgX: b.dmg * (n >= 3 || d.kind !== 'grupo' ? 1 : 0.85), aggro: 11 }); (boss as E & { noGear?: boolean }).noGear = true; ctx.onKit?.(boss); }
     });
+    const deco: { g: THREE.Object3D; dispose(): void }[] = [];
+    if (d.arena === 'teia') { const rm = int.rooms.find((q) => q.kind === 'boss'); if (rm) { const A = buildWebArena(Math.max(6, Math.min(rm.w, rm.d) / 2 - 0.6)); A.g.position.set(O.x + rm.x, 0, O.z + rm.z); ctx.scene.add(ctx.fine(A.g)); deco.push(A); } }
     const need = Math.ceil(total * (d.kind === 'grupo' ? 0.7 : 0.6));
-    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], opened: new Set(), done: false, dead: new Set(), depth, ti: tier };
+    run = { tier: TI, d, int, O, pre, lvl: e.lvl, kills: 0, need, total, boss, bossHp: 1, phase: 0, aoeT: 6, heavyT: 9, poolT: 8, enraged: false, pools: [], deco, opened: new Set(), openedC: new Set(), done: false, dead: new Set(), depth, ti: tier };
     ctx.game.logMsg(`⚔ ${d.name}${d.deep ? ` · Nível ${depth + 1} da descida` : ''} · ${TI.name} (nível ${e.lvl[0]}–${e.lvl[1]}, ${d.players}). Derrube ${need} criaturas para abrir o portão do chefe.`, '#ff9a8a');
     if (d.deep) { const best = +(localStorage.getItem('karmika.dg.fundo.' + d.id) || 0); if (depth + 1 > best) try { localStorage.setItem('karmika.dg.fundo.' + d.id, String(depth + 1)); } catch { /* */ } }
     hud();
   }
-  function stop() { ctx.onStop?.(); if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
+  function stop() { ctx.onStop?.(); if (!run) return; for (const p of run.pools) ctx.scene.remove(p.m); for (const q of run.deco) { ctx.scene.remove(q.g); q.dispose(); } ctx.game.enemies.clearTag('dg'); ctx.game.enemies.clearTag('dg-add'); run = null; HUD.style.display = 'none'; }
   function hud() {
     if (!run) { HUD.style.display = 'none'; return; } const R = run, b = R.boss, open = !!R.int.gate?.opened;
     HUD.style.display = 'block';
@@ -299,27 +317,43 @@ export function createMasmorras(ctx: DgCtx) {
     for (let i = 0; i < 120; i++) { const a = Math.random() * 6.283, s = 2 + Math.random() * 6; ctx.particles.spawn(b.pos.x, 1 + Math.random() * 2, b.pos.z, { vx: Math.cos(a) * s, vy: Math.random() * 6, vz: Math.sin(a) * s, life: 1.4, s0: 0.3, s1: 0.04, c0: 0xfff0b0, c1: 0xff8a3a, a: 1, drag: 1.5 }); }
     /* o saque é de cada um: equipamentos bons e, às vezes, a peça única da masmorra */
     const ilvl = R.lvl[1] + 1, y = ctx.heightAt(b.pos.x, b.pos.z);
-    ctx.game.spawnGear(b.pos.x, b.pos.z, y, ilvl, { rare: 6 * R.tier.loot, legendary: 4 * R.tier.loot, epic: 2 * R.tier.loot }, (d.kind === 'grupo' ? 3 : 2) + R.tier.extra, R.tier.min);
-    const uq = d.uniq?.length && (first || Math.random() < (d.kind === 'grupo' ? 0.3 : 0) + R.tier.uq) ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
-    if (uq) { const g = genGear(ilvl, 'epic', uq.slot); g.name = uq.name; g.icon = uq.icon; g.rarity = 'unique'; (g as Gear & { lore?: string }).lore = uq.lore; for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.25 * 10) / 10; ctx.game.spawnGear(b.pos.x + 1, b.pos.z, y, ilvl, {}, 1, 'unique', [g]); ctx.game.logMsg(`✦ Peça única: ${uq.name}!`, '#f2cf6a'); }
+    /* 12/11 (Erling: "um item lendário forte ou um item épico a cada 3x que se fizer uma masmorra, na média... um ou 2 no máximo caindo do boss... o único que dá baú é o boss";
+       "masmorra 12-18 cai itens até o 20 só"): o baú do chefe traz UMA peça (às vezes duas, nunca mais). A cada vitória há uma chance (1 em 3 no Normal, mais nas
+       dificuldades altas e nos níveis fundos) de a peça ser o grande prêmio: a peça única da masmorra, uma épica ou uma lendária forte. Senão é uma rara.
+       Nenhuma peça passa de 2 níveis acima do teto da masmorra. */
+    const cap = R.lvl[1] + 2, gl = Math.min(ilvl, cap), pBig = Math.min(0.8, [1 / 3, 0.38, 0.45, 0.55, 0.7][R.ti] + 0.05 * R.depth), big = Math.random() < pBig, prize: Gear[] = [];
+    const serve = (r: 'epic' | 'legendary' | 'rare') => { let g = genGear(gl, r); for (let t = 0; t < 40 && ctx.game.gearFits && !ctx.game.gearFits(g); t++) g = genGear(gl, r); return g; }; /* o prêmio sempre serve para a classe de quem joga */
+    if (big) { const uq = d.uniq?.length && Math.random() < 0.4 + R.tier.uq ? d.uniq[Math.floor(Math.random() * d.uniq.length)] : null;
+      if (uq) { const g = genGear(gl, 'epic', uq.slot); g.name = uq.name; g.icon = uq.icon; g.rarity = 'unique'; (g as Gear & { lore?: string }).lore = uq.lore; for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.25 * 10) / 10; prize.push(g); }
+      else if (Math.random() < 0.5) prize.push(serve('epic'));
+      else { const g = serve('legendary'); for (const k of Object.keys(g.stats) as (keyof Gear['stats'])[]) g.stats[k] = Math.round((g.stats[k] ?? 0) * 1.15 * 10) / 10; prize.push(g); } }
+    else prize.push(serve('rare'));
+    if (Math.random() < 0.2 + 0.1 * R.tier.extra + (d.kind === 'grupo' ? 0.15 : 0)) prize.push(genGear(gl, 'rare'));
+    const bgold = Math.round((d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)) * R.tier.gold);
+    if (!ctx.bossChest?.(b.pos.x, b.pos.z, y, prize, bgold)) { ctx.game.spawnGear(b.pos.x, b.pos.z, y, gl, {}, prize.length, undefined, prize); ctx.game.st.gold += bgold; ctx.audio.coins(3); }
+    if (R.tier.lv) ctx.game.logMsg(`✦ ${R.tier.name}: prêmio ×${R.tier.gold}`, R.tier.col);
     const bonus = Math.round(ctx.game.xpNeed() * (d.kind === 'grupo' ? (first ? 0.6 : 0.25) : (first ? 0.3 : 0.1)) * R.tier.xp); if (bonus > 0) ctx.game.gainXp(bonus);
-    ctx.game.st.gold += Math.round((d.kind === 'grupo' ? 40 : 15) * Math.max(1, Math.round(R.lvl[1] / 5)) * R.tier.gold); if (R.tier.lv) ctx.game.logMsg(`✦ ${R.tier.name}: prêmio ×${R.tier.gold}`, R.tier.col); ctx.audio.coins(3);
     if (d.pet && Math.random() < d.pet.p * (1 + 0.5 * R.ti) + (first ? 0.1 : 0)) { ctx.game.dropLoot(b.pos.x - 1, b.pos.z, y, d.pet.id, 1); ctx.game.logMsg('🐾 Algo pequeno e vivo saiu de perto do chefe e ficou olhando para você…', '#ffd27a'); }
-    if (d.deep) { const extra = Math.round(30 * (R.depth + 1) * Math.max(1, R.lvl[1] / 6)); ctx.game.st.gold += extra; ctx.game.logMsg(`🪙 Tesouro do nível ${R.depth + 1}: +${extra} de ouro. A escada para o nível ${R.depth + 2} está aberta.`, '#ffe08a');
-      if (R.depth >= 2) ctx.game.spawnGear(b.pos.x - 1.5, b.pos.z + 1, y, ilvl + R.depth, { legendary: 4 + R.depth, epic: 2 + R.depth * 0.5 }, 1 + Math.floor(R.depth / 3), 'rare'); }
+    if (d.deep) { const extra = Math.round(30 * (R.depth + 1) * Math.max(1, R.lvl[1] / 6)); ctx.game.st.gold += extra; ctx.game.logMsg(`🪙 Tesouro do nível ${R.depth + 1}: +${extra} de ouro. A escada para o nível ${R.depth + 2} está aberta.`, '#ffe08a'); }
     ctx.onClear?.(d, first); hud();
   }
   /* ---------- chefe: telegrafa, chama ajuda, joga poças, enfurece ---------- */
   const v3 = new THREE.Vector3();
+  /* 10/11: o círculo de aviso do chefe em 3D (fx3d.ts): parede de energia que sobe na borda e estacas que saem do chão quando bate */
+  const ringFx: ((dt: number) => boolean)[] = [];
   function ring(x: number, z: number, R0: number, col: number, dur: number, then: () => void) {
-    const m = new THREE.Mesh(new THREE.RingGeometry(R0 - 0.25, R0, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
-    const f = new THREE.Mesh(new THREE.CircleGeometry(R0, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.12, depthWrite: false, blending: THREE.AdditiveBlending }));
-    m.position.set(x, 0.07, z); f.position.set(x, 0.06, z); ctx.scene.add(ctx.fine(m)); ctx.scene.add(ctx.fine(f)); let t = 0; const t0 = performance.now();
-    const tick = () => { t = (performance.now() - t0) / 1000; const k = Math.min(1, t / dur); f.scale.setScalar(Math.max(0.05, k)); (f.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.3 * k;
-      if (k < 1) requestAnimationFrame(tick); else { ctx.scene.remove(m); ctx.scene.remove(f); then(); } }; tick();
+    const geo = new THREE.CircleGeometry(R0, 48).rotateX(-Math.PI / 2);
+    const f = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.06, depthWrite: false, blending: THREE.AdditiveBlending }));
+    const w = wallOf(geo, col); w.position.set(x, 0.06, z); w.scale.y = 0.1; f.position.set(x, 0.06, z); ctx.scene.add(ctx.fine(w)); ctx.scene.add(ctx.fine(f)); let t = 0, pT = 0;
+    ringFx.push((dt) => { t += dt; const k = Math.min(1, t / dur); f.scale.setScalar(Math.max(0.05, k)); (f.material as THREE.MeshBasicMaterial).opacity = 0.05 + 0.12 * k;
+      w.scale.y = 0.15 + 1.6 * k * k + (k > 0.7 ? Math.abs(Math.sin(t * 22)) * 0.25 : 0);
+      pT += dt * (6 + 26 * k); while (pT > 1) { pT -= 1; const a = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * R0; ctx.particles.spawn(x + Math.cos(a) * rr, 0.15, z + Math.sin(a) * rr, { vy: 1.2 + Math.random() * 2.2, life: 0.7, s0: 0.12, s1: 0.02, c0: 0xffffff, c1: col, a: 0.9 }); }
+      if (k < 1) return false; ctx.scene.remove(w); ctx.scene.remove(f); w.geometry.dispose(); (w.material as THREE.Material).dispose(); (f.material as THREE.Material).dispose();
+      ringFx.push(erupt(ctx.scene, ctx.fine, geo, col, x, 0.06, z, 0)); setTimeout(() => geo.dispose(), 3000); then(); return true; });
   }
   let flickT = 0;
   function update(dt: number) {
+    for (let i = ringFx.length - 1; i >= 0; i--) if (ringFx[i](dt)) ringFx.splice(i, 1);
     flickT += dt; { const hp = ctx.heroPos(); for (const e of efx) { const near = Math.abs(e.x - hp.x) < 45 && Math.abs(e.z - hp.z) < 45; if (near) flickerEntrance(e.fx, flickT);
       /* o nome em letra nítida sobre a entrada, quando você chega perto (some dentro da masmorra) */
       const dd = Math.hypot(e.x - hp.x, e.z - hp.z), sp = !run && dd < 22 && ctx.project ? ctx.project(new THREE.Vector3(e.x, e.y + 4.6, e.z)) : null;
@@ -347,13 +381,26 @@ export function createMasmorras(ctx: DgCtx) {
       if (Math.random() < dt * 6) ctx.particles.spawn(p.x + (Math.random() - 0.5) * 3, 0.1, p.z + (Math.random() - 0.5) * 3, { vy: 0.8, life: 0.8, s0: 0.15, s1: 0.03, c0: mt.color.getHex(), c1: 0x101010, a: 0.8 });
       if (p.t > 14) { ctx.scene.remove(p.m); R.pools.splice(i, 1); } }
   }
+  /** bichos da própria masmorra que saem de um baú-isca ou de um caixão */
+  function ambush(R: NonNullable<typeof run>, x: number, z: number, n: number) { for (let i = 0; i < n; i++) { const a = Math.random() * 6.283, t = R.d.mobs[Math.floor(Math.random() * R.d.mobs.length)], k = lvlScale(t, R.lvl[1]);
+      ctx.game.enemies.spawn(t, x + Math.cos(a) * 1.4, z + Math.sin(a) * 1.4, { tag: 'dg-add', lvl: R.lvl[1], hpMul: k.hp * R.tier.hp, dmgMul: k.dmg * R.tier.dmg, aggro: 30, leash: 999, anun: true, netId: `dga:${Date.now().toString(36)}${i}${Math.floor(Math.random() * 1e4)}` } as never); } }
   /** o que dá para fazer perto (lá dentro): baús, o portão */
   function interactions(hx: number, hz: number, add: (d: number, r: number, label: string, act: () => void) => void) {
     if (!run) return; const R = run;
     R.int.chests.forEach((c, i) => { const x = R.O.x + c.x, z = R.O.z + c.z, dd = Math.hypot(hx - x, hz - z); if (dd > 4 || R.opened.has(i)) return;
-      add(dd, 2.8, 'E — Abrir o baú', () => { R.opened.add(i); ctx.audio.coins(2); const g = 8 + Math.floor(Math.random() * 12) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
-        if (Math.random() < 0.8) ctx.game.spawnGear(x, z, 0, R.lvl[1], { rare: 3, legendary: 1 }, 1, 'magic');
-        for (let k = 0; k < 30; k++) ctx.particles.spawn(x, 0.8, z, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.2, s1: 0.03, c0: 0xffe08a, c1: 0xb8924a, a: 1, drag: 1.5 }); }); });
+      add(dd, 2.8, 'E — Abrir o baú', () => { R.opened.add(i); const puff = (c0: number, c1: number) => { for (let k = 0; k < 30; k++) ctx.particles.spawn(x, 0.8, z, { vx: (Math.random() - 0.5) * 3, vy: 2 + Math.random() * 3, vz: (Math.random() - 0.5) * 3, life: 0.9, s0: 0.2, s1: 0.03, c0, c1, a: 1, drag: 1.5 }); };
+        /* 10/11 (Erling: "abrir baús e caixões: podem cair itens legais ou sair monstros"): 1 em 6 baús é isca */
+        if (Math.random() < 0.17) { ambush(R, x, z, 2 + (Math.random() < 0.4 ? 1 : 0)); puff(0x8a6a5a, 0x2a1a10); ctx.audio.boom(); ctx.game.logMsg('📦 O baú estava vazio. Era isca: alguma coisa se mexe atrás de você!', '#ff9a8a'); return; }
+        ctx.audio.coins(2); const g = 14 + Math.floor(Math.random() * 18) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`📦 Baú: ${g} de ouro.`, '#ffe08a');
+        /* 12/11: baú de sala lateral e caixão dão só ouro. Equipamento, só no baú do chefe. */
+        puff(0xffe08a, 0xb8924a); }); });
+    /* caixões e sarcófagos: metade só tem pó; um em quatro guarda algo de valor; um em quatro acorda quem dormia lá dentro */
+    (R.int.coffins ?? []).forEach((c, i) => { const x = R.O.x + c.x, z = R.O.z + c.z, dd = Math.hypot(hx - x, hz - z); if (dd > 3.4 || R.openedC.has(i)) return;
+      add(dd - 0.6, 2.4, 'E — Abrir o caixão', () => { R.openedC.add(i); const roll = Math.random();
+        for (let k = 0; k < 18; k++) ctx.particles.spawn(x, 0.9, z, { vx: (Math.random() - 0.5) * 2, vy: 0.6 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 2, life: 1, s0: 0.3, s1: 0.06, c0: 0x9a9080, c1: 0x3a342c, a: 0.7, drag: 1.5 });
+        if (roll < 0.25) { ambush(R, x, z, 1 + (Math.random() < 0.35 ? 1 : 0)); ctx.audio.boom(); ctx.game.logMsg('⚰ A tampa cede por dentro. Quem dormia aqui acordou!', '#ff9a8a'); }
+        else if (roll < 0.5) { ctx.audio.coins(2); const g = 5 + Math.floor(Math.random() * 10) * Math.max(1, Math.round(R.lvl[1] / 6)); ctx.game.st.gold += g; ctx.game.logMsg(`⚰ Entre os ossos: ${g} de ouro. Alguém foi enterrado com o que tinha de melhor.`, '#ffe08a'); }
+        else ctx.game.logMsg('⚰ Só pó e ossos. Você fecha a tampa com cuidado.', '#b9b0a0'); }); });
     if (R.done && R.d.deep) { const bm = R.int.rooms.find((q) => q.kind === 'boss'); if (bm) { const x = R.O.x + bm.x, z = R.O.z + bm.z - 4, dd = Math.hypot(hx - x, hz - z); if (dd < 7) add(dd, 6, `⬇ E — Descer ao nível ${R.depth + 2} dos Túneis (+${R.d.deep.step} níveis)`, () => ctx.descend?.(R.depth + 1, R.ti)); } }
     const gt = R.int.gate; if (gt && !gt.opened) { const x = R.O.x + gt.x, z = R.O.z + gt.z, dd = Math.hypot(hx - x, hz - z); if (dd < 4.5) add(dd, 3, `🗝 Portão do chefe — faltam ${Math.max(0, R.need - R.kills)} criaturas`, () => hud()); }
   }

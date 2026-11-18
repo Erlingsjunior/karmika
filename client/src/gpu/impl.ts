@@ -313,6 +313,23 @@ export async function createGPURenderer(): Promise<THREE.WebGLRenderer | null> {
     AU.createAttribute = (a: any, usage: number) => { const arr = a.isInterleavedBufferAttribute ? null : a.array, C = arr?.constructor;
       const keep16 = a.normalized === false && (C === Uint16Array || C === Int16Array || ((C === Uint8Array || C === Int8Array) && !(usage & IDX) && (a.itemSize === 2 || a.itemSize === 4)));
       if (!keep16) return oCA(a, usage); a.normalized = null; try { return oCA(a, usage); } finally { a.normalized = false; } }; }
+  /* GUARDA DAS CÓPIAS (11/11 noite, Erling: "o WebGPU acabou de cair de novo"; erro: "Instance range (count 5) requires a larger buffer (320) than the
+     bound buffer size (256) … slot 3"): alguma malha de cópias foi desenhada com MAIS cópias do que cabem no buffer de matrizes ligado a ela (64 bytes
+     por cópia: 5 pedidas, 4 no buffer). O WebGPU recusa o quadro inteiro, os erros se acumulam e o jogo cai para o WebGL. A troca de material de 18:58
+     não resolveu, e aqui o erro não se repete, então a guarda fica no último ponto antes da placa: confere cada desenho de cópias, desenha só o que
+     cabe (o jogo não cai), refaz a ligação dos buffers daquele objeto no quadro seguinte e anota QUEM foi (modelo, material, pai, tamanhos) no
+     relatório do F10, para a causa aparecer com nome. */
+  { const B = R.backend, oD = B.draw.bind(B), seen = new Set<string>();
+    B.draw = (ro: any, info: any) => { const ob = ro.object; if (!ob || !ob.isInstancedMesh) return oD(ro, info);
+      const n = ob.count as number; let cap = n, why = '';
+      for (const vb of ro.getVertexBuffers()) { if (!(vb.isInstancedInterleavedBuffer || vb.isInstancedBufferAttribute)) continue;
+        const per = vb.isInstancedInterleavedBuffer ? vb.stride : vb.itemSize, cA = Math.floor(vb.array.length / per), g = B.get(vb)?.buffer, cG = g && typeof g.size === 'number' ? Math.floor(g.size / (per * vb.array.BYTES_PER_ELEMENT)) : cA, c = Math.min(cA, cG);
+        if (c < cap) { cap = c; why = `buffer de ${per} por cópia: ${cA} no jogo, ${cG} na placa${ob.instanceMatrix && vb.array === ob.instanceMatrix.array ? ' (é a matriz deste objeto)' : ' (NÃO é a matriz deste objeto)'}`; } }
+      if (cap >= n) return oD(ro, info);
+      const k = ob.uuid + ro.material.uuid; if (!seen.has(k) && seen.size < 12) { seen.add(k); const ch: string[] = []; for (let q = ob; q && ch.length < 5; q = q.parent) ch.push(q.name || q.userData?.kind || q.type);
+        const m = `cópias a mais: pediu ${n}, cabem ${cap} · ${why} · matriz do objeto: ${ob.instanceMatrix?.count} · modelo ${ob.userData?.art ?? ob.geometry?.type} · material ${ro.material.type}${ro.material.name ? ':' + ro.material.name : ''} · ${ch.join(' < ')}`; console.warn('[WebGPU]', m); if (gpuState.log.length < 12) gpuState.log.push(m); }
+      ro.attributes = null; ro.vertexBuffers = null; /* refaz a ligação no próximo quadro */
+      if (cap <= 0) return; ob.count = cap; try { return oD(ro, info); } finally { ob.count = n; } }; }
   gpuState.on = true; gpuState.backend = 'webgpu';
   /* qualquer erro do WebGPU (validação, memória) é contado em silêncio; se a placa "se perder" (driver reiniciou, placa saiu), o jogo
      volta para o WebGL na hora (main.ts: gpuState.lost) */

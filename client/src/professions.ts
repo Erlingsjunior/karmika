@@ -97,6 +97,9 @@ export const RECIPES2: Recipe[] = [
   { id: 'valvula_vapor', prof: 'engenheiro', lvl: 3, need: [['ore_i', 2], ['plank', 1]], out: ['valvula_vapor', 1] },
   { id: 'reacao_azul', prof: 'engenheiro', lvl: 5, need: [['dust', 1], ['herb_g', 1]], out: ['reacao_azul', 2] },
   { id: 'pulseira_choque', prof: 'engenheiro', lvl: 8, need: [['bobina_cobre', 2], ['mola_aco', 1], ['hide', 1]], out: ['pulseira_choque', 1] },
+  { id: 'pulseira_voltaica', prof: 'engenheiro', lvl: 14, need: [['bobina_cobre', 4], ['mola_aco', 1], ['hide', 1]], out: ['pulseira_voltaica', 1] },
+  { id: 'pulseira_impacto', prof: 'engenheiro', lvl: 19, need: [['mola_aco', 4], ['valvula_vapor', 1], ['hide', 1]], out: ['pulseira_impacto', 1] },
+  { id: 'pulseira_magnetica', prof: 'engenheiro', lvl: 24, need: [['bobina_cobre', 5], ['valvula_vapor', 1], ['hide', 2]], out: ['pulseira_magnetica', 1] },
   { id: 'lanca_chamas', prof: 'engenheiro', lvl: 10, need: [['valvula_vapor', 1], ['mola_aco', 1], ['ore_i', 2], ['sap', 1]], out: ['lanca_chamas', 2] },
   { id: 'lanca_veneno', prof: 'engenheiro', lvl: 12, need: [['valvula_vapor', 1], ['mola_aco', 1], ['herb_s', 2]], out: ['lanca_veneno', 2] },
   { id: 'eletrificador', prof: 'engenheiro', lvl: 16, need: [['bobina_cobre', 3], ['valvula_vapor', 1], ['ore_ag', 1]], out: ['eletrificador', 1] },
@@ -114,6 +117,12 @@ export const RECIPES2: Recipe[] = [
   { id: 'bag_s', prof: 'costureiro', lvl: 5, need: [['hide', 4], ['rope', 2]], out: ['bag_s', 1] },
   { id: 'cape', prof: 'costureiro', lvl: 10, need: [['hide', 6], ['rope', 2]], gear: 'cape', label: 'Costurar capa' },
   { id: 'shoulders', prof: 'costureiro', lvl: 14, need: [['hide', 5], ['hide_f', 1], ['rope', 2]], gear: 'shoulders', label: 'Ombreiras' },
+  /* 16/11: os cintos (acesso rápido) */
+  { id: 'cinto_couro', prof: 'costureiro', lvl: 5, need: [['hide', 3], ['rope', 1]], out: ['cinto_couro', 1] },
+  { id: 'cinto_viajante', prof: 'costureiro', lvl: 15, need: [['hide', 4], ['hide_f', 2], ['nail', 2]], out: ['cinto_viajante', 1] },
+  { id: 'cinto_duplo', prof: 'costureiro', lvl: 25, need: [['hide_f', 5], ['hide', 4], ['nail', 4]], out: ['cinto_duplo', 1] },
+  { id: 'cinto_mestre', prof: 'costureiro', lvl: 35, need: [['hide_f', 8], ['ore_ag', 2], ['nail', 6]], out: ['cinto_mestre', 1] },
+  { id: 'belt', prof: 'costureiro', lvl: 12, need: [['hide', 4], ['hide_f', 1], ['rope', 2]], gear: 'belt', label: 'Costurar cinto (peça com atributos)' },
   { id: 'bag_m', prof: 'costureiro', lvl: 15, need: [['hide_f', 4], ['rope', 3]], out: ['bag_m', 1] },
   { id: 'boots', prof: 'costureiro', lvl: 18, need: [['hide_f', 3], ['hide', 2]], gear: 'boots', label: 'Botas de couro' },
   { id: 'bag_l', prof: 'costureiro', lvl: 30, need: [['hide_f', 8], ['hide', 6], ['rope', 4]], out: ['bag_l', 1] },
@@ -123,11 +132,13 @@ export const RECIPES2: Recipe[] = [
   { id: 'antidote_j', prof: 'alquimista', lvl: 3, need: [['herb_j', 2], ['herb_g', 1]], out: ['antidote', 1], label: 'Antídoto de junco' },
   { id: 'potion_f', prof: 'alquimista', lvl: 6, need: [['herb_f', 3], ['herb_g', 1]], out: ['potion', 2], label: 'Poção de flores (2)' },
   { id: 'tonic', prof: 'alquimista', lvl: 10, need: [['herb_s', 2], ['herb_g', 1], ['herb_f', 1]], out: ['tonic', 1] },
+  { id: 'elixir_folego', prof: 'alquimista', lvl: 6, need: [['herb_f', 2], ['herb_g', 1]], out: ['elixir_folego', 1] },
   { id: 'mana', prof: 'alquimista', lvl: 12, need: [['herb_s', 2], ['dust', 1]], out: ['mana', 1] },
   { id: 'potion_g', prof: 'alquimista', lvl: 20, need: [['herb_r', 2], ['herb_g', 2]], out: ['potion_g', 1] },
   // cozinheiro
   { id: 'cooked', prof: 'cozinheiro', lvl: 1, need: [['meat', 1]], out: ['cooked', 1] },
   { id: 'fishc', prof: 'cozinheiro', lvl: 1, need: [['fish', 1]], out: ['fishc', 1] },
+  { id: 'caldo_folego', prof: 'cozinheiro', lvl: 4, need: [['meat', 1], ['herb_g', 1]], out: ['caldo_folego', 2] },
   { id: 'jerky', prof: 'cozinheiro', lvl: 5, need: [['meat', 2]], out: ['jerky', 2] },
   { id: 'sausage', prof: 'cozinheiro', lvl: 10, need: [['meat', 3], ['rope', 1]], out: ['sausage', 3] },
   { id: 'skewer', prof: 'cozinheiro', lvl: 15, need: [['meat', 2], ['apple', 1]], out: ['skewer', 1] },
@@ -205,17 +216,17 @@ export function createProfessions(ctx: Ctx) {
     if (!open) { el.style.display = 'none'; return; }
     const P = PROFS.find((p) => p.id === sel)!, L = lv[sel], rs = RECIPES2.filter((r) => r.prof === sel).sort((a, b) => a.lvl - b.lvl);
     const pairs: ProfId[][] = [['sobrevivencia'], ['lenhador', 'marceneiro'], ['minerador', 'ferreiro'], ['esfolador', 'costureiro'], ['herbalista', 'alquimista'], ['pescador', 'cozinheiro'], ['engenheiro']];
-    const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
+    const nav = pairs.map((g) => `<div class="pfpair">${g.map((id) => { const p = PROFS.find((q) => q.id === id)!; return `<button data-pf="${id}" class="${id === sel ? 'on' : ''}" style="--p:${Math.round(lv[id].x / need(lv[id].l) * 100)}"><span>${p.ic}</span><b>${p.name}</b><small>${lv[id].l}</small></button>`; }).join('<i class="pfarr">→</i>')}</div>`).join('');
     const pair = P.pair ? PROFS.find((q) => q.id === P.pair)! : null;
     /* abas (Erling, 25/10: "modais quadradas com abas, e não essa linguiça"): o que dá para fazer agora, o que vem com nível e as especializações */
     const EL = effL(sel); const tabOf = (r: Recipe) => (r.cls ? 'spec' : EL < r.lvl ? 'next' : 'now'), cnt = { now: 0, next: 0, spec: 0 } as Record<string, number>; for (const r of rs) cnt[tabOf(r)]++;
     if (!cnt[ptab] && rs.length) ptab = cnt.now ? 'now' : cnt.next ? 'next' : 'spec';
     const tabs = rs.length ? `<div class="pftabs">${([['now', '⚒ Pode fazer'], ['next', '🔒 Próximas'], ['spec', '✦ Especialização']] as const).map(([k, t]) => `<button data-ptab="${k}" class="${ptab === k ? 'on' : ''}" ${cnt[k] ? '' : 'disabled'}>${t} <small>${cnt[k]}</small></button>`).join('')}</div>` : '';
     const list = rs.length ? rs.filter((r) => tabOf(r) === ptab).map((r) => { const cb = clsBlock(r), ok = ready(r), lock = EL < r.lvl || !!cb, nm = r.label ?? (r.out ? ctx.itemName(r.out[0]) : r.id), ic = r.out ? ctx.itemIcon(r.out[0]) : r.gear ? '⚒' : '🔥';
-      return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${cb ? `<small class="n">${r.cls ? '✦ ' : ''}${cb}</small>` : L.l < r.lvl ? `<small class="n">nível ${r.lvl}</small>` : r.cls ? '<small class="y">✦ especialização</small>' : ''}<small>${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemName(i)} ${ctx.count(i)}/${n}</span>`).join(' · ')}${(r.keep ?? []).map((k) => ` · <span class="${ctx.has(k) ? 'y' : 'n'}">${ctx.itemName(k)} (ferramenta)</span>`).join('')}${r.gear ? ' · <em>peça aleatória; ofício alto dá mágicas e raras</em>' : ''}</small></div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
+      return `<div class="pfr ${ok ? 'ok' : ''} ${lock ? 'lock' : ''}"><span class="pic">${ic}</span><div><b>${nm}${r.out && r.out[1] > 1 ? ` ×${r.out[1]}` : ''}</b>${cb ? `<small class="n">${r.cls ? '✦ ' : ''}${cb}</small>` : L.l < r.lvl ? `<small class="n">nível ${r.lvl}</small>` : r.cls ? '<small class="y">✦ especialização</small>' : ''}<small class="mats">${r.need.map(([i, n]) => `<span class="${ctx.has(i, n) ? 'y' : 'n'}">${ctx.itemIcon(i)} ${ctx.itemName(i)} <b>${ctx.count(i)}/${n}</b></span>`).join('')}${(r.keep ?? []).map((k) => `<span class="tool ${ctx.has(k) ? 'y' : 'n'}">🛠 ${ctx.itemName(k)}</span>`).join('')}</small>${r.gear ? '<small class="gnote">peça aleatória; ofício alto dá mágicas e raras</small>' : ''}</div>${lock ? '' : `<button data-pc="${r.id}" ${ok ? '' : 'disabled'}>Fazer</button>${r.inv !== 'fire' && !r.gear ? `<button data-pc5="${r.id}" ${ok ? '' : 'disabled'}>×5</button>` : ''}`}</div>`; }).join('')
       : `<em class="emptyb">${P.name} é coleta: sobe trabalhando no mundo${pair ? ` e abastece o ${pair.name}` : ''}.</em>`;
     el.innerHTML = `<div class="pn profpn"><h2>⚒ Profissões <button data-px>✕</button></h2><div class="pfwrap"><nav class="pfnav">${nav}</nav>
-      <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100${EL > L.l ? ` <b style="color:#9affb0">+${EL - L.l} da classe (${myCls()})</b>` : ''}</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
+      <div class="pfmain"><div class="pfhead"><span class="big">${P.ic}</span><div><b>${P.name}</b> <small>${P.kind === 'coleta' ? 'coleta' : P.kind === 'oficio' ? 'ofício' : 'básico'} · nível ${L.l}/100${EL > L.l ? ` <b style="color:#9affb0">+${EL - L.l} da classe (${myCls()})</b>` : ''}</small><div class="pfbar"><i style="width:${Math.round(L.x / need(L.l) * 100)}%"></i><em>${Math.round(L.x)} / ${need(L.l)} para o nível ${L.l + 1}</em></div><small>${P.desc}${pair ? ` ${P.kind === 'coleta' ? 'Abastece' : 'Usa o que vem do'} <a data-pf="${pair.id}">${pair.name}</a>.` : ''}</small></div></div>
       ${(() => { const S = STATION_OF[sel]; if (!S) return ''; const here = !ctx.atStation || ctx.atStation(sel); return `<div class="pfst ${here ? 'here' : 'away'}">${S.icon} ${here ? `Você está na <b>${S.name}</b>: mãos à obra.` : `Só se faz na <b>${S.name}</b>. Toda vila e cidade tem, em volta da praça (veja no mapa).`}</div>`; })()}
       ${tabs}<div class="pflist pfgrid ${STATION_OF[sel] && ctx.atStation && !ctx.atStation(sel) ? 'away' : ''}">${list}</div></div></div><small class="ft">Y abre e fecha · Esc fecha</small></div>`;
     el.style.display = 'flex';

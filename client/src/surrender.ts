@@ -50,7 +50,25 @@ function modal(title: string, html: string, buttons: [string, () => void][], cls
  *  Um Olho só: se outras escolhas chegam enquanto ele está aberto (vários elites, missão com muitos atos), entram na mesma visão
  *  e o karma aparece somado, em vez de o Olho subir cinco vezes seguidas. */
 let openEye: { list: HTMLElement; kd: HTMLElement; total: number; n: number; jt: HTMLElement; afters: (() => void)[] } | null = null;
+/* 11/11 (Erling: "o Olho não deve mais aparecer na hora: posso estar lutando e vou morrer porque minha tela trava. Deixa o Olho com um brilho extra e
+   um contador em cima; quando eu clicar no Olho, aí aparece a mensagem. Assim vejo depois da batalha, sem ser penalizado por uma coisa boa"):
+   o que o Olho viu fica GUARDADO. O Olho da barra acende e mostra quantos atos esperam; o clique nele abre a visão com todos de uma vez.
+   O jogo não espera: o que vinha "depois do Olho" segue na hora. Sem Olho na tela (antes de ele existir), a visão abre como antes. */
+const eyeQueue: { title: string; what: string; why: string; delta: number }[] = [];
+let eyeBound = false;
+function eyeBadge() {
+  const sg = document.getElementById('sigil'); if (!sg) return; let b = sg.querySelector('.eyecnt') as HTMLElement | null;
+  if (!eyeQueue.length) { sg.classList.remove('eyepend'); b?.remove(); return; }
+  if (!b) { b = document.createElement('b'); b.className = 'eyecnt'; sg.appendChild(b); }
+  b.textContent = String(eyeQueue.length); sg.classList.add('eyepend'); sg.title = `O Olho viu ${eyeQueue.length} ato${eyeQueue.length > 1 ? 's' : ''} seu${eyeQueue.length > 1 ? 's' : ''}. Clique para ver.`;
+}
 export function eyeSees(title: string, what: string, why: string, delta: number, after?: () => void) {
+  const sg = document.getElementById('sigil');
+  if (openEye || !sg || sg.classList.contains('dead')) { eyeShow(title, what, why, delta, after); return; } /* a visão já está aberta (junta nela), ou não há Olho para clicar */
+  eyeQueue.push({ title, what, why, delta }); eyeBadge(); if (after) setTimeout(after, 0);
+  if (!eyeBound) { eyeBound = true; sg.addEventListener('click', (e) => { if (!eyeQueue.length) return; e.stopPropagation(); e.preventDefault(); const L = eyeQueue.splice(0); sg.removeAttribute('title'); eyeBadge(); for (const q of L) eyeShow(q.title, q.what, q.why, q.delta); }, true); }
+}
+function eyeShow(title: string, what: string, why: string, delta: number, after?: () => void) {
   if (openEye) { const o = openEye; o.n++; o.total += delta; if (after) o.afters.push(after);
     const it = document.createElement('div'); it.className = 'eyeitem'; const c = delta > 0 ? '#9ad7ff' : delta < 0 ? '#ff8a7a' : '#d9c08a';
     it.innerHTML = `<b>${title}</b> <span style="color:${c}">${delta > 0 ? '+' : ''}${delta}</span><br><small>${what}</small>`; o.list.appendChild(it);

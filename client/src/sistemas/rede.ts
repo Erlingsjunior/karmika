@@ -9,13 +9,15 @@ import { bandOf } from '../karma';
 import { RARITY } from '../loot';
 import { FEATS, CATS } from '../feats';
 import { createCoop } from '../coop';
+import { molduraAtiva, tituloAtivo } from '../titulos';
 import { initMirror } from '../espelho';
 import type { RedeCtx } from '../main';
+import { tarefa } from './perf-tarefas'; /* 17/11 (estudo de desempenho, regra 3): o que roda por relógio na rede aparece no /travadas */
 
 export function createRede(K: RedeCtx) {
 /* jogar junto: os outros Caminhantes da sala aparecem no mundo (cada um com o próprio save) */
 const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
-  look: () => ({ kind: K.kindOf(K.state.race), opts: K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}, gear: K.lastGear, skin: K.peleSys.netSkin, name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(K.state.karma), fac: myFac(), path: K.myPath(), lean: K.soulLean(), prem: isPremium() }),
+  look: () => ({ kind: K.kindOf(K.state.race), opts: K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}, gear: K.lastGear, skin: K.peleSys.netSkin, name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', karma: Math.round(K.state.karma), fac: myFac(), path: K.myPath(), lean: K.soulLean(), prem: isPremium(), /* 15/11: o Bracelete de Choque no pulso aparece também para os outros jogadores */ cuff: !!(K.hero as { cuffOn?: boolean }).cuffOn, /* 16/11: a moldura e o título em uso (o quadro do grupo mostra) */ mold: molduraAtiva(), title: tituloAtivo()?.nome ?? '' }),
   premRune: () => { const sp = K.makeBlessRune(); sp.visible = true; return sp; },
   st: () => { const p = K.hero.root.position; const zn = K.inside ? (K.inside.crypt ? `crypt:${K.inside.crypt}` : `in:${K.inside.prop.gx},${K.inside.prop.gy}`) : 'world';
     return { x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), f: +K.hero.root.rotation.y.toFixed(3), m: +K.netMps.toFixed(2), zn, hp: Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), ...(K.hero.combat ? { cb: 1 as const } : {}), ...(K.hero.guard ? { gd: 1 as const } : {}), ...(K.hero.riding ? { rd: 1 as const } : {}), ...(K.hero.kneel ? { kn: 1 as const } : {}), ...(K.pvpOn ? { ag: 1 as const } : {}) }; },
@@ -40,7 +42,7 @@ const net = createNet({ scene: K.scene, camera: K.camera, canvas: K.canvas,
     const gear = Object.entries(K.inv.eq).filter(([, g]) => !!g).map(([slot, g]) => ({ slot, name: g!.name, rarity: RARITY[g!.rarity].name, icon: g!.icon, col: RARITY[g!.rarity].col }));
     const done = FEATS.filter((f) => K.feats.isDone(f.id)); const top = [...done].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0) || b.goal - a.goal).slice(0, 6);
     const fac = myFac();
-    return { name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', title: K.quests?.title ?? '', karma: k, align, fac: fac ? FAC[fac].name : null, portrait,
+    return { name: K.profile?.name || RACES[K.state.race].label, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim() || 'Caminhante', title: K.quests?.title ?? '', karma: k, align, fac: fac ? FAC[fac].name : null, portrait, mold: molduraAtiva(),
       gear, feats: top.map((f) => ({ name: f.name, desc: f.desc, icon: CATS[f.cat].icon })), featCount: done.length, featTotal: FEATS.length, kills: K.game.st.kills ?? 0, quests: K.quests.q.done.length, lives: K.soul.s.lives.map((l) => ({ name: l.name, race: K.originName(l.origin), cls: l.cls, lvl: l.lvl })) };
   },
 });
@@ -72,7 +74,8 @@ K.canvas.addEventListener('pointerdown', (e) => { if (e.button !== 1) return; e.
 K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefault(); });
 /* jogar junto, etapa 2: os monstros do mundo são os mesmos para todos da sala (quem luta com o bicho conduz; golpes e mortes vão para todos) */
 { const inParty = (id: number) => !!net.party && net.party.members.includes(id) && id !== net.myId;
-  const partyNear = () => { if (!net.party || K.inside) return 1; const p = K.hero.root.position; let n = 1; for (const r of net.remotes()) if (inParty(r.id) && r.zn === 'world' && r.pos.distanceTo(p) < 45) n++; return n; };
+  /* 11/11 (Erling: "masmorra e raide usam os dois multiplicadores"): antes só contava companheiro no mundo aberto; dentro de masmorra o grupo valia 1. Agora conta quem está no MESMO lugar que você (o boneco dele só fica visível aí) e perto. */
+  const partyNear = () => { if (!net.party) return 1; const p = K.hero.root.position; let n = 1; for (const r of net.remotes()) if (inParty(r.id) && (r as { root?: { visible: boolean } }).root?.visible && r.pos.distanceTo(p) < 45) n++; return n; };
   K.game.setNet({ myId: () => net.myId, hit: (id, n) => net.x('x:hit', { e: id, n }), die: (id) => net.x('x:die', { e: id }), cast: (id, x, z, i) => net.x('x:cast', { e: id, x: Math.round(x * 10) / 10, z: Math.round(z * 10) / 10, i }) }, partyNear);
   /* 06/11: runas que curam o aliado — o companheiro de grupo mais ferido a até 10 m recebe a cura (só companheiros, nunca estranhos) */
   let rhAt = 0; K.game.setAllyHeal((pct) => { const t = performance.now(); if (t - rhAt < 1200) return false; if (!net.party || net.state !== 'on') return false; const p = K.hero.root.position; let best: { id: number; d: number } | null = null; for (const r of net.remotes()) { if (!inParty(r.id)) continue; const d = r.pos.distanceTo(p); if (d < 10 && (!best || d < best.d)) best = { id: r.id, d }; } if (!best) return false; rhAt = t; net.x('x:rh', { to: best.id, pct: Math.min(0.2, pct) }); return true; });
@@ -85,14 +88,37 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
       net.x('x:gh', { to: q.id, v: Math.round(v * k) }); K.game.beam(from.clone().setY(from.y + 1.3), q.pos.clone().setY(q.pos.y + 1.3), 0xb0ffc0); from = q.pos.clone(); k -= 0.15; n++; }
     return n; });
   net.onX('x:gh', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.game.healAbs(Math.max(0, Number(m.v) || 0), net.nameOf(from)); });
-  setInterval(() => { if (!net.party || net.state !== 'on') return; const a = K.game.groupAuraOut(); if (a.def <= 0 && a.dmg <= 0) return; net.x('x:aura', { d: a.def, a: a.dmg }); }, 2500);
+  setInterval(tarefa('rede: aura do grupo', () => { if (!net.party || net.state !== 'on') return; const a = K.game.groupAuraOut(); if (a.def <= 0 && a.dmg <= 0) return; net.x('x:aura', { d: a.def, a: a.dmg }); }), 2500);
   net.onX('x:aura', (from, m) => { if (!inParty(from)) return; const q = net.remotes().find((r) => r.id === from); if (!q || q.pos.distanceTo(K.hero.root.position) > 14) return; K.game.groupAuraIn(Math.max(0, Number(m.d) || 0), Math.max(0, Number(m.a) || 0)); });
   net.onX('x:rh', (from, m) => { if (m.to !== net.myId || !inParty(from) || K.game.st.dead) return; K.game.healFrom(Number(m.pct) || 0, net.nameOf(from)); });
   net.onX('x:mob', (from, m) => K.game.enemies.netIn(from, m.l as (number | string)[][]));
   net.onX('x:hit', (_f, m) => K.game.enemies.netHit(String(m.e), m.n as number));
   net.onX('x:cast', (_f, m) => { if (!K.inside || K.inside.crypt || K.inside.dg) K.game.enemies.netCast(String(m.e), m.x as number, m.z as number, m.i as number); });
   net.onX('x:die', (from, m) => { const e = K.game.enemies.netDie(String(m.e)); // companheiro de grupo perto: a morte conta para mim também (XP, missão, meu saque)
-    if (e && inParty(from) && !K.inside && !K.game.st.dead && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 45) K.game.sharedKill(e); });
+    if (e && inParty(from) && !K.inside && !K.game.st.dead && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 45) K.game.sharedKill(e); /* (a morte do grupo já conta para o evento por este caminho) */
+    else if (e && (e as { tag?: string }).tag === 'hunt' && !K.game.st.dead) K.game.sharedKill(e); /* 17/11: a minha caça de elite, morta com a ajuda de outro jogador, conta para o meu contrato */
+    else if (e && (e as { tag?: string }).tag?.startsWith('ev:') && Math.hypot(e.pos.x - K.hero.root.position.x, e.pos.z - K.hero.root.position.z) < 70) dispatchEvent(new CustomEvent('karmika:evkill', { detail: e })); });
+  /* 17/11 (eventos compartilhados): bicho de evento vivo morto por QUALQUER jogador perto conta para o meu evento (acima, no x:die); a tarefa feita por outro anda no meu */
+  /* 17/11 (Erling: "a sala cabe 200 jogadores e tudo tem que ser visto por todos"). BICHOS PESSOAIS À VISTA DE TODOS: a caçada de elite, a isca
+     de aranhas e a emboscada do baú nascem só na máquina de quem os chamou. De 3 em 3 s o dono anuncia os seus; quem está a até 150 m e ainda
+     não tem aquele bicho cria um igual com a mesma chave, e daí em diante ele anda, apanha e morre igual para todos (x:mob, x:hit, x:die).
+     O bicho de fora que fica 12 s sem anúncio (o dono saiu, a caçada acabou) some. */
+  const nomeDe = (id: number) => (net.peers() as { id?: number; name: string }[]).find((q) => q.id === id)?.name ?? 'Um Caminhante';
+  const deFora = new Map<string, number>();
+  type Anun = { net?: string; type: string; pos: { x: number; z: number }; def: { name: string; lvl: number; scale: number }; hp: number; hpMax: number; tag?: string };
+  setInterval(tarefa('rede: anúncio de bichos', () => { if (net.state !== 'on') return; const L = (K.game.enemies as unknown as { netAnun(): Anun[] }).netAnun().filter((e) => !deFora.has(e.net!)).slice(0, 14); if (L.length) net.x('x:spw', { l: L.map((e) => [e.net, e.type, Math.round(e.pos.x * 10) / 10, Math.round(e.pos.z * 10) / 10, e.def.name, e.def.lvl, e.hpMax, e.tag ?? '']) });
+    const agora = Date.now(); for (const [id, t] of deFora) if (agora - t > 12000) { deFora.delete(id); K.game.enemies.netDie(id); } }), 3000);
+  net.onX('x:spw', (_from, m) => { const E = K.game.enemies as unknown as { netHas(id: string): boolean; spawn(t: string, x: number, z: number, o: Record<string, unknown>): { hp: number; hpMax: number } }, hp = K.hero.root.position;
+    for (const r of (m.l as [string, string, number, number, string, number, number, string][]) ?? []) { const [id, type, x, z, name, lvl, hpMax, tag] = r; if (typeof id !== 'string' || deFora.size > 60) continue; if (E.netHas(id)) { if (deFora.has(id)) deFora.set(id, Date.now()); continue; } if (Math.hypot(x - hp.x, z - hp.z) > 150) continue;
+      try { const e = E.spawn(type, x, z, { name, lvl, tag: 'fora:' + (tag || 'x'), netId: id, aggro: 0 }); e.hpMax = e.hp = hpMax; deFora.set(id, Date.now()); } catch { /* tipo de bicho que esta versão não conhece */ } } });
+  /* OS MONTES DE DESPOJOS dos outros aparecem para todos (só o dono recolhe) */
+  addEventListener('karmika:despojos', (ev) => { if (net.state === 'on') net.x('x:desp', { l: (ev as CustomEvent).detail }); });
+  net.onX('x:desp', (from, m) => dispatchEvent(new CustomEvent('karmika:despojos-in', { detail: { de: from, l: m.l } })));
+  /* O CHAMADO DO EVENTO (Erling: "eventos próximos têm que chamar quem estiver próximo"): quem entra num evento chama a sala; quem está perto ouve */
+  addEventListener('karmika:evcall', (ev) => { if (net.state === 'on') net.x('x:evc', (ev as CustomEvent).detail); });
+  net.onX('x:evc', (from, m) => dispatchEvent(new CustomEvent('karmika:evcall-in', { detail: { key: String(m.key), quem: nomeDe(from) } })));
+  addEventListener('karmika:evtask', (ev) => { if (net.state === 'on') net.x('x:evt', (ev as CustomEvent).detail); });
+  net.onX('x:evt', (_from, m) => dispatchEvent(new CustomEvent('karmika:evtask-in', { detail: { key: String(m.key), task: String(m.task), n: +(m.n as number) || 0 } })));
   /* missões do grupo: o que eu pego aparece para os companheiros (com "Pegar também") */
   K.quests.setOnAccept((d) => { if (net.state === 'on' && net.party && d.giver !== 'O Olho') net.x('x:pq', { d }); });
   /* masmorra em grupo: quem chega pede o estado; quem já está dentro conta o que caiu e se o portão abriu */
@@ -101,8 +127,8 @@ K.canvas.addEventListener('auxclick', (e) => { if (e.button === 1) e.preventDefa
   net.onX('x:dgsnap', (from, m) => { if (m.to !== net.myId || !inParty(from)) return; K.dgs.applySnapshot(m as never); });
   net.onX('x:dgwin', (from, m) => { if (inParty(from)) K.game.logMsg(`🏆 ${net.nameOf(from)} e o grupo venceram ${K.dgs.entrances.find((e) => e.d.id === m.id)?.d.name ?? 'a masmorra'}!`, '#ffd24a'); });
   net.onX('x:pq', (from, m) => { if (!inParty(from)) return; const d = m.d as Parameters<typeof K.quests.accept>[0], nm = net.nameOf(from); coop.questShare(nm, d, K.quests.shareState(d), () => K.quests.accept(d, nm)); });
-  setInterval(() => { K.pvp.tick(); }, 500);
-  setInterval(() => { if (net.state !== 'on' || (K.inside && !K.inside.crypt && !K.inside.dg)) return; const l = K.game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }, 100); }
-const coop = createCoop(net, { friend: (n) => K.social.friendChar(n), guildInvite: (n) => K.social.inviteGuild(n), inGuild: () => !!K.social.guild, pvpToggle: () => K.pvp.toggle(), pvpOn: () => K.pvpOn, toMenu: () => K.inicio.open(), mailTo: (n) => K.mail.compose(n), duel: (id) => K.pvp.challenge(id), whisperTo: (n) => K.chat.whisperTo(n), myHp: () => Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)) });
+  setInterval(tarefa('rede: pvp', () => { K.pvp.tick(); }), 500);
+  setInterval(tarefa('rede: bichos', () => { if (net.state !== 'on' || (K.inside && !K.inside.crypt && !K.inside.dg)) return; const l = K.game.enemies.netOut(); if (l.length) net.x('x:mob', { l }); }), 100); }
+const coop = createCoop(net, { friend: (n) => K.social.friendChar(n), guildInvite: (n) => K.social.inviteGuild(n), inGuild: () => !!K.social.guild, pvpToggle: () => K.pvp.toggle(), pvpOn: () => K.pvpOn, toMenu: () => K.inicio.open(), mailTo: (n) => K.mail.compose(n), duel: (id) => K.pvp.challenge(id), whisperTo: (n) => K.chat.whisperTo(n), myHp: () => Math.round(100 * K.game.st.hp / Math.max(1, K.game.st.hpMax)), eu: () => ({ retrato: K.retrato(), mold: molduraAtiva(), titulo: tituloAtivo()?.nome ?? '' }) });
   return { coop, net };
 }

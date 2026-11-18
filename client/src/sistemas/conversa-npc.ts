@@ -28,15 +28,22 @@ function portraitOf(name: string, root: THREE.Object3D, full = false): string {
   let headY = -1; root.traverse((o) => { if (headY < 0 && (o as THREE.Bone).isBone && /head/i.test(o.name) && !/end|top/i.test(o.name)) headY = o.getWorldPosition(new THREE.Vector3()).y; });
   const box = new THREE.Box3().setFromObject(root), top = headY > 0.5 ? headY + 0.2 : Math.min(box.max.y, 1.97 * (root.scale.y || 1)) /* a antena do reator do tecnocrata passava da cabeça e o retrato mirava nela */, cy = full ? top * 0.52 : top - 0.26, dist = full ? top * 1.45 + 0.45 : 1.15;
   const cam = new THREE.PerspectiveCamera(full ? 34 : 30, w / h, 0.05, 30); cam.position.set(full ? 0.3 : 0.12, cy + (full ? 0.15 : 0.08), dist); cam.lookAt(0, cy - 0.02, 0); cam.layers.enableAll();
+  /* 17/11 (Erling: "retrato de personagem sempre com o personagem dentro"): na hora da foto nada do modelo pode ser cortado por estar "fora da
+     tela" (o corpo com esqueleto guardava a esfera de corte de outro lugar e sumia, ficando só a espada e o escudo), nem sair meio apagado. */
+  const semCorte: THREE.Object3D[] = [], apagados: [THREE.Material, number][] = [];
+  root.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; if (me.frustumCulled) { me.frustumCulled = false; semCorte.push(me); } for (const mt of Array.isArray(me.material) ? me.material : [me.material]) if (mt && mt.transparent && mt.opacity < 1 && mt.opacity > 0 && mt.depthTest !== false && !o.userData.xray) { apagados.push([mt, mt.opacity]); mt.opacity = 1; } });
   const bgc = new THREE.Color(); K.renderer.getClearColor(bgc); const alpha = K.renderer.getClearAlpha(), sm = K.renderer.shadowMap.autoUpdate;
   K.renderer.shadowMap.autoUpdate = false; K.renderer.setRenderTarget(rt); K.renderer.setClearColor(0x14101a, 1); K.renderer.clear(); K.renderer.render(ps, cam);
   const px = new Uint8Array(w * h * 4); K.renderer.readRenderTargetPixels(rt, 0, 0, w, h, px);
   K.renderer.setRenderTarget(null); K.renderer.setClearColor(bgc, alpha); K.renderer.shadowMap.autoUpdate = sm; rt.dispose();
-  for (const o of xr) o.visible = true;
+  for (const o of xr) o.visible = true; for (const o of semCorte) (o as THREE.Mesh).frustumCulled = true; for (const [mt, op] of apagados) mt.opacity = op;
   ps.remove(root); if (parent) parent.add(root); root.position.copy(pos); root.rotation.copy(rot); root.visible = vis;
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d')!, im = g.createImageData(w, h);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const si = ((h - 1 - y) * w + x) * 4, di = (y * w + x) * 4; im.data[di] = px[si]; im.data[di + 1] = px[si + 1]; im.data[di + 2] = px[si + 2]; im.data[di + 3] = 255; }
-  g.putImageData(im, 0, 0); const url = cv.toDataURL(); if (root.userData.hideProc || full) portraits.set(name, url); /* 09/11: sem o modelo de arte encaixado ainda, não guarda — na próxima conversa fotografa de novo, já com ele */ return url;
+  /* quanto do retrato tem gente: conta os pontos que não são o fundo, na faixa do meio. Retrato quase vazio não é guardado (tira outro depois). */
+  let cheio = 0, tot = 0; for (let y = Math.floor(h * 0.25); y < Math.floor(h * 0.9); y += 2) for (let x = Math.floor(w * 0.3); x < Math.floor(w * 0.7); x += 2) { const si = (y * w + x) * 4; tot++; if (Math.abs(px[si] - px[0]) + Math.abs(px[si + 1] - px[1]) + Math.abs(px[si + 2] - px[2]) > 24) cheio++; } /* a cor do fundo é lida do canto da própria foto */
+  const cobertura = cheio / Math.max(1, tot); root.userData.retratoCheio = cobertura;
+  g.putImageData(im, 0, 0); const url = cv.toDataURL(); if ((root.userData.hideProc || full) && cobertura > 0.2) portraits.set(name, url); /* 09/11: sem o modelo de arte encaixado ainda, não guarda — na próxima conversa fotografa de novo, já com ele */ return url;
 }
 /* conversa com um NPC: missões para entregar, missões novas, comércio, quadro, conversa */
 function talkTo(n: (typeof K.npcSys.npcs)[number]) {
@@ -57,7 +64,7 @@ function talkTo(n: (typeof K.npcSys.npcs)[number]) {
     choices.push({ kind: 'shop', label: `Comerciar com ${nm}`, hint: mf === sf ? 'peças com brasão' : 'só para guardar ou vender', cb: () => { K.inv.openShop(shopId); if (mf !== sf) K.game.logMsg(sf === 'fio' ? `🧵 ${nm}: “Vendo a quem paga. Vestir o fio é outra história: só quem jura.”` : `✂ ${nm}: “Leve. Mas o manto só cai bem em quem já cortou o fio.”`, '#c8b890'); } }); }
   else if (shopId) choices.push({ kind: 'shop', label: `Comerciar com ${nm}`, cb: () => { if (shopId === 'latao') K.prepLatao(); K.inv.openShop(shopId, SHOP_OF[nm] ? undefined : `${nm}, ${n.def.role}`); const k = K.shopLeanK(shopId);
     if (k > 1) K.game.logMsg(`${nm} olha você de cima a baixo. Para gente como você, o preço é outro (+${Math.round((k - 1) * 100)}%).`, '#c8a090'); else if (k < 1) K.game.logMsg(`${nm} sorri: “Para você, um desconto.” (−${Math.round((1 - k) * 100)}%)`, '#a8d0a0'); } });
-  if (nm === 'Elowen' || nm === 'Elowen do Porto') choices.push({ kind: 'custom', label: 'Abrir o Shop', hint: 'Premium e brasões', cb: () => { K.dlg.close(); K.loja.toggle('prem'); } });
+  if (nm === 'Elowen' || nm === 'Elowen do Porto') choices.push({ kind: 'custom', label: 'Abrir o Shop', hint: 'Pacotes, engenhocas e brasões', cb: () => { K.dlg.close(); K.loja.toggle('pac'); } });
   if (nm === 'Mestre-Forjador Brokki') choices.push({ kind: 'custom', label: 'Forja de Elite', hint: 'peças lendárias', cb: () => eliteForge(n) });
   { /* a festa também é um assunto de conversa: quem fechou o convite (ou clicou fora dele) ainda pode aceitar falando com quem deu a missão */
     const stF = K.hereSettle()?.name ?? '', dF = stF && !K.festaSys.festa && !K.align.flag('festa_' + stF) && K.align.get('vila', stF) >= (stF === 'Karmika' ? 100 : 300) ? K.leavingQuest(stF) : null;
@@ -66,6 +73,8 @@ function talkTo(n: (typeof K.npcSys.npcs)[number]) {
   if (nm === 'Prefeito Corvin Aldmar' && !K.social.guild) choices.push({ kind: 'custom', label: 'Fundar uma guilda', hint: 'Licença de Guilda: nível 45 · Lágrima de Marghar · party de 3', cb: () => { K.dlg.close(); K.social.startFounding(); } });
   /* 06/11: o Livro de Guildas fica nas bibliotecas e com o Prefeito */
   if (nm === 'Prefeito Corvin Aldmar' || /Bibliotec|Cronista/i.test(n.def.role ?? '')) choices.push({ kind: 'custom', label: '📖 Ler o Livro de Guildas', hint: 'todas as guildas de Karmika', cb: () => { K.dlg.close(); K.social.openBook(); } });
+  /* 12/11: o Arauto dos Torneios, na Estalagem de Karmika, recebe a inscrição das guildas no campeonato */
+  if (nm === 'Arauto Valério dos Torneios') choices.push({ kind: 'custom', label: '🏆 Inscrever a guilda no campeonato', hint: 'só a diretoria · guilda de nível 3', cb: () => { K.dlg.close(); K.social.openTorneio(); } });
   if (nm === 'Garrick') choices.push({ kind: 'board', label: 'Quadro de Missões', hint: 'contratos', cb: () => K.quests.openBoard() });
   if (nm === 'Hrefna') { if (K.game.st.lvl >= 20 && (!K.profile?.path || K.profile.path === 'humano')) choices.push({ kind: 'custom', label: K.profile?.path === 'humano' ? 'Ler o meu caminho de novo' : 'Ler o meu caminho', hint: 'doze perguntas', cb: () => { K.dlg.close(); K.vid.open(); } }); else if (K.game.st.lvl < 30) choices.push({ kind: 'talk', label: 'Ler o meu caminho', hint: 'nível 30', cb: () => K.dlg.setText('Ainda não. A sua alma ainda está se formando. Volte no nível 30, e eu leio o que a Deusa vê.') }); }
   choices.push({ kind: 'talk', label: 'Conversar', cb: () => K.dlg.setText(K.npcSys.talk(n)) });

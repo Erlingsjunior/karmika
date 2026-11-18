@@ -1,6 +1,6 @@
 /* ESTÁBULO E COMPANHEIROS (Erling, 25/10): o pet ou a montaria comprada é "consumida" da mochila e passa a morar aqui.
    Na página: o bicho se mexendo, dar comida, brincar clicando nele, renomear, coleira e peitoral (pets), a coleção
-   (quantos você tem de quantos existem) e trocar quem anda com você. Abre com X, pelo ícone do dock e com Ctrl+clique no pet. */
+   (quantos você tem de quantos existem) e trocar quem anda com você. Abre com X, pelo ícone do dock e com Alt+clique no pet. */
 import * as THREE from 'three';
 import { PETS, MOUNTS, petModel, mountModel, type PetKind } from './companions';
 import { ramp } from './toon3d';

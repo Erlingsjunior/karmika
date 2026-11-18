@@ -1,7 +1,7 @@
 /* CINEMÁTICAS DE PAISAGEM, Fontes da Visão, portas das casas e marcas de cena: tocar a cena, a câmera do menu, os olhos das vistas e os gatilhos. Saiu do main.ts (02/11). */
 import { scenes, type Scene, playOverlay } from '../cinema';
-import { TILE_M as T } from '@karmika/shared';
-import { CATHEDRAL, ASKAVIK, CITY, heightAt, localDims, rotLocal } from '../world';
+import { TILE_M as T, isWalkable } from '@karmika/shared';
+import { CATHEDRAL, ASKAVIK, CITY, heightAt, localDims, rotLocal, groundH, WL } from '../world';
 import { waterU } from '../chunks3d';
 import * as THREE from 'three';
 import { gpuTag } from '../gpu/tags';
@@ -16,18 +16,23 @@ if (localStorage.getItem('karmika.crypt.done') !== '1') waterU.uFoul.value.set((
 const vistaSeen = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.vistas') || '[]') as string[]; } catch { return []; } })());
 const cineSeen = new Set<string>((() => { try { return JSON.parse(localStorage.getItem('karmika.cine') || '[]') as string[]; } catch { return []; } })());
 let cineTick = 0;
-let cine: { sc: Scene; t: number; ov: { close(): void; allowSkip(): void }; skipOk?: boolean; z0: number; az0: number; x0: number; z0w: number; done?: () => void } | null = null;
-function playScene(sc: Scene, done?: () => void) {
+let cine: { sc: Scene; t: number; ov: { close(): void; allowSkip(): void }; skipOk?: boolean; z0: number; az0: number; x0: number; z0w: number; done?: () => void; hold?: boolean; warm?: number; direct?: boolean } | null = null;
+function playScene(sc: Scene, done?: () => void, hold = false) {
   if (cine) return; K.keys.clear(); K.state.path = []; if (K.combatMode) K.setCombat(false);
   for (const id of ['inv', 'char', 'shop', 'qlog', 'skillsw', 'featsw']) { const el = document.getElementById(id); if (el) el.style.display = 'none'; }
   document.body.classList.add('cinema'); K.objs.setRad(5); K.objs.update(K.camX, K.camZ, true);
-  cine = { sc, t: 0, ov: playOverlay(sc, () => endScene()), z0: K.zoomTarget, az0: K.az, x0: K.camX, z0w: K.camZ, done };
-  K.audio.hymn(sc.sec, sc.mood);
+  cine = { sc, t: 0, ov: hold ? { close() { /* ainda sem letreiro */ }, allowSkip() { /* idem */ } } : playOverlay(sc, () => endScene()), z0: K.zoomTarget, az0: K.az, x0: K.camX, z0w: K.camZ, done, hold, direct: hold };
+  if (!hold) K.audio.hymn(sc.sec, sc.mood);
 }
 /** toda cena passa por uma tela de carregamento: o cenário de todos os planos é montado com a tela preta, e só então o filme começa (nada de travar no meio do jogo) */
 function startScene(sc: Scene, done?: () => void) {
   if (cine || K.fading) return; K.keys.clear(); K.state.path = [];
-  K.withFade(() => { K.objs.setRad(5); for (const sh of sc.shots) K.objs.update(sh.x, sh.z, true); K.objs.update(K.camX, K.camZ, true); }, `Preparando a cena — ${sc.title}`, () => playScene(sc, done));
+  /* 11/11 (Erling: "ele volta para o jogo antes do panorama começar e fica parado; o loading só termina para dar lugar ao panorama já começando de verdade"):
+     a cena começa AINDA com a tela preta, em espera: a câmera passa por todos os planos (a placa compila e carrega tudo o que o filme vai mostrar) e para
+     no primeiro. Só então a tela abre, já em cima da paisagem, e o letreiro e a música começam nesse instante. */
+  K.withFade(() => { K.objs.setRad(5); for (const sh of sc.shots) K.objs.update(sh.x, sh.z, true); playScene(sc, done, true); }, `Preparando a cena: ${sc.title}`,
+    () => { if (!cine || cine.sc !== sc) return; cine.hold = false; cine.t = 0; cine.ov = playOverlay(sc, () => endScene()); K.audio.hymn(sc.sec, sc.mood); },
+    () => !cine || (cine.warm ?? 0) >= sc.shots.length * 3 + 4);
 }
 function endScene() { if (!cine) return; const c = cine; cine = null; c.ov.close(); document.body.classList.remove('cinema'); K.objs.setRad(2); K.zoomTarget = c.z0; K.azT = c.az0; c.done?.(); }
 /* 26/10 (Erling: "na tela de fundo coloque cada vez um lugar diferente dos lindos que já foram criados — paisagens de Karmika, e não
@@ -48,10 +53,14 @@ function menuView(rdt: number) {
   return true;
 }
 function updateCine(rdt: number) {
-  if (!cine) return false; cine.t += rdt; const sc = cine.sc, sh = sc.shots, u = Math.min(1, cine.t / sc.sec);
+  if (!cine) return false;
+  if (cine.hold) { /* em espera atrás da tela preta: visita cada plano por 3 quadros e termina parado no primeiro */
+    const n = cine.sc.shots.length, w = cine.warm = (cine.warm ?? 0) + 1, s0 = cine.sc.shots[w < n * 3 ? Math.floor(w / 3) : 0];
+    K.camX = s0.x; K.camZ = s0.z; K.zoom = K.zoomTarget = s0.zoom; K.az = K.azT = s0.az; K.camY = heightAt(K.camX, K.camZ) + s0.zoom * 0.16; K.objs.update(K.camX, K.camZ); return true; }
+  cine.t += rdt; const sc = cine.sc, sh = sc.shots, u = Math.min(1, cine.t / sc.sec);
   const f = u * (sh.length - 1), i = Math.min(sh.length - 2, Math.floor(f)), k = f - i, e = k * k * (3 - 2 * k), a = sh[i], b = sh[i + 1];
   // entra e sai suavemente da posição do jogador
-  const inK = Math.min(1, cine.t / 2.2), outK = Math.min(1, (sc.sec - cine.t) / 2.2), w = Math.min(inK, outK), ww = w * w * (3 - 2 * w);
+  const inK = cine.direct ? 1 : Math.min(1, cine.t / 2.2), outK = Math.min(1, (sc.sec - cine.t) / 2.2), w = Math.min(inK, outK), ww = w * w * (3 - 2 * w);
   const tx = THREE.MathUtils.lerp(a.x, b.x, e), tz = THREE.MathUtils.lerp(a.z, b.z, e), tzm = THREE.MathUtils.lerp(a.zoom, b.zoom, e), taz = THREE.MathUtils.lerp(a.az, b.az, e);
   const hx = K.state.fx * T, hz = K.state.fy * T;
   K.camX = THREE.MathUtils.lerp(hx, tx, ww); K.camZ = THREE.MathUtils.lerp(hz, tz, ww); K.zoom = K.zoomTarget = THREE.MathUtils.lerp(cine.z0, tzm, ww); K.az = K.azT = THREE.MathUtils.lerp(cine.az0, taz, ww);
@@ -86,6 +95,38 @@ const FONT_R = new Map<string, number>();
       text: [`A fonte de ${st.name} é o coração do lugar: as estradas chegam nela, as notícias se espalham dela, e as crianças aprendem a contar com as moedas do fundo.${lore ? ' ' + lore : ''}`,
         'Como toda fonte de Karmika, esta guarda o que as almas deixam cair quando passam. Quem joga uma moeda e olha a água vê o que o lugar já viu: os que nasceram, os que partiram e os que voltaram com outro rosto.',
         'Os velhos dizem que Marghar bebe de todas as fontes ao mesmo tempo. Por isso nenhuma seca, e por isso ninguém mente com a mão na borda de pedra.'] } as (typeof CINE.vistas)[number]); } }
+/* 13/11 (Erling: "coloque a fonte de olhar na casa da guilda e na taverna, eles precisam ver essas belezinhas e a história das guildas e tavernas e estábulos no jogo
+   com o sistema de tear, onde cada reino contribui com seu fio ao tear do mundo kármiko, fazendo parte do desenho que se forma no fim"):
+   duas Fontes da Visão em Karmika, uma na calçada da Estalagem e outra na saída do portão do Salão das Guildas */
+{ const D = Math.PI / 180, shot = (x: number, y: number, zoom: number, az: number) => ({ x: x * T, z: y * T, zoom, az: az * D });
+  const inn = K.city.props.find((q) => q.kind === 'house' && q.shop === 'estalagem'), gh = K.city.props.find((q) => q.kind === 'house' && q.shop === 'salao_guildas'), stb = K.city.props.find((q) => q.kind === 'house' && q.shop === 'estabulo');
+  if (inn) { const cx = inn.gx + inn.w / 2, cy = inn.gy + inn.h / 2;
+    CINE.vistas.push({ id: 'v_estalagem', at: { x: inn.gx - 2, y: inn.gy + inn.h + 1 }, title: 'Fonte da Visão — Estalagem de Karmika', sub: 'A mesa, a cama e o estábulo', mood: 'bright', skippable: true, sec: 30,
+      shots: [shot(cx, cy + 2, 19, 45), shot(stb ? stb.gx + stb.w / 2 : cx + 8, stb ? stb.gy + stb.h / 2 + 1 : cy, 15, 45), shot(cx + 2, cy, 26, 45)],
+      text: ['Antes das muralhas havia a mesa. A primeira estalagem de Karmika foi um telheiro onde quem chegava da estrada dividia o fogo com quem ia partir. Dizem que Marghar sentou ali sem ser reconhecido e pagou a sopa com uma história.',
+        'Toda estalagem tem um estábulo porque nenhuma jornada é de um só. O animal que carrega você carrega também o que você fez no caminho. Por isso o moço do estábulo escova devagar e não pergunta de onde vem a poeira.',
+        'Cada reino tem a sua estalagem: igual por dentro, com outro nome na placa e outra bandeira na porta. No Tear do Mundo ela é o nó onde os fios se encontram. Quem senta a esta mesa hoje vira linha no desenho que só se vê inteiro no fim.'] } as (typeof CINE.vistas)[number]); }
+  if (gh) { const cx = gh.gx + gh.w / 2, cy = gh.gy + gh.h / 2;
+    CINE.vistas.push({ id: 'v_salao_guildas', at: { x: gh.gx + 12, y: gh.gy + 8 }, title: 'Fonte da Visão — Salão das Guildas', sub: 'O juramento dos ofícios e o Tear do Mundo', mood: 'bright', skippable: true, sec: 30,
+      shots: [shot(cx + 1, cy + 3, 20, 45), shot(cx + 5, cy + 4, 14, 45), shot(cx + 4, cy + 2, 26, 45)],
+      text: ['As guildas nasceram quando os ofícios descobriram que, sozinhos, morriam com o mestre. Ferreiros, marceneiros, alfaiates, boticários e cozinheiros juraram ensinar antes de partir, e o Salão guarda cada juramento debaixo de um estandarte.',
+        'Uma guilda é um karma que não cabe em uma pessoa só. O que um membro faz pesa no nome de todos: a bandeira sobe com a honra de cada um e desce com a vergonha de qualquer um.',
+        'No Tear do Mundo cada reino é um fio, e cada guilda torce o seu. Nos campeonatos os fios se cruzam, e a casa que vence dá a cor daquele trecho. Ninguém enxerga o desenho inteiro enquanto tece. O Olho enxerga, e no fim todos verão o que fizeram juntos.'] } as (typeof CINE.vistas)[number]); } }
+/* 13/11 (Erling: "em todas as fontes de cena, TODAS, o texto precisa ir mais devagar; não está dando para ler direito"): a duração de cada cena era um número fixo
+   (24 a 30 s para três parágrafos: quase 20 letras por segundo). Agora TODA cena (fontes e cinemáticas) dura o que o texto pede: 11 letras por segundo mais 8 s de folga,
+   e nunca menos que uma vez e meia o tempo antigo. A câmera acompanha, mais lenta. */
+/* 16/11 (regra de ouro: nada escondido nem fora de alcance): a Fonte da Visão que caiu dentro d'água ou de uma parede (Pináculo de Marfim,
+   Vale da Desgraça, os faróis de Porto Caldeira e de Ferrugem, o Mausoléu do Bispo) vai para o chão firme mais perto, com chão firme em toda a volta.
+   As fontes de praça não entram: elas são a própria fonte da vila. */
+{ const firme = (x: number, y: number, rua: boolean) => { const t = K.city.map[y]?.[x]; return !!t && isWalkable(t) && (rua || t !== 'road') && groundH((x + 0.5) * T, (y + 0.5) * T) > WL + 0.15; };
+  /* primeiro procura um canto fora da estrada; num vale estreito onde só há estrada, aceita a beira dela */
+  const folga = (x: number, y: number, rua: boolean) => { if (!firme(x, y, false) && !rua) return false; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!firme(x + dx, y + dy, rua)) return false; return true; };
+  for (const v of CINE.vistas) { if (FONT_R.has(v.id)) continue; const ox = Math.floor(v.at.x), oy = Math.floor(v.at.y), t0 = K.city.map[oy]?.[ox]; if (t0 && isWalkable(t0) && groundH((ox + 0.5) * T, (oy + 0.5) * T) > WL) continue; /* já está em chão firme: não mexe */
+    /* a câmera olha do sudeste: parede (prédio, farol, torre) logo a sudeste do ponto tapa a fonte */
+    const tapada = (x: number, y: number) => { for (let k = 1; k <= 9; k++) for (let j = -2; j <= 2; j++) if (K.city.map[y + k + Math.max(0, j)]?.[x + k + Math.max(0, -j)] === 'wall') return true; return false; };
+    let bx = -1, by = -1, bd = 1e9; for (const [rua, vista] of [[false, true], [false, false], [true, false]]) { if (bx >= 0) break; for (let dy = -24; dy <= 24; dy++) for (let dx = -24; dx <= 24; dx++) { const d = Math.hypot(dx, dy); if (d >= bd || !folga(ox + dx, oy + dy, rua) || (vista && tapada(ox + dx, oy + dy))) continue; bd = d; bx = ox + dx; by = oy + dy; } }
+    if (bx < 0) continue; const s0 = v.shots[0]; if (s0 && Math.abs(s0.x - v.at.x * T) < 0.01 && Math.abs(s0.z - v.at.y * T) < 0.01) { s0.x = bx * T; s0.z = by * T; } v.at = { x: bx, y: by }; } }
+for (const sc of [...CINE.list, ...CINE.vistas]) { const ch = sc.text.join(' ').length; sc.sec = Math.max(Math.round(sc.sec * 1.5), Math.round(ch / 11) + 8); }
 /* o nome do recurso nunca sai do globo: encolhe a letra até caber (DETERMINAÇÃO, ENERGIA, FÚRIA...) */
 for (const u of Array.from(document.querySelectorAll<HTMLElement>('.orb u'))) { const fitU = () => { u.style.fontSize = ''; u.style.letterSpacing = ''; let fs = 8, ls = 0.16; for (let k = 0; k < 10 && u.scrollWidth > u.clientWidth + 1; k++) { if (ls > 0.04) ls -= 0.04; else fs -= 0.5; u.style.letterSpacing = ls + 'em'; u.style.fontSize = fs + 'px'; } }; new MutationObserver(fitU).observe(u, { childList: true, characterData: true, subtree: true }); setTimeout(fitU, 500); }
 let shiftHeld = false; addEventListener('keydown', (e) => { shiftHeld = e.shiftKey; }, true); addEventListener('keyup', (e) => { shiftHeld = e.shiftKey; }, true);
@@ -102,7 +143,7 @@ for (const v of CINE.vistas) {
   const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.4, 0.35, 12), st); bowl.position.y = 1.4; g.add(bowl);
   const water = new THREE.Mesh(new THREE.CircleGeometry(0.66, 16).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x6fd0ff, transparent: true, opacity: 0.85 })); water.position.y = 1.58; g.add(water);
   const eye = new THREE.Mesh(new THREE.OctahedronGeometry(0.28), new THREE.MeshBasicMaterial({ color: 0xffe08a })); eye.scale.set(1.5, 0.8, 1.5); eye.position.y = 2.3; g.add(eye);
-  const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; g.add(ring);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(1.3, 1.6, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false })); ring.position.y = 0.06; ring.visible = false; /* 15/11 (Erling: "tem círculo de seleção em volta da fonte"): o anel amarelo saiu também das fontes soltas, como já tinha saído das fontes de praça em 03/11 */ g.add(ring);
   g.position.set(x, y, z); K.scene.add(fine(g)); vistaObjs.push({ v, eye, ring, x, z, y, r: 3.6 });
 }
 /* luz na porta: todo lugar onde dá para entrar tem um brilho quente no batente e no chão, chamando para dentro (pool perto do herói) */

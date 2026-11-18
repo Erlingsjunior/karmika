@@ -1,3 +1,4 @@
+import { loadModel } from './models3d';
 import * as THREE from 'three';
 import { artMesh, artGeo, artGuardY, SWORD_ART, SHIELD_ART, FIRE_ART } from './arte3d';
 import { REF_SWORDS, buildRefSword, type RefSword, REF_SHIELD_STYLE, refShieldFace } from './armas3d';
@@ -17,6 +18,9 @@ import { radialTexture } from './fx3d';
 export type Kind = 'nordic' | 'technocrat' | 'dwarf';
 export type Action = 'fishcast' | 'attack' | 'combo1' | 'combo2' | 'combo3' | 'combo4' | 'slam' | 'bash' | 'cast' | 'dash' | 'hit' | 'shoot' | 'throw' | 'jet' | 'cleave1' | 'cleave2' | 'cleave3' | 'cleave4' | 'rush' | 'quake' | 'charge' | 'drink' | 'parry' | 'dodge' | 'block' | 'chop' | 'mine' | 'skin' | 'herb' | 'kick' | 'lowcut' | 'plant' | 'breath' | 'bite' | 'thrust1' | 'thrust2' | 'claw1' | 'claw2' | 'stab' | 'clubsm' | 'aim1' | 'kthrow' | 'draw' | 'skyraise' | 'stance' | 'dance';
 
+/** 12/11: armas com modelo do KayKit (public/models/kaykit/armas): [arquivo, comprimento da lâmina na mão em metros, altura do modelo acima do cabo] */
+const KK_WEAPON: Record<string, [string, number, number]> = { 'Espada de Guarda': ['fantasia/sword_B', 0.8, 1.42], 'Sabre de Cavalaria': ['fantasia/sword_C', 0.92, 1.7], 'Montante de Aço': ['fantasia/sword_E', 1.2, 2.82], 'Adaga de Viagem': ['fantasia/dagger_A', 0.42, 1.03],
+  'Cutelo de Guerra': ['fantasia/axe_C', 0.62, 0.93], 'Machado Duplo de Ferro': ['aventureiros/axe_2handed', 0.95, 1.29], 'Martelo de Guerra de Ferro': ['fantasia/hammer_A', 0.85, 0.74], 'Alabarda de Guarda': ['fantasia/halberd', 1.45, 1.81], 'Lança de Caça': ['fantasia/spear_A', 1.5, 2.11], 'Florete de Copo': ['fantasia/sword_D', 0.98, 1.72] };
 /** classe da arma (02/11, Erling): uma mão + escudo · duas mãos · florete (esgrima) · adaga · garras · porrete · besta de mão · kunai · arco */
 export type WClass = 'one' | 'two' | 'fence' | 'dagger' | 'claw' | 'club' | 'hxbow' | 'kunai' | 'bow';
 export function weaponClass(base: string | null | undefined): WClass {
@@ -54,6 +58,7 @@ export interface Hero3D {
   readonly stepVel: number;
   readonly actName: Action | null;
   readonly actP: number;
+  readonly stridePh?: number;
   guard: boolean;
   /** 09/11 pesca: segurando a vara (pose) e o puxão quando o peixe morde (0..1) */ fishing: boolean; fishTug: number;
   /** 03/11 (andar de costas, como no Path of Exile 2): direção em que os pés andam (yaw no mundo) quando ela é diferente de para onde o corpo olha; null = anda para onde olha */
@@ -365,6 +370,10 @@ function armIK(sh: THREE.Group, el: THREE.Group, target: THREE.Vector3, a: numbe
 
 /** sombras projetadas pelos personagens (caro: dobra os draw calls de cada um); desligado por padrão, a sombra-mancha no pé fica */
 export const charShadow = { on: false };
+const footShadow = { geo: new THREE.PlaneGeometry(0.9, 0.9), m: null as THREE.MeshBasicMaterial | null,
+  mat(): THREE.MeshBasicMaterial { if (this.m) return this.m; const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d')!, gr = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(0,0,0,.42)'); gr.addColorStop(0.45, 'rgba(0,0,0,.24)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    return (this.m = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, fog: false })); } };
 export interface CharOpts { hair?: number; skin?: number; /** NPC: cabelo/barba sem física, fundidos no osso (menos draw calls) */ static?: boolean; /** aldeão comum (sem armas/armadura) ou elfo (orelhas pontudas, túnica verde) */ civil?: 'human' | 'elf'; /** cor da túnica/capa do civil */ cloth?: number; /** penteado (nórdica/humano/elfo) */ hairStyle?: 'braid' | 'long' | 'short' | 'bald'; /** barba: 0 nenhuma, 1 curta, 2 longa */ beard?: number; /** orelhas pontudas (elfo jogável) */ ears?: boolean }
 export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   const S = { ...SPECS[kind], skin: opts.skin ?? SPECS[kind].skin };
@@ -715,7 +724,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
       drone.rotation.z = THREE.MathUtils.clamp(-dVel.x * 6, -0.6, 0.6); drone.rotation.x = THREE.MathUtils.clamp(dVel.z * 6, -0.6, 0.6) + 0.1;
       shell.rotation.y = t * 1.2; dring.rotation.z = t * 2; dring2.rotation.z = -t * 1.3; ringBack.rotation.z = t * 1.4;
       hero.droneFlash = Math.max(0, hero.droneFlash - dt * 6);
-      dGlow.material.opacity = 0.35 + night * 0.35 + hero.droneFlash * 0.8; dGlow.scale.setScalar(1.3 + hero.droneFlash * 1.2); eye.scale.setScalar(1 + hero.droneFlash * 0.8);
+      /* 11/11 (Erling: "o drone tem um sombreado e um brilho estranho"): de dia o halo pintado quase some (era um borrão claro de 1,3 m em volta de uma esfera de 26 cm); à noite ele acende, menor */ dGlow.material.opacity = 0.06 + night * 0.34 + hero.droneFlash * 0.8; dGlow.scale.setScalar(0.62 + night * 0.25 + hero.droneFlash * 1.2); eye.scale.setScalar(1 + hero.droneFlash * 0.8);
       void speed;
     };
     restL = { x: -0.2, z: 0.12, e: 0.5 }; restR = { x: -0.35, z: -0.1, e: 0.6 };
@@ -809,8 +818,10 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   if (!charShadow.on) root.traverse((o) => { if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).castShadow = false; });
 
   /* sombra e silhueta atrás de obstáculos */
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.5, 14), new THREE.MeshBasicMaterial({ color: 0, transparent: true, opacity: 0.4, depthWrite: false }));
-  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03; root.add(shadow);
+  /* 11/11 (Erling: "o que são essas névoas nos jogadores e NPCs? fica feio na tela"): era um disco preto de 1 m, borda dura, 40% — parecia uma poça.
+     Agora é uma sombra de pé: menor, esfumada até sumir na borda, uma só malha e um só material para todos; some quando a sombra de verdade do personagem está ligada. */
+  const shadow = new THREE.Mesh(footShadow.geo, footShadow.mat()); shadow.userData.blob = true; shadow.visible = !charShadow.on;
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03; shadow.renderOrder = 1; root.add(shadow);
   /* luz de aura só no herói: cada PointLight a mais entra no shader de TODO o mundo (NPCs não ganham luz própria) */
   const aura = opts.static ? null : new THREE.PointLight(0xffe9ad, 0, 9, 2); if (aura) { aura.position.set(0, 1.2, 0); root.add(aura); }
   const sil = new THREE.MeshBasicMaterial({ color: 0xb7a6ff, transparent: true, opacity: 0.28, depthFunc: THREE.GreaterDepth, depthWrite: false });
@@ -932,7 +943,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   }
   let act: { a: Action; t: number; dur: number } | null = null;
   // combate ~12% mais lento e dramático (golpes, defesas); saltos, dash e quedas seguem a física
-  const DUR: Record<Action, number> = { fishcast: 1.0, attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 0.95, mine: 1.0, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
+  const DUR: Record<Action, number> = { fishcast: 1.0, attack: 0.62, combo1: 0.56, combo2: 0.56, combo3: 0.62, combo4: 1.1, slam: 1.15, bash: 0.8, cast: 0.78, dash: 0.22, hit: 0.32, shoot: 0.46, throw: 0.78, jet: 0.6, cleave1: 0.62, cleave2: 0.78, cleave3: 0.78, /* 07/11: o giro do anão mais rápido (Erling: "o giro está lento") */ cleave4: 0.62, rush: 1.05, quake: 0.82, /* 07/11: o Terremoto do anão mais ligeiro */ charge: 0.78, drink: 0.9, parry: 0.5, dodge: 0.44, block: 0.42, chop: 1.15 /* 12/11: um golpe só do clipe Chopping (1,33 s), quase na velocidade natural */, mine: 1.5, skin: 0.8, herb: 0.75, kick: 0.62, lowcut: 0.8, plant: 0.82, breath: 0.9, bite: 0.62, thrust1: 0.5, thrust2: 0.56, claw1: 0.46, claw2: 0.46, stab: 0.36, clubsm: 0.78, aim1: 0.42, kthrow: 0.44, draw: 0.66, skyraise: 0.95, stance: 0.92, dance: 3.2 };
   /* REGRA DO COMBATE — Karmika é lento e pesado (um pouco mais rápido que o WoW, bem mais lento que um arcade):
      todo golpe e magia dura 40% a mais; reações (esquiva, aparo, bloqueio, tranco) mantêm o tempo curto */
   const TEMPO = 1.65 * 1.1; /* 28/10: a luta 10% mais lenta */ for (const k of Object.keys(DUR) as Action[]) if (!['dash', 'hit', 'parry', 'dodge', 'block'].includes(k)) DUR[k] *= TEMPO;
@@ -1167,6 +1178,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
     cuffPos(out: THREE.Vector3) { return (cuff && cuff.visible ? cuff : armL.wr).getWorldPosition(out); },
     get actName() { return act ? act.a : null; },
     get actP() { return act ? clamp(act.t / act.dur, 0, 1) : 0; },
+    /** 13/11: a fase da passada (rad; 2π = dois passos). O animador KayKit anda no MESMO compasso, para as duas camadas não baterem uma contra a outra */ get stridePh() { return phase; },
     get stepVel() { return stepVel; },
     guard: false,
     moveYaw: null,
@@ -1226,6 +1238,11 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           fm.userData.keep = true; fm.rotation.y = -Math.PI / 2; fm.scale.setScalar(fk); fm.position.set(0, -0.07 * fk - Math.max(0, FG.boundingBox!.max.y - 0.3) * 0.5 * fk, 0); RG.add(fm); /* tanque alto (lança-chamas, Gatling): desce para não subir no rosto */
           if (glowOf(rar)) { const gm2 = (fm.material as THREE.MeshToonMaterial).clone(); gm2.emissive = new THREE.Color(glowOf(rar)).multiplyScalar(0.22); fm.material = gm2; }
           len = Math.max(0.1, FG.boundingBox!.max.x * fk - 0.14);
+        } else if (KK_WEAPON[base]) { /* 12/11: arma com o modelo do KayKit. O modelo vem com o cabo na origem e a lâmina para cima: vira de ponta para baixo (o eixo da arma) e ganha o tamanho de gente adulta */
+          sw.remove(pom); sw.remove(grip); const [file, L, top] = KK_WEAPON[base], hold = new THREE.Group(); hold.userData.keep = true; hold.rotation.x = Math.PI; hold.scale.setScalar(L / top); sw.add(hold); len = L;
+          const gl = glowOf(rar); loadModel(`/models/kaykit/armas/${file}.gltf`).then((m) => { if (hold.parent !== sw) return; /* já trocou de arma */
+            m.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; const src = me.material as THREE.MeshStandardMaterial; me.material = toon(0xffffff, { map: src.map ?? null, ...(gl ? { emissive: new THREE.Color(gl).multiplyScalar(0.22) } : {}) }); me.userData.keep = true; me.castShadow = true; });
+            hold.add(m); }).catch(() => { /* sem o arquivo, a mão fica vazia: melhor que travar */ });
         } else if ((REF_SWORDS as readonly string[]).includes(base)) { /* 01/11: as seis espadas da prancha de referência (imagem 49) */
           len = buildRefSword(sw, base as RefSword, { mk, metal, toon, glow: glowOf(rar), rar });
         } else if (base === 'Machado de Guerra') {
@@ -1233,17 +1250,18 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           const headA = mk(new THREE.BoxGeometry(0.3, 0.26, 0.03), 0x8a929e, 0.006, metal(rar, 0x8a929e)); headA.position.set(0.14, -0.78, 0); sw.add(headA);
           const edge = mk(new THREE.BoxGeometry(0.04, 0.32, 0.034), 0xdde3ec, 0.004, metal(rar)); edge.position.set(0.3, -0.78, 0); sw.add(edge);
           len = 0.9;
-        } else if (base === 'Machado de Lenhador') { // cabo longo e curvo, cunha grossa de um lado só
-          const haft = mk(new THREE.CylinderGeometry(0.019, 0.024, 0.95, 7), 0x6a4a2a, 0.004); haft.position.y = -0.47; sw.add(haft);
-          const wedge = new THREE.CylinderGeometry(0.11, 0.11, 0.05, 3, 1); wedge.rotateX(Math.PI / 2); wedge.scale(1.6, 1.25, 1); const headA = mk(wedge, tint ?? 0x8a929e, 0.006, tMat(0x8a929e)); headA.position.set(0.12, -0.84, 0); sw.add(headA);
-          const poll = mk(new THREE.BoxGeometry(0.07, 0.09, 0.06), tint ?? 0x8a929e, 0.004, tMat(0x8a929e)); poll.position.set(-0.03, -0.84, 0); sw.add(poll);
-          const edge = mk(new THREE.BoxGeometry(0.025, 0.2, 0.03), 0xe8edf2, 0.003, tMat(0xe8edf2)); edge.position.set(0.28, -0.84, 0); sw.add(edge);
-          len = 0.95;
-        } else if (base === 'Picareta') { // cabeça curva: bico comprido para a frente, enxó curta atrás
-          const haft = mk(new THREE.CylinderGeometry(0.02, 0.024, 0.92, 7), 0x5a3a20, 0.004); haft.position.y = -0.46; sw.add(haft);
-          const eye = mk(new THREE.BoxGeometry(0.08, 0.1, 0.07), tint ?? 0x6a6e78, 0.004, tMat(0x6a6e78)); eye.position.y = -0.88; sw.add(eye);
-          const spike = new THREE.ConeGeometry(0.035, 0.36, 5); spike.rotateZ(-Math.PI / 2 - 0.25); const sp = mk(spike, tint ?? 0x8a929e, 0.005, tMat(0x8a929e)); sp.position.set(0.2, -0.84, 0); sw.add(sp);
-          const adze = mk(new THREE.BoxGeometry(0.16, 0.035, 0.07), tint ?? 0x8a929e, 0.004, tMat(0x8a929e)); adze.position.set(-0.1, -0.86, 0); adze.rotation.z = 0.3; sw.add(adze);
+        } else if (base === 'Machado de Lenhador') { /* 12/11 (Erling: "esse machado tá horrível"): a cabeça era uma cunha de três lados na ponta de um cabo de quase 1 m. Agora é o machado de uma mão do KayKit
+             (o mesmo para o qual o gesto de cortar foi feito), com o fio para a frente; o metal continua dizendo o nível (pedra, ferro, aço, anão) */
+          sw.remove(pom); sw.remove(grip); const L = 0.72, hold = new THREE.Group(); hold.userData.keep = true; hold.rotation.z = Math.PI; hold.scale.setScalar(L / 0.97); sw.add(hold); len = L;
+          const tc = new THREE.Color(0xffffff).lerp(new THREE.Color(tint ?? 0xffffff), 0.5);
+          loadModel('/models/kaykit/armas/aventureiros/axe_1handed.gltf').then((m) => { if (hold.parent !== sw) return;
+            m.traverse((o) => { const me = o as THREE.Mesh; if (!me.isMesh) return; const src = me.material as THREE.MeshStandardMaterial; me.material = toon(tc.getHex(), { map: src.map ?? null, ...(tglow ? { emissive: new THREE.Color(tglow).multiplyScalar(0.3) } : {}) }); me.userData.keep = true; me.castShadow = true; });
+            hold.add(m); }).catch(() => { /* sem o arquivo, a mão fica vazia */ });
+        } else if (base === 'Picareta') { // 11/11 noite (Erling: "horrível"): parecia uma lança (bico fino de um lado só). Agora é picareta de mineiro: cabo grosso, olho de ferro e dois bicos curvos, um para cada lado
+          const haft = mk(new THREE.CylinderGeometry(0.024, 0.03, 0.92, 7), 0x5a3a20, 0.004); haft.position.y = -0.46; sw.add(haft);
+          const eye = mk(new THREE.BoxGeometry(0.11, 0.12, 0.085), tint ?? 0x6a6e78, 0.004, tMat(0x6a6e78)); eye.position.y = -0.87; sw.add(eye);
+          for (const sx of [-1, 1]) { const spike = new THREE.ConeGeometry(0.05, 0.36, 6); spike.rotateZ(-sx * (Math.PI / 2 + 0.28)); const sp = mk(spike, tint ?? 0x8a929e, 0.005, tMat(0x8a929e)); sp.position.set(sx * 0.2, -0.845, 0); sp.scale.z = 0.7; sw.add(sp); }
+          const cap = mk(new THREE.BoxGeometry(0.05, 0.03, 0.05), 0x4a3018, 0.003); cap.position.y = -0.945; sw.add(cap);
           len = 0.92;
         } else if (base === 'Faca de Caça') { // lâmina curta de esfolar, ponta curva, cabo de chifre
           const hilt = mk(new THREE.CylinderGeometry(0.018, 0.02, 0.13, 6), 0xc8b89a, 0.004); hilt.position.y = -0.0; sw.add(hilt);
@@ -1725,7 +1743,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
          assento e fica um pouco para trás do meio dele; as coxas vão para a frente quase na horizontal (o ângulo sai da conta: coxa × cos(a)
          + canela + tornozelo = altura da pelve, para o pé tocar o chão), a canela desce quase reta e o pé fica plano. Tronco reto com um
          leve peso à frente; a mão da arma no joelho e a do escudo solta do lado, para o escudo não entrar na coxa. */
-      if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && !act ? 1 : 0) - sitK) * Math.min(1, dt * 5);
+      if (hero.sit > 0) seatH = hero.sit; sitK += ((hero.sit > 0 && !hero.riding && (!act || act.a === 'drink') ? 1 : 0) - sitK) /* 13/11 (Erling: "os NPCs sobem e descem das cadeiras"): beber não levanta ninguém */ * Math.min(1, dt * 5);
       if (sitK > 0.01) { const k = sitK, P = seatH + 0.07, ca = clamp((P - S.shin - S.ankle) / S.thigh, 0.02, 0.45), a = Math.acos(ca);
         const L = (o: THREE.Object3D, v: number) => { o.rotation.x += (v - o.rotation.x) * k; };
         /* 05/11 (Erling: "pode sentar de pernas abertas, meio como um guerreiro; personagens femininas podem sentar toda arrumadinha"): homem com os
@@ -1816,7 +1834,7 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
           kthrow: [{ p: 0, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }, { p: .3, g: [0.3, 0.42, -0.12], d: [0, 0.9, -0.4] }, { p: .5, g: [0.15, 0.2, 0.55], d: [0, -0.2, 1] }, { p: 1, g: [0.22, -0.08, 0.28], d: [0.05, -0.9, 0.3] }],
           draw: [{ p: 0, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }, { p: .2, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: .85, g: [0.06, 0.25, 0.58], d: [0, -1, 0] }, { p: 1, g: [0.2, -0.1, 0.36], d: [0, -1, 0.15] }],
           chop: [{ p: 0, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }, { p: .38, g: [0.36, 0.2, -0.02], d: [0.7, 0.3, -0.65] }, { p: .56, g: [0.04, 0.0, 0.46], d: [-0.45, -0.08, 0.89] }, { p: .74, g: [0.02, -0.02, 0.46], d: [-0.5, -0.1, 0.86] }, { p: 1, g: [0.22, -0.12, 0.32], d: [0.15, -0.35, 0.92] }], /* lenhador de verdade: duas mãos no cabo, recua sobre o ombro direito e corta na horizontal na altura da cintura */
-          mine: [{ p: 0, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }, { p: .4, g: [0.14, 0.62, -0.06], d: [0.05, 0.92, -0.38] }, { p: .58, g: [0.1, -0.12, 0.46], d: [0.02, -0.78, 0.62] }, { p: .76, g: [0.1, -0.14, 0.45], d: [0.02, -0.8, 0.6] }, { p: 1, g: [0.22, -0.08, 0.3], d: [0.05, -0.5, 0.86] }],
+          mine: [{ p: 0, g: [0.2, -0.06, 0.32], d: [0.05, 0.45, 0.89] }, { p: .4, g: [0.12, 0.66, -0.04], d: [0.03, 0.78, -0.62] }, { p: .58, g: [0.08, -0.2, 0.52], d: [0, -0.3, 0.95] }, { p: .76, g: [0.08, -0.21, 0.51], d: [0, -0.32, 0.95] }, { p: 1, g: [0.2, -0.06, 0.32], d: [0.05, 0.45, 0.89] }], /* 11/11 noite: no impacto o CABO fica quase deitado para a frente e o bico é que desce na pedra (antes o cabo apontava para o chão, como lança) */
           skin: [{ p: 0, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }, { p: .3, g: [0.2, 0.22, 0.62], d: [-0.55, 0.3, 0.78] }, { p: .6, g: [-0.1, 0.18, 0.64], d: [0.1, 0.25, 0.96] }, { p: 1, g: [0.06, 0.2, 0.6], d: [-0.2, 0.3, 0.93] }],
           herb: [{ p: 0, g: [0.06, 0.25, 0.55], d: [0, 0.3, 0.95] }, { p: .4, g: [0.04, 0.18, 0.68], d: [0, 0.1, 1] }, { p: .55, g: [0.04, 0.17, 0.68], d: [0, 0.08, 1] }, { p: 1, g: [0.06, 0.25, 0.55], d: [0, 0.3, 0.95] }],
           rush: [{ p: 0, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }, { p: .08, g: [0.5, 0.2, 0.05], d: [1, 0, 0.25] }, { p: .62, g: [0.5, 0.2, 0.05], d: [1, 0, 0.25] }, { p: .74, g: [0.3, 0.0, -0.2], d: [0.4, 0.2, -0.9] }, { p: 1, g: [0.4, 0.15, -0.05], d: [0.6, 0.3, -0.2] }],
@@ -1941,6 +1959,6 @@ export function createCharacter(kind: Kind, opts: CharOpts = {}): Hero3D {
   root.add(gunHolder); gunHolder.visible = false;
   /* 05/11: altura do quadril com o corpo DE PÉ, medida agora, antes de qualquer gesto — é por ela que o modelo de arte é escalado */
   const hipRestY = (() => { root.updateMatrixWorld(true); return root.worldToLocal(rigJ.hips.getWorldPosition(new THREE.Vector3())).y; })();
-  (hero as unknown as { rig: unknown }).rig = { ...rigJ, hipRestY, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, /** armas à mostra? (a tela de criação esconde tudo) */ gearOn: () => gearOn, off: () => (offSrc && offSw ? offSw : null), /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe ?? (wcls === 'two' ? gearSword : null), swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, offHolder, offRig, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
+  (hero as unknown as { rig: unknown }).rig = { ...rigJ, hipRestY, gun: () => (gunOn ? gunHolder : null), gunK: () => gunK, placeGun, sword: () => gearSword, shield: () => shieldHolder, /** armas à mostra? (a tela de criação esconde tudo) */ gearOn: () => gearOn, off: () => (offSrc && offSw ? offSw : null), /** arma de duas mãos do anão (martelo/machado): o modelo de arte põe as duas mãos no cabo por IK (skin3d) */ twoHand: () => dwarfAxe ?? (wcls === 'two' ? gearSword : null), swordHolder: () => swordHolder, holdTool: () => hero.holdTool, cups: () => [mug, vial], cuff: () => cuff, keepRoots: () => [swordHolder, shieldHolder, offHolder, offRig, backAnchor, shadow, droneObj, helmHolder, bodyHolder, gunHolder, weaponRig /* 10/11 (Erling: "o Coração de Odin não aparece na mão"): o machado de mão em combate passa para o weaponRig (no peito) e o modelo de arte o escondia como roupa procedural */].filter(Boolean) as THREE.Object3D[], helmHolder: () => helmHolder, bodyHolder: () => bodyHolder, procHeadR: S.headR, procShoulderW: S.shoulderW, meshes };
   return hero;
 }

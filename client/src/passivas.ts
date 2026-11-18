@@ -5,17 +5,29 @@
    - as ATIVAS do compêndio: as que já existem ganham a ficha e as runas próprias; as novas aparecem com a ficha completa e "em breve".
    Os pontos são os mesmos da Árvore (1 por nível): cada nível de passiva custa 1 e só abre com a magia alvo no rank 3.
    A leitura dos números do texto é aproximada (o texto do compêndio é a ficha; o jogo traduz para os mesmos multiplicadores das magias). */
+import { grupoDe } from './grupo-habilidades';
+import type { KitKey } from './kits';
 export interface CompActive { n: number; name: string; type: string; lvl: number; key: string | null; desc: string; runes: Record<string, string>; desperta: string; sup: boolean; aura: boolean }
 export interface CompSP { n: number; name: string; target: string; lv: string[]; stat: string; v: ([number, string] | null)[] }
 export interface CompCP { n: number; name: string; levels: number; eff: string; stat: string; v: number[] }
 export interface Comp { kit: string; title: string; intro: string; actives: CompActive[]; spellPassives: CompSP[]; classPassives: CompCP[]; combos: string[] }
 export interface PMods { dmg: number; crit: number; area: number; dur: number; cdr: number; cost: number; heal: number }
 
+/* 12/11 (Erling: "não encontrei passivas de habilidade que ajam nas habilidades de grupo"): cada habilidade de grupo ganha DUAS passivas, como as outras
+   habilidades. A primeira reforça o efeito (+6%, +12%, +18%); a segunda encurta a recarga (5%, 10%, 15%). Abrem com 3 pontos na habilidade, a segunda
+   depois da primeira. Os nomes saem do símbolo da runa (cura, defesa, força, velocidade, visão, purificação). Numeração a partir de 9000, fora do compêndio. */
+const GP_NOME: Record<string, [string, string][]> = { cura: [['Mão que Não Treme', 'Remédio na Bolsa'], ['Ponto Bem Dado', 'Atadura Pronta']], defesa: [['Ombro Firme', 'Pé Fincado'], ['Couro Dobrado', 'Olho no Golpe']], forca: [['Sangue Quente', 'Grito Curto'], ['Braço Solto', 'Fôlego de Briga']],
+  veloc: [['Pé Ligeiro', 'Passo Marcado'], ['Vento nas Costas', 'Corda Esticada']], olho: [['Olho Aberto', 'Vigia de Turno'], ['Faro Fino', 'Rastro Fresco']], chama: [['Brasa Limpa', 'Lume Guardado'], ['Fogo Manso', 'Cinza Quente']] };
+function gpDe(kit: string): CompSP[] { const seen: Record<string, number> = {}; return grupoDe(kit as KitKey).flatMap((sk, i) => { const k = seen[sk.tipo] = (seen[sk.tipo] ?? -1) + 1, [n1, n2] = (GP_NOME[sk.tipo] ?? GP_NOME.forca)[k % 2];
+    return [{ n: 9000 + i * 2, name: n1, target: sk.name, lv: [6, 12, 18].map((v) => `${sk.name} fica ${v}% mais forte.`), stat: 'gpot', v: [[6, '%'], [12, '%'], [18, '%']] as [number, string][] },
+      { n: 9001 + i * 2, name: n2, target: sk.name, lv: [5, 10, 15].map((v) => `${sk.name} volta ${v}% mais depressa.`), stat: 'gcd', v: [[5, '%'], [10, '%'], [15, '%']] as [number, string][] }]; }); }
+/** o que as passivas acesas dão a uma habilidade de grupo (pelo nome dela): efeito a mais e recarga a menos, em fração */
+export function grupoPassMods(kit: string, skillName: string): { pot: number; cd: number } { const o = { pot: 0, cd: 0 }; for (const p of gpDe(kit)) { if (p.target !== skillName) continue; const r = passRank(kit, p.n); if (!r) continue; const x = (p.v[r - 1]?.[0] ?? 0) / 100; if (p.stat === 'gpot') o.pot += x; else o.cd += x; } return o; }
 const cache = new Map<string, Comp | null>(); const wait = new Map<string, Promise<Comp | null>>();
 export function compOf(kit: string): Comp | null { if (cache.has(kit)) return cache.get(kit)!; loadComp(kit); return null; }
 export function loadComp(kit: string): Promise<Comp | null> {
   let p = wait.get(kit); if (p) return p;
-  p = fetch(`/dados/compendio/${kit}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((c) => { cache.set(kit, c as Comp | null); onLoad.forEach((f) => f(kit)); return c as Comp | null; });
+  p = fetch(`/dados/compendio/${kit}.json`).then((r) => (r.ok ? r.json() : null)).catch(() => null).then((c) => { if (c && !(c as Comp).spellPassives.some((q) => q.n >= 9000)) (c as Comp).spellPassives.push(...gpDe(kit)); cache.set(kit, c as Comp | null); onLoad.forEach((f) => f(kit)); return c as Comp | null; });
   wait.set(kit, p); return p;
 }
 const onLoad: ((kit: string) => void)[] = []; export const onCompLoad = (f: (kit: string) => void) => onLoad.push(f);
@@ -34,6 +46,7 @@ export const resetPass = (kit: string) => { delete S[kit]; save(); modCache.clea
 function spVal(p: CompSP, i: number): Partial<PMods> {
   const c = p.v[i - 1] ?? (p.v[0] ? [p.v[0][0] * i, p.v[0][1]] as [number, string] : null); const x = c ? c[0] : 0, u = c ? c[1] : '';
   const fb = { dmg: 0.03 * i }; if (!c) return fb;
+  if (p.stat === 'gpot' || p.stat === 'gcd') return {}; /* passivas de habilidade de grupo: quem aplica é grupo-magias.ts (grupoPassMods) */
   switch (p.stat) {
     case 'dmg': return u === '%' ? { dmg: Math.min(0.35, x / 100) } : fb;
     case 'crit': return u === '%' ? { crit: Math.min(0.25, x / 100) } : { crit: Math.min(0.2, 0.04 * x) };
@@ -46,7 +59,7 @@ function spVal(p: CompSP, i: number): Partial<PMods> {
   }
 }
 /** texto curto do que o jogo aplica (para a ficha) */
-export function spApplied(p: CompSP, i: number) { const m = spVal(p, i), T: Record<string, string> = { dmg: 'dano', crit: 'crítico', area: 'área e alcance', dur: 'duração', cdr: 'recarga mais curta', cost: 'custo menor', heal: 'cura' };
+export function spApplied(p: CompSP, i: number) { if (p.stat === 'gpot') return `+${p.v[i - 1]?.[0] ?? 0}% no efeito`; if (p.stat === 'gcd') return `recarga ${p.v[i - 1]?.[0] ?? 0}% mais curta`; const m = spVal(p, i), T: Record<string, string> = { dmg: 'dano', crit: 'crítico', area: 'área e alcance', dur: 'duração', cdr: 'recarga mais curta', cost: 'custo menor', heal: 'cura' };
   return Object.entries(m).map(([k, v]) => `+${Math.round((v as number) * 100)}% de ${T[k]}`).join(', '); }
 const modCache = new Map<string, PMods>();
 /** id da magia no jogo ↔ nome no compêndio: pela tecla ("no jogo, tecla X") ou pelo nome */

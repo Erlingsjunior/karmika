@@ -28,7 +28,7 @@ function globalBuffKey() { try { const g = globalNow(); return g ? g.id + Math.c
 /* 05/11 (Erling: "o número do tempo de duração tem que ser em turnos: 1t 2t 5t 2.5t; com o mouse em cima, um relógio regressivo em horas, dias"):
    no ícone vai o que falta em TURNOS de Karmika (1 turno = 30 min reais), de meio em meio; na dica, o relógio que corre e o que o efeito faz. */
 const TURN_S = 1800;
-const fmtBuffT = (t: number) => { const tu = t / TURN_S; if (tu < 1) return `${Math.max(0.1, Math.ceil(tu * 10) / 10)}t`; const h = Math.ceil(tu * 2) / 2; return `${h % 1 ? h.toFixed(1) : h}t`; };
+const fmtBuffT = (t: number) => { if (t < 120) return `${Math.max(1, Math.ceil(t))}s`; /* 10/11: efeito de luta mostra os segundos ("0.1t" não dizia quanto faltava) */ const tu = t / TURN_S; if (tu < 1) return `${Math.max(0.1, Math.ceil(tu * 10) / 10)}t`; const h = Math.ceil(tu * 2) / 2; return `${h % 1 ? h.toFixed(1) : h}t`; };
 /** relógio regressivo da dica: 2d 4h 05m · 1h 12m 30s · 45s */
 const clockT = (t: number) => { const s = Math.max(0, Math.floor(t)), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60), x = s % 60, p = (n: number) => String(n).padStart(2, '0');
   return d ? `${d}d ${h}h ${p(m)}m` : h ? `${h}h ${p(m)}m ${p(x)}s` : m ? `${m}m ${p(x)}s` : `${x}s`; };

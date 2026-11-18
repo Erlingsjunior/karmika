@@ -1,4 +1,6 @@
 /* COMANDOS DE TESTE DO BETA (chat): /morrer, /folegos, /lagrimas, /nivel, /classe, /aprender, /arma, /pele, /ir e os outros. Saiu do main.ts (02/11). */
+import { conviteComando } from './acesso-web';
+import { isAdm, admComando } from './admin';
 import { addHonor, honor } from './honra';
 import { ITEMS as ITEMS_TBL } from '../inventory';
 import { BASES, genGear } from '../loot';
@@ -7,6 +9,7 @@ import { PATHS } from '../vidente';
 import { KITS, refreshLocks } from '../kits';
 import { TILE_M as T } from '@karmika/shared';
 import type { ComandosTesteCtx } from '../main';
+import { controleDiag } from './controle';
 
 export function createComandosTeste(K: ComandosTesteCtx) {
 /* comandos de teste do beta (chat): /morrer, /folegos N, /lagrimas N, /nivel N, /ajuda */
@@ -17,8 +20,16 @@ function betaCommand(cmd: string, a: string[]): string | null {
   /* EMOTES (28/10, Erling): /dance faz o personagem dançar (até você andar); /beber, uma caneca de cerveja na mão. Os outros jogadores veem. */
   if (cmd === 'dance' || cmd === 'dancar' || cmd === 'dançar' || cmd === 'danca' || cmd === 'dança') { if (K.inside && !K.inside.prop) return '💃 Aqui não dá para dançar.'; K.emote.dance = true; K.emote.x = K.state.fx; K.emote.y = K.state.fy; K.hero.stopAct?.(); return '💃 Você começa a dançar. (ande para parar)'; }
   if (cmd === 'beber' || cmd === 'brinde' || cmd === 'cerveja' || cmd === 'drink') { K.emote.dance = false; K.hero.stopAct?.(); K.hero.drinkProp = 'mug'; K.hero.act('drink', true); K.netRef?.act('drink'); K.audio.gulp(); setTimeout(() => K.audio.gulp(), 380); return '🍺 Você vira uma caneca de cerveja. Saúde!'; }
+  /* 12/11 (Erling: "o layout padrão para quando começar o jogo; depois o jogador move como achar melhor e fica salvo até ele mudar"): /layout apaga as
+     posições que o jogador mexeu (painel de missões, janelas, barras) e tudo volta ao lugar padrão */
+  if (cmd === 'layout') { try { for (const k of Object.keys(localStorage)) if (k === 'karmika.ui.quests' || k === 'karmika.win.v1' || k === 'karmika.win.free' || k.startsWith('karmika.mv.')) localStorage.removeItem(k); } catch { /* */ } setTimeout(() => location.reload(), 600); return '⟲ Layout padrão restaurado. O jogo recarrega em um instante.'; }
+  /* 12/11 (Erling: "os beta testers não podem ter isso, somente a tela de bug"): daqui para baixo é tudo ferramenta de teste e só responde a quem entrou
+     como administrador (/adm SENHA, sistemas/admin.ts). Para os outros, o jogo diz que o comando não existe. */
+  if (cmd === 'adm') return admComando(a);
+  if (cmd === 'convite') return conviteComando(a); /* 12/11: versão do navegador, convite de testador */
+  if (!isAdm()) return cmd === 'ajuda' || cmd === 'help' ? 'Gestos: /dance · /beber. Janelas no lugar padrão: /layout. Achou um erro? Clique no inseto 🐞 e conte o que aconteceu.' : null;
   if (!BETA_TOOLS) return null; const n = Math.round(Number(a[0]));
-  if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /classe <vam|lob|mag|bru|pal|cac|tec> (vira a classe) · /pele <id|auto> (modelo do Herik) · /armas [rara|epica] (todas as armas e escudos) · /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-150 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna)';
+  if (cmd === 'ajuda' || cmd === 'help') return 'Gestos: /dance · /beber. Teste (beta): /classe <vam|lob|mag|bru|pal|cac|tec> (vira a classe) · /pele <id|auto> (modelo do Herik) · /armas [rara|epica] (todas as armas e escudos) · /tabuas /prego /madeira /pedra /corda /galho (+1000) · /gold (+10.000) · /morrer · /folegos 0-3 · /lagrimas 0-3 · /nivel 1-150 · /limiar (abre o Limiar sem morrer) · /masmorra [nome] (vai até a entrada) · /guerreiro (vira guerreiro do Norte) · /ir <NPC ou lugar> (ex.: /ir hrefna) · /equipar [rara|epica|lendaria] (veste um conjunto do seu nível) · /arma <nome> (uma arma só) · /aprender (abre todas as magias da classe) · /honra [n] (+Honra Kármica) · /obra [%] (adianta a obra da casa) · /bench [curto] (três cenas fixas de medição; baixa um arquivo com o resultado) · /travadas ou /perf (relatório de travadas e tempo por parte do quadro) · /som (o que está tocando) · /runas (abre todas as habilidades de grupo da classe, para testar). Conversa: /g global · /l local · /p ou /grupo · /w <nome> sussurro · /r responder.';
   { const MAT: Record<string, string> = { prego: 'nail', pregos: 'nail', madeira: 'wood', tabua: 'plank', tabuas: 'plank', 'tábuas': 'plank', pedra: 'stone', pedras: 'stone', corda: 'rope', cordas: 'rope', galho: 'stick', galhos: 'stick' };
     if (MAT[cmd]) { const id = MAT[cmd], q = n > 0 ? n : 1000; K.inv.grant(id, q); return `🧪 (teste) +${q} ${ITEMS_TBL[id]?.icon ?? ''} ${ITEMS_TBL[id]?.name ?? id}.`; }
     /* /armas: uma de cada arma e escudo na mochila (teste de visual, Erling 01/11); /armas rara, /armas epica… escolhe a raridade; o baú recebe o que não couber */
@@ -33,8 +44,10 @@ function betaCommand(cmd: string, a: string[]): string | null {
     if (cmd === 'arma') { const nm = a.join(' ').trim().toLowerCase(); const b = BASES.weapon.find((x) => x.n.toLowerCase() === nm) ?? BASES.weapon.find((x) => x.n.toLowerCase().startsWith(nm)); if (!b) return `Não conheço "${nm}". Tenho: ${BASES.weapon.map((x) => x.n).join(', ')}`;
       const g = genGear(Math.max(1, K.game.st.lvl), 'rare' as never, 'weapon', b.n); if (!K.inv.addGear(g)) return '🎒 Mochila cheia.'; const logs: string[] = []; const lm0 = K.game.logMsg; (K.game as unknown as { logMsg: (t: string, c?: string) => void }).logMsg = (t: string, c?: string) => { logs.push(t); lm0(t, c); }; try { K.inv.equipGear(g.uid); } finally { (K.game as unknown as { logMsg: typeof lm0 }).logMsg = lm0; } const EQ = K.inv.eq as Record<string, { uid?: number } | undefined>, inL = EQ.shield?.uid === g.uid; const why = EQ.weapon?.uid === g.uid || inL ? '' : ` — não vestiu: ${(g.only && !K.walksPath(g.only)) ? 'caminho não liberado (' + g.only + ', path=' + (K.profile?.path ?? '—') + ')' : 'regra da classe ' + K.kitRace() + ' · ' + logs.join(' | ')}`; return `🧪 (teste) ${b.n}${why || (inL ? ' na mão esquerda.' : ' na mão.')}`; }
     if (cmd === 'gold' || cmd === 'ouro') { const q = n > 0 ? n : 10000; K.game.st.gold += q; return `🧪 (teste) +${q} 🪙 ouro.`; } }
+  if (cmd === 'runas') { const g = (window as unknown as { __grupo?: { testToggle(): boolean } }).__grupo; return g ? (g.testToggle() ? '🧪 (teste) todas as habilidades de grupo da sua classe abertas. /runas de novo fecha.' : '🧪 (teste) habilidades de grupo de volta ao normal (pelos pontos de talento).') : 'sem habilidades de grupo'; }
   if (cmd === 'som') { const r = `🔊 ${K.audio.whatPlays()} · lua=${K.luaK.toFixed(2)} aurora=${K.aurK.toFixed(2)} global=${K.gCur ?? '—'}`; console.log(r); return r; }
-  if (cmd === 'perf') { const r = K.perfReport(); console.log(r); return r; }
+  if (cmd === 'bench') return K.benchSys.comando(a); /* 17/11: três cenas fixas de medição (desempenho/bench.ts) */
+  if (cmd === 'perf' || cmd === 'travadas') { const r = K.perfReport(); console.log(r); return r; }
   if (cmd === 'morrer') { if (K.game.st.dead) return 'Você já caiu.'; K.game.st.hp = 1; K.game.damage(99999, K.hero.root.position); return `☠ Você caiu de propósito. Fôlegos antes da queda: ${K.soul.s.breaths}/${MAX_BREATHS}${K.game.st.lvl < FRAY_LVL ? ` (antes do nível ${FRAY_LVL}, com o Olho ainda dormindo, o Fio não se gasta: use /nivel ${FRAY_LVL})` : ''}.`; }
   if (cmd === 'folegos' || cmd === 'fôlegos') { if (!(n >= 0 && n <= MAX_BREATHS)) return `Uso: /folegos 0-${MAX_BREATHS}`; K.soul.s.breaths = n; K.soul.s.regenAt = Date.now(); K.soul.save(); return `🕯 Fio da Vida: ${n}/${MAX_BREATHS}.`; }
   if (cmd === 'lagrimas' || cmd === 'lágrimas') { if (!(n >= 0 && n <= 9)) return 'Uso: /lagrimas 0-9'; const c = K.inv.count('lagrima'); if (n > c) K.inv.add('lagrima', n - c, true); else if (n < c) K.inv.take('lagrima', c - n); return `💧 Lágrimas do Olho na mochila: ${n}.`; }
@@ -47,6 +60,10 @@ function betaCommand(cmd: string, a: string[]): string | null {
     K.tree.wipe(); K.tree.setView(null); K.applyKitAll(); return ` Atributos zerados (${n} pontos de volta) e Árvore zerada: ${K.tree.available()} pontos livres em K.`; };
   /* /classe <vam|lob|mag|bru|pal|cac|tec|hum>: vira a classe na hora (teste, 02/11) — para provar as magias e poses de cada caminho sem fazer a missão */
   /* 08/11: /honra N dá N pontos de Honra Kármica (teste das lojas de honra) */
+  /* 13/11 (Erling: "onde está esse lugar, quero ver ele, não consigo"): /tear leva direto ao Grande Salão do Tear, de qualquer lugar */
+  if (cmd === 'tear' || cmd === 'salao') { const ok = (window as unknown as { __k?: { tear?: () => boolean } }).__k?.tear?.(); return ok ? '🧵 Descendo ao Grande Salão do Tear…' : 'Não achei o Salão das Guildas de Karmika neste mundo.'; }
+  /* 14/11: /controle mostra os controles que o jogo enxerga (para descobrir por que um portátil não é reconhecido) */
+  if (cmd === 'controle') return '🎮 ' + controleDiag().join(' | ');
   if (cmd === 'honra') { const n = Math.max(1, Math.min(5000, Math.round(Number(a[0]) || 100))); addHonor(n, 'teste'); return `🏅 (teste) +${n} de Honra Kármica (${honor()} no total).`; }
   if (cmd === 'classe' || cmd === 'class') { const id = (a[0] ?? '').toLowerCase(); const p = PATHS.find((x) => x.id === id || x.cls.toLowerCase().startsWith(id)); if (!p) return `Uso: /classe ${PATHS.map((x) => x.id).join('|')}`; if (K.profile) { K.profile.path = p.id; try { localStorage.setItem('karmika.char.v1', JSON.stringify(K.profile)); } catch { /* */ } } try { if (!K.quests.q.done.includes('v_' + p.id)) K.quests.q.done.push('v_' + p.id); } catch { /* */ } /* as armas do caminho (only) ficam liberadas como para quem fez a missão */ if (K.game.st.lvl < 20) { const d = 20 - K.game.st.lvl; K.game.st.lvl = 20; K.game.st.xp = 0; K.game.st.points += d * 3; K.game.st.recalc?.(); } K.takeClass(p); return `🧪 (teste) classe: ${p.cls}.` + cleanSwitch(); }
   /* /aprender: investe 1 ponto em cada magia da classe que já pode (teste, 02/11) — para ver todas as poses e magias de uma vez */

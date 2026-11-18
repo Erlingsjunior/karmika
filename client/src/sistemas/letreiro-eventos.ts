@@ -1,3 +1,4 @@
+import { movable } from '../windows';
 /* LETREIRO RÚNICO DO ALTO e EVENTOS MUNDIAIS: lugar, clima, turno, nível da região, elite próxima; o contador e o painel dos eventos globais; as marcas de missão sobre os NPCs. Saiu do main.ts (02/11). */
 import { globalNow, globalList, G_FX, globalNext } from '../eventos';
 import { floatWin } from '../windows';
@@ -22,7 +23,8 @@ function gevNote(f: (h: GevH) => void) { let g: ReturnType<typeof globalNow> = n
   if (!h) { h = { id: g.id, start: g.end - (g.id === 'lua' ? 80 : 90) * 60000, kills: 0, evs: 0 }; L.unshift(h); } f(h); try { localStorage.setItem(GEV_HIST, JSON.stringify(L.slice(0, 12))); } catch { /* */ } }
 const gevChip = document.createElement('button'); gevChip.id = 'gevt'; gevChip.title = 'Eventos mundiais: o que está acontecendo, o que vem e o que já passou';
 setTimeout(() => document.getElementById('mini')?.appendChild(gevChip), 0);
-gevChip.addEventListener('click', () => openGev());
+movable(gevChip, 'gevt'); /* só pelo puxador ⠿ */ /* 12/11 (Erling: "não consigo mudar separadamente o banner de eventos de lugar") */
+gevChip.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('.mvgrip')) return; /* o puxador só arrasta */ openGev(); });
 const gevEl = document.createElement('div'); gevEl.id = 'gevwin'; gevEl.className = 'pn gevpn'; gevEl.style.display = 'none'; document.body.appendChild(gevEl);
 setTimeout(() => floatWin(gevEl, 'gev', { right: '210px', top: '70px' }), 0);
 let gevOpen = false;
@@ -45,7 +47,8 @@ let gevT = 0;
 function updateGevChip(dt: number) { gevT -= dt; if (gevT > 0) return; gevT = 1;
   let g: ReturnType<typeof globalNow> = null, nx: ReturnType<typeof globalNext> = null; try { g = globalNow(); nx = g ? null : globalNext(); } catch { /* */ }
   gevChip.className = g ? 'on ' + g.id : 'off';
-  gevChip.innerHTML = g ? `<i>${g.icon}</i><span><b>${g.name}</b><em>${fmtClock(g.end - Date.now())}</em></span>` : nx ? `<i>${nx.icon}</i><span><b>${nx.name}</b><em>em ${fmtLeft(nx.start - Date.now())}</em></span>` : '';
+  const GRIP = '<u class="mvgrip" title="Arraste para mudar de lugar (fica salvo) · clique duplo: volta">⠿</u>';
+  gevChip.innerHTML = g ? `${GRIP}<i>${g.icon}</i><span><b>${g.name}</b><em>${fmtClock(g.end - Date.now())}</em></span>` : nx ? `${GRIP}<i>${nx.icon}</i><span><b>${nx.name}</b><em>em ${fmtLeft(nx.start - Date.now())}</em></span>` : '';
   gevChip.style.display = g || nx ? '' : 'none'; if (g) gevChip.style.setProperty('--gc', g.color);
   if (gevOpen) renderGev(); }
 

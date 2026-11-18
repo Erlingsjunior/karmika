@@ -140,7 +140,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     K.out.glows.push({ pos: new THREE.Vector3(cx, 4, nz + nd / 2 + 2), color: 0xffd070, base: 40 });
   } else if (id === 5) { // BASTIÃO DE PRATA: forte estrelado de seis pontas, muralha grossa, torre central com a estaca de prata, balestras
     const st = stone(0x8a8e94), dk = stone(0x5a5e64), sv = mat('silver', () => std(0xe0e4ec)), R = Math.min(Wm, Dm) / 2 - 0.5;
-    K.cyl(R * 0.72, R * 0.74, 0.6, cx, 0, cz, dk, 24);
+    K.cyl(R * 0.72, R * 0.74, 0.12, cx, 0, cz, dk, 24); /* 12/11: o pátio virou chão de andar (antes era um degrau de 60 cm e o forte era maciço) */
     for (let k = 0; k < 12; k++) { const a0 = k / 12 * Math.PI * 2, a1 = (k + 1) / 12 * Math.PI * 2, r0 = k % 2 ? R * 0.62 : R, r1 = (k + 1) % 2 ? R * 0.62 : R;
       const x0 = cx + Math.cos(a0) * r0, z0 = cz + Math.sin(a0) * r0, x1 = cx + Math.cos(a1) * r1, z1 = cz + Math.sin(a1) * r1, L = Math.hypot(x1 - x0, z1 - z0), ry = Math.atan2(x1 - x0, z1 - z0);
       const gate = k === 2 || k === 3; if (gate) continue;
@@ -149,7 +149,27 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
       if (!(k % 2)) { K.cyl(1.6, 1.9, 8.5, x0, 0, z0, dk, 10); K.cone(1.9, 2.6, x0, 8.5, z0, slate(0x4a4e58), 10, 0); K.add(new THREE.ConeGeometry(0.08, 1.4, 4), sv, x0, 11.8, z0, 0, false); const bal = K.add(new THREE.BoxGeometry(2.2, 0.2, 0.3), flat(0x5a3a22), x0, 9.2, z0); bal.rotation.y = -a0; } }
     // portão (sul) com duas torres e a ponte levadiça baixada (a ponte de pedra cruza o fosso)
     { const gz = cz + R * 0.86; for (const s of [-1, 1]) { K.cyl(1.7, 2.0, 10, cx + s * 3.2, 0, gz, dk, 10); K.cone(2, 3, cx + s * 3.2, 10, gz, slate(0x4a4e58), 10, 0); K.torch(cx + s * 2.2, 0, gz + 1.6, 0xd8e8ff); }
-      const a = K.arch(5, 7.5, 2.2, 3.2, 3.6, st); a.position.set(cx, 0, gz); K.plane(3.2, 5.2, cx, 2.6, gz - 0.9, dark()); }
+      const a = K.arch(5, 7.5, 2.2, 3.2, 3.6, st); a.position.set(cx, 0, gz);
+      /* 12/11 (Erling: "queria entrar só para olhar a beleza interna"): o portão ficou ABERTO, com a grade de ferro erguida no alto do arco */
+      for (let i = -3; i <= 3; i++) K.add(new THREE.BoxGeometry(0.1, 1.5, 0.1), flat(0x2a2c32), cx + i * 0.45, 4.6, gz - 0.3); K.add(new THREE.BoxGeometry(3.2, 0.12, 0.12), flat(0x2a2c32), cx, 4.0, gz - 0.3); }
+    /* O PÁTIO DO BASTIÃO: o que um clã de caçadores que nunca dorme guarda dentro da muralha */
+    { const wood = flat(0x5a3a22), iron = flat(0x2a2c32), blue = flat(0x2a3a5a), straw = flat(0xc8a858), rI = R * 0.5;
+      /* estandartes de prata e azul nas pontas de dentro da estrela */
+      for (let k = 1; k < 12; k += 2) { if (k === 3) continue; const a0 = k / 12 * Math.PI * 2, x = cx + Math.cos(a0) * R * 0.5, z = cz + Math.sin(a0) * R * 0.5; K.cyl(0.07, 0.07, 5.2, x, 0, z, wood, 6); K.add(new THREE.BoxGeometry(1.1, 2.2, 0.06), blue, x, 3.9, z, -a0 + Math.PI / 2); K.add(new THREE.BoxGeometry(0.5, 0.5, 0.08), sv, x, 4.2, z, -a0 + Math.PI / 2); }
+      /* o círculo das estacas: seis estacas de ponta de prata em volta da torre, onde os novatos juram */
+      for (let k = 0; k < 6; k++) { const a0 = (k + 0.5) / 6 * Math.PI * 2, x = cx + Math.cos(a0) * 5.4, z = cz + Math.sin(a0) * 5.4; K.cyl(0.11, 0.14, 2.4, x, 0, z, wood, 6); K.add(new THREE.ConeGeometry(0.12, 0.5, 6), sv, x, 2.65, z, 0, false); }
+      /* campo de treino (oeste): bonecos de palha e o alvo das bestas */
+      for (let i = 0; i < 3; i++) { const x = cx - rI - 1.5 + i * 0.4, z = cz - 2.4 + i * 2.4; K.cyl(0.08, 0.08, 1.9, x, 0, z, wood, 6); K.add(new THREE.BoxGeometry(1.3, 0.12, 0.12), wood, x, 1.45, z, 0.4); K.cyl(0.28, 0.24, 0.8, x, 0.75, z, straw, 8); K.add(new THREE.SphereGeometry(0.22, 8, 6), straw, x, 1.85, z, 0, false); }
+      { const x = cx - rI + 2.2, z = cz + 4.6; K.cyl(0.07, 0.07, 1.5, x, 0, z, wood, 6); const t = K.add(new THREE.CylinderGeometry(0.7, 0.7, 0.14, 16), straw, x, 1.6, z, 0, false); t.rotation.x = Math.PI / 2; const t2 = K.add(new THREE.CylinderGeometry(0.3, 0.3, 0.16, 12), flat(0x8a2a22), x, 1.6, z, 0, false); t2.rotation.x = Math.PI / 2; }
+      /* arsenal ao ar livre (leste): cavaletes de bestas e estacas, barris de água benta, a mesa do mapa das caçadas */
+      for (let i = 0; i < 2; i++) { const x = cx + rI + 0.8, z = cz - 3 + i * 3.4; K.add(new THREE.BoxGeometry(0.16, 1.5, 2.2), wood, x, 0.75, z); for (let j = -2; j <= 2; j++) { K.add(new THREE.BoxGeometry(0.06, 1.7, 0.06), j % 2 ? iron : wood, x - 0.2, 0.95, z + j * 0.42, 0, false).rotation.z = 0.22; if (j % 2 === 0) K.add(new THREE.ConeGeometry(0.05, 0.22, 5), sv, x - 0.38, 1.86, z + j * 0.42, 0, false); } }
+      for (const [dx, dz] of [[rI - 0.6, 3.2], [rI + 0.2, 4.0], [rI - 0.4, 4.6]]) { K.cyl(0.36, 0.32, 0.9, cx + dx, 0, cz + dz, wood, 10); K.cyl(0.37, 0.37, 0.06, cx + dx, 0.62, cz + dz, iron, 10); }
+      { const x = cx + 3.2, z = cz + 6.2; K.add(new THREE.BoxGeometry(2.2, 0.12, 1.2), wood, x, 0.86, z, 0.3); for (const [ax, az] of [[-0.9, -0.45], [0.9, -0.45], [-0.9, 0.45], [0.9, 0.45]]) K.cyl(0.06, 0.06, 0.86, x + ax * Math.cos(0.3) + az * Math.sin(0.3), 0, z - ax * Math.sin(0.3) + az * Math.cos(0.3), wood, 5); K.add(new THREE.BoxGeometry(1.5, 0.02, 0.9), flat(0xd8c8a0), x, 0.94, z, 0.3); K.add(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 6), sv, x + 0.5, 1.03, z - 0.1, 0, false); }
+      /* o poço, a forja de prata com a fornalha acesa (norte) e os braseiros azuis na porta da torre */
+      { const x = cx - 3.4, z = cz + 6.0; K.cyl(0.9, 1.0, 0.8, x, 0, z, st, 12); K.cyl(0.7, 0.7, 0.04, x, 0.72, z, flat(0x1a2a3a), 12); for (const s of [-1, 1]) K.cyl(0.07, 0.07, 2.2, x + s * 0.85, 0, z, wood, 5); K.add(new THREE.BoxGeometry(2.0, 0.12, 0.12), wood, x, 2.2, z); K.add(new THREE.BoxGeometry(2.2, 0.1, 1.2), slate(0x4a4e58), x, 2.45, z); }
+      { const x = cx, z = cz - rI - 1.2; K.add(new THREE.BoxGeometry(3.2, 1.3, 1.8), dk, x, 0.65, z); K.add(new THREE.BoxGeometry(1.2, 2.6, 1.2), dk, x - 0.9, 2.2, z - 0.2); K.plane(1.0, 0.7, x + 0.5, 0.8, z + 0.92, glow(0xff9a3a)); K.add(new THREE.BoxGeometry(0.9, 0.5, 0.5), iron, x + 2.4, 0.75, z + 0.6); K.cyl(0.3, 0.36, 0.5, x + 2.4, 0, z + 0.6, wood, 8); K.out.glows.push({ pos: new THREE.Vector3(x + 0.5, 1.2, z + 1.2), color: 0xff9a3a, base: 16 }); }
+      for (const s of [-1, 1]) K.torch(cx + s * 1.6, 0, cz + 4.3, 0xd8e8ff);
+    }
     // a torre central e a estaca de prata no alto
     K.cyl(3.0, 3.6, 22, cx, 0, cz, st, 12); K.cyl(3.8, 3.2, 1, cx, 22, cz, dk, 12);
     for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; K.add(new THREE.BoxGeometry(0.7, 1, 0.5), st, cx + Math.cos(a) * 3.5, 23.5, cz + Math.sin(a) * 3.5, -a); }
@@ -297,7 +317,7 @@ export function buildMonument(id: number, Wm: number, Dm: number): Built {
     for (let q = 0; q < 8; q++) { const a = q / 8 * Math.PI * 2; K.box(0.14, 3.2, 0.14, cx + Math.cos(a) * 1.5, H - 2.1, cz + Math.sin(a) * 1.5, brass, -a); } // montantes da lanterna
     K.add(new THREE.CylinderGeometry(1.5, 1.5, 3.0, 8, 1, true), glow(0xfff0b0), cx, H - 0.6, cz, 0, false); // o vidro iluminado
     K.add(new THREE.SphereGeometry(0.7, 10, 8), glow(0xffffff), cx, H - 0.6, cz, 0, false);
-    { const bg = new THREE.CylinderGeometry(0.3, 4.5, 40, 10, 1, true); bg.translate(0, -20, 0); bg.rotateZ(Math.PI / 2); /* o feixe sai da lanterna e corre ao longo de +x; gira em volta de si mesmo (world3d) */ const beam = K.add(bg, new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }), cx, H - 0.6, cz, 0, false); beam.userData.beam = true; beam.userData.dyn = true; }
+    /* 11/11 (Erling: "tem farol com os dois, luz em 3D e luz em desenho; tira a do desenho"): o feixe antigo (um cone de cor chapada) saiu; fica só o facho novo, de sistemas/farois.ts */
     K.cyl(1.7, 1.7, 0.5, cx, H + 0.9, cz, ir, 8); K.cone(1.8, 1.8, cx, H + 1.4, cz, flat(0x8a2a22), 8); K.add(new THREE.ConeGeometry(0.08, 1.4, 4), brass, cx, H + 3.9, cz, 0, false); // cúpula e para-raios
     K.cyl(0.25, 0.25, 6, cx + 2.6, H - 6, cz - 1.2, flat(0xb87333), 8); K.add(new THREE.ConeGeometry(0.5, 0.9, 8), brass, cx + 2.6, H + 0.3, cz - 1.2, 0, false); K.out.smoke.push(new THREE.Vector3(cx + 2.6, H + 0.9, cz - 1.2)); // o tubo de vapor da sirene
     K.box(4.2, 2.8, 3.2, cx - 4.4, 0, cz + 2.2, br); K.box(4.6, 0.2, 3.6, cx - 4.4, 2.8, cz + 2.2, ir); K.cone(3.0, 1.6, cx - 4.4, 3.0, cz + 2.2, flat(0x4a4e56), 4, Math.PI / 4); K.plane(0.6, 0.8, cx - 4.4, 1.5, cz + 3.81, glow(0xffc070)); // a casa do faroleiro

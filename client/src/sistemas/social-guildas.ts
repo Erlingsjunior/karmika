@@ -1,4 +1,6 @@
 /* AMIGOS, CONVERSAS E GUILDAS (hub.ts e social.ts): escrituras de casa, casas dos outros, terrenos e salões de guilda, o PvP de facção, entrar no servidor, o início, o cartão do herói e o balão de fala. Saiu do main.ts (02/11). */
+import { marcaGolpePvp } from '../morte';
+import { tarefa } from './perf-tarefas';
 import { FOUND_NEAR_M } from './guilda-fundacao';
 import { createHub } from '../hub';
 import { registerDeed, deedIdOf, DEEDS, ITEMS as ITEMS_TBL } from '../inventory';
@@ -7,7 +9,6 @@ import { badge } from '../celebrate';
 import { wholeOf } from '../build';
 import { type Guild, createSocial } from '../social';
 import * as THREE from 'three';
-import { gpuState } from '../gpu/tags';
 import { TILE_M as T } from '@karmika/shared';
 import { heightAt } from '../world';
 import { buyFxLast } from '../windows';
@@ -59,7 +60,7 @@ hub.on('h:sold', (m) => { if (K.obras.home && (!m.deedId || K.obras.home.deedId 
 let hSyncT: ReturnType<typeof setTimeout> | null = null, hPend: unknown = undefined, hGot = '';
 onHomeSave((h) => { hPend = h; if (hSyncT) return; hSyncT = setTimeout(() => { hSyncT = null; const v = hPend; hPend = undefined; if (v === undefined) return; hub.send(v ? { t: 'h:sync', house: v } : { t: 'h:del' }); }, 2000); });
 const askHouse = () => { const c = K.profile?.name ?? ''; if (!c || hub.state !== 'on' || hGot === c) return; hGot = c; hub.send({ t: 'h:get' }); };
-hub.on('a:me', () => { hGot = ''; setTimeout(askHouse, 600); }); setInterval(askHouse, 3000);
+hub.on('a:me', () => { hGot = ''; setTimeout(askHouse, 600); }); setInterval(tarefa('perguntar casa', askHouse), 3000);
 hub.on('h:mine', (m) => { if (m.bought) { badge('🏡', 'Casa comprada', String((m.house as { name?: string })?.name ?? '')); const hh = m.house as { deedId?: string; name: string; owner: string; gx: number; gy: number; w: number; h: number; since?: number }; if (hh?.deedId) registerDeed({ id: hh.deedId, house: hh.name, owner: hh.owner, place: placeOf(hh.gx, hh.gy), gx: hh.gx, gy: hh.gy, w: hh.w, h: hh.h, since: hh.since }); } const r = K.obras.fromServer((m.house as never) ?? null); if (r === 'up' && K.obras.home) hub.send({ t: 'h:sync', house: K.obras.home }); });
 hub.on('h:deny', (m) => K.game.logMsg(`🏡 ${String(m.why || 'O servidor recusou a casa.')}`, '#ff9a8a'));
 const otherHouses: { char: string; name: string; gx: number; gy: number; w: number; h: number; done: boolean; signed: boolean; id?: string; decor?: { id: string; x: number; z: number; r: number; i: number }[] }[] = []; const otherDecor = new Map<(typeof K.city.props)[number], NonNullable<(typeof otherHouses)[number]['decor']>>(); const otherProps = new Map<string, (typeof K.city.props)[number]>();
@@ -168,6 +169,7 @@ const pvp = (() => {
       K.game.damage(n, K.hero.root.position, fromPos); return; }
     if (K.inside || safeAt(K.hero.root.position.x, K.hero.root.position.z)) return;
     hostile.set(from, Date.now() + 120000); // agora eu posso revidar sem culpa
+    marcaGolpePvp(); /* 17/11: se este golpe matar, é morte por jogador (os dados decidem o que cai) */
     K.game.damage(n, K.hero.root.position, fromPos);
     if (K.game.st.dead) { K.net.x('x:pvpdie', { by: from }); K.quests.grudge(K.net.nameOf(from)); K.game.logMsg(`👁 ${K.net.nameOf(from)} matou você. O Olho viu: um Contrato de Vingança contra essa pessoa não pesa no seu karma.`, '#d9a0d0'); }
   });
@@ -202,7 +204,7 @@ addEventListener('karmika:drink', (e) => { const k = (e as CustomEvent).detail a
 addEventListener('karmika:burst', (e) => { const d = (e as CustomEvent).detail as { c0: number; c1: number; n: number; small?: boolean }, p = K.hero.root.position;
   for (let i = 0; i < d.n; i++) { const a = i / d.n * 6.283, sp = d.small ? 1.2 : 2.6; K.particles.spawn(p.x + Math.cos(a) * 0.3, p.y + (d.small ? 1.0 : 0.3) + Math.random() * 0.4, p.z + Math.sin(a) * 0.3, { vx: Math.cos(a) * sp, vy: (d.small ? 0.6 : 2.2) + Math.random(), vz: Math.sin(a) * sp, life: d.small ? 0.8 : 1.4, s0: d.small ? 0.16 : 0.3, s1: 0.03, c0: d.c0, c1: d.c1, a: 1, drag: 1.2 }); } });
 /* a tela de abertura sai quando o mundo e a tela de boas-vindas já estão de pé */
-function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 700); }
+function hideBoot() { const b = document.getElementById('boot'); if (!b || b.classList.contains('off')) return; b.classList.add('off'); setTimeout(() => b.remove(), 1700); }
 let bootFrames = 0; setTimeout(hideBoot, 30000); // segurança: nunca fica preso na abertura
 const inicio = createInicio({ onServer: (sv) => hub.connect(sv), social: () => social.toggle(true), shop: () => K.loja.toggle('prem'), hasChar: () => !!K.profile, desk: (window as unknown as { karmikaDesktop?: never }).karmikaDesktop ?? null,
   onPlay: (server, isNew) => { pendingServer = server; if (isNew || !K.profile) K.showCreate(); /* direto: antes a vila aparecia por um instante entre o menu e a criação (Erling, 26/10) */ else K.withFade(() => { K.objs.update(K.state.fx * T, K.state.fy * T, true); joinServer(); }, server ? 'Entrando no servidor…' : 'Entrando em Karmika…', () => setTimeout(K.resumeSoul, 300)); },
@@ -247,18 +249,21 @@ function cardFinish(px: Uint8Array, rw: number, rh: number, W: number, H: number
   return cv.toDataURL('image/jpeg', 0.86);
 }
 /* o retrato do cartão lê pixels da placa (trava o quadro): só tira de novo quando muda nível, classe ou a cada 5 min, não a cada 20 s */
-let picKey = '', picAt = 0, celebAt = 0;
+let picKey = '', celebAt = 0;
 addEventListener('karmika:celebrate', () => { celebAt = performance.now(); });
+let picWanted = false;
 function saveSlotMeta() { if (!K.profile || inicio.isOpen || K.peleSys.creating) return;
-  const pk = `${K.game.st.lvl}|${(document.getElementById('who')?.textContent || '').trim()}`;
-  /* WebGPU: a foto sai por um WebGL à parte, que monta o herói do zero (meio segundo parado). Então só tira quando muda nível ou classe —
-     não na primeira gravação (fica a foto que já estava no cartão) nem a cada 5 min */
-  if (gpuState.on && !picKey) picKey = pk;
-  /* a foto espera a festa acabar: nada de tirar retrato no meio do pilar de luz da subida de nível ou de uma luta */
-  const busy = performance.now() - celebAt < 12000 || !!K.hero.combat;
-  const needPic = !busy && (pk !== picKey || (!gpuState.on && performance.now() - picAt > 300000)); if (needPic) { picKey = pk; picAt = performance.now(); }
+  /* 11/11 (Erling: "travou muito, uns 3 segundos parado"; o /travadas acusou: salvar ficha, pior 1105 ms). A chave da foto era o texto do cabeçalho, que
+     inclui "em combate": a cada luta a chave mudava e o retrato era tirado de novo, e tirar o retrato monta o herói noutra cena, com outras luzes (a placa
+     recompila tudo: até 1 s parado). Agora a chave é só nível e classe, e a foto NUNCA é tirada com você jogando: fica pedida e sai quando o menu (Esc)
+     está aberto ou quando você troca de janela. Sem foto nova, o cartão guarda a anterior. */
+  const pk = `${K.game.st.lvl}|${K.profile.origin}|${(K.profile as { path?: string }).path ?? ''}`;
+  if (!picKey) picKey = pk; /* primeira gravação: fica a foto que já estava no cartão */
+  if (pk !== picKey) picWanted = true;
+  const calm = (document.hidden || !!K.game.st.menuOpen) && performance.now() - celebAt > 12000 && !K.hero.combat;
+  const needPic = picWanted && calm; if (needPic) { picWanted = false; picKey = pk; }
   (needPic ? slotPic() : Promise.resolve(null)).then((pic) => { if (K.profile) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic, server: K.net.state === 'on' ? `karmika://${K.net.address}/${K.net.code}` : null }); }); }
-setInterval(saveSlotMeta, 20000); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
+setInterval(tarefa('salvar ficha', saveSlotMeta), 20000); document.addEventListener('visibilitychange', () => { if (document.hidden && picWanted) saveSlotMeta(); }); addEventListener('beforeunload', () => { if (K.profile && !inicio.isOpen) inicio.saveMeta({ name: K.profile.name, lvl: K.game.st.lvl, cls: (document.getElementById('who')?.textContent || '').trim(), origin: K.profile.origin, sex: K.profile.sex ?? 'm', pic: null, server: null }); });
 /* balão de fala sobre o herói */
 const bubbleEl = document.createElement('div'); bubbleEl.className = 'bubble'; document.body.appendChild(bubbleEl); let bubbleT = 0;
 function bubble(text: string) { bubbleEl.textContent = text; bubbleT = 4.5; bubbleEl.style.display = 'block'; }

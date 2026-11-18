@@ -1,4 +1,5 @@
 import { INSTINCT_MARKS } from '../segredos';
+import { isPremium } from '../premium';
 import { partyMarks } from '../net';
 /* MINIMAPA: a imagem base do mundo, o zoom, os ícones e marcadores, o mapa grande (janela) e seus cliques. Saiu do main.ts (02/11). */
 import { MAP_W, groundH, WL, heightAt, fbm, ISLES } from '../world';
@@ -39,7 +40,9 @@ const mmBase = document.createElement('canvas'); mmBase.width = mmBase.height = 
     else { c = t === 'road' ? [160, 134, 94] : t === 'plaza' ? [184, 166, 128] : BCR[K.city.biome[y]?.[x] ?? 'meadow'] ?? BCR.meadow; if (t === 'tree') c = c.map((v) => v * 0.72); sh = Math.max(0.6, Math.min(1.45, 1 + (hAt(x - 2, y - 2) - hAt(x + 2, y + 2)) * 0.32)); }
     const o = (y * MMS + x) * 4; D[o] = Math.min(255, c[0] * sh); D[o + 1] = Math.min(255, c[1] * sh); D[o + 2] = Math.min(255, c[2] * sh); D[o + 3] = 255; }
   g.putImageData(id, 0, 0);
-  for (const p of K.city.props) { if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church' || p.kind === 'stall' || p.kind === 'tent') { g.fillStyle = p.kind === 'temple' || p.kind === 'church' ? '#a898c8' : '#7a4a32'; g.fillRect(p.gx, p.gy, p.w, p.h); } }
+  for (const p of K.city.props) { if (p.kind === 'house' || p.kind === 'temple' || p.kind === 'church' || p.kind === 'stall' || p.kind === 'tent') { g.fillStyle = p.kind === 'temple' || p.kind === 'church' ? '#a898c8' : '#7a4a32'; g.fillRect(p.gx, p.gy, p.w, p.h); }
+    /* 11/11 (Erling: "os muros das cidades não aparecem no mapa nem no minimapa"): paliçada (madeira escura), muralha de pedra (cinza) e portão (ouro); muretas de roça ficam de fora (poluem) */
+    else if (p.kind === 'palisade' || p.kind === 'rwall' || p.kind === 'gatehouse') { g.fillStyle = p.kind === 'palisade' ? '#3a2616' : p.kind === 'rwall' ? '#5e5e66' : '#d9a24f'; g.fillRect(p.gx, p.gy, p.w, p.h); } }
 }
 const BNAME: Record<string, string> = { meadow: 'Campos', forest: 'Floresta', swamp: 'Pântano', snow: 'Terras Geladas', ruins: 'Terras Antigas', rock: 'Garganta de Pedra', volcanic: 'Montanha Negra', enchanted: 'Floresta Encantada', blight: 'Terras Malditas', jungle: 'Selva Licantropa', coast: 'Costa do Vapor' };
 const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getContext('2d')!;
@@ -76,10 +79,23 @@ const mmEl = document.getElementById('mm') as HTMLCanvasElement, mg = mmEl.getCo
   mmEl.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); miniZoomBy(e.deltaY < 0 ? 1.15 : 0.87); }, { passive: false });
 }
 function miniZoomBy(f: number) { K.guiaSys.mmZoom = Math.max(0.5, Math.min(4, K.guiaSys.mmZoom * f)); try { localStorage.setItem('karmika.minizoom', String(K.guiaSys.mmZoom)); } catch { /* */ } K.drawMini(); }
+/** tamanho lógico do quadro do mapa grande (o quadro em si tem mais pixels: ver o ResizeObserver) */ const bmW = () => bmEl.width / (+(bmEl.dataset.d || 1) || 1), bmH = () => bmEl.height / (+(bmEl.dataset.d || 1) || 1);
 const bmEl = document.getElementById('bm') as HTMLCanvasElement, bg = bmEl.getContext('2d')!, bigEl = document.getElementById('bigmap') as HTMLElement;
 let bigOpen = false;
 /** viajar pelo mapa até uma relíquia conhecida (as regras do véu: não de dentro de um prédio, não com inimigos na cola) */
-function mapTravel(go: string) { if (K.inside) { K.game.logMsg('Saia para o céu aberto para atravessar o véu.', '#ff9a8a'); return; } if (K.combatMode) { const hp = K.heroPosNow(), hunted = K.game.enemies.list.some((en) => en.alive && en.active && (en.state === 'chase' || en.state === 'windup') && Math.hypot(en.pos.x - hp.x, en.pos.z - hp.z) < 16); if (hunted) { K.game.logMsg('Há inimigos atrás de você: o véu não se abre no meio da luta.', '#ff9a8a'); return; } K.setCombat(false); } if (bigOpen) toggleBigMap(); K.travelRelic(go); }
+function mapTravel(go: string) { if (K.inside) { K.game.logMsg('Saia para o céu aberto para atravessar o véu.', '#ff9a8a'); return; } if (K.combatMode) { const hp = K.heroPosNow(), hunted = K.game.enemies.list.some((en) => en.alive && en.active && (en.state === 'chase' || en.state === 'windup') && Math.hypot(en.pos.x - hp.x, en.pos.z - hp.z) < 16); if (hunted) { K.game.logMsg('Há inimigos atrás de você: o véu não se abre no meio da luta.', '#ff9a8a'); return; } K.setCombat(false); } if (bigOpen) toggleBigMap();
+  /* 16/11: 'lugar:Nome' e 'ponto:x,y,Nome' são lugares já encontrados (maravilha, lugar, masmorra, Fonte da Visão): o herói aparece no chão firme mais perto */
+  if (go.startsWith('lugar:') || go.startsWith('ponto:')) { let x = 0, y = 0, nome = ''; if (go.startsWith('lugar:')) { nome = go.slice(6); const p = K.city.pois.find((q) => q.name === nome); if (!p) return; x = p.x; y = p.y; } else { const m = go.slice(6).split(','); x = +m[0]; y = +m[1]; nome = m.slice(2).join(','); }
+    const chao = chaoPerto(x, y + 2) ?? chaoPerto(x, y); if (!chao) { K.game.logMsg(`Não há chão firme perto de ${nome}.`, '#ff9a8a'); return; } const [tx, ty] = chao;
+    /* 17/11 (Erling: "viagem com custo de moedas, não muito alto; gratuita para Premium"): 1 moeda a cada 15 casas de distância, de 5 a 80.
+       Com a Bênção de Marghar (gratuita a todos durante o beta) a viagem não custa nada. */
+    const custo = isPremium() || K.game.st.god ? 0 : Math.max(5, Math.min(80, Math.round(Math.hypot(tx - K.state.fx, ty - K.state.fy) / 15)));
+    if (custo > K.game.st.gold) { K.game.logMsg(`A travessia até ${nome} custa 🪙 ${custo}. Você tem ${K.game.st.gold}.`, '#ff9a8a'); return; }
+    if (custo) K.game.st.gold -= custo;
+    K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(custo ? `✦ Você atravessa o véu até ${nome} (🪙 −${custo}).` : `✦ Você atravessa o véu até ${nome}. A Bênção de Marghar paga a travessia.`, '#ffe08a'); }); return; }
+  K.travelRelic(go); }
+/** o chão firme mais perto de um ponto do mapa (nunca água, nunca parede), até 40 casas */
+function chaoPerto(tx: number, ty: number): [number, number] | null { for (let r = 0; r < 40; r++) for (let a = 0; a < Math.max(1, r * 8); a++) { const x = Math.floor(tx + Math.cos(a / Math.max(1, r * 8) * 6.283) * r), y = Math.floor(ty + Math.sin(a / Math.max(1, r * 8) * 6.283) * r), t2 = K.city.map[y]?.[x]; if (t2 && isWalkable(t2) && groundH((x + 0.5) * T, (y + 0.5) * T) > WL) return [x + 0.5, y + 0.5]; } return null; }
 /* 27/10 (Erling: "colocar no mapa todos os pontos mais lindos do jogo… maravilhas, lugares, cidades, vilas, para abrir o mapa e ir rapidamente"):
    a lateral do mapa lista as maravilhas, cidades, vilas, masmorras, lugares e relíquias; clique centra o mapa e marca a guia; ✦ viaja pela relíquia conhecida mais perto do lugar */
 const WONDERS = new Set(['Fortaleza de Odin', 'Abadia da Aurora', 'Bastião de Prata', 'Vale da Desgraça', 'Árvore-Mãe do Uivo', 'Castelo da Colina Vampírica', 'Pináculo de Marfim', 'A Grande Caldeira', 'Academia da Graxa', 'Portões de Brasaforja', 'Catedral de Askavik', 'Castelo de Askavik', 'Ruínas de Aravel', 'Grande Biblioteca']);
@@ -116,7 +132,9 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
   };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify({ w: size.w, h: size.h })); } catch { /* */ } };
   // o canvas acompanha o tamanho real da janela (sem esticar): mais espaço = mais mapa à vista
-  const ro = new ResizeObserver(() => { const w = Math.max(1, Math.round(bmEl.clientWidth || mv.clientWidth)), h = Math.max(1, Math.round(mv.clientHeight)); if (bmEl.width !== w || bmEl.height !== h) { bmEl.width = w; bmEl.height = h; mapV.z = Math.max(mapV.z, mapZMin()); if (bigOpen) K.drawBig(); } }); ro.observe(mv); ro.observe(bmEl);
+  /* 12/11 (Erling: "o mapa é pixel art, mas os símbolos têm que ser lisos e perfeitos, com alta densidade, para se destacar"): o quadro do mapa passa a ter
+     os pixels de verdade do monitor (escala do Windows × tamanho da interface, até 3×). As contas seguem no tamanho lógico (bmW/bmH); só o desenho ganha densidade. */
+  const ro = new ResizeObserver(() => { const cw = Math.max(1, Math.round(bmEl.clientWidth || mv.clientWidth)), ch = Math.max(1, Math.round(mv.clientHeight)), rw = bmEl.getBoundingClientRect().width, d = Math.max(1, Math.min(3, Math.round((devicePixelRatio || 1) * (rw > 0 && bmEl.clientWidth > 0 ? rw / bmEl.clientWidth : 1) * 4) / 4)), w = Math.round(cw * d), h = Math.round(ch * d); bmEl.dataset.d = String(d); if (bmEl.width !== w || bmEl.height !== h) { bmEl.width = w; bmEl.height = h; mapV.z = Math.max(mapV.z, mapZMin()); if (bigOpen) K.drawBig(); } }); ro.observe(mv); ro.observe(bmEl);
   apply();
   let rs: { x: number; y: number; w: number; h: number } | null = null;
   grip.addEventListener('pointerdown', (e) => { if (e.button !== 0) return; e.preventDefault(); e.stopPropagation(); maxed = null; rs = { x: e.clientX, y: e.clientY, w: size.w, h: size.h }; grip.setPointerCapture(e.pointerId); });
@@ -146,22 +164,22 @@ setTimeout(() => floatWin(bigEl, 'map', { left: 'calc(50vw - 470px)', top: '5vh'
 const mapV = { cx: 420, cy: 420, z: 6.4, layers: { town: true, poi: true, serv: true, relic: true, vista: true, npc: false } as Record<string, boolean> };
 let mapHits: MapHit[] = [], mapDrag: { x: number; y: number; cx: number; cy: number; moved: boolean } | null = null;
 const mview = bigEl.querySelector('.mview') as HTMLElement, mtip = bigEl.querySelector('.mtip') as HTMLElement;
-const mapPx = (e: MouseEvent) => { const r = bmEl.getBoundingClientRect(); return { x: (e.clientX - r.left) * bmEl.width / r.width, y: (e.clientY - r.top) * bmEl.height / r.height }; };
-const pxPerTile = () => (bmEl.height / MAP_W) * mapV.z;
+const mapPx = (e: MouseEvent) => { const r = bmEl.getBoundingClientRect(); return { x: (e.clientX - r.left) * bmW() / r.width, y: (e.clientY - r.top) * bmH() / r.height }; };
+const pxPerTile = () => (bmH() / MAP_W) * mapV.z;
 /** zoom mínimo: o mapa sempre cobre a largura da moldura (nada de faixa vazia dos lados) */
 /* 07/11 (Erling: "o zoom do mapa pode sair até eu ver o mapa inteiro de longe"): no zoom mínimo o mapa INTEIRO cabe na moldura */
-const mapZMin = () => Math.min(1, bmEl.width / bmEl.height) * 0.86; /* com folga: o mapa inteiro e a moldura em volta */
-mview.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const m = mapPx(e), k = pxPerTile(), wx = mapV.cx + (m.x - bmEl.width / 2) / k, wy = mapV.cy + (m.y - bmEl.height / 2) / k; mapV.z = THREE.MathUtils.clamp(mapV.z * Math.exp(-e.deltaY * 0.0015), mapZMin(), 14); const k2 = pxPerTile(); mapV.cx = wx - (m.x - bmEl.width / 2) / k2; mapV.cy = wy - (m.y - bmEl.height / 2) / k2; K.drawBig(); }, { passive: false });
+const mapZMin = () => Math.min(1, bmW() / bmH()) * 0.86; /* com folga: o mapa inteiro e a moldura em volta */
+mview.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); const m = mapPx(e), k = pxPerTile(), wx = mapV.cx + (m.x - bmW() / 2) / k, wy = mapV.cy + (m.y - bmH() / 2) / k; mapV.z = THREE.MathUtils.clamp(mapV.z * Math.exp(-e.deltaY * 0.0015), mapZMin(), 14); const k2 = pxPerTile(); mapV.cx = wx - (m.x - bmW() / 2) / k2; mapV.cy = wy - (m.y - bmH() / 2) / k2; K.drawBig(); }, { passive: false });
 mview.addEventListener('pointerdown', (e) => { if ((e.target as HTMLElement).closest('button, .mzoom')) return; /* botões de zoom não são clique no mapa */ mapDrag = { x: e.clientX, y: e.clientY, cx: mapV.cx, cy: mapV.cy, moved: false }; mview.setPointerCapture(e.pointerId); mview.classList.add('drag'); });
 mview.addEventListener('pointermove', (e) => {
   if (mapDrag && e.buttons === 0) { mapDrag = null; mview.classList.remove('drag'); } // soltou o botão fora do mapa: o arrasto acaba (antes o mapa ficava "grudado" no mouse)
-  if (mapDrag) { const r = bmEl.getBoundingClientRect(), sc = bmEl.width / r.width / pxPerTile(); const dx = e.clientX - mapDrag.x, dy = e.clientY - mapDrag.y; if (Math.hypot(dx, dy) > 4) mapDrag.moved = true; mapV.cx = mapDrag.cx - dx * sc; mapV.cy = mapDrag.cy - dy * sc; K.drawBig(); return; }
+  if (mapDrag) { const r = bmEl.getBoundingClientRect(), sc = bmW() / r.width / pxPerTile(); const dx = e.clientX - mapDrag.x, dy = e.clientY - mapDrag.y; if (Math.hypot(dx, dy) > 4) mapDrag.moved = true; mapV.cx = mapDrag.cx - dx * sc; mapV.cy = mapDrag.cy - dy * sc; K.drawBig(); return; }
   const m = mapPx(e); const h = mapHits.find((q) => Math.hypot(q.x - m.x, q.y - m.y) < q.r);
   if (h) { const r = bmEl.getBoundingClientRect(); mtip.innerHTML = `${h.name}<small>${h.sub}</small>`; mtip.style.display = 'block'; mtip.style.left = (e.clientX - r.left + 14) + 'px'; mtip.style.top = (e.clientY - r.top + 10) + 'px'; mview.style.cursor = h.go ? 'pointer' : ''; } else { mtip.style.display = 'none'; mview.style.cursor = ''; }
 });
 let lastMapClick = -1e9;
 for (const ev of ['pointercancel', 'lostpointercapture'] as const) mview.addEventListener(ev, () => { mapDrag = null; mview.classList.remove('drag'); });
-mview.addEventListener('pointerup', (e) => { const d = mapDrag; mapDrag = null; mview.classList.remove('drag'); const prevClick = lastMapClick; if (d && !d.moved) lastMapClick = performance.now(); if (d && !d.moved) { const m = mapPx(e); const h = mapHits.find((q) => q.go && Math.hypot(q.x - m.x, q.y - m.y) < q.r); if (h?.go) { mapTravel(h.go); } else if (K.game.st.god && !K.inside && performance.now() - prevClick < 380) { /* modo deus: DOIS cliques num ponto do mapa e vá até lá (um clique só não teleporta mais) */ const k = pxPerTile(), W = bmEl.width, H = bmEl.height; let tx = mapV.cx + (m.x - W / 2) / k, ty = mapV.cy + (m.y - H / 2) / k; { /* nunca cai na água: procura o chão firme mais perto */ let best: [number, number] | null = null; for (let r = 0; r < 40 && !best; r++) for (let a = 0; a < Math.max(1, r * 8) && !best; a++) { const x = Math.floor(tx + Math.cos(a / Math.max(1, r * 8) * 6.283) * r), y = Math.floor(ty + Math.sin(a / Math.max(1, r * 8) * 6.283) * r), t2 = K.city.map[y]?.[x]; if (t2 && isWalkable(t2) && groundH((x + 0.5) * T, (y + 0.5) * T) > WL) best = [x + 0.5, y + 0.5]; } if (best) { tx = best[0]; ty = best[1]; } } toggleBigMap(); K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(`⚡ Modo deus: você salta para ${Math.round(tx)}, ${Math.round(ty)}.`, '#ffd24a'); }); } } });
+mview.addEventListener('pointerup', (e) => { const d = mapDrag; mapDrag = null; mview.classList.remove('drag'); const prevClick = lastMapClick; if (d && !d.moved) lastMapClick = performance.now(); if (d && !d.moved) { const m = mapPx(e); const h = mapHits.find((q) => q.go && Math.hypot(q.x - m.x, q.y - m.y) < q.r); if (h?.go) { mapTravel(h.go); } else if (K.game.st.god && !K.inside && performance.now() - prevClick < 380) { /* modo deus: DOIS cliques num ponto do mapa e vá até lá (um clique só não teleporta mais) */ const k = pxPerTile(), W = bmW(), H = bmH(); let tx = mapV.cx + (m.x - W / 2) / k, ty = mapV.cy + (m.y - H / 2) / k; { /* nunca cai na água: procura o chão firme mais perto */ let best: [number, number] | null = null; for (let r = 0; r < 40 && !best; r++) for (let a = 0; a < Math.max(1, r * 8) && !best; a++) { const x = Math.floor(tx + Math.cos(a / Math.max(1, r * 8) * 6.283) * r), y = Math.floor(ty + Math.sin(a / Math.max(1, r * 8) * 6.283) * r), t2 = K.city.map[y]?.[x]; if (t2 && isWalkable(t2) && groundH((x + 0.5) * T, (y + 0.5) * T) > WL) best = [x + 0.5, y + 0.5]; } if (best) { tx = best[0]; ty = best[1]; } } toggleBigMap(); K.withFade(() => { K.state.fx = tx; K.state.fy = ty; K.state.path = []; K.objs.update(tx * T, ty * T, true); K.heroY = heightAt(tx * T, ty * T); K.camX = tx * T; K.camZ = ty * T; K.camY = K.heroY; K.game.logMsg(`⚡ Modo deus: você salta para ${Math.round(tx)}, ${Math.round(ty)}.`, '#ffd24a'); }); } } });
 bigEl.addEventListener('click', (e) => { const t = e.target as HTMLElement; if (t.closest('[data-x]')) toggleBigMap();
   if (t.closest('[data-side]')) { sideOpen = !sideOpen; try { localStorage.setItem('karmika.mapside', sideOpen ? '1' : '0'); } catch { /* */ } drawSide(); return; }
   { const tr = (t.closest('[data-trav]') as HTMLElement | null)?.dataset.trav; if (tr) { e.stopPropagation(); mapTravel(tr); return; } }
@@ -174,7 +192,7 @@ function miniIcons(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (
   const h0 = K.hereT(), R = D / 2 / S + 2; const near = (x: number, y: number) => Math.abs(x - h0.x) < R && Math.abs(y - h0.y) < R;
   const sz = Math.max(5, Math.min(9, 3.2 * S));
   const ic = (g: string, x0: number, y0: number, ring: string, big = 1) => { if (!near(x0, y0)) return; const x = X(x0), y = Y(y0), r = sz * big; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fillStyle = 'rgba(16,12,6,.85)'; ctx.fill(); ctx.lineWidth = 1.2; ctx.strokeStyle = ring; ctx.stroke(); ctx.font = `${r * 1.25}px serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#fff'; ctx.fillText(g, x, y + 0.5); };
-  const SICON: Record<string, string> = { armeiro: '⚔', armaduras: '🛡', mercador: '⚖', mercador_cidade: '⚖', pocoes: '⚗', cervejaria: '🍺', churrasco: '🍖', charcutaria: '🥓', cozinha: '🍲', padaria: '🍞', peixaria: '🐟', ervas: '🌿', joalheiro: '💎', alfaiate: '🧵', ferreiro: '⚒', estalagem: '🛏', estabulo: '🐴', shop: '🛍' };
+  const SICON: Record<string, string> = { armeiro: '⚔', armaduras: '🛡', mercador: '⚖', mercador_cidade: '⚖', pocoes: '⚗', cervejaria: '🍺', churrasco: '🍖', charcutaria: '🥓', cozinha: '🍲', padaria: '🍞', peixaria: '🐟', ervas: '🌿', joalheiro: '💎', alfaiate: '🧵', ferreiro: '⚒', estalagem: '🛏', salao_guildas: '⚜', estabulo: '🐴', shop: '🛍' };
   for (const p of K.city.props) {
     if (!near(p.gx, p.gy)) continue;
     if (p.kind === 'station') { const si = STATION_INFO[p.variant ?? 0]; if (si) ic(si.icon, p.gx + p.w / 2, p.gy + p.h / 2, '#e0c070'); }
@@ -202,7 +220,8 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
   for (const m of INSTINCT_MARKS) { const x = X(m.x), y = Y(m.y), pr = 0.5 + 0.5 * Math.sin(performance.now() / 220); ctx.save(); ctx.globalAlpha = 0.55 + 0.45 * pr; ctx.fillStyle = m.col; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = 1.2; ctx.font = `bold ${Math.round(11 * sc)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.strokeText('✦', x, y); ctx.fillText('✦', x, y); ctx.globalAlpha = 0.35 * pr; ctx.beginPath(); ctx.arc(x, y, (5 + 4 * pr) * sc, 0, 6.283); ctx.strokeStyle = m.col; ctx.stroke(); ctx.restore(); }
   for (const n of K.npcSys.npcs) { ctx.fillStyle = '#7ad0ff'; ctx.beginPath(); ctx.arc(X(n.pos.x / T), Y(n.pos.z / T), 2 * sc, 0, 6.283); ctx.fill(); }
   /* 09/11: os companheiros de grupo — bolinha verde com borda branca e o nome, por cima dos NPCs */
-  for (const pm of partyMarks) { const x = X(pm.x / T), y = Y(pm.z / T); ctx.fillStyle = pm.hp < 30 ? '#ff7a5a' : '#5aff8a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5 * sc; ctx.beginPath(); ctx.arc(x, y, 3.6 * sc, 0, 6.283); ctx.fill(); ctx.stroke();
+  /* 12/11 (Erling: "em grupo, cada um aparece numa cor"): uma cor fixa por companheiro, pela ordem no grupo; a borda fica vermelha com a vida baixa */
+  let pmi = 0; for (const pm of partyMarks) { const x = X(pm.x / T), y = Y(pm.z / T), PCOL = ['#4ad8ff', '#ff6ad8', '#7aff6a', '#ffa23a', '#b48aff', '#ff5a5a', '#5affd0']; ctx.fillStyle = PCOL[pmi++ % PCOL.length]; ctx.strokeStyle = pm.hp < 30 ? '#ff2a1a' : '#000'; ctx.lineWidth = 2 * sc; ctx.beginPath(); ctx.arc(x, y, 4.6 * sc, 0, 6.283); ctx.fill(); ctx.stroke();
     ctx.font = `bold ${Math.max(9, 9 * sc)}px Georgia, serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom'; ctx.lineWidth = 3; ctx.strokeStyle = '#000'; ctx.strokeText(pm.name, x, y - 5 * sc); ctx.fillStyle = '#c8ffd8'; ctx.fillText(pm.name, x, y - 5 * sc); }
   for (const v of K.CINE.vistas) { const seen = K.vistaSeen.has(v.id); ctx.fillStyle = seen ? '#ffe08a' : '#a08a50'; ctx.strokeStyle = '#1a1208'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(X(v.at.x), Y(v.at.y), 3.6 * sc, 2.2 * sc, 0, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#1a1208'; ctx.beginPath(); ctx.arc(X(v.at.x), Y(v.at.y), 1.1 * sc, 0, 6.283); ctx.fill(); }
   for (const rl of K.city.relics) if (K.knowsRelic(rl.name)) { ctx.fillStyle = '#8ad0ff'; ctx.beginPath(); ctx.moveTo(X(rl.x), Y(rl.y) - 4 * sc); ctx.lineTo(X(rl.x) + 3 * sc, Y(rl.y)); ctx.lineTo(X(rl.x), Y(rl.y) + 4 * sc); ctx.lineTo(X(rl.x) - 3 * sc, Y(rl.y)); ctx.closePath(); ctx.fill(); }
@@ -210,5 +229,7 @@ function markers(ctx: CanvasRenderingContext2D, X: (x: number) => number, Y: (y:
 }
 /** distâncias em metros do jogo (1 quadrado = 2 m; heroína 1,7 m) */
 const fmtDist = (m: number) => `${Math.round(m)} m`;
-  return { mmBase, toggleBigMap, mapV, get bigOpen() { return bigOpen; }, fmtDist, mmEl, mg, MMS, markers, miniIcons, bmEl, bg, mapZMin, pxPerTile, bigEl, BNAME, get mapHits() { return mapHits; }, set mapHits(v: typeof mapHits) { mapHits = v; } };
+  /* 12/11: o mapa-base do mundo como imagem, para o centro de comando (desktop/src/tear-mundo.webp é tirado daqui) */
+  (window as unknown as { __mapaBase?: () => string }).__mapaBase = () => mmBase.toDataURL('image/webp', 0.86);
+  return { mapTravel, mmBase, toggleBigMap, mapV, get bigOpen() { return bigOpen; }, fmtDist, mmEl, mg, MMS, markers, miniIcons, bmEl, bg, mapZMin, pxPerTile, bigEl, BNAME, get mapHits() { return mapHits; }, set mapHits(v: typeof mapHits) { mapHits = v; } };
 }

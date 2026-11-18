@@ -38,7 +38,11 @@ const dirV = new THREE.Vector3(), moon = new THREE.Vector3(-14, 22, -9).normaliz
 export function lightDirAt(h: number): THREE.Vector3 {
   h = ((h % 24) + 24) % 24; const t = (h - 6) / 12; /* 0 = nascer, 1 = poente */
   const el = Math.sin(Math.max(0, Math.min(1, t)) * Math.PI), az = (t - 0.5) * Math.PI * 0.9; /* elevação e azimute (leste = +x) */
-  sunV.set(Math.sin(az) * -1, 0.28 + el * 0.95, 0.42 - el * 0.2).normalize(); /* nunca rasteiro demais: a sombra ficaria quilométrica */
+  /* 11/11 (Erling: "até hoje a sombra só funcionou uma única vez"). A sombra era desenhada, mas caía ESCONDIDA: o sol ficava ao sul (do lado da câmera),
+     então toda sombra corria para o norte, para trás do próprio objeto, e ao meio-dia o sol ficava quase a pino (sombra debaixo do pé). Só no fim da tarde
+     sobrava um pedaço à vista. Agora o sol passa pelo NORTE e mais baixo: a sombra cai para o lado da câmera o dia inteiro (para a esquerda de manhã,
+     para a frente ao meio-dia, para a direita à tarde) e tem comprimento mesmo ao meio-dia. */
+  sunV.set(Math.sin(az) * -1, 0.32 + el * 0.46, -0.38).normalize();
   const dayK = h < 5.5 || h > 19.5 ? 0 : h < 7 ? (h - 5.5) / 1.5 : h > 18 ? (19.5 - h) / 1.5 : 1;
   return dirV.copy(moon).lerp(sunV, sm(dayK)).normalize();
 }

@@ -22,7 +22,7 @@ function rebirth(name: string, np: Profile) {
   setTimeout(() => {
     K.game.logMsg(`⚖ Nível ${K.game.st.lvl}, mochila, ouro e missões vieram com você. A classe recomeçou: fale com Hrefna, em Askavik, para ler o caminho de novo.`, '#ffe08a');
     if (past) K.game.logMsg(`✦ Eco da vida passada: se seguir ${past.cls} de novo, a classe ganha ${CATCHUP_MUL}× XP até o nível ${K.soul.s.catchup?.until ?? past.clsLvl}.`, '#c9a0ff');
-    if (pts) K.game.logMsg(`★ ${pts} pontos de atributo voltaram para distribuir (I).`, '#ffe08a');
+    if (pts) K.game.logMsg(`★ ${pts} pontos de atributo voltaram para distribuir (C).`, '#ffe08a');
     K.netRef?.lookNow(); K.saveSlotMeta();
   }, 900);
 }

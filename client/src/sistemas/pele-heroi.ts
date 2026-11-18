@@ -1,4 +1,5 @@
 /* A PELE DO HERÓI: os modelos de arte (Herik) por raça, sexo, caminho e nível; vestir/despir troca o modelo; o visual do caminho (vampiro, lobisomem); trocar o corpo; o recurso da classe. Saiu do main.ts (02/11). */
+import { tarefa } from './perf-tarefas';
 import { type Kind, createCharacter } from '../characters';
 import { type SkinDef, attachSkin } from '../skin3d';
 import * as THREE from 'three';
@@ -69,7 +70,7 @@ function applyArtSkin() {
 /** ao trocar de roupa: se o nível da pele mudou (1 ↔ 2), troca o modelo */
 function checkSkinLevel() { const art = artSkinId(); if (art) { if ('glb:' + art !== skinKey) applyArtSkin(); return; } const hk = humanSkinKey(); if (hk && hk !== skinKey) applyArtSkin(); }
 /* o modelo também muda ao subir de nível e ao passar na prova do caminho: confere de tempos em tempos (barato: só compara chaves) */
-setInterval(() => { try { if (!creating && !K.game.st.dead) checkSkinLevel(); } catch { /* */ } }, 3000);
+setInterval(tarefa('conferir pele', () => { try { if (!creating && !K.game.st.dead) checkSkinLevel(); } catch { /* */ } }), 3000);
 function swapHero() {
   K.scene.remove(K.hero.root);
   K.hero = createCharacter(K.kindOf(K.state.race), K.profile ? { hair: K.profile.hair, skin: K.profile.skin, hairStyle: K.profile.hairStyle, beard: K.profile.beard, ears: K.profile.origin === 'elf' } : {}); (K.hero as unknown as { sitNeat?: boolean }).sitNeat = K.profile?.sex === 'f';
@@ -80,7 +81,7 @@ function swapHero() {
 }
 K.tree.migrate(); K.applyKitAll();
 /** recurso do caminho: o orbe da direita muda de nome, de cor e de regra (guerreiros: Ímpeto, que enche lutando) */
-function applyRes() { setTimeout(applyLook, 0); K.game.setRaceScale(K.profile?.origin === 'elf' ? 1.1 : K.profile?.origin === 'dwarf' ? 1 : 1.09); /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói humano ~1,90" → "está MUITO pequeno, mais heroico"): o modelo humano mede 1,83 m de pé; o herói vai a ~2,0 m e os NPCs voltaram para 1,70 m (npcs.ts) */ setCulture(K.state.race === 'technocrat' ? 'technocrat' : K.state.race === 'dwarf' ? 'dwarf' : 'nordic'); K.game.setKit(K.kitRace()); const r = resOf(K.kitRace()); K.game.setResource(r); K.globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
+function applyRes() { setTimeout(applyLook, 0); K.game.setRaceScale(K.profile?.origin === 'elf' ? 1.1 : K.profile?.origin === 'dwarf' ? 1.24 : 1.09); /* 10/11 (Erling: "estou menor que um NPC; os heróis são levemente maiores"): o anão media 1,22 m na cabeça e os NPCs anões 1,35–1,50 m; vai a ~1,51 m */ /* 06/11 (Erling: "a altura média do jogo é 1,70; o herói humano ~1,90" → "está MUITO pequeno, mais heroico"): o modelo humano mede 1,83 m de pé; o herói vai a ~2,0 m e os NPCs voltaram para 1,70 m (npcs.ts) */ setCulture(K.state.race === 'technocrat' ? 'technocrat' : K.state.race === 'dwarf' ? 'dwarf' : 'nordic'); K.game.setKit(K.kitRace()); const r = resOf(K.kitRace()); K.game.setResource(r); K.globes.setStyle(r.style); const o = document.getElementById('mp'); if (o) { o.title = r.tip; const u = o.querySelector('u'); if (u) u.textContent = r.label; o.dataset.res = r.style; } }
 applyRes();
 /* a classe segue o caminho jogável atual (o humano puro chega depois): guerreiro nórdico, tecnocrata ou guerreiro anão */
 /* antes da Vidente (nível 20), a classe é a própria raça; os testes de dev (F5–F7) ainda trocam o corpo */
