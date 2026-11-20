@@ -15,6 +15,7 @@ import { CAP2_NEW } from './capitulo2-novas';
 import { FALAS_GUERREIRO } from './guerreiro-falas';
 import { HUNTER_II, MAGE_II, HUMAN_II, DWARF_II, ELF_II } from './capitulo2b';
 import { PALADIN_III_NEW, WARRIOR_III, WEREWOLF_III, VAMPIRE_III, TECHNO_III_NEW, WARLOCK_III, HUNTER_III, MAGE_III, HUMAN_III, DWARF_III, ELF_III, VELMORA_RECON, PONTE_VELMORA } from './capitulo3';
+import { LV4, PALADIN_IV, HUNTER_IV, MAGE_IV } from './capitulo4';
 import { HUNTER_I } from './cacador';
 import { MAGE_I } from './mago';
 import { HUMAN_I } from './humano';
@@ -23,7 +24,8 @@ import { ELF_I } from './elfo';
 
 const ALL = new Map<string, QuestDef>([...PALADIN, ...WANDERER, ...WARRIOR, ...WEREWOLF, ...VAMPIRE, ...TECHNO, ...WARLOCK_I, ...COSTURA_I, ...TECHNO_II, ...CAP2_NEW,
   ...HUNTER_II, ...MAGE_II, ...HUMAN_II, ...DWARF_II, ...ELF_II,
-  ...PALADIN_III_NEW, ...WARRIOR_III, ...WEREWOLF_III, ...VAMPIRE_III, ...TECHNO_III_NEW, ...WARLOCK_III, ...HUNTER_III, ...MAGE_III, ...HUMAN_III, ...DWARF_III, ...ELF_III, ...VELMORA_RECON, ...PONTE_VELMORA].map((d) => [d.id, d]));
+  ...PALADIN_III_NEW, ...WARRIOR_III, ...WEREWOLF_III, ...VAMPIRE_III, ...TECHNO_III_NEW, ...WARLOCK_III, ...HUNTER_III, ...MAGE_III, ...HUMAN_III, ...DWARF_III, ...ELF_III, ...VELMORA_RECON, ...PONTE_VELMORA,
+  ...PALADIN_IV, ...HUNTER_IV, ...MAGE_IV].map((d) => [d.id, d]));
 const LV = [20, 21, 22, 23, 24, 26, 27, 28, 29, 31];
 type Ov = { giver?: string; turnin?: string; doneAdd?: string; rep?: [string, string][]; doneLast?: string; title?: string };
 
@@ -317,6 +319,42 @@ export const ELF_III2 = seq(ids(ELF_III), {
   ex8: { doneAdd: 'A Rainha vai mandar você mediar a Mesa Partida.' },
 }, LV3, 'A Embaixada', 'ek10');
 
+/* ======================= CAPÍTULO IV — "O LABIRINTO" (níveis 76–98), pasta capitulo4/ (20/11) =======================
+   Dez missões por classe, na mesma espinha. Entram aqui conforme ficam prontas: Ordem do Fio primeiro (paladino, caçador, mago). */
+export const PALADIN_IV2 = seq(ids(PALADIN_IV), {
+  q4pa1: { doneAdd: 'Antes de ir: fique. Quero saber de onde saiu esse selo.' },
+  q4pa2: { doneAdd: 'O Aldric achou de onde vêm as cartas. Vá com ele, e vá na frente.' },
+  q4pa3: { doneAdd: 'Volte à Abadia. O Grão-Mestre, a Bispa e eu queremos coisas diferentes, e os três vamos pedir a sua opinião.' },
+  q4pa4: { doneAdd: 'O Evarist espera o julgamento. Enquanto isso, o rio continua trazendo gente, e eu quero saber por onde ela sai. Tenho uma chave que jurei não usar.' },
+  q4pa5: { doneAdd: 'Velmora cresceu demais. As duas bandeiras querem a ponte. Vá ouvir a Guardiã antes que alguém fale por ela.' },
+  q4pa6: { doneAdd: 'O Aldric desceu ao corredor e prendeu alguém. Vá, antes que ele decida sozinho.' },
+  q4pa7: { doneAdd: 'O Grão-Mestre quer ver o fim do corredor com os próprios olhos. Ele vai descer. Ninguém conseguiu convencê-lo do contrário.' },
+  q4pa8: { doneAdd: 'Agora o que eu vinha adiando: o julgamento do Evarist. Vá buscá-lo.' },
+  q4pa9: { doneAdd: 'Chegou uma carta. Sem selo. Venha ler comigo.' },
+}, LV4, 'A Igreja das Indulgências', 'pk7');
+export const HUNTER_IV2 = seq(ids(HUNTER_IV), {
+  q4ca1: { doneAdd: 'Vá falar com a Vesna. Ela leu uma coisa no livro-caixa e não quer me dizer o quê.' },
+  q4ca2: { doneAdd: 'Eu segui a carroça. Sei quem assina a saída. Venha.' },
+  q4ca3: { doneAdd: 'A Mestra já sabe. Ela quer falar com você antes de falar comigo. Isso é mau sinal.' },
+  q4ca4: { doneAdd: 'Enquanto o Bastião briga, Aravel acordou de novo. A Vesna jogou uma corda no poço. Vá ver o que ela achou.' },
+  q4ca5: { doneAdd: 'Velmora tem dezenove crianças sem dono e duas bandeiras de olho na ponte. Vá.' },
+  q4ca6: { doneAdd: 'A Vesna desceu ao corredor de Aravel e achou uma gaiola. Com o nosso desenho. Vá com ela.' },
+  q4ca7: { doneAdd: 'Eu quero ver o fim daquele corredor. Sim, eu. Desça comigo.' },
+  q4ca8: { doneAdd: 'Chega de adiar. O Rurik vai ao muro.' },
+  q4ca9: { doneAdd: 'Chegou uma carta sem selo. O Grão-Mestre recebeu uma igual.' },
+}, LV4, 'Quem Alimenta o Monstro', 'ck10');
+export const MAGE_IV2 = seq(ids(MAGE_IV), {
+  q4ma1: { doneAdd: 'A Ísold quer comparar os nossos livros com os do Ormund. Vá a ela.' },
+  q4ma2: { doneAdd: 'Só uma pessoa tem a chave da estante alta há vinte anos. Eu queria que fosse outra.' },
+  q4ma3: { doneAdd: 'O Vesk já sabe. Ele está andando em círculos, o que num arquimago é perigoso. Vá.' },
+  q4ma4: { doneAdd: 'E agora uma coisa que a Torre finge não ter: uma escada debaixo da Sala Que Ninguém Lê.' },
+  q4ma5: { doneAdd: 'Velmora virou cidade sem lei escrita. Quero a frase da ponte inteira antes que as bandeiras escrevam por cima.' },
+  q4ma6: { doneAdd: 'A Ísold quer descer ao corredor com pena e papel. Vá com ela. Leve o círculo.' },
+  q4ma7: { doneAdd: 'O Vesk quer ver a porta do fim do corredor. Trezentos e doze degraus. Ele vai reclamar de todos.' },
+  q4ma8: { doneAdd: 'O Conselho marcou o julgamento do Morvan. Vá buscá-lo.' },
+  q4ma9: { doneAdd: 'Chegou uma carta com uma letra que eu não tenho em estante nenhuma. Venha.' },
+}, LV4, 'A Última Sílaba', 'mk10');
+
 /* cada fim de capítulo aponta para o começo do seguinte (e diz quem chama) */
 const link = (a: QuestDef[], b: QuestDef[], line?: string) => { const last = a[a.length - 1]; last.next = b[0].id; if (line && last.done) last.done = [...last.done, line]; };
 for (const [a, b] of [[PALADIN_I, PALADIN_II], [WARRIOR_I, WARRIOR_II], [WEREWOLF_I, WEREWOLF_II], [VAMPIRE_I, VAMPIRE_II], [WARLOCK_I1, WARLOCK_II]] as const) link(a, b);
@@ -334,8 +372,12 @@ link(MAGE_II2, MAGE_III2, 'Agora quero queimar as cópias dos pactos que circula
 link(HUMAN_II2, HUMAN_III2, 'Achei uma terra sem dono. E vou pedir a você uma coisa grande.');
 link(DWARF_II2, DWARF_III2, 'Vou abrir o Mercado das Duas Bandeiras. Preciso de quem segure o balcão.');
 link(ELF_II2, ELF_III2, 'E agora quero fazer de você o embaixador da Copa.');
+link(PALADIN_III, PALADIN_IV2, 'A Mesa acabou. O rio, não: está descendo gente de Marghar. Venha.');
+link(HUNTER_III2, HUNTER_IV2, 'A Mesa acabou em nada. Agora desce gente pelo rio, e onde tem fila tem criança solta.');
+link(MAGE_III2, MAGE_IV2, 'A ata ficou excelente. Agora preciso de você em Velmora, com muito papel.');
 export const CHAPTER_I = [...PALADIN_I, ...WARRIOR_I, ...WEREWOLF_I, ...VAMPIRE_I, ...TECHNO_I, ...WARLOCK_I1, ...PALADIN_II, ...WARRIOR_II, ...WEREWOLF_II, ...VAMPIRE_II, ...TECHNO_II2, ...WARLOCK_II,
   ...HUNTER_II2, ...MAGE_II2, ...HUMAN_II2, ...DWARF_II2, ...ELF_II2,
-  ...PALADIN_III, ...WARRIOR_III2, ...WEREWOLF_III2, ...VAMPIRE_III2, ...TECHNO_III, ...WARLOCK_III2, ...HUNTER_III2, ...MAGE_III2, ...HUMAN_III2, ...DWARF_III2, ...ELF_III2];
+  ...PALADIN_III, ...WARRIOR_III2, ...WEREWOLF_III2, ...VAMPIRE_III2, ...TECHNO_III, ...WARLOCK_III2, ...HUNTER_III2, ...MAGE_III2, ...HUMAN_III2, ...DWARF_III2, ...ELF_III2,
+  ...PALADIN_IV2, ...HUNTER_IV2, ...MAGE_IV2];
 /** tira das listas antigas as missões que agora vêm montadas aqui (Capítulos I, II e III; pa6, pa8, aw10, te5, te6 e tv6 entraram no III) */
 export const notOldChapterI = (d: QuestDef) => !/^(pa\d+|aw\d+|w\d\d|la\d+|va\d+|te\d+|ti\d+|bx\d+|gb\d+|vg\d+|vn\d+|tv\d+|bw\d+)$/.test(d.id);
